@@ -32,15 +32,13 @@ static std::map<framework::proto::VarType::Type, aclDataType>
         {framework::proto::VarType::FP64, ACL_DOUBLE},
 };
 
-using Tensor = framework::Tensor;
-
 template <typename DeviceContext, typename T>
 class CastNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
     int dtype = ctx.Attr<int>("out_dtype");
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     auto place = ctx.GetPlace();
 
     if (framework::TransToProtoVarType(x->dtype()) == dtype) {
@@ -49,8 +47,10 @@ class CastNPUKernel : public framework::OpKernel<T> {
       VLOG(4) << "cast to same dtype:" << dtype;
       out->mutable_data(place, x->type());
       framework::TensorCopy(
-          *x, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(), out);
+          *x,
+          ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(),
+          out);
       return;
     }
 
@@ -89,7 +89,8 @@ class CastNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    cast, ops::CastNPUKernel<paddle::platform::NPUDeviceContext, int16_t>,
+    cast,
+    ops::CastNPUKernel<paddle::platform::NPUDeviceContext, int16_t>,
     ops::CastNPUKernel<paddle::platform::NPUDeviceContext, int32_t>,
     ops::CastNPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
     ops::CastNPUKernel<paddle::platform::NPUDeviceContext, int>,

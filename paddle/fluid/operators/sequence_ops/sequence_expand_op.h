@@ -22,36 +22,39 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+using EigenMatrix = phi::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename DeviceContext, typename T>
 struct SequenceExpandFunctor {
   void operator()(
-      const DeviceContext& ctx, const LoDTensor& x,
+      const DeviceContext& ctx,
+      const phi::DenseTensor& x,
       const framework::Vector<size_t>& x_lod,   /*expand source lod*/
       const framework::Vector<size_t>& ref_lod, /*expand referenced lod*/
-      LoDTensor* out);
+      phi::DenseTensor* out);
 };
 
 template <typename DeviceContext, typename T>
 struct SequenceExpandGradFunctor {
   void operator()(
-      const DeviceContext& ctx, const LoDTensor& dout,
+      const DeviceContext& ctx,
+      const phi::DenseTensor& dout,
       const framework::Vector<size_t>& x_lod,   /*expand source lod*/
       const framework::Vector<size_t>& ref_lod, /*expand referenced lod*/
-      LoDTensor* dx);
+      phi::DenseTensor* dx);
 };
 
 template <typename T>
-struct SequenceExpandFunctor<platform::CPUDeviceContext, T> {
+struct SequenceExpandFunctor<phi::CPUContext, T> {
   void operator()(
-      const platform::CPUDeviceContext& context, const LoDTensor& x,
+      const phi::CPUContext& context,
+      const phi::DenseTensor& x,
       const framework::Vector<size_t>& x_lod,   /*expand source lod*/
       const framework::Vector<size_t>& ref_lod, /*expand referenced lod*/
-      LoDTensor* out) {
+      phi::DenseTensor* out) {
     int out_offset = 0;
     int x_item_length = x.numel() / x.dims()[0];
     auto out_data = out->data<T>();
@@ -84,18 +87,19 @@ template <typename DeviceContext, typename T>
 class SequenceExpandKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* x = context.Input<LoDTensor>("X");
-    auto* y = context.Input<LoDTensor>("Y");
-    auto* out = context.Output<LoDTensor>("Out");
+    auto* x = context.Input<phi::DenseTensor>("X");
+    auto* y = context.Input<phi::DenseTensor>("Y");
+    auto* out = context.Output<phi::DenseTensor>("Out");
 
     int ref_level = context.Attr<int>("ref_level");
     auto& x_lod = x->lod();
     auto& y_lod = y->lod();
 
     PADDLE_ENFORCE_EQ(
-        y_lod.empty(), false,
+        y_lod.empty(),
+        false,
         platform::errors::InvalidArgument(
-            "Input(Y) Tensor of SequenceExpandOp does not contain "
+            "Input(Y) phi::DenseTensor of SequenceExpandOp does not contain "
             "LoD information."));
 
     if (ref_level == -1) ref_level = y_lod.size() - 1;
@@ -135,8 +139,11 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
       std::iota(ref_x_lod.begin(), ref_x_lod.end(), 0);
     }
     SequenceExpandFunctor<DeviceContext, T> functor;
-    functor(context.template device_context<DeviceContext>(), *x, ref_x_lod,
-            y_lod[ref_level], out);
+    functor(context.template device_context<DeviceContext>(),
+            *x,
+            ref_x_lod,
+            y_lod[ref_level],
+            out);
   }
 };
 
@@ -153,12 +160,13 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
  *
  * */
 template <typename T>
-struct SequenceExpandGradFunctor<platform::CPUDeviceContext, T> {
+struct SequenceExpandGradFunctor<phi::CPUContext, T> {
   void operator()(
-      const platform::CPUDeviceContext& context, const LoDTensor& dout,
+      const phi::CPUContext& context,
+      const phi::DenseTensor& dout,
       const framework::Vector<size_t>& x_lod,   /*expand source lod*/
       const framework::Vector<size_t>& ref_lod, /*expand referenced lod*/
-      LoDTensor* dx) {
+      phi::DenseTensor* dx) {
     int dout_offset = 0;
     for (size_t i = 1; i < ref_lod.size(); ++i) {
       int repeat_num = ref_lod[i] - ref_lod[i - 1];
@@ -172,7 +180,7 @@ struct SequenceExpandGradFunctor<platform::CPUDeviceContext, T> {
         int dout_end = dout_offset + repeat_num * x_seq_len;
         auto dout_sub = dout.Slice(dout_offset, dout_end);
         dout_sub.Resize({repeat_num, dx_sub.dims()[0]});
-        phi::funcs::ColwiseSum<platform::CPUDeviceContext, T> col_sum;
+        phi::funcs::ColwiseSum<phi::CPUContext, T> col_sum;
         col_sum(context, dout_sub, &dx_sub);
         dout_offset += repeat_num * x_seq_len;
       }
@@ -184,10 +192,11 @@ template <typename DeviceContext, typename T>
 class SequenceExpandGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* g_out = context.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto* x = context.Input<LoDTensor>("X");
-    auto* y = context.Input<LoDTensor>("Y");
-    auto* g_x = context.Output<LoDTensor>(framework::GradVarName("X"));
+    auto* g_out =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* x = context.Input<phi::DenseTensor>("X");
+    auto* y = context.Input<phi::DenseTensor>("Y");
+    auto* g_x = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     int ref_level = context.Attr<int>("ref_level");
 
     g_x->mutable_data<T>(context.GetPlace());
@@ -215,8 +224,11 @@ class SequenceExpandGradKernel : public framework::OpKernel<T> {
       std::iota(ref_x_lod.begin(), ref_x_lod.end(), 0);
     }
     SequenceExpandGradFunctor<DeviceContext, T> functor;
-    functor(context.template device_context<DeviceContext>(), *g_out, ref_x_lod,
-            ref_lod, g_x);
+    functor(context.template device_context<DeviceContext>(),
+            *g_out,
+            ref_x_lod,
+            ref_lod,
+            g_x);
   }
 };
 

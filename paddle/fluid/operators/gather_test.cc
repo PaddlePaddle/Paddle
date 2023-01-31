@@ -20,9 +20,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 
 TEST(Gather, GatherData) {
-  paddle::framework::Tensor* src = new paddle::framework::Tensor();
-  paddle::framework::Tensor* index = new paddle::framework::Tensor();
-  paddle::framework::Tensor* output = new paddle::framework::Tensor();
+  phi::DenseTensor* src = new phi::DenseTensor();
+  phi::DenseTensor* index = new phi::DenseTensor();
+  phi::DenseTensor* output = new phi::DenseTensor();
 
   int* p_src = nullptr;
   int* p_index = nullptr;
@@ -39,7 +39,7 @@ TEST(Gather, GatherData) {
                                             paddle::platform::CPUPlace());
 
   auto* cpu_place = new paddle::platform::CPUPlace();
-  paddle::platform::CPUDeviceContext ctx(*cpu_place);
+  phi::CPUContext ctx(*cpu_place);
   phi::funcs::CPUGather<int>(ctx, *src, *index, output);
   delete cpu_place;
   cpu_place = NULL;

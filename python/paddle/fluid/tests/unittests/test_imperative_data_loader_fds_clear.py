@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
+
 import numpy as np
+
 import paddle.fluid as fluid
-from paddle.fluid import core
-from paddle.io import Dataset, DataLoader
-from paddle.fluid.framework import _test_eager_guard
+import paddle.nn.functional as F
+from paddle.io import DataLoader, Dataset
 
 
 def get_random_images_and_labels(image_shape, label_shape):
@@ -28,25 +28,24 @@ def get_random_images_and_labels(image_shape, label_shape):
 
 
 def batch_generator_creator(batch_size, batch_num):
-
     def __reader__():
         for _ in range(batch_num):
             batch_image, batch_label = get_random_images_and_labels(
-                [batch_size, 784], [batch_size, 1])
+                [batch_size, 784], [batch_size, 1]
+            )
             yield batch_image, batch_label
 
     return __reader__
 
 
 class RandomDataset(Dataset):
-
     def __init__(self, sample_num):
         self.sample_num = sample_num
 
     def __getitem__(self, idx):
         np.random.seed(idx)
         image = np.random.random([784]).astype('float32')
-        label = np.random.randint(0, 9, (1, )).astype('int64')
+        label = np.random.randint(0, 9, (1,)).astype('int64')
         return image, label
 
     def __len__(self):
@@ -54,7 +53,6 @@ class RandomDataset(Dataset):
 
 
 class TestDygraphDataLoaderMmapFdsClear(unittest.TestCase):
-
     def setUp(self):
         self.batch_size = 8
         self.batch_num = 100
@@ -62,58 +60,51 @@ class TestDygraphDataLoaderMmapFdsClear(unittest.TestCase):
         self.capacity = 50
 
     def prepare_data_loader(self):
-        loader = fluid.io.DataLoader.from_generator(capacity=self.capacity,
-                                                    use_multiprocess=True)
-        loader.set_batch_generator(batch_generator_creator(
-            self.batch_size, self.batch_num),
-                                   places=fluid.CPUPlace())
+        loader = fluid.io.DataLoader.from_generator(
+            capacity=self.capacity, use_multiprocess=True
+        )
+        loader.set_batch_generator(
+            batch_generator_creator(self.batch_size, self.batch_num),
+            places=fluid.CPUPlace(),
+        )
         return loader
 
     def run_one_epoch_with_break(self, loader):
         for step_id, data in enumerate(loader()):
             image, label = data
-            relu = fluid.layers.relu(image)
+            relu = F.relu(image)
             self.assertEqual(image.shape, [self.batch_size, 784])
             self.assertEqual(label.shape, [self.batch_size, 1])
             self.assertEqual(relu.shape, [self.batch_size, 784])
             if step_id == 30:
                 break
 
-    def func_test_data_loader_break(self):
+    def test_data_loader_break(self):
         with fluid.dygraph.guard():
             loader = self.prepare_data_loader()
             for _ in range(self.epoch_num):
                 self.run_one_epoch_with_break(loader)
                 break
 
-    def test_data_loader_break(self):
-        with _test_eager_guard():
-            self.func_test_data_loader_break()
-        self.func_test_data_loader_break()
-
-    def func_test_data_loader_continue_break(self):
+    def test_data_loader_continue_break(self):
         with fluid.dygraph.guard():
             loader = self.prepare_data_loader()
             for _ in range(self.epoch_num):
                 self.run_one_epoch_with_break(loader)
 
-    def test_data_loader_continue_break(self):
-        with _test_eager_guard():
-            self.func_test_data_loader_continue_break()
-        self.func_test_data_loader_continue_break()
-
 
 class TestMultiProcessDataLoaderMmapFdsClear(TestDygraphDataLoaderMmapFdsClear):
-
     def prepare_data_loader(self):
         place = fluid.CPUPlace()
         with fluid.dygraph.guard(place):
             dataset = RandomDataset(self.batch_size * self.batch_num)
-            loader = DataLoader(dataset,
-                                places=place,
-                                batch_size=self.batch_size,
-                                drop_last=True,
-                                num_workers=2)
+            loader = DataLoader(
+                dataset,
+                places=place,
+                batch_size=self.batch_size,
+                drop_last=True,
+                num_workers=2,
+            )
             return loader
 
 

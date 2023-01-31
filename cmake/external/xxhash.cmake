@@ -97,5 +97,4 @@ endif()
 
 add_library(xxhash STATIC IMPORTED GLOBAL)
 set_property(TARGET xxhash PROPERTY IMPORTED_LOCATION ${XXHASH_LIBRARIES})
-include_directories(${XXHASH_INCLUDE_DIR})
 add_dependencies(xxhash extern_xxhash)

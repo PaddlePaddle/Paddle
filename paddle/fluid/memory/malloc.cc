@@ -37,11 +37,12 @@ uint64_t Release(const platform::Place& place) {
 std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
                                         size_t size,
                                         const phi::Stream& stream) {
-  return allocation::AllocatorFacade::Instance().AllocShared(place, size,
-                                                             stream);
+  return allocation::AllocatorFacade::Instance().AllocShared(
+      place, size, stream);
 }
 
-AllocationPtr Alloc(const platform::CUDAPlace& place, size_t size,
+AllocationPtr Alloc(const platform::CUDAPlace& place,
+                    size_t size,
                     const phi::Stream& stream) {
   return allocation::AllocatorFacade::Instance().Alloc(place, size, stream);
 }

@@ -36,33 +36,38 @@ inline void CompareAllKernelImpl(const Context& ctx,
                                  const DenseTensor& y,
                                  DenseTensor* out);
 
-#define DEFINE_COMPARE_KERNEL(compare_kernel, functor, inverse_functor) \
-  template <typename T, typename Context>                               \
-  void compare_kernel(const Context& ctx,                               \
-                      const DenseTensor& x,                             \
-                      const DenseTensor& y,                             \
-                      int axis,                                         \
-                      DenseTensor* out) {                               \
-    CompareKernelImpl<T, Context, functor<T>, inverse_functor<T>>(      \
-        ctx, x, y, axis, out);                                          \
+#define DEFINE_COMPARE_KERNEL(name, functor, inverse_functor)      \
+  template <typename T, typename Context>                          \
+  void name##RawKernel(const Context& ctx,                         \
+                       const DenseTensor& x,                       \
+                       const DenseTensor& y,                       \
+                       int axis,                                   \
+                       DenseTensor* out) {                         \
+    CompareKernelImpl<T, Context, functor<T>, inverse_functor<T>>( \
+        ctx, x, y, axis, out);                                     \
+  }                                                                \
+  template <typename T, typename Context>                          \
+  void name##Kernel(const Context& ctx,                            \
+                    const DenseTensor& x,                          \
+                    const DenseTensor& y,                          \
+                    DenseTensor* out) {                            \
+    name##RawKernel<T, Context>(ctx, x, y, -1, out);               \
   }
 
-DEFINE_COMPARE_KERNEL(LessThanKernel,
+DEFINE_COMPARE_KERNEL(LessThan,
                       funcs::LessThanFunctor,
                       funcs::GreaterThanFunctor)
-DEFINE_COMPARE_KERNEL(LessEqualKernel,
+DEFINE_COMPARE_KERNEL(LessEqual,
                       funcs::LessEqualFunctor,
                       funcs::GreaterEqualFunctor)
-DEFINE_COMPARE_KERNEL(GreaterThanKernel,
+DEFINE_COMPARE_KERNEL(GreaterThan,
                       funcs::GreaterThanFunctor,
                       funcs::LessThanFunctor)
-DEFINE_COMPARE_KERNEL(GreaterEqualKernel,
+DEFINE_COMPARE_KERNEL(GreaterEqual,
                       funcs::GreaterEqualFunctor,
                       funcs::LessEqualFunctor)
-DEFINE_COMPARE_KERNEL(EqualKernel, funcs::EqualFunctor, funcs::EqualFunctor)
-DEFINE_COMPARE_KERNEL(NotEqualKernel,
-                      funcs::NotEqualFunctor,
-                      funcs::NotEqualFunctor)
+DEFINE_COMPARE_KERNEL(Equal, funcs::EqualFunctor, funcs::EqualFunctor)
+DEFINE_COMPARE_KERNEL(NotEqual, funcs::NotEqualFunctor, funcs::NotEqualFunctor)
 #undef DEFINE_COMPARE_KERNEL
 
 #define DEFINE_COMPARE_ALL_KERNEL(compare_all_kernel, functor)    \

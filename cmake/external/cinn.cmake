@@ -16,6 +16,13 @@ if(NOT WITH_CINN)
   return()
 endif()
 
+if(NOT CINN_GIT_TAG)
+  # 2023.01.28 commit
+  set(CINN_GIT_TAG 1449890f7724babf2a343c6f8073bd28a7bbc683)
+endif()
+
+message(STATUS "CINN version: " ${CINN_GIT_TAG})
+
 # TODO(zhhsplendid): CINN has lots of warnings during early development.
 # They will be treated as errors under paddle. We set no-error now and we will
 # clean the code in the future.
@@ -26,7 +33,6 @@ add_definitions(-w)
 ######################################
 include(ExternalProject)
 set(CINN_PREFIX_DIR ${THIRD_PARTY_PATH}/CINN)
-set(CINN_GIT_TAG release/v0.2)
 set(CINN_OPTIONAL_ARGS
     -DPY_VERSION=${PY_VERSION}
     -DWITH_CUDA=${WITH_GPU}
@@ -35,7 +41,12 @@ set(CINN_OPTIONAL_ARGS
     -DWITH_MKLDNN=${WITH_MKL}
     -DPUBLISH_LIBS=ON
     -DWITH_TESTING=ON)
-set(CINN_BUILD_COMMAND $(MAKE) cinnapi -j)
+set(CINN_BUILD_COMMAND ${CMAKE_COMMAND} --build . --target cinnapi -j)
+set(CINN_BINARY_DIR ${CINN_PREFIX_DIR}/src/external_cinn-build)
+set(CINN_LIB_NAME "libcinnapi.so")
+set(CINN_LIB_LOCATION "${CINN_BINARY_DIR}/dist/cinn/lib")
+set(CINN_LIB "${CINN_LIB_LOCATION}/${CINN_LIB_NAME}")
+
 ExternalProject_Add(
   external_cinn
   ${EXTERNAL_PROJECT_LOG_ARGS}
@@ -44,11 +55,12 @@ ExternalProject_Add(
   PREFIX ${CINN_PREFIX_DIR}
   BUILD_COMMAND ${CINN_BUILD_COMMAND}
   INSTALL_COMMAND ""
-  CMAKE_ARGS ${CINN_OPTIONAL_ARGS})
+  CMAKE_ARGS ${CINN_OPTIONAL_ARGS}
+  CMAKE_GENERATOR "Unix Makefiles"
+  BUILD_BYPRODUCTS ${CINN_LIB})
 
 ExternalProject_Get_Property(external_cinn BINARY_DIR)
 ExternalProject_Get_Property(external_cinn SOURCE_DIR)
-set(CINN_BINARY_DIR ${BINARY_DIR})
 set(CINN_SOURCE_DIR ${SOURCE_DIR})
 
 message(STATUS "CINN BINARY_DIR: ${CINN_BINARY_DIR}")
@@ -74,8 +86,6 @@ include_directories(${LLVM_INCLUDE_DIR})
 # Put external_cinn and dependencies together as a lib
 ######################################################
 
-set(CINN_LIB_NAME "libcinnapi.so")
-set(CINN_LIB_LOCATION "${CINN_BINARY_DIR}/dist/cinn/lib")
 set(CINN_INCLUDE_DIR "${CINN_BINARY_DIR}/dist/cinn/include")
 
 add_library(cinn SHARED IMPORTED GLOBAL)

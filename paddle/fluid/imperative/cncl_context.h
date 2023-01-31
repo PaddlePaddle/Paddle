@@ -41,7 +41,8 @@ class CNCLParallelContext : public ParallelContext {
 
   ~CNCLParallelContext() override = default;
 
-  void BcastCNCLId(std::vector<cnclCliqueId>& cncl_ids, int root,  // NOLINT
+  void BcastCNCLId(std::vector<cnclCliqueId>& cncl_ids,
+                   int root,  // NOLINT
                    int server_fd);
 
   void Init() override;
@@ -49,7 +50,8 @@ class CNCLParallelContext : public ParallelContext {
   void InitWithRingID(int ring_id) override;
 
   void AllReduceByStream(const framework::Variable& src,
-                         framework::Variable* dst, int ring_id,
+                         framework::Variable* dst,
+                         int ring_id,
                          bool use_calc_stream) override;
 
   void Broadcast(framework::Variable* src, int ring_id) override;

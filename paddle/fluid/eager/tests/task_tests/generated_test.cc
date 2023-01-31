@@ -44,9 +44,13 @@ TEST(Generated, Sigmoid) {
   // 1. Prepare Input
   paddle::framework::DDim ddim = phi::make_ddim({2, 4, 4, 4});
   VLOG(6) << "Make Dim";
-  paddle::experimental::Tensor tensor = egr_utils_api::CreateTensorWithValue(
-      ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
-      phi::DataLayout::NCHW, 0.0, true);
+  paddle::experimental::Tensor tensor =
+      egr_utils_api::CreateTensorWithValue(ddim,
+                                           paddle::platform::CPUPlace(),
+                                           phi::DataType::FLOAT32,
+                                           phi::DataLayout::NCHW,
+                                           0.0,
+                                           true);
   VLOG(6) << "Make paddle::experimental::Tensor";
   egr_utils_api::RetainGradForTensor(tensor);
   VLOG(6) << "Retain Grad for Tensor";
@@ -71,15 +75,23 @@ TEST(Generated, Matmul_v2) {
 
   // 1. Prepare Input
   paddle::framework::DDim ddimX = phi::make_ddim({4, 16});
-  paddle::experimental::Tensor X = egr_utils_api::CreateTensorWithValue(
-      ddimX, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
-      phi::DataLayout::NCHW, 3.0, true);
+  paddle::experimental::Tensor X =
+      egr_utils_api::CreateTensorWithValue(ddimX,
+                                           paddle::platform::CPUPlace(),
+                                           phi::DataType::FLOAT32,
+                                           phi::DataLayout::NCHW,
+                                           3.0,
+                                           true);
   egr_utils_api::RetainGradForTensor(X);
 
   paddle::framework::DDim ddimY = phi::make_ddim({16, 20});
-  paddle::experimental::Tensor Y = egr_utils_api::CreateTensorWithValue(
-      ddimY, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
-      phi::DataLayout::NCHW, 2.0, true);
+  paddle::experimental::Tensor Y =
+      egr_utils_api::CreateTensorWithValue(ddimY,
+                                           paddle::platform::CPUPlace(),
+                                           phi::DataType::FLOAT32,
+                                           phi::DataLayout::NCHW,
+                                           2.0,
+                                           true);
   egr_utils_api::RetainGradForTensor(Y);
 
   auto output_tensor = matmul_v2_dygraph_function(
@@ -103,15 +115,23 @@ TEST(Generated, ElementwiseAdd) {
 
   // 1. Prepare Input
   paddle::framework::DDim ddimX = phi::make_ddim({4, 16});
-  paddle::experimental::Tensor X = egr_utils_api::CreateTensorWithValue(
-      ddimX, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
-      phi::DataLayout::NCHW, 3.0, true);
+  paddle::experimental::Tensor X =
+      egr_utils_api::CreateTensorWithValue(ddimX,
+                                           paddle::platform::CPUPlace(),
+                                           phi::DataType::FLOAT32,
+                                           phi::DataLayout::NCHW,
+                                           3.0,
+                                           true);
   egr_utils_api::RetainGradForTensor(X);
 
   paddle::framework::DDim ddimY = phi::make_ddim({4, 16});
-  paddle::experimental::Tensor Y = egr_utils_api::CreateTensorWithValue(
-      ddimY, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
-      phi::DataLayout::NCHW, 2.0, true);
+  paddle::experimental::Tensor Y =
+      egr_utils_api::CreateTensorWithValue(ddimY,
+                                           paddle::platform::CPUPlace(),
+                                           phi::DataType::FLOAT32,
+                                           phi::DataLayout::NCHW,
+                                           2.0,
+                                           true);
   egr_utils_api::RetainGradForTensor(Y);
 
   auto output_tensor = elementwise_add_dygraph_function(X, Y, {});

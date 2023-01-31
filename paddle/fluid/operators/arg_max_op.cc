@@ -18,11 +18,14 @@ limitations under the License. */
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 
-DECLARE_INFER_SHAPE_FUNCTOR(arg_max, ArgMaxInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(arg_max,
+                            ArgMaxInferShapeFunctor,
                             PD_INFER_META(phi::ArgMinMaxInferMeta));
 
 REGISTER_OPERATOR(
-    arg_max, paddle::operators::ArgMinMaxOp, paddle::operators::ArgMaxOpMaker,
+    arg_max,
+    paddle::operators::ArgMinMaxOp,
+    paddle::operators::ArgMaxOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ArgMaxInferShapeFunctor);

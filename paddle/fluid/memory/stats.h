@@ -99,12 +99,14 @@ class Stat : public StatBase {
 // functions where ultra-low performance overhead is required.
 int64_t DeviceMemoryStatCurrentValue(const std::string& stat_type, int dev_id);
 int64_t DeviceMemoryStatPeakValue(const std::string& stat_type, int dev_id);
-void DeviceMemoryStatUpdate(const std::string& stat_type, int dev_id,
+void DeviceMemoryStatUpdate(const std::string& stat_type,
+                            int dev_id,
                             int64_t increment);
 
 int64_t HostMemoryStatCurrentValue(const std::string& stat_type, int dev_id);
 int64_t HostMemoryStatPeakValue(const std::string& stat_type, int dev_id);
-void HostMemoryStatUpdate(const std::string& stat_type, int dev_id,
+void HostMemoryStatUpdate(const std::string& stat_type,
+                          int dev_id,
                           int64_t increment);
 
 #define DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, id)              \
@@ -152,7 +154,8 @@ void HostMemoryStatUpdate(const std::string& stat_type, int dev_id,
 
 #define HOST_MEMORY_STAT_FUNC(item, id, func, ...)                     \
   [&] {                                                                \
-    PADDLE_ENFORCE_EQ(id, 0,                                           \
+    PADDLE_ENFORCE_EQ(id,                                              \
+                      0,                                               \
                       paddle::platform::errors::OutOfRange(            \
                           "Only support device id 0 for host memory "  \
                           "stats, not support device id: %d",          \

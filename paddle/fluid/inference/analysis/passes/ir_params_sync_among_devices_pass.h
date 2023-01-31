@@ -37,13 +37,14 @@ class IrParamsSyncAmongDevicesPass : public AnalysisPass {
  private:
 #ifdef PADDLE_WITH_ASCEND_CL
   void CopyParamsToNpu(Argument *argument);
-#else
+#endif
 
-  void GetVarNameToOpTypeMap(
-      const framework::ir::Graph& graph,
-      std::unordered_map<std::string, std::string>* var_name_op_type_map);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  void CopyParamsToGpu(Argument *argument);
+#endif
 
-  void CopyParamsToGpu(Argument* argument);
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  void CopyParamsToCustomDevice(Argument *argument);
 #endif
 };
 

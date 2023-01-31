@@ -19,13 +19,15 @@
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/imperative/type_defs.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
+void SetOp(ProgramDesc* prog,
+           const std::string& type,
+           const std::string& name,
            const std::vector<std::string>& inputs,
            const std::vector<std::string>& outputs) {
   auto* op = prog->MutableBlock(0)->AppendOp();
@@ -77,32 +79,40 @@ ProgramDesc BuildProgramDesc(bool convWithExistingBias) {
 
   // conv+bias, both with MKL-DNN
   if (convWithExistingBias) {
-    SetOp(&prog, "conv2d", "conv",
+    SetOp(&prog,
+          "conv2d",
+          "conv",
           std::vector<std::string>({"c", "weights", "conv_bias"}),
           std::vector<std::string>({"f"}));
   } else {
-    SetOp(&prog, "conv2d", "conv", std::vector<std::string>({"c", "weights"}),
+    SetOp(&prog,
+          "conv2d",
+          "conv",
+          std::vector<std::string>({"c", "weights"}),
           std::vector<std::string>({"f"}));
   }
-  SetOp(&prog, "elementwise_add", "eltwise",
+  SetOp(&prog,
+        "elementwise_add",
+        "eltwise",
         std::vector<std::string>({"f", "eltwise_bias"}),
         std::vector<std::string>({"g"}));
 
   return prog;
 }
 
-void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
+void InitTensorHolder(Scope* scope,
+                      const paddle::platform::Place& place,
                       const char* var_name) {
   auto x = scope->Var(var_name);
-  auto tensor = x->GetMutable<LoDTensor>();
-  tensor->mutable_data(place,
-                       framework::TransToPhiDataType(proto::VarType::FP32), 1);
+  auto tensor = x->GetMutable<phi::DenseTensor>();
+  tensor->mutable_data(
+      place, framework::TransToPhiDataType(proto::VarType::FP32), 1);
 }
 
 void MainTest(bool convWithExistingBias) {
   auto prog = BuildProgramDesc(convWithExistingBias);
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
-  auto place = paddle::platform::CPUPlace();
+  auto place = phi::CPUPlace();
   NaiveExecutor exe{place};
   Scope scope;
   // Init scope, as it is used in pass
@@ -129,12 +139,13 @@ void MainTest(bool convWithExistingBias) {
   int conv_bias_count = 0;
 
   for (auto* node : graph->Nodes()) {
-    if (node->IsOp() && node->Op()->Type() == "conv2d") {
+    if (node->IsOp() && (node->Op()->Type() == "conv2d" ||
+                         node->Op()->Type() == "fused_conv2d")) {
       auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
-      EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
+      EXPECT_TRUE(PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")));
       // check if "conv" convolution is fused
-      auto op_name = BOOST_GET_CONST(std::string, op->GetAttr("name"));
+      auto op_name = PADDLE_GET_CONST(std::string, op->GetAttr("name"));
       if (op_name == "conv") {
         auto input_names = op->InputNames();
         ASSERT_TRUE(std::find(input_names.begin(), input_names.end(), "Bias") !=

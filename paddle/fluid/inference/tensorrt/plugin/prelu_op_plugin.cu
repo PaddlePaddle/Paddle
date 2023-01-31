@@ -28,7 +28,9 @@ namespace plugin {
 
 int PReluPlugin::initialize() TRT_NOEXCEPT {
   cudaMalloc(&p_gpu_weight_, sizeof(float) * weight_.size());
-  cudaMemcpy(p_gpu_weight_, weight_.data(), weight_.size() * sizeof(float),
+  cudaMemcpy(p_gpu_weight_,
+             weight_.data(),
+             weight_.size() * sizeof(float),
              cudaMemcpyHostToDevice);
   return 0;
 }
@@ -50,11 +52,15 @@ nvinfer1::Dims PReluPlugin::getOutputDimensions(int index,
   return output_dims;
 }
 
-int PReluPlugin::enqueue(int batch_size, const void *const *inputs,
+int PReluPlugin::enqueue(int batch_size,
+                         const void *const *inputs,
 #if IS_TRT_VERSION_LT(8000)
-                         void **outputs, void *workspace, cudaStream_t stream) {
+                         void **outputs,
+                         void *workspace,
+                         cudaStream_t stream) {
 #else
-                         void *const *outputs, void *workspace,
+                         void *const *outputs,
+                         void *workspace,
                          cudaStream_t stream) TRT_NOEXCEPT {
 #endif
   // input dims is CHW.
@@ -72,8 +78,14 @@ int PReluPlugin::enqueue(int batch_size, const void *const *inputs,
     bool channel_last = data_format_ == "NHWC";
     operators::math::PreluChannelWiseDirectCUDAFunctor<float>
         prelu_channel_wise;
-    prelu_channel_wise(stream, input, alpha, output, input_dims.d[0],
-                       input_dims.d[1], channel_last, numel);
+    prelu_channel_wise(stream,
+                       input,
+                       alpha,
+                       output,
+                       input_dims.d[0],
+                       input_dims.d[1],
+                       channel_last,
+                       numel);
   } else if (mode_ == "element") {
     operators::math::PreluElementWiseDirectCUDAFunctor<float>
         prelu_element_wise;
@@ -95,7 +107,9 @@ void PReluPluginDynamic::terminate() TRT_NOEXCEPT {
 
 int PReluPluginDynamic::initialize() TRT_NOEXCEPT {
   cudaMalloc(&p_gpu_weight_, sizeof(float) * weight_.size());
-  cudaMemcpy(p_gpu_weight_, weight_.data(), weight_.size() * sizeof(float),
+  cudaMemcpy(p_gpu_weight_,
+             weight_.data(),
+             weight_.size() * sizeof(float),
              cudaMemcpyHostToDevice);
   return 0;
 }
@@ -118,23 +132,30 @@ void PReluPluginDynamic::serialize(void *buffer) const TRT_NOEXCEPT {
 }
 
 nvinfer1::DimsExprs PReluPluginDynamic::getOutputDimensions(
-    int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,
+    int output_index,
+    const nvinfer1::DimsExprs *inputs,
+    int nb_inputs,
     nvinfer1::IExprBuilder &expr_builder) TRT_NOEXCEPT {
   return inputs[0];
 }
 
 bool PReluPluginDynamic::supportsFormatCombination(
-    int pos, const nvinfer1::PluginTensorDesc *in_out, int nb_inputs,
+    int pos,
+    const nvinfer1::PluginTensorDesc *in_out,
+    int nb_inputs,
     int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
-      in_out, platform::errors::InvalidArgument(
-                  "The input of swish plugin shoule not be nullptr."));
+      in_out,
+      platform::errors::InvalidArgument(
+          "The input of swish plugin shoule not be nullptr."));
 
   PADDLE_ENFORCE_LT(
-      pos, nb_inputs + nb_outputs,
+      pos,
+      nb_inputs + nb_outputs,
       platform::errors::InvalidArgument("The pos(%d) should be less than the "
                                         "num(%d) of the input and the output.",
-                                        pos, nb_inputs + nb_outputs));
+                                        pos,
+                                        nb_inputs + nb_outputs));
   (in_out && pos < (nb_inputs + nb_outputs));
 
   return ((in_out[pos].type == nvinfer1::DataType::kFLOAT) &&
@@ -142,14 +163,17 @@ bool PReluPluginDynamic::supportsFormatCombination(
 }
 
 nvinfer1::DataType PReluPluginDynamic::getOutputDataType(
-    int index, const nvinfer1::DataType *input_types,
+    int index,
+    const nvinfer1::DataType *input_types,
     int nb_inputs) const TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(index, 0,
+  PADDLE_ENFORCE_EQ(index,
+                    0,
                     platform::errors::InvalidArgument(
                         "The PRelu Plugin only has one input, so the "
                         "index value should be 0, but get %d.",
                         index));
-  PADDLE_ENFORCE_EQ((input_types[0] == nvinfer1::DataType::kFLOAT), true,
+  PADDLE_ENFORCE_EQ((input_types[0] == nvinfer1::DataType::kFLOAT),
+                    true,
                     platform::errors::InvalidArgument(
                         "The input type should be half or float"));
   return input_types[0];
@@ -157,7 +181,8 @@ nvinfer1::DataType PReluPluginDynamic::getOutputDataType(
 
 int PReluPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
                                 const nvinfer1::PluginTensorDesc *output_desc,
-                                const void *const *inputs, void *const *outputs,
+                                const void *const *inputs,
+                                void *const *outputs,
                                 void *workspace,
                                 cudaStream_t stream) TRT_NOEXCEPT {
   auto input_dims = input_desc[0].dims;
@@ -173,8 +198,14 @@ int PReluPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
     bool channel_last = data_format_ == "NHWC";
     operators::math::PreluChannelWiseDirectCUDAFunctor<float>
         prelu_channel_wise;
-    prelu_channel_wise(stream, input, alpha, output, input_dims.d[0],
-                       input_dims.d[1], channel_last, numel);
+    prelu_channel_wise(stream,
+                       input,
+                       alpha,
+                       output,
+                       input_dims.d[0],
+                       input_dims.d[1],
+                       channel_last,
+                       numel);
   } else if (mode_ == "element") {
     operators::math::PreluElementWiseDirectCUDAFunctor<float>
         prelu_element_wise;

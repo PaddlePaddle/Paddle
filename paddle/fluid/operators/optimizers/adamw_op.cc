@@ -48,10 +48,13 @@ class AdamWOpMaker : public AdamOpMaker {
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(adamw, AdamwInferMetaFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(adamw,
+                            AdamwInferMetaFunctor,
                             PD_INFER_META(phi::AdamwInferMeta));
 REGISTER_OPERATOR(
-    adamw, ops::AdamWOp, ops::AdamWOpMaker,
+    adamw,
+    ops::AdamWOp,
+    ops::AdamWOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     AdamwInferMetaFunctor);

@@ -104,8 +104,8 @@ void SingleThreadPrediction(paddle_infer::Predictor *predictor,
     Record output_Record;
     auto output_tensor = predictor->GetOutputHandle(output_name);
     std::vector<int> output_shape = output_tensor->shape();
-    int out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
-                                  std::multiplies<int>());
+    int out_num = std::accumulate(
+        output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
 
     switch (output_tensor->type()) {
       case paddle::PaddleDType::INT64: {
@@ -228,8 +228,8 @@ double SingleThreadProfile(paddle_infer::Predictor *predictor,
     for (auto &output_name : output_names) {
       auto output_tensor = predictor->GetOutputHandle(output_name);
       std::vector<int> output_shape = output_tensor->shape();
-      int out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
-                                    std::multiplies<int>());
+      int out_num = std::accumulate(
+          output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
       switch (output_tensor->type()) {
         case paddle::PaddleDType::INT64: {
           std::vector<int64_t> out_data;

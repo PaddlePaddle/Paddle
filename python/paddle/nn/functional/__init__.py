@@ -69,6 +69,7 @@ from .conv import conv2d  # noqa: F401
 from .conv import conv2d_transpose  # noqa: F401
 from .conv import conv3d  # noqa: F401
 from .conv import conv3d_transpose  # noqa: F401
+from .distance import pairwise_distance  # noqa: F401
 from .extension import diag_embed  # noqa: F401
 from .extension import sequence_mask
 from .loss import binary_cross_entropy  # noqa: F401
@@ -89,11 +90,14 @@ from .loss import softmax_with_cross_entropy  # noqa: F401
 from .loss import margin_cross_entropy  # noqa: F401
 from .loss import square_error_cost  # noqa: F401
 from .loss import ctc_loss  # noqa: F401
+from .loss import rnnt_loss  # noqa: F401
 from .loss import hinge_embedding_loss  # noqa: F401
 from .loss import cosine_embedding_loss  # noqa: F401
+from .loss import multi_margin_loss
 from .loss import multi_label_soft_margin_loss
 from .loss import triplet_margin_with_distance_loss
 from .loss import triplet_margin_loss
+from .loss import soft_margin_loss
 from .norm import batch_norm  # noqa: F401
 from .norm import instance_norm  # noqa: F401
 from .norm import layer_norm  # noqa: F401
@@ -136,6 +140,7 @@ __all__ = [  # noqa
     'conv2d_transpose',
     'conv3d',
     'conv3d_transpose',
+    'pairwise_distance',
     'elu',
     'elu_',
     'gelu',
@@ -216,6 +221,7 @@ __all__ = [  # noqa
     'margin_cross_entropy',
     'square_error_cost',
     'ctc_loss',
+    'rnnt_loss',
     'hinge_embedding_loss',
     'affine_grid',
     'grid_sample',
@@ -238,4 +244,6 @@ __all__ = [  # noqa
     'rrelu',
     'triplet_margin_with_distance_loss',
     'triplet_margin_loss',
+    'multi_margin_loss',
+    'soft_margin_loss',
 ]

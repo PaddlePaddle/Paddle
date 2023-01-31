@@ -25,11 +25,10 @@ class GraphSampleNeighborsOP : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Row"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Row"),
+                          ctx.device_context().GetPlace());
   }
 };
 
@@ -49,7 +48,8 @@ class GraphSampleNeighborsOpMaker : public framework::OpProtoAndCheckerMaker {
               "The number of sample neighbors of input nodes respectively.");
     AddOutput("Out_Eids", "The eids of the sample edges");
     AddAttr<int>(
-        "sample_size", "The sample size of graph sample neighbors method. ",
+        "sample_size",
+        "The sample size of graph sample neighbors method. "
         "Set default value as -1, means return all neighbors of nodes.")
         .SetDefault(-1);
     AddAttr<bool>("return_eids",
@@ -75,7 +75,8 @@ DECLARE_INFER_SHAPE_FUNCTOR(graph_sample_neighbors,
                             PD_INFER_META(phi::GraphSampleNeighborsInferMeta));
 
 REGISTER_OPERATOR(
-    graph_sample_neighbors, ops::GraphSampleNeighborsOP,
+    graph_sample_neighbors,
+    ops::GraphSampleNeighborsOP,
     ops::GraphSampleNeighborsOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,

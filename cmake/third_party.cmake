@@ -27,6 +27,9 @@ set(THIRD_PARTY_CACHE_PATH
 set(THIRD_PARTY_BUILD_TYPE Release)
 set(third_party_deps)
 
+include(ProcessorCount)
+ProcessorCount(NPROC)
+
 # cache funciton to avoid repeat download code of third_party.
 # This function has 4 parameters, URL / REPOSITOR / TAG / DIR:
 # 1. URL:           specify download url of 3rd party
@@ -225,7 +228,7 @@ if(NOT DEFINED WITH_MKLDNN)
   if(WITH_MKL AND AVX2_FOUND)
     set(WITH_MKLDNN ON)
   else()
-    message(STATUS "Do not have AVX2 intrinsics and disabled MKL-DNN")
+    message(STATUS "Do not have AVX2 intrinsics and disabled MKL-DNN.")
     set(WITH_MKLDNN OFF)
   endif()
 endif()
@@ -233,7 +236,7 @@ endif()
 if(WIN32
    OR APPLE
    OR NOT WITH_GPU
-   OR ON_INFER)
+   OR (ON_INFER AND NOT WITH_PYTHON))
   set(WITH_DGC OFF)
 endif()
 
@@ -246,46 +249,36 @@ endif()
 include(external/zlib) # download, build, install zlib
 include(external/gflags) # download, build, install gflags
 include(external/glog) # download, build, install glog
-include(external/boost) # download boost
 include(external/eigen) # download eigen3
 include(external/threadpool) # download threadpool
 include(external/dlpack) # download dlpack
 include(external/xxhash) # download, build, install xxhash
 include(external/warpctc) # download, build, install warpctc
+include(external/warprnnt) # download, build, install warprnnt
 include(external/utf8proc) # download, build, install utf8proc
 
-list(
-  APPEND
-  third_party_deps
-  extern_eigen3
-  extern_gflags
-  extern_glog
-  extern_boost
-  extern_xxhash)
+list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog
+     extern_xxhash)
 list(
   APPEND
   third_party_deps
   extern_zlib
   extern_dlpack
   extern_warpctc
+  extern_warprnnt
   extern_threadpool
   extern_utf8proc)
 include(external/lapack) # download, build, install lapack
 
-list(
-  APPEND
-  third_party_deps
-  extern_eigen3
-  extern_gflags
-  extern_glog
-  extern_boost
-  extern_xxhash)
+list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog
+     extern_xxhash)
 list(
   APPEND
   third_party_deps
   extern_zlib
   extern_dlpack
   extern_warpctc
+  extern_warprnnt
   extern_threadpool
   extern_lapack)
 
@@ -327,7 +320,8 @@ if(WITH_ONNXRUNTIME)
 endif()
 
 if(WITH_GPU)
-  if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
+  if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0
+     OR (WIN32 AND ${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.6))
     include(external/cub) # download cub
     list(APPEND third_party_deps extern_cub)
   endif()
@@ -431,6 +425,35 @@ if(WITH_PSCORE)
 
   include(external/rocksdb) # download, build, install rocksdb
   list(APPEND third_party_deps extern_rocksdb)
+
+  include(external/jemalloc) # download, build, install jemalloc
+  list(APPEND third_party_deps extern_jemalloc)
+endif()
+
+if(WITH_RPC
+   AND NOT WITH_PSCORE
+   AND NOT WITH_PSLIB)
+  include(external/snappy)
+  list(APPEND third_party_deps extern_snappy)
+
+  include(external/leveldb)
+  list(APPEND third_party_deps extern_leveldb)
+
+  include(external/brpc)
+  list(APPEND third_party_deps extern_brpc)
+endif()
+
+if(WITH_DISTRIBUTE
+   AND NOT WITH_PSLIB
+   AND NOT WITH_PSCORE
+   AND NOT WITH_RPC)
+  include(external/snappy)
+  list(APPEND third_party_deps extern_snappy)
+
+  include(external/leveldb)
+  list(APPEND third_party_deps extern_leveldb)
+  include(external/brpc)
+  list(APPEND third_party_deps extern_brpc)
 endif()
 
 if(WITH_XBYAK)
@@ -499,6 +522,22 @@ endif()
 if(WITH_CUSPARSELT)
   include(external/cusparselt) # download, build, install cusparselt
   list(APPEND third_party_deps extern_cusparselt)
+endif()
+
+if(WITH_GPU
+   AND NOT WITH_ARM
+   AND NOT WIN32
+   AND NOT APPLE)
+  if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.0)
+    include(external/cutlass) # download, build, install cusparselt
+    list(APPEND third_party_deps extern_cutlass)
+    set(WITH_CUTLASS ON)
+  endif()
+endif()
+
+if(WITH_CUDNN_FRONTEND)
+  include(external/cudnn-frontend) # download cudnn-frontend
+  list(APPEND third_party_deps extern_cudnn_frontend)
 endif()
 
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})

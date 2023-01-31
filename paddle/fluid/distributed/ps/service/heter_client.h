@@ -39,10 +39,10 @@ namespace framework {
 class Scope;
 }  // namespace framework
 }  // namespace paddle
-DECLARE_int32(pserver_timeout_ms);
+
 namespace paddle {
 namespace distributed {
-
+DECLARE_int32(pserver_timeout_ms);
 using MultiVarMsg = ::paddle::distributed::MultiVariableMessage;
 using VarMsg = ::paddle::distributed::VariableMessage;
 
@@ -100,7 +100,9 @@ class HeterClient {
       options.connection_type = "";
       VLOG(4) << "ssl enabled in arm";
 #else
-      options.ssl_options.enable = need_encrypt;
+      if (need_encrypt) {
+        options.mutable_ssl_options();
+      }
 #endif
       client_channels = &peer_switch_channels_;
     } else if (peer_role == PEER_ROLE_IS_WORKER) {
@@ -137,16 +139,21 @@ class HeterClient {
                         const std::vector<std::string>& recv_var_name,
                         const std::string& mode = "forward");
 
-  int Send(int group_id, const std::vector<std::string>& var_names,
-           const std::vector<int64_t>& vars_len, void* data_ptr,
+  int Send(int group_id,
+           const std::vector<std::string>& var_names,
+           const std::vector<int64_t>& vars_len,
+           void* data_ptr,
            int64_t data_size);
 
-  int Send(const platform::DeviceContext& ctx, const framework::Scope& scope,
+  int Send(const platform::DeviceContext& ctx,
+           const framework::Scope& scope,
            const std::string& message_name,
            const std::vector<std::string>& send_var_names);
 
-  int Recv(int group_id, const std::vector<std::string>& var_names,
-           void* data_ptr, int64_t data_size);
+  int Recv(int group_id,
+           const std::vector<std::string>& var_names,
+           void* data_ptr,
+           int64_t data_size);
 
   int Recv(const platform::DeviceContext& ctx,
            framework::Scope& recv_scope,  // NOLINT
@@ -195,7 +202,8 @@ class HeterClient {
 
   void Stop();
 
-  std::future<int32_t> SendCmd(uint32_t table_id, int cmd_id,
+  std::future<int32_t> SendCmd(uint32_t table_id,
+                               int cmd_id,
                                const std::vector<std::string>& params);
 
   std::future<int32_t> StartProfiler();

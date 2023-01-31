@@ -19,7 +19,7 @@
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/gpu/elementwise_grad.h"
 #include "paddle/phi/kernels/impl/elementwise_grad_kernel_impl.h"
@@ -35,6 +35,7 @@ void MaximumGradKernel(const Context& dev_ctx,
                        DenseTensor* dx,
                        DenseTensor* dy) {
   const auto place = dev_ctx.GetPlace();
+
   if (dx != nullptr && dy != nullptr) {
     std::vector<const DenseTensor*> ins = {&x, &y, &dout};
     GetGradXAndYOut<ElementwiseType::kTernary, T>(
@@ -96,6 +97,7 @@ PD_REGISTER_KERNEL(fmax_grad,
                    float,
                    double,
                    int,
+                   phi::dtype::float16,
                    int64_t) {}
 
 PD_REGISTER_KERNEL(fmin_grad,
@@ -105,6 +107,7 @@ PD_REGISTER_KERNEL(fmin_grad,
                    float,
                    double,
                    int,
+                   phi::dtype::float16,
                    int64_t) {}
 
 PD_REGISTER_KERNEL(maximum_grad,
@@ -136,6 +139,7 @@ PD_REGISTER_KERNEL(elementwise_heaviside_grad,
                    float,
                    double,
                    int,
+                   phi::dtype::float16,
                    int64_t) {}
 
 PD_REGISTER_KERNEL(elementwise_pow_grad,
@@ -145,4 +149,5 @@ PD_REGISTER_KERNEL(elementwise_pow_grad,
                    float,
                    double,
                    int,
+                   phi::dtype::float16,
                    int64_t) {}

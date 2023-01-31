@@ -157,8 +157,12 @@ void SeqPoolCVMConcatFusePass::ApplyImpl(ir::Graph* graph) const {
           Node* cvm_op = subgraph.at(cvm_op_node);
           Node* cvm_out_var = subgraph.at(cvm_out_var_node);
           cvm_input_of_cvm = subgraph.at(cvm_cvm_in_var_node);
-          marked_nodes.insert({seqpool_op, seqpool_out_var, seqpool_idx_out_var,
-                               cvm_op, cvm_out_var, concat_node});
+          marked_nodes.insert({seqpool_op,
+                               seqpool_out_var,
+                               seqpool_idx_out_var,
+                               cvm_op,
+                               cvm_out_var,
+                               concat_node});
           ins_to_concat[cvm_out_var->Name()] = seqpool_in_var;
         };
     gpd(graph, handler);

@@ -18,6 +18,8 @@
 #include <stdexcept>
 #include <string>
 
+#include "glog/logging.h"
+
 #if !defined(_WIN32)
 #include <dlfcn.h>  // dladdr
 #include <sys/stat.h>

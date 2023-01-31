@@ -1,8 +1,8 @@
 diff --git a/paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.cc b/paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.cc
-index 394ce7799e..8edbef50be 100644
+index 7a9c5b889d..c847a5d523 100644
 --- a/paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.cc
 +++ b/paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.cc
-@@ -390,6 +390,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
+@@ -418,6 +418,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
        graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&
        graph->Has(framework::ir::kMultiheadMatmulPass));
  
@@ -10,7 +10,7 @@ index 394ce7799e..8edbef50be 100644
    if (use_static_engine) {
      trt_engine_serialized_data = GetTrtEngineSerializedData(
          Get<std::string>("model_opt_cache_dir"), engine_key);
-@@ -399,6 +400,19 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
+@@ -427,6 +428,19 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
        LOG(INFO) << "Load TRT Optimized Info from "
                  << GetTrtEngineSerializedPath(
                         Get<std::string>("model_opt_cache_dir"), engine_key);
@@ -30,16 +30,18 @@ index 394ce7799e..8edbef50be 100644
        return;
      }
    }
-@@ -411,12 +425,25 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
+@@ -439,7 +453,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
  
    auto *scope = param_scope();
    framework::BlockDesc block_desc_temp(nullptr, block_desc.Proto());
 -  std::unordered_set<std::string> param_set(params.begin(), params.end());
    inference::Singleton<inference::tensorrt::OpConverter>::Global()
        .ConvertBlockToTRTEngine(
-           &block_desc_temp, *scope,
-           std::vector<std::string>(input_names.begin(), input_names.end()),
-           param_set, output_mapping, trt_engine);
+           &block_desc_temp,
+@@ -449,6 +462,21 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
+           output_mapping,
+           trt_engine);
+ 
 +  const auto* root_scope{scope};
 +  for (;root_scope->parent();) {
 +    root_scope = root_scope->parent();
@@ -54,10 +56,11 @@ index 394ce7799e..8edbef50be 100644
 +    memory::Release(platform::CUDAPlace(dev_id));
 +  }
 +  memory::Release(platform::CPUPlace());
- 
++
    if (use_static_engine) {
      nvinfer1::IHostMemory *serialized_engine_data = trt_engine->Serialize();
-@@ -431,6 +458,8 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
+     trt_engine_serialized_data =
+@@ -462,6 +490,8 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                << GetTrtEngineSerializedPath(
                       Get<std::string>("model_opt_cache_dir"), engine_key);
    }

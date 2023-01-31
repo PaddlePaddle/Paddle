@@ -66,7 +66,7 @@ class RmspropOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("centered", "(bool, default false) use centered rmsprop.")
         .SetDefault(false);
     AddComment(R"DOC(
-Rmsprop Optimizer. 
+Rmsprop Optimizer.
 
 $$
 MeanSquareOut = decay * MeanSquare + (1 - decay) * Grad * Grad \\
@@ -93,7 +93,10 @@ http://www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf)
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(rmsprop, RmspropInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(rmsprop,
+                            RmspropInferShapeFunctor,
                             PD_INFER_META(phi::RmspropInferMeta));
-REGISTER_OP_WITHOUT_GRADIENT(rmsprop, ops::RmspropOp, ops::RmspropOpMaker,
+REGISTER_OP_WITHOUT_GRADIENT(rmsprop,
+                             ops::RmspropOp,
+                             ops::RmspropOpMaker,
                              RmspropInferShapeFunctor);

@@ -34,7 +34,9 @@ std::shared_ptr<void> GetIpcBasePtr(std::string handle);
 
 class CudaIpcAllocation : public Allocation {
  public:
-  explicit CudaIpcAllocation(void *ptr, size_t size, int device_id,
+  explicit CudaIpcAllocation(void *ptr,
+                             size_t size,
+                             int device_id,
                              std::shared_ptr<void> shared_ptr)
       : Allocation(ptr, size, platform::CUDAPlace(device_id)),
         device_id_(std::move(device_id)),

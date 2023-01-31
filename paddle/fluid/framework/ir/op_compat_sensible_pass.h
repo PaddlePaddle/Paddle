@@ -224,7 +224,7 @@ AttrCompat& AttrCompat::IsType() {
 template <typename T>
 AttrCompat& AttrCompat::IsNumGT(T v) {
   conditions_.emplace_back([v](const Attribute& attr) -> bool {
-    T value = BOOST_GET_CONST(T, attr);
+    T value = PADDLE_GET_CONST(T, attr);
     return value > v;
   });
   return *this;
@@ -233,7 +233,7 @@ AttrCompat& AttrCompat::IsNumGT(T v) {
 template <typename T>
 AttrCompat& AttrCompat::IsNumGE(T v) {
   conditions_.emplace_back([v](const Attribute& attr) -> bool {
-    T value = BOOST_GET_CONST(T, attr);
+    T value = PADDLE_GET_CONST(T, attr);
     return value >= v;
   });
   return *this;
@@ -242,7 +242,7 @@ AttrCompat& AttrCompat::IsNumGE(T v) {
 template <typename T>
 AttrCompat& AttrCompat::IsNumLT(T v) {
   conditions_.emplace_back([v](const Attribute& attr) -> bool {
-    T value = BOOST_GET_CONST(T, attr);
+    T value = PADDLE_GET_CONST(T, attr);
     return value < v;
   });
   return *this;
@@ -251,7 +251,7 @@ AttrCompat& AttrCompat::IsNumLT(T v) {
 template <typename T>
 AttrCompat& AttrCompat::IsNumLE(T v) {
   conditions_.emplace_back([v](const Attribute& attr) -> bool {
-    T value = BOOST_GET_CONST(T, attr);
+    T value = PADDLE_GET_CONST(T, attr);
     return value <= v;
   });
   return *this;
@@ -260,7 +260,7 @@ AttrCompat& AttrCompat::IsNumLE(T v) {
 template <typename T>
 AttrCompat& AttrCompat::IsNumEQ(T v) {
   conditions_.emplace_back([v](const Attribute& attr) -> bool {
-    T value = BOOST_GET_CONST(T, attr);
+    T value = PADDLE_GET_CONST(T, attr);
     return value == v;
   });
   return *this;
@@ -269,7 +269,7 @@ AttrCompat& AttrCompat::IsNumEQ(T v) {
 template <typename T>
 AttrCompat& AttrCompat::IsNumMatch(bool (*func)(T)) {
   conditions_.emplace_back([func](const Attribute& attr) -> bool {
-    T value = BOOST_GET_CONST(T, attr);
+    T value = PADDLE_GET_CONST(T, attr);
     return func(value);
   });
   return *this;

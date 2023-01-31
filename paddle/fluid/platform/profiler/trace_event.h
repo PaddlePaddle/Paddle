@@ -18,6 +18,8 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/type_defs.h"
+
 namespace paddle {
 namespace platform {
 
@@ -105,6 +107,11 @@ struct KernelEventInfo {
   uint64_t submitted;
   // The completed timestamp for the kernel execution, in ns.
   uint64_t completed;
+
+  float blocks_per_sm;
+  float warps_per_sm;
+  // theoretical achieved occupancy
+  float occupancy;
 };
 
 static constexpr size_t kMemKindMaxLen = 50;
@@ -136,16 +143,23 @@ struct MemsetEventInfo {
 struct OperatorSupplementEvent {
   OperatorSupplementEvent() = default;
   OperatorSupplementEvent(
-      uint64_t timestamp_ns, const std::string& op_type,
+      uint64_t timestamp_ns,
+      const std::string& op_type,
       const std::map<std::string, std::vector<std::vector<int64_t>>>&
           input_shapes,
       const std::map<std::string, std::vector<std::string>>& dtypes,
-      const std::string& callstack, uint64_t process_id, uint64_t thread_id)
+      const std::string& callstack,
+      const framework::AttributeMap& attributes,
+      uint64_t op_id,
+      uint64_t process_id,
+      uint64_t thread_id)
       : timestamp_ns(timestamp_ns),
         op_type(op_type),
         input_shapes(input_shapes),
         dtypes(dtypes),
         callstack(callstack),
+        attributes(attributes),
+        op_id(op_id),
         process_id(process_id),
         thread_id(thread_id) {}
   // timestamp of the record
@@ -157,6 +171,10 @@ struct OperatorSupplementEvent {
   std::map<std::string, std::vector<std::string>> dtypes;
   // call stack
   std::string callstack;
+  // op attributes
+  framework::AttributeMap attributes;
+  // op id
+  uint64_t op_id;
   // process id of the record
   uint64_t process_id;
   // thread id of the record
@@ -165,8 +183,11 @@ struct OperatorSupplementEvent {
 
 struct HostTraceEvent {
   HostTraceEvent() = default;
-  HostTraceEvent(const std::string& name, TracerEventType type,
-                 uint64_t start_ns, uint64_t end_ns, uint64_t process_id,
+  HostTraceEvent(const std::string& name,
+                 TracerEventType type,
+                 uint64_t start_ns,
+                 uint64_t end_ns,
+                 uint64_t process_id,
                  uint64_t thread_id)
       : name(name),
         type(type),
@@ -190,9 +211,13 @@ struct HostTraceEvent {
 
 struct RuntimeTraceEvent {
   RuntimeTraceEvent() = default;
-  RuntimeTraceEvent(const std::string& name, uint64_t start_ns, uint64_t end_ns,
-                    uint64_t process_id, uint64_t thread_id,
-                    uint32_t correlation_id, uint32_t callback_id)
+  RuntimeTraceEvent(const std::string& name,
+                    uint64_t start_ns,
+                    uint64_t end_ns,
+                    uint64_t process_id,
+                    uint64_t thread_id,
+                    uint32_t correlation_id,
+                    uint32_t callback_id)
       : name(name),
         start_ns(start_ns),
         end_ns(end_ns),
@@ -221,10 +246,15 @@ struct RuntimeTraceEvent {
 
 struct DeviceTraceEvent {
   DeviceTraceEvent() = default;
-  DeviceTraceEvent(const std::string& name, TracerEventType type,
-                   uint64_t start_ns, uint64_t end_ns, uint64_t device_id,
-                   uint64_t context_id, uint64_t stream_id,
-                   uint32_t correlation_id, const KernelEventInfo& kernel_info)
+  DeviceTraceEvent(const std::string& name,
+                   TracerEventType type,
+                   uint64_t start_ns,
+                   uint64_t end_ns,
+                   uint64_t device_id,
+                   uint64_t context_id,
+                   uint64_t stream_id,
+                   uint32_t correlation_id,
+                   const KernelEventInfo& kernel_info)
       : name(name),
         type(type),
         start_ns(start_ns),
@@ -234,10 +264,15 @@ struct DeviceTraceEvent {
         stream_id(stream_id),
         correlation_id(correlation_id),
         kernel_info(kernel_info) {}
-  DeviceTraceEvent(const std::string& name, TracerEventType type,
-                   uint64_t start_ns, uint64_t end_ns, uint64_t device_id,
-                   uint64_t context_id, uint64_t stream_id,
-                   uint32_t correlation_id, const MemcpyEventInfo& memcpy_info)
+  DeviceTraceEvent(const std::string& name,
+                   TracerEventType type,
+                   uint64_t start_ns,
+                   uint64_t end_ns,
+                   uint64_t device_id,
+                   uint64_t context_id,
+                   uint64_t stream_id,
+                   uint32_t correlation_id,
+                   const MemcpyEventInfo& memcpy_info)
       : name(name),
         type(type),
         start_ns(start_ns),
@@ -247,10 +282,15 @@ struct DeviceTraceEvent {
         stream_id(stream_id),
         correlation_id(correlation_id),
         memcpy_info(memcpy_info) {}
-  DeviceTraceEvent(const std::string& name, TracerEventType type,
-                   uint64_t start_ns, uint64_t end_ns, uint64_t device_id,
-                   uint64_t context_id, uint64_t stream_id,
-                   uint32_t correlation_id, const MemsetEventInfo& memset_info)
+  DeviceTraceEvent(const std::string& name,
+                   TracerEventType type,
+                   uint64_t start_ns,
+                   uint64_t end_ns,
+                   uint64_t device_id,
+                   uint64_t context_id,
+                   uint64_t stream_id,
+                   uint32_t correlation_id,
+                   const MemsetEventInfo& memset_info)
       : name(name),
         type(type),
         start_ns(start_ns),
@@ -289,10 +329,16 @@ struct DeviceTraceEvent {
 
 struct MemTraceEvent {
   MemTraceEvent() = default;
-  MemTraceEvent(uint64_t timestamp_ns, uint64_t addr, TracerMemEventType type,
-                uint64_t process_id, uint64_t thread_id, int64_t increase_bytes,
-                const std::string& place, uint64_t current_allocated,
-                uint64_t current_reserved, uint64_t peak_allocated,
+  MemTraceEvent(uint64_t timestamp_ns,
+                uint64_t addr,
+                TracerMemEventType type,
+                uint64_t process_id,
+                uint64_t thread_id,
+                int64_t increase_bytes,
+                const std::string& place,
+                uint64_t current_allocated,
+                uint64_t current_reserved,
+                uint64_t peak_allocated,
                 uint64_t peak_reserved)
       : timestamp_ns(timestamp_ns),
         addr(addr),

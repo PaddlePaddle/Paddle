@@ -35,6 +35,9 @@ void TransposeKernel(const Context& ctx,
   }
   int rank = axis.size();
   switch (rank) {
+    case 0:
+      phi::Copy<Context>(ctx, x, ctx.GetPlace(), false, out);
+      break;
     case 1:
       funcs::Transpose<Context, T, 1> trans1;
       trans1(ctx, x, out, axis);

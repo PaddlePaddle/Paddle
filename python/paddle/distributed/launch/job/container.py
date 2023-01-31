@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import OrderedDict
+import os
+import sys
+
 from paddle.distributed.launch.utils.process_context import ProcessContext
 
 from .status import Status
 
-import os, copy, sys
 
-
-class Container(object):
+class Container:
     '''
     TODO(kuizhiqing) A container can be run by process/thread or just a callable function
     '''
@@ -89,7 +89,8 @@ class Container(object):
     def _valide_env(self):
         for k, v in self._env.items():
             assert isinstance(k, str) and isinstance(
-                v, str), 'env {}:{} must be str'.format(k, v)
+                v, str
+            ), 'env {}:{} must be str'.format(k, v)
 
     def _get_fd(self, pth):
         if not pth:
@@ -99,7 +100,7 @@ class Container(object):
             d = os.path.dirname(pth)
             if not os.path.isdir(d):
                 os.makedirs(d, exist_ok=True)
-            return open(pth, 'w')
+            return open(pth, 'a')
         except:
             return None
 
@@ -115,11 +116,19 @@ class Container(object):
         elif self._err:
             self._stderr = self._get_fd(self._err) or sys.stderr
 
-        self._proc = ProcessContext(self._entrypoint,
-                                    env=self._env,
-                                    out=self._stdout,
-                                    err=self._stderr,
-                                    shell=self._shell)
+        if not self._log_handler:
+            self._log_handler = open(self._out)
+            self._log_handler.seek(0, 2)
+            self._log_start_offset = self._log_handler.tell()
+
+        self._proc = ProcessContext(
+            self._entrypoint,
+            env=self._env,
+            out=self._stdout,
+            err=self._stderr,
+            shell=self._shell,
+        )
+
         self._proc.start()
 
     def terminate(self, force=False):
@@ -131,7 +140,11 @@ class Container(object):
             return self._proc.terminate(force)
 
     def wait(self, timeout=None):
-        self._proc.wait(timeout)
+        try:
+            self._proc.wait(timeout)
+            return True
+        except Exception:
+            return False
 
     @property
     def exit_code(self):
@@ -149,13 +162,15 @@ class Container(object):
             return Status.FAILED
 
     def __str__(self):
-        return 'Container rank {} status {} cmd {} code {} log {} \nenv {}'.format(
-            self._rank,
-            self.status,
-            self._entrypoint,
-            self.exit_code,
-            self.errfile,
-            self._env,
+        return (
+            'Container rank {} status {} cmd {} code {} log {} \nenv {}'.format(
+                self._rank,
+                self.status,
+                self._entrypoint,
+                self.exit_code,
+                self.errfile,
+                self._env,
+            )
         )
 
     def logs(self, fn=None, offset=0, whence=1, limit=1000):
@@ -167,13 +182,16 @@ class Container(object):
 
         try:
             if offset != 0 or whence != 1:
+                if whence == 0 and offset < self._log_start_offset:
+                    offset = self._log_start_offset
                 self._log_handler.seek(offset, whence)
 
             for _ in range(limit):
                 line = self._log_handler.readline()
                 if not line:
-                    break
+                    return False
                 fn.write(line)
+            return True
         except:
             return
 

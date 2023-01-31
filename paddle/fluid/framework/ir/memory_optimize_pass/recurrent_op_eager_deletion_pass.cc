@@ -36,12 +36,50 @@ void RecurrentOpEagerDeletionPass::ApplyImpl(Graph *graph) const {
   std::unordered_map<size_t, OpAndGradOpPair> target_ops =
       DeviceIdToRecurrentAndRecurrentGradOp(*graph);
 
+  if (graph->IsConstructedByPartialProgram()) {
+    PADDLE_ENFORCE_LE(target_ops.size(),
+                      1,
+                      platform::errors::InvalidArgument(
+                          "Unsupported multi devices if graph is constructed "
+                          "with partial program."));
+    size_t scope_idx = 0;
+    auto &recur_ops = target_ops[scope_idx].first;
+    auto &recur_grad_ops = target_ops[scope_idx].second;
+
+    auto all_ops = graph->OriginProgram().Block(0).AllOps();
+    if (recur_ops.empty()) {
+      operators::AppendOpVariantByOpName(
+          all_ops, std::string("recurrent"), &recur_ops);
+    } else if (recur_grad_ops.empty()) {
+      operators::AppendOpVariantByOpName(
+          all_ops, std::string("recurrent_grad"), &recur_grad_ops);
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "One of recur_ops or recur_grad_ops should be empty."));
+    }
+  }
+
   for (auto &entry : target_ops) {
     // Prepare safe eager deletion on different devices because the garbage
     // collection may be different across devices
     OpAndGradOpPair &op_pair = entry.second;
     PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
         graph->OriginProgram(), &op_pair);
+  }
+
+  auto all_ops = ir::FilterByNodeWrapper<details::OpHandleBase>(*graph);
+  for (auto op_hander : all_ops) {
+    auto *compute_op = dynamic_cast<details::ComputationOpHandle *>(op_hander);
+    if (compute_op == nullptr) continue;
+    if (compute_op->Name() == "recurrent" ||
+        compute_op->Name() == "recurrent_grad") {
+      ir::Node *op_node = op_hander->Node();
+      auto *op_base = compute_op->GetOp();
+      if (op_base->Attrs().count("skip_eager_deletion_vars")) {
+        op_node->Op()->SetAttr("skip_eager_deletion_vars",
+                               op_base->Attrs().at("skip_eager_deletion_vars"));
+      }
+    }
   }
 }
 

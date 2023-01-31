@@ -14,12 +14,14 @@
 try:
     from paddle.version import full_version as __version__
     from paddle.version import commit as __git_commit__
-    from paddle.cuda_env import *
+    from paddle.cuda_env import *  # noqa: F403
 except ImportError:
     import sys
-    sys.stderr.write('''Warning with import paddle: you should not
+
+    sys.stderr.write(
+        '''Warning with import paddle: you should not
      import paddle from the source directory; please install paddlepaddle*.whl firstly.'''
-                     )
+    )
 
 from .batch import batch  # noqa: F401
 from .framework import monkey_patch_variable
@@ -35,7 +37,10 @@ from .framework import set_flags  # noqa: F401
 from .framework import disable_static  # noqa: F401
 from .framework import enable_static  # noqa: F401
 from .framework import in_dynamic_mode  # noqa: F401
+from .fluid.dataset import *  # noqa: F401, F403
+from .fluid.lazy_init import LazyGuard  # noqa: F401
 
+from .framework.dtype import iinfo  # noqa: F401
 from .framework.dtype import dtype as dtype  # noqa: F401
 from .framework.dtype import uint8  # noqa: F401
 from .framework.dtype import int8  # noqa: F401
@@ -49,13 +54,13 @@ from .framework.dtype import bfloat16  # noqa: F401
 from .framework.dtype import bool  # noqa: F401
 from .framework.dtype import complex64  # noqa: F401
 from .framework.dtype import complex128  # noqa: F401
-if fluid.framework._in_eager_mode_:
+
+if fluid.framework.global_var._in_eager_mode_:
     Tensor = framework.core.eager.Tensor
 else:
     from .framework import VarBase as Tensor  # noqa: F401
 
 Tensor.__qualname__ = 'Tensor'  # noqa: F401
-import paddle.compat  # noqa: F401
 import paddle.distributed  # noqa: F401
 import paddle.sysconfig  # noqa: F401
 import paddle.distribution  # noqa: F401
@@ -77,6 +82,10 @@ import paddle.onnx  # noqa: F401
 import paddle.reader  # noqa: F401
 import paddle.static  # noqa: F401
 import paddle.vision  # noqa: F401
+import paddle.audio  # noqa: F401
+import paddle.geometric  # noqa: F401
+import paddle.sparse  # noqa: F401
+import paddle.quantization  # noqa: F401
 
 from .tensor.attribute import is_complex  # noqa: F401
 from .tensor.attribute import is_integer  # noqa: F401
@@ -85,6 +94,7 @@ from .tensor.attribute import shape  # noqa: F401
 from .tensor.attribute import real  # noqa: F401
 from .tensor.attribute import imag  # noqa: F401
 from .tensor.attribute import is_floating_point  # noqa: F401
+from .tensor.creation import create_parameter  # noqa: F401
 from .tensor.creation import to_tensor  # noqa: F401
 from .tensor.creation import diag  # noqa: F401
 from .tensor.creation import diagflat  # noqa: F401
@@ -106,7 +116,8 @@ from .tensor.creation import empty_like  # noqa: F401
 from .tensor.creation import assign  # noqa: F401
 from .tensor.creation import complex  # noqa: F401
 from .tensor.creation import clone  # noqa: F401
-from .tensor.creation import tril_indices  #noqa: F401
+from .tensor.creation import tril_indices  # noqa: F401
+from .tensor.creation import triu_indices  # noqa: F401
 from .tensor.linalg import matmul  # noqa: F401
 from .tensor.linalg import dot  # noqa: F401
 from .tensor.linalg import norm  # noqa: F401
@@ -160,6 +171,7 @@ from .tensor.manipulation import shard_index  # noqa: F401
 from .tensor.manipulation import slice  # noqa: F401
 from .tensor.manipulation import crop  # noqa: F401
 from .tensor.manipulation import split  # noqa: F401
+from .tensor.manipulation import vsplit  # noqa: F401
 from .tensor.manipulation import squeeze  # noqa: F401
 from .tensor.manipulation import squeeze_  # noqa: F401
 from .tensor.manipulation import stack  # noqa: F401
@@ -182,6 +194,8 @@ from .tensor.manipulation import as_complex  # noqa: F401
 from .tensor.manipulation import as_real  # noqa: F401
 from .tensor.manipulation import moveaxis  # noqa: F401
 from .tensor.manipulation import repeat_interleave  # noqa: F401
+from .tensor.manipulation import index_add  # noqa: F401
+from .tensor.manipulation import index_add_  # noqa: F401
 from .tensor.math import abs  # noqa: F401
 from .tensor.math import acos  # noqa: F401
 from .tensor.math import asin  # noqa: F401
@@ -217,8 +231,10 @@ from .tensor.math import sqrt  # noqa: F401
 from .tensor.math import square  # noqa: F401
 from .tensor.math import stanh  # noqa: F401
 from .tensor.math import sum  # noqa: F401
+from .tensor.math import nan_to_num  # noqa: F401
 from .tensor.math import nansum  # noqa: F401
 from .tensor.math import nanmean  # noqa: F401
+from .tensor.math import count_nonzero  # noqa: F401
 from .tensor.math import tanh  # noqa: F401
 from .tensor.math import tanh_  # noqa: F401
 from .tensor.math import add_n  # noqa: F401
@@ -232,6 +248,7 @@ from .tensor.math import mm  # noqa: F401
 from .tensor.math import divide  # noqa: F401
 from .tensor.math import floor_divide  # noqa: F401
 from .tensor.math import remainder  # noqa: F401
+from .tensor.math import remainder_  # noqa: F401
 from .tensor.math import mod  # noqa: F401
 from .tensor.math import floor_mod  # noqa: F401
 from .tensor.math import multiply  # noqa: F401
@@ -274,6 +291,9 @@ from .tensor.math import inner  # noqa: F401
 from .tensor.math import outer  # noqa: F401
 from .tensor.math import heaviside  # noqa: F401
 from .tensor.math import frac  # noqa: F401
+from .tensor.math import sgn  # noqa: F401
+from .tensor.math import take  # noqa: F401
+from .tensor.math import frexp  # noqa: F401
 
 from .tensor.random import bernoulli  # noqa: F401
 from .tensor.random import poisson  # noqa: F401
@@ -290,6 +310,7 @@ from .tensor.search import argmax  # noqa: F401
 from .tensor.search import argmin  # noqa: F401
 from .tensor.search import argsort  # noqa: F401
 from .tensor.search import searchsorted  # noqa: F401
+from .tensor.search import bucketize  # noqa: F401
 from .tensor.search import masked_select  # noqa: F401
 from .tensor.search import topk  # noqa: F401
 from .tensor.search import where  # noqa: F401
@@ -306,8 +327,9 @@ from .tensor.einsum import einsum  # noqa: F401
 from .framework.random import seed  # noqa: F401
 from .framework.random import get_cuda_rng_state  # noqa: F401
 from .framework.random import set_cuda_rng_state  # noqa: F401
+from .framework.random import get_rng_state  # noqa: F401
+from .framework.random import set_rng_state  # noqa: F401
 from .framework import ParamAttr  # noqa: F401
-from .framework import create_parameter  # noqa: F401
 from .framework import CPUPlace  # noqa: F401
 from .framework import IPUPlace  # noqa: F401
 from .framework import CUDAPlace  # noqa: F401
@@ -346,6 +368,7 @@ from .device import is_compiled_with_mlu  # noqa: F401
 from .device import is_compiled_with_cinn  # noqa: F401
 from .device import is_compiled_with_cuda  # noqa: F401
 from .device import is_compiled_with_rocm  # noqa: F401
+from .device import is_compiled_with_custom_device  # noqa: F401
 from .device import XPUPlace  # noqa: F401
 
 # high-level api
@@ -366,6 +389,7 @@ from .tensor.random import check_shape  # noqa: F401
 # CINN has to set a flag to include a lib
 if is_compiled_with_cinn():
     import os
+
     package_dir = os.path.dirname(os.path.abspath(__file__))
     runtime_include_dir = os.path.join(package_dir, "libs")
     cuh_file = os.path.join(runtime_include_dir, "cinn_cuda_runtime_source.cuh")
@@ -373,8 +397,8 @@ if is_compiled_with_cinn():
         os.environ.setdefault('runtime_include_dir', runtime_include_dir)
 
 disable_static()
-
 __all__ = [  # noqa
+    'iinfo',
     'dtype',
     'uint8',
     'int8',
@@ -403,6 +427,7 @@ __all__ = [  # noqa
     'save',
     'multinomial',
     'get_cuda_rng_state',
+    'get_rng_state',
     'rank',
     'empty_like',
     'eye',
@@ -410,6 +435,7 @@ __all__ = [  # noqa
     'cumprod',
     'logcumsumexp',
     'logit',
+    'LazyGuard',
     'sign',
     'is_empty',
     'equal',
@@ -441,7 +467,9 @@ __all__ = [  # noqa
     'flops',
     'sort',
     'searchsorted',
+    'bucketize',
     'split',
+    'vsplit',
     'logical_and',
     'full_like',
     'less_than',
@@ -559,6 +587,7 @@ __all__ = [  # noqa
     'sum',
     'nansum',
     'nanmean',
+    'count_nonzero',
     'tile',
     'greater_equal',
     'isfinite',
@@ -581,6 +610,7 @@ __all__ = [  # noqa
     'unique',
     'unique_consecutive',
     'set_cuda_rng_state',
+    'set_rng_state',
     'set_printoptions',
     'std',
     'flatten',
@@ -642,6 +672,13 @@ __all__ = [  # noqa
     'renorm',
     'take_along_axis',
     'put_along_axis',
+    'nan_to_num',
     'heaviside',
     'tril_indices',
+    'index_add',
+    "index_add_",
+    'sgn',
+    'triu_indices',
+    'take',
+    'frexp',
 ]

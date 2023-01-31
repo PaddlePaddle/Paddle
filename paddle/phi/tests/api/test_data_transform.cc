@@ -29,7 +29,6 @@ PD_DECLARE_KERNEL(matmul, CPU, ALL_LAYOUT);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_DECLARE_KERNEL(full, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(matmul, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(copy, GPU, ALL_LAYOUT);
 #endif
 
 namespace paddle {

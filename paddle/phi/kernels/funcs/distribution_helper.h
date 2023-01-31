@@ -278,11 +278,10 @@ __global__ void DistributionKernel(size_t size,
   MT args[kCount];
   T result[kCount];
   for (size_t i = idx; i < size; i += total_thread * kCount) {
-    kps::ElementwiseRandom<SType, MT, kCount, 1, DistOp>(
-        &args[0], dist, &state);
-    kps::ElementwiseUnary<MT, T, kCount, 1, 1, TransformOp>(
+    kps::ElementwiseRandom<SType, MT, kCount, DistOp>(&args[0], dist, &state);
+    kps::ElementwiseUnary<MT, T, kCount, 1, TransformOp>(
         &result[0], &args[0], trans);
-    kps::WriteData<T, T, kCount, 1, 1, true>(
+    kps::WriteData<T, T, kCount, 1, true>(
         out_data + i, &result[0], size - i, 1, stride, 1);
     __syncthreads();
   }

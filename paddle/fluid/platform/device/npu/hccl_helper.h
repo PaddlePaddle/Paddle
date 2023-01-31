@@ -113,8 +113,10 @@ struct HCCLContextMap {
 
   explicit HCCLContextMap(const std::vector<platform::Place> &places,
                           HcclRootInfo *hccl_id = nullptr,
-                          size_t num_trainers = 1, size_t trainer_id = 0) {
-    PADDLE_ENFORCE_EQ(!places.empty(), true,
+                          size_t num_trainers = 1,
+                          size_t trainer_id = 0) {
+    PADDLE_ENFORCE_EQ(!places.empty(),
+                      true,
                       platform::errors::InvalidArgument(
                           "The HCCL place should not be empty."));
     order_.reserve(places.size());
@@ -124,7 +126,8 @@ struct HCCLContextMap {
       contexts_.emplace(dev_id, HCCLContext(dev_id));
     }
     PADDLE_ENFORCE_EQ(
-        order_.size(), contexts_.size(),
+        order_.size(),
+        contexts_.size(),
         platform::errors::Unavailable("HCCL Context Map does not support "
                                       "contain two or more same device."));
 
@@ -136,8 +139,9 @@ struct HCCLContextMap {
       // PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::ncclCommInitAll(
       //     comms.get(), static_cast<int>(order_.size()), order_.data()));
     } else {
-      PADDLE_ENFORCE_NOT_NULL(hccl_id, platform::errors::InvalidArgument(
-                                           "The HCCL id should not be null."));
+      PADDLE_ENFORCE_NOT_NULL(
+          hccl_id,
+          platform::errors::InvalidArgument("The HCCL id should not be null."));
       {
         int nranks = num_trainers * order_.size();
         // HCCLGroupGuard gurad;
@@ -189,12 +193,12 @@ inline std::string GetFlatHCCLVarName(size_t pos) {
 }
 
 inline std::string GetHierarchicalExterHCCLVarName(size_t pos) {
-  return string::Sprintf("Hierarchical_exter_%s_%d", HCCL_ID_VARNAME,
-                         static_cast<int>(pos));
+  return string::Sprintf(
+      "Hierarchical_exter_%s_%d", HCCL_ID_VARNAME, static_cast<int>(pos));
 }
 inline std::string GetHierarchicalInterHCCLVarName(size_t pos) {
-  return string::Sprintf("Hierarchical_inter_%s_%d", HCCL_ID_VARNAME,
-                         static_cast<int>(pos));
+  return string::Sprintf(
+      "Hierarchical_inter_%s_%d", HCCL_ID_VARNAME, static_cast<int>(pos));
 }
 
 class HCCLCommunicator {
@@ -249,15 +253,16 @@ class HCCLCommunicator {
 
   void InitFlatCtxs(const std::vector<platform::Place> &places,
                     const std::vector<HcclRootInfo *> &hccl_ids,
-                    size_t trainers_num, size_t trainer_id) {
+                    size_t trainers_num,
+                    size_t trainer_id) {
     if (hccl_ids.size() == 0) {
       auto ptr = new platform::HCCLContextMap(places);
       VLOG(1) << "init local trainer";
       flat_ctxs_.emplace_back(ptr);
     } else {
       for (size_t i = 0; i < hccl_ids.size(); i++) {
-        auto ptr = new platform::HCCLContextMap(places, hccl_ids[i],
-                                                trainers_num, trainer_id);
+        auto ptr = new platform::HCCLContextMap(
+            places, hccl_ids[i], trainers_num, trainer_id);
         VLOG(1) << "init trainer_id:" << trainer_id << ", comm no:" << i;
         flat_ctxs_.emplace_back(ptr);
       }
@@ -272,8 +277,8 @@ class HCCLCommunicator {
         int rank = trainer_id * places.size() + p;
         int dev_id = places[p].device;
         auto &ctx = flat_ctxs_[ring_id]->contexts_.at(dev_id);
-        HCCLCommContext::Instance().AssignHCCLComm(ctx.comm_, nranks, rank,
-                                                   dev_id, ring_id);
+        HCCLCommContext::Instance().AssignHCCLComm(
+            ctx.comm_, nranks, rank, dev_id, ring_id);
       }
     }
   }
@@ -281,18 +286,22 @@ class HCCLCommunicator {
   void InitHierarchicalCtxs(const std::vector<platform::Place> &places,
                             const std::vector<HcclRootInfo *> &inter_hccl_ids,
                             const std::vector<HcclRootInfo *> &exter_hccl_ids,
-                            size_t trainers_num, size_t trainer_id,
+                            size_t trainers_num,
+                            size_t trainer_id,
                             size_t inter_trainers_num,
                             size_t exter_trainers_num) {
-    PADDLE_ENFORCE_EQ(
-        trainers_num, inter_trainers_num * exter_trainers_num,
-        platform::errors::InvalidArgument(
-            "trainers_num:%llu != inter_trainers_num:%llu * "
-            "exter_trainers_num:%llu",
-            trainers_num, inter_trainers_num, exter_trainers_num));
+    PADDLE_ENFORCE_EQ(trainers_num,
+                      inter_trainers_num * exter_trainers_num,
+                      platform::errors::InvalidArgument(
+                          "trainers_num:%llu != inter_trainers_num:%llu * "
+                          "exter_trainers_num:%llu",
+                          trainers_num,
+                          inter_trainers_num,
+                          exter_trainers_num));
 
     PADDLE_ENFORCE_GT(
-        inter_trainers_num, 1,
+        inter_trainers_num,
+        1,
         platform::errors::InvalidArgument(
             "The inter_trainers_num:%llu should be larger than 1.",
             inter_trainers_num));
@@ -301,8 +310,8 @@ class HCCLCommunicator {
     for (size_t i = 0; i < inter_hccl_ids.size(); i++) {
       VLOG(1) << "init inter_trainer_id:" << inter_trainer_id
               << ", comm no:" << i;
-      auto local = new HCCLContextMap(places, inter_hccl_ids[i],
-                                      inter_trainers_num, inter_trainer_id);
+      auto local = new HCCLContextMap(
+          places, inter_hccl_ids[i], inter_trainers_num, inter_trainer_id);
 
       h_inter_ctxs_.emplace_back(local);
     }
@@ -314,8 +323,8 @@ class HCCLCommunicator {
 
     if (exter_trainer_id >= 0) {
       for (size_t i = 0; i < exter_hccl_ids.size(); i++) {
-        auto ex = new HCCLContextMap(places, exter_hccl_ids[i],
-                                     exter_trainers_num, exter_trainer_id);
+        auto ex = new HCCLContextMap(
+            places, exter_hccl_ids[i], exter_trainers_num, exter_trainer_id);
         VLOG(1) << "init exter_trainer_id:" << exter_trainer_id
                 << ", comm no:" << i;
         h_exter_ctxs_.emplace_back(ex);
@@ -326,14 +335,16 @@ class HCCLCommunicator {
   bool NeedExterAllReduce() const { return h_exter_ctxs_.size() > 0; }
 
   HCCLContextMap *GetHierarchicalInterCtx(size_t run_order) const {
-    PADDLE_ENFORCE_GT(h_inter_ctxs_.size(), 0,
+    PADDLE_ENFORCE_GT(h_inter_ctxs_.size(),
+                      0,
                       platform::errors::InvalidArgument(
                           "Hierarchical ctxs should be initialized firstly!"));
     return h_inter_ctxs_[run_order % h_inter_ctxs_.size()].get();
   }
 
   HCCLContextMap *GetHierarchicalExterCtx(size_t run_order) const {
-    PADDLE_ENFORCE_GT(h_exter_ctxs_.size(), 0,
+    PADDLE_ENFORCE_GT(h_exter_ctxs_.size(),
+                      0,
                       platform::errors::InvalidArgument(
                           "Hierarchical ctxs should be initialized firstly!"));
     return h_exter_ctxs_[run_order % h_exter_ctxs_.size()].get();

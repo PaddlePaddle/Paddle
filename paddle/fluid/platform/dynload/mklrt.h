@@ -65,7 +65,8 @@ MKLDFTI_ROUTINE_EACH(DYNAMIC_LOAD_MKLRT_WRAP)
 DFTI_EXTERN MKL_LONG DftiCreateDescriptorX(DFTI_DESCRIPTOR_HANDLE* desc,
                                            enum DFTI_CONFIG_VALUE prec,
                                            enum DFTI_CONFIG_VALUE domain,
-                                           MKL_LONG dim, MKL_LONG* sizes);
+                                           MKL_LONG dim,
+                                           MKL_LONG* sizes);
 
 }  // namespace dynload
 }  // namespace platform

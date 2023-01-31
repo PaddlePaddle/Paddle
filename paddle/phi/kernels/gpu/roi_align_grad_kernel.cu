@@ -15,9 +15,9 @@
 #include "paddle/phi/kernels/roi_align_grad_kernel.h"
 
 #include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
@@ -153,14 +153,11 @@ __global__ void GPURoiAlignBackward(const int nthreads,
         T diff3 = out_grad_this_bin * w3 / count;
         T diff4 = out_grad_this_bin * w4 / count;
         if (x_low >= 0 && x_high >= 0 && y_low >= 0 && y_high >= 0) {
-          paddle::platform::CudaAtomicAdd(
-              offset_input_grad + y_low * width + x_low, diff1);
-          paddle::platform::CudaAtomicAdd(
-              offset_input_grad + y_low * width + x_high, diff2);
-          paddle::platform::CudaAtomicAdd(
-              offset_input_grad + y_high * width + x_low, diff3);
-          paddle::platform::CudaAtomicAdd(
-              offset_input_grad + y_high * width + x_high, diff4);
+          phi::CudaAtomicAdd(offset_input_grad + y_low * width + x_low, diff1);
+          phi::CudaAtomicAdd(offset_input_grad + y_low * width + x_high, diff2);
+          phi::CudaAtomicAdd(offset_input_grad + y_high * width + x_low, diff3);
+          phi::CudaAtomicAdd(offset_input_grad + y_high * width + x_high,
+                             diff4);
         }
       }
     }
@@ -219,8 +216,10 @@ void RoiAlignGradKernel(const Context& dev_ctx,
       }
     }
   }
-  auto roi_ptr =
-      paddle::memory::Alloc(dev_ctx, box_batch_id_list.numel() * sizeof(int));
+  auto roi_ptr = paddle::memory::Alloc(
+      dev_ctx.GetPlace(),
+      box_batch_id_list.numel() * sizeof(int),
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
   int bytes = box_batch_id_list.numel() * sizeof(int);
   paddle::memory::Copy(

@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-import numpy as np
-import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 
-from paddle.fluid.tests.unittests.test_conv2d_transpose_op import conv2dtranspose_forward_naive
+import numpy as np
+
+import paddle.fluid.core as core
 from paddle import enable_static
+from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.test_conv2d_transpose_op import (
+    conv2dtranspose_forward_naive,
+)
 
 
 def conv2d_bias_naive(out, bias):
@@ -31,10 +32,10 @@ def conv2d_bias_naive(out, bias):
     return out
 
 
-@unittest.skipIf(not core.supports_bfloat16(),
-                 "place does not support BF16 evaluation")
+@unittest.skipIf(
+    not core.supports_bfloat16(), "place does not support BF16 evaluation"
+)
 class TestConv2DTransposeBF16MKLDNNOp(OpTest):
-
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace())
 
@@ -97,7 +98,7 @@ class TestConv2DTransposeBF16MKLDNNOp(OpTest):
             'data_format': self.data_format,
             'fuse_activation': self.fuse_activation,
             'fuse_alpha': self.fuse_alpha,
-            'fuse_beta': self.fuse_beta
+            'fuse_beta': self.fuse_beta,
         }
         if self.output_size is not None:
             self.attrs['output_size'] = self.output_size
@@ -105,15 +106,16 @@ class TestConv2DTransposeBF16MKLDNNOp(OpTest):
         if len(self.output_padding) > 0:
             self.attrs['output_padding'] = self.output_padding
 
-        output = conv2dtranspose_forward_naive(input, filter,
-                                               self.attrs).astype(np.float32)
+        output = conv2dtranspose_forward_naive(
+            input, filter, self.attrs
+        ).astype(np.float32)
 
         if self.input_type is not np.float32:
             input = convert_float_to_uint16(input)
 
         self.inputs = {
             'Input': input.view(self.input_type),
-            'Filter': OpTest.np_dtype_to_fluid_dtype(filter)
+            'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
         }
 
         if self.fuse_bias and self.bias_size is not None:
@@ -134,70 +136,62 @@ class TestConv2DTransposeBF16MKLDNNOp(OpTest):
 
 
 class TestMKLDNNFuseBias(TestConv2DTransposeBF16MKLDNNOp):
-
     def init_test_case(self):
-        super(TestMKLDNNFuseBias, self).init_test_case()
+        super().init_test_case()
         self.pad = [1, 1]
         self.fuse_bias = True
         self.bias_size = [6]
 
 
 class TestMKLDNNWithPad(TestConv2DTransposeBF16MKLDNNOp):
-
     def init_test_case(self):
-        super(TestMKLDNNWithPad, self).init_test_case()
+        super().init_test_case()
         self.pad = [1, 1]
         self.input_size = [2, 3, 10, 10]
 
 
 class TestMKLDNNWithStride(TestConv2DTransposeBF16MKLDNNOp):
-
     def init_test_case(self):
-        super(TestMKLDNNWithStride, self).init_test_case()
+        super().init_test_case()
         self.pad = [1, 1]
         self.stride = [2, 2]
         self.input_size = [2, 3, 6, 6]  # NCHW
 
 
 class TestMKLDNNWithAsymPad(TestConv2DTransposeBF16MKLDNNOp):
-
     def init_test_case(self):
-        super(TestMKLDNNWithAsymPad, self).init_test_case()
+        super().init_test_case()
         self.pad = [0, 0, 1, 2]
         self.padding_algorithm = "EXPLICIT"
 
 
 class TestMKLDNNWithSamePad(TestConv2DTransposeBF16MKLDNNOp):
-
     def init_test_case(self):
-        super(TestMKLDNNWithSamePad, self).init_test_case()
+        super().init_test_case()
         self.pad = [0, 0]
         self.padding_algorithm = "SAME"
 
 
 class TestMKLDNNWithValidPad(TestConv2DTransposeBF16MKLDNNOp):
-
     def init_test_case(self):
-        super(TestMKLDNNWithValidPad, self).init_test_case()
+        super().init_test_case()
         self.pad = [1, 1]
         self.padding_algorithm = "VALID"
 
 
 class TestMKLDNNWithValidPad_NHWC(TestMKLDNNWithValidPad):
-
     def init_test_case(self):
-        super(TestMKLDNNWithValidPad_NHWC, self).init_test_case()
+        super().init_test_case()
         self.data_format = 'NHWC'
         N, C, H, W = self.input_size
         self.input_size = [N, H, W, C]
 
 
 class TestConv2DTransposeMKLDNNWithDilationsExplicitPad(
-        TestConv2DTransposeBF16MKLDNNOp):
-
+    TestConv2DTransposeBF16MKLDNNOp
+):
     def init_test_case(self):
-        super(TestConv2DTransposeMKLDNNWithDilationsExplicitPad,
-              self).init_test_case()
+        super().init_test_case()
         self.stride = [2, 1]
         self.dilations = [1, 2]
         self.groups = 1

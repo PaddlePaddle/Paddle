@@ -27,10 +27,10 @@ class AllReduceOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {}
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -69,12 +69,13 @@ If input and output are the same variable, in-place allreduce will be used.
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_WITHOUT_GRADIENT(allreduce, ops::AllReduceOp,
+REGISTER_OP_WITHOUT_GRADIENT(allreduce,
+                             ops::AllReduceOp,
                              ops::AllReduceOpMaker);
 
-REGISTER_OP_CPU_KERNEL(
-    allreduce, ops::AllReduceOpKernel<plat::CPUDeviceContext, float>,
-    ops::AllReduceOpKernel<plat::CPUDeviceContext, double>,
-    ops::AllReduceOpKernel<plat::CPUDeviceContext, int>,
-    ops::AllReduceOpKernel<plat::CPUDeviceContext, int64_t>,
-    ops::AllReduceOpKernel<plat::CPUDeviceContext, plat::float16>);
+REGISTER_OP_CPU_KERNEL(allreduce,
+                       ops::AllReduceOpKernel<phi::CPUContext, float>,
+                       ops::AllReduceOpKernel<phi::CPUContext, double>,
+                       ops::AllReduceOpKernel<phi::CPUContext, int>,
+                       ops::AllReduceOpKernel<phi::CPUContext, int64_t>,
+                       ops::AllReduceOpKernel<phi::CPUContext, plat::float16>);

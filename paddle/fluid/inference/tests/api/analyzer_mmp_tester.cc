@@ -72,8 +72,8 @@ void compare(bool use_mkldnn = false) {
   auto output =
       predictor_xx->GetOutputTensor(predictor_xx->GetOutputNames()[0]);
   auto output_shape = output->shape();
-  int numel = std::accumulate(output_shape.begin(), output_shape.end(), 1,
-                              std::multiplies<int>());
+  int numel = std::accumulate(
+      output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
   std::vector<float> xx_output(numel);
   output->copy_to_cpu(xx_output.data());
 
@@ -93,11 +93,14 @@ void compare(bool use_mkldnn = false) {
 
   // compare results
   auto result = std::equal(
-      xx_output.begin(), xx_output.end(), xx2_output.begin(),
+      xx_output.begin(),
+      xx_output.end(),
+      xx2_output.begin(),
       [](const float& l, const float& r) { return fabs(l - r) < 1e-4; });
 
   PADDLE_ENFORCE_EQ(
-      result, true,
+      result,
+      true,
       paddle::platform::errors::Fatal("Results of model run independently "
                                       "differs from results of the same model "
                                       "run as a sequence of models"));

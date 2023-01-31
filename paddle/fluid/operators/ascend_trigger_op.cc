@@ -23,10 +23,10 @@ class AscendTriggerOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {}
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(framework::proto::VarType::FP32,
-                                   ctx.device_context());
+    return phi::KernelKey(framework::proto::VarType::FP32,
+                          ctx.device_context().GetPlace());
   }
 };
 
@@ -47,6 +47,7 @@ Trigger Ascend SubGraph
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(ascend_trigger, ops::AscendTriggerOp,
+REGISTER_OPERATOR(ascend_trigger,
+                  ops::AscendTriggerOp,
                   ops::AscendTriggerOpMaker);
 REGISTER_OP_CPU_KERNEL(ascend_trigger, ops::AscendTriggerCPUKernel<float>)

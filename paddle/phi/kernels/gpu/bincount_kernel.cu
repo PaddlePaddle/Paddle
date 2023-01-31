@@ -14,15 +14,15 @@
 
 #include "paddle/phi/kernels/bincount_kernel.h"
 
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 
-using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 inline int GET_BLOCKS(const int N) {
   return (N + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS;
@@ -36,12 +36,11 @@ __global__ void KernelBincount(const InputT* input,
                                OutT* output) {
   if (!has_weights) {
     for (int i = threadIdx.x; i < total_elements; i += blockDim.x) {
-      paddle::platform::CudaAtomicAdd(&output[input[i]], 1L);
+      phi::CudaAtomicAdd(&output[input[i]], 1L);
     }
   } else {
     for (int i = threadIdx.x; i < total_elements; i += blockDim.x) {
-      paddle::platform::CudaAtomicAdd(&output[input[i]],
-                                      static_cast<OutT>(weights[i]));
+      phi::CudaAtomicAdd(&output[input[i]], static_cast<OutT>(weights[i]));
     }
   }
 }
@@ -138,12 +137,21 @@ template <typename T, typename Context>
 void BincountKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const paddle::optional<DenseTensor>& weights,
-                    int minlength,
+                    const Scalar& minlength,
                     DenseTensor* out) {
+  int int_minlength = minlength.to<int>();
+  PADDLE_ENFORCE_GE(int_minlength,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The minlength should be greater than or equal to 0."
+                        "But received minlength is %d",
+                        int_minlength));
+
   if (x.dtype() == DataType::INT32) {
-    BincountCUDAInner<Context, T, int>(dev_ctx, x, weights, minlength, out);
+    BincountCUDAInner<Context, T, int>(dev_ctx, x, weights, int_minlength, out);
   } else if (x.dtype() == DataType::INT64) {
-    BincountCUDAInner<Context, T, int64_t>(dev_ctx, x, weights, minlength, out);
+    BincountCUDAInner<Context, T, int64_t>(
+        dev_ctx, x, weights, int_minlength, out);
   }
 }
 }  // namespace phi

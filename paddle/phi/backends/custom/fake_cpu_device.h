@@ -136,6 +136,92 @@ C_Status DeviceMaxAllocSize(const C_Device device, size_t *size) {
   return C_SUCCESS;
 }
 
+C_Status XcclGetUniqueIdSize(size_t *size) {
+  *size = sizeof(size_t);
+  return C_SUCCESS;
+}
+C_Status XcclGetUniqueId(C_CCLRootId *unique_id) { return C_SUCCESS; }
+C_Status XcclCommInitRank(size_t ranks,
+                          C_CCLRootId *unique_id,
+                          size_t rank,
+                          C_CCLComm *comm) {
+  return C_SUCCESS;
+}
+C_Status XcclDestroyComm(C_CCLComm comm) { return C_SUCCESS; }
+C_Status XcclAllReduce(void *send_buf,
+                       void *recv_buf,
+                       size_t count,
+                       C_DataType data_type,
+                       C_CCLReduceOp op,
+                       C_CCLComm comm,
+                       C_Stream stream) {
+  return C_SUCCESS;
+}
+C_Status XcclBroadcast(void *buf,
+                       size_t count,
+                       C_DataType data_type,
+                       size_t root,
+                       C_CCLComm comm,
+                       C_Stream stream) {
+  return C_SUCCESS;
+}
+C_Status XcclReduce(void *send_buf,
+                    void *recv_buf,
+                    size_t count,
+                    C_DataType data_type,
+                    C_CCLReduceOp op,
+                    size_t root_id,
+                    C_CCLComm comm,
+                    C_Stream stream) {
+  return C_SUCCESS;
+}
+C_Status XcclAllGather(void *send_buf,
+                       void *recv_buf,
+                       size_t count,
+                       C_DataType data_type,
+                       C_CCLComm comm,
+                       C_Stream stream) {
+  return C_SUCCESS;
+}
+C_Status XcclReduceScatter(void *send_buf,
+                           void *recv_buf,
+                           size_t count,
+                           C_DataType data_type,
+                           C_CCLReduceOp op,
+                           C_CCLComm comm,
+                           C_Stream stream) {
+  return C_SUCCESS;
+}
+C_Status XcclGroupStart() { return C_SUCCESS; }
+C_Status XcclGroupEnd() { return C_SUCCESS; }
+C_Status XcclSend(void *send_buf,
+                  size_t count,
+                  C_DataType data_type,
+                  size_t dest_rank,
+                  C_CCLComm comm,
+                  C_Stream stream) {
+  return C_SUCCESS;
+}
+C_Status XcclRecv(void *recv_buf,
+                  size_t count,
+                  C_DataType data_type,
+                  size_t src_rank,
+                  C_CCLComm comm,
+                  C_Stream stream) {
+  return C_SUCCESS;
+}
+
+C_Status BlasAXPBY(const C_Device device,
+                   C_Stream stream,
+                   C_DataType dtype,
+                   size_t numel,
+                   float alpha,
+                   void *x,
+                   float beta,
+                   void *y) {
+  return C_SUCCESS;
+}
+
 #define DEVICE_TYPE "FakeCPU"
 #define SUB_DEVICE_TYPE "V100"
 
@@ -190,4 +276,20 @@ void InitFakeCPUDevice(CustomRuntimeParams *params) {
   params->interface->device_max_chunk_size = DeviceMaxChunkSize;
   params->interface->device_min_chunk_size = DeviceMinChunkSize;
   params->interface->device_max_alloc_size = DeviceMaxAllocSize;
+
+  params->interface->xccl_get_unique_id_size = XcclGetUniqueIdSize;
+  params->interface->xccl_get_unique_id = XcclGetUniqueId;
+  params->interface->xccl_all_reduce = XcclAllReduce;
+  params->interface->xccl_all_gather = XcclAllGather;
+  params->interface->xccl_broadcast = XcclBroadcast;
+  params->interface->xccl_comm_init_rank = XcclCommInitRank;
+  params->interface->xccl_destroy_comm = XcclDestroyComm;
+  params->interface->xccl_group_end = XcclGroupEnd;
+  params->interface->xccl_group_start = XcclGroupStart;
+  params->interface->xccl_reduce = XcclReduce;
+  params->interface->xccl_reduce_scatter = XcclReduceScatter;
+  params->interface->xccl_send = XcclSend;
+  params->interface->xccl_recv = XcclRecv;
+
+  params->interface->blas_axpby = BlasAXPBY;
 }

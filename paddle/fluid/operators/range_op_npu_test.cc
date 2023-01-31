@@ -34,25 +34,26 @@ USE_OP_ITSELF(range);
 USE_OP_DEVICE_KERNEL(range, NPU);
 
 template <typename T>
-void Compare(f::Scope* scope, const p::DeviceContext& ctx,
+void Compare(f::Scope* scope,
+             const p::DeviceContext& ctx,
              std::string op_type) {
   // init
   auto start = scope->Var("Start");
-  auto tensor_start = start->GetMutable<f::LoDTensor>();
+  auto tensor_start = start->GetMutable<phi::DenseTensor>();
   std::vector<T> init_start;
   init_start.push_back(static_cast<T>(1));
   paddle::framework::TensorFromVector(init_start, ctx, tensor_start);
   tensor_start->Resize({1});
 
   auto end = scope->Var("End");
-  auto tensor_end = end->GetMutable<f::LoDTensor>();
+  auto tensor_end = end->GetMutable<phi::DenseTensor>();
   std::vector<T> init_end;
   init_end.push_back(static_cast<T>(10));
   paddle::framework::TensorFromVector(init_end, ctx, tensor_end);
   tensor_end->Resize({1});
 
   auto step = scope->Var("Step");
-  auto tensor_step = step->GetMutable<f::LoDTensor>();
+  auto tensor_step = step->GetMutable<phi::DenseTensor>();
   std::vector<T> init_step;
   init_step.push_back(static_cast<T>(2));
   paddle::framework::TensorFromVector(init_step, ctx, tensor_step);
@@ -62,12 +63,14 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
 
   auto place = ctx.GetPlace();
   auto out = scope->Var("Out");
-  auto tensor_out = out->GetMutable<f::LoDTensor>();
+  auto tensor_out = out->GetMutable<phi::DenseTensor>();
 
   // run
   auto op = f::OpRegistry::CreateOp(
-      op_type, {{"Start", {"Start"}}, {"End", {"End"}}, {"Step", {"Step"}}},
-      {{"Out", {"Out"}}}, {});
+      op_type,
+      {{"Start", {"Start"}}, {"End", {"End"}}, {"Step", {"Step"}}},
+      {{"Out", {"Out"}}},
+      {});
 
   op->Run(*scope, place);
 

@@ -23,19 +23,22 @@ namespace operators {
 
 template <typename T>
 void GetSize(T start, T end, T step, int64_t* size) {
-  PADDLE_ENFORCE_NE(step, 0,
+  PADDLE_ENFORCE_NE(step,
+                    0,
                     platform::errors::InvalidArgument(
                         "The step of range op should not be 0."));
 
   if (start < end) {
     PADDLE_ENFORCE_GT(
-        step, 0,
+        step,
+        0,
         platform::errors::InvalidArgument(
             "The step should be greater than 0 while start < end."));
   }
 
   if (start > end) {
-    PADDLE_ENFORCE_LT(step, 0,
+    PADDLE_ENFORCE_LT(step,
+                      0,
                       platform::errors::InvalidArgument(
                           "The step should be less than 0 while start > end."));
   }
@@ -49,10 +52,10 @@ template <typename T>
 class CPURangeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    T start = context.Input<framework::Tensor>("Start")->data<T>()[0];
-    T end = context.Input<framework::Tensor>("End")->data<T>()[0];
-    T step = context.Input<framework::Tensor>("Step")->data<T>()[0];
-    auto* out = context.Output<framework::Tensor>("Out");
+    T start = context.Input<phi::DenseTensor>("Start")->data<T>()[0];
+    T end = context.Input<phi::DenseTensor>("End")->data<T>()[0];
+    T step = context.Input<phi::DenseTensor>("Step")->data<T>()[0];
+    auto* out = context.Output<phi::DenseTensor>("Out");
     int64_t size = 0;
     GetSize(start, end, step, &size);
     out->Resize(phi::make_ddim({size}));

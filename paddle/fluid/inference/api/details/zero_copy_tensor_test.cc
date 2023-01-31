@@ -32,7 +32,8 @@ namespace paddle_infer {
 
 struct TensorWrapper : public Tensor {
   TensorWrapper(
-      paddle_infer::PlaceType place, paddle::framework::Scope* scope,
+      paddle_infer::PlaceType place,
+      paddle::framework::Scope* scope,
       const std::map<phi::Place,
                      std::shared_future<std::unique_ptr<phi::DeviceContext>>>*
           dev_ctxs,
@@ -67,7 +68,9 @@ struct RandomGenerator {
 };
 
 template <typename T, template <typename> class G>
-bool FillRandomDataAndCheck(PlaceType place, size_t length, G<T>&& generator,
+bool FillRandomDataAndCheck(PlaceType place,
+                            size_t length,
+                            G<T>&& generator,
                             float threshold = 10e-5) {
   std::vector<T> data_in(length);
   std::generate(data_in.begin(), data_in.end(), std::forward<G<T>>(generator));
@@ -117,14 +120,14 @@ bool SetPlaceAndCheck(PlaceType place, size_t length) {
 bool FillRandomDataAndCheck(PlaceType place) {
   const size_t length{RandomGenerator<size_t>{1, 1000}()};
   VLOG(3) << "FillRandomDataAndCheck: length = " << length;
-  return FillRandomDataAndCheck<float>(place, length,
-                                       RandomGenerator<float>{}) &&
-         FillRandomDataAndCheck<int64_t>(place, length,
-                                         RandomGenerator<int64_t>{}) &&
-         FillRandomDataAndCheck<int32_t>(place, length,
-                                         RandomGenerator<int32_t>{}) &&
-         FillRandomDataAndCheck<uint8_t>(place, length,
-                                         RandomGenerator<uint8_t>{});
+  return FillRandomDataAndCheck<float>(
+             place, length, RandomGenerator<float>{}) &&
+         FillRandomDataAndCheck<int64_t>(
+             place, length, RandomGenerator<int64_t>{}) &&
+         FillRandomDataAndCheck<int32_t>(
+             place, length, RandomGenerator<int32_t>{}) &&
+         FillRandomDataAndCheck<uint8_t>(
+             place, length, RandomGenerator<uint8_t>{});
 }
 
 bool SetPlaceAndCheck(PlaceType place) {

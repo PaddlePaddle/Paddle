@@ -23,7 +23,7 @@ using AbstractAutogradMeta = paddle::experimental::AbstractAutogradMeta;
  *
  * AutogradMeta is what record the backward info for tensor. When we run
  * computation graph eagerly, we can not build a static paddle program like
- * static mode do, so we need a new method to record forward info to trace
+ * static graph mode do, so we need a new method to record forward info to trace
  * backward when we finish all forward computation. This require our
  * AutogradMeta class record following main members
  *
@@ -121,12 +121,6 @@ class AutogradMeta : public AbstractAutogradMeta {
 
   void SetStopGradient(bool stop_gradient) {
     stop_gradient_ = static_cast<int>(stop_gradient);
-  }
-
-  void WeakSetStopGradient(bool stop_gradient) {
-    if (stop_gradient_ == -1) {
-      stop_gradient_ = static_cast<int>(stop_gradient);
-    }
   }
 
   bool Persistable() const { return persistable_; }

@@ -12,19 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid.core as core
 import unittest
+
 import numpy as np
-from paddle.incubate.nn.functional import fused_matmul_bias, fused_linear
+
+import paddle
+from paddle.fluid import core
 from paddle.incubate.nn import FusedLinear
+from paddle.incubate.nn.functional import fused_linear, fused_matmul_bias
 
 
 def is_fused_matmul_bias_supported():
-    if paddle.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm():
-        return hasattr(core.ops, 'fused_gemm_epilogue')
-    else:
-        return False
+    return hasattr(core.eager.ops.legacy, 'fused_gemm_epilogue')
 
 
 def matmul(x, y, bias, trans_x, trans_y):
@@ -64,9 +63,9 @@ def matmul_grad(x, y, bias, dz, trans_x, trans_y):
 
 @unittest.skipIf(
     not is_fused_matmul_bias_supported(),
-    "fused_gemm_epilogue is only supported when CUDA version >= 11.6")
+    "fused_gemm_epilogue is only supported when CUDA version >= 11.6",
+)
 class TestFusedMatmulBias(unittest.TestCase):
-
     def setUp(self):
         paddle.set_device('gpu')
 
@@ -97,29 +96,31 @@ class TestFusedMatmulBias(unittest.TestCase):
 
         z = fused_matmul_bias(x, y, bias, trans_x, trans_y)
         z_np = matmul(x_np, y_np, bias_np, trans_x, trans_y)
-        self.assertTrue(np.array_equal(z.numpy(), z_np))
+        np.testing.assert_array_equal(z.numpy(), z_np)
 
         z_grad_np = self.rand_data(z_np.shape, dtype)
         paddle.autograd.backward(z, grad_tensors=[paddle.to_tensor(z_grad_np)])
 
         x_grad_np, y_grad_np, bias_grad_np = matmul_grad(
-            x_np, y_np, bias_np, z_grad_np, trans_x, trans_y)
-        self.assertTrue(np.array_equal(x.grad.numpy(), x_grad_np))
+            x_np, y_np, bias_np, z_grad_np, trans_x, trans_y
+        )
+        np.testing.assert_array_equal(x.grad.numpy(), x_grad_np)
         self.assertEqual(y_grad_np.shape, y_np.shape)
-        self.assertTrue(np.array_equal(y.grad.numpy(), y_grad_np))
+        np.testing.assert_array_equal(y.grad.numpy(), y_grad_np)
 
         if need_bias:
-            self.assertTrue(np.array_equal(bias.grad.numpy(), bias_grad_np))
+            np.testing.assert_array_equal(bias.grad.numpy(), bias_grad_np)
         else:
-            self.assertTrue(bias_grad_np is None)
+            self.assertIsNone(bias_grad_np)
 
     def rand_test(self, m, n, k, dtype):
         seed = int(np.random.randint(low=0, high=1000, size=[1]))
         for trans_x in [False, True]:
             for trans_y in [False, True]:
                 for need_bias in [False, True]:
-                    self.rand_test_base(m, n, k, trans_x, trans_y, need_bias,
-                                        dtype, seed)
+                    self.rand_test_base(
+                        m, n, k, trans_x, trans_y, need_bias, dtype, seed
+                    )
 
     def test_fp32(self):
         self.rand_test(30, 40, 50, np.float32)
@@ -130,15 +131,15 @@ class TestFusedMatmulBias(unittest.TestCase):
 
 @unittest.skipIf(
     not is_fused_matmul_bias_supported(),
-    "fused_gemm_epilogue is only supported when CUDA version >= 11.6")
+    "fused_gemm_epilogue is only supported when CUDA version >= 11.6",
+)
 class TestFusedLinear(unittest.TestCase):
-
     def check_fused_linear(self, transpose):
         x = paddle.randn([30, 40])
         linear = FusedLinear(40, 50, transpose_weight=transpose)
         y1 = linear(x)
         y2 = fused_linear(x, linear.weight, linear.bias, transpose)
-        self.assertTrue(np.array_equal(y1.numpy(), y2.numpy()))
+        np.testing.assert_array_equal(y1.numpy(), y2.numpy())
 
     def test_non_transpose(self):
         self.check_fused_linear(False)
@@ -149,9 +150,9 @@ class TestFusedLinear(unittest.TestCase):
 
 @unittest.skipIf(
     not is_fused_matmul_bias_supported(),
-    "fused_gemm_epilogue is only supported when CUDA version >= 11.6")
+    "fused_gemm_epilogue is only supported when CUDA version >= 11.6",
+)
 class TestStaticGraph(unittest.TestCase):
-
     def test_static_graph(self):
         paddle.enable_static()
         x = paddle.static.data(name='x', dtype='float32', shape=[-1, 100])

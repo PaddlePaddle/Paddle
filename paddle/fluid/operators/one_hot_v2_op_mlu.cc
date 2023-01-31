@@ -19,8 +19,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
 
 template <typename T>
 class OneHotV2MLUKernel : public framework::OpKernel<T> {
@@ -28,12 +26,13 @@ class OneHotV2MLUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::MLUDeviceContext>();
-    auto* in = ctx.Input<LoDTensor>("X");
-    auto* out = ctx.Output<LoDTensor>("Out");
+    auto* in = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     int depth = ctx.Attr<int>("depth");
     if (ctx.HasInput("depth_tensor")) {
       std::vector<int32_t> depth_data;
-      depth_data = GetDataFromTensor<int>(ctx.Input<Tensor>("depth_tensor"));
+      depth_data =
+          GetDataFromTensor<int>(ctx.Input<phi::DenseTensor>("depth_tensor"));
       depth = depth_data[0];
 
       auto out_dims = out->dims();
@@ -44,22 +43,29 @@ class OneHotV2MLUKernel : public framework::OpKernel<T> {
 
     float on_value = 1.0f, off_value = 0.0f;
     const int in_off_dim[1] = {1};
-    Tensor on_value_tensor = ctx.AllocateTmpTensor<float, MLUDeviceContext>(
-        framework::DDim(in_off_dim, 1), dev_ctx);
-    Tensor off_value_tensor = ctx.AllocateTmpTensor<float, MLUDeviceContext>(
-        framework::DDim(in_off_dim, 1), dev_ctx);
+    phi::DenseTensor on_value_tensor =
+        ctx.AllocateTmpTensor<float, MLUDeviceContext>(
+            framework::DDim(in_off_dim, 1), dev_ctx);
+    phi::DenseTensor off_value_tensor =
+        ctx.AllocateTmpTensor<float, MLUDeviceContext>(
+            framework::DDim(in_off_dim, 1), dev_ctx);
     FillMLUTensorWithHostValue(ctx, on_value, &on_value_tensor);
     FillMLUTensorWithHostValue(ctx, off_value, &off_value_tensor);
 
     if (framework::TransToProtoVarType(in->dtype()) ==
         framework::proto::VarType::INT32) {
       MLUCnnlTensorDesc desc_indices(*in);
-      MLUCnnl::OneHot(ctx, desc_indices.get(), GetBasePtr(in), depth,
+      MLUCnnl::OneHot(ctx,
+                      desc_indices.get(),
+                      GetBasePtr(in),
+                      depth,
                       GetBasePtr(&on_value_tensor),
-                      GetBasePtr(&off_value_tensor), -1,
-                      ToCnnlDataType(out->dtype()), GetBasePtr(out));
+                      GetBasePtr(&off_value_tensor),
+                      -1,
+                      ToCnnlDataType(out->dtype()),
+                      GetBasePtr(out));
     } else {
-      Tensor transformed_in;
+      phi::DenseTensor transformed_in;
       transformed_in.mutable_data<int32_t>(in->dims(), dev_ctx.GetPlace());
       // use cnnlCast to cast int64_t to int32_t then do one_hot
       MLUCnnlTensorDesc in_desc(*in);
@@ -67,12 +73,21 @@ class OneHotV2MLUKernel : public framework::OpKernel<T> {
       cnnlCastDataType_t cast_type = GetCastDataType(
           framework::TransToProtoVarType(in->dtype()),
           framework::TransToProtoVarType(transformed_in.dtype()));
-      MLUCnnl::Cast(ctx, cast_type, in_desc.get(), GetBasePtr(in),
-                    transformed_in_desc.get(), GetBasePtr(&transformed_in));
-      MLUCnnl::OneHot(
-          ctx, transformed_in_desc.get(), GetBasePtr(&transformed_in), depth,
-          GetBasePtr(&on_value_tensor), GetBasePtr(&off_value_tensor), -1,
-          ToCnnlDataType(out->dtype()), GetBasePtr(out));
+      MLUCnnl::Cast(ctx,
+                    cast_type,
+                    in_desc.get(),
+                    GetBasePtr(in),
+                    transformed_in_desc.get(),
+                    GetBasePtr(&transformed_in));
+      MLUCnnl::OneHot(ctx,
+                      transformed_in_desc.get(),
+                      GetBasePtr(&transformed_in),
+                      depth,
+                      GetBasePtr(&on_value_tensor),
+                      GetBasePtr(&off_value_tensor),
+                      -1,
+                      ToCnnlDataType(out->dtype()),
+                      GetBasePtr(out));
     }
   }
 };
@@ -83,4 +98,6 @@ class OneHotV2MLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_MLU_KERNEL(one_hot_v2, ops::OneHotV2MLUKernel<int32_t>);
+REGISTER_OP_MLU_KERNEL(one_hot_v2,
+                       ops::OneHotV2MLUKernel<int32_t>,
+                       ops::OneHotV2MLUKernel<int64_t>);

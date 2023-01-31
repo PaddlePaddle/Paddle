@@ -39,7 +39,7 @@ imperative::ParallelStrategy GetStrategy(int local_rank) {
 void AllReduceByStream(int local_rank, int device_id) {
   int data_size = 32;
   const auto& place = platform::CUDAPlace(device_id);
-  platform::CUDADeviceContext ctx(place);
+  phi::GPUContext ctx(place);
 
   // heter_parallel_ctx
   imperative::HeterParallelContext hpc(GetStrategy(local_rank), device_id);
@@ -49,7 +49,7 @@ void AllReduceByStream(int local_rank, int device_id) {
 
   // input and output data
   framework::Variable* src_dev_var(new framework::Variable());
-  auto* src_dev_tensor = src_dev_var->GetMutable<framework::LoDTensor>();
+  auto* src_dev_tensor = src_dev_var->GetMutable<phi::DenseTensor>();
   src_dev_tensor->mutable_data<float>(phi::make_ddim({data_size}), place);
 
   std::vector<float> src_vec;
@@ -60,7 +60,7 @@ void AllReduceByStream(int local_rank, int device_id) {
   ctx.Wait();
 
   framework::Variable* dst_dev_var(new framework::Variable());
-  auto* dst_dev_tensor = dst_dev_var->GetMutable<framework::LoDTensor>();
+  auto* dst_dev_tensor = dst_dev_var->GetMutable<phi::DenseTensor>();
   dst_dev_tensor->mutable_data<float>(phi::make_ddim({data_size}), place);
 
   // call allreduce
