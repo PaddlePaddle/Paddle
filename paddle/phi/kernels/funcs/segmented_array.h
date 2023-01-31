@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -39,7 +40,7 @@ struct PADDLE_ALIGN(256) ValueArray {
  public:
   T data[Num];
 
-  void Set(T* ptr, const int num, T* dev_ptr = nullptr) {
+  void Set(T* ptr, const int num) {
     for (auto i = 0; i < num; ++i) {
       data[i] = ptr[i];
     }
@@ -51,7 +52,7 @@ struct PADDLE_ALIGN(256) ValueArray<T, SegmentedArraySize::kVariableLength, 0> {
  public:
   T* data{nullptr};
 
-  void Set(T* ptr, const int num, T* dev_ptr = nullptr) { data = dev_ptr; }
+  void Set(T* ptr, const int num) { data = ptr; }
 };
 
 template <typename T, SegmentedArraySize Size>
@@ -160,13 +161,13 @@ struct PointerArraySetter : public ArraySetterBase<Context> {
  public:
   PointerArray<T, Size> array;
 
-  // is_grad : tensor data needs extra buffer or not.
+  // need_alloc : tensor data needs extra buffer or not.
   // use_cuda_graph: tensor data shall be captured by cuda_graph or not.
   // pre_alloc_host_buf: tensor data is temporaily stored by pinned memory or
   // not.
   PointerArraySetter(const Context& ctx,
                      std::vector<DenseTensor*>* t,
-                     bool is_grad = false,
+                     bool need_alloc = false,
                      bool use_cuda_graph = false,
                      T** pre_alloc_host_buf = nullptr) {
     ptrs.resize(t->size());
@@ -179,7 +180,7 @@ struct PointerArraySetter : public ArraySetterBase<Context> {
     for (int i = 0; i < t->size(); ++i) {
       if (t->at(i) && (t->at(i)->numel() > 0)) {
         data_ptr[i] =
-            is_grad ? ctx.template Alloc<T>(t->at(i)) : t->at(i)->data<T>();
+            need_alloc ? ctx.template Alloc<T>(t->at(i)) : t->at(i)->data<T>();
       } else {
         data_ptr[i] = nullptr;
       }

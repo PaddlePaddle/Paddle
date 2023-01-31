@@ -646,7 +646,7 @@ struct PointerAndColArray
       : funcs::PointerArraySetter<phi::GPUContext, T, Size>(
             ctx,
             t,
-            /*is_grad=*/false,
+            /*need_alloc=*/false,
             /*use_cuda_graph=*/true,
             pre_alloc_host_buf) {
     IndexT* dev_ptr = nullptr;
@@ -654,8 +654,10 @@ struct PointerAndColArray
       size_t num_bytes = out_col_num * sizeof(IndexT);
       dev_ptr = reinterpret_cast<IndexT*>(this->AllocAndCopy(
           ctx, reinterpret_cast<void*>(out_cols), num_bytes, true));
+      val_array.Set(dev_ptr, out_col_num);
+    } else {
+      val_array.Set(out_cols, out_col_num);
     }
-    val_array.Set(out_cols, out_col_num, dev_ptr);
   }
 };
 
@@ -721,7 +723,7 @@ void SplitFunctionDispatchWithSameShape(const phi::GPUContext& ctx,
   funcs::PointerArraySetter<phi::GPUContext, T, Size> setter(
       ctx,
       outs,
-      /*is_grad=*/false,
+      /*need_alloc=*/false,
       /*use_cuda_graph=*/true,
       pre_alloc_host_buf);
   SplitTensorWithSameShape<T, IndexT, decltype(setter.array)>
