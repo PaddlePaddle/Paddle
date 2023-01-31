@@ -16,6 +16,8 @@
 
 #include "gflags/gflags.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/tensor_operator_base.h"
 
@@ -50,6 +52,9 @@ class OperatorManager {
       return static_operator->multiply(x, y);
     } else if (FLAGS_tensor_operator == "phi") {
       return phi_operator->multiply(x, y);
+    } else {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "OperatorManager does not support the operator "));
     }
   }
 
