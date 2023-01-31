@@ -15,6 +15,8 @@
 #pragma once
 
 #include <map>
+#include <string>
+
 namespace paddle {
 namespace prim {
 class PrimCommonUtils {

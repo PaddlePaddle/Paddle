@@ -110,6 +110,7 @@ Tensor unsqueeze<DescTensor>(const Tensor& x, const IntArray& axis) {
   op->SetAttr("axes", new_shape);
   op->CheckAttrs();
   op->InferVarType(block);
+  op->InferShape(*block);
   return out;
 }
 

@@ -1699,6 +1699,11 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
 
 
 def infershape_for_composite(block, grad_op_desc):
+    # pruning empty output
+    if len(grad_op_desc.output_arg_names()) == 0:
+        return
+
+    # append op to block
     op_desc = block.desc.append_op()
     op_desc.copy_from(grad_op_desc)
     op_desc._set_attr(
@@ -1706,6 +1711,7 @@ def infershape_for_composite(block, grad_op_desc):
         core.op_proto_and_checker_maker.OpRole.Backward,
     )
 
+    # create output var
     new_vars = set()
     # create new gradient variables
     for grad_var_name in op_desc.output_arg_names():
@@ -1715,7 +1721,8 @@ def infershape_for_composite(block, grad_op_desc):
         ):
             block.desc.var(grad_var_name.encode())
             new_vars.add(grad_var_name)
-    # infer_shape and infer_type
+
+    # infer shape and infer dthype
     op_desc.check_attrs()
     op_desc.infer_var_type(block.desc)
     op_desc.infer_shape(block.desc)
