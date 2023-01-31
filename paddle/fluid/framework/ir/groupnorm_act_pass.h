@@ -20,12 +20,9 @@ namespace paddle {
 namespace framework {
 namespace ir {
 //
-//
-//
-//  |                                |
-//       |              ->      group_norm
-//   group_norm                      |
-//       |
+//       |                             |
+//   group_norm                   group_norm
+//       |              ->             |
 //      silu
 //       |
 
