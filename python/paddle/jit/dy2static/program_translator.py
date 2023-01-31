@@ -1098,7 +1098,7 @@ class FallbackProgramLayer(object):
         if key not in self.__slots__:
             raise RuntimeError(
                 "There raises a exception while dy2static and you are in fallback mode. \n"
-                "You can't get attribute for a fallback program layer. Check dy2static.error file"
+                "You can't get attribute for a fallback program layer. Check dy2static.error file "
                 "and fix unsupported gramma."
             )
         elif key in ['training']:
@@ -1112,7 +1112,7 @@ class FallbackProgramLayer(object):
         if key not in self.__slots__:
             raise RuntimeError(
                 "There raises a exception while dy2static and you are in fallback mode. \n"
-                "You can't get attribute for a fallback program layer. Check dy2static.error file"
+                "You can't get attribute for a fallback program layer. Check dy2static.error file "
                 "and fix unsupported gramma."
             )
         elif key in ['training']:

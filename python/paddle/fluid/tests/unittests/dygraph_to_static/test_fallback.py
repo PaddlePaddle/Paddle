@@ -109,6 +109,18 @@ class TestFallback(unittest.TestCase):
         with self.assertRaises(TypeError):
             paddle.jit.save(u_net, path="model")
 
+    def test_case_save_error_2(self):
+        """
+        test the save will raise error.
+        """
+        u_net = UnsuppportNet()
+        build_strategy = paddle.static.BuildStrategy()
+        build_strategy.build_cinn_pass = True
+        u_net = paddle.jit.to_static(u_net, build_strategy=build_strategy)
+        u_net(self.x)
+        with self.assertRaises(RuntimeError):
+            print(u_net.forward.main_program)
+
     def test_case_flag(self):
         """
         test the flags is working. TODO: add a global flags.
