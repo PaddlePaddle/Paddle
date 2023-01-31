@@ -12,6 +12,11 @@ if(WITH_GPU OR WITH_ROCM)
        gpu/gpu_resources.cc)
   if(WITH_GPU)
     list(APPEND BACKENDS_SRCS gpu/cuda/cuda_info.cc gpu/cuda/cuda_graph.cc)
+    set_source_files_properties(
+      gpu/gpu_resources.cc
+      PROPERTIES COMPILE_FLAGS
+                 "-DCUDA_REAL_ARCHS=\"${NVCC_FLAGS_EXTRA_real_archs}\"")
+
   endif()
   if(WITH_ROCM)
     list(APPEND BACKENDS_SRCS gpu/rocm/rocm_info.cc)
@@ -31,18 +36,18 @@ if(WITH_MKLDNN)
   list(APPEND BACKENDS_DEPS mkldnn)
 endif()
 
+list(
+  APPEND
+  BACKENDS_SRCS
+  callback_manager.cc
+  device_guard.cc
+  stream.cc
+  event.cc
+  device_base.cc
+  device_manager.cc)
+
 if(WITH_CUSTOM_DEVICE)
-  list(
-    APPEND
-    BACKENDS_SRCS
-    callback_manager.cc
-    device_guard.cc
-    stream.cc
-    event.cc
-    device_base.cc
-    device_manager.cc
-    custom/custom_context.cc
-    custom/custom_device.cc)
+  list(APPEND BACKENDS_SRCS custom/custom_context.cc custom/custom_device.cc)
 endif()
 
 add_library(phi_backends "${BACKENDS_SRCS}")
@@ -65,12 +70,12 @@ if(WITH_CUSTOM_DEVICE)
     DEPS phi_capi)
 endif()
 
-set(COMM_UTILS_DEPS processgroup)
+set(COMM_UTILS_DEPS process_group)
 if(WITH_NCCL OR WITH_RCCL)
-  set(COMM_UTILS_DEPS ${PROCESS_GROUP_UTILS_DEPS} processgroup_nccl)
+  set(COMM_UTILS_DEPS ${PROCESS_GROUP_UTILS_DEPS} process_group_nccl)
 endif()
 if(WITH_CUSTOM_DEVICE)
-  set(COMM_UTILS_DEPS ${PROCESS_GROUP_UTILS_DEPS} processgroup_custom)
+  set(COMM_UTILS_DEPS ${PROCESS_GROUP_UTILS_DEPS} process_group_custom)
 endif()
 cc_library(
   processgroup_comm_utils

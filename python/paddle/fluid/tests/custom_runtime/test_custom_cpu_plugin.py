@@ -50,18 +50,13 @@ class TestCustomCPUPlugin(unittest.TestCase):
         del os.environ['CUSTOM_DEVICE_ROOT']
 
     def test_custom_device(self):
-        import paddle
-
-        with paddle.fluid.framework._test_eager_guard():
-            self._test_custom_device_dataloader()
-            self._test_custom_device_mnist()
-            self._test_eager_backward_api()
-            self._test_eager_copy_to()
-            self._test_fallback_kernel()
-            self._test_scalar()
-            self._test_custom_device_gradient_accumulation()
         self._test_custom_device_dataloader()
         self._test_custom_device_mnist()
+        self._test_eager_backward_api()
+        self._test_eager_copy_to()
+        self._test_fallback_kernel()
+        self._test_scalar()
+        self._test_custom_device_py_api()
 
     def _test_custom_device_dataloader(self):
         import paddle
@@ -262,6 +257,34 @@ class TestCustomCPUPlugin(unittest.TestCase):
         avg_loss = paddle.nn.functional.cross_entropy(pred, label_int32)
         avg_loss.backward()
         sgd.step()
+
+    def _test_custom_device_py_api(self):
+        import paddle
+
+        p = paddle.set_device('custom_cpu')
+        paddle.device.synchronize('custom_cpu')
+
+        s1 = paddle.device.Stream()
+        s2 = paddle.device.Stream(p)
+
+        s1 = paddle.device.current_stream()
+        s2 = paddle.device.current_stream(p)
+
+        e1 = paddle.device.Event()
+        e2 = paddle.device.Event(p)
+
+        s = paddle.device.Stream()
+        e = paddle.device.Event()
+        s.query()
+        s.synchronize()
+        s.wait_event(e)
+        s.record_event(e)
+        s.wait_stream(s)
+        paddle.device.set_stream(s)
+
+        e.query()
+        e.synchronize()
+        e.record(s)
 
 
 if __name__ == '__main__':

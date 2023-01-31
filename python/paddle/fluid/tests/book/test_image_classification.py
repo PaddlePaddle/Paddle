@@ -31,7 +31,7 @@ def resnet_cifar10(input, depth=32):
     def conv_bn_layer(
         input, ch_out, filter_size, stride, padding, act='relu', bias_attr=False
     ):
-        tmp = fluid.layers.conv2d(
+        tmp = paddle.static.nn.conv2d(
             input=input,
             filter_size=filter_size,
             num_filters=ch_out,
@@ -93,10 +93,10 @@ def vgg16_bn_drop(input):
     conv5 = conv_block(conv4, 512, 3, [0.4, 0.4, 0])
 
     drop = paddle.nn.functional.dropout(x=conv5, p=0.5)
-    fc1 = fluid.layers.fc(input=drop, size=4096, act=None)
+    fc1 = paddle.static.nn.fc(x=drop, size=4096)
     bn = paddle.static.nn.batch_norm(input=fc1, act='relu')
     drop2 = paddle.nn.functional.dropout(x=bn, p=0.5)
-    fc2 = fluid.layers.fc(input=drop2, size=4096, act=None)
+    fc2 = paddle.static.nn.fc(x=drop2, size=4096)
     return fc2
 
 
@@ -104,8 +104,10 @@ def train(net_type, use_cuda, save_dirname, is_local):
     classdim = 10
     data_shape = [3, 32, 32]
 
-    images = fluid.layers.data(name='pixel', shape=data_shape, dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    images = paddle.static.data(
+        name='pixel', shape=[-1] + data_shape, dtype='float32'
+    )
+    label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
 
     if net_type == "vgg":
         print("train vgg net")
@@ -116,7 +118,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
     else:
         raise ValueError("%s network is not supported" % net_type)
 
-    predict = fluid.layers.fc(input=net, size=classdim, act='softmax')
+    predict = paddle.static.nn.fc(x=net, size=classdim, activation='softmax')
     cost = paddle.nn.functional.cross_entropy(
         input=predict, label=label, reduction='none', use_softmax=False
     )

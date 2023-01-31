@@ -20,7 +20,6 @@ from test_imperative_base import new_program_scope
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.nn import BatchNorm
 
@@ -418,13 +417,12 @@ class TestImperativeResneXt(unittest.TestCase):
             ) = run_dygraph()
 
         with fluid.dygraph.guard():
-            with _test_eager_guard():
-                (
-                    eager_out,
-                    eager_param_init_value,
-                    eager_param_value,
-                    eager_grad_value,
-                ) = run_dygraph()
+            (
+                eager_out,
+                eager_param_init_value,
+                eager_param_value,
+                eager_grad_value,
+            ) = run_dygraph()
 
         with new_program_scope():
             paddle.seed(seed)
@@ -446,10 +444,12 @@ class TestImperativeResneXt(unittest.TestCase):
                 drop_last=True,
             )
 
-            img = fluid.layers.data(
-                name='pixel', shape=[3, 224, 224], dtype='float32'
+            img = paddle.static.data(
+                name='pixel', shape=[-1, 3, 224, 224], dtype='float32'
             )
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
             out = se_resnext(img)
             softmax_out = paddle.nn.function.softmax(out)
             loss = paddle.nn.functional.cross_entropy(

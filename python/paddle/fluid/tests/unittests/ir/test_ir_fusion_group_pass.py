@@ -33,7 +33,7 @@ class FusionGroupPassTest(PassTest):
 
             # subgraph with only 1 op node
             tmp_0 = self.feed_vars[0] * self.feed_vars[1]
-            tmp_1 = layers.mul(tmp_0, self.feed_vars[2])
+            tmp_1 = paddle.matmul(tmp_0, self.feed_vars[2])
             # subgraph with 2 op nodes
             tmp_2 = paddle.nn.functional.relu(tmp_0 + tmp_1)
 
@@ -114,7 +114,7 @@ class FusionGroupPassInplaceTest(FusionGroupPassTest):
             tmp_0 = self.feed_vars[0] - self.feed_vars[1]
             tmp_1 = tmp_0 * self.feed_vars[2]
             tmp_2 = layers.assign(tmp_1, output=tmp_0)
-            tmp_3 = layers.mul(tmp_2, self.feed_vars[3])
+            tmp_3 = paddle.matmul(tmp_2, self.feed_vars[3])
 
         self.num_fused_ops = 1
         self.fetch_list = [tmp_3]
@@ -143,7 +143,7 @@ class FusionGroupPassTestCastAndFP16(FusionGroupPassTest):
             # TODO(xreki): fix precision problem when using softmax of float16.
             # tmp_2 = layers.softmax(tmp_1)
             tmp_2 = paddle.add(tmp_1, zero)
-            tmp_3 = layers.mul(tmp_0, self.feed_vars[2])
+            tmp_3 = paddle.matmul(tmp_0, self.feed_vars[2])
             # subgraph with 4 op nodes
             tmp_3 = layers.cast(tmp_2, dtype="float16")
             tmp_4 = paddle.nn.functional.relu(tmp_1 + tmp_3)
@@ -169,7 +169,7 @@ class FusionGroupPassSumTest(FusionGroupPassTest):
                 [self.feed_vars[0], self.feed_vars[1], self.feed_vars[2]]
             )
             tmp_1 = paddle.sqrt(tmp_0)
-            tmp_2 = layers.mul(tmp_0, self.feed_vars[3])
+            tmp_2 = paddle.matmul(tmp_0, self.feed_vars[3])
             # subgraph with 2 op nodes
             tmp_3 = paddle.square(paddle.add_n([tmp_1, tmp_2]))
 

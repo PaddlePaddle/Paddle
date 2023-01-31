@@ -608,8 +608,12 @@ class DistributedStrategy:
             'embedx_sparse_beta2_decay_rate',
             'feature_learning_rate',
             'nodeid_slot',
+            'sparse_load_filter_slots',
         ]
-        support_sparse_table_class = ['DownpourSparseTable']
+        support_sparse_table_class = [
+            'DownpourSparseTable',
+            'DownpourSparseSSDTable',
+        ]
         support_sparse_accessor_class = [
             'DownpourSparseValueAccessor',
             'DownpourCtrAccessor',
@@ -729,10 +733,13 @@ class DistributedStrategy:
             )
             if table_class not in support_sparse_table_class:
                 raise ValueError(
-                    "support sparse_table_class: ['DownpourSparseTable'], but actual %s"
+                    "support sparse_table_class: ['DownpourSparseTable, DownpourSparseSSDTable'], but actual %s"
                     % (table_class)
                 )
-            table_data.table_class = 'MemorySparseTable'
+            if table_class == "DownpourSparseSSDTable":
+                table_data.table_class = 'SSDSparseTable'
+            else:
+                table_data.table_class = 'MemorySparseTable'
             table_data.shard_num = config.get('sparse_shard_num', 1000)
             table_data.enable_sparse_table_cache = config.get(
                 'sparse_enable_cache', True
@@ -800,6 +807,10 @@ class DistributedStrategy:
             )
             table_data.accessor.ctr_accessor_param.ssd_unseenday_threshold = (
                 config.get('sparse_ssd_unseenday_threshold', 1)
+            )
+            load_filter_slots = config.get('sparse_load_filter_slots', [])
+            table_data.accessor.ctr_accessor_param.load_filter_slots.extend(
+                load_filter_slots
             )
             converter = config.get('sparse_converter', "")
             deconverter = config.get('sparse_deconverter', "")

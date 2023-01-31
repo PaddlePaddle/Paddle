@@ -80,9 +80,6 @@ def start_local_trainers(
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
         }
 
-        if not eager_mode:
-            proc_env["FLAGS_enable_eager_mode"] = "%d" % 0
-
         current_env.update(proc_env)
 
         print("trainer proc env:{}".format(current_env))
@@ -152,7 +149,6 @@ class TestGradientCheckInEagerMode(TestMultipleXpus):
 
 
 if __name__ == "__main__":
-    os.environ["FLAGS_enable_eager_mode"] = "1"
     os.environ["BKCL_PCIE_RING"] = "1"
     os.environ["BKCL_CCIX_RING"] = "0"
     unittest.main()

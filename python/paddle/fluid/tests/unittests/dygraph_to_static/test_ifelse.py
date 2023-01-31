@@ -44,8 +44,6 @@ from ifelse_simple_func import (
 import paddle
 import paddle.fluid.core as core
 import paddle.nn.functional as F
-from paddle.jit.api import declarative
-from paddle.jit.dy2static.program_translator import ProgramTranslator
 from paddle.jit.dy2static.utils import Dygraph2StaticException
 
 np.random.seed(1)
@@ -65,10 +63,10 @@ class TestDy2staticException(unittest.TestCase):
     def test_error(self):
         if self.dyfunc:
             with self.assertRaisesRegex(Dygraph2StaticException, self.error):
-                ProgramTranslator().enable(True)
-                self.assertTrue(declarative(self.dyfunc)(self.x))
-        paddle.fluid.dygraph.base._in_declarative_mode_ = False
-        ProgramTranslator().enable(False)
+                paddle.jit.enable_to_static(True)
+                self.assertTrue(paddle.jit.to_static(self.dyfunc)(self.x))
+        paddle.fluid.dygraph.base.global_var._in_declarative_mode_ = False
+        paddle.jit.enable_to_static(False)
 
 
 class TestDygraphIfElse(unittest.TestCase):
@@ -89,7 +87,7 @@ class TestDygraphIfElse(unittest.TestCase):
         with fluid.dygraph.guard(place):
             x_v = fluid.dygraph.to_variable(self.x)
             if to_static:
-                ret = declarative(self.dyfunc)(x_v)
+                ret = paddle.jit.to_static(self.dyfunc)(x_v)
             else:
                 ret = self.dyfunc(x_v)
             return ret.numpy()
@@ -255,8 +253,7 @@ class TestDygraphIfElseNet(unittest.TestCase):
         return self._run(to_static=False)
 
     def _run(self, to_static=False):
-        prog_trans = ProgramTranslator()
-        prog_trans.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
 
         with fluid.dygraph.guard(place):
             net = self.Net()
@@ -293,7 +290,7 @@ class TestAst2FuncWithExternalFunc(TestDygraphIfElse):
 
 
 class NetWithExternalFunc(fluid.dygraph.Layer):
-    @declarative
+    @paddle.jit.to_static
     def forward(self, x, label=None):
         if paddle.mean(x) < 0:
             x_v = x - 1
@@ -365,8 +362,7 @@ class TestDiffModeNet(unittest.TestCase):
         self.Net = DiffModeNet1
 
     def _run(self, mode, to_static):
-        prog_trans = ProgramTranslator()
-        prog_trans.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
 
         net = self.Net(mode)
         ret = net(self.x, self.y)
@@ -424,10 +420,10 @@ class TestDy2StIfElseRetInt1(unittest.TestCase):
         self.out = self.get_dy2stat_out()
 
     def get_dy2stat_out(self):
-        ProgramTranslator().enable(True)
+        paddle.jit.enable_to_static(True)
         static_func = paddle.jit.to_static(self.dyfunc)
         out = static_func(self.x)
-        ProgramTranslator().enable(False)
+        paddle.jit.enable_to_static(False)
         return out
 
     def test_ast_to_func(self):
@@ -458,7 +454,7 @@ class TestDy2StIfElseRetInt4(TestDy2StIfElseRetInt1):
         self.dyfunc = dyfunc_ifelse_ret_int4
 
     def test_ast_to_func(self):
-        ProgramTranslator().enable(True)
+        paddle.jit.enable_to_static(True)
         with self.assertRaises(Dygraph2StaticException):
             static_func = paddle.jit.to_static(self.dyfunc)
             out = static_func(self.x)
@@ -467,8 +463,8 @@ class TestDy2StIfElseRetInt4(TestDy2StIfElseRetInt1):
         # that the code block is under @to_static, but in this UT
         # an exception is thrown during Dy2St, making the `_in_declarative_mode_`
         # a wrong value. So We need set `_in_declarative_mode_` to False manually.
-        paddle.fluid.dygraph.base._in_declarative_mode_ = False
-        ProgramTranslator().enable(False)
+        paddle.fluid.dygraph.base.global_var._in_declarative_mode_ = False
+        paddle.jit.enable_to_static(False)
 
 
 class IfElseNet(paddle.nn.Layer):

@@ -65,18 +65,18 @@ class TestDistFleetHeterProgram(unittest.TestCase):
         return self.strategy
 
     def build_input(self):
-        dense_input = fluid.layers.data(
-            name="dense_input", shape=[10], dtype="float32"
+        dense_input = paddle.static.data(
+            name="dense_input", shape=[-1, 10], dtype="float32"
         )
 
         sparse_input_ids = [
-            fluid.layers.data(
-                name="C" + str(i), shape=[1], lod_level=1, dtype="int64"
+            paddle.static.data(
+                name="C" + str(i), shape=[-1, 1], lod_level=1, dtype="int64"
             )
             for i in range(1, 27)
         ]
 
-        label = fluid.layers.data(name="label", shape=[1], dtype="float32")
+        label = paddle.static.data(name="label", shape=[-1, 1], dtype="float32")
 
         inputs = [dense_input] + sparse_input_ids + [label]
         return inputs
@@ -98,11 +98,11 @@ class TestDistFleetHeterProgram(unittest.TestCase):
         concated = fluid.layers.concat(sparse_embed_seq + inputs[0:1], axis=1)
 
         with fluid.device_guard("gpu"):
-            fc1 = fluid.layers.fc(
-                input=concated,
+            fc1 = paddle.static.nn.fc(
+                x=concated,
                 size=400,
-                act="relu",
-                param_attr=fluid.ParamAttr(
+                activation="relu",
+                weight_attr=fluid.ParamAttr(
                     initializer=fluid.initializer.Normal(
                         scale=1 / math.sqrt(concated.shape[1])
                     )
@@ -111,11 +111,11 @@ class TestDistFleetHeterProgram(unittest.TestCase):
             )
 
         with fluid.device_guard("cpu"):
-            fc2 = fluid.layers.fc(
-                input=fc1,
+            fc2 = paddle.static.nn.fc(
+                x=fc1,
                 size=400,
-                act="relu",
-                param_attr=fluid.ParamAttr(
+                activation="relu",
+                weight_attr=fluid.ParamAttr(
                     initializer=fluid.initializer.Normal(
                         scale=1 / math.sqrt(fc1.shape[1])
                     )
@@ -124,11 +124,11 @@ class TestDistFleetHeterProgram(unittest.TestCase):
             )
 
         with fluid.device_guard("gpu"):
-            fc3 = fluid.layers.fc(
-                input=fc2,
+            fc3 = paddle.static.nn.fc(
+                x=fc2,
                 size=400,
-                act="relu",
-                param_attr=fluid.ParamAttr(
+                activation="relu",
+                weight_attr=fluid.ParamAttr(
                     initializer=fluid.initializer.Normal(
                         scale=1 / math.sqrt(fc2.shape[1])
                     )
@@ -137,11 +137,11 @@ class TestDistFleetHeterProgram(unittest.TestCase):
             )
 
         with fluid.device_guard("cpu"):
-            predict = fluid.layers.fc(
-                input=fc3,
+            predict = paddle.static.nn.fc(
+                x=fc3,
                 size=2,
-                act="softmax",
-                param_attr=fluid.ParamAttr(
+                activation="softmax",
+                weight_attr=fluid.ParamAttr(
                     initializer=fluid.initializer.Normal(
                         scale=1 / math.sqrt(fc3.shape[1])
                     )

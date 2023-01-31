@@ -41,9 +41,9 @@ def create_test_class(op_type, typename, callback):
         def test_errors(self):
             paddle.enable_static()
             with program_guard(Program(), Program()):
-                x = fluid.layers.data(name='x', shape=[2], dtype='int32')
-                y = fluid.layers.data(name='y', shape=[2], dtype='int32')
-                a = fluid.layers.data(name='a', shape=[2], dtype='int16')
+                x = paddle.static.data(name='x', shape=[-1, 2], dtype='int32')
+                y = paddle.static.data(name='y', shape=[-1, 2], dtype='int32')
+                a = paddle.static.data(name='a', shape=[-1, 2], dtype='int16')
                 op = eval("paddle.%s" % self.op_type)
                 self.assertRaises(TypeError, op, x=x, y=a)
                 self.assertRaises(TypeError, op, x=a, y=y)
@@ -415,8 +415,8 @@ def create_paddle_case(op_type, callback):
         def test_attr_name(self):
             paddle.enable_static()
             with program_guard(Program(), Program()):
-                x = fluid.layers.data(name='x', shape=[4], dtype='int32')
-                y = fluid.layers.data(name='y', shape=[4], dtype='int32')
+                x = paddle.static.data(name='x', shape=[-1, 4], dtype='int32')
+                y = paddle.static.data(name='y', shape=[-1, 4], dtype='int32')
                 op = eval("paddle.%s" % (self.op_type))
                 out = op(x=x, y=y, name="name_%s" % (self.op_type))
             self.assertEqual("name_%s" % (self.op_type) in out.name, True)
@@ -439,7 +439,7 @@ class TestCompareOpError(unittest.TestCase):
         paddle.enable_static()
         with program_guard(Program(), Program()):
             # The input x and y of compare_op must be Variable.
-            x = fluid.layers.data(name='x', shape=[1], dtype="float32")
+            x = paddle.static.data(name='x', shape=[-1, 1], dtype="float32")
             y = fluid.create_lod_tensor(
                 numpy.array([[-1]]), [[1]], fluid.CPUPlace()
             )

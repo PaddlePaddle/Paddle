@@ -46,7 +46,8 @@ class InterpreterCore {
                   const std::set<std::string>& skip_gc_vars,
                   Scope* scope,
                   bool used_for_jit = false,
-                  bool used_for_control_flow_op = false);
+                  bool used_for_control_flow_op = false,
+                  bool used_for_cinn = false);
 
   ~InterpreterCore();
 
@@ -78,6 +79,12 @@ class InterpreterCore {
   const platform::Place& GetPlace() const { return place_; }
 
  private:
+  using InstructionSchedulingPriorityLess = std::function<bool(size_t, size_t)>;
+  using SchedulingQueue =
+      std::priority_queue<size_t,
+                          std::vector<size_t>,
+                          InstructionSchedulingPriorityLess>;
+
   // build graph
   void Convert(std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
   void BuildOperatorDependences();
@@ -92,12 +99,17 @@ class InterpreterCore {
       const std::vector<std::vector<size_t>>& input_var2op, size_t var_index);
   void SetFeedVarsInplaceSkip(const std::vector<std::string>& feed_names);
 
+  // cuda graph
+  void CheckCUDAGraphBeforeRun(const std::vector<std::string>& feed_names);
+  void PrepareForCUDAGraphCapture();
+
   // execution
+  void RunImpl();
   void ExecuteInstructionList(const std::vector<Instruction>& vec_instr);
   void RunInstructionAsync(size_t instr_id);
   void RunInstruction(const Instruction& instr_node);
   void RunNextInstructions(const Instruction& instr_id,
-                           std::deque<size_t>* reserved_next_ops);
+                           SchedulingQueue* reserved_next_ops);
   void RunOperator(const Instruction& instr_node);
   // Trace
   void TraceInstructionList(const std::vector<Instruction>& vec_instr);
@@ -170,6 +182,8 @@ class InterpreterCore {
   // used for Trace
   int64_t sync_op_num_{-1};
   std::vector<size_t> trace_execute_order_;
+
+  InstructionSchedulingPriorityLess instruction_scheduling_priority_less;
 };
 
 std::shared_ptr<InterpreterCore> CreateInterpreterCore(

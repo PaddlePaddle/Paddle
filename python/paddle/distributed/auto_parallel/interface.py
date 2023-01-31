@@ -207,7 +207,7 @@ def recompute(op):
             self._op = op
 
         def __call__(self, *args, **kwargs):
-            default_prog = paddle.fluid.default_main_program()
+            default_prog = paddle.static.default_main_program()
             cur_block = default_prog.current_block()
             op_size = len(cur_block.ops)
             output = self._op(*args, **kwargs)
@@ -256,6 +256,16 @@ def add_to_collection(collection_name, value, name=None):
 
 
 def fetch(tensor, name=None, logging=False):
+    if isinstance(tensor, paddle.static.Variable):
+        tensor = tensor.name
+    elif isinstance(tensor, str):
+        tensor = tensor
+    else:
+        raise TypeError(
+            "Only support fetch `Variable` or `str`[`Variable`'s name], but got `{}`".format(
+                type(tensor)
+            )
+        )
     add_to_collection(CollectionNames.FETCHES, tensor, name)
     if logging:
         add_to_collection(CollectionNames.LOGGING, tensor, name)

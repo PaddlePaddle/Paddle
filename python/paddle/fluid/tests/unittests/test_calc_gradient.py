@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 from paddle.fluid.backward import calc_gradient
 
 
@@ -29,7 +28,7 @@ class TestCalcGradient(unittest.TestCase):
         with fluid.program_guard(main, startup):
             x = paddle.create_parameter(dtype="float32", shape=[5, 10])
             y = paddle.create_parameter(dtype="float32", shape=[10, 8])
-            mul_out = layers.mul(x=x, y=y)
+            mul_out = paddle.matmul(x=x, y=y)
             mean_out = paddle.mean(mul_out)
             a = calc_gradient(mean_out, mul_out)
             b = calc_gradient(mean_out, x)
