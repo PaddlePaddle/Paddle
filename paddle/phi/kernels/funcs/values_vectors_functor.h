@@ -195,7 +195,8 @@ static void CheckEighResult(const GPUContext &dev_ctx,
                        dev_ctx.GetPlace(),
                        info,
                        sizeof(int) * batch_size,
-                       nullptr);
+                       dev_ctx.stream());
+  dev_ctx.Wait();
   for (auto i = 0; i < batch_size; ++i) {
     CheckEighResult(i, error_info[i]);
   }
@@ -403,23 +404,13 @@ struct MatrixEighFunctor<GPUContext, T> {
                 out_value,
                 &workspace_size);
     }
-    /* size_t total_bytes = sizeof(T) * workspace_size + sizeof(int) *
-       batch_size; auto work = paddle::memory::Alloc( dev_ctx.GetPlace(),
-       total_bytes,
-              phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-       auto *work_ptr = reinterpret_cast<T *>(work->ptr());
-       auto *info_ptr = reinterpret_cast<int *>(work_ptr + workspace_size);
-    */
+    size_t total_bytes = sizeof(T) * workspace_size + sizeof(int) * batch_size;
     auto work = paddle::memory::Alloc(
         dev_ctx.GetPlace(),
-        sizeof(T) * workspace_size,
-        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-    auto info = paddle::memory::Alloc(
-        dev_ctx.GetPlace(),
-        sizeof(int) * batch_size,
+        total_bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
     auto *work_ptr = reinterpret_cast<T *>(work->ptr());
-    auto *info_ptr = reinterpret_cast<int *>(info->ptr());
+    auto *info_ptr = reinterpret_cast<int *>(work_ptr + workspace_size);
 
     for (auto i = 0; i < batch_size; ++i) {
       auto *input_data = input_vector + i * vector_stride;
