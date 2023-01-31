@@ -19,9 +19,9 @@ import numpy as np
 import paddle
 
 
-class TestSparseEmbeddingAPIError(unittest.TestCase):
+class TestEigAPIError(unittest.TestCase):
     def test_errors(self):
-        # The size of input in sparse_embedding should not be 0.
+        # The size of input in Eig should not be 0.
         def test_0_size():
             array = np.array([], dtype=np.float32)
             x = paddle.to_tensor(np.reshape(array, [0, 0]), dtype='float32')
