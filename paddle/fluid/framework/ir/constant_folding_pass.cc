@@ -135,7 +135,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
         auto out_desc = out_node->Var();
         auto out_name = out_desc->Name();
         auto *local_out_tensor =
-            local_scope->FindVar(out_name)->GetMutable<phi::DenseTensor>();
+            local_scope->FindVar(out_name)->GetMutable<LoDTensor>();
         std::vector<int64_t> out_shape;
         for (int64_t i = 0; i < local_out_tensor->dims().size(); i++) {
           out_shape.push_back(local_out_tensor->dims()[i]);
@@ -146,8 +146,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
         var_desc_out->SetShape(out_shape);
         var_desc_out->SetPersistable(true);
         var_desc_out->Flush();
-        auto *global_out_tensor =
-            scope->Var(out_name)->GetMutable<phi::DenseTensor>();
+        auto *global_out_tensor = scope->Var(out_name)->GetMutable<LoDTensor>();
         *global_out_tensor = *local_out_tensor;
       }
       GraphSafeRemoveNodes(graph, remove_nodes);
