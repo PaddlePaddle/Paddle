@@ -1732,10 +1732,7 @@ class OpTest(unittest.TestCase):
                         + ") has diff at "
                         + str(place)
                         + " in "
-                        + self.checker_name
-                        + str(actual_np.sum())
-                        + "vs"
-                        + str(expect_np.sum()),
+                        + self.checker_name,
                     )
 
             def convert_uint16_to_float_ifneed(self, actual_np, expect_np):

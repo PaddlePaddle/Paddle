@@ -16,11 +16,11 @@ import os
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest
 from test_attribute_var import UnittestBase
 
 import paddle
 import paddle.fluid.core as core
-from eager_op_test import OpTest
 from paddle.fluid import Program, program_guard
 
 

@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
-from eager_op_test import OpTest
 from paddle.fluid import Program, program_guard
 
 
@@ -43,19 +43,19 @@ class TestAddMMOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input', 'X', 'Y'], 'Out', check_dygraph=False)
+        self.check_grad(['Input', 'X', 'Y'], 'Out')
 
     def test_check_grad_x(self):
-        self.check_grad(['X'], 'Out', no_grad_set=None, check_dygraph=False)
+        self.check_grad(['X'], 'Out', no_grad_set=None)
 
     def test_check_grad_y(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=None, check_dygraph=False)
+        self.check_grad(['Y'], 'Out', no_grad_set=None)
 
     def test_check_grad_input(self):
-        self.check_grad(['Input'], 'Out', no_grad_set=None, check_dygraph=False)
+        self.check_grad(['Input'], 'Out', no_grad_set=None)
 
 
 class TestAddMMOpError(unittest.TestCase):

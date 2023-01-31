@@ -16,10 +16,10 @@ import math
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid.core as core
-from eager_op_test import OpTest
 from paddle.fluid.op import Operator
 
 

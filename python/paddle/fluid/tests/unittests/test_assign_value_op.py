@@ -15,8 +15,8 @@
 import unittest
 
 import numpy as np
+import op_test
 
-import eager_op_test as op_test
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
@@ -42,7 +42,7 @@ class TestAssignValueOp(op_test.OpTest):
         self.attrs["fp32_values"] = [float(v) for v in self.value.flat]
 
     def test_forward(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
 
 class TestAssignValueOp2(TestAssignValueOp):
