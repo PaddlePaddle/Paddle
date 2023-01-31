@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _legacy_C_ops
-from paddle.fluid.framework import _non_static_mode
+from paddle import _C_ops
+from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
-
 
 def cutlass_fused_multi_head_attention(
     query, key, value, mask=None, scale=None, causal=False
@@ -59,9 +58,9 @@ def cutlass_fused_multi_head_attention(
 
             print(out.shape) # [batch, seq_len, num_expert]
     """
-    if _non_static_mode():
-        return _legacy_C_ops.cutlass_fused_multihead_attention(
-            query, key, value, mask, 'scale', scale, 'causal', causal
+    if in_dygraph_mode():
+        return _C_ops.cutlass_fused_multihead_attention(
+            query, key, value, mask, scale, causal
         )
 
     helper = LayerHelper('cutlass_fused_multihead_attention', **locals())

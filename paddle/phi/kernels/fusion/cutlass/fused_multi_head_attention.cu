@@ -326,8 +326,7 @@ void MultiHeadAttentionForwardKernel(
     const DenseTensor& query,
     const DenseTensor& key,
     const DenseTensor& value,
-    //  const paddle::optional<DenseTensor>& mask,
-    const DenseTensor& mask,
+    const paddle::optional<DenseTensor>& mask, 
     const float scale,
     const bool causal,
     DenseTensor* output) {
@@ -337,10 +336,6 @@ void MultiHeadAttentionForwardKernel(
   params.datatype = query.dtype();
   params.query_ptr = query.data();
   params.key_ptr = key.data();
-
-  // TODO(zhengzekang): Check optional.
-  params.mask_ptr = mask.data();
-  // params.mask_ptr = nullptr;
 
   params.value_ptr = value.data();
   params.output_ptr = output->data();
@@ -357,28 +352,29 @@ void MultiHeadAttentionForwardKernel(
   params.head_size = query.dims()[3];
   params.value_head_size = value.dims()[3];
 
-  // set default scale value.
-  float scale_value = 1.0f / sqrt(params.head_size);
-  if (scale != 0.0f) {
-    // assume 0.0f is default value.
-    scale_value = scale;
-  }
-  params.scale = scale_value;
+  params.scale = scale;
   params.causal = causal;
 
   params.query_strideH = query.dims()[3];
   params.key_strideH = key.dims()[3];
   params.value_strideH = value.dims()[3];
-  params.mask_strideM = mask.dims()[2] == 1 ? 0 : mask.dims()[3];
-  params.mask_strideH =
-      mask.dims()[1] == 1 ? 0 : mask.dims()[2] * mask.dims()[3];
-  params.mask_strideB = mask.dims()[0] == 1
-                            ? 0
-                            : mask.dims()[1] * mask.dims()[2] * mask.dims()[3];
-  params.mask_broadcast_row = false;
-  if (params.mask_strideM == 0) {
-    params.mask_broadcast_row = true;
+
+  if(mask){
+    auto mask_tensor = mask.get(); 
+    params.mask_ptr = mask_tensor.data();
+    params.mask_strideM = mask_tensor.dims()[2] == 1 ? 0 : mask_tensor.dims()[3];
+    params.mask_strideH =
+        mask_tensor.dims()[1] == 1 ? 0 : mask_tensor.dims()[2] * mask_tensor.dims()[3];
+    params.mask_strideB = mask_tensor.dims()[0] == 1
+                              ? 0
+                              : mask_tensor.dims()[1] * mask_tensor.dims()[2] * mask_tensor.dims()[3];
+  
+    params.mask_broadcast_row = false;
+    if (params.mask_strideM == 0) {
+      params.mask_broadcast_row = true;
+    }
   }
+  
   DispatchFusedMultiheadAttentionKernel(params, ctx);
 }
 

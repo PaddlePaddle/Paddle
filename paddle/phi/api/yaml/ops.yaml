@@ -248,6 +248,7 @@
     func : FusedMultiHeadAttentionInferMeta
   kernel :
     func : fused_multihead_attention
+  optional : mask
 
 - op : det
   args : (Tensor x)
