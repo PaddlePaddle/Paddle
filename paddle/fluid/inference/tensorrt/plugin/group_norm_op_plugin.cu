@@ -247,8 +247,8 @@ __global__ void groupNormNHWCScaleKernel(const GroupNormNHWCParams params) {
     f2.x = gammaF2.x * f2.x + betaF2.x;
     f2.y = gammaF2.y * f2.y + betaF2.y;
 
-    // Apply Swish if needed.
-    if (params.withSwish) {
+    // Apply Silu if needed.
+    if (params.withSilu) {
       f2.x = f2.x * sigmoid(f2.x);
       f2.y = f2.y * sigmoid(f2.y);
     }
@@ -624,7 +624,7 @@ int GroupNormPluginDynamic::enqueue(
         cPerBlock = 8;
       }
 
-      params_.withSwish = with_silu_;
+      params_.withSilu = with_silu_;
       params_.dst = static_cast<half *>(outputs[0]);
       params_.srcX = static_cast<half const *>(inputs[0]);
       params_.gamma = scale_gpu_;
