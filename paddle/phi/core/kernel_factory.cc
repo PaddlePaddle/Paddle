@@ -63,7 +63,8 @@ bool KernelFactory::HasCompatiblePhiKernel(const std::string& op_type) const {
 }
 
 bool KernelFactory::AllAreFuncKernel(const std::string& op_type) const {
-  auto kernel_iter = kernels_.find(op_type);
+  auto phi_kernel_name = phi::OpUtilsMap::Instance().GetBaseKernelName(op_type);
+  auto kernel_iter = kernels_.find(phi_kernel_name);
   if (deprecated_op_names.find(op_type) == deprecated_op_names.end() &&
       kernel_iter != kernels_.end()) {
     return std::all_of(kernel_iter->second.begin(),
