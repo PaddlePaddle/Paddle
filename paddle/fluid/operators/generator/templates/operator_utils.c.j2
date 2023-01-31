@@ -117,6 +117,15 @@ static_cast<int>(phi::Place({{"phi::" if not default_value is initializer_list}}
 
 {# --------------------------------------- name mapping ---------------------------------------------- #}
 {% macro name_map(op) %}
+/*
+******************************************************************
+NOTE: The following codes are for 'get_compat_kernel_signature.py'
+All possible KernelSignatures returned by {{op["name"] | to_pascal_case }}OpArgumentMapping:
+
+{{op | cartesian_prod_mapping}}
+******************************************************************
+*/
+
 KernelSignature {{op["op_name"] | to_pascal_case }}OpArgumentMapping(const ArgumentMappingContext& ctx) {
   {% set kernel_args = op["kernel"]["param"] %}
   {{get_input_list(op["inputs"], kernel_args)}};
@@ -136,15 +145,6 @@ KernelSignature {{op["op_name"] | to_pascal_case }}OpArgumentMapping(const Argum
   return sig;
   {%endif%}
 }
-
-/*
-******************************************************************
-NOTE: The following codes are for 'get_compat_kernel_signature.py'
-All possible KernelSignatures returned by {{op["name"] | to_pascal_case }}OpArgumentMapping:
-
-{{op | cartesian_prod_mapping}}
-******************************************************************
-*/
 {% endmacro %}
 
 {% macro get_kernel_dispatch(inputs, kernel_config) %}{# inline #}
@@ -172,6 +172,15 @@ ctx.IsSparseCsrTensorInput("{{input["name"]}}"){{" && " if not loop.last}}
 {%- endmacro %}
 
 {% macro sparse_op_name_map(op) %}
+/*
+******************************************************************
+NOTE: The following codes are for 'get_compat_kernel_signature.py'
+All possible KernelSignatures returned by {{op["name"] | to_pascal_case }}OpArgumentMapping:
+
+{{op | cartesian_prod_mapping}}
+******************************************************************
+*/
+
 KernelSignature {{op["op_name"] | to_pascal_case }}OpArgumentMapping(const ArgumentMappingContext& ctx) {
   {% set kernel_args = op["kernel"]["param"] %}
   {{get_input_list(op["inputs"], kernel_args)}};
@@ -188,15 +197,6 @@ KernelSignature {{op["op_name"] | to_pascal_case }}OpArgumentMapping(const Argum
   KernelSignature sig (kernel_name, std::move(inputs), std::move(attrs), std::move(outputs));
   return sig;
 }
-
-/*
-******************************************************************
-NOTE: The following codes are for 'get_compat_kernel_signature.py'
-All possible KernelSignatures returned by {{op["name"] | to_pascal_case }}OpArgumentMapping:
-
-{{op | cartesian_prod_mapping}}
-******************************************************************
-*/
 {% endmacro %}
 
 {% macro register_base_kernel_name(op) %}
@@ -284,6 +284,32 @@ phi::KernelKey GetExpectedKernelType(
 }
 {% endmacro %}
 
+{% macro get_kernel_for_var(op) %} {# only for data_transform #}
+{% set skip_args = op["data_transform"]["skip_transform"] %}
+{% set var_name = "var_name" %}
+{% set skip_args_len = skip_args | length %}
+phi::KernelKey GetKernelTypeForVar(
+    const std::string& {{var_name}},
+    const phi::DenseTensor& tensor,
+    const phi::KernelKey& expected_kernel_type) const override {
+    
+      if (
+        {%- for skip_arg in skip_args -%}
+          var_name == "{{ skip_arg }}"
+          {%- if skip_args_len != 1 and loop.index != skip_args_len %} || {% endif -%}
+        {%- endfor -%}
+      ){
+        return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
+      }
+      else{
+          return phi::KernelKey(
+            tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+      }
+    }
+{% endmacro %}
+
 {# --------------------------------------- operator  ---------------------------------------------- #}
 {% macro operator(op) %}
 class {{op["op_name"] | to_pascal_case}}Op : public framework::OperatorWithKernel {
@@ -293,9 +319,17 @@ class {{op["op_name"] | to_pascal_case}}Op : public framework::OperatorWithKerne
   {% set kernel = op["kernel"] %}
   {% if kernel["data_type"] is not none %}
  protected:
-  {% filter indent(2, True)%}
+    {% filter indent(2, True)%}
 {{get_expected_kernel(op)}}
-  {% endfilter %}
+    {% endfilter %}
+    {%- if "data_transform" in op and op["data_transform"] is not none -%}
+      {%- if "skip_transform" in op["data_transform"] -%}
+        {% filter indent(2, True) %}
+{{get_kernel_for_var(op)}}
+        {% endfilter %}
+      {%- endif %}
+    {%- endif -%}
+{# TODO(lizhiyu): add the 'support_trans_dtype' #}
   {% endif %}
 };
 
@@ -635,6 +669,7 @@ class {{op_name | to_composite_grad_opmaker_name}} : public prim::GradCompositeO
 {%- endmacro %}
 
 {% macro call_composite_backward_api(composite_op_dict) %}
+    VLOG(3) << "Runing {{composite_op_dict["composite"]["func_name"]}} composite func";
     prim::{{composite_op_dict["composite"]["func_name"]}}<prim::DescTensor>({{composite_op_dict["composite"]["func_args"]}});
 {%- endmacro %}
 

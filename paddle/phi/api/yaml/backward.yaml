@@ -431,6 +431,7 @@
   kernel :
     func : exp_grad
   inplace : (out_grad -> x_grad)
+  composite : exp_grad(out, out_grad, x_grad)
 
 - backward_op : expm1_grad
   forward : expm1 (Tensor x) -> Tensor(out)
@@ -1085,6 +1086,30 @@
     func : selu_grad
     data_type : out
 
+- backward_op : send_u_recv_grad
+  forward : send_u_recv (Tensor x, Tensor src_index, Tensor dst_index, str reduce_op = "SUM", IntArray out_size = {0}) -> Tensor(out), Tensor(dst_count)
+  args : (Tensor x, Tensor src_index, Tensor dst_index, Tensor out, Tensor dst_count, Tensor out_grad, str reduce_op = "SUM")
+  output : Tensor(x_grad)
+  infer_meta :
+    func : GeneralUnaryGradInferMeta
+    param : [x]
+  kernel :
+    func : send_u_recv_grad
+    data_type : out_grad
+  optional: out, dst_count
+
+- backward_op : send_ue_recv_grad
+  forward : send_ue_recv (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str message_op="ADD", str reduce_op="SUM", IntArray out_size={0}) -> Tensor(out), Tensor(dst_count)
+  args : (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, Tensor out, Tensor dst_count, Tensor out_grad, str message_op, str reduce_op)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, y]
+  kernel :
+    func : send_ue_recv_grad
+    data_type : out_grad
+  optional: out, dst_count
+
 - backward_op : send_uv_grad
   forward : send_uv (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str message_op = "ADD") -> Tensor(out)
   args: (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, Tensor out_grad, str message_op = "ADD")
@@ -1191,6 +1216,17 @@
     func : sinh_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : slogdet_grad
+  forward : slogdet (Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : GeneralUnaryGradInferMeta
+    param : [x]
+  kernel :
+    func : slogdet_grad
+    data_type : out_grad
+
 - backward_op : softplus_grad
   forward : softplus (Tensor x, float beta, float threshold) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, float beta, float threshold)
@@ -1254,6 +1290,7 @@
     param : [out]
   kernel :
     func : sqrt_grad
+  composite : sqrt_grad(out, out_grad, x_grad)
   backward : sqrt_double_grad
   inplace : (out_grad -> x_grad)
 

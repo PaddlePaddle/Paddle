@@ -88,6 +88,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/profiler.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
+#include "paddle/fluid/pybind/custom_device_py.h"
 #include "paddle/fluid/pybind/distributed_py.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/imperative.h"
@@ -281,6 +282,20 @@ bool IsCompiledWithNPU() {
   return false;
 #else
   return true;
+#endif
+}
+
+bool IsCompiledWithCustomDevice(std::string device_type) {
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
+  return false;
+#else
+  std::vector<std::string> device_types;
+  device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+  if (std::count(device_types.begin(), device_types.end(), device_type)) {
+    return true;
+  } else {
+    return false;
+  }
 #endif
 }
 
@@ -615,6 +630,7 @@ PYBIND11_MODULE(libpaddle, m) {
   BindCudaStream(&m);
   BindXpuStream(&m);
   BindJit(&m);
+  BindCustomDevicePy(&m);
 
   // Not used, just make sure cpu_info.cc is linked.
   phi::backends::cpu::CpuTotalPhysicalMemory();
@@ -646,8 +662,16 @@ PYBIND11_MODULE(libpaddle, m) {
         return oss.str();
       });
 
-  m.def("set_prim_enabled", &paddle::prim::PrimCommonUtils::SetPrimEnabled);
-  m.def("is_prim_enabled", &paddle::prim::PrimCommonUtils::IsPrimEnabled);
+  m.def("__set_bwd_prim_enabled",
+        &paddle::prim::PrimCommonUtils::SetBwdPrimEnabled);
+  m.def("_is_bwd_prim_enabled",
+        &paddle::prim::PrimCommonUtils::IsBwdPrimEnabled);
+  m.def("__set_fwd_prim_enabled",
+        &paddle::prim::PrimCommonUtils::SetFwdPrimEnabled);
+  m.def("_is_fwd_prim_enabled",
+        &paddle::prim::PrimCommonUtils::IsFwdPrimEnabled);
+  m.def("__set_all_prim_enabled",
+        &paddle::prim::PrimCommonUtils::SetAllPrimEnabled);
   m.def("set_num_threads", &platform::SetNumThreads);
 
   m.def("disable_signal_handler", &DisableSignalHandler);
@@ -956,7 +980,7 @@ All parameter, weight, gradient are variables in Paddle.
              }
            })
       .def("set_string_list",
-           [](Variable &self, Strings str_list) {
+           [](Variable &self, std::vector<std::string> str_list) {
              *self.GetMutable<Strings>() = str_list;
            })
       .def("set_vocab",
@@ -1250,8 +1274,9 @@ All parameter, weight, gradient are variables in Paddle.
           // priority of GradCompOpMaker is less than GradCompMaker for better
           // performance.
           std::vector<std::unique_ptr<OpDesc>> grad_op_descs;
-          if (paddle::prim::PrimCommonUtils::IsPrimEnabled()) {
+          if (paddle::prim::PrimCommonUtils::IsBwdPrimEnabled()) {
             if (grad_comp_op_maker != nullptr) {
+              VLOG(3) << "Runing composite fun for " << op_desc.Type();
               grad_op_descs = grad_comp_op_maker(op_desc,
                                                  no_grad_set,
                                                  &grad_to_var,
@@ -1559,6 +1584,25 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
     return devices;
   });
+  m.def("get_custom_device_count", [](const std::string &device_type) {
+    size_t device_count = 0;
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    // TODO(duanyanhui): Optimize DeviceManager::GetDeviceCount to support
+    // returning default device when only one device is registered in
+    // DeviceManager.
+    device_count = phi::DeviceManager::GetDeviceCount(device_type);
+#else
+          VLOG(1) << string::Sprintf(
+              "Cannot use get_custom_device_count because you have "
+              "installed"
+              "CPU/GPU version PaddlePaddle.\n"
+              "If you want to use get_custom_device_count, please try to "
+              "install"
+              "CustomDevice version "
+              "PaddlePaddle by: pip install paddlepaddle\n");
+#endif
+    return device_count;
+  });
 
   py::class_<OperatorBase>(m, "Operator")
       .def_static("create",
@@ -1806,6 +1850,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_ascend", IsCompiledWithAscend);
   m.def("is_compiled_with_rocm", IsCompiledWithROCM);
   m.def("is_compiled_with_npu", IsCompiledWithNPU);
+  m.def("is_compiled_with_custom_device", IsCompiledWithCustomDevice);
   m.def("is_compiled_with_ipu", IsCompiledWithIPU);
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
@@ -1892,7 +1937,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("set_feed_variable",
         static_cast<void (*)(  // NOLINT
             Scope *,
-            const Strings &,
+            const std::vector<std::string> &,
             const std::string &,
             size_t)>(&framework::SetFeedVariable));
   m.def("get_fetch_variable",

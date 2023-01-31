@@ -26,6 +26,7 @@
 #include "paddle/fluid/platform/dynload/tensorrt.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/utils/data_type.h"
 
 namespace paddle {
 namespace inference {

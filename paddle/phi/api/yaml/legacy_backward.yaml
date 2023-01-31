@@ -42,6 +42,7 @@
   kernel :
     func : add_grad
   no_need_buffer : x, y
+  composite : add_grad(x, y, out_grad, axis)
   backward : add_double_grad
   inplace : (out_grad -> x_grad)
 
@@ -193,6 +194,15 @@
   invoke : cast (out_grad, x.dtype())
   no_need_buffer : x
 
+- backward_op : channel_shuffle_grad
+  forward : channel_shuffle (Tensor x, int groups, str data_format="NCHW") -> Tensor(out)
+  args : (Tensor out_grad, int groups, str data_format="NCHW")
+  output : Tensor(x_grad)
+  infer_meta :
+    func : ChannelShuffleGradInferMeta
+  kernel :
+    func : channel_shuffle_grad
+
 - backward_op : concat_double_grad
   forward : concat_grad (Tensor[] x, Tensor grad_out, Scalar axis) -> Tensor[](grad_x)
   args : (Tensor[] grad_x_grad, Scalar axis = 0)
@@ -306,9 +316,14 @@
 
 - backward_op : cumsum_grad
   forward : cumsum(Tensor x, Scalar axis, bool flatten, bool exclusive, bool reverse) -> Tensor(out)
-  args : (Tensor out_grad, Scalar axis, bool flatten, bool exclusive, bool reverse)
+  args : (Tensor x, Tensor out_grad, Scalar axis, bool flatten, bool exclusive, bool reverse)
   output : Tensor(x_grad)
-  invoke : cumsum(out_grad, axis, flatten, exclusive, !reverse)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : cumsum_grad
+    data_type: x
 
 - backward_op : deformable_conv_grad
   forward : deformable_conv(Tensor x, Tensor offset, Tensor filter, Tensor mask, int[] strides, int[] paddings, int[] dilations, int deformable_groups, int groups, int im2col_step) -> Tensor(out)
@@ -375,6 +390,7 @@
     param : [x, y]
   kernel :
     func : divide_grad
+  composite : divide_grad(x, y, out, out_grad, -1)
   backward : divide_double_grad
 
 - backward_op : dropout_grad
@@ -408,6 +424,16 @@
     param : [x_shape]
   kernel :
     func : einsum_grad
+
+- backward_op : elementwise_heaviside_grad
+  forward : heaviside (Tensor x, Tensor y) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out_grad, int axis = -1)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, y]
+  kernel :
+    func : elementwise_heaviside_grad
 
 - backward_op : elementwise_pow_grad
   forward : elementwise_pow(Tensor x, Tensor y) -> Tensor(out)
@@ -454,6 +480,7 @@
     func : expand_grad
   no_need_buffer : x
   backward : expand_double_grad
+  composite: expand_grad(x, out_grad, shape, x_grad_p)
 
 - backward_op : exponential__grad
   forward : exponential_ (Tensor x, float lam) -> Tensor(out)
@@ -859,6 +886,7 @@
     param : [x, y]
   kernel :
     func : multiply_grad
+  composite: multiply_grad(x, y, out_grad, axis, x_grad, y_grad)
   backward : multiply_double_grad
 
 - backward_op : multiply_triple_grad
@@ -1180,30 +1208,6 @@
     data_type : x
   optional : summed_ids
 
-- backward_op : send_u_recv_grad
-  forward : send_u_recv (Tensor x, Tensor src_index, Tensor dst_index, str reduce_op = "SUM", IntArray out_size = {0}) -> Tensor(out), Tensor(dst_count)
-  args : (Tensor x, Tensor src_index, Tensor dst_index, Tensor out, Tensor dst_count, Tensor out_grad, str reduce_op = "SUM")
-  output : Tensor(x_grad)
-  infer_meta :
-    func : GeneralUnaryGradInferMeta
-    param : [x]
-  kernel :
-    func : send_u_recv_grad
-    data_type : out_grad
-  optional: out, dst_count
-
-- backward_op : send_ue_recv_grad
-  forward : send_ue_recv (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str message_op, str reduce_op, IntArray out_size) -> Tensor(out), Tensor(dst_count)
-  args : (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, Tensor out, Tensor dst_count, Tensor out_grad, str message_op, str reduce_op)
-  output : Tensor(x_grad), Tensor(y_grad)
-  infer_meta :
-    func : GeneralBinaryGradInferMeta
-    param : [x, y]
-  kernel :
-    func : send_ue_recv_grad
-    data_type : out_grad
-  optional: out, dst_count
-
 - backward_op : sigmoid_cross_entropy_with_logits_grad
   forward : sigmoid_cross_entropy_with_logits (Tensor x, Tensor label, bool normalize, int ignore_index) -> Tensor(out)
   args : (Tensor x, Tensor label, Tensor out_grad, bool normalize, int ignore_index)
@@ -1238,16 +1242,6 @@
     func : slice_grad
   backward : slice_double_grad
   no_need_buffer : input
-
-- backward_op : slogdet_grad
-  forward : slogdet (Tensor x) -> Tensor(out)
-  args : (Tensor x, Tensor out, Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : slogdet_grad
 
 - backward_op : softmax_grad
   forward : softmax (Tensor x, int axis) -> Tensor(out)
@@ -1325,6 +1319,7 @@
   kernel :
     func : subtract_grad
   no_need_buffer : x, y
+  composite : subtract_grad(x, y, out_grad, axis)
   backward : subtract_double_grad
   inplace : (out_grad -> x_grad)
 
@@ -1343,6 +1338,7 @@
     param : [x]
   kernel :
     func : sum_grad
+  composite : sum_grad(x, out_grad, axis, keepdim, reduce_all, x_grad)
   no_need_buffer : x
   backward : sum_double_grad
 

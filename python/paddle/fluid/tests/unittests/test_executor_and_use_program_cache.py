@@ -26,13 +26,10 @@ class TestExecutor(unittest.TestCase):
         main_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(main_program, startup_program):
-            a = fluid.layers.data(name='a', shape=[784], dtype='float32')
-            b = fluid.layers.data(
-                name='b',
-                shape=[784, 100],
-                dtype='float32',
-                append_batch_size=False,
-            )
+            a = paddle.static.data(name='a', shape=[-1, 784], dtype='float32')
+            b = paddle.static.data(name='b', shape=[784, 100], dtype='float32')
+            a.desc.set_need_check_feed(False)
+            b.desc.set_need_check_feed(False)
             output = paddle.matmul(x=a, y=b)
 
         # Compute with numpy

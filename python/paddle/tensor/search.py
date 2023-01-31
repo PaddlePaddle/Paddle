@@ -326,7 +326,7 @@ def index_select(x, index, axis=0, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64'],
             'paddle.tensor.search.index_select',
         )
         check_variable_and_dtype(
@@ -644,7 +644,6 @@ def where(condition, x=None, y=None, name=None):
         check_variable_and_dtype(
             y, 'y', ['float32', 'float64', 'int32', 'int64'], 'where'
         )
-
         helper = LayerHelper("where", **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
