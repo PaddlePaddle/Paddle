@@ -22,12 +22,6 @@
 namespace paddle {
 namespace operators {
 
-using dnnl::inner_product_forward;
-using dnnl::memory;
-using dnnl::primitive;
-using dnnl::prop_kind;
-using dnnl::stream;
-using framework::DDim;
 using framework::ExecutionContext;
 using phi::OneDNNContext;
 using phi::funcs::OneDNNGetDataType;
@@ -40,12 +34,13 @@ struct InnerProductCache {
   dnnl::memory bias_mem;
   dnnl::memory dst_mem;
 };
+
 template <typename T_in, typename T_w, typename T_out>
-class FCMKLDNNHandler
+class FCOneDNNHandler
     : public phi::funcs::OneDNNHandlerNoCachingT<T_in,
                                                  dnnl::inner_product_forward> {
  public:
-  FCMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
+  FCOneDNNHandler(const ExecutionContext& ctx,
                   const OneDNNContext& dev_ctx,
                   const phi::DenseTensor* x,
                   const phi::DenseTensor* weights,
@@ -91,7 +86,7 @@ class FCMKLDNNHandler
     const auto attrs = CreateFCAttrs(ctx);
 
     this->AcquireForwardPrimitiveDescriptor(attrs,
-                                            prop_kind::forward_inference,
+                                            dnnl::prop_kind::forward_inference,
                                             src_md,
                                             weights_md,
                                             bias_md,
@@ -113,8 +108,7 @@ class FCMKLDNNHandler
       attributes.set_output_scales(mask, output_shift_scale);
     }
 
-    if (ctx.HasAttr("fuse_residual_connection") &&
-        ctx.Attr<bool>("fuse_residual_connection")) {
+    if (ctx.HasInput("ResidualData")) {
       post_operations.append_sum(sum_scale);
     }
 
@@ -137,7 +131,7 @@ class FCMKLDNNHandler
 
   // Compute the bias scales so that its values correspond to the
   // scale of data being an output of weights and input multiplication
-  std::vector<float> GetBiasScales(const framework::ExecutionContext& ctx) {
+  std::vector<float> GetBiasScales(const ExecutionContext& ctx) {
     if (ctx.HasAttr("Bias_scales")) {
       return ctx.Attr<std::vector<float>>("Bias_scales");
     } else {
@@ -199,7 +193,7 @@ class FCMKLDNNHandler
       PADDLE_ENFORCE_NE(
           activation_type,
           activation_map.end(),
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Activation '%s' not found in oneDNN algorithms mapper",
               fuse_activation));
 
@@ -224,8 +218,7 @@ class FCMKLDNNHandler
       auto scale_weights_data = ctx.Attr<std::vector<float>>("Scale_weights");
       bool has_activation = !ctx.Attr<std::string>("activation_type").empty();
       bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
-      bool fuse_residual_conn = ctx.HasAttr("fuse_residual_connection") &&
-                                ctx.Attr<bool>("fuse_residual_connection");
+      bool fuse_residual_conn = ctx.HasInput("ResidualData");
       auto scale_in_eltwise_data = ctx.HasAttr("Scale_in_eltwise")
                                        ? ctx.Attr<float>("Scale_in_eltwise")
                                        : 1.0f;
@@ -310,7 +303,7 @@ class FCMKLDNNHandler
   }
 
   std::shared_ptr<dnnl::memory> AcquireBiasMemoryWithReorder(
-      const framework::ExecutionContext& ctx, const phi::DenseTensor* bias) {
+      const ExecutionContext& ctx, const phi::DenseTensor* bias) {
     const float* bias_data = bias->data<float>();
 
     if (phi::funcs::is_int8<T_w>() == false) {
@@ -382,14 +375,13 @@ class FCMKLDNNHandler
 
   std::shared_ptr<dnnl::memory> AcquireCustomDstMemory(
       const ExecutionContext& ctx, phi::DenseTensor* out) {
-    if (ctx.HasAttr("fuse_residual_connection") &&
-        ctx.Attr<bool>("fuse_residual_connection")) {
+    if (ctx.HasInput("ResidualData")) {
       auto* residual_param = ctx.Input<phi::DenseTensor>("ResidualData");
 
       PADDLE_ENFORCE_EQ(
           out->dims(),
           residual_param->dims(),
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Output and elementwise parameter need to have the "
               "same dimension sizes, but got output's dimension = %d"
               " and residual param's dimension =%d .",
@@ -414,7 +406,7 @@ class FCMKLDNNHandler
 template <typename T_in>
 class FCOneDNNKernel : public framework::OpKernel<T_in> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
+  void Compute(const ExecutionContext& ctx) const override {
     bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
     bool fuse_relu = ctx.Attr<std::string>("activation_type") == "relu";
 
@@ -433,7 +425,7 @@ class FCOneDNNKernel : public framework::OpKernel<T_in> {
                              }));
   }
 
-  void PrepareSrcMem(const std::shared_ptr<inner_product_forward>& fc_p,
+  void PrepareSrcMem(const std::shared_ptr<dnnl::inner_product_forward>& fc_p,
                      const std::shared_ptr<dnnl::memory>& src_mem,
                      const phi::DenseTensor* x,
                      const dnnl::engine& engine) const {
@@ -451,7 +443,7 @@ class FCOneDNNKernel : public framework::OpKernel<T_in> {
   }
 
   void SetOutMemDescWithUnsqueeze2FuseSupport(
-      const framework::ExecutionContext& ctx,
+      const ExecutionContext& ctx,
       phi::DenseTensor* out,
       const dnnl::memory::desc& out_md) const {
     const std::vector<int>& fused_unsqueeze2_axes =
@@ -476,7 +468,7 @@ class FCOneDNNKernel : public framework::OpKernel<T_in> {
   }
 
   void SetOutMemDescWithReshape2FuseSupport(
-      const framework::ExecutionContext& ctx,
+      const ExecutionContext& ctx,
       phi::DenseTensor* out,
       const dnnl::memory::desc& out_md) const {
     std::vector<int64_t> fused_reshape2_shape(
@@ -501,23 +493,18 @@ class FCOneDNNKernel : public framework::OpKernel<T_in> {
   }
 
   void SetOutMemDescWithLogicalLayoutFusesSupport(
-      const framework::ExecutionContext& ctx,
+      const ExecutionContext& ctx,
       phi::DenseTensor* out,
       const dnnl::memory::desc& out_md) const {
-    if (ctx.HasAttr("fused_unsqueeze2_axes")) {
-      SetOutMemDescWithUnsqueeze2FuseSupport(ctx, out, out_md);
-    } else if (ctx.HasAttr("fused_reshape2_shape")) {
+    if (ctx.HasAttr("fused_reshape2_shape")) {
       SetOutMemDescWithReshape2FuseSupport(ctx, out, out_md);
-    } else if (ctx.HasAttr("fused_squeeze2_axes")) {
-      out->set_mem_desc(out_md);
-      out->Resize(phi::make_ddim(out_md.dims()));
     } else {
       out->set_mem_desc(out_md);
     }
   }
 
   template <typename T_out, typename T_w>
-  void RunKernel(const framework::ExecutionContext& ctx) const {
+  void RunKernel(const ExecutionContext& ctx) const {
     const auto& dev_ctx = ctx.template device_context<OneDNNContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
 
@@ -560,8 +547,7 @@ class FCOneDNNKernel : public framework::OpKernel<T_in> {
 
       dst_memory_p =
           std::make_shared<dnnl::memory>(inner_product_cache->dst_mem);
-      if (ctx.HasAttr("fuse_residual_connection") &&
-          ctx.Attr<bool>("fuse_residual_connection")) {
+      if (ctx.HasInput("ResidualData")) {
         auto* residual_param = ctx.Input<phi::DenseTensor>("ResidualData");
         out->ShareDataWith(*residual_param);
       }
@@ -576,7 +562,7 @@ class FCOneDNNKernel : public framework::OpKernel<T_in> {
     } else {
       auto in_col_dims = ctx.Attr<int>("in_num_col_dims");
 
-      FCMKLDNNHandler<T_in, T_w, T_out> handler(ctx,
+      FCOneDNNHandler<T_in, T_w, T_out> handler(ctx,
                                                 dev_ctx,
                                                 x,
                                                 weights,
@@ -638,7 +624,7 @@ class FCOneDNNKernel : public framework::OpKernel<T_in> {
     bool padding_weights = ctx.Attr<bool>("padding_weights");
     PADDLE_ENFORCE_EQ(padding_weights,
                       false,
-                      platform::errors::PermissionDenied(
+                      phi::errors::PermissionDenied(
                           "Weight padding in fc can not be used in MKLDNN."));
     std::vector<int64_t> output_dims;
     FCOutputSize(x->dims(),

@@ -26,7 +26,7 @@ using string::PrettyLogDetail;
 
 void FuseOperatorScaleOneDNNPass::ApplyImpl(Graph *graph) const {
   const std::vector<std::string> fusable_ops{
-      "fc",
+      "fused_fc",
       "matmul",
       "matmul_v2",
       "elementwise_add",
