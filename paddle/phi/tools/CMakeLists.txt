@@ -1,6 +1,8 @@
-if(WITH_GPU AND ${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0 
-        AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 12.0)
-  return()
+if(WITH_GPU)
+  if(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0 
+      AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 12.0)
+    return()
+  endif()
 endif()
 
 add_executable(print_phi_kernels print_phi_kernels.cc)
