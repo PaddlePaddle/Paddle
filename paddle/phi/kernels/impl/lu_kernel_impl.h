@@ -443,7 +443,10 @@ void LU_Unpack(const Context& dev_ctx,
   auto dim = std::min(H, W);
   DenseTensor rowtensor, rt_dev;
   auto batchsize = product(phi::slice_ddim(udims, 0, udims.size() - 2));
-  batchsize = std::max(static_cast<int>(batchsize), 1);
+
+  // if udims is [0, ..., H, W], it should be 0
+  if (udims.size() == 2) batchsize = std::max(static_cast<int>(batchsize), 1);
+
   arange<Context>(dev_ctx, &rowtensor, dim, batchsize, H);
   auto idtptr = rowtensor.data<int32_t>();
   if (phi::AllocationType::GPU == dev_ctx.GetPlace().GetType()) {
@@ -494,7 +497,8 @@ void Unpack_Pivot(const Context& dev_ctx,
   setter(dev_ctx, P, static_cast<T>(0));
 
   auto batchsize = product(phi::slice_ddim(dims, 0, prank - 1));
-  batchsize = std::max(static_cast<int>(batchsize), 1);
+  if (prank == 1) batchsize = std::max(static_cast<int>(batchsize), 1);
+
   DenseTensor idt;
   for (int i = 0; i < batchsize; i++) {
     arange<Context>(dev_ctx, &idt, h);
