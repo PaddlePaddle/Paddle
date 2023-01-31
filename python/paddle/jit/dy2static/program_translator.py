@@ -1092,10 +1092,7 @@ class FallbackProgramLayer(object):
         self._dy_func = dy_func
 
     def __call__(self, inputs):
-        if self._instance is None:
-            return self._dy_func(*inputs)
-        else:
-            return self._dy_func(*inputs)
+        return self._dy_func(*inputs)
 
     def __getattr__(self, key):
         if key not in self.__slots__:
