@@ -23,7 +23,7 @@ namespace framework {
 namespace ir {
 
 FCResidualConnectionMKLDNNFusePass::FCResidualConnectionMKLDNNFusePass() {
-  AddOpCompat(OpCompat("fc"))
+  AddOpCompat(OpCompat("fused_fc"))
       .AddInput("Input")
       .IsTensor()
       .End()
@@ -77,7 +77,7 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    VLOG(4) << "Fuse fc + elementwise_add as residual";
+    VLOG(4) << "Fuse FC + elementwise_add as residual";
     GET_IR_NODE_FROM_SUBGRAPH(fc_op, fc, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_input, input, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_weights, weights, fc_pattern);
@@ -109,7 +109,7 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
     if (HasFusedActivation(fc_op)) {
       VLOG(4) << "Skipping fusion for " << fc_op->Name() << "(" << fc_op->id()
               << ") with " << elementwise_op->Name() << "("
-              << elementwise_op->id() << ") because fc has activation fused";
+              << elementwise_op->id() << ") because FC has activation fused";
       return;
     }
 
@@ -136,7 +136,7 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
       (found_fc_count > 0)) {
     std::stringstream msg_ss;
     std::string fusionMode = fc_as_x ? "x" : "y";
-    msg_ss << "---    Fused " << found_fc_count << " fc (as " << fusionMode
+    msg_ss << "---    Fused " << found_fc_count << " FC (as " << fusionMode
            << ") + elementwise_add patterns";
     paddle::string::PrettyLogDetail(msg_ss.str().c_str());
   }
@@ -161,5 +161,5 @@ REGISTER_PASS(fc_elementwise_add_mkldnn_fuse_pass,
 REGISTER_PASS_CAPABILITY(fc_elementwise_add_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .LE("fc", 0)
+            .EQ("fused_fc", 0)
             .LE("elementwise_add", 1));

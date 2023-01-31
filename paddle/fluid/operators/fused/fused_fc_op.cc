@@ -19,7 +19,18 @@ namespace operators {
 
 class FusedFCMaker : public FCOpMaker {
  protected:
-  void Apply() override {}
+  void Apply() override {
+    AddInput("ResidualData",
+             "(Tensor) Tensor with residual data "
+             "to which convolution output will be added."
+             "Used with fuse_residual_connection fusion.")
+        .AsDispensable()
+        .AsExtra();
+    AddAttr<bool>("force_fp32_output",
+                  "(bool, default false) Force INT8 kernel output FP32, only "
+                  "used in MKL-DNN INT8")
+        .SetDefault(false);
+  }
 };
 
 }  // namespace operators

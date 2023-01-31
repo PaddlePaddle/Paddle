@@ -1,4 +1,4 @@
-type: "fc"
+type: "fused_fc"
 def {
   inputs {
     name: "Input"
@@ -8,6 +8,9 @@ def {
   }
   inputs {
     name: "Bias"
+  }
+  inputs {
+    name: "ResidualData"
   }
   outputs {
     name: "Out"
@@ -41,5 +44,9 @@ extra {
   attrs {
     name: "Scale_out"
     type: FLOAT
+  }
+  attrs {
+    name: "force_fp32_output"
+    type: BOOLEAN
   }
 }

@@ -170,10 +170,6 @@ void FCOpMaker::Make() {
   AddAttr<float>("Scale_out",
                  "(float, default 1.0f), The quantize scale of output data")
       .SetDefault(1.0f);
-  AddAttr<bool>("force_fp32_output",
-                "(bool, default false) Force INT8 kernel output FP32, only "
-                "used in MKL-DNN INT8")
-      .SetDefault(false);
   AddComment(R"DOC(
 Fully Connected Operator.
 
