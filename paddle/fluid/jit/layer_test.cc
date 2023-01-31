@@ -117,12 +117,32 @@ TEST(CpuLayerTest, Construct) {
       paddle::experimental::pow(outs[0], paddle::experimental::Scalar(2));
   out_data = pow_out.data<float>();
   EXPECT_NEAR(out_data[0], pow(1.41562390, 2.0), 1e-6);
+}
+
+
+TEST(CpuLayerTest, Clone) {
+  auto place = phi::CPUPlace();
+  std::string path = "./multi_program_load/export";
+  auto layer = jit::Load(path, place);
 
   auto layer2 = layer.Clone();
-  {
   float fbias = layer2->Attribute<float>("fbias");
   EXPECT_FLOAT_EQ(fbias, 1.4);
-  }
+
+  auto inputs = PrepareInputs(place);
+  auto outs = layer2->forward(inputs);
+  auto out_data = outs[0].data<float>();
+  EXPECT_NEAR(out_data[0], 0.02194316, 1e-6);
+
+  auto func = layer2->Function("infer");
+  EXPECT_TRUE(func.IsValid());
+  outs = func(inputs);
+  out_data = outs[0].data<float>();
+  EXPECT_NEAR(out_data[0], 1.41562390, 1e-6);
+  auto pow_out =
+      paddle::experimental::pow(outs[0], paddle::experimental::Scalar(2));
+  out_data = pow_out.data<float>();
+  EXPECT_NEAR(out_data[0], pow(1.41562390, 2.0), 1e-6);
 }
 
 #if defined(PADDLE_WITH_CUDA)
@@ -152,16 +172,23 @@ TEST(GpuLayerTest, Construct) {
   cpu_tensor = paddle::experimental::copy_to(sqrt_out, phi::CPUPlace(), true);
   out_data = cpu_tensor.data<float>();
   EXPECT_NEAR(out_data[0], sqrt(1.41562390), 1e-6);
+}
+
+
+TEST(GpuLayerTest, Clone) {
+  auto place = phi::GPUPlace();
+
+  std::string path = "./multi_program_load/export";
+  auto layer = jit::Load(path, place);
+  auto inputs = PrepareInputs(place);
 
   auto layer2 = layer.Clone();
-  {
-    auto outs = layer2->forward(inputs);
-    auto gpu_tensor = outs[0];
-    auto cpu_tensor =
-        paddle::experimental::copy_to(gpu_tensor, phi::CPUPlace(), true);
-    auto out_data = cpu_tensor.data<float>();
-    EXPECT_NEAR(out_data[0], 0.02194316, 1e-6);
-  }
+  auto outs = layer2->forward(inputs);
+  auto gpu_tensor = outs[0];
+  auto cpu_tensor =
+      paddle::experimental::copy_to(gpu_tensor, phi::CPUPlace(), true);
+  auto out_data = cpu_tensor.data<float>();
+  EXPECT_NEAR(out_data[0], 0.02194316, 1e-6);
 }
 #endif
 
