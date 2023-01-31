@@ -20,6 +20,7 @@
 
 namespace paddle {
 class AnalysisPredictor;
+class PaddlePredictor;
 
 namespace framework {
 class Scope;
@@ -36,7 +37,7 @@ class PredictorEngine : public BaseEngine {
   PredictorEngine(const std::shared_ptr<FunctionInfo> &info,
                   const std::shared_ptr<framework::Scope> &scope,
                   const phi::Place &place, 
-                  const std::shared_ptr<AnalysisPredictor> &predictor);
+                  const std::shared_ptr<PaddlePredictor> &predictor);
 
   ~PredictorEngine() noexcept {}
 

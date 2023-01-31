@@ -62,7 +62,7 @@ PredictorEngine::PredictorEngine(const std::shared_ptr<FunctionInfo> &info,
    info_ = info;
    scope_ = scope;
    place_ = place;
-   predictor_ = predictor;
+   predictor_ = std::dynamic_pointer_cast<AnalysisPredictor, PaddlePredictor>(predictor);
 }
 
 std::vector<Tensor> PredictorEngine::operator()(

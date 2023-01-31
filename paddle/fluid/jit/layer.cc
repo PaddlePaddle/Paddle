@@ -95,9 +95,10 @@ PD_SPECIALZE_ATTRIBUTE_TYPE(std::vector<float>)
 PD_SPECIALZE_ATTRIBUTE_TYPE(std::vector<std::string>)
 
 
-std::shared_ptr<Layer> Layer::Clone(void *stream=nullptr) {
+std::shared_ptr<Layer> Layer::Clone(void *stream) {
   std::shared_ptr<Layer> x = std::make_shared<Layer>(params_map_, attrs_map_, info_map_, place_);
   x->unit_ = unit_->Clone(stream);
+  return x;
 }
 
 }  // namespace jit
