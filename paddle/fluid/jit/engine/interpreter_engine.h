@@ -36,7 +36,7 @@ using InterpreterCore = framework::InterpreterCore;
 class InterpreterEngine : public BaseEngine {
  public:
   InterpreterEngine(const std::shared_ptr<FunctionInfo> &info,
-                    const VariableMap &params_dict,
+                    const std::shared_ptr<VariableMap> &params_dict,
                     const phi::Place &place);
 
   ~InterpreterEngine() noexcept {}
@@ -54,7 +54,7 @@ class InterpreterEngine : public BaseEngine {
 
  private:
   std::shared_ptr<FunctionInfo> info_;
-  VariableMap params_dict_;
+  std::shared_ptr<VariableMap> params_dict_;
   framework::Scope scope_;
   phi::Place place_;
   std::shared_ptr<framework::InterpreterCore> inner_interpreter_;
