@@ -119,7 +119,6 @@ TEST(CpuLayerTest, Construct) {
   EXPECT_NEAR(out_data[0], pow(1.41562390, 2.0), 1e-6);
 }
 
-
 TEST(CpuLayerTest, Clone) {
   auto place = phi::CPUPlace();
   std::string path = "./multi_program_load/export";
@@ -173,7 +172,6 @@ TEST(GpuLayerTest, Construct) {
   out_data = cpu_tensor.data<float>();
   EXPECT_NEAR(out_data[0], sqrt(1.41562390), 1e-6);
 }
-
 
 TEST(GpuLayerTest, Clone) {
   auto place = phi::GPUPlace();

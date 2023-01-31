@@ -2229,7 +2229,7 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone(void *stream) {
   auto *x = new AnalysisPredictor(config_);
   x->status_is_cloned_ = true;
   x->root_predictor_id_ = this->root_predictor_id_;
-  x->config_.apply_optim_ = false; 
+  x->config_.apply_optim_ = false;
   if (config_.use_external_stream_ && stream == nullptr) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "config has been configured to use external stream, but the Clone "
