@@ -58,7 +58,7 @@ else()
       ${LEVELDB_INSTALL_DIR}/
     BUILD_IN_SOURCE 1
     BUILD_BYPRODUCTS ${LEVELDB_LIBRARIES})
-endif()  
+endif()
 
 add_dependencies(extern_leveldb snappy)
 
