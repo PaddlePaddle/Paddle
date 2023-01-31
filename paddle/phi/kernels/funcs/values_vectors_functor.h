@@ -195,8 +195,7 @@ static void CheckEighResult(const GPUContext &dev_ctx,
                        dev_ctx.GetPlace(),
                        info,
                        sizeof(int) * batch_size,
-                       dev_ctx.stream());
-  dev_ctx.Wait();
+                       nullptr);
   for (auto i = 0; i < batch_size; ++i) {
     CheckEighResult(i, error_info[i]);
   }
@@ -354,12 +353,6 @@ struct MatrixEighFunctor<GPUContext, T> {
         has_vectors ? CUSOLVER_EIG_MODE_VECTOR : CUSOLVER_EIG_MODE_NOVECTOR;
 
     ValueType *out_value = dev_ctx.template Alloc<ValueType>(eigen_values);
-    auto info = paddle::memory::Alloc(
-        dev_ctx.GetPlace(),
-        sizeof(int) * batch_size,
-        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-    auto *info_ptr = reinterpret_cast<int *>(info->ptr());
-
     DenseTensor input_trans = phi::TransposeLast2Dim<T>(dev_ctx, input);
     T *input_vector = input_trans.data<T>();
 
@@ -410,11 +403,23 @@ struct MatrixEighFunctor<GPUContext, T> {
                 out_value,
                 &workspace_size);
     }
+    /* size_t total_bytes = sizeof(T) * workspace_size + sizeof(int) *
+       batch_size; auto work = paddle::memory::Alloc( dev_ctx.GetPlace(),
+       total_bytes,
+              phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+       auto *work_ptr = reinterpret_cast<T *>(work->ptr());
+       auto *info_ptr = reinterpret_cast<int *>(work_ptr + workspace_size);
+    */
     auto work = paddle::memory::Alloc(
         dev_ctx.GetPlace(),
         sizeof(T) * workspace_size,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+    auto info = paddle::memory::Alloc(
+        dev_ctx.GetPlace(),
+        sizeof(int) * batch_size,
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
     auto *work_ptr = reinterpret_cast<T *>(work->ptr());
+    auto *info_ptr = reinterpret_cast<int *>(info->ptr());
 
     for (auto i = 0; i < batch_size; ++i) {
       auto *input_data = input_vector + i * vector_stride;

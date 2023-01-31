@@ -340,5 +340,4 @@ PD_REGISTER_KERNEL(topk,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::float16) {}

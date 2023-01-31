@@ -76,8 +76,6 @@ PD_REGISTER_KERNEL(masked_select,
                    float,
                    double,
                    int,
-                   int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   int64_t) {
   kernel->InputAt(1).SetDataType(phi::DataType::BOOL);
 }
