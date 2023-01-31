@@ -46,14 +46,6 @@ ir::Graph *FuseAdamWPass::FuseAdamWFun(ir::Graph *graph,
   const std::string scope_name("fuse_adamw");
   FusePassBase::Init(scope_name, graph);
 
-  // size_t count_adamw = 0;
-
-  // for (auto &node : graph->Nodes()) {
-  //   if (node.Name() == "adamw"){
-  //     count_adamw++;
-  //   }
-  // }
-
   GraphPatternDetector gpd;
   auto *beta1_pow = gpd.mutable_pattern()
                         ->NewNode(patterns::PDNodeName(scope_name, "Beta1_Pow"))
@@ -68,6 +60,7 @@ ir::Graph *FuseAdamWPass::FuseAdamWFun(ir::Graph *graph,
   float beta1, beta2, epsilon, coeff, lr_ratio;
   bool lazy_mode, multi_precision, use_global_beta_pow, with_decay,
       replace_adamw = true;
+  int64_t min_row_size_to_use_multithread;
 
   std::vector<Node *> beta1_pow_vector, beta2_pow_vector, grad_vector,
       master_prarm_vector, moment1_vector, moment2_vector, param_vector,
@@ -122,16 +115,16 @@ ir::Graph *FuseAdamWPass::FuseAdamWFun(ir::Graph *graph,
       epsilon = PADDLE_GET_CONST(float, adamw_op_desc->GetAttr("epsilon"));
       coeff = PADDLE_GET_CONST(float, adamw_op_desc->GetAttr("coeff"));
       lazy_mode = PADDLE_GET_CONST(bool, adamw_op_desc->GetAttr("lazy_mode"));
-      // min_row_size_to_use_multithread = PADDLE_GET_CONST(float,
-      // adamw_op_desc->GetAttr("min_row_size_to_use_multithread"));
+      min_row_size_to_use_multithread = PADDLE_GET_CONST(
+          int64_t, adamw_op_desc->GetAttr("min_row_size_to_use_multithread"));
       multi_precision =
           PADDLE_GET_CONST(bool, adamw_op_desc->GetAttr("multi_precision"));
       use_global_beta_pow =
           PADDLE_GET_CONST(bool, adamw_op_desc->GetAttr("use_global_beta_pow"));
       lr_ratio = PADDLE_GET_CONST(float, adamw_op_desc->GetAttr("lr_ratio"));
 
-      if (lazy_mode != false) {
-        // if(lazy_mode != false || lr_ratio != 1.0) {
+      if (lazy_mode != false || lr_ratio != 1.0 ||
+          min_row_size_to_use_multithread != 1000) {
         replace_adamw = false;
         return;
       }
