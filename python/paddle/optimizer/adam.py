@@ -26,6 +26,8 @@ from .multi_tensor_base import MultiTensorBase
 
 __all__ = []
 
+GRAD_TYPES = [int(paddle.float32), int(paddle.float16), int(paddle.bfloat16)]
+
 
 class Adam(MultiTensorBase):
     r"""
