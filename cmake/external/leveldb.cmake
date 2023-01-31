@@ -22,11 +22,8 @@ set(LEVELDB_INCLUDE_DIR
 set(LEVELDB_LIBRARIES
     "${LEVELDB_INSTALL_DIR}/lib/libleveldb.a"
     CACHE FILEPATH "leveldb library." FORCE)
-set(LEVELDB_CXXFLAGS "-fPIC")
-if(WITH_HETERPS AND WITH_PSLIB)
-  set(LEVELDB_CXXFLAGS "${LEVELDB_CXXFLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
-endif()
 include_directories(${LEVELDB_INCLUDE_DIR})
+
 ExternalProject_Add(
   extern_leveldb
   ${EXTERNAL_PROJECT_LOG_ARGS}
@@ -35,7 +32,7 @@ ExternalProject_Add(
   GIT_TAG v1.18
   UPDATE_COMMAND ""
   CONFIGURE_COMMAND ""
-  BUILD_COMMAND CXXFLAGS=${LEVELDB_CXXFLAGS} make -j ${NUM_OF_PROCESSOR} libleveldb.a
+  BUILD_COMMAND CXXFLAGS=-fPIC make -j ${NUM_OF_PROCESSOR} libleveldb.a
   INSTALL_COMMAND
     mkdir -p ${LEVELDB_INSTALL_DIR}/lib/ && cp
     ${LEVELDB_PREFIX_DIR}/src/extern_leveldb/libleveldb.a ${LEVELDB_LIBRARIES}
