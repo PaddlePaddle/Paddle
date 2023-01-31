@@ -193,6 +193,7 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
 
         # for static_shape
         clear_dynamic_shape()
+        self.trt_param.workspace_size = 2147484160
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
             False
@@ -204,6 +205,7 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
+        self.trt_param.workspace_size = 2147484160
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
