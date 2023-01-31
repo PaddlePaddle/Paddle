@@ -39,6 +39,7 @@ if(WIN32)
        "test_preln_groupnorm_act_fuse_pass")
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
        "test_element_groupnorm_act_fuse_pass")
+  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_groupnorm_act_pass_fuse_pass")
   list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_fused_token_prune")
   list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_fused_token_prune")
 endif()
@@ -204,8 +205,6 @@ if(WITH_GPU AND TENSORRT_FOUND)
                                                                        240)
     set_tests_properties(test_shuffle_channel_detect_pass PROPERTIES TIMEOUT
                                                                      120)
-    set_tests_properties(test_groupnorm_act_pass_fuse_pass PROPERTIES TIMEOUT
-                                                                      120)
     if(WIN32)
       set_tests_properties(test_matmul_scale_fuse_pass PROPERTIES TIMEOUT 300)
       set_tests_properties(test_matmul_v2_scale_fuse_pass PROPERTIES TIMEOUT
@@ -227,6 +226,8 @@ if(WITH_GPU AND TENSORRT_FOUND)
                            PROPERTIES TIMEOUT 120)
       set_tests_properties(test_preln_groupnorm_act_fuse_pass PROPERTIES TIMEOUT
                                                                          120)
+      set_tests_properties(test_groupnorm_act_pass_fuse_pass PROPERTIES TIMEOUT
+                                                                        120)
     endif()
   endif()
 
