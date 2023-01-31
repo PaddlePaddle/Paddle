@@ -108,8 +108,9 @@ CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
   // collect variables name list to be skipped in GC
   skip_eager_vars_.reserve(input_var_names.size() + output_var_names.size());
   auto add_skip_var_fn = [&outer_varinfo, this](const std::string& var_name) {
-    // Always consider Input/Output of Graph as skip_gc_vars, because InterpreterCore
-    // has no eager_deletion_op to deal with it.
+    // Always consider Input/Output of Graph as skip_gc_vars, because
+    // InterpreterCore has no eager_deletion_op to deal with it.
+
     VLOG(4) << "Append a skip_gc_var for InterpreterCore:" << var_name;
     skip_gc_vars_.insert(var_name);
     // if a var exists at the outer_varinfo map, that means it will be
