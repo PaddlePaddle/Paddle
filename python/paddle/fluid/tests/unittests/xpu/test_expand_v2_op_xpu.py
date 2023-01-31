@@ -199,14 +199,14 @@ class TestExpandV2API(unittest.TestCase):
             input = np.random.random([12, 14]).astype("float32")
             x = paddle.static.data(
                 name='x',
-                shape=[-1, 12, 14],
+                shape=[12, 14],
                 dtype="float32",
             )
 
             positive_2 = fluid.layers.fill_constant([1], "int32", 12)
             expand_shape = paddle.static.data(
                 name="expand_shape",
-                shape=[-1, 2],
+                shape=[2],
                 dtype="int32",
             )
 
