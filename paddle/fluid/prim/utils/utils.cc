@@ -19,12 +19,24 @@
 PADDLE_DEFINE_EXPORTED_bool(prim_enabled, false, "enable_prim or not");
 namespace paddle {
 namespace prim {
-bool PrimCommonUtils::IsPrimEnabled() {
-  return StaticCompositeContext::Instance().IsPrimEnabled();
+bool PrimCommonUtils::IsBwdPrimEnabled() {
+  return StaticCompositeContext::Instance().IsBwdPrimEnabled();
 }
 
-void PrimCommonUtils::SetPrimEnabled(bool enable_prim) {
-  return StaticCompositeContext::Instance().SetPrimEnabled(enable_prim);
+void PrimCommonUtils::SetBwdPrimEnabled(bool enable_prim) {
+  return StaticCompositeContext::Instance().SetBwdPrimEnabled(enable_prim);
+}
+
+bool PrimCommonUtils::IsFwdPrimEnabled() {
+  return StaticCompositeContext::Instance().IsFwdPrimEnabled();
+}
+
+void PrimCommonUtils::SetFwdPrimEnabled(bool enable_prim) {
+  return StaticCompositeContext::Instance().SetFwdPrimEnabled(enable_prim);
+}
+
+void PrimCommonUtils::SetAllPrimEnabled(bool enable_prim) {
+  return StaticCompositeContext::Instance().SetAllPrimEnabled(enable_prim);
 }
 }  // namespace prim
 }  // namespace paddle

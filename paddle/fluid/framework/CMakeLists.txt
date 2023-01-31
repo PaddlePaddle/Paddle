@@ -618,7 +618,8 @@ if(WITH_PYTHON)
     fleet_proto_init
     pass_desc_py_proto
     ps_py_proto
-    ps_py_proto_init)
+    ps_py_proto_init
+    pslib_py_proto)
   if(NOT WIN32)
     add_custom_command(
       TARGET framework_py_proto
@@ -865,7 +866,8 @@ if(WITH_DISTRIBUTE)
            fleet
            heter_server
            brpc
-           fleet_executor)
+           fleet_executor
+           flags)
     set(DISTRIBUTE_COMPILE_FLAGS
         "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=parentheses"
     )

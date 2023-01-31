@@ -200,8 +200,8 @@ class TestLookupTableIsSparse(unittest.TestCase):
         self.init_data()
         main_program = fluid.Program()
         with fluid.program_guard(main_program, fluid.Program()):
-            x = fluid.layers.data(name='x', shape=[5], dtype='int64')
-            y_ = fluid.layers.data(name='y_', shape=[5], dtype='float32')
+            x = paddle.static.data(name='x', shape=[-1, 5], dtype='int64')
+            y_ = paddle.static.data(name='y_', shape=[-1, 5], dtype='float32')
             emb = fluid.input.embedding(
                 input=x,
                 size=[10, 16],
@@ -246,7 +246,7 @@ class TestLookupTableIsSparse(unittest.TestCase):
 
 class TestLookupTableApi(unittest.TestCase):
     def test_api(self):
-        x = fluid.layers.data(name='x', shape=[20], dtype='int64')
+        x = paddle.static.data(name='x', shape=[-1, 20], dtype='int64')
         emb = fluid.embedding(input=x, size=[128, 64])
 
         place = fluid.CPUPlace()
