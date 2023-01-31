@@ -221,7 +221,6 @@ fused_bias_dropout_residual_layer_norm_dygraph_function(
       egr::EagerUtils::SetOutRankWithSlot(p_autograd_Y, 4);
       egr::EagerUtils::SetHistory(p_autograd_Y, grad_node);
       grad_node->SetGradInMeta(Y, 4);
-      egr::EagerUtils::CheckAndRetainGrad(Y);
     }
   }
 

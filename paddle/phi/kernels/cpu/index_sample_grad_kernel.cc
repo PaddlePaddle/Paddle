@@ -14,10 +14,10 @@
 
 #include "paddle/phi/kernels/index_sample_grad_kernel.h"
 
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/utils/data_type.h"
 namespace phi {
 template <typename T, typename Context, typename IndexT = int>
@@ -27,8 +27,8 @@ void IndexSampleGradInner(const Context& context,
                           DenseTensor* x_grad) {
   std::vector<T> out_grad_vec;
   std::vector<IndexT> index_vec;
-  paddle::framework::TensorToVector(out_grad, context, &out_grad_vec);
-  paddle::framework::TensorToVector(index, context, &index_vec);
+  phi::TensorToVector(out_grad, context, &out_grad_vec);
+  phi::TensorToVector(index, context, &index_vec);
 
   auto index_dims = index.dims();
   auto x_grad_dims = x_grad->dims();
@@ -63,7 +63,7 @@ void IndexSampleGradInner(const Context& context,
     x_grad_vec[v_i] += out_grad_vec[i];
   }
   context.template Alloc<T>(x_grad);
-  paddle::framework::TensorFromVector(x_grad_vec, context, x_grad);
+  phi::TensorFromVector(x_grad_vec, context, x_grad);
   x_grad->Resize(x_grad_dims);
 }
 
