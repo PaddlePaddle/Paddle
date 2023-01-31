@@ -2551,8 +2551,9 @@ class Executor(object):
         place = core.Place()
         place.set_place(self.place)
 
-        # NOTE: the last argument is used to force create some vars in root scope,
-        # won't be used during train.
+        inference_root_scope_vars = (
+            fleet_opt["fetch_var"] if "fetch_var" in fleet_opt else []
+        )
         self._fleet_executor.init(
             carrier_id,
             program.desc,
@@ -2561,7 +2562,7 @@ class Executor(object):
             num_micro_batches,
             tasks,
             task_id_to_rank,
-            [],
+            inference_root_scope_vars,
             micro_scope_list,
         )
 
