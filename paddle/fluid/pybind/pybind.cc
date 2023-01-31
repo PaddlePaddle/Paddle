@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/data_type_transform.h"
+#include "paddle/fluid/framework/details/nan_inf_utils_detail.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/executor_cache.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
@@ -88,6 +89,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/profiler.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
+#include "paddle/fluid/pybind/custom_device_py.h"
 #include "paddle/fluid/pybind/distributed_py.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/imperative.h"
@@ -629,6 +631,7 @@ PYBIND11_MODULE(libpaddle, m) {
   BindCudaStream(&m);
   BindXpuStream(&m);
   BindJit(&m);
+  BindCustomDevicePy(&m);
 
   // Not used, just make sure cpu_info.cc is linked.
   phi::backends::cpu::CpuTotalPhysicalMemory();
@@ -660,8 +663,16 @@ PYBIND11_MODULE(libpaddle, m) {
         return oss.str();
       });
 
-  m.def("set_prim_enabled", &paddle::prim::PrimCommonUtils::SetPrimEnabled);
-  m.def("is_prim_enabled", &paddle::prim::PrimCommonUtils::IsPrimEnabled);
+  m.def("__set_bwd_prim_enabled",
+        &paddle::prim::PrimCommonUtils::SetBwdPrimEnabled);
+  m.def("_is_bwd_prim_enabled",
+        &paddle::prim::PrimCommonUtils::IsBwdPrimEnabled);
+  m.def("__set_fwd_prim_enabled",
+        &paddle::prim::PrimCommonUtils::SetFwdPrimEnabled);
+  m.def("_is_fwd_prim_enabled",
+        &paddle::prim::PrimCommonUtils::IsFwdPrimEnabled);
+  m.def("__set_all_prim_enabled",
+        &paddle::prim::PrimCommonUtils::SetAllPrimEnabled);
   m.def("set_num_threads", &platform::SetNumThreads);
 
   m.def("disable_signal_handler", &DisableSignalHandler);
@@ -1241,7 +1252,7 @@ All parameter, weight, gradient are variables in Paddle.
 
           auto op_info = framework::OpInfoMap::Instance().Get(op_desc.Type());
           auto grad_op_maker = op_info.GradOpMaker();
-          auto grad_comp_op_maker = op_info.GradCompOpMaker();
+          auto grad_comp_op_maker = op_info.CompGradOpMaker();
 
           if ((grad_op_maker == nullptr) && (grad_comp_op_maker == nullptr)) {
             // Normally, proto_ should not be null, except some special
@@ -1249,7 +1260,7 @@ All parameter, weight, gradient are variables in Paddle.
             std::string type =
                 op_info.proto_ ? op_info.proto_->type() : "unknown";
             PADDLE_THROW(platform::errors::NotFound(
-                "Neither operator %s's GradOpMaker nor GradCompOpMaker has "
+                "Neither operator %s's GradOpMaker nor CompGradOpMaker has "
                 "been registered.\nPlease check whether (%s) operator has "
                 "gradient operator.\nIf not, please set stop_gradient to be "
                 "True for its input and output variables using "
@@ -1258,14 +1269,15 @@ All parameter, weight, gradient are variables in Paddle.
                 type.c_str()));
           }
 
-          // In PrimEnabled mode, the priority of GradCompOpMaker is greater
+          // In PrimEnabled mode, the priority of CompGradOpMaker is greater
           // than GradCompMaker as we need split first-order grad operator into
           // primitive operators for compiler. In PrimDisabled mode, the
-          // priority of GradCompOpMaker is less than GradCompMaker for better
+          // priority of CompGradOpMaker is less than GradCompMaker for better
           // performance.
           std::vector<std::unique_ptr<OpDesc>> grad_op_descs;
-          if (paddle::prim::PrimCommonUtils::IsPrimEnabled()) {
+          if (paddle::prim::PrimCommonUtils::IsBwdPrimEnabled()) {
             if (grad_comp_op_maker != nullptr) {
+              VLOG(3) << "Runing composite fun for " << op_desc.Type();
               grad_op_descs = grad_comp_op_maker(op_desc,
                                                  no_grad_set,
                                                  &grad_to_var,
@@ -2660,6 +2672,9 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("use_layout_autotune",
         [] { return egr::Controller::Instance().UseLayoutAutoTune(); });
+  // Add the api for nan op debug
+  m.def("set_nan_inf_debug_path",
+        &paddle::framework::details::SetNanInfDebugPath);
 
   BindFleetWrapper(&m);
   BindIO(&m);

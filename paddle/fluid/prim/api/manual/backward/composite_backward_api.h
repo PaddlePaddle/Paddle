@@ -192,7 +192,7 @@ void divide_grad(const Tensor& x,
   }  // indicate we will compute dy
   if (dx) {
     // dx = (1/y) * dout
-    auto one_tensor = full<T>(phi::vectorize(y.dims()), 1.0);
+    auto one_tensor = full<T>(phi::vectorize(y.dims()), 1.0, y.dtype());
     auto tmp0 = divide<T>(one_tensor, y);
     auto dx_res = multiply<T>(tmp0, out_grad);
     if (y.dims() != x.dims()) {
