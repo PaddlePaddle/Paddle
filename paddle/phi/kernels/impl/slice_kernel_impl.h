@@ -48,7 +48,6 @@ void SliceCompute(const Context& ctx,
 
   // Step 2: Compute output
   auto in = &input;
-
   auto in_dims = in->dims();
   auto out_dims = out->dims();
   auto slice_dims = out_dims;
@@ -106,7 +105,6 @@ void SliceCompute(const Context& ctx,
     funcs::EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
         eigen_place, out_t, in_t, offsets, extents);
   }
-
   out->Resize(out_dims);
 }
 

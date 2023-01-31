@@ -65,7 +65,7 @@ using ConvAlgorithmsCacheMap = ConvAlgorithmsCache<ConvAutoTuneResult>;
 using ConvAlgorithmsTypeMap =
     std::unordered_map<int64_t, ConvAlgorithmsCacheMap>;
 
-using MatmulAlgorithmsCacheMap = std::unordered_map<size_t, int64_t>;
+using MatmulAlgorithmsCacheMap = MatmulAlgorithmsCache<size_t, int64_t>;
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
 using CudnnV8AlgorithmsTypeMap =
     std::unordered_map<int64_t, CudnnFrontendPlanCache>;

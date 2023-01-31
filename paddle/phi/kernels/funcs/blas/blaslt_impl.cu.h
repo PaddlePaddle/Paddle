@@ -17,9 +17,9 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime_api.h>
 #include "cuda.h"  // NOLINT
+#endif
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/gpu_timer.h"
-#include "paddle/phi/kernels/autotune/switch_autotune.h"
 
 namespace phi {
 
@@ -28,7 +28,7 @@ enum MatmulImplType { kImplWithCublas = 1, kImplWithCublasLt = 2 };
 #ifdef PADDLE_WITH_CUDA
 template <typename T, class Enable = void>
 struct MatmulCalculationClassifier {
-  void operator()(cudaDataType_t* math_type,
+  void operator()(cudaDataType_t* mat_type,
                   cudaDataType_t* scale_type,
                   cublasComputeType_t* compute_type) {}
 };
@@ -37,7 +37,7 @@ template <typename T>
 struct MatmulCalculationClassifier<
     T,
     std::enable_if_t<std::is_same<T, phi::dtype::float16>::value>> {
-  void operator()(cudaDataType_t* math_type,
+  void operator()(cudaDataType_t* mat_type,
                   cudaDataType_t* scale_type,
                   cublasComputeType_t* compute_type) {
     *mat_type = CUDA_R_16F;
@@ -48,7 +48,7 @@ template <typename T>
 struct MatmulCalculationClassifier<
     T,
     std::enable_if_t<std::is_same<T, phi::dtype::bfloat16>::value>> {
-  void operator()(cudaDataType_t* math_type,
+  void operator()(cudaDataType_t* mat_type,
                   cudaDataType_t* scale_type,
                   cublasComputeType_t* compute_type) {
     *mat_type = CUDA_R_16BF;
@@ -59,7 +59,7 @@ template <typename T>
 struct MatmulCalculationClassifier<
     T,
     std::enable_if_t<std::is_same<T, double>::value>> {
-  void operator()(cudaDataType_t* math_type,
+  void operator()(cudaDataType_t* mat_type,
                   cudaDataType_t* scale_type,
                   cublasComputeType_t* compute_type) {
     *mat_type = CUDA_R_64F;
@@ -83,7 +83,7 @@ struct MatmulDescCreator {
                      const bool trans_x,
                      const bool trans_y,
                      bool is_batch = false,
-                     int batch_size = 0,
+                     int batch_size = 1,
                      int64_t stride_x = 0,
                      int64_t stride_y = 0,
                      int64_t stride_out = 0) {
@@ -176,13 +176,55 @@ struct MatmulDescCreator {
       PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmulDescDestroy(*op_desc));
     }
   }
-}
+};
+
+template <typename Context, typename T>
+struct MatmulWithCublasLt {
+  static void Run(const Context& ctx,
+                  const T* x_data,
+                  const T* y_data,
+                  T* out_data,
+                  const int M,
+                  const int N,
+                  const int K,
+                  const bool trans_x,
+                  const bool trans_y,
+                  phi::autotune::MatmulCacheKey* matmul_key = nullptr) {}
+
+  static void RunWithBatch(
+      const Context& ctx,
+      const T* x_data,
+      const T* y_data,
+      T* out_data,
+      const int M,
+      const int N,
+      const int K,
+      bool trans_x,
+      bool trans_y,
+      int batch_size,
+      int64_t stride_x,
+      int64_t stride_y,
+      int64_t stride_out,
+      phi::autotune::MatmulCacheKey* matmul_key = nullptr) {}
+
+  static void RunWithBatch(
+      const Context& ctx,
+      const T** x_data,
+      const T** y_data,
+      T** out_data,
+      const int M,
+      const int N,
+      const int K,
+      bool trans_x,
+      bool trans_y,
+      int batch_size,
+      phi::autotune::MatmulCacheKey* matmul_key = nullptr) {}
+};
 
 template <typename T>
-struct MatmulWithCublasLt {
+struct MatmulWithCublasLt<phi::GPUContext, T> {
  public:
   static void Run(const phi::GPUContext& ctx,
-                  const size_t key,
                   const T* x_data,
                   const T* y_data,
                   T* out_data,
@@ -193,7 +235,6 @@ struct MatmulWithCublasLt {
                   const bool trans_y,
                   phi::autotune::MatmulCacheKey* matmul_key = nullptr) {
     // init data structure
-    // cublasLtHandle_t lt_handle = ctx.cublaslt_handle();
     cublasLtMatmulDesc_t op_desc = NULL;
     cublasLtMatrixLayout_t x_desc = NULL, y_desc = NULL, out_desc = NULL;
     cublasOperation_t transx = trans_x ? CUBLAS_OP_T : CUBLAS_OP_N;
@@ -203,10 +244,16 @@ struct MatmulWithCublasLt {
     cudaDataType_t scale_type = CUDA_R_32F;
     cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
 
+    double alpha64 = 1.0, beta64 = 0.0;
     float alpha32 = 1.0f, beta32 = 0.0f;
-    double alpha64{1.0}, beta64{0.0};
-    void* alpha = std::is_same<T, double>::value ? &alpha64 : &alpha32;
-    void* beta = std::is_same<T, double>::value ? &beta64 : &beta32;
+    void *alpha = nullptr, *beta = nullptr;
+    if (std::is_same<T, double>::value) {
+      alpha = &alpha64;
+      alpha = &beta64;
+    } else {
+      alpha = &alpha32;
+      beta = &beta32;
+    }
 
     MatmulCalculationClassifier<T>()(&mat_type, &scale_type, &compute_type);
     MatmulDescCreator::Create(&op_desc,
@@ -219,10 +266,9 @@ struct MatmulWithCublasLt {
                               M,
                               N,
                               K,
-                              trans_x,
-                              trans_y);
+                              transx,
+                              transy);
     RunImpl(ctx,
-            key,
             op_desc,
             x_desc,
             y_desc,
@@ -231,69 +277,26 @@ struct MatmulWithCublasLt {
             y_data,
             out_data,
             alpha,
-            beta);
+            beta,
+            matmul_key);
     MatmulDescCreator::Release(&op_desc, &x_desc, &y_desc, &out_desc);
-
-    // size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
-    // phi::Allocator::AllocationPtr workspace =
-    //     MatmulDescCreator::GetWorkspace(ctx, workspace_size);
-
-    // cublasLtMatmulAlgo_t* best_algo = nullptr;
-    // if (matmul_key != nullptr) {
-    //   auto& cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
-    //   size_t sub_key = matmul_key->GetSubKey(
-    //       key, static_cast<int64_t>(phi::MatmulImplType::kImplWithCublasLt));
-    //   if (cache.FindSubKey(sub_key)) {
-    //     best_algo = cache.SubGetKey(sub_key);
-    //   } else if (phi::autotune::AutoTuneStatus::Instance().UseAutoTune()) {
-    //     best_algo = SearchBestAlgo(lt_handle,
-    //                                op_desc,
-    //                                y_desc,
-    //                                x_desc,
-    //                                out_desc,
-    //                                alpha,
-    //                                beta,
-    //                                y_data,
-    //                                x_data,
-    //                                out_data,
-    //                                ctx.stream(),
-    //                                workspace->ptr(),
-    //                                workspace_size);
-    //     cache.SetSubKey(sub_key, *best_algo);
-    //   }
-    // }
-    // PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmul(lt_handle,
-    //                                                    op_desc,
-    //                                                    alpha,
-    //                                                    y_data,
-    //                                                    y_desc,
-    //                                                    x_data,
-    //                                                    x_desc,
-    //                                                    beta,
-    //                                                    out_data,
-    //                                                    out_desc,
-    //                                                    out_data,
-    //                                                    out_desc,
-    //                                                    best_algo,
-    //                                                    workspace->ptr(),
-    //                                                    workspace_size,
-    //                                                    ctx.stream()));
   }
 
-  static void RunWithBatch(const phi::GPUContext& ctx,
-                           const size_t key,
-                           const T* x_data,
-                           const T* y_data,
-                           const int M,
-                           const int N,
-                           const int K,
-                           T* out_data,
-                           bool trans_x,
-                           bool trans_y,
-                           int batch_size,
-                           int64_t stride_x,
-                           int64_t stride_y,
-                           int64_t stride_out) {
+  static void RunWithBatch(
+      const phi::GPUContext& ctx,
+      const T* x_data,
+      const T* y_data,
+      T* out_data,
+      const int M,
+      const int N,
+      const int K,
+      bool trans_x,
+      bool trans_y,
+      int batch_size,
+      int64_t stride_x,
+      int64_t stride_y,
+      int64_t stride_out,
+      phi::autotune::MatmulCacheKey* matmul_key = nullptr) {
     // cublasLtHandle_t lt_handle = ctx.cublaslt_handle();
     cublasLtMatmulDesc_t op_desc = NULL;
     cublasLtMatrixLayout_t x_desc = NULL, y_desc = NULL, out_desc = NULL;
@@ -304,10 +307,16 @@ struct MatmulWithCublasLt {
     cudaDataType_t scale_type = CUDA_R_32F;
     cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
 
+    double alpha64 = 1.0, beta64 = 0.0;
     float alpha32 = 1.0f, beta32 = 0.0f;
-    double alpha64{1.0}, beta64{0.0};
-    void* alpha = std::is_same<T, double>::value ? &alpha64 : &alpha32;
-    void* beta = std::is_same<T, double>::value ? &beta64 : &beta32;
+    void *alpha = nullptr, *beta = nullptr;
+    if (std::is_same<T, double>::value) {
+      alpha = &alpha64;
+      alpha = &beta64;
+    } else {
+      alpha = &alpha32;
+      beta = &beta32;
+    }
 
     MatmulCalculationClassifier<T>()(&mat_type, &scale_type, &compute_type);
     MatmulDescCreator::Create(&op_desc,
@@ -320,15 +329,14 @@ struct MatmulWithCublasLt {
                               M,
                               N,
                               K,
-                              trans_x,
-                              trans_y,
+                              transx,
+                              transy,
                               true,
                               batch_size,
                               stride_x,
                               stride_y,
                               stride_out);
     RunImpl(ctx,
-            key,
             op_desc,
             x_desc,
             y_desc,
@@ -337,68 +345,49 @@ struct MatmulWithCublasLt {
             y_data,
             out_data,
             alpha,
-            beta);
+            beta,
+            matmul_key);
     MatmulDescCreator::Release(&op_desc, &x_desc, &y_desc, &out_desc);
+  }
 
-    // size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
-    // phi::Allocator::AllocationPtr workspace =
-    //     MatmulDescCreator::GetWorkspace(ctx, workspace_size);
-    // cublasLtMatmulAlgo_t* best_algo = nullptr;
-    // if (matmul_key != nullptr) {
-    //   auto& cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
-    //   size_t sub_key = matmul_key->GetSubKey(
-    //       key, static_cast<int64_t>(phi::MatmulImplType::kImplWithCublasLt));
-    //   if (cache.FindSubKey(sub_key)) {
-    //     best_algo = cache.SubGetKey(sub_key);
-    //   } else if (phi::autotune::AutoTuneStatus::Instance().UseAutoTune()) {
-    //     best_algo = SearchBestAlgo(lt_handle,
-    //                                op_desc,
-    //                                y_desc,
-    //                                x_desc,
-    //                                out_desc,
-    //                                alpha,
-    //                                beta,
-    //                                y_data,
-    //                                x_data,
-    //                                out_data,
-    //                                ctx.stream(),
-    //                                workspace->ptr(),
-    //                                workspace_size);
-    //     cache.SetSubKey(sub_key, *best_algo);
-    //   }
-    // }
-
-    // PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmul(lt_handle,
-    //                                                    op_desc,
-    //                                                    alpha,
-    //                                                    y_data,
-    //                                                    y_desc,
-    //                                                    x_data,
-    //                                                    x_desc,
-    //                                                    beta,
-    //                                                    out_data,
-    //                                                    out_desc,
-    //                                                    out_data,
-    //                                                    out_desc,
-    //                                                    best_algo,
-    //                                                    workspace->ptr(),
-    //                                                    workspace_size,
-    //                                                    ctx.stream()));
-    // MatmulDescCreator::Release(&op_desc, &x_desc, &y_desc, &out_desc);
+  static void RunWithBatch(
+      const phi::GPUContext& ctx,
+      const T** x_data,
+      const T** y_data,
+      T** out_data,
+      const int M,
+      const int N,
+      const int K,
+      bool trans_x,
+      bool trans_y,
+      int batch_size,
+      phi::autotune::MatmulCacheKey* matmul_key = nullptr) {
+    for (int i = 0; i < batch_size; ++i) {
+      Run(ctx,
+          x_data[i],
+          y_data[i],
+          out_data[i],
+          M,
+          N,
+          K,
+          trans_x,
+          trans_y,
+          matmul_key);
+    }
   }
 
  private:
-  static RunImpl(const phi::GPUContext& ctx,
-                 const size_t key,
-                 const cublasLtMatmulDesc_t& op_desc,
-                 const cublasLtMatrixLayout_t& x_desc,
-                 const cublasLtMatrixLayout_t& y_desc,
-                 const cublasLtMatrixLayout_t& out_desc,
-                 const T* x_data,
-                 const T* y_data,
-                 T* out_data,
-                 void* alpha,
-                 void* beta) {
+  static void RunImpl(const phi::GPUContext& ctx,
+                      const cublasLtMatmulDesc_t& op_desc,
+                      const cublasLtMatrixLayout_t& x_desc,
+                      const cublasLtMatrixLayout_t& y_desc,
+                      const cublasLtMatrixLayout_t& out_desc,
+                      const T* x_data,
+                      const T* y_data,
+                      T* out_data,
+                      void* alpha,
+                      void* beta,
+                      phi::autotune::MatmulCacheKey* matmul_key = nullptr) {
     cublasLtHandle_t lt_handle = ctx.cublaslt_handle();
     cublasLtMatmulAlgo_t* best_algo = nullptr;
 
@@ -409,11 +398,13 @@ struct MatmulWithCublasLt {
     if (matmul_key != nullptr) {
       auto& cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
       size_t sub_key = matmul_key->GetSubKey(
-          key, static_cast<int64_t>(phi::MatmulImplType::kImplWithCublasLt));
+          static_cast<int64_t>(phi::MatmulImplType::kImplWithCublasLt));
       if (cache.FindSubKey(sub_key)) {
-        best_algo = cache.SubGetKey(sub_key);
+        best_algo =
+            reinterpret_cast<cublasLtMatmulAlgo_t*>(cache.GetSubKey(sub_key));
       } else if (phi::autotune::AutoTuneStatus::Instance().UseAutoTune()) {
-        best_algo = SearchBestAlgo(lt_handle,
+        best_algo = SearchBestAlgo(ctx,
+                                   lt_handle,
                                    op_desc,
                                    y_desc,
                                    x_desc,
@@ -423,10 +414,11 @@ struct MatmulWithCublasLt {
                                    y_data,
                                    x_data,
                                    out_data,
-                                   ctx.stream(),
                                    workspace->ptr(),
                                    workspace_size);
-        cache.SetSubKey(sub_key, *best_algo);
+        cache.SetSubKey(
+            sub_key,
+            reinterpret_cast<phi::autotune::MatmulHashValueType*>(best_algo));
       }
     }
 
@@ -448,26 +440,24 @@ struct MatmulWithCublasLt {
                                                        ctx.stream()));
   }
 
-  static cublasLtMatmulAlgo_t SearchBestAlgo(const phi::GPUContext& ctx,
-                                             cublasLtMatmulDesc_t op_desc,
-                                             cublasLtMatrixLayout_t y_desc,
-                                             cublasLtMatrixLayout_t x_desc,
-                                             cublasLtMatrixLayout_t out_desc,
-                                             const void* alpha,
-                                             const void* beta,
-                                             const void* y_data,
-                                             const void* x_data,
-                                             void* out_data,
-                                             void* workspace,
-                                             size_t workspace_size) {
+  static cublasLtMatmulAlgo_t* SearchBestAlgo(const phi::GPUContext& ctx,
+                                              const cublasLtHandle_t& lt_handle,
+                                              cublasLtMatmulDesc_t op_desc,
+                                              cublasLtMatrixLayout_t y_desc,
+                                              cublasLtMatrixLayout_t x_desc,
+                                              cublasLtMatrixLayout_t out_desc,
+                                              const void* alpha,
+                                              const void* beta,
+                                              const void* y_data,
+                                              const void* x_data,
+                                              void* out_data,
+                                              void* workspace_ptr,
+                                              size_t workspace_size) {
     const auto& stream = ctx.stream();
-    cublasLtHandle_t lt_handle = ctx.cublaslt_handle();
-
-    int best_algo_idx = -1;
     int returned_results = 0;
     constexpr int requested_algo_count = 10;
-    cublasLtMatmulAlgo_t ret;
     cublasLtMatmulPreference_t preference;
+
     PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cublasLtMatmulPreferenceCreate(&preference));
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmulPreferenceSetAttribute(
@@ -494,9 +484,9 @@ struct MatmulWithCublasLt {
                       phi::errors::Unavailable("No GEMM algorithm avaliable."));
 
     phi::GpuTimer timer;
+    int best_algo_idx = -1;
     constexpr int repeats = 6;
     float min_time_cost = std::numeric_limits<float>::max();
-    int best_algo = -1;
     for (int algo_idx = 0; algo_idx < returned_results; ++algo_idx) {
       ctx.Wait();
       float cur_time = 0.f;
@@ -515,8 +505,8 @@ struct MatmulWithCublasLt {
                                     out_desc,
                                     out_data,
                                     out_desc,
-                                    &heuristic_results[warmup_algo_idx].algo,
-                                    workspace->ptr(),
+                                    &(heuristic_results[algo_idx].algo),
+                                    workspace_ptr,
                                     workspace_size,
                                     stream));
         timer.Stop(stream);
@@ -524,6 +514,10 @@ struct MatmulWithCublasLt {
         if (i > 0) {
           cur_time += time;
         }
+      }
+      if (cur_time < min_time_cost) {
+        best_algo_idx = algo_idx;
+        min_time_cost = cur_time;
       }
     }
 
@@ -535,9 +529,9 @@ struct MatmulWithCublasLt {
     // }
     PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cublasLtMatmulPreferenceDestroy(preference));
-    return heuristic_results[best_algo_idx].algo;
+    return &(heuristic_results[best_algo_idx].algo);
   }
 };
-#endif
+#endif  // #ifdef PADDLE_WITH_CUDA
 
 }  // namespace phi

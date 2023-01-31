@@ -63,6 +63,25 @@ class AutoTuneBase {
   }
 
   template <typename Context, typename... Args>
+  void RunMatmul(const Context& ctx, const size_t key, Args&&... args) {
+    is_init_ = true;
+    CheckKernelSize();
+    auto& cache = AutoTuneCache::Instance().GetMatmul();
+    if (cache.Find(key)) {
+      auto best_idx = cache.Get(key);
+      kernels_[best_idx].Run(args...);
+    } else {
+      bool use_autotune = AutoTuneStatus::Instance().UseAutoTune();
+      if (use_autotune) {
+        auto best_idx = PickBestKernel(ctx, args...);
+        cache.Set(key, best_idx);
+      } else {
+        kernels_[0].Run(args...);
+      }
+    }
+  }
+
+  template <typename Context, typename... Args>
   void Run(const Context& ctx,
            const AlgorithmType& algo,
            const size_t key,
@@ -143,13 +162,6 @@ class AutoTuneBase {
 };
 
 template <typename T, typename ReturnType, typename... Args>
-static AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>> MakeAutoTuner(
-    ReturnType (*func)(Args...)) {
-  auto obj = MakeCallback<T>(func);
-  return AutoTuneBase<T, decltype(obj)>(obj);
-}
-
-template <typename T, typename ReturnType, typename... Args>
 class TransposeAutoTuner
     : public AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>> {
  public:
@@ -171,36 +183,16 @@ template <typename T, typename ReturnType, typename... Args>
 class MatmulAutoTuner
     : public AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>> {
  public:
-  static AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>>* Instance(
+  static MatmulAutoTuner<T, ReturnType, Args...>* Instance(
       ReturnType (*func)(Args...)) {
     static std::once_flag matmul_init_flag_;
-    static std::unique_ptr<
-        AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>>>
-        instance_;
+    static std::unique_ptr<MatmulAutoTuner<T, ReturnType, Args...>> instance_;
     std::call_once(matmul_init_flag_, [&] {
       auto obj = MakeCallback<T>(func);
-      instance_.reset(new AutoTuneBase<T, decltype(obj)>(obj));
+      instance_.reset(new MatmulAutoTuner<T, ReturnType, Args...>);
+      instance_->AddCallBack(func);
     });
     return instance_.get();
-  }
-
-  template <typename Context, typename... Args>
-  void Run(const Context& ctx, const size_t key, Args&&... args) override {
-    is_init_ = true;
-    CheckKernelSize();
-    auto& cache = AutoTuneCache::Instance().GetMatmul();
-    if (cache.Find(key)) {
-      auto best_idx = cache.Get(key);
-      kernels_[best_idx].Run(args...);
-    } else {
-      bool use_autotune = AutoTuneStatus::Instance().UseAutoTune();
-      if (use_autotune) {
-        auto best_idx = PickBestKernel(ctx, args...);
-        cache.Set(key, best_idx);
-      } else {
-        kernels_[0].Run(args...);
-      }
-    }
   }
 };
 
@@ -211,7 +203,7 @@ MakeTransposeTuner(ReturnType (*func)(Args...)) {
 }
 
 template <typename T, typename ReturnType, typename... Args>
-static AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>>* MakeMatmulTuner(
+static MatmulAutoTuner<T, ReturnType, Args...>* MakeMatmulTuner(
     ReturnType (*func)(Args...)) {
   return MatmulAutoTuner<T, ReturnType, Args...>::Instance(func);
 }
