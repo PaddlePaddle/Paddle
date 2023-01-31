@@ -145,7 +145,9 @@ void profile() {
   std::vector<std::vector<PaddleTensor>> inputs;
   LoadInputData(&inputs);
   TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&config),
-                 inputs, &outputs, FLAGS_num_threads);
+                 inputs,
+                 &outputs,
+                 FLAGS_num_threads);
 }
 
 // Compare Deterministic result

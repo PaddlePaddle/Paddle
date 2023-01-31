@@ -48,6 +48,10 @@ struct EmbeddingCPUFunctor {
     dev_ctx_.template Alloc<T>(out_);
     auto* output = out_->data<T>();
 
+#if defined(_OPENMP) && !defined(PADDLE_WITH_CUDA)
+#pragma omp parallel for
+#endif
+
     for (int64_t i = 0; i < ids_numel; ++i) {
       if (padding_idx_ != kNoPadding && ids[i] == padding_idx_) {
         memset(output + i * row_width, 0, row_width * sizeof(T));

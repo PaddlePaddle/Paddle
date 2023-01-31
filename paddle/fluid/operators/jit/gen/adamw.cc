@@ -17,7 +17,7 @@
 #include <stddef.h>  // offsetof
 
 #include "paddle/fluid/operators/jit/registry.h"
-#include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 
 namespace paddle {
 namespace operators {
@@ -147,7 +147,7 @@ void AdamWJitCode::genCode() {
 class AdamWCreator : public JitCodeCreator<int> {
  public:
   bool CanBeUsed(const int& attr) const override {
-    return platform::MayIUse(platform::avx512f);
+    return phi::backends::cpu::MayIUse(phi::backends::cpu::avx512f);
   }
   size_t CodeSize(const int& attr) const override { return 96 + 32 * 8; }
   std::unique_ptr<GenBase> CreateJitCode(const int& attr) const override {

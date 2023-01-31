@@ -25,7 +25,8 @@ static std::unordered_set<std::string> ReaderOpSet() {
   return {"create_py_reader"};
 }
 
-void InitReaderQueueDeviceCount(Graph *graph, const Scope &scope,
+void InitReaderQueueDeviceCount(Graph *graph,
+                                const Scope &scope,
                                 size_t dev_cnt) {
   using QueueHolder =
       operators::reader::OrderedMultiDeviceLoDTensorBlockingQueueHolder;

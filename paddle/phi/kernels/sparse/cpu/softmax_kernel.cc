@@ -14,14 +14,12 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/softmax_kernel.h"
 
-#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/cpu_vec.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
-
-namespace plt = paddle::platform;
 
 namespace phi {
 namespace sparse {
@@ -37,44 +35,52 @@ void SoftmaxCsrKernel(const Context& dev_ctx,
                         "SparseCsrTensor only support axis=-1 for softmax, "
                         "which is faster when reading data by row (axis=-1)"));
   EmptyLikeCsrKernel<T, Context>(dev_ctx, x, out);
-
   auto x_dim = x.dims();
+  auto x_rank = x_dim.size();
+
+  int batch_size = 1;
   int row_number = 1;
-  for (int i = 0; i < x_dim.size() - 1; ++i) {
-    row_number *= x_dim[i];
+  for (int i = 0; i < x_rank - 1; ++i) {
+    if (i < x_rank - 2) {
+      batch_size *= x_dim[i];
+    } else if (i == x_rank - 2) {
+      row_number = x_dim[i];
+    }
   }
 
   const DenseTensor& x_crows = x.non_zero_crows();
   const DenseTensor& x_values = x.non_zero_elements();
   DenseTensor* out_values = out->mutable_non_zero_elements();
 
-  int row_first = 0;
   int row_nnz = 0;
   T row_max_val = 0;
   const T* x_data = x_values.data<T>();
   T* out_data = out_values->data<T>();
 
   // out = exp(x-x_max) / sum( exp(x-x_max ))
-  PD_VISIT_INTEGRAL_TYPES(
+  PD_VISIT_BASE_INTEGRAL_TYPES(
       x.non_zero_crows().dtype(), "CsrSoftmaxKernel", ([&] {
         const data_t* x_crows_data = x_crows.data<data_t>();
-        for (int i = 0; i < row_number; ++i) {
-          row_first = static_cast<int>(x_crows_data[i]);
-          row_nnz = static_cast<int>(x_crows_data[i + 1] - x_crows_data[i]);
+        for (int i = 0; i < batch_size; ++i) {
+          for (int j = 0; j < row_number; ++j) {
+            int crow_idx = i * (row_number + 1) + j;
+            row_nnz = static_cast<int>(x_crows_data[crow_idx + 1] -
+                                       x_crows_data[crow_idx]);
 
-          x_data = x_data + row_first;
-          out_data = out_data + row_first;
+            row_max_val = *std::max_element(x_data, x_data + row_nnz);
+            phi::funcs::vec_add_bias<T, backends::cpu::avx>(
+                row_nnz, static_cast<T>(-1) * row_max_val, x_data, out_data);
 
-          row_max_val = *std::max_element(x_data, x_data + row_nnz);
-          phi::funcs::vec_add_bias<T, plt::avx>(
-              row_nnz, static_cast<T>(-1) * row_max_val, x_data, out_data);
+            phi::funcs::vec_exp<T>(row_nnz, out_data, out_data);
 
-          phi::funcs::vec_exp<T>(row_nnz, out_data, out_data);
+            T sum = 0;
+            phi::funcs::vec_sum<T, backends::cpu::avx>(row_nnz, out_data, &sum);
+            phi::funcs::vec_scal<T, backends::cpu::avx>(
+                row_nnz, static_cast<T>(1) / sum, out_data, out_data);
 
-          T sum = 0;
-          phi::funcs::vec_sum<T, plt::avx>(row_nnz, out_data, &sum);
-          phi::funcs::vec_scal<T, plt::avx>(
-              row_nnz, static_cast<T>(1) / sum, out_data, out_data);
+            x_data = x_data + row_nnz;
+            out_data = out_data + row_nnz;
+          }
         }
       }));
 }

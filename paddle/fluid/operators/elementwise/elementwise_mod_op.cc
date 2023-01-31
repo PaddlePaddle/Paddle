@@ -25,9 +25,6 @@ class EmptyGradOpMaker;
 namespace imperative {
 class OpBase;
 }  // namespace imperative
-namespace platform {
-class CPUDeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -57,8 +54,10 @@ class ElementwiseModOpMaker : public ElementwiseOpMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(elementwise_mod, ops::ElementwiseOp,
-                             ops::ElementwiseModOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(elementwise_mod,
+                             ops::ElementwiseOp,
+                             ops::ElementwiseModOpMaker,
+                             ops::ElementwiseOpInplaceInferer);
 
 REGISTER_OP_VERSION(elementwise_mod)
     .AddCheckpoint(

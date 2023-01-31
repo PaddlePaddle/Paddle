@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import sys
+
 import paddle.fluid as fluid
 
 print("compile with xpu:", fluid.core.is_compiled_with_xpu())

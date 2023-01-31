@@ -21,7 +21,7 @@ namespace framework {
 namespace ir {
 
 template <typename T>
-void FillConstData(LoDTensor* out_t, T value) {
+void FillConstData(phi::DenseTensor* out_t, T value) {
   auto output_data = out_t->mutable_data<T>(platform::CPUPlace());
   for (int i = 0; i < out_t->numel(); i++) {
     output_data[i] = value;
@@ -29,6 +29,11 @@ void FillConstData(LoDTensor* out_t, T value) {
 }
 
 void DeleteFillConstantOpPass::ApplyImpl(ir::Graph* graph) const {
+  bool with_dynamic_shape = Get<bool>("with_dynamic_shape");
+  // Not support
+  if (with_dynamic_shape) {
+    return;
+  }
   FusePassBase::Init("delete_fill_constant_op_pass", graph);
   GraphPatternDetector detector;
   auto fill_constant_op =
@@ -63,15 +68,15 @@ void DeleteFillConstantOpPass::ApplyImpl(ir::Graph* graph) const {
     Node* fill_constant_out_node = subgraph.at(fill_constant_out);
     // Get fill_constant's attr
     auto fill_constant = fill_constant_op_node->Op();
-    auto value = BOOST_GET_CONST(float, fill_constant->GetAttr("value"));
+    auto value = PADDLE_GET_CONST(float, fill_constant->GetAttr("value"));
     auto shape =
-        BOOST_GET_CONST(std::vector<int64_t>, fill_constant->GetAttr("shape"));
+        PADDLE_GET_CONST(std::vector<int64_t>, fill_constant->GetAttr("shape"));
     auto* scope = param_scope();
     auto fill_constant_out_desc = fill_constant_out_node->Var();
     fill_constant_out_desc->SetShape(shape);
     fill_constant_out_desc->SetPersistable(true);
-    auto* fill_constant_out_tensor =
-        scope->Var(fill_constant_out_desc->Name())->GetMutable<LoDTensor>();
+    auto* fill_constant_out_tensor = scope->Var(fill_constant_out_desc->Name())
+                                         ->GetMutable<phi::DenseTensor>();
     auto dtype =
         framework::TransToPhiDataType(fill_constant_out_desc->GetDataType());
     fill_constant_out_tensor->Resize(phi::make_ddim(shape));

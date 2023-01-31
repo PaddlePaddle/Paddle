@@ -29,24 +29,23 @@ class KronOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type =
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const {
-    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
+  phi::KernelKey GetKernelTypeForVar(
+      const std::string& var_name,
+      const phi::DenseTensor& tensor,
+      const phi::KernelKey& expected_kernel_type) const override {
+    if (framework::IsComplexType(expected_kernel_type.dtype())) {
       // only promote inputs’s types when contains complex input
-      return framework::OpKernelType(
-          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
-          tensor.layout());
+      return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
     } else {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(), tensor.layout());
+      return phi::KernelKey(
+          tensor.place(), tensor.layout(), expected_kernel_type.dtype());
     }
   }
 };
@@ -61,14 +60,14 @@ class KronOpMaker : public framework::OpProtoAndCheckerMaker {
           Kron Operator.
 
           This operator computes the Kronecker product of two tensors, a
-          composite tensor made of blocks of the second tensor scaled by the 
+          composite tensor made of blocks of the second tensor scaled by the
           first.
 
           This operator assumes that the rank of the two tensors, $X$ and $Y$
-          are the same, if necessary prepending the smallest with ones. If the 
-          shape of $X$ is [$r_0$, $r_1$, ..., $r_N$] and the shape of $Y$ is 
-          [$s_0$, $s_1$, ..., $s_N$], then the shape of the output tensor is 
-          [$r_{0}s_{0}$, $r_{1}s_{1}$, ..., $r_{N}s_{N}$]. The elements are 
+          are the same, if necessary prepending the smallest with ones. If the
+          shape of $X$ is [$r_0$, $r_1$, ..., $r_N$] and the shape of $Y$ is
+          [$s_0$, $s_1$, ..., $s_N$], then the shape of the output tensor is
+          [$r_{0}s_{0}$, $r_{1}s_{1}$, ..., $r_{N}s_{N}$]. The elements are
           products of elements from $X$ and $Y$.
 
           The equation is:
@@ -92,8 +91,10 @@ class KronGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "kron_grad");
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "kron_grad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "kron_grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "kron_grad");
 
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");
@@ -106,25 +107,24 @@ class KronGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto out_grad_name = framework::GradVarName("Out");
-    return framework::OpKernelType(
+    return phi::KernelKey(
         OperatorWithKernel::IndicateVarDataType(ctx, out_grad_name),
         ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const {
-    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
+  phi::KernelKey GetKernelTypeForVar(
+      const std::string& var_name,
+      const phi::DenseTensor& tensor,
+      const phi::KernelKey& expected_kernel_type) const override {
+    if (framework::IsComplexType(expected_kernel_type.dtype())) {
       // only promote inputs’s types when contains complex input
-      return framework::OpKernelType(
-          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
-          tensor.layout());
+      return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
     } else {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(), tensor.layout());
+      return phi::KernelKey(
+          tensor.place(), tensor.layout(), expected_kernel_type.dtype());
     }
   }
 };
@@ -154,9 +154,12 @@ class KronGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(kron, KronInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(kron,
+                            KronInferShapeFunctor,
                             PD_INFER_META(phi::KronInferMeta));
-REGISTER_OPERATOR(kron, ops::KronOp, ops::KronOpMaker,
+REGISTER_OPERATOR(kron,
+                  ops::KronOp,
+                  ops::KronOpMaker,
                   ops::KronGradOpMaker<paddle::framework::OpDesc>,
                   ops::KronGradOpMaker<paddle::imperative::OpBase>,
                   KronInferShapeFunctor);

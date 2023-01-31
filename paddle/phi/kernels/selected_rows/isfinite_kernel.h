@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/core/selected_rows.h"
+#include "paddle/phi/kernels/isfinite_kernel.h"
 
 namespace phi {
 

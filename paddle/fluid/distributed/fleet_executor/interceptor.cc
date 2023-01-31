@@ -35,8 +35,9 @@ Interceptor::~Interceptor() {
 void Interceptor::RegisterMsgHandle(MsgHandle handle) { handle_ = handle; }
 
 void Interceptor::Handle(const InterceptorMessage& msg) {
-  PADDLE_ENFORCE_NOT_NULL(handle_, platform::errors::PreconditionNotMet(
-                                       "Message handle is not registered."));
+  PADDLE_ENFORCE_NOT_NULL(handle_,
+                          platform::errors::PreconditionNotMet(
+                              "Message handle is not registered."));
   handle_(msg);
 }
 
@@ -46,7 +47,8 @@ void Interceptor::LoopOnce() {
     std::lock_guard<std::mutex> lock(mutex_);
     messages_.swap(tmp_messages);
   }
-  PADDLE_ENFORCE_EQ(tmp_messages.empty(), false,
+  PADDLE_ENFORCE_EQ(tmp_messages.empty(),
+                    false,
                     platform::errors::PreconditionNotMet(
                         "tmp_messages must not empty in task loop"));
 
@@ -61,8 +63,9 @@ void Interceptor::LoopOnce() {
 }
 
 void Interceptor::StopCarrier() {
-  PADDLE_ENFORCE_NOT_NULL(carrier_, platform::errors::PreconditionNotMet(
-                                        "Carrier is not registered."));
+  PADDLE_ENFORCE_NOT_NULL(
+      carrier_,
+      platform::errors::PreconditionNotMet("Carrier is not registered."));
   carrier_->WakeUp();
 }
 
@@ -84,8 +87,9 @@ void Interceptor::EnqueueRemoteInterceptorMessage(
 }
 
 bool Interceptor::Send(int64_t dst_id, InterceptorMessage& msg) {
-  PADDLE_ENFORCE_NOT_NULL(carrier_, platform::errors::PreconditionNotMet(
-                                        "Carrier is not registered."));
+  PADDLE_ENFORCE_NOT_NULL(
+      carrier_,
+      platform::errors::PreconditionNotMet("Carrier is not registered."));
   msg.set_src_id(interceptor_id_);
   msg.set_dst_id(dst_id);
   return carrier_->Send(msg);
@@ -102,7 +106,8 @@ std::unique_ptr<Interceptor> InterceptorFactory::Create(const std::string& type,
   auto& interceptor_map = GetInterceptorMap();
   auto iter = interceptor_map.find(type);
   PADDLE_ENFORCE_NE(
-      iter, interceptor_map.end(),
+      iter,
+      interceptor_map.end(),
       platform::errors::NotFound("interceptor %s is not register", type));
   return iter->second(id, node);
 }

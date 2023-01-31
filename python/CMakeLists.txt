@@ -20,31 +20,15 @@ endif()
 
 set(SETUP_LOG_FILE "setup.py.log")
 
-set(FLUID_CORE_NAME "core")
-if(WITH_AVX AND AVX_FOUND)
-  set(FLUID_CORE_NAME "${FLUID_CORE_NAME}_avx")
-  if(NOT DEFINED NOAVX_CORE_FILE OR NOAVX_CORE_FILE STREQUAL "")
-    message(
-      STATUS
-        "MESSAGE: This is just a message for publishing release.
-      You are building AVX version without NOAVX core.
-      So the wheel package may fail on NOAVX machine.
-      You can add -DNOAVX_CORE_FILE=/path/to/your/core_noavx.* in cmake command
-      to get a full wheel package to resolve this warning.
-      While, this version will still work on local machine.")
-  endif()
+set(FLUID_CORE_NAME "libpaddle")
 
-  if(NOAVX_CORE_FILE AND NOT EXISTS "${NOAVX_CORE_FILE}")
-    message(FATAL_ERROR "The file ${NOAVX_CORE_FILE} does not exist!")
-  endif()
-
-  set(HAS_NOAVX_CORE ON)
+if(WITH_SETUP_INSTALL)
+  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/env_dict.py.in
+                 ${CMAKE_CURRENT_BINARY_DIR}/env_dict.py)
 else()
-  set(FLUID_CORE_NAME "${FLUID_CORE_NAME}_noavx")
+  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
+                 ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
 endif()
-
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
-               ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
 
 set(FLUID_DST_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/)
 
@@ -52,72 +36,105 @@ if(WIN32)
   # Python would use the .pyd by default under Windows series platform
   set(FLUID_CORE ${FLUID_DST_DIR}/${FLUID_CORE_NAME}.pyd)
   set(FLUID_CORE_LIB ${FLUID_DST_DIR}/${FLUID_CORE_NAME}.lib)
-
   add_custom_command(
     OUTPUT ${FLUID_CORE}
-    COMMAND cmake -E copy $<TARGET_FILE:paddle_pybind> ${FLUID_CORE}
-    COMMAND cmake -E copy $<TARGET_LINKER_FILE:paddle_pybind> ${FLUID_CORE_LIB}
-    DEPENDS paddle_pybind)
-
-  set(FLUID_NOAVX_CORE ${FLUID_DST_DIR}/core_noavx.pyd)
+    COMMAND cmake -E copy $<TARGET_FILE:libpaddle> ${FLUID_CORE}
+    COMMAND cmake -E copy $<TARGET_LINKER_FILE:libpaddle> ${FLUID_CORE_LIB}
+    DEPENDS libpaddle)
 else()
   set(FLUID_CORE ${FLUID_DST_DIR}/${FLUID_CORE_NAME}.so)
   add_custom_command(
     OUTPUT ${FLUID_CORE}
-    COMMAND cmake -E copy $<TARGET_FILE:paddle_pybind> ${FLUID_CORE}
-    DEPENDS paddle_pybind)
-
-  set(FLUID_NOAVX_CORE ${FLUID_DST_DIR}/core_noavx.so)
+    COMMAND cmake -E copy $<TARGET_FILE:paddle> ${FLUID_CORE}
+    DEPENDS paddle)
 endif()
 
 set(FLUID_CORE_DEPS ${FLUID_CORE})
 
-if(HAS_NOAVX_CORE AND EXISTS "${NOAVX_CORE_FILE}")
-  get_filename_component(NOAVX_CORE_NAME ${NOAVX_CORE_FILE} NAME)
-  get_filename_component(NOAVX_CORE_EXT ${NOAVX_CORE_FILE} EXT)
-  if(WIN32)
-    if(NOT NOAVX_CORE_EXT STREQUAL ".pyd")
-      message(
-        FATAL_ERROR
-          "Wrong file ${NOAVX_CORE_NAME}, the ext does not match windows *.pyd!"
-      )
-    endif()
-  else()
-    if(NOT NOAVX_CORE_EXT STREQUAL ".so")
-      message(
-        FATAL_ERROR
-          "Wrong file ${NOAVX_CORE_NAME}, the ext does not match *.so!")
-    endif()
-  endif()
-  add_custom_command(
-    OUTPUT ${FLUID_NOAVX_CORE}
-    COMMAND cmake -E copy ${NOAVX_CORE_FILE} ${FLUID_NOAVX_CORE}
-    DEPENDS paddle_pybind)
-  list(APPEND FLUID_CORE_DEPS ${FLUID_NOAVX_CORE})
+add_custom_target(copy_libpaddle ALL DEPENDS ${FLUID_CORE_DEPS})
+
+# Standard op(phi op) description is defined in ops.yaml and legacy_ops.yaml.
+# When users define composite rules of some nonbasic op, as for defination of args,
+# they are supposed to refer to standard op description. However, there exists
+# some gap of description between current op and standard ones. So special dictionary
+# is needed to record such gap for execution of composite rules.
+# Todo: this custom_target will be moved to other place.
+
+set(ops_yaml_path "${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/ops.yaml")
+
+set(ops_legacy_yaml_path
+    "${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/legacy_ops.yaml")
+
+set(ops_compat_yaml_path
+    "${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml")
+
+set(phi_ops_map_path
+    "${PADDLE_SOURCE_DIR}/python/paddle/incubate/autograd/phi_ops_map.py")
+
+add_custom_target(
+  op_map_codegen ALL
+  COMMAND
+    "${PYTHON_EXECUTABLE}"
+    "${PADDLE_SOURCE_DIR}/python/paddle/incubate/autograd/generate_op_map.py"
+    "--ops_yaml_path=${ops_yaml_path}"
+    "--ops_legacy_yaml_path=${ops_legacy_yaml_path}"
+    "--ops_compat_yaml_path=${ops_compat_yaml_path}"
+    "--phi_ops_map_path=${phi_ops_map_path}"
+  VERBATIM)
+
+# NOTE(zhiqiu): WHY?
+# In `setup.py.in`, some dynamic libraries (eg, libxpuapi.so) are modified using
+# patchelf. In rare cases, if the a linker is linking that dynamic library for
+# some executables at the same time, a `file not recognized, file truncated`
+# error may occur, result in the compilation error.
+# So, add dependency to force the cpp tests built before running `setup.py.in`.
+if(WITH_TESTING)
+  add_dependencies(copy_libpaddle build_tests)
 endif()
 
-add_custom_target(copy_paddle_pybind ALL DEPENDS ${FLUID_CORE_DEPS})
-
 if(WIN32)
-  add_custom_command(
-    OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
-    COMMAND
-      ${CMAKE_COMMAND} -E copy_directory ${PADDLE_SOURCE_DIR}/python/paddle
-      ${PADDLE_BINARY_DIR}/python/paddle/
-    COMMAND ${CMAKE_COMMAND} -E env ${py_env} ${PYTHON_EXECUTABLE} setup.py
-            bdist_wheel
-    COMMENT "Packing whl packages------>>>"
-    DEPENDS copy_paddle_pybind ${FLUID_CORE} framework_py_proto
-            profiler_py_proto pass_desc_py_proto ${PY_FILES})
+  if(WITH_SETUP_INSTALL)
+    add_custom_command(
+      OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
+      COMMAND
+        ${CMAKE_COMMAND} -E copy_directory ${PADDLE_SOURCE_DIR}/python/paddle
+        ${PADDLE_BINARY_DIR}/python/paddle/
+      COMMENT "Packing whl packages------>>>"
+      DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
+              pass_desc_py_proto ${PY_FILES})
+  else()
+    add_custom_command(
+      OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
+      COMMAND
+        ${CMAKE_COMMAND} -E copy_directory ${PADDLE_SOURCE_DIR}/python/paddle
+        ${PADDLE_BINARY_DIR}/python/paddle/
+      COMMAND ${CMAKE_COMMAND} -E env ${py_env} ${PYTHON_EXECUTABLE} setup.py
+              bdist_wheel
+      COMMENT "Packing whl packages------>>>"
+      DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
+              pass_desc_py_proto ${PY_FILES})
+  endif()
 else()
-  add_custom_command(
-    OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
-    COMMAND touch stub.cc
-    COMMAND cp -r ${PADDLE_SOURCE_DIR}/python/paddle ${PADDLE_BINARY_DIR}/python
-    COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
-    COMMENT "Packing whl packages------>>>"
-    DEPENDS copy_paddle_pybind ${FLUID_CORE} framework_py_proto
-            profiler_py_proto pass_desc_py_proto ${PY_FILES})
+  if(WITH_SETUP_INSTALL)
+    add_custom_command(
+      OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
+      COMMAND touch stub.cc
+      COMMAND cp -r ${PADDLE_SOURCE_DIR}/python/paddle
+              ${PADDLE_BINARY_DIR}/python
+      COMMENT "Packing whl packages------>>>"
+      DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
+              pass_desc_py_proto ${PY_FILES})
+  else()
+    add_custom_command(
+      OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
+      COMMAND touch stub.cc
+      COMMAND cp -r ${PADDLE_SOURCE_DIR}/python/paddle
+              ${PADDLE_BINARY_DIR}/python
+      COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
+      COMMENT "Packing whl packages------>>>"
+      DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
+              pass_desc_py_proto ${PY_FILES})
+  endif()
 endif()
 
 add_custom_target(paddle_python ALL
@@ -131,10 +148,13 @@ if(WITH_TESTING)
   add_subdirectory(paddle/tests)
   add_subdirectory(paddle/fluid/tests)
   add_subdirectory(paddle/fluid/contrib/tests)
-  add_subdirectory(paddle/fluid/contrib/slim/tests)
+  add_subdirectory(paddle/static/quantization/tests)
 endif()
-install(DIRECTORY ${PADDLE_PYTHON_PACKAGE_DIR}
-        DESTINATION opt/paddle/share/wheels)
+
+if(NOT WITH_SETUP_INSTALL)
+  install(DIRECTORY ${PADDLE_PYTHON_PACKAGE_DIR}
+          DESTINATION opt/paddle/share/wheels)
+endif()
 
 if(APPLE)
   find_program(INSTALL_NAME_TOOL_EXECUTABLE install_name_tool)

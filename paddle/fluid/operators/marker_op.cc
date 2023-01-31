@@ -30,10 +30,9 @@ class MarkerOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(framework::proto::VarType::FP32,
-                                   ctx.GetPlace());
+    return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
   }
 };
 
@@ -63,8 +62,10 @@ class MarkerOpCPUKernel : public framework::OpKernel<T> {
     auto marker_pos = ctx.Attr<std::string>("marker_pos");
 
     platform::RecordEvent record_event(
-        "MarkerCPU", "marker_" + marker_role + "_" + marker_pos,
-        platform::TracerEventType::OperatorInner, 1,
+        "MarkerCPU",
+        "marker_" + marker_role + "_" + marker_pos,
+        platform::TracerEventType::OperatorInner,
+        1,
         platform::EventRole::kInnerOp);
   }
 };

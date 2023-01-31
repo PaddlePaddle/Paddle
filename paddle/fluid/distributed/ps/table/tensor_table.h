@@ -73,7 +73,8 @@ class TensorTable : public Table {
   int32_t Initialize() override { return 0; }
 
   int32_t SetProgramEnv(
-      framework::Scope *scope, platform::Place place,
+      framework::Scope *scope,
+      platform::Place place,
       const std::vector<framework::ProgramDesc> *sub_program) override {
     scope_ = scope;
     place_ = place;
@@ -119,7 +120,8 @@ class DenseTensorTable : public TensorTable {
   int32_t Initialize() override { return 0; }
 
  protected:
-  virtual int32_t _RunProgram(const float *values, size_t num,
+  virtual int32_t _RunProgram(const float *values,
+                              size_t num,
                               const uint32_t trainer_id) {
     return 0;
   }
@@ -174,7 +176,7 @@ class GlobalStepTable : public DenseTensorTable {
 
     // Run startup program
     if (startup_program_id_ != -1) {
-      std::map<std::string, const framework::LoDTensor *> fake_feed;
+      std::map<std::string, const phi::DenseTensor *> fake_feed;
       std::map<std::string, framework::FetchType *> fake_fetch;
       auto startup_program_desc = sub_program_->at(startup_program_id_);
       auto ctx = executor_->Prepare(startup_program_desc, 0);
@@ -205,7 +207,7 @@ class GlobalStepTable : public DenseTensorTable {
   int32_t SetTableMap(std::unordered_map<uint32_t, std::shared_ptr<Table>>
                           *table_map) override {
     auto *lr_var = scope_->FindVar(fetch_var_name_);
-    auto *lr_tensor = lr_var->GetMutable<framework::LoDTensor>();
+    auto *lr_tensor = lr_var->GetMutable<phi::DenseTensor>();
     auto *lr_value = lr_tensor->mutable_data<float>(platform::CPUPlace());
     VLOG(3) << "GlobalStepTable::set_table_map set global lr: " << *lr_value;
 
@@ -224,11 +226,11 @@ class GlobalStepTable : public DenseTensorTable {
                               const uint32_t trainer_id) {
     FLAGS_eager_delete_tensor_gb = -1;
     auto counter = decay_counters_.at(trainer_id);
-    counter += int(values[0]);
+    counter += static_cast<int>(values[0]);
     decay_counters_.at(trainer_id) = counter;
 
     auto *global_step_var = scope_->FindVar(feed_var_name_);
-    auto *tensor = global_step_var->GetMutable<framework::LoDTensor>();
+    auto *tensor = global_step_var->GetMutable<phi::DenseTensor>();
     auto *value = tensor->mutable_data<int64_t>(platform::CPUPlace());
 
     auto global_counter = 0;
@@ -242,7 +244,7 @@ class GlobalStepTable : public DenseTensorTable {
 
     executor_->RunPreparedContext(exec_context_.get(), scope_, false, false);
     auto *lr_var = scope_->FindVar(fetch_var_name_);
-    auto *lr_tensor = lr_var->GetMutable<framework::LoDTensor>();
+    auto *lr_tensor = lr_var->GetMutable<phi::DenseTensor>();
     auto *lr_value = lr_tensor->mutable_data<float>(platform::CPUPlace());
     VLOG(3) << "GlobalStepTable::LR value: " << lr_value[0];
     return 0;

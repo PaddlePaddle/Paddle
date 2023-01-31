@@ -24,7 +24,8 @@ namespace operators {
 
 class ArrayOp : public framework::OperatorBase {
  public:
-  ArrayOp(const std::string &type, const framework::VariableNameMap &inputs,
+  ArrayOp(const std::string &type,
+          const framework::VariableNameMap &inputs,
           const framework::VariableNameMap &outputs,
           const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
@@ -35,12 +36,14 @@ class ArrayOp : public framework::OperatorBase {
     auto *i = scope.FindVar(Input("I"));
     PADDLE_ENFORCE_NOT_NULL(
         i, platform::errors::NotFound("Input(I) is not found."));
-    auto &i_tensor = i->Get<framework::LoDTensor>();
-    PADDLE_ENFORCE_EQ(i_tensor.numel(), 1,
+    auto &i_tensor = i->Get<phi::DenseTensor>();
+    PADDLE_ENFORCE_EQ(i_tensor.numel(),
+                      1,
                       platform::errors::InvalidArgument(
                           "Input(I) must have numel 1. "
                           "But received %d, and it's shape is [%s].",
-                          i_tensor.numel(), i_tensor.dims()));
+                          i_tensor.numel(),
+                          i_tensor.dims()));
 
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
@@ -49,9 +52,10 @@ class ArrayOp : public framework::OperatorBase {
     size_t offset;
     if (platform::is_gpu_place(i_tensor.place()) ||
         platform::is_xpu_place(i_tensor.place()) ||
-        platform::is_npu_place(i_tensor.place())) {
+        platform::is_npu_place(i_tensor.place()) ||
+        platform::is_custom_place(i_tensor.place())) {
       // FIXME: Avoid copy from GPU to CPU
-      framework::Tensor t;
+      phi::DenseTensor t;
       framework::TensorCopy(i_tensor, platform::CPUPlace(), dev_ctx, &t);
       dev_ctx.Wait();
       offset = static_cast<size_t>(*t.data<int64_t>());

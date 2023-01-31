@@ -14,35 +14,30 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <unordered_map>
-
-#include "paddle/fluid/jit/executor_function.h"
-#include "paddle/fluid/jit/function_schema.h"
-#include "paddle/fluid/jit/pe_function.h"
+#include <vector>
 
 namespace paddle {
 namespace jit {
+class BaseEngine;
+using EngineMap = std::unordered_map<std::string, std::shared_ptr<BaseEngine>>;
 
 class CompilationUnit {
  public:
   CompilationUnit() = default;
   ~CompilationUnit() {}
 
-  void AddExecutorFunction(const std::string &func_name,
-                           const std::shared_ptr<FunctionInfo> &info,
-                           const Name2VariableMap &params_dict,
-                           const phi::Place &place);
+  std::shared_ptr<BaseEngine> GetEngine(const std::string &name) const;
 
-  void AddPEFunction(const std::string &func_name,
-                     const std::shared_ptr<FunctionInfo> &info,
-                     const Name2VariableMap &params_dict,
-                     const phi::Place &place);
+  void SetEngine(const std::string &name,
+                 const std::shared_ptr<BaseEngine> &engine);
 
-  std::shared_ptr<BaseFunction> GetFunction(const std::string &name) const;
+  const jit::EngineMap &EngineMap() const;
 
  private:
-  std::unordered_map<std::string, std::shared_ptr<BaseFunction>> function_dict_;
+  jit::EngineMap engine_map_;
 };
 
 }  // namespace jit

@@ -12,16 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+import unittest
 
 import paddle.dataset.voc2012
-import unittest
 
 __all__ = []
 
 
 class TestVOC(unittest.TestCase):
-
     def check_reader(self, reader):
         sum = 0
         label = 0

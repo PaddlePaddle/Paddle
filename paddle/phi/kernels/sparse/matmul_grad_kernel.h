@@ -23,16 +23,16 @@ namespace sparse {
 
 // TODO(zhouwei25): implement Backward of " COO @ COO -> COO"
 template <typename T, typename Context>
-void CooCooMatmulGradKernel(const Context& dev_ctx,
+void MatmulCooCooGradKernel(const Context& dev_ctx,
                             const SparseCooTensor& x,
                             const SparseCooTensor& y,
                             const SparseCooTensor& dout,
                             SparseCooTensor* dx,
                             SparseCooTensor* dy);
 
-// TODO(zhouwei25): implement Backward of " COO @ DENSE -> DENSE"
+// Backward of " COO @ DENSE -> DENSE"
 template <typename T, typename Context>
-void CooDenseMatmulGradKernel(const Context& dev_ctx,
+void MatmulCooDenseGradKernel(const Context& dev_ctx,
                               const SparseCooTensor& x,
                               const DenseTensor& y,
                               const DenseTensor& dout,
@@ -41,7 +41,7 @@ void CooDenseMatmulGradKernel(const Context& dev_ctx,
 
 // TODO(zhouwei25): implement Backward of " CSR @ CSR -> CSR"
 template <typename T, typename Context>
-void CsrCsrMatmulGradKernel(const Context& dev_ctx,
+void MatmulCsrCsrGradKernel(const Context& dev_ctx,
                             const SparseCsrTensor& x,
                             const SparseCsrTensor& y,
                             const SparseCsrTensor& dout,
@@ -50,7 +50,7 @@ void CsrCsrMatmulGradKernel(const Context& dev_ctx,
 
 /* Backward of "CSR @ DENSE -> DENSE" */
 template <typename T, typename Context>
-void CsrDenseMatmulGradKernel(const Context& dev_ctx,
+void MatmulCsrDenseGradKernel(const Context& dev_ctx,
                               const SparseCsrTensor& x,
                               const DenseTensor& y,
                               const DenseTensor& dout,
@@ -59,7 +59,7 @@ void CsrDenseMatmulGradKernel(const Context& dev_ctx,
 
 /* Backward of "DENSE @ DENSE * CSR_MASK -> CSR" */
 template <typename T, typename Context>
-void CsrMaskedMatmulGradKernel(const Context& dev_ctx,
+void MaskedMatmulCsrGradKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& y,
                                const SparseCsrTensor& dout,

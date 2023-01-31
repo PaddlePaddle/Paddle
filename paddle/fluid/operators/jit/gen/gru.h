@@ -27,7 +27,9 @@ namespace gen {
 
 class GRUJitCode : public VActFunc {
  public:
-  explicit GRUJitCode(int id, const gru_attr_t& attr, size_t code_size,
+  explicit GRUJitCode(int id,
+                      const gru_attr_t& attr,
+                      size_t code_size,
                       void* code_ptr = nullptr)
       : VActFunc(code_size, code_ptr), id_(id), num_(attr.d) {
     auto typeExchange = [](KernelType type) -> gen::operand_type {
@@ -95,12 +97,13 @@ class GRUJitCode : public VActFunc {
   reg64_t param1{abi_param1};
 };
 
-#define DECLARE_GRU_JITCODE(name, id)                                \
-  class name##JitCode : public GRUJitCode {                          \
-   public:                                                           \
-    explicit name##JitCode(const gru_attr_t& attr, size_t code_size, \
-                           void* code_ptr = nullptr)                 \
-        : GRUJitCode(id, attr, code_size, code_ptr) {}               \
+#define DECLARE_GRU_JITCODE(name, id)                  \
+  class name##JitCode : public GRUJitCode {            \
+   public:                                             \
+    explicit name##JitCode(const gru_attr_t& attr,     \
+                           size_t code_size,           \
+                           void* code_ptr = nullptr)   \
+        : GRUJitCode(id, attr, code_size, code_ptr) {} \
   };
 
 DECLARE_GRU_JITCODE(GRUH1, 0);

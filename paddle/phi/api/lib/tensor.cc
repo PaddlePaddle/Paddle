@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-// clang-format off
 #include "paddle/phi/api/include/tensor.h"
 
 #include <memory>
@@ -21,7 +20,9 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -33,9 +34,6 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/core/tensor_utils.h"
-
-#include "paddle/fluid/platform/stream/cuda_stream.h"
-// clang-format off
 
 namespace paddle {
 namespace experimental {
@@ -158,6 +156,8 @@ bool Tensor::is_gpu() const { return paddle::platform::is_gpu_place(place()); }
 bool Tensor::is_gpu_pinned() const {
   return paddle::platform::is_cuda_pinned_place(place());
 }
+
+bool Tensor::is_xpu() const { return paddle::platform::is_xpu_place(place()); }
 
 bool Tensor::is_custom_device() const {
   return paddle::platform::is_custom_place(place());
@@ -311,7 +311,10 @@ void Tensor::set_impl(std::shared_ptr<phi::TensorBase> &&impl) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 gpuStream_t Tensor::stream() const {
-  return platform::stream::get_current_stream(-1)->raw_stream();
+  int device_id = phi::backends::gpu::GetCurrentDeviceId();
+  auto *gpu_context = DeviceContextPool::Instance().Get<AllocationType::GPU>(
+      GPUPlace(device_id));
+  return gpu_context->stream();
 }
 #endif
 

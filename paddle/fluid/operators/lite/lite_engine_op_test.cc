@@ -72,14 +72,14 @@ TEST(LiteEngineOp, engine_op) {
   framework::Scope scope;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   platform::CUDAPlace place;
-  platform::CUDADeviceContext ctx(place);
+  phi::GPUContext ctx(place);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(place, ctx.stream())
                        .get());
   ctx.PartialInitWithAllocator();
 #else
   platform::CPUPlace place;
-  platform::CPUDeviceContext ctx(place);
+  phi::CPUContext ctx(place);
 #endif
   // Prepare variables.
   CreateTensor(&scope, "x", std::vector<int64_t>({2, 4}), true);

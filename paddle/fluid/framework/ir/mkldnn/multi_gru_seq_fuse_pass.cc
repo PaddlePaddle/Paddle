@@ -21,9 +21,9 @@
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
-#include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/phi/core/errors.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -34,7 +34,8 @@ using string::PrettyLogDetail;
 
 namespace {
 
-std::vector<std::string> JoinInputs(Node* op1, Node* op2,
+std::vector<std::string> JoinInputs(Node* op1,
+                                    Node* op2,
                                     std::string input_name) {
   auto in1 = op1->Op()->Input(input_name);
   auto& in2 = op2->Op()->Input(input_name);
@@ -47,11 +48,11 @@ std::vector<std::string> JoinInputs(Node* op1, Node* op2,
 void MultiGruSeqFusePass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Fusing two consecutive multi_gru ops.";
   PADDLE_ENFORCE_NOT_NULL(graph,
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "Pointer to graph argument cannot be NULL."));
   FusePassBase::Init(name_scope_, graph);
-  PADDLE_ENFORCE_NOT_NULL(param_scope(), platform::errors::InvalidArgument(
-                                             "Scope cannot be nullptr."));
+  PADDLE_ENFORCE_NOT_NULL(
+      param_scope(), phi::errors::InvalidArgument("Scope cannot be nullptr."));
 
   GraphPatternDetector gpd;
   patterns::MultiGruSeq pattern{gpd.mutable_pattern(), name_scope_};
@@ -101,8 +102,8 @@ void MultiGruSeqFusePass::ApplyImpl(ir::Graph* graph) const {
       multi_gru_desc.SetAttr(attr.first, attr.second);
     }
 
-    auto layers = BOOST_GET_CONST(int, gru1->Op()->GetAttr("layers")) +
-                  BOOST_GET_CONST(int, gru2->Op()->GetAttr("layers"));
+    auto layers = PADDLE_GET_CONST(int, gru1->Op()->GetAttr("layers")) +
+                  PADDLE_GET_CONST(int, gru2->Op()->GetAttr("layers"));
     multi_gru_desc.SetAttr("layers", layers);
 
     auto multi_gru =

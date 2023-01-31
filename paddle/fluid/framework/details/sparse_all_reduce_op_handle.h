@@ -44,7 +44,8 @@ class SparseAllReduceOpHandle : public AllReduceOpHandle {
                           const std::vector<Scope *> &local_scopes,
                           const std::vector<platform::Place> &places,
                           const platform::NCCLCommunicator *ctxs,
-                          bool is_encoded = false, int nranks = -1);
+                          bool is_encoded = false,
+                          int nranks = -1);
   std::string Name() const override;
 
  protected:

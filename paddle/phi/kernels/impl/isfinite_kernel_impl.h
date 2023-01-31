@@ -17,23 +17,24 @@
 #include "paddle/phi/kernels/funcs/isfinite_functor.h"
 #include "paddle/phi/kernels/isfinite_kernel.h"
 
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/platform/transform.h"
+
 namespace phi {
 
-template <typename T, typename Context, typename Functor>
-inline void IsfiniteKernelImpl(const Context& ctx,
-                               const DenseTensor& x,
-                               DenseTensor* out);
-
-#define DEFINE_ISFINITE_KERNEL(isfinite_kernel, functor)            \
-  template <typename T, typename Context>                           \
-  void isfinite_kernel(                                             \
-      const Context& ctx, const DenseTensor& x, DenseTensor* out) { \
-    IsfiniteKernelImpl<T, Context, functor>(ctx, x, out);           \
+#define DEFINE_ISFINITE_KERNEL(isfinite_kernel, functor)                   \
+  template <typename T, typename Context>                                  \
+  void isfinite_kernel(                                                    \
+      const Context& ctx, const DenseTensor& x, DenseTensor* out) {        \
+    auto* out_ptr = ctx.template Alloc<bool>(out);                         \
+    funcs::functor<T> unary_func;                                          \
+    paddle::platform::Transform<Context> trans;                            \
+    trans(ctx, x.data<T>(), x.data<T>() + x.numel(), out_ptr, unary_func); \
   }
 
-DEFINE_ISFINITE_KERNEL(IsinfKernel, funcs::InfinityV2Functor)
-DEFINE_ISFINITE_KERNEL(IsnanKernel, funcs::NANV2Functor)
-DEFINE_ISFINITE_KERNEL(IsfiniteKernel, funcs::IsfiniteV2Functor)
+DEFINE_ISFINITE_KERNEL(IsinfKernel, IsInfFunctor)
+DEFINE_ISFINITE_KERNEL(IsnanKernel, IsNanFunctor)
+DEFINE_ISFINITE_KERNEL(IsfiniteKernel, IsFiniteFunctor)
 #undef DEFINE_ISFINITE_KERNEL
 
 }  // namespace phi

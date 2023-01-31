@@ -50,5 +50,7 @@ if(WITH_MLU)
     set_tests_properties(test_collective_allgather_api_mlu PROPERTIES TIMEOUT
                                                                       120)
     set_tests_properties(test_c_comm_init_op_mlu PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_sync_batch_norm_op_mlu_baseline PROPERTIES TIMEOUT
+                                                                         120)
   endif()
 endif()

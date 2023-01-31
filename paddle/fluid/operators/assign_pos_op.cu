@@ -21,10 +21,10 @@ We retain the following license from the original files:
    Licensed under the Apache License, Version 2.0 (the "License").
 */
 
-#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/assign_pos_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 DECLARE_bool(avoid_op_randomness);
 
@@ -40,12 +40,14 @@ static inline int NumBlocks(const int N) {
 }
 
 template <typename T>
-__global__ void AssignPos(T* cum_count, const T* numbers, T* out,
+__global__ void AssignPos(T* cum_count,
+                          const T* numbers,
+                          T* out,
                           int64_t limit) {
   CUDA_KERNEL_LOOP(i, limit) {
     int number_idx = numbers[i];
     if (number_idx > -1) {
-      int p = platform::CudaAtomicAdd(cum_count + number_idx, -1);
+      int p = phi::CudaAtomicAdd(cum_count + number_idx, -1);
       out[p - 1] = i;
     }
   }
@@ -57,13 +59,14 @@ class AssignPosCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     // assign pos decides which tokens should be fetched belong to specially
     // counter orderingly.
-    auto cum_count = context.Input<LoDTensor>(
+    auto cum_count = context.Input<phi::DenseTensor>(
         "cum_count");  // (counter number) int32 | int64
-    auto numbers =
-        context.Input<LoDTensor>("X");  // (batch_size * seq_len, topk) int32
+    auto numbers = context.Input<phi::DenseTensor>(
+        "X");  // (batch_size * seq_len, topk) int32
     auto eff_num_len =
-        context.Input<LoDTensor>("eff_num_len");  // (sum(cum_count))
-    auto out = context.Output<LoDTensor>("Out");  // (cum_count) value ranges
+        context.Input<phi::DenseTensor>("eff_num_len");  // (sum(cum_count))
+    auto out =
+        context.Output<phi::DenseTensor>("Out");  // (cum_count) value ranges
                                                   // from 0 to batch_size *
                                                   // seq_len * topk
     auto place = context.GetPlace();
@@ -71,17 +74,16 @@ class AssignPosCUDAKernel : public framework::OpKernel<T> {
     T* cum_data = const_cast<T*>(cum_count->data<T>());
     auto cum_size = cum_count->numel();
 
-    framework::Tensor cpu_eff_num_len;
+    phi::DenseTensor cpu_eff_num_len;
     int64_t cpu_eff_num_len_data = 0;
     if (platform::is_cpu_place(eff_num_len->place())) {
       cpu_eff_num_len_data = eff_num_len->data<T>()[0];
     } else {
-      framework::TensorCopySync(*eff_num_len, platform::CPUPlace(),
-                                &cpu_eff_num_len);
+      framework::TensorCopySync(
+          *eff_num_len, platform::CPUPlace(), &cpu_eff_num_len);
       cpu_eff_num_len_data = cpu_eff_num_len.data<T>()[0];
     }
-    const auto& dev_ctx =
-        context.template device_context<platform::CUDADeviceContext>();
+    const auto& dev_ctx = context.template device_context<phi::GPUContext>();
     framework::DDim out_dims = phi::make_ddim({cpu_eff_num_len_data});
     auto out_data = out->mutable_data<T>(out_dims, place);
 
@@ -90,8 +92,8 @@ class AssignPosCUDAKernel : public framework::OpKernel<T> {
     int blocks = NumBlocks(numel);
     int threads = kNumCUDAThreads;
 
-    AssignPos<T><<<blocks, threads, 0, dev_ctx.stream()>>>(cum_data, num_data,
-                                                           out_data, numel);
+    AssignPos<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
+        cum_data, num_data, out_data, numel);
   }
 };
 

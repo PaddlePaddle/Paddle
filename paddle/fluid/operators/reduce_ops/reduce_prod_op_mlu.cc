@@ -31,6 +31,7 @@ class ReduceMeanMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_MLU_KERNEL(reduce_prod, ops::ReduceMeanMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(reduce_prod,
+                       ops::ReduceMeanMLUKernel<float>,
                        ops::ReduceMeanMLUKernel<plat::float16>,
                        ops::ReduceMeanMLUKernel<int>);

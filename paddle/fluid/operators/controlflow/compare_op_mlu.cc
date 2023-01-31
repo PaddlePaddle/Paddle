@@ -21,19 +21,25 @@ template <typename DeviceContext, typename T>
 class EqualMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* y = ctx.Input<framework::LoDTensor>("Y");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<bool>(ctx.GetPlace());
 
-    MLUCnnlTensorDesc input_x(*x, CNNL_LAYOUT_ARRAY,
-                              ToCnnlDataType(x->dtype()));
-    MLUCnnlTensorDesc input_y(*y, CNNL_LAYOUT_ARRAY,
-                              ToCnnlDataType(y->dtype()));
-    MLUCnnlTensorDesc output(*out, CNNL_LAYOUT_ARRAY,
-                             ToCnnlDataType(out->dtype()));
-    MLUCnnl::Logic(ctx, CNNL_LOGIC_OP_EQ, input_x.get(), GetBasePtr(x),
-                   input_y.get(), GetBasePtr(y), output.get(), GetBasePtr(out));
+    MLUCnnlTensorDesc input_x(
+        *x, CNNL_LAYOUT_ARRAY, ToCnnlDataType(x->dtype()));
+    MLUCnnlTensorDesc input_y(
+        *y, CNNL_LAYOUT_ARRAY, ToCnnlDataType(y->dtype()));
+    MLUCnnlTensorDesc output(
+        *out, CNNL_LAYOUT_ARRAY, ToCnnlDataType(out->dtype()));
+    MLUCnnl::Logic(ctx,
+                   CNNL_LOGIC_OP_EQ,
+                   input_x.get(),
+                   GetBasePtr(x),
+                   input_y.get(),
+                   GetBasePtr(y),
+                   output.get(),
+                   GetBasePtr(out));
   }
 };
 
@@ -41,19 +47,25 @@ template <typename DeviceContext, typename T>
 class NotEqualMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* y = ctx.Input<framework::LoDTensor>("Y");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<bool>(ctx.GetPlace());
 
-    MLUCnnlTensorDesc input_x(*x, CNNL_LAYOUT_ARRAY,
-                              ToCnnlDataType(x->dtype()));
-    MLUCnnlTensorDesc input_y(*y, CNNL_LAYOUT_ARRAY,
-                              ToCnnlDataType(y->dtype()));
-    MLUCnnlTensorDesc output(*out, CNNL_LAYOUT_ARRAY,
-                             ToCnnlDataType(out->dtype()));
-    MLUCnnl::Logic(ctx, CNNL_LOGIC_OP_NE, input_x.get(), GetBasePtr(x),
-                   input_y.get(), GetBasePtr(y), output.get(), GetBasePtr(out));
+    MLUCnnlTensorDesc input_x(
+        *x, CNNL_LAYOUT_ARRAY, ToCnnlDataType(x->dtype()));
+    MLUCnnlTensorDesc input_y(
+        *y, CNNL_LAYOUT_ARRAY, ToCnnlDataType(y->dtype()));
+    MLUCnnlTensorDesc output(
+        *out, CNNL_LAYOUT_ARRAY, ToCnnlDataType(out->dtype()));
+    MLUCnnl::Logic(ctx,
+                   CNNL_LOGIC_OP_NE,
+                   input_x.get(),
+                   GetBasePtr(x),
+                   input_y.get(),
+                   GetBasePtr(y),
+                   output.get(),
+                   GetBasePtr(out));
   }
 };
 
@@ -61,19 +73,25 @@ template <typename DeviceContext, typename T>
 class LessThanMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* y = ctx.Input<framework::LoDTensor>("Y");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<bool>(ctx.GetPlace());
 
-    MLUCnnlTensorDesc input_x(*x, CNNL_LAYOUT_ARRAY,
-                              ToCnnlDataType(x->dtype()));
-    MLUCnnlTensorDesc input_y(*y, CNNL_LAYOUT_ARRAY,
-                              ToCnnlDataType(y->dtype()));
-    MLUCnnlTensorDesc output(*out, CNNL_LAYOUT_ARRAY,
-                             ToCnnlDataType(out->dtype()));
-    MLUCnnl::Logic(ctx, CNNL_LOGIC_OP_LT, input_x.get(), GetBasePtr(x),
-                   input_y.get(), GetBasePtr(y), output.get(), GetBasePtr(out));
+    MLUCnnlTensorDesc input_x(
+        *x, CNNL_LAYOUT_ARRAY, ToCnnlDataType(x->dtype()));
+    MLUCnnlTensorDesc input_y(
+        *y, CNNL_LAYOUT_ARRAY, ToCnnlDataType(y->dtype()));
+    MLUCnnlTensorDesc output(
+        *out, CNNL_LAYOUT_ARRAY, ToCnnlDataType(out->dtype()));
+    MLUCnnl::Logic(ctx,
+                   CNNL_LOGIC_OP_LT,
+                   input_x.get(),
+                   GetBasePtr(x),
+                   input_y.get(),
+                   GetBasePtr(y),
+                   output.get(),
+                   GetBasePtr(out));
   }
 };
 
@@ -81,19 +99,25 @@ template <typename DeviceContext, typename T>
 class LessEqualMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* y = ctx.Input<framework::LoDTensor>("Y");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<bool>(ctx.GetPlace());
 
-    MLUCnnlTensorDesc input_x(*x, CNNL_LAYOUT_ARRAY,
-                              ToCnnlDataType(x->dtype()));
-    MLUCnnlTensorDesc input_y(*y, CNNL_LAYOUT_ARRAY,
-                              ToCnnlDataType(y->dtype()));
-    MLUCnnlTensorDesc output(*out, CNNL_LAYOUT_ARRAY,
-                             ToCnnlDataType(out->dtype()));
-    MLUCnnl::Logic(ctx, CNNL_LOGIC_OP_LE, input_x.get(), GetBasePtr(x),
-                   input_y.get(), GetBasePtr(y), output.get(), GetBasePtr(out));
+    MLUCnnlTensorDesc input_x(
+        *x, CNNL_LAYOUT_ARRAY, ToCnnlDataType(x->dtype()));
+    MLUCnnlTensorDesc input_y(
+        *y, CNNL_LAYOUT_ARRAY, ToCnnlDataType(y->dtype()));
+    MLUCnnlTensorDesc output(
+        *out, CNNL_LAYOUT_ARRAY, ToCnnlDataType(out->dtype()));
+    MLUCnnl::Logic(ctx,
+                   CNNL_LOGIC_OP_LE,
+                   input_x.get(),
+                   GetBasePtr(x),
+                   input_y.get(),
+                   GetBasePtr(y),
+                   output.get(),
+                   GetBasePtr(out));
   }
 };
 
@@ -101,19 +125,25 @@ template <typename DeviceContext, typename T>
 class GreaterThanMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* y = ctx.Input<framework::LoDTensor>("Y");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<bool>(ctx.GetPlace());
 
-    MLUCnnlTensorDesc input_x(*x, CNNL_LAYOUT_ARRAY,
-                              ToCnnlDataType(x->dtype()));
-    MLUCnnlTensorDesc input_y(*y, CNNL_LAYOUT_ARRAY,
-                              ToCnnlDataType(y->dtype()));
-    MLUCnnlTensorDesc output(*out, CNNL_LAYOUT_ARRAY,
-                             ToCnnlDataType(out->dtype()));
-    MLUCnnl::Logic(ctx, CNNL_LOGIC_OP_GT, input_x.get(), GetBasePtr(x),
-                   input_y.get(), GetBasePtr(y), output.get(), GetBasePtr(out));
+    MLUCnnlTensorDesc input_x(
+        *x, CNNL_LAYOUT_ARRAY, ToCnnlDataType(x->dtype()));
+    MLUCnnlTensorDesc input_y(
+        *y, CNNL_LAYOUT_ARRAY, ToCnnlDataType(y->dtype()));
+    MLUCnnlTensorDesc output(
+        *out, CNNL_LAYOUT_ARRAY, ToCnnlDataType(out->dtype()));
+    MLUCnnl::Logic(ctx,
+                   CNNL_LOGIC_OP_GT,
+                   input_x.get(),
+                   GetBasePtr(x),
+                   input_y.get(),
+                   GetBasePtr(y),
+                   output.get(),
+                   GetBasePtr(out));
   }
 };
 
@@ -121,19 +151,25 @@ template <typename DeviceContext, typename T>
 class GreaterEqualMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* y = ctx.Input<framework::LoDTensor>("Y");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<bool>(ctx.GetPlace());
 
-    MLUCnnlTensorDesc input_x(*x, CNNL_LAYOUT_ARRAY,
-                              ToCnnlDataType(x->dtype()));
-    MLUCnnlTensorDesc input_y(*y, CNNL_LAYOUT_ARRAY,
-                              ToCnnlDataType(y->dtype()));
-    MLUCnnlTensorDesc output(*out, CNNL_LAYOUT_ARRAY,
-                             ToCnnlDataType(out->dtype()));
-    MLUCnnl::Logic(ctx, CNNL_LOGIC_OP_GE, input_x.get(), GetBasePtr(x),
-                   input_y.get(), GetBasePtr(y), output.get(), GetBasePtr(out));
+    MLUCnnlTensorDesc input_x(
+        *x, CNNL_LAYOUT_ARRAY, ToCnnlDataType(x->dtype()));
+    MLUCnnlTensorDesc input_y(
+        *y, CNNL_LAYOUT_ARRAY, ToCnnlDataType(y->dtype()));
+    MLUCnnlTensorDesc output(
+        *out, CNNL_LAYOUT_ARRAY, ToCnnlDataType(out->dtype()));
+    MLUCnnl::Logic(ctx,
+                   CNNL_LOGIC_OP_GE,
+                   input_x.get(),
+                   GetBasePtr(x),
+                   input_y.get(),
+                   GetBasePtr(y),
+                   output.get(),
+                   GetBasePtr(out));
   }
 };
 
@@ -144,7 +180,8 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_MLU_KERNEL(
-    equal, ops::EqualMLUKernel<plat::MLUDeviceContext, plat::float16>,
+    equal,
+    ops::EqualMLUKernel<plat::MLUDeviceContext, plat::float16>,
     ops::EqualMLUKernel<plat::MLUDeviceContext, float>,
     ops::EqualMLUKernel<plat::MLUDeviceContext, int8_t>,
     ops::EqualMLUKernel<plat::MLUDeviceContext, uint8_t>,
@@ -153,7 +190,8 @@ REGISTER_OP_MLU_KERNEL(
     ops::EqualMLUKernel<plat::MLUDeviceContext, bool>);
 
 REGISTER_OP_MLU_KERNEL(
-    not_equal, ops::NotEqualMLUKernel<plat::MLUDeviceContext, plat::float16>,
+    not_equal,
+    ops::NotEqualMLUKernel<plat::MLUDeviceContext, plat::float16>,
     ops::NotEqualMLUKernel<plat::MLUDeviceContext, float>,
     ops::NotEqualMLUKernel<plat::MLUDeviceContext, int8_t>,
     ops::NotEqualMLUKernel<plat::MLUDeviceContext, uint8_t>,
@@ -162,7 +200,8 @@ REGISTER_OP_MLU_KERNEL(
     ops::NotEqualMLUKernel<plat::MLUDeviceContext, bool>);
 
 REGISTER_OP_MLU_KERNEL(
-    less_than, ops::LessThanMLUKernel<plat::MLUDeviceContext, plat::float16>,
+    less_than,
+    ops::LessThanMLUKernel<plat::MLUDeviceContext, plat::float16>,
     ops::LessThanMLUKernel<plat::MLUDeviceContext, float>,
     ops::LessThanMLUKernel<plat::MLUDeviceContext, int8_t>,
     ops::LessThanMLUKernel<plat::MLUDeviceContext, uint8_t>,
@@ -171,7 +210,8 @@ REGISTER_OP_MLU_KERNEL(
     ops::LessThanMLUKernel<plat::MLUDeviceContext, bool>);
 
 REGISTER_OP_MLU_KERNEL(
-    less_equal, ops::LessEqualMLUKernel<plat::MLUDeviceContext, plat::float16>,
+    less_equal,
+    ops::LessEqualMLUKernel<plat::MLUDeviceContext, plat::float16>,
     ops::LessEqualMLUKernel<plat::MLUDeviceContext, float>,
     ops::LessEqualMLUKernel<plat::MLUDeviceContext, int8_t>,
     ops::LessEqualMLUKernel<plat::MLUDeviceContext, uint8_t>,

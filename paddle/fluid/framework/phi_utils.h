@@ -43,8 +43,7 @@ namespace framework {
 
 OpKernelType TransPhiKernelKeyToOpKernelType(const phi::KernelKey& kernel_key);
 phi::KernelKey TransOpKernelTypeToPhiKernelKey(const OpKernelType& kernel_type);
-phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
-                             const phi::KernelKey& kernel_key,
+phi::KernelKey FallBackToCpu(const phi::KernelKey& kernel_key,
                              const framework::OperatorBase& op);
 
 /* Kernel Args parse */
@@ -66,13 +65,13 @@ struct ConvertToPhiContext {
 };
 
 template <>
-struct ConvertToPhiContext<platform::CPUDeviceContext> {
+struct ConvertToPhiContext<phi::CPUContext> {
   using TYPE = phi::CPUContext;
 };
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <>
-struct ConvertToPhiContext<platform::CUDADeviceContext> {
+struct ConvertToPhiContext<phi::GPUContext> {
   using TYPE = phi::GPUContext;
 };
 #endif

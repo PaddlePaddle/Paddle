@@ -37,19 +37,23 @@ class CastOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
 
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
-    auto out_dtype = BOOST_GET_CONST(int, op_desc.GetAttr("out_dtype"));
+    auto out_dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("out_dtype"));
 
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Identity, *input);
 
     switch (out_dtype) {
+      case 0:  // BOOL = 0
+        layer->setOutputType(0, nvinfer1::DataType::kBOOL);
+        break;
       case 2:  // INT32 = 2
-        layer->getOutput(0)->setType(nvinfer1::DataType::kINT32);
+      case 3:  // INT64 = 3 there is no int64 in tensorrt subgraph
+        layer->setOutputType(0, nvinfer1::DataType::kINT32);
         break;
       case 4:  // FP16 = 4
-        layer->getOutput(0)->setType(nvinfer1::DataType::kHALF);
+        layer->setOutputType(0, nvinfer1::DataType::kHALF);
         break;
       case 5:  // FP32 = 5
-        layer->getOutput(0)->setType(nvinfer1::DataType::kFLOAT);
+        layer->setOutputType(0, nvinfer1::DataType::kFLOAT);
         break;
       default:
         LOG(ERROR) << "Unable to convert a fluid data type(" << out_dtype

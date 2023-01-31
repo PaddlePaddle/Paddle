@@ -16,29 +16,15 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 
-namespace paddle {
-namespace platform {
-class CUDADeviceContext;
-}  // namespace platform
-}  // namespace paddle
-
 REGISTER_OP_CUDA_KERNEL(
     sequence_concat,
-    paddle::operators::SeqConcatKernel<paddle::platform::CUDADeviceContext,
-                                       float>,
-    paddle::operators::SeqConcatKernel<paddle::platform::CUDADeviceContext,
-                                       double>,
-    paddle::operators::SeqConcatKernel<paddle::platform::CUDADeviceContext,
-                                       int>,
-    paddle::operators::SeqConcatKernel<paddle::platform::CUDADeviceContext,
-                                       int64_t>);
+    paddle::operators::SeqConcatKernel<phi::GPUContext, float>,
+    paddle::operators::SeqConcatKernel<phi::GPUContext, double>,
+    paddle::operators::SeqConcatKernel<phi::GPUContext, int>,
+    paddle::operators::SeqConcatKernel<phi::GPUContext, int64_t>);
 REGISTER_OP_CUDA_KERNEL(
     sequence_concat_grad,
-    paddle::operators::SeqConcatGradKernel<paddle::platform::CUDADeviceContext,
-                                           float>,
-    paddle::operators::SeqConcatGradKernel<paddle::platform::CUDADeviceContext,
-                                           double>,
-    paddle::operators::SeqConcatGradKernel<paddle::platform::CUDADeviceContext,
-                                           int>,
-    paddle::operators::SeqConcatGradKernel<paddle::platform::CUDADeviceContext,
-                                           int64_t>);
+    paddle::operators::SeqConcatGradKernel<phi::GPUContext, float>,
+    paddle::operators::SeqConcatGradKernel<phi::GPUContext, double>,
+    paddle::operators::SeqConcatGradKernel<phi::GPUContext, int>,
+    paddle::operators::SeqConcatGradKernel<phi::GPUContext, int64_t>);

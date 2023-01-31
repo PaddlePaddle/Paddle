@@ -104,8 +104,8 @@ class EventCount {
       CheckState(state);
       uint64_t newstate = state + kWaiterInc;
       CheckState(newstate);
-      if (state_.compare_exchange_weak(state, newstate,
-                                       std::memory_order_seq_cst))
+      if (state_.compare_exchange_weak(
+              state, newstate, std::memory_order_seq_cst))
         return;
     }
   }
@@ -129,8 +129,8 @@ class EventCount {
                       std::memory_order_relaxed);
       }
       CheckState(newstate);
-      if (state_.compare_exchange_weak(state, newstate,
-                                       std::memory_order_acq_rel)) {
+      if (state_.compare_exchange_weak(
+              state, newstate, std::memory_order_acq_rel)) {
         if ((state & kSignalMask) == 0) {
           w->epoch += kEpochInc;
           Park(w);
@@ -154,8 +154,8 @@ class EventCount {
           ((state & kSignalMask) >> kSignalShift))
         newstate -= kSignalInc;
       CheckState(newstate);
-      if (state_.compare_exchange_weak(state, newstate,
-                                       std::memory_order_acq_rel))
+      if (state_.compare_exchange_weak(
+              state, newstate, std::memory_order_acq_rel))
         return;
     }
   }
@@ -186,8 +186,8 @@ class EventCount {
         newstate = (state & (kWaiterMask | kSignalMask)) | next;
       }
       CheckState(newstate);
-      if (state_.compare_exchange_weak(state, newstate,
-                                       std::memory_order_acq_rel)) {
+      if (state_.compare_exchange_weak(
+              state, newstate, std::memory_order_acq_rel)) {
         if (!notify_all && (signals < waiters))
           return;  // unblocked pre-wait thread
         if ((state & kStackMask) == kStackMask) return;

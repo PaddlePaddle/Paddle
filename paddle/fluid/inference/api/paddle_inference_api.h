@@ -25,6 +25,7 @@ limitations under the License. */
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -92,6 +93,20 @@ class PD_INFER_DECL Predictor {
   explicit Predictor(const Config& config);
 
   ///
+  /// \brief Get all input names and their corresponding shapes
+  ///
+  /// \return the map of input names and shape
+  ///
+  std::map<std::string, std::vector<int64_t>> GetInputTensorShape();
+
+  ///
+  /// \brief Get all input names and their corresponding type
+  ///
+  /// \return the map of input names and type
+  ///
+  std::map<std::string, DataType> GetInputTypes();
+
+  ///
   /// \brief Get the input names
   ///
   /// \return input names
@@ -129,6 +144,20 @@ class PD_INFER_DECL Predictor {
   std::unique_ptr<Tensor> GetOutputHandle(const std::string& name);
 
   ///
+  /// \brief Get all output names and their corresponding shapes
+  ///
+  /// \return the map of output names and shape
+  ///
+  std::map<std::string, std::vector<int64_t>> GetOutputTensorShape();
+
+  ///
+  /// \brief Get all output names and their corresponding type
+  ///
+  /// \return the map of output names and type
+  ///
+  std::map<std::string, DataType> GetOutputTypes();
+
+  ///
   /// \brief Clone to get the new predictor. thread safe.
   ///
   /// \return get a new predictor
@@ -148,6 +177,16 @@ class PD_INFER_DECL Predictor {
   /// MemoryPool.
   ///
   uint64_t TryShrinkMemory();
+
+  ///
+  /// \brief Register a output hook function to operate the intermediate tensor
+  /// of op output. when using this function, memory reuse should be tured off.
+  /// The hook function signature is void(const std::string&, const
+  /// std::string&, const Tensor&>). Here, the first parameter is op's
+  /// type, the second param is output var name of the op, and the third
+  /// parameter is output tensor with the var name.
+  ///
+  void RegisterOutputHook(const Exp_OutputHookFunc& hookfunc);
 
   ///
   /// \brief Get the execution stream on devices with a concept of stream,
@@ -182,6 +221,16 @@ PD_INFER_DECL std::string GetVersion();
 PD_INFER_DECL std::tuple<int, int, int> GetTrtCompileVersion();
 PD_INFER_DECL std::tuple<int, int, int> GetTrtRuntimeVersion();
 PD_INFER_DECL std::string UpdateDllFlag(const char* name, const char* value);
+
+PD_INFER_DECL void ConvertToMixedPrecision(
+    const std::string& model_file,
+    const std::string& params_file,
+    const std::string& mixed_model_file,
+    const std::string& mixed_params_file,
+    PrecisionType mixed_precision,
+    PlaceType backend,
+    bool keep_io_types = true,
+    std::unordered_set<std::string> black_list = {});
 
 namespace services {
 ///

@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import ssl
+import sys
+
 import requests
+
 import paddle
 
 
@@ -32,6 +34,9 @@ def download_file():
 
     if paddle.is_compiled_with_npu():
         url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut_npu')
+
+    if paddle.is_compiled_with_mlu():
+        url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut_mlu')
 
     f = requests.get(url)
     data = f.text

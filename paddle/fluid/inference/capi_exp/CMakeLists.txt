@@ -20,7 +20,7 @@ cc_library(
   SRCS ${C_API_SRCS}
   DEPS paddle_inference)
 
-if(NOT ON_INFER)
+if(NOT ON_INFER AND NOT WIN32)
   return()
 endif()
 
@@ -31,6 +31,18 @@ cc_library(
   DEPS paddle_inference)
 set_target_properties(paddle_inference_c_shared PROPERTIES OUTPUT_NAME
                                                            paddle_inference_c)
+
+if(APPLE)
+  target_link_libraries(
+    paddle_inference_c_shared
+    xxhash
+    utf8proc
+    cryptopp
+    protobuf
+    gflags
+    cblas)
+endif()
+
 if(WIN32)
   target_link_libraries(paddle_inference_c_shared shlwapi.lib)
 endif()

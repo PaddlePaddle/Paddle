@@ -21,7 +21,7 @@
 #include <hip/hip_fp16.h>
 #endif
 
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/common/float16.h"
 
 namespace phi {
@@ -65,7 +65,7 @@ __device__ __forceinline__ T WarpReduce(T val, ReduceOp reducer) {
   unsigned mask = 0u;
   CREATE_SHFL_MASK(mask, true);
   for (int stride = details::kWarpSize / 2; stride > 0; stride >>= 1) {
-    T temp = paddle::platform::CudaShuffleDownSync(mask, val, stride);
+    T temp = phi::backends::gpu::CudaShuffleDownSync(mask, val, stride);
     val = reducer(val, temp);
   }
   return val;
@@ -91,10 +91,13 @@ __device__ __forceinline__ T BlockXReduce(T val, ReduceOp reducer) {
   __shared__ T shared[2 * kWarpSize];
   int block_dim_x = blockDim.x;
   if (blockDim.x > kWarpSize) {
-    block_dim_x = blockDim.x / kWarpSize;
-    int lane = threadIdx.x % kWarpSize;
+    // Bit operation can be used when kWarpSize is 32 or 64 now
+    constexpr int rshift_val =
+        (kWarpSize != 32) ? ((kWarpSize == 64) ? 6 : 5) : 5;
+    block_dim_x = blockDim.x >> rshift_val;
+    int lane = threadIdx.x & (kWarpSize - 1);
     int tid = threadIdx.y * blockDim.x + threadIdx.x;
-    int wid = tid / kWarpSize;
+    int wid = tid >> rshift_val;
     int bid = threadIdx.y;
     val = WarpReduce(val, reducer);
     if (lane == 0) {
@@ -107,9 +110,10 @@ __device__ __forceinline__ T BlockXReduce(T val, ReduceOp reducer) {
   unsigned mask = 0u;
   CREATE_SHFL_MASK(mask, true);
   for (int stride = 1; stride < block_dim_x; stride <<= 1) {
-    T temp = paddle::platform::CudaShuffleDownSync(mask, val, stride);
+    T temp = phi::backends::gpu::CudaShuffleDownSync(mask, val, stride);
     val = reducer(val, temp);
   }
+  __syncthreads();
   if (threadIdx.x == 0) {
     shared[threadIdx.y] = val;
   }
@@ -200,7 +204,6 @@ __device__ inline int GetLastPow2(int n) {
  * OutT: The data type of out.
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
- * BlockSize: Identifies the current device thread index method. For GPU,
  * threadIdx.x is used as the thread index. Currently only GPU was supported.
  * OpFunc: Compute functor which has an operator() as following:
  *     template <typename InT, typename OutT>
@@ -215,12 +218,7 @@ __device__ inline int GetLastPow2(int n) {
  * in: The register pointer of in, the size is NX * NY.
  * compute: Compute function which was declared like OpFunc<InT, OutT>().
  */
-template <typename InT,
-          typename OutT,
-          int NX,
-          int NY,
-          int BlockSize,
-          class OpFunc>
+template <typename InT, typename OutT, int NX, int NY, class OpFunc>
 __device__ __forceinline__ void ElementwiseUnary(OutT* out,
                                                  const InT* in,
                                                  OpFunc compute) {
@@ -239,7 +237,6 @@ __device__ __forceinline__ void ElementwiseUnary(OutT* out,
  * OutT: The data type of out.
  * NX: The number of data columns computed by each thread.
  * NY: The number of data rows computed by each thread.
- * BlockSize: Identifies the current device thread index method. For GPU,
  * threadIdx.x is used as the thread index. Currently only GPU was supported.
  * OpFunc: Compute functor which has an operator() as following:
  *     template <typename InT>
@@ -255,12 +252,7 @@ __device__ __forceinline__ void ElementwiseUnary(OutT* out,
  * in2: The register pointer of second input, size is NX * NY.
  * compute: Compute function which was declared like OpFunc<InT>().
  */
-template <typename InT,
-          typename OutT,
-          int NX,
-          int NY,
-          int BlockSize,
-          class OpFunc>
+template <typename InT, typename OutT, int NX, int NY, class OpFunc>
 __device__ __forceinline__ void ElementwiseBinary(OutT* out,
                                                   const InT* in1,
                                                   const InT* in2,
@@ -271,12 +263,7 @@ __device__ __forceinline__ void ElementwiseBinary(OutT* out,
   }
 }
 
-template <typename InT,
-          typename OutT,
-          int NX,
-          int NY,
-          int BlockSize,
-          class OpFunc>
+template <typename InT, typename OutT, int NX, int NY, class OpFunc>
 __device__ __forceinline__ void ElementwiseBinary(
     OutT* out, const InT* in1, const InT* in2, OpFunc compute, int read_lens) {
 #pragma unroll
@@ -294,7 +281,6 @@ __device__ __forceinline__ void ElementwiseBinary(
  * OutT: The data type of out.
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
- * BlockSize: Identifies the current device thread index method. For GPU,
  * threadIdx.x is used as the thread index. Currently only GPU was supported.
  * OpFunc: Compute functor which has an operator() as following
  *     template <typename InT>
@@ -312,12 +298,7 @@ __device__ __forceinline__ void ElementwiseBinary(
  * in3: The register pointer of third input, size is NX * NY.
  * compute: Compute function which was declared like OpFunc<InT>().
  */
-template <typename InT,
-          typename OutT,
-          int NX,
-          int NY,
-          int BlockSize,
-          class OpFunc>
+template <typename InT, typename OutT, int NX, int NY, class OpFunc>
 __device__ __forceinline__ void ElementwiseTernary(
     OutT* out, const InT* in1, const InT* in2, const InT* in3, OpFunc compute) {
 #pragma unroll
@@ -335,7 +316,6 @@ __device__ __forceinline__ void ElementwiseTernary(
  * OutT: The data type of out.
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
- * BlockSize: Identifies the current device thread index method. For GPU,
  * threadIdx.x is used as the thread index. Currently only GPU was supported.
  * Arity: The size of ins.
  * OpFunc: Compute functor which has an operator() as following:
@@ -351,13 +331,7 @@ __device__ __forceinline__ void ElementwiseTernary(
  * ins: A pointers of array consisting of multiple inputs.
  * compute: Compute function which was declared like OpFunc<InT>().
  */
-template <typename InT,
-          typename OutT,
-          int NX,
-          int NY,
-          int BlockSize,
-          int Arity,
-          class OpFunc>
+template <typename InT, typename OutT, int NX, int NY, int Arity, class OpFunc>
 __device__ __forceinline__ void ElementwiseAny(OutT* out,
                                                InT (*ins)[NX * NY],
                                                OpFunc compute) {
@@ -382,7 +356,6 @@ __device__ __forceinline__ void ElementwiseAny(OutT* out,
  * OutT: The data type of out.
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
- * BlockSize: Identifies the current device thread index method. For GPU,
  * threadIdx.x is used as the thread index. Currently only GPU was supported.
  * OpFunc: Compute functor which has an operator() as following
  *     template <typename InT, typename OutT>
@@ -398,12 +371,7 @@ __device__ __forceinline__ void ElementwiseAny(OutT* out,
  * in2: The register pointer of second input, size is NX * NY.
  * compute: Compute function which was declared like OpFunc<InT, OutT>().
  */
-template <typename InT,
-          typename OutT,
-          int NX,
-          int NY,
-          int BlockSize,
-          class OpFunc>
+template <typename InT, typename OutT, int NX, int NY, class OpFunc>
 __device__ __forceinline__ void CycleBinary(OutT* out,
                                             const InT* in1,
                                             const InT* in2,
@@ -421,14 +389,13 @@ __device__ __forceinline__ void CycleBinary(OutT* out,
 /**
  * @brief The Reduce provides collective methods for computing a parallel
  * reduction of items partitioned across a CUDA block and intra thread. When
- * ReduceMode == kLocalMode, thread reduce along nx. When ReduceMode ==
- * kGlobalMode, use shared memory to reduce between threads.
+ * ReduceMode == kLocalMode, use shared memory to reduce between threads.When
+ * ReduceMode == kGlobalMode, thread reduce along nx.
  *
  * @template paraments
  * T: The type of data.
  * NX: The number of data continuously loaded by each thread.
  * NY: The number of data rows loaded by each thread, only NY = 1 was supported.
- * BlockSize: Identifies the current device thread index method. For GPU,
  * threadIdx.x is used as the thread index. Currently only GPU was supported.
  * ReduceFunctor: Compute functor which has an operator() as following
  *     template <typename InT>
@@ -448,7 +415,6 @@ __device__ __forceinline__ void CycleBinary(OutT* out,
 template <typename T,
           int NX,
           int NY,
-          int BlockSize,
           class ReduceFunctor,
           details::ReduceMode Mode>
 __device__ __forceinline__ void Reduce(T* out,
@@ -494,7 +460,6 @@ __device__ __forceinline__ void Reduce(T* out,
  * OutT: The data type of out.
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
- * BlockSize: Identifies the current device thread index method. Currently only
  * GPU was supported.
  * OpFunc: Compute functor which has an operator() as following
  *     template <typename InT>
@@ -509,12 +474,7 @@ __device__ __forceinline__ void Reduce(T* out,
  * out: The register pointer of out, the size is NX * NY.
  * compute: Compute function which was declared like OpFunc<InT>().
  */
-template <typename InT,
-          typename OutT,
-          int NX,
-          int NY,
-          int BlockSize,
-          class OpFunc>
+template <typename InT, typename OutT, int NX, int NY, class OpFunc>
 __device__ __forceinline__ void ElementwiseConstant(OutT* out, OpFunc compute) {
 #pragma unroll
   for (int idx = 0; idx < NX * NY; idx++) {
@@ -532,7 +492,6 @@ __device__ __forceinline__ void ElementwiseConstant(OutT* out, OpFunc compute) {
  * hiprandStatePhilox4_32_10_t.
  * OutT: the type of out register.
  * ReturnsCount: The number of random data generated by OpFunc.
- * BlockSize: Identifies the current device thread index method. Currently only
  * GPU was supported.
  * OpFunc: Compute functor which has an operator() as following
  *     template <typename T>
@@ -549,11 +508,7 @@ __device__ __forceinline__ void ElementwiseConstant(OutT* out, OpFunc compute) {
  * compute: Compute function which was declared like OpFunc<T>().
  */
 
-template <typename StateType,
-          typename OutT,
-          int ReturnsCount,
-          int BlockSize,
-          class OpFunc>
+template <typename StateType, typename OutT, int ReturnsCount, class OpFunc>
 __device__ __forceinline__ void ElementwiseRandom(OutT* out,
                                                   OpFunc compute,
                                                   StateType* state) {
@@ -571,7 +526,6 @@ __device__ __forceinline__ void ElementwiseRandom(OutT* out,
  * @template paraments
  * InT: the type of input register.
  * OutT: the type of out register.
- * BlockSize: Identifies the current device thread index method. Currently only
  * GPU was supported.
  * OpFunc: Compute functor which has an operator() as following
  *     template <typename T>
@@ -589,7 +543,7 @@ __device__ __forceinline__ void ElementwiseRandom(OutT* out,
  */
 
 #define SHARED_SIZE_LIMIT 512
-template <typename InT, typename OutT, int BlockSize, class OpFunc>
+template <typename InT, typename OutT, class OpFunc>
 __device__ __forceinline__ void Cumsum(OutT* out,
                                        const InT* in,
                                        OpFunc compute) {
@@ -632,7 +586,6 @@ __device__ __forceinline__ void Cumsum(OutT* out,
  * @template paraments
  * InT: the type of input register.
  * OutT: the type of out register.
- * BlockSize: Identifies the current device thread index method. Currently only
  * GPU was supported.
  *
  * @param
@@ -645,7 +598,7 @@ __device__ __forceinline__ void Cumsum(OutT* out,
 #define SHARED_SIZE_LIMIT 1024
 // each thread load 2 data from global memory so SHARED_SIZE_LIMIT must
 // larger than blockDim.x * 2
-template <typename InT, typename OutT, int BlockSize>
+template <typename InT, typename OutT>
 __device__ __forceinline__ void Sort(OutT* out,
                                      const InT* in,
                                      int num,
@@ -689,7 +642,6 @@ __device__ __forceinline__ void Sort(OutT* out,
  * InT: The type of input register.
  * OutT: The type of out register.
  * IndexType: The type of index.
- * BlockSize: Identifies the current device thread index method. Currently only
  * GPU was supported.
  *
  * @param
@@ -701,7 +653,7 @@ __device__ __forceinline__ void Sort(OutT* out,
  * monotonic_type: if monotonic_type = 1 then sorted in ascending order, eles
  * sorted in escending.
  */
-template <typename InT, typename OutT, typename IndexType, int BlockSize>
+template <typename InT, typename OutT, typename IndexType>
 __device__ __forceinline__ void Sort(OutT* out,
                                      IndexType* out_index,
                                      const InT* in,

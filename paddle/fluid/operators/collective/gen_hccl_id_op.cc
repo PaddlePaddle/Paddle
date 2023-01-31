@@ -35,7 +35,8 @@ namespace operators {
 
 class GenHCCLIdOp : public framework::OperatorBase {
  public:
-  GenHCCLIdOp(const std::string& type, const framework::VariableNameMap& inputs,
+  GenHCCLIdOp(const std::string& type,
+              const framework::VariableNameMap& inputs,
               const framework::VariableNameMap& outputs,
               const framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
@@ -48,11 +49,13 @@ class GenHCCLIdOp : public framework::OperatorBase {
     std::string endpoint = trainers[trainer_id];
 
     PADDLE_ENFORCE_GE(
-        trainer_id, 0,
+        trainer_id,
+        0,
         platform::errors::InvalidArgument("trainer_id %d is less than 0. Its "
                                           "valid range is [0, trainer_size)"));
     PADDLE_ENFORCE_LT(
-        trainer_id, static_cast<int>(trainers.size()),
+        trainer_id,
+        static_cast<int>(trainers.size()),
         platform::errors::OutOfRange("trainer_id %d is out of range. Its valid "
                                      "range is [0, trainer_size)",
                                      trainer_id));
@@ -65,19 +68,23 @@ class GenHCCLIdOp : public framework::OperatorBase {
 
     if (use_hierarchical_allreduce) {
       PADDLE_ENFORCE_GT(
-          trainers.size(), 1,
+          trainers.size(),
+          1,
           platform::errors::PreconditionNotMet(
               "The number of collective trainers %llu <= 1", trainers.size()));
       PADDLE_ENFORCE_GT(
-          inter_nranks, 1,
+          inter_nranks,
+          1,
           platform::errors::PreconditionNotMet(
               "inter_nranks %d <= 1 while in hierarchical allreduce mode",
               inter_nranks));
       PADDLE_ENFORCE_EQ(
-          trainers.size() % inter_nranks, 0,
+          trainers.size() % inter_nranks,
+          0,
           platform::errors::PreconditionNotMet(
               "The number of trainers %llu mod inter_nranks %d is not equal 0",
-              trainers.size(), inter_nranks));
+              trainers.size(),
+              inter_nranks));
 
       inter_trainer_id = trainer_id % inter_nranks;
 
@@ -106,8 +113,8 @@ class GenHCCLIdOp : public framework::OperatorBase {
     if (trainer_id == 0) {
       // server endpoints
       std::vector<std::string> flat_endpoints;
-      flat_endpoints.insert(flat_endpoints.begin(), trainers.begin() + 1,
-                            trainers.end());
+      flat_endpoints.insert(
+          flat_endpoints.begin(), trainers.begin() + 1, trainers.end());
       SendBroadCastHCCLID(flat_endpoints, hccl_comm_num, func, scope);
     } else {
       server_fd = CreateListenSocket(endpoint);
@@ -164,7 +171,8 @@ class GenHCCLIdOp : public framework::OperatorBase {
 #else
 class GenHCCLIdOp : public framework::OperatorBase {
  public:
-  GenHCCLIdOp(const std::string& type, const framework::VariableNameMap& inputs,
+  GenHCCLIdOp(const std::string& type,
+              const framework::VariableNameMap& inputs,
               const framework::VariableNameMap& outputs,
               const framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}

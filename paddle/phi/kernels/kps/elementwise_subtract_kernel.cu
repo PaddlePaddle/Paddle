@@ -25,19 +25,9 @@ namespace phi {
 // Create the definition of Subtract
 DEFINE_CUDA_ELEMENTWISE_OP(Subtract)
 
-template <typename T, typename Context>
-void SubtractKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
-                    DenseTensor* out) {
-  int axis = -1;
-  SubtractRawKernel<T>(dev_ctx, x, y, axis, out);
-}
-
 }  // namespace phi
 
 #ifdef PADDLE_WITH_XPU_KP
-PD_REGISTER_KERNEL(subtract, KPS, ALL_LAYOUT, phi::SubtractKernel, float) {}
 PD_REGISTER_KERNEL(
     subtract_raw, KPS, ALL_LAYOUT, phi::SubtractRawKernel, float) {}
 #else
@@ -60,17 +50,5 @@ PD_REGISTER_KERNEL(subtract_raw,
                    bfloat16,
                    complex64,
                    complex128) {}
-PD_REGISTER_KERNEL(subtract,
-                   KPS,
-                   ALL_LAYOUT,
-                   phi::SubtractKernel,
-                   float,
-                   double,
-                   int16_t,
-                   int,
-                   int64_t,
-                   phi::dtype::float16,
-                   complex64,
-                   complex128,
-                   phi::dtype::bfloat16) {}
+
 #endif

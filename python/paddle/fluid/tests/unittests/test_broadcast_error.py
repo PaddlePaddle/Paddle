@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
 import paddle.fluid.core as core
 
 
 class TestBroadcastOpCpu(OpTest):
-
     def setUp(self):
         self.op_type = "broadcast"
         input = np.random.random((100, 2)).astype("float32")

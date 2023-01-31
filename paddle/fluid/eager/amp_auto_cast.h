@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/eager/api/generated/fluid_generated/dygraph_forward_api.h"
+#include "paddle/fluid/eager/api/manual/fluid_manual/dygraph_forward_api.h"
 #include "paddle/fluid/framework/convert_utils.h"
 
 namespace egr {
@@ -28,7 +29,8 @@ static inline bool NeedCast(const paddle::experimental::Tensor& tensor,
       paddle::platform::is_xpu_place(place) ||
       paddle::platform::is_mlu_place(place) ||
       paddle::platform::is_npu_place(place) ||
-      paddle::platform::is_npu_pinned_place(place)) {
+      paddle::platform::is_npu_pinned_place(place) ||
+      paddle::platform::is_custom_place(place)) {
     // CudaPinndePlace is added for varbase created by dataloader
     if ((data_type == paddle::experimental::DataType::FLOAT32 ||
          data_type == paddle::experimental::DataType::FLOAT16 ||
@@ -43,10 +45,11 @@ static inline bool NeedCast(const paddle::experimental::Tensor& tensor,
 inline std::vector<paddle::experimental::Tensor> AmpAutoCasts(
     const std::string& inputs_name,
     const std::vector<paddle::experimental::Tensor>& inputs,
-    const paddle::experimental::DataType& dst_dtype, std::string op_name) {
+    const paddle::experimental::DataType& dst_dtype,
+    std::string op_name) {
   VLOG(6) << "AMP AmpAutoCasts:"
           << " inputs(" << inputs_name << ") dst_dtype("
-          << paddle::framework::DataType2String(dst_dtype) << ").";
+          << phi::DataTypeToString(dst_dtype) << ").";
   std::vector<paddle::experimental::Tensor> inputs_casted;
   for (auto& input : inputs) {
     if (NeedCast(input, dst_dtype)) {
@@ -63,11 +66,13 @@ inline std::vector<paddle::experimental::Tensor> AmpAutoCasts(
 }
 
 inline paddle::experimental::Tensor AmpAutoCast(
-    const std::string& input_name, const paddle::experimental::Tensor& input,
-    const paddle::experimental::DataType& dst_dtype, std::string op_name) {
+    const std::string& input_name,
+    const paddle::experimental::Tensor& input,
+    const paddle::experimental::DataType& dst_dtype,
+    std::string op_name) {
   VLOG(6) << "AMP AmpAutoCasts:"
           << " input(" << input_name << ") dst_dtype("
-          << paddle::framework::DataType2String(dst_dtype) << ").";
+          << phi::DataTypeToString(dst_dtype) << ").";
   if (dst_dtype == paddle::experimental::DataType::FLOAT16) {
     if (op_name == "run_program") {
       return input;

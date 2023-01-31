@@ -49,8 +49,8 @@ TEST(LiteSubgraphPass, basic) {
   CHECK(inference::lite::OpTeller::Global().Tell("while", *host_while_op))
       << "Lite operator teller test failed.";
 
-  lite::AppendLiteSubBlocks({host_while_op}, &engine_program, &host_program,
-                            host_sub_block->ID());
+  lite::AppendLiteSubBlocks(
+      {host_while_op}, &engine_program, &host_program, host_sub_block->ID());
   lite::ModifyHostSubgraphOps(&host_program, host_sub_block, {host_while_op});
   lite::StrToBinaryFile("./", "test");
 }

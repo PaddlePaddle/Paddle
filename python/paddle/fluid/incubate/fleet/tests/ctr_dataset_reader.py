@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import logging
 import tarfile
 import os
@@ -22,9 +20,9 @@ import paddle
 import paddle.distributed.fleet as fleet
 from paddle.fluid.log_helper import get_logger
 
-logger = get_logger("paddle",
-                    logging.INFO,
-                    fmt='%(asctime)s - %(levelname)s - %(message)s')
+logger = get_logger(
+    "paddle", logging.INFO, fmt='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 DATA_URL = "http://paddle-ctr-data.bj.bcebos.com/avazu_ctr_data.tgz"
 DATA_MD5 = "c11df99fbd14e53cd4bfa6567344b26e"
@@ -61,17 +59,16 @@ def load_lr_input_record(sent):
 
 
 class DatasetCtrReader(fleet.MultiSlotDataGenerator):
-
     def generate_sample(self, line):
-
         def iter():
             fs = line.strip().split('\t')
             dnn_input = load_dnn_input_record(fs[0])
             lr_input = load_lr_input_record(fs[1])
             click = [int(fs[2])]
-            yield ("dnn_data", dnn_input), \
-                  ("lr_data", lr_input), \
-                  ("click", click)
+            yield ("dnn_data", dnn_input), ("lr_data", lr_input), (
+                "click",
+                click,
+            )
 
         return iter
 
@@ -87,7 +84,9 @@ def prepare_data():
         lines = f.readlines()
     err_info = "wrong meta format"
     assert len(lines) == 2, err_info
-    assert 'dnn_input_dim:' in lines[0] and 'lr_input_dim:' in lines[1], err_info
+    assert (
+        'dnn_input_dim:' in lines[0] and 'lr_input_dim:' in lines[1]
+    ), err_info
     res = map(int, [_.split(':')[1] for _ in lines])
     res = list(res)
     dnn_input_dim = res[0]

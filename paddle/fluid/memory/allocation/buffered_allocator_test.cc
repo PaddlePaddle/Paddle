@@ -20,36 +20,10 @@
 
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
-#include "paddle/fluid/memory/allocation/locked_allocator.h"
 
 namespace paddle {
 namespace memory {
 namespace allocation {
-
-inline std::unique_ptr<BufferedAllocator> GetBufferedAllocator(
-    phi::Allocation *allocation, bool thread_safe) {
-  std::unique_ptr<Allocator> allocator(new BestFitAllocator(allocation));
-  if (thread_safe) {
-    allocator.reset(new LockedAllocator(std::move(allocator)));
-  }
-
-  return std::unique_ptr<BufferedAllocator>(
-      new BufferedAllocator(std::move(allocator)));
-}
-
-TEST(buffered_allocator, thread_safety) {
-  std::unique_ptr<CPUAllocator> allocator(new CPUAllocator());
-  auto chunk = allocator->Allocate(1 << 20);
-  {
-    auto buf_allocator = GetBufferedAllocator(chunk.get(), true);
-    ASSERT_EQ(buf_allocator->IsAllocThreadSafe(), true);
-  }
-
-  {
-    auto buf_allocator = GetBufferedAllocator(chunk.get(), false);
-    ASSERT_EQ(buf_allocator->IsAllocThreadSafe(), false);
-  }
-}
 
 class StubAllocation : public Allocation {
  public:
@@ -71,8 +45,9 @@ class StubAllocator : public Allocator {
   void FreeImpl(phi::Allocation *allocation) override {
     auto *alloc = dynamic_cast<StubAllocation *>(allocation);
     PADDLE_ENFORCE_NOT_NULL(
-        alloc, platform::errors::InvalidArgument(
-                   "The input allocation is not type of StubAllocation."));
+        alloc,
+        platform::errors::InvalidArgument(
+            "The input allocation is not type of StubAllocation."));
     if (alloc->ptr()) delete[] static_cast<uint8_t *>(alloc->ptr());
     ++destruct_count_;
     delete allocation;
@@ -135,12 +110,15 @@ TEST(buffered_allocator, lazy_free) {
 TEST(buffered_allocator, garbage_collection) {
   std::unique_ptr<CPUAllocator> cpu_allocator(new CPUAllocator());
   auto chunk = cpu_allocator->Allocate(2048);
-  auto allocator = GetBufferedAllocator(chunk.get(), false);
-  auto x1 = allocator->Allocate(1600);
-  auto x2 = allocator->Allocate(400);
+  std::unique_ptr<Allocator> allocator(new BestFitAllocator(chunk.get()));
+
+  auto buffered_allocator = std::unique_ptr<BufferedAllocator>(
+      new BufferedAllocator(std::move(allocator)));
+  auto x1 = buffered_allocator->Allocate(1600);
+  auto x2 = buffered_allocator->Allocate(400);
   x1 = nullptr;
   x2 = nullptr;
-  auto x3 = allocator->Allocate(1600);
+  auto x3 = buffered_allocator->Allocate(1600);
   ASSERT_NE(x3, nullptr);
   ASSERT_NE(x3->ptr(), nullptr);
 }

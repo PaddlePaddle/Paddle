@@ -46,7 +46,8 @@ class HeterXpuService : public HeterService {
   HeterXpuService() {}
   virtual ~HeterXpuService() {}
   void service(::google::protobuf::RpcController* controller,
-               const HeterRequest* request, HeterResponse* response,
+               const HeterRequest* request,
+               HeterResponse* response,
                ::google::protobuf::Closure* done) {
     brpc::ClosureGuard done_guard(done);
     int ret = 0;

@@ -74,20 +74,23 @@ namespace imperative {
 // TODO(jiabin): Change this and remove nolint
 void benchmark_fluid_scale(
     const std::shared_ptr<imperative::VarBase>& X,  // NOLINT
-    const paddle::platform::Place& place, bool accuracy_check = false);
+    const paddle::platform::Place& place,
+    bool accuracy_check = false);
 
 /* ---- Fluid MatMul ---- */
 void benchmark_fluid_matmul(
     const std::shared_ptr<imperative::VarBase>& X,
     const std::shared_ptr<imperative::VarBase>& Y,  // NOLINT
-    const paddle::platform::Place& place, bool accuracy_check = false);
+    const paddle::platform::Place& place,
+    bool accuracy_check = false);
 
 /* ---- Fluid MLP ---- */
 void benchmark_fluid_mlp(
     const std::shared_ptr<imperative::VarBase>& X,
     const std::vector<std::shared_ptr<imperative::VarBase>>& Ws,
     const std::vector<std::shared_ptr<imperative::VarBase>>& Bs,
-    const paddle::platform::Place& place, bool accuracy_check = false);
+    const paddle::platform::Place& place,
+    bool accuracy_check = false);
 
 }  // namespace imperative
 }  // namespace paddle

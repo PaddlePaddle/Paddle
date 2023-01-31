@@ -103,10 +103,14 @@ inline paddle::experimental::DataType GetAmpDestDtype(
         return paddle::experimental::DataType::FLOAT16;
       } else if (paddle::imperative::AmpOperators::Instance()
                      .GetMutableBlockOps()
+                     ->count(op_name) ||
+                 paddle::imperative::AmpOperators::Instance()
+                     .GetMutableUnsupportedFp16Ops()
                      ->count(op_name)) {
         return paddle::experimental::DataType::FLOAT32;
       } else {
-        auto dst_type = GetPromoteType(op_name, amp_tensors_vector,
+        auto dst_type = GetPromoteType(op_name,
+                                       amp_tensors_vector,
                                        paddle::experimental::DataType::FLOAT16);
         if (dst_type == paddle::experimental::DataType::FLOAT16 &&
             paddle::imperative::AmpOperators::Instance()
@@ -140,7 +144,8 @@ inline paddle::experimental::DataType GetAmpDestDtype(
         return paddle::experimental::DataType::FLOAT32;
       } else {
         auto dst_type =
-            GetPromoteType(op_name, amp_tensors_vector,
+            GetPromoteType(op_name,
+                           amp_tensors_vector,
                            paddle::experimental::DataType::BFLOAT16);
         if (dst_type == paddle::experimental::DataType::BFLOAT16 &&
             paddle::imperative::AmpOperators::Instance()

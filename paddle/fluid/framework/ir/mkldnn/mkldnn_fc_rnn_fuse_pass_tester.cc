@@ -30,15 +30,16 @@ void TestFcRNNFusePass(const std::string& pass_name,
   std::unique_ptr<ir::Graph> graph =
       (pass_name == "fc_gru_fuse_pass"
            ? fc_gru_test::PrepareGraph(activation, gate_activation)
-           : fc_lstm_test::PrepareGraph(gate_activation, activation,
-                                        candidate_activation));
+           : fc_lstm_test::PrepareGraph(
+                 gate_activation, activation, candidate_activation));
   auto mkldnn_placement_pass_ =
       PassRegistry::Instance().Get("mkldnn_placement_pass");
   mkldnn_placement_pass_->Set("mkldnn_enabled_op_types",
                               new std::unordered_set<std::string>({}));
-  graph->Set("__param_scope__", (pass_name == "fc_gru_fuse_pass"
-                                     ? fc_gru_test::CreateParamScope()
-                                     : fc_lstm_test::CreateParamScope()));
+  graph->Set(
+      "__param_scope__",
+      (pass_name == "fc_gru_fuse_pass" ? fc_gru_test::CreateParamScope()
+                                       : fc_lstm_test::CreateParamScope()));
   graph.reset(mkldnn_placement_pass_->Apply(graph.release()));
 
   auto check_num_mkldnn_nodes = [&](const std::unique_ptr<ir::Graph>& graph) {

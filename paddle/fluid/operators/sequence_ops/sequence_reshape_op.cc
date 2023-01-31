@@ -25,16 +25,19 @@ class SequenceReshapeOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
+                      true,
                       platform::errors::NotFound(
                           "Input(X) of SequenceReshapeOp should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
+        ctx->HasOutput("Out"),
+        true,
         platform::errors::NotFound(
             "Output(Out) of SequenceReshapeOp should not be null."));
     auto x_dims = ctx->GetInputDim("X");
     auto x_numel = product(x_dims);
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2U,
+    PADDLE_ENFORCE_EQ(x_dims.size(),
+                      2U,
                       platform::errors::InvalidArgument(
                           "The rank of SequenceReshapeOp Input(X) should be 2. "
                           "But the rank we received is %d",
@@ -100,11 +103,13 @@ class SequenceReshapeGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput(framework::GradVarName("Out")), true,
+        ctx->HasInput(framework::GradVarName("Out")),
+        true,
         platform::errors::NotFound(
             "Input(Out@GRAD) of SequenceReshapeGradOp should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
+        ctx->HasInput("X"),
+        true,
         platform::errors::NotFound(
             "Input(X) of SequenceReshapeGradOp should not be null."));
 
@@ -133,20 +138,19 @@ class SequenceReshapeGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(sequence_reshape, ops::SequenceReshapeOp,
+REGISTER_OPERATOR(sequence_reshape,
+                  ops::SequenceReshapeOp,
                   ops::SequenceReshapeOpMaker,
                   ops::SequenceReshapeGradOpMaker<paddle::framework::OpDesc>,
                   ops::SequenceReshapeGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(sequence_reshape_grad, ops::SequenceReshapeGradOp);
-REGISTER_OP_CPU_KERNEL(
-    sequence_reshape,
-    ops::SequenceReshapeKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequenceReshapeKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SequenceReshapeKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SequenceReshapeKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    sequence_reshape_grad,
-    ops::SequenceReshapeGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequenceReshapeGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SequenceReshapeGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::SequenceReshapeGradKernel<paddle::platform::CPUDeviceContext, int>);
+REGISTER_OP_CPU_KERNEL(sequence_reshape,
+                       ops::SequenceReshapeKernel<phi::CPUContext, float>,
+                       ops::SequenceReshapeKernel<phi::CPUContext, double>,
+                       ops::SequenceReshapeKernel<phi::CPUContext, int>,
+                       ops::SequenceReshapeKernel<phi::CPUContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(sequence_reshape_grad,
+                       ops::SequenceReshapeGradKernel<phi::CPUContext, float>,
+                       ops::SequenceReshapeGradKernel<phi::CPUContext, double>,
+                       ops::SequenceReshapeGradKernel<phi::CPUContext, int64_t>,
+                       ops::SequenceReshapeGradKernel<phi::CPUContext, int>);

@@ -45,7 +45,7 @@ def get_pull(pull_id):
 def get_files(args):
     """
     Args:
-        args (argparse.ArgumentParser().parse_args()): Arguments. 
+        args (argparse.ArgumentParser().parse_args()): Arguments.
 
     Returns:
         None.
@@ -60,7 +60,7 @@ def get_files(args):
 def diff(args):
     """
     Args:
-        args (argparse.ArgumentParser().parse_args()): Arguments. 
+        args (argparse.ArgumentParser().parse_args()): Arguments.
 
     Returns:
         None.
