@@ -4648,6 +4648,7 @@ void UniqueRawInferMeta(const MetaTensor& x,
     if (axis_value < 0) {
       axis_value += x.dims().size();
     }
+
     PADDLE_ENFORCE_LT(
         axis_value,
         x.dims().size(),
@@ -4655,6 +4656,14 @@ void UniqueRawInferMeta(const MetaTensor& x,
                                      "the dimension size(%d) of x.",
                                      axis_value,
                                      x.dims().size()));
+    PADDLE_ENFORCE_GE(
+        axis_value,
+        0,
+        phi::errors::InvalidArgument(
+            "The axis(%d) + rank(x) (%d) should be greater than or equal to 0.",
+            axis_value,
+            -x.dims().size()));
+
     auto out_dims = x.dims();
     out_dims[axis_value] = -1;
     out->set_dims(out_dims);
