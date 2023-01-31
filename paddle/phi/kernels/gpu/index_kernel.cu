@@ -242,7 +242,6 @@ void IndexPutKernel(const Context& dev_ctx,
   bool need_broadcast = false;
   for (int i = 1; i < indices_v.size(); ++i) {
     tmp_dim = indices_v[i]->dims();
-    VLOG(2) << "tmp_dim is " << tmp_dim << std::endl;
     if (pre_dim != tmp_dim) {
       pre_dim = BroadcastTwoDims(pre_dim, tmp_dim, -1);
       need_broadcast = true;

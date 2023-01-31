@@ -819,8 +819,9 @@ def monkey_patch_varbase():
             return self._getitem_index_not_tensor(item)
 
     def __setitem__(self, item, value):
-        if framework._in_eager_mode_ and self.__check_index_is_all_tensor__(
-            item, value
+        if (
+            framework.global_var._in_eager_mode_
+            and self.__check_index_is_all_tensor__(item, value)
         ):
             # _C_ops.index_put(self, list(item), value)
             return
