@@ -79,9 +79,11 @@ class InterpreterCore {
   const platform::Place& GetPlace() const { return place_; }
 
  private:
-  using InstructionPriorityLess = std::function<bool(size_t, size_t)>;
+  using InstructionSchedulingPriorityLess = std::function<bool(size_t, size_t)>;
   using SchedulingQueue =
-      std::priority_queue<size_t, std::vector<size_t>, InstructionPriorityLess>;
+      std::priority_queue<size_t,
+                          std::vector<size_t>,
+                          InstructionSchedulingPriorityLess>;
 
   // build graph
   void Convert(std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
@@ -181,7 +183,7 @@ class InterpreterCore {
   int64_t sync_op_num_{-1};
   std::vector<size_t> trace_execute_order_;
 
-  InstructionPriorityLess instruction_prority_less;
+  InstructionSchedulingPriorityLess instruction_scheduling_priority_less;
 };
 
 std::shared_ptr<InterpreterCore> CreateInterpreterCore(

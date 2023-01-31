@@ -256,10 +256,8 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
         self.assertListEqual(
             ops,
             [
-                'square',
-                'reduce_sum',
-                'square',
-                'reduce_sum',
+                'squared_l2_norm',
+                'squared_l2_norm',
                 'sum',
                 'cast',
                 'sqrt',

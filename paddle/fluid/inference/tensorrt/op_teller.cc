@@ -1365,16 +1365,26 @@ struct SimpleOpTypeSetTeller : public Teller {
         VLOG(3) << "Ops(" << op_type << ") do not support static shape yet.";
         return false;
       }
+      auto* block = desc.Block();
+      auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
+      auto* y_var_desc = block->FindVar(desc.Input("Y")[0]);
+      auto x_dtype = x_var_desc->GetDataType();
+      auto y_dtype = y_var_desc->GetDataType();
       if (op_type == "logical_or" || op_type == "logical_xor" ||
           op_type == "logical_and") {
-        auto* block = desc.Block();
-        auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
-        auto* y_var_desc = block->FindVar(desc.Input("Y")[0]);
-        auto x_dtype = x_var_desc->GetDataType();
-        auto y_dtype = y_var_desc->GetDataType();
         if (x_dtype != framework::proto::VarType::BOOL ||
             y_dtype != framework::proto::VarType::BOOL) {
-          VLOG(3) << "the op only support input of BOOL.";
+          VLOG(3) << "the op (" << op_type << ") only support input of BOOL.";
+          return false;
+        }
+      }
+      if (op_type == "less_than" || op_type == "greater_than" ||
+          op_type == "less_equal") {
+        if (x_dtype == framework::proto::VarType::BOOL ||
+            y_dtype == framework::proto::VarType::BOOL) {
+          VLOG(3)
+              << "ElementWiseOperation::kLESS/ElementWiseOperation::kGREATER "
+                 "do not support boolean datatype.";
           return false;
         }
       }
@@ -1416,6 +1426,29 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto* y_var_desc = block->FindVar(desc.Input("Y")[0]);
       const auto x_shape = x_var_desc->GetShape();
       const auto y_shape = y_var_desc->GetShape();
+
+      // These operations do not support boolean datatype.
+      if (op_type == "elementwise_add" || op_type == "elementwise_mul" ||
+          op_type == "elementwise_sub" || op_type == "elementwise_div" ||
+          op_type == "elementwise_pow" || op_type == "elementwise_min" ||
+          op_type == "elementwise_max" || op_type == "elementwise_floordiv") {
+        if (x_var_desc->GetDataType() ==
+            paddle::framework::proto::VarType_Type::VarType_Type_BOOL) {
+          VLOG(3) << "These operations "
+                     "(elementwise_add/mul/sub/div/pow/min/max/floordiv) do "
+                     "not support boolean datatype.";
+          return false;
+        }
+      }
+      // These operations input do not support int32 datatype.
+      if (op_type == "elementwise_pow") {
+        if (x_var_desc->GetDataType() ==
+            paddle::framework::proto::VarType_Type::VarType_Type_INT32) {
+          VLOG(3) << "These operations (elementwise_pow) do not support int32 "
+                     "datatype.";
+          return false;
+        }
+      }
 
       // The case when x_shape.size() == 1 is dealt with in common case
       if (!with_dynamic_shape && (!y_var_desc->Persistable()) &&
