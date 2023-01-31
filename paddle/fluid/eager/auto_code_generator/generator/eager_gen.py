@@ -247,6 +247,7 @@ BEFORE_LOG_PRINT_TEMPLATE = """
 
 FORWARD_ONLY_FUNCTION_TEMPLATE = """
 {} {}({}) {{
+  FLAGS_tensor_operator = "eager";
   VLOG(3) << \"Running AD API: \" << \"{}\";
   // Dygraph Record Event
 {}
