@@ -42,6 +42,8 @@ cc_library(
   DEPS zero_copy_tensor)
 cc_library(paddle_pass_builder SRCS paddle_pass_builder.cc)
 
+get_property(phi_kernels GLOBAL PROPERTY PHI_KERNELS)
+
 set(paddle_inference_api_deps
     lod_tensor
     scope
@@ -50,7 +52,9 @@ set(paddle_inference_api_deps
     paddle_infer_contrib
     zero_copy_tensor
     trainer_desc_proto
-    custom_operator)
+    custom_operator
+    phi_data_layout_transform
+    ${phi_kernels})
 
 if(WITH_CRYPTO)
   list(APPEND paddle_inference_api_deps paddle_crypto)

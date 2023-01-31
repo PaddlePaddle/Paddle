@@ -61,6 +61,8 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/funcs/data_type_transform.h"
 #include "paddle/utils/string/split.h"
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
@@ -1866,16 +1868,16 @@ bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
 
 void AnalysisPredictor::CollectShapeRangeInfo() {
   // if use gpu, sync first.
+  paddle::platform::DeviceContextPool &pool =
+      paddle::platform::DeviceContextPool::Instance();
+  auto *dev_ctx = pool.Get(place_);
   if (config_.use_gpu()) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    paddle::platform::DeviceContextPool &pool =
-        paddle::platform::DeviceContextPool::Instance();
-    auto gpu_place = place_;
-    auto *dev_ctx = static_cast<const phi::GPUContext *>(pool.Get(gpu_place));
+    auto stream = static_cast<phi::GPUContext *>(dev_ctx)->stream();
 #ifdef PADDLE_WITH_HIP
-    hipStreamSynchronize(dev_ctx->stream());
+    hipStreamSynchronize(stream);
 #else
-    cudaStreamSynchronize(dev_ctx->stream());
+    cudaStreamSynchronize(stream);
 #endif
 #endif
   }
@@ -1898,22 +1900,32 @@ void AnalysisPredictor::CollectShapeRangeInfo() {
     // This is a simple method to identify all shape tensors with some
     // mistakes, but it doesn't matter.
     auto is_shape_tensor = tensor.numel() <= 7 && tensor.numel() >= 1;
-    if (tensor.dtype() == paddle::experimental::DataType::INT32 &&
+    if ((tensor.dtype() == paddle::experimental::DataType::INT32 ||
+         tensor.dtype() == paddle::experimental::DataType::INT32) &&
         is_shape_tensor) {
       std::vector<int> int32_host(tensor.numel());
+      // phi::Cast<int64_t>();
+      // auto int32_tensor = phi::funcs::TransDataType(*dev_ctx, tensor,
+      // DataType::INT32);
       if (tensor.place() == platform::CPUPlace()) {
+        auto int32_tensor =
+            phi::Cast<int32_t>(*dev_ctx, tensor, phi::DataType::INT64);
         paddle::memory::Copy(platform::CPUPlace(),
                              int32_host.data(),
                              platform::CPUPlace(),
-                             tensor.data<int>(),
-                             tensor.numel() * sizeof(int));
+                             int32_tensor.data<int>(),
+                             int32_tensor.numel() * sizeof(int));
       } else if (tensor.place() == platform::CUDAPlace()) {
 #if defined(PADDLE_WITH_CUDA)
+        auto int32_tensor = phi::Cast<int32_t>(
+            reinterpret_cast<const phi::GPUContext &>(*dev_ctx),
+            tensor,
+            phi::DataType::INT64);
         paddle::memory::Copy(platform::CPUPlace(),
                              int32_host.data(),
                              platform::CUDAPlace(),
-                             tensor.data<int>(),
-                             tensor.numel() * sizeof(int),
+                             int32_tensor.data<int>(),
+                             int32_tensor.numel() * sizeof(int),
                              nullptr);
 #endif
       }
