@@ -1251,7 +1251,7 @@ All parameter, weight, gradient are variables in Paddle.
 
           auto op_info = framework::OpInfoMap::Instance().Get(op_desc.Type());
           auto grad_op_maker = op_info.GradOpMaker();
-          auto grad_comp_op_maker = op_info.GradCompOpMaker();
+          auto grad_comp_op_maker = op_info.CompGradOpMaker();
 
           if ((grad_op_maker == nullptr) && (grad_comp_op_maker == nullptr)) {
             // Normally, proto_ should not be null, except some special
@@ -1259,7 +1259,7 @@ All parameter, weight, gradient are variables in Paddle.
             std::string type =
                 op_info.proto_ ? op_info.proto_->type() : "unknown";
             PADDLE_THROW(platform::errors::NotFound(
-                "Neither operator %s's GradOpMaker nor GradCompOpMaker has "
+                "Neither operator %s's GradOpMaker nor CompGradOpMaker has "
                 "been registered.\nPlease check whether (%s) operator has "
                 "gradient operator.\nIf not, please set stop_gradient to be "
                 "True for its input and output variables using "
@@ -1268,10 +1268,10 @@ All parameter, weight, gradient are variables in Paddle.
                 type.c_str()));
           }
 
-          // In PrimEnabled mode, the priority of GradCompOpMaker is greater
+          // In PrimEnabled mode, the priority of CompGradOpMaker is greater
           // than GradCompMaker as we need split first-order grad operator into
           // primitive operators for compiler. In PrimDisabled mode, the
-          // priority of GradCompOpMaker is less than GradCompMaker for better
+          // priority of CompGradOpMaker is less than GradCompMaker for better
           // performance.
           std::vector<std::unique_ptr<OpDesc>> grad_op_descs;
           if (paddle::prim::PrimCommonUtils::IsBwdPrimEnabled()) {
