@@ -3150,7 +3150,7 @@ class QuantWeightPass:
         self._save_int_weight = save_int_weight
         assert self._scope is not None, "scope must not be None."
         assert self._place is not None, "place must not be None."
-        self._quantized_ops = set()
+        self._quantized_ops = {}
 
     def apply(self, graph):
         assert isinstance(
@@ -3189,7 +3189,6 @@ class QuantWeightPass:
                 quant_axis = _op.op().attr("quant_axis")
                 bits_length = _op.op().attr("bit_length")
                 if x_node.name() not in self._quantized_ops:
-                    self._quantized_ops.add(x_node.name())
                     quantized_param_v = utils.quant_tensor(
                         param_v.copy(),
                         scale_v,
@@ -3224,10 +3223,13 @@ class QuantWeightPass:
                         self._scope,
                         self._place,
                     )
+                    self._quantized_ops[x_node.name()] = quant_weight_node
 
                 for next_op_node in out_node.outputs:
                     graph.update_input_link(
-                        out_node, quant_weight_node, next_op_node
+                        out_node,
+                        self._quantized_ops[x_node.name()],
+                        next_op_node,
                     )
                 graph.safe_remove_nodes(_op)
         self._remove_unused_var_nodes(graph)
@@ -3332,7 +3334,10 @@ class AddQuantDequantForInferencePass:
             else:
                 var_names = utils._get_op_input_var_names(op_node)
                 for var_name in var_names:
-                    if var_name in dequant_node_map:
+                    if (
+                        var_name in dequant_node_map
+                        and dequant_node_map[var_name]
+                    ):
                         in_node = graph._find_node_by_name(
                             op_node.inputs, var_name
                         )
