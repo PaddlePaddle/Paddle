@@ -15,17 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
 import paddle.fluid.core as core
-
-
-def broadcast_wrapper(shape=[1, 10, 12, 1]):
-    def max_wrapper(x, y, axis=-1):
-        return paddle.maximum(x, y.reshape(shape))
-
-    return max_wrapper
 
 
 class TestElementwiseOp(OpTest):
@@ -43,15 +36,15 @@ class TestElementwiseOp(OpTest):
 
     def test_check_output(self):
         if hasattr(self, 'attrs'):
-            self.check_output(check_dygraph=False)
+            self.check_output(check_eager=False)
         else:
-            self.check_output(check_dygraph=True)
+            self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
         if hasattr(self, 'attrs'):
-            self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
+            self.check_grad(['X', 'Y'], 'Out', check_eager=False)
         else:
-            self.check_grad(['X', 'Y'], 'Out', check_dygraph=True)
+            self.check_grad(['X', 'Y'], 'Out', check_eager=True)
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
@@ -121,15 +114,15 @@ class TestElementwiseBF16Op(OpTest):
 
     def test_check_output(self):
         if hasattr(self, 'attrs'):
-            self.check_output(check_dygraph=False)
+            self.check_output(check_eager=False)
         else:
-            self.check_output(check_dygraph=True)
+            self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
         if hasattr(self, 'attrs'):
-            self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
+            self.check_grad(['X', 'Y'], 'Out', check_eager=False)
         else:
-            self.check_grad(['X', 'Y'], 'Out', check_dygraph=True)
+            self.check_grad(['X', 'Y'], 'Out', check_eager=True)
 
     def test_check_grad_ingore_x(self):
         self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
@@ -165,7 +158,7 @@ class TestElementwiseMaxOp_Vector(TestElementwiseOp):
 class TestElementwiseMaxOp_broadcast_0(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_max"
-        self.python_api = broadcast_wrapper(shape=[100, 1, 1])
+        self.python_api = paddle.maximum
         x = np.random.uniform(0.5, 1, (100, 5, 2)).astype(np.float64)
         sgn = np.random.choice([-1, 1], (100,)).astype(np.float64)
         y = x[:, 0, 0] + sgn * np.random.uniform(1, 2, (100,)).astype(
@@ -184,7 +177,7 @@ class TestElementwiseMaxOp_broadcast_0(TestElementwiseOp):
 class TestElementwiseMaxOp_broadcast_1(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_max"
-        self.python_api = broadcast_wrapper(shape=[1, 100, 1])
+        self.python_api = paddle.maximum
         x = np.random.uniform(0.5, 1, (2, 100, 3)).astype(np.float64)
         sgn = np.random.choice([-1, 1], (100,)).astype(np.float64)
         y = x[0, :, 0] + sgn * np.random.uniform(1, 2, (100,)).astype(
@@ -203,7 +196,7 @@ class TestElementwiseMaxOp_broadcast_1(TestElementwiseOp):
 class TestElementwiseMaxOp_broadcast_2(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_max"
-        self.python_api = broadcast_wrapper(shape=[1, 1, 100])
+        self.python_api = paddle.maximum
         x = np.random.uniform(0.5, 1, (1, 3, 100)).astype(np.float64)
         sgn = np.random.choice([-1, 1], (100,)).astype(np.float64)
         y = x[0, 0, :] + sgn * np.random.uniform(1, 2, (100,)).astype(
@@ -221,7 +214,7 @@ class TestElementwiseMaxOp_broadcast_2(TestElementwiseOp):
 class TestElementwiseMaxOp_broadcast_3(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_max"
-        self.python_api = broadcast_wrapper(shape=[1, 50, 2, 1])
+        self.python_api = paddle.maximum
         x = np.random.uniform(0.5, 1, (2, 50, 2, 1)).astype(np.float64)
         sgn = np.random.choice([-1, 1], (50, 2)).astype(np.float64)
         y = x[0, :, :, 0] + sgn * np.random.uniform(1, 2, (50, 2)).astype(
