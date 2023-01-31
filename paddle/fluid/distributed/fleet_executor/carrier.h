@@ -25,6 +25,7 @@
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor_message.pb.h"
 #include "paddle/fluid/distributed/fleet_executor/task_loop_thread_pool.h"
+#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
@@ -60,7 +61,8 @@ class Carrier final {
       framework::Scope* scope,
       int64_t num_micro_batches,
       const platform::Place& place,
-      const std::vector<std::string>& inference_root_scope_vars = {});
+      const std::vector<std::string>& inference_root_scope_vars = {},
+      const std::vector<framework::Scope*>& micro_scope_list = {});
 
   void CopyParameters(
       int microbatch_id,

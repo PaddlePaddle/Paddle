@@ -1542,6 +1542,9 @@ def conv2d_transpose(
             "but received {}".format(len(input.shape))
         )
 
+    if num_filters == 0:
+        raise ValueError("num of filters should not be 0.")
+
     if data_format not in ['NCHW', 'NHWC']:
         raise ValueError(
             "Attr(data_format) of Op(paddle.static.nn.layers.conv2d_transpose) got wrong value: received "
@@ -2728,6 +2731,12 @@ def batch_norm(
         dtype = core.VarDesc.VarType.FP32
 
     input_shape = input.shape
+    if len(input.shape) < 2 or len(input.shape) > 5:
+        raise ValueError(
+            'expected 2D or 3D or 4D or 5D input (got {}D input, input shape is: {})'.format(
+                len(input.shape), input_shape
+            )
+        )
     if data_layout == 'NCHW':
         channel_num = input_shape[1]
     else:
