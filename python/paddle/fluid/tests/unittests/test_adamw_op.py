@@ -17,11 +17,10 @@ import unittest
 from functools import partial
 
 import numpy as np
+from op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
-from eager_op_test import OpTest
-from paddle import _C_ops
 from paddle.framework import core
 
 
@@ -65,7 +64,6 @@ class TestAdamW(OpTest):
     def setUp(self):
         '''Test AdamW Op with supplied attributes'''
         self.op_type = "adamw"
-        self.python_api = _C_ops.adamw_
         param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float32")
