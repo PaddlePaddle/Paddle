@@ -39,8 +39,8 @@ void AccuracyRawKernel(const Context& dev_ctx,
       inference.dims().size(),
       2,
       phi::errors::InvalidArgument(
-          "dimension(Input) of AccuracyOp must be 2, with shape "
-          "[sample_number, class_dim], But received dimension(Input) is %d",
+          "Rank(Input) of AccuracyOp must be 2, with shape "
+          "[sample_number, class_dim], But received rank(Input) is %d",
           inference.dims().size()));
 
   size_t num_samples = inference.dims()[0];
@@ -50,8 +50,8 @@ void AccuracyRawKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_GT(label.dims().size(),
                     0,
                     phi::errors::InvalidArgument(
-                        "dimension(Label) of AccuracyOp must greater than 0, "
-                        "But received dimension(Label) is %d",
+                        "Rank(Label) of AccuracyOp must greater than 0, "
+                        "But received rank(Label) is %d",
                         label.dims().size()));
 
   PADDLE_ENFORCE_GE(
