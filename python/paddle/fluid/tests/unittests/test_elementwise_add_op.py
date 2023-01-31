@@ -149,6 +149,7 @@ class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
 class TestBF16ElementwiseAddOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_add"
+        self.python_api = paddle.add
         self.dtype = np.uint16
 
         self.x = np.random.uniform(0.1, 1, [13, 17]).astype(np.float32)
