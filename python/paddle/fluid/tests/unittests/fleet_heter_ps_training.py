@@ -105,7 +105,7 @@ def net(batch_size=4, lr=0.01):
             )
             dnn_out = fc
 
-        merge_layer = paddle.concat(input=[dnn_out, lr_pool], axis=1)
+        merge_layer = paddle.concat([dnn_out, lr_pool], axis=1)
         label = paddle.cast(label, dtype="int64")
         predict = paddle.static.nn.fc(
             x=merge_layer, size=2, activation='softmax'

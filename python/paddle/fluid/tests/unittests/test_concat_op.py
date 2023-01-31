@@ -295,9 +295,9 @@ class TestConcatAPI(unittest.TestCase):
         x_3 = fluid.data(shape=[2, 2, 4, 5], dtype='int32', name='x_3')
         positive_1_int32 = fluid.layers.fill_constant([1], "int32", 1)
         positive_1_int64 = fluid.layers.fill_constant([1], "int64", 1)
-        out_1 = paddle.concat(input=[x_2, x_3], axis=1)
-        out_2 = paddle.concat(input=[x_2, x_3], axis=positive_1_int32)
-        out_3 = paddle.concat(input=[x_2, x_3], axis=positive_1_int64)
+        out_1 = paddle.concat([x_2, x_3], axis=1)
+        out_2 = paddle.concat([x_2, x_3], axis=positive_1_int32)
+        out_3 = paddle.concat([x_2, x_3], axis=positive_1_int64)
 
         exe = fluid.Executor(place=fluid.CPUPlace())
         [res_1, res_2, res_3] = exe.run(
@@ -347,7 +347,7 @@ class TestConcatAPI(unittest.TestCase):
         x1 = paddle.to_tensor(in1)
         x2 = paddle.to_tensor(in2)
         x3 = paddle.to_tensor(in3)
-        out1 = paddle.concat(input=[x1, x2, x3], axis=-1)
+        out1 = paddle.concat([x1, x2, x3], axis=-1)
         out2 = paddle.concat(x=[x1, x2], axis=0)
         np_out1 = np.concatenate([in1, in2, in3], axis=-1)
         np_out2 = np.concatenate([in1, in2], axis=0)

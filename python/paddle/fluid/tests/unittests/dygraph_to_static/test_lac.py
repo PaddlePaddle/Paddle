@@ -154,7 +154,7 @@ class BiGRU(fluid.dygraph.Layer):
         res_pre_gru_r = self.pre_gru_r(input_feature)
         res_gru_r = self.gru_r(res_pre_gru_r)
 
-        bi_merge = paddle.concat(input=[res_gru, res_gru_r], axis=-1)
+        bi_merge = paddle.concat([res_gru, res_gru_r], axis=-1)
         return bi_merge
 
 

@@ -252,7 +252,7 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
             lr_pool = fluid.layers.sequence_pool(
                 input=lr_embbding, pool_type="sum"
             )
-            merge_layer = paddle.concat(input=[dnn_out, lr_pool], axis=1)
+            merge_layer = paddle.concat([dnn_out, lr_pool], axis=1)
             predict = paddle.static.nn.fc(
                 x=merge_layer, size=2, activation='softmax'
             )

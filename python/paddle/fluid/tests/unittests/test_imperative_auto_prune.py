@@ -244,7 +244,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             out1 = linear(a)
             out2 = linear2(b)
             out1.stop_gradient = True
-            out = paddle.concat(input=[out1, out2, c], axis=1)
+            out = paddle.concat([out1, out2, c], axis=1)
             out.backward()
             self.assertIsNone(linear.weight.gradient())
             self.assertIsNone(out1.gradient())
@@ -262,7 +262,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             out1 = linear(a)
             out2 = linear2(b)
             out1.stop_gradient = True
-            out = paddle.concat(input=[out1, out2, c], axis=1)
+            out = paddle.concat([out1, out2, c], axis=1)
             out.backward()
             self.assertIsNone(linear.weight.gradient())
             self.assertIsNone(out1.gradient())
@@ -338,7 +338,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             out1 = linear(a)
             out2 = linear2(b)
             out1.stop_gradient = True
-            out = paddle.concat(input=[out1, out2, c], axis=1)
+            out = paddle.concat([out1, out2, c], axis=1)
             # TODO(jiabin): In Eager Mode we don't actually need sort_sum_gradient, this test should be removed when we don't support fluid anymore.
             fluid.set_flags({'FLAGS_sort_sum_gradient': True})
             out.backward()

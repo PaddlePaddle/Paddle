@@ -1728,7 +1728,7 @@ class TestBook(LayerTest):
 
             embs.append(emb)
 
-        embs = paddle.concat(input=embs, axis=1)
+        embs = paddle.concat(embs, axis=1)
         loss = paddle.static.nn.nce(
             input=embs,
             label=words[label_word],
