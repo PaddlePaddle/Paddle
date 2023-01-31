@@ -17,8 +17,8 @@ if(NOT WITH_CINN)
 endif()
 
 if(NOT CINN_GIT_TAG)
-  # 2023.01.28 commit
-  set(CINN_GIT_TAG 1449890f7724babf2a343c6f8073bd28a7bbc683)
+  # Commit upgraded protobuf version in CINN repo
+  set(CINN_GIT_TAG cde2f21964e9ab46dc774d0c176730c61965dc08)
 endif()
 
 message(STATUS "CINN version: " ${CINN_GIT_TAG})
