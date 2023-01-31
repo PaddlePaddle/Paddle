@@ -117,5 +117,17 @@ class TestMinWithTensorAxis2(TestReduceOPTensorAxisBase):
         self.keepdim = True
 
 
+class TestMinWithEmptyTensor(TestReduceOPTensorAxisBase):
+    def init_data(self):
+        self.pd_api = paddle.min
+        self.np_api = np.min
+        data = np.array([], dtype=np.float32)
+        self.x = paddle.to_tensor(
+            np.reshape(data, [0, 0, 0, 0, 0, 0, 0]), dtype='float64'
+        )
+        self.np_axis = 0
+        self.tensor_axis = 0
+
+
 if __name__ == '__main__':
     unittest.main()
