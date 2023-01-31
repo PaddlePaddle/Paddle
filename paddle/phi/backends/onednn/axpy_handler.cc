@@ -33,14 +33,18 @@ class AXPYHandler {
         {n}, OneDNNGetDataType<T>(), dnnl::memory::format_tag::x);
     src_mem_ = dnnl::memory(md, onednn_engine, DNNL_MEMORY_NONE);
     dst_mem_ = dnnl::memory(md, onednn_engine, DNNL_MEMORY_NONE);
-    dnnl::primitive_attr reorder_attr;
-    dnnl::post_ops post_operations;
     if (alpha != 1.f) {
       std::vector<float> scales(1, alpha);
-      reorder_attr.set_output_scales(0, scales);
+      auto scales_md = dnnl::memory::desc(
+          {n}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
+      src_scales_mem_ = dnnl::memory(scales_md, onednn_engine);
+      src_scales_mem_.set_data_handle(scales.data());
     }
-    post_operations.append_sum(1.0f);
 
+    dnnl::primitive_attr reorder_attr;
+    dnnl::post_ops post_operations;
+    post_operations.append_sum(1.0f);
+    reorder_attr.set_scales_mask(DNNL_ARG_FROM, 0);  // Ax + b
     reorder_attr.set_post_ops(post_operations);
     reorder_p_ = dnnl::reorder(src_mem_, dst_mem_, reorder_attr);
   }
@@ -49,6 +53,8 @@ class AXPYHandler {
     src_mem_.set_data_handle(to_void_cast<T>(x));
     return src_mem_;
   }
+
+  dnnl::memory &AcquireAlphaMemory() { return this->src_scales_mem_; }
 
   dnnl::memory &AcquireDstMemory(T *y) {
     dst_mem_.set_data_handle(y);
@@ -59,6 +65,7 @@ class AXPYHandler {
 
  private:
   dnnl::memory src_mem_;
+  dnnl::memory src_scales_mem_;
   dnnl::memory dst_mem_;
   dnnl::reorder reorder_p_;
 };
@@ -107,6 +114,15 @@ void OneDNNAXPYHandler<T>::Impl::operator()(const T *x, T *y) {
   auto &reorder_dst_mem_p = handler_->AcquireDstMemory(y);
   auto reorder_p = handler_->AcquireReorder();
   auto &astream = OneDNNContext::tls().get_stream();
+
+  std::unordered_map<int, dnnl::memory> reorder_args;
+  reorder_args.insert({DNNL_ARG_SRC, reorder_src_mem_p});
+  reorder_args.insert({DNNL_ARG_DST, reorder_dst_mem_p});
+  if (static_cast<float>(this->alpha_) != 1.f) {
+    reorder_args.insert(
+        {DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, handler_->AcquireAlphaMemory()});
+  }
+
   reorder_p.execute(astream, reorder_src_mem_p, reorder_dst_mem_p);
   astream.wait();
 }
