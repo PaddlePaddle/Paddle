@@ -192,11 +192,11 @@ void PSGPUWrapper::add_key_to_gputask(std::shared_ptr<HeterContext> gpu_task) {
   }
   timeline.Pause();
 
-  VLOG(0) << "GpuPs task add keys cost " << timeline.ElapsedSec()
+  VLOG(1) << "GpuPs task add keys cost " << timeline.ElapsedSec()
           << " seconds.";
   timeline.Start();
 #ifdef PADDLE_WITH_PSCORE
-  size_t slot_num = slot_vector_.size() - 1;
+  size_t slot_num = (size_t)slot_num_for_pull_feature_;
   // no slot_fea mode and whole_hbm mode, only keep one unique_sort action
   if (slot_num > 0 && FLAGS_gpugraph_storage_mode !=
                           paddle::framework::GpuGraphStorageMode::WHOLE_HBM) {
@@ -207,7 +207,7 @@ void PSGPUWrapper::add_key_to_gputask(std::shared_ptr<HeterContext> gpu_task) {
   gpu_task->UniqueKeys();
 #endif
   timeline.Pause();
-  VLOG(0) << "GpuPs task unique cost " << timeline.ElapsedSec() << " seconds.";
+  VLOG(1) << "GpuPs task unique cost " << timeline.ElapsedSec() << " seconds.";
 }
 
 void PSGPUWrapper::resize_gputask(std::shared_ptr<HeterContext> gpu_task) {
@@ -222,7 +222,8 @@ void PSGPUWrapper::resize_gputask(std::shared_ptr<HeterContext> gpu_task) {
   }
 }
 
-void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
+void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task,
+                                Dataset* dataset_for_pull) {
   VLOG(3) << "PSGPUWrapper::BuildGPUPSTask begin";
   platform::Timer timeline;
   timeline.Start();
@@ -345,12 +346,13 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
               << " seconds.";
     }
   } else {
-    SlotRecordDataset* dataset = reinterpret_cast<SlotRecordDataset*>(dataset_);
+    SlotRecordDataset* dataset =
+        reinterpret_cast<SlotRecordDataset*>(dataset_for_pull);
     const std::vector<uint64_t>& vec_data = dataset->GetGpuGraphTotalKeys();
     timeline.Start();
     add_key_to_local(vec_data);
     timeline.Pause();
-    VLOG(0) << "GpuGraphTotalKeys: " << vec_data.size()
+    VLOG(1) << "GpuGraphTotalKeys: " << vec_data.size()
             << ", add_key_to_local cost " << timeline.ElapsedSec()
             << " seconds.";
   }
@@ -365,6 +367,8 @@ void PSGPUWrapper::add_slot_feature(std::shared_ptr<HeterContext> gpu_task) {
   // 8卡数据分片
   size_t device_num = heter_devices_.size();
   std::vector<std::thread> threads;
+  size_t slot_num =
+      (size_t)slot_num_for_pull_feature_;  // node slot 9008 in slot_vector
   auto& local_dim_keys = gpu_task->feature_dim_keys_;  // [shard_num, 0, keys]]
   double divide_nodeid_cost = 0;
   double get_feature_id_cost = 0;
@@ -539,8 +543,7 @@ void PSGPUWrapper::add_slot_feature(std::shared_ptr<HeterContext> gpu_task) {
   for (size_t i = 0; i < device_num; i++) {
     feature_num += feature_list_size[i];
   }
-  VLOG(0) << "feature_num is " << feature_num << " node_num num is "
-          << node_num;
+  VLOG(1) << "feature_num is " << feature_num << " node_num is " << node_num;
 
   size_t set_num = thread_keys_shard_num_;
   std::vector<std::unordered_set<uint64_t>> feature_id_set(set_num);
@@ -642,7 +645,7 @@ void PSGPUWrapper::add_slot_feature(std::shared_ptr<HeterContext> gpu_task) {
   add_feature_to_key_cost = time_stage.ElapsedSec();
   threads.clear();
   timeline.Pause();
-  VLOG(0) << " add_slot_feature costs: " << timeline.ElapsedSec() << " s."
+  VLOG(1) << " add_slot_feature costs: " << timeline.ElapsedSec() << " s."
           << " divide_nodeid_cost " << divide_nodeid_cost
           << " get_feature_id_cost " << get_feature_id_cost
           << " add_feature_to_set_cost " << add_feature_to_set_cost
@@ -652,9 +655,9 @@ void PSGPUWrapper::add_slot_feature(std::shared_ptr<HeterContext> gpu_task) {
 void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
   platform::Timer timeline;
 #ifdef PADDLE_WITH_PSCORE
-  size_t slot_num = slot_vector_.size() - 1;  // node slot 9008 in slot_vector
-  if (slot_num > 0 && FLAGS_gpugraph_storage_mode !=
-                          paddle::framework::GpuGraphStorageMode::WHOLE_HBM) {
+  if (slot_num_for_pull_feature_ > 0 &&
+      FLAGS_gpugraph_storage_mode !=
+          paddle::framework::GpuGraphStorageMode::WHOLE_HBM) {
     add_slot_feature(gpu_task);
   }
 #endif
@@ -667,7 +670,7 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
   time_stage.Start();
   gpu_task->UniqueKeys();
   time_stage.Pause();
-  VLOG(0) << "BuildPull slot feature uniq and sort cost time: "
+  VLOG(1) << "BuildPull slot feature uniq and sort cost time: "
           << time_stage.ElapsedSec();
 
   auto& local_dim_keys = gpu_task->feature_dim_keys_;
@@ -797,7 +800,7 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
   }
   task_futures.clear();
   timeline.Pause();
-  VLOG(0) << "pull sparse from CpuPS into GpuPS total keys " << total_key
+  VLOG(1) << "pull sparse from CpuPS into GpuPS total keys " << total_key
           << ", cost " << timeline.ElapsedSec() << " seconds.";
   if (multi_node_) {
     auto gloo_wrapper = paddle::framework::GlooWrapper::GetInstance();
@@ -881,7 +884,7 @@ void PSGPUWrapper::divide_to_device(std::shared_ptr<HeterContext> gpu_task) {
     }
   }
   timeline.Pause();
-  VLOG(0) << "GpuPs prepare for build hbm cost " << timeline.ElapsedSec()
+  VLOG(1) << "GpuPs prepare for build hbm cost " << timeline.ElapsedSec()
           << " seconds.";
 }
 
@@ -1004,7 +1007,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
               << " dim index: " << j << " contains feasign nums: "
               << gpu_task->device_dim_ptr_[i][j].size();
     }
-    VLOG(0) << i << " card with dynamic mf contains feasign nums total: "
+    VLOG(1) << i << " card with dynamic mf contains feasign nums total: "
             << feature_keys_count[i];
     size_max = std::max(size_max, feature_keys_count[i]);
   }
@@ -1026,7 +1029,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
 #endif
   }
   stagetime.Pause();
-  VLOG(0) << "card: "
+  VLOG(1) << "card: "
           << " BuildGPUTask create HeterPs_ costs: " << stagetime.ElapsedSec()
           << " s.";
   stagetime.Start();
@@ -1111,8 +1114,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
     }
 #ifdef PADDLE_WITH_GPU_GRAPH
     // build feature table
-    size_t slot_num = slot_vector_.size() - 1;  // node slot 9008 in slot_vector
-    if (slot_num > 0 &&
+    if (slot_num_for_pull_feature_ > 0 &&
         (FLAGS_gpugraph_storage_mode == paddle::framework::GpuGraphStorageMode::
                                             MEM_EMB_FEATURE_AND_GPU_GRAPH ||
          FLAGS_gpugraph_storage_mode ==
@@ -1148,7 +1150,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
       t.join();
     }
     stagetime.Pause();
-    VLOG(0) << "card: " << i
+    VLOG(1) << "card: " << i
             << " BuildGPUTask build_ps async costs: " << stagetime.ElapsedSec()
             << " s.";
   };
@@ -1182,7 +1184,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
   }
   cpu_task_futures.clear();
   stagetime.Pause();
-  VLOG(0) << " BuildGPUTask build_dynamic_mf_func "
+  VLOG(1) << " BuildGPUTask build_dynamic_mf_func "
           << " cost " << stagetime.ElapsedSec() << " s.";
   for (int i = 0; i < device_num; i++) {
     cpu_reday_channels_[i]->Close();
@@ -1204,7 +1206,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
   }
 #endif
   stagetime.Pause();
-  VLOG(0) << "  build_dymf_hbm_pool "
+  VLOG(1) << "  build_dymf_hbm_pool "
           << " cost " << stagetime.ElapsedSec() << " s.";
 }
 
@@ -1214,7 +1216,7 @@ void PSGPUWrapper::LoadIntoMemory(bool is_shuffle) {
   timer.Start();
   dataset_->LoadIntoMemory();
   timer.Pause();
-  VLOG(0) << "LoadIntoMemory cost: " << timer.ElapsedSec() << "s";
+  VLOG(1) << "LoadIntoMemory cost: " << timer.ElapsedSec() << "s";
   gpu_graph_mode_ = dataset_->GetGpuGraphMode();
   if (dataset_->GetMemoryDataSize() == 0) {
     VLOG(0) << "GetMemoryDataSize == 0";
@@ -1231,7 +1233,7 @@ void PSGPUWrapper::LoadIntoMemory(bool is_shuffle) {
     std::shared_ptr<HeterContext> gpu_task = gpu_task_pool_.Get();
     gpu_task->Reset();
     gpu_task->pass_id_ = (uint16_t)(dataset_->GetPassID());
-    data_ready_channel_->Put(gpu_task);
+    data_ready_channel_->Put(std::make_pair(gpu_task, dataset_));
   } else if (hbm_sparse_table_initialized_ == false) {
     SparseTableToHbm();
   }
@@ -1239,7 +1241,7 @@ void PSGPUWrapper::LoadIntoMemory(bool is_shuffle) {
   std::shared_ptr<HeterContext> gpu_task = gpu_task_pool_.Get();
   gpu_task->Reset();
   gpu_task->pass_id_ = (uint16_t)(dataset_->GetPassID());
-  data_ready_channel_->Put(gpu_task);
+  data_ready_channel_->Put(std::make_pair(gpu_task, dataset_));
 #endif
   VLOG(3) << "End LoadIntoMemory(), dataset[" << dataset_ << "]";
 }
@@ -1254,17 +1256,20 @@ void PSGPUWrapper::start_build_thread() {
 void PSGPUWrapper::pre_build_thread() {
   // prebuild: process load_data
   while (running_) {
+    std::pair<std::shared_ptr<HeterContext>, Dataset*> task =
+        std::make_pair(nullptr, nullptr);
     std::shared_ptr<HeterContext> gpu_task = nullptr;
-    if (!data_ready_channel_->Get(gpu_task)) {
+    if (!data_ready_channel_->Get(task)) {
       continue;
     }
+    gpu_task = task.first;
     VLOG(3) << "thread PreBuildTask start.";
     platform::Timer timer;
     timer.Start();
     // build cpu ps data process
-    PreBuildTask(gpu_task);
+    PreBuildTask(gpu_task, task.second);
     timer.Pause();
-    VLOG(0) << "thread PreBuildTask end, cost time: " << timer.ElapsedSec()
+    VLOG(1) << "thread PreBuildTask end, cost time: " << timer.ElapsedSec()
             << " s";
     buildcpu_ready_channel_->Put(gpu_task);
   }
@@ -1304,7 +1309,7 @@ void PSGPUWrapper::build_task() {
     return;
   }
 
-  VLOG(0) << "PrepareGPUTask start.";
+  VLOG(1) << "PrepareGPUTask start.";
   platform::Timer timer;
   timer.Start();
   if (!multi_mf_dim_) {
@@ -1312,7 +1317,7 @@ void PSGPUWrapper::build_task() {
   }
   BuildGPUTask(gpu_task);
   timer.Pause();
-  VLOG(0) << "PrepareGPUTask + BuildGPUTask end, cost time: "
+  VLOG(1) << "PrepareGPUTask + BuildGPUTask end, cost time: "
           << timer.ElapsedSec() << "s";
 
   current_task_ = gpu_task;
@@ -1341,11 +1346,11 @@ void PSGPUWrapper::BeginPass() {
         "[BeginPass] after build_task, current task is not null."));
   }
   if (FLAGS_gpugraph_dedup_pull_push_mode) {
-    VLOG(0) << "BeginPass end, cost time: " << timer.ElapsedSec()
+    VLOG(1) << "BeginPass end, cost time: " << timer.ElapsedSec()
             << "s, enable pull push dedup mode="
             << FLAGS_gpugraph_dedup_pull_push_mode;
   } else {
-    VLOG(0) << "BeginPass end, cost time: " << timer.ElapsedSec() << "s";
+    VLOG(1) << "BeginPass end, cost time: " << timer.ElapsedSec() << "s";
   }
 }
 
@@ -1355,11 +1360,14 @@ void PSGPUWrapper::EndPass() {
     return;
   }
 #endif
+  if (current_task_ == nullptr) {
+    return;
+  }
   platform::Timer stagetime;
   stagetime.Start();
   HbmToSparseTable();
   stagetime.Pause();
-  VLOG(0) << "EndPass HbmToSparseTable cost time: " << stagetime.ElapsedSec()
+  VLOG(1) << "EndPass HbmToSparseTable cost time: " << stagetime.ElapsedSec()
           << "s";
 
   gpu_task_pool_.Push(current_task_);
@@ -1376,7 +1384,7 @@ void PSGPUWrapper::SparseTableToHbm() {
   gpu_task->init(thread_keys_shard_num_, device_num, multi_mf_dim_);
   gpu_task->pass_id_ = (uint16_t)(dataset_->GetPassID());
   auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
-  auto node_to_id = gpu_graph_ptr->feature_to_id;
+  auto node_to_id = gpu_graph_ptr->node_to_id;
   auto edge_to_id = gpu_graph_ptr->edge_to_id;
   std::vector<uint64_t> vec_data = gpu_graph_ptr->get_graph_total_keys();
 
@@ -1493,7 +1501,7 @@ void PSGPUWrapper::HbmToSparseTable() {
   size_t thread_num = 16;
   size_t device_num = heter_devices_.size();
   if (multi_mf_dim_) {
-    VLOG(0) << "psgpu wrapper dump pool: multi_mf_dim_: " << multi_mf_dim_;
+    VLOG(1) << "psgpu wrapper dump pool: multi_mf_dim_: " << multi_mf_dim_;
     for (size_t i = 0; i < device_num; i++) {
       cpu_reday_channels_[i]->Open();
       for (int j = 0; j < multi_mf_dim_; j++) {
@@ -1517,7 +1525,7 @@ void PSGPUWrapper::HbmToSparseTable() {
     f.wait();
   }
   timer.Pause();
-  VLOG(0) << " EndPass  dump_pool_to_cpu_func "
+  VLOG(1) << " EndPass  dump_pool_to_cpu_func "
           << " cost " << timer.ElapsedSec() << " s.";
   for (size_t i = 0; i < device_num; i++) {
     cpu_reday_channels_[i]->Close();
@@ -1529,7 +1537,7 @@ void PSGPUWrapper::HbmToSparseTable() {
   }
   cpu_task_futures.clear();
   timer.Pause();
-  VLOG(0) << " EndPass  cpu_func "
+  VLOG(1) << " EndPass  cpu_func "
           << " cost " << timer.ElapsedSec() << " s.";
   if (keysize_max != 0) {
     HeterPs_->end_pass();
