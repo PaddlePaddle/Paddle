@@ -210,16 +210,14 @@ class TestAdamaxOpMultiPrecison(unittest.TestCase):
         paddle.disable_static()
         paddle.seed(10)
         paddle.set_device(place)
-
         input = paddle.randn((5, 5))
 
         model = paddle.nn.Linear(5, 5)
-
         optimizer = paddle.optimizer.Adamax(
             0.1,
             beta1=0.1,
             parameters=model.parameters(),
-            multi_precision=False,
+            multi_precision=use_amp,
         )
 
         for idx in range(2):
@@ -253,7 +251,7 @@ class TestAdamaxOpMultiPrecison(unittest.TestCase):
 
     def test_main(self):
         for place in self._get_places():
-            use_amp_list = [True]
+            use_amp_list = [True, False]
             for use_amp in use_amp_list:
                 self._test_adamax_op_dygraph_place_amp(place, use_amp)
 

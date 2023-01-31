@@ -24,17 +24,17 @@ template <typename T, typename MT>
 __global__ void AdamaxGPUKernel(const T* param,
                                 const T* grad,
                                 const MT* learning_rate,
-                                const T* moment,
-                                const T* inf_norm,
-                                const T* beta1_pow,
+                                const MT* moment,
+                                const MT* inf_norm,
+                                const MT* beta1_pow,
                                 const MT* master_param,
                                 MT d_beta1,
                                 MT d_beta2,
                                 MT d_epsilon,
                                 int num,
                                 T* param_out,
-                                T* moment_out,
-                                T* inf_norm_out,
+                                MT* moment_out,
+                                MT* inf_norm_out,
                                 MT* master_param_out) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -84,8 +84,8 @@ void AdamaxKernel(const Context& dev_ctx,
                   DenseTensor* master_param_outs) {
   using MPDType = typename phi::dtype::template MPTypeTrait<T>::Type;
   T* param_out_data = dev_ctx.template Alloc<T>(param_out);
-  T* moment_out_data = dev_ctx.template Alloc<T>(moment_out);
-  T* inf_norm_out_data = dev_ctx.template Alloc<T>(inf_norm_out);
+  MPDType* moment_out_data = dev_ctx.template Alloc<MPDType>(moment_out);
+  MPDType* inf_norm_out_data = dev_ctx.template Alloc<MPDType>(inf_norm_out);
   const MPDType* master_in_data =
       multi_precision ? master_param->data<MPDType>() : nullptr;
   MPDType* master_out_data =
@@ -112,9 +112,9 @@ void AdamaxKernel(const Context& dev_ctx,
       <<<block, grid, 0, stream>>>(param.data<T>(),
                                    grad.data<T>(),
                                    learning_rate.data<MPDType>(),
-                                   moment.data<T>(),
-                                   inf_norm.data<T>(),
-                                   beta1_pow.data<T>(),
+                                   moment.data<MPDType>(),
+                                   inf_norm.data<MPDType>(),
+                                   beta1_pow.data<MPDType>(),
                                    master_in_data,
                                    beta1_,
                                    beta2_,

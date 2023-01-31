@@ -58,6 +58,7 @@
     func : AdamaxInferMeta
   kernel :
     func : adamax
+    data_type : param
   optional : master_param
   inplace : (param -> param_out), (moment -> avg_squared_grad_out), (inf_norm -> avg_squared_update_out), (master_param ->master_param_outs)
 

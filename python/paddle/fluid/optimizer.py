@@ -2709,7 +2709,14 @@ class AdamaxOptimizer(Optimizer):
         for p in parameters:
             if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
                 master_p = self._create_master_weight(p)
-                self._add_accumulator(self._velocity_acc_str, master_p)
+                self._add_accumulator(self._moment_acc_str, master_p)
+                self._add_accumulator(self._inf_norm_acc_str, master_p)
+                self._add_accumulator(
+                    name=self._beta1_pow_acc_str,
+                    param=master_p,
+                    fill_value=self._beta1,
+                    shape=[1],
+                )
                 continue
             if (
                 p.dtype == core.VarDesc.VarType.FP16
