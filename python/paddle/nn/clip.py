@@ -208,6 +208,11 @@ def _squared_l2_norm(x):
 
     x = _cast_to_mp_type_if_enabled(x)
 
+    if core.is_compiled_with_xpu():
+        square = paddle.square(x)
+        sum_square = paddle.sum(square)
+        return sum_square
+
     if in_dygraph_mode():
         return _C_ops.squared_l2_norm(x)
 
