@@ -2303,7 +2303,7 @@ class TestSundryAPIStatic(unittest.TestCase):
             return paddle.less_than(i, eleven)
 
         def body(i, x):
-            x = paddle.multiply(x=i, y=i)
+            x = paddle.multiply(x, i)
             i = paddle.increment(i)
             return [i, x]
 
@@ -2312,10 +2312,8 @@ class TestSundryAPIStatic(unittest.TestCase):
             i = paddle.static.data(name='i', shape=[], dtype='float32')
             i.stop_gradient = False
             eleven = paddle.full([], 11, 'float32')
-            one = paddle.full([], 1, 'float32')
             x = paddle.static.data(name='x', shape=[], dtype='float32')
             x.stop_gradient = False
-
             out_i, out_x = paddle.static.nn.while_loop(cond, body, [i, x])
             paddle.static.append_backward(out_x.sum())
 
