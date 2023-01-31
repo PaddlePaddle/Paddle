@@ -2104,7 +2104,7 @@ void PReluInferMeta(const MetaTensor& x,
                     MetaConfig config) {
   auto x_dim = x.dims();
   if (mode == "all") {
-    PADDLE_ENFORCE_LE(phi::product(alpha.dims()),
+    PADDLE_ENFORCE_EQ(phi::product(alpha.dims()),
                       1,
                       phi::errors::InvalidArgument(
                           "For mode 'all', size of weight Alpha must be one. "

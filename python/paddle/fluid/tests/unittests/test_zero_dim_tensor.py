@@ -1450,7 +1450,7 @@ class TestSundryAPI(unittest.TestCase):
         out2.retain_grads()
         out2.backward()
         self.assertEqual(out2.shape, [])
-        self.assertEqual(out1.grad.shape, [])
+        self.assertEqual(out2.grad.shape, [])
         self.assertEqual(x.grad.shape, [])
 
 

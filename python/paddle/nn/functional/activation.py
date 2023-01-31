@@ -463,7 +463,7 @@ def prelu(x, weight, data_format="NCHW", name=None):
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
         weight (Tensor): The learnable parameter with data type same as ``x``.
-            The weight shape is [1] or [in], where `in` is the input channel of ``x``.
+            The weight shape is [], [1] or [in], where `in` is the input channel of ``x``.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
         data_format(str, optional): Data format that specifies the layout of input.
             It may be "NC", "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Default: "NCHW".
