@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/unpooling.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -111,12 +111,12 @@ __global__ void KernelUnpool3dMaxGrad(const int nthreads,
  */
 
 template <typename T>
-class Unpool2dMaxFunctor<platform::CUDADeviceContext, T> {
+class Unpool2dMaxFunctor<phi::GPUContext, T> {
  public:
-  void operator()(const platform::CUDADeviceContext& context,
-                  const framework::Tensor& input,
-                  const framework::Tensor& indices,
-                  framework::Tensor* output) {
+  void operator()(const phi::GPUContext& context,
+                  const phi::DenseTensor& input,
+                  const phi::DenseTensor& indices,
+                  phi::DenseTensor* output) {
     const int batch_size = input.dims()[0];
     const int input_height = input.dims()[2];
     const int input_width = input.dims()[3];
@@ -148,14 +148,14 @@ class Unpool2dMaxFunctor<platform::CUDADeviceContext, T> {
  * All tensors are in NCHW format.
  */
 template <typename T>
-class Unpool2dMaxGradFunctor<platform::CUDADeviceContext, T> {
+class Unpool2dMaxGradFunctor<phi::GPUContext, T> {
  public:
-  void operator()(const platform::CUDADeviceContext& context,
-                  const framework::Tensor& input,
-                  const framework::Tensor& indices,
-                  const framework::Tensor& output,
-                  const framework::Tensor& output_grad,
-                  framework::Tensor* input_grad) {
+  void operator()(const phi::GPUContext& context,
+                  const phi::DenseTensor& input,
+                  const phi::DenseTensor& indices,
+                  const phi::DenseTensor& output,
+                  const phi::DenseTensor& output_grad,
+                  phi::DenseTensor* input_grad) {
     const int batch_size = input.dims()[0];
     const int input_height = input.dims()[2];
     const int input_width = input.dims()[3];
@@ -189,12 +189,12 @@ class Unpool2dMaxGradFunctor<platform::CUDADeviceContext, T> {
 };
 
 template <typename T>
-class Unpool3dMaxFunctor<platform::CUDADeviceContext, T> {
+class Unpool3dMaxFunctor<phi::GPUContext, T> {
  public:
-  void operator()(const platform::CUDADeviceContext& context,
-                  const framework::Tensor& input,
-                  const framework::Tensor& indices,
-                  framework::Tensor* output) {
+  void operator()(const phi::GPUContext& context,
+                  const phi::DenseTensor& input,
+                  const phi::DenseTensor& indices,
+                  phi::DenseTensor* output) {
     const int batch_size = input.dims()[0];
     const int input_depth = input.dims()[2];
     const int input_height = input.dims()[3];
@@ -230,14 +230,14 @@ class Unpool3dMaxFunctor<platform::CUDADeviceContext, T> {
  * All tensors are in NCDHW format.
  */
 template <typename T>
-class Unpool3dMaxGradFunctor<platform::CUDADeviceContext, T> {
+class Unpool3dMaxGradFunctor<phi::GPUContext, T> {
  public:
-  void operator()(const platform::CUDADeviceContext& context,
-                  const framework::Tensor& input,
-                  const framework::Tensor& indices,
-                  const framework::Tensor& output,
-                  const framework::Tensor& output_grad,
-                  framework::Tensor* input_grad) {
+  void operator()(const phi::GPUContext& context,
+                  const phi::DenseTensor& input,
+                  const phi::DenseTensor& indices,
+                  const phi::DenseTensor& output,
+                  const phi::DenseTensor& output_grad,
+                  phi::DenseTensor* input_grad) {
     const int batch_size = input.dims()[0];
     const int input_depth = input.dims()[2];
     const int input_height = input.dims()[3];
@@ -274,14 +274,14 @@ class Unpool3dMaxGradFunctor<platform::CUDADeviceContext, T> {
   }
 };
 
-template class Unpool2dMaxGradFunctor<platform::CUDADeviceContext, float>;
-template class Unpool2dMaxGradFunctor<platform::CUDADeviceContext, double>;
-template class Unpool2dMaxFunctor<platform::CUDADeviceContext, float>;
-template class Unpool2dMaxFunctor<platform::CUDADeviceContext, double>;
-template class Unpool3dMaxGradFunctor<platform::CUDADeviceContext, float>;
-template class Unpool3dMaxGradFunctor<platform::CUDADeviceContext, double>;
-template class Unpool3dMaxFunctor<platform::CUDADeviceContext, float>;
-template class Unpool3dMaxFunctor<platform::CUDADeviceContext, double>;
+template class Unpool2dMaxGradFunctor<phi::GPUContext, float>;
+template class Unpool2dMaxGradFunctor<phi::GPUContext, double>;
+template class Unpool2dMaxFunctor<phi::GPUContext, float>;
+template class Unpool2dMaxFunctor<phi::GPUContext, double>;
+template class Unpool3dMaxGradFunctor<phi::GPUContext, float>;
+template class Unpool3dMaxGradFunctor<phi::GPUContext, double>;
+template class Unpool3dMaxFunctor<phi::GPUContext, float>;
+template class Unpool3dMaxFunctor<phi::GPUContext, double>;
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

@@ -41,15 +41,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/graph_khop_sampler_imp.h"
 #include "paddle/fluid/operators/graph_khop_sampler_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 constexpr int WARP_SIZE = 32;
 
 namespace paddle {
 namespace operators {
-
-using Tensor = framework::Tensor;
 
 template <typename T>
 struct MaxFunctor {
@@ -134,8 +132,7 @@ __global__ void GraphSampleNeighborsCUDAKernel(const uint64_t rand_seed,
         const int num = curand(&rng) % (idx + 1);
 #endif
         if (num < k) {
-          paddle::platform::CudaAtomicMax(output_idxs + out_row_start + num,
-                                          idx);
+          phi::CudaAtomicMax(output_idxs + out_row_start + num, idx);
         }
       }
 #ifdef PADDLE_WITH_CUDA
@@ -245,8 +242,7 @@ void SampleNeighbors(const framework::ExecutionContext& ctx,
       <<<grid,
          block,
          0,
-         reinterpret_cast<const platform::CUDADeviceContext&>(
-             ctx.device_context())
+         reinterpret_cast<const phi::GPUContext&>(ctx.device_context())
              .stream()>>>(0,
                           k,
                           bs,
@@ -305,8 +301,7 @@ void FillHashTable(const framework::ExecutionContext& ctx,
       <<<grid,
          block,
          0,
-         reinterpret_cast<const platform::CUDADeviceContext&>(
-             ctx.device_context())
+         reinterpret_cast<const phi::GPUContext&>(ctx.device_context())
              .stream()>>>(input,
                           num_input,
                           len_hashtable,
@@ -319,8 +314,7 @@ void FillHashTable(const framework::ExecutionContext& ctx,
       <<<grid,
          block,
          0,
-         reinterpret_cast<const platform::CUDADeviceContext&>(
-             ctx.device_context())
+         reinterpret_cast<const phi::GPUContext&>(ctx.device_context())
              .stream()>>>(input,
                           thrust::raw_pointer_cast(item_count.data()),
                           num_input,
@@ -338,8 +332,7 @@ void FillHashTable(const framework::ExecutionContext& ctx,
       <<<grid,
          block,
          0,
-         reinterpret_cast<const platform::CUDADeviceContext&>(
-             ctx.device_context())
+         reinterpret_cast<const phi::GPUContext&>(ctx.device_context())
              .stream()>>>(input,
                           num_input,
                           len_hashtable,
@@ -398,8 +391,7 @@ void ReindexFunc(const framework::ExecutionContext& ctx,
       <<<grid,
          block,
          0,
-         reinterpret_cast<const platform::CUDADeviceContext&>(
-             ctx.device_context())
+         reinterpret_cast<const phi::GPUContext&>(ctx.device_context())
              .stream()>>>(thrust::raw_pointer_cast(outputs->data()),
                           outputs->size(),
                           size,
@@ -411,8 +403,7 @@ void ReindexFunc(const framework::ExecutionContext& ctx,
       <<<grid_,
          block,
          0,
-         reinterpret_cast<const platform::CUDADeviceContext&>(
-             ctx.device_context())
+         reinterpret_cast<const phi::GPUContext&>(ctx.device_context())
              .stream()>>>(thrust::raw_pointer_cast(orig_nodes->data()),
                           bs,
                           thrust::raw_pointer_cast(reindex_nodes->data()),
@@ -426,9 +417,9 @@ class GraphKhopSamplerOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     // 1. Get sample neighbors operators' inputs.
-    auto* src = ctx.Input<Tensor>("Row");
-    auto* dst_count = ctx.Input<Tensor>("Col_Ptr");
-    auto* vertices = ctx.Input<Tensor>("X");
+    auto* src = ctx.Input<phi::DenseTensor>("Row");
+    auto* dst_count = ctx.Input<phi::DenseTensor>("Col_Ptr");
+    auto* vertices = ctx.Input<phi::DenseTensor>("X");
     std::vector<int> sample_sizes = ctx.Attr<std::vector<int>>("sample_sizes");
     bool return_eids = ctx.Attr<bool>("return_eids");
 
@@ -457,7 +448,7 @@ class GraphKhopSamplerOpCUDAKernel : public framework::OpKernel<T> {
     bool is_last_layer = false, is_first_layer = true;
 
     if (return_eids) {
-      auto* src_eids = ctx.Input<Tensor>("Eids");
+      auto* src_eids = ctx.Input<phi::DenseTensor>("Eids");
       const T* src_eids_data = src_eids->data<T>();
       for (int i = 0; i < num_layers; i++) {
         if (i == num_layers - 1) {
@@ -569,7 +560,7 @@ class GraphKhopSamplerOpCUDAKernel : public framework::OpKernel<T> {
                                         eids_merge_ptr);
         }
       }
-      auto* out_eids = ctx.Output<Tensor>("Out_Eids");
+      auto* out_eids = ctx.Output<phi::DenseTensor>("Out_Eids");
       out_eids->Resize({static_cast<int>(eids_merge.size())});
       T* p_out_eids = out_eids->mutable_data<T>(ctx.GetPlace());
       thrust::copy(eids_merge.begin(), eids_merge.end(), p_out_eids);
@@ -598,11 +589,11 @@ class GraphKhopSamplerOpCUDAKernel : public framework::OpKernel<T> {
                    &orig_nodes,
                    &reindex_nodes,
                    bs);
-    auto* reindex_x = ctx.Output<Tensor>("Reindex_X");
+    auto* reindex_x = ctx.Output<phi::DenseTensor>("Reindex_X");
     T* p_reindex_x = reindex_x->mutable_data<T>(ctx.GetPlace());
     thrust::copy(reindex_nodes.begin(), reindex_nodes.end(), p_reindex_x);
 
-    auto* sample_index = ctx.Output<Tensor>("Sample_Index");
+    auto* sample_index = ctx.Output<phi::DenseTensor>("Sample_Index");
     sample_index->Resize({static_cast<int>(subset.size())});
     T* p_sample_index = sample_index->mutable_data<T>(ctx.GetPlace());
     thrust::copy(subset.begin(), subset.end(), p_sample_index);  // Done!
@@ -625,8 +616,7 @@ class GraphKhopSamplerOpCUDAKernel : public framework::OpKernel<T> {
         <<<grid,
            block,
            0,
-           reinterpret_cast<const platform::CUDADeviceContext&>(
-               ctx.device_context())
+           reinterpret_cast<const phi::GPUContext&>(ctx.device_context())
                .stream()>>>(
             unique_dst_size,
             thrust::raw_pointer_cast(unique_dst_merge_reindex.data()),
@@ -635,8 +625,8 @@ class GraphKhopSamplerOpCUDAKernel : public framework::OpKernel<T> {
             thrust::raw_pointer_cast(dst_merge.data()));
 
     // 8. Give operator's outputs.
-    auto* out_src = ctx.Output<Tensor>("Out_Src");
-    auto* out_dst = ctx.Output<Tensor>("Out_Dst");
+    auto* out_src = ctx.Output<phi::DenseTensor>("Out_Src");
+    auto* out_dst = ctx.Output<phi::DenseTensor>("Out_Dst");
     out_src->Resize({static_cast<int>(src_merge.size()), 1});
     out_dst->Resize({static_cast<int>(src_merge.size()), 1});
     T* p_out_src = out_src->mutable_data<T>(ctx.GetPlace());
@@ -650,7 +640,7 @@ class GraphKhopSamplerOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-using CUDA = paddle::platform::CUDADeviceContext;
+using CUDA = phi::GPUContext;
 namespace ops = paddle::operators;
 
 REGISTER_OP_CUDA_KERNEL(graph_khop_sampler,

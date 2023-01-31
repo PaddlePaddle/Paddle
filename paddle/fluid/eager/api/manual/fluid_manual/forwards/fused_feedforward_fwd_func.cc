@@ -19,8 +19,6 @@
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-#pragma GCC diagnostic ignored "-Wunused-variable"
-
 std::tuple<paddle::experimental::Tensor,
            paddle::experimental::Tensor,
            paddle::experimental::Tensor,
@@ -318,7 +316,7 @@ fused_feedforward_dygraph_function(
 
       bool pre_layer_norm = false;
       if (attrs.count("pre_layer_norm")) {
-        pre_layer_norm = BOOST_GET_CONST(bool, attrs.at("pre_layer_norm"));
+        pre_layer_norm = PADDLE_GET_CONST(bool, attrs.at("pre_layer_norm"));
       }
 
       // Set Attributes
@@ -365,7 +363,6 @@ fused_feedforward_dygraph_function(
       egr::EagerUtils::SetOutRankWithSlot(p_autograd_Out, 0);
       egr::EagerUtils::SetHistory(p_autograd_Out, grad_node);
       grad_node->SetGradInMeta(Out, 0);
-      egr::EagerUtils::CheckAndRetainGrad(Out);
       egr::EagerUtils::SetOutRankWithSlot(p_autograd_Dropout1Mask, 1);
       grad_node->SetGradInMeta(Dropout1Mask, 1);
       egr::EagerUtils::SetOutRankWithSlot(p_autograd_Dropout2Mask, 2);

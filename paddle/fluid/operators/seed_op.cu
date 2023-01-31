@@ -22,7 +22,7 @@ template <typename Place, typename T>
 class GPUSeedKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *out = context.Output<Tensor>("Out");
+    auto *out = context.Output<phi::DenseTensor>("Out");
     int seed = get_seed(context);
 
     auto force_cpu = context.Attr<bool>("force_cpu");
@@ -53,6 +53,5 @@ class GPUSeedKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(
-    seed,
-    paddle::operators::GPUSeedKernel<paddle::platform::CUDADeviceContext, int>);
+REGISTER_OP_CUDA_KERNEL(seed,
+                        paddle::operators::GPUSeedKernel<phi::GPUContext, int>);

@@ -50,15 +50,15 @@ struct FusedResidualDropoutBiasTester {
   bool has_bias = true;
   bool add_residual = true;
 
-  framework::Tensor src, residual, bias, out, mask;
-  framework::Tensor dsrc, dbias;
+  phi::DenseTensor src, residual, bias, out, mask;
+  phi::DenseTensor dsrc, dbias;
 
   std::vector<T> src_vec, residual_vec, bias_vec;
   std::vector<T> correct_out, correct_dsrc, correct_dbias;
   std::vector<uint8_t> correct_mask;
 
   platform::CUDAPlace place;
-  platform::CUDADeviceContext *ctx;
+  phi::GPUContext *ctx;
 
   FusedResidualDropoutBiasTester() {
     rows = 32;
@@ -69,7 +69,7 @@ struct FusedResidualDropoutBiasTester {
     is_test = false;
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto device_ctx = pool.Get(place);
-    ctx = reinterpret_cast<platform::CUDADeviceContext *>(device_ctx);
+    ctx = reinterpret_cast<phi::GPUContext *>(device_ctx);
   }
 
   FusedResidualDropoutBiasTester(int rows,
@@ -86,7 +86,7 @@ struct FusedResidualDropoutBiasTester {
         is_test(is_test) {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto device_ctx = pool.Get(place);
-    ctx = reinterpret_cast<platform::CUDADeviceContext *>(device_ctx);
+    ctx = reinterpret_cast<phi::GPUContext *>(device_ctx);
   }
 
   void SetUp() {
@@ -258,14 +258,14 @@ struct FusedResidualDropoutBiasTester {
     std::vector<T> fused_out(n);
     std::vector<uint8_t> fused_mask(n);
     framework::TensorToVector(out, *ctx, &fused_out);
-    if (!is_test) {
+    if (!is_test && dropout_prob != 0.0f) {
       framework::TensorToVector<uint8_t>(mask, *ctx, &fused_mask);
     }
     ctx->Wait();
 
     for (int i = 0; i < n; i++) {
       EXPECT_LT(std::abs(fused_out[i] - correct_out[i]), diff);
-      if (!is_test) {
+      if (!is_test && dropout_prob != 0.0f) {
         EXPECT_EQ(fused_mask[i], correct_mask[i]);
       }
     }

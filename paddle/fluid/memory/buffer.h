@@ -50,7 +50,7 @@ class Buffer {
         allocation_ && allocation_->size() > 0 ? allocation_->ptr() : nullptr);
   }
 
-  size_t Size() const { return allocation_ ? 0 : allocation_->size(); }
+  size_t Size() const { return allocation_ ? allocation_->size() : 0; }
 
   platform::Place GetPlace() const { return place_; }
 

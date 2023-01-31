@@ -13,11 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/clip_by_norm_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace ops = paddle::operators;
+
+DECLARE_INFER_SHAPE_FUNCTOR(clip_by_norm,
+                            ClipByNormInferShapeFunctor,
+                            PD_INFER_META(phi::ClipByNormInferMeta));
+
 REGISTER_OP_WITHOUT_GRADIENT(clip_by_norm,
                              ops::ClipByNormOp,
-                             ops::ClipByNormOpMaker);
-
-REGISTER_OP_CPU_KERNEL(clip_by_norm,
-                       ops::ClipByNormKernel<phi::CPUContext, float>);
+                             ops::ClipByNormOpMaker,
+                             ClipByNormInferShapeFunctor);

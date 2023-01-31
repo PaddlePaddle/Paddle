@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/group_norm_op.h"
+
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -26,9 +28,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 
 class GroupNormOp : public framework::OperatorWithKernel {
  public:
@@ -114,7 +114,7 @@ class GroupNormGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     const auto *var = ctx.InputVar(framework::GradVarName("Y"));
 
@@ -122,18 +122,18 @@ class GroupNormGradOp : public framework::OperatorWithKernel {
         var,
         platform::errors::InvalidArgument(
             "Input(Y@GRAD) of GroupNormGradOp should not be null"));
-    const Tensor *t = nullptr;
-    if (var->IsType<Tensor>()) {
-      t = &var->Get<Tensor>();
-    } else if (var->IsType<LoDTensor>()) {
-      t = &var->Get<LoDTensor>();
+    const phi::DenseTensor *t = nullptr;
+    if (var->IsType<phi::DenseTensor>()) {
+      t = &var->Get<phi::DenseTensor>();
+    } else if (var->IsType<phi::DenseTensor>()) {
+      t = &var->Get<phi::DenseTensor>();
     }
-    PADDLE_ENFORCE_NOT_NULL(
-        t,
-        platform::errors::InvalidArgument(
-            "Input(Y@GRAD) Tensor of GroupNormGradOp should not be null"));
-    return framework::OpKernelType(framework::TransToProtoVarType(t->dtype()),
-                                   ctx.GetPlace());
+    PADDLE_ENFORCE_NOT_NULL(t,
+                            platform::errors::InvalidArgument(
+                                "Input(Y@GRAD) phi::DenseTensor of "
+                                "GroupNormGradOp should not be null"));
+    return phi::KernelKey(framework::TransToProtoVarType(t->dtype()),
+                          ctx.GetPlace());
   }
 };
 

@@ -146,8 +146,9 @@ void DeleteUnusedTensors(const Scope &scope,
     }
 
     VLOG(2) << "Erase variable " << var_name;
-    if (var->IsType<LoDTensor>()) {
-      garbages.emplace_back(var->GetMutable<LoDTensor>()->MoveMemoryHolder());
+    if (var->IsType<phi::DenseTensor>()) {
+      garbages.emplace_back(
+          var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
     } else if (var->IsType<phi::SelectedRows>()) {
       garbages.emplace_back(var->GetMutable<phi::SelectedRows>()
                                 ->mutable_value()
@@ -202,23 +203,34 @@ static std::vector<std::unique_ptr<OperatorBase>> CreateOpsFromBlock(
 }
 
 std::vector<std::vector<std::vector<std::string>>> GetEagerDeletionCleanVars(
-    const ProgramDesc &origin_program,
-    const std::vector<std::string> &skip_vars) {
+    const ProgramDesc &program, const std::vector<std::string> &skip_vars) {
+  return GetEagerDeletionCleanVarsForPartial(program, skip_vars, false);
+}
+
+std::vector<std::vector<std::vector<std::string>>>
+GetEagerDeletionCleanVarsForPartial(const ProgramDesc &origin_program,
+                                    const std::vector<std::string> &skip_vars,
+                                    const bool &for_partial_block) {
   ProgramDesc program{origin_program};
   size_t block_num = program.Size();
   PADDLE_ENFORCE_GE(block_num,
                     1,
                     platform::errors::PermissionDenied(
                         "Program should have at least one block"));
-
-  // prepare safe GCs on sub block ops
-  auto global_block_ops = CreateOpsFromBlock(program.Block(0));
-  operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
-      program, 0, global_block_ops);
-  operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
-      program, 0, global_block_ops);
-  operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
-      program, 0, global_block_ops);
+  // Note(zhangbo): For dygraph2static inplace policy, origin_program is a
+  // partial program(only include forward or backward), and control flow op's
+  // attr skip_eager_deletion_vars has been updated at graph->program before
+  // calling this function.
+  if (!for_partial_block) {
+    // prepare safe GCs on sub block ops
+    auto global_block_ops = CreateOpsFromBlock(program.Block(0));
+    operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
+        program, 0, global_block_ops);
+    operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
+        program, 0, global_block_ops);
+    operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
+        program, 0, global_block_ops);
+  }
 
   // find the skip vars on each block
   std::vector<std::vector<std::string>> skip_vars_on_each_block(block_num);

@@ -41,8 +41,8 @@ __global__ void NegTargetAssignKernel(const int* neg_indices,
 }
 
 template <typename T, typename WT>
-struct NegTargetAssignFunctor<platform::CUDADeviceContext, T, WT> {
-  void operator()(const platform::CUDADeviceContext& ctx,
+struct NegTargetAssignFunctor<phi::GPUContext, T, WT> {
+  void operator()(const phi::GPUContext& ctx,
                   const int* neg_indices,
                   const size_t* lod,
                   const int N,
@@ -58,16 +58,13 @@ struct NegTargetAssignFunctor<platform::CUDADeviceContext, T, WT> {
   }
 };
 
-template struct NegTargetAssignFunctor<platform::CUDADeviceContext, int, float>;
-template struct NegTargetAssignFunctor<platform::CUDADeviceContext,
-                                       float,
-                                       float>;
+template struct NegTargetAssignFunctor<phi::GPUContext, int, float>;
+template struct NegTargetAssignFunctor<phi::GPUContext, float, float>;
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    target_assign,
-    ops::TargetAssignKernel<paddle::platform::CUDADeviceContext, int, float>,
-    ops::TargetAssignKernel<paddle::platform::CUDADeviceContext, float, float>);
+REGISTER_OP_CUDA_KERNEL(target_assign,
+                        ops::TargetAssignKernel<phi::GPUContext, int, float>,
+                        ops::TargetAssignKernel<phi::GPUContext, float, float>);

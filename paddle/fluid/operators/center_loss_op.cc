@@ -53,11 +53,10 @@ class CenterLossOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.device_context().GetPlace());
   }
 };
 
@@ -80,10 +79,10 @@ class CenterLossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("need_update", "whether need to update center info.");
     AddComment(R"DOC(
 **CenterLoss operator**
-implemention of the center loss function in the papper<<A Discriminative 
+implemention of the center loss function in the papper<<A Discriminative
 Feature Learning Approach for Deep Face Recognition>>, equations in this  implement
 is:loss = 1/2 * (x-y)^2 ,where x(X) means the deep feature(output of last hidden layer )
-and y(Label) the target label 
+and y(Label) the target label
 )DOC");
   }
 };
@@ -115,11 +114,11 @@ class CenterLossGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
+    return phi::KernelKey(
         OperatorWithKernel::IndicateVarDataType(ctx, "SampleCenterDiff"),
-        ctx.device_context());
+        ctx.device_context().GetPlace());
   }
 };
 

@@ -65,15 +65,10 @@ class TopkOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    framework::LibraryType library_{framework::LibraryType::kPlain};
-    framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context(),
-        layout_,
-        library_);
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -90,8 +85,8 @@ class TopkOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Top K operator
 
-If the input is a vector (1d tensor), this operator finds the k largest 
-entries in the vector and outputs their values and indices as vectors. 
+If the input is a vector (1d tensor), this operator finds the k largest
+entries in the vector and outputs their values and indices as vectors.
 Thus values[j] is the j-th largest entry in input, and its index is indices[j].
 
 For matrices, this operator computes the top k entries in each row. )DOC");
@@ -128,11 +123,11 @@ class TopkOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
-    return framework::OpKernelType(data_type, ctx.device_context());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 

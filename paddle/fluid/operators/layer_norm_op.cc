@@ -17,16 +17,10 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
-
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 
 class LayerNormOp : public framework::OperatorWithKernel {
  public:
@@ -107,24 +101,19 @@ class LayerNormOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    framework::LibraryType library = framework::LibraryType::kPlain;
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
 
-#ifdef PADDLE_WITH_MKLDNN
+    // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
     int begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
-    if (library == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx, input_data_type) &&
-        begin_norm_axis == ctx.Input<Tensor>("X")->dims().size() - 1) {
-      library = framework::LibraryType::kMKLDNN;
-      layout = framework::DataLayout::kMKLDNN;
+    if (begin_norm_axis !=
+        ctx.Input<phi::DenseTensor>("X")->dims().size() - 1) {
+      this->SetDnnFallback(true);
     }
-#endif
+    // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
-    return framework::OpKernelType(
-        input_data_type, ctx.GetPlace(), layout, library);
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -171,22 +160,6 @@ class LayerNormOpMaker : public framework::OpProtoAndCheckerMaker {
                                 "greater than zero. But received [%d].",
                                 begin_norm_axis));
         });
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "bfloat16"})
-        .AsExtra();
-    AddAttr<bool>("is_test",
-                  "(bool, default false) Set to true for inference only, false "
-                  "for training. Some layers may run faster when this is true.")
-        .SetDefault(false)
-        .AsExtra();
-
     AddComment(R"DOC(
 Assume feature vectors exist on dimensions
 :attr:`begin_norm_axis ... rank(input)` and calculate the moment statistics
@@ -230,29 +203,23 @@ class LayerNormGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     const auto *var = ctx.InputVar(framework::GradVarName("Y"));
     PADDLE_ENFORCE_NOT_NULL(
         var,
         platform::errors::NotFound("Y@GRAD of LayerNorm Op is not found."));
-    const Tensor *t = nullptr;
-    if (var->IsType<Tensor>()) {
-      t = &var->Get<Tensor>();
-    } else if (var->IsType<LoDTensor>()) {
-      t = &var->Get<LoDTensor>();
+    const phi::DenseTensor *t = nullptr;
+    if (var->IsType<phi::DenseTensor>()) {
+      t = &var->Get<phi::DenseTensor>();
+    } else if (var->IsType<phi::DenseTensor>()) {
+      t = &var->Get<phi::DenseTensor>();
     }
     PADDLE_ENFORCE_NOT_NULL(
         t, platform::errors::NotFound("Y@GRAD of LayerNorm Op is not found."));
 
-    framework::LibraryType library = framework::LibraryType::kPlain;
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
-
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.GetPlace(),
-        layout,
-        library);
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 

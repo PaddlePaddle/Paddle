@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import paddle
 import unittest
+from functools import partial
+
 import numpy as np
 from op_test import OpTest
-from functools import partial
+
+import paddle
 
 
 def arange_wrapper(start, end, step, dtype=None):
@@ -26,20 +26,19 @@ def arange_wrapper(start, end, step, dtype=None):
 
 
 class TestRangeOp(OpTest):
-
     def setUp(self):
         self.op_type = "range"
         self.init_config()
         self.inputs = {
             'Start': np.array([self.case[0]]).astype(self.dtype),
             'End': np.array([self.case[1]]).astype(self.dtype),
-            'Step': np.array([self.case[2]]).astype(self.dtype)
+            'Step': np.array([self.case[2]]).astype(self.dtype),
         }
 
         self.outputs = {
-            'Out':
-            np.arange(self.case[0], self.case[1],
-                      self.case[2]).astype(self.dtype)
+            'Out': np.arange(self.case[0], self.case[1], self.case[2]).astype(
+                self.dtype
+            )
         }
 
     def init_config(self):
@@ -52,7 +51,6 @@ class TestRangeOp(OpTest):
 
 
 class TestFloatRangeOpCase0(TestRangeOp):
-
     def init_config(self):
         self.dtype = np.float32
         self.python_api = partial(arange_wrapper, dtype=self.dtype)
@@ -60,7 +58,6 @@ class TestFloatRangeOpCase0(TestRangeOp):
 
 
 class TestInt32RangeOpCase0(TestRangeOp):
-
     def init_config(self):
         self.dtype = np.int32
         self.python_api = partial(arange_wrapper, dtype=self.dtype)
@@ -68,7 +65,6 @@ class TestInt32RangeOpCase0(TestRangeOp):
 
 
 class TestInt32RangeOpCase1(TestRangeOp):
-
     def init_config(self):
         self.dtype = np.int32
         self.python_api = partial(arange_wrapper, dtype=self.dtype)
@@ -76,7 +72,6 @@ class TestInt32RangeOpCase1(TestRangeOp):
 
 
 class TestInt32RangeOpCase2(TestRangeOp):
-
     def init_config(self):
         self.dtype = np.int32
         self.python_api = partial(arange_wrapper, dtype=self.dtype)

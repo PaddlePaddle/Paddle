@@ -25,17 +25,20 @@ namespace egr_utils_api {
 
 int64_t RegisterGradientHookForTensor(
     const paddle::experimental::Tensor& tensor,
-    std::shared_ptr<egr::TensorHook>&& hook) {
+    const std::function<paddle::experimental::Tensor(
+        const paddle::experimental::Tensor&)>& hook) {
   // Find grad_node and out_rank from AutogradMeta
   std::shared_ptr<GradNodeBase> grad_node = EagerUtils::grad_node(tensor);
   auto rank_info = EagerUtils::unsafe_autograd_meta(tensor)->OutRankInfo();
 
   return grad_node->RegisterGradientHook(
-      rank_info.first, rank_info.second, std::move(hook));
+      rank_info.first,
+      rank_info.second,
+      std::move(std::make_shared<CppTensorHook>(hook)));
 }
 
 void RegisterReduceHookForTensor(const paddle::experimental::Tensor& tensor,
-                                 std::shared_ptr<egr::TensorVoidHook>&& hook) {
+                                 const std::function<void()>& hook) {
   if (IsLeafTensor(tensor)) {
     VLOG(6) << "Register ReduceHook for leaf tensor";
     std::shared_ptr<GradNodeBase> grad_node = EagerUtils::grad_node(tensor);
@@ -46,7 +49,8 @@ void RegisterReduceHookForTensor(const paddle::experimental::Tensor& tensor,
                                         "with type: GradNodeAccumulation"));
     auto accumulation_grad_node =
         std::dynamic_pointer_cast<GradNodeAccumulation>(grad_node);
-    accumulation_grad_node->RegisterReduceHook(std::move(hook));
+    accumulation_grad_node->RegisterReduceHook(
+        std::move(std::make_shared<CppVoidHook>(hook)));
   } else {
     PADDLE_THROW(paddle::platform::errors::Fatal(
         "Only can register reduce hook for leaf Tensor."));
@@ -90,10 +94,12 @@ void RetainGradForTensor(const paddle::experimental::Tensor& tensor) {
     };
 
     // Append to GradientHooks
-    RegisterGradientHookForTensor(tensor,
-                                  std::make_shared<egr::CppTensorHook>(hook));
+    RegisterGradientHookForTensor(tensor, hook);
   }
 }
 
+void RegisterBackwardFinalHook(const std::function<void()>& hook) {
+  Controller::Instance().RegisterBackwardFinalHook(hook);
+}
 }  // namespace egr_utils_api
 }  // namespace egr

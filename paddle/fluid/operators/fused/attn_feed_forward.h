@@ -24,7 +24,7 @@ namespace operators {
 template <typename T>
 class FeedForward {
  public:
-  FeedForward(const platform::CUDADeviceContext& dev_ctx,
+  FeedForward(const phi::GPUContext& dev_ctx,
               int bsz_seq,
               int output_size,
               int input_size,
@@ -53,7 +53,7 @@ class FeedForward {
 
     // column-major: (m,n,k) = output_size,bsz_seq,input_size (weight*input=out)
     // here: (m,n,k) = bsz_seq,output_size,input_size (input*weight=out)
-    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
+    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx_);
     blas.GEMM(transA,
               transB,
               bsz_seq_,
@@ -78,7 +78,7 @@ class FeedForward {
       T* input, T* weight, T* d_output, T* d_input, T* d_weight, T* d_bias) {
     T alpha = static_cast<T>(1.0);
     T beta = static_cast<T>(0.0);
-    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
+    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx_);
 
     // column-major: gemm-nt, get d_weight.
     CBLAS_TRANSPOSE transA = CblasTrans;
@@ -116,7 +116,7 @@ class FeedForward {
   }
 
  private:
-  const platform::CUDADeviceContext& dev_ctx_;
+  const phi::GPUContext& dev_ctx_;
   int bsz_seq_, output_size_, input_size_;
   bool compute_bias_;
 };

@@ -30,9 +30,6 @@ namespace cub = hipcub;
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
-
 #define DIVUP(m, n) ((m) / (n) + ((m) % (n) > 0))
 
 int const kThreadsPerBlock = sizeof(uint64_t) * 8;
@@ -47,14 +44,14 @@ struct RangeInitFunctor {
 };
 
 template <typename T>
-static void SortDescending(const platform::CUDADeviceContext &ctx,
-                           const Tensor &value,
-                           Tensor *value_out,
-                           Tensor *index_out) {
+static void SortDescending(const phi::GPUContext &ctx,
+                           const phi::DenseTensor &value,
+                           phi::DenseTensor *value_out,
+                           phi::DenseTensor *index_out) {
   int num = static_cast<int>(value.numel());
-  Tensor index_in_t;
+  phi::DenseTensor index_in_t;
   int *idx_in = index_in_t.mutable_data<int>({num}, ctx.GetPlace());
-  platform::ForRange<platform::CUDADeviceContext> for_range(ctx, num);
+  platform::ForRange<phi::GPUContext> for_range(ctx, num);
   for_range(RangeInitFunctor{0, 1, idx_in});
 
   int *idx_out = index_out->mutable_data<int>({num}, ctx.GetPlace());
@@ -287,11 +284,11 @@ static __global__ void NMSKernel(const int n_boxes,
 }
 
 template <typename T>
-static void NMS(const platform::CUDADeviceContext &ctx,
-                const Tensor &proposals,
-                const Tensor &sorted_indices,
+static void NMS(const phi::GPUContext &ctx,
+                const phi::DenseTensor &proposals,
+                const phi::DenseTensor &sorted_indices,
                 const T nms_threshold,
-                Tensor *keep_out,
+                phi::DenseTensor *keep_out,
                 bool pixel_offset = true) {
   int boxes_num = proposals.dims()[0];
   const int col_blocks = DIVUP(boxes_num, kThreadsPerBlock);
@@ -301,7 +298,10 @@ static void NMS(const platform::CUDADeviceContext &ctx,
 
   const T *boxes = proposals.data<T>();
   auto place = ctx.GetPlace();
-  auto mask_ptr = memory::Alloc(ctx, boxes_num * col_blocks * sizeof(uint64_t));
+  auto mask_ptr =
+      memory::Alloc(ctx.GetPlace(),
+                    boxes_num * col_blocks * sizeof(uint64_t),
+                    phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
   uint64_t *mask_dev = reinterpret_cast<uint64_t *>(mask_ptr->ptr());
 
   NMSKernel<<<blocks, threads, 0, ctx.stream()>>>(

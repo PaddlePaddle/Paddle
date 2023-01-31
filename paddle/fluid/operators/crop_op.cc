@@ -21,8 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class CropOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -60,11 +58,10 @@ class CropOp : public framework::OperatorWithKernel {
     }
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.device_context().GetPlace());
   }
 };
 
@@ -102,14 +99,14 @@ Crop Operator.
 Crop input into output, as specified by offsets and shape.
 
 There are two ways to set the offsets:
-1. In runtime: Using the input 'Offsets', which is a Variable and can be 
-               output of other operators. This way is suitable for 
+1. In runtime: Using the input 'Offsets', which is a Variable and can be
+               output of other operators. This way is suitable for
                dynamic offsets.
-2. In network configuration: Using the attribute 'offsets', which will be 
-                             set in Python configure script. This way is 
+2. In network configuration: Using the attribute 'offsets', which will be
+                             set in Python configure script. This way is
                              suitable for fixed offsets.
-You CANNOT use these two ways at the same time. An exception will be raised 
-if input 'Offset' is configured and meanwhile the attribute 'offsets' is 
+You CANNOT use these two ways at the same time. An exception will be raised
+if input 'Offset' is configured and meanwhile the attribute 'offsets' is
 not empty.
 
 There are two ways to set shape:
@@ -184,11 +181,11 @@ class CropOpGrad : public framework::OperatorWithKernel {
     }
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.device_context().GetPlace());
   }
 };
 
@@ -230,11 +227,9 @@ REGISTER_OP_CPU_KERNEL(crop_grad,
                        ops::CropGradKernel<phi::CPUContext, float>,
                        ops::CropGradKernel<phi::CPUContext, double>);
 
-REGISTER_OP_CUDA_KERNEL(
-    crop,
-    ops::CropKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::CropKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
-    crop_grad,
-    ops::CropGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::CropGradKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(crop,
+                        ops::CropKernel<phi::GPUContext, float>,
+                        ops::CropKernel<phi::GPUContext, double>);
+REGISTER_OP_CUDA_KERNEL(crop_grad,
+                        ops::CropGradKernel<phi::GPUContext, float>,
+                        ops::CropGradKernel<phi::GPUContext, double>);

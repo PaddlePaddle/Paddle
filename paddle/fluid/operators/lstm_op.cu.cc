@@ -15,11 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/lstm_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    lstm,
-    ops::LSTMKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::LSTMKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
-    lstm_grad,
-    ops::LSTMGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::LSTMGradKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(lstm,
+                        ops::LSTMKernel<phi::GPUContext, float>,
+                        ops::LSTMKernel<phi::GPUContext, double>);
+REGISTER_OP_CUDA_KERNEL(lstm_grad,
+                        ops::LSTMGradKernel<phi::GPUContext, float>,
+                        ops::LSTMGradKernel<phi::GPUContext, double>);

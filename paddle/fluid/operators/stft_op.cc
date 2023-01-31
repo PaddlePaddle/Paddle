@@ -14,8 +14,6 @@
 
 #include "paddle/fluid/operators/stft_op.h"
 
-#include "paddle/fluid/operators/spectral_helper.h"
-
 namespace paddle {
 namespace operators {
 class StftOp : public framework::OperatorWithKernel {
@@ -81,10 +79,10 @@ class StftOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     const auto in_dtype = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(in_dtype, ctx.GetPlace());
+    return phi::KernelKey(in_dtype, ctx.GetPlace());
   }
 };
 
@@ -142,12 +140,12 @@ class StftGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     const auto in_dtype = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
     const auto kernel_dtype = framework::ToRealType(in_dtype);
-    return framework::OpKernelType(kernel_dtype, ctx.GetPlace());
+    return phi::KernelKey(kernel_dtype, ctx.GetPlace());
   }
 };
 

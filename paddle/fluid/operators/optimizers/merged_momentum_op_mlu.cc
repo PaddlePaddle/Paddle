@@ -12,8 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
-#include "paddle/fluid/operators/optimizers/merged_momentum_op.h"
+#include "paddle/fluid/platform/for_range.h"
+#include "paddle/fluid/platform/macros.h"
+#include "paddle/phi/kernels/impl/momentum_kernel_impl.h"
 
 namespace paddle {
 namespace operators {
@@ -22,8 +28,8 @@ template <typename T>
 class MLUMergedMomentumOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto params = ctx.MultiInput<framework::Tensor>("Param");
-    auto params_out = ctx.MultiOutput<framework::Tensor>("ParamOut");
+    auto params = ctx.MultiInput<phi::DenseTensor>("Param");
+    auto params_out = ctx.MultiOutput<phi::DenseTensor>("ParamOut");
     size_t n = params.size();
     PADDLE_ENFORCE_EQ(n,
                       params_out.size(),
@@ -41,7 +47,7 @@ class MLUMergedMomentumOpKernel : public framework::OpKernel<T> {
                             "must be the same Tensors."));
     }
 
-    auto grads = ctx.MultiInput<framework::Tensor>("Grad");
+    auto grads = ctx.MultiInput<phi::DenseTensor>("Grad");
     PADDLE_ENFORCE_EQ(
         n,
         grads.size(),
@@ -51,7 +57,7 @@ class MLUMergedMomentumOpKernel : public framework::OpKernel<T> {
             grads.size(),
             n));
 
-    auto velocitys = ctx.MultiInput<framework::Tensor>("Velocity");
+    auto velocitys = ctx.MultiInput<phi::DenseTensor>("Velocity");
     PADDLE_ENFORCE_EQ(n,
                       velocitys.size(),
                       platform::errors::InvalidArgument(
@@ -61,7 +67,7 @@ class MLUMergedMomentumOpKernel : public framework::OpKernel<T> {
                           velocitys.size(),
                           n));
 
-    auto velocitys_out = ctx.MultiOutput<framework::Tensor>("VelocityOut");
+    auto velocitys_out = ctx.MultiOutput<phi::DenseTensor>("VelocityOut");
     PADDLE_ENFORCE_EQ(
         n,
         velocitys_out.size(),
@@ -80,7 +86,7 @@ class MLUMergedMomentumOpKernel : public framework::OpKernel<T> {
     }
 
     auto mu = static_cast<T>(ctx.Attr<float>("mu"));
-    auto lrs = ctx.MultiInput<framework::Tensor>("LearningRate");
+    auto lrs = ctx.MultiInput<phi::DenseTensor>("LearningRate");
     if (lrs.size() != 1) {
       PADDLE_ENFORCE_EQ(
           n,
@@ -128,7 +134,8 @@ class MLUMergedMomentumOpKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx = ctx.template device_context<platform::MLUDeviceContext>();
 
-    Tensor mu_tensor = ctx.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
+    phi::DenseTensor mu_tensor =
+        ctx.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
     MLUCnnlTensorDesc mu_tensor_desc(mu_tensor);
     MLUCnnl::Fill(ctx,
                   CNNL_POINTER_MODE_HOST,
@@ -152,7 +159,7 @@ class MLUMergedMomentumOpKernel : public framework::OpKernel<T> {
       auto velocity_out = velocitys_out[idx];
 
       auto grad = grads[idx];
-      Tensor regularized_grad;
+      phi::DenseTensor regularized_grad;
       MLUCnnlTensorDesc param_desc(*param_out);
       if (regularization_flag == phi::RegularizationType::kL2DECAY) {
         regularized_grad = ctx.AllocateTmpTensor<T, MLUDeviceContext>(

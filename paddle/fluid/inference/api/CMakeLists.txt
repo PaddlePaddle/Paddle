@@ -55,6 +55,9 @@ set(paddle_inference_api_deps
 if(WITH_CRYPTO)
   list(APPEND paddle_inference_api_deps paddle_crypto)
 endif()
+if(WITH_CUSTOM_DEVICE)
+  set(paddle_inference_api_deps ${paddle_inference_api_deps} phi_capi)
+endif()
 
 cc_library(
   paddle_inference_api
@@ -99,6 +102,11 @@ cc_test(
   SRCS api_tester.cc
   DEPS paddle_inference_api)
 
+cc_test(
+  inference_api_helper_test
+  SRCS helper_test.cc
+  DEPS paddle_inference_api)
+
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will
   # be build only in CI, so suppose the generator in Windows is Ninja.
@@ -133,16 +141,25 @@ if(WITH_TESTING)
 endif()
 
 if(NOT APPLE AND NOT WIN32)
-  cc_test(
+  cc_test_old(
     test_analysis_predictor
-    SRCS analysis_predictor_tester.cc
-    DEPS paddle_inference_shared ARGS --dirname=${WORD2VEC_MODEL_DIR})
+    SRCS
+    analysis_predictor_tester.cc
+    DEPS
+    paddle_inference_shared
+    ARGS
+    --dirname=${WORD2VEC_MODEL_DIR})
 elseif(WIN32)
-  cc_test(
+  cc_test_old(
     test_analysis_predictor
-    SRCS analysis_predictor_tester.cc
-    DEPS analysis_predictor benchmark ${inference_deps} ARGS
-         --dirname=${WORD2VEC_MODEL_DIR})
+    SRCS
+    analysis_predictor_tester.cc
+    DEPS
+    analysis_predictor
+    benchmark
+    ${inference_deps}
+    ARGS
+    --dirname=${WORD2VEC_MODEL_DIR})
 endif()
 
 if(WITH_TESTING AND WITH_MKLDNN)

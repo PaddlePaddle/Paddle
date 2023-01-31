@@ -36,8 +36,8 @@ class MemcpyD2HFunctor {
                    const int dst_place_type)
       : out_(out), dev_ctx_(dev_ctx), dst_place_type_(dst_place_type) {}
 
-  void operator()(const framework::LoDTensor &lod_tensor) const {
-    auto &out_tensor = *out_->GetMutable<framework::LoDTensor>();
+  void operator()(const phi::DenseTensor &lod_tensor) const {
+    auto &out_tensor = *out_->GetMutable<phi::DenseTensor>();
     CopyLoDTensor(lod_tensor, out_tensor);
   }
 
@@ -68,10 +68,11 @@ class MemcpyD2HFunctor {
 
  private:
   static constexpr size_t WAIT_THRESHOLD = 64 * 1024;
-  void CopyLoDTensor(const framework::LoDTensor &src,
-                     framework::LoDTensor &dst) const {  // NOLINT
+  void CopyLoDTensor(const phi::DenseTensor &src,
+                     phi::DenseTensor &dst) const {  // NOLINT
     if (dst_place_type_ == 1) {
       framework::TensorCopy(src, platform::CUDAPinnedPlace(), dev_ctx_, &dst);
+      dev_ctx_.Wait();
     } else if (dst_place_type_ == 0) {
       framework::TensorCopy(src, platform::CPUPlace(), dev_ctx_, &dst);
     } else {

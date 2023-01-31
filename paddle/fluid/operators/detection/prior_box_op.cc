@@ -13,13 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/detection/prior_box_op.h"
-
 #include <string>
-
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
@@ -28,111 +25,12 @@ class PriorBoxOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "PriorBoxOp");
-    OP_INOUT_CHECK(ctx->HasInput("Image"), "Input", "Image", "PriorBoxOp");
-
-    auto image_dims = ctx->GetInputDim("Image");
-    auto input_dims = ctx->GetInputDim("Input");
-
-    PADDLE_ENFORCE_EQ(
-        image_dims.size(),
-        4,
-        platform::errors::InvalidArgument(
-            "The Input(Image) of Op(PriorBoxOp) should be a 4-D Tensor "
-            "and data format is NCHW. But received Image's dimensions = %d, "
-            "shape = [%s].",
-            image_dims.size(),
-            image_dims));
-    PADDLE_ENFORCE_EQ(
-        input_dims.size(),
-        4,
-        platform::errors::InvalidArgument(
-            "The Input(Input) of Op(PriorBoxOp) should be a 4-D Tensor "
-            "and data format is NCHW. But received Input's dimensions = %d, "
-            "shape = [%s].",
-            input_dims.size(),
-            input_dims));
-
-    auto min_sizes = ctx->Attrs().Get<std::vector<float>>("min_sizes");
-    auto max_sizes = ctx->Attrs().Get<std::vector<float>>("max_sizes");
-    auto variances = ctx->Attrs().Get<std::vector<float>>("variances");
-    auto aspect_ratios = ctx->Attrs().Get<std::vector<float>>("aspect_ratios");
-    bool flip = ctx->Attrs().Get<bool>("flip");
-
-    std::vector<float> aspect_ratios_vec;
-    ExpandAspectRatios(aspect_ratios, flip, &aspect_ratios_vec);
-
-    size_t num_priors = aspect_ratios_vec.size() * min_sizes.size();
-    if (max_sizes.size() > 0) {
-      PADDLE_ENFORCE_EQ(
-          max_sizes.size(),
-          min_sizes.size(),
-          platform::errors::InvalidArgument(
-              "The length of min_size and "
-              "max_size must be equal. But received: min_size's length is %d, "
-              "max_size's length is %d.",
-              min_sizes.size(),
-              max_sizes.size()));
-      num_priors += max_sizes.size();
-      for (size_t i = 0; i < max_sizes.size(); ++i) {
-        PADDLE_ENFORCE_GT(
-            max_sizes[i],
-            min_sizes[i],
-            platform::errors::InvalidArgument(
-                "max_size[%d] must be greater "
-                "than min_size[%d]. But received: max_size[%d] is %f, "
-                "min_size[%d] is %f.",
-                i,
-                i,
-                i,
-                max_sizes[i],
-                i,
-                min_sizes[i]));
-      }
-    }
-
-    std::vector<int64_t> dim_vec(4);
-    dim_vec[0] = input_dims[2];
-    dim_vec[1] = input_dims[3];
-    dim_vec[2] = num_priors;
-    dim_vec[3] = 4;
-    ctx->SetOutputDim("Boxes", phi::make_ddim(dim_vec));
-    ctx->SetOutputDim("Variances", phi::make_ddim(dim_vec));
-  }
-
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_input_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "Input");
-
-    framework::LibraryType library_{framework::LibraryType::kPlain};
-    framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
-#ifdef PADDLE_WITH_MKLDNN
-    if (library_ == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx, input_input_type)) {
-      library_ = framework::LibraryType::kMKLDNN;
-      layout_ = framework::DataLayout::kMKLDNN;
-      auto input_image_type = framework::TransToProtoVarType(
-          ctx.Input<framework::Tensor>("Image")->dtype());
-      int customized_type_value =
-          framework::OpKernelType::kDefaultCustomizedTypeValue;
-      if (input_image_type == framework::DataTypeTrait<float>::DataType()) {
-        customized_type_value = kPriorBoxFLOAT;
-      } else if (input_image_type ==
-                 framework::DataTypeTrait<double>::DataType()) {
-        customized_type_value = kPriorBoxDOUBLE;
-      }
-      return framework::OpKernelType(input_input_type,
-                                     ctx.GetPlace(),
-                                     layout_,
-                                     library_,
-                                     customized_type_value);
-    }
-#endif
-    return framework::OpKernelType(
-        input_input_type, ctx.GetPlace(), layout_, library_);
+    return phi::KernelKey(input_input_type, ctx.GetPlace());
   }
 };
 
@@ -274,56 +172,23 @@ https://arxiv.org/abs/1512.02325.
 }  // namespace operators
 }  // namespace paddle
 
+DECLARE_INFER_SHAPE_FUNCTOR(prior_box,
+                            PriorBoxInferShapeFunctor,
+                            PD_INFER_META(phi::PriorBoxInferMeta));
+
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
     prior_box,
     ops::PriorBoxOp,
     ops::PriorBoxOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    PriorBoxInferShapeFunctor);
 
-REGISTER_OP_CPU_KERNEL(prior_box,
-                       ops::PriorBoxOpKernel<float, float>,
-                       ops::PriorBoxOpKernel<double, double>);
-
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(prior_box,
-                                    MKLDNN,
-                                    ::paddle::platform::CPUPlace,
-                                    FF,
-                                    ops::kPriorBoxFLOAT,
-                                    ops::PriorBoxOpKernel<float, float>);
-
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(prior_box,
-                                    MKLDNN,
-                                    ::paddle::platform::CPUPlace,
-                                    DD,
-                                    ops::kPriorBoxDOUBLE,
-                                    ops::PriorBoxOpKernel<double, double>);
-
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(prior_box,
-                                    MKLDNN,
-                                    ::paddle::platform::CPUPlace,
-                                    U8F,
-                                    ops::kPriorBoxFLOAT,
-                                    ops::PriorBoxOpKernel<uint8_t, float>);
-
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(prior_box,
-                                    MKLDNN,
-                                    ::paddle::platform::CPUPlace,
-                                    S8F,
-                                    ops::kPriorBoxFLOAT,
-                                    ops::PriorBoxOpKernel<int8_t, float>);
-
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(prior_box,
-                                    MKLDNN,
-                                    ::paddle::platform::CPUPlace,
-                                    U8D,
-                                    ops::kPriorBoxDOUBLE,
-                                    ops::PriorBoxOpKernel<uint8_t, double>);
-
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(prior_box,
-                                    MKLDNN,
-                                    ::paddle::platform::CPUPlace,
-                                    S8D,
-                                    ops::kPriorBoxDOUBLE,
-                                    ops::PriorBoxOpKernel<int8_t, double>);
+REGISTER_OP_KERNEL(prior_box,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
+                   ops::PriorBoxOpKernel<float>,
+                   ops::PriorBoxOpKernel<double>,
+                   ops::PriorBoxOpKernel<uint8_t>,
+                   ops::PriorBoxOpKernel<int8_t>);

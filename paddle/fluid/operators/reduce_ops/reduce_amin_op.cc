@@ -11,20 +11,28 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_min_max_op.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
-REGISTER_REDUCE_OP(reduce_amin);
-REGISTER_OP_CPU_KERNEL(
+namespace ops = paddle::operators;
+
+class ReduceAMinOpMaker : public ops::ReduceOpMaker {
+ protected:
+  virtual std::string GetName() const { return "reduce_amin"; }
+  virtual std::string GetOpType() const { return "Reduce reduce_amin"; }
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(reduce_amin,
+                            ReduceAMinInferShapeFunctor,
+                            PD_INFER_META(phi::ReduceInferMetaBase));
+
+REGISTER_OPERATOR(
     reduce_amin,
-    ops::ReduceKernel<phi::CPUContext, float, ops::MinFunctor>,
-    ops::ReduceKernel<phi::CPUContext, double, ops::MinFunctor>,
-    ops::ReduceKernel<phi::CPUContext, int, ops::MinFunctor>,
-    ops::ReduceKernel<phi::CPUContext, int64_t, ops::MinFunctor>);
-REGISTER_OP_CPU_KERNEL(
-    reduce_amin_grad,
-    ops::ReduceGradKernel<phi::CPUContext, float, ops::AMaxOrAMinGradFunctor>,
-    ops::ReduceGradKernel<phi::CPUContext, double, ops::AMaxOrAMinGradFunctor>,
-    ops::ReduceGradKernel<phi::CPUContext, int, ops::AMaxOrAMinGradFunctor>,
-    ops::
-        ReduceGradKernel<phi::CPUContext, int64_t, ops::AMaxOrAMinGradFunctor>);
+    ops::ReduceOp,
+    ReduceAMinOpMaker,
+    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
+    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>,
+    ReduceAMinInferShapeFunctor);
+REGISTER_OPERATOR(reduce_amin_grad, ops::ReduceGradOp)

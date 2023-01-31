@@ -131,7 +131,7 @@ void AllReduceOpHandle::AllReduceImpl(
         var,
         platform::errors::NotFound("Variable %s is not found in local scope.",
                                    in_var_handles[i]->name()));
-    auto &lod_tensor = var->Get<LoDTensor>();
+    auto &lod_tensor = var->Get<phi::DenseTensor>();
 
     if (i == 0) {
       numel = static_cast<int64_t>(lod_tensor.numel());
@@ -246,9 +246,9 @@ void AllReduceOpHandle::AllReduceFunc(
   } else {  // Special handle CPU only Operator's gradient. Like CRF
     auto &trg = *local_exec_scopes_[0]
                      ->FindVar(out_var_names[0])
-                     ->GetMutable<LoDTensor>();
+                     ->GetMutable<phi::DenseTensor>();
 
-    // Reduce All Tensor to trg in CPU
+    // Reduce All phi::DenseTensor to trg in CPU
     ReduceBufferData func(lod_tensor_data, trg.data(), numel);
     VisitDataType(framework::TransToProtoVarType(trg.dtype()), func);
 
@@ -260,7 +260,7 @@ void AllReduceOpHandle::AllReduceFunc(
       size_t size =
           numel * SizeOfType(framework::TransToProtoVarType(trg.dtype()));
       RunAndRecordEvent(p, [&trg, var, p, size] {
-        auto dst_ptr = var->GetMutable<framework::LoDTensor>()->data();
+        auto dst_ptr = var->GetMutable<phi::DenseTensor>()->data();
         platform::CPUPlace cpu_place;
         memory::Copy(cpu_place, dst_ptr, cpu_place, trg.data(), size);
       });
@@ -276,19 +276,26 @@ void AllReduceOpHandle::BKCLAllReduceFunc(
     if (all_reduce_calls.size() == 1UL) {
       all_reduce_calls[0]();
     } else {
-      PADDLE_ENFORCE_EQ(
-          bkcl_group_start(),
-          BKCL_SUCCESS,
-          platform::errors::PreconditionNotMet("bkcl_group_start failed"));
+      platform::BKCLGroupGuard guard;
       for (auto &call : all_reduce_calls) {
         call();
       }
-      PADDLE_ENFORCE_EQ(
-          bkcl_group_end(),
-          BKCL_SUCCESS,
-          platform::errors::PreconditionNotMet("bkcl_group_end failed"));
     }
   });
+
+  SyncBKCLAllReduce();
+}
+
+void AllReduceOpHandle::SyncBKCLAllReduce() {
+  // bkcl always use async kernel
+  for (auto &p : places_) {
+    int dev_id = p.device;
+    platform::SetXPUDeviceId(dev_id);
+    auto *bkcl_ctxs =
+        bkcl_ctxs_->GetRunEnvBKCLCtx(run_order_, use_hierarchical_allreduce_);
+    auto &bkcl_ctx = bkcl_ctxs->at(dev_id);
+    platform::XPUStreamSync(bkcl_ctx.stream());
+  }
 }
 #endif
 

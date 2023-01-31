@@ -132,6 +132,13 @@ class OpRegistry {
                                                 const VariableNameMap& outputs,
                                                 const AttributeMap& attrs,
                                                 bool attr_check = true);
+  static std::unique_ptr<OperatorBase> CreateOp(
+      const std::string& type,
+      const VariableNameMap& inputs,
+      const VariableNameMap& outputs,
+      const AttributeMap& attrs,
+      const AttributeMap& runtime_attrs,
+      bool attr_check = true);
 
   static std::unique_ptr<OperatorBase> CreateOp(const proto::OpDesc& op_desc);
 
@@ -164,9 +171,20 @@ inline void RegisterKernelClass(const char* op_type,
   if (library == "MKLDNN") {
     data_layout = "MKLDNNLAYOUT";
   }
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (std::is_same<PlaceType, platform::CustomPlace>::value) {
+    OpKernelType key(ToDataType(std::type_index(typeid(T))),
+                     platform::CustomPlace(library_type),
+                     phi::StringToDataLayout(data_layout),
+                     LibraryType::kPlain,
+                     customized_type_value);
+    OperatorWithKernel::AllOpKernels()[op_type][key] = func;
+    return;
+  }
+#endif
   OpKernelType key(ToDataType(std::type_index(typeid(T))),
                    PlaceType(),
-                   StringToDataLayout(data_layout),
+                   phi::StringToDataLayout(data_layout),
                    StringToLibraryType(library_type),
                    customized_type_value);
   OperatorWithKernel::AllOpKernels()[op_type][key] = func;
@@ -405,6 +423,12 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
 #define REGISTER_OP_MLU_KERNEL_FUNCTOR(op_type, ...)                  \
   REGISTER_OP_KERNEL_EX(                                              \
       op_type, MLU, ::paddle::platform::MLUPlace, DEFAULT_TYPE,       \
+      ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
+      __VA_ARGS__)
+
+#define REGISTER_OP_IPU_KERNEL_FUNCTOR(op_type, ...)                  \
+  REGISTER_OP_KERNEL_EX(                                              \
+      op_type, IPU, ::paddle::platform::IPUPlace, DEFAULT_TYPE,       \
       ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
       __VA_ARGS__)
 

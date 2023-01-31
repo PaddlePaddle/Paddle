@@ -75,19 +75,19 @@ void CreateVarsOnScope(framework::Scope* scope) {
   w_var->GetMutable<phi::SelectedRows>();
 
   auto out_var = scope->Var("out");
-  out_var->GetMutable<framework::LoDTensor>();
+  out_var->GetMutable<phi::DenseTensor>();
 
   auto micro_var = scope->Var("microbatch_id");
-  micro_var->GetMutable<framework::LoDTensor>();
+  micro_var->GetMutable<phi::DenseTensor>();
 
   auto ids_var = scope->Var("ids");
-  ids_var->GetMutable<framework::LoDTensor>();
+  ids_var->GetMutable<phi::DenseTensor>();
 
   auto x_var = scope->Var("x");
-  x_var->GetMutable<framework::LoDTensor>();
+  x_var->GetMutable<phi::DenseTensor>();
 
   auto res_var = scope->Var("res");
-  res_var->GetMutable<framework::LoDTensor>();
+  res_var->GetMutable<phi::DenseTensor>();
 }
 
 void InitTensorsOnClient(framework::Scope* scope,
@@ -95,16 +95,15 @@ void InitTensorsOnClient(framework::Scope* scope,
                          const platform::DeviceContext& ctx) {
   CreateVarsOnScope(scope);
   const auto place = ctx.GetPlace();
-  // auto ids_var = scope->Var("ids")->GetMutable<framework::LoDTensor>();
+  // auto ids_var = scope->Var("ids")->GetMutable<phi::DenseTensor>();
   // int64_t* ids_ptr =
   //    ids_var->mutable_data<int64_t>(framework::DDim({rows_numel, 1}),
   //    *place);
   // for (int64_t i = 0; i < rows_numel; ++i) ids_ptr[i] = i * 2;
-  auto stream =
-      reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
+  auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
 
   auto micro_id_var =
-      scope->Var("microbatch_id")->GetMutable<framework::LoDTensor>();
+      scope->Var("microbatch_id")->GetMutable<phi::DenseTensor>();
   float* micro_id_ptr =
       micro_id_var->mutable_data<float>(framework::DDim({1}), place);
   std::vector<float> temp_vec{0};
@@ -119,7 +118,7 @@ void InitTensorsOnClient(framework::Scope* scope,
                        framework::TransToProtoVarType(micro_id_var->dtype())),
                stream);
 
-  auto x_var = scope->Var("x")->GetMutable<framework::LoDTensor>();
+  auto x_var = scope->Var("x")->GetMutable<phi::DenseTensor>();
   float* x_ptr =
       x_var->mutable_data<float>(framework::DDim({1, rows_numel}), place);
   std::vector<float> x_vec;
@@ -129,10 +128,10 @@ void InitTensorsOnClient(framework::Scope* scope,
                reinterpret_cast<void*>(x_ptr),
                platform::CPUPlace(),
                reinterpret_cast<void*>(x_vec_ptr),
-               x_var->numel() * framework::DataTypeSize(x_var->dtype()),
+               x_var->numel() * phi::SizeOf(x_var->dtype()),
                stream);
 
-  // auto res_var = scope->Var("res")->GetMutable<framework::LoDTensor>();
+  // auto res_var = scope->Var("res")->GetMutable<phi::DenseTensor>();
   // float* res_ptr =
   //    res_var->mutable_data<float>(framework::DDim({1, rows_numel}), place);
   // for (int64_t i = 0; i < rows_numel; ++i) res_ptr[i] = 1.0;
@@ -245,7 +244,7 @@ TEST(SENDANDRECV, GPU) {
 
   framework::Scope* scope = (*micro_scope)[0];
   platform::CUDAPlace place;
-  platform::CUDADeviceContext ctx(place);
+  phi::GPUContext ctx(place);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(place, ctx.stream())
                        .get());

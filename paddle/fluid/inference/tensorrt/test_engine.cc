@@ -26,7 +26,7 @@ namespace tensorrt {
 class TensorRTEngineTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    ctx_ = new platform::CUDADeviceContext(platform::CUDAPlace(0));
+    ctx_ = new phi::GPUContext(platform::CUDAPlace(0));
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
                            .get());
@@ -37,6 +37,10 @@ class TensorRTEngineTest : public ::testing::Test {
     ctx_->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetZeroAllocator(platform::CUDAPlace(0))
+            .get());
+    ctx_->SetHostZeroAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetZeroAllocator(paddle::platform::CPUPlace())
             .get());
     ctx_->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
@@ -66,10 +70,10 @@ class TensorRTEngineTest : public ::testing::Test {
   }
 
  protected:
-  framework::Tensor input_;
-  framework::Tensor output_;
+  phi::DenseTensor input_;
+  phi::DenseTensor output_;
   TensorRTEngine *engine_;
-  platform::CUDADeviceContext *ctx_;
+  phi::GPUContext *ctx_;
 };
 
 TEST_F(TensorRTEngineTest, add_layer) {

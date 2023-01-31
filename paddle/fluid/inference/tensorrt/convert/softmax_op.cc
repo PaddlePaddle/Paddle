@@ -45,7 +45,7 @@ class SoftMaxOpConverter : public OpConverter {
     nvinfer1::Dims input_shape = input1->getDimensions();
     int input_dims = input_shape.nbDims;
     int axis = op_desc.HasAttr("axis")
-                   ? BOOST_GET_CONST(int, op_desc.GetAttr("axis"))
+                   ? PADDLE_GET_CONST(int, op_desc.GetAttr("axis"))
                    : -1;
 
     auto* layer = TRT_ENGINE_ADD_LAYER(

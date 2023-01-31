@@ -60,10 +60,10 @@ class SendAndRecvOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {}
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(data_type, platform::CPUPlace());
+    return phi::KernelKey(data_type, platform::CPUPlace());
   }
 };
 
@@ -98,12 +98,11 @@ class SendAndRecvOpMaker : public framework::OpProtoAndCheckerMaker {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(send_and_recv, ops::SendAndRecvOp, ops::SendAndRecvOpMaker);
-REGISTER_OP_CUDA_KERNEL(
-    send_and_recv,
-    ops::SendAndRecvKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SendAndRecvKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::SendAndRecvKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::SendAndRecvKernel<paddle::platform::CUDADeviceContext, int64_t>);
+REGISTER_OP_CUDA_KERNEL(send_and_recv,
+                        ops::SendAndRecvKernel<phi::GPUContext, float>,
+                        ops::SendAndRecvKernel<phi::GPUContext, double>,
+                        ops::SendAndRecvKernel<phi::GPUContext, int>,
+                        ops::SendAndRecvKernel<phi::GPUContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(send_and_recv,
                        ops::SendAndRecvKernel<phi::CPUContext, float>,
                        ops::SendAndRecvKernel<phi::CPUContext, double>,

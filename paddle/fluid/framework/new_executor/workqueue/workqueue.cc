@@ -121,8 +121,13 @@ WorkQueueGroupImpl::WorkQueueGroupImpl(
   queues_.resize(num_queues);
   void* buffer = malloc(sizeof(NonblockingThreadPool) * num_queues);
   queues_storage_ = reinterpret_cast<NonblockingThreadPool*>(buffer);
+
   for (size_t idx = 0; idx < num_queues; ++idx) {
     const auto& options = queues_options_[idx];
+    if (options.num_threads == 0) {
+      queues_[idx] = nullptr;
+      continue;
+    }
     if (options.track_task && tracker_ == nullptr &&
         options.events_waiter != nullptr) {
       empty_notifier_ = options.events_waiter->RegisterEvent(kQueueEmptyEvent);
@@ -144,7 +149,9 @@ WorkQueueGroupImpl::WorkQueueGroupImpl(
 
 WorkQueueGroupImpl::~WorkQueueGroupImpl() {
   for (auto queue : queues_) {
-    queue->~NonblockingThreadPool();
+    if (queue) {
+      queue->~NonblockingThreadPool();
+    }
   }
   if (tracker_ != nullptr) {
     tracker_->~TaskTracker();
@@ -161,6 +168,10 @@ void WorkQueueGroupImpl::AddTask(size_t queue_idx, std::function<void()> fn) {
                                platform::TracerEventType::UserDefined,
                                10 /*level*/);
   assert(queue_idx < queues_.size());
+  PADDLE_ENFORCE_NOT_NULL(
+      queues_.at(queue_idx),
+      platform::errors::NotFound("Workqueue of index %d is not initialized.",
+                                 queue_idx));
   if (queues_options_.at(queue_idx).track_task) {
     fn = [task = std::move(fn),
           raii = CounterGuard<TaskTracker>(tracker_)]() mutable { task(); };
@@ -170,6 +181,9 @@ void WorkQueueGroupImpl::AddTask(size_t queue_idx, std::function<void()> fn) {
 
 size_t WorkQueueGroupImpl::QueueNumThreads(size_t queue_idx) const {
   assert(queue_idx < queues_.size());
+  if (!queues_.at(queue_idx)) {
+    return 0;
+  }
   return queues_.at(queue_idx)->NumThreads();
 }
 
@@ -183,10 +197,14 @@ size_t WorkQueueGroupImpl::QueueGroupNumThreads() const {
 
 void WorkQueueGroupImpl::Cancel() {
   for (auto queue : queues_) {
-    queue->Cancel();
+    if (queue) {
+      queue->Cancel();
+    }
   }
   for (auto queue : queues_) {
-    queue->WaitThreadsExit();
+    if (queue) {
+      queue->WaitThreadsExit();
+    }
   }
 }
 

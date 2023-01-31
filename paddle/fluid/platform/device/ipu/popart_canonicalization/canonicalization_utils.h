@@ -85,6 +85,13 @@ const bool is_float_equal(float a, float b, float eps = 1e-8);
 const ONNXDataType GetVarDType(const Node *node);
 const ONNXDataType GetOutputVarDType(const Node *node,
                                      const std::string &output_name = "Out");
+void MarkNodeForDeletion(Node *node);
+bool IsMarkedForDeletion(Node *node);
+bool IsLastVarNode(Node *node);
+int RemoveTailReduction(Graph *graph,
+                        Node *loss_op,
+                        const std::string &output_var_name);
+int ConvertToPopartReduction(const std::string &reduction);
 
 }  // namespace ipu
 }  // namespace platform

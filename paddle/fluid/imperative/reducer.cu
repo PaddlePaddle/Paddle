@@ -18,7 +18,7 @@ namespace paddle {
 namespace imperative {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-void Group::DivNRanks(framework::Tensor *tensor,
+void Group::DivNRanks(phi::DenseTensor *tensor,
                       int64_t nranks,
                       const platform::DeviceContext &context) {
 #ifdef PADDLE_WITH_HIP
@@ -27,13 +27,10 @@ void Group::DivNRanks(framework::Tensor *tensor,
         "Unsupport BF16 in DataParallel for now"));
   }
   framework::VisitDataTypeForHIP(
-      dtype_,
-      DivNRanksForAllReduce<platform::CUDADeviceContext>(
-          tensor, nranks, context));
+      dtype_, DivNRanksForAllReduce<phi::GPUContext>(tensor, nranks, context));
 #else
-  framework::VisitDataType(dtype_,
-                           DivNRanksForAllReduce<platform::CUDADeviceContext>(
-                               tensor, nranks, context));
+  framework::VisitDataType(
+      dtype_, DivNRanksForAllReduce<phi::GPUContext>(tensor, nranks, context));
 #endif
 }
 #endif

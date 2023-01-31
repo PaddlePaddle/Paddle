@@ -19,7 +19,7 @@
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/imperative/type_defs.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace framework {
@@ -104,7 +104,7 @@ void InitTensorHolder(Scope* scope,
                       const paddle::platform::Place& place,
                       const char* var_name) {
   auto x = scope->Var(var_name);
-  auto tensor = x->GetMutable<LoDTensor>();
+  auto tensor = x->GetMutable<phi::DenseTensor>();
   tensor->mutable_data(
       place, framework::TransToPhiDataType(proto::VarType::FP32), 1);
 }
@@ -112,7 +112,7 @@ void InitTensorHolder(Scope* scope,
 void MainTest(bool convWithExistingBias) {
   auto prog = BuildProgramDesc(convWithExistingBias);
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
-  auto place = paddle::platform::CPUPlace();
+  auto place = phi::CPUPlace();
   NaiveExecutor exe{place};
   Scope scope;
   // Init scope, as it is used in pass
@@ -139,12 +139,13 @@ void MainTest(bool convWithExistingBias) {
   int conv_bias_count = 0;
 
   for (auto* node : graph->Nodes()) {
-    if (node->IsOp() && node->Op()->Type() == "conv2d") {
+    if (node->IsOp() && (node->Op()->Type() == "conv2d" ||
+                         node->Op()->Type() == "fused_conv2d")) {
       auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
-      EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
+      EXPECT_TRUE(PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")));
       // check if "conv" convolution is fused
-      auto op_name = BOOST_GET_CONST(std::string, op->GetAttr("name"));
+      auto op_name = PADDLE_GET_CONST(std::string, op->GetAttr("name"));
       if (op_name == "conv") {
         auto input_names = op->InputNames();
         ASSERT_TRUE(std::find(input_names.begin(), input_names.end(), "Bias") !=

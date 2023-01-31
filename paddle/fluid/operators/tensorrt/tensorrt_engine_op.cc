@@ -34,7 +34,7 @@ class TensorRTEngineOpMaker : public framework::OpProtoAndCheckerMaker {
         "engine_key",
         "The engine_key here is used to distinguish different TRT Engines");
     AddAttr<int>("max_batch_size", "the maximum batch size.");
-    AddAttr<int>("workspace_size", "the workspace size.");
+    AddAttr<int64_t>("workspace_size", "the workspace size.").AsExtra();
     AddAttr<framework::BlockDesc *>("sub_block", "the trt block");
     AddAttr<bool>("enable_int8", "whether swith to int8 mode");
     AddComment("TensorRT engine operator.");

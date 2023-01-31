@@ -33,15 +33,15 @@ template <typename T>
 class MarkerOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
 
     auto marker_role = ctx.Attr<std::string>("marker_role");
     auto marker_pos = ctx.Attr<std::string>("marker_pos");
     VLOG(3) << "marker role: " << marker_role
             << " marker position: " << marker_pos;
 
-    framework::Tensor A;
-    framework::Tensor B;
+    phi::DenseTensor A;
+    phi::DenseTensor B;
     auto* in_temp = A.mutable_data<T>({32, 1}, ctx.GetPlace());
     auto* out_temp = B.mutable_data<T>({32, 1}, ctx.GetPlace());
     platform::RecordEvent record_event(

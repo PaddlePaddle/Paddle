@@ -125,6 +125,15 @@ static float nsToMsFloat(uint64_t end_ns, uint64_t start_ns = 0) {
 }
 
 #ifdef PADDLE_WITH_CUPTI
+#ifdef PADDLE_WITH_HIP
+float CalculateEstOccupancy(uint32_t DeviceId,
+                            int32_t DynamicSharedMemory,
+                            int32_t BlockX,
+                            int32_t BlockY,
+                            int32_t BlockZ,
+                            void* kernelFunc,
+                            uint8_t launchType);
+#else
 float CalculateEstOccupancy(uint32_t deviceId,
                             uint16_t registersPerThread,
                             int32_t staticSharedMemory,
@@ -133,7 +142,8 @@ float CalculateEstOccupancy(uint32_t deviceId,
                             int32_t blockY,
                             int32_t blockZ,
                             float blocksPerSm);
-#endif
+#endif  // PADDLE_WITH_HIP
+#endif  // PADDLE_WITH_CUPTI
 
 }  // namespace platform
 }  // namespace paddle

@@ -31,6 +31,7 @@ int CtrDymfAccessor::Initialize() {
   _embedx_sgd_rule = CREATE_PSCORE_CLASS(SparseValueSGDRule, name);
   _embedx_sgd_rule->LoadConfig(_config.embedx_sgd_param(),
                                _config.embedx_dim());
+  common_feature_value.optimizer_name = name;
 
   common_feature_value.embed_sgd_dim = _embed_sgd_rule->Dim();
   common_feature_value.embedx_dim = _config.embedx_dim();
@@ -42,7 +43,16 @@ int CtrDymfAccessor::Initialize() {
   if (_config.ctr_accessor_param().show_scale()) {
     _show_scale = true;
   }
-  VLOG(0) << " INTO CtrDymfAccessor::Initialize()";
+  for (int i = 0; i < _config.ctr_accessor_param().load_filter_slots_size();
+       i++) {
+    _filtered_slots.insert(_config.ctr_accessor_param().load_filter_slots(i));
+    VLOG(0) << "CtrDymfAccessor::Initialize() load filter slot:"
+            << _config.ctr_accessor_param().load_filter_slots(i);
+  }
+  VLOG(0) << " INTO CtrDymfAccessor::Initialize(); embed_sgd_dim:"
+          << common_feature_value.embed_sgd_dim
+          << " embedx_dim:" << common_feature_value.embedx_dim
+          << "  embedx_sgd_dim:" << common_feature_value.embedx_sgd_dim;
   InitAccessorInfo();
   return 0;
 }
@@ -53,9 +63,9 @@ void CtrDymfAccessor::InitAccessorInfo() {
 
   auto embedx_dim = _config.embedx_dim();
   VLOG(0) << "InitAccessorInfo embedx_dim:" << embedx_dim;
-  _accessor_info.select_dim = 3 + embedx_dim;
+  _accessor_info.select_dim = 4 + embedx_dim;
   _accessor_info.select_size = _accessor_info.select_dim * sizeof(float);
-  _accessor_info.update_dim = 4 + embedx_dim;
+  _accessor_info.update_dim = 5 + embedx_dim;
   _accessor_info.update_size = _accessor_info.update_dim * sizeof(float);
   _accessor_info.mf_size =
       (embedx_dim + common_feature_value.embedx_sgd_dim) * sizeof(float);
@@ -95,6 +105,15 @@ bool CtrDymfAccessor::SaveCache(float* value,
 
 bool CtrDymfAccessor::SaveSSD(float* value) {
   if (common_feature_value.UnseenDays(value) > _ssd_unseenday_threshold) {
+    return true;
+  }
+  return false;
+}
+
+bool CtrDymfAccessor::FilterSlot(float* value) {
+  // 热启时过滤掉_filtered_slots中的feasign
+  if (_filtered_slots.find(common_feature_value.Slot(value)) !=
+      _filtered_slots.end()) {
     return true;
   }
   return false;
@@ -173,14 +192,17 @@ void CtrDymfAccessor::UpdateStatAfterSave(float* value, int param) {
 int32_t CtrDymfAccessor::Create(float** values, size_t num) {
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* value = values[value_item];
-    value[common_feature_value.UnseenDaysIndex()] = 0;
+    common_feature_value.UnseenDays(value) = 0;
+    common_feature_value.PassId(value) = 0;
     value[common_feature_value.DeltaScoreIndex()] = 0;
     value[common_feature_value.ShowIndex()] = 0;
     value[common_feature_value.ClickIndex()] = 0;
     value[common_feature_value.SlotIndex()] = -1;
     value[common_feature_value.MfDimIndex()] = -1;
-    _embed_sgd_rule->InitValue(value + common_feature_value.EmbedWIndex(),
-                               value + common_feature_value.EmbedG2SumIndex());
+    _embed_sgd_rule->InitValue(
+        value + common_feature_value.EmbedWIndex(),
+        value + common_feature_value.EmbedG2SumIndex(),
+        false);  // adam embed init not zero, adagrad embed init zero
     _embedx_sgd_rule->InitValue(value + common_feature_value.EmbedxWIndex(),
                                 value + common_feature_value.EmbedxG2SumIndex(),
                                 false);
@@ -286,29 +308,23 @@ std::string CtrDymfAccessor::ParseToString(const float* v, int param) {
   thread_local std::ostringstream os;
   os.clear();
   os.str("");
-  os << v[0] << " " << v[1] << " " << v[2] << " " << v[3] << " " << v[4];
+  os << common_feature_value.UnseenDays(const_cast<float*>(v)) << " " << v[1]
+     << " " << v[2] << " " << v[3] << " " << v[4];
   //    << v[5] << " " << v[6];
   for (int i = common_feature_value.EmbedG2SumIndex();
        i < common_feature_value.EmbedxG2SumIndex();
        i++) {
     os << " " << v[i];
   }
-  // os << " " << common_feature_value.Slot(const_cast<float*>(v)) << " "
-  //    << common_feature_value.MfDim(const_cast<float*>(v));
   auto show = common_feature_value.Show(const_cast<float*>(v));
   auto click = common_feature_value.Click(const_cast<float*>(v));
   auto score = ShowClickScore(show, click);
+  auto mf_dim =
+      static_cast<int>(common_feature_value.MfDim(const_cast<float*>(v)));
   if (score >= _config.embedx_threshold() &&
       param > common_feature_value.EmbedxG2SumIndex()) {
-    // VLOG(1) << "common_feature_value.EmbedxG2SumIndex():"
-    //         << common_feature_value.EmbedxG2SumIndex();
-    // VLOG(1) << "common_feature_value.EmbedxWIndex():"
-    //         << common_feature_value.EmbedxWIndex();
-    // VLOG(1) << "common_feature_value.MfDim():"
-    //         << common_feature_value.MfDim(const_cast<float*>(v));
     for (auto i = common_feature_value.EmbedxG2SumIndex();
-         i < common_feature_value.EmbedxWIndex() +
-                 common_feature_value.MfDim(const_cast<float*>(v));
+         i < common_feature_value.Dim(mf_dim);
          ++i) {
       os << " " << v[i];
     }
@@ -318,8 +334,23 @@ std::string CtrDymfAccessor::ParseToString(const float* v, int param) {
 
 int CtrDymfAccessor::ParseFromString(const std::string& str, float* value) {
   auto ret = paddle::string::str_to_float(str.data(), value);
+  float unseen_day = value[common_feature_value.UnseenDaysIndex()];
+  common_feature_value.UnseenDays(value) = (uint16_t)(unseen_day);
+  common_feature_value.PassId(value) = 0;
   CHECK(ret >= 7) << "expect more than 7 real:" << ret;
   return ret;
+}
+
+bool CtrDymfAccessor::SaveMemCache(float* value,
+                                   int param,
+                                   double global_cache_threshold,
+                                   uint16_t pass_id) {
+  return common_feature_value.Show(value) > global_cache_threshold ||
+         common_feature_value.PassId(value) >= pass_id;
+}
+
+void CtrDymfAccessor::UpdatePassId(float* value, uint16_t pass_id) {
+  common_feature_value.PassId(value) = pass_id;
 }
 
 }  // namespace distributed

@@ -47,6 +47,22 @@ constexpr char kPassRecorder[] = "pass_recorder";
 constexpr char kEmbEltwiseLayernormPass[] =
     "embedding_eltwise_layernorm_fuse_pass_flag";
 constexpr char kMultiheadMatmulPass[] = "multihead_matmul_fuse_pass_flag";
+constexpr char kFusedMultiTransformerEncoderPass[] =
+    "fused_multi_transformer_encoder_pass_flag";
+constexpr char kFusedMultiTransformerDecoderPass[] =
+    "fused_multi_transformer_decoder_pass_flag";
+constexpr char kFusedMultiTransformerEncoderFuseQKVPass[] =
+    "fused_multi_transformer_encoder_fuse_qkv_pass_flag";
+constexpr char kFusedMultiTransformerDecoderFuseQKVPass[] =
+    "fused_multi_transformer_decoder_fuse_qkv_pass_flag";
+constexpr char kMultiDevicesFusedMultiTransformerEncoderFuseQKVPass[] =
+    "multi_devices_fused_multi_transformer_encoder_fuse_qkv_pass_flag";
+constexpr char kMultiDevicesFusedMultiTransformerDecoderFuseQKVPass[] =
+    "multi_devices_fused_multi_transformer_decoder_fuse_qkv_pass_flag";
+constexpr char kFusedMultiTransformerEncoderFusionCount[] =
+    "fused_multi_transformer_encoder_fusion_count";
+constexpr char kFusedMultiTransformerDecoderFusionCount[] =
+    "fused_multi_transformer_decoder_fusion_count";
 constexpr char kPrelnEmbEltwiseLayernormPass[] =
     "preln_embedding_eltwise_layernorm_fuse_pass_flag";
 
@@ -130,7 +146,7 @@ class Pass {
     }
     attrs_[attr_name] = attr;
     attr_dels_[attr_name] = [attr, attr_name]() {
-      VLOG(3) << "deleting " << attr_name;
+      VLOG(8) << "deleting " << attr_name;
       delete attr;
     };
   }

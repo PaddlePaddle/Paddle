@@ -46,7 +46,7 @@ EagerDeletionOpHandle::EagerDeletionOpHandle(
       gc_(gc) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(place)) {
-    dev_ctx_ = reinterpret_cast<platform::CUDADeviceContext *>(
+    dev_ctx_ = reinterpret_cast<phi::GPUContext *>(
         platform::DeviceContextPool::Instance().Get(place));
     if (dynamic_cast<StreamGarbageCollector *>(gc_)) {
       platform::CUDADeviceGuard guard(place.device);
@@ -150,8 +150,9 @@ void EagerDeletionOpHandle::RunImpl() {
 
     Variable *var = vars_[i];
 
-    if (var->IsType<LoDTensor>()) {
-      garbages.emplace_back(var->GetMutable<LoDTensor>()->MoveMemoryHolder());
+    if (var->IsType<phi::DenseTensor>()) {
+      garbages.emplace_back(
+          var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
     } else if (var->IsType<phi::SelectedRows>()) {
       garbages.emplace_back(var->GetMutable<phi::SelectedRows>()
                                 ->mutable_value()

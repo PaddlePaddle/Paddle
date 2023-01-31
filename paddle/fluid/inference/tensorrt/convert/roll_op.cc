@@ -42,9 +42,9 @@ class RollOpConverter : public OpConverter {
     nvinfer1::Dims input_dims = input->getDimensions();
 
     std::vector<int64_t> axis =
-        BOOST_GET_CONST(std::vector<int64_t>, op_desc.GetAttr("axis"));
+        PADDLE_GET_CONST(std::vector<int64_t>, op_desc.GetAttr("axis"));
     std::vector<int64_t> shifts =
-        BOOST_GET_CONST(std::vector<int64_t>, op_desc.GetAttr("shifts"));
+        PADDLE_GET_CONST(std::vector<int64_t>, op_desc.GetAttr("shifts"));
 
     nvinfer1::Dims start;
     start.nbDims = input_dims.nbDims;

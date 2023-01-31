@@ -13,13 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/conv_shift_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
-
-using framework::Tensor;
 
 namespace {
 
@@ -124,13 +122,12 @@ __global__ void ConvShiftDy(const T *x,
 }  // namespace
 
 template <typename T>
-class ConvShiftKernel<platform::CUDADeviceContext, T>
-    : public framework::OpKernel<T> {
+class ConvShiftKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    const Tensor *X = context.Input<Tensor>("X");
-    const Tensor *Y = context.Input<Tensor>("Y");
-    Tensor *Out = context.Output<Tensor>("Out");
+    const phi::DenseTensor *X = context.Input<phi::DenseTensor>("X");
+    const phi::DenseTensor *Y = context.Input<phi::DenseTensor>("Y");
+    phi::DenseTensor *Out = context.Output<phi::DenseTensor>("Out");
     const T *x_data = X->data<T>();
     const T *y_data = Y->data<T>();
     T *out_data = Out->mutable_data<T>(context.GetPlace());
@@ -146,8 +143,7 @@ class ConvShiftKernel<platform::CUDADeviceContext, T>
 
     dim3 grid_dim(num_x_blocks, batch_size);
 
-    auto stream =
-        context.template device_context<platform::CUDADeviceContext>().stream();
+    auto stream = context.template device_context<phi::GPUContext>().stream();
 
     ConvShiftForward<T><<<grid_dim, x_per_block, mem_per_block, stream>>>(
         x_data, y_data, x_width, y_width, y_half_width, batch_size, out_data);
@@ -155,28 +151,29 @@ class ConvShiftKernel<platform::CUDADeviceContext, T>
 };
 
 template <typename T>
-class ConvShiftGradKernel<platform::CUDADeviceContext, T>
-    : public framework::OpKernel<T> {
+class ConvShiftGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    const Tensor *X = context.Input<Tensor>("X");
-    const Tensor *Y = context.Input<Tensor>("Y");
-    const Tensor *dOut = context.Input<Tensor>(framework::GradVarName("Out"));
+    const phi::DenseTensor *X = context.Input<phi::DenseTensor>("X");
+    const phi::DenseTensor *Y = context.Input<phi::DenseTensor>("Y");
+    const phi::DenseTensor *dOut =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     const T *x_data = X->data<T>();
     const T *y_data = Y->data<T>();
     const T *dout_data = dOut->data<T>();
 
-    Tensor *dX = context.Output<Tensor>(framework::GradVarName("X"));
-    Tensor *dY = context.Output<Tensor>(framework::GradVarName("Y"));
+    phi::DenseTensor *dX =
+        context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    phi::DenseTensor *dY =
+        context.Output<phi::DenseTensor>(framework::GradVarName("Y"));
 
     int batch_size = X->dims()[0];
     int x_width = X->dims()[1];
     int y_width = Y->dims()[1];
     int y_half_width = (y_width - 1) / 2;
 
-    auto &device_ctx =
-        context.template device_context<platform::CUDADeviceContext>();
-    phi::funcs::SetConstant<platform::CUDADeviceContext, T> zero;
+    auto &device_ctx = context.template device_context<phi::GPUContext>();
+    phi::funcs::SetConstant<phi::GPUContext, T> zero;
 
     const int x_per_block = 256;
     int num_x_blocks = DivUp(x_width, x_per_block);
@@ -212,9 +209,7 @@ class ConvShiftGradKernel<platform::CUDADeviceContext, T>
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    conv_shift,
-    ops::ConvShiftKernel<paddle::platform::CUDADeviceContext, float>);
-REGISTER_OP_CUDA_KERNEL(
-    conv_shift_grad,
-    ops::ConvShiftGradKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(conv_shift,
+                        ops::ConvShiftKernel<phi::GPUContext, float>);
+REGISTER_OP_CUDA_KERNEL(conv_shift_grad,
+                        ops::ConvShiftGradKernel<phi::GPUContext, float>);

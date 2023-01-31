@@ -62,6 +62,8 @@ struct TableContext {
   size_t num;
   bool use_ptr = false;
   uint32_t trainer_id;  // for GEO and global step
+  int shard_id;         // for gpups
+  uint16_t pass_id;     // for gpups ssd
 };
 
 class Table {
@@ -71,8 +73,8 @@ class Table {
   virtual int32_t Initialize(const TableParameter &config,
                              const FsClientParameter &fs_config);
 
-  virtual int32_t Pull(TableContext &context) = 0;
-  virtual int32_t Push(TableContext &context) = 0;
+  virtual int32_t Pull(TableContext &context) = 0;  // NOLINT
+  virtual int32_t Push(TableContext &context) = 0;  // NOLINT
 
   // only for barrier
   virtual int32_t Barrier(const uint32_t trainer_id,
@@ -125,7 +127,8 @@ class Table {
       const std::string &param,
       double cache_threshold,
       std::function<std::future<int32_t>(
-          int msg_type, int to_pserver_id, std::string &msg)> send_msg_func,
+          int msg_type, int to_pserver_id, std::string &msg)>  // NOLINT
+          send_msg_func,
       paddle::framework::Channel<std::pair<uint64_t, std::string>>
           &shuffled_channel,
       const std::vector<Table *> &table_ptrs) {
@@ -146,6 +149,11 @@ class Table {
 
   virtual void *GetShard(size_t shard_idx) = 0;
   virtual std::pair<int64_t, int64_t> PrintTableStat() { return {0, 0}; }
+  virtual int32_t CacheTable(uint16_t pass_id) { return 0; }
+
+  // for patch model
+  virtual void Revert() {}
+  virtual void CheckSavePrePatchDone() {}
 
  protected:
   virtual int32_t Initialize() = 0;

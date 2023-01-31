@@ -33,8 +33,7 @@ TEST(DeviceEvent, CUDA) {
 
   auto& pool = DeviceContextPool::Instance();
   auto place = CUDAPlace(0);
-  auto* context =
-      static_cast<paddle::platform::CUDADeviceContext*>(pool.Get(place));
+  auto* context = static_cast<phi::GPUContext*>(pool.Get(place));
 
   ASSERT_NE(context, nullptr);
   // case 1. test for event_creator
@@ -83,8 +82,7 @@ TEST(DeviceEvent, CUDA) {
 
   auto& pool = DeviceContextPool::Instance();
   auto place = CUDAPlace(0);
-  auto* context =
-      static_cast<paddle::platform::CUDADeviceContext*>(pool.Get(place));
+  auto* context = static_cast<phi::GPUContext*>(pool.Get(place));
 
   ASSERT_NE(context, nullptr);
   // case 1. test for event_creator

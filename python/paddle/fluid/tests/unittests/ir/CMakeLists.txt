@@ -12,6 +12,7 @@ endif()
 
 foreach(target ${TEST_IR_PASSES})
   py_test_modules(${target} MODULES ${target})
+  set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
 endforeach()
 
 add_subdirectory(inference)

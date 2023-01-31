@@ -39,8 +39,8 @@ class NCCLBroadcastOpKernel : public framework::OpKernel<T> {
     int dev_id = ctx.GetPlace().device;
     int root_dev_id = ctx.Attr<int>("root");
 
-    auto in = ctx.Input<framework::Tensor>("X");
-    auto out = ctx.Output<framework::Tensor>("Out");
+    auto in = ctx.Input<phi::DenseTensor>("X");
+    auto out = ctx.Output<phi::DenseTensor>("Out");
     PADDLE_ENFORCE_EQ(
         out->IsInitialized(),
         true,
@@ -54,7 +54,7 @@ class NCCLBroadcastOpKernel : public framework::OpKernel<T> {
         platform::errors::PreconditionNotMet("Currently, the broadcast op can "
                                              "only be an In-Place operation."));
 
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto comm = dev_ctx.nccl_comm();
     auto stream = dev_ctx.stream();
 

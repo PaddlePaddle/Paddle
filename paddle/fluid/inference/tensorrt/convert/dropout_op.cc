@@ -41,11 +41,11 @@ class DropoutOpConverter : public OpConverter {
     // Declare inputs
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
     float dropout_prob =
-        BOOST_GET_CONST(float, op_desc.GetAttr("dropout_prob"));
+        PADDLE_GET_CONST(float, op_desc.GetAttr("dropout_prob"));
 
     std::string downgrade_in_infer = "";
     if (op_desc.HasAttr("dropout_implementation")) {
-      downgrade_in_infer = BOOST_GET_CONST(
+      downgrade_in_infer = PADDLE_GET_CONST(
           std::string, op_desc.GetAttr("dropout_implementation"));
     }
 
@@ -58,8 +58,7 @@ class DropoutOpConverter : public OpConverter {
     }
 
     platform::CPUPlace cpu_place;
-    std::unique_ptr<framework::LoDTensor> weight_tensor(
-        new framework::LoDTensor());
+    std::unique_ptr<phi::DenseTensor> weight_tensor(new phi::DenseTensor());
     weight_tensor->Resize(phi::make_ddim({1}));
     auto* weight_data =
         weight_tensor->mutable_data<float>(platform::CPUPlace());

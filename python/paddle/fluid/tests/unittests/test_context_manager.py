@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
 import unittest
+
+import paddle.fluid as fluid
 
 
 class TestContextManagerRaiseException(unittest.TestCase):
     # When exception raised in 'with' context, we should safely exit the context
     def test_func1(self):
-
         def foo():
             with fluid.dygraph.guard():
                 print("raise error in context manager")

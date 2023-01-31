@@ -188,7 +188,7 @@ void DataFeed::AddFeedVar(Variable* var, const std::string& name) {
       if (var == nullptr) {
         feed_vec_[i] = nullptr;
       } else {
-        feed_vec_[i] = var->GetMutable<LoDTensor>();
+        feed_vec_[i] = var->GetMutable<phi::DenseTensor>();
       }
     }
   }
@@ -257,7 +257,7 @@ void DataFeed::CheckStart() {
 void DataFeed::AssignFeedVar(const Scope& scope) {
   CheckInit();
   for (size_t i = 0; i < use_slots_.size(); ++i) {
-    feed_vec_[i] = scope.FindVar(use_slots_[i])->GetMutable<LoDTensor>();
+    feed_vec_[i] = scope.FindVar(use_slots_[i])->GetMutable<phi::DenseTensor>();
   }
 }
 
@@ -309,7 +309,7 @@ void PrivateQueueDataFeed<T>::ReadThread() {
   std::string filename;
   while (PickOneFile(&filename)) {
     int err_no = 0;
-    fp_ = fs_open_read(filename, &err_no, pipe_command_);
+    fp_ = fs_open_read(filename, &err_no, pipe_command_, true);
     __fsetlocking(&*fp_, FSETLOCKING_BYCALLER);
     T instance;
     while (ParseOneInstanceFromPipe(&instance)) {
@@ -538,7 +538,7 @@ void InMemoryDataFeed<T>::LoadIntoMemory() {
     } else {
 #endif
       int err_no = 0;
-      this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_);
+      this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_, true);
 #ifdef PADDLE_WITH_BOX_PS
     }
 #endif
@@ -574,7 +574,7 @@ void InMemoryDataFeed<T>::LoadIntoMemoryFromSo() {
     (defined PADDLE_WITH_PSLIB)
   VLOG(3) << "LoadIntoMemoryFromSo() begin, thread_id=" << thread_id_;
   int buf_len = 1024 * 1024 * 10;
-  char* buf = (char*)malloc(buf_len + 10);
+  char* buf = reinterpret_cast<char*>(malloc(buf_len + 10));
   auto ps_gpu_ptr = PSGPUWrapper::GetInstance();
 
   paddle::framework::CustomParser* parser =
@@ -681,7 +681,7 @@ void MultiSlotDataFeed::ReadThread() {
   std::string filename;
   while (PickOneFile(&filename)) {
     int err_no = 0;
-    fp_ = fs_open_read(filename, &err_no, pipe_command_);
+    fp_ = fs_open_read(filename, &err_no, pipe_command_, true);
     CHECK(fp_ != nullptr);
     __fsetlocking(&*fp_, FSETLOCKING_BYCALLER);
     std::vector<MultiSlotType> instance;
@@ -1889,7 +1889,8 @@ void PaddleBoxDataFeed::AssignFeedVar(const Scope& scope) {
   // set rank offset memory
   int phase = GetCurrentPhase();  // join: 1, update: 0
   if (enable_pv_merge_ && phase == 1) {
-    rank_offset_ = scope.FindVar(rank_offset_name_)->GetMutable<LoDTensor>();
+    rank_offset_ =
+        scope.FindVar(rank_offset_name_)->GetMutable<phi::DenseTensor>();
   }
 }
 
@@ -2108,7 +2109,29 @@ void SlotRecordInMemoryDataFeed::Init(const DataFeedDesc& data_feed_desc) {
   } else {
     so_parser_name_.clear();
   }
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+  gpu_graph_data_generator_.SetConfig(data_feed_desc);
+#endif
+  if (gpu_graph_mode_) {
+    train_mode_ = true;
+  } else {
+    train_mode_ = data_feed_desc.graph_config().gpu_graph_training();
+  }
 }
+
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+void SlotRecordInMemoryDataFeed::InitGraphResource() {
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+  gpu_graph_data_generator_.AllocResource(thread_id_, feed_vec_);
+#endif
+}
+
+void SlotRecordInMemoryDataFeed::InitGraphTrainResource() {
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+  gpu_graph_data_generator_.AllocTrainResource(thread_id_);
+#endif
+}
+#endif
 
 void SlotRecordInMemoryDataFeed::LoadIntoMemory() {
   VLOG(3) << "SlotRecord LoadIntoMemory() begin, thread_id=" << thread_id_;
@@ -2175,7 +2198,7 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile(void) {
             lines);
       } else {
         int err_no = 0;
-        this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_);
+        this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_, true);
 
         CHECK(this->fp_ != nullptr);
         __fsetlocking(&*(this->fp_), FSETLOCKING_BYCALLER);
@@ -2265,7 +2288,7 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByLine(void) {
 
     do {
       int err_no = 0;
-      this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_);
+      this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_, true);
       CHECK(this->fp_ != nullptr);
       __fsetlocking(&*(this->fp_), FSETLOCKING_BYCALLER);
       lines = line_reader.read_file(this->fp_.get(), line_func, lines);
@@ -2314,7 +2337,7 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByCommand(void) {
 
     do {
       int err_no = 0;
-      this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_);
+      this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_, true);
       CHECK(this->fp_ != nullptr);
       __fsetlocking(&*(this->fp_), FSETLOCKING_BYCALLER);
 
@@ -2475,7 +2498,7 @@ void SlotRecordInMemoryDataFeed::AssignFeedVar(const Scope& scope) {
   CheckInit();
   for (int i = 0; i < use_slot_size_; ++i) {
     feed_vec_[i] =
-        scope.FindVar(used_slots_info_[i].slot)->GetMutable<LoDTensor>();
+        scope.FindVar(used_slots_info_[i].slot)->GetMutable<phi::DenseTensor>();
   }
 }
 
@@ -2645,39 +2668,54 @@ bool SlotRecordInMemoryDataFeed::Start() {
   CHECK(paddle::platform::is_gpu_place(this->place_));
   pack_ = BatchGpuPackMgr().get(this->GetPlace(), used_slots_info_);
 #endif
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+  gpu_graph_data_generator_.SetFeedVec(feed_vec_);
+#endif
   return true;
 }
 
 int SlotRecordInMemoryDataFeed::Next() {
 #ifdef _LINUX
   this->CheckStart();
-
-  VLOG(3) << "enable heter next: " << offset_index_
-          << " batch_offsets: " << batch_offsets_.size();
-  if (offset_index_ >= batch_offsets_.size()) {
-    VLOG(3) << "offset_index: " << offset_index_
+  if (!gpu_graph_mode_) {
+    VLOG(3) << "enable heter next: " << offset_index_
             << " batch_offsets: " << batch_offsets_.size();
-    return 0;
-  }
-  auto& batch = batch_offsets_[offset_index_++];
-  this->batch_size_ = batch.second;
-  VLOG(3) << "batch_size_=" << this->batch_size_
-          << ", thread_id=" << thread_id_;
-  if (this->batch_size_ != 0) {
-    PutToFeedVec(&records_[batch.first], this->batch_size_);
+    if (offset_index_ >= batch_offsets_.size()) {
+      VLOG(3) << "offset_index: " << offset_index_
+              << " batch_offsets: " << batch_offsets_.size();
+      return 0;
+    }
+    auto& batch = batch_offsets_[offset_index_++];
+    this->batch_size_ = batch.second;
+    VLOG(3) << "batch_size_=" << this->batch_size_
+            << ", thread_id=" << thread_id_;
+    if (this->batch_size_ != 0) {
+      PutToFeedVec(&records_[batch.first], this->batch_size_);
+    } else {
+      VLOG(3) << "finish reading for heterps, batch size zero, thread_id="
+              << thread_id_;
+    }
+    VLOG(3) << "enable heter next: " << offset_index_
+            << " batch_offsets: " << batch_offsets_.size()
+            << " baych_size: " << this->batch_size_;
   } else {
-    VLOG(3) << "finish reading for heterps, batch size zero, thread_id="
-            << thread_id_;
+    VLOG(3) << "datafeed in gpu graph mode";
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+    this->batch_size_ = gpu_graph_data_generator_.GenerateBatch();
+#endif
   }
-  VLOG(3) << "enable heter next: " << offset_index_
-          << " batch_offsets: " << batch_offsets_.size()
-          << " baych_size: " << this->batch_size_;
 
   return this->batch_size_;
 #else
   return 0;
 #endif
 }
+
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+void SlotRecordInMemoryDataFeed::DoWalkandSage() {
+  gpu_graph_data_generator_.DoWalkandSage();
+}
+#endif
 
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
 void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {
@@ -2705,8 +2743,8 @@ void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {
   // alloc gpu memory
   pack_->resize_tensor();
 
-  LoDTensor& float_tensor = pack_->float_tensor();
-  LoDTensor& uint64_tensor = pack_->uint64_tensor();
+  phi::DenseTensor& float_tensor = pack_->float_tensor();
+  phi::DenseTensor& uint64_tensor = pack_->uint64_tensor();
 
   int64_t float_offset = 0;
   int64_t uint64_offset = 0;
@@ -2797,7 +2835,7 @@ void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {
 MiniBatchGpuPack::MiniBatchGpuPack(const paddle::platform::Place& place,
                                    const std::vector<UsedSlotInfo>& infos) {
   place_ = place;
-  stream_ = dynamic_cast<platform::CUDADeviceContext*>(
+  stream_ = dynamic_cast<phi::GPUContext*>(
                 platform::DeviceContextPool::Instance().Get(place))
                 ->stream();
 
@@ -2831,7 +2869,7 @@ MiniBatchGpuPack::~MiniBatchGpuPack() {}
 
 void MiniBatchGpuPack::reset(const paddle::platform::Place& place) {
   place_ = place;
-  stream_ = dynamic_cast<platform::CUDADeviceContext*>(
+  stream_ = dynamic_cast<phi::GPUContext*>(
                 platform::DeviceContextPool::Instance().Get(place))
                 ->stream();
   ins_num_ = 0;

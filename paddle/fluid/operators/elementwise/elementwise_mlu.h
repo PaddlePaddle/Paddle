@@ -77,9 +77,9 @@ void MLUOpTensorKernel(const framework::ExecutionContext& ctx,
                     platform::errors::Unavailable(
                         "This kernel of MLU only support ADD, SUB, MUL."));
 
-  auto* x = ctx.Input<Tensor>("X");
-  auto* y = ctx.Input<Tensor>("Y");
-  auto* out = ctx.Output<Tensor>("Out");
+  auto* x = ctx.Input<phi::DenseTensor>("X");
+  auto* y = ctx.Input<phi::DenseTensor>("Y");
+  auto* out = ctx.Output<phi::DenseTensor>("Out");
   out->mutable_data<T>(ctx.GetPlace());
 
   int axis = ctx.Attr<int>("axis");
@@ -122,6 +122,7 @@ enum BINARY_FUNCTOR {
   DIVNONAN,
   MAXIMUM,
   MINIMUM,
+  POW,
 };
 
 template <BINARY_FUNCTOR func>
@@ -171,11 +172,23 @@ inline void MLUBinary<MINIMUM>(const framework::ExecutionContext& ctx,
   MLUCnnl::Minimum(ctx, in1_desc, in1, in2_desc, in2, out_desc, out);
 }
 
+template <>
+inline void MLUBinary<POW>(const framework::ExecutionContext& ctx,
+                           cnnlComputationPreference_t prefer,
+                           const cnnlTensorDescriptor_t x_desc,
+                           const void* x,
+                           const cnnlTensorDescriptor_t y_desc,
+                           const void* y,
+                           const cnnlTensorDescriptor_t out_desc,
+                           void* out) {
+  MLUCnnl::Pow(ctx, prefer, x_desc, x, y_desc, y, out_desc, out);
+}
+
 template <BINARY_FUNCTOR Functor, typename T>
 void MLUBinaryOp(const framework::ExecutionContext& ctx) {
-  auto* x = ctx.Input<Tensor>("X");
-  auto* y = ctx.Input<Tensor>("Y");
-  auto* out = ctx.Output<Tensor>("Out");
+  auto* x = ctx.Input<phi::DenseTensor>("X");
+  auto* y = ctx.Input<phi::DenseTensor>("Y");
+  auto* out = ctx.Output<phi::DenseTensor>("Out");
   out->mutable_data<T>(ctx.GetPlace());
 
   int axis = ctx.Attr<int>("axis");
@@ -246,8 +259,8 @@ inline void MLUUnary<RECIPROCAL>(const framework::ExecutionContext& ctx,
 
 template <UNARY_FUNCTOR Functor, typename Tin, typename Tout = Tin>
 void MLUUnaryOp(const framework::ExecutionContext& ctx) {
-  auto* x = ctx.Input<Tensor>("X");
-  auto* out = ctx.Output<Tensor>("Out");
+  auto* x = ctx.Input<phi::DenseTensor>("X");
+  auto* out = ctx.Output<phi::DenseTensor>("Out");
 
   out->mutable_data<Tout>(ctx.GetPlace());
 
@@ -270,11 +283,11 @@ enum MINMAX_GRAD_FUNCTOR {
 };
 template <MINMAX_GRAD_FUNCTOR Functor, typename Tin, typename Tout = Tin>
 void MLUMinMaxGradHelper(const framework::ExecutionContext& ctx) {
-  auto* x = ctx.Input<Tensor>("X");
-  auto* y = ctx.Input<Tensor>("Y");
-  auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-  auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-  auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+  auto* x = ctx.Input<phi::DenseTensor>("X");
+  auto* y = ctx.Input<phi::DenseTensor>("Y");
+  auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+  auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+  auto* dy = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
   int axis = ctx.Attr<int>("axis");
 
   const auto& x_dims = x->dims();
@@ -296,7 +309,7 @@ void MLUMinMaxGradHelper(const framework::ExecutionContext& ctx) {
   // mask = Logic(x, y) only support min & max
   cnnlLogicOp_t logic =
       Functor == MAXIMUM_GRAD ? CNNL_LOGIC_OP_GE : CNNL_LOGIC_OP_LE;
-  Tensor mask(x->dtype());
+  phi::DenseTensor mask(x->dtype());
   mask.Resize(phi::make_ddim(out_dims_array));
   mask.mutable_data<Tin>(ctx.GetPlace());
 
@@ -314,7 +327,7 @@ void MLUMinMaxGradHelper(const framework::ExecutionContext& ctx) {
                  GetBasePtr(&mask));
 
   // dx = Mul(dz, mask)
-  Tensor dx_temp(x->dtype());
+  phi::DenseTensor dx_temp(x->dtype());
   dx_temp.Resize(dout->dims());
   dx_temp.mutable_data<Tout>(ctx.GetPlace());
   MLUCnnlTensorDesc dout_desc(*dout);
@@ -331,7 +344,7 @@ void MLUMinMaxGradHelper(const framework::ExecutionContext& ctx) {
                     data_type);
 
   // dy = Sub(dz, dx)
-  Tensor dy_temp(y->dtype());
+  phi::DenseTensor dy_temp(y->dtype());
   dy_temp.Resize(dout->dims());
   dy_temp.mutable_data<Tout>(ctx.GetPlace());
   MLUCnnlOpTensorDesc sub_op_desc(

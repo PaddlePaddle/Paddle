@@ -156,3 +156,7 @@ std::shared_ptr<framework::Cipher> MakeCipher(const std::string &config_file) {
 #endif
 
 }  // namespace paddle
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/capi/capi.h"
+#endif

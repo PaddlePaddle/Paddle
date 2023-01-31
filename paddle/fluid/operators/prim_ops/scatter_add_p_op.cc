@@ -70,7 +70,7 @@ class ScatterAddPrimOpShapeInference : public framework::InferShapeBase {
       framework::InferShapeVarPtr index_var_ptr =
           ctx->GetInputVarPtrs("IndexTensor")[0];
       framework::VarDesc *index_var =
-          BOOST_GET(framework::VarDesc *, index_var_ptr);
+          PADDLE_GET(framework::VarDesc *, index_var_ptr);
       auto index_shape = index_var->GetShape();
       PADDLE_ENFORCE_EQ(index_shape.size(),
                         1,
@@ -83,8 +83,8 @@ class ScatterAddPrimOpShapeInference : public framework::InferShapeBase {
       num_index = ctx->Attrs().Get<std::vector<int64_t>>("index").size();
     }
     auto axis = ctx->Attrs().Get<int64_t>("axis");
-    framework::VarDesc *x_var = BOOST_GET(framework::VarDesc *, x_var_ptr);
-    framework::VarDesc *y_var = BOOST_GET(framework::VarDesc *, y_var_ptr);
+    framework::VarDesc *x_var = PADDLE_GET(framework::VarDesc *, x_var_ptr);
+    framework::VarDesc *y_var = PADDLE_GET(framework::VarDesc *, y_var_ptr);
     auto x_shape = x_var->GetShape();
     auto y_shape = y_var->GetShape();
     size_t x_rank = x_shape.size();
@@ -118,7 +118,7 @@ class ScatterAddPrimOpShapeInference : public framework::InferShapeBase {
       }
     }
 
-    BOOST_GET(framework::VarDesc *, z_var_ptr)->SetShape(x_shape);
+    PADDLE_GET(framework::VarDesc *, z_var_ptr)->SetShape(x_shape);
   }
 };
 

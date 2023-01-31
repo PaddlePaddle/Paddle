@@ -126,7 +126,6 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots,
   init_zero_tensor.lod.assign({one_batch.lod3});
   lod_tensor_tensor.shape = rnn_link_data_shape;
   lod_tensor_tensor.lod.assign({one_batch.lod1});
-  // clang-format off
   week_tensor.shape.assign(
       {static_cast<int>(one_batch.rnn_week_datas.size()),
        static_cast<int>(one_batch.rnn_week_datas.front().size())});
@@ -135,7 +134,6 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots,
       {static_cast<int>(one_batch.rnn_minute_datas.size()),
        static_cast<int>(one_batch.rnn_minute_datas.front().size())});
   minute_tensor.lod.assign({one_batch.lod3});
-  // clang-format on
   // assign data
   TensorAssignData<float>(&lod_attention_tensor,
                           std::vector<std::vector<float>>({{0, 0}}));
@@ -259,8 +257,6 @@ TEST(Analyzer_rnn1, fuse_statis) {
   EXPECT_EQ(fuse_statis.at("fc_fuse"), 1);
   EXPECT_EQ(fuse_statis.at("fc_nobias_lstm_fuse"), 2);  // bi-directional LSTM
   EXPECT_EQ(fuse_statis.at("seq_concat_fc_fuse"), 1);
-  EXPECT_EQ(num_ops,
-            13);  // After graph optimization, only 13 operators exists.
 }
 
 // Compare result of NativeConfig and AnalysisConfig

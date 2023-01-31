@@ -528,10 +528,9 @@ struct CannotToStringType {
 };
 
 TEST(enforce, cannot_to_string_type) {
-  static_assert(
-      !paddle::platform::details::CanToString<CannotToStringType>::kValue,
-      "CannotToStringType must not be converted to string");
-  static_assert(paddle::platform::details::CanToString<int>::kValue,
+  static_assert(!phi::enforce::details::CanToString<CannotToStringType>::kValue,
+                "CannotToStringType must not be converted to string");
+  static_assert(phi::enforce::details::CanToString<int>::kValue,
                 "int can be converted to string");
   CannotToStringType obj1(3), obj2(4), obj3(3);
 
@@ -622,19 +621,19 @@ TEST(OP_INOUT_CHECK_MACRO, FAIL) {
   EXPECT_TRUE(caught_exception);
 }
 
-TEST(BOOST_GET_SAFELY, SUCCESS) {
+TEST(PADDLE_GET_SAFELY, SUCCESS) {
   paddle::framework::Attribute attr;
   attr = true;
-  bool rlt = BOOST_GET(bool, attr);
+  bool rlt = PADDLE_GET(bool, attr);
   EXPECT_EQ(rlt, true);
 }
 
-TEST(BOOST_GET_SAFELY, FAIL) {
+TEST(PADDLE_GET_SAFELY, FAIL) {
   paddle::framework::Attribute attr;
   attr = true;
   bool caught_exception = false;
   try {
-    BOOST_GET(int, attr);
+    PADDLE_GET(int, attr);
   } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
   }

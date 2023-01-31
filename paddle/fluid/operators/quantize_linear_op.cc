@@ -25,13 +25,29 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
+struct DequantizeFunctor<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext &dev_ctx,
+                  const phi::DenseTensor *in,
+                  const phi::DenseTensor *scale,
+                  T max_range,
+                  phi::DenseTensor *out) {
+    auto in_e = framework::EigenVector<T>::Flatten(*in);
+    const T *scale_factor = scale->data<T>();
+    auto out_e = framework::EigenVector<T>::Flatten(*out);
+
+    auto &dev = *dev_ctx.eigen_device();
+    out_e.device(dev) = in_e * scale_factor[0] / max_range;
+  }
+};
+
+template <typename T>
 struct ChannelDequantizeFunctorV2<phi::CPUContext, T> {
   void operator()(const phi::CPUContext &dev_ctx,
-                  const framework::Tensor *in,
-                  const framework::Tensor *scale,
+                  const phi::DenseTensor *in,
+                  const phi::DenseTensor *scale,
                   T max_range,
                   const int quant_axis,
-                  framework::Tensor *out) {
+                  phi::DenseTensor *out) {
     // Dequant op is before quantized op
     // Dequantize the weight of quantized op
     auto in_dims = in->dims();
@@ -40,8 +56,8 @@ struct ChannelDequantizeFunctorV2<phi::CPUContext, T> {
     if (quant_axis == 0) {
       for (int64_t i = 0; i < channel; i++) {
         T s = scale_factor[i];
-        framework::Tensor one_channel_in = in->Slice(i, i + 1);
-        framework::Tensor one_channel_out = out->Slice(i, i + 1);
+        phi::DenseTensor one_channel_in = in->Slice(i, i + 1);
+        phi::DenseTensor one_channel_out = out->Slice(i, i + 1);
         auto in_e = framework::EigenVector<T>::Flatten(one_channel_in);
         auto out_e = framework::EigenVector<T>::Flatten(one_channel_out);
         auto &dev = *dev_ctx.eigen_device();
@@ -55,7 +71,7 @@ struct ChannelDequantizeFunctorV2<phi::CPUContext, T> {
       int64_t step_i = in->numel() / out_iter;
       int64_t step_j = in->numel() / (out_iter * channel);
       auto *in_data = in->data<T>();
-      auto *out_data = out->mutable_data<T>(dev_ctx.GetPlace());
+      auto *out_data = dev_ctx.Alloc<T>(out, out->numel() * sizeof(T));
       for (int64_t i = 0; i < out_iter; i++) {
         for (int64_t j = 0; j < channel; j++) {
           auto *cur_in = in_data + i * step_i + j * step_j;
@@ -72,6 +88,11 @@ struct ChannelDequantizeFunctorV2<phi::CPUContext, T> {
   }
 };
 
+template struct DequantizeFunctor<phi::CPUContext, phi::dtype::float16>;
+template struct DequantizeFunctor<phi::CPUContext, float>;
+template struct DequantizeFunctor<phi::CPUContext, double>;
+template struct ChannelDequantizeFunctorV2<phi::CPUContext,
+                                           phi::dtype::float16>;
 template struct ChannelDequantizeFunctorV2<phi::CPUContext, float>;
 template struct ChannelDequantizeFunctorV2<phi::CPUContext, double>;
 
@@ -93,14 +114,20 @@ class QuantizeLinearOp : public framework::OperatorWithKernel {
         ctx->SetOutputDim("OutScale", {ctx->GetInputDim("X")[quant_axis]});
       }
     }
+    if (ctx->HasOutput("OutState")) {
+      ctx->SetOutputDim("OutState", {1});
+    }
+    if (ctx->HasOutput("OutAccum")) {
+      ctx->SetOutputDim("OutAccum", {1});
+    }
     ctx->ShareLoD("X", /*->*/ "Y");
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -113,7 +140,21 @@ class QuantizeLinearOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Y",
               "(Tensor) Output of quantized low level tensor, "
               "but also saved as float data type.");
-    AddOutput("OutScale", "(Tensor) Current scale").AsDispensable().AsExtra();
+    AddInput("InAccum", "Last accum.")
+        .AsDispensable()
+        .AsExtra();  // only qat use
+    AddInput("InState", "Last state.")
+        .AsDispensable()
+        .AsExtra();  // only qat use
+    AddOutput("OutState", "(Tensor) state buffer.")
+        .AsDispensable()
+        .AsExtra();  // only qat use
+    AddOutput("OutAccum", "(Tensor) accum buffer.")
+        .AsDispensable()
+        .AsExtra();  // only qat use
+    AddOutput("OutScale", "(Tensor) Current scale")
+        .AsDispensable()
+        .AsExtra();  // only qat use
     AddAttr<int>("quant_axis",
                  "(int, default 0) The axis for quantization. "
                  "For conv2d, depthwise_conv2d, conv2d_transpose "
@@ -154,12 +195,17 @@ class QuantizeLinearOpMaker : public framework::OpProtoAndCheckerMaker {
                   "nearest ties to even and 1 is rounding to nearest "
                   "ties away from zero.but the received is %d",
                   round_type));
-        })
-        .AsExtra();
+        });
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
         .SetDefault(true);
+    AddAttr<bool>(
+        "only_observer",
+        "(bool, default false) Whether to only observer or not. If "
+        "only_observer=false, it will calculate fake quant or dequant output. "
+        "If only_observer=true, it will only calibrate scale information.")
+        .SetDefault(false);
     AddComment(R"DOC(
 The scale of QuantizeLinear operator is a vector.
 In detail, each channel of the input X has a scale value.
@@ -195,6 +241,6 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CPU_KERNEL(dequantize_linear,
-                       ops::DeQuantizeLinearKernel<CPU, float, float>,
-                       ops::DeQuantizeLinearKernel<CPU, int8_t, float>,
-                       ops::DeQuantizeLinearKernel<CPU, double, double>);
+                       ops::DeQuantizeLinearKernel<CPU, float>,
+                       ops::DeQuantizeLinearKernel<CPU, int8_t>,
+                       ops::DeQuantizeLinearKernel<CPU, double>);

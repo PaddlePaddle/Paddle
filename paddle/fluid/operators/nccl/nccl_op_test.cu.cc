@@ -58,7 +58,7 @@ class NCCLTester : public ::testing::Test {
     paddle::platform::CPUPlace cpu_place;
     for (size_t i = 0; i < gpu_list_.size(); ++i) {
       p::CUDAPlace place(i);
-      auto *ctx = new p::CUDADeviceContext(place);
+      auto *ctx = new phi::GPUContext(place);
       ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                             .GetAllocator(place, ctx->stream())
                             .get());
@@ -106,8 +106,8 @@ class NCCLTester : public ::testing::Test {
     p::CUDAPlace place(gpu_id);
     auto &ctx = dev_ctxs_.at(gpu_id);
 
-    auto *send_tensor = scope->Var("st")->GetMutable<f::LoDTensor>();
-    auto *recv_tensor = scope->Var("rt")->GetMutable<f::LoDTensor>();
+    auto *send_tensor = scope->Var("st")->GetMutable<phi::DenseTensor>();
+    auto *recv_tensor = scope->Var("rt")->GetMutable<phi::DenseTensor>();
 
     if (!send_tensor->numel()) {
       send_tensor->mutable_data<T>(kDims, place);
@@ -178,13 +178,14 @@ void NCCLTester::testNcclAllReduceOp() {
     p::CPUPlace cpu_place;
     p::CUDAPlace gpu_place(gpu_list_[i]);
 
-    auto &recv_tensor = dev_scopes[i]->FindVar("rt")->Get<f::LoDTensor>();
+    auto &recv_tensor = dev_scopes[i]->FindVar("rt")->Get<phi::DenseTensor>();
     auto *rt = recv_tensor.data<float>();
-    auto *result_tensor = dev_scopes[i]->Var("ct")->GetMutable<f::LoDTensor>();
+    auto *result_tensor =
+        dev_scopes[i]->Var("ct")->GetMutable<phi::DenseTensor>();
     result_tensor->Resize(kDims);
     auto *ct = result_tensor->mutable_data<float>(cpu_place);
 
-    auto *dev_ctx = static_cast<p::CUDADeviceContext *>(dev_ctxs_[i]);
+    auto *dev_ctx = static_cast<phi::GPUContext *>(dev_ctxs_[i]);
     paddle::memory::Copy(cpu_place,
                          ct,
                          p::CUDAPlace(gpu_list_[i]),
@@ -234,10 +235,10 @@ void NCCLTester::testNcclReduceOp() {
   p::CPUPlace cpu_place;
   p::CUDAPlace gpu_place(gpu_list_[kRoot]);
 
-  auto &recv_tensor = dev_scopes[kRoot]->FindVar("rt")->Get<f::LoDTensor>();
+  auto &recv_tensor = dev_scopes[kRoot]->FindVar("rt")->Get<phi::DenseTensor>();
   auto *rt = recv_tensor.data<float>();
   auto *result_tensor =
-      dev_scopes[kRoot]->Var("ct")->GetMutable<f::LoDTensor>();
+      dev_scopes[kRoot]->Var("ct")->GetMutable<phi::DenseTensor>();
   result_tensor->Resize(kDims);
   auto *ct = result_tensor->mutable_data<float>(cpu_place);
 
@@ -290,13 +291,14 @@ void NCCLTester::testNcclBcastOp() {
   if (idx == kRoot) {
     rt_str = "st";
   }
-  auto &recv_tensor = dev_scopes[idx]->FindVar(rt_str)->Get<f::LoDTensor>();
+  auto &recv_tensor = dev_scopes[idx]->FindVar(rt_str)->Get<phi::DenseTensor>();
   auto *rt = recv_tensor.data<float>();
-  auto *result_tensor = dev_scopes[idx]->Var("ct")->GetMutable<f::LoDTensor>();
+  auto *result_tensor =
+      dev_scopes[idx]->Var("ct")->GetMutable<phi::DenseTensor>();
   result_tensor->Resize(kDims);
   auto *ct = result_tensor->mutable_data<float>(cpu_place);
 
-  auto *dev_ctx = static_cast<p::CUDADeviceContext *>(dev_ctxs_[idx]);
+  auto *dev_ctx = static_cast<phi::GPUContext *>(dev_ctxs_[idx]);
   paddle::memory::Copy(cpu_place,
                        ct,
                        p::CUDAPlace(gpu_list_[idx]),

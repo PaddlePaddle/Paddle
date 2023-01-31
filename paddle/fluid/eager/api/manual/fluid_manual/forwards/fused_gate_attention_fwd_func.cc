@@ -19,8 +19,6 @@
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-#pragma GCC diagnostic ignored "-Wunused-variable"
-
 std::tuple<paddle::experimental::Tensor,
            paddle::experimental::Tensor,
            paddle::experimental::Tensor,
@@ -303,12 +301,12 @@ fused_gate_attention_dygraph_function(
 
       bool merge_qkv = true;
       if (attrs.count("merge_qkv")) {
-        merge_qkv = BOOST_GET_CONST(bool, attrs.at("merge_qkv"));
+        merge_qkv = PADDLE_GET_CONST(bool, attrs.at("merge_qkv"));
       }
 
       bool has_gating = true;
       if (attrs.count("has_gating")) {
-        has_gating = BOOST_GET_CONST(bool, attrs.at("has_gating"));
+        has_gating = PADDLE_GET_CONST(bool, attrs.at("has_gating"));
       }
 
       // Set Attributes
@@ -374,7 +372,6 @@ fused_gate_attention_dygraph_function(
       egr::EagerUtils::SetOutRankWithSlot(p_autograd_Out, 7);
       egr::EagerUtils::SetHistory(p_autograd_Out, grad_node);
       grad_node->SetGradInMeta(Out, 7);
-      egr::EagerUtils::CheckAndRetainGrad(Out);
     }
   }
 

@@ -18,8 +18,8 @@
 
 #include "gflags/gflags.h"
 #include "glog/logging.h"
-#include "paddle/fluid/memory/detail/buddy_allocator.h"
-#include "paddle/fluid/memory/detail/system_allocator.h"
+#include "paddle/fluid/memory/allocation/buddy_allocator.h"
+#include "paddle/fluid/memory/allocation/system_allocator.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -78,8 +78,8 @@ BuddyAllocator *GetCPUBuddyAllocator() {
   std::call_once(init_flag, []() {
     a = new detail::BuddyAllocator(
         std::unique_ptr<detail::SystemAllocator>(new detail::CPUAllocator),
-        platform::CpuMinChunkSize(),
-        platform::CpuMaxChunkSize());
+        phi::backends::cpu::CpuMinChunkSize(),
+        phi::backends::cpu::CpuMaxChunkSize());
   });
 
   return a;
@@ -290,8 +290,8 @@ BuddyAllocator *GetNPUPinnedBuddyAllocator() {
   std::call_once(init_flag, []() {
     ba = new BuddyAllocator(std::unique_ptr<detail::SystemAllocator>(
                                 new detail::NPUPinnedAllocator),
-                            platform::NPUPinnedMinChunkSize(),
-                            platform::NPUPinnedMaxChunkSize());
+                            phi::backends::cpu::NPUPinnedMinChunkSize(),
+                            phi::backends::cpu::NPUPinnedMaxChunkSize());
   });
 
   return ba;
@@ -562,8 +562,8 @@ BuddyAllocator *GetCUDAPinnedBuddyAllocator() {
   std::call_once(init_flag, []() {
     ba = new BuddyAllocator(std::unique_ptr<detail::SystemAllocator>(
                                 new detail::CUDAPinnedAllocator),
-                            platform::CUDAPinnedMinChunkSize(),
-                            platform::CUDAPinnedMaxChunkSize());
+                            phi::backends::cpu::CUDAPinnedMinChunkSize(),
+                            phi::backends::cpu::CUDAPinnedMaxChunkSize());
   });
 
   return ba;
@@ -764,7 +764,7 @@ class BuddyAllocatorList {
  private:
   explicit BuddyAllocatorList(const std::string &device_type)
       : device_type_(device_type) {
-    auto devices = phi::DeviceManager::GetDeviceList(device_type);
+    auto devices = phi::DeviceManager::GetSelectedDeviceList(device_type);
     for (auto dev_id : devices) {
       init_flags_[dev_id].reset(new std::once_flag());
     }

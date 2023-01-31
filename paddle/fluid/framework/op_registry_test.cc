@@ -214,9 +214,10 @@ class OpWithKernelTest : public OperatorWithKernel {
  protected:
   void InferShape(InferShapeContext* ctx) const override {}
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(proto::VarType::FP32, ctx.device_context());
+    return phi::KernelKey(proto::VarType::FP32,
+                          ctx.device_context().GetPlace());
   }
 };
 
@@ -236,9 +237,7 @@ REGISTER_OP_CPU_KERNEL(op_with_kernel,
                        paddle::framework::OpKernelTest<phi::CPUContext, float>);
 
 REGISTER_OP_CUDA_KERNEL(
-    op_with_kernel,
-    paddle::framework::OpKernelTest<paddle::platform::CUDADeviceContext,
-                                    float>);
+    op_with_kernel, paddle::framework::OpKernelTest<phi::GPUContext, float>);
 
 TEST(OperatorRegistrar, CPU) {
   paddle::framework::proto::OpDesc op_desc;
@@ -263,9 +262,9 @@ TEST(OperatorRegistrar, CUDA) {
 }
 
 static int op_test_value = 0;
-using paddle::platform::CUDADeviceContext;
 using paddle::platform::DeviceContext;
 using phi::CPUContext;
+using phi::GPUContext;
 
 namespace paddle {
 namespace framework {
@@ -277,12 +276,11 @@ class OpWithMultiKernelTest : public OperatorWithKernel {
  protected:
   void InferShape(InferShapeContext* ctx) const override {}
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(proto::VarType::FP32,
-                                   platform::CUDAPlace(0),
-                                   DataLayout::kAnyLayout,
-                                   framework::LibraryType::kCUDNN);
+    return phi::KernelKey(phi::Backend::GPUDNN,
+                          phi::DataLayout::ALL_LAYOUT,
+                          phi::DataType::FLOAT32);
   }
 };
 
@@ -301,7 +299,7 @@ class OpMultiKernelTest<CPUContext, T> : public paddle::framework::OpKernel<T> {
 };
 
 template <typename T>
-class OpMultiKernelTest<CUDADeviceContext, T>
+class OpMultiKernelTest<phi::GPUContext, T>
     : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const {
@@ -325,7 +323,7 @@ class OpMultiKernelTest2<CPUContext, T>
 };
 
 template <typename T>
-class OpMultiKernelTest2<CUDADeviceContext, T>
+class OpMultiKernelTest2<phi::GPUContext, T>
     : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const {
@@ -351,12 +349,12 @@ REGISTER_OP_KERNEL(
     op_with_multi_kernel,
     CUDA,
     paddle::platform::CUDAPlace,
-    paddle::framework::OpMultiKernelTest<CUDADeviceContext, float>);
+    paddle::framework::OpMultiKernelTest<phi::GPUContext, float>);
 REGISTER_OP_KERNEL(
     op_with_multi_kernel,
     CUDNN,
     paddle::platform::CUDAPlace,
-    paddle::framework::OpMultiKernelTest2<CUDADeviceContext, float>);
+    paddle::framework::OpMultiKernelTest2<phi::GPUContext, float>);
 
 TEST(OperatorRegistrar, OpWithMultiKernel) {
   paddle::framework::proto::OpDesc op_desc;

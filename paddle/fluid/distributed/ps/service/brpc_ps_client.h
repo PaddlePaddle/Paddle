@@ -25,6 +25,7 @@
 #include "brpc/server.h"
 #include "paddle/fluid/distributed/ps/service/brpc_utils.h"
 #include "paddle/fluid/distributed/ps/service/ps_client.h"
+#include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
@@ -56,14 +57,69 @@ class DownpourPsClientService : public PsService {
     _rank = rank_id;
     return 0;
   }
-  void service(::google::protobuf::RpcController *controller,
-               const PsRequestMessage *request,
-               PsResponseMessage *response,
-               ::google::protobuf::Closure *done) override;
+
+  virtual void service(::google::protobuf::RpcController *controller,
+                       const PsRequestMessage *request,
+                       PsResponseMessage *response,
+                       ::google::protobuf::Closure *done);
+
+  virtual void FLService(::google::protobuf::RpcController *controller,
+                         const CoordinatorReqMessage *request,
+                         CoordinatorResMessage *response,
+                         ::google::protobuf::Closure *done) {
+    brpc::ClosureGuard done_guard(done);
+    size_t client_id = request->client_id();
+    CHECK(_client->_client_id == client_id)
+        << "request client id not matched self";
+    _fl_strategy = request->str_params();
+    _is_fl_strategy_ready = true;
+    response->set_err_code(0);
+    response->set_err_msg("");
+    VLOG(0) << "fl-ps > DownpourPsClientService::FLService finished!";
+    return;
+  }
+
+ public:
+  std::string _fl_strategy;
+  bool _is_fl_strategy_ready = false;
 
  protected:
   size_t _rank;
   PSClient *_client;
+};
+
+class FlClientBrpcClosure : public PSClientClosure {
+ public:
+  FlClientBrpcClosure(size_t num, PSClientCallBack callback)
+      : PSClientClosure(callback) {
+    _waiting_num = num;
+
+    _cntls.resize(num);
+    _requests.resize(num);
+    _responses.resize(num);
+    for (size_t i = 0; i < num; ++i) {
+      _cntls[i].reset(new brpc::Controller());
+    }
+  }
+  virtual ~FlClientBrpcClosure() {}
+  void Run() override {
+    if (_waiting_num.fetch_sub(1) == 1) {
+      _callback(this);
+      delete this;
+    }
+  }
+  CoordinatorReqMessage *request(size_t i) { return &_requests[i]; }
+  CoordinatorResMessage *response(size_t i) { return &_responses[i]; }
+  brpc::Controller *cntl(size_t i) { return _cntls[i].get(); }
+  int check_response(size_t request_idx, int cmd_id);
+  int check_save_response(size_t request_idx, int cmd_id);
+  std::string get_response(size_t request_idx, int cmd_id);
+
+ private:
+  std::atomic<int32_t> _waiting_num;
+  std::vector<CoordinatorReqMessage> _requests;
+  std::vector<CoordinatorResMessage> _responses;
+  std::vector<std::shared_ptr<brpc::Controller>> _cntls;
 };
 
 class DownpourBrpcClosure : public PSClientClosure {
@@ -178,6 +234,9 @@ class BrpcPsClient : public PSClient {
 
   std::future<int32_t> Clear(uint32_t table_id) override;
 
+  std::future<int32_t> Revert() override;
+  std::future<int32_t> CheckSavePrePatchDone() override;
+
   std::future<int32_t> StopServer() override;
 
   std::future<int32_t> StartProfiler() override;
@@ -264,6 +323,14 @@ class BrpcPsClient : public PSClient {
   }
   int32_t Initialize() override;
 
+  // for fl
+ public:
+  virtual int32_t InitializeFlWorker(const std::string &self_endpoint);
+  int32_t StartFlClientService(const std::string &self_endpoint);
+  virtual void PushFLClientInfoSync(const std::string &fl_client_info);
+  std::string PullFlStrategy();
+  // for fl
+
  private:
   inline uint32_t DenseDimPerShard(uint32_t dense_dim_total,
                                    uint32_t shard_num) {
@@ -298,16 +365,16 @@ class BrpcPsClient : public PSClient {
 
   int PushSparseAsyncShardMerge(
       std::vector<std::shared_ptr<SparseAsyncTask>> &task_list,  // NOLINT
-      std::vector<int> &request_kv_num,
+      std::vector<int> &request_kv_num,                          // NOLINT
       int table_id,
-      int shard_idx,  // NOLINT
+      int shard_idx,
       ValueAccessor *accessor);
 
   int PushSparseAsyncShardPush(
       std::vector<std::shared_ptr<SparseAsyncTask>> &task_list,  // NOLINT
-      std::vector<int> &request_kv_num,
+      std::vector<int> &request_kv_num,                          // NOLINT
       int table_id,
-      int shard_idx,  // NOLINT
+      int shard_idx,
       DownpourBrpcClosure *closure,
       ValueAccessor *accessor);
 
@@ -317,6 +384,8 @@ class BrpcPsClient : public PSClient {
       _client_channels;  // client2client
   std::vector<std::array<std::shared_ptr<brpc::Channel>, 3>>
       _server_channels;  // client2server
+  std::vector<std::array<std::shared_ptr<brpc::Channel>, 1>>
+      _coordinator_channels;  // client2coordinator
   std::future<int32_t> PushDenseRawGradient(int table_id,
                                             float *total_send_data,
                                             size_t total_send_data_size,
@@ -357,6 +426,7 @@ class BrpcPsClient : public PSClient {
   float _mse = 0;
   uint16_t _push_times = 0;
   brpc::Server _server;
+  brpc::Server _fl_server;
   DownpourPsClientService _service;
   bool _server_started = false;
   std::atomic_uint grad_num_{0};

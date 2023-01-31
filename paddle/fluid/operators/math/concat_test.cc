@@ -29,13 +29,13 @@ limitations under the License. */
  */
 template <typename DeviceContext, typename Place>
 void ConcatCase1(DeviceContext* context) {
-  paddle::framework::Tensor input_a_cpu;
-  paddle::framework::Tensor input_b_cpu;
-  paddle::framework::Tensor out_cpu;
+  phi::DenseTensor input_a_cpu;
+  phi::DenseTensor input_b_cpu;
+  phi::DenseTensor out_cpu;
 
-  paddle::framework::Tensor input_a;
-  paddle::framework::Tensor input_b;
-  paddle::framework::Tensor out;
+  phi::DenseTensor input_a;
+  phi::DenseTensor input_b;
+  phi::DenseTensor out;
 
   auto dim_a = phi::make_ddim({2, 3, 4});
   auto dim_b = phi::make_ddim({3, 3, 4});
@@ -73,7 +73,7 @@ void ConcatCase1(DeviceContext* context) {
     paddle::framework::TensorCopySync(input_b_cpu, Place(), &input_b);
   }
 
-  std::vector<paddle::framework::Tensor> input;
+  std::vector<phi::DenseTensor> input;
   input.push_back(input_a);
   input.push_back(input_b);
 
@@ -134,13 +134,13 @@ void ConcatCase1(DeviceContext* context) {
  */
 template <typename DeviceContext, typename Place>
 void ConcatCase2(DeviceContext* context) {
-  paddle::framework::Tensor input_a_cpu;
-  paddle::framework::Tensor input_b_cpu;
-  paddle::framework::Tensor out_cpu;
+  phi::DenseTensor input_a_cpu;
+  phi::DenseTensor input_b_cpu;
+  phi::DenseTensor out_cpu;
 
-  paddle::framework::Tensor input_a;
-  paddle::framework::Tensor input_b;
-  paddle::framework::Tensor out;
+  phi::DenseTensor input_a;
+  phi::DenseTensor input_b;
+  phi::DenseTensor out;
 
   auto dim_a = phi::make_ddim({2, 3, 4});
   auto dim_b = phi::make_ddim({2, 4, 4});
@@ -178,7 +178,7 @@ void ConcatCase2(DeviceContext* context) {
     paddle::framework::TensorCopySync(input_b_cpu, Place(), &input_b);
   }
 
-  std::vector<paddle::framework::Tensor> input;
+  std::vector<phi::DenseTensor> input;
   input.push_back(input_a);
   input.push_back(input_b);
 
@@ -243,13 +243,13 @@ void ConcatCase2(DeviceContext* context) {
  */
 template <typename DeviceContext, typename Place>
 void ConcatCase3(DeviceContext* context) {
-  paddle::framework::Tensor input_a_cpu;
-  paddle::framework::Tensor input_b_cpu;
-  paddle::framework::Tensor out_cpu;
+  phi::DenseTensor input_a_cpu;
+  phi::DenseTensor input_b_cpu;
+  phi::DenseTensor out_cpu;
 
-  paddle::framework::Tensor input_a;
-  paddle::framework::Tensor input_b;
-  paddle::framework::Tensor out;
+  phi::DenseTensor input_a;
+  phi::DenseTensor input_b;
+  phi::DenseTensor out;
 
   auto dim_a = phi::make_ddim({2, 3, 4});
   auto dim_b = phi::make_ddim({2, 3, 5});
@@ -287,7 +287,7 @@ void ConcatCase3(DeviceContext* context) {
     paddle::framework::TensorCopySync(input_b_cpu, Place(), &input_b);
   }
 
-  std::vector<paddle::framework::Tensor> input;
+  std::vector<phi::DenseTensor> input;
   input.push_back(input_a);
   input.push_back(input_b);
 
@@ -354,13 +354,13 @@ void ConcatCase3(DeviceContext* context) {
  */
 template <typename DeviceContext, typename Place>
 void ConcatCase4(DeviceContext* context) {
-  paddle::framework::Tensor input_a_cpu;
-  paddle::framework::Tensor input_b_cpu;
-  paddle::framework::Tensor out_cpu;
+  phi::DenseTensor input_a_cpu;
+  phi::DenseTensor input_b_cpu;
+  phi::DenseTensor out_cpu;
 
-  paddle::framework::Tensor input_a;
-  paddle::framework::Tensor input_b;
-  paddle::framework::Tensor out;
+  phi::DenseTensor input_a;
+  phi::DenseTensor input_b;
+  phi::DenseTensor out;
 
   auto dim_a = phi::make_ddim({2, 3, 4});
   auto dim_b = phi::make_ddim({2, 3, 4});
@@ -398,7 +398,7 @@ void ConcatCase4(DeviceContext* context) {
     paddle::framework::TensorCopySync(input_b_cpu, Place(), &input_b);
   }
 
-  std::vector<paddle::framework::Tensor> input;
+  std::vector<phi::DenseTensor> input;
   input.push_back(input_a);
   input.push_back(input_b);
 
@@ -469,24 +469,18 @@ void TestConcatMain() {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <>
-void TestConcatMain<paddle::platform::CUDADeviceContext,
-                    paddle::platform::CUDAPlace>() {
-  auto* context =
-      new paddle::platform::CUDADeviceContext(paddle::platform::CUDAPlace());
+void TestConcatMain<phi::GPUContext, paddle::platform::CUDAPlace>() {
+  auto* context = new phi::GPUContext(paddle::platform::CUDAPlace());
   context->SetAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(paddle::platform::CUDAPlace(), context->stream())
           .get());
   context->PartialInitWithAllocator();
 
-  ConcatCase1<paddle::platform::CUDADeviceContext, paddle::platform::CUDAPlace>(
-      context);
-  ConcatCase2<paddle::platform::CUDADeviceContext, paddle::platform::CUDAPlace>(
-      context);
-  ConcatCase3<paddle::platform::CUDADeviceContext, paddle::platform::CUDAPlace>(
-      context);
-  ConcatCase4<paddle::platform::CUDADeviceContext, paddle::platform::CUDAPlace>(
-      context);
+  ConcatCase1<phi::GPUContext, paddle::platform::CUDAPlace>(context);
+  ConcatCase2<phi::GPUContext, paddle::platform::CUDAPlace>(context);
+  ConcatCase3<phi::GPUContext, paddle::platform::CUDAPlace>(context);
+  ConcatCase4<phi::GPUContext, paddle::platform::CUDAPlace>(context);
 
   delete context;
 }
@@ -495,7 +489,6 @@ void TestConcatMain<paddle::platform::CUDADeviceContext,
 TEST(math, concat) {
   TestConcatMain<phi::CPUContext, paddle::platform::CPUPlace>();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  TestConcatMain<paddle::platform::CUDADeviceContext,
-                 paddle::platform::CUDAPlace>();
+  TestConcatMain<phi::GPUContext, paddle::platform::CUDAPlace>();
 #endif
 }

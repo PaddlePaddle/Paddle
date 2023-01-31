@@ -19,7 +19,7 @@
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/platform/device_memory_aligment.h"
+#include "paddle/phi/backends/device_memory_aligment.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
@@ -28,6 +28,8 @@
 #ifdef PADDLE_WITH_MLU
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
 #endif
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
@@ -35,7 +37,7 @@ namespace operators {
 template <typename DeviceContext>
 struct FillConstantVisitor {
   FillConstantVisitor(const DeviceContext &dev_ctx,
-                      framework::LoDTensor *tensor,
+                      phi::DenseTensor *tensor,
                       const float value,
                       framework::proto::VarType::Type dtype,
                       const framework::ExecutionContext &context)
@@ -59,7 +61,7 @@ struct FillConstantVisitor {
                  * = nullptr) const {
 #ifdef PADDLE_WITH_ASCEND_CL
     if (platform::is_npu_place(dev_ctx_.GetPlace())) {
-      Tensor tensor_tmp(framework::TransToPhiDataType(dtype_));
+      phi::DenseTensor tensor_tmp(framework::TransToPhiDataType(dtype_));
       tensor_tmp.mutable_data<T>({1}, context_.GetPlace());
       FillNpuTensorWithConstant<T>(&tensor_tmp, static_cast<T>(value_));
 
@@ -90,7 +92,7 @@ struct FillConstantVisitor {
   }
 
   const DeviceContext &dev_ctx_;
-  framework::LoDTensor *tensor_;
+  phi::DenseTensor *tensor_;
   float value_;
   framework::proto::VarType::Type dtype_;
   const framework::ExecutionContext &context_;
@@ -102,8 +104,8 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     auto in_var_names = context.InputNames("Input");
     auto out_var_names = context.OutputNames("Output");
-    const auto &in_tensors = context.MultiInput<framework::LoDTensor>("Input");
-    auto out_tensors = context.MultiOutput<framework::LoDTensor>("Output");
+    const auto &in_tensors = context.MultiInput<phi::DenseTensor>("Input");
+    auto out_tensors = context.MultiOutput<phi::DenseTensor>("Output");
 
     PADDLE_ENFORCE_GT(in_var_names.size(),
                       static_cast<size_t>(0),
@@ -118,7 +120,7 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
                           in_var_names.size(),
                           out_var_names.size()));
 
-    // Input & Output check: only support LoDTensor
+    // Input & Output check: only support phi::DenseTensor
     bool has_not_init_in_vars = false;
     for (size_t i = 0; i < in_tensors.size(); ++i) {
       PADDLE_ENFORCE_NOT_NULL(
@@ -225,7 +227,7 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
                        align_size);
 
     // Alloc the continuous space
-    auto fused_tensor = context.Output<framework::LoDTensor>("FusedOutput");
+    auto fused_tensor = context.Output<phi::DenseTensor>("FusedOutput");
     void *fused_tensor_ptr =
         fused_tensor->Resize(phi::make_ddim({static_cast<int64_t>(numel)}))
             .mutable_data(context.GetPlace(),
@@ -248,9 +250,9 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
         framework::TensorCopy(
             *in_tensors[i], context.GetPlace(), dev_ctx, &sub_tensor);
 
-        offset += use_align ? platform::Alignment(len * size_of_dtype,
-                                                  context.GetPlace(),
-                                                  align_size) /
+        offset += use_align ? phi::Alignment(len * size_of_dtype,
+                                             context.GetPlace(),
+                                             align_size) /
                                   size_of_dtype
                             : len;
       }
@@ -272,9 +274,9 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
           framework::TensorCopy(
               *out_tensors[i], context.GetPlace(), dev_ctx, &sub_tensor);
         }
-        offset += use_align ? platform::Alignment(len * size_of_dtype,
-                                                  context.GetPlace(),
-                                                  align_size) /
+        offset += use_align ? phi::Alignment(len * size_of_dtype,
+                                             context.GetPlace(),
+                                             align_size) /
                                   size_of_dtype
                             : len;
       }
@@ -294,7 +296,7 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
               static_cast<int64_t>(offset), static_cast<int64_t>(offset + len)))
           .Resize(dim);
       len = use_align
-                ? platform::Alignment(
+                ? phi::Alignment(
                       len * size_of_dtype, context.GetPlace(), align_size) /
                       size_of_dtype
                 : len;
@@ -315,7 +317,7 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
 
  private:
   void GetMemSizeAndDtype(
-      const std::vector<const framework::LoDTensor *> &lod_tensors,
+      const std::vector<const phi::DenseTensor *> &lod_tensors,
       const std::vector<std::string> var_names,
       size_t *numel,
       const size_t &size_of_dtype,
@@ -340,12 +342,12 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
           0,
           platform::errors::InvalidArgument(
               "The number of tensor `%s`'s elements is 0.", var_names[i]));
-      auto len = use_align ? platform::Alignment(
-                                 static_cast<size_t>(size) * size_of_dtype,
-                                 place,
-                                 align_size) /
-                                 size_of_dtype
-                           : static_cast<size_t>(size);
+      auto len = use_align
+                     ? phi::Alignment(static_cast<size_t>(size) * size_of_dtype,
+                                      place,
+                                      align_size) /
+                           size_of_dtype
+                     : static_cast<size_t>(size);
       const void *ptr =
           lod_tensors[i]->IsInitialized() ? lod_tensors[i]->data() : nullptr;
       VLOG(4) << size << " " << len;
@@ -403,20 +405,20 @@ class CoalesceTensorOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &context) const override {
     auto dtype = static_cast<framework::proto::VarType::Type>(
         context.Attr<int>("dtype"));
-    return framework::OpKernelType(dtype, context.GetPlace());
+    return phi::KernelKey(dtype, context.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
-      const framework::Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const override {
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   expected_kernel_type.place_,
-                                   tensor.layout());
+      const phi::DenseTensor &tensor,
+      const phi::KernelKey &expected_kernel_type) const override {
+    return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                          tensor.layout(),
+                          expected_kernel_type.dtype());
   }
 };
 
@@ -424,17 +426,17 @@ class CoalesceTensorOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Input",
-             "(vector<LoDTensor>) The input tensors of"
+             "(vector<phi::DenseTensor>) The input tensors of"
              " coalesce_tensor operator.")
         .AsDuplicable();
     AddOutput("Output",
-              "(vector<LoDTensor>) The output "
+              "(vector<phi::DenseTensor>) The output "
               "tensors of coalesce_tensor operator. And the address "
               "of output tensors are continuous, they are sliced from the "
               "tensor of FusedOutput.")
         .AsDuplicable();
     AddOutput("FusedOutput",
-              "(LoDTensor) The output tensor "
+              "(phi::DenseTensor) The output tensor "
               "of coalesce_tensor operator. And the tensors of"
               " Output is sliced from the tensor of FusedOutput.");
     AddAttr<int>("dtype", "The output data type.");
@@ -506,25 +508,16 @@ value.
 }  // namespace operators
 }  // namespace paddle
 
+DECLARE_INFER_SHAPE_FUNCTOR(coalesce_tensor,
+                            CoalesceTensorInferShapeFunctor,
+                            PD_INFER_META(phi::CoalesceTensorInferMeta));
+
 REGISTER_OPERATOR(coalesce_tensor,
                   paddle::operators::CoalesceTensorOp,
-                  paddle::operators::CoalesceTensorOpMaker);
+                  paddle::operators::CoalesceTensorOpMaker,
+                  CoalesceTensorInferShapeFunctor);
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CPU_KERNEL(coalesce_tensor,
-                       ops::CoalesceTensorOpKernel<phi::CPUContext, int>,
-                       ops::CoalesceTensorOpKernel<phi::CPUContext, float>,
-                       ops::CoalesceTensorOpKernel<phi::CPUContext, double>);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-REGISTER_OP_CUDA_KERNEL(
-    coalesce_tensor,
-    ops::CoalesceTensorOpKernel<paddle::platform::CUDADeviceContext,
-                                plat::float16>,
-    ops::CoalesceTensorOpKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::CoalesceTensorOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::CoalesceTensorOpKernel<paddle::platform::CUDADeviceContext, double>);
-#endif
 
 #if defined(PADDLE_WITH_ASCEND_CL)
 REGISTER_OP_CUDA_KERNEL(
@@ -534,16 +527,6 @@ REGISTER_OP_CUDA_KERNEL(
     ops::CoalesceTensorOpKernel<paddle::platform::NPUDeviceContext, int>,
     ops::CoalesceTensorOpKernel<paddle::platform::NPUDeviceContext, float>,
     ops::CoalesceTensorOpKernel<paddle::platform::NPUDeviceContext, double>);
-#endif
-
-#ifdef PADDLE_WITH_XPU
-REGISTER_OP_XPU_KERNEL(
-    coalesce_tensor,
-    ops::CoalesceTensorOpKernel<paddle::platform::XPUDeviceContext,
-                                plat::float16>,
-    ops::CoalesceTensorOpKernel<paddle::platform::XPUDeviceContext, int>,
-    ops::CoalesceTensorOpKernel<paddle::platform::XPUDeviceContext, float>,
-    ops::CoalesceTensorOpKernel<paddle::platform::XPUDeviceContext, double>);
 #endif
 
 #if defined(PADDLE_WITH_ASCEND_CL)

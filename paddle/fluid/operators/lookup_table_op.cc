@@ -67,10 +67,10 @@ class LookupTableOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "W");
-    return framework::OpKernelType(data_type, ctx.device_context());
+    return phi::KernelKey(data_type, ctx.device_context().GetPlace());
   }
 };
 
@@ -134,6 +134,7 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
         "in the order of input variables for mapping")
         .SetDefault({});
     AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
+    AddAttr<int>("slot", "slot of id").SetDefault(0).AsExtra();
     AddAttr<bool>("grad_inplace",
                   "(boolean, default false) "
                   "If the grad op reuse the input's variable.")
@@ -190,11 +191,11 @@ class LookupTableOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
-    return framework::OpKernelType(data_type, ctx.device_context());
+    return phi::KernelKey(data_type, ctx.device_context().GetPlace());
   }
 };
 
@@ -203,7 +204,7 @@ class LookupTableOpGradVarTypeInference : public framework::VarTypeInference {
   void operator()(framework::InferVarTypeContext* ctx) const override {
     auto out_var_name = framework::GradVarName("W");
     auto attr = ctx->GetAttr("is_sparse");
-    bool is_sparse = BOOST_GET(bool, attr);
+    bool is_sparse = PADDLE_GET(bool, attr);
     if (is_sparse) {
       VLOG(3) << "lookup_table_grad op " << framework::GradVarName("W")
               << " is set to SelectedRows";
@@ -211,7 +212,7 @@ class LookupTableOpGradVarTypeInference : public framework::VarTypeInference {
                          framework::proto::VarType::SELECTED_ROWS);
     } else {
       VLOG(3) << "lookup_table_grad op " << framework::GradVarName("W")
-              << " is set to LoDTensor";
+              << " is set to phi::DenseTensor";
       ctx->SetOutputType(out_var_name, framework::proto::VarType::LOD_TENSOR);
     }
     ctx->SetOutputDataType(out_var_name, ctx->GetInputDataType("W"));

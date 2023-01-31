@@ -87,7 +87,7 @@ class CreateCTRReaderOpMaker : public FileReaderMakerBase {
                                       "format is svm");
 
     AddComment(R"DOC(
-			Create CTRReader to support read ctr data with cpp.
+      Create CTRReader to support read ctr data with cpp.
       )DOC");
   }
 };

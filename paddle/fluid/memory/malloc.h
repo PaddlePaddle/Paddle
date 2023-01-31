@@ -33,8 +33,6 @@ extern std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
 
 extern AllocationPtr Alloc(const platform::Place& place, size_t size);
 
-extern AllocationPtr Alloc(const phi::DeviceContext& dev_ctx, size_t size);
-
 extern uint64_t Release(const platform::Place& place);
 
 extern std::shared_ptr<Allocation> AllocShared(const platform::Place& place,

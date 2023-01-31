@@ -40,7 +40,7 @@ class TileOpConverter : public OpConverter {
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
     nvinfer1::Dims input_shape = input->getDimensions();
     std::vector<int> repeat_times =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("repeat_times"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("repeat_times"));
 
     nvinfer1::Dims output_dim = input_shape;
     nvinfer1::Dims output_stride;

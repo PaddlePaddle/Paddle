@@ -67,13 +67,11 @@ template <typename T>
 class YoloBoxHeadKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    using Tensor = framework::Tensor;
-    auto* x = context.Input<framework::Tensor>("X");
-    auto* out = context.Output<framework::Tensor>("Out");
+    auto* x = context.Input<phi::DenseTensor>("X");
+    auto* out = context.Output<phi::DenseTensor>("Out");
     auto anchors = context.Attr<std::vector<int>>("anchors");
     auto class_num = context.Attr<int>("class_num");
-    auto& device_ctx =
-        context.template device_context<platform::CUDADeviceContext>();
+    auto& device_ctx = context.template device_context<phi::GPUContext>();
     auto x_dims = x->dims();
     const int batch_size = x_dims[0];
     const int h = x_dims[2];
@@ -82,7 +80,7 @@ class YoloBoxHeadKernel : public framework::OpKernel<T> {
     const int grid_size_y = h;
     const int anchors_num = anchors.size() / 2;
     const T* input_data = x->data<T>();
-    T* output_data = out->mutable_data<T>(context.GetPlace());
+    T* output_data = device_ctx.Alloc<T>(out, out->numel() * sizeof(T));
     auto stream = device_ctx.stream();
     const int volume = x_dims[1] * h * w;
     dim3 block(16, 16, 4);

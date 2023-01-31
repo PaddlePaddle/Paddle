@@ -53,7 +53,7 @@ __global__ void SoftmaxGradGpuKernel(const IntT* out_crows,
 
     mul_result += out_values[row_first + idx] * dout_values[row_first + idx];
   }
-  T sum = phi::funcs::warpReduceSum<T>(mul_result, 0xFFFFFFFF);
+  T sum = phi::funcs::WarpReduceSum<T>(mul_result, 0xFFFFFFFF);
 
   for (int i = 0; i < kIteration; ++i) {
     int idx = non_zero_idx + i * warpSize;
@@ -92,13 +92,13 @@ void SoftmaxCsrGradKernel(const Context& dev_ctx,
   dim3 grid((total_row_number + 3) / 4);
   dim3 block(32, 4);
 
-  PD_VISIT_INTEGRAL_TYPES(
-      out.non_zero_crows().dtype(), "SoftmaxCsrGradKernel", ([&] {
+  PD_VISIT_BASE_INTEGRAL_TYPES(
+      out.crows().dtype(), "SoftmaxCsrGradKernel", ([&] {
         SoftmaxGradGpuKernel<T, data_t><<<grid, block, 0, dev_ctx.stream()>>>(
-            out.non_zero_crows().data<data_t>(),
-            out.non_zero_elements().data<T>(),
-            dout.non_zero_elements().data<T>(),
-            dx->mutable_non_zero_elements()->data<T>(),
+            out.crows().data<data_t>(),
+            out.values().data<T>(),
+            dout.values().data<T>(),
+            dx->mutable_values()->data<T>(),
             row_number,
             total_row_number);
       }));

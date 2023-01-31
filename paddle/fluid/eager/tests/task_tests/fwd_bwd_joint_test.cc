@@ -256,8 +256,8 @@ TEST(FwdBwdJoint, GradientHook) {
                                                  true /*bias_after_scale*/,
                                                  true /*trace_backward*/);
   egr_utils_api::RetainGradForTensor(out0);  // hook: +5
-  egr_utils_api::RegisterGradientHookForTensor(
-      out0, std::make_shared<egr::CppTensorHook>(hook_function));  // hook: +5
+  egr_utils_api::RegisterGradientHookForTensor(out0,
+                                               hook_function);  // hook: +5
 
   // Run Forward Node 1
   float scale1 = 5.0;
@@ -265,8 +265,8 @@ TEST(FwdBwdJoint, GradientHook) {
   paddle::experimental::Tensor out1 = egr::scale(
       out0, scale1, bias1, true /*bias_after_scale*/, true /*trace_backward*/);
   egr_utils_api::RetainGradForTensor(out1);  // hook: +5
-  egr_utils_api::RegisterGradientHookForTensor(
-      out1, std::make_shared<egr::CppTensorHook>(hook_function));  // hook: +5
+  egr_utils_api::RegisterGradientHookForTensor(out1,
+                                               hook_function);  // hook: +5
 
   // Run Forward Node 2
   float scale2 = 10.0;
@@ -274,8 +274,8 @@ TEST(FwdBwdJoint, GradientHook) {
   paddle::experimental::Tensor out2 = egr::scale(
       out0, scale2, bias2, true /*bias_after_scale*/, true /*trace_backward*/);
   egr_utils_api::RetainGradForTensor(out2);  // hook: +5
-  egr_utils_api::RegisterGradientHookForTensor(
-      out2, std::make_shared<egr::CppTensorHook>(hook_function));  // hook: +5
+  egr_utils_api::RegisterGradientHookForTensor(out2,
+                                               hook_function);  // hook: +5
 
   // 4. Run Backward
   std::vector<paddle::experimental::Tensor> outs = {out1, out2};

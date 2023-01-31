@@ -28,25 +28,22 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
-
 namespace {
 template <typename T>
-static std::pair<Tensor, Tensor> ProposalForOneImage(
-    const platform::CUDADeviceContext &ctx,
-    const Tensor &im_info,
-    const Tensor &anchors,
-    const Tensor &variances,
-    const Tensor &bbox_deltas,  // [M, 4]
-    const Tensor &scores,       // [N, 1]
+static std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
+    const phi::GPUContext &ctx,
+    const phi::DenseTensor &im_info,
+    const phi::DenseTensor &anchors,
+    const phi::DenseTensor &variances,
+    const phi::DenseTensor &bbox_deltas,  // [M, 4]
+    const phi::DenseTensor &scores,       // [N, 1]
     int pre_nms_top_n,
     int post_nms_top_n,
     float nms_thresh,
     float min_size,
     float eta) {
   // 1. pre nms
-  Tensor scores_sort, index_sort;
+  phi::DenseTensor scores_sort, index_sort;
   SortDescending<T>(ctx, scores, &scores_sort, &index_sort);
   int num = scores.numel();
   int pre_nms_num = (pre_nms_top_n <= 0 || pre_nms_top_n > num) ? scores.numel()
@@ -55,11 +52,11 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
   index_sort.Resize({pre_nms_num, 1});
 
   // 2. box decode and clipping
-  Tensor proposals;
+  phi::DenseTensor proposals;
   proposals.mutable_data<T>({pre_nms_num, 4}, ctx.GetPlace());
 
   {
-    platform::ForRange<platform::CUDADeviceContext> for_range(ctx, pre_nms_num);
+    platform::ForRange<phi::GPUContext> for_range(ctx, pre_nms_num);
     for_range(BoxDecodeAndClipFunctor<T>{anchors.data<T>(),
                                          bbox_deltas.data<T>(),
                                          variances.data<T>(),
@@ -69,7 +66,7 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
   }
 
   // 3. filter
-  Tensor keep_index, keep_num_t;
+  phi::DenseTensor keep_index, keep_num_t;
   keep_index.mutable_data<int>({pre_nms_num}, ctx.GetPlace());
   keep_num_t.mutable_data<int>({1}, ctx.GetPlace());
   min_size = std::max(min_size, 1.0f);
@@ -91,10 +88,10 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
   ctx.Wait();
   keep_index.Resize({keep_num});
 
-  Tensor scores_filter, proposals_filter;
+  phi::DenseTensor scores_filter, proposals_filter;
   // Handle the case when there is no keep index left
   if (keep_num == 0) {
-    phi::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
+    phi::funcs::SetConstant<phi::GPUContext, T> set_zero;
     proposals_filter.mutable_data<T>({1, 4}, ctx.GetPlace());
     scores_filter.mutable_data<T>({1, 1}, ctx.GetPlace());
     set_zero(ctx, &proposals_filter, static_cast<T>(0));
@@ -111,13 +108,13 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
   }
 
   // 4. nms
-  Tensor keep_nms;
+  phi::DenseTensor keep_nms;
   NMS<T>(ctx, proposals_filter, keep_index, nms_thresh, &keep_nms);
   if (post_nms_top_n > 0 && post_nms_top_n < keep_nms.numel()) {
     keep_nms.Resize({post_nms_top_n});
   }
 
-  Tensor scores_nms, proposals_nms;
+  phi::DenseTensor scores_nms, proposals_nms;
   proposals_nms.mutable_data<T>({keep_nms.numel(), 4}, ctx.GetPlace());
   scores_nms.mutable_data<T>({keep_nms.numel(), 1}, ctx.GetPlace());
   phi::funcs::GPUGather<T>(ctx, proposals_filter, keep_nms, &proposals_nms);
@@ -131,20 +128,21 @@ template <typename DeviceContext, typename T>
 class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *scores = context.Input<Tensor>("Scores");
-    auto *bbox_deltas = context.Input<Tensor>("BboxDeltas");
-    auto *im_info = context.Input<Tensor>("ImInfo");
-    auto anchors = GET_DATA_SAFELY(context.Input<Tensor>("Anchors"),
+    auto *scores = context.Input<phi::DenseTensor>("Scores");
+    auto *bbox_deltas = context.Input<phi::DenseTensor>("BboxDeltas");
+    auto *im_info = context.Input<phi::DenseTensor>("ImInfo");
+    auto anchors = GET_DATA_SAFELY(context.Input<phi::DenseTensor>("Anchors"),
                                    "Input",
                                    "Anchors",
                                    "GenerateProposals");
-    auto variances = GET_DATA_SAFELY(context.Input<Tensor>("Variances"),
-                                     "Input",
-                                     "Variances",
-                                     "GenerateProposals");
+    auto variances =
+        GET_DATA_SAFELY(context.Input<phi::DenseTensor>("Variances"),
+                        "Input",
+                        "Variances",
+                        "GenerateProposals");
 
-    auto *rpn_rois = context.Output<LoDTensor>("RpnRois");
-    auto *rpn_roi_probs = context.Output<LoDTensor>("RpnRoiProbs");
+    auto *rpn_rois = context.Output<phi::DenseTensor>("RpnRois");
+    auto *rpn_roi_probs = context.Output<phi::DenseTensor>("RpnRoiProbs");
 
     int pre_nms_top_n = context.Attr<int>("pre_nms_topN");
     int post_nms_top_n = context.Attr<int>("post_nms_topN");
@@ -171,7 +169,7 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
     int64_t h_bbox = bbox_dim[2];
     int64_t w_bbox = bbox_dim[3];
 
-    Tensor bbox_deltas_swap, scores_swap;
+    phi::DenseTensor bbox_deltas_swap, scores_swap;
     bbox_deltas_swap.mutable_data<T>({num, h_bbox, w_bbox, c_bbox},
                                      dev_ctx.GetPlace());
     scores_swap.mutable_data<T>({num, h_score, w_score, c_score},
@@ -200,14 +198,14 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
     std::vector<int> tmp_num;
 
     for (int64_t i = 0; i < num; ++i) {
-      Tensor im_info_slice = im_info->Slice(i, i + 1);
-      Tensor bbox_deltas_slice = bbox_deltas_swap.Slice(i, i + 1);
-      Tensor scores_slice = scores_swap.Slice(i, i + 1);
+      phi::DenseTensor im_info_slice = im_info->Slice(i, i + 1);
+      phi::DenseTensor bbox_deltas_slice = bbox_deltas_swap.Slice(i, i + 1);
+      phi::DenseTensor scores_slice = scores_swap.Slice(i, i + 1);
 
       bbox_deltas_slice.Resize({h_bbox * w_bbox * c_bbox / 4, 4});
       scores_slice.Resize({h_score * w_score * c_score, 1});
 
-      std::pair<Tensor, Tensor> box_score_pair =
+      std::pair<phi::DenseTensor, phi::DenseTensor> box_score_pair =
           ProposalForOneImage<T>(dev_ctx,
                                  im_info_slice,
                                  anchors,
@@ -220,8 +218,8 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
                                  min_size,
                                  eta);
 
-      Tensor &proposals = box_score_pair.first;
-      Tensor &scores = box_score_pair.second;
+      phi::DenseTensor &proposals = box_score_pair.first;
+      phi::DenseTensor &scores = box_score_pair.second;
 
       memory::Copy(place,
                    rpn_rois_data + num_proposals * 4,
@@ -240,7 +238,7 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
       tmp_num.push_back(proposals.dims()[0]);
     }
     if (context.HasOutput("RpnRoisNum")) {
-      auto *rpn_rois_num = context.Output<Tensor>("RpnRoisNum");
+      auto *rpn_rois_num = context.Output<phi::DenseTensor>("RpnRoisNum");
       rpn_rois_num->mutable_data<int>({num}, context.GetPlace());
       int *num_data = rpn_rois_num->data<int>();
       memory::Copy(place,
@@ -266,5 +264,4 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     generate_proposals,
-    ops::CUDAGenerateProposalsKernel<paddle::platform::CUDADeviceContext,
-                                     float>);
+    ops::CUDAGenerateProposalsKernel<phi::GPUContext, float>);

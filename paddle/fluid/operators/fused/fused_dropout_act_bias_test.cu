@@ -49,15 +49,15 @@ struct TestFusedDropoutActBias {
   bool is_upscale_in_train;
   bool is_test;  // default false,  Set to true for inference only
   bool has_bias = true;
-  framework::Tensor src, bias, out, mask;
-  framework::Tensor dsrc, dbias;
+  phi::DenseTensor src, bias, out, mask;
+  phi::DenseTensor dsrc, dbias;
 
   std::vector<T> src_vec, bias_vec, out_vec, mask_vec;
   std::vector<T> correct_out, correct_dsrc, correct_dbias;
   std::vector<uint8_t> correct_mask;
 
   platform::CUDAPlace place;
-  platform::CUDADeviceContext *ctx;
+  phi::GPUContext *ctx;
 
   TestFusedDropoutActBias() {
     rows = 32;
@@ -69,7 +69,7 @@ struct TestFusedDropoutActBias {
     has_bias = true;
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto devicectx = pool.Get(place);
-    ctx = reinterpret_cast<platform::CUDADeviceContext *>(devicectx);
+    ctx = reinterpret_cast<phi::GPUContext *>(devicectx);
   }
 
   TestFusedDropoutActBias(int rows_,
@@ -87,7 +87,7 @@ struct TestFusedDropoutActBias {
     has_bias = true;
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto devicectx = pool.Get(place);
-    ctx = reinterpret_cast<platform::CUDADeviceContext *>(devicectx);
+    ctx = reinterpret_cast<phi::GPUContext *>(devicectx);
   }
 
   ~TestFusedDropoutActBias() {}

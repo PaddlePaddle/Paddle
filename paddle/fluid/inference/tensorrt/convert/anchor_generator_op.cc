@@ -36,14 +36,14 @@ class AnchorGeneratorOpConverter : public OpConverter {
     std::vector<std::string> output_names{anchor_name, variance_name};
 
     const auto anchor_sizes =
-        BOOST_GET_CONST(std::vector<float>, op_desc.GetAttr("anchor_sizes"));
+        PADDLE_GET_CONST(std::vector<float>, op_desc.GetAttr("anchor_sizes"));
     const auto aspect_ratios =
-        BOOST_GET_CONST(std::vector<float>, op_desc.GetAttr("aspect_ratios"));
+        PADDLE_GET_CONST(std::vector<float>, op_desc.GetAttr("aspect_ratios"));
     const auto stride =
-        BOOST_GET_CONST(std::vector<float>, op_desc.GetAttr("stride"));
+        PADDLE_GET_CONST(std::vector<float>, op_desc.GetAttr("stride"));
     const auto variances =
-        BOOST_GET_CONST(std::vector<float>, op_desc.GetAttr("variances"));
-    const auto offset = BOOST_GET_CONST(float, op_desc.GetAttr("offset"));
+        PADDLE_GET_CONST(std::vector<float>, op_desc.GetAttr("variances"));
+    const auto offset = PADDLE_GET_CONST(float, op_desc.GetAttr("offset"));
     const int num_anchors = aspect_ratios.size() * anchor_sizes.size();
     bool is_dynamic = engine_->with_dynamic_shape();
     const auto height = input_dims.d[1];

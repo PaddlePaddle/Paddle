@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/phi/kernels/funcs/eigen/extensions.h"
+#include "paddle/phi/common/data_type.h"
 
 namespace paddle {
 namespace framework {
@@ -82,6 +82,13 @@ struct DataTypeTrait<void> {
       callback, ::paddle::platform::complex<float>, COMPLEX64); \
   _ForEachDataTypeHelper_(                                      \
       callback, ::paddle::platform::complex<double>, COMPLEX128);
+
+#define _ForEachDataTypeNormal_(callback)            \
+  _ForEachDataTypeHelper_(callback, float, FP32);    \
+  _ForEachDataTypeHelper_(callback, double, FP64);   \
+  _ForEachDataTypeHelper_(callback, int, INT32);     \
+  _ForEachDataTypeHelper_(callback, int64_t, INT64); \
+  _ForEachDataTypeHelper_(callback, ::paddle::platform::float16, FP16);
 
 // For the use of thrust, as index-type elements can be only integers.
 #define _ForEachDataTypeTiny_(callback)          \
@@ -148,6 +155,21 @@ inline void VisitDataTypeSmall(proto::VarType::Type type, Visitor visitor) {
 #undef VisitDataTypeCallbackSmall
 }
 
+// for normal dtype, int, int64, float, float64, float16
+template <typename Visitor>
+inline void VisitDataTypeNormal(proto::VarType::Type type, Visitor visitor) {
+#define VisitDataTypeCallbackNormal(cpp_type, proto_type) \
+  do {                                                    \
+    if (type == proto_type) {                             \
+      visitor.template apply<cpp_type>();                 \
+      return;                                             \
+    }                                                     \
+  } while (0)
+
+  _ForEachDataTypeNormal_(VisitDataTypeCallbackNormal);
+#undef VisitDataTypeCallbackNormal
+}
+
 template <typename Visitor>
 inline void VisitIntDataType(proto::VarType::Type type, Visitor visitor) {
 #define VisitIntDataTypeCallback(cpp_type, proto_type) \
@@ -203,6 +225,11 @@ inline std::ostream& operator<<(std::ostream& out,
 extern inline bool IsComplexType(const proto::VarType::Type& type) {
   return (type == proto::VarType::COMPLEX64 ||
           type == proto::VarType::COMPLEX128);
+}
+
+extern inline bool IsComplexType(const phi::DataType& type) {
+  return (type == phi::DataType::COMPLEX64 ||
+          type == phi::DataType::COMPLEX128);
 }
 
 extern proto::VarType::Type PromoteTypesIfComplexExists(

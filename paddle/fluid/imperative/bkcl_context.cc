@@ -33,8 +33,8 @@
 namespace paddle {
 namespace imperative {
 
-static void AllReduce(const framework::Tensor &src,
-                      framework::Tensor *dst,
+static void AllReduce(const phi::DenseTensor &src,
+                      phi::DenseTensor *dst,
                       const XPUStream stream,
                       const platform::BKCLComm *comm) {
   const auto &place = src.place();
@@ -110,6 +110,10 @@ void BKCLParallelContext::Init() {
                                                      strategy_.local_rank_,
                                                      xpu_id,
                                                      ring_id);
+    compute_events_.emplace_back(
+        platform::XpuEventResourcePool::Instance().New(place_.device));
+    comm_events_.emplace_back(
+        platform::XpuEventResourcePool::Instance().New(place_.device));
   }
 }
 
@@ -134,6 +138,11 @@ void BKCLParallelContext::InitWithRingID(int ring_id) {
   // it will assign bkcl_comm in XPUDeviceContext within ring_id
   platform::BKCLCommContext::Instance().CreateComm(
       &bkcl_ids[0], strategy_.nranks_, strategy_.local_rank_, xpu_id, ring_id);
+
+  compute_events_.emplace_back(
+      platform::XpuEventResourcePool::Instance().New(place_.device));
+  comm_events_.emplace_back(
+      platform::XpuEventResourcePool::Instance().New(place_.device));
 }
 
 void BKCLParallelContext::AllReduceByStream(const framework::Variable &src,
@@ -154,12 +163,12 @@ void BKCLParallelContext::AllReduceByStream(const framework::Variable &src,
   XPUStream stream =
       use_calc_stream ? dev_ctx->x_context()->xpu_stream : comm->stream();
 
-  if (src.IsType<framework::LoDTensor>()) {
-    if (!dst->IsType<framework::LoDTensor>()) {
+  if (src.IsType<phi::DenseTensor>()) {
+    if (!dst->IsType<phi::DenseTensor>()) {
       dst->Clear();
     }
-    AllReduce(src.Get<framework::LoDTensor>(),
-              dst->GetMutable<framework::LoDTensor>(),
+    AllReduce(src.Get<phi::DenseTensor>(),
+              dst->GetMutable<phi::DenseTensor>(),
               stream,
               comm);
   } else {
@@ -172,7 +181,7 @@ void BKCLParallelContext::AllReduceByStream(const framework::Variable &src,
 
 void BKCLParallelContext::Broadcast(framework::Variable *src, int ring_id) {
   VLOG(3) << "/// DEBUG /// start inter broadcast with ring_id: " << ring_id;
-  framework::Tensor *src_tensor = src->GetMutable<framework::LoDTensor>();
+  phi::DenseTensor *src_tensor = src->GetMutable<phi::DenseTensor>();
   const auto &place = src_tensor->place();
   platform::BKCLComm *comm =
       platform::BKCLCommContext::Instance().Get(ring_id, place);
@@ -213,9 +222,18 @@ void BKCLParallelContext::WaitCompute(int ring_id) {
                                    "but got ring id = %d, nrings = %d",
                                    ring_id,
                                    strategy_.nrings_));
-  auto compute_dev_ctx = static_cast<platform::XPUDeviceContext *>(
-      platform::DeviceContextPool::Instance().Get(place_));
-  compute_dev_ctx->Wait();
+  auto compute_stream = static_cast<platform::XPUDeviceContext *>(
+                            platform::DeviceContextPool::Instance().Get(place_))
+                            ->stream();
+  auto comm_stream = platform::BKCLCommContext::Instance()
+                         .Get(ring_id, place_)
+                         ->dev_context()
+                         ->stream();
+  auto event = compute_events_[ring_id].get();
+
+  // compute_stream-->event-->comm_stream
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_event_record(event, compute_stream));
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_wait_event(comm_stream, event));
 }
 
 void BKCLParallelContext::WaitComm(int ring_id) {
@@ -230,9 +248,18 @@ void BKCLParallelContext::WaitComm(int ring_id) {
                                    "but got ring id = %d, nrings = %d",
                                    ring_id,
                                    strategy_.nrings_));
-  auto comm_dev_ctx =
-      platform::BKCLCommContext::Instance().Get(ring_id, place_)->dev_context();
-  comm_dev_ctx->Wait();
+  auto comm_stream = platform::BKCLCommContext::Instance()
+                         .Get(ring_id, place_)
+                         ->dev_context()
+                         ->stream();
+  auto compute_stream = static_cast<platform::XPUDeviceContext *>(
+                            platform::DeviceContextPool::Instance().Get(place_))
+                            ->stream();
+  auto event = compute_events_[ring_id].get();
+
+  // comm_stream-->event-->compute_stream
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_event_record(event, comm_stream));
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_wait_event(compute_stream, event));
 }
 
 void BKCLParallelContext::SynchronizeCompute() {

@@ -11,12 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from multiprocessing import Pool, Process
 import os
 import socket
-from contextlib import closing
-import time
 import sys
+import time
+from contextlib import closing
+from multiprocessing import Process
 
 
 def launch_func(func, env_dict):
@@ -59,7 +59,6 @@ def wait(procs, timeout=30):
 
 
 def _find_free_port(port_set):
-
     def __free_port():
         with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
             s.bind(('', 0))

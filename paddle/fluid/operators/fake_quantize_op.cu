@@ -16,7 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/fake_quantize_op.cu.h"
 
 namespace ops = paddle::operators;
-using CUDA = paddle::platform::CUDADeviceContext;
+using CUDA = phi::GPUContext;
 using float16 = paddle::platform::float16;
 REGISTER_OP_CUDA_KERNEL(fake_quantize_abs_max,
                         ops::FakeQuantizeAbsMaxKernel<CUDA, float>,

@@ -44,7 +44,7 @@ class ConcatOpConverter : public OpConverter {
     for (auto& input_name : op_desc.Input("X")) {
       itensors.push_back(engine_->GetITensor(input_name));
     }
-    int axis = BOOST_GET_CONST(int, op_desc.GetAttr("axis"));
+    int axis = PADDLE_GET_CONST(int, op_desc.GetAttr("axis"));
     if (axis == -1) {
       axis = (engine_->GetITensor(op_desc.Input("X").front())->getDimensions())
                  .nbDims -

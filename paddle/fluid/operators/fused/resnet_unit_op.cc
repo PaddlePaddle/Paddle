@@ -18,8 +18,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
 // Shape of bitmask
 static framework::DDim GetBitmaskDims(std::vector<int> out_shape) {
   int c = out_shape.back();
@@ -159,22 +157,28 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
                           bn_param_dims,
                           bn_param_dims.size()));
     auto data_format = ctx->Attrs().Get<std::string>("data_format");
-    PADDLE_ENFORCE_EQ(
-        data_format,
-        "NHWC",
-        platform::errors::InvalidArgument("The data format must equal to NHWC. "
-                                          "But received: the data format "
-                                          "= [%s]",
-                                          data_format));
+    bool is_nchw = (data_format == "NCHW");
     // Calculate the dims of outputs
     int batch = x_dims[0];
     int output_channel = w_dims[0];
     int filter_size = w_dims[2];
     int stride = ctx->Attrs().Get<int>("stride");
     int padding = ctx->Attrs().Get<int>("padding");
-    int out_h = (x_dims[1] + padding * 2 - filter_size) / stride + 1;
-    int out_w = (x_dims[2] + padding * 2 - filter_size) / stride + 1;
-    std::vector<int> out_shape = {batch, out_h, out_w, output_channel};
+    std::vector<int> out_shape;
+    out_shape.push_back(batch);
+    if (is_nchw) {
+      int out_h = (x_dims[2] + padding * 2 - filter_size) / stride + 1;
+      int out_w = (x_dims[3] + padding * 2 - filter_size) / stride + 1;
+      out_shape.push_back(output_channel);
+      out_shape.push_back(out_h);
+      out_shape.push_back(out_w);
+    } else {
+      int out_h = (x_dims[1] + padding * 2 - filter_size) / stride + 1;
+      int out_w = (x_dims[2] + padding * 2 - filter_size) / stride + 1;
+      out_shape.push_back(out_h);
+      out_shape.push_back(out_w);
+      out_shape.push_back(output_channel);
+    }
 
     auto y_dims = phi::make_ddim(out_shape);
     auto bitmask_dims = GetBitmaskDims(out_shape);
@@ -196,27 +200,24 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     // By default, the type of the scale, bias, mean,
     // and var tensors should be float when input tensor's dtype is float16.
     auto bn_param_type = framework::proto::VarType::FP32;
 
-    PADDLE_ENFORCE_EQ(
-        bn_param_type,
-        framework::TransToProtoVarType(ctx.Input<Tensor>("ScaleX")->dtype()),
-        platform::errors::InvalidArgument(
-            "Scale input should be of float type"));
-    PADDLE_ENFORCE_EQ(
-        bn_param_type,
-        framework::TransToProtoVarType(ctx.Input<Tensor>("BiasX")->dtype()),
-        platform::errors::InvalidArgument(
-            "Bias input should be of float type"));
-    framework::LibraryType library = framework::LibraryType::kPlain;
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
-    return framework::OpKernelType(
-        input_data_type, ctx.GetPlace(), layout, library);
+    PADDLE_ENFORCE_EQ(bn_param_type,
+                      framework::TransToProtoVarType(
+                          ctx.Input<phi::DenseTensor>("ScaleX")->dtype()),
+                      platform::errors::InvalidArgument(
+                          "Scale input should be of float type"));
+    PADDLE_ENFORCE_EQ(bn_param_type,
+                      framework::TransToProtoVarType(
+                          ctx.Input<phi::DenseTensor>("BiasX")->dtype()),
+                      platform::errors::InvalidArgument(
+                          "Bias input should be of float type"));
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -268,10 +269,10 @@ class ResNetUnitOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::string>("act_type", "The activation type to be fused.")
         .SetDefault("relu");
     AddComment(R"DOC(
-Fusion op of the basic unit of resnet block. 
+Fusion op of the basic unit of resnet block.
 
 The implementation is based on the latest fusion op interface in cuDNN v8.0.
-For more details: 
+For more details:
 https://docs.nvidia.com/deeplearning/cudnn/api/index.html#cudnnFusedOps_t
 
 )DOC");
@@ -388,21 +389,15 @@ class ResNetUnitGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const {
     PADDLE_ENFORCE_NOT_NULL(
         ctx.InputVar(framework::GradVarName("Y")),
         platform::errors::NotFound(
             "Can not find Y@GRAD in the execution context."));
 
-    framework::LibraryType library = framework::LibraryType::kPlain;
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
-
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.GetPlace(),
-        layout,
-        library);
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 

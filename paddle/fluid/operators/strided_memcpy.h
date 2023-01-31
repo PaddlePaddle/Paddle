@@ -110,8 +110,7 @@ inline void StridedNumelCopyWithAxis(const platform::DeviceContext& ctx,
     } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       auto& gpu_place = place;
-      auto& cuda_ctx =
-          reinterpret_cast<const platform::CUDADeviceContext&>(ctx);
+      auto& cuda_ctx = reinterpret_cast<const phi::GPUContext&>(ctx);
       memory::Copy(gpu_place,
                    dst + i * dst_after,
                    gpu_place,
@@ -147,9 +146,9 @@ inline void StridedNumelCopyWithAxis(const platform::DeviceContext& ctx,
 template <typename T>
 inline void StridedMemcpyWithAxis0(
     const platform::DeviceContext& dev_ctx,
-    const framework::Tensor& input,
-    const std::vector<const framework::Tensor*>& shape_refer,
-    std::vector<framework::Tensor*>* outputs) {
+    const phi::DenseTensor& input,
+    const std::vector<const phi::DenseTensor*>& shape_refer,
+    std::vector<phi::DenseTensor*>* outputs) {
   const framework::DDim in_stride = stride_numel(input.dims());
   const int axis = 0;
   size_t input_offset = 0;

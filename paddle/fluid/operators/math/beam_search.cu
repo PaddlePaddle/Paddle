@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/beam_search.h"
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
 
 namespace paddle {
 namespace operators {
@@ -403,16 +403,16 @@ static inline int GetNumUsedThreads(const int max_threads_per_seq,
 }
 
 template <typename T>
-class BeamSearchFunctor<platform::CUDADeviceContext, T> {
+class BeamSearchFunctor<phi::GPUContext, T> {
  public:
-  void operator()(const platform::CUDADeviceContext& context,
-                  const framework::LoDTensor* pre_ids,
-                  const framework::LoDTensor* pre_scores,
-                  const framework::LoDTensor* ids,
-                  const framework::LoDTensor* scores,
-                  framework::LoDTensor* selected_ids,
-                  framework::LoDTensor* selected_scores,
-                  framework::Tensor* parent_idx,
+  void operator()(const phi::GPUContext& context,
+                  const phi::DenseTensor* pre_ids,
+                  const phi::DenseTensor* pre_scores,
+                  const phi::DenseTensor* ids,
+                  const phi::DenseTensor* scores,
+                  phi::DenseTensor* selected_ids,
+                  phi::DenseTensor* selected_scores,
+                  phi::DenseTensor* parent_idx,
                   size_t level,
                   size_t beam_size,
                   int end_id,
@@ -531,10 +531,10 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
   }
 };
 
-template class BeamSearchFunctor<platform::CUDADeviceContext, int>;
-template class BeamSearchFunctor<platform::CUDADeviceContext, int64_t>;
-template class BeamSearchFunctor<platform::CUDADeviceContext, float>;
-template class BeamSearchFunctor<platform::CUDADeviceContext, double>;
+template class BeamSearchFunctor<phi::GPUContext, int>;
+template class BeamSearchFunctor<phi::GPUContext, int64_t>;
+template class BeamSearchFunctor<phi::GPUContext, float>;
+template class BeamSearchFunctor<phi::GPUContext, double>;
 
 }  // namespace math
 }  // namespace operators

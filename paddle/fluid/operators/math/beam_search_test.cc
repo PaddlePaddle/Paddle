@@ -19,10 +19,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 
-void PrepareCPUTensors(paddle::framework::LoDTensor* ids,
-                       paddle::framework::LoDTensor* scores,
-                       paddle::framework::LoDTensor* pre_ids,
-                       paddle::framework::LoDTensor* pre_scores) {
+void PrepareCPUTensors(phi::DenseTensor* ids,
+                       phi::DenseTensor* scores,
+                       phi::DenseTensor* pre_ids,
+                       phi::DenseTensor* pre_scores) {
   // lod
   paddle::framework::LoD lod;
   std::vector<size_t> level0({0, 2, 4});
@@ -66,20 +66,20 @@ void PrepareCPUTensors(paddle::framework::LoDTensor* ids,
 
 template <typename DeviceContext, typename Place>
 void TestBeamSearch() {
-  paddle::framework::LoDTensor ids;
-  paddle::framework::LoDTensor scores;
-  paddle::framework::LoDTensor pre_ids;
-  paddle::framework::LoDTensor pre_scores;
+  phi::DenseTensor ids;
+  phi::DenseTensor scores;
+  phi::DenseTensor pre_ids;
+  phi::DenseTensor pre_scores;
 
   auto* place = new Place();
   DeviceContext* context = new DeviceContext(*place);
   if (paddle::platform::is_cpu_place(*place)) {
     PrepareCPUTensors(&ids, &scores, &pre_ids, &pre_scores);
   } else {
-    paddle::framework::LoDTensor cpu_ids;
-    paddle::framework::LoDTensor cpu_scores;
-    paddle::framework::LoDTensor cpu_pre_ids;
-    paddle::framework::LoDTensor cpu_pre_scores;
+    phi::DenseTensor cpu_ids;
+    phi::DenseTensor cpu_scores;
+    phi::DenseTensor cpu_pre_ids;
+    phi::DenseTensor cpu_pre_scores;
 
     PrepareCPUTensors(&cpu_ids, &cpu_scores, &cpu_pre_ids, &cpu_pre_scores);
 
@@ -94,9 +94,9 @@ void TestBeamSearch() {
     pre_scores.set_lod(cpu_pre_scores.lod());
   }
 
-  paddle::framework::LoDTensor selected_ids;
-  paddle::framework::LoDTensor selected_scores;
-  paddle::framework::LoDTensor parent_idx;
+  phi::DenseTensor selected_ids;
+  phi::DenseTensor selected_scores;
+  phi::DenseTensor parent_idx;
 
   size_t level = 0;
   size_t beam_size = 2;
@@ -117,8 +117,8 @@ void TestBeamSearch() {
 
   ASSERT_EQ(selected_ids.lod(), selected_scores.lod());
 
-  paddle::framework::LoDTensor cpu_selected_ids;
-  paddle::framework::LoDTensor cpu_selected_scores;
+  phi::DenseTensor cpu_selected_ids;
+  phi::DenseTensor cpu_selected_scores;
   if (paddle::platform::is_cpu_place(*place)) {
     cpu_selected_ids = selected_ids;
     cpu_selected_scores = selected_scores;
@@ -144,15 +144,14 @@ void TestBeamSearch() {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <>
-void TestBeamSearch<paddle::platform::CUDADeviceContext,
-                    paddle::platform::CUDAPlace>() {
-  paddle::framework::LoDTensor ids;
-  paddle::framework::LoDTensor scores;
-  paddle::framework::LoDTensor pre_ids;
-  paddle::framework::LoDTensor pre_scores;
+void TestBeamSearch<phi::GPUContext, paddle::platform::CUDAPlace>() {
+  phi::DenseTensor ids;
+  phi::DenseTensor scores;
+  phi::DenseTensor pre_ids;
+  phi::DenseTensor pre_scores;
 
   auto* place = new paddle::platform::CUDAPlace();
-  auto* context = new paddle::platform::CUDADeviceContext(*place);
+  auto* context = new phi::GPUContext(*place);
   context->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                             .GetAllocator(*place, context->stream())
                             .get());
@@ -160,10 +159,10 @@ void TestBeamSearch<paddle::platform::CUDADeviceContext,
   if (paddle::platform::is_cpu_place(*place)) {
     PrepareCPUTensors(&ids, &scores, &pre_ids, &pre_scores);
   } else {
-    paddle::framework::LoDTensor cpu_ids;
-    paddle::framework::LoDTensor cpu_scores;
-    paddle::framework::LoDTensor cpu_pre_ids;
-    paddle::framework::LoDTensor cpu_pre_scores;
+    phi::DenseTensor cpu_ids;
+    phi::DenseTensor cpu_scores;
+    phi::DenseTensor cpu_pre_ids;
+    phi::DenseTensor cpu_pre_scores;
 
     PrepareCPUTensors(&cpu_ids, &cpu_scores, &cpu_pre_ids, &cpu_pre_scores);
 
@@ -178,16 +177,14 @@ void TestBeamSearch<paddle::platform::CUDADeviceContext,
     pre_scores.set_lod(cpu_pre_scores.lod());
   }
 
-  paddle::framework::LoDTensor selected_ids;
-  paddle::framework::LoDTensor selected_scores;
-  paddle::framework::LoDTensor parent_idx;
+  phi::DenseTensor selected_ids;
+  phi::DenseTensor selected_scores;
+  phi::DenseTensor parent_idx;
 
   size_t level = 0;
   size_t beam_size = 2;
   int end_id = 0;
-  paddle::operators::math::
-      BeamSearchFunctor<paddle::platform::CUDADeviceContext, float>
-          beamsearch;
+  paddle::operators::math::BeamSearchFunctor<phi::GPUContext, float> beamsearch;
   beamsearch(*context,
              &pre_ids,
              &pre_scores,
@@ -203,8 +200,8 @@ void TestBeamSearch<paddle::platform::CUDADeviceContext,
 
   ASSERT_EQ(selected_ids.lod(), selected_scores.lod());
 
-  paddle::framework::LoDTensor cpu_selected_ids;
-  paddle::framework::LoDTensor cpu_selected_scores;
+  phi::DenseTensor cpu_selected_ids;
+  phi::DenseTensor cpu_selected_scores;
   if (paddle::platform::is_cpu_place(*place)) {
     cpu_selected_ids = selected_ids;
     cpu_selected_scores = selected_scores;
@@ -235,7 +232,6 @@ TEST(BeamSearch, CPU) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(BeamSearch, GPU) {
-  TestBeamSearch<paddle::platform::CUDADeviceContext,
-                 paddle::platform::CUDAPlace>();
+  TestBeamSearch<phi::GPUContext, paddle::platform::CUDAPlace>();
 }
 #endif

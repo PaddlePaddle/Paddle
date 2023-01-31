@@ -17,6 +17,7 @@
 #include <string>
 
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/prim/api/manual/backward/composite_backward_api.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 
@@ -49,18 +50,46 @@ class ReduceSumOpGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const {
     int in_dtype = ctx.Attr<int>("out_dtype");
     if (in_dtype >= 0) {
-      return framework::OpKernelType(
+      return phi::KernelKey(
           static_cast<framework::proto::VarType::Type>(in_dtype),
           ctx.GetPlace());
     }
-    return framework::OpKernelType(
-        framework::OperatorWithKernel::IndicateVarDataType(
-            ctx, framework::GradVarName("Out")),
-        ctx.GetPlace());
+    return phi::KernelKey(framework::OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.GetPlace());
+  }
+};
+
+class ReduceSumCompositeGradOpMaker : public prim::GradCompositeOpMakerBase {
+ public:
+  using prim::GradCompositeOpMakerBase::GradCompositeOpMakerBase;
+  void Apply() override {
+    // get inputs
+    paddle::experimental::Tensor x = this->GetSingleForwardInput("X");
+    paddle::experimental::Tensor out_grad = this->GetSingleOutputGrad("Out");
+
+    // get attr
+    std::vector<int> axis = this->Attr<std::vector<int>>("dim");
+    bool keep_dim = this->Attr<bool>("keep_dim");
+    bool reduce_all = this->Attr<bool>("reduce_all");
+    // get output
+    paddle::experimental::Tensor x_grad_t = this->GetSingleInputGrad("X");
+
+    // get output ptr
+    paddle::experimental::Tensor* x_grad = this->GetOutputPtr(&x_grad_t);
+
+    // get output orginal name
+    std::string x_grad_name = this->GetOutputName(x_grad_t);
+    VLOG(3) << "Runing sum_grad composite func";
+    // call composite backward func
+    prim::sum_grad<prim::DescTensor>(
+        x, out_grad, axis, keep_dim, reduce_all, x_grad);
+    // recover output name
+    this->RecoverOutputName(x_grad_t, x_grad_name);
   }
 };
 
@@ -83,7 +112,7 @@ class ReduceSumVarTypeInference : public paddle::framework::VarTypeInference {
  public:
   void operator()(paddle::framework::InferVarTypeContext* ctx) const override {
     auto data_type = static_cast<paddle::framework::proto::VarType::Type>(
-        BOOST_GET_CONST(int, ctx->GetAttr("out_dtype")));
+        PADDLE_GET_CONST(int, ctx->GetAttr("out_dtype")));
     if (data_type >= 0) {
       ctx->SetOutputDataType("Out", data_type);
     } else {
@@ -115,6 +144,7 @@ REGISTER_OPERATOR(reduce_sum,
                   ops::ReduceSumVarTypeInference,
                   ops::ReduceSumOpGradMaker<paddle::framework::OpDesc>,
                   ops::ReduceSumOpGradMaker<paddle::imperative::OpBase>,
+                  ops::ReduceSumCompositeGradOpMaker,
                   ReduceSumInferShapeFunctor);
 REGISTER_OPERATOR(reduce_sum_grad,
                   ops::ReduceGradOp,

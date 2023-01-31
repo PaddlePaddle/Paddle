@@ -70,7 +70,7 @@ static bool IsOutputOfFC(Node* n) {
 static bool IsFCWithAct(Node* n, const std::string& act_type = "relu") {
   if (n && n->IsOp() && n->Op() && n->Op()->Type() == "fc" &&
       n->inputs.size() == 3U && n->outputs.size() == 1U) {
-    return BOOST_GET_CONST(std::string, n->Op()->GetAttr("activation_type")) ==
+    return PADDLE_GET_CONST(std::string, n->Op()->GetAttr("activation_type")) ==
            act_type;
   }
   return false;
@@ -81,7 +81,7 @@ static bool IsFCWithPaddingWeights(Node* n) {
   if (n && n->IsOp() && n->Op() && n->Op()->Type() == "fc" &&
       n->inputs.size() == 3U && n->outputs.size() == 1U) {
     if (n->Op()->HasAttr("padding_weights")) {
-      res = BOOST_GET_CONST(bool, n->Op()->GetAttr("padding_weights"));
+      res = PADDLE_GET_CONST(bool, n->Op()->GetAttr("padding_weights"));
     }
   }
   return res;

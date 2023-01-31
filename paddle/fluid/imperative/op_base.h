@@ -147,7 +147,7 @@ class OpBase {
 
   template <typename T>
   inline const T& Attr(const std::string& name) const {
-    return BOOST_GET_CONST(T, GetAttr(name));
+    return PADDLE_GET_CONST(T, GetAttr(name));
   }
 
   size_t id() const { return id_; }
@@ -221,13 +221,13 @@ class OpBase {
   NameVarMap<VariableWrapper> ins_;
   NameVarMap<VariableWrapper> outs_;
   framework::AttributeMap attrs_;
-  const framework::AttributeMap* default_attrs_;
+  const framework::AttributeMap* default_attrs_ = nullptr;
   std::unique_ptr<framework::OperatorBase> op_;
   platform::Place place_;
   size_t id_{-1UL};
   // In order to reduce the compatibility phase
   // performance overhead, temporarily cache KernelContext
-  static phi::KernelContext pt_kernel_context_;
+  static phi::KernelContext phi_kernel_context_;
   std::vector<std::shared_ptr<std::function<void()>>> void_function_post_hooks_;
 };
 

@@ -19,7 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
 using DDim = framework::DDim;
 
 template <typename T>
@@ -28,12 +27,12 @@ class LayerNormMLUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
     const auto epsilon = ctx.Attr<float>("epsilon");
-    const auto* x = ctx.Input<Tensor>("X");
-    const auto* scale = ctx.Input<Tensor>("Scale");
-    const auto* bias = ctx.Input<Tensor>("Bias");
-    auto* y = ctx.Output<Tensor>("Y");
-    auto* mean = ctx.Output<Tensor>("Mean");
-    auto* variance = ctx.Output<Tensor>("Variance");
+    const auto* x = ctx.Input<phi::DenseTensor>("X");
+    const auto* scale = ctx.Input<phi::DenseTensor>("Scale");
+    const auto* bias = ctx.Input<phi::DenseTensor>("Bias");
+    auto* y = ctx.Output<phi::DenseTensor>("Y");
+    auto* mean = ctx.Output<phi::DenseTensor>("Mean");
+    auto* variance = ctx.Output<phi::DenseTensor>("Variance");
 
     auto place = ctx.GetPlace();
 
@@ -72,7 +71,7 @@ class LayerNormMLUKernel : public framework::OpKernel<T> {
                                 GetBasePtr(mean),
                                 GetBasePtr(variance));
     } else {
-      Tensor tmp_scale(x->dtype());
+      phi::DenseTensor tmp_scale(x->dtype());
       if (!scale) {
         tmp_scale.mutable_data<T>(phi::make_ddim(scale_bias_axes), place);
         FillMLUTensorWithHostValue(ctx, static_cast<T>(1), &tmp_scale);
@@ -80,7 +79,7 @@ class LayerNormMLUKernel : public framework::OpKernel<T> {
         tmp_scale = *scale;
       }
 
-      Tensor tmp_bias(x->dtype());
+      phi::DenseTensor tmp_bias(x->dtype());
       if (!bias) {
         tmp_bias.mutable_data<T>(phi::make_ddim(scale_bias_axes), place);
         FillMLUTensorWithHostValue(ctx, static_cast<T>(0), &tmp_bias);
@@ -95,7 +94,7 @@ class LayerNormMLUKernel : public framework::OpKernel<T> {
           scale_bias_axes.size(), scale_bias_axes.data(), CNNL_DTYPE_HALF);
       cnnlCastDataType_t cast_type = GetCastDataType(VT::FP32, VT::FP16);
 
-      Tensor final_scale(x->dtype());
+      phi::DenseTensor final_scale(x->dtype());
       if (final_scale.dtype() == DataType::FLOAT16 &&
           tmp_scale.dtype() == DataType::FLOAT32) {
         final_scale.mutable_data<T>(phi::make_ddim(scale_bias_axes), place);
@@ -110,7 +109,7 @@ class LayerNormMLUKernel : public framework::OpKernel<T> {
         final_scale = tmp_scale;
       }
 
-      Tensor final_bias(x->dtype());
+      phi::DenseTensor final_bias(x->dtype());
       if (final_bias.dtype() == DataType::FLOAT16 &&
           tmp_bias.dtype() == DataType::FLOAT32) {
         final_bias.mutable_data<T>(phi::make_ddim(scale_bias_axes), place);
@@ -151,14 +150,15 @@ class LayerNormGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
-    const auto* x = ctx.Input<Tensor>("X");
-    const auto* mean = ctx.Input<Tensor>("Mean");
-    const auto* variance = ctx.Input<Tensor>("Variance");
-    const auto* scale = ctx.Input<Tensor>("Scale");
-    const auto* dy = ctx.Input<Tensor>(framework::GradVarName("Y"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dscale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
-    auto* dbias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
+    const auto* x = ctx.Input<phi::DenseTensor>("X");
+    const auto* mean = ctx.Input<phi::DenseTensor>("Mean");
+    const auto* variance = ctx.Input<phi::DenseTensor>("Variance");
+    const auto* scale = ctx.Input<phi::DenseTensor>("Scale");
+    const auto* dy = ctx.Input<phi::DenseTensor>(framework::GradVarName("Y"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dscale =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Scale"));
+    auto* dbias = ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
 
     auto place = ctx.GetPlace();
     dx->mutable_data<T>(place);
@@ -180,7 +180,7 @@ class LayerNormGradMLUKernel : public framework::OpKernel<T> {
         mean_var_axes.size(), mean_var_axes.data(), ToCnnlDataType<T>());
     MLUCnnlTensorDesc dx_desc(*dx);
 
-    Tensor tmp_scale(x->dtype());
+    phi::DenseTensor tmp_scale(x->dtype());
     if (!scale) {
       tmp_scale.mutable_data<T>(phi::make_ddim(scale_bias_axes), place);
       FillMLUTensorWithHostValue(ctx, static_cast<T>(1), &tmp_scale);
@@ -195,7 +195,7 @@ class LayerNormGradMLUKernel : public framework::OpKernel<T> {
     cnnlCastDataType_t cast_fp32_to_fp16 = GetCastDataType(VT::FP32, VT::FP16);
     cnnlCastDataType_t cast_fp16_to_fp32 = GetCastDataType(VT::FP16, VT::FP32);
 
-    Tensor final_scale(x->dtype());
+    phi::DenseTensor final_scale(x->dtype());
     if (final_scale.dtype() == DataType::FLOAT16 &&
         tmp_scale.dtype() == DataType::FLOAT32) {
       final_scale.mutable_data<T>(phi::make_ddim(scale_bias_axes), place);
@@ -210,14 +210,14 @@ class LayerNormGradMLUKernel : public framework::OpKernel<T> {
       final_scale = tmp_scale;
     }
 
-    Tensor tmp_dscale(x->dtype());
+    phi::DenseTensor tmp_dscale(x->dtype());
     if (dscale && (tmp_dscale.dtype() == dscale->dtype())) {
       dscale->mutable_data<T>(place);
       tmp_dscale = *dscale;
     } else {
       tmp_dscale.mutable_data<T>(phi::make_ddim(scale_bias_axes), place);
     }
-    Tensor tmp_dbias(x->dtype());
+    phi::DenseTensor tmp_dbias(x->dtype());
     if (dbias && (tmp_dbias.dtype() == dbias->dtype())) {
       dbias->mutable_data<T>(place);
       tmp_dbias = *dbias;

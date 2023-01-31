@@ -25,6 +25,7 @@
 #ifdef PADDLE_WITH_MLU
 #include "paddle/fluid/platform/device/mlu/device_context.h"
 #endif
+#include "paddle/fluid/platform/stream_callback_manager.h"
 
 namespace paddle {
 namespace framework {

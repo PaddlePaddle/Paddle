@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 
 class SequenceExpandOp : public framework::OperatorWithKernel {
  public:
@@ -46,9 +46,9 @@ class SequenceExpandOp : public framework::OperatorWithKernel {
 
     if (ctx->IsRuntime()) {
       framework::Variable* x_var =
-          BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
+          PADDLE_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
       framework::Variable* y_var =
-          BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("Y")[0]);
+          PADDLE_GET(framework::Variable*, ctx->GetInputVarPtrs("Y")[0]);
 
       auto& x_lod = x_var->Get<LoDTensor>().lod();
       auto& y_lod = y_var->Get<LoDTensor>().lod();
@@ -128,10 +128,10 @@ class SequenceExpandOp : public framework::OperatorWithKernel {
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -238,11 +238,11 @@ class SequenceExpandOpGrad : public framework::OperatorWithKernel {
     }
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.GetPlace());
   }
 };
 

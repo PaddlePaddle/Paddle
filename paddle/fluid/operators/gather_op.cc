@@ -32,21 +32,22 @@ class GatherOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.device_context().GetPlace());
   }
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
-      const framework::Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
+      const phi::DenseTensor& tensor,
+      const phi::KernelKey& expected_kernel_type) const override {
     if (var_name == "Axis") {
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
-    return framework::OpKernelType(
-        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+    return phi::KernelKey(
+        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
   }
 };
 
@@ -55,21 +56,23 @@ class GatherGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.device_context().GetPlace());
   }
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
-      const framework::Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
+      const phi::DenseTensor& tensor,
+      const phi::KernelKey& expected_kernel_type) const override {
     if (var_name == "Axis") {
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
-    return framework::OpKernelType(
-        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+    return phi::KernelKey(
+        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
   }
 };
 
@@ -82,14 +85,6 @@ class GatherOpMaker : public framework::OpProtoAndCheckerMaker {
              "The Tensor which contains the axis that we do gather operation.")
         .AsDispensable();
     AddOutput("Out", "The output of gather op");
-    AddAttr<bool>(
-        "overwrite",
-        "(bool, default: False) "
-        "In backward process, calc the grad when has same index,"
-        "If true, update the grad using the overwrite mode in same index,"
-        "If false, using the accumulate mode in same index.")
-        .SetDefault(true)
-        .AsExtra();
     AddAttr<int>(
         "axis",
         "The Tensor which contains the axis that we do gather operation.")

@@ -50,7 +50,7 @@ class TopKOpConverter : public OpConverter {
     auto* input_tensor = engine_->GetITensor(op_desc.Input("X")[0]);
 
     const int k = op_desc.HasAttr("k")
-                      ? BOOST_GET_CONST(int, op_desc.GetAttr("k"))
+                      ? PADDLE_GET_CONST(int, op_desc.GetAttr("k"))
                       : 1.0f;
 
     nvinfer1::Dims input_dims = input_tensor->getDimensions();
@@ -83,14 +83,15 @@ class TopKv2OpConverter : public OpConverter {
     auto* input_tensor = engine_->GetITensor(op_desc.Input("X")[0]);
 
     const int k = op_desc.HasAttr("k")
-                      ? BOOST_GET_CONST(int, op_desc.GetAttr("k"))
+                      ? PADDLE_GET_CONST(int, op_desc.GetAttr("k"))
                       : 1.0f;
     const int axis = op_desc.HasAttr("axis")
-                         ? BOOST_GET_CONST(int, op_desc.GetAttr("axis"))
+                         ? PADDLE_GET_CONST(int, op_desc.GetAttr("axis"))
                          : 1.0f;
-    const bool largest = op_desc.HasAttr("largest")
-                             ? BOOST_GET_CONST(bool, op_desc.GetAttr("largest"))
-                             : true;
+    const bool largest =
+        op_desc.HasAttr("largest")
+            ? PADDLE_GET_CONST(bool, op_desc.GetAttr("largest"))
+            : true;
     auto flag =
         largest ? nvinfer1::TopKOperation::kMAX : nvinfer1::TopKOperation::kMIN;
     nvinfer1::ITopKLayer* layer = nullptr;

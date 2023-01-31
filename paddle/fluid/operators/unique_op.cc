@@ -98,18 +98,17 @@ class UniqueOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     // Return CPUPlace when Attr("is_sorted") is false. Because it means
     // that fluid.layers.unique is called, but there is no cuda kernel.
     if (!ctx.Attr<bool>("is_sorted")) {
-      return framework::OpKernelType(
-          OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-          platform::CPUPlace());
+      return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                            platform::CPUPlace());
     } else {
       // new version paddle.unique is called.
-      return framework::OpKernelType(
-          OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+      return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                            ctx.GetPlace());
     }
   }
 };
@@ -119,7 +118,7 @@ class UniqueOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "Input tensor. It should be a 1-D tensor when Attr(is_sorted)"
-             " is fasle or a N-D tensor when Attr(is_sorted) is true.");
+             " is false or a N-D tensor when Attr(is_sorted) is true.");
     AddAttr<int>("dtype", "data type for output index");
     AddOutput("Out", "A unique subsequence for input tensor.");
     AddOutput("Index",
@@ -153,9 +152,9 @@ class UniqueOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
     AddComment(R"DOC(
     1. Return a unique subsequence for 1-D input tensor, and an index tensor
-    pointing to this unique subsequence when Attr(is_sorted) is false. This 
+    pointing to this unique subsequence when Attr(is_sorted) is false. This
     means paddle.unique is called.
-    
+
     2. Returns the unique elements of X in ascending order when Attr(is_sorted)
     is true. This means fluid.layers.unique is called.
 )DOC");

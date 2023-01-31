@@ -35,12 +35,12 @@ class IntArrayBase {
   IntArrayBase(std::initializer_list<int64_t> array_list)
       : array_(array_list) {}
 
-  IntArrayBase(const int64_t* date_value, int64_t n) {
-    AssignData(date_value, n);
+  IntArrayBase(const int64_t* data_value, int64_t n) {
+    AssignData(data_value, n);
   }
 
-  IntArrayBase(const int32_t* date_value, int64_t n) {
-    AssignData(date_value, n);
+  IntArrayBase(const int32_t* data_value, int64_t n) {
+    AssignData(data_value, n);
   }
 
   bool FromTensor() const { return is_from_tensor_; }
@@ -57,6 +57,8 @@ class IntArrayBase {
   IntArrayBase(const IntArrayBase<OtherT>& other) : array_(other.GetData()) {}
 
   size_t size() const { return array_.size(); }
+
+  int64_t operator[](int64_t i) const { return array_[i]; }
 
   const std::vector<int64_t>& GetData() const { return array_; }
 

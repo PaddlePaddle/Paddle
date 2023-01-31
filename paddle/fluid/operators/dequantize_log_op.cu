@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/dequantize_log_op.h"
-#include "paddle/fluid/operators/math.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/hostdevice.h"
+#include "paddle/phi/kernels/funcs/math.h"
 
 namespace paddle {
 namespace operators {
@@ -36,11 +36,11 @@ __global__ void KeDequantize(const T* in,
 }
 
 template <typename T>
-struct DequantizeFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext& dev_ctx,
-                  const framework::Tensor* in,
-                  const framework::Tensor* dict,
-                  framework::Tensor* out) {
+struct DequantizeFunctor<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext& dev_ctx,
+                  const phi::DenseTensor* in,
+                  const phi::DenseTensor* dict,
+                  phi::DenseTensor* out) {
     const T* in_data = in->data<T>();
     const float* dict_data = dict->data<float>();
     float* out_data = out->mutable_data<float>(dev_ctx.GetPlace());
@@ -54,11 +54,11 @@ struct DequantizeFunctor<platform::CUDADeviceContext, T> {
   }
 };
 
-template struct DequantizeFunctor<platform::CUDADeviceContext, int8_t>;
+template struct DequantizeFunctor<phi::GPUContext, int8_t>;
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CUDA = paddle::platform::CUDADeviceContext;
+using CUDA = phi::GPUContext;
 REGISTER_OP_CUDA_KERNEL(dequantize_log, ops::DequantizeLogKernel<CUDA, int8_t>);

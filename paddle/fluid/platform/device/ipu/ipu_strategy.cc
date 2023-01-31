@@ -87,23 +87,25 @@ IpuStrategy::IpuStrategy() {
   ADD_BOOL_OPTION(use_no_bias_optimizer);
   ADD_BOOL_OPTION(enable_distribution);
   ADD_BOOL_OPTION(scaled_optimizer_state);
+  ADD_BOOL_OPTION(is_dynamic);
+  ADD_BOOL_OPTION(enable_model_runtime_executor);
   ADD_UINT64_OPTION(num_ipus);
   ADD_UINT64_OPTION(batches_per_step);
   ADD_UINT64_OPTION(micro_batch_size);
   ADD_UINT64_OPTION(random_seed);
   ADD_UINT64_OPTION(tiles_per_ipu);
+  ADD_UINT64_OPTION(num_buffers);
   ADD_DOUBLE_OPTION(available_memory_proportion);
   ADD_DOUBLE_OPTION(loss_scaling);
   ADD_DOUBLE_OPTION(max_weight_norm);
+  ADD_DOUBLE_OPTION(timeout_ms);
+  // dy2static support
+  ADD_DOUBLE_OPTION(lr);
   ADD_STRING_OPTION(accl1_type);
   ADD_STRING_OPTION(accl2_type);
   ADD_STRING_OPTION(accl3_type);
   ADD_STRING_OPTION(onnx_dump_path);
   ADD_STRING_OPTION(weight_decay_mode);
-
-  // dy2static support
-  ADD_DOUBLE_OPTION(lr);
-  ADD_BOOL_OPTION(is_dynamic);
 
 #undef ADD_STRING_OPTION
 #undef ADD_DOUBLE_OPTION
@@ -302,8 +304,6 @@ IpuStrategy::IpuStrategy() {
   ADD_POPART_BOOL_OPTION_ALIAS(
       schedule_non_weight_update_gradient_consumers_early,
       scheduleNonWeightUpdateGradientConsumersEarly);
-  ADD_POPART_BOOL_OPTION_ALIAS(create_implicit_pipelining_fwd_only_program,
-                               createImplicitPipeliningFwdOnlyProgram);
 
   ADD_POPART_DOUBLE_OPTION_ALIAS(outline_sequence_break_cost,
                                  outlineSequenceBreakCost);

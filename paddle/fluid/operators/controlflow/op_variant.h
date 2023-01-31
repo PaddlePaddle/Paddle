@@ -53,7 +53,7 @@ class OpVariant {
         it,
         attrs.end(),
         platform::errors::NotFound("Cannot find attribute %s.", name));
-    return BOOST_GET_CONST(AttrType, it->second);
+    return PADDLE_GET_CONST(AttrType, it->second);
   }
 
   bool operator==(const OpVariant &other) const {
@@ -77,6 +77,11 @@ class OpVariant {
 void AppendOpVariantByOpName(const std::vector<framework::OpDesc *> &op_descs,
                              const std::string &candidate_op_name,
                              std::vector<OpVariant> *result_ops);
+
+void AppendOpVariantByOpName(
+    const std::vector<framework::OpDesc *> &op_descs,
+    const std::string &candidate_op_name,
+    std::unordered_set<OpVariant, OpVariant::Hasher> *result_ops);
 
 }  // namespace operators
 }  // namespace paddle

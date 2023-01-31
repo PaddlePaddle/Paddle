@@ -28,11 +28,10 @@ class SegmentPoolOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -113,11 +112,11 @@ class SegmentPoolGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.GetPlace());
   }
 };
 
@@ -132,7 +131,7 @@ class SegmentPoolGradOpMaker : public framework::SingleGradOpMaker<T> {
     op_desc_ptr->SetInput("X", this->Input("X"));
     op_desc_ptr->SetInput("SegmentIds", this->Input("SegmentIds"));
     op_desc_ptr->SetInput("Out", this->Output("Out"));
-    if (BOOST_GET_CONST(std::string, this->GetAttr("pooltype")) == "MEAN") {
+    if (PADDLE_GET_CONST(std::string, this->GetAttr("pooltype")) == "MEAN") {
       op_desc_ptr->SetInput("SummedIds", this->Output("SummedIds"));
     }
     op_desc_ptr->SetInput(framework::GradVarName("Out"),

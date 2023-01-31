@@ -19,7 +19,7 @@
 #include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_pass.h"  // NOLINT
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/imperative/type_defs.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace framework {
@@ -69,6 +69,9 @@ void SetOp(ProgramDesc* prog,
   } else if (type == "slice") {
     op->SetInput("Input", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
+  } else if (type == "split") {
+    op->SetInput("X", {inputs[0]});
+    op->SetOutput("Out", {outputs});
   } else if (type == "dropout") {
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
@@ -90,6 +93,7 @@ void SetOp(ProgramDesc* prog,
   } else if (type == "matmul") {
     op->SetInput("X", {inputs[0]});
     if (inputs.size() > 1) op->SetInput("Y", {inputs[1]});
+    if (inputs.size() > 2) op->SetInput("ResidualData", {inputs[2]});
     op->SetOutput("Out", {outputs[0]});
     op->SetAttr("Scale_x", 1.0f);
     op->SetAttr("Scale_y", 1.0f);
@@ -130,7 +134,7 @@ void InitTensorHolder(Scope* scope,
                       const paddle::platform::Place& place,
                       const char* var_name) {
   auto x = scope->Var(var_name);
-  auto tensor = x->GetMutable<LoDTensor>();
+  auto tensor = x->GetMutable<phi::DenseTensor>();
   tensor->mutable_data(
       place, framework::TransToPhiDataType(proto::VarType::FP32), 1);
 }
@@ -142,7 +146,7 @@ void PreparePass(std::unique_ptr<ir::Graph>* graph,
                  int* current_nodes_num,
                  std::string var_without_scale = "",
                  std::string var_signed = "") {
-  auto place = paddle::platform::CPUPlace();
+  auto place = phi::CPUPlace();
   NaiveExecutor exe{place};
   Scope scope;
   exe.CreateVariables(prog, 0, true, &scope);
@@ -150,7 +154,7 @@ void PreparePass(std::unique_ptr<ir::Graph>* graph,
   for (auto& v : variable_names) {
     if (v.compare(var_without_scale) == 0) continue;
     InitTensorHolder(&scope, place, v.c_str());
-    LoDTensor tensor;
+    phi::DenseTensor tensor;
     tensor.Resize({1});
     auto* ptr = tensor.mutable_data<double>(place);
     ptr[0] = SCALE;
@@ -170,7 +174,7 @@ void PreparePass(std::unique_ptr<ir::Graph>* graph,
 void CheckScales(const OpDesc* op, float scale, float shift) {
   std::string type = op->Type();
   std::vector<std::string> scale_names;
-  if (type == "conv2d" || type == "fc") {
+  if (type == "conv2d" || type == "fused_conv2d" || type == "fc") {
     EXPECT_EQ(op->GetAttrIfExists<std::vector<float>>("Scale_weights")[0],
               scale);
     scale_names.push_back("Scale_in");
@@ -180,6 +184,11 @@ void CheckScales(const OpDesc* op, float scale, float shift) {
     scale_names.push_back("Scale_x");
     scale_names.push_back("Scale_y");
     scale_names.push_back("Scale_out");
+    if (type == "matmul") {
+      auto const& names = op->InputNames();
+      if (std::find(names.begin(), names.end(), "ResidualData") != names.end())
+        scale_names.push_back("Scale_in_eltwise");
+    }
   } else if (type == "fusion_gru" || type == "fusion_lstm") {
     EXPECT_EQ(op->GetAttrIfExists<float>("Shift_data"), shift);
     EXPECT_EQ(op->GetAttrIfExists<std::vector<float>>("Scale_weights")[0],
@@ -321,7 +330,7 @@ TEST(CpuQuantizePass, quantize) {
   // Insert nodes: 8 Quant + 8 IN + 7 OUT + 7 DEQUANT
   int added_nodes = 8 + 8 + 7 + 7;
   std::unordered_map<std::string, int> expected_operators = {
-      {"conv2d", 4}, {"pool2d", 2}, {"quantize", 8}, {"dequantize", 7}};
+      {"fused_conv2d", 4}, {"pool2d", 2}, {"quantize", 8}, {"dequantize", 7}};
   MainTest(BuildProgramDesc(use_mkldnn, mkldnn_data_type),
            variable_names,
            expected_operators,
@@ -334,7 +343,7 @@ TEST(CpuQuantizePass, do_not_quantize) {
   std::string mkldnn_data_type = "float32";
   int added_nodes = 0;
   std::unordered_map<std::string, int> expected_operators = {
-      {"conv2d", 4}, {"pool2d", 2}, {"quantize", 0}, {"dequantize", 0}};
+      {"fused_conv2d", 4}, {"pool2d", 2}, {"quantize", 0}, {"dequantize", 0}};
   MainTest(BuildProgramDesc(use_mkldnn, mkldnn_data_type),
            variable_names,
            expected_operators,
@@ -461,7 +470,7 @@ static const std::initializer_list<std::string> variable_names_immutable_ops = {
 void TestImmutableOp(const std::string tested_op) {
   ProgramDesc prog;
   for (auto& v : variable_names_immutable_ops) {
-    prog.MutableBlock(0)->Var(v);
+    prog.MutableBlock(0)->Var(v)->SetDataType(proto::VarType::FP32);
   }
   SetOp(&prog, "dequantize", "Dequantize1", {"a"}, {"b"}, true);
   SetOp(&prog, tested_op, tested_op, {"b"}, {"c"}, true, "int8");
@@ -514,7 +523,7 @@ void TestImmutableOpBetweenNonQuantizedOp(const std::string tested_op) {
 void TestImmutableOpWithManyOutputs(const std::string tested_op) {
   ProgramDesc prog;
   for (auto& v : variable_names_immutable_ops) {
-    prog.MutableBlock(0)->Var(v);
+    prog.MutableBlock(0)->Var(v)->SetDataType(proto::VarType::FP32);
   }
 
   SetOp(&prog, "dropout", "Dropout1", {"a"}, {"b"}, true, "float32");
@@ -550,8 +559,12 @@ void TestImmutableOpWithManyOutputs(const std::string tested_op) {
            SCALE * S8_MAX);
 }
 
-const std::vector<std::string> immutables = {
-    "reshape2", "transpose2", "slice", "nearest_interp", "nearest_interp_v2"};
+const std::vector<std::string> immutables = {"reshape2",
+                                             "transpose2",
+                                             "slice",
+                                             "nearest_interp",
+                                             "nearest_interp_v2",
+                                             "split"};
 
 class TestImmutables : public testing::TestWithParam<std::string> {};
 
@@ -575,7 +588,7 @@ INSTANTIATE_TEST_CASE_P(
     });
 
 static const std::initializer_list<std::string> variable_names_matmul = {
-    "a", "b", "c", "d", "e", "f"};
+    "a", "b", "c", "d", "e", "f", "g", "h"};
 
 ProgramDesc BuildProgramDescMatmul() {
   ProgramDesc prog;
@@ -595,10 +608,24 @@ ProgramDesc BuildProgramDescMatmulNotQuantized() {
   for (auto& v : variable_names_matmul) {
     prog.MutableBlock(0)->Var(v);
   }
-  SetOp(&prog, "dropout", "Dropout", {"a"}, {"b"}, false);
-  SetOp(&prog, "dequantize", "Dequantize", {"c"}, {"d"}, true);
+  SetOp(&prog, "dropout", "Dropout1", {"a"}, {"b"}, false);
+  SetOp(&prog, "dropout", "Dropout2", {"c"}, {"d"}, false);
   SetOp(&prog, "matmul", "Matmul", {"b", "d"}, {"e"}, true, "int8");
   SetOp(&prog, "dropout", "Dropout", {"e"}, {"f"}, true, "float32");
+
+  return prog;
+}
+
+ProgramDesc BuildProgramDescMatmulResidual() {
+  ProgramDesc prog;
+  for (auto& v : variable_names_matmul) {
+    prog.MutableBlock(0)->Var(v);
+  }
+  SetOp(&prog, "dequantize", "Dequantize1", {"a"}, {"b"}, true);
+  SetOp(&prog, "dequantize", "Dequantize2", {"c"}, {"d"}, true);
+  SetOp(&prog, "dequantize", "Dequantize3", {"e"}, {"f"}, true);
+  SetOp(&prog, "matmul", "Matmul", {"b", "d", "f"}, {"g"}, true, "int8");
+  SetOp(&prog, "dropout", "Dropout", {"g"}, {"h"}, true, "float32");
 
   return prog;
 }
@@ -619,12 +646,24 @@ TEST(CpuQuantizePass, matmul_not_quantized) {
   // nothing change
   int added_nodes = 0;
   std::unordered_map<std::string, int> expected_operators = {
-      {"matmul", 1}, {"quantize", 0}, {"dequantize", 1}};
+      {"matmul", 1}, {"quantize", 0}, {"dequantize", 0}};
   MainTest(BuildProgramDescMatmulNotQuantized(),
            variable_names_matmul,
            expected_operators,
            added_nodes,
            1.0f);
+}
+
+TEST(CpuQuantizePass, matmul_residual) {
+  // 3 Quant + 3 IN + 1 DeQuant + 1 OUT
+  int added_nodes = 8;
+  std::unordered_map<std::string, int> expected_operators = {
+      {"matmul", 1}, {"quantize", 3}, {"dequantize", 4}};
+  MainTest(BuildProgramDescMatmulResidual(),
+           variable_names_matmul,
+           expected_operators,
+           added_nodes,
+           SCALE * S8_MAX);
 }
 
 static const std::initializer_list<std::string> variable_names_elementwise = {
@@ -794,14 +833,15 @@ void MainTestMultiGru(int layers) {
       if (op->Type() == "multi_gru") {
         multi_gru_nodes_count++;
 
-        auto op_name = BOOST_GET_CONST(std::string, op->GetAttr("name"));
-        EXPECT_EQ(BOOST_GET_CONST(float, op->GetAttr("Scale_data")), scale)
+        auto op_name = PADDLE_GET_CONST(std::string, op->GetAttr("name"));
+        EXPECT_EQ(PADDLE_GET_CONST(float, op->GetAttr("Scale_data")), scale)
             << "Scale_data for node '" + op_name + "'.";
-        EXPECT_EQ(BOOST_GET_CONST(float, op->GetAttr("Shift_data")), shift)
+        EXPECT_EQ(PADDLE_GET_CONST(float, op->GetAttr("Shift_data")), shift)
             << "Shift_data for node '" + op_name + "'.";
         EXPECT_EQ(op->Input("Scale_weights").size(), 2u * layers)
             << "Scale_weights for node '" + op_name + "'.";
-        EXPECT_EQ(BOOST_GET_CONST(bool, op->GetAttr("force_fp32_output")), true)
+        EXPECT_EQ(PADDLE_GET_CONST(bool, op->GetAttr("force_fp32_output")),
+                  true)
             << "force_fp32_output for node '" + op_name + "'.";
       } else if (op->Type() == "quantize") {
         quantize_nodes_count++;
@@ -839,6 +879,45 @@ TEST(CpuQuantizePass, multi_gru_2) {
 TEST(CpuQuantizePass, multi_gru_3) {
   int layers = 3;
   MainTestMultiGru(layers);
+}
+
+static const std::initializer_list<std::string>
+    variable_names_multi_inputs_outputs = {"a", "b", "c1", "c2", "d", "e"};
+
+// a->Pool->b
+// b->Split->c1, c2
+// (c1, c2, c1, c2)->Concat->d
+// d->Pool->e
+ProgramDesc BuildProgramDescMulti() {
+  ProgramDesc prog;
+  for (auto& v : variable_names_multi_inputs_outputs) {
+    prog.MutableBlock(0)->Var(v)->SetDataType(proto::VarType::FP32);
+  }
+
+  SetOp(&prog, "pool2d", "Pool", {"a"}, {"b"}, true, "float32");
+  SetOp(&prog, "split", "Split", {"b"}, {"c1", "c2"}, true, "int8");
+  SetOp(
+      &prog, "concat", "Concat", {"c1", "c2", "c1", "c2"}, {"d"}, true, "int8");
+  SetOp(&prog, "pool2d", "Pool2", {"d"}, {"e"}, true, "float32");
+
+  return prog;
+}
+
+TEST(CpuQuantizePass, multi_inputs_outputs_ops) {
+  // a->QUANT1->Split
+  //               b1->DEQUANT->OUT->QUANT
+  //               b2->DEQUANT->OUT->QUANT
+  // (b1, b2, b1, b2)->Concat->c->DEQUANT->Pool->d
+  int added_nodes = 6 * 2;
+  std::unordered_map<std::string, int> expected_operators = {{"pool2d", 2},
+                                                             {"concat", 1},
+                                                             {"split", 1},
+                                                             {"quantize", 3},
+                                                             {"dequantize", 3}};
+  MainTest(BuildProgramDescMulti(),
+           variable_names_multi_inputs_outputs,
+           expected_operators,
+           added_nodes);
 }
 
 }  // namespace ir

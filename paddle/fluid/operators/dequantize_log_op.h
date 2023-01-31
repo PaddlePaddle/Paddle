@@ -29,18 +29,18 @@ namespace operators {
 template <typename DeviceContext, typename T>
 struct DequantizeFunctor {
   void operator()(const DeviceContext& dev_ctx,
-                  const framework::Tensor* in,
-                  const framework::Tensor* dict,
-                  framework::Tensor* out);
+                  const phi::DenseTensor* in,
+                  const phi::DenseTensor* dict,
+                  phi::DenseTensor* out);
 };
 
 template <typename DeviceContext, typename T>
 class DequantizeLogKernel : public framework::OpKernel<T> {
  public:
   virtual void Compute(const framework::ExecutionContext& ctx) const {
-    auto* in = ctx.Input<framework::Tensor>("X");
-    auto* dict = ctx.Input<framework::Tensor>("Dict");
-    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* in = ctx.Input<phi::DenseTensor>("X");
+    auto* dict = ctx.Input<phi::DenseTensor>("Dict");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     out->mutable_data<float>(dev_ctx.GetPlace());

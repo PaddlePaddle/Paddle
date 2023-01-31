@@ -13,8 +13,11 @@ set(eager_deps
     eager_nan_inf_utils
     grad_node_info
     grad_tensor_holder
-    accumulation_node
     custom_operator_node)
+
+if(NOT (NOT WITH_PYTHON AND ON_INFER))
+  set(eager_deps ${eager_deps} accumulation_node prim_utils)
+endif()
 
 set(fluid_deps
     tracer
@@ -33,15 +36,16 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
 endif()
 
 add_subdirectory(api)
-add_subdirectory(accumulation)
 add_subdirectory(custom_operator)
 if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
+  add_subdirectory(accumulation)
+  add_subdirectory(tests)
   add_subdirectory(pylayer)
   cc_library(
     grad_tensor_holder
     SRCS grad_tensor_holder.cc
     DEPS grad_node_info gradient_accumulator)
-  add_dependencies(grad_tensor_holder eager_final_state_codegen)
+  add_dependencies(grad_tensor_holder eager_codegen)
   cc_library(
     backward
     SRCS backward.cc
@@ -76,7 +80,3 @@ cc_library(
        scale_op
        autograd_meta
        hook_utils)
-
-if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
-  add_subdirectory(tests)
-endif()

@@ -44,11 +44,10 @@ class UniqueWithCountsOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        platform::CPUPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          platform::CPUPlace());
   }
 };
 
@@ -64,7 +63,7 @@ class UniqueWithCountsOpMaker : public framework::OpProtoAndCheckerMaker {
               "the attr `dtype`");
     AddOutput("Count", "A subsequence for the count of unique index");
     AddComment(R"DOC(
-    Return a unique subsequence for 1-D input tensor, index tensor pointing to this unique subsequence, 
+    Return a unique subsequence for 1-D input tensor, index tensor pointing to this unique subsequence,
     and the subsequence for the count of unique index.
 )DOC");
   }

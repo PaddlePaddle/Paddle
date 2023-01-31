@@ -31,11 +31,11 @@ limitations under the License. */
 namespace phi {
 namespace sparse {
 
-template <typename T, typename Context>
-void CsrDenseMatmulKernel(const Context& dev_ctx,
-                          const SparseCsrTensor& x,
-                          const DenseTensor& y,
-                          DenseTensor* out) {
+template <typename T, typename Context, typename TensorType>
+void MatmulKernelImpl(const Context& dev_ctx,
+                      const TensorType& x,
+                      const DenseTensor& y,
+                      DenseTensor* out) {
 #if CUDA_VERSION >= 11000
   std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
   std::vector<int64_t> ydim_vec = phi::vectorize(y.dims());
@@ -91,7 +91,23 @@ void CsrDenseMatmulKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void CsrMaskedMatmulKernel(const Context& dev_ctx,
+void MatmulCooDenseKernel(const Context& dev_ctx,
+                          const SparseCooTensor& x,
+                          const DenseTensor& y,
+                          DenseTensor* out) {
+  MatmulKernelImpl<T>(dev_ctx, x, y, out);
+}
+
+template <typename T, typename Context>
+void MatmulCsrDenseKernel(const Context& dev_ctx,
+                          const SparseCsrTensor& x,
+                          const DenseTensor& y,
+                          DenseTensor* out) {
+  MatmulKernelImpl<T>(dev_ctx, x, y, out);
+}
+
+template <typename T, typename Context>
+void MaskedMatmulCsrKernel(const Context& dev_ctx,
                            const DenseTensor& x,
                            const DenseTensor& y,
                            const SparseCsrTensor& mask,
@@ -176,18 +192,27 @@ void CsrMaskedMatmulKernel(const Context& dev_ctx,
 }  // namespace sparse
 }  // namespace phi
 
-PD_REGISTER_KERNEL(csr_dense_matmul,
+PD_REGISTER_KERNEL(matmul_csr_dense,
                    GPU,
                    ALL_LAYOUT,
-                   phi::sparse::CsrDenseMatmulKernel,
+                   phi::sparse::MatmulCsrDenseKernel,
                    float,
                    double) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
-PD_REGISTER_KERNEL(csr_masked_matmul,
+PD_REGISTER_KERNEL(matmul_coo_dense,
                    GPU,
                    ALL_LAYOUT,
-                   phi::sparse::CsrMaskedMatmulKernel,
+                   phi::sparse::MatmulCooDenseKernel,
+                   float,
+                   double) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
+PD_REGISTER_KERNEL(masked_matmul_csr,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::MaskedMatmulCsrKernel,
                    float,
                    double) {}

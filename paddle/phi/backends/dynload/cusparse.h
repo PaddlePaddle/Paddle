@@ -68,6 +68,7 @@ CUSPARSE_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP)
 
 #if CUDA_VERSION >= 11030
 #define CUSPARSE_ROUTINE_EACH_R2(__macro) \
+  __macro(cusparseSpMM_preprocess);       \
   __macro(cusparseSDDMM_bufferSize);      \
   __macro(cusparseSDDMM_preprocess);      \
   __macro(cusparseSDDMM);
@@ -75,7 +76,7 @@ CUSPARSE_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP)
 CUSPARSE_ROUTINE_EACH_R2(DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP)
 #endif
 
-#if CUDA_VERSION >= 11070
+#if CUDA_VERSION >= 11080
 #define CUSPARSE_ROUTINE_EACH_R3(__macro) \
   __macro(cusparseDnMatSetStridedBatch);  \
   __macro(cusparseCooSetStridedBatch);    \

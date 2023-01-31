@@ -146,7 +146,7 @@ std::future<int32_t> BrpcPsServer::SendPServer2PServerMsg(
     return fut;
   }
   auto *closure = new DownpourPServerBrpcClosure(1, [msg_type](void *done) {
-    auto *closure = (DownpourPServerBrpcClosure *)done;
+    auto *closure = reinterpret_cast<DownpourPServerBrpcClosure *>(done);
     int32_t ret = closure->check_response(0, msg_type + 1000);
     closure->set_promise_value(ret);
   });
@@ -209,12 +209,15 @@ int32_t BrpcPsService::Initialize() {
   _service_handler_map[PS_STOP_PROFILER] = &BrpcPsService::StopProfiler;
   _service_handler_map[PS_PUSH_GLOBAL_STEP] = &BrpcPsService::PushGlobalStep;
   // for save cache
-
   _service_handler_map[PS_SAVE_ONE_CACHE_TABLE] =
       &BrpcPsService::SaveCacheTable;
   _service_handler_map[PS_GET_CACHE_THRESHOLD] =
       &BrpcPsService::GetCacheThreshold;
   _service_handler_map[PS_CACHE_SHUFFLE] = &BrpcPsService::CacheShuffle;
+
+  _service_handler_map[PS_REVERT] = &BrpcPsService::Revert;
+  _service_handler_map[PS_CHECK_SAVE_PRE_PATCH_DONE] =
+      &BrpcPsService::CheckSavePrePatchDone;
 
   auto &profiler = CostProfiler::instance();
   profiler.register_profiler("pserver_server_pull_dense");
@@ -319,9 +322,8 @@ int32_t BrpcPsService::PullDense(Table *table,
   table_context.pull_context.values = res_data->data();
   table_context.num = num;
   table->Pull(table_context);
-  // table->PullDense(res_data->data(), num);
 
-  cntl->response_attachment().append((char *)(res_data->data()),
+  cntl->response_attachment().append(reinterpret_cast<char *>(res_data->data()),
                                      res_data->size() * sizeof(float));
   butil::return_object(res_data);
 
@@ -356,7 +358,6 @@ int32_t BrpcPsService::PushDenseParam(Table *table,
   table_context.push_context.is_param = true;
   table_context.num = num;
 
-  //  if (table->PushDenseParam(values, num) != 0) {
   if (table->Push(table_context) != 0) {
     set_response_code(response, -1, "PushDenseParam failed");
   }
@@ -438,7 +439,8 @@ int32_t BrpcPsService::PushSparseParam(Table *table,
                       "least 1 for num of sparse_key");
     return 0;
   }
-  uint32_t num = *(uint32_t *)(request.params(0).c_str());
+  const uint32_t num =
+      *(reinterpret_cast<const uint32_t *>(request.params(0).c_str()));
   /*
   Push Content:
   |---keysData---|---valuesData---|
@@ -484,10 +486,11 @@ int32_t BrpcPsService::PullGeoParam(Table *table,
   //  table->PullGeoParam(trainer_id, &values, &ids);
 
   uint32_t num = ids.size();
-  cntl->response_attachment().append((char *)(&num), sizeof(uint32_t));
-  cntl->response_attachment().append((char *)ids.data(),
+  cntl->response_attachment().append(reinterpret_cast<char *>(&num),
+                                     sizeof(uint32_t));
+  cntl->response_attachment().append(reinterpret_cast<char *>(ids.data()),
                                      ids.size() * sizeof(uint64_t));
-  cntl->response_attachment().append((char *)values.data(),
+  cntl->response_attachment().append(reinterpret_cast<char *>(values.data()),
                                      values.size() * sizeof(float));
   return 0;
 }
@@ -517,7 +520,8 @@ int32_t BrpcPsService::PullSparse(Table *table,
   }
 
   CostTimer timer("pserver_server_pull_sparse");
-  uint32_t num = *(uint32_t *)(request.params(0).c_str());
+  const uint32_t num =
+      *(reinterpret_cast<const uint32_t *>(request.params(0).c_str()));
   auto dim = table->ValueAccesor()->GetAccessorInfo().select_dim;
 
   thread_local std::string req_buffer;
@@ -539,7 +543,7 @@ int32_t BrpcPsService::PullSparse(Table *table,
   table->Pull(table_context);
   // table->PullSparse(res_data->data(), value);
 
-  cntl->response_attachment().append((char *)(res_data->data()),
+  cntl->response_attachment().append(reinterpret_cast<char *>(res_data->data()),
                                      res_data->size() * sizeof(float));
   butil::return_object(res_data);
   return 0;
@@ -565,7 +569,8 @@ int32_t BrpcPsService::PushSparse(Table *table,
     return 0;
   }
   CostTimer timer("pserver_server_push_sparse");
-  uint32_t num = *(uint32_t *)(request.params(0).c_str());
+  const uint32_t num =
+      *(reinterpret_cast<const uint32_t *>(request.params(0).c_str()));
   /*
   Push Content:
   |---keysData---|---valuesData---|
@@ -764,6 +769,29 @@ int32_t BrpcPsService::GetCacheThreshold(Table *table,
   ss << std::setprecision(15) << cache_threshold;
   std::string cache_threshold_str = ss.str();
   response.set_data(cache_threshold_str);
+  return 0;
+}
+
+int32_t BrpcPsService::Revert(Table *table,
+                              const PsRequestMessage &request,
+                              PsResponseMessage &response,
+                              brpc::Controller *cntl) {
+  auto &table_map = *(_server->GetTable());
+  for (auto &itr : table_map) {
+    itr.second->Flush();
+    itr.second->Revert();
+  }
+  return 0;
+}
+
+int32_t BrpcPsService::CheckSavePrePatchDone(Table *table,
+                                             const PsRequestMessage &request,
+                                             PsResponseMessage &response,
+                                             brpc::Controller *cntl) {
+  auto &table_map = *(_server->GetTable());
+  for (auto &itr : table_map) {
+    itr.second->CheckSavePrePatchDone();
+  }
   return 0;
 }
 

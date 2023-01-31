@@ -83,10 +83,11 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
     SerializeValue(&buffer, with_fp16_);
   }
 
-  nvinfer1::DimsExprs getOutputDimensions(int output_index,
-                                          const nvinfer1::DimsExprs* inputs,
-                                          int nb_inputs,
-                                          nvinfer1::IExprBuilder& expr_builder)
+  nvinfer1::DimsExprs getOutputDimensions(
+      int output_index,
+      const nvinfer1::DimsExprs* inputs,
+      int nb_inputs,
+      nvinfer1::IExprBuilder& expr_builder)  // NOLINT
       TRT_NOEXCEPT override;
 
   bool supportsFormatCombination(int pos,
@@ -97,7 +98,7 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
   void configurePlugin(const nvinfer1::DynamicPluginTensorDesc* in,
                        int nb_inputs,
                        const nvinfer1::DynamicPluginTensorDesc* out,
-                       int nb_outputs) TRT_NOEXCEPT override {}
+                       int nb_outputs) TRT_NOEXCEPT override;
 
   size_t getWorkspaceSize(const nvinfer1::PluginTensorDesc* inputs,
                           int nb_inputs,
@@ -124,6 +125,9 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
   int head_number_;
   int head_size_;
   float scale_;
+  phi::DenseTensor tensor_;
+  half* mask_half_;
+  float* fake_qk_bias_;
 };
 
 class QkvToContextPluginDynamicCreator : public nvinfer1::IPluginCreator {

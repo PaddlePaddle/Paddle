@@ -15,54 +15,75 @@
 #include "paddle/fluid/jit/function_utils.h"
 
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_desc.h"
+#include "paddle/fluid/framework/variable.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace jit {
 namespace utils {
-void FetchVarsByNames(const std::vector<std::string> &names,
-                      const framework::Scope &scope,
-                      std::vector<Variable> *outs) {
-  for (auto &out_name : names) {
+
+std::vector<DenseTensor> ToDenseTensors(const std::vector<Tensor> &tensors) {
+  std::vector<DenseTensor> ret;
+  for (auto &t : tensors) {
+    ret.emplace_back(*std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
+  }
+  return ret;
+}
+
+std::vector<Tensor> ToTensors(const std::vector<DenseTensor> &tensors) {
+  std::vector<Tensor> ret;
+  for (auto &t : tensors) {
+    ret.emplace_back(std::make_shared<DenseTensor>(t));
+  }
+  return ret;
+}
+
+void FetchOuts(const std::vector<std::string> &names,
+               const framework::Scope &scope,
+               std::vector<DenseTensor> *outs) {
+  outs->reserve(names.size());
+  for (size_t i = 0; i < names.size(); ++i) {
+    auto &out_name = names[i];
     VLOG(3) << "fetch out: " << out_name;
     auto *var = scope.FindVar(out_name);
     auto &src_tensor = var->Get<DenseTensor>();
-    Variable v;
-    auto *p = v.GetMutable<DenseTensor>();
-    *p = src_tensor;
-    outs->emplace_back(v);
+    outs->emplace_back(src_tensor);
   }
 }
 
-void ShareInputsIntoScope(const std::vector<std::string> &ordered_input_names,
-                          const std::vector<Variable> &vars,
-                          framework::Scope *scope) {
-  VLOG(3) << "vars size: " << vars.size();
+void ShareIntoScope(const std::vector<std::string> &ordered_input_names,
+                    const std::vector<DenseTensor> &tensors,
+                    framework::Scope *scope) {
+  VLOG(3) << "tensors size: " << tensors.size();
   PADDLE_ENFORCE_EQ(
-      vars.size(),
+      tensors.size(),
       ordered_input_names.size(),
       platform::errors::InvalidArgument(
-          "vars.size() should be equal to ordered_input_names.size()."));
-
-  for (size_t i = 0; i < vars.size(); i++) {
+          "tensors.size() should be equal to ordered_input_names.size()."));
+  for (size_t i = 0; i < tensors.size(); ++i) {
     VLOG(3) << "share into scope: " << ordered_input_names[i];
-    auto &dense_tensor = vars[i].Get<DenseTensor>();
     auto *var = scope->Var(ordered_input_names[i]);
     auto *dst_tensor = var->GetMutable<DenseTensor>();
-    *dst_tensor = dense_tensor;
+    *dst_tensor = tensors[i];
   }
 }
 
 void ShareParamsIntoScope(const std::vector<std::string> &param_names,
-                          const Name2VariableMap &params_dict,
+                          const VariableMap &params_dict,
                           framework::Scope *scope) {
-  VLOG(3) << "param_names size: " << param_names.size();
   for (size_t i = 0; i < param_names.size(); ++i) {
     std::string name = param_names[i];
+    PADDLE_ENFORCE_EQ(params_dict.count(name),
+                      1,
+                      phi::errors::InvalidArgument(
+                          "Parameter named %s is not existed in params_dict. "
+                          "Please check that your model was saved correctly",
+                          name));
+
     auto &param = params_dict.find(name)->second;
-    auto &dense_tensor = param.Get<DenseTensor>();
-    VLOG(3) << "share into scope: " << name;
+    auto &dense_tensor = param->Get<DenseTensor>();
     auto *var = scope->Var(name);
     auto *dst_tensor = var->GetMutable<DenseTensor>();
     *dst_tensor = dense_tensor;

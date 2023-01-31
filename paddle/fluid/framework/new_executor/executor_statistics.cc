@@ -24,9 +24,9 @@
 #include <vector>
 
 #include "glog/logging.h"
-#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/utils.h"
+#include "paddle/phi/core/flags.h"
 
 DECLARE_bool(use_stream_safe_cuda_allocator);
 PADDLE_DEFINE_EXPORTED_string(static_executor_perfstat_filepath,
@@ -600,9 +600,9 @@ void StatisticsEngine::Log(const std::string& filepath) {
   for (size_t idx = 0; idx < statistics_.size(); ++idx) {
     const auto& evt_stat = statistics_[idx];
     ofs << platform::string_format(std::string(R"JSON(
-  { 
-    "statistical item" : "%s", 
-    "total time(ns)" : %llu, 
+  {
+    "statistical item" : "%s",
+    "total time(ns)" : %llu,
     "total number of times" : %llu,
     "normalization time(ns)" : %llu
   },)JSON"),

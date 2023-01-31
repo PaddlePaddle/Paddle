@@ -68,8 +68,8 @@ class EmbEltwiseLayerNormFunctor {
                   int seq_len,
                   int hidden,
                   const int64_t *ids,
-                  const float *scale,
-                  const float *bias,
+                  const T *scale,
+                  const T *bias,
                   const int64_t *embs,
                   T *output,
                   float eps,
@@ -93,13 +93,14 @@ class EmbEltwiseLayerNormFunctor {
 template <typename T>
 class MultiHeadGPUComputeFunctor {
  public:
-  void operator()(const platform::CUDADeviceContext &dev_ctx,
+  void operator()(const phi::GPUContext &dev_ctx,
                   int batch,
                   int seq_len,
                   int head_num,
                   int head_size,
                   T *qkptr,
                   const T *bias_qk_ptr,
+                  bool bias_is_mask,
                   T *tptr,
                   T alpha,
                   T beta);
@@ -125,10 +126,10 @@ class SkipLayerNormFunctor {
                   const int hidden,
                   const T *input1,
                   const T *input2,
-                  const float *scale,
-                  const float *bias,
+                  const T *scale,
+                  const T *bias,
                   T *output,
-                  T eps,
+                  float eps,
                   gpuStream_t stream);
 };
 #endif

@@ -223,10 +223,10 @@ class AfsManager {
     delete read_stream;
   }
   int PopenBidirectionalInternal(const char* command,
-                                 FILE*& fp_read,  // NOLINT
-                                 FILE*& fp_write,
-                                 pid_t& pid,  // NOLINT
-                                 bool read,   // NOLINT
+                                 FILE*& fp_read,   // NOLINT
+                                 FILE*& fp_write,  // NOLINT
+                                 pid_t& pid,       // NOLINT
+                                 bool read,        // NOLINT
                                  bool write) {
     std::lock_guard<std::mutex> g(g_flock);
     int fd_read[2];
@@ -440,10 +440,9 @@ class BoxWrapper {
       std::vector<gpuStream_t*> stream_list;
       for (int i = 0; i < platform::GetGPUDeviceCount(); ++i) {
         VLOG(3) << "before get context i[" << i << "]";
-        platform::CUDADeviceContext* context =
-            dynamic_cast<platform::CUDADeviceContext*>(
-                platform::DeviceContextPool::Instance().Get(
-                    platform::CUDAPlace(i)));
+        phi::GPUContext* context = dynamic_cast<phi::GPUContext*>(
+            platform::DeviceContextPool::Instance().Get(
+                platform::CUDAPlace(i)));
         stream_list_[i] = context->stream();
         stream_list.push_back(&stream_list_[i]);
       }
@@ -590,7 +589,7 @@ class BoxWrapper {
           var,
           platform::errors::NotFound("Error: var %s is not found in scope.",
                                      varname.c_str()));
-      auto& gpu_tensor = var->Get<LoDTensor>();
+      auto& gpu_tensor = var->Get<phi::DenseTensor>();
       auto* gpu_data = gpu_tensor.data<T>();
       auto len = gpu_tensor.numel();
       data->resize(len);
@@ -926,7 +925,7 @@ class BoxWrapper {
   std::map<std::string, MetricMsg*> metric_lists_;
   std::vector<std::string> metric_name_list_;
   std::vector<int> slot_vector_;
-  std::vector<LoDTensor> keys_tensor;  // Cache for pull_sparse
+  std::vector<phi::DenseTensor> keys_tensor;  // Cache for pull_sparse
   bool use_afs_api_ = false;
 
  public:

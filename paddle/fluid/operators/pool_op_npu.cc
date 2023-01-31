@@ -24,8 +24,8 @@ class NPUPoolOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto &dev_ctx = ctx.template device_context<platform::NPUDeviceContext>();
-    const Tensor *in_x = ctx.Input<Tensor>("X");
-    Tensor *out = ctx.Output<Tensor>("Out");
+    const Tensor *in_x = ctx.Input<phi::DenseTensor>("X");
+    Tensor *out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
     std::string pooling_type = ctx.Attr<std::string>("pooling_type");
@@ -77,6 +77,7 @@ class NPUPoolOpKernel : public framework::OpKernel<T> {
                               data_dims,
                               strides,
                               ksize);
+#if (CANN_VERSION_CODE < 512000)
     PADDLE_ENFORCE_LT(
         std::max(paddings[0], paddings[1]),
         ksize[0],
@@ -91,7 +92,7 @@ class NPUPoolOpKernel : public framework::OpKernel<T> {
             "Paddings should be less than %d, but max(pads[2], pads[3]) is %d.",
             ksize[1],
             std::max(paddings[2], paddings[3])));
-
+#endif
     if (adaptive) {
       std::string pooling_mode = "AdaptiveAvgPool2d";
       if (pooling_type == "max") {
@@ -170,10 +171,12 @@ class NPUPoolGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto &dev_ctx = ctx.template device_context<platform::NPUDeviceContext>();
-    const Tensor *in_x = ctx.Input<Tensor>("X");
-    const Tensor *out = ctx.Input<Tensor>("Out");
-    const Tensor *out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    Tensor *in_x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+    const Tensor *in_x = ctx.Input<phi::DenseTensor>("X");
+    const Tensor *out = ctx.Input<phi::DenseTensor>("Out");
+    const Tensor *out_grad =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    Tensor *in_x_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     in_x_grad->mutable_data<T>(ctx.GetPlace());
 
     std::string pooling_type = ctx.Attr<std::string>("pooling_type");
@@ -228,7 +231,7 @@ class NPUPoolGradOpKernel : public framework::OpKernel<T> {
                               data_dims,
                               strides,
                               ksize);
-
+#if (CANN_VERSION_CODE < 512000)
     PADDLE_ENFORCE_LT(
         std::max(paddings[0], paddings[1]),
         ksize[0],
@@ -243,7 +246,7 @@ class NPUPoolGradOpKernel : public framework::OpKernel<T> {
             "Paddings should be less than %d, but max(pads[2], pads[3]) is %d.",
             ksize[1],
             std::max(paddings[2], paddings[3])));
-
+#endif
     if (adaptive || (global_pooling && pooling_type == "max")) {
       PADDLE_ENFORCE_EQ(data_dims[0] % out_data_dims[0],
                         0,

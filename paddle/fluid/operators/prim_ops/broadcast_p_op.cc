@@ -86,11 +86,11 @@ class BroadcastPrimOpShapeInference : public framework::InferShapeBase {
   void operator()(framework::InferShapeContext *ctx) const override {
     framework::InferShapeVarPtr x_var_ptr = ctx->GetInputVarPtrs("X")[0];
     framework::InferShapeVarPtr y_var_ptr = ctx->GetOutputVarPtrs("Y")[0];
-    framework::VarDesc *x_var = BOOST_GET(framework::VarDesc *, x_var_ptr);
+    framework::VarDesc *x_var = PADDLE_GET(framework::VarDesc *, x_var_ptr);
     auto x_shape = x_var->GetShape();
     auto target_shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
     CheckShapeValid(x_shape, target_shape);
-    BOOST_GET(framework::VarDesc *, y_var_ptr)->SetShape(target_shape);
+    PADDLE_GET(framework::VarDesc *, y_var_ptr)->SetShape(target_shape);
   }
 };
 

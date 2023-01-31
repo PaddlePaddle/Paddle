@@ -24,13 +24,12 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
 // support gemm-nt and gemm-nn, which is used in fused_attention_op.
 template <typename T>
 class AttnMatMul {
  public:
   // (m, n, k) = bsz_seq, output_size, input_size
-  AttnMatMul(const platform::CUDADeviceContext& dev_ctx,
+  AttnMatMul(const phi::GPUContext& dev_ctx,
              bool transA,
              bool transB,
              int bsz_seq,
@@ -47,11 +46,11 @@ class AttnMatMul {
 
   ~AttnMatMul() {}
 
-  void ComputeForward(const framework::Tensor* weight,
-                      const framework::Tensor* input,
-                      const framework::Tensor* bias,
-                      framework::Tensor* output,
-                      framework::Tensor* bias_out) {
+  void ComputeForward(const phi::DenseTensor* weight,
+                      const phi::DenseTensor* input,
+                      const phi::DenseTensor* bias,
+                      phi::DenseTensor* output,
+                      phi::DenseTensor* bias_out) {
     // Note: for blas.GEMM API in Paddle, it treats all inputs as row-major.
     // here: (transa, transb): nt, input * weight.
     CBLAS_TRANSPOSE transA = transA_ ? CblasTrans : CblasNoTrans;
@@ -60,7 +59,7 @@ class AttnMatMul {
     T beta = static_cast<T>(0.0);
 
     // (m, n, k) = bsz_seq, output_size, input_size, (input, weight, out)
-    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
+    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx_);
     blas.GEMM(transA,
               transB,
               bsz_seq_,
@@ -73,25 +72,25 @@ class AttnMatMul {
               output->data<T>());
     if (compute_bias_) {
       // bias_out = output + bias
-      std::vector<const Tensor*> ins = {output, bias};
-      std::vector<Tensor*> outs = {bias_out};
+      std::vector<const phi::DenseTensor*> ins = {output, bias};
+      std::vector<phi::DenseTensor*> outs = {bias_out};
       phi::funcs::BroadcastKernel<phi::ElementwiseType::kBinary, T, T>(
           dev_ctx_, ins, &outs, -1, phi::funcs::AddFunctor<T>());
     }
   }
 
-  void ComputeBackward(const framework::Tensor* input,
-                       const framework::Tensor* weight,
-                       const framework::Tensor* d_output,
-                       framework::Tensor* d_input,
-                       framework::Tensor* d_weight,
-                       framework::Tensor* d_bias,
+  void ComputeBackward(const phi::DenseTensor* input,
+                       const phi::DenseTensor* weight,
+                       const phi::DenseTensor* d_output,
+                       phi::DenseTensor* d_input,
+                       phi::DenseTensor* d_weight,
+                       phi::DenseTensor* d_bias,
                        bool use_addto = false) {
     T alpha = static_cast<T>(1.0);
     T beta_dA = use_addto ? static_cast<T>(1.0) : static_cast<T>(0.0);
     T beta_dB = static_cast<T>(0.0);
 
-    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
+    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx_);
     if (!transA_) {
       // forward: gemm-nt
       if (transB_) {
@@ -223,7 +222,7 @@ class AttnMatMul {
   }
 
  private:
-  const platform::CUDADeviceContext& dev_ctx_;
+  const phi::GPUContext& dev_ctx_;
 
   bool transA_;
   bool transB_;

@@ -62,8 +62,8 @@ static std::string PythonFuncDebugString(const py::object &py_callable) {
 }
 
 static void CallPythonFunc(py::object *callable,
-                           const std::vector<framework::LoDTensor> &ins,
-                           std::vector<framework::LoDTensor *> *outs) {
+                           const std::vector<phi::DenseTensor> &ins,
+                           std::vector<phi::DenseTensor *> *outs) {
   py::gil_scoped_acquire guard;
   py::tuple in_args(ins.size());
   for (size_t i = 0; i < ins.size(); ++i) {
@@ -96,7 +96,7 @@ static void CallPythonFunc(py::object *callable,
             out_num));
 
     PADDLE_ENFORCE_EQ(
-        py::cast<framework::LoDTensor *>(ret_tuple[0]) == nullptr,
+        py::cast<phi::DenseTensor *>(ret_tuple[0]) == nullptr,
         true,
         platform::errors::InvalidArgument(
             "Python function has no return values or returns None. In "
@@ -110,7 +110,7 @@ static void CallPythonFunc(py::object *callable,
       continue;
     }
     try {
-      auto *py_out_tensor = py::cast<framework::LoDTensor *>(ret_tuple[i]);
+      auto *py_out_tensor = py::cast<phi::DenseTensor *>(ret_tuple[i]);
       PADDLE_ENFORCE_NOT_NULL(py_out_tensor,
                               platform::errors::InvalidArgument(
                                   "Output tensor %d should not be nullptr", i));
@@ -118,8 +118,8 @@ static void CallPythonFunc(py::object *callable,
       out->ShareDataWith(*py_out_tensor);
     } catch (py::cast_error &) {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "py::cast to LoDTensor error. The %d-th output expection is "
-          "LoDTensor",
+          "py::cast to phi::DenseTensor error. The %d-th output expection is "
+          "phi::DenseTensor",
           i));
     }
   }
@@ -144,11 +144,11 @@ class PyFuncOpVarTypeInference : public framework::StaticGraphVarTypeInference {
                                           has_out));
 
     PADDLE_ENFORCE_GE(
-        BOOST_GET_CONST(int, ctx->GetAttr(kForwardPythonCallableId)),
+        PADDLE_GET_CONST(int, ctx->GetAttr(kForwardPythonCallableId)),
         0,
         platform::errors::InvalidArgument(
             "Function id cannot be less than 0, but received value is %d.",
-            BOOST_GET_CONST(int, ctx->GetAttr(kForwardPythonCallableId))));
+            PADDLE_GET_CONST(int, ctx->GetAttr(kForwardPythonCallableId))));
 
     if (!has_out) return;
 
@@ -241,7 +241,7 @@ class PyFuncOpGradDescMaker : public framework::GradOpDescMakerBase {
   std::vector<std::unique_ptr<framework::OpDesc>> operator()() const override {
     auto &fwd_attrs = Attrs();
     // no backward op when backward_id is less than 0
-    if (BOOST_GET_CONST(int, fwd_attrs.at(kBackwardPythonCallableId)) < 0) {
+    if (PADDLE_GET_CONST(int, fwd_attrs.at(kBackwardPythonCallableId)) < 0) {
       return {};
     }
 
@@ -261,7 +261,7 @@ class PyFuncOpGradDescMaker : public framework::GradOpDescMakerBase {
 
     // For memory reused, some inputs/output in forward part may be not needed
     // in backward part. Skipping these vars helps to save memory
-    auto &backward_skip_var_list = BOOST_GET_CONST(
+    auto &backward_skip_var_list = PADDLE_GET_CONST(
         std::vector<std::string>, fwd_attrs.at(kPyFuncBackwardSkipVars));
     std::unordered_set<std::string> backward_skip_var_set(
         backward_skip_var_list.begin(), backward_skip_var_list.end());
@@ -311,14 +311,14 @@ class PyFuncOp : public framework::OperatorBase {
     auto &in_arg_names = Inputs("X");
     auto &out_arg_names = Outputs("Out");
 
-    std::vector<framework::LoDTensor> inputs(in_arg_names.size());
+    std::vector<phi::DenseTensor> inputs(in_arg_names.size());
     for (size_t i = 0; i < in_arg_names.size(); ++i) {
       auto in_var = scope.FindVar(in_arg_names[i]);
       // When py_func op is called in backward, in_var may be null
       if (in_var == nullptr) {
         continue;
       }
-      auto &in_tensor = in_var->Get<framework::LoDTensor>();
+      auto &in_tensor = in_var->Get<phi::DenseTensor>();
       if (!in_tensor.IsInitialized()) {
         continue;
       }
@@ -330,11 +330,10 @@ class PyFuncOp : public framework::OperatorBase {
       inputs[i].set_lod(in_tensor.lod());
     }
 
-    std::vector<framework::LoDTensor *> outputs(out_arg_names.size());
+    std::vector<phi::DenseTensor *> outputs(out_arg_names.size());
     for (size_t i = 0; i < out_arg_names.size(); ++i) {
       auto *out_var = scope.FindVar(out_arg_names[i]);
-      outputs[i] =
-          out_var ? out_var->GetMutable<framework::LoDTensor>() : nullptr;
+      outputs[i] = out_var ? out_var->GetMutable<phi::DenseTensor>() : nullptr;
     }
 
     auto callable_id = static_cast<size_t>(Attr<int>(kForwardPythonCallableId));

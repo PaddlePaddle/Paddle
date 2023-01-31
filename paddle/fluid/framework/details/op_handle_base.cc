@@ -184,8 +184,7 @@ void OpHandleBase::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
       dev_ctx.second->Wait();
     }
   } else {
-    auto stream =
-        static_cast<platform::CUDADeviceContext *>(waited_ctx)->stream();
+    auto stream = static_cast<phi::GPUContext *>(waited_ctx)->stream();
     for (auto &ev : events_) {
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(hipStreamWaitEvent(stream, ev.second, 0));
@@ -224,8 +223,7 @@ void OpHandleBase::WaitInputVarGenerated(bool wait_for_feed) {
         if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
           auto stream =
-              static_cast<platform::CUDADeviceContext *>(dev_ctxes_.at(place))
-                  ->stream();
+              static_cast<phi::GPUContext *>(dev_ctxes_.at(place))->stream();
 #ifdef PADDLE_WITH_HIP
           PADDLE_ENFORCE_GPU_SUCCESS(
               hipStreamWaitEvent(stream, in_var_handle->GetEvent(), 0));
@@ -254,8 +252,7 @@ void OpHandleBase::WaitInputVarGenerated(bool wait_for_feed) {
             platform::DeviceContextPool &pool =
                 platform::DeviceContextPool::Instance();
             auto stream =
-                static_cast<platform::CUDADeviceContext *>(pool.Get(place))
-                    ->stream();
+                static_cast<phi::GPUContext *>(pool.Get(place))->stream();
             platform::GpuStreamSync(stream);
 #else
             PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -277,7 +274,7 @@ void OpHandleBase::WaitInputVarGenerated(const platform::Place &place) {
       if (in_var_handle) {
         if (platform::is_gpu_place(in_var_handle->place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-          auto stream = static_cast<platform::CUDADeviceContext *>(
+          auto stream = static_cast<phi::GPUContext *>(
                             dev_ctxes_.at(in_var_handle->place()))
                             ->stream();
 #ifdef PADDLE_WITH_HIP
@@ -318,8 +315,8 @@ void OpHandleBase::RunAndRecordEvent(const std::function<void()> &callback) {
   if (!events_.empty()) {  // Use event
     for (auto &p : dev_ctxes_) {
       auto dev_id = p.first.device;
-      auto *cuda_dev_ctx = static_cast<platform::CUDADeviceContext *>(p.second);
-      VLOG(10) << "cudadevicecontext:" << cuda_dev_ctx << ", dev_id:" << dev_id;
+      auto *cuda_dev_ctx = static_cast<phi::GPUContext *>(p.second);
+      VLOG(10) << "phi::GPUContext:" << cuda_dev_ctx << ", dev_id:" << dev_id;
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(
           hipEventRecord(events_.at(dev_id), cuda_dev_ctx->stream()));
@@ -339,7 +336,7 @@ void OpHandleBase::RunAndRecordEvent(platform::Place p,
     callback();
   } else {
     auto *ctx = dev_ctxes_.at(p);
-    auto *cuda_ctx = static_cast<platform::CUDADeviceContext *>(ctx);
+    auto *cuda_ctx = static_cast<phi::GPUContext *>(ctx);
     cuda_ctx->RecordEvent(events_.at(p.device), callback);
   }
 #else

@@ -25,6 +25,7 @@
 #include "paddle/fluid/memory/allocation/stat_allocator.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/macros.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <shared_mutex>
@@ -39,7 +40,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/device/gpu/cuda/cuda_graph.h"
+#include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
 #endif
 
 #if CUDA_VERSION >= 10020
@@ -157,7 +158,7 @@ class CUDAGraphAllocator
 
 static bool IsCUDAGraphCapturing() {
 #ifdef PADDLE_WITH_CUDA
-  return UNLIKELY(platform::CUDAGraph::IsThisThreadCapturing());
+  return UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing());
 #else
   return false;
 #endif
@@ -238,7 +239,7 @@ class AllocatorFacadePrivate {
         // releate to non-default stream (i.e., the stream users pass in). The
         // default stream Allocator is built in the structure of
         // AllocatorFacadePrivate, while the non-default stream is build in a
-        // manner in GetAllocator function with 'create_if_not_found = ture'.
+        // manner in GetAllocator function with 'create_if_not_found = true'.
         // We make special treatment for the default stream for performance
         // reasons. Since most Alloc calls are for default stream in
         // application, treating it separately can avoid lots of overhead of
@@ -493,8 +494,8 @@ class AllocatorFacadePrivate {
   const AllocatorMap& GetAllocatorMap() { return allocators_; }
 
   void InitNaiveBestFitCPUAllocator() {
-    allocators_[platform::CPUPlace()] =
-        std::make_shared<NaiveBestFitAllocator>(platform::CPUPlace());
+    // It is more efficient to use CPUAllocator directly.
+    allocators_[platform::CPUPlace()] = std::make_shared<CPUAllocator>();
   }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -589,6 +590,7 @@ class AllocatorFacadePrivate {
           std::make_shared<AutoGrowthBestFitAllocator>(
               cuda_allocator,
               platform::GpuMinChunkSize(),
+              /*chunk_size=*/0,
               allow_free_idle_chunk_);
     }
 #else
@@ -637,7 +639,10 @@ class AllocatorFacadePrivate {
 #if defined(PADDLE_WITH_HIP)
     auto cuda_allocator = CreateCUDAAllocator(p);
     allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
-        cuda_allocator, platform::GpuMinChunkSize(), allow_free_idle_chunk);
+        cuda_allocator,
+        platform::GpuMinChunkSize(),
+        /*chunk_size=*/0,
+        allow_free_idle_chunk);
 #endif
 
 #if defined(PADDLE_WITH_CUDA)
@@ -665,7 +670,10 @@ class AllocatorFacadePrivate {
     } else {
       auto cuda_allocator = CreateCUDAAllocator(p);
       allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
-          cuda_allocator, platform::GpuMinChunkSize(), allow_free_idle_chunk);
+          cuda_allocator,
+          platform::GpuMinChunkSize(),
+          /*chunk_size=*/0,
+          allow_free_idle_chunk);
     }
 
 #else
@@ -821,6 +829,7 @@ class AllocatorFacadePrivate {
     allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
         custom_allocator,
         phi::DeviceManager::GetMinChunkSize(p),
+        /*chunk_size=*/0,
         allow_free_idle_chunk);
   }
 #endif
@@ -999,7 +1008,7 @@ AllocatorFacade& AllocatorFacade::Instance() {
 AllocatorFacadePrivate* AllocatorFacade::GetPrivate() const {
 #ifdef PADDLE_WITH_CUDA
   if (UNLIKELY(IsCUDAGraphCapturing())) {
-    auto id = platform::CUDAGraph::CapturingPoolID();
+    auto id = phi::backends::gpu::CUDAGraph::CapturingPoolID();
     auto iter = cuda_graph_map_.find(id);
     PADDLE_ENFORCE_NE(
         iter,
@@ -1080,11 +1089,11 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
   } else {
     return m->GetAllocator(p, size)->Allocate(size);
   }
-#elif defined PADDLE_WITH_XPU
+#elif defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_ASCEND_CL)
   return GetAllocator(place)->Allocate(size);
 #else
-  PADDLE_THROW(
-      platform::errors::PreconditionNotMet("Not compiled with GPU or XPU."));
+  PADDLE_THROW(platform::errors::PreconditionNotMet(
+      "Not compiled with GPU or XPU or NPU."));
 #endif
 }
 
@@ -1189,6 +1198,10 @@ void AllocatorFacade::RemoveMemoryPoolOfCUDAGraph(int64_t id) {
 }
 #endif
 #endif
+
+UNUSED static std::shared_ptr<NaiveBestFitAllocator> unused_obj =
+    std::make_shared<NaiveBestFitAllocator>(platform::CPUPlace());
+
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle

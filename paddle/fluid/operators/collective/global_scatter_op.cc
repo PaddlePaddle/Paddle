@@ -52,10 +52,10 @@ class GlobalScatterOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -80,8 +80,8 @@ class GlobalScatterOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor) the result of global_scatter.");
     AddComment(R"DOC(
 Global Scatter Operator
-Scatter data in X which has been put together belong to one expert 
-to n_expert * world_size exeperts according to local_count 
+Scatter data in X which has been put together belong to one expert
+to n_expert * world_size exeperts according to local_count
 and receive tensors from n_expert * world_size experts according
 to global_count.
 )DOC");

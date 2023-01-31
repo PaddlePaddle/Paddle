@@ -124,28 +124,11 @@ class FCOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    framework::LibraryType library = framework::LibraryType::kPlain;
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
-    int customized_type_value =
-        framework::OpKernelType::kDefaultCustomizedTypeValue;
     auto input_data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "Input");
-    if (ctx.Attr<bool>("use_mkldnn")) {
-      library = framework::LibraryType::kMKLDNN;
-      layout = framework::DataLayout::kMKLDNN;
-      using framework::proto::VarType;
-      customized_type_value = (input_data_type == VarType::INT8 ||
-                               input_data_type == VarType::UINT8)
-                                  ? kFCMKLDNNINT8
-                                  : kFCMKLDNNFP32;
-    }
-    return framework::OpKernelType(input_data_type,
-                                   ctx.GetPlace(),
-                                   layout,
-                                   library,
-                                   customized_type_value);
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 

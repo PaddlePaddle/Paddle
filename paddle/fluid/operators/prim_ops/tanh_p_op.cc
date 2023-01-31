@@ -55,9 +55,9 @@ class TanhPrimOpShapeInference : public framework::InferShapeBase {
     framework::InferShapeVarPtr x_var_ptr = ctx->GetInputVarPtrs("X")[0];
     framework::InferShapeVarPtr y_var_ptr = ctx->GetOutputVarPtrs("Y")[0];
 
-    framework::VarDesc *x_var = BOOST_GET(framework::VarDesc *, x_var_ptr);
+    framework::VarDesc *x_var = PADDLE_GET(framework::VarDesc *, x_var_ptr);
 
-    BOOST_GET(framework::VarDesc *, y_var_ptr)->SetShape(x_var->GetShape());
+    PADDLE_GET(framework::VarDesc *, y_var_ptr)->SetShape(x_var->GetShape());
   }
 };
 

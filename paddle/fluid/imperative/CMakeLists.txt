@@ -5,7 +5,7 @@ cc_library(
 cc_library(
   var_helper
   SRCS var_helper.cc
-  DEPS tensor phi_api)
+  DEPS tensor selected_rows extended_tensor)
 if(WITH_XPU)
   cc_library(
     prepared_operator
@@ -20,10 +20,11 @@ if(WITH_XPU)
          op_kernel_type
          data_transform
          nan_inf_utils
-         phi_api
-         phi_utils
+         scalar
+         int_array
          var_helper
-         profiler)
+         profiler
+         place)
 else()
   cc_library(
     prepared_operator
@@ -37,27 +38,23 @@ else()
          op_kernel_type
          data_transform
          nan_inf_utils
-         phi_api
-         phi_utils
+         scalar
+         int_array
          var_helper
-         profiler)
+         profiler
+         place)
 endif()
 cc_library(
   layer
   SRCS layer.cc
-  DEPS prepared_operator
-       math_function
-       imperative_flag
-       variable_helper
-       op_registry
-       var_helper
-       phi_api)
+  DEPS prepared_operator math_function imperative_flag variable_helper
+       op_registry var_helper)
 add_subdirectory(jit)
 if(WITH_GPU)
   cc_library(
     layout_autotune
     SRCS layout_autotune.cc
-    DEPS op_info phi_gpu_info)
+    DEPS op_info phi_backends)
 else()
   cc_library(
     layout_autotune
@@ -78,7 +75,8 @@ cc_library(
        denormal
        garbage_collector
        var_helper
-       layout_autotune)
+       layout_autotune
+       ops_extra_info)
 cc_library(
   basic_engine
   SRCS basic_engine.cc

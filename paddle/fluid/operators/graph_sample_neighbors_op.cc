@@ -25,11 +25,10 @@ class GraphSampleNeighborsOP : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Row"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Row"),
+                          ctx.device_context().GetPlace());
   }
 };
 
@@ -50,7 +49,7 @@ class GraphSampleNeighborsOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out_Eids", "The eids of the sample edges");
     AddAttr<int>(
         "sample_size",
-        "The sample size of graph sample neighbors method. ",
+        "The sample size of graph sample neighbors method. "
         "Set default value as -1, means return all neighbors of nodes.")
         .SetDefault(-1);
     AddAttr<bool>("return_eids",

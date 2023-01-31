@@ -22,8 +22,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class PadOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -31,6 +29,13 @@ class PadOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Pad");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Pad");
+  }
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -54,11 +59,12 @@ class PadOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("pad_value",
                    "(float, default 0.0) "
                    "The value to fill the padded areas.")
-        .SetDefault(0.0f);
+        .SetDefault(0.0f)
+        .SupportTensor();
     AddComment(R"DOC(
 Pad Operator.
 
-Pad input into output, as specified by paddings and pad_value. 
+Pad input into output, as specified by paddings and pad_value.
 The input should be a k-D tensor(k > 0 and k < 7). As an example:
 
 Given:
@@ -98,6 +104,14 @@ class PadOpGrad : public framework::OperatorWithKernel {
       }
       ctx->SetOutputDim(x_grad_name, dout_dims);
     }
+  }
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.GetPlace());
   }
 };
 

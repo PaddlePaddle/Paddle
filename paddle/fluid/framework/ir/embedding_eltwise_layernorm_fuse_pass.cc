@@ -316,6 +316,13 @@ int EmbeddingEltwiseLayerNormFusePass::BuildFusion(
       embs.push_back(inner_pattern_ins[js[iter]].second->Name());
     }
 
+    // todo: support any inputs with lookup_table_v2
+    if (ids.size() < 3) {
+      VLOG(3) << "embedding_eltwise_layernorm_fuse_pass only support >=3 "
+                 "inputs with lookup_table_v2";
+      return fusion_count;
+    }
+
     OpDesc new_op_desc;
     new_op_desc.SetType("fused_embedding_eltwise_layernorm");
     new_op_desc.SetInput("Ids", ids);

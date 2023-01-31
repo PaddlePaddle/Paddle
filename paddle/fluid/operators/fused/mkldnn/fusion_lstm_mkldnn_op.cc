@@ -13,32 +13,31 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/expect.h"
 #include "paddle/fluid/operators/fused/fusion_lstm_op.h"
 #include "paddle/fluid/operators/fused/mkldnn/fusion_rnn_mkldnn.h"
+#include "paddle/phi/core/expect.h"
 
 namespace paddle {
 namespace operators {
 
-using paddle::framework::LoDTensor;
-using paddle::framework::Tensor;
-using paddle::platform::MKLDNNGetDataType;
-using paddle::platform::MKLDNNMemDesc;
-using phi::CPUContext;
-using platform::to_void_cast;
+using phi::OneDNNContext;
+using phi::funcs::OneDNNGetDataType;
+using phi::funcs::OneDNNMemDesc;
+using phi::funcs::RNNReorderType;
+using OneDNNMemoryFormat = dnnl::memory::format_tag;
 
 template <typename T, typename T_out = T>
 class LSTMMKLDNNHandler
     : public RNNMKLDNNHandler<T, dnnl::lstm_forward, T_out> {
  public:
   LSTMMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
-                    const platform::MKLDNNDeviceContext& dev_ctx,
-                    const dnnl::engine mkldnn_engine,
+                    const OneDNNContext& dev_ctx,
+                    const dnnl::engine onednn_engine,
                     platform::Place cpu_place,
-                    const LoDTensor* input,
-                    const Tensor* weight_h,
-                    const Tensor* h0,
-                    const Tensor* c0,
+                    const phi::DenseTensor* input,
+                    const phi::DenseTensor* weight_h,
+                    const phi::DenseTensor* h0,
+                    const phi::DenseTensor* c0,
                     const bool is_reverse,
                     const int64_t N,
                     const int64_t Ti,
@@ -48,7 +47,7 @@ class LSTMMKLDNNHandler
       : RNNMKLDNNHandler<T, dnnl::lstm_forward, T_out>(
             ctx,
             dev_ctx,
-            mkldnn_engine,
+            onednn_engine,
             ctx.GetPlace(),
             input,
             weight_h,
@@ -82,7 +81,7 @@ class LSTMMKLDNNHandler
 
       // Weights for int8 kernel are of a type s8
       const auto weights_dt =
-          is_INT8 ? dnnl::memory::data_type::s8 : MKLDNNGetDataType<T>();
+          is_INT8 ? dnnl::memory::data_type::s8 : OneDNNGetDataType<T>();
 
       // oneDNN RNN dimensions
       const int64_t D = 1;  // Directions
@@ -90,21 +89,21 @@ class LSTMMKLDNNHandler
       const int64_t G = 4;  // Number of Gates, 4 for LSTM
 
       // Create memory descriptors
-      auto input_md = MKLDNNMemDesc(
-          {Ti, N, IC}, MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::tnc);
+      auto input_md = OneDNNMemDesc(
+          {Ti, N, IC}, OneDNNGetDataType<T>(), OneDNNMemoryFormat::tnc);
       auto weight_x_md =
-          MKLDNNMemDesc({L, D, IC, G, OC}, weights_dt, MKLDNNMemoryFormat::any);
+          OneDNNMemDesc({L, D, IC, G, OC}, weights_dt, OneDNNMemoryFormat::any);
       auto weight_h_md =
-          MKLDNNMemDesc({L, D, OC, G, OC}, weights_dt, MKLDNNMemoryFormat::any);
-      auto bias_md = MKLDNNMemDesc(
-          {L, D, G, OC}, MKLDNNGetDataType<float>(), MKLDNNMemoryFormat::ldgo);
-      auto hidden_md = MKLDNNMemDesc(
-          {Ti, N, OC}, MKLDNNGetDataType<T_out>(), MKLDNNMemoryFormat::any);
+          OneDNNMemDesc({L, D, OC, G, OC}, weights_dt, OneDNNMemoryFormat::any);
+      auto bias_md = OneDNNMemDesc(
+          {L, D, G, OC}, OneDNNGetDataType<float>(), OneDNNMemoryFormat::ldgo);
+      auto hidden_md = OneDNNMemDesc(
+          {Ti, N, OC}, OneDNNGetDataType<T_out>(), OneDNNMemoryFormat::any);
 
-      auto h0_md = MKLDNNMemDesc(
-          {L, D, N, OC}, MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::any);
-      auto c0_md = MKLDNNMemDesc(
-          {L, D, N, OC}, MKLDNNGetDataType<float>(), MKLDNNMemoryFormat::any);
+      auto h0_md = OneDNNMemDesc(
+          {L, D, N, OC}, OneDNNGetDataType<T>(), OneDNNMemoryFormat::any);
+      auto c0_md = OneDNNMemDesc(
+          {L, D, N, OC}, OneDNNGetDataType<float>(), OneDNNMemoryFormat::any);
 
       // Create LSTM oneDNN primitive
       const auto direction =
@@ -125,9 +124,9 @@ class LSTMMKLDNNHandler
             dnnl::memory::desc(),
             dnnl::memory::desc());
       } else {
-        auto weight_peephole_md = MKLDNNMemDesc({L, D, 3, OC},
-                                                MKLDNNGetDataType<float>(),
-                                                MKLDNNMemoryFormat::ldgo);
+        auto weight_peephole_md = OneDNNMemDesc({L, D, 3, OC},
+                                                OneDNNGetDataType<float>(),
+                                                OneDNNMemoryFormat::ldgo);
         this->AcquireForwardPrimitiveDescriptor(
             this->attr_,
             dnnl::prop_kind::forward_inference,
@@ -168,15 +167,16 @@ class LSTMMKLDNNHandler
   }
 
   template <typename U>
-  std::shared_ptr<dnnl::memory> AcquireWeightXMemory(const Tensor* weight_x) {
+  std::shared_ptr<dnnl::memory> AcquireWeightXMemory(
+      const phi::DenseTensor* weight_x) {
     const std::string wx_key = this->memory_key_ + "@weight_x";
     auto memory_p =
         std::static_pointer_cast<dnnl::memory>(this->dev_ctx_.GetBlob(wx_key));
 
     if (!memory_p) {
-      auto user_md = MKLDNNMemDesc({1, 1, this->IC, this->G, this->OC},
-                                   MKLDNNGetDataType<U>(),
-                                   MKLDNNMemoryFormat::ldigo);
+      auto user_md = OneDNNMemDesc({1, 1, this->IC, this->G, this->OC},
+                                   OneDNNGetDataType<U>(),
+                                   OneDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, this->engine_);
 
       auto* weight_x_data = reinterpret_cast<U*>(user_memory.get_data_handle());
@@ -189,7 +189,7 @@ class LSTMMKLDNNHandler
       memory_p = std::make_shared<dnnl::memory>(
           this->fwd_pd_->weights_layer_desc(), this->engine_);
 
-      auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
+      auto& astream = OneDNNContext::tls().get_stream();
       dnnl::reorder(user_memory, *memory_p, this->attr_)
           .execute(astream, user_memory, *memory_p);
 
@@ -199,15 +199,16 @@ class LSTMMKLDNNHandler
   }
 
   template <typename U>
-  std::shared_ptr<dnnl::memory> AcquireWeightHMemory(const Tensor* weight_h) {
+  std::shared_ptr<dnnl::memory> AcquireWeightHMemory(
+      const phi::DenseTensor* weight_h) {
     const std::string wh_key = this->memory_key_ + "@weight_h";
     auto memory_p =
         std::static_pointer_cast<dnnl::memory>(this->dev_ctx_.GetBlob(wh_key));
 
     if (!memory_p) {
-      auto user_md = MKLDNNMemDesc({1, 1, this->OC, this->G, this->OC},
-                                   MKLDNNGetDataType<U>(),
-                                   MKLDNNMemoryFormat::ldigo);
+      auto user_md = OneDNNMemDesc({1, 1, this->OC, this->G, this->OC},
+                                   OneDNNGetDataType<U>(),
+                                   OneDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, this->engine_);
 
       auto* weight_h_data = reinterpret_cast<U*>(user_memory.get_data_handle());
@@ -220,7 +221,7 @@ class LSTMMKLDNNHandler
       memory_p = std::make_shared<dnnl::memory>(
           this->fwd_pd_->weights_iter_desc(), this->engine_);
 
-      auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
+      auto& astream = OneDNNContext::tls().get_stream();
       dnnl::reorder(user_memory, *memory_p, this->attr_)
           .execute(astream, user_memory, *memory_p);
 
@@ -229,7 +230,8 @@ class LSTMMKLDNNHandler
     return memory_p;
   }
 
-  std::shared_ptr<dnnl::memory> AcquireBiasMemory(const Tensor* bias) {
+  std::shared_ptr<dnnl::memory> AcquireBiasMemory(
+      const phi::DenseTensor* bias) {
     const std::string bias_key = this->memory_key_ + "@bias";
     auto memory_p = std::static_pointer_cast<dnnl::memory>(
         this->dev_ctx_.GetBlob(bias_key));
@@ -256,15 +258,16 @@ class LSTMMKLDNNHandler
     return memory_p;
   }
 
-  std::shared_ptr<dnnl::memory> AcquirePeepholeWeights(const Tensor* bias) {
+  std::shared_ptr<dnnl::memory> AcquirePeepholeWeights(
+      const phi::DenseTensor* bias) {
     const std::string peepholes_key = this->memory_key_ + "@peepholes_weights";
     auto memory_p = std::static_pointer_cast<dnnl::memory>(
         this->dev_ctx_.GetBlob(peepholes_key));
 
     if (!memory_p) {
-      auto user_md = MKLDNNMemDesc({1, 1, 3, this->OC},
-                                   MKLDNNGetDataType<float>(),
-                                   MKLDNNMemoryFormat::ldgo);
+      auto user_md = OneDNNMemDesc({1, 1, 3, this->OC},
+                                   OneDNNGetDataType<float>(),
+                                   OneDNNMemoryFormat::ldgo);
       auto user_memory = dnnl::memory(user_md, this->engine_);
       memory_p = std::make_shared<dnnl::memory>(
           this->fwd_pd_->weights_peephole_desc(), this->engine_);
@@ -282,7 +285,7 @@ class LSTMMKLDNNHandler
     return memory_p;
   }
 
-  std::shared_ptr<dnnl::memory> AcquireC0Memory(const Tensor* c0) {
+  std::shared_ptr<dnnl::memory> AcquireC0Memory(const phi::DenseTensor* c0) {
     const std::string c0_key = this->memory_key_ + "@c0";
     auto memory_p =
         std::static_pointer_cast<dnnl::memory>(this->dev_ctx_.GetBlob(c0_key));
@@ -290,15 +293,16 @@ class LSTMMKLDNNHandler
     if (!memory_p) {
       auto user_c0_memory = dnnl::memory();
       if (c0) {
-        user_c0_memory = dnnl::memory({{1, 1, this->N, this->OC},
-                                       MKLDNNGetDataType<float>(),
-                                       MKLDNNMemoryFormat::ldnc},
-                                      this->engine_,
-                                      to_void_cast(c0->data<float>()));
+        user_c0_memory =
+            dnnl::memory({{1, 1, this->N, this->OC},
+                          OneDNNGetDataType<float>(),
+                          OneDNNMemoryFormat::ldnc},
+                         this->engine_,
+                         phi::funcs::to_void_cast(c0->data<float>()));
       } else {
         user_c0_memory = dnnl::memory({{1, 1, this->N, this->OC},
-                                       MKLDNNGetDataType<float>(),
-                                       MKLDNNMemoryFormat::ldnc},
+                                       OneDNNGetDataType<float>(),
+                                       OneDNNMemoryFormat::ldnc},
                                       this->engine_);
         memset(user_c0_memory.get_data_handle(),
                0,
@@ -307,7 +311,7 @@ class LSTMMKLDNNHandler
       memory_p = std::make_shared<dnnl::memory>(
           this->fwd_pd_->src_iter_c_desc(), this->engine_);
 
-      auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
+      auto& astream = OneDNNContext::tls().get_stream();
       dnnl::reorder(user_c0_memory, *memory_p)
           .execute(astream, user_c0_memory, *memory_p);
 
@@ -334,19 +338,18 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
 
   template <typename Tout = T>
   void RunKernel(const framework::ExecutionContext& ctx) const {
-    auto& dev_ctx =
-        ctx.template device_context<platform::MKLDNNDeviceContext>();
-    const auto& mkldnn_engine = dev_ctx.GetEngine();
+    auto& dev_ctx = ctx.template device_context<OneDNNContext>();
+    const auto& onednn_engine = dev_ctx.GetEngine();
 
     // Get Tensors
-    const auto* input = ctx.Input<LoDTensor>("X");
-    const auto* h0 = ctx.Input<Tensor>("H0");
-    const auto* c0 = ctx.Input<Tensor>("C0");
-    const auto* weight_x = ctx.Input<Tensor>("WeightX");
-    const auto* weight_h = ctx.Input<Tensor>("WeightH");
-    const auto* bias = ctx.Input<Tensor>("Bias");
-    auto* hidden = ctx.Output<LoDTensor>("Hidden");
-    auto* cell = ctx.Output<LoDTensor>("Cell");
+    const auto* input = ctx.Input<phi::DenseTensor>("X");
+    const auto* h0 = ctx.Input<phi::DenseTensor>("H0");
+    const auto* c0 = ctx.Input<phi::DenseTensor>("C0");
+    const auto* weight_x = ctx.Input<phi::DenseTensor>("WeightX");
+    const auto* weight_h = ctx.Input<phi::DenseTensor>("WeightH");
+    const auto* bias = ctx.Input<phi::DenseTensor>("Bias");
+    auto* hidden = ctx.Output<phi::DenseTensor>("Hidden");
+    auto* cell = ctx.Output<phi::DenseTensor>("Cell");
     cell = cell;
     auto x_dims = input->dims();
     auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1)
@@ -377,7 +380,7 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
     LSTMMKLDNNHandler<T, Tout> handler(
         ctx,
         dev_ctx,
-        mkldnn_engine,
+        onednn_engine,
         ctx.GetPlace(),
         input,
         weight_h,
@@ -443,25 +446,25 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
 
     auto lstm_forward_p = handler.AcquireForwardPrimitive();
 
-    auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
+    auto& astream = OneDNNContext::tls().get_stream();
     lstm_forward_p->execute(astream, lstm_args);
     astream.wait();
 
     auto* hidden_onednn_data = hidden_onednn_memory_p->get_data_handle();
     auto* hidden_data =
-        to_void_cast(hidden->mutable_data<Tout>(ctx.GetPlace()));
+        phi::funcs::to_void_cast(hidden->mutable_data<Tout>(ctx.GetPlace()));
     if (handler.is_NTC()) {
       handler.reorderRNNdata(hidden_onednn_data,
                              hidden_data,
                              input_lod,
                              is_reverse,
-                             platform::RNNReorderType::NTC_PP);
+                             RNNReorderType::NTC_PP);
     } else {
       handler.reorderRNNdata(hidden_onednn_data,
                              hidden_data,
                              input_lod,
                              is_reverse,
-                             platform::RNNReorderType::TNC_PP);
+                             RNNReorderType::TNC_PP);
     }
   }
 };
@@ -472,7 +475,7 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(fusion_lstm,
                    MKLDNN,
-                   paddle::platform::CPUPlace,
+                   phi::CPUPlace,
                    ops::FusionLSTMMKLDNNKernel<float>,
                    ops::FusionLSTMMKLDNNKernel<paddle::platform::bfloat16>,
                    ops::FusionLSTMMKLDNNKernel<uint8_t>);

@@ -126,6 +126,13 @@ int GetMLUCnnlVersion(int id) {
   return x * 10000 + y * 100 + z;
 }
 
+int GetMLUOpVersion(int id) {
+  CheckDeviceId(id);
+  int x, y, z;
+  mluOpGetLibVersion(&x, &y, &z);
+  return x * 10000 + y * 100 + z;
+}
+
 int GetMLUCurrentDeviceId() {
   int device_id;
   PADDLE_ENFORCE_MLU_SUCCESS(cnrtGetDevice(&device_id));
@@ -218,11 +225,6 @@ static size_t MLUAllocSize(bool realloc) {
 size_t MLUInitAllocSize() { return MLUAllocSize(/* realloc = */ false); }
 
 size_t MLUReallocSize() { return MLUAllocSize(/* realloc = */ true); }
-
-size_t MLUMinChunkSize() {
-  // Allow to allocate the minimum chunk size is 256 bytes.
-  return 1 << 8;
-}
 
 size_t MLUMaxChunkSize() {
   size_t max_chunk_size = MLUMaxAllocSize();

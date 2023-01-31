@@ -315,9 +315,9 @@ TEST(float16, conversion_on_gpu) {
 }
 
 TEST(float16, lod_tensor_on_gpu) {
-  framework::LoDTensor src_tensor;
-  framework::LoDTensor gpu_tensor;
-  framework::LoDTensor dst_tensor;
+  phi::DenseTensor src_tensor;
+  phi::DenseTensor gpu_tensor;
+  phi::DenseTensor dst_tensor;
 
   float16 *src_ptr =
       src_tensor.mutable_data<float16>(phi::make_ddim({2, 2}), CPUPlace());
@@ -328,7 +328,7 @@ TEST(float16, lod_tensor_on_gpu) {
 
   // CPU LoDTensor to GPU LoDTensor
   CUDAPlace gpu_place(0);
-  CUDADeviceContext gpu_ctx(gpu_place);
+  phi::GPUContext gpu_ctx(gpu_place);
   gpu_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(gpu_place, gpu_ctx.stream())
                            .get());

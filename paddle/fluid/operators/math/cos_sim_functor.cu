@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/cos_sim_functor.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -44,14 +44,14 @@ __global__ void CosSimDyKernel(const T* x_norm,
     for (size_t i = 0; i < cols; ++i) {
       T dy_data = dz_data * (x_data[i] * reciprocal_xy_norm_prod -
                              z_data * y[i] * reciprocal_y_norm_square);
-      platform::CudaAtomicAdd(dy + i, dy_data);
+      phi::CudaAtomicAdd(dy + i, dy_data);
     }
   }
 }
 
 template <typename T>
-struct CosSimDyFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext& ctx,
+struct CosSimDyFunctor<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext& ctx,
                   const T* x_norm,
                   const T* y_norm,
                   const T* x,
@@ -69,8 +69,8 @@ struct CosSimDyFunctor<platform::CUDADeviceContext, T> {
   }
 };
 
-template struct CosSimDyFunctor<platform::CUDADeviceContext, float>;
-template struct CosSimDyFunctor<platform::CUDADeviceContext, double>;
+template struct CosSimDyFunctor<phi::GPUContext, float>;
+template struct CosSimDyFunctor<phi::GPUContext, double>;
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

@@ -14,6 +14,11 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/program_desc.h"
 
+extern "C" {
+#include <xxhash.h>
+}
+
+#include <algorithm>
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/version.h"
 
@@ -74,7 +79,7 @@ ProgramDesc::ProgramDesc(const ProgramDesc &o) {
       for (const std::string &attr_name : op->AttrNames()) {
         if (op->GetAttrType(attr_name) == proto::AttrType::BLOCK) {
           framework::BlockDesc *block_desc =
-              BOOST_GET_CONST(framework::BlockDesc *, op->GetAttr(attr_name));
+              PADDLE_GET_CONST(framework::BlockDesc *, op->GetAttr(attr_name));
           if (std::find(old_block_desc.begin(),
                         old_block_desc.end(),
                         block_desc) != old_block_desc.end()) {
@@ -97,6 +102,23 @@ ProgramDesc::ProgramDesc(const ProgramDesc &o) {
             block_descs.push_back(MutableBlock(block_id));
           }
           op->SetBlocksAttr(attr_name, block_descs);
+        } else if (op->GetAttrType(attr_name, true) == proto::AttrType::VAR) {
+          VarDesc *var_desc =
+              PADDLE_GET_CONST(VarDesc *, op->GetAttr(attr_name, true));
+          op->SetVarAttr(attr_name,
+                         o.Block(block_id).FindVarRecursive(var_desc->Name()));
+        } else if (op->GetAttrType(attr_name, true) == proto::AttrType::VARS) {
+          std::vector<VarDesc *> vars_desc = PADDLE_GET_CONST(
+              std::vector<VarDesc *>, op->GetAttr(attr_name, true));
+          std::vector<VarDesc *> new_vars_desc;
+          std::transform(
+              vars_desc.begin(),
+              vars_desc.end(),
+              std::back_inserter(new_vars_desc),
+              [&](VarDesc *var_desc) {
+                return o.Block(block_id).FindVarRecursive(var_desc->Name());
+              });
+          op->SetVarsAttr(attr_name, new_vars_desc);
         }
       }
     }
@@ -129,7 +151,21 @@ void ProgramDesc::InitFromProto() {
   for (auto &block : blocks_) {
     for (auto *op : block->AllOps()) {
       for (const auto &attr : op->Proto()->attrs()) {
-        if (attr.type() == proto::AttrType::BLOCK) {
+        if (attr.type() == proto::AttrType::VAR) {
+          std::string var_name = attr.var_name();
+          VLOG(3) << "InitFromProto: SetVarAttr " << attr.name() << " from "
+                  << var_name;
+          op->SetVarAttr(attr.name(), op->FindVarRecursive(var_name));
+        } else if (attr.type() == proto::AttrType::VARS) {
+          auto vars_name = attr.vars_name();
+          std::vector<VarDesc *> vars_desc;
+          for (auto &var_name : vars_name) {
+            VLOG(3) << "InitFromProto: SetVarsAttr " << attr.name() << " from "
+                    << var_name;
+            vars_desc.emplace_back(op->FindVarRecursive(var_name));
+          }
+          op->SetVarsAttr(attr.name(), vars_desc);
+        } else if (attr.type() == proto::AttrType::BLOCK) {
           size_t blk_idx = attr.block_idx();
           op->SetBlockAttr(attr.name(), this->MutableBlock(blk_idx));
         } else if (attr.type() == proto::AttrType::BLOCKS) {
@@ -152,7 +188,7 @@ const std::vector<std::string> ProgramDesc::GetFeedTargetNames() {
   std::vector<std::string> feed_target_names;
   for (auto *op : global_block.AllOps()) {
     if (op->Type() == kFeedOpType) {
-      size_t col = BOOST_GET_CONST(int, op->GetAttr("col"));
+      size_t col = PADDLE_GET_CONST(int, op->GetAttr("col"));
       if (col >= feed_target_names.size()) {
         feed_target_names.resize(col + 1);
       }
@@ -169,7 +205,7 @@ const std::vector<std::string> ProgramDesc::GetFetchTargetNames() {
   std::vector<std::string> fetch_target_names;
   for (auto *op : global_block.AllOps()) {
     if (op->Type() == kFetchOpType) {
-      size_t col = BOOST_GET_CONST(int, op->GetAttr("col"));
+      size_t col = PADDLE_GET_CONST(int, op->GetAttr("col"));
       if (col >= fetch_target_names.size()) {
         fetch_target_names.resize(col + 1);
       }
@@ -215,6 +251,29 @@ void ProgramDesc::SetFetchHolderName(const std::string &fetch_holder_name) {
   auto *fetch_holder = global_block->Var(fetch_holder_name);
   fetch_holder->SetType(proto::VarType::FETCH_LIST);
   fetch_holder->SetPersistable(true);
+}
+
+std::string ProgramDesc::CachedHashString() {
+  std::string serialize_str;
+  if (cached_hash_str_.size() == 0 || NeedUpdate()) {
+    Flush();
+    desc_.SerializePartialToString(&serialize_str);
+    // non-cryptographic is enough
+    cached_hash_str_ =
+        std::to_string(XXH64(serialize_str.c_str(), serialize_str.size(), 1));
+  }
+  return cached_hash_str_;
+}
+
+bool ProgramDesc::NeedUpdate() const {
+  bool need = false;
+  for (auto &block : blocks_) {
+    if (block->NeedUpdate()) {
+      need = true;
+      break;
+    }
+  }
+  return need;
 }
 
 }  // namespace framework

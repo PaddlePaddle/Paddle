@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <cuda_fp16.h>
 #include <cstring>
 #include <string>
 #include <type_traits>
@@ -46,10 +47,11 @@ template <typename T, class Enable = void>
 struct Serializer {};
 
 template <typename T>
-struct Serializer<T,
-                  typename std::enable_if<std::is_arithmetic<T>::value ||
-                                          std::is_enum<T>::value ||
-                                          std::is_pod<T>::value>::type> {
+struct Serializer<
+    T,
+    typename std::enable_if<std::is_arithmetic<T>::value ||
+                            std::is_enum<T>::value || std::is_pod<T>::value ||
+                            std::is_same<T, half>::value>::type> {
   static size_t SerializedSize(T const& value) { return sizeof(T); }
 
   static void Serialize(void** buffer, T const& value) {
@@ -86,10 +88,11 @@ struct Serializer<const char*> {
 };
 
 template <typename T>
-struct Serializer<std::vector<T>,
-                  typename std::enable_if<std::is_arithmetic<T>::value ||
-                                          std::is_enum<T>::value ||
-                                          std::is_pod<T>::value>::type> {
+struct Serializer<
+    std::vector<T>,
+    typename std::enable_if<std::is_arithmetic<T>::value ||
+                            std::is_enum<T>::value || std::is_pod<T>::value ||
+                            std::is_same<T, half>::value>::type> {
   static size_t SerializedSize(std::vector<T> const& value) {
     return sizeof(value.size()) + value.size() * sizeof(T);
   }

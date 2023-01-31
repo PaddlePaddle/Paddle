@@ -12,18 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/operators/layout_utils.h"
-#include "paddle/fluid/operators/norm_utils.cu.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
+#include "paddle/phi/common/layout.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/batch_norm_kernel.h"
+#include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/norm_utils.cu.h"
 #include "paddle/phi/kernels/funcs/norm_utils.h"
-#include "paddle/phi/kernels/gpu/batch_norm_utils.h"
+#include "paddle/phi/kernels/funcs/reduce_function.h"
 
 #ifdef __HIPCC__
 #define LAUNCH_BOUNDS(BlockDim) __launch_bounds__(BlockDim)
@@ -35,7 +37,7 @@ DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 namespace phi {
 
 template <typename T>
-using CudnnDataType = paddle::platform::CudnnDataType<T>;
+using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
 template <typename T>
 using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
@@ -197,6 +199,7 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNBackward(
         x_sum += x_i;
         x_square_sum += x_i * x_i;
       }
+
       x_sum = BlockReduce(mean_storage).Reduce(x_sum, cub::Sum());
       x_square_sum =
           BlockReduce(variance_storeage).Reduce(x_square_sum, cub::Sum());
@@ -218,6 +221,7 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNBackward(
           dy_i * (static_cast<BatchNormParamType<T>>(x[index]) - mean_val);
       db_sum += dy_i;
     }
+
     ds_sum = BlockReduce(ds_storage).Reduce(ds_sum, cub::Sum());
     db_sum = BlockReduce(db_storage).Reduce(db_sum, cub::Sum());
     if (threadIdx.x == 0) {
@@ -232,6 +236,185 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNBackward(
       const int index = layout == phi::DataLayout::kNCHW
                             ? (j / HxW * C + i) * HxW + j % HxW
                             : j * outer_size + i;
+      dx[index] = scale[i] * inv_var_val *
+                  (static_cast<BatchNormParamType<T>>(dy[index]) -
+                   dbias_val / static_cast<BatchNormParamType<T>>(inner_size) -
+                   (static_cast<BatchNormParamType<T>>(x[index]) - mean_val) *
+                       inv_var_val * dscale_val / inner_size);
+    }
+  }
+}
+
+template <typename T, int BlockDim>
+static __global__ void BNBackward2DChannelLastStage1(
+    const T *x,
+    const int C,
+    const int N,
+    const int HxW,
+    const double epsilon,
+    BatchNormParamType<T> *block_data_ptr,
+    BatchNormParamType<T> *compute_mean,
+    BatchNormParamType<T> *compute_inv_var,
+    int *flag_ptr) {
+  int outer_size = C;
+  int inner_size = N * HxW;
+
+  __shared__ BatchNormParamType<T> smem_sum[BlockDim];
+  __shared__ BatchNormParamType<T> smem_square_sum[BlockDim];
+  __shared__ BatchNormParamType<T> inv_var_val;
+  __shared__ BatchNormParamType<T> mean_val;
+
+  int outer_loop_stride = gridDim.x * blockDim.x;
+  int inner_loop_stride = gridDim.y * blockDim.y;
+
+  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < outer_size;
+       i += outer_loop_stride) {
+    BatchNormParamType<T> x_sum = static_cast<BatchNormParamType<T>>(0);
+    BatchNormParamType<T> x_square_sum = static_cast<BatchNormParamType<T>>(0);
+
+    for (int j = blockIdx.y * blockDim.y + threadIdx.y; j < inner_size;
+         j += inner_loop_stride) {
+      const int index = j * outer_size + i;
+      BatchNormParamType<T> x_i = static_cast<BatchNormParamType<T>>(x[index]);
+      x_sum += x_i;
+      x_square_sum += x_i * x_i;
+    }
+
+    // vertical block sum
+    funcs::BlockReduceByVetical<T, BatchNormParamType<T>>(x_sum,
+                                                          x_square_sum,
+                                                          &smem_sum[0],
+                                                          &smem_square_sum[0],
+                                                          &x_sum,
+                                                          &x_square_sum);
+
+    if (gridDim.y > 1) {
+      __shared__ bool is_last_block_done;
+      funcs::ReduceSumPost<T, BatchNormParamType<T>>(C,
+                                                     i,
+                                                     &x_sum,
+                                                     &x_square_sum,
+                                                     &is_last_block_done,
+                                                     smem_sum,
+                                                     smem_square_sum,
+                                                     block_data_ptr,
+                                                     flag_ptr);
+      if (is_last_block_done) {
+        // final compute
+        if (threadIdx.y == 0) {
+          BatchNormParamType<T> compute_mean_val = x_sum / inner_size;
+          BatchNormParamType<T> variance_val =
+              x_square_sum / inner_size - compute_mean_val * compute_mean_val;
+          BatchNormParamType<T> compute_inv_var_val =
+              1 / sqrt(variance_val + epsilon);
+
+          compute_mean[i] = compute_mean_val;
+          compute_inv_var[i] = compute_inv_var_val;
+        }
+      }
+    }
+  }
+}
+
+template <typename T, int BlockDim>
+static __global__ void BNBackward2DChannelLastStage2(
+    const T *dy,
+    const T *x,
+    const BatchNormParamType<T> *means,
+    const BatchNormParamType<T> *variances,
+    const int C,
+    const int N,
+    const int HxW,
+    const double epsilon,
+    const bool is_test,
+    BatchNormParamType<T> *block_data_ptr,
+    BatchNormParamType<T> *dscale,
+    BatchNormParamType<T> *dbias,
+    int *flag_ptr) {
+  int outer_size = C;
+  int inner_size = N * HxW;
+
+  __shared__ BatchNormParamType<T> smem_ds_sum[BlockDim];
+  __shared__ BatchNormParamType<T> smem_db_sum[BlockDim];
+  __shared__ BatchNormParamType<T> inv_var_val;
+  __shared__ BatchNormParamType<T> mean_val;
+
+  int outer_loop_stride = gridDim.x * blockDim.x;
+  int inner_loop_stride = gridDim.y * blockDim.y;
+
+  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < outer_size;
+       i += outer_loop_stride) {
+    BatchNormParamType<T> ds_sum = static_cast<BatchNormParamType<T>>(0);
+    BatchNormParamType<T> db_sum = static_cast<BatchNormParamType<T>>(0);
+    BatchNormParamType<T> mean_val = means[i];
+    BatchNormParamType<T> inv_var_val =
+        is_test ? 1.0 / sqrt(variances[i] + epsilon) : variances[i];
+
+    for (int j = blockIdx.y * blockDim.y + threadIdx.y; j < inner_size;
+         j += inner_loop_stride) {
+      const int index = j * outer_size + i;
+      BatchNormParamType<T> dy_i =
+          static_cast<BatchNormParamType<T>>(dy[index]);
+      ds_sum +=
+          dy_i * (static_cast<BatchNormParamType<T>>(x[index]) - mean_val);
+      db_sum += dy_i;
+    }
+
+    // vertical block sum
+    funcs::BlockReduceByVetical<T, BatchNormParamType<T>>(
+        ds_sum, db_sum, &smem_ds_sum[0], &smem_db_sum[0], &ds_sum, &db_sum);
+
+    if (gridDim.y > 1) {
+      __shared__ bool is_last_block_done;
+      funcs::ReduceSumPost<T, BatchNormParamType<T>>(C,
+                                                     i,
+                                                     &ds_sum,
+                                                     &db_sum,
+                                                     &is_last_block_done,
+                                                     smem_ds_sum,
+                                                     smem_db_sum,
+                                                     block_data_ptr,
+                                                     flag_ptr);
+      if (is_last_block_done) {
+        // final compute
+        if (threadIdx.y == 0) {
+          dscale[i] = ds_sum * inv_var_val;
+          dbias[i] = db_sum;
+        }
+      }
+    }
+  }
+}
+
+template <typename T, int BlockDim>
+static __global__ void BNBackward2DChannelLastStage3(
+    const T *dy,
+    const T *x,
+    const BatchNormParamType<T> *scale,
+    const BatchNormParamType<T> *dscales,
+    const BatchNormParamType<T> *dbias,
+    const BatchNormParamType<T> *means,
+    const BatchNormParamType<T> *variances,
+    const int C,
+    const int N,
+    const int HxW,
+    const double epsilon,
+    T *dx) {
+  const int outer_size = C;
+  const int inner_size = N * HxW;
+  int outer_loop_stride = gridDim.x * blockDim.x;
+  int inner_loop_stride = gridDim.y * blockDim.y;
+
+  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < outer_size;
+       i += outer_loop_stride) {
+    BatchNormParamType<T> mean_val = means[i];
+    BatchNormParamType<T> inv_var_val = variances[i];
+    BatchNormParamType<T> dscale_val = dscales[i];
+    BatchNormParamType<T> dbias_val = dbias[i];
+
+    for (int j = blockIdx.y * blockDim.y + threadIdx.y; j < inner_size;
+         j += inner_loop_stride) {
+      const int index = j * outer_size + i;
       dx[index] = scale[i] * inv_var_val *
                   (static_cast<BatchNormParamType<T>>(dy[index]) -
                    dbias_val / static_cast<BatchNormParamType<T>>(inner_size) -
@@ -317,15 +500,13 @@ void BatchNormGradRawKernel(const Context &ctx,
                             bool is_test,
                             bool use_global_stats,
                             bool trainable_statistics,
-                            bool fuse_with_relu,
                             bool is_inplace,
                             DenseTensor *x_grad,
                             DenseTensor *scale_grad,
                             DenseTensor *bias_grad) {
   double epsilon = static_cast<double>(epsilon_f);
 
-  const DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
 
   const auto *d_y = &y_grad;
 
@@ -346,6 +527,14 @@ void BatchNormGradRawKernel(const Context &ctx,
           "the dimensions of input is [%s]",
           x_dims.size(),
           x_dims));
+
+  PADDLE_ENFORCE_EQ((d_scale == nullptr && d_bias == nullptr) ||
+                        (d_scale != nullptr && d_bias != nullptr),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Weight and bias's stop_gradient of BatchNorm must be "
+                        "True or False at the same time."));
+
   int N, C, H, W, D;
   phi::funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
@@ -377,7 +566,7 @@ void BatchNormGradRawKernel(const Context &ctx,
           C,
           scale.dims()[0]));
 
-  auto dtype = paddle::platform::CudnnDataType<T>::type;
+  auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
 #ifdef PADDLE_WITH_HIP
   auto compute_format =
       data_layout == DataLayout::kNHWC ? DataLayout::kNHWC : DataLayout::kNCHW;
@@ -591,41 +780,150 @@ void BatchNormGradRawKernel(const Context &ctx,
 //             ctx.GetPlace()),
 //         epsilon, saved_mean_data, saved_var_data));
 #else
-      // CUDNN PER_ACTIVATION mode only support small batch size
-      const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 131070;
-      const bool use_native_kernel =
-          (x_dims.size() == 2 && N >= CUDNN_PER_ACTIVATION_THRESHOLD);
-      if (use_native_kernel) {
-        if (compute_format == DataLayout::kNCHW) {
-          BNBackward<T, block, DataLayout::kNCHW>
-              <<<grid2, block, 0, ctx.stream()>>>(
+    }
+    // CUDNN only support small batch size
+    bool use_native_nhwc =
+        d_x ? (x_dims.size() == 4 && compute_format == DataLayout::kNHWC)
+            : false;
+    const bool use_native_kernel =
+        ((x_dims.size() == 2 && N >= CUDNN_PER_ACTIVATION_THRESHOLD) ||
+         (x_dims.size() == 3 && N >= CUDNN_SPATIAL_THRESHOLD_TRAIN));
+    if (use_native_nhwc || (d_x && d_scale && d_bias)) {
+      if (use_native_kernel || use_native_nhwc) {
+        if (x_dims.size() == 2 || use_native_nhwc) {
+          dim3 block;
+          dim3 grid;
+          const int block_size = 512;
+
+          // init intermediate storage
+          DenseTensor block_data_tensor;
+          DenseTensor flag_tensor;
+          DenseTensor compute_mean_tensor =
+              phi::Empty<BatchNormParamType<T>, Context>(ctx, {C});
+          DenseTensor compute_inv_var_tensor =
+              phi::Empty<BatchNormParamType<T>, Context>(ctx, {C});
+
+          BatchNormParamType<T> *block_data_ptr = nullptr;
+          int *flag_ptr = nullptr;
+
+          funcs::SetLaunchConfigInfoForChannelLast<T, BatchNormParamType<T>>(
+              ctx,
+              &block_data_tensor,
+              &flag_tensor,
+              &block_data_ptr,
+              &flag_ptr,
+              N,
+              H,
+              W,
+              D,
+              C,
+              block_size,
+              &block,
+              &grid);
+
+          // 1. reduce_sum(x) => mean, inv_var
+          auto *mean_ptr =
+              saved_mean_data == nullptr
+                  ? compute_mean_tensor.data<BatchNormParamType<T>>()
+                  : saved_mean_data;
+          auto *variance_ptr =
+              saved_var_data == nullptr
+                  ? compute_inv_var_tensor.data<BatchNormParamType<T>>()
+                  : saved_var_data;
+
+          if (saved_mean_data == nullptr) {
+            BNBackward2DChannelLastStage1<T, block_size>
+                <<<grid, block, 0, ctx.stream()>>>(
+                    transformed_x.template data<T>(),
+                    C,
+                    N,
+                    H * W * D,
+                    epsilon,
+                    block_data_ptr,
+                    compute_mean_tensor.data<BatchNormParamType<T>>(),
+                    compute_inv_var_tensor.data<BatchNormParamType<T>>(),
+                    flag_ptr);
+          }
+          // 2. reduce_sum(x, dy, mean) => dscale, dbias
+          BatchNormParamType<T> *dscale = nullptr;
+          BatchNormParamType<T> *dbias = nullptr;
+          bool with_scale = false;
+          if (d_scale && d_bias) {
+            dscale = ctx.template Alloc<BatchNormParamType<T>>(d_scale);
+            dbias = ctx.template Alloc<BatchNormParamType<T>>(d_bias);
+          } else {
+            DenseTensor dscale_mem =
+                phi::Empty<BatchNormParamType<T>, Context>(ctx, {C});
+            DenseTensor dbias_mem =
+                phi::Empty<BatchNormParamType<T>, Context>(ctx, {C});
+            dscale = dscale_mem.data<BatchNormParamType<T>>();
+            dbias = dbias_mem.data<BatchNormParamType<T>>();
+          }
+
+          BNBackward2DChannelLastStage2<T, block_size>
+              <<<grid, block, 0, ctx.stream()>>>(
                   transformed_d_y.template data<T>(),
                   transformed_x.template data<T>(),
-                  scale.template data<BatchNormParamType<T>>(),
-                  saved_mean_data,
-                  saved_var_data,
+                  mean_ptr,
+                  variance_ptr,
                   C,
                   N,
                   H * W * D,
                   epsilon,
-                  transformed_d_x.template data<T>(),
-                  ctx.template Alloc<BatchNormParamType<T>>(d_scale),
-                  ctx.template Alloc<BatchNormParamType<T>>(d_bias));
+                  false,
+                  block_data_ptr,
+                  dscale,
+                  dbias,
+                  flag_ptr);
+
+          // 3. elementwise_mul(scale, mean, inv_var, dy, dscale, dbias) => dx
+          BNBackward2DChannelLastStage3<T, block_size>
+              <<<grid, block, 0, ctx.stream()>>>(
+                  transformed_d_y.template data<T>(),
+                  transformed_x.template data<T>(),
+                  scale.template data<BatchNormParamType<T>>(),
+                  dscale,
+                  dbias,
+                  mean_ptr,
+                  variance_ptr,
+                  C,
+                  N,
+                  H * W * D,
+                  epsilon,
+                  transformed_d_x.template data<T>());
+
         } else {
-          BNBackward<T, block, DataLayout::kNHWC>
-              <<<grid2, block, 0, ctx.stream()>>>(
-                  transformed_d_y.template data<T>(),
-                  transformed_x.template data<T>(),
-                  scale.template data<BatchNormParamType<T>>(),
-                  saved_mean_data,
-                  saved_var_data,
-                  C,
-                  N,
-                  H * W * D,
-                  epsilon,
-                  transformed_d_x.template data<T>(),
-                  ctx.template Alloc<BatchNormParamType<T>>(d_scale),
-                  ctx.template Alloc<BatchNormParamType<T>>(d_bias));
+          if (compute_format == DataLayout::kNCHW) {
+            BNBackward<T, block, DataLayout::kNCHW>
+                <<<grid2, block, 0, ctx.stream()>>>(
+                    transformed_d_y.template data<T>(),
+                    transformed_x.template data<T>(),
+                    scale.template data<BatchNormParamType<T>>(),
+                    saved_mean_data,
+                    saved_var_data,
+                    C,
+                    N,
+                    H * W * D,
+                    epsilon,
+                    transformed_d_x.template data<T>(),
+                    ctx.template Alloc<BatchNormParamType<T>>(d_scale),
+                    ctx.template Alloc<BatchNormParamType<T>>(d_bias));
+          } else {
+            BNBackward<T, block, DataLayout::kNHWC>
+                <<<grid2, block, 0, ctx.stream()>>>(
+                    transformed_d_y.template data<T>(),
+                    transformed_x.template data<T>(),
+                    scale.template data<BatchNormParamType<T>>(),
+                    saved_mean_data,
+                    saved_var_data,
+                    C,
+                    N,
+                    H * W * D,
+                    epsilon,
+                    transformed_d_x.template data<T>(),
+                    ctx.template Alloc<BatchNormParamType<T>>(d_scale),
+                    ctx.template Alloc<BatchNormParamType<T>>(d_bias));
+          }
         }
       } else {
 #if CUDNN_VERSION_MIN(7, 4, 1)
@@ -795,6 +1093,7 @@ void BatchNormGradRawKernel(const Context &ctx,
         paddle::platform::dynload::cudnnDestroyTensorDescriptor(
             bn_param_desc_));
 #endif
+
   } else {
     const auto *running_mean = mean.get_ptr();
     const auto *running_var = variance.get_ptr();
@@ -861,18 +1160,45 @@ void BatchNormGradRawKernel(const Context &ctx,
                                           d_x->data<T>());
       }
       if (d_scale && d_bias) {
-        KeBNBackwardScaleBias<T, block, phi::DataLayout::kNHWC>
-            <<<grid2, block, 0, stream>>>(
-                d_y->data<T>(),
-                x.data<T>(),
+        dim3 block;
+        dim3 grid;
+        const int block_size = 512;
+
+        // init intermediate storage
+        DenseTensor block_data_tensor;
+        DenseTensor flag_tensor;
+        BatchNormParamType<T> *block_data_ptr = nullptr;
+        int *flag_ptr = nullptr;
+
+        funcs::SetLaunchConfigInfoForChannelLast<T, BatchNormParamType<T>>(
+            ctx,
+            &block_data_tensor,
+            &flag_tensor,
+            &block_data_ptr,
+            &flag_ptr,
+            N,
+            H,
+            W,
+            D,
+            C,
+            block_size,
+            &block,
+            &grid);
+        BNBackward2DChannelLastStage2<T, block_size>
+            <<<grid, block, 0, ctx.stream()>>>(
+                transformed_d_y.template data<T>(),
+                transformed_x.template data<T>(),
                 running_mean_data,
                 running_var_data,
-                epsilon,
-                N,
                 C,
+                N,
                 H * W * D,
+                epsilon,
+                true,
+                block_data_ptr,
                 d_scale->data<BatchNormParamType<T>>(),
-                d_bias->data<BatchNormParamType<T>>());
+                d_bias->data<BatchNormParamType<T>>(),
+                flag_ptr);
       }
     }
   }
@@ -895,7 +1221,6 @@ void BatchNormGradKernel(const Context &dev_ctx,
                          bool is_test,
                          bool use_global_stats,
                          bool trainable_statistics,
-                         bool fuse_with_relu,
                          DenseTensor *x_grad,
                          DenseTensor *scale_grad,
                          DenseTensor *bias_grad) {
@@ -915,7 +1240,6 @@ void BatchNormGradKernel(const Context &dev_ctx,
                                      is_test,
                                      use_global_stats,
                                      trainable_statistics,
-                                     fuse_with_relu,
                                      false,
                                      x_grad,
                                      scale_grad,
@@ -923,27 +1247,27 @@ void BatchNormGradKernel(const Context &dev_ctx,
 }
 
 template <typename T, typename Context>
-void BatchNormDoubleGradKernel(const Context &ctx,
-                               const DenseTensor &x,
-                               const DenseTensor &scale,
-                               const paddle::optional<DenseTensor> &mean,
-                               const paddle::optional<DenseTensor> &variance,
-                               const DenseTensor &saved_mean,
-                               const DenseTensor &saved_variance,
-                               const DenseTensor &y_grad,
-                               const DenseTensor &x_grad_grad,
-                               const DenseTensor &scale_grad_grad,
-                               const DenseTensor &bias_grad_grad,
-                               float momentum,
-                               float epsilon,
-                               const std::string &data_layout_str,
-                               bool is_test,
-                               bool use_global_stats,
-                               bool trainable_statistics,
-                               bool fuse_with_relu,
-                               DenseTensor *x_grad,
-                               DenseTensor *scale_grad,
-                               DenseTensor *y_grad_grad) {
+void BatchNormDoubleGradKernel(
+    const Context &ctx,
+    const DenseTensor &x,
+    const DenseTensor &scale,
+    const paddle::optional<DenseTensor> &mean,
+    const paddle::optional<DenseTensor> &variance,
+    const DenseTensor &saved_mean,
+    const DenseTensor &saved_variance,
+    const DenseTensor &y_grad,
+    const paddle::optional<DenseTensor> &x_grad_grad,
+    const paddle::optional<DenseTensor> &scale_grad_grad,
+    const paddle::optional<DenseTensor> &bias_grad_grad,
+    float momentum,
+    float epsilon,
+    const std::string &data_layout_str,
+    bool is_test,
+    bool use_global_stats,
+    bool trainable_statistics,
+    DenseTensor *x_grad,
+    DenseTensor *scale_grad,
+    DenseTensor *y_grad_grad) {
   PADDLE_ENFORCE_EQ(is_test,
                     false,
                     phi::errors::InvalidArgument(
@@ -951,8 +1275,7 @@ void BatchNormDoubleGradKernel(const Context &ctx,
                         "you want to use global status in pre_train model, "
                         "please set `use_global_stats = True`"));
 
-  const DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
 
   const DenseTensor *running_mean = nullptr;
   const DenseTensor *running_variance = nullptr;
@@ -960,23 +1283,23 @@ void BatchNormDoubleGradKernel(const Context &ctx,
     running_mean = mean.get_ptr();
     running_variance = variance.get_ptr();
   }
-  paddle::operators::NormDoubleGradFunctor<Context, T>(ctx,
-                                                       data_layout,
-                                                       &x,
-                                                       &scale,
-                                                       &y_grad,
-                                                       &saved_mean,
-                                                       &saved_variance,
-                                                       running_mean,
-                                                       running_variance,
-                                                       epsilon,
-                                                       use_global_stats,
-                                                       &x_grad_grad,
-                                                       &scale_grad_grad,
-                                                       &bias_grad_grad,
-                                                       x_grad,
-                                                       scale_grad,
-                                                       y_grad_grad);
+  phi::funcs::NormDoubleGradFunctor<Context, T>(ctx,
+                                                data_layout,
+                                                &x,
+                                                &scale,
+                                                &y_grad,
+                                                &saved_mean,
+                                                &saved_variance,
+                                                running_mean,
+                                                running_variance,
+                                                epsilon,
+                                                use_global_stats,
+                                                x_grad_grad.get_ptr(),
+                                                scale_grad_grad.get_ptr(),
+                                                bias_grad_grad.get_ptr(),
+                                                x_grad,
+                                                scale_grad,
+                                                y_grad_grad);
 }
 
 }  // namespace phi

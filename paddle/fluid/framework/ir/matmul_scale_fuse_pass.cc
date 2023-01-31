@@ -131,16 +131,16 @@ void MatmulScaleFusePass::ApplyImpl(ir::Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(scale_out, scale_out, matmul_scale_pattern);
 
     auto* scope = param_scope();
-    float bias = BOOST_GET_CONST(float, scale_op->Op()->GetAttr("bias"));
+    float bias = PADDLE_GET_CONST(float, scale_op->Op()->GetAttr("bias"));
     if (std::abs(bias) > 1e-5) return;
     if (!IsCompat(subgraph, g)) {
       LOG(WARNING) << "matmul_scale_fuse_pass in op compat failed.";
       return;
     }
 
-    float scale = BOOST_GET_CONST(float, scale_op->Op()->GetAttr("scale"));
+    float scale = PADDLE_GET_CONST(float, scale_op->Op()->GetAttr("scale"));
     float matmul_alpha =
-        BOOST_GET_CONST(float, matmul_op->Op()->GetAttr("alpha"));
+        PADDLE_GET_CONST(float, matmul_op->Op()->GetAttr("alpha"));
     auto const& names = scale_op->Op()->InputNames();
     bool has_scale_tensor =
         std::find(names.begin(), names.end(), "ScaleTensor") != names.end();
@@ -149,7 +149,7 @@ void MatmulScaleFusePass::ApplyImpl(ir::Graph* graph) const {
       auto* scale_var = scope->FindVar(scale_var_name);
       // ScaleTensor must be weight
       if (scale_var == nullptr) return;
-      auto* scale_tensor = scale_var->GetMutable<LoDTensor>();
+      auto* scale_tensor = scale_var->GetMutable<phi::DenseTensor>();
       scale = *(scale_tensor->data<float>());
     }
 
@@ -195,14 +195,14 @@ void MatmulV2ScaleFusePass::ApplyImpl(ir::Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(scale_out, scale_out, matmul_v2_scale_pattern);
 
     auto* scope = param_scope();
-    float bias = BOOST_GET_CONST(float, scale_op->Op()->GetAttr("bias"));
+    float bias = PADDLE_GET_CONST(float, scale_op->Op()->GetAttr("bias"));
     if (std::abs(bias) > 1e-5) return;
     if (!IsCompat(subgraph, g)) {
       LOG(WARNING) << "matmul_v2_scale_fuse_pass in op compat failed.";
       return;
     }
 
-    float scale = BOOST_GET_CONST(float, scale_op->Op()->GetAttr("scale"));
+    float scale = PADDLE_GET_CONST(float, scale_op->Op()->GetAttr("scale"));
     auto const& names = scale_op->Op()->InputNames();
     bool has_scale_tensor =
         std::find(names.begin(), names.end(), "ScaleTensor") != names.end();
@@ -211,12 +211,12 @@ void MatmulV2ScaleFusePass::ApplyImpl(ir::Graph* graph) const {
       auto* scale_var = scope->FindVar(scale_var_name);
       // ScaleTensor must be weight
       if (scale_var == nullptr) return;
-      auto* scale_tensor = scale_var->GetMutable<LoDTensor>();
+      auto* scale_tensor = scale_var->GetMutable<phi::DenseTensor>();
       scale = *(scale_tensor->data<float>());
     }
 
     auto* matmul_y =
-        scope->FindVar(matmul_v2_in_y->Name())->GetMutable<LoDTensor>();
+        scope->FindVar(matmul_v2_in_y->Name())->GetMutable<phi::DenseTensor>();
     auto y_data = matmul_y->mutable_data<float>(platform::CPUPlace());
     for (int i = 0; i < matmul_y->numel(); ++i) {
       y_data[i] *= scale;

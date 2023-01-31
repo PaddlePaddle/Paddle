@@ -29,7 +29,6 @@ limitations under the License. */
 
 namespace paddle::operators {
 
-using LoDTensor = framework::LoDTensor;
 using Variable = framework::Variable;
 using Graph = framework::ir::Graph;
 using Node = framework::ir::Node;
@@ -85,6 +84,8 @@ std::unique_ptr<Graph> CreateOnlyElementwiseAddGraph(
                                    new std::vector<std::string>({out_name}));
   g->GetOrInit<Name2VarInfoMap>(
       framework::paddle2cinn::kMemOptVarInfoFromMainGraph);
+  g->GetOrInit<std::unordered_set<std::string>>(
+      framework::paddle2cinn::kInplaceVarNames);
   return g;
 }
 
@@ -97,11 +98,12 @@ void InitVariablesWithRandomValue(const std::vector<std::string>& var_names,
   std::default_random_engine engine(seed());
   std::uniform_real_distribution<float> dist(0, 100);
 
-  LoDTensor tmp_tensor;
+  phi::DenseTensor tmp_tensor;
   auto* tmp_data =
       tmp_tensor.mutable_data<DataType>(common_ddim, platform::CPUPlace());
   for (const auto& var_name : var_names) {
-    auto* tensor = scope->Var(var_name)->GetMutable<LoDTensor>();
+    auto* tensor = scope->Var(var_name)->GetMutable<phi::DenseTensor>();
+    tensor->mutable_data<DataType>(common_ddim, place);
     for (auto i = 0; i < tensor->numel(); ++i) {
       tmp_data[i] = static_cast<DataType>(dist(engine));
     }
@@ -111,19 +113,20 @@ void InitVariablesWithRandomValue(const std::vector<std::string>& var_names,
 
 template <typename DataType>
 void CompareOpResult(Variable* test_out, Variable* expected_out) {
-  LoDTensor test_tensor, expected_tensor;
+  phi::DenseTensor test_tensor, expected_tensor;
   paddle::framework::TensorCopySync(
-      test_out->Get<LoDTensor>(), platform::CPUPlace(), &test_tensor);
-  paddle::framework::TensorCopySync(
-      expected_out->Get<LoDTensor>(), platform::CPUPlace(), &expected_tensor);
+      test_out->Get<phi::DenseTensor>(), platform::CPUPlace(), &test_tensor);
+  paddle::framework::TensorCopySync(expected_out->Get<phi::DenseTensor>(),
+                                    platform::CPUPlace(),
+                                    &expected_tensor);
 
   ASSERT_TRUE(test_tensor.IsInitialized());
   ASSERT_TRUE(expected_tensor.IsInitialized());
   ASSERT_EQ(test_tensor.dims(), expected_tensor.dims());
   const auto* test_data = test_tensor.data<DataType>();
-  const auto* excepted_data = expected_tensor.data<DataType>();
+  const auto* expected_data = expected_tensor.data<DataType>();
   for (auto i = 0; i < expected_tensor.numel(); ++i) {
-    EXPECT_EQ(test_data[i], excepted_data[i]);
+    EXPECT_EQ(test_data[i], expected_data[i]);
   }
 }
 

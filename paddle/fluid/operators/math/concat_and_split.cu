@@ -23,12 +23,12 @@ namespace math {
  * each dimension must be the same, except the axis dimension.
  */
 template <typename T>
-class ConcatFunctor<platform::CUDADeviceContext, T> {
+class ConcatFunctor<phi::GPUContext, T> {
  public:
-  void operator()(const platform::CUDADeviceContext& context,
-                  const std::vector<framework::Tensor>& input,
+  void operator()(const phi::GPUContext& context,
+                  const std::vector<phi::DenseTensor>& input,
                   int axis,
-                  framework::Tensor* output) {
+                  phi::DenseTensor* output) {
     phi::funcs::ConcatFunctor<phi::GPUContext, T> functor;
     functor(context, input, axis, output);
   }
@@ -39,21 +39,21 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
  * each dimension must be the same, except the axis dimension.
  */
 template <typename T>
-class SplitFunctor<platform::CUDADeviceContext, T> {
+class SplitFunctor<phi::GPUContext, T> {
  public:
-  void operator()(const platform::CUDADeviceContext& context,
-                  const framework::Tensor& input,
-                  const std::vector<const framework::Tensor*>& ref_inputs,
+  void operator()(const phi::GPUContext& context,
+                  const phi::DenseTensor& input,
+                  const std::vector<const phi::DenseTensor*>& ref_inputs,
                   int axis,
-                  std::vector<framework::Tensor*>* outputs) {
+                  std::vector<phi::DenseTensor*>* outputs) {
     phi::funcs::SplitFunctor<phi::GPUContext, T> functor;
     functor(context, input, ref_inputs, axis, outputs);
   }
 };
 
-#define DEFINE_FUNCTOR(type)                                       \
-  template class ConcatFunctor<platform::CUDADeviceContext, type>; \
-  template class SplitFunctor<platform::CUDADeviceContext, type>
+#define DEFINE_FUNCTOR(type)                           \
+  template class ConcatFunctor<phi::GPUContext, type>; \
+  template class SplitFunctor<phi::GPUContext, type>
 
 FOR_ALL_TYPES(DEFINE_FUNCTOR);
 

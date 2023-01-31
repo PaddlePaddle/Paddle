@@ -19,13 +19,12 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
 template <typename DeviceContext, typename T>
 class ExpandV2NPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* X = ctx.Input<framework::Tensor>("X");
-    auto* Out = ctx.Output<framework::Tensor>("Out");
+    auto* X = ctx.Input<phi::DenseTensor>("X");
+    auto* Out = ctx.Output<phi::DenseTensor>("Out");
 
     auto in_dims = X->dims();
     auto expand_shape = get_expand_shape(ctx);
@@ -121,8 +120,8 @@ class ExpandV2NPUKernel : public framework::OpKernel<T> {
 
     const auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
-    auto op_func = [](const std::vector<Tensor>& inputs,
-                      const std::vector<Tensor>& outputs,
+    auto op_func = [](const std::vector<phi::DenseTensor>& inputs,
+                      const std::vector<phi::DenseTensor>& outputs,
                       const NPUAttributeMap& attrs,
                       const platform::NPUDeviceContext& dev_ctx) {
       const auto& runner = NpuOpRunner("ExpandD", inputs, outputs, attrs);
@@ -158,8 +157,8 @@ template <typename DeviceContext, typename T>
 class ExpandV2NPUGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     dx->mutable_data<T>(ctx.GetPlace());
 
     auto stream =
@@ -174,8 +173,8 @@ class ExpandV2NPUGradKernel : public framework::OpKernel<T> {
       axes.push_back(i);
     }
 
-    Tensor tmp_dout(dout->dtype());
-    Tensor reduced_dout(dx->dtype());
+    phi::DenseTensor tmp_dout(dout->dtype());
+    phi::DenseTensor reduced_dout(dx->dtype());
     tmp_dout.ShareDataWith(*dout);
     if (axes.size() != 0) {
       std::vector<int64_t> reduced_dout_dims;

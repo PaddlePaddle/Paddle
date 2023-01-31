@@ -136,7 +136,8 @@ class VariableCompatTensor
 
   void* AllocateFrom(phi::Allocator* allocator,
                      phi::DataType dtype,
-                     size_t requested_size = 0) override {
+                     size_t requested_size = 0,
+                     bool fake_alloc = false) override {
     PADDLE_THROW(paddle::platform::errors::Unavailable(
         "VariableCompatTensor does not support `AllocateFrom` method."));
   }
@@ -209,6 +210,7 @@ class EagerVariable final {
     if (tensor.defined()) {
       if (tensor.is_dense_tensor()) {
         ConstructVariableFromTensor<phi::DenseTensor>(tensor);
+        src_tensor_ = tensor.impl();
       } else if (tensor.is_selected_rows()) {
         ConstructVariableFromTensor<phi::SelectedRows>(tensor);
       } else if (IsVariableCompatTensor(tensor) &&
@@ -229,12 +231,24 @@ class EagerVariable final {
     }
   }
 
+  ~EagerVariable() {
+    if (src_tensor_) {
+      auto* framework_tensor = var_.GetMutable<phi::DenseTensor>();
+      auto tensor_dense = static_cast<phi::DenseTensor*>(src_tensor_.get());
+      if (framework_tensor->memory_size() > 0 &&
+          (!paddle::platform::is_same_place(framework_tensor->place(),
+                                            tensor_dense->place()) ||
+           framework_tensor->dtype() != tensor_dense->dtype())) {
+        tensor_dense->ShareBufferWith(*framework_tensor);
+      }
+    }
+  }
+
   /** Part 11: Construct paddle::framework::Variable with phi::Tensor **/
   std::shared_ptr<phi::TensorBase> GetTensorBase() {
     // Construct allocation only once.
     if (var_.IsInitialized()) {
-      if (var_.IsType<paddle::framework::LoDTensor>() ||
-          var_.IsType<paddle::framework::Tensor>()) {
+      if (var_.IsType<phi::DenseTensor>() || var_.IsType<phi::DenseTensor>()) {
         return SetImplWithLegacyTensor<phi::DenseTensor>();
       } else if (var_.IsType<phi::SelectedRows>()) {
         return SetImplWithLegacyTensor<phi::SelectedRows>();
@@ -272,7 +286,7 @@ class EagerVariable final {
   template <typename VarType>
   void ConstructVariableFromTensor(const paddle::experimental::Tensor& tensor) {
     auto* framework_tensor = var_.GetMutable<VarType>();
-    // Contruct framework::Tensor from egr::EagerVariable
+    // Contruct phi::DenseTensor from egr::EagerVariable
     auto tensor_dense = std::dynamic_pointer_cast<VarType>(tensor.impl());
     PADDLE_ENFORCE_EQ(
         (tensor_dense.get() && tensor_dense),
@@ -289,7 +303,7 @@ class EagerVariable final {
   void ConstructVariableFromCompatTensor(
       const paddle::experimental::Tensor& tensor) {
     auto* framework_holder = var_.GetMutable<VarType>();
-    // Contruct framework::Tensor from egr::EagerVariable
+    // Contruct phi::DenseTensor from egr::EagerVariable
     auto* compat_tensor =
         static_cast<VariableCompatTensor*>(tensor.impl().get());
     PADDLE_ENFORCE_NOT_NULL(compat_tensor,
@@ -304,5 +318,6 @@ class EagerVariable final {
  private:
   std::string name_{""};
   paddle::framework::Variable var_;
+  std::shared_ptr<phi::TensorBase> src_tensor_;
 };
 }  // namespace egr

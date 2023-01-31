@@ -53,7 +53,7 @@ typedef std::vector<details::OpHandleBase *> GraphOps;
 const char kGraphOps[] = "ops";
 
 bool OpHaveRole(const ir::Node &node, const framework::OpRole &role) {
-  return BOOST_GET_CONST(
+  return PADDLE_GET_CONST(
              int,
              node.Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) ==
          static_cast<int>(role);
@@ -111,11 +111,12 @@ details::VarHandle *CreateOrGetLatestVarHandle(ir::Graph *graph,
   details::VarHandle *var = nullptr;
   if (var_holder.empty()) {
     if (node->Var()) {
-      var = new details::VarHandle(graph->CreateVarNode(node->Var()),
-                                   0,
-                                   place_offset,
-                                   node->Name(),
-                                   place);
+      var = new details::VarHandle(
+          graph->CreateVarNode(node->Var(), node->GetVarNodeBlockId()),
+          0,
+          place_offset,
+          node->Name(),
+          place);
     } else {
       var = new details::VarHandle(
           graph->CreateEmptyNode(node->Name(), ir::Node::Type::kVariable),
@@ -376,7 +377,8 @@ void MultiDevSSAGraphBuilderBase::CreateOpHandleIOs(ir::Graph *result,
   for (ir::Node *output : node->outputs) {
     ir::Node *new_node = nullptr;
     if (output->Var()) {
-      new_node = result->CreateVarNode(output->Var());
+      new_node =
+          result->CreateVarNode(output->Var(), output->GetVarNodeBlockId());
     } else {
       new_node =
           result->CreateEmptyNode(output->Name(), ir::Node::Type::kVariable);
@@ -549,7 +551,7 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(ir::Graph *result,
           "Please compile PaddlePaddle WITH_DGC first."));
 #endif
     } else if (is_grad_merge) {
-      grad_merge_cond_name = BOOST_GET_CONST(
+      grad_merge_cond_name = PADDLE_GET_CONST(
           std::string, node->Op()->GetAttr(GRAD_MERGE_COND_NAME));
       VLOG(10) << "og=" << og << " use grad_merge_allreduce";
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -696,7 +698,8 @@ void MultiDevSSAGraphBuilderBase::CreateScaleLossGradOp(
 
     CreateOpOutput(result,
                    op_handle,
-                   result->CreateVarNode(out_var_node->Var()),
+                   result->CreateVarNode(out_var_node->Var(),
+                                         out_var_node->GetVarNodeBlockId()),
                    places_[i],
                    i);
   }
@@ -766,7 +769,7 @@ details::VarHandle *MultiDevSSAGraphBuilderBase::CreateReduceOp(
 
 bool MultiDevSSAGraphBuilderBase::IsScaleLossOp(ir::Node *node) const {
   return !loss_var_name_.empty() && node->Op() &&
-         BOOST_GET_CONST(
+         PADDLE_GET_CONST(
              int,
              node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) ==
              (static_cast<int>(OpRole::kBackward) |
@@ -830,7 +833,7 @@ int BalanceVarSSAGraphBuilder::GetOpDeviceID(ir::Node *node) const {
   if (!OpHaveRole(*node, framework::OpRole::kOptimize)) {
     return -1;
   }
-  auto param_grad = BOOST_GET_CONST(
+  auto param_grad = PADDLE_GET_CONST(
       std::vector<std::string>,
       node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleVarAttrName()));
 
@@ -951,7 +954,7 @@ int ReduceSSAGraphBuilder::GetOpDeviceID(
     return -1;
   }
 
-  auto param_grad = BOOST_GET_CONST(
+  auto param_grad = PADDLE_GET_CONST(
       std::vector<std::string>,
       node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleVarAttrName()));
 
@@ -1007,7 +1010,7 @@ std::vector<ir::Node *> ReduceSSAGraphBuilder::SortForReduceMode(
       // gradients.
       sorted_ops.emplace_back(node);
       bool is_bk_op = static_cast<bool>(
-          BOOST_GET_CONST(
+          PADDLE_GET_CONST(
               int,
               node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) &
           static_cast<int>(OpRole::kBackward));
@@ -1062,9 +1065,9 @@ bool DistSSAGraphBuilder::DealWithSpecialOp(ir::Graph *result,
                           node->Name()));
     if (node->Op()->Type() == "recv") {
       auto recv_vars_attr =
-          BOOST_GET_CONST(std::vector<std::string>,
-                          node->Op()->GetNullableAttr(
-                              OpProtoAndCheckerMaker::OpRoleVarAttrName()));
+          PADDLE_GET_CONST(std::vector<std::string>,
+                           node->Op()->GetNullableAttr(
+                               OpProtoAndCheckerMaker::OpRoleVarAttrName()));
       PADDLE_ENFORCE_EQ(
           recv_vars_attr.size(),
           2UL,
@@ -1138,7 +1141,7 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
       for (ir::Node *n : node->inputs) {
         input_var_names.push_back(n->Name());
       }
-      auto send_param_grad = BOOST_GET_CONST(
+      auto send_param_grad = PADDLE_GET_CONST(
           std::vector<std::string>,
           node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleVarAttrName()));
       PADDLE_ENFORCE_EQ(
@@ -1162,7 +1165,7 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
     for (ir::Node *n : node->outputs) {
       output_var_names.push_back(n->Name());
     }
-    auto recv_param_grad = BOOST_GET_CONST(
+    auto recv_param_grad = PADDLE_GET_CONST(
         std::vector<std::string>,
         node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleVarAttrName()));
     if (recv_param_grad.size() == 2U) {
@@ -1225,7 +1228,8 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
       p = places_[outvar_dev_id];
       ir::Node *new_node = nullptr;
       if (output->Var()) {
-        new_node = result->CreateVarNode(output->Var());
+        new_node =
+            result->CreateVarNode(output->Var(), output->GetVarNodeBlockId());
       } else {
         new_node =
             result->CreateEmptyNode(output->Name(), ir::Node::Type::kVariable);

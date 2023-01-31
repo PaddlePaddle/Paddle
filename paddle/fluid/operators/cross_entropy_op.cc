@@ -126,11 +126,10 @@ class CrossEntropyOpBase : public framework::OperatorWithKernel {
  protected:
   // Explicitly set that the data type of computation kernel of cross_entropy
   // is determined by its input "X".
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.device_context().GetPlace());
   }
 
   virtual bool IsSoftLabel(framework::InferShapeContext* ctx) const {
@@ -142,7 +141,7 @@ class CrossEntropyGradientOpBase : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(
         ctx->HasInput("Label"), "Input", "Label", "CrossEntropyGradientOpBase");
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")),
@@ -192,11 +191,11 @@ class CrossEntropyGradientOpBase : public framework::OperatorWithKernel {
  protected:
   // Explicitly set that the data type of computation kernel of cross_entropy
   // is determined by its input "X".
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Y")),
-                                   ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Y")),
+                          ctx.device_context().GetPlace());
   }
 
   virtual framework::DDim GetXDim(framework::InferShapeContext* ctx) const {
@@ -250,10 +249,10 @@ class CrossEntropyOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 CrossEntropy Operator.
 
-The input 'X' and 'Label' will first be logically flattened to 2-D matrixs. 
-The matrix's second dimension(row length) is as same as the original last 
-dimension, and the first dimension(column length) is the product of all other 
-original dimensions. Then the softmax computation will take palce on each raw 
+The input 'X' and 'Label' will first be logically flattened to 2-D matrixs.
+The matrix's second dimension(row length) is as same as the original last
+dimension, and the first dimension(column length) is the product of all other
+original dimensions. Then the softmax computation will take palce on each raw
 of flattened matrixs.
 
 It supports both standard cross-entropy and soft-label cross-entropy loss
@@ -346,14 +345,14 @@ class CrossEntropyGradientOp2 : public CrossEntropyGradientOpBase {
   }
 
  protected:
-  virtual framework::DDim GetXDim(framework::InferShapeContext* ctx) const {
+  framework::DDim GetXDim(framework::InferShapeContext* ctx) const override {
     auto x_shape = ctx->GetInputDim("XShape");
     return framework::DDim(x_shape.Get(), x_shape.size() - 1);
   }
 
-  virtual const char* VarNameWithXLoD() const { return "XShape"; }
+  const char* VarNameWithXLoD() const override { return "XShape"; }
 
-  virtual bool IsSoftLabel(framework::InferShapeContext* ctx) const {
+  bool IsSoftLabel(framework::InferShapeContext* ctx) const override {
     return false;
   }
 };
@@ -385,10 +384,10 @@ class CrossEntropyOpMaker2 : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Hard-label CrossEntropy Operator.
 
-The input 'X' and 'Label' will first be logically flattened to 2-D matrixs. 
-The matrix's second dimension(row length) is as same as the original last 
-dimension, and the first dimension(column length) is the product of all other 
-original dimensions. Then the softmax computation will take palce on each raw 
+The input 'X' and 'Label' will first be logically flattened to 2-D matrixs.
+The matrix's second dimension(row length) is as same as the original last
+dimension, and the first dimension(column length) is the product of all other
+original dimensions. Then the softmax computation will take palce on each raw
 of flattened matrixs.
 
 Only support hard label.

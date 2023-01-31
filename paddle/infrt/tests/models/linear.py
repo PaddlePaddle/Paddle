@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,6 +14,7 @@
 
 # example 1: save layer
 import numpy as np
+
 import paddle
 import paddle.nn as nn
 import paddle.optimizer as opt
@@ -33,7 +34,7 @@ class RandomDataset(paddle.io.Dataset):
 
     def __getitem__(self, idx):
         image = np.random.random([IMAGE_SIZE]).astype('float32')
-        label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
+        label = np.random.randint(0, CLASS_NUM - 1, (1,)).astype('int64')
         return image, label
 
     def __len__(self):
@@ -42,7 +43,7 @@ class RandomDataset(paddle.io.Dataset):
 
 class LinearNet(nn.Layer):
     def __init__(self):
-        super(LinearNet, self).__init__()
+        super().__init__()
         self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
 
     @paddle.jit.to_static
@@ -70,7 +71,8 @@ adam = opt.Adam(learning_rate=0.001, parameters=layer.parameters())
 # create data loader
 dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
 loader = paddle.io.DataLoader(
-    dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=True, num_workers=2)
+    dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=True, num_workers=2
+)
 
 # train
 train(layer, loader, loss_fn, adam)

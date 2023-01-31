@@ -18,16 +18,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
 template <typename DeviceContext, typename T>
 class PriorBoxNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<Tensor>("Input");
-    auto* image = ctx.Input<Tensor>("Image");
-    auto* boxes = ctx.Output<Tensor>("Boxes");
-    auto* variances = ctx.Output<Tensor>("Variances");
+    auto* input = ctx.Input<phi::DenseTensor>("Input");
+    auto* image = ctx.Input<phi::DenseTensor>("Image");
+    auto* boxes = ctx.Output<phi::DenseTensor>("Boxes");
+    auto* variances = ctx.Output<phi::DenseTensor>("Variances");
 
     PADDLE_ENFORCE_EQ(boxes->dims(),
                       variances->dims(),
@@ -50,7 +48,7 @@ class PriorBoxNPUKernel : public framework::OpKernel<T> {
 
     auto place = ctx.GetPlace();
 
-    Tensor out(input->type());
+    phi::DenseTensor out(input->type());
     auto out_dims = phi::vectorize(boxes->dims());
     out_dims.insert(out_dims.begin(), 2);
     out.Resize(phi::make_ddim(out_dims));
@@ -75,8 +73,8 @@ class PriorBoxNPUKernel : public framework::OpKernel<T> {
     runner.Run(stream);
 
     out.Resize(phi::make_ddim({out.numel()}));
-    Tensor out_boxes = out.Slice(0, boxes->numel());
-    Tensor out_variances = out.Slice(boxes->numel(), out.numel());
+    phi::DenseTensor out_boxes = out.Slice(0, boxes->numel());
+    phi::DenseTensor out_variances = out.Slice(boxes->numel(), out.numel());
 
     out_boxes.Resize(boxes->dims());
     out_variances.Resize(variances->dims());

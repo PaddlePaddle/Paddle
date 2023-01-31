@@ -54,11 +54,10 @@ class RandomCropOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", phi::make_ddim(out_dim));
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -79,7 +78,7 @@ class RandomCropOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
       This operator takes a batch of instance, and do random cropping on each instance.
       It means that cropping positions differs on each instance, which is determined
-      by an uniform random generator. All cropped instances have the same shape, which 
+      by an uniform random generator. All cropped instances have the same shape, which
       is determined by the operator's attribute 'shape'.
     )DOC");
   }

@@ -16,9 +16,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    diag,
-    ops::DiagKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::DiagKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::DiagKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::DiagKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(diag,
+                        ops::DiagKernel<phi::GPUContext, int>,
+                        ops::DiagKernel<phi::GPUContext, int64_t>,
+                        ops::DiagKernel<phi::GPUContext, float>,
+                        ops::DiagKernel<phi::GPUContext, double>);

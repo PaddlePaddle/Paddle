@@ -15,12 +15,10 @@ limitations under the License. */
 #include <algorithm>
 
 #include "paddle/fluid/operators/sequence_ops/sequence_expand_as_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
-
-using LoDTensor = framework::LoDTensor;
 
 template <typename T>
 static __global__ void sequence_expand_as_kernel(const T *in_data,
@@ -66,12 +64,12 @@ static __global__ void sequence_expand_as_grad_kernel(
 }
 
 template <typename T>
-struct SequenceExpandAsFunctor<platform::CUDADeviceContext, T> {
+struct SequenceExpandAsFunctor<phi::GPUContext, T> {
   void operator()(
-      const platform::CUDADeviceContext &context,
-      const LoDTensor &x,
+      const phi::GPUContext &context,
+      const phi::DenseTensor &x,
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
-      LoDTensor *out) {
+      phi::DenseTensor *out) {
     int height = x.dims()[0];
     int width = phi::product(x.dims()) / height;
 
@@ -97,11 +95,11 @@ struct SequenceExpandAsFunctor<platform::CUDADeviceContext, T> {
 };
 
 template <typename T>
-struct SequenceExpandAsGradFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext &context,
-                  const LoDTensor &dout,
+struct SequenceExpandAsGradFunctor<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext &context,
+                  const phi::DenseTensor &dout,
                   const framework::Vector<size_t> &ref_lod, /*expand based lod*/
-                  LoDTensor *dx) {
+                  phi::DenseTensor *dx) {
     int height = dx->dims()[0];
     int width = phi::product(dx->dims()) / height;
 
@@ -133,17 +131,14 @@ struct SequenceExpandAsGradFunctor<platform::CUDADeviceContext, T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    sequence_expand_as,
-    ops::SequenceExpandAsKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SequenceExpandAsKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::SequenceExpandAsKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::SequenceExpandAsKernel<paddle::platform::CUDADeviceContext, int64_t>);
+REGISTER_OP_CUDA_KERNEL(sequence_expand_as,
+                        ops::SequenceExpandAsKernel<phi::GPUContext, float>,
+                        ops::SequenceExpandAsKernel<phi::GPUContext, double>,
+                        ops::SequenceExpandAsKernel<phi::GPUContext, int>,
+                        ops::SequenceExpandAsKernel<phi::GPUContext, int64_t>);
 REGISTER_OP_CUDA_KERNEL(
     sequence_expand_as_grad,
-    ops::SequenceExpandAsGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SequenceExpandAsGradKernel<paddle::platform::CUDADeviceContext,
-                                    double>,
-    ops::SequenceExpandAsGradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::SequenceExpandAsGradKernel<paddle::platform::CUDADeviceContext,
-                                    int64_t>);
+    ops::SequenceExpandAsGradKernel<phi::GPUContext, float>,
+    ops::SequenceExpandAsGradKernel<phi::GPUContext, double>,
+    ops::SequenceExpandAsGradKernel<phi::GPUContext, int>,
+    ops::SequenceExpandAsGradKernel<phi::GPUContext, int64_t>);

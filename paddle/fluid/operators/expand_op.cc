@@ -21,8 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class ExpandOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -79,22 +77,23 @@ class ExpandOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.device_context().GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
-      const Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
+      const phi::DenseTensor& tensor,
+      const phi::KernelKey& expected_kernel_type) const override {
     if (var_name == "expand_times_tensor" || var_name == "ExpandTimes") {
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
-    return framework::OpKernelType(
-        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+    return phi::KernelKey(
+        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
   }
 };
 
@@ -208,22 +207,24 @@ class ExpandGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.device_context().GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
-      const Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
+      const phi::DenseTensor& tensor,
+      const phi::KernelKey& expected_kernel_type) const override {
     if (var_name == "expand_times_tensor") {
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
-    return framework::OpKernelType(
-        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+    return phi::KernelKey(
+        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
   }
 };
 
@@ -294,19 +295,17 @@ REGISTER_OP_CPU_KERNEL(expand_grad,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL(
     expand,
-    ops::ExpandKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ExpandKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::ExpandKernel<paddle::platform::CUDADeviceContext,
-                      paddle::platform::float16>,
-    ops::ExpandKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ExpandKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::ExpandKernel<paddle::platform::CUDADeviceContext, bool>);
+    ops::ExpandKernel<phi::GPUContext, float>,
+    ops::ExpandKernel<phi::GPUContext, double>,
+    ops::ExpandKernel<phi::GPUContext, paddle::platform::float16>,
+    ops::ExpandKernel<phi::GPUContext, int>,
+    ops::ExpandKernel<phi::GPUContext, int64_t>,
+    ops::ExpandKernel<phi::GPUContext, bool>);
 REGISTER_OP_CUDA_KERNEL(
     expand_grad,
-    ops::ExpandGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ExpandGradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::ExpandGradKernel<paddle::platform::CUDADeviceContext,
-                          paddle::platform::float16>,
-    ops::ExpandGradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ExpandGradKernel<paddle::platform::CUDADeviceContext, int64_t>);
+    ops::ExpandGradKernel<phi::GPUContext, float>,
+    ops::ExpandGradKernel<phi::GPUContext, double>,
+    ops::ExpandGradKernel<phi::GPUContext, paddle::platform::float16>,
+    ops::ExpandGradKernel<phi::GPUContext, int>,
+    ops::ExpandGradKernel<phi::GPUContext, int64_t>);
 #endif

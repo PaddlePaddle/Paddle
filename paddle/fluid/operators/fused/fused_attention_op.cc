@@ -21,8 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
 class FusedAttentionOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -110,10 +108,77 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
                    "FusedAttentionOp");
     OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "FusedAttentionOp");
 
+    int num_heads = ctx->Attrs().Get<int>("num_heads");
+    bool transpose_qkv_wb = ctx->Attrs().Get<bool>("transpose_qkv_wb");
+
     // x: qkv's input [batch_size, seq_len, dim_embed]
+    // if transpose_qkv_wb is False
     // y: qkv's weight: [3, num_head, dim_head, dim_embed]
+    // if transpose_qkv_wb is True
+    // y: qkv's weight: [dim_embed, 3 * dim_embed]
     auto x_dim = ctx->GetInputDim("X");
     auto y_dim = ctx->GetInputDim("QKVW");
+    int dim_head;
+    int hidden_size;
+    if (transpose_qkv_wb) {
+      PADDLE_ENFORCE_EQ(y_dim.size(),
+                        2,
+                        platform::errors::InvalidArgument(
+                            "The dimensions of qkv_weight must be 2 if enable"
+                            "transpose_qkv_wb: (dim_embed, 3 * dim_embed),"
+                            "but received dimensions of"
+                            "Input is [%d]",
+                            y_dim.size()));
+      PADDLE_ENFORCE_GT(num_heads,
+                        0,
+                        platform::errors::InvalidArgument(
+                            "The num_heads must be provided and greater than 0 "
+                            "if enable transpose_qkv_wb, but we got %d.",
+                            num_heads));
+      PADDLE_ENFORCE_EQ(y_dim[0] % num_heads,
+                        0,
+                        platform::errors::InvalidArgument(
+                            "First dim of qkv_w must be divisible by num heads "
+                            "if enable transpose_qkv_wb, but receive first "
+                            "dim of qkv_w is %d and num_heads is %d.",
+                            y_dim[0],
+                            num_heads));
+      if (ctx->Attrs().Get<int>("ring_id") == -1) {
+        PADDLE_ENFORCE_EQ(y_dim[0] * 3,
+                          y_dim[1],
+                          platform::errors::InvalidArgument(
+                              "The dimensions of qkv_weight must be 2"
+                              "(dim_embed, 3 * dim_embed)."));
+      }
+      dim_head = y_dim[0] / num_heads;
+      hidden_size = y_dim[0];
+    } else {
+      PADDLE_ENFORCE_EQ(y_dim.size(),
+                        4,
+                        platform::errors::InvalidArgument(
+                            "The dimensions of qkv_weight must be 4 if not"
+                            "enable transpose_qkv_wb: (3, num_head, dim_head, "
+                            "dim_embed), but received [%d]",
+                            y_dim.size()));
+      PADDLE_ENFORCE_EQ(y_dim[0],
+                        3,
+                        platform::errors::InvalidArgument(
+                            "First dim of qkv_w must be 3 if disable "
+                            "transpose_qkv_wb, but we got %d.",
+                            y_dim[0]));
+      if (ctx->Attrs().Get<int>("ring_id") == -1) {
+        PADDLE_ENFORCE_EQ(y_dim[1] * y_dim[2],
+                          y_dim[3],
+                          platform::errors::InvalidArgument(
+                              "The dimensions of qkv_weight must be 4"
+                              "(3, num_head, dim_head, dim_embed),"
+                              "and must satisfy the limitations: "
+                              "(num_head * dim_head == dim_embed)"));
+      }
+      num_heads = y_dim[1];
+      dim_head = y_dim[2];
+      hidden_size = y_dim[3];
+    }
     PADDLE_ENFORCE_EQ(
         x_dim.size(),
         3,
@@ -122,33 +187,17 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
                                           "but received dimensions of"
                                           "Input is [%d]",
                                           x_dim.size()));
-    PADDLE_ENFORCE_EQ(y_dim.size(),
-                      4,
-                      platform::errors::InvalidArgument(
-                          "The dimensions of qkv_weight must be 4"
-                          "(3, num_head, dim_head, dim_embed),"
-                          "but received dimensions of"
-                          "Input is [%d]",
-                          y_dim.size()));
+
     PADDLE_ENFORCE_EQ(x_dim[2],
-                      y_dim[3],
+                      hidden_size,
                       platform::errors::InvalidArgument(
-                          "ShapeError: the dimension of x_dim[2] and y_dim[3]"
+                          "ShapeError: the dimension of x_dim[2] and y_dim[3] "
+                          "(y_dim[1] if enable transpose_qkv_w) "
                           "must be equal. But received: the shape "
                           "of input x = [%s], and the shape of "
                           "input qkv_weight = [%s]",
                           x_dim,
                           y_dim));
-
-    if (ctx->Attrs().Get<int>("ring_id") == -1) {
-      PADDLE_ENFORCE_EQ(y_dim[1] * y_dim[2],
-                        y_dim[3],
-                        platform::errors::InvalidArgument(
-                            "The dimensions of qkv_weight must be 4"
-                            "(3, num_head, dim_head, dim_embed),"
-                            "and must satisfy the limitations: "
-                            "(num_head * dim_head == dim_embed)"));
-    }
 
     if (ctx->Attrs().Get<bool>("pre_layer_norm") == true) {
       ctx->SetOutputDim("LnMean", {x_dim[0] * x_dim[1]});
@@ -159,17 +208,27 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim("Ln2Variance", {x_dim[0] * x_dim[1]});
       ctx->SetOutputDim("BiasDropoutResidualOut", ctx->GetInputDim("X"));
     }
-    // [batch_size, seq_len, 3, num_head, head_size]
-    ctx->SetOutputDim("QKVOut",
-                      {x_dim[0], x_dim[1], y_dim[0], y_dim[1], y_dim[2]});
 
-    if (ctx->HasInput("QKVBias")) {
-      ctx->SetOutputDim("QKVBiasOut",
-                        {x_dim[0], x_dim[1], y_dim[0], y_dim[1], y_dim[2]});
+    if (transpose_qkv_wb) {
+      // [batch_size, seq_len, 3 * hidden_size]
+      ctx->SetOutputDim("QKVOut", {x_dim[0], x_dim[1], 3 * hidden_size});
+
+      if (ctx->HasInput("QKVBias")) {
+        ctx->SetOutputDim("QKVBiasOut", {x_dim[0], x_dim[1], 3 * hidden_size});
+      }
+    } else {
+      // [batch_size, seq_len, 3, num_head, head_size]
+      ctx->SetOutputDim("QKVOut", {x_dim[0], x_dim[1], 3, num_heads, dim_head});
+
+      if (ctx->HasInput("QKVBias")) {
+        ctx->SetOutputDim("QKVBiasOut",
+                          {x_dim[0], x_dim[1], 3, num_heads, dim_head});
+      }
     }
+
     // [3, batch_size, num_head, seq_len, head_size]
     ctx->SetOutputDim("TransposeOut2",
-                      {y_dim[0], x_dim[0], y_dim[1], x_dim[1], y_dim[2]});
+                      {3, x_dim[0], num_heads, x_dim[1], dim_head});
 
     // cache_seq_len + seq_len if cache else seq_len
     auto out_seq_len = x_dim[1];
@@ -195,11 +254,11 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
                             x_dim[0],
                             c_dim[1]));  // batch_size
       PADDLE_ENFORCE_EQ(c_dim[2],
-                        y_dim[1],
+                        num_heads,
                         paddle::platform::errors::InvalidArgument(
                             "The third dim of CacheKV must be equal with num "
                             "head %d, but got %d",
-                            y_dim[1],
+                            num_heads,
                             c_dim[2]));  // num_head
       // In compile stage, input seq_len can be -1, in that case
       // c_dim[3] may < 0 in while
@@ -211,12 +270,13 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
                 "The forth dim of CacheKV must be greater than 0, but got %d",
                 c_dim[3]));  // cache_seq_len
       }
+
       PADDLE_ENFORCE_EQ(c_dim[4],
-                        y_dim[2],
+                        dim_head,
                         paddle::platform::errors::InvalidArgument(
                             "The fifth dim of CacheKV must be equal with head "
                             "size %d, but got %d",
-                            y_dim[2],
+                            dim_head,
                             c_dim[4]));  // head_size
 
       out_seq_len += c_dim[3];
@@ -226,25 +286,26 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
     }
 
     // [batch, num_head, seq_len, out_seq_len]
-    ctx->SetOutputDim("QKOut", {x_dim[0], y_dim[1], x_dim[1], out_seq_len});
+    ctx->SetOutputDim("QKOut", {x_dim[0], num_heads, x_dim[1], out_seq_len});
 
     if (ctx->HasInput("SrcMask")) {
       ctx->SetOutputDim("SrcMaskOut",
-                        {x_dim[0], y_dim[1], x_dim[1], out_seq_len});
+                        {x_dim[0], num_heads, x_dim[1], out_seq_len});
     }
     // the same as QKOut's shape.
     ctx->SetOutputDim("AttnDropoutOut",
-                      {x_dim[0], y_dim[1], x_dim[1], out_seq_len});
+                      {x_dim[0], num_heads, x_dim[1], out_seq_len});
     if (ctx->Attrs().Get<bool>("is_test") == false) {
       ctx->SetOutputDim("AttnDropoutMaskOut",
-                        {x_dim[0], y_dim[1], x_dim[1], out_seq_len});
+                        {x_dim[0], num_heads, x_dim[1], out_seq_len});
     }
     ctx->SetOutputDim("SoftmaxOut",
-                      {x_dim[0], y_dim[1], x_dim[1], out_seq_len});
+                      {x_dim[0], num_heads, x_dim[1], out_seq_len});
     // [batch_size, num_heads, seq_len, head_dim]
-    ctx->SetOutputDim("QKTVOut", {x_dim[0], y_dim[1], x_dim[1], y_dim[2]});
+    ctx->SetOutputDim("QKTVOut", {x_dim[0], num_heads, x_dim[1], dim_head});
     // [batch_size, seq_len, number of heads*head size]
-    ctx->SetOutputDim("FMHAOut", {x_dim[0], x_dim[1], y_dim[1], y_dim[2]});
+    ctx->SetOutputDim("FMHAOut", {x_dim[0], x_dim[1], num_heads, dim_head});
+
     ctx->SetOutputDim("OutLinearOut", ctx->GetInputDim("X"));
 
     if (ctx->Attrs().Get<bool>("is_test") == false) {
@@ -255,11 +316,11 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input = ctx.Input<Tensor>("X");
+    auto input = ctx.Input<phi::DenseTensor>("X");
     auto input_data_type = framework::TransToProtoVarType(input->dtype());
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -317,6 +378,11 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("CacheKVOut", "The udpated cache KV.");
     AddOutput("Y", "Result after attention.");
 
+    AddAttr<int>("num_heads", "The number head for multi_head_attention.")
+        .SetDefault(-1);
+    AddAttr<bool>("transpose_qkv_wb",
+                  "The qkv_w shape is (h, 3h), do transpose to it.")
+        .SetDefault(false);
     AddAttr<bool>("pre_layer_norm",
                   "if true, the attention op uses pre_layer_norm architecure, "
                   "else, uses post_layer_norm architecuture. "
@@ -432,8 +498,8 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
   The fused_attention operator is the same as following pseudo codes:
 
-  // @input: [batch_size, seq_len, embed_dim] 
-  // @final_out: [batch_size, seq_len, num_heads, head_dim] 
+  // @input: [batch_size, seq_len, embed_dim]
+  // @final_out: [batch_size, seq_len, num_heads, head_dim]
   residual = input
   if (pre_layernorm)
     query = layer_norm(input);
@@ -447,7 +513,7 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     out = dropout(out);
     out = out * v;
     out = transpose(out, perm=[0, 2, 1, 3]);
-                
+
   }
   // out linear
   out = linear(out);
@@ -522,54 +588,79 @@ class FusedAttentionGradOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim(framework::GradVarName("OutLinearBias"),
                         ctx->GetInputDim("OutLinearBias"));
     }
-    ctx->SetOutputDim(framework::GradVarName("OutLinearW"),
-                      ctx->GetInputDim("OutLinearW"));
-    ctx->SetOutputDim(framework::GradVarName("QKVW"), ctx->GetInputDim("QKVW"));
+    if (ctx->HasOutput(framework::GradVarName("OutLinearW"))) {
+      ctx->SetOutputDim(framework::GradVarName("OutLinearW"),
+                        ctx->GetInputDim("OutLinearW"));
+    }
+    if (ctx->HasOutput(framework::GradVarName("QKVW"))) {
+      ctx->SetOutputDim(framework::GradVarName("QKVW"),
+                        ctx->GetInputDim("QKVW"));
+    }
     if (ctx->HasOutput(framework::GradVarName("QKVBias"))) {
       ctx->SetOutputDim(framework::GradVarName("QKVBias"),
                         ctx->GetInputDim("QKVBias"));
     }
 
     if (ctx->Attrs().Get<bool>("pre_layer_norm") == true) {
-      ctx->SetOutputDim(framework::GradVarName("LnOut"),
-                        ctx->GetInputDim("LnOut"));
+      if (ctx->HasOutput(framework::GradVarName("LnOut"))) {
+        ctx->SetOutputDim(framework::GradVarName("LnOut"),
+                          ctx->GetInputDim("LnOut"));
+      }
     } else {
-      ctx->SetOutputDim(framework::GradVarName("BiasDropoutResidualOut"),
-                        ctx->GetInputDim("BiasDropoutResidualOut"));
+      if (ctx->HasOutput(framework::GradVarName("BiasDropoutResidualOut"))) {
+        ctx->SetOutputDim(framework::GradVarName("BiasDropoutResidualOut"),
+                          ctx->GetInputDim("BiasDropoutResidualOut"));
+      }
     }
-    ctx->SetOutputDim(framework::GradVarName("FMHAOut"),
-                      ctx->GetInputDim("FMHAOut"));
-    ctx->SetOutputDim(framework::GradVarName("QKTVOut"),
-                      ctx->GetInputDim("QKTVOut"));
-    ctx->SetOutputDim(framework::GradVarName("TransposeOut2"),
-                      ctx->GetInputDim("TransposeOut2"));
-    ctx->SetOutputDim(framework::GradVarName("QKOut"),
-                      ctx->GetInputDim("QKOut"));
-    ctx->SetOutputDim(framework::GradVarName("SoftmaxOut"),
-                      ctx->GetInputDim("SoftmaxOut"));
-    ctx->SetOutputDim(framework::GradVarName("AttnDropoutOut"),
-                      ctx->GetInputDim("AttnDropoutOut"));
+    if (ctx->HasOutput(framework::GradVarName("FMHAOut"))) {
+      ctx->SetOutputDim(framework::GradVarName("FMHAOut"),
+                        ctx->GetInputDim("FMHAOut"));
+    }
+    if (ctx->HasOutput(framework::GradVarName("QKTVOut"))) {
+      ctx->SetOutputDim(framework::GradVarName("QKTVOut"),
+                        ctx->GetInputDim("QKTVOut"));
+    }
+    if (ctx->HasOutput(framework::GradVarName("TransposeOut2"))) {
+      ctx->SetOutputDim(framework::GradVarName("TransposeOut2"),
+                        ctx->GetInputDim("TransposeOut2"));
+    }
+    if (ctx->HasOutput(framework::GradVarName("QKOut"))) {
+      ctx->SetOutputDim(framework::GradVarName("QKOut"),
+                        ctx->GetInputDim("QKOut"));
+    }
+    if (ctx->HasOutput(framework::GradVarName("SoftmaxOut"))) {
+      ctx->SetOutputDim(framework::GradVarName("SoftmaxOut"),
+                        ctx->GetInputDim("SoftmaxOut"));
+    }
+    if (ctx->HasOutput(framework::GradVarName("AttnDropoutOut"))) {
+      ctx->SetOutputDim(framework::GradVarName("AttnDropoutOut"),
+                        ctx->GetInputDim("AttnDropoutOut"));
+    }
 
     if (ctx->HasOutput(framework::GradVarName("SrcMaskOut"))) {
       ctx->SetOutputDim(framework::GradVarName("SrcMaskOut"),
                         ctx->GetInputDim("SrcMaskOut"));
     }
-    ctx->SetOutputDim(framework::GradVarName("QKVOut"),
-                      ctx->GetInputDim("QKVOut"));
+    if (ctx->HasOutput(framework::GradVarName("QKVOut"))) {
+      ctx->SetOutputDim(framework::GradVarName("QKVOut"),
+                        ctx->GetInputDim("QKVOut"));
+    }
     if (ctx->HasOutput(framework::GradVarName("QKVBiasOut"))) {
       ctx->SetOutputDim(framework::GradVarName("QKVBiasOut"),
                         ctx->GetInputDim("QKVBiasOut"));
     }
-    ctx->SetOutputDim(framework::GradVarName("OutLinearOut"),
-                      ctx->GetInputDim("OutLinearOut"));
+    if (ctx->HasOutput(framework::GradVarName("OutLinearOut"))) {
+      ctx->SetOutputDim(framework::GradVarName("OutLinearOut"),
+                        ctx->GetInputDim("OutLinearOut"));
+    }
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input = ctx.Input<Tensor>("X");
+    auto input = ctx.Input<phi::DenseTensor>("X");
     auto input_data_type = framework::TransToProtoVarType(input->dtype());
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -612,7 +703,7 @@ class FusedAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
 
     op->SetAttrMap(this->Attrs());
     bool is_pre_layer_norm =
-        BOOST_GET_CONST(bool, op->GetAttr("pre_layer_norm"));
+        PADDLE_GET_CONST(bool, op->GetAttr("pre_layer_norm"));
     if (is_pre_layer_norm) {
       if (this->HasInput("LnScale")) {
         op->SetInput("LnScale", this->Input("LnScale"));
@@ -704,6 +795,14 @@ class FusedAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(FusedAttentionGradNoNeedBufferInferer,
+                                    "QKVBiasOut",
+                                    "QKVOut",
+                                    "QKOut",
+                                    "QKTVOut",
+                                    "OutLinearOut",
+                                    "SrcMask");
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -713,7 +812,9 @@ REGISTER_OPERATOR(fused_attention,
                   ops::FusedAttentionOpMaker,
                   ops::FusedAttentionGradOpMaker<paddle::framework::OpDesc>,
                   ops::FusedAttentionGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(fused_attention_grad, ops::FusedAttentionGradOp);
+REGISTER_OPERATOR(fused_attention_grad,
+                  ops::FusedAttentionGradOp,
+                  ops::FusedAttentionGradNoNeedBufferInferer);
 
 REGISTER_OP_VERSION(fused_attention)
     .AddCheckpoint(

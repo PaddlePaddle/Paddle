@@ -34,6 +34,7 @@ class OperatorBase;
 class OpDesc;
 class InferShapeContext;
 class InferVarTypeContext;
+class VarDesc;
 class BlockDesc;
 class Variable;
 class InferNoNeedBufferVarsFN;
@@ -55,7 +56,10 @@ using Attribute = paddle::variant<paddle::blank,
                                   int64_t,
                                   std::vector<BlockDesc*>,
                                   std::vector<int64_t>,
-                                  std::vector<double>>;
+                                  std::vector<double>,
+                                  VarDesc*,
+                                  std::vector<VarDesc*>,
+                                  double>;
 using AttributeMap = std::unordered_map<std::string, Attribute>;
 
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -73,6 +77,8 @@ using NPUAttribute = paddle::variant<paddle::blank,
                                      std::vector<BlockDesc*>,
                                      std::vector<int64_t>,
                                      std::vector<double>,
+                                     VarDesc*,
+                                     std::vector<VarDesc*>,
                                      std::vector<std::vector<int64_t>>>;
 
 using NPUAttributeMap = std::unordered_map<std::string, NPUAttribute>;
@@ -89,6 +95,14 @@ using GradOpMakerFN = std::function<std::vector<std::unique_ptr<OpDesc>>(
     const std::unordered_set<std::string>& /*no_grad_set*/,
     std::unordered_map<std::string, std::string>* /*grad_to_var*/,
     const std::vector<BlockDesc*>& grad_block)>;
+
+using GradCompositeOpMakerFN =
+    std::function<std::vector<std::unique_ptr<OpDesc>>(
+        const OpDesc&,
+        const std::unordered_set<std::string>& /*no_grad_set*/,
+        std::unordered_map<std::string, std::string>* /*grad_to_var*/,
+        const BlockDesc*,
+        const std::vector<BlockDesc*>& grad_block)>;
 
 using DygraphGradOpMakerFN =
     std::function<std::shared_ptr<imperative::GradOpNode>(

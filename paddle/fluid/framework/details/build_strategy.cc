@@ -56,7 +56,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendPrintGraphPass("graph_viz_pass", "_original_graph");
 
 #ifdef PADDLE_WITH_CINN
-    if (FLAGS_use_cinn) {
+    if (FLAGS_use_cinn || strategy.build_cinn_pass_) {
       // Note: This pass is used to enable cinn.
       AppendPass("build_cinn_pass");
       AppendPrintGraphPass("graph_viz_pass", "_build_cinn_graph");
@@ -169,6 +169,15 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
   }
 
   void AppendOpFusePasses() {
+    // 1. infernce pass if enabled.
+    AppendPassWithCheck(
+        strategy_.enable_inference_pass_ && strategy_.delete_dropout_,
+        "delete_dropout_op_x_pass");
+    AppendPassWithCheck(
+        strategy_.enable_inference_pass_ && strategy_.use_mkldnn_,
+        "mkldnn_placement_pass");
+
+    // 2. trainning pass
     AppendPassWithCheck(strategy_.fuse_relu_depthwise_conv_,
                         "fuse_relu_depthwise_conv_pass");
     AppendPassWithCheck(strategy_.fuse_bn_act_ops_, "fuse_bn_act_pass");
@@ -176,6 +185,10 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
     !defined(_WIN32) && !defined(__APPLE__)
     AppendPassWithCheck(strategy_.enable_auto_fusion_, "fusion_group_pass");
+#endif
+
+#ifdef PADDLE_WITH_CUDA
+    AppendPassWithCheck(strategy_.fused_attention_, "fused_attention_pass");
 #endif
 
 #if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060)
@@ -509,6 +522,10 @@ USE_PASS(fuse_momentum_op_pass);
 USE_PASS(fuse_all_reduce_op_pass);
 USE_PASS(runtime_context_cache_pass);
 USE_PASS(add_reader_dependency_pass);
+USE_PASS(delete_dropout_op_x_pass);
+#ifdef PADDLE_WITH_CUDA
+USE_PASS(fused_attention_pass);
+#endif
 #ifdef PADDLE_WITH_CINN
 USE_PASS(build_cinn_pass);
 #endif

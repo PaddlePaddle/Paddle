@@ -15,7 +15,7 @@
 #include "paddle/fluid/operators/jit/gen/act.h"
 
 #include "paddle/fluid/operators/jit/registry.h"
-#include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 
 namespace paddle {
 namespace operators {
@@ -98,27 +98,27 @@ DECLARE_ACT_CREATOR(VTanh);
 
 // TODO(TJ): tuning use me
 bool VReluCreator::CanBeUsed(const int& d) const {
-  return platform::MayIUse(platform::avx);
+  return phi::backends::cpu::MayIUse(phi::backends::cpu::avx);
 }
 
 bool VSquareCreator::CanBeUsed(const int& d) const {
-  return platform::MayIUse(platform::avx);
+  return phi::backends::cpu::MayIUse(phi::backends::cpu::avx);
 }
 
 bool VIdentityCreator::CanBeUsed(const int& d) const {
-  return platform::MayIUse(platform::avx);
+  return phi::backends::cpu::MayIUse(phi::backends::cpu::avx);
 }
 
 bool VExpCreator::CanBeUsed(const int& d) const {
-  return platform::MayIUse(platform::avx) && d < 32;
+  return phi::backends::cpu::MayIUse(phi::backends::cpu::avx) && d < 32;
 }
 
 bool VSigmoidCreator::CanBeUsed(const int& d) const {
-  return platform::MayIUse(platform::avx);
+  return phi::backends::cpu::MayIUse(phi::backends::cpu::avx);
 }
 
 bool VTanhCreator::CanBeUsed(const int& d) const {
-  return platform::MayIUse(platform::avx);
+  return phi::backends::cpu::MayIUse(phi::backends::cpu::avx);
 }
 
 size_t VReluCreator::CodeSize(const int& d) const {

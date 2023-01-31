@@ -91,6 +91,38 @@ Node *less_than_handler(Graph *graph, Node *node) {
                       {});
 }
 
+Node *greater_equal_handler(Graph *graph, Node *node) {
+  auto less_op =
+      CreateBaseOp(graph,
+                   node,
+                   "popart_less",
+                   {GetInputVarNode("X", node), GetInputVarNode("Y", node)},
+                   {},
+                   {});
+  return CreateBaseOp(graph,
+                      node,
+                      "popart_logical_not",
+                      less_op->outputs,
+                      {GetOutputVarNode("Out", node)},
+                      {});
+}
+
+Node *less_equal_handler(Graph *graph, Node *node) {
+  auto less_op =
+      CreateBaseOp(graph,
+                   node,
+                   "popart_greater",
+                   {GetInputVarNode("X", node), GetInputVarNode("Y", node)},
+                   {},
+                   {});
+  return CreateBaseOp(graph,
+                      node,
+                      "popart_logical_not",
+                      less_op->outputs,
+                      {GetOutputVarNode("Out", node)},
+                      {});
+}
+
 }  // namespace
 }  // namespace ipu
 }  // namespace platform
@@ -103,3 +135,5 @@ REGISTER_HANDLER(logical_or, logical_or_handler);
 REGISTER_HANDLER(logical_and, logical_and_handler);
 REGISTER_HANDLER(greater_than, greater_than_handler);
 REGISTER_HANDLER(less_than, less_than_handler);
+REGISTER_HANDLER(greater_equal, greater_equal_handler);
+REGISTER_HANDLER(less_equal, less_equal_handler);

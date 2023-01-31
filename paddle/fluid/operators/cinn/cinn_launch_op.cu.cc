@@ -18,6 +18,4 @@ limitations under the License. */
 
 /* see [Why use single type kernel] */
 REGISTER_OP_CUDA_KERNEL(
-    cinn_launch,
-    paddle::operators::CinnLaunchOpKernel<paddle::platform::CUDADeviceContext,
-                                          float>);
+    cinn_launch, paddle::operators::CinnLaunchOpKernel<phi::GPUContext, float>);

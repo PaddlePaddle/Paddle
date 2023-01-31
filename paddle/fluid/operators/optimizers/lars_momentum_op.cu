@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/optimizers/lars_momentum_op.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/platform/fast_divmod.h"
+#include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 
 #if CUDA_VERSION >= 11000
@@ -187,8 +187,8 @@ __global__ void L2NormKernel(
     g_tmp += (tmp1 * tmp1);
     tid += grid_stride;
   }
-  p_tmp = phi::funcs::blockReduceSum<MT>(p_tmp, FINAL_MASK);
-  g_tmp = phi::funcs::blockReduceSum<MT>(g_tmp, FINAL_MASK);
+  p_tmp = phi::funcs::BlockReduceSum<MT>(p_tmp, FINAL_MASK);
+  g_tmp = phi::funcs::BlockReduceSum<MT>(g_tmp, FINAL_MASK);
 
   if (threadIdx.x == 0) {
     p_buffer[blockIdx.x] = p_tmp;
@@ -198,8 +198,8 @@ __global__ void L2NormKernel(
   cg->sync();  // Grid sync for writring partial result to gloabl memory
   MT p_part_sum = threadIdx.x < gridDim.x ? p_buffer[threadIdx.x] : 0;
   MT g_part_sum = threadIdx.x < gridDim.x ? g_buffer[threadIdx.x] : 0;
-  MT tmp0 = phi::funcs::blockReduceSum<MT>(p_part_sum, FINAL_MASK);
-  MT tmp1 = phi::funcs::blockReduceSum<MT>(g_part_sum, FINAL_MASK);
+  MT tmp0 = phi::funcs::BlockReduceSum<MT>(p_part_sum, FINAL_MASK);
+  MT tmp1 = phi::funcs::BlockReduceSum<MT>(g_part_sum, FINAL_MASK);
   if (threadIdx.x == 0) {
     s_buffer[0] = tmp0;
     s_buffer[1] = tmp1;
@@ -393,8 +393,8 @@ __global__ void MomentumLarsKernel(const T* param,
   MT grad_part_norm = threadIdx.x < thresh ? g_buffer[threadIdx.x] : 0;
   __syncthreads();
   MT param_norm =
-      Sqrt(phi::funcs::blockReduceSum<MT>(param_part_norm, FINAL_MASK));
-  MT grad_norm = Sqrt(rescale_grad_pow * phi::funcs::blockReduceSum<MT>(
+      Sqrt(phi::funcs::BlockReduceSum<MT>(param_part_norm, FINAL_MASK));
+  MT grad_norm = Sqrt(rescale_grad_pow * phi::funcs::BlockReduceSum<MT>(
                                              grad_part_norm, FINAL_MASK));
 #endif
   MomentumUpdate<T, MT>(param,
@@ -419,25 +419,24 @@ __global__ void MomentumLarsKernel(const T* param,
 }
 
 template <typename T, typename MT>
-inline void SeparatedLarsMomentumOpCUDAKernel(
-    const platform::CUDADeviceContext& cuda_ctx,
-    const T* param_data,
-    T* param_out_data,
-    const MT* velocity_data,
-    MT* velocity_out_data,
-    const T* grad_data,
-    const MT* lr,
-    MT* p_buffer,
-    MT* g_buffer,
-    const MT mu,
-    const MT lars_coeff,
-    const MT weight_decay,
-    const MT epsilon,
-    const MT rescale_grad,
-    const int64_t numel,
-    const MT* master_param_data,
-    MT* master_out_data,
-    const bool is_amp) {
+inline void SeparatedLarsMomentumOpCUDAKernel(const phi::GPUContext& cuda_ctx,
+                                              const T* param_data,
+                                              T* param_out_data,
+                                              const MT* velocity_data,
+                                              MT* velocity_out_data,
+                                              const T* grad_data,
+                                              const MT* lr,
+                                              MT* p_buffer,
+                                              MT* g_buffer,
+                                              const MT mu,
+                                              const MT lars_coeff,
+                                              const MT weight_decay,
+                                              const MT epsilon,
+                                              const MT rescale_grad,
+                                              const int64_t numel,
+                                              const MT* master_param_data,
+                                              MT* master_out_data,
+                                              const bool is_amp) {
   LarsThreadConfig<T> lars_thread_config(numel);
   L2NormKernel<T, MT><<<lars_thread_config.grid_for_norm,
                         LARS_BLOCK_SIZE,
@@ -483,11 +482,10 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     int num_blocks_per_sm = 0;
     bool multi_precision = ctx.Attr<bool>("multi_precision");
-    auto& cuda_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& cuda_ctx = ctx.template device_context<phi::GPUContext>();
     int sm_num = cuda_ctx.GetSMCount();
-    framework::Tensor tmp_buffer_t =
-        ctx.AllocateTmpTensor<MT, platform::CUDADeviceContext>(
-            {LARS_BLOCK_SIZE << 1}, cuda_ctx);
+    phi::DenseTensor tmp_buffer_t = ctx.AllocateTmpTensor<MT, phi::GPUContext>(
+        {LARS_BLOCK_SIZE << 1}, cuda_ctx);
     auto* p_buffer = tmp_buffer_t.mutable_data<MT>(ctx.GetPlace());
     auto* g_buffer = p_buffer + LARS_BLOCK_SIZE;
 
@@ -497,15 +495,14 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
     MT rescale_grad = static_cast<MT>(ctx.Attr<float>("rescale_grad"));
 
     auto weight_decay_arr = ctx.Attr<std::vector<float>>("lars_weight_decay");
-    auto grad = ctx.MultiInput<framework::LoDTensor>("Grad");
-    auto param = ctx.MultiInput<framework::LoDTensor>("Param");
-    auto velocity = ctx.MultiInput<framework::LoDTensor>("Velocity");
-    auto param_out = ctx.MultiOutput<framework::LoDTensor>("ParamOut");
-    auto velocity_out = ctx.MultiOutput<framework::LoDTensor>("VelocityOut");
-    auto learning_rate = ctx.MultiInput<framework::LoDTensor>("LearningRate");
-    auto master_param = ctx.MultiInput<framework::LoDTensor>("MasterParam");
-    auto master_param_out =
-        ctx.MultiOutput<framework::LoDTensor>("MasterParamOut");
+    auto grad = ctx.MultiInput<phi::DenseTensor>("Grad");
+    auto param = ctx.MultiInput<phi::DenseTensor>("Param");
+    auto velocity = ctx.MultiInput<phi::DenseTensor>("Velocity");
+    auto param_out = ctx.MultiOutput<phi::DenseTensor>("ParamOut");
+    auto velocity_out = ctx.MultiOutput<phi::DenseTensor>("VelocityOut");
+    auto learning_rate = ctx.MultiInput<phi::DenseTensor>("LearningRate");
+    auto master_param = ctx.MultiInput<phi::DenseTensor>("MasterParam");
+    auto master_param_out = ctx.MultiOutput<phi::DenseTensor>("MasterParamOut");
 
     int op_num = grad.size();
 #if CUDA_VERSION >= 11000
@@ -684,7 +681,6 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     lars_momentum,
-    ops::LarsMomentumOpCUDAKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::LarsMomentumOpCUDAKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::LarsMomentumOpCUDAKernel<paddle::platform::CUDADeviceContext,
-                                  paddle::platform::float16>);
+    ops::LarsMomentumOpCUDAKernel<phi::GPUContext, float>,
+    ops::LarsMomentumOpCUDAKernel<phi::GPUContext, double>,
+    ops::LarsMomentumOpCUDAKernel<phi::GPUContext, paddle::platform::float16>);

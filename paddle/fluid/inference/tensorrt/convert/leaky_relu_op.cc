@@ -39,7 +39,7 @@ class LeakyReluOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
     // Get attrs
-    float alpha = BOOST_GET_CONST(float, op_desc.GetAttr("alpha"));
+    float alpha = PADDLE_GET_CONST(float, op_desc.GetAttr("alpha"));
     nvinfer1::ILayer* output_layer = nullptr;
 
 #if IS_TRT_VERSION_GE(5100)
@@ -51,13 +51,12 @@ class LeakyReluOpConverter : public OpConverter {
     bool enable_int8 = op_desc.HasAttr("enable_int8");
     if (enable_int8) {
       CHECK(op_desc.HasAttr("Input_scale"));
-      float in_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Input_scale"));
+      float in_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("Input_scale"));
       engine_->SetTensorDynamicRange(input, in_scale);
     }
 #else
     platform::CPUPlace place;
-    std::unique_ptr<framework::LoDTensor> alpha_tensor(
-        new framework::LoDTensor());
+    std::unique_ptr<phi::DenseTensor> alpha_tensor(new phi::DenseTensor());
     alpha_tensor->Resize(phi::make_ddim({2}));
     float* alpha_data = alpha_tensor->mutable_data<float>(place);
     alpha_data[0] = alpha;

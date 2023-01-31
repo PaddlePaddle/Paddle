@@ -20,7 +20,7 @@ cc_library(
 
 cc_library(
   ir_pass_manager
-  SRCS ir_pass_manager.cc
+  SRCS ir_pass_manager.cc pass_result_info.cc
   DEPS graph pass ${INFER_IR_PASSES} analysis_helper)
 
 cc_library(
@@ -65,6 +65,7 @@ function(inference_analysis_test_run TARGET)
                           "${multiValueArgs}" ${ARGN})
     inference_base_test_run(${TARGET} COMMAND ${analysis_test_COMMAND} ARGS
                             ${analysis_test_ARGS})
+    set_tests_properties(${TARGET} PROPERTIES LABELS "RUN_TYPE=INFER")
   endif()
 endfunction()
 
@@ -86,6 +87,7 @@ function(inference_analysis_test TARGET)
       ${GLOB_PASS_LIB})
     inference_base_test_run(${TARGET} COMMAND ${TARGET} ARGS
                             ${analysis_test_ARGS})
+    set_tests_properties(${TARGET} PROPERTIES LABELS "RUN_TYPE=INFER")
   endif()
 endfunction()
 

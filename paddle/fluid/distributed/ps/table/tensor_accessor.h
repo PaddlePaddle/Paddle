@@ -20,8 +20,8 @@
 #include <vector>
 
 #include "paddle/fluid/distributed/common/registerer.h"
-#include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/table/accessor.h"
+#include "paddle/fluid/distributed/the_one_ps.pb.h"
 
 namespace paddle {
 namespace distributed {

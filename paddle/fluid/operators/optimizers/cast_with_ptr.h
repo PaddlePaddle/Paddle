@@ -31,7 +31,7 @@ struct CastFunctor {
 };
 
 template <typename InT, typename OutT, int VecSize>
-static void VecCastKernel(const platform::CUDADeviceContext &ctx,
+static void VecCastKernel(const phi::GPUContext &ctx,
                           const InT *x,
                           OutT *y,
                           size_t n) {
@@ -53,7 +53,7 @@ static void VecCastKernel(const platform::CUDADeviceContext &ctx,
 }  // namespace details
 
 template <typename InT, typename OutT>
-static void LaunchCastKernel(const platform::CUDADeviceContext &ctx,
+static void LaunchCastKernel(const phi::GPUContext &ctx,
                              const InT *x,
                              OutT *y,
                              size_t n) {

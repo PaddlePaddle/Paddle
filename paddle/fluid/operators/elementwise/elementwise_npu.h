@@ -20,24 +20,23 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
 
 template <typename T>
 void NpuBroadcast(const platform::NPUDeviceContext& dev_ctx,
-                  const Tensor* src,
+                  const phi::DenseTensor* src,
                   int axis,
                   const framework::DDim& dst_dims,
-                  Tensor* transformed_src) {
+                  phi::DenseTensor* transformed_src) {
   auto stream = dev_ctx.stream();
 
   // 1. expand the axis with dim 1
   auto src_dims = src->dims();
-  Tensor tmp_src;
+  phi::DenseTensor tmp_src;
   tmp_src.ShareDataWith(*src);
   tmp_src.Resize(src_dims);
   for (int i = 0; i < src_dims.size(); ++i) {
     if (src_dims[i] == 1 && dst_dims[i + axis] > 1) {
-      Tensor tmp_tensor;
+      phi::DenseTensor tmp_tensor;
       auto tmp_tensor_dims = tmp_src.dims();
       tmp_tensor_dims[i] = dst_dims[i + axis];
       tmp_tensor.mutable_data<T>(tmp_tensor_dims, dev_ctx.GetPlace());
@@ -56,7 +55,7 @@ void NpuBroadcast(const platform::NPUDeviceContext& dev_ctx,
   // 2.expand the ahead axis
   auto prev = phi::product(phi::slice_ddim(dst_dims, 0, axis));
   if (prev > 1) {
-    Tensor tmp_tensor;
+    phi::DenseTensor tmp_tensor;
     auto tmp_tensor_dims = phi::slice_ddim(dst_dims, 0, axis + src_dims.size());
     tmp_tensor.mutable_data<T>(tmp_tensor_dims, dev_ctx.GetPlace());
     const auto& runner =
@@ -79,7 +78,7 @@ void NpuBroadcast(const platform::NPUDeviceContext& dev_ctx,
     src_dims_vec.push_back(1);
     tmp_src.Resize(phi::make_ddim(src_dims_vec));
 
-    Tensor tmp_tensor;
+    phi::DenseTensor tmp_tensor;
     tmp_tensor.mutable_data<T>(dst_dims, dev_ctx.GetPlace());
     const auto& runner =
         NpuOpRunner("TileWithAxis",
@@ -96,11 +95,11 @@ void NpuBroadcast(const platform::NPUDeviceContext& dev_ctx,
 
 template <typename T>
 void NpuElementWiseOpBroadcast(const platform::NPUDeviceContext& dev_ctx,
-                               const Tensor* x,
-                               const Tensor* y,
+                               const phi::DenseTensor* x,
+                               const phi::DenseTensor* y,
                                int axis,
-                               Tensor* transformed_x,
-                               Tensor* transformed_y) {
+                               phi::DenseTensor* transformed_x,
+                               phi::DenseTensor* transformed_y) {
   auto x_dims = x->dims();
   auto y_dims = y->dims();
   bool is_xsize_larger = true;
@@ -123,12 +122,13 @@ void NpuElementWiseOpBroadcast(const platform::NPUDeviceContext& dev_ctx,
       platform::errors::InvalidArgument(
           "Axis should be great than or equal to 0, but received axis is %d.",
           axis));
-  PADDLE_ENFORCE_LT(axis,
-                    max_dim,
-                    platform::errors::InvalidArgument(
-                        "Axis should be less than %d, but received axis is %d.",
-                        max_dim,
-                        axis));
+  PADDLE_ENFORCE_LE(
+      axis,
+      max_dim,
+      platform::errors::InvalidArgument(
+          "Axis should be less than or equal to %d, but received axis is %d.",
+          max_dim,
+          axis));
 
   for (int i = 0; i < x_dims.size(); ++i) {
     dst_dims_vec[i + x_axis] =

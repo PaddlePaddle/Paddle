@@ -23,9 +23,6 @@ namespace operators {
 
 #define CEIL_DIV(x, y) (((x) + (y)-1) / (y))
 
-using LoDTensor = framework::LoDTensor;
-using Tensor = framework::Tensor;
-
 template <class T>
 __global__ void ConcatPartialCUDAKernel(T **in,
                                         T *out,
@@ -72,8 +69,8 @@ template <typename T>
 class PartialConcatOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto in_vars = ctx.MultiInput<Tensor>("X");
-    Tensor *out = ctx.Output<Tensor>("Out");
+    auto in_vars = ctx.MultiInput<phi::DenseTensor>("X");
+    phi::DenseTensor *out = ctx.Output<phi::DenseTensor>("Out");
     PADDLE_ENFORCE_EQ(in_vars[0] != nullptr,
                       true,
                       platform::errors::InvalidArgument(
@@ -101,7 +98,7 @@ class PartialConcatOpCUDAKernel : public framework::OpKernel<T> {
     int all_length = batch_size * out_batch_len;
 
     constexpr size_t theory_sm_threads = 1024;
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto stream = dev_ctx.stream();
     auto max_threads = dev_ctx.GetMaxPhysicalThreadCount();
     auto sm_count = max_threads / theory_sm_threads;
@@ -126,7 +123,10 @@ class PartialConcatOpCUDAKernel : public framework::OpKernel<T> {
     for (int i = 0; i < in_num; ++i)
       in_data.emplace_back(in_vars[i]->data<T>());
 
-    auto tmp_in_array = memory::Alloc(dev_ctx, in_data.size() * sizeof(T *));
+    auto tmp_in_array = memory::Alloc(
+        dev_ctx.GetPlace(),
+        in_data.size() * sizeof(T *),
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
     memory::Copy(dev_ctx.GetPlace(),
                  tmp_in_array->ptr(),
                  platform::CPUPlace(),
@@ -150,9 +150,9 @@ template <typename T>
 class PartialConcatGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto ins = ctx.MultiInput<LoDTensor>("X");
-    auto outs = ctx.MultiOutput<LoDTensor>(framework::GradVarName("X"));
+    auto *out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto ins = ctx.MultiInput<phi::DenseTensor>("X");
+    auto outs = ctx.MultiOutput<phi::DenseTensor>(framework::GradVarName("X"));
 
     PADDLE_ENFORCE_EQ(ins[0] != nullptr,
                       true,
@@ -171,8 +171,8 @@ class PartialConcatGradOpCUDAKernel : public framework::OpKernel<T> {
     auto grad_batch_len = partial_len * in_num;
     auto all_length = grad_batch_len * batch_size;
     // initialize
-    auto &place = *ctx.template device_context<platform::CUDADeviceContext>()
-                       .eigen_device();
+    auto &place =
+        *ctx.template device_context<phi::GPUContext>().eigen_device();
     for (size_t i = 0; i < outs.size(); ++i) {
       outs[i]->mutable_data<T>(ctx.GetPlace());
       auto dxt = framework::EigenVector<T>::Flatten(*outs[i]);
@@ -180,7 +180,7 @@ class PartialConcatGradOpCUDAKernel : public framework::OpKernel<T> {
     }
 
     constexpr size_t theory_sm_threads = 1024;
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto stream = dev_ctx.stream();
     auto max_threads = dev_ctx.GetMaxPhysicalThreadCount();
     auto sm_count = max_threads / theory_sm_threads;
@@ -202,7 +202,10 @@ class PartialConcatGradOpCUDAKernel : public framework::OpKernel<T> {
     for (size_t i = 0; i < in_num; ++i) {
       out_data.emplace_back(outs[i]->data<T>());
     }
-    auto tmp_out_array = memory::Alloc(dev_ctx, out_data.size() * sizeof(T *));
+    auto tmp_out_array = memory::Alloc(
+        dev_ctx.GetPlace(),
+        out_data.size() * sizeof(T *),
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
 
     memory::Copy(dev_ctx.GetPlace(),
                  tmp_out_array->ptr(),

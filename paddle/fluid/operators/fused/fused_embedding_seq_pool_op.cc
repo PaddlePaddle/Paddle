@@ -58,7 +58,7 @@ class FusedEmbeddingSeqPoolOp : public framework::OperatorWithKernel {
     int64_t last_dim = FusedEmbeddingSeqPoolLastDim(table_dims, ids_dims);
     // in compile time, the lod level of ids must be 1
     framework::VarDesc* ids_desc =
-        BOOST_GET(framework::VarDesc*, ctx->GetInputVarPtrs("Ids")[0]);
+        PADDLE_GET(framework::VarDesc*, ctx->GetInputVarPtrs("Ids")[0]);
     PADDLE_ENFORCE_EQ(ids_desc->GetLoDLevel(),
                       1,
                       platform::errors::InvalidArgument(
@@ -72,10 +72,10 @@ class FusedEmbeddingSeqPoolOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "W");
-    return framework::OpKernelType(data_type, ctx.device_context());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -141,10 +141,10 @@ class FusedEmbeddingSeqPoolOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "W");
-    return framework::OpKernelType(data_type, ctx.device_context());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -154,7 +154,7 @@ class FusedEmbeddingSeqPoolOpGradVarTypeInference
   void operator()(framework::InferVarTypeContext* ctx) const override {
     auto out_var_name = framework::GradVarName("W");
     auto attr = ctx->GetAttr("is_sparse");
-    bool is_sparse = BOOST_GET(bool, attr);
+    bool is_sparse = PADDLE_GET(bool, attr);
     if (is_sparse) {
       VLOG(3) << "fused_embedding_seq_pool_grad op "
               << framework::GradVarName("W") << " is set to SelectedRows";
@@ -162,7 +162,7 @@ class FusedEmbeddingSeqPoolOpGradVarTypeInference
                          framework::proto::VarType::SELECTED_ROWS);
     } else {
       VLOG(3) << "fused_embedding_seq_pool_grad op "
-              << framework::GradVarName("W") << " is set to LoDTensor";
+              << framework::GradVarName("W") << " is set to phi::DenseTensor";
       ctx->SetOutputType(out_var_name, framework::proto::VarType::LOD_TENSOR);
     }
     ctx->SetOutputDataType(out_var_name, ctx->GetInputDataType("W"));

@@ -75,26 +75,26 @@ class Pool2dOpConverter : public OpConverter {
     int input_dims = input_shape.nbDims;
 
     bool global_pooling =
-        BOOST_GET_CONST(bool, op_desc.GetAttr("global_pooling"));
+        PADDLE_GET_CONST(bool, op_desc.GetAttr("global_pooling"));
     std::string pool_type =
-        BOOST_GET_CONST(std::string, op_desc.GetAttr("pooling_type"));
+        PADDLE_GET_CONST(std::string, op_desc.GetAttr("pooling_type"));
     std::vector<int> ksize =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("ksize"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("ksize"));
     std::vector<int> strides =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
     std::vector<int> paddings =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
     bool exclusive = op_desc.HasAttr("exclusive")
-                         ? BOOST_GET_CONST(bool, op_desc.GetAttr("exclusive"))
+                         ? PADDLE_GET_CONST(bool, op_desc.GetAttr("exclusive"))
                          : true;
-    bool ceil_mode = BOOST_GET_CONST(bool, op_desc.GetAttr("ceil_mode"));
+    bool ceil_mode = PADDLE_GET_CONST(bool, op_desc.GetAttr("ceil_mode"));
     bool adaptive = false;
     if (op_desc.HasAttr("adaptive"))
-      adaptive = BOOST_GET_CONST(bool, op_desc.GetAttr("adaptive"));
+      adaptive = PADDLE_GET_CONST(bool, op_desc.GetAttr("adaptive"));
     std::string padding_algorithm = "EXPLICIT";
     if (op_desc.HasAttr("padding_algorithm"))
       padding_algorithm =
-          BOOST_GET_CONST(std::string, op_desc.GetAttr("padding_algorithm"));
+          PADDLE_GET_CONST(std::string, op_desc.GetAttr("padding_algorithm"));
 
     nvinfer1::PoolingType nv_pool_type = nvinfer1::PoolingType::kMAX;
     nvinfer1::ReduceOperation reduce_operation =
@@ -138,7 +138,7 @@ class Pool2dOpConverter : public OpConverter {
     if (op_desc.HasAttr("enable_int8")) {
       CHECK(op_desc.HasAttr("Input_scale"));
       float input_scale =
-          BOOST_GET_CONST(float, op_desc.GetAttr("Input_scale"));
+          PADDLE_GET_CONST(float, op_desc.GetAttr("Input_scale"));
       engine_->SetTensorDynamicRange(input1, input_scale);
     }
 

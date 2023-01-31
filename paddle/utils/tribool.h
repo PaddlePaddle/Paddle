@@ -63,9 +63,7 @@ typedef bool (*indeterminate_keyword_t)(tribool, detail::indeterminate_t);
  * as a unary function that tells whether the tribool value is in the
  * "indeterminate" state. It's second role is as a keyword
  * representing the indeterminate (just like "true" and "false"
- * represent the true and false states). If you do not like the name
- * "indeterminate", and would prefer to use a different name, see the
- * macro \c BOOST_TRIBOOL_THIRD_STATE.
+ * represent the true and false states).
  *
  * \returns <tt>x.value == tribool::indeterminate_value</tt>
  * \throws nothrow

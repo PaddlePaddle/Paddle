@@ -19,7 +19,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
 namespace dynload = platform::dynload;
@@ -89,18 +88,18 @@ struct ScaleBiasAddReluArgs {
   cudnnDataType_t param_dtype;
   cudnnTensorFormat_t format;
 
-  platform::TensorDescriptor in_desc;
-  platform::TensorDescriptor out_desc;
-  platform::TensorDescriptor equiv_scale_bias_desc;
-  platform::TensorDescriptor scale_bias_mean_var_desc;
-  platform::TensorDescriptor bitmask_desc;
-  platform::ActivationDescriptor activation_desc;
+  phi::backends::gpu::TensorDescriptor in_desc;
+  phi::backends::gpu::TensorDescriptor out_desc;
+  phi::backends::gpu::TensorDescriptor equiv_scale_bias_desc;
+  phi::backends::gpu::TensorDescriptor scale_bias_mean_var_desc;
+  phi::backends::gpu::TensorDescriptor bitmask_desc;
+  phi::backends::gpu::ActivationDescriptor activation_desc;
 };
 
 template <typename T>
 class CudnnScaleBiasAddRelu {
  public:
-  CudnnScaleBiasAddRelu(const platform::CUDADeviceContext &ctx,
+  CudnnScaleBiasAddRelu(const phi::GPUContext &ctx,
                         const std::string &act_type,
                         bool fuse_add,
                         bool has_shortcut,
@@ -116,18 +115,17 @@ class CudnnScaleBiasAddRelu {
 
   ~CudnnScaleBiasAddRelu() {}
 
-  void Forward(const platform::CUDADeviceContext &ctx,
-               const Tensor &x,
-               const Tensor &x_scale,
-               const Tensor &x_bias,
-               const Tensor *z,
-               const Tensor *z_scale,
-               const Tensor *z_bias,
-               Tensor *out,
-               Tensor *bitmask) {
+  void Forward(const phi::GPUContext &ctx,
+               const phi::DenseTensor &x,
+               const phi::DenseTensor &x_scale,
+               const phi::DenseTensor &x_bias,
+               const phi::DenseTensor *z,
+               const phi::DenseTensor *z_scale,
+               const phi::DenseTensor *z_bias,
+               phi::DenseTensor *out,
+               phi::DenseTensor *bitmask) {
     ForwardInit(ctx);
     auto handle = ctx.cudnn_handle();
-    auto place = ctx.GetPlace();
     auto workspace_handle = ctx.cudnn_workspace_handle();
     fwd_workspace_byte_ = fwd_op_.GetWorkspaceSizeInBytes(handle);
     // Set variant_param
@@ -156,8 +154,9 @@ class CudnnScaleBiasAddRelu {
         CUDNN_SCALAR_SIZE_T_WORKSPACE_SIZE_IN_BYTES, &fwd_workspace_byte_);
 
     // output ptr
-    T *out_ptr = out->mutable_data<T>(place);
-    int32_t *bitmask_ptr = bitmask->mutable_data<int32_t>(place);
+    T *out_ptr = ctx.template Alloc<T>(out, out->numel() * sizeof(T));
+    int32_t *bitmask_ptr = ctx.template Alloc<int32_t>(
+        bitmask, bitmask->numel() * sizeof(int32_t));
     fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_YDATA, out_ptr);
     fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_ACTIVATION_BITMASK, bitmask_ptr);
 
@@ -171,22 +170,21 @@ class CudnnScaleBiasAddRelu {
         fwd_workspace_byte_);
   }
 
-  void Backward(const platform::CUDADeviceContext &ctx,
-                const Tensor &dy,
-                const Tensor &x,
-                const Tensor &scale,
-                const Tensor &bias,
-                const Tensor &saved_mean,
-                const Tensor &saved_invstd,
-                const Tensor *bitmask,
-                Tensor *dx,
-                Tensor *dz,
-                Tensor *dscale,
-                Tensor *dbias,
+  void Backward(const phi::GPUContext &ctx,
+                const phi::DenseTensor &dy,
+                const phi::DenseTensor &x,
+                const phi::DenseTensor &scale,
+                const phi::DenseTensor &bias,
+                const phi::DenseTensor &saved_mean,
+                const phi::DenseTensor &saved_invstd,
+                const phi::DenseTensor *bitmask,
+                phi::DenseTensor *dx,
+                phi::DenseTensor *dz,
+                phi::DenseTensor *dscale,
+                phi::DenseTensor *dbias,
                 double eps) {
     BackwardInit(ctx);
     auto handle = ctx.cudnn_handle();
-    auto place = ctx.GetPlace();
     auto workspace_handle = ctx.cudnn_workspace_handle();
     bwd_workspace_byte_ = bwd_op_.GetWorkspaceSizeInBytes(handle);
     // Set variant_param
@@ -199,10 +197,15 @@ class CudnnScaleBiasAddRelu {
     float *saved_invstd_ptr = const_cast<float *>(saved_invstd.data<float>());
     int32_t *bitmask_ptr =
         bitmask ? const_cast<int32_t *>(bitmask->data<int32_t>()) : nullptr;
-    T *dx_ptr = dx->mutable_data<T>(place);
-    T *dz_ptr = dz ? dz->mutable_data<T>(place) : nullptr;
-    float *dscale_ptr = dscale ? dscale->mutable_data<float>(place) : nullptr;
-    float *dbias_ptr = dbias ? dbias->mutable_data<float>(place) : nullptr;
+    T *dx_ptr = ctx.template Alloc<T>(dx, dx->numel() * sizeof(T));
+    T *dz_ptr =
+        dz ? ctx.template Alloc<T>(dz, dz->numel() * sizeof(T)) : nullptr;
+    float *dscale_ptr = dscale ? ctx.template Alloc<float>(
+                                     dscale, dscale->numel() * sizeof(float))
+                               : nullptr;
+    float *dbias_ptr =
+        dbias ? ctx.template Alloc<float>(dbias, dbias->numel() * sizeof(float))
+              : nullptr;
 
     bwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_XDATA, x_ptr);
     bwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_DYDATA, dy_ptr);
@@ -237,7 +240,7 @@ class CudnnScaleBiasAddRelu {
   }
 
  private:
-  void ForwardInit(const platform::CUDADeviceContext &ctx) {
+  void ForwardInit(const phi::GPUContext &ctx) {
     // Set constant_param
     fwd_op_.SetOpConstParamAttr({CUDNN_PARAM_XDATA_PLACEHOLDER,
                                  CUDNN_PARAM_BN_EQSCALE_PLACEHOLDER,
@@ -285,7 +288,7 @@ class CudnnScaleBiasAddRelu {
                                 CUDNN_BATCHNORM_SPATIAL_PERSISTENT);
   }
 
-  void BackwardInit(const platform::CUDADeviceContext &ctx) {
+  void BackwardInit(const phi::GPUContext &ctx) {
     // Set constant_param
     bwd_op_.SetOpConstParamAttr({CUDNN_PARAM_XDATA_PLACEHOLDER,
                                  CUDNN_PARAM_DYDATA_PLACEHOLDER,

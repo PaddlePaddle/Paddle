@@ -24,6 +24,7 @@ limitations under the License. */
 #include <atomic>
 #include <ctime>
 #include <map>
+#include <mutex>
 #include <random>
 #include <string>
 #include <unordered_map>
@@ -141,12 +142,13 @@ class FleetWrapper {
 
   // Pull sparse variables from server in sync mode
   // pull immediately to tensors
-  void PullSparseToTensorSync(const uint64_t table_id,
-                              int fea_dim,
-                              uint64_t padding_id,
-                              platform::Place place,
-                              std::vector<const LoDTensor*>* inputs,  // NOLINT
-                              std::vector<LoDTensor*>* outputs);      // NOLINT
+  void PullSparseToTensorSync(
+      const uint64_t table_id,
+      int fea_dim,
+      uint64_t padding_id,
+      platform::Place place,
+      std::vector<const phi::DenseTensor*>* inputs,  // NOLINT
+      std::vector<phi::DenseTensor*>* outputs);      // NOLINT
 
   // pull dense variables from server in sync mod
   // Param<in>: scope, table_id, var_names
@@ -255,8 +257,8 @@ class FleetWrapper {
       const std::string& click_name,
       platform::Place place,
       const std::vector<std::string>& input_names,
-      std::vector<const LoDTensor*>* inputs,    // NOLINT
-      std::vector<const LoDTensor*>* outputs);  // NOLINT
+      std::vector<const phi::DenseTensor*>* inputs,    // NOLINT
+      std::vector<const phi::DenseTensor*>* outputs);  // NOLINT
 
   // Push sparse variables to server in Async mode
   // Param<In>: scope, table_id, fea_keys, sparse_grad_names
@@ -297,7 +299,7 @@ class FleetWrapper {
   // flush all push requests
   void ClientFlush();
   // load from paddle model
-  void LoadFromPaddleModel(Scope& scope,
+  void LoadFromPaddleModel(Scope& scope,             // NOLINT
                            const uint64_t table_id,  // NOLINT
                            std::vector<std::string> var_list,
                            std::string model_path,
@@ -381,8 +383,11 @@ class FleetWrapper {
   void Revert();
   // FleetWrapper singleton
   static std::shared_ptr<FleetWrapper> GetInstance() {
-    if (NULL == s_instance_) {
-      s_instance_.reset(new paddle::framework::FleetWrapper());
+    {
+      std::lock_guard<std::mutex> lk(ins_mutex);
+      if (NULL == s_instance_) {
+        s_instance_.reset(new paddle::framework::FleetWrapper());
+      }
     }
     return s_instance_;
   }
@@ -397,6 +402,7 @@ class FleetWrapper {
 
  private:
   static std::shared_ptr<FleetWrapper> s_instance_;
+  static std::mutex ins_mutex;
 #ifdef PADDLE_WITH_PSLIB
   std::map<uint64_t, std::vector<paddle::ps::Region>> _regions;
 #endif

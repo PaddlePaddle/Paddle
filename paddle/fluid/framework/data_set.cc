@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/data_set.h"
 
+#include "gflags/gflags.h"
 #include "google/protobuf/text_format.h"
 #if (defined PADDLE_WITH_DISTRIBUTE) && (defined PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/index_dataset/index_sampler.h"
@@ -26,6 +27,7 @@
 
 #ifdef PADDLE_WITH_PSCORE
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
+#include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
 #endif
 
 #if defined _WIN32 || defined __APPLE__
@@ -34,6 +36,10 @@
 #endif
 
 USE_INT_STAT(STAT_total_feasign_num_in_mem);
+USE_INT_STAT(STAT_epoch_finish);
+DECLARE_bool(graph_get_neighbor_id);
+DECLARE_int32(gpugraph_storage_mode);
+
 namespace paddle {
 namespace framework {
 
@@ -102,7 +108,7 @@ void DatasetImpl<T>::SetHdfsConfig(const std::string& fs_name,
   cmd += " -D fs.default.name=" + fs_name;
   cmd += " -D hadoop.job.ugi=" + fs_ugi;
   cmd += " -Ddfs.client.block.write.retries=15 -Ddfs.rpc.timeout=500000";
-  paddle::framework::hdfs_set_command(cmd);
+  paddle::framework::dataset_hdfs_set_command(cmd);
 }
 
 template <typename T>
@@ -194,6 +200,16 @@ void DatasetImpl<T>::SetFeaEval(bool fea_eval, int record_candidate_size) {
   slots_shuffle_rclist_.ReSize(record_candidate_size);
   VLOG(3) << "SetFeaEval fea eval mode: " << fea_eval
           << " with record candidate size: " << record_candidate_size;
+}
+
+template <typename T>
+void DatasetImpl<T>::SetGpuGraphMode(int is_graph_mode) {
+  gpu_graph_mode_ = is_graph_mode;
+}
+
+template <typename T>
+int DatasetImpl<T>::GetGpuGraphMode() {
+  return gpu_graph_mode_;
 }
 
 template <typename T>
@@ -440,12 +456,66 @@ void DatasetImpl<T>::LoadIntoMemory() {
   platform::Timer timeline;
   timeline.Start();
   std::vector<std::thread> load_threads;
-  for (int64_t i = 0; i < thread_num_; ++i) {
-    load_threads.push_back(std::thread(
-        &paddle::framework::DataFeed::LoadIntoMemory, readers_[i].get()));
-  }
-  for (std::thread& t : load_threads) {
-    t.join();
+  if (gpu_graph_mode_) {
+    VLOG(1) << "in gpu_graph_mode";
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+    for (size_t i = 0; i < readers_.size(); i++) {
+      readers_[i]->SetGpuGraphMode(gpu_graph_mode_);
+    }
+
+    if (STAT_GET(STAT_epoch_finish) == 1) {
+      VLOG(0) << "get epoch finish true";
+      STAT_RESET(STAT_epoch_finish, 0);
+      for (size_t i = 0; i < readers_.size(); i++) {
+        readers_[i]->ResetPathNum();
+        readers_[i]->ResetEpochFinish();
+      }
+    }
+
+    for (int64_t i = 0; i < thread_num_; ++i) {
+      load_threads.push_back(std::thread(
+          &paddle::framework::DataFeed::DoWalkandSage, readers_[i].get()));
+    }
+    for (std::thread& t : load_threads) {
+      t.join();
+    }
+    uint64_t node_num = 0;
+    for (int i = 0; i < thread_num_; i++) {
+      auto host_vec = readers_[i]->GetHostVec();
+      node_num += host_vec->size();
+    }
+    gpu_graph_total_keys_.reserve(node_num);
+    for (int i = 0; i < thread_num_; i++) {
+      auto host_vec = readers_[i]->GetHostVec();
+      for (size_t j = 0; j < host_vec->size(); j++) {
+        gpu_graph_total_keys_.push_back((*host_vec)[j]);
+      }
+    }
+
+    if (GetEpochFinish() == true) {
+      VLOG(0) << "epoch finish, set stat and clear sample stat!";
+      STAT_RESET(STAT_epoch_finish, 1);
+      for (size_t i = 0; i < readers_.size(); i++) {
+        readers_[i]->ClearSampleState();
+      }
+    }
+    if (FLAGS_gpugraph_storage_mode != GpuGraphStorageMode::WHOLE_HBM) {
+      for (size_t i = 0; i < readers_.size(); i++) {
+        readers_[i]->clear_gpu_mem();
+      }
+    }
+
+    VLOG(2) << "end add edge into gpu_graph_total_keys_ size["
+            << gpu_graph_total_keys_.size() << "]";
+#endif
+  } else {
+    for (int64_t i = 0; i < thread_num_; ++i) {
+      load_threads.push_back(std::thread(
+          &paddle::framework::DataFeed::LoadIntoMemory, readers_[i].get()));
+    }
+    for (std::thread& t : load_threads) {
+      t.join();
+    }
   }
   input_channel_->Close();
   int64_t in_chan_size = input_channel_->Size();
@@ -1033,7 +1103,30 @@ void DatasetImpl<T>::DestroyPreLoadReaders() {
 
 template <typename T>
 int64_t DatasetImpl<T>::GetMemoryDataSize() {
-  return input_channel_->Size();
+  if (gpu_graph_mode_) {
+    int64_t total_path_num = 0;
+    for (int i = 0; i < thread_num_; i++) {
+      total_path_num += readers_[i]->GetGraphPathNum();
+    }
+    return total_path_num;
+  } else {
+    return input_channel_->Size();
+  }
+}
+
+template <typename T>
+bool DatasetImpl<T>::GetEpochFinish() {
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+  bool is_epoch_finish = true;
+  if (gpu_graph_mode_) {
+    for (int i = 0; i < thread_num_; i++) {
+      is_epoch_finish = is_epoch_finish && readers_[i]->get_epoch_finish();
+    }
+  }
+  return is_epoch_finish;
+#else
+  return false;
+#endif
 }
 
 template <typename T>
@@ -1690,6 +1783,9 @@ void SlotRecordDataset::CreateReaders() {
     readers_[i]->SetParseLogKey(parse_logkey_);
     readers_[i]->SetEnablePvMerge(enable_pv_merge_);
     readers_[i]->SetCurrentPhase(current_phase_);
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+    readers_[i]->InitGraphResource();
+#endif
     if (input_channel_ != nullptr) {
       readers_[i]->SetInputChannel(input_channel_.get());
     }

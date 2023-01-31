@@ -19,8 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class L1NormOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -97,8 +95,6 @@ REGISTER_OP_CPU_KERNEL(l1_norm, ops::L1NormKernel<phi::CPUContext, float>);
 REGISTER_OP_CPU_KERNEL(l1_norm_grad,
                        ops::L1NormGradKernel<phi::CPUContext, float>);
 
-REGISTER_OP_CUDA_KERNEL(
-    l1_norm, ops::L1NormKernel<paddle::platform::CUDADeviceContext, float>);
-REGISTER_OP_CUDA_KERNEL(
-    l1_norm_grad,
-    ops::L1NormGradKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(l1_norm, ops::L1NormKernel<phi::GPUContext, float>);
+REGISTER_OP_CUDA_KERNEL(l1_norm_grad,
+                        ops::L1NormGradKernel<phi::GPUContext, float>);

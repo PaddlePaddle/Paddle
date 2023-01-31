@@ -337,6 +337,11 @@ NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
           pair.first != "X") {
         continue;
       }
+      if ((op_type == "max_pool2d_with_index_grad" ||
+           op_type == "max_pool2d_with_index") &&
+          pair.first == "Mask") {
+        continue;
+      }
 
       if ((op_type == "fused_attention" || op_type == "fused_feedforward")) {
         if (pair.first == "LnScale" || pair.first == "LnBias" ||
@@ -353,7 +358,9 @@ NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
       }
     }
     return new_ins;
-  } else if (AmpOperators::Instance().GetMutableBlockOps()->count(op_type)) {
+  } else if (AmpOperators::Instance().GetMutableBlockOps()->count(op_type) ||
+             AmpOperators::Instance().GetMutableUnsupportedFp16Ops()->count(
+                 op_type)) {
     for (auto& pair : new_ins) {
       VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
               << GetDtypeStr(*pair.second.cbegin()) << " to float";
@@ -377,6 +384,11 @@ NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
       if ((op_type == "batch_norm" || op_type == "layer_norm" ||
            op_type == "sync_batch_norm") &&
           pair.first == "X" && dst_type == framework::proto::VarType::FP32) {
+        continue;
+      }
+      if ((op_type == "max_pool2d_with_index_grad" ||
+           op_type == "max_pool2d_with_index") &&
+          pair.first != "Mask" && dst_type == framework::proto::VarType::FP32) {
         continue;
       }
       if ((op_type == "fused_attention" || op_type == "fused_feedforwad") &&
@@ -424,6 +436,11 @@ NameVarMap<VarType> CastPureFp16Inputs(const std::string& op_type,
     if ((op_type == "batch_norm" || op_type == "layer_norm" ||
          op_type == "sync_batch_norm") &&
         pair.first != "X") {
+      continue;
+    }
+    if ((op_type == "max_pool2d_with_index_grad" ||
+         op_type == "max_pool2d_with_index") &&
+        pair.first == "Mask") {
       continue;
     }
     if ((op_type == "fused_attention" || op_type == "fused_feedforward")) {

@@ -157,7 +157,7 @@ std::vector<std::string> localfs_list(const std::string& path) {
   std::shared_ptr<FILE> pipe;
   int err_no = 0;
   pipe = shell_popen(
-      string::format_string("find %s -type f -maxdepth 1", path.c_str()),
+      string::format_string("find %s -type f -maxdepth 1 | sort", path.c_str()),
       "r",
       &err_no);
   string::LineFileReader reader;
@@ -230,6 +230,20 @@ const std::string& hdfs_command() { return hdfs_command_internal(); }
 
 void hdfs_set_command(const std::string& x) { hdfs_command_internal() = x; }
 
+// dataset and model may be on different afs cluster
+static std::string& dataset_hdfs_command_internal() {
+  static std::string x = "hadoop fs";
+  return x;
+}
+
+const std::string& dataset_hdfs_command() {
+  return dataset_hdfs_command_internal();
+}
+
+void dataset_hdfs_set_command(const std::string& x) {
+  dataset_hdfs_command_internal() = x;
+}
+
 static std::string& customized_download_cmd_internal() {
   static std::string x = "";
   return x;
@@ -243,17 +257,28 @@ void set_download_command(const std::string& x) {
 
 std::shared_ptr<FILE> hdfs_open_read(std::string path,
                                      int* err_no,
-                                     const std::string& converter) {
+                                     const std::string& converter,
+                                     bool read_data) {
   if (download_cmd() != "") {  // use customized download command
     path = string::format_string(
         "%s \"%s\"", download_cmd().c_str(), path.c_str());
   } else {
     if (fs_end_with_internal(path, ".gz")) {
-      path = string::format_string(
-          "%s -text \"%s\"", hdfs_command().c_str(), path.c_str());
+      if (read_data) {
+        path = string::format_string(
+            "%s -text \"%s\"", dataset_hdfs_command().c_str(), path.c_str());
+      } else {
+        path = string::format_string(
+            "%s -text \"%s\"", hdfs_command().c_str(), path.c_str());
+      }
     } else {
-      path = string::format_string(
-          "%s -cat \"%s\"", hdfs_command().c_str(), path.c_str());
+      if (read_data) {
+        path = string::format_string(
+            "%s -cat \"%s\"", dataset_hdfs_command().c_str(), path.c_str());
+      } else {
+        path = string::format_string(
+            "%s -cat \"%s\"", hdfs_command().c_str(), path.c_str());
+      }
     }
   }
 
@@ -370,13 +395,14 @@ int fs_select_internal(const std::string& path) {
 
 std::shared_ptr<FILE> fs_open_read(const std::string& path,
                                    int* err_no,
-                                   const std::string& converter) {
+                                   const std::string& converter,
+                                   bool read_data) {
   switch (fs_select_internal(path)) {
     case 0:
       return localfs_open_read(path, converter);
 
     case 1:
-      return hdfs_open_read(path, err_no, converter);
+      return hdfs_open_read(path, err_no, converter, read_data);
 
     default:
       PADDLE_THROW(platform::errors::Unimplemented(

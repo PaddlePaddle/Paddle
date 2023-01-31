@@ -64,6 +64,7 @@ void BindDistFleetWrapper(py::module* m) {
       .def("save_one_model", &FleetWrapper::SaveModelOneTable)
       .def("recv_and_save_model", &FleetWrapper::RecvAndSaveTable)
       .def("sparse_table_stat", &FleetWrapper::PrintTableStat)
+      .def("save_cache_table", &FleetWrapper::SaveCacheTable)
       .def("stop_server", &FleetWrapper::StopServer)
       .def("stop_worker", &FleetWrapper::FinalizeWorker)
       .def("barrier", &FleetWrapper::BarrierWithTable)
@@ -75,7 +76,12 @@ void BindDistFleetWrapper(py::module* m) {
       .def("client_flush", &FleetWrapper::ClientFlush)
       .def("get_cache_threshold", &FleetWrapper::GetCacheThreshold)
       .def("cache_shuffle", &FleetWrapper::CacheShuffle)
-      .def("save_cache", &FleetWrapper::SaveCache);
+      .def("save_cache", &FleetWrapper::SaveCache)
+      .def("init_fl_worker", &FleetWrapper::InitFlWorker)
+      .def("push_fl_client_info_sync", &FleetWrapper::PushFLClientInfoSync)
+      .def("pull_fl_strategy", &FleetWrapper::PullFlStrategy)
+      .def("revert", &FleetWrapper::Revert)
+      .def("check_save_pre_patch_done", &FleetWrapper::CheckSavePrePatchDone);
 }
 
 void BindPSHost(py::module* m) {
@@ -102,8 +108,11 @@ void BindCommunicatorContext(py::module* m) {
                     int,
                     bool,
                     bool,
-                    int64_t>())
+                    int64_t,
+                    const std::vector<int32_t>&>())
       .def("var_name", [](const CommContext& self) { return self.var_name; })
+      .def("remote_sparse_ids",
+           [](const CommContext& self) { return self.remote_sparse_ids; })
       .def("trainer_id",
            [](const CommContext& self) { return self.trainer_id; })
       .def("table_id", [](const CommContext& self) { return self.table_id; })
@@ -129,6 +138,7 @@ void BindCommunicatorContext(py::module* m) {
 }
 
 using paddle::distributed::AsyncCommunicator;
+using paddle::distributed::FLCommunicator;
 using paddle::distributed::GeoCommunicator;
 using paddle::distributed::RecvCtxMap;
 using paddle::distributed::RpcCtxMap;
@@ -155,6 +165,9 @@ void BindDistCommunicator(py::module* m) {
         } else if (mode == "GEO") {
           Communicator::InitInstance<GeoCommunicator>(
               send_ctx, recv_ctx, dist_desc, host_sign_list, param_scope, envs);
+        } else if (mode == "WITH_COORDINATOR") {
+          Communicator::InitInstance<FLCommunicator>(
+              send_ctx, recv_ctx, dist_desc, host_sign_list, param_scope, envs);
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "unsuported communicator MODE"));
@@ -170,7 +183,10 @@ void BindDistCommunicator(py::module* m) {
       .def("create_client_to_client_connection",
            &Communicator::CreateC2CConnection)
       .def("get_client_info", &Communicator::GetClientInfo)
-      .def("set_clients", &Communicator::SetClients);
+      .def("set_clients", &Communicator::SetClients)
+      .def("start_coordinator", &Communicator::StartCoordinator)
+      .def("query_fl_clients_info", &Communicator::QueryFLClientsInfo)
+      .def("save_fl_strategy", &Communicator::SaveFLStrategy);
 }
 
 void BindHeterClient(py::module* m) {
@@ -187,13 +203,13 @@ void BindHeterClient(py::module* m) {
 void BindGraphNode(py::module* m) {
   py::class_<GraphNode>(*m, "GraphNode")
       .def(py::init<>())
-      .def("get_id", &GraphNode::get_id)
+      .def("get_id", &GraphNode::get_py_id)
       .def("get_feature", &GraphNode::get_feature);
 }
 void BindGraphPyFeatureNode(py::module* m) {
   py::class_<FeatureNode>(*m, "FeatureNode")
       .def(py::init<>())
-      .def("get_id", &GraphNode::get_id)
+      .def("get_id", &GraphNode::get_py_id)
       .def("get_feature", &GraphNode::get_feature);
 }
 
@@ -347,17 +363,43 @@ void BindGraphGpuWrapper(py::module* m) {
       *m, "GraphGpuWrapper")
       .def(py::init([]() { return GraphGpuWrapper::GetInstance(); }))
       .def("neighbor_sample", &GraphGpuWrapper::graph_neighbor_sample_v3)
-      .def("graph_neighbor_sample", &GraphGpuWrapper::graph_neighbor_sample)
+      .def("graph_neighbor_sample",
+           py::overload_cast<int, uint64_t*, int, int>(
+               &GraphGpuWrapper::graph_neighbor_sample))
+      .def("graph_neighbor_sample",
+           py::overload_cast<int, int, std::vector<uint64_t>&, int>(
+               &GraphGpuWrapper::graph_neighbor_sample))
       .def("set_device", &GraphGpuWrapper::set_device)
+      .def("set_feature_separator", &GraphGpuWrapper::set_feature_separator)
+      .def("set_slot_feature_separator",
+           &GraphGpuWrapper::set_slot_feature_separator)
       .def("init_service", &GraphGpuWrapper::init_service)
       .def("set_up_types", &GraphGpuWrapper::set_up_types)
       .def("query_node_list", &GraphGpuWrapper::query_node_list)
       .def("add_table_feat_conf", &GraphGpuWrapper::add_table_feat_conf)
-      .def("load_edge_file", &GraphGpuWrapper::load_edge_file)
-      .def("upload_batch", &GraphGpuWrapper::upload_batch)
-      .def("get_all_id", &GraphGpuWrapper::get_all_id)
-      .def("init_sample_status", &GraphGpuWrapper::init_sample_status)
-      .def("free_sample_status", &GraphGpuWrapper::free_sample_status)
+      .def("load_edge_file",
+           py::overload_cast<std::string, std::string, bool>(
+               &GraphGpuWrapper::load_edge_file))
+      .def("load_edge_file",
+           py::overload_cast<std::string, std::string, int, bool>(
+               &GraphGpuWrapper::load_edge_file))
+      .def("load_node_and_edge", &GraphGpuWrapper::load_node_and_edge)
+      .def("upload_batch",
+           py::overload_cast<int, int, int, const std::string&>(
+               &GraphGpuWrapper::upload_batch))
+      .def("upload_batch",
+           py::overload_cast<int, int, int>(&GraphGpuWrapper::upload_batch))
+      .def(
+          "get_all_id",
+          py::overload_cast<int, int, int, std::vector<std::vector<uint64_t>>*>(
+              &GraphGpuWrapper::get_all_id))
+      .def("get_all_id",
+           py::overload_cast<int, int, std::vector<std::vector<uint64_t>>*>(
+               &GraphGpuWrapper::get_all_id))
+      .def("init_metapath", &GraphGpuWrapper::init_metapath)
+      .def("get_node_type_size", &GraphGpuWrapper::get_node_type_size)
+      .def("get_edge_type_size", &GraphGpuWrapper::get_edge_type_size)
+      .def("clear_metapath_state", &GraphGpuWrapper::clear_metapath_state)
       .def("load_next_partition", &GraphGpuWrapper::load_next_partition)
       .def("make_partitions", &GraphGpuWrapper::make_partitions)
       .def("make_complementary_graph",
@@ -368,7 +410,16 @@ void BindGraphGpuWrapper(py::module* m) {
       .def("get_partition", &GraphGpuWrapper::get_partition)
       .def("load_node_weight", &GraphGpuWrapper::load_node_weight)
       .def("export_partition_files", &GraphGpuWrapper::export_partition_files)
-      .def("load_node_file", &GraphGpuWrapper::load_node_file);
+      .def("load_node_file",
+           py::overload_cast<std::string, std::string>(
+               &GraphGpuWrapper::load_node_file))
+      .def("load_node_file",
+           py::overload_cast<std::string, std::string, int>(
+               &GraphGpuWrapper::load_node_file))
+      .def("release_graph", &GraphGpuWrapper::release_graph)
+      .def("release_graph_edge", &GraphGpuWrapper::release_graph_edge)
+      .def("release_graph_node", &GraphGpuWrapper::release_graph_node)
+      .def("finalize", &GraphGpuWrapper::finalize);
 }
 #endif
 

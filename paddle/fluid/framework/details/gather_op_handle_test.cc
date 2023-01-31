@@ -58,7 +58,7 @@ struct TestGatherOpHandle {
       for (int i = 0; i < count; ++i) {
         auto p = p::CUDAPlace(i);
         gpu_list_.push_back(p);
-        ctxs_.emplace_back(new p::CUDADeviceContext(p));
+        ctxs_.emplace_back(new phi::GPUContext(p));
       }
 #else
       PADDLE_THROW(
@@ -204,7 +204,7 @@ struct TestGatherOpHandle {
               out_select_rows.rows()[k]));
     }
 
-    f::Tensor result_tensor;
+    phi::DenseTensor result_tensor;
     f::TensorCopy(rt, cpu_place, *(ctxs_[output_scope_idx]), &result_tensor);
     float* ct = result_tensor.data<float>();
 

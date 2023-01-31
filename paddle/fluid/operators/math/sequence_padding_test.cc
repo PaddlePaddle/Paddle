@@ -19,13 +19,13 @@ template <typename DeviceContext, typename T>
 void TestSequencePadding(const DeviceContext &context,
                          const paddle::framework::LoD &lod,
                          const size_t sequence_width) {
-  paddle::framework::LoDTensor cpu_seq;
-  paddle::framework::LoDTensor cpu_seq_back;
-  paddle::framework::LoDTensor seq;
-  paddle::framework::LoDTensor seq_back;
-  paddle::framework::LoDTensor padding;
-  paddle::framework::LoDTensor cpu_pad_value;
-  paddle::framework::LoDTensor pad_value;
+  phi::DenseTensor cpu_seq;
+  phi::DenseTensor cpu_seq_back;
+  phi::DenseTensor seq;
+  phi::DenseTensor seq_back;
+  phi::DenseTensor padding;
+  phi::DenseTensor cpu_pad_value;
+  phi::DenseTensor pad_value;
 
   const size_t level = lod.size() - 1;
   auto seq_dims = phi::make_ddim({static_cast<int64_t>(lod[level].back()),
@@ -116,17 +116,15 @@ TEST(Seq2BatchPadding, CPU) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(SequencePadding, CUDA) {
   auto place = paddle::platform::CUDAPlace(0);
-  auto *context = static_cast<paddle::platform::CUDADeviceContext *>(
+  auto *context = static_cast<phi::GPUContext *>(
       paddle::platform::DeviceContextPool::Instance().Get(place));
 
   paddle::framework::LoD lod1;
   lod1.push_back(std::vector<size_t>{0, 10});
-  TestSequencePadding<paddle::platform::CUDADeviceContext, float>(
-      *context, lod1, 16);
+  TestSequencePadding<phi::GPUContext, float>(*context, lod1, 16);
 
   paddle::framework::LoD lod2;
   lod2.push_back(std::vector<size_t>{0, 2, 7, 10});
-  TestSequencePadding<paddle::platform::CUDADeviceContext, float>(
-      *context, lod2, 128);
+  TestSequencePadding<phi::GPUContext, float>(*context, lod2, 128);
 }
 #endif

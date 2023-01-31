@@ -37,11 +37,30 @@ void InferenceDtypeTransferPass::ApplyImpl(ir::Graph* graph) const {
     VLOG(10) << "Transfer var to fp16...";
     auto* scope = ipu_backend->GetScope();
 
+    // Record specific vars to skip
+    std::set<std::string> skip_var_lists;
+    for (auto* node : graph->Nodes()) {
+      if (node->IsOp()) {
+        // clip op' attrs `max` and `min` only support FP32
+        if (node->Op()->Type() == "popart_clip") {
+          auto min_tensor_name = node->Op()->InputArgumentNames()[1];
+          auto max_tensor_name = node->Op()->InputArgumentNames()[2];
+          skip_var_lists.insert(min_tensor_name);
+          skip_var_lists.insert(max_tensor_name);
+        }
+      }
+    }
+
     std::unordered_set<std::string> used_var_names;
     for (auto* node : graph->Nodes()) {
       if (node->IsVar()) {
         auto var_desc = node->Var();
         if (var_desc->GetDataType() == proto::VarType::FP32) {
+          // Skip specific vars
+          if (skip_var_lists.find(var_desc->Name()) != skip_var_lists.end()) {
+            continue;
+          }
+
           // Transfer the dtypes of var_desc
           var_desc->SetDataType(proto::VarType::FP16);
           VLOG(10) << "Transfer the VarDesc of " << var_desc->Name() << " to "
@@ -53,7 +72,7 @@ void InferenceDtypeTransferPass::ApplyImpl(ir::Graph* graph) const {
             // Transfer the dtypes of weight tensors
             std::vector<float16> fp16_data;
             auto* tensor = scope->FindVar(var_desc->Name())
-                               ->GetMutable<framework::LoDTensor>();
+                               ->GetMutable<phi::DenseTensor>();
             auto* data_ptr = tensor->data<float>();
             auto num_elem = tensor->numel();
 
@@ -74,12 +93,19 @@ void InferenceDtypeTransferPass::ApplyImpl(ir::Graph* graph) const {
         auto* op_desc = node->Op();
         if (op_desc->Type() == "popart_cast") {
           // Transfer the target dtype of cast Op
-          if (BOOST_GET_CONST(std::string, op_desc->GetAttr("to")) == "FLOAT") {
+          if (PADDLE_GET_CONST(std::string, op_desc->GetAttr("to")) ==
+              "FLOAT") {
             op_desc->SetAttr("to", std::string("FLOAT16"));
             op_desc->Flush();
           }
         }
         if (op_desc->Type() == "popart_constant") {
+          // Skip specific constant
+          auto output_var_name = node->outputs[0]->Var()->Name();
+          if (skip_var_lists.find(output_var_name) != skip_var_lists.end()) {
+            continue;
+          }
+
           // Transfer the dtype of fill_constant Op
           if (op_desc->GetAttrIfExists<int>("dtype") == 1) {
             op_desc->SetAttr("dtype", 10);

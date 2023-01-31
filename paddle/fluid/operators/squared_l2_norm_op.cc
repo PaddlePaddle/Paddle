@@ -12,25 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/squared_l2_norm_op.h"
-
-#include <memory>
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class SquaredL2NormOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SquaredL2NormOp");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "SquaredL2NormOp");
-
-    ctx->SetOutputDim("Out", {1});
-  }
 };
 
 template <typename T>
@@ -54,20 +46,6 @@ class SquaredL2NormGradOpMaker : public framework::SingleGradOpMaker<T> {
 class SquaredL2NormGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SquaredL2NormGradOp");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input",
-                   "Out@GRAD",
-                   "SquaredL2NormGradOp");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
-                   "Output",
-                   "X@GRAD",
-                   "SquaredL2NormGradOp");
-
-    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
-  }
 };
 
 class SquaredL2NormOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -90,15 +68,22 @@ $$Out = \sum_{i} X_{i}^2$$
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+
+DECLARE_INFER_SHAPE_FUNCTOR(squared_l2_norm,
+                            SquaredL2NormInferShapeFunctor,
+                            PD_INFER_META(phi::SquaredL2NormInferMeta));
+
+DECLARE_INFER_SHAPE_FUNCTOR(squared_l2_norm_grad,
+                            SquaredL2NormGradInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+
 REGISTER_OPERATOR(squared_l2_norm,
                   ops::SquaredL2NormOp,
                   ops::SquaredL2NormOpMaker,
                   ops::SquaredL2NormGradOpMaker<paddle::framework::OpDesc>,
-                  ops::SquaredL2NormGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(squared_l2_norm_grad, ops::SquaredL2NormGradOp);
-REGISTER_OP_CPU_KERNEL(squared_l2_norm,
-                       ops::SquaredL2NormKernel<phi::CPUContext, float>,
-                       ops::SquaredL2NormKernel<phi::CPUContext, double>);
-REGISTER_OP_CPU_KERNEL(squared_l2_norm_grad,
-                       ops::SquaredL2NormGradKernel<phi::CPUContext, float>,
-                       ops::SquaredL2NormGradKernel<phi::CPUContext, double>);
+                  ops::SquaredL2NormGradOpMaker<paddle::imperative::OpBase>,
+                  SquaredL2NormInferShapeFunctor);
+
+REGISTER_OPERATOR(squared_l2_norm_grad,
+                  ops::SquaredL2NormGradOp,
+                  SquaredL2NormGradInferShapeFunctor);

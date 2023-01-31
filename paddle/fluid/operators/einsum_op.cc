@@ -68,11 +68,11 @@ class EinsumGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto dtype = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
-    return framework::OpKernelType(dtype, ctx.GetPlace());
+    return phi::KernelKey(dtype, ctx.GetPlace());
   }
 };
 
@@ -106,7 +106,7 @@ namespace ops = paddle::operators;
 
 DECLARE_INFER_SHAPE_FUNCTOR(einsum,
                             EinsumInferShapeFunctor,
-                            PD_INFER_META(phi::EinsumInferMeta));
+                            PD_INFER_META(phi::EinsumRawInferMeta));
 
 REGISTER_OPERATOR(einsum,
                   ops::EinsumOp,

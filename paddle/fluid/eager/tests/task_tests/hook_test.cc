@@ -95,8 +95,7 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
         std::dynamic_pointer_cast<paddle::experimental::AbstractAutogradMeta>(
             auto_grad_meta));
 
-    egr_utils_api::RegisterGradientHookForTensor(
-        target_tensor, std::make_shared<egr::CppTensorHook>(hook_function));
+    egr_utils_api::RegisterGradientHookForTensor(target_tensor, hook_function);
     egr_utils_api::RetainGradForTensor(
         target_tensor);  // result: 1.0 + 3.0 = 4.0
     egr_utils_api::RetainGradForTensor(
@@ -122,8 +121,7 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
         std::dynamic_pointer_cast<paddle::experimental::AbstractAutogradMeta>(
             tmp_tensor0.mutable_autograd_meta()));
 
-    egr_utils_api::RegisterGradientHookForTensor(
-        leaf_tensor, std::make_shared<egr::CppTensorHook>(hook_function));
+    egr_utils_api::RegisterGradientHookForTensor(leaf_tensor, hook_function);
     egr_utils_api::RetainGradForTensor(
         leaf_tensor);  // result: 4.0*5.0 + 3.0 = 23.0
   }
@@ -173,8 +171,7 @@ TEST(RetainGrad, HookAfterRetainGrad) {
             auto_grad_meta));
 
     egr_utils_api::RetainGradForTensor(target_tensor);  // result: 1.0
-    egr_utils_api::RegisterGradientHookForTensor(
-        target_tensor, std::make_shared<egr::CppTensorHook>(hook_function));
+    egr_utils_api::RegisterGradientHookForTensor(target_tensor, hook_function);
   }
 
   // Retain Grad for leaf tensor1
@@ -193,8 +190,7 @@ TEST(RetainGrad, HookAfterRetainGrad) {
         std::dynamic_pointer_cast<paddle::experimental::AbstractAutogradMeta>(
             tmp_tensor0.mutable_autograd_meta()));
 
-    egr_utils_api::RegisterGradientHookForTensor(
-        leaf_tensor, std::make_shared<egr::CppTensorHook>(hook_function));
+    egr_utils_api::RegisterGradientHookForTensor(leaf_tensor, hook_function);
   }
 
   Backward(target_tensors, {});

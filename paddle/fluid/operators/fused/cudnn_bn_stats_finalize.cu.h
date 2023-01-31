@@ -20,7 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
 namespace dynload = platform::dynload;
 template <typename T>
 using BatchNormParamType =
@@ -54,14 +53,14 @@ struct BNStatsFinalizeArgs {
   cudnnDataType_t param_dtype;
   cudnnTensorFormat_t format;
 
-  platform::TensorDescriptor in_desc;
-  platform::TensorDescriptor out_desc;
+  phi::backends::gpu::TensorDescriptor in_desc;
+  phi::backends::gpu::TensorDescriptor out_desc;
 };
 
 template <typename T>
 class CudnnBNStatsFinalize {
  public:
-  CudnnBNStatsFinalize(const platform::CUDADeviceContext &ctx,
+  CudnnBNStatsFinalize(const phi::GPUContext &ctx,
                        const std::vector<int> &param_shape)
       : train_op_(CUDNN_FUSED_BN_FINALIZE_STATISTICS_TRAINING),
         inference_op_(CUDNN_FUSED_BN_FINALIZE_STATISTICS_INFERENCE) {
@@ -69,22 +68,21 @@ class CudnnBNStatsFinalize {
   }
   ~CudnnBNStatsFinalize() {}
 
-  void Forward(const platform::CUDADeviceContext &ctx,
-               const Tensor &sum,
-               const Tensor &sum_of_squares,
-               const Tensor &scale,
-               const Tensor &bias,
-               Tensor *saved_mean,
-               Tensor *saved_invstd,
-               Tensor *running_mean,
-               Tensor *running_var,
-               Tensor *equiv_scale,
-               Tensor *equiv_bias,
+  void Forward(const phi::GPUContext &ctx,
+               const phi::DenseTensor &sum,
+               const phi::DenseTensor &sum_of_squares,
+               const phi::DenseTensor &scale,
+               const phi::DenseTensor &bias,
+               phi::DenseTensor *saved_mean,
+               phi::DenseTensor *saved_invstd,
+               phi::DenseTensor *running_mean,
+               phi::DenseTensor *running_var,
+               phi::DenseTensor *equiv_scale,
+               phi::DenseTensor *equiv_bias,
                double eps,
                float momentum,
                int64_t ele_count,
                bool is_train) {
-    auto place = ctx.GetPlace();
     if (is_train) {
       TrainInit(ctx);
     } else {
@@ -98,12 +96,18 @@ class CudnnBNStatsFinalize {
         const_cast<float *>(sum_of_squares.data<float>());
     float *scale_ptr = const_cast<float *>(scale.data<float>());
     float *bias_ptr = const_cast<float *>(bias.data<float>());
-    float *saved_mean_ptr = saved_mean->mutable_data<float>(place);
-    float *saved_invstd_ptr = saved_invstd->mutable_data<float>(place);
-    float *running_mean_ptr = running_mean->mutable_data<float>(place);
-    float *running_var_ptr = running_var->mutable_data<float>(place);
-    T *equiv_scale_ptr = equiv_scale->mutable_data<T>(place);
-    T *equiv_bias_ptr = equiv_bias->mutable_data<T>(place);
+    float *saved_mean_ptr = ctx.template Alloc<float>(
+        saved_mean, saved_mean->numel() * sizeof(float));
+    float *saved_invstd_ptr = ctx.template Alloc<float>(
+        saved_invstd, saved_invstd->numel() * sizeof(float));
+    float *running_mean_ptr = ctx.template Alloc<float>(
+        running_mean, running_mean->numel() * sizeof(float));
+    float *running_var_ptr = ctx.template Alloc<float>(
+        running_var, running_var->numel() * sizeof(float));
+    T *equiv_scale_ptr =
+        ctx.template Alloc<T>(equiv_scale, equiv_scale->numel() * sizeof(T));
+    T *equiv_bias_ptr =
+        ctx.template Alloc<T>(equiv_bias, equiv_bias->numel() * sizeof(T));
     op.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_SCALE, scale_ptr);
     op.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_BIAS, bias_ptr);
     op.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_RUNNING_MEAN, running_mean_ptr);
@@ -130,7 +134,7 @@ class CudnnBNStatsFinalize {
   }
 
  private:
-  void TrainInit(const platform::CUDADeviceContext &ctx) {
+  void TrainInit(const phi::GPUContext &ctx) {
     // Set constant_param for train op
     train_op_.SetOpConstParamAttr({CUDNN_PARAM_YSUM_PLACEHOLDER,
                                    CUDNN_PARAM_YSQSUM_PLACEHOLDER,
@@ -167,7 +171,7 @@ class CudnnBNStatsFinalize {
                                        &workspace_size_bytes);
   }
 
-  void InferenceInit(const platform::CUDADeviceContext &ctx) {
+  void InferenceInit(const phi::GPUContext &ctx) {
     // Set constant_param for inference op
     inference_op_.SetOpConstParamAttr({CUDNN_PARAM_BN_SCALE_PLACEHOLDER,
                                        CUDNN_PARAM_BN_BIAS_PLACEHOLDER,

@@ -21,7 +21,6 @@ limitations under the License. */
 
 #include "google/protobuf/text_format.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
 #include "paddle/fluid/distributed/ps/service/brpc_ps_server.h"
 #include "paddle/fluid/distributed/ps/service/env.h"
@@ -32,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/service/ps_service/service.h"
 #include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
 #include "paddle/fluid/distributed/ps/table/graph/graph_node.h"
+#include "paddle/fluid/distributed/the_one_ps.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
@@ -157,7 +157,8 @@ void GetDownpourSparseTableProto(
 
 /*-------------------------------------------------------------------------*/
 
-std::string ip_ = "127.0.0.1", ip2 = "127.0.0.1";
+const char* ip_ = "127.0.0.1";
+const char* ip2 = "127.0.0.1";
 uint32_t port_ = 5209, port2 = 5210;
 
 std::vector<std::string> host_sign_list_;
@@ -203,10 +204,10 @@ void RunServer2() {
   pserver_ptr2->build_peer2peer_connection(1);
 }
 
-void RunClient(
-    std::map<uint64_t, std::vector<paddle::distributed::Region>>& dense_regions,
-    int index,
-    paddle::distributed::PsBaseService* service) {
+void RunClient(std::map<uint64_t, std::vector<paddle::distributed::Region>>&
+                   dense_regions,  // NOLINT
+               int index,
+               paddle::distributed::PsBaseService* service) {
   ::paddle::distributed::PSParameter worker_proto = GetWorkerProto();
   paddle::distributed::PaddlePSEnvironment _ps_env;
   auto servers_ = host_sign_list_.size();

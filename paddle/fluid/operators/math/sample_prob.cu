@@ -31,8 +31,6 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-using Tensor = framework::Tensor;
-
 template <typename T>
 __device__ T gpu_adjust_prob(const T prob,
                              const int num_samples,
@@ -124,15 +122,14 @@ int UniqSampler(const Sampler& sampler,
 }
 
 template <typename T>
-void GPUSampleWithProb<T>::operator()(
-    const platform::CUDADeviceContext& context,
-    const int seed,
-    const int dict_size,
-    const bool uniq,
-    const std::size_t num_samples,
-    const Tensor* L,
-    Tensor* S,
-    Tensor* P) {
+void GPUSampleWithProb<T>::operator()(const phi::GPUContext& context,
+                                      const int seed,
+                                      const int dict_size,
+                                      const bool uniq,
+                                      const std::size_t num_samples,
+                                      const phi::DenseTensor* L,
+                                      phi::DenseTensor* S,
+                                      phi::DenseTensor* P) {
   // UNDERSTAND: dimension issues
   const auto lbl_dim = L->dims();
   const int batch_size = lbl_dim[0];
@@ -147,7 +144,7 @@ void GPUSampleWithProb<T>::operator()(
 
   int s_size = num_samples;
   framework::DDim s_dim{s_size};
-  Tensor s;
+  phi::DenseTensor s;
   int64_t* s_data = s.mutable_data<int64_t>(s_dim, platform::CPUPlace());
 
   math::LogUniformSampler sampler(dict_size, seed);

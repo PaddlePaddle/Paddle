@@ -81,12 +81,13 @@ class HeterContext {
   std::vector<std::vector<FeatureValue>> device_values_;
   std::vector<std::vector<FeatureKey>> device_keys_;
   std::vector<std::vector<std::vector<FeatureKey>>> device_dim_keys_;
-  std::vector<std::vector<std::vector<FeatureValue>>> device_dim_values_;
   std::vector<std::mutex*> mutex_;
   std::vector<std::vector<std::mutex*>> dim_mutex_;
   int multi_mf_dim_ = 0;
 
+  void* sub_graph_feas = NULL;
   uint32_t shard_num_ = 37;
+  uint16_t pass_id_ = 0;
   uint64_t size() {
     uint64_t total_size = 0;
     for (auto& keys : feature_keys_) {
@@ -114,7 +115,6 @@ class HeterContext {
       value_dim_ptr_[i].resize(dim_num);
     }
     device_values_.resize(device_num);
-    device_dim_values_.resize(device_num);
     device_keys_.resize(device_num);
 
     device_dim_keys_.resize(device_num);

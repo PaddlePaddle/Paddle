@@ -36,7 +36,7 @@ void ForwardGraphExtractPass::ApplyImpl(ir::Graph* graph) const {
     if (!node->IsOp()) {
       continue;
     }
-    auto op_role = BOOST_GET_MUTABLE(int, node->Op()->GetAttr("op_role"));
+    auto op_role = PADDLE_GET_MUTABLE(int, node->Op()->GetAttr("op_role"));
     if (op_role == static_cast<int>(OpRole::kForward)) {
       all_ops[OpRole::kForward].insert(node);
     } else if (op_role == static_cast<int>(OpRole::kBackward)) {

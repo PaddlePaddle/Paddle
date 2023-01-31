@@ -121,8 +121,8 @@ Node *tanh_handler(Graph *graph, Node *node) {
 
 Node *brelu_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto t_min_ = BOOST_GET_CONST(float, op->GetAttr("t_min"));
-  auto t_max_ = BOOST_GET_CONST(float, op->GetAttr("t_max"));
+  auto t_min_ = PADDLE_GET_CONST(float, op->GetAttr("t_min"));
+  auto t_max_ = PADDLE_GET_CONST(float, op->GetAttr("t_max"));
   auto x = GetInputVarNode("X", node);
   auto cli_min =
       CreateConst(
@@ -138,7 +138,11 @@ Node *brelu_handler(Graph *graph, Node *node) {
 
 Node *gelu_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto approximate_ = BOOST_GET_CONST(bool, op->GetAttr("approximate"));
+  // In case of the Op has no `approximate` attr.
+  if (!op->HasAttr("approximate")) {
+    return activation_op_handler(graph, node, "popart_gelu_v2");
+  }
+  auto approximate_ = PADDLE_GET_CONST(bool, op->GetAttr("approximate"));
   if (approximate_) {
     return activation_op_handler(graph, node, "popart_gelu_v2");
   } else {
@@ -189,14 +193,14 @@ Node *gelu_handler(Graph *graph, Node *node) {
 }
 
 Node *log_softmax_handler(Graph *graph, Node *node) {
-  auto axis = BOOST_GET_CONST(int, node->Op()->GetAttr("axis"));
+  auto axis = PADDLE_GET_CONST(int, node->Op()->GetAttr("axis"));
   auto new_softmax = CreateSoftmaxOpset11(graph, node, node->inputs, {}, axis);
   return CreateBaseOp(
       graph, node, "popart_log", new_softmax->outputs, node->outputs);
 }
 
 Node *elu_handler(Graph *graph, Node *node) {
-  auto alpha_ = BOOST_GET_CONST(float, node->Op()->GetAttr("alpha"));
+  auto alpha_ = PADDLE_GET_CONST(float, node->Op()->GetAttr("alpha"));
   return CreateBaseOp(graph,
                       node,
                       "popart_elu",
@@ -208,7 +212,7 @@ Node *elu_handler(Graph *graph, Node *node) {
 }
 
 Node *hard_shrink_handler(Graph *graph, Node *node) {
-  auto threshold_ = BOOST_GET_CONST(float, node->Op()->GetAttr("threshold"));
+  auto threshold_ = PADDLE_GET_CONST(float, node->Op()->GetAttr("threshold"));
   return CreateBaseOp(graph,
                       node,
                       "popart_shrink",
@@ -221,8 +225,8 @@ Node *hard_shrink_handler(Graph *graph, Node *node) {
 }
 
 Node *hard_sigmoid_handler(Graph *graph, Node *node) {
-  auto slope_ = BOOST_GET_CONST(float, node->Op()->GetAttr("slope"));
-  auto offset_ = BOOST_GET_CONST(float, node->Op()->GetAttr("offset"));
+  auto slope_ = PADDLE_GET_CONST(float, node->Op()->GetAttr("slope"));
+  auto offset_ = PADDLE_GET_CONST(float, node->Op()->GetAttr("offset"));
   return CreateBaseOp(graph,
                       node,
                       "popart_hardsigmoid",
@@ -236,9 +240,9 @@ Node *hard_sigmoid_handler(Graph *graph, Node *node) {
 
 Node *hard_swish_handler(Graph *graph, Node *node) {
   auto x = GetInputVarNode("X", node);
-  auto scale_ = BOOST_GET_CONST(float, node->Op()->GetAttr("scale"));
-  auto offset_ = BOOST_GET_CONST(float, node->Op()->GetAttr("offset"));
-  auto threshold_ = BOOST_GET_CONST(float, node->Op()->GetAttr("threshold"));
+  auto scale_ = PADDLE_GET_CONST(float, node->Op()->GetAttr("scale"));
+  auto offset_ = PADDLE_GET_CONST(float, node->Op()->GetAttr("offset"));
+  auto threshold_ = PADDLE_GET_CONST(float, node->Op()->GetAttr("threshold"));
   auto scale_node =
       CreateConst(graph, node, std::vector<float>{scale_}, {1}, GetVarDType(x))
           ->outputs.front();
@@ -269,7 +273,7 @@ Node *hard_swish_handler(Graph *graph, Node *node) {
 }
 
 Node *leaky_relu_handler(Graph *graph, Node *node) {
-  auto alpha_ = BOOST_GET_CONST(float, node->Op()->GetAttr("alpha"));
+  auto alpha_ = PADDLE_GET_CONST(float, node->Op()->GetAttr("alpha"));
   return CreateBaseOp(graph,
                       node,
                       "popart_leakyrelu",
@@ -321,7 +325,7 @@ Node *logsigmoid_handler(Graph *graph, Node *node) {
 }
 
 Node *mish_handler(Graph *graph, Node *node) {
-  auto threshold_ = BOOST_GET_CONST(float, node->Op()->GetAttr("threshold"));
+  auto threshold_ = PADDLE_GET_CONST(float, node->Op()->GetAttr("threshold"));
   if (!is_float_equal(threshold_, 20.0f)) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "For mish op, only support threshold = 20.0"));
@@ -374,7 +378,7 @@ Node *prelu_handler(Graph *graph, Node *node) {
 }
 
 Node *relu6_handler(Graph *graph, Node *node) {
-  auto threshold_ = BOOST_GET_CONST(float, node->Op()->GetAttr("threshold"));
+  auto threshold_ = PADDLE_GET_CONST(float, node->Op()->GetAttr("threshold"));
   auto cli_min =
       CreateConst(
           graph, node, std::vector<float>{0.0}, {1}, ONNXDataType::FLOAT)
@@ -398,8 +402,8 @@ Node *rsqrt_handler(Graph *graph, Node *node) {
 }
 
 Node *selu_handler(Graph *graph, Node *node) {
-  auto alpha_ = BOOST_GET_CONST(float, node->Op()->GetAttr("alpha"));
-  auto scale_ = BOOST_GET_CONST(float, node->Op()->GetAttr("scale"));
+  auto alpha_ = PADDLE_GET_CONST(float, node->Op()->GetAttr("alpha"));
+  auto scale_ = PADDLE_GET_CONST(float, node->Op()->GetAttr("scale"));
   return CreateBaseOp(graph,
                       node,
                       "popart_selu",
@@ -419,7 +423,7 @@ Node *silu_handler(Graph *graph, Node *node) {
 }
 
 Node *softshrink_handler(Graph *graph, Node *node) {
-  auto lambda_ = BOOST_GET_CONST(float, node->Op()->GetAttr("lambda"));
+  auto lambda_ = PADDLE_GET_CONST(float, node->Op()->GetAttr("lambda"));
   return CreateBaseOp(graph,
                       node,
                       "popart_shrink",
@@ -439,7 +443,7 @@ Node *square_handler(Graph *graph, Node *node) {
 Node *swish_handler(Graph *graph, Node *node) {
   auto x = GetInputVarNode("X", node);
   auto out = GetOutputVarNode("Out", node);
-  auto beta_ = BOOST_GET_CONST(float, node->Op()->GetAttr("beta"));
+  auto beta_ = PADDLE_GET_CONST(float, node->Op()->GetAttr("beta"));
   auto beta_node =
       CreateConst(graph, node, std::vector<float>{beta_}, {1}, GetVarDType(x))
           ->outputs.front();
@@ -459,7 +463,7 @@ Node *tanh_shrink_handler(Graph *graph, Node *node) {
 }
 
 Node *thresholded_relu_handler(Graph *graph, Node *node) {
-  auto threshold_ = BOOST_GET_CONST(float, node->Op()->GetAttr("threshold"));
+  auto threshold_ = PADDLE_GET_CONST(float, node->Op()->GetAttr("threshold"));
   auto x = GetInputVarNode("X", node);
   return CreateBaseOp(graph,
                       node,

@@ -18,26 +18,24 @@ limitations under the License. */
 #include "paddle/fluid/operators/rank_attention.cu.h"
 #include "paddle/fluid/operators/rank_attention_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 template <typename DeviceContext, typename T>
 class RankAttentionCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *X = ctx.Input<Tensor>("X");
-    auto *rank_offset = ctx.Input<Tensor>("RankOffset");
-    auto *param = ctx.Input<Tensor>("RankParam");
-    auto *input_help = ctx.Output<Tensor>("InputHelp");
-    auto *ins_rank = ctx.Output<Tensor>("InsRank");
+    auto *X = ctx.Input<phi::DenseTensor>("X");
+    auto *rank_offset = ctx.Input<phi::DenseTensor>("RankOffset");
+    auto *param = ctx.Input<phi::DenseTensor>("RankParam");
+    auto *input_help = ctx.Output<phi::DenseTensor>("InputHelp");
+    auto *ins_rank = ctx.Output<phi::DenseTensor>("InsRank");
     int max_rank = ctx.Attr<int>("MaxRank");
     int64_t max_size = ctx.Attr<int>("MaxSize");
-    auto *Out = ctx.Output<Tensor>("Out");
+    auto *Out = ctx.Output<phi::DenseTensor>("Out");
 
     // check dims
     auto x_dims = X->dims();
@@ -62,11 +60,11 @@ class RankAttentionCUDAKernel : public framework::OpKernel<T> {
 
     int block_matrix_row = max_rank * x_fea_dim;
 
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
 
     int max_ins = std::max(ins_num, max_size);
 
-    Tensor param_help;
+    phi::DenseTensor param_help;
     param_help = ctx.AllocateTmpTensor<T, DeviceContext>(
         {max_ins * block_matrix_row, para_col}, dev_ctx);
     param_help.mutable_data<T>(ctx.GetPlace());
@@ -83,8 +81,8 @@ class RankAttentionCUDAKernel : public framework::OpKernel<T> {
     auto ins_rank_eigen = framework::EigenVector<T>::Flatten(*ins_rank);
     auto out_eigen = framework::EigenVector<T>::Flatten(*Out);
 
-    auto &place = *ctx.template device_context<platform::CUDADeviceContext>()
-                       .eigen_device();
+    auto &place =
+        *ctx.template device_context<phi::GPUContext>().eigen_device();
 
     param_help_eigen.device(place) =
         param_help_eigen.constant(static_cast<T>(0));
@@ -135,7 +133,7 @@ class RankAttentionCUDAKernel : public framework::OpKernel<T> {
     int64_t strideA = block_matrix_row;
     int64_t strideB = block_matrix_row * para_col;
 
-    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
     blas.BatchedGEMM(transA,
                      transB,
                      1,
@@ -156,15 +154,17 @@ template <typename DeviceContext, typename T>
 class RankAttentionGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *X = ctx.Input<Tensor>("X");                     // not use data
-    auto *rank_offset = ctx.Input<Tensor>("RankOffset");  // not use data
-    auto *param = ctx.Input<Tensor>("RankParam");         // not use data
-    auto *input_help = ctx.Input<Tensor>("InputHelp");
-    auto *ins_rank = ctx.Input<Tensor>("InsRank");
-    auto *dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto *X = ctx.Input<phi::DenseTensor>("X");  // not use data
+    auto *rank_offset =
+        ctx.Input<phi::DenseTensor>("RankOffset");           // not use data
+    auto *param = ctx.Input<phi::DenseTensor>("RankParam");  // not use data
+    auto *input_help = ctx.Input<phi::DenseTensor>("InputHelp");
+    auto *ins_rank = ctx.Input<phi::DenseTensor>("InsRank");
+    auto *dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     int64_t max_size = ctx.Attr<int>("MaxSize");
 
-    auto *drank_para = ctx.Output<Tensor>(framework::GradVarName("RankParam"));
+    auto *drank_para =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("RankParam"));
 
     // get dim
     auto x_dims = X->dims();
@@ -176,9 +176,9 @@ class RankAttentionGradOpCUDAKernel : public framework::OpKernel<T> {
     auto rank_offset_dims = rank_offset->dims();
     auto max_rank = (rank_offset_dims[1] - 1) / 2;
     int block_matrix_row = max_rank * x_fea_dim;
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    auto &place = *ctx.template device_context<platform::CUDADeviceContext>()
-                       .eigen_device();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
+    auto &place =
+        *ctx.template device_context<phi::GPUContext>().eigen_device();
 
     int max_ins = std::max(ins_num, max_size);
     // initialize out grad
@@ -188,7 +188,7 @@ class RankAttentionGradOpCUDAKernel : public framework::OpKernel<T> {
         drank_para_eigen.constant(static_cast<T>(0));
 
     // copy data
-    Tensor param_grad;
+    phi::DenseTensor param_grad;
     param_grad = ctx.AllocateTmpTensor<T, DeviceContext>(
         {max_ins * block_matrix_row, para_col}, dev_ctx);
     param_grad.mutable_data<T>(ctx.GetPlace());
@@ -201,7 +201,7 @@ class RankAttentionGradOpCUDAKernel : public framework::OpKernel<T> {
     const T *ins_rank_data = ins_rank->data<T>();
     T *param_grad_data = param_grad.data<T>();
 
-    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
     T alpha = 1;
     T beta = 0;
 
@@ -242,7 +242,7 @@ class RankAttentionGradOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using GPUCtx = paddle::platform::CUDADeviceContext;
+using GPUCtx = phi::GPUContext;
 REGISTER_OP_CUDA_KERNEL(rank_attention,
                         ops::RankAttentionCUDAKernel<GPUCtx, float>,
                         ops::RankAttentionCUDAKernel<GPUCtx, double>);

@@ -56,11 +56,11 @@ class ActivationOpConverter : public OpConverter {
     nvinfer1::IActivationLayer* layer = nullptr;
     if (op_type_ == "softplus") {
       const float beta = op_desc.HasAttr("beta")
-                             ? BOOST_GET_CONST(float, op_desc.GetAttr("beta"))
+                             ? PADDLE_GET_CONST(float, op_desc.GetAttr("beta"))
                              : 1.0f;
       const float threshold =
           op_desc.HasAttr("threshold")
-              ? BOOST_GET_CONST(float, op_desc.GetAttr("threshold"))
+              ? PADDLE_GET_CONST(float, op_desc.GetAttr("threshold"))
               : 20.0f;
       auto* layer_clip = TRT_ENGINE_ADD_LAYER(
           engine_, Activation, *input_tensor, nvinfer1::ActivationType::kCLIP);
@@ -82,29 +82,32 @@ class ActivationOpConverter : public OpConverter {
       layer->setBeta(6.);
     }
     if (op_type_ == "elu") {
-      const float alpha = op_desc.HasAttr("alpha")
-                              ? BOOST_GET_CONST(float, op_desc.GetAttr("alpha"))
-                              : 1.0f;
+      const float alpha =
+          op_desc.HasAttr("alpha")
+              ? PADDLE_GET_CONST(float, op_desc.GetAttr("alpha"))
+              : 1.0f;
       layer->setAlpha(alpha);
     }
     if (op_type_ == "selu") {
-      const float alpha = op_desc.HasAttr("alpha")
-                              ? BOOST_GET_CONST(float, op_desc.GetAttr("alpha"))
-                              : 1.0507009873554804934193349852946;
-      const float scale = op_desc.HasAttr("scale")
-                              ? BOOST_GET_CONST(float, op_desc.GetAttr("scale"))
-                              : 1.6732632423543772848170429916717;
+      const float alpha =
+          op_desc.HasAttr("alpha")
+              ? PADDLE_GET_CONST(float, op_desc.GetAttr("alpha"))
+              : 1.0507009873554804934193349852946;
+      const float scale =
+          op_desc.HasAttr("scale")
+              ? PADDLE_GET_CONST(float, op_desc.GetAttr("scale"))
+              : 1.6732632423543772848170429916717;
       layer->setAlpha(alpha);
       layer->setBeta(scale);
     }
     if (op_type_ == "stanh") {
       const float scale_a =
           op_desc.HasAttr("scale_a")
-              ? BOOST_GET_CONST(float, op_desc.GetAttr("scale_a"))
+              ? PADDLE_GET_CONST(float, op_desc.GetAttr("scale_a"))
               : 0.67f;
       const float scale_b =
           op_desc.HasAttr("scale_b")
-              ? BOOST_GET_CONST(float, op_desc.GetAttr("scale_b"))
+              ? PADDLE_GET_CONST(float, op_desc.GetAttr("scale_b"))
               : 1.7159f;
       layer->setAlpha(scale_b);
       layer->setBeta(scale_a);
@@ -112,7 +115,7 @@ class ActivationOpConverter : public OpConverter {
     if (op_type_ == "thresholded_relu") {
       const float threshold =
           op_desc.HasAttr("threshold")
-              ? BOOST_GET_CONST(float, op_desc.GetAttr("threshold"))
+              ? PADDLE_GET_CONST(float, op_desc.GetAttr("threshold"))
               : 1.0f;
       layer->setAlpha(threshold);
     }

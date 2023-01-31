@@ -57,8 +57,8 @@ class MatmulPrimOpShapeInference : public framework::InferShapeBase {
     framework::InferShapeVarPtr y_var_ptr = ctx->GetInputVarPtrs("Y")[0];
     framework::InferShapeVarPtr z_var_ptr = ctx->GetOutputVarPtrs("Z")[0];
 
-    framework::VarDesc *x_var = BOOST_GET(framework::VarDesc *, x_var_ptr);
-    framework::VarDesc *y_var = BOOST_GET(framework::VarDesc *, y_var_ptr);
+    framework::VarDesc *x_var = PADDLE_GET(framework::VarDesc *, x_var_ptr);
+    framework::VarDesc *y_var = PADDLE_GET(framework::VarDesc *, y_var_ptr);
     auto x_shape = x_var->GetShape();
     auto y_shape = y_var->GetShape();
     size_t x_rank = x_shape.size();
@@ -90,7 +90,7 @@ class MatmulPrimOpShapeInference : public framework::InferShapeBase {
             y_shape[y_rank - 2]));
     if (x_rank == 2) {
       std::vector<int64_t> z_shape{x_shape[x_rank - 2], y_shape[y_rank - 1]};
-      BOOST_GET(framework::VarDesc *, z_var_ptr)->SetShape(z_shape);
+      PADDLE_GET(framework::VarDesc *, z_var_ptr)->SetShape(z_shape);
     } else {
       PADDLE_ENFORCE_EQ(x_shape[0],
                         y_shape[0],
@@ -104,7 +104,7 @@ class MatmulPrimOpShapeInference : public framework::InferShapeBase {
 
       std::vector<int64_t> z_shape{
           x_shape[0], x_shape[x_rank - 2], y_shape[y_rank - 1]};
-      BOOST_GET(framework::VarDesc *, z_var_ptr)->SetShape(z_shape);
+      PADDLE_GET(framework::VarDesc *, z_var_ptr)->SetShape(z_shape);
     }
   }
 };

@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-import unittest
-import numpy as np
-from paddle.vision.models import resnet18
 from paddle.nn import CrossEntropyLoss
+from paddle.vision.models import resnet18
 
 
 class TestFixOpRunOrder(unittest.TestCase):
-
     def setUp(self):
         paddle.enable_static()
         paddle.seed(1)
@@ -30,8 +31,11 @@ class TestFixOpRunOrder(unittest.TestCase):
             fluid.set_flags({'FLAGS_cudnn_deterministic': 1})
 
     def get_place(self):
-        return paddle.CUDAPlace(
-            0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
+        return (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
 
     def get_feed(self):
         batch_size = 4
@@ -44,12 +48,12 @@ class TestFixOpRunOrder(unittest.TestCase):
         startup_prog = paddle.static.Program()
         scope = paddle.static.Scope()
         with paddle.static.program_guard(main_prog, startup_prog):
-            image = paddle.static.data(name="image",
-                                       shape=[None, 3, 224, 224],
-                                       dtype="float32")
-            label = paddle.static.data(name="label",
-                                       shape=[None, 1],
-                                       dtype="int64")
+            image = paddle.static.data(
+                name="image", shape=[None, 3, 224, 224], dtype="float32"
+            )
+            label = paddle.static.data(
+                name="label", shape=[None, 1], dtype="int64"
+            )
             model = resnet18()
             pred = model(image)
             loss_fn = CrossEntropyLoss()
@@ -64,7 +68,8 @@ class TestFixOpRunOrder(unittest.TestCase):
         main_prog = paddle.static.CompiledProgram(main_prog).with_data_parallel(
             loss_name=loss.name,
             build_strategy=build_strategy,
-            places=[self.get_place()])
+            places=[self.get_place()],
+        )
 
         exe = paddle.static.Executor(self.get_place())
         with paddle.static.scope_guard(scope):
