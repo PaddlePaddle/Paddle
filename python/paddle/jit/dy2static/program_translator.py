@@ -16,6 +16,7 @@ import collections
 import inspect
 import textwrap
 import threading
+import warnings
 import weakref
 
 from paddle.fluid import _non_static_mode, core, framework
@@ -1077,10 +1078,60 @@ class ParametersRecorder:
         return id(program)
 
 
+class FallbackProgramLayer(object):
+    __slots__ = [
+        '_instance',
+        '_dy_func',
+        'training',
+        '_cuda_graph_capture_mode',
+        '_cuda_graph_pool_id',
+    ]
+
+    def __init__(self, instance, dy_func):
+        self._instance = instance
+        self._dy_func = dy_func
+
+    def __call__(self, inputs):
+        if self._instance is None:
+            return self._dy_func(*inputs)
+        else:
+            return self._dy_func(*inputs)
+
+    def __getattr__(self, key):
+        if key not in self.__slots__:
+            raise RuntimeError(
+                "There raises a exception while dy2static and you are in fallback mode. \n"
+                "You can't get attribute for a fallback program layer. Check dy2static.error file"
+                "and fix unsupported gramma."
+            )
+        elif key in ['training']:
+            if self._instance is not None:
+                return getattr(self._instance, key)
+            return
+
+        return super().__getattr__(key)
+
+    def __setattr__(self, key, value):
+        if key not in self.__slots__:
+            raise RuntimeError(
+                "There raises a exception while dy2static and you are in fallback mode. \n"
+                "You can't get attribute for a fallback program layer. Check dy2static.error file"
+                "and fix unsupported gramma."
+            )
+        elif key in ['training']:
+            if self._instance is not None:
+                return setattr(self._instance, key, value)
+            return
+
+        return super().__setattr__(key, value)
+
+
 class ProgramCache:
     """
     Wrapper class for the program functions defined by dygraph function.
     """
+
+    dy2static_error_file = "dy2static.error"
 
     def __init__(self):
         # {hash_id : (concrete_program, partial_layer)}
@@ -1092,17 +1143,37 @@ class ProgramCache:
     def _build_once(self, cache_key):
         # TODO(Aurelius84): Need a gloabl FLAGS to enable/disable to_prim
         enable_prim = cache_key.kwargs['build_strategy'].build_cinn_pass
+        # NOTE(xiongkun): Need a global FLAGS to enable/disable to_prim
+        enable_fallback = enable_prim
         if enable_prim:
             # TODO(Jiabin): Change this to True if we need this to be default option
             core.check_and_set_prim_all_enabled()
+        try:
+            concrete_program = ConcreteProgram.from_func_spec(
+                func_spec=cache_key.function_spec,
+                input_spec=cache_key.input_args_with_spec,
+                input_kwargs_spec=cache_key.input_kwargs_with_spec,
+                class_instance=cache_key.class_instance,
+                **cache_key.kwargs
+            )
+        except Exception as e:
+            if enable_fallback:
+                warnings.warn(
+                    "Exception is thrown while performing dygraph to static. FallBack to dygraph mode training.\n"
+                    "1. You can check `dy2static.error` file in current work directory to see what is going wrong.\n"
+                    "2. In fallback mode, you can only do training, can't save or get program."
+                )
+                # TODO(xiongkun) change different file name to avoid overwrite.
+                with open(self.dy2static_error_file, "w") as fp:
+                    fp.write(str(e))
 
-        concrete_program = ConcreteProgram.from_func_spec(
-            func_spec=cache_key.function_spec,
-            input_spec=cache_key.input_args_with_spec,
-            input_kwargs_spec=cache_key.input_kwargs_with_spec,
-            class_instance=cache_key.class_instance,
-            **cache_key.kwargs
-        )
+                fallback_layer = FallbackProgramLayer(
+                    cache_key.class_instance,
+                    cache_key.function_spec.dygraph_function,
+                )
+                return fallback_layer, fallback_layer
+            else:
+                raise
 
         concrete_program._to_prim()
         return concrete_program, partial_program_from(concrete_program)
