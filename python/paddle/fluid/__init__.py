@@ -102,9 +102,7 @@ from .dygraph.layers import *
 from .dygraph.base import enable_dygraph, disable_dygraph
 from .io import save, load, load_program_state, set_program_state
 from .dygraph.varbase_patch_methods import monkey_patch_varbase
-from . import generator
 from .core import _cuda_synchronize
-from .generator import Generator
 from .trainer_desc import (
     TrainerDesc,
     DistMultiTrainer,
@@ -130,7 +128,6 @@ __all__ = (
     + data_feed_desc.__all__
     + compiler.__all__
     + backward.__all__
-    + generator.__all__
     + [
         'io',
         'initializer',

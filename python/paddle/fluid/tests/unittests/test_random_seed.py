@@ -20,7 +20,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.generator as generator
 from paddle.tensor import random
 
 
@@ -193,8 +192,6 @@ class TestGeneratorSeed(unittest.TestCase):
 
     def test_generator_randint_dygraph(self):
         """Test Generator seed."""
-        gen = generator.Generator()
-
         fluid.enable_dygraph()
 
         gen = paddle.seed(12312321111)
