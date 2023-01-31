@@ -1136,32 +1136,33 @@ PDNode *patterns::FC::operator()(paddle::framework::ir::PDNode *x,
   }
 }
 
-PDNode *patterns::FCMKLDNN::operator()(bool with_residual_data) {
-  auto *fc_op = pattern->NewNode(fc_repr())->assert_is_op("fc");
+PDNode *patterns::FCOneDNN::operator()(const std::string &fc_type,
+                                       bool with_residual_data) {
+  auto *fc_op = pattern->NewNode(fc_repr())->assert_is_op(fc_type);
   // Create variables
   // Input
   auto *input_var = pattern->NewNode(input_repr())
                         ->AsInput()
-                        ->assert_is_op_input("fc", "Input");
+                        ->assert_is_op_input(fc_type, "Input");
   // Filter
   auto *fc_weight_var = pattern->NewNode(weights_repr())
                             ->AsInput()
-                            ->assert_is_op_input("fc", "W");
+                            ->assert_is_op_input(fc_type, "W");
   // Bias
   auto *fc_bias_var = pattern->NewNode(bias_repr())
                           ->AsInput()
-                          ->assert_is_op_input("fc", "Bias");
+                          ->assert_is_op_input(fc_type, "Bias");
   // Output
   auto *fc_out_var = pattern->NewNode(output_repr())
                          ->AsOutput()
-                         ->assert_is_op_output("fc", "Out")
-                         ->assert_is_only_output_of_op("fc");
+                         ->assert_is_op_output(fc_type, "Out")
+                         ->assert_is_only_output_of_op(fc_type);
 
   std::vector<PDNode *> links_from{input_var, fc_weight_var, fc_bias_var};
   if (with_residual_data) {
     auto res_fc_var = pattern->NewNode(residual_data_repr())
                           ->AsInput()
-                          ->assert_is_op_input("fc", "ResidualData");
+                          ->assert_is_op_input(fc_type, "ResidualData");
     links_from.push_back(res_fc_var);
   } else {
     fc_op->assert_more([&](Node *x) {

@@ -644,11 +644,11 @@ struct FC : public PatternBase {
 // named node:
 // fc
 // w, bias, output, residual_data
-struct FCMKLDNN : public PatternBase {
-  FCMKLDNN(PDPattern* pattern, const std::string& name_scope)
+struct FCOneDNN : public PatternBase {
+  FCOneDNN(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "fc_mkldnn") {}
 
-  PDNode* operator()(bool with_residual_data);
+  PDNode* operator()(const std::string& fc_type, bool with_residual_data);
 
   // declare operator node's name
   PATTERN_DECL_NODE(fc);

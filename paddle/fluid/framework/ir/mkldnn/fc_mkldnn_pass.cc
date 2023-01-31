@@ -36,9 +36,9 @@ void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
   Init("fc_mkldnn_pass", graph);
 
   GraphPatternDetector gpd;
-  patterns::FCMKLDNN fc_pattern(gpd.mutable_pattern(), "fc_mkldnn_pass");
+  patterns::FCOneDNN fc_pattern(gpd.mutable_pattern(), "fc_mkldnn_pass");
   // searching for fc+residual  doesn't make sense at this stage
-  fc_pattern(false /*with_residual*/);
+  fc_pattern("fc", false /*with_residual*/);
 
   int found_fc_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -68,6 +68,7 @@ void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
                  "2, 3 & 4, or when width or height is different than one.";
       return;
     }
+    desc->SetType("fused_fc");
     desc->SetAttr("use_mkldnn", true);
 
     found_fc_count++;

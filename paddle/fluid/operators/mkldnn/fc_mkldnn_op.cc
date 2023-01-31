@@ -659,7 +659,7 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
 // be used during computations of kernel).
 namespace ops = paddle::operators;
 
-REGISTER_OP_KERNEL(fc,
+REGISTER_OP_KERNEL(fused_fc,
                    MKLDNN,
                    ::phi::CPUPlace,
                    ops::FCMKLDNNKernel<float>,
