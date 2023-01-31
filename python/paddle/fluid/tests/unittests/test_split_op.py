@@ -304,34 +304,46 @@ class TestSplitOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
             # The type of axis in split_op should be int or Variable.
             def test_axis_type():
-                x6 = fluid.layers.data(shape=[4], dtype='float16', name='x3')
+                x6 = paddle.static.data(
+                    shape=[-1, 4], dtype='float16', name='x3'
+                )
                 paddle.split(x=x6, num_or_sections=2, axis=3.2)
 
             self.assertRaises(TypeError, test_axis_type)
 
             # The type of axis in split_op should be int or Variable.
             def test_axis_variable_type():
-                x9 = fluid.layers.data(shape=[4], dtype='float16', name='x9')
-                x10 = fluid.layers.data(shape=[1], dtype='float16', name='x10')
+                x9 = paddle.static.data(
+                    shape=[-1, 4], dtype='float16', name='x9'
+                )
+                x10 = paddle.static.data(
+                    shape=[-1, 1], dtype='float16', name='x10'
+                )
                 paddle.split(x=x9, num_or_sections=2, axis=x10)
 
             self.assertRaises(TypeError, test_axis_variable_type)
 
             # The type of num_or_sections in split_op should be int, tuple or list.
             def test_num_or_sections_type():
-                x6 = fluid.layers.data(shape=[4], dtype='float16', name='x4')
+                x6 = paddle.static.data(
+                    shape=[-1, 4], dtype='float16', name='x4'
+                )
                 paddle.split(x=x6, num_or_sections=2.1, axis=3)
 
             self.assertRaises(TypeError, test_num_or_sections_type)
 
             def test_num_or_sections_type_tensor():
-                x7 = fluid.layers.data(shape=[4], dtype='float16', name='x5')
+                x7 = paddle.static.data(
+                    shape=[-1, 4], dtype='float16', name='x5'
+                )
                 paddle.split(input=x7, num_or_sections=2.1, dim=3)
 
             self.assertRaises(TypeError, test_num_or_sections_type_tensor)
 
             def test_axis_type_tensor():
-                x8 = fluid.layers.data(shape=[4], dtype='float16', name='x6')
+                x8 = paddle.static.data(
+                    shape=[-1, 4], dtype='float16', name='x6'
+                )
                 paddle.split(input=x8, num_or_sections=2, dim=3.2)
 
             self.assertRaises(TypeError, test_axis_type_tensor)
@@ -340,8 +352,12 @@ class TestSplitOpError(unittest.TestCase):
 class API_TestSplit(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data1 = fluid.layers.data('data1', shape=[4, 6, 6], dtype='float64')
-            data2 = fluid.layers.data('data2', shape=[1], dtype='int32')
+            data1 = paddle.static.data(
+                'data1', shape=[-1, 4, 6, 6], dtype='float64'
+            )
+            data1.desc.set_need_check_feed(False)
+            data2 = paddle.static.data('data2', shape=[-1, 1], dtype='int32')
+            data2.desc.set_need_check_feed(False)
             x0, x1, x2 = paddle.split(data1, num_or_sections=3, axis=data2)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -359,7 +375,10 @@ class API_TestSplit(unittest.TestCase):
 class API_TestSplit2(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data1 = fluid.layers.data('data1', shape=[4, 6, 6], dtype='float64')
+            data1 = paddle.static.data(
+                'data1', shape=[-1, 4, 6, 6], dtype='float64'
+            )
+            data1.desc.set_need_check_feed(False)
             x0, x1, x2 = paddle.split(data1, num_or_sections=3, axis=2)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -378,7 +397,7 @@ class API_TestSplit2(unittest.TestCase):
 class API_TestSplit3(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data = fluid.layers.data('data', shape=[-1, 10], dtype='float64')
+            data = paddle.static.data('data', shape=[-1, 10], dtype='float64')
             x0, x1 = paddle.split(data, num_or_sections=(3, 7), axis=1)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -392,8 +411,8 @@ class API_TestSplit3(unittest.TestCase):
 class API_TestSplit4(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data = fluid.layers.data('data', shape=[-1, 10], dtype='float64')
-            index = fluid.layers.data('index', shape=[1], dtype='int32')
+            data = paddle.static.data('data', shape=[-1, 10], dtype='float64')
+            index = paddle.static.data('index', shape=[1], dtype='int32')
             x0, x1 = paddle.split(data, num_or_sections=(3, index), axis=1)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -430,7 +449,7 @@ class API_TestSplit5(unittest.TestCase):
 class API_TestSplit6(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data = fluid.layers.data('data', shape=[-1, 10], dtype='float64')
+            data = paddle.static.data('data', shape=[-1, 10], dtype='float64')
             x0, x1 = paddle.split(data, num_or_sections=[1, 1], axis=0)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)

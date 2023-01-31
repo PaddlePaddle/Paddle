@@ -78,6 +78,7 @@ class TestCompositeSoftmax(unittest.TestCase):
 
     def cal_composite_grad(self, inputs):
         paddle.enable_static()
+        core._set_prim_all_enabled(True)
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
@@ -108,6 +109,7 @@ class TestCompositeSoftmax(unittest.TestCase):
         exe.run(startup_program)
         res = exe.run(main_program, feed={'x': inputs}, fetch_list=[z])
         paddle.disable_static()
+        core._set_prim_all_enabled(False)
         return res
 
     def compare_backward(self):
@@ -139,7 +141,7 @@ class TestCompositeSoftmaxPrimBackward(unittest.TestCase):
     "test composite softmax and prim backward"
 
     def setUp(self):
-        core.set_prim_enabled(True)
+        core._set_prim_backward_enabled(True)
         self.dtypes = ["float32"]
         self.shapes = [[2, 3, 4], [2, 3]]
         self.axes = [-1, 0, 1]

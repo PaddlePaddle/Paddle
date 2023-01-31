@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/roll_grad_kernel.h"
 
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/cpu/roll_kernel_impl.h"
 
 namespace phi {
@@ -28,7 +28,7 @@ void RollGradKernel(const Context& dev_ctx,
                     const std::vector<int64_t>& axis,
                     DenseTensor* x_grad) {
   std::vector<T> out_vec;
-  paddle::framework::TensorToVector(out_grad, dev_ctx, &out_vec);
+  phi::TensorToVector(out_grad, dev_ctx, &out_vec);
 
   auto shifts_data = shifts.GetData();
   size_t nums = shifts_data.size();
@@ -46,7 +46,7 @@ void RollGradKernel(const Context& dev_ctx,
   }
 
   dev_ctx.template Alloc<T>(x_grad);
-  paddle::framework::TensorFromVector(out_vec, dev_ctx, x_grad);
+  phi::TensorFromVector(out_vec, dev_ctx, x_grad);
   x_grad->Resize(out_grad.dims());
 }
 
