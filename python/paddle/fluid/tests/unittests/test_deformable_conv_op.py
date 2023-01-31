@@ -441,6 +441,23 @@ class TestModulatedDeformableConvInvalidInput(unittest.TestCase):
 
         self.assertRaises(ValueError, test_invalid_filter)
 
+        def test_invalid_groups():
+            paddle.enable_static()
+            input = paddle.static.data(
+                name='input_groups', shape=[1, 1, 1, 1], dtype='float32'
+            )
+            offset = paddle.static.data(
+                name='offset_groups', shape=[1, 1], dtype='float32'
+            )
+            mask = paddle.static.data(
+                name='mask_groups', shape=[1], dtype='float32'
+            )
+            paddle.static.nn.deform_conv2d(
+                input, offset, mask, 1, 1, padding=1, groups=0
+            )
+
+        self.assertRaises(ValueError, test_invalid_groups)
+
 
 class TestDeformConv2DAPI(unittest.TestCase):
     def test_api(self):

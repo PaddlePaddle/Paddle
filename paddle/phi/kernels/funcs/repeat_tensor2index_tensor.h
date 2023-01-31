@@ -42,7 +42,7 @@ void RepeatsTensor2IndexTensor(const Context& ctx,
   }
   index->Resize(phi::make_ddim({index_size}));
 
-  paddle::framework::TensorFromVector<RepeatsT>(index_vec, ctx, index);
+  phi::TensorFromVector<RepeatsT>(index_vec, ctx, index);
 }
 }  // namespace funcs
 }  // namespace phi

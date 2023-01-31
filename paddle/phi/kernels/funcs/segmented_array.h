@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/funcs/fast_divmod.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 namespace funcs {
@@ -89,12 +89,11 @@ struct ArraySetterBase {
         ctx.GetPlace(),
         num_bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
-    paddle::memory::Copy(ctx.GetPlace(),
-                         allocation->ptr(),
-                         phi::CPUPlace(),
-                         src,
-                         num_bytes,
-                         ctx.stream());
+    phi::backends::gpu::GpuMemcpyAsync(allocation->ptr(),
+                                       src,
+                                       num_bytes,
+                                       phi::gpuMemcpyHostToDevice,
+                                       ctx.stream());
     return allocation->ptr();
   }
 

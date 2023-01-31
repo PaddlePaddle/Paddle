@@ -179,7 +179,7 @@ class TestFoldOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
 
             def test_input_shape():
-                # input_shpae must be 3-D
+                # input_shape must be 3-D
                 x = paddle.randn(shape=[2, 3, 6, 7], dtype="float32")
                 out = fold(x, output_sizes=[2, 3], kernel_sizes=[2, 2])
 
