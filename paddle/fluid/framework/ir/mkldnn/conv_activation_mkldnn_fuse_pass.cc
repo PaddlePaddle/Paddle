@@ -25,7 +25,7 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void ConvActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
-  auto act_types = phi::funcs::GetSupportedActivations();
+  auto act_types = GetSupportedActivations();
   std::vector<std::string> conv_types = {"fused_conv2d", "conv2d"};
 
   for (auto& act_type : act_types) {
