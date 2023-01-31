@@ -1,34 +1,3 @@
-/***************************************************************************************************
- * Copyright (c) 2017 - 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
- * SPDX-License-Identifier: BSD-3-Clause
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice,
- * this list of conditions and the following disclaimer in the documentation
- * and/or other materials provided with the distribution.
- *
- * 3. Neither the name of the copyright holdvr nor the names of its
- * contributors may be used to endorse or promote products derived from
- * this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- **************************************************************************************************/
-
 #pragma once
 
 #include "cutlass/functional.h"
@@ -36,137 +5,15 @@
 #include "cutlass/gemm/warp/mma_tensor_op_tile_iterator_sm70.h"
 #include "cutlass/gemm/warp/mma_tensor_op_tile_iterator_sm80.h"
 #include "cutlass/matrix_shape.h"
-#include "gemm_kernel_utils.h"
 
-namespace {
-
-static CUTLASS_DEVICE float atomicMaxFloat(float* addr, float value) {
-  // source: https://stackoverflow.com/a/51549250
-  return (value >= 0)
-      ? __int_as_float(atomicMax((int*)addr, __float_as_int(value)))
-      : __uint_as_float(atomicMin((unsigned int*)addr, __float_as_uint(value)));
-}
-} // namespace
-
-/* Iterates on the accumulator and corresponding position on result matrix
-
-(1) Update `mi[r]` to the max value of the row `r`
-(2) In a second iteration do the following:
-    (a) accum   <- exp(accum - mi)
-    (b) m_prime <- exp(m_prime - mi)
-    (c) s_prime <- s_prime * m_prime + sum(accum)
-
-All of this is done on registers, before we store all of this
-on shared memory for the next matmul with Value.
-
-We have multiple implementations, because each configuration has a different way
-of iterating in the accumulators.
+/*
+TensorCores have different accumulator layouts.
+This file provides a class to easily map the accumulator
+i-th element with the corresponding matrix row/col.
 */
 
-template <typename BASE, typename T, typename accum_t, int kWarpSize>
-struct RegisterOps {
-  template <
-      int kQueriesPerBlock,
-      bool kFullColumns,
-      bool kIsFirst,
-      bool kKeepOutputInRF>
-  CUTLASS_DEVICE static void update(
-      typename T::Fragment& frag_o, // output so far
-      typename T::Fragment& frag,
-      cutlass::Array<accum_t, kQueriesPerBlock>& mi,
-      cutlass::Array<accum_t, kQueriesPerBlock>& m_prime,
-      cutlass::Array<accum_t, kQueriesPerBlock>& s_prime,
-      int8_t lane_id,
-      int8_t thread_id,
-      int8_t warp_id,
-      int16_t max_col,
-      typename T::TensorCoord const& tile_offset,
-      float scaling) {
-    // Convert to `accum_t` (rather than double)
-    constexpr float kLog2e = 1.4426950408889634074; // log_2(e) = M_LOG2E
-    if (!kIsFirst) {
-      if (thread_id < kQueriesPerBlock) {
-        m_prime[thread_id] = mi[thread_id];
-      }
-      __syncthreads();
-    }
-
-    auto lane_offset = BASE::get_lane_offset(lane_id, warp_id, tile_offset);
-
-    // First update `mi` to the max per-row
-    {
-      accum_t max;
-      BASE::iterateRows(
-          lane_offset,
-          [&](int accum_m) {
-            max = -cutlass::platform::numeric_limits<accum_t>::infinity();
-          },
-          [&](int accum_m, int accum_n, int idx) {
-            if (kFullColumns || accum_n < max_col) {
-              max = cutlass::fast_max(max, frag[idx]);
-            }
-          },
-          [&](int accum_m) {
-            // Having 4x atomicMax seems faster than reduce within warp
-            // first...
-            atomicMaxFloat(&mi[accum_m], max * scaling);
-          });
-    }
-    frag = cutlass::multiplies<typename T::Fragment>()(scaling * kLog2e, frag);
-
-    // Make sure we all share the update values for `mi`
-    __syncthreads();
-
-    if (thread_id < kQueriesPerBlock) {
-      auto m_prime_exp = exp2f(kLog2e * (m_prime[thread_id] - mi[thread_id]));
-      m_prime[thread_id] = m_prime_exp;
-      s_prime[thread_id] *= m_prime_exp;
-    }
-    __syncthreads(); // Update output fragments
-    if (kKeepOutputInRF && !kIsFirst) {
-      accum_t mp;
-      BASE::iterateRows(
-          lane_offset,
-          [&](int accum_m) { mp = m_prime[accum_m]; },
-          [&](int accum_m, int accum_n, int idx) { frag_o[idx] *= mp; },
-          [&](int accum_m) {});
-      __syncthreads();
-    }
-    // Update accum_m, accum_n, ...
-    {
-      accum_t mi_row, total_row;
-      BASE::iterateRows(
-          lane_offset,
-          [&](int accum_m) { mi_row = kLog2e * mi[accum_m]; },
-          [&](int accum_m, int accum_n, int idx) {
-            frag[idx] = (kFullColumns || accum_n < max_col)
-                ? exp2f(frag[idx] - mi_row)
-                : accum_t(0.0);
-          },
-          [&](int accum_m) {});
-      BASE::iterateRows(
-          lane_offset,
-          [&](int accum_m) { total_row = 0.0; },
-          [&](int accum_m, int accum_n, int idx) { total_row += frag[idx]; },
-          [&](int accum_m) {
-            if (BASE::reduceSameRow(
-                    lane_id, total_row, [](accum_t a, accum_t b) {
-                      return a + b;
-                    })) {
-              atomicAdd(&s_prime[accum_m], total_row);
-            }
-          });
-    }
-  }
-};
-
 template <typename T, typename accum_t, int kWarpSize>
-struct AttentionScalingCoefsUpdaterSm80
-    : RegisterOps<
-          AttentionScalingCoefsUpdaterSm80<T, accum_t, kWarpSize>,
-          T,
-          accum_t,
-          kWarpSize> {
+struct AccumLambdaIteratorSm80 {
   static_assert(
       cutlass::platform::
           is_same<typename T::Layout, cutlass::layout::RowMajor>::value,
@@ -239,12 +86,7 @@ struct AttentionScalingCoefsUpdaterSm80
 };
 
 template <typename T, typename accum_t, int kWarpSize>
-struct AttentionScalingCoefsUpdaterVolta
-    : RegisterOps<
-          AttentionScalingCoefsUpdaterVolta<T, accum_t, kWarpSize>,
-          T,
-          accum_t,
-          kWarpSize> {
+struct AccumLambdaIteratorSm70 {
   static_assert(
       cutlass::platform::
           is_same<typename T::Layout, cutlass::layout::RowMajor>::value,
@@ -357,12 +199,7 @@ struct AttentionScalingCoefsUpdaterVolta
 };
 
 template <typename T, typename accum_t, int kWarpSize>
-struct AttentionScalingCoefsUpdaterSimt
-    : RegisterOps<
-          AttentionScalingCoefsUpdaterSimt<T, accum_t, kWarpSize>,
-          T,
-          accum_t,
-          kWarpSize> {
+struct AccumLambdaIteratorSimt {
   using Policy = typename T::Policy;
   using Iterations = typename T::Iterations;
   using Element = typename T::Element;
@@ -436,11 +273,11 @@ struct AttentionScalingCoefsUpdaterSimt
 };
 
 template <typename T, typename accum_t, int kWarpSize>
-struct DefaultAttentionScalingCoefsUpdater;
+struct DefaultMmaAccumLambdaIterator;
 
 // Simt
 template <typename S, typename P, typename accum_t, int kWarpSize>
-struct DefaultAttentionScalingCoefsUpdater<
+struct DefaultMmaAccumLambdaIterator<
     cutlass::gemm::warp::MmaSimtTileIterator<
         S,
         cutlass::gemm::Operand::kC,
@@ -451,7 +288,7 @@ struct DefaultAttentionScalingCoefsUpdater<
         1>,
     accum_t,
     kWarpSize> {
-  using Iterator = typename cutlass::gemm::warp::MmaSimtTileIterator<
+  using WarpIterator = typename cutlass::gemm::warp::MmaSimtTileIterator<
       S,
       cutlass::gemm::Operand::kC,
       accum_t,
@@ -459,13 +296,12 @@ struct DefaultAttentionScalingCoefsUpdater<
       P,
       1,
       1>;
-  using Updater =
-      AttentionScalingCoefsUpdaterSimt<Iterator, accum_t, kWarpSize>;
+  using Iterator = AccumLambdaIteratorSimt<WarpIterator, accum_t, kWarpSize>;
 };
 
 // TensorOp - Volta
 template <typename S1, typename S2, typename accum_t, int kWarpSize>
-struct DefaultAttentionScalingCoefsUpdater<
+struct DefaultMmaAccumLambdaIterator<
     cutlass::gemm::warp::MmaVoltaTensorOpAccumulatorTileIterator<
         S1,
         accum_t,
@@ -474,15 +310,14 @@ struct DefaultAttentionScalingCoefsUpdater<
         cutlass::MatrixShape<1, 1>>,
     accum_t,
     kWarpSize> {
-  using Iterator =
+  using WarpIterator =
       typename cutlass::gemm::warp::MmaVoltaTensorOpAccumulatorTileIterator<
           S1,
           accum_t,
           cutlass::layout::RowMajor,
           S2,
           cutlass::MatrixShape<1, 1>>;
-  using Updater =
-      AttentionScalingCoefsUpdaterVolta<Iterator, accum_t, kWarpSize>;
+  using Iterator = AccumLambdaIteratorSm70<WarpIterator, accum_t, kWarpSize>;
 };
 
 // TensorOp - Sm75+
@@ -492,7 +327,7 @@ template <
     typename S3,
     typename accum_t,
     int kWarpSize>
-struct DefaultAttentionScalingCoefsUpdater<
+struct DefaultMmaAccumLambdaIterator<
     cutlass::gemm::warp::MmaTensorOpAccumulatorTileIterator<
         S1,
         accum_t,
@@ -501,13 +336,12 @@ struct DefaultAttentionScalingCoefsUpdater<
         S3>,
     accum_t,
     kWarpSize> {
-  using Iterator =
+  using WarpIterator =
       typename cutlass::gemm::warp::MmaTensorOpAccumulatorTileIterator<
           S1,
           accum_t,
           cutlass::layout::RowMajor,
           S2,
           S3>;
-  using Updater =
-      AttentionScalingCoefsUpdaterSm80<Iterator, accum_t, kWarpSize>;
+  using Iterator = AccumLambdaIteratorSm80<WarpIterator, accum_t, kWarpSize>;
 };

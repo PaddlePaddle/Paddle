@@ -1,44 +1,15 @@
-/***************************************************************************************************
- * Copyright (c) 2017 - 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
- * SPDX-License-Identifier: BSD-3-Clause
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice,
- * this list of conditions and the following disclaimer in the documentation
- * and/or other materials provided with the distribution.
- *
- * 3. Neither the name of the copyright holdvr nor the names of its
- * contributors may be used to endorse or promote products derived from
- * this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- **************************************************************************************************/
-
 #include <cmath>
 #include <vector>
 
 #include "cutlass/bfloat16.h"
+#include "cutlass/fast_math.h"
 #include "cutlass/gemm/gemm.h"
 #include "cutlass/layout/matrix.h"
 #include "cutlass/layout/vector.h"
+#include "cutlass/matrix.h"
 #include "cutlass/numeric_types.h"
+#include "cutlass/tensor_ref.h"
 
-#include "attention_scaling_coefs_updater.h"
 #include "cutlass/epilogue/threadblock/default_epilogue_simt.h"
 #include "cutlass/epilogue/threadblock/default_epilogue_tensor_op.h"
 #include "cutlass/epilogue/threadblock/default_epilogue_volta_tensor_op.h"
@@ -54,12 +25,12 @@
 #include "cutlass/platform/platform.h"
 #include "cutlass/transform/threadblock/predicated_tile_iterator.h"
 #include "debug_utils.h"
-#include "epilogue_pipelined.h"
-#include "epilogue_rescale_output.h"
-#include "find_default_mma.h"
+#include "epilogue/epilogue_pipelined.h"
+#include "epilogue/epilogue_rescale_output.h"
+#include "gemm/find_default_mma.h"
+#include "gemm/mma_from_smem.h"
 #include "gemm_kernel_utils.h"
-#include "mma_from_smem.h"
-#include "tile_smem_loader.h"
+#include "transform/tile_smem_loader.h"
 
 #include <inttypes.h>
 
@@ -74,6 +45,12 @@ constexpr int getWarpsPerSm() {
           ? 16
           : 12);
 }
+static CUTLASS_DEVICE float atomicMaxFloat(float* addr, float value) {
+  // source: https://stackoverflow.com/a/51549250
+  return (value >= 0)
+      ? __int_as_float(atomicMax((int*)addr, __float_as_int(value)))
+      : __uint_as_float(atomicMin((unsigned int*)addr, __float_as_uint(value)));
+}
 } // namespace
 
 template <
@@ -85,8 +62,10 @@ template <
     bool isAligned_,
     int kQueriesPerBlock,
     int kKeysPerBlock,
-    bool kSingleValueIteration // = `value.shape[-1] <= kKeysPerBlock`
-    >
+    bool kSingleValueIteration, // = `value.shape[-1] <= kKeysPerBlock`
+    bool kAddMask, 
+    // This is quite faster when mask need broadcast at row axis
+    bool kMaskBroadcastRow = true>
 struct AttentionKernel {
   using scalar_t = scalar_t_;
   using accum_t = float;
@@ -140,25 +119,24 @@ struct AttentionKernel {
     int32_t num_keys;
 
     bool causal;
-    bool add_mask; 
     bool mask_broadcast_row; 
 
     int32_t q_strideM;
     int32_t k_strideM;
     int32_t v_strideM;
-    int32_t mask_strideM;
+    int32_t mask_strideM = 0;
 
     // Everything below is only used in `advance_to_block`
     // and shouldn't use registers
     int32_t q_strideH;
     int32_t k_strideH;
     int32_t v_strideH;
-    int32_t mask_strideH;
+    int32_t mask_strideH = 0;
 
     int64_t q_strideB;
     int64_t k_strideB;
     int64_t v_strideB;
-    int32_t mask_strideB;
+    int32_t mask_strideB = 0;
 
     int32_t num_batches;
     int32_t num_heads;
@@ -166,7 +144,6 @@ struct AttentionKernel {
     CUTLASS_HOST_DEVICE int32_t o_strideM() const {
       return head_dim_value * num_heads;
     }
-
     // Moves pointers to what we should process
     // Returns "false" if there is no work to do
     CUTLASS_DEVICE bool advance_to_block() {
@@ -214,7 +191,6 @@ struct AttentionKernel {
       if (mask_ptr != nullptr) {
         mask_ptr += (batch_id * mask_strideB) + (head_id * mask_strideH);
       }
-
       if (output_accum_ptr != nullptr) {
         output_accum_ptr += int64_t(q_start + query_start) * o_strideM() +
             head_id * head_dim_value;
@@ -240,8 +216,8 @@ struct AttentionKernel {
       query_ptr = warp_uniform(query_ptr);
       key_ptr = warp_uniform(key_ptr);
       value_ptr = warp_uniform(value_ptr);
-      output_ptr = warp_uniform(output_ptr);
       mask_ptr = warp_uniform(mask_ptr);
+      output_ptr = warp_uniform(output_ptr);
       output_accum_ptr = warp_uniform(output_accum_ptr);
       logsumexp_ptr = warp_uniform(logsumexp_ptr);
       num_queries = warp_uniform(num_queries);
@@ -311,17 +287,17 @@ struct AttentionKernel {
     using IteratorA = typename DefaultMma::IteratorA;
     using IteratorB = typename DefaultMma::IteratorB;
     using Mma = typename DefaultMma::ThreadblockMma;
-    using ScalingCoefsUpdater = typename DefaultAttentionScalingCoefsUpdater<
+    using AccumLambdaIterator = typename DefaultMmaAccumLambdaIterator<
         typename Mma::Operator::IteratorC,
         accum_t,
-        kWarpSize>::Updater;
+        kWarpSize>::Iterator;
     static_assert(
         MmaCore::WarpCount::kM * MmaCore::WarpCount::kN *
                 MmaCore::WarpCount::kK ==
             kNumWarpsPerBlock,
         "");
 
-
+    // used for efficient load of mask_ tile Bij from global to shared memory
     using MaskLoader = TileSmemLoader<
         scalar_t,
         cutlass::MatrixShape<kQueriesPerBlock, kKeysPerBlock>,
@@ -390,7 +366,8 @@ struct AttentionKernel {
     using DefaultMmaFromSmem =
         typename cutlass::gemm::threadblock::DefaultMmaFromSharedMemory<
             typename DefaultGemm::Mma,
-            typename MM0::AccumulatorSharedStorage>;
+            typename MM0::AccumulatorSharedStorage,
+            false>; // kScaleOperandA
     using Mma = typename DefaultMmaFromSmem::Mma;
     using IteratorB = typename Mma::IteratorB;
     using WarpCount = typename Mma::WarpCount;
@@ -427,8 +404,10 @@ struct AttentionKernel {
   struct SharedStorageEpilogueAtEnd : ScalingCoefs {
     struct SharedStorageAfterMM0 {
       // Everything here might be overwritten during MM0
-      typename MM0::AccumulatorSharedStorage si;
-      typename MM0::MaskLoader::SmemTile mask;
+      union {
+        typename MM0::MaskLoader::SmemTile mask;
+        typename MM0::AccumulatorSharedStorage si;
+      };
       typename MM1::SharedStorageMM1 mm1;
     };
 
@@ -447,8 +426,10 @@ struct AttentionKernel {
   struct SharedStorageEpilogueInLoop : ScalingCoefs {
     struct SharedStorageAfterMM0 {
       // Everything here might be overwritten during MM0
-      typename MM0::AccumulatorSharedStorage si;
-      typename MM0::MaskLoader::SmemTile mask;
+      union {
+        typename MM0::MaskLoader::SmemTile mask;
+        typename MM0::AccumulatorSharedStorage si;
+      };
       typename MM1::SharedStorageMM1 mm1;
       typename MM1::DefaultEpilogue::SharedStorage epilogue;
     };
@@ -473,6 +454,18 @@ struct AttentionKernel {
     CHECK_ALIGNED_PTR(p.query_ptr, kAlignmentQ);
     CHECK_ALIGNED_PTR(p.key_ptr, kAlignmentK);
     CHECK_ALIGNED_PTR(p.value_ptr, kAlignmentV);
+    if (p.mask_ptr != nullptr) {
+      CHECK_ALIGNED_PTR(p.mask_ptr, kAlignmentQ);
+      XFORMERS_CHECK(
+          p.mask_strideB % kAlignmentQ == 0,
+          "attn_mask is not correctly aligned");
+      XFORMERS_CHECK(
+          p.mask_strideH % kAlignmentQ == 0,
+          "attn_mask is not correctly aligned");
+      XFORMERS_CHECK(
+          p.mask_strideM % kAlignmentQ == 0,
+          "attn_mask is not correctly aligned");
+    }
     XFORMERS_CHECK(
         p.q_strideM % kAlignmentQ == 0, "query is not correctly aligned");
     XFORMERS_CHECK(
@@ -497,7 +490,7 @@ struct AttentionKernel {
     SharedStorage& shared_storage = *((SharedStorage*)smem_buffer);
     auto& m_prime = shared_storage.m_prime;
     auto& s_prime = shared_storage.s_prime;
-    [[maybe_unused]] auto& si = shared_storage.after_mm0.si;
+    auto& si = shared_storage.after_mm0.si;
     auto& mi = shared_storage.mi;
     const uint32_t query_start = blockIdx.x * kQueriesPerBlock;
 
@@ -626,26 +619,24 @@ struct AttentionKernel {
               (tb_tile_offset.n() * MM0::Mma::WarpCount::kN) +
                   (my_warp_id / MM0::Mma::WarpCount::kM)};
 
+      if (kAddMask) {
+        accum =
+            cutlass::multiplies<typename MM0::Mma::FragmentC>()(p.scale, accum);
+      }
 
-      // multiply by scaling factor
-      // problem is here!
-      accum = cutlass::multiplies<typename MM0::Mma::FragmentC>()(p.scale, accum);
+      int32_t mask_iter_m = kMaskBroadcastRow ? 1 : problem_size_0_m; 
 
       // apply attention mask if applicable
-      if (p.mask_ptr != nullptr) {
-        int32_t mask_iter_m = problem_size_0_m;
-        if (p.mask_broadcast_row) {
-          mask_iter_m = 1;
-        }
-
+      if (kAddMask) {
         // load mask tile Bij into shared memory
         typename MM0::MaskLoader::GmemTileIterator mask_iter(
-            {cutlass::layout::RowMajor(p.mask_strideM)},
-            // attn_mask_pointer points to matrix of size (n_queries, n_keys)
-            // for the relevant batch_id and head_id
-            p.mask_ptr + query_start * p.mask_strideM + iter_key_start,
-            {mask_iter_m, problem_size_0_n},
-            thread_id());
+          {cutlass::layout::RowMajor(p.mask_strideM)},
+          // attn_mask_pointer points to matrix of size (n_queries, n_keys)
+          // for the relevant batch_id and head_id
+          p.mask_ptr + query_start * p.mask_strideM + iter_key_start,
+          {mask_iter_m, problem_size_0_n},
+          thread_id());
+
         cutlass::TensorRef<scalar_t, cutlass::layout::RowMajor> mask_tensor_ref(
             shared_storage.after_mm0.mask.data(),
             cutlass::layout::RowMajor(MM0::ThreadblockShape::kN));
@@ -654,14 +645,15 @@ struct AttentionKernel {
         MM0::MaskLoader::load(mask_iter, smem_tile_iter);
 
         // Pij += Bij, Pij is in register fragment and Bij is in shared memory
-        auto lane_offset = MM0::ScalingCoefsUpdater::get_lane_offset(
+        auto lane_offset = MM0::AccumLambdaIterator::get_lane_offset(
             lane_id(), warp_id(), iteratorC_tile_offset);
-        MM0::ScalingCoefsUpdater::iterateRows(
+      
+        MM0::AccumLambdaIterator::iterateRows(
             lane_offset,
             [&](int accum_m) {},
             [&](int accum_m, int accum_n, int idx) {
               if (accum_m < problem_size_0_m && accum_n < problem_size_0_n) {
-                if (p.mask_broadcast_row) {
+                if(kMaskBroadcastRow){
                   accum[idx] += mask_tensor_ref.at({0, accum_n});
                 } else {
                   accum[idx] += mask_tensor_ref.at({accum_m, accum_n});
@@ -674,10 +666,10 @@ struct AttentionKernel {
       // Mask out last if causal
       if (p.causal && p.num_keys - iter_key_start <= kKeysPerBlock) {
         auto query_start = blockIdx.x * kQueriesPerBlock;
-        auto lane_offset = MM0::ScalingCoefsUpdater::get_lane_offset(
+        auto lane_offset = MM0::AccumLambdaIterator::get_lane_offset(
             lane_id(), warp_id(), iteratorC_tile_offset);
         int32_t last_col;
-        MM0::ScalingCoefsUpdater::iterateRows(
+        MM0::AccumLambdaIterator::iterateRows(
             lane_offset,
             [&](int accum_m) {
               last_col = query_start + accum_m - iter_key_start;
@@ -696,11 +688,9 @@ struct AttentionKernel {
                           kFullColumns,
                           ([&] {
                             // Update `mi` from accum stored in registers
-                            // Also updates `accum` with accum[i] <-
-                            // exp(accum[i] * scale
-                            // - mi)
-                            MM0::ScalingCoefsUpdater::update<
-                                kQueriesPerBlock,
+                            // Also does accum[i] <- exp(accum[i] - mi)
+                            iterative_softmax<
+                                typename MM0::Mma::Operator::IteratorC,
                                 kFullColumns,
                                 kIsFirst,
                                 kKeepOutputInRF>(
@@ -714,7 +704,8 @@ struct AttentionKernel {
                                 warp_id(),
                                 p.num_keys - iter_key_start,
                                 iteratorC_tile_offset,
-                                1.0f);
+                                // (p.mask_ptr != nullptr) ? 1.0f : p.scale);
+                                kAddMask ? 1.0f : p.scale);
                           }));
                     }));
 
@@ -901,6 +892,117 @@ struct AttentionKernel {
     }
   }
 
+  template <
+      typename WarpIteratorC,
+      bool kFullColumns,
+      bool kIsFirst,
+      bool kKeepOutputInRF>
+  CUTLASS_DEVICE static void iterative_softmax(
+      typename WarpIteratorC::Fragment& frag_o, // output so far
+      typename WarpIteratorC::Fragment& frag,
+      cutlass::Array<accum_t, kQueriesPerBlock>& mi,
+      cutlass::Array<accum_t, kQueriesPerBlock>& m_prime,
+      cutlass::Array<accum_t, kQueriesPerBlock>& s_prime,
+      int8_t lane_id,
+      int8_t thread_id,
+      int8_t warp_id,
+      int16_t max_col,
+      typename WarpIteratorC::TensorCoord const& tile_offset, 
+      float scaling) {
+    /* Iterates on the accumulator and corresponding position on result matrix
+
+    (1) Update `mi[r]` to the max value of the row `r`
+    (2) In a second iteration do the following:
+        (a) accum   <- exp(accum - mi)
+        (b) m_prime <- exp(m_prime - mi)
+        (c) s_prime <- s_prime * m_prime + sum(accum)
+
+    All of this is done on registers, before we store all of this
+    on shared memory for the next matmul with Value.
+    */
+    using Fragment = typename WarpIteratorC::Fragment;
+    using LambdaIterator = typename DefaultMmaAccumLambdaIterator<
+        WarpIteratorC,
+        accum_t,
+        kWarpSize>::Iterator;
+    // Convert to `accum_t` (rather than double)
+    constexpr float kLog2e = 1.4426950408889634074; // log_2(e) = M_LOG2E
+    if (!kIsFirst) {
+      if (thread_id < kQueriesPerBlock) {
+        m_prime[thread_id] = mi[thread_id];
+      }
+      __syncthreads();
+    }
+
+    auto lane_offset =
+        LambdaIterator::get_lane_offset(lane_id, warp_id, tile_offset);
+
+    // First update `mi` to the max per-row
+    {
+      accum_t max;
+      LambdaIterator::iterateRows(
+          lane_offset,
+          [&](int accum_m) {
+            max = -cutlass::platform::numeric_limits<accum_t>::infinity();
+          },
+          [&](int accum_m, int accum_n, int idx) {
+            if (kFullColumns || accum_n < max_col) {
+              max = cutlass::fast_max(max, frag[idx]);
+            }
+          },
+          [&](int accum_m) {
+            // Having 4x atomicMax seems faster than reduce within warp
+            // first...
+            atomicMaxFloat(&mi[accum_m], max * scaling);
+          });
+    }
+    frag = cutlass::multiplies<Fragment>()(scaling * kLog2e, frag);
+
+    // Make sure we all share the update values for `mi`
+    __syncthreads();
+
+    if (thread_id < kQueriesPerBlock) {
+      auto m_prime_exp = exp2f(kLog2e * (m_prime[thread_id] - mi[thread_id]));
+      m_prime[thread_id] = m_prime_exp;
+      s_prime[thread_id] *= m_prime_exp;
+    }
+    __syncthreads(); // Update output fragments
+    if (kKeepOutputInRF && !kIsFirst) {
+      accum_t mp;
+      LambdaIterator::iterateRows(
+          lane_offset,
+          [&](int accum_m) { mp = m_prime[accum_m]; },
+          [&](int accum_m, int accum_n, int idx) { frag_o[idx] *= mp; },
+          [&](int accum_m) {});
+      __syncthreads();
+    }
+    // Update accum_m, accum_n, ...
+    {
+      accum_t mi_row, total_row;
+      LambdaIterator::iterateRows(
+          lane_offset,
+          [&](int accum_m) { mi_row = kLog2e * mi[accum_m]; },
+          [&](int accum_m, int accum_n, int idx) {
+            frag[idx] = (kFullColumns || accum_n < max_col)
+                ? exp2f(frag[idx] - mi_row)
+                : accum_t(0.0);
+          },
+          [&](int accum_m) {});
+      LambdaIterator::iterateRows(
+          lane_offset,
+          [&](int accum_m) { total_row = 0.0; },
+          [&](int accum_m, int accum_n, int idx) { total_row += frag[idx]; },
+          [&](int accum_m) {
+            if (LambdaIterator::reduceSameRow(
+                    lane_id, total_row, [](accum_t a, accum_t b) {
+                      return a + b;
+                    })) {
+              atomicAdd(&s_prime[accum_m], total_row);
+            }
+          });
+    }
+  }
+
   static CUTLASS_DEVICE int8_t lane_id() {
     return threadIdx.x;
   }
@@ -920,3 +1022,7 @@ __global__ void __launch_bounds__(AK::kNumThreads, AK::kMinBlocksPerSm)
   }
   AK::attention_kernel(p);
 }
+
+template <typename AK>
+__global__ void __launch_bounds__(AK::kNumThreads, AK::kMinBlocksPerSm)
+    attention_kernel_batched(typename AK::Params params);

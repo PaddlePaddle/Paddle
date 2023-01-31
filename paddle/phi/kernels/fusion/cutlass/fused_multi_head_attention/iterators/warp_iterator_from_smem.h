@@ -34,10 +34,12 @@
    "cutlass/gemm/warp/mma_tensor_op_tile_access_iterator.h" Loads tiles of GEMM
    operands from a RowMajor shared-memory layout into registers to use by A100
    TensorCores.
+
     The difference with "mma_tensor_op_tile_access_iterator.h" is that:
     (1) We use "ldmatrix" to load tiles, rather than manual loads (slightly
    faster) (2) We support to transpose the operand (eg read `A.transpose()` when
    the shared memory holds `A`)
+
     This is only implemented for the specific shapes that are interesting for us
 */
 #pragma once

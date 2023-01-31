@@ -1,34 +1,3 @@
-/***************************************************************************************************
- * Copyright (c) 2017 - 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
- * SPDX-License-Identifier: BSD-3-Clause
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice,
- * this list of conditions and the following disclaimer in the documentation
- * and/or other materials provided with the distribution.
- *
- * 3. Neither the name of the copyright holdvr nor the names of its
- * contributors may be used to endorse or promote products derived from
- * this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- **************************************************************************************************/
-
 #pragma once
 #include <float.h>
 #include <stdio.h>
@@ -47,19 +16,52 @@
   }
 
 // Print on the first thread of the first block
-#if 0
+#if 1
 #define PRINT_WARP_ID 0
 #define PRINT_LANE_ID 0
 #define PRINT_T0_L0(msg, ...)                                         \
   if (blockIdx.x == 0 && blockIdx.y == 0 && blockIdx.z == 0 &&        \
       threadIdx.x == PRINT_LANE_ID && threadIdx.y == PRINT_WARP_ID && \
       threadIdx.z == 0) {                                             \
-    printf(msg "\n", __VA_ARGS__);                                    \
+    printf(msg "\n", ##__VA_ARGS__);                                  \
   }
+#define PRINT_TX_LX(msg, ...)                                                 \
+  for (int bx = 0; bx < gridDim.x; ++bx) {                                    \
+    for (int by = 0; by < gridDim.y; ++by) {                                  \
+      for (int bz = 0; bz < gridDim.z; ++bz) {                                \
+        for (int tx = 0; tx < blockDim.x; ++tx) {                             \
+          for (int ty = 0; ty < blockDim.y; ++ty) {                           \
+            for (int tz = 0; tz < blockDim.z; ++tz) {                         \
+              __syncthreads();                                                \
+              if (blockIdx.x == bx && blockIdx.y == by && blockIdx.z == bz && \
+                  threadIdx.x == tx && threadIdx.y == ty &&                   \
+                  threadIdx.z == tz) {                                        \
+                printf(                                                       \
+                    "[%d,%d,%d][%d,%d,%d]" msg "\n",                          \
+                    bx,                                                       \
+                    by,                                                       \
+                    bz,                                                       \
+                    tx,                                                       \
+                    ty,                                                       \
+                    tz,                                                       \
+                    ##__VA_ARGS__);                                           \
+              }                                                               \
+            }                                                                 \
+          }                                                                   \
+        }                                                                     \
+      }                                                                       \
+    }                                                                         \
+  }
+#else
+#define PRINT_T0_L0
+#define PRINT_TX_LX
+#endif
+
 struct __string_view {
   char const* data;
   std::size_t size;
 };
+#if __cplusplus >= 201402L
 template <class T>
 constexpr __string_view __get_type_name() {
   char const* p = __PRETTY_FUNCTION__;
@@ -83,7 +85,10 @@ constexpr __string_view __get_type_name() {
   return {};
 }
 #else
-#define PRINT_T0_L0
+template <class T>
+constexpr __string_view __get_type_name() {
+  return {"unsupported", 11};
+}
 #endif
 
 // Print a given array
@@ -157,3 +162,36 @@ constexpr __string_view __get_type_name() {
       int(ps.m()),                              \
       int(ps.n()),                              \
       int(ps.k()))
+
+template <typename LambdaIterator, typename LaneOffsetT, typename AccumT>
+CUTLASS_DEVICE void print_warp_accum(
+    AccumT accum,
+    LaneOffsetT lane_offset,
+    int32_t num_rows,
+    int32_t num_cols) {
+  bool is_main = blockIdx.x == 0 && blockIdx.y == 0 && blockIdx.z == 0 &&
+      threadIdx.x == 0 && threadIdx.y == 0 && threadIdx.z == 0;
+  for (int row = 0; row < num_rows; ++row) {
+    for (int col = 0; col < num_cols; ++col) {
+      if (col % 32 == 0) {
+        if (is_main) {
+          printf("\nmat[%3d, %3d:%3d]", row, col, col + 32);
+        }
+        __syncthreads();
+      }
+      LambdaIterator::iterateRows(
+          lane_offset,
+          [&](int accum_m) {},
+          [&](int accum_m, int accum_n, int idx) {
+            if (row == accum_m && col == accum_n) {
+              printf(" %6.1f", float(accum[idx]));
+            }
+          },
+          [&](int accum_m) {});
+      __syncthreads();
+    }
+    if (is_main) {
+      printf("\n");
+    }
+  }
+}

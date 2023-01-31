@@ -83,7 +83,9 @@ template <typename T,
           bool IsAligned,
           int QueriesPerBlock,
           int KeysPerBlock,
-          bool SingleValueIteration>
+          bool SingleValueIteration, 
+          bool AddMask, 
+          bool MaskBroadcastRow>
 void LaunchMultiHeadAttentionKernel(LaunchParams params,
                                     const phi::GPUContext& ctx) {
   using Attention = AttentionKernel<T,
@@ -91,7 +93,9 @@ void LaunchMultiHeadAttentionKernel(LaunchParams params,
                                     IsAligned,
                                     QueriesPerBlock,
                                     KeysPerBlock,
-                                    SingleValueIteration>;
+                                    SingleValueIteration, 
+                                    AddMask, 
+                                    MaskBroadcastRow>;
 
   typename Attention::Params p;
   {  // set parameters
@@ -179,15 +183,19 @@ template <typename T,
           typename ArchTag,
           bool IsAligned,
           int QueriesPerBlock,
-          int KeysPerBlock>
-void DispatchFMHASingleValueIteration(LaunchParams params,
-                                      const phi::GPUContext& ctx) {
-  if (params.value_head_size <= KeysPerBlock) {
+          int KeysPerBlock, 
+          bool SingleValueIteration, 
+          bool AddMask>
+void DispatchFMHAMaskBroadcastRow(LaunchParams params,
+                                  const phi::GPUContext& ctx) {
+  if (params.mask_broadcast_row) {
     LaunchMultiHeadAttentionKernel<T,
                                    ArchTag,
                                    IsAligned,
                                    QueriesPerBlock,
                                    KeysPerBlock,
+                                   SingleValueIteration, 
+                                   AddMask, 
                                    true>(params, ctx);
   } else {
     LaunchMultiHeadAttentionKernel<T,
@@ -195,7 +203,60 @@ void DispatchFMHASingleValueIteration(LaunchParams params,
                                    IsAligned,
                                    QueriesPerBlock,
                                    KeysPerBlock,
+                                   SingleValueIteration,
+                                   AddMask, 
                                    false>(params, ctx);
+  }
+}
+
+template <typename T,
+          typename ArchTag,
+          bool IsAligned,
+          int QueriesPerBlock,
+          int KeysPerBlock, 
+          bool SingleValueIteration>
+void DispatchFMHAAddMask(LaunchParams params,
+                         const phi::GPUContext& ctx) {
+  if (params.mask_ptr != nullptr) {
+    DispatchFMHAMaskBroadcastRow<T,
+                                   ArchTag,
+                                   IsAligned,
+                                   QueriesPerBlock,
+                                   KeysPerBlock,
+                                   SingleValueIteration, 
+                                   true>(params, ctx);
+  } else {
+    DispatchFMHAMaskBroadcastRow<T,
+                                   ArchTag,
+                                   IsAligned,
+                                   QueriesPerBlock,
+                                   KeysPerBlock,
+                                   SingleValueIteration, 
+                                   false>(params, ctx);
+  }
+}
+
+template <typename T,
+          typename ArchTag,
+          bool IsAligned,
+          int QueriesPerBlock,
+          int KeysPerBlock>
+void DispatchFMHASingleValueIteration(LaunchParams params,
+                                      const phi::GPUContext& ctx) {
+  if (params.value_head_size <= KeysPerBlock) {
+    DispatchFMHAAddMask<T,
+                        ArchTag,
+                        IsAligned,
+                        QueriesPerBlock,
+                        KeysPerBlock,
+                        true>(params, ctx);
+  } else {
+    DispatchFMHAAddMask<T,
+                        ArchTag,
+                        IsAligned,
+                        QueriesPerBlock,
+                        KeysPerBlock,
+                        false>(params, ctx);
   }
 }
 
