@@ -125,7 +125,7 @@ void MatMulFunctionImplWithCuBlas(
     // MatMul's case 0  =>  vector * vector
     Out->Resize({1});
     dev_ctx.template Alloc<T>(Out);
-    VLOG(3) << "MatMul's case 0";
+    VLOG(3) << "MatMul's case 1";
     blas.GEMM(CblasNoTrans,
               CblasTrans,
               1,
@@ -175,7 +175,7 @@ void MatMulFunctionImplWithCuBlas(
     dev_ctx.template Alloc<T>(Out);
     if (trans_y) {
       const int M = Y.numel() / N;
-      VLOG(3) << "MatMul's case 1";
+      VLOG(3) << "MatMul's case 2";
       blas.GEMV(false,
                 M,
                 N,
@@ -188,7 +188,7 @@ void MatMulFunctionImplWithCuBlas(
       const int M = y_dims[y_ndim - 1];
       const int batch_size = Y.numel() / (M * N);
       if (batch_size == 1) {
-        VLOG(3) << "MatMul's case 2";
+        VLOG(3) << "MatMul's case 3";
         blas.GEMV(true,
                   N,
                   M,
@@ -198,7 +198,7 @@ void MatMulFunctionImplWithCuBlas(
                   static_cast<T>(flag),
                   dev_ctx.template Alloc<T>(Out));
       } else {
-        VLOG(3) << "MatMul's case 3";
+        VLOG(3) << "MatMul's case 4";
         blas.BatchedGEMM(CblasTrans,
                          CblasNoTrans,
                          M,
@@ -256,7 +256,7 @@ void MatMulFunctionImplWithCuBlas(
       const int M = x_dims[x_ndim - 1];
       const int batch_size = X.numel() / (M * N);
       if (batch_size == 1) {
-        VLOG(3) << "MatMul's case 4";
+        VLOG(3) << "MatMul's case 5";
         blas.GEMV(true,
                   N,
                   M,
@@ -266,7 +266,7 @@ void MatMulFunctionImplWithCuBlas(
                   static_cast<T>(flag),
                   dev_ctx.template Alloc<T>(Out));
       } else {
-        VLOG(3) << "MatMul's case 5";
+        VLOG(3) << "MatMul's case 6";
         blas.BatchedGEMM(CblasTrans,
                          CblasNoTrans,
                          M,
@@ -283,7 +283,7 @@ void MatMulFunctionImplWithCuBlas(
       }
     } else {
       const int M = X.numel() / N;
-      VLOG(3) << "MatMul's case 6";
+      VLOG(3) << "MatMul's case 7";
       blas.GEMV(false,
                 M,
                 N,
@@ -364,7 +364,7 @@ void MatMulFunctionImplWithCuBlas(
                       std::multiplies<std::int64_t>());
   if (out_batch_size == 0) return;
   if (x_batch_size == 1 && y_batch_size == 1) {
-    VLOG(3) << "MatMul's case 7";
+    VLOG(3) << "MatMul's case 8";
     blas.GEMM(trans_x ? CblasTrans : CblasNoTrans,
               trans_y ? CblasTrans : CblasNoTrans,
               M,
@@ -377,7 +377,7 @@ void MatMulFunctionImplWithCuBlas(
               dev_ctx.template Alloc<T>(Out));
   } else if (x_batch_size == 1) {
     if (M == 1 && trans_y) {
-      VLOG(3) << "MatMul's case 8";
+      VLOG(3) << "MatMul's case 9";
       blas.GEMV(false,
                 y_batch_size * N,
                 K,
@@ -387,7 +387,7 @@ void MatMulFunctionImplWithCuBlas(
                 static_cast<T>(flag),
                 dev_ctx.template Alloc<T>(Out));
     } else {
-      VLOG(3) << "MatMul's case 9";
+      VLOG(3) << "MatMul's case 10";
       blas.BatchedGEMM(trans_x ? CblasTrans : CblasNoTrans,
                        trans_y ? CblasTrans : CblasNoTrans,
                        M,
@@ -404,7 +404,7 @@ void MatMulFunctionImplWithCuBlas(
     }
   } else if (y_batch_size == 1) {
     if (!trans_x) {
-      VLOG(3) << "MatMul's case 10";
+      VLOG(3) << "MatMul's case 11";
       blas.GEMM(CblasNoTrans,
                 trans_y ? CblasTrans : CblasNoTrans,
                 x_batch_size * M,
@@ -416,7 +416,7 @@ void MatMulFunctionImplWithCuBlas(
                 static_cast<T>(flag),
                 dev_ctx.template Alloc<T>(Out));
     } else {
-      VLOG(3) << "MatMul's case 11";
+      VLOG(3) << "MatMul's case 12";
       blas.BatchedGEMM(CblasTrans,
                        trans_y ? CblasTrans : CblasNoTrans,
                        M,
@@ -432,7 +432,7 @@ void MatMulFunctionImplWithCuBlas(
                        0);
     }
   } else if (!is_broadcast_dims) {
-    VLOG(3) << "MatMul's case 12";
+    VLOG(3) << "MatMul's case 13";
     blas.BatchedGEMM(trans_x ? CblasTrans : CblasNoTrans,
                      trans_y ? CblasTrans : CblasNoTrans,
                      M,
@@ -464,7 +464,7 @@ void MatMulFunctionImplWithCuBlas(
       out_ptr[i] = dev_ctx.template Alloc<T>(Out) + i * M * N;
       IndexIncreaseFromDims(batch_dim, out_broadcast_dims.data(), index.data());
     }
-    VLOG(3) << "MatMul's case 13";
+    VLOG(3) << "MatMul's case 14";
     blas.BatchedGEMM(trans_x ? CblasTrans : CblasNoTrans,
                      trans_y ? CblasTrans : CblasNoTrans,
                      M,
@@ -517,7 +517,7 @@ void MatMulFunctionImplWithCublasLt(
     // MatMul's case 0  =>  vector * vector
     Out->Resize({1});
     dev_ctx.template Alloc<T>(Out);
-    VLOG(3) << "MatMul's case 0";
+    VLOG(3) << "MatMul's case 1";
     blaslt::Run(dev_ctx,
                 y_data,
                 x_data,
@@ -567,7 +567,7 @@ void MatMulFunctionImplWithCublasLt(
     dev_ctx.template Alloc<T>(Out);
     if (trans_y) {
       const int M = Y.numel() / N;
-      VLOG(3) << "MatMul's case 1";
+      VLOG(3) << "MatMul's case 2";
       blaslt::Run(dev_ctx,
                   y_data,
                   x_data,
@@ -582,7 +582,7 @@ void MatMulFunctionImplWithCublasLt(
       const int M = y_dims[y_ndim - 1];
       const int batch_size = Y.numel() / (M * N);
       if (batch_size == 1) {
-        VLOG(3) << "MatMul's case 2";
+        VLOG(3) << "MatMul's case 3";
         blaslt::Run(dev_ctx,
                     y_data,
                     x_data,
@@ -594,7 +594,7 @@ void MatMulFunctionImplWithCublasLt(
                     false,
                     matmul_key);
       } else {
-        VLOG(3) << "MatMul's case 3";
+        VLOG(3) << "MatMul's case 4";
         blaslt::RunWithBatch(dev_ctx,
                              y_data,
                              x_data,
@@ -653,7 +653,7 @@ void MatMulFunctionImplWithCublasLt(
       const int M = x_dims[x_ndim - 1];
       const int batch_size = X.numel() / (M * N);
       if (batch_size == 1) {
-        VLOG(3) << "MatMul's case 4";
+        VLOG(3) << "MatMul's case 5";
         blaslt::Run(dev_ctx,
                     x_data,
                     y_data,
@@ -665,7 +665,7 @@ void MatMulFunctionImplWithCublasLt(
                     false,
                     matmul_key);
       } else {
-        VLOG(3) << "MatMul's case 5";
+        VLOG(3) << "MatMul's case 6";
         blaslt::RunWithBatch(dev_ctx,
                              x_data,
                              y_data,
@@ -683,7 +683,7 @@ void MatMulFunctionImplWithCublasLt(
       }
     } else {
       const int M = X.numel() / N;
-      VLOG(3) << "MatMul's case 6";
+      VLOG(3) << "MatMul's case 7";
       blaslt::Run(dev_ctx,
                   x_data,
                   y_data,
@@ -766,7 +766,7 @@ void MatMulFunctionImplWithCublasLt(
                       std::multiplies<std::int64_t>());
   if (out_batch_size == 0) return;
   if (x_batch_size == 1 && y_batch_size == 1) {
-    VLOG(3) << "MatMul's case 7";
+    VLOG(3) << "MatMul's case 8";
     blaslt::Run(dev_ctx,
                 x_data,
                 y_data,
@@ -779,7 +779,7 @@ void MatMulFunctionImplWithCublasLt(
                 matmul_key);
   } else if (x_batch_size == 1) {
     if (M == 1 && trans_y) {
-      VLOG(3) << "MatMul's case 8";
+      VLOG(3) << "MatMul's case 9";
       blaslt::Run(dev_ctx,
                   y_data,
                   x_data,
@@ -791,7 +791,7 @@ void MatMulFunctionImplWithCublasLt(
                   false,
                   matmul_key);
     } else {
-      VLOG(3) << "MatMul's case 9";
+      VLOG(3) << "MatMul's case 10";
       blaslt::RunWithBatch(dev_ctx,
                            x_data,
                            y_data,
@@ -809,7 +809,7 @@ void MatMulFunctionImplWithCublasLt(
     }
   } else if (y_batch_size == 1) {
     if (!trans_x) {
-      VLOG(3) << "MatMul's case 10";
+      VLOG(3) << "MatMul's case 11";
       blaslt::Run(dev_ctx,
                   x_data,
                   y_data,
@@ -821,7 +821,7 @@ void MatMulFunctionImplWithCublasLt(
                   trans_y,
                   matmul_key);
     } else {
-      VLOG(3) << "MatMul's case 11";
+      VLOG(3) << "MatMul's case 12";
       blaslt::RunWithBatch(dev_ctx,
                            x_data,
                            y_data,
@@ -838,7 +838,7 @@ void MatMulFunctionImplWithCublasLt(
                            matmul_key);
     }
   } else if (!is_broadcast_dims) {
-    VLOG(3) << "MatMul's case 12";
+    VLOG(3) << "MatMul's case 13";
     blaslt::RunWithBatch(dev_ctx,
                          x_data,
                          y_data,
@@ -871,7 +871,7 @@ void MatMulFunctionImplWithCublasLt(
       out_ptr[i] = dev_ctx.template Alloc<T>(Out) + i * M * N;
       IndexIncreaseFromDims(batch_dim, out_broadcast_dims.data(), index.data());
     }
-    VLOG(3) << "MatMul's case 13";
+    VLOG(3) << "MatMul's case 14";
     blaslt::RunWithBatch(dev_ctx,
                          x_ptr.data(),
                          y_ptr.data(),
