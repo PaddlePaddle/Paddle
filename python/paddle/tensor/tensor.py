@@ -12,4 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define the basic tensor classes
+"""
+The basic tensor classes
+"""
+
+from .. import fluid
+
+if fluid.framework.global_var._in_eager_mode_:
+    Tensor = fluid.core.eager.Tensor
+else:
+    from .framework import VarBase as Tensor
+
+Tensor.__qualname__ = 'Tensor'

@@ -24,6 +24,7 @@ except ImportError:
     )
 
 from .batch import batch  # noqa: F401
+from .tensor.tensor import Tensor
 from .framework import monkey_patch_variable
 from .framework import monkey_patch_math_varbase
 
@@ -55,12 +56,6 @@ from .framework.dtype import bool  # noqa: F401
 from .framework.dtype import complex64  # noqa: F401
 from .framework.dtype import complex128  # noqa: F401
 
-if fluid.framework.global_var._in_eager_mode_:
-    Tensor = framework.core.eager.Tensor
-else:
-    from .framework import VarBase as Tensor  # noqa: F401
-
-Tensor.__qualname__ = 'Tensor'  # noqa: F401
 import paddle.distributed  # noqa: F401
 import paddle.sysconfig  # noqa: F401
 import paddle.distribution  # noqa: F401

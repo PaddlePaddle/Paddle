@@ -15,21 +15,14 @@
 # TODO: define logic functions of a tensor
 
 import paddle
-
-from ..fluid.data_feeder import check_type, check_variable_and_dtype
-from ..fluid.framework import global_var
-from ..static import Variable
-from .layer_function_generator import templatedoc
-
-if global_var._in_eager_mode_:
-    Tensor = paddle.fluid.framework.core.eager.Tensor
-else:
-    from ..framework import VarBase as Tensor
-
 from paddle import _C_ops
 from paddle.tensor.creation import full
 
+from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..framework import LayerHelper, in_dygraph_mode
+from ..static import Variable
+from .layer_function_generator import templatedoc
+from .tensor import Tensor
 
 __all__ = []
 
