@@ -179,6 +179,7 @@ void RmspropDenseKernel(const Context &ctx,
       true,
       phi::errors::InvalidArgument(
           "MeanSquare and MeanSquareOut must be the same Tensor"));
+
   size_t limit = static_cast<size_t>(ms_tensor.numel());
   auto &grad_tensor = grad;
   if (paddle::platform::is_cpu_place(ctx.GetPlace())) {
@@ -240,6 +241,13 @@ void RmspropDenseKernel(const Context &ctx,
             phi::errors::InvalidArgument(
                 "MeanGrad and MeanGradOut must be the same Tensor"));
       }
+
+      using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
+      const MPDType *master_in_data =
+          multi_precision ? master_param->data<MPDType>() : nullptr;
+      MPDType *master_out_data =
+          multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_outs)
+                          : nullptr;
 
       for_range(CenteredRmspropFunctor<T, DenseRmspropGradFunctor<T>>(
           ctx.template Alloc<T>(param_out),
