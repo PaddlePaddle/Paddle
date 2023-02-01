@@ -3467,10 +3467,6 @@ function build_pr_and_develop() {
     generate_api_spec "$1" "PR"
     mkdir ${PADDLE_ROOT}/build/pr_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl
     rm -f ${PADDLE_ROOT}/build/python/dist/*.whl && rm -f ${PADDLE_ROOT}/build/python/build/.timestamp
-    if [[ ${cmake_change} ]];then
-        rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
-        rm -rf ${PADDLE_ROOT}/build/third_party
-    fi
 
     git fetch upstream develop
     git checkout develop
@@ -3481,6 +3477,10 @@ function build_pr_and_develop() {
         mkdir ${PADDLE_ROOT}/build/dev_whl && wget -q -P ${PADDLE_ROOT}/build/dev_whl ${dev_url}
         cp ${PADDLE_ROOT}/build/dev_whl/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl ${PADDLE_ROOT}/build/python/dist
     else
+        if [[ ${cmake_change} ]];then
+            rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
+            rm -rf ${PADDLE_ROOT}/build/third_party
+        fi
         git checkout -b develop_base_pr upstream/$BRANCH
         run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number} 
         mkdir ${PADDLE_ROOT}/build/python/dist/ && mv ${PADDLE_ROOT}/dist/*.whl ${PADDLE_ROOT}/build/python/dist/
