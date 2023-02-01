@@ -1086,6 +1086,7 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
 }
 
 void AnalysisPredictor::PrepareArgument() {
+  VLOG(3) << "AnalysisPredictor::PrepareArgument";
   // Init std::unique_ptr argument_.
   argument_.reset(new Argument);
   argument_->SetUseGPU(config_.use_gpu());
@@ -2246,10 +2247,12 @@ AnalysisPredictor::~AnalysisPredictor() {
 }
 
 std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone(void *stream) {
+  VLOG(3) << "AnalysisPredictor::Clone";
   std::lock_guard<std::mutex> lk(clone_mutex_);
   auto *x = new AnalysisPredictor(config_);
   x->status_is_cloned_ = true;
   x->root_predictor_id_ = this->root_predictor_id_;
+  x->config_.apply_optim_ = false;
   if (config_.use_external_stream_ && stream == nullptr) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "config has been configured to use external stream, but the Clone "
