@@ -60,9 +60,9 @@ size_t GetKey(Args&&... args) {
   return seed;
 }
 
-typedef struct {
+struct MatmulHashValueType {
   uint64_t data[8];
-} MatmulHashValueType;
+};
 
 struct MatmulCacheKey {
  public:

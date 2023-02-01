@@ -80,8 +80,8 @@ struct MatmulDescCreator {
                      const int M,
                      const int N,
                      const int K,
-                     const bool trans_x,
-                     const bool trans_y,
+                     const cublasOperation_t& trans_x,
+                     const cublasOperation_t& trans_y,
                      bool is_batch = false,
                      int batch_size = 1,
                      int64_t stride_x = 0,
@@ -254,7 +254,6 @@ struct MatmulWithCublasLt<phi::GPUContext, T> {
       alpha = &alpha32;
       beta = &beta32;
     }
-
     MatmulCalculationClassifier<T>()(&mat_type, &scale_type, &compute_type);
     MatmulDescCreator::Create(&op_desc,
                               &x_desc,
@@ -307,9 +306,11 @@ struct MatmulWithCublasLt<phi::GPUContext, T> {
     cudaDataType_t scale_type = CUDA_R_32F;
     cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
 
-    double alpha64 = 1.0, beta64 = 0.0;
-    float alpha32 = 1.0f, beta32 = 0.0f;
     void *alpha = nullptr, *beta = nullptr;
+    constexpr double alpha64 = static_cast<double>(1.0);
+    constexpr double beta64 = static_cast<double>(0.0);
+    constexpr float alpha32 = 1.0f;
+    constexpr float beta32 = 0.0f;
     if (std::is_same<T, double>::value) {
       alpha = &alpha64;
       alpha = &beta64;
@@ -403,56 +404,65 @@ struct MatmulWithCublasLt<phi::GPUContext, T> {
         best_algo =
             reinterpret_cast<cublasLtMatmulAlgo_t*>(cache.GetSubKey(sub_key));
       } else if (phi::autotune::AutoTuneStatus::Instance().UseAutoTune()) {
-        best_algo = SearchBestAlgo(ctx,
-                                   lt_handle,
-                                   op_desc,
-                                   y_desc,
-                                   x_desc,
-                                   out_desc,
-                                   alpha,
-                                   beta,
-                                   y_data,
-                                   x_data,
-                                   out_data,
-                                   workspace->ptr(),
-                                   workspace_size);
+        cublasLtMatmulAlgo_t test_algo;
+        SearchBestAlgo(ctx,
+                       lt_handle,
+                       op_desc,
+                       y_desc,
+                       x_desc,
+                       out_desc,
+                       alpha,
+                       beta,
+                       y_data,
+                       x_data,
+                       out_data,
+                       workspace->ptr(),
+                       workspace_size,
+                       &(test_algo));
         cache.SetSubKey(
             sub_key,
-            reinterpret_cast<phi::autotune::MatmulHashValueType*>(best_algo));
+            reinterpret_cast<phi::autotune::MatmulHashValueType*>(&test_algo));
+        best_algo = &test_algo;
       }
     }
 
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmul(lt_handle,
-                                                       op_desc,
-                                                       alpha,
-                                                       y_data,
-                                                       y_desc,
-                                                       x_data,
-                                                       x_desc,
-                                                       beta,
-                                                       out_data,
-                                                       out_desc,
-                                                       out_data,
-                                                       out_desc,
-                                                       best_algo,
-                                                       workspace->ptr(),
-                                                       workspace_size,
-                                                       ctx.stream()));
+    // for (int i = 0; i < 8; ++i) {
+    //   printf("[%s, %d] elementwise[%d] = %d\n", __func__, __LINE__, i,
+    //   (*best_algo).data[i]);
+    // }
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmul(
+        lt_handle,
+        op_desc,
+        alpha,
+        y_data,
+        y_desc,
+        x_data,
+        x_desc,
+        beta,
+        out_data,
+        out_desc,
+        out_data,
+        out_desc,
+        reinterpret_cast<cublasLtMatmulAlgo_t*>(best_algo),
+        workspace->ptr(),
+        workspace_size,
+        ctx.stream()));
   }
 
-  static cublasLtMatmulAlgo_t* SearchBestAlgo(const phi::GPUContext& ctx,
-                                              const cublasLtHandle_t& lt_handle,
-                                              cublasLtMatmulDesc_t op_desc,
-                                              cublasLtMatrixLayout_t y_desc,
-                                              cublasLtMatrixLayout_t x_desc,
-                                              cublasLtMatrixLayout_t out_desc,
-                                              const void* alpha,
-                                              const void* beta,
-                                              const void* y_data,
-                                              const void* x_data,
-                                              void* out_data,
-                                              void* workspace_ptr,
-                                              size_t workspace_size) {
+  static void SearchBestAlgo(const phi::GPUContext& ctx,
+                             const cublasLtHandle_t& lt_handle,
+                             const cublasLtMatmulDesc_t& op_desc,
+                             const cublasLtMatrixLayout_t& y_desc,
+                             const cublasLtMatrixLayout_t& x_desc,
+                             const cublasLtMatrixLayout_t& out_desc,
+                             const void* alpha,
+                             const void* beta,
+                             const void* y_data,
+                             const void* x_data,
+                             void* out_data,
+                             void* workspace_ptr,
+                             size_t workspace_size,
+                             cublasLtMatmulAlgo_t* best_algo) {
     const auto& stream = ctx.stream();
     int returned_results = 0;
     constexpr int requested_algo_count = 10;
@@ -515,21 +525,28 @@ struct MatmulWithCublasLt<phi::GPUContext, T> {
           cur_time += time;
         }
       }
+      float time_cnt = (cur_time / (repeats - 1));
+      // std::cout << "Time cost of cublaslt algo [" << algo_idx << "] is :" <<
+      // time_cnt << std::endl;
+      VLOG(4) << "Time cost in MatmulWithCublaslt algo[" << algo_idx << "]"
+              << "is : " << time_cnt << " s";
+
       if (cur_time < min_time_cost) {
         best_algo_idx = algo_idx;
         min_time_cost = cur_time;
       }
     }
+    // std::cout << "Best_algo_idx is : " << best_algo_idx << std::endl <<
+    // std::endl;
+    VLOG(4) << "Best_algo_idx in MatmulWithCublaslt is : " << best_algo_idx;
 
-    // for (int i = 0; i < actual_algo_count; ++i) {
-    //   VLOG(3) << "Time cost of cublaslt algo [" << algo_idx << "] is :" <<
-    //   (time / (repeats - 1)); min_time_cost = (cur_time < min_time_cost) ?
-    //   cur_time : min_time_cost; best_algo = (cur_time < min_time_cost) ?
-    //   algo_idx : best_algo;
+    // for (int i = 0; i < 8; ++i) {
+    //   printf("[%s, %d] elementwise[%d] = %d\n", __func__, __LINE__, i,
+    //   heuristic_results[best_algo_idx].algo);
     // }
+    *best_algo = heuristic_results[best_algo_idx].algo;
     PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cublasLtMatmulPreferenceDestroy(preference));
-    return &(heuristic_results[best_algo_idx].algo);
   }
 };
 #endif  // #ifdef PADDLE_WITH_CUDA
