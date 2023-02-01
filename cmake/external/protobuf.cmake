@@ -234,6 +234,8 @@ function(build_protobuf TARGET_NAME BUILD_FOR_HOST)
         "-Dprotobuf_MSVC_STATIC_RUNTIME=${MSVC_STATIC_CRT}")
   endif()
 
+
+
   if(WITH_ASCEND AND NOT WITH_ASCEND_CXX11)
     set(PROTOBUF_REPOSITORY https://gitee.com/tianjianhe/protobuf.git)
     set(PROTOBUF_TAG v3.8.0)
@@ -249,7 +251,13 @@ function(build_protobuf TARGET_NAME BUILD_FOR_HOST)
     set(PROTOBUF_TAG 01a05a53f40ca2ac5f0af10c6cc0810bee39b792)
   else()
     set(PROTOBUF_REPOSITORY ${GIT_URL}/protocolbuffers/protobuf.git)
-    set(PROTOBUF_TAG 2dc747c574b68a808ea4699d26942c8132fe2b09)
+    set(PROTOBUF_TAG 9f75c5aa851cd877fb0d93ccc31b8567a6706546)
+    if(WITH_GPU)
+      if(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0 
+          AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 12.0)
+        set(PROTOBUF_TAG 2dc747c574b68a808ea4699d26942c8132fe2b09)
+      endif()
+    endif()
   endif()
   if(WITH_ARM_BRPC)
     set(ARM_PROTOBUF_URL
@@ -321,7 +329,13 @@ elseif(WITH_IPU)
 elseif(WITH_ARM_BRPC)
   set(PROTOBUF_VERSION 3.7.1-baidu-ee-common)
 else()
-  set(PROTOBUF_VERSION 3.16.0)
+  set(PROTOBUF_VERSION 3.1.0)
+  if(WITH_GPU)
+    if(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0 
+        AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 12.0)
+      set(PROTOBUF_VERSION 3.16.0)
+    endif()
+  endif()
 endif()
 
 if(NOT PROTOBUF_FOUND)
