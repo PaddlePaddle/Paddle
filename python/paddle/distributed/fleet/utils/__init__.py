@@ -35,11 +35,11 @@ def recompute(function, *args, **kwargs):
               in backward stage for gradient calculation.
         *args(Tensor): inputs to the function.
         **kwargs(Dict): Kwargs should only contain two kinds of key-value params, the one is part of function's key-value params,
-                        and the other contains 'preserve_rng_state' and 'use_reentrant'. the key-value pair of preserve_rng_state,
+                        and the other contains ``preserve_rng_state`` and ``use_reentrant``. the key-value pair of ``preserve_rng_state``,
                         which is used to indicate whether to save the forward rng. If it is True, then the last forward rng value
                         will be restored when the forward recalculation of backpropagation is performed, its default value is True.
-                        the key-value pair of use_reentrant is used to indicate which implementation of recompute you will be used.
-                        'use_reentrant=True' means to use the PyLayer implementation of recompute, 'use_reentrant=False' means to
+                        the key-value pair of ``use_reentrant`` is used to indicate which implementation of recompute you will be used.
+                        ``use_reentrant=True`` means to use the PyLayer implementation of recompute, ``use_reentrant=False`` means to
                         use the Hook implementation of recompute, its default value is True.
     Returns:
         Output of function on args.
