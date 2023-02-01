@@ -43,8 +43,10 @@ void ArgMaxKernel(const Context& dev_ctx,
   // TODO(ZHUI): fix dtype of out
   dev_ctx.template Alloc<int64_t>(out);
   if (x.dims().size() == 0) {
-    xpu::constant(
-        dev_ctx.x_context(), out->data<int64_t>(), x.numel(), static_cast<int64_t>(0));
+    xpu::constant(dev_ctx.x_context(),
+                  out->data<int64_t>(),
+                  x.numel(),
+                  static_cast<int64_t>(0));
     return;
   }
 
