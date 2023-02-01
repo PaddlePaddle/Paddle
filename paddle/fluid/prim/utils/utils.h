@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-
+#include <unordered_set>
 namespace paddle {
 namespace prim {
 class PrimCommonUtils {
@@ -23,6 +23,9 @@ class PrimCommonUtils {
   static bool IsFwdPrimEnabled();
   static void SetFwdPrimEnabled(bool enabled);
   static void SetAllPrimEnabled(bool enabled);
+  static size_t CheckSkipCompOps(const std::string& op_type);
+  static void AddSkipCompOps(const std::string& op_type);
+  static void RemoveSkipCompOps(const std::string& op_type);
 };
 }  // namespace prim
 }  // namespace paddle

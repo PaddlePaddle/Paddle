@@ -69,12 +69,27 @@ class StaticCompositeContext {
     enable_bwd_prim_ = enable_prim;
   }
 
+  size_t CheckSkipCompOps(const std::string& op_type) const {
+    return skip_comp_ops_.count(op_type);
+  }
+
+  void AddSkipCompOps(const std::string& op_type) {
+    skip_comp_ops_.insert(op_type);
+  }
+
+  void RemoveSkipCompOps(const std::string& op_type) {
+    skip_comp_ops_.erase(op_type);
+  }
+
  private:
   StaticCompositeContext()
-      : current_block_desc_(nullptr), generator_(new UniqueNameGenerator()) {}
+      : current_block_desc_(nullptr),
+        generator_(new UniqueNameGenerator()),
+        skip_comp_ops_({'matmul_v2'}) {}
 
   framework::BlockDesc* current_block_desc_;
   std::unique_ptr<UniqueNameGenerator> generator_;
+  std::unordered_set<std::string> skip_comp_ops_;
   static thread_local bool enable_bwd_prim_;
   static thread_local bool enable_fwd_prim_;
   static StaticCompositeContext* static_composite_context_;
