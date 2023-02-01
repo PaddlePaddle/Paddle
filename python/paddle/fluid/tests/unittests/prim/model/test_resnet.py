@@ -144,10 +144,14 @@ class TestResnet(unittest.TestCase):
         dy2st_prim = self.train(
             to_static=True, enable_prim=True, enable_cinn=False
         )
+        dy2st_cinn = self.train(
+            to_static=True, enable_prim=False, enable_cinn=True
+        )
         dy2st_prim_cinn = self.train(
             to_static=True, enable_prim=True, enable_cinn=True
         )
         np.testing.assert_allclose(dy2st, dy2st_prim, rtol=1e-6)
+        np.testing.assert_allclose(dy2st, dy2st_cinn, rtol=1e-1)
 
         np.testing.assert_allclose(dy2st[0:2], dy2st_prim_cinn[0:2], rtol=1e-2)
         np.testing.assert_allclose(dy2st[2:], dy2st_prim_cinn[2:], rtol=1e-1)
