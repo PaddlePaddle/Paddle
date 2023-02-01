@@ -138,8 +138,8 @@ class Assign(NumpyArrayInitializer):
 
     Args:
         value (Tensor|numpy.ndarray|list|tuple): numpy array, list, tuple, or tensor to initialize the parameter.
-        name(str, optional): The default value is None. Normally there is no need for user to set this
-            property. For more information, please refer to :ref:`api_guide_Name`.
+        name(str, optional): Normally there is no need for user to set this
+            property. For more information, please refer to :ref:`api_guide_Name`. Default is None.
 
     Returns:
         A parameter initialized by the input numpy array, list, or tensor.

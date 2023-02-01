@@ -27,7 +27,7 @@ class ConstantInitializer(Initializer):
     """Implements the constant initializer
 
     Args:
-        value (float32): constant value to initialize the variable
+        value (float32, optional): constant value to initialize the variable. Default: 0.0.
 
     """
 

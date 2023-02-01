@@ -26,15 +26,15 @@ class UniformInitializer(Initializer):
     """Implements the random uniform distribution initializer
 
     Args:
-        low (float): lower boundary of the uniform distribution
-        high (float): upper boundary of the uniform distribution
-        seed (int): random seed
-        diag_num (int): the number of diagonal elements to initialize.
-            If set to 0, diagonal initialization will be not performed.
-        diag_step (int): Step size between two diagonal elements,
-            which is generally the width of the square matrix.
-        diag_val (float): the value of the diagonal element to be initialized,
-            default 1.0. It takes effect only if the diag_num is greater than 0.
+        low (float, optional): Lower boundary of the uniform distribution. Default is :math:`-1.0`.
+        high (float, optional): Upper boundary of the uniform distribution. Default is :math:`1.0`.
+        seed (int, optional): Random seed. Default is 0.
+        diag_num (int, optional): the number of diagonal elements to initialize.
+            If set to 0, diagonal initialization will be not performed. Default is 0.
+        diag_step (int, optional): Step size between two diagonal elements,
+            which is generally the width of the square matrix. Default is 0.
+        diag_val (float, optional): the value of the diagonal element to be initialized,
+            default 1.0. It takes effect only if the diag_num is greater than 0. Default is :math:`1.0`.
 
     """
 
@@ -148,8 +148,8 @@ class Uniform(UniformInitializer):
     """The uniform distribution initializer.
 
     Args:
-        low (float, optional): Lower boundary of the uniform distribution. The default value is :math:`-1.0`.
-        high (float, optional): Upper boundary of the uniform distribution. The default value is :math:`1.0`.
+        low (float, optional): Lower boundary of the uniform distribution. Default is :math:`-1.0`.
+        high (float, optional): Upper boundary of the uniform distribution. Default is :math:`1.0`.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:

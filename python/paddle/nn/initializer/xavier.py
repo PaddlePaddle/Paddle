@@ -48,12 +48,12 @@ class XavierInitializer(Initializer):
 
 
     Args:
-        uniform (bool,default True): whether to use uniform ,if False use normal distribution
-        fan_in (float,default None): fan_in for Xavier initialization. If None, it is
-                inferred from the variable.
-        fan_out (float,default None): fan_out for Xavier initialization. If None, it is
-                 inferred from the variable.
-        seed (int): random seed
+        uniform (bool, optional): whether to use uniform ,if False use normal distribution. Default is True.
+        fan_in (float, optional): fan_in for Xavier initialization. If None, it is
+                inferred from the variable. Default is None.
+        fan_out (float, optional): fan_out for Xavier initialization. If None, it is
+                 inferred from the variable. Default is None.
+        seed (int, optional): Random seed. Default is 0.
 
     Note:
         It is recommended to set fan_in and fan_out to None for most cases.
@@ -203,9 +203,9 @@ class XavierNormal(XavierInitializer):
 
     Args:
         fan_in (float, optional): fan_in for Xavier initialization, which is
-                inferred from the Tensor. The default value is None.
+                inferred from the Tensor. Default is None.
         fan_out (float, optional): fan_out for Xavier initialization, which is
-                 inferred from the Tensor. The default value is None.
+                 inferred from the Tensor. Default is None.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -255,9 +255,9 @@ class XavierUniform(XavierInitializer):
 
     Args:
         fan_in (float, optional): fan_in for Xavier initialization, which is
-                inferred from the Tensor. The default value is None.
+                inferred from the Tensor. Default is None.
         fan_out (float, optional): fan_out for Xavier initialization, which is
-                 inferred from the Tensor. The default value is None.
+                 inferred from the Tensor. Default is None.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
