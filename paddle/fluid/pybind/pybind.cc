@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/data_type_transform.h"
+#include "paddle/fluid/framework/details/nan_inf_utils_detail.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/executor_cache.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
@@ -2671,6 +2672,9 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("use_layout_autotune",
         [] { return egr::Controller::Instance().UseLayoutAutoTune(); });
+  // Add the api for nan op debug
+  m.def("set_nan_inf_debug_path",
+        &paddle::framework::details::SetNanInfDebugPath);
 
   BindFleetWrapper(&m);
   BindIO(&m);
