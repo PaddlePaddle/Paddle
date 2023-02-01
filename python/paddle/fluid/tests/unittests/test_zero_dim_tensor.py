@@ -2404,7 +2404,7 @@ class TestSundryAPIStatic(unittest.TestCase):
             return paddle.less_than(i, eleven)
 
         def body(i, x):
-            x = paddle.multiply(x, i)
+            x = paddle.multiply(i, i)
             i = paddle.increment(i)
             return [i, x]
 
@@ -2433,9 +2433,13 @@ class TestSundryAPIStatic(unittest.TestCase):
             fetch_list=[out_i.name, out_x.name, i.grad_name, x.grad_name],
         )
         self.assertEqual(res[0].shape, ())
+        np.testing.assert_allclose(res[0], np.array(1.0))
         self.assertEqual(res[1].shape, ())
+        np.testing.assert_allclose(res[1], np.array(100))
         self.assertEqual(res[2].shape, ())
+        np.testing.assert_allclose(res[2], np.array(110))
         self.assertEqual(res[3].shape, ())
+        np.testing.assert_allclose(res[3], np.array(1.0))
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
