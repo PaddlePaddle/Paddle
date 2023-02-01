@@ -45,9 +45,7 @@ def _all_gather(tensor, buffer_size, group):
 
 
 # CUDA alignment 256 bytes
-alignment = {
-    "gpu": 256,
-}
+alignment = {"gpu": 256, "cpu": 4096, "xpu": 256}
 align = {
     Type.bf16.value: 2,
     Type.fp16.value: 2,
@@ -323,7 +321,9 @@ class GroupShardedStage3(nn.Layer):
         buffer_size[Type.fp16.value] = 0
         for param in self._unslice_params:
             # Updata optimizer master weights
-            if param.dtype == Type.fp16.value and not self._offload:
+            if (
+                param.dtype == Type.fp16.value or param.dtype == Type.bf16.value
+            ) and not self._offload:
                 master_tensor = paddle.cast(param, Type.fp32.value)
                 master_tensor.name = param.name
                 self._optim._master_weights[param.name] = master_tensor
@@ -426,10 +426,14 @@ class GroupShardedStage3(nn.Layer):
         assert isinstance(buffer_size, int)
         value = (
             np.zeros(buffer_size, dtype=np.float16)
-            if Type.fp16.value == param.dtype
+            if (
+                Type.fp16.value == param.dtype or Type.bf16.value == param.dtype
+            )
             else np.zeros(buffer_size, dtype=np.float32)
         )
         buffer = core.eager.Tensor(value=value, place=core.CPUPlace())
+        if Type.bf16.value == param.dtype:
+            buffer = buffer.cast(Type.bf16.value)
 
         param_shape = param.shape
         origin_state = param.stop_gradient
@@ -469,7 +473,9 @@ class GroupShardedStage3(nn.Layer):
         # Updata optimizer master weights
         if (
             param.trainable
-            and param.dtype == Type.fp16.value
+            and (
+                param.dtype == Type.fp16.value or param.dtype == Type.bf16.value
+            )
             and not self._offload
         ):
             master_tensor = paddle.cast(param.fw_storage, Type.fp32.value)
