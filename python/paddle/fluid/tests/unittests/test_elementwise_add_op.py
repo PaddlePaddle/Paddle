@@ -746,12 +746,7 @@ class TestEmptyTensorAddOp(unittest.TestCase):
         x = paddle.to_tensor(np.array([]))
         y = paddle.to_tensor(np.array([]))
         z = x + y
-        self.assertEqual(
-            z.shape,
-            [
-                0,
-            ],
-        )
+        self.assertEqual(z.shape, [0])
 
     def test_empty_diff_shape_tensor_add1(self):
         paddle.disable_static()

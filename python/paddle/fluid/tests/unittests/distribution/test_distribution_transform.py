@@ -1208,7 +1208,7 @@ class TestStickBreakingTransform(unittest.TestCase):
             self._t.forward_log_det_jacobian(paddle.to_tensor(x)).shape, [1]
         )
 
-    @param.param_func([((0, 0), (0, 0))])
+    @param.param_func([((0, 0), (0, 1))])
     def test_forward_empty_tensor(self, shape, expected_shape):
         if not paddle.device.is_compiled_with_cuda():
             return
