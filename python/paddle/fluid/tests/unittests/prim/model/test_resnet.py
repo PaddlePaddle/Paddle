@@ -20,10 +20,9 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.vision.models import ResNet
-from paddle.vision.models.resnet import BottleneckBlock
+from paddle.vision.models import resnet50
 
-SEED = 2023
+SEED = 2020
 base_lr = 0.001
 momentum_rate = 0.9
 l2_decay = 1e-4
@@ -69,8 +68,6 @@ def train(to_static, enable_prim, enable_cinn):
         fluid.core._set_prim_all_enabled(
             enable_prim and platform.system() == 'Linux'
         )
-        # fluid.core._set_prim_backward_enabled(enable_prim and platform.system()=='Linux')
-        # fluid.core._set_prim_forward_enabled(enable_prim and platform.system()=='Linux')
 
         train_reader = paddle.batch(
             reader_decorator(paddle.dataset.flowers.train(use_xmap=False)),
@@ -82,8 +79,7 @@ def train(to_static, enable_prim, enable_cinn):
         )
         data_loader.set_sample_list_generator(train_reader)
 
-        # resnet = resnet50(pretrained=True)
-        resnet = ResNet(BottleneckBlock, depth=50, num_classes=102)
+        resnet = resnet50(False)
         if to_static:
             build_strategy = paddle.static.BuildStrategy()
             if enable_cinn:
@@ -123,7 +119,7 @@ def train(to_static, enable_prim, enable_cinn):
                 losses.append(avg_loss.numpy())
 
                 end_time = time.time()
-                if batch_id % 2 == 0:
+                if batch_id % 1 == 0:
                     print(
                         "epoch %d | batch step %d, loss %0.8f, acc1 %0.3f, acc5 %0.3f, time %f"
                         % (
@@ -155,6 +151,10 @@ class TestResnet(unittest.TestCase):
         dy2st_prim_cinn = self.train(
             to_static=True, enable_prim=True, enable_cinn=True
         )
+        np.testing.assert_allclose(dy2st, dy2st_prim, rtol=1e-6)
+
+        np.testing.assert_allclose(dy2st[0:2], dy2st_prim_cinn[0:2], rtol=1e-2)
+        np.testing.assert_allclose(dy2st[2:], dy2st_prim_cinn[2:], rtol=1e-1)
 
 
 if __name__ == '__main__':
