@@ -17,7 +17,6 @@
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/impl/add_n_kernel_impl.h"
 namespace phi {
 
@@ -118,11 +117,12 @@ void AddNKernel(const Context &dev_ctx,
     int64_t length_0 = in_0.numel();
     int64_t length_1 = in_1.numel();
     if (length_0 && length_1 && in_0.IsInitialized() && in_1.IsInitialized()) {
+      using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
       auto result = EigenVector<T>::Flatten(*out);
       auto &place = *dev_ctx.eigen_device();
-      auto in_0_e = EigenVector<T>::Flatten(in_0);
-      auto in_1_e = EigenVector<T>::Flatten(in_1);
-      result.device(place) = in_0_e + in_1_e;
+      auto in_0_e = EigenVector<T>::Flatten(in_0).template cast<MPType>();
+      auto in_1_e = EigenVector<T>::Flatten(in_1).template cast<MPType>();
+      result.device(place) = (in_0_e + in_1_e).template cast<T>();
     } else if (length_0 && in_0.IsInitialized()) {
       auto result = EigenVector<T>::Flatten(*out);
       auto &place = *dev_ctx.eigen_device();
