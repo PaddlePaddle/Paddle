@@ -55,6 +55,17 @@ PredictorEngine::PredictorEngine(const std::shared_ptr<FunctionInfo> &info,
       scope_, std::make_shared<framework::ProgramDesc>(info_->ProgramDesc()));
 }
 
+PredictorEngine::PredictorEngine(
+    const std::shared_ptr<FunctionInfo> &info,
+    const std::shared_ptr<framework::Scope> &scope,
+    const phi::Place &place,
+    const std::shared_ptr<PaddlePredictor> &predictor)
+    : info_(info),
+      scope_(scope),
+      place_(place),
+      predictor_(std::dynamic_pointer_cast<AnalysisPredictor, PaddlePredictor>(
+          predictor)) {}
+
 std::vector<Tensor> PredictorEngine::operator()(
     const std::vector<Tensor> &inputs) {
   auto dense_tensors = utils::ToDenseTensors(inputs);
@@ -186,6 +197,12 @@ static bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
         "The analysis predictor supports CPU, GPU and XPU now."));
   }
   return true;
+}
+
+std::unique_ptr<BaseEngine> PredictorEngine::Clone(void *stream) {
+  auto *x = new PredictorEngine(
+      info_, scope_, place_, std::move(predictor_->Clone(stream)));
+  return std::unique_ptr<BaseEngine>(x);
 }
 
 }  // namespace jit
