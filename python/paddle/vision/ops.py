@@ -1424,6 +1424,8 @@ def psroi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
         output_size = (output_size, output_size)
     pooled_height, pooled_width = output_size
     assert len(x.shape) == 4, "Input features with shape should be (N, C, H, W)"
+    if pooled_height * pooled_width == 0:
+        raise ValueError('output_size should not contain 0.')
     output_channels = int(x.shape[1] / (pooled_height * pooled_width))
     if in_dygraph_mode():
         return _C_ops.psroi_pool(

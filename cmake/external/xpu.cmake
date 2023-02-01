@@ -7,16 +7,20 @@ set(XPU_PROJECT "extern_xpu")
 set(XPU_API_LIB_NAME "libxpuapi.so")
 set(XPU_RT_LIB_NAME "libxpurt.so")
 
+set(XPU_BASE_DATE "20230119")
+set(XPU_XCCL_BASE_VERSION "1.0.7")
+
 if(NOT DEFINED XPU_BASE_URL)
   set(XPU_BASE_URL_WITHOUT_DATE
       "https://baidu-kunlun-product.su.bcebos.com/KL-SDK/klsdk-dev")
-  set(XPU_BASE_URL "${XPU_BASE_URL_WITHOUT_DATE}/20230114")
+  set(XPU_BASE_URL "${XPU_BASE_URL_WITHOUT_DATE}/${XPU_BASE_DATE}")
 else()
   set(XPU_BASE_URL "${XPU_BASE_URL}")
 endif()
 
 set(XPU_XCCL_BASE_URL
-    "https://klx-sdk-release-public.su.bcebos.com/xccl/release/1.0.7")
+    "https://klx-sdk-release-public.su.bcebos.com/xccl/release/${XPU_XCCL_BASE_VERSION}"
+)
 
 if(WITH_AARCH64)
   set(XPU_XRE_DIR_NAME "xre-kylin_aarch64")

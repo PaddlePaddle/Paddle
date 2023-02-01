@@ -296,6 +296,9 @@ class NoamDecay(LRScheduler):
         last_epoch=-1,
         verbose=False,
     ):
+        if d_model <= 0:
+            raise ValueError("d_model should be grater than 0")
+
         self.d_model = d_model
         self.warmup_steps = warmup_steps
         super().__init__(learning_rate, last_epoch, verbose)
@@ -1406,7 +1409,7 @@ class ReduceOnPlateau(LRScheduler):
             metrics, (int, float, numpy.float32, numpy.float64)
         ):
             raise TypeError(
-                "metrics must be 'int', 'float', 'np.float', 'numpy.ndarray' or 'paddle.Tensor', but receive {}".format(
+                "metrics must be 'int', 'float', 'np.float64', 'numpy.ndarray' or 'paddle.Tensor', but receive {}".format(
                     type(metrics)
                 )
             )
