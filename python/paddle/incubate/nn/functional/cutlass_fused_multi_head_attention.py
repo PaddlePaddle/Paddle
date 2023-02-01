@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math 
+
 from paddle import _C_ops
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
@@ -20,18 +22,16 @@ def cutlass_fused_multi_head_attention(
     query, key, value, mask=None, scale=None, causal=False
 ):
     """
-    Applies fused ec_moe kernel.
-    This method requires SM_ARCH in sm75, sm80, sm86.
+    Cutlass Fused Multihead Attention.
+    This method requires SM_ARCH in sm70, sm75, sm80.
 
     Args:
-        x (Tensor): the input Tensor. Its shape is [bsz, seq_len, d_model].
-        gate (Tensor): the gate Tensor to choose expert. Its shape is [bsz, seq_len, e].
-        bmm0_weight (Tensor): the first batch matrix matmul weight. Its shape is [e, d_model, d_feed_forward].
-        bmm0_bias (Tensor): the first batch matrix matmul bias. Its shape is [e, 1, d_feed_forward].
-        bmm1_weight (Tensor): the second batch matrix matmul weight. Its shape is [e, d_model, d_feed_forward].
-        bmm1_bias (Tensor): the second batch matrix matmul bias. Its shape is [e, 1, d_feed_forward].
-        act_type (string): the Activation Type. Currently only support `gelu`, `relu`.
-
+        query (Tensor): the Query Tensor. Its shape is [batchsize, num_head, seq_len, head_size].
+        key (Tensor): the Key Tensor. Its shape is [batchsize, num_head, seq_len, head_size].
+        value (Tensor): the Value Tensor. Its shape is [batchsize, num_head, seq_len, head_size].
+        mask (Tensor): the Mask Tensor. Its shape is [batchsize, num_head, seq_len, seq_len]. And it can broadcast in each dims (which means you can set dimsize=1). 
+        scale (Float): the attention matrix's scale. Default is sqrt(1.0 / head_size). 
+        causal (Bool): whether causal masking is used or not. Default is False.
     Returns:
         Tensor: the output Tensor.
 
@@ -39,25 +39,32 @@ def cutlass_fused_multi_head_attention(
         .. code-block:: python
 
             # required: gpu
+            import math 
             import paddle
-            from paddle.incubate.nn.functional import fused_ec_moe
+            from paddle.incubate.nn.functional import cutlass_fused_multi_head_attention
+            
+            batch = 1
+            num_head = 8 
+            seq_len = 256
+            head_size = 32
 
-            batch = 10
-            seq_len = 128
-            d_model = 1024
-            d_feed_forward = d_model * 4
-            num_expert = 8
+            dtype = paddle.float16
 
-            x = paddle.randn([batch, seq_len, d_model])
-            gate = paddle.randn([batch, seq_len, num_expert])
-            bmm0_weight = paddle.randn([num_expert, d_model, d_feed_forward])
-            bmm0_bias = paddle.randn([num_expert, d_model, d_feed_forward])
-            bmm1_weight = paddle.randn([num_expert, d_model, d_feed_forward])
-            bmm1_bias = paddle.randn([num_expert, d_model, d_feed_forward])
-            out = fused_ec_moe(x, gate, bmm0_weight, bmm0_bias, bmm1_weight, bmm1_bias, act_type="gelu")
+            query = paddle.randn([batch, seq_len, num_head, head_size], dtype=dtype)
+            key = paddle.randn([batch, seq_len, num_head, head_size], dtype=dtype)
+            value = paddle.randn([batch, seq_len, num_head, head_size], dtype=dtype)
+            mask = paddle.randn([1, 1, 1, seq_len], dtype=dtype)
 
-            print(out.shape) # [batch, seq_len, num_expert]
+            scale = float(1.0 / math.sqrt(head_size))
+
+            out = cutlass_fused_multi_head_attention(query, key, value, mask, scale)
+            
+            print(out.shape) # [batch, seq_len, num_head, head_size]
     """
+    if scale is None: 
+        head_size = query.shape[3]
+        scale = float(1.0 / math.sqrt(head_size))
+
     if in_dygraph_mode():
         return _C_ops.cutlass_fused_multihead_attention(
             query, key, value, mask, scale, causal
