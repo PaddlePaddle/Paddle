@@ -2405,7 +2405,7 @@ class TestSundryAPIStatic(unittest.TestCase):
 
         def body(i, x):
             x = paddle.multiply(i, i)
-            i = paddle.increment(i)
+            i = i + 1
             return [i, x]
 
         main_program = paddle.static.Program()
@@ -2433,7 +2433,7 @@ class TestSundryAPIStatic(unittest.TestCase):
             fetch_list=[out_i.name, out_x.name, i.grad_name, x.grad_name],
         )
         self.assertEqual(res[0].shape, ())
-        np.testing.assert_allclose(res[0], np.array(1.0))
+        np.testing.assert_allclose(res[0], np.array(11))
         self.assertEqual(res[1].shape, ())
         np.testing.assert_allclose(res[1], np.array(100))
         self.assertEqual(res[2].shape, ())
