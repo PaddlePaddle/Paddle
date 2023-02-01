@@ -3045,38 +3045,35 @@ void FusedMultiHeadAttentionInferMeta(const MetaTensor& query,
                     phi::errors::InvalidArgument(
                         "The seq length of Key, Value should be equal. "));
 
-  if(mask){
+  if (mask) {
     const int64_t mask_batch_size = mask.dims()[0];
     const int64_t mask_num_head = mask.dims()[1];
     const int64_t mask_q_seq_length = mask.dims()[2];
     const int64_t mask_k_seq_length = mask.dims()[3];
 
     PADDLE_ENFORCE_EQ(
-      ((mask_batch_size == query_batch_size) ||
-       (mask_batch_size == 1)),
-      true,
-      phi::errors::InvalidArgument(
-          "The batchsize of Mask should be equal to qkv's or 1. "));
+        ((mask_batch_size == query_batch_size) || (mask_batch_size == 1)),
+        true,
+        phi::errors::InvalidArgument(
+            "The batchsize of Mask should be equal to qkv's or 1. "));
 
     PADDLE_ENFORCE_EQ(
-      ((mask_num_head == query_num_head) ||
-       (mask_num_head == 1)),
-      true,
-      phi::errors::InvalidArgument(
-          "The head number of Mask should be equal to qkv's or 1. "));
+        ((mask_num_head == query_num_head) || (mask_num_head == 1)),
+        true,
+        phi::errors::InvalidArgument(
+            "The head number of Mask should be equal to qkv's or 1. "));
 
     PADDLE_ENFORCE_EQ(
-      ((mask_q_seq_length == query_seq_length) ||
-       (mask_q_seq_length == 1)),
-      true,
-      phi::errors::InvalidArgument(
-          "The Mask dims[2] should be equal to query's seq_length or 1. "));
+        ((mask_q_seq_length == query_seq_length) || (mask_q_seq_length == 1)),
+        true,
+        phi::errors::InvalidArgument(
+            "The Mask dims[2] should be equal to query's seq_length or 1. "));
 
     PADDLE_ENFORCE_EQ(
-      ((mask_k_seq_length == key_seq_length)),
-      true,
-      phi::errors::InvalidArgument(
-          "The Mask dims[3] should be equal to key's seq_length. "));
+        ((mask_k_seq_length == key_seq_length)),
+        true,
+        phi::errors::InvalidArgument(
+            "The Mask dims[3] should be equal to key's seq_length. "));
   }
 
   std::vector<int64_t> out_dims(

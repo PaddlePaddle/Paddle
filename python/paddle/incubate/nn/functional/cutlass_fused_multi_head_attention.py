@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import math 
+import math
 
 from paddle import _C_ops
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
+
 
 def cutlass_fused_multi_head_attention(
     query, key, value, mask=None, scale=None, causal=False
@@ -29,8 +30,8 @@ def cutlass_fused_multi_head_attention(
         query (Tensor): the Query Tensor. Its shape is [batchsize, num_head, seq_len, head_size].
         key (Tensor): the Key Tensor. Its shape is [batchsize, num_head, seq_len, head_size].
         value (Tensor): the Value Tensor. Its shape is [batchsize, num_head, seq_len, head_size].
-        mask (Tensor): the Mask Tensor. Its shape is [batchsize, num_head, seq_len, seq_len]. And it can broadcast in each dims (which means you can set dimsize=1). 
-        scale (Float): the attention matrix's scale. Default is sqrt(1.0 / head_size). 
+        mask (Tensor): the Mask Tensor. Its shape is [batchsize, num_head, seq_len, seq_len]. And it can broadcast in each dims (which means you can set dimsize=1).
+        scale (Float): the attention matrix's scale. Default is sqrt(1.0 / head_size).
         causal (Bool): whether causal masking is used or not. Default is False.
     Returns:
         Tensor: the output Tensor.
@@ -39,12 +40,12 @@ def cutlass_fused_multi_head_attention(
         .. code-block:: python
 
             # required: gpu
-            import math 
+            import math
             import paddle
             from paddle.incubate.nn.functional import cutlass_fused_multi_head_attention
-            
+
             batch = 1
-            num_head = 8 
+            num_head = 8
             seq_len = 256
             head_size = 32
 
@@ -58,10 +59,10 @@ def cutlass_fused_multi_head_attention(
             scale = float(1.0 / math.sqrt(head_size))
 
             out = cutlass_fused_multi_head_attention(query, key, value, mask, scale)
-            
+
             print(out.shape) # [batch, seq_len, num_head, head_size]
     """
-    if scale is None: 
+    if scale is None:
         head_size = query.shape[3]
         scale = float(1.0 / math.sqrt(head_size))
 

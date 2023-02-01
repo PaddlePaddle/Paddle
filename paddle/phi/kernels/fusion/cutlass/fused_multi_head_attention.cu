@@ -72,7 +72,7 @@ struct LaunchParams {
   int32_t key_strideH;
   int32_t value_strideH;
 
-  // Since bias can be broadcasted, we need to assign each stride
+  // Since mask can be broadcasted, we need to assign each stride
   int32_t mask_strideM;
   int64_t mask_strideH;  // stride for num_heads
   int64_t mask_strideB;  // stride for num_batches
@@ -83,8 +83,8 @@ template <typename T,
           bool IsAligned,
           int QueriesPerBlock,
           int KeysPerBlock,
-          bool SingleValueIteration, 
-          bool AddMask, 
+          bool SingleValueIteration,
+          bool AddMask,
           bool MaskBroadcastRow>
 void LaunchMultiHeadAttentionKernel(LaunchParams params,
                                     const phi::GPUContext& ctx) {
@@ -93,8 +93,8 @@ void LaunchMultiHeadAttentionKernel(LaunchParams params,
                                     IsAligned,
                                     QueriesPerBlock,
                                     KeysPerBlock,
-                                    SingleValueIteration, 
-                                    AddMask, 
+                                    SingleValueIteration,
+                                    AddMask,
                                     MaskBroadcastRow>;
 
   typename Attention::Params p;
@@ -183,8 +183,8 @@ template <typename T,
           typename ArchTag,
           bool IsAligned,
           int QueriesPerBlock,
-          int KeysPerBlock, 
-          bool SingleValueIteration, 
+          int KeysPerBlock,
+          bool SingleValueIteration,
           bool AddMask>
 void DispatchFMHAMaskBroadcastRow(LaunchParams params,
                                   const phi::GPUContext& ctx) {
@@ -194,8 +194,8 @@ void DispatchFMHAMaskBroadcastRow(LaunchParams params,
                                    IsAligned,
                                    QueriesPerBlock,
                                    KeysPerBlock,
-                                   SingleValueIteration, 
-                                   AddMask, 
+                                   SingleValueIteration,
+                                   AddMask,
                                    true>(params, ctx);
   } else {
     LaunchMultiHeadAttentionKernel<T,
@@ -204,7 +204,7 @@ void DispatchFMHAMaskBroadcastRow(LaunchParams params,
                                    QueriesPerBlock,
                                    KeysPerBlock,
                                    SingleValueIteration,
-                                   AddMask, 
+                                   AddMask,
                                    false>(params, ctx);
   }
 }
@@ -213,26 +213,25 @@ template <typename T,
           typename ArchTag,
           bool IsAligned,
           int QueriesPerBlock,
-          int KeysPerBlock, 
+          int KeysPerBlock,
           bool SingleValueIteration>
-void DispatchFMHAAddMask(LaunchParams params,
-                         const phi::GPUContext& ctx) {
+void DispatchFMHAAddMask(LaunchParams params, const phi::GPUContext& ctx) {
   if (params.mask_ptr != nullptr) {
     DispatchFMHAMaskBroadcastRow<T,
-                                   ArchTag,
-                                   IsAligned,
-                                   QueriesPerBlock,
-                                   KeysPerBlock,
-                                   SingleValueIteration, 
-                                   true>(params, ctx);
+                                 ArchTag,
+                                 IsAligned,
+                                 QueriesPerBlock,
+                                 KeysPerBlock,
+                                 SingleValueIteration,
+                                 true>(params, ctx);
   } else {
     DispatchFMHAMaskBroadcastRow<T,
-                                   ArchTag,
-                                   IsAligned,
-                                   QueriesPerBlock,
-                                   KeysPerBlock,
-                                   SingleValueIteration, 
-                                   false>(params, ctx);
+                                 ArchTag,
+                                 IsAligned,
+                                 QueriesPerBlock,
+                                 KeysPerBlock,
+                                 SingleValueIteration,
+                                 false>(params, ctx);
   }
 }
 
@@ -321,15 +320,14 @@ void DispatchFusedMultiheadAttentionKernel(LaunchParams params,
 }
 
 template <typename T, typename Context>
-void MultiHeadAttentionForwardKernel(
-    const Context& ctx,
-    const DenseTensor& query,
-    const DenseTensor& key,
-    const DenseTensor& value,
-    const paddle::optional<DenseTensor>& mask, 
-    const float scale,
-    const bool causal,
-    DenseTensor* output) {
+void MultiHeadAttentionForwardKernel(const Context& ctx,
+                                     const DenseTensor& query,
+                                     const DenseTensor& key,
+                                     const DenseTensor& value,
+                                     const paddle::optional<DenseTensor>& mask,
+                                     const float scale,
+                                     const bool causal,
+                                     DenseTensor* output) {
   ctx.template Alloc<T>(output);
   LaunchParams params{};
 
@@ -359,22 +357,25 @@ void MultiHeadAttentionForwardKernel(
   params.key_strideH = key.dims()[3];
   params.value_strideH = value.dims()[3];
 
-  if(mask){
-    auto mask_tensor = mask.get(); 
+  if (mask) {
+    auto mask_tensor = mask.get();
     params.mask_ptr = mask_tensor.data();
-    params.mask_strideM = mask_tensor.dims()[2] == 1 ? 0 : mask_tensor.dims()[3];
-    params.mask_strideH =
-        mask_tensor.dims()[1] == 1 ? 0 : mask_tensor.dims()[2] * mask_tensor.dims()[3];
+    params.mask_strideM =
+        mask_tensor.dims()[2] == 1 ? 0 : mask_tensor.dims()[3];
+    params.mask_strideH = mask_tensor.dims()[1] == 1
+                              ? 0
+                              : mask_tensor.dims()[2] * mask_tensor.dims()[3];
     params.mask_strideB = mask_tensor.dims()[0] == 1
                               ? 0
-                              : mask_tensor.dims()[1] * mask_tensor.dims()[2] * mask_tensor.dims()[3];
-  
+                              : mask_tensor.dims()[1] * mask_tensor.dims()[2] *
+                                    mask_tensor.dims()[3];
+
     params.mask_broadcast_row = false;
     if (params.mask_strideM == 0) {
       params.mask_broadcast_row = true;
     }
   }
-  
+
   DispatchFusedMultiheadAttentionKernel(params, ctx);
 }
 

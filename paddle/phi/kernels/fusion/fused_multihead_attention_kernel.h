@@ -20,10 +20,10 @@ namespace phi {
 
 template <typename T, typename Context>
 void MultiHeadAttentionForwardKernel(const Context& ctx,
-                                     const DenseTensor& query, 
-                                     const DenseTensor& key, 
-                                     const DenseTensor& value, 
-                                     const paddle::optional<DenseTensor>& mask, 
+                                     const DenseTensor& query,
+                                     const DenseTensor& key,
+                                     const DenseTensor& value,
+                                     const paddle::optional<DenseTensor>& mask,
                                      const float scale,
                                      DenseTensor* output);
 
