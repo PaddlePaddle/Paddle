@@ -46,6 +46,7 @@ class XPUContext : public DeviceContext,
   // Return bkcl context.
   xpu::BKCLContext_t bkcl_context() const;
   void SetBkclContext(xpu::BKCLContext_t context);
+  void CreateStream();
 
   // Wait for all operations completion in the stream.
   void Wait() const override;

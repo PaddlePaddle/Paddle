@@ -39,6 +39,7 @@ if(WIN32)
        "test_preln_groupnorm_act_fuse_pass")
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
        "test_element_groupnorm_act_fuse_pass")
+  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_groupnorm_act_pass_fuse_pass")
   list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_fused_token_prune")
   list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_fused_token_prune")
 endif()
@@ -225,6 +226,8 @@ if(WITH_GPU AND TENSORRT_FOUND)
                            PROPERTIES TIMEOUT 120)
       set_tests_properties(test_preln_groupnorm_act_fuse_pass PROPERTIES TIMEOUT
                                                                          120)
+      set_tests_properties(test_groupnorm_act_pass_fuse_pass PROPERTIES TIMEOUT
+                                                                        120)
     endif()
   endif()
 
@@ -232,7 +235,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(test_mkldnn_conv_elementwise_add_fuse_pass
                          PROPERTIES TIMEOUT 120)
     set_tests_properties(test_mkldnn_depthwise_conv_pass PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_mkldnn_reshape_transpose_matmul_fuse_pass
+    set_tests_properties(test_onednn_reshape_transpose_matmul_fuse_pass
                          PROPERTIES TIMEOUT 100)
     set_tests_properties(test_mkldnn_mish_op PROPERTIES TIMEOUT 300)
     set_tests_properties(test_mkldnn_conv3d_op PROPERTIES TIMEOUT 300)
@@ -240,7 +243,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(test_conv_act_mkldnn_fuse_pass PROPERTIES TIMEOUT 120)
     set_tests_properties(test_conv_transpose_eltwiseadd_bn_fuse_pass
                          PROPERTIES TIMEOUT 250)
-    set_tests_properties(test_mkldnn_matmul_transpose_reshape_fuse_pass
+    set_tests_properties(test_onednn_matmul_transpose_reshape_fuse_pass
                          PROPERTIES TIMEOUT 100)
     set_tests_properties(test_conv_transpose_bn_fuse_pass PROPERTIES TIMEOUT
                                                                      300)

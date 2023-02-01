@@ -41,9 +41,9 @@ namespace prim {
   argument DropEmptyIG in the derived classes.
  */
 
-class GradCompositeOpMakerBase {
+class CompositeGradOpMakerBase {
  public:
-  explicit GradCompositeOpMakerBase(
+  explicit CompositeGradOpMakerBase(
       const framework::OpDesc& fwd_op,
       const std::unordered_set<std::string>& no_grad_set,
       std::unordered_map<std::string, std::string>* grad_to_var,
@@ -61,7 +61,7 @@ class GradCompositeOpMakerBase {
         acting_program_.MutableBlock(0));
   }
 
-  virtual ~GradCompositeOpMakerBase() = default;
+  virtual ~CompositeGradOpMakerBase() = default;
 
   virtual std::vector<std::unique_ptr<framework::OpDesc>> operator()() {
     this->Apply();
@@ -477,6 +477,9 @@ class GradCompositeOpMakerBase {
   void RecoverOutputName(const paddle::experimental::Tensor& output,
                          const std::string& origin_name) {
     if (origin_name == framework::kEmptyVarName) return;
+    VLOG(4) << "Recover: "
+            << static_cast<prim::DescTensor*>(output.impl().get())->Name()
+            << " To: " << origin_name;
     prim::StaticCompositeContext::Instance().GetBlock()->RenameVar(
         static_cast<prim::DescTensor*>(output.impl().get())->Name(),
         origin_name);

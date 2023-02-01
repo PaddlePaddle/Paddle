@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -24,6 +24,7 @@ import paddle.fluid as fluid
 class TestTrilIndicesOp(OpTest):
     def setUp(self):
         self.op_type = "tril_indices"
+        self.python_api = paddle.tril_indices
         self.inputs = {}
         self.init_config()
         self.outputs = {'out': self.target}

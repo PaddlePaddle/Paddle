@@ -44,6 +44,7 @@ if(WITH_TESTING)
     cinn_launch_context
     cinn_instruction_run_op
     cinn)
+  target_link_libraries(cinn_launch_context_test ${PYTHON_LIBRARIES})
   set_tests_properties(cinn_launch_context_test PROPERTIES LABELS
                                                            "RUN_TYPE=CINN")
 
@@ -73,6 +74,7 @@ if(WITH_TESTING)
     cinn_launch_op
     cinn_instruction_run_op
     elementwise_add_op)
+  target_link_libraries(cinn_instruction_run_op_test ${PYTHON_LIBRARIES})
   set_tests_properties(
     cinn_instruction_run_op_test PROPERTIES LABELS "RUN_TYPE=CINN" ENVIRONMENT
                                             "${CINN_RUN_ENVIRONMENT}")

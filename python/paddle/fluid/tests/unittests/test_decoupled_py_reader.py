@@ -42,10 +42,12 @@ def simple_fc_net(places, use_legacy_py_reader, use_double_buffer):
 
     with fluid.unique_name.guard():
         with fluid.program_guard(main_prog, startup_prog):
-            image = fluid.layers.data(
-                name='image', shape=[784], dtype='float32'
+            image = paddle.static.data(
+                name='image', shape=[-1, 784], dtype='float32'
             )
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
             py_reader = fluid.io.PyReader(
                 feed_list=[image, label],
                 capacity=4,

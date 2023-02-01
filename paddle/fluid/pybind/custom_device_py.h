@@ -12,6 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
 
-PD_REGISTER_BASE_KERNEL_NAME(size, numel);
+#include "pybind11/pybind11.h"
+#include "pybind11/stl.h"
+
+namespace py = pybind11;
+
+namespace paddle {
+namespace pybind {
+
+void BindCustomDevicePy(py::module* m);
+
+}  // namespace pybind
+}  // namespace paddle

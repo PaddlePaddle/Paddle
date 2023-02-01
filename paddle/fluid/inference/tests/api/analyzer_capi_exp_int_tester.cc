@@ -37,6 +37,9 @@ void predictor_run() {
   PD_OneDimArrayCstr* input_names = PD_PredictorGetInputNames(predictor);
   LOG(INFO) << "The inputs' size is: " << input_names->size;
   EXPECT_EQ(input_names->size, 2u);
+  PD_IOInfos* in_infos = PD_PredictorGetInputInfos(predictor);
+  EXPECT_EQ(in_infos->size, 2u);
+  PD_IOInfos* out_infos = PD_PredictorGetOutputInfos(predictor);
 
   int32_t shape_0[4] = {1, 3, 224, 224};
   float data_0[1 * 3 * 224 * 224] = {0};
@@ -79,6 +82,8 @@ void predictor_run() {
   PD_TensorDestroy(input_1);
   PD_TensorDestroy(input_0);
   PD_OneDimArrayCstrDestroy(input_names);
+  PD_IOInfosDestroy(in_infos);
+  PD_IOInfosDestroy(out_infos);
   PD_PredictorDestroy(predictor);
 }
 

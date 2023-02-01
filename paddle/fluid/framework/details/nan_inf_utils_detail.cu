@@ -322,18 +322,26 @@ __global__ void FindGlobalMaxMinAndPrint(const int64_t* block_num_nan_ptr,
 }
 
 template <typename T>
-static char* GetGpuHintStringPtr(const phi::GPUContext& ctx,
-                                 const std::string& op_type,
+inline std::string GetHintString(const std::string& op_type,
                                  const std::string& var_name,
-                                 int dev_id) {
+                                 const phi::Place& place,
+                                 int dev_id = -1) {
+  std::string op_var = GetCpuHintString<T>(op_type, var_name, place, dev_id);
   PADDLE_ENFORCE_EQ(
       (dev_id >= 0 && dev_id < multi_op_var2gpu_str_mutex().size()),
       true,
       platform::errors::OutOfRange("GPU dev_id must >=0 and < dev_count=%d",
                                    multi_op_var2gpu_str_mutex().size()));
+  return op_var;
+}
 
+template <typename T>
+static char* GetGpuHintStringPtr(const phi::GPUContext& ctx,
+                                 const std::string& op_type,
+                                 const std::string& var_name,
+                                 int dev_id) {
   std::string op_var =
-      GetCpuHintString<T>(op_type, var_name, ctx.GetPlace(), dev_id);
+      GetHintString<T>(op_type, var_name, ctx.GetPlace(), dev_id);
   char* gpu_str_ptr = nullptr;
 
   {
@@ -396,6 +404,24 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
   auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(
       platform::DeviceContextPool::Instance().Get(tensor.place()));
   int dev_id = tensor.place().device;
+  // Write log to file
+  auto file_path = GetNanPath();
+  if (file_path.size() > 0) {
+    phi::DenseTensor cpu_tensor;
+    platform::CPUPlace cpu_place;
+    cpu_tensor.Resize(tensor.dims());
+    // 1. copy from gpu to cpu
+    paddle::framework::TensorCopySync(tensor, cpu_place, &cpu_tensor);
+    auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(
+        platform::DeviceContextPool::Instance().Get(tensor.place()));
+    const std::string debug_info =
+        GetHintString<T>(op_type, var_name, place, dev_id);
+    // 2. write log to file
+    CheckNanInfCpuImpl(cpu_tensor.data<T>(), tensor.numel(), debug_info, "gpu");
+    return;
+  }
+
+  // Write log to window
   char* gpu_str_ptr =
       GetGpuHintStringPtr<T>(*dev_ctx, op_type, var_name, dev_id);
 
