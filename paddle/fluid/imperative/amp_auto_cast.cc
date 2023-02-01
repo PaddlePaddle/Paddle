@@ -86,7 +86,7 @@ OpSupportedInfos(const std::string& place,
           framework::TransPhiKernelKeyToOpKernelType(info_pair.first);
       if (is_target_place[query_place](kernel_type.place_) &&
           kernel_type.data_type_ == dtype && all_ops.count(op_type)) {
-        VLOG(4) << op_type << " " << supported_ops.size();
+        VLOG(6) << op_type << " " << supported_ops.size();
         supported_ops.emplace(op_type);
       }
     }

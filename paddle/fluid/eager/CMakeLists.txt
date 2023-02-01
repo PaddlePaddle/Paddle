@@ -11,6 +11,7 @@ set(eager_deps
     layer
     autograd_meta
     eager_nan_inf_utils
+    eager_tensor_dump_utils
     grad_node_info
     grad_tensor_holder
     custom_operator_node)
@@ -56,6 +57,10 @@ cc_library(
   eager_nan_inf_utils
   SRCS nan_inf_utils.cc
   DEPS phi_tensor nan_inf_utils enforce)
+cc_library(
+  eager_tensor_dump_utils
+  SRCS tensor_dump_utils.cc
+  DEPS phi_tensor enforce)
 cc_library(
   grad_node_info
   SRCS grad_node_info.cc
