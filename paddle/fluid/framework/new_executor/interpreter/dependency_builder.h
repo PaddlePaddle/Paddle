@@ -53,8 +53,6 @@ class DependencyBuilder {
 
   void BuildDownstreamMap();
 
-  void BuildOpHappensBefore();
-
   void ShrinkDownstreamMap();
 
   bool is_build_;
