@@ -45,7 +45,7 @@ class OperatorManager {
   //   }
   // }
 
-  Tensor& multiply(const Tensor& x, const Tensor& y) {
+  Tensor multiply(const Tensor& x, const Tensor& y) {
     if (FLAGS_tensor_operator == "eager") {
       return eager_operator->multiply(x, y);
     } else if (FLAGS_tensor_operator == "static") {
