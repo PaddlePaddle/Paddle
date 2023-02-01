@@ -39,6 +39,24 @@ namespace paddle {
 namespace prim {
 
 template <>
+Tensor add<DescTensor>(const Tensor& x, const Tensor& y) {
+  Tensor out = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
+  framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
+  framework::OpDesc* op = block->AppendOp();
+  op->SetType("elementwise_add");
+  op->SetInput("X",
+               {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
+  op->SetInput("Y",
+               {std::static_pointer_cast<prim::DescTensor>(y.impl())->Name()});
+  op->SetOutput(
+      "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
+  op->CheckAttrs();
+  op->InferVarType(block);
+  op->InferShape(*block);
+  return out;
+}
+
+template <>
 Tensor pow<DescTensor>(const Tensor& x, const Scalar& y) {
   Tensor out = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
   framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
@@ -71,6 +89,29 @@ Tensor scale<DescTensor>(const Tensor& x,
   op->SetAttr("scale", scale.to<float>());
   op->SetAttr("bias", bias);
   op->SetAttr("bias_after_scale", bias_after_scale);
+  op->CheckAttrs();
+  op->InferVarType(block);
+  op->InferShape(*block);
+  return out;
+}
+
+template <>
+Tensor matmul<DescTensor>(const Tensor& x,
+                          const Tensor& y,
+                          bool transpose_x,
+                          bool transpose_y) {
+  Tensor out = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
+  framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
+  framework::OpDesc* op = block->AppendOp();
+  op->SetType("MatMul");
+  op->SetInput("X",
+               {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
+  op->SetInput("Y",
+               {std::static_pointer_cast<prim::DescTensor>(y.impl())->Name()});
+  op->SetOutput(
+      "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
+  op->SetAttr("transpose_X", transpose_x);
+  op->SetAttr("transpose_Y", transpose_y);
   op->CheckAttrs();
   op->InferVarType(block);
   op->InferShape(*block);
@@ -233,6 +274,41 @@ Tensor reshape<DescTensor>(const Tensor& x, const IntArray& shape) {
   op->CheckAttrs();
   op->InferVarType(block);
   // TODO(jiabin, cxxly): This may have runtime shape skip infershape for now.
+  return out;
+}
+
+template <>
+Tensor transpose<Tensor>(const Tensor& x, const std::vector<int>& perm) {
+  Tensor out = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
+  framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
+  framework::OpDesc* op = block->AppendOp();
+  op->SetType("transpose");
+  op->SetInput("X",
+               {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
+  op->SetOutput(
+      "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
+  op->SetAttr("axis", perm);
+  op->CheckAttrs();
+  op->InferVarType(block);
+  op->InferShape(*block);
+  return out;
+}
+
+template <>
+Tensor dot<DescTensor>(const Tensor& x, const Tensor& y) {
+  Tensor out = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
+  framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
+  framework::OpDesc* op = block->AppendOp();
+  op->SetType("dot");
+  op->SetInput("X",
+               {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
+  op->SetInput("Y",
+               {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
+  op->SetOutput(
+      "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
+  op->CheckAttrs();
+  op->InferVarType(block);
+  op->InferShape(*block);
   return out;
 }
 
