@@ -19,7 +19,6 @@ from op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.initializer as initializer
 from paddle.fluid import Program, program_guard
 
 
@@ -199,7 +198,7 @@ class TestNCECase1SelectedRows(unittest.TestCase):
                 shape=[num_total_classes, 10],
                 dtype='float32',
                 name='nce_w',
-                initializer=initializer.ConstantInitializer(),
+                initializer=paddle.nn.initializer.Constant(),
             )
         )
         b_param = (
@@ -209,7 +208,7 @@ class TestNCECase1SelectedRows(unittest.TestCase):
                 shape=[num_total_classes, 1],
                 dtype='float32',
                 name='nce_b',
-                initializer=initializer.ConstantInitializer(),
+                initializer=paddle.nn.initializer.Constant(),
             )
         )
 

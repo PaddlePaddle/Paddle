@@ -35,7 +35,6 @@ from ..fluid.framework import (
     _in_eager_without_dygraph_check,
     device_guard,
 )
-from ..fluid.initializer import Constant, Initializer
 from ..fluid.layers import utils
 from ..fluid.param_attr import ParamAttr
 from ..framework import (
@@ -140,7 +139,10 @@ def create_global_var(
         stop_gradient=True,
     )
     helper.set_variable_initializer(
-        var, initializer=Constant(value=float(value), force_cpu=force_cpu)
+        var,
+        initializer=paddle.nn.initializer.ConstantInitializer(
+            value=float(value), force_cpu=force_cpu
+        ),
     )
 
     return var
@@ -214,7 +216,7 @@ def create_parameter(
     check_type(
         default_initializer,
         'default_initializer',
-        (type(None), Initializer),
+        (type(None), paddle.nn.initializer.Initializer),
         'create_parameter',
     )
 
