@@ -26,6 +26,8 @@ using string::PrettyLogDetail;
 
 void ConvActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
   auto act_types = GetSupportedActivations();
+  act_types.erase(std::remove(act_types.begin(), act_types.end(), "sqrt"),
+                  act_types.end());
   std::vector<std::string> conv_types = {"fused_conv2d", "conv2d"};
 
   for (auto& act_type : act_types) {
@@ -394,6 +396,5 @@ REGISTER_PASS_CAPABILITY(conv_activation_mkldnn_fuse_pass)
             .EQ("relu", 0)
             .EQ("relu6", 0)
             .EQ("sigmoid", 0)
-            .EQ("sqrt", 0)
             .EQ("swish", 0)
             .EQ("tanh", 0));
