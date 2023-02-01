@@ -38,16 +38,18 @@ __global__ void Sum2CUDAKernel(const T *in_0,
 template <class T>
 __global__ void SumArrayCUDAKernel(
     T **in, T *out, int64_t N, size_t in_size, bool read_dst) {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   int id = blockIdx.x * blockDim.x + threadIdx.x;
   while (id < N) {
-    T total(read_dst ? out[id] : static_cast<T>(0));
+    MPType total(read_dst ? static_cast<MPType>(out[id])
+                          : static_cast<MPType>(0));
     for (int i = 0; i < in_size; ++i) {
       const T *tmp = in[i];
       if (tmp) {
-        total += tmp[id];
+        total += static_cast<MPType>(tmp[id]);
       }
     }
-    out[id] = total;
+    out[id] = static_cast<T>(total);
     id += blockDim.x * gridDim.x;
   }
 }
