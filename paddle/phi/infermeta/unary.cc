@@ -1889,6 +1889,11 @@ void MatrixPowerInferMeta(const MetaTensor& x, int n, MetaTensor* out) {
                         "The Input(X) should have at least 2 dimensions. But "
                         "received a %d dimension tensor.",
                         n_dim));
+  for (int i = 0; i < n_dim; ++i)
+    PADDLE_ENFORCE_NE(
+        dims[i],
+        0,
+        phi::errors::InvalidArgument("The size of Input(X) should not be 0."));
   PADDLE_ENFORCE_EQ(dims[n_dim - 2],
                     dims[n_dim - 1],
                     phi::errors::InvalidArgument(
@@ -2533,6 +2538,10 @@ void PixelShuffleInferMeta(const MetaTensor& x,
                         "Input should be a 4-D tensor of format [N, C, H, W] "
                         "or [N, H, W, C], but got %u.",
                         input_dims.size()));
+  PADDLE_ENFORCE_NE(
+      upscale_factor,
+      0,
+      phi::errors::InvalidArgument("upscale_factor should not be 0."));
 
   const bool channel_last = (data_format == "NHWC");
 
@@ -3071,27 +3080,40 @@ void RepeatInterleaveInferMeta(const MetaTensor& x,
                                MetaTensor* out) {
   const auto& input_dim = x.dims();
   auto output_dim = phi::vectorize(input_dim);
+  auto n_dim = dim;
 
-  PADDLE_ENFORCE_EQ(
-      dim < input_dim.size() && dim >= (0 - input_dim.size()),
-      true,
+  if (n_dim < 0) n_dim += input_dim.size();
+
+  PADDLE_ENFORCE_LT(
+      dim,
+      input_dim.size(),
       phi::errors::OutOfRange(
           "Attr(dim) is out of range, It's expected "
-          "to be in range of [-%d, %d]. But received Attr(dim) = %d.",
-          input_dim.size(),
+          "to be in range of [%d, %d]. But received Attr(dim) = %d.",
+          -input_dim.size(),
           input_dim.size() - 1,
           dim));
-  PADDLE_ENFORCE_EQ(
-      repeats > 0,
-      true,
+  PADDLE_ENFORCE_GE(
+      dim,
+      (0 - input_dim.size()),
+      phi::errors::OutOfRange(
+          "Attr(dim) is out of range, It's expected "
+          "to be in range of [%d, %d]. But received Attr(dim) = %d.",
+          -input_dim.size(),
+          input_dim.size() - 1,
+          dim));
+
+  PADDLE_ENFORCE_GT(
+      repeats,
+      0,
       phi::errors::InvalidArgument("repeats should be larger than zero"));
 
-  PADDLE_ENFORCE_NE(out,
-                    nullptr,
-                    phi::errors::InvalidArgument(
-                        "repeat_interleave's output tensor can't be nullptr"));
+  PADDLE_ENFORCE_NOT_NULL(
+      out,
+      phi::errors::InvalidArgument(
+          "repeat_interleave's output tensor can't be nullptr"));
 
-  output_dim[dim] = input_dim[dim] * repeats;
+  output_dim[n_dim] = input_dim[n_dim] * repeats;
   out->set_dims(phi::make_ddim(output_dim));
   out->share_lod(x);
   out->set_dtype(x.dtype());
@@ -4231,7 +4253,20 @@ void UnbindInferMeta(const MetaTensor& x,
                      std::vector<MetaTensor*> outs) {
   auto in_dims = x.dims();
   std::vector<int> out_dim;
+
+  PADDLE_ENFORCE_GE(
+      axis,
+      -in_dims.size(),
+      phi::errors::InvalidArgument(
+          "axis must be in range(%d, %d).", -in_dims.size(), in_dims.size()));
+  PADDLE_ENFORCE_LT(
+      axis,
+      in_dims.size(),
+      phi::errors::InvalidArgument(
+          "axis must be in range(%d, %d).", -in_dims.size(), in_dims.size()));
+
   axis = axis < 0 ? in_dims.size() + axis : axis;
+
   for (int i = 0; i < in_dims.size(); ++i) {
     if (i != axis) out_dim.push_back(in_dims[i]);
   }
@@ -4626,6 +4661,7 @@ void UniqueRawInferMeta(const MetaTensor& x,
     if (axis_value < 0) {
       axis_value += x.dims().size();
     }
+
     PADDLE_ENFORCE_LT(
         axis_value,
         x.dims().size(),
@@ -4633,6 +4669,14 @@ void UniqueRawInferMeta(const MetaTensor& x,
                                      "the dimension size(%d) of x.",
                                      axis_value,
                                      x.dims().size()));
+    PADDLE_ENFORCE_GE(
+        axis_value,
+        0,
+        phi::errors::InvalidArgument(
+            "The axis(%d) + rank(x) (%d) should be greater than or equal to 0.",
+            axis_value,
+            -x.dims().size()));
+
     auto out_dims = x.dims();
     out_dims[axis_value] = -1;
     out->set_dims(out_dims);

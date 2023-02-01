@@ -30,8 +30,10 @@ DECLARE_string(jit_engine_type);
 
 namespace paddle {
 namespace jit {
+
 using FunctionInfoMap =
     std::unordered_map<std::string, std::shared_ptr<FunctionInfo>>;
+
 Layer Deserializer::operator()(const std::string& path,
                                const phi::Place& place) {
   const auto& pdmodel_paths = utils::PdmodelFilePaths(path);

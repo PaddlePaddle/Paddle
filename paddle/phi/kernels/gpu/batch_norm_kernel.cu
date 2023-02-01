@@ -30,6 +30,7 @@ namespace cub = hipcub;
 #include "paddle/phi/kernels/batch_norm_kernel.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/norm_utils.cu.h"
 #include "paddle/phi/kernels/funcs/norm_utils.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 
@@ -172,34 +173,6 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNForwardTraining(
 }
 
 template <typename T>
-__device__ __forceinline__ void merge_block_vertical(
-    BatchNormParamType<T> x_sum,
-    BatchNormParamType<T> x_square_sum,
-    BatchNormParamType<T> *smem_sum,
-    BatchNormParamType<T> *smem_square_sum,
-    BatchNormParamType<T> *x_sum_out,
-    BatchNormParamType<T> *x_square_sum_out) {
-  int tid = threadIdx.x + threadIdx.y * blockDim.x;
-#pragma unroll
-  for (int offset = blockDim.y / 2; offset > 0; offset >>= 1) {
-    if (threadIdx.y < offset * 2) {
-      smem_sum[tid] = x_sum;
-      smem_square_sum[tid] = x_square_sum;
-    }
-    __syncthreads();
-    if (threadIdx.y < offset) {
-      int pair_tid = tid + offset * blockDim.x;
-      x_sum += smem_sum[pair_tid];
-      x_square_sum += smem_square_sum[pair_tid];
-    }
-  }
-  if (threadIdx.y == 0) {
-    *x_sum_out = x_sum;
-    *x_square_sum_out = x_square_sum;
-  }
-}
-
-template <typename T>
 __device__ __forceinline__ void merge_block_horizonal(
     BatchNormParamType<T> x_sum,
     BatchNormParamType<T> x_square_sum,
@@ -269,53 +242,26 @@ static __global__ void BNForwardTraining2DChannelLastCompStat(
     }
 
     // vertical block sum
-    merge_block_vertical<T>(x_sum,
-                            x_square_sum,
-                            &smem_sum[0],
-                            &smem_square_sum[0],
-                            &x_sum,
-                            &x_square_sum);
+    funcs::BlockReduceByVetical<T, BatchNormParamType<T>>(x_sum,
+                                                          x_square_sum,
+                                                          &smem_sum[0],
+                                                          &smem_square_sum[0],
+                                                          &x_sum,
+                                                          &x_square_sum);
 
     if (gridDim.y > 1) {
-      volatile BatchNormParamType<T> *staging_sum = block_data_ptr;
-      volatile BatchNormParamType<T> *staging_square_sum =
-          &block_data_ptr[C * gridDim.y];
-      // write block data to global memory
-      if (threadIdx.y == 0) {
-        staging_sum[i + blockIdx.y * C] = x_sum;
-        staging_square_sum[i + blockIdx.y * C] = x_square_sum;
-      }
-
-      // make sure write is visible to all blocks
-      __threadfence();
-      __syncthreads();
-
       __shared__ bool is_last_block_done;
-      // mark block done
-      if (threadIdx.x == 0 && threadIdx.y == 0) {
-        int old = atomicAdd(&flag_ptr[blockIdx.x], 1);
-        is_last_block_done = (old == (gridDim.y - 1));
-      }
-
-      __syncthreads();
+      funcs::ReduceSumPost<T, BatchNormParamType<T>>(C,
+                                                     i,
+                                                     &x_sum,
+                                                     &x_square_sum,
+                                                     &is_last_block_done,
+                                                     smem_sum,
+                                                     smem_square_sum,
+                                                     block_data_ptr,
+                                                     flag_ptr);
 
       if (is_last_block_done) {
-        x_sum = static_cast<BatchNormParamType<T>>(0);
-        x_square_sum = static_cast<BatchNormParamType<T>>(0);
-        // thread sum
-        for (int y = threadIdx.y; y < gridDim.y; y += blockDim.y) {
-          x_sum += staging_sum[i + y * C];
-          x_square_sum += staging_square_sum[i + y * C];
-        }
-
-        // vertical block sum
-        merge_block_vertical<T>(x_sum,
-                                x_square_sum,
-                                &smem_sum[0],
-                                &smem_square_sum[0],
-                                &x_sum,
-                                &x_square_sum);
-
         // final compute
         if (threadIdx.y == 0) {
           BatchNormParamType<T> compute_mean_val = x_sum / inner_size;

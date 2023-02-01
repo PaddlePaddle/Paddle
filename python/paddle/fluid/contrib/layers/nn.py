@@ -793,6 +793,9 @@ def sparse_embedding(
         'paddle.static.nn.sparse_embedding',
     )
 
+    if input.size == 0:
+        raise ValueError("input size should not be 0")
+
     w = helper.create_parameter(
         attr=helper.param_attr,
         shape=size,
