@@ -2755,14 +2755,19 @@ def unbind(input, axis=0):
             # x2.shape [3, 5]
             # x3.shape [3, 5]
     """
+    if not isinstance(axis, (int)):
+        raise TypeError(
+            "The type of 'axis'  must be int, but received %s." % (type(axis))
+        )
+
+    if axis not in range(-input.ndim, input.ndim):
+        raise ValueError(
+            f'The axis must in range({-input.ndim}, {input.ndim}).'
+        )
+
     if in_dygraph_mode():
         return _C_ops.unbind(input, axis)
     else:
-        if not isinstance(axis, (int)):
-            raise TypeError(
-                "The type of 'axis'  must be int, but received %s."
-                % (type(axis))
-            )
         if isinstance(axis, np.generic):
             axis = np.asscalar(axis)
         input_shape = input.shape

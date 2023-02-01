@@ -67,10 +67,13 @@ class Layer {
 
   std::vector<std::string> FunctionNames() const;
 
+  std::shared_ptr<Layer> Clone(void* stream = nullptr);
+
  private:
   VariableMap params_map_;
   VariableMap attrs_map_;
   FunctionInfoMap info_map_;
+  phi::Place place_;
   std::shared_ptr<CompilationUnit> unit_;
 };
 
