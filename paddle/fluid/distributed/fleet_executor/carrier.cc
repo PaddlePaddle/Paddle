@@ -178,6 +178,7 @@ void Carrier::Start() {
                     platform::errors::PreconditionNotMet(
                         "Using carrier before initialized."));
   InterceptorMessage start_msg;
+  start_msg.set_src_id(SOURCE_ID);
   start_msg.set_dst_id(SOURCE_ID);
   start_msg.set_message_type(START);
   Send(start_msg);
