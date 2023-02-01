@@ -162,6 +162,7 @@ class MultiHeadAttention(Layer):
         need_weights=False,
         weight_attr=None,
         bias_attr=None,
+        sparse=False,
     ):
         super(MultiHeadAttention, self).__init__()
 
@@ -198,6 +199,22 @@ class MultiHeadAttention(Layer):
         self.out_proj = Linear(
             embed_dim, embed_dim, weight_attr, bias_attr=bias_attr
         )
+
+        self.sparse = sparse
+        self.sparse_mask = None
+
+    def ernie_sparse_mask(self, seq_len, glb, wnd):
+        import numpy as np
+
+        mask = np.zeros([seq_len, seq_len])
+        mask[:glb, :glb] = 1
+        pos = np.repeat(list(range((seq_len - glb) // wnd)), wnd)
+        local_visible_part = pos[None, :] == pos[:, None]
+        local_visible_part |= np.roll(local_visible_part, wnd, axis=1)
+        local_visible_part |= np.roll(local_visible_part, -wnd, axis=1)
+        mask[glb:, glb:][local_visible_part] = 1
+
+        return mask
 
     def _prepare_qkv(self, query, key, value, cache=None):
         r"""
@@ -416,24 +433,40 @@ class MultiHeadAttention(Layer):
         else:
             q, k, v, cache = self._prepare_qkv(query, key, value, cache)
 
-        # scale dot product attention
-        product = paddle.matmul(
-            x=q * (self.head_dim**-0.5), y=k, transpose_y=True
-        )
-        if attn_mask is not None:
-            # Support bool or int mask
-            attn_mask = _convert_attention_mask(attn_mask, product.dtype)
-            product = product + attn_mask
-        weights = F.softmax(product)
-        if self.dropout:
-            weights = F.dropout(
-                weights,
-                self.dropout,
-                training=self.training,
-                mode="upscale_in_train",
+        if self.sparse is False:
+            # scale dot product attention
+            product = paddle.matmul(
+                x=q * (self.head_dim**-0.5), y=k, transpose_y=True
             )
+            if attn_mask is not None:
+                # Support bool or int mask
+                attn_mask = _convert_attention_mask(attn_mask, product.dtype)
+                product = product + attn_mask
+            weights = F.softmax(product)
+            if self.dropout:
+                weights = F.dropout(
+                    weights,
+                    self.dropout,
+                    training=self.training,
+                    mode="upscale_in_train",
+                )
 
-        out = tensor.matmul(weights, v)
+            out = tensor.matmul(weights, v)
+        else:
+            # call sparse self-attention
+            # TODO: support attn_mask and dropout
+            if self.sparse_mask is None:
+                glb = 128
+                wnd = 64
+                seq_len = q.shape[-2]
+                mask = self.ernie_sparse_mask(seq_len, glb, wnd)
+                mask = np.repeat(mask[None, :, :], [self.num_heads], axis=0)
+                self.sparse_mask = (
+                    paddle.to_tensor(mask).astype('float32').to_sparse_csr()
+                )
+            out = paddle.sparse.nn.functional.attention(
+                q, k, v, self.sparse_mask
+            )
 
         # combine heads
         out = tensor.transpose(out, perm=[0, 2, 1, 3])
