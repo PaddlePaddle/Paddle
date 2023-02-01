@@ -295,16 +295,23 @@ def _solve_pass_conflict(passes, context):
         return []
 
     n = len(passes)
-    adjacent_matrix = []
-    for _ in range(n):
-        adjacent_matrix.append([None] * n)
+    adjacent_matrix = [[None] * n for _ in range(n)]
 
     for i in range(n):
         for j in range(n):
-            adjacent_matrix[i][j] = (
-                passes[j]._check_conflict_including_common_rules(passes[i])
-                and i < j
-            )
+            if adjacent_matrix[i][j] is None:
+                can_reach_ij = passes[j]._check_conflict_including_common_rules(
+                    passes[i]
+                )
+                can_reach_ji = passes[i]._check_conflict_including_common_rules(
+                    passes[j]
+                )
+                if can_reach_ij and can_reach_ji:
+                    adjacent_matrix[i][j] = can_reach_ij
+                    adjacent_matrix[j][i] = False
+                else:
+                    adjacent_matrix[i][j] = can_reach_ij
+                    adjacent_matrix[j][i] = can_reach_ji
 
     longest_path = _find_longest_path(adjacent_matrix)
 
