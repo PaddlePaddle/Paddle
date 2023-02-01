@@ -22,7 +22,9 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 
 
-def reference_unique_consecutive(X, return_inverse=False, return_counts=False):
+def reference_unique_consecutive(
+    X, return_inverse=False, return_counts=False, axis=None
+):
     """
     Reference unique_consecutive implementation using python.
     Args:
@@ -273,41 +275,45 @@ class TestUniqueConsecutiveCase2API(unittest.TestCase):
                 )
 
 
-class TestUniqueConsecutiveNegativeAxis(OpTest):
-    """negative axis"""
-
-    def config(self):
-        self.return_inverse = True
-        self.return_counts = True
-        self.axis = -1
-        self.python_api = paddle.unique_consecutive
-
-    def init_kernel_type(self):
-        self.dtype = "float32" if core.is_compiled_with_rocm() else "float64"
-
+class TestUniqueConsecutiveCase3API(unittest.TestCase):
     def setUp(self):
-        self.init_kernel_type()
-        self.config()
-        self.op_type = "unique_consecutive"
-        x = np.array([1.1]).astype(self.dtype)
-        result = reference_unique_consecutive(
-            x, self.return_inverse, self.return_counts
-        )
-        out = reference_unique_consecutive(x)
-        out = np.array(out).astype(self.dtype)
-        self.inputs = {
-            'X': x,
-        }
-        self.python_out_sig = ["Out"]
-        self.attrs = {
-            'dtype': int(core.VarDesc.VarType.INT32),
-        }
-        self.outputs = {
-            'Out': out,
-        }
+        self.places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(fluid.CUDAPlace(0))
 
-    def test_check_output(self):
-        self.check_output(check_eager=True)
+    def check_static_result(self, place):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            paddle.enable_static()
+            input_x = fluid.data(
+                name="input_x",
+                shape=[
+                    100,
+                ],
+                dtype="float32",
+            )
+            result, inverse, counts = paddle.unique_consecutive(
+                input_x, return_inverse=True, return_counts=True, axis=-1
+            )
+            x_np = np.random.randint(20, size=100).astype("float32")
+            exe = fluid.Executor(place)
+            fetches = exe.run(
+                fluid.default_main_program(),
+                feed={"input_x": x_np},
+                fetch_list=[result],
+            )
+
+    def test_static(self):
+        for place in self.places:
+            self.check_static_result(place=place)
+
+    def test_dygraph(self):
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+                input_x = np.random.randint(20, size=100).astype("float64")
+                x = paddle.to_tensor(input_x)
+                result, inverse, counts = paddle.unique_consecutive(
+                    x, return_inverse=True, return_counts=True, axis=-1
+                )
 
 
 class TestUniqueConsecutiveEmptyInput(OpTest):
