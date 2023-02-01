@@ -306,7 +306,7 @@ void DispatchFMHAArchTag(LaunchParams params, const phi::GPUContext& ctx) {
 void DispatchFusedMultiheadAttentionKernel(LaunchParams params,
                                            const phi::GPUContext& ctx) {
   if (params.datatype == DataType::FLOAT32) {
-    return DispatchFMHAArchTag<cutlass::tfloat32_t>(params, ctx);
+    return DispatchFMHAArchTag<float>(params, ctx);
   } else if (params.datatype == DataType::FLOAT16) {
     return DispatchFMHAArchTag<cutlass::half_t>(params, ctx);
   } else {
