@@ -25,6 +25,10 @@ white_ops_list = [
     "divide",
     "sum",
     "exp",
+    "matmul",
+    "dot",
+    "transpose",
+    "add",
 ]
 
 inplace_out_type_map = {
