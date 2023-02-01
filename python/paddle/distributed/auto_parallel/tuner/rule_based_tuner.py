@@ -520,7 +520,8 @@ class ClusterPartitionUtil:
             return [[1, 2], [2, 1]]
         if num == 3:
             return [[1, 2], [2, 1], [1]]
-        elif len(partitions) == 1:
+        # special cases
+        if len(partitions) == 1:
             partitions = ClusterPartitionUtil.factorization(num - 1)
             partitions.append([1])
         return partitions
