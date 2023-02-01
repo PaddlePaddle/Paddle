@@ -1564,11 +1564,11 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
   int y_block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, y_threads);
   if (dx) {
     size_t dx_total_bytes = bytes * 2;
-    auto tmp_order_buffer = paddle::memory::Alloc(
+    auto dx_tmp_buffer = paddle::memory::Alloc(
         ctx.GetPlace(),
         dx_total_bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
-    int *x_strides_order_gpu = reinterpret_cast<int *>(tmp_order_buffer->ptr());
+    int *x_strides_order_gpu = reinterpret_cast<int *>(dx_tmp_buffer->ptr());
     int *x_dims_order_gpu =
         reinterpret_cast<int *>(x_strides_order_gpu + max_dim);
 
@@ -1603,12 +1603,11 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
   if (dy) {
     // One part buffer for y_strides_order_gpu, the other for y_dims_order_gpu
     size_t dy_total_bytes = bytes * 2;
-    auto y_mem_tmp = paddle::memory::Alloc(
+    auto dy_tmp_buffer = paddle::memory::Alloc(
         ctx.GetPlace(),
         dy_total_bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
-    int *y_strides_order_gpu =
-        reinterpret_cast<int *>(y_strides_order_tmp->ptr());
+    int *y_strides_order_gpu = reinterpret_cast<int *>(dy_tmp_buffer->ptr());
     int *y_dims_order_gpu =
         reinterpret_cast<int *>(y_strides_order_gpu + max_dim);
 
