@@ -833,7 +833,192 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(
         residual_ele_add_op_node, residual_ele_add_op, fused_attention_pattern);
 
-    // TODO(Yuang Liu): finish the handler
+    OpDesc fused_attention_op_desc(pre_layer_norm_op_node->Op()->Block());
+    fused_attention_op_desc.SetType("fused_attention");
+    fused_attention_op_desc.SetInput("X", {subgraph.at(x)->Name()});
+
+    fused_attention_op_desc.SetAttr("pre_layer_norm", true);
+    GET_IR_NODE_FROM_SUBGRAPH(pre_layer_norm_scale_node,
+                              pre_layer_norm_scale,
+                              fused_attention_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(pre_layer_norm_bias_node,
+                              pre_layer_norm_scale,
+                              fused_attention_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        pre_layer_norm_out_node, pre_layer_norm_scale, fused_attention_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(pre_layer_norm_mean_node,
+                              pre_layer_norm_scale,
+                              fused_attention_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(pre_layer_norm_variance_node,
+                              pre_layer_norm_scale,
+                              fused_attention_pattern);
+    fused_attention_op_desc.SetInput("LnScale",
+                                     {pre_layer_norm_scale_node->Name()});
+    fused_attention_op_desc.SetInput("LnBias",
+                                     {pre_layer_norm_bias_node->Name()});
+    fused_attention_op_desc.SetOutput("LnOut",
+                                      {pre_layer_norm_out_node->Name()});
+    fused_attention_op_desc.SetOutput("LnMean",
+                                      {pre_layer_norm_mean_node->Name()});
+    fused_attention_op_desc.SetOutput("LnVariance",
+                                      {pre_layer_norm_variance_node->Name()});
+    fused_attention_op_desc.SetAttr(
+        "epsilon",
+        PADDLE_GET_CONST(float,
+                         pre_layer_norm_op_node->Op()->GetAttr("epsilon")));
+
+    fused_attention_op_desc.SetAttr("transpose_qkv_wb", true);
+    std::vector<int> shape = PADDLE_GET_CONST(
+        std::vector<int>, fuse_qkv_reshape_op_node->Op()->GetAttr("shape"));
+    fused_attention_op_desc.SetAttr("num_heads", shape[2]);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        fuse_qkv_matmul_w_node, fuse_qkv_matmul_w, fused_attention_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        fuse_qkv_matmul_out_node, fuse_qkv_matmul_out, fused_attention_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fuse_qkv_ele_add_bias_node,
+                              fuse_qkv_ele_add_bias,
+                              fused_attention_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fuse_qkv_ele_add_out_node,
+                              fuse_qkv_ele_add_out,
+                              fused_attention_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fuse_qkv_transpose_out_node,
+                              fuse_qkv_transpose_out,
+                              fused_attention_pattern);
+    fused_attention_op_desc.SetInput("QKVW", {fuse_qkv_matmul_w_node->Name()});
+    fused_attention_op_desc.SetInput("QKVBias",
+                                     {fuse_qkv_ele_add_bias_node->Name()});
+    fused_attention_op_desc.SetOutput("QKVOut",
+                                      {fuse_qkv_matmul_out_node->Name()});
+    fused_attention_op_desc.SetOutput("QKVBiasOut",
+                                      {fuse_qkv_ele_add_out_node->Name()});
+    fused_attention_op_desc.SetOutput("TransposeOut2",
+                                      {fuse_qkv_transpose_out_node->Name()});
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        qk_matmul_out_node, qk_matmul_out, fused_attention_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(add_mask_ele_add_mask_node,
+                              add_mask_ele_add_mask,
+                              fused_attention_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(add_mask_ele_add_out_node,
+                              add_mask_ele_add_out,
+                              fused_attention_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        qk_softmax_out_node, qk_softmax_out, fused_attention_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        attn_dropout_out_node, attn_dropout_out, fused_attention_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        attn_dropout_mask_node, attn_dropout_mask, fused_attention_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        qkv_matmul_out_node, qkv_matmul_out, fused_attention_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        qkv_reshape_out_node, qkv_reshape_out, fused_attention_pattern);
+    fused_attention_op_desc.SetOutput("QKOut", {qk_matmul_out_node->Name()});
+    fused_attention_op_desc.SetInput("SrcMask",
+                                     {add_mask_ele_add_mask_node->Name()});
+    fused_attention_op_desc.SetOutput("SrcMaskOut",
+                                      {add_mask_ele_add_out_node->Name()});
+    fused_attention_op_desc.SetOutput("SoftmaxOut",
+                                      {qk_softmax_out_node->Name()});
+    fused_attention_op_desc.SetAttr(
+        "attn_dropout_rate",
+        PADDLE_GET_CONST(float,
+                         attn_dropout_op_node->Op()->GetAttr("dropout_prob")));
+    fused_attention_op_desc.SetAttr(
+        "is_test",
+        PADDLE_GET_CONST(bool, attn_dropout_op_node->Op()->GetAttr("is_test")));
+    fused_attention_op_desc.SetAttr(
+        "attn_dropout_fix_seed",
+        PADDLE_GET_CONST(bool,
+                         attn_dropout_op_node->Op()->GetAttr("fix_seed")));
+    fused_attention_op_desc.SetAttr(
+        "attn_dropout_seed",
+        PADDLE_GET_CONST(int, attn_dropout_op_node->Op()->GetAttr("seed")));
+    fused_attention_op_desc.SetAttr(
+        "attn_dropout_implementation",
+        PADDLE_GET_CONST(
+            std::string,
+            attn_dropout_op_node->Op()->GetAttr("dropout_implementation")));
+    fused_attention_op_desc.SetOutput("AttnDropoutMaskOut",
+                                      {attn_dropout_mask_node->Name()});
+    fused_attention_op_desc.SetOutput("AttnDropoutOut",
+                                      {attn_dropout_out_node->Name()});
+    fused_attention_op_desc.SetOutput("QKTVOut", {qkv_matmul_out_node->Name()});
+    fused_attention_op_desc.SetOutput("FMHAOut",
+                                      {qkv_reshape_out_node->Name()});
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        out_linear_matmul_w_node, out_linear_matmul_w, fused_attention_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(out_linear_matmul_out_node,
+                              out_linear_matmul_out,
+                              fused_attention_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(out_linear_ele_add_bias_node,
+                              out_linear_ele_add_bias,
+                              fused_attention_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(out_linear_ele_add_out_node,
+                              out_linear_ele_add_out,
+                              fused_attention_pattern);
+    fused_attention_op_desc.SetInput("OutLinearW",
+                                     {out_linear_matmul_w_node->Name()});
+    fused_attention_op_desc.SetInput("OutLinearBias",
+                                     {out_linear_ele_add_bias_node->Name()});
+    fused_attention_op_desc.SetOutput("OutLinearOut",
+                                      {out_linear_matmul_out_node->Name()});
+    GET_IR_NODE_FROM_SUBGRAPH(out_linear_dropout_mask_node,
+                              out_linear_dropout_mask,
+                              fused_attention_pattern);
+    fused_attention_op_desc.SetAttr(
+        "dropout_rate",
+        PADDLE_GET_CONST(
+            float, out_linear_dropout_op_node->Op()->GetAttr("dropout_prob")));
+    fused_attention_op_desc.SetAttr(
+        "dropout_fix_seed",
+        PADDLE_GET_CONST(
+            bool, out_linear_dropout_op_node->Op()->GetAttr("fix_seed")));
+    fused_attention_op_desc.SetAttr(
+        "dropout_seed",
+        PADDLE_GET_CONST(int,
+                         out_linear_dropout_op_node->Op()->GetAttr("seed")));
+    fused_attention_op_desc.SetAttr(
+        "dropout_implementation",
+        PADDLE_GET_CONST(std::string,
+                         out_linear_dropout_op_node->Op()->GetAttr(
+                             "dropout_implementation")));
+    fused_attention_op_desc.SetOutput("DropoutMaskOut",
+                                      {out_linear_dropout_mask_node->Name()});
+
+    GET_IR_NODE_FROM_SUBGRAPH(residual_ele_add_out_node,
+                              residual_ele_add_out,
+                              fused_attention_pattern);
+    fused_attention_op_desc.SetAttr("add_residual", true);
+    fused_attention_op_desc.SetOutput("Y", {residual_ele_add_out_node->Name()});
+
+    auto fused_attention_node = g->CreateOpNode(&fused_attention_op_desc);
+
+    IR_NODE_LINK_TO(subgraph.at(x), fused_attention_node);
+    IR_NODE_LINK_TO(pre_layer_norm_scale_node, fused_attention_node);
+    IR_NODE_LINK_TO(pre_layer_norm_bias_node, fused_attention_node);
+    IR_NODE_LINK_TO(fuse_qkv_matmul_w_node, fused_attention_node);
+    IR_NODE_LINK_TO(fuse_qkv_ele_add_bias_node, fused_attention_node);
+    IR_NODE_LINK_TO(add_mask_ele_add_mask_node, fused_attention_node);
+    IR_NODE_LINK_TO(out_linear_matmul_w_node, fused_attention_node);
+    IR_NODE_LINK_TO(out_linear_ele_add_bias_node, fused_attention_node);
+
+    IR_NODE_LINK_TO(fused_attention_node, pre_layer_norm_out_node);
+    IR_NODE_LINK_TO(fused_attention_node, pre_layer_norm_mean_node);
+    IR_NODE_LINK_TO(fused_attention_node, pre_layer_norm_variance_node);
+    IR_NODE_LINK_TO(fused_attention_node, fuse_qkv_matmul_out_node);
+    IR_NODE_LINK_TO(fused_attention_node, fuse_qkv_ele_add_out_node);
+    IR_NODE_LINK_TO(fused_attention_node, fuse_qkv_transpose_out_node);
+    IR_NODE_LINK_TO(fused_attention_node, qk_matmul_out_node);
+    IR_NODE_LINK_TO(fused_attention_node, add_mask_ele_add_out_node);
+    IR_NODE_LINK_TO(fused_attention_node, qk_softmax_out_node);
+    IR_NODE_LINK_TO(fused_attention_node, attn_dropout_mask_node);
+    IR_NODE_LINK_TO(fused_attention_node, attn_dropout_out_node);
+    IR_NODE_LINK_TO(fused_attention_node, qkv_matmul_out_node);
+    IR_NODE_LINK_TO(fused_attention_node, qkv_reshape_out_node);
+    IR_NODE_LINK_TO(fused_attention_node, out_linear_matmul_out_node);
+    IR_NODE_LINK_TO(fused_attention_node, out_linear_dropout_mask_node);
+    IR_NODE_LINK_TO(fused_attention_node, residual_ele_add_out_node);
 
     GraphSafeRemoveNodes(g,
                          {pre_layer_norm_op_node,
@@ -868,7 +1053,7 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResBwd(Graph* graph) const {
   auto* x = gpd.mutable_pattern()
                 ->NewNode(patterns::PDNodeName(name_scope_, "x"))
                 ->AsInput()
-                ->assert_is_op_input("layer_norm_grad", "Y@GRAD");
+                ->assert_is_op_input("elementwise_add_grad", "Out@GRAD");
   patterns::FusedAttentionGradPattern fused_attention_grad_pattern(
       gpd.mutable_pattern(), "fused_attention_grad_pattern");
 
