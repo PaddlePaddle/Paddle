@@ -20,6 +20,7 @@ from test_sum_op import TestReduceOPTensorAxisBase
 
 import paddle
 import paddle.fluid.core as core
+from paddle import fluid
 
 
 class ApiMinTest(unittest.TestCase):
@@ -117,16 +118,17 @@ class TestMinWithTensorAxis2(TestReduceOPTensorAxisBase):
         self.keepdim = True
 
 
-class TestMinWithEmptyTensor(TestReduceOPTensorAxisBase):
-    def init_data(self):
-        self.pd_api = paddle.min
-        self.np_api = np.min
-        data = np.array([], dtype=np.float32)
-        self.x = paddle.to_tensor(
-            np.reshape(data, [0, 0, 0, 0, 0, 0, 0]), dtype='float64'
-        )
-        self.np_axis = 0
-        self.tensor_axis = 0
+class TestMinAPIWithEmptyTensor(unittest.TestCase):
+    def test_empty_tensor(self):
+        with fluid.dygraph.guard():
+            with self.assertRaises(ValueError):
+                data = np.array([], dtype=np.float32)
+                data = np.reshape(data, [0, 0, 0, 0, 0, 0, 0])
+                x = paddle.to_tensor(data, dtype='float64')
+                np_axis = np.array([0], dtype='int64')
+                tensor_axis = paddle.to_tensor(np_axis, dtype='int64')
+
+                out = paddle.min(x, tensor_axis)
 
 
 if __name__ == '__main__':
