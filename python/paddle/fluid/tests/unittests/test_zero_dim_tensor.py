@@ -210,8 +210,6 @@ class TestReduceAPI(unittest.TestCase):
             out.retain_grads()
             out.backward()
 
-
-
             self.assertEqual(x.shape, [])
             self.assertEqual(out.shape, [])
             if api not in [paddle.argmax, paddle.argmin]:
