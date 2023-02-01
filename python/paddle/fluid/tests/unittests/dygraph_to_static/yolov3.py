@@ -295,9 +295,7 @@ class YOLOv3(fluid.dygraph.Layer):
         blocks = self.block(inputs)
         for i, block in enumerate(blocks):
             if i > 0:
-                block = paddle.concat(
-                    input=[route, block], axis=1  # noqa: F821
-                )
+                block = paddle.concat([route, block], axis=1)  # noqa: F821
             route, tip = self.yolo_blocks[i](block)
             block_out = self.block_outputs[i](tip)
             self.outputs.append(block_out)

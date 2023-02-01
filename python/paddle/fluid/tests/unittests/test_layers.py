@@ -1652,7 +1652,7 @@ class TestBook(LayerTest):
             )
 
             concat_embed = paddle.concat(
-                input=[embed_first, embed_second, embed_third, embed_forth],
+                [embed_first, embed_second, embed_third, embed_forth],
                 axis=1,
             )
 
