@@ -452,42 +452,6 @@ class FCOneDNNKernel : public framework::OpKernel<T_in> {
     out->Resize(phi::make_ddim(unsqueezed_op_tz));
   }
 
-  void SetOutMemDescWithReshape2FuseSupport(
-      const ExecutionContext& ctx,
-      phi::DenseTensor* out,
-      const dnnl::memory::desc& out_md) const {
-    std::vector<int64_t> fused_reshape2_shape(
-        ctx.Attr<std::vector<int>>("fused_reshape2_shape").begin(),
-        ctx.Attr<std::vector<int>>("fused_reshape2_shape").end());
-
-    const int out_shape_numel = out->numel();
-    const int new_shape_numel = std::accumulate(fused_reshape2_shape.begin(),
-                                                fused_reshape2_shape.end(),
-                                                1,
-                                                std::multiplies<int64_t>());
-
-    for (size_t i = 0; i < fused_reshape2_shape.size(); ++i) {
-      if (fused_reshape2_shape[i] == -1) {
-        fused_reshape2_shape[i] = -out_shape_numel / new_shape_numel;
-        break;
-      }
-    }
-
-    out->set_mem_desc(out_md.reshape(fused_reshape2_shape));
-    out->Resize(phi::make_ddim(fused_reshape2_shape));
-  }
-
-  void SetOutMemDescWithLogicalLayoutFusesSupport(
-      const ExecutionContext& ctx,
-      phi::DenseTensor* out,
-      const dnnl::memory::desc& out_md) const {
-    if (!(ctx.Attr<std::vector<int>>("fused_reshape2_shape").empty())) {
-      SetOutMemDescWithReshape2FuseSupport(ctx, out, out_md);
-    } else {
-      out->set_mem_desc(out_md);
-    }
-  }
-
   template <typename T_out, typename T_w>
   void RunKernel(const ExecutionContext& ctx) const {
     const auto& dev_ctx = ctx.template device_context<OneDNNContext>();
@@ -595,10 +559,16 @@ class FCOneDNNKernel : public framework::OpKernel<T_in> {
       dev_ctx.SetBlob(cache_key, ip_cache);
     }
 
-    SetOutMemDescWithLogicalLayoutFusesSupport(
-        ctx,
-        out,
-        dst_memory_p->get_desc().reshape(phi::vectorize(out->dims())));
+    auto out_md = dst_memory_p->get_desc().reshape(phi::vectorize(out->dims()));
+    auto fused_reshape2_shape =
+        ctx.Attr<std::vector<int>>("fused_reshape2_shape");
+
+    if (fused_reshape2_shape.empty()) {
+      out->set_mem_desc(out_md);
+    } else {
+      phi::funcs::SetOutMemDescWithReshape2FuseSupport(
+          fused_reshape2_shape, out, out_md);
+    }
   }
 
   void RecomputeOutputDims(const ExecutionContext& ctx,
