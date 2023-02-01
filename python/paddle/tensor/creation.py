@@ -695,15 +695,17 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     If the ``data`` is already a Tensor, copy will be performed and return a new tensor.
     If you only want to change stop_gradient property, please call ``Tensor.stop_gradient = stop_gradient`` directly.
 
-    We use the dtype conversion rules following this:
-               Keep dtype
-    np.number ───────────► paddle.Tensor
-                            (0D-Tensor)
-                   default_dtype
-    Python Number ───────────────► paddle.Tensor
-                                    (1D-Tensor)
+    .. code-block:: text
+
+        We use the dtype conversion rules following this:
                 Keep dtype
-    np.ndarray ───────────► paddle.Tensor
+        np.number ───────────► paddle.Tensor
+                                (0D-Tensor)
+                    default_dtype
+        Python Number ───────────────► paddle.Tensor
+                                        (1D-Tensor)
+                    Keep dtype
+        np.ndarray ───────────► paddle.Tensor
 
     Args:
         data(scalar|tuple|list|ndarray|Tensor): Initial data for the tensor.
