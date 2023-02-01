@@ -65,13 +65,16 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilder::Build(
       is_build_,
       false,
       phi::errors::AlreadyExists("The op dependency has been built"));
+  is_build_ = true;
 
   instructions_ = &instructions;
   op_num_ = instructions_->size();
 
   BuildDownstreamMap();
-  BuildOpHappensBefore();
+  VLOG(6) << "Finish BuildDownstreamMap";
+
   ShrinkDownstreamMap();
+  VLOG(6) << "Finish ShrinkDownstreamMap";
 
   if (FLAGS_new_executor_sequential_run) {
     AddDependencyForSequentialRun();
@@ -81,14 +84,16 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilder::Build(
 
   if (FLAGS_add_dependency_for_communication_op) {
     AddDependencyForCommunicationOp();
+    VLOG(6) << "Finish AddDependencyForSequentialRun";
   }
 
   AddDependencyForRandomOp();
+  VLOG(6) << "Finish AddDependencyForRandomOp";
+
   AddDependencyForReadOp();
+  VLOG(6) << "Finish AddDependencyForReadOp";
 
-  is_build_ = true;
-
-  VLOG(8) << "Finish build dependency";
+  VLOG(6) << "Finish build dependency";
   VLOG(8) << "downstream count: " << CountDownstreamMap(op_downstream_map_);
   VLOG(8) << "downstream_map: " << std::endl
           << StringizeDownstreamMap(op_downstream_map_);
@@ -108,11 +113,17 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilder::OpDownstreamMap()
 
 bool DependencyBuilder::OpHappensBefore(size_t prior_op_idx,
                                         size_t posterior_op_idx) const {
-  PADDLE_ENFORCE_GE(
-      op_happens_before_.size(),
-      0,
-      phi::errors::Unavailable("op_happen_before is not yet built"));
-  return op_happens_before_.at(prior_op_idx).at(posterior_op_idx);
+  PADDLE_ENFORCE_EQ(
+      is_build_,
+      true,
+      phi::errors::AlreadyExists("The op dependency is not yet built"));
+  auto it = op_behind_map_.find(prior_op_idx);
+  if (it == op_behind_map_.end()) {
+    return false;
+  }
+
+  const std::set<size_t>& posterior_op_set = it->second;
+  return posterior_op_set.find(posterior_op_idx) != posterior_op_set.end();
 }
 
 void DependencyBuilder::AddDependencyForCoalesceTensorOp() {
@@ -287,7 +298,7 @@ void DependencyBuilder::AddDependencyForReadOp() {
   for (size_t read_op_idx : read_ops) {
     for (size_t downstream_op_idx : startup_ops) {
       if (read_op_idx != downstream_op_idx &&
-          !op_happens_before_[downstream_op_idx][read_op_idx]) {
+          !OpHappensBefore(downstream_op_idx, read_op_idx)) {
         AddDownstreamOp(read_op_idx, downstream_op_idx);
       }
     }
@@ -308,42 +319,48 @@ void DependencyBuilder::AddDependencyForSequentialRun() {
 
 void DependencyBuilder::AddDownstreamOp(size_t prior_op_idx,
                                         size_t posterior_op_idx) {
+  PADDLE_ENFORCE_EQ(
+      OpHappensBefore(posterior_op_idx, prior_op_idx),
+      false,
+      phi::errors::Unavailable(
+          "Can not add dependency %d->%d because %d is run before %d",
+          prior_op_idx,
+          posterior_op_idx,
+          posterior_op_idx,
+          prior_op_idx));
+
   std::set<size_t>& downstream_ops = op_downstream_map_[prior_op_idx];
-
-  if (op_happens_before_.size() != 0) {
-    PADDLE_ENFORCE_EQ(
-        op_happens_before_[posterior_op_idx][prior_op_idx],
-        false,
-        phi::errors::Unavailable(
-            "Can not add dependency %d->%d because %d is run before %d",
-            prior_op_idx,
-            posterior_op_idx,
-            posterior_op_idx,
-            prior_op_idx));
-
-    for (size_t op_idx : downstream_ops) {
-      if (op_happens_before_[op_idx][posterior_op_idx]) {
-        VLOG(7) << "Find dependencies " << prior_op_idx << "->" << op_idx
-                << "->" << posterior_op_idx << ", skip adding " << prior_op_idx
-                << "->" << posterior_op_idx;
-        return;
-      }
+  // NOTE(Ruibiao): Here the downstream map shrinking is best-effort, therefore
+  // ShrinkDownstreamMap after BuildDownstreamMap is still helpful. For example,
+  // a->c will not be shrinked in the following case: AddDownstreamOp(a, b) ->
+  // AddDownstreamOp(a, c) -> AddDownstreamOp(b, c), it should be shrinked by
+  // ShrinkDownstreamMap.
+  for (size_t op_idx : downstream_ops) {
+    if (OpHappensBefore(op_idx, posterior_op_idx)) {
+      VLOG(7) << "Find dependencies " << prior_op_idx << "->" << op_idx << "->"
+              << posterior_op_idx << ", skip adding " << prior_op_idx << "->"
+              << posterior_op_idx;
+      return;
     }
   }
-
   downstream_ops.insert(posterior_op_idx);
 
-  if (op_happens_before_.size() != 0) {
-    for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
-      if (op_happens_before_[op_idx][prior_op_idx]) {
-        op_happens_before_[op_idx][posterior_op_idx] = true;
-      }
+  std::set<size_t>& posterior_ops = op_behind_map_[prior_op_idx];
+  posterior_ops.insert(posterior_op_idx);
 
-      if (op_happens_before_[posterior_op_idx][op_idx]) {
-        op_happens_before_[prior_op_idx][op_idx] = true;
-      }
+  // All ops before prior-op are also before posterior-op
+  for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
+    if (OpHappensBefore(op_idx, prior_op_idx)) {
+      op_behind_map_[op_idx].insert(posterior_op_idx);
     }
   }
+
+  // All ops after posterior-op are also after prior-op
+  auto it = op_behind_map_.find(posterior_op_idx);
+  if (it != op_behind_map_.end()) {
+    posterior_ops.insert(it->second.begin(), it->second.end());
+  }
+
   VLOG(8) << prior_op_idx << "->" << posterior_op_idx;
   VLOG(8) << "Add dependency from "
           << instructions_->at(prior_op_idx).OpBase()->Type() << "("
@@ -468,46 +485,6 @@ void DependencyBuilder::BuildDownstreamMap() {
   }
 }
 
-void DependencyBuilder::BuildOpHappensBefore() {
-  // happens_before[i][j] means i should be executed before j
-  op_happens_before_.assign(op_num_, std::vector<bool>(op_num_, false));
-
-  // bfs to get all next ops
-  auto bfs = [&](size_t op_idx) {
-    std::queue<size_t> q;
-    std::vector<bool> visited(op_num_, false);
-    q.push(op_idx);
-    while (!q.empty()) {
-      size_t op = q.front();
-      q.pop();
-      visited[op] = true;
-      if (!op_downstream_map_.count(op)) {
-        continue;
-      }
-      for (auto next : op_downstream_map_.at(op)) {
-        if (!visited[next]) {
-          PADDLE_ENFORCE_EQ(op_happens_before_[next][op_idx],
-                            false,
-                            paddle::platform::errors::AlreadyExists(
-                                "There exists circle in graph, expected "
-                                "%d->%d, but already got %d->%d",
-                                op_idx,
-                                next,
-                                next,
-                                op_idx));
-          op_happens_before_[op_idx][next] = true;
-          VLOG(10) << "happens before: " << op_idx << " " << next;
-          q.push(next);
-        }
-      }
-    }
-  };
-
-  for (size_t i = 0; i < op_num_; ++i) {
-    bfs(i);
-  }
-}
-
 void DependencyBuilder::ShrinkDownstreamMap() {
   // remove unnecessary downstream ops
   // for example, a->b->c
@@ -529,7 +506,7 @@ void DependencyBuilder::ShrinkDownstreamMap() {
       bool not_after_any = true;
       // find the op that is not executed after any
       for (size_t other_item : op_downstream_map_.at(i)) {
-        if (op_happens_before_[other_item][item]) {
+        if (OpHappensBefore(other_item, item)) {
           VLOG(8) << "happens_before: " << other_item << "->" << item
                   << ", so skip " << item;
           not_after_any = false;
@@ -541,6 +518,8 @@ void DependencyBuilder::ShrinkDownstreamMap() {
         minumum_nexts.insert(item);
       }
     }
+    // NOTE(Ruibiao): op_behind_map_ will not be changed when shrink dowstream
+    // map
     op_downstream_map_.at(i) = minumum_nexts;
   }
   VLOG(8) << "Finish shrink downstream map";

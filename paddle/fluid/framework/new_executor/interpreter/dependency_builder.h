@@ -61,12 +61,14 @@ class DependencyBuilder {
   const std::vector<Instruction>* instructions_;  // not_own
   size_t op_num_;
 
-  // op_happens_before_[i][j] == true means op[i] happens before op[j]
-  std::vector<std::vector<bool>> op_happens_before_;
+  // op_behind_map_ is the mapping from op to its posterior-op set, that is to
+  // say, op_behind_map_[i] == {a, b, c} means op[a], op[b] and op[c] depend on
+  // op[i] directly or indirectly
+  std::map<size_t, std::set<size_t>> op_behind_map_;
 
   // op_downstream_map_ is the mapping from op to its downstream-op set, that is
   // to say, op_downstream_map_[i] == {a, b, c} means op[a], op[b] and op[c]
-  // should be dispatched after op[i]
+  // depend on op[i] directly
   std::map<size_t, std::set<size_t>> op_downstream_map_;
 };
 
