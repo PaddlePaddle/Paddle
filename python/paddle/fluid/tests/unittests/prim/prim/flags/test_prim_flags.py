@@ -56,8 +56,7 @@ class TestPrimFlags(unittest.TestCase):
 
         with self.assertRaises(TypeError):
             core.__sync_stat_with_flag("aaaa")
-            
-        
+
 
 if __name__ == '__main__':
     unittest.main()
