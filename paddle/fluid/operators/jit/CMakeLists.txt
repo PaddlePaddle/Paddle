@@ -48,7 +48,7 @@ if(NOT WIN32)
       jit_kernel_helper
       device_tracer
       tensor)
-  elseif(NOT (${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0 
+  elseif(NOT (${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0
       AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 12.0))
     cc_binary(
       jit_kernel_benchmark
