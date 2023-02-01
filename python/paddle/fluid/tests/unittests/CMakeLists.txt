@@ -631,7 +631,6 @@ if(WITH_DISTRIBUTE)
   endif()
 
   if(NOT WITH_HETERPS)
-    add_subdirectory(ps)
     list(REMOVE_ITEM DIST_TEST_OPS "test_communicator_ps_gpu")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ps11")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ps12")
