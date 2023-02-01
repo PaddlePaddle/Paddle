@@ -391,9 +391,9 @@ class PiecewiseDecay(LRScheduler):
         if len(boundaries) == 0:
             raise ValueError('The boundaries cannot be empty.')
 
-        if len(values) < len(boundaries):
+        if len(values) <= len(boundaries):
             raise ValueError(
-                f'The length ({len(values)}) of values should >= length ({len(boundaries)}) of boundaries.'
+                f'The values have one more element than boundaries, but received len(values) [{len(values)}] < len(boundaries) + 1 [{len(boundaries) + 1}].'
             )
 
         self.boundaries = boundaries

@@ -734,6 +734,11 @@ class TestLRScheduler(unittest.TestCase):
         # check non-empty boundaries but empty values
         with self.assertRaises(ValueError):
             paddle.optimizer.lr.PiecewiseDecay(boundaries=[100, 200], values=[])
+        # check boundaries and values has same length
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.PiecewiseDecay(
+                boundaries=[100, 200], values=[0.5, 0.1]
+            )
 
         func_api_kwargs = [
             (
