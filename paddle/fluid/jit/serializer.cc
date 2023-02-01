@@ -58,8 +58,6 @@ Layer Deserializer::operator()(const std::string& path,
 
   VariableMap params_dict;
   VariableMap attrs_dict;
-  // auto params_dict = std::make_shared<VariableMap>();
-  // auto attrs_dict = std::make_shared<VariableMap>();
   ReadTensorData(path + PDPARAMS_SUFFIX, param_names_set, place, &params_dict);
 
   if (utils::FileExists(path + PROPERTY_SUFFIX)) {

@@ -55,15 +55,16 @@ PredictorEngine::PredictorEngine(const std::shared_ptr<FunctionInfo> &info,
       scope_, std::make_shared<framework::ProgramDesc>(info_->ProgramDesc()));
 }
 
-PredictorEngine::PredictorEngine(const std::shared_ptr<FunctionInfo> &info,
-                                 const std::shared_ptr<framework::Scope> &scope,
-                                 const phi::Place &place,
-                                 const std::shared_ptr<PaddlePredictor> &predictor){
-   info_ = info;
-   scope_ = scope;
-   place_ = place;
-   predictor_ = std::dynamic_pointer_cast<AnalysisPredictor, PaddlePredictor>(predictor);
-}
+PredictorEngine::PredictorEngine(
+    const std::shared_ptr<FunctionInfo> &info,
+    const std::shared_ptr<framework::Scope> &scope,
+    const phi::Place &place,
+    const std::shared_ptr<PaddlePredictor> &predictor)
+    : info_(info),
+      scope_(scope),
+      place_(place),
+      predictor_(std::dynamic_pointer_cast<AnalysisPredictor, PaddlePredictor>(
+          predictor)) {}
 
 std::vector<Tensor> PredictorEngine::operator()(
     const std::vector<Tensor> &inputs) {
@@ -199,7 +200,8 @@ static bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
 }
 
 std::unique_ptr<BaseEngine> PredictorEngine::Clone(void *stream) {
-  auto *x = new PredictorEngine(info_, scope_, place_, std::move(predictor_->Clone()));
+  auto *x = new PredictorEngine(
+      info_, scope_, place_, std::move(predictor_->Clone()));
   return std::unique_ptr<BaseEngine>(x);
 }
 

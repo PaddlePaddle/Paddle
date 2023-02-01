@@ -100,7 +100,7 @@ const std::shared_ptr<FunctionInfo> &InterpreterEngine::Info() const {
 
 std::unique_ptr<BaseEngine> InterpreterEngine::Clone(void *stream) {
   auto *x = new InterpreterEngine(info_, params_dict_, place_);
-  return std::unique_ptr<BaseEngine>(x);
+  return std::make_unique<BaseEngine>(*x);
 }
 
 }  // namespace jit
