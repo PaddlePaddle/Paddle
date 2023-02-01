@@ -475,20 +475,14 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            [](phi::DenseTensor &self) {
              DLPackTensor dlpack_tensor(self, 1);
              DLManagedTensor *dmt = dlpack_tensor.ToDLManagedTensor();
-             auto capsule = py::capsule(
+             auto capsule = pybind11::capsule(
                  static_cast<void *>(dmt), "dltensor", [](PyObject *ptr) {
-                   if (ptr) {
-                     auto dltensor = new DLManagedTensor;
-                     try {
-                       dltensor = reinterpret_cast<DLManagedTensor *>(
-                           PyCapsule_GetPointer(ptr, "used_dltensor"));
-                       return;
-                     } catch (...) {
-                       dltensor = reinterpret_cast<DLManagedTensor *>(
-                           PyCapsule_GetPointer(ptr, "dltensor"));
-                     }
-                     dltensor->deleter(dltensor);
+                   if (!PyCapsule_IsValid(ptr, "dltensor")) {
+                     return;
                    }
+                   DLManagedTensor *dmt = static_cast<DLManagedTensor *>(
+                       PyCapsule_GetPointer(ptr, "dltensor"));
+                   dmt->deleter(dmt);
                  });
              return capsule;
            })
