@@ -517,7 +517,7 @@ void MatMulFunctionImplWithCublasLt(
     // MatMul's case 0  =>  vector * vector
     Out->Resize({1});
     dev_ctx.template Alloc<T>(Out);
-    VLOG(3) << "MatMul's case 1";
+    VLOG(3) << "MatMul with blaslt case 1";
     blaslt::Run(dev_ctx,
                 y_data,
                 x_data,
@@ -567,7 +567,7 @@ void MatMulFunctionImplWithCublasLt(
     dev_ctx.template Alloc<T>(Out);
     if (trans_y) {
       const int M = Y.numel() / N;
-      VLOG(3) << "MatMul's case 2";
+      VLOG(3) << "MatMul with blaslt 2";
       blaslt::Run(dev_ctx,
                   y_data,
                   x_data,
@@ -582,7 +582,7 @@ void MatMulFunctionImplWithCublasLt(
       const int M = y_dims[y_ndim - 1];
       const int batch_size = Y.numel() / (M * N);
       if (batch_size == 1) {
-        VLOG(3) << "MatMul's case 3";
+        VLOG(3) << "MatMul with blaslt 3";
         blaslt::Run(dev_ctx,
                     y_data,
                     x_data,
@@ -594,7 +594,7 @@ void MatMulFunctionImplWithCublasLt(
                     false,
                     matmul_key);
       } else {
-        VLOG(3) << "MatMul's case 4";
+        VLOG(3) << "MatMul with blaslt 4";
         blaslt::RunWithBatch(dev_ctx,
                              y_data,
                              x_data,
@@ -653,7 +653,7 @@ void MatMulFunctionImplWithCublasLt(
       const int M = x_dims[x_ndim - 1];
       const int batch_size = X.numel() / (M * N);
       if (batch_size == 1) {
-        VLOG(3) << "MatMul's case 5";
+        VLOG(3) << "MatMul with blaslt 5";
         blaslt::Run(dev_ctx,
                     x_data,
                     y_data,
@@ -665,7 +665,7 @@ void MatMulFunctionImplWithCublasLt(
                     false,
                     matmul_key);
       } else {
-        VLOG(3) << "MatMul's case 6";
+        VLOG(3) << "MatMul with blaslt 6";
         blaslt::RunWithBatch(dev_ctx,
                              x_data,
                              y_data,
@@ -683,7 +683,7 @@ void MatMulFunctionImplWithCublasLt(
       }
     } else {
       const int M = X.numel() / N;
-      VLOG(3) << "MatMul's case 7";
+      VLOG(3) << "MatMul with blaslt 7";
       blaslt::Run(dev_ctx,
                   x_data,
                   y_data,
@@ -766,7 +766,7 @@ void MatMulFunctionImplWithCublasLt(
                       std::multiplies<std::int64_t>());
   if (out_batch_size == 0) return;
   if (x_batch_size == 1 && y_batch_size == 1) {
-    VLOG(3) << "MatMul's case 8";
+    VLOG(3) << "MatMul with blaslt 8";
     blaslt::Run(dev_ctx,
                 x_data,
                 y_data,
@@ -779,7 +779,7 @@ void MatMulFunctionImplWithCublasLt(
                 matmul_key);
   } else if (x_batch_size == 1) {
     if (M == 1 && trans_y) {
-      VLOG(3) << "MatMul's case 9";
+      VLOG(3) << "MatMul with blaslt 9";
       blaslt::Run(dev_ctx,
                   y_data,
                   x_data,
@@ -791,7 +791,7 @@ void MatMulFunctionImplWithCublasLt(
                   false,
                   matmul_key);
     } else {
-      VLOG(3) << "MatMul's case 10";
+      VLOG(3) << "MatMul with blaslt 10";
       blaslt::RunWithBatch(dev_ctx,
                            x_data,
                            y_data,
@@ -809,7 +809,7 @@ void MatMulFunctionImplWithCublasLt(
     }
   } else if (y_batch_size == 1) {
     if (!trans_x) {
-      VLOG(3) << "MatMul's case 11";
+      VLOG(3) << "MatMul with blaslt 11";
       blaslt::Run(dev_ctx,
                   x_data,
                   y_data,
@@ -821,7 +821,7 @@ void MatMulFunctionImplWithCublasLt(
                   trans_y,
                   matmul_key);
     } else {
-      VLOG(3) << "MatMul's case 12";
+      VLOG(3) << "MatMul with blaslt 12";
       blaslt::RunWithBatch(dev_ctx,
                            x_data,
                            y_data,
@@ -838,7 +838,7 @@ void MatMulFunctionImplWithCublasLt(
                            matmul_key);
     }
   } else if (!is_broadcast_dims) {
-    VLOG(3) << "MatMul's case 13";
+    VLOG(3) << "MatMul with blaslt 13";
     blaslt::RunWithBatch(dev_ctx,
                          x_data,
                          y_data,
@@ -871,7 +871,7 @@ void MatMulFunctionImplWithCublasLt(
       out_ptr[i] = dev_ctx.template Alloc<T>(Out) + i * M * N;
       IndexIncreaseFromDims(batch_dim, out_broadcast_dims.data(), index.data());
     }
-    VLOG(3) << "MatMul's case 14";
+    VLOG(3) << "MatMul with blaslt 14";
     blaslt::RunWithBatch(dev_ctx,
                          x_ptr.data(),
                          y_ptr.data(),
