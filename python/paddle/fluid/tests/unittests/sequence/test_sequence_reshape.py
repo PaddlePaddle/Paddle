@@ -22,9 +22,6 @@ import paddle
 sys.path.append("../")
 from op_test import OpTest
 
-import paddle
-import paddle.fluid as fluid
-
 
 class TestSequenceReshape(OpTest):
     def init_data(self):
