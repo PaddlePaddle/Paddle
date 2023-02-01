@@ -30,6 +30,18 @@ extra {
     type: BOOLEAN
   }
   attrs {
+    name: "fuse_activation"
+    type: STRING
+  }
+  attrs {
+    name: "fuse_alpha"
+    type: FLOAT
+  }
+  attrs {
+    name: "fuse_beta"
+    type: FLOAT
+  }
+  attrs {
     name: "fused_output_scale"
     type: FLOAT
   }

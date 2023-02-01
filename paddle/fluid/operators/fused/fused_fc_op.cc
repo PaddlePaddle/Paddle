@@ -26,6 +26,9 @@ class FusedFCMaker : public FCOpMaker {
              "Used with fuse_residual_connection fusion.")
         .AsDispensable()
         .AsExtra();
+    AddAttr<std::string>("fuse_activation", "activ").SetDefault("");
+    AddAttr<float>("fuse_alpha", "activ attr").SetDefault(0.0f);
+    AddAttr<float>("fuse_beta", "activ attr").SetDefault(0.0f);
     AddAttr<float>("fused_output_scale", "output scale").SetDefault(1.0f);
     AddAttr<bool>("force_fp32_output",
                   "(bool, default false) Force INT8 kernel output FP32, only "

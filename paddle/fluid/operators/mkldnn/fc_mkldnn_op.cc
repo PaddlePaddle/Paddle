@@ -16,7 +16,6 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/fc_op.h"
-#include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 
 namespace paddle {
@@ -108,16 +107,16 @@ class FCOneDNNHandler
       attributes.set_output_scales(mask, output_shift_scale);
     }
 
-    if (ctx.HasInput("ResidualData")) {
-      post_operations.append_sum(sum_scale);
-    }
-
     // ReLU from "fc_fuse_pass"
     if (ctx.Attr<std::string>("activation_type") == "relu") {
       post_operations.append_eltwise(
           activation_scale, dnnl::algorithm::eltwise_relu, 0.0f, 0.0f);
     }
     AppendActivation(ctx, post_operations, activation_scale);
+
+    if (ctx.HasInput("ResidualData")) {
+      post_operations.append_sum(sum_scale);
+    }
 
     float scale_alpha = ctx.Attr<float>("fused_output_scale");
     if (scale_alpha != 1.0f) {
@@ -152,17 +151,11 @@ class FCOneDNNHandler
   void AppendActivation(const ExecutionContext& ctx,
                         dnnl::post_ops& post_ops,  // NOLINT
                         float activation_scale = 1.0f) {
-    const auto invalid_attribute =
-        ctx.HasAttr("fuse_activation")
-            ? ctx.Attr<std::string>("fuse_activation").empty()
-            : true;
-    if (invalid_attribute) return;
-
     const auto fuse_activation = ctx.Attr<std::string>("fuse_activation");
-    const auto fuse_alpha =
-        ctx.HasAttr("fuse_alpha") ? ctx.Attr<float>("fuse_alpha") : 0.0f;
-    const auto fuse_beta =
-        ctx.HasAttr("fuse_beta") ? ctx.Attr<float>("fuse_beta") : 0.0f;
+    if (fuse_activation.empty()) return;
+
+    const auto fuse_alpha = ctx.Attr<float>("fuse_alpha");
+    const auto fuse_beta = ctx.Attr<float>("fuse_beta");
 
     if (fuse_activation == "hard_sigmoid") {
       post_ops.append_eltwise(activation_scale,
