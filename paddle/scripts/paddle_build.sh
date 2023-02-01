@@ -459,7 +459,7 @@ EOF
         if ls ${PADDLE_ROOT}/build/python/dist/*whl >/dev/null 2>&1; then
             PR_whlSize=$($com ${PADDLE_ROOT}/build/python/dist |awk '{print $1}')
         elif ls ${PADDLE_ROOT}/dist/*whl >/dev/null 2>&1; then
-            PR_whlSize=$($com ${PADDLE_ROOT}/build/python/dist |awk '{print $1}')
+            PR_whlSize=$($com ${PADDLE_ROOT}/dist |awk '{print $1}')
         fi
         echo "PR whl Size: $PR_whlSize"
         echo "ipipe_log_param_PR_whl_Size: $PR_whlSize" >> ${PADDLE_ROOT}/build/build_summary.txt
@@ -1326,6 +1326,17 @@ function card_test() {
     cardnumber=$2
     parallel_level_base=${CTEST_PARALLEL_LEVEL:-1}
 
+    # run ut based on the label
+    if [[ "${UT_RUN_TYPE_SETTING}" == "INFER" ]];then
+        run_label_mode="-L (RUN_TYPE=INFER)"
+    elif [[ "${UT_RUN_TYPE_SETTING}" == "DIST" ]];then
+        run_label_mode="-L (RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE)"
+    elif [[ "${UT_RUN_TYPE_SETTING}" == "WITHOUT_INFER" ]];then
+        run_label_mode="-LE (RUN_TYPE=INFER)"
+    elif [[ "${UT_RUN_TYPE_SETTING}" == "OTHER" ]];then
+        run_label_mode="-LE (RUN_TYPE=INFER|RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE)"
+    fi
+
     # get the CUDA device count, XPU device count is one
     if [ "${WITH_XPU}" == "ON" ];then
         CUDA_DEVICE_COUNT=1
@@ -1375,15 +1386,15 @@ function card_test() {
         tmpfile=$tmp_dir/$tmpfile_rand"_"$i
         if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
-                (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" -V --timeout 120 -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} -V --timeout 120 -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             else
-                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" --timeout 120 -V -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 -V -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             fi
         else
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
-                (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" --timeout 120 --output-on-failure  -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 --output-on-failure  -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             else
-                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" --timeout 120 --output-on-failure  -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 --output-on-failure  -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             fi
         fi
     done
@@ -2364,7 +2375,7 @@ set +x
                             if [[ "${failed_test_lists}" == "" ]];then
                                 break
                             else
-                                retry_unittests=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                                retry_unittests=$( echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
                             fi
                         fi
                         echo "========================================="
@@ -2687,10 +2698,10 @@ set +x
             if [ ${TIMEOUT_DEBUG_HELP:-OFF} == "ON" ];then
                 bash $PADDLE_ROOT/tools/timeout_debug_help.sh "$failed_test_lists"    # cat logs for tiemout uts which killed by ctest
             fi
-            read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+            need_retry_ut_str=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
             need_retry_ut_arr=(${need_retry_ut_str})
             need_retry_ut_count=${#need_retry_ut_arr[@]}
-            read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+            retry_unittests=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
             while ( [ $exec_times -lt $retry_time ] )
                 do
                     if [[ "${exec_times}" == "0" ]] ;then
@@ -2700,7 +2711,7 @@ set +x
                             is_retry_execuate=1
                         fi
                     elif [[ "${exec_times}" == "1" ]] ;then
-                        read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                        need_retry_ut_str=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
                         need_retry_ut_arr=(${need_retry_ut_str})
                         need_retry_ut_count=${#need_retry_ut_arr[@]}
                         if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
@@ -2718,7 +2729,7 @@ set +x
                             if [[ "${failed_test_lists}" == "" ]];then
                                 break
                             else
-                                read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                                retry_unittests=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
                             fi
                         fi
                         echo "========================================="
@@ -3752,6 +3763,8 @@ function run_setup(){
         exit 7;
     fi
 
+    build_size
+    
     endTime_s=`date +%s`
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
