@@ -17,7 +17,6 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime_api.h>
 #include "cuda.h"  // NOLINT
-#endif
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/gpu_timer.h"
 
@@ -25,7 +24,7 @@ namespace phi {
 
 enum MatmulImplType { kImplWithCublas = 1, kImplWithCublasLt = 2 };
 
-#ifdef PADDLE_WITH_CUDA
+#if CUDA_VERSION >= 11060
 template <typename T, class Enable = void>
 struct MatmulCalculationClassifier {
   void operator()(cudaDataType_t* mat_type,
@@ -549,6 +548,7 @@ struct MatmulWithCublasLt<phi::GPUContext, T> {
         dynload::cublasLtMatmulPreferenceDestroy(preference));
   }
 };
-#endif  // #ifdef PADDLE_WITH_CUDA
+#endif  // CUDA_VERSION >= 11060
 
 }  // namespace phi
+#endif  // #ifdef PADDLE_WITH_CUDA
