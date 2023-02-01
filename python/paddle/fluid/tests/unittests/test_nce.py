@@ -332,7 +332,7 @@ class TestNCE_OpError(unittest.TestCase):
             )
 
             input5 = paddle.static.data(name='x', shape=[1], dtype='float32')
-            label5 = paddle.static.data(name='label', shape=[1], dtype='int')
+            label5 = paddle.static.data(name='label', shape=[1], dtype='int64')
 
             self.assertRaises(
                 ValueError, paddle.static.nn.nce, input5, label5, 1
