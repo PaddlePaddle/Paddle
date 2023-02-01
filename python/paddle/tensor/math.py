@@ -213,6 +213,8 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """
 
     if in_dygraph_mode():
+        if act is None:
+            return _C_ops.scale(x, scale, float(bias), bias_after_scale)
         out = _C_ops.scale(x, scale, float(bias), bias_after_scale)
         return dygraph_utils._append_activation_in_dygraph(out, act)
     else:
@@ -495,9 +497,12 @@ def _elementwise_op_in_dygraph(
                 OP_NAMEMAPPING[op_name] if not is_inplace(op_name) else op_name,
             )
             out = op(x, y)
-    return dygraph_utils._append_activation_in_dygraph(
-        out, act, use_mkldnn=use_mkldnn
-    )
+    if act is None:
+        return out
+    else:
+        return dygraph_utils._append_activation_in_dygraph(
+            out, act, use_mkldnn=use_mkldnn
+        )
 
 
 def _elementwise_op(helper):
@@ -2009,7 +2014,6 @@ def renorm(x, p, axis, max_norm):
 
     """
     input_shape = x.shape
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'renorm')
     if not axis < len(input_shape):
         raise ValueError(
             "the axis:{} should be less then the shape's size {}:{}".format(
@@ -2028,6 +2032,7 @@ def renorm(x, p, axis, max_norm):
         out = _C_ops.renorm(x, p, axis, max_norm)
         return out
     else:
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'renorm')
         inputs = {'X': x}
         attrs = {'p': p, 'axis': axis, 'max_norm': max_norm}
 
@@ -4209,7 +4214,6 @@ def lerp(x, y, weight, name=None):
 
     """
     if in_dygraph_mode():
-        check_type(weight, 'weight', (float, paddle.Tensor, Variable), 'lerp')
         if isinstance(weight, float):
             weight = paddle.to_tensor(weight, dtype=x.dtype)
 
@@ -4853,14 +4857,10 @@ def heaviside(x, y, name=None):
             #    [[0.        , 0.20000000, 1.        ],
             #     [0.        , 1.        , 0.30000001]]
     """
-    op_type = 'elementwise_heaviside'
-    axis = -1
-    act = None
     if in_dygraph_mode():
-        return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name=op_type
-        )
+        return _C_ops.elementwise_heaviside(x, y)
     else:
+        op_type = 'elementwise_heaviside'
         return _elementwise_op(LayerHelper(op_type, **locals()))
 
 

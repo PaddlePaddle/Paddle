@@ -98,10 +98,12 @@ def fused_embedding_seq_pool(
         .. code-block:: python
             import numpy as np
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
 
             dict_size = 20
-            data_t = fluid.layers.data(
-                name='word', shape=[1], dtype='int64', lod_level=1)
+            data_t = paddle.static.data(
+                name='word', shape=[-1, 1], dtype='int64', lod_level=1)
             padding_idx = np.random.randint(1, 10)
             out = fluid.contrib.fused_embedding_seq_pool(
                 input=data_t,
@@ -305,11 +307,13 @@ def multiclass_nms2(
 
 
             import paddle.fluid as fluid
-            boxes = fluid.layers.data(name='bboxes', shape=[81, 4],
+            import paddle
+            paddle.enable_static()
+            boxes = paddle.static.data(name='bboxes', shape=[-1, 81, 4],
                                       dtype='float32', lod_level=1)
-            scores = fluid.layers.data(name='scores', shape=[81],
+            scores = paddle.static.data(name='scores', shape=[-1, 81],
                                       dtype='float32', lod_level=1)
-            out, index = fluid.layers.multiclass_nms2(bboxes=boxes,
+            out, index = fluid.contrib.layers.multiclass_nms2(bboxes=boxes,
                                               scores=scores,
                                               background_label=0,
                                               score_threshold=0.5,
@@ -501,7 +505,9 @@ def shuffle_batch(x, seed=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[-1, 4])
+            import paddle
+            paddle.enable_static()
+            x = paddle.static.data(name="x", shape=[-1, 4])
             out = fluid.contrib.layers.shuffle_batch(x)
     """
     helper = LayerHelper('shuffle_batch', **locals())
@@ -786,6 +792,9 @@ def sparse_embedding(
         ['float32', 'float64'],
         'paddle.static.nn.sparse_embedding',
     )
+
+    if input.size == 0:
+        raise ValueError("input size should not be 0")
 
     w = helper.create_parameter(
         attr=helper.param_attr,
@@ -1313,7 +1322,7 @@ def _pull_box_extended_sparse(input, size, extend_size=64, dtype='float32'):
     Examples:
         .. code-block:: python
           import paddle.fluid as fluid
-          data = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          data = paddle.static.data(name='sequence', shape=[-1, 1], dtype='int64', lod_level=1)
           emb, emb_ex = fluid.contrib.layers._pull_box_extended_sparse(input=data, size=8, extend_size=128)
     """
     helper = LayerHelper('pull_box_extended_sparse', **locals())
@@ -1438,15 +1447,14 @@ def correlation(
         .. code-block:: python
 
             import paddle.fluid as fluid
-
-            x1 = fluid.layers.data(name='x1',
-                               shape=x_shape,
-                               dtype=x_type,
-                               append_batch_size=False)
-            x2 = fluid.layers.data(name='x2',
-                                shape=x_shape,
-                                dtype=x_type,
-                                append_batch_size=False)
+            import paddle
+            paddle.enable_static()
+            x1 = paddle.static.data(name='x1',
+                               shape=[2,3,4,5],
+                               dtype="float32")
+            x2 = paddle.static.data(name='x2',
+                                shape=[2,3,4,5],
+                                dtype="float32")
 
 
             out = fluid.contrib.correlation(
@@ -1555,8 +1563,8 @@ def fused_bn_add_act(
             # required: gpu
             def build_program(main_program, startup_program):
                 with fluid.program_guard(main_program, startup_program):
-                    x = fluid.layers.data(name='x', shape=[1, 28, 28], dtype='float32')
-                    y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+                    x = paddle.static.data(name='x', shape=[-1, 1, 28, 28], dtype='float32')
+                    y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
                     conv1_1 = paddle.static.nn.conv2d(
                         input=x,
                         filter_size=3,
@@ -1587,7 +1595,7 @@ def fused_bn_add_act(
                     )
                     loss = paddle.mean(loss)
                     sgd = fluid.optimizer.SGD(learning_rate=0.001)
-                    sgd = fluid.contrib.mixed_precision.decorate(
+                    sgd = paddle.static.amp.decorate(
                         sgd, use_dynamic_loss_scaling=True, init_loss_scaling=128.0)
                     sgd.minimize(loss)
 

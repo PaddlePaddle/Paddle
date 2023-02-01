@@ -343,6 +343,10 @@ int TrtCrossMultiHeadMatmulFusePass::BuildCrossFusion(
                           Node* reshape2_qkv_out,
                           Node* scale,
                           Node* scale_out) {
+    // get Device context
+    auto* dev_ctx = static_cast<phi::CPUContext*>(
+        platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
+
     auto scale_attr = PADDLE_GET_CONST(float, scale->Op()->GetAttr("scale"));
 
     // create multihead
@@ -373,8 +377,8 @@ int TrtCrossMultiHeadMatmulFusePass::BuildCrossFusion(
             << "trt cross attention wk_tensor name = " << mul1_w->Name()
             << "trt cross attention wv_tensor name = " << mul2_w->Name();
 
-    auto* wk_data = wk_tensor->mutable_data<float>(platform::CPUPlace());
-    auto* wv_data = wv_tensor->mutable_data<float>(platform::CPUPlace());
+    auto* wk_data = wk_tensor->data<float>();
+    auto* wv_data = wv_tensor->data<float>();
     // combined_w_dims = [in,2,out]
     auto combined_w_kv_dims =
         phi::make_ddim({wk_tensor->dims()[0], 2, wk_tensor->dims()[1]});
@@ -386,8 +390,8 @@ int TrtCrossMultiHeadMatmulFusePass::BuildCrossFusion(
     combined_w_kv_desc->SetPersistable(true);
     phi::DenseTensor tmp_combined_w_kv_tensor;
     tmp_combined_w_kv_tensor.Resize(combined_w_kv_dims);
-    auto* tmp_combined_w_kv_data =
-        tmp_combined_w_kv_tensor.mutable_data<float>(platform::CPUPlace());
+    float* tmp_combined_w_kv_data =
+        dev_ctx->template HostAlloc<float>(&tmp_combined_w_kv_tensor);
 
     std::vector<float*> w_vec = {wk_data, wv_data};
     int dims_h = combined_w_kv_dims[0], dims_w = combined_w_kv_dims[2];
@@ -403,10 +407,10 @@ int TrtCrossMultiHeadMatmulFusePass::BuildCrossFusion(
         }
       }
     }
-
+    wk_tensor->clear();
     wk_tensor->Resize(combined_w_kv_dims);
-    auto* new_combined_w_kv_data =
-        wk_tensor->mutable_data<float>(platform::CPUPlace());
+    auto* new_combined_w_kv_data = dev_ctx->template HostAlloc<float>(
+        wk_tensor, sizeof(float) * wk_tensor->numel());
     memcpy(new_combined_w_kv_data,
            tmp_combined_w_kv_data,
            sizeof(float) * wk_tensor->numel());

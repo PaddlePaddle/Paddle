@@ -385,12 +385,13 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
 
 
 def _create_loss_op_desc_(loss):
+    create_shape = [] if len(loss.shape) == 0 else [1]
     op_desc = _create_op_desc_(
         "fill_constant",
         {},
         {"Out": [_append_grad_suffix_(loss.name)]},
         {
-            "shape": [1],
+            "shape": create_shape,
             "value": 1.0,
             "dtype": loss.dtype,
             "force_cpu": False,
@@ -1491,11 +1492,16 @@ def _append_backward_ops_(
     )
 
     # remove some backward ops
-    not_need_ops = _find_not_need_ops(grad_op_descs, ops, input_grad_names_set)
-
-    grad_op_descs = [
-        op_desc for op_desc in grad_op_descs if op_desc not in not_need_ops
-    ]
+    # TODO(Jiabin): Support this in prime later, it will prune add_grad, fix this problem
+    if not core._is_bwd_prim_enabled():
+        not_need_ops = _find_not_need_ops(
+            grad_op_descs, ops, input_grad_names_set
+        )
+        grad_op_descs = [
+            op_desc for op_desc in grad_op_descs if op_desc not in not_need_ops
+        ]
+    else:
+        logging.debug("Runing backward composite and disable find_not_need_ops")
 
     # append op_desc in grad_op_descs to target_block
     op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()

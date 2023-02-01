@@ -340,6 +340,10 @@ int TrtFlashMultiHeadMatmulFusePass::BuildFlashFusion(
                           Node* reshape2_qkv_out,
                           Node* scale,
                           Node* scale_out) {
+    // get Device context
+    auto* dev_ctx = static_cast<phi::CPUContext*>(
+        platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
+
     auto scale_attr = PADDLE_GET_CONST(float, scale->Op()->GetAttr("scale"));
 
     // create multihead
@@ -367,9 +371,9 @@ int TrtFlashMultiHeadMatmulFusePass::BuildFlashFusion(
       return;
     }
 
-    auto* wq_data = wq_tensor->mutable_data<float>(platform::CPUPlace());
-    auto* wk_data = wk_tensor->mutable_data<float>(platform::CPUPlace());
-    auto* wv_data = wv_tensor->mutable_data<float>(platform::CPUPlace());
+    float* wq_data = wq_tensor->data<float>();
+    float* wk_data = wk_tensor->data<float>();
+    float* wv_data = wv_tensor->data<float>();
     // combined_w_dims = [in,3,out]
     auto combined_w_dims =
         phi::make_ddim({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
@@ -378,10 +382,10 @@ int TrtFlashMultiHeadMatmulFusePass::BuildFlashFusion(
     combined_w_desc->SetPersistable(true);
     phi::DenseTensor tmp_combined_w_tensor;
     tmp_combined_w_tensor.Resize(combined_w_dims);
-    auto* tmp_combined_w_data =
-        tmp_combined_w_tensor.mutable_data<float>(platform::CPUPlace());
+    float* tmp_combined_w_data =
+        dev_ctx->template HostAlloc<float>(&tmp_combined_w_tensor);
 
-    std::vector<float*> w_vec = {wq_data, wk_data, wv_data};
+    std::vector<const float*> w_vec = {wq_data, wk_data, wv_data};
     int dims_h = combined_w_dims[0], dims_w = combined_w_dims[2];
     // dims_h=in_feature, dims_w=out_feature
     // Combine the three fc weights together.
@@ -395,10 +399,12 @@ int TrtFlashMultiHeadMatmulFusePass::BuildFlashFusion(
         }
       }
     }
-
+    // clear weight for reuse
+    wq_tensor->clear();
     wq_tensor->Resize(combined_w_dims);
-    auto* new_combined_w_data =
-        wq_tensor->mutable_data<float>(platform::CPUPlace());
+
+    float* new_combined_w_data = dev_ctx->template HostAlloc<float>(
+        wq_tensor, sizeof(float) * wq_tensor->numel());
     memcpy(new_combined_w_data,
            tmp_combined_w_data,
            sizeof(float) * wq_tensor->numel());
