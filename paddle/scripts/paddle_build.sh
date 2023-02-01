@@ -459,7 +459,7 @@ EOF
         if ls ${PADDLE_ROOT}/build/python/dist/*whl >/dev/null 2>&1; then
             PR_whlSize=$($com ${PADDLE_ROOT}/build/python/dist |awk '{print $1}')
         elif ls ${PADDLE_ROOT}/dist/*whl >/dev/null 2>&1; then
-            PR_whlSize=$($com ${PADDLE_ROOT}/build/python/dist |awk '{print $1}')
+            PR_whlSize=$($com ${PADDLE_ROOT}/dist |awk '{print $1}')
         fi
         echo "PR whl Size: $PR_whlSize"
         echo "ipipe_log_param_PR_whl_Size: $PR_whlSize" >> ${PADDLE_ROOT}/build/build_summary.txt
@@ -3763,6 +3763,8 @@ function run_setup(){
         exit 7;
     fi
 
+    build_size
+    
     endTime_s=`date +%s`
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
