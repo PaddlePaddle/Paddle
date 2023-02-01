@@ -1,6 +1,6 @@
 if(WITH_GPU)
-  if(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0
-      AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 12.0)
+  if(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0 AND ${CMAKE_CXX_COMPILER_VERSION}
+                                                  VERSION_GREATER 12.0)
     return()
   endif()
 endif()

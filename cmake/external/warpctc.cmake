@@ -29,9 +29,10 @@ set(WARPCTC_SOURCE_DIR ${THIRD_PARTY_PATH}/warpctc/src/extern_warpctc)
 set(WARPCTC_PATCH_COMMAND "")
 set(WARPCTC_CCBIN_OPTION "")
 if(WITH_GPU)
-  if(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0
-        AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 12.0)
-    file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/warpctc/CMakeLists.txt.patch native_src)
+  if(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0 AND ${CMAKE_CXX_COMPILER_VERSION}
+                                                  VERSION_GREATER 12.0)
+    file(TO_NATIVE_PATH
+         ${PADDLE_SOURCE_DIR}/patches/warpctc/CMakeLists.txt.patch native_src)
     set(WARPCTC_PATCH_COMMAND patch -d ${WARPCTC_SOURCE_DIR} < ${native_src})
     set(WARPCTC_CCBIN_OPTION -DCCBIN_COMPILER=${CCBIN_COMPILER})
   endif()
