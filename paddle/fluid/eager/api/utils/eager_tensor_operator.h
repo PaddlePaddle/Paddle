@@ -27,7 +27,7 @@ class TensorOperatorBase;
 class EagerTensorOperator : public TensorOperatorBase {
  public:
   Tensor& multiply(const Tensor& x, const Tensor& y) {
-    ::multiply_ad_func(x, y);
+    return ::multiply_ad_func(x, y);
   }
 };
 
