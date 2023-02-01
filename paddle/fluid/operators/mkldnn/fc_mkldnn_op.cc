@@ -131,7 +131,7 @@ class FCOneDNNHandler
   // Compute the bias scales so that its values correspond to the
   // scale of data being an output of weights and input multiplication
   std::vector<float> GetBiasScales(const ExecutionContext& ctx) {
-    if (ctx.HasAttr("Bias_scales")) {
+    if (!(ctx.Attr<std::vector<float>>("Bias_scales")).empty()) {
       return ctx.Attr<std::vector<float>>("Bias_scales");
     } else {
       const float scale_in = ctx.Attr<float>("Scale_in");
@@ -202,41 +202,33 @@ class FCOneDNNHandler
   // was. Then we multiply them by desired output scale we want on the output.
   std::tuple<std::vector<float>, float, float> GetOutputScales(
       const ExecutionContext& ctx) {
-    if (ctx.HasAttr("Sum_scale")) {
-      return std::make_tuple(ctx.Attr<std::vector<float>>("Output_shift_scale"),
-                             ctx.Attr<float>("Sum_scale"),
-                             ctx.Attr<float>("Activation_scale"));
-    } else {
-      auto scale_in_data = ctx.Attr<float>("Scale_in");
-      auto scale_weights_data = ctx.Attr<std::vector<float>>("Scale_weights");
-      bool has_activation = !ctx.Attr<std::string>("activation_type").empty();
-      bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
-      bool fuse_residual_conn = ctx.HasInput("ResidualData");
-      auto scale_in_eltwise_data = ctx.HasAttr("Scale_in_eltwise")
-                                       ? ctx.Attr<float>("Scale_in_eltwise")
-                                       : 1.0f;
+    auto scale_in_data = ctx.Attr<float>("Scale_in");
+    auto scale_weights_data = ctx.Attr<std::vector<float>>("Scale_weights");
+    bool has_activation = !ctx.Attr<std::string>("activation_type").empty();
+    bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
+    bool fuse_residual_conn = ctx.HasInput("ResidualData");
+    auto scale_in_eltwise_data = ctx.Attr<float>("Scale_in_eltwise");
 
-      // If the output will be in floats, we don't multiply by scale_out.
+    // If the output will be in floats, we don't multiply by scale_out.
 
-      float activation_scale = (!force_fp32_output && has_activation)
-                                   ? ctx.Attr<float>("Scale_out")
-                                   : 1.0f;
-      float scale_out_data = (force_fp32_output || has_activation)
-                                 ? 1.0f
-                                 : ctx.Attr<float>("Scale_out");
-      float sum_scale =
-          fuse_residual_conn ? scale_out_data / scale_in_eltwise_data : 1.0f;
-      const size_t weight_scales_num = scale_weights_data.size();
+    float activation_scale = (!force_fp32_output && has_activation)
+                                 ? ctx.Attr<float>("Scale_out")
+                                 : 1.0f;
+    float scale_out_data = (force_fp32_output || has_activation)
+                               ? 1.0f
+                               : ctx.Attr<float>("Scale_out");
+    float sum_scale =
+        fuse_residual_conn ? scale_out_data / scale_in_eltwise_data : 1.0f;
+    const size_t weight_scales_num = scale_weights_data.size();
 
-      for (size_t i = 0; i < weight_scales_num; ++i) {
-        if (scale_weights_data[i] == 0.0)
-          scale_weights_data[i] = scale_out_data;
-        else
-          scale_weights_data[i] =
-              scale_out_data / (scale_in_data * scale_weights_data[i]);
-      }
-      return std::make_tuple(scale_weights_data, sum_scale, activation_scale);
+    for (size_t i = 0; i < weight_scales_num; ++i) {
+      if (scale_weights_data[i] == 0.0)
+        scale_weights_data[i] = scale_out_data;
+      else
+        scale_weights_data[i] =
+            scale_out_data / (scale_in_data * scale_weights_data[i]);
     }
+    return std::make_tuple(scale_weights_data, sum_scale, activation_scale);
   }
 
   // Computing MKL-DNN's scaling mask which determines along which dimension
@@ -489,7 +481,7 @@ class FCOneDNNKernel : public framework::OpKernel<T_in> {
       const ExecutionContext& ctx,
       phi::DenseTensor* out,
       const dnnl::memory::desc& out_md) const {
-    if (ctx.HasAttr("fused_reshape2_shape")) {
+    if (!(ctx.Attr<std::vector<int>>("fused_reshape2_shape").empty())) {
       SetOutMemDescWithReshape2FuseSupport(ctx, out, out_md);
     } else {
       out->set_mem_desc(out_md);

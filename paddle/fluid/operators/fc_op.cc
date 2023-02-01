@@ -159,17 +159,6 @@ void FCOpMaker::Make() {
       "(string, default \"float32\"). Data type of mkldnn kernel")
       .SetDefault("float32")
       .InEnum({"float32", "int8", "bfloat16"});
-  /* int8 parameters */
-  AddAttr<float>("Scale_in",
-                 "(float, default 1.0f), The quantize scale of input data")
-      .SetDefault(1.0f);
-  AddAttr<std::vector<float>>("Scale_weights",
-                              "(std::vector<float>, default {1.0f}), The "
-                              "quantize scale of weights data")
-      .SetDefault({1.0f});
-  AddAttr<float>("Scale_out",
-                 "(float, default 1.0f), The quantize scale of output data")
-      .SetDefault(1.0f);
   AddComment(R"DOC(
 Fully Connected Operator.
 

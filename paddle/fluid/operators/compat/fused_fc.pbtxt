@@ -46,6 +46,10 @@ extra {
     type: FLOAT
   }
   attrs {
+    name: "fused_reshape2_shape"
+    type: INTS
+  }
+  attrs {
     name: "@ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE@"
     type: BOOLEAN
   }
@@ -55,6 +59,14 @@ extra {
   }
   attrs {
     name: "Scale_weights"
+    type: FLOATS
+  }
+  attrs {
+    name: "Bias_scales"
+    type: FLOAT
+  }
+  attrs {
+    name: "Scale_in_eltwise"
     type: FLOAT
   }
   attrs {

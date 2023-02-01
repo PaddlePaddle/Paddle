@@ -30,6 +30,21 @@ class FusedFCMaker : public FCOpMaker {
     AddAttr<float>("fuse_alpha", "activ attr").SetDefault(0.0f);
     AddAttr<float>("fuse_beta", "activ attr").SetDefault(0.0f);
     AddAttr<float>("fused_output_scale", "output scale").SetDefault(1.0f);
+    AddAttr<std::vector<int>>("fused_reshape2_shape", "ffused reshape")
+        .SetDefault({});
+    AddAttr<float>("Scale_in",
+                   "(float, default 1.0f), The quantize scale of input data")
+        .SetDefault(1.0f);
+    AddAttr<std::vector<float>>("Scale_weights",
+                                "(std::vector<float>, default {1.0f}), The "
+                                "quantize scale of weights data")
+        .SetDefault({1.0f});
+    AddAttr<std::vector<float>>("Bias_scales", "scale bias scales")
+        .SetDefault({});
+    AddAttr<float>("Scale_in_eltwise", "scale eltwise").SetDefault(1.0f);
+    AddAttr<float>("Scale_out",
+                   "(float, default 1.0f), The quantize scale of output data")
+        .SetDefault(1.0f);
     AddAttr<bool>("force_fp32_output",
                   "(bool, default false) Force INT8 kernel output FP32, only "
                   "used in MKL-DNN INT8")
