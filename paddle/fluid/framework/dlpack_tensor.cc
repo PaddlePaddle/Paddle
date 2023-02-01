@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/dlpack_tensor.h"
+#include "pybind11/pybind11.h"
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
@@ -134,8 +135,9 @@ struct DLDeviceVisitor
 };
 }  // namespace internal
 
-DLPackTensor::DLPackTensor(const phi::DenseTensor &tensor, LaneType lanes) {
+DLPackTensor::DLPackTensor(phi::DenseTensor &tensor, LaneType lanes) {
   // init data, data buffer
+  dt_ = &tensor;
   t_.data = const_cast<void *>(tensor.data());
 
   // init device, DLDevice type with device_type and device_id
@@ -188,12 +190,17 @@ DLPackTensor::DLPackTensor(const phi::DenseTensor &tensor, LaneType lanes) {
   tensor->dl_tensor = t_;
 
   tensor->deleter = [](DLManagedTensor *arg) {
+    phi::DenseTensor *tensor_ptr =
+        reinterpret_cast<phi::DenseTensor *>(arg->manager_ctx);
+    pybind11::handle tensor_handle = pybind11::cast(tensor_ptr);
+    tensor_handle.dec_ref();
+
     delete[] arg->dl_tensor.shape;
     delete[] arg->dl_tensor.strides;
     delete arg;
   };
 
-  tensor->manager_ctx = nullptr;
+  tensor->manager_ctx = dt_;
 
   return tensor;
 }
