@@ -33,14 +33,12 @@ def find_output_shape(input_list):
         rank = len(x.shape)
         output_rank = max(output_rank, rank)
 
-    output_shape = [0 for i in range(output_rank)]
+    output_shape = [1 for i in range(output_rank)]
     for i in range(output_rank):
         for x in input_list:
             shape = list(reversed(x.shape))
-            size = 1
-            if i < len(shape):
-                size = shape[i]
-            output_shape[i] = max(output_shape[i], size)
+            if i < len(shape) and shape[i] != 1:
+                output_shape[i] = shape[i]
 
     return list(reversed(output_shape))
 
@@ -80,6 +78,11 @@ def gen_mixed_tensors_test(dtype):
     return make_inputs_outputs(input_shapes, dtype)
 
 
+def gen_empty_tensors_test(dtype):
+    input_shapes = [(0), (0), (0)]
+    return make_inputs_outputs(input_shapes, dtype)
+
+
 class TestCPUBroadcastTensorsOp(OpTest):
     def set_place(self):
         self.place = core.CPUPlace()
@@ -95,6 +98,7 @@ class TestCPUBroadcastTensorsOp(OpTest):
             gen_rank_diff_test,
             gen_no_broadcast_test,
             gen_mixed_tensors_test,
+            gen_empty_tensors_test,
         ]
         self.set_place()
         self.set_dtypes()

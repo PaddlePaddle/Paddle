@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
@@ -43,6 +43,12 @@ def ref_softmax(x, axis=None, dtype=None):
     return np.apply_along_axis(stable_softmax, axis, x_t)
 
 
+def softmax_wrapper(
+    x, axis=-1, dtype=None, name=None, use_cudnn=False, use_mkldnn=False
+):
+    return paddle.nn.functional.softmax(x, axis=axis, dtype=dtype)
+
+
 class TestSoftmaxOp(OpTest):
     def get_x_shape(self):
         return [10, 10]
@@ -52,6 +58,7 @@ class TestSoftmaxOp(OpTest):
 
     def setUp(self):
         self.op_type = "softmax"
+        self.python_api = softmax_wrapper
         self.use_cudnn = False
         self.use_mkldnn = False
         # explicilty use float32 for ROCm, as MIOpen does not yet support float64
@@ -109,6 +116,7 @@ class TestSoftmaxOp(OpTest):
 class TestSoftmaxOp_ZeroDim1(TestSoftmaxOp):
     def setUp(self):
         self.op_type = "softmax"
+        self.python_api = softmax_wrapper
         self.use_cudnn = False
         self.use_mkldnn = False
         # explicilty use float32 for ROCm, as MIOpen does not yet support float64
@@ -133,6 +141,7 @@ class TestSoftmaxOp_ZeroDim1(TestSoftmaxOp):
 class TestSoftmaxOp_ZeroDim2(TestSoftmaxOp):
     def setUp(self):
         self.op_type = "softmax"
+        self.python_api = softmax_wrapper
         self.use_cudnn = True
         self.use_mkldnn = False
         # explicilty use float32 for ROCm, as MIOpen does not yet support float64
@@ -366,6 +375,7 @@ class TestSoftmaxFP16CUDNNOp2(TestSoftmaxFP16CUDNNOp):
 class TestSoftmaxBF16Op(OpTest):
     def setUp(self):
         self.op_type = "softmax"
+        self.python_api = softmax_wrapper
         self.use_cudnn = self.init_cudnn()
         self.use_mkldnn = False
         self.dtype = np.uint16

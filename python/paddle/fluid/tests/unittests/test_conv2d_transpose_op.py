@@ -989,6 +989,17 @@ class TestConv2DTransposeOpException(unittest.TestCase):
 
         self.assertRaises(ValueError, error_groups)
 
+        def error_0_filter_number():
+            out = paddle.static.nn.conv2d_transpose(
+                input=data,
+                groups=1,
+                num_filters=0,
+                filter_size=3,
+                data_format='NCHW',
+            )
+
+        self.assertRaises(ValueError, error_0_filter_number)
+
 
 class TestConv2DTransposeRepr(unittest.TestCase):
     def test_case(self):

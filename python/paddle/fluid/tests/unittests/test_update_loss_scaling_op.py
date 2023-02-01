@@ -85,7 +85,7 @@ class TestUpdateLossScalingOp(OpTest):
         self.num_good_steps = np.array([999], dtype=np.int32)
         self.num_bad_steps = np.array([1], dtype=np.int32)
         self.zero_steps = np.array([0], dtype=np.int32)
-        self.stop_update = np.array([False], dtype=np.bool)
+        self.stop_update = np.array([False], dtype=np.bool_)
         self.attrs = {
             'incr_every_n_steps': 1000,
             'decr_every_n_nan_or_inf': 2,
