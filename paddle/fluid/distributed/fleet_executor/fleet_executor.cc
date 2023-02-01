@@ -111,21 +111,22 @@ void FleetExecutor::Init(
     task_node->SetUnusedVars(unused_vars);
     if (task_node->type() == "Cond") {
       std::vector<std::string> while_block_vars;
-      std::vector<std::string> vars_in_parent;
-      std::vector<std::string> vars_in_sub;
-      for (auto& var : program_desc.Block(0).AllVars()) {
-        vars_in_parent.emplace_back(var->Name());
-      }
+      VLOG(3) << "Vars in while sub block:";
       for (auto& var : program_desc.Block(1).AllVars()) {
-        vars_in_sub.emplace_back(var->Name());
+        VLOG(3) << var->Name();
+        while_block_vars.emplace_back(var->Name());
       }
-      std::sort(vars_in_parent.begin(), vars_in_parent.end());
-      std::sort(vars_in_sub.begin(), vars_in_sub.end());
-      std::set_difference(vars_in_sub.begin(),
-                          vars_in_sub.end(),
-                          vars_in_parent.begin(),
-                          vars_in_parent.end(),
-                          std::back_inserter(while_block_vars));
+      for (const auto& pair : unused_vars) {
+        if (pair.first->Type() == "while") {
+          for (const auto& var_name : pair.second) {
+            while_block_vars.emplace_back(var_name);
+          }
+        }
+      }
+      VLOG(3) << "Vars below will be removed after while:";
+      for (const auto& name : while_block_vars) {
+        VLOG(3) << name;
+      }
       task_node->SetWhileBlockVars(while_block_vars);
     }
     int64_t interceptor_id = task_node->task_id();

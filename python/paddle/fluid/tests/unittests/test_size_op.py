@@ -15,15 +15,20 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
 
 
+def size_wrapper(input):
+    return paddle.numel(paddle.to_tensor(input))
+
+
 class TestSizeOp(OpTest):
     def setUp(self):
         self.op_type = "size"
+        self.python_api = size_wrapper
         self.shape = []
         self.config()
         input = np.zeros(self.shape, dtype='bool')
