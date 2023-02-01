@@ -2323,6 +2323,7 @@ def eig(x, name=None):
             #       [ (16.50471283351188+0j)  , (-5.5034820550763515+0j) ,
             #         (-0.21026087843552282+0j)])
     """
+
     if in_dygraph_mode():
         return _C_ops.eig(x)
     else:
