@@ -256,8 +256,6 @@ include(external/xxhash) # download, build, install xxhash
 include(external/warpctc) # download, build, install warpctc
 include(external/warprnnt) # download, build, install warprnnt
 include(external/utf8proc) # download, build, install utf8proc
-include(external/pybind11) # download, build, install pybind11
-include(external/python) # find python and python_module
 
 list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog
      extern_xxhash)
@@ -269,8 +267,7 @@ list(
   extern_warpctc
   extern_warprnnt
   extern_threadpool
-  extern_utf8proc
-  extern_pybind)
+  extern_utf8proc)
 include(external/lapack) # download, build, install lapack
 
 list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog
@@ -302,6 +299,12 @@ endif()
 include(external/protobuf) # find first, then download, build, install protobuf
 if(TARGET extern_protobuf)
   list(APPEND third_party_deps extern_protobuf)
+endif()
+
+if(NOT ON_INFER)
+  include(external/python) # find python and python_module
+  include(external/pybind11) # download pybind11
+  list(APPEND third_party_deps extern_pybind)
 endif()
 
 if(WITH_TESTING OR WITH_DISTRIBUTE)

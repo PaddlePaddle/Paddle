@@ -35,10 +35,13 @@ typedef struct {
   Py_INCREF(Py_None);  \
   return Py_None;
 
+// Internal use only, to expose the Tensor type to Python.
 bool PyCheckTensor(PyObject* obj);
 
+// Internal use only, to expose the Tensor type to Python.
 paddle::experimental::Tensor CastPyArg2Tensor(PyObject* obj, ssize_t arg_pos);
 
+// Internal use only, to expose the Tensor type to Python.
 PyObject* ToPyObject(const paddle::experimental::Tensor& value,
                      bool return_py_none_if_not_initialize = false);
 

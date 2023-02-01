@@ -20,21 +20,11 @@ from site import getsitepackages
 import numpy as np
 
 import paddle
-from paddle.utils.cpp_extension import get_build_directory, load
-from paddle.utils.cpp_extension.extension_utils import run_cmd
+from paddle.utils.cpp_extension import load
 
 if os.name == 'nt' or sys.platform.startswith('darwin'):
     # only support Linux now
     exit()
-
-# Because Windows don't use docker, the shared lib already exists in the
-# cache dir, it will not be compiled again unless the shared lib is removed.
-file = '{}\\custom_cpp_extension\\custom_cpp_extension.pyd'.format(
-    get_build_directory()
-)
-if os.name == 'nt' and os.path.isfile(file):
-    cmd = 'del {}'.format(file)
-    run_cmd(cmd, True)
 
 # Compile and load cpp extension Just-In-Time.
 sources = ["custom_add.cc", "custom_sub.cc"]
