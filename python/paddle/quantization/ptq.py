@@ -29,6 +29,32 @@ class PTQ(Quantization):
         super(PTQ, self).__init__(config)
 
     def quantize(self, model: Layer, inplace=False):
+        r"""
+        Create a model for post-training quantization.
+
+        The quantization configuration will be propagated in the model.
+        And it will insert observers into the model to collect and compute
+        quantization parameters.
+
+        Args:
+            model(Layer) - The model to be quantized.
+            inplace(bool) - Whether to modify the model in-place.
+
+        Return: The prepared model for post-training quantization.
+
+        Examples:
+        .. code-block:: python
+            from paddle.quantization import QAT, QuantConfig
+            from paddle.quantization.observers import AbsmaxObserver
+            from paddle.vision.models import LeNet
+
+            observer = AbsmaxObserver()
+            q_config = QuantConfig(activation=observer, weight=observer)
+            qat = QAT(q_config)
+            model = LeNet()
+            quant_model = qat.quantize(model)
+            print(quant_model)
+        """
         _model = model
         if not inplace:
             _model = copy.deepcopy(model)

@@ -51,12 +51,12 @@ class LeNetDygraph(paddle.nn.Layer):
 
 
 class TestPTQ(unittest.TestCase):
-    # def test_quantize(self):
-    #     model = LeNetDygraph()
-    #     model.eval()
-    #     q_config = QuantConfig(activation=observer, weight=observer)
-    #     ptq = PTQ(q_config)
-    #     quant_model = ptq.quantize(model)
+    def test_quantize(self):
+        model = LeNetDygraph()
+        model.eval()
+        q_config = QuantConfig(activation=observer, weight=observer)
+        ptq = PTQ(q_config)
+        quant_model = ptq.quantize(model)
 
     def test_convert(self):
         model = LeNetDygraph()
@@ -66,7 +66,6 @@ class TestPTQ(unittest.TestCase):
         quant_model = ptq.quantize(model)
         onnx_model = ptq.convert(quant_model)
         image = paddle.rand([1, 1, 32, 32], dtype="float32")
-        print(type(image))
         paddle.jit.save(onnx_model, "./quant_deploy", [image])
 
 

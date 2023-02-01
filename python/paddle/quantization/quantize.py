@@ -16,10 +16,13 @@ import abc
 import copy
 
 from paddle.nn import Layer
+from paddle.nn.quant.format import (
+    ConvertibleQuantedLayer,
+    LinearQuanterDequanter,
+)
 
 from .base_quanter import BaseQuanter
 from .config import QuantConfig
-from .format import LinearQuanterDequanter
 
 
 class Quantization(object, metaclass=abc.ABCMeta):
@@ -34,23 +37,48 @@ class Quantization(object, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def quantize(self, model: Layer, inplace=False):
+        r"""Create a model for quantization-aware training or post-training quantization."""
         pass
 
     def convert(self, model: Layer, inplace=False):
+        r"""Convert the quantization model to onnx style. And the converted
+        model can be saved as inference model by calling paddle.jit.save.
+        Args:
+            model(Layer) - The quantized model to be covnerted.
+            inplace(bool) - Whether to modify the model in-place.
+
+        Return: The converted model
+
+        Examples:
+        .. code-block:: python
+            from paddle.quantization import QAT, QuantConfig
+            from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+            from paddle.vision.models import LeNet
+
+            quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
+            q_config = QuantConfig(activation=quanter, weight=quanter)
+            qat = QAT(q_config)
+            model = LeNet()
+            quantized_model = qat.quantize(model)
+            converted_model = ptq.convert(quantized_model)
+            dummy_data = paddle.rand([1, 3, 32, 32], dtype="float32")
+            paddle.jit.save(converted_model, "./quant_deploy", [dummy_data])
+
+        """
         _model = model if inplace else copy.deepcopy(model)
         replaced = {}
         for name, child in _model.named_children():
             quant_dequant = None
-            if isinstance(child, BaseQuanter):
+            if isinstance(child, ConvertibleQuantedLayer):
+                child._convert()
+            elif isinstance(child, BaseQuanter):
                 quant_dequant = LinearQuanterDequanter.from_quanter(child)
             else:
                 self.convert(child, inplace=True)
-            print(f"type: {type(child)}; quant_dequant: {quant_dequant}")
             if quant_dequant is not None:
                 replaced[name] = quant_dequant
         for key, value in replaced.items():
             _model._sub_layers[key] = value
-
         return _model
 
     def _convert_to_quant_layers(self, model: Layer, config: QuantConfig):
