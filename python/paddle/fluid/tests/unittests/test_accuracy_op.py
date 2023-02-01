@@ -56,6 +56,7 @@ class TestAccuracyOpFp16(TestAccuracyOp):
         self.dtype = np.float16
 
     def test_check_output(self):
+        self.enable_static()
         self.check_output(atol=1e-3)
 
 
@@ -87,15 +88,18 @@ class TestAccuracyOpError(unittest.TestCase):
             paddle.disable_static()
 
             # The input rank of accuracy_op must be 2.
-            x3 = paddle.to_tensor([0.1], dtype='float32')
-            label3 = paddle.to_tensor(np.reshape([0], [1, 1]), dtype='int32')
             with self.assertRaises(ValueError):
+                x3 = paddle.to_tensor([0.1], dtype='float32')
+                label3 = paddle.to_tensor(
+                    np.reshape([0], [1, 1]), dtype='int32'
+                )
                 paddle.metric.accuracy(x3, label3)
+
+            paddle.enable_static()
 
 
 class TestAccuracyAPI1(unittest.TestCase):
     def setUp(self):
-        paddle.enable_static()
         self.predictions = paddle.static.data(
             shape=[2, 5], name="predictions", dtype="float32"
         )
