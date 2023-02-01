@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,11 +24,11 @@ void FuseQuantTranspose2DequantOneDNNPass::FuseQuantizeTranspose2(
     Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
-  FusePassBase::Init("quant_transpose2_dequant_onednn_fuse_pass", graph);
+  FusePassBase::Init(name_scope, graph);
 
   GraphPatternDetector gpd;
-  patterns::QuantTranspose2 quant_transpose2_pattern(
-      gpd.mutable_pattern(), "quant_transpose2_dequant_onednn_fuse_pass");
+  patterns::QuantTranspose2 quant_transpose2_pattern(gpd.mutable_pattern(),
+                                                     name_scope);
   quant_transpose2_pattern();
 
   int found_patterns_count = 0;
@@ -41,9 +41,7 @@ void FuseQuantTranspose2DequantOneDNNPass::FuseQuantizeTranspose2(
         transpose2_op, transpose2_op, quant_transpose2_pattern);
 
     if (!transpose2_op->Op()->HasAttr("use_mkldnn") ||
-        (transpose2_op->Op()->HasAttr("use_mkldnn") &&
-         !(PADDLE_GET_CONST(bool,
-                            transpose2_op->Op()->GetAttr("use_mkldnn"))))) {
+        !(PADDLE_GET_CONST(bool, transpose2_op->Op()->GetAttr("use_mkldnn")))) {
       VLOG(4)
           << "Only oneDNN version of transpose2 can be fused with quantize.";
       return;
@@ -99,11 +97,11 @@ void FuseQuantTranspose2DequantOneDNNPass::FuseTranspose2Dequantize(
     Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
-  FusePassBase::Init("quant_transpose2_dequant_onednn_fuse_pass", graph);
+  FusePassBase::Init(name_scope, graph);
 
   GraphPatternDetector gpd;
-  patterns::Transpose2Dequant transpose2_dequant_pattern(
-      gpd.mutable_pattern(), "quant_transpose2_dequant_onednn_fuse_pass");
+  patterns::Transpose2Dequant transpose2_dequant_pattern(gpd.mutable_pattern(),
+                                                         name_scope);
   transpose2_dequant_pattern();
 
   int found_patterns_count = 0;
@@ -119,9 +117,7 @@ void FuseQuantTranspose2DequantOneDNNPass::FuseTranspose2Dequantize(
         dequant_out, dequant_out, transpose2_dequant_pattern);
 
     if (!transpose2_op->Op()->HasAttr("use_mkldnn") ||
-        (transpose2_op->Op()->HasAttr("use_mkldnn") &&
-         !(PADDLE_GET_CONST(bool,
-                            transpose2_op->Op()->GetAttr("use_mkldnn"))))) {
+        !(PADDLE_GET_CONST(bool, transpose2_op->Op()->GetAttr("use_mkldnn")))) {
       VLOG(4)
           << "Only oneDNN version of transpose2 can be fused with dequantize.";
       return;

@@ -88,7 +88,7 @@ void TransposeKernel(const Context& dev_ctx,
   auto x_type = funcs::ToOneDNNDataType(x.dtype());
 
   dnnl::primitive_attr attrs;
-  static constexpr int32_t mask = 0;
+  const int32_t mask = 0;
   const auto quantization_scale =
       dev_ctx.HasDnnAttr("scale")
           ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("scale"))

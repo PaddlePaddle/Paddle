@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,6 +29,9 @@ class FuseQuantTranspose2DequantOneDNNPass : public FusePassBase {
   void ApplyImpl(Graph *graph) const override;
   void FuseQuantizeTranspose2(Graph *graph) const;
   void FuseTranspose2Dequantize(Graph *graph) const;
+
+ private:
+  std::string name_scope = "quant_transpose2_dequant_onednn_fuse_pass";
 };
 
 }  // namespace ir

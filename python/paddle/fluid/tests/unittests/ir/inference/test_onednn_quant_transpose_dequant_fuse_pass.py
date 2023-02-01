@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,6 +33,7 @@ class TestQuantTranspose2DequantOneDNNFusePass(PassAutoScanTest):
         input_dim = draw(st.sampled_from([32, 64]))
         scale = draw(st.floats(min_value=1, max_value=16))
         shift = draw(st.integers(min_value=1, max_value=3))
+        is_negative_input = draw(st.booleans())
 
         def generate_input():
             if transpose_X:
@@ -46,7 +47,7 @@ class TestQuantTranspose2DequantOneDNNFusePass(PassAutoScanTest):
             inputs={'Input': ['input_data']},
             outputs={'Output': ['quantize_output']},
             attrs={
-                'is_negative_input': False,
+                'is_negative_input': is_negative_input,
                 'Scale': scale,
                 'Shift': shift,
             },
@@ -87,7 +88,6 @@ class TestQuantTranspose2DequantOneDNNFusePass(PassAutoScanTest):
             inputs={'Input': ['transpose2_output_2']},
             outputs={'Output': ['dequantize_output']},
             attrs={
-                'is_negative_input': False,
                 'Scale': scale,
                 'Shift': shift,
             },
