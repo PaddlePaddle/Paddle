@@ -210,14 +210,14 @@ class TestReduceAPI(unittest.TestCase):
             out.retain_grads()
             out.backward()
 
-            out_empty_list = api(x, [])
-            self.assertEqual(out_empty_list, out)
+
 
             self.assertEqual(x.shape, [])
             self.assertEqual(out.shape, [])
             if api not in [paddle.argmax, paddle.argmin]:
-                self.assertEqual(out.numpy(), x.numpy())
                 np.testing.assert_allclose(out.numpy(), x.numpy())
+                out_empty_list = api(x, [])
+                self.assertEqual(out_empty_list, out)
 
             if x.grad is not None:
                 self.assertEqual(x.grad.shape, [])
