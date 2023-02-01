@@ -27,7 +27,6 @@ from paddle.fluid.framework import (
     Operator,
     convert_np_dtype_to_dtype_,
 )
-from paddle.fluid.initializer import NumpyArrayInitializer
 from paddle.static.quantization import (
     QuantizationFreezePass,
     QuantizationTransformPass,
@@ -305,7 +304,7 @@ def create_fake_model(program_config):
             shape=tensor_config.shape,
             type=core.VarDesc.VarType.LOD_TENSOR,
             name=name,
-            initializer=NumpyArrayInitializer(tensor_config.data),
+            initializer=paddle.nn.initializer.Assign(tensor_config.data),
         )
     in_vars = []
     for name in sorted(save_var_map.keys()):

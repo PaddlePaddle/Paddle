@@ -15,6 +15,7 @@
 import paddle
 from paddle.fluid import core
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+from paddle.utils import deprecated
 
 from .streams import Stream  # noqa: F401
 from .streams import Event  # noqa: F401
@@ -37,6 +38,12 @@ __all__ = [
 ]
 
 
+@deprecated(
+    since="2.5.0",
+    update_to="paddle.device.current_stream",
+    level=1,
+    reason="current_stream in paddle.device.cuda will be removed in future",
+)
 def current_stream(device=None):
     '''
     Return the current CUDA stream by the device.
@@ -75,6 +82,12 @@ def current_stream(device=None):
     return core._get_current_stream(device_id)
 
 
+@deprecated(
+    since="2.5.0",
+    update_to="paddle.device.synchronize",
+    level=1,
+    reason="synchronize in paddle.device.cuda will be removed in future",
+)
 def synchronize(device=None):
     '''
     Wait for the compute on the given CUDA device to finish.
@@ -352,6 +365,12 @@ def _set_current_stream(stream):
     return core._set_current_stream(stream)
 
 
+@deprecated(
+    since="2.5.0",
+    update_to="paddle.device.stream_guard",
+    level=1,
+    reason="stream_guard in paddle.device.cuda will be removed in future",
+)
 @signature_safe_contextmanager
 def stream_guard(stream):
     '''

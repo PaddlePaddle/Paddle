@@ -175,7 +175,7 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
 
         self.x_type = np.float32
         self.attn_mask_type = np.float64
-        # self.attn_mask_type = np.bool
+        # self.attn_mask_type = np.bool_
         self.pre_layer_norm = True
         self.has_attn_mask = True
 

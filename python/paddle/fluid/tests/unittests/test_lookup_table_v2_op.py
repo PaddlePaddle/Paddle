@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from eager_op_test import OpTest, skip_check_grad_ci
 
 import paddle
 import paddle.fluid as fluid
@@ -57,10 +57,10 @@ class TestLookupTableOp(OpTest):
         return "int64"
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['W'], 'Out', no_grad_set=set('Ids'), check_eager=True)
+        self.check_grad(['W'], 'Out', no_grad_set=set('Ids'))
 
 
 class TestLookupTableOpInt16(OpTest):
@@ -81,6 +81,7 @@ class TestLookupTableOpUInt8(OpTest):
 class TestLookupTableOpWithTensorIds(OpTest):
     def setUp(self):
         self.op_type = "lookup_table_v2"
+        self.python_api = paddle.nn.functional.embedding
         table = np.random.random((17, 31)).astype("float64")
         ids = np.random.randint(low=0, high=17, size=(2, 4, 5)).astype("int32")
         self.inputs = {'W': table, 'Ids': ids}
@@ -200,17 +201,15 @@ class TestLookupTableIsSparse(unittest.TestCase):
         self.init_data()
         main_program = fluid.Program()
         with fluid.program_guard(main_program, fluid.Program()):
-            x = fluid.layers.data(name='x', shape=[5], dtype='int64')
-            y_ = fluid.layers.data(name='y_', shape=[5], dtype='float32')
+            x = paddle.static.data(name='x', shape=[-1, 5], dtype='int64')
+            y_ = paddle.static.data(name='y_', shape=[-1, 5], dtype='float32')
             emb = fluid.input.embedding(
                 input=x,
                 size=[10, 16],
                 param_attr=fluid.ParamAttr(
                     name="emb_weight",
                     learning_rate=10,
-                    initializer=fluid.initializer.NumpyArrayInitializer(
-                        self.w_data
-                    ),
+                    initializer=paddle.nn.initializer.Assign(self.w_data),
                 ),
                 is_sparse=is_sparse,
             )
@@ -246,7 +245,7 @@ class TestLookupTableIsSparse(unittest.TestCase):
 
 class TestLookupTableApi(unittest.TestCase):
     def test_api(self):
-        x = fluid.layers.data(name='x', shape=[20], dtype='int64')
+        x = paddle.static.data(name='x', shape=[-1, 20], dtype='int64')
         emb = fluid.embedding(input=x, size=[128, 64])
 
         place = fluid.CPUPlace()

@@ -226,7 +226,7 @@ class ResNet(fluid.Layer):
             self.pool2d_avg_output,
             class_dim,
             weight_attr=fluid.param_attr.ParamAttr(
-                initializer=fluid.initializer.Uniform(-stdv, stdv)
+                initializer=paddle.nn.initializer.Uniform(-stdv, stdv)
             ),
         )
 
@@ -361,10 +361,12 @@ class TestDygraphResnet(unittest.TestCase):
                 batch_size=batch_size,
             )
 
-            img = fluid.layers.data(
-                name='pixel', shape=[3, 224, 224], dtype='float32'
+            img = paddle.static.data(
+                name='pixel', shape=[-1, 3, 224, 224], dtype='float32'
             )
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
             out = resnet(img)
             loss = paddle.nn.functional.cross_entropy(
                 input=out, label=label, reduction='none', use_softmax=False

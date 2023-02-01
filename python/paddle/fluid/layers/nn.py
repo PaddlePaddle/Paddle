@@ -22,7 +22,6 @@ import numpy as np
 
 import paddle
 from ..layer_helper import LayerHelper
-from ..initializer import Normal, Constant
 from ..framework import (
     Variable,
     OpProtoHolder,
@@ -240,7 +239,7 @@ def embedding(
           w_param_attrs = fluid.ParamAttr(
               name="emb_weight",
               learning_rate=0.5,
-              initializer=fluid.initializer.NumpyArrayInitializer(weight_data),
+              initializer=paddle.nn.initializer.Assign(weight_data),
               trainable=True)
           emb_2 = fluid.layers.embedding(input=data, size=(128, 100), param_attr=w_param_attrs, dtype='float32')
     """
@@ -329,7 +328,7 @@ def _pull_sparse(
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          data = paddle.static.data(name='sequence', shape=[-1, 1], dtype='int64', lod_level=1)
           emb = fluid.layers.nn._pull_sparse(
               input=data, size=11, table_id=0, accessor_class="DownpourCtrAccessor")
     """
@@ -403,7 +402,7 @@ def _pull_sparse_v2(
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          data = paddle.static.data(name='sequence', shape=[-1, 1], dtype='int64', lod_level=1)
           emb = fluid.layers.nn._pull_sparse_v2(
               input=data, size=11, table_id=0, accessor_class="DownpourCtrAccessor")
     """
@@ -464,9 +463,9 @@ def _pull_gpups_sparse(
 
           import paddle.fluid as fluid
           slots = []
-          data_1 = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          data_1 = paddle.static.data(name='sequence', shape=[-1,1], dtype='int64', lod_level=1)
           slots.append(data_1)
-          data_2 = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          data_2 = paddle.static.data(name='sequence', shape=[-1,1], dtype='int64', lod_level=1)
           slots.append(data_2)
           embs = fluid.layers.pull_gpups_sparse(input=slots, size=[11, 35])
     """
@@ -526,7 +525,7 @@ def _pull_box_sparse(
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          data = paddle.static.data(name='sequence', shape=[-1,1], dtype='int64', lod_level=1)
           emb = fluid.layers.pull_box_sparse(input=data, size=[11])
     """
     helper = LayerHelper('pull_box_sparse', **locals())
@@ -673,7 +672,10 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
     )
     if is_new_var:
         helper.set_variable_initializer(
-            counter, initializer=Constant(value=begin - 1, force_cpu=True)
+            counter,
+            initializer=paddle.nn.initializer.ConstantInitializer(
+                value=begin - 1, force_cpu=True
+            ),
         )
         helper.main_program.global_block()._prepend_op(
             type='increment',
@@ -711,7 +713,7 @@ def unsqueeze(input, axes, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[5, 10])
+            x = paddle.static.data(name='x', shape=[-1, 5, 10], dtype="float32")
             y = fluid.layers.unsqueeze(input=x, axes=[1])
 
     """
