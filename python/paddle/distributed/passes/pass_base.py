@@ -301,12 +301,22 @@ def _solve_pass_conflict(passes, context):
 
     for i in range(n):
         for j in range(n):
-            adjacent_matrix[i][j] = passes[
-                j
-            ]._check_conflict_including_common_rules(passes[i])
+            adjacent_matrix[i][j] = (
+                passes[j]._check_conflict_including_common_rules(passes[i])
+                and i < j
+            )
 
     longest_path = _find_longest_path(adjacent_matrix)
-    return [passes[idx] for idx in longest_path]
+
+    id_before = longest_path[0]
+    passes_list = [id_before]
+    for id in longest_path[1:]:
+        if id_before == id:
+            continue
+        passes_list.append(id)
+        id_before = id
+
+    return [passes[idx] for idx in passes_list]
 
 
 class PassManager:
