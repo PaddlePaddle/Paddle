@@ -32,7 +32,7 @@ if(LINUX)
     return()
   endif()
   if(${CUDA_VERSION} VERSION_LESS "11.2" AND ${CMAKE_CXX_COMPILER_VERSION}
-                                                  VERSION_GREATER_EQUAL 12.0)
+                                             VERSION_GREATER_EQUAL 12.0)
     message("cuda less than 11.2 doesn't support gcc12")
     return()
   endif()
