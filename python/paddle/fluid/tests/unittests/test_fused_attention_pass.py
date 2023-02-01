@@ -117,6 +117,7 @@ class TestFusedAttentionPass(unittest.TestCase):
         ).astype('float32')
 
         main_prog = paddle.static.Program()
+        main_prog.random_seed = 1234
         startup_prog = paddle.static.Program()
 
         with paddle.static.program_guard(main_prog, startup_prog):
@@ -153,13 +154,14 @@ class TestFusedAttentionPass(unittest.TestCase):
         pass_manager.apply([main_prog], [startup_prog])
 
         ops = main_prog.global_block().ops
-        assert ops[2].type == 'reduce_mean'
-        assert ops[4].type == 'reduce_mean_grad'
+        assert ops[2].type == 'fused_attention'
+        assert ops[3].type == 'reduce_mean'
+        assert ops[5].type == 'reduce_mean_grad'
         # two ops for linear, one op for reduce mean
         # one fill constant
         # one op for reduce mean grad, two ops for linear bwd
         # the eighth op should be the optimizer
-        assert ops[7].type == 'sgd'
+        assert ops[8].type == 'sgd'
 
 
 if __name__ == "__main__":

@@ -841,16 +841,14 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(pre_layer_norm_scale_node,
                               pre_layer_norm_scale,
                               fused_attention_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(pre_layer_norm_bias_node,
-                              pre_layer_norm_scale,
-                              fused_attention_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
-        pre_layer_norm_out_node, pre_layer_norm_scale, fused_attention_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(pre_layer_norm_mean_node,
-                              pre_layer_norm_scale,
-                              fused_attention_pattern);
+        pre_layer_norm_bias_node, pre_layer_norm_bias, fused_attention_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        pre_layer_norm_out_node, pre_layer_norm_out, fused_attention_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        pre_layer_norm_mean_node, pre_layer_norm_mean, fused_attention_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(pre_layer_norm_variance_node,
-                              pre_layer_norm_scale,
+                              pre_layer_norm_variance,
                               fused_attention_pattern);
     fused_attention_op_desc.SetInput("LnScale",
                                      {pre_layer_norm_scale_node->Name()});
