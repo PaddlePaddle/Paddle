@@ -36,7 +36,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/thirdparty/round_robin.h"
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/fleet/heter_context.h"
-#ifdef PADDLE_WITH_GPU_GRAPH
+#ifdef PADDLE_WITH_PSCORE
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
 #endif
 #include "paddle/fluid/framework/fleet/heter_ps/heter_ps_base.h"
@@ -433,7 +433,7 @@ class PSGPUWrapper {
     }
   }
 
- void InitializeGPUServer(const string& dist_desc) {
+ void InitializeGPUServer(const std::string& dist_desc) {
     paddle::distributed::PSParameter ps_param;
     google::protobuf::TextFormat::ParseFromString(dist_desc, &ps_param);
     auto sparse_table =
