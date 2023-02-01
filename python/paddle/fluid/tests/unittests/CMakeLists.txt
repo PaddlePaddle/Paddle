@@ -631,9 +631,11 @@ if(WITH_DISTRIBUTE)
   endif()
 
   if(NOT WITH_HETERPS)
+    add_subdirectory(ps)
     list(REMOVE_ITEM DIST_TEST_OPS "test_communicator_ps_gpu")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ps11")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ps12")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_gpubox_ps")
   endif()
 
   py_test_modules(test_communicator_async MODULES test_communicator_async ENVS
@@ -857,8 +859,10 @@ if(WITH_XPU_BKCL)
 endif()
 
 if(WITH_HETERPS)
+  add_subdirectory(ps)
   set_tests_properties(test_dist_fleet_ps11 PROPERTIES LABELS "RUN_TYPE=GPUPS")
   set_tests_properties(test_dist_fleet_ps12 PROPERTIES LABELS "RUN_TYPE=GPUPS")
+  set_tests_properties(test_gpubox_ps PROPERTIES LABELS "RUN_TYPE=GPUPS")
 endif()
 
 if(WIN32)
