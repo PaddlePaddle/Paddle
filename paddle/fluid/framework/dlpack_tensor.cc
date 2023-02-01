@@ -188,6 +188,7 @@ DLPackTensor::DLPackTensor(phi::DenseTensor &tensor, LaneType lanes) {
 
   auto tensor = new DLManagedTensor;
   tensor->dl_tensor = t_;
+  tensor->manager_ctx = dt_;
 
   tensor->deleter = [](DLManagedTensor *arg) {
     phi::DenseTensor *tensor_ptr =
@@ -199,8 +200,6 @@ DLPackTensor::DLPackTensor(phi::DenseTensor &tensor, LaneType lanes) {
     delete[] arg->dl_tensor.strides;
     delete arg;
   };
-
-  tensor->manager_ctx = dt_;
 
   return tensor;
 }
