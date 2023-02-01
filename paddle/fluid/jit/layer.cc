@@ -30,7 +30,10 @@ Layer::Layer(const VariableMap& params_map,
              const VariableMap& attrs_map,
              const FunctionInfoMap& info_map,
              const phi::Place& place)
-    : params_map_(params_map), attrs_map_(attrs_map), info_map_(info_map) {
+    : params_map_(params_map),
+      attrs_map_(attrs_map),
+      info_map_(info_map),
+      place_(place) {
   unit_.reset(new CompilationUnit());
 }
 
@@ -93,6 +96,13 @@ PD_SPECIALZE_ATTRIBUTE_TYPE(framework::String)
 PD_SPECIALZE_ATTRIBUTE_TYPE(std::vector<int>)
 PD_SPECIALZE_ATTRIBUTE_TYPE(std::vector<float>)
 PD_SPECIALZE_ATTRIBUTE_TYPE(std::vector<std::string>)
+
+std::shared_ptr<Layer> Layer::Clone(void* stream) {
+  std::shared_ptr<Layer> x =
+      std::make_shared<Layer>(params_map_, attrs_map_, info_map_, place_);
+  x->unit_ = unit_->Clone(stream);
+  return x;
+}
 
 }  // namespace jit
 }  // namespace paddle

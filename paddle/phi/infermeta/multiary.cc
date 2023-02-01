@@ -791,7 +791,7 @@ void BroadcastTensorsInferMeta(const std::vector<const MetaTensor*>& x,
 
       // We performed bcast semantics check at python level
       // So input tensors should all have legal shape
-      target_dim_size = std::max(target_dim_size, dim_size);
+      target_dim_size = dim_size == 1 ? target_dim_size : dim_size;
     }
     target_dims[target_rank - index - 1] = target_dim_size;
   }
@@ -1424,16 +1424,18 @@ static void Interpolate1DInferShapeCheck(
   if (scale_tensor) {
     auto scale_tensor_dim = scale_tensor.dims();
     PADDLE_ENFORCE_EQ(
-        scale_tensor_dim.size(),
-        1,
+        scale_tensor_dim.size() == 1 || scale_tensor_dim.size() == 0,
+        true,
         phi::errors::InvalidArgument(
-            "Scale's dimension size must be 1, but got dimension = %d .",
+            "Scale's dimension size must be 1 or 0, but got dimension = %d .",
             scale_tensor_dim.size()));
-    PADDLE_ENFORCE_EQ(scale_tensor_dim[0],
-                      1,
-                      phi::errors::InvalidArgument(
-                          "Scale's shape must be 1, but got shape = %d .",
-                          scale_tensor_dim[0]));
+    if (scale_tensor_dim.size() == 1) {
+      PADDLE_ENFORCE_EQ(scale_tensor_dim[0],
+                        1,
+                        phi::errors::InvalidArgument(
+                            "Scale's shape must be 1, but got shape = %d .",
+                            scale_tensor_dim[0]));
+    }
     out_w_tmp = -1;
   } else {
     if (scale.size() > 0) {
@@ -1550,19 +1552,25 @@ static void Interpolate2DInferShapeCheck(
   }
 
   int out_h_tmp, out_w_tmp;
+
   if (scale_tensor) {
     auto scale_tensor_dim = scale_tensor.dims();
     PADDLE_ENFORCE_EQ(
-        scale_tensor_dim.size(),
-        1,
+        scale_tensor_dim.size() == 1 || scale_tensor_dim.size() == 0,
+        true,
         phi::errors::InvalidArgument(
-            "Scale's dimension size must be 1, but got dimension = %d .",
+            "Scale's dimension size must be 1 or 0, but got dimension = %d .",
             scale_tensor_dim.size()));
-    PADDLE_ENFORCE_EQ(scale_tensor_dim[0] == 2 || scale_tensor_dim[0] == 1,
-                      true,
-                      phi::errors::InvalidArgument(
-                          "Scale's shape must be 2 or 1, but got shape = %d .",
-                          scale_tensor_dim[0]));
+
+    if (scale_tensor_dim.size() == 1) {
+      PADDLE_ENFORCE_EQ(
+          scale_tensor_dim[0] == 2 || scale_tensor_dim[0] == 1,
+          true,
+          phi::errors::InvalidArgument(
+              "Scale's shape must be 2 or 1, but got shape = %d .",
+              scale_tensor_dim[0]));
+    }
+
     out_h_tmp = -1;
     out_w_tmp = -1;
   } else {
@@ -1695,10 +1703,10 @@ static void Interpolate3DInferShapeCheck(
   if (scale_tensor) {
     auto scale_tensor_dim = scale_tensor.dims();
     PADDLE_ENFORCE_EQ(
-        scale_tensor_dim.size(),
-        1,
+        scale_tensor_dim.size() == 1 || scale_tensor_dim.size() == 0,
+        true,
         phi::errors::InvalidArgument(
-            "Scale's dimension size must be 1, but got size = %d .",
+            "Scale's dimension size must be 1 or 0, but got size = %d .",
             scale_tensor_dim.size()));
     PADDLE_ENFORCE_EQ(scale_tensor_dim[0] == 3 || scale_tensor_dim[0] == 1,
                       true,

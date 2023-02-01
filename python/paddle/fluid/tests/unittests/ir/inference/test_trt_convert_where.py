@@ -73,7 +73,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                         "op_inputs": {"X": ["condition_data"]},
                         "op_outputs": {"Out": ["condition_data_bool"]},
                         "op_attrs": {"in_dtype": 5, "out_dtype": 0},
-                        "outputs_dtype": {"condition_data_bool": np.bool},
+                        "outputs_dtype": {"condition_data_bool": np.bool_},
                     },
                     {
                         "op_type": "where",
@@ -84,7 +84,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                         },
                         "op_outputs": {"Out": ["output_data"]},
                         "op_attrs": dics[0],
-                        "outputs_dtype": {"condition_data_bool": np.bool},
+                        "outputs_dtype": {"condition_data_bool": np.bool_},
                     },
                 ]
                 ops = self.generate_op_config(ops_config)
