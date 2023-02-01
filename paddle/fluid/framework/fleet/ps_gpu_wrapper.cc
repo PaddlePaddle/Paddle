@@ -367,8 +367,6 @@ void PSGPUWrapper::add_slot_feature(std::shared_ptr<HeterContext> gpu_task) {
   // 8卡数据分片
   size_t device_num = heter_devices_.size();
   std::vector<std::thread> threads;
-  size_t slot_num =
-      (size_t)slot_num_for_pull_feature_;  // node slot 9008 in slot_vector
   auto& local_dim_keys = gpu_task->feature_dim_keys_;  // [shard_num, 0, keys]]
   double divide_nodeid_cost = 0;
   double get_feature_id_cost = 0;
@@ -434,7 +432,7 @@ void PSGPUWrapper::add_slot_feature(std::shared_ptr<HeterContext> gpu_task) {
   threads.clear();
   time_stage.Pause();
   divide_nodeid_cost = time_stage.ElapsedSec();
-#ifdef PADDLE_WITH_GPU_GRAPH
+#ifdef PADDLE_WITH_PSCORE
   gpu_task->sub_graph_feas = new std::vector<GpuPsCommGraphFea>;
   std::vector<GpuPsCommGraphFea>& sub_graph_feas =
       *((std::vector<GpuPsCommGraphFea>*)gpu_task->sub_graph_feas);
@@ -442,7 +440,7 @@ void PSGPUWrapper::add_slot_feature(std::shared_ptr<HeterContext> gpu_task) {
   std::vector<std::vector<uint64_t>> feature_ids(device_num);
   std::vector<uint64_t*> feature_list(device_num);
   std::vector<size_t> feature_list_size(device_num);
-#ifdef PADDLE_WITH_GPU_GRAPH
+#ifdef PADDLE_WITH_PSCORE
   size_t batch = 40000;
   size_t slot_num = slot_vector_.size() - 1;  // node slot 9008 in slot_vector
   time_stage.Start();
@@ -1112,7 +1110,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
           };
       threads[j] = std::thread(build_ps_thread, i, j, len, feature_value_size);
     }
-#ifdef PADDLE_WITH_GPU_GRAPH
+#ifdef PADDLE_WITH_PSCORE
     // build feature table
     if (slot_num_for_pull_feature_ > 0 &&
         (FLAGS_gpugraph_storage_mode == paddle::framework::GpuGraphStorageMode::
@@ -1194,7 +1192,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
     f.wait();
   }
   gpu_task_futures.clear();
-#ifdef PADDLE_WITH_GPU_GRAPH
+#ifdef PADDLE_WITH_PSCORE
   if (FLAGS_gpugraph_storage_mode == paddle::framework::GpuGraphStorageMode::
                                          MEM_EMB_FEATURE_AND_GPU_GRAPH ||
       FLAGS_gpugraph_storage_mode == paddle::framework::GpuGraphStorageMode::
@@ -1377,7 +1375,7 @@ void PSGPUWrapper::EndPass() {
 }
 
 void PSGPUWrapper::SparseTableToHbm() {
-#ifdef PADDLE_WITH_GPU_GRAPH
+#ifdef PADDLE_WITH_PSCORE
   std::shared_ptr<HeterContext> gpu_task = gpu_task_pool_.Get();
   gpu_task->Reset();
   size_t device_num = heter_devices_.size();
@@ -1545,7 +1543,7 @@ void PSGPUWrapper::HbmToSparseTable() {
 }
 
 void PSGPUWrapper::DumpToMem() {
-#ifdef PADDLE_WITH_GPU_GRAPH
+#ifdef PADDLE_WITH_PSCORE
   if (FLAGS_gpugraph_storage_mode == GpuGraphStorageMode::WHOLE_HBM) {
     this->HbmToSparseTable();
   }
