@@ -20,6 +20,7 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/platform/timer.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -78,7 +79,11 @@ TEST(CpuLayerTest, Function) {
 TEST(CpuLayerTest, Construct) {
   auto place = phi::CPUPlace();
   std::string path = "./multi_program_load/export";
+  paddle::platform::Timer timer;
+  timer.Start();
   auto layer = jit::Load(path, place);
+  timer.Pause();
+  std::cout << "jit::Load coast" << timer.ElapsedMS() << std::endl;
 
   float fbias = layer.Attribute<float>("fbias");
   EXPECT_FLOAT_EQ(fbias, 1.4);
@@ -122,9 +127,19 @@ TEST(CpuLayerTest, Construct) {
 TEST(CpuLayerTest, Clone) {
   auto place = phi::CPUPlace();
   std::string path = "./multi_program_load/export";
-  auto layer = jit::Load(path, place);
 
+  paddle::platform::Timer timer;
+  timer.Start();
+  auto layer = jit::Load(path, place);
+  timer.Pause();
+  std::cout << "jit::Load cost " << timer.ElapsedMS() << " ms" << std::endl;
+
+  timer.Start();
   auto layer2 = layer.Clone();
+  timer.Pause();
+  std::cout << "jit::Layer::Clone cost " << timer.ElapsedMS() << " ms"
+            << std::endl;
+
   float fbias = layer2->Attribute<float>("fbias");
   EXPECT_FLOAT_EQ(fbias, 1.4);
 

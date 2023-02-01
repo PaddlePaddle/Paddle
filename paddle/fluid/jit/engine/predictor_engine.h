@@ -41,9 +41,10 @@ class PredictorEngine : public BaseEngine {
 
   ~PredictorEngine() noexcept {}
 
-  std::vector<Tensor> operator()(const std::vector<Tensor> &inputs);
+  std::vector<Tensor> operator()(const std::vector<Tensor> &inputs) override;
 
-  std::vector<DenseTensor> operator()(const std::vector<DenseTensor> &inputs);
+  std::vector<DenseTensor> operator()(
+      const std::vector<DenseTensor> &inputs) override;
 
   std::unique_ptr<BaseEngine> Clone(void *stream = nullptr) override;
 
