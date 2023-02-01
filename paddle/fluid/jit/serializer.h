@@ -59,7 +59,7 @@ class Deserializer {
 
   // property pb
   void ReadAttributeData(const std::string& file_path,
-                        std::shared_ptr<VariableMap>attrs_dict) const;
+                         std::shared_ptr<VariableMap> attrs_dict) const;
 
   // void ReadExtraInfo(const std::string& file_name) const;
 
