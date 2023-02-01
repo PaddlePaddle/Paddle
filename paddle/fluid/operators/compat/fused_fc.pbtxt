@@ -30,6 +30,10 @@ extra {
     type: BOOLEAN
   }
   attrs {
+    name: "fused_output_scale"
+    type: FLOAT
+  }
+  attrs {
     name: "@ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE@"
     type: BOOLEAN
   }

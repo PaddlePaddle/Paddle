@@ -119,8 +119,8 @@ class FCOneDNNHandler
     }
     AppendActivation(ctx, post_operations, activation_scale);
 
-    if (ctx.HasAttr("fused_output_scale")) {
-      float scale_alpha = ctx.Attr<float>("fused_output_scale");
+    float scale_alpha = ctx.Attr<float>("fused_output_scale");
+    if (scale_alpha != 1.0f) {
       post_operations.append_eltwise(
           1.0, dnnl::algorithm::eltwise_linear, scale_alpha, 0.0f);
     }
