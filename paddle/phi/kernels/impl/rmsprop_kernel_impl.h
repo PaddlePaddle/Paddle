@@ -146,14 +146,17 @@ void RmspropDenseKernel(const Context &ctx,
                         const DenseTensor &moment,
                         const DenseTensor &learning_rate,
                         const paddle::optional<DenseTensor> &mean_grad_opt,
+                        const paddle::optional<DenseTensor> &master_param,
                         float epsilon_t,
                         float decay_t,
                         float momentum_t,
                         bool centered,
+                        bool multi_precision,
                         DenseTensor *param_out,
                         DenseTensor *moment_out,
                         DenseTensor *mean_square_out,
-                        DenseTensor *mean_grad_out) {
+                        DenseTensor *mean_grad_out,
+                        DenseTensor *master_param_outs) {
   auto epsilon = static_cast<T>(epsilon_t);
   auto rho = static_cast<T>(decay_t);
   auto momentum = static_cast<T>(momentum_t);
@@ -270,14 +273,17 @@ void RmspropSparseKernel(const Context &ctx,
                          const DenseTensor &moment,
                          const DenseTensor &learning_rate,
                          const paddle::optional<DenseTensor> &mean_grad_opt,
+                         const paddle::optional<DenseTensor> &master_param,
                          float epsilon_t,
                          float decay_t,
                          float momentum_t,
                          bool centered,
+                         bool multi_precision,
                          DenseTensor *param_out,
                          DenseTensor *moment_out,
                          DenseTensor *mean_square_out,
-                         DenseTensor *mean_grad_out) {
+                         DenseTensor *mean_grad_out,
+                         DenseTensor *master_param_outs) {
   auto epsilon = static_cast<T>(epsilon_t);
   auto rho = static_cast<T>(decay_t);
   auto momentum = static_cast<T>(momentum_t);
