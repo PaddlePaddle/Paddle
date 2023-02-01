@@ -14,11 +14,11 @@
 
 #include "paddle/phi/kernels/add_n_kernel.h"
 
-#include "paddle/phi/kernels/impl/add_n_kernel_impl.h"
-
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
-
+#include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/float16.h"
+#include "paddle/phi/kernels/impl/add_n_kernel_impl.h"
 namespace phi {
 
 #define CEIL_DIV(x, y) (((x) + (y)-1) / (y))
