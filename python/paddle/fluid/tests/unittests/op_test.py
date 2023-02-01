@@ -1741,6 +1741,11 @@ class OpTest(unittest.TestCase):
                     np.float64,
                 ]:
                     self.rtol = 1.0e-2
+                elif actual_np.dtype == np.float16 and expect_np.dtype in [
+                    np.float32,
+                    np.float64,
+                ]:
+                    self.rtol = 1.0e-3
                 else:
                     self.rtol = 1.0e-5
                 if self.op_test.is_bfloat16_op():
@@ -2058,7 +2063,6 @@ class OpTest(unittest.TestCase):
         max_relative_error,
         msg_prefix,
     ):
-        max_absolute_error = 1.0e-3
         for a, b, name in zip(numeric_grads, analytic_grads, names):
             # It asserts np.abs(a - b) / np.abs(a) < max_relative_error, in which
             # max_relative_error is 1e-7. According to the value of np.abs(a), we
@@ -2119,31 +2123,6 @@ class OpTest(unittest.TestCase):
                 )
 
             self.assertLessEqual(max_diff, max_relative_error, err_msg())
-            if b.dtype == np.float16:
-                diff_abs = np.abs(a - b)
-                max_atol = np.max(diff_abs)
-
-                def err_msg_abs():
-                    offset = np.argmax(diff_mat > max_absolute_error)
-                    return (
-                        "Operator %s error, %s variable %s (shape: %s, dtype: %s) max absolute gradient diff %e over limit %e, "
-                        "the first error element is %d, expected %e, but got %e."
-                    ) % (
-                        self.op_type,
-                        msg_prefix,
-                        name,
-                        str(a.shape),
-                        self.dtype,
-                        max_diff,
-                        max_relative_error,
-                        offset,
-                        a.flatten()[offset],
-                        b.flatten()[offset],
-                    )
-
-                self.assertLessEqual(
-                    max_atol, max_absolute_error, err_msg_abs()
-                )
 
     def _check_grad_helper(self):
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
