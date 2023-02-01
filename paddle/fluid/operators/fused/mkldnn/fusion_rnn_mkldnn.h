@@ -14,23 +14,23 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/backends/onednn/onednn_reuse.h"
 
 namespace paddle {
 namespace operators {
 
-using paddle::platform::CreateKey;
-using paddle::platform::MKLDNNGetDataType;
-using paddle::platform::MKLDNNMemDesc;
-using phi::CPUContext;
-using platform::to_void_cast;
+using phi::funcs::CreateKey;
+using phi::funcs::OneDNNGetDataType;
+using phi::funcs::RNNReorderType;
+using OneDNNMemoryFormat = dnnl::memory::format_tag;
 
 template <typename T, typename T_alg, typename T_out = T>
-class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
+class RNNMKLDNNHandler : public phi::funcs::OneDNNHandlerT<T, T_alg> {
  public:
   RNNMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
-                   const platform::MKLDNNDeviceContext& dev_ctx,
-                   const dnnl::engine mkldnn_engine,
+                   const phi::OneDNNContext& dev_ctx,
+                   const dnnl::engine onednn_engine,
                    platform::Place cpu_place,
                    const phi::DenseTensor* input,
                    const phi::DenseTensor* weight_h,
@@ -42,11 +42,11 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
                    const int64_t OC,
                    const int64_t G,
                    const std::string& unique_name)
-      : platform::MKLDNNHandlerT<T, T_alg>(
+      : phi::funcs::OneDNNHandlerT<T, T_alg>(
             dev_ctx,
             dev_ctx.GetEngine(),
             cpu_place,
-            CreateKey(dev_ctx, unique_name, MKLDNNGetDataType<T>(), Ti)),
+            CreateKey(dev_ctx, unique_name, OneDNNGetDataType<T>(), Ti)),
         N(N),
         Ti(Ti),
         IC(IC),
@@ -54,8 +54,8 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
         G(G) {
     // Create memory key without Ti because weights, bias and h0 memories
     // do not depend on Ti size but primitive and input/output memory do
-    memory_key_ = platform::ExtendKeyWithThreadInfoIfNeeded(
-        dev_ctx, CreateKey(dev_ctx, unique_name, MKLDNNGetDataType<T>()));
+    memory_key_ = phi::funcs::ExtendKeyWithThreadInfoIfNeeded(
+        dev_ctx, CreateKey(dev_ctx, unique_name, OneDNNGetDataType<T>()));
 
     // Is it int8 kernel
     const bool is_INT8 = std::is_same<T, uint8_t>::value;
@@ -77,19 +77,22 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
     }
   }
 
-  bool is_NTC() {
-    return (platform::GetMKLDNNFormat(this->fwd_pd_->dst_desc()) ==
-            dnnl::memory::format_tag::ntc);
+  bool is_NTC() { return this->is_NTC(this->fwd_pd_->dst_desc()); }
+
+  bool is_NTC(const dnnl::memory::desc& md) {
+    auto ntc_md = dnnl::memory::desc(
+        md.dims(), md.data_type(), dnnl::memory::format_tag::ntc);
+    return md == ntc_md;
   }
 
   void reorderRNNdata(void* input_data,
                       void* output_data,
                       std::vector<size_t> lod,
                       const bool is_reverse,
-                      platform::RNNReorderType reorder_type) {
+                      RNNReorderType reorder_type) {
     switch (reorder_type) {
       // Reorder input memory [WORDS, C] + LoD -> [N, T, C]
-      case platform::RNNReorderType::PP_NTC: {
+      case RNNReorderType::PP_NTC: {
         auto* input_data_iter = reinterpret_cast<T*>(input_data);
         auto* output_data_iter = reinterpret_cast<T*>(output_data);
         for (int n = 0; n < N; ++n) {
@@ -102,7 +105,7 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
         }
       } break;
       // Reorder input memory [WORDS, C] + LoD -> [T, N, C]
-      case platform::RNNReorderType::PP_TNC: {
+      case RNNReorderType::PP_TNC: {
         auto* input_data_iter = reinterpret_cast<T*>(input_data);
         auto* output_data_iter = reinterpret_cast<T*>(output_data);
         for (int n = 0; n < N; ++n) {
@@ -117,7 +120,7 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
         }
       } break;
       // Reorder output values to PP format [N, T, C] -> [WORDS, C]
-      case platform::RNNReorderType::NTC_PP: {
+      case RNNReorderType::NTC_PP: {
         auto* input_data_iter = reinterpret_cast<T_out*>(input_data);
         auto* output_data_iter = reinterpret_cast<T_out*>(output_data);
         for (int n = 0; n < N; ++n) {
@@ -130,7 +133,7 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
         }
       } break;
       // Reorder output values to PP format [T, N, C] -> [WORDS, C]
-      case platform::RNNReorderType::TNC_PP: {
+      case RNNReorderType::TNC_PP: {
         auto* input_data_iter = reinterpret_cast<T_out*>(input_data);
         auto* output_data_iter = reinterpret_cast<T_out*>(output_data);
         for (int n = 0; n < N; ++n) {
@@ -160,24 +163,17 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
     }
 
     const auto& input_lod = input->lod()[0];
-    auto* x_data = to_void_cast(input->data<T>());
+    auto* x_data = phi::funcs::to_void_cast(input->data<T>());
 
     auto* x_onednn_data = memory_p->get_data_handle();
     memset(x_onednn_data, 0, sizeof(T) * N * Ti * IC);
 
-    if (platform::GetMKLDNNFormat(this->fwd_pd_->src_desc()) ==
-        dnnl::memory::format_tag::ntc) {
-      reorderRNNdata(x_data,
-                     x_onednn_data,
-                     input_lod,
-                     is_reverse,
-                     platform::RNNReorderType::PP_NTC);
+    if (is_NTC(this->fwd_pd_->src_desc())) {
+      reorderRNNdata(
+          x_data, x_onednn_data, input_lod, is_reverse, RNNReorderType::PP_NTC);
     } else {
-      reorderRNNdata(x_data,
-                     x_onednn_data,
-                     input_lod,
-                     is_reverse,
-                     platform::RNNReorderType::PP_TNC);
+      reorderRNNdata(
+          x_data, x_onednn_data, input_lod, is_reverse, RNNReorderType::PP_TNC);
     }
     return memory_p;
   }
@@ -208,19 +204,19 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
       auto user_h0_memory = dnnl::memory();
       if (h0) {
         user_h0_memory = dnnl::memory(
-            {{1, 1, N, OC}, MKLDNNGetDataType<U>(), MKLDNNMemoryFormat::ldnc},
+            {{1, 1, N, OC}, OneDNNGetDataType<U>(), OneDNNMemoryFormat::ldnc},
             this->engine_,
-            to_void_cast(h0->data<U>()));
+            phi::funcs::to_void_cast(h0->data<U>()));
       } else {
         user_h0_memory = dnnl::memory(
-            {{1, 1, N, OC}, MKLDNNGetDataType<U>(), MKLDNNMemoryFormat::ldnc},
+            {{1, 1, N, OC}, OneDNNGetDataType<U>(), OneDNNMemoryFormat::ldnc},
             this->engine_);
         memset(user_h0_memory.get_data_handle(), 0, sizeof(U) * N * OC);
       }
       memory_p = std::make_shared<dnnl::memory>(this->fwd_pd_->src_iter_desc(),
                                                 this->engine_);
 
-      auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
+      auto& astream = phi::OneDNNContext::tls().get_stream();
       dnnl::reorder(user_h0_memory, *memory_p, attr_)
           .execute(astream, user_h0_memory, *memory_p);
 

@@ -14,8 +14,9 @@
 
 import unittest
 
-import paddle
 import numpy as np
+
+import paddle
 
 SEED = 2020
 np.random.seed(SEED)
@@ -23,7 +24,7 @@ np.random.seed(SEED)
 
 class SimpleNet(paddle.nn.Layer):
     def __init__(self):
-        super(SimpleNet, self).__init__()
+        super().__init__()
         self.linear1 = paddle.nn.Linear(10, 3)
         self.linear2 = paddle.nn.Linear(3, 1)
 

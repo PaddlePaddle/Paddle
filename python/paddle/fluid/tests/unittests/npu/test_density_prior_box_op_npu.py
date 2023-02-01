@@ -186,14 +186,14 @@ class TestNpuDensityPriorBoxFlatten(TestNpuDensityPriorBoxOp):
 
 class TestNpuDensityPriorBoxOp1(TestNpuDensityPriorBoxOp):
     def set_density(self):
-        super(TestNpuDensityPriorBoxOp1, self).set_density()
+        super().set_density()
         self.layer_w = 1
         self.layer_h = 1
 
 
 class TestNpuDensityPriorBoxOp2(TestNpuDensityPriorBoxOp):
     def set_density(self):
-        super(TestNpuDensityPriorBoxOp2, self).set_density()
+        super().set_density()
         self.layer_w = 15
         self.layer_h = 17
         self.image_w = 533
@@ -202,7 +202,7 @@ class TestNpuDensityPriorBoxOp2(TestNpuDensityPriorBoxOp):
 
 class TestNpuDensityPriorBoxOp3(TestNpuDensityPriorBoxOp):
     def set_density(self):
-        super(TestNpuDensityPriorBoxOp3, self).set_density()
+        super().set_density()
         self.fixed_ratios = [1.0, 4.0]
 
 
@@ -211,7 +211,7 @@ class TestNpuDensityPriorBoxOpFP16(TestNpuDensityPriorBoxOp):
         self.dtype = np.float16
 
     def init_test_params(self):
-        super(TestNpuDensityPriorBoxOpFP16, self).init_test_params()
+        super().init_test_params()
         self.atol = 1e-3
         self.clip = False
 

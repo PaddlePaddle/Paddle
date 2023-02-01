@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import numpy as np
+
+import paddle
 from paddle.distributed.fleet import auto
 from paddle.incubate.autograd import Hessian
 
@@ -62,7 +63,7 @@ class FCNet:
 
 class LaplaceModel(paddle.nn.Layer):
     def __init__(self, num_ins=2, num_outs=1, num_layers=5, hidden_size=20):
-        super(LaplaceModel, self).__init__()
+        super().__init__()
         self.net = FCNet(
             num_ins=num_ins,
             num_outs=num_outs,

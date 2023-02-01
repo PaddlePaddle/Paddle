@@ -147,7 +147,7 @@ def tokenize_chinese_chars(text):
     return output
 
 
-class PretrainedTokenizer(object):
+class PretrainedTokenizer:
     """
     The base class for all pretrained tokenizers. It mainly provides common methods
     for loading (construction and loading) and saving pretrained tokenizers. Loading

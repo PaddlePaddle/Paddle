@@ -12,26 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import gc
-import unittest
+import os
 import time
+import unittest
+
 import paddle
 import paddle.incubate.multiprocessing as mp
-from paddle.fluid.framework import (
-    _enable_legacy_dygraph,
-    _test_eager_guard,
-    in_dygraph_mode,
-)
 
 REPEAT = 20
 HAS_SHM_FILES = os.path.isdir('/dev/shm')
 
 
 def fill_tensor(queue, event):
-    # make sure run in legacy dygraph
-    if in_dygraph_mode():
-        _enable_legacy_dygraph()
     data = queue.get()
     with paddle.no_grad():
         data[0][:] = 5
@@ -58,7 +51,7 @@ def send_parambase(queue, event, device, dtype):
     event.wait()
 
 
-class leak_checker(object):
+class leak_checker:
     def __init__(self, test_case):
         self.checked_pids = [os.getpid()]
         self.test_case = test_case
@@ -182,36 +175,24 @@ class TestMultiprocessingBase(unittest.TestCase):
 
 class TestMultiprocessingCpu(TestMultiprocessingBase):
     def func_test_pass_tensor(self):
-        if in_dygraph_mode():
-            return
         paddle.set_device("cpu")
         self._test_sharing(repeat=REPEAT)
 
     def test_pass_tensor(self):
-        with _test_eager_guard():
-            self.func_test_pass_tensor()
         self.func_test_pass_tensor()
 
     def func_test_pass_parambase(self):
-        if in_dygraph_mode():
-            return
         paddle.set_device("cpu")
         self._test_sharing(repeat=1, param=True)
 
     def test_pass_parambase(self):
-        with _test_eager_guard():
-            self.func_test_pass_parambase()
         self.func_test_pass_parambase()
 
     def func_test_pass_empty(self):
-        if in_dygraph_mode():
-            return
         paddle.set_device("cpu")
         self._test_empty()
 
     def test_pass_empty(self):
-        with _test_eager_guard():
-            self.func_test_pass_empty()
         self.func_test_pass_empty()
 
 
@@ -221,14 +202,10 @@ class TestMultiprocessingGpu(TestMultiprocessingBase):
         "core is not compiled with CUDA",
     )
     def func_test_pass_tensor(self):
-        if in_dygraph_mode():
-            return
         paddle.set_device("gpu")
         self._test_sharing(mp.get_context("spawn"), "gpu")
 
     def test_pass_tensor(self):
-        with _test_eager_guard():
-            self.func_test_pass_tensor()
         self.func_test_pass_tensor()
 
 

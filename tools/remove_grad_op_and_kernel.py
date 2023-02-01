@@ -16,9 +16,9 @@ This script simply removes all grad ops and kernels. You should use this script
 when cmake ON_INFER=ON, which can greatly reduce the volume of the prediction library.
 """
 
+import glob
 import os
 import re
-import glob
 
 
 def find_type_files(cur_dir, file_type, file_list=[]):
@@ -170,7 +170,7 @@ if __name__ == '__main__':
             content = content.replace(i, '')
 
         with open(op_file, 'w', encoding='utf-8') as f:
-            f.write(u'{}'.format(content))
+            f.write(content)
 
     # 2. update operators/CMakeLists.txt
     cmake_file = os.path.join(

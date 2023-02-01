@@ -28,7 +28,7 @@ def Singleton(cls):
     return _singleton
 
 
-class OpUpdateInfoHelper(object):
+class OpUpdateInfoHelper:
     def __init__(self, info):
         self._info = info
 
@@ -47,7 +47,7 @@ class OpUpdateInfoHelper(object):
 
 
 @Singleton
-class OpLastCheckpointChecker(object):
+class OpLastCheckpointChecker:
     def __init__(self):
         self.raw_version_map = core.get_op_version_map()
         self.checkpoints_map = {}

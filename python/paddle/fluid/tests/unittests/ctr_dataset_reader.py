@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import logging
+import os
+import random
 import tarfile
 import tempfile
-import random
 import warnings
 
 import paddle
@@ -60,7 +60,7 @@ def load_lr_input_record(sent):
     return res
 
 
-class CtrReader(object):
+class CtrReader:
     def __init__(self):
         pass
 

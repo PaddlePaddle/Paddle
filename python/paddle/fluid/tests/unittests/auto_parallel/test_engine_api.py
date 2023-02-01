@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import subprocess
+import sys
 import tempfile
 import unittest
-import os
-import sys
-import subprocess
 
 
 class TestEngineAPI(unittest.TestCase):
@@ -38,8 +38,8 @@ class TestEngineAPI(unittest.TestCase):
                 "paddle.distributed.launch",
                 "--devices",
                 "0,1",
-                "--log_dir",
-                tmp_dir.name,
+                # "--log_dir",
+                # tmp_dir.name,
                 launch_model_path,
             ]
         )

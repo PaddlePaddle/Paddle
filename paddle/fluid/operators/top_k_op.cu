@@ -22,15 +22,13 @@ limitations under the License. */
 #include <hipcub/hipcub.hpp>
 #endif
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/top_k_function_cuda.h"
 #include "paddle/fluid/operators/top_k_op.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/kernels/funcs/top_k_function_cuda.h"
 // set cub base traits in order to handle float16
 
 namespace paddle {
 namespace operators {
-
-using Tensor = phi::DenseTensor;
 
 #define FIXED_BLOCK_DIM_BASE(dim, ...) \
   case (dim): {                        \
@@ -74,7 +72,7 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
 
     auto* k_t = ctx.Input<phi::DenseTensor>("K");
     if (k_t) {
-      Tensor k_host;
+      phi::DenseTensor k_host;
       framework::TensorCopySync(*k_t, platform::CPUPlace(), &k_host);
       k = k_host.data<int>()[0];
       framework::DDim output_dims = output->dims();
@@ -93,7 +91,7 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
     const int64_t input_width = inputdims[inputdims.size() - 1];
     const auto& dev_ctx = ctx.cuda_device_context();
     if ((input_width <= 1024 || k >= 128 || k == input_width)) {
-      if (SortTopk<T>(
+      if (phi::funcs::SortTopk<T>(
               dev_ctx, input, input_width, input_height, k, output, indices)) {
         // Successed, return.
         return;
@@ -110,12 +108,12 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
     // TODO(typhoonzero): refine this kernel.
     const int kMaxHeight = 2048;
     int gridx = input_height < kMaxHeight ? input_height : kMaxHeight;
-    paddle::platform::GpuLaunchConfig config =
-        paddle::platform::GetGpuLaunchConfig1D(dev_ctx, input_width);
+    phi::backends::gpu::GpuLaunchConfig config =
+        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, input_width);
     switch (config.thread_per_block.x) {
-      FIXED_BLOCK_DIM(switch (getMaxLength(k)) {
+      FIXED_BLOCK_DIM(switch (phi::funcs::getMaxLength(k)) {
         FIXED_MAXLENGTH(
-            KeMatrixTopK<T, maxLength, kBlockDim>
+            phi::funcs::KeMatrixTopK<T, maxLength, kBlockDim>
             <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(output_data,
                                                         k,
                                                         indices_data,
@@ -164,9 +162,9 @@ class TopkOpGradCUDAKernel : public framework::OpKernel<T> {
     const auto& dev_ctx = context.cuda_device_context();
     const int kMaxHeight = 2048;
     int gridx = row < kMaxHeight ? row : kMaxHeight;
-    switch (GetDesiredBlockDim(col)) {
+    switch (phi::funcs::GetDesiredBlockDim(col)) {
       FIXED_BLOCK_DIM(
-          AssignGrad<T, 5, kBlockDim>
+          phi::funcs::AssignGrad<T, 5, kBlockDim>
           <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(
               x_grad_data, indices_data, out_grad_data, row, col, k));
       default:

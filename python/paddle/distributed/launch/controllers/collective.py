@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .controller import Controller, ControleMode
-from ..context.device import DeviceType
-
 import json
+
+from ..context.device import DeviceType
+from .controller import ControleMode, Controller
 
 
 class CollectiveController(Controller):
@@ -71,7 +71,7 @@ class CollectiveController(Controller):
                 "PADDLE_GLOBAL_RANK": "{}".format(i + rank_offset),
                 "PADDLE_LOCAL_RANK": "{}".format(i),
                 "PADDLE_NNODES": "{}".format(len(ips)),
-                ## compatible env
+                # compatible env
                 "PADDLE_TRAINER_ENDPOINTS": ",".join(job_endpoints),
                 "PADDLE_CURRENT_ENDPOINT": job_endpoints[i + rank_offset],
                 "PADDLE_TRAINER_ID": "{}".format(i + rank_offset),
@@ -157,7 +157,7 @@ class CollectiveController(Controller):
                 "PADDLE_GLOBAL_RANK": "{}".format(i + rank_offset),
                 "PADDLE_LOCAL_RANK": "{}".format(i),
                 "PADDLE_NNODES": "{}".format(self.job.replicas),
-                ## compatible env
+                # compatible env
                 "PADDLE_TRAINER_ENDPOINTS": ",".join(job_endpoints),
                 "PADDLE_CURRENT_ENDPOINT": endpoints[i],
                 "PADDLE_TRAINER_ID": "{}".format(i + rank_offset),

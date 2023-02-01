@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..utils.nvsmi import get_gpu_process, get_gpu_util, get_gpu_info
-import time
 import os
-
+import time
 from threading import Thread
 
+from ..utils.nvsmi import get_gpu_info, get_gpu_process, get_gpu_util
 
-class Watcher(object):
+
+class Watcher:
     def __init__(self, ctx):
         self.ctx = ctx
 

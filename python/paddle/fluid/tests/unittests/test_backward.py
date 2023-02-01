@@ -13,14 +13,16 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid as fluid
-import paddle.static as static
-import paddle
 
 import numpy as np
 
+import paddle
+import paddle.fluid as fluid
+import paddle.nn.functional as F
+import paddle.static as static
 
-class BackwardNet(object):
+
+class BackwardNet:
     """
     Abstract Base Class.
     All Net inherited this Class should implement two functions:
@@ -185,27 +187,27 @@ class TestBackward(unittest.TestCase):
 
 class SimpleNet(BackwardNet):
     def __init__(self):
-        super(SimpleNet, self).__init__()
+        super().__init__()
         self.stop_gradient_grad_vars = set(
             [
-                u'x_no_grad@GRAD',
-                u'x2_no_grad@GRAD',
-                u'x3_no_grad@GRAD',
-                u'label_no_grad@GRAD',
+                'x_no_grad@GRAD',
+                'x2_no_grad@GRAD',
+                'x3_no_grad@GRAD',
+                'label_no_grad@GRAD',
             ]
         )
         self.no_grad_vars = set()
-        self.params_names = set([u'w2v', u'fc_predict.b_0', u'fc_w'])
+        self.params_names = set(['w2v', 'fc_predict.b_0', 'fc_w'])
         self.op_path = [
-            u'lookup_table_v2',
-            u'lookup_table_v2',  # embedding
-            u'elementwise_add',  # merge
-            u'mul',
-            u'elementwise_add',
-            u'softmax',  # fc
-            u'elementwise_sub',
-            u'square',
-            u'reduce_mean',
+            'lookup_table_v2',
+            'lookup_table_v2',  # embedding
+            'elementwise_add',  # merge
+            'mul',
+            'elementwise_add',
+            'softmax',  # fc
+            'elementwise_sub',
+            'square',
+            'reduce_mean',
         ]  # loss
         self.shape = [16, 50]
 
@@ -242,28 +244,28 @@ class SimpleNet(BackwardNet):
             x3, size=[100, 64], param_attr=fluid.ParamAttr(name='w2v')
         )
         # merge layers
-        x_merge = fluid.layers.elementwise_add(x_emb, x2_emb, name='x_add_x2')
-        x2_merge = fluid.layers.elementwise_add(
-            x2_emb, x3_emb, name='x2_add_x3'
-        )
+        x_merge = paddle.add(x_emb, x2_emb, name='x_add_x2')
+        x2_merge = paddle.add(x2_emb, x3_emb, name='x2_add_x3')
         # shared fc_w
-        predict = fluid.layers.fc(
-            input=x_merge,
+        predict = paddle.static.nn.fc(
+            x=x_merge,
             size=1,
-            act='softmax',
-            param_attr=fluid.ParamAttr(name='fc_w'),
+            activation='softmax',
+            weight_attr=fluid.ParamAttr(name='fc_w'),
             name='fc_predict',
         )
         # useless layer for calculating loss
-        fc_no_use = fluid.layers.fc(
-            input=x2_merge,
+        fc_no_use = paddle.static.nn.fc(
+            x=x2_merge,
             size=1,
-            act='sigmoid',
-            param_attr=fluid.ParamAttr(name='fc_w'),
+            activation='sigmoid',
+            weight_attr=fluid.ParamAttr(name='fc_w'),
             name='fc_no_use',
         )
         # loss
-        cost = fluid.layers.square_error_cost(input=predict, label=label)
+        cost = paddle.nn.functional.square_error_cost(
+            input=predict, label=label
+        )
         loss = paddle.mean(cost, name='mean_loss')
 
         return loss
@@ -283,8 +285,8 @@ class TestGradientsError(unittest.TestCase):
     def test_error(self):
         x = fluid.data(name='x', shape=[None, 2, 8, 8], dtype='float32')
         x.stop_gradient = False
-        conv = fluid.layers.conv2d(x, 4, 1, bias_attr=False)
-        y = fluid.layers.relu(conv)
+        conv = paddle.static.nn.conv2d(x, 4, 1, bias_attr=False)
+        y = F.relu(conv)
 
         with self.assertRaises(TypeError):
             x_grad = fluid.gradients(y.name, x)
@@ -330,8 +332,8 @@ class TestAppendBackwardWithError(unittest.TestCase):
         x = fluid.data(name='x', shape=[None, 13], dtype='int64')
         y = fluid.data(name='y', shape=[None, 1], dtype='float32')
         x_emb = fluid.embedding(x, size=[100, 256])
-        y_predict = fluid.layers.fc(input=x_emb, size=1, name='my_fc')
-        loss = fluid.layers.square_error_cost(input=y_predict, label=y)
+        y_predict = paddle.static.nn.fc(x=x_emb, size=1, name='my_fc')
+        loss = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_loss = paddle.mean(loss)
         param_names = [
             param.name
@@ -404,7 +406,7 @@ class TestGradientsWithOptimizer(unittest.TestCase):
 # TODO(Aurelius84): add conditional network test
 class ConditionalNet(BackwardNet):
     def __init__(self):
-        super(ConditionalNet, self).__init__()
+        super().__init__()
 
 
 if __name__ == '__main__':

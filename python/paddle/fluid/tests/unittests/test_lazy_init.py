@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
+
 import numpy as np
+
+import paddle
 from paddle import LazyGuard
-from paddle.nn import Linear, Layer
+from paddle.fluid import unique_name
+from paddle.nn import Layer, Linear
 from paddle.nn.initializer import (
     Constant,
     Normal,
@@ -25,7 +28,6 @@ from paddle.nn.initializer import (
     XavierNormal,
     XavierUniform,
 )
-from paddle.fluid import unique_name
 
 
 class TestInitializerBase(unittest.TestCase):
@@ -101,7 +103,7 @@ class TestDygraphLazy(TestInitializerBase):
 
 class NestModel(Layer):
     def __init__(self, base_model):
-        super(NestModel, self).__init__()
+        super().__init__()
         self.base_model = base_model
         self.fc = Linear(10, 10)
 

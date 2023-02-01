@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
 
 API_list = [
@@ -217,7 +219,7 @@ class TestError(unittest.TestCase):
 class TestQuantileRuntime(unittest.TestCase):
     """
     This class is used to test the API could run correctly with
-    different devices, different data types, and dygraph/static mode.
+    different devices, different data types, and dygraph/static graph mode.
     """
 
     def setUp(self):

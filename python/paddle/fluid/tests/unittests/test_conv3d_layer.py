@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-from paddle import fluid, nn
-import paddle.fluid.dygraph as dg
-import paddle.nn.functional as F
-import paddle.fluid.initializer as I
-import paddle
-from paddle.fluid.framework import _test_eager_guard
 import unittest
+
+import numpy as np
+
+import paddle
+import paddle.fluid.dygraph as dg
+import paddle.fluid.initializer as I
+import paddle.nn.functional as F
+from paddle import fluid, nn
 
 
 class Conv3DTestCase(unittest.TestCase):
@@ -39,7 +40,7 @@ class Conv3DTestCase(unittest.TestCase):
         data_format="NCDHW",
         dtype="float32",
     ):
-        super(Conv3DTestCase, self).__init__(methodName)
+        super().__init__(methodName)
         self.batch_size = batch_size
         self.num_channels = num_channels
         self.num_filters = num_filters
@@ -101,7 +102,7 @@ class Conv3DTestCase(unittest.TestCase):
                     bias_attr = False
                 else:
                     bias_attr = I.NumpyArrayInitializer(self.bias)
-                y_var = fluid.layers.conv3d(
+                y_var = paddle.static.nn.conv3d(
                     x_var,
                     self.num_filters,
                     self.filter_size,
@@ -182,12 +183,8 @@ class Conv3DTestCase(unittest.TestCase):
         result2 = self.functional(place)
         with dg.guard(place):
             result3, g1 = self.paddle_nn_layer()
-            with _test_eager_guard():
-                res_eager, g2 = self.paddle_nn_layer()
         np.testing.assert_array_almost_equal(result1, result2)
         np.testing.assert_array_almost_equal(result2, result3)
-        np.testing.assert_allclose(result3, res_eager, rtol=1e-05)
-        np.testing.assert_allclose(g1, g2, rtol=1e-05)
 
     def runTest(self):
         place = fluid.CPUPlace()

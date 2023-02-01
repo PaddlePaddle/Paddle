@@ -12,8 +12,10 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
 import paddle.tensor as tensor
@@ -77,7 +79,7 @@ def case_generator(op_type, Xshape, diagonal, expected):
             paddle.enable_static()
 
             data = fluid.data(shape=Xshape, dtype='float64', name=cls_name)
-            with self.assertRaisesRegexp(
+            with self.assertRaisesRegex(
                 eval(expected.split(':')[-1]), errmsg[expected]
             ):
                 getattr(tensor, op_type)(x=data, diagonal=diagonal)
@@ -95,9 +97,9 @@ def case_generator(op_type, Xshape, diagonal, expected):
     globals()[cls_name] = CLASS
 
 
-### NOTE: meaningful diagonal is [1 - min(H, W), max(H, W) -1]
-### test the diagonal just at the border, upper/lower the border,
-###     negative/positive integer within range and a zero
+# NOTE: meaningful diagonal is [1 - min(H, W), max(H, W) -1]
+# test the diagonal just at the border, upper/lower the border,
+#     negative/positive integer within range and a zero
 cases = {
     'success': {
         (2, 2, 3, 4, 5): [-100, -3, -1, 0, 2, 4, 100],  # normal shape
@@ -183,7 +185,7 @@ class TestTrilTriuOpAPI(unittest.TestCase):
             with program_guard(prog, startup_prog):
                 data = np.random.random([1, 9, 9, 4]).astype(dtype)
                 x = fluid.data(shape=[1, 9, -1, 4], dtype=dtype, name='x')
-                triu_out = fluid.layers.triu(x)
+                triu_out = paddle.triu(x)
 
                 place = (
                     fluid.CUDAPlace(0)

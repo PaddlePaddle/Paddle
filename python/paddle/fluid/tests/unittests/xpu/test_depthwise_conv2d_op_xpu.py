@@ -16,6 +16,7 @@ import sys
 
 sys.path.append("..")
 import unittest
+
 import numpy as np
 
 import paddle
@@ -23,9 +24,9 @@ import paddle
 paddle.enable_static()
 from test_conv2d_op_xpu import XPUTestConv2DOp, XPUTestConv2DOp_v2
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
 
 
@@ -191,7 +192,7 @@ for stype in support_types:
     create_test_class(globals(), XPUTestDepthwiseConv2DOp, stype)
     create_test_class(globals(), XPUTestDepthwiseConv2DOp_v2, stype)
 
-#### depthwise conv2d
+# depthwise conv2d
 
 # create_test_padding_SAME_class(TestDepthwiseConv_AsyPadding)
 # create_test_padding_SAME_class(TestDepthwiseConvWithDilation_AsyPadding)
@@ -203,7 +204,7 @@ for stype in support_types:
 # create_test_padding_VALID_class(TestDepthwiseConvandFuse_AsyPadding)
 # create_test_padding_VALID_class(TestDepthwiseConvWithDilationandFuse_AsyPadding)
 
-#### channel last
+# channel last
 
 # create_test_channel_last_class(TestDepthwiseConv_AsyPadding)
 # create_test_channel_last_class(TestDepthwiseConvWithDilation2_AsyPadding)

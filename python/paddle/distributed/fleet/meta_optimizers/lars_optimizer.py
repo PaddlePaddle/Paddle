@@ -11,16 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-from paddle.fluid.optimizer import Momentum, LarsMomentumOptimizer
-from .meta_optimizer_base import MetaOptimizerBase
 import logging
+
+from paddle.fluid.optimizer import LarsMomentumOptimizer, Momentum
+
+from .meta_optimizer_base import MetaOptimizerBase
 
 __all__ = []
 
 
 class LarsOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
-        super(LarsOptimizer, self).__init__(optimizer)
+        super().__init__(optimizer)
         self.inner_opt = optimizer
         self.lars_opt = None
         # we do not allow meta optimizer to be inner optimizer currently
@@ -30,7 +32,7 @@ class LarsOptimizer(MetaOptimizerBase):
     def _set_basic_info(
         self, loss, role_maker, user_defined_optimizer, user_defined_strategy
     ):
-        super(LarsOptimizer, self)._set_basic_info(
+        super()._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy
         )
 

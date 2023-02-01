@@ -249,7 +249,7 @@ class TypedAttrChecker {
                             "doesn't support phi::DenseTensor type.",
                             attr_name_));
 
-      VLOG(1) << "Found Attribute " << attr_name_ << " with type(Variable).";
+      VLOG(3) << "Found Attribute " << attr_name_ << " with type(Variable).";
       var_info_checker_(it->second);
       return;
     }

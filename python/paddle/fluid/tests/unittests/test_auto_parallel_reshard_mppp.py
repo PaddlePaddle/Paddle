@@ -16,18 +16,18 @@ import unittest
 
 import paddle
 import paddle.nn as nn
-import paddle.static as static
 import paddle.nn.functional as F
+import paddle.static as static
 import paddle.utils as utils
-from paddle.distributed.fleet import auto
-from paddle.distributed.auto_parallel.completion import Completer
-from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed import fleet
+from paddle.distributed.auto_parallel.cluster import Cluster
+from paddle.distributed.auto_parallel.completion import Completer
+from paddle.distributed.auto_parallel.cost import CostEstimator
+from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.reshard import Resharder
-from paddle.distributed.auto_parallel.cost import CostEstimator
-from paddle.distributed.auto_parallel.cluster import Cluster
+from paddle.distributed.fleet import auto
 
 paddle.enable_static()
 _global_parallel_strategy = "mp_pp"
@@ -43,7 +43,7 @@ class MLPLayer(nn.Layer):
         intermediate_size=4 * 1024,
         initializer_range=0.02,
     ):
-        super(MLPLayer, self).__init__()
+        super().__init__()
         d_model = hidden_size
         dim_feedforward = intermediate_size
         weight_attr = paddle.ParamAttr(
@@ -79,11 +79,9 @@ class MLPLayer(nn.Layer):
         auto.shard_tensor(self.linear2.weight, PP_MESH_1, ["x", None])
         w_out = self.word_embeddings(input)
         out = self.linear0(w_out)
-        param = paddle.fluid.layers.create_parameter(
-            [4096, 4096], paddle.float32
-        )
+        param = paddle.create_parameter([4096, 4096], paddle.float32)
         auto.shard_tensor(param, PP_MESH_0, ["x", None])
-        out = paddle.fluid.layers.mul(out, param)
+        out = paddle.matmul(out, param)
         gelu_out = F.gelu(out, approximate=True)
         out = self.linear1(gelu_out)
         out1 = self.linear2(gelu_out)
@@ -303,6 +301,60 @@ class TestMLPReshard(unittest.TestCase):
         resharder.reshard()
         # the x should not be slice
         self.assertTrue(check_allgather(partitioned_main_prog))
+
+    def test_c_concat(self):
+        train_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        process_mesh = auto.ProcessMesh(mesh=[0, 1], dim_names=["x"])
+        with static.program_guard(train_program, startup_program):
+            x = paddle.static.data(name="x", shape=[4, 4], dtype='float32')
+            x = auto.shard_tensor(x, process_mesh, [None, "x"])
+            w = paddle.static.data(name="w", shape=[4, 4], dtype='float32')
+            w = auto.shard_tensor(w, process_mesh, [None, None])
+
+            y = paddle.distributed.shard_op(
+                paddle.matmul, process_mesh, [[None, None], [None, None]]
+            )(x, w)
+
+        rank_id = 0
+        dist_context = DistributedContext()
+        dist_strategy = fleet.DistributedStrategy()
+        partitioner = Partitioner(dist_context, rank_id)
+        completer = Completer(dist_context)
+        complete_train_program = completer.complete_forward_annotation(
+            train_program
+        )
+        dist_context.block_state.parse_forward_blocks(complete_train_program)
+        (
+            partitioned_main_prog,
+            partitioned_startup_prog,
+            partitioned_params_grads,
+        ) = partitioner.partition(complete_train_program, startup_program, [])
+
+        # test estimator
+        cluster = Cluster()
+        cluster.gen_default_config_cluster(device_count=2)
+        cost_estimator = CostEstimator(train_program, cluster)
+        global_cost = cost_estimator.estimate(dist_context)
+        max_memory = cost_estimator._estimate_max_memory_by_dist_op(
+            dist_context
+        )
+        # test cache
+        global_cost = cost_estimator.estimate(dist_context)
+        max_memory = cost_estimator._estimate_max_memory_by_dist_op(
+            dist_context
+        )
+        assert global_cost.time >= 0
+        assert max_memory > 0
+
+        resharder = Resharder(
+            partitioned_main_prog,
+            partitioned_startup_prog,
+            rank_id,
+            dist_context,
+            partitioned_params_grads,
+        )
+        resharder.reshard()
 
 
 if __name__ == "__main__":

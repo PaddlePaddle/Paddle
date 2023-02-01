@@ -14,9 +14,11 @@
 # limitations under the License.
 """Test cases for role makers."""
 
-import paddle
 import unittest
+
 import numpy as np
+
+import paddle
 import paddle.fluid.core as core
 
 
@@ -46,7 +48,7 @@ def verify_node_count(graph, node_name, target_count):
 
 class MultiFCLayer(paddle.nn.Layer):
     def __init__(self, hidden, Activation):
-        super(MultiFCLayer, self).__init__()
+        super().__init__()
         self.linear1 = paddle.nn.Linear(hidden, 4 * hidden)
         self.linear2 = paddle.nn.Linear(4 * hidden, hidden)
         self.linear3 = paddle.nn.Linear(hidden, hidden)

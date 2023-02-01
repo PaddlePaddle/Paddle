@@ -11,14 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-from paddle import fluid
-import paddle.distributed.passes
-from .meta_optimizer_base import MetaOptimizerBase
-from paddle.fluid import core
-import subprocess
-import re
 import os
 import platform
+import re
+import subprocess
+
+import paddle.distributed.passes
+from paddle.distributed.passes import PassContext
+from paddle.distributed.ps.utils.ps_factory import PsProgramBuilderFactory
 from paddle.distributed.ps.utils.public import (
     TrainerRuntimeConfig,
     build_var_distributed,
@@ -27,13 +27,14 @@ from paddle.distributed.ps.utils.public import (
     get_var_mem_size,
     logger,
 )
-from paddle.distributed.passes import PassContext
-from paddle.distributed.ps.utils.ps_factory import PsProgramBuilderFactory
+from paddle.framework import core
+
+from .meta_optimizer_base import MetaOptimizerBase
 
 
 class ParameterServerOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
-        super(ParameterServerOptimizer, self).__init__(optimizer)
+        super().__init__(optimizer)
         self.inner_opt = optimizer
         # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = []
@@ -41,7 +42,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
     def _set_basic_info(
         self, loss, role_maker, user_defined_optimizer, user_defined_strategy
     ):
-        super(ParameterServerOptimizer, self)._set_basic_info(
+        super()._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy
         )
 
@@ -111,8 +112,8 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         build_var_distributed(attrs)
 
         # server
-        attrs['_main_server'] = fluid.Program()
-        attrs['_startup_server'] = fluid.Program()
+        attrs['_main_server'] = paddle.static.Program()
+        attrs['_startup_server'] = paddle.static.Program()
         attrs['tensor_table'] = {}
 
         self.pass_ctx._attrs = attrs
@@ -203,7 +204,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                     % (platform.system())
                 )
 
-        if not isinstance(self.inner_opt, fluid.optimizer.SGDOptimizer):
+        if not isinstance(self.inner_opt, paddle.fluid.optimizer.SGDOptimizer):
             return False
 
         free = get_sys_free_mem()

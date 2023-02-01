@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest
-from program_config import TensorConfig, ProgramConfig
-import numpy as np
-from functools import partial
 import unittest
+from functools import partial, reduce
 
 import hypothesis.strategies as st
-from functools import reduce
+import numpy as np
+from auto_scan_test import PassAutoScanTest
+from program_config import ProgramConfig, TensorConfig
 
 num = 32 * 64
 

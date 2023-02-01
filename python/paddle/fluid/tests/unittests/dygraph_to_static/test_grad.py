@@ -12,16 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import paddle
-import unittest
 import os
 import tempfile
+import unittest
+
+import numpy as np
+
+import paddle
 
 
 class GradLayer(paddle.nn.Layer):
     def __init__(self):
-        super(GradLayer, self).__init__()
+        super().__init__()
 
     @paddle.jit.to_static
     def forward(self, x):
@@ -33,7 +35,7 @@ class GradLayer(paddle.nn.Layer):
 
 class GradLinearLayer(paddle.nn.Layer):
     def __init__(self):
-        super(GradLinearLayer, self).__init__()
+        super().__init__()
         self.linear = paddle.nn.Linear(5, 5, bias_attr=False)
 
     @paddle.jit.to_static
@@ -51,7 +53,7 @@ class GradLinearLayer(paddle.nn.Layer):
 
 class NoGradLinearLayer(paddle.nn.Layer):
     def __init__(self):
-        super(NoGradLinearLayer, self).__init__()
+        super().__init__()
         self.linear = paddle.nn.Linear(5, 5, bias_attr=False)
 
     @paddle.jit.to_static

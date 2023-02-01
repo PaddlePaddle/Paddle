@@ -15,7 +15,7 @@
 __all__ = []
 
 
-class ProgramDeps(object):
+class ProgramDeps:
     def __init__(self, block, start_vars, end_vars):
         self._block = block
         # vars where to start to build the deps

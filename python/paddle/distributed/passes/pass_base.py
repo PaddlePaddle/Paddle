@@ -13,7 +13,8 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
-from paddle.fluid.framework import _apply_pass as _apply_cpp_pass
+
+from paddle.framework import _apply_pass as _apply_cpp_pass
 
 
 class PassContext:
@@ -139,7 +140,7 @@ def new_pass(name, pass_attrs={}):
 
 class CPPPassWrapper(PassBase):
     def __init__(self):
-        super(CPPPassWrapper, self).__init__()
+        super().__init__()
 
     @property
     def cpp_name(self):

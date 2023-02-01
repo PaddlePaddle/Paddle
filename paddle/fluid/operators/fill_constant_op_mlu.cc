@@ -60,7 +60,8 @@ class FillConstantMLUKernel : public framework::OpKernel<T> {
           value_tensor->numel(),
           1,
           platform::errors::InvalidArgument(
-              "When use Tensor as value to set Tensor value in fill_cosntant, "
+              "When use phi::DenseTensor as value to set phi::DenseTensor "
+              "value in fill_cosntant, "
               "value input(ValueTensor) size must be 1, but get %d",
               value_tensor->numel()));
       value_data = value_tensor->data<T>();

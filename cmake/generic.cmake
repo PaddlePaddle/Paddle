@@ -195,6 +195,7 @@ function(create_dummy_static_lib TARGET_NAME)
   # the dummy target would be consisted of limit size libraries
   set(limit ${merge_LIMIT})
   list(LENGTH merge_LIBS libs_len)
+  message("libs_len ${libs_len}")
   foreach(lib ${merge_LIBS})
     list(APPEND merge_list ${lib})
     list(LENGTH merge_list listlen)
@@ -388,8 +389,7 @@ function(cc_library TARGET_NAME)
           target_link_libraries(${TARGET_NAME} "-Wl,-undefined,dynamic_lookup")
         endif()
       endif()
-      target_link_libraries(${TARGET_NAME} ${cc_library_DEPS}
-                            ${PYTHON_LIBRARIES})
+      target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
       common_link(${TARGET_NAME})
     endif()
 

@@ -13,15 +13,17 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
 import paddle.distributed as dist
 from paddle.distributed.fleet.base.strategy_group import (
-    StrategyGroupBase,
     DPGroup,
     MPGroup,
     PPGroup,
     ShardingGroup,
+    StrategyGroupBase,
 )
 
 

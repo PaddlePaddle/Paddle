@@ -13,27 +13,28 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
-from paddle.fluid.tests.unittests.op_test import (
-    OpTest,
-    OpTestTool,
-    convert_float_to_uint16,
-)
-import paddle.fluid.core as core
 import paddle
+import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.mkldnn.test_matmul_mkldnn_op import (
-    TestMatMulOpTransposeReshapeEmptyFloat,
     TestMatMulOpTransposeReshapeBasicFloat,
+    TestMatMulOpTransposeReshapeEmptyFloat,
     TestMatMulOpTransposeReshapeOtherDimFloat,
     TestReshapeTransposeMatMulOp,
-    TestReshapeTransposeMatMulOp4DXFloat,
-    TestReshapeTransposeMatMulOp4DYFloat,
-    TestReshapeTransposeMatMulOp4DXYFloat,
     TestReshapeTransposeMatMulOp2DXFloat,
     TestReshapeTransposeMatMulOp2DYFloat,
     TestReshapeTransposeMatMulOp3DXFloat,
     TestReshapeTransposeMatMulOp3DYFloat,
+    TestReshapeTransposeMatMulOp4DXFloat,
+    TestReshapeTransposeMatMulOp4DXYFloat,
+    TestReshapeTransposeMatMulOp4DYFloat,
+)
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    OpTestTool,
+    convert_float_to_uint16,
 )
 
 

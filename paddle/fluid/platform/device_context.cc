@@ -163,13 +163,20 @@ std::unique_ptr<DeviceContext> CreateDeviceContext(
     if (!disable_setting_default_stream_for_allocator) {
       instance.SetDefaultStream(CUDAPlace(p.GetDeviceId()), cuda_ctx->stream());
     }
-    dev_ctx->SetAllocator(instance.GetAllocator(p).get());
+    dev_ctx->SetAllocator(instance.GetAllocator(p, cuda_ctx->stream()).get());
     dev_ctx->SetPinnedAllocator(
         instance.GetAllocator(paddle::platform::CUDAPinnedPlace()).get());
 
     cuda_ctx->PartialInitWithAllocator();
     dev_ctx->SetGenerator(
         framework::DefaultCUDAGenerator(p.GetDeviceId()).get());
+#endif
+  } else if (is_xpu_place(p)) {
+#if defined(PADDLE_WITH_XPU)
+    dev_ctx->SetAllocator(
+        memory::allocation::AllocatorFacade::Instance().GetAllocator(p).get());
+    dev_ctx->SetGenerator(
+        framework::DefaultXPUGenerator(p.GetDeviceId()).get());
 #endif
   } else {
     dev_ctx->SetAllocator(
@@ -183,6 +190,9 @@ std::unique_ptr<DeviceContext> CreateDeviceContext(
   dev_ctx->SetZeroAllocator(memory::allocation::AllocatorFacade::Instance()
                                 .GetZeroAllocator(p)
                                 .get());
+  dev_ctx->SetHostZeroAllocator(memory::allocation::AllocatorFacade::Instance()
+                                    .GetZeroAllocator(platform::CPUPlace())
+                                    .get());
   return PtrType(dev_ctx);
 }
 
@@ -221,7 +231,7 @@ void EmplaceDeviceContexts(
   for (auto& p : set) {
     if (platform::is_cpu_place(p)) {
 #ifdef PADDLE_WITH_MKLDNN
-      EmplaceDeviceContext<MKLDNNDeviceContext>(
+      EmplaceDeviceContext<phi::OneDNNContext>(
           place_to_device_context,
           p,
           disable_setting_default_stream_for_allocator);

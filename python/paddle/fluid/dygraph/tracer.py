@@ -102,7 +102,7 @@ class Tracer(core.Tracer):
     """
 
     def __init__(self):
-        super(Tracer, self).__init__()
+        super().__init__()
 
         self._train_mode = True
 
@@ -306,7 +306,7 @@ class Tracer(core.Tracer):
         stop_gradient=False,
         inplace_map=None,
     ):
-        if not framework._in_legacy_dygraph():
+        if framework.in_dygraph_mode():
             # inputs : {"sum": [tensor], ...}
             # outputs : {"sum": [tensor], ...}
             if type in name_mapping.keys():

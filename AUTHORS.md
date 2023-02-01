@@ -20,6 +20,7 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | dragonwarrior | Long Wang |
 | dyning | Yuning Du |
 | emailweixu | Wei Xu |
+| engineer1109 | Jia-Liang Wang |
 | gangliao | Gang Liao |
 | gongweibao | Wei-Bao Gong |
 | guru4elephant | Daxiang Dong |
@@ -28,6 +29,7 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | Haichao-Zhang | Hai-Chao Zhang |
 | hedaoyuan | Dao-Yuan He |
 | helinwang | He-Lin Wang |
+| houj04 | HOU Jue |
 | jacquesqiao | Long-Fei Qiao |
 | [jakpiase](https://raw.githubusercontent.com/jakpiase/Paddle/new_paddle_intel_authors/img/img.jpg) | Jakub Piasecki |
 | [jczaja](https://raw.githubusercontent.com/jakpiase/Paddle/new_paddle_intel_authors/img/img.jpg) | Jacek Czaja |

@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
+
 import numpy as np
-import paddle.fluid as fluid
 from op_test import OpTest
-from paddle.fluid.framework import _test_eager_guard
+
+import paddle
 
 paddle.enable_static()
 
@@ -395,13 +395,13 @@ class TestModulatedDeformableConvInvalidInput(unittest.TestCase):
         def test_invalid_input():
             paddle.enable_static()
             input = [1, 3, 32, 32]
-            offset = fluid.data(
+            offset = paddle.static.data(
                 name='offset', shape=[None, 3, 32, 32], dtype='float32'
             )
-            mask = fluid.data(
+            mask = paddle.static.data(
                 name='mask', shape=[None, 3, 32, 32], dtype='float32'
             )
-            loss = fluid.layers.deformable_conv(
+            loss = paddle.static.nn.common.deformable_conv(
                 input, offset, mask, num_filters=4, filter_size=1
             )
 
@@ -409,16 +409,16 @@ class TestModulatedDeformableConvInvalidInput(unittest.TestCase):
 
         def test_invalid_offset():
             paddle.enable_static()
-            input = fluid.data(
+            input = paddle.static.data(
                 name='input', shape=[None, 3, 32, 32], dtype='int32'
             )
-            offset = fluid.data(
+            offset = paddle.static.data(
                 name='offset', shape=[None, 3, 32, 32], dtype='float32'
             )
-            mask = fluid.data(
+            mask = paddle.static.data(
                 name='mask', shape=[None, 3, 32, 32], dtype='float32'
             )
-            loss = fluid.layers.deformable_conv(
+            loss = paddle.static.nn.common.deformable_conv(
                 input, offset, mask, num_filters=4, filter_size=1
             )
 
@@ -426,24 +426,20 @@ class TestModulatedDeformableConvInvalidInput(unittest.TestCase):
 
         def test_invalid_filter():
             paddle.enable_static()
-            input = fluid.data(
+            input = paddle.static.data(
                 name='input_filter', shape=[None, 3, 32, 32], dtype='float32'
             )
-            offset = fluid.data(
+            offset = paddle.static.data(
                 name='offset_filter', shape=[None, 3, 32, 32], dtype='float32'
             )
-            mask = fluid.data(
+            mask = paddle.static.data(
                 name='mask_filter', shape=[None, 3, 32, 32], dtype='float32'
             )
-            loss = fluid.layers.deformable_conv(
+            loss = paddle.static.nn.common.deformable_conv(
                 input, offset, mask, num_filters=4, filter_size=0
             )
 
         self.assertRaises(ValueError, test_invalid_filter)
-
-    def test_error_with_eager_guard(self):
-        with _test_eager_guard():
-            self.test_error()
 
 
 class TestDeformConv2DAPI(unittest.TestCase):
@@ -482,10 +478,6 @@ class TestDeformConv2DAPI(unittest.TestCase):
             assert out.shape == (-1, 4, 32, 32)
 
         test_deform_conv2d_v2()
-
-    def test_api_with_eager_guard(self):
-        with _test_eager_guard():
-            self.test_api()
 
 
 if __name__ == '__main__':

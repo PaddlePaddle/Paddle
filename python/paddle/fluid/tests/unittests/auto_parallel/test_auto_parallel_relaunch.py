@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
+import os
+import subprocess
+import sys
 import tempfile
 import unittest
-import os
-import sys
-import json
-import subprocess
 
 cluster_json = """
 {

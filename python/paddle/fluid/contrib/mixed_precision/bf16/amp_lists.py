@@ -24,7 +24,7 @@ from ..fp16_lists import (
 __all__ = ["AutoMixedPrecisionListsBF16"]
 
 
-class AutoMixedPrecisionListsBF16(object):
+class AutoMixedPrecisionListsBF16:
     """
     AutoMixedPrecisionListsBF16 is a class for fp32/bf16 op types list. The lists are used for an
     algorithm which determines op's execution mode (fp32 or bf16).It can update pre-defined

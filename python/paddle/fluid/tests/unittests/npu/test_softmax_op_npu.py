@@ -74,14 +74,14 @@ class TestSoftmaxNet(unittest.TestCase):
             d = paddle.sqrt(c)
 
             # 4 x 128
-            fc_1 = fluid.layers.fc(input=d, size=128)
+            fc_1 = paddle.static.nn.fc(x=d, size=128)
             # 4 x 2
-            prediction = fluid.layers.fc(input=fc_1, size=2)
+            prediction = paddle.static.nn.fc(x=fc_1, size=2)
 
             # 4 x 2
-            prob = fluid.layers.softmax(prediction, axis=1)
+            prob = paddle.nn.functional.softmax(prediction, axis=1)
 
-            cost = fluid.layers.cross_entropy(input=prob, label=label)
+            cost = paddle.nn.functional.cross_entropy(input=prob, label=label, reduction='none', use_softmax=False)
             loss = paddle.mean(cost)
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)

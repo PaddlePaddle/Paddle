@@ -12,16 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import multiprocessing
-
-import re
-import time
 import abc
-from paddle.fluid import core
 import functools
-
+import multiprocessing
+import os
+import re
 import shutil
+import time
+
+# (TODO: GhostScreaming) It will be removed later.
+from paddle.fluid import core
+
+from .log_util import logger
 
 __all__ = []
 
@@ -46,7 +48,7 @@ class FSShellCmdAborted(ExecuteError):
     pass
 
 
-class FS(object):
+class FS:
     @abc.abstractmethod
     def ls_dir(self, fs_path):
         raise NotImplementedError

@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import paddle
-from ..layer.conv import Conv1DTranspose, Conv2DTranspose, Conv3DTranspose
-from ..layer.common import Linear
+
 from .. import functional as F
+from ..layer.common import Linear
+from ..layer.conv import Conv1DTranspose, Conv2DTranspose, Conv3DTranspose
 
 __all__ = []
 
@@ -26,7 +27,7 @@ def normal_(x, mean=0.0, std=1.0):
     return x
 
 
-class SpectralNorm(object):
+class SpectralNorm:
     def __init__(self, name='weight', n_power_iterations=1, dim=0, eps=1e-12):
         self.name = name
         self.dim = dim

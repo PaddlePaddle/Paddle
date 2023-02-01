@@ -25,7 +25,7 @@ def crepr(v):
     return str(v)
 
 
-class Rank(object):
+class Rank:
     def __init__(self, kind, name, priority):
         '''
         kind: str
@@ -49,7 +49,7 @@ class Rank(object):
         )
 
 
-class Graph(object):
+class Graph:
     rank_counter = 0
 
     def __init__(self, title, **attrs):
@@ -145,7 +145,7 @@ class Graph(object):
         return '\n'.join(reprs)
 
 
-class Node(object):
+class Node:
     counter = 1
 
     def __init__(self, label, prefix, description="", **attrs):
@@ -170,7 +170,7 @@ class Node(object):
         return reprs
 
 
-class Edge(object):
+class Edge:
     def __init__(self, source, target, **attrs):
         '''
         Link source to target.
@@ -199,7 +199,7 @@ class Edge(object):
         return repr
 
 
-class GraphPreviewGenerator(object):
+class GraphPreviewGenerator:
     '''
     Generate a graph image for ONNX proto.
     '''

@@ -44,7 +44,7 @@ namespace plugin {
 void BuildPhiKernelContextAttr(const framework::OpDesc& op_desc,
                                phi::KernelContext* kernel_context,
                                const phi::KernelSignature& signature,
-                               const phi::Kernel& phi_kernel);
+                               const phi::Kernel* phi_kernel);
 
 class GenericPlugin : public DynamicPluginTensorRT {
  public:
@@ -57,11 +57,13 @@ class GenericPlugin : public DynamicPluginTensorRT {
   GenericPlugin() {}
 
   GenericPlugin(const paddle::framework::proto::OpDesc& proto_op_desc,
-                const InputOutPutVarInfo& in_out_info);
+                const InputOutPutVarInfo& in_out_info,
+                bool with_fp16_ = false);
 
   GenericPlugin(const paddle::framework::proto::OpDesc& proto_op_desc,
                 const std::vector<int>& inputs_data_type,
-                const std::vector<int>& outputs_data_type);
+                const std::vector<int>& outputs_data_type,
+                bool with_fp16_ = false);
 
   // It was used for tensorrt deserialization.
   // It should not be called by users.
@@ -86,7 +88,7 @@ class GenericPlugin : public DynamicPluginTensorRT {
 
   size_t getSerializationSize() const TRT_NOEXCEPT {
     return op_meta_data_.size() + SerializedSize(inputs_data_type_) +
-           SerializedSize(outputs_data_type_);
+           SerializedSize(outputs_data_type_) + SerializedSize(with_fp16_);
   }
 
   void serialize(void* buffer) const TRT_NOEXCEPT;
@@ -122,15 +124,24 @@ class GenericPlugin : public DynamicPluginTensorRT {
                                        const nvinfer1::DataType* input_types,
                                        int nb_inputs) const TRT_NOEXCEPT;
 
+  bool isFp16Supported() {
+    auto half_dtype = nvinfer1::DataType::kHALF;
+    return with_fp16_ &&
+           !(phi_kernels_.find(half_dtype) == phi_kernels_.end()) &&
+           phi_kernels_[half_dtype]->IsValid();
+  }
+
  private:
   std::string op_meta_data_;
   framework::proto::OpDesc proto_op_desc_;
   framework::OpDesc op_desc_;
 
  private:
-  const phi::Kernel* phi_kernel_{nullptr};
+  std::unordered_map<nvinfer1::DataType, std::unique_ptr<phi::Kernel>>
+      phi_kernels_;
+  std::unordered_map<nvinfer1::DataType, std::unique_ptr<phi::KernelContext>>
+      phi_kernel_contexts_;
 
-  phi::KernelContext* phi_kernel_context_{nullptr};
   std::vector<phi::DenseTensor>* dense_tensor_inputs_{nullptr};
   std::vector<phi::DenseTensor>* dense_tensor_outputs_{nullptr};
 

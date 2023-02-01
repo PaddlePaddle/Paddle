@@ -15,7 +15,9 @@
 import unittest
 
 import numpy as np
+
 import paddle
+import paddle.nn.functional as F
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
@@ -29,7 +31,7 @@ class TestBase(IPUOpTest):
         self.set_feed_attr()
 
     def set_test_op(self):
-        self.op = paddle.fluid.layers.abs
+        self.op = paddle.abs
         self.op_attrs = {}
 
     def set_data_feed(self):
@@ -70,55 +72,55 @@ class TestAcos(TestBase):
         self.atol = 1e-6
 
     def set_test_op(self):
-        self.op = paddle.fluid.layers.acos
+        self.op = paddle.acos
         self.op_attrs = {}
 
 
 class TestAsin(TestAcos):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.asin
+        self.op = paddle.asin
         self.op_attrs = {}
 
 
 class TestSinh(TestAcos):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.sinh
+        self.op = paddle.sinh
         self.op_attrs = {}
 
 
 class TestAtan(TestBase):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.atan
+        self.op = paddle.atan
         self.op_attrs = {}
 
 
 class TestCeil(TestBase):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.ceil
+        self.op = paddle.ceil
         self.op_attrs = {}
 
 
 class TestCos(TestBase):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.cos
+        self.op = paddle.cos
         self.op_attrs = {}
 
 
 class TestCosh(TestBase):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.cosh
+        self.op = paddle.cosh
         self.op_attrs = {}
 
 
 class TestErf(TestBase):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.erf
+        self.op = paddle.erf
         self.op_attrs = {}
 
 
 class TestExp(TestBase):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.exp
+        self.op = paddle.exp
         self.op_attrs = {}
 
 
@@ -128,79 +130,79 @@ class TestFloor(TestBase):
         return False
 
     def set_test_op(self):
-        self.op = paddle.fluid.layers.floor
+        self.op = paddle.floor
         self.op_attrs = {}
 
 
 class TestLog(TestBase):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.log
+        self.op = paddle.log
         self.op_attrs = {}
 
 
 class TestReciprocal(TestBase):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.reciprocal
+        self.op = paddle.reciprocal
         self.op_attrs = {}
 
 
 class TestRelu(TestBase):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.relu
+        self.op = F.relu
         self.op_attrs = {}
 
 
 class TestRound(TestBase):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.round
+        self.op = paddle.round
         self.op_attrs = {}
 
 
 class TestSigmoid(TestBase):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.sigmoid
+        self.op = paddle.nn.functional.sigmoid
         self.op_attrs = {}
 
 
 class TestSign(TestBase):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.sign
+        self.op = paddle.sign
         self.op_attrs = {}
 
 
 class TestSin(TestBase):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.sin
+        self.op = paddle.sin
         self.op_attrs = {}
 
 
 class TestSoftplus(TestBase):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.softplus
+        self.op = paddle.nn.functional.softplus
         self.op_attrs = {}
 
 
 class TestSoftsign(TestBase):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.softsign
+        self.op = paddle.nn.functional.softsign
         self.op_attrs = {}
 
 
 class TestSqrt(TestBase):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.sqrt
+        self.op = paddle.sqrt
         self.op_attrs = {}
 
 
 class TestTan(TestBase):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.tan
+        self.op = paddle.tan
         self.op_attrs = {}
 
 
 class TestTanh(TestBase):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.tanh
+        self.op = paddle.tanh
         self.op_attrs = {}
 
 

@@ -40,7 +40,7 @@ paddle.enable_static()
 SEED = 10
 
 
-class TestSyncBatchNormRunnerBase(object):
+class TestSyncBatchNormRunnerBase:
     def get_model(
         self,
         main,

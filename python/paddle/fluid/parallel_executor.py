@@ -25,7 +25,7 @@ ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
 BuildStrategy = core.ParallelExecutor.BuildStrategy
 
 
-class ParallelExecutor(object):
+class ParallelExecutor:
     """
         :api_attr: Static Graph
 

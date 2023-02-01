@@ -39,7 +39,7 @@ TEST(bfloat16, convert_float32_to_bfloat16_on_gpu) {
 TEST(bfloat16, assignment_operator_on_gpu) {
   // Assignment operator
   bfloat16 v_assign;
-  v_assign = nv_bfloat16(bfloat16(1.0f));
+  v_assign = bfloat16(1.0f).to_nv_bfloat16();
   EXPECT_EQ(v_assign.x, 0x3f80);
   v_assign = 0.33333;
   EXPECT_EQ(v_assign.x, 0x3eab);

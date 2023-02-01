@@ -21,7 +21,7 @@ from .args_envs import parse_args, fetch_envs, env_args_mapping
 import logging
 
 
-class Context(object):
+class Context:
     def __init__(self, enable_plugin=True):
         self.args, self.unknown_args = parse_args()
         self.envs = fetch_envs()

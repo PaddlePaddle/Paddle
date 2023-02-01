@@ -41,7 +41,7 @@ class TestLayer(fluid.dygraph.Layer):
         groups=1,
         act=None,
     ):
-        super(TestLayer, self).__init__()
+        super().__init__()
 
         self._conv = Conv2D(
             in_channels=num_channels,

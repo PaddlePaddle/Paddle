@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import functools
+import unittest
+
+import numpy as np
 from op_test import OpTest
+
 from paddle.fluid.tests.unittests.test_lstm_op import ACTIVATION
-from paddle import fluid
-from paddle.fluid import Program, program_guard
 
 
 def gru(
@@ -258,31 +258,11 @@ class TestGRUOpInference(TestGRUOp):
         new_outputs = {}
         new_outputs['Hidden'] = self.outputs['Hidden']
         self.outputs = new_outputs
-        super(TestGRUOpInference, self).test_check_output()
+        super().test_check_output()
 
     # avoid checking gradient
     def test_check_grad(self):
         pass
-
-
-class TestGruOpError(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program(), Program()):
-
-            def test_Variable():
-                input_data = np.random.random((1, 1536)).astype("float32")
-                fluid.layers.dynamic_gru(input=input_data, size=512)
-
-            self.assertRaises(TypeError, test_Variable)
-
-            def test_h_0():
-                in_data = fluid.data(
-                    name="input", shape=[None, 1536], dtype="float32"
-                )
-                h = fluid.data(name="h", shape=[None, 512], dtype="int32")
-                fluid.layers.dynamic_gru(input=in_data, size=512, h_0=h)
-
-            self.assertRaises(TypeError, test_h_0)
 
 
 if __name__ == "__main__":

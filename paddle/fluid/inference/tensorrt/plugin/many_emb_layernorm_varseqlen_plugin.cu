@@ -39,7 +39,8 @@ constexpr size_t packedMaskSize256 = xmmasM256 * threadsPerCta256;
 constexpr size_t packedMaskSize384 = xmmasM384 * threadsPerCta384;
 char const* EMB_LAYER_NORM_VAR_SEQLEN_VERSION_HFACE{"1"};
 char const* EMB_LAYER_NORM_VAR_SEQLEN_VERSION_MTRON{"2"};
-char const* EMB_LAYER_NORM_VAR_SEQLEN_NAME{"ManyEmbLayerNormPluginDynamic"};
+char const* EMB_LAYER_NORM_VAR_SEQLEN_NAME{
+    "ManyEmbLayerNormVarlenPluginDynamic"};
 // Static class fields initialization
 nvinfer1::PluginFieldCollection EmbLayerNormVarSeqlenPluginBaseCreator::mFC{};
 std::vector<nvinfer1::PluginField>
@@ -167,7 +168,6 @@ nvinfer1::DimsExprs EmbLayerNormVarSeqlenPluginHFace::getOutputDimensions(
     assert(inputs[i].nbDims == inputs[1].nbDims);  // same shape
   }
   assert(inputs[0].nbDims == 1);  // pos_id: B+1
-  assert(outputIndex == 0 || outputIndex == 1);
   if (outputIndex == 0) {
     nvinfer1::DimsExprs ret;
     ret.nbDims = 4;
@@ -176,25 +176,32 @@ nvinfer1::DimsExprs EmbLayerNormVarSeqlenPluginHFace::getOutputDimensions(
     ret.d[2] = exprBuilder.constant(1);
     ret.d[3] = exprBuilder.constant(1);
     return ret;
+  } else if (outputIndex == 1) {
+    // This is a hack: we just report some mask size and rely the plugins to
+    // play nicely together.
+    //      At runtime, depending on the actual maxSeqlen, the size might be
+    //      different.
+    int32_t maskSize_ = packedMaskSize384;
+    auto maskSize = exprBuilder.constant(maskSize_);
+    auto fp16maskSize =
+        exprBuilder.operation(nvinfer1::DimensionOperation::kPROD,
+                              *maskSize,
+                              *exprBuilder.constant(2));
+    auto Bplus1 = inputs[0].d[0];  // pos_id
+    auto one = exprBuilder.constant(1);
+    auto B = exprBuilder.operation(
+        nvinfer1::DimensionOperation::kSUB, *Bplus1, *one);
+    nvinfer1::DimsExprs ret;
+    ret.nbDims = 2;
+    ret.d[0] = B;
+    ret.d[1] = fp16maskSize;
+    return ret;
+  } else {
+    nvinfer1::DimsExprs ret;
+    ret.nbDims = 1;
+    ret.d[0] = inputs[nbInputs - 1].d[1];  // mask id: max seqlen
+    return ret;
   }
-
-  // This is a hack: we just report some mask size and rely the plugins to play
-  // nicely together.
-  //      At runtime, depending on the actual maxSeqlen, the size might be
-  //      different.
-  int32_t maskSize_ = packedMaskSize384;
-  auto maskSize = exprBuilder.constant(maskSize_);
-  auto fp16maskSize = exprBuilder.operation(
-      nvinfer1::DimensionOperation::kPROD, *maskSize, *exprBuilder.constant(2));
-  auto Bplus1 = inputs[0].d[0];  // pos_id
-  auto one = exprBuilder.constant(1);
-  auto B =
-      exprBuilder.operation(nvinfer1::DimensionOperation::kSUB, *Bplus1, *one);
-  nvinfer1::DimsExprs ret;
-  ret.nbDims = 2;
-  ret.d[0] = B;
-  ret.d[1] = fp16maskSize;
-  return ret;
 }
 
 nvinfer1::DimsExprs EmbLayerNormVarSeqlenPluginMTron::getOutputDimensions(
@@ -209,14 +216,20 @@ nvinfer1::DimsExprs EmbLayerNormVarSeqlenPluginMTron::getOutputDimensions(
     assert(inputs[i].nbDims == inputs[1].nbDims);  // same shape
   }
   assert(inputs[0].nbDims == 1);  // pos_id: B+1
-  assert(outputIndex == 0 || outputIndex == 1);
-  nvinfer1::DimsExprs ret;
-  ret.nbDims = 4;
-  ret.d[0] = inputs[1].d[0];
-  ret.d[1] = exprBuilder.constant(mLd);
-  ret.d[2] = exprBuilder.constant(1);
-  ret.d[3] = exprBuilder.constant(1);
-  return ret;
+  if (outputIndex == 0 || outputIndex == 1) {
+    nvinfer1::DimsExprs ret;
+    ret.nbDims = 4;
+    ret.d[0] = inputs[1].d[0];  // sum of seq length
+    ret.d[1] = exprBuilder.constant(mLd);
+    ret.d[2] = exprBuilder.constant(1);
+    ret.d[3] = exprBuilder.constant(1);
+    return ret;
+  } else {
+    nvinfer1::DimsExprs ret;
+    ret.nbDims = 1;
+    ret.d[0] = inputs[nbInputs - 1].d[1];  // mask id: max seqlen
+    return ret;
+  }
 }
 
 bool EmbLayerNormVarSeqlenPluginBase::supportsFormatCombination(
@@ -224,7 +237,7 @@ bool EmbLayerNormVarSeqlenPluginBase::supportsFormatCombination(
     nvinfer1::PluginTensorDesc const* inOut,
     int32_t nbInputs,
     int32_t nbOutputs) noexcept {
-  assert(nbOutputs == 2);
+  assert(nbOutputs == 3);
   nvinfer1::PluginTensorDesc const& desc = inOut[pos];
   if (desc.format != nvinfer1::TensorFormat::kLINEAR) {
     return false;
@@ -241,8 +254,8 @@ bool EmbLayerNormVarSeqlenPluginBase::supportsFormatCombination(
     return desc.type == prev.type && desc.dims.nbDims == 1 &&
            desc.dims.d[0] == prev.dims.d[0];
   }
-  if (pos == nbInputs - 1) {  // max seq length
-    return desc.dims.nbDims == 1;
+  if (pos == nbInputs - 1) {  // mask id
+    return desc.type == mType;
   }
   // embedded sequence
   if (pos == nbInputs) {
@@ -250,8 +263,14 @@ bool EmbLayerNormVarSeqlenPluginBase::supportsFormatCombination(
            desc.dims.d[0] == inOut[1].dims.d[0] && desc.dims.d[2] == 1 &&
            desc.dims.d[3] == 1;
   }
-  // mask
-  return desc.type == nvinfer1::DataType::kHALF;
+  // mask(HFace) or pre_layernorm_bias(MTron)
+  if (pos == nbInputs + 1) {
+    return desc.type == mType;
+  }
+  // max seqlen
+  if (pos == nbInputs + 2) {
+    return desc.type == mType;
+  }
 }
 
 void checkConfigurationInputs(nvinfer1::DynamicPluginTensorDesc const* inputs,
@@ -259,8 +278,7 @@ void checkConfigurationInputs(nvinfer1::DynamicPluginTensorDesc const* inputs,
                               nvinfer1::DynamicPluginTensorDesc const* outputs,
                               int32_t nbOutputs) noexcept {
   // Validate input arguments
-  // assert(nbInputs == 4);
-  assert(nbOutputs == 2);
+  assert(nbOutputs == 3);
   assert(inputs[0].desc.dims.nbDims == 1);
   assert(inputs[0].desc.type == nvinfer1::DataType::kINT32);
   for (int i = 1; i < nbInputs - 1; ++i) {
@@ -671,7 +689,7 @@ char const* EmbLayerNormVarSeqlenPluginMTron::getPluginVersion()
 }
 
 int32_t EmbLayerNormVarSeqlenPluginBase::getNbOutputs() const noexcept {
-  return 2;
+  return 3;
 }
 
 int32_t EmbLayerNormVarSeqlenPluginHFace::initialize() noexcept {

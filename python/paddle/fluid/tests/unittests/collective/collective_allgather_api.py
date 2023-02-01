@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import os
+import pickle
 import sys
+
+import test_collective_api_base as test_base
+
 import paddle
 import paddle.fluid as fluid
-import pickle
 import paddle.fluid.layers as layers
-import test_collective_api_base as test_base
 
 paddle.enable_static()
 
@@ -58,7 +60,7 @@ class TestCollectiveAllgatherAPI(test_base.TestCollectiveAPIRunnerBase):
         )
         assert (
             args['static_mode'] == 1
-        ), "collective_allgather_api only support static mode"
+        ), "collective_allgather_api only support static graph mode"
         result = self.get_model(
             train_prog, startup_prog, rank, dtype=args["dtype"]
         )

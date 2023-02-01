@@ -13,29 +13,31 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
 from scipy.special import expit
+
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 from paddle.fluid.tests.unittests.test_activation_op import (
-    TestActivation,
-    TestRelu,
-    TestTanh,
-    TestSqrt,
     TestAbs,
-    TestLeakyRelu,
-    TestSwish,
+    TestActivation,
     TestHardSwish,
+    TestLeakyRelu,
+    TestRelu,
     TestRelu6,
     TestSigmoid,
+    TestSqrt,
+    TestSwish,
+    TestTanh,
 )
 from paddle.fluid.tests.unittests.test_gelu_op import gelu
-from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
 
 
 class TestMKLDNNReluDim2(TestRelu):
     def setUp(self):
-        super(TestMKLDNNReluDim2, self).setUp()
+        super().setUp()
 
         self.attrs = {"use_mkldnn": True}
 
@@ -45,7 +47,7 @@ class TestMKLDNNReluDim2(TestRelu):
 
 class TestMKLDNNRelu6Dim2(TestRelu6):
     def setUp(self):
-        super(TestMKLDNNRelu6Dim2, self).setUp()
+        super().setUp()
         self.attrs.update({"use_mkldnn": True})
 
     def init_dtype(self):
@@ -54,7 +56,7 @@ class TestMKLDNNRelu6Dim2(TestRelu6):
 
 class TestMKLDNNLeakyReluDim2(TestLeakyRelu):
     def setUp(self):
-        super(TestMKLDNNLeakyReluDim2, self).setUp()
+        super().setUp()
 
         self.attrs = {"use_mkldnn": True}
 
@@ -90,7 +92,7 @@ class TestMKLDNNGeluDim2Approx(TestActivation):
 
 class TestMKLDNNTanhDim2(TestTanh):
     def setUp(self):
-        super(TestMKLDNNTanhDim2, self).setUp()
+        super().setUp()
 
         self.attrs = {"use_mkldnn": True}
 
@@ -100,7 +102,7 @@ class TestMKLDNNTanhDim2(TestTanh):
 
 class TestMKLDNNSqrtDim2(TestSqrt):
     def setUp(self):
-        super(TestMKLDNNSqrtDim2, self).setUp()
+        super().setUp()
 
         self.attrs = {"use_mkldnn": True}
 
@@ -110,7 +112,7 @@ class TestMKLDNNSqrtDim2(TestSqrt):
 
 class TestMKLDNNAbsDim2(TestAbs):
     def setUp(self):
-        super(TestMKLDNNAbsDim2, self).setUp()
+        super().setUp()
         self.attrs = {"use_mkldnn": True}
 
     def init_dtype(self):
@@ -119,7 +121,7 @@ class TestMKLDNNAbsDim2(TestAbs):
 
 class TestMKLDNNSwishDim2(TestSwish):
     def setUp(self):
-        super(TestMKLDNNSwishDim2, self).setUp()
+        super().setUp()
 
         self.attrs["use_mkldnn"] = True
         self.check_eager = False
@@ -130,19 +132,19 @@ class TestMKLDNNSwishDim2(TestSwish):
 
 class TestMKLDNNHardSwishDim2(TestHardSwish):
     def setUp(self):
-        super(TestMKLDNNHardSwishDim2, self).setUp()
+        super().setUp()
         self.attrs = {"use_mkldnn": True}
 
 
 class TestMKLDNNSigmoidDim2(TestSigmoid):
     def setUp(self):
-        super(TestMKLDNNSigmoidDim2, self).setUp()
+        super().setUp()
         self.attrs = {"use_mkldnn": True}
 
 
 class TestMKLDNNReluDim4(TestRelu):
     def setUp(self):
-        super(TestMKLDNNReluDim4, self).setUp()
+        super().setUp()
 
         x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype("float32")
         # The same reason with TestAbs
@@ -159,7 +161,7 @@ class TestMKLDNNReluDim4(TestRelu):
 
 class TestMKLDNNLeakyReluDim4(TestLeakyRelu):
     def setUp(self):
-        super(TestMKLDNNLeakyReluDim4, self).setUp()
+        super().setUp()
 
         x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype("float32")
         # The same reason with TestAbs
@@ -246,7 +248,7 @@ class TestMKLDNNGeluBf16Dim4Approx(TestActivation):
 
 class TestMKLDNNTanhDim4(TestTanh):
     def setUp(self):
-        super(TestMKLDNNTanhDim4, self).setUp()
+        super().setUp()
 
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype("float32")
@@ -257,7 +259,7 @@ class TestMKLDNNTanhDim4(TestTanh):
 
 class TestMKLDNNSqrtDim4(TestSqrt):
     def setUp(self):
-        super(TestMKLDNNSqrtDim4, self).setUp()
+        super().setUp()
 
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype("float32")
@@ -268,7 +270,7 @@ class TestMKLDNNSqrtDim4(TestSqrt):
 
 class TestMKLDNNAbsDim4(TestAbs):
     def setUp(self):
-        super(TestMKLDNNAbsDim4, self).setUp()
+        super().setUp()
 
         x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype("float32")
         # The same reason with TestAbs
@@ -283,7 +285,7 @@ class TestMKLDNNAbsDim4(TestAbs):
 
 class TestMKLDNNSwishDim4(TestSwish):
     def setUp(self):
-        super(TestMKLDNNSwishDim4, self).setUp()
+        super().setUp()
 
         x = np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype(self.dtype)
         beta = 2.3
@@ -310,7 +312,7 @@ def ref_hardswish(x, threshold=6.0, scale=6.0, offset=3.0):
 
 class TestMKLDNNHardSwishDim4(TestHardSwish):
     def setUp(self):
-        super(TestMKLDNNHardSwishDim4, self).setUp()
+        super().setUp()
 
         x = np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype(self.dtype)
         threshold = 6.0
@@ -356,7 +358,7 @@ class TestMKLDNNRound(TestActivation):
 
 class TestMKLDNNSigmoidDim4(TestSigmoid):
     def setUp(self):
-        super(TestMKLDNNSigmoidDim4, self).setUp()
+        super().setUp()
 
         x = np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype(self.dtype)
         out = 1 / (1 + np.exp(-x))
@@ -401,7 +403,7 @@ class TestMKLDNNExpOp(TestActivation):
 # Check if primitives already exist in backward
 class TestMKLDNNAbsPrimitivesAlreadyExist(unittest.TestCase):
     def setUp(self):
-        super(TestMKLDNNAbsPrimitivesAlreadyExist, self).setUp()
+        super().setUp()
 
         np.random.seed(123)
         self.op_type = 'abs'

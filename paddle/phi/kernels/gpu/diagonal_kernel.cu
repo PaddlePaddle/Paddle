@@ -15,12 +15,12 @@
 #include "paddle/phi/kernels/diagonal_kernel.h"
 
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/diagonal.h"
 
 namespace phi {
-using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 template <typename T, typename Context>
 void DiagonalKernel(const Context& dev_ctx,
                     const DenseTensor& x,
@@ -54,9 +54,10 @@ void DiagonalKernel(const Context& dev_ctx,
   int64_t axis1_ = axis1 < 0 ? input_dim_size + axis1 : axis1;
   int64_t axis2_ = axis2 < 0 ? input_dim_size + axis2 : axis2;
   int64_t numel = input->numel();
+  int64_t out_numel = out->numel();
 
   int threads = PADDLE_CUDA_NUM_THREADS;
-  int blocks = (numel + threads - 1) / threads;
+  int blocks = (out_numel + threads - 1) / threads;
 
   switch (input_dim_size) {
     case 2:
@@ -68,6 +69,7 @@ void DiagonalKernel(const Context& dev_ctx,
                                                         input_stride,
                                                         output_stride,
                                                         numel,
+                                                        out_numel,
                                                         false);
       break;
     case 3:
@@ -79,6 +81,7 @@ void DiagonalKernel(const Context& dev_ctx,
                                                         input_stride,
                                                         output_stride,
                                                         numel,
+                                                        out_numel,
                                                         false);
       break;
     case 4:
@@ -90,6 +93,7 @@ void DiagonalKernel(const Context& dev_ctx,
                                                         input_stride,
                                                         output_stride,
                                                         numel,
+                                                        out_numel,
                                                         false);
       break;
     case 5:
@@ -101,6 +105,7 @@ void DiagonalKernel(const Context& dev_ctx,
                                                         input_stride,
                                                         output_stride,
                                                         numel,
+                                                        out_numel,
                                                         false);
       break;
     case 6:
@@ -112,6 +117,7 @@ void DiagonalKernel(const Context& dev_ctx,
                                                         input_stride,
                                                         output_stride,
                                                         numel,
+                                                        out_numel,
                                                         false);
       break;
     case 7:
@@ -123,6 +129,7 @@ void DiagonalKernel(const Context& dev_ctx,
                                                         input_stride,
                                                         output_stride,
                                                         numel,
+                                                        out_numel,
                                                         false);
       break;
     case 8:
@@ -134,6 +141,7 @@ void DiagonalKernel(const Context& dev_ctx,
                                                         input_stride,
                                                         output_stride,
                                                         numel,
+                                                        out_numel,
                                                         false);
       break;
     case 9:
@@ -145,6 +153,7 @@ void DiagonalKernel(const Context& dev_ctx,
                                                         input_stride,
                                                         output_stride,
                                                         numel,
+                                                        out_numel,
                                                         false);
       break;
     default:

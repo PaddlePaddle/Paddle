@@ -16,7 +16,7 @@ import timeit
 from collections import OrderedDict
 
 
-class Stack(object):
+class Stack:
     """
     The stack in a Last-In/First-Out (LIFO) manner. New element is added at
     the end and an element is removed from that end.
@@ -41,7 +41,7 @@ class Stack(object):
             return None
 
 
-class Event(object):
+class Event:
     """
     A Event is used to record the cost of every step and the cost of
     the total steps except skipped steps.
@@ -152,7 +152,7 @@ class Event(object):
         return summary
 
 
-class Hook(object):
+class Hook:
     """
     As the base class. All types of hooks should inherit from it.
     """
@@ -299,7 +299,7 @@ class TimerHook(Hook):
         )
 
 
-class TimeAverager(object):
+class TimeAverager:
     """
     Record the cost of every step and count the average.
     """
@@ -346,7 +346,7 @@ class TimeAverager(object):
         return float(self._total_iters) / self._total_time
 
 
-class Benchmark(object):
+class Benchmark:
     """
     A tool for the statistics of model performance. The `before_reader`
     and `after_reader` are called in the DataLoader to count the cost

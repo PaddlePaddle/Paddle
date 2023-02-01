@@ -13,8 +13,9 @@
 # limitations under the License.
 
 import math
-import numpy as np
 import unittest
+
+import numpy as np
 
 import paddle
 import paddle.fluid as fluid
@@ -52,7 +53,7 @@ def reduce_lr_on_plateau(
     return var_list[1]
 
 
-class TestReduceOnPlateauDecay(object):
+class TestReduceOnPlateauDecay:
     def test_ReduceLR(self):
         # the decay rate must be less than 1.0
         with self.assertRaises(ValueError):
@@ -108,7 +109,7 @@ class TestReduceOnPlateauDecay(object):
         main_prog = paddle.static.Program()
         start_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, start_prog):
-            x = fluid.layers.create_global_var(
+            x = paddle.static.create_global_var(
                 [1], 1, 'float32', persistable=True
             )
             paddle.increment(x)

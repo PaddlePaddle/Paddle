@@ -15,13 +15,12 @@
 import os
 
 import numpy as np
+
 import paddle.fluid as fluid
-
-from paddle.fluid.core import AnalysisConfig
-from paddle.fluid.core import create_paddle_predictor
+from paddle.fluid.core import AnalysisConfig, create_paddle_predictor
 
 
-class PredictorTools(object):
+class PredictorTools:
     '''
     Paddle-Inference predictor
     '''

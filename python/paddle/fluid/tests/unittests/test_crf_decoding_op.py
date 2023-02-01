@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import random
-import numpy as np
+import unittest
 
+import numpy as np
 from op_test import OpTest
 
 
-class CRFDecoding(object):
+class CRFDecoding:
     def __init__(
         self, emission_weights, transition_weights, seq_start_positions
     ):

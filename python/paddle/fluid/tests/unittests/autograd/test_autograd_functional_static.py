@@ -15,12 +15,12 @@
 import typing
 import unittest
 
+import config
 import numpy as np
+import utils
+
 import paddle
 import paddle.fluid as fluid
-
-import config
-import utils
 
 paddle.enable_static()
 

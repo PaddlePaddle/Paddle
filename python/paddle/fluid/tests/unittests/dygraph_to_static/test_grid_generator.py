@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from paddle import nn, ParamAttr
+import unittest
 
 import numpy as np
-import unittest
+
+import paddle
+from paddle import ParamAttr, nn
 
 np.random.seed(2020)
 paddle.seed(2020)
@@ -24,7 +25,7 @@ paddle.seed(2020)
 
 class GridGenerator(nn.Layer):
     def __init__(self, in_channels, num_fiducial):
-        super(GridGenerator, self).__init__()
+        super().__init__()
         self.eps = 1e-6
         self.F = num_fiducial
 

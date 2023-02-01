@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import json
+import sys
 
 
 def check_approval(count, required_reviewers):

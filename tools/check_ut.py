@@ -16,10 +16,11 @@
 
 import os
 import os.path
+
 from github import Github
 
 
-class PRChecker(object):
+class PRChecker:
     """PR Checker."""
 
     def __init__(self):

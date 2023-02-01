@@ -12,23 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
 import os
+import unittest
 
 if os.getenv("CUDA_VISIBLE_DEVICES", None) is None:
     os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 
 import paddle
 import paddle.nn as nn
-import paddle.static as static
 import paddle.nn.functional as F
+import paddle.static as static
 import paddle.utils as utils
-from paddle.distributed.fleet import auto
+from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.dist_context import (
     get_default_distributed_context,
 )
-from paddle.distributed import fleet
+from paddle.distributed.fleet import auto
 
 paddle.enable_static()
 _global_parallel_strategy = None
@@ -42,7 +41,7 @@ class MLPLayer(nn.Layer):
         intermediate_size=4 * 1024,
         initializer_range=0.02,
     ):
-        super(MLPLayer, self).__init__()
+        super().__init__()
         d_model = hidden_size
         dim_feedforward = intermediate_size
         weight_attr = paddle.ParamAttr(
@@ -60,8 +59,12 @@ class MLPLayer(nn.Layer):
 
     def forward(self, input):
         if _global_parallel_strategy == "pp":
-            auto.shard_tensor(self.linear0.weight, PP_MESH_0, [None, None])
-            auto.shard_tensor(self.linear1.weight, PP_MESH_1, [None, None])
+            auto.shard_tensor(
+                self.linear0.weight, PP_MESH_0, [None, None]  # noqa: F821
+            )
+            auto.shard_tensor(
+                self.linear1.weight, PP_MESH_1, [None, None]  # noqa: F821
+            )
         else:
             auto.shard_tensor(
                 self.linear0.weight, _global_process_mesh, [None, None]
@@ -93,8 +96,8 @@ def mlp_forward(train_program, start_program):
         )
 
         if _global_parallel_strategy == "pp":
-            auto.shard_tensor(input, PP_MESH_0, [None, None])
-            auto.shard_tensor(label, PP_MESH_1, [None, None])
+            auto.shard_tensor(input, PP_MESH_0, [None, None])  # noqa: F821
+            auto.shard_tensor(label, PP_MESH_1, [None, None])  # noqa: F821
         elif _global_parallel_strategy == "dp":
             auto.shard_tensor(input, _global_process_mesh, ["x", None])
         else:

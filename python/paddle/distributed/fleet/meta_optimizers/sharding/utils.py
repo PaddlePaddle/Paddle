@@ -11,18 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import paddle
-from paddle.fluid import core, unique_name
+import os
+import re
 from functools import reduce
+
+import paddle
 from paddle.distributed.fleet.meta_optimizers.common import (
-    is_loss_grad_op,
+    OP_ROLE_KEY,
+    OpRole,
     is_backward_op,
+    is_loss_grad_op,
     is_optimizer_op,
 )
-from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
-
-import re
-import os
+from paddle.framework import core
+from paddle.utils import unique_name
 
 
 def check_broadcast(block):
@@ -408,7 +410,7 @@ def insert_allreduce_ops(
     return
 
 
-class FuseHelper(object):
+class FuseHelper:
     @staticmethod
     def sort_vars_by_dtype(block, vars_name):
         fp32_vars = []
@@ -1046,11 +1048,11 @@ def save_persistables(exe, dirname, main_program, filename=None):
         )
 
     if int(os.environ.get('PADDLE_TRAINER_ID', 0)) == 0:
-        paddle.fluid.io.save_persistables(
-            exe, dirname, main_program=main_program, filename=None
+        paddle.distributed.io.save_persistables(
+            exe, dirname, main_program=main_program, filename=filename
         )
     else:
-        paddle.fluid.io.save_vars(
+        paddle.static.save_vars(
             exe,
             dirname,
             main_program=main_program,

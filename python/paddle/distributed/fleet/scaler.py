@@ -12,14 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from .base.topology import ParallelMode
-from paddle.distributed import fleet
 from types import MethodType
-from paddle.fluid import core
-from paddle.fluid.dygraph import to_variable
+
 import numpy as np
+
+import paddle
 from paddle import _legacy_C_ops
+from paddle.distributed import fleet
+from paddle.fluid.dygraph import to_variable
+from paddle.framework import core
+
+from .base.topology import ParallelMode
 
 
 def distributed_scaler(scaler):

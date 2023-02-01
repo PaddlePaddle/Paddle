@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import numpy as np
-from .. import functional as F
-from paddle.nn import Layer
-from paddle.nn.initializer import Normal
-from paddle.nn.functional.conv import _update_padding_nd
+
 from paddle.fluid.layers import utils
+from paddle.nn import Layer
+from paddle.nn.functional.conv import _update_padding_nd
+from paddle.nn.initializer import Normal
+
+from .. import functional as F
 
 __all__ = []
 
@@ -39,7 +41,7 @@ class _Conv3D(Layer):
         bias_attr=None,
         data_format="NDHWC",
     ):
-        super(_Conv3D, self).__init__()
+        super().__init__()
         assert (
             weight_attr is not False
         ), "weight_attr should not be False in Conv."
@@ -248,7 +250,7 @@ class Conv3D(_Conv3D):
         bias_attr=None,
         data_format="NDHWC",
     ):
-        super(Conv3D, self).__init__(
+        super().__init__(
             in_channels,
             out_channels,
             kernel_size,
@@ -388,7 +390,7 @@ class SubmConv3D(_Conv3D):
         bias_attr=None,
         data_format="NDHWC",
     ):
-        super(SubmConv3D, self).__init__(
+        super().__init__(
             in_channels,
             out_channels,
             kernel_size,

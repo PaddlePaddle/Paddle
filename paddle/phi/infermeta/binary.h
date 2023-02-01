@@ -69,8 +69,12 @@ void CompareAllInferMeta(const MetaTensor& x,
 
 void CompareInferMeta(const MetaTensor& x,
                       const MetaTensor& y,
-                      int axis,
                       MetaTensor* out);
+
+void CompareRawInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         int axis,
+                         MetaTensor* out);
 
 void ComplexInferMeta(const MetaTensor& x,
                       const MetaTensor& y,

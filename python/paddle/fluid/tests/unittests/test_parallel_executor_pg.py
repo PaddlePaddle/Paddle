@@ -12,16 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
-import os
 
 os.environ['FLAGS_enable_parallel_graph'] = str(1)
-import paddle.fluid.core as core
 import os
-from parallel_executor_test_base import TestParallelExecutorBase, DeviceType
-from simple_nets import simple_fc_net, init_data
+
+from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
+from simple_nets import init_data, simple_fc_net
+
+import paddle.fluid.core as core
 
 
 class TestMNIST(TestParallelExecutorBase):
@@ -68,12 +70,12 @@ class TestMNIST(TestParallelExecutorBase):
             use_parallel_executor=True,
         )
 
-        self.assertAlmostEquals(
+        self.assertAlmostEqual(
             np.mean(parallel_first_loss),
             single_first_loss,
             delta=1e-6,
         )
-        self.assertAlmostEquals(
+        self.assertAlmostEqual(
             np.mean(parallel_last_loss), single_last_loss, delta=1e-6
         )
 

@@ -16,9 +16,9 @@
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/mkldnn_reuse.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/phi/backends/onednn/onednn_reuse.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -27,7 +27,12 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void SoftplusActivationOneDNNPass::ApplyImpl(Graph *graph) const {
-  auto act_types = paddle::platform::GetSupportedActivations();
+  auto act_types = phi::funcs::GetSupportedActivations();
+
+  // Currently softplus can't be fused with hard_sigmoid
+  act_types.erase(
+      std::remove(act_types.begin(), act_types.end(), "hard_sigmoid"),
+      act_types.end());
 
   for (const auto &act_type : act_types) {
     FuseSoftplusActivation(graph, act_type);
@@ -70,7 +75,7 @@ void SoftplusActivationOneDNNPass::FuseSoftplusActivation(
     }
 
     auto *activation_op = activation->Op();
-    auto attr_map = paddle::platform::GetAttributeMap(act_type);
+    auto attr_map = phi::funcs::GetAttributeMap(act_type);
     for (const auto &attr : attr_map) {
       if (activation_op->HasAttr(attr.first)) {
         softplus_op->SetAttr(attr.second, activation_op->GetAttr(attr.first));
@@ -113,7 +118,6 @@ REGISTER_PASS_CAPABILITY(softplus_activation_mkldnn_fuse_pass)
             .EQ("abs", 0)
             .LE("clip", 1)
             .EQ("gelu", 0)
-            .EQ("hard_sigmoid", 0)
             .LE("hard_swish", 0)
             .LE("leaky_relu", 1)
             .LE("mish", 1)

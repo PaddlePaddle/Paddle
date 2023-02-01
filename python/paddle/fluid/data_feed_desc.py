@@ -18,7 +18,7 @@ from google.protobuf import text_format
 __all__ = ['DataFeedDesc']
 
 
-class DataFeedDesc(object):
+class DataFeedDesc:
     """
     :api_attr: Static Graph
 

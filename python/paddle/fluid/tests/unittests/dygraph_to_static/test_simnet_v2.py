@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import argparse
-import numpy as np
-import paddle
 import random
 import unittest
 
+import numpy as np
 from simnet_dygraph_model_v2 import BOW, HingeLoss
+
+import paddle
 
 SEED = 102
 random.seed(SEED)
@@ -71,7 +72,7 @@ def fake_vocabulary():
 vocab = fake_vocabulary()
 
 
-class FakeReaderProcessor(object):
+class FakeReaderProcessor:
     def __init__(self, args, vocab):
         self.vocab = vocab
         self.seq_len = args.seq_len

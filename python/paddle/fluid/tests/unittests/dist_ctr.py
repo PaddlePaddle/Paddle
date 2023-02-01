@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
 import os
 
 import dist_ctr_reader
 from test_dist_base import TestDistRunnerBase, runtime_main
+
+import paddle
+import paddle.fluid as fluid
 
 IS_SPARSE = True
 os.environ['PADDLE_ENABLE_REMOTE_PREFETCH'] = "1"
@@ -71,11 +72,11 @@ class TestDistCTR2x2(TestDistRunnerBase):
         )
         dnn_out = dnn_pool
         for i, dim in enumerate(dnn_layer_dims[1:]):
-            fc = fluid.layers.fc(
-                input=dnn_out,
+            fc = paddle.static.nn.fc(
+                x=dnn_out,
                 size=dim,
-                act="relu",
-                param_attr=fluid.ParamAttr(
+                activation="relu",
+                weight_attr=fluid.ParamAttr(
                     initializer=fluid.initializer.Constant(value=0.01)
                 ),
                 name='dnn-fc-%d' % i,
@@ -97,12 +98,16 @@ class TestDistCTR2x2(TestDistRunnerBase):
 
         merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
 
-        predict = fluid.layers.fc(input=merge_layer, size=2, act='softmax')
-        acc = fluid.layers.accuracy(input=predict, label=label)
-        auc_var, batch_auc_var, auc_states = fluid.layers.auc(
+        predict = paddle.static.nn.fc(
+            x=merge_layer, size=2, activation='softmax'
+        )
+        acc = paddle.static.accuracy(input=predict, label=label)
+        auc_var, batch_auc_var, auc_states = paddle.static.auc(
             input=predict, label=label
         )
-        cost = fluid.layers.cross_entropy(input=predict, label=label)
+        cost = paddle.nn.functional.cross_entropy(
+            input=predict, label=label, reduction='none', use_softmax=False
+        )
         avg_cost = paddle.mean(x=cost)
 
         inference_program = paddle.fluid.default_main_program().clone()

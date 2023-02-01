@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-class Registry(object):
+class Registry:
     """A general registry object."""
 
     __slots__ = ['name', 'tab']

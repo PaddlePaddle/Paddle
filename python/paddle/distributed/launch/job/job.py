@@ -19,7 +19,7 @@ class JobMode:
     HETER = 'heter'
 
 
-class Job(object):
+class Job:
     def __init__(self, jid='default', mode=JobMode.COLLECTIVE, nnodes="1"):
         self._mode = mode
         self._id = jid

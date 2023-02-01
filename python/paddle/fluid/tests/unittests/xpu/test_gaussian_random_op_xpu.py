@@ -16,18 +16,20 @@ import sys
 
 sys.path.append("..")
 import unittest
+
 import numpy as np
-import paddle
-import paddle.fluid as fluid
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
 import paddle
+import paddle.fluid as fluid
 
 paddle.enable_static()
+from paddle.tensor import random
 
 
 class XPUTestGaussianRandomOp(XPUOpTestWrapper):
@@ -191,11 +193,11 @@ class TestGaussianRandomAPI(unittest.TestCase):
             name="shape_tensor_int64", shape=[2], dtype="int64"
         )
 
-        out_1 = fluid.layers.gaussian_random(
+        out_1 = random.gaussian(
             shape=[2000, 500], dtype="float32", mean=0.0, std=1.0, seed=10
         )
 
-        out_2 = fluid.layers.gaussian_random(
+        out_2 = random.gaussian(
             shape=[2000, positive_2_int32],
             dtype="float32",
             mean=0.0,
@@ -203,7 +205,7 @@ class TestGaussianRandomAPI(unittest.TestCase):
             seed=10,
         )
 
-        out_3 = fluid.layers.gaussian_random(
+        out_3 = random.gaussian(
             shape=[2000, positive_2_int64],
             dtype="float32",
             mean=0.0,
@@ -211,7 +213,7 @@ class TestGaussianRandomAPI(unittest.TestCase):
             seed=10,
         )
 
-        out_4 = fluid.layers.gaussian_random(
+        out_4 = random.gaussian(
             shape=shape_tensor_int32,
             dtype="float32",
             mean=0.0,
@@ -219,7 +221,7 @@ class TestGaussianRandomAPI(unittest.TestCase):
             seed=10,
         )
 
-        out_5 = fluid.layers.gaussian_random(
+        out_5 = random.gaussian(
             shape=shape_tensor_int64,
             dtype="float32",
             mean=0.0,
@@ -227,7 +229,7 @@ class TestGaussianRandomAPI(unittest.TestCase):
             seed=10,
         )
 
-        out_6 = fluid.layers.gaussian_random(
+        out_6 = random.gaussian(
             shape=shape_tensor_int64,
             dtype=np.float32,
             mean=0.0,

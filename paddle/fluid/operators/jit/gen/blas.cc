@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/operators/jit/macro.h"
 #include "paddle/fluid/operators/jit/registry.h"
-#include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 
 namespace paddle {
 namespace operators {
@@ -145,7 +145,7 @@ void NCHW16CMulNCJitCode::genCode() {
 class NCHW16CMulNCCreator : public JitCodeCreator<int> {
  public:
   bool CanBeUsed(const int& attr) const override {
-    return platform::MayIUse(platform::avx512f);
+    return phi::backends::cpu::MayIUse(phi::backends::cpu::avx512f);
   }
   size_t CodeSize(const int& d) const override { return 256 * 1024; }
   std::unique_ptr<GenBase> CreateJitCode(const int& attr) const override {
@@ -157,7 +157,8 @@ class NCHW16CMulNCCreator : public JitCodeCreator<int> {
   class name##Creator : public JitCodeCreator<int> {                         \
    public:                                                                   \
     bool CanBeUsed(const int& attr) const override {                         \
-      return platform::MayIUse(platform::avx) && attr <= 1024;               \
+      return phi::backends::cpu::MayIUse(phi::backends::cpu::avx) &&         \
+             attr <= 1024;                                                   \
     }                                                                        \
     size_t CodeSize(const int& d) const override {                           \
       return 96 + d / YMM_FLOAT_BLOCK * 4 * 8;                               \

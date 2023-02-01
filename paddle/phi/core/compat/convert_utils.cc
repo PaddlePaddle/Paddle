@@ -110,14 +110,11 @@ const std::string& TransToPhiKernelName(const std::string& fluid_op_name) {
 }
 
 const std::string& TransToFluidOpName(const std::string& phi_kernel_name) {
-  auto& base_kernel_name_map = OpUtilsMap::Instance().base_kernel_name_map();
-  auto it = std::find_if(base_kernel_name_map.begin(),
-                         base_kernel_name_map.end(),
-                         [&phi_kernel_name](const auto& pair) {
-                           return pair.second == phi_kernel_name;
-                         });
-  if (it != base_kernel_name_map.end()) {
-    return it->first;
+  const auto& phi_kernel_to_fluid_op =
+      OpUtilsMap::Instance().phi_kernel_to_fluid_op();
+  auto it = phi_kernel_to_fluid_op.find(phi_kernel_name);
+  if (it != phi_kernel_to_fluid_op.end()) {
+    return it->second;
   }
   return phi_kernel_name;
 }

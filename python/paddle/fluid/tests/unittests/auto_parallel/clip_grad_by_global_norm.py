@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import random
-import numpy as np
-import paddle
+import unittest
 
+import numpy as np
+from get_gpt_model import FakeDataset, generate_model
+
+import paddle
 from paddle.distributed.fleet import auto
 from paddle.fluid.dygraph.parallel import ParallelEnv
-from get_gpt_model import FakeDataset, generate_model
 
 paddle.enable_static()
 
@@ -30,6 +31,7 @@ def apply_pass(use_sharding=False):
     strategy.reinit = True
     if use_sharding:
         sharding = strategy.sharding
+        sharding.enable = True
         sharding.degree = 2
         sharding.stage = 2
     return strategy

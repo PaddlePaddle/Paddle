@@ -86,6 +86,10 @@ void InferenceProcessPass::ApplyImpl(ir::Graph* graph) const {
     }
   }
 
+  // Set executor
+  ipu_strategy_instance_->enable_model_runtime_executor =
+      graph->Get<bool>("enable_model_runtime_executor");
+
   // Set available memory proportion for matmul/conv
   ipu_strategy_instance_->available_memory_proportion =
       graph->Get<float>("available_memory_proportion");

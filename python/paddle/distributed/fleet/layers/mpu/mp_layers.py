@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import paddle
-from . import mp_ops
 from paddle.fluid import core
-from paddle.fluid.dygraph.layers import Layer
-from .random import get_rng_state_tracker
+from paddle.nn import Layer
 from paddle.nn import functional as F
+
 from ...base import topology as tp
+from . import mp_ops
+from .random import get_rng_state_tracker
 
 __all__ = []
 
@@ -28,10 +29,7 @@ __all__ = []
 
 
 def is_fused_matmul_bias_supported():
-    if paddle.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm():
-        return hasattr(core.ops, 'fused_gemm_epilogue')
-    else:
-        return False
+    return hasattr(core.eager.ops.legacy, 'fused_gemm_epilogue')
 
 
 class VocabParallelEmbedding(Layer):
@@ -59,7 +57,7 @@ class VocabParallelEmbedding(Layer):
 
         class SimpleMPNet(paddle.nn.Layer):
            def __init__(self, vocab_size, hidden_size, inner_size, output_size):
-              super(SimpleMPNet, self).__init__()
+              super().__init__()
               self.linear1 = fleet.meta_parallel.ColumnParallelLinear(
                     hidden_size,
                     inner_size,
@@ -94,7 +92,7 @@ class VocabParallelEmbedding(Layer):
         mp_group=None,
         name=None,
     ):
-        super(VocabParallelEmbedding, self).__init__()
+        super().__init__()
 
         self.model_parallel_group = (
             tp._HYBRID_PARALLEL_GROUP.get_model_parallel_group()
@@ -144,6 +142,8 @@ class VocabParallelEmbedding(Layer):
             )
 
         self.weight.is_distributed = True if self.is_mp else False
+        if self.weight.is_distributed:
+            setattr(self.weight, "split_axis", 0)
 
     def forward(self, x):
         if self.is_mp:
@@ -193,7 +193,7 @@ class ColumnParallelLinear(Layer):
 
         class SimpleMPNet(paddle.nn.Layer):
            def __init__(self, vocab_size, hidden_size, inner_size, output_size):
-              super(SimpleMPNet, self).__init__()
+              super().__init__()
               self.linear1 = fleet.meta_parallel.ColumnParallelLinear(
                     hidden_size,
                     inner_size,
@@ -231,7 +231,7 @@ class ColumnParallelLinear(Layer):
         mp_group=None,
         name=None,
     ):
-        super(ColumnParallelLinear, self).__init__()
+        super().__init__()
 
         self.model_parallel_group = (
             tp._HYBRID_PARALLEL_GROUP.get_model_parallel_group()
@@ -276,6 +276,9 @@ class ColumnParallelLinear(Layer):
 
         self.weight.is_distributed = True if self.is_mp else False
 
+        if self.weight.is_distributed:
+            setattr(self.weight, "split_axis", 1)
+
         if has_bias:
             # initialize bias to zero like Megatron
             self.bias = self.create_parameter(
@@ -285,6 +288,8 @@ class ColumnParallelLinear(Layer):
                 is_bias=True,
             )
             self.bias.is_distributed = True if self.is_mp else False
+            if self.bias.is_distributed:
+                setattr(self.bias, "split_axis", 0)
         else:
             self.bias = None
 
@@ -347,7 +352,7 @@ class RowParallelLinear(Layer):
 
         class SimpleMPNet(paddle.nn.Layer):
            def __init__(self, vocab_size, hidden_size, inner_size, output_size):
-              super(SimpleMPNet, self).__init__()
+              super().__init__()
               self.linear1 = fleet.meta_parallel.ColumnParallelLinear(
                     hidden_size,
                     inner_size,
@@ -385,7 +390,7 @@ class RowParallelLinear(Layer):
         mp_group=None,
         name=None,
     ):
-        super(RowParallelLinear, self).__init__()
+        super().__init__()
 
         self.in_features = in_features
         self.out_features = out_features
@@ -437,6 +442,8 @@ class RowParallelLinear(Layer):
             )
 
         self.weight.is_distributed = True if self.is_mp else False
+        if self.weight.is_distributed:
+            setattr(self.weight, "split_axis", 0)
 
         if has_bias:
             self.bias = self.create_parameter(
@@ -504,7 +511,7 @@ class ParallelCrossEntropy(Layer):
     """
 
     def __init__(self, mp_group=None, name=None):
-        super(ParallelCrossEntropy, self).__init__()
+        super().__init__()
         self.name = name
         self.model_parallel_group = (
             tp._HYBRID_PARALLEL_GROUP.get_model_parallel_group()

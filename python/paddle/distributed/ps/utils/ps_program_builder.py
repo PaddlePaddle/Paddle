@@ -12,14 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .public import *  # noqa: F403
+import paddle
+import paddle.fluid as fluid
 from paddle.distributed.fleet.base.private_helper_function import (
     wait_server_ready,
 )
 from paddle.distributed.passes import new_pass
 
+from .public import *  # noqa: F403
 
-class PsProgramBuilder(object):
+
+class PsProgramBuilder:
     def __init__(self, pass_ctx):
         self.pass_ctx = pass_ctx
         self.attrs = self.pass_ctx._attrs
@@ -77,8 +80,8 @@ class PsProgramBuilder(object):
             self._build_trainer_programs()
             fluid.framework.switch_startup_program(self.cloned_startup)
             print(
-                "fluid.default_startup_program: {}".format(
-                    fluid.default_startup_program
+                "paddle.static.default_startup_program: {}".format(
+                    paddle.static.default_startup_program
                 )
             )
             # print("ps_program_build before =", id(self.loss.block.program))
@@ -101,7 +104,7 @@ class PsProgramBuilder(object):
 
 class GeoPsProgramBuilder(PsProgramBuilder):  # 仅 CPU 模式
     def __init__(self, pass_ctx):
-        super(GeoPsProgramBuilder, self).__init__(pass_ctx)
+        super().__init__(pass_ctx)
         if self.ps_mode != DistributedMode.GEO:
             raise ValueError(
                 "ps mode: {} not matched {}",
@@ -129,7 +132,7 @@ class GeoPsProgramBuilder(PsProgramBuilder):  # 仅 CPU 模式
 
 class NuPsProgramBuilder(PsProgramBuilder):
     def __init__(self, pass_ctx):
-        super(NuPsProgramBuilder, self).__init__(pass_ctx)
+        super().__init__(pass_ctx)
         if not self.attrs['local_sparse']:
             raise ValueError("No local sparse params")
 
@@ -178,7 +181,7 @@ class NuPsProgramBuilder(PsProgramBuilder):
 
 class CpuSyncPsProgramBuilder(PsProgramBuilder):
     def __init__(self, pass_ctx):
-        super(CpuSyncPsProgramBuilder, self).__init__(pass_ctx)
+        super().__init__(pass_ctx)
         if (
             self.ps_mode != DistributedMode.SYNC
             and self.ps_mode != DistributedMode.ASYNC
@@ -230,7 +233,7 @@ class CpuSyncPsProgramBuilder(PsProgramBuilder):
 
 class CpuAsyncPsProgramBuilder(CpuSyncPsProgramBuilder):
     def __init__(self, pass_ctx):
-        super(CpuAsyncPsProgramBuilder, self).__init__(pass_ctx)
+        super().__init__(pass_ctx)
 
     def _build_trainer_desc(self):
         opt_info = self.loss.block.program._fleet_opt
@@ -267,7 +270,7 @@ class CpuAsyncPsProgramBuilder(CpuSyncPsProgramBuilder):
 
 class GpuPsProgramBuilder(PsProgramBuilder):
     def __init__(self, pass_ctx):
-        super(GpuPsProgramBuilder, self).__init__(pass_ctx)
+        super().__init__(pass_ctx)
 
     def _build_trainer_programs(self):
 
@@ -301,7 +304,7 @@ class GpuPsProgramBuilder(PsProgramBuilder):
 
 class HeterAsyncPsProgramBuilder(PsProgramBuilder):
     def __init__(self, pass_ctx):
-        super(HeterAsyncPsProgramBuilder, self).__init__(pass_ctx)
+        super().__init__(pass_ctx)
 
     def _build_trainer_programs(self):
         add_lr_decay_table_pass = new_pass(
@@ -377,7 +380,7 @@ class HeterAsyncPsProgramBuilder(PsProgramBuilder):
 
 class FlPsProgramBuilder(HeterAsyncPsProgramBuilder):
     def __init__(self, pass_ctx):
-        super(FlPsProgramBuilder, self).__init__(pass_ctx)
+        super().__init__(pass_ctx)
 
     def _build_trainer_programs(self):
         _main_file = ps_log_root_dir + '0_fl_worker_main_program.prototxt'
@@ -471,8 +474,8 @@ class FlPsProgramBuilder(HeterAsyncPsProgramBuilder):
             fluid.framework.switch_startup_program(self.cloned_startup)
             fluid.framework.switch_main_program(self.cloned_main)
             print(
-                "fluid.default_startup_program: {}".format(
-                    fluid.default_startup_program()._heter_pipeline_opt
+                "paddle.static.default_startup_program: {}".format(
+                    paddle.static.default_startup_program()._heter_pipeline_opt
                 )
             )
         else:

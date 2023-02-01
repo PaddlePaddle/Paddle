@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
-from program_config import TensorConfig, ProgramConfig
-import numpy as np
-import paddle.inference as paddle_infer
+import os
+import unittest
 from functools import partial
 from typing import List
-import unittest
-import os
+
+import numpy as np
+from program_config import ProgramConfig, TensorConfig
+from trt_layer_auto_scan_test import SkipReasons, TrtLayerAutoScanTest
+
+import paddle.inference as paddle_infer
 
 
 class TrtConvertGatherNdTest_dim_4_1(TrtLayerAutoScanTest):
@@ -67,11 +69,11 @@ class TrtConvertGatherNdTest_dim_4_1(TrtLayerAutoScanTest):
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
-                "input_data": [1, 8, 8, 8],
+                "input_data": [2, 32, 64, 64],
                 "index_data": [1],
             }
             self.dynamic_shape.max_input_shape = {
-                "input_data": [4, 32, 64, 64],
+                "input_data": [2, 32, 64, 64],
                 "index_data": [1],
             }
             self.dynamic_shape.opt_input_shape = {
@@ -157,11 +159,11 @@ class TrtConvertGatherNdTest_dim_4_1_2(TrtLayerAutoScanTest):
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
-                "input_data": [1, 8, 8, 8],
+                "input_data": [2, 32, 64, 64],
                 "index_data": [2],
             }
             self.dynamic_shape.max_input_shape = {
-                "input_data": [4, 32, 64, 64],
+                "input_data": [2, 32, 64, 64],
                 "index_data": [2],
             }
             self.dynamic_shape.opt_input_shape = {
@@ -247,11 +249,11 @@ class TrtConvertGatherNdTest_dim_4_2(TrtLayerAutoScanTest):
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
-                "input_data": [1, 8, 8, 8],
+                "input_data": [2, 32, 64, 64],
                 "index_data": [2, 2],
             }
             self.dynamic_shape.max_input_shape = {
-                "input_data": [4, 32, 64, 64],
+                "input_data": [2, 32, 64, 64],
                 "index_data": [2, 2],
             }
             self.dynamic_shape.opt_input_shape = {
@@ -337,11 +339,11 @@ class TrtConvertGatherNdTest_dim_4_3(TrtLayerAutoScanTest):
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
-                "input_data": [1, 8, 8, 8],
+                "input_data": [2, 32, 64, 64],
                 "index_data": [2, 2, 4],
             }
             self.dynamic_shape.max_input_shape = {
-                "input_data": [4, 32, 64, 64],
+                "input_data": [2, 32, 64, 64],
                 "index_data": [2, 2, 4],
             }
             self.dynamic_shape.opt_input_shape = {
@@ -427,15 +429,15 @@ class TrtConvertGatherNdTest_dim_2_2(TrtLayerAutoScanTest):
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
-                "input_data": [1, 4],
+                "input_data": [2, 32],
                 "index_data": [2, 2],
             }
             self.dynamic_shape.max_input_shape = {
-                "input_data": [4, 64],
+                "input_data": [2, 32],
                 "index_data": [2, 2],
             }
             self.dynamic_shape.opt_input_shape = {
-                "input_data": [2, 8],
+                "input_data": [2, 32],
                 "index_data": [2, 2],
             }
 
@@ -519,15 +521,15 @@ class TrtConvertGatherNdTest_dim_3_3(TrtLayerAutoScanTest):
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
-                "input_data": [1, 4, 4],
-                "index_data": [1, 1, 1],
+                "input_data": [16, 32, 256],
+                "index_data": [2, 2, 2],
             }
             self.dynamic_shape.max_input_shape = {
-                "input_data": [16, 64, 512],
-                "index_data": [4, 2, 4],
+                "input_data": [16, 32, 256],
+                "index_data": [2, 2, 2],
             }
             self.dynamic_shape.opt_input_shape = {
-                "input_data": [2, 8, 64],
+                "input_data": [16, 32, 256],
                 "index_data": [2, 2, 2],
             }
 

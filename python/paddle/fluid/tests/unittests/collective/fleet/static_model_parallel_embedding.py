@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import numpy as np
+from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
-import paddle.fluid as fluid
-from test_dist_base import TestDistRunnerBase, runtime_main
 import paddle.distributed.fleet as fleet
+import paddle.fluid as fluid
 
 paddle.enable_static()
 
@@ -51,10 +51,10 @@ def create_model(data, rank):
             bias_attr=False,
         )
     else:
-        result = fluid.layers.fc(
+        result = paddle.static.nn.fc(
             data,
             size=OUT_SIZE,
-            param_attr=paddle.ParamAttr(
+            weight_attr=paddle.ParamAttr(
                 initializer=fluid.initializer.NumpyArrayInitializer(np_weight)
             ),
             bias_attr=False,

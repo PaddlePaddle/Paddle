@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import numpy as np
-import scipy.sparse as sp
-import unittest
 import os
 import re
+import unittest
+
+import numpy as np
+import scipy.sparse as sp
+
+import paddle
 
 paddle.set_default_dtype('float64')
 
@@ -84,7 +86,7 @@ class TestMatmul(unittest.TestCase):
 
     @unittest.skipIf(
         not paddle.is_compiled_with_cuda() or get_cuda_version() < 11070,
-        "only support cuda>=11.7",
+        "only support cuda>=11.8",
     )
     def test_matmul_3d(self):
         self.check_result([8, 16, 12], [8, 12, 10], 'coo')
@@ -132,7 +134,7 @@ class TestMaskedMatmul(unittest.TestCase):
 
     @unittest.skipIf(
         not paddle.is_compiled_with_cuda() or get_cuda_version() < 11070,
-        "only support on cuda>=11.7",
+        "only support on cuda>=11.8",
     )
     def test_masked_matmul_3d(self):
         paddle.set_default_dtype('float32')

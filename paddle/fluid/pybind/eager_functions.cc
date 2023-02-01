@@ -25,7 +25,6 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/backward.h"
 #include "paddle/fluid/eager/custom_operator/custom_operator_node.h"
-#include "paddle/fluid/eager/saved_tensors_hooks.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/custom_operator.h"
@@ -79,7 +78,7 @@ class EagerNumpyAllocation : public phi::Allocation {
   explicit EagerNumpyAllocation(PyObject* numpy_data, phi::DataType dtype)
       : Allocation(
             static_cast<void*>(pybind11::detail::array_proxy(numpy_data)->data),
-            framework::DataTypeSize(dtype) * PyArray_Size_(numpy_data),
+            phi::SizeOf(dtype) * PyArray_Size_(numpy_data),
             paddle::platform::CPUPlace()),
         arr_(numpy_data) {
     PADDLE_ENFORCE_NOT_NULL(
@@ -161,7 +160,7 @@ static PyObject* eager_api_run_partial_grad(PyObject* self,
                        only_inputs,
                        allow_unused,
                        no_grad_vars);
-    VLOG(1) << " in eager_api_run_partial_grad, after runing egr::Grad";
+    VLOG(4) << " in eager_api_run_partial_grad, after runing egr::Grad";
   }
   return ToPyObject(result, true /* return_py_none_if_not_initialize */);
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -187,6 +186,99 @@ static PyObject* eager_api_tensor_copy(PyObject* self,
         egr::EagerUtils::autograd_meta(&(src))->Persistable());
   }
   RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+PyObject* eager_api_get_all_grads(PyObject* self,
+                                  PyObject* args,
+                                  PyObject* kwargs) {
+  EAGER_TRY
+  auto tensor_list = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
+
+  std::vector<paddle::experimental::Tensor> ret;
+  for (auto& tensor : tensor_list) {
+    VLOG(6) << "Get grad for tensor: " << tensor.name();
+    auto meta = egr::EagerUtils::nullable_autograd_meta(tensor);
+    if (!meta || meta->StopGradient()) {
+      ret.emplace_back(paddle::experimental::Tensor());
+      continue;
+    }
+    if (meta && meta->Grad().initialized()) {
+      ret.emplace_back(meta->Grad());
+    } else {
+      ret.emplace_back(paddle::experimental::Tensor());
+    }
+  }
+  return ToPyObject(ret, true);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+PyObject* eager_api_get_grads_lists(PyObject* self,
+                                    PyObject* args,
+                                    PyObject* kwargs) {
+  EAGER_TRY
+  auto tensor_list = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
+  // The order of the 3 vectors is: FP16_grads, BF16_grads, FP32_grads
+  std::vector<std::vector<paddle::experimental::Tensor>> ret(3);
+
+  for (auto& tensor : tensor_list) {
+    VLOG(6) << "Get grad for tensor: " << tensor.name();
+    auto meta = egr::EagerUtils::nullable_autograd_meta(tensor);
+    if (meta && meta->Grad().initialized()) {
+      auto& grad = meta->Grad();
+      switch (grad.dtype()) {
+        case paddle::experimental::DataType::FLOAT16:
+          ret[0].emplace_back(grad);
+          break;
+        case paddle::experimental::DataType::BFLOAT16:
+          ret[1].emplace_back(grad);
+          break;
+        case paddle::experimental::DataType::FLOAT32:
+          ret[2].emplace_back(grad);
+          break;
+        default:
+          break;
+      }
+    }
+  }
+
+  return ToPyObject(ret);
+
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+PyObject* eager_api_get_grads_types(PyObject* self,
+                                    PyObject* args,
+                                    PyObject* kwargs) {
+  EAGER_TRY
+  auto tensor_list = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
+
+  std::vector<int> ret;
+
+  for (auto& tensor : tensor_list) {
+    VLOG(6) << "Get grad for tensor: " << tensor.name();
+    auto meta = egr::EagerUtils::nullable_autograd_meta(tensor);
+    if (!meta || meta->StopGradient()) {
+      ret.emplace_back(-1);
+      continue;
+    }
+
+    auto& grad = meta->Grad();
+    if (meta && grad.initialized()) {
+      if (grad.is_dense_tensor() &&
+          (tensor.dtype() == paddle::experimental::DataType::FLOAT32 ||
+           tensor.dtype() == paddle::experimental::DataType::FLOAT16 ||
+           tensor.dtype() == paddle::experimental::DataType::BFLOAT16)) {
+        ret.emplace_back(
+            paddle::framework::TransToProtoVarType(tensor.dtype()));
+      }
+    } else {
+      ret.emplace_back(-1);
+    }
+  }
+
+  return ToPyObject(ret);
+
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -328,7 +420,7 @@ static void ConstructFwdAndBwdMap(
   }
 }
 
-static std::vector<paddle::any> CastAttrsToTragetType(
+static std::vector<paddle::any> CastAttrsToTargetType(
     const std::vector<paddle::any>& src,
     const std::vector<std::string>& attrs_names) {
   std::vector<paddle::any> res;
@@ -395,7 +487,7 @@ static PyObject* eager_api_jit_function_call(PyObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-static PyObject* eager_api_run_costum_op(PyObject* self,
+static PyObject* eager_api_run_custom_op(PyObject* self,
                                          PyObject* args,
                                          PyObject* kwargs) {
   EAGER_TRY
@@ -418,7 +510,7 @@ static PyObject* eager_api_run_costum_op(PyObject* self,
             op_type));
     VLOG(7) << "Run Kernel of Custom Op: " << op_type;
     std::vector<paddle::any> res_attrs =
-        CastAttrsToTragetType(ctx.Attrs(),
+        CastAttrsToTargetType(ctx.Attrs(),
                               paddle::framework::OpMetaInfoHelper::GetAttrs(
                                   meta_info_map.at(op_type)[0]));
     ctx.EmplaceBackAttrs(res_attrs);
@@ -622,7 +714,9 @@ static PyObject* eager_api_register_saved_tensors_hooks(PyObject* self,
   if (egr::Controller::Instance().HasGrad()) {
     auto pack_hook = PyTuple_GET_ITEM(args, 0);
     auto unpack_hook = PyTuple_GET_ITEM(args, 1);
-    egr::SavedTensorsHooks::GetInstance().SetHooks(pack_hook, unpack_hook);
+    egr::SavedTensorsHooks::GetInstance().SetHooks(
+        std::make_shared<PackHook>(pack_hook),
+        std::make_shared<UnPackHook>(unpack_hook));
   }
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -994,11 +1088,23 @@ PyMethodDef variable_functions[] = {
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"_run_custom_op",
-     (PyCFunction)(void (*)(void))eager_api_run_costum_op,
+     (PyCFunction)(void (*)(void))eager_api_run_custom_op,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"tensor_copy",
      (PyCFunction)(void (*)(void))eager_api_tensor_copy,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"get_all_grads",
+     (PyCFunction)(void (*)(void))eager_api_get_all_grads,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"get_grads_lists",
+     (PyCFunction)(void (*)(void))eager_api_get_grads_lists,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"get_grads_types",
+     (PyCFunction)(void (*)(void))eager_api_get_grads_types,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"read_next_tensor_list",

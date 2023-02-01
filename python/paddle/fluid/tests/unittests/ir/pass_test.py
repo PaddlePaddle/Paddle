@@ -15,7 +15,9 @@
 import random
 import unittest
 import warnings
+
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core

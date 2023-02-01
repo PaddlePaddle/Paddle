@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from paddle.fluid import core
-from paddle.fluid.dygraph.base import switch_to_static_graph
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
+from paddle.fluid import core
+from paddle.fluid.dygraph.base import switch_to_static_graph
 
 
 class LAMBOptimizer(paddle.optimizer.Lamb):
@@ -123,8 +125,10 @@ class TestLambOpWithCombinedOp(unittest.TestCase):
                 startup.random_seed = seed
                 x = fluid.layers.data(name='X', shape=[13], dtype='float32')
                 y = fluid.layers.data(name='Y', shape=[1], dtype='float32')
-                prediction = fluid.layers.fc(input=x, size=1, act=None)
-                loss = fluid.layers.square_error_cost(input=prediction, label=y)
+                prediction = paddle.static.nn.fc(x, size=1, activation=None)
+                loss = paddle.nn.functional.square_error_cost(
+                    input=prediction, label=y
+                )
                 avg_loss = paddle.mean(loss)
             return avg_loss
 

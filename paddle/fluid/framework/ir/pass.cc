@@ -46,6 +46,9 @@ static const std::vector<std::string> support_subgraph_passes = {
     "fused_multi_transformer_decoder_fuse_qkv_pass",
     "multi_devices_fused_multi_transformer_encoder_fuse_qkv_pass",
     "multi_devices_fused_multi_transformer_decoder_fuse_qkv_pass",
+    "fuse_multi_transformer_layer_pass",
+    "delete_quant_dequant_linear_op_pass",
+    "delete_weight_dequant_linear_op_pass",
 };
 
 Graph *Pass::Apply(Graph *graph) const {

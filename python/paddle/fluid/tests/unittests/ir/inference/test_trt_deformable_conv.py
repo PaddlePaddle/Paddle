@@ -14,12 +14,14 @@
 
 import os
 import unittest
+
 import numpy as np
 from inference_pass_test import InferencePassTest
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
-from paddle.fluid.core import AnalysisConfig
+from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 os.environ['NVIDIA_TF32_OVERRIDE'] = '0'
 
@@ -38,7 +40,7 @@ class TRTDeformableConvTest(InferencePassTest):
                 name='mask', shape=self.mask_size, dtype=self.dtype
             )
 
-            output = fluid.layers.deformable_conv(
+            output = paddle.static.nn.common.deformable_conv(
                 input,
                 offset,
                 mask,

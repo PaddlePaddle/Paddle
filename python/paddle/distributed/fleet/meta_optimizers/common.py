@@ -14,8 +14,10 @@
 
 import os
 
-import paddle.fluid as fluid
-from paddle.fluid import core, unique_name
+import paddle
+from paddle.framework import core
+from paddle.utils import unique_name
+
 from ..base.private_helper_function import wait_server_ready
 
 __all__ = []
@@ -53,7 +55,7 @@ def is_optimizer_op(op):
     ) & int(OpRole.Optimize)
 
 
-class CollectiveHelper(object):
+class CollectiveHelper:
     def __init__(self, role_maker, nrings=1, wait_port=True):
         self.nrings = nrings
         self.wait_port = wait_port
@@ -62,7 +64,7 @@ class CollectiveHelper(object):
     def update_startup_program(self, startup_program=None):
         self.startup_program = startup_program
         if startup_program is None:
-            self.startup_program = fluid.default_startup_program()
+            self.startup_program = paddle.static.default_startup_program()
 
         endpoints = self.role_maker._get_trainer_endpoints()
         current_endpoint = endpoints[self.role_maker._worker_index()]

@@ -12,25 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import random
-import numpy as np
 import os
+import random
 import shutil
+import unittest
+
+import numpy as np
 
 import paddle
 import paddle.nn as nn
-import paddle.utils as utils
-import paddle.static as static
 import paddle.nn.functional as F
-from paddle.distributed.fleet import auto
-
+import paddle.static as static
+import paddle.utils as utils
 from paddle.distributed import fleet
-from paddle.fluid.initializer import NumpyArrayInitializer
 from paddle.distributed.auto_parallel.utils import (
-    save_distributed_checkpoint,
     load_checkpoint_into_program,
+    save_distributed_checkpoint,
 )
+from paddle.distributed.fleet import auto
+from paddle.fluid.initializer import NumpyArrayInitializer
 
 paddle.enable_static()
 _global_parallel_strategy = None
@@ -43,7 +43,7 @@ class MLPLayer(nn.Layer):
     def __init__(
         self, hidden_size=64, intermediate_size=4 * 64, initializer_range=0.02
     ):
-        super(MLPLayer, self).__init__()
+        super().__init__()
         d_model = hidden_size
         dim_feedforward = intermediate_size
         np.random.seed(2021)

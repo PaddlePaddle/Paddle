@@ -15,8 +15,8 @@
 #include "paddle/fluid/framework/ir/mkldnn/conv_activation_mkldnn_fuse_pass.h"
 
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/platform/mkldnn_reuse.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/phi/backends/onednn/onednn_reuse.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -25,8 +25,8 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void ConvActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
-  auto act_types = paddle::platform::GetSupportedActivations();
-  std::vector<std::string> conv_types = {"conv2d"};
+  auto act_types = phi::funcs::GetSupportedActivations();
+  std::vector<std::string> conv_types = {"fused_conv2d", "conv2d"};
 
   for (auto& act_type : act_types) {
     FuseConvConcatAct(graph, act_type);
@@ -64,7 +64,11 @@ void ConvActivationMkldnnFusePass::FuseConvAct(Graph* graph,
     OpDesc* conv_op = conv->Op();
     OpDesc* act_op = activation->Op();
 
-    auto attr_map = paddle::platform::GetAttributeMap(act_type);
+    if (conv_op->Type() == "conv2d") {
+      conv_op->SetType("fused_conv2d");
+    }
+
+    auto attr_map = phi::funcs::GetAttributeMap(act_type);
     for (const auto& attrs : attr_map) {
       if (act_op->HasAttr(attrs.first)) {
         conv_op->SetAttr(attrs.second, act_op->GetAttr(attrs.first));
@@ -91,8 +95,9 @@ void ConvActivationMkldnnFusePass::FuseConvAct(Graph* graph,
   AddStatis(found_conv_activation_count);
   if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
       found_conv_activation_count > 0) {
-    PrettyLogDetail("---    fused %d conv with %s activation",
+    PrettyLogDetail("---    fused %d %s with %s activation",
                     found_conv_activation_count,
+                    conv_type,
                     act_type);
   }
 }
@@ -134,18 +139,23 @@ void ConvActivationMkldnnFusePass::FuseConvConcatAct(
 
       bool is_not_conv_mkldnn =
           !(prev_op_nodes[0]->Op()->GetAttrIfExists<bool>("use_mkldnn"));
-      if (prev_op_nodes[0]->Op()->Type() != "conv2d" || is_not_conv_mkldnn) {
-        LOG(WARNING)
-            << "This fuse pass supports only conv2d (mkldnn) + activation.";
+      if ((prev_op_nodes[0]->Op()->Type() != "conv2d" &&
+           prev_op_nodes[0]->Op()->Type() != "fused_conv2d") ||
+          is_not_conv_mkldnn) {
+        LOG(WARNING) << "This fuse pass supports only conv2d(mkldnn) | "
+                        "fused_conv2d(mkldnn) + activation.";
         return;
       }
     }
 
     for (auto node : concat_inputs) {
       OpDesc* conv_op = node->inputs[0]->Op();
+      if (conv_op->Type() == "conv2d") {
+        conv_op->SetType("fused_conv2d");
+      }
       OpDesc* act_op = activation_op->Op();
 
-      auto attr_map = paddle::platform::GetAttributeMap(act_type);
+      auto attr_map = phi::funcs::GetAttributeMap(act_type);
       for (const auto& attrs : attr_map) {
         if (act_op->HasAttr(attrs.first)) {
           conv_op->SetAttr(attrs.second, act_op->GetAttr(attrs.first));
@@ -180,6 +190,45 @@ void ConvActivationMkldnnFusePass::FuseConvConcatAct(
 
 ConvActivationMkldnnFusePass::ConvActivationMkldnnFusePass() {
   AddOpCompat(OpCompat("conv2d"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsOptional()
+      .IsTensor()
+      .End()
+      .AddInput("ResidualData")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("strides")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("paddings")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("padding_algorithm")
+      .IsOptional()
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
+      .End()
+      .AddAttr("groups")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("dilations")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("data_format")
+      .IsOptional()
+      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
+      .End();
+
+  AddOpCompat(OpCompat("fused_conv2d"))
       .AddInput("Input")
       .IsTensor()
       .End()

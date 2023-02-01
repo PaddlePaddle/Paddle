@@ -255,20 +255,6 @@ nvinfer1::DimsExprs MergeLayernormPluginDynamic::getOutputDimensions(
     const nvinfer1::DimsExprs *inputs,
     int nb_inputs,
     nvinfer1::IExprBuilder &expr_builder) TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(output_index,
-                    0,
-                    platform::errors::InvalidArgument(
-                        "There is only one output of the MergeLayernorm, "
-                        "so the index should be zero,"
-                        "but it's (%d)",
-                        output_index));
-  PADDLE_ENFORCE_EQ(
-      nb_inputs,
-      1,
-      platform::errors::InvalidArgument(
-          "The Input of the MergeLayernorm should be 1, but we found "
-          "it has (%d) inputs",
-          nb_inputs));
   nvinfer1::DimsExprs ret;
   ret.nbDims = 3;
   ret.d[0] = inputs[0].d[0];

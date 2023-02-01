@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import math
-
 import functools
-import unittest
-import numpy as np
-
 import gc
+import math
+import unittest
+
+import numpy as np
 
 gc.set_debug(gc.DEBUG_COLLECTABLE)
 
@@ -40,15 +39,14 @@ class TranspilerTest(unittest.TestCase):
 
     def net_conf(self):
         x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
-        y_predict = fluid.layers.fc(
-            input=x,
+        y_predict = paddle.static.nn.fc(
+            x,
             size=1000,
-            act=None,
-            param_attr=fluid.ParamAttr(name='fc_w'),
+            weight_attr=fluid.ParamAttr(name='fc_w'),
             bias_attr=fluid.ParamAttr(name='fc_b'),
         )
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+        cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_cost = paddle.mean(cost)
         sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.1)
         sgd_optimizer.minimize(avg_cost)
@@ -275,7 +273,7 @@ class TestBasicModelWithLargeBlockSize(TranspilerTest):
 
 class TestNoSliceVar(TranspilerTest):
     def setUp(self):
-        super(TestNoSliceVar, self).setUp()
+        super().setUp()
 
     def transpiler_test_impl(self):
         config = fluid.DistributeTranspilerConfig()
@@ -295,15 +293,14 @@ class TestNoSliceVar(TranspilerTest):
 class TestLRDecay(TranspilerTest):
     def net_conf(self):
         x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
-        y_predict = fluid.layers.fc(
-            input=x,
+        y_predict = paddle.static.nn.fc(
+            x,
             size=1000,
-            act=None,
-            param_attr=fluid.ParamAttr(name='fc_w'),
+            weight_attr=fluid.ParamAttr(name='fc_w'),
             bias_attr=fluid.ParamAttr(name='fc_b'),
         )
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+        cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_cost = paddle.mean(cost)
         sgd_optimizer = fluid.optimizer.SGD(
             learning_rate=fluid.layers.exponential_decay(
@@ -381,7 +378,7 @@ class TestFakeInit(TranspilerTest):
             ),
         )
 
-        neg_word_reshape = fluid.layers.reshape(inputs[2], shape=[-1, 1])
+        neg_word_reshape = paddle.reshape(inputs[2], shape=[-1, 1])
         neg_word_reshape.stop_gradient = True
 
         neg_emb_w = fluid.layers.embedding(
@@ -391,7 +388,7 @@ class TestFakeInit(TranspilerTest):
             param_attr=fluid.ParamAttr(name='emb_w', learning_rate=1.0),
         )
 
-        neg_emb_w_re = fluid.layers.reshape(
+        neg_emb_w_re = paddle.reshape(
             neg_emb_w, shape=[-1, neg_num, embedding_size]
         )
 
@@ -402,26 +399,22 @@ class TestFakeInit(TranspilerTest):
             param_attr=fluid.ParamAttr(name='emb_b', learning_rate=1.0),
         )
 
-        neg_emb_b_vec = fluid.layers.reshape(neg_emb_b, shape=[-1, neg_num])
+        neg_emb_b_vec = paddle.reshape(neg_emb_b, shape=[-1, neg_num])
 
-        true_logits = fluid.layers.elementwise_add(
-            fluid.layers.reduce_sum(
-                fluid.layers.elementwise_mul(input_emb, true_emb_w),
+        true_logits = paddle.add(
+            paddle.sum(
+                paddle.multiply(input_emb, true_emb_w),
                 dim=1,
                 keep_dim=True,
             ),
             true_emb_b,
         )
 
-        input_emb_re = fluid.layers.reshape(
-            input_emb, shape=[-1, 1, embedding_size]
-        )
+        input_emb_re = paddle.reshape(input_emb, shape=[-1, 1, embedding_size])
 
-        neg_matmul = fluid.layers.matmul(
-            input_emb_re, neg_emb_w_re, transpose_y=True
-        )
-        neg_matmul_re = fluid.layers.reshape(neg_matmul, shape=[-1, neg_num])
-        neg_logits = fluid.layers.elementwise_add(neg_matmul_re, neg_emb_b_vec)
+        neg_matmul = paddle.matmul(input_emb_re, neg_emb_w_re, transpose_y=True)
+        neg_matmul_re = paddle.reshape(neg_matmul, shape=[-1, neg_num])
+        neg_logits = paddle.add(neg_matmul_re, neg_emb_b_vec)
         # nce loss
         label_ones = fluid.layers.fill_constant_batch_size_like(
             true_logits, shape=[-1, 1], value=1.0, dtype='float32'
@@ -430,17 +423,17 @@ class TestFakeInit(TranspilerTest):
             true_logits, shape=[-1, neg_num], value=0.0, dtype='float32'
         )
 
-        true_xent = fluid.layers.sigmoid_cross_entropy_with_logits(
+        true_xent = paddle.nn.functional.binary_cross_entropy_with_logits(
             true_logits, label_ones
         )
-        neg_xent = fluid.layers.sigmoid_cross_entropy_with_logits(
+        neg_xent = paddle.nn.functional.binary_cross_entropy_with_logits(
             neg_logits, label_zeros
         )
-        cost = fluid.layers.elementwise_add(
-            fluid.layers.reduce_sum(true_xent, dim=1),
-            fluid.layers.reduce_sum(neg_xent, dim=1),
+        cost = paddle.add(
+            paddle.sum(true_xent, axis=1),
+            paddle.sum(neg_xent, axis=1),
         )
-        avg_cost = fluid.layers.reduce_mean(cost)
+        avg_cost = paddle.mean(cost)
 
         sgd_optimizer = fluid.optimizer.SGD(
             learning_rate=fluid.layers.exponential_decay(
@@ -466,15 +459,14 @@ class TestFakeInit(TranspilerTest):
 class TestDecayedAdagrad(TranspilerTest):
     def net_conf(self):
         x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
-        y_predict = fluid.layers.fc(
-            input=x,
+        y_predict = paddle.static.nn.fc(
+            x,
             size=1000,
-            act=None,
-            param_attr=fluid.ParamAttr(name='fc_w'),
+            weight_attr=fluid.ParamAttr(name='fc_w'),
             bias_attr=fluid.ParamAttr(name='fc_b'),
         )
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+        cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_cost = paddle.mean(cost)
         opt = fluid.optimizer.DecayedAdagrad(learning_rate=0.1)
         opt.minimize(avg_cost)
@@ -487,15 +479,14 @@ class TestDecayedAdagrad(TranspilerTest):
 class TestFtrl(TranspilerTest):
     def net_conf(self):
         x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
-        y_predict = fluid.layers.fc(
-            input=x,
+        y_predict = paddle.static.nn.fc(
+            x,
             size=1000,
-            act=None,
-            param_attr=fluid.ParamAttr(name='fc_w'),
+            weight_attr=fluid.ParamAttr(name='fc_w'),
             bias_attr=fluid.ParamAttr(name='fc_b'),
         )
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+        cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_cost = paddle.mean(cost)
         opt = fluid.optimizer.Ftrl(learning_rate=0.1)
         opt.minimize(avg_cost)
@@ -508,15 +499,14 @@ class TestFtrl(TranspilerTest):
 class TestLRDecayConditional(TranspilerTest):
     def net_conf(self):
         x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
-        y_predict = fluid.layers.fc(
-            input=x,
+        y_predict = paddle.static.nn.fc(
+            x,
             size=1000,
-            act=None,
-            param_attr=fluid.ParamAttr(name='fc_w'),
+            weight_attr=fluid.ParamAttr(name='fc_w'),
             bias_attr=fluid.ParamAttr(name='fc_b'),
         )
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+        cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_cost = paddle.mean(cost)
         sgd_optimizer = fluid.optimizer.SGD(
             learning_rate=fluid.layers.piecewise_decay(
@@ -572,24 +562,23 @@ class TestLRDecayConditional(TranspilerTest):
 class TestL2Decay(TranspilerTest):
     def net_conf(self):
         x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
-        y_predict = fluid.layers.fc(
-            input=x,
+        y_predict = paddle.static.nn.fc(
+            x,
             size=1000,
-            act=None,
-            param_attr=fluid.ParamAttr(
+            weight_attr=fluid.ParamAttr(
                 name='fc_w', regularizer=fluid.regularizer.L2Decay()
             ),
             bias_attr=fluid.ParamAttr(name='fc_b'),
         )
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+        cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_cost = paddle.mean(cost)
         sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.1)
 
         def filter(param):
             return param.name == "fc_w"
 
-        clip = fluid.clip.GradientClipByValue(0.1, need_clip=filter)
+        clip = paddle.nn.ClipGradByValue(0.1, need_clip=filter)
         sgd_optimizer.minimize(avg_cost, grad_clip=clip)
 
     def transpiler_test_impl(self):
@@ -611,15 +600,14 @@ class TestL2Decay(TranspilerTest):
 class TestL2DecayWithPiecewise(TranspilerTest):
     def net_conf(self):
         x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
-        y_predict = fluid.layers.fc(
-            input=x,
+        y_predict = paddle.static.nn.fc(
+            x,
             size=1000,
-            act=None,
-            param_attr=fluid.ParamAttr(name='fc_w'),
+            weight_attr=fluid.ParamAttr(name='fc_w'),
             bias_attr=fluid.ParamAttr(name='fc_b'),
         )
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+        cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_cost = paddle.mean(cost)
         base_lr = 1.0
         bd = [1, 10, 20, 30]
@@ -687,15 +675,14 @@ class TestEmptyPserverOptimizeBlocks(TranspilerTest):
     def net_conf(self):
         x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
         # only one parameter
-        y_predict = fluid.layers.fc(
-            input=x,
+        y_predict = paddle.static.nn.fc(
+            x,
             size=1000,
-            act=None,
-            param_attr=fluid.ParamAttr(name='fc_w'),
+            weight_attr=fluid.ParamAttr(name='fc_w'),
             bias_attr=False,
         )
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+        cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_cost = paddle.mean(cost)
         sgd_optimizer = fluid.optimizer.SGD(learning_rate=1.0)
         sgd_optimizer.minimize(avg_cost)
@@ -743,16 +730,17 @@ class TestDistLookupTableBase(TranspilerTest):
         fc0 = fluid.layers.concat(
             input=[title_emb, brand_emb, profile_emb], axis=1
         )
-        predict = fluid.layers.fc(
-            input=fc0,
+        predict = paddle.static.nn.fc(
+            x=fc0,
             size=2,
-            act=None,
-            param_attr=fluid.ParamAttr(name='fc_w'),
+            weight_attr=fluid.ParamAttr(name='fc_w'),
             bias_attr=fluid.ParamAttr(name='fc_b'),
         )
 
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-        cost = fluid.layers.cross_entropy(input=predict, label=label)
+        cost = paddle.nn.functional.cross_entropy(
+            input=predict, label=label, reduction='none', use_softmax=False
+        )
         avg_cost = paddle.mean(cost)
         optimizer = fluid.optimizer.Adam(learning_rate=0.003)
         optimizer.minimize(avg_cost)
@@ -1129,15 +1117,14 @@ class TestDistArgsInProgram(TestDistLookupTableBase):
 class TestRMSPropOptimizer(TranspilerTest):
     def net_conf(self):
         x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
-        y_predict = fluid.layers.fc(
-            input=x,
+        y_predict = paddle.static.nn.fc(
+            x,
             size=1000,
-            act=None,
-            param_attr=fluid.ParamAttr(name='fc_w'),
+            weight_attr=fluid.ParamAttr(name='fc_w'),
             bias_attr=fluid.ParamAttr(name='fc_b'),
         )
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+        cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_cost = paddle.mean(cost)
         optimizer = fluid.optimizer.RMSProp(learning_rate=0.1)
         optimizer.minimize(avg_cost)
@@ -1162,15 +1149,14 @@ class TestRMSPropOptimizer(TranspilerTest):
 class TestLoadSliceVar(TranspilerTest):
     def net_conf(self):
         x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
-        y_predict = fluid.layers.fc(
-            input=x,
+        y_predict = paddle.static.nn.fc(
+            x,
             size=1000,
-            act=None,
-            param_attr=fluid.ParamAttr(name='fc_w'),
+            weight_attr=fluid.ParamAttr(name='fc_w'),
             bias_attr=fluid.ParamAttr(name='fc_b'),
         )
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+        cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_cost = paddle.mean(cost)
         optimizer = fluid.optimizer.RMSProp(learning_rate=0.1)
         optimizer.minimize(avg_cost)
@@ -1353,7 +1339,7 @@ class TestRemoteNce(TestDistLookupTableBase):
             )
         )
 
-        cost = fluid.layers.nce(
+        cost = paddle.static.nn.nce(
             input=input,
             label=label,
             num_total_classes=num_total_classes,
@@ -1442,15 +1428,20 @@ class TestRemoteHsigmoid(TestDistLookupTableBase):
             ),
         )
 
-        cost = fluid.layers.hsigmoid(
-            input=emb,
-            label=label,
+        loss = paddle.nn.HSigmoidLoss(
+            feature_size=emb.shape[1],
             num_classes=num_total_classes,
-            path_table=path_table,
-            path_code=path_code,
             is_custom=True,
             is_sparse=is_sparse,
         )
+
+        cost = loss(
+            input=emb,
+            label=label,
+            path_table=path_table,
+            path_code=path_code,
+        )
+
         avg_cost = paddle.mean(cost)
         # optimizer
         optimizer = fluid.optimizer.SGD(learning_rate=0.003)
@@ -1471,9 +1462,9 @@ class TestRemoteHsigmoid(TestDistLookupTableBase):
                 for name in ["epmap", "table_names", "epmap"]:
                     assert op.has_attr(name)
                     if name == "epmap":
-                        assert op.attr(name)[0] == u'127.0.0.1:6174'
+                        assert op.attr(name)[0] == '127.0.0.1:6174'
                     elif name == "table_names":
-                        assert op.attr(name)[0] == u'hierarchical_sigmoid_0.w_0'
+                        assert op.attr(name)[0] == 'hierarchical_sigmoid_0.w_0'
                     else:
                         assert op.attr(name) == 3
             elif op.type == "lookup_table":
@@ -1484,7 +1475,7 @@ class TestRemoteHsigmoid(TestDistLookupTableBase):
         for op in trainer.blocks[0].ops:
             if op.type == "recv":
                 assert len(op.output("Out")) == 1
-                assert op.output("Out")[0] == u'hierarchical_sigmoid_0.b_0'
+                assert op.output("Out")[0] == 'hierarchical_sigmoid_0.b_0'
                 op_count += 1
         assert op_count == 1
 

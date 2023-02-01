@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import numbers
 import math
+import numbers
+
 import numpy as np
 
+import paddle
 from paddle.distribution.transformed_distribution import TransformedDistribution
 from paddle.fluid import framework as framework
 
@@ -96,7 +97,7 @@ class Gumbel(TransformedDistribution):
 
         self.transforms = ()
 
-        super(Gumbel, self).__init__(self.base_dist, self.transforms)
+        super().__init__(self.base_dist, self.transforms)
 
     @property
     def mean(self):

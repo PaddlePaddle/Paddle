@@ -22,7 +22,7 @@ from paddle.incubate.autograd.primrules import _prim2orig
 paddle.enable_static()
 
 
-############################ Test prim2orig rules ############################
+# ------------------------ Test prim2orig rules ---------------------------- #
 class TestAddPPrim2Orig(unittest.TestCase):
     def setUp(self):
         self.main_program = paddle.static.Program()

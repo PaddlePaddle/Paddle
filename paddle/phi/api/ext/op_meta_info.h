@@ -271,7 +271,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
     static void Compute(CustomOpKernelContext* ctx, const Args&... args) {
       static_assert(out_idx == 0,
                     "If return std::vector<Tensor> in Custom OpKernel, "
-                    "you cannot pass output by kernel funciton argument.");
+                    "you cannot pass output by kernel function argument.");
       auto outs = impl_fn(args...);
       auto* orig_outs = ctx->AllMutableOutput();
       PD_CHECK(orig_outs->size() == outs.size(),
@@ -626,8 +626,7 @@ class PADDLE_API OpMetaInfoBuilder {
 void RegisterAllCustomOperator();
 
 // Using this api to load compiled custom operator's dynamic library and
-// register Custom
-// Operator into it
+// register Custom Operator into it
 void LoadCustomOperatorLib(const std::string& dso_name);
 
 /////////////////////// Op register Macro /////////////////////////

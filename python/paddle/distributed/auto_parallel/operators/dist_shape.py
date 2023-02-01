@@ -12,17 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .common import DistributedOperatorImplContainer
-from .common import DistributedOperatorImpl
-from .common import register_distributed_operator_impl_container
-from .common import register_distributed_operator_impl
-from .dist_default import DistributedDefaultImpl0
 from ..utils import is_dim_shard
+from .common import (
+    DistributedOperatorImpl,
+    DistributedOperatorImplContainer,
+    register_distributed_operator_impl,
+    register_distributed_operator_impl_container,
+)
+from .dist_default import DistributedDefaultImpl0
 
 
 class DistributedShape(DistributedOperatorImplContainer):
     def __init__(self, op_type):
-        super(DistributedShape, self).__init__(op_type)
+        super().__init__(op_type)
 
 
 register_distributed_operator_impl_container(DistributedShape("shape"))
@@ -30,7 +32,7 @@ register_distributed_operator_impl_container(DistributedShape("shape"))
 
 class DistributedShapeImpl(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedShapeImpl, self).__init__(name)
+        super().__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
 

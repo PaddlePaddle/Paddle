@@ -13,14 +13,17 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import _non_static_mode
 from paddle import _legacy_C_ops
+from paddle.fluid.data_feeder import check_variable_and_dtype
+from paddle.fluid.framework import _non_static_mode
+from paddle.fluid.layer_helper import LayerHelper
 from paddle.static import default_main_program
 
 

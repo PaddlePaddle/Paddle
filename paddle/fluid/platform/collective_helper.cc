@@ -221,6 +221,10 @@ NCCLComm* NCCLCommContext::AssignNCCLComm(
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetZeroAllocator(CUDAPlace(dev_id))
           .get());
+  dev_ctx->SetHostZeroAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetZeroAllocator(paddle::platform::CPUPlace())
+          .get());
   dev_ctx->SetPinnedAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(paddle::platform::CUDAPinnedPlace())
@@ -353,12 +357,21 @@ BKCLComm* BKCLCommContext::AssignBKCLComm(
     BKCLContext_t comm, int nranks, int rank, int dev_id, int ring_id) {
   std::unique_ptr<XPUDeviceContext> dev_ctx(
       new XPUDeviceContext(XPUPlace(dev_id)));
-  // used in BKCL as comm_stream, for every dev_id there is
-  // a comm_stream at each ring. this stream is passed as input var
-  // when calling collective comm commands like bkcl_all_reduce
-  XPUStream comm_stream;
-  PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&comm_stream));
-  dev_ctx->SetXPUStream(comm_stream);
+  dev_ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                            .GetAllocator(XPUPlace(dev_id))
+                            .get());
+  dev_ctx->SetHostAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CPUPlace())
+          .get());
+  dev_ctx->SetZeroAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetZeroAllocator(XPUPlace(dev_id))
+          .get());
+  dev_ctx->SetHostZeroAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetZeroAllocator(paddle::platform::CPUPlace())
+          .get());
 
   BKCLCommImpl* c = new BKCLCommImpl;
   c->set_ring_id(ring_id);

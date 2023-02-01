@@ -13,18 +13,20 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from paddle.distributed import fleet
-from paddle.fluid.dygraph.container import Sequential
+
 import paddle.nn as nn
-from paddle.fluid.dygraph.layers import Layer
-from paddle.distributed.fleet.meta_parallel import LayerDesc, PipelineLayer
 import paddle.nn.functional as F
+from paddle.distributed import fleet
+from paddle.distributed.fleet.meta_parallel import LayerDesc, PipelineLayer
+from paddle.fluid.dygraph.layers import Layer
+from paddle.nn import Sequential
 
 
 class ReshapeHelp(Layer):
     def __init__(self, shape):
-        super(ReshapeHelp, self).__init__()
+        super().__init__()
         self.shape = shape
 
     def forward(self, x):
@@ -33,7 +35,7 @@ class ReshapeHelp(Layer):
 
 class AlexNet(Layer):
     def __init__(self, num_classes=10):
-        super(AlexNet, self).__init__()
+        super().__init__()
         self.features = Sequential(
             nn.Conv2D(1, 64, kernel_size=11, stride=4, padding=5),
             nn.ReLU(),
@@ -89,9 +91,7 @@ class AlexNetPipeDesc(PipelineLayer):
             LayerDesc(ReshapeHelp, shape=[-1, 256]),
             LayerDesc(nn.Linear, 256, self.num_classes),  # classifier
         ]
-        super(AlexNetPipeDesc, self).__init__(
-            layers=decs, loss_fn=nn.CrossEntropyLoss(), **kwargs
-        )
+        super().__init__(layers=decs, loss_fn=nn.CrossEntropyLoss(), **kwargs)
 
 
 class TestPipeLayerAPI(unittest.TestCase):

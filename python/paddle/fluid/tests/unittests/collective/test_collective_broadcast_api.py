@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import unittest
-import paddle
 
 from test_collective_api_base import TestDistBase
+
+import paddle
 
 paddle.enable_static()
 
@@ -27,6 +28,14 @@ class TestCollectiveBroadcastAPI(TestDistBase):
     def test_broadcast_nccl(self):
         self.check_with_place(
             "collective_broadcast_api.py", "broadcast", "nccl"
+        )
+
+    def test_broadcast_nccl_with_comm_context(self):
+        self.check_with_place(
+            "collective_broadcast_api.py",
+            "broadcast",
+            "nccl",
+            need_envs={"USE_COMM_CONTEXT": "1"},
         )
 
     def test_broadcast_gloo(self):

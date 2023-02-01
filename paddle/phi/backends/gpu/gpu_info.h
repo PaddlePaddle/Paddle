@@ -67,6 +67,12 @@ const gpuDeviceProp &GetDeviceProperties(int id);
 //! Set the GPU device id for next execution.
 void SetDeviceId(int device_id);
 
+//! Get the minimum chunk size for GPU buddy allocator.
+inline size_t GpuMinChunkSize() {
+  // Allow to allocate the minimum chunk size is 256 bytes.
+  return 1 << 8;
+}
+
 //! Copy memory from address src to dst asynchronously.
 void GpuMemcpyAsync(void *dst,
                     const void *src,

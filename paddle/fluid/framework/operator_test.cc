@@ -127,14 +127,10 @@ class OpWithKernelTest : public OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {}
-  OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const ExecutionContext& ctx) const override {
-    int sub_type = ctx.Attr<int>("kernel_sub_type");
-    return OpKernelType(proto::VarType::FP32,
-                        ctx.GetPlace(),
-                        phi::DataLayout::kAnyLayout,
-                        framework::LibraryType::kPlain,
-                        sub_type);
+    return phi::KernelKey(
+        ctx.GetPlace(), phi::DataLayout::ALL_LAYOUT, phi::DataType::FLOAT32);
   }
 };
 
@@ -256,16 +252,6 @@ TEST(OpKernel, all) {
   // kerne_sub_type = 0, hence cpu_kernel is called, cpu_kernel2 is not called.
   ASSERT_EQ(paddle::framework::cpu_kernel_run_num, 1);
   ASSERT_EQ(paddle::framework::cpu_kernel2_run_num, 0);
-
-  attr = op_desc.mutable_attrs()->Add();
-  attr->set_name("kernel_sub_type");
-  attr->set_type(paddle::framework::proto::AttrType::INT);
-  attr->set_i(1);
-  auto op2 = paddle::framework::OpRegistry::CreateOp(op_desc);
-  op2->Run(scope, cpu_place);
-  // kerne_sub_type = 1, hence cpu_kernel2 is called, cpu_kernel is not called.
-  ASSERT_EQ(paddle::framework::cpu_kernel_run_num, 1);
-  ASSERT_EQ(paddle::framework::cpu_kernel2_run_num, 1);
 }
 
 REGISTER_OP_WITHOUT_GRADIENT(
@@ -339,11 +325,11 @@ class IndicateLoDTensorDataTypeTest : public OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {}
-  OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const ExecutionContext& ctx) const override {
     auto data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "phi::DenseTensor");
-    return framework::OpKernelType(data_type, ctx.device_context());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -361,11 +347,11 @@ class IndicateSelectedRowsDataTypeTest : public OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {}
-  OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const ExecutionContext& ctx) const override {
     auto data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "SelectedRows");
-    return framework::OpKernelType(data_type, ctx.device_context());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 class IndicateSelectedRowsDataTypeTestProtoMaker
@@ -383,10 +369,10 @@ class IndicateOtherDataTypeTest : public OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {}
-  OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Other");
-    return framework::OpKernelType(data_type, ctx.device_context());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 class IndicateOtherDataTypeTestProtoMaker : public OpProtoAndCheckerMaker {
@@ -428,61 +414,6 @@ REGISTER_OP_CPU_KERNEL(
 REGISTER_OP_CPU_KERNEL(
     indicate_other_data_type_test,
     paddle::framework::EmptyTestKernel<phi::CPUContext, int>);
-
-TEST(IndicateVarDataTypeTest, lodtensor) {
-  paddle::framework::InitDevices();
-  paddle::framework::proto::OpDesc op_desc;
-  op_desc.set_type("indicate_lod_tensor_data_type_test");
-  BuildVar("phi::DenseTensor", {"lodtensor_1"}, op_desc.add_inputs());
-
-  paddle::platform::CPUPlace cpu_place;
-  paddle::framework::Scope scope;
-
-  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
-  auto* var = scope.Var("lodtensor_1");
-  var->GetMutable<phi::DenseTensor>();
-
-  bool caught = false;
-  try {
-    op->Run(scope, cpu_place);
-  } catch (paddle::platform::EnforceNotMet& err) {
-    caught = true;
-    std::string ex_msg = err.what();
-    EXPECT_TRUE(
-        ex_msg.find(
-            "The indicate_lod_tensor_data_type_test Op's Input Variable "
-            "`phi::DenseTensor` contains uninitialized phi::DenseTensor.") !=
-        std::string::npos);
-  }
-  ASSERT_TRUE(caught);
-}
-
-TEST(IndicateVarDataTypeTest, selectedrows) {
-  paddle::framework::InitDevices();
-  paddle::framework::proto::OpDesc op_desc;
-  op_desc.set_type("indicate_selected_rows_data_type_test");
-  BuildVar("SelectedRows", {"selected_rows_1"}, op_desc.add_inputs());
-
-  paddle::platform::CPUPlace cpu_place;
-  paddle::framework::Scope scope;
-
-  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
-  auto* var = scope.Var("selected_rows_1");
-  var->GetMutable<phi::SelectedRows>();
-
-  bool caught = false;
-  try {
-    op->Run(scope, cpu_place);
-  } catch (paddle::platform::EnforceNotMet& err) {
-    caught = true;
-    std::string ex_msg = err.what();
-    EXPECT_TRUE(
-        ex_msg.find("The indicate_selected_rows_data_type_test Op's "
-                    "Input Variable `SelectedRows` contains uninitialized "
-                    "phi::DenseTensor.") != std::string::npos);
-  }
-  ASSERT_TRUE(caught);
-}
 
 TEST(IndicateVarDataTypeTest, other) {
   paddle::framework::InitDevices();
@@ -652,10 +583,10 @@ class OpUnusedVarTest : public OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {}
-  OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const ExecutionContext& ctx) const override {
-    return OpKernelType(
-        proto::VarType::FP32, ctx.GetPlace(), phi::DataLayout::kAnyLayout);
+    return phi::KernelKey(
+        ctx.GetPlace(), phi::DataLayout::ALL_LAYOUT, phi::DataType::FLOAT32);
   }
 };
 

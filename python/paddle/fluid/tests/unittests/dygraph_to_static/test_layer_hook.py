@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle
 import os
-import numpy as np
 import tempfile
+import unittest
+
+import numpy as np
+
+import paddle
 
 
 def forward_post_hook1(layer, input, output):
@@ -32,7 +34,7 @@ class SimpleNet(paddle.nn.Layer):
     def __init__(
         self,
     ):
-        super(SimpleNet, self).__init__()
+        super().__init__()
         self.fc1 = paddle.nn.Linear(10, 10)
         # sublayer1 register post hook
         self.fc1.register_forward_post_hook(forward_post_hook1)

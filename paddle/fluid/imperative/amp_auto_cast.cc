@@ -353,7 +353,9 @@ NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
       }
     }
     return new_ins;
-  } else if (AmpOperators::Instance().GetMutableBlockOps()->count(op_type)) {
+  } else if (AmpOperators::Instance().GetMutableBlockOps()->count(op_type) ||
+             AmpOperators::Instance().GetMutableUnsupportedFp16Ops()->count(
+                 op_type)) {
     for (auto& pair : new_ins) {
       VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
               << GetDtypeStr(*pair.second.cbegin()) << " to float";

@@ -13,26 +13,29 @@
 # limitations under the License
 
 import copy
+
 import paddle.fluid as fluid
-from paddle.fluid import core
-from paddle.fluid import core
-from paddle.fluid.framework import Parameter, Program
+from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.auto_parallel.operators.common import (
     get_distributed_operator_impl_container,
 )
-from paddle.distributed.auto_parallel.dist_context import DistributedContext
-from .dist_attribute import OperatorDistributedAttribute
-from .utils import is_backward_op, is_forward_op, is_loss_op, is_optimize_op
+from paddle.fluid import core
+from paddle.fluid.framework import Parameter, Program
+
+from .dist_attribute import OperatorDistAttr
 from .operators.common import BACKWARD_ONLY_DIST_OPS
+from .utils import (
+    __no_shape_var_type__,
+    is_backward_op,
+    is_forward_op,
+    is_loss_op,
+    is_optimize_op,
+)
 
 __varname_not_in_block__ = ["lod_tensor_blocking_queue"]
-__not_shape_var_type__ = [
-    core.VarDesc.VarType.READER,
-    core.VarDesc.VarType.STEP_SCOPES,
-]
 
 
-class Partitioner(object):
+class Partitioner:
     """
     warning:: Partitioner is experimental and subject to change.
 
@@ -162,7 +165,7 @@ class Partitioner(object):
             output_var_attr = (
                 self._dist_context.get_tensor_dist_attr_for_program(output_var)
             )
-            op_attr = OperatorDistributedAttribute()
+            op_attr = OperatorDistAttr()
             op_attr.process_mesh = output_var_attr.process_mesh
             op_attr.set_output_dims_mapping(
                 output_var.name, output_var_attr.dims_mapping
@@ -363,7 +366,7 @@ class Partitioner(object):
         var_dist_attrs = [
             self._dist_context.get_tensor_dist_attr_for_program(var)
             for var in vars_
-            if (var.type not in __not_shape_var_type__)
+            if (var.type not in __no_shape_var_type__)
         ]
 
         all_ops_annotated = all(
@@ -388,7 +391,7 @@ def _get_dist_shape(var, dist_attr):
 
     var_shape = var.shape
     mapping = dist_attr.dims_mapping
-    mesh = dist_attr.process_mesh.topology
+    mesh = dist_attr.process_mesh.shape
     if mapping == []:
         return var_shape
 
@@ -404,8 +407,13 @@ def _get_dist_shape(var, dist_attr):
         else:
             assert (
                 var_shape[idx] % mesh[mapping[idx]] == 0
-            ), "un-event partition: var_shape[idx]=[{}], mesh[{}]".format(
-                var_shape[idx], mesh[mapping[idx]]
+            ), "un-event partition: var_shape[idx]=[{}], mesh[{}], {}, {}, {}, {}".format(
+                var_shape[idx],
+                mesh[mapping[idx]],
+                var.name,
+                var_shape,
+                mesh,
+                mapping,
             )
             new_shape.append(var_shape[idx] // mesh[mapping[idx]])
 
@@ -468,7 +476,7 @@ def _partition_var(
     """
     src_var = src_block.var(src_varname)
 
-    if src_var.type in __not_shape_var_type__:
+    if src_var.type in __no_shape_var_type__:
         persist = getattr(src_var, 'persistable', False)
         new_var = dst_block.create_var(
             type=src_var.type,

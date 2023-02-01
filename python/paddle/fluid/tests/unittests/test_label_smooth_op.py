@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
 import paddle
 
 
@@ -56,7 +58,7 @@ class TestLabelSmoothOpWithPriorDist(TestLabelSmoothOp):
 
 class TestLabelSmoothOp3D(TestLabelSmoothOp):
     def setUp(self):
-        super(TestLabelSmoothOp3D, self).setUp()
+        super().setUp()
         self.inputs['X'] = self.inputs['X'].reshape(
             [2, -1, self.inputs['X'].shape[-1]]
         )
@@ -67,7 +69,7 @@ class TestLabelSmoothOp3D(TestLabelSmoothOp):
 
 class TestLabelSmoothOpWithPriorDist3D(TestLabelSmoothOpWithPriorDist):
     def setUp(self):
-        super(TestLabelSmoothOpWithPriorDist3D, self).setUp()
+        super().setUp()
         self.inputs['X'] = self.inputs['X'].reshape(
             [2, -1, self.inputs['X'].shape[-1]]
         )

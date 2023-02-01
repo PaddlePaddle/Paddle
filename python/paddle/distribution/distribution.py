@@ -22,18 +22,15 @@
 import warnings
 
 import numpy as np
+
 import paddle
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 from paddle.fluid.data_feeder import check_variable_and_dtype, convert_dtype
-from paddle.fluid.framework import (
-    _non_static_mode,
-    in_dygraph_mode,
-    _in_legacy_dygraph,
-)
+from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layers import tensor
 
 
-class Distribution(object):
+class Distribution:
     """
     The abstract base class for probability distributions. Functions are
     implemented in specific distributions.
@@ -60,7 +57,7 @@ class Distribution(object):
             else tuple(event_shape)
         )
 
-        super(Distribution, self).__init__()
+        super().__init__()
 
     @property
     def batch_shape(self):
@@ -202,7 +199,7 @@ class Distribution(object):
         dtype = tmp.dtype
         for arg in numpy_args:
             arg_broadcasted, _ = np.broadcast_arrays(arg, tmp)
-            arg_variable = tensor.create_tensor(dtype=dtype)
+            arg_variable = paddle.tensor.create_tensor(dtype=dtype)
             tensor.assign(arg_broadcasted, arg_variable)
             variable_args.append(arg_variable)
 
@@ -220,7 +217,7 @@ class Distribution(object):
         Returns:
             value (Tensor): Change value's dtype if value's dtype is different from param.
         """
-        if _non_static_mode():
+        if in_dygraph_mode():
             if value.dtype != param.dtype and convert_dtype(value.dtype) in [
                 'float32',
                 'float64',
@@ -228,12 +225,7 @@ class Distribution(object):
                 warnings.warn(
                     "dtype of input 'value' needs to be the same as parameters of distribution class. dtype of 'value' will be converted."
                 )
-                if in_dygraph_mode():
-                    return _C_ops.cast(value, param.dtype)
-                if _in_legacy_dygraph():
-                    return _legacy_C_ops.cast(
-                        value, 'in_dtype', value.dtype, 'out_dtype', param.dtype
-                    )
+                return _C_ops.cast(value, param.dtype)
             return value
 
         check_variable_and_dtype(

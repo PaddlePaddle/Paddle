@@ -18,10 +18,7 @@ import numpy as np
 from ..framework import _non_static_mode
 from .. import core, layers
 
-try:
-    from collections.abc import Sequence, Mapping
-except:
-    from collections import Sequence, Mapping
+from collections.abc import Sequence, Mapping
 
 
 def default_collate_fn(batch):
@@ -58,7 +55,7 @@ def default_collate_fn(batch):
         batch = np.stack(batch, axis=0)
         return batch
     elif isinstance(sample, (paddle.Tensor, core.eager.Tensor)):
-        return layers.stack(batch, axis=0)
+        return paddle.stack(batch, axis=0)
     elif isinstance(sample, numbers.Number):
         batch = np.array(batch)
         return batch

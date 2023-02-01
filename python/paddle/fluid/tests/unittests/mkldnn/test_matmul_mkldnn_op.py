@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest, os
+import os
+import unittest
+
 import numpy as np
+
 from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
 
 

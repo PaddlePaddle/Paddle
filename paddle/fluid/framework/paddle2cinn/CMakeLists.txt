@@ -57,7 +57,8 @@ if(WITH_TESTING)
     op_registry
     mul_op
     activation_op
-    elementwise_add_op)
+    elementwise_add_op
+    generated_op)
   set_tests_properties(build_cinn_pass_test PROPERTIES LABELS "RUN_TYPE=CINN")
 
   cc_test_old(transform_desc_test SRCS transform_desc_test.cc DEPS
@@ -86,6 +87,7 @@ if(WITH_TESTING)
     cinn
     mul_op
     activation_op
-    elementwise_add_op)
+    elementwise_add_op
+    generated_op)
   set_tests_properties(cinn_compiler_test PROPERTIES LABELS "RUN_TYPE=CINN")
 endif()

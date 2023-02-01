@@ -22,7 +22,7 @@ from paddle.distributed import fleet
 class AscendTranspiler(collective.Collective):
     def __init__(self, startup_program, main_program):
         self.nrings = 1
-        super(AscendTranspiler, self).__init__(self.nrings)
+        super().__init__(self.nrings)
         self._startup_program = startup_program
         self._main_program = main_program
 

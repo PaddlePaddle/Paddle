@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import (
@@ -103,6 +105,16 @@ class TestSqueezeOneDNNOp2(TestSqueezeOneDNNOp):
 
 
 class TestSqueeze2OneDNNOp3(TestSqueeze2OneDNNOp):
+    def init_test_case(self):
+        self.ori_shape = (25, 1, 1, 4, 1)
+        self.axes = (1, -1)
+        self.new_shape = (25, 1, 4)
+
+
+class TestSqueeze2OneDNNOp4(TestSqueeze2OneDNNOp):
+    def set_outputs(self):
+        self.outputs = {"Out": self.x.reshape(self.new_shape)}
+
     def init_test_case(self):
         self.ori_shape = (25, 1, 1, 4, 1)
         self.axes = (1, -1)

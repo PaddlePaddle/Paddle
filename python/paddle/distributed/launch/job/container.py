@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import sys
+
 from paddle.distributed.launch.utils.process_context import ProcessContext
 
 from .status import Status
 
-import os
-import sys
 
-
-class Container(object):
+class Container:
     '''
     TODO(kuizhiqing) A container can be run by process/thread or just a callable function
     '''

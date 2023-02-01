@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
-from program_config import TensorConfig, ProgramConfig
 import unittest
-import numpy as np
-import paddle.inference as paddle_infer
 from functools import partial
 from typing import Any, Dict, List
+
+import numpy as np
+from program_config import ProgramConfig, TensorConfig
+from trt_layer_auto_scan_test import SkipReasons, TrtLayerAutoScanTest
+
+import paddle.inference as paddle_infer
 
 
 class TrtConvertRoiAlignTest(TrtLayerAutoScanTest):
@@ -33,7 +35,20 @@ class TrtConvertRoiAlignTest(TrtLayerAutoScanTest):
             return np.random.random([3, 4]).astype(np.float32)
 
         def generate_input3(attrs: List[Dict[str, Any]], batch):
-            return np.random.random([batch]).astype(np.int32)
+            if batch == 1:
+                return np.array([3]).astype(np.int32)
+            if batch == 2:
+                return np.array([1, 2]).astype(np.int32)
+            if batch == 4:
+                return np.array([1, 1, 0, 1]).astype(np.int32)
+
+        def generate_lod(batch):
+            if batch == 1:
+                return [[0, 3]]
+            if batch == 2:
+                return [[0, 1, 3]]
+            if batch == 4:
+                return [[0, 1, 2, 2, 3]]
 
         for num_input in [0, 1]:
             for batch in [1, 2, 4]:
@@ -94,7 +109,7 @@ class TrtConvertRoiAlignTest(TrtLayerAutoScanTest):
                                                 data_gen=partial(
                                                     generate_input2, dics, batch
                                                 ),
-                                                lod=[[32, 3]],
+                                                lod=generate_lod(batch),
                                             ),
                                         },
                                     ]

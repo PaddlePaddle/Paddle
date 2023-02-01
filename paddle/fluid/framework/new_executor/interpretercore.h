@@ -22,12 +22,11 @@
 #include "paddle/fluid/framework/details/exception_holder.h"
 #include "paddle/fluid/framework/new_executor/garbage_collector/garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/interpreter/dependency_builder.h"
-#include "paddle/fluid/framework/new_executor/interpreter/event_manager.h"
 #include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
+#include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/new_executor/profiler.h"
-#include "paddle/fluid/framework/new_executor/stream_analyzer.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
@@ -47,7 +46,8 @@ class InterpreterCore {
                   const std::set<std::string>& skip_gc_vars,
                   Scope* scope,
                   bool used_for_jit = false,
-                  bool used_for_control_flow_op = false);
+                  bool used_for_control_flow_op = false,
+                  bool used_for_cinn = false);
 
   ~InterpreterCore();
 
@@ -68,6 +68,10 @@ class InterpreterCore {
 
   void SetSkipGcVars(const std::set<std::string>& skip_gc_vars);
 
+  const std::set<std::string>& JitInputVars() const;
+
+  void SetJitInputVars(const std::set<std::string>& jit_input_vars);
+
   const VariableScope* GetVariableScope() const;
 
   void reset_scope(Scope* new_scope);
@@ -75,11 +79,17 @@ class InterpreterCore {
   const platform::Place& GetPlace() const { return place_; }
 
  private:
+  using InstructionPriorityLess = std::function<bool(size_t, size_t)>;
+  using SchedulingQueue =
+      std::priority_queue<size_t, std::vector<size_t>, InstructionPriorityLess>;
+
   // build graph
   void Convert(std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
   void BuildOperatorDependences();
   void BuildAndCacheInstructionCtx(Instruction* instr_node);
   void BuildSkipShareLoDInfo();
+  void UpdateSyncOpNum();
+  void AnalyseExecuteOrderForTrace();
 
   // inplace
   void BuildInplace();
@@ -88,15 +98,22 @@ class InterpreterCore {
   void SetFeedVarsInplaceSkip(const std::vector<std::string>& feed_names);
 
   // execution
+  void RunImpl();
   void ExecuteInstructionList(const std::vector<Instruction>& vec_instr);
   void RunInstructionAsync(size_t instr_id);
   void RunInstruction(const Instruction& instr_node);
   void RunNextInstructions(const Instruction& instr_id,
-                           std::deque<size_t>* reserved_next_ops);
+                           SchedulingQueue* reserved_next_ops);
+  void RunOperator(const Instruction& instr_node);
+  // Trace
+  void TraceInstructionList(const std::vector<Instruction>& vec_instr);
+
   // only used when program contains no feed op
   void Prepare(const std::vector<std::string>& feed_names,
                const std::vector<phi::DenseTensor>& feed_tensors,
                bool prepare_feed);
+
+  void RecordMemcpyD2H(const Instruction& instr_node);
 
   // gc
   void RecordStreamForGC(const Instruction& instr);
@@ -117,6 +134,7 @@ class InterpreterCore {
 
   interpreter::DependencyBuilder dependency_builder_;
   interpreter::ExecutionConfig execution_config_;
+  interpreter::StreamAnalyzer stream_analyzer_;
 
   // NOTE(zhiqiu): when add fetch ops in GetInterpreterCore, we will
   // copy a new program and block, the copy_program_ here is used to
@@ -135,7 +153,6 @@ class InterpreterCore {
   VariableScope var_scope_;
   Scope* local_scope_{nullptr};  // not owned
 
-  StreamAnalyzer stream_analyzer_;
   EventsWaiter main_thread_blocker_;
   std::shared_ptr<interpreter::AsyncWorkQueue> async_work_queue_;
 
@@ -155,6 +172,12 @@ class InterpreterCore {
 
   std::vector<std::shared_ptr<interpreter::OpDepInfo>> deps_;
   std::vector<std::shared_ptr<interpreter::VarRefInfo>> refs_;
+
+  // used for Trace
+  int64_t sync_op_num_{-1};
+  std::vector<size_t> trace_execute_order_;
+
+  InstructionPriorityLess instruction_prority_less;
 };
 
 std::shared_ptr<InterpreterCore> CreateInterpreterCore(

@@ -12,18 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import unittest
 
-import paddle
+import numpy as np
 
 # used by model.run_trainer in test_dist_base
 from test_dist_base import RUN_STEP
-from paddle.fluid.framework import _test_eager_guard
+
+import paddle
 
 
 # NOTE: compatible TestParallelDyGraphRunnerBase args
-class SpawnAssistTestArgs(object):
+class SpawnAssistTestArgs:
     update_method = "local"
     trainer_id = 0
     find_unused_parameters = False
@@ -53,10 +53,6 @@ class TestDistSpawnRunner(unittest.TestCase):
         return result_list
 
     def check_dist_result_with_spawn(self, test_class, delta=1e-3):
-        with _test_eager_guard():
-            self.check_dist_result_with_spawn_func(
-                test_class=test_class, delta=delta
-            )
         self.check_dist_result_with_spawn_func(
             test_class=test_class, delta=delta
         )

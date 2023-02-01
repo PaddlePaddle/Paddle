@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import unittest
-import numpy as np
 import math
+import unittest
+
+import numpy as np
 from op_test import OpTest
+
+import paddle
 
 
 class TestROIAlignOp(OpTest):

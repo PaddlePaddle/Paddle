@@ -12,14 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import warnings
 import logging
+import warnings
+
 import numpy as np
+
+import paddle
+
 from ..utils.log_utils import get_logger
 
 
-class Converter(object):
+class Converter:
     """
     Converter is a class object for auto parallel to convert tensors from
     one parallel strategy to another one. Tensors will merge and slice value

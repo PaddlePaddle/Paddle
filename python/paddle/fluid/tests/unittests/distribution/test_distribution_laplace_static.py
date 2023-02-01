@@ -14,12 +14,12 @@
 
 import unittest
 
+import config
 import numpy as np
+import parameterize
 import scipy.stats
 
 import paddle
-import config
-import parameterize
 
 paddle.enable_static()
 
@@ -273,7 +273,7 @@ class TestLaplaceAndLaplaceKL(unittest.TestCase):
 
 
 """
-# Note: Zero dimension of a Tensor is not supported by static mode of paddle;
+# Note: Zero dimension of a Tensor is not supported by static graph mode of paddle;
 # therefore, ks test below cannot be conducted temporarily.
 
 @parameterize.place(config.DEVICES)

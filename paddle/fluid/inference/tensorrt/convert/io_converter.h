@@ -24,8 +24,6 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-using LoDTensor = phi::DenseTensor;
-
 /*
  * Convert Input from Fluid to TensorRT Engine.
  * Convert Output from TensorRT Engine to Fluid.
@@ -38,13 +36,17 @@ class EngineIOConverter {
  public:
   EngineIOConverter() {}
 
-  virtual void operator()(const LoDTensor& in, void* out, size_t max_size) {}
-  virtual void operator()(const void* in, LoDTensor* out, size_t max_size) {}
+  virtual void operator()(const phi::DenseTensor& in,
+                          void* out,
+                          size_t max_size) {}
+  virtual void operator()(const void* in,
+                          phi::DenseTensor* out,
+                          size_t max_size) {}
 
   void SetStream(cudaStream_t* stream) { stream_ = stream; }
 
   static void ConvertInput(const std::string& op_type,
-                           const LoDTensor& in,
+                           const phi::DenseTensor& in,
                            void* out,
                            size_t max_size,
                            cudaStream_t* stream) {
@@ -63,7 +65,7 @@ class EngineIOConverter {
 
   static void ConvertOutput(const std::string& op_type,
                             const void* in,
-                            LoDTensor* out,
+                            phi::DenseTensor* out,
                             size_t max_size,
                             cudaStream_t* stream) {
     PADDLE_ENFORCE_NOT_NULL(stream,

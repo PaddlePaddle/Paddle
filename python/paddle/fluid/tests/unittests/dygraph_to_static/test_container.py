@@ -13,15 +13,17 @@
 # limitations under the License.
 
 import os
-import paddle
-import unittest
-import numpy as np
 import tempfile
+import unittest
+
+import numpy as np
+
+import paddle
 
 
 class BufferLayers(paddle.nn.Layer):
     def __init__(self, out_channel):
-        super(BufferLayers, self).__init__()
+        super().__init__()
         self.out_channel = out_channel
 
     def forward(self, x):
@@ -38,7 +40,7 @@ class BufferLayers(paddle.nn.Layer):
 
 class SequentialNet(paddle.nn.Layer):
     def __init__(self, sub_layer, in_channel, out_channel):
-        super(SequentialNet, self).__init__()
+        super().__init__()
         self.layer = paddle.nn.Sequential(
             ('l1', paddle.nn.Linear(in_channel, in_channel)),
             ('l2', paddle.nn.Linear(in_channel, out_channel)),

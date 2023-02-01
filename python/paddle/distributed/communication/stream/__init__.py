@@ -14,8 +14,7 @@
 
 from .all_gather import all_gather
 from .all_reduce import all_reduce
-from .alltoall import alltoall
-from .alltoall_single import alltoall_single
+from .all_to_all import alltoall, alltoall_single
 from .broadcast import broadcast
 from .reduce import reduce
 from .reduce_scatter import reduce_scatter

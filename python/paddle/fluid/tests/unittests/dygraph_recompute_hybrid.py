@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import random
 import unittest
+
 import numpy as np
 
 import paddle
-from paddle.incubate.distributed.fleet import recompute_hybrid
-import random
 from paddle.distributed import fleet
+from paddle.incubate.distributed.fleet import recompute_hybrid
 
 
 def get_fc_block(block_idx, input_size, is_last=False):
@@ -58,7 +59,7 @@ class Naive_fc_net(paddle.nn.Layer):
         partition=False,
         recompute_kwargs={},
     ):
-        super(Naive_fc_net, self).__init__()
+        super().__init__()
         self.recompute_blocks = recompute_blocks
         self.recompute_kwargs = recompute_kwargs
         self.offload = offload

@@ -168,7 +168,7 @@ def _zeros_like_with_grad(xs):
     return ys
 
 
-class Jacobian(object):
+class Jacobian:
     r"""
     Computes the Jacobian matrix of a given function.
 
@@ -257,7 +257,7 @@ class Jacobian(object):
         return self._jacobian.shape
 
 
-class Hessian(object):
+class Hessian:
     """
     Computes the Hessian matrix  with a given ``func`` with respect to ``xs`` .
 
@@ -328,7 +328,7 @@ class Hessian(object):
         return self.symbolic.shape
 
 
-class _Jacobian(object):
+class _Jacobian:
     """The base class for computing Jacobian matrix.
 
     ``_Jacobian`` implementes the core logic of multidimensional index and lazy
@@ -432,7 +432,7 @@ class _JacobianNoBatch(_Jacobian):
     """
 
     def __init__(self, func, xs):
-        super(_JacobianNoBatch, self).__init__(func, xs)
+        super().__init__(func, xs)
 
     @property
     def shape(self):
@@ -461,7 +461,7 @@ class _JacobianBatchFirst(_Jacobian):
     """
 
     def __init__(self, func, xs):
-        super(_JacobianBatchFirst, self).__init__(func, xs)
+        super().__init__(func, xs)
 
     @property
     def shape(self):

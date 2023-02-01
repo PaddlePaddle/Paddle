@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import os
 import signal
+import sys
 
+from paddle.distributed.launch.job.container import Container
 from paddle.distributed.launch.job.job import Job
 from paddle.distributed.launch.job.pod import Pod
-from paddle.distributed.launch.job.container import Container
 
 from .master import Master
 from .watcher import Watcher
@@ -31,7 +31,7 @@ class ControleMode:
     RPC = "rpc"
 
 
-class ControllerBase(object):
+class ControllerBase:
     def __init__(self, ctx):
         signal.signal(signal.SIGTERM, self.signal_handler)
         signal.signal(signal.SIGABRT, self.signal_handler)

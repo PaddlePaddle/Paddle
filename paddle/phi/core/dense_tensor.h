@@ -125,7 +125,8 @@ class DenseTensor : public TensorBase,
   /// \return The mutable data pointer value of type T.
   void* AllocateFrom(Allocator* allocator,
                      DataType dtype,
-                     size_t requested_size = 0) override;
+                     size_t requested_size = 0,
+                     bool fake_alloc = false) override;
 
   /// \brief Check if allocation is shared with other objects.
   /// \return Whether the allocation is shared with other objects.
@@ -163,6 +164,10 @@ class DenseTensor : public TensorBase,
   T* data();
 
   void* data();
+
+  /// \brief Get whether the storage_properties is inited.
+  /// \return The init status of storage_properties.
+  bool storage_properties_initialized() const;
 
   /// \brief Returns the storage_properties of the tensor.
   /// \return The storage_properties of the tensor.
@@ -274,16 +279,6 @@ In the final state, we should come up with a MKLDNN_Tensor and move the
 following codes there.
 */
 #ifdef PADDLE_WITH_MKLDNN
-  /**
-   * @brief the detail format of memory block which have layout as kMKLDNN
-   *
-   * @note MKLDNN lib support various memory format like nchw, nhwc, nChw8C,
-   *       nChw16c, etc. For a MKLDNN memory block, layout will be set as
-   *       DataLayout::kMKLDNN meanwhile detail memory format will be kept in
-   *       this field.
-   */
-  dnnl::memory::format_tag format_ = dnnl::memory::format_tag::undef;
-
   /// \brief memory descriptor of tensor which have layout set as kMKLDNN
   dnnl::memory::desc mem_desc_;
 #endif

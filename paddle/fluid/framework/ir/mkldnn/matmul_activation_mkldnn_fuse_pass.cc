@@ -15,8 +15,8 @@
 #include "paddle/fluid/framework/ir/mkldnn/matmul_activation_mkldnn_fuse_pass.h"
 
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/platform/mkldnn_reuse.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/phi/backends/onednn/onednn_reuse.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -25,7 +25,7 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void MatmulActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
-  auto act_types = paddle::platform::GetSupportedActivations();
+  auto act_types = phi::funcs::GetSupportedActivations();
   auto matmul_types = {"matmul", "matmul_v2"};
 
   for (const auto& matmul_type : matmul_types)
@@ -64,7 +64,7 @@ void MatmulActivationMkldnnFusePass::FuseMatmulAct(
     OpDesc* matmul_op = matmul->Op();
     OpDesc* act_op = activation->Op();
 
-    auto attr_map = paddle::platform::GetAttributeMap(act_type);
+    auto attr_map = phi::funcs::GetAttributeMap(act_type);
     for (const auto& attrs : attr_map) {
       if (act_op->HasAttr(attrs.first)) {
         matmul_op->SetAttr(attrs.second, act_op->GetAttr(attrs.first));

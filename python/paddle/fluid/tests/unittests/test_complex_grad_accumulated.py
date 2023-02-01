@@ -13,12 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
 import paddle
-
 import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard
 
 
 class Optimization_ex1(paddle.nn.Layer):
@@ -28,7 +27,7 @@ class Optimization_ex1(paddle.nn.Layer):
         dtype,
         param_attr=paddle.nn.initializer.Uniform(low=-5.0, high=5.0),
     ):
-        super(Optimization_ex1, self).__init__()
+        super().__init__()
 
         self.theta0 = self.create_parameter(
             shape=shape, attr=param_attr, dtype=dtype, is_bias=False
@@ -127,12 +126,6 @@ class TestComplexGradAccumulated(unittest.TestCase):
             for dtype in self.dtypes:
                 self.train(dev, dtype, 3)
                 self.train_no_clear_grad(dev, dtype, 3)
-
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_case_one_step()
-            self.test_case_two_step()
-            self.test_case_non_param()
 
 
 if __name__ == '__main__':

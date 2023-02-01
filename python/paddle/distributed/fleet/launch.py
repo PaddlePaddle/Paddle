@@ -54,36 +54,34 @@ launch a process on each of the given gpu card or cpu machine.
                 your_training_py (arg1 arg2 and all others)
 """
 
+import copy
+import os
+import pathlib
 import shutil
 import sys
 import tempfile
-import os
 import time
-import copy
-import pathlib
-from argparse import ArgumentParser, REMAINDER
-import paddle.fluid as fluid
-from paddle.distributed.fleet import launch_utils
+from argparse import REMAINDER, ArgumentParser
+
+import paddle.framework as framework
+from paddle.distributed.fleet import ascend_utils, cloud_utils, launch_utils
+from paddle.distributed.fleet.elastic import enable_elastic, launch_elastic
 from paddle.distributed.fleet.launch_utils import (
-    get_host_name_ip,
-    find_free_ports,
-    logger,
-    get_cluster,
     DeviceMode,
-    start_local_trainers,
-    direct_start,
-    watch_local_trainers,
-    terminate_local_procs,
     DistributeMode,
     ParameterServerLauncher,
-    get_logger,
-    check_backend,
     block_windows_and_macos,
+    check_backend,
+    direct_start,
+    find_free_ports,
+    get_cluster,
+    get_host_name_ip,
+    get_logger,
+    logger,
+    start_local_trainers,
+    terminate_local_procs,
+    watch_local_trainers,
 )
-from paddle.distributed.fleet import cloud_utils
-from paddle.distributed.fleet import ascend_utils
-
-from paddle.distributed.fleet.elastic import enable_elastic, launch_elastic
 
 __all__ = []
 
@@ -136,7 +134,7 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         help="run mode of job, can be:collective/ps/ps-heter",
     )
 
-    if fluid.core.is_compiled_with_cuda():
+    if framework.core.is_compiled_with_cuda():
         base_group.add_argument(
             "--gpus",
             type=str,
@@ -147,7 +145,7 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         )
         base_group.add_argument("--selected_gpus", dest="gpus")
 
-    if fluid.core.is_compiled_with_xpu():
+    if framework.core.is_compiled_with_xpu():
         base_group.add_argument(
             "--xpus",
             type=str,
@@ -157,7 +155,7 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         )
         base_group.add_argument("--selected_xpus", dest="xpus")
 
-    if fluid.core.is_compiled_with_npu():
+    if framework.core.is_compiled_with_npu():
         base_group.add_argument(
             "--npus",
             type=str,
@@ -167,7 +165,7 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         )
         base_group.add_argument("--selected_npus", dest="npus")
 
-    if fluid.core.is_compiled_with_mlu():
+    if framework.core.is_compiled_with_mlu():
         base_group.add_argument(
             "--mlus",
             type=str,
@@ -505,13 +503,13 @@ def launch_ps(args, distribute_mode):
 def infer_backend(args):
     if args.backend != "auto":
         return
-    if fluid.core.is_compiled_with_cuda():
+    if framework.core.is_compiled_with_cuda():
         args.backend = 'nccl'
-    elif fluid.core.is_compiled_with_npu():
+    elif framework.core.is_compiled_with_npu():
         args.backend = 'unknown'
-    elif fluid.core.is_compiled_with_xpu():
+    elif framework.core.is_compiled_with_xpu():
         args.backend = 'bkcl'
-    elif fluid.core.is_compiled_with_mlu():
+    elif framework.core.is_compiled_with_mlu():
         args.backend = 'cncl'
     else:
         args.backend = 'gloo'
@@ -559,14 +557,14 @@ def which_distributed_mode(args):
             "Only one mode(Collective or Parameter-Server) can be selected at the same time, but more than one configuration was received."
         )
 
-    if fluid.core.is_compiled_with_cuda():
-        accelerators = fluid.core.get_cuda_device_count()
-    elif fluid.core.is_compiled_with_npu():
-        accelerators = fluid.core.get_npu_device_count()
-    elif fluid.core.is_compiled_with_xpu():
-        accelerators = fluid.core.get_xpu_device_count()
-    elif fluid.core.is_compiled_with_mlu():
-        accelerators = fluid.core.get_mlu_device_count()
+    if framework.core.is_compiled_with_cuda():
+        accelerators = framework.core.get_cuda_device_count()
+    elif framework.core.is_compiled_with_npu():
+        accelerators = framework.core.get_npu_device_count()
+    elif framework.core.is_compiled_with_xpu():
+        accelerators = framework.core.get_xpu_device_count()
+    elif framework.core.is_compiled_with_mlu():
+        accelerators = framework.core.get_mlu_device_count()
     else:
         accelerators = 0
 
@@ -591,9 +589,9 @@ def which_distributed_mode(args):
         return DistributeMode.COLLECTIVE
     else:
         if (
-            not fluid.core.is_compiled_with_cuda()
-            and not fluid.core.is_compiled_with_xpu()
-            and not fluid.core.is_compiled_with_mlu()
+            not framework.core.is_compiled_with_cuda()
+            and not framework.core.is_compiled_with_xpu()
+            and not framework.core.is_compiled_with_mlu()
         ):
             if args.servers:
                 logger.warning(

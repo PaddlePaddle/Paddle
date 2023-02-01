@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...fluid.initializer import Initializer
-from ...fluid.data_feeder import check_variable_and_dtype
-from ...fluid.core import VarDesc
-from ...fluid import framework
-from ...fluid.framework import _current_expected_place
-from paddle import in_dynamic_mode
+from paddle import _C_ops, in_dynamic_mode
 from paddle.utils import unique_name
-from paddle import _C_ops
+
 from ... import fluid
+from ...fluid import framework
+from ...fluid.core import VarDesc
+from ...fluid.data_feeder import check_variable_and_dtype
+from ...fluid.framework import _current_expected_place
+from ...fluid.initializer import Initializer
 
 __all__ = []
 
@@ -92,7 +92,7 @@ class Dirac(Initializer):
         assert groups > 0 and isinstance(
             groups, int
         ), " 'groups' must be a positive integer. "
-        super(Dirac, self).__init__()
+        super().__init__()
         self._groups = groups
 
     def __call__(self, var, block=None):

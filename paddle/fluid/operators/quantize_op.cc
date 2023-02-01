@@ -19,13 +19,13 @@
 namespace paddle {
 namespace operators {
 
-framework::OpKernelType QuantOp::GetExpectedKernelType(
+phi::KernelKey QuantOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-      ctx.GetPlace(),
-      phi::DataLayout::kMKLDNN,
-      framework::LibraryType::kMKLDNN);
+  return phi::KernelKey(
+      phi::Backend::ONEDNN,
+      phi::DataLayout::ONEDNN,
+      phi::TransToPhiDataType(
+          OperatorWithKernel::IndicateVarDataType(ctx, "Input")));
 }
 
 void QuantOpMaker::Make() {

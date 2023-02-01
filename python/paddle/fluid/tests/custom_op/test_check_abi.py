@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import os
+import unittest
 import warnings
 
 import paddle.utils.cpp_extension.extension_utils as utils
@@ -142,7 +142,7 @@ class TestCheckCompiler(TestABIBase):
 class TestRunCMDException(unittest.TestCase):
     def test_exception(self):
         for verbose in [True, False]:
-            with self.assertRaisesRegexp(RuntimeError, "Failed to run command"):
+            with self.assertRaisesRegex(RuntimeError, "Failed to run command"):
                 cmd = "fake cmd"
                 utils.run_cmd(cmd, verbose)
 

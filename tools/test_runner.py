@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+import importlib
 import os
 import sys
+import unittest
+from io import StringIO
+
 import paddle
 import paddle.fluid as fluid
-import importlib
 import paddle.fluid.core as core
-from io import StringIO
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 import static_mode_white_list

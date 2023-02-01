@@ -13,14 +13,15 @@
 # limitations under the License.
 
 import os
-import paddle.fluid as fluid
-from paddle.fluid import unique_name
-import paddle.fluid.core as core
+from collections import namedtuple
+
 import paddle
-from paddle.fluid.layer_helper import LayerHelper
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_optimizers.ascend import ascend_optimizer
-from collections import namedtuple
+from paddle.fluid import unique_name
+from paddle.fluid.layer_helper import LayerHelper
 
 Block = namedtuple('Block', ['program'])
 Loss = namedtuple('Loss', ['block'])

@@ -14,8 +14,8 @@
 
 import paddle
 import paddle.nn as nn
-
 from paddle.utils.download import get_weights_path_from_url
+
 from ..ops import ConvNormActivation
 
 __all__ = []
@@ -38,7 +38,7 @@ class DepthwiseSeparable(nn.Layer):
         stride,
         scale,
     ):
-        super(DepthwiseSeparable, self).__init__()
+        super().__init__()
 
         self._depthwise_conv = ConvNormActivation(
             in_channels,
@@ -92,7 +92,7 @@ class MobileNetV1(nn.Layer):
     """
 
     def __init__(self, scale=1.0, num_classes=1000, with_pool=True):
-        super(MobileNetV1, self).__init__()
+        super().__init__()
         self.scale = scale
         self.dwsl = []
         self.num_classes = num_classes

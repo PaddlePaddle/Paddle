@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from paddle.fluid import core
-from paddle.static import program_guard, Program
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
+import paddle
+from paddle.fluid import core
+from paddle.static import Program, program_guard
 
 
 class TestArangeOp(OpTest):
@@ -66,6 +68,12 @@ class TestInt64ArangeOp(TestArangeOp):
     def init_config(self):
         self.dtype = np.int64
         self.case = (-1, -10, -2)
+
+
+class TestZeroSizeArangeOp(TestArangeOp):
+    def init_config(self):
+        self.dtype = np.int32
+        self.case = (0, 0, 1)
 
 
 class TestArangeOpError(unittest.TestCase):

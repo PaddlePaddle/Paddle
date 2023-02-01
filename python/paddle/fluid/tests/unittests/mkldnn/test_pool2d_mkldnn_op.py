@@ -13,14 +13,16 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 from paddle.fluid.tests.unittests.test_pool2d_op import (
-    TestPool2D_Op,
     TestCase1,
     TestCase2,
     TestCase3,
     TestCase4,
     TestCase5,
+    TestPool2D_Op,
     avg_pool2D_forward_naive,
 )
 

@@ -223,7 +223,7 @@ def prepare_batch_data(
     return res
 
 
-class DataReader(object):
+class DataReader:
     def __init__(
         self,
         batch_size=4096,
@@ -339,7 +339,7 @@ class DataReader(object):
         return wrapper
 
 
-class ModelHyperParams(object):
+class ModelHyperParams:
     generate_neg_sample = False
     epoch = 100
     max_seq_len = 512

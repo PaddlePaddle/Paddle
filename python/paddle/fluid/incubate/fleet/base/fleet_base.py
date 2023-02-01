@@ -30,7 +30,7 @@ __all__ = ['Fleet', 'DistributedOptimizer']
 __all__ += mode.__all__
 
 
-class Fleet(object):
+class Fleet(metaclass=abc.ABCMeta):
     """
     Fleet is the base class, transpiler and pslib are implementation of Fleet.
 
@@ -40,8 +40,6 @@ class Fleet(object):
     Returns:
         None
     """
-
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, mode):
         self._is_initialized = False
@@ -268,7 +266,7 @@ class Fleet(object):
         pass
 
 
-class DistributedOptimizer(object):
+class DistributedOptimizer(metaclass=abc.ABCMeta):
     """
     DistributedOptimizer is a wrapper for paddle.fluid.optimizer
     A user should pass a paddle.fluid.optimizer to DistributedOptimizer
@@ -286,8 +284,6 @@ class DistributedOptimizer(object):
         None
 
     """
-
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, optimizer, strategy=None):
         if (

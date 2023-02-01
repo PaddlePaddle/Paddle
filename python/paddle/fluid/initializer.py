@@ -17,9 +17,7 @@ import functools
 from . import framework
 from . import core
 from .framework import (
-    _non_static_mode,
     in_dygraph_mode,
-    _in_legacy_dygraph,
     default_main_program,
     _current_expected_place,
 )
@@ -55,7 +53,7 @@ _global_weight_initializer_ = None
 _global_bias_initializer_ = None
 
 
-class Initializer(object):
+class Initializer:
     """Base class for variable initializers
 
     Defines the common interface of variable initializers.
@@ -152,16 +150,16 @@ class ConstantInitializer(Initializer):
             import paddle.fluid as fluid
             paddle.enable_static()
             x = fluid.data(name="data", shape=[8, 32, 32], dtype="float32")
-            fc = fluid.layers.fc(
-                input=x,
+            fc = paddle.static.nn.fc(
+                x,
                 size=10,
-                param_attr=fluid.initializer.Constant(value=2.0))
+                weight_attr=fluid.initializer.Constant(value=2.0))
 
     """
 
     def __init__(self, value=0.0, force_cpu=False):
         assert value is not None
-        super(ConstantInitializer, self).__init__()
+        super().__init__()
         self._value = value
         self._force_cpu = force_cpu
 
@@ -189,21 +187,6 @@ class ConstantInitializer(Initializer):
                 place = core.CPUPlace()
             _C_ops.full_(
                 var, var.shape, str(float(self._value)), var.dtype, place
-            )
-            return None
-        elif _in_legacy_dygraph():
-            _legacy_C_ops.fill_constant(
-                var,
-                'value',
-                float(self._value),
-                'force_cpu',
-                self._force_cpu,
-                'dtype',
-                int(var.dtype),
-                'str_value',
-                str(float(self._value)),
-                'shape',
-                var.shape,
             )
             return None
         else:
@@ -241,10 +224,12 @@ class UniformInitializer(Initializer):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+            paddle.enable_static()
             x = fluid.data(name='x', shape=[None, 1], dtype='float32')
-            fc = fluid.layers.fc(input=x, size=10,
-                param_attr=fluid.initializer.Uniform(low=-0.5, high=0.5))
+            fc = paddle.static.nn.fc(x, size=10,
+                weight_attr=fluid.initializer.Uniform(low=-0.5, high=0.5))
     """
 
     def __init__(
@@ -259,7 +244,7 @@ class UniformInitializer(Initializer):
         assert diag_val is not None
         if diag_num > 0 or diag_step > 0:
             assert diag_num > 0 and diag_step > 0
-        super(UniformInitializer, self).__init__()
+        super().__init__()
         self._low = low
         self._high = high
         self._seed = seed
@@ -307,46 +292,17 @@ class UniformInitializer(Initializer):
             out_dtype = var.dtype
             out_var = var
 
-        if framework._non_static_mode():
-            if in_dygraph_mode():
-                out_var = _C_ops.uniform(
-                    var.shape,
-                    out_dtype,
-                    self._low,
-                    self._high,
-                    self._seed,
-                    _current_expected_place(),
-                )
-            elif _in_legacy_dygraph():
-                out_var = _legacy_C_ops.uniform_random(
-                    'shape',
-                    var.shape,
-                    'min',
-                    self._low,
-                    'max',
-                    self._high,
-                    'seed',
-                    self._seed,
-                    'dtype',
-                    out_dtype,
-                    'diag_num',
-                    self._diag_num,
-                    'diag_step',
-                    self._diag_step,
-                    'diag_val',
-                    self._diag_val,
-                )
+        if in_dygraph_mode():
+            out_var = _C_ops.uniform(
+                var.shape,
+                out_dtype,
+                self._low,
+                self._high,
+                self._seed,
+                _current_expected_place(),
+            )
             if var.dtype == VarDesc.VarType.FP16:
-                if in_dygraph_mode():
-                    var_tmp = _C_ops.cast(out_var, var.dtype)
-                elif _in_legacy_dygraph():
-                    var_tmp = _legacy_C_ops.cast(
-                        out_var,
-                        'in_dtype',
-                        out_var.dtype,
-                        'out_dtype',
-                        var.dtype,
-                    )
+                var_tmp = _C_ops.cast(out_var, var.dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)
@@ -392,10 +348,12 @@ class NormalInitializer(Initializer):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+            paddle.enable_static()
             x = fluid.data(name="data", shape=[None, 32, 32], dtype="float32")
-            fc = fluid.layers.fc(input=x, size=10,
-                param_attr=fluid.initializer.Normal(loc=0.0, scale=2.0))
+            fc = paddle.static.nn.fc(x, size=10,
+                weight_attr=fluid.initializer.Normal(loc=0.0, scale=2.0))
 
     """
 
@@ -403,7 +361,7 @@ class NormalInitializer(Initializer):
         assert loc is not None
         assert scale is not None
         assert seed is not None
-        super(NormalInitializer, self).__init__()
+        super().__init__()
         self._mean = loc
         self._std_dev = scale
         self._seed = seed
@@ -446,24 +404,6 @@ class NormalInitializer(Initializer):
             out_var._share_underline_tensor_to(var)
             return None
 
-        if _in_legacy_dygraph():
-            out_var = _legacy_C_ops.gaussian_random(
-                'shape',
-                var.shape,
-                'dtype',
-                var.dtype,
-                'mean',
-                self._mean,
-                'std',
-                self._std_dev,
-                'seed',
-                self._seed,
-                'use_mkldnn',
-                False,
-            )
-
-            out_var._share_underline_tensor_to(var)
-            return None
         else:
             op = block.append_op(
                 type="gaussian_random",
@@ -493,17 +433,19 @@ class TruncatedNormalInitializer(Initializer):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+            paddle.enable_static()
             x = fluid.data(name='x', shape=[None, 1], dtype='float32')
-            fc = fluid.layers.fc(input=x, size=10,
-                param_attr=fluid.initializer.TruncatedNormal(loc=0.0, scale=2.0))
+            fc = paddle.static.nn.fc(x, size=10,
+                weight_attr=fluid.initializer.TruncatedNormal(loc=0.0, scale=2.0))
     """
 
     def __init__(self, loc=0.0, scale=1.0, seed=0):
         assert loc is not None
         assert scale is not None
         assert seed is not None
-        super(TruncatedNormalInitializer, self).__init__()
+        super().__init__()
         self._mean = loc
         self._std_dev = scale
         self._seed = seed
@@ -559,27 +501,6 @@ class TruncatedNormalInitializer(Initializer):
                 out_var._share_underline_tensor_to(var)
             return None
 
-        if _in_legacy_dygraph():
-            out_var = _legacy_C_ops.truncated_gaussian_random(
-                'shape',
-                var.shape,
-                'dtype',
-                out_dtype,
-                'mean',
-                self._mean,
-                'std',
-                self._std_dev,
-                'seed',
-                self._seed,
-            )
-            if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
-                var_tmp = _legacy_C_ops.cast(
-                    out_var, 'in_dtype', out_var.dtype, 'out_dtype', var.dtype
-                )
-                var_tmp._share_underline_tensor_to(var)
-            else:
-                out_var._share_underline_tensor_to(var)
-            return None
         else:
             op = block.append_op(
                 type="truncated_gaussian_random",
@@ -642,18 +563,20 @@ class XavierInitializer(Initializer):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+            paddle.enable_static()
             queries = fluid.data(name='x', shape=[None,1], dtype='float32')
-            fc = fluid.layers.fc(
-                input=queries, size=10,
-                param_attr=fluid.initializer.Xavier(uniform=False))
+            fc = paddle.static.nn.fc(
+                x=queries, size=10,
+                weight_attr=fluid.initializer.Xavier(uniform=False))
 
     """
 
     def __init__(self, uniform=True, fan_in=None, fan_out=None, seed=0):
         assert uniform is not None
         assert seed is not None
-        super(XavierInitializer, self).__init__()
+        super().__init__()
         self._uniform = uniform
         self._fan_in = fan_in
         self._fan_out = fan_out
@@ -707,66 +630,29 @@ class XavierInitializer(Initializer):
             out_dtype = var.dtype
             out_var = var
 
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             if self._uniform:
                 limit = math.sqrt(6.0 / float(fan_in + fan_out))
-                if in_dygraph_mode():
-                    out_var = _C_ops.uniform(
-                        out_var.shape,
-                        out_dtype,
-                        -limit,
-                        limit,
-                        self._seed,
-                        _current_expected_place(),
-                    )
-                elif _in_legacy_dygraph():
-                    out_var = _legacy_C_ops.uniform_random(
-                        'shape',
-                        out_var.shape,
-                        'min',
-                        -limit,
-                        'max',
-                        limit,
-                        'seed',
-                        self._seed,
-                        'dtype',
-                        out_dtype,
-                    )
+                out_var = _C_ops.uniform(
+                    out_var.shape,
+                    out_dtype,
+                    -limit,
+                    limit,
+                    self._seed,
+                    _current_expected_place(),
+                )
             else:
                 std = math.sqrt(2.0 / float(fan_in + fan_out))
 
-                if in_dygraph_mode():
-                    place = _current_expected_place()
-                    out_var = _C_ops.gaussian(
-                        out_var.shape, 0.0, std, self._seed, out_dtype, place
-                    )
-                else:
-                    out_var = _legacy_C_ops.gaussian_random(
-                        'shape',
-                        out_var.shape,
-                        'dtype',
-                        out_dtype,
-                        'mean',
-                        0.0,
-                        'std',
-                        std,
-                        'seed',
-                        self._seed,
-                    )
+                place = _current_expected_place()
+                out_var = _C_ops.gaussian(
+                    out_var.shape, 0.0, std, self._seed, out_dtype, place
+                )
 
             if var.dtype == VarDesc.VarType.FP16 or (
                 var.dtype == VarDesc.VarType.BF16 and not self._uniform
             ):
-                if in_dygraph_mode():
-                    var_tmp = _C_ops.cast(out_var, var.dtype)
-                elif _in_legacy_dygraph():
-                    var_tmp = _legacy_C_ops.cast(
-                        out_var,
-                        'in_dtype',
-                        out_var.dtype,
-                        'out_dtype',
-                        var.dtype,
-                    )
+                var_tmp = _C_ops.cast(out_var, var.dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)
@@ -854,8 +740,8 @@ class MSRAInitializer(Initializer):
             import paddle.fluid as fluid
             paddle.enable_static()
             x = fluid.data(name="data", shape=[8, 32, 32], dtype="float32")
-            fc = fluid.layers.fc(input=x, size=10,
-                param_attr=fluid.initializer.MSRA(uniform=False))
+            fc = paddle.static.nn.fc(x, size=10,
+                weight_attr=fluid.initializer.MSRA(uniform=False))
 
     """
 
@@ -870,7 +756,7 @@ class MSRAInitializer(Initializer):
         """Constructor for MSRAInitializer"""
         assert uniform is not None
         assert seed is not None
-        super(MSRAInitializer, self).__init__()
+        super().__init__()
         self._uniform = uniform
         self._fan_in = fan_in
         self._seed = seed
@@ -918,67 +804,30 @@ class MSRAInitializer(Initializer):
             out_dtype = var.dtype
             out_var = var
 
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             if self._uniform:
                 gain = calculate_gain(self._nonlinearity, self._negative_slope)
                 limit = gain * math.sqrt(3.0 / float(fan_in))
-                if in_dygraph_mode():
-                    out_var = _C_ops.uniform(
-                        var.shape,
-                        out_dtype,
-                        -limit,
-                        limit,
-                        self._seed,
-                        _current_expected_place(),
-                    )
-                else:
-                    out_var = _legacy_C_ops.uniform_random(
-                        'shape',
-                        out_var.shape,
-                        'min',
-                        -limit,
-                        'max',
-                        limit,
-                        'seed',
-                        self._seed,
-                        'dtype',
-                        int(out_dtype),
-                    )
+                out_var = _C_ops.uniform(
+                    var.shape,
+                    out_dtype,
+                    -limit,
+                    limit,
+                    self._seed,
+                    _current_expected_place(),
+                )
             else:
                 gain = calculate_gain(self._nonlinearity, self._negative_slope)
                 std = gain / math.sqrt(float(fan_in))
-                if in_dygraph_mode():
-                    place = _current_expected_place()
-                    out_var = _C_ops.gaussian(
-                        out_var.shape, 0.0, std, self._seed, out_dtype, place
-                    )
-                else:
-                    out_var = _legacy_C_ops.gaussian_random(
-                        'shape',
-                        out_var.shape,
-                        'dtype',
-                        int(out_dtype),
-                        'mean',
-                        0.0,
-                        'std',
-                        std,
-                        'seed',
-                        self._seed,
-                    )
+                place = _current_expected_place()
+                out_var = _C_ops.gaussian(
+                    out_var.shape, 0.0, std, self._seed, out_dtype, place
+                )
 
             if var.dtype == VarDesc.VarType.FP16 or (
                 var.dtype == VarDesc.VarType.BF16 and not self._uniform
             ):
-                if in_dygraph_mode():
-                    var_tmp = _C_ops.cast(out_var, var.dtype)
-                elif _in_legacy_dygraph():
-                    var_tmp = _legacy_C_ops.cast(
-                        out_var,
-                        'in_dtype',
-                        out_var.dtype,
-                        'out_dtype',
-                        var.dtype,
-                    )
+                var_tmp = _C_ops.cast(out_var, var.dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)
@@ -1077,7 +926,7 @@ class BilinearInitializer(Initializer):
 
     def __init__(self):
         """Constructor for BilinearInitializer."""
-        super(BilinearInitializer, self).__init__()
+        super().__init__()
 
     def forward(self, var, block=None):
         """Initialize the input tensor with Bilinear initialization.
@@ -1145,40 +994,20 @@ class BilinearInitializer(Initializer):
         if np.prod(shape) > 1024 * 1024:
             raise ValueError("The size of input is too big. ")
 
-        if framework._non_static_mode():
-            if in_dygraph_mode():
-                _C_ops.assign_value_(
-                    out_var,
-                    list(shape),
-                    out_dtype,
-                    values,
-                    _current_expected_place(),
-                )
-            elif _in_legacy_dygraph():
-                _legacy_C_ops.assign_value(
-                    out_var,
-                    'shape',
-                    list(shape),
-                    'dtype',
-                    out_dtype,
-                    value_name,
-                    values,
-                )
+        if in_dygraph_mode():
+            _C_ops.assign_value_(
+                out_var,
+                list(shape),
+                out_dtype,
+                values,
+                _current_expected_place(),
+            )
             if var.dtype in [
                 VarDesc.VarType.FP16,
                 VarDesc.VarType.BF16,
                 VarDesc.VarType.FP64,
             ]:
-                if in_dygraph_mode():
-                    var_tmp = _C_ops.cast(out_var, var.dtype)
-                elif _in_legacy_dygraph():
-                    var_tmp = _legacy_C_ops.cast(
-                        out_var,
-                        'in_dtype',
-                        out_var.dtype,
-                        'out_dtype',
-                        var.dtype,
-                    )
+                var_tmp = _C_ops.cast(out_var, var.dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)
@@ -1223,18 +1052,20 @@ class NumpyArrayInitializer(Initializer):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             import numpy
+            paddle.enable_static()
             x = fluid.data(name="x", shape=[2, 1], dtype='float32')
-            fc = fluid.layers.fc(input=x, size=10,
-                param_attr=fluid.initializer.NumpyArrayInitializer(numpy.array([1,2])))
+            fc = paddle.static.nn.fc(x, size=10,
+                weight_attr=fluid.initializer.NumpyArrayInitializer(numpy.array([1,2])))
     """
 
     def __init__(self, value):
         import numpy
 
         assert isinstance(value, numpy.ndarray)
-        super(NumpyArrayInitializer, self).__init__()
+        super().__init__()
         self._value = value
 
     def forward(self, var, block=None):
@@ -1285,36 +1116,16 @@ class NumpyArrayInitializer(Initializer):
                 "saving it to file and 'load_op' to load it"
             )
 
-        if framework._non_static_mode():
-            if in_dygraph_mode():
-                _C_ops.assign_value_(
-                    out_var,
-                    list(self._value.shape),
-                    out_dtype,
-                    values,
-                    _current_expected_place(),
-                )
-            elif _in_legacy_dygraph():
-                _legacy_C_ops.assign_value(
-                    out_var,
-                    'shape',
-                    list(self._value.shape),
-                    'dtype',
-                    out_dtype,
-                    value_name,
-                    values,
-                )
+        if in_dygraph_mode():
+            _C_ops.assign_value_(
+                out_var,
+                list(self._value.shape),
+                out_dtype,
+                values,
+                _current_expected_place(),
+            )
             if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
-                if in_dygraph_mode():
-                    var_tmp = _C_ops.cast(out_var, var.dtype)
-                elif _in_legacy_dygraph():
-                    var_tmp = _legacy_C_ops.cast(
-                        out_var,
-                        'in_dtype',
-                        out_var.dtype,
-                        'out_dtype',
-                        var.dtype,
-                    )
+                var_tmp = _C_ops.cast(out_var, var.dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)
@@ -1481,10 +1292,11 @@ def calculate_gain(nonlinearity, param=None):
 # We short the class name, since users will use the initializer with the package
 # name. The sample code:
 #
+# import paddle
 # import paddle.fluid as fluid
 #
-# hidden = fluid.layers.fc(...,
-#                          param_attr=ParamAttr(fluid.initializer.Xavier()))
+# hidden = paddle.static.nn.fc(...,
+#                          weight_attr=ParamAttr(fluid.initializer.Xavier()))
 #
 # It is no need to add an `Initializer` as the class suffix
 Constant = ConstantInitializer

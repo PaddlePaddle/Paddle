@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import numpy as np
 import random
-import paddle.distributed as dist
-import paddle.fluid as fluid
-import paddle.distributed.fleet as fleet
 import unittest
+
+import numpy as np
+
+import paddle
+import paddle.distributed as dist
+import paddle.distributed.fleet as fleet
+import paddle.fluid as fluid
 
 
 def set_random_seed(seed, dp_id, rank_id):
@@ -71,7 +73,7 @@ class SimpleMPNet(fluid.dygraph.Layer):
         np_fc2,
         mp_id,
     ):
-        super(SimpleMPNet, self).__init__()
+        super().__init__()
 
         if mp_id == 0:
             init_fc1_data = np_fc1[:, : (inner_size // 2)]
@@ -131,7 +133,7 @@ class SimpleDPNet(fluid.dygraph.Layer):
         self, vocab_size, hidden_size, inner_size, output_size, np_fc1, np_fc2
     ):
 
-        super(SimpleDPNet, self).__init__()
+        super().__init__()
         self.linear1 = paddle.nn.Linear(
             hidden_size,
             inner_size,

@@ -17,7 +17,7 @@
 #include <limits>
 
 #include "paddle/fluid/operators/jit/registry.h"
-#include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 
 namespace paddle {
 namespace operators {
@@ -172,7 +172,7 @@ bool CRFDecodingKernel::CanBeUsed(const int& d) const {
 #else
   constexpr int block = YMM_FLOAT_BLOCK;
 #endif
-  return platform::MayIUse(platform::avx) && d >= block;
+  return phi::backends::cpu::MayIUse(phi::backends::cpu::avx) && d >= block;
 }
 
 }  // namespace intrinsic

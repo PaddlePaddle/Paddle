@@ -19,10 +19,11 @@ http://www.fit.vutbr.cz/~imikolov/rnnlm/ and parse training set and test set
 into paddle reader creators.
 """
 
-import paddle.dataset.common
-import paddle.utils.deprecated as deprecated
 import collections
 import tarfile
+
+import paddle.dataset.common
+import paddle.utils.deprecated as deprecated
 
 __all__ = []
 
@@ -31,7 +32,7 @@ URL = 'https://dataset.bj.bcebos.com/imikolov%2Fsimple-examples.tgz'
 MD5 = '30177ea32e27c525793142b6bf2c8e2d'
 
 
-class DataType(object):
+class DataType:
     NGRAM = 1
     SEQ = 2
 

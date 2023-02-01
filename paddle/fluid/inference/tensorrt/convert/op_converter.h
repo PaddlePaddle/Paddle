@@ -151,6 +151,7 @@ class OpConverter {
               platform::errors::Unimplemented("no OpConverter for optype [%s]",
                                               op_desc.Type()));
         }
+        // lookup_table_v2 == lookup_table
         if (op_desc.Type() == "lookup_table_v2") {
           it = Registry<OpConverter>::Global().Lookup("lookup_table");
           PADDLE_ENFORCE_NOT_NULL(

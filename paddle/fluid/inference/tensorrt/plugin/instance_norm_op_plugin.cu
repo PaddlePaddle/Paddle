@@ -131,6 +131,115 @@ int InstanceNormPlugin::enqueue(int batch_size,
   return cudaGetLastError() != cudaSuccess;
 }
 
+int InstanceNormPluginDynamic::initialize() TRT_NOEXCEPT { return 0; }
+
+nvinfer1::DimsExprs InstanceNormPluginDynamic::getOutputDimensions(
+    int index,
+    const nvinfer1::DimsExprs *inputs,
+    int nbInputs,
+    nvinfer1::IExprBuilder &expr_builder) TRT_NOEXCEPT {
+  assert(nbInputs == 1);
+  assert(index < this->getNbOutputs());
+  nvinfer1::DimsExprs output(inputs[0]);
+  return output;
+}
+
+bool InstanceNormPluginDynamic::supportsFormatCombination(
+    int pos,
+    const nvinfer1::PluginTensorDesc *inOut,
+    int nbInputs,
+    int nbOutputs) TRT_NOEXCEPT {
+  assert(inOut && pos < (nbInputs + nbOutputs));
+  assert(pos == 0 || pos == 1);
+  return ((inOut[pos].type == nvinfer1::DataType::kFLOAT ||
+           inOut[pos].type == nvinfer1::DataType::kHALF) &&
+          (inOut[pos].format == nvinfer1::PluginFormat::kLINEAR) &&
+          inOut[pos].type == inOut[0].type);
+}
+
+int InstanceNormPluginDynamic::enqueue(
+    const nvinfer1::PluginTensorDesc *inputDesc,
+    const nvinfer1::PluginTensorDesc *outputDesc,
+    const void *const *inputs,
+    void *const *outputs,
+    void *workspace,
+    cudaStream_t stream) TRT_NOEXCEPT {
+  nvinfer1::Dims input_dims = inputDesc[0].dims;
+  int n = input_dims.d[0];
+  int c = input_dims.d[1];
+  int h = input_dims.d[2];
+  int w = input_dims.d[3];
+
+  scale_t.Resize(phi::make_ddim({n, c}));
+  bias_t.Resize(phi::make_ddim({n, c}));
+  int device_id;
+  cudaGetDevice(&device_id);
+  float *scale_d = scale_t.mutable_data<float>(platform::CUDAPlace(device_id));
+  float *bias_d = bias_t.mutable_data<float>(platform::CUDAPlace(device_id));
+
+  for (int i = 0; i < n; i++) {
+    cudaMemcpyAsync(scale_d + i * c,
+                    scale_.data(),
+                    sizeof(float) * c,
+                    cudaMemcpyHostToDevice,
+                    stream);
+    cudaMemcpyAsync(bias_d + i * c,
+                    bias_.data(),
+                    sizeof(float) * c,
+                    cudaMemcpyHostToDevice,
+                    stream);
+  }
+  platform::dynload::cudnnSetTensor4dDescriptor(
+      b_desc_, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, 1, n * c, 1, 1);
+
+  cudnnDataType_t cudnn_dtype;
+  auto data_type = inputDesc[0].type;
+  convert_trt2cudnn_dtype(data_type, &cudnn_dtype);
+  platform::dynload::cudnnSetTensor4dDescriptor(
+      x_desc_, CUDNN_TENSOR_NCHW, cudnn_dtype, 1, n * c, h, w);
+  platform::dynload::cudnnSetTensor4dDescriptor(
+      y_desc_, CUDNN_TENSOR_NCHW, cudnn_dtype, 1, n * c, h, w);
+  float alpha = 1;
+  float beta = 0;
+  platform::dynload::cudnnSetStream(handle_, stream);
+
+  void const *x_ptr = inputs[0];
+  void *y_ptr = outputs[0];
+  platform::dynload::cudnnBatchNormalizationForwardTraining(
+      handle_,
+      CUDNN_BATCHNORM_SPATIAL_PERSISTENT,
+      &alpha,
+      &beta,
+      x_desc_,
+      x_ptr,
+      y_desc_,
+      y_ptr,
+      b_desc_,
+      scale_d,
+      bias_d,
+      1.,
+      nullptr,
+      nullptr,
+      eps_,
+      nullptr,
+      nullptr);
+  return cudaGetLastError() != cudaSuccess;
+}
+
+nvinfer1::DataType InstanceNormPluginDynamic::getOutputDataType(
+    int index,
+    const nvinfer1::DataType *inputTypes,
+    int nbInputs) const TRT_NOEXCEPT {
+  assert(inputTypes && nbInputs > 0 && index == 0);
+  return inputTypes[0];
+}
+
+void InstanceNormPluginDynamic::configurePlugin(
+    const nvinfer1::DynamicPluginTensorDesc *in,
+    int nbInputs,
+    const nvinfer1::DynamicPluginTensorDesc *out,
+    int nbOutputs) TRT_NOEXCEPT {}
+
 }  // namespace plugin
 }  // namespace tensorrt
 }  // namespace inference

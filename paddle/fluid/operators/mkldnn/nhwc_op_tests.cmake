@@ -8,6 +8,7 @@ cc_test_old(
   shape_op
   crop_op
   activation_op
+  generated_op
   pooling
   transpose_op
   scope

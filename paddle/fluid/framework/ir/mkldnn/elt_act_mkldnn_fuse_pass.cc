@@ -16,9 +16,9 @@
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/mkldnn_reuse.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/phi/backends/onednn/onednn_reuse.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -27,7 +27,7 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void ElementwiseActivationOneDNNPass::ApplyImpl(Graph *graph) const {
-  auto act_types = paddle::platform::GetSupportedActivations();
+  auto act_types = phi::funcs::GetSupportedActivations();
   std::vector<std::string> elt_types = {
       "elementwise_add", "elementwise_sub", "elementwise_mul"};
 
@@ -76,7 +76,7 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
     }
 
     auto *activation_op = activation->Op();
-    auto attr_map = paddle::platform::GetAttributeMap(act_type);
+    auto attr_map = phi::funcs::GetAttributeMap(act_type);
     for (const auto &attr : attr_map) {
       if (activation_op->HasAttr(attr.first)) {
         elementwise_op->SetAttr(attr.second,

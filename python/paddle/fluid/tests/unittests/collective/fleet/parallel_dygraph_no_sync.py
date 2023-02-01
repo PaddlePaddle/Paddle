@@ -13,19 +13,20 @@
 # limitations under the License.
 
 import os
-import numpy as np
 import random
 
-import paddle
-import paddle.fluid as fluid
-import paddle.distributed as dist
-from paddle.fluid.dygraph.nn import Linear
+import numpy as np
 from test_dist_base import (
+    TestParallelDyGraphRunnerBase,
     print_to_err,
     print_to_out,
     runtime_main,
-    TestParallelDyGraphRunnerBase,
 )
+
+import paddle
+import paddle.distributed as dist
+import paddle.fluid as fluid
+from paddle.nn import Linear
 
 seed = 90
 RUN_STEP = 20
@@ -35,10 +36,10 @@ batch_num = 1000
 
 class SimpleNet(fluid.Layer):
     def __init__(self):
-        super(SimpleNet, self).__init__()
-        self.net_a = Linear(input_dim=10, output_dim=20)
-        self.net_b = Linear(input_dim=20, output_dim=5)
-        self.net_c = Linear(input_dim=5, output_dim=10)
+        super().__init__()
+        self.net_a = Linear(10, 20)
+        self.net_b = Linear(20, 5)
+        self.net_c = Linear(5, 10)
 
     def forward(self, x):
         x = self.net_a(x)

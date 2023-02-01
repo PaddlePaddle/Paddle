@@ -17,8 +17,8 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/backends/dynload/cupti_lib_path.h"
+#include "paddle/phi/core/enforce.h"
 
 #if defined(_WIN32)
 #include <windows.h>
@@ -216,6 +216,7 @@ static inline void* GetDsoHandleFromDefaultPath(const std::string& dso_path,
                                                 int dynload_flags) {
   // default search from LD_LIBRARY_PATH/DYLD_LIBRARY_PATH
   // and /usr/local/lib path
+  std::cout << dso_path << std::endl;
   void* dso_handle = dlopen(dso_path.c_str(), dynload_flags);
   VLOG(3) << "Try to find library: " << dso_path
           << " from default system path.";
@@ -428,6 +429,7 @@ void* GetCusparseDsoHandle() {
   return GetDsoHandleFromSearchPath(
       FLAGS_cuda_dir, win_cusparse_lib, true, {cuda_lib_path});
 #else
+  std::cout << FLAGS_cuda_dir << std::endl;
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusparse.so");
 #endif
 }
@@ -467,6 +469,20 @@ void* GetWarpCTCDsoHandle() {
   return GetDsoHandleFromSearchPath(warpctc_dir, "warpctc.dll");
 #else
   return GetDsoHandleFromSearchPath(warpctc_dir, "libwarpctc.so");
+#endif
+}
+
+void* GetWarpRNNTDsoHandle() {
+  std::string warprnnt_dir = "";
+  if (!s_py_site_pkg_path.path.empty()) {
+    warprnnt_dir = s_py_site_pkg_path.path;
+  }
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(warprnnt_dir, "libwarprnnt.dylib");
+#elif defined(_WIN32)
+  return GetDsoHandleFromSearchPath(warprnnt_dir, "warprnnt.dll");
+#else
+  return GetDsoHandleFromSearchPath(warprnnt_dir, "libwarprnnt.so");
 #endif
 }
 

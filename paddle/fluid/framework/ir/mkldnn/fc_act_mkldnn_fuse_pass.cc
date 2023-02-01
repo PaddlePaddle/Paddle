@@ -15,8 +15,8 @@
 #include "paddle/fluid/framework/ir/mkldnn/fc_act_mkldnn_fuse_pass.h"
 
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/platform/mkldnn_reuse.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/phi/backends/onednn/onednn_reuse.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -25,7 +25,7 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void FuseFCActOneDNNPass::ApplyImpl(Graph *graph) const {
-  auto act_types = paddle::platform::GetSupportedActivations();
+  auto act_types = phi::funcs::GetSupportedActivations();
 
   for (auto act_type : act_types) FuseFCAct(graph, act_type);
 }
@@ -61,7 +61,7 @@ void FuseFCActOneDNNPass::FuseFCAct(Graph *graph,
               "is used."));
     }
 
-    auto attr_map = paddle::platform::GetAttributeMap(act_type);
+    auto attr_map = phi::funcs::GetAttributeMap(act_type);
     for (const auto &attr : attr_map) {
       if (act_op->HasAttr(attr.first)) {
         fc_op->SetAttr(attr.second, act_op->GetAttr(attr.first));

@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..nn import Layer
+from paddle import _C_ops, _legacy_C_ops
+
+from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..fluid.framework import _non_static_mode, in_dygraph_mode
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.data_feeder import check_variable_and_dtype, check_type
-from paddle import _C_ops, _legacy_C_ops
+from ..nn import Layer
 
 __all__ = ['viterbi_decode', 'ViterbiDecoder']
 
@@ -135,7 +136,7 @@ class ViterbiDecoder(Layer):
     """
 
     def __init__(self, transitions, include_bos_eos_tag=True, name=None):
-        super(ViterbiDecoder, self).__init__()
+        super().__init__()
         self.transitions = transitions
         self.include_bos_eos_tag = include_bos_eos_tag
         self.name = name

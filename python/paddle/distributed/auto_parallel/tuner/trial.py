@@ -19,8 +19,8 @@ import hashlib
 import random
 import time
 
-from .storable import Storable
 from .recorder import MetricsRecorder
+from .storable import Storable
 from .tunable_space import TunableSpace
 
 
@@ -121,7 +121,7 @@ class OptimizationTunerTrial(Trial):
         trial_id=None,
         status=TrialStatus.RUNNING,
     ):
-        super(OptimizationTunerTrial, self).__init__(config, trial_id, status)
+        super().__init__(config, trial_id, status)
         self._name = name
         self._changed_configs = changed_configs
 

@@ -15,8 +15,8 @@
 import numpy as np
 
 import paddle
-from paddle.io import Dataset
 from paddle.dataset.common import _check_exists_and_download
+from paddle.io import Dataset
 
 __all__ = []
 
@@ -63,7 +63,7 @@ class UCIHousing(Dataset):
 
             class SimpleNet(paddle.nn.Layer):
                 def __init__(self):
-                    super(SimpleNet, self).__init__()
+                    super().__init__()
 
                 def forward(self, feature, target):
                     return paddle.sum(feature), target

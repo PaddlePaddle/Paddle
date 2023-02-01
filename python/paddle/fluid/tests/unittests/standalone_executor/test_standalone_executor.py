@@ -15,16 +15,17 @@
 import os
 
 os.environ['FLAGS_use_stream_safe_cuda_allocator'] = "true"
-import sys
-import shutil
-import unittest
-import paddle
 import json
+import shutil
+import sys
+import unittest
+
+import numpy as np
+
+import paddle
 from paddle.fluid import core, framework
 from paddle.fluid.core import StandaloneExecutor
 from paddle.profiler import profiler
-
-import numpy as np
 
 paddle.enable_static()
 

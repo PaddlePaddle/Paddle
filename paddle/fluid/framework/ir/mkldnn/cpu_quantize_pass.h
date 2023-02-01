@@ -49,8 +49,10 @@ class CPUQuantizePass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
 
-  void QuantizeConv(Graph* graph, bool with_residual_data = false) const;
-  void QuantizeFc(Graph* graph) const;
+  void QuantizeConv(Graph* graph,
+                    const std::string& conv_type,
+                    bool with_residual_data) const;
+  void QuantizeFc(Graph* graph, bool with_residual_data) const;
   void QuantizePool(Graph* graph) const;
   void QuantizeConcat(Graph* graph) const;
   void QuantizePriorBox(Graph* graph) const;
@@ -90,6 +92,14 @@ class CPUQuantizePass : public FusePassBase {
                         double scale_to_one,
                         bool is_unsigned,
                         std::string scale_attr_name = "") const;
+
+  // quantize all outputs of given name
+  void DequantizeOutputs(Graph* g,
+                         Node* op,
+                         std::string output_name,
+                         double scale_to_one,
+                         bool is_unsigned,
+                         std::string scale_attr_name = "") const;
 
   bool AreScalesPresentForVarNames(std::vector<std::string> names) const;
   bool AreScalesPresentForNodes(std::initializer_list<Node*> nodes) const;

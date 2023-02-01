@@ -13,17 +13,19 @@
 # limitations under the License.
 
 import os
-import unittest
 import tempfile
-import numpy as np
-from op_test import OpTest
-import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-import paddle.inference as paddle_infer
+import unittest
+
 import gradient_checker
+import numpy as np
 from decorator_helper import prog_scope
+from op_test import OpTest
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle.fluid.layers as layers
+import paddle.inference as paddle_infer
 
 
 class TestCumsumOp(unittest.TestCase):
@@ -371,7 +373,7 @@ class BadInputTest(unittest.TestCase):
 
             def test_bad_x():
                 data = [1, 2, 4]
-                result = fluid.layers.cumsum(data, axis=0)
+                result = paddle.cumsum(data, axis=0)
 
             self.assertRaises(TypeError, test_bad_x)
 

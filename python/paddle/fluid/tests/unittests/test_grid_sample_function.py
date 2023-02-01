@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import numpy as np
+
 import paddle
-from paddle import fluid
 import paddle.fluid.dygraph as dg
 import paddle.nn.functional as F
-import unittest
+from paddle import fluid
 
 
 class GridSampleTestCase(unittest.TestCase):
@@ -30,7 +32,7 @@ class GridSampleTestCase(unittest.TestCase):
         padding_mode="zeros",
         align_corners=False,
     ):
-        super(GridSampleTestCase, self).__init__(methodName)
+        super().__init__(methodName)
         self.padding_mode = padding_mode
         self.x_shape = x_shape
         self.grid_shape = grid_shape

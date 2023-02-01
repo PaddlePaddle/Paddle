@@ -115,7 +115,7 @@ def output_vars_on_path(path):
     return vars
 
 
-class VarMap(object):
+class VarMap:
     """A general map data structure for linking variables to variables.
 
     An example is linking variables to their gradients.
@@ -180,7 +180,7 @@ class VarMap(object):
 
 
 # TODO(lml): supporting control flow, nested blocks, and block other than current block of main program.
-class Transform(object):
+class Transform:
     """An object that maintains the state of transformations applied to a
     primitve program."""
 
@@ -547,7 +547,7 @@ def _lower(block, reverse, blacklist):
 def orig2prim(block=None):
     """
     Note:
-        **This API is ONLY available in the static mode.**
+        **This API is ONLY available in the static graph mode.**
         **Args block must be None or current block of main program.**
 
     All operators in the target block are processed as follows.
@@ -572,7 +572,7 @@ def orig2prim(block=None):
 def prim2orig(block=None, blacklist=None):
     """
     Note:
-        **ONLY available in the static mode.**
+        **ONLY available in the static graph mode.**
         **Args block must be None or current block of main program.**
 
     All operators in the target block are processed as follows.

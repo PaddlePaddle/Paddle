@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import signal
 import subprocess
-import os, sys, signal, time
+import sys
+import time
 
 
-class ProcessContext(object):
+class ProcessContext:
     def __init__(
         self,
         cmd,

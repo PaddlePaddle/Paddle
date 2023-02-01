@@ -193,7 +193,6 @@ void LayerNorm(const std::vector<LayerNormParamType<T>> &scale,
                           bias_opt,
                           1e-5,
                           1,
-                          false,
                           tensor_y,
                           tensor_mean,
                           tensor_variance);

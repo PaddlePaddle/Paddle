@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from hybrid_parallel_mp_model import TestDistMPTraning
 import unittest
+
+from hybrid_parallel_mp_model import TestDistMPTraning
+
+import paddle
 
 # log = logging.getLogger("HybridParallel")
 # log.setLevel(logging.WARNING)

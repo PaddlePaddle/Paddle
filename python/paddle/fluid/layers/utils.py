@@ -25,10 +25,7 @@ from ..data_feeder import (
 from ..layer_helper import LayerHelper
 from sys import version_info
 
-try:
-    from collections.abc import Sequence
-except:
-    from collections import Sequence
+from collections.abc import Sequence
 
 
 def convert_to_list(value, n, name, dtype=int):
@@ -487,7 +484,7 @@ def try_set_static_shape_tensor(tensor, shape):
 
     """
     if not _non_static_mode():
-        # static mode, and shape is not all inferred (contains -1)
+        # static graph mode, and shape is not all inferred (contains -1)
         if -1 in tensor.shape:
             if isinstance(shape, Variable):
                 shape = try_get_constant_shape_from_tensor(shape)

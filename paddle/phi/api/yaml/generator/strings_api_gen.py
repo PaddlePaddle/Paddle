@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import yaml
 import argparse
 
+import yaml
 from api_gen import ForwardAPI
 
 PREFIX_TENSOR_NAME = 'input_'
@@ -23,7 +23,7 @@ PREFIX_META_TENSOR_NAME = 'meta_'
 
 class StringsAPI(ForwardAPI):
     def __init__(self, api_item_yaml):
-        super(StringsAPI, self).__init__(api_item_yaml)
+        super().__init__(api_item_yaml)
 
     def get_api_func_name(self):
         return self.api
@@ -31,7 +31,7 @@ class StringsAPI(ForwardAPI):
     def gene_api_declaration(self):
         return f"""
 // {", ".join(self.outputs['names'])}
-{super(StringsAPI, self).gene_api_declaration()}
+{super().gene_api_declaration()}
 """
 
     def get_kernel_tensor_out_type(self, output_name):
@@ -210,6 +210,9 @@ class StringsAPI(ForwardAPI):
   VLOG(6) << "{self.api} api strings kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
   auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "{self.kernel['func'][0]}", {{kernel_backend, kernel_layout, kernel_data_type}});
+  if (FLAGS_low_precision_op_list) {{
+    phi::KernelFactory::Instance().AddToLowPrecisionKernelList("{self.api}", kernel_data_type);
+  }}
   const auto& kernel = kernel_result.kernel;
   VLOG(6) << "{self.api} api strings kernel: " << kernel;
 
@@ -334,6 +337,8 @@ def source_include(header_file_path):
 #include "paddle/phi/api/lib/api_registry.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/core/kernel_registry.h"
+
+DECLARE_int32(low_precision_op_list);
 """
 
 

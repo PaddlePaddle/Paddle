@@ -62,14 +62,16 @@ void MaskedSelectKernel(const Context& dev_ctx,
   auto input_shape = vectorize<int>(input_dim);
   auto mask_shape = vectorize<int>(mask_dim);
 
-  PADDLE_ENFORCE_XDNN_SUCCESS(xpu::masked_select(dev_ctx.x_context(),
-                                                 input_data,
-                                                 mask_data,
-                                                 out_data,
-                                                 input_shape,
-                                                 mask_shape,
-                                                 out_size_cpu),
-                              "masked_select");
+  if (out_size_cpu > 0) {
+    PADDLE_ENFORCE_XDNN_SUCCESS(xpu::masked_select(dev_ctx.x_context(),
+                                                   input_data,
+                                                   mask_data,
+                                                   out_data,
+                                                   input_shape,
+                                                   mask_shape,
+                                                   out_size_cpu),
+                                "masked_select");
+  }
 }
 
 }  // namespace phi

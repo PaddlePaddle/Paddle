@@ -32,8 +32,6 @@
 
 namespace paddle {
 namespace operators {
-using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
 
 template <typename T>
 using Vector = framework::Vector<T>;
@@ -42,11 +40,11 @@ template <typename T>
 class ShuffleBatchKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *x = context.Input<LoDTensor>("X");
-    auto *seed = context.Input<LoDTensor>("Seed");
-    auto *out = context.Output<LoDTensor>("Out");
-    auto *shuffleidx = context.Output<LoDTensor>("ShuffleIdx");
-    auto *seed_out = context.Output<LoDTensor>("SeedOut");
+    auto *x = context.Input<phi::DenseTensor>("X");
+    auto *seed = context.Input<phi::DenseTensor>("Seed");
+    auto *out = context.Output<phi::DenseTensor>("Out");
+    auto *shuffleidx = context.Output<phi::DenseTensor>("ShuffleIdx");
+    auto *seed_out = context.Output<phi::DenseTensor>("SeedOut");
 
     auto x_embed_size = x->dims()[x->dims().size() - 1];
     auto elem_size = 1;
@@ -128,9 +126,11 @@ template <typename T>
 class ShuffleBatchGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *out_grad = context.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto *shuffleidx = context.Input<LoDTensor>("ShuffleIdx");
-    auto *x_grad = context.Output<LoDTensor>(framework::GradVarName("X"));
+    auto *out_grad =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto *shuffleidx = context.Input<phi::DenseTensor>("ShuffleIdx");
+    auto *x_grad =
+        context.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     auto embed_size = out_grad->dims()[out_grad->dims().size() - 1];
     auto elem_size = 1;

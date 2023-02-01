@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import os
+
+from test_collective_base_xpu import TestCollectiveRunnerBase, runtime_main
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import core
 import paddle.fluid.layers as layers
-from test_collective_base_xpu import TestCollectiveRunnerBase, runtime_main
+from paddle.fluid import core
 
 paddle.enable_static()
 

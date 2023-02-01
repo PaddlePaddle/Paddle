@@ -45,7 +45,7 @@ __global__ void GraphSendUVGradCUDAKernel(const T* out_grad,
     const T* out_grad_off = out_grad + ty * slice_size;
     T* x_grad_off = x_grad + dst * slice_size;
     while (tx < slice_size) {
-      paddle::platform::CudaAtomicAdd(x_grad_off + tx, out_grad_off[tx]);
+      phi::CudaAtomicAdd(x_grad_off + tx, out_grad_off[tx]);
       tx += stride_x;
     }
     ty += stride_y;
@@ -127,7 +127,7 @@ void CalculateGrad(const Context& ctx,
     const auto& bcast_info = phi::CalcBCastInfo(y.dims(), out_grad_dims);
     thrust::device_vector<int64_t> l_bcastoff, r_bcastoff;
     if (bcast_info.use_bcast) {
-      CopyBCastOff(bcast_info, l_bcastoff, r_bcastoff);
+      CopyBCastOff(bcast_info, &l_bcastoff, &r_bcastoff);
     }
     int64_t out_len = bcast_info.out_len;
     const int ntx = FindNumThreads(out_len, ctx.GetMaxThreadsPerBlock());

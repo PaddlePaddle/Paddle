@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import collections
 import math
+import unittest
+
+import numpy as np
 from op_test import OpTest
 
 
@@ -271,7 +272,7 @@ class TestDetectionMAPOp(OpTest):
 
 class TestDetectionMAPOpSkipDiff(TestDetectionMAPOp):
     def init_test_case(self):
-        super(TestDetectionMAPOpSkipDiff, self).init_test_case()
+        super().init_test_case()
 
         self.evaluate_difficult = False
 
@@ -289,7 +290,7 @@ class TestDetectionMAPOpSkipDiff(TestDetectionMAPOp):
 
 class TestDetectionMAPOpWithoutDiff(TestDetectionMAPOp):
     def init_test_case(self):
-        super(TestDetectionMAPOpWithoutDiff, self).init_test_case()
+        super().init_test_case()
 
         # label xmin ymin xmax ymax
         self.label = [
@@ -302,14 +303,14 @@ class TestDetectionMAPOpWithoutDiff(TestDetectionMAPOp):
 
 class TestDetectionMAPOp11Point(TestDetectionMAPOp):
     def init_test_case(self):
-        super(TestDetectionMAPOp11Point, self).init_test_case()
+        super().init_test_case()
 
         self.ap_type = "11point"
 
 
 class TestDetectionMAPOpMultiBatch(TestDetectionMAPOp):
     def init_test_case(self):
-        super(TestDetectionMAPOpMultiBatch, self).init_test_case()
+        super().init_test_case()
         self.class_pos_count = [0, 2, 1, 0]
         self.true_pos_lod = [[0, 3, 2]]
         self.true_pos = [

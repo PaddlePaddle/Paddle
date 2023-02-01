@@ -14,13 +14,14 @@
 
 import os
 import unittest
-import paddle
+
 import numpy as np
-from paddle.utils.cpp_extension import load, get_build_directory
-from paddle.utils.cpp_extension.extension_utils import run_cmd
-from utils import IS_MAC, extra_cc_args, extra_nvcc_args, paddle_includes
 from test_custom_relu_op_setup import custom_relu_dynamic, custom_relu_static
-from paddle.fluid.framework import _test_eager_guard
+from utils import IS_MAC, extra_cc_args, extra_nvcc_args, paddle_includes
+
+import paddle
+from paddle.utils.cpp_extension import get_build_directory, load
+from paddle.utils.cpp_extension.extension_utils import run_cmd
 
 # Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
@@ -83,7 +84,7 @@ class TestJITLoad(unittest.TestCase):
                         ),
                     )
 
-    def func_dynamic(self):
+    def test_dynamic(self):
         for device in self.devices:
             for dtype in self.dtypes:
                 if device == 'cpu' and dtype == 'float16':
@@ -111,12 +112,7 @@ class TestJITLoad(unittest.TestCase):
                         ),
                     )
 
-    def test_dynamic(self):
-        with _test_eager_guard():
-            self.func_dynamic()
-        self.func_dynamic()
-
-    def func_exception(self):
+    def test_exception(self):
         caught_exception = False
         try:
             x = np.random.uniform(-1, 1, [4, 8]).astype('int32')
@@ -140,11 +136,6 @@ class TestJITLoad(unittest.TestCase):
             self.assertTrue("int32" in str(e))
             self.assertTrue("custom_relu_op.cu" in str(e))
         self.assertTrue(caught_exception)
-
-    def test_exception(self):
-        with _test_eager_guard():
-            self.func_exception()
-        self.func_exception()
 
     def test_load_multiple_module(self):
         custom_module = load(

@@ -13,20 +13,22 @@
 # limitations under the License.
 
 import os
+import unittest
+
+import numpy as np
+from dist_pass_test_base import DistPassTestBase
+
 import paddle
 import paddle.distributed.fleet as fleet
-import numpy as np
 import paddle.nn as nn
-from paddle.distributed.passes import new_pass, PassManager
-import unittest
-from dist_pass_test_base import DistPassTestBase
+from paddle.distributed.passes import PassManager, new_pass
 
 paddle.enable_static()
 
 
 class ReluDepthwiseConvNet(nn.Layer):
     def __init__(self):
-        super(ReluDepthwiseConvNet, self).__init__()
+        super().__init__()
 
         self.conv1 = nn.Conv2D(3, 9, (3, 3))
         self.relu = nn.ReLU()

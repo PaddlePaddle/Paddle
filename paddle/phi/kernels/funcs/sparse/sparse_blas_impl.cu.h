@@ -109,7 +109,7 @@ inline void CreateCsrDescriptor(const phi::SparseCsrTensor& x,
 #else
     PADDLE_THROW(phi::errors::Unimplemented(
         "Batch Sparse matmul use 'cusparseCsrSetStridedBatch', which is "
-        "supported from CUDA 11.7"));
+        "supported from CUDA 11.8"));
 #endif
   }
 }
@@ -163,7 +163,7 @@ inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
 #else
     PADDLE_THROW(phi::errors::Unimplemented(
         "Batch Sparse matmul use 'cusparseCooSetStridedBatch', which is "
-        "supported from CUDA 11.7"));
+        "supported from CUDA 11.8"));
 #endif
   }
 }
@@ -249,7 +249,7 @@ class CuSparseDnMatDescriptor {
 #else
       PADDLE_THROW(phi::errors::Unimplemented(
           "Batch Sparse matmul use 'cusparseDnMatSetStridedBatch', which is "
-          "supported from CUDA 11.7"));
+          "supported from CUDA 11.8"));
 #endif
     }
     VLOG(6) << "Create cusparseDnMatDescr_t " << &descriptor_;

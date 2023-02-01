@@ -12,16 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from functools import partial
-from typing import Optional
-from typing import Union
+from typing import Optional, Union
 
 import paddle
 import paddle.nn as nn
 from paddle import Tensor
 
-from ..functional import compute_fbank_matrix
-from ..functional import create_dct
-from ..functional import power_to_db
+from ..functional import compute_fbank_matrix, create_dct, power_to_db
 from ..functional.window import get_window
 
 
@@ -72,7 +69,7 @@ class Spectrogram(nn.Layer):
         pad_mode: str = 'reflect',
         dtype: str = 'float32',
     ) -> None:
-        super(Spectrogram, self).__init__()
+        super().__init__()
 
         assert power > 0, 'Power of spectrogram must be > 0.'
         self.power = power
@@ -163,7 +160,7 @@ class MelSpectrogram(nn.Layer):
         norm: Union[str, float] = 'slaney',
         dtype: str = 'float32',
     ) -> None:
-        super(MelSpectrogram, self).__init__()
+        super().__init__()
 
         self._spectrogram = Spectrogram(
             n_fft=n_fft,
@@ -269,7 +266,7 @@ class LogMelSpectrogram(nn.Layer):
         top_db: Optional[float] = None,
         dtype: str = 'float32',
     ) -> None:
-        super(LogMelSpectrogram, self).__init__()
+        super().__init__()
 
         self._melspectrogram = MelSpectrogram(
             sr=sr,
@@ -374,7 +371,7 @@ class MFCC(nn.Layer):
         top_db: Optional[float] = None,
         dtype: str = 'float32',
     ) -> None:
-        super(MFCC, self).__init__()
+        super().__init__()
         assert (
             n_mfcc <= n_mels
         ), 'n_mfcc cannot be larger than n_mels: %d vs %d' % (n_mfcc, n_mels)

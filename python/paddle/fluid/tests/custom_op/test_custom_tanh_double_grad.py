@@ -14,14 +14,14 @@
 
 import os
 import unittest
+
 import numpy as np
+from utils import extra_cc_args, extra_nvcc_args, paddle_includes
 
 import paddle
 import paddle.fluid as fluid
-from paddle.utils.cpp_extension import load, get_build_directory
+from paddle.utils.cpp_extension import get_build_directory, load
 from paddle.utils.cpp_extension.extension_utils import run_cmd
-from utils import paddle_includes, extra_cc_args, extra_nvcc_args
-from paddle.fluid.framework import _test_eager_guard
 
 # Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
@@ -67,7 +67,8 @@ class TestCustomTanhDoubleGradJit(unittest.TestCase):
         self.dtypes = ['float32', 'float64']
         self.devices = ['cpu']
 
-    def func_double_grad_dynamic(self):
+    def test_double_grad_dynamic(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         for device in self.devices:
             for dtype in self.dtypes:
                 x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
@@ -101,12 +102,6 @@ class TestCustomTanhDoubleGradJit(unittest.TestCase):
                         dout, pd_dout
                     ),
                 )
-
-    def test_func_double_grad_dynamic(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        with _test_eager_guard():
-            self.func_double_grad_dynamic()
-        self.func_double_grad_dynamic()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 

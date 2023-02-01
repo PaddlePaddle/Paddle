@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import tempfile
 import unittest
 
-import os
 import numpy as np
-import tempfile
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
@@ -71,7 +72,7 @@ class TestBase(IPUOpTest):
                 image = paddle.static.data(
                     name='image', shape=[1, 3, 10, 10], dtype='float32'
                 )
-                bias = paddle.fluid.layers.create_parameter(
+                bias = paddle.create_parameter(
                     shape=[1, 3, 10, 10], is_bias=True, dtype='float32'
                 )
                 add1 = image + bias

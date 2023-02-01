@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from paddle.distribution import constraint
 
 
-class Variable(object):
+class Variable:
     """Random variable of probability distribution.
 
     Args:
@@ -44,12 +45,12 @@ class Variable(object):
 
 class Real(Variable):
     def __init__(self, event_rank=0):
-        super(Real, self).__init__(False, event_rank, constraint.real)
+        super().__init__(False, event_rank, constraint.real)
 
 
 class Positive(Variable):
     def __init__(self, event_rank=0):
-        super(Positive, self).__init__(False, event_rank, constraint.positive)
+        super().__init__(False, event_rank, constraint.positive)
 
 
 class Independent(Variable):
@@ -64,7 +65,7 @@ class Independent(Variable):
     def __init__(self, base, reinterpreted_batch_rank):
         self._base = base
         self._reinterpreted_batch_rank = reinterpreted_batch_rank
-        super(Independent, self).__init__(
+        super().__init__(
             base.is_discrete, base.event_rank + reinterpreted_batch_rank
         )
 

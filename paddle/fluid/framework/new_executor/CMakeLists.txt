@@ -3,7 +3,7 @@ add_subdirectory(interpreter)
 add_subdirectory(workqueue)
 
 set(STANDALONE_EXECUTOR_SRCS interpretercore.cc new_executor_defs.cc
-                             stream_analyzer.cc standalone_executor.cc)
+                             standalone_executor.cc)
 
 set(STANDALONE_EXECUTOR_DEPS interpreter interpretercore_garbage_collector
                              workqueue)

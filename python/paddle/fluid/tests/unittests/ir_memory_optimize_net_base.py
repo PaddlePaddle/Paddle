@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
 import os
 import sys
-import unittest
 import time
-import math
+import unittest
+
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid import compiler
 
 # open eager delete mode
@@ -139,12 +140,12 @@ class TestIrMemOptBase(BuildIrMemOptBase):
                     self.network
                 )
 
-                self.assertAlmostEquals(
+                self.assertAlmostEqual(
                     np.mean(baseline_last_loss),
                     np.mean(cur_last_loss),
                     delta=1e-6,
                 )
-                self.assertAlmostEquals(
+                self.assertAlmostEqual(
                     np.mean(baseline_first_loss),
                     np.mean(cur_first_loss),
                     delta=1e-6,

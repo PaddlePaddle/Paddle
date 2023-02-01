@@ -12,25 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import warnings
 
-import os
-import paddle.fluid as fluid
+from google.protobuf import text_format
+
+import paddle
 from paddle.distributed import fleet
-from paddle.fluid import core
-from paddle.distributed.ps.utils.public import *  # noqa: F403
-from paddle.fluid.framework import Program
-from paddle.fluid.compiler import CompiledProgram
-from paddle.fluid.executor import Executor
-from paddle.fluid.parallel_executor import ParallelExecutor
-from paddle.distributed.fleet.runtime.runtime_base import RuntimeBase
+from paddle.distributed.communicator import Communicator, HeterClient
 from paddle.distributed.fleet.base.private_helper_function import (
     wait_server_ready,
 )
 from paddle.distributed.fleet.proto import the_one_ps_pb2
-from paddle.fluid.communicator import Communicator, HeterClient
-from google.protobuf import text_format
+from paddle.distributed.fleet.runtime.runtime_base import RuntimeBase
 from paddle.distributed.ps.coordinator import Coordinator
+from paddle.distributed.ps.utils.public import *  # noqa: F403
+from paddle.framework import core
+from paddle.static import CompiledProgram, Executor, ParallelExecutor, Program
 
 __all__ = [
     'Table',
@@ -129,7 +127,7 @@ class Service:
 
 class GpuService(Service):
     def __init__(self):
-        super(GpuService, self).__init__()
+        super().__init__()
 
     def _set(self, service_proto):
         service_proto.server_class = 'PsLocalServer'
@@ -285,7 +283,7 @@ class Accessor:
 
 class CommonAccessor(Accessor):
     def __init__(self):
-        super(CommonAccessor, self).__init__()
+        super().__init__()
         self.table_name = ''
         self.entry = 'none'
         self.attrs = []
@@ -633,7 +631,7 @@ class Table:
 
 class BarrierTable(Table):
     def __init__(self, context, idx):
-        super(BarrierTable, self).__init__()
+        super().__init__()
         self.type = None
         self.shard_num = 256
         self.accessor.accessor_class = 'CommMergeAccessor'
@@ -668,7 +666,7 @@ class BarrierTable(Table):
 
 class TensorTable(Table):
     def __init__(self, idx, tensor_dict, role_maker):
-        super(TensorTable, self).__init__()
+        super().__init__()
         self.idx = idx
         self.tensor_dict = tensor_dict
         self.role_maker = role_maker
@@ -691,7 +689,7 @@ class TensorTable(Table):
 
 class SparseTable(Table):
     def __init__(self, context, send_ctx):
-        super(SparseTable, self).__init__()
+        super().__init__()
         self.context = context
         self.ctx = send_ctx
         self.type = None
@@ -800,7 +798,7 @@ class SparseTable(Table):
 
 class GeoSparseTable(SparseTable):
     def __init__(self, context, send_ctx):
-        super(GeoSparseTable, self).__init__(context, send_ctx)
+        super().__init__(context, send_ctx)
         self.table_class = "MemorySparseGeoTable"
         if self.context['ps_mode'] != DistributedMode.GEO:
             raise ValueError("not geo sparse table!")
@@ -835,7 +833,7 @@ class GeoSparseTable(SparseTable):
 
 class DenseTable(Table):
     def __init__(self, context, send_ctx):
-        super(DenseTable, self).__init__()
+        super().__init__()
         self.context = context
         self.ctx = send_ctx
         self.accessor = Accessor()
@@ -879,7 +877,7 @@ class Server:
 
 class DownpourServer(Server):
     def __init__(self):
-        super(DownpourServer, self).__init__()
+        super().__init__()
 
     def _set(self):
         pass
@@ -895,7 +893,7 @@ class Worker:
 
 class DownpourWorker(Worker):
     def __init__(self):
-        super(DownpourWorker, self).__init__()
+        super().__init__()
 
     def _set(self):
         pass
@@ -914,7 +912,7 @@ class fsClient:
         proto.hadoop_bin = self.fs_client_param.hadoop_bin
 
 
-class PsDescBuilder(object):
+class PsDescBuilder:
     def __init__(self, context):
         self.context = context
         self.is_sync = context['is_sync']
@@ -1032,10 +1030,10 @@ class PsDescBuilder(object):
 
 class TheOnePSRuntime(RuntimeBase):
     def __init__(self):
-        super(TheOnePSRuntime, self).__init__()
+        super().__init__()
         self._communicator = None
         self._server = None
-        self._worker = fluid.core.DistFleetWrapper()
+        self._worker = core.DistFleetWrapper()
         self._coordinator = None
         self._server_sub_program = []
         self._heter_client = None
@@ -1092,7 +1090,7 @@ class TheOnePSRuntime(RuntimeBase):
         self.string_hosts = []
         for idx, ep in enumerate(self.endpoints):
             host, port = ep.split(":")
-            pshost = fluid.core.PSHost(host, int(port), idx)
+            pshost = core.PSHost(host, int(port), idx)
             self.string_hosts.append(pshost.serialize_to_string())
 
         self.with_coordinator = self.role_maker._with_coordinator
@@ -1102,7 +1100,7 @@ class TheOnePSRuntime(RuntimeBase):
             coordinator_endpoints = self.role_maker._get_coordinator_endpoints()
             for idx, ep in enumerate(coordinator_endpoints):
                 ip, port = ep.split(":")
-                pshost = fluid.core.PSHost(ip, int(port), idx)
+                pshost = core.PSHost(ip, int(port), idx)
                 self.coordinator_hosts.append(pshost.serialize_to_string())
 
         self.ps_desc_builder = PsDescBuilder(self.context)
@@ -1173,7 +1171,7 @@ class TheOnePSRuntime(RuntimeBase):
             gpus_env = os.getenv("FLAGS_selected_gpus")
             gpus_env = [int(s) for s in gpus_env.split(",")]
             main_program._fleet_opt["worker_places"] = gpus_env
-            PSGPU = fluid.core.PSGPU()
+            PSGPU = core.PSGPU()
             PSGPU.init_gpu_ps(gpus_env)
 
         def sync_strategy_envs():
@@ -1241,7 +1239,7 @@ class TheOnePSRuntime(RuntimeBase):
                 dense_map,
                 worker_desc,
                 self.string_hosts,
-                fluid.global_scope(),
+                paddle.static.global_scope(),
             )
         fleet.util.barrier()
 
@@ -1273,7 +1271,7 @@ class TheOnePSRuntime(RuntimeBase):
                 raise ValueError(
                     "You must set the scope list when you have Multiple programs"
                 )
-            scopes = [fluid.global_scope()]
+            scopes = [paddle.static.global_scope()]
         if len(self.origin_main_programs) != len(scopes):
             raise VauleError("len(programs) != len(scopes)")
 
@@ -1350,7 +1348,7 @@ class TheOnePSRuntime(RuntimeBase):
         if self.debug:
             print("server_desc: \n{}".format(server_desc))
 
-        self._server = fluid.core.DistFleetWrapper()
+        self._server = core.DistFleetWrapper()
         self._server.init_server(
             server_desc,
             self.string_hosts,
@@ -1633,11 +1631,17 @@ class TheOnePSRuntime(RuntimeBase):
         fleet.util.barrier()
         return feasign_num
 
+    def _save_cache_table(self, table_id, pass_id, mem_cache_key_threshold):
+        if self.role_maker._is_first_worker():
+            self._worker.save_cache_table(
+                table_id, pass_id, mem_cache_key_threshold
+            )
+        fleet.util.barrier()
+
     def _check_save_pre_patch_done(self):
         fleet.util.barrier()
         if self.role_maker._is_first_worker():
             self._worker.check_save_pre_patch_done()
-        fleet.util.barrier()
 
     def _load_sparse_params(self, dirname, context, main_program, mode):
         distributed_varnames = get_sparse_tablenames(

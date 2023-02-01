@@ -82,7 +82,7 @@ def case_generator(op_type, Xshape, diagonal, expected):
             paddle.enable_static()
 
             data = fluid.data(shape=Xshape, dtype='float64', name=cls_name)
-            with self.assertRaisesRegexp(
+            with self.assertRaisesRegex(
                 eval(expected.split(':')[-1]), errmsg[expected]
             ):
                 getattr(tensor, op_type)(x=data, diagonal=diagonal)
@@ -184,7 +184,7 @@ class TestTrilTriuOpAPI(unittest.TestCase):
             with program_guard(prog, startup_prog):
                 data = np.random.random([1, 9, 9, 4]).astype(dtype)
                 x = fluid.data(shape=[1, 9, -1, 4], dtype=dtype, name='x')
-                triu_out = fluid.layers.triu(x)
+                triu_out = paddle.triu(x)
 
                 place = fluid.MLUPlace(0)
                 exe = fluid.Executor(place)

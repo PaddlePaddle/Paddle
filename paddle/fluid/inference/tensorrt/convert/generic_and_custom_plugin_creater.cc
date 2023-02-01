@@ -182,6 +182,8 @@ class GenericPluginCreater : public OpConverter {
           phi::DefaultKernelSignatureMap::Instance().Get(op_desc.Type());
     }
 
+    bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+
     plugin::GenericPlugin::InputOutPutVarInfo in_out_info;
 
     for (auto &param_name : phi_kernel_signature.input_names) {
@@ -218,7 +220,8 @@ class GenericPluginCreater : public OpConverter {
         in_out_info.outputs_data_type.push_back(var->GetDataType());
       }
     }
-    plugin::GenericPlugin *plugin = new plugin::GenericPlugin(op, in_out_info);
+    plugin::GenericPlugin *plugin =
+        new plugin::GenericPlugin(op, in_out_info, with_fp16);
     layer = engine_->AddDynamicPlugin(inputs.data(), inputs.size(), plugin);
 
     RreplenishLayerAndOutput(layer, op_desc.Type(), output_names, test_mode);

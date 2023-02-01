@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import paddle
 import paddle.nn as nn
 from paddle.incubate.nn.layer.fused_transformer import (
-    FusedMultiHeadAttention,
     FusedFeedForward,
+    FusedMultiHeadAttention,
 )
-import unittest
 
 
 class PreModel(nn.Layer):
     def __init__(self):
-        super(PreModel, self).__init__()
+        super().__init__()
         self.attn = FusedMultiHeadAttention(
             embed_dim=1024,
             num_heads=16,
@@ -40,7 +41,7 @@ class PreModel(nn.Layer):
 
 class PostModel(nn.Layer):
     def __init__(self):
-        super(PostModel, self).__init__()
+        super().__init__()
         self.attn = FusedMultiHeadAttention(
             embed_dim=1024,
             num_heads=16,

@@ -45,7 +45,7 @@ from multiprocessing import Process, Manager
 __all__ = ["TrainerFactory", "FetchHandlerMonitor"]
 
 
-class TrainerFactory(object):
+class TrainerFactory:
     """
     Create trainer and device worker.
     If opt_info is not None, it will get configs from opt_info,
@@ -91,6 +91,13 @@ class TrainerFactory(object):
                     and len(opt_info.get("dump_fields_path")) != 0
                 ):
                     trainer._set_dump_fields_path(opt_info["dump_fields_path"])
+                if (
+                    opt_info.get("user_define_dump_filename") is not None
+                    and len(opt_info.get("user_define_dump_filename")) != 0
+                ):
+                    trainer._set_user_define_dump_filename(
+                        opt_info["user_define_dump_filename"]
+                    )
                 if opt_info.get("dump_file_num") is not None:
                     trainer._set_dump_file_num(opt_info["dump_file_num"])
                 if opt_info.get("dump_converter") is not None:
@@ -151,7 +158,7 @@ class TrainerFactory(object):
         return trainer
 
 
-class FetchHandlerMonitor(object):
+class FetchHandlerMonitor:
     """
     Defination of FetchHandlerMonitor class,
     it's for fetch handler.

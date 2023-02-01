@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import os
+import unittest
+
+import numpy as np
+from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
-from op_test import OpTest
 import paddle.fluid.core as core
 from paddle.fluid.dygraph.base import switch_to_static_graph
 
@@ -189,6 +191,25 @@ class TestScatterOp5(OpTest):
             self.check_grad_with_place(
                 place, ['X', 'Updates'], 'Out', check_eager=False
             )
+
+
+class TestScatterOp6(OpTest):
+    def setUp(self):
+        self.op_type = "scatter"
+        self.python_api = paddle.scatter
+        ref_np = np.ones((3, 50)).astype("float32")
+        index_np = np.array([[1], [2]]).astype("int32")
+        updates_np = np.random.random((2, 50)).astype("float32")
+        output_np = np.copy(ref_np)
+        output_np[np.array([1, 2]).astype("int32")] = updates_np
+        self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
+        self.outputs = {'Out': output_np}
+
+    def test_check_output(self):
+        self.check_output(check_eager=False)
+
+    def test_check_grad(self):
+        self.check_grad(["X", "Updates"], "Out", check_eager=False)
 
 
 class TestScatterAPI(unittest.TestCase):

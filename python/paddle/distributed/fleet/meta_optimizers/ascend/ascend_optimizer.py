@@ -12,19 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.optimizer import Optimizer
-import paddle.fluid.core as core
-from . import ascend_parser
-from paddle.distributed import fleet
-import hccl.manage.api as hccl
 from collections import namedtuple
+
+import hccl.manage.api as hccl
+
+import paddle.framework.core as core
+from paddle.distributed import fleet
+from paddle.optimizer import Optimizer
+
+from . import ascend_parser
 
 HcomGroupConfig = namedtuple('HcomGroupConfig', ['name', 'nranks', 'rank_ids'])
 
 __all__ = []
 
 
-class AscendIRParser(object):
+class AscendIRParser:
     def __init__(self, auto_dp=False, world_rank_size=1):
         self.graph_idx = 0
         self.hcom_endpoints = {}

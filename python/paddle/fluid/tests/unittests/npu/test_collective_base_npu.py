@@ -28,7 +28,7 @@ import paddle.fluid.unique_name as nameGen
 from paddle.fluid import core
 
 
-class TestCollectiveRunnerBase(object):
+class TestCollectiveRunnerBase:
     def get_model(self, train_prog, startup_prog):
         raise NotImplementedError(
             "get model should be implemented by child class."

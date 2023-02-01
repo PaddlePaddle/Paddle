@@ -41,8 +41,6 @@ class OpBase;
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 class ReshapeOp : public framework::OperatorWithKernel {
  public:
   ReshapeOp(const std::string &type,
@@ -60,6 +58,17 @@ class ReshapeOp : public framework::OperatorWithKernel {
                       true,
                       platform::errors::InvalidArgument(
                           "Output(Out) of ReshapeOp should not be null."));
+
+    if (ctx->IsRuntime()) {
+      auto *x_var =
+          PADDLE_GET(framework::Variable *, ctx->GetInputVarPtrs("X")[0]);
+      auto *out_var =
+          PADDLE_GET(framework::Variable *, ctx->GetOutputVarPtrs("Out")[0]);
+      // inplace, can not to run infer shape.
+      if (x_var == out_var) {
+        return;
+      }
+    }
 
     if (ctx->HasInputs("ShapeTensor")) {
       // top prority shape
@@ -116,11 +125,6 @@ class ReshapeOp : public framework::OperatorWithKernel {
       return;
     }
 
-    PADDLE_ENFORCE_EQ(!shape.empty(),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "The parameter 'shape' in ReshapeOp must be set. "
-                          "But received 'shape' is empty."));
     auto x_dims = ctx->GetInputDim("X");
     auto out_dims = ValidateShape(shape, x_dims);
     ctx->SetOutputDim("Out", out_dims);
@@ -253,23 +257,24 @@ class ReshapeOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
-      const Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const override {
+      const phi::DenseTensor &tensor,
+      const phi::KernelKey &expected_kernel_type) const override {
     if (var_name == "ShapeTensor") {
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
-    return framework::OpKernelType(
-        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+    return phi::KernelKey(
+        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
   }
 };
 
@@ -367,12 +372,11 @@ class ReshapeGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -518,19 +522,16 @@ class Reshape2Op : public ReshapeOp {
              const framework::AttributeMap &attrs)
       : ReshapeOp(type, inputs, outputs, attrs) {}
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("XShape"),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Output(XShape) of ReshapeOp should not be null."));
-    const auto &x_dims = ctx->GetInputDim("X");
-    std::vector<int64_t> xshape_dims(x_dims.size() + 1);
-    xshape_dims[0] = 0;
-    for (int i = 0; i < x_dims.size(); ++i) {
-      xshape_dims[i + 1] = x_dims[i];
+    if (ctx->HasOutput("XShape")) {
+      const auto &x_dims = ctx->GetInputDim("X");
+      std::vector<int64_t> xshape_dims(x_dims.size() + 1);
+      xshape_dims[0] = 0;
+      for (int i = 0; i < x_dims.size(); ++i) {
+        xshape_dims[i + 1] = x_dims[i];
+      }
+      ctx->SetOutputDim("XShape", phi::make_ddim(xshape_dims));
+      ctx->ShareLoD("X", /*->*/ "XShape");
     }
-    ctx->SetOutputDim("XShape", phi::make_ddim(xshape_dims));
-    ctx->ShareLoD("X", /*->*/ "XShape");
-
     ReshapeOp::InferShape(ctx);
   }
 };
@@ -613,23 +614,24 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
-
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
-      const Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const override {
+      const phi::DenseTensor &tensor,
+      const phi::KernelKey &expected_kernel_type) const override {
     if (var_name == "ShapeTensor") {
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
-    return framework::OpKernelType(
-        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+    return phi::KernelKey(
+        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
   }
 };
 
@@ -642,22 +644,23 @@ class Reshape2DoubleGradOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "DDX"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "DDX"),
+                          ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
-      const Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const override {
+      const phi::DenseTensor &tensor,
+      const phi::KernelKey &expected_kernel_type) const override {
     if (var_name == "ShapeTensor") {
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
-    return framework::OpKernelType(
-        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+    return phi::KernelKey(
+        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
   }
 };
 

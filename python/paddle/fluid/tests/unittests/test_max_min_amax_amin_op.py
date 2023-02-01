@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -134,6 +136,15 @@ class TestMaxMinAmaxAminAPI(unittest.TestCase):
         _test_dygraph('min')
 
     # test two minimum or maximum elements
+
+
+class TestMaxMinAmaxAminAPI_ZeroDim(TestMaxMinAmaxAminAPI):
+    def init_case(self):
+        self.x_np = np.array(0.5)
+        self.shape = []
+        self.dtype = 'float64'
+        self.axis = None
+        self.keepdim = False
 
 
 class TestMaxMinAmaxAminAPI2(TestMaxMinAmaxAminAPI):

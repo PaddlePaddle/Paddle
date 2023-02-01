@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import importlib
 import os
-import paddle
 import shlex
 import site
 import sys
-import importlib
 import unittest
+
 import numpy as np
+
+import paddle
 
 MODULE_NAME = "custom_raw_op_kernel_op_lib"
 

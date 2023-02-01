@@ -13,11 +13,12 @@
 # limitations under the License.
 
 from functools import reduce
+
 import paddle
 from paddle.static import Variable
 
 
-class EmbeddingLayer(object):
+class EmbeddingLayer:
     """
     Embedding Layer class
     """
@@ -37,11 +38,12 @@ class EmbeddingLayer(object):
         """
         # TODO(huihuangzheng): The original code set the is_sparse=True, but it
         # causes crush in dy2stat. Set it to True after fixing it.
-        emb = paddle.fluid.dygraph.Embedding(
-            size=[self.dict_size, self.emb_dim],
-            is_sparse=True,
+        emb = paddle.nn.Embedding(
+            self.dict_size,
+            self.emb_dim,
+            sparse=True,
             padding_idx=self.padding_idx,
-            param_attr=paddle.ParamAttr(
+            weight_attr=paddle.ParamAttr(
                 name=self.name,
                 initializer=paddle.nn.initializer.XavierUniform(),
             ),
@@ -50,7 +52,7 @@ class EmbeddingLayer(object):
         return emb
 
 
-class FCLayer(object):
+class FCLayer:
     """
     Fully Connect Layer class
     """
@@ -76,7 +78,7 @@ class FCLayer(object):
         return fc
 
 
-class ConcatLayer(object):
+class ConcatLayer:
     """
     Connection Layer class
     """
@@ -95,7 +97,7 @@ class ConcatLayer(object):
         return concat
 
 
-class ReduceMeanLayer(object):
+class ReduceMeanLayer:
     """
     Reduce Mean Layer class
     """
@@ -114,7 +116,7 @@ class ReduceMeanLayer(object):
         return mean
 
 
-class CosSimLayer(object):
+class CosSimLayer:
     """
     Cos Similarly Calculate Layer
     """
@@ -133,7 +135,7 @@ class CosSimLayer(object):
         return sim
 
 
-class ElementwiseMaxLayer(object):
+class ElementwiseMaxLayer:
     """
     Elementwise Max Layer class
     """
@@ -152,7 +154,7 @@ class ElementwiseMaxLayer(object):
         return max
 
 
-class ElementwiseAddLayer(object):
+class ElementwiseAddLayer:
     """
     Elementwise Add Layer class
     """
@@ -171,7 +173,7 @@ class ElementwiseAddLayer(object):
         return add
 
 
-class ElementwiseSubLayer(object):
+class ElementwiseSubLayer:
     """
     Elementwise Add Layer class
     """
@@ -186,11 +188,11 @@ class ElementwiseSubLayer(object):
         """
         operation
         """
-        sub = paddle.fluid.layers.elementwise_sub(x, y)
+        sub = paddle.subtract(x, y)
         return sub
 
 
-class ConstantLayer(object):
+class ConstantLayer:
     """
     Generate A Constant Layer class
     """
@@ -212,7 +214,7 @@ class ConstantLayer(object):
         return constant
 
 
-class SoftsignLayer(object):
+class SoftsignLayer:
     """
     Softsign Layer class
     """
@@ -307,7 +309,7 @@ class FC(paddle.nn.Layer):
         is_test=False,
         dtype="float32",
     ):
-        super(FC, self).__init__(dtype)
+        super().__init__(dtype)
 
         self._size = size
         self._num_flatten_dims = num_flatten_dims
@@ -425,7 +427,7 @@ class FC(paddle.nn.Layer):
         return self._helper.append_activation(pre_activation, act=self._act)
 
 
-class HingeLoss(object):
+class HingeLoss:
     """
     Hing Loss Calculate class
     """
@@ -466,7 +468,7 @@ class BOW(paddle.nn.Layer):
         """
         initialize
         """
-        super(BOW, self).__init__()
+        super().__init__()
         self.dict_size = conf_dict["dict_size"]
         self.task_mode = conf_dict["task_mode"]
         self.emb_dim = conf_dict["net"]["emb_dim"]
@@ -497,8 +499,8 @@ class BOW(paddle.nn.Layer):
             right_emb, shape=[-1, self.seq_len, self.bow_dim]
         )
 
-        bow_left = paddle.fluid.layers.reduce_sum(left_emb, dim=1)
-        bow_right = paddle.fluid.layers.reduce_sum(right_emb, dim=1)
+        bow_left = paddle.sum(left_emb, axis=1)
+        bow_right = paddle.sum(right_emb, axis=1)
         softsign_layer = SoftsignLayer()
         left_soft = softsign_layer.ops(bow_left)
         right_soft = softsign_layer.ops(bow_right)

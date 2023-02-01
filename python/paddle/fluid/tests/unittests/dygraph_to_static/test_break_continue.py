@@ -13,14 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.jit import declarative
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
-    ProgramTranslator,
-)
-from paddle.fluid.dygraph.dygraph_to_static.utils import Dygraph2StaticException
+from paddle.jit.api import to_static
+from paddle.jit.dy2static.program_translator import ProgramTranslator
+from paddle.jit.dy2static.utils import Dygraph2StaticException
 
 SEED = 2020
 np.random.seed(SEED)
@@ -36,7 +36,7 @@ class TestDy2staticException(unittest.TestCase):
         if self.dyfunc:
             with self.assertRaisesRegex(Dygraph2StaticException, self.error):
                 ProgramTranslator().enable(True)
-                self.assertTrue(declarative(self.dyfunc)(self.x))
+                self.assertTrue(to_static(self.dyfunc)(self.x))
         paddle.fluid.dygraph.base._in_declarative_mode_ = False
         ProgramTranslator().enable(False)
 
@@ -160,7 +160,7 @@ def test_for_in_else(x):
 
 
 def while_loop_class_var(x):
-    class Foo(object):
+    class Foo:
         def __init__(self):
             self.a = 3
             self.b = 4
@@ -223,7 +223,7 @@ class TestContinueInFor(unittest.TestCase):
 
     def run_static_mode(self):
         with fluid.dygraph.guard():
-            res = declarative(self.dygraph_func)(self.input)
+            res = to_static(self.dygraph_func)(self.input)
             return res.numpy()
 
     def test_transformed_static_result(self):
@@ -292,5 +292,4 @@ class TestOptimBreakInWhile(TestContinueInWhile):
 
 
 if __name__ == '__main__':
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

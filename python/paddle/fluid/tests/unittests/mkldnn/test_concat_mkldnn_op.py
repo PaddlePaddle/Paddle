@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest
 from paddle import enable_static
+from paddle.fluid.tests.unittests.op_test import OpTest
 
 
 class TestConcatAxis0OneDNNOp(OpTest):

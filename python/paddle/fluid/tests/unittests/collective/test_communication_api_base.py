@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import sys
-import tempfile
 import itertools
-import subprocess
 import os
 import shutil
+import subprocess
+import sys
+import tempfile
+import unittest
 
 
 class CommunicationTestDistBase(unittest.TestCase):

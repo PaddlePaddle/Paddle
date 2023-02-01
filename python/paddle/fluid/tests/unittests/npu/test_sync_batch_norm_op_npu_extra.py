@@ -79,7 +79,7 @@ class TestConvertSyncBatchNormCast1(unittest.TestCase):
     def test_convert(self):
         class Net(nn.Layer):
             def __init__(self):
-                super(Net, self).__init__()
+                super().__init__()
                 self.conv1 = nn.Conv2D(3, 5, 3)
                 self.bn = []
                 bn = self.add_sublayer('bn', nn.BatchNorm2D(5))

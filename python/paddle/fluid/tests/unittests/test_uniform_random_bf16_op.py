@@ -13,16 +13,19 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest, convert_uint16_to_float
+
 import paddle
+import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
-import paddle.fluid as fluid
 from paddle.fluid.tests.unittests.test_uniform_random_op import (
     output_hist,
     output_hist_diag,
 )
+from paddle.tensor import random
 
 
 class TestUniformRandomOpBF16(OpTest):
@@ -159,23 +162,6 @@ class TestUniformRandomOpBF16SelectedRowsWithDiagInit(
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
-class TestUniformRandomOpBF16AttrTensorAPI(unittest.TestCase):
-    def test_attr_tensor_API(self):
-        startup_program = fluid.Program()
-        train_program = fluid.Program()
-        with fluid.program_guard(train_program, startup_program):
-            dim_tensor = fluid.layers.fill_constant([1], "int64", 3)
-            ret = fluid.layers.nn.uniform_random(
-                [1, dim_tensor, 2], dtype=np.uint16
-            )
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-
-            exe.run(startup_program)
-            outs = exe.run(train_program, fetch_list=[ret])
-
-
 class TestUniformRandomOpAPISeed(unittest.TestCase):
     def test_attr_tensor_API(self):
         _seed = 10
@@ -186,13 +172,9 @@ class TestUniformRandomOpAPISeed(unittest.TestCase):
             _min = 5
             _max = 10
 
-            ret = fluid.layers.nn.uniform_random(
-                [2, 3, 2], min=_min, max=_max, seed=_seed
-            )
-            ret_2 = fluid.layers.nn.uniform_random(
-                [2, 3, 2], min=_min, max=_max, seed=_seed
-            )
-            res = fluid.layers.equal(ret, ret_2)
+            ret = paddle.uniform([2, 3, 2], min=_min, max=_max, seed=_seed)
+            ret_2 = paddle.uniform([2, 3, 2], min=_min, max=_max, seed=_seed)
+            res = paddle.equal(ret, ret_2)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
 
@@ -262,7 +244,7 @@ class TestUniformRandomBatchSizeLikeOpBF16API(unittest.TestCase):
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
             input = fluid.data(name="input", shape=[1, 3], dtype='uint16')
-            out_1 = fluid.layers.uniform_random_batch_size_like(
+            out_1 = random.uniform_random_batch_size_like(
                 input, [2, 4], dtype=np.uint16
             )  # out_1.shape=[1, 4]
 

@@ -91,7 +91,7 @@ def get_data_iter(batch_size, mode='train', cache_num=20):
             yield (src_ids, src_mask, tar_ids, tar_mask)
 
 
-class Seq2SeqModelHyperParams(object):
+class Seq2SeqModelHyperParams:
     # Whether use attention model
     attention = False
 

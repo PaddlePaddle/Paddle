@@ -13,17 +13,17 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
+import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
-    skip_check_grad_ci,
     convert_float_to_uint16,
+    skip_check_grad_ci,
 )
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestElementwiseAddOp(OpTest):
@@ -488,25 +488,6 @@ class TestElementwiseAddOp_same_shape_ysize_large(TestElementwiseAddOp):
         self.axis = 0
 
 
-class TestElementwiseAddOpError(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program(), Program()):
-            # the input of elementwise_add must be Variable.
-            x1 = fluid.create_lod_tensor(
-                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
-            )
-            y1 = fluid.create_lod_tensor(
-                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
-            )
-            self.assertRaises(TypeError, fluid.layers.elementwise_add, x1, y1)
-
-            # the input dtype of elementwise_add must be float16 or float32 or float64 or int32 or int64
-            # float16 only can be set on GPU place
-            x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="uint8")
-            y2 = fluid.layers.data(name='y2', shape=[3, 4, 5, 6], dtype="uint8")
-            self.assertRaises(TypeError, fluid.layers.elementwise_add, x2, y2)
-
-
 class TestAddApi(unittest.TestCase):
     def _executed_api(self, x, y, name=None):
         return paddle.add(x, y, name)
@@ -702,7 +683,7 @@ class TestBoolAddFloatElementwiseAddop(unittest.TestCase):
         self.assertTrue(c.dtype == core.VarDesc.VarType.FP32)
         paddle.enable_static()
 
-    def func_dygraph_add(self):
+    def test_dygraph_add(self):
         paddle.disable_static()
         a = 1.5
         b = paddle.full([2], True, dtype='bool')
@@ -733,10 +714,27 @@ class TestBoolAddFloatElementwiseAddop(unittest.TestCase):
 
         paddle.enable_static()
 
+
+class TestElementwiseAddop1(unittest.TestCase):
     def test_dygraph_add(self):
-        with _test_eager_guard():
-            self.func_dygraph_add()
-        self.func_dygraph_add()
+        paddle.disable_static()
+
+        np_a = np.random.random((2, 3, 4)).astype(np.float32)
+        np_b = np.random.random((2, 3, 4)).astype(np.float32)
+
+        tensor_a = paddle.to_tensor(np_a, dtype="float32")
+        tensor_b = paddle.to_tensor(np_b, dtype="float32")
+
+        # normal case: nparray + tenor
+        expect_out = np_a + np_b
+        actual_out = np_a + tensor_b
+        np.testing.assert_allclose(actual_out, expect_out)
+
+        # normal case: tensor + nparray
+        actual_out = tensor_a + np_b
+        np.testing.assert_allclose(actual_out, expect_out)
+
+        paddle.enable_static()
 
 
 if __name__ == '__main__':

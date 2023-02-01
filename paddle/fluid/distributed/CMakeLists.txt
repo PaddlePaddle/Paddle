@@ -1,6 +1,5 @@
 add_subdirectory(auto_parallel)
 add_subdirectory(collective)
-add_subdirectory(store)
 if(WITH_PYTHON)
   py_proto_compile(ps_py_proto SRCS the_one_ps.proto)
   add_custom_target(
@@ -40,7 +39,7 @@ endif()
 proto_library(ps_framework_proto SRCS the_one_ps.proto)
 
 set(DISTRIBUTE_COMPILE_FLAGS
-    "-Wno-error=unused-value -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
+    "-Wno-error=unused-value -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
 )
 
 if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)

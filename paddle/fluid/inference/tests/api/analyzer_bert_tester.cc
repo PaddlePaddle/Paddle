@@ -218,9 +218,6 @@ AnalysisConfig SetConfig(bool use_mkldnn, bool use_bfloat16) {
 
   if (use_mkldnn) {
     config.EnableMKLDNN();
-    config.pass_builder()->AppendPass("fc_mkldnn_pass");
-    config.pass_builder()->AppendPass("fc_act_mkldnn_fuse_pass");
-    config.pass_builder()->AppendPass("fc_elementwise_add_mkldnn_fuse_pass");
   }
 
   if (use_bfloat16) config.EnableMkldnnBfloat16();

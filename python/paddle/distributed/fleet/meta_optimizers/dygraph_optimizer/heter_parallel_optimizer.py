@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.dygraph import base as imperative_base
-from paddle.fluid import framework
+import paddle.autograd as imperative_base
+from paddle import framework
 
 __all__ = []
 
@@ -41,13 +41,13 @@ class HeterParallelOptimizer:
         # NOTE(liubo48): In pure DataParallel mode,
         # the gradient synchronization is achieved through reducer.
 
-    @imperative_base.no_grad
+    @imperative_base.no_grad()
     @framework.dygraph_only
     def step(self):
         parameters_list = _obtain_optimizer_parameters_list(self._inner_opt)
         self._inner_opt.step()
 
-    @imperative_base.no_grad
+    @imperative_base.no_grad()
     def minimize(
         self, loss, startup_program=None, parameters=None, no_grad_set=None
     ):
