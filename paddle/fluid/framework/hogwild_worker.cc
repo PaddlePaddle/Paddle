@@ -31,7 +31,7 @@ DECLARE_bool(enable_exit_when_partial_worker);
 namespace paddle {
 namespace framework {
 
-std::atomic<uint64_t> HogwildWorker::worker_num_stat_(0);
+std::atomic<bool> HogwildWorker::quit_flag_(false);
 Barrier g_barrier;
 
 void HogwildWorker::Initialize(const TrainerDesc &desc) {
@@ -148,7 +148,7 @@ void HogwildWorker::TrainFilesWithProfiler() {
   int cur_batch;
   int batch_cnt = 0;
   if (thread_id_ == 0) {
-    worker_num_stat_.store(0);
+    quit_flag_.store(false);
   }
   g_barrier.wait();
   bool train_mode = device_reader_->IsTrainMode();
@@ -160,11 +160,11 @@ void HogwildWorker::TrainFilesWithProfiler() {
   while (1) {
     cur_batch = device_reader_->Next();
     if (FLAGS_enable_exit_when_partial_worker && train_mode) {
-      if (cur_batch > 0) {
-        worker_num_stat_.fetch_add(1, std::memory_order_relaxed);
+      if (cur_batch <= 0) {
+        quit_flag_.store(true, std::memory_order_relaxed);
       }
       g_barrier.wait();
-      if (worker_num_stat_.load(std::memory_order_relaxed) % thread_num_ != 0) {
+      if (quit_flag_.load(std::memory_order_relaxed) == true) {
         break;
       }
     }
@@ -265,7 +265,8 @@ void HogwildWorker::TrainFiles() {
   int cur_batch;
   int batch_cnt = 0;
   if (thread_id_ == 0) {
-    worker_num_stat_.store(0);
+    quit_flag_.store(false);
+    // quit_flag_2 = false;
   }
   g_barrier.wait();
 
@@ -280,11 +281,11 @@ void HogwildWorker::TrainFiles() {
   while (1) {
     cur_batch = device_reader_->Next();
     if (FLAGS_enable_exit_when_partial_worker && train_mode) {
-      if (cur_batch > 0) {
-        worker_num_stat_.fetch_add(1, std::memory_order_relaxed);
+      if (cur_batch <= 0) {
+        quit_flag_.store(true, std::memory_order_relaxed);
       }
       g_barrier.wait();
-      if (worker_num_stat_.load(std::memory_order_relaxed) % thread_num_ != 0) {
+      if (quit_flag_.load(std::memory_order_relaxed) == true) {
         break;
       }
     }
@@ -320,7 +321,7 @@ void HogwildWorker::TrainFiles() {
 #endif
   }
   timeline.Pause();
-  VLOG(0) << "worker " << thread_id_ << " train cost " << timeline.ElapsedSec()
+  VLOG(1) << "worker " << thread_id_ << " train cost " << timeline.ElapsedSec()
           << " seconds, batch_num: " << total_batch_num;
 
   if (need_dump_field_ || need_dump_param_) {
