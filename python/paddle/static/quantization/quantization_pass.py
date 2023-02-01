@@ -3363,39 +3363,41 @@ class AddQuantDequantForInferencePass:
             shape=var_node.shape(),
             var_dtype=var_node.dtype(),
         )
-        if not self._calibration_range_dict:
-            try:
-                scale_var_node = graph._find_node_by_name(
-                    graph.all_persistable_nodes(), self._scale_name(var_name)
+
+        try:
+            scale_var_node = graph._find_node_by_name(
+                graph.all_persistable_nodes(), self._scale_name(var_name)
+            )
+        except:
+            if (
+                self._calibration_range_dict
+                and var_name in self._calibration_range_dict
+            ):
+                scale_value = self._calibration_range_dict[var_name]
+                scale_var_node = graph.create_persistable_node(
+                    name=self._scale_name(var_name),
+                    var_type=var_node.type(),
+                    shape=[1],
+                    var_dtype=var_node.dtype(),
                 )
-            except:
+                data_type = (
+                    'float64'
+                    if var_node.dtype() == core.VarDesc.VarType.FP64
+                    else 'float32'
+                )
+                _init_var_node(
+                    scale_var_node,
+                    np.array(scale_value, dtype=data_type),
+                    self._scope,
+                    self._place,
+                )
+            else:
                 _logger.warning(
                     "Cannot find the target node {} in scope, so skip adding quant node.".format(
                         var_name
                     )
                 )
                 return None
-        elif var_name in self._calibration_range_dict:
-            scale_value = self._calibration_range_dict[var_name]
-            scale_var_node = graph.create_persistable_node(
-                name=self._scale_name(var_name),
-                var_type=var_node.type(),
-                shape=[1],
-                var_dtype=var_node.dtype(),
-            )
-            data_type = (
-                'float64'
-                if var_node.dtype() == core.VarDesc.VarType.FP64
-                else 'float32'
-            )
-            _init_var_node(
-                scale_var_node,
-                np.array(scale_value, dtype=data_type),
-                self._scope,
-                self._place,
-            )
-        else:
-            return None
         try:
             zero_point_node = graph._find_node_by_name(
                 graph.all_persistable_nodes(),
