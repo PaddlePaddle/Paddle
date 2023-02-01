@@ -189,6 +189,8 @@ reduce_api_list = [
     paddle.logsumexp,
     paddle.all,
     paddle.any,
+    paddle.argmax,
+    paddle.argmin,
 ]
 
 
@@ -208,12 +210,13 @@ class TestReduceAPI(unittest.TestCase):
             out.retain_grads()
             out.backward()
 
-            out_empty_list = api(x, [])
-            self.assertEqual(out_empty_list, out)
-
             self.assertEqual(x.shape, [])
             self.assertEqual(out.shape, [])
-            np.testing.assert_allclose(out.numpy(), x.numpy())
+            if api not in [paddle.argmax, paddle.argmin]:
+                np.testing.assert_allclose(out.numpy(), x.numpy())
+                out_empty_list = api(x, [])
+                self.assertEqual(out_empty_list, out)
+
             if x.grad is not None:
                 self.assertEqual(x.grad.shape, [])
                 self.assertEqual(out.grad.shape, [])
@@ -250,7 +253,9 @@ class TestReduceAPI(unittest.TestCase):
                 res = exe.run(main_prog, fetch_list=fetch_list)
                 self.assertEqual(res[0].shape, ())
                 self.assertEqual(res[1].shape, ())
-                np.testing.assert_allclose(res[0], res[1])
+                if api not in [paddle.argmax, paddle.argmin]:
+                    np.testing.assert_allclose(res[0], res[1])
+
                 if len(res) > 2:
                     self.assertEqual(res[2].shape, ())
                     self.assertEqual(res[3].shape, ())
