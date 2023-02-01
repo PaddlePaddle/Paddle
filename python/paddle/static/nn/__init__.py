@@ -38,7 +38,7 @@ from .common import prelu  # noqa: F401
 from .common import layer_norm  # noqa: F401
 
 
-from ...fluid.input import embedding  # noqa: F401
+from .common import embedding  # noqa: F401
 from ...fluid.contrib.layers import sparse_embedding  # noqa: F401
 from ...fluid.layers import StaticRNN  # noqa: F401
 
