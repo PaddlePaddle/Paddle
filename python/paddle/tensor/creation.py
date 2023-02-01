@@ -533,6 +533,9 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
 
 def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
 
+    if isinstance(data, np.number):  # Special case for numpy scalars
+        data = np.array(data)
+
     if not isinstance(data, np.ndarray):
 
         def _handle_dtype(data, dtype):
@@ -627,6 +630,8 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
     if isinstance(data, Variable) and (dtype is None or dtype == data.dtype):
         output = data
     else:
+        if isinstance(data, np.number):  # Special case for numpy scalars
+            data = np.array(data)
 
         if not isinstance(data, np.ndarray):
             if np.isscalar(data) and not isinstance(data, str):
@@ -689,6 +694,18 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
 
     If the ``data`` is already a Tensor, copy will be performed and return a new tensor.
     If you only want to change stop_gradient property, please call ``Tensor.stop_gradient = stop_gradient`` directly.
+
+    .. code-block:: text
+
+        We use the dtype conversion rules following this:
+                Keep dtype
+        np.number ───────────► paddle.Tensor
+                                (0D-Tensor)
+                    default_dtype
+        Python Number ───────────────► paddle.Tensor
+                                        (1D-Tensor)
+                    Keep dtype
+        np.ndarray ───────────► paddle.Tensor
 
     Args:
         data(scalar|tuple|list|ndarray|Tensor): Initial data for the tensor.
