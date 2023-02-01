@@ -210,7 +210,6 @@ class FCOneDNNHandler
     auto scale_in_eltwise_data = ctx.Attr<float>("Scale_in_eltwise");
 
     // If the output will be in floats, we don't multiply by scale_out.
-
     float activation_scale = (!force_fp32_output && has_activation)
                                  ? ctx.Attr<float>("Scale_out")
                                  : 1.0f;
@@ -482,7 +481,13 @@ class FCOneDNNKernel : public framework::OpKernel<T_in> {
     auto inner_product_cache =
         std::static_pointer_cast<InnerProductCache>(dev_ctx.GetBlob(cache_key));
 
-    RecomputeOutputDims(ctx, x, weights, out);
+    PADDLE_ENFORCE_EQ(ctx.Attr<bool>("padding_weights"),
+                      false,
+                      phi::errors::PermissionDenied(
+                          "padding_weights can't be used in oneDNN FC"));
+
+    const auto in_num_col_dims = ctx.Attr<int>("in_num_col_dims");
+    RecomputeOutputDims(in_num_col_dims, x, weights, out);
 
     if (inner_product_cache) {
       fc_p = std::make_shared<dnnl::inner_product_forward>(
@@ -509,15 +514,13 @@ class FCOneDNNKernel : public framework::OpKernel<T_in> {
             std::make_shared<dnnl::memory>(inner_product_cache->bias_mem);
       }
     } else {
-      auto in_col_dims = ctx.Attr<int>("in_num_col_dims");
-
       FCOneDNNHandler<T_in, T_w, T_out> handler(ctx,
                                                 dev_ctx,
                                                 x,
                                                 weights,
                                                 bias,
                                                 out,
-                                                in_col_dims,
+                                                in_num_col_dims,
                                                 onednn_engine,
                                                 ctx.GetPlace());
 
@@ -571,22 +574,13 @@ class FCOneDNNKernel : public framework::OpKernel<T_in> {
     }
   }
 
-  void RecomputeOutputDims(const ExecutionContext& ctx,
+  void RecomputeOutputDims(const int in_num_col_dims,
                            const phi::DenseTensor* x,
                            const phi::DenseTensor* weights,
                            phi::DenseTensor* out) const {
-    int in_num_col_dims = ctx.Attr<int>("in_num_col_dims");
-    bool padding_weights = ctx.Attr<bool>("padding_weights");
-    PADDLE_ENFORCE_EQ(padding_weights,
-                      false,
-                      phi::errors::PermissionDenied(
-                          "Weight padding in fc can not be used in MKLDNN."));
     std::vector<int64_t> output_dims;
-    FCOutputSize(x->dims(),
-                 weights->dims(),
-                 output_dims,
-                 in_num_col_dims,
-                 padding_weights);
+    FCOutputSize(
+        x->dims(), weights->dims(), output_dims, in_num_col_dims, false);
     out->Resize(phi::make_ddim(output_dims));
     out->set_lod(x->lod());
   }
