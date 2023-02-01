@@ -45,7 +45,10 @@ class UnsuppportNet(paddle.nn.Layer):
         super().__init__()
 
     def forward(self, x):
-        return unsupport_func(x)
+        if self.training:
+            return unsupport_func(x)
+        else:
+            return unsupport_func(x - 1)
 
 
 class TestFallback(unittest.TestCase):
@@ -97,6 +100,15 @@ class TestFallback(unittest.TestCase):
                 ).numpy(),
                 u_net(self.x).numpy(),
             )
+
+    def test_case_training(self):
+        build_strategy = paddle.static.BuildStrategy()
+        build_strategy.build_cinn_pass = True
+        u_net = paddle.jit.to_static(
+            UnsuppportNet(), build_strategy=build_strategy
+        )
+        u_net.eval()
+        np.testing.assert_allclose(u_net(self.x).numpy(), [1, 1])
 
     def test_case_save_error(self):
         """

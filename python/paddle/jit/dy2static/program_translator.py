@@ -1097,9 +1097,8 @@ class FallbackProgramLayer(object):
     def __getattr__(self, key):
         if key not in self.__slots__:
             raise RuntimeError(
-                "There raises a exception while dy2static and you are in fallback mode. \n"
-                "You can't get attribute for a fallback program layer. Check dy2static.error file "
-                "and fix unsupported gramma."
+                "There raises a exception after applying `@paddle.jit.to_static()` and already switch into fallback mode. \n"
+                "You can't get attribute for a fallback program layer. Please check `to_static.error` file for detail."
             )
         elif key in ['training']:
             if self._instance is not None:
@@ -1111,9 +1110,8 @@ class FallbackProgramLayer(object):
     def __setattr__(self, key, value):
         if key not in self.__slots__:
             raise RuntimeError(
-                "There raises a exception while dy2static and you are in fallback mode. \n"
-                "You can't get attribute for a fallback program layer. Check dy2static.error file "
-                "and fix unsupported gramma."
+                "There raises a exception after applying `@paddle.jit.to_static()` and already switch into fallback mode. \n"
+                "You can't get attribute for a fallback program layer. Please check `to_static.error` file for detail."
             )
         elif key in ['training']:
             if self._instance is not None:
@@ -1128,7 +1126,7 @@ class ProgramCache:
     Wrapper class for the program functions defined by dygraph function.
     """
 
-    dy2static_error_file = "dy2static.error"
+    dy2static_error_file = "to_static.error"
 
     def __init__(self):
         # {hash_id : (concrete_program, partial_layer)}
@@ -1140,7 +1138,7 @@ class ProgramCache:
     def _build_once(self, cache_key):
         # TODO(Aurelius84): Need a gloabl FLAGS to enable/disable to_prim
         enable_prim = cache_key.kwargs['build_strategy'].build_cinn_pass
-        # NOTE(xiongkun): Need a global FLAGS to enable/disable to_prim
+        # NOTE(xiongkun): Need a global FLAGS to enable/disable fallback
         enable_fallback = enable_prim
         if enable_prim:
             # TODO(Jiabin): Change this to True if we need this to be default option
@@ -1156,9 +1154,9 @@ class ProgramCache:
         except Exception as e:
             if enable_fallback:
                 warnings.warn(
-                    "Exception is thrown while performing dygraph to static. FallBack to dygraph mode training.\n"
-                    "1. You can check `dy2static.error` file in current work directory to see what is going wrong.\n"
-                    "2. In fallback mode, you can only do training, can't save or get program."
+                    "Exception is thrown while applying @paddle.jit.to_static. It will fallback into dygraph mode for training.\n"
+                    "1. You can check `to_static.error` file in current workspace directory for detail.\n"
+                    "2. In fallback mode, you can only do training, can't call paddle.jit.save(). Please modify model code according `to_static.error` firstly"
                 )
                 # TODO(xiongkun) change different file name to avoid overwrite.
                 with open(self.dy2static_error_file, "w") as fp:
