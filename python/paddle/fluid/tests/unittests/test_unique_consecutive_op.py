@@ -273,6 +273,43 @@ class TestUniqueConsecutiveCase2API(unittest.TestCase):
                 )
 
 
+class TestUniqueConsecutiveNegativeAxis(OpTest):
+    """negative axis"""
+
+    def config(self):
+        self.return_inverse = True
+        self.return_counts = True
+        self.axis = -1
+        self.python_api = paddle.unique_consecutive
+
+    def init_kernel_type(self):
+        self.dtype = "float32" if core.is_compiled_with_rocm() else "float64"
+
+    def setUp(self):
+        self.init_kernel_type()
+        self.config()
+        self.op_type = "unique_consecutive"
+        x = np.array([1.1]).astype(self.dtype)
+        result = reference_unique_consecutive(
+            x, self.return_inverse, self.return_counts
+        )
+        out = reference_unique_consecutive(x)
+        out = np.array(out).astype(self.dtype)
+        self.inputs = {
+            'X': x,
+        }
+        self.python_out_sig = ["Out"]
+        self.attrs = {
+            'dtype': int(core.VarDesc.VarType.INT32),
+        }
+        self.outputs = {
+            'Out': out,
+        }
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+
 class TestUniqueConsecutiveEmptyInput(OpTest):
     """empty input"""
 
