@@ -301,7 +301,7 @@ if(TARGET extern_protobuf)
   list(APPEND third_party_deps extern_protobuf)
 endif()
 
-if(NOT ON_INFER)
+if(WITH_PYTHON OR NOT ON_INFER)
   include(external/python) # find python and python_module
   include(external/pybind11) # download pybind11
   list(APPEND third_party_deps extern_pybind)
