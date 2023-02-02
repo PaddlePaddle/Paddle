@@ -94,14 +94,14 @@ def train(to_static, enable_prim, enable_cinn):
             img, label = data
 
             pred = resnet(img)
-            loss = paddle.nn.functional.cross_entropy(
+            avg_loss = paddle.nn.functional.cross_entropy(
                 input=pred,
                 label=label,
-                reduction='none',
+                soft_label=False,
+                reduction='mean',
                 use_softmax=True,
             )
 
-            avg_loss = paddle.mean(x=loss)
             acc_top1 = paddle.static.accuracy(input=pred, label=label, k=1)
             acc_top5 = paddle.static.accuracy(input=pred, label=label, k=5)
 
@@ -135,27 +135,36 @@ def train(to_static, enable_prim, enable_cinn):
 
 
 class TestResnet(unittest.TestCase):
-    def train(self, to_static, enable_prim, enable_cinn):
-        return train(to_static, enable_prim, enable_cinn)
+    @classmethod
+    def setUpClass(cls):
+        cls.dy2st = train(to_static=True, enable_prim=False, enable_cinn=False)
 
-    def test_run(self):
-        dy2st = self.train(to_static=True, enable_prim=False, enable_cinn=False)
-        dy2st_prim = self.train(
-            to_static=True, enable_prim=True, enable_cinn=False
-        )
-        np.testing.assert_allclose(dy2st, dy2st_prim, rtol=1e-6)
+    def test_prim(self):
+        dy2st_prim = train(to_static=True, enable_prim=True, enable_cinn=False)
+        # NOTE: Now dy2st is equal to dy2st_prim. With the splitting of kernels, the threshold here may need to be adjusted
+        np.testing.assert_allclose(self.dy2st, dy2st_prim, rtol=1e-6)
 
-        dy2st_cinn = self.train(
-            to_static=True, enable_prim=False, enable_cinn=True
-        )
-        np.testing.assert_allclose(dy2st[0:2], dy2st_cinn[0:2], rtol=1e-3)
-        np.testing.assert_allclose(dy2st, dy2st_cinn, rtol=1e-1)
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cinn(), "padle is not compiled with CINN"
+    )
+    def test_cinn(self):
+        dy2st_cinn = train(to_static=True, enable_prim=False, enable_cinn=True)
+        # TODO(0x45f): The following is only temporary thresholds, and the final thresholds needs to be discussed
+        np.testing.assert_allclose(self.dy2st[0:2], dy2st_cinn[0:2], rtol=1e-3)
+        np.testing.assert_allclose(self.dy2st, dy2st_cinn, rtol=1e-1)
 
-        dy2st_prim_cinn = self.train(
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cinn(), "padle is not compiled with CINN"
+    )
+    def test_prim_cinn(self):
+        dy2st_prim_cinn = train(
             to_static=True, enable_prim=True, enable_cinn=True
         )
-        np.testing.assert_allclose(dy2st[0:2], dy2st_prim_cinn[0:2], rtol=1e-2)
-        np.testing.assert_allclose(dy2st, dy2st_prim_cinn, rtol=1e-1)
+        # TODO(0x45f): The following is only temporary thresholds, and the final thresholds need to be discussed
+        np.testing.assert_allclose(
+            self.dy2st[0:2], dy2st_prim_cinn[0:2], rtol=1e-2
+        )
+        np.testing.assert_allclose(self.dy2st, dy2st_prim_cinn, rtol=1e-1)
 
 
 if __name__ == '__main__':
