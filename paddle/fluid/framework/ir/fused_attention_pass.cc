@@ -1116,6 +1116,8 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResBwd(
                      Graph* g) {
     VLOG(3) << "handle FusedMultiHeadAttention backward pass's fusion";
 
+    int block_id = g->GetBlockId();
+
     GET_IR_NODE_FROM_SUBGRAPH(residual_ele_add_grad_op_node,
                               residual_ele_add_grad_op,
                               fused_attention_grad_pattern);
@@ -1178,52 +1180,95 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResBwd(
     fused_attention_grad_op_desc.SetType("fused_attention_grad");
     fused_attention_grad_op_desc.SetInput("Y@GRAD", {subgraph.at(x)->Name()});
     fused_attention_grad_op_desc.SetInput(
-        "X", {cache->GetNodeFromCache("X")->Name()});
+        "X",
+        {cache->GetNodeFromCache(GenerateCacheKey("X", block_id))->Name()});
     fused_attention_grad_op_desc.SetInput(
         "AttnDropoutMaskOut",
-        {cache->GetNodeFromCache("AttnDropoutMaskOut")->Name()});
+        {cache
+             ->GetNodeFromCache(
+                 GenerateCacheKey("AttnDropoutMaskOut", block_id))
+             ->Name()});
     fused_attention_grad_op_desc.SetInput(
-        "AttnDropoutOut", {cache->GetNodeFromCache("AttnDropoutOut")->Name()});
+        "AttnDropoutOut",
+        {cache->GetNodeFromCache(GenerateCacheKey("AttnDropoutOut", block_id))
+             ->Name()});
     fused_attention_grad_op_desc.SetInput(
-        "DropoutMaskOut", {cache->GetNodeFromCache("DropoutMaskOut")->Name()});
+        "DropoutMaskOut",
+        {cache->GetNodeFromCache(GenerateCacheKey("DropoutMaskOut", block_id))
+             ->Name()});
     fused_attention_grad_op_desc.SetInput(
-        "FMHAOut", {cache->GetNodeFromCache("FMHAOut")->Name()});
+        "FMHAOut",
+        {cache->GetNodeFromCache(GenerateCacheKey("FMHAOut", block_id))
+             ->Name()});
     fused_attention_grad_op_desc.SetInput(
-        "LnBias", {cache->GetNodeFromCache("LnBias")->Name()});
+        "LnBias",
+        {cache->GetNodeFromCache(GenerateCacheKey("LnBias", block_id))
+             ->Name()});
     fused_attention_grad_op_desc.SetInput(
-        "LnMean", {cache->GetNodeFromCache("LnMean")->Name()});
+        "LnMean",
+        {cache->GetNodeFromCache(GenerateCacheKey("LnMean", block_id))
+             ->Name()});
     fused_attention_grad_op_desc.SetInput(
-        "LnOut", {cache->GetNodeFromCache("LnOut")->Name()});
+        "LnOut",
+        {cache->GetNodeFromCache(GenerateCacheKey("LnOut", block_id))->Name()});
     fused_attention_grad_op_desc.SetInput(
-        "LnScale", {cache->GetNodeFromCache("LnScale")->Name()});
+        "LnScale",
+        {cache->GetNodeFromCache(GenerateCacheKey("LnScale", block_id))
+             ->Name()});
     fused_attention_grad_op_desc.SetInput(
-        "LnVariance", {cache->GetNodeFromCache("LnVariance")->Name()});
+        "LnVariance",
+        {cache->GetNodeFromCache(GenerateCacheKey("LnVariance", block_id))
+             ->Name()});
     fused_attention_grad_op_desc.SetInput(
-        "OutLinearBias", {cache->GetNodeFromCache("OutLinearBias")->Name()});
+        "OutLinearBias",
+        {cache->GetNodeFromCache(GenerateCacheKey("OutLinearBias", block_id))
+             ->Name()});
     fused_attention_grad_op_desc.SetInput(
-        "OutLinearOut", {cache->GetNodeFromCache("OutLinearOut")->Name()});
+        "OutLinearOut",
+        {cache->GetNodeFromCache(GenerateCacheKey("OutLinearOut", block_id))
+             ->Name()});
     fused_attention_grad_op_desc.SetInput(
-        "OutLinearW", {cache->GetNodeFromCache("OutLinearW")->Name()});
+        "OutLinearW",
+        {cache->GetNodeFromCache(GenerateCacheKey("OutLinearW", block_id))
+             ->Name()});
     fused_attention_grad_op_desc.SetInput(
-        "QKOut", {cache->GetNodeFromCache("QKOut")->Name()});
+        "QKOut",
+        {cache->GetNodeFromCache(GenerateCacheKey("QKOut", block_id))->Name()});
     fused_attention_grad_op_desc.SetInput(
-        "QKTVOut", {cache->GetNodeFromCache("QKTVOut")->Name()});
+        "QKTVOut",
+        {cache->GetNodeFromCache(GenerateCacheKey("QKTVOut", block_id))
+             ->Name()});
     fused_attention_grad_op_desc.SetInput(
-        "QKVBias", {cache->GetNodeFromCache("QKVBias")->Name()});
+        "QKVBias",
+        {cache->GetNodeFromCache(GenerateCacheKey("QKVBias", block_id))
+             ->Name()});
     fused_attention_grad_op_desc.SetInput(
-        "QKVBiasOut", {cache->GetNodeFromCache("QKVBiasOut")->Name()});
+        "QKVBiasOut",
+        {cache->GetNodeFromCache(GenerateCacheKey("QKVBiasOut", block_id))
+             ->Name()});
     fused_attention_grad_op_desc.SetInput(
-        "QKVOut", {cache->GetNodeFromCache("QKVOut")->Name()});
+        "QKVOut",
+        {cache->GetNodeFromCache(GenerateCacheKey("QKVOut", block_id))
+             ->Name()});
     fused_attention_grad_op_desc.SetInput(
-        "QKVW", {cache->GetNodeFromCache("QKVW")->Name()});
+        "QKVW",
+        {cache->GetNodeFromCache(GenerateCacheKey("QKVW", block_id))->Name()});
     fused_attention_grad_op_desc.SetInput(
-        "SoftmaxOut", {cache->GetNodeFromCache("SoftmaxOut")->Name()});
+        "SoftmaxOut",
+        {cache->GetNodeFromCache(GenerateCacheKey("SoftmaxOut", block_id))
+             ->Name()});
     fused_attention_grad_op_desc.SetInput(
-        "SrcMask", {cache->GetNodeFromCache("SrcMask")->Name()});
+        "SrcMask",
+        {cache->GetNodeFromCache(GenerateCacheKey("SrcMask", block_id))
+             ->Name()});
     fused_attention_grad_op_desc.SetInput(
-        "SrcMaskOut", {cache->GetNodeFromCache("SrcMaskOut")->Name()});
+        "SrcMaskOut",
+        {cache->GetNodeFromCache(GenerateCacheKey("SrcMaskOut", block_id))
+             ->Name()});
     fused_attention_grad_op_desc.SetInput(
-        "TransposeOut2", {cache->GetNodeFromCache("TransposeOut2")->Name()});
+        "TransposeOut2",
+        {cache->GetNodeFromCache(GenerateCacheKey("TransposeOut2", block_id))
+             ->Name()});
 
     GraphSafeRemoveNodes(g,
                          {residual_ele_add_grad_op_node,
