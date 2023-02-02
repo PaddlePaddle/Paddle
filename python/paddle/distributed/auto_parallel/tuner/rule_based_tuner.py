@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import math
-
 from abc import abstractmethod
+
 from ..graph import Graph
 
 _PATTERNS = {}

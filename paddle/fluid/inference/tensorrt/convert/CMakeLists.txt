@@ -18,12 +18,15 @@ list(
   group_norm_op.cc
   pad_op.cc
   split_op.cc
+  square_op.cc
   prelu_op.cc
   leaky_relu_op.cc
   gelu_op.cc
   layer_norm_op.cc
   multihead_matmul_op.cc
   multihead_matmul_roformer_op.cc
+  flash_multihead_matmul_op.cc
+  cross_multihead_matmul_op.cc
   shuffle_channel_op.cc
   fill_any_like_op.cc
   where_op.cc
@@ -46,6 +49,7 @@ list(
   yolo_box_op.cc
   yolo_box_head_op.cc
   arg_max_op.cc
+  arg_min_op.cc
   roi_align_op.cc
   affine_channel_op.cc
   multiclass_nms_op.cc
@@ -92,6 +96,8 @@ list(
   skip_merge_layernorm_op.cc
   generic_and_custom_plugin_creater.cc
   fused_lookup_tables_op.cc
+  skip_groupnorm_act_op.cc
+  preln_groupnorm_act_op.cc
   expand_v2_op.cc)
 
 if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)

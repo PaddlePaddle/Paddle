@@ -47,7 +47,7 @@ class TestGeneratorSeed(unittest.TestCase):
         print("x: {}".format(x.numpy()))
         print("x_again: {}".format(x_again.numpy()))
         x = x + x_again + x_third
-        y = fluid.layers.dropout(x, 0.5)
+        y = paddle.nn.functional.dropout(x, 0.5)
 
         paddle.set_cuda_rng_state(st)
 
@@ -55,7 +55,7 @@ class TestGeneratorSeed(unittest.TestCase):
         x1_again = paddle.uniform([2, 10], dtype="float32", min=0.0, max=1.0)
         x1_third = paddle.uniform([2, 10], dtype="float32", min=0.0, max=1.0)
         x1 = x1 + x1_again + x1_third
-        y1 = fluid.layers.dropout(x1, 0.5)
+        y1 = paddle.nn.functional.dropout(x1, 0.5)
         y_np = y.numpy()
         y1_np = y1.numpy()
 
@@ -117,18 +117,18 @@ class TestGeneratorSeed(unittest.TestCase):
             # example 1:
             # attr shape is a list which doesn't contain tensor Variable.
             x = paddle.uniform(shape=[2, 10])
-            result_1 = fluid.layers.fc(
-                input=x,
+            result_1 = paddle.static.nn.fc(
+                x,
                 size=10,
-                param_attr=fluid.initializer.TruncatedNormal(
-                    loc=0.0, scale=2.0
+                weight_attr=paddle.nn.initializer.TruncatedNormal(
+                    mean=0.0, std=2.0
                 ),
             )
-            result_2 = fluid.layers.fc(
-                input=x,
+            result_2 = paddle.static.nn.fc(
+                x,
                 size=10,
-                param_attr=fluid.initializer.TruncatedNormal(
-                    loc=0.0, scale=2.0
+                weight_attr=paddle.nn.initializer.TruncatedNormal(
+                    mean=0.0, std=2.0
                 ),
             )
 

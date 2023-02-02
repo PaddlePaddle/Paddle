@@ -21,15 +21,13 @@ import paddle.fluid as fluid
 from paddle.fluid import ParamAttr, layers
 from paddle.fluid.dygraph import Layer
 from paddle.fluid.dygraph.base import to_variable
-from paddle.jit.api import declarative
+from paddle.jit.api import to_static
 from paddle.nn import Embedding
 
 INF = 1.0 * 1e5
 alpha = 0.6
-uniform_initializer = lambda x: fluid.initializer.UniformInitializer(
-    low=-x, high=x
-)
-zero_constant = fluid.initializer.Constant(0.0)
+uniform_initializer = lambda x: paddle.nn.initializer.Uniform(low=-x, high=x)
+zero_constant = paddle.nn.initializer.Constant(0.0)
 
 
 class BasicLSTMUnit(Layer):
@@ -73,7 +71,7 @@ class BasicLSTMUnit(Layer):
         gate_input = paddle.matmul(x=concat_input_hidden, y=self._weight)
 
         gate_input = paddle.add(gate_input, self._bias)
-        i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
+        i, j, f, o = paddle.split(gate_input, num_or_sections=4, axis=-1)
         new_cell = paddle.add(
             paddle.multiply(
                 pre_cell, paddle.nn.functional.sigmoid(f + self._forget_bias)
@@ -189,23 +187,25 @@ class BaseModel(fluid.dygraph.Layer):
         return paddle.reshape(x, shape=(-1, self.beam_size, x.shape[1]))
 
     def _expand_to_beam_size(self, x):
-        x = fluid.layers.unsqueeze(x, [1])
+        x = paddle.unsqueeze(x, [1])
         expand_shape = [-1] * len(x.shape)
         expand_shape[1] = self.beam_size * x.shape[1]
         x = paddle.expand(x, expand_shape)
         return x
 
     def _real_state(self, state, new_state, step_mask):
-        new_state = fluid.layers.elementwise_mul(
+        new_state = paddle.tensor.math._multiply_with_axis(
             new_state, step_mask, axis=0
-        ) - fluid.layers.elementwise_mul(state, (step_mask - 1), axis=0)
+        ) - paddle.tensor.math._multiply_with_axis(
+            state, (step_mask - 1), axis=0
+        )
         return new_state
 
     def _gather(self, x, indices, batch_pos):
         topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
         return paddle.gather_nd(x, topk_coordinates)
 
-    @declarative
+    @to_static
     def forward(self, inputs):
         src, tar, label, src_sequence_length, tar_sequence_length = inputs
         if src.shape[0] < self.batch_size:
@@ -226,10 +226,10 @@ class BaseModel(fluid.dygraph.Layer):
         enc_cell = paddle.tensor.create_array(dtype="float32")
         for i in range(self.num_layers):
             index = zero + i
-            enc_hidden = fluid.layers.array_write(
+            enc_hidden = paddle.tensor.array_write(
                 enc_hidden_0, index, array=enc_hidden
             )
-            enc_cell = fluid.layers.array_write(
+            enc_cell = paddle.tensor.array_write(
                 enc_cell_0, index, array=enc_cell
             )
 
@@ -253,10 +253,10 @@ class BaseModel(fluid.dygraph.Layer):
                     enc_step_input, enc_hidden[i], enc_cell[i]
                 )
                 if self.dropout is not None and self.dropout > 0.0:
-                    enc_step_input = fluid.layers.dropout(
+                    enc_step_input = paddle.nn.functional.dropout(
                         enc_new_hidden,
-                        dropout_prob=self.dropout,
-                        dropout_implementation='upscale_in_train',
+                        p=self.dropout,
+                        mode='upscale_in_train',
                     )
                 else:
                     enc_step_input = enc_new_hidden
@@ -285,10 +285,10 @@ class BaseModel(fluid.dygraph.Layer):
                 new_dec_hidden.append(new_hidden)
                 new_dec_cell.append(new_cell)
                 if self.dropout is not None and self.dropout > 0.0:
-                    step_input = fluid.layers.dropout(
+                    step_input = paddle.nn.functional.dropout(
                         new_hidden,
-                        dropout_prob=self.dropout,
-                        dropout_implementation='upscale_in_train',
+                        p=self.dropout,
+                        mode='upscale_in_train',
                     )
                 else:
                     step_input = new_hidden
@@ -310,7 +310,7 @@ class BaseModel(fluid.dygraph.Layer):
 
         return loss
 
-    @declarative
+    @to_static
     def beam_search(self, inputs):
         src, tar, label, src_sequence_length, tar_sequence_length = inputs
         if src.shape[0] < self.batch_size:
@@ -328,10 +328,10 @@ class BaseModel(fluid.dygraph.Layer):
         enc_cell = paddle.tensor.create_array(dtype="float32")
         for j in range(self.num_layers):
             index = zero + j
-            enc_hidden = fluid.layers.array_write(
+            enc_hidden = paddle.tensor.array_write(
                 enc_hidden_0, index, array=enc_hidden
             )
-            enc_cell = fluid.layers.array_write(
+            enc_cell = paddle.tensor.array_write(
                 enc_cell_0, index, array=enc_cell
             )
 
@@ -353,10 +353,10 @@ class BaseModel(fluid.dygraph.Layer):
                     enc_step_input, enc_hidden[i], enc_cell[i]
                 )
                 if self.dropout is not None and self.dropout > 0.0:
-                    enc_step_input = fluid.layers.dropout(
+                    enc_step_input = paddle.nn.functional.dropout(
                         enc_new_hidden,
-                        dropout_prob=self.dropout,
-                        dropout_implementation='upscale_in_train',
+                        p=self.dropout,
+                        mode='upscale_in_train',
                     )
                 else:
                     enc_step_input = enc_new_hidden
@@ -399,7 +399,7 @@ class BaseModel(fluid.dygraph.Layer):
         dec_cell = [self._expand_to_beam_size(ele) for ele in dec_cell]
 
         batch_pos = paddle.expand(
-            fluid.layers.unsqueeze(
+            paddle.unsqueeze(
                 to_variable(np.arange(0, self.batch_size, 1, dtype="int64")),
                 [1],
             ),
@@ -426,10 +426,10 @@ class BaseModel(fluid.dygraph.Layer):
                 new_dec_hidden.append(new_hidden)
                 new_dec_cell.append(new_cell)
                 if self.dropout is not None and self.dropout > 0.0:
-                    step_input = fluid.layers.dropout(
+                    step_input = paddle.nn.functional.dropout(
                         new_hidden,
-                        dropout_prob=self.dropout,
-                        dropout_implementation='upscale_in_train',
+                        p=self.dropout,
+                        mode='upscale_in_train',
                     )
                 else:
                     step_input = new_hidden
@@ -448,14 +448,14 @@ class BaseModel(fluid.dygraph.Layer):
 
             step_log_probs = paddle.multiply(
                 paddle.expand(
-                    fluid.layers.unsqueeze(beam_finished, [2]),
+                    paddle.unsqueeze(beam_finished, [2]),
                     [-1, -1, self.tar_vocab_size],
                 ),
                 noend_mask_tensor,
-            ) - fluid.layers.elementwise_mul(
+            ) - paddle.tensor.math._multiply_with_axis(
                 step_log_probs, (beam_finished - 1), axis=0
             )
-            log_probs = fluid.layers.elementwise_add(
+            log_probs = paddle.tensor.math._add_with_axis(
                 x=step_log_probs, y=beam_state_log_probs, axis=0
             )
             scores = paddle.reshape(
@@ -662,7 +662,7 @@ class AttentionModel(fluid.dygraph.Layer):
         return paddle.reshape(x, shape=(-1, x.shape[2]))
 
     def tile_beam_merge_with_batch(self, x):
-        x = fluid.layers.unsqueeze(x, [1])  # [batch_size, 1, ...]
+        x = paddle.unsqueeze(x, [1])  # [batch_size, 1, ...]
         expand_shape = [-1] * len(x.shape)
         expand_shape[1] = self.beam_size * x.shape[1]
         x = paddle.expand(x, expand_shape)  # [batch_size, beam_size, ...]
@@ -682,16 +682,18 @@ class AttentionModel(fluid.dygraph.Layer):
         return paddle.reshape(x, shape=(-1, self.beam_size, x.shape[1]))
 
     def _expand_to_beam_size(self, x):
-        x = fluid.layers.unsqueeze(x, [1])
+        x = paddle.unsqueeze(x, [1])
         expand_shape = [-1] * len(x.shape)
         expand_shape[1] = self.beam_size * x.shape[1]
         x = paddle.expand(x, expand_shape)
         return x
 
     def _real_state(self, state, new_state, step_mask):
-        new_state = fluid.layers.elementwise_mul(
+        new_state = paddle.tensor.math._multiply_with_axis(
             new_state, step_mask, axis=0
-        ) - fluid.layers.elementwise_mul(state, (step_mask - 1), axis=0)
+        ) - paddle.tensor.math._multiply_with_axis(
+            state, (step_mask - 1), axis=0
+        )
         return new_state
 
     def _gather(self, x, indices, batch_pos):
@@ -699,7 +701,7 @@ class AttentionModel(fluid.dygraph.Layer):
         return paddle.gather_nd(x, topk_coordinates)
 
     def attention(self, query, enc_output, mask=None):
-        query = fluid.layers.unsqueeze(query, [1])
+        query = paddle.unsqueeze(query, [1])
         memory = self.attn_fc(enc_output)
         attn = paddle.matmul(query, memory, transpose_y=True)
 
@@ -716,11 +718,11 @@ class AttentionModel(fluid.dygraph.Layer):
         print(" ^" * 10, "_change_size_for_array")
         print("array : ", array)
         for i, state in enumerate(array):
-            fluid.layers.array_write(func(state), i, array)
+            paddle.tensor.array_write(func(state), i, array)
 
         return array
 
-    @declarative
+    @to_static
     def forward(self, inputs):
         src, tar, label, src_sequence_length, tar_sequence_length = inputs
         if src.shape[0] < self.batch_size:
@@ -743,10 +745,10 @@ class AttentionModel(fluid.dygraph.Layer):
         enc_cell = paddle.tensor.create_array(dtype="float32")
         for i in range(self.num_layers):
             index = zero + i
-            enc_hidden = fluid.layers.array_write(
+            enc_hidden = paddle.tensor.array_write(
                 enc_hidden_0, index, array=enc_hidden
             )
-            enc_cell = fluid.layers.array_write(
+            enc_cell = paddle.tensor.array_write(
                 enc_cell_0, index, array=enc_cell
             )
 
@@ -772,10 +774,10 @@ class AttentionModel(fluid.dygraph.Layer):
                     enc_step_input, enc_hidden[i], enc_cell[i]
                 )
                 if self.dropout is not None and self.dropout > 0.0:
-                    enc_step_input = fluid.layers.dropout(
+                    enc_step_input = paddle.nn.functional.dropout(
                         enc_new_hidden,
-                        dropout_prob=self.dropout,
-                        dropout_implementation='upscale_in_train',
+                        p=self.dropout,
+                        mode='upscale_in_train',
                     )
                 else:
                     enc_step_input = enc_new_hidden
@@ -815,10 +817,10 @@ class AttentionModel(fluid.dygraph.Layer):
                 new_dec_hidden.append(new_hidden)
                 new_dec_cell.append(new_cell)
                 if self.dropout is not None and self.dropout > 0.0:
-                    step_input = fluid.layers.dropout(
+                    step_input = paddle.nn.functional.dropout(
                         new_hidden,
-                        dropout_prob=self.dropout,
-                        dropout_implementation='upscale_in_train',
+                        p=self.dropout,
+                        mode='upscale_in_train',
                     )
                 else:
                     step_input = new_hidden

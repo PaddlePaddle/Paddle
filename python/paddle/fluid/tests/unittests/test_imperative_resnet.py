@@ -20,10 +20,10 @@ from utils import DyGraphProgramDescTracerTestHelper
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import BatchNorm, core
+from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.layer_helper import LayerHelper
+from paddle.nn import BatchNorm
 
 # NOTE(zhiqiu): run with FLAGS_cudnn_deterministic=1
 
@@ -226,7 +226,7 @@ class ResNet(fluid.Layer):
             self.pool2d_avg_output,
             class_dim,
             weight_attr=fluid.param_attr.ParamAttr(
-                initializer=fluid.initializer.Uniform(-stdv, stdv)
+                initializer=paddle.nn.initializer.Uniform(-stdv, stdv)
             ),
         )
 
@@ -252,7 +252,7 @@ class TestDygraphResnet(unittest.TestCase):
 
         return _reader_imple
 
-    def func_test_resnet_float32(self):
+    def test_resnet_float32(self):
         seed = 90
 
         batch_size = train_parameters["batch_size"]
@@ -361,10 +361,12 @@ class TestDygraphResnet(unittest.TestCase):
                 batch_size=batch_size,
             )
 
-            img = fluid.layers.data(
-                name='pixel', shape=[3, 224, 224], dtype='float32'
+            img = paddle.static.data(
+                name='pixel', shape=[-1, 3, 224, 224], dtype='float32'
             )
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
             out = resnet(img)
             loss = paddle.nn.functional.cross_entropy(
                 input=out, label=label, reduction='none', use_softmax=False
@@ -460,11 +462,6 @@ class TestDygraphResnet(unittest.TestCase):
             np.testing.assert_allclose(value, dy_param_value[key], rtol=1e-05)
             self.assertTrue(np.isfinite(value.all()))
             self.assertFalse(np.isnan(value.any()))
-
-    def test_resnet_float32(self):
-        with _test_eager_guard():
-            self.func_test_resnet_float32()
-        self.func_test_resnet_float32()
 
 
 if __name__ == '__main__':

@@ -24,7 +24,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.framework import _test_eager_guard
 from paddle.nn import Linear
 
 
@@ -124,7 +123,7 @@ class DeepCF(fluid.Layer):
             shape=matrix.shape,
             dtype=matrix.dtype,
             is_bias=False,
-            default_initializer=fluid.initializer.NumpyArrayInitializer(matrix),
+            default_initializer=paddle.nn.initializer.Assign(matrix),
         )
         self._rating_matrix.stop_gradient = True
 
@@ -265,9 +264,9 @@ class TestDygraphDeepCF(unittest.TestCase):
 
         scope = fluid.core.Scope()
         with new_program_scope(main=main, startup=startup, scope=scope):
-            users = fluid.layers.data('users', [1], dtype='int32')
-            items = fluid.layers.data('items', [1], dtype='int32')
-            labels = fluid.layers.data('labels', [1], dtype='float32')
+            users = paddle.static.data('users', [-1, 1], dtype='int32')
+            items = paddle.static.data('items', [-1, 1], dtype='int32')
+            labels = paddle.static.data('labels', [-1, 1], dtype='float32')
 
             deepcf = DeepCF(num_users, num_items, matrix)
             prediction = deepcf(users, items)
@@ -375,47 +374,42 @@ class TestDygraphDeepCF(unittest.TestCase):
                     )
 
         with fluid.dygraph.guard():
-            with _test_eager_guard():
-                paddle.seed(seed)
-                paddle.framework.random._manual_program_seed(seed)
-                fluid.default_startup_program().random_seed = seed
-                fluid.default_main_program().random_seed = seed
+            paddle.seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
+            fluid.default_startup_program().random_seed = seed
+            fluid.default_main_program().random_seed = seed
 
-                deepcf = DeepCF(num_users, num_items, matrix)
-                adam = fluid.optimizer.AdamOptimizer(
-                    0.01, parameter_list=deepcf.parameters()
-                )
+            deepcf = DeepCF(num_users, num_items, matrix)
+            adam = fluid.optimizer.AdamOptimizer(
+                0.01, parameter_list=deepcf.parameters()
+            )
 
-                for e in range(self.num_epoches):
-                    sys.stderr.write('epoch %d\n' % e)
-                    for slice in range(
-                        0, self.batch_size * self.num_batches, self.batch_size
-                    ):
-                        if slice + self.batch_size >= users_np.shape[0]:
-                            break
-                        prediction = deepcf(
+            for e in range(self.num_epoches):
+                sys.stderr.write('epoch %d\n' % e)
+                for slice in range(
+                    0, self.batch_size * self.num_batches, self.batch_size
+                ):
+                    if slice + self.batch_size >= users_np.shape[0]:
+                        break
+                    prediction = deepcf(
+                        to_variable(users_np[slice : slice + self.batch_size]),
+                        to_variable(items_np[slice : slice + self.batch_size]),
+                    )
+                    loss = paddle.sum(
+                        paddle.nn.functional.log_loss(
+                            prediction,
                             to_variable(
-                                users_np[slice : slice + self.batch_size]
-                            ),
-                            to_variable(
-                                items_np[slice : slice + self.batch_size]
+                                labels_np[slice : slice + self.batch_size]
                             ),
                         )
-                        loss = paddle.sum(
-                            paddle.nn.functional.log_loss(
-                                prediction,
-                                to_variable(
-                                    labels_np[slice : slice + self.batch_size]
-                                ),
-                            )
-                        )
-                        loss.backward()
-                        adam.minimize(loss)
-                        deepcf.clear_gradients()
-                        eager_loss = loss.numpy()
-                        sys.stderr.write(
-                            'eager loss: %s %s\n' % (slice, eager_loss)
-                        )
+                    )
+                    loss.backward()
+                    adam.minimize(loss)
+                    deepcf.clear_gradients()
+                    eager_loss = loss.numpy()
+                    sys.stderr.write(
+                        'eager loss: %s %s\n' % (slice, eager_loss)
+                    )
 
         self.assertEqual(static_loss, dy_loss)
         self.assertEqual(static_loss, dy_loss2)

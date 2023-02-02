@@ -13,15 +13,12 @@
 # limitations under the License.
 
 import astor
+
 from paddle.utils import gast
 
-from .static_analysis import (
-    AstNodeWrapper,
-)
 from . import utils
-from .base_transformer import (
-    BaseTransformer,
-)
+from .base_transformer import BaseTransformer
+from .static_analysis import AstNodeWrapper
 
 __all__ = []
 
@@ -136,7 +133,7 @@ class AttributeJstTransformer(BaseTransformer):
     for example:
         a.size  -->  __jst.attr(a, "size")
 
-    because `size` have different behavier when in dygraph / static mode
+    because `size` have different behavier when in dygraph / static graph mode
     NOTE: we only deal with ctx=Load() case.
     """
 

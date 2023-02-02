@@ -13,12 +13,9 @@
 # limitations under the License.
 
 from paddle.utils import gast
-from .static_analysis import (
-    AstNodeWrapper,
-)
-from .base_transformer import (
-    BaseTransformer,
-)
+
+from .base_transformer import BaseTransformer
+from .static_analysis import AstNodeWrapper
 
 __all__ = []
 

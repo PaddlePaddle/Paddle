@@ -19,6 +19,7 @@ import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.static.nn as nn
@@ -49,7 +50,7 @@ class TensorRTSubgraphPassElementwiseBroadcastTest(InferencePassTest):
         self.fetch_list = [out]
 
     def append_eltwise(self, data1, data2):
-        return fluid.layers.elementwise_add(x=data1, y=data2, axis=0)
+        return paddle.tensor.math._add_with_axis(x=data1, y=data2, axis=0)
 
     def test_check_output(self):
         if os.path.exists(self.path + "_opt_cache"):
@@ -66,21 +67,21 @@ class TensorRTSubgraphPassElementwiseBroadcastTest1(
     TensorRTSubgraphPassElementwiseBroadcastTest
 ):
     def append_eltwise(self, data1, data2):
-        return fluid.layers.elementwise_sub(x=data1, y=data2, axis=0)
+        return paddle.tensor.math._subtract_with_axis(x=data1, y=data2, axis=0)
 
 
 class TensorRTSubgraphPassElementwiseBroadcastTest2(
     TensorRTSubgraphPassElementwiseBroadcastTest
 ):
     def append_eltwise(self, data1, data2):
-        return fluid.layers.elementwise_mul(x=data1, y=data2, axis=0)
+        return paddle.tensor.math._multiply_with_axis(x=data1, y=data2, axis=0)
 
 
 class TensorRTSubgraphPassElementwiseBroadcastTest3(
     TensorRTSubgraphPassElementwiseBroadcastTest
 ):
     def append_eltwise(self, data1, data2):
-        return fluid.layers.elementwise_div(x=data1, y=data2, axis=0)
+        return paddle.tensor.math._divide_with_axis(x=data1, y=data2, axis=0)
 
 
 if __name__ == "__main__":

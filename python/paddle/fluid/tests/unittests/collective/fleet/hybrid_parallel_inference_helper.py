@@ -73,7 +73,7 @@ class TestHybridParallelInferenceHelperClass(unittest.TestCase):
                     shape=[1], dtype="int64", value=0, force_cpu=False, name="i"
                 )
 
-                data = layers.array_write(X, step_idx)
+                data = paddle.tensor.array_write(X, step_idx)
 
                 cond_int = layers.fill_constant(
                     shape=[1],
@@ -90,9 +90,9 @@ class TestHybridParallelInferenceHelperClass(unittest.TestCase):
 
             with while_op.block():
                 with paddle.fluid.device_guard(f'{device}:all'):
-                    input = layers.array_read(array=data, i=step_idx)
-                    layers.increment(x=step_idx, value=1.0, in_place=True)
-                    layers.array_write(input, i=step_idx, array=data)
+                    input = paddle.tensor.array_read(array=data, i=step_idx)
+                    paddle.increment(x=step_idx, value=1.0)
+                    paddle.tensor.array_write(input, i=step_idx, array=data)
 
                 with paddle.fluid.device_guard(f'{device}:0'):
                     param_attr = paddle.ParamAttr(
@@ -118,7 +118,7 @@ class TestHybridParallelInferenceHelperClass(unittest.TestCase):
                     )
                     hidden2 = paddle.matmul(hidden1, weight2)
 
-                    layers.array_write(hidden2, i=step_idx, array=data)
+                    paddle.tensor.array_write(hidden2, i=step_idx, array=data)
 
                     # update cond and assign to cond_int, we will sync cond_int
                     paddle.assign(paddle.less_than(x=step_idx, y=max_len), cond)

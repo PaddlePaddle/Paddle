@@ -25,6 +25,10 @@ import paddle.inference as paddle_infer
 
 class TrtConvertActivationTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        ver = paddle_infer.get_trt_compile_version()
+        if ver[0] * 1000 + ver[1] * 100 + ver[0] * 10 < 8200:
+            if program_config.ops[0].type == "round":
+                return False
         return True
 
     def sample_program_configs(self):
@@ -37,6 +41,14 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                 return np.random.random([3, 32, 32]).astype(np.float32)
             else:
                 return np.random.random([batch, 3, 32, 32]).astype(np.float32)
+
+        def generate_int_input(dims, batch, attrs: List[Dict[str, Any]]):
+            if dims == 2:
+                return np.random.random([3, 32]).astype(np.int32)
+            elif dims == 3:
+                return np.random.random([3, 32, 32]).astype(np.int32)
+            else:
+                return np.random.random([batch, 3, 32, 32]).astype(np.int32)
 
         for dims in [2, 3, 4]:
             for batch in [1, 4]:
@@ -54,11 +66,13 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                     "acos",
                     "atan",
                     "asinh",
+                    "acosh",
                     "atanh",
                     "ceil",
                     "floor",
                     "rsqrt",
                     "reciprocal",
+                    "round",
                     "sign",
                 ]:
                     self.dims = dims
@@ -82,6 +96,39 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                             "input_data": TensorConfig(
                                 data_gen=partial(
                                     generate_input1, dims, batch, dics
+                                )
+                            )
+                        },
+                        outputs=["output_data"],
+                    )
+
+                    yield program_config
+
+                for op_type in [
+                    "exp",
+                    "abs",
+                ]:
+                    self.dims = dims
+                    self.op_type = op_type
+                    dics = [{}]
+
+                    ops_config = [
+                        {
+                            "op_type": op_type,
+                            "op_inputs": {"X": ["input_data"]},
+                            "op_outputs": {"Out": ["output_data"]},
+                            "op_attrs": dics[0],
+                        }
+                    ]
+                    ops = self.generate_op_config(ops_config)
+
+                    program_config = ProgramConfig(
+                        ops=ops,
+                        weights={},
+                        inputs={
+                            "input_data": TensorConfig(
+                                data_gen=partial(
+                                    generate_int_input, dims, batch, dics
                                 )
                             )
                         },
@@ -187,7 +234,7 @@ class TrtConvertLogicalNotTest(TrtLayerAutoScanTest):
                             "op_inputs": {"X": ["input_data"]},
                             "op_outputs": {"Out": ["cast_output_data1"]},
                             "op_attrs": dics[1],
-                            "outputs_dtype": {"cast_output_data1": np.bool},
+                            "outputs_dtype": {"cast_output_data1": np.bool_},
                         },
                         {
                             "op_type": op_type,
@@ -196,7 +243,7 @@ class TrtConvertLogicalNotTest(TrtLayerAutoScanTest):
                             },
                             "op_outputs": {"Out": ["cast_output_data0"]},
                             "op_attrs": dics[0],
-                            "outputs_dtype": {"cast_output_data0": np.bool},
+                            "outputs_dtype": {"cast_output_data0": np.bool_},
                         },
                         {
                             "op_type": "cast",

@@ -17,10 +17,10 @@
 #include <algorithm>
 #include <vector>
 
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 namespace phi {
 
@@ -160,15 +160,15 @@ void PriorBoxKernel(const Context& ctx,
   ctx.template Alloc<T>(var);
 
   DenseTensor r;
-  paddle::framework::TensorFromVector(new_aspect_ratios, ctx, &r);
+  phi::TensorFromVector(new_aspect_ratios, ctx, &r);
 
   DenseTensor min;
-  paddle::framework::TensorFromVector(min_sizes, ctx, &min);
+  phi::TensorFromVector(min_sizes, ctx, &min);
 
   T* max_data = nullptr;
   DenseTensor max;
   if (max_sizes.size() > 0) {
-    paddle::framework::TensorFromVector(max_sizes, ctx, &max);
+    phi::TensorFromVector(max_sizes, ctx, &max);
     max_data = max.data<T>();
   }
 
@@ -189,7 +189,7 @@ void PriorBoxKernel(const Context& ctx,
                                              min_max_aspect_ratios_order);
 
   DenseTensor v;
-  paddle::framework::TensorFromVector(variances, ctx, &v);
+  phi::TensorFromVector(variances, ctx, &v);
   grid = (box_num * 4 + block - 1) / block;
   SetVariance<T><<<grid, block, 0, stream>>>(
       var->data<T>(), v.data<T>(), variances.size(), box_num * 4);

@@ -17,9 +17,9 @@ from functools import reduce
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.param_attr as attr
+from paddle.common_ops_import import Variable
 from paddle.fluid.dygraph import Layer
-from paddle.jit.api import declarative
-from paddle.static import Variable
+from paddle.jit.api import to_static
 
 
 class EmbeddingLayer:
@@ -48,7 +48,8 @@ class EmbeddingLayer:
             sparse=True,
             padding_idx=self.padding_idx,
             weight_attr=attr.ParamAttr(
-                name=self.name, initializer=fluid.initializer.Xavier()
+                name=self.name,
+                initializer=paddle.nn.initializer.XavierUniform(),
             ),
         )
 
@@ -495,7 +496,7 @@ class BOW(Layer):
         self.bow_layer_po = FCLayer(self.bow_dim, None, "fc").ops()
         self.softmax_layer = FCLayer(2, "softmax", "cos_sim").ops()
 
-    @declarative
+    @to_static
     def forward(self, left, right):
         """
         Forward network

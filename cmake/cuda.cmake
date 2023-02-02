@@ -6,7 +6,7 @@ if(WITH_NV_JETSON)
   add_definitions(-DWITH_NV_JETSON)
   set(paddle_known_gpu_archs "53 62 72")
   set(paddle_known_gpu_archs10 "53 62 72")
-  set(paddle_known_gpu_archs11 "53 62 72")
+  set(paddle_known_gpu_archs11 "53 62 72 87")
 elseif(NEW_RELEASE_ALL)
   message("Using New Release Strategy - All Arches Packge")
   add_definitions(-DNEW_RELEASE_ALL)
@@ -166,10 +166,14 @@ function(select_nvcc_arch_flags out_variable)
   elseif(${CUDA_ARCH_NAME} STREQUAL "Turing")
     set(cuda_arch_bin "75")
   elseif(${CUDA_ARCH_NAME} STREQUAL "Ampere")
-    if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.1) # CUDA 11.0
-      set(cuda_arch_bin "80")
-    elseif(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0) # CUDA 11.1+
-      set(cuda_arch_bin "80 86")
+    if(WITH_NV_JETSON)
+      set(cuda_arch_bin "87")
+    else()
+      if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.1) # CUDA 11.0
+        set(cuda_arch_bin "80")
+      elseif(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0) # CUDA 11.1+
+        set(cuda_arch_bin "80 86")
+      endif()
     endif()
   elseif(${CUDA_ARCH_NAME} STREQUAL "All")
     set(cuda_arch_bin ${paddle_known_gpu_archs})
@@ -203,6 +207,7 @@ function(select_nvcc_arch_flags out_variable)
 
   set(nvcc_flags "")
   set(nvcc_archs_readable "")
+  set(nvcc_archs_bin_list "")
 
   # Tell NVCC to add binaries for the specified GPUs
   foreach(arch ${cuda_arch_bin})
@@ -211,10 +216,12 @@ function(select_nvcc_arch_flags out_variable)
       string(APPEND nvcc_flags
              " -gencode arch=compute_${CMAKE_MATCH_2},code=sm_${CMAKE_MATCH_1}")
       string(APPEND nvcc_archs_readable " sm_${CMAKE_MATCH_1}")
+      string(APPEND nvcc_archs_bin_list " ${CMAKE_MATCH_1}")
     else()
       # User didn't explicitly specify PTX for the concrete BIN, we assume PTX=BIN
       string(APPEND nvcc_flags " -gencode arch=compute_${arch},code=sm_${arch}")
       string(APPEND nvcc_archs_readable " sm_${arch}")
+      string(APPEND nvcc_archs_bin_list " ${arch}")
     endif()
   endforeach()
 
@@ -226,11 +233,16 @@ function(select_nvcc_arch_flags out_variable)
   endforeach()
 
   string(REPLACE ";" " " nvcc_archs_readable "${nvcc_archs_readable}")
+  string(REGEX MATCHALL "[0-9()]+" nvcc_archs_bin_list "${nvcc_archs_bin_list}")
+  string(JOIN "," nvcc_real_archs ${nvcc_archs_bin_list})
   set(${out_variable}
       ${nvcc_flags}
       PARENT_SCOPE)
   set(${out_variable}_readable
       ${nvcc_archs_readable}
+      PARENT_SCOPE)
+  set(${out_variable}_real_archs
+      ${nvcc_real_archs}
       PARENT_SCOPE)
 endfunction()
 

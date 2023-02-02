@@ -21,11 +21,11 @@ import paddle
 import paddle.fluid as fluid
 import paddle.tensor as tensor
 from paddle.fluid import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestUnbind(unittest.TestCase):
     def test_unbind(self):
+        paddle.enable_static()
 
         x_1 = fluid.data(shape=[2, 3], dtype='float32', name='x_1')
         [out_0, out_1] = tensor.unbind(input=x_1, axis=0)
@@ -57,13 +57,10 @@ class TestUnbind(unittest.TestCase):
             out.backward()
             np.testing.assert_array_equal(x.grad.numpy(), np_grad)
 
-    def test_unbind_dygraph_final_state(self):
-        with _test_eager_guard():
-            self.test_unbind_dygraph()
-
 
 class TestLayersUnbind(unittest.TestCase):
     def test_layers_unbind(self):
+        paddle.enable_static()
 
         x_1 = fluid.data(shape=[2, 3], dtype='float32', name='x_1')
         [out_0, out_1] = paddle.unbind(input=x_1, axis=0)
@@ -218,6 +215,11 @@ class TestUnbindAxisError(unittest.TestCase):
                 tensor.unbind(input=x, axis=2.0)
 
             self.assertRaises(TypeError, test_table_Variable)
+
+            def test_invalid_axis():
+                tensor.unbind(input=x, axis=2)
+
+            self.assertRaises(ValueError, test_invalid_axis)
 
 
 if __name__ == '__main__':

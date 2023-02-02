@@ -58,22 +58,15 @@ def create_complex_test_data(shape=None, dtype=None, seed=None):
     return data
 
 
-def create_pylist_test_data(shape=None, seed=None):
+def create_pyobject_test_data(shape=None, seed=None):
     if seed:
         np.random.seed(seed)
-    # Generate random shape test case for xxx_object api
-    shape = np.random.randint(0, high=100, size=(2)).tolist()
-    data = np.random.random(shape).tolist()
-    return data
-
-
-def create_pydict_test_data(shape=None, seed=None):
-    if seed:
-        np.random.seed(seed)
-    key = [i for i in range(0, shape[0])]
-    value = np.random.random(shape).tolist()
-    data = dict(zip(key, value))
-    return data
+    list_shape = np.random.randint(0, high=100, size=(2)).tolist()
+    list_data = np.random.random(shape).tolist()
+    dict_key = [i for i in range(0, shape[0])]
+    dict_val = np.random.random(shape).tolist()
+    dict_data = dict(zip(dict_key, dict_val))
+    return [list_data, dict_data]
 
 
 def create_test_data(shape=None, dtype=None, seed=None):
@@ -94,10 +87,8 @@ def create_test_data(shape=None, dtype=None, seed=None):
         return create_int_test_data(shape=shape, dtype=dtype, seed=seed)
     elif dtype == "complex64" or dtype == "complex128":
         return create_complex_test_data(shape=shape, dtype=dtype, seed=seed)
-    elif dtype == "pylist":
-        return create_pylist_test_data(shape=shape, seed=seed)
-    elif dtype == "pydict":
-        return create_pydict_test_data(shape=shape, seed=seed)
+    elif dtype == "pyobject":
+        return create_pyobject_test_data(shape=shape, seed=seed)
     else:
         raise NotImplementedError("Unsupported dtype for creating test data.")
 
@@ -117,7 +108,10 @@ class TestCollectiveAPIRunnerBase:
         rank = args["trainerid"]
         current_endpoint = args["currentendpoint"]
         nranks = 2
-        paddle.distributed.init_parallel_env()
+        if args["use_comm_context"]:
+            paddle.distributed.collective._init_parallel_env(args["backend"])
+        else:
+            paddle.distributed.init_parallel_env()
         if args['backend'] == 'nccl':
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
             place = fluid.CUDAPlace(
@@ -159,6 +153,7 @@ def runtime_main(test_class, col_type):
     args["path_id"] = int(os.getenv("PATH_ID"))
     args["static_mode"] = int(os.getenv("STATIC_MODE"))
     args["dtype"] = os.getenv("DTYPE")
+    args["use_comm_context"] = bool(int(os.getenv("USE_COMM_CONTEXT", "0")))
     model.run_trainer(args)
 
 
@@ -171,6 +166,7 @@ class TestDistBase(unittest.TestCase):
             self._find_free_port(),
         )
         self._python_interp = sys.executable
+        self._master_endpoints = "127.0.0.1:%s" % (self._find_free_port())
 
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -213,6 +209,7 @@ class TestDistBase(unittest.TestCase):
                 "PADDLE_TRAINERS_NUM": "2",
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
                 "PADDLE_CURRENT_ENDPOINT": w0_ep,
+                "PADDLE_MASTER": self._master_endpoints,
             }
 
             env1 = {
@@ -221,6 +218,7 @@ class TestDistBase(unittest.TestCase):
                 "PADDLE_TRAINERS_NUM": "2",
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
                 "PADDLE_CURRENT_ENDPOINT": w1_ep,
+                "PADDLE_MASTER": self._master_endpoints,
             }
         elif core.is_compiled_with_xpu():
             env0 = {
@@ -327,11 +325,6 @@ class TestDistBase(unittest.TestCase):
                 'NVIDIA_TF32_OVERRIDE', ''
             )
 
-        if eager_mode:
-            required_envs["FLAGS_enable_eager_mode"] = "%d" % 1
-        else:
-            required_envs["FLAGS_enable_eager_mode"] = "%d" % 0
-
         tr0_out, tr1_out, pid0, pid1 = self._run_cluster(
             model_file, required_envs
         )
@@ -347,7 +340,7 @@ class TestDistBase(unittest.TestCase):
             tr_out1 = np.vstack((tr1_out[0], tr1_out[1]))
             np.testing.assert_allclose(tr_out0, need_result, rtol=1e-05)
             np.testing.assert_allclose(tr_out1, need_result, rtol=1e-05)
-        if col_type == "allgather_object":
+        elif col_type == "allgather_object":
             need_result = [input1, input2]
             self.assertEqual(need_result, tr0_out)
             self.assertEqual(need_result, tr1_out)
@@ -355,6 +348,10 @@ class TestDistBase(unittest.TestCase):
             need_result = input2
             np.testing.assert_allclose(tr0_out[0], need_result, rtol=1e-05)
             np.testing.assert_allclose(tr1_out[0], need_result, rtol=1e-05)
+        elif col_type == "broadcast_object_list":
+            need_result = [input2]
+            self.assertEqual(need_result, tr0_out)
+            self.assertEqual(need_result, tr1_out)
         elif col_type == "reduce":
             need_result = input1 + input2
             # bfloat16 precision loss comes from truncating the last 16 bits of float32,
@@ -370,6 +367,12 @@ class TestDistBase(unittest.TestCase):
             need_result2 = need_result[need_result.shape[0] // 2 :]
             np.testing.assert_allclose(tr0_out[0], need_result1, rtol=1e-05)
             np.testing.assert_allclose(tr1_out[0], need_result2, rtol=1e-05)
+        elif col_type == "scatter_object_list":
+            need_result = input2
+            need_result1 = [need_result[0 : len(need_result) // 2]]
+            need_result2 = [need_result[len(need_result) // 2 :]]
+            self.assertEqual(need_result1, tr0_out)
+            self.assertEqual(need_result2, tr1_out)
         elif col_type == "reduce_scatter":
             need_result = input1 + input2
             need_result1 = need_result[0 : need_result.shape[0] // 2]
@@ -401,7 +404,7 @@ class TestDistBase(unittest.TestCase):
             for i in range(result_data.shape[0]):
                 for j in range(result_data.shape[1]):
                     data = result_data[i][j]
-                    assert np.allclose(
+                    np.testing.assert_allclose(
                         tr0_out[1][i][j], need_result[data], atol=1e-08
                     )
         elif col_type == "row_parallel_linear":

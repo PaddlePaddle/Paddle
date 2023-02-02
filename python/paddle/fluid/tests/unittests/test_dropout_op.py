@@ -342,17 +342,17 @@ class TestDropoutOpError(unittest.TestCase):
                 x1 = fluid.create_lod_tensor(
                     np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
                 )
-                fluid.layers.dropout(x1, dropout_prob=0.5)
+                paddle.nn.functional.dropout(x1, p=0.5)
 
             self.assertRaises(TypeError, test_Variable)
 
             def test_dtype():
                 # the input dtype of dropout must be float16 or float32 or float64
                 # float16 only can be set on GPU place
-                x2 = fluid.layers.data(
-                    name='x2', shape=[3, 4, 5, 6], dtype="int32"
+                x2 = paddle.static.data(
+                    name='x2', shape=[-1, 3, 4, 5, 6], dtype="int32"
                 )
-                fluid.layers.dropout(x2, dropout_prob=0.5)
+                paddle.nn.functional.dropout(x2, p=0.5)
 
             self.assertRaises(TypeError, test_dtype)
 
@@ -413,7 +413,7 @@ class TestDropoutFAPI(unittest.TestCase):
                 mode='downscale_in_infer',
             )
             res10 = paddle.nn.functional.dropout(x=input, p=1.0, training=True)
-            res11 = paddle.fluid.layers.dropout(x=input, dropout_prob=0.0)
+            res11 = paddle.nn.functional.dropout(x=input, p=0.0)
             res12 = paddle.nn.functional.dropout(
                 x=input,
                 p=0.0,

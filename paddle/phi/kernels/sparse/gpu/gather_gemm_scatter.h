@@ -66,7 +66,8 @@ fp16_gather_gemm_scatter getBestFp16Kernel(const int M,
                                            const int N);
 fp32_gather_gemm_scatter getBestFp32Kernel(const int M,
                                            const int K,
-                                           const int N);
+                                           const int N,
+                                           const int SM);
 fp64_gather_gemm_scatter getBestFp64Kernel(const int M,
                                            const int K,
                                            const int N);
@@ -550,6 +551,30 @@ struct cutlass_tensorop_d884gemm_32x16_16x5_nn_align1 {
       false,
       true>;
 };
+
+// sm75
+struct cutlass_tensorop_s1688gemm_f16_64x64_32x2_nn_align4 {
+  using Gemm = cutlass::gemm::device::GemmUniversal<
+      cutlass::half_t,
+      cutlass::layout::RowMajor,
+      cutlass::half_t,
+      cutlass::layout::RowMajor,
+      float,
+      cutlass::layout::RowMajor,
+      float,
+      cutlass::arch::OpClassTensorOp,
+      cutlass::arch::Sm75,
+      cutlass::gemm::GemmShape<64, 64, 32>,
+      cutlass::gemm::GemmShape<32, 32, 32>,
+      cutlass::gemm::GemmShape<16, 8, 8>,
+      cutlass::epilogue::thread::LinearCombination<float, 4, float, float>,
+      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
+      2,
+      8,
+      8,
+      cutlass::arch::OpMultiplyAdd>;
+};
+
 }  // namespace sparse
 }  // namespace phi
 #endif

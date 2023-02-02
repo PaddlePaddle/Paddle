@@ -20,8 +20,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.jit import ProgramTranslator
-from paddle.jit.api import declarative
+from paddle.jit.api import to_static
 from paddle.nn import Embedding
 
 
@@ -231,7 +230,7 @@ class SkipGram(fluid.dygraph.Layer):
             self.embedding_size,
             weight_attr=fluid.ParamAttr(
                 name='embedding_para',
-                initializer=fluid.initializer.UniformInitializer(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-0.5 / self.embedding_size,
                     high=0.5 / self.embedding_size,
                 ),
@@ -243,14 +242,14 @@ class SkipGram(fluid.dygraph.Layer):
             self.embedding_size,
             weight_attr=fluid.ParamAttr(
                 name='embedding_out_para',
-                initializer=fluid.initializer.UniformInitializer(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-0.5 / self.embedding_size,
                     high=0.5 / self.embedding_size,
                 ),
             ),
         )
 
-    @declarative
+    @to_static
     def forward(self, center_words, target_words, label):
         center_words_emb = self.embedding(center_words)
         target_words_emb = self.embedding_out(target_words)
@@ -278,8 +277,7 @@ total_steps = len(dataset) * epoch_num // batch_size
 
 
 def train(to_static):
-    program_translator = ProgramTranslator()
-    program_translator.enable(to_static)
+    paddle.jit.enable_to_static(to_static)
 
     random.seed(0)
     np.random.seed(0)

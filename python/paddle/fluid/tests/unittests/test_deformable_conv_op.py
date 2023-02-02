@@ -18,7 +18,6 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 
@@ -442,9 +441,22 @@ class TestModulatedDeformableConvInvalidInput(unittest.TestCase):
 
         self.assertRaises(ValueError, test_invalid_filter)
 
-    def test_error_with_eager_guard(self):
-        with _test_eager_guard():
-            self.test_error()
+        def test_invalid_groups():
+            paddle.enable_static()
+            input = paddle.static.data(
+                name='input_groups', shape=[1, 1, 1, 1], dtype='float32'
+            )
+            offset = paddle.static.data(
+                name='offset_groups', shape=[1, 1], dtype='float32'
+            )
+            mask = paddle.static.data(
+                name='mask_groups', shape=[1], dtype='float32'
+            )
+            paddle.static.nn.deform_conv2d(
+                input, offset, mask, 1, 1, padding=1, groups=0
+            )
+
+        self.assertRaises(ValueError, test_invalid_groups)
 
 
 class TestDeformConv2DAPI(unittest.TestCase):
@@ -483,10 +495,6 @@ class TestDeformConv2DAPI(unittest.TestCase):
             assert out.shape == (-1, 4, 32, 32)
 
         test_deform_conv2d_v2()
-
-    def test_api_with_eager_guard(self):
-        with _test_eager_guard():
-            self.test_api()
 
 
 if __name__ == '__main__':

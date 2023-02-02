@@ -16,7 +16,19 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/unstack_grad_kernel_impl.h"
+#include "paddle/phi/kernels/funcs/stack_and_unstack.h"
+
+namespace phi {
+
+template <typename T, typename Context>
+void UnStackGradKernel(const Context& ctx,
+                       const std::vector<const DenseTensor*>& out_grad,
+                       int axis,
+                       DenseTensor* x_grad) {
+  funcs::StackRawKernel<T, Context>(ctx, out_grad, axis, x_grad);
+}
+
+}  // namespace phi
 
 PD_REGISTER_KERNEL(unstack_grad,
                    GPU,
@@ -26,4 +38,5 @@ PD_REGISTER_KERNEL(unstack_grad,
                    double,
                    int64_t,
                    int,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

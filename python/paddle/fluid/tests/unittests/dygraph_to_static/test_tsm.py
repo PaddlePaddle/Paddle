@@ -24,10 +24,8 @@ from tsm_config_utils import merge_configs, parse_config, print_configs
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.dygraph.nn import BatchNorm
-from paddle.jit import ProgramTranslator
-from paddle.jit.api import declarative
-from paddle.nn import Linear
+from paddle.jit.api import to_static
+from paddle.nn import BatchNorm, Linear
 
 random.seed(0)
 np.random.seed(0)
@@ -201,7 +199,7 @@ class TSM_ResNet(fluid.dygraph.Layer):
             ),
         )
 
-    @declarative
+    @to_static
     def forward(self, inputs):
         y = paddle.reshape(inputs, [-1] + self.reshape_list)
         y = self.conv(y)
@@ -209,7 +207,7 @@ class TSM_ResNet(fluid.dygraph.Layer):
         for bottleneck_block in self.bottleneck_block_list:
             y = bottleneck_block(y)
         y = self.pool2d_avg(y)
-        y = fluid.layers.dropout(y, dropout_prob=0.5)
+        y = paddle.nn.functional.dropout(y, p=0.5)
         y = paddle.reshape(y, [-1, self.seg_num, y.shape[1]])
         y = paddle.mean(y, axis=1)
         y = paddle.reshape(y, shape=[-1, 2048])
@@ -291,8 +289,7 @@ def create_optimizer(cfg, params):
 
 
 def train(args, fake_data_reader, to_static):
-    program_translator = ProgramTranslator()
-    program_translator.enable(to_static)
+    paddle.jit.enable_to_static(to_static)
 
     config = parse_config(args.config)
     train_config = merge_configs(config, 'train', vars(args))
@@ -330,8 +327,12 @@ def train(args, fake_data_reader, to_static):
                 labels = to_variable(y_data)
                 labels.stop_gradient = True
                 outputs = video_model(imgs)
-                loss = fluid.layers.cross_entropy(
-                    input=outputs, label=labels, ignore_index=-1
+                loss = paddle.nn.functional.cross_entropy(
+                    input=outputs,
+                    label=labels,
+                    ignore_index=-1,
+                    reduction='none',
+                    use_softmax=False,
                 )
                 avg_loss = paddle.mean(loss)
                 acc_top1 = paddle.static.accuracy(

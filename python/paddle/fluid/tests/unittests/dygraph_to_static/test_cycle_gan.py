@@ -31,15 +31,15 @@ import unittest
 import numpy as np
 from PIL import Image, ImageOps
 
+import paddle.fluid as fluid
+
 # Use GPU:0 to elimate the influence of other tasks.
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 import paddle
-import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.dygraph.nn import BatchNorm
-from paddle.jit import ProgramTranslator
-from paddle.jit.api import declarative
+from paddle.jit.api import to_static
+from paddle.nn import BatchNorm
 
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
@@ -60,8 +60,6 @@ lambda_identity = 0.5
 IMAGE_SIZE = 64
 SEED = 2020
 
-program_translator = ProgramTranslator()
-
 
 class Cycle_Gan(fluid.dygraph.Layer):
     def __init__(self, input_channel, istrain=True):
@@ -81,7 +79,7 @@ class Cycle_Gan(fluid.dygraph.Layer):
                 input_channel
             )
 
-    @declarative
+    @to_static
     def forward(self, input_A, input_B):
         """
         Generator of GAN model.
@@ -105,18 +103,14 @@ class Cycle_Gan(fluid.dygraph.Layer):
         G = g_A_loss + g_B_loss
         idt_A = self.build_generator_resnet_9blocks_a(input_B)
         idt_loss_A = (
-            paddle.mean(
-                paddle.abs(fluid.layers.elementwise_sub(x=input_B, y=idt_A))
-            )
+            paddle.mean(paddle.abs(paddle.subtract(x=input_B, y=idt_A)))
             * lambda_B
             * lambda_identity
         )
 
         idt_B = self.build_generator_resnet_9blocks_b(input_A)
         idt_loss_B = (
-            paddle.mean(
-                paddle.abs(fluid.layers.elementwise_sub(x=input_A, y=idt_B))
-            )
+            paddle.mean(paddle.abs(paddle.subtract(x=input_A, y=idt_B)))
             * lambda_A
             * lambda_identity
         )
@@ -136,7 +130,7 @@ class Cycle_Gan(fluid.dygraph.Layer):
             g_loss,
         )
 
-    @declarative
+    @to_static
     def discriminatorA(self, input_A, input_B):
         """
         Discriminator A of GAN model.
@@ -146,7 +140,7 @@ class Cycle_Gan(fluid.dygraph.Layer):
 
         return rec_B, fake_pool_rec_B
 
-    @declarative
+    @to_static
     def discriminatorB(self, input_A, input_B):
         """
         Discriminator B of GAN model.
@@ -358,7 +352,7 @@ class conv2d(fluid.dygraph.Layer):
             con_bias_attr = False
         else:
             con_bias_attr = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(0.0)
+                initializer=paddle.nn.initializer.Constant(0.0)
             )
 
         self.conv = paddle.nn.Conv2D(
@@ -368,9 +362,7 @@ class conv2d(fluid.dygraph.Layer):
             stride=stride,
             padding=padding,
             weight_attr=paddle.ParamAttr(
-                initializer=fluid.initializer.NormalInitializer(
-                    loc=0.0, scale=stddev
-                )
+                initializer=paddle.nn.initializer.Normal(mean=0.0, std=stddev)
             ),
             bias_attr=con_bias_attr,
         )
@@ -384,10 +376,10 @@ class conv2d(fluid.dygraph.Layer):
                 use_global_stats=True,  # set True to use deterministic algorithm
                 num_channels=num_filters,
                 param_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.NormalInitializer(1.0, 0.02)
+                    initializer=paddle.nn.initializer.Normal(1.0, 0.02)
                 ),
                 bias_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant(0.0)
+                    initializer=paddle.nn.initializer.Constant(0.0)
                 ),
                 trainable_statistics=True,
             )
@@ -427,7 +419,7 @@ class DeConv2D(fluid.dygraph.Layer):
             de_bias_attr = False
         else:
             de_bias_attr = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(0.0)
+                initializer=paddle.nn.initializer.Constant(0.0)
             )
 
         self._deconv = paddle.nn.Conv2DTranspose(
@@ -437,9 +429,7 @@ class DeConv2D(fluid.dygraph.Layer):
             stride=stride,
             padding=padding,
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.NormalInitializer(
-                    loc=0.0, scale=stddev
-                )
+                initializer=paddle.nn.initializer.Normal(mean=0.0, std=stddev)
             ),
             bias_attr=de_bias_attr,
         )
@@ -450,10 +440,10 @@ class DeConv2D(fluid.dygraph.Layer):
                 use_global_stats=True,  # set True to use deterministic algorithm
                 num_channels=num_filters,
                 param_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.NormalInitializer(1.0, 0.02)
+                    initializer=paddle.nn.initializer.Normal(1.0, 0.02)
                 ),
                 bias_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant(0.0)
+                    initializer=paddle.nn.initializer.Constant(0.0)
                 ),
                 trainable_statistics=True,
             )
@@ -563,7 +553,7 @@ def train(args, to_static):
         else fluid.CPUPlace()
     )
 
-    program_translator.enable(to_static)
+    paddle.jit.enable_to_static(to_static)
 
     with fluid.dygraph.guard(place):
         max_images_num = args.max_images_num

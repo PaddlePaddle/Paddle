@@ -115,7 +115,7 @@ proto_library(trainer_desc_proto SRCS trainer_desc.proto DEPS framework_proto
 cc_library(
   string_array
   SRCS string_array.cc
-  DEPS utf8proc)
+  DEPS utf8proc phi_enforce)
 
 cc_library(
   data_type
@@ -233,7 +233,8 @@ cc_test(
 cc_library(
   var_type_traits
   SRCS var_type_traits.cc
-  DEPS framework_proto scope tensor_array sparse_coo_tensor sparse_csr_tensor)
+  DEPS framework_proto scope tensor_array sparse_coo_tensor sparse_csr_tensor
+       extended_tensor)
 if(WITH_GPU)
   target_link_libraries(var_type_traits dynload_cuda)
 endif()
@@ -617,7 +618,8 @@ if(WITH_PYTHON)
     fleet_proto_init
     pass_desc_py_proto
     ps_py_proto
-    ps_py_proto_init)
+    ps_py_proto_init
+    pslib_py_proto)
   if(NOT WIN32)
     add_custom_command(
       TARGET framework_py_proto
@@ -629,16 +631,18 @@ if(WITH_PYTHON)
               ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
       COMMENT "Copy generated python proto into directory paddle/fluid/proto."
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-    add_custom_target(
-      fleet_executor_proto_init ALL
-      DEPENDS fleet_proto_init fleet_executor_desc_py_proto
-      COMMAND
-        cp
-        ${PADDLE_BINARY_DIR}/paddle/fluid/distributed/fleet_executor/fleet_executor_*.py
-        ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
-      COMMENT
-        "Copy generated python proto into directory paddle/distributed/fleet/proto."
-    )
+    if(NOT WITH_ROCM)
+      add_custom_target(
+        fleet_executor_proto_init ALL
+        DEPENDS fleet_proto_init fleet_executor_desc_py_proto
+        COMMAND
+          cp
+          ${PADDLE_BINARY_DIR}/paddle/fluid/distributed/fleet_executor/fleet_executor_*.py
+          ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
+        COMMENT
+          "Copy generated python proto into directory paddle/distributed/fleet/proto."
+      )
+    endif()
   else()
     string(REPLACE "/" "\\" proto_dstpath
                    "${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/")
@@ -862,7 +866,8 @@ if(WITH_DISTRIBUTE)
            fleet
            heter_server
            brpc
-           fleet_executor)
+           fleet_executor
+           flags)
     set(DISTRIBUTE_COMPILE_FLAGS
         "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=parentheses"
     )

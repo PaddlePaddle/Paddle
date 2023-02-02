@@ -19,7 +19,7 @@
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/imperative/type_defs.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace framework {
@@ -112,7 +112,7 @@ void InitTensorHolder(Scope* scope,
 void MainTest(bool convWithExistingBias) {
   auto prog = BuildProgramDesc(convWithExistingBias);
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
-  auto place = paddle::platform::CPUPlace();
+  auto place = phi::CPUPlace();
   NaiveExecutor exe{place};
   Scope scope;
   // Init scope, as it is used in pass

@@ -366,10 +366,10 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
             for p in self.places:
                 with fluid.dygraph.guard(p):
                     x = paddle.randn([2, 6, 6, 4])
-                    net1 = paddle.fluid.dygraph.BatchNorm(
+                    net1 = paddle.nn.BatchNorm(
                         6,
                         param_attr=fluid.ParamAttr(
-                            initializer=fluid.initializer.Constant(1.0)
+                            initializer=paddle.nn.initializer.Constant(1.0)
                         ),
                         use_global_stats=self.use_global_stats,
                         trainable_statistics=self.trainable_statistics,

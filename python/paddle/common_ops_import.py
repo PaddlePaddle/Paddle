@@ -24,7 +24,6 @@ from paddle.fluid.framework import (  # noqa: F401
     OpProtoHolder,
     Variable,
     _dygraph_tracer,
-    _in_legacy_dygraph,
     _non_static_mode,
     _varbase_creator,
     convert_np_dtype_to_dtype_,
@@ -33,7 +32,6 @@ from paddle.fluid.framework import (  # noqa: F401
     dygraph_only,
     in_dygraph_mode,
 )
-from paddle.fluid.initializer import Constant  # noqa: F401
 from paddle.fluid.layer_helper import LayerHelper  # noqa: F401
 from paddle.fluid.layers import fill_constant, utils  # noqa: F401
 from paddle.fluid.layers.layer_function_generator import (  # noqa: F401

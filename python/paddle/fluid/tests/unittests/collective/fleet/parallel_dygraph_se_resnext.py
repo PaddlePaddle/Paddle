@@ -139,7 +139,7 @@ class SqueezeExcitation(fluid.dygraph.Layer):
         y = paddle.nn.functional.relu(y)
         y = self._excitation(y)
         y = paddle.nn.functional.sigmoid(y)
-        y = fluid.layers.elementwise_mul(x=input, y=y, axis=0)
+        y = paddle.tensor.math._multiply_with_axis(x=input, y=y, axis=0)
         return y
 
 

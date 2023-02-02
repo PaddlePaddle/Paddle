@@ -18,8 +18,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.jit.api import declarative
-from paddle.jit.dy2static.program_translator import ProgramTranslator
+from paddle.jit.api import to_static
 from paddle.jit.dy2static.utils import Dygraph2StaticException
 
 SEED = 2020
@@ -35,10 +34,10 @@ class TestDy2staticException(unittest.TestCase):
     def test_error(self):
         if self.dyfunc:
             with self.assertRaisesRegex(Dygraph2StaticException, self.error):
-                ProgramTranslator().enable(True)
-                self.assertTrue(declarative(self.dyfunc)(self.x))
-        paddle.fluid.dygraph.base._in_declarative_mode_ = False
-        ProgramTranslator().enable(False)
+                paddle.jit.enable_to_static(True)
+                self.assertTrue(to_static(self.dyfunc)(self.x))
+        paddle.fluid.dygraph.base.global_var._in_declarative_mode_ = False
+        paddle.jit.enable_to_static(False)
 
 
 def test_continue_in_for(x):
@@ -223,7 +222,7 @@ class TestContinueInFor(unittest.TestCase):
 
     def run_static_mode(self):
         with fluid.dygraph.guard():
-            res = declarative(self.dygraph_func)(self.input)
+            res = to_static(self.dygraph_func)(self.input)
             return res.numpy()
 
     def test_transformed_static_result(self):

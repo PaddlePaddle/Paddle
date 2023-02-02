@@ -19,12 +19,11 @@ from .meta_optimizer_base import MetaOptimizerBase
 __all__ = []
 
 import paddle
-from paddle import framework
 from paddle.common_ops_import import LayerHelper
-from paddle.fluid.clip import GradientClipByNorm, append_gradient_clip_ops
 from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid.optimizer import Momentum, Optimizer
-from paddle.framework import core
+from paddle.framework import core, in_dygraph_mode
+from paddle.nn.clip import ClipGradByNorm, append_gradient_clip_ops
 from paddle.static import create_global_var
 
 
@@ -46,7 +45,7 @@ class DGCMomentumOptimizer(Optimizer):
         grad_clip=None,
         name=None,
     ):
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             raise Exception("In dygraph, don't support DGCMomentumOptimizer.")
 
         assert (
@@ -76,9 +75,9 @@ class DGCMomentumOptimizer(Optimizer):
 
         self._dgc_clip_norm = None
         if grad_clip is not None:
-            if not isinstance(grad_clip, GradientClipByNorm):
+            if not isinstance(grad_clip, ClipGradByNorm):
                 raise TypeError(
-                    "The type of grad_clip should be 'GradientClipByNorm', because DGCMomentumOptimizer only support GradientClipByNorm"
+                    "The type of grad_clip should be 'ClipGradByNorm', because DGCMomentumOptimizer only support ClipGradByNorm"
                 )
             assert isinstance(num_trainers, int), (
                 "The type of num_trainers should be 'int', but received %s"
@@ -123,7 +122,7 @@ class DGCMomentumOptimizer(Optimizer):
         return True
 
     def _append_optimize_op(self, block, param_and_grad):
-        assert isinstance(block, paddle.fluid.framework.Block)
+        assert isinstance(block, paddle.framework.Block)
         velocity_acc = self._get_accumulator(
             self._u_velocity_acc_str, param_and_grad[0]
         )
@@ -172,7 +171,7 @@ class DGCMomentumOptimizer(Optimizer):
         if is_new_var:
             helper.set_variable_initializer(
                 counter,
-                initializer=paddle.fluid.initializer.Constant(
+                initializer=paddle.nn.initializer.ConstantInitializer(
                     value=float(begin - 1), force_cpu=True
                 ),
             )
@@ -195,7 +194,7 @@ class DGCMomentumOptimizer(Optimizer):
         if is_new_var:
             helper.set_variable_initializer(
                 counter,
-                initializer=paddle.fluid.initializer.Constant(
+                initializer=paddle.nn.initializer.ConstantInitializer(
                     value=float(value), force_cpu=True
                 ),
             )
