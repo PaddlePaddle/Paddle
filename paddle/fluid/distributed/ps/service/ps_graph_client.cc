@@ -17,7 +17,7 @@
 #include "paddle/fluid/distributed/ps/table/table.h"
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
-#include "paddle/fluid/framework/threadpool.h"
+// #include "paddle/fluid/framework/threadpool.h"
 
 namespace paddle {
 namespace distributed {

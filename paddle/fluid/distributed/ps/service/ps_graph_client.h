@@ -15,11 +15,12 @@
 #include "paddle/fluid/distributed/ps/service/ps_local_client.h"
 #include "paddle/fluid/framework/archive.h"
 #include "paddle/fluid/framework/barrier.h"
+#include "paddle/fluid/framework/threadpool.h"
 
 namespace paddle {
-namespace framework {
-class ThreadPool;
-};
+// namespace framework {
+// class ThreadPool;
+// };
 namespace distributed {
 namespace simple {
 struct RpcMessageHead;
@@ -57,6 +58,8 @@ class PsGraphClient : public PsLocalClient {
   void request_handler(const simple::RpcMessageHead &head,
                        paddle::framework::BinaryArchive &iar);  // NOLINT
   SparseTableInfo &get_table_info(const size_t &table_id);
+
+
 
  private:
   std::map<uint32_t, std::shared_ptr<SparseTableInfo>> _table_info;
