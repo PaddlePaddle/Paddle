@@ -16,7 +16,7 @@ import logging
 import os
 import sys
 
-from paddle.fluid.dygraph.parallel import ParallelEnv
+import paddle
 
 __all__ = []
 
@@ -40,7 +40,7 @@ def setup_logger(output=None, name="hapi", log_level=logging.INFO):
 
     format_str = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     # stdout logging: only local rank==0
-    local_rank = ParallelEnv().local_rank
+    local_rank = paddle.distributed.ParallelEnv().local_rank
     if local_rank == 0 and len(logger.handlers) == 0:
         ch = logging.StreamHandler(stream=sys.stdout)
         ch.setLevel(log_level)
