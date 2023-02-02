@@ -65,10 +65,10 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilder::Build(
       is_build_,
       false,
       phi::errors::AlreadyExists("The op dependency has been built"));
-  is_build_ = true;
 
   instructions_ = &instructions;
   op_num_ = instructions_->size();
+  op_happens_before_.assign(op_num_, std::vector<bool>(op_num_, false));
 
   BuildDownstreamMap();
   VLOG(6) << "Finish BuildDownstreamMap";
@@ -98,6 +98,8 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilder::Build(
   VLOG(8) << "downstream_map: " << std::endl
           << StringizeDownstreamMap(op_downstream_map_);
 
+  is_build_ = true;
+
   return op_downstream_map_;
 }
 
@@ -109,21 +111,6 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilder::OpDownstreamMap()
       phi::errors::Unavailable(
           "DependencyBuilder is not yet built, call Build() firstly."));
   return op_downstream_map_;
-}
-
-bool DependencyBuilder::OpHappensBefore(size_t prior_op_idx,
-                                        size_t posterior_op_idx) const {
-  PADDLE_ENFORCE_EQ(
-      is_build_,
-      true,
-      phi::errors::AlreadyExists("The op dependency is not yet built"));
-  auto it = op_behind_map_.find(prior_op_idx);
-  if (it == op_behind_map_.end()) {
-    return false;
-  }
-
-  const std::set<size_t>& posterior_op_set = it->second;
-  return posterior_op_set.find(posterior_op_idx) != posterior_op_set.end();
 }
 
 void DependencyBuilder::AddDependencyForCoalesceTensorOp() {
@@ -345,20 +332,26 @@ void DependencyBuilder::AddDownstreamOp(size_t prior_op_idx,
   }
   downstream_ops.insert(posterior_op_idx);
 
-  std::set<size_t>& posterior_ops = op_behind_map_[prior_op_idx];
-  posterior_ops.insert(posterior_op_idx);
+  std::set<size_t> prior_of_prior = op_before_map_[prior_op_idx];
+  std::set<size_t> posterior_of_posterior = op_behind_map_[posterior_op_idx];
+
+  auto update_op_happen_before = [this](size_t prior_op_idx,
+                                        size_t posterior_op_idx) {
+    op_before_map_[posterior_op_idx].insert(prior_op_idx);
+    op_behind_map_[prior_op_idx].insert(posterior_op_idx);
+    op_happens_before_[prior_op_idx][posterior_op_idx] = true;
+  };
+
+  update_op_happen_before(prior_op_idx, posterior_op_idx);
 
   // All ops before prior-op are also before posterior-op
-  for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
-    if (OpHappensBefore(op_idx, prior_op_idx)) {
-      op_behind_map_[op_idx].insert(posterior_op_idx);
-    }
+  for (size_t op_idx : prior_of_prior) {
+    update_op_happen_before(op_idx, posterior_op_idx);
   }
 
   // All ops after posterior-op are also after prior-op
-  auto it = op_behind_map_.find(posterior_op_idx);
-  if (it != op_behind_map_.end()) {
-    posterior_ops.insert(it->second.begin(), it->second.end());
+  for (size_t op_idx : posterior_of_posterior) {
+    update_op_happen_before(prior_op_idx, op_idx);
   }
 
   VLOG(8) << prior_op_idx << "->" << posterior_op_idx;
