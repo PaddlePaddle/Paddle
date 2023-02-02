@@ -65,20 +65,20 @@ class DependencyBuilder {
   const std::vector<Instruction>* instructions_;  // not_own
   size_t op_num_;
 
-  // op_behind_map_ is the mapping from op to its posterior-op set, that is to
-  // say, op_behind_map_[i] == {a, b, c} means op[a], op[b] and op[c] depend on
-  // op[i] directly or indirectly. op_before_map_ is the revered mapping of
-  // op_behind_map.
-  std::map<size_t, std::set<size_t>> op_before_map_;
-  std::map<size_t, std::set<size_t>> op_behind_map_;
+  // ops_behind_ is the adjacency list about op to its posterior-ops, that is to
+  // say, op_behind_[i] == {a, b, c} means op[a], op[b] and op[c] depend on
+  // op[i] directly or indirectly. ops_before_ is the revered adjacency list of
+  // ops_behind_.
+  std::vector<std::vector<size_t>> ops_before_;
+  std::vector<std::vector<size_t>> ops_behind_;
 
   // op_downstream_map_ is the mapping from op to its downstream-op set, that is
   // to say, op_downstream_map_[i] == {a, b, c} means op[a], op[b] and op[c]
-  // depend on op[i] directly
+  // depend on op[i] directly.
   std::map<size_t, std::set<size_t>> op_downstream_map_;
 
-  // op_happens_before_ is a matrix form of op_before_map_ and op_behind_map_,
-  // it is used to speed up the query.
+  // op_happens_before_ is a matrix form of ops_before_ and ops_behind_, it is
+  // used to speed up the query.
   std::vector<std::vector<bool>> op_happens_before_;
 };
 

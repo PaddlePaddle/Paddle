@@ -68,6 +68,9 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilder::Build(
 
   instructions_ = &instructions;
   op_num_ = instructions_->size();
+
+  ops_before_.assign(op_num_, {});
+  ops_behind_.assign(op_num_, {});
   op_happens_before_.assign(op_num_, std::vector<bool>(op_num_, false));
 
   BuildDownstreamMap();
@@ -332,14 +335,16 @@ void DependencyBuilder::AddDownstreamOp(size_t prior_op_idx,
   }
   downstream_ops.insert(posterior_op_idx);
 
-  std::set<size_t> prior_of_prior = op_before_map_[prior_op_idx];
-  std::set<size_t> posterior_of_posterior = op_behind_map_[posterior_op_idx];
+  std::vector<size_t> prior_of_prior = ops_before_[prior_op_idx];
+  std::vector<size_t> posterior_of_posterior = ops_behind_[posterior_op_idx];
 
   auto update_op_happen_before = [this](size_t prior_op_idx,
                                         size_t posterior_op_idx) {
-    op_before_map_[posterior_op_idx].insert(prior_op_idx);
-    op_behind_map_[prior_op_idx].insert(posterior_op_idx);
-    op_happens_before_[prior_op_idx][posterior_op_idx] = true;
+    if (!op_happens_before_[prior_op_idx][posterior_op_idx]) {
+      op_happens_before_[prior_op_idx][posterior_op_idx] = true;
+      ops_before_[posterior_op_idx].push_back(prior_op_idx);
+      ops_behind_[prior_op_idx].push_back(posterior_op_idx);
+    }
   };
 
   update_op_happen_before(prior_op_idx, posterior_op_idx);
@@ -511,8 +516,8 @@ void DependencyBuilder::ShrinkDownstreamMap() {
         minumum_nexts.insert(item);
       }
     }
-    // NOTE(Ruibiao): op_behind_map_ will not be changed when shrink dowstream
-    // map
+    // NOTE(Ruibiao): op_happens_before will not be changed when shrink
+    // dowstream map
     op_downstream_map_.at(i) = minumum_nexts;
   }
   VLOG(8) << "Finish shrink downstream map";
