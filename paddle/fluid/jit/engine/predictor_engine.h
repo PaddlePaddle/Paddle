@@ -31,7 +31,7 @@ namespace jit {
 class PredictorEngine : public BaseEngine {
  public:
   PredictorEngine(const std::shared_ptr<FunctionInfo> &info,
-                  const VariableMap &params_dict,
+                  const std::shared_ptr<VariableMap> &params_dict,
                   const phi::Place &place);
 
   PredictorEngine(const std::shared_ptr<FunctionInfo> &info,
@@ -50,6 +50,7 @@ class PredictorEngine : public BaseEngine {
 
  private:
   std::shared_ptr<FunctionInfo> info_;
+  std::shared_ptr<VariableMap> params_dict_;
   std::shared_ptr<framework::Scope> scope_;
   phi::Place place_;
   std::shared_ptr<AnalysisPredictor> predictor_;
