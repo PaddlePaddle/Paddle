@@ -23,43 +23,27 @@ set(LEVELDB_LIBRARIES
     "${LEVELDB_INSTALL_DIR}/lib/libleveldb.a"
     CACHE FILEPATH "leveldb library." FORCE)
 include_directories(${LEVELDB_INCLUDE_DIR})
-
+set(LEVELDN_CXXFLAGS "-fPIC")
 if(WITH_HETERPS AND WITH_PSLIB)
-  ExternalProject_Add(
-    extern_leveldb
-    ${EXTERNAL_PROJECT_LOG_ARGS}
-    PREFIX ${LEVELDB_PREFIX_DIR}
-    GIT_REPOSITORY "https://github.com/google/leveldb"
-    GIT_TAG v1.18
-    UPDATE_COMMAND ""
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND CXXFLAGS='-fPIC -D_GLIBCXX_USE_CXX11_ABI=0' make -j ${NUM_OF_PROCESSOR} libleveldb.a
-    INSTALL_COMMAND
-      mkdir -p ${LEVELDB_INSTALL_DIR}/lib/ && cp
-      ${LEVELDB_PREFIX_DIR}/src/extern_leveldb/libleveldb.a ${LEVELDB_LIBRARIES}
-      && cp -r ${LEVELDB_PREFIX_DIR}/src/extern_leveldb/include
-      ${LEVELDB_INSTALL_DIR}/
-    BUILD_IN_SOURCE 1
-    BUILD_BYPRODUCTS ${LEVELDB_LIBRARIES})
-else()
-  ExternalProject_Add(
-    extern_leveldb
-    ${EXTERNAL_PROJECT_LOG_ARGS}
-    PREFIX ${LEVELDB_PREFIX_DIR}
-    GIT_REPOSITORY "https://github.com/google/leveldb"
-    GIT_TAG v1.18
-    UPDATE_COMMAND ""
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND CXXFLAGS=-fPIC make -j ${NUM_OF_PROCESSOR} libleveldb.a
-    INSTALL_COMMAND
-      mkdir -p ${LEVELDB_INSTALL_DIR}/lib/ && cp
-      ${LEVELDB_PREFIX_DIR}/src/extern_leveldb/libleveldb.a ${LEVELDB_LIBRARIES}
-      && cp -r ${LEVELDB_PREFIX_DIR}/src/extern_leveldb/include
-      ${LEVELDB_INSTALL_DIR}/
-    BUILD_IN_SOURCE 1
-    BUILD_BYPRODUCTS ${LEVELDB_LIBRARIES})
+  set(LEVELDN_CXXFLAGS "${LEVELDN_CXXFLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
 endif()
-
+ExternalProject_Add(
+  extern_leveldb
+  ${EXTERNAL_PROJECT_LOG_ARGS}
+  PREFIX ${LEVELDB_PREFIX_DIR}
+  GIT_REPOSITORY "https://github.com/google/leveldb"
+  GIT_TAG v1.18
+  UPDATE_COMMAND ""
+  CONFIGURE_COMMAND ""
+  BUILD_COMMAND export "CXXFLAGS=${LEVELDN_CXXFLAGS}" && make -j
+                ${NUM_OF_PROCESSOR} libleveldb.a
+  INSTALL_COMMAND
+    mkdir -p ${LEVELDB_INSTALL_DIR}/lib/ && cp
+    ${LEVELDB_PREFIX_DIR}/src/extern_leveldb/libleveldb.a ${LEVELDB_LIBRARIES}
+    && cp -r ${LEVELDB_PREFIX_DIR}/src/extern_leveldb/include
+    ${LEVELDB_INSTALL_DIR}/
+  BUILD_IN_SOURCE 1
+  BUILD_BYPRODUCTS ${LEVELDB_LIBRARIES})
 add_dependencies(extern_leveldb snappy)
 
 add_library(leveldb STATIC IMPORTED GLOBAL)
