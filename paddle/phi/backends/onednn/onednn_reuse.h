@@ -52,8 +52,7 @@ constexpr bool is_bfloat16() {
 }
 
 static void AppendActivation(const OneDNNContext& dev_ctx,
-                             dnnl::post_ops& post_ops,  // NOLINT
-                             float activation_scale = 1.0f) {
+                             dnnl::post_ops& post_ops) {  // NOLINT
   const auto invalid_attribute =
       dev_ctx.HasDnnAttr("fuse_activation")
           ? PADDLE_GET_CONST(std::string, dev_ctx.GetDnnAttr("fuse_activation"))
@@ -75,12 +74,11 @@ static void AppendActivation(const OneDNNContext& dev_ctx,
           : 0.0f;
 
   if (fuse_activation == "hard_sigmoid") {
-    post_ops.append_eltwise(activation_scale,
-                            dnnl::algorithm::eltwise_linear,
-                            fuse_alpha,
-                            fuse_beta);
     post_ops.append_eltwise(
-        activation_scale, dnnl::algorithm::eltwise_clip, 0.0f, 1.0f);
+        dnnl::algorithm::eltwise_linear, fuse_alpha, fuse_beta);
+    post_ops.append_eltwise(dnnl::algorithm::eltwise_clip, 0.0f, 1.0f);
+  } else if (fuse_activation == "relu6") {
+    post_ops.append_eltwise(dnnl::algorithm::eltwise_clip, 0.0f, fuse_alpha);
   } else {
     const std::unordered_map<std::string, dnnl::algorithm> activation_map = {
         {"abs", dnnl::algorithm::eltwise_abs},
@@ -92,7 +90,6 @@ static void AppendActivation(const OneDNNContext& dev_ctx,
         {"leaky_relu", dnnl::algorithm::eltwise_relu},
         {"mish", dnnl::algorithm::eltwise_mish},
         {"relu", dnnl::algorithm::eltwise_relu},
-        {"relu6", dnnl::algorithm::eltwise_bounded_relu},
         {"sigmoid", dnnl::algorithm::eltwise_logistic},
         {"sqrt", dnnl::algorithm::eltwise_sqrt},
         {"swish", dnnl::algorithm::eltwise_swish},
@@ -107,8 +104,7 @@ static void AppendActivation(const OneDNNContext& dev_ctx,
             "Activation '%s' not found in oneDNN algorithms mapper",
             fuse_activation));
 
-    post_ops.append_eltwise(
-        activation_scale, activation_type->second, fuse_alpha, fuse_beta);
+    post_ops.append_eltwise(activation_type->second, fuse_alpha, fuse_beta);
   }
 }
 

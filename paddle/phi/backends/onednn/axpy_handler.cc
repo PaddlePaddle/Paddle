@@ -123,7 +123,7 @@ void OneDNNAXPYHandler<T>::Impl::operator()(const T *x, T *y) {
         {DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, handler_->AcquireAlphaMemory()});
   }
 
-  reorder_p.execute(astream, reorder_src_mem_p, reorder_dst_mem_p);
+  reorder_p.execute(astream, reorder_args);
   astream.wait();
 }
 

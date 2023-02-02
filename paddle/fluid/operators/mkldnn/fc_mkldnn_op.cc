@@ -104,13 +104,14 @@ class FCMKLDNNHandler
     dnnl::post_ops post_operations;
 
     float sum_scale = 1.0f;
-    float activation_scale = 1.0f;
     if (phi::funcs::is_int8<T_w>()) {
       std::vector<float> output_shift_scale;
-      std::tie(output_shift_scale, sum_scale, activation_scale) =
+      // TODO(jczaja): I have moves activation scale to be applied in runtime.
+      // Is this correct????
+      std::tie(output_shift_scale, sum_scale, std::ignore) =
           GetOutputScales(ctx);
       int mask = CreateMask(1, output_shift_scale.size() > 1);
-      attributes.set_output_scales(mask, output_shift_scale);
+      attributes.set_scales_mask(DNNL_ARG_DST, mask);
     }
 
     if (ctx.HasAttr("fuse_residual_connection") &&
@@ -120,15 +121,15 @@ class FCMKLDNNHandler
 
     // ReLU from "fc_fuse_pass"
     if (ctx.Attr<std::string>("activation_type") == "relu") {
-      post_operations.append_eltwise(
-          activation_scale, dnnl::algorithm::eltwise_relu, 0.0f, 0.0f);
+      post_operations.append_eltwise(dnnl::algorithm::eltwise_relu, 0.0f, 0.0f);
     }
-    AppendActivation(ctx, post_operations, activation_scale);
+    // TODO(jczaja): actviate scale was removed. How to replace it?
+    AppendActivation(ctx, post_operations);
 
     if (ctx.HasAttr("fused_output_scale")) {
       float scale_alpha = ctx.Attr<float>("fused_output_scale");
       post_operations.append_eltwise(
-          1.0, dnnl::algorithm::eltwise_linear, scale_alpha, 0.0f);
+          dnnl::algorithm::eltwise_linear, scale_alpha, 0.0f);
     }
 
     attributes.set_post_ops(post_operations);
@@ -154,10 +155,9 @@ class FCMKLDNNHandler
       return bias_scales;
     }
   }
-
+  // TODO(jczaja): The same function is in onednn_reuse.h . Why?
   void AppendActivation(const ExecutionContext& ctx,
-                        dnnl::post_ops& post_ops,  // NOLINT
-                        float activation_scale = 1.0f) {
+                        dnnl::post_ops& post_ops) {  // NOLINT
     const auto invalid_attribute =
         ctx.HasAttr("fuse_activation")
             ? ctx.Attr<std::string>("fuse_activation").empty()
@@ -171,12 +171,11 @@ class FCMKLDNNHandler
         ctx.HasAttr("fuse_beta") ? ctx.Attr<float>("fuse_beta") : 0.0f;
 
     if (fuse_activation == "hard_sigmoid") {
-      post_ops.append_eltwise(activation_scale,
-                              dnnl::algorithm::eltwise_linear,
-                              fuse_alpha,
-                              fuse_beta);
       post_ops.append_eltwise(
-          activation_scale, dnnl::algorithm::eltwise_clip, 0.0f, 1.0f);
+          dnnl::algorithm::eltwise_linear, fuse_alpha, fuse_beta);
+      post_ops.append_eltwise(dnnl::algorithm::eltwise_clip, 0.0f, 1.0f);
+    } else if (fuse_activation == "relu6") {
+      post_ops.append_eltwise(dnnl::algorithm::eltwise_clip, 0.0f, fuse_alpha);
     } else {
       const std::unordered_map<std::string, dnnl::algorithm> activation_map = {
           {"abs", dnnl::algorithm::eltwise_abs},
@@ -188,7 +187,6 @@ class FCMKLDNNHandler
           {"leaky_relu", dnnl::algorithm::eltwise_relu},
           {"mish", dnnl::algorithm::eltwise_mish},
           {"relu", dnnl::algorithm::eltwise_relu},
-          {"relu6", dnnl::algorithm::eltwise_bounded_relu},
           {"sigmoid", dnnl::algorithm::eltwise_logistic},
           {"sqrt", dnnl::algorithm::eltwise_sqrt},
           {"swish", dnnl::algorithm::eltwise_swish},
@@ -203,8 +201,7 @@ class FCMKLDNNHandler
               "Activation '%s' not found in oneDNN algorithms mapper",
               fuse_activation));
 
-      post_ops.append_eltwise(
-          activation_scale, activation_type->second, fuse_alpha, fuse_beta);
+      post_ops.append_eltwise(activation_type->second, fuse_alpha, fuse_beta);
     }
   }
 
@@ -608,6 +605,25 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
     if (bias) {
       fc_args.insert({DNNL_ARG_BIAS, *bias_memory_p});
     }
+
+    {  // TODO(jczaja): Make it more decent
+      bool has_activation = !ctx.Attr<std::string>("activation_type").empty();
+      bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
+      float activation_scale = (!force_fp32_output && has_activation)
+                                   ? ctx.Attr<float>("Scale_out")
+                                   : 1.0f;
+
+      if (activation_scale != 1.0f) {
+        // TODO(jczaja): Make memory object during handler initialization
+        std::vector<float> scales(1, activation_scale);
+        auto scales_md = dnnl::memory::desc(
+            {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
+        auto activation_scales_mem = dnnl::memory(scales_md, onednn_engine);
+        activation_scales_mem.set_data_handle(scales.data());
+        fc_args.insert(
+            {DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, activation_scales_mem});
+      }
+    }  //
 
     fc_p->execute(astream, fc_args);
     astream.wait();
