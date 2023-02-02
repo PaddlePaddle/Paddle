@@ -57,6 +57,7 @@ class AbsmaxObserverLayer(BaseObserver):
     def forward(self, input):
         abs_max_val = float(paddle.max(paddle.abs(input)).numpy())
         self.abs_max_val = max(abs_max_val, self.abs_max_val)
+        return input
 
     def cal_thresholds(self):
         self.thresholds = self.abs_max_val
