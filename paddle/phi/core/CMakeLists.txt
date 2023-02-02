@@ -114,6 +114,11 @@ cc_library(
   SRCS custom_kernel.cc
   DEPS kernel_factory)
 
+cc_library(
+  operator_manager
+  SRCS operator_manager.cc
+  DEPS flags)
+
 # Will remove once we implemented MKLDNN_Tensor
 if(WITH_MKLDNN)
   add_dependencies(dense_tensor mkldnn)

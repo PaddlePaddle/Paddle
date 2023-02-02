@@ -19,7 +19,6 @@
 namespace paddle {
 
 namespace experimental {
-class Tensor;
 
 class TensorOperatorBase {
  public:
@@ -27,7 +26,7 @@ class TensorOperatorBase {
 
   // virtual Tensor& add_(Tensor& x, const Tensor& y) = 0;
 
-  virtual Tensor* multiply(const Tensor& x, const Tensor& y) = 0;
+  virtual Tensor multiply(const Tensor& x, const Tensor& y) = 0;
 };
 
 }  // namespace experimental

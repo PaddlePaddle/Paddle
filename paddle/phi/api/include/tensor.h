@@ -33,7 +33,6 @@ using gpuStream_t = hipStream_t;
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/core/operator_manager.h"
 
 namespace phi {
 class DenseTensor;
@@ -513,9 +512,7 @@ class PADDLE_API Tensor final {
   //   // return *this;
   // }
 
-  friend Tensor operator*(const Tensor& x, const Tensor& y) {
-    return *(OperatorManager::Instance().multiply(x, y));
-  }
+  friend Tensor operator*(const Tensor& x, const Tensor& y);
 
   // Tensor& operator*=(const Tensor& other) {
   //   return OperatorManager::Instance().multiply(const_cast<Tensor&>(*this),

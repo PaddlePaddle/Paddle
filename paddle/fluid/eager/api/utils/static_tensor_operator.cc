@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/fluid/eager/api/utils/static_tensor_operator.h"
 
-#include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/core/tensor_operator_base.h"
+#include "paddle/fluid/prim/api/generated/prim_api/prim_api.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 
 namespace paddle {
 
 namespace experimental {
+using DescTensor = paddle::prim::DescTensor;
 
-class StaticTensorOperator : public TensorOperatorBase {
- public:
-  Tensor multiply(const Tensor& x, const Tensor& y) override;
-};
+Tensor StaticTensorOperator::multiply(const Tensor& x, const Tensor& y) {
+  return paddle::prim::multiply<DescTensor>(x, y);
+}
 
 }  // namespace experimental
 }  // namespace paddle

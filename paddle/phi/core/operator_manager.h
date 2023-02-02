@@ -14,26 +14,17 @@
 
 #pragma once
 
-#include "gflags/gflags.h"
 #include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/tensor_operator_base.h"
-
-DECLARE_string(tensor_operator);
 
 namespace paddle {
 
 namespace experimental {
-class Tensor;
 
 class OperatorManager {
  public:
-  static OperatorManager& Instance() {
-    static OperatorManager g_op_manager;
-    return g_op_manager;
-  }
+  static OperatorManager& Instance();
 
   // Tensor& add_(Tensor& x, const Tensor& y) {
   //   if (FLAGS_tensor_operator == "eager"){
@@ -45,18 +36,7 @@ class OperatorManager {
   //   }
   // }
 
-  Tensor* multiply(const Tensor& x, const Tensor& y) {
-    if (FLAGS_tensor_operator == "eager") {
-      return eager_operator->multiply(x, y);
-    } else if (FLAGS_tensor_operator == "static") {
-      return static_operator->multiply(x, y);
-    } else if (FLAGS_tensor_operator == "phi") {
-      return phi_operator->multiply(x, y);
-    } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
-          "OperatorManager does not support the operator "));
-    }
-  }
+  Tensor multiply(const Tensor& x, const Tensor& y);
 
  public:
   TensorOperatorBase* eager_operator = nullptr;

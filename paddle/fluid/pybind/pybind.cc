@@ -200,7 +200,6 @@ limitations under the License. */
 
 #include "paddle/fluid/eager/api/utils/eager_tensor_operator.h"
 #include "paddle/fluid/eager/api/utils/static_tensor_operator.h"
-#include "paddle/phi/api/include/phi_tensor_operator.h"
 #include "paddle/phi/core/operator_manager.h"
 
 DECLARE_bool(use_mkldnn);
@@ -1849,12 +1848,9 @@ All parameter, weight, gradient are variables in Paddle.
     }
 #endif
     paddle::experimental::EagerTensorOperator eager_operator;
-    paddle::experimental::PhiTensorOperator phi_operator;
-    paddle::experimental::StaticTensorOperator static_operator;
     paddle::experimental::OperatorManager::Instance().eager_operator =
         &eager_operator;
-    paddle::experimental::OperatorManager::Instance().phi_operator =
-        &phi_operator;
+    paddle::experimental::StaticTensorOperator static_operator;
     paddle::experimental::OperatorManager::Instance().static_operator =
         &static_operator;
   });

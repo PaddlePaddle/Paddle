@@ -12,19 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/fluid/eager/api/utils/eager_tensor_operator.h"
 
-#include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/core/tensor_operator_base.h"
+#include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 
 namespace paddle {
 
 namespace experimental {
 
-class StaticTensorOperator : public TensorOperatorBase {
- public:
-  Tensor multiply(const Tensor& x, const Tensor& y) override;
-};
+Tensor EagerTensorOperator::multiply(const Tensor& x, const Tensor& y) {
+  return ::multiply_ad_func(x, y);
+}
 
 }  // namespace experimental
 }  // namespace paddle

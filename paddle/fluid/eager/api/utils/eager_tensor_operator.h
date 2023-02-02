@@ -14,21 +14,16 @@
 
 #pragma once
 
-#include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/tensor_operator_base.h"
 
 namespace paddle {
 
 namespace experimental {
-class Tensor;
-class TensorOperatorBase;
 
 class EagerTensorOperator : public TensorOperatorBase {
  public:
-  Tensor* multiply(const Tensor& x, const Tensor& y) override {
-    return &(::multiply_ad_func(x, y));
-  }
+  Tensor multiply(const Tensor& x, const Tensor& y) override;
 };
 
 }  // namespace experimental

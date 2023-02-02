@@ -14,21 +14,16 @@
 
 #pragma once
 
-#include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/tensor_operator_base.h"
 
 namespace paddle {
 
 namespace experimental {
-class Tensor;
-class TensorOperatorBase;
 
 class PhiTensorOperator : public TensorOperatorBase {
  public:
-  Tensor* multiply(const Tensor& x, const Tensor& y) override {
-    return &paddle::experimental::multiply(x, y);
-  }
+  Tensor multiply(const Tensor& x, const Tensor& y) override;
 };
 
 }  // namespace experimental

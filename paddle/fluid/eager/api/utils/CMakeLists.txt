@@ -3,6 +3,16 @@ cc_library(
   SRCS global_utils.cc
   DEPS place tracer)
 
+cc_library(
+  eager_tensor_operator
+  SRCS eager_tensor_operator.cc
+  DEPS final_dygraph_function)
+
+cc_library(
+  static_tensor_operator
+  SRCS static_tensor_operator.cc
+  DEPS static_prim_api)
+
 if(NOT (NOT WITH_PYTHON AND ON_INFER))
   cc_library(
     tensor_utils

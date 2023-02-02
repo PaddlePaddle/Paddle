@@ -12,19 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/core/tensor_operator_base.h"
+#include "paddle/phi/api/include/phi_tensor_operator.h"
+#include "paddle/phi/api/include/api.h"
 
 namespace paddle {
 
 namespace experimental {
 
-class StaticTensorOperator : public TensorOperatorBase {
- public:
-  Tensor multiply(const Tensor& x, const Tensor& y) override;
-};
+Tensor PhiTensorOperator::multiply(const Tensor& x, const Tensor& y) {
+  return paddle::experimental::multiply(x, y);
+}
 
 }  // namespace experimental
 }  // namespace paddle

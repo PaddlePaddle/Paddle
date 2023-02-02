@@ -42,7 +42,10 @@ set(PYBIND_DEPS
     auto_parallel
     jit_layer
     jit_property
-    prim_utils)
+    prim_utils
+    phi_tensor_operator
+    eager_tensor_operator
+    static_tensor_operator)
 
 if(WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
