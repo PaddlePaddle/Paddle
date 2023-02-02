@@ -324,6 +324,16 @@ void matmul_double_grad(const Tensor& x,
   int y_ndim = y_dims.size();
   int ndim = grad_out_dims.size();
 
+  if (!grad_x_grad && !grad_y_grad) {
+    x_grad = nullptr;
+    y_grad = nullptr;
+    grad_out_grad = nullptr;
+  } else if (!grad_x_grad) {
+    y_grad = nullptr;
+  } else if (!grad_y_grad) {
+    x_grad = nullptr;
+  }
+
   // Case1 : x's or y's dim = 1
 
   bool is_broadcast = true;
@@ -343,7 +353,7 @@ void matmul_double_grad(const Tensor& x,
     Tensor grad_out_help = grad_out;
 
     reshape_xyout_to_matrixsequence<T>(
-        x_help, y_help, grad_out_help, transpose_x, transpose_y);
+        &x_help, &y_help, &grad_out_help, transpose_x, transpose_y);
 
     phi::DDim x_grad_dims;
     if (x_grad) {
@@ -370,104 +380,83 @@ void matmul_double_grad(const Tensor& x,
       }
     }
 
-    bool dgrad_out_flag = false;
     if (grad_x_grad) {
       auto grad_x_grad_mat = grad_x_grad.get();
       if (grad_x_grad_mat.dims() != x_help.dims()) {
         grad_x_grad_mat = reshape<T>(grad_x_grad_mat,
                                      IntArray(phi::vectorize(x_help.dims())));
       }
-      if (y_grad) {
-        Tensor y_grad_tmp;
-        if (transpose_x && transpose_y) {
-          // y_grad = grad_out' * grad_x_grad'
-          auto tmp =
-              modify_dim_for_matmul<T>(grad_out, true, grad_x_grad_mat, false);
-          y_grad_tmp =
-              matmul<T>(std::get<0>(tmp), std::get<1>(tmp), true, true);
-        } else if (transpose_x) {
-          // y_grad = grad_x_grad * grad_out
-          auto tmp =
-              modify_dim_for_matmul<T>(grad_x_grad_mat, false, grad_out, true);
-          y_grad_tmp =
-              matmul<T>(std::get<0>(tmp), std::get<1>(tmp), false, false);
-        } else if (transpose_y) {
-          // y_grad = grad_out' * grad_x_grad
-          auto tmp =
-              modify_dim_for_matmul<T>(grad_out, true, grad_x_grad_mat, true);
-          y_grad_tmp =
-              matmul<T>(std::get<0>(tmp), std::get<1>(tmp), true, false);
-        } else {
-          // y_grad = grad_x_grad' * grad_out
-          auto tmp =
-              modify_dim_for_matmul<T>(grad_x_grad_mat, true, grad_out, true);
-          y_grad_tmp =
-              matmul<T>(std::get<0>(tmp), std::get<1>(tmp), true, false);
-        }
-        set_output<T>(y_grad_tmp, y_grad);
-      }
 
-      if (grad_out_grad) {
-        auto tmp = modify_dim_for_matmul<T>(grad_x_grad_mat, true, y, false);
-        auto grad_out_grad_tmp = matmul<T>(
-            std::get<0>(tmp), std::get<1>(tmp), transpose_x, transpose_y);
-        set_output<T>(grad_out_grad_tmp, grad_out_grad);
+      Tensor y_grad_tmp;
+      if (transpose_x && transpose_y) {
+        // y_grad = grad_out' * grad_x_grad'
+        auto tmp = modify_dim_for_matmul<T>(
+            grad_out, true, grad_x_grad_mat, false, y_grad);
+        y_grad_tmp = matmul<T>(std::get<0>(tmp), std::get<1>(tmp), true, true);
+      } else if (transpose_x) {
+        // y_grad = grad_x_grad * grad_out
+        auto tmp = modify_dim_for_matmul<T>(
+            grad_x_grad_mat, false, grad_out, true, y_grad);
+        y_grad_tmp =
+            matmul<T>(std::get<0>(tmp), std::get<1>(tmp), false, false);
+      } else if (transpose_y) {
+        // y_grad = grad_out' * grad_x_grad
+        auto tmp = modify_dim_for_matmul<T>(
+            grad_out, true, grad_x_grad_mat, true, y_grad);
+        y_grad_tmp = matmul<T>(std::get<0>(tmp), std::get<1>(tmp), true, false);
+      } else {
+        // y_grad = grad_x_grad' * grad_out
+        auto tmp = modify_dim_for_matmul<T>(
+            grad_x_grad_mat, true, grad_out, true, y_grad);
+        y_grad_tmp = matmul<T>(std::get<0>(tmp), std::get<1>(tmp), true, false);
       }
-    } else if (!grad_x_grad && y_grad) {
-      auto y_grad_tmp = full<T>(phi::vectorize(y.dims()), Scalar(0.0));
       set_output<T>(y_grad_tmp, y_grad);
+
+      auto tmp = modify_dim_for_matmul<T>(
+          grad_x_grad_mat, true, y, false, grad_out_grad);
+      auto grad_out_grad_tmp = matmul<T>(
+          std::get<0>(tmp), std::get<1>(tmp), transpose_x, transpose_y);
+      set_output<T>(grad_out_grad_tmp, grad_out_grad);
     }
+
     if (grad_y_grad) {
       auto grad_y_grad_mat = grad_y_grad.get();
       if (grad_y_grad_mat.dims() != y_help.dims()) {
         grad_y_grad_mat = reshape<T>(grad_y_grad_mat,
                                      IntArray(phi::vectorize(y_help.dims())));
       }
-      if (x_grad) {
-        Tensor x_grad_tmp;
-        if (transpose_x && transpose_y) {
-          // x_grad = grad_y_grad' * grad_out'
-          auto tmp =
-              modify_dim_for_matmul<T>(grad_y_grad_mat, true, grad_out, false);
-          x_grad_tmp =
-              matmul<T>(std::get<0>(tmp), std::get<1>(tmp), true, true);
-        } else if (transpose_x) {
-          // x_grad = grad_y_grad * grad_out'
-          auto tmp =
-              modify_dim_for_matmul<T>(grad_y_grad_mat, false, grad_out, false);
-          x_grad_tmp =
-              matmul<T>(std::get<0>(tmp), std::get<1>(tmp), false, true);
-        } else if (transpose_y) {
-          // x_grad = grad_out * grad_y_grad
-          auto tmp =
-              modify_dim_for_matmul<T>(grad_out, false, grad_y_grad_mat, true);
-          x_grad_tmp =
-              matmul<T>(std::get<0>(tmp), std::get<1>(tmp), false, false);
-        } else {
-          // x_grad = grad_out * grad_y_grad'
-          auto tmp =
-              modify_dim_for_matmul<T>(grad_out, false, grad_y_grad_mat, false);
-          x_grad_tmp =
-              matmul<T>(std::get<0>(tmp), std::get<1>(tmp), false, true);
-        }
-        set_output<T>(x_grad_tmp, x_grad);
-      }
 
-      if (grad_out_grad) {
-        auto tmp = modify_dim_for_matmul<T>(x, true, grad_y_grad_mat, false);
-        auto grad_out_grad_tmp = matmul<T>(
-            std::get<0>(tmp), std::get<1>(tmp), transpose_x, transpose_y);
-        auto output_tmp = add<T>(grad_out_grad_tmp, *grad_out_grad);
-        set_output<T>(output_tmp, grad_out_grad);
+      Tensor x_grad_tmp;
+      if (transpose_x && transpose_y) {
+        // x_grad = grad_y_grad' * grad_out'
+        auto tmp = modify_dim_for_matmul<T>(
+            grad_y_grad_mat, true, grad_out, false, x_grad);
+        x_grad_tmp = matmul<T>(std::get<0>(tmp), std::get<1>(tmp), true, true);
+      } else if (transpose_x) {
+        // x_grad = grad_y_grad * grad_out'
+        auto tmp = modify_dim_for_matmul<T>(
+            grad_y_grad_mat, false, grad_out, false, x_grad);
+        x_grad_tmp = matmul<T>(std::get<0>(tmp), std::get<1>(tmp), false, true);
+      } else if (transpose_y) {
+        // x_grad = grad_out * grad_y_grad
+        auto tmp = modify_dim_for_matmul<T>(
+            grad_out, false, grad_y_grad_mat, true, x_grad);
+        x_grad_tmp =
+            matmul<T>(std::get<0>(tmp), std::get<1>(tmp), false, false);
+      } else {
+        // x_grad = grad_out * grad_y_grad'
+        auto tmp = modify_dim_for_matmul<T>(
+            grad_out, false, grad_y_grad_mat, false, x_grad);
+        x_grad_tmp = matmul<T>(std::get<0>(tmp), std::get<1>(tmp), false, true);
       }
-    } else if (!grad_y_grad && x_grad) {
-      auto x_grad_tmp = full<T>(phi::vectorize(x.dims()), Scalar(0.0));
       set_output<T>(x_grad_tmp, x_grad);
-    }
-    if (grad_out_grad && !grad_x_grad && !grad_y_grad) {
-      auto grad_out_grad_tmp =
-          full<T>(phi::vectorize(grad_out.dims()), Scalar(0.0));
-      set_output<T>(grad_out_grad_tmp, grad_out_grad);
+
+      auto tmp = modify_dim_for_matmul<T>(
+          x, true, grad_y_grad_mat, false, grad_out_grad);
+      auto grad_out_grad_tmp = matmul<T>(
+          std::get<0>(tmp), std::get<1>(tmp), transpose_x, transpose_y);
+      auto output_tmp = add<T>(grad_out_grad_tmp, *grad_out_grad);
+      set_output<T>(output_tmp, grad_out_grad);
     }
 
     if (x_grad) {
@@ -500,37 +489,33 @@ void matmul_double_grad(const Tensor& x,
     Tensor y_grad_help;
     Tensor grad_out_grad_help;
 
-    if (transpose_x) {
-      if (transpose_y) {
-        if (x_grad && grad_y_grad) {
-          x_grad_help = matmul<T>(grad_y_grad.get(), grad_out, true, true);
-        }
-        if (y_grad && grad_x_grad) {
-          y_grad_help = matmul<T>(grad_out, grad_x_grad.get(), true, true);
-        }
-      } else {
-        if (x_grad && grad_y_grad) {
-          x_grad_help = matmul<T>(grad_y_grad.get(), grad_out, false, true);
-        }
-        if (y_grad && grad_x_grad) {
-          y_grad_help = matmul<T>(grad_x_grad.get(), grad_out, false, false);
-        }
+    if (transpose_x && transpose_y) {
+      if (x_grad) {
+        x_grad_help = matmul<T>(grad_y_grad.get(), grad_out, true, true);
+      }
+      if (y_grad) {
+        y_grad_help = matmul<T>(grad_out, grad_x_grad.get(), true, true);
+      }
+    } else if (transpose_x && !transpose_y) {
+      if (x_grad) {
+        x_grad_help = matmul<T>(grad_y_grad.get(), grad_out, false, true);
+      }
+      if (y_grad) {
+        y_grad_help = matmul<T>(grad_x_grad.get(), grad_out, false, false);
+      }
+    } else if (!transpose_x && transpose_y) {
+      if (x_grad) {
+        x_grad_help = matmul<T>(grad_out, grad_y_grad.get(), false, false);
+      }
+      if (y_grad) {
+        y_grad_help = matmul<T>(grad_out, grad_x_grad.get(), true, false);
       }
     } else {
-      if (transpose_y) {
-        if (x_grad && grad_y_grad) {
-          x_grad_help = matmul<T>(grad_out, grad_y_grad.get(), false, false);
-        }
-        if (y_grad && grad_x_grad) {
-          y_grad_help = matmul<T>(grad_out, grad_x_grad.get(), true, false);
-        }
-      } else {
-        if (x_grad && grad_y_grad) {
-          x_grad_help = matmul<T>(grad_out, grad_y_grad.get(), false, true);
-        }
-        if (y_grad && grad_x_grad) {
-          y_grad_help = matmul<T>(grad_x_grad.get(), grad_out, true, false);
-        }
+      if (x_grad) {
+        x_grad_help = matmul<T>(grad_out, grad_y_grad.get(), false, true);
+      }
+      if (y_grad) {
+        y_grad_help = matmul<T>(grad_x_grad.get(), grad_out, true, false);
       }
     }
 

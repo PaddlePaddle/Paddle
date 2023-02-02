@@ -15,6 +15,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/prim/api/manual/backward/composite_backward_api.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -947,6 +948,50 @@ class MatMulOpDoubleGradMaker : public framework::SingleGradOpMaker<T> {
         "DY", ddx.empty() ? this->EmptyInputGrad() : this->InputGrad("Y"));
 
     retv->SetAttrMap(this->Attrs());
+  }
+};
+
+class MatMulCompositeDoubleGradOpMaker : public prim::CompositeGradOpMakerBase {
+ public:
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+  void Apply() override {
+    // get inputs
+    paddle::experimental::Tensor x = this->GetSingleForwardInput("X");
+    paddle::experimental::Tensor y = this->GetSingleForwardInput("Y");
+    paddle::experimental::Tensor dout =
+        this->GetSingleForwardInput(framework::GradVarName("Out"));
+    paddle::experimental::Tensor ddx = this->GetOptionalSingleOutputGrad(
+        framework::GradVarName(framework::GradVarName("X")));
+    paddle::experimental::Tensor ddy = this->GetOptionalSingleOutputGrad(
+        framework::GradVarName(framework::GradVarName("Y")));
+
+    // get attr
+    bool trans_x = this->Attr<bool>("transpose_X");
+    bool trans_y = this->Attr<bool>("transpose_Y");
+
+    // get output
+    paddle::experimental::Tensor x_grad_t = this->GetSingleInputGrad("X");
+    paddle::experimental::Tensor y_grad_t = this->GetSingleInputGrad("Y");
+    paddle::experimental::Tensor grad_out_grad_t =
+        this->GetSingleInputGrad(framework::GradVarName("Out"));
+
+    // get output ptr
+    paddle::experimental::Tensor *x_grad = this->GetOutputPtr(&x_grad_t);
+    paddle::experimental::Tensor *y_grad = this->GetOutputPtr(&y_grad_t);
+    paddle::experimental::Tensor *grad_out_grad =
+        this->GetOutputPtr(&grad_out_grad_t);
+    // get output orginal name
+    std::string x_grad_name = this->GetOutputName(x_grad_t);
+    std::string y_grad_name = this->GetOutputName(y_grad_t);
+    std::string grad_out_grad_name = this->GetOutputName(grad_out_grad_t);
+    VLOG(3) << "Runing matmul_double_grad composite func";
+    // call composite backward func
+    prim::matmul_double_grad<prim::DescTensor>(
+        x, y, dout, ddx, ddy, trans_x, trans_y, x_grad, y_grad, grad_out_grad);
+    // recover output name
+    this->RecoverOutputName(x_grad_t, x_grad_name);
+    this->RecoverOutputName(y_grad_t, y_grad_name);
+    this->RecoverOutputName(grad_out_grad_t, grad_out_grad_name);
   }
 };
 

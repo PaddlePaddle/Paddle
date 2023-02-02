@@ -27,7 +27,6 @@
 namespace paddle {
 namespace prim {
 // We put some api like utils here
-using Tensor = paddle::experimental::Tensor;
 template <typename T>
 Tensor empty(const paddle::experimental::IntArray& shape,
              paddle::experimental::DataType dype,
@@ -86,8 +85,8 @@ template <typename T>
 std::tuple<Tensor, Tensor> modify_dim_for_matmul(const Tensor& a,
                                                  bool is_fold_init_dims_a,
                                                  const Tensor& b,
-                                                 const Tensor* out,
-                                                 bool is_fold_init_dims_b) {
+                                                 bool is_fold_init_dims_b,
+                                                 const Tensor* out) {
   Tensor a_out = a;
   Tensor b_out = b;
   bool need_combine =
@@ -102,7 +101,7 @@ std::tuple<Tensor, Tensor> modify_dim_for_matmul(const Tensor& a,
       }
     } else {
       if (a_dims.size() == 3) {
-        a_out = transpose<T>(a, IntArray(std::vector<int>({1, 0, 2})));
+        a_out = transpose<T>(a, std::vector<int>({1, 0, 2}));
         std::vector<int64_t> a_shape = {a_dims[0], a_dims[1] * a_dims[2]};
         a_out = reshape<T>(a_out, IntArray(a_shape));
       }
@@ -115,7 +114,7 @@ std::tuple<Tensor, Tensor> modify_dim_for_matmul(const Tensor& a,
       }
     } else {
       if (b_dims.size() == 3) {
-        b_out = transpose<T>(b, IntArray(std::vector<int>({1, 0, 2})));
+        b_out = transpose<T>(b, std::vector<int>({1, 0, 2}));
         std::vector<int64_t> b_shape = {b_dims[0], b_dims[1] * b_dims[2]};
         b_out = reshape<T>(b_out, IntArray(b_shape));
       }

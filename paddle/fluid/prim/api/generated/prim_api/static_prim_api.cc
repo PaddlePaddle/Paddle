@@ -278,7 +278,7 @@ Tensor reshape<DescTensor>(const Tensor& x, const IntArray& shape) {
 }
 
 template <>
-Tensor transpose<Tensor>(const Tensor& x, const std::vector<int>& perm) {
+Tensor transpose<DescTensor>(const Tensor& x, const std::vector<int>& perm) {
   Tensor out = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
   framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
   framework::OpDesc* op = block->AppendOp();
