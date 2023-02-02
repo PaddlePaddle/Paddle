@@ -39,9 +39,6 @@
 			*paddle::GPUContextResource*;
 			*paddle::CPUContextResource*;
 
-			*paddle::LoadCustomOperatorLib*;
-			*paddle::RegisterAllCustomOperator*;
-
 			/* ut needs the following symbol, we need to modify all the ut to hidden such symbols */
 
 			/* Another question: the ut size will grow from 50M to 80M, why? */
