@@ -120,6 +120,8 @@ uniqueidmap = UniqueIdMap()
 
 
 def uniqueid(obj):
+    if isinstance(obj, str):
+        return id(obj)
     if isinstance(obj, list):
         t = ()
         for v in obj:
