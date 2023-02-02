@@ -189,9 +189,7 @@ class TestOneHotOpApi(unittest.TestCase):
     def _run(self, depth):
         label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
         label.desc.set_need_check_feed(False)
-        one_hot_label = paddle.nn.functional.one_hot(
-            input=label, num_classes=depth
-        )
+        one_hot_label = paddle.nn.functional.one_hot(x=label, num_classes=depth)
 
         place = fluid.CPUPlace()
         label_data = np.array(
@@ -221,7 +219,7 @@ class BadInputTestOnehotV2(unittest.TestCase):
                 )
                 label.desc.set_need_check_feed(False)
                 one_hot_label = paddle.nn.functional.one_hot(
-                    input=label, depth=4
+                    x=label, num_classes=4
                 )
 
             self.assertRaises(TypeError, test_bad_x)
