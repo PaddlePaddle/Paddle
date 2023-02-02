@@ -158,7 +158,7 @@ void LaunchMultiHeadAttentionKernel(LaunchParams params,
     p.mask_strideB = params.mask_strideB;
   }
 
-  constexpr auto kernel_fn = attention_kernel_batched_impl<Attention>;
+  constexpr auto kernel_fn = attention_kernel_batched<Attention>;
   int smem_bytes = sizeof(typename Attention::SharedStorage);
   if (smem_bytes > 0xc000) {
     cudaFuncSetAttribute(
@@ -242,7 +242,8 @@ template <typename T,
           int KeysPerBlock>
 void DispatchFMHASingleValueIteration(LaunchParams params,
                                       const phi::GPUContext& ctx) {
-  if (params.value_head_size <= KeysPerBlock) {
+  if (params.value_head_size <= KeysPerBlock ||
+      (KeysPerBlock == 64 && QueriesPerBlock == 64)) {
     DispatchFMHAAddMask<T,
                         ArchTag,
                         IsAligned,
