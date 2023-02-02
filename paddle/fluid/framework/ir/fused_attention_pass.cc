@@ -766,12 +766,15 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
 
 void FusedAttentionsPass::ApplyImpl(Graph* graph) const {
   FusePassBase::Init(name_scope_, graph);
+  FusedAttentionPassCache cache;
 
-  graph = PreMaskDropResFwd(graph);
-  graph = PreMaskDropResBwd(graph);
+  graph = PreMaskDropResFwd(graph, &cache);
+  graph = PreMaskDropResBwd(graph, &cache);
+  cache.ResetCache();
 }
 
-ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(Graph* graph) const {
+ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(
+    Graph* graph, FusedAttentionPassCache* cache) const {
   GraphPatternDetector gpd;
   auto* x = gpd.mutable_pattern()
                 ->NewNode(patterns::PDNodeName(name_scope_, "x"))
@@ -791,6 +794,8 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(Graph* graph) const {
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     VLOG(3) << "handle FusedMultiHeadAttention pass's fusion";
+
+    int block_id = g->GetBlockId();
 
     GET_IR_NODE_FROM_SUBGRAPH(
         pre_layer_norm_op_node, pre_layer_norm_op, fused_attention_pattern);
@@ -836,6 +841,7 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(Graph* graph) const {
     OpDesc fused_attention_op_desc(pre_layer_norm_op_node->Op()->Block());
     fused_attention_op_desc.SetType("fused_attention");
     fused_attention_op_desc.SetInput("X", {subgraph.at(x)->Name()});
+    cache->InsertIntoCache(GenerateCacheKey("X", block_id), subgraph.at(x));
 
     fused_attention_op_desc.SetAttr("pre_layer_norm", true);
     GET_IR_NODE_FROM_SUBGRAPH(pre_layer_norm_scale_node,
@@ -860,6 +866,16 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(Graph* graph) const {
                                       {pre_layer_norm_mean_node->Name()});
     fused_attention_op_desc.SetOutput("LnVariance",
                                       {pre_layer_norm_variance_node->Name()});
+    cache->InsertIntoCache(GenerateCacheKey("LnScale", block_id),
+                           pre_layer_norm_scale_node);
+    cache->InsertIntoCache(GenerateCacheKey("LnBias", block_id),
+                           pre_layer_norm_bias_node);
+    cache->InsertIntoCache(GenerateCacheKey("LnOut", block_id),
+                           pre_layer_norm_out_node);
+    cache->InsertIntoCache(GenerateCacheKey("LnMean", block_id),
+                           pre_layer_norm_mean_node);
+    cache->InsertIntoCache(GenerateCacheKey("LnVariance", block_id),
+                           pre_layer_norm_variance_node);
     fused_attention_op_desc.SetAttr(
         "epsilon",
         PADDLE_GET_CONST(float,
@@ -891,6 +907,16 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(Graph* graph) const {
                                       {fuse_qkv_ele_add_out_node->Name()});
     fused_attention_op_desc.SetOutput("TransposeOut2",
                                       {fuse_qkv_transpose_out_node->Name()});
+    cache->InsertIntoCache(GenerateCacheKey("QKVW", block_id),
+                           fuse_qkv_matmul_w_node);
+    cache->InsertIntoCache(GenerateCacheKey("QKVBias", block_id),
+                           fuse_qkv_ele_add_bias_node);
+    cache->InsertIntoCache(GenerateCacheKey("QKVOut", block_id),
+                           fuse_qkv_matmul_out_node);
+    cache->InsertIntoCache(GenerateCacheKey("QKVBiasOut", block_id),
+                           fuse_qkv_ele_add_out_node);
+    cache->InsertIntoCache(GenerateCacheKey("TransposeOut2", block_id),
+                           fuse_qkv_transpose_out_node);
 
     GET_IR_NODE_FROM_SUBGRAPH(
         qk_matmul_out_node, qk_matmul_out, fused_attention_pattern);
@@ -911,12 +937,20 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(
         qkv_reshape_out_node, qkv_reshape_out, fused_attention_pattern);
     fused_attention_op_desc.SetOutput("QKOut", {qk_matmul_out_node->Name()});
+    cache->InsertIntoCache(GenerateCacheKey("QKOut", block_id),
+                           qk_matmul_out_node);
     fused_attention_op_desc.SetInput("SrcMask",
                                      {add_mask_ele_add_mask_node->Name()});
     fused_attention_op_desc.SetOutput("SrcMaskOut",
                                       {add_mask_ele_add_out_node->Name()});
     fused_attention_op_desc.SetOutput("SoftmaxOut",
                                       {qk_softmax_out_node->Name()});
+    cache->InsertIntoCache(GenerateCacheKey("SrcMask", block_id),
+                           add_mask_ele_add_mask_node);
+    cache->InsertIntoCache(GenerateCacheKey("SrcMaskOut", block_id),
+                           add_mask_ele_add_out_node);
+    cache->InsertIntoCache(GenerateCacheKey("SoftmaxOut", block_id),
+                           qk_softmax_out_node);
     fused_attention_op_desc.SetAttr(
         "attn_dropout_rate",
         PADDLE_GET_CONST(float,
@@ -943,6 +977,14 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(Graph* graph) const {
     fused_attention_op_desc.SetOutput("QKTVOut", {qkv_matmul_out_node->Name()});
     fused_attention_op_desc.SetOutput("FMHAOut",
                                       {qkv_reshape_out_node->Name()});
+    cache->InsertIntoCache(GenerateCacheKey("AttnDropoutMaskOut", block_id),
+                           attn_dropout_mask_node);
+    cache->InsertIntoCache(GenerateCacheKey("AttnDropoutOut", block_id),
+                           attn_dropout_out_node);
+    cache->InsertIntoCache(GenerateCacheKey("QKTVOut", block_id),
+                           qkv_matmul_out_node);
+    cache->InsertIntoCache(GenerateCacheKey("FMHAOut", block_id),
+                           qkv_reshape_out_node);
 
     GET_IR_NODE_FROM_SUBGRAPH(
         out_linear_matmul_w_node, out_linear_matmul_w, fused_attention_pattern);
@@ -958,6 +1000,12 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(Graph* graph) const {
                                      {out_linear_ele_add_bias_node->Name()});
     fused_attention_op_desc.SetOutput("OutLinearOut",
                                       {out_linear_matmul_out_node->Name()});
+    cache->InsertIntoCache(GenerateCacheKey("OutLinearW", block_id),
+                           out_linear_matmul_w_node);
+    cache->InsertIntoCache(GenerateCacheKey("OutLinearBias", block_id),
+                           out_linear_ele_add_bias_node);
+    cache->InsertIntoCache(GenerateCacheKey("OutLinearOut", block_id),
+                           out_linear_matmul_out_node);
     GET_IR_NODE_FROM_SUBGRAPH(out_linear_dropout_mask_node,
                               out_linear_dropout_mask,
                               fused_attention_pattern);
@@ -980,6 +1028,8 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(Graph* graph) const {
                              "dropout_implementation")));
     fused_attention_op_desc.SetOutput("DropoutMaskOut",
                                       {out_linear_dropout_mask_node->Name()});
+    cache->InsertIntoCache(GenerateCacheKey("DropoutMaskOut", block_id),
+                           out_linear_dropout_mask_node);
 
     GET_IR_NODE_FROM_SUBGRAPH(residual_ele_add_out_node,
                               residual_ele_add_out,
@@ -1015,7 +1065,6 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(Graph* graph) const {
     IR_NODE_LINK_TO(fused_attention_node, out_linear_dropout_mask_node);
     IR_NODE_LINK_TO(fused_attention_node, residual_ele_add_out_node);
 
-    // remove origin ops
     GraphSafeRemoveNodes(g,
                          {pre_layer_norm_op_node,
                           fuse_qkv_matmul_op_node,
@@ -1045,7 +1094,8 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(Graph* graph) const {
   return graph;
 }
 
-ir::Graph* FusedAttentionsPass::PreMaskDropResBwd(Graph* graph) const {
+ir::Graph* FusedAttentionsPass::PreMaskDropResBwd(
+    Graph* graph, FusedAttentionPassCache* cache) const {
   GraphPatternDetector gpd;
   auto* x = gpd.mutable_pattern()
                 ->NewNode(patterns::PDNodeName(name_scope_, "x"))
@@ -1123,7 +1173,57 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResBwd(Graph* graph) const {
                               grad_accumulation_sum_op,
                               fused_attention_grad_pattern);
 
-    // TODO(Yuang Liu): finish the handler
+    OpDesc fused_attention_grad_op_desc(
+        residual_ele_add_grad_op_node->Op()->Block());
+    fused_attention_grad_op_desc.SetType("fused_attention_grad");
+    fused_attention_grad_op_desc.SetInput("Y@GRAD", {subgraph.at(x)->Name()});
+    fused_attention_grad_op_desc.SetInput(
+        "X", {cache->GetNodeFromCache("X")->Name()});
+    fused_attention_grad_op_desc.SetInput(
+        "AttnDropoutMaskOut",
+        {cache->GetNodeFromCache("AttnDropoutMaskOut")->Name()});
+    fused_attention_grad_op_desc.SetInput(
+        "AttnDropoutOut", {cache->GetNodeFromCache("AttnDropoutOut")->Name()});
+    fused_attention_grad_op_desc.SetInput(
+        "DropoutMaskOut", {cache->GetNodeFromCache("DropoutMaskOut")->Name()});
+    fused_attention_grad_op_desc.SetInput(
+        "FMHAOut", {cache->GetNodeFromCache("FMHAOut")->Name()});
+    fused_attention_grad_op_desc.SetInput(
+        "LnBias", {cache->GetNodeFromCache("LnBias")->Name()});
+    fused_attention_grad_op_desc.SetInput(
+        "LnMean", {cache->GetNodeFromCache("LnMean")->Name()});
+    fused_attention_grad_op_desc.SetInput(
+        "LnOut", {cache->GetNodeFromCache("LnOut")->Name()});
+    fused_attention_grad_op_desc.SetInput(
+        "LnScale", {cache->GetNodeFromCache("LnScale")->Name()});
+    fused_attention_grad_op_desc.SetInput(
+        "LnVariance", {cache->GetNodeFromCache("LnVariance")->Name()});
+    fused_attention_grad_op_desc.SetInput(
+        "OutLinearBias", {cache->GetNodeFromCache("OutLinearBias")->Name()});
+    fused_attention_grad_op_desc.SetInput(
+        "OutLinearOut", {cache->GetNodeFromCache("OutLinearOut")->Name()});
+    fused_attention_grad_op_desc.SetInput(
+        "OutLinearW", {cache->GetNodeFromCache("OutLinearW")->Name()});
+    fused_attention_grad_op_desc.SetInput(
+        "QKOut", {cache->GetNodeFromCache("QKOut")->Name()});
+    fused_attention_grad_op_desc.SetInput(
+        "QKTVOut", {cache->GetNodeFromCache("QKTVOut")->Name()});
+    fused_attention_grad_op_desc.SetInput(
+        "QKVBias", {cache->GetNodeFromCache("QKVBias")->Name()});
+    fused_attention_grad_op_desc.SetInput(
+        "QKVBiasOut", {cache->GetNodeFromCache("QKVBiasOut")->Name()});
+    fused_attention_grad_op_desc.SetInput(
+        "QKVOut", {cache->GetNodeFromCache("QKVOut")->Name()});
+    fused_attention_grad_op_desc.SetInput(
+        "QKVW", {cache->GetNodeFromCache("QKVW")->Name()});
+    fused_attention_grad_op_desc.SetInput(
+        "SoftmaxOut", {cache->GetNodeFromCache("SoftmaxOut")->Name()});
+    fused_attention_grad_op_desc.SetInput(
+        "SrcMask", {cache->GetNodeFromCache("SrcMask")->Name()});
+    fused_attention_grad_op_desc.SetInput(
+        "SrcMaskOut", {cache->GetNodeFromCache("SrcMaskOut")->Name()});
+    fused_attention_grad_op_desc.SetInput(
+        "TransposeOut2", {cache->GetNodeFromCache("TransposeOut2")->Name()});
 
     GraphSafeRemoveNodes(g,
                          {residual_ele_add_grad_op_node,
