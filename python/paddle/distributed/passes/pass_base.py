@@ -239,13 +239,6 @@ PassBase._AFTER_WHITE_LISTS_DICT = {
 
 # The index of pass in this list represent the order in which the pass is processed.
 PassBase._PASS_PROCESS_ORDER_LIST = [
-    "inplace_addto_op",
-    "build_cinn",
-    "fuse_elewise_add_act",
-    "fuse_bn_act",
-    "fuse_bn_add_act",
-    "fuse_relu_depthwise_conv",
-    "fused_attention",
     "fuse_gemm_epilogue",
     "fuse_optimizer",
 ]
@@ -290,23 +283,14 @@ def _find_longest_path(edges):
             for j in range(n):
                 if dists[i][j] > dists[i][k] + dists[k][j]:
                     dists[i][j] = dists[i][k] + dists[k][j]
-                    paths[i][j] = paths[i][k] + paths[k][j]
+                    paths[i][j] = (
+                        paths[i][k] + paths[k][j][1:] if paths[k][j] else []
+                    )
                     if dists[i][j] < min_dist:
                         min_dist = dists[i][j]
                         min_path = paths[i][j]
 
-    if min_path:
-        id_before = min_path[0]
-        longest_path = [id_before]
-        for id in min_path[1:]:
-            if id_before == id:
-                continue
-            longest_path.append(id)
-            id_before = id
-    else:
-        longest_path = [0]
-
-    return longest_path
+    return min_path if min_path else [0]
 
 
 def _solve_pass_conflict(passes, context):
