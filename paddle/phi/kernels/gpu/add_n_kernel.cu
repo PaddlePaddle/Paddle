@@ -14,11 +14,10 @@
 
 #include "paddle/phi/kernels/add_n_kernel.h"
 
-#include "paddle/phi/kernels/impl/add_n_kernel_impl.h"
-
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
-
+#include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/kernels/impl/add_n_kernel_impl.h"
 namespace phi {
 
 #define CEIL_DIV(x, y) (((x) + (y)-1) / (y))
@@ -38,16 +37,18 @@ __global__ void Sum2CUDAKernel(const T *in_0,
 template <class T>
 __global__ void SumArrayCUDAKernel(
     T **in, T *out, int64_t N, size_t in_size, bool read_dst) {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   int id = blockIdx.x * blockDim.x + threadIdx.x;
   while (id < N) {
-    T total(read_dst ? out[id] : static_cast<T>(0));
+    MPType total(read_dst ? static_cast<MPType>(out[id])
+                          : static_cast<MPType>(0));
     for (int i = 0; i < in_size; ++i) {
       const T *tmp = in[i];
       if (tmp) {
-        total += tmp[id];
+        total += static_cast<MPType>(tmp[id]);
       }
     }
-    out[id] = total;
+    out[id] = static_cast<T>(total);
     id += blockDim.x * gridDim.x;
   }
 }
@@ -116,11 +117,12 @@ void AddNKernel(const Context &dev_ctx,
     int64_t length_0 = in_0.numel();
     int64_t length_1 = in_1.numel();
     if (length_0 && length_1 && in_0.IsInitialized() && in_1.IsInitialized()) {
+      using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
       auto result = EigenVector<T>::Flatten(*out);
       auto &place = *dev_ctx.eigen_device();
-      auto in_0_e = EigenVector<T>::Flatten(in_0);
-      auto in_1_e = EigenVector<T>::Flatten(in_1);
-      result.device(place) = in_0_e + in_1_e;
+      auto in_0_e = EigenVector<T>::Flatten(in_0).template cast<MPType>();
+      auto in_1_e = EigenVector<T>::Flatten(in_1).template cast<MPType>();
+      result.device(place) = (in_0_e + in_1_e).template cast<T>();
     } else if (length_0 && in_0.IsInitialized()) {
       auto result = EigenVector<T>::Flatten(*out);
       auto &place = *dev_ctx.eigen_device();
