@@ -142,7 +142,7 @@ int TransLayernormFusePass::ApplyConvTransLayernormPattern(
     }
     auto layernorm_begin_norm_axis =
         PADDLE_GET_CONST(int, layernorm->Op()->GetAttr("begin_norm_axis"));
-    if (layernorm_begin_norm_axis != 2 || layernorm_begin_norm_axis != -1) {
+    if (layernorm_begin_norm_axis != 2 && layernorm_begin_norm_axis != -1) {
       VLOG(1) << "transpose layernorm fuse pass, layernorm begin norm axis "
                  "check fail, stop fusion";
       return;
