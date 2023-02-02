@@ -52,8 +52,8 @@ class TestGroupNormOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_x_type)
 
             def test_x_dtype():
-                x2 = fluid.layers.data(
-                    name='x2', shape=[2, 100, 3, 5], dtype='int32'
+                x2 = paddle.static.data(
+                    name='x2', shape=[-1, 2, 100, 3, 5], dtype='int32'
                 )
                 groups = 2
                 paddle.static.nn.group_norm(x2, groups)
