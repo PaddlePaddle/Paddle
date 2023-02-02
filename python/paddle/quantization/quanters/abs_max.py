@@ -182,7 +182,7 @@ class FakeQuanterWithAbsMaxObserverLayer(BaseQuanter):
         return out
 
     def bit_length(self):
-        return self.bits
+        return self._bit_length
 
     def quant_axis(self):
         return -1

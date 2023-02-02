@@ -51,6 +51,7 @@ class Quantization(object, metaclass=abc.ABCMeta):
 
         Examples:
         .. code-block:: python
+            import paddle
             from paddle.quantization import QAT, QuantConfig
             from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
             from paddle.vision.models import LeNet
@@ -60,10 +61,9 @@ class Quantization(object, metaclass=abc.ABCMeta):
             qat = QAT(q_config)
             model = LeNet()
             quantized_model = qat.quantize(model)
-            converted_model = ptq.convert(quantized_model)
-            dummy_data = paddle.rand([1, 3, 32, 32], dtype="float32")
+            converted_model = qat.convert(quantized_model)
+            dummy_data = paddle.rand([1, 1, 32, 32], dtype="float32")
             paddle.jit.save(converted_model, "./quant_deploy", [dummy_data])
-
         """
         _model = model if inplace else copy.deepcopy(model)
         replaced = {}
