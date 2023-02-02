@@ -16,12 +16,12 @@
 
 #include <math.h>
 
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/funcs/algorithm.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 #include "paddle/phi/kernels/rmsprop_kernel.h"
-
 namespace phi {
 
 template <typename T>
@@ -56,19 +56,21 @@ struct SparseRmspropGradFunctor {
   int64_t row_count_;
 };
 
-template <typename T, typename GradFunctor>
+template <typename T, typename MT, typename GradFunctor>
 struct UncenteredRmspropFunctor {
   UncenteredRmspropFunctor(T *param,
-                           T *ms,
-                           T *mom,
+                           MT *ms,
+                           MT *mom,
                            const T *lr,
-                           T rho,
-                           T epsilon,
-                           T momentum,
+                           MT *master_p,
+                           MT rho,
+                           MT epsilon,
+                           MT momentum,
                            const GradFunctor &grad_functor)
       : param_(param),
         ms_(ms),
         mom_(mom),
+        master_p_(master_p),
         lr_(lr),
         rho_(rho),
         epsilon_(epsilon),
@@ -76,38 +78,43 @@ struct UncenteredRmspropFunctor {
         grad_functor_(grad_functor) {}
 
   HOSTDEVICE inline void operator()(int64_t idx) const {
-    T g = grad_functor_(idx);
-    T ms_out = rho_ * ms_[idx] + (1 - rho_) * g * g;
-    T mom_out = momentum_ * mom_[idx] + lr_[0] * g / sqrt(ms_out + epsilon_);
+    MT g = static_cast<MT>(grad_functor_(idx));
+    MT l_rho = static_cast<MT>(1) - rho_;
+    MT ms_out = rho_ * ms_[idx] + l_rho * g * g;
+    MT mom_out = momentum_ * mom_[idx] +
+                 static_cast<MT>(lr_[0]) * g / sqrt(ms_out + epsilon_);
     param_[idx] -= mom_out;
     ms_[idx] = ms_out;
     mom_[idx] = mom_out;
   }
 
   T *param_;
-  T *ms_;
-  T *mom_;
+  MT *ms_;
+  MT *mom_;
+  MT *master_p_;
   const T *lr_;
-  T rho_;
-  T epsilon_;
-  T momentum_;
+  MT rho_;
+  MT epsilon_;
+  MT momentum_;
   GradFunctor grad_functor_;
 };
 
-template <typename T, typename GradFunctor>
+template <typename T, typename MT, typename GradFunctor>
 struct CenteredRmspropFunctor {
   CenteredRmspropFunctor(T *param,
-                         T *ms,
-                         T *mom,
-                         T *mean_grad,
+                         MT *ms,
+                         MT *mom,
+                         MT *mean_grad,
                          const T *lr,
-                         T rho,
-                         T epsilon,
-                         T momentum,
+                         MT *master_param,
+                         MT rho,
+                         MT epsilon,
+                         MT momentum,
                          const GradFunctor &grad_functor)
       : param_(param),
         ms_(ms),
         mom_(mom),
+        master_p_(master_param),
         mean_grad_(mean_grad),
         lr_(lr),
         rho_(rho),
@@ -130,6 +137,7 @@ struct CenteredRmspropFunctor {
   T *param_;
   T *ms_;
   T *mom_;
+  MT *master_p_;
   T *mean_grad_;
   const T *lr_;
   T rho_;
@@ -226,6 +234,11 @@ void RmspropDenseKernel(const Context &ctx,
   } else {
     DenseRmspropGradFunctor<T> grad_func(grad_tensor.data<T>());
     funcs::ForRange<Context> for_range(ctx, limit);
+    using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
+    MPDType *master_out_data =
+        multi_precision ? ctx.template Alloc<MPDType>(master_param_outs)
+                        : nullptr;
+
     if (centered) {
       auto mg_tensor = mean_grad_opt.get_ptr();
       if (mg_tensor) {
@@ -242,33 +255,29 @@ void RmspropDenseKernel(const Context &ctx,
                 "MeanGrad and MeanGradOut must be the same Tensor"));
       }
 
-      using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
-      const MPDType *master_in_data =
-          multi_precision ? master_param->data<MPDType>() : nullptr;
-      MPDType *master_out_data =
-          multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_outs)
-                          : nullptr;
-
-      for_range(CenteredRmspropFunctor<T, DenseRmspropGradFunctor<T>>(
+      for_range(CenteredRmspropFunctor<T, MPDType, DenseRmspropGradFunctor<T>>(
           ctx.template Alloc<T>(param_out),
-          ctx.template Alloc<T>(mean_square_out),
-          ctx.template Alloc<T>(moment_out),
-          ctx.template Alloc<T>(mean_grad_out),
+          ctx.template Alloc<MPDType>(mean_square_out),
+          ctx.template Alloc<MPDType>(moment_out),
+          ctx.template Alloc<MPDType>(mean_grad_out),
           lr_tensor.data<T>(),
-          rho,
-          epsilon,
-          momentum,
+          master_out_data,
+          static_cast<MPDType>(rho),
+          static_cast<MPDType>(epsilon),
+          static_cast<MPDType>(momentum),
           grad_func));
     } else {
-      for_range(UncenteredRmspropFunctor<T, DenseRmspropGradFunctor<T>>(
-          ctx.template Alloc<T>(param_out),
-          ctx.template Alloc<T>(mean_square_out),
-          ctx.template Alloc<T>(moment_out),
-          lr_tensor.data<T>(),
-          rho,
-          epsilon,
-          momentum,
-          grad_func));
+      for_range(
+          UncenteredRmspropFunctor<T, MPDType, DenseRmspropGradFunctor<T>>(
+              ctx.template Alloc<T>(param_out),
+              ctx.template Alloc<T>(mean_square_out),
+              ctx.template Alloc<T>(moment_out),
+              lr_tensor.data<T>(),
+              master_out_data,
+              static_cast<MPDType>(rho),
+              static_cast<MPDType>(epsilon),
+              static_cast<MPDType>(momentum),
+              grad_func));
     }
   }
 }
@@ -331,6 +340,11 @@ void RmspropSparseKernel(const Context &ctx,
   int64_t row_numel = merged_tensor.numel() / row_count;
   SparseRmspropGradFunctor<T> grad_func(
       merged_tensor.data<T>(), rows, row_numel, row_count);
+  using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  MPDType *master_out_data =
+      multi_precision ? ctx.template Alloc<MPDType>(master_param_outs)
+                      : nullptr;
 
   if (centered) {
     auto mg_tensor = mean_grad_opt.get_ptr();
@@ -348,25 +362,27 @@ void RmspropSparseKernel(const Context &ctx,
               "MeanGrad and MeanGradOut must be the same Tensor"));
     }
 
-    for_range(CenteredRmspropFunctor<T, SparseRmspropGradFunctor<T>>(
+    for_range(CenteredRmspropFunctor<T, MPDType, SparseRmspropGradFunctor<T>>(
         ctx.template Alloc<T>(param_out),
-        ctx.template Alloc<T>(mean_square_out),
-        ctx.template Alloc<T>(moment_out),
-        ctx.template Alloc<T>(mean_grad_out),
+        ctx.template Alloc<MPDType>(mean_square_out),
+        ctx.template Alloc<MPDType>(moment_out),
+        ctx.template Alloc<MPDType>(mean_grad_out),
         lr_tensor.data<T>(),
-        rho,
-        epsilon,
-        momentum,
+        master_out_data,
+        static_cast<MPDType>(rho),
+        static_cast<MPDType>(epsilon),
+        static_cast<MPDType>(momentum),
         grad_func));
   } else {
-    for_range(UncenteredRmspropFunctor<T, SparseRmspropGradFunctor<T>>(
+    for_range(UncenteredRmspropFunctor<T, MPDType, SparseRmspropGradFunctor<T>>(
         ctx.template Alloc<T>(param_out),
-        ctx.template Alloc<T>(mean_square_out),
-        ctx.template Alloc<T>(moment_out),
+        ctx.template Alloc<MPDType>(mean_square_out),
+        ctx.template Alloc<MPDType>(moment_out),
         lr_tensor.data<T>(),
-        rho,
-        epsilon,
-        momentum,
+        master_out_data,
+        static_cast<MPDType>(rho),
+        static_cast<MPDType>(epsilon),
+        static_cast<MPDType>(momentum),
         grad_func));
   }
 }
