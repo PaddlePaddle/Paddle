@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <memory>
-
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/fc_op.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
@@ -202,20 +200,19 @@ class FCOneDNNHandler
   // was. Then we multiply them by desired output scale we want on the output.
   std::tuple<std::vector<float>, float, float> GetOutputScales(
       const ExecutionContext& ctx) {
+    bool fuse_residual_conn = ctx.HasInput("ResidualData");
+    bool has_activation = !ctx.Attr<std::string>("activation_type").empty();
     auto scale_in_data = ctx.Attr<float>("Scale_in");
     auto scale_weights_data = ctx.Attr<std::vector<float>>("Scale_weights");
-    bool has_activation = !ctx.Attr<std::string>("activation_type").empty();
     bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
-    bool fuse_residual_conn = ctx.HasInput("ResidualData");
     auto scale_in_eltwise_data = ctx.Attr<float>("Scale_in_eltwise");
+    auto scale_out = ctx.Attr<float>("Scale_out");
 
     // If the output will be in floats, we don't multiply by scale_out.
-    float activation_scale = (!force_fp32_output && has_activation)
-                                 ? ctx.Attr<float>("Scale_out")
-                                 : 1.0f;
-    float scale_out_data = (force_fp32_output || has_activation)
-                               ? 1.0f
-                               : ctx.Attr<float>("Scale_out");
+    float activation_scale =
+        (!force_fp32_output && has_activation) ? scale_out : 1.0f;
+    float scale_out_data =
+        (force_fp32_output || has_activation) ? 1.0f : scale_out;
     float sum_scale =
         fuse_residual_conn ? scale_out_data / scale_in_eltwise_data : 1.0f;
     const size_t weight_scales_num = scale_weights_data.size();
@@ -424,31 +421,6 @@ class FCOneDNNKernel : public framework::OpKernel<T_in> {
     } else {
       src_mem->set_data_handle(to_void_cast<T_in>(x->data<T_in>()));
     }
-  }
-
-  void SetOutMemDescWithUnsqueeze2FuseSupport(
-      const ExecutionContext& ctx,
-      phi::DenseTensor* out,
-      const dnnl::memory::desc& out_md) const {
-    const std::vector<int>& fused_unsqueeze2_axes =
-        ctx.Attr<std::vector<int>>("fused_unsqueeze2_axes");
-    const std::vector<int64_t>& op_tz = out_md.dims();
-    std::vector<int64_t> unsqueezed_op_tz(
-        op_tz.size() + fused_unsqueeze2_axes.size(), 0);
-
-    for (const auto& axis : fused_unsqueeze2_axes) {
-      int positive_axis = axis < 0 ? unsqueezed_op_tz.size() + axis : axis;
-      unsqueezed_op_tz[positive_axis] = 1;
-    }
-
-    int j = 0;
-    for (size_t i = 0; i < unsqueezed_op_tz.size(); ++i) {
-      if (unsqueezed_op_tz[i] == 0) {
-        unsqueezed_op_tz[i] = op_tz[j++];
-      }
-    }
-    out->set_mem_desc(out_md.reshape(unsqueezed_op_tz));
-    out->Resize(phi::make_ddim(unsqueezed_op_tz));
   }
 
   template <typename T_out, typename T_w>
