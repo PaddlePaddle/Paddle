@@ -99,7 +99,7 @@ void FCOp::InferShape(framework::InferShapeContext* ctx) const {
                           activation_type.c_str()));
   }
 
-  if (ctx->Attrs().Get<bool>("use_mkldnn")) {
+  if (ctx->HasAttr("use_mkldnn") && ctx->Attrs().Get<bool>("use_mkldnn")) {
     PADDLE_ENFORCE_EQ(
         in_dims.size() >= 2 && in_dims.size() <= 4,
         true,
