@@ -34,10 +34,6 @@ limitations under the License. */
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 
-#include "gflags/gflags.h"
-
-DECLARE_string(tensor_operator);
-
 namespace paddle {
 namespace framework {
 namespace details {
@@ -179,7 +175,6 @@ struct OpInfoFiller<T, kOperator> {
                         const VariableNameMap& inputs,
                         const VariableNameMap& outputs,
                         const AttributeMap& attrs) {
-      FLAGS_tensor_operator = "static";
       return new T(type, inputs, outputs, attrs);
     };
 

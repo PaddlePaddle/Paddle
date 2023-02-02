@@ -27,6 +27,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/utils/flat_hash_map.h"
 
+#include "paddle/phi/core/flags.h"
+
+DECLARE_string(tensor_operator);
+
 namespace paddle {
 namespace framework {
 
@@ -79,6 +83,7 @@ class OpInfo {
     PADDLE_ENFORCE_NOT_NULL(creator_,
                             platform::errors::NotFound(
                                 "Operator's Creator has not been registered."));
+    FLAGS_tensor_operator = "static";
     return creator_;
   }
 
