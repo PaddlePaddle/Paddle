@@ -12,29 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/int_array.h"
-#include "paddle/phi/common/place.h"
-#include "paddle/phi/common/scalar.h"
-#include "paddle/utils/optional.h"
+#include "paddle/fluid/eager/api/all.h"
+#include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
+#include "paddle/fluid/prim/api/manual_prim/prim_manual_api.h"
 
 namespace paddle {
 namespace prim {
 
-using Tensor = paddle::experimental::Tensor;
-using Scalar = paddle::experimental::Scalar;
-using IntArray = paddle::experimental::IntArray;
-using DataType = paddle::experimental::DataType;
+template <>
+Tensor reshape<Tensor>(const Tensor& x, const IntArray& shape) {
+  VLOG(4) << "Eager Prim API reshape_ad_func call";
+  return ::reshape_ad_func(x, shape);
+}
 
-template <typename T>
-Tensor reshape(const Tensor& x, const IntArray& shape);
-
-template <typename T>
-Tensor full(const IntArray& shape,
-            const Scalar& value,
-            DataType dtype = DataType::FLOAT32,
-            const Place& place = CPUPlace());
+template <>
+Tensor full<Tensor>(const IntArray& shape,
+                    const Scalar& value,
+                    DataType dtype,
+                    const Place& place) {
+  VLOG(4) << "Eager Prim API full_ad_func call";
+  return ::full_ad_func(shape, value, dtype, place);
+}
 }  // namespace prim
 }  // namespace paddle

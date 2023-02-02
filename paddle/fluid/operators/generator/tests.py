@@ -38,6 +38,14 @@ def is_scalar(s):
     return re.match(r"Scalar(\(\w+\))*", s) is not None
 
 
+def is_intarray(s):
+    return s == 'IntArray'
+
+
+def is_datatype(s):
+    return s == 'DataType'
+
+
 def is_initializer_list(s):
     return s == "{}"
 
@@ -63,3 +71,7 @@ def supports_no_need_buffer(op):
         if input["no_need_buffer"]:
             return True
     return False
+
+
+def is_tensor_list(s):
+    return s == 'Tensor[]'
