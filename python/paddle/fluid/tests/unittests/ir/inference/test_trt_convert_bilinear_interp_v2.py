@@ -33,7 +33,7 @@ class TrtConvertBilinearInterpV2Test(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def generate_input1(attrs: List[Dict[str, Any]]):
-            return np.random.random([1, 3, 64, 64]).astype(np.float32)
+            return np.ones([1, 3, 64, 64]).astype(np.float32)
 
         def generate_input2(attrs: List[Dict[str, Any]]):
             return np.random.uniform(low=0.5, high=6.0, size=(2)).astype(
