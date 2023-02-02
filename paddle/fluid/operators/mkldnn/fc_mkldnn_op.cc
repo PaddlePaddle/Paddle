@@ -40,6 +40,52 @@ struct InnerProductCache {
   dnnl::memory bias_mem;
   dnnl::memory dst_mem;
 };
+
+// Correct output scale, to take into account scaling of input and weights
+// Since the data that comes out of input and weight multiplication is
+// scaled with its own scales, this data needs to be divided by
+// those scales to normalise them back to what their floating-point range
+// was. Then we multiply them by desired output scale we want on the output.
+std::tuple<std::vector<float>, float, float> GetOutputScales(
+    const ExecutionContext& ctx) {
+  if (ctx.HasAttr("Sum_scale")) {
+    return std::make_tuple(ctx.Attr<std::vector<float>>("Output_shift_scale"),
+                           ctx.Attr<float>("Sum_scale"),
+                           ctx.Attr<float>("Activation_scale"));
+  } else {
+    auto scale_in_data = ctx.Attr<float>("Scale_in");
+    auto scale_weights_data = ctx.Attr<std::vector<float>>("Scale_weights");
+    bool has_activation = !ctx.Attr<std::string>("activation_type").empty();
+    bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
+    bool fuse_residual_conn = ctx.HasAttr("fuse_residual_connection") &&
+                              ctx.Attr<bool>("fuse_residual_connection");
+    auto scale_in_eltwise_data = ctx.HasAttr("Scale_in_eltwise")
+                                     ? ctx.Attr<float>("Scale_in_eltwise")
+                                     : 1.0f;
+
+    // If the output will be in floats, we don't multiply by scale_out.
+
+    float activation_scale = (!force_fp32_output && has_activation)
+                                 ? ctx.Attr<float>("Scale_out")
+                                 : 1.0f;
+    float scale_out_data = (force_fp32_output || has_activation)
+                               ? 1.0f
+                               : ctx.Attr<float>("Scale_out");
+    float sum_scale =
+        fuse_residual_conn ? scale_out_data / scale_in_eltwise_data : 1.0f;
+    const size_t weight_scales_num = scale_weights_data.size();
+
+    for (size_t i = 0; i < weight_scales_num; ++i) {
+      if (scale_weights_data[i] == 0.0)
+        scale_weights_data[i] = scale_out_data;
+      else
+        scale_weights_data[i] =
+            scale_out_data / (scale_in_data * scale_weights_data[i]);
+    }
+    return std::make_tuple(scale_weights_data, sum_scale, activation_scale);
+  }
+}
+
 template <typename T_in, typename T_w, typename T_out>
 class FCMKLDNNHandler
     : public phi::funcs::OneDNNHandlerNoCachingT<T_in,
@@ -104,14 +150,14 @@ class FCMKLDNNHandler
     dnnl::post_ops post_operations;
 
     float sum_scale = 1.0f;
+    float activation_scale = 1.0f;
     if (phi::funcs::is_int8<T_w>()) {
       std::vector<float> output_shift_scale;
-      // TODO(jczaja): I have moves activation scale to be applied in runtime.
-      // Is this correct????
-      std::tie(output_shift_scale, sum_scale, std::ignore) =
+      std::tie(output_shift_scale, sum_scale, activation_scale) =
           GetOutputScales(ctx);
       int mask = CreateMask(1, output_shift_scale.size() > 1);
       attributes.set_scales_mask(DNNL_ARG_DST, mask);
+      // output_shift_scale
     }
 
     if (ctx.HasAttr("fuse_residual_connection") &&
@@ -122,9 +168,10 @@ class FCMKLDNNHandler
     // ReLU from "fc_fuse_pass"
     if (ctx.Attr<std::string>("activation_type") == "relu") {
       post_operations.append_eltwise(dnnl::algorithm::eltwise_relu, 0.0f, 0.0f);
+      post_operations.append_eltwise(
+          dnnl::algorithm::eltwise_linear, activation_scale, 0.0f);
     }
-    // TODO(jczaja): actviate scale was removed. How to replace it?
-    AppendActivation(ctx, post_operations);
+    AppendActivation(ctx, post_operations, activation_scale);
 
     if (ctx.HasAttr("fused_output_scale")) {
       float scale_alpha = ctx.Attr<float>("fused_output_scale");
@@ -157,7 +204,8 @@ class FCMKLDNNHandler
   }
   // TODO(jczaja): The same function is in onednn_reuse.h . Why?
   void AppendActivation(const ExecutionContext& ctx,
-                        dnnl::post_ops& post_ops) {  // NOLINT
+                        dnnl::post_ops& post_ops,  // NOLINT
+                        float activation_scale = 1.0f) {
     const auto invalid_attribute =
         ctx.HasAttr("fuse_activation")
             ? ctx.Attr<std::string>("fuse_activation").empty()
@@ -173,9 +221,15 @@ class FCMKLDNNHandler
     if (fuse_activation == "hard_sigmoid") {
       post_ops.append_eltwise(
           dnnl::algorithm::eltwise_linear, fuse_alpha, fuse_beta);
+      post_ops.append_eltwise(
+          dnnl::algorithm::eltwise_linear, activation_scale, 0.0f);
       post_ops.append_eltwise(dnnl::algorithm::eltwise_clip, 0.0f, 1.0f);
+      post_ops.append_eltwise(
+          dnnl::algorithm::eltwise_linear, activation_scale, 0.0f);
     } else if (fuse_activation == "relu6") {
       post_ops.append_eltwise(dnnl::algorithm::eltwise_clip, 0.0f, fuse_alpha);
+      post_ops.append_eltwise(
+          dnnl::algorithm::eltwise_linear, activation_scale, 0.0f);
     } else {
       const std::unordered_map<std::string, dnnl::algorithm> activation_map = {
           {"abs", dnnl::algorithm::eltwise_abs},
@@ -202,51 +256,8 @@ class FCMKLDNNHandler
               fuse_activation));
 
       post_ops.append_eltwise(activation_type->second, fuse_alpha, fuse_beta);
-    }
-  }
-
-  // Correct output scale, to take into account scaling of input and weights
-  // Since the data that comes out of input and weight multiplication is
-  // scaled with its own scales, this data needs to be divided by
-  // those scales to normalise them back to what their floating-point range
-  // was. Then we multiply them by desired output scale we want on the output.
-  std::tuple<std::vector<float>, float, float> GetOutputScales(
-      const ExecutionContext& ctx) {
-    if (ctx.HasAttr("Sum_scale")) {
-      return std::make_tuple(ctx.Attr<std::vector<float>>("Output_shift_scale"),
-                             ctx.Attr<float>("Sum_scale"),
-                             ctx.Attr<float>("Activation_scale"));
-    } else {
-      auto scale_in_data = ctx.Attr<float>("Scale_in");
-      auto scale_weights_data = ctx.Attr<std::vector<float>>("Scale_weights");
-      bool has_activation = !ctx.Attr<std::string>("activation_type").empty();
-      bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
-      bool fuse_residual_conn = ctx.HasAttr("fuse_residual_connection") &&
-                                ctx.Attr<bool>("fuse_residual_connection");
-      auto scale_in_eltwise_data = ctx.HasAttr("Scale_in_eltwise")
-                                       ? ctx.Attr<float>("Scale_in_eltwise")
-                                       : 1.0f;
-
-      // If the output will be in floats, we don't multiply by scale_out.
-
-      float activation_scale = (!force_fp32_output && has_activation)
-                                   ? ctx.Attr<float>("Scale_out")
-                                   : 1.0f;
-      float scale_out_data = (force_fp32_output || has_activation)
-                                 ? 1.0f
-                                 : ctx.Attr<float>("Scale_out");
-      float sum_scale =
-          fuse_residual_conn ? scale_out_data / scale_in_eltwise_data : 1.0f;
-      const size_t weight_scales_num = scale_weights_data.size();
-
-      for (size_t i = 0; i < weight_scales_num; ++i) {
-        if (scale_weights_data[i] == 0.0)
-          scale_weights_data[i] = scale_out_data;
-        else
-          scale_weights_data[i] =
-              scale_out_data / (scale_in_data * scale_weights_data[i]);
-      }
-      return std::make_tuple(scale_weights_data, sum_scale, activation_scale);
+      post_ops.append_eltwise(
+          dnnl::algorithm::eltwise_linear, activation_scale, 0.0f);
     }
   }
 
@@ -601,29 +612,20 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
         {DNNL_ARG_SRC, *src_memory_p},
         {DNNL_ARG_WEIGHTS, *weights_memory_p},
         {DNNL_ARG_DST, *dst_memory_p}};
-
+    {
+      std::vector<float> output_shift_scale;
+      std::tie(output_shift_scale, std::ignore, std::ignore) =
+          GetOutputScales(ctx);
+      auto output_scale_md = dnnl::memory::desc({output_shift_scale.len()},
+                                                dnnl::memory::data_type::f32,
+                                                dnnl::memory::format_tag::x);
+      auto output_scale_mem = dnnl::memory(output_scale_md, onednn_engine);
+      output_scale_mem.set_data_handle(output_shift_scale.data());
+      fc_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, output_scale_mem});
+    }
     if (bias) {
       fc_args.insert({DNNL_ARG_BIAS, *bias_memory_p});
     }
-
-    {  // TODO(jczaja): Make it more decent
-      bool has_activation = !ctx.Attr<std::string>("activation_type").empty();
-      bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
-      float activation_scale = (!force_fp32_output && has_activation)
-                                   ? ctx.Attr<float>("Scale_out")
-                                   : 1.0f;
-
-      if (activation_scale != 1.0f) {
-        // TODO(jczaja): Make memory object during handler initialization
-        std::vector<float> scales(1, activation_scale);
-        auto scales_md = dnnl::memory::desc(
-            {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
-        auto activation_scales_mem = dnnl::memory(scales_md, onednn_engine);
-        activation_scales_mem.set_data_handle(scales.data());
-        fc_args.insert(
-            {DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, activation_scales_mem});
-      }
-    }  //
 
     fc_p->execute(astream, fc_args);
     astream.wait();
