@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 from op_test import OpTest, skip_check_grad_ci
 
+import paddle
 import paddle.version as ver
 
 
@@ -108,8 +109,8 @@ class TestFusedEmbeddingSeqPoolApi(unittest.TestCase):
             import paddle.fluid as fluid
 
             dict_size = 20
-            data_t = fluid.layers.data(
-                name='word', shape=[1], dtype='int64', lod_level=1
+            data_t = paddle.static.data(
+                name='word', shape=[-1, 1], dtype='int64', lod_level=1
             )
             padding_idx = np.random.randint(1, 10)
             out = fluid.contrib.fused_embedding_seq_pool(
