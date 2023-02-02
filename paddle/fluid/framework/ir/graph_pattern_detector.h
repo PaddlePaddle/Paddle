@@ -1418,6 +1418,62 @@ struct PriorBox : public PatternBase {
   PATTERN_DECL_NODE(prior_box_variances);
 };
 
+// flash_attention
+struct FlashAttention : public PatternBase {
+  FlashAttention(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "flash_attention") {}
+
+  PDNode* operator()(PDNode* in);
+  PATTERN_DECL_NODE(elementwiseA0_op);
+  PATTERN_DECL_NODE(elementwiseA0_in_y);
+  PATTERN_DECL_NODE(elementwiseA0_out);
+  PATTERN_DECL_NODE(matmulA0_op);
+  PATTERN_DECL_NODE(matmulA0_in_y);
+  PATTERN_DECL_NODE(matmulA0_out);
+  PATTERN_DECL_NODE(elementwiseA1_op);
+  PATTERN_DECL_NODE(elementwiseA1_in_y);
+  PATTERN_DECL_NODE(elementwiseA1_out);
+  PATTERN_DECL_NODE(reshapeA1_op);
+  PATTERN_DECL_NODE(reshapeA1_out);
+  PATTERN_DECL_NODE(transposeA1_op);
+  PATTERN_DECL_NODE(transposeA1_out);
+  PATTERN_DECL_NODE(scaleA1_op);
+  PATTERN_DECL_NODE(scaleA1_out);
+  PATTERN_DECL_NODE(matmulA1_op);
+  PATTERN_DECL_NODE(matmulA1_out);
+  PATTERN_DECL_NODE(softmaxA1_op);
+  PATTERN_DECL_NODE(softmaxA1_out);
+  PATTERN_DECL_NODE(matmulA2_op);
+  PATTERN_DECL_NODE(matmulA2_out);
+  PATTERN_DECL_NODE(transposeA2_op);
+  PATTERN_DECL_NODE(transposeA2_out);
+  PATTERN_DECL_NODE(reshapeA2_op);
+  PATTERN_DECL_NODE(reshapeA2_out);
+  PATTERN_DECL_NODE(elementwiseB0_op);
+  PATTERN_DECL_NODE(elementwiseB0_in_y);
+  PATTERN_DECL_NODE(elementwiseB0_out);
+  PATTERN_DECL_NODE(matmulB0_op);
+  PATTERN_DECL_NODE(matmulB0_in_y);
+  PATTERN_DECL_NODE(matmulB0_out);
+  PATTERN_DECL_NODE(elementwiseB1_op);
+  PATTERN_DECL_NODE(elementwiseB1_in_y);
+  PATTERN_DECL_NODE(elementwiseB1_out);
+  PATTERN_DECL_NODE(reshapeB1_op);
+  PATTERN_DECL_NODE(reshapeB1_out);
+  PATTERN_DECL_NODE(transposeB1_op);
+  PATTERN_DECL_NODE(transposeB1_out);
+  PATTERN_DECL_NODE(matmulC0_op);
+  PATTERN_DECL_NODE(matmulC0_in_y);
+  PATTERN_DECL_NODE(matmulC0_out);
+  PATTERN_DECL_NODE(elementwiseC1_op);
+  PATTERN_DECL_NODE(elementwiseC1_in_y);
+  PATTERN_DECL_NODE(elementwiseC1_out);
+  PATTERN_DECL_NODE(reshapeC1_op);
+  PATTERN_DECL_NODE(reshapeC1_out);
+  PATTERN_DECL_NODE(transposeC1_op);
+  PATTERN_DECL_NODE(transposeC1_out);
+};
+
 // vit_attention
 struct VitAttention : public PatternBase {
   VitAttention(PDPattern* pattern, const std::string& name_scope)
