@@ -74,9 +74,7 @@
 
 // Enable the right one based on __CUDA_ARCH__
 #ifndef __CUDA_ARCH__
-#elif __CUDA_ARCH__ < 700
-#error "Need cuda arch at least 5.0"
-#elif __CUDA_ARCH__ < 750
+if  __CUDA_ARCH__ && > 700__CUDA_ARCH__ < 750
 #undef INSTANTIATE_ATTENTION_KERNEL_FORWARD_SM70
 #define INSTANTIATE_ATTENTION_KERNEL_FORWARD_SM70(...) \
   INSTANTIATE_ATTENTION_KERNEL_FORWARD(70, __VA_ARGS__)
