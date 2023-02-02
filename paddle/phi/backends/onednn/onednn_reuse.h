@@ -1710,7 +1710,7 @@ static void SetOutMemDescWithLogicalLayoutFusesSupport(
     SetOutMemDescWithReshape2FuseSupport(fused_reshape2_shape, out, out_md);
   } else if (!fused_squeeze2_axes.empty()) {
     out->set_mem_desc(out_md);
-    out->Resize(make_ddim(out_md.dims()));
+    out->Resize(make_ddim(out_md.get_dims()));
   } else {
     out->set_mem_desc(out_md);
   }
@@ -1957,7 +1957,7 @@ class MatmulOneDNNHandler : public OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
             : 1.0f;
     if (scale_alpha != 1.0f) {
       post_operations.append_eltwise(
-          1.0, dnnl::algorithm::eltwise_linear, scale_alpha, 0.0f);
+          dnnl::algorithm::eltwise_linear, scale_alpha, 0.0f);
     }
 
     matmul_attrs.set_post_ops(post_operations);
