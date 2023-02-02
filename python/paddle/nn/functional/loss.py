@@ -254,12 +254,12 @@ def fluid_softmax_with_cross_entropy(
             #        [1.15328646])
     """
     if in_dygraph_mode():
-        if not soft_label:
-            valid_label = (
-                paddle.cast(label != ignore_index, dtype=label.dtype) * label
-            )
         if core.is_compiled_with_custom_device("npu"):
             if not soft_label:
+                valid_label = (
+                    paddle.cast(label != ignore_index, dtype=label.dtype)
+                    * label
+                )
                 softmax, loss = _legacy_C_ops.softmax_with_cross_entropy(
                     logits,
                     valid_label,
