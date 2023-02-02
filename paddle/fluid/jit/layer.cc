@@ -26,8 +26,8 @@
 namespace paddle {
 namespace jit {
 
-Layer::Layer(const VariableMap& params_map,
-             const VariableMap& attrs_map,
+Layer::Layer(const std::shared_ptr<VariableMap>& params_map,
+             const std::shared_ptr<VariableMap>& attrs_map,
              const FunctionInfoMap& info_map,
              const phi::Place& place)
     : params_map_(params_map),
@@ -80,12 +80,12 @@ std::vector<std::string> Layer::FunctionNames() const {
 #define PD_SPECIALZE_ATTRIBUTE_TYPE(T)                                \
   template <>                                                         \
   T Layer::Attribute<T>(const std::string& name) const {              \
-    if (attrs_map_.find(name) == attrs_map_.end()) {                  \
+    if (attrs_map_->find(name) == attrs_map_->end()) {                \
       PADDLE_THROW(phi::errors::NotFound(                             \
           "Attribute can not found %s, please check if it exists.")); \
       return T();                                                     \
     }                                                                 \
-    auto var = attrs_map_.at(name);                                   \
+    auto var = attrs_map_->at(name);                                  \
     T ret = var->Get<T>();                                            \
     return ret;                                                       \
   }
