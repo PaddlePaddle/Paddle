@@ -53,6 +53,7 @@ class PassBase(ABC):
 
     _BEFORE_WHITE_LISTS_DICT = {}
     _AFTER_WHITE_LISTS_DICT = {}
+    _PASS_PROCESS_ORDER_LIST = []
 
     name = None
 
@@ -216,6 +217,13 @@ def _make_rule_from_white_lists_dict(
     return rule
 
 
+def _get_list_index(in_pass):
+    assert (
+        in_pass.name in PassBase._PASS_PROCESS_ORDER_LIST
+    ), "Pass {} is not in _PASS_PROCESS_ORDER_LIST".format(in_pass.name)
+    return PassBase._PASS_PROCESS_ORDER_LIST.index(in_pass.name)
+
+
 # The key-value pair (k, [v1, v2, ..., vn]) means the pass k can be
 # applied before any of pass [v1, v2, ..., vn] is applied
 PassBase._BEFORE_WHITE_LISTS_DICT = {
@@ -229,9 +237,24 @@ PassBase._AFTER_WHITE_LISTS_DICT = {
     # Add more white lists here
 }
 
+# The index of pass in this list represent the order in which the pass is processed.
+PassBase._PASS_PROCESS_ORDER_LIST = [
+    "inplace_addto_op",
+    "build_cinn",
+    "fuse_elewise_add_act",
+    "fuse_bn_act",
+    "fuse_bn_add_act",
+    "fuse_relu_depthwise_conv",
+    "fused_attention",
+    "fuse_gemm_epilogue",
+    "fuse_optimizer",
+]
+
 PassBase._COMMON_RULES = [
     _fusion_opt_last_rule,
     lambda pass_before, pass_after: type(pass_before) != type(pass_after),
+    lambda pass_before, pass_after: _get_list_index(pass_before)
+    < _get_list_index(pass_after),
     _make_rule_from_white_lists_dict(
         PassBase._BEFORE_WHITE_LISTS_DICT, PassBase._AFTER_WHITE_LISTS_DICT
     ),
@@ -272,7 +295,18 @@ def _find_longest_path(edges):
                         min_dist = dists[i][j]
                         min_path = paths[i][j]
 
-    return min_path if min_path else [0]
+    if min_path:
+        id_before = min_path[0]
+        longest_path = [id_before]
+        for id in min_path[1:]:
+            if id_before == id:
+                continue
+            longest_path.append(id)
+            id_before = id
+    else:
+        longest_path = [0]
+
+    return longest_path
 
 
 def _solve_pass_conflict(passes, context):
@@ -295,35 +329,18 @@ def _solve_pass_conflict(passes, context):
         return []
 
     n = len(passes)
-    adjacent_matrix = [[None] * n for _ in range(n)]
+    adjacent_matrix = []
+    for _ in range(n):
+        adjacent_matrix.append([None] * n)
 
     for i in range(n):
         for j in range(n):
-            if adjacent_matrix[i][j] is None:
-                can_reach_ij = passes[j]._check_conflict_including_common_rules(
-                    passes[i]
-                )
-                can_reach_ji = passes[i]._check_conflict_including_common_rules(
-                    passes[j]
-                )
-                if can_reach_ij and can_reach_ji:
-                    adjacent_matrix[i][j] = can_reach_ij
-                    adjacent_matrix[j][i] = False
-                else:
-                    adjacent_matrix[i][j] = can_reach_ij
-                    adjacent_matrix[j][i] = can_reach_ji
+            adjacent_matrix[i][j] = passes[
+                j
+            ]._check_conflict_including_common_rules(passes[i])
 
     longest_path = _find_longest_path(adjacent_matrix)
-
-    id_before = longest_path[0]
-    passes_list = [id_before]
-    for id in longest_path[1:]:
-        if id_before == id:
-            continue
-        passes_list.append(id)
-        id_before = id
-
-    return [passes[idx] for idx in passes_list]
+    return [passes[idx] for idx in longest_path]
 
 
 class PassManager:
