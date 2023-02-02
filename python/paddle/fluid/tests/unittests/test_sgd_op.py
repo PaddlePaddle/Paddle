@@ -200,7 +200,7 @@ class TestSGDOpWithLargeInput(unittest.TestCase):
         label = fluid.layers.fill_constant(
             shape=[1, 150], value=0.5, dtype='float32'
         )
-        emb = paddle.static.embedding(
+        emb = paddle.static.nn.embedding(
             input=data, size=(10000000, 150), dtype='float32'
         )
         out = paddle.nn.functional.normalize(x=emb, axis=-1)
