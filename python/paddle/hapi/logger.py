@@ -16,7 +16,7 @@ import logging
 import os
 import sys
 
-from paddle.distributed import ParallelEnv
+from paddle.parallel import ParallelEnv
 
 __all__ = []
 

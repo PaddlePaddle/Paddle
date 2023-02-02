@@ -16,6 +16,8 @@ import os
 
 from paddle.fluid import core
 
+__all__ = ["ParallelEnv"]
+
 
 class ParallelEnv:
     """
