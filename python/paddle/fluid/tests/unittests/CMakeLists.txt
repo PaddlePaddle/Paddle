@@ -861,10 +861,6 @@ if(WITH_HETERPS)
   set_tests_properties(test_dist_fleet_ps12 PROPERTIES LABELS "RUN_TYPE=GPUPS")
 endif()
 
-if(WITH_PSCORE)
-  set_tests_properties(test_gpubox_ps PROPERTIES LABELS "RUN_TYPE=GPUPS")
-endif()
-
 if(WIN32)
   cc_test(
     cc_imp_py_test
