@@ -440,6 +440,11 @@ def __sync_stat_with_flag(flag):
         )
 
 
+# Alert!!! This method is only for test coveraget, user should never use it directly, this may cause serious system errors.
+def _test_use_sync(value):
+    __sync_stat_with_flag(value)
+
+
 def _set_prim_backward_enabled(value):
     __set_bwd_prim_enabled(bool(value))
     print("backward prim enabled: ", bool(_is_bwd_prim_enabled()))

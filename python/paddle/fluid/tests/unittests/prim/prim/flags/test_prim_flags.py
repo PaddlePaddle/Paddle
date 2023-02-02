@@ -55,7 +55,7 @@ class TestPrimFlags(unittest.TestCase):
         self.assertFalse(core._is_fwd_prim_enabled())
 
         with self.assertRaises(TypeError):
-            core.__sync_stat_with_flag("aaaa")
+            core._test_use_sync("aaaa")
 
 
 if __name__ == '__main__':
