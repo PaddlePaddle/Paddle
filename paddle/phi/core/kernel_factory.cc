@@ -62,7 +62,7 @@ bool KernelFactory::HasCompatiblePhiKernel(const std::string& op_type) const {
   return false;
 }
 
-bool KernelFactory::AllAreFuncKernel(const std::string& op_type) const {
+bool KernelFactory::AllAreStructuredKernel(const std::string& op_type) const {
   auto phi_kernel_name = phi::OpUtilsMap::Instance().GetBaseKernelName(op_type);
   auto kernel_iter = kernels_.find(phi_kernel_name);
   if (deprecated_op_names.find(op_type) == deprecated_op_names.end() &&
@@ -71,7 +71,7 @@ bool KernelFactory::AllAreFuncKernel(const std::string& op_type) const {
                        kernel_iter->second.end(),
                        [](phi::KernelKeyMap::const_reference kernel_pair) {
                          return kernel_pair.second.GetKernelRegisteredType() ==
-                                KernelRegisteredType::FUNCTION;
+                                KernelRegisteredType::STRUCTURE;
                        });
   }
   return false;

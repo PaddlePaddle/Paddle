@@ -1689,11 +1689,11 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   std::string phi_kernel_name;
   if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(type_)) {
     if (kernel_signature_ == nullptr || phi_kernel_ == nullptr) {
-      if (phi::KernelFactory::Instance().AllAreFuncKernel(type_)) {
+      if (phi::KernelFactory::Instance().AllAreStructuredKernel(type_)) {
+        kernel_signature_.reset(new phi::KernelSignature(type_.c_str()));
+      } else {
         kernel_signature_.reset(new phi::KernelSignature(
             std::move(GetExpectedPhiKernelArgs(exe_ctx))));
-      } else {
-        kernel_signature_.reset(new phi::KernelSignature(type_.c_str()));
       }
 
       VLOG(6) << *kernel_signature_.get();
@@ -2156,11 +2156,11 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 phi::KernelKey OperatorWithKernel::ChoosePhiKernel(
     const ExecutionContext& ctx) const {
   std::string phi_kernel_name;
-  if (phi::KernelFactory::Instance().AllAreFuncKernel(type_)) {
+  if (phi::KernelFactory::Instance().AllAreStructuredKernel(type_)) {
+    kernel_signature_.reset(new phi::KernelSignature(type_.c_str()));
+  } else {
     kernel_signature_.reset(
         new phi::KernelSignature(std::move(GetExpectedPhiKernelArgs(ctx))));
-  } else {
-    kernel_signature_.reset(new phi::KernelSignature(type_.c_str()));
   }
   VLOG(6) << *kernel_signature_.get();
   phi_kernel_name = kernel_signature_->name;

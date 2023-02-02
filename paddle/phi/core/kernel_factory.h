@@ -316,7 +316,7 @@ class KernelFactory {
 
   bool HasCompatiblePhiKernel(const std::string& op_type) const;
 
-  bool AllAreFuncKernel(const std::string& op_type) const;
+  bool AllAreStructuredKernel(const std::string& op_type) const;
 
   KernelResult SelectKernelOrThrowError(const std::string& kernel_name,
                                         const KernelKey& kernel_key) const;
