@@ -59,20 +59,36 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                     ]
                     ops = self.generate_op_config(ops_config)
 
-                    program_config = ProgramConfig(
-                        ops=ops,
-                        weights={},
-                        inputs={
-                            "input_data": TensorConfig(
-                                data_gen=partial(
-                                    generate_input1, dims, batch, dics
-                                )
-                            )
-                        },
-                        outputs=["output_data", "indices_data"],
-                    )
+                    for precision in ['float32', 'float16']:
 
-                    yield program_config
+                        input1_data = generate_input1(dims, batch, dics)
+
+                        def gen_input1(dtype):
+                            return input1_data.astype(dtype)
+
+                        program_config = ProgramConfig(
+                            ops=ops,
+                            weights={},
+                            inputs={
+                                "input_data": TensorConfig(
+                                    data_gen=partial(gen_input1, 'float32')
+                                )
+                            },
+                            outputs=["output_data", "indices_data"],
+                        )
+
+                        trt_program_config = ProgramConfig(
+                            ops=ops,
+                            weights={},
+                            inputs={
+                                "input_data": TensorConfig(
+                                    data_gen=partial(gen_input1, precision)
+                                )
+                            },
+                            outputs=["output_data", "indices_data"],
+                        )
+
+                        yield (program_config, trt_program_config)
 
     def sample_predictor_configs(
         self, program_config
@@ -117,25 +133,29 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
 
         # for static_shape
         clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-3
+        if program_config.inputs['input_data'].dtype == 'float32':
+            self.trt_param.precision = paddle_infer.PrecisionType.Float32
+            yield self.create_inference_config(), generate_trt_nodes_num(
+                attrs, False
+            ), 1e-5
+        else:
+            self.trt_param.precision = paddle_infer.PrecisionType.Half
+            yield self.create_inference_config(), generate_trt_nodes_num(
+                attrs, False
+            ), 1e-3
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), 1e-3
+        if program_config.inputs['input_data'].dtype == 'float32':
+            self.trt_param.precision = paddle_infer.PrecisionType.Float32
+            yield self.create_inference_config(), generate_trt_nodes_num(
+                attrs, True
+            ), 1e-5
+        else:
+            self.trt_param.precision = paddle_infer.PrecisionType.Half
+            yield self.create_inference_config(), generate_trt_nodes_num(
+                attrs, True
+            ), 1e-3
 
     def test(self):
         self.run_test()

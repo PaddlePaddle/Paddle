@@ -746,7 +746,14 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 return False
             return True
 
-        for prog_config in self.sample_program_configs(*args, **kwargs):
+        for sample_program_configs in self.sample_program_configs(
+            *args, **kwargs
+        ):
+
+            if isinstance(prog_configs, tuple):
+                prog_config, trt_prog_config = prog_configs
+            else:
+                prog_config = trt_prog_config = prog_configs
 
             if random_to_skip():
                 continue
@@ -782,7 +789,17 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 pred_config,
                 nodes_num,
                 threshold,
-            ) in self.sample_predictor_configs(prog_config):
+            ) in self.sample_predictor_configs(trt_prog_config):
+
+                model, params = create_fake_model(trt_prog_config)
+                if quant:
+                    model, params = create_quant_model(model, params)
+                feed_data = {}
+                for name, tensor_config in trt_prog_config.inputs.items():
+                    feed_data[name] = {
+                        'data': tensor_config.data,
+                        'lod': tensor_config.lod,
+                    }
 
                 if os.path.exists(self.cache_dir):
                     shutil.rmtree(self.cache_dir)
@@ -813,7 +830,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
 
                 ignore_flag = False
                 for teller, reason, note in self.ignore_cases:
-                    if teller(prog_config, pred_config):
+                    if teller(trt_prog_config, pred_config):
                         ignore_flag = True
                         if reason == IgnoreReasons.TRT_NOT_IMPLEMENTED:
                             self.ignore_log(
@@ -838,7 +855,11 @@ class TrtLayerAutoScanTest(AutoScanTest):
                     pred_config_deserialize = paddle_infer.Config(pred_config)
                     results.append(
                         self.run_test_config(
-                            model, params, prog_config, pred_config, feed_data
+                            model,
+                            params,
+                            trt_prog_config,
+                            pred_config,
+                            feed_data,
                         )
                     )
                     self.assert_tensors_near(
@@ -852,7 +873,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
                         self.run_test_config(
                             model,
                             params,
-                            prog_config,
+                            trt_prog_config,
                             pred_config_deserialize,
                             feed_data,
                         )
