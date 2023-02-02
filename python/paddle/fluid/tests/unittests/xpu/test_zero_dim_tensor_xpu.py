@@ -132,6 +132,8 @@ reduce_api_list = [
     paddle.logsumexp,
     paddle.all,
     paddle.any,
+    paddle.argmax,
+    paddle.argmin,
 ]
 
 
@@ -153,7 +155,8 @@ class TestReduceAPI(unittest.TestCase):
 
             self.assertEqual(x.shape, [])
             self.assertEqual(out.shape, [])
-            np.testing.assert_allclose(out.numpy(), x.numpy())
+            if api not in [paddle.argmax, paddle.argmin]:
+                np.testing.assert_allclose(out.numpy(), x.numpy())
             if x.grad is not None:
                 self.assertEqual(x.grad.shape, [])
                 self.assertEqual(out.grad.shape, [])
