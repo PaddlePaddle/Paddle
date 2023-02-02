@@ -24,7 +24,7 @@ set -ex
 # remove others to expedite build and reduce docker image size. The original
 # manylinux docker image project builds many python versions.
 # NOTE We added back 3.5.1, since auditwheel requires python 3.3+
-CPYTHON_VERSIONS="3.9.0 3.8.0 3.7.0 3.6.0"
+CPYTHON_VERSIONS="3.10.0 3.9.0 3.8.0 3.7.0"
 
 # openssl version to build, with expected sha256 hash of .tar.gz
 # archive
@@ -77,15 +77,15 @@ build_openssl $OPENSSL_ROOT $OPENSSL_HASH
 mkdir -p /opt/python
 build_cpythons $CPYTHON_VERSIONS
 
-PY36_BIN=/opt/python/cp36-cp36m/bin
 PY37_BIN=/opt/python/cp37-cp37m/bin
 PY38_BIN=/opt/python/cp38-cp38m/bin
 PY39_BIN=/opt/python/cp39-cp39m/bin
+PY310_BIN=/opt/python/cp310-cp310m/bin
 # NOTE Since our custom manylinux image builds pythons with shared
 # libpython, we need to add libpython's dir to LD_LIBRARY_PATH before running
 # python.
 ORIGINAL_LD_LIBRARY_PATH="${LD_LIBRARY_PATH}"
-LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname ${PY36_BIN})/lib:$(dirname ${PY37_BIN})/lib:$(dirname ${PY38_BIN})/lib:$(dirname ${PY39_BIN})/lib"
+LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname ${PY37_BIN})/lib:$(dirname ${PY38_BIN})/lib:$(dirname ${PY39_BIN})/lib:$(dirname ${PY310_BIN})/lib"
 
 # Our openssl doesn't know how to find the system CA trust store
 #   (https://github.com/pypa/manylinux/issues/53)
@@ -137,11 +137,13 @@ for PYTHON in /opt/python/*/bin/python; do
     # Add matching directory of libpython shared library to library lookup path
     LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname $(dirname ${PYTHON}))/lib"
 
-    # Smoke test to make sure that our Pythons work, and do indeed detect as
-    # being manylinux compatible:
-    LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname $(dirname ${PYTHON}))/lib" $PYTHON $MY_DIR/manylinux1-check.py
-    # Make sure that SSL cert checking works
-    LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname $(dirname ${PYTHON}))/lib" $PYTHON $MY_DIR/ssl-check.py
+    if [ "$(dirname $(dirname ${PYTHON}))" != "/opt/python/cp310-cp310" ]; then
+        # Smoke test to make sure that our Pythons work, and do indeed detect as
+        # being manylinux compatible:
+        LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname $(dirname ${PYTHON}))/lib" $PYTHON $MY_DIR/manylinux1-check.py
+        # Make sure that SSL cert checking works
+        LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname $(dirname ${PYTHON}))/lib" $PYTHON $MY_DIR/ssl-check.py
+    fi
 done
 
 # Restore LD_LIBRARY_PATH

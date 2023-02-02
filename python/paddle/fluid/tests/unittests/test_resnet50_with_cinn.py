@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.fluid import core
 
 paddle.enable_static()
 
@@ -122,6 +123,25 @@ class TestResnet50Accuracy(unittest.TestCase):
         print("Losses of CINN:")
         print(loss_c)
         print("Losses of Paddle")
+        print(loss_p)
+        np.testing.assert_allclose(loss_c, loss_p, rtol=1e-05, atol=1e-05)
+
+    def test_check_resnet50_accuracy_with_composite(self):
+        place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+
+        loop_num = 10
+        feed = self.generate_random_data(loop_num)
+        core._set_prim_backward_enabled(True)
+        loss_c = self.train(place, loop_num, feed, use_cinn=True)
+        core._set_prim_backward_enabled(False)
+        loss_p = self.train(place, loop_num, feed, use_cinn=True)
+        print("Losses of Composite + CINN:")
+        print(loss_c)
+        print("Losses of CINN: ")
         print(loss_p)
         np.testing.assert_allclose(loss_c, loss_p, rtol=1e-05, atol=1e-05)
 

@@ -130,6 +130,18 @@ class TestAtan2API(unittest.TestCase):
             run(place)
 
 
+class TestAtan2Error(unittest.TestCase):
+    def test_mismatch(self):
+        paddle.enable_static()
+
+        def test_mismatch_numel():
+            X = paddle.fluid.data('X', (1,), dtype=np.float64)
+            Y = paddle.fluid.data('Y', (0,), dtype=np.float64)
+            out = paddle.atan2(X, Y)
+
+        self.assertRaises(ValueError, test_mismatch_numel)
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

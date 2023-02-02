@@ -274,7 +274,7 @@ class TestPool1D_API(unittest.TestCase):
             self.check_max_dygraph_return_index_results(place)
 
 
-class TestPool2DError_API(unittest.TestCase):
+class TestPool1DError_API(unittest.TestCase):
     def test_error_api(self):
         def run1():
             with fluid.dygraph.guard():
@@ -416,6 +416,18 @@ class TestPool2DError_API(unittest.TestCase):
                 )
 
         self.assertRaises(ValueError, run_stride_out_of_range)
+
+        def run_zero_stride():
+            with fluid.dygraph.guard():
+                array = np.array([1], dtype=np.float32)
+                x = paddle.to_tensor(
+                    np.reshape(array, [1, 1, 1]), dtype='float32'
+                )
+                out = F.max_pool1d(
+                    x, 1, stride=0, padding=1, return_mask=True, ceil_mode=True
+                )
+
+        self.assertRaises(ValueError, run_zero_stride)
 
 
 if __name__ == '__main__':

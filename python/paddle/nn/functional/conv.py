@@ -22,6 +22,7 @@ from paddle.device import (
 from paddle.fluid.framework import _global_flags, in_dygraph_mode
 from paddle.tensor.math import _add_with_axis
 
+from ...common_ops_import import Variable
 from ...device import get_cudnn_version
 from ...fluid.data_feeder import check_dtype, check_variable_and_dtype
 from ...fluid.layer_helper import LayerHelper
@@ -32,7 +33,6 @@ from ...fluid.layers.utils import (
     convert_to_list,
 )
 from ...framework import no_grad
-from ...static import Variable
 from ...tensor.manipulation import squeeze, unsqueeze
 
 __all__ = []

@@ -148,7 +148,7 @@ cc_library(ops_extra_info SRCS ops_extra_info.cc DEPS attribute cudnn_workspace_
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} selected_rows_functor selected_rows_utils lapack_function
 lod_tensor maxouting unpooling pooling lod_rank_table context_project
 sequence_pooling executor generator static_prim_api)
-set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dynload_warpctc)
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dynload_warpctc static_prim_api static_utils static_global_utils prim_utils)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} sequence_padding sequence_scale cos_sim_functor memory jit_kernel_helper concat_and_split cross_entropy softmax vol2col im2col sampler sample_prob tree2col)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} sequence2batch lstm_compute matrix_bit_code gru_compute activation_functions beam_search fc_functor matrix_inverse matrix_solve)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} box_wrapper ps_gpu_wrapper)
@@ -216,7 +216,7 @@ endif()
 set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
 add_subdirectory(benchmark)
 
-cc_test(op_debug_string_test SRCS op_debug_string_test.cc DEPS elementwise_add_op)
+cc_test_old(op_debug_string_test SRCS op_debug_string_test.cc DEPS elementwise_add_op ${COMMON_OP_DEPS})
 if (WITH_ASCEND_CL)
     cc_test(transpose_op_npu_test SRCS transpose_op_npu_test.cc DEPS op_registry transpose_op scope device_context enforce executor)
 endif()

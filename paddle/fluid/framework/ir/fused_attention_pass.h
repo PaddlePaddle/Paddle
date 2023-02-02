@@ -28,7 +28,7 @@ namespace patterns {
 
 // Declare patterns for multi head attention.
 // Can detect:
-// 1. Pre layer norm, post layer norm or sandwich layer norm.
+// 1. Pre layer norm or post layer norm.
 // 2. Add attn mask for qk product before the softmax or not.
 // 3. Do attn dropout or not.
 // 4. Add residual to the out linear result or not.
@@ -37,11 +37,10 @@ struct FusedAttentionPattern : public PatternBase {
       : PatternBase(pattern, name_scope, "fused_attention_pattern") {}
 
   PDNode* operator()(PDNode* x,
-                     bool pre_layer_norm,   // do pre ln or not
-                     bool post_layer_norm,  // do post ln or not
-                     bool has_attn_mask,    // add attn mask to qk or not
-                     bool do_dropout,       // dropout the softmax(qk) or not
-                     bool add_residual);    // add residual to out linear or not
+                     bool pre_layer_norm,  // do pre ln or not
+                     bool has_attn_mask,   // add attn mask to qk or not
+                     bool do_dropout,      // dropout the softmax(qk) or not
+                     bool add_residual);   // add residual to out linear or not
 
   // pre layer norm
   PATTERN_DECL_NODE(pre_layer_norm_op);
@@ -134,13 +133,121 @@ struct FusedAttentionGradPattern : public PatternBase {
       : PatternBase(pattern, name_scope, "fused_attention_pattern") {}
 
   PDNode* operator()(PDNode* x,
-                     bool pre_layer_norm,   // pre ln
-                     bool post_layer_norm,  // post ln
-                     bool has_attn_mask,    // add attn mask to qk or not
-                     bool do_dropout,       // dropout the softmax(qk) or not
-                     bool add_residual);    // add residual to out linear or not
+                     bool pre_layer_norm,  // pre ln
+                     bool has_attn_mask,   // add attn mask to qk or not
+                     bool do_dropout,      // dropout the softmax(qk) or not
+                     bool add_residual);   // add residual to out linear or not
 
-  // TODO(Yuang Liu): add backward pattern
+  // post layer norm grad
+  PATTERN_DECL_NODE(post_layer_norm_grad_op);
+  PATTERN_DECL_NODE(post_layer_norm_grad_scale);
+  PATTERN_DECL_NODE(post_layer_norm_grad_bias);
+  PATTERN_DECL_NODE(post_layer_norm_grad_mean);
+  PATTERN_DECL_NODE(post_layer_norm_grad_variance);
+  PATTERN_DECL_NODE(post_layer_norm_grad_x);
+  PATTERN_DECL_NODE(post_layer_norm_grad_scale_grad);
+  PATTERN_DECL_NODE(post_layer_norm_grad_bias_grad);
+  PATTERN_DECL_NODE(post_layer_norm_grad_x_grad);
+
+  // residual grad
+  PATTERN_DECL_NODE(residual_ele_add_grad_op);
+  PATTERN_DECL_NODE(residual_ele_add_grad_x);
+  PATTERN_DECL_NODE(residual_ele_add_grad_bias);
+  PATTERN_DECL_NODE(residual_ele_add_grad_bias_grad);
+  PATTERN_DECL_NODE(residual_ele_add_grad_x_grad);
+
+  // out linear grad
+  PATTERN_DECL_NODE(out_linear_dropout_grad_op);
+  PATTERN_DECL_NODE(out_linear_dropout_grad_mask);
+  PATTERN_DECL_NODE(out_linear_dropout_grad_out);
+
+  PATTERN_DECL_NODE(out_linear_ele_add_grad_op);
+  PATTERN_DECL_NODE(out_linear_ele_add_grad_x);
+  PATTERN_DECL_NODE(out_linear_ele_add_grad_bias);
+  PATTERN_DECL_NODE(out_linear_ele_add_grad_x_grad);
+  PATTERN_DECL_NODE(out_linear_ele_add_grad_bias_grad);
+
+  PATTERN_DECL_NODE(out_linear_matmul_grad_op);
+  PATTERN_DECL_NODE(out_linear_matmul_grad_x);
+  PATTERN_DECL_NODE(out_linear_matmul_grad_w);
+  PATTERN_DECL_NODE(out_linear_matmul_grad_x_grad);
+  PATTERN_DECL_NODE(out_linear_matmul_grad_w_grad);
+
+  // core attention grad
+  PATTERN_DECL_NODE(qkv_reshape_grad_op);
+  PATTERN_DECL_NODE(qkv_reshape_grad_x_shape);
+  PATTERN_DECL_NODE(qkv_reshape_grad_out);
+
+  PATTERN_DECL_NODE(qkv_transpose_grad_op);
+  PATTERN_DECL_NODE(qkv_transpose_grad_x_shape);
+  PATTERN_DECL_NODE(qkv_transpose_grad_out);
+
+  PATTERN_DECL_NODE(qkv_matmul_grad_op);
+  PATTERN_DECL_NODE(qkv_matmul_grad_x);
+  PATTERN_DECL_NODE(qkv_matmul_grad_w);
+  PATTERN_DECL_NODE(qkv_matmul_grad_x_grad);
+  PATTERN_DECL_NODE(qkv_matmul_grad_w_grad);
+
+  PATTERN_DECL_NODE(attn_dropout_grad_op);
+  PATTERN_DECL_NODE(attn_dropout_grad_mask);
+  PATTERN_DECL_NODE(attn_dropout_grad_out);
+
+  PATTERN_DECL_NODE(qk_softmax_grad_op);
+  PATTERN_DECL_NODE(qk_softmax_grad_fwd_out);
+  PATTERN_DECL_NODE(qk_softmax_grad_out);
+
+  PATTERN_DECL_NODE(add_mask_ele_add_grad_op);
+  PATTERN_DECL_NODE(add_mask_ele_add_grad_x);
+  PATTERN_DECL_NODE(add_mask_ele_add_grad_bias);
+  PATTERN_DECL_NODE(add_mask_ele_add_grad_x_grad);
+
+  PATTERN_DECL_NODE(qk_scale_grad_op);
+  PATTERN_DECL_NODE(qk_scale_grad_out);
+
+  PATTERN_DECL_NODE(qk_matmul_grad_op);
+  PATTERN_DECL_NODE(qk_matmul_grad_x);
+  PATTERN_DECL_NODE(qk_matmul_grad_w);
+  PATTERN_DECL_NODE(qk_matmul_grad_x_grad);
+  PATTERN_DECL_NODE(qk_matmul_grad_w_grad);
+
+  // fuse qkv projection grad
+  PATTERN_DECL_NODE(fuse_qkv_split_grad_op);  // concat op
+  PATTERN_DECL_NODE(fuse_qkv_split_grad_out);
+
+  PATTERN_DECL_NODE(fuse_qkv_transpose_grad_op);
+  PATTERN_DECL_NODE(fuse_qkv_transpose_grad_x_shape);
+  PATTERN_DECL_NODE(fuse_qkv_transpose_grad_out);
+
+  PATTERN_DECL_NODE(fuse_qkv_reshape_grad_op);
+  PATTERN_DECL_NODE(fuse_qkv_reshape_grad_x_shape);
+  PATTERN_DECL_NODE(fuse_qkv_reshape_grad_out);
+
+  PATTERN_DECL_NODE(fuse_qkv_ele_add_grad_op);
+  PATTERN_DECL_NODE(fuse_qkv_ele_add_grad_x);
+  PATTERN_DECL_NODE(fuse_qkv_ele_add_grad_bias);
+  PATTERN_DECL_NODE(fuse_qkv_ele_add_grad_x_grad);
+  PATTERN_DECL_NODE(fuse_qkv_ele_add_grad_bias_grad);
+
+  PATTERN_DECL_NODE(fuse_qkv_matmul_grad_op);
+  PATTERN_DECL_NODE(fuse_qkv_matmul_grad_x);
+  PATTERN_DECL_NODE(fuse_qkv_matmul_grad_w);
+  PATTERN_DECL_NODE(fuse_qkv_matmul_grad_x_grad);
+  PATTERN_DECL_NODE(fuse_qkv_matmul_grad_w_grad);
+
+  // pre layer norm grad
+  PATTERN_DECL_NODE(pre_layer_norm_grad_op);
+  PATTERN_DECL_NODE(pre_layer_norm_grad_scale);
+  PATTERN_DECL_NODE(pre_layer_norm_grad_bias);
+  PATTERN_DECL_NODE(pre_layer_norm_grad_mean);
+  PATTERN_DECL_NODE(pre_layer_norm_grad_variance);
+  PATTERN_DECL_NODE(pre_layer_norm_grad_x);
+  PATTERN_DECL_NODE(pre_layer_norm_grad_scale_grad);
+  PATTERN_DECL_NODE(pre_layer_norm_grad_bias_grad);
+  PATTERN_DECL_NODE(pre_layer_norm_grad_x_grad);
+
+  // grad accumulation
+  PATTERN_DECL_NODE(grad_accumulation_sum_op);
+  PATTERN_DECL_NODE(grad_accumulation_out);
 };
 
 }  // namespace patterns
@@ -166,9 +273,9 @@ class FusedAttentionsPass : public FusePassBase {
   // If true, the function name will have an abbreviation part.
   // If false, the function name won't contain an abbreviation for it.
 
-  ir::Graph* PreMaskDropResPostFwd(Graph* graph) const;
+  ir::Graph* PreMaskDropResFwd(Graph* graph) const;
 
-  ir::Graph* PreMaskDropResPostBwd(Graph* graph) const;
+  ir::Graph* PreMaskDropResBwd(Graph* graph) const;
 };
 
 }  // namespace ir
