@@ -882,7 +882,6 @@ def fused_multi_transformer(
     epsilon=1e-05,
     cache_kvs=None,
     pre_caches=None,
-    remove_padding=False,
     seq_lens=None,
     rotary_embs=None,
     time_step=None,
@@ -953,7 +952,6 @@ def fused_multi_transformer(
         epsilon (float, optional): Small float value added to denominator of the layer_norm to avoid dividing by zero. Default is 1e-5.
         cache_kvs (list(Tensor)|tuple(Tensor), optional): The cache structure tensors for the generation model. The shape is `[2, bsz, num\_head, max\_seq\_len, head\_dim]`. Default None.
         pre_caches (list(Tensor)|tuple(Tensor), optional): The prefix caches for the generation model. The shape is `[2, bsz, num\_head, cache\_len, head\_dim]`. Default None.
-        remove_padding (bool, optional): A flag indicating whether remove padding or not. Default False.
         seq_lens (Tensor optional): The sequence lengths of this batch. The shape is `[bsz]`. Default None.
         rotary_embs (Tensor optional): The RoPE embs for rotary computation. The shape is `[2, bsz, 1, seq\_len, head\_dim]`. Default None.
         time_step (Tensor, optional): The time step tensor for the generation model. Which used in decode stage, to represent the time step, that is, the real seq_len of CacheKV. The shape is `[1]`, must be in CPUPlace. Default None.
@@ -1067,8 +1065,6 @@ def fused_multi_transformer(
             cache_kvs,
             'pre_layer_norm',
             pre_layer_norm,
-            'remove_padding',
-            remove_padding,
             'epsilon',
             epsilon,
             'dropout_rate',
@@ -1117,8 +1113,7 @@ def fused_multi_transformer(
             inputs['PreCaches'] = pre_caches
         if rotary_emb_dims > 0:
             inputs['RotaryPosEmb'] = rotary_embs
-        if remove_padding:
-            inputs['SeqLengths'] = seq_lens
+        inputs['SeqLengths'] = seq_lens
         inputs['SrcMask'] = attn_mask
         inputs['OutLinearW'] = linear_weights
         if linear_biases is not None:
@@ -1144,7 +1139,6 @@ def fused_multi_transformer(
             'act_method': activation,
             'trans_qkvw': trans_qkvw,
             'ring_id': ring_id,
-            'remove_padding': remove_padding,
         }
 
         outputs = dict()

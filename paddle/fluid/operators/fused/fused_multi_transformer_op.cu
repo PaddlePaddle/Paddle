@@ -32,8 +32,11 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     int dim_embed = input_x_dims[2];
     int bsz_seq = bsz * seq_len;
     const std::string act_method = ctx.Attr<std::string>("act_method");
-    bool remove_padding = ctx.Attr<bool>("remove_padding");
+    bool remove_padding = false;
     auto *sequence_lengths = ctx.Input<phi::DenseTensor>("SeqLengths");
+    if (sequence_lengths) {
+      remove_padding = true;
+    }
     phi::DenseTensor d_token_tensor;
     phi::DenseTensor padding_offset_tensor;
     phi::DenseTensor x_remove_padding;
@@ -695,8 +698,11 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     int dim_embed = input_x_dims[2];
     int bsz_seq = bsz * seq_len;
     const std::string act_method = ctx.Attr<std::string>("act_method");
-    bool remove_padding = ctx.Attr<bool>("remove_padding");
+    bool remove_padding = false;
     auto *sequence_lengths = ctx.Input<phi::DenseTensor>("SeqLengths");
+    if (sequence_lengths) {
+      remove_padding = true;
+    }
     phi::DenseTensor d_token_tensor;
     phi::DenseTensor padding_offset_tensor;
     phi::DenseTensor x_remove_padding;

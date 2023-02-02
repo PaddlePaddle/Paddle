@@ -1158,7 +1158,6 @@ class FusedMultiTransformer(Layer):
         trans_qkvw (bool, optional): Whether to transpose for weights of qkv.
             If true, the shape eights of qkv should be [3, num_head, dim_head, dim_embed].
             Otherwise the shape of weights of qkv should be [dim_embed, 3, num_head, dim_head]. Default: True.
-        remove_padding (bool, optional): A flag indicating whether remove padding or not. Default False.
         ring_id (int, optional): For distributed tensor model parallel. Default is -1, means not using mp.
         name (str, optional): The default value is None.  Normally there is no need for user to set
             this property. For more information, please refer to :ref:`api_guide_Name`.
@@ -1203,7 +1202,6 @@ class FusedMultiTransformer(Layer):
         num_layers=-1,
         nranks=1,
         trans_qkvw=True,
-        remove_padding=False,
         ring_id=-1,
         name=None,
     ):
@@ -1228,7 +1226,6 @@ class FusedMultiTransformer(Layer):
         self._dtype = self._helper.get_default_dtype()
         self._epsilon = epsilon
         self._trans_qkvw = trans_qkvw
-        self._remove_padding = remove_padding
         self._ring_id = ring_id
 
         self.embed_dim = embed_dim
@@ -1447,7 +1444,6 @@ class FusedMultiTransformer(Layer):
             rotary_embs=rotary_embs,
             time_step=time_step,
             seq_lens=seq_lens,
-            remove_padding=self._remove_padding,
             attn_mask=attn_mask,
             dropout_rate=self.dropout_rate,
             rotary_emb_dims=rotary_emb_dims,
