@@ -514,7 +514,7 @@ class PADDLE_API Tensor final {
   // }
 
   friend Tensor operator*(const Tensor& x, const Tensor& y) {
-    return OperatorManager::Instance().multiply(x, y);
+    return *(OperatorManager::Instance().multiply(x, y));
   }
 
   // Tensor& operator*=(const Tensor& other) {

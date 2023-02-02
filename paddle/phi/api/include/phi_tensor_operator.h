@@ -26,8 +26,8 @@ class TensorOperatorBase;
 
 class PhiTensorOperator : public TensorOperatorBase {
  public:
-  Tensor multiply(const Tensor& x, const Tensor& y) override {
-    return paddle::experimental::multiply(x, y);
+  Tensor* multiply(const Tensor& x, const Tensor& y) override {
+    return &paddle::experimental::multiply(x, y);
   }
 };
 

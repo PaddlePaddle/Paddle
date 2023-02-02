@@ -28,8 +28,8 @@ using DescTensor = paddle::prim::DescTensor;
 
 class StaticTensorOperator : public TensorOperatorBase {
  public:
-  Tensor multiply(const Tensor& x, const Tensor& y) override {
-    return paddle::prim::multiply<DescTensor>(x, y);
+  Tensor* multiply(const Tensor& x, const Tensor& y) override {
+    return &paddle::prim::multiply<DescTensor>(x, y);
   }
 };
 
