@@ -24,28 +24,6 @@ namespace ir {
 
 class PlacementPassTest {
  private:
-  void RegisterOpKernel() {
-    static bool is_registered = false;
-    if (!is_registered) {
-      auto& all_kernels = OperatorWithKernel::AllOpKernels();
-
-      platform::CPUPlace place = platform::CPUPlace();
-      OpKernelType mkldnn_kernel_type = OpKernelType(proto::VarType::FP32,
-                                                     place,
-                                                     DataLayout::kAnyLayout,
-                                                     LibraryType::kMKLDNN);
-
-      auto fake_kernel_func = [](const ExecutionContext&) -> void {};
-
-      all_kernels["conv2d"][mkldnn_kernel_type] = fake_kernel_func;
-      all_kernels["pool2d"][mkldnn_kernel_type] = fake_kernel_func;
-      all_kernels["concat"][mkldnn_kernel_type] = fake_kernel_func;
-      all_kernels["relu"][mkldnn_kernel_type] = fake_kernel_func;
-
-      is_registered = true;
-    }
-  }
-
   void SetOp(ProgramDesc* prog,
              const std::string& type,
              const std::string& name,
@@ -152,7 +130,7 @@ class PlacementPassTest {
   void MainTest(std::initializer_list<std::string> mkldnn_enabled_op_types,
                 unsigned expected_use_mkldnn_true_count) {
     auto prog = BuildProgramDesc();
-    RegisterOpKernel();
+    RegisterOpKernel({"conv2d", "pool2d", "concat", "relu"});
     std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
 
     auto pass = PassRegistry::Instance().Get("mkldnn_placement_pass");

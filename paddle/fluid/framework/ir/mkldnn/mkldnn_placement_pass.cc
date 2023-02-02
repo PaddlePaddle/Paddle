@@ -19,15 +19,16 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-bool MKLDNNPlacementPass::IsSupport(const Node* op) const {
-  auto op_type = op->Op()->Type();
-
-  auto& all_kernels = OperatorWithKernel::AllOpKernels();
+inline bool FoundOneDNNKernelWithCorrectDataType(
+    const framework::ir::Node* op) {
+  const auto op_type = op->Op()->Type();
+  auto& all_kernels = framework::OperatorWithKernel::AllOpKernels();
   auto it = all_kernels.find(op_type);
   if (it != all_kernels.end()) {
     for (auto& kernel_pair : it->second) {
       if (platform::is_cpu_place(kernel_pair.first.place_) &&
-          (kernel_pair.first.library_type_ == LibraryType::kMKLDNN)) {
+          (kernel_pair.first.library_type_ ==
+           framework::LibraryType::kMKLDNN)) {
         if (op->inputs.size() > 0) {
           if (op->inputs[0]->IsVar() &&
               op->inputs[0]->Var()->Name() != "feed" &&
@@ -40,7 +41,12 @@ bool MKLDNNPlacementPass::IsSupport(const Node* op) const {
       }
     }
   }
+  return false;
+}
 
+inline bool FoundPhiOneDNNKernelWithCorrectDataType(
+    const framework::ir::Node* op) {
+  auto op_type = op->Op()->Type();
   auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
       phi::TransToPhiKernelName(op_type));
 
@@ -57,6 +63,13 @@ bool MKLDNNPlacementPass::IsSupport(const Node* op) const {
       }
     }
   }
+  return false;
+}
+
+bool MKLDNNPlacementPass::IsSupport(const Node* op) const {
+  if (FoundOneDNNKernelWithCorrectDataType(op) ||
+      FoundPhiOneDNNKernelWithCorrectDataType(op))
+    return true;
   return false;
 }
 
