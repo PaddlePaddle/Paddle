@@ -273,6 +273,12 @@ def get_tensor_members():
         if is_inherited_member(name, tensor_class):
             continue
 
+        # Filter out private members except magic methods
+        if name.startswith("_") and not (
+            name.startswith("__") and name.endswith("__")
+        ):
+            continue
+
         if member_id in members:
             members[member_id].add_alias(name)
             continue
