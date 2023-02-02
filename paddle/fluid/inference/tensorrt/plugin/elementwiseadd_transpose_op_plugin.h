@@ -68,6 +68,30 @@ class ElementwiseAddTransposePluginDynamic : public DynamicPluginTensorRT {
                           int nbInputs,
                           const nvinfer1::PluginTensorDesc* outputs,
                           int nbOutputs) const TRT_NOEXCEPT override {
+    auto output_desc = outputs[0];
+    if (output_desc.format == nvinfer1::PluginFormat::kLINEAR) {
+      auto input_desc = inputs[0];
+      if (input_desc.dims.d[0] > 0) {
+        size_t input_numel = 1;
+        for (auto& i : input_desc.dims.d) {
+          input_numel *= i;
+        }
+        size_t bytes_per_element = 4;
+        if (input_desc.type == nvinfer1::DataType::kHALF) {
+          bytes_per_element = 2;
+        } else if (input_desc.type == nvinfer1::DataType::kFLOAT) {
+          bytes_per_element = 4;
+        }
+        return input_numel * bytes_per_element;
+      }
+    } else if (output_desc.format == nvinfer1::PluginFormat::kHWC8) {
+      // for khwc8 output no workspace is need.
+      return 0;
+    } else {
+      PADDLE_THROW(platform::errors::Unavailable(
+          "the output format of elementwiseadd_transpose trt plugin must be "
+          "kLINEAR or kHWC8"));
+    }
     return 0;
   }
 

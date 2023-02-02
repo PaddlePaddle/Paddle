@@ -2496,6 +2496,13 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
     }
+    if (op_type == "fuse_eleadd_transpose") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "The fuse_eleadd_transpose op does not support "
+                   "static shape yet";
+        return false;
+      }
+    }
     if (op_type == "lookup_table") {
       if (!with_dynamic_shape) {
         VLOG(3) << "the lookup_table does not support "

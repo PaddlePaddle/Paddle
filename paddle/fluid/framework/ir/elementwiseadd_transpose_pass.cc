@@ -111,14 +111,33 @@ int ElementwiseAddTransposeFusePass::ApplyEleTransPattern(
       LOG(WARNING) << "elementwiseadd transpose pass in op compat failed.";
       return;
     }
+    // elementwiseadd_trans is suit for
+    // nhwc-to-nchw transpose after elementwise add
+    // check for it
+    std::vector<int> trans_axis =
+        PADDLE_GET_CONST(std::vector<int>, transpose->Op()->GetAttr("axis"));
+    if (trans_axis != std::vector<int>{0, 3, 1, 2}) {
+      VLOG(1)
+          << "elementwiseadd transpose fuse pass, transpose axis check fail, "
+             "stop fusion";
+      return;
+    }
+    if (!reshape->Op()->HasAttr("shape")) {
+      VLOG(1) << "reshape op in elementwise_add_transpose fusion do not found "
+                 "shape attr, the fusion will be stoped.";
+      return;
+    }
     std::vector<int> shape_attr =
         PADDLE_GET_CONST(std::vector<int>, reshape->Op()->GetAttr("shape"));
-    VLOG(4) << "fuse elementwiseadd transpose, with reshape attr:"
+    VLOG(4) << "Fuse elementwiseadd transpose, with reshape attr:"
             << shape_attr[0] << ", " << shape_attr[1] << ", " << shape_attr[2]
             << ", " << shape_attr[3];
-    if (shape_attr[1] <= 0 || shape_attr[2] <= 0) {
-      LOG(WARNING) << "elementwiseadd transpose pass do not support reshape by "
-                      "shape tensor";
+    if (shape_attr[1] <= 0 || shape_attr[2] <= 0 || shape_attr.size() != 4) {
+      VLOG(1) << "found that shape_attr[1] and shape_attr[2]<=0 for reshape op "
+                 "in elementwise_add_transpose, "
+                 "currently, the elementwiseadd transpose pass only support "
+                 "reshape bay shape attr rather than shape tensor."
+                 "Therefore, the fusion will be stoped.";
       return;
     }
     std::unordered_set<const Node *> del_node_set;

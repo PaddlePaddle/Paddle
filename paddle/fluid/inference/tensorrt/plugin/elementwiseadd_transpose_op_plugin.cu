@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
+#include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace paddle {
 namespace inference {
@@ -60,8 +61,8 @@ bool ElementwiseAddTransposePluginDynamic::supportsFormatCombination(
     int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
       in_out,
-      platform::errors::InvalidArgument(
-          "The input of swish plugin shoule not be nullptr."));
+      platform::errors::InvalidArgument("The input of elementwiseadd_transpose "
+                                        "plugin shoule not be nullptr."));
 
   PADDLE_ENFORCE_LT(
       pos,
@@ -70,23 +71,25 @@ bool ElementwiseAddTransposePluginDynamic::supportsFormatCombination(
                                         "num(%d) of the input and the output.",
                                         pos,
                                         nb_inputs + nb_outputs));
-  (in_out && pos < (nb_inputs + nb_outputs));
+  // (in_out && pos < (nb_inputs + nb_outputs));
 
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
+  // input 0
   if (pos == 0) {
-    return (in.type == nvinfer1::DataType::kFLOAT ||
-            in.type == nvinfer1::DataType::kHALF) &&
+    return (in.type == nvinfer1::DataType::kHALF ||
+            in.type == nvinfer1::DataType::kFLOAT) &&
            (in.format == nvinfer1::TensorFormat::kLINEAR);
   }
+  // input 1
   if (pos == 1) {
-    return (in.type == nvinfer1::DataType::kFLOAT ||
-            in.type == nvinfer1::DataType::kHALF) &&
+    return (in.type == in_out[0].type) &&
            (in.format == nvinfer1::TensorFormat::kLINEAR);
   }
+  // output 0
   if (pos == 2) {
-    return (in.type == nvinfer1::DataType::kFLOAT ||
-            in.type == nvinfer1::DataType::kHALF) &&
-           (in.format == nvinfer1::TensorFormat::kHWC8);
+    return (in.type == in_out[0].type) &&
+           (in.format == nvinfer1::TensorFormat::kLINEAR ||
+            in.format == nvinfer1::TensorFormat::kHWC8);
   }
 }
 
@@ -142,8 +145,6 @@ int ElementwiseAddTransposePluginDynamic::enqueue(
   for (int i = axis + trimed_nb_dims; i < x_dims.nbDims; ++i) {
     post_size *= x_dims.d[i];
   }
-  auto input_type = input_desc[0].type;
-
   std::vector<int> x_shape;
   int x_numel = 1;
   for (int i = 0; i < x_dims.nbDims; i++) {
@@ -168,38 +169,146 @@ int ElementwiseAddTransposePluginDynamic::enqueue(
   platform::CUDAPlace place(platform::GetCurrentDeviceId());
   auto *device_context = static_cast<phi::GPUContext *>(pool.Get(place));
   const phi::GPUContext &dev_ctx = *device_context;
+
+  auto input_type = input_desc[0].type;
+  auto output_format = output_desc[0].format;
   if (input_type == nvinfer1::DataType::kFLOAT) {
+    VLOG(1) << "TRT Plugin DataType selected. elementwiseadd_transpose-->fp16";
     const float *x = static_cast<const float *>(inputs[0]);
     const float *y = static_cast<const float *>(inputs[1]);
     float *out = static_cast<float *>(outputs[0]);
+    if (output_format == nvinfer1::PluginFormat::kLINEAR) {
+      VLOG(1)
+          << "TRT Plugin format selected. elementwiseadd_transpose-->kLINEAR";
+      phi::DenseTensorMeta x_meta(phi::DataType::FLOAT32,
+                                  phi::make_ddim(x_shape));
+      phi::DenseTensorMeta y_meta(phi::DataType::FLOAT32,
+                                  phi::make_ddim(y_shape));
+      phi::DenseTensorMeta ele_out_meta(phi::DataType::FLOAT32,
+                                        phi::make_ddim(x_shape));
+      phi::DenseTensorMeta out_meta(phi::DataType::FLOAT32,
+                                    phi::make_ddim(out_shape));
+      std::shared_ptr<phi::Allocation> x_alloc(new phi::Allocation(
+          static_cast<void *>(const_cast<float *>(x)),  // NOLINT
+          x_numel * sizeof(float),
+          place));
+      std::shared_ptr<phi::Allocation> y_alloc(new phi::Allocation(
+          static_cast<void *>(const_cast<float *>(y)),  // NOLINT
+          y_numel * sizeof(float),
+          place));
 
+      std::shared_ptr<phi::Allocation> ele_out_alloc(
+          new phi::Allocation(static_cast<void *>(workspace),  // NOLINT
+                              x_numel * sizeof(float),
+                              place));
+      std::shared_ptr<phi::Allocation> out_alloc(
+          new phi::Allocation(static_cast<void *>(out),  // NOLINT
+                              out_numel * sizeof(float),
+                              place));
+      const phi::DenseTensor x_tensor = phi::DenseTensor(x_alloc, x_meta);
+      const phi::DenseTensor y_tensor = phi::DenseTensor(y_alloc, y_meta);
+      phi::DenseTensor ele_out_tensor =
+          phi::DenseTensor(ele_out_alloc, ele_out_meta);
+      phi::DenseTensor out_tensor = phi::DenseTensor(out_alloc, out_meta);
+      phi::AddKernel<float, phi::GPUContext>(
+          dev_ctx, x_tensor, y_tensor, &ele_out_tensor);
+      phi::TransposeKernel<float, phi::GPUContext>(
+          dev_ctx, ele_out_tensor, std::vector<int>{0, 3, 1, 2}, &out_tensor);
+
+    } else if (output_format == nvinfer1::PluginFormat::kHWC8) {
+      VLOG(1) << "TRT Plugin format selected. elementwiseadd_transpose-->kHWC8";
+      phi::DenseTensorMeta x_meta(phi::DataType::FLOAT32,
+                                  phi::make_ddim(x_shape));
+      phi::DenseTensorMeta y_meta(phi::DataType::FLOAT32,
+                                  phi::make_ddim(y_shape));
+      phi::DenseTensorMeta out_meta(phi::DataType::FLOAT32,
+                                    phi::make_ddim(out_shape));
+      std::shared_ptr<phi::Allocation> x_alloc(new phi::Allocation(
+          static_cast<void *>(const_cast<float *>(x)),  // NOLINT
+          x_numel * sizeof(float),
+          place));
+      std::shared_ptr<phi::Allocation> y_alloc(new phi::Allocation(
+          static_cast<void *>(const_cast<float *>(y)),  // NOLINT
+          y_numel * sizeof(float),
+          place));
+      std::shared_ptr<phi::Allocation> out_alloc(
+          new phi::Allocation(static_cast<void *>(out),  // NOLINT
+                              out_numel * sizeof(float),
+                              place));
+      const phi::DenseTensor x_tensor = phi::DenseTensor(x_alloc, x_meta);
+      const phi::DenseTensor y_tensor = phi::DenseTensor(y_alloc, y_meta);
+      phi::DenseTensor out_tensor = phi::DenseTensor(out_alloc, out_meta);
+      phi::AddKernel<float, phi::GPUContext>(
+          dev_ctx, x_tensor, y_tensor, &out_tensor);
+    }
   } else if (input_type == nvinfer1::DataType::kHALF) {
+    VLOG(1) << "TRT Plugin DataType selected. elementwiseadd_transpose-->fp16";
     const half *x = static_cast<const half *>(inputs[0]);
     const half *y = static_cast<const half *>(inputs[1]);
     half *out = static_cast<half *>(outputs[0]);
-    phi::DenseTensorMeta x_meta(phi::DataType::FLOAT16,
-                                phi::make_ddim(x_shape));
-    phi::DenseTensorMeta y_meta(phi::DataType::FLOAT16,
-                                phi::make_ddim(y_shape));
-    phi::DenseTensorMeta out_meta(phi::DataType::FLOAT16,
-                                  phi::make_ddim(out_shape));
-    std::shared_ptr<phi::Allocation> x_alloc(new phi::Allocation(
-        static_cast<void *>(const_cast<half *>(x)),  // NOLINT
-        x_numel * sizeof(half),
-        place));
-    std::shared_ptr<phi::Allocation> y_alloc(new phi::Allocation(
-        static_cast<void *>(const_cast<half *>(y)),  // NOLINT
-        y_numel * sizeof(half),
-        place));
-    std::shared_ptr<phi::Allocation> out_alloc(
-        new phi::Allocation(static_cast<void *>(out),  // NOLINT
-                            out_numel * sizeof(half),
-                            place));
-    const phi::DenseTensor x_tensor = phi::DenseTensor(x_alloc, x_meta);
-    const phi::DenseTensor y_tensor = phi::DenseTensor(y_alloc, y_meta);
-    phi::DenseTensor out_tensor = phi::DenseTensor(out_alloc, out_meta);
-    phi::AddKernel<phi::dtype::float16, phi::GPUContext>(
-        dev_ctx, x_tensor, y_tensor, &out_tensor);
+    if (output_format == nvinfer1::PluginFormat::kLINEAR) {
+      VLOG(1)
+          << "TRT Plugin format selected. elementwiseadd_transpose-->kLINEAR";
+      phi::DenseTensorMeta x_meta(phi::DataType::FLOAT16,
+                                  phi::make_ddim(x_shape));
+      phi::DenseTensorMeta y_meta(phi::DataType::FLOAT16,
+                                  phi::make_ddim(y_shape));
+      phi::DenseTensorMeta ele_out_meta(phi::DataType::FLOAT16,
+                                        phi::make_ddim(x_shape));
+      phi::DenseTensorMeta out_meta(phi::DataType::FLOAT16,
+                                    phi::make_ddim(out_shape));
+      std::shared_ptr<phi::Allocation> x_alloc(new phi::Allocation(
+          static_cast<void *>(const_cast<half *>(x)),  // NOLINT
+          x_numel * sizeof(half),
+          place));
+      std::shared_ptr<phi::Allocation> y_alloc(new phi::Allocation(
+          static_cast<void *>(const_cast<half *>(y)),  // NOLINT
+          y_numel * sizeof(half),
+          place));
+
+      std::shared_ptr<phi::Allocation> ele_out_alloc(
+          new phi::Allocation(static_cast<void *>(workspace),  // NOLINT
+                              x_numel * sizeof(half),
+                              place));
+      std::shared_ptr<phi::Allocation> out_alloc(
+          new phi::Allocation(static_cast<void *>(out),  // NOLINT
+                              out_numel * sizeof(half),
+                              place));
+      const phi::DenseTensor x_tensor = phi::DenseTensor(x_alloc, x_meta);
+      const phi::DenseTensor y_tensor = phi::DenseTensor(y_alloc, y_meta);
+      phi::DenseTensor ele_out_tensor =
+          phi::DenseTensor(ele_out_alloc, ele_out_meta);
+      phi::DenseTensor out_tensor = phi::DenseTensor(out_alloc, out_meta);
+      phi::AddKernel<phi::dtype::float16, phi::GPUContext>(
+          dev_ctx, x_tensor, y_tensor, &ele_out_tensor);
+      phi::TransposeKernel<phi::dtype::float16, phi::GPUContext>(
+          dev_ctx, ele_out_tensor, std::vector<int>{0, 3, 1, 2}, &out_tensor);
+    } else if (output_format == nvinfer1::PluginFormat::kHWC8) {
+      VLOG(1) << "TRT Plugin format selected. elementwiseadd_transpose-->kHWC8";
+      phi::DenseTensorMeta x_meta(phi::DataType::FLOAT16,
+                                  phi::make_ddim(x_shape));
+      phi::DenseTensorMeta y_meta(phi::DataType::FLOAT16,
+                                  phi::make_ddim(y_shape));
+      phi::DenseTensorMeta out_meta(phi::DataType::FLOAT16,
+                                    phi::make_ddim(out_shape));
+      std::shared_ptr<phi::Allocation> x_alloc(new phi::Allocation(
+          static_cast<void *>(const_cast<half *>(x)),  // NOLINT
+          x_numel * sizeof(half),
+          place));
+      std::shared_ptr<phi::Allocation> y_alloc(new phi::Allocation(
+          static_cast<void *>(const_cast<half *>(y)),  // NOLINT
+          y_numel * sizeof(half),
+          place));
+      std::shared_ptr<phi::Allocation> out_alloc(
+          new phi::Allocation(static_cast<void *>(out),  // NOLINT
+                              out_numel * sizeof(half),
+                              place));
+      const phi::DenseTensor x_tensor = phi::DenseTensor(x_alloc, x_meta);
+      const phi::DenseTensor y_tensor = phi::DenseTensor(y_alloc, y_meta);
+      phi::DenseTensor out_tensor = phi::DenseTensor(out_alloc, out_meta);
+      phi::AddKernel<phi::dtype::float16, phi::GPUContext>(
+          dev_ctx, x_tensor, y_tensor, &out_tensor);
+    }
   }
   return cudaGetLastError() != cudaSuccess;
 }
