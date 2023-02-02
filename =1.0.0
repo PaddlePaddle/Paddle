@@ -1,4 +1,0 @@
-Requirement already satisfied: poetry-core in /usr/local/lib/python3.7/dist-packages (1.4.0)
-Requirement already satisfied: importlib-metadata>=1.7.0 in /usr/local/lib/python3.7/dist-packages (from poetry-core) (4.13.0)
-Requirement already satisfied: typing-extensions>=3.6.4 in /usr/local/lib/python3.7/dist-packages (from importlib-metadata>=1.7.0->poetry-core) (4.4.0)
-Requirement already satisfied: zipp>=0.5 in /usr/local/lib/python3.7/dist-packages (from importlib-metadata>=1.7.0->poetry-core) (3.4.1)
