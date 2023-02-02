@@ -27,11 +27,15 @@ static bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
                                       DenseTensor *t,
                                       const platform::Place &place);
 
-PredictorEngine::PredictorEngine(const std::shared_ptr<FunctionInfo> &info,
-                                 const VariableMap &params_dict,
-                                 const phi::Place &place)
-    : info_(info), scope_(new framework::Scope()), place_(place) {
-  utils::ShareParamsIntoScope(info_->ParamNames(), params_dict, scope_.get());
+PredictorEngine::PredictorEngine(
+    const std::shared_ptr<FunctionInfo> &info,
+    const std::shared_ptr<VariableMap> &params_dict,
+    const phi::Place &place)
+    : info_(info),
+      params_dict_(params_dict),
+      scope_(new framework::Scope()),
+      place_(place) {
+  utils::ShareParamsIntoScope(info_->ParamNames(), params_dict_, scope_.get());
   VLOG(6) << framework::GenScopeTreeDebugInfo(scope_.get());
 
   // TODO(Aurelius84): Expose AnalysisConfig to user.
@@ -53,6 +57,23 @@ PredictorEngine::PredictorEngine(const std::shared_ptr<FunctionInfo> &info,
 
   predictor_->Init(
       scope_, std::make_shared<framework::ProgramDesc>(info_->ProgramDesc()));
+}
+
+PredictorEngine::PredictorEngine(
+    const std::shared_ptr<FunctionInfo> &info,
+    const std::shared_ptr<framework::Scope> &scope,
+    const phi::Place &place,
+    const std::shared_ptr<PaddlePredictor> &predictor)
+    : info_(info),
+      scope_(scope),
+      place_(place),
+      predictor_(std::dynamic_pointer_cast<AnalysisPredictor, PaddlePredictor>(
+          predictor)) {}
+
+std::unique_ptr<BaseEngine> PredictorEngine::Clone(void *stream) {
+  auto *x = new PredictorEngine(
+      info_, scope_, place_, std::move(predictor_->Clone(stream)));
+  return std::unique_ptr<BaseEngine>(x);
 }
 
 std::vector<Tensor> PredictorEngine::operator()(

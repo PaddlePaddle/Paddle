@@ -184,6 +184,12 @@ void CastPyArg2AttrLong(PyObject* obj,
   attrs[key] = CastPyArg2Long(obj, op_type, arg_pos);
 }
 
+float16 CastPyArg2Float16(PyObject* obj,
+                          const std::string& op_type,
+                          ssize_t arg_pos) {
+  return static_cast<float16>(CastPyArg2Double(obj, op_type, arg_pos));
+}
+
 float CastPyArg2Float(PyObject* obj,
                       const std::string& op_type,
                       ssize_t arg_pos) {

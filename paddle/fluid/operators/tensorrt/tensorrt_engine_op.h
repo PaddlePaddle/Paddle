@@ -438,11 +438,32 @@ class TensorRTEngineOp : public framework::OperatorBase {
       calib_res->calib_.reset(new TRTInt8Calibrator(
           calib_buffers, runtime_batch, calibration_engine_key_, dev_place));
       calib_res->thr_.reset(new std::thread([&]() {
+        std::map<std::string, std::vector<int>> min_input_shape;
+        std::map<std::string, std::vector<int>> max_input_shape;
+        std::map<std::string, std::vector<int>> opt_input_shape;
+        std::map<std::string, std::vector<int>> min_shape_tensor;
+        std::map<std::string, std::vector<int>> max_shape_tensor;
+        std::map<std::string, std::vector<int>> opt_shape_tensor;
+        if (shape_range_info_path_.size())
+          inference::DeserializeShapeRangeInfo(shape_range_info_path_,
+                                               &min_input_shape,
+                                               &max_input_shape,
+                                               &opt_input_shape,
+                                               &min_shape_tensor,
+                                               &max_shape_tensor,
+                                               &opt_shape_tensor);
+
         calib_res->engine_.reset(new TensorRTEngine(max_batch_size_,
                                                     workspace_size_,
                                                     precision_mode_,
                                                     calib_res->calib_.get(),
-                                                    dev_place.device));
+                                                    dev_place.device,
+                                                    min_input_shape,
+                                                    max_input_shape,
+                                                    opt_input_shape,
+                                                    min_shape_tensor,
+                                                    max_shape_tensor,
+                                                    opt_shape_tensor));
         VLOG(3) << "start the calib trt engine thread";
         PrepareTRTEngine(scope, calib_res->engine_.get());
       }));

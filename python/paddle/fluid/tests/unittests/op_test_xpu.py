@@ -35,6 +35,7 @@ class XPUOpTest(OpTest):
         '''Fix random seeds to remove randomness from tests'''
         cls.use_xpu = True
         cls.use_mkldnn = False
+        cls.epsilon_xpu2xpu = 0.00000001
         super().setUpClass()
 
     @classmethod
@@ -212,7 +213,11 @@ class XPUOpTest(OpTest):
             user_defined_grad_outputs=user_defined_grad_outputs,
         )
         self._assert_is_close(
-            a1, a2, inputs_to_check, 0.00000001, "Gradient Check On two xpu"
+            a1,
+            a2,
+            inputs_to_check,
+            self.epsilon_xpu2xpu,
+            "Gradient Check On two xpu",
         )
         self._assert_is_close(
             a1,

@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ from .transform_parameters import (
     vector_to_parameters,
     _stride_column,
 )  # noqa: F401
+from .clip_grad_norm_ import clip_grad_norm_  # noqa: F401
 
 __all__ = [  # noqa
     'weight_norm',
@@ -26,4 +27,5 @@ __all__ = [  # noqa
     'spectral_norm',
     'parameters_to_vector',
     'vector_to_parameters',
+    'clip_grad_norm_',
 ]

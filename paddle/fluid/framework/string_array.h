@@ -103,6 +103,14 @@ class Vocab : public phi::ExtendedTensor,
 // stored in a vector as PHI kernel argument.
 
 template <typename T>
+struct PhiVectorType;
+
+template <>
+struct PhiVectorType<std::string> {
+  const char* type_name = "PhiVectorString";
+};
+
+template <typename T>
 class PhiVector : public phi::ExtendedTensor,
                   public phi::TypeInfoTraits<phi::TensorBase, PhiVector<T>> {
  public:
@@ -129,9 +137,7 @@ class PhiVector : public phi::ExtendedTensor,
  public:
   /// \brief Returns the name of the class for type traits.
   /// \return The name of the class.
-  static const char* name() {
-    return (std::string("PhiVector_") + std::string(typeid(T).name())).c_str();
-  }
+  static const char* name() { return PhiVectorType<T>().type_name; }
 
   size_t size() const { return data_.size(); }
 
