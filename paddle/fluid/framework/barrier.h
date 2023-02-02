@@ -23,9 +23,9 @@
 #include <pthread.h>
 #include <semaphore.h>
 #endif
-#include "paddle/fluid/platform/enforce.h"
 #include <condition_variable>
 #include <mutex>
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {

@@ -59,8 +59,6 @@ class PsGraphClient : public PsLocalClient {
                        paddle::framework::BinaryArchive &iar);  // NOLINT
   SparseTableInfo &get_table_info(const size_t &table_id);
 
-
-
  private:
   std::map<uint32_t, std::shared_ptr<SparseTableInfo>> _table_info;
   void *_service = nullptr;
