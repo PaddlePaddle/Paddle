@@ -16,11 +16,12 @@ import copy
 import os
 import pickle
 
+import numpy as np
+
 import paddle
 import paddle.distributed as dist
 from paddle.distributed.auto_parallel.converter import Converter
 from paddle.distributed.auto_parallel.dist_context import (
-    DistributedContext,
     get_default_distributed_context,
 )
 from paddle.distributed.auto_parallel.utils import (
@@ -30,6 +31,7 @@ from paddle.distributed.auto_parallel.utils import (
 )
 from paddle.fluid import core
 from paddle.fluid.framework import Program
+from paddle.static.io import deserialize_program
 
 _valid_types = [
     core.VarDesc.VarType.LOD_TENSOR,
@@ -37,11 +39,11 @@ _valid_types = [
     core.VarDesc.VarType.LOD_TENSOR_ARRAY,
 ]
 
+paddle.enable_static()
+
 
 class AutoAlign:
-    def __init__(
-        self, program: Program, step=1, fetch_list: DistributedContext = None
-    ):
+    def __init__(self, program: Program, step=1, fetch_list=None):
         assert isinstance(program, Program)
         self._program = program
         self._blocks = program.blocks
@@ -56,7 +58,7 @@ class AutoAlign:
         """
         level in [0,1,2,3,4,5]
         """
-        if step < self._step:
+        if step != self._step and step != -1:
             return self._fetch_list
         if level == 0:
             return self.get_loss_lr_var()
@@ -240,19 +242,20 @@ class AutoAlign:
                 process_mesh = tensor_dist_attr.process_mesh
                 dims_mapping = tensor_dist_attr.dims_mapping
                 dist_attr[var.name] = {
-                    "process_shape": process_mesh.topology,
-                    "process_group": process_mesh.processes,
+                    "process_shape": process_mesh.shape,
+                    "process_group": process_mesh.process_ids,
                     "dims_mapping": dims_mapping,
                 }
             if len(dist_attr) > 0:
                 pickle.dump(dist_attr, open(dist_attr_path, "wb"))
         if self._program is not None:
-            paddle.save(self._program, program_path)
+            with open(program_path, "wb") as f:
+                f.write(self._program.desc.serialize_to_string())
 
     @staticmethod
     def load(save_dir):
         assert os.path.exists(save_dir)
-        filename_list = os.listdir(save_dir)
+        filename_list = sorted(os.listdir(save_dir))
         vars_list = []
         program_list = []
         dist_attr_list = []
@@ -264,7 +267,9 @@ class AutoAlign:
                 vars_list.append(pickle.load(open(filepath, "rb")))
             elif "program" in filename:
                 assert filename.endswith("pdmodel")
-                program_list.append(paddle.load(filepath))
+                with open(filepath, "rb") as f:
+                    program_string = f.read()
+                program_list.append(deserialize_program(program_string))
             elif "dist_attr" in filename:
                 assert filename.endswith("pkl")
                 dist_attr_list.append(pickle.load(open(filepath, "rb")))
@@ -285,6 +290,7 @@ class AutoAlign:
     @staticmethod
     def convert_dist_tensor_2_serial_tensor(vars_list, dist_attr_map):
         assert len(vars_list) >= 1
+        # if dist_attr_map is None or len(dist_attr_map) == 0 or len(vars_list) == 1:
         if dist_attr_map is None or len(dist_attr_map) == 0:
             return vars_list[0]
 
@@ -364,81 +370,85 @@ class AutoAlign:
 
 
 if __name__ == "__main__":
-    import warnings
+    AutoAlign.diff_informations(
+        "/workspace/PaddleFleetX/align_tool/serial",
+        "/workspace/PaddleFleetX/align_tool/dp2",
+    )
+    # import warnings
 
-    import numpy as np
+    # import numpy as np
 
-    from paddle import fluid, nn, optimizer, static
-    from paddle.vision.datasets import MNIST
+    # from paddle import fluid, nn, optimizer, static
+    # from paddle.vision.datasets import MNIST
 
-    warnings.filterwarnings("ignore")
-    paddle.enable_static()
-    paddle.set_device("gpu")
+    # warnings.filterwarnings("ignore")
+    # paddle.enable_static()
+    # paddle.set_device("gpu")
 
-    startup_program = fluid.default_startup_program()
-    main_program = fluid.default_main_program()
+    # startup_program = fluid.default_startup_program()
+    # main_program = fluid.default_main_program()
 
-    class MnistDataset(MNIST):
-        def __init__(self, mode, return_label=True):
-            super().__init__(mode=mode)
-            self.return_label = return_label
+    # class MnistDataset(MNIST):
+    #     def __init__(self, mode, return_label=True):
+    #         super().__init__(mode=mode)
+    #         self.return_label = return_label
 
-        def __getitem__(self, idx):
-            img = np.reshape(self.images[idx], [1, 28, 28])
-            if self.return_label:
-                return img, np.array(self.labels[idx]).astype('int64')
-            return (img,)
+    #     def __getitem__(self, idx):
+    #         img = np.reshape(self.images[idx], [1, 28, 28])
+    #         if self.return_label:
+    #             return img, np.array(self.labels[idx]).astype('int64')
+    #         return (img,)
 
-        def __len__(self):
-            return len(self.images)
+    #     def __len__(self):
+    #         return len(self.images)
 
-    dataset = MnistDataset("train")
-    place = paddle.CUDAPlace(0)
-    with fluid.program_guard(main_program, startup_program):
-        inputs = static.data(
-            name="image", shape=[256, 1, 28, 28], dtype="float32"
-        )
-        labels = static.data(name="label", shape=[256, 1], dtype="int64")
-        z = nn.Conv2D(1, 6, 3, 1, 1).forward(inputs)
-        z = nn.ReLU().forward(x=z)
-        z = nn.MaxPool2D(2, 2).forward(x=z)
-        z = nn.Conv2D(6, 16, 5, 1, 0).forward(x=z)
-        z = nn.ReLU().forward(x=z)
-        z = nn.MaxPool2D(2, 2).forward(x=z)
-        z = nn.Flatten().forward(z)
-        z = static.nn.fc(name="fc1", x=z, size=120)
-        z = static.nn.fc(name="fc2", x=z, size=84)
-        z = static.nn.fc(name="fc3", x=z, size=10)
-        losses = nn.CrossEntropyLoss()(z, labels)
+    # dataset = MnistDataset("train")
+    # place = paddle.CUDAPlace(0)
+    # with fluid.program_guard(main_program, startup_program):
+    #     inputs = static.data(
+    #         name="image", shape=[256, 1, 28, 28], dtype="float32"
+    #     )
+    #     labels = static.data(name="label", shape=[256, 1], dtype="int64")
+    #     z = nn.Conv2D(1, 6, 3, 1, 1).forward(inputs)
+    #     z = nn.ReLU().forward(x=z)
+    #     z = nn.MaxPool2D(2, 2).forward(x=z)
+    #     z = nn.Conv2D(6, 16, 5, 1, 0).forward(x=z)
+    #     z = nn.ReLU().forward(x=z)
+    #     z = nn.MaxPool2D(2, 2).forward(x=z)
+    #     z = nn.Flatten().forward(z)
+    #     z = static.nn.fc(name="fc1", x=z, size=120)
+    #     z = static.nn.fc(name="fc2", x=z, size=84)
+    #     z = static.nn.fc(name="fc3", x=z, size=10)
+    #     losses = nn.CrossEntropyLoss()(z, labels)
 
-        optim = optimizer.SGD(0.001)
-        optim.minimize(losses)
+    #     optim = optimizer.SGD(0.001)
+    #     optim.minimize(losses)
 
-    executor = fluid.Executor()
-    executor.run(startup_program)
+    # executor = fluid.Executor()
+    # executor.run(startup_program)
 
-    align_tool = AutoAlign(main_program, 1, [losses.name])
+    # align_tool = AutoAlign(main_program, 1, [losses.name])
 
-    for epoch in range(5):
-        images = np.zeros([256, 1, 28, 28], np.float32)
-        labels = np.zeros([256, 1], np.int64)
-        for i, data in enumerate(dataset):
-            images[i % 256] = data[0]
-            labels[i % 256] = data[1]
-            if i % 255 == 0 and i > 0:
-                fetch_list = align_tool.get_var(0, 1)
-                fetch_list = align_tool.get_var(1, 1)
-                fetch_list = align_tool.get_var(2, 1)
-                fetch_list = align_tool.get_var(3, 1)
-                fetch_list = align_tool.get_var(4, 1)
-                fetch_list = align_tool.get_var(5, 1)
-                vars = executor.run(
-                    main_program,
-                    feed={"image": images, "label": labels},
-                    fetch_list=fetch_list,
-                )
-                align_tool.save(
-                    "/workspace/Paddle/save_dir/serial", vars, fetch_list
-                )
-                ans = align_tool.load("/workspace/Paddle/save_dir/serial")
-                print()
+    # for epoch in range(5):
+    #     images = np.zeros([256, 1, 28, 28], np.float32)
+    #     labels = np.zeros([256, 1], np.int64)
+    #     for i, data in enumerate(dataset):
+    #         images[i % 256] = data[0]
+    #         labels[i % 256] = data[1]
+    #         if i % 255 == 0 and i > 0:
+    #             fetch_list = align_tool.get_var(0, 1)
+    #             fetch_list = align_tool.get_var(1, 1)
+    #             fetch_list = align_tool.get_var(2, 1)
+    #             fetch_list = align_tool.get_var(3, 1)
+    #             fetch_list = align_tool.get_var(4, 1)
+    #             fetch_list = align_tool.get_var(5, 1)
+    #             vars = executor.run(
+    #                 main_program,
+    #                 feed={"image": images, "label": labels},
+    #                 fetch_list=fetch_list,
+    #             )
+    #             align_tool.save(
+    #                 "/workspace/Paddle/save_dir/serial", vars, fetch_list
+    #             )
+    #             ans = align_tool.load("/workspace/Paddle/save_dir/serial")
+    #             print()
