@@ -677,6 +677,8 @@ PYBIND11_MODULE(libpaddle, m) {
         &paddle::prim::PrimCommonUtils::IsFwdPrimEnabled);
   m.def("__set_all_prim_enabled",
         &paddle::prim::PrimCommonUtils::SetAllPrimEnabled);
+  m.def("_set_prim_target_grad_name",
+        &paddle::prim::PrimCommonUtils::SetTargetGradName);
   m.def("set_num_threads", &platform::SetNumThreads);
 
   m.def("disable_signal_handler", &DisableSignalHandler);

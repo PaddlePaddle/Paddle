@@ -16,9 +16,9 @@
 
 import paddle
 
+from ..common_ops_import import Variable
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..fluid.framework import global_var
-from ..static import Variable
 from .layer_function_generator import templatedoc
 
 if global_var._in_eager_mode_:

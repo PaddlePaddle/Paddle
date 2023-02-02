@@ -251,7 +251,7 @@ void multiply_grad(const Tensor& x,
     }
   }
   if (y_grad) {
-    auto y_grad_unreduce = out_grad * x;
+    auto y_grad_unreduce = multiply<T>(out_grad, x);
     if (y.dims() != x.dims()) {
       auto axes = get_reduce_dims(y.dims(), x.dims());
       if (!axes.size()) {

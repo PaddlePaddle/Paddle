@@ -209,9 +209,7 @@ class TestLookupTableIsSparse(unittest.TestCase):
                 param_attr=fluid.ParamAttr(
                     name="emb_weight",
                     learning_rate=10,
-                    initializer=fluid.initializer.NumpyArrayInitializer(
-                        self.w_data
-                    ),
+                    initializer=paddle.nn.initializer.Assign(self.w_data),
                 ),
                 is_sparse=is_sparse,
             )
