@@ -363,7 +363,7 @@ class TestDataset(unittest.TestCase):
 
         dataset = paddle.distributed.InMemoryDataset()
         dataset.init(
-            batch_size=32, thread_num=1, pipe_command="cat", use_var=slots_vars
+            batch_size=32, thread_num=3, pipe_command="cat", use_var=slots_vars
         )
         dataset._init_distributed_settings(parse_ins_id=True)
         dataset.set_filelist(
@@ -442,7 +442,7 @@ class TestDataset(unittest.TestCase):
 
         dataset = paddle.distributed.InMemoryDataset()
         dataset.init(
-            batch_size=32, thread_num=1, pipe_command="cat", use_var=slots_vars
+            batch_size=32, thread_num=3, pipe_command="cat", use_var=slots_vars
         )
         dataset._init_distributed_settings(parse_ins_id=True)
         dataset.set_filelist(
@@ -816,7 +816,7 @@ class TestDataset(unittest.TestCase):
         dataset = paddle.distributed.InMemoryDataset()
         dataset.init(
             batch_size=32,
-            thread_num=1,
+            thread_num=3,
             pipe_command="cat",
             data_feed_type="SlotRecordInMemoryDataFeed",
             use_var=slots_vars,
