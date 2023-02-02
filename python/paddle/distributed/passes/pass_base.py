@@ -240,7 +240,6 @@ PassBase._AFTER_WHITE_LISTS_DICT = {
 # The index of pass in this list represent the order in which the pass is processed.
 PassBase._PASS_PROCESS_ORDER_LIST = [
     "fuse_gemm_epilogue",
-    "fuse_optimizer",
 ]
 
 PassBase._COMMON_RULES = [
