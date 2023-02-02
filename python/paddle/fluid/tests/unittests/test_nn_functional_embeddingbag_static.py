@@ -11,10 +11,10 @@ class EmbeddingStatic(unittest.TestCase):
         with fluid.program_guard(prog):
 
             def test_bad_x():
-                initializer = fluid.initializer.NumpyArrayInitializer(
-                    np.random.random(size=(5, 3))
+                initializer = paddle.nn.initializer.Assign(
+                    np.random.random(size=(5,3))
                 )
-
+                
                 param_attr = fluid.ParamAttr(
                     name="emb_weight",
                     learning_rate=0.5,
@@ -26,7 +26,7 @@ class EmbeddingStatic(unittest.TestCase):
                     (5, 3), attr=param_attr, dtype="float32"
                 )
 
-                initializer_params = fluid.initializer.NumpyArrayInitializer(
+                initializer_params = paddle.nn.initializer.Assign(
                     np.random.random(size=(10,5))
                 )
 
@@ -60,7 +60,7 @@ class EmbeddingStatic(unittest.TestCase):
         with fluid.program_guard(prog):
 
             def test_bad_x():
-                initializer = fluid.initializer.NumpyArrayInitializer(
+                initializer = paddle.nn.initializer.Assign(
                     np.random.random(size=(5, 3))
                 )
 
@@ -75,7 +75,7 @@ class EmbeddingStatic(unittest.TestCase):
                     (5, 3), attr=param_attr, dtype="float32"
                 )
 
-                initializer_params = fluid.initializer.NumpyArrayInitializer(
+                initializer_params = paddle.nn.initializer.Assign(
                     np.random.random(size=(10,5))
                 )
 
