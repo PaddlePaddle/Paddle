@@ -728,6 +728,17 @@ class TestLRScheduler(unittest.TestCase):
                 step_size_down=-1,
                 scale_mode='test',
             )
+        # check empty boundaries
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.PiecewiseDecay(boundaries=[], values=[])
+        # check non-empty boundaries but empty values
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.PiecewiseDecay(boundaries=[100, 200], values=[])
+        # check boundaries and values has same length
+        with self.assertRaises(ValueError):
+            paddle.optimizer.lr.PiecewiseDecay(
+                boundaries=[100, 200], values=[0.5, 0.1]
+            )
 
         func_api_kwargs = [
             (
