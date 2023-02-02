@@ -44,7 +44,6 @@ class EmbeddingStatic(unittest.TestCase):
                 label = paddle.static.data(
                     name="label",
                     shape=[5,3],
-                    append_batch_size=False,
                     dtype="int64",
                 )
 
@@ -93,7 +92,6 @@ class EmbeddingStatic(unittest.TestCase):
                 label = paddle.static.data(
                     name="label",
                     shape=[5,3],
-                    append_batch_size=False,
                     dtype="int32",
                 )
 
