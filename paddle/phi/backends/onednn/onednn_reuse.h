@@ -874,8 +874,10 @@ class ReorderOneDNNHandler {
           output->mutable_data(place, ptype_dst_, src_md.get_size());
       return std::make_shared<dnnl::memory>(src_md, engine_, dst_data);
     } else {
-      auto dst_md = src_md;
-      dst_md.data.data_type = static_cast<dnnl_data_type_t>(dtype_dst_);
+      auto dst_md =
+          dnnl::memory::desc(src_md.get_dims(),
+                             static_cast<dnnl_data_type_t>(dtype_dst_),
+                             src_md.get_format_kind());
       auto dst_data =
           output->mutable_data(place, ptype_dst_, dst_md.get_size());
       return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);
