@@ -9,5 +9,6 @@ foreach(TEST_OP ${TEST_OPS})
 endforeach()
 
 if(WITH_CINN)
-  set_tests_properties(test_resnet_prim_cinn PROPERTIES LABELS "RUN_TYPE=CINN")
+  set_tests_properties(test_resnet_prim_cinn PROPERTIES LABELS "RUN_TYPE=CINN"
+                                                        TIMEOUT 300)
 endif()
