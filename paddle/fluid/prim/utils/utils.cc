@@ -50,5 +50,11 @@ void PrimCommonUtils::AddSkipCompOps(const std::string& op_type) {
 void PrimCommonUtils::RemoveSkipCompOps(const std::string& op_type) {
   StaticCompositeContext::Instance().RemoveSkipCompOps(op_type);
 }
+
+void PrimCommonUtils::SetTargetGradName(
+    const std::map<std::string, std::string>& m) {
+  StaticCompositeContext::Instance().SetTargetGradName(m);
+}
+
 }  // namespace prim
 }  // namespace paddle

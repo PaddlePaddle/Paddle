@@ -139,13 +139,15 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
   }
   var_scope_.SetLocalScope(local_scope_);
 
-  instruction_prority_less = [this](size_t lhs, size_t rhs) {
-    Priority lhs_prority = vec_instruction_[lhs].GetPriority();
-    Priority rhs_prority = vec_instruction_[rhs].GetPriority();
-    if (lhs_prority == rhs_prority) {
+  instruction_scheduling_priority_less = [this](size_t lhs, size_t rhs) {
+    SchedulingPriority lhs_scheduling_priority =
+        vec_instruction_[lhs].GetSchedulingPriority();
+    SchedulingPriority rhs_scheduling_priority =
+        vec_instruction_[rhs].GetSchedulingPriority();
+    if (lhs_scheduling_priority == rhs_scheduling_priority) {
       return lhs < rhs;
     }
-    return lhs_prority > rhs_prority;
+    return lhs_scheduling_priority > rhs_scheduling_priority;
   };
 
   PrepareForCUDAGraphCapture();
@@ -1089,7 +1091,7 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
   // scheduling, the priority order involved cross-thread scheduling is not
   // guaranteed. Only Ops scheduled by the same AddTask call have the guarantee
   // of priority order.
-  SchedulingQueue ready_ops(instruction_prority_less);
+  SchedulingQueue ready_ops(instruction_scheduling_priority_less);
   ready_ops.push(instr_id);
   while (!ready_ops.empty()) {
     instr_id = ready_ops.top();
@@ -1427,7 +1429,7 @@ void InterpreterCore::AnalyseExecuteOrderForTrace() {
   };
 
   std::vector<size_t> trace_order;
-  SchedulingQueue ready_ops(instruction_prority_less);
+  SchedulingQueue ready_ops(instruction_scheduling_priority_less);
 
   for (size_t instr_id = 0; instr_id < dependecy_count_.size(); ++instr_id) {
     if (dependecy_count_[instr_id] == 0) {

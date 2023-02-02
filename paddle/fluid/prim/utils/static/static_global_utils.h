@@ -81,6 +81,14 @@ class StaticCompositeContext {
     skip_comp_ops_.erase(op_type);
   }
 
+  void SetTargetGradName(const std::map<std::string, std::string>& m) {
+    target_grad_name_ = m;
+  }
+
+  std::map<std::string, std::string> GetTargetGradName() {
+    return target_grad_name_;
+  }
+
  private:
   StaticCompositeContext()
       : current_block_desc_(nullptr),
@@ -90,6 +98,7 @@ class StaticCompositeContext {
   framework::BlockDesc* current_block_desc_;
   std::unique_ptr<UniqueNameGenerator> generator_;
   std::unordered_set<std::string> skip_comp_ops_;
+  std::map<std::string, std::string> target_grad_name_;
   static thread_local bool enable_bwd_prim_;
   static thread_local bool enable_fwd_prim_;
   static StaticCompositeContext* static_composite_context_;

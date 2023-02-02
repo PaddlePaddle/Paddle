@@ -346,7 +346,8 @@ void EmplaceDeviceContexts(
     std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
         place_to_device_context,
     const std::vector<platform::Place>& places,
-    bool disable_setting_default_stream_for_allocator);
+    bool disable_setting_default_stream_for_allocator,
+    int stream_priority);
 
 /*! \brief device context pool singleton */
 class DeviceContextPool {

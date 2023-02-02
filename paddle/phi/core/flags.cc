@@ -1198,11 +1198,11 @@ PADDLE_DEFINE_EXPORTED_bool(trt_ibuilder_cache,
  * mmap_allocator related FLAG
  * Name: use_shm_cache
  * Since Version: 2.5.0
- * Value Range: bool, default=true
+ * Value Range: bool, default=false
  * Example:
  * Note: . If True, mmap_allocator will cache shm file to decrease munmap
  * operation.
  */
 PADDLE_DEFINE_EXPORTED_bool(use_shm_cache,
-                            true,
+                            false,
                             "Use shm cache in mmap_allocator.");

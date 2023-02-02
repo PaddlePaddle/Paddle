@@ -315,6 +315,14 @@ try:
     from .libpaddle import __set_fwd_prim_enabled
     from .libpaddle import _is_fwd_prim_enabled
     from .libpaddle import __set_all_prim_enabled
+    from .libpaddle import _set_prim_target_grad_name
+
+    # custom devivce
+    from .libpaddle import _get_current_custom_device_stream
+    from .libpaddle import _set_current_custom_device_stream
+    from .libpaddle import _synchronize_custom_device
+    from .libpaddle import CustomDeviceStream
+    from .libpaddle import CustomDeviceEvent
 
     if sys.platform != 'win32':
         from .libpaddle import _set_process_pids
