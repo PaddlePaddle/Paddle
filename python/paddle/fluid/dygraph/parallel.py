@@ -42,10 +42,14 @@ ParallelStrategy = core.ParallelStrategy
 
 def _build_default_parallel_strategy():
     strategy = ParallelStrategy()
-    strategy.nranks = ParallelEnv().nranks
-    strategy.local_rank = ParallelEnv().local_rank
-    strategy.trainer_endpoints = ParallelEnv().trainer_endpoints
-    strategy.current_endpoint = ParallelEnv().current_endpoint
+    strategy.nranks = paddle.distributed.ParallelEnv().nranks
+    strategy.local_rank = paddle.distributed.ParallelEnv().local_rank
+    strategy.trainer_endpoints = (
+        paddle.distributed.ParallelEnv().trainer_endpoints
+    )
+    strategy.current_endpoint = (
+        paddle.distributed.ParallelEnv().current_endpoint
+    )
     return strategy
 
 
@@ -99,11 +103,13 @@ def _split_tensors(coalesced_grads_and_grad_vars):
 
 def scale_loss(loss):
     # TODO(liuyuhui) Currently only for xpu. Will be removed in the future.
-    if not ParallelEnv().world_size > 1:
+    if not paddle.distributed.ParallelEnv().world_size > 1:
         return loss
 
     loss_scale = to_variable(
-        np.array([ParallelEnv().world_size]).astype("float32")
+        np.array([paddle.distributed.ParallelEnv().world_size]).astype(
+            "float32"
+        )
     )
     loss_scale.stop_gradient = True
     scaled_loss = loss / loss_scale
