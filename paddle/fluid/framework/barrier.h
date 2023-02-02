@@ -14,6 +14,11 @@
 
 #pragma once
 
+#if defined _WIN32 || defined __APPLE__
+#else
+#define __LINUX__
+#endif
+
 #ifdef __LINUX__
 #include <pthread.h>
 #include <semaphore.h>
@@ -48,7 +53,7 @@ class Barrier {
   void wait() {
 #ifdef __LINUX__
     int err = pthread_barrier_wait(&_barrier);
-    if (err != 0 && err != PTHREAD_BARRIER_SERIAL_THREAD)) {
+    if (err != 0 && err != PTHREAD_BARRIER_SERIAL_THREAD) {
       CHECK_EQ(1, 0);
     }
 #endif
