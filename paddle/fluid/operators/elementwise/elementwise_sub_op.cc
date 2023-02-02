@@ -70,7 +70,7 @@ class ElementwiseSubCompositeGradOpMaker
     auto dy_ptr = this->GetOutputPtr(&dy);
     std::string dy_name = this->GetOutputName(dy);
     int axis = static_cast<int>(this->Attr<int>("axis"));
-    VLOG(3) << "Runing sub_grad composite func";
+    VLOG(6) << "Runing sub_grad composite func";
     prim::subtract_grad<prim::DescTensor>(x, y, out_grad, axis, dx_ptr, dy_ptr);
     this->RecoverOutputName(dx, dx_name);
     this->RecoverOutputName(dy, dy_name);
