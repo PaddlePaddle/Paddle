@@ -33,9 +33,13 @@ void ComputeInterceptor::PrepareDeps() {
   auto& downstream = node_->downstream();
 
   for (auto up : upstream) {
+    VLOG(3) << "Interceptor " << interceptor_id_ << " with upstream "
+            << up.first << " " << up.second;
     in_readys_.emplace(up.first, std::make_pair(up.second, 0));
   }
   for (auto down : downstream) {
+    VLOG(3) << "Interceptor " << interceptor_id_ << " with downstream "
+            << down.first << " " << down.second;
     out_buffs_.emplace(down.first, std::make_pair(down.second, 0));
   }
 }
@@ -82,6 +86,7 @@ void ComputeInterceptor::DecreaseBuff(int64_t down_id) {
 bool ComputeInterceptor::IsInputReady() {
   for (auto& ins : in_readys_) {
     auto ready_size = ins.second.second;
+    VLOG(3) << "Compute interceptor ready_size " << ready_size << " ";
     // not ready, return false
     if (ready_size == 0) {
       VLOG(3) << "Interceptor " << GetInterceptorId()
@@ -196,6 +201,8 @@ void ComputeInterceptor::Run() {
 
 void ComputeInterceptor::Compute(const InterceptorMessage& msg) {
   if (msg.message_type() == DATA_IS_READY) {
+    VLOG(3) << "Compute interceptor receive data_is_ready " << msg.src_id()
+            << " " << msg.scope_idx() << " ";
     IncreaseReady(msg.src_id());
     ready_queue_.push(msg.scope_idx());
     Run();

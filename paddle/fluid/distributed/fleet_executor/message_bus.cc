@@ -169,6 +169,7 @@ void MessageBus::Barrier() {
 
 bool MessageBus::DispatchMsgToCarrier(
     const InterceptorMessage& interceptor_message) {
+  VLOG(3) << "Inter DispatchMsgToCarrier";
   const std::string& carrier_id = *GlobalVal<std::string>::Get();
   return GlobalMap<std::string, Carrier>::Get(carrier_id)
       ->EnqueueInterceptorMessage(interceptor_message);

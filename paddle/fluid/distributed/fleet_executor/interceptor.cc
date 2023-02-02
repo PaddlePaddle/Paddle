@@ -42,6 +42,7 @@ void Interceptor::Handle(const InterceptorMessage& msg) {
 }
 
 void Interceptor::LoopOnce() {
+  VLOG(3) << "Running in LoopOnce";
   std::deque<InterceptorMessage> tmp_messages;
   {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -79,7 +80,21 @@ void Interceptor::EnqueueRemoteInterceptorMessage(
   {
     std::lock_guard<std::mutex> lock(mutex_);
     empty = messages_.empty();
+    VLOG(3) << "[" << std::this_thread::get_id() << "]"
+            << "Emplace_back message " << message.src_id() << " "
+            << message.dst_id() << " " << message.scope_idx() << " "
+            << message.message_type();
     messages_.emplace_back(message);
+  }
+  VLOG(3) << "EnqueueRemote before loop " << empty;
+  if (!empty) {
+    VLOG(3) << "Message box is not empty with message size "
+            << messages_.size();
+    for (auto message : messages_) {
+      VLOG(3) << "Remain message " << message.src_id() << " "
+              << message.dst_id() << " " << message.scope_idx() << " "
+              << message.message_type();
+    }
   }
   if (empty) {
     loop_->QueueInLoop([this]() { LoopOnce(); });
