@@ -26,20 +26,17 @@ class TestOneDNNMultiGruFusePass(PassAutoScanTest):
         return True
 
     def sample_program_config(self, draw):
-        input_dim1 = 9
-        input_dim2 = 3
-        shape_wx = [3, 15]
-        shape_wh = [5, 15]
+        input_dim1 = draw(st.integers(min_value=1, max_value=128)) * 3
+        input_dim2 = input_dim1 // 3
+        frame_size = draw(st.integers(min_value=1, max_value=128))
+        shape_wx = [input_dim2, frame_size * 3]
+        shape_wh = [frame_size, frame_size * 3]
         with_bias = draw(st.booleans())
-        shape_bias = [1, 15]
-        axis = draw(st.sampled_from([0]))
-        lod = [[2, 4, 3]]
+        shape_bias = [1, frame_size * 3]
+        axis = 1
+        lod = [[0, input_dim1]]
 
-        def generate_input():
-            shape = [input_dim1, input_dim2]
-            return np.random.random(shape).astype(np.float32)
-
-        def generate_weight(shape):
+        def generate_data(shape):
             return np.random.random(shape).astype(np.float32)
 
         def generate_bias(shape):
@@ -97,27 +94,28 @@ class TestOneDNNMultiGruFusePass(PassAutoScanTest):
             ops=[fusion_gru_op_1, fusion_gru_op_2, concat_op],
             weights={
                 "input_weight_x_1": TensorConfig(
-                    data_gen=partial(generate_weight, shape_wx)
+                    data_gen=partial(generate_data, shape_wx)
                 ),
                 "input_weight_h_1": TensorConfig(
-                    data_gen=partial(generate_weight, shape_wh)
+                    data_gen=partial(generate_data, shape_wh)
                 ),
                 'bias_1': TensorConfig(
                     data_gen=partial(generate_bias, shape_bias)
                 ),
                 "input_weight_x_2": TensorConfig(
-                    data_gen=partial(generate_weight, shape_wx)
+                    data_gen=partial(generate_data, shape_wx)
                 ),
                 "input_weight_h_2": TensorConfig(
-                    data_gen=partial(generate_weight, shape_wh)
+                    data_gen=partial(generate_data, shape_wh)
                 ),
                 'bias_2': TensorConfig(
-                    data_gen=partial(generate_weight, shape_bias)
+                    data_gen=partial(generate_data, shape_bias)
                 ),
             },
             inputs={
                 'input_data': TensorConfig(
-                    lod=lod, data_gen=partial(generate_input)
+                    lod=lod,
+                    data_gen=partial(generate_data, [input_dim1, input_dim2]),
                 ),
             },
             outputs=['concat_output'],
@@ -127,10 +125,10 @@ class TestOneDNNMultiGruFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(
-            use_mkldnn=False,
+            use_mkldnn=True,
             passes=['multi_gru_fuse_pass'],
         )
-        yield config, ['fusion_gru'], (1e-4, 1e-4)
+        yield config, ['multi_gru'], (1e-5, 1e-5)
 
     def test(self):
         self.run_and_statis(quant=False, passes=['multi_gru_fuse_pass'])
