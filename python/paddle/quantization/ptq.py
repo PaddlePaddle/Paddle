@@ -63,7 +63,6 @@ class PTQ(Quantization):
             not model.training
         ), "Post-Training Quantization shoud not work on training models. Please set evaluation mode by model.eval()."
         self._config._specify(_model)
-        print(f"config: {self._config.details()}")
         self._convert_to_quant_layers(_model, self._config)
         self._insert_activation_observers(_model, self._config)
         return _model

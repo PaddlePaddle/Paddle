@@ -53,7 +53,7 @@ class LinearQuanter(Layer):
             if zero_point is None
             else paddle.to_tensor(zero_point)
         )
-        self._quant_axis = 0 if quant_axis is None else quant_axis
+        self._quant_axis = -1 if quant_axis is None else quant_axis
         self._bit_length = bit_length
 
     def forward(self, input):
@@ -104,7 +104,7 @@ class LinearDequanter(Layer):
             if zero_point is None
             else paddle.to_tensor(zero_point)
         )
-        self._quant_axis = 0 if quant_axis is None else quant_axis
+        self._quant_axis = -1 if quant_axis is None else quant_axis
         self._bit_length = bit_length
 
     def forward(self, input):

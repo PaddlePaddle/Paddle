@@ -1352,6 +1352,7 @@ def get_setup_parameters():
         'paddle.incubate.distributed.models.moe.gate',
         'paddle.quantization',
         'paddle.quantization.quanters',
+        'paddle.quantization.observers',
         'paddle.sparse',
         'paddle.sparse.nn',
         'paddle.sparse.nn.layer',

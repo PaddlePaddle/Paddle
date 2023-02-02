@@ -66,7 +66,7 @@ class AbsmaxObserverLayer(BaseObserver):
         return self._quant_bits
 
     def quant_axis(self):
-        return None
+        return -1
 
     def scales(self):
         return self.abs_max_val
