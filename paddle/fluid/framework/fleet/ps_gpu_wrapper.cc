@@ -196,7 +196,7 @@ void PSGPUWrapper::add_key_to_gputask(std::shared_ptr<HeterContext> gpu_task) {
           << " seconds.";
   timeline.Start();
 #ifdef PADDLE_WITH_PSCORE
-  size_t slot_num = (size_t)slot_num_for_pull_feature_;
+  size_t slot_num = static_cast<size_t>(slot_num_for_pull_feature_);
   // no slot_fea mode and whole_hbm mode, only keep one unique_sort action
   if (slot_num > 0 && FLAGS_gpugraph_storage_mode !=
                           paddle::framework::GpuGraphStorageMode::WHOLE_HBM) {
@@ -700,87 +700,90 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
 
   timeline.Start();
 
-  auto ptl_dynamic_mf_func =
-      [this, &local_dim_keys, &local_dim_ptr, &gpu_task](int i,
-                                                                     int j) {
-        size_t key_size = local_dim_keys[i][j].size();
-        int32_t status = -1;
-        int32_t cnt = 0;
+  auto ptl_dynamic_mf_func = [this, &local_dim_keys, &local_dim_ptr, &gpu_task](
+                                 int i, int j) {
+    size_t key_size = local_dim_keys[i][j].size();
+    int32_t status = -1;
+    int32_t cnt = 0;
 #ifdef PADDLE_WITH_PSLIB
-        while (true) {
-          auto tt = fleet_ptr_->pslib_ptr_->_worker_ptr->pull_sparse_ptr(i,
-              reinterpret_cast<char**>(local_dim_ptr[i][j].data()), this->table_id_,
-              local_dim_keys[i][j].data(), key_size, gpu_task->pass_id_);
-          bool flag = true;
+    while (true) {
+      auto tt = fleet_ptr_->pslib_ptr_->_worker_ptr->pull_sparse_ptr(
+          i,
+          reinterpret_cast<char**>(local_dim_ptr[i][j].data()),
+          this->table_id_,
+          local_dim_keys[i][j].data(),
+          key_size,
+          gpu_task->pass_id_);
+      bool flag = true;
 
-          tt.wait();
+      tt.wait();
 
-          try {
-            status = tt.get();
-          } catch (const std::future_error& e) {
-            VLOG(0) << "Caught a future_error with code" << e.code()
-                    << ", Message:" << e.what();
-          }
-          if (status != 0) {
-            VLOG(0) << "fleet pull sparse failed, status[" << status << "]";
-            sleep(sleep_seconds_before_fail_exit_);
-            flag = false;
-            cnt++;
-          }
-          if (cnt > 3) {
-            VLOG(0) << "fleet pull sparse failed, retry 3 times";
-            exit(-1);
-          }
+      try {
+        status = tt.get();
+      } catch (const std::future_error& e) {
+        VLOG(0) << "Caught a future_error with code" << e.code()
+                << ", Message:" << e.what();
+      }
+      if (status != 0) {
+        VLOG(0) << "fleet pull sparse failed, status[" << status << "]";
+        sleep(sleep_seconds_before_fail_exit_);
+        flag = false;
+        cnt++;
+      }
+      if (cnt > 3) {
+        VLOG(0) << "fleet pull sparse failed, retry 3 times";
+        exit(-1);
+      }
 
-          if (flag) {
-            break;
-          }
-        }
+      if (flag) {
+        break;
+      }
+    }
 #endif
 #ifdef PADDLE_WITH_PSCORE
-        while (true) {
-          auto tt = fleet_ptr_->worker_ptr_->PullSparsePtr(
-              i,
-              reinterpret_cast<char**>(local_dim_ptr[i][j].data()),
-              this->table_id_,
-              local_dim_keys[i][j].data(),
-              key_size,
-              gpu_task->pass_id_);
-          bool flag = true;
+    while (true) {
+      auto tt = fleet_ptr_->worker_ptr_->PullSparsePtr(
+          i,
+          reinterpret_cast<char**>(local_dim_ptr[i][j].data()),
+          this->table_id_,
+          local_dim_keys[i][j].data(),
+          key_size,
+          gpu_task->pass_id_);
+      bool flag = true;
 
-          tt.wait();
+      tt.wait();
 
-          try {
-            status = tt.get();
-          } catch (const std::future_error& e) {
-            VLOG(0) << "Caught a future_error with code" << e.code()
-                    << ", Message:" << e.what();
-          }
-          if (status != 0) {
-            VLOG(0) << "fleet pull sparse failed, status[" << status << "]";
-            sleep(sleep_seconds_before_fail_exit_);
-            flag = false;
-            cnt++;
-          }
-          if (cnt > 3) {
-            VLOG(0) << "fleet pull sparse failed, retry 3 times";
-            exit(-1);
-          }
+      try {
+        status = tt.get();
+      } catch (const std::future_error& e) {
+        VLOG(0) << "Caught a future_error with code" << e.code()
+                << ", Message:" << e.what();
+      }
+      if (status != 0) {
+        VLOG(0) << "fleet pull sparse failed, status[" << status << "]";
+        sleep(sleep_seconds_before_fail_exit_);
+        flag = false;
+        cnt++;
+      }
+      if (cnt > 3) {
+        VLOG(0) << "fleet pull sparse failed, retry 3 times";
+        exit(-1);
+      }
 
-          if (flag) {
-            break;
-          }
-        }
+      if (flag) {
+        break;
+      }
+    }
 #endif
-        if (status != 0) {
-          LOG(ERROR) << "fleet pull sparse failed, status[" << status << "]";
-          sleep(300);
-          exit(-1);
-        } else {
-          VLOG(1) << "FleetWrapper Pull sparse to local done with table size: "
-                  << local_dim_keys[i][j].size();
-        }
-      };
+    if (status != 0) {
+      LOG(ERROR) << "fleet pull sparse failed, status[" << status << "]";
+      sleep(300);
+      exit(-1);
+    } else {
+      VLOG(1) << "FleetWrapper Pull sparse to local done with table size: "
+              << local_dim_keys[i][j].size();
+    }
+  };
 
   threads.resize(thread_keys_shard_num_ * multi_mf_dim_);
 
@@ -1046,15 +1049,18 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
     for (size_t k = start; k < end; k++) {
 #ifdef PADDLE_WITH_PSCORE
       void* val = reinterpret_cast<float*>(test_build_values +
-          (k - start) * feature_value_size);
+                                           (k - start) * feature_value_size);
       accessor_wrapper_ptr->BuildFill(
           val, device_dim_ptrs[k], cpu_table_accessor_, mf_dim);
 #endif
 #ifdef PADDLE_WITH_PSLIB
       float* val = reinterpret_cast<float*>(test_build_values +
-          (k - start) * feature_value_size);
-      accessor_wrapper_ptr->BuildFill(
-          val, device_dim_ptrs[k], cpu_table_accessor_, mf_dim, accessor_class_);
+                                            (k - start) * feature_value_size);
+      accessor_wrapper_ptr->BuildFill(val,
+                                      device_dim_ptrs[k],
+                                      cpu_table_accessor_,
+                                      mf_dim,
+                                      accessor_class_);
 #endif
     }
     task_info task;
