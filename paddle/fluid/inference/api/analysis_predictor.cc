@@ -1883,12 +1883,15 @@ void AnalysisPredictor::CollectShapeRangeInfo() {
   }
 
   std::vector<std::string> var_names = sub_scope_->LocalVarNames();
+  std::cout << "collect shape, " << std::endl;
   for (const auto &name : var_names) {
+    std::cout << "collect shape, " << name << std::endl;
     auto *var = sub_scope_->GetVar(name);
     if (!var->IsType<phi::DenseTensor>()) {
       continue;
     }
     auto tensor = var->Get<phi::DenseTensor>();
+    if (!tensor.initialized()) continue;
     framework::DDim dim = tensor.dims();
     std::vector<int32_t> shape(dim.size());
     for (size_t i = 0; i < shape.size(); ++i) shape[i] = dim[i];
@@ -1900,27 +1903,53 @@ void AnalysisPredictor::CollectShapeRangeInfo() {
     // This is a simple method to identify all shape tensors with some
     // mistakes, but it doesn't matter.
     auto is_shape_tensor = tensor.numel() <= 7 && tensor.numel() >= 1;
-    if ((tensor.dtype() == paddle::experimental::DataType::INT32 ||
-         tensor.dtype() == paddle::experimental::DataType::INT32) &&
+    if ((tensor.dtype() == phi::DataType::INT32 ||
+         tensor.dtype() == phi::DataType::INT64) &&
         is_shape_tensor) {
       std::vector<int> int32_host(tensor.numel());
-      // phi::Cast<int64_t>();
-      // auto int32_tensor = phi::funcs::TransDataType(*dev_ctx, tensor,
-      // DataType::INT32);
-      if (tensor.place() == platform::CPUPlace()) {
-        auto int32_tensor =
-            phi::Cast<int32_t>(*dev_ctx, tensor, phi::DataType::INT64);
+
+      if (platform::is_cpu_place(tensor.place())) {
+        std::cout << "collect CPU, " << name << std::endl;
+        auto &int32_tensor = tensor;
+        if (tensor.dtype() == phi::DataType::INT64) {
+          std::vector<int64_t> int64_host(tensor.numel());
+          paddle::memory::Copy(platform::CPUPlace(),
+                               int64_host.data(),
+                               platform::CPUPlace(),
+                               tensor.data<int64_t>(),
+                               tensor.numel() * sizeof(int64_t));
+          for (int8_t i = 0; i < tensor.numel() && i <= 10; ++i) {
+            std::cout << int64_host[i] << " ";
+          }
+          std::cout << std::endl;
+          int32_tensor = phi::funcs::TransDataType(
+              reinterpret_cast<const phi::CPUContext &>(*dev_ctx),
+              tensor,
+              DataType::INT32);
+        }
+        // auto int32_tensor =
+        //     phi::Cast<int32_t>(reinterpret_cast<const phi::CPUContext
+        //     &>(*dev_ctx), tensor, phi::DataType::INT64);
+        // phi::Cast<double>(dev_ctx, tensor, dtype);
         paddle::memory::Copy(platform::CPUPlace(),
                              int32_host.data(),
                              platform::CPUPlace(),
                              int32_tensor.data<int>(),
                              int32_tensor.numel() * sizeof(int));
-      } else if (tensor.place() == platform::CUDAPlace()) {
+      } else if (platform::is_gpu_place(tensor.place())) {
+        std::cout << "collect CUDA, " << name << std::endl;
 #if defined(PADDLE_WITH_CUDA)
-        auto int32_tensor = phi::Cast<int32_t>(
-            reinterpret_cast<const phi::GPUContext &>(*dev_ctx),
-            tensor,
-            phi::DataType::INT64);
+        auto &int32_tensor = tensor;
+        if (tensor.dtype() == phi::DataType::INT64) {
+          int32_tensor = phi::funcs::TransDataType(
+              reinterpret_cast<const phi::GPUContext &>(*dev_ctx),
+              tensor,
+              DataType::INT32);
+        }
+        // auto int32_tensor = phi::Cast<int32_t>(
+        //     reinterpret_cast<const phi::GPUContext &>(*dev_ctx),
+        //     tensor,
+        //     phi::DataType::INT64);
         paddle::memory::Copy(platform::CPUPlace(),
                              int32_host.data(),
                              platform::CUDAPlace(),
@@ -1929,6 +1958,11 @@ void AnalysisPredictor::CollectShapeRangeInfo() {
                              nullptr);
 #endif
       }
+      // std::cout << name << " data:  ";
+      //     for(int8_t i = 0; i < tensor.numel() && i <= 10; ++i) {
+      //       std::cout << int32_host[i] << " ";
+      //     }
+      //     std::cout << std::endl;
       shape_tensor_value_[name].emplace_back(int32_host);
     }
   }

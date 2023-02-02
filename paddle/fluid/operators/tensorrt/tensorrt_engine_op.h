@@ -570,6 +570,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
         if (engine->engine()->isShapeBinding(bind_index) &&
             engine->engine()->bindingIsInput(bind_index)) {
           std::vector<int> shape_v(t.numel());
+          VLOG(1) << "trt_op input [" << x << "] dtype is " << t.dtype();
           paddle::memory::Copy(platform::CPUPlace(),
                                shape_v.data(),
                                platform::CUDAPlace(),
@@ -617,6 +618,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
             "The TRT Engine OP only support "
             "float/int32_t/int64_t/float16/bool input."));
       }
+      VLOG(1) << "trt input finish [" << x << "] dtype is " << t.dtype();
     }
 
     // Bind output tensor to TRT.
@@ -714,6 +716,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
         auto *fluid_t = fluid_v->GetMutable<phi::DenseTensor>();
         auto int32_tensor =
             scope.FindVar(y + "_cast_to_INT64")->GetMutable<phi::DenseTensor>();
+        std::cout << "TensorRT op " << y << std::endl;
         int32_tensor->Resize(fluid_t->dims());
         dev_ctx.Alloc<int32_t>(int32_tensor);
         framework::TensorCopy(*fluid_t, dev_place, dev_ctx, int32_tensor);
