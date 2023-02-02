@@ -838,11 +838,15 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(
     GET_IR_NODE_FROM_SUBGRAPH(
         residual_ele_add_op_node, residual_ele_add_op, fused_attention_pattern);
 
+    GET_IR_NODE_FROM_SUBGRAPH(
+        fuse_qkv_matmul_w_node, fuse_qkv_matmul_w, fused_attention_pattern);
+    std::string cache_anchor_name = fuse_qkv_matmul_w_node->Var()->Name();
+
     OpDesc fused_attention_op_desc(pre_layer_norm_op_node->Op()->Block());
     fused_attention_op_desc.SetType("fused_attention");
     fused_attention_op_desc.SetInput("X", {subgraph.at(x)->Name()});
-
-    std::string cache_anchor_name = subgraph.at(x)->Name();
+    cache->InsertIntoCache(GenerateCacheKey(cache_anchor_name, "X", block_id),
+                           subgraph.at(x));
 
     fused_attention_op_desc.SetAttr("pre_layer_norm", true);
     GET_IR_NODE_FROM_SUBGRAPH(pre_layer_norm_scale_node,
@@ -891,8 +895,6 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(
     std::vector<int> shape = PADDLE_GET_CONST(
         std::vector<int>, fuse_qkv_reshape_op_node->Op()->GetAttr("shape"));
     fused_attention_op_desc.SetAttr("num_heads", shape[2]);
-    GET_IR_NODE_FROM_SUBGRAPH(
-        fuse_qkv_matmul_w_node, fuse_qkv_matmul_w, fused_attention_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
         fuse_qkv_matmul_out_node, fuse_qkv_matmul_out, fused_attention_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fuse_qkv_ele_add_bias_node,
@@ -1202,14 +1204,17 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResBwd(
         residual_ele_add_grad_op_node->Op()->Block());
     fused_attention_grad_op_desc.SetType("fused_attention_grad");
     fused_attention_grad_op_desc.SetInput("Y@GRAD", {subgraph.at(x)->Name()});
-    GET_IR_NODE_FROM_SUBGRAPH(pre_layer_norm_grad_x_node,
-                              pre_layer_norm_grad_x,
+    GET_IR_NODE_FROM_SUBGRAPH(fuse_qkv_matmul_grad_w_node,
+                              fuse_qkv_matmul_grad_w,
                               fused_attention_grad_pattern);
-    fused_attention_grad_op_desc.SetInput("X",
-                                          {pre_layer_norm_grad_x_node->Name()});
+    std::string cache_anchor_name = fuse_qkv_matmul_grad_w_node->Var()->Name();
 
-    std::string cache_anchor_name = pre_layer_norm_grad_x_node->Name();
-
+    fused_attention_grad_op_desc.SetInput(
+        "X",
+        {cache
+             ->GetNodeFromCache(
+                 GenerateCacheKey(cache_anchor_name, "X", block_id))
+             ->Name()});
     fused_attention_grad_op_desc.SetInput(
         "AttnDropoutMaskOut",
         {cache
