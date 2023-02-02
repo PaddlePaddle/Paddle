@@ -83,9 +83,9 @@ void LaunchMultiTensorApplyKernel(
       errors::InvalidArgument(
           "input_vector[0].size() is not > 0, please cheack params."));
   auto place = input_vector[0][0]->place();
-  PADDLE_ENFORCE_NE(
+  PADDLE_ENFORCE_EQ(
       place,
-      CPUPlace(),
+      GPUPlace(),
       errors::InvalidArgument(
           "expected input to be on gpu, but input is on cpu now."));
   for (size_t i = 0; i < input_vector.size(); i++) {

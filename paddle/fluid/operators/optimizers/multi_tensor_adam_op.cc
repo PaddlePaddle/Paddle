@@ -42,10 +42,12 @@ class MultiTensorAdamOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("LearningRate", "(Tensor, default Tensor<float>) Learning rate");
     AddInput("Moments1", "(Tensor) Input first moments").AsDuplicable();
     AddInput("Moments2", "(Tensor) Input second moments").AsDuplicable();
-    AddInput("Beta1Pow",
-             "(Tensor, default Tensor<float>) Input beta1 power accumulator");
-    AddInput("Beta2Pow",
-             "(Tensor, default Tensor<float>) Input beta2 power accumulator");
+    AddInput("Beta1Pows",
+             "(Tensor, default Tensor<float>) Input beta1 power accumulator")
+        .AsDuplicable();
+    AddInput("Beta2Pows",
+             "(Tensor, default Tensor<float>) Input beta2 power accumulator")
+        .AsDuplicable();
     AddInput("MasterParams", "FP32 master weight for AMP.")
         .AsDispensable()
         .AsDuplicable();
@@ -55,8 +57,10 @@ class MultiTensorAdamOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("ParamsOut", "(Tensor) Output parameters").AsDuplicable();
     AddOutput("Moments1Out", "(Tensor) Output first moments").AsDuplicable();
     AddOutput("Moments2Out", "(Tensor) Output second moments").AsDuplicable();
-    AddOutput("Beta1PowOut", "(Tensor) Output beta1 power accumulator");
-    AddOutput("Beta2PowOut", "(Tensor) Output beta2 power accumulator");
+    AddOutput("Beta1PowsOut", "(Tensor) Output beta1 power accumulator")
+        .AsDuplicable();
+    AddOutput("Beta2PowsOut", "(Tensor) Output beta2 power accumulator")
+        .AsDuplicable();
     AddOutput("MasterParamsOut",
               "The updated FP32 master weight for AMP. "
               "It shared memory with Input(MasterParams).")
@@ -67,16 +71,19 @@ class MultiTensorAdamOpMaker : public framework::OpProtoAndCheckerMaker {
                    "(float, default 0.9) "
                    "Exponential decay rate for the "
                    "first moment estimates.")
-        .SetDefault(0.9f);
+        .SetDefault(0.9f)
+        .SupportTensor();
     AddAttr<float>("beta2",
                    "(float, default 0.999) "
                    "exponential decay rate for the "
                    "second moment estimates.")
-        .SetDefault(0.999f);
+        .SetDefault(0.999f)
+        .SupportTensor();
     AddAttr<float>("epsilon",
                    "(float, default 1.0e-8) "
                    "Constant for numerical stability")
-        .SetDefault(1.0e-8f);
+        .SetDefault(1.0e-8f)
+        .SupportTensor();
 
     AddAttr<int>("chunk_size", "ChunkSize for blocks computing");
 
