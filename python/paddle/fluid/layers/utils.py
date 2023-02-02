@@ -121,13 +121,11 @@ uniqueidmap = UniqueIdMap()
 
 def uniqueid(obj):
     if isinstance(obj, str):
-        return id(obj)
-    if isinstance(obj, list):
-        t = ()
-        for v in obj:
-            t = t + uniqueid(v)
-        return t
-    return (uniqueidmap[obj].int,)
+        return (hash(obj),)
+    elif isinstance(obj, list):
+        return (id(obj),)
+    else:
+        return (uniqueidmap[obj].int,)
 
 
 def _hash_with_id(*args):
