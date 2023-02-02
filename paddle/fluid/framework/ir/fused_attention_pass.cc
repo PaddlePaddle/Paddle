@@ -952,9 +952,6 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(out_linear_ele_add_bias_node,
                               out_linear_ele_add_bias,
                               fused_attention_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(out_linear_ele_add_out_node,
-                              out_linear_ele_add_out,
-                              fused_attention_pattern);
     fused_attention_op_desc.SetInput("OutLinearW",
                                      {out_linear_matmul_w_node->Name()});
     fused_attention_op_desc.SetInput("OutLinearBias",
@@ -1018,6 +1015,7 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(Graph* graph) const {
     IR_NODE_LINK_TO(fused_attention_node, out_linear_dropout_mask_node);
     IR_NODE_LINK_TO(fused_attention_node, residual_ele_add_out_node);
 
+    // remove origin ops
     GraphSafeRemoveNodes(g,
                          {pre_layer_norm_op_node,
                           fuse_qkv_matmul_op_node,
@@ -1037,6 +1035,55 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(Graph* graph) const {
                           out_linear_ele_add_op_node,
                           out_linear_dropout_op_node,
                           residual_ele_add_op_node});
+
+    // remove unused vars
+    GET_IR_NODE_FROM_SUBGRAPH(fuse_qkv_reshape_out_node,
+                              fuse_qkv_reshape_out,
+                              fused_attention_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fuse_qkv_reshape_x_shape_node,
+                              fuse_qkv_reshape_x_shape,
+                              fused_attention_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fuse_qkv_transpose_x_shape_node,
+                              fuse_qkv_transpose_x_shape,
+                              fused_attention_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fuse_qkv_split_out_q_node,
+                              fuse_qkv_split_out_q,
+                              fused_attention_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fuse_qkv_split_out_k_node,
+                              fuse_qkv_split_out_k,
+                              fused_attention_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fuse_qkv_split_out_v_node,
+                              fuse_qkv_split_out_v,
+                              fused_attention_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        qk_scale_out_node, qk_scale_out, fused_attention_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        qkv_transpose_out_node, qkv_transpose_out, fused_attention_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(qkv_transpose_x_shape_node,
+                              qkv_transpose_x_shape,
+                              fused_attention_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        qkv_reshape_x_shape_node, qkv_reshape_x_shape, fused_attention_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(out_linear_ele_add_out_node,
+                              out_linear_ele_add_out,
+                              fused_attention_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(out_linear_dropout_out_node,
+                              out_linear_dropout_out,
+                              fused_attention_pattern);
+
+    GraphSafeRemoveNodes(g,
+                         {fuse_qkv_reshape_out_node,
+                          fuse_qkv_reshape_x_shape_node,
+                          fuse_qkv_transpose_x_shape_node,
+                          fuse_qkv_split_out_q_node,
+                          fuse_qkv_split_out_k_node,
+                          fuse_qkv_split_out_v_node,
+                          qk_scale_out_node,
+                          qkv_transpose_out_node,
+                          qkv_transpose_x_shape_node,
+                          qkv_reshape_x_shape_node,
+                          out_linear_ele_add_out_node,
+                          out_linear_dropout_out_node});
     found_fused_attention++;
   };
 
