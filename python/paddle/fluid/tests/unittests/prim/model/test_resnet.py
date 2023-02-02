@@ -115,18 +115,17 @@ def train(to_static, enable_prim, enable_cinn):
             losses.append(avg_loss.numpy())
 
             end_time = time.time()
-            if batch_id % 1 == 0:
-                print(
-                    "epoch %d | batch step %d, loss %0.8f, acc1 %0.3f, acc5 %0.3f, time %f"
-                    % (
-                        epoch,
-                        batch_id,
-                        avg_loss,
-                        total_acc1.numpy() / total_sample,
-                        total_acc5.numpy() / total_sample,
-                        end_time - start_time,
-                    )
+            print(
+                "epoch %d | batch step %d, loss %0.8f, acc1 %0.3f, acc5 %0.3f, time %f"
+                % (
+                    epoch,
+                    batch_id,
+                    avg_loss,
+                    total_acc1.numpy() / total_sample,
+                    total_acc5.numpy() / total_sample,
+                    end_time - start_time,
                 )
+            )
             if batch_id == 10:
                 # avoid dataloader throw abort signaal
                 data_loader._reset()
