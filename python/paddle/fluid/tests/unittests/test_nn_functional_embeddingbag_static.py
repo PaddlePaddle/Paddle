@@ -41,7 +41,7 @@ class EmbeddingStatic(unittest.TestCase):
                     (10,5), attr = param_attr, dtype = "float32"
                 )
 
-                label = fluid.layers.data(
+                label = paddle.static.data(
                     name="label",
                     shape=[5,3],
                     append_batch_size=False,
@@ -90,7 +90,7 @@ class EmbeddingStatic(unittest.TestCase):
                     (10,5), attr = param_attr, dtype = "float64"
                 )
 
-                label = fluid.layers.data(
+                label = paddle.static.data(
                     name="label",
                     shape=[5,3],
                     append_batch_size=False,
