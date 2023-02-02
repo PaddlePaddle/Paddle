@@ -874,10 +874,8 @@ class ReorderOneDNNHandler {
           output->mutable_data(place, ptype_dst_, src_md.get_size());
       return std::make_shared<dnnl::memory>(src_md, engine_, dst_data);
     } else {
-      auto dst_md =
-          dnnl::memory::desc(src_md.get_dims(),
-                             static_cast<dnnl_data_type_t>(dtype_dst_),
-                             src_md.get_format_kind());
+      auto dst_md = dnnl::memory::desc(
+          src_md.get_dims(), dtype_dst_, src_md.get_strides());
       auto dst_data =
           output->mutable_data(place, ptype_dst_, dst_md.get_size());
       return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);
@@ -983,8 +981,9 @@ class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
     // Workaround for U2++ model which deletes first tensor dimensions to enable
     // optimized oneDNNs broadcasting. Output tensor is reshaped back afterwards
     // at the end of the kernel, after the computation
-    if (allow_hack && dst_tz.size() == 4 &&
-        src0_md.dims()[2] != src1_md.dims()[2]) {
+    auto src0_dims = src0_md.get_dims();
+    auto src1_dims = src1_md.get_dims();
+    if (allow_hack && dst_tz.size() == 4 && src0_dims[2] != src1_dims[2]) {
       auto are_strides_plain = [](int64_t* strides, int ndims) {
         for (int i = 0; i < ndims - 1; ++i) {
           if (strides[i] < strides[i + 1]) {
@@ -994,10 +993,10 @@ class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
         return true;
       };
 
-      auto src0_strides = src0_md.data.format_desc.blocking.strides;
-      auto src1_strides = src1_md.data.format_desc.blocking.strides;
-      auto src0_dims = src0_md.dims();
-      auto src1_dims = src1_md.dims();
+      auto src0_strides = src0_md.get_strides();
+      auto src1_strides = src1_md.get_strides();
+      auto src0_dims = src0_md.get_dims();
+      auto src1_dims = src1_md.get_dims();
 
       bool can_squeeze = src0_dims[0] == src1_dims[0] &&
                          src0_dims[1] == src1_dims[1] &&
