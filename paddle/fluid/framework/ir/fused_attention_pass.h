@@ -305,9 +305,10 @@ class FusedAttentionsPass : public FusePassBase {
   ir::Graph* PreMaskDropResBwd(Graph* graph,
                                FusedAttentionPassCache* cache) const;
 
-  const std::string GenerateCacheKey(const std::string var_name,
+  const std::string GenerateCacheKey(const std::string anchor,
+                                     const std::string var_name,
                                      int block_id) const {
-    return std::to_string(block_id) + var_name;
+    return anchor + "_" + std::to_string(block_id) + "_" + var_name;
   }
 };
 
