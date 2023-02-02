@@ -1,3 +1,2 @@
-generated_prim/eager_prim_api.cc
-generated_prim/tmp_eager_prim_api.cc
+generated_prim/*.cc
 generated_prim/*.h
