@@ -83,9 +83,12 @@ struct UncenteredRmspropFunctor {
     MT ms_out = rho_ * ms_[idx] + l_rho * g * g;
     MT mom_out = momentum_ * mom_[idx] +
                  static_cast<MT>(lr_[0]) * g / sqrt(ms_out + epsilon_);
-    param_[idx] -= mom_out;
+    MT p = master_p_ ? master_p_[idx] : static_cast<MT>(param_[idx]);
+    MT p_m = p - mom_out;
+    param_[idx] = static_cast<T>(p_m);
     ms_[idx] = ms_out;
     mom_[idx] = mom_out;
+    if (master_p_) master_p_[idx] = p_m;
   }
 
   T *param_;
@@ -123,26 +126,32 @@ struct CenteredRmspropFunctor {
         grad_functor_(grad_functor) {}
 
   HOSTDEVICE inline void operator()(int64_t idx) const {
-    T g = grad_functor_(idx);
-    T ms_out = rho_ * ms_[idx] + (1 - rho_) * g * g;
-    T mg_out = rho_ * mean_grad_[idx] + (1 - rho_) * g;
-    T mom_out = momentum_ * mom_[idx] +
-                lr_[0] * g / sqrt(ms_out - mg_out * mg_out + epsilon_);
-    param_[idx] -= mom_out;
+    MT g = static_cast<MT>(grad_functor_(idx));
+    MT l_rho = static_cast<MT>(1) - rho_;
+    MT ms_out = rho_ * ms_[idx] + l_rho * g * g;
+    MT mg_out = rho_ * mean_grad_[idx] + l_rho * g;
+    MT mom_out =
+        momentum_ * mom_[idx] +
+        static_cast<MT>(lr_[0]) * g / sqrt(ms_out - mg_out * mg_out + epsilon_);
+
+    MT p = master_p_ ? master_p_[idx] : static_cast<MT>(param_[idx]);
+    MT p_m = p - mom_out;
+    param_[idx] = static_cast<T>(p_m);
     ms_[idx] = ms_out;
     mom_[idx] = mom_out;
     mean_grad_[idx] = mg_out;
+    if (master_p_) master_p_[idx] = p_m;
   }
 
   T *param_;
-  T *ms_;
-  T *mom_;
+  MT *ms_;
+  MT *mom_;
   MT *master_p_;
-  T *mean_grad_;
+  MT *mean_grad_;
   const T *lr_;
-  T rho_;
-  T epsilon_;
-  T momentum_;
+  MT rho_;
+  MT epsilon_;
+  MT momentum_;
   GradFunctor grad_functor_;
 };
 
@@ -301,9 +310,10 @@ void RmspropSparseKernel(const Context &ctx,
                          DenseTensor *mean_square_out,
                          DenseTensor *mean_grad_out,
                          DenseTensor *master_param_outs) {
-  auto epsilon = static_cast<T>(epsilon_t);
-  auto rho = static_cast<T>(decay_t);
-  auto momentum = static_cast<T>(momentum_t);
+  using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
+  auto epsilon = static_cast<MPDType>(epsilon_t);
+  auto rho = static_cast<MPDType>(decay_t);
+  auto momentum = static_cast<MPDType>(momentum_t);
 
   auto &p_tensor = param;
   auto &ms_tensor = mean_square;
@@ -340,7 +350,6 @@ void RmspropSparseKernel(const Context &ctx,
   int64_t row_numel = merged_tensor.numel() / row_count;
   SparseRmspropGradFunctor<T> grad_func(
       merged_tensor.data<T>(), rows, row_numel, row_count);
-  using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
 
   MPDType *master_out_data =
       multi_precision ? ctx.template Alloc<MPDType>(master_param_outs)
@@ -369,9 +378,9 @@ void RmspropSparseKernel(const Context &ctx,
         ctx.template Alloc<MPDType>(mean_grad_out),
         lr_tensor.data<T>(),
         master_out_data,
-        static_cast<MPDType>(rho),
-        static_cast<MPDType>(epsilon),
-        static_cast<MPDType>(momentum),
+        rho,
+        epsilon,
+        momentum,
         grad_func));
   } else {
     for_range(UncenteredRmspropFunctor<T, MPDType, SparseRmspropGradFunctor<T>>(
@@ -380,9 +389,9 @@ void RmspropSparseKernel(const Context &ctx,
         ctx.template Alloc<MPDType>(moment_out),
         lr_tensor.data<T>(),
         master_out_data,
-        static_cast<MPDType>(rho),
-        static_cast<MPDType>(epsilon),
-        static_cast<MPDType>(momentum),
+        rho,
+        epsilon,
+        momentum,
         grad_func));
   }
 }
