@@ -13,7 +13,9 @@ cc_test(
   SRCS variant_test.cc
   DEPS gtest)
 
-cc_library(
-  pybind_util
-  SRCS pybind.cc
-  DEPS phi_tensor_raw)
+if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
+  cc_library(
+    pybind_util
+    SRCS pybind.cc
+    DEPS phi_tensor_raw)
+endif()
