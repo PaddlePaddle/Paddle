@@ -36,6 +36,11 @@ class ReshapeOpConverter : public OpConverter {
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
 
+    std::cout << "log 开始-----------------------------------------------------"
+              << std::endl;
+    std::cout << op_desc.Input("X")[0] << std::endl;
+    std::vector<int> compiled_shape = PADDLE_GET_CONST(
+        std::vector<int>, op_desc.GetAttr("compiled_time_shape"));
     std::vector<int> shape =
         PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("shape"));
     int nbDims_num = shape.size();
@@ -46,8 +51,21 @@ class ReshapeOpConverter : public OpConverter {
     if (engine_->with_dynamic_shape()) {
       if (op_desc.Inputs().find("ShapeTensor") != op_desc.Inputs().end() &&
           op_desc.Input("ShapeTensor").size() > 0) {
-        for (auto name : op_desc.Input("ShapeTensor"))
-          concat_inputs.push_back(engine_->GetITensor(name));
+        int output_rank = op_desc.Input("ShapeTensor").size();
+        for (int i = 0; i < output_rank; i++) {
+          if (engine_->GetITensor(op_desc.Input("ShapeTensor")[i])->getType() ==
+              nvinfer1::DataType::kINT32) {
+            std::cout << "是int32" << std::endl;
+          } else {
+            std::cout << "不是int32" << std::endl;
+          }
+          if (compiled_shape[i] > 0 && i >= 0 && 0) {
+            concat_inputs.push_back(Add1DConstantLayer(compiled_shape[i]));
+          } else {
+            concat_inputs.push_back(
+                engine_->GetITensor(op_desc.Input("ShapeTensor")[i]));
+          }
+        }
         real_shape_tensor = Concat(concat_inputs);
       } else if (op_desc.Inputs().find("Shape") != op_desc.Inputs().end() &&
                  op_desc.Input("Shape").size() > 0) {
@@ -65,11 +83,17 @@ class ReshapeOpConverter : public OpConverter {
         reshape_dim.d[i] = shape[i + 1];
       }
     }
+
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
-    if (!engine_->with_dynamic_shape() || one_input)
+    std::cout << "输入的rank：" << input->getDimensions().nbDims << std::endl;
+
+    if (!engine_->with_dynamic_shape() || one_input || !real_shape_tensor)
       layer->setReshapeDimensions(reshape_dim);
     else
       layer->setInput(1, *real_shape_tensor);
+
+    std::cout << "log 结束-----------------------------------------------------"
+              << std::endl;
 
     PADDLE_ENFORCE_GE(
         layer->getOutput(0)->getDimensions().nbDims,

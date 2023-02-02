@@ -1406,6 +1406,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       const auto x_shape = x_var_desc->GetShape();
       const auto y_shape = y_var_desc->GetShape();
 
+      auto dtype = x_var_desc->GetDataType();
+      if (dtype == framework::proto::VarType::BOOL) {
+        std::cout << desc.Input("X")[0] << "XXXXXX" << std::endl;
+        return false;
+      }
+
       // The case when x_shape.size() == 1 is dealt with in common case
       if (!with_dynamic_shape && (!y_var_desc->Persistable()) &&
           y_shape.size() == 1) {

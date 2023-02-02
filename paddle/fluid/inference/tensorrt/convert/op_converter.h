@@ -595,6 +595,10 @@ class OpConverter {
       }
       layer_name += output_tensor_names[i];
       if (i != num_out - 1) layer_name += ", ";
+      PADDLE_ENFORCE_GE(layer->getOutput(i)->getDimensions().nbDims,
+                        0,
+                        platform::errors::InvalidArgument(
+                            "%s error \n", output_tensor_names[i].c_str()));
     }
     layer->setName((layer_name + ")").c_str());
   }

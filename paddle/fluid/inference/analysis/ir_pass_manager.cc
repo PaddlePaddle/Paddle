@@ -85,6 +85,9 @@ void IRPassManager::CreatePasses(Argument *argument,
     // here.
     pass->Set("gpu_device_id", new int(argument->gpu_device_id()));
 
+    pass->Set("trt_shape_range_info_path",
+              new std::string(argument->tensorrt_shape_range_info_path()));
+
     // tuned trt dynamic_shape
     pass->Set("trt_tuned_dynamic_shape",
               new bool(argument->tensorrt_tuned_dynamic_shape()));
@@ -208,8 +211,8 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("use_inspector", new bool(argument->tensorrt_use_inspector()));
 
       // tuned trt dynamic_shape
-      pass->Set("trt_shape_range_info_path",
-                new std::string(argument->tensorrt_shape_range_info_path()));
+      // pass->Set("trt_shape_range_info_path",
+      //           new std::string(argument->tensorrt_shape_range_info_path()));
       pass->Set("trt_allow_build_at_runtime",
                 new bool(argument->tensorrt_allow_build_at_runtime()));
       pass->Set(

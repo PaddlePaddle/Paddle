@@ -1868,6 +1868,30 @@ void AnalysisPredictor::CollectShapeRangeInfo() {
 #endif
       }
       shape_tensor_value_[name].emplace_back(int32_host);
+    } else if (tensor.dtype() == paddle::experimental::DataType::INT64 &&
+               is_shape_tensor) {
+      std::vector<int64_t> int64_host(tensor.numel());
+      if (tensor.place() == platform::CPUPlace()) {
+        paddle::memory::Copy(platform::CPUPlace(),
+                             int64_host.data(),
+                             platform::CPUPlace(),
+                             tensor.data<int64_t>(),
+                             tensor.numel() * sizeof(int64_t));
+      } else if (tensor.place() == platform::CUDAPlace()) {
+#if defined(PADDLE_WITH_CUDA)
+        paddle::memory::Copy(platform::CPUPlace(),
+                             int64_host.data(),
+                             platform::CUDAPlace(),
+                             tensor.data<int64_t>(),
+                             tensor.numel() * sizeof(int64_t),
+                             nullptr);
+#endif
+      }
+      std::vector<int> int32_host(int64_host.begin(), int64_host.end());
+      if (name == "tmp_225") {
+        std::cout << int64_host[0] << "dawn高" << std::endl;
+      }
+      shape_tensor_value_[name].emplace_back(int32_host);
     }
   }
 }
