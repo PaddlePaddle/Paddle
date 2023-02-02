@@ -24,7 +24,7 @@ import paddle.distributed as dist
 
 def init_process_group(strategy=None):
     nranks = paddle.distributed.ParallelEnv().nranks
-    rank = paddle.distributed.ParallelEnv().local_rank
+    rank = dist.ParallelEnv().local_rank
     is_master = True if rank == 0 else False
     pg_group = dist.init_parallel_env()
 
