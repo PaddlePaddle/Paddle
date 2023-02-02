@@ -17,6 +17,8 @@ import unittest
 
 import numpy as np
 
+import paddle
+
 sys.path.append("../")
 from op_test import OpTest
 
@@ -162,8 +164,8 @@ class TestSequencePadOpError(unittest.TestCase):
         self.assertRaises(TypeError, test_x_variable)
 
         def test_pad_value_variable():
-            x1 = fluid.layers.data(
-                name='x1', shape=[10, 5], dtype='float32', lod_level=1
+            x1 = paddle.static.data(
+                name='x1', shape=[-1, 10, 5], dtype='float32', lod_level=1
             )
             pad_value1 = np.array([0.0], dtype=np.float32)
             fluid.layers.sequence_pad(x=x1, pad_value=pad_value1)
@@ -171,8 +173,8 @@ class TestSequencePadOpError(unittest.TestCase):
         self.assertRaises(TypeError, test_pad_value_variable)
 
         def test_dtype():
-            x2 = fluid.layers.data(
-                name='x2', shape=[10, 5], dtype='int16', lod_level=1
+            x2 = paddle.static.data(
+                name='x2', shape=[-1, 10, 5], dtype='int16', lod_level=1
             )
             pad_value2 = fluid.layers.assign(
                 input=np.array([0.0], dtype=np.int32)

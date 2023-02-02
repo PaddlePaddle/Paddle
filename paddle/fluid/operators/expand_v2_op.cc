@@ -193,8 +193,8 @@ class ExpandV2GradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-class ExpandV2GradCompositeOpMaker : public prim::GradCompositeOpMakerBase {
-  using prim::GradCompositeOpMakerBase::GradCompositeOpMakerBase;
+class ExpandV2CompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
 
  public:
   void Apply() override {
@@ -206,6 +206,7 @@ class ExpandV2GradCompositeOpMaker : public prim::GradCompositeOpMakerBase {
     auto shape = this->Attr<std::vector<int>>("shape");
     prim::expand_grad<prim::DescTensor>(
         x, out_grad, paddle::experimental::IntArray(shape), x_grad_p);
+    VLOG(3) << "Runing expand_v2 composite func";
     this->RecoverOutputName(x_grad, x_grad_name);
   }
 };
@@ -243,7 +244,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(expand_v2,
                   ops::ExpandV2Op,
                   ops::ExpandV2OpMaker,
-                  ops::ExpandV2GradCompositeOpMaker,
+                  ops::ExpandV2CompositeGradOpMaker,
                   ops::ExpandV2GradOpMaker<paddle::framework::OpDesc>,
                   ops::ExpandV2GradOpMaker<paddle::imperative::OpBase>,
                   ExpandInferShapeFunctor);

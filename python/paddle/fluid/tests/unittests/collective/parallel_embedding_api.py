@@ -42,13 +42,13 @@ class TestParallelEmbeddingAPI(TestCollectiveAPIRunnerBase):
             per_part_size = size[0] // 2
             if rank == 0:
                 param_attr = paddle.fluid.ParamAttr(
-                    initializer=paddle.fluid.initializer.NumpyArrayInitializer(
+                    initializer=paddle.nn.initializer.Assign(
                         np_array[0:per_part_size, :]
                     ),
                 )
             else:
                 param_attr = paddle.fluid.ParamAttr(
-                    initializer=paddle.fluid.initializer.NumpyArrayInitializer(
+                    initializer=paddle.nn.initializer.Assign(
                         np_array[per_part_size : size[0], :]
                     ),
                 )

@@ -131,8 +131,10 @@ img_shape = [3, 224, 224]
 
 def SE_ResNeXt50Small(use_feed):
 
-    img = fluid.layers.data(name='image', shape=img_shape, dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    img = paddle.static.data(
+        name='image', shape=[-1] + img_shape, dtype='float32'
+    )
+    label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
 
     conv = conv_bn_layer(
         input=img, num_filters=16, filter_size=3, stride=2, act='relu'

@@ -20,7 +20,6 @@ from decorator_helper import prog_scope
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 from paddle.fluid import Program, core, program_guard
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
@@ -250,7 +249,7 @@ class TestConcatOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of concat_op should be list.
-            x1 = fluid.layers.data(shape=[4], dtype='int32', name='x1')
+            x1 = paddle.static.data(shape=[-1, 4], dtype='int32', name='x1')
             fluid.layers.concat(x1)
             # The item in input must be Variable.
             x2 = fluid.create_lod_tensor(
@@ -261,12 +260,12 @@ class TestConcatOpError(unittest.TestCase):
             )
             self.assertRaises(TypeError, fluid.layers.concat, [x2])
             # The input dtype of concat_op must be float16, float32, float64, int32, int64.
-            x4 = fluid.layers.data(shape=[4], dtype='uint8', name='x4')
-            x5 = fluid.layers.data(shape=[4], dtype='uint8', name='x5')
+            x4 = paddle.static.data(shape=[-1, 4], dtype='uint8', name='x4')
+            x5 = paddle.static.data(shape=[-1, 4], dtype='uint8', name='x5')
             self.assertRaises(TypeError, fluid.layers.concat, [x4, x5])
-            x6 = fluid.layers.data(shape=[4], dtype='float16', name='x6')
-            x7 = fluid.layers.data(shape=[4], dtype='float16', name='x7')
-            x8 = fluid.layers.data(shape=[4], dtype='float32', name='x8')
+            x6 = paddle.static.data(shape=[-1, 4], dtype='float16', name='x6')
+            x7 = paddle.static.data(shape=[-1, 4], dtype='float16', name='x7')
+            x8 = paddle.static.data(shape=[-1, 4], dtype='float32', name='x8')
             fluid.layers.concat([x6, x7])
 
             # The type of axis in concat_op should be int or Variable.
@@ -369,9 +368,9 @@ class TestConcatAPI(unittest.TestCase):
             self.assertRaises(TypeError, fluid.layers.concat, [x4, x5])
 
             # The type of axis in concat_op should be int or Variable.
-            x6 = fluid.layers.data(shape=[4], dtype='float16', name='x6')
-            x7 = fluid.layers.data(shape=[4], dtype='float16', name='x7')
-            x8 = fluid.layers.data(shape=[4], dtype='float32', name='x8')
+            x6 = paddle.static.data(shape=[-1, 4], dtype='float16', name='x6')
+            x7 = paddle.static.data(shape=[-1, 4], dtype='float16', name='x7')
+            x8 = paddle.static.data(shape=[-1, 4], dtype='float32', name='x8')
 
             def test_axis_type():
                 paddle.concat([x6, x7], 3.2)
@@ -457,9 +456,9 @@ class TestConcatDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data1 = layers.data('data1', [2, 3], False, dtype)
+        data1 = paddle.static.data('data1', [2, 3], dtype)
         data1.persistable = True
-        data2 = layers.data('data2', [2, 3], False, dtype)
+        data2 = paddle.static.data('data2', [2, 3], dtype)
         data2.persistable = True
         out = paddle.concat([data1, data2])
         data1_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
@@ -498,9 +497,9 @@ class TestConcatTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data1 = layers.data('data1', [2, 3, 4], False, dtype)
+        data1 = paddle.static.data('data1', [2, 3, 4], dtype)
         data1.persistable = True
-        data2 = layers.data('data2', [2, 3, 4], False, dtype)
+        data2 = paddle.static.data('data2', [2, 3, 4], dtype)
         data2.persistable = True
         out = paddle.concat([data1, data2], 1)
         data1_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)

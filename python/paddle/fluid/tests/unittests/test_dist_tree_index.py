@@ -17,7 +17,6 @@ import tempfile
 import unittest
 
 import paddle
-import paddle.fluid as fluid
 from paddle.dataset.common import download
 from paddle.distributed.fleet.dataset import TreeIndex
 
@@ -25,19 +24,19 @@ paddle.enable_static()
 
 
 def create_feeds():
-    user_input = fluid.layers.data(
-        name="item_id", shape=[1], dtype="int64", lod_level=1
+    user_input = paddle.static.data(
+        name="item_id", shape=[-1, 1], dtype="int64", lod_level=1
     )
 
-    item = fluid.layers.data(
-        name="unit_id", shape=[1], dtype="int64", lod_level=1
+    item = paddle.static.data(
+        name="unit_id", shape=[-1, 1], dtype="int64", lod_level=1
     )
 
-    label = fluid.layers.data(
-        name="label", shape=[1], dtype="int64", lod_level=1
+    label = paddle.static.data(
+        name="label", shape=[-1, 1], dtype="int64", lod_level=1
     )
-    labels = fluid.layers.data(
-        name="labels", shape=[1], dtype="int64", lod_level=1
+    labels = paddle.static.data(
+        name="labels", shape=[-1, 1], dtype="int64", lod_level=1
     )
 
     feed_list = [user_input, item, label, labels]
@@ -140,7 +139,7 @@ class TestIndexSampler(unittest.TestCase):
         slots = ["slot1", "slot2", "slot3"]
         slots_vars = []
         for slot in slots:
-            var = fluid.layers.data(name=slot, shape=[1], dtype="int64")
+            var = paddle.static.data(name=slot, shape=[-1, 1], dtype="int64")
             slots_vars.append(var)
 
         dataset = paddle.distributed.InMemoryDataset()

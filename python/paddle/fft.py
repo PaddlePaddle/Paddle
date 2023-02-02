@@ -1275,6 +1275,8 @@ def fftfreq(n, d=1.0, dtype=None, name=None):
             #  Tensor(shape=[5], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
             #           [ 0.        ,  0.40000001,  0.80000001, -0.80000001, -0.40000001])
     """
+    if d * n == 0:
+        raise ValueError("d or n should not be 0.")
 
     dtype = paddle.framework.get_default_dtype()
     val = 1.0 / (n * d)
