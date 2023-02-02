@@ -20,35 +20,43 @@ namespace operators {
 class FusedFCMaker : public FCOpMaker {
  protected:
   void Apply() override {
+    AddAttr<bool>("use_mkldnn", "Used to schedule oneDNN kernel")
+        .SetDefault(true);
+    AddAttr<std::string>("mkldnn_data_type", "oneDNN operator data type")
+        .SetDefault("float32")
+        .InEnum({"float32", "int8", "bfloat16"});
     AddInput("ResidualData",
-             "(Tensor) Tensor with residual data "
-             "to which convolution output will be added."
-             "Used with fuse_residual_connection fusion.")
+             "Extra input from fc_elementwise_add_mkldnn_fuse_pass")
         .AsDispensable()
         .AsExtra();
-    AddAttr<std::string>("fuse_activation", "activ").SetDefault("");
-    AddAttr<float>("fuse_alpha", "activ attr").SetDefault(0.0f);
-    AddAttr<float>("fuse_beta", "activ attr").SetDefault(0.0f);
-    AddAttr<float>("fused_output_scale", "output scale").SetDefault(1.0f);
-    AddAttr<std::vector<int>>("fused_reshape2_shape", "ffused reshape")
-        .SetDefault({});
-    AddAttr<float>("Scale_in",
-                   "(float, default 1.0f), The quantize scale of input data")
+    AddAttr<std::string>("fuse_activation",
+                         "Activation type from fc_act_mkldnn_fuse_pass")
+        .SetDefault("");
+    AddAttr<float>("fuse_alpha",
+                   "Activation alpha from fc_act_mkldnn_fuse_pass")
+        .SetDefault(0.0f);
+    AddAttr<float>("fuse_beta", "Activation beta from fc_act_mkldnn_fuse_pass")
+        .SetDefault(0.0f);
+    AddAttr<float>("fused_output_scale",
+                   "Output scale from operator_scale_onednn_fuse_pass")
         .SetDefault(1.0f);
-    AddAttr<std::vector<float>>("Scale_weights",
-                                "(std::vector<float>, default {1.0f}), The "
-                                "quantize scale of weights data")
-        .SetDefault({1.0f});
-    AddAttr<std::vector<float>>("Bias_scales", "scale bias scales")
+    AddAttr<std::vector<int>>(
+        "fused_reshape2_shape",
+        "Reshape's shape attribute from operator_reshape2_onednn_fuse_pass")
         .SetDefault({});
-    AddAttr<float>("Scale_in_eltwise", "scale eltwise").SetDefault(1.0f);
-    AddAttr<float>("Scale_out",
-                   "(float, default 1.0f), The quantize scale of output data")
+    AddAttr<float>("Scale_in", "FC Input quantization scale").SetDefault(1.0f);
+    AddAttr<std::vector<float>>("Scale_weights", "FC W quantization scale")
+        .SetDefault({1.0f});
+    AddAttr<std::vector<float>>("Bias_scales", "FC Bias quantization scales")
+        .SetDefault({});
+    AddAttr<float>("Scale_in_eltwise", "FC ResidualData quantization scale")
+        .SetDefault(1.0f);
+    AddAttr<float>("Scale_out", "FC output quantization scale")
         .SetDefault(1.0f);
     AddAttr<bool>("force_fp32_output",
-                  "(bool, default false) Force INT8 kernel output FP32, only "
-                  "used in MKL-DNN INT8")
+                  "Flag determining if output should be converted to FP32")
         .SetDefault(false);
+    AddComment(R"DOC(FC extended with oneDNN-specific fusion logic.)DOC");
   }
 };
 

@@ -30,6 +30,14 @@ extra {
     type: BOOLEAN
   }
   attrs {
+    name: "use_mkldnn"
+    type: BOOL
+  }
+  attrs {
+    name: "mkldnn_data_type"
+    type: STRING
+  }
+  attrs {
     name: "fuse_activation"
     type: STRING
   }
