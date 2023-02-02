@@ -273,16 +273,18 @@ PreparedOp PrepareImpl(
     kernel_signature = (*arg_map_fn)(
         framework::ExecutionArgumentMappingContext(dygraph_exe_ctx));
   } else {
-    if (phi::KernelFactory::Instance().AllAreFuncKernel(op.Type())) {
-      default_kernel_signature =
-          default_phi_kernel_sig_map.GetNullable(op.Type());
-      if (default_kernel_signature) {
+    if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(op.Type())) {
+      if (phi::KernelFactory::Instance().AllAreFuncKernel(op.Type())) {
+        default_kernel_signature =
+            default_phi_kernel_sig_map.GetNullable(op.Type());
+        if (default_kernel_signature) {
+          has_phi_kernel = true;
+          kernel_signature = *default_kernel_signature;
+        }
+      } else {
         has_phi_kernel = true;
-        kernel_signature = *default_kernel_signature;
+        kernel_signature = phi::KernelSignature(op.Type().c_str());
       }
-    } else {
-      has_phi_kernel = true;
-      kernel_signature = phi::KernelSignature(op.Type().c_str());
     }
   }
 
