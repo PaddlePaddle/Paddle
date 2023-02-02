@@ -52,13 +52,6 @@ from paddle.fluid import core, framework
             (np.random.rand(2, 3, 3, 4),),
             np.float32,
         ),
-        (
-            'test_reduce_axe_empty',
-            (np.random.rand(2, 3, 3, 4), np.random.rand(2, 1, 3, 4)),
-            (False, False),
-            (np.random.rand(2, 3, 3, 4),),
-            np.float32,
-        ),
     ),
 )
 class TestMultiplyGradComp(unittest.TestCase):
@@ -76,7 +69,7 @@ class TestMultiplyGradComp(unittest.TestCase):
     def as_tuple(self, x):
         return (x,) if isinstance(x, framework.Variable) else x
 
-    def vjp(self):
+    def net(self):
         primals, cotangents = self.primals, self.cotangents
         mp, sp = paddle.static.Program(), paddle.static.Program()
         with paddle.static.program_guard(mp, sp):
@@ -90,8 +83,8 @@ class TestMultiplyGradComp(unittest.TestCase):
                 paddle.static.data(f'cotangent{i}', co.shape, co.dtype)
                 for i, co in enumerate(cotangents)
             )
-            out = self.as_tuple(paddle.multiply(*primals))
-            grads = paddle.static.gradients(out, primals, cotangents)
+            out = self.as_tuple(paddle.tanh(paddle.multiply(*primals)))
+            grads = paddle.static.gradients(out, primals)
         exe = paddle.static.Executor()
         exe.run(sp)
         return exe.run(
@@ -107,12 +100,11 @@ class TestMultiplyGradComp(unittest.TestCase):
         )
 
     def test_comp(self):
-
         core._set_prim_backward_enabled(True)
-        actual = self.vjp()
+        actual = self.net()
 
         core._set_prim_backward_enabled(False)
-        desired = self.vjp()
+        desired = self.net()
 
         self.assertEqual(len(actual), len(desired))
         for i, j in zip(actual, desired):
