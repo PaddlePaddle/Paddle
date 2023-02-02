@@ -37,7 +37,6 @@ struct TransLayernormPattern : public PatternBase {
   PATTERN_DECL_NODE(transpose_output);
   PATTERN_DECL_NODE(reshape);
   PATTERN_DECL_NODE(reshape_output);
-  PATTERN_DECL_NODE(reshape_output_xshape);
   PATTERN_DECL_NODE(layernorm);
   PATTERN_DECL_NODE(layernorm_scale);
   PATTERN_DECL_NODE(layernorm_bias);
@@ -57,12 +56,7 @@ void TransLayernormPattern::operator()(PDNode *x) {
                              ->assert_is_ops_output(reshape_ops, "Out")
                              ->assert_is_op_input("layer_norm", "X")
                              ->AsOutput();
-  auto *reshape_output_xshape =
-      pattern->NewNode(reshape_output_xshape_repr())
-          ->assert_is_ops_output(reshape_ops, "XShape")
-          ->AsOutput();
-  reshape->LinksFrom({transpose_output})
-      .LinksTo({reshape_output, reshape_output_xshape});
+  reshape->LinksFrom({transpose_output}).LinksTo({reshape_output});
   auto *layernorm =
       pattern->NewNode(layernorm_repr())->assert_is_op("layer_norm");
   auto *layernorm_scale = pattern->NewNode(layernorm_scale_repr())
@@ -108,8 +102,6 @@ int TransLayernormFusePass::ApplyConvTransLayernormPattern(
         transpose_output, transpose_output, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(reshape, reshape, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(reshape_output, reshape_output, fused_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(
-        reshape_output_xshape, reshape_output_xshape, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layernorm, layernorm, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layernorm_scale, layernorm_scale, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layernorm_bias, layernorm_bias, fused_pattern);
@@ -120,7 +112,41 @@ int TransLayernormFusePass::ApplyConvTransLayernormPattern(
       LOG(WARNING) << "transpose layernorm pass in op compat failed.";
       return;
     }
-
+    // trans_layernorm is suit for nchw-to-nhwc transpose before layernorm
+    // check for it
+    std::vector<int> trans_axis =
+        PADDLE_GET_CONST(std::vector<int>, transpose->Op()->GetAttr("axis"));
+    if (trans_axis != std::vector<int>{0, 2, 3, 1}) {
+      VLOG(1) << "transpose layernorm fuse pass, transpose axis check fail, "
+                 "stop fusion";
+      return;
+    }
+    if (reshape->Op()->Type() == "flatten_contiguous_range") {
+      int start_axis =
+          PADDLE_GET_CONST(int, reshape->Op()->GetAttr("start_axis"));
+      int stop_axis =
+          PADDLE_GET_CONST(int, reshape->Op()->GetAttr("stop_axis"));
+      if (!(start_axis == 1 && stop_axis == 2)) {
+        VLOG(1) << "transpose layernorm fuse pass, flatten axis check fail, "
+                   "stop fusion";
+        return;
+      }
+    } else if (reshape->Op()->Type() == "reshape2") {
+      std::vector<int> reshape_shape =
+          PADDLE_GET_CONST(std::vector<int>, reshape->Op()->GetAttr("shape"));
+      if (reshape_shape.size() != 3) {
+        VLOG(1)
+            << "transpose layernorm fuse pass, reshape check fail, stop fusion";
+        return;
+      }
+    }
+    auto layernorm_begin_norm_axis =
+        PADDLE_GET_CONST(int, layernorm->Op()->GetAttr("begin_norm_axis"));
+    if (layernorm_begin_norm_axis != 2 || layernorm_begin_norm_axis != -1) {
+      VLOG(1) << "transpose layernorm fuse pass, layernorm begin norm axis "
+                 "check fail, stop fusion";
+      return;
+    }
     std::unordered_set<const Node *> del_node_set;
     // Create an preln_groupnorm_act op node
     OpDesc new_desc(*layernorm->Op());
@@ -134,7 +160,6 @@ int TransLayernormFusePass::ApplyConvTransLayernormPattern(
     del_node_set.insert(transpose);
     del_node_set.insert(transpose_output);
     del_node_set.insert(reshape);
-    del_node_set.insert(reshape_output_xshape);
     del_node_set.insert(layernorm);
     GraphSafeRemoveNodes(graph, del_node_set);
 

@@ -19,19 +19,16 @@ class TransLayerNormOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(4)
-        << "convert a trans_layer_norm fused op to tensorrt layer_norm plugin";
+    VLOG(4) << "convert a trans_layer_norm fused op to tensorrt "
+               "trans_layernorm plugin";
     framework::OpDesc op_desc(op, nullptr);
 
     auto* X = engine_->GetITensor(op_desc.Input("X").front());
     auto* Bias_v = scope.FindVar(op_desc.Input("Bias").front());
     auto* Scale_v = scope.FindVar(op_desc.Input("Scale").front());
-    // TODO(wangbojun), for nhwc, begin_norm_axis=3
+    // we already check the begin_norm_axis in pass action.
+    // here we set begin_norm_axis as 3 to fit the calculation in trt plugin.
     const int begin_norm_axis = 3;
-    // const int begin_norm_axis =
-    //     op_desc.HasAttr("begin_norm_axis")
-    //         ? PADDLE_GET_CONST(int, op_desc.GetAttr("begin_norm_axis"))
-    //         : 1;
     const float eps = op_desc.HasAttr("epsilon")
                           ? PADDLE_GET_CONST(float, op_desc.GetAttr("epsilon"))
                           : 1e-5f;
@@ -73,7 +70,8 @@ class TransLayerNormOpConverter : public OpConverter {
               with_fp16);
       layernorm_layer = engine_->AddDynamicPlugin(&X, 1, plugin);
     } else {
-      // TODO
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "trans_layernorm do not support static shape mode yet"));
     }
 
     auto output_layernorm_name = op_desc.Output("Out_layernorm").front();

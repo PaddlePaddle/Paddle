@@ -18,7 +18,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 namespace ir {
-//    conv2d
 //     |
 //   transpose
 //     |
@@ -29,8 +28,7 @@ namespace ir {
 //        layernorm_out
 //
 // ->fuse to
-//   conv2d
-//    |
+//     |
 //  trans_layernorm
 //   |      |
 //  out    layernorm_out

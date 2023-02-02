@@ -21,6 +21,7 @@
 #include "paddle/fluid/inference/tensorrt/plugin/trans_layernorm_op_plugin.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 #include "paddle/phi/kernels/layer_norm_kernel.h"
+#include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace paddle {
 namespace inference {
@@ -31,15 +32,14 @@ namespace plugin {
 #define FINAL_MASK 0xffffffff
 
 template <int UNROLL_FACTOR>
-__global__ void generalAddBiasResidualLayerNormOpt2(
-    half2 *normed_output,
-    half2 *output,
-    const half2 *__restrict src,
-    const half2 *__restrict gamma,
-    const half2 *__restrict beta,
-    int m,
-    int n,
-    float epsilon) {
+__global__ void generalResidualLayerNormOpt2(half2 *normed_output,
+                                             half2 *output,
+                                             const half2 *__restrict src,
+                                             const half2 *__restrict gamma,
+                                             const half2 *__restrict beta,
+                                             int m,
+                                             int n,
+                                             float epsilon) {
   __shared__ float s_mean;
   __shared__ float s_variance;
   float x_sum = 0.0f;
@@ -89,8 +89,8 @@ __global__ void generalAddBiasResidualLayerNormOpt2(
   }
 }
 
-#define HALF2_ADD_BIAS_RESIDUAL_LAYERNORM_OPT2(UNROLL_FACTOR)                \
-  generalAddBiasResidualLayerNormOpt2<UNROLL_FACTOR>                         \
+#define HALF2_RESIDUAL_LAYERNORM_OPT2(UNROLL_FACTOR)                         \
+  generalResidualLayerNormOpt2<UNROLL_FACTOR>                                \
       <<<rows, block, 0, stream>>>(reinterpret_cast<half2 *>(layernorm_dst), \
                                    reinterpret_cast<half2 *>(dst),           \
                                    (const half2 *)input,                     \
@@ -102,7 +102,7 @@ __global__ void generalAddBiasResidualLayerNormOpt2(
 
 #endif
 
-using half = phi::dtype::float16;
+// using half = phi::dtype::float16;
 
 int TransLayerNormPluginDynamic::initialize() TRT_NOEXCEPT {
   if (!with_fp16_) {
@@ -136,6 +136,16 @@ int TransLayerNormPluginDynamic::initialize() TRT_NOEXCEPT {
     cudaMemcpy(fp16_scale_gpu_,
                fp16_scale_.data(),
                fp16_scale_.size() * sizeof(half),
+               cudaMemcpyHostToDevice);
+    cudaMalloc(&bias_gpu_, sizeof(float) * bias_.size());
+    cudaMemcpy(bias_gpu_,
+               bias_.data(),
+               bias_.size() * sizeof(float),
+               cudaMemcpyHostToDevice);
+    cudaMalloc(&scale_gpu_, sizeof(float) * scale_.size());
+    cudaMemcpy(scale_gpu_,
+               scale_.data(),
+               scale_.size() * sizeof(float),
                cudaMemcpyHostToDevice);
   }
   return 0;
@@ -186,12 +196,9 @@ bool TransLayerNormPluginDynamic::supportsFormatCombination(
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
     if (with_fp16_) {
-      return ((in.type == nvinfer1::DataType::kFLOAT ||
-               in.type == nvinfer1::DataType::kHALF) &&
-              (
-                  // TODO(wangbojun) linear input support latter
-                  //   in.format == nvinfer1::PluginFormat::kLINEAR ||
-                  in.format == nvinfer1::PluginFormat::kHWC8));
+      return ((in.type == nvinfer1::DataType::kHALF) &&
+              (in.format == nvinfer1::PluginFormat::kLINEAR ||
+               in.format == nvinfer1::PluginFormat::kHWC8));
     } else {
       return (in.type == nvinfer1::DataType::kFLOAT) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
@@ -199,8 +206,7 @@ bool TransLayerNormPluginDynamic::supportsFormatCombination(
   }
   if (pos == 1) {
     if (with_fp16_) {
-      return ((in.type == nvinfer1::DataType::kFLOAT ||
-               in.type == nvinfer1::DataType::kHALF) &&
+      return (in.type == in_out[0].type &&
               (in.format == nvinfer1::PluginFormat::kLINEAR));
     } else {
       return (in.type == nvinfer1::DataType::kFLOAT) &&
@@ -209,8 +215,7 @@ bool TransLayerNormPluginDynamic::supportsFormatCombination(
   }
   if (pos == 2) {
     if (with_fp16_) {
-      return ((in.type == nvinfer1::DataType::kFLOAT ||
-               in.type == nvinfer1::DataType::kHALF) &&
+      return (in.type == in_out[0].type &&
               (in.format == nvinfer1::PluginFormat::kLINEAR));
     } else {
       return (in.type == nvinfer1::DataType::kFLOAT) &&
@@ -266,6 +271,10 @@ int TransLayerNormPluginDynamic::enqueue(
   for (int i = 0; i < input_dims.nbDims; i++) {
     input_shape.push_back(input_dims.d[i]);
   }
+  int input_numel = 1;
+  for (int i = 0; i < input_dims.nbDims; i++) {
+    input_numel *= input_dims.d[i];
+  }
   // in dynamic shape
   // the batch num should be involved in mean/variance shape
   PADDLE_ENFORCE_EQ(1,
@@ -318,20 +327,68 @@ int TransLayerNormPluginDynamic::enqueue(
   float *variance_d =
       variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
   auto input_type = input_desc[0].type;
+
+  paddle::platform::DeviceContextPool &pool =
+      paddle::platform::DeviceContextPool::Instance();
+  platform::CUDAPlace place(platform::GetCurrentDeviceId());
+  auto *device_context = static_cast<phi::GPUContext *>(pool.Get(place));
+  const phi::GPUContext &dev_ctx = *device_context;
+
   if (input_type == nvinfer1::DataType::kFLOAT) {
+    VLOG(1) << "TRT Plugin DataType selected. trans_layernorm-->fp32";
+    const float *input = reinterpret_cast<const float *>(inputs[0]);
+    float *layernorm_dst = static_cast<float *>(outputs[0]);
+    float *dst = static_cast<float *>(outputs[1]);
+
     if (input_desc[0].format == nvinfer1::PluginFormat::kLINEAR) {
-      // TODO
+      VLOG(1) << "TRT Plugin format selected. trans_layernorm-->kLINEAR";
+      phi::DenseTensorMeta input_meta(phi::DataType::FLOAT32,
+                                      phi::make_ddim(input_shape));
+      std::shared_ptr<phi::Allocation> input_alloc(new phi::Allocation(
+          static_cast<void *>(const_cast<float *>(input)),  // NOLINT
+          input_numel * sizeof(float),
+          place));
+      // transpose do not change numel
+      int trans_result_numel = input_numel;
+      std::vector<int> trans_result_shape{
+          input_shape[0], input_shape[2], input_shape[3], input_shape[1]};
+      phi::DenseTensorMeta trans_result_meta(
+          phi::DataType::FLOAT32, phi::make_ddim(trans_result_shape));
+      std::shared_ptr<phi::Allocation> trans_result_alloc(
+          new phi::Allocation(static_cast<void *>(dst),  // NOLINT
+                              trans_result_numel * sizeof(float),
+                              place));
+      const phi::DenseTensor input_tensor =
+          phi::DenseTensor(input_alloc, input_meta);
+      phi::DenseTensor trans_result_tensor =
+          phi::DenseTensor(trans_result_alloc, trans_result_meta);
+      phi::TransposeKernel<float, phi::GPUContext>(dev_ctx,
+                                                   input_tensor,
+                                                   std::vector<int>{0, 2, 3, 1},
+                                                   &trans_result_tensor);
+      phi::LayerNormDirectCUDAFunctor<float, float> layer_norm;
+      layer_norm(stream,
+                 dst,
+                 trans_result_shape,
+                 bias_gpu_,
+                 scale_gpu_,
+                 layernorm_dst,
+                 mean_d,
+                 variance_d,
+                 begin_norm_axis,
+                 eps);
+
     } else if (input_desc[0].format == nvinfer1::PluginFormat::kHWC8) {
-      VLOG(1) << "TRT Plugin DataType selected. trans_layernorm-->fp32";
-      const float *input = reinterpret_cast<const float *>(inputs[0]);
-      float *output = static_cast<float *>(outputs[0]);
+      VLOG(1) << "TRT Plugin format selected. trans_layernorm-->kHWC8";
+      cudaMemcpyAsync(
+          dst, input, input_numel * sizeof(float), cudaMemcpyDeviceToDevice);
       phi::LayerNormDirectCUDAFunctor<float, float> layer_norm;
       layer_norm(stream,
                  input,
                  input_shape,
                  bias_gpu_,
                  scale_gpu_,
-                 output,
+                 layernorm_dst,
                  mean_d,
                  variance_d,
                  begin_norm_axis,
@@ -339,48 +396,95 @@ int TransLayerNormPluginDynamic::enqueue(
     }
   } else if (input_type == nvinfer1::DataType::kHALF) {
     VLOG(1) << "TRT Plugin DataType selected. trans_layernorm-->fp16";
-
     const half *input = reinterpret_cast<const half *>(inputs[0]);
     half *layernorm_dst = static_cast<half *>(outputs[0]);
     half *dst = static_cast<half *>(outputs[1]);
     if (input_desc[0].format == nvinfer1::PluginFormat::kLINEAR) {
-      // TODO
+      VLOG(1) << "TRT Plugin format selected. trans_layernorm-->kLINEAR";
+      phi::DenseTensorMeta input_meta(phi::DataType::FLOAT16,
+                                      phi::make_ddim(input_shape));
+      std::shared_ptr<phi::Allocation> input_alloc(new phi::Allocation(
+          static_cast<void *>(const_cast<half *>(input)),  // NOLINT
+          input_numel * sizeof(half),
+          place));
+      // transpose do not change numel
+      int trans_result_numel = input_numel;
+      std::vector<int> trans_result_shape{
+          input_shape[0], input_shape[2], input_shape[3], input_shape[1]};
+      phi::DenseTensorMeta trans_result_meta(
+          phi::DataType::FLOAT16, phi::make_ddim(trans_result_shape));
+      std::shared_ptr<phi::Allocation> trans_result_alloc(
+          new phi::Allocation(static_cast<void *>(dst),  // NOLINT
+                              trans_result_numel * sizeof(half),
+                              place));
+      const phi::DenseTensor input_tensor =
+          phi::DenseTensor(input_alloc, input_meta);
+      phi::DenseTensor trans_result_tensor =
+          phi::DenseTensor(trans_result_alloc, trans_result_meta);
+      phi::TransposeKernel<phi::dtype::float16, phi::GPUContext>(
+          dev_ctx,
+          input_tensor,
+          std::vector<int>{0, 2, 3, 1},
+          &trans_result_tensor);
+      phi::LayerNormDirectCUDAFunctor<half, float> layer_norm;
+      layer_norm(stream,
+                 dst,
+                 trans_result_shape,
+                 bias_gpu_,
+                 scale_gpu_,
+                 layernorm_dst,
+                 mean_d,
+                 variance_d,
+                 begin_norm_axis,
+                 eps);
     } else if (input_desc[0].format == nvinfer1::PluginFormat::kHWC8) {
-      // std::cout<<"@ trans_layernorm_khwc8 input shape:"<<std::endl;
-      // for (int i = 0; i < input_dims.nbDims; i++) {
-      //   std::cout<<input_shape[i]<<' ';
-      // }
-      // std::cout<<std::endl;
-      // call
-      int hidden = input_shape[1];
-      const size_t rows =
-          static_cast<size_t>(input_shape[0] * input_shape[2] *
-                              input_shape[3]);  // batch * seq_length
+      VLOG(1) << "TRT Plugin format selected. trans_layernorm-->kHWC8";
 
-      int half_n = hidden / 2;
-      int half_n_32 = (half_n + 31) / 32 * 32;
-      dim3 block(std::min(half_n_32, 512));
-      int rolls_per_thread = half_n / block.x;
-      int unroll_factor = 8;
-      while (unroll_factor > rolls_per_thread && unroll_factor > 1) {
-        unroll_factor /= 2;
-      }
-      switch (unroll_factor) {
-        case 1:
-          HALF2_ADD_BIAS_RESIDUAL_LAYERNORM_OPT2(1);
-          break;
-        case 2:
-          HALF2_ADD_BIAS_RESIDUAL_LAYERNORM_OPT2(2);
-          break;
-        case 4:
-          HALF2_ADD_BIAS_RESIDUAL_LAYERNORM_OPT2(4);
-          break;
-        case 8:
-          HALF2_ADD_BIAS_RESIDUAL_LAYERNORM_OPT2(8);
-          break;
-        default:
-          PADDLE_THROW(platform::errors::Fatal(
-              "Invalid UNROLL_FACTOR in preln_residual_bias trt plugin."));
+      int hidden = input_shape[1];
+      if (hidden % 2 == 0) {
+        const size_t rows =
+            static_cast<size_t>(input_shape[0] * input_shape[2] *
+                                input_shape[3]);  // batch * seq_length
+
+        int half_n = hidden / 2;
+        int half_n_32 = (half_n + 31) / 32 * 32;
+        dim3 block(std::min(half_n_32, 512));
+        int rolls_per_thread = half_n / block.x;
+        int unroll_factor = 8;
+        while (unroll_factor > rolls_per_thread && unroll_factor > 1) {
+          unroll_factor /= 2;
+        }
+        switch (unroll_factor) {
+          case 1:
+            HALF2_RESIDUAL_LAYERNORM_OPT2(1);
+            break;
+          case 2:
+            HALF2_RESIDUAL_LAYERNORM_OPT2(2);
+            break;
+          case 4:
+            HALF2_RESIDUAL_LAYERNORM_OPT2(4);
+            break;
+          case 8:
+            HALF2_RESIDUAL_LAYERNORM_OPT2(8);
+            break;
+          default:
+            PADDLE_THROW(platform::errors::Fatal(
+                "Invalid UNROLL_FACTOR in transpose_layernorm trt plugin."));
+        }
+      } else {
+        cudaMemcpyAsync(
+            dst, input, input_numel * sizeof(half), cudaMemcpyDeviceToDevice);
+        phi::LayerNormDirectCUDAFunctor<half, float> layer_norm;
+        layer_norm(stream,
+                   input,
+                   input_shape,
+                   bias_gpu_,
+                   scale_gpu_,
+                   layernorm_dst,
+                   mean_d,
+                   variance_d,
+                   begin_norm_axis,
+                   eps);
       }
     }
   } else {
