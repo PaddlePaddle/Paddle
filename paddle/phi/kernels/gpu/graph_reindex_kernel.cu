@@ -422,6 +422,10 @@ void GraphReindexKernel(const Context& dev_ctx,
 
   // Get reindex dst edge.
   // Add support for multi-type edges reindex.
+  PADDLE_ENFORCE_NE(bs,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "x.dims()[0] not should be 0 (Division by zero)."));
   int num_ac_count = count.dims()[0];
   int num_edge_types = num_ac_count / bs;
   thrust::device_vector<int> unique_dst_reindex(bs);
