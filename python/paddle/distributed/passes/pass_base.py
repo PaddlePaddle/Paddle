@@ -283,6 +283,10 @@ def _find_longest_path(edges):
             for j in range(n):
                 if dists[i][j] > dists[i][k] + dists[k][j]:
                     dists[i][j] = dists[i][k] + dists[k][j]
+                    if paths[i][k]:
+                        assert paths[i][k][-1] == k
+                    if paths[k][j]:
+                        assert paths[k][j][0] == k
                     paths[i][j] = (
                         paths[i][k] + paths[k][j][1:] if paths[k][j] else []
                     )
