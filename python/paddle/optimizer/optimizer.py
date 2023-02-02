@@ -34,7 +34,6 @@ from paddle.fluid.framework import (
 from ..fluid import framework, unique_name
 from ..fluid.backward import _get_no_grad_set_name, append_backward
 from ..fluid.framework import Parameter, program_guard
-from ..fluid.initializer import Constant
 from ..fluid.layer_helper import LayerHelper
 from .lr import LRScheduler
 
@@ -254,7 +253,6 @@ class Optimizer:
         # {accum_name : { paramter_name : accumulator_for_parameter, ...}, ...}
         self._accumulators = defaultdict(lambda: dict())
         self.helper = None
-        self.test_lr_and_betapow = True
         self._opti_name_list = []
         self._accumulators_holder = {}
         self._param_device_map = dict()
@@ -358,9 +356,6 @@ class Optimizer:
                 adam.set_state_dict(opti_state_dict)
 
         '''
-
-        self.test_lr_and_betapow = True
-
         if isinstance(self._learning_rate, LRScheduler):
             self._learning_rate.set_state_dict(state_dict["LR_Scheduler"])
 
@@ -457,7 +452,8 @@ class Optimizer:
 
             lr_value = float(self._learning_rate())
             self.helper.set_variable_initializer(
-                lr_var, initializer=Constant(value=lr_value)
+                lr_var,
+                initializer=paddle.nn.initializer.Constant(value=lr_value),
             )
         elif isinstance(self._learning_rate, float):
             # only create global lr_var once
@@ -730,7 +726,10 @@ class Optimizer:
         else:
             with device_guard(device):
                 self.helper.set_variable_initializer(
-                    var, initializer=Constant(value=float(fill_value))
+                    var,
+                    initializer=paddle.nn.initializer.Constant(
+                        value=float(fill_value)
+                    ),
                 )
 
         if framework._non_static_mode():
@@ -836,7 +835,6 @@ class Optimizer:
         if self._use_multi_tensor and self.__class__.__name__ in [
             'Momentum',
             'Adam',
-            'AdamW',
         ]:
             if (
                 len(self._param_dict['FP32_LODTensor'][param_group_idx]) == 0
