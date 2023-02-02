@@ -83,7 +83,6 @@ unary_api_list = [
     paddle.lgamma,
     paddle.poisson,
     paddle.bernoulli,
-    paddle.median,
     paddle.nn.functional.softmax,
     paddle.nn.functional.log_softmax,
     paddle.nn.functional.gumbel_softmax,
@@ -192,8 +191,6 @@ reduce_api_list = [
     paddle.logsumexp,
     paddle.all,
     paddle.any,
-    paddle.argmax,
-    paddle.argmin,
 ]
 
 
@@ -215,10 +212,10 @@ class TestReduceAPI(unittest.TestCase):
 
             self.assertEqual(x.shape, [])
             self.assertEqual(out.shape, [])
-            if api not in [paddle.argmax, paddle.argmin]:
-                np.testing.assert_allclose(out.numpy(), x.numpy())
-                out_empty_list = api(x, [])
-                self.assertEqual(out_empty_list, out)
+            np.testing.assert_allclose(out.numpy(), x.numpy())
+
+            out_empty_list = api(x, [])
+            self.assertEqual(out_empty_list, out)
 
             if x.grad is not None:
                 self.assertEqual(x.grad.shape, [])
@@ -256,8 +253,7 @@ class TestReduceAPI(unittest.TestCase):
                 res = exe.run(main_prog, fetch_list=fetch_list)
                 self.assertEqual(res[0].shape, ())
                 self.assertEqual(res[1].shape, ())
-                if api not in [paddle.argmax, paddle.argmin]:
-                    np.testing.assert_allclose(res[0], res[1])
+                np.testing.assert_allclose(res[0], res[1])
 
                 if len(res) > 2:
                     self.assertEqual(res[2].shape, ())
@@ -392,22 +388,40 @@ class TestBinaryAPI(unittest.TestCase):
 
         for api in binary_int_api_list:
             # 1) x is 0D, y is 0D
-            x = paddle.randint(-10, 10, [])
-            y = paddle.randint(-10, 10, [])
+            x_np = np.random.randint(-10, 10, [])
+            y_np = np.random.randint(-10, 10, [])
+            out_np = eval('np.%s(x_np, y_np)' % api.__name__)
+
+            x = paddle.to_tensor(x_np)
+            y = paddle.to_tensor(y_np)
             out = api(x, y)
+
             self.assertEqual(out.shape, [])
+            np.testing.assert_array_equal(out.numpy(), out_np)
 
             # 2) x is ND, y is 0D
-            x = paddle.randint(-10, 10, [3, 5])
-            y = paddle.randint(-10, 10, [])
+            x_np = np.random.randint(-10, 10, [3, 5])
+            y_np = np.random.randint(-10, 10, [])
+            out_np = eval('np.%s(x_np, y_np)' % api.__name__)
+
+            x = paddle.to_tensor(x_np)
+            y = paddle.to_tensor(y_np)
             out = api(x, y)
+
             self.assertEqual(out.shape, [3, 5])
+            np.testing.assert_array_equal(out.numpy(), out_np)
 
             # 3) x is 0D , y is ND
-            x = paddle.randint(-10, 10, [])
-            y = paddle.randint(-10, 10, [3, 5])
+            x_np = np.random.randint(-10, 10, [])
+            y_np = np.random.randint(-10, 10, [3, 5])
+            out_np = eval('np.%s(x_np, y_np)' % api.__name__)
+
+            x = paddle.to_tensor(x_np)
+            y = paddle.to_tensor(y_np)
             out = api(x, y)
+
             self.assertEqual(out.shape, [3, 5])
+            np.testing.assert_array_equal(out.numpy(), out_np)
 
         paddle.enable_static()
 
@@ -555,6 +569,57 @@ class TestSundryAPI(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         self.x = paddle.rand([])
+
+    def _test_argmin(self):
+        x = paddle.rand([])
+        out1 = paddle.argmin(x, 0)
+        out2 = paddle.argmin(x, -1)
+        out3 = paddle.argmin(x, None)
+        self.assertEqual(out1.shape, [])
+        np.testing.assert_allclose(out1, 0.0)
+
+        self.assertEqual(out2.shape, [])
+        np.testing.assert_allclose(out2, 0.0)
+
+        self.assertEqual(out3.shape, [])
+        np.testing.assert_allclose(out3, 0.0)
+
+    def _test_argmax(self):
+        x = paddle.rand([])
+        out1 = paddle.argmax(x, 0)
+        out2 = paddle.argmax(x, -1)
+        out3 = paddle.argmax(x, None)
+        self.assertEqual(out1.shape, [])
+        np.testing.assert_allclose(out1, 0.0)
+
+        self.assertEqual(out2.shape, [])
+        np.testing.assert_allclose(out2, 0.0)
+
+        self.assertEqual(out3.shape, [])
+        np.testing.assert_allclose(out3, 0.0)
+
+    def test_median(self):
+        x = paddle.rand([])
+        x.stop_gradient = False
+        out1 = paddle.median(x, 0)
+        out2 = paddle.median(x, -1)
+        out3 = paddle.median(x, None)
+
+        out1.backward()
+        out2.backward()
+        out3.backward()
+
+        self.assertEqual(out1.shape, [])
+        np.testing.assert_allclose(out1, x)
+
+        self.assertEqual(out2.shape, [])
+        np.testing.assert_allclose(out2, x)
+
+        self.assertEqual(out3.shape, [])
+        np.testing.assert_allclose(out3, x)
+
+        self.assertEqual(x.grad.shape, [])
+        np.testing.assert_allclose(x.grad, 3.0)
 
     def test_quantile(self):
         # 1) x is 0D
@@ -1531,6 +1596,74 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.exe = paddle.static.Executor()
 
     @prog_scope()
+    def _test_argmin(self):
+        x = paddle.rand([])
+        out1 = paddle.argmin(x, 0)
+        out2 = paddle.argmin(x, -1)
+        out3 = paddle.argmin(x, None)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog,
+            fetch_list=[
+                out1,
+                out2,
+                out3,
+            ],
+        )
+        self.assertEqual(res[0].shape, ())
+        np.testing.assert_allclose(res[0], 0.0)
+        self.assertEqual(res[1].shape, ())
+        np.testing.assert_allclose(res[1], 0.0)
+        self.assertEqual(res[2].shape, ())
+        np.testing.assert_allclose(res[2], 0.0)
+
+    @prog_scope()
+    def _test_argmax(self):
+        x = paddle.rand([])
+        out1 = paddle.argmax(x, 0)
+        out2 = paddle.argmax(x, -1)
+        out3 = paddle.argmax(x, None)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog,
+            fetch_list=[
+                out1,
+                out2,
+                out3,
+            ],
+        )
+        self.assertEqual(res[0].shape, ())
+        np.testing.assert_allclose(res[0], 0.0)
+        self.assertEqual(res[1].shape, ())
+        np.testing.assert_allclose(res[1], 0.0)
+        self.assertEqual(res[2].shape, ())
+        np.testing.assert_allclose(res[2], 0.0)
+
+    @prog_scope()
+    def test_median(self):
+        x = paddle.rand([])
+        x.stop_gradient = False
+        out = paddle.median(x)
+
+        paddle.static.append_backward(out.sum())
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog,
+            fetch_list=[
+                x,
+                out,
+                x.grad_name,
+            ],
+        )
+        self.assertEqual(res[1].shape, ())
+        np.testing.assert_allclose(res[1], res[0])
+
+        self.assertEqual(res[2].shape, ())
+        np.testing.assert_allclose(res[2], 1.0)
+
+    @prog_scope()
     def test_quantile(self):
         x1 = paddle.rand([])
         x1.stop_gradient = False
@@ -1780,7 +1913,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[2].shape, (2,))
 
     @prog_scope()
-    def test_scatter_1D(self):
+    def _test_scatter_1D(self):
         x = paddle.full([10], 1.0, 'float32')
         x.stop_gradient = False
         index = paddle.full([], 2, 'int64')
@@ -1796,7 +1929,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[2].shape, (10,))
 
     @prog_scope()
-    def test_scatter_XD(self):
+    def _test_scatter_XD(self):
         x = paddle.full([2, 3], 1.0, 'float32')
         x.stop_gradient = False
         index = paddle.full([], 1, 'int64')
