@@ -1825,8 +1825,8 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
   virtual void InitGraphResource(void);
   virtual void InitGraphTrainResource(void);
   virtual void DoWalkandSage();
-  virtual void DumpWalkPath(std::string dump_path, size_t dump_rate);
 #endif
+  virtual void DumpWalkPath(std::string dump_path, size_t dump_rate);
 
   float sample_rate_ = 1.0f;
   int use_slot_size_ = 0;
