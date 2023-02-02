@@ -1037,6 +1037,9 @@
   output : Tensor
   infer_meta :
     func : EmbeddingBagInferMeta
+    param : [input, params, weight]
   kernel : 
     func : embedding_bag 
+    param : [input, params, weight, mode]
+    data_type : params
   backward : embedding_bag_grad
