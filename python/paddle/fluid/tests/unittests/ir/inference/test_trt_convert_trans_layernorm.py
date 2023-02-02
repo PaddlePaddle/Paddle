@@ -99,6 +99,7 @@ class TrtConvertTransLayernormTest(TrtLayerAutoScanTest):
                                             "groups": 1,
                                             "paddings": [0, 0],
                                             "strides": [1, 1],
+                                            "data_format": "NCHW",
                                         },
                                     },
                                     {
