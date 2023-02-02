@@ -250,6 +250,18 @@ void EditDistanceInferMeta(const MetaTensor& hyps,
                            MetaTensor* sequencenum,
                            MetaTensor* out);
 
+void FcXPUInferMeta(const MetaTensor& x,
+                    const MetaTensor& w,
+                    const MetaTensor& w_max,
+                    const MetaTensor& bias,
+                    int in_num_col_dims,
+                    bool transpose_x,
+                    float alpha,
+                    float beta,
+                    int act_type,
+                    float act_alpha,
+                    MetaTensor* out);
+
 void GenerateProposalsV2InferMeta(const MetaTensor& scores,
                                   const MetaTensor& bbox_deltas,
                                   const MetaTensor& im_shape,

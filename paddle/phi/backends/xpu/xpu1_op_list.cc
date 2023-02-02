@@ -93,6 +93,7 @@ XPUOpMap& get_kl1_ops() {
                      phi::DataType::BOOL,
                      phi::DataType::FLOAT16,
                      phi::DataType::FLOAT32})},
+      {"fc_xpu", XPUKernelSet({phi::DataType::FLOAT32})},
       {"fill_any_like", XPUKernelSet({phi::DataType::INT64})},
       {"fill_constant",
        XPUKernelSet({phi::DataType::INT32,
