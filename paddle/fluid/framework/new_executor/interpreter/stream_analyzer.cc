@@ -39,7 +39,9 @@ class ContextManager {
   }
 
   std::shared_future<std::unique_ptr<DeviceContext>> Get(
-      const std::string& type, const platform::Place& place) {
+      const std::string& type,
+      const platform::Place& place,
+      int stream_priority) {
     std::lock_guard<std::mutex> lk(ctx_mtx_);
     VLOG(6) << "Get dev_ctx for " << type << " - " << place;
 
@@ -48,7 +50,8 @@ class ContextManager {
       platform::EmplaceDeviceContexts(
           &ctxs,
           {place},
-          /*disable_setting_default_stream_for_allocator=*/true);
+          /*disable_setting_default_stream_for_allocator=*/true,
+          stream_priority);
     }
     return ctxs[place];
   }
@@ -142,6 +145,7 @@ DeviceContext* StreamAnalyzer::ParseDeviceContext(
   auto& op = op_func_node.operator_base_;
   auto& op_type = op->Type();
   const std::string& execution_stream = op_func_node.execution_stream_;
+  const int stream_priority = op_func_node.stream_priority_;
   ContextManager& ctx_manager = ContextManager::Instance();
 
   // only gpu/npu need update. xpu not need, because xpu memcpy op kernel is
@@ -152,15 +156,21 @@ DeviceContext* StreamAnalyzer::ParseDeviceContext(
             << ", execution stream = " << execution_stream;
     if (execution_stream != kDefaultStream) {
       return ctx_manager
-          .Get(std::string(kCustomStream) + "-" + execution_stream, place_)
+          .Get(std::string(kCustomStream) + "-" + execution_stream,
+               place_,
+               stream_priority)
           .get()
           .get();
     }
 
     if (op_type == interpreter::kMemcpyD2H) {
-      return ctx_manager.Get(std::string(kD2HStream), place_).get().get();
+      return ctx_manager.Get(std::string(kD2HStream), place_, stream_priority)
+          .get()
+          .get();
     } else if (op_type == interpreter::kMemcpyH2D) {
-      return ctx_manager.Get(std::string(kH2DStream), place_).get().get();
+      return ctx_manager.Get(std::string(kH2DStream), place_, stream_priority)
+          .get()
+          .get();
     }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
