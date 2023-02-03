@@ -100,6 +100,8 @@ void FakeInitializeOutputs(phi::Kernel* phi_kernel,
                            phi::KernelSignature* kernel_sig,
                            phi::KernelContext* phi_kernel_context);
 
+void SetDeviceCommContext(framework::OperatorBase* operator_base,
+                          platform::DeviceContext* dev_ctx);
 }  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle
