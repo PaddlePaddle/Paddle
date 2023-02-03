@@ -196,7 +196,7 @@ void PSGPUWrapper::add_key_to_gputask(std::shared_ptr<HeterContext> gpu_task) {
   VLOG(1) << "GpuPs task add keys cost " << timeline.ElapsedSec()
           << " seconds.";
   timeline.Start();
-  size_t slot_num = (size_t)slot_num_for_pull_feature_;
+  size_t slot_num = (size_t)slot_num_for_pull_feature_;  // NOLINT
   // no slot_fea mode and whole_hbm mode, only keep one unique_sort action
   if (slot_num > 0 && FLAGS_gpugraph_storage_mode !=
                           paddle::framework::GpuGraphStorageMode::WHOLE_HBM) {
@@ -363,8 +363,7 @@ void PSGPUWrapper::add_slot_feature(std::shared_ptr<HeterContext> gpu_task) {
   // 8卡数据分片
   size_t device_num = heter_devices_.size();
   std::vector<std::thread> threads;
-  size_t slot_num =
-      (size_t)slot_num_for_pull_feature_;  // node slot 9008 in slot_vector
+  size_t slot_num = (size_t)slot_num_for_pull_feature_;  // NOLINT
   auto& local_dim_keys = gpu_task->feature_dim_keys_;  // [shard_num, 0, keys]]
   double divide_nodeid_cost = 0;
   double get_feature_id_cost = 0;
@@ -1402,11 +1401,9 @@ void PSGPUWrapper::build_task() {
 
 void PSGPUWrapper::BeginPass() {
   platform::Timer timer;
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   if (FLAGS_gpugraph_storage_mode == GpuGraphStorageMode::WHOLE_HBM) {
     return;
   }
-#endif
   timer.Start();
   if (current_task_) {
     PADDLE_THROW(
@@ -1432,11 +1429,9 @@ void PSGPUWrapper::BeginPass() {
 }
 
 void PSGPUWrapper::EndPass() {
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   if (FLAGS_gpugraph_storage_mode == GpuGraphStorageMode::WHOLE_HBM) {
     return;
   }
-#endif
   if (current_task_ == nullptr) {
     return;
   }
