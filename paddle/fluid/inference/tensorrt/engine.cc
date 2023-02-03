@@ -344,8 +344,9 @@ void TensorRTEngine::FreezeNetwork() {
         .updateContextMemorySize(infer_engine_->getDeviceMemorySize(),
                                  predictor_id_per_thread);
   }
-
-  GetEngineInfo();
+  if (use_inspector_) {
+    GetEngineInfo();
+  }
 }
 
 nvinfer1::ITensor *TensorRTEngine::DeclareInput(const std::string &name,
@@ -552,8 +553,9 @@ void TensorRTEngine::Deserialize(const std::string &engine_serialized_data) {
         .updateContextMemorySize(infer_engine_->getDeviceMemorySize(),
                                  predictor_id_per_thread);
   }
-
-  GetEngineInfo();
+  if (use_inspector_) {
+    GetEngineInfo();
+  }
 }
 
 void TensorRTEngine::SetRuntimeBatch(size_t batch_size) {
