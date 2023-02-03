@@ -1,0 +1,21 @@
+- name: share_buffer
+  inputs:
+  - {typename: 'Tensor[]', name: x, optional: false, no_need_buffer: false}
+  attrs:
+  - {typename: 'bool[]', name: share_dims_and_dtype, default_value: '{}'}
+  outputs:
+  - {typename: 'Tensor[]', name: out, size: x.size(), intermediate: false}
+  - {typename: 'Tensor[]', name: xout, size: x.size(), intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: ShareBufferInferMeta
+    param: [x, share_dims_and_dtype]
+  kernel:
+    func: [share_buffer]
+    param: [x, share_dims_and_dtype]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {share_buffer: null}
+  inplace: null
+  backward: null
