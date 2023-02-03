@@ -191,6 +191,10 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendPassWithCheck(strategy_.fused_attention_, "fused_attention_pass");
 #endif
 
+#if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 800)
+    AppendPassWithCheck(strategy_.flash_attention_, "flash_attention_pass");
+#endif
+
 #if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060)
     AppendPassWithCheck(strategy_.fuse_gemm_epilogue_,
                         "fuse_gemm_epilogue_pass");
