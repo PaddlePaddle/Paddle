@@ -37,9 +37,7 @@ class FuseAdamWPass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph *graph) const override;
 
-  ir::Graph *FuseAdamWFun(ir::Graph *graph,
-                          bool use_master_param,
-                          bool use_skip_update) const;
+  ir::Graph *FuseAdamWFun(ir::Graph *graph) const;
 };
 
 }  // namespace ir

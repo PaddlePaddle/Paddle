@@ -1726,68 +1726,6 @@ PDNode *patterns::LinearAct::operator()(
   return ele_out_var;
 }
 
-void patterns::AdamWAct::operator()(
-    paddle::framework::ir::PDNode *beta1_pow_var,
-    bool use_master_param,
-    bool use_skip_update) {
-  // these may be used later
-  // auto *beta1_tensor_var =
-  // pattern->NewNode(beta1_tensor_repr())->assert_is_op_input("adamw",
-  // "Beta1Tensor"); auto *beta2_tensor_var =
-  // pattern->NewNode(beta2_tensor_repr())->assert_is_op_input("adamw",
-  // "Beta2Tensor"); auto *epsilon_tensor_var =
-  // pattern->NewNode(epsilon_tensor_repr())->assert_is_op_input("adamw",
-  // "EpsilonTensor");
-  auto *beta2_pow_var = pattern->NewNode(beta2_pow_repr())
-                            ->assert_is_op_input("adamw", "Beta2Pow");
-  auto *grad_var =
-      pattern->NewNode(grad_repr())->assert_is_op_input("adamw", "Grad");
-  auto *learning_rate_var = pattern->NewNode(learning_rate_repr())
-                                ->assert_is_op_input("adamw", "LearningRate");
-  auto *moment1_var =
-      pattern->NewNode(moment1_repr())->assert_is_op_input("adamw", "Moment1");
-  auto *moment2_var =
-      pattern->NewNode(moment2_repr())->assert_is_op_input("adamw", "Moment2");
-  auto *param_var =
-      pattern->NewNode(param_repr())->assert_is_op_input("adamw", "Param");
-  auto *adamw = pattern->NewNode(adamw_repr())->assert_is_op("adamw");
-  auto *beta1_pow_out_var = pattern->NewNode(beta1_pow_out_repr())
-                                ->assert_is_op_output("adamw", "Beta1PowOut");
-  auto *beta2_pow_out_var = pattern->NewNode(beta2_pow_out_repr())
-                                ->assert_is_op_output("adamw", "Beta2PowOut");
-  auto *moment1_out_var = pattern->NewNode(moment1_out_repr())
-                              ->assert_is_op_output("adamw", "Moment1Out");
-  auto *moment2_out_var = pattern->NewNode(moment2_out_repr())
-                              ->assert_is_op_output("adamw", "Moment2Out");
-  auto *param_out_var = pattern->NewNode(param_out_repr())
-                            ->assert_is_op_output("adamw", "ParamOut");
-  std::vector<paddle::framework::ir::PDNode *> link_from = {beta1_pow_var,
-                                                            beta2_pow_var,
-                                                            grad_var,
-                                                            learning_rate_var,
-                                                            moment1_var,
-                                                            moment2_var,
-                                                            param_var};
-
-  if (use_master_param) {
-    auto *master_prarm_var = pattern->NewNode(master_prarm_repr())
-                                 ->assert_is_op_input("adamw", "MasterParam");
-    link_from.push_back(master_prarm_var);
-  }
-
-  if (use_skip_update) {
-    auto *skip_update_var = pattern->NewNode(skip_update_repr())
-                                ->assert_is_op_input("adamw", "SkipUpdate");
-    link_from.push_back(skip_update_var);
-  }
-
-  adamw->LinksFrom(link_from).LinksTo({beta1_pow_out_var,
-                                       beta2_pow_out_var,
-                                       moment1_out_var,
-                                       moment2_out_var,
-                                       param_out_var});
-}
-
 PDNode *patterns::ElewiseAddMatmulAct::operator()(
     paddle::framework::ir::PDNode *dout_var,
     const std::unordered_set<std::string> &act_grad_types,
