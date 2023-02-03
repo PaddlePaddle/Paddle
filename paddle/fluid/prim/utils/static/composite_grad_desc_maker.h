@@ -57,6 +57,8 @@ class CompositeGradOpMakerBase {
         acting_program_(framework::ProgramDesc()),
         grad_block_(grad_block) {
     // TODO(jiabin): This should always execute by one thread...
+    VLOG(6) << "Constructing Composite Grad func for " << fwd_op_.Type()
+            << "_grad ";
     StaticCompositeContext::Instance().SetBlock(
         acting_program_.MutableBlock(0));
   }
@@ -64,6 +66,7 @@ class CompositeGradOpMakerBase {
   virtual ~CompositeGradOpMakerBase() = default;
 
   virtual std::vector<std::unique_ptr<framework::OpDesc>> operator()() {
+    VLOG(3) << "Runing Composite Grad func for " << fwd_op_.Type() << "_grad ";
     this->Apply();
     std::vector<std::unique_ptr<framework::OpDesc>> ops;
     // TODO(jiabin): Support multiple blocks later
