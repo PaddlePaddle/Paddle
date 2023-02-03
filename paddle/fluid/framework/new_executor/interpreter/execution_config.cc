@@ -124,15 +124,22 @@ ExecutionConfig::ExecutionConfig(const phi::Place& place, size_t op_num) {
 }
 
 void ExecutionConfig::Log(int log_level) {
-  VLOG(log_level) << "ExecutionConfig:";
-  VLOG(log_level) << "used_for_jit = " << used_for_jit;
-  VLOG(log_level) << "create_local_scope = " << create_local_scope;
-  VLOG(log_level) << "host_num_threads = " << host_num_threads;
-  VLOG(log_level) << "deivce_num_threads = " << deivce_num_threads;
-  VLOG(log_level) << "skip_gc_vars = ";
+  std::stringstream log_str;
+  log_str << "ExecutionConfig:\n"
+          << "create_local_scope = " << create_local_scope << "\n"
+          << "used_for_jit = " << used_for_jit << "\n"
+          << "used_for_control_flow_op = " << used_for_control_flow_op << "\n"
+          << "used_for_auto_parallel = " << used_for_auto_parallel << "\n"
+          << "host_num_threads = " << host_num_threads << "\n"
+          << "deivce_num_threads = " << deivce_num_threads << "\n";
+
+  log_str << "skip_gc_vars = [";
   for (const std::string& var : skip_gc_vars) {
-    VLOG(log_level) << var;
+    log_str << var << " ";
   }
+  log_str << "]\n";
+
+  VLOG(log_level) << log_str.str();
 }
 
 }  // namespace interpreter

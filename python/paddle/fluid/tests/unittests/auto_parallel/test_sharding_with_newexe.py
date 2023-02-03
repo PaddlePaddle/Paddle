@@ -18,7 +18,7 @@ import sys
 import tempfile
 import unittest
 
-os.environ["FLAGS_add_dependency_for_communication_op"] = 'false'
+os.environ["FLAGS_new_executor_used_for_auto_parallel"] = 'true'
 
 
 class TestShardingWithNewEXE(unittest.TestCase):
