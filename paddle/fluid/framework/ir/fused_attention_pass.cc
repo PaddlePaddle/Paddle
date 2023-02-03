@@ -1334,6 +1334,12 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResBwd(
         "epsilon",
         PADDLE_GET_CONST(
             float, pre_layer_norm_grad_op_node->Op()->GetAttr("epsilon")));
+    // forward op will use default value
+    // but backward op has to set this redundant attr
+    fused_attention_grad_op_desc.SetAttr(
+        "ln_epsilon",
+        PADDLE_GET_CONST(
+            float, pre_layer_norm_grad_op_node->Op()->GetAttr("epsilon")));
     std::vector<int> shape =
         PADDLE_GET_CONST(std::vector<int>,
                          fuse_qkv_reshape_grad_op_node->Op()->GetAttr("shape"));

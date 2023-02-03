@@ -165,6 +165,7 @@ class TestFusedAttentionPass(unittest.TestCase):
         assert ops[9].type == 'sgd'
 
         exe = paddle.static.Executor()
+        exe.run(startup_prog)
         rst = exe.run(
             main_prog,
             feed={'x': x_data, 'attn_mask': mask_data},
