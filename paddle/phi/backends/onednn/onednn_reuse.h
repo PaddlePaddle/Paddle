@@ -1274,7 +1274,7 @@ class BatchNormOneDNNHandler
       flags |= dnnl::normalization_flags::fuse_norm_relu;  // 100
 
     this->AcquireForwardPrimitiveDescriptor(
-        global_stats ? dnnl::prop_kind::forward_scoring
+        global_stats ? dnnl::prop_kind::forward_inference
                      : dnnl::prop_kind::forward_training,
         x->mem_desc(),
         epsilon,
@@ -1573,8 +1573,8 @@ class PoolingOneDNNHandler
     // may be executed by diffrent thread, hence
     // for that one we use key that does not contain TID
     std::string workspace_key = CreateKey(dev_ctx,
-                                          workspace_md.dims(),
-                                          workspace_md.data_type(),
+                                          workspace_md.get_dims(),
+                                          workspace_md.get_data_type(),
                                           unique_name,
                                           "@wrk");
     auto mem_p =
