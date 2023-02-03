@@ -43,8 +43,34 @@ _valid_types = [
 paddle.enable_static()
 
 
-class AutoAlign:
+class AutoAlignTool:
+    """
+    This is an automatic parallel precision alignment tool。
+    """
+
     def __init__(self, program: Program, step=1, fetch_list=None):
+        """Set some initialization information of the tool.
+        step: Step when returning a specific variable name。
+        fetch_list: initialization fetch_list.When a specific step is not reached, return this.
+                 It can combine with Engine class。
+                 example:in Engine.fit function,like this
+                         try:
+                             fetch_list = []
+                             align_tool = AutoAlignTool(self.main_program, 0, fetch_names)
+                             level = 0
+                             fetch_list = align_tool.get_var(level, step)
+                             outs = self._executor.run(
+                                 self.main_program,
+                                 fetch_list=fetch_list,
+                                 use_program_cache=self._strategy.use_cache,
+                                 return_numpy=self._strategy.return_numpy,
+                             )
+                             if fetch_list != fetch_names:
+                                 align_tool.save(dir_path, outs, fetch_list, self._dist_contexts["train"], self.serial)
+                                 exit(0)
+                         except core.EOFException:
+                             break
+        """
         assert isinstance(program, Program)
         self._program = program
         self._blocks = program.blocks
@@ -57,9 +83,9 @@ class AutoAlign:
 
     def get_var(self, level, step):
         """
-        level in [0,1,2,3,4,5]
+        level must be in [0,1,2,3,4,5].
         """
-        if step != self._step and step != -1:
+        if step != self._step or step == -1:
             return self._fetch_list
         if level == 0:
             return self.get_loss_lr_var()
@@ -83,6 +109,9 @@ class AutoAlign:
         assert self._blocks is not None
 
     def get_loss_lr_var(self):
+        """
+        Returns the variable name of learning rate and loss
+        """
         fetch_set = set()
         loss_ops = []
         for block in self._blocks:
@@ -103,13 +132,15 @@ class AutoAlign:
                 if "learning_rate" in var.name:
                     fetch_set.add(var.name)
 
-        assert len(loss_ops) == 1, "num of loss op is not equal to one"
-
-        fetch_set.add(loss_ops[0].output_arg_names[0])
+        for loss_op in loss_ops:
+            fetch_set.add(loss_op.output_arg_names[0])
 
         return list(fetch_set)
 
     def get_data_var(self):
+        """
+        Returns the variable name of data.
+        """
         fetch_set = set()
         for block in self._blocks:
             for varname in block.vars:
@@ -123,6 +154,9 @@ class AutoAlign:
         return list(fetch_set)
 
     def get_param_var(self):
+        """
+        Returns the variable name of parameters.
+        """
         fetch_set = set()
         for block in self._blocks:
             for op in block.ops:
@@ -138,6 +172,9 @@ class AutoAlign:
         return list(fetch_set)
 
     def get_param_grad_var(self):
+        """
+        Returns the variable name of parameters' gradient.
+        """
         fetch_set = set()
         for block in self._blocks:
             for op in block.ops:
@@ -160,6 +197,9 @@ class AutoAlign:
         return list(fetch_set)
 
     def get_forward_tmp_var(self):
+        """
+        Returns the name of the temporary variable in the forward propagation
+        """
         fetch_set = set()
         loss_lr_list = self.get_loss_lr_var()
         for block in self._blocks:
@@ -179,31 +219,43 @@ class AutoAlign:
         return list(fetch_set)
 
     def get_backward_tmp_var(self):
+        """
+        Returns the name of a temporary variable in back-propagation
+        """
         fetch_set = set()
         loss_lr_list = self.get_loss_lr_var()
+        forward_tmp_list = self.get_forward_tmp_var()
         for block in self._blocks:
             for op in block.ops:
-                if is_backward_op(op) is False:
-                    continue
-                for varname in op.input_arg_names + op.output_arg_names:
-                    if varname in loss_lr_list:
-                        continue
-                    if "@GRAD" in varname:
-                        fwd_varname = varname.split("@GRAD")[0]
-                        fwd_var = block._find_var_recursive(fwd_varname)
-                        if fwd_var is not None and fwd_var.type in _valid_types:
-                            if fwd_var.is_parameter:
-                                continue
-                    var = block._find_var_recursive(varname)
-                    if var is None or var.type not in _valid_types:
-                        continue
-                    if var.is_data or var.is_parameter:
-                        continue
-                    fetch_set.add(varname)
+                if is_backward_op(op):
+                    for varname in op.input_arg_names + op.output_arg_names:
+                        if (
+                            varname in loss_lr_list
+                            or varname in forward_tmp_list
+                        ):
+                            continue
+                        if "@GRAD" in varname:
+                            fwd_varname = varname.split("@GRAD")[0]
+                            fwd_var = block._find_var_recursive(fwd_varname)
+                            if (
+                                fwd_var is not None
+                                and fwd_var.type in _valid_types
+                            ):
+                                if fwd_var.is_parameter:
+                                    continue
+                        var = block._find_var_recursive(varname)
+                        if var is None or var.type not in _valid_types:
+                            continue
+                        if var.is_data or var.is_parameter:
+                            continue
+                        fetch_set.add(varname)
 
         return list(fetch_set)
 
     def save(self, save_dir, vars, fetch_list, dist_context=None):
+        """
+        save fetch variables, distributed properties of variables and program.
+        """
         if os.path.exists(save_dir) is False:
             os.mkdir(save_dir)
         if dist_context is None:
@@ -230,7 +282,8 @@ class AutoAlign:
                 if vars[i] is None:
                     continue
                 vars_dict[fetch_list[i]] = vars[i]
-            pickle.dump(vars_dict, open(vars_path, "wb"))
+            with open(vars_path, "wb") as f:
+                pickle.dump(vars_dict, f)
             dist_attr = {}
             for var in self._program.list_vars():
                 if var.name not in fetch_list:
@@ -248,7 +301,8 @@ class AutoAlign:
                     "dims_mapping": dims_mapping,
                 }
             if len(dist_attr) > 0:
-                pickle.dump(dist_attr, open(dist_attr_path, "wb"))
+                with open(dist_attr_path, "wb") as f:
+                    pickle.dump(dist_attr, f)
         if self._program is not None:
             with open(program_path, "wb") as f:
                 f.write(self._program.desc.serialize_to_string())
@@ -265,7 +319,8 @@ class AutoAlign:
             assert os.path.isfile(filepath)
             if "vars" in filename:
                 assert filename.endswith("pkl")
-                vars_list.append(pickle.load(open(filepath, "rb")))
+                with (open(filepath, "rb")) as f:
+                    vars_list.append(pickle.load(f))
             elif "program" in filename:
                 assert filename.endswith("pdmodel")
                 with open(filepath, "rb") as f:
@@ -273,36 +328,37 @@ class AutoAlign:
                 program_list.append(deserialize_program(program_string))
             elif "dist_attr" in filename:
                 assert filename.endswith("pkl")
-                dist_attr_list.append(pickle.load(open(filepath, "rb")))
+                with (open(filepath, "rb")) as f:
+                    dist_attr_list.append(pickle.load(f))
 
         dist_attr_map = dict()
         for dist_attrs in dist_attr_list:
             for dist_attr_name in dist_attrs.keys():
                 if dist_attr_name not in dist_attr_map:
                     dist_attr_map[dist_attr_name] = dist_attrs[dist_attr_name]
-                else:
-                    assert (
-                        dist_attr_map[dist_attr_name]
-                        == dist_attrs[dist_attr_name]
-                    )
         assert len(vars_list) == len(program_list)
         return vars_list, program_list, dist_attr_map
 
     @staticmethod
-    def convert_dist_tensor_2_serial_tensor(vars_list, dist_attr_map):
+    def convert_src_tensor_2_dst_tensor(vars_list, src_attr_map, dst_attr_map):
+        """
+        Converter is a class object for auto parallel to convert tensors from
+        one parallel strategy to another one. Tensors will merge and slice value
+        with their strategy when strategies are different.
+        But like dp to pp or dp to serial is not supported.
+        """
         assert len(vars_list) >= 1
         # if dist_attr_map is None or len(dist_attr_map) == 0 or len(vars_list) == 1:
-        if dist_attr_map is None or len(dist_attr_map) == 0:
+        if src_attr_map is None or len(src_attr_map) == 0:
             return vars_list[0]
 
-        complete_strategys = dict()
-        dist_strategys = dict()
+        dst_strategys = dict()
+        src_strategys = dict()
         tensors_dict = dict()
 
         convert_tensor_dict = None
-        for var_name in dist_attr_map.keys():
-            assert var_name not in tensors_dict
-            assert var_name not in complete_strategys
+        for var_name in src_attr_map.keys():
+            assert var_name not in dst_strategys
             dist_vars = []
             for vars in vars_list:
                 if var_name in vars.keys():
@@ -310,51 +366,64 @@ class AutoAlign:
             if len(dist_vars) == 0:
                 continue
 
-            tensors_dict[var_name] = dist_vars
-            complete_strategys[var_name] = copy.deepcopy(
-                dist_attr_map[var_name]
-            )
-            dist_strategys[var_name] = copy.deepcopy(dist_attr_map[var_name])
-            for i in range(len(complete_strategys[var_name]["dims_mapping"])):
-                complete_strategys[var_name]["dims_mapping"][i] = -1
+            if var_name in dst_attr_map and var_name in src_attr_map:
+                dst_strategys[var_name] = copy.deepcopy(dst_attr_map[var_name])
+                src_strategys[var_name] = copy.deepcopy(src_attr_map[var_name])
+                tensors_dict[var_name] = dist_vars
 
-        converter = Converter(tensors_dict, dist_strategys, complete_strategys)
+        if src_attr_map == dst_attr_map:
+            return tensors_dict
+        converter = Converter(tensors_dict, src_strategys, dst_strategys)
         convert_tensor_dict = converter.convert()
-        for vars in vars_list:
-            for var_name in vars.keys():
-                if var_name not in convert_tensor_dict:
-                    convert_tensor_dict[var_name] = vars[var_name]
 
         return convert_tensor_dict
 
     @staticmethod
-    def find_diff_vars(vars_map1, vars_map2):
-        diff_var_name_list = []
-        for var_name1 in vars_map1.keys():
-            if var_name1 in vars_map2:
-                if not np.allclose(vars_map1[var_name1], vars_map2[var_name1]):
-                    diff_var_name_list.append(var_name1)
+    def find_diff_vars(fixed_vars_map, query_vars_map):
+        """
+        Found two variable names with different variable lists
+        """
+        diff_var_name_list = set()
+        for var_name in fixed_vars_map.keys():
+            if var_name in query_vars_map:
+                fixed_vars = fixed_vars_map[var_name]
+                query_vars = query_vars_map[var_name]
+                if isinstance(fixed_vars, np.ndarray):
+                    fixed_vars = [fixed_vars]
+                if isinstance(query_vars, np.ndarray):
+                    query_vars = [query_vars]
+
+                length = min(len(fixed_vars), len(query_vars))
+                if len(fixed_vars) != len(query_vars):
+                    print()
+                for i in range(length):
+                    if not np.allclose(fixed_vars[i], query_vars[i]):
+                        diff_var_name_list.add(var_name)
         return diff_var_name_list
 
     @staticmethod
     def diff_informations(right_dir, wrong_dir):
+        """
+        Find the corresponding operator according to the variable name.
+        """
         (
             right_vars_list,
             right_program_list,
             right_dist_attr_map,
-        ) = AutoAlign.load(right_dir)
+        ) = AutoAlignTool.load(right_dir)
         (
             wrong_vars_list,
             wrong_program_list,
             wrong_dist_attr_map,
-        ) = AutoAlign.load(wrong_dir)
-        right_tensors_dict = AutoAlign.convert_dist_tensor_2_serial_tensor(
-            right_vars_list, right_dist_attr_map
+        ) = AutoAlignTool.load(wrong_dir)
+        right_tensors_dict = AutoAlignTool.convert_src_tensor_2_dst_tensor(
+            right_vars_list, right_dist_attr_map, right_dist_attr_map
         )
-        wrong_tensors_dict = AutoAlign.convert_dist_tensor_2_serial_tensor(
-            wrong_vars_list, wrong_dist_attr_map
+        wrong_tensors_dict = AutoAlignTool.convert_src_tensor_2_dst_tensor(
+            wrong_vars_list, wrong_dist_attr_map, right_dist_attr_map
         )
-        diff_var_name_list = AutoAlign.find_diff_vars(
+
+        diff_var_name_list = AutoAlignTool.find_diff_vars(
             right_tensors_dict, wrong_tensors_dict
         )
 
@@ -378,85 +447,78 @@ class AutoAlign:
 
         return diff_ops_varname_dict
 
+    @staticmethod
+    def diff_informations_from_dirs(right_dirs, wrong_dirs):
+        right_vars_list = []
+        right_program_list = []
+        right_dist_attr_map = dict()
+        for right_dir in right_dirs:
+            (
+                tmp_vars_list,
+                right_program_list,
+                tmp_dist_attr_map,
+            ) = AutoAlignTool.load(right_dir)
+            if len(right_vars_list) == 0:
+                right_vars_list = tmp_vars_list
+            else:
+                for i in range(len(tmp_vars_list)):
+                    vars_list = tmp_vars_list[i]
+                    for key in vars_list.keys():
+                        if key not in right_vars_list[i].keys():
+                            right_vars_list[i][key] = vars_list[key]
 
-if __name__ == "__main__":
-    # diff_var_name_list = AutoAlign.diff_informations(
-    #     "/workspace/PaddleFleetX/align_tool/serial",
-    #     "/workspace/PaddleFleetX/align_tool/dp2",
-    # )
-    import warnings
+            for key in tmp_dist_attr_map.keys():
+                if key not in right_dist_attr_map:
+                    right_dist_attr_map[key] = tmp_dist_attr_map[key]
 
-    from paddle import fluid, nn, optimizer, static
-    from paddle.vision.datasets import MNIST
+        wrong_vars_list = []
+        wrong_program_list = []
+        wrong_dist_attr_map = dict()
+        for wrong_dir in wrong_dirs:
+            (
+                tmp_vars_list,
+                wrong_program_list,
+                tmp_dist_attr_map,
+            ) = AutoAlignTool.load(wrong_dir)
+            if len(wrong_vars_list) == 0:
+                wrong_vars_list = tmp_vars_list
+            else:
+                for i in range(len(tmp_vars_list)):
+                    vars_list = tmp_vars_list[i]
+                    for key in vars_list.keys():
+                        if key not in wrong_vars_list[i].keys():
+                            wrong_vars_list[i][key] = vars_list[key]
 
-    warnings.filterwarnings("ignore")
-    paddle.enable_static()
-    paddle.set_device("gpu")
+            for key in tmp_dist_attr_map.keys():
+                if key not in wrong_dist_attr_map:
+                    wrong_dist_attr_map[key] = tmp_dist_attr_map[key]
 
-    startup_program = fluid.default_startup_program()
-    main_program = fluid.default_main_program()
-
-    class MnistDataset(MNIST):
-        def __init__(self, mode, return_label=True):
-            super().__init__(mode=mode)
-            self.return_label = return_label
-
-        def __getitem__(self, idx):
-            img = np.reshape(self.images[idx], [1, 28, 28])
-            if self.return_label:
-                return img, np.array(self.labels[idx]).astype('int64')
-            return (img,)
-
-        def __len__(self):
-            return len(self.images)
-
-    dataset = MnistDataset("train")
-    place = paddle.CUDAPlace(0)
-    with fluid.program_guard(main_program, startup_program):
-        inputs = static.data(
-            name="image", shape=[256, 1, 28, 28], dtype="float32"
+        right_tensors_dict = AutoAlignTool.convert_src_tensor_2_dst_tensor(
+            right_vars_list, right_dist_attr_map, right_dist_attr_map
         )
-        labels = static.data(name="label", shape=[256, 1], dtype="int64")
-        z = nn.Conv2D(1, 6, 3, 1, 1).forward(inputs)
-        z = nn.ReLU().forward(x=z)
-        z = nn.MaxPool2D(2, 2).forward(x=z)
-        z = nn.Conv2D(6, 16, 5, 1, 0).forward(x=z)
-        z = nn.ReLU().forward(x=z)
-        z = nn.MaxPool2D(2, 2).forward(x=z)
-        z = nn.Flatten().forward(z)
-        z = static.nn.fc(name="fc1", x=z, size=120)
-        z = static.nn.fc(name="fc2", x=z, size=84)
-        z = static.nn.fc(name="fc3", x=z, size=10)
-        losses = nn.CrossEntropyLoss()(z, labels)
+        wrong_tensors_dict = AutoAlignTool.convert_src_tensor_2_dst_tensor(
+            wrong_vars_list, wrong_dist_attr_map, right_dist_attr_map
+        )
+        diff_var_name_list = AutoAlignTool.find_diff_vars(
+            right_tensors_dict, wrong_tensors_dict
+        )
 
-        optim = optimizer.SGD(0.001)
-        optim.minimize(losses)
+        diff_ops_varname_dict = collections.OrderedDict()
 
-    executor = fluid.Executor()
-    executor.run(startup_program)
+        for program in wrong_program_list:
+            for block in program.blocks:
+                for op in block.ops:
+                    for varname in op.input_arg_names + op.output_arg_names:
+                        if varname in diff_var_name_list:
+                            if len(diff_ops_varname_dict) == 0:
+                                print(
+                                    "first different op:\n",
+                                    op,
+                                    "\ndifferent varname is:{}".format(varname),
+                                )
+                            if op not in diff_ops_varname_dict:
+                                diff_ops_varname_dict[op] = [varname]
+                            else:
+                                diff_ops_varname_dict[op].append(varname)
 
-    align_tool = AutoAlign(main_program, 1, [losses.name])
-
-    for epoch in range(5):
-        images = np.zeros([256, 1, 28, 28], np.float32)
-        labels = np.zeros([256, 1], np.int64)
-        for i, data in enumerate(dataset):
-            images[i % 256] = data[0]
-            labels[i % 256] = data[1]
-            if i % 255 == 0 and i > 0:
-                fetch_list = align_tool.get_var(0, 1)
-                fetch_list = align_tool.get_var(1, 1)
-                fetch_list = align_tool.get_var(2, 1)
-                fetch_list = align_tool.get_var(3, 1)
-                fetch_list = align_tool.get_var(4, 1)
-                fetch_list = align_tool.get_var(5, 1)
-                vars = executor.run(
-                    main_program,
-                    feed={"image": images, "label": labels},
-                    fetch_list=fetch_list,
-                )
-                align_tool.save(
-                    "/workspace/Paddle/save_dir/serial", vars, fetch_list
-                )
-                ans = align_tool.load("/workspace/Paddle/save_dir/serial")
-                print()
+        return diff_ops_varname_dict
