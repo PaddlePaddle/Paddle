@@ -1334,18 +1334,20 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResBwd(
         "epsilon",
         PADDLE_GET_CONST(
             float, pre_layer_norm_grad_op_node->Op()->GetAttr("epsilon")));
-    // forward op will use default value
-    // but backward op has to set this redundant attr
-    fused_attention_grad_op_desc.SetAttr(
-        "ln_epsilon",
-        PADDLE_GET_CONST(
-            float, pre_layer_norm_grad_op_node->Op()->GetAttr("epsilon")));
     std::vector<int> shape =
         PADDLE_GET_CONST(std::vector<int>,
                          fuse_qkv_reshape_grad_op_node->Op()->GetAttr("shape"));
     fused_attention_grad_op_desc.SetAttr("num_heads", shape[2]);
     fused_attention_grad_op_desc.SetAttr("pre_layer_norm", true);
     fused_attention_grad_op_desc.SetAttr("transpose_qkv_wb", true);
+
+    // forward op will use default value
+    // but backward op has to set these redundant attrs
+    fused_attention_grad_op_desc.SetAttr(
+        "ln_epsilon",
+        PADDLE_GET_CONST(
+            float, pre_layer_norm_grad_op_node->Op()->GetAttr("epsilon")));
+    fused_attention_grad_op_desc.SetAttr("ring_id", -1);
 
     GET_IR_NODE_FROM_SUBGRAPH(qkv_matmul_grad_x_grad_node,
                               qkv_matmul_grad_x_grad,
