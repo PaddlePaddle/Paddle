@@ -67,7 +67,6 @@ if(WITH_GPU OR WITH_ROCM)
   op_library(skip_layernorm_op)
   op_library(yolo_box_head_op)
   op_library(yolo_box_post_op)
-  op_library(fused_embedding_eltwise_layernorm_op)
   op_library(fused_embedding_eltwise_layernorm_op DEPS bert_encoder_functor)
   # fusion_group
   if(NOT APPLE AND NOT WIN32)
