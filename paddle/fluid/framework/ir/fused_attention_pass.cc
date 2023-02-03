@@ -1432,6 +1432,63 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResBwd(
     fused_attention_grad_op_desc.SetOutput(
         "X@GRAD", {grad_accumulation_out_node->Name()});
 
+    auto fused_attention_grad_node =
+        g->CreateOpNode(&fused_attention_grad_op_desc);
+
+    IR_NODE_LINK_TO(fused_attention_grad_node, qkv_matmul_grad_x_grad_node);
+    IR_NODE_LINK_TO(fused_attention_grad_node,
+                    out_linear_matmul_grad_x_grad_node);
+    IR_NODE_LINK_TO(fused_attention_grad_node,
+                    pre_layer_norm_grad_bias_grad_node);
+    IR_NODE_LINK_TO(fused_attention_grad_node,
+                    fuse_qkv_matmul_grad_x_grad_node);
+    IR_NODE_LINK_TO(fused_attention_grad_node,
+                    pre_layer_norm_grad_scale_grad_node);
+    IR_NODE_LINK_TO(fused_attention_grad_node,
+                    out_linear_ele_add_grad_bias_grad_node);
+    IR_NODE_LINK_TO(fused_attention_grad_node,
+                    out_linear_ele_add_grad_x_grad_node);
+    IR_NODE_LINK_TO(fused_attention_grad_node,
+                    out_linear_matmul_grad_w_grad_node);
+    IR_NODE_LINK_TO(fused_attention_grad_node, qk_scale_grad_out_node);
+    IR_NODE_LINK_TO(fused_attention_grad_node, qkv_transpose_grad_out_node);
+    IR_NODE_LINK_TO(fused_attention_grad_node,
+                    fuse_qkv_ele_add_grad_bias_grad_node);
+    IR_NODE_LINK_TO(fused_attention_grad_node, fuse_qkv_reshape_grad_out_node);
+    IR_NODE_LINK_TO(fused_attention_grad_node,
+                    fuse_qkv_ele_add_grad_x_grad_node);
+    IR_NODE_LINK_TO(fused_attention_grad_node,
+                    fuse_qkv_matmul_grad_w_grad_node);
+    IR_NODE_LINK_TO(fused_attention_grad_node, attn_dropout_grad_out_node);
+    IR_NODE_LINK_TO(fused_attention_grad_node, qk_softmax_grad_out_node);
+    IR_NODE_LINK_TO(fused_attention_grad_node, fuse_qkv_split_grad_out_node);
+    IR_NODE_LINK_TO(fused_attention_grad_node, grad_accumulation_out_node);
+
+    IR_NODE_LINK_TO(subgraph.at(x), fused_attention_grad_node);
+    IR_NODE_LINK_TO(x_node, fused_attention_grad_node);
+    IR_NODE_LINK_TO(attn_dropout_mask_out_node, fused_attention_grad_node);
+    IR_NODE_LINK_TO(attn_dropout_out_node, fused_attention_grad_node);
+    IR_NODE_LINK_TO(dropout_mask_out_node, fused_attention_grad_node);
+    IR_NODE_LINK_TO(fmha_out_node, fused_attention_grad_node);
+    IR_NODE_LINK_TO(ln_bias_node, fused_attention_grad_node);
+    IR_NODE_LINK_TO(ln_mean_node, fused_attention_grad_node);
+    IR_NODE_LINK_TO(ln_out_node, fused_attention_grad_node);
+    IR_NODE_LINK_TO(ln_scale_node, fused_attention_grad_node);
+    IR_NODE_LINK_TO(ln_variance_node, fused_attention_grad_node);
+    IR_NODE_LINK_TO(out_linear_bias_node, fused_attention_grad_node);
+    IR_NODE_LINK_TO(out_linear_out_node, fused_attention_grad_node);
+    IR_NODE_LINK_TO(out_linear_w_node, fused_attention_grad_node);
+    IR_NODE_LINK_TO(qk_out_node, fused_attention_grad_node);
+    IR_NODE_LINK_TO(qktv_out_node, fused_attention_grad_node);
+    IR_NODE_LINK_TO(qkv_bias_node, fused_attention_grad_node);
+    IR_NODE_LINK_TO(qkv_bias_out_node, fused_attention_grad_node);
+    IR_NODE_LINK_TO(qkv_out_node, fused_attention_grad_node);
+    IR_NODE_LINK_TO(qkv_w_node, fused_attention_grad_node);
+    IR_NODE_LINK_TO(softmax_out_node, fused_attention_grad_node);
+    IR_NODE_LINK_TO(src_mask_node, fused_attention_grad_node);
+    IR_NODE_LINK_TO(src_mask_out_node, fused_attention_grad_node);
+    IR_NODE_LINK_TO(transpose_out_2_node, fused_attention_grad_node);
+
     GraphSafeRemoveNodes(g,
                          {residual_ele_add_grad_op_node,
                           out_linear_dropout_grad_op_node,
