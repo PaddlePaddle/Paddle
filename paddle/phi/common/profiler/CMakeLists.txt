@@ -1,8 +1,7 @@
 proto_library(phi_profiler_proto SRCS profiler.proto)
 
-set(FLUID_PATH ${PADDLE_BINARY_DIR}/python/paddle/fluid)
-
-if(WITH_PYTHON AND EXISTS ${FLUID_PATH})
+if(WITH_PYTHON AND EXISTS ${PADDLE_BINARY_DIR})
+  set(FLUID_PATH ${PADDLE_BINARY_DIR}/python/paddle/fluid)
   py_proto_compile(profiler_py_proto SRCS profiler.proto)
 
   add_custom_target(profiler_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E
