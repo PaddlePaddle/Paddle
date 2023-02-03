@@ -35,6 +35,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_utils.h"
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_GPU_GRAPH)
+#include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
+#endif
 #include "paddle/fluid/platform/timer.h"
 #if defined(PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/ps/table/depends/feature_value.h"
@@ -442,7 +445,8 @@ void PSGPUWrapper::add_slot_feature(std::shared_ptr<HeterContext> gpu_task) {
   std::vector<size_t> feature_list_size(device_num);
 #ifdef PADDLE_WITH_PSCORE
   size_t batch = 40000;
-  size_t slot_num = slot_vector_.size() - 1;  // node slot 9008 in slot_vector
+  size_t slot_num =
+      static_cast(slot_num_for_pull_feature_);  // node slot 9008 in slot_vector
   time_stage.Start();
   if (FLAGS_gpugraph_storage_mode ==
       paddle::framework::GpuGraphStorageMode::MEM_EMB_AND_GPU_GRAPH) {
@@ -1116,7 +1120,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
           };
       threads[j] = std::thread(build_ps_thread, i, j, len, feature_value_size);
     }
-#ifdef PADDLE_WITH_PSCORE
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_GPU_GRAPH)
     // build feature table
     if (slot_num_for_pull_feature_ > 0 &&
         (FLAGS_gpugraph_storage_mode == paddle::framework::GpuGraphStorageMode::
@@ -1549,7 +1553,7 @@ void PSGPUWrapper::HbmToSparseTable() {
 }
 
 void PSGPUWrapper::DumpToMem() {
-#ifdef PADDLE_WITH_PSCORE
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_GPU_GRAPH)
   if (FLAGS_gpugraph_storage_mode == GpuGraphStorageMode::WHOLE_HBM) {
     this->HbmToSparseTable();
   }

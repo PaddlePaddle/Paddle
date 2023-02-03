@@ -36,7 +36,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/thirdparty/round_robin.h"
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/fleet/heter_context.h"
-#ifdef PADDLE_WITH_PSCORE
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_GPU_GRAPH)
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
 #endif
 #include "paddle/fluid/framework/fleet/heter_ps/heter_ps_base.h"
