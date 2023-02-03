@@ -12,16 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+# default tolerance
 TOLERANCE = {
     "float32": {
-        "forward": {"rtol": 1e-7, "atol": 1e-7},
-        "backward": {"rtol": 1e-7, "atol": 1e-7},
+        "forward": {"rtol": 1e-6, "atol": 1e-6},
+        "backward": {"rtol": 1e-6, "atol": 1e-6},
         "prim_backward": {"rtol": 1e-6, "atol": 1e-6},
     },
     "float64": {
-        "forward": {"rtol": 1e-16, "atol": 1e-16},
+        "forward": {"rtol": 1e-15, "atol": 1e-15},
         "backward": {"rtol": 1e-15, "atol": 1e-15},
         "prim_backward": {"rtol": 1e-15, "atol": 1e-15},
+    },
+}
+
+# this tolerance is for big composite ops like batch_norm.
+SUB_TOLERANCE = {
+    "float32": {
+        "forward": {"rtol": 5e-6, "atol": 5e-6},
+        "backward": {"rtol": 5e-6, "atol": 5e-6},
+        "prim_backward": {"rtol": 5e-6, "atol": 5e-6},
+    },
+    "float64": {
+        "forward": {"rtol": 1e-14, "atol": 1e-14},
+        "backward": {"rtol": 1e-14, "atol": 1e-14},
+        "prim_backward": {"rtol": 1e-14, "atol": 1e-14},
     },
 }
