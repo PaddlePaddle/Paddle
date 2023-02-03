@@ -1348,6 +1348,57 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResBwd(
                  GenerateCacheKey(cache_anchor_name, "TransposeOut2", block_id))
              ->Name()});
 
+    fused_attention_grad_op_desc.SetAttr("add_residual", true);
+    fused_attention_grad_op_desc.SetAttr(
+        "attn_dropout_rate",
+        PADDLE_GET_CONST(
+            float, attn_dropout_grad_op_node->Op()->GetAttr("dropout_prob")));
+    fused_attention_grad_op_desc.SetAttr(
+        "is_test",
+        PADDLE_GET_CONST(bool,
+                         attn_dropout_grad_op_node->Op()->GetAttr("is_test")));
+    fused_attention_grad_op_desc.SetAttr(
+        "attn_dropout_fix_seed",
+        PADDLE_GET_CONST(bool,
+                         attn_dropout_grad_op_node->Op()->GetAttr("fix_seed")));
+    fused_attention_grad_op_desc.SetAttr(
+        "attn_dropout_seed",
+        PADDLE_GET_CONST(int,
+                         attn_dropout_grad_op_node->Op()->GetAttr("seed")));
+    fused_attention_grad_op_desc.SetAttr(
+        "attn_dropout_implementation",
+        PADDLE_GET_CONST(std::string,
+                         attn_dropout_grad_op_node->Op()->GetAttr(
+                             "dropout_implementation")));
+    fused_attention_grad_op_desc.SetAttr(
+        "dropout_rate",
+        PADDLE_GET_CONST(
+            float,
+            out_linear_dropout_grad_op_node->Op()->GetAttr("dropout_prob")));
+    fused_attention_grad_op_desc.SetAttr(
+        "dropout_fix_seed",
+        PADDLE_GET_CONST(
+            bool, out_linear_dropout_grad_op_node->Op()->GetAttr("fix_seed")));
+    fused_attention_grad_op_desc.SetAttr(
+        "dropout_seed",
+        PADDLE_GET_CONST(
+            int, out_linear_dropout_grad_op_node->Op()->GetAttr("seed")));
+    fused_attention_grad_op_desc.SetAttr(
+        "dropout_implementation",
+        PADDLE_GET_CONST(std::string,
+                         out_linear_dropout_grad_op_node->Op()->GetAttr(
+                             "dropout_implementation")));
+    fused_attention_grad_op_desc.SetAttr(
+        "epsilon",
+        PADDLE_GET_CONST(
+            float, pre_layer_norm_grad_op_node->Op()->GetAttr("epsilon")));
+    std::vector<int> shape =
+        PADDLE_GET_CONST(std::vector<int>,
+                         fuse_qkv_reshape_grad_op_node->Op()->GetAttr("shape"));
+    fused_attention_grad_op_desc.SetAttr("num_heads", shape[2]);
+    fused_attention_grad_op_desc.SetAttr("pre_layer_norm", true);
+    fused_attention_grad_op_desc.SetAttr("transpose_qkv_wb", true);
+
     GraphSafeRemoveNodes(g,
                          {residual_ele_add_grad_op_node,
                           out_linear_dropout_grad_op_node,
