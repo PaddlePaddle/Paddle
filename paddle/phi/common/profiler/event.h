@@ -18,14 +18,19 @@ limitations under the License. */
 #include <map>
 #include <string>
 #include <utility>
+
+#include "paddle/phi/common/place.h"
+
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
 #endif
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #endif
-#include "paddle/phi/common/place.h"
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/core/cuda_stream.h"
+#endif
 
 namespace phi {
 
