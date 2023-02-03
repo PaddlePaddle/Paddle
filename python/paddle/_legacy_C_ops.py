@@ -19,7 +19,7 @@ __all__ = []
 
 _already_switch_to_eager_ = False
 
-if not framework._in_eager_mode_:
+if not framework.global_var._in_eager_mode_:
     for name in dir(core.ops):
         globals()[name] = getattr(core.ops, name)
         __all__.append(name)
