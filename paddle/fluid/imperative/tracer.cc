@@ -530,7 +530,7 @@ phi::KernelSignature Tracer::GetExpectedKernelSignature(
                         "This op type:`%s` is not a OperatorWithKernel, only "
                         "OperatorWithKernel can get KernelSignature",
                         type));
-  if (phi::KernelFactory::Instance().AllAreStructuredKernel(type)) {
+  if (phi::KernelFactory::Instance().HasStructuredKernel(type)) {
     return phi::KernelSignature(op->Type().c_str());
   } else {
     return phi::KernelSignature(std::move(

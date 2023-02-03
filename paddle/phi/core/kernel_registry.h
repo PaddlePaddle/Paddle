@@ -32,7 +32,7 @@
 namespace phi {
 
 #define BACKEND(arg__) phi::Backend::arg__
-#define _DATALAYOUT(arg__) phi::DataLayout::arg__
+#define DATA_LAYOUT(arg__) phi::DataLayout::arg__
 #define DATATYPE(arg__) phi::DataType::arg__
 
 template <typename Func>
@@ -347,13 +347,8 @@ struct KernelRegistrar {
     std::string kernel_name(kernel_name_cstr);
     KernelKey kernel_key(
         paddle::experimental::StringToBackend(backend_cstr), layout, dtype);
-    KernelRegisteredType kernel_registered_type =
-        KernelRegisteredType::FUNCTION;
-    if (variadic_kernel_fn == nullptr) {
-      kernel_registered_type = KernelRegisteredType::STRUCTURE;
-    }
-    Kernel kernel(kernel_fn, variadic_kernel_fn, kernel_registered_type);
-    if (kernel_registered_type == KernelRegisteredType::FUNCTION) {
+    Kernel kernel(kernel_fn, variadic_kernel_fn);
+    if (kernel.GetKernelRegisteredType() == KernelRegisteredType::FUNCTION) {
       args_parse_fn(kernel_key, kernel.mutable_args_def());
     }
     args_def_fn(kernel_key, &kernel);
@@ -779,7 +774,7 @@ struct KernelRegistrar {
       reg_type,                                                                \
       #kernel_name,                                                            \
       #backend,                                                                \
-      _DATALAYOUT(layout),                                                     \
+      DATA_LAYOUT(layout),                                                     \
       ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),            \
       arg_parse_functor_macro(meta_kernel_fn, cpp_dtype, context),             \
       args_def_fn,                                                             \
@@ -1359,7 +1354,7 @@ struct KernelRegistrar {
           reg_type,                                                         \
           #kernel_name,                                                     \
           #backend,                                                         \
-          _DATALAYOUT(layout),                                              \
+          DATA_LAYOUT(layout),                                              \
           ::phi::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,       \
           &__PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout,    \
           PHI_KERNEL(kernel_fn),                                            \
@@ -1379,7 +1374,7 @@ struct KernelRegistrar {
           reg_type,                                                         \
           #kernel_name,                                                     \
           #backend,                                                         \
-          _DATALAYOUT(layout),                                              \
+          DATA_LAYOUT(layout),                                              \
           ::phi::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,       \
           &__PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout,    \
           PHI_KERNEL(kernel_fn),                                            \

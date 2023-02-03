@@ -273,7 +273,7 @@ PreparedOp PrepareImpl(
     kernel_signature = (*arg_map_fn)(
         framework::ExecutionArgumentMappingContext(dygraph_exe_ctx));
   } else {
-    if (phi::KernelFactory::Instance().AllAreStructuredKernel(op.Type())) {
+    if (phi::KernelFactory::Instance().HasStructuredKernel(op.Type())) {
       has_phi_kernel = true;
       kernel_signature = phi::KernelSignature(op.Type().c_str());
     } else {

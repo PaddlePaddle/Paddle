@@ -1689,7 +1689,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   std::string phi_kernel_name;
   if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(type_)) {
     if (kernel_signature_ == nullptr || phi_kernel_ == nullptr) {
-      if (phi::KernelFactory::Instance().AllAreStructuredKernel(type_)) {
+      if (phi::KernelFactory::Instance().HasStructuredKernel(type_)) {
         kernel_signature_.reset(new phi::KernelSignature(type_.c_str()));
       } else {
         kernel_signature_.reset(new phi::KernelSignature(
@@ -2156,7 +2156,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 phi::KernelKey OperatorWithKernel::ChoosePhiKernel(
     const ExecutionContext& ctx) const {
   std::string phi_kernel_name;
-  if (phi::KernelFactory::Instance().AllAreStructuredKernel(type_)) {
+  if (phi::KernelFactory::Instance().HasStructuredKernel(type_)) {
     kernel_signature_.reset(new phi::KernelSignature(type_.c_str()));
   } else {
     kernel_signature_.reset(

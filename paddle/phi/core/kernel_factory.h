@@ -245,13 +245,14 @@ class Kernel {
   // for map element construct
   Kernel() = default;
 
-  explicit Kernel(KernelFn fn,
-                  void* variadic_fn,
-                  KernelRegisteredType kernel_registered_type =
-                      KernelRegisteredType::FUNCTION)
-      : fn_(fn),
-        variadic_fn_(variadic_fn),
-        kernel_registered_type_(kernel_registered_type) {}
+  explicit Kernel(KernelFn fn, void* variadic_fn)
+      : fn_(fn), variadic_fn_(variadic_fn) {
+    if (variadic_fn == nullptr) {
+      kernel_registered_type_ = KernelRegisteredType::STRUCTURE;
+    } else {
+      kernel_registered_type_ = KernelRegisteredType::FUNCTION;
+    }
+  }
 
   void operator()(KernelContext* ctx) const { fn_(ctx); }
 
@@ -316,7 +317,7 @@ class KernelFactory {
 
   bool HasCompatiblePhiKernel(const std::string& op_type) const;
 
-  bool AllAreStructuredKernel(const std::string& op_type) const;
+  bool HasStructuredKernel(const std::string& op_type) const;
 
   KernelResult SelectKernelOrThrowError(const std::string& kernel_name,
                                         const KernelKey& kernel_key) const;
