@@ -158,10 +158,6 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
       transpose_bias_v2(
           bias_data_tmp.data(), bias_data, bias_length, head_number, head_size);
 
-      nvinfer1::Weights bias{nvinfer1::DataType::kFLOAT,
-                             static_cast<void*>(bias_data),
-                             static_cast<int32_t>(bias_t->numel())};
-
       auto weight_shape = nvinfer1::Dims3{1, n, hidden_in};
       auto* weight_tensor = AddConstantLayer(weight_data, weight_shape, " ");
       auto bias_shape = nvinfer1::Dims3{1, bias_length, n};

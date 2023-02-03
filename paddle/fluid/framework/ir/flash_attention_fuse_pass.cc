@@ -69,6 +69,43 @@
   GET_IR_NODE(transposeC1_op);     \
   GET_IR_NODE(transposeC1_out);
 
+// fuse struct
+//            input
+//              |
+//       |      |       |
+//     element element  |
+//       |      |       |
+//       |q     k       v
+//       |      |       |
+//    matmul  matmul  matmul
+//       |      |       |
+//     element element element
+//       |      |       |
+//    reshape reshape reshape
+//       |      |       |
+//     trans   trans   trans
+//       |(x)   |(y)    |
+//        matmul        |
+//          |           |
+//        scale         |(y)
+//          |           |
+//        softmax       |
+//          |------matmul
+//            (x)     |
+//                  trans
+//                    |
+//                  reshape
+//                    |
+//                   output
+//
+// -> fused to
+//
+//     input
+//       |
+//    flash_multihead_matmul
+//       |
+//     output
+
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -91,6 +128,8 @@ bool IsScale(OpDesc* const op_ptr,
 }
 
 // Naive gemm.
+// A=[M,K], B=[K,N], C=[M, N]
+// C = A * B + C
 template <typename T>
 void NaiveGemm(const T* A, const T* B, T* C, int M, int N, int K) {
   for (int i = 0; i < M; i++) {
@@ -102,7 +141,9 @@ void NaiveGemm(const T* A, const T* B, T* C, int M, int N, int K) {
   }
 }
 
-// B need to broadcast. A=[M,N], B=[N]
+// B need to broadcast.
+// A=[M,N], B=[N]
+// A = A + B
 template <typename T>
 void ElementAdd(T* A, T* B, int M, int N) {
   for (int i = 0; i < M; i++) {
@@ -251,6 +292,15 @@ void FlashAttentionFusePass::ApplyImpl(ir::Graph* graph) const {
   const std::string pattern_name = "flash_attention_fuse";
   FusePassBase::Init(pattern_name, graph);
   auto* scope = param_scope();
+
+  auto trt_version = paddle::inference::tensorrt::GetTrtRuntimeVersion();
+  if (std::get<0>(trt_version) * 1000 + std::get<1>(trt_version) * 100 +
+          std::get<2>(trt_version) * 10 <
+      8520) {
+    VLOG(3) << "Flash attention oss plugin only available for trt version >= "
+               "8.5.2.2. Stop this pass";
+    return;
+  }
 
   // pattern
   std::unordered_set<std::string> matmul_ops{"matmul", "matmul_v2"};
