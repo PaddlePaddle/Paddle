@@ -19,12 +19,13 @@ limitations under the License. */
 #include "cuda.h"  // NOLINT
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/gpu_timer.h"
+#endif
 
 namespace phi {
 
+#if CUDA_VERSION >= 11060
 enum MatmulImplType { kImplWithCublas = 1, kImplWithCublasLt = 2 };
 
-#if CUDA_VERSION >= 11060
 template <typename T, class Enable = void>
 struct MatmulCalculationClassifier {
   void operator()(cudaDataType_t* mat_type,
@@ -161,19 +162,10 @@ struct MatmulDescCreator {
                       cublasLtMatrixLayout_t* x_desc,
                       cublasLtMatrixLayout_t* y_desc,
                       cublasLtMatrixLayout_t* out_desc) {
-    if (*y_desc) {
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutDestroy(*y_desc));
-    }
-    if (*x_desc) {
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutDestroy(*x_desc));
-    }
-    if (*out_desc) {
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          dynload::cublasLtMatrixLayoutDestroy(*out_desc));
-    }
-    if (*op_desc) {
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmulDescDestroy(*op_desc));
-    }
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutDestroy(*y_desc));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutDestroy(*x_desc));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutDestroy(*out_desc));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmulDescDestroy(*op_desc));
   }
 };
 
@@ -295,7 +287,6 @@ struct MatmulWithCublasLt<phi::GPUContext, T> {
       int64_t stride_y,
       int64_t stride_out,
       phi::autotune::MatmulCacheKey* matmul_key = nullptr) {
-    // cublasLtHandle_t lt_handle = ctx.cublaslt_handle();
     cublasLtMatmulDesc_t op_desc = NULL;
     cublasLtMatrixLayout_t x_desc = NULL, y_desc = NULL, out_desc = NULL;
     cublasOperation_t transx = trans_x ? CUBLAS_OP_T : CUBLAS_OP_N;
@@ -306,10 +297,9 @@ struct MatmulWithCublasLt<phi::GPUContext, T> {
     cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
 
     void *alpha = nullptr, *beta = nullptr;
-    constexpr double alpha64 = static_cast<double>(1.0);
-    constexpr double beta64 = static_cast<double>(0.0);
-    constexpr float alpha32 = 1.0f;
-    constexpr float beta32 = 0.0f;
+    double alpha64 = static_cast<double>(1.0);
+    double beta64 = static_cast<double>(0.0);
+    float alpha32 = 1.0f, beta32 = 0.0f;
     if (std::is_same<T, double>::value) {
       alpha = &alpha64;
       alpha = &beta64;
@@ -425,10 +415,6 @@ struct MatmulWithCublasLt<phi::GPUContext, T> {
       }
     }
 
-    // for (int i = 0; i < 8; ++i) {
-    //   printf("[%s, %d] elementwise[%d] = %d\n", __func__, __LINE__, i,
-    //   (*best_algo).data[i]);
-    // }
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmul(
         lt_handle,
         op_desc,
@@ -525,8 +511,6 @@ struct MatmulWithCublasLt<phi::GPUContext, T> {
         }
       }
       float time_cnt = (cur_time / (repeats - 1));
-      // std::cout << "Time cost of cublaslt algo [" << algo_idx << "] is :" <<
-      // time_cnt << std::endl;
       VLOG(4) << "Time cost in MatmulWithCublaslt algo[" << algo_idx << "]"
               << "is : " << time_cnt << " s";
 
@@ -535,14 +519,8 @@ struct MatmulWithCublasLt<phi::GPUContext, T> {
         min_time_cost = cur_time;
       }
     }
-    // std::cout << "Best_algo_idx is : " << best_algo_idx << std::endl <<
-    // std::endl;
     VLOG(4) << "Best_algo_idx in MatmulWithCublaslt is : " << best_algo_idx;
 
-    // for (int i = 0; i < 8; ++i) {
-    //   printf("[%s, %d] elementwise[%d] = %d\n", __func__, __LINE__, i,
-    //   heuristic_results[best_algo_idx].algo);
-    // }
     *best_algo = heuristic_results[best_algo_idx].algo;
     PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cublasLtMatmulPreferenceDestroy(preference));
@@ -551,4 +529,3 @@ struct MatmulWithCublasLt<phi::GPUContext, T> {
 #endif  // CUDA_VERSION >= 11060
 
 }  // namespace phi
-#endif  // #ifdef PADDLE_WITH_CUDA
