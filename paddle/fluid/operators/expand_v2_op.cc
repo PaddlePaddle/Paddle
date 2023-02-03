@@ -206,7 +206,7 @@ class ExpandV2CompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     auto shape = this->Attr<std::vector<int>>("shape");
     prim::expand_grad<prim::DescTensor>(
         x, out_grad, paddle::experimental::IntArray(shape), x_grad_p);
-    VLOG(3) << "Runing expand_v2 composite func";
+    VLOG(6) << "Runing expand_v2 composite func";
     this->RecoverOutputName(x_grad, x_grad_name);
   }
 };

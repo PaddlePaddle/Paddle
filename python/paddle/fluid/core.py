@@ -306,6 +306,8 @@ try:
     from .libpaddle import _Profiler, _ProfilerResult, _RecordEvent
     from .libpaddle import _set_current_stream
     from .libpaddle import _get_phi_kernel_name
+    from .libpaddle import _add_skip_comp_ops
+    from .libpaddle import _remove_skip_comp_ops
 
     # prim controller flags
     from .libpaddle import __set_bwd_prim_enabled
