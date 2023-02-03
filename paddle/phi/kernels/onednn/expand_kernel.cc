@@ -49,13 +49,15 @@ void ExpandKernel(const Context& dev_ctx,
   }
 
   out->Resize(make_ddim(out_new_dims));
+  const float scale_0 = 0.0f;
+  const float scale_1 = 0.0f;
   funcs::BroadcastDataOneDNNHandler<T> handler(dnnl::algorithm::binary_add,
                                                onednn_engine,
                                                dev_ctx.GetPlace(),
                                                &x,
                                                out,
-                                               0.0f,
-                                               1.0f,
+                                               scale_0,
+                                               scale_1,
                                                x_vec_dims);
 
   auto src_memory_p = handler.AcquireSrcMemory(&x);
@@ -65,7 +67,11 @@ void ExpandKernel(const Context& dev_ctx,
   const std::unordered_map<int, dnnl::memory> args = {
       {DNNL_ARG_SRC_0, *dst_memory_p},
       {DNNL_ARG_SRC_1, *src_memory_p},
-      {DNNL_ARG_DST, *dst_memory_p}};
+      {DNNL_ARG_DST, *dst_memory_p},
+      {DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC_0,
+       handler.Get_Scale_Memory(scale_0)},
+      {DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC_1,
+       handler.Get_Scale_Memory(scale_1)}};
 
   auto& astream = OneDNNContext::tls().get_stream();
   binary_p->execute(astream, args);

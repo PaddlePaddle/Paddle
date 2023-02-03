@@ -139,7 +139,11 @@ void ReduceGradKernel(const Context& dev_ctx,
   const std::unordered_map<int, dnnl::memory> args = {
       {DNNL_ARG_SRC_0, *dst_memory_p},
       {DNNL_ARG_SRC_1, *src_memory_p},
-      {DNNL_ARG_DST, *dst_memory_p}};
+      {DNNL_ARG_DST, *dst_memory_p},
+      {DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC_0,
+       handler.Get_Scale_Memory(scale_x)},
+      {DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC_1,
+       handler.Get_Scale_Memory(scale_y)}};
 
   auto& astream = OneDNNContext::tls().get_stream();
   binary_prim->execute(astream, args);

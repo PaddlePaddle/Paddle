@@ -1037,6 +1037,7 @@ class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
                                             to_void_cast<T>(input_data));
   }
 
+  // TODO(jczaja): make single function
   dnnl::memory Get_SRC_0_Scale_Memory() {
     std::vector<float> scales(1, scale_0_);
     auto scale_md = dnnl::memory::desc(
@@ -1110,8 +1111,8 @@ class BroadcastDataOneDNNHandler
     const auto src1_md = x->mem_desc().reshape(extended_x_dims);
 
     dnnl::primitive_attr attributes;
-    attributes.set_scales(DNNL_ARG_SRC_0, 0, {scale_x});
-    attributes.set_scales(DNNL_ARG_SRC_1, 0, {scale_y});
+    attributes.set_scales_mask(DNNL_ARG_SRC_0, 0);
+    attributes.set_scales_mask(DNNL_ARG_SRC_1, 0);
 
     this->AcquireForwardPrimitiveDescriptor(
         attributes, algo, src0_md, src1_md, src0_md);
@@ -1123,6 +1124,13 @@ class BroadcastDataOneDNNHandler
                                           this->fwd_pd_->dst_desc().get_size());
     memset(ptr, 0, this->fwd_pd_->dst_desc().get_size());
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
+  }
+
+  inline dnnl::memory Get_Scale_Memory(float scale_value) {
+    std::vector<float> scales(1, scale_value);
+    auto scale_md = dnnl::memory::desc(
+        {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
+    return dnnl::memory(scale_md, this->engine_, scales.data());
   }
 };
 
