@@ -410,13 +410,22 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         # Note(zhangbo): shm_buffer_size is used for MemoryMapAllocationPool.
         # MemoryMapAllocationPool is used to cache and reuse shm, thus reducing munmap in dataloader.
         # For more details, please see: paddle/fluid/memory/allocation/mmap_allocator.h
-        try:
-            self._worker_shm_buffer_size = (2 + 1) * len(self._dataset[0])
-        except:
+        if os.environ.get('FLAGS_use_shm_cache', False) in [
+            1,
+            '1',
+            True,
+            'True',
+            'true',
+        ]:
+            try:
+                self._worker_shm_buffer_size = (2 + 1) * len(self._dataset[0])
+            except:
+                self._worker_shm_buffer_size = 0
+                warnings.warn(
+                    "Setting the shm cache buffer size to 0, equivalent to not using the shm cache policy."
+                )
+        else:
             self._worker_shm_buffer_size = 0
-            warnings.warn(
-                "Setting the shm cache buffer size to 0, equivalent to not using the shm cache policy."
-            )
         self._main_thread_shm_buffer_size = (
             (self._worker_shm_buffer_size) * 2 * self._num_workers
         )
