@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/backward.h"
@@ -129,6 +130,50 @@ class GatherGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());
+  }
+};
+
+template <typename T>
+class GatherGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("gather_grad");
+    op->SetInput("Index", this->Input("Index"));
+    op->SetInput("Axis", this->Input("Axis"));
+
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
+  }
+};
+
+class GatherCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+ public:
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ protected:
+  void Apply() const override {
+    paddle::experimental::Tensor index = this->GetSingleForwardInput("Index");
+    paddle::optional<paddle::experimental::Tensor> tensor_axis =
+        this->GetOptionalSingleForwardInput("Axis");
+    paddle::experimental::Tensor x = this->GetSingleForwardInput("X");
+    paddle::experimental::Tensor dout = this->GetSingleOutputGrad("Out");
+    paddle::experimental::Tensor dx = this->GetSingleInputGrad("X");
+    auto* dx_ptr = this->GetOutputPtr(&dx);
+    std::string dx_name = this->GetOutputName(&dx_ptr);
+    int axis = static_cast<int>(this->Attr<int>("axis"));
+    VLOG(3) << "Runing gather_grad composite func";
+    if (tensor_axis.is_initialized()) {
+      prim::gather_grad<prim::DescTensor>(
+          x, index, dout, tensor_axis, false, dx_ptr);
+    } else {
+      prim::gather_grad<prim::DescTensor>(x, index, dout, axis, false, dx_ptr);
+    }
+    this->RecoverOutputName(dx, dx_name);
   }
 };
 

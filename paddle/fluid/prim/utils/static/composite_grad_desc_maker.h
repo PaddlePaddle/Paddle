@@ -106,34 +106,40 @@ class CompositeGradOpMakerBase {
   paddle::optional<paddle::experimental::Tensor> GetOptionalSingleForwardOutput(
       const std::string& name) {
     paddle::optional<paddle::experimental::Tensor> output_opt;
-    framework::VarDesc* output_desc = this->SingleForwardOutput(name);
-    if (!output_desc) return output_opt;
-    paddle::experimental::Tensor output =
-        paddle::experimental::Tensor(std::make_shared<DescTensor>(output_desc));
-    output_opt = paddle::make_optional<paddle::experimental::Tensor>(output);
+    if (fwd_op_.Outputs().find(name) != fwd_op_.Outputs().end()) {
+      framework::VarDesc* output_desc = this->SingleForwardOutput(name);
+      if (!output_desc) return output_opt;
+      paddle::experimental::Tensor output = paddle::experimental::Tensor(
+          std::make_shared<DescTensor>(output_desc));
+      output_opt = paddle::make_optional<paddle::experimental::Tensor>(output);
+    }
     return output_opt;
   }
 
   paddle::optional<paddle::experimental::Tensor> GetOptionalSingleForwardInput(
       const std::string& name) {
     paddle::optional<paddle::experimental::Tensor> input_opt;
-    framework::VarDesc* input_desc = this->SingleForwardInput(name);
-    if (!input_desc) return input_opt;
-    paddle::experimental::Tensor input =
-        paddle::experimental::Tensor(std::make_shared<DescTensor>(input_desc));
-    input_opt = paddle::make_optional<paddle::experimental::Tensor>(input);
+    if (fwd_op_.Inputs().find(name) != fwd_op_.Inputs().end()) {
+      framework::VarDesc* input_desc = this->SingleForwardInput(name);
+      if (!input_desc) return input_opt;
+      paddle::experimental::Tensor input = paddle::experimental::Tensor(
+          std::make_shared<DescTensor>(input_desc));
+      input_opt = paddle::make_optional<paddle::experimental::Tensor>(input);
+    }
     return input_opt;
   }
 
   paddle::optional<paddle::experimental::Tensor> GetOptionalSingleOutputGrad(
       const std::string& name) {
     paddle::optional<paddle::experimental::Tensor> output_grad_opt;
-    framework::VarDesc* output_grad_desc = this->SingleOutputGrad(name);
-    if (!output_grad_desc) return output_grad_opt;
-    paddle::experimental::Tensor output_grad = paddle::experimental::Tensor(
-        std::make_shared<DescTensor>(output_grad_desc));
-    output_grad_opt =
-        paddle::make_optional<paddle::experimental::Tensor>(output_grad);
+    if (fwd_op_.Outputs().find(name) != fwd_op_.Outputs().end()) {
+      framework::VarDesc* output_grad_desc = this->SingleOutputGrad(name);
+      if (!output_grad_desc) return output_grad_opt;
+      paddle::experimental::Tensor output_grad = paddle::experimental::Tensor(
+          std::make_shared<DescTensor>(output_grad_desc));
+      output_grad_opt =
+          paddle::make_optional<paddle::experimental::Tensor>(output_grad);
+    }
     return output_grad_opt;
   }
 
@@ -449,16 +455,44 @@ class CompositeGradOpMakerBase {
 
   framework::VarDesc* SingleForwardInput(const std::string& name) const {
     // Copy Var from original block to active block, or create a new one.
-    CopyVarFromOrig(fwd_op_.Input(name).at(0));
-    return StaticCompositeContext::Instance().GetBlock()->FindVar(
-        fwd_op_.Input(name).at(0));
+    auto fwd_in_names = fwd_op.Input(name);
+    if (!fwd_in_names.empty()) {
+      PADDLE_ENFORCE_EQ(
+          fwd_in_names.size(),
+          1,
+          phi::errors::InvalidArgument(
+              "When calling SingleForward for op: %s's Input: %s, we should "
+              "only get one input tensor, but we got %d instead.",
+              fwd_op.Type(),
+              name,
+              fwd_in_names.size()));
+      CopyVarFromOrig(fwd_op_.Input(name).at(0));
+      return StaticCompositeContext::Instance().GetBlock()->FindVar(
+          fwd_op_.Input(name).at(0));
+    } else {
+      return nullptr;
+    }
   }
 
   framework::VarDesc* SingleForwardOutput(const std::string& name) const {
     // Copy Var from original block to active block, or create a new one.
-    CopyVarFromOrig(fwd_op_.Output(name).at(0));
-    return StaticCompositeContext::Instance().GetBlock()->FindVar(
-        fwd_op_.Output(name).at(0));
+    auto fwd_out_names = fwd_op.Output(name);
+    if (!fwd_out_names.empty()) {
+      PADDLE_ENFORCE_EQ(
+          fwd_out_names.size(),
+          1,
+          phi::errors::InvalidArgument(
+              "When calling SingleForward for op: %s's Output: %s, we should "
+              "only get one input tensor, but we got %d instead.",
+              fwd_op.Type(),
+              name,
+              fwd_out_names.size()));
+      CopyVarFromOrig(fwd_op_.Output(name).at(0));
+      return StaticCompositeContext::Instance().GetBlock()->FindVar(
+          fwd_op_.Output(name).at(0));
+    } else {
+      return nullptr;
+    }
   }
 
   std::vector<framework::VarDesc*> MultiForwardInput(

@@ -25,6 +25,7 @@ white_ops_list = [
     "divide",
     "sum",
     "exp",
+    "scatter",
 ]
 
 inplace_out_type_map = {
