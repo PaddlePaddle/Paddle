@@ -1394,3 +1394,11 @@
   kernel :
     func : where
   backward : where_grad
+
+- op : broadcast
+  args : (Tensor X, int ring_id = 0, int root = 0, bool use_calc_stream = false)
+  output : Tensor(Out)
+  infer_meta :
+    func : BroadcastInferMeta
+  kernel :
+    func : broadcast

@@ -98,7 +98,7 @@ class BKCLBroadcastOpKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_XPU_KERNEL(broadcast,
+REGISTER_OP_XPU_KERNEL(broadcast_v1,
                        ops::BKCLBroadcastOpKernel<float>,
                        ops::BKCLBroadcastOpKernel<double>,
                        ops::BKCLBroadcastOpKernel<int>,

@@ -77,6 +77,8 @@ set(COMMON_KERNEL_DEPS
     phi_data_layout_transform
     gpc
     utf8proc
+    nccl_comm_context
+    gloo_comm_context
     gather_scatter_functor)
 
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group)

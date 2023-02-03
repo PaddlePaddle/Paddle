@@ -72,11 +72,11 @@ class BroadcastOpKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_WITHOUT_GRADIENT(broadcast,
+REGISTER_OP_WITHOUT_GRADIENT(broadcast_v1,
                              ops::BroadcastOp,
                              ops::BroadcastOpMaker);
 
-REGISTER_OP_CPU_KERNEL(broadcast,
+REGISTER_OP_CPU_KERNEL(broadcast_v1,
                        ops::BroadcastOpKernel<float>,
                        ops::BroadcastOpKernel<double>,
                        ops::BroadcastOpKernel<int>,

@@ -20,6 +20,8 @@
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
 
 namespace paddle {
 namespace framework {
@@ -147,6 +149,9 @@ DeviceContext* StreamAnalyzer::ParseDeviceContext(
   const std::string& execution_stream = op_func_node.execution_stream_;
   const int stream_priority = op_func_node.stream_priority_;
   ContextManager& ctx_manager = ContextManager::Instance();
+
+  auto dev_ctx = ctx_manager.Get(op_type, place_, stream_priority).get().get();
+  SetDeviceCommContext(op.get(), dev_ctx);
 
   // only gpu/npu need update. xpu not need, because xpu memcpy op kernel is
   // synchronous.

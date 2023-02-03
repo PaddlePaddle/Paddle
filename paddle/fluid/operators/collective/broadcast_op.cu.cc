@@ -82,7 +82,7 @@ class NCCLBroadcastOpKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(broadcast,
+REGISTER_OP_CUDA_KERNEL(broadcast_v1,
                         ops::NCCLBroadcastOpKernel<float>,
                         ops::NCCLBroadcastOpKernel<double>,
                         ops::NCCLBroadcastOpKernel<int>,

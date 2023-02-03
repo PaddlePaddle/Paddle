@@ -63,6 +63,12 @@ void BatchSizeLikeInferMeta(const MetaTensor& x,
                             int out_batch_size_dim,
                             MetaTensor* out);
 
+void BroadcastInferMeta(const MetaTensor& x,
+                        int ring_id,
+                        int root,
+                        bool use_calc_stream,
+                        MetaTensor* out);
+
 void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out);
 
 void ChannelShuffleInferMeta(const MetaTensor& x,
