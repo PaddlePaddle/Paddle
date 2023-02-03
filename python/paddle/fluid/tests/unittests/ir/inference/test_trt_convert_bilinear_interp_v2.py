@@ -144,10 +144,15 @@ class TrtConvertBilinearInterpV2Test1(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def generate_input1(attrs: List[Dict[str, Any]]):
-            return np.random.random([1, 258, 40, 40]).astype(np.float32)
+            return np.random.random(attrs[0]['input_size']).astype(np.float32)
 
         for data_layout in ["NCHW", "NHWC"]:
-            for scale, out_h, out_w in [([], 24, 24), ([2.0, 2.0], -1, -1)]:
+            for input_size, scale, out_h, out_w in [
+                ([1, 258, 40, 40], [], 24, 24),
+                ([1, 258, 40, 40], [2.0, 2.0], -1, -1),
+                ([1, 256, 160, 160], [0.5, 0.5], -1, -1),
+                ([1, 258, 20, 20], [], 16, 16),
+            ]:
                 dics = [
                     {
                         "data_layout": data_layout,
@@ -157,6 +162,8 @@ class TrtConvertBilinearInterpV2Test1(TrtLayerAutoScanTest):
                         "scale": scale,
                         "out_h": out_h,
                         "out_w": out_w,
+                        # below attrs are used just for unitest, not used by inference
+                        "input_size": input_size,
                     }
                 ]
 
@@ -192,13 +199,14 @@ class TrtConvertBilinearInterpV2Test1(TrtLayerAutoScanTest):
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
-                "input_data": [1, 258, 40, 40]
+                "input_data": attrs[0]['input_size']
             }
             self.dynamic_shape.max_input_shape = {
-                "input_data": [1, 258, 40, 40]
+                "input_data": [attrs[0]['input_size'][0] + 2]
+                + attrs[0]['input_size'][1:4]
             }
             self.dynamic_shape.opt_input_shape = {
-                "input_data": [1, 258, 40, 40]
+                "input_data": attrs[0]['input_size']
             }
 
         def clear_dynamic_shape():
