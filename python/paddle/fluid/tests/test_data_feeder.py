@@ -22,8 +22,8 @@ paddle.enable_static()
 
 class TestDataFeeder(unittest.TestCase):
     def test_lod_level_0_converter(self):
-        img = fluid.layers.data(name='image', shape=[1, 28, 28])
-        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+        img = paddle.static.data(name='image', shape=[-1, 1, 28, 28])
+        label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
         feeder = fluid.DataFeeder([img, label], fluid.CPUPlace())
         result = feeder.feed([([0] * 784, [9]), ([1] * 784, [1])])
 
@@ -41,10 +41,10 @@ class TestDataFeeder(unittest.TestCase):
     def test_lod_level_1_converter(self):
         # lod_level = 1
         # each sentence has a different number of words
-        sentences = fluid.layers.data(
-            name='sentences', shape=[1], dtype='int64', lod_level=1
+        sentences = paddle.static.data(
+            name='sentences', shape=[-1, 1], dtype='int64', lod_level=1
         )
-        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+        label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
         feeder = fluid.DataFeeder([sentences, label], fluid.CPUPlace())
 
         # lod = [[0, 3, 5, 9]]
@@ -64,10 +64,10 @@ class TestDataFeeder(unittest.TestCase):
     def test_lod_level_2_converter(self):
         # lod_level = 2
         # paragraphs -> sentences -> words
-        paragraphs = fluid.layers.data(
-            name='paragraphs', shape=[1], dtype='int64', lod_level=2
+        paragraphs = paddle.static.data(
+            name='paragraphs', shape=[-1, 1], dtype='int64', lod_level=2
         )
-        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+        label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
         feeder = fluid.DataFeeder([paragraphs, label], fluid.CPUPlace())
 
         # lod = [[0, 2, 3], [0, 3, 5, 9]]

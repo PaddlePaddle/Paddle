@@ -195,10 +195,12 @@ class TestImperativeMnist(unittest.TestCase):
                 drop_last=True,
             )
 
-            img = fluid.layers.data(
-                name='pixel', shape=[1, 28, 28], dtype='float32'
+            img = paddle.static.data(
+                name='pixel', shape=[-1, 1, 28, 28], dtype='float32'
             )
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
             cost = mnist(img)
             loss = paddle.nn.functional.cross_entropy(
                 cost, label, reduction='none', use_softmax=False

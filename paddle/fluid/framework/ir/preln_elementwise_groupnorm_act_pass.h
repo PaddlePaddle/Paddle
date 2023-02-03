@@ -25,7 +25,7 @@ namespace ir {
 //   |         |               ->        preln_gn_act
 // other op  group_norm                    |       |
 //             |                        other op
-//            silu
+//            silu(optional)
 //             |
 
 class Graph;
@@ -88,7 +88,7 @@ class PrelnGroupNormActFusePass : public FusePassBase {
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
-  int ApplyGNSiluPattern(ir::Graph* graph) const;
+  int ApplyAddGNPattern(ir::Graph* graph, bool with_act) const;
 };
 
 }  // namespace ir
