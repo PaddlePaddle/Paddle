@@ -125,12 +125,10 @@ class FusedBnFinalizeOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("eqBias", c_dims);
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const {
-    framework::LibraryType library = framework::LibraryType::kPlain;
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Sum");
-    return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 

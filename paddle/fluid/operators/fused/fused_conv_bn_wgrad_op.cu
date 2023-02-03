@@ -20,12 +20,13 @@ limitations under the License. */
 #include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/operators/layout_utils.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/backends/gpu/cuda/cudnn_desc.h"
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_frontend.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using DataLayout = platform::DataLayout;
 using helper = phi::CudnnFrontendConvHelper;
 using TensorDesc_t = cudnn_frontend::Tensor;
@@ -85,17 +86,17 @@ class FusedConvBnWgradOpKernel : public framework::OpKernel<T> {
     auto workspace_handle = dev_ctx.cudnn_workspace_handle();
     // create tensor descriptors
     cudnnTensorFormat_t layout_format = CUDNN_TENSOR_NHWC;
-    auto tensor_format = platform::ToCudnnDataType(
-        framework::TransToProtoVarType(bn_x_tensor->dtype()));
+    auto tensor_format =
+        phi::backends::gpu::ToCudnnDataType(bn_x_tensor->dtype());
     auto tensor_format_math = CUDNN_DATA_FLOAT;
     auto compute_dtype = CUDNN_DATA_FLOAT;
 
-    auto dim_x = helper::GetInt64Array(
-        platform::TransformDimOrder(phi::vectorize<int>(in_dims)));
-    auto dim_filt = helper::GetInt64Array(
-        platform::TransformDimOrder(phi::vectorize<int>(filter_dims)));
-    auto dim_y = helper::GetInt64Array(
-        platform::TransformDimOrder(phi::vectorize<int>(dy_tensor->dims())));
+    auto dim_x =
+        phi::backends::gpu::TransformDimOrder(phi::vectorize<int64_t>(in_dims));
+    auto dim_filt = phi::backends::gpu::TransformDimOrder(
+        phi::vectorize<int64_t>(filter_dims));
+    auto dim_y = phi::backends::gpu::TransformDimOrder(
+        phi::vectorize<int64_t>(dy_tensor->dims()));
     std::vector<int64_t> dim_scale(dim_x.size(), 1);
     dim_scale[1] = dim_x[1];  //  [1, C, 1, 1]
 

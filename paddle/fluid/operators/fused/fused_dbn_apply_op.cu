@@ -18,12 +18,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/backends/gpu/cuda/cudnn_desc.h"
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_frontend.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using DataLayout = platform::DataLayout;
 using helper = phi::CudnnFrontendConvHelper;
 
@@ -43,16 +44,15 @@ void _DbnApplyImpl(const framework::ExecutionContext& ctx,
   auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
   using U = BatchNormParamType<T>;
   cudnnTensorFormat_t layout_format = CUDNN_TENSOR_NHWC;
-  auto tensor_format = platform::ToCudnnDataType(
-      framework::TransToProtoVarType(dY_tensor->dtype()));
+  auto tensor_format = phi::backends::gpu::ToCudnnDataType(dY_tensor->dtype());
   auto tensor_format_math = CUDNN_DATA_FLOAT;
   auto compute_dtype = CUDNN_DATA_FLOAT;
 
   auto handle = dev_ctx.cudnn_handle();
   auto workspace_handle = dev_ctx.cudnn_workspace_handle();
 
-  auto dim_x = helper::GetInt64Array(
-      platform::TransformDimOrder(phi::vectorize<int>(X_tensor->dims())));
+  auto dim_x = phi::backends::gpu::TransformDimOrder(
+      phi::vectorize<int64_t>(X_tensor->dims()));
   std::vector<int64_t> dim_a(dim_x.size(), 1);
   dim_a[1] = dim_x[1];  //  [1, C, 1, 1]
 
@@ -162,16 +162,15 @@ void _DualDbnApplyImpl(const framework::ExecutionContext& ctx,
   auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
   using U = BatchNormParamType<T>;
   cudnnTensorFormat_t layout_format = CUDNN_TENSOR_NHWC;
-  auto tensor_format = platform::ToCudnnDataType(
-      framework::TransToProtoVarType(dY_tensor->dtype()));
+  auto tensor_format = phi::backends::gpu::ToCudnnDataType(dY_tensor->dtype());
   auto tensor_format_math = CUDNN_DATA_FLOAT;
   auto compute_dtype = CUDNN_DATA_FLOAT;
 
   auto handle = dev_ctx.cudnn_handle();
   auto workspace_handle = dev_ctx.cudnn_workspace_handle();
 
-  auto dim_x = helper::GetInt64Array(
-      platform::TransformDimOrder(phi::vectorize<int>(X_tensor->dims())));
+  auto dim_x = phi::backends::gpu::TransformDimOrder(
+      phi::vectorize<int64_t>(X_tensor->dims()));
   std::vector<int64_t> dim_a(dim_x.size(), 1);
   dim_a[1] = dim_x[1];  //  [1, C, 1, 1]
 
