@@ -16,6 +16,7 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
@@ -252,6 +253,31 @@ struct FusedAttentionGradPattern : public PatternBase {
 
 }  // namespace patterns
 
+class FusedAttentionPassCache {
+ public:
+  ir::Node* GetNodeFromCache(const std::string name) {
+    if (var_name_to_ir_node_cache_.count(name)) {
+      return var_name_to_ir_node_cache_.find(name)->second;
+    }
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "The key (%d) of FusedAttentionCache does not exist.", name));
+  }
+
+  void InsertIntoCache(const std::string name, ir::Node* node) {
+    if (!var_name_to_ir_node_cache_.count(name)) {
+      var_name_to_ir_node_cache_.insert({name, node});
+    } else {
+      PADDLE_THROW(platform::errors::AlreadyExists(
+          "The key (%d) of FusedAttentionCache already exist.", name));
+    }
+  }
+
+  void ResetCache() { var_name_to_ir_node_cache_.clear(); }
+
+ private:
+  std::unordered_map<std::string, ir::Node*> var_name_to_ir_node_cache_;
+};
+
 class FusedAttentionsPass : public FusePassBase {
  public:
   virtual ~FusedAttentionsPass() {}
@@ -273,9 +299,17 @@ class FusedAttentionsPass : public FusePassBase {
   // If true, the function name will have an abbreviation part.
   // If false, the function name won't contain an abbreviation for it.
 
-  ir::Graph* PreMaskDropResFwd(Graph* graph) const;
+  ir::Graph* PreMaskDropResFwd(Graph* graph,
+                               FusedAttentionPassCache* cache) const;
 
-  ir::Graph* PreMaskDropResBwd(Graph* graph) const;
+  ir::Graph* PreMaskDropResBwd(Graph* graph,
+                               FusedAttentionPassCache* cache) const;
+
+  const std::string GenerateCacheKey(const std::string anchor,
+                                     const std::string var_name,
+                                     int block_id) const {
+    return anchor + "_" + std::to_string(block_id) + "_" + var_name;
+  }
 };
 
 }  // namespace ir

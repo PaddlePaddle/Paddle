@@ -25,9 +25,10 @@
 namespace paddle {
 namespace jit {
 
-InterpreterEngine::InterpreterEngine(const std::shared_ptr<FunctionInfo> &info,
-                                     const VariableMap &params_dict,
-                                     const phi::Place &place)
+InterpreterEngine::InterpreterEngine(
+    const std::shared_ptr<FunctionInfo> &info,
+    const std::shared_ptr<VariableMap> &params_dict,
+    const phi::Place &place)
     : info_(info), params_dict_(params_dict), place_(place) {
   info_->RemoveDescFeedFetch();
   PADDLE_ENFORCE_GT(

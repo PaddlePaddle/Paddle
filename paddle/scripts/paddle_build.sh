@@ -3481,10 +3481,7 @@ function build_pr_and_develop() {
     generate_api_spec "$1" "PR"
     mkdir ${PADDLE_ROOT}/build/pr_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl
     rm -f ${PADDLE_ROOT}/build/python/dist/*.whl && rm -f ${PADDLE_ROOT}/build/python/build/.timestamp
-    if [[ ${cmake_change} ]];then
-        rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
-        rm -rf ${PADDLE_ROOT}/build/third_party
-    fi
+
 
     git fetch upstream develop
     git checkout develop
@@ -3495,6 +3492,10 @@ function build_pr_and_develop() {
         mkdir ${PADDLE_ROOT}/build/dev_whl && wget -q -P ${PADDLE_ROOT}/build/dev_whl ${dev_url}
         cp ${PADDLE_ROOT}/build/dev_whl/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl ${PADDLE_ROOT}/build/python/dist
     else
+        if [[ ${cmake_change} ]];then
+            rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
+            rm -rf ${PADDLE_ROOT}/build/third_party
+        fi
         git checkout -b develop_base_pr upstream/$BRANCH
         run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number} 
         if [ ! -d "${PADDLE_ROOT}/build/python/dist/" ]; then
@@ -3960,12 +3961,20 @@ function run_setup_mac(){
 
     ccache -z
     cd ..
-    if [ "${PYTHON_EXECUTABLE}" != "" ];then
-        ${PYTHON_EXECUTABLE} setup.py $2;build_error=$?
-    else
-        python setup.py $2;build_error=$?
-    fi
     
+    if [ "${PYTHON_EXECUTABLE}" != "" ];then
+        if [ "$SYSTEM" == "Darwin" ]; then
+            ${PYTHON_EXECUTABLE} setup.py $2 --plat-name=macosx_10_9_x86_64;build_error=$?
+        else
+            ${PYTHON_EXECUTABLE} setup.py $2;build_error=$?
+        fi
+    else
+        if [ "$SYSTEM" == "Darwin" ]; then
+            python setup.py $2 --plat-name=macosx_10_9_x86_64;build_error=$?
+        else
+            python setup.py $2;build_error=$?
+        fi
+    fi
     # ci will collect ccache hit rate
     collect_ccache_hits
 
