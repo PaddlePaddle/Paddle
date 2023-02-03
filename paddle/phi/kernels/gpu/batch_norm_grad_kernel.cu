@@ -852,15 +852,17 @@ void BatchNormGradRawKernel(const Context &ctx,
 //             ctx.GetPlace()),
 //         epsilon, saved_mean_data, saved_var_data));
 #else
-      // CUDNN only support small batch size
-      // const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 131070;
-      const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 10240;
-      const size_t CUDNN_SPATIAL_THRESHOLD = 880801;
-      const bool use_native_kernel =
-          ((x_dims.size() == 2 && N >= CUDNN_PER_ACTIVATION_THRESHOLD) ||
-           (x_dims.size() == 3 && N >= CUDNN_SPATIAL_THRESHOLD));
-      if (use_native_kernel) {
-        if (x_dims.size() == 2) {
+    }
+    // CUDNN only support small batch size
+    bool use_native_nhwc =
+        d_x ? (x_dims.size() == 4 && compute_format == DataLayout::kNHWC)
+            : false;
+    const bool use_native_kernel =
+        ((x_dims.size() == 2 && N >= CUDNN_PER_ACTIVATION_THRESHOLD) ||
+         (x_dims.size() == 3 && N >= CUDNN_SPATIAL_THRESHOLD_TRAIN));
+    if (use_native_nhwc || (d_x && d_scale && d_bias)) {
+      if (use_native_kernel || use_native_nhwc) {
+        if (x_dims.size() == 2 || use_native_nhwc) {
           dim3 block;
           dim3 grid;
           const int block_size = 512;
