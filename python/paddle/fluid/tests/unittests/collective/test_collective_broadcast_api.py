@@ -27,7 +27,9 @@ class TestCollectiveBroadcastAPI(TestDistBase):
 
     def test_broadcast_nccl(self):
         self.check_with_place(
-            "collective_broadcast_api.py", "broadcast", "nccl"
+            "collective_broadcast_api.py",
+            "broadcast",
+            "nccl",
         )
 
     def test_broadcast_nccl_with_comm_context(self):
@@ -40,7 +42,9 @@ class TestCollectiveBroadcastAPI(TestDistBase):
 
     def test_broadcast_gloo(self):
         self.check_with_place(
-            "collective_broadcast_api.py", "broadcast", "gloo", "0"
+            "collective_broadcast_api.py",
+            "broadcast",
+            "gloo",
         )
 
     def test_broadcast_gloo_with_comm_context(self):
