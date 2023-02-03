@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
+#include "paddle/phi/kernels/gpudnn/conv_gpudnn_base.h"
 
 namespace phi {
 

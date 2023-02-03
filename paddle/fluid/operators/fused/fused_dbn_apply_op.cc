@@ -112,12 +112,10 @@ class FusedDbnApplyOp : public framework::OperatorWithKernel {
     }
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const {
-    framework::LibraryType library = framework::LibraryType::kPlain;
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "dY");
-    return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 

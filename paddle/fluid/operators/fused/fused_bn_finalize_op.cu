@@ -18,12 +18,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/backends/gpu/cuda/cudnn_desc.h"
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_frontend.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using DataLayout = platform::DataLayout;
 using helper = phi::CudnnFrontendConvHelper;
 
@@ -78,10 +79,10 @@ class FusedBnFinalizeOpKernel : public framework::OpKernel<T> {
     auto workspace_handle = dev_ctx.cudnn_workspace_handle();
     // set dtypes
     cudnnTensorFormat_t layout_format = CUDNN_TENSOR_NHWC;
-    auto tensor_format_bn = platform::ToCudnnDataType(
-        framework::TransToProtoVarType(sum_tensor->dtype()));
-    auto tensor_format = platform::ToCudnnDataType(
-        framework::TransToProtoVarType(eq_scale_tensor->dtype()));
+    auto tensor_format_bn =
+        phi::backends::gpu::ToCudnnDataType(sum_tensor->dtype());
+    auto tensor_format =
+        phi::backends::gpu::ToCudnnDataType(eq_scale_tensor->dtype());
     auto compute_dtype = CUDNN_DATA_FLOAT;
     // create tensor descriptors
     auto dim_input = phi::vectorize<int64_t>(sum_tensor->dims());
