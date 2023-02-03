@@ -157,11 +157,19 @@ class TestFusedAttentionPass(unittest.TestCase):
         assert ops[2].type == 'fused_attention'
         assert ops[3].type == 'reduce_mean'
         assert ops[5].type == 'reduce_mean_grad'
+        assert ops[6].type == 'fused_attention_grad'
         # two ops for linear, one op for reduce mean
         # one fill constant
         # one op for reduce mean grad, two ops for linear bwd
         # the eighth op should be the optimizer
-        assert ops[8].type == 'sgd'
+        assert ops[9].type == 'sgd'
+
+        exe = paddle.static.Executor()
+        rst = exe.run(
+            main_prog,
+            feed={'x': x_data, 'attn_mask': mask_data},
+            fetch_list=[loss],
+        )
 
 
 if __name__ == "__main__":
