@@ -134,6 +134,16 @@
     func : bmm
   backward : bmm_grad
 
+- op : broadcast_tensors
+  args: (Tensor[] input)
+  output: Tensor[]{input.size()}
+  infer_meta:
+    func: BroadcastTensorsInferMeta
+  kernel:
+    func: broadcast_tensors
+    data_type : input
+  backward: broadcast_tensors_grad
+
 - op : ceil
   args : (Tensor x)
   output : Tensor(out)
@@ -910,6 +920,17 @@
   kernel :
     func : poisson
   backward : poisson_grad
+
+- op : pow
+  args : (Tensor x, Scalar y=1.0f)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : pow
+    data_type : x
+  backward : pow_grad
 
 - op : put_along_axis
   args : (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign")
