@@ -160,7 +160,6 @@ def gelu_composite(x, approximate):
             )
         )
         return ret
-        #return 0.5 * x * (1.0 + tanh((math.sqrt(2.0 / math.pi)) * (x + 0.044715 * pow(x, 3))))
         
     else:
         #gelu(x) = 0.5 * x *  (1 + erf(x / sqrt(2)))
@@ -180,4 +179,3 @@ def gelu_composite(x, approximate):
             )
         )
         return ret
-        #return 0.5 * x * (1.0 + erf(x / math.sqrt(2.0)))
