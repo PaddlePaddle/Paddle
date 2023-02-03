@@ -255,7 +255,7 @@ class FeatureNode : public Node {
   }
 
   template <typename T>
-  static void parse_value_to_bytes(
+  static int parse_value_to_bytes(
       std::vector<paddle::string::str_ptr>::iterator feat_str_begin,
       std::vector<paddle::string::str_ptr>::iterator feat_str_end,
       std::string *output) {
@@ -269,8 +269,14 @@ class FeatureNode : public Node {
     thread_local paddle::string::str_ptr_stream ss;
     for (size_t i = 0; i < feat_str_size; i++) {
       ss.reset(*(feat_str_begin + i));
+      int len = ss.end - ss.ptr;
+      char *old_ptr = ss.ptr;
       ss >> fea_ptrs[i];
+      if (ss.ptr - old_ptr != len) {
+        return -1;
+      }
     }
+    return 0;
   }
 
  protected:

@@ -25,6 +25,8 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+extern Barrier g_barrier;
+
 void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
                               Dataset* dataset) {
   thread_num_ = trainer_desc.thread_num();
@@ -62,7 +64,7 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
         thread_num_);
   }
 #endif
-
+  g_barrier.reset(thread_num_);
   for (int i = 0; i < thread_num_; ++i) {
     workers_[i] = DeviceWorkerFactory::CreateDeviceWorker(
         trainer_desc.device_worker_name());
@@ -74,6 +76,7 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
     workers_[i]->Initialize(trainer_desc);
     workers_[i]->SetDeviceIndex(i);
     workers_[i]->SetDataFeed(readers[i]);
+    workers_[i]->SetThreadNum(thread_num_);
   }
 
   // set debug here
@@ -177,7 +180,7 @@ void MultiTrainer::InitOtherEnv(const ProgramDesc& main_program) {
   // for unittest which call train_from_dataset but does not call
   // fleet.init_worker() first
   if (communicator == nullptr) {
-    VLOG(0) << "MultiTrainer::InitOtherEnv Communicator is null!";
+    VLOG(1) << "MultiTrainer::InitOtherEnv Communicator is null!";
   } else {
     auto& recv_ctx = communicator->GetRecvCtxMap();
     communicator->PullDense(recv_ctx);
@@ -299,13 +302,13 @@ void MultiTrainer::Finalize() {
   auto communicator = paddle::distributed::Communicator::GetInstance();
   // for unittest which does not call fleet.init_worker() first
   if (communicator == nullptr) {
-    VLOG(0) << "MultiTrainer::Finalize communicator is null!";
+    VLOG(1) << "MultiTrainer::Finalize communicator is null!";
   } else {
     if (communicator->_worker_ptr != nullptr) {
       communicator->_worker_ptr->Flush();
       VLOG(1) << "MultiTrainer::Finalize ps client flush done";
     } else {
-      VLOG(0) << "communicator->_worker_ptr is null";
+      VLOG(1) << "communicator->_worker_ptr is null";
     }
   }
 #endif

@@ -36,21 +36,25 @@ using InterpreterCore = framework::InterpreterCore;
 class InterpreterEngine : public BaseEngine {
  public:
   InterpreterEngine(const std::shared_ptr<FunctionInfo> &info,
-                    const VariableMap &params_dict,
+                    const std::shared_ptr<VariableMap> &params_dict,
                     const phi::Place &place);
 
   ~InterpreterEngine() noexcept {}
 
   void CreateInterpreterCore();
 
-  std::vector<Tensor> operator()(const std::vector<Tensor> &inputs);
+  std::vector<Tensor> operator()(const std::vector<Tensor> &inputs) override;
 
-  std::vector<DenseTensor> operator()(const std::vector<DenseTensor> &inputs);
+  std::vector<DenseTensor> operator()(
+      const std::vector<DenseTensor> &inputs) override;
 
   const std::shared_ptr<FunctionInfo> &Info() const;
 
+  std::unique_ptr<BaseEngine> Clone(void *stream = nullptr) override;
+
  private:
   std::shared_ptr<FunctionInfo> info_;
+  std::shared_ptr<VariableMap> params_dict_;
   framework::Scope scope_;
   phi::Place place_;
   std::shared_ptr<framework::InterpreterCore> inner_interpreter_;

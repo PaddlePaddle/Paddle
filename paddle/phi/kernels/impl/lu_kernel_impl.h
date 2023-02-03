@@ -443,7 +443,10 @@ void LU_Unpack(const Context& dev_ctx,
   auto dim = std::min(H, W);
   DenseTensor rowtensor, rt_dev;
   auto batchsize = product(phi::slice_ddim(udims, 0, udims.size() - 2));
-  batchsize = std::max(static_cast<int>(batchsize), 1);
+
+  // if udims is [0, ..., H, W], it should be 0
+  if (udims.size() == 2) batchsize = std::max(static_cast<int>(batchsize), 1);
+
   arange<Context>(dev_ctx, &rowtensor, dim, batchsize, H);
   auto idtptr = rowtensor.data<int32_t>();
   if (phi::AllocationType::GPU == dev_ctx.GetPlace().GetType()) {
@@ -494,7 +497,8 @@ void Unpack_Pivot(const Context& dev_ctx,
   setter(dev_ctx, P, static_cast<T>(0));
 
   auto batchsize = product(phi::slice_ddim(dims, 0, prank - 1));
-  batchsize = std::max(static_cast<int>(batchsize), 1);
+  if (prank == 1) batchsize = std::max(static_cast<int>(batchsize), 1);
+
   DenseTensor idt;
   for (int i = 0; i < batchsize; i++) {
     arange<Context>(dev_ctx, &idt, h);
@@ -516,6 +520,14 @@ DenseTensor Transpose2DTo6D(const Context& dev_ctx, const DenseTensor& x) {
   auto x_dim = x.dims();
   auto x_vec = phi::vectorize<int>(x_dim);
   int rank = x_vec.size();
+
+  for (int i = 0; i < x_dim.size(); i++) {
+    PADDLE_ENFORCE_LT(0,
+                      x_dim[i],
+                      errors::InvalidArgument(
+                          "The dims of Input(X) should be greater than 0."));
+  }
+
   std::swap(x_vec[rank - 1], x_vec[rank - 2]);
   std::vector<int> out_shape = x_vec;
   std::vector<int> axis(rank);

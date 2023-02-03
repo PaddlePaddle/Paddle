@@ -8,8 +8,3 @@ set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0)
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS ${GC_ENVS})
 endforeach()
-
-set_tests_properties(test_comp_eager_tanh_grad PROPERTIES TIMEOUT 60)
-set_tests_properties(test_comp_eager_div_grad PROPERTIES TIMEOUT 60)
-set_tests_properties(test_comp_eager_add_grad PROPERTIES TIMEOUT 60)
-set_tests_properties(test_comp_eager_sub_grad PROPERTIES TIMEOUT 60)

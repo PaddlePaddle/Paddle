@@ -17,7 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core, ir
+from paddle.fluid import core
+from paddle.incubate.passes import ir
 from paddle.static import InputSpec
 
 
