@@ -88,7 +88,7 @@ class TestReduceLROnPlateau(unittest.TestCase):
 
         optim = paddle.optimizer.Adam(
             learning_rate=paddle.optimizer.lr.PiecewiseDecay(
-                [0.001, 0.0001], [5, 10]
+                [0.001, 0.0001], [5, 10, 10]
             ),
             parameters=net.parameters(),
         )
