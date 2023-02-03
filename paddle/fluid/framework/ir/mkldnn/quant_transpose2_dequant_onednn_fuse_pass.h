@@ -24,6 +24,7 @@ namespace ir {
 class FuseQuantTranspose2DequantOneDNNPass : public FusePassBase {
  public:
   virtual ~FuseQuantTranspose2DequantOneDNNPass() {}
+  FuseQuantTranspose2DequantOneDNNPass();
 
  protected:
   void ApplyImpl(Graph *graph) const override;

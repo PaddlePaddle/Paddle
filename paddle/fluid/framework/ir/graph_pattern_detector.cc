@@ -1003,7 +1003,6 @@ PDNode *patterns::Transpose2Dequant::operator()() {
   auto *transpose2_op =
       pattern->NewNode(transpose2_op_repr())->assert_is_op("transpose2");
   auto dequant_in = pattern->NewNode(dequant_in_repr())
-                        ->AsInput()
                         ->AsIntermediate()
                         ->assert_has_n_inputs(1)
                         ->assert_is_op_input("dequantize", "Input");

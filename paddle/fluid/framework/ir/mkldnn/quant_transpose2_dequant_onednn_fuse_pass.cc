@@ -34,6 +34,10 @@ void FuseQuantTranspose2DequantOneDNNPass::FuseQuantizeTranspose2(
   int found_patterns_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
     GET_IR_NODE_FROM_SUBGRAPH(quant_in, quant_in, quant_transpose2_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(quant_op, quant_op, quant_transpose2_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(quant_out, quant_out, quant_transpose2_pattern);
@@ -107,6 +111,10 @@ void FuseQuantTranspose2DequantOneDNNPass::FuseTranspose2Dequantize(
   int found_patterns_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
     GET_IR_NODE_FROM_SUBGRAPH(
         transpose2_op, transpose2_op, transpose2_dequant_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
@@ -157,6 +165,23 @@ void FuseQuantTranspose2DequantOneDNNPass::ApplyImpl(Graph *graph) const {
   FuseTranspose2Dequantize(graph);
 }
 
+FuseQuantTranspose2DequantOneDNNPass::FuseQuantTranspose2DequantOneDNNPass() {
+  AddOpCompat(OpCompat("transpose2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddOutput("XShape")
+      .IsOptional()
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsType<std::vector<int>>()
+      .End();
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
@@ -165,5 +190,5 @@ REGISTER_PASS(quant_transpose2_dequant_onednn_fuse_pass,
               paddle::framework::ir::FuseQuantTranspose2DequantOneDNNPass);
 REGISTER_PASS_CAPABILITY(quant_transpose2_dequant_onednn_fuse_pass)
     .AddCombination(
-        paddle::framework::compatible::OpVersionComparatorCombination().GE(
+        paddle::framework::compatible::OpVersionComparatorCombination().EQ(
             "transpose2", 0));
