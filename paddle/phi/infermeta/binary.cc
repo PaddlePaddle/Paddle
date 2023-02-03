@@ -86,7 +86,13 @@ void AllValueCompareInferMeta(const MetaTensor& x,
                               MetaConfig config) {
   detail::BinarySameInputDimsCheck(x, y, config);
 
-  out->set_dims(phi::make_ddim({1}));
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  if (x_dims.size() == 0 && y_dims.size() == 0) {
+    out->set_dims(phi::make_ddim({}));
+  } else {
+    out->set_dims(phi::make_ddim({1}));
+  }
   out->set_dtype(DataType::BOOL);
 }
 
@@ -136,6 +142,26 @@ void KLDivInferMeta(const MetaTensor& x,
 }
 
 void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      y_dims.size(),
+      phi::errors::InvalidArgument("The rank (%d) of X shall be same as "
+                                   "rank (%d) of Y.",
+                                   x_dims.size(),
+                                   y_dims.size()));
+
+  if (x_dims.size() > 0)
+    PADDLE_ENFORCE_LE(x_dims[0],
+                      y_dims[0],
+                      phi::errors::InvalidArgument(
+                          "The count (%d) of elements of X shall not "
+                          "greater than count (%d) of elements of Y.",
+                          x_dims[0],
+                          y_dims[0]));
+
   out->share_meta(x);
   if (x.dtype() == DataType::INT32 || x.dtype() == DataType::INT64 ||
       y.dtype() == DataType::INT32 || y.dtype() == DataType::INT64) {
@@ -375,7 +401,11 @@ void CompareAllInferMeta(const MetaTensor& x,
       errors::InvalidArgument(
           "The size of dim_y should not be greater than dim_x's."));
   out->share_lod(x);
-  out->set_dims(make_ddim({1}));
+  if (!x.dims().size() || !y.dims().size()) {
+    out->set_dims(make_ddim({}));
+  } else {
+    out->set_dims(make_ddim({1}));
+  }
   out->set_dtype(DataType::BOOL);
 }
 

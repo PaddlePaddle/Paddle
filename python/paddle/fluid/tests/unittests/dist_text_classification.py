@@ -59,7 +59,7 @@ def conv_net(
         size=[dict_dim, emb_dim],
         is_sparse=False,
         param_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.01)
+            initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
 
@@ -70,7 +70,7 @@ def conv_net(
         act="tanh",
         pool_type="max",
         param_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.01)
+            initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
 
@@ -78,7 +78,7 @@ def conv_net(
         x=[conv_3],
         size=fc0_dim,
         weight_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.01)
+            initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
 
@@ -87,7 +87,7 @@ def conv_net(
         size=class_dim,
         activation="softmax",
         weight_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.01)
+            initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
 
@@ -95,8 +95,8 @@ def conv_net(
 
 
 def inference_network(dict_dim):
-    data = fluid.layers.data(
-        name="words", shape=[1], dtype="int64", lod_level=1
+    data = paddle.static.data(
+        name="words", shape=[-1, 1], dtype="int64", lod_level=1
     )
     out = conv_net(data, dict_dim)
     return out
@@ -125,10 +125,10 @@ class TestDistTextClassification2x2(TestDistRunnerBase):
         word_dict, dict_dim = get_worddict(vocab)
 
         # Input data
-        data = fluid.layers.data(
-            name="words", shape=[1], dtype="int64", lod_level=1
+        data = paddle.static.data(
+            name="words", shape=[-1, 1], dtype="int64", lod_level=1
         )
-        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+        label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
 
         # Train program
         predict = conv_net(data, dict_dim)

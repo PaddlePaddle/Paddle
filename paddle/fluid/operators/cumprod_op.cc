@@ -82,7 +82,7 @@ class CumprodGradOp : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 DECLARE_INFER_SHAPE_FUNCTOR(cumprod,
                             CumprodInferShapeFunctor,
-                            PD_INFER_META(phi::UnchangedInferMeta));
+                            PD_INFER_META(phi::UnchangedInferMetaCheckAxis));
 
 REGISTER_OPERATOR(cumprod,
                   ops::CumprodOp,

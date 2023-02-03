@@ -16,12 +16,12 @@
 
 import paddle
 
+from ..common_ops_import import Variable
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
-from ..fluid.framework import _in_eager_mode_
-from ..static import Variable
+from ..fluid.framework import global_var
 from .layer_function_generator import templatedoc
 
-if _in_eager_mode_:
+if global_var._in_eager_mode_:
     Tensor = paddle.fluid.framework.core.eager.Tensor
 else:
     from ..framework import VarBase as Tensor
@@ -351,12 +351,19 @@ def equal_all(x, y, name=None):
 
 @templatedoc()
 def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
-    """
-    ${comment}
+    r"""
+    Check if all :math:`x` and :math:`y` satisfy the condition:
+
+    .. math::
+        \left| x - y \right| \leq atol + rtol \times \left| y \right|
+
+    elementwise, for all elements of :math:`x` and :math:`y`. The behaviour of this
+    operator is analogous to :math:`numpy.allclose`, namely that it returns :math:`True` if
+    two tensors are elementwise equal within a tolerance.
 
     Args:
-        x(Tensor): ${input_comment}.
-        y(Tensor): ${other_comment}.
+        x(Tensor): The input tensor, it's data type should be float32, float64..
+        y(Tensor): The input tensor, it's data type should be float32, float64..
         rtol(rtoltype, optional): The relative tolerance. Default: :math:`1e-5` .
         atol(atoltype, optional): The absolute tolerance. Default: :math:`1e-8` .
         equal_nan(equalnantype, optional): ${equal_nan_comment}.
@@ -364,7 +371,7 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
             refer to :ref:`api_guide_Name`. Default: None.
 
     Returns:
-        Tensor: ${out_comment}.
+        Tensor: The output tensor, it's data type is bool.
 
     Examples:
         .. code-block:: python
@@ -937,7 +944,7 @@ def bitwise_not(x, out=None, name=None):
 @templatedoc()
 def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     r"""
-    Checks if all :math:`x` and :math:`y` satisfy the condition:
+    Check if all :math:`x` and :math:`y` satisfy the condition:
 
     .. math::
 

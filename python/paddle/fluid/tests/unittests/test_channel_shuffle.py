@@ -47,6 +47,7 @@ class TestChannelShuffleOp(OpTest):
         self.op_type = "channel_shuffle"
         self.init_data_format()
         n, c, h, w = 2, 9, 4, 4
+        self.python_api = paddle.nn.functional.channel_shuffle
 
         if self.format == "NCHW":
             shape = [n, c, h, w]
@@ -66,10 +67,10 @@ class TestChannelShuffleOp(OpTest):
         self.format = "NCHW"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestChannelLast(TestChannelShuffleOp):
