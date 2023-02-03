@@ -541,7 +541,7 @@ def monkey_patch_math_varbase():
     global _already_patch_varbase
     global _already_patch_eager_tensor
 
-    if framework.global_var.global_var._in_eager_mode_:
+    if framework.global_var._in_eager_mode_:
         local_already_patch = _already_patch_eager_tensor
         _already_patch_eager_tensor = True
         local_tensor = core.eager.Tensor
