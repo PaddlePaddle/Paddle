@@ -983,11 +983,10 @@ PDNode *patterns::QuantTranspose2::operator()() {
   auto *quant_in = pattern->NewNode(quant_in_repr())
                        ->AsInput()
                        ->assert_is_op_input("quantize", "Input");
-  auto *quant_op = pattern->NewNode(quant_op_repr())
-                       ->assert_is_op("quantize")
-                       ->AsIntermediate();
+  auto *quant_op = pattern->NewNode(quant_op_repr())->assert_is_op("quantize");
   auto *quant_out = pattern->NewNode(quant_out_repr())
                         ->AsOutput()
+                        ->AsIntermediate()
                         ->assert_has_n_outputs(1)
                         ->assert_is_op_output("quantize")
                         ->assert_is_op_input("transpose2", "X");
@@ -1004,11 +1003,12 @@ PDNode *patterns::Transpose2Dequant::operator()() {
   auto *transpose2_op =
       pattern->NewNode(transpose2_op_repr())->assert_is_op("transpose2");
   auto dequant_in = pattern->NewNode(dequant_in_repr())
+                        ->AsInput()
+                        ->AsIntermediate()
                         ->assert_has_n_inputs(1)
                         ->assert_is_op_input("dequantize", "Input");
-  auto dequant_op = pattern->NewNode(dequant_op_repr())
-                        ->assert_is_op("dequantize")
-                        ->AsIntermediate();
+  auto dequant_op =
+      pattern->NewNode(dequant_op_repr())->assert_is_op("dequantize");
   auto dequant_out = pattern->NewNode(dequant_out_repr())
                          ->AsOutput()
                          ->assert_is_op_output("dequantize", "Output");
