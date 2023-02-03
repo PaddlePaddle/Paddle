@@ -177,6 +177,16 @@ def _fusion_opt_last_rule(pass_before, pass_after):
         return True
 
 
+def _fusion_opt_list_rule(pass_before, pass_after):
+    if (
+        pass_before._type() == PassType.FUSION_OPT
+        and pass_after._type() == PassType.FUSION_OPT
+    ):
+        return _get_list_index(pass_before) < _get_list_index(pass_after)
+    else:
+        return True
+
+
 def _make_rule_from_white_lists_dict(
     before_white_lists_dict, after_white_lists_dict
 ):
@@ -245,8 +255,6 @@ PassBase._PASS_PROCESS_ORDER_LIST = [
 PassBase._COMMON_RULES = [
     _fusion_opt_last_rule,
     lambda pass_before, pass_after: type(pass_before) != type(pass_after),
-    lambda pass_before, pass_after: _get_list_index(pass_before)
-    < _get_list_index(pass_after),
     _make_rule_from_white_lists_dict(
         PassBase._BEFORE_WHITE_LISTS_DICT, PassBase._AFTER_WHITE_LISTS_DICT
     ),
