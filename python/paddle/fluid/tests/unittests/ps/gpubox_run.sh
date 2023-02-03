@@ -31,8 +31,8 @@ export PADDLE_PSERVERS_IP_PORT_LIST="127.0.0.1:29011"
 export PADDLE_PSERVER_PORT_ARRAY=(29011)
 
 # set gpu numbers according to your device
-export FLAGS_selected_gpus="0,1,2,3,4,5,6,7"
-#export FLAGS_selected_gpus="0,1"
+#export FLAGS_selected_gpus="0,1,2,3,4,5,6,7"
+export FLAGS_selected_gpus="0,1"
 
 # set your model yaml
 #SC="gpubox_ps_trainer.py"
@@ -57,4 +57,8 @@ do
     python3.7 -u $SC &> ./log/worker.$i.log
 done
 
+if [ $? -eq 0 ];then
 echo "Training log stored in ./log/"
+else
+exit 1
+fi
