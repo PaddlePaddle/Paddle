@@ -69,6 +69,9 @@ struct GroupNormNHWCParams {
   int32_t groupsPerBlock;
   // epsilon, Constant for numerical stability
   float eps;
+
+  float dqScaleIn;
+  float qScale;
 };
 
 }  // namespace plugin
