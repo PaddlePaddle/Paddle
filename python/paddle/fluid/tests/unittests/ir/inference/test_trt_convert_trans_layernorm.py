@@ -183,27 +183,28 @@ class TrtConvertTransLayernormTest(TrtLayerAutoScanTest):
     def sample_predictor_configs(
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
-        def generate_dynamic_shape(attrs):
+        def generate_dynamic_shape(attrs, inputs):
+            conv2d_c = inputs['conv2d_input'].shape[1]
             self.dynamic_shape.min_input_shape = {
-                "conv2d_input": [1, 128, 32, 32],
-                "conv2d_filter": [128, 128, 1, 1],
-                "elementwise_bias": [128],
-                "layernorm_bias": [128],
-                "layernorm_scale": [128],
+                "conv2d_input": [1, conv2d_c, 32, 32],
+                "conv2d_filter": [conv2d_c, conv2d_c, 1, 1],
+                "elementwise_bias": [conv2d_c],
+                "layernorm_bias": [conv2d_c],
+                "layernorm_scale": [conv2d_c],
             }
             self.dynamic_shape.max_input_shape = {
-                "conv2d_input": [4, 320, 64, 64],
-                "conv2d_filter": [320, 320, 1, 1],
-                "elementwise_bias": [320],
-                "layernorm_bias": [320],
-                "layernorm_scale": [128],
+                "conv2d_input": [4, conv2d_c, 64, 64],
+                "conv2d_filter": [conv2d_c, conv2d_c, 1, 1],
+                "elementwise_bias": [conv2d_c],
+                "layernorm_bias": [conv2d_c],
+                "layernorm_scale": [conv2d_c],
             }
             self.dynamic_shape.opt_input_shape = {
-                "conv2d_input": [4, 320, 64, 64],
-                "conv2d_filter": [320, 320, 1, 1],
-                "elementwise_bias": [320],
-                "layernorm_bias": [320],
-                "layernorm_scale": [128],
+                "conv2d_input": [4, conv2d_c, 64, 64],
+                "conv2d_filter": [conv2d_c, conv2d_c, 1, 1],
+                "elementwise_bias": [conv2d_c],
+                "layernorm_bias": [conv2d_c],
+                "layernorm_scale": [conv2d_c],
             }
 
         def clear_dynamic_shape():
@@ -217,8 +218,9 @@ class TrtConvertTransLayernormTest(TrtLayerAutoScanTest):
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
+        inputs = program_config.inputs
         # just support dynamic_shape
-        generate_dynamic_shape(attrs)
+        generate_dynamic_shape(attrs, inputs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
