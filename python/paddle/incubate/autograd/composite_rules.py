@@ -35,3 +35,7 @@ def softmax_composite(x, axis):
     denominator = sum(molecular, axis=axis, keepdim=True)
     res = divide(molecular, denominator)
     return res
+
+
+@REGISTER_COMPOSITE('reduce_mean')
+def mean_composite(x, axis, keepdim=false):
