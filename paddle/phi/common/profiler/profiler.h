@@ -23,6 +23,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include "gflags/gflags.h"
 
 #include "paddle/phi/common/profiler/event_tracing.h"
 

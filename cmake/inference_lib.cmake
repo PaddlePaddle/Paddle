@@ -449,7 +449,7 @@ copy(
   fluid_lib_dist
   SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/dynload/*.h
        ${src_dir}/${module}/details/*.h
-       ${PADDLE_BINARY_DIR}/paddle/fluid/platform/*.pb.h
+       ${PADDLE_BINARY_DIR}/paddle/phi/common/profiler/*.pb.h
   DSTS ${dst_dir}/${module} ${dst_dir}/${module}/dynload
        ${dst_dir}/${module}/details ${dst_dir}/${module})
 
