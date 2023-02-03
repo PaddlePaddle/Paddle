@@ -21,12 +21,12 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/backends/onednn/onednn_context.h"
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/common/profiler/event_tracing.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
@@ -388,11 +388,10 @@ class OneDNNHandlerT {
 
     auto& astream = OneDNNContext::tls().get_stream();
 
-    paddle::platform::RecordEvent record_reorder(
-        "int_reorder",
-        paddle::platform::TracerEventType::UserDefined,
-        1,
-        paddle::platform::EventRole::kUniqueOp);
+    phi::RecordEvent record_reorder("int_reorder",
+                                    phi::TracerEventType::UserDefined,
+                                    1,
+                                    phi::EventRole::kUniqueOp);
     reorder_p->execute(
         astream,
         {{DNNL_ARG_FROM, *user_memory_p}, {DNNL_ARG_TO, *target_memory_p}});
@@ -441,11 +440,10 @@ class OneDNNHandlerT {
         dev_ctx_.SetBlob(key_reorder_p, reorder_p);
 
         auto& astream = OneDNNContext::tls().get_stream();
-        paddle::platform::RecordEvent record_reorder(
-            "int_reorder",
-            paddle::platform::TracerEventType::UserDefined,
-            1,
-            paddle::platform::EventRole::kUniqueOp);
+        phi::RecordEvent record_reorder("int_reorder",
+                                        phi::TracerEventType::UserDefined,
+                                        1,
+                                        phi::EventRole::kUniqueOp);
         reorder_p->execute(
             astream,
             {{DNNL_ARG_FROM, *user_memory_p}, {DNNL_ARG_TO, *target_memory_p}});
@@ -467,11 +465,10 @@ class OneDNNHandlerT {
       auto reorder_p = std::static_pointer_cast<dnnl::reorder>(
           dev_ctx_.GetBlob(key_reorder_p));
       if (reorder_p != nullptr) {
-        paddle::platform::RecordEvent record_reorder(
-            "int_reorder",
-            paddle::platform::TracerEventType::UserDefined,
-            1,
-            paddle::platform::EventRole::kUniqueOp);
+        phi::RecordEvent record_reorder("int_reorder",
+                                        phi::TracerEventType::UserDefined,
+                                        1,
+                                        phi::EventRole::kUniqueOp);
         reorder_p->execute(
             astream,
             {{DNNL_ARG_FROM, *user_memory_p}, {DNNL_ARG_TO, *target_memory_p}});
@@ -655,11 +652,10 @@ class OneDNNHandlerNoCachingT {
 
     auto& astream = OneDNNContext::tls().get_stream();
 
-    paddle::platform::RecordEvent record_reorder(
-        "int_reorder",
-        paddle::platform::TracerEventType::UserDefined,
-        1,
-        paddle::platform::EventRole::kUniqueOp);
+    phi::RecordEvent record_reorder("int_reorder",
+                                    phi::TracerEventType::UserDefined,
+                                    1,
+                                    phi::EventRole::kUniqueOp);
     reorder_p->execute(
         astream,
         {{DNNL_ARG_FROM, *user_memory_p}, {DNNL_ARG_TO, *target_memory_p}});
@@ -686,11 +682,10 @@ class OneDNNHandlerNoCachingT {
           std::make_shared<dnnl::reorder>(*user_memory_p, *target_memory_p);
 
       auto& astream = OneDNNContext::tls().get_stream();
-      paddle::platform::RecordEvent record_reorder(
-          "int_reorder",
-          paddle::platform::TracerEventType::UserDefined,
-          1,
-          paddle::platform::EventRole::kUniqueOp);
+      phi::RecordEvent record_reorder("int_reorder",
+                                      phi::TracerEventType::UserDefined,
+                                      1,
+                                      phi::EventRole::kUniqueOp);
       reorder_p->execute(
           astream,
           {{DNNL_ARG_FROM, *user_memory_p}, {DNNL_ARG_TO, *target_memory_p}});

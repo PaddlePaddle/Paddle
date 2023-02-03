@@ -44,6 +44,7 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/common/profiler/profiler_helper.h"
 
 namespace paddle {
 namespace platform {
@@ -53,26 +54,17 @@ static bool should_send_profile_state = false;
 std::mutex profiler_mu;
 
 static TracerOption g_tracer_option = TracerOption::kDefault;
-// The profiler state, the initial value is ProfilerState::kDisabled
-static ProfilerState g_state = ProfilerState::kDisabled;
-// To hook RecordEvent's events, use it to nvtx timeline
-static bool g_enable_nvprof_hook = false;
-// The thread local event list only can be accessed by the specific thread
-// The thread index of each thread
-static thread_local uint64_t g_thread_id;
-// The g_next_thread_id is a global counter for threads, by the g_thread_id and
-// g_next_thread_id, we can know how many threads have created EventList.
-static uint32_t g_next_thread_id = 0;
-// The global mutex
-static std::mutex g_all_event_lists_mutex;
-// The total event lists of all threads
-static std::list<std::shared_ptr<EventList<Event>>> g_all_event_lists;
-// The thread local event list only can be accessed by the specific thread
-static thread_local std::shared_ptr<EventList<Event>> g_event_list;
+using phi::g_all_event_lists;
+using phi::g_all_event_lists_mutex;
+using phi::g_enable_nvprof_hook;
+using phi::g_event_list;
+using phi::g_next_thread_id;
+using phi::g_state;
+using phi::g_thread_id;
 
-static std::list<std::shared_ptr<EventList<MemEvent>>> g_all_mem_event_lists;
-static thread_local std::shared_ptr<EventList<MemEvent>> g_mem_event_list;
-static std::mutex g_all_mem_event_lists_mutex;
+using phi::g_all_mem_event_lists;
+using phi::g_all_mem_event_lists_mutex;
+using phi::g_mem_event_list;
 static thread_local int32_t g_mem_thread_id;
 static uint32_t g_mem_next_thread_id = 0;
 
@@ -88,25 +80,9 @@ static int FindNthReversePos(const std::string &s, const char ch, const int N) {
   return found_pos;
 }
 
-inline uint64_t GetTimeInNsec() {
-  using clock = std::conditional<std::chrono::high_resolution_clock::is_steady,
-                                 std::chrono::high_resolution_clock,
-                                 std::chrono::steady_clock>::type;
-  return std::chrono::duration_cast<std::chrono::nanoseconds>(
-             clock::now().time_since_epoch())
-      .count();
-}
+using phi::GetTimeInNsec;
 
-inline EventList<Event> &GetEventList() {
-  if (!g_event_list) {
-    std::lock_guard<std::mutex> guard(g_all_event_lists_mutex);
-    g_event_list = std::make_shared<EventList<Event>>();
-    g_thread_id = g_next_thread_id++;
-    g_all_event_lists.emplace_front(g_event_list);
-    RecoreCurThreadId(g_thread_id);
-  }
-  return *g_event_list;
-}
+using phi::GetEventList;
 
 inline EventList<MemEvent> &GetMemEventList() {
   if (!g_mem_event_list) {

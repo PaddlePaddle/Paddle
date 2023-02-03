@@ -1,3 +1,4 @@
+add_subdirectory(profiler)
 if(WITH_GPU)
   nv_library(
     phi_place

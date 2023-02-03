@@ -2,17 +2,17 @@ if(WITH_GPU)
   nv_test(
     test_phi_tensor
     SRCS test_phi_tensor.cc
-    DEPS phi_tensor glog)
+    DEPS phi_tensor glog phi_profiler)
 elseif(WITH_ROCM)
   hip_test(
     test_phi_tensor
     SRCS test_phi_tensor.cc
-    DEPS phi_tensor glog)
+    DEPS phi_tensor glog phi_profiler)
 else()
   cc_test(
     test_phi_tensor
     SRCS test_phi_tensor.cc
-    DEPS phi_tensor glog)
+    DEPS phi_tensor glog phi_profiler)
 endif()
 
 cc_test(
@@ -20,7 +20,7 @@ cc_test(
   SRCS test_phi_exception.cc
   DEPS gtest)
 
-set(COMMON_API_TEST_DEPS phi_tensor phi_api phi_api_utils)
+set(COMMON_API_TEST_DEPS phi_tensor phi_api phi_api_utils phi_profiler)
 cc_test(
   test_to_api
   SRCS test_to_api.cc

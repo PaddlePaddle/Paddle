@@ -246,8 +246,8 @@ CostData CostModel::ProfileMeasure(
   executor.Run(startup_program, &scope, /*block_id = */ 0);
 
   // TODO(zhhsplendid): handle the case that Profiler is already enabled
-  SetTracerOption(platform::TracerOption::kAllOpDetail);
-  EnableProfiler(profiler_state);
+  platform::SetTracerOption(platform::TracerOption::kAllOpDetail);
+  platform::EnableProfiler(profiler_state);
   executor.Run(main_program, &scope, /*block_id = */ 0);
 
   std::unique_ptr<std::vector<std::vector<Event>>> time_events(
@@ -255,7 +255,7 @@ CostData CostModel::ProfileMeasure(
   std::unique_ptr<std::vector<std::vector<MemEvent>>> mem_events(
       new std::vector<std::vector<MemEvent>>());
 
-  CompleteProfilerEvents(
+  platform::CompleteProfilerEvents(
       /*tracer_profile= */ nullptr, time_events.get(), mem_events.get());
 
   // TODO(zhhsplendid): remove debug vlog after this series of work

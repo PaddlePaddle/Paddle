@@ -20,13 +20,13 @@ limitations under the License. */
 #include <string>
 #include <type_traits>
 
-#include "paddle/fluid/platform/device_tracer.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/common_event.h"
 #include "paddle/fluid/platform/profiler/host_event_recorder.h"
 #include "paddle/fluid/platform/profiler/host_tracer.h"
 #include "paddle/fluid/platform/profiler/profiler.h"
 #include "paddle/fluid/platform/profiler_helper.h"
+#include "paddle/phi/common/profiler/device_tracer.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/nvtx.h"
 #endif
@@ -38,10 +38,6 @@ PADDLE_DEFINE_EXPORTED_bool(enable_rpc_profiler,
                             false,
                             "Enable rpc profiler or not.");
 
-DEFINE_bool(enable_host_event_recorder_hook,
-            false,
-            "enable HostEventRecorder, hook Profiler");
-
 DEFINE_bool(enable_record_op_info,
             false,
             "enable operator supplement info recorder");
@@ -52,198 +48,6 @@ namespace paddle {
 namespace platform {
 
 MemEvenRecorder MemEvenRecorder::recorder;
-
-Event::Event(EventType type,
-             std::string name,
-             uint32_t thread_id,
-             EventRole role,
-             std::string attr)
-    : type_(type),
-      name_(name),
-      thread_id_(thread_id),
-      role_(role),
-      attr_(attr) {
-  cpu_ns_ = GetTimeInNsec();
-}
-
-const EventType &Event::type() const { return type_; }
-
-double Event::CpuElapsedMs(const Event &e) const {
-  return (e.cpu_ns_ - cpu_ns_) / (1000000.0);
-}
-
-double Event::CudaElapsedMs(const Event &e) const {
-#ifdef PADDLE_WITH_CUPTI
-  return gpu_ns_ / 1000000.0;
-#else
-  LOG_FIRST_N(WARNING, 1) << "CUDA CUPTI is not enabled";
-  return 0;
-#endif
-}
-
-RecordEvent::RecordEvent(const char *name,
-                         const TracerEventType type,
-                         uint32_t level,
-                         const EventRole role) {
-#ifndef _WIN32
-#ifdef PADDLE_WITH_CUDA
-  if (g_enable_nvprof_hook) {
-    dynload::nvtxRangePushA(name);
-    is_pushed_ = true;
-  }
-#endif
-#endif
-  if (UNLIKELY(HostTraceLevel::GetInstance().NeedTrace(level) == false)) {
-    return;
-  }
-
-  if (FLAGS_enable_host_event_recorder_hook == false) {
-    if (g_state != ProfilerState::kDisabled) {  // avoid temp string
-      if (type == TracerEventType::Operator ||
-          type == TracerEventType::OperatorInner ||
-          type == TracerEventType::UserDefined) {
-        OriginalConstruct(name, role, "none");
-      }
-    }
-    return;
-  }
-
-  is_enabled_ = true;
-  shallow_copy_name_ = name;
-  role_ = role;
-  type_ = type;
-  start_ns_ = PosixInNsec();
-}
-
-RecordEvent::RecordEvent(const std::string &name,
-                         const TracerEventType type,
-                         uint32_t level,
-                         const EventRole role) {
-#ifndef _WIN32
-#ifdef PADDLE_WITH_CUDA
-  if (g_enable_nvprof_hook) {
-    dynload::nvtxRangePushA(name.c_str());
-    is_pushed_ = true;
-  }
-#endif
-#endif
-  if (UNLIKELY(HostTraceLevel::GetInstance().NeedTrace(level) == false)) {
-    return;
-  }
-
-  if (FLAGS_enable_host_event_recorder_hook == false) {
-    if (type == TracerEventType::Operator ||
-        type == TracerEventType::OperatorInner ||
-        type == TracerEventType::UserDefined) {
-      OriginalConstruct(name, role, "none");
-    }
-    return;
-  }
-
-  is_enabled_ = true;
-  name_ = new std::string(name);
-  role_ = role;
-  type_ = type;
-  start_ns_ = PosixInNsec();
-}
-
-RecordEvent::RecordEvent(const std::string &name,
-                         const std::string &attr,
-                         const TracerEventType type,
-                         uint32_t level,
-                         const EventRole role) {
-#ifndef _WIN32
-#ifdef PADDLE_WITH_CUDA
-  if (g_enable_nvprof_hook) {
-    dynload::nvtxRangePushA(name.c_str());
-    is_pushed_ = true;
-  }
-#endif
-#endif
-
-  if (UNLIKELY(HostTraceLevel::GetInstance().NeedTrace(level) == false)) {
-    return;
-  }
-
-  if (FLAGS_enable_host_event_recorder_hook == false) {
-    if (type == TracerEventType::Operator ||
-        type == TracerEventType::OperatorInner ||
-        type == TracerEventType::UserDefined) {
-      OriginalConstruct(name, role, attr);
-    }
-    return;
-  }
-
-  is_enabled_ = true;
-  type_ = type;
-  name_ = new std::string(name);
-  start_ns_ = PosixInNsec();
-  attr_ = new std::string(attr);
-}
-
-void RecordEvent::OriginalConstruct(const std::string &name,
-                                    const EventRole role,
-                                    const std::string &attr) {
-  if (g_state == ProfilerState::kDisabled || name.empty()) return;
-
-  // do some initialization
-  name_ = new std::string(name);
-  start_ns_ = PosixInNsec();
-  role_ = role;
-  attr_ = new std::string(attr);
-  is_enabled_ = true;
-  // lock is not needed, the code below is thread-safe
-  // Maybe need the same push/pop behavior.
-  Event *e = PushEvent(name, role, attr);
-  SetCurAnnotation(e);
-  *name_ = e->name();
-}
-
-void RecordEvent::End() {
-#ifndef _WIN32
-#ifdef PADDLE_WITH_CUDA
-  if (g_enable_nvprof_hook && is_pushed_) {
-    dynload::nvtxRangePop();
-    is_pushed_ = false;
-  }
-#endif
-#endif
-  if (LIKELY(FLAGS_enable_host_event_recorder_hook && is_enabled_)) {
-    uint64_t end_ns = PosixInNsec();
-    if (LIKELY(shallow_copy_name_ != nullptr)) {
-      HostEventRecorder<CommonEvent>::GetInstance().RecordEvent(
-          shallow_copy_name_, start_ns_, end_ns, role_, type_);
-    } else if (name_ != nullptr) {
-      if (attr_ == nullptr) {
-        HostEventRecorder<CommonEvent>::GetInstance().RecordEvent(
-            *name_, start_ns_, end_ns, role_, type_);
-      } else {
-        HostEventRecorder<CommonEvent>::GetInstance().RecordEvent(
-            *name_, start_ns_, end_ns, role_, type_, *attr_);
-        delete attr_;
-      }
-      delete name_;
-    }
-    // use this flag to avoid double End();
-    is_enabled_ = false;
-    return;
-  }
-
-  if (g_state == ProfilerState::kDisabled || !is_enabled_) return;
-  // lock is not needed, the code below is thread-safe
-  DeviceTracer *tracer = GetDeviceTracer();
-  if (tracer) {
-    uint64_t end_ns = PosixInNsec();
-    tracer->AddCPURecords(
-        CurAnnotationName(), start_ns_, end_ns, BlockDepth(), g_thread_id);
-  }
-  ClearCurAnnotation();
-  PopEvent(*name_, role_);
-  delete name_;
-  delete attr_;
-  // use this flag to avoid double End();
-  is_enabled_ = false;
-}
 
 RecordInstantEvent::RecordInstantEvent(const char *name,
                                        TracerEventType type,
@@ -321,11 +125,6 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
   uint64_t op_id = 0;
   HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
       PosixInNsec(), type, input_shapes, dtypes, attrs, op_id);
-}
-
-bool RecordEvent::IsEnabled() {
-  return FLAGS_enable_host_event_recorder_hook || g_enable_nvprof_hook ||
-         g_state != ProfilerState::kDisabled;
 }
 
 bool RecordOpInfoSupplement::IsEnabled() { return FLAGS_enable_record_op_info; }
@@ -799,15 +598,15 @@ MemEvenRecorder::RecordMemEvent::RecordMemEvent(const Place &place,
     : place_(place),
       bytes_(bytes),
       start_ns_(PosixInNsec()),
-      alloc_in_(CurAnnotationName()) {
+      alloc_in_(phi::CurAnnotationName()) {
   PushMemEvent(start_ns_, end_ns_, bytes_, place_, alloc_in_);
 }
 
 MemEvenRecorder::RecordMemEvent::~RecordMemEvent() {
-  DeviceTracer *tracer = GetDeviceTracer();
+  phi::DeviceTracer *tracer = phi::GetDeviceTracer();
   end_ns_ = PosixInNsec();
 
-  auto annotation_free = CurAnnotationName();
+  auto annotation_free = phi::CurAnnotationName();
   if (tracer) {
     tracer->AddMemInfoRecord(start_ns_,
                              end_ns_,
@@ -831,21 +630,21 @@ RecordBlock::RecordBlock(int block_id)
   // lock is not needed, the code below is thread-safe
   if (g_state == ProfilerState::kDisabled) return;
   is_enabled_ = true;
-  SetCurBlock(block_id);
+  phi::SetCurBlock(block_id);
   name_ = string::Sprintf("block_%d", block_id);
 }
 
 RecordBlock::~RecordBlock() {
   // lock is not needed, the code below is thread-safe
   if (g_state == ProfilerState::kDisabled || !is_enabled_) return;
-  DeviceTracer *tracer = GetDeviceTracer();
+  phi::DeviceTracer *tracer = phi::GetDeviceTracer();
   if (tracer) {
     // We try to put all blocks at the same nested depth in the
     // same timeline lane. and distinguish the using thread_id.
     tracer->AddCPURecords(
-        name_, start_ns_, PosixInNsec(), BlockDepth(), g_thread_id);
+        name_, start_ns_, PosixInNsec(), phi::BlockDepth(), g_thread_id);
   }
-  ClearCurBlock();
+  phi::ClearCurBlock();
 }
 
 void PushMemEvent(uint64_t start_ns,
@@ -885,16 +684,6 @@ void Mark(const std::string &name) {
   GetEventList().Record(EventType::kMark, name, g_thread_id);
 }
 
-Event *PushEvent(const std::string &name,
-                 const EventRole role,
-                 std::string attr) {
-  return GetEventList().Record(
-      EventType::kPushRange, name, g_thread_id, role, attr);
-}
-
-void PopEvent(const std::string &name, const EventRole role, std::string attr) {
-  GetEventList().Record(EventType::kPopRange, name, g_thread_id, role, attr);
-}
 void EnableProfiler(ProfilerState state) {
   PADDLE_ENFORCE_NE(state,
                     ProfilerState::kDisabled,
@@ -910,13 +699,13 @@ void EnableProfiler(ProfilerState state) {
   ProfilerOptions option;
   HostTraceLevel::GetInstance().SetLevel(option.trace_level);
   should_send_profile_state = true;
-  GetDeviceTracer()->Enable();
+  phi::GetDeviceTracer()->Enable();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (g_state == ProfilerState::kCUDA || g_state == ProfilerState::kAll ||
       g_state == ProfilerState::kCPU) {
     // Generate some dummy events first to reduce the startup overhead.
     DummyKernelAndEvent();
-    GetDeviceTracer()->Reset();
+    phi::GetDeviceTracer()->Reset();
   }
 #endif
   // Mark the profiling start.
@@ -925,7 +714,7 @@ void EnableProfiler(ProfilerState state) {
 
 void ResetProfiler() {
   SynchronizeAllDevice();
-  GetDeviceTracer()->Reset();
+  phi::GetDeviceTracer()->Reset();
   MemEvenRecorder::Instance().Flush();
   std::lock_guard<std::mutex> guard(g_all_event_lists_mutex);
   for (auto it = g_all_event_lists.begin(); it != g_all_event_lists.end();
@@ -955,7 +744,7 @@ void DisableProfiler(EventSortingKey sorted_key,
   Mark("_stop_profiler_");
   DealWithShowName();
 
-  DeviceTracer *tracer = GetDeviceTracer();
+  phi::DeviceTracer *tracer = phi::GetDeviceTracer();
   if (tracer->IsEnabled()) {
     tracer->Disable();
     DockHostEventRecorderDevicePart(thr_events);
@@ -977,7 +766,7 @@ void DisableProfiler(EventSortingKey sorted_key,
   should_send_profile_state = true;
 }
 
-void CompleteProfilerEvents(proto::Profile *tracer_profile,
+void CompleteProfilerEvents(phi::proto::Profile *tracer_profile,
                             std::vector<std::vector<Event>> *time_events,
                             std::vector<std::vector<MemEvent>> *mem_events) {
   SynchronizeAllDevice();
@@ -990,7 +779,7 @@ void CompleteProfilerEvents(proto::Profile *tracer_profile,
   // Mark the profiling stop.
   Mark("_stop_profiler_");
 
-  DeviceTracer *tracer = GetDeviceTracer();
+  phi::DeviceTracer *tracer = phi::GetDeviceTracer();
   if (tracer->IsEnabled() && tracer_profile != nullptr) {
     tracer->Disable();
     DockHostEventRecorderDevicePart(thr_events);
@@ -1148,7 +937,7 @@ static void EmulateEventPushAndPop(
 
 static void EmulateCPURecordsAdd(
     const HostEventSection<CommonEvent> &host_sec) {
-  DeviceTracer *tracer = GetDeviceTracer();
+  phi::DeviceTracer *tracer = phi::GetDeviceTracer();
   if (tracer == nullptr) {
     return;
   }
@@ -1156,14 +945,14 @@ static void EmulateCPURecordsAdd(
     uint64_t tid = thr_sec.thread_id;
     for (const auto &evt : thr_sec.events) {
       tracer->AddCPURecords(
-          evt.name, evt.start_ns, evt.end_ns, BlockDepth(), tid);
+          evt.name, evt.start_ns, evt.end_ns, phi::BlockDepth(), tid);
     }
   }
 }
 
 static void EmulateCorrelation(
     const std::map<uint64_t, ThreadEvents> &thr_events) {
-  DeviceTracer *tracer = GetDeviceTracer();
+  phi::DeviceTracer *tracer = phi::GetDeviceTracer();
   if (tracer == nullptr) {
     return;
   }
