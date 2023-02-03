@@ -307,6 +307,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                    &qkv_out,
                                    qkv_in_scale[i],
                                    qkv_out_scales[i],
+                                   &cublaslt_workspace,
                                    quant_round_type,
                                    quant_max_bound,
                                    quant_min_bound);
@@ -320,6 +321,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                    &qkv_out,
                                    qkv_in_scale[i],
                                    qkv_out_scales[i],
+                                   &cublaslt_workspace,
                                    quant_round_type,
                                    quant_max_bound,
                                    quant_min_bound);
@@ -331,7 +333,8 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                           &qkv_out,
                                           &output_workspace,
                                           &qkv_out,
-                                          qkv_out_scales[i]);
+                                          qkv_out_scales[i],
+                                          &cublaslt_workspace);
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step2";
@@ -424,6 +427,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                                  nullptr,
                                                  &output_workspace,
                                                  nullptr,
+                                                 &cublaslt_workspace,
                                                  quant_round_type,
                                                  quant_max_bound,
                                                  quant_min_bound);
@@ -441,6 +445,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                           nullptr,
                                           out_linear_in_scale[i],
                                           out_linear_out_scales[i],
+                                          &cublaslt_workspace,
                                           quant_round_type,
                                           quant_max_bound,
                                           quant_min_bound);
@@ -501,13 +506,12 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
       // step6. ffn matmul1
 
       if (pre_layer_norm) {
-        ffn1_linear_compute.ComputeForwardINT8ToINT8(
-            ffn1_weights[i],
-            &input_workspace,
-            nullptr,
-            &output_workspace,
-            nullptr,
-            cublaslt_workspace.data<int8_t>());
+        ffn1_linear_compute.ComputeForwardINT8ToINT8(ffn1_weights[i],
+                                                     &input_workspace,
+                                                     nullptr,
+                                                     &output_workspace,
+                                                     nullptr,
+                                                     &cublaslt_workspace);
       } else {
         ffn1_linear_compute.ComputeForward(ffn1_weights[i],
                                            buf1,
@@ -518,6 +522,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                            nullptr,
                                            ffn1_in_scale[i],
                                            ffn1_out_scales[i],
+                                           &cublaslt_workspace,
                                            quant_round_type,
                                            quant_max_bound,
                                            quant_min_bound);
@@ -557,13 +562,12 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
 
       // step8. ffn matmul2
       if (pre_layer_norm) {
-        ffn2_linear_compute.ComputeForwardINT8ToINT8(
-            ffn2_weights[i],
-            &input_workspace,
-            nullptr,
-            &output_workspace,
-            nullptr,
-            cublaslt_workspace.data<int8_t>());
+        ffn2_linear_compute.ComputeForwardINT8ToINT8(ffn2_weights[i],
+                                                     &input_workspace,
+                                                     nullptr,
+                                                     &output_workspace,
+                                                     nullptr,
+                                                     &cublaslt_workspace);
       } else {
         ffn2_linear_compute.ComputeForward(ffn2_weights[i],
                                            &ffn1_dropout_out,
@@ -574,6 +578,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                            nullptr,
                                            ffn2_in_scale[i],
                                            ffn2_out_scales[i],
+                                           &cublaslt_workspace,
                                            quant_round_type,
                                            quant_max_bound,
                                            quant_min_bound);
