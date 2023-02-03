@@ -72,6 +72,7 @@
 namespace paddle {
 namespace framework {
 namespace ir {
+namespace {
 
 bool IsScale(OpDesc* const op_ptr,
              std::string* name,
@@ -89,13 +90,12 @@ bool IsScale(OpDesc* const op_ptr,
   return false;
 }
 
-namespace {
 // Naive gemm.
 template <typename T>
 void NaiveGemm(const T* A, const T* B, T* C, int M, int N, int K) {
-  for (size_t i = 0; i < M; i++) {
-    for (size_t j = 0; j < N; j++) {
-      for (size_t k = 0; k < K; k++) {
+  for (int i = 0; i < M; i++) {
+    for (int j = 0; j < N; j++) {
+      for (int k = 0; k < K; k++) {
         C[i * N + j] = (C[i * N + j]) + A[i * K + k] * B[k * N + j];
       }
     }
