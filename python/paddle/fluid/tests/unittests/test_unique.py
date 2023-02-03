@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -25,11 +25,14 @@ import paddle.fluid.core as core
 class TestUniqueOp(OpTest):
     def setUp(self):
         self.op_type = "unique"
+        self.python_api = paddle.unique
+        self.python_out_sig = ['Out']
+        self.check_dygraph = True
         self.init_config()
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output()
+        self.check_output(check_dygraph=self.check_dygraph)
         paddle.disable_static()
 
     def init_config(self):
@@ -41,6 +44,7 @@ class TestUniqueOp(OpTest):
             'Out': np.array([2, 3, 1, 5], dtype='int64'),
             'Index': np.array([0, 1, 1, 2, 3, 1], dtype='int32'),
         }
+        self.check_dygraph = False
 
 
 class TestOne(TestUniqueOp):
@@ -70,6 +74,7 @@ class TestRandom(TestUniqueOp):
         )
 
         self.outputs = {'Out': target_out, 'Index': target_index}
+        self.check_dygraph = False
 
 
 class TestUniqueRaiseError(unittest.TestCase):
@@ -134,7 +139,7 @@ class TestRandomGPU(TestUniqueOp):
         if core.is_compiled_with_cuda():
             paddle.enable_static()
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
+            self.check_output_with_place(place, check_dygraph=False, atol=1e-5)
             paddle.disable_static()
 
 
@@ -214,6 +219,7 @@ class TestUniqueOpAxisNeg(TestUniqueOp):
             "Index": inverse,
             "Counts": counts,
         }
+        self.check_dygraph = False
 
 
 class TestUniqueOpAxis1(TestUniqueOp):
@@ -240,37 +246,39 @@ class TestUniqueOpAxis1(TestUniqueOp):
             "Index": inverse,
             "Counts": counts,
         }
+        self.check_dygraph = False
 
 
 class TestUniqueAPI(unittest.TestCase):
     def test_dygraph_api_out(self):
-        x_data = x_data = np.random.randint(0, 10, (120))
-        x = paddle.to_tensor(x_data)
-        out = paddle.unique(x)
-        expected_out = np.unique(x_data)
-        self.assertTrue((out.numpy() == expected_out).all(), True)
+        for x_data in [np.random.randint(0, 10, (120)),  np.array([2, 3, 3, 1, 5, 3], dtype='int64')]:
+            x = paddle.to_tensor(x_data)
+            out = paddle.unique(x)
+            expected_out = np.unique(x_data)
+            self.assertTrue((out.numpy() == expected_out).all(), True)
 
     def test_dygraph_api_attr(self):
-        x_data = np.random.random((3, 5, 5)).astype("float32")
-        x = paddle.to_tensor(x_data)
-        out, index, inverse, counts = paddle.unique(
-            x,
-            return_index=True,
-            return_inverse=True,
-            return_counts=True,
-            axis=0,
-        )
-        np_out, np_index, np_inverse, np_counts = np.unique(
-            x_data,
-            return_index=True,
-            return_inverse=True,
-            return_counts=True,
-            axis=0,
-        )
-        self.assertTrue((out.numpy() == np_out).all(), True)
-        self.assertTrue((index.numpy() == np_index).all(), True)
-        self.assertTrue((inverse.numpy() == np_inverse).all(), True)
-        self.assertTrue((counts.numpy() == np_counts).all(), True)
+        for x_data in [np.random.random((3, 5, 5)).astype("float32"),  np.random.random((3, 8, 8)).astype('float64')]:
+            for axis in [0, -1, 1]:
+                x = paddle.to_tensor(x_data)
+                out, index, inverse, counts = paddle.unique(
+                    x,
+                    return_index=True,
+                    return_inverse=True,
+                    return_counts=True,
+                    axis=0,
+                )
+                np_out, np_index, np_inverse, np_counts = np.unique(
+                    x_data,
+                    return_index=True,
+                    return_inverse=True,
+                    return_counts=True,
+                    axis=0,
+                )
+                self.assertTrue((out.numpy() == np_out).all(), True)
+                self.assertTrue((index.numpy() == np_index).all(), True)
+                self.assertTrue((inverse.numpy() == np_inverse).all(), True)
+                self.assertTrue((counts.numpy() == np_counts).all(), True)
 
     def test_dygraph_attr_dtype(self):
         x_data = x_data = np.random.randint(0, 10, (120))

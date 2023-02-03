@@ -17,10 +17,11 @@ import sys
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid.core as core
+from python.paddle.fluid.tests.unittests.rnn.rnn_numpy import dropout, rnn
 
 sys.path.append("./rnn")
 from convert import get_params_for_net
@@ -30,6 +31,11 @@ random.seed(2)
 np.set_printoptions(threshold=np.inf)
 paddle.enable_static()
 
+
+def rnn_wrapper(inputs, initial_states=None, sequence_length=None, dropout_prob=0.0, is_bidirec='forward',
+                input_size=None, hidden_size=None, num_layers=1, is_test=False, mode=None):
+    rnn = paddle.nn.Layer.SimpleRNN(input_size, hidden_size, num_layers, direction=is_bidirec, dropout=dropout_prob)
+    return rnn(inputs, initial_states, sequence_length)
 
 class TestSimpleRNNOp(OpTest):
     def get_weight_names(self):
@@ -44,6 +50,7 @@ class TestSimpleRNNOp(OpTest):
 
     def setUp(self):
         self.op_type = "rnn"
+        self.python_api = rnn_wrapper
         self.dtype = "float32" if core.is_compiled_with_rocm() else "float64"
         self.sequence_length = (
             None

@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing_extensions import Self
 import unittest
 
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
@@ -32,6 +33,7 @@ paddle.enable_static()
 class TestSliceOp(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.python_api = paddle.slice
         self.config()
         self.inputs = {'Input': self.input}
         self.outputs = {'Out': self.out}
@@ -80,6 +82,7 @@ class TestCase2(TestSliceOp):
 class TestSliceZerosShapeTensor(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.python_api = paddle.slice
         self.config()
         self.inputs = {'Input': self.input}
         self.outputs = {'Out': self.out}
@@ -107,6 +110,7 @@ class TestSliceZerosShapeTensor(OpTest):
 class TestSliceOp_decs_dim(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.python_api = paddle.slice
         self.config()
         self.inputs = {'Input': self.input}
         self.outputs = {'Out': self.out}
@@ -167,6 +171,14 @@ class TestSliceOp_decs_dim_4(TestSliceOp_decs_dim):
         self.out = self.input[0, 1, 2, 3:4]
 
 
+def slice_wrapper(shape=[3, 4, 5]):
+    def inner_func(input, axes, starts, ends):
+        out = paddle.slice(input, axes, starts, ends)
+        out = out.reshape(shape)
+        return out
+    return inner_func
+
+
 class TestSliceOp_decs_dim_5(TestSliceOp_decs_dim):
     def config(self):
         self.input = np.random.random([3, 4, 5, 6]).astype("float64")
@@ -176,6 +188,7 @@ class TestSliceOp_decs_dim_5(TestSliceOp_decs_dim):
         self.decrease_axis = [3]
         self.infer_flags = [1, 1, 1]
         self.out = self.input[:, :, :, -1]
+        self.python_api = slice_wrapper()
 
 
 class TestSliceOp_decs_dim_6(TestSliceOp_decs_dim):
@@ -194,6 +207,7 @@ class TestSliceOp_decs_dim_6(TestSliceOp_decs_dim):
 class TestSliceOp_starts_ListTensor(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.python_api = paddle.slice
         self.config()
 
         starts_tensor = []
@@ -233,6 +247,7 @@ class TestSliceOp_starts_ListTensor(OpTest):
 class TestSliceOp_decs_dim_starts_ListTensor(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.python_api = paddle.slice
         self.config()
 
         starts_tensor = []
@@ -283,6 +298,7 @@ class TestSliceOp_decs_dim_5_starts_ListTensor(
         self.out = self.input[:, :, :, -1]
 
         self.starts_infer = [-1]
+        self.python_api = slice_wrapper()
 
 
 # Situation 3: starts(tensor), ends(list, no tensor)
@@ -290,6 +306,7 @@ class TestSliceOp_decs_dim_5_starts_ListTensor(
 class TestSliceOp_decs_dim_starts_OneTensor(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.python_api = paddle.slice
         self.config()
         self.inputs = {
             'Input': self.input,
@@ -325,6 +342,7 @@ class TestSliceOp_decs_dim_starts_OneTensor(OpTest):
 class TestSliceOp_starts_OneTensor_ends_OneTensor(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.python_api = paddle.slice
         self.config()
 
         self.inputs = {
@@ -360,6 +378,7 @@ class TestSliceOp_starts_OneTensor_ends_OneTensor(OpTest):
 class TestSliceOp_decs_dim_starts_and_ends_OneTensor(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.python_api = paddle.slice
         self.config()
         self.inputs = {
             'Input': self.input,
@@ -396,6 +415,7 @@ class TestSliceOp_decs_dim_starts_and_ends_OneTensor(OpTest):
 class TestSliceOp_starts_OneTensor_ends_ListTensor(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.python_api = paddle.slice
         self.config()
 
         ends_tensor = []
@@ -441,6 +461,7 @@ class TestSliceOp_starts_OneTensor_ends_ListTensor(OpTest):
 class TestFP16(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.python_api = paddle.slice
         self.config()
         self.inputs = {'Input': self.input}
         self.outputs = {'Out': self.out}
@@ -479,6 +500,7 @@ class TestFP16(OpTest):
 class TestFP16_2(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.python_api = paddle.slice
         self.config()
         self.inputs = {'Input': self.input}
         self.outputs = {'Out': self.out}
@@ -518,6 +540,7 @@ class TestFP16_2(OpTest):
 class TestBF16(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.python_api = paddle.slice
         self.config()
         self.inputs = {'Input': convert_float_to_uint16(self.input)}
         self.outputs = {'Out': convert_float_to_uint16(self.out)}

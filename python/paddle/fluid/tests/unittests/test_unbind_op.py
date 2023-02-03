@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
@@ -80,7 +80,7 @@ class TestLayersUnbind(unittest.TestCase):
 
 class TestUnbindOp(OpTest):
     def initParameters(self):
-        pass
+        self.python_out_sig = ['out0', 'out1', 'out2']
 
     def outReshape(self):
         pass
@@ -109,6 +109,7 @@ class TestUnbindOp(OpTest):
 
     def _set_op_type(self):
         self.op_type = "unbind"
+        self.python_api = paddle.unbind
 
     def test_check_output(self):
         self.check_output()
@@ -121,6 +122,8 @@ class TestUnbindOp1(TestUnbindOp):
     def initParameters(self):
         self.axis = 1
         self.num = 2
+        self.python_out_sig = ['out0', 'out1']
+
 
     def test_check_grad(self):
         self.check_grad(['X'], ['out0', 'out1'])
@@ -134,6 +137,8 @@ class TestUnbindOp2(TestUnbindOp):
     def initParameters(self):
         self.axis = 2
         self.num = 2
+        self.python_out_sig = ['out0', 'out1']
+
 
     def test_check_grad(self):
         self.check_grad(['X'], ['out0', 'out1'])
@@ -147,6 +152,7 @@ class TestUnbindOp3(TestUnbindOp):
     def initParameters(self):
         self.axis = 2
         self.num = 2
+        self.python_out_sig = ['out0', 'out1']
 
     def setAxis(self):
         self.attrs = {'axis': -1}
@@ -163,6 +169,7 @@ class TestUnbindOp4(TestUnbindOp):
     def initParameters(self):
         self.axis = 1
         self.num = 2
+        self.python_out_sig = ['out0', 'out1']
 
     def setAxis(self):
         self.attrs = {'axis': -2}
@@ -179,6 +186,7 @@ class TestUnbindBF16Op(OpTest):
     def setUp(self):
         self._set_op_type()
         self.python_api = paddle.unbind
+        self.python_out_sig = ['out0', 'out1', 'out2']
         self.dtype = self.get_dtype()
         self.axis = 0
         self.num = 3
