@@ -15,67 +15,59 @@
 
 import unittest
 
-from paddle.fluid import core
-
-core._set_prim_backward_enabled(True)
-
-import parameterized as param
-
 import paddle
 from paddle.fluid import core, framework
 
 
-@param.parameterized_class(
-    (
-        'fwd_type',
-        'inputs',
-        'outputs',
-        'no_grad_var',
-        'grad_sub_block',
-        'desired_ops',
-    ),
-    (
-        (
-            'tanh',
-            {'X': ['x']},
-            {'Out': ['y']},
-            set(),
-            tuple(),
-            ('pow', 'scale', 'elementwise_mul'),
-        ),
-        ('empty', {}, {'Out': ['y']}, set(), tuple(), tuple()),
-    ),
-)
 class TestGetGradOpDescPrimEnabled(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
+    def setUp(self):
+        self.fwd_type = 'tanh'
+        self.inputs = {'X': ['x']}
+        self.outputs = {'Out': ['y']}
+        self.no_grad_var = set()
+        self.grad_sub_block = tuple()
+        self.desired_ops = 'tanh_grad'
+        self.desired_ops_no_skip = ('pow', 'scale', 'elementwise_mul')
         paddle.enable_static()
         block = framework.Block(framework.Program(), 0)
         block.append_op(
-            type=cls.fwd_type,
+            type=self.fwd_type,
             inputs={
                 n: [block.create_var(name=v, stop_gradient=False) for v in vs]
-                for n, vs in cls.inputs.items()
+                for n, vs in self.inputs.items()
             },
             outputs={
                 n: [block.create_var(name=v, stop_gradient=False) for v in vs]
-                for n, vs in cls.outputs.items()
+                for n, vs in self.outputs.items()
             },
         )
-        cls.fwd = block.ops[0].desc
+        self.fwd = block.ops[0].desc
 
-    @classmethod
-    def tearDownClass(cls):
+    def tearDown(self):
         paddle.disable_static()
 
-    def test_get_grad_op_desc(self):
+    def test_get_grad_op_desc_without_skip(self):
+        core._set_prim_backward_enabled(True)
         actual = tuple(
             desc.type()
             for desc in core.get_grad_op_desc(
                 self.fwd, self.no_grad_var, self.grad_sub_block
             )[0]
         )
-        self.assertEquals(actual, self.desired_ops)
+        self.assertEquals(actual, self.desired_ops_no_skip)
+        core._set_prim_backward_enabled(False)
+
+    def test_get_grad_op_desc_with_skip(self):
+        core._set_prim_backward_enabled(True)
+        core._add_skip_comp_ops("tanh")
+        actual = tuple(
+            desc.type()
+            for desc in core.get_grad_op_desc(
+                self.fwd, self.no_grad_var, self.grad_sub_block
+            )[0]
+        )
+        core._remove_skip_comp_ops("tanh")
+        self.assertEquals(actual[0], self.desired_ops)
         core._set_prim_backward_enabled(False)
 
 

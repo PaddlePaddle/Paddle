@@ -8,5 +8,8 @@ foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS ${GC_ENVS})
 endforeach()
 
-add_subdirectory(prim)
-add_subdirectory(model)
+set_tests_properties(test_resnet_prim_cinn PROPERTIES TIMEOUT 300)
+
+if(WITH_CINN)
+  set_tests_properties(test_resnet_prim_cinn PROPERTIES LABELS "RUN_TYPE=CINN")
+endif()

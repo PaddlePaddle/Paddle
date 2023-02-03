@@ -9,3 +9,7 @@ foreach(TEST_OP ${TEST_OPS})
   list(APPEND TEST_OPS ${TEST_OP})
   set_tests_properties(${TEST_OP} PROPERTIES TIMEOUT 50)
 endforeach()
+
+if(WITH_PSCORE)
+  set_tests_properties(test_gpubox_ps PROPERTIES LABELS "RUN_TYPE=GPUPS")
+endif()

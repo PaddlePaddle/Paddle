@@ -26,9 +26,8 @@
 #include "paddle/fluid/framework/program_desc.h"
 
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/prim/api/generated/prim_api/prim_api.h"
-#include "paddle/fluid/prim/api/manual/prim_api/prim_api.h"
-#include "paddle/fluid/prim/api/manual/utils/utils.h"
+#include "paddle/fluid/prim/api/manual_prim/prim_manual_api.h"
+#include "paddle/fluid/prim/api/manual_prim/utils/utils.h"
 #include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/phi/api/include/tensor.h"
@@ -110,6 +109,7 @@ Tensor unsqueeze<DescTensor>(const Tensor& x, const IntArray& axis) {
   op->SetAttr("axes", new_shape);
   op->CheckAttrs();
   op->InferVarType(block);
+  op->InferShape(*block);
   return out;
 }
 
@@ -209,7 +209,7 @@ Tensor sum<DescTensor>(const Tensor& x,
       "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
   op->CheckAttrs();
   op->InferVarType(block);
-  // TODO(jiabin, cxxly): This may have runtime shape skip infershape for now.
+  op->InferShape(*block);
   return out;
 }
 
@@ -232,7 +232,7 @@ Tensor reshape<DescTensor>(const Tensor& x, const IntArray& shape) {
       "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
   op->CheckAttrs();
   op->InferVarType(block);
-  // TODO(jiabin, cxxly): This may have runtime shape skip infershape for now.
+  op->InferShape(*block);
   return out;
 }
 
