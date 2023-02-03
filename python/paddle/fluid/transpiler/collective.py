@@ -516,12 +516,12 @@ class SingleProcessMultiThread(GradAllReduce):
     def _transpile_main_program(self):
         # not need loss scale and no dense param
         param_cnt = self._get_update_param_count()
-        if self.loss_scale is 0 and param_cnt is 0:
+        if self.loss_scale == 0 and param_cnt == 0:
             return
         # scale loss
         self._insert_scale_loss_grad_ops()
         # no param
-        if param_cnt is 0:
+        if param_cnt == 0:
             return
         # fuse allreduce
         if self.fuse_allreduce > 0:

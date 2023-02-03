@@ -530,19 +530,30 @@ class Momentum(Optimizer):
                 )
 
                 if in_dygraph_mode():
-                    _, _, _ = _C_ops.merged_momentum_(
-                        self._param_dict[key][param_group_idx],
-                        grad_dict[key],
-                        self._velocity_dict[key][param_group_idx],
-                        lr_dict[key],
-                        master_weight,
-                        self._momentum,
-                        self._use_nesterov,
-                        self._regularization_method_dict[key][param_group_idx],
-                        self._regularization_coeff_dict[key][param_group_idx],
-                        find_master,
-                        self._rescale_grad,
-                    )
+                    found_inf = self._get_auxiliary_var('found_inf')
+                    if found_inf:
+                        if isinstance(found_inf, core.eager.Tensor):
+                            self._set_auxiliary_var('found_inf', True)
+                    else:
+                        if isinstance(found_inf, core.eager.Tensor):
+                            self._set_auxiliary_var('found_inf', False)
+                        _, _, _ = _C_ops.merged_momentum_(
+                            self._param_dict[key][param_group_idx],
+                            grad_dict[key],
+                            self._velocity_dict[key][param_group_idx],
+                            lr_dict[key],
+                            master_weight,
+                            self._momentum,
+                            self._use_nesterov,
+                            self._regularization_method_dict[key][
+                                param_group_idx
+                            ],
+                            self._regularization_coeff_dict[key][
+                                param_group_idx
+                            ],
+                            find_master,
+                            self._rescale_grad,
+                        )
                 else:
                     inputs = {
                         "Param": self._param_dict[key][param_group_idx],

@@ -144,6 +144,7 @@ if(WITH_TENSORRT)
   pass_library(trt_support_nhwc_pass inference)
   pass_library(elementwise_groupnorm_act_pass inference)
   pass_library(preln_elementwise_groupnorm_act_pass inference)
+  pass_library(groupnorm_act_pass inference)
   pass_library(trt_embedding_eltwise_layernorm_fuse_pass inference)
   pass_library(preln_embedding_eltwise_layernorm_fuse_pass inference)
 endif()
@@ -386,18 +387,6 @@ if(WITH_MKLDNN)
     test_depthwise_conv_mkldnn_pass
     SRCS mkldnn/depthwise_conv_mkldnn_pass_tester.cc
     DEPS depthwise_conv_mkldnn_pass)
-  cc_test(
-    test_conv_bias_mkldnn_fuse_pass_cc
-    SRCS mkldnn/conv_bias_mkldnn_fuse_pass_tester.cc
-    DEPS conv_bias_mkldnn_fuse_pass naive_executor)
-  cc_test(
-    test_conv_concat_relu_mkldnn_fuse_pass
-    SRCS mkldnn/conv_concat_relu_mkldnn_fuse_pass_tester.cc
-    DEPS conv_activation_mkldnn_fuse_pass)
-  cc_test_old(
-    test_conv_elementwise_add_mkldnn_fuse_pass SRCS
-    mkldnn/conv_elementwise_add_mkldnn_fuse_pass_tester.cc DEPS
-    conv_elementwise_add_mkldnn_fuse_pass pass_test_util)
   cc_test_old(
     test_int8_scale_calculation_mkldnn_pass SRCS
     mkldnn/int8_scale_calculation_mkldnn_pass_tester.cc DEPS

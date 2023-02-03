@@ -26,7 +26,6 @@
 #include <iostream>
 #include <vector>
 
-#include "paddle/fluid/framework/tensor_util.h"  // TensorToVector()
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -127,8 +126,8 @@ void IndexSelect(const Context& context,
 
   std::vector<InT> input_vec;
   std::vector<IndexT> index_vec;
-  paddle::framework::TensorToVector(input, context, &input_vec);
-  paddle::framework::TensorToVector(index, context, &index_vec);
+  phi::TensorToVector(input, context, &input_vec);
+  phi::TensorToVector(index, context, &index_vec);
   std::vector<InT> out_vec(output->numel());
 
   for (int i = 0; i < index_size; i++) {
@@ -165,7 +164,7 @@ void IndexSelect(const Context& context,
     }
   }
   context.template Alloc<IndexT>(output);
-  paddle::framework::TensorFromVector(out_vec, context, output);
+  phi::TensorFromVector(out_vec, context, output);
   output->Resize(output_dim);
 }
 

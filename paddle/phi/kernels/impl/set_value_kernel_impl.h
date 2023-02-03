@@ -316,7 +316,7 @@ void SetValueKernel(const Context& dev_ctx,
     assgin_values.push_back(val.to<T>());
   }
   DenseTensor value_tensor = Empty<T>(dev_ctx, shape);
-  paddle::framework::TensorFromVector(assgin_values, dev_ctx, &value_tensor);
+  phi::TensorFromVector(assgin_values, dev_ctx, &value_tensor);
   value_tensor.Resize(phi::make_ddim(shape));
 
   SetTensorValueKernel<T, Context>(dev_ctx,
