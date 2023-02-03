@@ -21,13 +21,6 @@ from paddle import _legacy_C_ops
 from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
 from paddle.fluid import backward, core, framework, program_guard
 from paddle.fluid.compiler import BuildStrategy
-from paddle.fluid.contrib.mixed_precision.decorator import (
-    AutoMixedPrecisionLists,
-)
-from paddle.fluid.contrib.mixed_precision.fp16_utils import (
-    cast_model_to_fp16,
-    rewrite_program,
-)
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.executor import (
@@ -39,6 +32,7 @@ from paddle.fluid.layers.utils import _hash_with_id, flatten, pack_sequence_as
 
 from . import logging_utils
 from .return_transformer import RETURN_NO_VALUE_MAGIC_NUM
+from .utils import _out_grad_names, _param_grad_names
 
 __all__ = []
 
@@ -129,6 +123,21 @@ def _change_is_test_status(program, is_test):
     return program
 
 
+class ProgramInfo:
+    """
+    A helper class to recoder Program information
+    """
+
+    def __init__(self, mode='infer'):
+        self.op_size = {
+            'fp32': -1,
+            'amp': -1,
+            'fp16': -1,
+        }
+        assert mode in ['train', 'infer']
+        self.mode = mode
+
+
 class PartialProgramLayer:
     """
     PartialProgramLayer wraps all the ops from layers decorated by `@to_static`
@@ -167,13 +176,14 @@ class PartialProgramLayer:
         self._cuda_graph_pool_id = 0
         # Set default mode to train
         self.training = True
+        self._infer_info = ProgramInfo(mode='infer')
 
         custom_white_list, custom_black_list = None, None
         tracer = framework._dygraph_tracer()
         if tracer:
             custom_white_list, custom_black_list = tracer._get_amp_op_list()
         # For AMP training
-        self._amp_list = AutoMixedPrecisionLists(
+        self._amp_list = paddle.static.amp.fp16_lists.AutoMixedPrecisionLists(
             custom_white_list=custom_white_list,
             custom_black_list=custom_black_list,
         )
@@ -198,10 +208,6 @@ class PartialProgramLayer:
             return core.Scope()
 
     @LazyInitialized
-    def __fake_vars(self):
-        return _create_fake_var()
-
-    @LazyInitialized
     def _double_grads(self):
         return self._get_double_grads(self._origin_main_program)
 
@@ -222,7 +228,9 @@ class PartialProgramLayer:
     def _create_amp_program(self, is_infer_mode=False):
         amp_program = self._origin_main_program.clone(for_test=is_infer_mode)
         with program_guard(amp_program):
-            rewrite_program(amp_program, self._amp_list)
+            paddle.static.amp.fp16_utils.rewrite_program(
+                amp_program, self._amp_list
+            )
         if is_infer_mode:
             return amp_program
         else:
@@ -236,7 +244,7 @@ class PartialProgramLayer:
             for_test=is_infer_mode
         )
         with program_guard(pure_fp16_program):
-            cast_model_to_fp16(
+            paddle.static.amp.fp16_utils.cast_model_to_fp16(
                 pure_fp16_program, self._amp_list, use_fp16_guard=False
             )
         if is_infer_mode:
@@ -251,7 +259,8 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _create_forward_backward_train_program(self):
         whole_program = self._train_program
-        forward_end_op_index = self._infer_program.desc.block(0).op_size()
+        forward_end_op_index = self._infer_info.op_size['fp32']
+        assert forward_end_op_index >= 0
         return self._get_forward_backward_program_form(
             whole_program, forward_end_op_index
         )
@@ -259,7 +268,8 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _create_forward_backward_train_amp_program(self):
         whole_program = self._train_amp_program
-        forward_end_op_index = self._infer_amp_program.desc.block(0).op_size()
+        forward_end_op_index = self._infer_info.op_size['amp']
+        assert forward_end_op_index >= 0
         return self._get_forward_backward_program_form(
             whole_program, forward_end_op_index
         )
@@ -267,9 +277,8 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _create_forward_backward_train_pure_fp16_program(self):
         whole_program = self._train_pure_fp16_program
-        forward_end_op_index = self._infer_pure_fp16_program.desc.block(
-            0
-        ).op_size()
+        forward_end_op_index = self._infer_info.op_size['fp16']
+        assert forward_end_op_index >= 0
         return self._get_forward_backward_program_form(
             whole_program, forward_end_op_index
         )
@@ -280,7 +289,11 @@ class PartialProgramLayer:
 
     @LazyInitialized
     def _infer_program(self):
-        return self._create_program(is_infer_mode=True)
+        program = self._create_program(is_infer_mode=True)
+        self._infer_info.op_size['fp32'] = program.desc.block(0).op_size()
+        return self._build_infer_program(
+            program, self._infer_info.op_size['fp32']
+        )
 
     @LazyInitialized
     def _train_amp_program(self):
@@ -288,7 +301,11 @@ class PartialProgramLayer:
 
     @LazyInitialized
     def _infer_amp_program(self):
-        return self._create_amp_program(is_infer_mode=True)
+        program = self._create_amp_program(is_infer_mode=True)
+        self._infer_info.op_size['amp'] = program.desc.block(0).op_size()
+        return self._build_infer_program(
+            program, self._infer_info.op_size['amp']
+        )
 
     @LazyInitialized
     def _train_pure_fp16_program(self):
@@ -296,7 +313,11 @@ class PartialProgramLayer:
 
     @LazyInitialized
     def _infer_pure_fp16_program(self):
-        return self._create_pure_fp16_program(is_infer_mode=True)
+        program = self._create_pure_fp16_program(is_infer_mode=True)
+        self._infer_info.op_size['fp16'] = program.desc.block(0).op_size()
+        return self._build_infer_program(
+            program, self._infer_info.op_size['fp16']
+        )
 
     @LazyInitialized
     def _train_forward_backward_program(self):
@@ -316,67 +337,6 @@ class PartialProgramLayer:
     def _train_pure_fp16_forward_backward_program(self):
         program = self._create_forward_backward_train_pure_fp16_program()
         return program
-
-    @property
-    def whole_program(self):
-        if self.training:
-            if _in_amp_guard():
-                return self._train_amp_program
-            elif _in_pure_fp16_guard():
-                return self._train_pure_fp16_program
-            else:
-                return self._train_program
-        else:
-            if _in_amp_guard():
-                return self._infer_amp_program
-            elif _in_pure_fp16_guard():
-                return self._infer_pure_fp16_program
-            else:
-                return self._infer_program
-
-    @property
-    def forward_program(self):
-        if self.training:
-            if _in_amp_guard():
-                program = self._train_amp_forward_backward_program
-                return program[0]
-            elif _in_pure_fp16_guard():
-                program = self._train_pure_fp16_forward_backward_program
-                return program[0]
-            else:
-                program = self._train_forward_backward_program
-                return program[0]
-        else:
-            if _in_amp_guard():
-                return self._infer_amp_program
-            elif _in_pure_fp16_guard():
-                return self._infer_pure_fp16_program
-            else:
-                return self._infer_program
-
-    @property
-    def backward_program(self):
-        if self.training:
-            if _in_amp_guard():
-                program = self._train_amp_forward_backward_program
-                return program[1]
-            elif _in_pure_fp16_guard():
-                program = self._train_pure_fp16_forward_backward_program
-                return program[1]
-            else:
-                program = self._train_forward_backward_program
-                return program[1]
-        else:
-            """
-            Can't just return paddle.static.Program(), because self.backward_program is a property,
-            whenever we call this method, a tmp Program() object is created and is gc immediatly
-            after executed the following line in PartialProgramLayer.__call__.
-
-            >>> self.backward_program.desc.block(0),
-
-            When we access RunProgramAPI, it's possible to get an invalid backward_program address.
-            """
-            return self._empty_backward_program_for_eval
 
     @LazyInitialized
     def _train_program_id(self):
@@ -416,43 +376,31 @@ class PartialProgramLayer:
 
     @LazyInitialized
     def _param_grad_names(self):
-        names = []
-        # NOTE: `names` and `self._params` must be in the same order so that
-        # the param grad name can be set correctly in the run_program.
-        for param in self._params:
-            candidate = [
-                var_name
-                for var_name in self._train_program.block(0).vars.keys()
-                if var_name.endswith(param.name + '@GRAD')
-            ]
-            if candidate:
-                names.append(
-                    max(candidate, key=lambda name: name.count('grad/'))
-                )
-            else:
-                names.append(param.name + '@GRAD')
-        return names
+        return _param_grad_names(self._train_program.desc, self._params)
 
     @LazyInitialized
     def _out_grad_names(self):
-        names = []
-        fwd_end_op_index = self._get_end_op_index()
-        for i in range(
-            fwd_end_op_index + 1,
-            min(
-                fwd_end_op_index + 2 * len(self._outputs.var_ids),
-                len(self.program.block(0).ops),
-            ),
-            2,
-        ):
-            op = self.program.block(0).ops[i]
-            if op.type == 'fill_constant':
-                var_name = op.output('Out')[0]
-                names.append(var_name)
-        return names
+        return _out_grad_names(
+            self._train_program.desc,
+            self._create_program(is_infer_mode=True).desc.block(0).op_size(),
+            len(self._outputs.var_ids),
+        )
 
     @property
-    def whole_program_id(self):
+    def program(self):
+        """
+        Return current train or eval program.
+        """
+        if self.training:
+            return self.train_program
+        else:
+            return self.infer_program
+
+    @property
+    def program_id(self):
+        """
+        Return current train or eval program hash id.
+        """
         if self.training:
             if _in_amp_guard():
                 return self._train_amp_program_id
@@ -467,6 +415,59 @@ class PartialProgramLayer:
                 return self._infer_pure_fp16_program_id
             else:
                 return self._infer_program_id
+
+    @property
+    def train_program(self):
+        if _in_amp_guard():
+            return self._train_amp_program
+        elif _in_pure_fp16_guard():
+            return self._train_pure_fp16_program
+        else:
+            return self._train_program
+
+    @property
+    def infer_program(self):
+        if _in_amp_guard():
+            return self._infer_amp_program
+        elif _in_pure_fp16_guard():
+            return self._infer_pure_fp16_program
+        else:
+            return self._infer_program
+
+    @property
+    def forward_program(self):
+        if self.training:
+            if _in_amp_guard():
+                progs = self._train_amp_forward_backward_program
+            elif _in_pure_fp16_guard():
+                progs = self._train_pure_fp16_forward_backward_program
+            else:
+                progs = self._train_forward_backward_program
+            return progs[0]
+        else:
+            return self.infer_program
+
+    @property
+    def backward_program(self):
+        if self.training:
+            if _in_amp_guard():
+                progs = self._train_amp_forward_backward_program
+            elif _in_pure_fp16_guard():
+                progs = self._train_pure_fp16_forward_backward_program
+            else:
+                progs = self._train_forward_backward_program
+            return progs[1]
+        else:
+            """
+            Can't just return paddle.static.Program(), because self.backward_program is a property,
+            whenever we call this method, a tmp Program() object is created and is gc immediatly
+            after executed the following line in PartialProgramLayer.__call__.
+
+            >>> self.backward_program.desc.block(0),
+
+            When we access RunProgramAPI, it's possible to get an invalid backward_program address.
+            """
+            return self._empty_backward_program_for_eval
 
     def _verify_program(self, main_program):
         """
@@ -569,12 +570,13 @@ class PartialProgramLayer:
             if isinstance(out, framework.Variable):
                 targets.append(program.global_block().var(out.name))
 
-        if targets and self._params:
+        if targets:
+            if self._build_strategy.build_cinn_pass:
+                # TODO(Jiabin): Change this to True if we need this to be default option
+                core.check_and_set_prim_all_enabled()
             backward.gradients(targets=targets, inputs=[])
 
-        start_idx = len(main_program.block(0).ops) + 2 * len(
-            self._outputs.tolist()
-        )
+        start_idx = len(main_program.block(0).ops) + len(self._outputs.tolist())
 
         self.prepare_gradient_aggregation(start_idx, main_program, program)
 
@@ -612,7 +614,7 @@ class PartialProgramLayer:
                 if "@GRAD" in name:
                     var_desc = block.vars[name].desc
                     var_base = None
-                    if not framework._in_eager_mode_:
+                    if not framework.global_var._in_eager_mode_:
                         var_base = core.VarBase(
                             var_desc.dtype(),
                             var_desc.shape(),
@@ -637,7 +639,7 @@ class PartialProgramLayer:
         elif _in_pure_fp16_guard():
             infer_program = self._infer_pure_fp16_program
         else:
-            infer_program = self.infer_program
+            infer_program = self._infer_program
         return infer_program.desc.block(0).op_size()
 
     def __call__(self, inputs):
@@ -730,31 +732,18 @@ class PartialProgramLayer:
                     in_vars[i] = var.astype('float16')
                     in_vars[i].name = name
 
-    @property
-    def program(self):
-        return self.whole_program
-
-    @property
-    def program_id(self):
-        return self.whole_program_id
-
-    @property
-    def train_program(self):
-        if _in_amp_guard():
-            return self._train_amp_program
-        elif _in_pure_fp16_guard():
-            return self._train_pure_fp16_program
-        else:
-            return self._train_program
-
-    @property
-    def infer_program(self):
-        if _in_amp_guard():
-            return self._infer_amp_program
-        elif _in_pure_fp16_guard():
-            return self._infer_pure_fp16_program
-        else:
-            return self._infer_program
+    @switch_to_static_graph
+    def _build_infer_program(self, infer_program, forward_end_op_index):
+        forward_skip_vars = self._parse_skip_gc_vars(infer_program)
+        builded_infer_program = add_build_strategy_for(
+            infer_program,
+            0,
+            forward_end_op_index,
+            self._build_strategy,
+            forward_skip_vars,
+        )
+        self._apply_inplace_pass(builded_infer_program, None)
+        return builded_infer_program
 
     @switch_to_static_graph
     def _get_forward_backward_program_form(
@@ -762,7 +751,7 @@ class PartialProgramLayer:
     ):
         # NOTE(dev): We apply build_strategy for backward firstly to
         # avoid skipping more gc variables.
-        backward_start_op_index = forward_end_op_index + 2 * len(
+        backward_start_op_index = forward_end_op_index + len(
             self._outputs.var_ids
         )
         backward_end_op_index = whole_program.desc.block(0).op_size()
@@ -808,30 +797,32 @@ class PartialProgramLayer:
             forward_program, backward_program
         )
         backward_mem_opt_skip_vars = self._parse_skip_gc_vars(forward_program)
-        attrs = {
-            "use_cuda": use_cuda,
-            "mem_opt_skip_vars": forward_mem_opt_skip_vars,
-            "for_partial_block": True,
-        }
-        _apply_pass(
-            forward_program,
-            empty_startup_program,
-            "buffer_shared_inplace_pass",
-            attrs,
-            attr_types,
-        )
-        attrs = {
-            "use_cuda": use_cuda,
-            "mem_opt_skip_vars": backward_mem_opt_skip_vars,
-            "for_partial_block": True,
-        }
-        _apply_pass(
-            backward_program,
-            empty_startup_program,
-            "buffer_shared_inplace_pass",
-            attrs,
-            attr_types,
-        )
+        if forward_program:
+            attrs = {
+                "use_cuda": use_cuda,
+                "mem_opt_skip_vars": forward_mem_opt_skip_vars,
+                "for_partial_block": True,
+            }
+            _apply_pass(
+                forward_program,
+                empty_startup_program,
+                "buffer_shared_inplace_pass",
+                attrs,
+                attr_types,
+            )
+        if backward_program:
+            attrs = {
+                "use_cuda": use_cuda,
+                "mem_opt_skip_vars": backward_mem_opt_skip_vars,
+                "for_partial_block": True,
+            }
+            _apply_pass(
+                backward_program,
+                empty_startup_program,
+                "buffer_shared_inplace_pass",
+                attrs,
+                attr_types,
+            )
 
     @LazyInitialized
     def _inout_var_names(self):
@@ -878,7 +869,7 @@ class PartialProgramLayer:
         for i, value in enumerate(flatten_inputs):
             if isinstance(value, np.ndarray):
                 var = None
-                if not framework._in_eager_mode_:
+                if not framework.global_var._in_eager_mode_:
                     var = core.VarBase(
                         value=value,
                         name=self._inputs[i].desc.name(),
@@ -922,7 +913,7 @@ class PartialProgramLayer:
             if var_desc.name() in out_varbase_map:
                 return out_varbase_map[var_desc.name()]
 
-            if not framework._in_eager_mode_:
+            if not framework.global_var._in_eager_mode_:
                 var_base = core.VarBase(
                     var_desc.dtype(),
                     var_desc.shape(),
@@ -953,7 +944,7 @@ class PartialProgramLayer:
         inner_scope = self._get_scope(
             program_id=program_id, use_scope_cache=use_scope_cache
         )
-        if not framework._in_eager_mode_:
+        if not framework.global_var._in_eager_mode_:
             tmp_scope_vec = core.VarBase(
                 core.VarDesc.VarType.FP32,
                 [],
@@ -1099,19 +1090,14 @@ class PartialProgramLayer:
                         )
 
     def _valid_vars(self, vars):
-        """
-        Note: run_program_op.InferShape requires `X`/'Out' not be null.
-        But it's common in dy2static, fake varBase is created to handle the
-        problem.
-        """
-        return vars if vars else self.__fake_vars
+        return vars if vars else None
 
 
 def _create_fake_var():
     """
     Create a fake_var (force on CPU) to handle empty input or output
     """
-    if not framework._in_eager_mode_:
+    if not framework.global_var._in_eager_mode_:
         return [
             core.VarBase(
                 core.VarDesc.VarType.FP32,

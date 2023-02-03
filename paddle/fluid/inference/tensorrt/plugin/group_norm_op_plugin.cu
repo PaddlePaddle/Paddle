@@ -178,6 +178,13 @@ void groupNormNHWCSum(const GroupNormNHWCParams &params, cudaStream_t stream) {
     case 128:
       groupNormNHWCSumKernel<64><<<grid, 64, 0, stream>>>(params);
       break;
+    case 8:
+      groupNormNHWCSumKernel<4><<<grid, 4, 0, stream>>>(params);
+      break;
+    default:
+      PADDLE_THROW(platform::errors::Fatal(
+          "The function groupNormNHWCSum of GroupNormPlugin TRT Plugin "
+          "encounter error"));
   }
 }
 
@@ -240,8 +247,8 @@ __global__ void groupNormNHWCScaleKernel(const GroupNormNHWCParams params) {
     f2.x = gammaF2.x * f2.x + betaF2.x;
     f2.y = gammaF2.y * f2.y + betaF2.y;
 
-    // Apply Swish if needed.
-    if (params.withSwish) {
+    // Apply Silu if needed.
+    if (params.withSilu) {
       f2.x = f2.x * sigmoid(f2.x);
       f2.y = f2.y * sigmoid(f2.y);
     }
@@ -277,10 +284,13 @@ void groupNormNHWCScale(const GroupNormNHWCParams &params,
     case 128:
       groupNormNHWCScaleKernel<64><<<grid, 64, 0, stream>>>(params);
       break;
+    case 8:
+      groupNormNHWCScaleKernel<4><<<grid, 4, 0, stream>>>(params);
+      break;
     default:
-      PADDLE_THROW(
-          platform::errors::Fatal("The function groupNormNHWCScale of "
-                                  "GroupNorm TRT Plugin encounter error"));
+      PADDLE_THROW(platform::errors::Fatal(
+          "The function groupNormNHWCScale of GroupNormPlugin TRT Plugin "
+          "encounter error"));
   }
 }
 
@@ -447,7 +457,7 @@ bool GroupNormPluginDynamic::supportsFormatCombination(
   if (pos == 0) {
     if (with_fp16_) {
       return ((in.type == nvinfer1::DataType::kHALF) &&
-              (in.format == nvinfer1::PluginFormat::kLINEAR ||
+              ((!with_silu_ && in.format == nvinfer1::PluginFormat::kLINEAR) ||
                in.format == nvinfer1::PluginFormat::kHWC8));
     } else {
       return (in.type == nvinfer1::DataType::kFLOAT) &&
@@ -610,8 +620,11 @@ int GroupNormPluginDynamic::enqueue(
         default:
           cPerBlock = 320;
       }
+      if (cPerBlock > input_desc[0].dims.d[1]) {
+        cPerBlock = 8;
+      }
 
-      params_.withSwish = false;
+      params_.withSilu = with_silu_;
       params_.dst = static_cast<half *>(outputs[0]);
       params_.srcX = static_cast<half const *>(inputs[0]);
       params_.gamma = scale_gpu_;

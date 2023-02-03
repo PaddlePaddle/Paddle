@@ -61,6 +61,13 @@ void PNormKernel(const Context& dev_ctx,
   int pre, n, post;
   GetDims(xdim, axis, &pre, &n, &post, asvector);
 
+  for (int i = 0; i < xdim.size(); i++) {
+    PADDLE_ENFORCE_LT(0,
+                      xdim[i],
+                      errors::InvalidArgument(
+                          "The dims of Input(X) should be greater than 0."));
+  }
+
   auto* place = dev_ctx.eigen_device();
 
   Eigen::DSizes<int, 3> shape(pre, n, post);

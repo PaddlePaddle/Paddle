@@ -16,7 +16,7 @@ import copy
 import logging
 
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
-from paddle.fluid import core
+from paddle.framework import core
 
 from .dist_attribute import OperatorDistAttr, TensorDistAttr
 from .dist_context import _node_id
@@ -939,7 +939,6 @@ class Completer:
             self._dist_context._serial_main_program = serial_main_program
 
         if not is_naive_data_parallel(self._dist_context):
-            print("$$$$$$ here 0", flush=True)
             self._dist_context.initialize(with_graph=True)
             self._prepare()
             self._update_process_mesh()
@@ -947,7 +946,6 @@ class Completer:
             # Copy the corresponding distributed attribute from graph to serial_main_program
             self._dist_context.copy_dist_attr_from_graph_to_program()
         else:
-            print("$$$$$$ here 2", flush=True)
             self._logger.info("Default distributed attributed will be set.")
             self._dist_context.initialize(with_graph=False)
             # A fast and special completion for data parallel
@@ -1852,11 +1850,11 @@ class Completer:
                             op_dist_attr.set_output_dims_mapping(
                                 input_var.name, ref_dims_mapping
                             )
-
-                        input_var_attr.process_mesh = ref_process_mesh
-                        self._dist_context.set_tensor_dist_attr_for_program(
-                            input_var, input_var_attr
-                        )
+                        if "SkipUpdate" not in input_name:
+                            input_var_attr.process_mesh = ref_process_mesh
+                            self._dist_context.set_tensor_dist_attr_for_program(
+                                input_var, input_var_attr
+                            )
 
                     self._dist_context.set_op_dist_attr_for_program(
                         op, op_dist_attr
