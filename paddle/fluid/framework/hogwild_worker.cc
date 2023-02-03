@@ -197,10 +197,9 @@ void HogwildWorker::TrainFilesWithProfiler() {
     quit_flag_.store(false);
   }
   g_barrier.wait();
-  bool train_mode = device_reader_->IsTrainMode();
-
-  bool is_multi_node = false;
 #if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_GPU_GRAPH)
+  bool train_mode = device_reader_->IsTrainMode();
+  bool is_multi_node = false;
   auto gloo = paddle::framework::GlooWrapper::GetInstance();
   if (gloo->Size() > 1) {
     is_multi_node = true;
@@ -336,9 +335,9 @@ void HogwildWorker::TrainFiles() {
   platform::SetDeviceId(thread_id_);
 #endif
   // while ((cur_batch = device_reader_->Next()) > 0) {
-  bool train_mode = device_reader_->IsTrainMode();
-  bool is_multi_node = false;
 #if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_GPU_GRAPH)
+  bool is_multi_node = false;
+  bool train_mode = device_reader_->IsTrainMode();
   auto gloo = paddle::framework::GlooWrapper::GetInstance();
   if (gloo->Size() > 1) {
     is_multi_node = true;
