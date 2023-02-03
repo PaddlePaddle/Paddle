@@ -18,6 +18,7 @@ limitations under the License. */
 #include <set>
 #include <sstream>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -974,8 +975,8 @@ class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
       }
       src0_md = src0_md.reshape(dims0_ex);
     }
-
-    auto attributes =
+    dnnl::primitive_attr attributes;
+    std::tie(attributes, scale_0_, scale_1_) =
         CreateAttributes(algo, scale_x, scale_y, scale_out, post_ops);
 
     // Workaround for U2++ model which deletes first tensor dimensions to enable
@@ -1019,7 +1020,7 @@ class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
 
     if (x->numel() < y->numel()) {
       if (algo == dnnl::algorithm::binary_sub) {
-        attributes = CreateAttributes(
+        std::tie(attributes, scale_0_, scale_1_) = CreateAttributes(
             algo, -1.0 * scale_x, -1.0 * scale_y, scale_out, post_ops);
       }
       this->AcquireForwardPrimitiveDescriptor(
@@ -1036,8 +1037,22 @@ class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
                                             to_void_cast<T>(input_data));
   }
 
+  dnnl::memory Get_SRC_0_Scale_Memory() {
+    std::vector<float> scales(1, scale_0_);
+    auto scale_md = dnnl::memory::desc(
+        {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
+    return dnnl::memory(scale_md, this->engine_, scales.data());
+  }
+
+  dnnl::memory Get_SRC_1_Scale_Memory() {
+    std::vector<float> scales(1, scale_1_);
+    auto scale_md = dnnl::memory::desc(
+        {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
+    return dnnl::memory(scale_md, this->engine_, scales.data());
+  }
+
  private:
-  static inline dnnl::primitive_attr CreateAttributes(
+  static inline std::tuple<dnnl::primitive_attr, float, float> CreateAttributes(
       dnnl::algorithm op,
       float scale_x,
       float scale_y,
@@ -1063,13 +1078,17 @@ class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
     float scale_1 =
         op == dnnl::algorithm::binary_add ? scale_out / scale_y : 1.0 / scale_y;
     dnnl::primitive_attr attributes;
-    attributes.set_scales(
-        /* input_x_id = */ DNNL_ARG_SRC_0, /* mask = */ 0, {scale_0});
-    attributes.set_scales(
-        /* input_y_id = */ DNNL_ARG_SRC_1, /* mask = */ 0, {scale_1});
+    attributes.set_scale_mask(/* input_x_id = */ DNNL_ARG_SRC_0,
+                              /* mask = */ 0);
+    attributes.set_scale_mask(/* input_y_id = */ DNNL_ARG_SRC_1,
+                              /* mask = */ 0);
     if (post_ops.len() > 0) attributes.set_post_ops(post_ops);
-    return attributes;
+    return std::make_tuple(attributes, scale_0, scale_1);
   }
+
+ private:
+  float scale_0_ = 1.0f;
+  float scale_1_ = 1.0f;
 };
 
 template <typename T>
