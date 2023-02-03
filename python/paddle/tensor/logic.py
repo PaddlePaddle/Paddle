@@ -20,7 +20,7 @@ from .layer_function_generator import templatedoc
 from ..static import Variable
 
 # TODO: define logic functions of a tensor
-from ..fluid.framework import _in_eager_mode_
+from ..fluid.framework import global_var
 
 if global_var._in_eager_mode_:
     Tensor = paddle.fluid.framework.core.eager.Tensor

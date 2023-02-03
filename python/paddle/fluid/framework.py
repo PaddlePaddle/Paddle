@@ -276,7 +276,7 @@ def in_dygraph_mode():
 
 
 def _in_legacy_dygraph():
-    return (not _in_eager_mode_) and (_dygraph_tracer_ is not None)
+    return (not global_var._in_eager_mode_) and (_dygraph_tracer_ is not None)
 
 
 def _non_static_mode():
