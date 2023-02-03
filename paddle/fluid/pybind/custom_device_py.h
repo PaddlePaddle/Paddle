@@ -12,15 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// prim api which can't be generated
 #pragma once
 
-#include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/int_array.h"
-#include "paddle/phi/common/place.h"
-#include "paddle/phi/common/scalar.h"
-#include "paddle/utils/optional.h"
+#include "pybind11/pybind11.h"
+#include "pybind11/stl.h"
+
+namespace py = pybind11;
 
 namespace paddle {
-namespace prim {}  // namespace prim
+namespace pybind {
+
+void BindCustomDevicePy(py::module* m);
+
+}  // namespace pybind
 }  // namespace paddle

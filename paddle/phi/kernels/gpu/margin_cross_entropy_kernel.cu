@@ -57,14 +57,13 @@ void GetClassInterval(const gpuStream_t& stream,
   std::vector<int> shard_dim_vec(nranks + 1, 0);
   shard_dim_vec[rank + 1] = D;
   if (nranks <= 1) {
-    paddle::framework::TensorFromVector(shard_dim_vec, dev_ctx, class_interval);
+    phi::TensorFromVector(shard_dim_vec, dev_ctx, class_interval);
     return;
   }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   DenseTensor num_classes_per_device;
-  paddle::framework::TensorFromVector(
-      shard_dim_vec, dev_ctx, &num_classes_per_device);
+  phi::TensorFromVector(shard_dim_vec, dev_ctx, &num_classes_per_device);
   int* num_classes_per_device_ptr = num_classes_per_device.data<int>();
 
   auto map = paddle::distributed::ProcessGroupMapFromGid::getInstance();

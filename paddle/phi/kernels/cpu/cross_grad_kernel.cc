@@ -14,10 +14,10 @@
 
 #include "paddle/phi/kernels/cross_grad_kernel.h"
 
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 namespace phi {
 
@@ -82,9 +82,9 @@ void CrossGradKernel(const Context &dev_ctx,
   }
 
   std::vector<T> input_x_vec, input_y_vec, input_dout_vec;
-  paddle::framework::TensorToVector(input_x, dev_ctx, &input_x_vec);
-  paddle::framework::TensorToVector(input_y, dev_ctx, &input_y_vec);
-  paddle::framework::TensorToVector(input_out_grad, dev_ctx, &input_dout_vec);
+  phi::TensorToVector(input_x, dev_ctx, &input_x_vec);
+  phi::TensorToVector(input_y, dev_ctx, &input_y_vec);
+  phi::TensorToVector(input_out_grad, dev_ctx, &input_dout_vec);
   std::vector<T> out_dx_vec(output_x_grad->numel());
   std::vector<T> out_dy_vec(output_y_grad->numel());
 
@@ -106,8 +106,8 @@ void CrossGradKernel(const Context &dev_ctx,
       }
     }
   }
-  paddle::framework::TensorFromVector(out_dx_vec, dev_ctx, output_x_grad);
-  paddle::framework::TensorFromVector(out_dy_vec, dev_ctx, output_y_grad);
+  phi::TensorFromVector(out_dx_vec, dev_ctx, output_x_grad);
+  phi::TensorFromVector(out_dy_vec, dev_ctx, output_y_grad);
   output_x_grad->Resize(input_x_dims);
   output_y_grad->Resize(input_x_dims);
 }

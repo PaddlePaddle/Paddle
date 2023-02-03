@@ -24,7 +24,6 @@ import paddle
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers import utils
 from ... import unique_name
-from paddle.fluid.initializer import Normal, Constant, NumpyArrayInitializer
 from paddle.fluid.data_feeder import (
     check_variable_and_dtype,
     check_type,
@@ -793,6 +792,9 @@ def sparse_embedding(
         'paddle.static.nn.sparse_embedding',
     )
 
+    if input.size == 0:
+        raise ValueError("input size should not be 0")
+
     w = helper.create_parameter(
         attr=helper.param_attr,
         shape=size,
@@ -893,8 +895,10 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
 
     Examples:
         .. code-block:: python
+        import paddle
         import paddle.fluid as fluid
         import numpy as np
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[None, 1], dtype="int32", lod_level=1)
         tree_info = [[0,0,0,1,2],
                      [0,1,0,3,4],[0,1,0,5,6],
@@ -905,7 +909,7 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
         child_nums = 2
         child, leaf_mask  = fluid.contrib.layers.tdm_child(x, node_nums, child_nums,
                                 param_attr=fluid.ParamAttr(
-                                    initializer=fluid.initializer.NumpyArrayInitializer(
+                                    initializer=paddle.nn.initializer.Assign(
                                                                             tree_info_np)))
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -922,7 +926,7 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
         attr=helper.param_attr,
         shape=[node_nums, 3 + child_nums],
         dtype=dtype,
-        default_initializer=Constant(0),
+        default_initializer=paddle.nn.initializer.Constant(0),
     )
     tree_info.stop_gradient = True
 
@@ -1000,8 +1004,10 @@ def tdm_sampler(
 
     Examples:
         .. code-block:: python
+        import paddle
         import paddle.fluid as fluid
         import numpy as np
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[None, 1], dtype="int32", lod_level=1)
         travel_list = [[1, 3], [1, 4], [2, 5], [2, 6]] # leaf node's travel path, shape(leaf_node_num, layer_num)
         layer_list_flat = [[1], [2], [3], [4], [5], [6]] # shape(node_nums, 1)
@@ -1019,10 +1025,10 @@ def tdm_sampler(
             layer_node_num_list,
             leaf_node_num,
             tree_travel_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(
+                initializer=paddle.nn.initializer.Assign(
                     travel_array)),
             tree_layer_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(
+                initializer=paddle.nn.initializer.Assign(
                     layer_array)),
             output_positive=True,
             output_list=True,
@@ -1086,7 +1092,7 @@ def tdm_sampler(
         attr=tree_travel_attr,
         shape=travel_shape,
         dtype=tree_dtype,
-        default_initializer=Constant(0),
+        default_initializer=paddle.nn.initializer.Constant(0),
     )
 
     layer_shape = [node_nums, 1]
@@ -1094,7 +1100,7 @@ def tdm_sampler(
         attr=tree_layer_attr,
         shape=layer_shape,
         dtype=tree_dtype,
-        default_initializer=Constant(0),
+        default_initializer=paddle.nn.initializer.Constant(0),
     )
 
     out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -1637,7 +1643,7 @@ def fused_bn_add_act(
         attr=helper.param_attr,
         shape=param_shape,
         dtype=bn_param_dtype,
-        default_initializer=Constant(1.0),
+        default_initializer=paddle.nn.initializer.Constant(1.0),
     )
     bias = helper.create_parameter(
         attr=helper.bias_attr,
@@ -1647,7 +1653,9 @@ def fused_bn_add_act(
     )
     mean = helper.create_parameter(
         attr=ParamAttr(
-            name=moving_mean_name, initializer=Constant(0.0), trainable=False
+            name=moving_mean_name,
+            initializer=paddle.nn.initializer.Constant(0.0),
+            trainable=False,
         ),
         shape=param_shape,
         dtype=bn_param_dtype,
@@ -1656,7 +1664,7 @@ def fused_bn_add_act(
     variance = helper.create_parameter(
         attr=ParamAttr(
             name=moving_variance_name,
-            initializer=Constant(1.0),
+            initializer=paddle.nn.initializer.Constant(1.0),
             trainable=False,
         ),
         shape=param_shape,
@@ -1720,13 +1728,16 @@ def pow2_decay_with_linear_warmup(
     helper = LayerHelper("pow2_decay_with_linear_warmup", **locals())
     lr = helper.create_global_variable(persistable=True, dtype=dtype, shape=[1])
     helper.set_variable_initializer(
-        lr, Constant(value=float(base_lr) / warmup_steps)
+        lr,
+        paddle.nn.initializer.Constant(value=float(base_lr) / warmup_steps),
     )
 
     step = helper.create_global_variable(
         persistable=True, dtype='int64', shape=[1]
     )
-    helper.set_variable_initializer(step, Constant(value=0))
+    helper.set_variable_initializer(
+        step, paddle.nn.initializer.Constant(value=0)
+    )
     assert (
         warmup_steps <= total_steps
     ), "warmup_steps cannot be larger than total_steps"
