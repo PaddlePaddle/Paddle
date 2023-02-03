@@ -281,6 +281,7 @@ class AdamW(Optimizer):
         self._use_multi_tensor = None
         self.regularization = None
         self._auxiliary_vars = {}
+        self._already_create_accumulater = set()
 
     def _set_auxiliary_var(self, key, val):
         self._auxiliary_vars[key] = val
