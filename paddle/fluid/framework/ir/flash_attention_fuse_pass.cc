@@ -17,6 +17,7 @@
 #include <string>
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 #define GET_IR_NODE(node__) GET_IR_NODE_FROM_SUBGRAPH(node__, node__, pattern);
