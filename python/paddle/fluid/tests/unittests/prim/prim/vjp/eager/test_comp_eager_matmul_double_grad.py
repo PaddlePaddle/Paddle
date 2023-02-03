@@ -98,11 +98,13 @@ core._set_prim_backward_enabled(True)
         ),
     ],
 )
-class TestTanhGradComp(unittest.TestCase):
+class TestMatmulDoubleGradComp(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.primal0 = cls.primal0.astype(cls.dtype)
         cls.primal1 = cls.primal1.astype(cls.dtype)
+        cls.trans_0 = cls.trans_0
+        cls.trans_1 = cls.trans_1
 
     def setUp(self):
         paddle.enable_static()

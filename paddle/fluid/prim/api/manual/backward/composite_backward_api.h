@@ -316,25 +316,14 @@ void matmul_double_grad(const Tensor& x,
                         Tensor* y_grad,
                         Tensor* grad_out_grad) {
   // Get dims from the input x, y, output_grad
+  VLOG(1) << "-------------------1----------------";
   std::vector<std::int64_t> x_dims = vectorize(x.dims());
   std::vector<std::int64_t> y_dims = vectorize(y.dims());
   std::vector<std::int64_t> grad_out_dims = vectorize(grad_out.dims());
-
+  VLOG(1) << "-------------------2----------------";
   int x_ndim = x_dims.size();
   int y_ndim = y_dims.size();
-  int ndim = grad_out_dims.size();
-
-  if (!grad_x_grad && !grad_y_grad) {
-    x_grad = nullptr;
-    y_grad = nullptr;
-    grad_out_grad = nullptr;
-  } else if (!grad_x_grad) {
-    y_grad = nullptr;
-  } else if (!grad_y_grad) {
-    x_grad = nullptr;
-  }
-
-  // Case1 : x's or y's dim = 1
+  int dout_ndim = grad_out_dims.size();
 
   bool is_broadcast = true;
   if (x_ndim <= 2 || y_ndim <= 2) {
@@ -345,251 +334,129 @@ void matmul_double_grad(const Tensor& x,
     is_broadcast = !std::equal(
         x_dims.cbegin(), x_dims.cbegin() + x_ndim - 2, y_dims.cbegin());
   }
+  VLOG(1) << "-------------------3----------------";
+  Tensor dx, dy, ddout_1, ddout_2, ddout;
+  if (!grad_x_grad && !grad_y_grad) {
+    VLOG(1) << "-------------------!ddx!ddy----------------";
+    x_grad = nullptr;
+    y_grad = nullptr;
+    grad_out_grad = nullptr;
+    return;
+
+  } else if (!grad_x_grad) {
+    VLOG(1) << "-------------------!ddx----------------";
+    y_grad = nullptr;
+    if (!transpose_x && !transpose_y) {
+      dx = matmul<T>(grad_out, grad_y_grad.get(), false, true);
+      ddout = matmul<T>(x, grad_y_grad.get(), false, false);
+    } else if (!transpose_x && transpose_y) {
+      dx = matmul<T>(grad_out, grad_y_grad.get(), false, false);
+      ddout = matmul<T>(x, grad_y_grad.get(), false, true);
+    } else if (transpose_x && !transpose_y) {
+      dx = matmul<T>(grad_y_grad.get(), grad_out, false, true);
+      ddout = matmul<T>(x, grad_y_grad.get(), true, false);
+    } else {
+      dx = matmul<T>(grad_y_grad.get(), grad_out, true, true);
+      ddout = matmul<T>(x, grad_y_grad.get(), true, true);
+    }
+
+  } else if (!grad_y_grad) {
+    VLOG(1) << "-------------------!ddy----------------";
+    x_grad = nullptr;
+    if (!transpose_x && !transpose_y) {
+      dy = matmul<T>(grad_x_grad.get(), grad_out, true, false);
+      ddout = matmul<T>(grad_x_grad.get(), y, false, false);
+    } else if (!transpose_x && transpose_y) {
+      dy = matmul<T>(grad_out, grad_x_grad.get(), true, false);
+      ddout = matmul<T>(grad_x_grad.get(), y, false, true);
+    } else if (transpose_x && !transpose_y) {
+      dy = matmul<T>(grad_x_grad.get(), grad_out, false, false);
+      ddout = matmul<T>(grad_x_grad.get(), y, true, false);
+    } else {
+      dy = matmul<T>(grad_out, grad_x_grad.get(), true, true);
+      ddout = matmul<T>(grad_x_grad.get(), y, true, true);
+    }
+
+  } else {
+    VLOG(1) << "-------------------ddxddy----------------";
+    if (!transpose_x && !transpose_y) {
+      dx = matmul<T>(grad_out, grad_y_grad.get(), false, true);
+      dy = matmul<T>(grad_x_grad.get(), grad_out, true, false);
+      ddout_1 = matmul<T>(x, grad_y_grad.get(), false, false);
+      ddout_2 = matmul<T>(grad_x_grad.get(), y, false, false);
+      ddout = add<T>(ddout_1, ddout_2);
+    } else if (!transpose_x && transpose_y) {
+      dx = matmul<T>(grad_out, grad_y_grad.get(), false, false);
+      dy = matmul<T>(grad_out, grad_x_grad.get(), true, false);
+      ddout_1 = matmul<T>(x, grad_y_grad.get(), false, true);
+      ddout_2 = matmul<T>(grad_x_grad.get(), y, false, true);
+      ddout = add<T>(ddout_1, ddout_2);
+    } else if (transpose_x && !transpose_y) {
+      dx = matmul<T>(grad_y_grad.get(), grad_out, false, true);
+      dy = matmul<T>(grad_x_grad.get(), grad_out, false, false);
+      ddout_1 = matmul<T>(x, grad_y_grad.get(), true, false);
+      ddout_2 = matmul<T>(grad_x_grad.get(), y, true, false);
+      ddout = add<T>(ddout_1, ddout_2);
+    } else {
+      dx = matmul<T>(grad_y_grad.get(), grad_out, true, true);
+      dy = matmul<T>(grad_out, grad_x_grad.get(), true, true);
+      ddout_1 = matmul<T>(x, grad_y_grad.get(), true, true);
+      ddout_2 = matmul<T>(grad_x_grad.get(), y, true, true);
+      ddout = add<T>(ddout_1, ddout_2);
+    }
+  }
 
   if (!is_broadcast) {
-    // Case2: no broadcast or no batch size
-    Tensor x_help = x;
-    Tensor y_help = y;
-    Tensor grad_out_help = grad_out;
-
-    reshape_xyout_to_matrixsequence<T>(
-        &x_help, &y_help, &grad_out_help, transpose_x, transpose_y);
-
-    phi::DDim x_grad_dims;
-    if (x_grad) {
-      x_grad_dims = x_grad->dims();
-      if (x_grad_dims != x_help.dims()) {
-        *x_grad = reshape<T>(*x_grad, IntArray(phi::vectorize(x_help.dims())));
-      }
+    VLOG(1) << "-------------------!is_broadcast----------------";
+    if (!grad_x_grad) {
+      VLOG(1) << "-------------------2-1----------------";
+      set_output<T>(dx, x_grad);
+      set_output<T>(ddout, grad_out_grad);
+    } else if (!grad_y_grad) {
+      VLOG(1) << "-------------------2-2----------------";
+      set_output<T>(dy, y_grad);
+      set_output<T>(ddout, grad_out_grad);
+    } else {
+      VLOG(1) << "-------------------2-3----------------";
+      set_output<T>(dx, x_grad);
+      set_output<T>(dy, y_grad);
+      set_output<T>(ddout, grad_out_grad);
     }
-
-    phi::DDim y_grad_dims;
-    if (y_grad) {
-      y_grad_dims = y_grad->dims();
-      if (y_grad_dims != y_help.dims()) {
-        *y_grad = reshape<T>(*y_grad, IntArray(phi::vectorize(y_help.dims())));
-      }
-    }
-
-    phi::DDim dgrad_out_dims;
-    if (grad_out_grad) {
-      dgrad_out_dims = grad_out_grad->dims();
-      if (dgrad_out_dims != grad_out_help.dims()) {
-        *grad_out_grad = reshape<T>(
-            *grad_out_grad, IntArray(phi::vectorize(grad_out_help.dims())));
-      }
-    }
-
-    if (grad_x_grad) {
-      auto grad_x_grad_mat = grad_x_grad.get();
-      if (grad_x_grad_mat.dims() != x_help.dims()) {
-        grad_x_grad_mat = reshape<T>(grad_x_grad_mat,
-                                     IntArray(phi::vectorize(x_help.dims())));
-      }
-
-      Tensor y_grad_tmp;
-      if (transpose_x && transpose_y) {
-        // y_grad = grad_out' * grad_x_grad'
-        auto tmp = modify_dim_for_matmul<T>(
-            grad_out, true, grad_x_grad_mat, false, y_grad);
-        y_grad_tmp = matmul<T>(std::get<0>(tmp), std::get<1>(tmp), true, true);
-      } else if (transpose_x) {
-        // y_grad = grad_x_grad * grad_out
-        auto tmp = modify_dim_for_matmul<T>(
-            grad_x_grad_mat, false, grad_out, true, y_grad);
-        y_grad_tmp =
-            matmul<T>(std::get<0>(tmp), std::get<1>(tmp), false, false);
-      } else if (transpose_y) {
-        // y_grad = grad_out' * grad_x_grad
-        auto tmp = modify_dim_for_matmul<T>(
-            grad_out, true, grad_x_grad_mat, true, y_grad);
-        y_grad_tmp = matmul<T>(std::get<0>(tmp), std::get<1>(tmp), true, false);
-      } else {
-        // y_grad = grad_x_grad' * grad_out
-        auto tmp = modify_dim_for_matmul<T>(
-            grad_x_grad_mat, true, grad_out, true, y_grad);
-        y_grad_tmp = matmul<T>(std::get<0>(tmp), std::get<1>(tmp), true, false);
-      }
-      set_output<T>(y_grad_tmp, y_grad);
-
-      auto tmp = modify_dim_for_matmul<T>(
-          grad_x_grad_mat, true, y, false, grad_out_grad);
-      auto grad_out_grad_tmp = matmul<T>(
-          std::get<0>(tmp), std::get<1>(tmp), transpose_x, transpose_y);
-      set_output<T>(grad_out_grad_tmp, grad_out_grad);
-    }
-
-    if (grad_y_grad) {
-      auto grad_y_grad_mat = grad_y_grad.get();
-      if (grad_y_grad_mat.dims() != y_help.dims()) {
-        grad_y_grad_mat = reshape<T>(grad_y_grad_mat,
-                                     IntArray(phi::vectorize(y_help.dims())));
-      }
-
-      Tensor x_grad_tmp;
-      if (transpose_x && transpose_y) {
-        // x_grad = grad_y_grad' * grad_out'
-        auto tmp = modify_dim_for_matmul<T>(
-            grad_y_grad_mat, true, grad_out, false, x_grad);
-        x_grad_tmp = matmul<T>(std::get<0>(tmp), std::get<1>(tmp), true, true);
-      } else if (transpose_x) {
-        // x_grad = grad_y_grad * grad_out'
-        auto tmp = modify_dim_for_matmul<T>(
-            grad_y_grad_mat, false, grad_out, false, x_grad);
-        x_grad_tmp = matmul<T>(std::get<0>(tmp), std::get<1>(tmp), false, true);
-      } else if (transpose_y) {
-        // x_grad = grad_out * grad_y_grad
-        auto tmp = modify_dim_for_matmul<T>(
-            grad_out, false, grad_y_grad_mat, true, x_grad);
-        x_grad_tmp =
-            matmul<T>(std::get<0>(tmp), std::get<1>(tmp), false, false);
-      } else {
-        // x_grad = grad_out * grad_y_grad'
-        auto tmp = modify_dim_for_matmul<T>(
-            grad_out, false, grad_y_grad_mat, false, x_grad);
-        x_grad_tmp = matmul<T>(std::get<0>(tmp), std::get<1>(tmp), false, true);
-      }
-      set_output<T>(x_grad_tmp, x_grad);
-
-      auto tmp = modify_dim_for_matmul<T>(
-          x, true, grad_y_grad_mat, false, grad_out_grad);
-      auto grad_out_grad_tmp = matmul<T>(
-          std::get<0>(tmp), std::get<1>(tmp), transpose_x, transpose_y);
-      auto output_tmp = add<T>(grad_out_grad_tmp, *grad_out_grad);
-      set_output<T>(output_tmp, grad_out_grad);
-    }
-
-    if (x_grad) {
-      if (x_grad_dims != x_help.dims()) {
-        *x_grad = reshape<T>(*x_grad, IntArray(phi::vectorize(x_grad_dims)));
-      }
-    }
-
-    if (y_grad) {
-      if (y_grad_dims != y_help.dims()) {
-        *y_grad = reshape<T>(*y_grad, IntArray(phi::vectorize(y_grad_dims)));
-      }
-    }
-
-    if (grad_out_grad) {
-      if (dgrad_out_dims != grad_out_help.dims()) {
-        *grad_out_grad = reshape<T>(*grad_out_grad,
-                                    IntArray(phi::vectorize(dgrad_out_dims)));
-      }
-    }
-
   } else {
     // Case3: broadcast. It need cost much time to reduce sum for the
     // broadcast and wastes the memory.
     // So we should avoid the case in reality.
     VLOG(3) << "It need cost much time to reduce sum for the broadcast and "
                "wastes the memory. So we should avoid the case in reality";
-
-    Tensor x_grad_help;
-    Tensor y_grad_help;
-    Tensor grad_out_grad_help;
-
-    if (transpose_x && transpose_y) {
-      if (x_grad) {
-        x_grad_help = matmul<T>(grad_y_grad.get(), grad_out, true, true);
-      }
-      if (y_grad) {
-        y_grad_help = matmul<T>(grad_out, grad_x_grad.get(), true, true);
-      }
-    } else if (transpose_x && !transpose_y) {
-      if (x_grad) {
-        x_grad_help = matmul<T>(grad_y_grad.get(), grad_out, false, true);
-      }
-      if (y_grad) {
-        y_grad_help = matmul<T>(grad_x_grad.get(), grad_out, false, false);
-      }
-    } else if (!transpose_x && transpose_y) {
-      if (x_grad) {
-        x_grad_help = matmul<T>(grad_out, grad_y_grad.get(), false, false);
-      }
-      if (y_grad) {
-        y_grad_help = matmul<T>(grad_out, grad_x_grad.get(), true, false);
-      }
-    } else {
-      if (x_grad) {
-        x_grad_help = matmul<T>(grad_out, grad_y_grad.get(), false, true);
-      }
-      if (y_grad) {
-        y_grad_help = matmul<T>(grad_x_grad.get(), grad_out, true, false);
-      }
-    }
-
-    // get help dims
-    const std::vector<std::int64_t> x_grad_help_dims =
-        vectorize(x_grad_help.dims());
-    const std::vector<std::int64_t> y_grad_help_dims =
-        vectorize(y_grad_help.dims());
-
-    std::vector<std::int64_t> x_grad_broadcast_dims(ndim);
-    std::vector<std::int64_t> y_grad_broadcast_dims(ndim);
-
-    std::fill(x_grad_broadcast_dims.data(),
-              x_grad_broadcast_dims.data() + ndim - x_ndim,
-              1);
-    std::fill(y_grad_broadcast_dims.data(),
-              y_grad_broadcast_dims.data() + ndim - y_ndim,
-              1);
-    std::copy(x_dims.data(),
-              x_dims.data() + x_ndim,
-              x_grad_broadcast_dims.data() + ndim - x_ndim);
-    std::copy(y_dims.data(),
-              y_dims.data() + y_ndim,
-              y_grad_broadcast_dims.data() + ndim - y_ndim);
-
-    std::vector<int> x_grad_reduce_dims;
-    std::vector<int> y_grad_reduce_dims;
-    for (int ix_grad = 0; ix_grad <= ndim - 3; ix_grad++) {
-      if (x_grad_help_dims[ix_grad] != 1 &&
-          x_grad_broadcast_dims[ix_grad] == 1) {
-        x_grad_reduce_dims.push_back(ix_grad);
-      }
-      if (y_grad_help_dims[ix_grad] != 1 &&
-          y_grad_broadcast_dims[ix_grad] == 1) {
-        y_grad_reduce_dims.push_back(ix_grad);
-      }
-    }
+    VLOG(1) << "-------------------is_broadcast----------------";
     // Reduce sum to get grad by ReduceSum
-    if (x_grad && x_grad_help.initialized()) {
+    if (x_grad) {
+      VLOG(1) << "-------------------3-1----------------";
+      auto x_grad_reduce_dims = get_reduce_dims(dx, dout_ndim, x_ndim, &x_dims);
       if (x_grad_reduce_dims.empty()) {
-        x_grad_help = std::move(x_grad_help);
+        dx = std::move(dx);
       } else {
-        x_grad_help = sum<T>(x_grad_help, IntArray(x_grad_reduce_dims));
+        dx = sum<T>(dx, IntArray(x_grad_reduce_dims));
       }
-      reshape<T>(x_grad_help, IntArray(phi::vectorize(x.dims())));
-    } else if (x_grad && !x_grad_help.initialized()) {
-      x_grad_help = full<T>(phi::vectorize(x.dims()), Scalar(0.0));
+      reshape<T>(dx, IntArray(phi::vectorize(x.dims())));
+      set_output<T>(dx, x_grad);
     }
-    set_output<T>(x_grad_help, x_grad);
 
-    if (y_grad && y_grad_help.initialized()) {
+    if (y_grad) {
+      VLOG(1) << "-------------------3-2----------------";
+      auto y_grad_reduce_dims = get_reduce_dims(dy, dout_ndim, y_ndim, &y_dims);
       if (y_grad_reduce_dims.empty()) {
-        y_grad_help = std::move(y_grad_help);
+        dy = std::move(dy);
       } else {
-        y_grad_help = sum<T>(y_grad_help, IntArray(y_grad_reduce_dims));
+        dy = sum<T>(dy, IntArray(y_grad_reduce_dims));
       }
-      reshape<T>(y_grad_help, IntArray(phi::vectorize(y.dims())));
-    } else if (y_grad && !y_grad_help.initialized()) {
-      y_grad_help = full<T>(phi::vectorize(y.dims()), Scalar(0.0));
+      reshape<T>(dy, IntArray(phi::vectorize(y.dims())));
+      set_output<T>(dy, y_grad);
     }
-    set_output<T>(y_grad_help, y_grad);
 
     if (grad_out_grad) {
-      // Calculate the gradient of OutputGrad(Out)
-      if (grad_x_grad) {
-        grad_out_grad_help =
-            matmul<T>(grad_x_grad.get(), y, transpose_x, transpose_y);
-      }
-      if (grad_y_grad) {
-        auto grad_out_grad_help_2 =
-            matmul<T>(x, grad_y_grad.get(), transpose_x, transpose_y);
-        grad_out_grad_help = add<T>(grad_out_grad_help, grad_out_grad_help_2);
-      }
-      set_output<T>(grad_out_grad_help, grad_out_grad);
+      VLOG(1) << "-------------------3-3----------------";
+      set_output<T>(ddout, grad_out_grad);
     }
   }
 }

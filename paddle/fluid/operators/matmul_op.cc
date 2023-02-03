@@ -960,10 +960,12 @@ class MatMulCompositeDoubleGradOpMaker : public prim::CompositeGradOpMakerBase {
     paddle::experimental::Tensor y = this->GetSingleForwardInput("Y");
     paddle::experimental::Tensor dout =
         this->GetSingleForwardInput(framework::GradVarName("Out"));
-    paddle::experimental::Tensor ddx = this->GetOptionalSingleOutputGrad(
-        framework::GradVarName(framework::GradVarName("X")));
-    paddle::experimental::Tensor ddy = this->GetOptionalSingleOutputGrad(
-        framework::GradVarName(framework::GradVarName("Y")));
+    paddle::optional<paddle::experimental::Tensor> ddx =
+        this->GetOptionalSingleOutputGrad(
+            framework::GradVarName(framework::GradVarName("X")));
+    paddle::optional<paddle::experimental::Tensor> ddy =
+        this->GetOptionalSingleOutputGrad(
+            framework::GradVarName(framework::GradVarName("Y")));
 
     // get attr
     bool trans_x = this->Attr<bool>("transpose_X");
