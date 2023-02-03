@@ -67,11 +67,20 @@ CinnCompiler *CinnCompiler::GetInstance() {
   return instance;
 }
 
+Target CreateDefaultTarget(bool use_gpu = false) {
+#ifdef PADDLE_WITH_CUDA
+  if (use_gpu) {
+    return ::cinn::common::DefaultNVGPUTarget();
+  }
+#endif
+  return ::cinn::common::DefaultHostTarget();
+}
+
 const CinnCompiledObject &CinnCompiler::Compile(
     const Graph &graph,
-    const std::map<std::string, const phi::DenseTensor *> &input_tensors,
-    const Target &target,
-    void *stream) {
+    const std::map<std::string, const phi::DenseTensor *> &input_tensors = {},
+    const Target &target = CreateDefaultTarget(),
+    void *stream = nullptr) {
   VLOG(4) << "-- The graph to be compiled is:\n" << VizGraph(graph);
   CinnCacheKeyByAddress cur_key_by_address(
       graph, input_tensors, target.arch_str());
