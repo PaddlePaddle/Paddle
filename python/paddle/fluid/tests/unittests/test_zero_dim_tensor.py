@@ -84,6 +84,9 @@ unary_api_list = [
     paddle.poisson,
     paddle.bernoulli,
     paddle.median,
+    paddle.nn.functional.softmax,
+    paddle.nn.functional.log_softmax,
+    paddle.nn.functional.gumbel_softmax,
 ]
 
 inplace_api_list = [
@@ -189,6 +192,8 @@ reduce_api_list = [
     paddle.logsumexp,
     paddle.all,
     paddle.any,
+    paddle.argmax,
+    paddle.argmin,
 ]
 
 
@@ -208,12 +213,13 @@ class TestReduceAPI(unittest.TestCase):
             out.retain_grads()
             out.backward()
 
-            out_empty_list = api(x, [])
-            self.assertEqual(out_empty_list, out)
-
             self.assertEqual(x.shape, [])
             self.assertEqual(out.shape, [])
-            np.testing.assert_allclose(out.numpy(), x.numpy())
+            if api not in [paddle.argmax, paddle.argmin]:
+                np.testing.assert_allclose(out.numpy(), x.numpy())
+                out_empty_list = api(x, [])
+                self.assertEqual(out_empty_list, out)
+
             if x.grad is not None:
                 self.assertEqual(x.grad.shape, [])
                 self.assertEqual(out.grad.shape, [])
@@ -250,7 +256,9 @@ class TestReduceAPI(unittest.TestCase):
                 res = exe.run(main_prog, fetch_list=fetch_list)
                 self.assertEqual(res[0].shape, ())
                 self.assertEqual(res[1].shape, ())
-                np.testing.assert_allclose(res[0], res[1])
+                if api not in [paddle.argmax, paddle.argmin]:
+                    np.testing.assert_allclose(res[0], res[1])
+
                 if len(res) > 2:
                     self.assertEqual(res[2].shape, ())
                     self.assertEqual(res[3].shape, ())
@@ -1496,6 +1504,26 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out.grad.shape, [])
         self.assertEqual(x.grad.shape, [])
 
+    def test_prelu(self):
+        x = paddle.full([], 1.0, 'float32')
+        x.stop_gradient = False
+
+        w1 = paddle.to_tensor([0.25], dtype='float32')
+        out1 = paddle.nn.functional.prelu(x, w1)
+        out1.retain_grads()
+        out1.backward()
+        self.assertEqual(out1.shape, [])
+        self.assertEqual(out1.grad.shape, [])
+        self.assertEqual(x.grad.shape, [])
+
+        w2 = paddle.full([], 0.25, dtype='float32')
+        out2 = paddle.nn.functional.prelu(x, w2)
+        out2.retain_grads()
+        out2.backward()
+        self.assertEqual(out2.shape, [])
+        self.assertEqual(out2.grad.shape, [])
+        self.assertEqual(x.grad.shape, [])
+
 
 class TestSundryAPIStatic(unittest.TestCase):
     def setUp(self):
@@ -2397,6 +2425,38 @@ class TestSundryAPIStatic(unittest.TestCase):
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, feed={"x": x_tensor}, fetch_list=[out])
         self.assertEqual(res[0].shape, (3, 4, 2))
+
+    def test_prelu(self):
+        x1 = paddle.full([], 1.0, 'float32')
+        x1.stop_gradient = False
+        w1 = paddle.to_tensor([0.25], dtype='float32')
+        out1 = paddle.nn.functional.prelu(x1, w1)
+        paddle.static.append_backward(out1.sum())
+
+        x2 = paddle.full([], 1.0, 'float32')
+        x2.stop_gradient = False
+        w2 = paddle.full([], 0.25, dtype='float32')
+        out2 = paddle.nn.functional.prelu(x2, w2)
+        paddle.static.append_backward(out2.sum())
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog,
+            fetch_list=[
+                out1,
+                out2,
+                x1.grad_name,
+                x2.grad_name,
+                out1.grad_name,
+                out2.grad_name,
+            ],
+        )
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[2].shape, ())
+        self.assertEqual(res[3].shape, ())
+        self.assertEqual(res[4].shape, ())
+        self.assertEqual(res[5].shape, ())
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.

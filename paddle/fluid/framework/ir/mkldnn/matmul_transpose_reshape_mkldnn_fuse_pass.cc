@@ -263,6 +263,5 @@ REGISTER_PASS_CAPABILITY(matmul_transpose_reshape_mkldnn_fuse_pass)
             .EQ("fused_matmul", 0)
             .EQ("matmul", 0)
             .EQ("matmul_v2", 0)
-            .EQ("matmul_v2", 0)
             .EQ("transpose2", 0)
             .EQ("reshape2", 0));

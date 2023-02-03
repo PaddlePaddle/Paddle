@@ -103,7 +103,6 @@ void MatmulKernel(const Context &dev_ctx,
 
   auto x_dims = vectorize(x.dims());
   auto y_dims = vectorize(y.dims());
-
   int ndims = std::max(x_dims.size(), y_dims.size());
   ndims = std::max(ndims, 3);
 

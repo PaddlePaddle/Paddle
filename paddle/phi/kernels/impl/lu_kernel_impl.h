@@ -520,6 +520,14 @@ DenseTensor Transpose2DTo6D(const Context& dev_ctx, const DenseTensor& x) {
   auto x_dim = x.dims();
   auto x_vec = phi::vectorize<int>(x_dim);
   int rank = x_vec.size();
+
+  for (int i = 0; i < x_dim.size(); i++) {
+    PADDLE_ENFORCE_LT(0,
+                      x_dim[i],
+                      errors::InvalidArgument(
+                          "The dims of Input(X) should be greater than 0."));
+  }
+
   std::swap(x_vec[rank - 1], x_vec[rank - 2]);
   std::vector<int> out_shape = x_vec;
   std::vector<int> axis(rank);

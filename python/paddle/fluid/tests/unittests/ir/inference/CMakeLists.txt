@@ -18,15 +18,6 @@ string(REPLACE ".py" "" TEST_TRT_CONVERTER "${TEST_TRT_CONVERTER}")
 
 if(NOT WITH_DISTRIBUTE)
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_delete_c_identity_op_pass")
-  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
-       "test_trt_convert_preln_residual_bias")
-  list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_preln_residual_bias")
-  list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_preln_residual_bias")
-  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
-       "test_trt_convert_preln_residual_no_bias")
-  list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_preln_residual_no_bias")
-  list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_preln_residual_no_bias")
-
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_trt_convert_c_allreduce")
   list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_c_allreduce")
   list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_c_allreduce")
@@ -39,6 +30,7 @@ if(WIN32)
        "test_preln_groupnorm_act_fuse_pass")
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
        "test_element_groupnorm_act_fuse_pass")
+  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_groupnorm_act_pass_fuse_pass")
   list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_fused_token_prune")
   list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_fused_token_prune")
 endif()
@@ -193,6 +185,9 @@ if(WITH_GPU AND TENSORRT_FOUND)
                          PROPERTIES TIMEOUT 120)
     set_tests_properties(test_conv_elementwise_add_act_fuse_pass
                          PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_onednn_conv_bias_fuse_pass PROPERTIES TIMEOUT 300)
+    set_tests_properties(test_onednn_conv_concat_activation_fuse_pass
+                         PROPERTIES TIMEOUT 300)
     set_tests_properties(test_flatten2_matmul_fuse_pass PROPERTIES TIMEOUT 240)
     set_tests_properties(test_squeeze2_matmul_fuse_pass PROPERTIES TIMEOUT 240)
     set_tests_properties(test_reshape2_matmul_fuse_pass PROPERTIES TIMEOUT 240)
@@ -225,11 +220,13 @@ if(WITH_GPU AND TENSORRT_FOUND)
                            PROPERTIES TIMEOUT 120)
       set_tests_properties(test_preln_groupnorm_act_fuse_pass PROPERTIES TIMEOUT
                                                                          120)
+      set_tests_properties(test_groupnorm_act_pass_fuse_pass PROPERTIES TIMEOUT
+                                                                        120)
     endif()
   endif()
 
   if(WITH_MKLDNN)
-    set_tests_properties(test_mkldnn_conv_elementwise_add_fuse_pass
+    set_tests_properties(test_onednn_conv_elementwise_add_fuse_pass
                          PROPERTIES TIMEOUT 120)
     set_tests_properties(test_mkldnn_depthwise_conv_pass PROPERTIES TIMEOUT 120)
     set_tests_properties(test_onednn_reshape_transpose_matmul_fuse_pass

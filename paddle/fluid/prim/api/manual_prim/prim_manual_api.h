@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,15 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// prim api which can't be generated
 #pragma once
 
+#include "paddle/fluid/prim/api/generated_prim/prim_generated_api.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/utils/optional.h"
-
+// TODO(jiabin): Make this Header only for handwritten api, instead of include
+// prim_generated_api.h
 namespace paddle {
 namespace prim {}  // namespace prim
 }  // namespace paddle
