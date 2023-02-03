@@ -75,8 +75,8 @@ class CinnCompiler {
 
   const CinnCompiledObject& Compile(
       const ir::Graph& graph,
-      const std::map<std::string, const phi::DenseTensor*>& input_tensors,
-      const ::cinn::common::Target& target,
+      const std::map<std::string, const phi::DenseTensor*>& input_tensors = {},
+      const ::cinn::common::Target& target = ::cinn::common::DefaultTarget(),
       void* stream = nullptr);
 
   const CinnCompiledObject& Compile(
