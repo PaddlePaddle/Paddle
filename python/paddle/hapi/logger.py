@@ -16,6 +16,9 @@ import logging
 import os
 import sys
 
+# Here is the only case to import ParallelEnv from paddle.parallel,
+# because there is circular import if import it from paddle.distributed.
+# It is also the reason why put the implenmentation of ParallelEnv in the paddle/parallel.py
 from paddle.parallel import ParallelEnv
 
 __all__ = []
