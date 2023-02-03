@@ -74,7 +74,7 @@ def monkey_patch_math_varbase():
 
     @no_grad
     def create_tensor(value, dtype, shape):
-        if framework._in_eager_mode_:
+        if framework.global_var._in_eager_mode_:
             out = _C_ops.full(
                 shape, value, dtype, framework._current_expected_place()
             )
@@ -251,7 +251,7 @@ def monkey_patch_math_varbase():
 
             # 2. create varbase for scalar
             lhs_dtype = self.dtype
-            if framework._in_eager_mode_:
+            if framework.global_var._in_eager_mode_:
                 other_var_should_be = core.eager.Tensor
             else:
                 other_var_should_be = core.VarBase
@@ -486,7 +486,7 @@ def monkey_patch_math_varbase():
     global _already_patch_varbase
     global _already_patch_eager_tensor
 
-    if framework._in_eager_mode_:
+    if framework.global_var._in_eager_mode_:
         local_already_patch = _already_patch_eager_tensor
         _already_patch_eager_tensor = True
         local_tensor = core.eager.Tensor
@@ -496,7 +496,7 @@ def monkey_patch_math_varbase():
         local_tensor = core.VarBase
 
     if not local_already_patch:
-        if framework._in_eager_mode_:
+        if framework.global_var._in_eager_mode_:
             for method_name in eager_cpp_level_patch:
                 method_impl = getattr(local_tensor, method_name, None)
                 if method_impl:

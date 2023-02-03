@@ -16,8 +16,8 @@
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
+from paddle.common_ops_import import Variable
 from paddle.fluid.framework import _current_expected_place, in_dygraph_mode
-from paddle.static import Variable
 
 from ..fluid.data_feeder import (
     check_dtype,
@@ -789,8 +789,8 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
         high = low
         low = 0
     if dtype is None:
-        dtype = 'int64'
-    if not isinstance(dtype, core.VarDesc.VarType):
+        dtype = core.VarDesc.VarType.INT64
+    elif not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():

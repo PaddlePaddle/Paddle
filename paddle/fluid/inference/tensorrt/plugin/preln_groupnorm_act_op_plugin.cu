@@ -155,7 +155,14 @@ __global__ void prelnGroupNormNHWCSumKernel(GroupNormNHWCParams params) {
       // int64_t offsetY = static_cast<int64_t>(ni) * params.c + ci;
       __half2 y = *reinterpret_cast<__half2 const *>(&params.srcY[offset]);
       h2 = *reinterpret_cast<__half2 const *>(&params.srcX[offset]);
+#if __CUDA_ARCH__ >= 530
       h2 = __hadd2(h2, y);
+#else
+      float2 out{};
+      out.x = __half2float(h2.x) + __half2float(y.x);
+      out.y = __half2float(h2.y) + __half2float(y.y);
+      h2 = __float22half2_rn(out);
+#endif
       // elementwise_add
       *reinterpret_cast<__half2 *>(&params.eleOut[offset]) = h2;
     }
@@ -323,8 +330,8 @@ __global__ void prelnGroupNormNHWCScaleKernel(GroupNormNHWCParams params) {
     f2.x = gammaF2.x * f2.x + betaF2.x;
     f2.y = gammaF2.y * f2.y + betaF2.y;
 
-    // Apply Swish if needed.
-    if (params.withSwish) {
+    // Apply Silu if needed.
+    if (params.withSilu) {
       f2.x = f2.x * sigmoid(f2.x);
       f2.y = f2.y * sigmoid(f2.y);
     }
@@ -424,7 +431,7 @@ int PrelnGroupnormActPluginDynamic::enqueue(
     if (cPerBlock > input_desc[0].dims.d[1]) {
       cPerBlock = 8;
     }
-    params_.withSwish = true;
+    params_.withSilu = with_silu_;
     params_.dst = static_cast<half *>(outputs[1]);
     params_.eleOut = static_cast<half *>(outputs[0]);
     params_.srcX = static_cast<half const *>(inputs[0]);

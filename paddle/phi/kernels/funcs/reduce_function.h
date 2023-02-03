@@ -1228,8 +1228,22 @@ void HandleLargeDim(const DeviceContext& dev_ctx,
 
   // transpose to 2D tensor whose shape is {unreduced, reduced}.
   const int64_t unreduced = output->numel();
-  const int64_t reduced = shuffled_input.numel() / unreduced;
+  const int64_t input_numel = shuffled_input.numel();
+  // assume: 0 / 0 == 0, which allow process 0 dim tensor
+  const int64_t reduced = (unreduced != 0) ? (input_numel / unreduced) : 0;
+
+  PADDLE_ENFORCE_EQ(
+      unreduced * reduced,
+      input_numel,
+      phi::errors::InvalidArgument(
+          "Reducing failed in HandleLargeDim, when try to transpose (%d) "
+          "operands into 2D tensor with shape (%d, %d).",
+          input_numel,
+          unreduced,
+          reduced));
+
   shuffled_input.ResizeAndAllocate({unreduced, reduced});
+
   DDim output_dim = output->dims();
   output->ResizeAndAllocate({unreduced});
   ReduceFunctor<DeviceContext, OutT, 2, 1, Functor>(
