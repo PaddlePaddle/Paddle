@@ -325,6 +325,80 @@ void matmul_double_grad(const Tensor& x,
   int y_ndim = y_dims.size();
   int dout_ndim = grad_out_dims.size();
 
+  // prepare dims for x_ndims <= 1 || x_ndims <= 1
+  Tensor x_help, y_help, xg_help, yg_help, out_help;
+  std::cout << "x_ndim = " << x_ndim << std::endl;
+  std::cout << "y_ndim = " << y_ndim << std::endl;
+  std::cout << "dout_ndim = " << dout_ndim << std::endl;
+
+  if (x_ndim == 1 && y_ndim == 1) {
+    transpose_x = false;
+    transpose_y = false;
+    x_help = reshape<T>(x, IntArray(std::vector<int64_t>({1, x_dims[0]})));
+    y_help = reshape<T>(y, IntArray(std::vector<int64_t>({y_dims[0], 1})));
+    if (grad_x_grad) {
+      VLOG(1) << "-------------------0_1----------------";
+      xg_help = reshape<T>(grad_x_grad.get(),
+                           IntArray(std::vector<int64_t>({1, x_dims[0]})));
+    }
+
+    if (grad_y_grad) {
+      VLOG(1) << "-------------------0_2----------------";
+      yg_help = reshape<T>(grad_y_grad.get(),
+                           IntArray(std::vector<int64_t>({y_dims[0], 1})));
+    }
+    VLOG(1) << "-------------------0_3----------------";
+    out_help = reshape<T>(grad_out, IntArray(std::vector<int64_t>({1, 1})));
+  } else if (x_ndim == 1 && y_ndim > 1) {
+    VLOG(1) << "-------------------1_0----------------";
+    transpose_x = false;
+    x_help = reshape<T>(x, IntArray(std::vector<int64_t>({1, x_dims[0]})));
+    y_help = y;
+    if (grad_x_grad) {
+      VLOG(1) << "-------------------1_1----------------";
+      xg_help = reshape<T>(grad_x_grad.get(),
+                           IntArray(std::vector<int64_t>({1, x_dims[0]})));
+    }
+    VLOG(1) << "-------------------1_2----------------";
+
+    if (grad_y_grad) {
+      yg_help = grad_y_grad.get();
+    }
+    out_help = reshape<T>(
+        grad_out, IntArray(std::vector<int64_t>({1, grad_out_dims[0]})));
+  } else if (y_ndim == 1 && x_ndim > 1) {
+    VLOG(1) << "-------------------2_0----------------";
+    transpose_y = false;
+    x_help = x;
+    y_help = reshape<T>(y, IntArray(std::vector<int64_t>({y_dims[0], 1})));
+    if (grad_x_grad) {
+      VLOG(1) << "-------------------2_1----------------";
+      xg_help = grad_x_grad.get();
+    }
+    if (grad_y_grad) {
+      VLOG(1) << "-------------------2_2----------------";
+      yg_help = reshape<T>(grad_y_grad.get(),
+                           IntArray(std::vector<int64_t>({y_dims[0], 1})));
+    }
+    VLOG(1) << "-------------------2_3----------------";
+    out_help = reshape<T>(
+        grad_out, IntArray(std::vector<int64_t>({grad_out_dims[0], 1})));
+  } else {
+    VLOG(1) << "-------------------3_0----------------";
+    x_help = x;
+    y_help = y;
+    if (grad_x_grad) {
+      VLOG(1) << "-------------------3_1----------------";
+      xg_help = grad_x_grad.get();
+    }
+    if (grad_y_grad) {
+      VLOG(1) << "-------------------3_2----------------";
+      yg_help = grad_y_grad.get();
+    }
+    out_help = grad_out;
+  }
+
+  VLOG(1) << "-------------------3----------------";
   bool is_broadcast = true;
   if (x_ndim <= 2 || y_ndim <= 2) {
     is_broadcast = false;
@@ -334,7 +408,7 @@ void matmul_double_grad(const Tensor& x,
     is_broadcast = !std::equal(
         x_dims.cbegin(), x_dims.cbegin() + x_ndim - 2, y_dims.cbegin());
   }
-  VLOG(1) << "-------------------3----------------";
+  VLOG(1) << "-------------------4----------------";
   Tensor dx, dy, ddout_1, ddout_2, ddout;
   if (!grad_x_grad && !grad_y_grad) {
     VLOG(1) << "-------------------!ddx!ddy----------------";
@@ -347,63 +421,78 @@ void matmul_double_grad(const Tensor& x,
     VLOG(1) << "-------------------!ddx----------------";
     y_grad = nullptr;
     if (!transpose_x && !transpose_y) {
-      dx = matmul<T>(grad_out, grad_y_grad.get(), false, true);
-      ddout = matmul<T>(x, grad_y_grad.get(), false, false);
+      dx = matmul<T>(out_help, yg_help, false, true);
+      ddout = matmul<T>(x_help, yg_help, false, false);
     } else if (!transpose_x && transpose_y) {
-      dx = matmul<T>(grad_out, grad_y_grad.get(), false, false);
-      ddout = matmul<T>(x, grad_y_grad.get(), false, true);
+      dx = matmul<T>(out_help, yg_help, false, false);
+      ddout = matmul<T>(x_help, yg_help, false, true);
     } else if (transpose_x && !transpose_y) {
-      dx = matmul<T>(grad_y_grad.get(), grad_out, false, true);
-      ddout = matmul<T>(x, grad_y_grad.get(), true, false);
+      dx = matmul<T>(yg_help, out_help, false, true);
+      ddout = matmul<T>(x_help, yg_help, true, false);
     } else {
-      dx = matmul<T>(grad_y_grad.get(), grad_out, true, true);
-      ddout = matmul<T>(x, grad_y_grad.get(), true, true);
+      dx = matmul<T>(yg_help, out_help, true, true);
+      ddout = matmul<T>(x_help, yg_help, true, true);
     }
 
   } else if (!grad_y_grad) {
     VLOG(1) << "-------------------!ddy----------------";
     x_grad = nullptr;
     if (!transpose_x && !transpose_y) {
-      dy = matmul<T>(grad_x_grad.get(), grad_out, true, false);
-      ddout = matmul<T>(grad_x_grad.get(), y, false, false);
+      dy = matmul<T>(xg_help, out_help, true, false);
+      ddout = matmul<T>(xg_help, y_help, false, false);
     } else if (!transpose_x && transpose_y) {
-      dy = matmul<T>(grad_out, grad_x_grad.get(), true, false);
-      ddout = matmul<T>(grad_x_grad.get(), y, false, true);
+      dy = matmul<T>(out_help, xg_help, true, false);
+      ddout = matmul<T>(xg_help, y_help, false, true);
     } else if (transpose_x && !transpose_y) {
-      dy = matmul<T>(grad_x_grad.get(), grad_out, false, false);
-      ddout = matmul<T>(grad_x_grad.get(), y, true, false);
+      dy = matmul<T>(xg_help, out_help, false, false);
+      ddout = matmul<T>(xg_help, y_help, true, false);
     } else {
-      dy = matmul<T>(grad_out, grad_x_grad.get(), true, true);
-      ddout = matmul<T>(grad_x_grad.get(), y, true, true);
+      dy = matmul<T>(out_help, xg_help, true, true);
+      ddout = matmul<T>(xg_help, y_help, true, true);
     }
 
   } else {
     VLOG(1) << "-------------------ddxddy----------------";
     if (!transpose_x && !transpose_y) {
-      dx = matmul<T>(grad_out, grad_y_grad.get(), false, true);
-      dy = matmul<T>(grad_x_grad.get(), grad_out, true, false);
-      ddout_1 = matmul<T>(x, grad_y_grad.get(), false, false);
-      ddout_2 = matmul<T>(grad_x_grad.get(), y, false, false);
+      VLOG(1) << "-------------------dx----------------";
+      dx = matmul<T>(out_help, yg_help, false, true);
+      VLOG(1) << "-------------------dy----------------";
+      dy = matmul<T>(xg_help, out_help, true, false);
+      VLOG(1) << "-------------------ddout1----------------";
+      ddout_1 = matmul<T>(x_help, yg_help, false, false);
+      VLOG(1) << "-------------------ddout2----------------";
+      ddout_2 = matmul<T>(xg_help, y_help, false, false);
+      VLOG(1) << "-------------------ddout----------------";
       ddout = add<T>(ddout_1, ddout_2);
     } else if (!transpose_x && transpose_y) {
-      dx = matmul<T>(grad_out, grad_y_grad.get(), false, false);
-      dy = matmul<T>(grad_out, grad_x_grad.get(), true, false);
-      ddout_1 = matmul<T>(x, grad_y_grad.get(), false, true);
-      ddout_2 = matmul<T>(grad_x_grad.get(), y, false, true);
+      dx = matmul<T>(out_help, yg_help, false, false);
+      dy = matmul<T>(out_help, xg_help, true, false);
+      ddout_1 = matmul<T>(x_help, yg_help, false, true);
+      ddout_2 = matmul<T>(xg_help, y_help, false, true);
       ddout = add<T>(ddout_1, ddout_2);
     } else if (transpose_x && !transpose_y) {
-      dx = matmul<T>(grad_y_grad.get(), grad_out, false, true);
-      dy = matmul<T>(grad_x_grad.get(), grad_out, false, false);
-      ddout_1 = matmul<T>(x, grad_y_grad.get(), true, false);
-      ddout_2 = matmul<T>(grad_x_grad.get(), y, true, false);
+      dx = matmul<T>(yg_help, out_help, false, true);
+      dy = matmul<T>(xg_help, out_help, false, false);
+      ddout_1 = matmul<T>(x_help, yg_help, true, false);
+      ddout_2 = matmul<T>(xg_help, y_help, true, false);
       ddout = add<T>(ddout_1, ddout_2);
     } else {
-      dx = matmul<T>(grad_y_grad.get(), grad_out, true, true);
-      dy = matmul<T>(grad_out, grad_x_grad.get(), true, true);
-      ddout_1 = matmul<T>(x, grad_y_grad.get(), true, true);
-      ddout_2 = matmul<T>(grad_x_grad.get(), y, true, true);
+      dx = matmul<T>(yg_help, out_help, true, true);
+      dy = matmul<T>(out_help, xg_help, true, true);
+      ddout_1 = matmul<T>(x_help, yg_help, true, true);
+      ddout_2 = matmul<T>(xg_help, y_help, true, true);
       ddout = add<T>(ddout_1, ddout_2);
     }
+  }
+
+  if (dx.initialized() && dx.dims() != x.dims()) {
+    dx = reshape<T>(x, IntArray(x_dims));
+  }
+  if (dy.initialized() && dy.dims() != y.dims()) {
+    dy = reshape<T>(y, IntArray(y_dims));
+  }
+  if (ddout.initialized() && ddout.dims() != grad_out.dims()) {
+    ddout = reshape<T>(ddout, IntArray(grad_out_dims));
   }
 
   if (!is_broadcast) {
