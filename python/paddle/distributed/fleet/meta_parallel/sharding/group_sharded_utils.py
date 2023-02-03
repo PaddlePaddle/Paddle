@@ -270,6 +270,9 @@ def GroupShardedScaler(scaler):
                     param_grads_bfp16,
                     temp_found_inf_bfp16,
                 )
+                self._found_inf = _C_ops.bitwise_or(
+                    self._found_inf, temp_found_inf_bfp16
+                )
             if len(param_grads_fp16):
                 _legacy_C_ops.check_finite_and_unscale(
                     param_grads_fp16,
@@ -291,13 +294,6 @@ def GroupShardedScaler(scaler):
                     self._found_inf, temp_found_inf_fp32
                 )
 
-        self._found_inf = (
-            1
-            if temp_found_inf_fp16
-            or temp_found_inf_fp32
-            or temp_found_inf_bfp16
-            else 0
-        )
         self._found_inf = self._found_inf.cast("int32")
 
         paddle.distributed.all_reduce(
