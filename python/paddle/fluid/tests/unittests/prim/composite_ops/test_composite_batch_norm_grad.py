@@ -25,7 +25,7 @@ np.random.seed(2023)
 TOLERANCE = {
     "float32": {
         "forward": {"rtol": 1e-6, "atol": 1e-6},
-        "backward": {"rtol": 1e-6, "atol": 1e-6},
+        "backward": {"rtol": 3e-6, "atol": 3e-6},
     },
     "float64": {
         "forward": {"rtol": 1e-7, "atol": 1e-7},

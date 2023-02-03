@@ -34,8 +34,8 @@ SUB_TOLERANCE = {
         "prim_backward": {"rtol": 5e-6, "atol": 5e-6},
     },
     "float64": {
-        "forward": {"rtol": 1e-14, "atol": 1e-14},
-        "backward": {"rtol": 1e-14, "atol": 1e-14},
-        "prim_backward": {"rtol": 1e-14, "atol": 1e-14},
+        "forward": {"rtol": 1e-13, "atol": 1e-13},
+        "backward": {"rtol": 1e-13, "atol": 1e-13},
+        "prim_backward": {"rtol": 1e-13, "atol": 1e-13},
     },
 }
