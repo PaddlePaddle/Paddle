@@ -97,35 +97,73 @@ void FlashAttnKernel(const Context& ctx,
     ctx.template Alloc<T>(softmax);
   }
 
-  DenseTensor workspace = Empty<float>(ctx, {total_q, num_heads, head_size});
   uint64_t workspace_size;
 
-  phi::dynload::flash_attn_fwd(q_t_s.data(),
-                               k_t_s.data(),
-                               v_t_s.data(),
-                               out->data(),
-                               cu_seqlens_q.data(),
-                               cu_seqlens_k.data(),
-                               total_q,
-                               total_k,
-                               batch_size,
-                               num_heads,
-                               head_size,
-                               seq_len_q,
-                               seq_len_k,
-                               dropout,
-                               scale,
-                               zero_tensors,
-                               causal,
-                               is_bf16,
-                               num_splits,
-                               softmax_lse->data(),
-                               return_softmax ? softmax->data() : nullptr,
-                               workspace.data(),
-                               &workspace_size,
-                               stream,
-                               seed,
-                               offset);
+  // calculate workspace size before execution
+  bool succ =
+      phi::dynload::flash_attn_fwd(q_t_s.data(),
+                                   k_t_s.data(),
+                                   v_t_s.data(),
+                                   nullptr,  // for calculation workspace size
+                                   cu_seqlens_q.data(),
+                                   cu_seqlens_k.data(),
+                                   total_q,
+                                   total_k,
+                                   batch_size,
+                                   num_heads,
+                                   head_size,
+                                   seq_len_q,
+                                   seq_len_k,
+                                   dropout,
+                                   scale,
+                                   zero_tensors,
+                                   causal,
+                                   is_bf16,
+                                   num_splits,
+                                   softmax_lse->data(),
+                                   return_softmax ? softmax->data() : nullptr,
+                                   nullptr,
+                                   &workspace_size,
+                                   stream,
+                                   seed,
+                                   offset);
+
+  if (!succ) PADDLE_THROW(phi::dynload::flash_attn_error());
+
+  DenseTensor workspace;
+  if (workspace_size > 0) {
+    workspace = Empty<float>(ctx, {int64_t(workspace_size / sizeof(float))});
+  }
+
+  succ = phi::dynload::flash_attn_fwd(
+      q_t_s.data(),
+      k_t_s.data(),
+      v_t_s.data(),
+      out->data(),
+      cu_seqlens_q.data(),
+      cu_seqlens_k.data(),
+      total_q,
+      total_k,
+      batch_size,
+      num_heads,
+      head_size,
+      seq_len_q,
+      seq_len_k,
+      dropout,
+      scale,
+      zero_tensors,
+      causal,
+      is_bf16,
+      num_splits,
+      softmax_lse->data(),
+      return_softmax ? softmax->data() : nullptr,
+      workspace_size > 0 ? workspace.data() : nullptr,
+      &workspace_size,
+      stream,
+      seed,
+      offset);
+  if (!succ) PADDLE_THROW(phi::dynload::flash_attn_error());
+
 #endif
 }
 
