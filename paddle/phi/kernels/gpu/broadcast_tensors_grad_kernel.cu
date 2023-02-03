@@ -28,8 +28,10 @@ namespace phi {
 
 template <typename T, typename Context>
 void BroadcastTensorsGradKernel(const Context& ctx,
+                                const std::vector<const DenseTensor*>& inputs,
                                 const std::vector<const DenseTensor*>& dout,
                                 std::vector<DenseTensor*> dx) {
+  (void)inputs;
   // Find reduce dimensions
   const auto& in_tensors = dout;
   auto& out_tensors = dx;

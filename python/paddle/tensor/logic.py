@@ -18,9 +18,9 @@ import paddle
 from paddle import _C_ops
 from paddle.tensor.creation import full
 
+from ..common_ops_import import Variable
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..framework import LayerHelper, in_dygraph_mode
-from ..static import Variable
 from .layer_function_generator import templatedoc
 from .tensor import Tensor
 
