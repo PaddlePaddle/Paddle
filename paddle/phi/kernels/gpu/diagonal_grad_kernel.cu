@@ -14,9 +14,9 @@
 
 #include "paddle/phi/kernels/diagonal_grad_kernel.h"
 
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/diagonal.h"
 
 namespace phi {
@@ -38,8 +38,7 @@ void DiagonalGradKernel(const Context& dev_ctx,
 
   std::vector<int64_t> res_dout = vectorize(phi::stride(dout->dims()));
   DenseTensor dout_stride_tensor;
-  paddle::framework::TensorFromVector<int64_t>(
-      res_dout, dev_ctx, &dout_stride_tensor);
+  phi::TensorFromVector<int64_t>(res_dout, dev_ctx, &dout_stride_tensor);
   int64_t* dout_stride = dout_stride_tensor.data<int64_t>();
 
   auto* dx = in_grad;
@@ -49,8 +48,7 @@ void DiagonalGradKernel(const Context& dev_ctx,
 
   std::vector<int64_t> res_dx = vectorize(phi::stride(dx->dims()));
   DenseTensor dx_stride_tensor;
-  paddle::framework::TensorFromVector<int64_t>(
-      res_dx, dev_ctx, &dx_stride_tensor);
+  phi::TensorFromVector<int64_t>(res_dx, dev_ctx, &dx_stride_tensor);
   int64_t* dx_stride = dx_stride_tensor.data<int64_t>();
 
   const int64_t offset_ = offset;

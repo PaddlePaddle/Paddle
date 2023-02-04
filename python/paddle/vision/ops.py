@@ -19,11 +19,11 @@ from paddle.tensor.math import _add_with_axis
 
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..fluid.framework import Variable, in_dygraph_mode
-from ..fluid.initializer import Normal
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.layers import utils
 from ..framework import _current_expected_place
 from ..nn import BatchNorm2D, Conv2D, Layer, ReLU, Sequential
+from ..nn.initializer import Normal
 
 __all__ = [  # noqa
     'yolo_loss',
@@ -1120,7 +1120,7 @@ class DeformConv2D(Layer):
         def _get_default_param_initializer():
             filter_elem_num = np.prod(self._kernel_size) * self._in_channels
             std = (2.0 / filter_elem_num) ** 0.5
-            return Normal(0.0, std, 0)
+            return Normal(0.0, std)
 
         self.weight = self.create_parameter(
             shape=filter_shape,
@@ -1424,6 +1424,8 @@ def psroi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
         output_size = (output_size, output_size)
     pooled_height, pooled_width = output_size
     assert len(x.shape) == 4, "Input features with shape should be (N, C, H, W)"
+    if pooled_height * pooled_width == 0:
+        raise ValueError('output_size should not contain 0.')
     output_channels = int(x.shape[1] / (pooled_height * pooled_width))
     if in_dygraph_mode():
         return _C_ops.psroi_pool(

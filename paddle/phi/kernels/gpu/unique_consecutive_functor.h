@@ -24,8 +24,6 @@
 #include <iostream>
 #include <vector>
 
-#include "paddle/fluid/framework/tensor_util.h"
-
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
@@ -293,8 +291,8 @@ void IndexSelect(const Context& context,
 
   std::vector<InT> input_vec;
   std::vector<IndexT> index_vec;
-  paddle::framework::TensorToVector(input, context, &input_vec);
-  paddle::framework::TensorToVector(index, context, &index_vec);
+  phi::TensorToVector(input, context, &input_vec);
+  phi::TensorToVector(index, context, &index_vec);
   std::vector<InT> out_vec(output->numel());
 
   for (int i = 0; i < index_size; i++) {
@@ -331,7 +329,7 @@ void IndexSelect(const Context& context,
     }
   }
   context.template Alloc<InT>(output);
-  paddle::framework::TensorFromVector(out_vec, context, output);
+  phi::TensorFromVector(out_vec, context, output);
   output->Resize(output_dim);
 }
 
