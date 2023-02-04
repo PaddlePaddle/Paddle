@@ -77,7 +77,7 @@ function cmake_base() {
     SYSTEM=`uname -s`
     if [ "$SYSTEM" == "Darwin" ]; then
         echo "Using python abi: $1"
-        if [ "$1" == "cp37-cp37m" ]; then
+        if [ "$1" == "cp37-cp37m" ] || [ "$1" == "" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.7" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.7/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.7/lib/
@@ -4110,10 +4110,6 @@ function main() {
         ;;
       maccheck_py3)
         run_setup_mac ${PYTHON_ABI:-""} bdist_wheel
-        run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
-        ;;
-      maccheck_py3)
-        cmake_gen_and_build_mac ${PYTHON_ABI:-""}
         run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       macbuild)
