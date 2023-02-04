@@ -363,9 +363,26 @@ class OpConverter {
                           "check the INFO log above for more details."));
     framework::proto::BlockDesc* block_proto = block_desc->Proto();
     ConvertBlock(*block_proto, parameters, scope, engine);
+
     for (auto& output : outputs) {
-      engine->DeclareOutput(output);
+      auto* var = block_desc->FindVar(output);
+      PADDLE_ENFORCE_NOT_NULL(
+          var,
+          platform::errors::NotFound("no variable called %s in block.",
+                                     output.c_str()));
+      PADDLE_ENFORCE_EQ(
+          var->GetType(),
+          FluidDT::VarType_Type_LOD_TENSOR,
+          platform::errors::InvalidArgument(
+              "The output tensor in TensorRT subgraph should be LoDTensor"));
+      engine->DeclareOutput(
+          output,
+          FluidDataType2TRT(
+              var->Proto()->type().lod_tensor().tensor().data_type()));
+      VLOG(6) << "DeclareOutput(name: " << output << ", dtype: "
+              << var->Proto()->type().lod_tensor().tensor().data_type() << ")";
     }
+
     engine->FreezeNetwork();
     engine->ClearWeights();
   }

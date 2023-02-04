@@ -32,20 +32,21 @@ class TestElementwiseOp(OpTest):
         self.op_type = "elementwise_heaviside"
         x = np.random.random((13, 17)).astype("float64")
         y = np.random.random((13, 17)).astype("float64")
+        self.python_api = paddle.heaviside
         self.inputs = {'X': x, 'Y': y}
         self.outputs = {'Out': np.heaviside(self.inputs['X'], self.inputs['Y'])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
 
     def test_check_grad_ingore_x(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
+        self.check_grad(['Y'], 'Out', no_grad_set=set("X"), check_eager=True)
 
     def test_check_grad_ingore_y(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_eager=True)
 
 
 class TestHeavisideBroadcast(unittest.TestCase):

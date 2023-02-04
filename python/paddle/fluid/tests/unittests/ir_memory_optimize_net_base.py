@@ -60,11 +60,11 @@ class BuildIrMemOptBase(unittest.TestCase):
         fluid.default_startup_program().random_seed = 100
         fluid.default_main_program().random_seed = 100
 
-        data = fluid.layers.data(
-            name="words", shape=[1], dtype="int64", lod_level=1
+        data = paddle.static.data(
+            name="words", shape=[-1, 1], dtype="int64", lod_level=1
         )
 
-        label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+        label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
 
         cost = network(data, label, len(self.word_dict))
         optimizer = fluid.optimizer.Adam(learning_rate=0.001)
