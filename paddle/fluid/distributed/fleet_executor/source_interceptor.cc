@@ -30,6 +30,8 @@ SourceInterceptor::SourceInterceptor(int64_t interceptor_id, TaskNode* node)
 
 void SourceInterceptor::SendDataReadyToDownStream(int64_t downstream_id) {
   int64_t micro_step = downstream_step_.at(downstream_id);
+  VLOG(3) << "Source Interceptor micro_step " << micro_step
+          << " max_run_times: " << max_run_times_;
   if (micro_step >= max_run_times_) {
     return;
   }

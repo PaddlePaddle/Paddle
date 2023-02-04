@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from logging import exception
 import os
 
 from paddle.fluid import core
@@ -26,13 +27,23 @@ from paddle.distributed.fleet.meta_optimizers.common import (
     OP_ROLE_KEY,
     is_loss_grad_op,
 )
-from paddle.distributed.auto_parallel.partitioner import __not_shape_var_type__
+
+# from paddle.distributed.auto_parallel.partitioner import __not_shape_var_type__
 from paddle.distributed.auto_parallel.utils import (
     is_forward_op,
     is_backward_op,
     is_optimize_op,
     is_lr_sched_op,
 )
+
+
+__not_shape_var_type__ = [
+    core.VarDesc.VarType.READER,
+    core.VarDesc.VarType.STEP_SCOPES,
+    core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+    core.VarDesc.VarType.FEED_MINIBATCH,
+    core.VarDesc.VarType.FETCH_LIST,
+]
 
 
 @register_pass("auto_parallel_pipeline")
@@ -201,12 +212,29 @@ class PipelinePass(PassBase):
             src_var = src_block._var_recursive(src_varname)
         if src_var.type in __not_shape_var_type__:
             persist = getattr(src_var, 'persistable', False)
-            dst_block.create_var(
-                type=src_var.type,
-                name=src_varname,
-                persistable=persist,
-                stop_gradient=True,
-            )
+            try:
+                dst_block.create_var(
+                    type=src_var.type,
+                    name=src_var.name,
+                    shape=src_var.shape,
+                    dtype=src_var.dtype,
+                    lod_level=src_var.lod_level,
+                    persistable=persist,
+                    error_clip=src_var.error_clip,
+                    stop_gradient=src_var.stop_gradient,
+                    is_data=src_var.is_data,
+                    belong_to_optimizer=src_var.belong_to_optimizer,
+                )
+            except:
+                dst_block.create_var(
+                    type=src_var.type,
+                    name=src_var.name,
+                    persistable=persist,
+                    error_clip=src_var.error_clip,
+                    stop_gradient=src_var.stop_gradient,
+                    is_data=src_var.is_data,
+                    belong_to_optimizer=src_var.belong_to_optimizer,
+                )
         else:
             if isinstance(src_var, Parameter):
                 self._create_param(dst_block, src_var)
@@ -217,12 +245,16 @@ class PipelinePass(PassBase):
         dst_op_desc = dst_block.desc.append_op()
         dst_op_desc.copy_from(src_op.desc)
         for input_varname in src_op.input_arg_names:
-            if src_block.has_var(input_varname):
+            if src_block.has_var(input_varname) or (
+                force_create and src_block._find_var_recursive(input_varname)
+            ):
                 self._create_var(
                     src_block, dst_block, input_varname, force_create
                 )
         for output_varname in src_op.output_arg_names:
-            if src_block.has_var(output_varname):
+            if src_block.has_var(output_varname) or (
+                force_create and src_block._find_var_recursive(output_varname)
+            ):
                 self._create_var(
                     src_block, dst_block, output_varname, force_create
                 )
@@ -526,18 +558,77 @@ class PipelinePass(PassBase):
         print("=" * 20)
         print("start_prog:")
         print(start_prog)
+        for var in start_prog.list_vars():
+            if (
+                "create_py_reader_" in var.name
+                or "double_buffer_" in var.name
+                or "generated_var_" in var.name
+            ):
+                continue
+            if "beam_search" in var.name:
+                print(var.name, "'s lod level:", var.lod_level)
+            if "array" in var.name:
+                print(var.name, "'s lod level:", var.lod_level)
+
         print("=" * 20)
         print("cond_prog:")
         print(cond_prog)
+        for var in cond_prog.list_vars():
+            if (
+                "create_py_reader_" in var.name
+                or "double_buffer_" in var.name
+                or "generated_var_" in var.name
+            ):
+                continue
+            if "beam_search" in var.name:
+                print(var.name, "'s lod level:", var.lod_level)
+            if "array" in var.name:
+                print(var.name, "'s lod level:", var.lod_level)
+
         print("=" * 20)
         print("send_prog:")
         print(send_prog)
+        for var in send_prog.list_vars():
+            if (
+                "create_py_reader_" in var.name
+                or "double_buffer_" in var.name
+                or "generated_var_" in var.name
+            ):
+                continue
+            if "beam_search" in var.name:
+                print(var.name, "'s lod level:", var.lod_level)
+            if "array" in var.name:
+                print(var.name, "'s lod level:", var.lod_level)
+
         print("=" * 20)
         print("recv_prog:")
         print(recv_prog)
+        for var in recv_prog.list_vars():
+            if (
+                "create_py_reader_" in var.name
+                or "double_buffer_" in var.name
+                or "generated_var_" in var.name
+            ):
+                continue
+            if "beam_search" in var.name:
+                print(var.name, "'s lod level:", var.lod_level)
+            if "array" in var.name:
+                print(var.name, "'s lod level:", var.lod_level)
+
         print("=" * 20)
         print("end_prog:")
         print(end_prog)
+        for var in end_prog.list_vars():
+            if (
+                "create_py_reader_" in var.name
+                or "double_buffer_" in var.name
+                or "generated_var_" in var.name
+            ):
+                continue
+            if "beam_search" in var.name:
+                print(var.name, "'s lod level:", var.lod_level)
+            if "array" in var.name:
+                print(var.name, "'s lod level:", var.lod_level)
 
         assert cond_var_name is not None
 
@@ -587,7 +678,7 @@ class PipelinePass(PassBase):
         inf = 2**31 - 1
         pp_buff_size = int(pp_stages - pp_idx)
         start_task_node.add_downstream_task(
-            cond_task_node.task_id(), pp_buff_size
+            cond_task_node.task_id(), self._acc_steps
         )
         print(
             "Task ",
@@ -595,10 +686,10 @@ class PipelinePass(PassBase):
             "'s downstream is:",
             cond_task_node.task_id(),
             ", buffer size is:",
-            pp_buff_size,
+            self._acc_steps,
         )
         cond_task_node.add_upstream_task(
-            start_task_node.task_id(), pp_buff_size
+            start_task_node.task_id(), self._acc_steps
         )
         print(
             "Task ",
@@ -606,7 +697,7 @@ class PipelinePass(PassBase):
             "'s upstream is:",
             start_task_node.task_id(),
             ", buffer size is:",
-            pp_buff_size,
+            self._acc_steps,
         )
         cond_task_node.add_downstream_task(send_task_node.task_id(), inf)
         print(
@@ -669,7 +760,7 @@ class PipelinePass(PassBase):
             inf,
         )
         cond_task_node.add_downstream_task(
-            end_task_node.task_id(), inf, core.DependType.LOOP
+            end_task_node.task_id(), inf, core.DependType.STOP_LOOP
         )
         print(
             "Task ",
@@ -680,7 +771,7 @@ class PipelinePass(PassBase):
             inf,
         )
         end_task_node.add_upstream_task(
-            cond_task_node.task_id(), inf, core.DependType.LOOP
+            cond_task_node.task_id(), inf, core.DependType.STOP_LOOP
         )
         print(
             "Task ",

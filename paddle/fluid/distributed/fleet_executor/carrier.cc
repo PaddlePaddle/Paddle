@@ -71,6 +71,8 @@ void Carrier::Init(
       root_scope_,
       platform::errors::InvalidArgument("root_scope can not be nullptr"));
 
+  VLOG(3) << "===========Num micro batches================="
+          << num_micro_batches;
   if (need_create_scope) {
     minibatch_scope_ = &root_scope_->NewScope();
     microbatch_scopes_.resize(num_micro_batches);

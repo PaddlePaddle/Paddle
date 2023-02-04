@@ -2689,9 +2689,11 @@ class Executor(object):
             # fetch each.
             result_list = []
             for scope in micro_scope_list:
+                tensor = None
                 for var in fleet_opt["fetch_var"]:
                     tensor = core.get_variable_tensor(scope, var)
-                result_list.append(as_numpy(tensor))
+                if tensor:
+                    result_list.append(as_numpy(tensor))
             return result_list
 
         if fetch_list:

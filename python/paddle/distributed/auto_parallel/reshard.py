@@ -1809,6 +1809,12 @@ class Resharder:
                         )
 
                         # for lod tensor, need reset lod after received
+                        print("!!!!!!!!!!!!!!! lod_level !!!!!!!!!!!!!!! ")
+                        print(source_tensor)
+                        print(source_tensor.lod_level)
+                        print(recv_tensor)
+                        print(recv_tensor.lod_level)
+                        print("!!!!!!!!!!!!!!! lod_level !!!!!!!!!!!!!!! ")
                         if recv_tensor.lod_level != 0:
                             set_lod = False
                             # use data lod to reset tensor lod

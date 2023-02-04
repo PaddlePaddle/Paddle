@@ -98,8 +98,8 @@ void CondInterceptor::ReplyDataIsUseless(int64_t up_id) {
 }
 
 void CondInterceptor::Compute() {
-  cur_scope_id_ = ready_queue_.front();
-  ready_queue_.pop();
+  // cur_scope_id_ = ready_queue_.front();
+  // ready_queue_.pop();
   bool cond = GetCondResult();
   VLOG(3) << "Cond interceptor get condition var " << node_->cond_var()
           << " with value " << cond;
@@ -116,7 +116,8 @@ void CondInterceptor::Compute() {
 
 void CondInterceptor::Run(const InterceptorMessage& msg) {
   if (msg.message_type() == DATA_IS_READY) {
-    ready_queue_.push(msg.scope_idx());
+    // ready_queue_.push(msg.scope_idx());
+    cur_scope_id_ = msg.scope_idx();
     Compute();
   } else if (msg.message_type() == DATA_IS_USELESS) {
     if (node_->id_to_dep_type().at(msg.src_id()) == DependType::STOP_LOOP) {
