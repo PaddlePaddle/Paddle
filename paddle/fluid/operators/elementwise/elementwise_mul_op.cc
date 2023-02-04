@@ -19,7 +19,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/prim/api/manual/backward/composite_backward_api.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
 #include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
 
@@ -66,9 +66,9 @@ class ElementwiseMulOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-class ElementwiseMulGradCompositeOpMaker
-    : public prim::GradCompositeOpMakerBase {
-  using prim::GradCompositeOpMakerBase::GradCompositeOpMakerBase;
+class ElementwiseMulCompositeGradOpMaker
+    : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
 
  public:
   void Apply() override {
@@ -88,7 +88,7 @@ class ElementwiseMulGradCompositeOpMaker
         static_cast<int>(this->Attr<int>("axis")),
         x_grad_p,
         y_grad_p);
-    VLOG(3) << "Runing mul_grad composite func";
+    VLOG(6) << "Runing mul_grad composite func";
     this->RecoverOutputName(x_grad, x_grad_name);
     this->RecoverOutputName(y_grad, y_grad_name);
   }
@@ -155,7 +155,7 @@ REGISTER_OPERATOR(elementwise_mul,
                   ops::ElementwiseOpInferVarType,
                   ops::ElementwiseMulOpGradMaker<paddle::framework::OpDesc>,
                   ops::ElementwiseMulOpGradMaker<paddle::imperative::OpBase>,
-                  ops::ElementwiseMulGradCompositeOpMaker);
+                  ops::ElementwiseMulCompositeGradOpMaker);
 REGISTER_OPERATOR(
     elementwise_mul_grad,
     ops::ElementwiseOpGrad,
