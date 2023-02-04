@@ -164,6 +164,14 @@
   outputs :
     out : Out
 
+- op : broadcast_tensors
+  backward : broadcast_tensors_grad
+  inputs :
+    input : X
+  outputs :
+    out : Out
+  drop_empty_grad : [input_grad]
+
 - op : ceil
   backward : ceil_grad
   inputs :
@@ -1044,6 +1052,19 @@
   backward : pool3d_grad
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : pow
+  backward : pow_grad, pow_double_grad, pow_triple_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs :
+    y : factor
+  scalar :
+    y :
+      data_type : float
+      tensor_name : FactorTensor
 
 - op : prelu
   backward : prelu_grad

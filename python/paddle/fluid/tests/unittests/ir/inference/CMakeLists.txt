@@ -185,6 +185,9 @@ if(WITH_GPU AND TENSORRT_FOUND)
                          PROPERTIES TIMEOUT 120)
     set_tests_properties(test_conv_elementwise_add_act_fuse_pass
                          PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_onednn_conv_bias_fuse_pass PROPERTIES TIMEOUT 300)
+    set_tests_properties(test_onednn_conv_concat_activation_fuse_pass
+                         PROPERTIES TIMEOUT 300)
     set_tests_properties(test_flatten2_matmul_fuse_pass PROPERTIES TIMEOUT 240)
     set_tests_properties(test_squeeze2_matmul_fuse_pass PROPERTIES TIMEOUT 240)
     set_tests_properties(test_reshape2_matmul_fuse_pass PROPERTIES TIMEOUT 240)
@@ -223,7 +226,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
   endif()
 
   if(WITH_MKLDNN)
-    set_tests_properties(test_mkldnn_conv_elementwise_add_fuse_pass
+    set_tests_properties(test_onednn_conv_elementwise_add_fuse_pass
                          PROPERTIES TIMEOUT 120)
     set_tests_properties(test_mkldnn_depthwise_conv_pass PROPERTIES TIMEOUT 120)
     set_tests_properties(test_onednn_reshape_transpose_matmul_fuse_pass
