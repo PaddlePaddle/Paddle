@@ -65,14 +65,17 @@ void ComputeInterceptor::IncreaseReady(int64_t up_id, int64_t scope_id) {
   for (auto& scope_iter : ready_scope_map) {
     ready_size += scope_iter.second;
   }
-  PADDLE_ENFORCE_LE(ready_size,
-                    max_ready_size,
-                    platform::errors::OutOfRange(
-                        "upstream=%lld ready_size must <= max_ready_size, but "
-                        "now ready_size=%lld, max_ready_size=%lld",
-                        up_id,
-                        ready_size,
-                        max_ready_size));
+  if (max_ready_size != INFINITE_BUFFER_SIZE) {
+    PADDLE_ENFORCE_LE(
+        ready_size,
+        max_ready_size,
+        platform::errors::OutOfRange(
+            "upstream=%lld ready_size must <= max_ready_size, but "
+            "now ready_size=%lld, max_ready_size=%lld",
+            up_id,
+            ready_size,
+            max_ready_size));
+  }
   it->second.second.at(scope_id) = ready_scope_map.at(scope_id) + 1;
 }
 
@@ -116,6 +119,9 @@ bool ComputeInterceptor::CanWriteOutput() {
   for (auto& outs : out_buffs_) {
     auto max_buffer_size = outs.second.first;
     auto used_size = outs.second.second;
+    if (max_buffer_size == INFINITE_BUFFER_SIZE) {
+      continue;
+    }
     // full, return false
     if (used_size == max_buffer_size) {
       VLOG(3) << "Interceptor " << GetInterceptorId()
@@ -132,15 +138,17 @@ void ComputeInterceptor::SendDataReadyToDownStream() {
     auto max_buff_size = outs.second.first;
     auto used_size = outs.second.second;
     used_size += 1;
-    PADDLE_ENFORCE_LE(
-        used_size,
-        max_buff_size,
-        platform::errors::OutOfRange("downstream=%lld used buff size must <= "
-                                     "max_buff_size, but now used_size=%lld, "
-                                     "max_buff_size=%lld",
-                                     down_id,
-                                     used_size,
-                                     max_buff_size));
+    if (max_buff_size != INFINITE_BUFFER_SIZE) {
+      PADDLE_ENFORCE_LE(
+          used_size,
+          max_buff_size,
+          platform::errors::OutOfRange("downstream=%lld used buff size must <= "
+                                       "max_buff_size, but now used_size=%lld, "
+                                       "max_buff_size=%lld",
+                                       down_id,
+                                       used_size,
+                                       max_buff_size));
+    }
     outs.second.second = used_size;
 
     InterceptorMessage ready_msg;
