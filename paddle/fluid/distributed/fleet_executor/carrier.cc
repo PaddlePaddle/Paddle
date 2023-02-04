@@ -304,14 +304,13 @@ void Carrier::CreateInterceptors() {
   }
   // link source node with origin source
   for (const auto& node : origin_sources) {
-    source->AddDownstreamTask(node->task_id(),
-                              std::numeric_limits<int64_t>::max());
-    node->AddUpstreamTask(SOURCE_ID, std::numeric_limits<int64_t>::max());
+    source->AddDownstreamTask(node->task_id(), max_run_times);
+    node->AddUpstreamTask(SOURCE_ID, max_run_times);
   }
   // link sink node with origin sink
   for (const auto& node : origin_sinks) {
-    sink->AddUpstreamTask(node->task_id(), std::numeric_limits<int64_t>::max());
-    node->AddDownstreamTask(SINK_ID, std::numeric_limits<int64_t>::max());
+    sink->AddUpstreamTask(node->task_id(), max_run_times);
+    node->AddDownstreamTask(SINK_ID, max_run_times);
   }
   // create source and sink interceptor
   SetInterceptor(SOURCE_ID,

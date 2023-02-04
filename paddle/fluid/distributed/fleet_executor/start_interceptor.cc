@@ -29,6 +29,24 @@ void StartInterceptor::RunOps() {
 }
 
 void StartInterceptor::SendDataReadyToDownStream() {
+  for (auto& outs : out_buffs_) {
+    auto down_id = outs.first;
+    auto max_buff_size = outs.second.first;
+    auto used_size = outs.second.second;
+    used_size += 1;
+    if (max_buff_size != INFINITE_BUFFER_SIZE) {
+      PADDLE_ENFORCE_LE(
+          used_size,
+          max_buff_size,
+          platform::errors::OutOfRange("downstream=%lld used buff size must <= "
+                                       "max_buff_size, but now used_size=%lld, "
+                                       "max_buff_size=%lld",
+                                       down_id,
+                                       used_size,
+                                       max_buff_size));
+    }
+    outs.second.second = used_size;
+  }
   const auto& micro_scope_nums = node_->max_run_times();
   if (finish_count_ == micro_scope_nums) {
     for (int64_t i = 0; i < micro_scope_nums; ++i) {
@@ -46,10 +64,15 @@ void StartInterceptor::SendDataReadyToDownStream() {
   }
 }
 
-void StartInterceptor::ReplyCompletedToUpStream() {}
+void StartInterceptor::ReplyCompletedToUpStream() {
+  ComputeInterceptor::ReplyCompletedToUpStream();
+}
 
 void StartInterceptor::Compute(const InterceptorMessage& msg) {
   if (msg.message_type() == DATA_IS_READY) {
+    VLOG(3) << "Start interceptor " << interceptor_id_
+            << " receive data_is_ready " << msg.src_id() << " "
+            << msg.scope_idx() << " ";
     IncreaseReady(msg.src_id(), msg.scope_idx());
     Run();
   } else if (msg.message_type() == DATA_IS_USELESS) {
