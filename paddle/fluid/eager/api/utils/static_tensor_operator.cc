@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/eager/api/utils/static_tensor_operator.h"
 
+#include "glog/logging.h"
 #include "paddle/fluid/prim/api/generated/prim_api/prim_api.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
 
@@ -22,7 +23,13 @@ namespace paddle {
 namespace experimental {
 using DescTensor = paddle::prim::DescTensor;
 
+StaticTensorOperator& StaticTensorOperator::Instance() {
+  static StaticTensorOperator g_static_op;
+  return g_static_op;
+}
+
 Tensor StaticTensorOperator::multiply(const Tensor& x, const Tensor& y) {
+  VLOG(1) << "DEBUG dispatched in static mode";
   return paddle::prim::multiply<DescTensor>(x, y);
 }
 

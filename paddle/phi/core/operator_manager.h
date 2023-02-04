@@ -26,16 +26,6 @@ class OperatorManager {
  public:
   static OperatorManager& Instance();
 
-  // Tensor& add_(Tensor& x, const Tensor& y) {
-  //   if (FLAGS_tensor_operator == "eager"){
-  //     return eager_operator->add_(x, y);
-  //   } else if (FLAGS_tensor_operator == "static"){
-  //     return static_operator->add_(x, y);
-  //   } else if (FLAGS_tensor_operator == "phi"){
-  //     return phi_operator->add_(x, y);
-  //   }
-  // }
-
   Tensor multiply(const Tensor& x, const Tensor& y);
 
  public:

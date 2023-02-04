@@ -14,13 +14,20 @@
 
 #include "paddle/fluid/eager/api/utils/eager_tensor_operator.h"
 
+#include "glog/logging.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 
 namespace paddle {
 
 namespace experimental {
 
+EagerTensorOperator& EagerTensorOperator::Instance() {
+  static EagerTensorOperator g_eager_op;
+  return g_eager_op;
+}
+
 Tensor EagerTensorOperator::multiply(const Tensor& x, const Tensor& y) {
+  VLOG(1) << "DEBUG dispatched in eager mode";
   return ::multiply_ad_func(x, y);
 }
 

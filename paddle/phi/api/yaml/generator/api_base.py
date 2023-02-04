@@ -1270,7 +1270,6 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             api_func_name += '_'
         api_code = f"""
 PADDLE_API {self.get_return_type(inplace_flag)} {api_func_name}({self.get_define_args(inplace_flag)}) {{
-FLAGS_tensor_operator = "phi";
 {self.gene_kernel_select()}
 """
 

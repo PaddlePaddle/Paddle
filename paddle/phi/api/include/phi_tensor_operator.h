@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/tensor_operator_base.h"
 
 namespace paddle {
@@ -23,7 +24,13 @@ namespace experimental {
 
 class PhiTensorOperator : public TensorOperatorBase {
  public:
+  static PhiTensorOperator& Instance();
+
   Tensor multiply(const Tensor& x, const Tensor& y) override;
+
+ private:
+  PhiTensorOperator() = default;
+  DISABLE_COPY_AND_ASSIGN(PhiTensorOperator);
 };
 
 }  // namespace experimental

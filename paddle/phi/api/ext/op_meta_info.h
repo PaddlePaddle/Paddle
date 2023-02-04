@@ -25,6 +25,10 @@ limitations under the License. */
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/utils/any.h"
 
+#include "gflags/gflags.h"
+
+DECLARE_string(tensor_operator);
+
 /**
  * Op Meta Info Related Define.
  *
@@ -167,6 +171,7 @@ struct KernelFuncImpl;
 template <typename Return, typename... Args, Return (*impl_fn)(Args...)>
 struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
   static void Compute(CustomOpKernelContext* ctx) {
+    FLAGS_tensor_operator = "phi";
     ComputeCallHelper<Args..., TypeTag<int>>::template Compute<0, 0, 0>(ctx);
   }
 

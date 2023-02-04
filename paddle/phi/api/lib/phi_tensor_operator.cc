@@ -13,13 +13,20 @@
 // limitations under the License.
 
 #include "paddle/phi/api/include/phi_tensor_operator.h"
+#include "glog/logging.h"
 #include "paddle/phi/api/include/api.h"
 
 namespace paddle {
 
 namespace experimental {
 
+PhiTensorOperator& PhiTensorOperator::Instance() {
+  static PhiTensorOperator g_phi_op;
+  return g_phi_op;
+}
+
 Tensor PhiTensorOperator::multiply(const Tensor& x, const Tensor& y) {
+  VLOG(1) << "DEBUG dispatched in phi mode";
   return paddle::experimental::multiply(x, y);
 }
 

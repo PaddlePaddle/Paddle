@@ -29,6 +29,10 @@
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/fluid/prim/utils/static/static_global_utils.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/flags.h"
+
+DECLARE_string(tensor_operator);
+
 namespace paddle {
 namespace prim {
 
@@ -57,6 +61,7 @@ class CompositeGradOpMakerBase {
         acting_program_(framework::ProgramDesc()),
         grad_block_(grad_block) {
     // TODO(jiabin): This should always execute by one thread...
+    FLAGS_tensor_operator = "static";
     StaticCompositeContext::Instance().SetBlock(
         acting_program_.MutableBlock(0));
   }

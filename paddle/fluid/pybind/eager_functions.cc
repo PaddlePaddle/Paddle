@@ -58,8 +58,6 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/api/include/phi_tensor_operator.h"
 #include "paddle/phi/core/operator_manager.h"
 
-DECLARE_string(tensor_operator);
-
 namespace paddle {
 namespace pybind {
 
@@ -497,13 +495,11 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
                                          PyObject* args,
                                          PyObject* kwargs) {
   EAGER_TRY
-  if (paddle::experimental::OperatorManager::Instance().phi_operator ==
-      nullptr) {
-    FLAGS_tensor_operator = "phi";
-    paddle::experimental::PhiTensorOperator phi_operator;
-    paddle::experimental::OperatorManager::Instance().phi_operator =
-        &phi_operator;
-  }
+
+  paddle::experimental::OperatorManager::Instance().phi_operator =
+      &paddle::experimental::PhiTensorOperator::Instance();
+  VLOG(1) << "DEBUG set phi_operator pointer successfully";
+
   paddle::CustomOpKernelContext ctx =
       CastPyArg2CustomOpKernelContext(PyTuple_GET_ITEM(args, 0), 0);
   std::string op_type = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 1), 1);

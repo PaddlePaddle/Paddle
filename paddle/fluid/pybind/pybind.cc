@@ -1849,12 +1849,12 @@ All parameter, weight, gradient are variables in Paddle.
       paddle::operators::RegisterCustomDeviceCommonKernel(dev_type);
     }
 #endif
-    paddle::experimental::EagerTensorOperator eager_operator;
     paddle::experimental::OperatorManager::Instance().eager_operator =
-        &eager_operator;
-    paddle::experimental::StaticTensorOperator static_operator;
+        &paddle::experimental::EagerTensorOperator::Instance();
+    VLOG(1) << "DEBUG set eager_operator pointer successfully";
     paddle::experimental::OperatorManager::Instance().static_operator =
-        &static_operator;
+        &paddle::experimental::StaticTensorOperator::Instance();
+    VLOG(1) << "DEBUG set static_operator pointer successfully";
   });
   m.def("init_default_kernel_signatures",
         []() { framework::InitDefaultKernelSignatureMap(); });

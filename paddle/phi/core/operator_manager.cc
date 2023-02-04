@@ -15,6 +15,7 @@
 #include "paddle/phi/core/operator_manager.h"
 
 #include "gflags/gflags.h"
+#include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 
@@ -40,12 +41,37 @@ OperatorManager& OperatorManager::Instance() {
 // }
 
 Tensor OperatorManager::multiply(const Tensor& x, const Tensor& y) {
+  // VLOG(1) << "DEBUG OperatorManager begin x numel " << x.numel() << " y numel
+  // " << y.numel();
   if (FLAGS_tensor_operator == "eager") {
-    return this->eager_operator->multiply(x, y);
+    VLOG(1) << "DEBUG OperatorManager reach eager mode";
+    PADDLE_ENFORCE_NE(this->eager_operator,
+                      nullptr,
+                      "eager mode, OperatorManager uses nullptr");
+
+    Tensor result = this->eager_operator->multiply(x, y);
+    VLOG(1) << "DEBUG OperatorManager finish eager mode";
+    VLOG(1) << "tensor numel " << result.numel();
+    return result;
   } else if (FLAGS_tensor_operator == "static") {
-    return this->static_operator->multiply(x, y);
+    VLOG(1) << "DEBUG OperatorManager reach static mode";
+    PADDLE_ENFORCE_NE(this->static_operator,
+                      nullptr,
+                      "static mode, OperatorManager uses nullptr");
+
+    Tensor result = this->static_operator->multiply(x, y);
+    VLOG(1) << "DEBUG OperatorManager finish static mode";
+    VLOG(1) << "tensor numel " << result.numel();
+    return result;
   } else if (FLAGS_tensor_operator == "phi") {
-    return this->phi_operator->multiply(x, y);
+    VLOG(1) << "DEBUG OperatorManager reach phi mode";
+    PADDLE_ENFORCE_NE(
+        this->phi_operator, nullptr, "phi mode, OperatorManager uses nullptr");
+
+    Tensor result = this->phi_operator->multiply(x, y);
+    VLOG(1) << "DEBUG OperatorManager finish phi mode";
+    VLOG(1) << "tensor numel " << result.numel();
+    return result;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "OperatorManager does not support the operator"));
