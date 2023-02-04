@@ -19,6 +19,7 @@ from ..fluid import core
 from ..fluid.profiler import cuda_profiler  # noqa: F401
 from ..fluid.profiler import profiler  # noqa: F401
 from ..fluid.profiler import reset_profiler, start_profiler, stop_profiler
+from .deprecated import deprecated
 
 __all__ = [  # noqa
     'Profiler',
@@ -32,6 +33,12 @@ __all__ = [  # noqa
 ]
 
 
+@deprecated(
+    since="2.4.2",
+    update_to="paddle.profiler.Profiler",
+    level=1,
+    reason="Please use new profiler tool, this profiler tool is no longer maintained.",
+)
 class ProfilerOptions:
     def __init__(self, options=None):
         self.options = {
@@ -72,6 +79,12 @@ class ProfilerOptions:
 _current_profiler = None
 
 
+@deprecated(
+    since="2.4.2",
+    update_to="paddle.profiler.Profiler",
+    level=1,
+    reason="Please use new profiler tool, this profiler tool is no longer maintained.",
+)
 class Profiler:
     def __init__(self, enabled=True, options=None):
         if options is not None:
@@ -146,6 +159,12 @@ class Profiler:
                 self.stop()
 
 
+@deprecated(
+    since="2.4.2",
+    update_to="paddle.profiler.Profiler",
+    level=1,
+    reason="Please use new profiler tool, this profiler tool is no longer maintained.",
+)
 def get_profiler():
     global _current_profiler
     if _current_profiler is None:
