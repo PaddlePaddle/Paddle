@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,20 +18,24 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 namespace ir {
-//     |
-//   transpose
-//     |
-//    reshape
+// This pass aim to fuse below structure
+//
+//      |
+//   transpose(axis= [0,2,3,1])
+//      |
+//    reshape(n,h*w,c)
 //    |    |
-//   out  layernorm
+//   out  layernorm(begin_norm_axis=2 or -1)
 //         |
 //        layernorm_out
 //
 // ->fuse to
+//
 //     |
 //  trans_layernorm
 //   |      |
 //  out    layernorm_out
+//
 class Graph;
 
 class TransLayernormFusePass : public FusePassBase {

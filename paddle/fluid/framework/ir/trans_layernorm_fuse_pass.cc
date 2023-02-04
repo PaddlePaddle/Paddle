@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -72,6 +72,25 @@ void TransLayernormPattern::operator()(PDNode *x) {
       .LinksTo({layernorm_output});
 }
 }  // namespace patterns
+
+// this pass make a fusion as below:
+//
+//       |
+//   transpose(axis= [0,2,3,1])
+//       |
+//    reshape(n,h*w,c)
+//    |    |
+//   out  layernorm(begin_norm_axis=2 or -1)
+//         |
+//        layernorm_out
+//
+// ->fuse to
+//
+//     |
+//  trans_layernorm
+//   |      |
+//  out    layernorm_out
+//
 
 int TransLayernormFusePass::ApplyConvTransLayernormPattern(
     ir::Graph *graph) const {

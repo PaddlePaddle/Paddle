@@ -28,15 +28,18 @@ class TrtConvertTransLayernormTest(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def conv_filter_datagen(dics):
-            x = np.random.randn(dics["c"], dics["c"], 1, 1) * 0.01
+            c = dics["c"]
+            x = np.random.random([dics["c"], dics["c"], 1, 1]) - 0.5
             return x.astype(np.float32)
 
         def elementwise_bias_datagen(dics):
-            x = np.random.randn(dics["c"]) * 0.01
+            c = dics["c"]
+            x = np.random.random([dics["c"]]) * 0.1
             return x.astype(np.float32)
 
         def layernorm_bias_datagen(dics):
-            x = np.random.randn(dics["c"]) * 0.01
+            c = dics["c"]
+            x = np.random.random([dics["c"]]) * 0.1
             return x.astype(np.float32)
 
         def layernorm_scale_datagen(dics):
@@ -44,7 +47,7 @@ class TrtConvertTransLayernormTest(TrtLayerAutoScanTest):
             return x.astype(np.float32)
 
         def conv2d_input_datagen(dics):
-            x = np.random.randn(dics["batch"], dics["c"], dics["h"], dics["w"])
+            x = np.ones([dics["batch"], dics["c"], dics["h"], dics["w"]])
             return x.astype(np.float32)
 
         for batch in [2]:
