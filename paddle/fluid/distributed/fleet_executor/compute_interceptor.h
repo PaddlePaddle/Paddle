@@ -32,25 +32,25 @@ class ComputeInterceptor : public Interceptor {
   virtual void RunOps();
   virtual void SendDataReadyToDownStream();
   virtual void ReplyCompletedToUpStream();
-
-  int64_t cur_scope_id_;
-
- private:
-  void PrepareDeps();
-
+  void Run();
   void IncreaseReady(int64_t up_id, int64_t scope_id);
   void DecreaseBuff(int64_t down_id);
-  bool IsInputReady();
-  bool CanWriteOutput();
 
-  void Run();
-  void Compute(const InterceptorMessage& msg);
+  int64_t cur_scope_id_;
 
   // upstream_id-->(max_ready_size, ready_size)
   std::map<int64_t, std::pair<int64_t, std::map<int64_t, int64_t>>>
       in_readys_{};
   // downstream_id-->(max_buffer_size, used_size)
   std::map<int64_t, std::pair<int64_t, int64_t>> out_buffs_{};
+
+ private:
+  void PrepareDeps();
+
+  bool IsInputReady();
+  bool CanWriteOutput();
+
+  void Compute(const InterceptorMessage& msg);
 };
 
 }  // namespace distributed

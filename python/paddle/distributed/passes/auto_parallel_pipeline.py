@@ -635,7 +635,7 @@ class PipelinePass(PassBase):
         start_task_node = TaskNode(
             rank=cur_rank,
             max_run_times=self._acc_steps,
-            node_type="Compute",
+            node_type="Start",
             task_id=int(cur_rank * num_of_functionality + 0),
             program=start_prog,
             lazy_initialize=True,

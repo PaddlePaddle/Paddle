@@ -2692,7 +2692,13 @@ class Executor(object):
             for scope in micro_scope_list:
                 tensor = None
                 for var in fleet_opt["fetch_var"]:
-                    tensor = core.get_variable_tensor(scope, var)
+                    assert isinstance(var, str)
+                    print(
+                        "!!!!!!!!!: varname {}, {}" % (var, scope.find_var(var))
+                    )
+                    arr = scope.find_var(var).get_tensor()
+                    tensor = arr._move_to_list()
+                    # tensor = core.get_variable_tensor(scope, var)
                 if tensor:
                     result_list.append(as_numpy(tensor))
             return result_list
