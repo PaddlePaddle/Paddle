@@ -590,13 +590,31 @@ class TensorRTEngineOp : public framework::OperatorBase {
         // If this x is a shape tensor, we need call setInputShapeBinding
         if (engine->engine()->isShapeBinding(bind_index) &&
             engine->engine()->bindingIsInput(bind_index)) {
+          // auto success = cudaStreamSynchronize(stream);
+          // PADDLE_ENFORCE_GPU_SUCCESS(success);
+          // std::cout <<  cudaGetErrorString( cudaGetLastError() ) <<
+          // std::endl;
+
           std::vector<int> shape_v(t.numel());
-          paddle::memory::Copy(platform::CPUPlace(),
-                               shape_v.data(),
-                               platform::CUDAPlace(),
-                               t.data<int32_t>(),
-                               t.numel() * sizeof(int),
-                               nullptr);
+          auto type = framework::TransToProtoVarType(t.dtype());
+          if (type == framework::proto::VarType::INT32) {
+            paddle::memory::Copy(platform::CPUPlace(),
+                                 shape_v.data(),
+                                 platform::CUDAPlace(device_id_),
+                                 t.data<int32_t>(),
+                                 t.numel() * sizeof(int),
+                                 nullptr);
+
+          } else if (type == framework::proto::VarType::INT64) {
+            std::vector<int64_t> shape_tmp(t.numel());
+            paddle::memory::Copy(platform::CPUPlace(),
+                                 shape_tmp.data(),
+                                 platform::CUDAPlace(device_id_),
+                                 t.data<int64_t>(),
+                                 t.numel() * sizeof(int64_t),
+                                 nullptr);
+            shape_v = std::vector<int32_t>(shape_tmp.begin(), shape_tmp.end());
+          }
           trt_context->setInputShapeBinding(bind_index, shape_v.data());
         }
 #endif
@@ -723,16 +741,37 @@ class TensorRTEngineOp : public framework::OperatorBase {
     // Execute the engine.
     engine->Execute(runtime_batch, &buffers, stream);
 
+    // success = cudaStreamSynchronize(stream);
+    // std::cout <<  cudaGetErrorString( cudaGetLastError() ) << std::endl;
+    // PADDLE_ENFORCE_GPU_SUCCESS(success);
+
     std::vector<int> origin_outputs_dtype =
         Attr<std::vector<int>>("origin_outputs_dtype");
     for (size_t i = 0; i < Outputs("Ys").size(); i++) {
       auto type =
           static_cast<framework::proto::VarType_Type>(origin_outputs_dtype[i]);
+      auto y = Outputs("Ys")[i];
+      auto *fluid_v = scope.FindVar(y);
+      auto *fluid_t = fluid_v->GetMutable<phi::DenseTensor>();
+
+      // if (type == framework::proto::VarType::INT32) {
+      //   if (y.find("shape_61.tmp_0_slice_1") != std::string::npos || 1) {
+      //     int32_t ii;
+      //     cudaMemcpy(&ii, fluid_t->data<int>(), sizeof(int32_t),
+      //     cudaMemcpyDeviceToHost); std::cout << y << ": " <<  ii <<
+      //     std::endl; std::cout << output_maps[i].c_str() << std::endl;
+      //     }
+      // }
 
       if (type == framework::proto::VarType::INT64) {
-        auto y = Outputs("Ys")[i];
-        auto *fluid_v = scope.FindVar(y);
-        auto *fluid_t = fluid_v->GetMutable<phi::DenseTensor>();
+        // if (y.find("cast_26.tmp_0") != std::string::npos || 1) {
+        //     auto success = cudaStreamSynchronize(stream);
+        //     PADDLE_ENFORCE_GPU_SUCCESS(success);
+        //     int32_t ii;
+        //     cudaMemcpy(&ii, fluid_t->data<int>(), sizeof(int32_t),
+        //     cudaMemcpyDeviceToHost); std::cout << y << ": " <<  ii <<
+        //     std::endl; std::cout << output_maps[i].c_str() << std::endl;
+        // }
         auto int32_tensor =
             scope.FindVar(y + "_cast_to_INT64")->GetMutable<phi::DenseTensor>();
         int32_tensor->Resize(fluid_t->dims());
