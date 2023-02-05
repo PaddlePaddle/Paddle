@@ -15,7 +15,7 @@
 #include "paddle/fluid/eager/api/utils/static_tensor_operator.h"
 
 #include "glog/logging.h"
-#include "paddle/fluid/prim/api/generated/prim_api/prim_api.h"
+#include "paddle/fluid/prim/api/generated/prim_api/prim_generated_api.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
 
 namespace paddle {
