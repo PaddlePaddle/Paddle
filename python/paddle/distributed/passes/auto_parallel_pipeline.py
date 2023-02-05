@@ -677,9 +677,7 @@ class PipelinePass(PassBase):
         # add dependencies for task nodes intra stage
         inf = 2**31 - 1
         pp_buff_size = int(pp_stages - pp_idx)
-        start_task_node.add_downstream_task(
-            cond_task_node.task_id(), self._acc_steps
-        )
+        start_task_node.add_downstream_task(cond_task_node.task_id(), 4)
         print(
             "Task ",
             start_task_node.task_id(),
@@ -688,9 +686,7 @@ class PipelinePass(PassBase):
             ", buffer size is:",
             self._acc_steps,
         )
-        cond_task_node.add_upstream_task(
-            start_task_node.task_id(), self._acc_steps
-        )
+        cond_task_node.add_upstream_task(start_task_node.task_id(), 4)
         print(
             "Task ",
             cond_task_node.task_id(),

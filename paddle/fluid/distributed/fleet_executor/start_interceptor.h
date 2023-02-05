@@ -27,11 +27,12 @@ class StartInterceptor final : public ComputeInterceptor {
 
  private:
   void SendDataReadyToDownStream() override;
-  void ReplyCompletedToUpStream() override;
+  void RunOps() override;
   void Compute(const InterceptorMessage& msg);
-  void RunOps();
 
+  int64_t batch_size_{0};
   int64_t finish_count_{0};
+  int64_t step_{0};
 };
 
 }  // namespace distributed

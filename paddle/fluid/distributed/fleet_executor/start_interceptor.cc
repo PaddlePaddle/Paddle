@@ -16,12 +16,31 @@
 
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/phi/core/errors.h"
 
 namespace paddle {
 namespace distributed {
 
 StartInterceptor::StartInterceptor(int64_t interceptor_id, TaskNode* node)
-    : ComputeInterceptor(interceptor_id, node) {}
+    : ComputeInterceptor(interceptor_id, node) {
+  auto& downstream = node_->downstream();
+  PADDLE_ENFORCE_EQ(
+      downstream.size(),
+      1,
+      platform::errors::OutOfRange(
+          "The downstream for StartInterceptor only support 1 for now."));
+  for (auto down : downstream) {
+    batch_size_ = down.second;
+  }
+  bool evenly_divisible = ((node_->max_run_times() % batch_size_) == 0);
+  PADDLE_ENFORCE(
+      evenly_divisible,
+      platform::errors::Fatal(
+          "Wrong config: Num of step should be divided by batch_size,"
+          "num_step=%lld, batch_size=%lld",
+          node_->max_run_times(),
+          batch_size_));
+}
 
 void StartInterceptor::RunOps() {
   finish_count_++;
@@ -47,25 +66,21 @@ void StartInterceptor::SendDataReadyToDownStream() {
     }
     outs.second.second = used_size;
   }
-  const auto& micro_scope_nums = node_->max_run_times();
-  if (finish_count_ == micro_scope_nums) {
-    for (int64_t i = 0; i < micro_scope_nums; ++i) {
+  if (finish_count_ == batch_size_) {
+    for (int64_t i = 0; i < batch_size_; ++i) {
       for (auto& outs : out_buffs_) {
         auto down_id = outs.first;
         InterceptorMessage ready_msg;
         ready_msg.set_message_type(DATA_IS_READY);
-        ready_msg.set_scope_idx(i);
+        ready_msg.set_scope_idx(step_);
         VLOG(3) << "StartInterceptor " << interceptor_id_
                 << " Send data_is_ready msg to " << down_id
-                << " in scope: " << i;
+                << " in scope: " << step_;
         Send(down_id, ready_msg);
       }
+      step_++;
     }
   }
-}
-
-void StartInterceptor::ReplyCompletedToUpStream() {
-  ComputeInterceptor::ReplyCompletedToUpStream();
 }
 
 void StartInterceptor::Compute(const InterceptorMessage& msg) {
@@ -79,16 +94,13 @@ void StartInterceptor::Compute(const InterceptorMessage& msg) {
     DecreaseBuff(msg.src_id());
     finish_count_--;
     if (finish_count_ == 0) {
-      const auto& micro_scope_nums = node_->max_run_times();
-      for (int64_t i = 0; i < micro_scope_nums; ++i) {
+      for (int64_t i = 0; i < batch_size_; ++i) {
         for (auto& ins : in_readys_) {
           auto up_id = ins.first;
           InterceptorMessage reply_msg;
           reply_msg.set_message_type(DATA_IS_USELESS);
-          reply_msg.set_scope_idx(i);
           VLOG(3) << "StartInterceptor " << interceptor_id_
-                  << " Send data_is_useless msg to " << up_id
-                  << " in scope: " << i;
+                  << " Send data_is_useless msg to " << up_id;
           Send(up_id, reply_msg);
         }
       }
