@@ -49,26 +49,23 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
         dnn_input_dim, lr_input_dim = int(1e5), int(1e5)
 
         with fluid.device_guard("cpu"):
-            dnn_data = fluid.layers.data(
+            dnn_data = paddle.static.data(
                 name="dnn_data",
                 shape=[-1, 1],
                 dtype="int64",
                 lod_level=1,
-                append_batch_size=False,
             )
-            lr_data = fluid.layers.data(
+            lr_data = paddle.static.data(
                 name="lr_data",
                 shape=[-1, 1],
                 dtype="int64",
                 lod_level=1,
-                append_batch_size=False,
             )
-            label = fluid.layers.data(
+            label = paddle.static.data(
                 name="click",
                 shape=[-1, 1],
                 dtype="float32",
                 lod_level=0,
-                append_batch_size=False,
             )
 
             datas = [dnn_data, lr_data, label]
@@ -81,7 +78,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
                 size=[dnn_input_dim, dnn_layer_dims[0]],
                 param_attr=fluid.ParamAttr(
                     name="deep_embedding",
-                    initializer=fluid.initializer.Constant(value=0.01),
+                    initializer=paddle.nn.initializer.Constant(value=0.01),
                 ),
                 is_sparse=True,
             )
@@ -97,7 +94,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
                 size=[lr_input_dim, 1],
                 param_attr=fluid.ParamAttr(
                     name="wide_embedding",
-                    initializer=fluid.initializer.Constant(value=0.01),
+                    initializer=paddle.nn.initializer.Constant(value=0.01),
                 ),
                 is_sparse=True,
             )
@@ -107,12 +104,12 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
 
         with fluid.device_guard("gpu"):
             for i, dim in enumerate(dnn_layer_dims[1:]):
-                fc = fluid.layers.fc(
-                    input=dnn_out,
+                fc = paddle.static.nn.fc(
+                    x=dnn_out,
                     size=dim,
-                    act="relu",
-                    param_attr=fluid.ParamAttr(
-                        initializer=fluid.initializer.Constant(value=0.01)
+                    activation="relu",
+                    weight_attr=fluid.ParamAttr(
+                        initializer=paddle.nn.initializer.Constant(value=0.01)
                     ),
                     name='dnn-fc-%d' % i,
                 )
@@ -121,7 +118,9 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
         with fluid.device_guard("cpu"):
             merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
             label = fluid.layers.cast(label, dtype="int64")
-            predict = fluid.layers.fc(input=merge_layer, size=2, act='softmax')
+            predict = paddle.static.nn.fc(
+                x=merge_layer, size=2, activation='softmax'
+            )
 
             cost = paddle.nn.functional.cross_entropy(
                 input=predict, label=label, reduction='none', use_softmax=False

@@ -38,21 +38,17 @@ class SparseLoadOp(unittest.TestCase):
                 size=[10, 10],
                 param_attr=fluid.ParamAttr(
                     name="embedding",
-                    initializer=fluid.initializer.NumpyArrayInitializer(
-                        emb_array
-                    ),
+                    initializer=paddle.nn.initializer.Assign(emb_array),
                 ),
             )
 
-            fc1 = fluid.layers.fc(
-                input=emb,
+            fc1 = paddle.static.nn.fc(
+                x=emb,
                 size=10,
-                act="relu",
-                param_attr=fluid.ParamAttr(
+                activation="relu",
+                weight_attr=fluid.ParamAttr(
                     name='fc',
-                    initializer=fluid.initializer.NumpyArrayInitializer(
-                        fc_array
-                    ),
+                    initializer=paddle.nn.initializer.Assign(fc_array),
                 ),
             )
             loss = paddle.mean(fc1)

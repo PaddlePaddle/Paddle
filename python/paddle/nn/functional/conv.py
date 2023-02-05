@@ -22,6 +22,7 @@ from paddle.device import (
 from paddle.fluid.framework import _global_flags, in_dygraph_mode
 from paddle.tensor.math import _add_with_axis
 
+from ...common_ops_import import Variable
 from ...device import get_cudnn_version
 from ...fluid.data_feeder import check_dtype, check_variable_and_dtype
 from ...fluid.layer_helper import LayerHelper
@@ -32,7 +33,6 @@ from ...fluid.layers.utils import (
     convert_to_list,
 )
 from ...framework import no_grad
-from ...static import Variable
 from ...tensor.manipulation import squeeze, unsqueeze
 
 __all__ = []
@@ -984,6 +984,13 @@ def conv1d_transpose(
             )
         )
 
+    if len(weight.shape) != 3:
+        raise ValueError(
+            'Input weight should be 3D tensor, but received weight with the shape of {}'.format(
+                weight.shape
+            )
+        )
+
     op_type = 'conv2d_transpose'
     num_filters = weight.shape[1]
     if (
@@ -1195,6 +1202,12 @@ def conv2d_transpose(
         raise ValueError(
             "Input x should be 4D tensor, but received x with the shape of {}".format(
                 x.shape
+            )
+        )
+    if len(weight.shape) != 4:
+        raise ValueError(
+            "Input weight should be 4D tensor, but received weight with the shape of {}".format(
+                weight.shape
             )
         )
     num_channels = x.shape[channel_dim]
@@ -1669,6 +1682,12 @@ def conv3d_transpose(
         raise ValueError(
             "Input x should be 5D tensor, but received x with the shape of {}".format(
                 x.shape
+            )
+        )
+    if len(weight.shape) != 5:
+        raise ValueError(
+            "Input weight should be 5D tensor, but received weight with the shape of {}".format(
+                weight.shape
             )
         )
     num_channels = x.shape[channel_dim]

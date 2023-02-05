@@ -19,10 +19,11 @@ from types import MethodType
 import numpy as np
 
 import paddle
-from paddle import _legacy_C_ops
-from paddle.fluid import core, layers
+from paddle import _C_ops, _legacy_C_ops
+from paddle.common_ops_import import dygraph_only
+from paddle.fluid import core
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.framework import dygraph_only
+from paddle.nn import clip
 
 
 class Taskflow:
@@ -65,8 +66,8 @@ class GroupShardedClipGrad:
 
             merge_grad = g
             if g.type == core.VarDesc.VarType.SELECTED_ROWS:
-                merge_grad = layers.get_tensor_from_selected_rows(
-                    layers.merge_selected_rows(g)
+                merge_grad = clip.get_tensor_from_selected_rows(
+                    clip.merge_selected_rows(g)
                 )
             square = paddle.square(merge_grad)
             sum_square = paddle.sum(square)
@@ -86,7 +87,7 @@ class GroupShardedClipGrad:
         if len(sum_square_fp16) == 0:
             global_norm_fp16 = paddle.to_tensor([0.0], dtype=paddle.float32)
         else:
-            global_norm_fp16 = layers.concat(sum_square_fp16)
+            global_norm_fp16 = paddle.concat(sum_square_fp16)
             global_norm_fp16 = paddle.sum(global_norm_fp16)
             global_norm_fp16 = paddle.cast(
                 global_norm_fp16, dtype=paddle.float32
@@ -96,7 +97,7 @@ class GroupShardedClipGrad:
         if len(unslice_params_fp16) == 0:
             global_unslice_fp16 = paddle.to_tensor([0.0], dtype=paddle.float32)
         else:
-            global_unslice_fp16 = layers.concat(unslice_params_fp16)
+            global_unslice_fp16 = paddle.concat(unslice_params_fp16)
             global_unslice_fp16 = paddle.sum(global_unslice_fp16)
             global_unslice_fp16 = paddle.cast(
                 global_unslice_fp16, dtype=paddle.float32
@@ -104,7 +105,7 @@ class GroupShardedClipGrad:
 
         # global norm of non-distributed FP32 params_and_grads
         global_norm_fp32 = (
-            layers.concat(sum_square_fp32)
+            paddle.concat(sum_square_fp32)
             if len(sum_square_fp32) != 0
             else paddle.to_tensor([0.0], dtype=paddle.float32)
         )
@@ -112,7 +113,7 @@ class GroupShardedClipGrad:
 
         # global norm of non-distributed FP32 params_and_grads for unslice parameters
         global_unslice_fp32 = (
-            layers.concat(unslice_params_fp32)
+            paddle.concat(unslice_params_fp32)
             if len(unslice_params_fp32) != 0
             else paddle.to_tensor([0.0], dtype=paddle.float32)
         )
@@ -130,8 +131,8 @@ class GroupShardedClipGrad:
             paddle.distributed.all_reduce(global_norm_var, group=self._group)
 
         global_norm_var = paddle.sqrt(global_norm_var + global_unslice_var)
-        max_global_norm = layers.fill_constant(
-            shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm
+        max_global_norm = paddle.full(
+            shape=[1], dtype=global_norm_var.dtype, fill_value=self.clip_norm
         )
 
         clip_var = paddle.divide(
@@ -230,6 +231,9 @@ def GroupShardedScaler(scaler):
                     param_grads_fp16,
                     temp_found_inf_fp16,
                 )
+                self._found_inf = _C_ops.bitwise_or(
+                    self._found_inf, temp_found_inf_fp16
+                )
             if len(param_grads_fp32):
                 _legacy_C_ops.check_finite_and_unscale(
                     param_grads_fp32,
@@ -237,15 +241,17 @@ def GroupShardedScaler(scaler):
                     param_grads_fp32,
                     temp_found_inf_fp32,
                 )
+                self._found_inf = _C_ops.bitwise_or(
+                    self._found_inf, temp_found_inf_fp32
+                )
 
-        self._found_inf = 1 if temp_found_inf_fp16 or temp_found_inf_fp32 else 0
-        is_found_inf = paddle.to_tensor([self._found_inf], dtype="int32")
+        self._found_inf = self._found_inf.cast("int32")
 
         paddle.distributed.all_reduce(
-            is_found_inf, op=paddle.distributed.ReduceOp.SUM, group=None
+            self._found_inf, op=paddle.distributed.ReduceOp.MAX, group=None
         )
 
-        self._found_inf = is_found_inf.numpy()[0]
+        self._found_inf = self._found_inf.cast("bool")
 
     scaler._unscale = MethodType(unscale_method, scaler)
     return scaler

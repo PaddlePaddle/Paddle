@@ -390,6 +390,12 @@ class TestBicubicOpError(unittest.TestCase):
                     x, size=[12, 12], mode='BICUBIC', align_corners=False
                 )
 
+            def test_size_shape():
+                x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+                out = interpolate(
+                    x, size=[12], mode='BICUBIC', align_corners=False
+                )
+
             def test_align_corcers():
                 x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
                 interpolate(x, size=[12, 12], mode='BICUBIC', align_corners=3)
@@ -481,6 +487,7 @@ class TestBicubicOpError(unittest.TestCase):
 
             self.assertRaises(ValueError, test_mode_type)
             self.assertRaises(ValueError, test_input_shape)
+            self.assertRaises(ValueError, test_size_shape)
             self.assertRaises(TypeError, test_align_corcers)
             self.assertRaises(ValueError, test_attr_data_format)
             self.assertRaises(TypeError, test_actual_shape)

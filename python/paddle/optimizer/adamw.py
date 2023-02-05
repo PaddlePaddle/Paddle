@@ -20,10 +20,10 @@ import paddle
 
 from .. import _C_ops
 from ..fluid import core, framework, unique_name
-from ..fluid.clip import GradientClipBase
 from ..fluid.dygraph import base as imperative_base
 from ..fluid.framework import Parameter, Variable
 from ..fluid.layer_helper import LayerHelper
+from ..nn.clip import GradientClipBase
 from .lr import LRScheduler
 from .optimizer import Optimizer
 
@@ -491,7 +491,6 @@ class AdamW(Optimizer):
                 else self._beta2.numpy().item(0)
             )
 
-            found_inf = self._get_auxiliary_var('found_inf')
             _, _, _, _, _, _ = _C_ops.adamw_(
                 param_and_grad[0],
                 param_and_grad[1],
@@ -501,7 +500,7 @@ class AdamW(Optimizer):
                 beta1_pow_acc,
                 beta2_pow_acc,
                 master_weight,
-                found_inf,
+                None,
                 _beta1,
                 _beta2,
                 self._epsilon,

@@ -68,10 +68,12 @@ class TrtConvertReduceTest(TrtLayerAutoScanTest):
                     for out_dtype in [-1, 2, 5]:
                         for op_type in [
                             "reduce_max",
+                            "reduce_min",
                             "reduce_mean",
                             "reduce_sum",
+                            "reduce_prod",
                         ]:
-                            dics = [
+                            dics1 = [
                                 {
                                     "keep_dim": keep_dim,
                                     "dim": dim,
@@ -81,36 +83,46 @@ class TrtConvertReduceTest(TrtLayerAutoScanTest):
                                 },
                                 {},
                             ]
-
-                            ops_config = [
+                            dics2 = [
                                 {
-                                    "op_type": op_type,
-                                    "op_inputs": {"X": ["input_data"]},
-                                    "op_outputs": {
-                                        "Out": ["reduce_output_data"]
-                                    },
-                                    "op_attrs": dics[0],
-                                }
-                            ]
-                            ops = self.generate_op_config(ops_config)
-
-                            program_config = ProgramConfig(
-                                ops=ops,
-                                weights={},
-                                inputs={
-                                    "input_data": TensorConfig(
-                                        data_gen=partial(
-                                            generate_input1, out_dtype, dics
-                                        )
-                                    )
+                                    "keep_dim": keep_dim,
+                                    "dim": dim,
+                                    "reduce_all": reduce_all,
+                                    "out_dtype": out_dtype,
+                                    "in_dtype": out_dtype,
                                 },
-                                outputs=["reduce_output_data"],
-                            )
+                                {},
+                            ]
+                            for dics in [dics1, dics2]:
+                                ops_config = [
+                                    {
+                                        "op_type": op_type,
+                                        "op_inputs": {"X": ["input_data"]},
+                                        "op_outputs": {
+                                            "Out": ["reduce_output_data"]
+                                        },
+                                        "op_attrs": dics[0],
+                                    }
+                                ]
+                                ops = self.generate_op_config(ops_config)
 
-                            if not self.is_program_valid(program_config):
-                                continue
+                                program_config = ProgramConfig(
+                                    ops=ops,
+                                    weights={},
+                                    inputs={
+                                        "input_data": TensorConfig(
+                                            data_gen=partial(
+                                                generate_input1, out_dtype, dics
+                                            )
+                                        )
+                                    },
+                                    outputs=["reduce_output_data"],
+                                )
 
-                            yield program_config
+                                if not self.is_program_valid(program_config):
+                                    continue
+
+                                yield program_config
 
     def sample_predictor_configs(
         self, program_config

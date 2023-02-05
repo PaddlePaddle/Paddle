@@ -24,7 +24,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.executor as executor
-import paddle.fluid.layers as layers
 import paddle.fluid.optimizer as optimizer
 from paddle.distributed.io import load_inference_model_distributed
 from paddle.fluid.compiler import CompiledProgram
@@ -55,10 +54,10 @@ class TestBook(unittest.TestCase):
         program = Program()
 
         with program_guard(program, init_program):
-            x = layers.data(name='x', shape=[2], dtype='float32')
-            y = layers.data(name='y', shape=[1], dtype='float32')
+            x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
+            y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
 
-            y_predict = layers.fc(input=x, size=1, act=None)
+            y_predict = paddle.static.nn.fc(x=x, size=1, activation=None)
 
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
@@ -163,10 +162,10 @@ class TestSaveInferenceModel(unittest.TestCase):
 
         # fake program without feed/fetch
         with program_guard(program, init_program):
-            x = layers.data(name='x', shape=[2], dtype='float32')
-            y = layers.data(name='y', shape=[1], dtype='float32')
+            x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
+            y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
 
-            y_predict = layers.fc(input=x, size=1, act=None)
+            y_predict = paddle.static.nn.fc(x, size=1, activation=None)
 
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
@@ -188,9 +187,9 @@ class TestSaveInferenceModel(unittest.TestCase):
 
         # fake program without feed/fetch
         with program_guard(program, init_program):
-            x = layers.data(name='x', shape=[2], dtype='float32')
-            y = layers.data(name='y', shape=[1], dtype='int32')
-            predict = fluid.layers.fc(input=x, size=2, act='softmax')
+            x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
+            y = paddle.static.data(name='y', shape=[-1, 1], dtype='int32')
+            predict = paddle.static.nn.fc(x, size=2, activation='softmax')
             acc = paddle.static.accuracy(input=predict, label=y)
             auc_var, batch_auc_var, auc_states = paddle.static.auc(
                 input=predict, label=y
@@ -223,10 +222,10 @@ class TestInstance(unittest.TestCase):
 
         # fake program without feed/fetch
         with program_guard(program, init_program):
-            x = layers.data(name='x', shape=[2], dtype='float32')
-            y = layers.data(name='y', shape=[1], dtype='float32')
+            x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
+            y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
 
-            y_predict = layers.fc(input=x, size=1, act=None)
+            y_predict = paddle.static.nn.fc(x, size=1, activation=None)
 
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
@@ -261,10 +260,10 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
         # fake program without feed/fetch
         with program_guard(program, init_program):
-            x = layers.data(name='x', shape=[2], dtype='float32')
-            y = layers.data(name='y', shape=[1], dtype='float32')
+            x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
+            y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
 
-            y_predict = layers.fc(input=x, size=1, act=None)
+            y_predict = paddle.static.nn.fc(x, size=1, activation=None)
 
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
@@ -440,10 +439,10 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
         # fake program without feed/fetch
         with program_guard(program, init_program):
-            x = layers.data(name='x', shape=[2], dtype='float32')
-            y = layers.data(name='y', shape=[1], dtype='float32')
+            x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
+            y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
 
-            y_predict = layers.fc(input=x, size=1, act=None)
+            y_predict = paddle.static.nn.fc(x, size=1, activation=None)
 
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
@@ -489,10 +488,10 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
         # fake program without feed/fetch
         with program_guard(program, init_program):
-            x = layers.data(name='x', shape=[2], dtype='float32')
-            y = layers.data(name='y', shape=[1], dtype='float32')
+            x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
+            y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
 
-            y_predict = layers.fc(input=x, size=1, act=None)
+            y_predict = paddle.static.nn.fc(x, size=1, activation=None)
 
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
