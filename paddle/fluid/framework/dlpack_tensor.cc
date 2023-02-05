@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/dlpack_tensor.h"
-#include "pybind11/pybind11.h"
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
@@ -135,9 +134,60 @@ struct DLDeviceVisitor
 };
 }  // namespace internal
 
-DLPackTensor::DLPackTensor(phi::DenseTensor &tensor, LaneType lanes) {
+struct PaddleDLMTensor {
+  phi::DenseTensor handle;
+  DLManagedTensor tensor;
+};
+
+void deleter(DLManagedTensor *arg) {
+  delete[] arg->dl_tensor.shape;
+  delete[] arg->dl_tensor.strides;
+  delete static_cast<PaddleDLMTensor *>(arg->manager_ctx);
+}
+
+DLManagedTensor *toDLPack(const phi::DenseTensor &src) {
+  PaddleDLMTensor *pdDLMTensor(new PaddleDLMTensor);
+  pdDLMTensor->handle = const_cast<phi::DenseTensor &>(src);
+  pdDLMTensor->tensor.manager_ctx = pdDLMTensor;
+  pdDLMTensor->tensor.deleter = &deleter;
+  pdDLMTensor->tensor.dl_tensor.data = const_cast<void *>(src.data());
+
+  // init ndim
+  using DimType = decltype(pdDLMTensor->tensor.dl_tensor.ndim);  // int
+  pdDLMTensor->tensor.dl_tensor.ndim = static_cast<DimType>(src.dims().size());
+  DimType ndim = pdDLMTensor->tensor.dl_tensor.ndim;
+
+  // init shape
+  auto shape = new int64_t[ndim];
+  for (DimType i = 0; i < ndim; ++i) {
+    shape[i] = src.dims()[i];
+  }
+  pdDLMTensor->tensor.dl_tensor.shape = shape;
+
+  // init stride
+  auto strides = new int64_t[ndim];
+  for (DimType i = 0; i < ndim; ++i) {
+    strides[i] = 1;
+  }
+  for (DimType i = ndim - 2; i >= 0; --i) {
+    strides[i] = shape[i + 1] * strides[i + 1];
+  }
+  pdDLMTensor->tensor.dl_tensor.strides = strides;
+
+  // init device, DLDevice type with device_type and device_id
+  auto place = src.place();
+  pdDLMTensor->tensor.dl_tensor.device =
+      paddle::platform::VisitPlace(place, internal::DLDeviceVisitor());
+
+  pdDLMTensor->tensor.dl_tensor.dtype = internal::GetDLDataTypeFromTypeIndex(
+      framework::TransToProtoVarType(src.dtype()));
+
+  pdDLMTensor->tensor.dl_tensor.byte_offset = 0;
+  return &(pdDLMTensor->tensor);
+}
+
+DLPackTensor::DLPackTensor(const phi::DenseTensor &tensor, LaneType lanes) {
   // init data, data buffer
-  dt_ = &tensor;
   t_.data = const_cast<void *>(tensor.data());
 
   // init device, DLDevice type with device_type and device_id
@@ -188,18 +238,14 @@ DLPackTensor::DLPackTensor(phi::DenseTensor &tensor, LaneType lanes) {
 
   auto tensor = new DLManagedTensor;
   tensor->dl_tensor = t_;
-  tensor->manager_ctx = dt_;
 
   tensor->deleter = [](DLManagedTensor *arg) {
-    phi::DenseTensor *tensor_ptr =
-        reinterpret_cast<phi::DenseTensor *>(arg->manager_ctx);
-    pybind11::handle tensor_handle = pybind11::cast(tensor_ptr);
-    tensor_handle.dec_ref();
-
     delete[] arg->dl_tensor.shape;
     delete[] arg->dl_tensor.strides;
     delete arg;
   };
+
+  tensor->manager_ctx = nullptr;
 
   return tensor;
 }

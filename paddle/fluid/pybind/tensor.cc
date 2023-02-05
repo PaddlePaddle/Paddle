@@ -473,10 +473,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            )DOC")
       .def("_to_dlpack",
            [](phi::DenseTensor &self) {
-             pybind11::handle tensor_handle = pybind11::cast(&self);
-             tensor_handle.inc_ref();
-             DLPackTensor dlpack_tensor(self, 1);
-             DLManagedTensor *dmt = dlpack_tensor.ToDLManagedTensor();
+             DLManagedTensor *dmt = framework::toDLPack(self);
              auto capsule = pybind11::capsule(
                  static_cast<void *>(dmt), "dltensor", [](PyObject *ptr) {
                    if (!PyCapsule_IsValid(ptr, "dltensor")) {
