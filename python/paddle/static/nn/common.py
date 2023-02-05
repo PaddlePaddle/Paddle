@@ -516,7 +516,9 @@ def data_norm(
     input_shape = input.shape
     if len(input_shape) < 2:
         raise ValueError(
-            "The shape pf Input < 2 (got {}D input, input shape is: {})".format(len(input_shape), input_shape)
+            "The shape pf Input < 2 (got {}D input, input shape is: {})".format(
+                len(input_shape), input_shape
+            )
         )
     if data_layout == 'NCHW':
         channel_num = input_shape[1]
