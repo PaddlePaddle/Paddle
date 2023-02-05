@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
@@ -24,11 +24,17 @@ from paddle.fluid import Program, program_guard
 from paddle.fluid.op import Operator
 
 
+def fill_wrapper(shape, value=0.0):
+    out = paddle.full(shape=shape, fill_value=value)
+    return out
+
+
 # Situation 1: Attr(shape) is a list(without tensor)
 class TestFillConstantOp1(OpTest):
     def setUp(self):
         '''Test fill_constant op with specified value'''
         self.op_type = "fill_constant"
+        self.python_api = fill_wrapper
 
         self.inputs = {}
         self.attrs = {'shape': [123, 92], 'value': 3.8}
@@ -42,6 +48,7 @@ class TestFillConstantOp2(OpTest):
     def setUp(self):
         '''Test fill_constant op with default value'''
         self.op_type = "fill_constant"
+        self.python_api = fill_wrapper
 
         self.inputs = {}
         self.attrs = {'shape': [123, 92]}
@@ -55,6 +62,7 @@ class TestFillConstantOp3(OpTest):
     def setUp(self):
         '''Test fill_constant op with specified int64 value'''
         self.op_type = "fill_constant"
+        self.python_api = fill_wrapper
 
         self.inputs = {}
         self.attrs = {'shape': [123, 92], 'value': 10000000000}
@@ -68,6 +76,7 @@ class TestFillConstantOp4(OpTest):
     def setUp(self):
         '''Test fill_constant op with specified int value'''
         self.op_type = "fill_constant"
+        self.python_api = fill_wrapper
 
         self.inputs = {}
         self.attrs = {'shape': [123, 92], 'value': 3}
@@ -84,6 +93,7 @@ class TestFillConstantBF16Op(OpTest):
     def setUp(self):
         '''Test fill_constant op with specified value'''
         self.op_type = "fill_constant"
+        self.python_api = fill_wrapper
         self.dtype = np.uint16
         self.inputs = {}
         self.attrs = {
@@ -130,6 +140,7 @@ class TestFillConstantOp1_ShapeTensorList(OpTest):
     def setUp(self):
         '''Test fill_constant op with specified value'''
         self.op_type = "fill_constant"
+        self.python_api = fill_wrapper
         self.init_data()
         shape_tensor_list = []
         for index, ele in enumerate(self.shape):
@@ -154,6 +165,7 @@ class TestFillConstantOp2_ShapeTensorList(OpTest):
     def setUp(self):
         '''Test fill_constant op with default value'''
         self.op_type = "fill_constant"
+        self.python_api = fill_wrapper
         self.init_data()
         shape_tensor_list = []
         for index, ele in enumerate(self.shape):
@@ -192,6 +204,7 @@ class TestFillConstantOp1_ShapeTensor(OpTest):
     def setUp(self):
         '''Test fill_constant op with specified value'''
         self.op_type = "fill_constant"
+        self.python_api = fill_wrapper
         self.init_data()
 
         self.inputs = {"ShapeTensor": np.array(self.shape).astype("int32")}
@@ -211,6 +224,7 @@ class TestFillConstantOp1_ValueTensor(OpTest):
     def setUp(self):
         '''Test fill_constant op with specified value'''
         self.op_type = "fill_constant"
+        self.python_api = fill_wrapper
         self.init_data()
 
         self.inputs = {
@@ -234,6 +248,7 @@ class TestFillConstantOp2_ValueTensor(OpTest):
     def setUp(self):
         '''Test fill_constant op with specified value'''
         self.op_type = "fill_constant"
+        self.python_api = fill_wrapper
         self.init_data()
 
         self.inputs = {
@@ -452,6 +467,7 @@ class TestFillConstantOp_ValueTensorBf16(OpTest):
     def setUp(self):
         '''Test fill_constant op with specified value'''
         self.op_type = "fill_constant"
+        self.python_api = fill_wrapper
         self.init_data()
 
         self.inputs = {
@@ -470,7 +486,8 @@ class TestFillConstantOp_ValueTensorBf16(OpTest):
         self.mkldnn_data_type = "bfloat16"
 
     def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace())
+        # no dynamic graph test for mkldnn
+        self.check_output_with_place(core.CPUPlace(), check_dygraph=False)
 
 
 if __name__ == "__main__":

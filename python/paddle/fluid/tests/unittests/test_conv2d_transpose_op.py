@@ -989,6 +989,17 @@ class TestConv2DTransposeOpException(unittest.TestCase):
 
         self.assertRaises(ValueError, error_groups)
 
+        def error_0_filter_number():
+            out = paddle.static.nn.conv2d_transpose(
+                input=data,
+                groups=1,
+                num_filters=0,
+                filter_size=3,
+                data_format='NCHW',
+            )
+
+        self.assertRaises(ValueError, error_0_filter_number)
+
 
 class TestConv2DTransposeRepr(unittest.TestCase):
     def test_case(self):
@@ -1000,6 +1011,17 @@ class TestConv2DTransposeRepr(unittest.TestCase):
         y_np = y_var.numpy()
         self.assertIsNotNone(y_np)
         paddle.enable_static()
+
+
+class TestConv2dTranspose(unittest.TestCase):
+    def error_weight_input(self):
+        array = np.array([1], dtype=np.float32)
+        x = paddle.to_tensor(np.reshape(array, [1, 1, 1, 1]), dtype='float32')
+        weight = paddle.to_tensor(np.reshape(array, [1]), dtype='float32')
+        paddle.nn.functional.conv2d_transpose(x, weight, bias=0)
+
+    def test_type_error(self):
+        self.assertRaises(ValueError, self.error_weight_input)
 
 
 class TestTensorOutputSize1(UnittestBase):
