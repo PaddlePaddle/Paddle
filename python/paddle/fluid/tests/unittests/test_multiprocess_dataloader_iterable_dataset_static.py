@@ -58,10 +58,10 @@ def simple_fc_net_static():
             label = fluid.data(name='label', shape=[None, 1], dtype='int64')
             hidden = image
             param_attr = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.8)
+                initializer=paddle.nn.initializer.Constant(value=0.8)
             )
             bias_attr = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.5)
+                initializer=paddle.nn.initializer.Constant(value=0.5)
             )
             for hidden_size in [10, 20, 30]:
                 hidden = paddle.static.nn.fc(

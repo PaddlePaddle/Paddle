@@ -151,9 +151,7 @@ class TestTDMChildShape(unittest.TestCase):
             node_nums=26,
             child_nums=2,
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(
-                    tree_info_np
-                )
+                initializer=paddle.nn.initializer.Assign(tree_info_np)
             ),
         )
 
