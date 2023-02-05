@@ -522,11 +522,11 @@ class TestDataNormOpErrorr(unittest.TestCase):
             paddle.static.nn.data_norm(
                 input=x2, param_attr={}, enable_scale_and_shift=True
             )
-        with program_guard(Program(), Program()):
+
+            # Test input with dimension 1
             paddle.enable_static()
             x3 = paddle.static.data("", shape=[0], dtype="float32")
-            # self.assertRaises(ValueError, fluid.data_norm, x3)
-            paddle.static.nn.data_norm(input=x3)
+            self.assertRaises(ValueError, paddle.static.nn.data_norm, x3)
 
 
 if __name__ == '__main__':
