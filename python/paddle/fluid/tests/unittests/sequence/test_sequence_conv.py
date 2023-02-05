@@ -24,6 +24,7 @@ sys.path.append("../")
 from op_test import OpTest
 
 
+
 def seqconv(
     x,
     lod,
@@ -283,6 +284,7 @@ class TestSeqProjectCase3(TestSeqProject):
 
 class TestSeqConvApi(unittest.TestCase):
     def test_api(self):
+        paddle.enable_static()
         import paddle.fluid as fluid
 
         x = paddle.static.data('x', shape=[-1, 32], lod_level=1)
@@ -297,6 +299,7 @@ class TestSeqConvApi(unittest.TestCase):
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
         ret = exe.run(feed={'x': x_tensor}, fetch_list=[y], return_numpy=False)
+        paddle.disable_static()
 
 
 if __name__ == '__main__':
