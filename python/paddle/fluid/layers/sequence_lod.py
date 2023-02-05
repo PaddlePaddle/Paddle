@@ -451,10 +451,6 @@ def sequence_concat(input, name=None):
             ['int64', 'float32', 'float64'],
             'fluid.layers.sequence_concat',
         )
-        if input_x.dim() == 1 and 0 in input_x.shape:
-            raise ValueError(
-                'the shape of element in input list should not be 0.'
-            )
 
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     helper.append_op(
