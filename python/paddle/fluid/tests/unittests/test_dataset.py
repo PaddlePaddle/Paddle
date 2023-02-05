@@ -362,7 +362,7 @@ class TestDataset(unittest.TestCase):
                 slots_vars.append(var)
 
         dataset = paddle.distributed.InMemoryDataset()
-         
+
         dataset.init(
             batch_size=32, thread_num=2, pipe_command="cat", use_var=slots_vars
         )
@@ -649,11 +649,11 @@ class TestDataset(unittest.TestCase):
             batch_size=32, thread_num=2, pipe_command="cat", use_var=slots_vars
         )
         dataset.set_filelist([])
-        #try:
+        # try:
         #    exe.train_from_dataset(fluid.default_main_program(), dataset2)
-        #except ImportError as e:
+        # except ImportError as e:
         #    print("warning: we skip trainer_desc_pb2 import problem in windows")
-        #except Exception as e:
+        # except Exception as e:
         #    self.assertTrue(False)
 
         temp_dir.cleanup()
@@ -917,6 +917,7 @@ class TestDataset(unittest.TestCase):
             except Exception as e:
                 self.assertTrue(False)
         temp_dir.cleanup()
+
 
 class TestDatasetWithDataLoader(TestDataset):
     """
@@ -1409,6 +1410,7 @@ class TestDataset2(unittest.TestCase):
             dataset.get_memory_data_size()
             dataset.get_shuffle_data_size()
         temp_dir.cleanup()
+
 
 if __name__ == '__main__':
     unittest.main()
