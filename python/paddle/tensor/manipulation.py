@@ -20,7 +20,7 @@ import paddle
 from paddle import _C_ops
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
-from ..common_ops_import import fill_constant
+from ..common_ops_import import Variable, fill_constant
 from ..fluid.data_feeder import (
     check_dtype,
     check_type,
@@ -35,7 +35,6 @@ from ..framework import (
     dygraph_only,
     in_dygraph_mode,
 )
-from ..static import Variable
 from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
 
 __all__ = []
@@ -2755,14 +2754,19 @@ def unbind(input, axis=0):
             # x2.shape [3, 5]
             # x3.shape [3, 5]
     """
+    if not isinstance(axis, (int)):
+        raise TypeError(
+            "The type of 'axis'  must be int, but received %s." % (type(axis))
+        )
+
+    if axis not in range(-input.ndim, input.ndim):
+        raise ValueError(
+            f'The axis must in range({-input.ndim}, {input.ndim}).'
+        )
+
     if in_dygraph_mode():
         return _C_ops.unbind(input, axis)
     else:
-        if not isinstance(axis, (int)):
-            raise TypeError(
-                "The type of 'axis'  must be int, but received %s."
-                % (type(axis))
-            )
         if isinstance(axis, np.generic):
             axis = np.asscalar(axis)
         input_shape = input.shape
