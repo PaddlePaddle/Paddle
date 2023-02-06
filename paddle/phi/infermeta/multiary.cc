@@ -2987,6 +2987,31 @@ void MoeInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
+void FusedGEGLUInferMeta(const MetaTensor& x,
+                         const MetaTensor& weight,
+                         const MetaTensor& bias,
+                         const std::string& act_type,
+                         MetaTensor* out) {
+  auto x_mat_dims = phi::flatten_to_2d(x.dims(), x.dims().size() - 1);
+  const int64_t m = x_mat_dims.dims()[0];
+  const int64_t k = x_mat_dims.dims()[1];
+  const int64_t n = weight.dims()[1];
+  PADDLE_ENFORCE_EQ(
+      k,
+      weight_dims()[0],
+      phi::errors::InvalidArgument("The matmul dim is not matched, the x "
+                                   "dim[1] should be equal to weight dim[0]"));
+  std::vector<int64_t> out_dims_vec;
+  const std::vector<int64_t> x_dims_vec = phi::vectorize(x.dims());
+  out_dims_vec.assign(x_dims_vec.begin(), x_dims_vec.end() - 1);
+  out_dims_vec.push_back(n);
+  auto out_dims = phi::make_ddim(out_dims_vec);
+  out->set_dims(out_dims);
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+}
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);

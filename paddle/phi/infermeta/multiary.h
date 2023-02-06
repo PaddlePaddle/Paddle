@@ -541,4 +541,10 @@ void MoeInferMeta(const MetaTensor& x,
                   const std::string& act_type,
                   MetaTensor* out);
 
+void FusedGEGLUInferMeta(const MetaTensor& x,
+                         const MetaTensor& weight,
+                         const MetaTensor& bias,
+                         const std::string& act_type,
+                         MetaTensor* out);
+
 }  // namespace phi
