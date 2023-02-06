@@ -57,7 +57,7 @@ struct EmbeddingBagGradCPUFunctor{
     std::unordered_map<IdT, EigenIndex> index_map;
     std::vector< std::pair<IdT, std::vector<EigenIndex>>> index_vec;
 
-    auto ids = CopyIdsToVector<IdT, int64_t>(input_);
+    auto ids = CopyIdsToVector<IdT, IdT>(input_);
 
     auto* d_grad = out_grad_.data<T>();
     auto* d_weights = weight_.data<T>();
