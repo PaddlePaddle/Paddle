@@ -198,9 +198,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "pybind11/stl.h"
 
-#include "paddle/phi/api/include/phi_tensor_operants.h"
-#include "paddle/phi/core/operants_manager.h"
-
 DECLARE_bool(use_mkldnn);
 
 // disable auto conversion to list in Python
@@ -1854,11 +1851,6 @@ All parameter, weight, gradient are variables in Paddle.
       paddle::operators::RegisterCustomDeviceCommonKernel(dev_type);
     }
 #endif
-  });
-  m.def("init_phi_tensor_operants", []() {
-    VLOG(4) << "Initialize phi tensor operants successfully";
-    paddle::experimental::OperantsManager::Instance().phi_operants =
-        &paddle::experimental::PhiTensorOperants::Instance();
   });
   m.def("init_default_kernel_signatures",
         []() { framework::InitDefaultKernelSignatureMap(); });

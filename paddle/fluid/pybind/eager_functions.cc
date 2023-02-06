@@ -47,7 +47,6 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/operants_manager.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "pybind11/numpy.h"
@@ -56,6 +55,12 @@ typedef SSIZE_T ssize_t;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/pybind/cuda_streams_py.h"
 #endif
+
+#include "gflags/gflags.h"
+#include "paddle/phi/api/include/phi_tensor_operants.h"
+#include "paddle/phi/core/operants_manager.h"
+
+DECLARE_string(operants_mode);
 
 namespace paddle {
 namespace pybind {
@@ -508,6 +513,14 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
                                          PyObject* args,
                                          PyObject* kwargs) {
   EAGER_TRY
+  FLAGS_operants_mode = "phi";
+  if (paddle::experimental::OperantsManager::Instance().phi_operants ==
+      nullptr) {
+    paddle::experimental::OperantsManager::Instance().phi_operants =
+        &paddle::experimental::PhiTensorOperants::Instance();
+    VLOG(4) << "Initialize phi tensor operants successfully";
+  }
+
   paddle::CustomOpKernelContext ctx =
       CastPyArg2CustomOpKernelContext(PyTuple_GET_ITEM(args, 0), 0);
   std::string op_type = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 1), 1);

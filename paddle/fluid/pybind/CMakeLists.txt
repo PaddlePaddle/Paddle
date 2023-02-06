@@ -42,9 +42,7 @@ set(PYBIND_DEPS
     auto_parallel
     jit_layer
     jit_property
-    prim_utils
-    operants_manager
-    phi_tensor_operants)
+    prim_utils)
 
 if(WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
@@ -501,6 +499,8 @@ if(WITH_PYTHON)
     list(APPEND PYBIND_DEPS custom_operator_node)
     list(APPEND PYBIND_DEPS eager_tensor_operants)
     list(APPEND PYBIND_DEPS static_tensor_operants)
+    list(APPEND PYBIND_DEPS operants_manager)
+    list(APPEND PYBIND_DEPS phi_tensor_operants)
   endif()
 
   # On Linux, cc_library(paddle SHARED ..) will generate the libpaddle.so,
