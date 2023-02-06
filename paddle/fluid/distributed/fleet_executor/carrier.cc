@@ -30,9 +30,10 @@
 
 PADDLE_DEFINE_EXPORTED_bool(
     fleet_executor_with_standalone,
-    true,
+    false,
     "Use standalone executor to run ops. Temporary FLAGS, will be removed "
-    "after testing of standalone executor.");
+    "after all fleet executor cases are modified to run ops with standalone "
+    "executor.");
 
 namespace paddle {
 namespace distributed {
