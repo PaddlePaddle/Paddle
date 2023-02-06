@@ -1187,6 +1187,14 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : scale
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out}
+  scalar :
+    scale :
+      data_type : float
+      tensor_name : ScaleTensor
   extra :
     attrs : [bool use_mkldnn = false]
 

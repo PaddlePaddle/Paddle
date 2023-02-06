@@ -407,6 +407,7 @@ def process_invoke_op(forward_op_dict, backward_op_dict):
             invoke_op = bw_op['invoke']['func']
             args_list = bw_op['invoke']['args']
             args_index = 0
+            # backward invoke forward
             if invoke_op in forward_op_dict:
                 reuse_op = forward_op_dict[invoke_op]
                 bw_op['invoke']['func'] = reuse_op['op_name']
@@ -460,17 +461,16 @@ def parse_drop_empty_grad(op_fluid_list: list, bw_op_dict: dict):
                 for bw_name in op_op['backward'].split(',')
             ]
             for bw_name in bw_names:
-                assert (
-                    bw_name in bw_op_dict
-                ), f"backward {bw_name} is not existed"
-                for out_grad in op_op['drop_empty_grad']:
-                    assert (
-                        out_grad in bw_op_dict[bw_name]['output_dict']
-                    ), f'''
-                         {bw_name} with {out_grad} is not existed in output_dict '''
-                    bw_op_dict[bw_name]['output_dict'][out_grad][
-                        'drop_empty_grad'
-                    ] = False
+                # static_ops.yaml and ops.yaml use the common op_compat.yaml
+                if bw_name in bw_op_dict:
+                    for out_grad in op_op['drop_empty_grad']:
+                        assert (
+                            out_grad in bw_op_dict[bw_name]['output_dict']
+                        ), f'''
+                            {bw_name} with {out_grad} is not existed in output_dict '''
+                        bw_op_dict[bw_name]['output_dict'][out_grad][
+                            'drop_empty_grad'
+                        ] = False
 
 
 def main(
@@ -493,7 +493,8 @@ def main(
         op_versions = yaml.safe_load(f)
     # add op version info into op
     for op_version in op_versions:
-        forward_op_dict[op_version['op']]['version'] = op_version['version']
+        if op_version['op'] in forward_op_dict:
+            forward_op_dict[op_version['op']]['version'] = op_version['version']
 
     with open(op_compat_yaml_path, "rt") as f:
         op_fluid_map_list = yaml.safe_load(f)

@@ -81,6 +81,7 @@ def restruct_io(op):
 
 def main(
     ops_yaml_path,
+    backward_yaml_path,
     op_compat_yaml_path,
     op_version_yaml_path,
     output_op_path,
@@ -90,6 +91,11 @@ def main(
         ops = yaml.safe_load(f)
         ops = [restruct_io(op) for op in ops]
     forward_op_dict = to_named_dict(ops)
+
+    with open(backward_yaml_path, "rt") as f:
+        backward_ops = yaml.safe_load(f)
+        backward_ops = [restruct_io(op) for op in backward_ops]
+    backward_op_dict = to_named_dict(backward_ops)
 
     with open(op_version_yaml_path, "rt") as f:
         op_versions = yaml.safe_load(f)
@@ -140,6 +146,11 @@ if __name__ == "__main__":
         '--ops_yaml_path', type=str, help="parsed static ops yaml file."
     )
     parser.add_argument(
+        '--backward_yaml_path',
+        type=str,
+        help="parsed static backward ops yaml file.",
+    )
+    parser.add_argument(
         '--op_compat_yaml_path', type=str, help="ops args compat yaml file."
     )
     parser.add_argument(
@@ -157,6 +168,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     main(
         args.ops_yaml_path,
+        args.backward_yaml_path,
         args.op_compat_yaml_path,
         args.op_version_yaml_path,
         args.output_op_path,

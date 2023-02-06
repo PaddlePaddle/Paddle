@@ -11,6 +11,8 @@ set(legacy_bw_op_yaml_file
 set(sparse_op_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/sparse_ops.yaml)
 set(sparse_bw_op_yaml_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/sparse_backward.yaml)
+set(static_bw_op_yaml_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/static_backward.yaml)
 
 if(NOT PYTHONINTERP_FOUND)
   find_package(PythonInterp REQUIRED)
@@ -66,6 +68,9 @@ execute_process(
   COMMAND
     ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${sparse_bw_op_yaml_file}
     --output_path ./parsed_ops/sparse_backward.parsed.yaml --backward
+  COMMAND
+    ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${static_bw_op_yaml_file}
+    --output_path ./parsed_ops/static_backward.parsed.yaml --backward
     RESULTS_VARIABLE _results)
 foreach(_result in ${_results})
   if(${_result})
@@ -82,12 +87,22 @@ execute_process(
   COMMAND
     ${PYTHON_EXECUTABLE} cross_validate.py --forward_yaml_paths
     ./parsed_ops/ops.parsed.yaml ./parsed_ops/legacy_ops.parsed.yaml
-    ./parsed_ops/static_ops.parsed.yaml --backward_yaml_paths
-    ./parsed_ops/backward_ops.parsed.yaml
+    --backward_yaml_paths ./parsed_ops/backward_ops.parsed.yaml
     ./parsed_ops/legacy_backward_ops.parsed.yaml
   RESULT_VARIABLE _result)
 if(${_result})
   message(FATAL_ERROR "ops validation failed, exiting.")
+endif()
+
+execute_process(
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
+  COMMAND
+    ${PYTHON_EXECUTABLE} cross_validate.py --forward_yaml_paths
+    ./parsed_ops/static_ops.parsed.yaml --backward_yaml_paths
+    ./parsed_ops/static_backward.parsed.yaml
+  RESULT_VARIABLE _result)
+if(${_result})
+  message(FATAL_ERROR "static ops validation failed, exiting.")
 endif()
 
 execute_process(
@@ -124,8 +139,9 @@ endif()
 execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
   COMMAND
-    ${PYTHON_EXECUTABLE} generate_static_op.py --ops_yaml_path
-    ./parsed_ops/static_ops.parsed.yaml --op_version_yaml_path
+    ${PYTHON_EXECUTABLE} generate_op.py --ops_yaml_path
+    ./parsed_ops/static_ops.parsed.yaml --backward_yaml_path
+    ./parsed_ops/static_backward.parsed.yaml --op_version_yaml_path
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/op_version.yaml
     --op_compat_yaml_path ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml
     --output_op_path "${generated_static_op_path}.tmp" --output_arg_map_path
