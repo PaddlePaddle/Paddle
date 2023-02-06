@@ -596,7 +596,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
             VLOG(1) << "trt_op input [" << x << "] dtype is " << t.dtype();
             paddle::memory::Copy(platform::CPUPlace(),
                                  shape_v.data(),
-                                 platform::CUDAPlace(),
+                                 t.place(),
                                  t.data<int32_t>(),
                                  t.numel() * sizeof(int),
                                  nullptr);
@@ -610,7 +610,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
                 phi::DataType::INT32);
             paddle::memory::Copy(platform::CPUPlace(),
                                  shape_v.data(),
-                                 platform::CUDAPlace(),
+                                 int32_tensor->place(),
                                  int32_tensor->data<int32_t>(),
                                  int32_tensor->numel() * sizeof(int),
                                  nullptr);
@@ -753,7 +753,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
         auto *fluid_t = fluid_v->GetMutable<phi::DenseTensor>();
         auto int32_tensor =
             scope.FindVar(y + "_cast_to_INT64")->GetMutable<phi::DenseTensor>();
-        std::cout << "TensorRT op " << y << std::endl;
         int32_tensor->Resize(fluid_t->dims());
         dev_ctx.Alloc<int32_t>(int32_tensor);
         framework::TensorCopy(*fluid_t, dev_place, dev_ctx, int32_tensor);

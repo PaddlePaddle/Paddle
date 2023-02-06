@@ -1954,7 +1954,7 @@ void AnalysisPredictor::CollectShapeRangeInfo() {
         }
         paddle::memory::Copy(platform::CPUPlace(),
                              int32_host.data(),
-                             platform::CUDAPlace(),
+                             int32_tensor.place(),
                              int32_tensor.data<int>(),
                              int32_tensor.numel() * sizeof(int),
                              nullptr);
