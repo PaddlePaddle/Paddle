@@ -70,10 +70,10 @@ class SequenceConcatOp : public framework::OperatorWithKernel {
       }
       batch_size += x_dim[0];
       PADDLE_ENFORCE_NE(
-        x_dim[0],
-        0,
-        platform::errors::InvalidArgument(
-            "The first dim of SequenceConcatOp inputs must not be 0.");
+          x_dim[0],
+          0,
+          platform::errors::InvalidArgument(
+              "The first dim of SequenceConcatOp inputs must not be 0."));
       if (feature_size == 0) {
         feature_size = phi::product(x_dim) / x_dim[0];
       } else {
