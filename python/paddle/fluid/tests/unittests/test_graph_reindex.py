@@ -258,6 +258,7 @@ class TestGeometricGraphReindex(unittest.TestCase):
 
     def test_reindex_result(self):
         paddle.disable_static()
+
         def test_reindex_0_error():
             """
             division by zero test
@@ -296,7 +297,6 @@ class TestGeometricGraphReindex(unittest.TestCase):
         np.testing.assert_allclose(self.reindex_src, reindex_src, rtol=1e-05)
         np.testing.assert_allclose(self.reindex_dst, reindex_dst, rtol=1e-05)
         np.testing.assert_allclose(self.out_nodes, out_nodes, rtol=1e-05)
-
 
     def test_heter_reindex_result(self):
         paddle.disable_static()
