@@ -63,25 +63,6 @@ class AutoTuneBase {
   }
 
   template <typename Context, typename... Args>
-  void RunMatmul(const Context& ctx, const size_t key, Args&&... args) {
-    is_init_ = true;
-    CheckKernelSize();
-    auto& cache = AutoTuneCache::Instance().GetMatmul();
-    if (cache.Find(key)) {
-      auto best_idx = cache.Get(key);
-      kernels_[best_idx].Run(args...);
-    } else {
-      bool use_autotune = AutoTuneStatus::Instance().UseAutoTune();
-      if (use_autotune) {
-        auto best_idx = PickBestKernel(ctx, args...);
-        cache.Set(key, best_idx);
-      } else {
-        kernels_[0].Run(args...);
-      }
-    }
-  }
-
-  template <typename Context, typename... Args>
   void Run(const Context& ctx,
            const AlgorithmType& algo,
            const size_t key,
@@ -193,6 +174,25 @@ class MatmulAutoTuner
       instance_->AddCallBack(func);
     });
     return instance_.get();
+  }
+
+  template <typename Context>
+  void RunMatmul(const Context& ctx, const size_t key, Args... args) {
+    this->is_init_ = true;
+    this->CheckKernelSize();
+    auto& cache = AutoTuneCache::Instance().GetMatmul();
+    if (cache.Find(key)) {
+      auto best_idx = cache.Get(key);
+      this->kernels_[best_idx].Run(args...);
+    } else {
+      bool use_autotune = AutoTuneStatus::Instance().UseAutoTune();
+      if (use_autotune) {
+        auto best_idx = this->PickBestKernel(ctx, args...);
+        cache.Set(key, best_idx);
+      } else {
+        this->kernels_[0].Run(args...);
+      }
+    }
   }
 };
 
