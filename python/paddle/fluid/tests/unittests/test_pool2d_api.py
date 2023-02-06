@@ -609,6 +609,18 @@ class TestPool2DError_API(unittest.TestCase):
 
         self.assertRaises(ValueError, run_zero_stride)
 
+        def run_zero_tuple_stride():
+            with fluid.dygraph.guard():
+                array = np.array([1], dtype=np.float32)
+                x = paddle.to_tensor(
+                    np.reshape(array, [1, 1, 1, 1]), dtype='float32'
+                )
+                out = max_pool2d(
+                    x, 1, stride=(0, 0), return_mask=False, data_format='NHWC'
+                )
+
+        self.assertRaises(ValueError, run_zero_tuple_stride)
+
 
 if __name__ == '__main__':
     unittest.main()
