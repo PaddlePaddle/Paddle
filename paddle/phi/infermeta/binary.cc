@@ -456,7 +456,17 @@ void ConvInferMeta(const MetaTensor& input,
   auto filter_dims = filter.dims();
   int dilation_size = dilations.size();
   for (int i = 0; i < dilation_size; ++i) {
-    PADDLE_ENFORCE_GT(
+    PADDLE_ENFORCE_NE(
+        in_dims[i],
+        0,
+        phi::errors::InvalidArgument(
+            "The size of Op(Conv) inputs should not be 0.");
+  }
+  const bool channel_last = (config.is_run_mkldnn_kernel == false) &&
+                            (data_format == "NHWC" || data_format == "NDHWC");
+
+  for (int i = 0; i < 2; ++i) {
+    PADDLE_ENFORCE_NE(
         dilations[i],
         0,
         phi::errors::InvalidArgument(
@@ -464,8 +474,6 @@ void ConvInferMeta(const MetaTensor& input,
             "dilation is %d.",
             dilations[i]));
   }
-  const bool channel_last = (config.is_run_mkldnn_kernel == false) &&
-                            (data_format == "NHWC" || data_format == "NDHWC");
 
   PADDLE_ENFORCE_EQ(
       in_dims.size() == 4 || in_dims.size() == 5,
