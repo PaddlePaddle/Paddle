@@ -65,6 +65,8 @@ from .ops import round  # noqa: F401
 from .ops import round_  # noqa: F401
 from .ops import rsqrt  # noqa: F401
 from .ops import rsqrt_  # noqa: F401
+from .ops import sigmoid  # noqa: F401
+from .ops import sigmoid_  # noqa: F401
 from .ops import sin  # noqa: F401
 from .ops import sinh  # noqa: F401
 from .ops import sqrt  # noqa: F401

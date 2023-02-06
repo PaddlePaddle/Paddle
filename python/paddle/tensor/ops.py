@@ -47,6 +47,7 @@ __inplace_unary_func__ = [
     'floor_',
     'round_',
     'reciprocal_',
+    'sigmoid_',
 ]
 
 __all__ = []
