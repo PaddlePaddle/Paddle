@@ -218,7 +218,6 @@ __global__ void groupNormNCHW32SumKernelQDQ(const GroupNormNHWCParams params) {
   // Iterate over the activations to compute the sums.
   for (int32_t hwi = hwBegin; hwi < hwEnd; ++hwi) {
     // The offset.
-    // ci的步伐是2！
     int64_t offset = static_cast<int64_t>(ni) * params.hwc +
                      +ci / 32 * params.hw * 32 +
                      static_cast<int64_t>(hwi) * 32 + ci % 32;
