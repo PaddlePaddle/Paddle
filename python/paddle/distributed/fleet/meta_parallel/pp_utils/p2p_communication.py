@@ -350,6 +350,7 @@ def _p2p_helper(
 
     # TODO(Yuang Liu): use batch_isend_irecv replace all these comm ops
     tasks = []
+    framework.core.ProcessGroupBKCL.group_start()
     # start to p2p communicate
     if tensor_send_prev is not None:
         if isinstance(tensor_send_prev, tuple):
@@ -479,6 +480,7 @@ def _p2p_helper(
                 )
             else:
                 tasks.append(task)
+    framework.core.ProcessGroupBKCL.group_end()
 
     if not sync_recv:
         if framework.in_dygraph_mode():
