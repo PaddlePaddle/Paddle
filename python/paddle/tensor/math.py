@@ -810,9 +810,6 @@ def remainder_(x, y, name=None):
     Inplace version of ``remainder`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_tensor_remainder`.
     """
-    op_type = 'elementwise_mod_'
-    axis = -1
-
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
         raise ValueError(
