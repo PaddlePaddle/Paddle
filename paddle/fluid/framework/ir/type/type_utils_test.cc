@@ -19,6 +19,8 @@ limitations under the License. */
 TEST(type_utils, type_id) {
   class TypeA {};
   class TypeB {};
+
+  // (1) Test construct TypeID by TypeID::Get()
   paddle::framework::ir::TypeID a_id =
       paddle::framework::ir::TypeID::Get<TypeA>();
   paddle::framework::ir::TypeID a_other_id =
@@ -30,6 +32,12 @@ TEST(type_utils, type_id) {
   EXPECT_EQ(a_id, a_other_id);
   EXPECT_NE(a_id, b_id);
 
+  // (2) Test construct TypeID by TypeID::Get(void*)
+  paddle::framework::ir::TypeID c_id =
+      paddle::framework::ir::TypeID::Get(a_other_id.GetStorage());
+  EXPECT_EQ(c_id, a_other_id);
+
+  // (3) Test TypeID hash
   std::unordered_map<paddle::framework::ir::TypeID, const void*>
       type_id_register;
   type_id_register.emplace(a_id, type_a_storage);

@@ -38,7 +38,7 @@ class TypeID {
     static Storage instance;
     return TypeID(&instance);
   }
-  static TypeID GetFromOpaquePtr(const void *ptr) {
+  static TypeID Get(const void *ptr) {
     return TypeID(reinterpret_cast<const Storage *>(ptr));
   }
   const void *GetStorage() const { return static_cast<const void *>(storage_); }
