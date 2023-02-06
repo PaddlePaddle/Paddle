@@ -215,12 +215,15 @@ __global__ void groupNormNCHW32SumKernelQDQ(const GroupNormNHWCParams params) {
 
   const int8_t *src_ptr = reinterpret_cast<const int8_t *>(params.srcX);
 
+  // nchw32 layout
+  // batch offset + channel offset
+  int nc_offset = static_cast<int64_t>(ni) * params.hwc +
+                  ci / 32 * params.hw * 32 + ci % 32;
+
   // Iterate over the activations to compute the sums.
   for (int32_t hwi = hwBegin; hwi < hwEnd; ++hwi) {
     // The offset.
-    int64_t offset = static_cast<int64_t>(ni) * params.hwc +
-                     +ci / 32 * params.hw * 32 +
-                     static_cast<int64_t>(hwi) * 32 + ci % 32;
+    int64_t offset = nc_offset + static_cast<int64_t>(hwi) * 32;
 
     // Fetch two channels per thread.
     __half2 h2(0, 0);
@@ -346,12 +349,14 @@ __global__ void groupNormNCHW32ScaleKernelQDQ(
   // The last activation loaded by that block.
   int32_t hwEnd = min(hwBegin + params.hwPerBlock, params.hw);
 
+  // nchw32 layout
+  int c_offset = ci / 32 * params.hw * 32 + ci % 32;
+
   // Iterate over the activations to compute the sums.
   for (int32_t hwi = hwBegin; hwi < hwEnd; ++hwi) {
     // The src/dst offset.
-    int64_t offset = static_cast<int64_t>(ni) * params.hwc +
-                     +ci / 32 * params.hw * 32 +
-                     static_cast<int64_t>(hwi) * 32 + ci % 32;
+    int64_t offset = static_cast<int64_t>(ni) * params.hwc + c_offset +
+                     static_cast<int64_t>(hwi) * 32;
 
     // Fetch two channels per thread.
     __half2 h2(0, 0);
