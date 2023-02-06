@@ -20,13 +20,15 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-// TypeID is the unique identification of Type, each Type corresponds to a
-// unique TypeID, the same ID indicates the same Type class. TypeID provides an
-// instantiation interface: TypeID::Get, the method to obtain the TypeID
-// according to the class Type is as follows:
-//  class Type_A {};
-//  TypeID type_a_id = TypeID::Get<Type_A>();
-//  void* type_a_storage = type_a_id.GetStorage();
+/*
+ * TypeID is the unique identification of Type, each Type corresponds to a
+ * unique TypeID, the same ID indicates the same Type class. TypeID provides an
+ * instantiation interface: TypeID::Get.
+ * For example:
+ *   class Type_A {};
+ *   TypeID type_a_id = TypeID::Get<Type_A>();
+ *   void* type_a_storage = type_a_id.GetStorage();
+ */
 class TypeID {
   struct Storage {};
 
@@ -56,6 +58,7 @@ class TypeID {
 }  // namespace framework
 }  // namespace paddle
 
+// Custom specialization of std::hash can be injected in namespace std.
 namespace std {
 template <>
 struct hash<paddle::framework::ir::TypeID> {
