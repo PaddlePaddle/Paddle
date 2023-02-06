@@ -2289,9 +2289,9 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
     kernel_iter = kernels.find(expected_kernel_key);
   }
 #endif
-
-  // some kernel only need cpu place, even though with GPU version
-  if (kernel_iter == kernels.end()) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (kernel_iter == kernels.end() &&
+      platform::is_custom_place(expected_kernel_key.place_)) {
     VLOG(3) << "missing " << expected_kernel_key.place_.GetDeviceType()
             << " kernel: " << type_
             << ", expected_kernel_key:" << expected_kernel_key
@@ -2299,6 +2299,18 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
     expected_kernel_key.place_ = platform::CPUPlace();
     kernel_iter = kernels.find(expected_kernel_key);
   }
+#endif
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (kernel_iter == kernels.end() &&
+      platform::is_gpu_place(expected_kernel_key.place_)) {
+    VLOG(3) << "missing " << expected_kernel_key.place_.GetDeviceType()
+            << " kernel: " << type_
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
+    expected_kernel_key.place_ = platform::CPUPlace();
+    kernel_iter = kernels.find(expected_kernel_key);
+  }
+#endif
 
   PADDLE_ENFORCE_NE(
       kernel_iter,
