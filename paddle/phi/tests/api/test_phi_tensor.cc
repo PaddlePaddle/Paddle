@@ -180,16 +180,22 @@ void GroupTestCast() {
 }
 
 void GroupTestDtype() {
-  CHECK(TestDtype<float>() == paddle::DataType::FLOAT32);
-  CHECK(TestDtype<double>() == paddle::DataType::FLOAT64);
-  CHECK(TestDtype<int>() == paddle::DataType::INT32);
-  CHECK(TestDtype<int64_t>() == paddle::DataType::INT64);
-  CHECK(TestDtype<int16_t>() == paddle::DataType::INT16);
+  CHECK(TestDtype<bool>() == paddle::DataType::BOOL);
   CHECK(TestDtype<int8_t>() == paddle::DataType::INT8);
   CHECK(TestDtype<uint8_t>() == paddle::DataType::UINT8);
+  CHECK(TestDtype<int16_t>() == paddle::DataType::INT16);
+  CHECK(TestDtype<uint16_t>() == paddle::DataType::UINT16);
+  CHECK(TestDtype<int>() == paddle::DataType::INT32);
+  CHECK(TestDtype<int32_t>() == paddle::DataType::INT32);
+  CHECK(TestDtype<uint32_t>() == paddle::DataType::UINT32);
+  CHECK(TestDtype<int64_t>() == paddle::DataType::INT64);
+  CHECK(TestDtype<uint64_t>() == paddle::DataType::UINT64);
+  CHECK(TestDtype<paddle::bfloat16>() == paddle::DataType::BFLOAT16);
+  CHECK(TestDtype<paddle::float16>() == paddle::DataType::FLOAT16);
+  CHECK(TestDtype<float>() == paddle::DataType::FLOAT32);
+  CHECK(TestDtype<double>() == paddle::DataType::FLOAT64);
   CHECK(TestDtype<paddle::complex64>() == paddle::DataType::COMPLEX64);
   CHECK(TestDtype<paddle::complex128>() == paddle::DataType::COMPLEX128);
-  CHECK(TestDtype<paddle::float16>() == paddle::DataType::FLOAT16);
 }
 
 void TestInitilized() {
