@@ -424,7 +424,7 @@ void groupNormNCHW32ScaleQDQ(const GroupNormNHWCParams &params,
       break;
     default:
       PADDLE_THROW(
-          platform::errors::Fatal("The function groupNormNHWCScale of "
+          platform::errors::Fatal("The function groupNormNCHW32ScaleQDQ of "
                                   "GroupNorm TRT Plugin encounter error"));
   }
 }
