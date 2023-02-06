@@ -21,6 +21,7 @@
 #include "paddle/fluid/eager/api/utils/hook_utils.h"
 #include "paddle/fluid/eager/backward.h"
 #include "paddle/fluid/eager/tests/test_utils.h"
+#include "paddle/fluid/prim/tests/init_env_utils.h"
 #include "paddle/fluid/prim/utils/utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
