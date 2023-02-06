@@ -77,7 +77,7 @@ class BRpcServiceImpl : public SimpleRpcService {
     uint64_t attach_size = attach.cutn(iar.Buffer(), size);
     PADDLE_ENFORCE_EQ((attach_size == size),
                       true,
-                      phi::errors::InvalidArgument("wrong request size"));
+                      phi::errors::PreconditionNotMet("Wrong request size."));
     iar.AdvanceFinish(size);
 
     RpcMessageHead head;
@@ -86,8 +86,8 @@ class BRpcServiceImpl : public SimpleRpcService {
       PADDLE_ENFORCE_EQ(
           (head.server_id == _rank_id),
           true,
-          phi::errors::InvalidArgument(
-              "server id %d not equal rank id %d", head.server_id, _rank_id));
+          phi::errors::PreconditionNotMet(
+              "Server id %d not equal rank id %d.", head.server_id, _rank_id));
       BRpcReqService *service =
           reinterpret_cast<BRpcReqService *>(head.service);
       service->set_handler(cntl, done, baidu_rpc_response);
@@ -103,12 +103,12 @@ class BRpcServiceImpl : public SimpleRpcService {
       PADDLE_ENFORCE_EQ(
           (head.client_id == _rank_id),
           true,
-          phi::errors::InvalidArgument(
-              "client id %d not equal rank id %d", head.client_id, _rank_id));
+          phi::errors::PreconditionNotMet(
+              "Client id %d not equal rank id %d.", head.client_id, _rank_id));
       head.request->callback()(head, iar);
       delete head.request;
       PADDLE_ENFORCE_NE(
-          head.service, 0, phi::errors::InvalidArgument("service is nullptr"));
+          head.service, 0, phi::errors::PreconditionNotMet("Service is nullptr."));
       head.service->decrease_request();
     } else {
       LOG(FATAL) << "Unknown message type";
@@ -148,7 +148,7 @@ void BaiduRpcServer::initialize() {
   }
 
   PADDLE_ENFORCE_NE(
-      _gloo, NULL, phi::errors::InvalidArgument("gloo not allow nullptr"));
+      _gloo, NULL, phi::errors::PreconditionNotMet("Gloo not allow nullptr."));
   _gloo->Barrier();
   _server->set_version(google::VersionString());
   brpc::ServerOptions option;
@@ -161,14 +161,14 @@ void BaiduRpcServer::initialize() {
   PADDLE_ENFORCE_EQ(
       (ret == 0),
       true,
-      phi::errors::InvalidArgument("failed to add BRpcServiceImpl."));
+      phi::errors::PreconditionNotMet("Failed to add BRpcServiceImpl."));
   brpc::PortRange range(MIN_SERVER_LISTEN_PORT, MAX_SERVER_LISTEN_PORT);
   auto server_ip = butil::ip2str(butil::int2ip(_ips[_gloo->Rank()]));
   ret = _server->Start(server_ip.c_str(), range, &option);
   PADDLE_ENFORCE_EQ(
       (ret == 0),
       true,
-      phi::errors::InvalidArgument("Fail to start BaiduRpcServer"));
+      phi::errors::PreconditionNotMet("Fail to start BaiduRpcServer."));
   butil::EndPoint ep = _server->listen_address();
   std::vector<int> ports = _gloo->AllGather(ep.port);
   auto new_channel = [this, &ports](int i) {
@@ -223,7 +223,7 @@ static void handle_baidu_rpc_response(brpc::Controller *cntl,
     size_t attach_size = cntl->response_attachment().cutn(iar.Buffer(), size);
     PADDLE_ENFORCE_EQ((attach_size == size),
                       true,
-                      phi::errors::InvalidArgument("wrong request size"));
+                      phi::errors::PreconditionNotMet("Wrong request size."));
     iar.AdvanceFinish(size);
 
     RpcMessageHead head;
@@ -232,7 +232,7 @@ static void handle_baidu_rpc_response(brpc::Controller *cntl,
       head.request->callback()(head, iar);
       delete head.request;
       PADDLE_ENFORCE_NE(
-          head.service, 0, phi::errors::InvalidArgument("service is nullptr"));
+          head.service, 0, phi::errors::PreconditionNotMet("Service is nullptr."));
       head.service->decrease_request();
     } else {
       LOG(FATAL) << "Unknown message type";
@@ -274,10 +274,10 @@ void BaiduRpcServer::send_response(RpcMessageHead head,
   PADDLE_ENFORCE_EQ(
       (head.server_id == _gloo->Rank()),
       true,
-      phi::errors::InvalidArgument("server_id not equal rank id"));
+      phi::errors::PreconditionNotMet("Server_id not equal rank id."));
   PADDLE_ENFORCE_EQ((head.client_id >= 0 && head.client_id < _gloo->Size()),
                     true,
-                    phi::errors::InvalidArgument("client id error"));
+                    phi::errors::PreconditionNotMet("Client id error."));
   BRpcReqService *service = reinterpret_cast<BRpcReqService *>(head.service);
   head.service = head.service->remote_pointer(head.client_id);
   head.message_type = RpcMessageHead::RESPONSE;

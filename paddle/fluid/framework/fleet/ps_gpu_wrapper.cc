@@ -493,7 +493,7 @@ void PSGPUWrapper::add_slot_feature(std::shared_ptr<HeterContext> gpu_task) {
         PADDLE_ENFORCE_EQ(
             ret,
             0,
-            platform::errors::PreconditionNotMet("get_feature_of_nodes error"));
+            platform::errors::PreconditionNotMet("Get_feature_of_nodes error."));
 
         CUDA_CHECK(cudaMemcpy(feature_ids[i].data() + pos * fea_num_per_node,
                               d_feature_list_ptr,
@@ -954,7 +954,7 @@ void PSGPUWrapper::MergePull(std::shared_ptr<HeterContext> gpu_task) {
                     PADDLE_ENFORCE_EQ((k == merge_num),
                                       true,
                                       phi::errors::InvalidArgument(
-                                          "shardid=%d, k=%d, merge_num=%d",
+                                          "shardid=%d, k=%d, merge_num=%d.",
                                           shard_id,
                                           k,
                                           merge_num));
@@ -1001,7 +1001,7 @@ void PSGPUWrapper::MergePull(std::shared_ptr<HeterContext> gpu_task) {
                     PADDLE_ENFORCE_EQ((k == merge_num),
                                       true,
                                       phi::errors::InvalidArgument(
-                                          "shardid=%d, k=%d, merge_num=%d",
+                                          "shardid=%d, k=%d, merge_num=%d.",
                                           shard_id,
                                           k,
                                           merge_num));
