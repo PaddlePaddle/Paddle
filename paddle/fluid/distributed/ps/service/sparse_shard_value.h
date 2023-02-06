@@ -2,8 +2,7 @@
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
+// You may obtain a copy of the License 0//
 //     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
@@ -12,17 +11,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
-
-namespace phi {
-
-KernelSignature BroadcastTensorsGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "broadcast_tensors_grad", {"Out@GRAD"}, {}, {"X@GRAD"});
-}
-
-}  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(broadcast_tensors_grad,
-                           phi::BroadcastTensorsGradOpArgumentMapping);
+#pragma once
+#include <vector>
+namespace paddle {
+namespace distributed {
+struct GraphPsShardValues {
+  std::vector<size_t> offsets;
+  std::vector<uint64_t> keys;
+  std::vector<char*> values;
+  void clear() {
+    offsets.clear();
+    keys.clear();
+    values.clear();
+    offsets.shrink_to_fit();
+    keys.shrink_to_fit();
+    values.shrink_to_fit();
+  }
+};
+typedef std::vector<GraphPsShardValues> SparseShardValues;
+}  // namespace distributed
+}  // namespace paddle

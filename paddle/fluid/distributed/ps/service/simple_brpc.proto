@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,15 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// prim api which can't be generated
-#pragma once
+syntax = "proto2";
+package paddle.distributed.simple;
+option cc_generic_services = true;
 
-#include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/int_array.h"
-#include "paddle/phi/common/place.h"
-#include "paddle/phi/common/scalar.h"
-#include "paddle/utils/optional.h"
+message SimpleRpcRequest {
+    required int64 archive_size = 1;
+};
 
-namespace paddle {
-namespace prim {}  // namespace prim
-}  // namespace paddle
+message SimpleRpcResponse {
+    required int64 archive_size = 1;
+};
+
+service SimpleRpcService {
+    rpc handle_request(SimpleRpcRequest) returns (SimpleRpcResponse);
+};

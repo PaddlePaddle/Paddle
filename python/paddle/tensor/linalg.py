@@ -1921,6 +1921,7 @@ def svd(x, full_matrices=False, name=None):
             #                  U * UH == I
             #                  V * VH == I
     """
+
     if in_dygraph_mode():
         return _C_ops.svd(x, full_matrices)
     else:
