@@ -514,7 +514,7 @@ class BeamSearchFunctor<phi::GPUContext, T> {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "lod %s is not right in"
           " beam_search, please check your code.",
-          framework::LoDToString(selected_lod)));
+          phi::LoDToString(selected_lod)));
     }
 
     selected_ids->set_lod(selected_lod);

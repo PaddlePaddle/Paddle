@@ -19,15 +19,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/version.h"
 #include "paddle/phi/core/serialization.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 namespace paddle {
 namespace framework {
-
-std::string LoDToString(const LoD &lod) {
-  std::ostringstream stream;
-  stream << lod;
-  return stream.str();
-}
 
 LoD SliceInLevel(const LoD &in,
                  size_t level,

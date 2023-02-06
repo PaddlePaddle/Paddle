@@ -17,6 +17,8 @@
 
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/isfinite_op.h"
+#include "paddle/phi/core/tensor_utils.h"
+
 namespace paddle {
 namespace framework {
 
@@ -335,11 +337,11 @@ TEST(TensorFromDLPack, Tensor) {
     cpu_tensor.Resize(phi::make_ddim({3, 3}));
     paddle::platform::CPUPlace cpu_place;
     phi::CPUContext cpu_ctx(cpu_place);
-    paddle::framework::TensorFromVector<int>(src_vec, cpu_ctx, &cpu_tensor);
+    phi::TensorFromVector<int>(src_vec, cpu_ctx, &cpu_tensor);
     paddle::framework::DLPackTensor dlpack_tensor(cpu_tensor, 1);
 
     phi::DenseTensor dst_tensor;
-    paddle::framework::TensorFromDLPack(dlpack_tensor, &dst_tensor);
+    phi::TensorFromDLPack(dlpack_tensor, &dst_tensor);
 
     auto cpu_ptr = cpu_tensor.data<int>();
     auto src_ptr = dst_tensor.data<int>();
@@ -372,7 +374,7 @@ TEST(TensorFromDLPack, Tensor) {
     gpu_ctx.Wait();
 
     paddle::framework::DLPackTensor dlpack_tensor(gpu_tensor, 1);
-    paddle::framework::TensorFromDLPack(dlpack_tensor, &gpu_tensor_from_dlpack);
+    phi::TensorFromDLPack(dlpack_tensor, &gpu_tensor_from_dlpack);
     gpu_ctx.Wait();
 
     // Copy from GPU to CPU tensor for comparison

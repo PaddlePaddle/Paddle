@@ -15,6 +15,7 @@
 #pragma once
 #include <cstddef>
 #include <vector>
+#include <string>
 
 namespace phi {
 using LoD = std::vector<std::vector<std::size_t>>;
@@ -32,5 +33,7 @@ void AppendLoD(LoD* lod, const LoD& lod_length);
  * then length_lod = [[2, 1], [3, 2, 4]]
  */
 LoD ConvertToLengthBasedLoD(const LoD& offset_lod);
+
+std::string LoDToString(const LoD& lod);
 
 }  // namespace  phi

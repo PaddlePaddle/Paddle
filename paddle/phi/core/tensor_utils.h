@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <dlpack/dlpack.h>
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/selected_rows.h"
@@ -128,6 +129,11 @@ void TensorToVector(const phi::DenseTensor& src,
 
 phi::DenseTensor ReshapeToMatrix(const phi::DenseTensor& src, int num_col_dims);
 
+// convert dlpack's DLTensor to tensor
+
+void TensorFromDLPack(const ::DLTensor& dl_tensor, phi::DenseTensor* dst);
+void TensorFromDLPack(const DLManagedTensor* src, phi::DenseTensor* dst);
+
 template <typename T>
 T GetValue(const phi::DenseTensor* x);
 
@@ -143,5 +149,9 @@ inline T GetValue(const Context& dev_ctx, const DenseTensor& x) {
   }
   return value;
 }
+
+std::ostream& operator<<(std::ostream& os, const LoD& lod);
+
+std::ostream& operator<<(std::ostream& os, const DenseTensor& t);
 
 }  // namespace phi

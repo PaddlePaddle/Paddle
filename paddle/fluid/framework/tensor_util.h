@@ -111,11 +111,6 @@ void TensorToVector(const phi::DenseTensor& src,
 template <typename T>
 void TesnorToVector(const phi::DenseTensor& src, std::vector<T>* dst);
 
-// convert dlpack's DLTensor to tensor
-
-void TensorFromDLPack(const ::DLTensor& dl_tensor, phi::DenseTensor* dst);
-void TensorFromDLPack(const DLManagedTensor* src, phi::DenseTensor* dst);
-
 //
 // The implementation of template functions.
 //
@@ -558,8 +553,6 @@ inline void TensorToVector(const phi::DenseTensor& src,
   delete[] array;
 }
 
-std::ostream& operator<<(std::ostream& os, const LoD& lod);
-
 template <typename T>
 inline T GetValue(const phi::DenseTensor* x) {
   T value = static_cast<T>(0);
@@ -581,6 +574,3 @@ inline T GetValue(const phi::DenseTensor* x) {
 }  // namespace framework
 }  // namespace paddle
 
-namespace phi {
-std::ostream& operator<<(std::ostream& os, const DenseTensor& t);
-}

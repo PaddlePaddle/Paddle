@@ -737,11 +737,11 @@ PYBIND11_MODULE(libpaddle, m) {
     phi::DenseTensor tensor;
 
     if (dl.device.device_type == kDLCPU) {
-      paddle::framework::TensorFromDLPack(dmt, &tensor);
+      phi::TensorFromDLPack(dmt, &tensor);
     }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (dl.device.device_type == kDLGPU) {
-      paddle::framework::TensorFromDLPack(dmt, &tensor);
+      phi::TensorFromDLPack(dmt, &tensor);
     }
 #endif
     return tensor;
@@ -763,7 +763,7 @@ PYBIND11_MODULE(libpaddle, m) {
   });
 
   m.def("set_printoptions", [](const py::kwargs &kwargs) {
-    auto &print_opt = framework::PrintOptions::Instance();
+    auto &print_opt = phi::PrintOptions::Instance();
     if (kwargs.contains("precision")) {
       print_opt.precision = kwargs["precision"].cast<int>();
     }

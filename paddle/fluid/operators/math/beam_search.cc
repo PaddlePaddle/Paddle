@@ -103,7 +103,7 @@ class BeamSearchFunctor<phi::CPUContext, T> {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "lod %s is not right in"
           " beam_search, please check your code.",
-          framework::LoDToString(lod)));
+          phi::LoDToString(lod)));
     }
     selected_ids->set_lod(lod);
     selected_scores->set_lod(lod);

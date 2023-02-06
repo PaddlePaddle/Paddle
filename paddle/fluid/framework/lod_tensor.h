@@ -56,8 +56,6 @@ void MergeLoDTensor(phi::DenseTensor* target,
  */
 using LoD = std::vector<Vector<size_t>>;
 
-std::string LoDToString(const LoD& lod);
-
 LoD SliceInLevel(const LoD& in,
                  size_t level,
                  size_t elem_begin,

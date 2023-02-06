@@ -888,6 +888,157 @@ phi::DenseTensor ReshapeToMatrix(const phi::DenseTensor& src,
   return res;
 }
 
+// get tensor data point by DLDataType
+void* GetDstPtrByDLDataType(DLDataType type,
+                            phi::DenseTensor* dst,
+                            const phi::Place& dst_place) {
+  // vector types not currently supported
+  PADDLE_ENFORCE_LE(
+      type.lanes,
+      1,
+      phi::errors::Unimplemented("Vector type is not supported currently."));
+
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+  phi::DeviceContext* dev_ctx = pool.Get(dst->place());
+
+  switch (type.bits) {
+    case 8:
+      if (type.code == kDLInt)
+        return static_cast<void*>(dev_ctx->Alloc<int8_t>(dst));
+      if (type.code == kDLUInt)
+        return static_cast<void*>(dev_ctx->Alloc<uint8_t>(dst));
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code,
+          type.bits));
+    case 16:
+      if (type.code == kDLInt)
+        return static_cast<void*>(dev_ctx->Alloc<int16_t>(dst));
+      if (type.code == kDLFloat)
+        return static_cast<void*>(dev_ctx->Alloc<phi::dtype::float16>(dst));
+      if (type.code == kDLBfloat)
+        return static_cast<void*>(dev_ctx->Alloc<phi::dtype::bfloat16>(dst));
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code,
+          type.bits));
+    case 32:
+      if (type.code == kDLInt)
+        return static_cast<void*>(dev_ctx->Alloc<int32_t>(dst));
+      if (type.code == kDLFloat)
+        return static_cast<void*>(dev_ctx->Alloc<float>(dst));
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code,
+          type.bits));
+    case 64:
+      if (type.code == kDLInt)
+        return static_cast<void*>(dev_ctx->Alloc<int64_t>(dst));
+      if (type.code == kDLFloat)
+        return static_cast<void*>(dev_ctx->Alloc<double>(dst));
+      if (type.code == kDLComplex)
+        return static_cast<void*>(
+            dev_ctx->Alloc<phi::dtype::complex<float>>(dst));
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code,
+          type.bits));
+    case 128:
+      if (type.code == kDLComplex)
+        return static_cast<void*>(
+            dev_ctx->Alloc<phi::dtype::complex<double>>(dst));
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code,
+          type.bits));
+    default:
+      PADDLE_THROW(phi::errors::Unimplemented("Unsupported DLDataType.bits %d.",
+                                              type.bits));
+  }
+}
+
+void TensorFromDLPack(const ::DLTensor& dl_tensor, phi::DenseTensor* dst) {
+  phi::CPUPlace dst_place = phi::CPUPlace();
+  phi::CPUPlace src_place = phi::CPUPlace();
+
+  std::vector<int64_t> vec;
+  std::copy(dl_tensor.shape,
+            dl_tensor.shape + dl_tensor.ndim,
+            std::back_inserter(vec));
+
+  phi::DDim vddim = phi::make_ddim(vec);
+
+  dst->Resize(vddim);
+  ::DLDataType type = dl_tensor.dtype;
+  void* dst_ptr = GetDstPtrByDLDataType(type, dst, dst_place);
+
+  auto src_ptr = static_cast<const void*>(dl_tensor.data);
+  auto size = phi::product(vddim) * type.bits / 8;
+
+  if (dl_tensor.device.device_type == kDLCPU) {
+    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+  }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (dl_tensor.device.device_type == kDLGPU) {
+    phi::CUDAPlace dst_place = phi::CUDAPlace(dl_tensor.device.device_id);
+    phi::CUDAPlace src_place = phi::CUDAPlace(dl_tensor.device.device_id);
+    dst_ptr = GetDstPtrByDLDataType(type, dst, dst_place);
+    auto* ctx = phi::DeviceContextPool::Instance().GetByPlace(dst_place);
+    paddle::memory::Copy(
+        dst_place,
+        dst_ptr,
+        src_place,
+        src_ptr,
+        size,
+        reinterpret_cast<const phi::GPUContext&>(*ctx).stream());
+  }
+#endif
+#ifdef PADDLE_WITH_XPU
+  PADDLE_THROW(platform::errors::Unimplemented("XPUPlace is not supported"));
+#endif
+}
+
+void TensorFromDLPack(const DLManagedTensor* src, phi::DenseTensor* dst) {
+  std::vector<int64_t> vec;
+  std::copy(src->dl_tensor.shape,
+            src->dl_tensor.shape + src->dl_tensor.ndim,
+            std::back_inserter(vec));
+
+  phi::DDim vddim = phi::make_ddim(vec);
+  dst->Resize(vddim);
+  ::DLDataType type = src->dl_tensor.dtype;
+
+  auto src_ptr = static_cast<const void*>(src->dl_tensor.data);
+  auto size = phi::product(vddim) * type.bits / 8;
+
+  if (src->dl_tensor.device.device_type == kDLCPU) {
+    phi::CPUPlace dst_place = phi::CPUPlace();
+    phi::CPUPlace src_place = phi::CPUPlace();
+    void* dst_ptr = GetDstPtrByDLDataType(type, dst, dst_place);
+    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+  }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (src->dl_tensor.device.device_type == kDLGPU) {
+    phi::CUDAPlace dst_place = phi::CUDAPlace(src->dl_tensor.device.device_id);
+    phi::CUDAPlace src_place = phi::CUDAPlace(src->dl_tensor.device.device_id);
+    void* dst_ptr = GetDstPtrByDLDataType(type, dst, dst_place);
+    auto* ctx = phi::DeviceContextPool::Instance().GetByPlace(dst_place);
+    // Fix copy by share allocation.
+    paddle::memory::Copy(
+        dst_place,
+        dst_ptr,
+        src_place,
+        src_ptr,
+        size,
+        reinterpret_cast<const phi::GPUContext&>(*ctx).stream());
+  }
+#endif
+  src->deleter(const_cast<DLManagedTensor*>(src));
+#ifdef PADDLE_WITH_XPU
+  PADDLE_THROW(phi::errors::Unimplemented("XPUPlace is not supported"));
+#endif
+}
+
 template <typename T>
 T GetValue(const phi::DenseTensor* x) {
   T value = static_cast<T>(0);
@@ -922,5 +1073,136 @@ template phi::dtype::float16 GetValue(const phi::DenseTensor* x);
 template phi::dtype::complex<float> GetValue(const phi::DenseTensor* x);
 
 template phi::dtype::complex<double> GetValue(const phi::DenseTensor* x);
+
+template <typename T>
+std::string format_tensor(const phi::DenseTensor& tensor) {
+  // TODO(zhiqiu): use the print option to format tensor.
+  return "NOT IMPLEMENTED";
+}
+
+template <typename T>
+std::ostream& print_tensor(std::ostream& os, const phi::DenseTensor& tensor) {
+  auto inspect = tensor.data<T>();
+  auto element_num = tensor.numel();
+
+  os << "  - data: [";
+  // Note: int8_t && uint8_t is typedf of char, ostream unable to print properly
+  if (typeid(int8_t) == typeid(T) || typeid(uint8_t) == typeid(T)) {
+    if (element_num > 0) {
+      os << signed(inspect[0]);
+      for (int j = 1; j < element_num; ++j) {
+        os << " " << signed(inspect[j]);
+      }
+    }
+  } else {
+    if (element_num > 0) {
+      os << inspect[0];
+      for (int j = 1; j < element_num; ++j) {
+        os << " " << inspect[j];
+      }
+    }
+  }
+  os << "]";
+  return os;
+}
+
+template <>
+std::ostream& print_tensor<phi::dtype::complex<float>>(
+    std::ostream& os, const phi::DenseTensor& tensor) {
+  auto inspect = tensor.data<phi::dtype::complex<float>>();
+  auto element_num = tensor.numel();
+
+  os << "  - data: [";
+  if (element_num > 0) {
+    os << signed(inspect[0].real) << "+" << signed(inspect[0].imag) << "j";
+    for (int j = 1; j < element_num; ++j) {
+      os << " " << signed(inspect[j].real) << "+" << signed(inspect[j].imag)
+         << "j";
+    }
+  }
+  os << "]";
+  return os;
+}
+
+template <>
+std::ostream& print_tensor<phi::dtype::complex<double>>(
+    std::ostream& os, const phi::DenseTensor& tensor) {
+  auto inspect = tensor.data<phi::dtype::complex<double>>();
+  auto element_num = tensor.numel();
+
+  os << "  - data: [";
+  if (element_num > 0) {
+    os << signed(inspect[0].real) << "+" << signed(inspect[0].imag) << "j";
+    for (int j = 1; j < element_num; ++j) {
+      os << " " << signed(inspect[j].real) << "+" << signed(inspect[j].imag)
+         << "j";
+    }
+  }
+  os << "]";
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const LoD& lod) {
+  // NOTE(xiongkun):
+  // https://stackoverflow.com/questions/5195512/namespaces-and-operator-resolution
+  // if we don't redefine, the operator << of phi / framework LoD is not found.
+  paddle::string::operator<<(os, lod);
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const phi::DenseTensor& t) {
+  if (t.lod().size() > 0) {
+    os << "  - lod: " << t.lod() << "\n";
+  }
+
+  os << "  - place: " << t.place() << "\n";
+  os << "  - shape: [" << t.dims() << "]\n";
+  os << "  - layout: " << phi::DataLayoutToString(t.layout()) << "\n";
+
+  DenseTensor tensor;
+  tensor.Resize(t.dims());
+  if (paddle::platform::is_cpu_place(t.place())) {
+    tensor.ShareDataWith(t);
+  } else {
+    phi::CPUPlace place;
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+    auto& dev_ctx = *pool.Get(t.place());
+    phi::Copy(dev_ctx, t, t.place(), false, &tensor);
+    dev_ctx.Wait();
+  }
+
+#define PrintTensorCallback(cpp_type, data_type) \
+  do {                                           \
+    if (tensor.dtype() == data_type) {           \
+      os << "  - dtype: " << data_type << "\n";  \
+      phi::print_tensor<cpp_type>(os, tensor);   \
+      return os;                                 \
+    }                                            \
+  } while (0);
+
+  using namespace paddle::experimental;
+  PrintTensorCallback(bool, DataType::BOOL);
+  PrintTensorCallback(int8_t, DataType::INT8);
+  PrintTensorCallback(uint8_t, DataType::UINT8);
+  PrintTensorCallback(int16_t, DataType::INT16);
+  PrintTensorCallback(uint16_t, DataType::UINT16);
+  PrintTensorCallback(int32_t, DataType::INT32);
+  PrintTensorCallback(uint32_t, DataType::UINT32);
+  PrintTensorCallback(int64_t, DataType::INT64);
+  PrintTensorCallback(uint64_t, DataType::UINT64);
+  PrintTensorCallback(bfloat16, DataType::BFLOAT16);
+  PrintTensorCallback(float16, DataType::FLOAT16);
+  PrintTensorCallback(float, DataType::FLOAT32);
+  PrintTensorCallback(double, DataType::FLOAT64);
+  PrintTensorCallback(complex64, DataType::COMPLEX64);
+  PrintTensorCallback(complex128, DataType::COMPLEX128);
+
+  // pstring no support for print_tensor
+
+  // PrintTensorCallback(pstring, DataType::PSTRING);
+  // PD_FOR_EACH_DATA_TYPE(PrintTensorCallback);
+  VLOG(1) << "PrintVar: unrecognized data type:" << t.type();
+  return os;
+}
 
 }  // namespace phi

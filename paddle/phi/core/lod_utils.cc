@@ -15,6 +15,7 @@
 #include "paddle/phi/core/lod_utils.h"
 
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 namespace phi {
 
@@ -54,6 +55,12 @@ LoD ConvertToLengthBasedLoD(const LoD &offset_lod) {
     length_lod.push_back(level);
   }
   return length_lod;
+}
+
+std::string LoDToString(const LoD &lod) {
+  std::ostringstream stream;
+  stream << lod;
+  return stream.str();
 }
 
 }  // namespace phi
