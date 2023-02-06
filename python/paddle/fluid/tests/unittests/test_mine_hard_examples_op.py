@@ -15,7 +15,9 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+
+from paddle import _legacy_C_ops
 
 
 class TestMineHardExamplesOp(OpTest):
@@ -48,6 +50,7 @@ class TestMineHardExamplesOp(OpTest):
 
     def setUp(self):
         self.op_type = "mine_hard_examples"
+        self.python_api = _legacy_C_ops.mine_hard_examples
         self.set_data()
 
     def init_test_data(self):

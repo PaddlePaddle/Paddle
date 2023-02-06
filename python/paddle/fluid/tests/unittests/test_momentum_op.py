@@ -16,11 +16,12 @@ import unittest
 
 import numpy
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from paddle import _legacy_C_ops
 from paddle.fluid.op import Operator
 
 
@@ -54,9 +55,31 @@ def calculate_momentum_by_numpy(
     return param_out, velocity_out
 
 
+def momentum_wrapper(mu=0.001, use_nesterov=False):
+    def inner_func(param, grad, velocity, lr):
+        _, _, _ = _legacy_C_ops.momentum(
+            param,
+            grad,
+            velocity,
+            lr,
+            None,
+            param,
+            velocity,
+            None,
+            'mu',
+            mu,
+            'use_nesterov',
+            use_nesterov,
+        )
+
+    return inner_func
+
+
 class TestMomentumOp1(OpTest):
     def setUp(self):
         self.op_type = "momentum"
+        self.python_api = momentum_wrapper()
+        self.python_out_sig = ['Out']
         self.dtype = np.float32
         self.init_dtype()
 
@@ -99,7 +122,9 @@ class TestMomentumOpFp16(TestMomentumOp1):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output(atol=1e-3)
+        self.check_output(
+            atol=1e-3,
+        )
 
 
 class TestMomentumOp2(OpTest):
@@ -107,6 +132,8 @@ class TestMomentumOp2(OpTest):
 
     def setUp(self):
         self.op_type = "momentum"
+        self.python_api = momentum_wrapper(mu=0.0001, use_nesterov=True)
+        self.python_out_sig = ['Out']
 
         param = np.random.random((123, 321)).astype("float32")
         grad = np.random.random((123, 321)).astype("float32")
@@ -139,6 +166,38 @@ class TestMomentumOp2(OpTest):
         self.check_output()
 
 
+def lars_momentum_wrapper(
+    mu=0.0001,
+    lars_coeff=0.001,
+    lars_weight_decay=0.0005,
+    multi_precision=False,
+    rescale_grad=1.0,
+):
+    def inner_func(param, grad, velocity, lr, master_params=None):
+        tmp, tmp2 = _legacy_C_ops.lars_momentum(
+            [param],
+            [grad],
+            [velocity],
+            [lr],
+            [param],
+            [velocity],
+            "mu",
+            mu,
+            "lars_coeff",
+            lars_coeff,
+            "lars_weight_decay",
+            [lars_weight_decay],
+            "multi_precision",
+            False,
+            "epsilon",
+            0,
+            "rescale_grad",
+            rescale_grad,
+        )
+
+    return inner_func
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
@@ -146,10 +205,12 @@ class TestLarsMomentumOpWithMP(OpTest):
     def setUp(self):
         self.config()
         self.op_type = "lars_momentum"
+        self.python_out_sig = ['Out']
         mu = 0.0001
         lars_coeff = 0.001
         lars_weight_decay = 0.0005
         rescale_grad = 1.0
+        self.python_api = lars_momentum_wrapper()
 
         params = []
         grads = []
@@ -221,7 +282,8 @@ class TestLarsMomentumOpWithMP(OpTest):
         if core.is_compiled_with_cuda():
             place = fluid.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place)
+                # new dynamic does not support multi_precision yet
+                self.check_output_with_place(place, check_dygraph=False)
 
     def config(self):
         self.params_num = 1
@@ -234,6 +296,9 @@ class TestLarsMomentumOp(OpTest):
         mu = 0.0001
         lars_coeff = 0.001
         lars_weight_decay = 0.0005
+        self.python_api = lars_momentum_wrapper(
+            mu=mu, lars_coeff=lars_coeff, lars_weight_decay=lars_weight_decay
+        )
 
         params = []
         grads = []
@@ -558,6 +623,30 @@ class TestMomentumV2(unittest.TestCase):
         self.assertRaises(ValueError, paddle.optimizer.Momentum, momentum=None)
 
 
+def momentum_with_decay(
+    mu=0.0001,
+    use_nesterov=False,
+    regularization_method='l2_decay',
+    regularization_coeff=0.9,
+):
+    def inner_wrapper(param, grad, velocity, lr):
+        return paddle._C_ops.momentum_(
+            param,
+            grad,
+            velocity,
+            lr,
+            None,
+            mu,
+            use_nesterov,
+            regularization_method,
+            regularization_coeff,
+            False,
+            1.0,
+        )
+
+    return inner_wrapper
+
+
 class TestMomentumOpWithDecay(OpTest):
     def setUp(self):
         self.op_type = "momentum"
@@ -565,13 +654,20 @@ class TestMomentumOpWithDecay(OpTest):
         self.use_nesterov = True
         self.regularization_method = 'l2_decay'
         self.regularization_coeff = 0.9
+        mu = 0.0001
         self.init_config()
+        self.python_api = momentum_with_decay(
+            mu=mu,
+            use_nesterov=self.use_nesterov,
+            regularization_method=self.regularization_method,
+            regularization_coeff=self.regularization_coeff,
+        )
+        self.python_out_sig = ['Out']
 
         param = np.random.random((123, 321)).astype(self.dtype)
         grad = np.random.random((123, 321)).astype(self.dtype)
         velocity = np.zeros((123, 321)).astype(self.dtype)
         learning_rate = np.array([0.001]).astype(np.float32)
-        mu = 0.0001
         use_nesterov = self.use_nesterov
         regularization_method = self.regularization_method
         regularization_coeff = self.regularization_coeff
@@ -617,7 +713,9 @@ class TestMomentumOpWithDecayFP16(TestMomentumOpWithDecay):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output(atol=1e-3)
+        self.check_output(
+            atol=1e-3,
+        )
 
 
 class TestMomentumOpWithDecay2(TestMomentumOpWithDecay):
