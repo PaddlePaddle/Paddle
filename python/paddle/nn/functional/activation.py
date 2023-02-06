@@ -463,7 +463,7 @@ def prelu(x, weight, data_format="NCHW", name=None):
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
         weight (Tensor): The learnable parameter with data type same as ``x``.
-            The weight shape is [1] or [in], where `in` is the input channel of ``x``.
+            The weight shape is [], [1] or [in], where `in` is the input channel of ``x``.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
         data_format(str, optional): Data format that specifies the layout of input.
             It may be "NC", "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Default: "NCHW".
@@ -495,12 +495,11 @@ def prelu(x, weight, data_format="NCHW", name=None):
             #    [ 6.  ,  7.  ,  8.  ,  9.  ]]]]
     """
     assert (
-        len(weight.shape) == 1
-    ), "The dim count of weight shape should be 1 in prelu()."
+        len(weight.shape) == 0 or len(weight.shape) == 1
+    ), "The dim count of weight shape should be 0 or 1 in prelu()."
 
     mode = 'all'
-    if weight.shape[0] > 1:
-
+    if len(weight.shape) == 1 and weight.shape[0] > 1:
         true_data_format = [
             'NC',
             'NCL',
@@ -654,10 +653,7 @@ def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
     is_test = not training
 
     if in_dygraph_mode():
-        out, noise = _legacy_C_ops.rrelu(
-            x, 'lower', lower, 'upper', upper, 'is_test', is_test
-        )
-        return out
+        return _C_ops.rrelu(x, lower, upper, is_test)
     else:
         check_variable_and_dtype(
             x, 'X', ['float16', 'float32', 'float64'], 'rrelu'

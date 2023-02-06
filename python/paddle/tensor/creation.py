@@ -35,7 +35,6 @@ from ..fluid.framework import (
     _in_eager_without_dygraph_check,
     device_guard,
 )
-from ..fluid.initializer import Constant, Initializer
 from ..fluid.layers import utils
 from ..fluid.param_attr import ParamAttr
 from ..framework import (
@@ -140,7 +139,10 @@ def create_global_var(
         stop_gradient=True,
     )
     helper.set_variable_initializer(
-        var, initializer=Constant(value=float(value), force_cpu=force_cpu)
+        var,
+        initializer=paddle.nn.initializer.ConstantInitializer(
+            value=float(value), force_cpu=force_cpu
+        ),
     )
 
     return var
@@ -214,7 +216,7 @@ def create_parameter(
     check_type(
         default_initializer,
         'default_initializer',
-        (type(None), Initializer),
+        (type(None), paddle.nn.initializer.Initializer),
         'create_parameter',
     )
 
@@ -533,6 +535,9 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
 
 def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
 
+    if isinstance(data, np.number):  # Special case for numpy scalars
+        data = np.array(data)
+
     if not isinstance(data, np.ndarray):
 
         def _handle_dtype(data, dtype):
@@ -627,6 +632,8 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
     if isinstance(data, Variable) and (dtype is None or dtype == data.dtype):
         output = data
     else:
+        if isinstance(data, np.number):  # Special case for numpy scalars
+            data = np.array(data)
 
         if not isinstance(data, np.ndarray):
             if np.isscalar(data) and not isinstance(data, str):
@@ -689,6 +696,18 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
 
     If the ``data`` is already a Tensor, copy will be performed and return a new tensor.
     If you only want to change stop_gradient property, please call ``Tensor.stop_gradient = stop_gradient`` directly.
+
+    .. code-block:: text
+
+        We use the dtype conversion rules following this:
+                Keep dtype
+        np.number ───────────► paddle.Tensor
+                                (0D-Tensor)
+                    default_dtype
+        Python Number ───────────────► paddle.Tensor
+                                        (1D-Tensor)
+                    Keep dtype
+        np.ndarray ───────────► paddle.Tensor
 
     Args:
         data(scalar|tuple|list|ndarray|Tensor): Initial data for the tensor.

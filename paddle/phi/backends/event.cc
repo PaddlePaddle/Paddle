@@ -59,7 +59,7 @@ void Event::Record(const stream::Stream* stream) { stream->RecordEvent(this); }
 
 bool Event::Query() const { return device_->QueryEvent(this); }
 
-void Event::Synchonrize() const { device_->SynchronizeEvent(this); }
+void Event::Synchronize() const { device_->SynchronizeEvent(this); }
 
 const Place& Event::GetPlace() const { return place_; }
 

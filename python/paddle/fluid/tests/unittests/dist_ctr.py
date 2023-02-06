@@ -33,26 +33,23 @@ class TestDistCTR2x2(TestDistRunnerBase):
 
         dnn_input_dim, lr_input_dim = dist_ctr_reader.load_data_meta()
         """ network definition """
-        dnn_data = fluid.layers.data(
+        dnn_data = paddle.static.data(
             name="dnn_data",
             shape=[-1, 1],
             dtype="int64",
             lod_level=1,
-            append_batch_size=False,
         )
-        lr_data = fluid.layers.data(
+        lr_data = paddle.static.data(
             name="lr_data",
             shape=[-1, 1],
             dtype="int64",
             lod_level=1,
-            append_batch_size=False,
         )
-        label = fluid.layers.data(
+        label = paddle.static.data(
             name="click",
             shape=[-1, 1],
             dtype="int64",
             lod_level=0,
-            append_batch_size=False,
         )
 
         # build dnn model
@@ -63,7 +60,7 @@ class TestDistCTR2x2(TestDistRunnerBase):
             size=[dnn_input_dim, dnn_layer_dims[0]],
             param_attr=fluid.ParamAttr(
                 name="deep_embedding",
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.Constant(value=0.01),
             ),
             is_sparse=IS_SPARSE,
         )
@@ -77,7 +74,7 @@ class TestDistCTR2x2(TestDistRunnerBase):
                 size=dim,
                 activation="relu",
                 weight_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant(value=0.01)
+                    initializer=paddle.nn.initializer.Constant(value=0.01)
                 ),
                 name='dnn-fc-%d' % i,
             )
@@ -90,7 +87,7 @@ class TestDistCTR2x2(TestDistRunnerBase):
             size=[lr_input_dim, 1],
             param_attr=fluid.ParamAttr(
                 name="wide_embedding",
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.Constant(value=0.01),
             ),
             is_sparse=IS_SPARSE,
         )

@@ -14,15 +14,13 @@
 
 # TODO: define functions to manipulate a tensor
 
-from collections import Counter
-
 import numpy as np
 
 import paddle
 from paddle import _C_ops
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
-from ..common_ops_import import fill_constant
+from ..common_ops_import import Variable, fill_constant
 from ..fluid.data_feeder import (
     check_dtype,
     check_type,
@@ -37,7 +35,6 @@ from ..framework import (
     dygraph_only,
     in_dygraph_mode,
 )
-from ..static import Variable
 from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
 
 __all__ = []
@@ -545,6 +542,10 @@ def unstack(x, axis=0, num=None):
             y = paddle.unstack(x, axis=1)  # unstack with second axis, which results 3 tensors with shape=[2, 5]
 
     """
+    if not (-x.ndim <= axis < x.ndim):
+        raise ValueError(
+            '`axis` must be in the range [-{0}, {0})'.format(x.ndim)
+        )
     if in_dygraph_mode():
         if num is None:
             num = x.shape[axis]
@@ -1916,31 +1917,20 @@ def split(x, num_or_sections, axis=0, name=None):
     input = x
     dim = axis
     if in_dygraph_mode():
-        num = None
-        attrs = ()
-
         if isinstance(dim, Variable):
             dim = dim.numpy()
             dim = dim.item(0)
         assert len(input.shape) + dim >= 0, "(rank(x) + axis) must >= 0"
         dim = (len(input.shape) + dim) if dim < 0 else dim
-        attrs += ('axis', dim)
 
-        if isinstance(num_or_sections, int):
-            num = num_or_sections
-            attrs += ('num', num_or_sections)
-        elif isinstance(num_or_sections, (list, tuple)):
-            num = len(num_or_sections)
+        if isinstance(num_or_sections, (list, tuple)):
             if utils._contain_var(num_or_sections):
                 for index, item in enumerate(num_or_sections):
                     if isinstance(item, Variable):
                         num_or_sections[index] = num_or_sections[index].numpy()[
                             0
                         ]
-                attrs += ('sections', list(num_or_sections))
-            else:
-                attrs += ('sections', list(num_or_sections))
-        else:
+        elif not isinstance(num_or_sections, int):
             raise TypeError(
                 "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
                 "received %s." % (type(num_or_sections))
@@ -2764,14 +2754,19 @@ def unbind(input, axis=0):
             # x2.shape [3, 5]
             # x3.shape [3, 5]
     """
+    if not isinstance(axis, (int)):
+        raise TypeError(
+            "The type of 'axis'  must be int, but received %s." % (type(axis))
+        )
+
+    if axis not in range(-input.ndim, input.ndim):
+        raise ValueError(
+            f'The axis must in range({-input.ndim}, {input.ndim}).'
+        )
+
     if in_dygraph_mode():
         return _C_ops.unbind(input, axis)
     else:
-        if not isinstance(axis, (int)):
-            raise TypeError(
-                "The type of 'axis'  must be int, but received %s."
-                % (type(axis))
-            )
         if isinstance(axis, np.generic):
             axis = np.asscalar(axis)
         input_shape = input.shape
@@ -4346,11 +4341,9 @@ def moveaxis(x, source, destination, name=None):
         dst
     ), "'source' must have the same number with 'destination'"
 
-    count = Counter(src).most_common(1)
-    if count[0][1] > 1:
+    if len(src) != len(set(src)):
         raise ValueError("Each elemment of 'source' must be unique!")
-    count = Counter(dst).most_common(1)
-    if count[0][1] > 1:
+    if len(dst) != len(set(dst)):
         raise ValueError("Each elemment of 'destination' must be unique!")
 
     ndim = len(x.shape)

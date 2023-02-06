@@ -293,6 +293,7 @@ std::vector<std::string> OperatorDistAttr::fields_{"process_mesh",
                                                    "impl_idx",
                                                    "is_recompute",
                                                    "execution_stream",
+                                                   "stream_priority",
                                                    "scheduling_priority"};
 
 OperatorDistAttr::OperatorDistAttr(const OpDesc& op) {
@@ -318,6 +319,8 @@ OperatorDistAttr& OperatorDistAttr::operator=(
   std::swap(this->impl_idx_, tmp.impl_idx_);
   std::swap(this->is_recompute_, tmp.is_recompute_);
   std::swap(this->execution_stream_, tmp.execution_stream_);
+  std::swap(this->stream_priority_, tmp.stream_priority_);
+  std::swap(this->scheduling_priority_, tmp.scheduling_priority_);
   std::swap(this->annotated_, tmp.annotated_);
   // Note: Make sure all tensor dist attr has the same process_mesh
   set_process_mesh(this->process_mesh_);
@@ -349,6 +352,7 @@ void OperatorDistAttr::initialize(const OpDesc* op) {
   impl_idx_ = 0;
   is_recompute_ = false;
   execution_stream_ = kDefault;
+  stream_priority_ = 0;
   scheduling_priority_ = 0;
 }
 
@@ -361,6 +365,7 @@ void OperatorDistAttr::copy_from(const OperatorDistAttr& dist_attr) {
   set_impl_idx(dist_attr.impl_idx());
   set_is_recompute(dist_attr.is_recompute());
   set_execution_stream(dist_attr.execution_stream());
+  set_stream_priority(dist_attr.stream_priority());
   set_scheduling_priority(dist_attr.scheduling_priority());
   set_annotated(dist_attr.annotated());
 }
@@ -599,6 +604,7 @@ std::string OperatorDistAttr::to_string() const {
   str += "{impl_type: " + impl_type_ + ", ";
   str += "impl_idx: " + std::to_string(impl_idx_) + ", ";
   str += "execution_stream: " + execution_stream_ + ", ";
+  str += "stream_priority: " + std::to_string(stream_priority_) + ", ";
   str += "scheduling_priority: " + std::to_string(scheduling_priority_) + ", ";
   str += "annotated: [" + str_join(annotated_) + "], ";
   str += "\nprocess_mesh: " + process_mesh_.to_string() + ", ";
@@ -682,6 +688,9 @@ bool operator==(const OperatorDistAttr& lhs, const OperatorDistAttr& rhs) {
     return false;
   }
   if (lhs.execution_stream() != rhs.execution_stream()) {
+    return false;
+  }
+  if (lhs.stream_priority() != rhs.stream_priority()) {
     return false;
   }
   if (lhs.scheduling_priority() != rhs.scheduling_priority()) {
