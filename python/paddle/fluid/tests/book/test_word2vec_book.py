@@ -88,7 +88,7 @@ def train(
         )
 
         concat_embed = paddle.concat(
-            input=[embed_first, embed_second, embed_third, embed_forth], axis=1
+            [embed_first, embed_second, embed_third, embed_forth], axis=1
         )
         hidden1 = paddle.static.nn.fc(
             x=concat_embed, size=HIDDEN_SIZE, activation='sigmoid'

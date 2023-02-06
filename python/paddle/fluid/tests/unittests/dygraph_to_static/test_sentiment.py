@@ -249,7 +249,7 @@ class BiGRU(fluid.dygraph.Layer):
         gru_forward_tanh = paddle.tanh(gru_forward)
         gru_backward_tanh = paddle.tanh(gru_backward)
         encoded_vector = paddle.concat(
-            input=[gru_forward_tanh, gru_backward_tanh], axis=2
+            [gru_forward_tanh, gru_backward_tanh], axis=2
         )
         encoded_vector = paddle.max(encoded_vector, axis=1)
         fc_2 = self._fc2(encoded_vector)

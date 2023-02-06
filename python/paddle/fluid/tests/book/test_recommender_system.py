@@ -92,7 +92,7 @@ def get_usr_combined_features():
     usr_job_fc = paddle.static.nn.fc(x=usr_job_emb, size=16)
 
     concat_embed = paddle.concat(
-        input=[usr_fc, usr_gender_fc, usr_age_fc, usr_job_fc], axis=1
+        [usr_fc, usr_gender_fc, usr_age_fc, usr_job_fc], axis=1
     )
 
     usr_combined_features = paddle.static.nn.fc(
@@ -151,7 +151,7 @@ def get_mov_combined_features():
     )
 
     concat_embed = paddle.concat(
-        input=[mov_fc, mov_categories_hidden, mov_title_conv], axis=1
+        [mov_fc, mov_categories_hidden, mov_title_conv], axis=1
     )
 
     # FIXME(dzh) : need tanh operator
