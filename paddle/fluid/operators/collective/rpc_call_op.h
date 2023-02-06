@@ -84,9 +84,6 @@ class RpcCallOpKernel : public framework::OpKernel<T> {
 
     // if req is async, controller should be on heap to avoid deleting
     auto* ctrl = new brpc::Controller();
-    auto cid = ctrl->call_id();
-    platform::RpcRequestStore::Instance().InsertCallId(request_id, &cid);
-
     ctrl->http_request().uri() = url.c_str();
     ctrl->http_request().set_method(brpc::HTTP_METHOD_POST);
     ctrl->http_request().SetHeader("Content-Type", "application/json");

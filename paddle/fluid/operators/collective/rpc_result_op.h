@@ -35,10 +35,8 @@ class RpcResultOpKernel : public framework::OpKernel<T> {
     int request_id = request_id_tensor->data<int>()[0];
 
     // wait for request event
-    auto* cid = platform::RpcRequestStore::Instance().GetCallId(request_id);
     auto event = platform::RpcRequestStore::Instance().GetEvent(request_id);
     event->Wait();
-    brpc::Join(*cid);
     const std::string& resp =
         platform::RpcRequestStore::Instance().GetResponse(request_id);
     VLOG(3) << "Request id " << request_id << " raw response: " << resp;

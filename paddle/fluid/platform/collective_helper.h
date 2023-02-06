@@ -16,6 +16,7 @@
 
 #include <brpc/channel.h>
 
+#include <chrono>
 #include <condition_variable>
 #include <map>
 #include <memory>
@@ -497,27 +498,16 @@ class RpcRequestStore {
     return request_id_;
   }
 
-  brpc::CallId* GetCallId(int request_id) {
-    return id_to_call_map_[request_id];
-  }
-
   std::shared_ptr<Semaphore> GetEvent(int request_id) {
     return id_to_event_map_[request_id];
-  }
-
-  std::string GetResponse(int request_id) {
-    return id_to_resp_map_[request_id];
   }
 
   std::string GetService(int request_id) {
     return id_to_service_map_[request_id];
   }
 
-  void InsertCallId(int request_id, brpc::CallId* call_id) {
-    if (request_id == 0) {
-      LOG(WARNING) << "Total num of requests have exceeded int limits.";
-    }
-    id_to_call_map_.emplace(request_id, call_id);
+  std::string GetResponse(int request_id) {
+    return id_to_resp_map_[request_id];
   }
 
   void InsertEvent(int request_id, const std::shared_ptr<Semaphore>& event) {
@@ -527,13 +517,6 @@ class RpcRequestStore {
     id_to_event_map_.emplace(request_id, event);
   }
 
-  void InsertResponse(int request_id, const std::string& resp) {
-    if (request_id == 0) {
-      LOG(WARNING) << "Total num of requests have exceeded int limits.";
-    }
-    id_to_resp_map_.emplace(request_id, resp);
-  }
-
   void InsertService(int request_id, const std::string& service) {
     if (request_id == 0) {
       LOG(WARNING) << "Total num of requests have exceeded int limits.";
@@ -541,10 +524,16 @@ class RpcRequestStore {
     id_to_service_map_.emplace(request_id, service);
   }
 
+  void InsertResponse(int request_id, const std::string& resp) {
+    if (request_id == 0) {
+      LOG(WARNING) << "Total num of requests have exceeded int limits.";
+    }
+    id_to_resp_map_.emplace(request_id, resp);
+  }
+
  private:
   std::mutex mutex_;
   int request_id_;
-  std::unordered_map<int, brpc::CallId*> id_to_call_map_;
   std::unordered_map<int, std::shared_ptr<Semaphore>> id_to_event_map_;
   std::unordered_map<int, std::string> id_to_resp_map_;
   std::unordered_map<int, std::string> id_to_service_map_;
