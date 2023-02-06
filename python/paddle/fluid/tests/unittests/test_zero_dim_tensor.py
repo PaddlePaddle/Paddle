@@ -87,6 +87,7 @@ unary_api_list = [
     paddle.nn.functional.softmax,
     paddle.nn.functional.log_softmax,
     paddle.nn.functional.gumbel_softmax,
+    paddle.nn.functional.alpha_dropout,
 ]
 
 inplace_api_list = [
