@@ -26,9 +26,8 @@
 #include "paddle/fluid/framework/program_desc.h"
 
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/prim/api/generated/prim_api/prim_api.h"
-#include "paddle/fluid/prim/api/manual/prim_api/prim_api.h"
-#include "paddle/fluid/prim/api/manual/utils/utils.h"
+#include "paddle/fluid/prim/api/manual_prim/prim_manual_api.h"
+#include "paddle/fluid/prim/api/manual_prim/utils/utils.h"
 #include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/phi/api/include/tensor.h"
