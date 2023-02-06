@@ -69,5 +69,6 @@ TEST(type_support, type_storage) {
   paddle::framework::ir::TypeStorage storage_a;
   storage_a.Initialize(abstract_type_a);
 
-  EXPECT_EQ(storage_a.GetAbstractType(), abstract_type_a);
+  EXPECT_EQ(storage_a.GetAbstractType().GetTypeID(),
+            abstract_type_a.GetTypeID());
 }
