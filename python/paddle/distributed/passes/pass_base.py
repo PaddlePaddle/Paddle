@@ -249,11 +249,13 @@ PassBase._AFTER_WHITE_LISTS_DICT = {
 
 # The index of pass in this list represent the order in which the pass is processed.
 PassBase._PASS_PROCESS_ORDER_LIST = [
+    "fuse_bn_add_act",
     "fuse_gemm_epilogue",
 ]
 
 PassBase._COMMON_RULES = [
     _fusion_opt_last_rule,
+    _fusion_opt_list_rule,
     lambda pass_before, pass_after: type(pass_before) != type(pass_after),
     _make_rule_from_white_lists_dict(
         PassBase._BEFORE_WHITE_LISTS_DICT, PassBase._AFTER_WHITE_LISTS_DICT
