@@ -239,6 +239,7 @@ class BaseTestCases:
             self.check_grad(
                 ['X'],
                 'Out',
+                in_place=True,
                 user_defined_grads=[
                     np_logcumsumexp_grad(
                         self.inputs['X'],

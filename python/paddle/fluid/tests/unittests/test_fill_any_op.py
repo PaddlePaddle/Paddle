@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 
@@ -23,6 +23,7 @@ import paddle
 class TestFillAnyOp(OpTest):
     def setUp(self):
         self.op_type = "fill_any"
+        self.python_api = paddle._legacy_C_ops.fill_any
         self.dtype = 'float64'
         self.value = 0.0
         self.init()

@@ -17,7 +17,9 @@ import math
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+
+import paddle
 
 
 def round_c_single_element(val):
@@ -41,6 +43,7 @@ def get_compute_type(dtype):
 class TestFakeQuantizeAbsMaxOp(OpTest):
     def setUp(self):
         self.op_type = 'fake_quantize_abs_max'
+        self.python_api = paddle._legacy_C_ops.fake_quantize_abs_max
         self.attrs = {'bit_length': 8}
 
     def _fake_quantize_abs_max(
@@ -90,6 +93,9 @@ class TestFakeQuantizeAbsMaxOp(OpTest):
 class TestFakeChannelWiseQuantizeAbsMaxOp(OpTest):
     def setUp(self):
         self.op_type = 'fake_channel_wise_quantize_abs_max'
+        self.python_api = (
+            paddle._legacy_C_ops.fake_channel_wise_quantize_abs_max
+        )
         self.attrs = {'bit_length': 8}
 
     def _fake_channel_wise_quantize_abs_max(
@@ -155,6 +161,7 @@ class TestFakeChannelWiseQuantizeAbsMaxOp(OpTest):
 class TestFakeQuantizeRangeAbsMaxOp(OpTest):
     def setUp(self):
         self.op_type = 'fake_quantize_range_abs_max'
+        self.python_api = paddle._legacy_C_ops.fake_quantize_range_abs_max
         self.attrs = {'bit_length': 5, 'window_size': 1}
 
     def _fake_quantize_range_abs_max(
@@ -225,6 +232,8 @@ class TestFakeQuantizeRangeAbsMaxOp(OpTest):
 class TestMovingAverageAbsMaxScaleOp(OpTest):
     def setUp(self):
         self.op_type = 'moving_average_abs_max_scale'
+        self.python_api = paddle._legacy_C_ops.moving_average_abs_max_scale
+
         self.attrs = {'moving_rate': float(0.9), 'is_test': False}
 
     def _moving_average_abs_max_scale(self, dtype, input_shape, distribution):
@@ -259,6 +268,9 @@ class TestMovingAverageAbsMaxScaleOp(OpTest):
 class TestFakeQuantizeMovingAverageAbsMaxOp(OpTest):
     def setUp(self):
         self.op_type = 'fake_quantize_moving_average_abs_max'
+        self.python_api = (
+            paddle._legacy_C_ops.fake_quantize_moving_average_abs_max
+        )
         self.attrs = {'bit_length': 5, 'moving_rate': 0.9, 'is_test': False}
 
     def _fake_quantize_moving_average_abs_max(
@@ -348,6 +360,8 @@ class TestFakeQuantizeMovingAverageAbsMaxOp(OpTest):
 class TestFakeQuantizeDequantizeAbsMaxOp(OpTest):
     def setUp(self):
         self.op_type = 'fake_quantize_dequantize_abs_max'
+        self.python_api = paddle._legacy_C_ops.fake_quantize_dequantize_abs_max
+
         self.attrs = {'bit_length': 8}
 
     def _fake_quantize_dequantize_abs_max(
@@ -387,6 +401,9 @@ class TestFakeQuantizeDequantizeAbsMaxOp(OpTest):
 class TestChannelWiseFakeQuantizeDequantizeAbsMaxOp(OpTest):
     def setUp(self):
         self.op_type = 'fake_channel_wise_quantize_dequantize_abs_max'
+        self.python_api = (
+            paddle._legacy_C_ops.fake_channel_wise_quantize_dequantize_abs_max
+        )
         self.attrs = {'bit_length': 8}
 
     def _fake_channel_wise_quantize_dequantize_abs_max(
@@ -489,6 +506,8 @@ class TestChannelWiseQuantizeOp(OpTest):
     def setUp(self):
         self.set_args()
         self.op_type = "quantize_linear"
+        self.python_api = paddle._legacy_C_ops.quantize_linear
+
         x = np.random.randn(4, 3, 64, 64).astype(self.data_type)
         yq, scale = channel_wise_quantize_max_abs(
             x, self.bit_length, self.quant_axis
@@ -524,6 +543,8 @@ class TestChannelWiseQuantizeOpTrain(OpTest):
     def setUp(self):
         self.set_args()
         self.op_type = "quantize_linear"
+        self.python_api = paddle._legacy_C_ops.quantize_linear
+
         x = np.random.randn(4, 3, 64, 64).astype(self.data_type)
         yq, scale = channel_wise_quantize_max_abs(
             x, self.bit_length, self.quant_axis
@@ -553,6 +574,7 @@ class TestquantizeOp(OpTest):
     def setUp(self):
         self.set_args()
         self.op_type = "quantize_linear"
+        self.python_api = paddle._legacy_C_ops.quantize_linear
         x = np.random.randn(31, 65).astype(self.data_type)
         yq, scale = quantize_max_abs(x, self.max_range)
         scale = np.array(scale).astype(self.data_type)
@@ -580,6 +602,8 @@ class TestquantizeOpTrain(TestquantizeOp):
     def setUp(self):
         self.set_args()
         self.op_type = "quantize_linear"
+        self.python_api = paddle._legacy_C_ops.quantize_linear
+
         self.attrs = {
             'bit_length': self.bit_length,
             'quant_axis': self.quant_axis,

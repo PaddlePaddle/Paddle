@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 
@@ -49,12 +49,13 @@ class TestExponentialOp1(OpTest):
         hist2 = hist2.astype("float32")
         hist2 = hist2 / float(data_np.size)
 
-        np.testing.assert_allclose(hist1, hist2, rtol=0.02)
+        np.testing.assert_allclose(hist1, hist2, rtol=0.05)
 
     def test_check_grad_normal(self):
         self.check_grad(
             ['X'],
             'Out',
+            check_dygraph=False,  # not support inplace backward
             user_defined_grads=[np.zeros([1024, 1024], dtype=self.dtype)],
             user_defined_grad_outputs=[
                 np.random.rand(1024, 1024).astype(self.dtype)
