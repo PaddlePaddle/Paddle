@@ -182,6 +182,7 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
 
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+#if 0
     auto place = ctx.GetPlace();
     PADDLE_ENFORCE_EQ(
         platform::is_xpu_place(place),
@@ -344,6 +345,7 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
         has_shortcut,
         fuse_add);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "resnet_unit_grad_fusion");
+#endif
   }
 };
 

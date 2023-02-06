@@ -26,6 +26,7 @@ void IndexSelectKernel(const Context& ctx,
                        const DenseTensor& index,
                        int dim,
                        DenseTensor* output) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
   auto input_dim = x.dims();
   dim = dim >= 0 ? dim : dim + input_dim.size();
   const auto& index_type = index.dtype();
@@ -41,29 +42,29 @@ void IndexSelectKernel(const Context& ctx,
                         phi::DataType::INT32,
                         phi::DataType::INT64));
 
-  auto* in_data = x.data<T>();
+  auto* in_data = reinterpret_cast<const XPUType*>(x.data<T>());
   std::vector<int> in_shape = phi::vectorize<int>(input_dim);
   int index_len = output->dims()[dim];
-  T* out_data = ctx.template Alloc<T>(output);
+  XPUType* out_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(output));
   int r = 0;
   if (index_type == phi::DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();
-    r = xpu::gather<T, int64_t>(ctx.x_context(),
-                                in_data,
-                                index_data,
-                                out_data,
-                                in_shape,
-                                index_len,
-                                dim);
+    r = xpu::gather<XPUType, int64_t>(ctx.x_context(),
+                                      in_data,
+                                      index_data,
+                                      out_data,
+                                      in_shape,
+                                      index_len,
+                                      dim);
   } else {
     const int* index_data = index.data<int>();
-    r = xpu::gather<T, int>(ctx.x_context(),
-                            in_data,
-                            index_data,
-                            out_data,
-                            in_shape,
-                            index_len,
-                            dim);
+    r = xpu::gather<XPUType, int>(ctx.x_context(),
+                                  in_data,
+                                  index_data,
+                                  out_data,
+                                  in_shape,
+                                  index_len,
+                                  dim);
   }
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "gather");
 }
@@ -75,5 +76,6 @@ PD_REGISTER_KERNEL(index_select,
                    ALL_LAYOUT,
                    phi::IndexSelectKernel,
                    float,
+                   phi::dtype::float16,
                    int,
                    int64_t) {}

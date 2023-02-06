@@ -40,25 +40,26 @@ void EmbeddingKernel(const Context &ctx,
   auto *table_t = &weight;
   auto &dev_ctx = ctx;
 
-//   auto *table = table_t->data<T>();
-//   auto *output = dev_ctx.template Alloc<T>(output_t);
+  //   auto *table = table_t->data<T>();
+  //   auto *output = dev_ctx.template Alloc<T>(output_t);
 
-  auto table = reinterpret_cast<const XPUType*>(table_t->data<T>());
-  auto output = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(output_t));
+  auto table = reinterpret_cast<const XPUType *>(table_t->data<T>());
+  auto output =
+      reinterpret_cast<XPUType *>(dev_ctx.template Alloc<T>(output_t));
 
-  auto* xpu_ctx = dev_ctx.x_context();
+  auto *xpu_ctx = dev_ctx.x_context();
   xpu::ctx_guard RAII_GUARD(xpu_ctx);
 
-//   const int64_t *ids = ids_t->data<int64_t>();
+  //   const int64_t *ids = ids_t->data<int64_t>();
   const int64_t *ids;
   if (inputx.dtype() == phi::DataType::INT64) {
     // printf("embedding, int64\n");
     ids = ids_t->data<int64_t>();
   } else if (inputx.dtype() == phi::DataType::INT16) {
     // printf("embedding, int16\n");
-    int64_t *ids_tmp = RAII_GUARD.alloc_l3_or_gm<int64_t>(ids_t->numel());;
-    int r =
-        xpu::cast<int16_t, int64_t>(xpu_ctx, ids_t->data<int16_t>(), ids_tmp, ids_t->numel());
+    int64_t *ids_tmp = RAII_GUARD.alloc_l3_or_gm<int64_t>(ids_t->numel());
+    int r = xpu::cast<int16_t, int64_t>(
+        xpu_ctx, ids_t->data<int16_t>(), ids_tmp, ids_t->numel());
     ids = ids_tmp;
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
   } else {
@@ -79,17 +80,22 @@ void EmbeddingKernel(const Context &ctx,
   size_t n = table_t->dims()[1];
 
   int r = xpu::embedding<XPUType, int64_t>(xpu_ctx,
-                                     table,
-                                     (const int64_t *)ids,
-                                     output,
-                                     xm,
-                                     n,
-                                     ym,
-                                     static_cast<int>(padding_idx));
+                                           table,
+                                           (const int64_t *)ids,
+                                           output,
+                                           xm,
+                                           n,
+                                           ym,
+                                           static_cast<int>(padding_idx));
 
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "embedding");
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(embedding, XPU, ALL_LAYOUT, phi::EmbeddingKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(embedding,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::EmbeddingKernel,
+                   float,
+                   phi::dtype::float16) {}

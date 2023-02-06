@@ -1707,6 +1707,12 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                        platform::TracerEventType::OperatorInner,
                                        1,
                                        platform::EventRole::kInnerOp);
+    std::chrono::time_point<std::chrono::steady_clock> tag_start;
+    if (std::getenv("XPU_PADDLE_OP_TIME") != nullptr) {
+      tag_start = std::chrono::steady_clock::now();
+      std::cout << "op_start: " << type_ << "\n";
+    }
+
     if (run_phi_kernel_) {
       phi::KernelContext phi_kernel_context;
       if (enable_cache_runtime_context_ && !need_prepare_phi_data_ &&
@@ -1729,6 +1735,23 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     }
     if (fallback_to_cpu) {
       phi_kernel_.release();
+    }
+
+    if (std::getenv("XPU_PADDLE_OP_TIME") != nullptr) {
+      if (platform::is_xpu_place(place)) {
+        dev_ctx->Wait();
+      }
+      auto tag_end = std::chrono::steady_clock::now();
+      float time_use = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                           tag_end - tag_start)
+                           .count() /
+                       1000000.0;
+
+      std::cout << "op: " << type_ << ", " << time_use << ", "
+                << kernel_type_->place_ << ", " << kernel_type_->data_type_
+                << std::endl;
+      //   printf("op: %s, %0.6f ms, \n", Type().c_str(),
+      //   kernel_type_->place_.GetType() time_use);
     }
   }
 

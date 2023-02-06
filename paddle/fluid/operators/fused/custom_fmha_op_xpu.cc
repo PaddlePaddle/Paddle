@@ -49,12 +49,12 @@ class CustomFMHAXPUKernel : public framework::OpKernel<T> {
     xpu::Context* xpu_ctx = dev_ctx.x_context();
 
     const XPUType* qkv_ptr = reinterpret_cast<const XPUType*>(qkv->data<T>());
-    const int* host_seq_len_ptr =
-        reinterpret_cast<const int*>(host_seq_len->data<int>());
+    // const int* host_seq_len_ptr =
+    //     reinterpret_cast<const int*>(host_seq_len->data<int>());
     const int* cu_seq_len_ptr =
         reinterpret_cast<const int*>(cu_seq_len->data<int>());
-    printf("====> host_seq_len_ptr: %p\n", host_seq_len_ptr);
-    printf("====> cu_seq_len_ptr: %p\n", cu_seq_len_ptr);
+    // printf("====> host_seq_len_ptr: %p\n", host_seq_len_ptr);
+    // printf("====> cu_seq_len_ptr: %p\n", cu_seq_len_ptr);
 
     int tmp_size = host_seq_len->numel();
     int* tmp = reinterpret_cast<int*>(malloc(tmp_size * sizeof(int)));
@@ -135,8 +135,8 @@ class CustomFMHAGradXPUKernel : public framework::OpKernel<T> {
     xpu::ctx_guard RAII_GUARD(xpu_ctx);
 
     const XPUType* qkv_ptr = reinterpret_cast<const XPUType*>(qkv->data<T>());
-    const int* host_seq_len_ptr =
-        reinterpret_cast<const int*>(host_seq_len->data<int>());
+    // const int* host_seq_len_ptr =
+    //     reinterpret_cast<const int*>(host_seq_len->data<int>());
     const int* cu_seq_len_ptr =
         reinterpret_cast<const int*>(cu_seq_len->data<int>());
     const XPUType* s_out_ptr =
@@ -149,7 +149,7 @@ class CustomFMHAGradXPUKernel : public framework::OpKernel<T> {
     XPUType* d_qkv_ptr =
         reinterpret_cast<XPUType*>(d_qkv->mutable_data<T>(ctx.GetPlace()));
 
-    printf("====> grad host_seq_len_ptr: %p\n", host_seq_len_ptr);
+    // printf("====> grad host_seq_len_ptr: %p\n", host_seq_len_ptr);
     // printf("====> grad cu_seq_len_ptr: %p\n", cu_seq_len_ptr);
     int tmp_size = host_seq_len->numel();
     int* tmp = reinterpret_cast<int*>(malloc(tmp_size * sizeof(int)));
@@ -178,9 +178,15 @@ class CustomFMHAGradXPUKernel : public framework::OpKernel<T> {
     bool is_test = ctx.Attr<bool>("is_test");
 
     int qkv_size = total_tokens * num_heads * head_size;
-    XPUType* d_q_ptr = RAII_GUARD.alloc_l3_or_gm<XPUType>(qkv_size * 3);
-    XPUType* d_k_ptr = RAII_GUARD.alloc_l3_or_gm<XPUType>(qkv_size * 3);
-    XPUType* d_v_ptr = RAII_GUARD.alloc_l3_or_gm<XPUType>(qkv_size * 3);
+    XPUType* d_q_ptr = RAII_GUARD.alloc_l3_or_gm<XPUType>(qkv_size);
+    PADDLE_ENFORCE_NOT_NULL(
+        d_q_ptr, paddle::platform::errors::Fatal("XPU memory is not enough"));
+    XPUType* d_k_ptr = RAII_GUARD.alloc_l3_or_gm<XPUType>(qkv_size);
+    PADDLE_ENFORCE_NOT_NULL(
+        d_k_ptr, paddle::platform::errors::Fatal("XPU memory is not enough"));
+    XPUType* d_v_ptr = RAII_GUARD.alloc_l3_or_gm<XPUType>(qkv_size);
+    PADDLE_ENFORCE_NOT_NULL(
+        d_v_ptr, paddle::platform::errors::Fatal("XPU memory is not enough"));
     int r = xpu::mha_fusion_grad<XPUType, int16_t>(
         xpu_ctx,
         qkv_ptr,

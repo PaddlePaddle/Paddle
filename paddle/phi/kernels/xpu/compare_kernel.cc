@@ -33,36 +33,17 @@ void XPUCompareKernelImpl(const Context& dev_ctx,
                                             bool*,
                                             const std::vector<int>&,
                                             const std::vector<int>&)> func) {
-  //  VLOG(1) << "==> XPUCompareKernelImpl";
   auto x_shape = vectorize<int>(x.dims());
   auto y_shape = vectorize<int>(y.dims());
 
-//   auto x_data = reinterpret_cast<const XPUType*>(x.data<T>());
-//   auto y_data = reinterpret_cast<const XPUType*>(y.data<T>());
-#if 0
-  if (x.dtype() == phi::DataType::INT32) {
-     printf("XPUCompareKernelImpl x, INT32\n");
-  } else if (x.dtype() == phi::DataType::INT64) {
-     printf("XPUCompareKernelImpl x, INT64\n");
-  }
+  auto x_data = reinterpret_cast<const XPUType*>(x.data<T>());
+  auto y_data = reinterpret_cast<const XPUType*>(y.data<T>());
 
-  if (y.dtype() == phi::DataType::INT32) {
-     printf("XPUCompareKernelImpl y, INT32\n");
-  } else if (y.dtype() == phi::DataType::INT64) {
-     printf("XPUCompareKernelImpl y, INT64\n");
-  }
-#endif
   auto* out_data = dev_ctx.template Alloc<bool>(out);
 
-  //   int ret =
-  //       func(dev_ctx.x_context(), x_data, y_data, out_data, x_shape,
-  //       y_shape);
-  //   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "compare op");
-  (void)x_shape;
-  (void)y_shape;
-  //   (void)x_data;
-  //   (void)y_data;
-  (void)out_data;
+  int ret =
+      func(dev_ctx.x_context(), x_data, y_data, out_data, x_shape, y_shape);
+  PADDLE_ENFORCE_XDNN_SUCCESS(ret, "compare op");
 }
 
 #if 0

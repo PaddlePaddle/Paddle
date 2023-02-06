@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/arg_min_max_kernel.h"
 
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -38,7 +39,16 @@ void ArgMaxKernel(const Context& dev_ctx,
           DataType::INT64,
           DataType::INT32,
           dtype));
-  dev_ctx.template Alloc<int64_t>(out);
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
+  if (out->dtype() == phi::DataType::INT32) {
+    dev_ctx.template Alloc<int>(out);
+  } else if (out->dtype() == phi::DataType::INT64) {
+    dev_ctx.template Alloc<int64_t>(out);
+  } else {
+    PADDLE_THROW(
+        phi::errors::Unimplemented("argmax out only support int32 and int64"));
+  }
 
   DDim x_dims;
   int axis_val = axis.to<int>();
@@ -51,9 +61,18 @@ void ArgMaxKernel(const Context& dev_ctx,
     if (axis_val < 0) axis_val += x_dims.size();
   }
   auto xdims_vec = phi::vectorize<int>(x_dims);
-  int r = xpu::argmax(dev_ctx.x_context(),
-                      x.data<T>(),
-                      out->data<int64_t>(),
+  auto* xpu_ctx = dev_ctx.x_context();
+  xpu::ctx_guard RAII_GUARD(xpu_ctx);
+  int64_t* out_tmp;
+  if (out->dtype() == phi::DataType::INT32) {
+    out_tmp = RAII_GUARD.alloc_l3_or_gm<int64_t>(out->numel());
+  } else {
+    out_tmp = out->data<int64_t>();
+  }
+
+  int r = xpu::argmax(xpu_ctx,
+                      reinterpret_cast<const XPUType*>(x.data<T>()),
+                      out_tmp,
                       xdims_vec,
                       axis_val);
   PADDLE_ENFORCE_EQ(
@@ -62,6 +81,12 @@ void ArgMaxKernel(const Context& dev_ctx,
       errors::External("XPU argmax kernel return wrong value[%d %s].",
                        r,
                        XPUAPIErrorMsg[r]));
+  if (out->dtype() == phi::DataType::INT32) {
+    int r = xpu::cast<int64_t, int>(
+        xpu_ctx, out_tmp, out->data<int>(), out->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+  }
 }
 }  // namespace phi
-PD_REGISTER_KERNEL(arg_max, XPU, ALL_LAYOUT, phi::ArgMaxKernel, float) {}
+PD_REGISTER_KERNEL(
+    arg_max, XPU, ALL_LAYOUT, phi::ArgMaxKernel, float, phi::dtype::float16) {}
