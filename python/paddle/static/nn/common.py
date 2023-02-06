@@ -3703,7 +3703,7 @@ def embedding(
 
             x = paddle.static.data(name="x", shape = [2, 4], dtype=np.int64)
             embedding = paddle.static.nn.embedding(10, 3,
-                        weight_attr=paddle.nn.initializer.Constant(value=1.0))
+                        param_attr=paddle.nn.initializer.Constant(value=1.0))
             adam = paddle.optimizer.SGD(parameters=[embedding.weight], learning_rate=0.01)
             output = embedding(x)
             m_output=paddle.mean(output)
@@ -3749,7 +3749,7 @@ def embedding(
             x = paddle.to_tensor(x_data, stop_gradient=False)
 
             # embedding weight shape = [10, 3]
-            embedding = paddle.static.nn.embedding(10, 3, sparse=True)
+            embedding = paddle.static.nn.embedding(10, 3, is_sparse=True)
 
             # embedding weight data = [10, 3]
             w0 = np.full(shape=(10, 3), fill_value=2).astype(np.float32)
