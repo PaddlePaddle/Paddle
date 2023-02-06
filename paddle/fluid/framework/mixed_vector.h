@@ -24,6 +24,8 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/errors.h"
 #include "paddle/utils/none.h"
 #include "paddle/utils/optional.h"
 
@@ -149,7 +151,7 @@ class MixVector {
     // get cuda ptr. immutable
     const T *CUDAData(phi::Place place) const {
       PADDLE_ENFORCE_EQ(
-          place.GetType() == phi::AllocationType::GPU
+          place.GetType() == phi::AllocationType::GPU,
           true,
           phi::errors::Unavailable(
               "Place mismatch, CUDA Data must be on CUDA place."));
