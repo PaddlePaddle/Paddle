@@ -2096,86 +2096,6 @@ class TestBook(LayerTest):
             )
             return out
 
-    def test_sequence_expand(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            x = paddle.static.data(name='x', shape=[-1, 10], dtype='float32')
-            y = paddle.static.data(
-                name='y', shape=[-1, 10, 20], dtype='float32', lod_level=2
-            )
-            return layers.sequence_expand(x=x, y=y, ref_level=1)
-
-    def test_sequence_reshape(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            x = paddle.static.data(
-                name='x', shape=[-1, 8], dtype='float32', lod_level=1
-            )
-            out = layers.sequence_reshape(input=x, new_dim=16)
-            return out
-
-    def test_sequence_unpad(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            x = paddle.static.data(name='x', shape=[-1, 10, 5], dtype='float32')
-            length = paddle.static.data(
-                name='length', shape=[-1], dtype='int64'
-            )
-            return layers.sequence_unpad(x=x, length=length)
-
-    def test_sequence_softmax(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            seq_data = paddle.static.data(
-                name='seq_data',
-                shape=[-1, 10, 10],
-                dtype='float32',
-                lod_level=1,
-            )
-            seq = paddle.static.nn.fc(x=seq_data, size=20)
-            return layers.sequence_softmax(seq)
-
-    def test_sequence_unsqueeze(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            x = paddle.static.data(name='x', shape=[-1, 8, 2], dtype='float32')
-            out = paddle.unsqueeze(x, axis=[1])
-            return out
-
-    def test_sequence_scatter(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            x = paddle.static.data(name='x', shape=[3, 6], dtype='float32')
-            idx = paddle.static.data(
-                name='idx',
-                shape=[12, 1],
-                dtype='int32',
-                lod_level=1,
-            )
-            updates = paddle.static.data(
-                name='updates',
-                shape=[12, 1],
-                dtype='float32',
-                lod_level=1,
-            )
-            out = layers.sequence_scatter(input=x, index=idx, updates=updates)
-            return out
-
-    def test_sequence_slice(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            import numpy as np
-
-            seqs = paddle.static.data(
-                name='x', shape=[-1, 10, 5], dtype='float32', lod_level=1
-            )
-            offset = layers.assign(input=np.array([[0, 1]]).astype('int32'))
-            length = layers.assign(input=np.array([[2, 1]]).astype('int32'))
-            out = layers.sequence_slice(
-                input=seqs, offset=offset, length=length
-            )
-            return out
-
     def test_shuffle_batch(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
@@ -2237,14 +2157,6 @@ class TestBook(LayerTest):
                 max_rank=3,
             )
             return out
-
-    def test_sequence_enumerate(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            x = paddle.static.data(
-                name="input", shape=[-1, 1], dtype='int32', lod_level=1
-            )
-            out = layers.sequence_enumerate(input=x, win_size=2, pad_value=0)
 
     def test_row_conv(self):
         # TODO(minqiyang): dygraph do not support lod now
