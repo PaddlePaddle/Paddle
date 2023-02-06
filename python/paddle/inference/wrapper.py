@@ -17,6 +17,7 @@ from typing import Set
 
 import numpy as np
 
+import paddle
 import paddle.fluid.core as core
 from paddle.fluid.core import (
     AnalysisConfig,
@@ -55,9 +56,11 @@ def tensor_share_external_data(self, data):
     '''
     if isinstance(data, core.LoDTensor):
         self.share_external_data_bind(data)
+    elif isinstance(data, paddle.Tensor):
+        self.share_external_data_paddle_tensor_bind(data)
     else:
         raise TypeError(
-            "In share_external_data, we only support LoDTensor data type."
+            "In share_external_data, we only support Tensor and LoDTensor."
         )
 
 
