@@ -17,7 +17,9 @@
 #include <string>
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#ifdef PADDLE_WITH_TENSORRT
 #include "paddle/fluid/inference/tensorrt/helper.h"
+#endif
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 #define GET_IR_NODE(node__) GET_IR_NODE_FROM_SUBGRAPH(node__, node__, pattern);
@@ -294,6 +296,7 @@ void FlashAttentionFusePass::ApplyImpl(ir::Graph* graph) const {
   FusePassBase::Init(pattern_name, graph);
   auto* scope = param_scope();
 
+#ifdef PADDLE_WITH_TENSORRT
   auto trt_version = paddle::inference::tensorrt::GetTrtRuntimeVersion();
   if (std::get<0>(trt_version) * 1000 + std::get<1>(trt_version) * 100 +
           std::get<2>(trt_version) * 10 <
@@ -302,6 +305,9 @@ void FlashAttentionFusePass::ApplyImpl(ir::Graph* graph) const {
                "8.5.2.2. Stop this pass";
     return;
   }
+#else
+  return;
+#endif
 
   // pattern
   std::unordered_set<std::string> matmul_ops{"matmul", "matmul_v2"};

@@ -127,7 +127,7 @@ pass_library(dense_multihead_matmul_to_sparse_pass inference)
 pass_library(generate_pass DEPS pass_desc_proto)
 target_link_libraries(generate_pass pass_desc_proto)
 
-if(PADDLE_WITH_TENSORRT)
+if(WITH_TENSORRT)
   pass_library(trt_map_matmul_to_mul_pass inference)
   pass_library(trt_multihead_matmul_fuse_pass inference)
   pass_library(trt_flash_multihead_matmul_fuse_pass inference)
