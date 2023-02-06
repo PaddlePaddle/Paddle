@@ -29,7 +29,7 @@ class TrtConvertTransLayernormTest(TrtLayerAutoScanTest):
     def sample_program_configs(self):
         def conv_filter_datagen(dics):
             c = dics["c"]
-            x = np.random.random([dics["c"], dics["c"], 1, 1]) - 0.5
+            x = (np.random.random([dics["c"], dics["c"], 1, 1]) - 0.5) * 0.1
             return x.astype(np.float32)
 
         def elementwise_bias_datagen(dics):
