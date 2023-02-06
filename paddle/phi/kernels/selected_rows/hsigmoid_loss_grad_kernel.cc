@@ -14,9 +14,9 @@
 
 #include "paddle/phi/kernels/selected_rows/hsigmoid_loss_grad_kernel.h"
 
-#include "paddle/phi/core/mixed_vector.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/mixed_vector.h"
 #include "paddle/phi/kernels/cpu/hsigmoid_loss_grad.h"
 
 namespace phi {

@@ -143,12 +143,11 @@ static int ExpandByMemoryCopy(const phi::GPUContext& context,
 
 template <typename T>
 struct SequenceExpandFunctor<phi::GPUContext, T> {
-  void operator()(
-      const phi::GPUContext& context,
-      const LoDTensor& x,
-      const phi::Vector<size_t>& x_lod,   /*expand source lod*/
-      const phi::Vector<size_t>& ref_lod, /*expand referenced lod*/
-      LoDTensor* out) {
+  void operator()(const phi::GPUContext& context,
+                  const LoDTensor& x,
+                  const phi::Vector<size_t>& x_lod,   /*expand source lod*/
+                  const phi::Vector<size_t>& ref_lod, /*expand referenced lod*/
+                  LoDTensor* out) {
     int num_copys =
         ExpandByMemoryCopy<T>(context, x, out, x_lod, ref_lod, false);
     // Sometimes direct copies will be faster, this maybe need deeply analysis.
@@ -197,7 +196,7 @@ template <typename T>
 struct SequenceExpandGradFunctor<phi::GPUContext, T> {
   void operator()(const phi::GPUContext& context,
                   const LoDTensor& dout,
-                  const phi::Vector<size_t>& x_lod, /*expand source lod*/
+                  const phi::Vector<size_t>& x_lod,   /*expand source lod*/
                   const phi::Vector<size_t>& ref_lod, /*expand based lod*/
                   LoDTensor* dx) {
     int x_item_length = phi::product(dx->dims()) / dx->dims()[0];

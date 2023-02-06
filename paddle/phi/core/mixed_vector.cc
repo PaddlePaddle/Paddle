@@ -82,7 +82,7 @@ void CopyCPUDataToCUDAHelper(std::vector<T> *cpu_,
                                                                               \
   template <>                                                                 \
   void MixVector<__TYPE__>::VectorData::CopyCPUDataToCUDA(                    \
-      const phi::Place &place) const {                                   \
+      const phi::Place &place) const {                                        \
     CopyCPUDataToCUDAHelper<__TYPE__>(cpu_, &gpu_, &gpu_memory_size_, place); \
   }
 

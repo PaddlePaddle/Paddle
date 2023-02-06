@@ -65,11 +65,10 @@ static __global__ void sequence_expand_as_grad_kernel(
 
 template <typename T>
 struct SequenceExpandAsFunctor<phi::GPUContext, T> {
-  void operator()(
-      const phi::GPUContext &context,
-      const phi::DenseTensor &x,
-      const phi::Vector<size_t> &ref_lod, /*expand referenced lod*/
-      phi::DenseTensor *out) {
+  void operator()(const phi::GPUContext &context,
+                  const phi::DenseTensor &x,
+                  const phi::Vector<size_t> &ref_lod, /*expand referenced lod*/
+                  phi::DenseTensor *out) {
     int height = x.dims()[0];
     int width = phi::product(x.dims()) / height;
 

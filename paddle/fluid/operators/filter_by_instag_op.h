@@ -23,9 +23,9 @@
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/phi/core/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/phi/core/mixed_vector.h"
 
 namespace paddle {
 namespace operators {

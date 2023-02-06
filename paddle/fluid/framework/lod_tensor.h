@@ -21,12 +21,12 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/phi/core/mixed_vector.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/mixed_vector.h"
 
 namespace paddle {
 namespace framework {

@@ -17,11 +17,11 @@ limitations under the License. */
 #include <memory>
 
 #include "dnnl.hpp"  // NOLINT
-#include "paddle/phi/core/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/fused/multi_gru_op.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
+#include "paddle/phi/core/mixed_vector.h"
 
 namespace paddle {
 namespace operators {

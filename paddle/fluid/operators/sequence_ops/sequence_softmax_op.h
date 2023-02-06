@@ -21,11 +21,10 @@ namespace operators {
 
 template <typename DeviceContext, typename T>
 struct SequenceSoftmaxFunctor {
-  void operator()(
-      const DeviceContext &ctx,
-      const phi::DenseTensor &x,
-      const phi::Vector<size_t> &ref_lod, /*expand referenced lod*/
-      phi::DenseTensor *out);
+  void operator()(const DeviceContext &ctx,
+                  const phi::DenseTensor &x,
+                  const phi::Vector<size_t> &ref_lod, /*expand referenced lod*/
+                  phi::DenseTensor *out);
 };
 
 template <typename DeviceContext, typename T>
