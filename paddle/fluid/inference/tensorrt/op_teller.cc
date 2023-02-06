@@ -357,11 +357,11 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (!with_dynamic_shape) {
         return false;
       }
+#if IS_TRT_VERSION_LT(8400)
       auto* block = desc.Block();
       auto start_var_name = desc.Input("Start")[0];
       auto* start_var_desc = block->FindVar(start_var_name);
       auto start_dtype = start_var_desc->GetDataType();
-#if IS_TRT_VERSION_LT(8400)
       if (start_dtype == framework::proto::VarType::FP32) {
         return false;
       }
