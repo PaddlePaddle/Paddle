@@ -506,14 +506,14 @@ class PADDLE_API Tensor final {
    */
   Tensor& operator=(Tensor&& x) &;
 
-  /**
-   * @brief multiply operator
-   *
-   * @param x
-   * @param y
-   * @return Tensor
-   */
-  friend Tensor operator*(const Tensor& x, const Tensor& y);
+  // /**
+  //  * @brief multiply operator
+  //  *
+  //  * @param x
+  //  * @param y
+  //  * @return Tensor
+  //  */
+  // friend Tensor operator*(const Tensor& x, const Tensor& y);
 
   /* Part 8: Autograd methods */
 

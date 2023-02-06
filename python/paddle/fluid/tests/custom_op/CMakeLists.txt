@@ -37,7 +37,7 @@ py_test(test_custom_conj SRCS test_custom_conj.py)
 py_test(test_custom_linear SRCS test_custom_linear.py)
 py_test(test_custom_simple_slice SRCS test_custom_simple_slice.py)
 py_test(test_custom_tanh_double_grad SRCS test_custom_tanh_double_grad.py)
-py_test(test_custom_power SRCS test_custom_power_jit.py)
+py_test(test_custom_power_jit SRCS test_custom_power_jit.py)
 
 # other tests
 py_test(test_sysconfig SRCS test_sysconfig.py)

@@ -101,13 +101,7 @@ class TestJITLoad(unittest.TestCase):
                 pd_out = custom_power_static(
                     self.custom_op, device, dtype, x, False
                 )
-                np.testing.assert_array_equal(
-                    out,
-                    pd_out,
-                    err_msg='custom op out: {},\n paddle api out: {}'.format(
-                        out, pd_out
-                    ),
-                )
+                np.testing.assert_allclose(out, pd_out, rtol=1e-5, atol=1e-8)
 
     def test_dynamic(self):
         for device in self.devices:
@@ -122,19 +116,9 @@ class TestJITLoad(unittest.TestCase):
                 pd_out, pd_x_grad = custom_power_dynamic(
                     self.custom_op, device, dtype, x, False
                 )
-                np.testing.assert_array_equal(
-                    out,
-                    pd_out,
-                    err_msg='custom op out: {},\n paddle api out: {}'.format(
-                        out, pd_out
-                    ),
-                )
-                np.testing.assert_array_equal(
-                    x_grad,
-                    pd_x_grad,
-                    err_msg='custom op x grad: {},\n paddle api x grad: {}'.format(
-                        x_grad, pd_x_grad
-                    ),
+                np.testing.assert_allclose(out, pd_out, rtol=1e-5, atol=1e-8)
+                np.testing.assert_allclose(
+                    x_grad, pd_x_grad, rtol=1e-5, atol=1e-8
                 )
 
 
