@@ -98,7 +98,7 @@ class CublasLtAlgoCache {
     PADDLE_CUBLASLT_STATUS_CHECK(cublasLtMatmulAlgoCheck);
     if (status != CUBLAS_STATUS_SUCCESS ||
         heuristic_result.workspaceSize > param.workspace_size) {
-      VLOG(0) << "param.workspace_size is " << param.workspace_size;
+      // VLOG(0) << "param.workspace_size is " << param.workspace_size;
       param.time = std::numeric_limits<float>::max();
       return;
     }
@@ -168,7 +168,7 @@ class CublasLtAlgoCache {
       return nullptr;
     }
 
-    VLOG(0) << "m n k" << m << " " << n << " " << k;
+    // VLOG(0) << "m n k" << m << " " << n << " " << k;
 
     int64_t seed = 0;
     std::hash<int64_t> hash_fn;
@@ -183,16 +183,17 @@ class CublasLtAlgoCache {
       std::lock_guard<std::mutex> lock(cache_mutex_);
       auto it = map_.find(seed);
       if (it != map_.end()) {
-        VLOG(0) << "CublasLtAlgoSelect Found in cache";
+        VLOG(3) << "CublasLtAlgoSelect Found in cache";
         return &(it->second);
       }
     }
-    VLOG(0) << "CublasLtAlgoSelect Not Found in cache";
+    VLOG(3) << "CublasLtAlgoSelect Not Found in cache";
 
     // Get Ids
     // https://docs.nvidia.com/cuda/cublas/index.html#cublasLtMatmulAlgoGetIds
     cublasStatus_t status = CUBLAS_STATUS_SUCCESS;
-    std::vector<int> algo_ids(requested_algo_count_);
+    // std::vector<int> algo_ids(requested_algo_count_);
+    int algo_ids[requested_algo_count_];  // NOLINT
 
     int num_algo_ids;
     status = dyl::cublasLtMatmulAlgoGetIds(handle,
@@ -440,11 +441,11 @@ class CublasLtAlgoCache {
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&stop_event));
 
     if (step == 0) {
-      VLOG(0) << "No algo can be used";
+      VLOG(3) << "No algo can be used";
       return nullptr;
     }
 
-    VLOG(0) << "CublasLtAlgoSelect Start testRun " << step << " "
+    VLOG(3) << "CublasLtAlgoSelect Start testRun " << step << " "
             << params.size();
 
     for (int i = 0; i < step; i++) {
@@ -469,11 +470,11 @@ class CublasLtAlgoCache {
     while (params[res_id].time == 0) res_id++;
 
     if (res_id >= params.size()) {
-      VLOG(0) << "No algo can be used";
+      VLOG(3) << "No algo can be used";
       return nullptr;
     }
 
-    VLOG(0) << "algo selected";
+    VLOG(3) << "algo selected";
 
     ret = params[res_id].algo;
     std::lock_guard<std::mutex> lock(cache_mutex_);
@@ -484,31 +485,55 @@ class CublasLtAlgoCache {
 
   ~CublasLtAlgoCache() {
     // Serialize map_ to cache file
+    std::ofstream outfile;
+    outfile.open(config_filename_, std::ios::out | std::ios::trunc);
+    outfile << dyl::cublasLtGetCudartVersion() << std::endl;
+
+    for (const auto p : map_) {
+      outfile << p.first << " ";
+      for (int i = 0; i < 8; ++i) {
+        outfile << p.second.data[i] << " ";
+      }
+      outfile << std::endl;
+    }
+    outfile.close();
   }
 
  private:
   explicit CublasLtAlgoCache(int search_times) : search_times_(search_times) {
     // Init map_ from cache file
-    // FILE* fd;
-    // fd = fopen((config_filename).c_str(), "r");
-    // if (fd == NULL || config_filename.size() == 0) {
-    //   VLOG(3) << "No CublasLtAlgoCache file found";
-    // }
-    // size_t cublaslt_version;
-    // int64_t seed = 0;
-    // uint64_t algo_data[8];
-    // fscanf(fd, "%d\n", &cublaslt_version);
-    // VLOG(0) << "cublaslt_version " << cublaslt_version;
+    std::ifstream infile;
+    infile.open(config_filename_);
+    if (!infile.is_open()) {
+      VLOG(3) << "No CublasLtAlgoCache file found";
+      return;
+    }
+    size_t cublaslt_version, real_cublaslt_version;
+    int64_t seed = 0;
+    uint64_t algo_data[8];
+    infile >> cublaslt_version;
+    VLOG(1) << "cublaslt_version " << cublaslt_version;
 
-    // while (fscanf(fd, "%d %d %d %d %d %d %d %d %d\n", algo_data[0],
-    // algo_data[1], algo_data[2], algo_data[3],
-    //   algo_data[4], algo_data[5], algo_data[6], algo_data[7]) != EOF) {
-    //     for (int i = 0; i < 8; ++i) {
-    //       map_[seed].data[i] = algo_data[i];
-    //     }
-    // }
+    if (dyl::cublasLtGetCudartVersion() != cublaslt_version) {
+      LOG(INFO) << config_filename_
+                << " is not compatible with current cublaslt_version "
+                << real_cublaslt_version;
+      return;
+    }
+
+    while (!infile.eof()) {
+      infile >> seed >> algo_data[0] >> algo_data[1] >> algo_data[2] >>
+          algo_data[3] >> algo_data[4] >> algo_data[5] >> algo_data[6] >>
+          algo_data[7];
+
+      for (int i = 0; i < 8; ++i) {
+        map_[seed].data[i] = algo_data[i];
+      }
+    }
+    infile.close();
   }
-  fclose(fd);
+
+  std::string config_filename_{"/tmp/paddle_cublaslt_cache"};
   std::unordered_map<int64_t, cublasLtMatmulAlgo_t> map_;
   int search_times_;
   const int requested_algo_count_ = 100;

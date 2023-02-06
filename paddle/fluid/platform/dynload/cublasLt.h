@@ -64,7 +64,8 @@ namespace dynload {
   __macro(cublasLtMatmulAlgoConfigSetAttribute);    \
   __macro(cublasLtMatmulAlgoGetIds);                \
   __macro(cublasLtMatmulAlgoCapGetAttribute);       \
-  __macro(cublasLtMatmulAlgoCheck);
+  __macro(cublasLtMatmulAlgoCheck);                 \
+  __macro(cublasLtGetCudartVersion);
 #else
 #define CUBLASLT_BLAS_ROUTINE_EACH(__macro)      \
   __macro(cublasLtCreate);                       \
