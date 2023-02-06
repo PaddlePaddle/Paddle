@@ -45,8 +45,6 @@ void MultiGRUOp::InferShape(framework::InferShapeContext* ctx) const {
 
   auto layers = ctx->Attrs().Get<int>("layers");
   auto wx_dims = ctx->GetInputsDim("WeightX");
-  std::cout << "  size: " << wx_dims.size() << "   dim 0: " << wx_dims[0]
-            << "  dim 1: " << wx_dims[1] << std::endl;
   for (int i : {0, 1}) {
     PADDLE_ENFORCE_EQ(
         wx_dims[i][0],
