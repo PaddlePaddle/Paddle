@@ -120,6 +120,16 @@ int TransLayerNormPluginDynamic::initialize() TRT_NOEXCEPT {
                scale_.size() * sizeof(float),
                cudaMemcpyHostToDevice);
   } else {
+    cudaMalloc(&bias_gpu_, sizeof(float) * bias_.size());
+    cudaMemcpy(bias_gpu_,
+               bias_.data(),
+               bias_.size() * sizeof(float),
+               cudaMemcpyHostToDevice);
+    cudaMalloc(&scale_gpu_, sizeof(float) * scale_.size());
+    cudaMemcpy(scale_gpu_,
+               scale_.data(),
+               scale_.size() * sizeof(float),
+               cudaMemcpyHostToDevice);
     std::vector<half> fp16_bias_;
     std::vector<half> fp16_scale_;
     fp16_bias_.resize(bias_.size());
@@ -130,6 +140,7 @@ int TransLayerNormPluginDynamic::initialize() TRT_NOEXCEPT {
     for (int i = 0; i < scale_.size(); i++) {
       fp16_scale_[i] = static_cast<half>(scale_[i]);
     }
+
     cudaMalloc(&fp16_bias_gpu_, sizeof(half) * fp16_bias_.size());
     cudaMemcpy(fp16_bias_gpu_,
                fp16_bias_.data(),
@@ -139,16 +150,6 @@ int TransLayerNormPluginDynamic::initialize() TRT_NOEXCEPT {
     cudaMemcpy(fp16_scale_gpu_,
                fp16_scale_.data(),
                fp16_scale_.size() * sizeof(half),
-               cudaMemcpyHostToDevice);
-    cudaMalloc(&bias_gpu_, sizeof(float) * bias_.size());
-    cudaMemcpy(bias_gpu_,
-               bias_.data(),
-               bias_.size() * sizeof(float),
-               cudaMemcpyHostToDevice);
-    cudaMalloc(&scale_gpu_, sizeof(float) * scale_.size());
-    cudaMemcpy(scale_gpu_,
-               scale_.data(),
-               scale_.size() * sizeof(float),
                cudaMemcpyHostToDevice);
   }
   return 0;
@@ -162,6 +163,14 @@ void TransLayerNormPluginDynamic::terminate() TRT_NOEXCEPT {
   if (scale_gpu_) {
     cudaFree(scale_gpu_);
     scale_gpu_ = nullptr;
+  }
+  if (fp16_bias_gpu_) {
+    cudaFree(fp16_bias_gpu_);
+    fp16_bias_gpu_ = nullptr;
+  }
+  if (fp16_scale_gpu_) {
+    cudaFree(fp16_scale_gpu_);
+    fp16_scale_gpu_ = nullptr;
   }
 }
 
@@ -185,6 +194,15 @@ bool TransLayerNormPluginDynamic::supportsFormatCombination(
     const nvinfer1::PluginTensorDesc *in_out,
     int nb_inputs,
     int nb_outputs) TRT_NOEXCEPT {
+  int feature_size = bias_.size();
+  PADDLE_ENFORCE_GE(
+      feature_size,
+      0,
+      platform::errors::InvalidArgument(
+          "The feature size of layernorm feature_size must be positive,"
+          "but got:%d",
+          feature_size));
+
   PADDLE_ENFORCE_NOT_NULL(
       in_out,
       platform::errors::InvalidArgument(
@@ -199,9 +217,15 @@ bool TransLayerNormPluginDynamic::supportsFormatCombination(
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
     if (with_fp16_) {
-      return ((in.type == nvinfer1::DataType::kHALF) &&
-              (in.format == nvinfer1::PluginFormat::kLINEAR ||
-               in.format == nvinfer1::PluginFormat::kHWC8));
+      if (feature_size % 8 == 0) {
+        // now, we only support khwc8 for feature_size % 8 == 0
+        return ((in.type == nvinfer1::DataType::kHALF) &&
+                (in.format == nvinfer1::PluginFormat::kLINEAR ||
+                 in.format == nvinfer1::PluginFormat::kHWC8));
+      } else {
+        return ((in.type == nvinfer1::DataType::kHALF) &&
+                (in.format == nvinfer1::PluginFormat::kLINEAR));
+      }
     } else {
       return (in.type == nvinfer1::DataType::kFLOAT) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
@@ -308,6 +332,11 @@ int TransLayerNormPluginDynamic::enqueue(
                         "but got:%d",
                         variance_shape_[0]));
 
+  // transpose do not change numel
+  int trans_result_numel = input_numel;
+  std::vector<int> trans_result_shape{
+      input_shape[0], input_shape[2], input_shape[3], input_shape[1]};
+
   const auto input_ddim = phi::make_ddim(input_shape);
   int feature_size = static_cast<int>(input_ddim[1]);
   PADDLE_ENFORCE_EQ(feature_size,
@@ -356,8 +385,6 @@ int TransLayerNormPluginDynamic::enqueue(
     // transpose and norm do not change numel
     int trans_result_numel = input_numel;
     int norm_result_numel = input_numel;
-    std::vector<int> trans_result_shape{
-        input_shape[0], input_shape[2], input_shape[3], input_shape[1]};
     phi::DenseTensorMeta input_meta(phi::DataType::FLOAT32,
                                     phi::make_ddim(input_shape));
     phi::DenseTensorMeta bias_meta(phi::DataType::FLOAT32,
@@ -422,10 +449,6 @@ int TransLayerNormPluginDynamic::enqueue(
           static_cast<void *>(const_cast<half *>(input)),  // NOLINT
           input_numel * sizeof(half),
           place));
-      // transpose do not change numel
-      int trans_result_numel = input_numel;
-      std::vector<int> trans_result_shape{
-          input_shape[0], input_shape[2], input_shape[3], input_shape[1]};
       phi::DenseTensorMeta trans_result_meta(
           phi::DataType::FLOAT16, phi::make_ddim(trans_result_shape));
       std::shared_ptr<phi::Allocation> trans_result_alloc(
@@ -493,7 +516,7 @@ int TransLayerNormPluginDynamic::enqueue(
           phi::LayerNormDirectCUDAFunctor<half, float> layer_norm;
           layer_norm(stream,
                      input,
-                     input_shape,
+                     trans_result_shape,
                      bias_gpu_,
                      scale_gpu_,
                      layernorm_dst,
@@ -508,7 +531,7 @@ int TransLayerNormPluginDynamic::enqueue(
         phi::LayerNormDirectCUDAFunctor<half, float> layer_norm;
         layer_norm(stream,
                    input,
-                   input_shape,
+                   trans_result_shape,
                    bias_gpu_,
                    scale_gpu_,
                    layernorm_dst,
