@@ -242,8 +242,7 @@ template <typename T,
           int KeysPerBlock>
 void DispatchFMHASingleValueIteration(LaunchParams params,
                                       const phi::GPUContext& ctx) {
-  if (params.value_head_size <= KeysPerBlock ||
-      (KeysPerBlock == 64 && QueriesPerBlock == 64)) {
+  if (params.value_head_size <= KeysPerBlock) {
     DispatchFMHAAddMask<T,
                         ArchTag,
                         IsAligned,
@@ -295,11 +294,9 @@ void DispatchFMHAArchTag(LaunchParams params, const phi::GPUContext& ctx) {
   } else if (compute_capability == 70) {
     DispatchFMHAIsAligned<T, cutlass::arch::Sm70>(params, ctx);
   } else {
-    PADDLE_ENFORCE_EQ(true,
-                      false,
-                      phi::errors::Unimplemented(
-                          "Currently cutlass fused multihead attention kernel "
-                          "only support arch: SM80, SM75, SM70"));
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Currently cutlass fused multihead attention kernel "
+        "only support arch: SM80, SM75, SM70"));
     return;
   }
 }

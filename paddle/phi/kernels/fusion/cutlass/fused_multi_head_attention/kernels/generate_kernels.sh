@@ -31,6 +31,7 @@ EOF
                     echo "INSTANTIATE_ATTENTION_KERNEL_${kernel}_SM${sm}($dtype, $aligned, 32, 128, true, $add_mask, $mask_broadcast);" >> $FNAME
                     echo "INSTANTIATE_ATTENTION_KERNEL_${kernel}_SM${sm}($dtype, $aligned, 32, 128, false, $add_mask, $mask_broadcast);" >> $FNAME
                     echo "INSTANTIATE_ATTENTION_KERNEL_${kernel}_SM${sm}($dtype, $aligned, 64, 64, true, $add_mask, $mask_broadcast);" >> $FNAME
+                    echo "INSTANTIATE_ATTENTION_KERNEL_${kernel}_SM${sm}($dtype, $aligned, 64, 64, false, $add_mask, $mask_broadcast);" >> $FNAME
                 done;
             done;
         done;
