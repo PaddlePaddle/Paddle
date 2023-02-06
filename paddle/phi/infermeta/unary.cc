@@ -3654,6 +3654,10 @@ void SplitWithNumInferMeta(const MetaTensor& x,
     auto input_axis_dim = x.dims().at(axis_value);
     // step1: get formated sections
     std::vector<int64_t> sections_vec;
+    PADDLE_ENFORCE_NE(
+        num,
+        0,
+        phi::errors::InvalidArgument("Attr(num_or_sections) should not be 0."));
     PADDLE_ENFORCE_EQ(input_axis_dim % num,
                       0,
                       phi::errors::InvalidArgument(
@@ -4581,6 +4585,14 @@ void UniqueConsecutiveInferMeta(const MetaTensor& x,
                         "unique_consecutive should have output tensor out."));
 
   auto in_dims = x.dims();
+  if (x.dims().size() == 0) {
+    PADDLE_ENFORCE_EQ(axis.empty(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The Input(X) with 0-D Tensor, axis must be None"
+                          "But now the axis is %d.",
+                          axis[0]));
+  }
   if (return_inverse) {
     PADDLE_ENFORCE_NE(
         index,
