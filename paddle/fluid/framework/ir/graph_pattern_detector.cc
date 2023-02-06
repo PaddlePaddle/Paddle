@@ -2809,7 +2809,6 @@ PDNode *patterns::Bfloat16Placement::operator()(
                                        "concat",
                                        "conv2d",
                                        "conv2d_transpose",
-                                       "fused_conv",
                                        "elementwise_add",
                                        "elementwise_mul",
                                        "expand_v2",
