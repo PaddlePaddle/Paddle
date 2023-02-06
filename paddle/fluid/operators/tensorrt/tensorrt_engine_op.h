@@ -593,7 +593,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
             engine->engine()->bindingIsInput(bind_index)) {
           std::vector<int> shape_v(t.numel());
           if (type == framework::proto::VarType::INT32) {
-            VLOG(1) << "trt_op input [" << x << "] dtype is " << t.dtype();
             paddle::memory::Copy(platform::CPUPlace(),
                                  shape_v.data(),
                                  t.place(),
@@ -601,7 +600,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
                                  t.numel() * sizeof(int),
                                  nullptr);
           } else if (type == framework::proto::VarType::INT64) {
-            VLOG(1) << "trt_op input [" << x << "] dtype is " << t.dtype();
             auto int32_tensor = scope.FindVar(x + "_cast_to_INT32")
                                     ->GetMutable<phi::DenseTensor>();
             *int32_tensor = phi::Cast<int64_t>(
@@ -620,7 +618,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
 #endif
       }
       runtime_batch = t_shape[0];
-      VLOG(1) << "trt input [" << x << "] dtype is " << t.dtype();
+      VLOG(6) << "TRT input [" << x << "] dtype is " << t.dtype();
 
       auto indata_type = inference::tensorrt::PhiType2NvType(t.dtype());
       auto intrt_index = engine->engine()->getBindingIndex(x.c_str());
