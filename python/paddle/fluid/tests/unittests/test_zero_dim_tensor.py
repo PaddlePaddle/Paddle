@@ -205,8 +205,6 @@ class TestReduceAPI(unittest.TestCase):
             # 1) x is 0D
             if api in [paddle.all, paddle.any]:
                 x = paddle.randint(0, 2, []).astype('bool')
-            elif api in [paddle.std, paddle.var]:
-                x = paddle.full([], 1, 'float32')
             else:
                 x = paddle.rand([])
             x.stop_gradient = False
@@ -242,8 +240,6 @@ class TestReduceAPI(unittest.TestCase):
                 # 1) x is 0D
                 if api in [paddle.all, paddle.any]:
                     x = paddle.randint(0, 2, []).astype('bool')
-                elif api in [paddle.std, paddle.var]:
-                    x = paddle.full([], 1, 'float32')
                 else:
                     x = paddle.rand([])
                 x.stop_gradient = False
