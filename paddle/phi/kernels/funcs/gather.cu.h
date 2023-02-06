@@ -278,6 +278,7 @@ void GatherV2GradCUDAFunction(const DenseTensor* input,
                               DenseTensor* out,
                               const phi::GPUContext& ctx) {
   auto* index_data = index->data<U>();
+  bool zero_dim_index = index->dims().size() == 0;
   int64_t index_size = index->numel();
   int64_t input_size = input->numel();
   auto input_dim = input->dims();
