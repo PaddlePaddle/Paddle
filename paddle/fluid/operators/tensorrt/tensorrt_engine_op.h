@@ -618,7 +618,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
 #endif
       }
       runtime_batch = t_shape[0];
-      VLOG(6) << "TRT input [" << x << "] dtype is " << t.dtype();
+      VLOG(1) << "trt input [" << x << "] dtype is " << t.dtype();
 
       auto indata_type = inference::tensorrt::PhiType2NvType(t.dtype());
       auto intrt_index = engine->engine()->getBindingIndex(x.c_str());
@@ -653,7 +653,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
             "The TRT Engine OP only support "
             "float/int32_t/int64_t/float16/bool input."));
       }
-      VLOG(1) << "trt input finish [" << x << "] dtype is " << t.dtype();
     }
 
     // Bind output tensor to TRT.
