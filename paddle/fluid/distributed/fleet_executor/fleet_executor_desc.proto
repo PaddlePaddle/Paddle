@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-syntax = "proto2";
+syntax = "proto3";
 package paddle.distributed;
 
 message RankInfo {
-  required int64 rank = 1;
-  required string ip_port = 2;
+  int64 rank = 1;
+  string ip_port = 2;
 }
 
 message FleetExecutorDesc {
