@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/ir/type/type_support.h"
+#include "paddle/ir/type/type_support.h"
 #include <gtest/gtest.h>
 #include <unordered_map>
 
@@ -21,25 +21,20 @@ TEST(type_support, type_id) {
   class TypeB {};
 
   // (1) Test construct TypeID by TypeID::Get()
-  paddle::framework::ir::TypeID a_id =
-      paddle::framework::ir::TypeID::Get<TypeA>();
-  paddle::framework::ir::TypeID a_other_id =
-      paddle::framework::ir::TypeID::Get<TypeA>();
-  paddle::framework::ir::TypeID b_id =
-      paddle::framework::ir::TypeID::Get<TypeB>();
+  ir::TypeID a_id = ir::TypeID::Get<TypeA>();
+  ir::TypeID a_other_id = ir::TypeID::Get<TypeA>();
+  ir::TypeID b_id = ir::TypeID::Get<TypeB>();
   const void* type_a_storage = a_id.GetStorage();
   const void* type_b_storage = b_id.GetStorage();
   EXPECT_EQ(a_id, a_other_id);
   EXPECT_NE(a_id, b_id);
 
   // (2) Test construct TypeID by TypeID::Get(void*)
-  paddle::framework::ir::TypeID c_id =
-      paddle::framework::ir::TypeID::Get(a_other_id.GetStorage());
+  ir::TypeID c_id = ir::TypeID::Get(a_other_id.GetStorage());
   EXPECT_EQ(c_id, a_other_id);
 
   // (3) Test TypeID hash
-  std::unordered_map<paddle::framework::ir::TypeID, const void*>
-      type_id_register;
+  std::unordered_map<ir::TypeID, const void*> type_id_register;
   type_id_register.emplace(a_id, type_a_storage);
   type_id_register.emplace(b_id, type_b_storage);
   for (auto kv : type_id_register) {
@@ -50,10 +45,8 @@ TEST(type_support, type_id) {
 TEST(type_support, abstract_type) {
   class TypeA {};
 
-  paddle::framework::ir::TypeID a_id =
-      paddle::framework::ir::TypeID::Get<TypeA>();
-  paddle::framework::ir::AbstractType abstract_type_a =
-      paddle::framework::ir::AbstractType::Get(a_id);
+  ir::TypeID a_id = ir::TypeID::Get<TypeA>();
+  ir::AbstractType abstract_type_a = ir::AbstractType::Get(a_id);
 
   EXPECT_EQ(abstract_type_a.GetTypeID(), a_id);
 }
@@ -61,12 +54,10 @@ TEST(type_support, abstract_type) {
 TEST(type_support, type_storage) {
   class TypeA {};
 
-  paddle::framework::ir::TypeID a_id =
-      paddle::framework::ir::TypeID::Get<TypeA>();
-  paddle::framework::ir::AbstractType abstract_type_a =
-      paddle::framework::ir::AbstractType::Get(a_id);
+  ir::TypeID a_id = ir::TypeID::Get<TypeA>();
+  ir::AbstractType abstract_type_a = ir::AbstractType::Get(a_id);
 
-  paddle::framework::ir::TypeStorage storage_a;
+  ir::TypeStorage storage_a;
   storage_a.Initialize(abstract_type_a);
 
   EXPECT_EQ(storage_a.GetAbstractType().GetTypeID(),

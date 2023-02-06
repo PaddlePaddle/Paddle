@@ -16,8 +16,6 @@
 
 #include <iostream>
 
-namespace paddle {
-namespace framework {
 namespace ir {
 
 /*
@@ -100,14 +98,12 @@ class TypeStorage {
 };
 
 }  // namespace ir
-}  // namespace framework
-}  // namespace paddle
 
 // Custom specialization of std::hash can be injected in namespace std.
 namespace std {
 template <>
-struct hash<paddle::framework::ir::TypeID> {
-  std::size_t operator()(const paddle::framework::ir::TypeID &obj) const {
+struct hash<ir::TypeID> {
+  std::size_t operator()(const ir::TypeID &obj) const {
     return std::hash<const void *>()(obj.GetStorage());
   }
 };
