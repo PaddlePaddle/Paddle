@@ -79,6 +79,7 @@ class InterpreterCore {
   const platform::Place& GetPlace() const { return place_; }
 
  private:
+  DISABLE_COPY_AND_ASSIGN(InterpreterCore);
   using InstructionSchedulingPriorityLess = std::function<bool(size_t, size_t)>;
   using SchedulingQueue =
       std::priority_queue<size_t,

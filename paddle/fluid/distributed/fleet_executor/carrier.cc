@@ -28,6 +28,12 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/framework/variable_helper.h"
 
+PADDLE_DEFINE_EXPORTED_bool(
+    fleet_executor_with_standalone,
+    true,
+    "Use standalone executor to run ops. Temporary FLAGS, will be removed "
+    "after testing of standalone executor.");
+
 namespace paddle {
 namespace distributed {
 
@@ -342,6 +348,33 @@ void Carrier::CreateInterceptors() {
     interceptor->SetMiniBatchScope(minibatch_scope_);
     interceptor->SetMicroBatchScope(microbatch_scopes_);
     interceptor->SetRootScope(root_scope_);
+
+    std::vector<std::shared_ptr<InterpreterCore>> cores;
+    for (framework::Scope* scope : microbatch_scopes_) {
+      const framework::ProgramDesc* program = task_node->program();
+      std::set<std::string> skip_gc_vars;
+      std::vector<framework::VarDesc*> all_vars = program->Block(0).AllVars();
+      for (framework::VarDesc* var : all_vars) {
+        skip_gc_vars.insert(var->Name());
+      }
+      // ONLY unused vars can be GCed.
+      const std::unordered_map<const framework::OperatorBase*,
+                               std::vector<std::string>>& unused_vars =
+          task_node->unused_vars();
+      for (auto& item : unused_vars) {
+        for (const std::string& unused_var : item.second) {
+          skip_gc_vars.erase(unused_var);
+        }
+      }
+
+      cores.push_back(
+          framework::CreateInterpreterCore(place_,
+                                           *(task_node->program()),
+                                           scope,
+                                           /*fetch_names=*/{},
+                                           /*skip_gc_vars =*/skip_gc_vars));
+    }
+
     interceptor->SetGC(gc);
 
     SetInterceptor(interceptor_id, std::move(interceptor));
