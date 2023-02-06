@@ -11,7 +11,7 @@ foreach(TEST_OP ${TEST_OPS})
 endforeach()
 
 if(NOT WITH_HETERPS)
-  list(REMOVE_ITEM DIST_TEST_OPS "test_gpubox_ps")
+  list(REMOVE_ITEM TEST_OPS "test_gpubox_ps")
 endif()
 
 if(WITH_HETERPS)
