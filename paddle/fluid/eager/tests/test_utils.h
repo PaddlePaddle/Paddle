@@ -112,7 +112,6 @@ inline void InitEnv(paddle::platform::Place place) {
   // Prepare Device Contexts
   // Init DeviceContextPool
   paddle::framework::InitDevices();
-  paddle::prim::init_tensor_operants();
 
   // Init Tracer Place
   egr::Controller::Instance().SetExpectedPlace(place);

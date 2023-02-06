@@ -50,6 +50,7 @@ TEST(EagerPrim, TanhBackwardTest) {
   // 1. Initialized
   eager_test::InitEnv(paddle::platform::CPUPlace());
   FLAGS_operants_mode = "eager";
+  paddle::prim::init_tensor_operants();
   // 2. pre
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
   paddle::experimental::Tensor tensor0 =
