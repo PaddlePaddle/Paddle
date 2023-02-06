@@ -355,7 +355,7 @@ Tensor &Tensor::operator=(Tensor &&x) & {
   return *this;
 }
 
-Tensor operator*(const Tensor &x, const Tensor &y) {
+PADDLE_API Tensor operator*(const Tensor &x, const Tensor &y) {
   return OperantsManager::Instance().multiply(x, y);
 }
 
