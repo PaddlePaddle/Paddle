@@ -1463,6 +1463,24 @@ class TestSundryAPI(unittest.TestCase):
             origin_result.numpy(), out3.numpy(), rtol=1e-05
         )
 
+    def test_upsample(self):
+        from paddle.nn.functional import upsample
+
+        input_x = paddle.rand([2, 3, 6, 6])
+        input_x.stop_gradient = False
+
+        output_size = [
+            paddle.full([], 12, dtype="int32"),
+            paddle.full([], 12, dtype="int32"),
+        ]
+        out1 = upsample(
+            x=input_x, size=output_size, mode="bilinear", align_corners=False
+        )
+        out1.backward()
+
+        self.assertEqual(out1.shape, [2, 3, 12, 12])
+        self.assertEqual(input_x.grad.shape, [2, 3, 6, 6])
+
     def test_maseked_select(self):
         x = paddle.rand([])
         x.stop_gradient = False
@@ -2352,6 +2370,28 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res1[1].shape, (2, 3, 6, 6))
         self.assertEqual(res2[0].shape, (2, 3, 12, 12))
         self.assertEqual(res2[1].shape, (2, 3, 6, 6))
+
+    @prog_scope()
+    def test_upsample(self):
+        from paddle.nn.functional import upsample
+
+        input_x = paddle.rand([2, 3, 6, 6])
+        input_x.stop_gradient = False
+
+        output_size = [
+            paddle.full([], 12, dtype="int32"),
+            paddle.full([], 12, dtype="int32"),
+        ]
+
+        out1 = upsample(
+            x=input_x, size=output_size, mode="bilinear", align_corners=False
+        )
+        paddle.static.append_backward(out1.sum())
+        prog = paddle.static.default_main_program()
+        res1 = self.exe.run(prog, feed={}, fetch_list=[out1, input_x.grad_name])
+
+        self.assertEqual(res1[0].shape, (2, 3, 12, 12))
+        self.assertEqual(res1[1].shape, (2, 3, 6, 6))
 
     @prog_scope()
     def test_maseked_select(self):
