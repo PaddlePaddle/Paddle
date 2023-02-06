@@ -1148,7 +1148,9 @@ static std::string GenerateGradNodeCreationContent(
   if (!forward_inplace_map.empty()) {
     const char* CHECKING_INPLACE_TEMPLATE =
         "  // Check Inplace\n"
-        "  egr::EagerUtils::CheckInplace(%s, p_autograd_%s);\n";
+        "  if (require_any_grad) {\n"
+        "    egr::EagerUtils::CheckInplace(%s, p_autograd_%s);\n"
+        "  }\n";
     for (auto& inplace_pair : forward_inplace_map) {
       std::string inplace_name = LegalizeVarName(inplace_pair.second);
       check_inplace_str += paddle::string::Sprintf(
