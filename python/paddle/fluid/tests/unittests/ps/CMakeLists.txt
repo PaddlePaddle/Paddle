@@ -10,6 +10,10 @@ foreach(TEST_OP ${TEST_OPS})
   set_tests_properties(${TEST_OP} PROPERTIES TIMEOUT 50)
 endforeach()
 
+if(NOT WITH_HETERPS)
+  list(REMOVE_ITEM DIST_TEST_OPS "test_gpubox_ps")
+endif()
+
 if(WITH_HETERPS)
   set_tests_properties(test_gpubox_ps PROPERTIES LABELS "RUN_TYPE=GPUPS")
 endif()
