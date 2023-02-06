@@ -24,7 +24,7 @@ struct SequenceSoftmaxFunctor {
   void operator()(
       const DeviceContext &ctx,
       const phi::DenseTensor &x,
-      const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
+      const phi::Vector<size_t> &ref_lod, /*expand referenced lod*/
       phi::DenseTensor *out);
 };
 
@@ -33,7 +33,7 @@ struct SequenceSoftmaxGradFunctor {
   void operator()(const DeviceContext &ctx,
                   const phi::DenseTensor &dout,
                   const phi::DenseTensor &out,
-                  const framework::Vector<size_t> &ref_lod, /*referenced lod*/
+                  const phi::Vector<size_t> &ref_lod, /*referenced lod*/
                   phi::DenseTensor *dx);
 };
 
@@ -41,7 +41,7 @@ template <typename T>
 struct SequenceSoftmaxFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext &ctx,
                   const phi::DenseTensor &x,
-                  const framework::Vector<size_t> &ref_lod, /*referenced lod*/
+                  const phi::Vector<size_t> &ref_lod, /*referenced lod*/
                   phi::DenseTensor *out) {
     size_t height = ref_lod.size() - 1;
     const T *in_data = x.data<T>();
@@ -64,7 +64,7 @@ struct SequenceSoftmaxGradFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext &ctx,
                   const phi::DenseTensor &dout,
                   const phi::DenseTensor &out,
-                  const framework::Vector<size_t> &ref_lod, /*referenced lod*/
+                  const phi::Vector<size_t> &ref_lod, /*referenced lod*/
                   phi::DenseTensor *dx) {
     size_t height = ref_lod.size() - 1;
 

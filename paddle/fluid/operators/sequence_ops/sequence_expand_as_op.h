@@ -29,7 +29,7 @@ struct SequenceExpandAsFunctor {
   void operator()(
       const DeviceContext &ctx,
       const phi::DenseTensor &x,
-      const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
+      const phi::Vector<size_t> &ref_lod, /*expand referenced lod*/
       phi::DenseTensor *out);
 };
 
@@ -38,7 +38,7 @@ struct SequenceExpandAsGradFunctor {
   void operator()(
       const DeviceContext &ctx,
       const phi::DenseTensor &dout,
-      const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
+      const phi::Vector<size_t> &ref_lod, /*expand referenced lod*/
       phi::DenseTensor *dx);
 };
 
@@ -47,7 +47,7 @@ struct SequenceExpandAsFunctor<phi::CPUContext, T> {
   void operator()(
       const phi::CPUContext &context,
       const phi::DenseTensor &x,
-      const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
+      const phi::Vector<size_t> &ref_lod, /*expand referenced lod*/
       phi::DenseTensor *out) {
     int64_t height = x.dims()[0];
     int64_t width = phi::product(x.dims()) / height;
@@ -125,7 +125,7 @@ struct SequenceExpandAsGradFunctor<phi::CPUContext, T> {
   void operator()(
       const phi::CPUContext &context,
       const phi::DenseTensor &dout,
-      const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
+      const phi::Vector<size_t> &ref_lod, /*expand referenced lod*/
       phi::DenseTensor *dx) {
     int64_t height = dx->dims()[0];
     int64_t width = phi::product(dx->dims()) / height;

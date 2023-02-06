@@ -32,8 +32,8 @@ struct SequenceExpandFunctor {
   void operator()(
       const DeviceContext& ctx,
       const phi::DenseTensor& x,
-      const framework::Vector<size_t>& x_lod,   /*expand source lod*/
-      const framework::Vector<size_t>& ref_lod, /*expand referenced lod*/
+      const phi::Vector<size_t>& x_lod,   /*expand source lod*/
+      const phi::Vector<size_t>& ref_lod, /*expand referenced lod*/
       phi::DenseTensor* out);
 };
 
@@ -42,8 +42,8 @@ struct SequenceExpandGradFunctor {
   void operator()(
       const DeviceContext& ctx,
       const phi::DenseTensor& dout,
-      const framework::Vector<size_t>& x_lod,   /*expand source lod*/
-      const framework::Vector<size_t>& ref_lod, /*expand referenced lod*/
+      const phi::Vector<size_t>& x_lod,   /*expand source lod*/
+      const phi::Vector<size_t>& ref_lod, /*expand referenced lod*/
       phi::DenseTensor* dx);
 };
 
@@ -52,8 +52,8 @@ struct SequenceExpandFunctor<phi::CPUContext, T> {
   void operator()(
       const phi::CPUContext& context,
       const phi::DenseTensor& x,
-      const framework::Vector<size_t>& x_lod,   /*expand source lod*/
-      const framework::Vector<size_t>& ref_lod, /*expand referenced lod*/
+      const phi::Vector<size_t>& x_lod,   /*expand source lod*/
+      const phi::Vector<size_t>& ref_lod, /*expand referenced lod*/
       phi::DenseTensor* out) {
     int out_offset = 0;
     int x_item_length = x.numel() / x.dims()[0];
@@ -112,7 +112,7 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
     }
 
     // x lod level is at most 1.
-    framework::Vector<size_t> out_lod;
+    phi::Vector<size_t> out_lod;
     if (x_lod.size() == 1) {
       out_lod.push_back(0);
       int out_offset = 0;
@@ -130,7 +130,7 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
       auto& ref_lod = *out->mutable_lod();
       ref_lod[0] = out_lod;
     }
-    framework::Vector<size_t> ref_x_lod;
+    phi::Vector<size_t> ref_x_lod;
     if (x->lod().size() == 1) {
       ref_x_lod = x->lod()[0];
     } else {
@@ -164,8 +164,8 @@ struct SequenceExpandGradFunctor<phi::CPUContext, T> {
   void operator()(
       const phi::CPUContext& context,
       const phi::DenseTensor& dout,
-      const framework::Vector<size_t>& x_lod,   /*expand source lod*/
-      const framework::Vector<size_t>& ref_lod, /*expand referenced lod*/
+      const phi::Vector<size_t>& x_lod,   /*expand source lod*/
+      const phi::Vector<size_t>& ref_lod, /*expand referenced lod*/
       phi::DenseTensor* dx) {
     int dout_offset = 0;
     for (size_t i = 1; i < ref_lod.size(); ++i) {
@@ -214,8 +214,8 @@ class SequenceExpandGradKernel : public framework::OpKernel<T> {
       return;
     }
 
-    framework::Vector<size_t> ref_x_lod;
-    framework::Vector<size_t> ref_lod = y_lod[ref_level];
+    phi::Vector<size_t> ref_x_lod;
+    phi::Vector<size_t> ref_lod = y_lod[ref_level];
     if (x->lod().size() == 1) {
       ref_x_lod = x->lod()[0];
     } else {

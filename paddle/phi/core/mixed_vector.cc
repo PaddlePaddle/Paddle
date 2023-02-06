@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/mixed_vector.h"
+#include "paddle/phi/core/mixed_vector.h"
 
 #include <algorithm>
 #include <initializer_list>
@@ -28,8 +28,7 @@ limitations under the License. */
 #include "paddle/utils/none.h"
 #include "paddle/utils/optional.h"
 
-namespace paddle {
-namespace framework {
+namespace phi {
 
 template <typename T>
 void CopyToCPUHelper(std::vector<T> *cpu_,
@@ -60,7 +59,7 @@ void CopyCPUDataToCUDAHelper(std::vector<T> *cpu_,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   void *src = cpu_->data();
   *gpu_memory_size_ = cpu_->size() * sizeof(T);  // sizeof(T)
-  (*gpu_) = memory::Alloc(place, *gpu_memory_size_);
+  (*gpu_) = paddle::memory::Alloc(place, *gpu_memory_size_);
   void *dst = (*gpu_)->ptr();
   auto *dev_ctx = static_cast<phi::GPUContext *>(
       phi::DeviceContextPool::Instance().Get(place));
@@ -91,5 +90,4 @@ INSTANTIATE_VECTOR_FOR_TYPE(size_t)
 INSTANTIATE_VECTOR_FOR_TYPE(int)
 INSTANTIATE_VECTOR_FOR_TYPE(int64_t)
 
-};  // namespace framework
-}  // namespace paddle
+};  // namespace phi

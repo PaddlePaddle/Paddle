@@ -338,7 +338,7 @@ class RowConvKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
       batch_size = X->lod()[0].size() - 1;
     }
     int input_dim = 0;
-    framework::Vector<size_t> batch_indices(batch_size + 1);
+    phi::Vector<size_t> batch_indices(batch_size + 1);
     int timesteps = X->dims()[1];
     if (is_tensor) {
       for (int i = 0; i < batch_size + 1; i++) {
@@ -352,7 +352,7 @@ class RowConvKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
 
     int num_sequence = batch_indices.size() - 1;
     int future_context = Filter->dims()[0];
-    paddle::framework::MixVector<size_t> mix_vector(&batch_indices);
+    phi::MixVector<size_t> mix_vector(&batch_indices);
     size_t *idx = mix_vector.CUDAMutableData(context.GetPlace());
     auto stream = context.cuda_device_context().stream();
 
@@ -397,7 +397,7 @@ class RowConvGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
     }
 
     int input_dim = 0;
-    framework::Vector<size_t> batch_indices(batch_size + 1);
+    phi::Vector<size_t> batch_indices(batch_size + 1);
     int timesteps = X->dims()[1];
     if (is_tensor) {
       for (int i = 0; i < batch_size + 1; i++) {
@@ -411,7 +411,7 @@ class RowConvGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
     // int input_dim = X->dims()[1];
     int num_sequence = batch_indices.size() - 1;
     int future_context = Filter->dims()[0];
-    paddle::framework::MixVector<size_t> mixv_batch_indices(&batch_indices);
+    phi::MixVector<size_t> mixv_batch_indices(&batch_indices);
     size_t *idx = mixv_batch_indices.CUDAMutableData(context.GetPlace());
 
     auto &device_ctx = context.cuda_device_context();

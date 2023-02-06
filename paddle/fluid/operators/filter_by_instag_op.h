@@ -23,7 +23,7 @@
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/mixed_vector.h"
+#include "paddle/phi/core/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
 
@@ -32,7 +32,7 @@ namespace operators {
 using SelectedRows = phi::SelectedRows;
 
 template <typename T>
-using Vector = framework::Vector<T>;
+using Vector = phi::Vector<T>;
 
 template <typename T>
 class FilterByInstagKernel : public framework::OpKernel<T> {

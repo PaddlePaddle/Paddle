@@ -29,8 +29,7 @@ limitations under the License. */
 #include "paddle/utils/none.h"
 #include "paddle/utils/optional.h"
 
-namespace paddle {
-namespace framework {
+namespace phi {
 
 template <class T>
 using Vector = std::vector<T>;
@@ -400,5 +399,4 @@ class MixVector {
   mutable std::unique_ptr<VectorData> m_;
 };
 
-};  // namespace framework
-}  // namespace paddle
+};  // namespace phi
