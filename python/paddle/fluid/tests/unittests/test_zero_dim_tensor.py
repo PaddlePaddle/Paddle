@@ -1496,6 +1496,32 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out.grad.shape, [])
         self.assertEqual(x.grad.shape, [])
 
+    def test_while_loop(self):
+        def cond(i, x):
+            return paddle.less_than(i, eleven)
+
+        def body(i, x):
+            x = x + i
+            i = i + 1
+            return [i, x]
+
+        i = paddle.full([], 1.0, dtype='float32')
+        i.stop_gradient = False
+        eleven = paddle.full([], 11, dtype='float32')
+        x = paddle.full([], 0.0, dtype='float32')
+        x.stop_gradient = False
+        out_i, out_x = paddle.static.nn.while_loop(cond, body, [i, x])
+        out_x.backward()
+
+        self.assertEqual(out_i.shape, [])
+        np.testing.assert_allclose(out_i, np.array(11))
+        self.assertEqual(out_x.shape, [])
+        np.testing.assert_allclose(out_x, np.array(55))
+        self.assertEqual(i.grad.shape, [])
+        np.testing.assert_allclose(i.grad, np.array(10))
+        self.assertEqual(x.grad.shape, [])
+        np.testing.assert_allclose(x.grad, np.array(1.0))
+
 
 class TestSundryAPIStatic(unittest.TestCase):
     def setUp(self):
@@ -2404,7 +2430,7 @@ class TestSundryAPIStatic(unittest.TestCase):
             return paddle.less_than(i, eleven)
 
         def body(i, x):
-            x = paddle.multiply(i, i)
+            x = x + i
             i = i + 1
             return [i, x]
 
@@ -2416,28 +2442,22 @@ class TestSundryAPIStatic(unittest.TestCase):
             x = paddle.static.data(name='x', shape=[], dtype='float32')
             x.stop_gradient = False
             out_i, out_x = paddle.static.nn.while_loop(cond, body, [i, x])
-            paddle.static.append_backward(out_x.sum())
-
-        place = (
-            paddle.CUDAPlace(0)
-            if paddle.device.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
-
-        feed_i = np.ones([]).astype('float32')
-        feed_x = np.ones([]).astype('float32')
+            paddle.static.append_backward(out_x)
 
         res = self.exe.run(
             main_program,
-            feed={'i': feed_i, 'x': feed_x},
+            feed={
+                'i': np.array(1.0, dtype='float32'),
+                'x': np.array(0.0, dtype='float32'),
+            },
             fetch_list=[out_i.name, out_x.name, i.grad_name, x.grad_name],
         )
         self.assertEqual(res[0].shape, ())
         np.testing.assert_allclose(res[0], np.array(11))
         self.assertEqual(res[1].shape, ())
-        np.testing.assert_allclose(res[1], np.array(100))
+        np.testing.assert_allclose(res[1], np.array(55))
         self.assertEqual(res[2].shape, ())
-        np.testing.assert_allclose(res[2], np.array(110))
+        np.testing.assert_allclose(res[2], np.array(10))
         self.assertEqual(res[3].shape, ())
         np.testing.assert_allclose(res[3], np.array(1.0))
 
