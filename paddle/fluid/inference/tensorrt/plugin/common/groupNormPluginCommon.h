@@ -69,7 +69,7 @@ struct GroupNormNHWCParams {
   int32_t groupsPerBlock;
   // epsilon, Constant for numerical stability
   float eps;
-
+  // for NCHW32 int8 use
   float dqScaleIn;
   float qScale;
 };

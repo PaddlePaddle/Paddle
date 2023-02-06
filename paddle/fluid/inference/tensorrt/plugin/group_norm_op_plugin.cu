@@ -695,13 +695,19 @@ bool GroupNormPluginDynamic::supportsFormatCombination(
                                         pos,
                                         nb_inputs + nb_outputs));
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
+
+  bool int8_support = in.type == nvinfer1::DataType::kINT8 &&
+                      in.format == nvinfer1::PluginFormat::kCHW32;
+  bool fp16_support =
+      (in.type == nvinfer1::DataType::kHALF) &&
+      ((!with_silu_ && in.format == nvinfer1::PluginFormat::kLINEAR) ||
+       in.format == nvinfer1::PluginFormat::kHWC8);
+
   if (pos == 0) {
-    if (with_fp16_) {
-      return (in.type == nvinfer1::DataType::kINT8 &&
-              in.format == nvinfer1::PluginFormat::kCHW32) ||
-             ((in.type == nvinfer1::DataType::kHALF) &&
-              ((!with_silu_ && in.format == nvinfer1::PluginFormat::kLINEAR) ||
-               in.format == nvinfer1::PluginFormat::kHWC8));
+    if (int8_support) {
+      return int8_support || fp16_support;
+    } else if (with_fp16_) {
+      return fp16_support;
     } else {
       return (in.type == nvinfer1::DataType::kFLOAT) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
