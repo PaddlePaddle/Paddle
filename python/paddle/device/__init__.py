@@ -540,6 +540,8 @@ class Event(object):
         .. code-block:: python
             # required: custom_device
             import paddle
+
+            paddle.set_device('custom_cpu')
             e1 = paddle.device.Event()
             e2 = paddle.device.Event('custom_cpu')
             e3 = paddle.device.Event('custom_cpu:0')
@@ -593,6 +595,8 @@ class Event(object):
             .. code-block:: python
                 # required: custom_device
                 import paddle
+
+                paddle.set_device('custom_cpu')
                 e = paddle.device.Event()
                 e.record()
 
@@ -613,7 +617,10 @@ class Event(object):
             .. code-block:: python
                 # required: custom_device
                 import paddle
+
+                paddle.set_device('custom_cpu')
                 e = paddle.device.Event()
+                e.record()
                 e.query()
         '''
         return self.event_base.query()
@@ -628,8 +635,13 @@ class Event(object):
             .. code-block:: python
                 # required: custom_device
                 import paddle
+
+                paddle.set_device('custom_cpu')
                 e1 = paddle.device.Event()
+                e1.record()
+
                 e2 = paddle.device.Event()
+                e2.record()
                 e1.elapsed_time(e2)
         '''
         return 0
@@ -645,7 +657,10 @@ class Event(object):
             .. code-block:: python
                 # required: custom_device
                 import paddle
+
+                paddle.set_device('custom_cpu')
                 e = paddle.device.Event()
+                e.record()
                 e.synchronize()
         '''
         self.event_base.synchronize()
@@ -670,6 +685,8 @@ class Stream(object):
         .. code-block:: python
             # required: custom_device
             import paddle
+
+            paddle.set_device('custom_cpu')
             s1 = paddle.device.Stream()
             s2 = paddle.device.Stream('custom_cpu')
             s3 = paddle.device.Stream('custom_cpu:0')
@@ -727,9 +744,13 @@ class Stream(object):
             .. code-block:: python
                 # required: custom_device
                 import paddle
-                s = paddle.device.Stream()
+
+                paddle.set_device('custom_cpu')
+                s1 = paddle.device.Stream()
+                s2 = paddle.device.Stream()
                 e = paddle.device.Event()
-                s.wait_event(e)
+                e.record(s1)
+                s2.wait_event(e)
         '''
         self.stream_base.wait_event(event.event_base)
 
@@ -746,6 +767,8 @@ class Stream(object):
             .. code-block:: python
                 # required: custom_device
                 import paddle
+
+                paddle.set_device('custom_cpu')
                 s1 = paddle.device.Stream()
                 s2 = paddle.device.Stream()
                 s1.wait_stream(s2)
@@ -764,6 +787,8 @@ class Stream(object):
             .. code-block:: python
                 # required: custom_device
                 import paddle
+
+                paddle.set_device('custom_cpu')
                 s = paddle.device.Stream()
                 e1 = s.record_event()
 
@@ -784,6 +809,8 @@ class Stream(object):
             .. code-block:: python
                 # required: custom_device
                 import paddle
+
+                paddle.set_device('custom_cpu')
                 s = paddle.device.Stream()
                 s.query()
         '''
@@ -798,6 +825,8 @@ class Stream(object):
             .. code-block:: python
                 # required: custom_device
                 import paddle
+
+                paddle.set_device('custom_cpu')
                 s = paddle.device.Stream()
                 s.synchronize()
         '''
@@ -837,8 +866,10 @@ def current_stream(device=None):
         .. code-block:: python
             # required: custom_device
             import paddle
+
+            paddle.set_device('custom_cpu')
             s1 = paddle.device.current_stream()
-            s2 = paddle.device.current_stream("gpu:0")
+            s2 = paddle.device.current_stream("custom_cpu:0")
             place = paddle.CustomPlace('custom_cpu', 0)
             s3 = paddle.device.current_stream(place)
     '''
@@ -878,6 +909,8 @@ def set_stream(stream):
         .. code-block:: python
             # required: custom_device
             import paddle
+
+            paddle.set_device('custom_cpu')
             s = paddle.device.Stream()
             paddle.device.set_stream(s)
     '''
@@ -917,6 +950,8 @@ class stream_guard(object):
         .. code-block:: python
             # required: custom_device
             import paddle
+
+            paddle.set_device('custom_cpu')
             s = paddle.device.Stream()
             data1 = paddle.ones(shape=[20])
             data2 = paddle.ones(shape=[20])
@@ -967,8 +1002,10 @@ def synchronize(device=None):
         .. code-block:: python
             # required: custom_device
             import paddle
+
+            paddle.set_device('custom_cpu')
             paddle.device.synchronize()
-            paddle.device.synchronize("gpu:0")
+            paddle.device.synchronize("custom_cpu:0")
             place = paddle.CustomPlace('custom_cpu', 0)
             paddle.device.synchronize(place)
     '''

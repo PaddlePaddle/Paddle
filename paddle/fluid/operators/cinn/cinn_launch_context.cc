@@ -119,12 +119,16 @@ CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
   // collect variables name list to be skipped in GC
   skip_eager_vars_.reserve(input_var_names.size() + output_var_names.size());
   auto add_skip_var_fn = [&outer_varinfo, this](const std::string& var_name) {
+    // Always consider Input/Output of Graph as skip_gc_vars, because
+    // InterpreterCore has no eager_deletion_op to deal with it.
+
+    VLOG(4) << "Append a skip_gc_var for InterpreterCore:" << var_name;
+    skip_gc_vars_.insert(var_name);
     // if a var exists at the outer_varinfo map, that means it will be
     // erased by the following eager_deletion_op of current cinn_launch op
     if (!outer_varinfo.count(var_name)) {
       skip_eager_vars_.emplace_back(var_name);
-      skip_gc_vars_.insert(var_name);
-      VLOG(4) << "Append a skip_gc_var:" << var_name;
+      VLOG(4) << "Append a skip_gc_var for PE:" << var_name;
     }
   };
   std::for_each(
@@ -231,6 +235,9 @@ std::unordered_set<std::string> CinnLaunchContext::ExtractInternalVarNames(
       remain_var_names.erase(var_name + InplaceOutSuffix);
     }
   };
+
+  VLOG(1) << "Input var list: " << string::join_strings(input_var_names, ", ");
+  VLOG(1) << "Ouput var list: " << string::join_strings(output_var_names, ", ");
   std::for_each(
       input_var_names.begin(), input_var_names.end(), exclude_names_fn);
   std::for_each(
@@ -470,6 +477,8 @@ framework::InterpreterCore* CinnLaunchContext::InitializeInterpreterCore(
                "interpreter_core_: "
             << interpreter_core_.get() << "; scope: " << scope
             << "; cached_scope_: " << cached_scope_;
+    VLOG(1) << "Internal var list: "
+            << string::join_strings(internal_var_names_, ", ");
     for (auto&& var_name : internal_var_names_) {
       auto* var = scope->FindVar(var_name);
       if (var != nullptr) {
@@ -502,8 +511,7 @@ std::string CinnLaunchContext::RedirectVarName(const std::string& var_name) {
   }
   std::string remove_suffix_name = var_name.substr(0, pos);
   if (!inplace_var_names_.count(remove_suffix_name)) {
-    LOG(WARNING) << "Variable:" << remove_suffix_name
-                 << " was not marked as inplaced by Paddle, but CINN does";
+    return var_name;
   }
   VLOG(4) << "Inplaced variable:" << var_name << " redirect to "
           << remove_suffix_name;

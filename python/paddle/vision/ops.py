@@ -19,11 +19,11 @@ from paddle.tensor.math import _add_with_axis
 
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..fluid.framework import Variable, in_dygraph_mode
-from ..fluid.initializer import Normal
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.layers import utils
 from ..framework import _current_expected_place
 from ..nn import BatchNorm2D, Conv2D, Layer, ReLU, Sequential
+from ..nn.initializer import Normal
 
 __all__ = [  # noqa
     'yolo_loss',
@@ -1120,7 +1120,7 @@ class DeformConv2D(Layer):
         def _get_default_param_initializer():
             filter_elem_num = np.prod(self._kernel_size) * self._in_channels
             std = (2.0 / filter_elem_num) ** 0.5
-            return Normal(0.0, std, 0)
+            return Normal(0.0, std)
 
         self.weight = self.create_parameter(
             shape=filter_shape,
