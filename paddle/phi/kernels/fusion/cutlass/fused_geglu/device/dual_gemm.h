@@ -184,7 +184,7 @@ class DualGemm {
         kAlignmentB,
         ElementC,
         cutlass::layout::RowMajor, // LayoutC,
-        ElementC,
+        ElementAccumulator,
         OpClass,
         ArchTag,
         ThreadblockShape,

@@ -15,7 +15,9 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 
+#include "paddle/phi/kernels/fusion/cutlass/cutlass_helper.h"
 #include "paddle/phi/kernels/fusion/cutlass/fused_geglu/device/dual_gemm.h"
+#include "paddle/phi/kernels/fusion/cutlass/fused_geglu/thread/left_silu_and_mul.h"
 
 namespace phi {
 
@@ -28,24 +30,26 @@ struct LaunchParams {
   const void* weight;
   const void* bias;
   void* output;
-  const int32_t m;
-  const int32_t n;
-  const int32_t k;
+  int32_t m;
+  int32_t n;
+  int32_t k;
   bool requires_grad;
 };
 
-template <typename T, typename AccT, typename arch, typename Context>
-void LaunchGeGLUKenrel(LaunchParams params, Context ctx) {
+template <typename T, typename AccT, typename arch>
+void LaunchGeGLUKenrel(LaunchParams params, const phi::GPUContext& ctx) {
   constexpr int kStages = 3;  // TODO(test 5?)
   constexpr bool kSplitKSerial = false;
   constexpr bool kUseBias = true;
-  constexpr auto kScaleType =
-      kUseBias
-          ? cutlass::epilogue::thread::ScaleType::NoBetaScaling
-          : (
-                // No bias
-                kSplitKSerial ? cutlass::epilogue::thread::ScaleType::Default
-                              : cutlass::epilogue::thread::ScaleType::Nothing);
+//   constexpr auto kScaleType =
+//       kUseBias
+//           ? cutlass::epilogue::thread::ScaleType::NoBetaScaling
+//           : (
+//                 // No bias
+//                 kSplitKSerial ? cutlass::epilogue::thread::ScaleType::Default
+//                               : cutlass::epilogue::thread::ScaleType::Nothing);
+
+  constexpr auto kScaleType = cutlass::epilogue::thread::ScaleType::NoBetaScaling;
 
   using ElementOperandA = T;
   using ElementOperandB = T;
@@ -60,8 +64,11 @@ void LaunchGeGLUKenrel(LaunchParams params, Context ctx) {
 
   // TODO(zhengzekang) set as false. Optionally, we might not need intermediate
   // GEMM outputs
-  constexpr bool kStoreD0 = false;
-  constexpr bool kStoreD1 = false;
+//   constexpr bool kStoreD0 = false;
+//   constexpr bool kStoreD1 = false;
+
+  constexpr bool kStoreD0 = true;
+  constexpr bool kStoreD1 = true;
 
   using EpilogueOutputOp0 = cutlass::epilogue::thread::LinearCombination<
       ElementOutput,
@@ -86,12 +93,13 @@ void LaunchGeGLUKenrel(LaunchParams params, Context ctx) {
       ElementOperandA,
       cutlass::layout::RowMajor,
       ElementOperandB,
-      cutlass::layout::RowMajor,
+      // cutlass::layout::RowMajor,
+      cutlass::layout::ColumnMajor,
       ElementOutput,
       cutlass::layout::RowMajor,
       ElementAccumulator,
       cutlass::arch::OpClassTensorOp,
-      cutlass::arch::Sm80,
+      arch,
       ThreadblockShape,
       WarpShape,
       InstructionShape,
@@ -107,23 +115,39 @@ void LaunchGeGLUKenrel(LaunchParams params, Context ctx) {
   // int split_k_slices = DualGemm::kSplitKSerial ? 2 : 1;
   int split_k_slices = 1;
 
-  using TensorInputRef = TensorRef<ElementOperandA const, RowMajor>;
-  using TensorStoreRef =
-      TensorRef<typename DualGemm::ElementC, typename DualGemm::LayoutC>;
-  using TensorOutRef = TensorRef<ElementOperandA, cutlass::layout::RowMajor>;
+  using TensorInputRef = typename cutlass::TensorRef<ElementOperandA const, cutlass::layout::RowMajor>;
+  using TensorStoreRef = typename cutlass::TensorRef<typename DualGemm::ElementC, typename DualGemm::LayoutC>;
+  using TensorOutRef = typename cutlass::TensorRef<ElementOperandA, cutlass::layout::RowMajor>;
 
   TensorInputRef tensor_a0(reinterpret_cast<const T*>(params.x), params.k);
-  TensorInputRef tensor_b0(reinterpret_cast<const T*>(params.weight), params.n);
-  TensorInputRef tensor_b1(
-      reinterpret_cast<const T*>(params.weight + params.n / 2), params.n);
+  printf("Params n is: %ld \n", params.n); 
+  // TensorInputRef tensor_b0(reinterpret_cast<const T*>(params.weight), params.n * 2);
+  // TensorInputRef tensor_b1(
+  //     reinterpret_cast<const T*>(params.weight) + params.n, params.n * 2);
+
+  typename cutlass::TensorRef<const ElementOperandA, cutlass::layout::ColumnMajor> tensor_b0(reinterpret_cast<const T*>(params.weight), params.k);
+  typename cutlass::TensorRef<const ElementOperandA, cutlass::layout::ColumnMajor> tensor_b1(
+      reinterpret_cast<const T*>(params.weight) + params.k * params.n, params.k);
+
+
   TensorInputRef tensor_bias0(reinterpret_cast<const T*>(params.bias), 0);
   TensorInputRef tensor_bias1(
-      reinterpret_cast<const T*>(params.bias + params.n / 2), 0);
-  TensorInputRef tensor_d0(reinterpret_cast<const T*>(nullptr, params.n / 2));
-  TensorInputRef tensor_d1(reinterpret_cast<const T*>(nullptr, params.n / 2));
-  TensorInputRef tensor_output(reinterpret_cast<T*>(params.output, n));
+      reinterpret_cast<const T*>(params.bias) + params.n, 0);
+//   TensorStoreRef tensor_d0(reinterpret_cast<T*>(nullptr), params.n / 2);
+//   TensorStoreRef tensor_d1(reinterpret_cast<T*>(nullptr), params.n / 2);
+  
+  // TODO
+  TensorStoreRef tensor_d0(reinterpret_cast<T*>(params.output), params.n);
+  TensorStoreRef tensor_d1(reinterpret_cast<T*>(params.output), params.n);
+
+  TensorOutRef tensor_output(reinterpret_cast<T*>(params.output), params.n);
 
   cutlass::gemm::GemmCoord problem_size{params.m, params.n, params.k};
+
+  const ElementCompute alpha0 = ElementCompute(1);
+  const ElementCompute beta0 = ElementCompute(kUseBias ? 1 : 0);
+  const ElementCompute alpha1 = ElementCompute(1);
+  const ElementCompute beta1 = ElementCompute(kUseBias ? 1 : 0);
 
   typename DualGemm::Arguments arguments{problem_size,
                                          tensor_a0,
@@ -141,12 +165,12 @@ void LaunchGeGLUKenrel(LaunchParams params, Context ctx) {
 
   DualGemm fused_geglu_op;
   cutlass::Status status = fused_geglu_op.can_implement(arguments);
-  CUTLASS_CHECK(status);
+  PD_CUTLASS_CHECK(status);
   fused_geglu_op.initialize(
       arguments, nullptr /*workspace todo*/, ctx.stream());
-  CUTLASS_CHECK(status);
+  PD_CUTLASS_CHECK(status);
   status = fused_geglu_op();
-  CUTLASS_CHECK(status);
+  PD_CUTLASS_CHECK(status);
 }
 
 template <typename T, typename Context>
@@ -159,37 +183,30 @@ void FusedGeGLUForwardKernel(const Context& ctx,
   // TODO(zhengzekang): Allocate for d0 and d1?
   ctx.template Alloc<T>(output);
 
-  //   struct LaunchParams{
-  //     const void* x;
-  //     const void* weight;
-  //     const void* bias;
-  //     void* output;
-  //     const int32_t m;
-  //     const int32_t n;
-  //     const int32_t k;
-  //     bool requires_grad;
-  //   };
   LaunchParams params{};
   params.x = x.data();
   params.weight = weight.data();
   params.bias = bias.data();
   params.output = output->data();
   auto x_mat_dims = phi::flatten_to_2d(x.dims(), x.dims().size() - 1);
-  const int64_t m = x_mat_dims.dims()[0];
-  const int64_t k = x_mat_dims.dims()[1];
-  const int64_t n = weight.dims()[1];
-  PADDLE_ENFORCE_EQ(
-      k,
-      weight_dims()[0],
-      phi::errors::InvalidArgument("The matmul dim is not matched, the x "
-                                   "dim[1] should be equal to weight dim[0]"));
+  const int64_t m = x_mat_dims[0];
+  const int64_t k = x_mat_dims[1];
+  // const int64_t n = weight.dims()[1];
+
+  const int64_t n = weight.dims()[0];
+  printf("m: %ld, n: %ld, k: %ld \n", m, n, k); 
+  // PADDLE_ENFORCE_EQ(
+  //     k,
+  //     weight.dims()[0],
+  //     phi::errors::InvalidArgument("The matmul dim is not matched, the x "
+  //                                  "dim[1] should be equal to weight dim[0]"));
   params.m = m;
-  params.m = n;
+  params.n = n / 2;
   params.k = k;
   // TODO(zhengzekang): fix it.
   params.requires_grad = false;
 
-  LaunchGeGLUKenrel<cutlass::half_t, float, cutlass::arch::Sm86, Context>(
+  LaunchGeGLUKenrel<cutlass::half_t, float, cutlass::arch::Sm80>(
       params, ctx);
 }
 
