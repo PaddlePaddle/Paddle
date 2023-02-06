@@ -1926,6 +1926,8 @@ class MatmulOneDNNHandler : public OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
     this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
   }
 
+  float GetOutputScale() { return scale_out_; }
+
   float ComputeOutputScale(const OneDNNContext& dev_ctx) {
     float alpha = dev_ctx.HasDnnAttr("alpha")
                       ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("alpha"))
@@ -1952,9 +1954,9 @@ class MatmulOneDNNHandler : public OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
     dnnl::primitive_attr matmul_attrs;
     dnnl::post_ops post_operations;
 
-    float scale_out = ComputeOutputScale(dev_ctx);
-    if (scale_out != 1.0f) {
-      matmul_attrs.set_output_scales(0, {scale_out});
+    float scale_out_ = ComputeOutputScale(dev_ctx);
+    if (scale_out_ != 1.0f) {
+      matmul_attrs.set_scales_mask(DNNL_ARG_DST, 0);
     }
     const auto* residual_data = dev_ctx.HasDnnInput("ResidualData")
                                     ? dev_ctx.GetDnnInput("ResidualData")
@@ -1970,7 +1972,7 @@ class MatmulOneDNNHandler : public OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
       if (dev_ctx.HasDnnAttr("Scale_in_eltwise")) {
         float scale_in_eltwise =
             PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("Scale_in_eltwise"));
-        float sum_scale = scale_out / scale_in_eltwise;
+        float sum_scale = scale_out_ / scale_in_eltwise;
         post_operations.append_sum(sum_scale);
       }
     }
@@ -2026,6 +2028,9 @@ class MatmulOneDNNHandler : public OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
     OT* ptr = dev_ctx.template Alloc<OT>(output);
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
   }
+
+ private:
+  float scale_out_ = 1.0f;
 };
 
 template <typename T>
@@ -2099,6 +2104,11 @@ void ExecuteMatmul(const OneDNNContext& dev_ctx,
       {DNNL_ARG_SRC, *src_memory_p},
       {DNNL_ARG_WEIGHTS, *weights_memory_p},
       {DNNL_ARG_DST, *dst_memory_p}};
+
+  auto scale_out = handler.GeOutputScale();
+  if (scale_out != 1.0f) {
+    matmul_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, scale_out});
+  }
 
   const auto* residual_data = dev_ctx.HasDnnInput("ResidualData")
                                   ? dev_ctx.GetDnnInput("ResidualData")
