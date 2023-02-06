@@ -175,18 +175,6 @@
   kernel :
     func : bilinear_tensor_product_grad
 
-- backward_op : broadcast_tensors_grad
-  forward : broadcast_tensors (Tensor[] input) -> Tensor[](out)
-  args : (Tensor[] input, Tensor[] out_grad)
-  output : Tensor[](input_grad)
-  infer_meta :
-    func : UnchangedMultiInferMeta
-    param : [input]
-  kernel :
-    func : broadcast_tensors_grad
-    param : [out_grad]
-  no_need_buffer : input
-
 - backward_op : cast_grad
   forward : cast (Tensor x, DataType dtype) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
@@ -1009,40 +997,6 @@
   kernel :
     func : pool3d_grad
     param : [x, out, out_grad, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
-
-- backward_op : pow_double_grad
-  forward : pow_grad(Tensor x, Tensor grad_out, Scalar y) -> Tensor(grad_x)
-  args : (Tensor x, Tensor grad_out, Tensor grad_x_grad, Scalar y)
-  output : Tensor(x_grad), Tensor(grad_out_grad)
-  infer_meta :
-    func : GeneralBinaryGradInferMeta
-    param: [x, grad_out]
-  kernel :
-    func : pow_double_grad
-  backward : pow_triple_grad
-  inplace : (grad_x_grad -> x_grad)
-
-- backward_op : pow_grad
-  forward : pow(Tensor x, Scalar y) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, Scalar y=-1)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param: [x]
-  kernel :
-    func : pow_grad
-  backward: pow_double_grad
-  inplace : (out_grad -> x_grad)
-
-- backward_op : pow_triple_grad
-  forward : pow_double_grad(Tensor x, Tensor grad_out, Tensor grad_grad_x, Scalar y) -> Tensor(grad_x), Tensor(grad_grad_out)
-  args : (Tensor x, Tensor grad_out, Tensor grad_grad_x, Tensor grad_x_grad, Tensor grad_grad_out_grad, Scalar y)
-  output : Tensor(x_grad), Tensor(grad_out_grad), Tensor(grad_grad_x_grad)
-  infer_meta :
-    func : GeneralTernaryGradInferMeta
-    param: [x, grad_out, grad_grad_x]
-  kernel :
-    func : pow_triple_grad
 
 - backward_op : prelu_grad
   forward : prelu(Tensor x, Tensor alpha, str data_format, str mode) -> Tensor(out)
