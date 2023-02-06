@@ -27,10 +27,10 @@ def cutlass_fused_multi_head_attention(
     This method requires SM_ARCH in sm70, sm75, sm80.
 
     Args:
-        query (Tensor): the Query Tensor. Its shape is [batchsize, num_head, seq_len, head_size].
-        key (Tensor): the Key Tensor. Its shape is [batchsize, num_head, seq_len, head_size].
-        value (Tensor): the Value Tensor. Its shape is [batchsize, num_head, seq_len, head_size].
-        mask (Tensor): the Mask Tensor. Its shape is [batchsize, num_head, seq_len, seq_len]. And it can broadcast in each dims (which means you can set dimsize=1).
+        query (Tensor): the Query Tensor. Its shape is [batchsize, seq_len, num_head, head_size].
+        key (Tensor): the Key Tensor. Its shape is [batchsize, seq_len, num_head, head_size].
+        value (Tensor): the Value Tensor. Its shape is [batchsize, seq_len, num_head, head_size].
+        mask (Tensor): the Mask Tensor. Its shape is [batchsize, seq_len, num_head, seq_len]. And it can broadcast in each dims (which means you can set dimsize=1).
         scale (Float): the attention matrix's scale. Default is sqrt(1.0 / head_size).
         causal (Bool): whether causal masking is used or not. Default is False.
     Returns:
