@@ -69,7 +69,7 @@ void GraphGpuWrapper::init_conf(const std::string &first_node_type,
         VLOG(2) << "edge_to_id[" << edge << "] = " << iter->second;
         meta_path_[i].push_back(iter->second);
         if (edge_to_node_map_.find(iter->second) == edge_to_node_map_.end()) {
-          auto nodes = paddle::string::split_string<std::string>(edge, "2");
+          auto nodes = get_ntype_from_etype(edge);
           uint64_t src_node_id = node_to_id.find(nodes[0])->second;
           uint64_t dst_node_id = node_to_id.find(nodes[1])->second;
           edge_to_node_map_[iter->second] = src_node_id << 32 | dst_node_id;
@@ -81,7 +81,7 @@ void GraphGpuWrapper::init_conf(const std::string &first_node_type,
         paddle::string::split_string<std::string>(excluded_train_pair, ";");
     VLOG(2) << "excluded_train_pair[" << excluded_train_pair << "]";
     for (auto &path : paths) {
-      auto nodes = paddle::string::split_string<std::string>(path, "2");
+      auto nodes = get_ntype_from_etype(path);
       for (auto &node : nodes) {
         auto iter = node_to_id.find(node);
         PADDLE_ENFORCE_NE(iter,
@@ -189,8 +189,7 @@ void GraphGpuWrapper::init_metapath(std::string cur_metapath,
         edge_to_id.end(),
         platform::errors::NotFound("(%s) is not found in edge_to_id.", node));
     cur_parse_metapath_.push_back(iter->second);
-    auto etype_split = paddle::string::split_string<std::string>(node, "2");
-    std::string reverse_type = etype_split[1] + "2" + etype_split[0];
+    std::string reverse_type = get_reverse_etype(node);
     iter = edge_to_id.find(reverse_type);
     PADDLE_ENFORCE_NE(iter,
                       edge_to_id.end(),
@@ -210,8 +209,7 @@ void GraphGpuWrapper::init_metapath(std::string cur_metapath,
   std::vector<std::vector<uint64_t>> tmp_keys;
   tmp_keys.resize(thread_num);
   int first_node_idx;
-  std::string first_node =
-      paddle::string::split_string<std::string>(cur_metapath_, "2")[0];
+  std::string first_node = get_ntype_from_etype(nodes[0])[0];
   auto it = node_to_id.find(first_node);
   first_node_idx = it->second;
   d_graph_train_total_keys_.resize(thread_num);
@@ -285,53 +283,102 @@ void GraphGpuWrapper::clear_metapath_state() {
   }
 }
 
-int GraphGpuWrapper::get_all_id(int type,
+int GraphGpuWrapper::get_all_id(int table_type,
                                 int slice_num,
                                 std::vector<std::vector<uint64_t>> *output) {
   return reinterpret_cast<GpuPsGraphTable *>(graph_table)
-      ->cpu_graph_table_->get_all_id(type, slice_num, output);
+      ->cpu_graph_table_->get_all_id(
+          (GraphTableType)table_type, slice_num, output);
 }
 
 int GraphGpuWrapper::get_all_neighbor_id(
-    int type, int slice_num, std::vector<std::vector<uint64_t>> *output) {
+    GraphTableType table_type,
+    int slice_num,
+    std::vector<std::vector<uint64_t>> *output) {
   return reinterpret_cast<GpuPsGraphTable *>(graph_table)
-      ->cpu_graph_table_->get_all_neighbor_id(type, slice_num, output);
+      ->cpu_graph_table_->get_all_neighbor_id(table_type, slice_num, output);
 }
 
-int GraphGpuWrapper::get_all_id(int type,
+int GraphGpuWrapper::get_all_id(int table_type,
                                 int idx,
                                 int slice_num,
                                 std::vector<std::vector<uint64_t>> *output) {
   return reinterpret_cast<GpuPsGraphTable *>(graph_table)
-      ->cpu_graph_table_->get_all_id(type, idx, slice_num, output);
+      ->cpu_graph_table_->get_all_id(
+          (GraphTableType)table_type, idx, slice_num, output);
 }
 
 int GraphGpuWrapper::get_all_neighbor_id(
-    int type,
+    GraphTableType table_type,
     int idx,
     int slice_num,
     std::vector<std::vector<uint64_t>> *output) {
   return reinterpret_cast<GpuPsGraphTable *>(graph_table)
-      ->cpu_graph_table_->get_all_neighbor_id(type, idx, slice_num, output);
+      ->cpu_graph_table_->get_all_neighbor_id(
+          table_type, idx, slice_num, output);
 }
 
 int GraphGpuWrapper::get_all_feature_ids(
-    int type,
+    GraphTableType table_type,
     int idx,
     int slice_num,
     std::vector<std::vector<uint64_t>> *output) {
   return reinterpret_cast<GpuPsGraphTable *>(graph_table)
-      ->cpu_graph_table_->get_all_feature_ids(type, idx, slice_num, output);
+      ->cpu_graph_table_->get_all_feature_ids(
+          table_type, idx, slice_num, output);
+}
+
+int GraphGpuWrapper::get_node_embedding_ids(
+    int slice_num, std::vector<std::vector<uint64_t>> *output) {
+  return (reinterpret_cast<GpuPsGraphTable *>(graph_table))
+      ->cpu_graph_table_->get_node_embedding_ids(slice_num, output);
+}
+
+std::string GraphGpuWrapper::get_reverse_etype(std::string etype) {
+  auto etype_split = paddle::string::split_string<std::string>(etype, "2");
+  if (etype_split.size() == 2) {
+    std::string reverse_type = etype_split[1] + "2" + etype_split[0];
+    return reverse_type;
+  } else if (etype_split.size() == 3) {
+    std::string reverse_type =
+        etype_split[2] + "2" + etype_split[1] + "2" + etype_split[0];
+    return reverse_type;
+  } else {
+    PADDLE_THROW(platform::errors::Fatal(
+        "The format of edge type should be [src2dst] or [src2etype2dst], "
+        "but got [%s].",
+        etype));
+  }
+}
+
+std::vector<std::string> GraphGpuWrapper::get_ntype_from_etype(
+    std::string etype) {
+  std::vector<std::string> etype_split =
+      paddle::string::split_string<std::string>(etype, "2");
+
+  if (etype_split.size() == 2) {
+    return etype_split;
+  } else if (etype_split.size() == 3) {
+    auto iter = etype_split.erase(etype_split.begin() + 1);
+    return etype_split;
+  } else {
+    PADDLE_THROW(platform::errors::Fatal(
+        "The format of edge type should be [src2dst] or [src2etype2dst], "
+        "but got [%s].",
+        etype));
+  }
 }
 
 void GraphGpuWrapper::set_up_types(const std::vector<std::string> &edge_types,
                                    const std::vector<std::string> &node_types) {
   id_to_edge = edge_types;
+  edge_to_id.clear();
   for (size_t table_id = 0; table_id < edge_types.size(); table_id++) {
     int res = edge_to_id.size();
     edge_to_id[edge_types[table_id]] = res;
   }
   id_to_feature = node_types;
+  node_to_id.clear();
   for (size_t table_id = 0; table_id < node_types.size(); table_id++) {
     int res = node_to_id.size();
     node_to_id[node_types[table_id]] = res;
@@ -404,13 +451,18 @@ void GraphGpuWrapper::load_edge_file(std::string name,
   }
 }
 
-void GraphGpuWrapper::load_edge_file(std::string etype2files,
-                                     std::string graph_data_local_path,
-                                     int part_num,
-                                     bool reverse) {
+void GraphGpuWrapper::load_edge_file(
+    std::string etype2files,
+    std::string graph_data_local_path,
+    int part_num,
+    bool reverse,
+    const std::vector<bool> &is_reverse_edge_map) {
   reinterpret_cast<GpuPsGraphTable *>(graph_table)
-      ->cpu_graph_table_->parse_edge_and_load(
-          etype2files, graph_data_local_path, part_num, reverse);
+      ->cpu_graph_table_->parse_edge_and_load(etype2files,
+                                              graph_data_local_path,
+                                              part_num,
+                                              reverse,
+                                              is_reverse_edge_map);
 }
 
 int GraphGpuWrapper::load_node_file(std::string name, std::string filepath) {
@@ -433,14 +485,20 @@ int GraphGpuWrapper::load_node_file(std::string ntype2files,
           ntype2files, graph_data_local_path, part_num);
 }
 
-void GraphGpuWrapper::load_node_and_edge(std::string etype2files,
-                                         std::string ntype2files,
-                                         std::string graph_data_local_path,
-                                         int part_num,
-                                         bool reverse) {
+void GraphGpuWrapper::load_node_and_edge(
+    std::string etype2files,
+    std::string ntype2files,
+    std::string graph_data_local_path,
+    int part_num,
+    bool reverse,
+    const std::vector<bool> &is_reverse_edge_map) {
   reinterpret_cast<GpuPsGraphTable *>(graph_table)
-      ->cpu_graph_table_->load_node_and_edge_file(
-          etype2files, ntype2files, graph_data_local_path, part_num, reverse);
+      ->cpu_graph_table_->load_node_and_edge_file(etype2files,
+                                                  ntype2files,
+                                                  graph_data_local_path,
+                                                  part_num,
+                                                  reverse,
+                                                  is_reverse_edge_map);
 }
 
 void GraphGpuWrapper::add_table_feat_conf(std::string table_name,
@@ -514,28 +572,29 @@ void GraphGpuWrapper::finalize() {
   reinterpret_cast<GpuPsGraphTable *>(graph_table)->show_table_collisions();
 }
 
-void GraphGpuWrapper::upload_batch(int type,
-                                   int idx,
+// edge table
+void GraphGpuWrapper::upload_batch(int table_type,
                                    int slice_num,
                                    const std::string &edge_type) {
-  VLOG(0) << "begin upload edge, type[" << edge_type << "]";
+  VLOG(0) << "begin upload edge, etype[" << edge_type << "]";
   auto iter = edge_to_id.find(edge_type);
-  idx = iter->second;
-  VLOG(2) << "cur edge: " << edge_type << ",idx: " << idx;
+  int edge_idx = iter->second;
+  VLOG(2) << "cur edge: " << edge_type << ", edge_idx: " << edge_idx;
   std::vector<std::vector<uint64_t>> ids;
   reinterpret_cast<GpuPsGraphTable *>(graph_table)
-      ->cpu_graph_table_->get_all_id(type, idx, slice_num, &ids);
+      ->cpu_graph_table_->get_all_id(
+          (GraphTableType)table_type, edge_idx, slice_num, &ids);
   debug_gpu_memory_info("upload_batch node start");
   GpuPsGraphTable *g = reinterpret_cast<GpuPsGraphTable *>(graph_table);
   std::vector<std::future<int>> tasks;
 
-  for (int i = 0; i < ids.size(); i++) {
-    tasks.push_back(upload_task_pool->enqueue([&, i, idx, this]() -> int {
+  for (int i = 0; i < slice_num; i++) {
+    tasks.push_back(upload_task_pool->enqueue([&, i, edge_idx, this]() -> int {
       VLOG(0) << "begin make_gpu_ps_graph, node_id[" << i << "]_size["
               << ids[i].size() << "]";
       GpuPsCommGraph sub_graph =
-          g->cpu_graph_table_->make_gpu_ps_graph(idx, ids[i]);
-      g->build_graph_on_single_gpu(sub_graph, i, idx);
+          g->cpu_graph_table_->make_gpu_ps_graph(edge_idx, ids[i]);
+      g->build_graph_on_single_gpu(sub_graph, i, edge_idx);
       sub_graph.release_on_cpu();
       VLOG(1) << "sub graph on gpu " << i << " is built";
       return 0;
@@ -546,8 +605,10 @@ void GraphGpuWrapper::upload_batch(int type,
 }
 
 // feature table
-void GraphGpuWrapper::upload_batch(int type, int slice_num, int slot_num) {
-  if (type == 1 &&
+void GraphGpuWrapper::upload_batch(int table_type,
+                                   int slice_num,
+                                   int slot_num) {
+  if (table_type == GraphTableType::FEATURE_TABLE &&
       (FLAGS_gpugraph_storage_mode == paddle::framework::GpuGraphStorageMode::
                                           MEM_EMB_FEATURE_AND_GPU_GRAPH ||
        FLAGS_gpugraph_storage_mode == paddle::framework::GpuGraphStorageMode::
@@ -556,11 +617,12 @@ void GraphGpuWrapper::upload_batch(int type, int slice_num, int slot_num) {
   }
   std::vector<std::vector<uint64_t>> node_ids;
   reinterpret_cast<GpuPsGraphTable *>(graph_table)
-      ->cpu_graph_table_->get_all_id(type, slice_num, &node_ids);
+      ->cpu_graph_table_->get_all_id(
+          (GraphTableType)table_type, slice_num, &node_ids);
   debug_gpu_memory_info("upload_batch feature start");
   GpuPsGraphTable *g = reinterpret_cast<GpuPsGraphTable *>(graph_table);
   std::vector<std::future<int>> tasks;
-  for (int i = 0; i < node_ids.size(); i++) {
+  for (int i = 0; i < slice_num; i++) {
     tasks.push_back(upload_task_pool->enqueue([&, i, this]() -> int {
       VLOG(0) << "begin make_gpu_ps_graph_fea, node_ids[" << i << "]_size["
               << node_ids[i].size() << "]";
@@ -638,7 +700,7 @@ void GraphGpuWrapper::get_node_degree(
     uint64_t *key,
     int len,
     std::shared_ptr<phi::Allocation> node_degree) {
-  return ((GpuPsGraphTable *)graph_table)
+  return (reinterpret_cast<GpuPsGraphTable *>(graph_table))
       ->get_node_degree(gpu_id, edge_idx, key, len, node_degree);
 }
 
@@ -830,7 +892,6 @@ std::string &GraphGpuWrapper::get_edge_type_size() {
                             ->cpu_graph_table_->edge_type_size;
   std::string delim = ";";
   edge_type_size_str_ = paddle::string::join_strings(edge_type_size, delim);
-  std::cout << "edge_type_size_str: " << edge_type_size_str_ << std::endl;
   return edge_type_size_str_;
 }
 
