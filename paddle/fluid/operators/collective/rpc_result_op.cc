@@ -26,26 +26,18 @@ class RpcResultOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {}
 
  protected:
-  phi::KernelKey GetExpectedKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    int dtype = ctx.Attr<int>("dtype");
-    return phi::KernelKey(framework::proto::VarType::Type(dtype),
-                          ctx.GetPlace());
+    auto dtype = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return framework::OpKernelType(dtype, ctx.GetPlace());
   }
 };
 
 class RpcResultOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
-    AddOutput("Out", "(Tensor) tensor for output.");
-    AddAttr<int>("dtype",
-                 "(int default 5('float32)) Output tensor's data type.")
-        .SetDefault(5);
-    AddAttr<int>("request_id", "(int default 0) Unique id for request.")
-        .SetDefault(0);
-    AddAttr<std::string>("service_name",
-                         "(string default service_name) Service's name.")
-        .SetDefault("service_name");
+    AddInput("X", "(Tensor) Request id.");
+    AddOutput("Out", "(Tensor) Response from service.");
     AddComment(R"DOC(
 Rpc Result Operator
 
@@ -62,9 +54,4 @@ REGISTER_OP_WITHOUT_GRADIENT(rpc_result,
                              ops::RpcResultOp,
                              ops::RpcResultOpMaker);
 
-REGISTER_OP_CPU_KERNEL(rpc_result,
-                       ops::RpcResultOpKernel<float>,
-                       ops::RpcResultOpKernel<double>,
-                       ops::RpcResultOpKernel<int>,
-                       ops::RpcResultOpKernel<int64_t>,
-                       ops::RpcResultOpKernel<phi::dtype::pstring>);
+REGISTER_OP_CPU_KERNEL(rpc_result, ops::RpcResultOpKernel<int>);

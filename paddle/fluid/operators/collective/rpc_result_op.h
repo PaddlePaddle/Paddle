@@ -14,11 +14,13 @@
 
 #pragma once
 
+#include <string>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/collective/thirdparty/json.h"
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/phi/common/pstring.h"
 
 namespace paddle {
 namespace operators {
@@ -29,38 +31,39 @@ template <typename T>
 class RpcResultOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    int request_id = ctx.Attr<int>("request_id");
-    const std::string& service_name = ctx.Attr<std::string>("service_name");
-    const std::string& result =
-        platform::RequestIdMap::Instance().GetRequestResult(request_id);
+    auto* request_id_tensor = ctx.Input<phi::DenseTensor>("X");
+    int request_id = request_id_tensor->data<int>()[0];
 
-    if (service_name == "test") {
-      json res_payload = json::parse(result);
+    // wait for request event
+    auto* cid = platform::RpcRequestStore::Instance().GetCallId(request_id);
+    auto event = platform::RpcRequestStore::Instance().GetEvent(request_id);
+    event->Wait();
+    brpc::Join(*cid);
+    const std::string& resp =
+        platform::RpcRequestStore::Instance().GetResponse(request_id);
+    VLOG(3) << "Request id " << request_id << " raw response: " << resp;
+
+    std::string res;
+    const std::string service =
+        platform::RpcRequestStore::Instance().GetService(request_id);
+    if (service == "test") {
+      json res_payload = json::parse(resp);
       json res_payload_data =
           json::parse(res_payload["data"][0].get<std::string>());
 
-      std::string res = "搜索结果: ";
+      res = "搜索结果: ";
       for (int i = 0; i < 3; ++i) {
         res += "[";
         res += std::to_string(i);
         res += "]";
         res += res_payload_data["results"][i]["abstract"];
       }
-
-      VLOG(3) << res;
-
-      // auto dtype = experimental::DataType::FLOAT32;
-      // phi::DenseTensor data(dtype);
-      // data.Resize({1});
-      // data.mutable_data(ctx.GetPlace(), dtype);
-      // data.data<float>()[0] = 1.0;
-
-      // auto* out = ctx.Output<phi::DenseTensor>("Out");
-      // // ctx.device_context().Alloc<T>(out);
-      // out->mutable_data(ctx.GetPlace(), dtype);
-
-      // framework::TensorCopySync(data, platform::CPUPlace(), out);
     }
+    VLOG(3) << "Request id " << request_id << " result: " << res;
+
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    std::vector<uint8_t> vec(res.begin(), res.end());
+    framework::TensorFromVector(vec, out);
   }
 };
 
