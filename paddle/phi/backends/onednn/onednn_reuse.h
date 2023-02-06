@@ -1667,7 +1667,7 @@ static void SetOutMemDescWithUnsqueeze2FuseSupport(
     const std::vector<int> fused_unsqueeze2_axes,
     phi::DenseTensor* out,
     const dnnl::memory::desc& out_md) {
-  const std::vector<int64_t>& op_tz = out_md.dims();
+  const std::vector<int64_t>& op_tz = out_md.get_dims();
   std::vector<int64_t> unsqueezed_op_tz(
       op_tz.size() + fused_unsqueeze2_axes.size(), 0);
 
