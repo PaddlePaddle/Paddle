@@ -472,23 +472,23 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                   print(t.shape())  # [5, 30]
            )DOC")
       .def("_to_dlpack",
+<<<<<<< HEAD
            [](framework::Tensor &self) {
              DLPackTensor dlpack_tensor(self, 1);
              DLManagedTensor *dmt = dlpack_tensor.ToDLManagedTensor();
              auto capsule = py::capsule(
+=======
+           [](phi::DenseTensor &self) {
+             DLManagedTensor *dmt = framework::toDLPack(self);
+             auto capsule = pybind11::capsule(
+>>>>>>> 35ce2bd... Fix to_dlpack (#50138)
                  static_cast<void *>(dmt), "dltensor", [](PyObject *ptr) {
-                   if (ptr) {
-                     auto dltensor = new DLManagedTensor;
-                     try {
-                       dltensor = reinterpret_cast<DLManagedTensor *>(
-                           PyCapsule_GetPointer(ptr, "used_dltensor"));
-                       return;
-                     } catch (...) {
-                       dltensor = reinterpret_cast<DLManagedTensor *>(
-                           PyCapsule_GetPointer(ptr, "dltensor"));
-                     }
-                     dltensor->deleter(dltensor);
+                   if (!PyCapsule_IsValid(ptr, "dltensor")) {
+                     return;
                    }
+                   DLManagedTensor *dmt = static_cast<DLManagedTensor *>(
+                       PyCapsule_GetPointer(ptr, "dltensor"));
+                   dmt->deleter(dmt);
                  });
              return capsule;
            })
