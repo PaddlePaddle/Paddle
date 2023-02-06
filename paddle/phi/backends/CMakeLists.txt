@@ -36,18 +36,18 @@ if(WITH_MKLDNN)
   list(APPEND BACKENDS_DEPS mkldnn)
 endif()
 
+list(
+  APPEND
+  BACKENDS_SRCS
+  callback_manager.cc
+  device_guard.cc
+  stream.cc
+  event.cc
+  device_base.cc
+  device_manager.cc)
+
 if(WITH_CUSTOM_DEVICE)
-  list(
-    APPEND
-    BACKENDS_SRCS
-    callback_manager.cc
-    device_guard.cc
-    stream.cc
-    event.cc
-    device_base.cc
-    device_manager.cc
-    custom/custom_context.cc
-    custom/custom_device.cc)
+  list(APPEND BACKENDS_SRCS custom/custom_context.cc custom/custom_device.cc)
 endif()
 
 add_library(phi_backends "${BACKENDS_SRCS}")

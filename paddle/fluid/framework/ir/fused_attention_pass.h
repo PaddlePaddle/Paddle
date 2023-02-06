@@ -16,6 +16,7 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
@@ -28,7 +29,7 @@ namespace patterns {
 
 // Declare patterns for multi head attention.
 // Can detect:
-// 1. Pre layer norm, post layer norm or sandwich layer norm.
+// 1. Pre layer norm or post layer norm.
 // 2. Add attn mask for qk product before the softmax or not.
 // 3. Do attn dropout or not.
 // 4. Add residual to the out linear result or not.
@@ -37,11 +38,10 @@ struct FusedAttentionPattern : public PatternBase {
       : PatternBase(pattern, name_scope, "fused_attention_pattern") {}
 
   PDNode* operator()(PDNode* x,
-                     bool pre_layer_norm,   // do pre ln or not
-                     bool post_layer_norm,  // do post ln or not
-                     bool has_attn_mask,    // add attn mask to qk or not
-                     bool do_dropout,       // dropout the softmax(qk) or not
-                     bool add_residual);    // add residual to out linear or not
+                     bool pre_layer_norm,  // do pre ln or not
+                     bool has_attn_mask,   // add attn mask to qk or not
+                     bool do_dropout,      // dropout the softmax(qk) or not
+                     bool add_residual);   // add residual to out linear or not
 
   // pre layer norm
   PATTERN_DECL_NODE(pre_layer_norm_op);
@@ -134,11 +134,10 @@ struct FusedAttentionGradPattern : public PatternBase {
       : PatternBase(pattern, name_scope, "fused_attention_pattern") {}
 
   PDNode* operator()(PDNode* x,
-                     bool pre_layer_norm,   // pre ln
-                     bool post_layer_norm,  // post ln
-                     bool has_attn_mask,    // add attn mask to qk or not
-                     bool do_dropout,       // dropout the softmax(qk) or not
-                     bool add_residual);    // add residual to out linear or not
+                     bool pre_layer_norm,  // pre ln
+                     bool has_attn_mask,   // add attn mask to qk or not
+                     bool do_dropout,      // dropout the softmax(qk) or not
+                     bool add_residual);   // add residual to out linear or not
 
   // post layer norm grad
   PATTERN_DECL_NODE(post_layer_norm_grad_op);
@@ -254,6 +253,31 @@ struct FusedAttentionGradPattern : public PatternBase {
 
 }  // namespace patterns
 
+class FusedAttentionPassCache {
+ public:
+  ir::Node* GetNodeFromCache(const std::string name) {
+    if (var_name_to_ir_node_cache_.count(name)) {
+      return var_name_to_ir_node_cache_.find(name)->second;
+    }
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "The key (%d) of FusedAttentionCache does not exist.", name));
+  }
+
+  void InsertIntoCache(const std::string name, ir::Node* node) {
+    if (!var_name_to_ir_node_cache_.count(name)) {
+      var_name_to_ir_node_cache_.insert({name, node});
+    } else {
+      PADDLE_THROW(platform::errors::AlreadyExists(
+          "The key (%d) of FusedAttentionCache already exist.", name));
+    }
+  }
+
+  void ResetCache() { var_name_to_ir_node_cache_.clear(); }
+
+ private:
+  std::unordered_map<std::string, ir::Node*> var_name_to_ir_node_cache_;
+};
+
 class FusedAttentionsPass : public FusePassBase {
  public:
   virtual ~FusedAttentionsPass() {}
@@ -275,9 +299,17 @@ class FusedAttentionsPass : public FusePassBase {
   // If true, the function name will have an abbreviation part.
   // If false, the function name won't contain an abbreviation for it.
 
-  ir::Graph* PreMaskDropResPostFwd(Graph* graph) const;
+  ir::Graph* PreMaskDropResFwd(Graph* graph,
+                               FusedAttentionPassCache* cache) const;
 
-  ir::Graph* PreMaskDropResPostBwd(Graph* graph) const;
+  ir::Graph* PreMaskDropResBwd(Graph* graph,
+                               FusedAttentionPassCache* cache) const;
+
+  const std::string GenerateCacheKey(const std::string anchor,
+                                     const std::string var_name,
+                                     int block_id) const {
+    return anchor + "_" + std::to_string(block_id) + "_" + var_name;
+  }
 };
 
 }  // namespace ir

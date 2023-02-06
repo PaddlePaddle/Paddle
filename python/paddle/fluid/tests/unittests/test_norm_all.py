@@ -655,6 +655,15 @@ class API_NormTest(unittest.TestCase):
                 ValueError, paddle.norm, data, p='unspport', axis=[-3, -2, -1]
             )
 
+        with fluid.dygraph.guard():
+            # The size of input in Norm should not be 0.
+            def test_0_size():
+                array = np.array([], dtype=np.float32)
+                x = paddle.to_tensor(np.reshape(array, [0, 0]), dtype='float32')
+                paddle.linalg.norm(x, axis=0)
+
+            self.assertRaises(ValueError, test_0_size)
+
 
 if __name__ == '__main__':
     paddle.enable_static()
