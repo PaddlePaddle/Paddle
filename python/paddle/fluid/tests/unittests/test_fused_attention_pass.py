@@ -53,7 +53,7 @@ class MultiHeadAttention(paddle.nn.Layer):
 
         self.qkv_proj = paddle.nn.Linear(embed_dim, 3 * embed_dim)
         self.out_proj = paddle.nn.Linear(embed_dim, embed_dim)
-        self.dropout = paddle.nn.Dropout(0.0000000001, mode="upscale_in_train")
+        self.dropout = paddle.nn.Dropout(1e-10, mode="upscale_in_train")
 
     def forward(self, x, attn_mask=None):
         residual = x
