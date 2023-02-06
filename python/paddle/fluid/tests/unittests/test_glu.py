@@ -79,7 +79,7 @@ class TestGlu(unittest.TestCase):
         paddle.nn.functional.glu(x, axis=256)
 
     def test_errors(self):
-        self.assertRaises(AssertionError, self.glu_axis_size)
+        self.assertRaises(ValueError, self.glu_axis_size)
 
 
 if __name__ == '__main__':
