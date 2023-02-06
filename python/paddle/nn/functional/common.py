@@ -16,10 +16,10 @@ import numpy
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
+from paddle.common_ops_import import Variable, default_main_program
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers.tensor import fill_constant
 from paddle.framework import core, in_dynamic_mode
-from paddle.static import Variable, default_main_program
 from paddle.tensor.creation import full
 
 from ...fluid.data_feeder import (
@@ -1436,7 +1436,7 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
         random_tensor = paddle.uniform(
             input_shape, dtype='float32', min=0.0, max=1.0
         )
-        p = full(shape=[1], fill_value=p, dtype='float32')
+        p = full(shape=input_shape, fill_value=p, dtype='float32')
         keep_mask = paddle.greater_equal(random_tensor, p)
         keep_mask = paddle.cast(keep_mask, dtype)
         drop_mask = paddle.subtract(
@@ -1444,7 +1444,7 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
         )
 
         # apply mask
-        b = full(shape=[1], fill_value=b, dtype=dtype)
+        b = full(shape=input_shape, fill_value=b, dtype=dtype)
         y = paddle.add(
             paddle.multiply(x, keep_mask),
             paddle.scale(drop_mask, scale=alpha_p),

@@ -89,7 +89,7 @@ class TestDistFleetHeterProgram(unittest.TestCase):
                 size=[100001, 10],
                 param_attr=fluid.ParamAttr(
                     name="SparseFeatFactors",
-                    initializer=fluid.initializer.Uniform(),
+                    initializer=paddle.nn.initializer.Uniform(),
                 ),
             )
 
@@ -103,8 +103,8 @@ class TestDistFleetHeterProgram(unittest.TestCase):
                 size=400,
                 activation="relu",
                 weight_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Normal(
-                        scale=1 / math.sqrt(concated.shape[1])
+                    initializer=paddle.nn.initializer.Normal(
+                        std=1 / math.sqrt(concated.shape[1])
                     )
                 ),
                 name="fc1",
@@ -116,8 +116,8 @@ class TestDistFleetHeterProgram(unittest.TestCase):
                 size=400,
                 activation="relu",
                 weight_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Normal(
-                        scale=1 / math.sqrt(fc1.shape[1])
+                    initializer=paddle.nn.initializer.Normal(
+                        std=1 / math.sqrt(fc1.shape[1])
                     )
                 ),
                 name="fc2",
@@ -129,8 +129,8 @@ class TestDistFleetHeterProgram(unittest.TestCase):
                 size=400,
                 activation="relu",
                 weight_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Normal(
-                        scale=1 / math.sqrt(fc2.shape[1])
+                    initializer=paddle.nn.initializer.Normal(
+                        std=1 / math.sqrt(fc2.shape[1])
                     )
                 ),
                 name="fc3",
@@ -142,8 +142,8 @@ class TestDistFleetHeterProgram(unittest.TestCase):
                 size=2,
                 activation="softmax",
                 weight_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Normal(
-                        scale=1 / math.sqrt(fc3.shape[1])
+                    initializer=paddle.nn.initializer.Normal(
+                        std=1 / math.sqrt(fc3.shape[1])
                     )
                 ),
             )

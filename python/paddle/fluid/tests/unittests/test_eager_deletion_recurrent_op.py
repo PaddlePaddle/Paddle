@@ -312,7 +312,7 @@ class EagerDeletionRecurrentOpTest2(EagerDeletionRecurrentOpTest1):
                 size=self.input_dim,
                 weight_attr=ParamAttr(
                     name='W',
-                    initializer=fluid.initializer.ConstantInitializer(1.0),
+                    initializer=paddle.nn.initializer.Constant(1.0),
                 ),
                 bias_attr=False,
             )
@@ -321,7 +321,7 @@ class EagerDeletionRecurrentOpTest2(EagerDeletionRecurrentOpTest1):
                 size=self.input_dim,
                 weight_attr=ParamAttr(
                     name='U',
-                    initializer=fluid.initializer.ConstantInitializer(0.0),
+                    initializer=paddle.nn.initializer.Constant(0.0),
                 ),
                 bias_attr=False,
             )
