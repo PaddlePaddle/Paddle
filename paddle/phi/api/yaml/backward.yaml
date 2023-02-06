@@ -128,6 +128,19 @@
     func : bmm_grad
     data_type : out_grad
 
+- backward_op : broadcast_tensors_grad
+  forward : broadcast_tensors (Tensor[] input) -> Tensor[](out)
+  args : (Tensor[] input, Tensor[] out_grad)
+  output : Tensor[](input_grad)
+  infer_meta :
+    func : UnchangedMultiInferMeta
+    param : [input]
+  kernel :
+    func : broadcast_tensors_grad
+    param : [input, out_grad]
+    data_type : out_grad
+  no_need_buffer : input
+
 - backward_op : ceil_grad
   forward : ceil(Tensor x) -> Tensor(out)
   args : (Tensor out_grad)
@@ -932,6 +945,43 @@
     param : [out_grad]
   kernel :
     func : poisson_grad
+
+- backward_op : pow_double_grad
+  forward : pow_grad(Tensor x, Tensor grad_out, Scalar y) -> Tensor(grad_x)
+  args : (Tensor x, Tensor grad_out, Tensor grad_x_grad, Scalar y)
+  output : Tensor(x_grad), Tensor(grad_out_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param: [x, grad_out]
+  kernel :
+    func : pow_double_grad
+    data_type : x
+  backward : pow_triple_grad
+  inplace : (grad_x_grad -> x_grad)
+
+- backward_op : pow_grad
+  forward : pow(Tensor x, Scalar y=1.0f) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, Scalar y=-1)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : pow_grad
+    data_type : out_grad
+  backward: pow_double_grad
+  inplace : (out_grad -> x_grad)
+
+- backward_op : pow_triple_grad
+  forward : pow_double_grad(Tensor x, Tensor grad_out, Tensor grad_grad_x, Scalar y) -> Tensor(grad_x), Tensor(grad_grad_out)
+  args : (Tensor x, Tensor grad_out, Tensor grad_grad_x, Tensor grad_x_grad, Tensor grad_grad_out_grad, Scalar y)
+  output : Tensor(x_grad), Tensor(grad_out_grad), Tensor(grad_grad_x_grad)
+  infer_meta :
+    func : GeneralTernaryGradInferMeta
+    param: [x, grad_out, grad_grad_x]
+  kernel :
+    func : pow_triple_grad
+    data_type : x
 
 - backward_op : put_along_axis_grad
   forward : put_along_axis (Tensor arr, Tensor indices, Tensor value, int axis, str reduce = "assign") -> Tensor(out)
