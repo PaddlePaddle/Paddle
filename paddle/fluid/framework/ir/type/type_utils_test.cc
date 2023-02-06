@@ -46,3 +46,14 @@ TEST(type_utils, type_id) {
     EXPECT_EQ(kv.first.GetStorage(), kv.second);
   }
 }
+
+TEST(type_utils, abstract_type) {
+  class TypeA {};
+
+  paddle::framework::ir::TypeID a_id =
+      paddle::framework::ir::TypeID::Get<TypeA>();
+  paddle::framework::ir::AbstractType abstract_type_a =
+      paddle::framework::ir::AbstractType::Get(a_id);
+
+  EXPECT_EQ(abstract_type_a.GetTypeID(), a_id);
+}

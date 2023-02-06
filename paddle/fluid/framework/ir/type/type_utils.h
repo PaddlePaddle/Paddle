@@ -54,6 +54,31 @@ class TypeID {
   const Storage *storage_;
 };
 
+/*
+ * Abstract the properties and behaviors common to all Type classes into an
+ * AbstractType class. There are two types in Type system:
+ * non-parameter/singleton type and parameter-type. The common attributes of all
+ * types is TypeID (and possibly others). Therefore, construct a class with
+ * TypeID as its member
+ */
+class AbstractType {
+ public:
+  // Construct an AbstractType by TypeID directly.
+  static AbstractType Get(TypeID type_id) { return AbstractType(type_id); }
+
+  TypeID GetTypeID() const { return typeID_; }
+
+  // TODO(zhangbo9674): After the IRContext is designed, AbstractType will be
+  // cached to IRContext with TypeID as key. static const AbstractType&
+  // LookUp(IRContext* ctx, TypeID type_id);
+
+ private:
+  // The constructor is set to private and provides the user with the Get method
+  // and LookUp method to obtain and manage the AstractType.
+  explicit AbstractType(TypeID typeID) : typeID_(typeID) {}
+  TypeID typeID_;
+};
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
