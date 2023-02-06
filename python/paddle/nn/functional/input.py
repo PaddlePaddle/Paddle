@@ -268,6 +268,7 @@ def embedding_bag(input, params, weight, mode, name = None ):
         Tensor: The calculation of embedding params according to 'input'. The data type is the same as 'params'.
     Examples:
         .. code-block:: python
+        
             import numpy as np
             import paddle
             import paddle.nn as nn
@@ -276,7 +277,7 @@ def embedding_bag(input, params, weight, mode, name = None ):
             weight = np.random.random((2,6)).astype(np.float32)
             params = np.random.random((10,3)).astype(np.float32)
             input = paddle.to_tensor(input, stop_gradient = False)
-            weight = paddle.to_tensor(weights, stop_gradient = False)
+            weight = paddle.to_tensor(weight, stop_gradient = False)
             params = paddle.to_tensor(params, stop_gradient = False)
             # a batch of 2 samples of w indices each 
             sum = nn.functional.embeddingbag(input, params, weight, mode='sum')

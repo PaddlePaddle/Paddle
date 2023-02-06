@@ -1778,6 +1778,7 @@ class EmbeddingBag(Layer):
         'weight' and 'params' are the learnable weights of this layer.
     Examples:
         .. code-block:: python
+        
             import numpy as np
             import paddle
             # an EmbeddingBag module containing 10 tensors of size3
