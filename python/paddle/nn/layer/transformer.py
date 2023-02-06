@@ -555,6 +555,7 @@ class TransformerEncoderLayer(Layer):
         normalize_before=False,
         weight_attr=None,
         bias_attr=None,
+        sparse=False,
     ):
         self._config = locals()
         self._config.pop("self")
@@ -590,6 +591,7 @@ class TransformerEncoderLayer(Layer):
             dropout=attn_dropout,
             weight_attr=weight_attrs[0],
             bias_attr=bias_attrs[0],
+            sparse=sparse,
         )
         self.linear1 = Linear(
             d_model, dim_feedforward, weight_attrs[1], bias_attr=bias_attrs[1]
