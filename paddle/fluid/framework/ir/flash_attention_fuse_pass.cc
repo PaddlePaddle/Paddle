@@ -167,14 +167,15 @@ inline void QKVWeightsProcess(phi::DenseTensor* wq_tensor,
                               phi::DenseTensor* bk_tensor,
                               phi::DenseTensor* bv_tensor,
                               phi::DenseTensor* bqk_tensor_before) {
-  auto* wq_data = wq_tensor->mutable_data<T>(platform::CPUPlace());
-  auto* wk_data = wk_tensor->mutable_data<T>(platform::CPUPlace());
-  auto* wv_data = wv_tensor->mutable_data<T>(platform::CPUPlace());
-  auto* bq_data = bq_tensor->mutable_data<T>(platform::CPUPlace());
-  auto* bk_data = bk_tensor->mutable_data<T>(platform::CPUPlace());
-  auto* bv_data = bv_tensor->mutable_data<T>(platform::CPUPlace());
-  auto* bqk_data_before =
-      bqk_tensor_before->mutable_data<T>(platform::CPUPlace());
+  auto* wq_data = wq_tensor->data<T>();
+  auto* wk_data = wk_tensor->data<T>();
+  auto* wv_data = wv_tensor->data<T>();
+  auto* bq_data = bq_tensor->data<T>();
+  auto* bk_data = bk_tensor->data<T>();
+  auto* bv_data = bv_tensor->data<T>();
+  auto* bqk_data_before = bqk_tensor_before->data<T>();
+  auto* dev_ctx = static_cast<phi::CPUContext*>(
+      platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
 
   auto combined_w_dims =
       phi::make_ddim({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
@@ -217,24 +218,21 @@ inline void QKVWeightsProcess(phi::DenseTensor* wq_tensor,
 
   phi::DenseTensor tmp_bias_q_tensor;
   tmp_bias_q_tensor.Resize(tmp_bias_dims);
-  auto* tmp_bias_q_data =
-      tmp_bias_q_tensor.mutable_data<T>(platform::CPUPlace());
+  auto* tmp_bias_q_data = dev_ctx->template HostAlloc<T>(&tmp_bias_q_tensor);
   memset(tmp_bias_q_data, 0, M * N * sizeof(T));
   NaiveGemm(bqk_data_before, wq_data, tmp_bias_q_data, M, N, K);
   ElementAdd(tmp_bias_q_data, bq_data, M, N);
   // tmp_k
   phi::DenseTensor tmp_bias_k_tensor;
   tmp_bias_k_tensor.Resize(tmp_bias_dims);
-  auto* tmp_bias_k_data =
-      tmp_bias_k_tensor.mutable_data<T>(platform::CPUPlace());
+  auto* tmp_bias_k_data = dev_ctx->template HostAlloc<T>(&tmp_bias_k_tensor);
   memset(tmp_bias_k_data, 0, M * N * sizeof(T));
   NaiveGemm(bqk_data_before, wk_data, tmp_bias_k_data, M, N, K);
   ElementAdd(tmp_bias_k_data, bk_data, M, N);
   // tmp_v
   phi::DenseTensor tmp_bias_v_tensor;
   tmp_bias_v_tensor.Resize(tmp_bias_dims);
-  auto* tmp_bias_v_data =
-      tmp_bias_v_tensor.mutable_data<T>(platform::CPUPlace());
+  auto* tmp_bias_v_data = dev_ctx->template HostAlloc<T>(&tmp_bias_v_tensor);
   memset(tmp_bias_v_data, 0, M * N * sizeof(T));
   ElementAdd(tmp_bias_v_data, bv_data, M, N);
 
@@ -242,7 +240,7 @@ inline void QKVWeightsProcess(phi::DenseTensor* wq_tensor,
   phi::DenseTensor tmp_combined_bias_tensor;
   tmp_combined_bias_tensor.Resize(combined_bias_dims);
   auto* tmp_combined_bias_data =
-      tmp_combined_bias_tensor.mutable_data<T>(platform::CPUPlace());
+      dev_ctx->template HostAlloc<T>(&tmp_combined_bias_tensor);
 
   std::vector<T*> bias_vec = {
       tmp_bias_q_data, tmp_bias_k_data, tmp_bias_v_data};
@@ -259,8 +257,7 @@ inline void QKVWeightsProcess(phi::DenseTensor* wq_tensor,
   }
 
   bq_tensor->Resize(combined_bias_dims);
-  auto* new_combined_bias_data =
-      bq_tensor->mutable_data<T>(platform::CPUPlace());
+  auto* new_combined_bias_data = dev_ctx->template HostAlloc<T>(bq_tensor);
   memcpy(new_combined_bias_data,
          tmp_combined_bias_data,
          sizeof(T) * bq_tensor->numel());
@@ -268,7 +265,7 @@ inline void QKVWeightsProcess(phi::DenseTensor* wq_tensor,
   phi::DenseTensor tmp_combined_w_tensor;
   tmp_combined_w_tensor.Resize(combined_w_dims);
   auto* tmp_combined_w_data =
-      tmp_combined_w_tensor.mutable_data<T>(platform::CPUPlace());
+      dev_ctx->template HostAlloc<T>(&tmp_combined_w_tensor);
 
   std::vector<T*> w_vec = {wq_data, wk_data, wv_data};
   int dims_h = combined_w_dims[0], dims_w = combined_w_dims[2];
@@ -285,7 +282,7 @@ inline void QKVWeightsProcess(phi::DenseTensor* wq_tensor,
 
   wq_tensor->clear();
   wq_tensor->Resize(combined_w_dims);
-  auto* new_combined_w_data = wq_tensor->mutable_data<T>(platform::CPUPlace());
+  auto* new_combined_w_data = dev_ctx->template HostAlloc<T>(wq_tensor);
   memcpy(
       new_combined_w_data, tmp_combined_w_data, sizeof(T) * wq_tensor->numel());
 }
