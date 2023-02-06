@@ -12,11 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/ir/type/type_utils.h"
+#include "paddle/fluid/framework/ir/type/type_support.h"
 #include <gtest/gtest.h>
 #include <unordered_map>
 
-TEST(type_utils, type_id) {
+TEST(type_support, type_id) {
   class TypeA {};
   class TypeB {};
 
@@ -47,7 +47,7 @@ TEST(type_utils, type_id) {
   }
 }
 
-TEST(type_utils, abstract_type) {
+TEST(type_support, abstract_type) {
   class TypeA {};
 
   paddle::framework::ir::TypeID a_id =
@@ -56,4 +56,18 @@ TEST(type_utils, abstract_type) {
       paddle::framework::ir::AbstractType::Get(a_id);
 
   EXPECT_EQ(abstract_type_a.GetTypeID(), a_id);
+}
+
+TEST(type_support, type_storage) {
+  class TypeA {};
+
+  paddle::framework::ir::TypeID a_id =
+      paddle::framework::ir::TypeID::Get<TypeA>();
+  paddle::framework::ir::AbstractType abstract_type_a =
+      paddle::framework::ir::AbstractType::Get(a_id);
+
+  paddle::framework::ir::TypeStorage storage_a;
+  storage_a.Initialize(abstract_type_a);
+
+  EXPECT_EQ(storage_a.GetAbstractType(), abstract_type_a);
 }

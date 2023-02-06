@@ -79,6 +79,26 @@ class AbstractType {
   TypeID typeID_;
 };
 
+/*
+ * TypeStorage is used to store all information of a Type. A Type object
+ * contains a TypeStorage. For non-parameter type, the information includes:
+ * TypeID, so TypeStorage only needs to include AbstractType; For parameter
+ * type, in addition to AbstractType/TypeID, parameter information needs to be
+ * included. So that, non-parameter type can be constructed by TypeStorage
+ * directly but parameter type should be constructed by Derived TypeStorage
+ */
+class TypeStorage {
+ public:
+  const AbstractType &GetAbstractType() { return *abstract_type_; }
+  TypeStorage() {}
+  void Initialize(const AbstractType &abstract_type) {
+    abstract_type_ = const_cast<AbstractType *>(&abstract_type);
+  }
+
+ private:
+  AbstractType *abstract_type_{nullptr};
+};
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

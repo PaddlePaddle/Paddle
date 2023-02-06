@@ -1,4 +1,4 @@
 cc_test(
-  type_utils_test
-  SRCS type_utils_test.cc
+  type_support_test
+  SRCS type_support_test.cc
   DEPS gtest)
