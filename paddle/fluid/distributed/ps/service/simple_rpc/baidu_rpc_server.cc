@@ -75,9 +75,10 @@ class BRpcServiceImpl : public SimpleRpcService {
     BinaryArchive iar;
     iar.Reserve(size);
     uint64_t attach_size = attach.cutn(iar.Buffer(), size);
-    PADDLE_ENFORCE_EQ((attach_size == size),
-                      true,
-                      phi::errors::PreconditionNotMet("Request size is wrong."));
+    PADDLE_ENFORCE_EQ(
+        (attach_size == size),
+        true,
+        phi::errors::PreconditionNotMet("Request size is wrong."));
     iar.AdvanceFinish(size);
 
     RpcMessageHead head;
@@ -108,7 +109,9 @@ class BRpcServiceImpl : public SimpleRpcService {
       head.request->callback()(head, iar);
       delete head.request;
       PADDLE_ENFORCE_NE(
-          head.service, 0, phi::errors::PreconditionNotMet("Service should not be nullptr."));
+          head.service,
+          0,
+          phi::errors::PreconditionNotMet("Service should not be nullptr."));
       head.service->decrease_request();
     } else {
       LOG(FATAL) << "Unknown message type";
@@ -221,9 +224,10 @@ static void handle_baidu_rpc_response(brpc::Controller *cntl,
     BinaryArchive iar;
     iar.Reserve(size);
     size_t attach_size = cntl->response_attachment().cutn(iar.Buffer(), size);
-    PADDLE_ENFORCE_EQ((attach_size == size),
-                      true,
-                      phi::errors::PreconditionNotMet("Request size is wrong."));
+    PADDLE_ENFORCE_EQ(
+        (attach_size == size),
+        true,
+        phi::errors::PreconditionNotMet("Request size is wrong."));
     iar.AdvanceFinish(size);
 
     RpcMessageHead head;
@@ -232,7 +236,9 @@ static void handle_baidu_rpc_response(brpc::Controller *cntl,
       head.request->callback()(head, iar);
       delete head.request;
       PADDLE_ENFORCE_NE(
-          head.service, 0, phi::errors::PreconditionNotMet("Service should not be nullptr."));
+          head.service,
+          0,
+          phi::errors::PreconditionNotMet("Service should not be nullptr."));
       head.service->decrease_request();
     } else {
       LOG(FATAL) << "Unknown message type";

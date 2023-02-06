@@ -490,10 +490,10 @@ void PSGPUWrapper::add_slot_feature(std::shared_ptr<HeterContext> gpu_task) {
                                                       slot_num,
                                                       d_slot_feature_num_map,
                                                       fea_num_per_node);
-        PADDLE_ENFORCE_EQ(
-            ret,
-            0,
-            platform::errors::PreconditionNotMet("Get_feature_of_nodes error."));
+        PADDLE_ENFORCE_EQ(ret,
+                          0,
+                          platform::errors::PreconditionNotMet(
+                              "Get_feature_of_nodes error."));
 
         CUDA_CHECK(cudaMemcpy(feature_ids[i].data() + pos * fea_num_per_node,
                               d_feature_list_ptr,
