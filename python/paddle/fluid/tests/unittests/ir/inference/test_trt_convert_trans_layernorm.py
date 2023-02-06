@@ -47,9 +47,8 @@ class TrtConvertTransLayernormTest(TrtLayerAutoScanTest):
             return x.astype(np.float32)
 
         def conv2d_input_datagen(dics):
-            x = np.random.random(
-                [dics["batch"], dics["c"], dics["h"], dics["w"]]
-            )
+            x = (np.random.random([dics["c"], dics["c"], 1, 1]) - 0.5) * 0.1
+
             return x.astype(np.float32)
 
         for batch in [2]:
