@@ -21,6 +21,7 @@
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/phi/core/errors.h"
 #include "paddle/utils/string/pretty_log.h"
@@ -140,3 +141,7 @@ void MultiGruSeqFusePass::ApplyImpl(ir::Graph* graph) const {
 
 REGISTER_PASS(multi_gru_seq_fuse_pass,
               paddle::framework::ir::MultiGruSeqFusePass);
+REGISTER_PASS_CAPABILITY(multi_gru_seq_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination().EQ(
+            "multi_gru", 0));
