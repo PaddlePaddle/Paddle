@@ -298,7 +298,7 @@ class TestRunProgramOpWithFC(RunProgramNPUOpTest):
         weight_attr = fluid.ParamAttr(
             name=self.input_names['Params'][0],
             learning_rate=0.5,
-            initializer=fluid.initializer.NumpyArrayInitializer(
+            initializer=paddle.nn.initializer.Assign(
                 self.inputs['Params'][self.input_names['Params'][0]]
             ),
             trainable=True,
@@ -306,7 +306,7 @@ class TestRunProgramOpWithFC(RunProgramNPUOpTest):
         bias_attr = fluid.ParamAttr(
             name=self.input_names['Params'][1],
             learning_rate=0.5,
-            initializer=fluid.initializer.NumpyArrayInitializer(
+            initializer=paddle.nn.initializer.Assign(
                 self.inputs['Params'][self.input_names['Params'][1]]
             ),
             trainable=True,

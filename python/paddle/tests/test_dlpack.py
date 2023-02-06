@@ -116,6 +116,12 @@ class TestDLPack(unittest.TestCase):
                 dlpack = paddle.utils.dlpack.to_dlpack(a)
                 b = paddle.utils.dlpack.from_dlpack(dlpack)
 
+    def test_to_dlpack_for_loop(self):
+        # See Paddle issue 50120
+        for i in range(10):
+            x = paddle.rand([3, 5])
+            dlpack = paddle.utils.dlpack.to_dlpack(x)
+
 
 class TestRaiseError(unittest.TestCase):
     def test_from_dlpack_raise_type_error(self):
