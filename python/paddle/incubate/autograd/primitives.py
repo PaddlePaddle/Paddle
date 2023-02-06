@@ -13,6 +13,8 @@
 # limitations under the License.
 
 from paddle.fluid.layers.tensor import cast  # noqa: F401
+from paddle.fluid.layers.tensor import fill_constant  # noqa: F401
+from paddle.fluid.layers.nn import reduce_sum  # noqa: F401
 from paddle.tensor import abs  # noqa: F401
 from paddle.tensor import acos  # noqa: F401
 from paddle.tensor import acosh  # noqa: F401
@@ -97,6 +99,8 @@ trigonometric_op = [
 others = [
     'cast',
     'broadcast_to',
+    'fill_constant',
+    'reduce_sum',
 ]
 
 __all__ = []

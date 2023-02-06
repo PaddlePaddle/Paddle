@@ -1111,6 +1111,8 @@
 
 - op : reduce_mean
   backward : reduce_mean_grad
+  inputs:
+    x : X
   extra :
     attrs : [bool use_mkldnn = false]
 

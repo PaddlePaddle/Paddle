@@ -38,4 +38,13 @@ def softmax_composite(x, axis):
 
 
 @REGISTER_COMPOSITE('reduce_mean')
-def mean_composite(x, axis, keepdim=false):
+def mean_composite(x, axis, keepdim):
+    """define composite rule of op mean"""
+    axes = axis or tuple(range(0, len(x.shape)))
+    sum = reduce_sum(x, axis=axes, keepdim=keepdim)
+    norm = fill_constant(
+        shape=sum.shape,
+        value=functools.reduce(operator.mul, [x.shape[axis] for axis in axes]),
+        dtype=sum.dtype,
+    )
+    return divide(sum, norm)
