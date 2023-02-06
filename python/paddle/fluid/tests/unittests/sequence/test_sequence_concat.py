@@ -139,7 +139,7 @@ class TestSequenceConcatOpError(unittest.TestCase):
             x4_data = paddle.static.data(name="x4", shape=[0], dtype='float32')
             y4_data = paddle.static.data(name="y4", shape=[1], dtype='float32')
             input_list = [x4_data, y4_data]
-            fluid.layers.sequence_concat(input=input_list)
+            paddle.static.nn.sequence_lod.sequence_concat(input=input_list)
 
         self.assertRaises(ValueError, test_0_shape)
 
