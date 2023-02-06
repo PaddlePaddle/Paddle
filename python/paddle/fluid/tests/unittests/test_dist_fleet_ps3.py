@@ -78,7 +78,7 @@ class TestPSPassWithBow(unittest.TestCase):
             is_distributed=is_distributed,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__emb__",
                 learning_rate=emb_lr,
             ),
@@ -95,7 +95,7 @@ class TestPSPassWithBow(unittest.TestCase):
             x=q_ss,
             size=hid_dim,
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__q_fc__",
                 learning_rate=base_lr,
             ),
@@ -112,7 +112,7 @@ class TestPSPassWithBow(unittest.TestCase):
             is_distributed=is_distributed,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__emb__",
                 learning_rate=emb_lr,
             ),
@@ -129,7 +129,7 @@ class TestPSPassWithBow(unittest.TestCase):
             x=pt_ss,
             size=hid_dim,
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__fc__",
                 learning_rate=base_lr,
             ),
@@ -145,7 +145,7 @@ class TestPSPassWithBow(unittest.TestCase):
             is_distributed=is_distributed,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__emb__",
                 learning_rate=emb_lr,
             ),
@@ -162,7 +162,7 @@ class TestPSPassWithBow(unittest.TestCase):
             x=nt_ss,
             size=hid_dim,
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__fc__",
                 learning_rate=base_lr,
             ),

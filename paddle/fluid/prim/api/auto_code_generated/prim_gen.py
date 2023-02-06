@@ -28,11 +28,11 @@ def header_include():
 """
 
 
-def eager_source_include(header_file_path):
+def eager_source_include():
     return """
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
-#include "paddle/fluid/prim/api/generated/prim_api/prim_api.h"
+#include "paddle/fluid/prim/api/generated_prim/prim_generated_api.h"
 """
 
 
@@ -73,10 +73,7 @@ def generate_api(api_yaml_path, header_file_path, eager_prim_source_file_path):
     header_file.write(header_include())
     header_file.write(namespace[0])
     header_file.write(namespace[1])
-    include_header_file = (
-        "#include paddle/fluid/prim/api/generated/prim_api/prim_api.h"
-    )
-    eager_prim_source_file.write(eager_source_include(include_header_file))
+    eager_prim_source_file.write(eager_source_include())
     eager_prim_source_file.write(namespace[0])
 
     for api in apis:
@@ -106,13 +103,13 @@ def main():
     parser.add_argument(
         '--prim_api_header_path',
         help='output of generated prim_api header code file',
-        default='paddle/fluid/prim/api/generated/prim_api/prim_api.h',
+        default='paddle/fluid/prim/api/generated_prim/prim_generated_api.h',
     )
 
     parser.add_argument(
         '--eager_prim_api_source_path',
         help='output of generated eager_prim_api source code file',
-        default='paddle/fluid/prim/api/generated/prim_api/eager_prim_api.cc',
+        default='paddle/fluid/prim/api/generated_prim/eager_prim_api.cc',
     )
 
     options = parser.parse_args()

@@ -20,7 +20,7 @@ from ...fluid import framework
 from ...fluid.core import VarDesc
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid.framework import _current_expected_place
-from ...fluid.initializer import Initializer
+from .initializer import Initializer
 
 __all__ = []
 
