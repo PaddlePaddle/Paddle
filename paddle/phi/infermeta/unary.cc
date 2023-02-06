@@ -4581,6 +4581,14 @@ void UniqueConsecutiveInferMeta(const MetaTensor& x,
                         "unique_consecutive should have output tensor out."));
 
   auto in_dims = x.dims();
+  if (x.dims().size() == 0) {
+    PADDLE_ENFORCE_EQ(axis.empty(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The Input(X) with 0-D Tensor, axis must be None"
+                          "But now the axis is %d.",
+                          axis[0]));
+  }
   if (return_inverse) {
     PADDLE_ENFORCE_NE(
         index,
