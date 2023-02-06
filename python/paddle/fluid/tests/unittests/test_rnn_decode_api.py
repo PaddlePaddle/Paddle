@@ -150,7 +150,9 @@ class MLE:
             use_softmax=False,
         )
         max_seq_len = paddle.shape(probs)[1]
-        mask = layers.sequence_mask(length, maxlen=max_seq_len, dtype="float32")
+        mask = paddle.static.nn.sequence_lod.sequence_mask(
+            length, maxlen=max_seq_len, dtype="float32"
+        )
         loss = loss * mask
         loss = paddle.mean(loss, axis=[0])
         loss = paddle.sum(loss)

@@ -940,6 +940,7 @@ class GraphDataGenerator {
   void ResetPathNum() { total_row_ = 0; }
   void ResetEpochFinish() { epoch_finish_ = false; }
   void ClearSampleState();
+  void DumpWalkPath(std::string dump_path, size_t dump_rate);
   void SetDeviceKeys(std::vector<uint64_t>* device_keys, int type) {
     // type_to_index_[type] = h_device_keys_.size();
     // h_device_keys_.push_back(device_keys);
@@ -1210,6 +1211,11 @@ class DataFeed {
     place_ = place;
   }
   virtual const paddle::platform::Place& GetPlace() const { return place_; }
+
+  virtual void DumpWalkPath(std::string dump_path, size_t dump_rate) {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "This function(DumpWalkPath) is not implemented."));
+  }
 
  protected:
   // The following three functions are used to check if it is executed in this
@@ -1820,6 +1826,7 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
   virtual void InitGraphTrainResource(void);
   virtual void DoWalkandSage();
 #endif
+  virtual void DumpWalkPath(std::string dump_path, size_t dump_rate);
 
   float sample_rate_ = 1.0f;
   int use_slot_size_ = 0;
