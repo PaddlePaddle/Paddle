@@ -69,6 +69,26 @@ class TestGraphReindex(unittest.TestCase):
         np.testing.assert_allclose(self.reindex_dst, reindex_dst, rtol=1e-05)
         np.testing.assert_allclose(self.out_nodes, out_nodes, rtol=1e-05)
 
+        with paddle.fluid.dygraph.guard():
+
+            def test_reindex_0_result():
+                """
+                division by zero test
+                issue url: https://github.com/PaddlePaddle/Paddle/issues/49919#issuecomment-1386649810
+                """
+                array = np.array([], dtype=np.float32)
+                x2 = paddle.to_tensor(np.reshape(array, [0]), dtype='int32')
+                paddle.incubate.graph_reindex(
+                    x=x2,
+                    neighbors=x2,
+                    count=x2,
+                    value_buffer=x2,
+                    index_buffer=x2,
+                    flag_buffer_hashtable=False,
+                )
+
+            self.assertRaises(ValueError, test_reindex_0_result)
+
     def test_heter_reindex_result(self):
         paddle.disable_static()
         x = paddle.to_tensor(self.x)
@@ -238,6 +258,25 @@ class TestGeometricGraphReindex(unittest.TestCase):
 
     def test_reindex_result(self):
         paddle.disable_static()
+        def test_reindex_0_error():
+            """
+            division by zero test
+            """
+            array = np.array([], dtype=np.float32)
+            x2 = paddle.to_tensor(np.reshape(array, [0]), dtype='int32')
+            x3 = paddle.to_tensor(
+                np.array([0], dtype=np.float32), dtype='int32'
+            )
+            paddle.geometric.reindex_graph(
+                x=x2,
+                neighbors=x2,
+                count=x2,
+                value_buffer=x3,
+                index_buffer=x3,
+            )
+
+        self.assertRaises(ValueError, test_reindex_0_error)
+
         x = paddle.to_tensor(self.x)
         neighbors = paddle.to_tensor(self.neighbors)
         count = paddle.to_tensor(self.count)
@@ -257,6 +296,7 @@ class TestGeometricGraphReindex(unittest.TestCase):
         np.testing.assert_allclose(self.reindex_src, reindex_src, rtol=1e-05)
         np.testing.assert_allclose(self.reindex_dst, reindex_dst, rtol=1e-05)
         np.testing.assert_allclose(self.out_nodes, out_nodes, rtol=1e-05)
+
 
     def test_heter_reindex_result(self):
         paddle.disable_static()

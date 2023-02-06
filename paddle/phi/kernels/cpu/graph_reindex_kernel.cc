@@ -60,6 +60,10 @@ void GraphReindexKernel(const Context& dev_ctx,
   }
   // Reindex Dst
   // Add support for multi-type edges reindex
+  PADDLE_ENFORCE_NE(bs,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "x.dims()[0] should not be 0 (Division by zero)."));
   int num_edge_types = count.dims()[0] / bs;
   int cnt = 0;
   for (int i = 0; i < num_edge_types; i++) {
