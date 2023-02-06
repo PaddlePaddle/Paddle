@@ -36,16 +36,13 @@ class TypeID {
     static Storage instance;
     return TypeID(&instance);
   }
-  static TypeID Get(const void *ptr) {
-    return TypeID(reinterpret_cast<const Storage *>(ptr));
-  }
-  const void *GetStorage() const { return static_cast<const void *>(storage_); }
   inline bool operator==(const TypeID &other) const {
     return storage_ == other.storage_;
   }
   inline bool operator!=(const TypeID &other) const {
     return !(*this == other);
   }
+  friend struct std::hash<TypeID>;
 
  private:
   explicit TypeID(const Storage *storage) : storage_(storage) {}
@@ -104,7 +101,7 @@ namespace std {
 template <>
 struct hash<ir::TypeID> {
   std::size_t operator()(const ir::TypeID &obj) const {
-    return std::hash<const void *>()(obj.GetStorage());
+    return std::hash<const void *>()(obj.storage_);
   }
 };
 }  // namespace std

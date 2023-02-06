@@ -3725,6 +3725,7 @@ function run_setup(){
     export WITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
     export WITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
     export WITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
+    export WITH_NEWIR=${WITH_NEWIR:-ON}
 
     if [ "$SYSTEM" == "Linux" ];then
       if [ `nproc` -gt 16 ];then
@@ -3955,6 +3956,7 @@ function run_setup_mac(){
     export WITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
     export WITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
     export WITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
+    export WITH_NEWIR=${WITH_NEWIR:-ON}
 
     export MAX_JOBS=8
     # reset ccache zero stats for collect PR's actual hit rate

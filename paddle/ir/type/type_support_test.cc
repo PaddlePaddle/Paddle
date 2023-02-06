@@ -24,8 +24,6 @@ TEST(type_support, type_id) {
   ir::TypeID a_id = ir::TypeID::Get<TypeA>();
   ir::TypeID a_other_id = ir::TypeID::Get<TypeA>();
   ir::TypeID b_id = ir::TypeID::Get<TypeB>();
-  const void* type_a_storage = a_id.GetStorage();
-  const void* type_b_storage = b_id.GetStorage();
   EXPECT_EQ(a_id, a_other_id);
   EXPECT_NE(a_id, b_id);
 
@@ -34,11 +32,11 @@ TEST(type_support, type_id) {
   EXPECT_EQ(c_id, a_other_id);
 
   // (3) Test TypeID hash
-  std::unordered_map<ir::TypeID, const void*> type_id_register;
-  type_id_register.emplace(a_id, type_a_storage);
-  type_id_register.emplace(b_id, type_b_storage);
+  std::unordered_map<ir::TypeID, ir::TypeID*> type_id_register;
+  type_id_register.emplace(a_id, &a_id);
+  type_id_register.emplace(b_id, &b_id);
   for (auto kv : type_id_register) {
-    EXPECT_EQ(kv.first.GetStorage(), kv.second);
+    EXPECT_EQ(kv.first, *kv.second);
   }
 }
 
