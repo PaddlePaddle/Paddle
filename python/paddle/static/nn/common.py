@@ -2568,16 +2568,10 @@ def bilinear_tensor_product(
     """
     helper = LayerHelper('bilinear_tensor_product', **locals())
     dtype = helper.input_dtype('x')
-    if len(x.shape) != 2:
+    if len(x.shape) != 2 or len(y.shape) != 2:
         raise ValueError(
-            "Input x should be 2D tensor, but received x with the shape of {}".format(
-                x.shape
-            )
-        )
-    if len(y.shape) != 2:
-        raise ValueError(
-            "Input y should be 2D tensor, but received y with the shape of {}".format(
-                y.shape
+            "Input x and y should be 2D tensor, but received x with the shape of {}, y with the shape of {}".format(
+                x.shape, y.shape
             )
         )
     param_shape = [size, x.shape[1], y.shape[1]]
