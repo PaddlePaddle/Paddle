@@ -164,6 +164,14 @@
   outputs :
     out : Out
 
+- op : broadcast_tensors
+  backward : broadcast_tensors_grad
+  inputs :
+    input : X
+  outputs :
+    out : Out
+  drop_empty_grad : [input_grad]
+
 - op : ceil
   backward : ceil_grad
   inputs :
@@ -854,13 +862,11 @@
     out : Out
 
 - op : logsigmoid
+  backward : logsigmoid_grad
   inputs :
     x : X
   outputs :
     out : Out
-
-- op : logsigmoid
-  backward : logsigmoid_grad
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
@@ -995,6 +1001,12 @@
   outputs :
     {out : Out, total_weight : Total_weight}
 
+- op : numel(size)
+  inputs :
+    x : Input
+  outputs :
+    size : Out
+
 - op : overlap_add
   backward : overlap_add_grad
   inputs :
@@ -1040,6 +1052,19 @@
   backward : pool3d_grad
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : pow
+  backward : pow_grad, pow_double_grad, pow_triple_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs :
+    y : factor
+  scalar :
+    y :
+      data_type : float
+      tensor_name : FactorTensor
 
 - op : prelu
   backward : prelu_grad
@@ -1217,6 +1242,28 @@
   outputs :
     out : Out
 
+- op : send_u_recv(graph_send_recv)
+  backward : send_u_recv_grad(graph_send_recv_grad)
+  inputs :
+    {x : X, src_index : Src_index, dst_index : Dst_index}
+  outputs :
+    {out : Out, dst_count : Dst_count}
+  int_array :
+    out_size:
+      data_type : int64_t
+      tensor_name : Out_size
+
+- op : send_ue_recv(graph_send_ue_recv)
+  backward : send_ue_recv_grad(graph_send_ue_recv_grad)
+  inputs :
+    {x : X, y : Y, src_index : Src_index, dst_index : Dst_index}
+  outputs :
+    {out : Out, dst_count : Dst_count}
+  int_array :
+    out_size:
+      data_type : int64_t
+      tensor_name : Out_size
+
 - op : send_uv (graph_send_uv)
   backward : send_uv_grad (graph_send_uv_grad)
 
@@ -1288,8 +1335,17 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
+- op : slogdet(slogdeterminant)
+  backward : slogdet_grad(slogdeterminant_grad)
+  inputs :
+    x : Input
+  outputs :
+    out : Out
+
 - op : softmax
   backward : softmax_grad
+  inputs :
+    x : X
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
@@ -1363,13 +1419,13 @@
 
 - op : stack
   backward : stack_grad
+  inputs :
+    x : X
+  outputs :
+    out : Y
   extra :
     attrs : [bool use_mkldnn = false]
-
-- op : stack
-  backward : stack_grad
-  extra :
-    attrs : [bool use_mkldnn = false]
+  drop_empty_grad : [x_grad]
 
 - op : subtract (elementwise_sub)
   backward : subtract_grad (elementwise_sub_grad)
@@ -1436,6 +1492,18 @@
   outputs :
     out : Out
 
+- op : tile
+  backward : tile_grad, tile_double_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  int_array:
+    repeat_times :
+      data_type : int
+      tensor_name : RepeatTimes
+      tensors_name : repeat_times_tensor
+
 - op : topk (top_k_v2)
   backward : topk_grad (top_k_v2_grad)
   inputs :
@@ -1470,11 +1538,23 @@
   outputs :
     out : Out
 
+- op : unbind
+  inputs :
+    input : X
+  outputs :
+    out : Out
+
 - op : unfold
   inputs :
     x : X
   outputs :
     out : Y
+
+- op : unique_consecutive
+  inputs :
+    x : X
+  outputs :
+    {out : Out, index : Index, counts : Counts}
 
 - op : unsqueeze (unsqueeze2)
   backward : unsqueeze_grad (unsqueeze2_grad), unsqueeze_double_grad(unsqueeze2_double_grad)

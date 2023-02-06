@@ -19,7 +19,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/prim/api/manual/utils/utils.h"
+#include "paddle/fluid/prim/api/manual_prim/utils/utils.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/fluid/prim/utils/utils.h"
 #include "paddle/phi/core/enforce.h"
@@ -135,9 +135,9 @@ struct TestBaseProgram {
   int idx_{0};
 };
 
-class TestGradCompositeGradMaker : public GradCompositeOpMakerBase {
+class TestCompositeGradMaker : public CompositeGradOpMakerBase {
  public:
-  using prim::GradCompositeOpMakerBase::GradCompositeOpMakerBase;
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
   void Apply() override {}
 };
 
@@ -177,7 +177,7 @@ TEST(StaticPrim, TanhBackwardComposite) {
   std::vector<std::unique_ptr<framework::OpDesc>> grad_ops =
       std::move(framework::OpInfoMap::Instance()
                     .Get(forward_opdesc->Type())
-                    .GradCompOpMaker()(*forward_opdesc,
+                    .CompGradOpMaker()(*forward_opdesc,
                                        std::unordered_set<std::string>(),
                                        &grad_to_var,
                                        target_block,
@@ -250,11 +250,11 @@ TEST(StaticCompositeGradMaker, TestMutiInputMethod) {
   auto* forward_opdesc = target_block->AllOps()[0];
   std::unordered_map<std::string, std::string> grad_to_var;
   std::vector<framework::BlockDesc*> grad_sub_block;
-  auto test = TestGradCompositeGradMaker(*forward_opdesc,
-                                         std::unordered_set<std::string>(),
-                                         &grad_to_var,
-                                         target_block,
-                                         grad_sub_block);
+  auto test = TestCompositeGradMaker(*forward_opdesc,
+                                     std::unordered_set<std::string>(),
+                                     &grad_to_var,
+                                     target_block,
+                                     grad_sub_block);
   test();
   std::vector<paddle::experimental::Tensor> muti_fw_input =
       test.GetMultiForwardInput("X");
@@ -312,11 +312,11 @@ TEST(StaticCompositeGradMaker, TestMutiOutputMethod) {
   auto* forward_opdesc = target_block->AllOps()[0];
   std::unordered_map<std::string, std::string> grad_to_var;
   std::vector<framework::BlockDesc*> grad_sub_block;
-  auto test = TestGradCompositeGradMaker(*forward_opdesc,
-                                         std::unordered_set<std::string>(),
-                                         &grad_to_var,
-                                         target_block,
-                                         grad_sub_block);
+  auto test = TestCompositeGradMaker(*forward_opdesc,
+                                     std::unordered_set<std::string>(),
+                                     &grad_to_var,
+                                     target_block,
+                                     grad_sub_block);
   test();
   paddle::experimental::Tensor fw_input = test.GetSingleForwardInput("X");
   paddle::optional<paddle::experimental::Tensor> opt_fw_input =
@@ -341,10 +341,10 @@ TEST(StaticCompositeGradMaker, TestMutiOutputMethod) {
 }
 
 TEST(StaticPrim, TestFlags) {
-  PrimCommonUtils::SetPrimEnabled(true);
-  ASSERT_TRUE(PrimCommonUtils::IsPrimEnabled());
-  PrimCommonUtils::SetPrimEnabled(false);
-  ASSERT_FALSE(PrimCommonUtils::IsPrimEnabled());
+  PrimCommonUtils::SetBwdPrimEnabled(true);
+  ASSERT_TRUE(PrimCommonUtils::IsBwdPrimEnabled());
+  PrimCommonUtils::SetBwdPrimEnabled(false);
+  ASSERT_FALSE(PrimCommonUtils::IsBwdPrimEnabled());
 }
 
 }  // namespace prim

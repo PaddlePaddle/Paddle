@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 #include <gtest/gtest.h>
 
@@ -25,7 +25,7 @@ namespace platform = paddle::platform;
 TEST(DenseTensor, Dims) {
   phi::DenseTensor tt;
   tt.Resize({2, 3, 4});
-  framework::DDim dims = tt.dims();
+  phi::DDim dims = tt.dims();
   ASSERT_EQ(arity(dims), 3);
   for (int i = 0; i < 3; ++i) {
     EXPECT_EQ(i + 2, dims[i]);
@@ -225,7 +225,7 @@ TEST(DenseTensor, Slice) {
     src_tensor.mutable_data<int>(phi::make_ddim({5, 3, 4}),
                                  platform::CPUPlace());
     phi::DenseTensor slice_tensor = src_tensor.Slice(1, 3);
-    framework::DDim slice_dims = slice_tensor.dims();
+    phi::DDim slice_dims = slice_tensor.dims();
     ASSERT_EQ(arity(slice_dims), 3);
     EXPECT_EQ(slice_dims[0], 2);
     EXPECT_EQ(slice_dims[1], 3);
@@ -251,7 +251,7 @@ TEST(DenseTensor, Slice) {
     src_tensor.mutable_data<double>(phi::make_ddim({6, 9}),
                                     platform::CUDAPlace(0));
     phi::DenseTensor slice_tensor = src_tensor.Slice(2, 6);
-    framework::DDim slice_dims = slice_tensor.dims();
+    phi::DDim slice_dims = slice_tensor.dims();
     ASSERT_EQ(arity(slice_dims), 2);
     EXPECT_EQ(slice_dims[0], 4);
     EXPECT_EQ(slice_dims[1], 9);
@@ -278,7 +278,7 @@ TEST(DenseTensor, Slice) {
     src_tensor.mutable_data<double>(phi::make_ddim({6, 9}),
                                     platform::NPUPlace(0));
     phi::DenseTensor slice_tensor = src_tensor.Slice(2, 6);
-    framework::DDim slice_dims = slice_tensor.dims();
+    phi::DDim slice_dims = slice_tensor.dims();
     ASSERT_EQ(arity(slice_dims), 2);
     EXPECT_EQ(slice_dims[0], 4);
     EXPECT_EQ(slice_dims[1], 9);
@@ -306,7 +306,7 @@ TEST(DenseTensor, ReshapeToMatrix) {
   for (int i = 0; i < 2 * 3 * 4 * 9; ++i) {
     src_ptr[i] = i;
   }
-  phi::DenseTensor res = framework::ReshapeToMatrix(src, 2);
+  phi::DenseTensor res = phi::ReshapeToMatrix(src, 2);
   ASSERT_EQ(res.dims()[0], 2 * 3);
   ASSERT_EQ(res.dims()[1], 4 * 9);
 }

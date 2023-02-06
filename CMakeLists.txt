@@ -157,8 +157,14 @@ if(WIN32)
     endforeach()
   endif()
 
-  # NOTE(zhouwei): msvc max/min macro conflict with std::min/max, define NOMINMAX globally
+  # msvc max/min macro conflict with std::min/max, define NOMINMAX globally
   add_definitions("-DNOMINMAX")
+
+  # 1. windows.h define 'small' cause CUDA11.6/11.7/11.8 's cub compile error,
+  # see https://github.com/microsoft/onnxruntime/issues/11227
+  # 2. WIN32_LEAN_AND_MEAN minimize the windows include files, avoid define 'small'
+  add_definitions(-DWIN32_LEAN_AND_MEAN)
+
   # windows build turn off warnings, use parallel compiling.
   foreach(
     flag_var

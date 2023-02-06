@@ -69,8 +69,8 @@ class TestPSPassWithBow(unittest.TestCase):
         is_sparse = True
 
         # query
-        q = fluid.layers.data(
-            name="query_ids", shape=[1], dtype="int64", lod_level=1
+        q = paddle.static.data(
+            name="query_ids", shape=[-1, 1], dtype="int64", lod_level=1
         )
         # embedding
         q_emb = fluid.layers.embedding(
@@ -78,7 +78,7 @@ class TestPSPassWithBow(unittest.TestCase):
             is_distributed=is_distributed,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__emb__",
                 learning_rate=emb_lr,
             ),
@@ -93,16 +93,16 @@ class TestPSPassWithBow(unittest.TestCase):
             x=q_ss,
             size=hid_dim,
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__q_fc__",
                 learning_rate=base_lr,
             ),
         )
         # label data
-        label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+        label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
         # pt
-        pt = fluid.layers.data(
-            name="pos_title_ids", shape=[1], dtype="int64", lod_level=1
+        pt = paddle.static.data(
+            name="pos_title_ids", shape=[-1, 1], dtype="int64", lod_level=1
         )
         # embedding
         pt_emb = fluid.layers.embedding(
@@ -110,7 +110,7 @@ class TestPSPassWithBow(unittest.TestCase):
             is_distributed=is_distributed,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__emb__",
                 learning_rate=emb_lr,
             ),
@@ -125,15 +125,15 @@ class TestPSPassWithBow(unittest.TestCase):
             x=pt_ss,
             size=hid_dim,
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__fc__",
                 learning_rate=base_lr,
             ),
             bias_attr=fluid.ParamAttr(name="__fc_b__"),
         )
         # nt
-        nt = fluid.layers.data(
-            name="neg_title_ids", shape=[1], dtype="int64", lod_level=1
+        nt = paddle.static.data(
+            name="neg_title_ids", shape=[-1, 1], dtype="int64", lod_level=1
         )
         # embedding
         nt_emb = fluid.layers.embedding(
@@ -141,7 +141,7 @@ class TestPSPassWithBow(unittest.TestCase):
             is_distributed=is_distributed,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__emb__",
                 learning_rate=emb_lr,
             ),
@@ -156,7 +156,7 @@ class TestPSPassWithBow(unittest.TestCase):
             x=nt_ss,
             size=hid_dim,
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__fc__",
                 learning_rate=base_lr,
             ),
