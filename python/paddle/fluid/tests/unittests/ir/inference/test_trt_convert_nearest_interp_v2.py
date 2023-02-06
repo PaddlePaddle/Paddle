@@ -53,8 +53,7 @@ class TrtConvertNearestInterpV2Test(TrtLayerAutoScanTest):
         ops = self.generate_op_config(ops_config)
         program_config = ProgramConfig(
             ops=ops,
-            weights={
-            },
+            weights={},
             inputs={"input_data": TensorConfig(data_gen=generate_input)},
             outputs=["interp_output_data"],
         )
@@ -200,6 +199,7 @@ class TrtConvertNearestInterpV2ShapeTensorTest(TrtLayerAutoScanTest):
 
     def test(self):
         self.run_test()
+
 
 if __name__ == "__main__":
     unittest.main()
