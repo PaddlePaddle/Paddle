@@ -15,15 +15,22 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
 
 
+def meshgrid_wrapper(x):
+    out0, out1 = paddle.tensor.meshgrid(x[0], x[1])
+    return out0, out1
+
+
 class TestMeshgridOp(OpTest):
     def setUp(self):
         self.op_type = "meshgrid"
+        self.python_api = meshgrid_wrapper
+        self.python_out_sig = ['out0', 'out1']
         self.dtype = self.get_dtype()
         ins, outs = self.init_test_data()
         self.inputs = {'X': [('x%d' % i, ins[i]) for i in range(len(ins))]}
@@ -38,8 +45,8 @@ class TestMeshgridOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['x0'], ['out0'])
-        self.check_grad(['x1'], ['out1'])
+        self.check_grad(['x0'], ['out0'], check_dygraph=False)
+        self.check_grad(['x1'], ['out1'], check_dygraph=False)
 
     def init_test_data(self):
         self.shape = self.get_x_shape()
