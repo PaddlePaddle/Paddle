@@ -902,7 +902,7 @@ int GroupNormPluginDynamic::enqueue(
       groupNormNHWCScale(params_, stream);
     } else {
       PADDLE_THROW(platform::errors::Fatal(
-          "The Groupnorm TRT Plugin's only support nchw or nhwc8 input"));
+          "The Groupnorm TRT int8 Plugin only support nchw32 input"));
     }
   } else if (input_type == nvinfer1::DataType::kINT8) {
     const int8_t *input = reinterpret_cast<const int8_t *>(inputs[0]);
