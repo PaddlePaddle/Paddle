@@ -28,9 +28,9 @@ from paddle.common_ops_import import (
 from paddle.fluid import core
 from paddle.fluid.data_feeder import check_dtype
 from paddle.fluid.framework import Variable, _non_static_mode, static_only
-from paddle.fluid.initializer import Constant, Normal
 from paddle.fluid.layers.layer_function_generator import templatedoc
 from paddle.fluid.param_attr import ParamAttr
+from paddle.nn.initializer import Constant, Normal
 
 __all__ = []
 
@@ -514,6 +514,12 @@ def data_norm(
     dtype = helper.input_dtype()
 
     input_shape = input.shape
+    if len(input_shape) < 2:
+        raise ValueError(
+            "The shape pf Input < 2 (got {}D input, input shape is: {})".format(
+                len(input_shape), input_shape
+            )
+        )
     if data_layout == 'NCHW':
         channel_num = input_shape[1]
     else:
@@ -1012,7 +1018,7 @@ def conv2d(
                 "filter size.".format(filter_elem_num)
             )
         std = (2.0 / filter_elem_num) ** 0.5
-        return Normal(0.0, std, 0)
+        return Normal(0.0, std)
 
     filter_param = helper.create_parameter(
         attr=helper.param_attr,
@@ -1315,7 +1321,7 @@ def conv3d(
             )
 
         std = (2.0 / filter_elem_num) ** 0.5
-        return Normal(0.0, std, 0)
+        return Normal(0.0, std)
 
     filter_param = helper.create_parameter(
         attr=helper.param_attr,
@@ -2286,7 +2292,7 @@ def deformable_conv(
                 "filter size.".format(filter_elem_num)
             )
         std = (2.0 / filter_elem_num) ** 0.5
-        return paddle.nn.initializer.normal.NormalInitializer(0.0, std, 0)
+        return paddle.nn.initializer.normal.Normal(0.0, std)
 
     filter_param = helper.create_parameter(
         attr=helper.param_attr,
@@ -2568,7 +2574,12 @@ def bilinear_tensor_product(
     """
     helper = LayerHelper('bilinear_tensor_product', **locals())
     dtype = helper.input_dtype('x')
-
+    if len(x.shape) != 2 or len(y.shape) != 2:
+        raise ValueError(
+            "Input x and y should be 2D tensor, but received x with the shape of {}, y with the shape of {}".format(
+                x.shape, y.shape
+            )
+        )
     param_shape = [size, x.shape[1], y.shape[1]]
 
     w = helper.create_parameter(
@@ -2757,7 +2768,7 @@ def batch_norm(
         attr=helper.param_attr,
         shape=param_shape,
         dtype=dtype,
-        default_initializer=paddle.fluid.initializer.Constant(1.0),
+        default_initializer=paddle.nn.initializer.Constant(1.0),
     )
     bias = helper.create_parameter(
         attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True
@@ -2766,7 +2777,7 @@ def batch_norm(
     mean = helper.create_parameter(
         attr=paddle.ParamAttr(
             name=moving_mean_name,
-            initializer=paddle.fluid.initializer.Constant(0.0),
+            initializer=paddle.nn.initializer.Constant(0.0),
             trainable=False,
             do_model_average=do_model_average_for_mean_and_var,
         ),
@@ -2778,7 +2789,7 @@ def batch_norm(
     variance = helper.create_parameter(
         attr=paddle.ParamAttr(
             name=moving_variance_name,
-            initializer=paddle.fluid.initializer.Constant(1.0),
+            initializer=paddle.nn.initializer.Constant(1.0),
             trainable=False,
             do_model_average=do_model_average_for_mean_and_var,
         ),

@@ -211,7 +211,7 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
             datas = [dnn_data, lr_data, label]
 
             inference = True
-            init = fluid.initializer.Uniform()
+            init = paddle.nn.initializer.Uniform()
 
             dnn_layer_dims = [128, 64, 32]
             dnn_embedding = fluid.contrib.layers.sparse_embedding(
@@ -222,7 +222,7 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
                     name="deep_embedding", initializer=init
                 ),
             )
-            dnn_pool = fluid.layers.sequence_pool(
+            dnn_pool = paddle.static.nn.sequence_lod.sequence_pool(
                 input=dnn_embedding, pool_type="sum"
             )
             dnn_out = dnn_pool
@@ -232,7 +232,7 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
                     size=dim,
                     activation="relu",
                     weight_attr=fluid.ParamAttr(
-                        initializer=fluid.initializer.Constant(value=0.01)
+                        initializer=paddle.nn.initializer.Constant(value=0.01)
                     ),
                     name='dnn-fc-%d' % i,
                 )
@@ -245,11 +245,11 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
                 is_test=inference,
                 param_attr=fluid.ParamAttr(
                     name="wide_embedding",
-                    initializer=fluid.initializer.Constant(value=0.01),
+                    initializer=paddle.nn.initializer.Constant(value=0.01),
                 ),
             )
 
-            lr_pool = fluid.layers.sequence_pool(
+            lr_pool = paddle.static.nn.sequence_lod.sequence_pool(
                 input=lr_embbding, pool_type="sum"
             )
             merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)

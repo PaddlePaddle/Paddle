@@ -18,11 +18,11 @@ import numpy as np
 
 import paddle
 from paddle import _legacy_C_ops
+from paddle.common_ops_import import Variable
 from paddle.fluid import core
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.framework import LayerHelper
-from paddle.static import Variable
 
 __all__ = []
 
