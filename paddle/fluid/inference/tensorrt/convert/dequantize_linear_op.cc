@@ -21,35 +21,26 @@ class DequantizeLinearOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                         const framework::Scope& scope,
                         bool test_model) override {
-    
     VLOG(4) << "convert a dequantize_linear op to tensorrt IDequantizeLayer";
 
     framework::OpDesc op_desc(op, nullptr);
-
+    // Declare inputs
     auto* x = engine_->GetITensor(op_desc.Input("X")[0]);
     auto* scale_var = scope.FindVar(op_desc.Input("Scale")[0]);
-
     PADDLE_ENFORCE_NOT_NULL(
         scale_var,
         platform::errors::NotFound("Can not find %s presistale var in scope.",
                                     op_desc.Input("Scale")[0]));
-
     auto* scale_t = scale_var->GetMutable<phi::DenseTensor>();
-
-    const float* fp32_data = reinterpret_cast<const float*>(
-        engine_->GetTrtWeight(op_desc.Input("Scale")[0], *scale_t)
-            .get()
-            .values);
-    
-    std::vector<float> new_fp32_data(scale_t->numel(), 0);
-    for (int i = 0; i < scale_t->numel(); ++i){
-        new_fp32_data[i] = fp32_data[i] / 127.;
+    std::vector<float> fp32_data(scale_t->numel(), 0);
+    for (int i = 0; i < scale_t->numel(); ++i) {
+        fp32_data[i] = scale_t->data<float>()[i] / 127.;
     }
 
     nvinfer1::Dims a;
     a.nbDims = 1;
     a.d[0] = scale_t->numel();
-    auto* scale = AddConstantLayer(new_fp32_data.data(), a);
+    auto* scale = AddConstantLayer(fp32_data.data(), a);
 
     int axis = PADDLE_GET_CONST(int, op_desc.GetAttr("quant_axis"));
     if (axis == -1) {
@@ -60,9 +51,8 @@ class DequantizeLinearOpConverter : public OpConverter {
     auto output_name = op_desc.Output("Y")[0];
     RreplenishLayerAndOutput(
         layer, "dequantize_linear", {output_name}, test_model);
-    }};
-
-
+  }
+};
 
 }  // namespace tensorrt
 }  // namespace inference
