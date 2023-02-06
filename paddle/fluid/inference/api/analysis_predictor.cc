@@ -1893,9 +1893,9 @@ void AnalysisPredictor::CollectShapeRangeInfo() {
   // if use gpu, sync first.
   paddle::platform::DeviceContextPool &pool =
       paddle::platform::DeviceContextPool::Instance();
-  auto *dev_ctx = pool.Get(place_);
   if (config_.use_gpu()) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    auto *dev_ctx = pool.Get(place_);
     auto stream = static_cast<phi::GPUContext *>(dev_ctx)->stream();
 #ifdef PADDLE_WITH_HIP
     hipStreamSynchronize(stream);
@@ -1945,6 +1945,7 @@ void AnalysisPredictor::CollectShapeRangeInfo() {
                              int32_tensor.numel() * sizeof(int));
       } else if (platform::is_gpu_place(tensor.place())) {
 #if defined(PADDLE_WITH_CUDA)
+        auto *dev_ctx = pool.Get(tensor.place());
         auto &int32_tensor = tensor;
         if (tensor.dtype() == phi::DataType::INT64) {
           int32_tensor = phi::funcs::TransDataType(
