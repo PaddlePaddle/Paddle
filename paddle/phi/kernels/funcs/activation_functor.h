@@ -724,7 +724,7 @@ struct SoftplusDoubleGradFunctor : public BaseActivationFunctor<T> {
       // 0, if x_beta > threshold
       dx.device(*d) =
           (x_beta > static_cast<T>(threshold))
-              .select(static_cast<T>(0) * x,
+              .select(x.constant(static_cast<T>(0)),
                       ddx * dout * static_cast<T>(beta) * x_beta.exp() /
                           (x_beta.exp() + static_cast<T>(1))
                               .pow(static_cast<T>(2)));
