@@ -93,8 +93,7 @@ void LaunchGeGLUKenrel(LaunchParams params, const phi::GPUContext& ctx) {
       ElementOperandA,
       cutlass::layout::RowMajor,
       ElementOperandB,
-      // cutlass::layout::RowMajor,
-      cutlass::layout::ColumnMajor,
+      cutlass::layout::RowMajor,
       ElementOutput,
       cutlass::layout::RowMajor,
       ElementAccumulator,
@@ -121,14 +120,9 @@ void LaunchGeGLUKenrel(LaunchParams params, const phi::GPUContext& ctx) {
 
   TensorInputRef tensor_a0(reinterpret_cast<const T*>(params.x), params.k);
   printf("Params n is: %ld \n", params.n); 
-  // TensorInputRef tensor_b0(reinterpret_cast<const T*>(params.weight), params.n * 2);
-  // TensorInputRef tensor_b1(
-  //     reinterpret_cast<const T*>(params.weight) + params.n, params.n * 2);
-
-  typename cutlass::TensorRef<const ElementOperandA, cutlass::layout::ColumnMajor> tensor_b0(reinterpret_cast<const T*>(params.weight), params.k);
-  typename cutlass::TensorRef<const ElementOperandA, cutlass::layout::ColumnMajor> tensor_b1(
-      reinterpret_cast<const T*>(params.weight) + params.k * params.n, params.k);
-
+  TensorInputRef tensor_b0(reinterpret_cast<const T*>(params.weight), params.n * 2);
+  TensorInputRef tensor_b1(
+      reinterpret_cast<const T*>(params.weight) + params.n, params.n * 2);
 
   TensorInputRef tensor_bias0(reinterpret_cast<const T*>(params.bias), 0);
   TensorInputRef tensor_bias1(
@@ -191,15 +185,12 @@ void FusedGeGLUForwardKernel(const Context& ctx,
   auto x_mat_dims = phi::flatten_to_2d(x.dims(), x.dims().size() - 1);
   const int64_t m = x_mat_dims[0];
   const int64_t k = x_mat_dims[1];
-  // const int64_t n = weight.dims()[1];
-
-  const int64_t n = weight.dims()[0];
-  printf("m: %ld, n: %ld, k: %ld \n", m, n, k); 
-  // PADDLE_ENFORCE_EQ(
-  //     k,
-  //     weight.dims()[0],
-  //     phi::errors::InvalidArgument("The matmul dim is not matched, the x "
-  //                                  "dim[1] should be equal to weight dim[0]"));
+  const int64_t n = weight.dims()[1];
+  PADDLE_ENFORCE_EQ(
+      k,
+      weight.dims()[0],
+      phi::errors::InvalidArgument("The matmul dim is not matched, the x "
+                                   "dim[1] should be equal to weight dim[0]"));
   params.m = m;
   params.n = n / 2;
   params.k = k;
