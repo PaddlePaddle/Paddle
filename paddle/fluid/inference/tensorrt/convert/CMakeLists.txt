@@ -98,6 +98,8 @@ list(
   fused_lookup_tables_op.cc
   skip_groupnorm_act_op.cc
   preln_groupnorm_act_op.cc
+  dequantize_linear_op.cc
+  quantize_linear_op.cc
   expand_v2_op.cc)
 
 if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)

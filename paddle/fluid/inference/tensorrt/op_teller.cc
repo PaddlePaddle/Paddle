@@ -1896,6 +1896,13 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "quantize_linear") {
+      return true;
+    }
+    if (op_type == "dequantize_linear") {
+      return true;
+    }
+
     if (op_type == "preln_skip_layernorm") {
       if (!with_dynamic_shape) {
         VLOG(3) << "the preln_skip_layernorm does not support static shape yet";
@@ -2636,6 +2643,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "lookup_table_v2",
       "expand_v2",
       "skip_groupnorm_act",
+      "quantize_linear",
+      "dequantize_linear",
       "preln_groupnorm_act"};
 
   std::unordered_set<std::string> teller_set{
@@ -2786,6 +2795,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "lookup_table_v2",
       "expand_v2",
       "skip_groupnorm_act",
+      "quantize_linear",
+      "dequantize_linear",
       "preln_groupnorm_act"};
 };
 
