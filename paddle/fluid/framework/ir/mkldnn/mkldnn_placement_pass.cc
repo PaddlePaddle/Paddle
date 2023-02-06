@@ -13,6 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/mkldnn/mkldnn_placement_pass.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 REGISTER_PASS(mkldnn_placement_pass, paddle::framework::ir::MKLDNNPlacementPass)
     .RequirePassAttr("mkldnn_enabled_op_types");
+
+REGISTER_PASS_CAPABILITY(mkldnn_placement_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination().LE(
+            "fusion_gru", 1));
