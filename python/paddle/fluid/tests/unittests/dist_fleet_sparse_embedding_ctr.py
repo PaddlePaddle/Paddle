@@ -131,7 +131,6 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             ),
         )
 
-
         lr_pool = paddle.static.nn.sequence_lod.sequence_pool(
             input=lr_embbding, pool_type="sum"
         )

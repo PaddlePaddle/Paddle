@@ -953,7 +953,6 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
                 input=var, pool_type='AVERAGE'
             )
 
-
             slots_vars.append(data)
             poolings.append(pool)
 

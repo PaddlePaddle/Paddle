@@ -46,7 +46,6 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
             is_sparse=True,
         )
 
-
         pool = paddle.static.nn.sequence_lod.sequence_pool(
             input=emb, pool_type="sum"
         )

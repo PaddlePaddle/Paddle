@@ -156,11 +156,8 @@ class TestSequencePadOpError(unittest.TestCase):
             # the input x type must be Variable
             x = np.random.random((2, 4)).astype("float32")
 
-            pad_value = paddle.assign(
-                np.array([0.0], dtype=np.float32)
-            )
+            pad_value = paddle.assign(np.array([0.0], dtype=np.float32))
             paddle.static.nn.sequence_lod.sequence_pad(x=x, pad_value=pad_value)
-
 
         self.assertRaises(TypeError, test_x_variable)
 
@@ -180,13 +177,10 @@ class TestSequencePadOpError(unittest.TestCase):
                 name='x2', shape=[-1, 10, 5], dtype='int16', lod_level=1
             )
 
-            pad_value2 = paddle.assign(
-                np.array([0.0], dtype=np.int32)
-            )
+            pad_value2 = paddle.assign(np.array([0.0], dtype=np.int32))
             paddle.static.nn.sequence_lod.sequence_pad(
                 x=x2, pad_value=pad_value2
             )
-
 
         self.assertRaises(TypeError, test_dtype)
 
