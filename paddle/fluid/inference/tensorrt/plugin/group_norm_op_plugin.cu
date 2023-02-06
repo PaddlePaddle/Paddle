@@ -927,7 +927,7 @@ int GroupNormPluginDynamic::enqueue(
           cPerBlock = 320;
       }
 
-      //
+      params_.withSilu = with_silu_;
       params_.dst = static_cast<half *>(outputs[0]);
       params_.srcX = static_cast<half const *>(inputs[0]);
 
