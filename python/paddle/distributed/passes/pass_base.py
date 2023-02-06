@@ -251,6 +251,7 @@ PassBase._AFTER_WHITE_LISTS_DICT = {
 PassBase._PASS_PROCESS_ORDER_LIST = [
     "fuse_bn_add_act",
     "fuse_gemm_epilogue",
+    "fused_attention",
 ]
 
 PassBase._COMMON_RULES = [
