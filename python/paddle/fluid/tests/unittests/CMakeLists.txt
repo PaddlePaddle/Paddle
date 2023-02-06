@@ -634,6 +634,7 @@ if(WITH_DISTRIBUTE)
     list(REMOVE_ITEM DIST_TEST_OPS "test_communicator_ps_gpu")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ps11")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ps12")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_gpubox_ps")
   endif()
 
   py_test_modules(test_communicator_async MODULES test_communicator_async ENVS
