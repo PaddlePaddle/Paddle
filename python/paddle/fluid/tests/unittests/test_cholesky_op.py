@@ -16,8 +16,8 @@ import unittest
 
 import numpy as np
 from decorator_helper import prog_scope
+from eager_op_test import OpTest, skip_check_grad_ci
 from gradient_checker import grad_check
-from op_test import OpTest, skip_check_grad_ci
 
 import paddle
 import paddle.fluid as fluid
@@ -36,6 +36,7 @@ import paddle.fluid.core as core
 class TestCholeskyOp(OpTest):
     def setUp(self):
         self.op_type = "cholesky"
+        self.python_api = paddle.cholesky
         self._input_shape = (2, 32, 32)
         self._upper = True
         self.init_config()

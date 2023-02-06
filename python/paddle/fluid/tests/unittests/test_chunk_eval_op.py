@@ -15,7 +15,9 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+
+import paddle
 
 
 class Segment:
@@ -218,6 +220,7 @@ class TestChunkEvalOp(OpTest):
 
     def setUp(self):
         self.op_type = 'chunk_eval'
+        self.python_api = paddle._legacy_C_ops.chunk_eval
         self.set_confs()
         self.set_data()
 

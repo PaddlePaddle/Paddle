@@ -20,7 +20,7 @@ import scipy
 import scipy.linalg
 
 sys.path.append("..")
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -121,6 +121,7 @@ class TestCholeskySolveOp(OpTest):
 
     def setUp(self):
         self.op_type = "cholesky_solve"
+        self.python_api = paddle.tensor.cholesky_solve
         self.config()
 
         if self.upper:
