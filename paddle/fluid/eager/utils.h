@@ -155,8 +155,9 @@ class EagerUtils {
   }
 
   static void CheckInplace(const paddle::experimental::Tensor& target,
-                           const AutogradMeta* autograd_meta) {
-    if (autograd_meta) {
+                           const AutogradMeta* autograd_meta,
+                           bool require_any_grad) {
+    if (require_any_grad && autograd_meta) {
       PADDLE_ENFORCE_EQ(!autograd_meta->StopGradient() &&
                             egr::egr_utils_api::IsLeafTensor(target),
                         false,

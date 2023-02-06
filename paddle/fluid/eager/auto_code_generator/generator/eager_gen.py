@@ -404,9 +404,7 @@ extern std::unordered_map<std::string, std::vector<std::string>> core_ops_return
 """
 
 CHECK_INPLACE_TEMPLATE = """
-  if (require_any_grad) {{
-    egr::EagerUtils::CheckInplace({}, {});
-  }}
+  egr::EagerUtils::CheckInplace({}, {}, require_any_grad);
 """
 
 BUMP_INPLACE_VERSION_TEMPLATE = """
