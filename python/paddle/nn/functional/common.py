@@ -318,8 +318,8 @@ def interpolate(
         size (list|tuple|Tensor|None): Output shape of image resize
              layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w)
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor.
-             Default: None. If a list/tuple, each element can be an integer or a Tensor of shape: [1].
-             If a Tensor, its dimensions size should be a 1.
+             Default: None. If a list/tuple, each element can be an integer or a Tensor of shape: [1] or [].
+             If a Tensor, its dimensions size should be a 1 or 0.
         scale_factor (float|Tensor|list|tuple|None): The multiplier for the input height or width. At
              least one of :attr:`size` or :attr:`scale_factor` must be set.
              And :attr:`size` has a higher priority than :attr:`scale_factor`.Has to match input size if it is either a list or a tuple or a Tensor.
@@ -870,8 +870,8 @@ def upsample(
         size (list|tuple|Tensor|None, optional): Output shape of image resize
              layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w)
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor.
-             Default: None. If a list/tuple, each element can be an integer or a Tensor of shape: [1].
-             If a Tensor , its dimensions size should be a 1.
+             Default: None. If a list/tuple, each element can be an integer or a Tensor of shape: [1] or [].
+             If a Tensor , its dimensions size should be a 1 or 0.
         scale_factor (float|Tensor|list|tuple|None, optional): The multiplier for the input height or width. At
              least one of :attr:`size` or :attr:`scale_factor` must be set.
              And :attr:`size` has a higher priority than :attr:`scale_factor`.Has to match input size if
