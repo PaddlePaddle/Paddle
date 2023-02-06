@@ -345,6 +345,22 @@ def get_cudnn_version():
         return 'False'
 
 
+def get_xpu_version():
+    with_xpu = env_dict.get("WITH_XPU")
+    if with_xpu == 'ON':
+        return env_dict.get("XPU_BASE_DATE")
+    else:
+        return 'False'
+
+
+def get_xpu_xccl_version():
+    with_xpu_xccl = env_dict.get("WITH_XPU_BKCL")
+    if with_xpu_xccl == 'ON':
+        return env_dict.get("XPU_XCCL_BASE_VERSION")
+    else:
+        return 'False'
+
+
 def is_taged():
     try:
         cmd = [
@@ -376,18 +392,20 @@ def is_taged():
 def write_version_py(filename='paddle/version/__init__.py'):
     cnt = '''# THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
 #
-full_version    = '%(major)d.%(minor)d.%(patch)s'
-major           = '%(major)d'
-minor           = '%(minor)d'
-patch           = '%(patch)s'
-rc              = '%(rc)d'
-cuda_version    = '%(cuda)s'
-cudnn_version   = '%(cudnn)s'
-istaged         = %(istaged)s
-commit          = '%(commit)s'
-with_mkl        = '%(with_mkl)s'
+full_version     = '%(major)d.%(minor)d.%(patch)s'
+major            = '%(major)d'
+minor            = '%(minor)d'
+patch            = '%(patch)s'
+rc               = '%(rc)d'
+cuda_version     = '%(cuda)s'
+cudnn_version    = '%(cudnn)s'
+xpu_version      = '%(xpu)s'
+xpu_xccl_version = '%(xpu_xccl)s'
+istaged          = %(istaged)s
+commit           = '%(commit)s'
+with_mkl         = '%(with_mkl)s'
 
-__all__ = ['cuda', 'cudnn', 'show']
+__all__ = ['cuda', 'cudnn', 'show', 'xpu', 'xpu_xccl']
 
 def show():
     """Get the version of paddle if `paddle` package if tagged. Otherwise, output the corresponding commit id.
@@ -410,6 +428,10 @@ def show():
 
         cudnn: the cudnn version of package. It will return `False` if CPU version paddle package is installed
 
+        xpu: the xpu version of package. It will return `False` if non-XPU version paddle package is installed
+
+        xpu_xccl: the xpu xccl version of package. It will return `False` if non-XPU version paddle package is installed
+
     Examples:
         .. code-block:: python
 
@@ -424,12 +446,16 @@ def show():
             # rc: 0
             # cuda: '10.2'
             # cudnn: '7.6.5'
+            # xpu: '20230114'
+            # xpu_xccl: '1.0.7'
 
             # Case 2: paddle is not tagged
             paddle.version.show()
             # commit: cfa357e984bfd2ffa16820e354020529df434f7d
             # cuda: '10.2'
             # cudnn: '7.6.5'
+            # xpu: '20230114'
+            # xpu_xccl: '1.0.7'
     """
     if istaged:
         print('full_version:', full_version)
@@ -441,6 +467,8 @@ def show():
         print('commit:', commit)
     print('cuda:', cuda_version)
     print('cudnn:', cudnn_version)
+    print('xpu:', xpu_version)
+    print('xpu_xccl:', xpu_xccl_version)
 
 def mkl():
     return with_mkl
@@ -478,6 +506,40 @@ def cudnn():
 
     """
     return cudnn_version
+
+def xpu():
+    """Get xpu version of paddle package.
+
+    Returns:
+        string: Return the version information of xpu. If paddle package is non-XPU version, it will return False.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            paddle.version.xpu()
+            # '20230114'
+
+    """
+    return xpu_version
+
+def xpu_xccl():
+    """Get xpu xccl version of paddle package.
+
+    Returns:
+        string: Return the version information of xpu xccl. If paddle package is non-XPU version, it will return False.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            paddle.version.xpu_xccl()
+            # '1.0.7'
+
+    """
+    return xpu_xccl_version
 '''
     commit = git_commit()
 
@@ -500,6 +562,8 @@ def cudnn():
                 'version': env_dict.get("PADDLE_VERSION"),
                 'cuda': get_cuda_version(),
                 'cudnn': get_cudnn_version(),
+                'xpu': get_xpu_version(),
+                'xpu_xccl': get_xpu_xccl_version(),
                 'commit': commit,
                 'istaged': is_taged(),
                 'with_mkl': env_dict.get("WITH_MKL"),
@@ -591,8 +655,8 @@ def options_process(args, build_options):
 
 
 def get_cmake_generator():
-    if os.getenv("CMAKE_GENERATOR"):
-        cmake_generator = os.getenv("CMAKE_GENERATOR")
+    if os.getenv("GENERATOR"):
+        cmake_generator = os.getenv("GENERATOR")
     else:
         cmake_generator = "Unix Makefiles"
     return cmake_generator
@@ -628,7 +692,7 @@ def cmake_run(build_path):
                 "XPU_SDK_ROOT",
                 "MSVC_STATIC_CRT",
                 "NEW_RELEASE_ALL",
-                "CMAKE_GENERATOR",
+                "GENERATOR",
             )
         }
     )
@@ -647,10 +711,13 @@ def cmake_run(build_path):
             elif option_key == 'PYTHON_INCLUDE_DIR':
                 key = option_key + ':PATH'
                 print(key)
+            elif option_key == 'GENERATOR':
+                key = 'CMAKE_' + option_key
             else:
                 key = other_options[option_key]
             if key not in paddle_build_options:
                 paddle_build_options[key] = option_value
+
     options_process(args, paddle_build_options)
     print("args:", args)
     with cd(build_path):
@@ -676,7 +743,12 @@ def build_run(args, build_path, envrion_var):
 
 
 def run_cmake_build(build_path):
-    build_args = ["--build", ".", "--target", "install", "--config", 'Release']
+    build_type = (
+        os.getenv("CMAKE_BUILD_TYPE")
+        if os.getenv("CMAKE_BUILD_TYPE") is not None
+        else "release"
+    )
+    build_args = ["--build", ".", "--target", "install", "--config", build_type]
     max_jobs = os.getenv("MAX_JOBS")
     if max_jobs is not None:
         max_jobs = max_jobs or str(multiprocessing.cpu_count())
@@ -702,6 +774,7 @@ def build_steps():
     if not os.path.exists(build_dir):
         _mkdir_p(build_dir)
     build_path = build_dir
+    print("build_dir:", build_dir)
     # run cmake to generate native build files
     cmake_cache_file_path = os.path.join(build_path, "CMakeCache.txt")
     # if rerun_cmake is True,remove CMakeCache.txt and rerun camke
@@ -1339,6 +1412,11 @@ def main():
     # Execute the build process,cmake and make
     if cmake_and_build:
         build_steps()
+
+    if os.getenv("WITH_PYTHON") == "OFF":
+        print("only compile, not package")
+        return
+
     build_dir = os.getenv("BUILD_DIR")
     if build_dir is not None:
         env_dict_path = TOP_DIR + '/' + build_dir + '/python'
@@ -1349,6 +1427,7 @@ def main():
 
     global env_dict
     global paddle_binary_dir, paddle_source_dir
+
     paddle_binary_dir = env_dict.get("PADDLE_BINARY_DIR")
     paddle_source_dir = env_dict.get("PADDLE_SOURCE_DIR")
 

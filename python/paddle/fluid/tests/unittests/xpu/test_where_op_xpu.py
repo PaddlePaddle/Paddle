@@ -58,6 +58,9 @@ class XPUTestWhereOp(XPUOpTestWrapper):
         def test_check_output(self):
             self.check_output_with_place(self.place)
 
+        def test_check_grad(self):
+            self.check_grad_with_place(self.place, ['X', 'Y'], 'Out')
+
     class TestXPUWhereOp2(TestXPUWhereOp):
         def init_data(self):
             self.x = np.random.uniform(-5, 5, (60, 2)).astype(self.dtype)
@@ -147,8 +150,8 @@ class TestXPUWhereAPI(unittest.TestCase):
         train_prog = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(train_prog, startup):
-            x = fluid.layers.data(name='x', shape=[4, 1], dtype='float32')
-            y = fluid.layers.data(name='y', shape=[4, 2], dtype='float32')
+            x = paddle.static.data(name='x', shape=[-1, 4, 1], dtype='float32')
+            y = paddle.static.data(name='y', shape=[-1, 4, 2], dtype='float32')
             x_i = np.array([[0.9383, 0.1983, 3.2, 1.2]]).astype("float32")
             y_i = np.array([[1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0]]).astype(
                 "float32"

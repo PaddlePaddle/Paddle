@@ -52,26 +52,23 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         """
         dnn_input_dim, lr_input_dim = 10, 10
 
-        dnn_data = fluid.layers.data(
+        dnn_data = paddle.static.data(
             name="dnn_data",
             shape=[-1, 1],
             dtype="int64",
             lod_level=1,
-            append_batch_size=False,
         )
-        lr_data = fluid.layers.data(
+        lr_data = paddle.static.data(
             name="lr_data",
             shape=[-1, 1],
             dtype="int64",
             lod_level=1,
-            append_batch_size=False,
         )
-        label = fluid.layers.data(
+        label = paddle.static.data(
             name="click",
             shape=[-1, 1],
             dtype="int64",
             lod_level=0,
-            append_batch_size=False,
         )
 
         datas = [dnn_data, lr_data, label]
@@ -89,11 +86,11 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         inference = bool(int(os.getenv("INFERENCE", "0")))
 
         if initializer == 0:
-            init = fluid.initializer.Constant(value=0.01)
+            init = paddle.nn.initializer.Constant(value=0.01)
         elif initializer == 1:
-            init = fluid.initializer.Uniform()
+            init = paddle.nn.initializer.Uniform()
         elif initializer == 2:
-            init = fluid.initializer.Normal()
+            init = paddle.nn.initializer.Normal()
         else:
             raise ValueError("error initializer code: {}".format(initializer))
 
@@ -116,7 +113,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                 size=dim,
                 activation="relu",
                 weight_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant(value=0.01)
+                    initializer=paddle.nn.initializer.Constant(value=0.01)
                 ),
                 name='dnn-fc-%d' % i,
             )
@@ -130,7 +127,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             entry=entry,
             param_attr=fluid.ParamAttr(
                 name="wide_embedding",
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.Constant(value=0.01),
             ),
         )
 

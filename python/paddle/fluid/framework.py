@@ -36,6 +36,7 @@ import paddle.version as fluid_version
 import warnings
 import functools
 from .variable_index import _getitem_impl_, _setitem_impl_
+import threading
 
 __all__ = [
     'Program',
@@ -70,8 +71,42 @@ GRAD_VAR_SUFFIX = core.kGradVarSuffix()
 ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 
+# use thread local to create thread save global variables.
+class GlobalThreadLocal(threading.local):
+    def __init__(self):
+        """
+        init the thread local data.
+        TODO(xiongkun): how to access another thread local data ?
+        """
+        global _dygraph_tracer_
+        self._in_declarative_mode_ = False
+        self._functional_dygraph_context_manager = None
+        self._dygraph_tracer_ = _dygraph_tracer_
+        self._in_eager_mode_ = True
+
+    def __str__(self):
+        strings = []
+        strings.append(
+            "_in_declarative_mode_:" + str(self._in_declarative_mode_)
+        )
+        strings.append(
+            "_functional_dygraph_context_manager:"
+            + str(self._functional_dygraph_context_manager)
+        )
+        strings.append("_dygraph_tracer_:" + str(self._dygraph_tracer_))
+        strings.append("_in_eager_mode_:" + str(self._in_eager_mode_))
+        return "\n".join(strings)
+
+    def __setattr__(self, name, val):
+        if name == '_dygraph_tracer_':
+            global _dygraph_tracer_
+            _dygraph_tracer_ = val
+        self.__dict__[name] = val
+
+
 _dygraph_tracer_ = None
-_in_eager_mode_ = True
+global_var = GlobalThreadLocal()
+
 _global_expected_place_ = None
 _current_device = None
 global_prog_seed = 0
@@ -85,6 +120,9 @@ _enable_standalone_executor_ = os.environ.get(
 )
 _dy2st_enable_standalone_executor_ = os.environ.get(
     'FLAGS_DY2ST_USE_STANDALONE_EXECUTOR', 1
+)
+_cuda_graph_enable_standalone_executor_ = os.environ.get(
+    'FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR', 0
 )
 
 # Some explanation of our execution system 2022.03
@@ -152,20 +190,17 @@ def _switch_tensor_bind_type(is_eager):
 
 
 def _enable_legacy_dygraph():
-    global _in_eager_mode_
-    _in_eager_mode_ = False
+    global_var._in_eager_mode_ = False
     _update_monkey_methods(is_eager=False)
 
 
 def _disable_legacy_dygraph():
-    global _in_eager_mode_
-    _in_eager_mode_ = True
+    global_var._in_eager_mode_ = True
     _update_monkey_methods(is_eager=True)
 
 
 def _in_eager_without_dygraph_check():
-    global _in_eager_mode_
-    return _in_eager_mode_
+    return global_var._in_eager_mode_
 
 
 # FIXME(dev): We haven't fully verified eager mode on XPU/NPU et.al but
@@ -174,7 +209,6 @@ _is_first_import_ = True
 
 
 def _fallback_legacy_dygraph():
-    global _in_eager_mode_
     global _is_first_import_
     need_fallback = False
     # Only enable eager on CPU/GPU/XPU
@@ -184,12 +218,12 @@ def _fallback_legacy_dygraph():
         or core.is_compiled_with_mlu()
     )
 
-    if _in_eager_mode_ and is_not_support:
+    if global_var._in_eager_mode_ and is_not_support:
         # switch into legacy dygraph mode
         warnings.warn(
             "We will fallback into legacy dygraph on NPU/XPU/MLU/IPU/ROCM devices. Because we only support new eager dygraph mode on CPU/GPU currently. "
         )
-        _in_eager_mode_ = False
+        global_var._in_eager_mode_ = False
         if not _is_first_import_:
             _enable_legacy_dygraph()
         need_fallback = True
@@ -231,11 +265,13 @@ def in_dygraph_mode():
             print(paddle.in_dynamic_mode())  # True, Now we are in dynamic mode
 
     """
-    return (_dygraph_tracer_ is not None) and _in_eager_mode_
+    return (
+        global_var._dygraph_tracer_ is not None
+    ) and global_var._in_eager_mode_
 
 
 def _non_static_mode():
-    return _dygraph_tracer_ is not None
+    return global_var._dygraph_tracer_ is not None
 
 
 @signature_safe_contextmanager
@@ -600,7 +636,7 @@ non_static_only = wrap_decorator(_non_static_only_)
 
 
 def _dygraph_tracer():
-    return _dygraph_tracer_
+    return global_var._dygraph_tracer_
 
 
 def _global_flags():
@@ -646,6 +682,21 @@ def _current_expected_place():
                     "You are using MLU version Paddle, but your MLU device is not set properly. CPU device will be used by default."
                 )
                 _global_expected_place_ = core.CPUPlace()
+        elif core.is_compiled_with_custom_device("npu"):
+            # TODO(duanyanhui): Optimize DeviceManager and Return all expected places when device registered in DeviceManager is greater than 1.
+            try:
+                device_count = core.get_custom_device_count("npu")
+            except Exception as e:
+                device_count = 0
+            if device_count > 0:
+                _global_expected_place_ = core.CustomPlace(
+                    "npu", _custom_device_ids("npu")[0]
+                )
+            else:
+                warnings.warn(
+                    "You are using NPU version Paddle, but your NPU device is not set properly. CPU device will be used by default."
+                )
+                _global_expected_place_ = core.CPUPlace()
         else:
             _global_expected_place_ = core.CPUPlace()
 
@@ -653,9 +704,8 @@ def _current_expected_place():
 
 
 def _set_dygraph_tracer_expected_place(place):
-    global _dygraph_tracer_
-    if _dygraph_tracer_ is not None:
-        _dygraph_tracer_._expected_place = place
+    if global_var._dygraph_tracer_ is not None:
+        global_var._dygraph_tracer_._expected_place = place
 
 
 def _set_expected_place(place):
@@ -722,6 +772,15 @@ def _npu_ids():
         device_ids = [int(s) for s in npus_env.split(",")]
     else:
         device_ids = range(core.get_npu_device_count())
+    return device_ids
+
+
+def _custom_device_ids(device_type):
+    custom_devices_env = os.getenv("FLAGS_selected_" + device_type + "s")
+    if custom_devices_env:
+        device_ids = [int(s) for s in custom_devices_env.split(",")]
+    else:
+        device_ids = range(core.get_custom_device_count(device_type))
     return device_ids
 
 
@@ -1288,7 +1347,7 @@ def _varbase_creator(
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if _in_eager_mode_:
+    if global_var._in_eager_mode_:
         eager_tensor = core.eager.Tensor(
             dtype if dtype else core.VarDesc.VarType.FP32,
             list(shape) if shape else [],
@@ -6898,9 +6957,10 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
             .. code-block:: python
 
                 import paddle.fluid as fluid
+                import paddle
 
                 prog = fluid.default_main_program()
-                rlt = fluid.layers.data("fake_data", shape=[1,1], dtype='float32')
+                rlt = paddle.static.data("fake_data", shape=[-1,1,1], dtype='float32')
                 debug_str = prog.to_string(throw_on_error=True, with_details=False)
                 print(debug_str)
         """
@@ -7433,16 +7493,17 @@ def _get_var(name, program=None):
 
 @signature_safe_contextmanager
 def _dygraph_guard(tracer):
-    global _dygraph_tracer_
-    tmp_tracer = _dygraph_tracer_
-    _dygraph_tracer_ = tracer
-    core._switch_tracer(tracer)
+    tmp_tracer = global_var._dygraph_tracer_
+    global_var._dygraph_tracer_ = tracer
+    if tracer is not None:
+        core._switch_tracer(tracer)
 
     try:
         yield
     finally:
-        core._switch_tracer(tmp_tracer)
-        _dygraph_tracer_ = tmp_tracer
+        if tmp_tracer is not None:
+            core._switch_tracer(tmp_tracer)
+        global_var._dygraph_tracer_ = tmp_tracer
 
 
 @signature_safe_contextmanager

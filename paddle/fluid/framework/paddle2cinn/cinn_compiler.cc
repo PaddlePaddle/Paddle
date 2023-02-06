@@ -26,6 +26,7 @@
 #include "cinn/auto_schedule/tuning.h"
 #include "cinn/common/target.h"
 #include "cinn/common/type.h"
+#include "cinn/frontend/op_mapper_registry.h"
 #include "cinn/frontend/optimize.h"
 #include "cinn/frontend/syntax.h"
 #include "cinn/hlir/framework/graph.h"
@@ -54,6 +55,7 @@ namespace paddle2cinn {
 using ::cinn::auto_schedule::AutoTuner;
 using ::cinn::common::Target;
 using ::cinn::frontend::Optimize;
+using ::cinn::frontend::paddle::InplaceOutSuffix;
 using ::cinn::hlir::framework::BuildScope;
 using ::cinn::hlir::framework::GraphCompiler;
 using inference::analysis::Dot;
@@ -239,11 +241,17 @@ void CinnCompiler::CheckCompiledValid(
     const std::map<std::string, const phi::DenseTensor *> &input_tensors,
     const CinnCompiledObject &compiled_obj) const {
   const auto &input_var_names = graph.Get<std::vector<std::string>>(kInputVars);
+  const auto &inplace_var_names =
+      graph.Get<std::unordered_set<std::string>>(kInplaceVarNames);
   const auto &output_var_names =
       graph.Get<std::vector<std::string>>(kOutputVars);
   auto *launch_context = compiled_obj.launch_context.get();
   // 1. check all of the output variables will be assigned by compiled program
-  for (auto &&var_name : output_var_names) {
+  for (auto var_name : output_var_names) {
+    // inplace variables are renamed with a specified suffix
+    if (inplace_var_names.count(var_name)) {
+      var_name += InplaceOutSuffix;
+    }
     PADDLE_ENFORCE_EQ(launch_context->IsVariableUsed(var_name),
                       true,
                       platform::errors::PreconditionNotMet(

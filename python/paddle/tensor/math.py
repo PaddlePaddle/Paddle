@@ -25,6 +25,7 @@ from paddle.common_ops_import import VarDesc, dygraph_only, dygraph_utils
 # TODO: define math functions
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
+from ..common_ops_import import Variable
 from ..fluid.data_feeder import (
     check_dtype,
     check_type,
@@ -38,7 +39,6 @@ from ..framework import (
     core,
     in_dygraph_mode,
 )
-from ..static import Variable
 from .creation import _complex_to_real_dtype
 from .layer_function_generator import generate_layer_fn, templatedoc
 from .manipulation import cast
@@ -2014,7 +2014,6 @@ def renorm(x, p, axis, max_norm):
 
     """
     input_shape = x.shape
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'renorm')
     if not axis < len(input_shape):
         raise ValueError(
             "the axis:{} should be less then the shape's size {}:{}".format(
@@ -2033,6 +2032,7 @@ def renorm(x, p, axis, max_norm):
         out = _C_ops.renorm(x, p, axis, max_norm)
         return out
     else:
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'renorm')
         inputs = {'X': x}
         attrs = {'p': p, 'axis': axis, 'max_norm': max_norm}
 
@@ -4857,14 +4857,10 @@ def heaviside(x, y, name=None):
             #    [[0.        , 0.20000000, 1.        ],
             #     [0.        , 1.        , 0.30000001]]
     """
-    op_type = 'elementwise_heaviside'
-    axis = -1
-    act = None
     if in_dygraph_mode():
-        return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name=op_type
-        )
+        return _C_ops.elementwise_heaviside(x, y)
     else:
+        op_type = 'elementwise_heaviside'
         return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
