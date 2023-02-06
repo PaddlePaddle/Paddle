@@ -19,9 +19,8 @@ add_definitions(-DPADDLE_WITH_FLASHATTN)
 set(FLASHATTN_PREFIX_DIR ${THIRD_PARTY_PATH}/flashattn)
 set(FLASHATTN_SOURCE_SUBDIR csrc/flash_attn)
 set(FLASHATTN_INSTALL_DIR ${THIRD_PARTY_PATH}/install/flashattn)
-# TODO(kuizhiqing)
-set(FLASHATTN_REPOSITORY ${GIT_URL}/kui-baidu/flash-attention.git)
-set(FLASHATTN_TAG capi)
+set(FLASHATTN_REPOSITORY ${GIT_URL}/PaddlePaddle/flash-attention.git)
+set(FLASHATTN_TAG 5994ce06e9f90b9fac810a7a36a72ddb896cdf06)
 
 set(FLASHATTN_INCLUDE_DIR
     "${FLASHATTN_INSTALL_DIR}/include"

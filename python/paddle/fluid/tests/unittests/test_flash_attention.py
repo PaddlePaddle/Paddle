@@ -22,6 +22,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle.nn.functional.flash_attention import flash_attention
 
 
 def get_cuda_version():
@@ -73,7 +74,7 @@ class TestFlashAttentionAPI(unittest.TestCase):
         k = paddle.to_tensor(key, place=self.place, dtype=self.dtype)
         v = paddle.to_tensor(value, place=self.place, dtype=self.dtype)
 
-        out, _ = F.flash_attention(
+        out, _ = flash_attention(
             q, k, v, self.dropout, self.causal, self.return_softmax
         )
         numpy_result = attention_naive(q, k, v)
@@ -94,7 +95,7 @@ class TestFlashAttentionAPI(unittest.TestCase):
                 name="v", shape=self.shape, dtype=self.dtype
             )
 
-            outs, softmax = F.flash_attention(
+            outs, softmax = flash_attention(
                 qs, ks, vs, self.dropout, self.causal, self.return_softmax
             )
 
@@ -170,7 +171,7 @@ class TestFlashAttentionBackward(unittest.TestCase):
         k.stop_gradient = False
         v.stop_gradient = False
 
-        out, _ = F.flash_attention(
+        out, _ = flash_attention(
             q, k, v, self.dropout, self.causal, self.return_softmax
         )
         out.backward()
