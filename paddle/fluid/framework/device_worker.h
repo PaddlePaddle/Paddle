@@ -285,6 +285,8 @@ class HogwildWorker : public CPUWorkerBase {
  protected:
   void CreateThreadOperators(const ProgramDesc& program);
   void CreateThreadScope(const ProgramDesc& program);
+  // check batch num
+  bool CheckBatchNum(int flag);
 
   std::vector<std::string> op_names_;
   std::vector<OperatorBase*> ops_;
@@ -294,7 +296,7 @@ class HogwildWorker : public CPUWorkerBase {
   std::vector<std::string> skip_ops_;
   std::map<std::string, int> stat_var_name_map_;
   static std::atomic<bool> quit_flag_;
-  // static bool quit_flag_2;
+  phi::DenseTensor sync_stat_;
 };
 
 class DownpourWorker : public HogwildWorker {

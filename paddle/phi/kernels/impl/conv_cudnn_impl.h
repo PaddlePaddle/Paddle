@@ -23,7 +23,6 @@
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"
 #endif
 
-#include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/backends/gpu/cuda/cudnn_workspace_helper.h"
 #include "paddle/phi/common/float16.h"
