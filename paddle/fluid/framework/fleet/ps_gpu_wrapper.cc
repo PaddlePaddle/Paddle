@@ -951,7 +951,13 @@ void PSGPUWrapper::MergePull(std::shared_ptr<HeterContext> gpu_task) {
                     }
                   }
                   if (pos == -1) {
-                    PADDLE_ENFORCE_EQ((k == merge_num), true, phi::errors::InvalidArgument("shardid=%d, k=%d, merge_num=%d", shard_id, k, merge_num));
+                    PADDLE_ENFORCE_EQ((k == merge_num),
+                                      true,
+                                      phi::errors::InvalidArgument(
+                                          "shardid=%d, k=%d, merge_num=%d",
+                                          shard_id,
+                                          k,
+                                          merge_num));
                     break;
                   }
                   if (key < min_key) {
@@ -992,7 +998,13 @@ void PSGPUWrapper::MergePull(std::shared_ptr<HeterContext> gpu_task) {
                     }
                   }
                   if (pos == -1) {
-                    PADDLE_ENFORCE_EQ((k == merge_num), true, phi::errors::InvalidArgument("shardid=%d, k=%d, merge_num=%d", shard_id, k, merge_num));
+                    PADDLE_ENFORCE_EQ((k == merge_num),
+                                      true,
+                                      phi::errors::InvalidArgument(
+                                          "shardid=%d, k=%d, merge_num=%d",
+                                          shard_id,
+                                          k,
+                                          merge_num));
                     break;
                   }
                 }

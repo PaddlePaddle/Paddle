@@ -61,7 +61,8 @@ inline std::string get_local_ip_internal() {
   ifconf.ifc_len = 512;
   ifconf.ifc_buf = buf;
   sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-  PADDLE_ENFORCE_EQ((sockfd >= 0), true, phi::errors::InvalidArgument("socket"));
+  PADDLE_ENFORCE_EQ(
+      (sockfd >= 0), true, phi::errors::InvalidArgument("socket"));
   int ret = ioctl(sockfd, SIOCGIFCONF, &ifconf);
   PADDLE_ENFORCE_EQ((ret >= 0), true, phi::errors::InvalidArgument("ioctl"));
   ret = close(sockfd);
@@ -117,14 +118,20 @@ void RpcServer::set_connection_num(int n) {
   if (n < _gloo->Size()) {
     n = _gloo->Size();
   }
-  PADDLE_ENFORCE_EQ((n >= 1), true, phi::errors::InvalidArgument("connect num need more than 1"));
+  PADDLE_ENFORCE_EQ(
+      (n >= 1),
+      true,
+      phi::errors::InvalidArgument("connect num need more than 1"));
   _conn_num = n;
 }
 void RpcServer::set_thread_num(int n) {
   if (n < _gloo->Size()) {
     n = _gloo->Size();
   }
-  PADDLE_ENFORCE_EQ((n >= 1), true, phi::errors::InvalidArgument("thread num need more than 1"));
+  PADDLE_ENFORCE_EQ(
+      (n >= 1),
+      true,
+      phi::errors::InvalidArgument("thread num need more than 1"));
   _thread_num = n;
 }
 void* RpcServer::add_service(RpcCallback callback, bool simplex) {
