@@ -58,7 +58,21 @@ def cutlass_fused_multi_head_attention(
 
             scale = float(1.0 / math.sqrt(head_size))
 
-            out = cutlass_fused_multi_head_attention(query, key, value, mask, scale)
+            def naive_attention_impl(query, key, value, mask, scale):
+                query = paddle.transpose(query, [0, 2, 1, 3])
+                key = paddle.transpose(key, [0, 2, 1, 3])
+                value = paddle.transpose(value, [0, 2, 1, 3])
+
+                qk_res = paddle.matmul(query, key, transpose_y=True)
+                attention = qk_res * scale
+                attention = attention + mask
+                softmax_result = paddle.nn.functional.softmax(attention, -1)
+                result = paddle.matmul(softmax_result, value)
+                result = paddle.transpose(result, [0, 2, 1, 3])
+                return result
+
+            out = naive_attention_impl(query, key, value, mask, scale)
+            # equals to: out = cutlass_fused_multi_head_attention(query, key, value, mask, scale)
 
             print(out.shape) # [batch, seq_len, num_head, head_size]
     """
