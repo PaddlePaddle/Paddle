@@ -285,7 +285,7 @@ ir::Graph *FuseAdamWPass::FuseAdamWFun(ir::Graph *graph) const {
         return graph;
       }
 
-      FeedInputVector(input_vectors,
+      FeedInputVector(&input_vectors,
                       inputs_name,
                       outputs_name,
                       adamw_op,
