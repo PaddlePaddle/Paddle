@@ -58,7 +58,7 @@ void BatchNormKernel(const Context &dev_ctx,
                                            test_mode);
 
   auto src_memory = handler.AcquireSrcMemory(&x);
-  auto scaleshift_memory = handler.AcquireScaleShiftMemory(&scale, &bias);
+  auto scaleshift_mems = handler.AcquireScaleShiftMemory(&scale, &bias);
   auto dst_memory = handler.AcquireDstMemory(y);
   auto batch_norm_p = handler.AcquireForwardPrimitive();
 
@@ -79,7 +79,8 @@ void BatchNormKernel(const Context &dev_ctx,
   auto &astream = OneDNNContext::tls().get_stream();
   batch_norm_p->execute(astream,
                         {{DNNL_ARG_SRC, *src_memory},
-                         {DNNL_ARG_SCALE_SHIFT, *scaleshift_memory},
+                         {DNNL_ARG_SCALE, std::get<0>(scaleshift_mems)},
+                         {DNNL_ARG_SHIFT, std::get<0>(scaleshift_mems)},
                          {DNNL_ARG_MEAN, *mean_memory},
                          {DNNL_ARG_VARIANCE, *variance_memory},
                          {DNNL_ARG_DST, *dst_memory}});

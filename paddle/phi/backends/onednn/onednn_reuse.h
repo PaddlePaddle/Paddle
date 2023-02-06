@@ -1294,7 +1294,8 @@ class BatchNormOneDNNHandler
                                 dnnl::batch_normalization_backward>(engine,
                                                                     cpu_place) {
     // Flags are added by bitwise OR operation
-    auto flags = dnnl::normalization_flags::use_scale_shift;  // 001
+    auto flags = dnnl::normalization_flags::use_scale |
+                 dnnl::normalization_flags::use_shift;  // 001
     if (global_stats)
       flags |= dnnl::normalization_flags::use_global_stats;  // 010
     if (fuse_with_relu && test_mode)
@@ -1330,19 +1331,20 @@ class BatchNormOneDNNHandler
         dnnl::prop_kind::forward_training,
         in_x->mem_desc(),
         epsilon,
-        dnnl::normalization_flags::use_scale_shift);
+        dnnl::normalization_flags::use_scale |
+            dnnl::normalization_flags::use_shift);
     this->AcquireBackwardPrimitiveDescriptor(
         dnnl::prop_kind::backward,
         out_grad->mem_desc(),
         in_x->mem_desc(),
         epsilon,
-        dnnl::normalization_flags::use_scale_shift);
+        dnnl::normalization_flags::use_scale |
+            dnnl::normalization_flags::use_shift);
   }
 
-  std::shared_ptr<dnnl::memory> AcquireScaleShiftMemory(
+  std::tuple<dnnl::memory, dnnl::memory> AcquireScaleShiftMemory(
       const DenseTensor* scale, const DenseTensor* shift) {
     auto scale_tz = vectorize(scale->dims());
-    const unsigned int C = scale_tz[0];
     PADDLE_ENFORCE_EQ(
         scale_tz.size(),
         1,
@@ -1350,15 +1352,12 @@ class BatchNormOneDNNHandler
             "Dims of scale tensor must be 1, but received scale's size is %d",
             scale_tz.size()));
 
-    auto scaleshift_memory =
-        this->AcquireMemoryFromPrimitive(this->fwd_pd_->weights_desc());
+    auto scale_memory = this->AcquireMemoryFromPrimitive(
+        this->fwd_pd_->weights_desc(), scale->data());
+    auto shift_memory = this->AcquireMemoryFromPrimitive(
+        this->fwd_pd_->weights_desc(), shift->data());
 
-    // oneDNN requires a single piece of memory for scale and shift/bias data
-    auto mem_data_handle =
-        reinterpret_cast<T*>(scaleshift_memory->get_data_handle());
-    std::copy(scale->data<T>(), scale->data<T>() + C, mem_data_handle);
-    std::copy(shift->data<T>(), shift->data<T>() + C, mem_data_handle + C);
-    return scaleshift_memory;
+    return std::make_tuple(scale_memory, shift_memory);
   }
 
   std::shared_ptr<dnnl::memory> AcquireDiffScaleShiftMemory(
