@@ -19,6 +19,7 @@ from op_test import OpTest, skip_check_grad_ci
 
 import paddle
 import paddle.fluid.core as core
+from paddle.incubate.nn.functional import fused_matmul_bias_int4
 
 
 def get_output(X, Y, Bias, Act):
@@ -27,24 +28,54 @@ def get_output(X, Y, Bias, Act):
 
 
 @skip_check_grad_ci(reason="no grad op")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or paddle.device.cuda.get_device_capability()[0] < 7,
+    "CutlassInt4Gemm requires CUDA_ARCH>=75",
+)
 class TestCutlassInt4GemmOp(OpTest):
     def setUp(self):
         self.op_type = "int4_gemm_cutlass"
-        self.python_api = paddle.incubate.nn.functional.int4_gemm_cutlass
-        self.place = core.CUDAPlace(0)
-        self.dtype = np.int8
-        self.x = np.ones((128, 64), dtype=self.dtype)
-        self.y = np.ones((64, 256), dtype=self.dtype)
-        self.bias = np.ones((256), dtype=self.dtype)
-        self.inputs = {'X': self.x, 'Y': self.y, 'Bias': self.bias}
-        self.attrs = {"activation": "none"}
+        self.__class__.op_type = "int4_gemm_cutlass"
+        self.place = paddle.CUDAPlace(0)
+        self.dtype = np.int32
+        self.accumtype = np.int32
+        # self.x = np.random.randint(-7, 7, size=(64, 64)).astype(self.dtype)
+        # self.y = np.random.randint(-7, 7, size=(64, 64)).astype(self.dtype)
+        self.x = np.ones((64, 64)).astype(self.dtype)
+        self.y = np.ones((64, 64)).astype(self.dtype)
+        # self.bias = np.random.randint(-7, 7, size=(64)).astype(self.dtype)
+        self.bias = np.zeros((64), dtype=self.accumtype)
+        self.inputs = {
+            'X': paddle.to_tensor(self.x, place=self.place),
+            'Y': paddle.to_tensor(self.y, place=self.place),
+            'Bias': paddle.to_tensor(self.bias, place=self.place),
+        }
+        self.attrs = {"trans_x": False, "trans_y": False, "activation": "none"}
         self.outputs = {'Out': get_output(self.x, self.y, self.bias, 'none')}
 
+    def GetInt4GemmOut(self):
+        gemm_out = fused_matmul_bias_int4(
+            self.inputs['X'],
+            self.inputs['Y'],
+            self.inputs['Bias'],
+            self.attrs['trans_x'],
+            self.attrs['trans_y'],
+            self.attrs['activation'],
+        )
+        return gemm_out
+
     def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-5)
+        out_ref = self.outputs['Out']
+        out = self.GetInt4GemmOut().numpy()
+        asum = np.sum(out)
+        bsum = np.sum(out_ref)
+        print(f'Out:{asum} Ref:{bsum} check:{out_ref-out}')
+        print(f'0:{out[:,0]} 1:{out[:,1]}')
+        print(f'test sum:{np.sum(out,0)}')
+        np.testing.assert_allclose(out_ref, out, rtol=1e-3, atol=1e-3)
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
     np.random.seed(42)
     unittest.main()

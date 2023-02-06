@@ -43,8 +43,8 @@ cutlass::Status Int4GemmImpl(GemmAllParams params) {
       cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<>;
   using LayoutInputA = cutlass::layout::RowMajor;
   using LayoutInputB = cutlass::layout::ColumnMajor;
-  using LayoutInputBias = cutlass::layout::ColumnMajor;
-  using LayoutOutput = cutlass::layout::ColumnMajor;
+  using LayoutInputBias = cutlass::layout::RowMajor;
+  using LayoutOutput = cutlass::layout::RowMajor;
   using EpilogueOp = cutlass::epilogue::thread::LinearCombination<
       ElementOutput,
       128 / cutlass::sizeof_bits<ElementOutput>::value,

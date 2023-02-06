@@ -13,6 +13,7 @@
 // limitations under the License.
 #pragma once
 
+#include "cutlass/array.h"
 #include "cutlass/cutlass.h"
 #include "cutlass/numeric_conversion.h"
 
@@ -32,7 +33,6 @@ int ProfileToGetBestConfig(
   for (int i = 0; i < gemm_funcs.size(); i++) {
     cutlass::Status status;
     auto func = gemm_funcs[i];
-    // When func has large diff, we will make it nullptr.
     if (!func) continue;
 
     for (int ii = 0; ii < WARMUP; ii++) {
@@ -65,58 +65,77 @@ int ProfileToGetBestConfig(
 }
 
 template <typename Destination, typename Source>
-void DynamicConvert(Source const *s, Destination *t, int N) {
+__global__ void DynamicConvert(Source const *s, Destination *t, int N) {
   cutlass::NumericConverter<Destination, Source> converter;
+  int idx = threadIdx.x + blockIdx.x * blockDim.x;
+
   CUTLASS_PRAGMA_UNROLL
-  for (int i = 0; i < N; ++i) {
+  for (int i = idx; i < N; i += gridDim.x * blockDim.x) {
     t[i] = converter(s[i]);
   }
   return;
 }
 
+template __global__ void DynamicConvert<int8_t, int32_t>(int32_t const *s,
+                                                         int8_t *t,
+                                                         int N);
+
 template <>
-void DynamicConvert<int8_t, int32_t>(int32_t const *s, int8_t *t, int N) {
-  cutlass::NumericConverter<int8_t, int32_t> converter;
+__global__ void DynamicConvert<int32_t, int32_t>(int32_t const *s,
+                                                 int32_t *t,
+                                                 int N) {
+  int idx = threadIdx.x + blockIdx.x * blockDim.x;
   CUTLASS_PRAGMA_UNROLL
-  for (int i = 0; i < N; ++i) {
-    t[i] = converter(s[i]);
+  for (int i = idx; i < N; i += gridDim.x * blockDim.x) {
+    t[i] = s[i];
   }
   return;
 }
+
 template <>
-void DynamicConvert<cutlass::int4b_t, int8_t>(int8_t const *s,
-                                              cutlass::int4b_t *t,
-                                              int N) {
-  cutlass::NumericConverter<cutlass::int4b_t, int8_t> converter;
+__global__ void DynamicConvert<cutlass::int4b_t, int32_t>(int32_t const *s,
+                                                          cutlass::int4b_t *t,
+                                                          int N) {
+  cutlass::NumericArrayConverter<cutlass::int4b_t, int, 8> converter;
+
+  cutlass::Array<cutlass::int4b_t, 8> *result_ptr =
+      reinterpret_cast<cutlass::Array<cutlass::int4b_t, 8> *>(t);
+  cutlass::Array<int, 8> const *source_ptr =
+      reinterpret_cast<cutlass::Array<int, 8> const *>(s);
+
+  int idx = threadIdx.x + blockIdx.x * blockDim.x;
   CUTLASS_PRAGMA_UNROLL
-  for (int i = 0; i < N; ++i) {
-    t[i] = converter(s[i]);
+  for (int i = idx; i < N / 8; i += gridDim.x * blockDim.x) {
+    result_ptr[i] = converter(source_ptr[i]);
   }
   return;
 }
 
 template <typename T>
-__global__ void ExpendKernel(const T *vector,
-                             T *matrix,
-                             const unsigned vlen,
-                             const unsigned mdim,
-                             const unsigned col_major = 0) {
+__global__ void ExpendKernel(
+    const T *vector, T *matrix, const int n, const int m, const int col_major) {
   if (col_major) {
-    int idx = threadIdx.x + blockIdx.x * mdim;
-    T myval = vector[blockIdx.x];
-    while (idx < ((blockIdx.x + 1) * mdim)) {
+    int idx = threadIdx.x + blockIdx.x * m;
+    T myval = vector[blockIdx.x % n];
+    while (idx < ((blockIdx.x + 1) * m)) {
       matrix[idx] = myval;
       idx += blockDim.x;
     }
   } else {
     int idx = threadIdx.x + blockDim.x * blockIdx.x;
-    T myval = vector[idx % vlen];
-    while (idx < mdim * vlen) {
+    T myval = vector[idx % n];
+    while (idx < m * n) {
       matrix[idx] = myval;
       idx += gridDim.x * blockDim.x;
     }
   }
 }
+
+template __global__ void ExpendKernel<int32_t>(const int32_t *vector,
+                                               int32_t *matrix,
+                                               const int n,
+                                               const int m,
+                                               const int col_major);
 
 }  // namespace cutlass_gemm_internal
 }  // namespace fusion

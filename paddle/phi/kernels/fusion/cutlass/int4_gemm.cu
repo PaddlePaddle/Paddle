@@ -19,8 +19,10 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 
+#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/fusion/cutlass/int4_gemm/int4_gemm_decl.h"
 #include "paddle/phi/kernels/fusion/cutlass/int4_gemm/int4_gemm_util.h"
+#include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace phi {
 namespace fusion {
@@ -45,15 +47,18 @@ void Int4GemmKernel(const Context &ctx,
 
   CHECK_EQ(out_dims.size() == 2UL, true);
 
-  const int m = x_dims[0];
-  const int kx = x_dims[1];
-  const int ky = y_dims[0];
-  const int n = y_dims[1];
+  const int m = trans_x ? x_dims[1] : x_dims[0];
+  const int kx = trans_x ? x_dims[0] : x_dims[1];
+  const int ky = trans_y ? y_dims[1] : y_dims[0];
+  const int n = trans_y ? y_dims[0] : y_dims[1];
   const int mk = m * kx;
   const int kn = ky * n;
   const int mn = m * n;
 
   CHECK_EQ(kx, ky);
+  CHECK_EQ(m % 8, 0);
+  CHECK_EQ(kx % 8, 0);
+  CHECK_EQ(n % 8, 0);
 
   int sm = getSMVersion();
   if (sm != 75 && sm != 80) {
@@ -61,6 +66,21 @@ void Int4GemmKernel(const Context &ctx,
         "Cutlass does not support int4 gemm on sm %d", sm));
   }
   auto stream = ctx.stream();
+
+  const T *source_x = reinterpret_cast<const T *>(x.data());
+  const T *source_y = reinterpret_cast<const T *>(y.data());
+
+  DenseTensor source_x_trans;
+  if (trans_x) {
+    source_x_trans = TransposeLast2Dim<T, Context>(ctx, x);
+    source_x = reinterpret_cast<const T *>(source_x_trans.data());
+  }
+  DenseTensor source_y_trans;
+  if (!trans_y) {
+    // Int4 GEMM need y in column-major,so action on y is opposite
+    source_y_trans = TransposeLast2Dim<T, Context>(ctx, y);
+    source_y = reinterpret_cast<const T *>(source_y_trans.data());
+  }
 
   size_t x_bytes = m * kx / 2;
   size_t y_bytes = ky * n / 2;
@@ -78,20 +98,33 @@ void Int4GemmKernel(const Context &ctx,
       ctx.GetPlace(),
       out_bytes,
       phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+  paddle::memory::allocation::AllocationPtr tmp_bias = paddle::memory::Alloc(
+      ctx.GetPlace(),
+      out_bytes,
+      phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
 
-  DynamicConvert<cutlass::int4b_t, T>(
-      reinterpret_cast<const T *>(x.data()),
-      reinterpret_cast<cutlass::int4b_t *>(tmp_x->ptr()),
-      mk);
-  DynamicConvert<cutlass::int4b_t, T>(
-      reinterpret_cast<const T *>(x.data()),
-      reinterpret_cast<cutlass::int4b_t *>(tmp_y->ptr()),
-      kn);
+  dim3 gridx(256);
+  dim3 blockx(512);
+
+  DynamicConvert<cutlass::int4b_t, T><<<gridx, blockx>>>(
+      source_x, reinterpret_cast<cutlass::int4b_t *>(tmp_x->ptr()), mk);
+
+  DynamicConvert<cutlass::int4b_t, T><<<gridx, blockx>>>(
+      source_y, reinterpret_cast<cutlass::int4b_t *>(tmp_y->ptr()), kn);
+
+  dim3 gridb(128);
+  dim3 blockb(n);
+  ExpendKernel<int32_t>
+      <<<gridb, blockb>>>(reinterpret_cast<const int32_t *>(bias.data()),
+                          reinterpret_cast<int32_t *>(tmp_bias->ptr()),
+                          n,
+                          m,
+                          0);
 
   GemmAllParams params = {
       reinterpret_cast<const cutlass::int4b_t *>(tmp_x->ptr()),
       reinterpret_cast<const cutlass::int4b_t *>(tmp_y->ptr()),
-      reinterpret_cast<const int32_t *>(bias.data()),
+      reinterpret_cast<const int32_t *>(tmp_bias->ptr()),
       reinterpret_cast<int32_t *>(tmp_out->ptr()),
       1,
       m,
@@ -105,9 +138,11 @@ void Int4GemmKernel(const Context &ctx,
         "Cutlass dose not support this activation on int4: %s.",
         activation.c_str()));
   }
-  DynamicConvert<T, int32_t>(reinterpret_cast<const int32_t *>(tmp_out->ptr()),
-                             reinterpret_cast<T *>(out->data()),
-                             mn);
+
+  DynamicConvert<T, int32_t>
+      <<<gridx, blockx>>>(reinterpret_cast<const int32_t *>(tmp_out->ptr()),
+                          reinterpret_cast<T *>(out->data()),
+                          mn);
 }
 }  // namespace cutlass_gemm_internal
 }  // namespace fusion
@@ -117,4 +152,4 @@ PD_REGISTER_KERNEL(int4_gemm_cutlass,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::cutlass_gemm_internal::Int4GemmKernel,
-                   int8_t) {}
+                   int32_t) {}
