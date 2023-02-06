@@ -13,7 +13,7 @@
 // limitations under the License.
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
-#include "paddle/fluid/prim/api/manual/utils/utils.h"
+#include "paddle/fluid/prim/api/manual_prim/utils/utils.h"
 #include "paddle/phi/api/include/tensor.h"
 
 namespace paddle {

@@ -25,6 +25,7 @@ from paddle.common_ops_import import VarDesc, dygraph_only, dygraph_utils
 # TODO: define math functions
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
+from ..common_ops_import import Variable
 from ..fluid.data_feeder import (
     check_dtype,
     check_type,
@@ -38,7 +39,6 @@ from ..framework import (
     core,
     in_dygraph_mode,
 )
-from ..static import Variable
 from .creation import _complex_to_real_dtype
 from .layer_function_generator import generate_layer_fn, templatedoc
 from .manipulation import cast

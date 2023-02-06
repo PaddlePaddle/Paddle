@@ -18,13 +18,13 @@ import paddle
 from paddle import _C_ops
 from paddle.common_ops_import import VarDesc
 
+from ..common_ops_import import Variable
 from ..fluid.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
 )
 from ..framework import LayerHelper, in_dygraph_mode
-from ..static import Variable
 from .creation import full
 from .logic import logical_not
 from .manipulation import cast
@@ -1921,6 +1921,7 @@ def svd(x, full_matrices=False, name=None):
             #                  U * UH == I
             #                  V * VH == I
     """
+
     if in_dygraph_mode():
         return _C_ops.svd(x, full_matrices)
     else:

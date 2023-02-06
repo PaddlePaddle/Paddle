@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -44,9 +45,9 @@ class BprLossOpKernel : public framework::OpKernel<T> {
     y->mutable_data<T>(ctx.GetPlace());
     int rank = x->dims().size();
 
-    phi::DenseTensor x_2d = framework::ReshapeToMatrix(*x, rank - 1);
-    phi::DenseTensor labels_2d = framework::ReshapeToMatrix(*label, rank - 1);
-    phi::DenseTensor y_2d = framework::ReshapeToMatrix(*y, rank - 1);
+    phi::DenseTensor x_2d = phi::ReshapeToMatrix(*x, rank - 1);
+    phi::DenseTensor labels_2d = phi::ReshapeToMatrix(*label, rank - 1);
+    phi::DenseTensor y_2d = phi::ReshapeToMatrix(*y, rank - 1);
 
     const phi::DenseTensor* logits = &x_2d;
     const phi::DenseTensor* labels = &labels_2d;
