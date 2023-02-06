@@ -148,7 +148,10 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'var')
     if x.shape == []:
         out = paddle.full([], 0)
+        print(1234)
+        print(out.shape)
     else:
+        print(4321)
         u = mean(x, axis, True, name)
         out = paddle.sum((x - u) ** 2, axis, keepdim=keepdim, name=name)
 
