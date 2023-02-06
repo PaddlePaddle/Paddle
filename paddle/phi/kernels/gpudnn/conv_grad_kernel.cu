@@ -68,7 +68,7 @@ void ConvCudnnGradKernelImplV7(
   T* transformed_input_grad_data = nullptr;
 
   auto handle = ctx.cudnn_handle();
-  auto workspace_handle = ctx.cudnn_workspace_handle();
+  auto& workspace_handle = ctx.cudnn_workspace_handle();
 
   auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
   auto layout_tensor = phi::backends::gpu::GetCudnnTensorFormat(layout);
@@ -361,7 +361,7 @@ void ConvCudnnGradKernelImplV8(
           "Group concolution using CUDNNv8 API is unsupported for now"));
 
   cudnnHandle_t handle = const_cast<cudnnHandle_t>(ctx.cudnn_handle());
-  auto workspace_handle = ctx.cudnn_workspace_handle();
+  auto& workspace_handle = ctx.cudnn_workspace_handle();
 
   auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
   auto layout_format = phi::backends::gpu::GetCudnnTensorFormat(layout);
@@ -1202,7 +1202,7 @@ void ConvCudnnGradGradKernel(
   // ScalingParamType<T> beta = ctx.Attr<bool>("use_addto") ? 1.0f :
   // 0.0f;
   // VLOG(4) << "Conv_grad_grad: use_addto = " << ctx.Attr<bool>("use_addto");
-  auto workspace_handle = ctx.cudnn_workspace_handle();
+  auto& workspace_handle = ctx.cudnn_workspace_handle();
 
   if (ddO) {
     if (ddX) {

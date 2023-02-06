@@ -267,7 +267,7 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
   int filter_offset = filter.numel() / groups;
   ScalingParamType<T> alpha = 1.0f;
   ScalingParamType<T> beta = 0.0f;
-  auto workspace_handle = ctx.cudnn_workspace_handle();
+  auto& workspace_handle = ctx.cudnn_workspace_handle();
   if (dx) {
 #ifdef PADDLE_WITH_HIP
     // Because beta is zero, it is unnecessary to reset dx.
@@ -806,7 +806,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
   ScalingParamType<T> alpha = 1.0f;
   ScalingParamType<T> beta = 0.0f;
 
-  auto workspace_handle = ctx.cudnn_workspace_handle();
+  auto& workspace_handle = ctx.cudnn_workspace_handle();
 
   if (ddout) {
     ddx_ = transformed_ddx.data<T>();
