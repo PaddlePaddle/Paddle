@@ -69,8 +69,8 @@ class MultiHeadAttention(paddle.nn.Layer):
         q, k, v = paddle.split(qkv, num_or_sections=3, axis=-1)
 
         # compute core attention
+        q = paddle.scale(q, scale=self.head_dim**-0.5)
         product = paddle.matmul(x=q, y=k, transpose_y=True)
-        product = paddle.scale(product, scale=self.head_dim**-0.5)
         if attn_mask is not None:
             product = product + attn_mask
         weights = F.softmax(product)
@@ -104,21 +104,28 @@ class TestFusedAttentionPass(unittest.TestCase):
         self.pre_ln = True
         self.attn_dropout = True
         self.add_mask = True
+        self.x_data = None
+        self.mask_data = None
 
-    def test_pass(self):
+    def get_rst(self, use_pass=False):
         batch_size = 2
         seq_len = 1024
         hidden_size = 768
         num_heads = 12
 
-        x_data = np.random.rand(batch_size, seq_len, seq_len).astype('float32')
-        mask_data = np.random.rand(
-            batch_size, num_heads, seq_len, seq_len
-        ).astype('float32')
+        np.random.seed(1234)
+        if self.x_data is None:
+            self.x_data = np.random.rand(batch_size, seq_len, seq_len).astype(
+                'float32'
+            )
+            self.mask_data = np.random.rand(
+                batch_size, num_heads, seq_len, seq_len
+            ).astype('float32')
 
         main_prog = paddle.static.Program()
         main_prog.random_seed = 1234
         startup_prog = paddle.static.Program()
+        startup_prog.random_seed = 1234
 
         with paddle.static.program_guard(main_prog, startup_prog):
             data = paddle.static.data(
@@ -150,29 +157,44 @@ class TestFusedAttentionPass(unittest.TestCase):
             sgd_optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.001)
             sgd_optimizer.minimize(loss)
 
-        pass_manager = PassManager([new_pass("fused_attention")])
-        pass_manager.apply([main_prog], [startup_prog])
+        if use_pass:
+            pass_manager = PassManager([new_pass("fused_attention")])
+            pass_manager.apply([main_prog], [startup_prog])
 
-        ops = main_prog.global_block().ops
-        assert ops[2].type == 'fused_attention'
-        assert ops[3].type == 'reduce_mean'
-        assert ops[5].type == 'reduce_mean_grad'
-        assert ops[6].type == 'fused_attention_grad'
-        # two ops for linear, one op for reduce mean
-        # one fill constant
-        # one op for reduce mean grad, two ops for linear bwd
-        # the eighth op should be the optimizer
-        assert ops[9].type == 'sgd'
+            ops = main_prog.global_block().ops
+            assert ops[2].type == 'fused_attention'
+            assert ops[3].type == 'reduce_mean'
+            assert ops[5].type == 'reduce_mean_grad'
+            assert ops[6].type == 'fused_attention_grad'
+            # two ops for linear, one op for reduce mean
+            # one fill constant
+            # one op for reduce mean grad, two ops for linear bwd
+            # the eighth op should be the optimizer
+            assert ops[9].type == 'sgd'
 
         exe = paddle.static.Executor()
         exe.run(startup_prog)
-        rst = exe.run(
-            main_prog,
-            feed={'x': x_data, 'attn_mask': mask_data},
-            fetch_list=[loss],
-        )
+        if use_pass:
+            fetch_list = ['matmul_v2_1.tmp_0']
+        else:
+            fetch_list = ['matmul_v2_3.tmp_0']
+        for i in range(1):
+            rst = exe.run(
+                main_prog,
+                feed={'x': self.x_data, 'attn_mask': self.mask_data},
+                fetch_list=fetch_list,
+            )
+        return rst
+
+    def test_pass(self):
+        fused_rst = self.get_rst(use_pass=True)
+        non_fused_rst = self.get_rst()
+        # print(fused_rst)
+        # print(non_fused_rst)
+        # print(np.array_equal(fused_rst, non_fused_rst))
+        for i in range(len(fused_rst)):
+            print(i, np.array_equal(fused_rst[i], non_fused_rst[i]))
 
 
 if __name__ == "__main__":
-    np.random.seed(0)
     unittest.main()
