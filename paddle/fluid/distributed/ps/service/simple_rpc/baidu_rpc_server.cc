@@ -77,7 +77,7 @@ class BRpcServiceImpl : public SimpleRpcService {
     uint64_t attach_size = attach.cutn(iar.Buffer(), size);
     PADDLE_ENFORCE_EQ((attach_size == size),
                       true,
-                      phi::errors::PreconditionNotMet("Wrong request size."));
+                      phi::errors::PreconditionNotMet("Request size is wrong."));
     iar.AdvanceFinish(size);
 
     RpcMessageHead head;
@@ -108,7 +108,7 @@ class BRpcServiceImpl : public SimpleRpcService {
       head.request->callback()(head, iar);
       delete head.request;
       PADDLE_ENFORCE_NE(
-          head.service, 0, phi::errors::PreconditionNotMet("Service is nullptr."));
+          head.service, 0, phi::errors::PreconditionNotMet("Service should not be nullptr."));
       head.service->decrease_request();
     } else {
       LOG(FATAL) << "Unknown message type";
@@ -223,7 +223,7 @@ static void handle_baidu_rpc_response(brpc::Controller *cntl,
     size_t attach_size = cntl->response_attachment().cutn(iar.Buffer(), size);
     PADDLE_ENFORCE_EQ((attach_size == size),
                       true,
-                      phi::errors::PreconditionNotMet("Wrong request size."));
+                      phi::errors::PreconditionNotMet("Request size is wrong."));
     iar.AdvanceFinish(size);
 
     RpcMessageHead head;
@@ -232,7 +232,7 @@ static void handle_baidu_rpc_response(brpc::Controller *cntl,
       head.request->callback()(head, iar);
       delete head.request;
       PADDLE_ENFORCE_NE(
-          head.service, 0, phi::errors::PreconditionNotMet("Service is nullptr."));
+          head.service, 0, phi::errors::PreconditionNotMet("Service should not be nullptr."));
       head.service->decrease_request();
     } else {
       LOG(FATAL) << "Unknown message type";
@@ -277,7 +277,7 @@ void BaiduRpcServer::send_response(RpcMessageHead head,
       phi::errors::PreconditionNotMet("Server_id not equal rank id."));
   PADDLE_ENFORCE_EQ((head.client_id >= 0 && head.client_id < _gloo->Size()),
                     true,
-                    phi::errors::PreconditionNotMet("Client id error."));
+                    phi::errors::PreconditionNotMet("The client id is error."));
   BRpcReqService *service = reinterpret_cast<BRpcReqService *>(head.service);
   head.service = head.service->remote_pointer(head.client_id);
   head.message_type = RpcMessageHead::RESPONSE;

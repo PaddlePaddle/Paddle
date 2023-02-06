@@ -62,11 +62,11 @@ inline std::string get_local_ip_internal() {
   ifconf.ifc_buf = buf;
   sockfd = socket(AF_INET, SOCK_DGRAM, 0);
   PADDLE_ENFORCE_EQ(
-      (sockfd >= 0), true, phi::errors::PreconditionNotMet("Socket."));
+      (sockfd >= 0), true, phi::errors::PreconditionNotMet("Socket should be >= 0."));
   int ret = ioctl(sockfd, SIOCGIFCONF, &ifconf);
-  PADDLE_ENFORCE_EQ((ret >= 0), true, phi::errors::PreconditionNotMet("Ioctl."));
+  PADDLE_ENFORCE_EQ((ret >= 0), true, phi::errors::PreconditionNotMet("Ioctl ret should be >= 0."));
   ret = close(sockfd);
-  PADDLE_ENFORCE_EQ((0 == ret), true, phi::errors::PreconditionNotMet("Close."));
+  PADDLE_ENFORCE_EQ((0 == ret), true, phi::errors::PreconditionNotMet("Close call should return 0."));
 
   ifreq = (struct ifreq*)buf;
   for (int i = 0; i < static_cast<int>(ifconf.ifc_len / sizeof(struct ifreq));
