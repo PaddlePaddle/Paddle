@@ -54,8 +54,12 @@ class FusedBiasDropoutResidualLnOpKernel : public framework::OpKernel<T> {
     auto *ln_mean_data =
         dev_ctx.Alloc<U>(ln_mean, ln_mean->numel() * sizeof(U));
     auto *ln_var_data = dev_ctx.Alloc<U>(ln_var, ln_var->numel() * sizeof(U));
-    auto *dropout_mask_out_data = dev_ctx.Alloc<uint8_t>(
-        dropout_mask_out, dropout_mask_out->numel() * sizeof(uint8_t));
+    auto *dropout_mask_out_data =
+        (dropout_mask_out == nullptr)
+            ? nullptr
+            : dev_ctx.Alloc<uint8_t>(
+                  dropout_mask_out,
+                  dropout_mask_out->numel() * sizeof(uint8_t));
     auto *y_data = dev_ctx.Alloc<T>(y, y->numel() * sizeof(T));
 
     const auto input_x_dims = input_x->dims();
