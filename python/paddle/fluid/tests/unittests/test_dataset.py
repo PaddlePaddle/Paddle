@@ -949,7 +949,10 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
                 name=slot, shape=[-1, 1], dtype="int64", lod_level=1
             )
             var = paddle.cast(x=data, dtype='float32')
-            pool = fluid.layers.sequence_pool(input=var, pool_type='AVERAGE')
+            pool = paddle.static.nn.sequence_lod.sequence_pool(
+                input=var, pool_type='AVERAGE'
+            )
+
 
             slots_vars.append(data)
             poolings.append(pool)

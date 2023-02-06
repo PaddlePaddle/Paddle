@@ -123,22 +123,22 @@ PDNode* FusedAttentionPattern::operator()(PDNode* x,
                 fuse_qkv_split_out_v_node});
 
   // core attention pattern
-  auto* qk_matmul_node =
-      pattern->NewNode(qk_matmul_op_repr())->assert_is_op("matmul_v2");
-  auto* qk_matmul_out_node =
-      pattern->NewNode(qk_matmul_out_repr())->assert_is_op_output("matmul_v2");
-  fuse_qkv_split_out_q_node->assert_is_op_input("matmul_v2", "X");
-  fuse_qkv_split_out_k_node->assert_is_op_input("matmul_v2", "Y");
-  qk_matmul_node
-      ->LinksFrom({fuse_qkv_split_out_q_node, fuse_qkv_split_out_k_node})
-      .LinksTo({qk_matmul_out_node});
-
   auto* qk_scale_node =
       pattern->NewNode(qk_scale_op_repr())->assert_is_op("scale");
   auto* qk_scale_out_node =
       pattern->NewNode(qk_scale_out_repr())->assert_is_op_output("scale");
-  qk_matmul_out_node->assert_is_op_input("scale", "X");
-  qk_scale_node->LinksFrom({qk_matmul_out_node}).LinksTo({qk_scale_out_node});
+  fuse_qkv_split_out_q_node->assert_is_op_input("scale", "X");
+  qk_scale_node->LinksFrom({fuse_qkv_split_out_q_node})
+      .LinksTo({qk_scale_out_node});
+
+  auto* qk_matmul_node =
+      pattern->NewNode(qk_matmul_op_repr())->assert_is_op("matmul_v2");
+  auto* qk_matmul_out_node =
+      pattern->NewNode(qk_matmul_out_repr())->assert_is_op_output("matmul_v2");
+  qk_scale_out_node->assert_is_op_input("matmul_v2", "X");
+  fuse_qkv_split_out_k_node->assert_is_op_input("matmul_v2", "Y");
+  qk_matmul_node->LinksFrom({qk_scale_out_node, fuse_qkv_split_out_k_node})
+      .LinksTo({qk_matmul_out_node});
 
   PDNode* add_mask_ele_add_out_node{nullptr};
   if (has_attn_mask) {
@@ -149,9 +149,9 @@ PDNode* FusedAttentionPattern::operator()(PDNode* x,
             ->assert_is_op_input("elementwise_add", "Y");
     add_mask_ele_add_out_node = pattern->NewNode(add_mask_ele_add_out_repr())
                                     ->assert_is_op_output("elementwise_add");
-    qk_scale_out_node->assert_is_op_input("elementwise_add", "X");
+    qk_matmul_out_node->assert_is_op_input("elementwise_add", "X");
     add_mask_ele_add_node
-        ->LinksFrom({qk_scale_out_node, add_mask_ele_add_mask_node})
+        ->LinksFrom({qk_matmul_out_node, add_mask_ele_add_mask_node})
         .LinksTo({add_mask_ele_add_out_node});
   }
 
@@ -164,8 +164,8 @@ PDNode* FusedAttentionPattern::operator()(PDNode* x,
     qk_softmax_node->LinksFrom({add_mask_ele_add_out_node})
         .LinksTo({qk_softmax_out_node});
   } else {
-    qk_scale_out_node->assert_is_op_input("softmax", "X");
-    qk_softmax_node->LinksFrom({qk_scale_out_node})
+    qk_matmul_out_node->assert_is_op_input("softmax", "X");
+    qk_softmax_node->LinksFrom({qk_matmul_out_node})
         .LinksTo({qk_softmax_out_node});
   }
 
@@ -575,16 +575,8 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
         .LinksTo({add_mask_ele_add_grad_x_grad_node});
   }
 
-  PDNode* qk_scale_grad_input_node =
+  PDNode* qk_matmul_grad_input_node =
       has_attn_mask ? add_mask_ele_add_grad_x_grad_node : qk_softmax_grad_out;
-  auto* qk_scale_grad_node =
-      pattern->NewNode(qk_scale_grad_op_repr())->assert_is_op("scale");
-  auto* qk_scale_grad_out_node =
-      pattern->NewNode(qk_scale_grad_out_repr())->assert_is_op_output("scale");
-  qk_scale_grad_input_node->assert_is_op_input("scale", "X");
-  qk_scale_grad_node->LinksFrom({qk_scale_grad_input_node})
-      .LinksTo({qk_scale_grad_out_node});
-
   auto* qk_matmul_grad_node = pattern->NewNode(qk_matmul_grad_op_repr())
                                   ->assert_is_op("matmul_v2_grad");
   auto* qk_matmul_grad_x_node = pattern->NewNode(qk_matmul_grad_x_repr())
@@ -597,12 +589,20 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
   auto* qk_matmul_grad_w_grad_node =
       pattern->NewNode(qk_matmul_grad_w_grad_repr())
           ->assert_is_op_output("matmul_v2_grad", "Y@GRAD");
-  qk_scale_grad_out_node->assert_is_op_input("matmul_v2_grad", "Out@GRAD");
+  qk_matmul_grad_input_node->assert_is_op_input("matmul_v2_grad", "Out@GRAD");
   qk_matmul_grad_node
-      ->LinksFrom({qk_scale_grad_out_node,
+      ->LinksFrom({qk_matmul_grad_input_node,
                    qk_matmul_grad_x_node,
                    qk_matmul_grad_w_node})
       .LinksTo({qk_matmul_grad_x_grad_node, qk_matmul_grad_w_grad_node});
+
+  auto* qk_scale_grad_node =
+      pattern->NewNode(qk_scale_grad_op_repr())->assert_is_op("scale");
+  auto* qk_scale_grad_out_node =
+      pattern->NewNode(qk_scale_grad_out_repr())->assert_is_op_output("scale");
+  qk_matmul_grad_x_grad_node->assert_is_op_input("scale", "X");
+  qk_scale_grad_node->LinksFrom({qk_matmul_grad_x_grad_node})
+      .LinksTo({qk_scale_grad_out_node});
 
   // fuse qkv projection
   auto* fuse_qkv_split_grad_node =
@@ -610,11 +610,11 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
   auto* fuse_qkv_split_grad_out_node =
       pattern->NewNode(fuse_qkv_split_grad_out_repr())
           ->assert_is_op_output("concat");
-  qk_matmul_grad_x_grad_node->assert_is_op_input("concat");   // q grad
+  qk_scale_grad_out_node->assert_is_op_input("concat");       // q grad
   qk_matmul_grad_w_grad_node->assert_is_op_input("concat");   // k grad
   qkv_matmul_grad_w_grad_node->assert_is_op_input("concat");  // v grad
   fuse_qkv_split_grad_node
-      ->LinksFrom({qk_matmul_grad_x_grad_node,
+      ->LinksFrom({qk_scale_grad_out_node,
                    qk_matmul_grad_w_grad_node,
                    qkv_matmul_grad_w_grad_node})
       .LinksTo({fuse_qkv_split_grad_out_node});
@@ -894,7 +894,7 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(
     fused_attention_op_desc.SetAttr("transpose_qkv_wb", true);
     std::vector<int> shape = PADDLE_GET_CONST(
         std::vector<int>, fuse_qkv_reshape_op_node->Op()->GetAttr("shape"));
-    fused_attention_op_desc.SetAttr("num_heads", shape[2]);
+    fused_attention_op_desc.SetAttr("num_heads", shape[2] / 3);
     GET_IR_NODE_FROM_SUBGRAPH(
         fuse_qkv_matmul_out_node, fuse_qkv_matmul_out, fused_attention_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fuse_qkv_ele_add_bias_node,
@@ -1337,7 +1337,7 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResBwd(
     std::vector<int> shape =
         PADDLE_GET_CONST(std::vector<int>,
                          fuse_qkv_reshape_grad_op_node->Op()->GetAttr("shape"));
-    fused_attention_grad_op_desc.SetAttr("num_heads", shape[2]);
+    fused_attention_grad_op_desc.SetAttr("num_heads", shape[2] / 3);
     fused_attention_grad_op_desc.SetAttr("pre_layer_norm", true);
     fused_attention_grad_op_desc.SetAttr("transpose_qkv_wb", true);
 

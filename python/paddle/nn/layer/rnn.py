@@ -28,7 +28,7 @@ from paddle.fluid.framework import (
     in_dygraph_mode,
     program_guard,
 )
-from paddle.fluid.layers import control_flow, sequence_lod, utils
+from paddle.fluid.layers import control_flow, utils
 from paddle.fluid.layers.utils import flatten, map_structure
 from paddle.framework import core
 from paddle.nn import Layer
@@ -171,7 +171,7 @@ def _rnn_dynamic_graph(
         inputs = map_structure(_transpose_batch_time, inputs)
 
     if sequence_length is not None:
-        mask = sequence_lod.sequence_mask(
+        mask = paddle.static.nn.sequence_lod.sequence_mask(
             sequence_length, maxlen=time_steps, dtype=inputs.dtype
         )
         mask = paddle.transpose(mask, [1, 0])
@@ -256,7 +256,7 @@ def _rnn_static_graph(
 
     max_seq_len = paddle.shape(flatten(inputs)[0])[0]
     if sequence_length:
-        mask = sequence_lod.sequence_mask(
+        mask = paddle.static.nn.sequence_lod.sequence_mask(
             sequence_length,
             maxlen=max_seq_len,
             dtype=flatten(initial_states)[0].dtype,

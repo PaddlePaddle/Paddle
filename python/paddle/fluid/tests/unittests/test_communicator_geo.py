@@ -46,8 +46,12 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
             is_sparse=True,
         )
 
-        pool = fluid.layers.sequence_pool(input=emb, pool_type="sum")
+
+        pool = paddle.static.nn.sequence_lod.sequence_pool(
+            input=emb, pool_type="sum"
+        )
         z = paddle.concat([x, pool], axis=1)
+
         y_predict = paddle.static.nn.fc(x=z, size=1)
         y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
         cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
