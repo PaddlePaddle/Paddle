@@ -894,7 +894,7 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(
     fused_attention_op_desc.SetAttr("transpose_qkv_wb", true);
     std::vector<int> shape = PADDLE_GET_CONST(
         std::vector<int>, fuse_qkv_reshape_op_node->Op()->GetAttr("shape"));
-    fused_attention_op_desc.SetAttr("num_heads", shape[2]);
+    fused_attention_op_desc.SetAttr("num_heads", shape[2] / 3);
     GET_IR_NODE_FROM_SUBGRAPH(
         fuse_qkv_matmul_out_node, fuse_qkv_matmul_out, fused_attention_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fuse_qkv_ele_add_bias_node,
@@ -1337,7 +1337,7 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResBwd(
     std::vector<int> shape =
         PADDLE_GET_CONST(std::vector<int>,
                          fuse_qkv_reshape_grad_op_node->Op()->GetAttr("shape"));
-    fused_attention_grad_op_desc.SetAttr("num_heads", shape[2]);
+    fused_attention_grad_op_desc.SetAttr("num_heads", shape[2] / 3);
     fused_attention_grad_op_desc.SetAttr("pre_layer_norm", true);
     fused_attention_grad_op_desc.SetAttr("transpose_qkv_wb", true);
 

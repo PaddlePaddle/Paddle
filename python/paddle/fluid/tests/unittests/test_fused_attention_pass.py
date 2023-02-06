@@ -64,9 +64,9 @@ class MultiHeadAttention(paddle.nn.Layer):
 
         # compute qkv
         qkv = self.qkv_proj(x)
-        qkv = paddle.reshape(qkv, [0, 0, self.num_heads, 3 * self.head_dim])
+        qkv = paddle.reshape(qkv, [0, 0, 3 * self.num_heads, self.head_dim])
         qkv = paddle.transpose(qkv, [0, 2, 1, 3])
-        q, k, v = paddle.split(qkv, num_or_sections=3, axis=-1)
+        q, k, v = paddle.split(qkv, num_or_sections=3, axis=2)
 
         # compute core attention
         q = paddle.scale(q, scale=self.head_dim**-0.5)
@@ -175,9 +175,9 @@ class TestFusedAttentionPass(unittest.TestCase):
         exe = paddle.static.Executor()
         exe.run(startup_prog)
         if use_pass:
-            fetch_list = ['matmul_v2_1.tmp_0']
+            fetch_list = ['transpose_0.tmp_0']
         else:
-            fetch_list = ['matmul_v2_3.tmp_0']
+            fetch_list = ['split_1.tmp_0', 'split_1.tmp_1', 'split_1.tmp_2']
         for i in range(1):
             rst = exe.run(
                 main_prog,
@@ -192,8 +192,17 @@ class TestFusedAttentionPass(unittest.TestCase):
         # print(fused_rst)
         # print(non_fused_rst)
         # print(np.array_equal(fused_rst, non_fused_rst))
-        for i in range(len(fused_rst)):
-            print(i, np.array_equal(fused_rst[i], non_fused_rst[i]))
+        np_qkv = np.array(fused_rst[0])
+        q, k, v = np.split(np_qkv, indices_or_sections=3)
+        q = np.squeeze(q)
+        k = np.squeeze(k)
+        v = np.squeeze(v)
+        t_q = np.array(non_fused_rst[0])
+        t_k = np.array(non_fused_rst[1])
+        t_v = np.array(non_fused_rst[2])
+        print(q.shape, t_q.shape, np.array_equal(q, t_q))
+        print(k.shape, t_k.shape, np.array_equal(k, t_k))
+        print(v.shape, t_v.shape, np.array_equal(v, t_v))
 
 
 if __name__ == "__main__":
