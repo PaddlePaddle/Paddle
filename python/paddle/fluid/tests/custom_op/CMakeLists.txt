@@ -4,14 +4,12 @@ if(WITH_GPU OR APPLE)
   py_test(test_custom_relu_op_jit SRCS test_custom_relu_op_jit.py)
   py_test(test_custom_relu_model SRCS test_custom_relu_model.py)
   py_test(test_context_pool SRCS test_context_pool.py)
-  # py_test(test_custom_power SRCS test_custom_power_jit.py)
 
   # Compiling shared library will cost some time, but running process is very fast.
   set_tests_properties(test_custom_relu_op_setup PROPERTIES TIMEOUT 250)
   set_tests_properties(test_custom_relu_op_jit PROPERTIES TIMEOUT 180)
   set_tests_properties(test_custom_relu_model PROPERTIES TIMEOUT 180)
   set_tests_properties(test_context_pool PROPERTIES TIMEOUT 180)
-  # set_tests_properties(test_custom_power PROPERTIES TIMEOUT 180)
   if($ENV{USE_STANDALONE_EXECUTOR})
     # these test will fail in some server due to PR#42149, temporarily set it use old executor.
     set_tests_properties(test_custom_relu_op_setup

@@ -30,7 +30,6 @@ void tanh_grad(const Tensor& out, const Tensor& grad_out, Tensor* grad_x) {
   auto tmp = pow<T>(out, 2.0);
   tmp = scale<T>(tmp, -1.0, 1.0, true);
   auto grad_x_tmp = grad_out * tmp;
-  // auto grad_x_tmp = multiply<T>(grad_out, tmp);
   set_output<T>(grad_x_tmp, grad_x);
 }
 
@@ -174,7 +173,6 @@ void divide_grad(const Tensor& x,
     auto tmp1 = divide<T>(x, tmp0);
     auto tmp2 = scale<T>(tmp1, -1.0, 0.0, true);
     auto dy_res = tmp2 * out_grad;
-    // auto dy_res = multiply<T>(tmp2, out_grad);
     if (x.dims() != y.dims()) {
       // Maybe need reduce here
       phi::DDim reduce_dim = get_reduce_dims(y.dims(), x.dims());
@@ -195,7 +193,6 @@ void divide_grad(const Tensor& x,
     auto one_tensor = full<T>(phi::vectorize(y.dims()), 1.0, y.dtype());
     auto tmp0 = divide<T>(one_tensor, y);
     auto dx_res = tmp0 * out_grad;
-    // auto dx_res = multiply<T>(tmp0, out_grad);
     if (y.dims() != x.dims()) {
       // Maybe need reduce here
       auto reduce_dim = get_reduce_dims(x.dims(), y.dims());
@@ -220,7 +217,6 @@ void sqrt_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
     auto div_x = full<T>(phi::vectorize(out.dims()), 0.5);
     auto tmp = divide<T>(div_x, out);
     auto x_grad_tmp = out_grad * tmp;
-    // auto x_grad_tmp = multiply<T>(out_grad, tmp);
     set_output<T>(x_grad_tmp, x_grad);
   }
 }
@@ -234,7 +230,6 @@ void multiply_grad(const Tensor& x,
                    Tensor* y_grad) {
   if (x_grad) {
     auto x_grad_unreduce = out_grad * y;
-    // auto x_grad_unreduce = multiply<T>(out_grad, y);
     if (x_grad_unreduce.dims() != x.dims()) {
       auto axes = get_reduce_dims_from_out(x_grad_unreduce.dims(), x.dims());
       if (!axes.size()) {
@@ -254,7 +249,7 @@ void multiply_grad(const Tensor& x,
     }
   }
   if (y_grad) {
-    auto y_grad_unreduce = multiply<T>(out_grad, x);
+    auto y_grad_unreduce = out_grad * x;
     if (y_grad_unreduce.dims() != y.dims()) {
       auto axes = get_reduce_dims_from_out(y_grad_unreduce.dims(), y.dims());
       if (!axes.size()) {
@@ -303,7 +298,6 @@ template <typename T>
 void exp_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
     set_output<T>(out_grad * out, x_grad);
-    // set_output<T>(multiply<T>(out_grad, out), x_grad);
   }
 }
 

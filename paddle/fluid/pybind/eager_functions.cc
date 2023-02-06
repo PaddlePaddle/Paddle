@@ -499,11 +499,11 @@ static PyObject* eager_api_init_eager_and_static_tensor_operants(
     PyObject* self, PyObject* args, PyObject* kwargs) {
   EAGER_TRY
 
-  VLOG(4) << "Initialize eager and static tensor operants successfully";
   paddle::experimental::OperantsManager::Instance().eager_operants =
       &paddle::experimental::EagerTensorOperants::Instance();
   paddle::experimental::OperantsManager::Instance().static_operants =
       &paddle::experimental::StaticTensorOperants::Instance();
+  VLOG(4) << "Initialize eager and static tensor operants successfully";
 
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL

@@ -192,7 +192,6 @@ paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallV
 FORWARD_FUNCTION_TEMPLATE = """
 {} {}({}) {{
   FLAGS_operants_mode = "eager";
-  VLOG(1) << \"DEBUG in eager operator from eager_gen.py, dygraph mode\";
   VLOG(3) << \"Running AD API: \" << \"{}\";
   // Dygraph Record Event
 {}
@@ -249,7 +248,6 @@ BEFORE_LOG_PRINT_TEMPLATE = """
 FORWARD_ONLY_FUNCTION_TEMPLATE = """
 {} {}({}) {{
   FLAGS_operants_mode = "eager";
-  VLOG(1) << \"DEBUG in eager operator from eager_gen.py, dygraph mode\";
   VLOG(3) << \"Running AD API: \" << \"{}\";
   // Dygraph Record Event
 {}
