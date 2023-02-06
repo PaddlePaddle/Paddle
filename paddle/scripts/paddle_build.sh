@@ -638,7 +638,7 @@ EOF
         set -ex
 
         if [ "$1" == "cp37-cp37m" ]; then
-            pip3.7 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
+            pip3.7 install --user ${PADDLE_ROOT}/dist/*.whl
             pip3.7 install --user hypothesis
         elif [ "$1" == "cp38-cp38" ]; then
             pip3.8 install --user ${PADDLE_ROOT}/dist/*.whl
