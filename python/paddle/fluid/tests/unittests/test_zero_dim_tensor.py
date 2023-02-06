@@ -2607,6 +2607,26 @@ class TestNoBackwardAPI(unittest.TestCase):
         self.assertEqual(one_hot_label.shape, [4])
         self.assertEqual(one_hot_label.numpy()[2], 1)
 
+    def test_unique_consecutive(self):
+        places = ['cpu']
+        if paddle.is_compiled_with_cuda():
+            places.append('gpu')
+        for place in places:
+            paddle.set_device(place)
+            x = paddle.rand([])
+            y, inverse, counts = paddle.unique_consecutive(
+                x,
+                return_inverse=True,
+                return_counts=True,
+            )
+
+            self.assertEqual(y, x)
+            self.assertEqual(inverse, 0)
+            self.assertEqual(counts, 1)
+            self.assertEqual(y.shape, [1])
+            self.assertEqual(inverse.shape, [1])
+            self.assertEqual(counts.shape, [1])
+
     def test_unique(self):
         places = ['cpu']
         if paddle.is_compiled_with_cuda():
@@ -2831,6 +2851,21 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
 
         self.assertEqual(res[0].shape, (4,))
         self.assertEqual(res[0][2], 1)
+
+    def test_unique_consecutive(self):
+        x = paddle.rand([])
+        y, inverse, counts = paddle.unique_consecutive(
+            x, return_inverse=True, return_counts=True
+        )
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[y, inverse, counts])
+        self.assertEqual(y, x)
+        self.assertEqual(inverse, 0)
+        self.assertEqual(counts, 1)
+        self.assertEqual(res[0].shape, (1,))
+        self.assertEqual(res[1].shape, (1,))
+        self.assertEqual(res[2].shape, (1,))
 
     def test_unique(self):
         x = paddle.rand([])
