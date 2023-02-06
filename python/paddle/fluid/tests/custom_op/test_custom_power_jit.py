@@ -16,7 +16,7 @@ import os
 import unittest
 
 import numpy as np
-from utils import extra_cc_args, extra_nvcc_args, paddle_includes
+from utils import extra_cc_args, paddle_includes
 
 import paddle
 import paddle.static as static
@@ -37,7 +37,6 @@ custom_module = load(
     sources=['custom_power.cc'],
     extra_include_paths=paddle_includes,  # add for Coverage CI
     extra_cxx_cflags=extra_cc_args,  # test for cc flags
-    extra_cuda_cflags=extra_nvcc_args,  # test for nvcc flags
     verbose=True,
 )
 
@@ -52,7 +51,6 @@ def custom_power_dynamic(func, device, dtype, np_x, use_func=True):
     out.stop_gradient = False
 
     out.backward()
-
     if t.grad is None:
         return out.numpy(), t.grad
     else:

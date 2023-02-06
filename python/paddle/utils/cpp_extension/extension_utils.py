@@ -1003,6 +1003,7 @@ def _custom_api_content(op_name):
         from paddle.fluid.core import VarBase, CustomOpKernelContext
         from paddle.fluid.framework import _dygraph_tracer, in_dygraph_mode
         from paddle.fluid.layer_helper import LayerHelper
+        from paddle.framework import set_flags
 
         def {op_name}({inputs}):
             # prepare inputs and outputs
@@ -1010,6 +1011,7 @@ def _custom_api_content(op_name):
             attrs = {attrs}
             outs = {{}}
             out_names = {out_names}
+            set_flags({{'FLAGS_operants_mode': 'phi'}})
 
             # The output variable's dtype use default value 'float32',
             # and the actual dtype of output variable will be inferred in runtime.

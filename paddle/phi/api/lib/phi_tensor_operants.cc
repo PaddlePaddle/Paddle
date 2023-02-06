@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/api/include/phi_tensor_operator.h"
+#include "paddle/phi/api/include/phi_tensor_operants.h"
 #include "glog/logging.h"
 #include "paddle/phi/api/include/api.h"
 
@@ -20,13 +20,12 @@ namespace paddle {
 
 namespace experimental {
 
-PhiTensorOperator& PhiTensorOperator::Instance() {
-  static PhiTensorOperator g_phi_op;
-  return g_phi_op;
+PhiTensorOperants& PhiTensorOperants::Instance() {
+  static PhiTensorOperants g_phi_operants;
+  return g_phi_operants;
 }
 
-Tensor PhiTensorOperator::multiply(const Tensor& x, const Tensor& y) {
-  VLOG(1) << "DEBUG dispatched in phi mode";
+Tensor PhiTensorOperants::multiply(const Tensor& x, const Tensor& y) {
   return paddle::experimental::multiply(x, y);
 }
 

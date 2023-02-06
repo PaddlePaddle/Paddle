@@ -115,8 +115,8 @@ cc_library(
   DEPS kernel_factory)
 
 cc_library(
-  operator_manager
-  SRCS operator_manager.cc
+  operants_manager
+  SRCS operants_manager.cc
   DEPS flags)
 
 # Will remove once we implemented MKLDNN_Tensor

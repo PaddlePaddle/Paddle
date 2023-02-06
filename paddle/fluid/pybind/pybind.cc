@@ -198,9 +198,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "pybind11/stl.h"
 
-#include "paddle/fluid/eager/api/utils/eager_tensor_operator.h"
-#include "paddle/fluid/eager/api/utils/static_tensor_operator.h"
-#include "paddle/phi/core/operator_manager.h"
+#include "paddle/phi/api/include/phi_tensor_operants.h"
+#include "paddle/phi/core/operants_manager.h"
 
 DECLARE_bool(use_mkldnn);
 
@@ -1855,12 +1854,11 @@ All parameter, weight, gradient are variables in Paddle.
       paddle::operators::RegisterCustomDeviceCommonKernel(dev_type);
     }
 #endif
-    paddle::experimental::OperatorManager::Instance().eager_operator =
-        &paddle::experimental::EagerTensorOperator::Instance();
-    VLOG(1) << "DEBUG set eager_operator pointer successfully";
-    paddle::experimental::OperatorManager::Instance().static_operator =
-        &paddle::experimental::StaticTensorOperator::Instance();
-    VLOG(1) << "DEBUG set static_operator pointer successfully";
+  });
+  m.def("init_phi_tensor_operants", []() {
+    VLOG(4) << "Initialize phi tensor operants successfully";
+    paddle::experimental::OperantsManager::Instance().phi_operants =
+        &paddle::experimental::PhiTensorOperants::Instance();
   });
   m.def("init_default_kernel_signatures",
         []() { framework::InitDefaultKernelSignatureMap(); });

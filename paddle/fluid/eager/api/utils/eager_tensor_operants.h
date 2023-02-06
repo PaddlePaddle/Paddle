@@ -12,26 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/eager/api/utils/static_tensor_operator.h"
+#pragma once
 
-#include "glog/logging.h"
-#include "paddle/fluid/prim/api/generated_prim/prim_generated_api.h"
-#include "paddle/fluid/prim/utils/static/desc_tensor.h"
+#include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/core/macros.h"
+#include "paddle/phi/core/operants_base.h"
 
 namespace paddle {
 
 namespace experimental {
-using DescTensor = paddle::prim::DescTensor;
 
-StaticTensorOperator& StaticTensorOperator::Instance() {
-  static StaticTensorOperator g_static_op;
-  return g_static_op;
-}
+class EagerTensorOperants : public OperantsBase {
+ public:
+  static EagerTensorOperants& Instance();
 
-Tensor StaticTensorOperator::multiply(const Tensor& x, const Tensor& y) {
-  VLOG(1) << "DEBUG dispatched in static mode";
-  return paddle::prim::multiply<DescTensor>(x, y);
-}
+  Tensor multiply(const Tensor& x, const Tensor& y) override;
+
+ private:
+  EagerTensorOperants() = default;
+  DISABLE_COPY_AND_ASSIGN(EagerTensorOperants);
+};
 
 }  // namespace experimental
 }  // namespace paddle

@@ -1,4 +1,4 @@
-//   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,20 +14,14 @@
 
 #pragma once
 
-#include "paddle/phi/api/include/tensor.h"
+#include "paddle/fluid/eager/api/utils/eager_tensor_operants.h"
+#include "paddle/fluid/eager/api/utils/static_tensor_operants.h"
+#include "paddle/phi/core/operants_manager.h"
 
 namespace paddle {
+namespace prim {
 
-namespace experimental {
+void init_tensor_operants();
 
-class TensorOperatorBase {
- public:
-  virtual ~TensorOperatorBase() = default;
-
-  // virtual Tensor& add_(Tensor& x, const Tensor& y) = 0;
-
-  virtual Tensor multiply(const Tensor& x, const Tensor& y) = 0;
-};
-
-}  // namespace experimental
+}  // namespace prim
 }  // namespace paddle

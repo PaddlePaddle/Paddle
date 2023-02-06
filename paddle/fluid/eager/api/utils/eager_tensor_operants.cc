@@ -12,31 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/fluid/eager/api/utils/eager_tensor_operants.h"
 
-#include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/core/macros.h"
-#include "paddle/phi/core/tensor_operator_base.h"
+#include "glog/logging.h"
+#include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 
 namespace paddle {
 
 namespace experimental {
 
-class OperatorManager {
- public:
-  static OperatorManager& Instance();
+EagerTensorOperants& EagerTensorOperants::Instance() {
+  static EagerTensorOperants g_eager_operants;
+  return g_eager_operants;
+}
 
-  Tensor multiply(const Tensor& x, const Tensor& y);
-
- public:
-  TensorOperatorBase* eager_operator = nullptr;
-  TensorOperatorBase* static_operator = nullptr;
-  TensorOperatorBase* phi_operator = nullptr;
-
- private:
-  OperatorManager() = default;
-  DISABLE_COPY_AND_ASSIGN(OperatorManager);
-};
+Tensor EagerTensorOperants::multiply(const Tensor& x, const Tensor& y) {
+  return ::multiply_ad_func(x, y);
+}
 
 }  // namespace experimental
 }  // namespace paddle

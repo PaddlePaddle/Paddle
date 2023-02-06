@@ -191,7 +191,7 @@ paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallV
 
 FORWARD_FUNCTION_TEMPLATE = """
 {} {}({}) {{
-  FLAGS_tensor_operator = "eager";
+  FLAGS_operants_mode = "eager";
   VLOG(1) << \"DEBUG in eager operator from eager_gen.py, dygraph mode\";
   VLOG(3) << \"Running AD API: \" << \"{}\";
   // Dygraph Record Event
@@ -248,7 +248,7 @@ BEFORE_LOG_PRINT_TEMPLATE = """
 
 FORWARD_ONLY_FUNCTION_TEMPLATE = """
 {} {}({}) {{
-  FLAGS_tensor_operator = "eager";
+  FLAGS_operants_mode = "eager";
   VLOG(1) << \"DEBUG in eager operator from eager_gen.py, dygraph mode\";
   VLOG(3) << \"Running AD API: \" << \"{}\";
   // Dygraph Record Event
@@ -365,7 +365,7 @@ FORWARD_CC_FILE_TEMPLATE = """
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
 DECLARE_bool(check_nan_inf);
-DECLARE_string(tensor_operator);
+DECLARE_string(operants_mode);
 {}
 {}
 """

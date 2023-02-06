@@ -20,12 +20,15 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/prim/api/manual_prim/utils/utils.h"
+#include "paddle/fluid/prim/tests/init_env_utils.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/fluid/prim/utils/utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 DECLARE_bool(prim_enabled);
+DECLARE_string(operants_mode);
+
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(tanh, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(tanh_grad, CPU, ALL_LAYOUT);
@@ -142,6 +145,10 @@ class TestCompositeGradMaker : public CompositeGradOpMakerBase {
 };
 
 TEST(StaticPrim, TanhBackwardComposite) {
+  // Initialized environment
+  FLAGS_operants_mode = "static";
+  paddle::prim::init_tensor_operants();
+
   TestBaseProgram base_program = TestBaseProgram();
   auto* target_block = base_program.GetBlock(0);
   // Prepare for forward tanh
@@ -223,6 +230,10 @@ TEST(StaticPrim, TanhBackwardComposite) {
 }
 
 TEST(StaticCompositeGradMaker, TestMutiInputMethod) {
+  // Initialized environment
+  FLAGS_operants_mode = "static";
+  paddle::prim::init_tensor_operants();
+
   TestBaseProgram base_program = TestBaseProgram();
   auto* target_block = base_program.GetBlock(0);
   std::vector<int64_t> shape = {2, 2};
@@ -285,6 +296,10 @@ TEST(StaticCompositeGradMaker, TestMutiInputMethod) {
 }
 
 TEST(StaticCompositeGradMaker, TestMutiOutputMethod) {
+  // Initialized environment
+  FLAGS_operants_mode = "static";
+  paddle::prim::init_tensor_operants();
+
   TestBaseProgram base_program = TestBaseProgram();
   auto* target_block = base_program.GetBlock(0);
   std::vector<int64_t> shape = {4, 2};

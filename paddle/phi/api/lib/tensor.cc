@@ -27,7 +27,7 @@ limitations under the License. */
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/operator_manager.h"
+#include "paddle/phi/core/operants_manager.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
@@ -356,7 +356,7 @@ Tensor &Tensor::operator=(Tensor &&x) & {
 }
 
 Tensor operator*(const Tensor &x, const Tensor &y) {
-  return OperatorManager::Instance().multiply(x, y);
+  return OperantsManager::Instance().multiply(x, y);
 }
 
 AbstractAutogradMeta *Tensor::get_autograd_meta() const {

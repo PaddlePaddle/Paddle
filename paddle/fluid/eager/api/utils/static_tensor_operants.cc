@@ -12,23 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/eager/api/utils/eager_tensor_operator.h"
+#include "paddle/fluid/eager/api/utils/static_tensor_operants.h"
 
 #include "glog/logging.h"
-#include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
+#include "paddle/fluid/prim/api/generated_prim/prim_generated_api.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 
 namespace paddle {
 
 namespace experimental {
+using DescTensor = paddle::prim::DescTensor;
 
-EagerTensorOperator& EagerTensorOperator::Instance() {
-  static EagerTensorOperator g_eager_op;
-  return g_eager_op;
+StaticTensorOperants& StaticTensorOperants::Instance() {
+  static StaticTensorOperants g_static_operants;
+  return g_static_operants;
 }
 
-Tensor EagerTensorOperator::multiply(const Tensor& x, const Tensor& y) {
-  VLOG(1) << "DEBUG dispatched in eager mode";
-  return ::multiply_ad_func(x, y);
+Tensor StaticTensorOperants::multiply(const Tensor& x, const Tensor& y) {
+  return paddle::prim::multiply<DescTensor>(x, y);
 }
 
 }  // namespace experimental

@@ -16,21 +16,26 @@
 
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/macros.h"
-#include "paddle/phi/core/tensor_operator_base.h"
+#include "paddle/phi/core/operants_base.h"
 
 namespace paddle {
 
 namespace experimental {
 
-class EagerTensorOperator : public TensorOperatorBase {
+class OperantsManager {
  public:
-  static EagerTensorOperator& Instance();
+  static OperantsManager& Instance();
 
-  Tensor multiply(const Tensor& x, const Tensor& y) override;
+  Tensor multiply(const Tensor& x, const Tensor& y);
+
+ public:
+  OperantsBase* eager_operants = nullptr;
+  OperantsBase* static_operants = nullptr;
+  OperantsBase* phi_operants = nullptr;
 
  private:
-  EagerTensorOperator() = default;
-  DISABLE_COPY_AND_ASSIGN(EagerTensorOperator);
+  OperantsManager() = default;
+  DISABLE_COPY_AND_ASSIGN(OperantsManager);
 };
 
 }  // namespace experimental

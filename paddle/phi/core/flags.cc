@@ -756,8 +756,6 @@ PADDLE_DEFINE_EXPORTED_string(tracer_mkldnn_ops_on,
                               "",
                               "List of OneDNN operation types to be turned on");
 
-PADDLE_DEFINE_EXPORTED_string(tensor_operator, "", "Tensor operator mode");
-
 /**
  * Debug related FLAG
  * Name: tracer_mkldnn_ops_off
@@ -1208,3 +1206,17 @@ PADDLE_DEFINE_EXPORTED_bool(trt_ibuilder_cache,
 PADDLE_DEFINE_EXPORTED_bool(use_shm_cache,
                             false,
                             "Use shm cache in mmap_allocator.");
+
+/**
+ * Tensor operants related FLAG
+ * Name: operants_mode
+ * Since Version: 2.5.0
+ * Value Range: string, {eager, phi, static}
+ * default=eager
+ * Example:
+ * Note: For switching tensor operants mode of PaddlePaddle.
+ *       - eager mode: tensor operants with dygraph autograd;
+ *       - phi mode: tensor operants with only phi forward API;
+ *       - static mode: tensor operants within static graph.
+ */
+PADDLE_DEFINE_EXPORTED_string(operants_mode, "eager", "Tensor operants mode");

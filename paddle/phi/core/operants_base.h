@@ -15,22 +15,16 @@
 #pragma once
 
 #include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/core/macros.h"
-#include "paddle/phi/core/tensor_operator_base.h"
 
 namespace paddle {
 
 namespace experimental {
 
-class StaticTensorOperator : public TensorOperatorBase {
+class OperantsBase {
  public:
-  static StaticTensorOperator& Instance();
+  virtual ~OperantsBase() = default;
 
-  Tensor multiply(const Tensor& x, const Tensor& y) override;
-
- private:
-  StaticTensorOperator() = default;
-  DISABLE_COPY_AND_ASSIGN(StaticTensorOperator);
+  virtual Tensor multiply(const Tensor& x, const Tensor& y) = 0;
 };
 
 }  // namespace experimental

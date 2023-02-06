@@ -506,18 +506,14 @@ class PADDLE_API Tensor final {
    */
   Tensor& operator=(Tensor&& x) &;
 
-  // Tensor& operator+=(const Tensor& other) {
-  //   return OperatorManager::Instance().add_(const_cast<Tensor&>(*this),
-  //   other);
-  //   // return *this;
-  // }
-
+  /**
+   * @brief multiply operator
+   *
+   * @param x
+   * @param y
+   * @return Tensor
+   */
   friend Tensor operator*(const Tensor& x, const Tensor& y);
-
-  // Tensor& operator*=(const Tensor& other) {
-  //   return OperatorManager::Instance().multiply(const_cast<Tensor&>(*this),
-  //                                               other);
-  // }
 
   /* Part 8: Autograd methods */
 

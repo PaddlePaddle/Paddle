@@ -21,6 +21,7 @@
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
+#include "paddle/fluid/prim/tests/init_env_utils.h"
 #include "paddle/phi/api/all.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_meta.h"
@@ -111,6 +112,7 @@ inline void InitEnv(paddle::platform::Place place) {
   // Prepare Device Contexts
   // Init DeviceContextPool
   paddle::framework::InitDevices();
+  paddle::prim::init_tensor_operants();
 
   // Init Tracer Place
   egr::Controller::Instance().SetExpectedPlace(place);
