@@ -3654,6 +3654,10 @@ void SplitWithNumInferMeta(const MetaTensor& x,
     auto input_axis_dim = x.dims().at(axis_value);
     // step1: get formated sections
     std::vector<int64_t> sections_vec;
+    PADDLE_ENFORCE_NE(
+        num,
+        0,
+        phi::errors::InvalidArgument("Attr(num_or_sections) should not be 0."));
     PADDLE_ENFORCE_EQ(input_axis_dim % num,
                       0,
                       phi::errors::InvalidArgument(
