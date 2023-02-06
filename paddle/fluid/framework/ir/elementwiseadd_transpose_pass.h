@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,13 +19,13 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 namespace ir {
-//  input_x  input_y
+//  input_x  input_y, input_x and input_y are both (n,h*w,c)
 //    |        |
-//  elementwise_add
+//  elementwise_add (n,h*w,c)
 //    |
-//   reshape
+//   reshape (n,h, w,c)
 //    |
-//   transpose
+//   transpose ((n,c,h,w))
 //    |
 //
 // fuse ->

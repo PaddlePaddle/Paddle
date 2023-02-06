@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -31,6 +31,20 @@ namespace paddle {
 namespace framework {
 namespace ir {
 namespace patterns {
+//  input_x  input_y, input_x and input_y are both (n,h*w,c)
+//    |        |
+//  elementwise_add (n,h*w,c)
+//    |
+//   reshape (n,h, w,c)
+//    |
+//   transpose ((n,c,h,w))
+//    |
+//
+// fuse ->
+//
+//   |
+//  elementwiseadd_transpose
+//   |
 struct ElementwiseAddTransposePattern : public PatternBase {
   ElementwiseAddTransposePattern(PDPattern *pattern,
                                  const std::string &name_scope)
@@ -138,6 +152,15 @@ int ElementwiseAddTransposeFusePass::ApplyEleTransPattern(
                  "currently, the elementwiseadd transpose pass only support "
                  "reshape bay shape attr rather than shape tensor."
                  "Therefore, the fusion will be stoped.";
+      return;
+    }
+    if (shape_attr[3] % 8 != 0) {
+      VLOG(1)
+          << "found that shape_attr[3](channel size) mod 8 !=0 for reshape op "
+             "in elementwise_add_transpose, "
+             "currently, the elementwiseadd transpose pass only support "
+             "channel size mod 8 == 0 for khwc8 trt format"
+             "Therefore, the fusion will be stoped.";
       return;
     }
     std::unordered_set<const Node *> del_node_set;
