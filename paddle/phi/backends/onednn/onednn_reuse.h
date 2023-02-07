@@ -53,7 +53,8 @@ constexpr bool is_bfloat16() {
 }
 
 static void AppendActivation(const OneDNNContext& dev_ctx,
-                             dnnl::post_ops& post_ops) {  // NOLINT
+                             dnnl::post_ops& post_ops,  // NOLINT
+                             float activation_scale = 1.0f) {
   const auto invalid_attribute =
       dev_ctx.HasDnnAttr("fuse_activation")
           ? PADDLE_GET_CONST(std::string, dev_ctx.GetDnnAttr("fuse_activation"))
@@ -77,7 +78,11 @@ static void AppendActivation(const OneDNNContext& dev_ctx,
   if (fuse_activation == "hard_sigmoid") {
     post_ops.append_eltwise(
         dnnl::algorithm::eltwise_linear, fuse_alpha, fuse_beta);
+    post_ops.append_eltwise(
+        dnnl::algorithm::eltwise_linear, activation_scale, 0.0f);
     post_ops.append_eltwise(dnnl::algorithm::eltwise_clip, 0.0f, 1.0f);
+    post_ops.append_eltwise(
+        dnnl::algorithm::eltwise_linear, activation_scale, 0.0f);
   } else if (fuse_activation == "relu6") {
     post_ops.append_eltwise(dnnl::algorithm::eltwise_clip, 0.0f, fuse_alpha);
   } else {
@@ -106,6 +111,8 @@ static void AppendActivation(const OneDNNContext& dev_ctx,
             fuse_activation));
 
     post_ops.append_eltwise(activation_type->second, fuse_alpha, fuse_beta);
+    post_ops.append_eltwise(
+        dnnl::algorithm::eltwise_linear, activation_scale, 0.0f);
   }
 }
 
