@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from functools import reduce  # noqa: F401
-from operator import mul  # noqa: F401
 
 from paddle.fluid.layers.nn import reduce_sum  # noqa: F401
 from paddle.fluid.layers.tensor import assign  # noqa: F401
