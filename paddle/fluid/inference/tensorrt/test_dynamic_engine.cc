@@ -32,8 +32,6 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-#if 0
-
 class TensorRTDynamicShapeValueEngineTest : public ::testing::Test {
  protected:
   void SetUp() override {
@@ -748,8 +746,6 @@ TEST_F(TensorRTDynamicTestFusedTokenPruneHalf, test_fused_token_prune) {
   LOG(INFO) << "finish";
 #endif
 }
-
-#endif
 
 class TensorRTDynamicShapeGNTest : public ::testing::Test {
  protected:
