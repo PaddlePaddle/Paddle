@@ -1151,8 +1151,7 @@ set_tests_properties(test_cumprod_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_split_program PROPERTIES TIMEOUT 120)
 set_tests_properties(test_graph_send_ue_recv_op PROPERTIES TIMEOUT 60)
 set_tests_properties(test_graph_send_uv_op PROPERTIES TIMEOUT 60)
-set_tests_properties(test_cutlass_fused_multihead_attention PROPERTIES TIMEOUT
-                                                                       150)
+
 if(WITH_DISTRIBUTE
    AND WITH_GPU
    AND WITH_NCCL)
@@ -1191,6 +1190,8 @@ endif()
 if(WITH_GPU AND NOT WIN32)
   set_tests_properties(test_fused_multi_transformer_int8_op PROPERTIES TIMEOUT
                                                                        60)
+  set_tests_properties(test_cutlass_fused_multihead_attention PROPERTIES TIMEOUT
+                                                                         150)
 endif()
 set_tests_properties(test_inplace_addto_strategy PROPERTIES TIMEOUT 120)
 set_tests_properties(test_eigvals_op PROPERTIES TIMEOUT 400)
