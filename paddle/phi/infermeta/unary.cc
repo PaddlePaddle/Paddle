@@ -161,6 +161,7 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
   const auto& x_dims = x.dims();
 
   auto x_rank = x.dims().size();
+  auto zero_dim_tensor = x_rank == 0;
   if (x_rank > 0) {
     PADDLE_ENFORCE_GE(int_axis,
                       -x_rank,
@@ -178,11 +179,11 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
             x_rank));
   } else {
     // 0-dim tensor
-    PADDLE_ENFORCE_EQ((int_axis == 0 || int_axis == -1) && flatten,
+    PADDLE_ENFORCE_EQ(int_axis == 0 || int_axis == -1,
                       true,
                       phi::errors::InvalidArgument(
                           "'axis'(%d) must be 0 or -1 if input tensor is "
-                          "0-dim. and flatten should be true.",
+                          "0-dim.",
                           int_axis));
   }
 
@@ -191,7 +192,7 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
   if (config.is_runtime) {
     if (dtype == phi::TransToProtoVarType(DataType::INT32)) {
       int64_t all_element_num = 0;
-      if (flatten) {
+      if (flatten || zero_dim_tensor) {
         all_element_num = phi::product(x_dims);
       } else {
         all_element_num = x_dims[int_axis];
