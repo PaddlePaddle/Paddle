@@ -132,19 +132,19 @@ class TrtConvertElementwiseaddTransposeTest(TrtLayerAutoScanTest):
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs, inputs):
-            channel = inputs['ele_input_1'].shape[1]
+            channel = inputs['ele_input_1'].shape[2]
 
             self.dynamic_shape.min_input_shape = {
                 "ele_input_1": [1, 32 * 32, channel],
                 "ele_input_2": [1, 32 * 32, channel],
             }
             self.dynamic_shape.max_input_shape = {
-                "ele_input_1": [4, channel, 64 * 64, channel],
-                "ele_input_2": [4, channel, 64 * 64, channel],
+                "ele_input_1": [4, 64 * 64, channel],
+                "ele_input_2": [4, 64 * 64, channel],
             }
             self.dynamic_shape.opt_input_shape = {
-                "ele_input_1": [4, channel, 64 * 64],
-                "ele_input_2": [4, channel, 64 * 64],
+                "ele_input_1": [4, 64 * 64, channel],
+                "ele_input_2": [4, 64 * 64, channel],
             }
 
         def clear_dynamic_shape():
