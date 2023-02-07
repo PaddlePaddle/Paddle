@@ -187,8 +187,6 @@ def ut_file_map_supplement(rootPath):
     ut_file_map_old = "%s/ut_file_map.json" % precision_test_map_store_dir
     with open(ut_file_map_new, 'r') as load_f:
         load_dict_new = json.load(load_f)
-    with open(ut_file_map_old, 'r') as f:
-        load_dict_old = json.load(f)
 
     all_uts_paddle = '%s/build/all_uts_paddle' % rootPath
 
@@ -206,24 +204,12 @@ def ut_file_map_supplement(rootPath):
         'cd %s && wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/tmp_test/prec_delta --no-check-certificate'
         % precision_test_map_store_dir
     )
-    prec_delta_old = '%s/prec_delta' % precision_test_map_store_dir
     prec_delta_new = "%s/build/prec_delta" % rootPath
-    with open(prec_delta_old, 'r') as f:
-        prec_delta_old_list = []
-        for ut in f.readlines():
-            prec_delta_old_list.append(ut.strip())
-        f.close()
     with open(prec_delta_new, 'r') as f:
         prec_delta_new_list = []
         for ut in f.readlines():
             prec_delta_new_list.append(ut.strip())
         f.close()
-
-    for ut in prec_delta_old_list:
-        filename = '%s/build/ut_map/%s/fnda.tmp' % (rootPath, ut)
-        if ut in all_uts_paddle_list:
-            if not os.path.exists(filename) and ut not in prec_delta_new_list:
-                prec_delta_new_list.append(ut)
     prec_delta_new_list.append(
         'test_py_reader_error_msg'
     )  # add a python case for pycoverage
