@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -93,12 +93,6 @@ class TestMkldnnMatmulv2Op(MkldnnAutoScanTest):
             attrs={
                 "trans_x": kwargs["transpose_X"],
                 "trans_y": kwargs["transpose_Y"],
-                "fused_reshape_X": [],
-                "fused_reshape_Y": [],
-                "fused_transpose_X": [],
-                "fused_transpose_Y": [],
-                "fused_reshape_Out": [],
-                "fused_transpose_Out": [],
             },
         )
 

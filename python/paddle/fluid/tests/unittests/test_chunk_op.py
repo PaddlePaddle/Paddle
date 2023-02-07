@@ -52,6 +52,14 @@ class TestChunkOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_axis_type_tensor)
 
+        with paddle.fluid.dygraph.guard():
+
+            def test_0_chunks_tensor():
+                x = paddle.uniform([1, 1, 1], dtype='float32')
+                paddle.chunk(x, chunks=0)
+
+            self.assertRaises(ValueError, test_0_chunks_tensor)
+
 
 class API_TestChunk(unittest.TestCase):
     def test_out(self):

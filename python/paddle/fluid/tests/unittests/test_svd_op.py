@@ -320,6 +320,16 @@ class TestSvdAPI(unittest.TestCase):
                 )
                 np.testing.assert_allclose(fetches[0], gt_s, rtol=1e-05)
 
+    def test_errors(self):
+        with paddle.fluid.dygraph.guard():
+            # The size of input in svd should not be 0.
+            def test_0_size():
+                array = np.array([], dtype=np.float32)
+                x = paddle.to_tensor(np.reshape(array, [0, 0]), dtype='float32')
+                paddle.linalg.svd(x, full_matrices=False)
+
+            self.assertRaises(ValueError, test_0_size)
+
 
 if __name__ == "__main__":
     paddle.enable_static()

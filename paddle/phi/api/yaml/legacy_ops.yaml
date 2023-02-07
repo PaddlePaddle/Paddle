@@ -318,15 +318,6 @@
     func : box_coder
   optional : prior_box_var
 
-- op : broadcast_tensors
-  args: (Tensor[] input)
-  output: Tensor[]{input.size()}
-  infer_meta:
-    func: BroadcastTensorsInferMeta
-  kernel:
-    func: broadcast_tensors
-  backward: broadcast_tensors_grad
-
 - op : cast
   args : (Tensor x, DataType dtype)
   output : Tensor
@@ -1365,17 +1356,6 @@
     param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
   backward : pool3d_grad
 
-- op : pow
-  args : (Tensor x, Scalar y)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-    param: [x]
-  kernel :
-    func : pow
-    data_type : x
-  backward : pow_grad
-
 - op : prelu
   args : (Tensor x, Tensor alpha, str data_format, str mode)
   output : Tensor(out)
@@ -1449,7 +1429,7 @@
 
 - op : remainder
   args : (Tensor x, Tensor y)
-  output : Tensor
+  output : Tensor (out)
   infer_meta :
     func : ElementwiseInferMeta
   kernel :

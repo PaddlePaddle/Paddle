@@ -35,6 +35,14 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #include "paddle/fluid/framework/scope.h"
 
+#ifdef PADDLE_WITH_PSLIB
+#define CONV2FEATURE_PTR(ptr) \
+  reinterpret_cast<paddle::ps::DownpourFixedFeatureValue**>(ptr)
+#else
+#define CONV2FEATURE_PTR(ptr) \
+  reinterpret_cast<paddle::distributed::FixedFeatureValue*>(ptr)
+#endif
+
 namespace paddle {
 namespace framework {
 
