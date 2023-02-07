@@ -221,6 +221,10 @@ class PSGPUWrapper {
   void build_pull_thread();
   void build_task();
   void DumpToMem();
+  void MergePull(std::shared_ptr<HeterContext> gpu_task);
+  void FilterPull(std::shared_ptr<HeterContext> gpu_task,
+                  const int shard_id,
+                  const int dim_id);
   // set mode
   void SetMode(bool infer_mode) {
     infer_mode_ = infer_mode;
@@ -246,7 +250,6 @@ class PSGPUWrapper {
     data_ready_channel_->Close();
     buildcpu_ready_channel_->Close();
     buildpull_ready_channel_->Close();
-    gpu_free_channel_->Close();
     running_ = false;
     VLOG(3) << "begin stop pre_build_threads_";
     pre_build_threads_.join();
@@ -338,19 +341,16 @@ class PSGPUWrapper {
       buildcpu_ready_channel_->SetCapacity(3);
       buildpull_ready_channel_->Open();
       buildpull_ready_channel_->SetCapacity(1);
-      gpu_free_channel_->Open();
-      gpu_free_channel_->SetCapacity(1);
 
       cpu_reday_channels_.resize(dev_ids.size());
       for (size_t i = 0; i < dev_ids.size(); i++) {
         cpu_reday_channels_[i] = paddle::framework::MakeChannel<task_info>();
         cpu_reday_channels_[i]->SetCapacity(16);
       }
-
       current_task_ = nullptr;
-      gpu_free_channel_->Put(current_task_);
 
       table_id_ = 0;
+      device_num_ = static_cast<int>(heter_devices_.size());
 
       // start build cpu&gpu ps thread
       start_build_thread();
@@ -449,14 +449,13 @@ class PSGPUWrapper {
     for (size_t i = 0; i < pull_thread_pool_.size(); i++) {
       pull_thread_pool_[i].reset(new ::ThreadPool(1));
     }
-    hbm_thread_pool_.resize(thread_keys_shard_num_);
+    hbm_thread_pool_.resize(device_num_);
     for (size_t i = 0; i < hbm_thread_pool_.size(); i++) {
       hbm_thread_pool_[i].reset(new ::ThreadPool(1));
     }
-
-    cpu_work_pool_.resize(thread_keys_shard_num_);
-    for (size_t i = 0; i < hbm_thread_pool_.size(); i++) {
-      cpu_work_pool_[i].reset(new ::ThreadPool(16));
+    cpu_work_pool_.resize(device_num_);
+    for (size_t i = 0; i < cpu_work_pool_.size(); i++) {
+      cpu_work_pool_[i].reset(new ::ThreadPool(cpu_device_thread_num_));
     }
 
     auto sparse_table_accessor = sparse_table.accessor();
@@ -890,6 +889,11 @@ class PSGPUWrapper {
                   const std::string& conf);
 #endif
 
+  // for node rank
+  int PartitionKeyForRank(const uint64_t& key) {
+    return ((key / device_num_) % node_size_);
+  }
+
  private:
   static std::shared_ptr<PSGPUWrapper> s_instance_;
   static std::mutex ins_mutex;
@@ -927,6 +931,7 @@ class PSGPUWrapper {
   int multi_node_{0};
   int rank_id_;
   int node_size_;
+  int device_num_ = 8;
   uint64_t table_id_;
   int gpu_graph_mode_ = 0;
 #ifdef PADDLE_WITH_CUDA
@@ -979,10 +984,6 @@ class PSGPUWrapper {
           paddle::framework::MakeChannel<std::shared_ptr<HeterContext>>();
   std::shared_ptr<
       paddle::framework::ChannelObject<std::shared_ptr<HeterContext>>>
-      gpu_free_channel_ =
-          paddle::framework::MakeChannel<std::shared_ptr<HeterContext>>();
-  std::shared_ptr<
-      paddle::framework::ChannelObject<std::shared_ptr<HeterContext>>>
       buildpull_ready_channel_ =
           paddle::framework::MakeChannel<std::shared_ptr<HeterContext>>();
   std::vector<std::shared_ptr<paddle::framework::ChannelObject<task_info>>>
@@ -991,14 +992,15 @@ class PSGPUWrapper {
   std::thread pre_build_threads_;
   std::thread buildpull_threads_;
   bool running_ = false;
-  std::vector<std::shared_ptr<ThreadPool>> pull_thread_pool_;
-  std::vector<std::shared_ptr<ThreadPool>> hbm_thread_pool_;
-  std::vector<std::shared_ptr<ThreadPool>> cpu_work_pool_;
+  std::vector<std::shared_ptr<::ThreadPool>> pull_thread_pool_;
+  std::vector<std::shared_ptr<::ThreadPool>> hbm_thread_pool_;
+  std::vector<std::shared_ptr<::ThreadPool>> cpu_work_pool_;
   OptimizerConfig optimizer_config_;
   // gradient push count
   uint64_t grad_push_count_ = 0;
   // infer mode
   bool infer_mode_ = false;
+  size_t cpu_device_thread_num_ = 16;
 
  protected:
   static bool is_initialized_;
