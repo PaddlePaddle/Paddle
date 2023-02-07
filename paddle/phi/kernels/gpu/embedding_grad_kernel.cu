@@ -14,12 +14,12 @@
 
 #include "paddle/phi/kernels/embedding_grad_kernel.h"
 
-#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/mixed_vector.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/embedding_util.h"
 
@@ -173,11 +173,11 @@ struct EmbeddingSparseGradCUDAFunctor {
     dim3 threads(128, 8);
     dim3 grids(8, 1);
     auto stream = dev_ctx_.stream();
-    paddle::framework::Vector<int64_t> new_rows;
+    phi::Vector<int64_t> new_rows;
     new_rows.resize(ids_num);
     auto gpu_place = dev_ctx_.GetPlace();
 
-    paddle::framework::MixVector<int64_t> mixv_new_rows(&new_rows);
+    phi::MixVector<int64_t> mixv_new_rows(&new_rows);
     if (!std::is_same<IdT, int64_t>::value) {
       InputTypeConvert<<<grids, threads, 0, stream>>>(
           ids_data, ids_num, mixv_new_rows.MutableData(gpu_place));
