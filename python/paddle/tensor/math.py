@@ -591,8 +591,6 @@ def add_(x, y, name=None):
     Inplace version of ``add`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_tensor_add`.
     """
-    op_type = 'elementwise_add_'
-    axis = -1
 
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
@@ -673,8 +671,6 @@ def subtract_(x, y, name=None):
     Inplace version of ``subtract`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_tensor_subtract`.
     """
-    axis = -1
-    act = None
 
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
