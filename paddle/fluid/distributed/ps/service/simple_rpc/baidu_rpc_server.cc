@@ -150,8 +150,9 @@ void BaiduRpcServer::initialize() {
     return;
   }
 
-  PADDLE_ENFORCE_NE(
-      _gloo, nullptr, phi::errors::PreconditionNotMet("Gloo not allow nullptr."));
+  PADDLE_ENFORCE_NE(_gloo,
+                    nullptr,
+                    phi::errors::PreconditionNotMet("Gloo not allow nullptr."));
   _gloo->Barrier();
   _server->set_version(google::VersionString());
   brpc::ServerOptions option;
