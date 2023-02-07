@@ -514,6 +514,12 @@ def data_norm(
     dtype = helper.input_dtype()
 
     input_shape = input.shape
+    if len(input_shape) < 2:
+        raise ValueError(
+            "The shape pf Input < 2 (got {}D input, input shape is: {})".format(
+                len(input_shape), input_shape
+            )
+        )
     if data_layout == 'NCHW':
         channel_num = input_shape[1]
     else:
@@ -2568,7 +2574,12 @@ def bilinear_tensor_product(
     """
     helper = LayerHelper('bilinear_tensor_product', **locals())
     dtype = helper.input_dtype('x')
-
+    if len(x.shape) != 2 or len(y.shape) != 2:
+        raise ValueError(
+            "Input x and y should be 2D tensor, but received x with the shape of {}, y with the shape of {}".format(
+                x.shape, y.shape
+            )
+        )
     param_shape = [size, x.shape[1], y.shape[1]]
 
     w = helper.create_parameter(

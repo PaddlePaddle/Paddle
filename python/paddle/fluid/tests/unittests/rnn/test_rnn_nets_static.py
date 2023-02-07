@@ -15,7 +15,7 @@
 import paddle
 
 paddle.set_default_dtype("float64")
-from paddle.fluid.layers import sequence_mask
+
 
 paddle.enable_static()
 
@@ -161,7 +161,9 @@ class TestSimpleRNN(unittest.TestCase):
                     dtype=paddle.framework.get_default_dtype(),
                 )
                 seq_len = paddle.fluid.data("seq_len", [-1], dtype="int64")
-                mask = sequence_mask(seq_len, dtype=paddle.get_default_dtype())
+                mask = paddle.static.nn.sequence_lod.sequence_mask(
+                    seq_len, dtype=paddle.get_default_dtype()
+                )
                 if self.time_major:
                     mask = paddle.transpose(mask, [1, 0])
                 y, h = rnn2(x_data, sequence_length=seq_len)
@@ -316,7 +318,9 @@ class TestGRU(unittest.TestCase):
                     dtype=paddle.framework.get_default_dtype(),
                 )
                 seq_len = paddle.fluid.data("seq_len", [-1], dtype="int64")
-                mask = sequence_mask(seq_len, dtype=paddle.get_default_dtype())
+                mask = paddle.static.nn.sequence_lod.sequence_mask(
+                    seq_len, dtype=paddle.get_default_dtype()
+                )
                 if self.time_major:
                     mask = paddle.transpose(mask, [1, 0])
                 y, h = rnn2(x_data, sequence_length=seq_len)
@@ -477,7 +481,9 @@ class TestLSTM(unittest.TestCase):
                     dtype=paddle.framework.get_default_dtype(),
                 )
                 seq_len = paddle.fluid.data("seq_len", [-1], dtype="int64")
-                mask = sequence_mask(seq_len, dtype=paddle.get_default_dtype())
+                mask = paddle.static.nn.sequence_lod.sequence_mask(
+                    seq_len, dtype=paddle.get_default_dtype()
+                )
                 if self.time_major:
                     mask = paddle.transpose(mask, [1, 0])
                 y, (h, c) = rnn2(x_data, sequence_length=seq_len)
