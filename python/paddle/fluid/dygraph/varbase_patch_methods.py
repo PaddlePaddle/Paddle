@@ -826,27 +826,17 @@ def monkey_patch_varbase():
             # _C_ops.index_put(self, list(item), value)
             return
 
-        def contain_list(item):
+        def contain_tensor_or_list(item):
             if not isinstance(item, tuple):
                 item = [item]
 
             for slice_item in item:
                 if isinstance(slice_item, list):
                     return True
+                elif isinstance(slice_item, Variable):
+                    return True
 
             return False
-
-        # def contain_tensor_or_list(item):
-        #     if not isinstance(item, tuple):
-        #         item = [item]
-
-        #     for slice_item in item:
-        #         if isinstance(slice_item, list):
-        #             return True
-        #         elif isinstance(slice_item, Variable):
-        #             return True
-
-        #     return False
 
         def is_combine_index(item):
             var_type = None
@@ -869,7 +859,7 @@ def monkey_patch_varbase():
 
             return False
 
-        if contain_list(item) and not is_combine_index(item):
+        if contain_tensor_or_list(item) and not is_combine_index(item):
             # To reuse code with static graph,
             # Call _setitem_impl_ when item contains tensor or list.
             # return _setitem_impl_(self, item, value)

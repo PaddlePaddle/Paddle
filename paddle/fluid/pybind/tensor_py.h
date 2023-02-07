@@ -553,8 +553,6 @@ void SetTensorFromPyArray(phi::DenseTensor *self,
   }
 }
 
-// 处理情况依据是否是indice逻辑不通
-// paddle::experimental::DataType dtype
 static paddle::experimental::Tensor PyArrayToTensor(
     const paddle::experimental::DataType &dtype,
     const phi::Place &place,
