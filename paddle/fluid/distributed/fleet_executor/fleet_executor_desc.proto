@@ -17,7 +17,7 @@ package paddle.distributed;
 
 message RankInfo {
   required int64 rank = 1;
-  required ip_port = 2;
+  required string ip_port = 2;
 }
 
 message FleetExecutorDesc {
