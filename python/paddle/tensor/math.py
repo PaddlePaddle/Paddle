@@ -35,6 +35,7 @@ from ..fluid.data_feeder import (
 from ..fluid.layers import utils
 from ..framework import (
     LayerHelper,
+    _dygraph_tracer,
     convert_np_dtype_to_dtype_,
     core,
     in_dygraph_mode,
@@ -927,6 +928,35 @@ def multiply(x, y, name=None):
             )
 
         return _elementwise_op(LayerHelper(op_type, **locals()))
+
+
+@inplace_apis_in_dygraph_only
+def multiply_(x, y, name=None):
+    """
+    Inplace version of ``multiply`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_tensor_multiply`.
+    """
+
+    assert (
+        _dygraph_tracer()._has_grad is False
+    ), "The current inplace version of multiply_ needs to be used in the context of paddle.no_grad() since inplace multiply_grad is not yet supported."
+    op_type = 'elementwise_mul'
+    act = None
+    axis = -1
+
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        raise ValueError(
+            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
+                out_shape, x.shape
+            )
+        )
+
+    if in_dygraph_mode():
+        return _C_ops.multiply_(x, y)
+    else:
+        out = _elementwise_op_in_dygraph(x, y, axis=axis, op_name=op_type)
+        return out
 
 
 @dygraph_only
