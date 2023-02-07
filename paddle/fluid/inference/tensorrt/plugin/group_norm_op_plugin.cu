@@ -305,6 +305,9 @@ void groupNormNCHW32SumQDQ(const GroupNormNHWCParams &params,
     case 128:
       groupNormNCHW32SumKernelQDQ<64><<<grid, 64, 0, stream>>>(params);
       break;
+    case 8:
+      groupNormNCHW32SumKernelQDQ<4><<<grid, 4, 0, stream>>>(params);
+      break;
   }
 }
 
@@ -425,6 +428,9 @@ void groupNormNCHW32ScaleQDQ(const GroupNormNHWCParams &params,
       break;
     case 128:
       groupNormNCHW32ScaleKernelQDQ<64><<<grid, 64, 0, stream>>>(params);
+      break;
+    case 8:
+      groupNormNCHW32ScaleKernelQDQ<4><<<grid, 4, 0, stream>>>(params);
       break;
     default:
       PADDLE_THROW(
@@ -930,7 +936,9 @@ int GroupNormPluginDynamic::enqueue(
         default:
           cPerBlock = 320;
       }
-
+      if (cPerBlock > input_desc[0].dims.d[1]) {
+        cPerBlock = 8;
+      }
       params_.withSilu = with_silu_;
       params_.dst = static_cast<half *>(outputs[0]);
       params_.srcX = static_cast<half const *>(inputs[0]);
@@ -951,6 +959,8 @@ int GroupNormPluginDynamic::enqueue(
       params_.hwc = params_.hw * params_.c;
       params_.invHWC = 1.F / static_cast<float>(params_.hw * params_.cPerGroup);
       params_.groupsPerBlock = cPerBlock / params_.cPerGroup;
+      CHECK_EQ(cPerBlock % params_.cPerGroup, 0);
+      CHECK_EQ(params_.cPerGroup % 2, 0);
       params_.eps = eps_;
       params_.dqScaleIn = input_desc[0].scale;
       params_.inv_qScale = 1.f / output_desc[0].scale;
