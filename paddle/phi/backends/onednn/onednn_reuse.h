@@ -1121,7 +1121,7 @@ class BroadcastDataOneDNNHandler
     attributes.set_scales_mask(DNNL_ARG_SRC_1, 0);
 
     this->AcquireForwardPrimitiveDescriptor(
-        engine, attributes, algo, src0_md, src1_md, src0_md);
+        attributes, algo, src0_md, src1_md, src0_md);
   }
 
   template <typename T_out = T>
