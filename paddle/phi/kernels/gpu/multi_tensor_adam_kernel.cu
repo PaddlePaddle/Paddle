@@ -240,11 +240,13 @@ __global__ void UpdateBetaPowGroup(
 template <typename Context>
 static void CopyTensorIfDifferent(const Context& dev_ctx,
                                   const std::vector<const DenseTensor*>& src,
-                                  const std::vector<DenseTensor*>& dst) {
+                                  const std::vector<DenseTensor*>& dst,
+                                  bool use_src_place = false) {
   for (size_t i = 0; i < src.size(); ++i) {
     if (src[i] != dst[i]) {
       VLOG(10) << "Copy Tensor " << i;
-      phi::Copy<Context>(dev_ctx, *(src[i]), dev_ctx.GetPlace(), false, dst[i]);
+      phi::Place place = (use_src_place ? src[i]->place() : dev_ctx.GetPlace());
+      phi::Copy<Context>(dev_ctx, *(src[i]), place, false, dst[i]);
     }
   }
 }
@@ -314,8 +316,8 @@ void MultiTensorAdamKernel(
   CopyTensorIfDifferent(dev_ctx, params, params_out);
   CopyTensorIfDifferent(dev_ctx, moments1, moments1_out);
   CopyTensorIfDifferent(dev_ctx, moments2, moments2_out);
-  CopyTensorIfDifferent(dev_ctx, beta1_pows, beta1_pows_out);
-  CopyTensorIfDifferent(dev_ctx, beta2_pows, beta2_pows_out);
+  CopyTensorIfDifferent(dev_ctx, beta1_pows, beta1_pows_out, true);
+  CopyTensorIfDifferent(dev_ctx, beta2_pows, beta2_pows_out, true);
   if (master_params) {
     CopyTensorIfDifferent(dev_ctx, master_params.get(), master_params_out);
   }
