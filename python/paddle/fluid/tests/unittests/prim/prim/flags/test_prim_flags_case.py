@@ -49,17 +49,15 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         self.flag = None
 
     def reset_env_flag(self):
-        # core.check_and_set_prim_all_enabled()
         os.environ["FLAGS_prim_backward"] = "False"
         os.environ["FLAGS_prim_forward"] = "False"
         if os.getenv("FLAGS_prim_all"):
             del os.environ["FLAGS_prim_all"]
         core.check_and_set_prim_all_enabled()
 
-    def train(self, use_prim):
+    def train(self, use_cinn):
         net = PrimeNet()
-        # core._set_prim_forward_enabled(use_prim)
-        net = apply_to_static(net, use_prim)
+        net = apply_to_static(net, use_cinn)
 
         out = net(self.x)
         loss = paddle.mean(out)
@@ -70,7 +68,6 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         return
 
     def check_prim(self, net):
-
         ops = [
             op.type
             for op in net.forward.program_cache.last()[-1][-1]
@@ -98,10 +95,9 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         self.reset_env_flag()
         os.environ["FLAGS_prim_all"] = "True"
         self.flag = "cinn_prim_all"
-        # breakpoint()
         plat = platform.system()
         if plat == "Linux":
-            _ = self.train(use_prim=True)
+            _ = self.train(use_cinn=True)
         else:
             pass
 
@@ -112,7 +108,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         self.flag = "prim_all"
         plat = platform.system()
         if plat == "Linux":
-            _ = self.train(use_prim=False)
+            _ = self.train(use_cinn=False)
         else:
             pass
 
@@ -125,7 +121,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         self.flag = "cinn_prim_forward"
         plat = platform.system()
         if plat == "Linux":
-            _ = self.train(use_prim=True)
+            _ = self.train(use_cinn=True)
         else:
             pass
 
@@ -136,7 +132,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         self.flag = "prim_forward"
         plat = platform.system()
         if plat == "Linux":
-            _ = self.train(use_prim=False)
+            _ = self.train(use_cinn=False)
         else:
             pass
 
@@ -147,7 +143,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         self.flag = "cinn_prim_backward"
         plat = platform.system()
         if plat == "Linux":
-            _ = self.train(use_prim=True)
+            _ = self.train(use_cinn=True)
         else:
             pass
 
@@ -158,7 +154,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         self.flag = "prim_backward"
         plat = platform.system()
         if plat == "Linux":
-            _ = self.train(use_prim=False)
+            _ = self.train(use_cinn=False)
         else:
             pass
 
@@ -168,7 +164,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         self.flag = "cinn"
         plat = platform.system()
         if plat == "Linux":
-            _ = self.train(use_prim=True)
+            _ = self.train(use_cinn=True)
         else:
             pass
 
