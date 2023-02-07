@@ -350,33 +350,41 @@ void Carrier::CreateInterceptors() {
     interceptor->SetMicroBatchScope(microbatch_scopes_);
     interceptor->SetRootScope(root_scope_);
 
-    std::vector<std::shared_ptr<InterpreterCore>> cores;
-    for (framework::Scope* scope : microbatch_scopes_) {
-      const framework::ProgramDesc* program = task_node->program();
-      std::set<std::string> skip_gc_vars;
-      std::vector<framework::VarDesc*> all_vars = program->Block(0).AllVars();
-      for (framework::VarDesc* var : all_vars) {
-        skip_gc_vars.insert(var->Name());
-      }
-      // ONLY unused vars can be GCed.
-      const std::unordered_map<const framework::OperatorBase*,
-                               std::vector<std::string>>& unused_vars =
-          task_node->unused_vars();
-      for (auto& item : unused_vars) {
-        for (const std::string& unused_var : item.second) {
-          skip_gc_vars.erase(unused_var);
+    if (FLAGS_fleet_executor_with_standalone) {
+      std::vector<std::shared_ptr<InterpreterCore>> cores;
+      for (framework::Scope* scope : microbatch_scopes_) {
+        std::set<std::string> skip_gc_vars;
+        const framework::ProgramDesc* program = task_node->program();
+        PADDLE_ENFORCE_NOT_NULL(
+            program,
+            phi::errors::InvalidArgument("TaskNode %d's program is not set.",
+                                         interceptor_id));
+        std::vector<framework::VarDesc*> all_vars = program->Block(0).AllVars();
+        for (framework::VarDesc* var : all_vars) {
+          skip_gc_vars.insert(var->Name());
         }
+
+        // ONLY unused vars can be GCed.
+        const std::unordered_map<const framework::OperatorBase*,
+                                 std::vector<std::string>>& unused_vars =
+            task_node->unused_vars();
+        for (auto& item : unused_vars) {
+          for (const std::string& unused_var : item.second) {
+            skip_gc_vars.erase(unused_var);
+          }
+        }
+
+        cores.push_back(
+            framework::CreateInterpreterCore(place_,
+                                             *(task_node->program()),
+                                             scope,
+                                             /*fetch_names=*/{},
+                                             /*skip_gc_vars =*/skip_gc_vars));
       }
-
-      cores.push_back(
-          framework::CreateInterpreterCore(place_,
-                                           *(task_node->program()),
-                                           scope,
-                                           /*fetch_names=*/{},
-                                           /*skip_gc_vars =*/skip_gc_vars));
+      interceptor->SetInterpreterCore(cores);
+    } else {
+      interceptor->SetGC(gc);
     }
-
-    interceptor->SetGC(gc);
 
     SetInterceptor(interceptor_id, std::move(interceptor));
     VLOG(3) << "Create Interceptor with interceptor id: " << interceptor_id

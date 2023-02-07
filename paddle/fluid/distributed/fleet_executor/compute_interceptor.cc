@@ -178,7 +178,7 @@ void ComputeInterceptor::RunOps() {
                           microbatch_scopes_.size(),
                           cur_scope_id_));
 
-    cores_[cur_scope_id_]->Run(/*feed_names=*/{}, /*need_fetch=*/false);
+    cores_.at(cur_scope_id_)->Run(/*feed_names=*/{}, /*need_fetch=*/false);
   } else {
     for (auto op : node_->ops()) {
       PADDLE_ENFORCE_LT(cur_scope_id_,
