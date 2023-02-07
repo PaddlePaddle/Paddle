@@ -106,9 +106,9 @@ class TestCompositeMean(unittest.TestCase):
             self.assertTrue('reduce_mean' not in fwd_ops_new)
 
             z = paddle.static.gradients([y], x)
+
             fwd_ops_grad = [op.type for op in blocks[0].ops]
             # Ensure that reduce_mean_grad not in grad block
-
             self.assertTrue('reduce_mean_grad' not in fwd_ops_grad)
 
         exe = paddle.static.Executor()
