@@ -22,9 +22,6 @@ from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 class TestOneDNNMultiGruSeqFusePass(PassAutoScanTest):
-    def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        return True
-
     def sample_program_config(self, draw):
         input_dim_1 = 6 * draw(st.integers(min_value=1, max_value=32))
         input_dim_2 = input_dim_1 // 3

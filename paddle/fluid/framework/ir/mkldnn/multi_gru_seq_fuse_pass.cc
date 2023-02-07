@@ -62,6 +62,11 @@ void MultiGruSeqFusePass::ApplyImpl(ir::Graph* graph) const {
   int fused_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
+
     GET_IR_NODE_FROM_SUBGRAPH(x, x, pattern);
     GET_IR_NODE_FROM_SUBGRAPH(gru1, gru1, pattern);
     GET_IR_NODE_FROM_SUBGRAPH(wx11, wx11, pattern);
@@ -133,6 +138,50 @@ void MultiGruSeqFusePass::ApplyImpl(ir::Graph* graph) const {
   if (!Has("disable_logs") || !Get<bool>("disable_logs"))
     PrettyLogDetail("---    fused %d sequences of two multi_gru ops",
                     fused_count);
+}
+
+MultiGruSeqFusePass::MultiGruSeqFusePass() {
+  AddOpCompat(OpCompat("multi_gru"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("WeightX")
+      .End()
+      .AddInput("WeightH")
+      .End()
+      .AddInput("Bias")
+      .IsOptional()
+      .End()
+      .AddInput("Scale_weights")
+      .IsOptional()
+      .End()
+      .AddOutput("Hidden")
+      .IsTensor()
+      .End()
+      .AddAttr("activation")
+      .IsType<std::string>()
+      .End()
+      .AddAttr("gate_activation")
+      .IsType<std::string>()
+      .End()
+      .AddAttr("layers")
+      .IsType<int>()
+      .End()
+      .AddAttr("origin_mode")
+      .IsType<bool>()
+      .End()
+      .AddAttr("mkldnn_data_type")
+      .IsType<std::string>()
+      .End()
+      .AddAttr("Scale_data")
+      .IsType<float>()
+      .End()
+      .AddAttr("Shift_data")
+      .IsType<float>()
+      .End()
+      .AddAttr("force_fp32_output")
+      .IsType<bool>()
+      .End();
 }
 
 }  // namespace ir

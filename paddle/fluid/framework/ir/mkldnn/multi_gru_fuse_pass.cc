@@ -58,6 +58,11 @@ void MultiGRUFusePass::ApplyImpl(ir::Graph* graph) const {
   int fused_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
+
     GET_IR_NODE_FROM_SUBGRAPH(x, x, pattern);
     GET_IR_NODE_FROM_SUBGRAPH(gru1, gru1, pattern);
     GET_IR_NODE_FROM_SUBGRAPH(gru2, gru2, pattern);
@@ -117,6 +122,89 @@ void MultiGRUFusePass::ApplyImpl(ir::Graph* graph) const {
   if (!Has("disable_logs") || !Get<bool>("disable_logs"))
     PrettyLogDetail("---    fused %d pairs of concatenated multi_gru ops",
                     fused_count);
+}
+
+MultiGRUFusePass::MultiGRUFusePass() {
+  AddOpCompat(OpCompat("concat"))
+      .AddInput("X")
+      .End()
+      .AddInput("AxisTensor")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsNumEQ(1)
+      .End();
+
+  AddOpCompat(OpCompat("fusion_gru"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("H0")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddInput("WeightX")
+      .IsTensor()
+      .End()
+      .AddInput("WeightH")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Hidden")
+      .IsTensor()
+      .End()
+      .AddOutput("XX")
+      .IsTensor()
+      .End()
+      .AddOutput("ReorderedH0")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("BatchedInput")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("BatchedOut")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddAttr("activation")
+      .IsType<std::string>()
+      .End()
+      .AddAttr("is_reverse")
+      .IsType<bool>()
+      .End()
+      .AddAttr("use_seq")
+      .IsType<bool>()
+      .End()
+      .AddAttr("origin_mode")
+      .IsType<bool>()
+      .End()
+      .AddAttr("use_mkldnn")
+      .IsType<bool>()
+      .End()
+      .AddAttr("mkldnn_data_type")
+      .IsType<std::string>()
+      .End()
+      .AddAttr("Scale_data")
+      .IsType<float>()
+      .End()
+      .AddAttr("Shift_data")
+      .IsType<float>()
+      .End()
+      .AddAttr("Scale_weights")
+      .IsType<std::vector<float>>()
+      .End()
+      .AddAttr("force_fp32_output")
+      .IsType<bool>()
+      .End();
 }
 
 }  // namespace ir
