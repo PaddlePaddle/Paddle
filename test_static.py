@@ -28,7 +28,7 @@ url_id_tensor = np.array([0], dtype='int32')
 in_query = fluid.data(name='X', shape=[MAX_SIZE_QUERY], dtype='int32')
 in_url_id = fluid.data(name='url_id', shape=[1], dtype='int32')
 req_id = fluid.data(name='rid', shape=[1], dtype='int32')
-out_status = fluid.data(name='status', shape=[1], dtype='bool')
+out_succeed = fluid.data(name='succeed', shape=[1], dtype='bool')
 out_data = fluid.data(name='Out', shape=[MAX_SIZE_RESPONSE], dtype='float32')
 
 default_prog = fluid.default_main_program()
@@ -51,7 +51,7 @@ cur_block.append_op(
         'X': req_id,
     },
     outputs={
-        'status': out_status,
+        'succeed': out_succeed,
         'Out': out_data,
     },
 )
@@ -59,15 +59,15 @@ cur_block.append_op(
 # run
 exe = fluid.Executor(fluid.CPUPlace())
 exe.run(fluid.default_startup_program())
-status, data, = exe.run(
+succeed, data, = exe.run(
     fluid.default_main_program(),
     feed={
         'X': query_tensor,
         'url_id': url_id_tensor,
     },
-    fetch_list=[out_status, out_data],
+    fetch_list=[out_succeed, out_data],
 )
-if status:
+if succeed:
     print('output:', data)
 else:
     print('request failed')
