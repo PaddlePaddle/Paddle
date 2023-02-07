@@ -84,8 +84,8 @@ TEST(AmplifierInterceptor, Amplifier) {
   TaskNode* source =
       new TaskNode(0, SOURCE_ID, micro_steps);  // rank, task_id, max_run_times
   TaskNode* node_a = new TaskNode(0, 0, 0, micro_steps);  // role, rank, task_id
-  TaskNode* node_b = new TaskNode(0, 0, 1, 3);
-  TaskNode* node_c = new TaskNode(0, 0, 2, 3);
+  TaskNode* node_b = new TaskNode(0, 0, 1, micro_steps);
+  TaskNode* node_c = new TaskNode(0, 0, 2, micro_steps);
   TaskNode* node_d = new TaskNode(0, 0, 3, micro_steps);
   TaskNode* sink = new TaskNode(0, SINK_ID, micro_steps);
 
