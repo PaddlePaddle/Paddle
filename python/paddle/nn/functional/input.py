@@ -232,7 +232,8 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
         )
         return tmp
 
-def embedding_bag(input, params, weight, mode, name = None ):
+
+def embedding_bag(input, params, weight, mode, name=None):
     """
     Used to calculate the sum or average of the specified bag in the embeddings vector by : attr:'input' .
     Each bag contains several row indexes of embeddings.
@@ -253,13 +254,13 @@ def embedding_bag(input, params, weight, mode, name = None ):
             out.data = [[ 7.24666166, -3.05312395, -6.47065353],
                         [ 2.96320534, -1.02136743, -3.56395578],
                         [-0.06210172, -2.78675747,  1.96624613]]
-    
+
     Args:
         input(Tensor): A tensor with type int32/int64, which contains the id information. The shape is [bag_number, sequence_length],
                     The value of the input id should satisfy :math: `0 <= id < params.shape[0]` .
         params(Tensor): A tensor with shape of [num_embedding, embedding_dim] in which num_embedding indicates the size of the dictionary of embeddings
                     and embedding_dim indicates the size of each embedding vector.
-        weight(Tensor): A tensor with the same shape of input. The variable can only be decalred when mode is set "sum". When mode is "mean", the value of 
+        weight(Tensor): A tensor with the same shape of input. The variable can only be decalred when mode is set "sum". When mode is "mean", the value of
                     weight is set to 1 by default.
         mode(str): The string indicates calculation mode. mode can be set "sum" or "mean" for now.
         name(str|None, optional): For detailed information, please refer to :ref:`api_guide_Name`. Usually name is no need to set and
@@ -268,7 +269,7 @@ def embedding_bag(input, params, weight, mode, name = None ):
         Tensor: The calculation of embedding params according to 'input'. The data type is the same as 'params'.
     Examples:
         .. code-block:: python
-        
+
             import numpy as np
             import paddle
             import paddle.nn as nn
@@ -279,7 +280,7 @@ def embedding_bag(input, params, weight, mode, name = None ):
             input = paddle.to_tensor(input, stop_gradient = False)
             weight = paddle.to_tensor(weight, stop_gradient = False)
             params = paddle.to_tensor(params, stop_gradient = False)
-            # a batch of 2 samples of w indices each 
+            # a batch of 2 samples of w indices each
             sum = nn.functional.embedding_bag(input, params, weight, mode='sum')
             # tensor([[ 0.7792,  0.3368, -0.0712],
             #    [-0.1101,  1.1775,  1.5315]])
@@ -289,26 +290,27 @@ def embedding_bag(input, params, weight, mode, name = None ):
         return _C_ops.embedding_bag(input, params, weight, mode)
     else:
         helper = LayerHelper('embedding_bag', **locals())
-        dtype = helper.input_dtype(input_param_name = 'weight')
+        dtype = helper.input_dtype(input_param_name='weight')
 
-        check_variable_and_dtype(input, 'input', 
-                                ['uint8', 'int8', 'int16', 'int32', 'int64'],
-                                'embedding_bag')
+        check_variable_and_dtype(
+            input,
+            'input',
+            ['uint8', 'int8', 'int16', 'int32', 'int64'],
+            'embedding_bag',
+        )
 
         # is_distributed = False
 
         tmp = helper.create_variable_for_type_inference(dtype)
 
         helper.append_op(
-            type = 'embedding_bag',
-            inputs = {'input': input,
-                    'params': params,
-                    'weight': weight,
-                    },
-            outputs = {'out': tmp},
-            attrs = {
-                'mode': mode
-            }
-
+            type='embedding_bag',
+            inputs={
+                'input': input,
+                'params': params,
+                'weight': weight,
+            },
+            outputs={'out': tmp},
+            attrs={'mode': mode},
         )
         return tmp

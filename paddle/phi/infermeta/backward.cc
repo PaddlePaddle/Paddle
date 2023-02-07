@@ -1039,7 +1039,7 @@ void EmbeddingBagGradInferMeta(const MetaTensor& input,
                               const MetaTensor& params,
                               const MetaTensor& weight,
                               MetaTensor* params_grad,
-                              MetaTensor* weight_grad){
+                              MetaTensor* weight_grad) {
     if (params_grad) {
       params_grad -> share_meta(params);
     }

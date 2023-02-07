@@ -400,6 +400,16 @@
   backward : elu_double_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : embedding_bag_grad
+  forward : embedding_bag (Tensor input, Tensor params, Tensor weight, str mode) -> Tensor(out)
+  args : (Tensor input, Tensor params, Tensor weight, Tensor out_grad, str mode)
+  output : Tensor(params_grad), Tensor(weight_grad)
+  infer_meta :
+    func : EmbeddingBagGradInferMeta
+    param : [input, params, weight]
+  kernel :
+    func : embedding_bag_grad
+
 - backward_op : erf_grad
   forward : erf (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
@@ -1543,13 +1553,3 @@
   kernel :
     func : where_grad
   no_need_buffer : x, y
-
-- backward_op : embedding_bag_grad
-  forward : embedding_bag (Tensor input, Tensor params, Tensor weight, str mode) -> Tensor(out)
-  args : (Tensor input, Tensor params, Tensor weight, Tensor out_grad, str mode)
-  output : Tensor(params_grad), Tensor(weight_grad)
-  infer_meta :
-    func : EmbeddingBagGradInferMeta
-    param : [input, params, weight]
-  kernel :
-    func : embedding_bag_grad

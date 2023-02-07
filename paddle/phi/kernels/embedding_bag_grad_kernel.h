@@ -29,7 +29,4 @@ void EmbeddingBagGradCUDAKernel(const Context& ctx,
                             const std::string& mode,
                             DenseTensor* params_grad,
                             DenseTensor* weight_grad);
-
-
-
-}
+}  // namespace phi

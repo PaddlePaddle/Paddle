@@ -1743,8 +1743,9 @@ class Flatten(Layer):
         )
         return out
 
+
 class EmbeddingBag(Layer):
-    """ 
+    """
     EmbeddingBag Layer, used to construct a callable object of the ``EmbeddingBag`` class.
     For specific usage, refer to code examples. It implements the function of the EmbeddingBag Layer.
     This Layer is used to calculate the sum or average of the specified bag in the embeddings vector by : attr:'input' .
@@ -1773,12 +1774,12 @@ class EmbeddingBag(Layer):
         mode(str): The string indicates calculation mode. mode can be set "sum" or "mean" for now.
         name(str|None, optional): For detailed information, please refer to :ref:`api_guide_Name`. Usually name is no need to set and
                     None by default.
-    
+
     Attribute:
         'weight' and 'params' are the learnable weights of this layer.
     Examples:
         .. code-block:: python
-        
+
             import numpy as np
             import paddle
             # an EmbeddingBag module containing 10 tensors of size3
@@ -1796,11 +1797,13 @@ class EmbeddingBag(Layer):
             adam.step()
     """
 
-    def __init__(self,
-            num_embeddings: int ,
-            embedding_dim: int,
-            mode: str = 'sum',
-            name = None) -> None:
+    def __init__(
+        self,
+        num_embeddings: int,
+        embedding_dim: int,
+        mode: str = 'sum',
+        name=None,
+    ) -> None:
         super(EmbeddingBag, self).__init__()
         self._num_embeddings = num_embeddings
         self._embedding_dim = embedding_dim
@@ -1810,31 +1813,35 @@ class EmbeddingBag(Layer):
         if self._embedding_dim <= 0:
             raise ValueError("embedding_dim must be gather than 0")
 
-
         self._dtype = self._helper.get_default_dtype()
         self._size = [self._num_embeddings, self._embedding_dim]
 
-        self._name = name        
+        self._name = name
         self._mode = mode
-        self._embedding = self.create_parameter(shape = self._size, dtype = self._dtype, is_bias = False)
+        self._embedding = self.create_parameter(
+            shape=self._size, dtype=self._dtype, is_bias=False
+        )
 
-    def forward(self, input, weight = None):
+    def forward(self, input, weight=None):
         if weight is None:
 
-            weight = paddle.ones_like(input, dtype = self._embedding.dtype)
+            weight = paddle.ones_like(input, dtype=self._embedding.dtype)
             weight.stop_gradient = False
         elif self._mode != 'sum':
-            raise ValueError("mode must be 'sum' when weight are supplied to EmbeddingBag")
+            raise ValueError(
+                "mode must be 'sum' when weight are supplied to EmbeddingBag"
+            )
 
-        return F.embedding_bag(input,
-                            params = self._embedding, 
-                            weight = weight,
-                            mode = self._mode,
-                            name = self._name)
-
+        return F.embedding_bag(
+            input,
+            params=self._embedding,
+            weight=weight,
+            mode=self._mode,
+            name=self._name,
+        )
 
     def extra_repr(self):
         main_str = '{_num_embeddings},{_embedding_dim}'
         if self._name is not None:
-                main_str += ', padding_idx = {_name}'
+            main_str += ', padding_idx = {_name}'
         return main_str.format(**self.__dict__)

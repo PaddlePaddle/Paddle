@@ -29,9 +29,9 @@ struct EmbeddingBagGradCPUFunctor{
                               const DenseTensor& weight,
                               const DenseTensor& out_grad,
                               const std::string& mode,
-                              DenseTensor* params_grad, 
-                              DenseTensor* weight_grad) 
-                               
+                              DenseTensor* params_grad,
+                              DenseTensor* weight_grad)
+
       : dev_ctx_(dev_ctx),
         input_(input),
         params_(params),
@@ -39,10 +39,11 @@ struct EmbeddingBagGradCPUFunctor{
         out_grad_(out_grad),
         mode_(mode),
         params_grad_(params_grad),
-        weight_grad_(weight_grad){}
+        weight_grad_(weight_grad) {}
 
     using EigenVectorMap = Eigen::Map< Eigen::Vector<T, Eigen::Dynamic> >;
-    using ConstEigenVectorMap = Eigen::Map< const Eigen::Vector<T, Eigen::Dynamic> >;
+    using ConstEigenVectorMap =
+        Eigen::Map< const Eigen::Vector<T, Eigen::Dynamic> >;
     using EigenIndex = Eigen::Index;
 
 
@@ -50,7 +51,7 @@ struct EmbeddingBagGradCPUFunctor{
   void apply() {
     dev_ctx_.template Alloc<T>(params_grad_);
     dev_ctx_.template Alloc<T>(weight_grad_);
-    
+
     const EigenIndex sequence_length = input_.dims()[1];
     const EigenIndex output_dim = params_.dims()[1];
 
@@ -63,64 +64,65 @@ struct EmbeddingBagGradCPUFunctor{
     auto* d_weights = weight_.data<T>();
     auto* d_params = params_.data<T>();
     auto* d_inputs = input_.data<IdT>();
-    
+
     auto* d_params_grad = params_grad_->data<T>();
     auto* d_weight_grad = weight_grad_->data<T>();
-    
+
     auto ids_num = static_cast<int64_t>(ids.size());
 
     for (EigenIndex i = 0; i < ids_num ; ++i) {
       auto index = ids.data()[i];
       if (index_map.find(index) == index_map.end()) {
         index_map[index] = index_vec.size();
-        index_vec.push_back({index,{}});
+        index_vec.push_back({index, {}});
       }
       index_vec[index_map[index]].second.push_back(i);
     }
 
     EigenIndex bags = input_.dims()[0];
     for (EigenIndex i = 0; i < bags; ++i) {
-      EigenVectorMap params_grads_slice(&d_params_grad[index_vec[i].first * output_dim], output_dim );
-      
+      EigenVectorMap params_grads_slice(
+          &d_params_grad[index_vec[i].first * output_dim], output_dim );
+
       for (EigenIndex index : index_vec[i].second) {
         const EigenIndex bag = index / sequence_length;
         const EigenIndex seq = index % sequence_length;
-        const ConstEigenVectorMap grads_slice(&d_grad[bag*output_dim], output_dim);
-        params_grads_slice += grads_slice * d_weights[bag*sequence_length + seq];
+        const ConstEigenVectorMap grads_slice(
+          &d_grad[bag*output_dim], output_dim);
+        params_grads_slice +=
+          grads_slice * d_weights[bag*sequence_length + seq];
       }
       if (mode_ == "mean") {
         params_grads_slice /= static_cast<T>(sequence_length);
       }
     }
 
-    for (EigenIndex i=0; i<bags; ++i){
-
-      for (EigenIndex j=0; j<sequence_length; ++j){
-        const ConstEigenVectorMap grads_slice( &d_grad[i * output_dim ], output_dim );
-        const ConstEigenVectorMap params_slice(&d_params[d_inputs[i*sequence_length+j] * output_dim ]
-                                                , output_dim );
-        if (mode_ == "sum"){
-          d_weight_grad[i * sequence_length + j]  =   params_slice.dot(grads_slice);
-        }else {
-          d_weight_grad[i * sequence_length + j] = params_slice.dot(grads_slice) / 
-                      static_cast<T>(sequence_length);
+    for (EigenIndex i=0; i < bags; ++i) {
+      for (EigenIndex j=0; j < sequence_length; ++j) {
+        const ConstEigenVectorMap grads_slice(
+          &d_grad[i * output_dim ], output_dim );
+        const ConstEigenVectorMap params_slice(
+          &d_params[d_inputs[i*sequence_length+j] * output_dim ], output_dim );
+        if (mode_ == "sum") {
+          d_weight_grad[i * sequence_length + j] =
+            params_slice.dot(grads_slice);
+        } else {
+          d_weight_grad[i * sequence_length + j] =
+            params_slice.dot(grads_slice) / static_cast<T>(sequence_length);
         }
-        
       }
     }
-  } 
+  }
 
-    private:
-      const Context& dev_ctx_;
-      const DenseTensor& input_;
-      const DenseTensor& params_;
-      const DenseTensor& weight_;
-      const DenseTensor& out_grad_;
-      const std::string& mode_;
-      DenseTensor* params_grad_;
-      DenseTensor* weight_grad_;
-      
-
+ private:
+  const Context& dev_ctx_;
+  const DenseTensor& input_;
+  const DenseTensor& params_;
+  const DenseTensor& weight_;
+  const DenseTensor& out_grad_;
+  const std::string& mode_;
+  DenseTensor* params_grad_;
+  DenseTensor* weight_grad_;
 };
 
 template <typename T, typename Context>
@@ -132,21 +134,19 @@ void EmbeddingBagGradKernel(const Context& ctx,
                             const std::string& mode,
                             DenseTensor* params_grad,
                             DenseTensor* weight_grad) {
-  EmbeddingBagGradCPUFunctor<T, Context> functor(ctx, input, params, weight, out_grad, mode, params_grad, weight_grad);
+  EmbeddingBagGradCPUFunctor<T, Context> functor(ctx, input, params,
+      weight, out_grad, mode, params_grad, weight_grad);
 
-  if (input.dtype() == phi::DataType::INT32) 
-  {
+  if (input.dtype() == phi::DataType::INT32) {
     functor.template apply<int>();
-  } else if (input.dtype() == phi::DataType::INT64) 
-  {
+  } else if (input.dtype() == phi::DataType::INT64) {
     functor.template apply<int64_t>();
   } else {
-      PADDLE_THROW(phi::errors::Unimplemented("emebdding input only support int32 and int64"));
+      PADDLE_THROW(phi::errors::Unimplemented(
+        "emebdding input only support int32 and int64"));
   }
-
 }
 
-    
 }  // namespace phi
 
 PD_REGISTER_KERNEL(embedding_bag_grad,

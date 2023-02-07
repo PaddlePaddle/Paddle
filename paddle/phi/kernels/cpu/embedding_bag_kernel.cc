@@ -16,7 +16,7 @@
 #include "paddle/phi/kernels/funcs/embedding_util.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/embedding_bag_kernel.h"
-namespace phi{
+namespace phi {
 
 template <typename T, typename Context>
 struct EmbeddingBagCPUFunctor{
@@ -32,10 +32,12 @@ struct EmbeddingBagCPUFunctor{
               weight_(weight),
               mode_(mode),
               out_(out) {}
-    
-    using EigenArrayMap = Eigen::Map< Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic> >;
+
+    using EigenArrayMap =
+        Eigen::Map< Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic> >;
     using EigenVectorMap = Eigen::Map< Eigen::Vector<T, Eigen::Dynamic> >;
-    using ConstEigenVectorMap = Eigen::Map< const Eigen::Vector<T, Eigen::Dynamic> >;
+    using ConstEigenVectorMap =
+        Eigen::Map< const Eigen::Vector<T, Eigen::Dynamic> >;
     using EigenIndex = Eigen::Index;
 
 
@@ -47,38 +49,37 @@ struct EmbeddingBagCPUFunctor{
         const EigenIndex output_dim = params_.dims()[1];
 
         auto* input_d = input_.data<IdT>();
-        
+
         auto* params_d = params_.data<T>();
         auto* weight_d = weight_.data<T>();
 
         auto* output_d = out_->data<T>();
 
-        for (EigenIndex bag = 0; bag < bag_number; ++bag){
-            EigenVectorMap output_slice(&output_d[ bag * output_dim ], output_dim);
+        for (EigenIndex bag = 0; bag < bag_number; ++bag) {
+            EigenVectorMap output_slice(&output_d[ bag * output_dim ],
+                    output_dim);
             output_slice.setZero();
             for (EigenIndex seq = 0; seq < sequence_length; ++seq) {
-                const ConstEigenVectorMap params_slice( &params_d[ input_d[ bag * sequence_length + seq ] * output_dim ], output_dim);
-                output_slice += params_slice * weight_d[ bag * sequence_length + seq];
+                const ConstEigenVectorMap params_slice(
+                &params_d[input_d[bag * sequence_length + seq] * output_dim],
+                output_dim);
+                output_slice +=
+                    params_slice * weight_d[ bag * sequence_length + seq];
             }
             if (mode_ == "mean") {
                 output_slice /= static_cast<T>(sequence_length);
             }
         }
-
-        
-
     }
 
-private:
+ private:
     const Context& dev_ctx_;
     const DenseTensor& input_;
     const DenseTensor& params_;
     const DenseTensor& weight_;
     const std::string& mode_;
     DenseTensor* out_;
-    
 };
-
 template <typename T, typename Context>
 void EmbeddingBagKernel(const Context& ctx,
                         const DenseTensor& input,
@@ -86,22 +87,19 @@ void EmbeddingBagKernel(const Context& ctx,
                         const DenseTensor& weight,
                         const std::string& mode,
                         DenseTensor* out) {
-    EmbeddingBagCPUFunctor<T, Context> functor(ctx, input, params, weight, mode, out);
-    if (input.dtype() == phi::DataType::INT32)
-    { 
+    EmbeddingBagCPUFunctor<T, Context>
+        functor(ctx, input, params, weight, mode, out);
+    if (input.dtype() == phi::DataType::INT32) {
         functor.template apply<int>();
-    } else if (input.dtype() == phi::DataType::INT64)
-    {
+    } else if (input.dtype() == phi::DataType::INT64) {
         functor.template apply<int64_t>();
     } else {
-        PADDLE_THROW(phi::errors::Unimplemented( "embebddingbag input only support int32 and int64" ) );
+        PADDLE_THROW(phi::errors::Unimplemented(
+             "embebddingbag input only support int32 and int64" ) );
     }
-                      
-                      
-                         
 }
 
-} //namespace phi
+}  // namespace phi
 
 PD_REGISTER_KERNEL(embedding_bag,
                    CPU,

@@ -341,6 +341,18 @@
   inplace : (x -> out)
   backward : elu_grad
 
+- op : embedding_bag
+  args : (Tensor input, Tensor params, Tensor weight, str mode)
+  output : Tensor
+  infer_meta :
+    func : EmbeddingBagInferMeta
+    param : [input, params, weight]
+  kernel :
+    func : embedding_bag
+    param : [input, params, weight, mode]
+    data_type : params
+  backward : embedding_bag_grad
+
 - op : equal_all
   args : (Tensor x, Tensor y)
   output : Tensor(out)
@@ -1373,15 +1385,3 @@
   kernel :
     func : where
   backward : where_grad
-
-- op : embedding_bag
-  args : (Tensor input, Tensor params, Tensor weight, str mode)
-  output : Tensor
-  infer_meta :
-    func : EmbeddingBagInferMeta
-    param : [input, params, weight]
-  kernel : 
-    func : embedding_bag 
-    param : [input, params, weight, mode]
-    data_type : params
-  backward : embedding_bag_grad
