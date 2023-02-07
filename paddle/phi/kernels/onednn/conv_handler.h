@@ -544,7 +544,7 @@ class ConvOneDNNHandlerT
             {static_cast<int64_t>(output_shift_scale.size())},
             dnnl::memory::data_type::f32,
             dnnl::memory::format_tag::x);
-        output_shift_scale_ = dnnl::memory(scales_md, this->onednn_engine);
+        output_shift_scale_ = dnnl::memory(scales_md, this->engine_);
         std::copy(output_shift_scale.begin(),
                   output_shift_scale.end(),
                   output_shift_scale_.get_data_handle());
