@@ -280,7 +280,7 @@ def embedding_bag(input, params, weight, mode, name = None ):
             weight = paddle.to_tensor(weight, stop_gradient = False)
             params = paddle.to_tensor(params, stop_gradient = False)
             # a batch of 2 samples of w indices each 
-            sum = nn.functional.embeddingbag(input, params, weight, mode='sum')
+            sum = nn.functional.embedding_bag(input, params, weight, mode='sum')
             # tensor([[ 0.7792,  0.3368, -0.0712],
             #    [-0.1101,  1.1775,  1.5315]])
     """
