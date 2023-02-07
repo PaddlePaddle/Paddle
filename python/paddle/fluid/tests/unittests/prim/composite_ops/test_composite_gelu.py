@@ -21,7 +21,7 @@ np.random.seed(2013)
 
 import paddle
 import paddle.nn.functional as F
-
+from paddle.fluid import core
 
 def generate_data(shape, dtype="float32"):
     np_data = np.random.random(shape).astype(dtype)
@@ -74,6 +74,7 @@ class TestCompositeGelu(unittest.TestCase):
 
     def cal_composite(self, inputs):
         paddle.enable_static()
+        core._set_prim_forward_enabled(True)
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
@@ -105,7 +106,6 @@ class TestCompositeGelu(unittest.TestCase):
 
         expect = expect_forward(tensor_data).numpy()
         actual = self.cal_composite(np_data)[0]
-        print(attrs.shape, attrs.dtype, attrs.a)
         assert expect.dtype == actual.dtype
         np.testing.assert_allclose(
             expect,
