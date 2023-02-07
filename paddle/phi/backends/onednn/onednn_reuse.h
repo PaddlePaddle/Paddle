@@ -1268,7 +1268,9 @@ class ClipOneDNNHandler
                                             x->mem_desc(),
                                             alpha,
                                             beta);
+
     this->AcquireBackwardPrimitiveDescriptor(dnnl::algorithm::eltwise_clip_v2,
+                                             dout->mem_desc(),
                                              dout->mem_desc(),
                                              x->mem_desc(),
                                              alpha,
