@@ -355,10 +355,6 @@ Tensor &Tensor::operator=(Tensor &&x) & {
   return *this;
 }
 
-PADDLE_API Tensor operator*(const Tensor &x, const Tensor &y) {
-  return OperantsManager::Instance().multiply(x, y);
-}
-
 AbstractAutogradMeta *Tensor::get_autograd_meta() const {
   return autograd_meta_.get();
 }
@@ -404,6 +400,10 @@ void Tensor::reset_inplace_version(bool set_to_zero) {
       inplace_version_counter.SetInplaceVersionToZero();
     }
   }
+}
+
+PADDLE_API Tensor operator*(const Tensor &x, const Tensor &y) {
+  return OperantsManager::Instance().multiply(x, y);
 }
 
 }  // namespace experimental

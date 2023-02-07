@@ -14,17 +14,18 @@
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "paddle/fluid/eager/api/utils/static_tensor_operants.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/prim/api/manual_prim/utils/utils.h"
-#include "paddle/fluid/prim/tests/init_env_utils.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/fluid/prim/utils/utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/operants_manager.h"
 
 DECLARE_bool(prim_enabled);
 DECLARE_string(operants_mode);
@@ -147,7 +148,8 @@ class TestCompositeGradMaker : public CompositeGradOpMakerBase {
 TEST(StaticPrim, TanhBackwardComposite) {
   // Initialized environment
   FLAGS_operants_mode = "static";
-  paddle::prim::init_tensor_operants();
+  paddle::experimental::OperantsManager::Instance().static_operants =
+      &paddle::experimental::StaticTensorOperants::Instance();
 
   TestBaseProgram base_program = TestBaseProgram();
   auto* target_block = base_program.GetBlock(0);
@@ -232,7 +234,8 @@ TEST(StaticPrim, TanhBackwardComposite) {
 TEST(StaticCompositeGradMaker, TestMutiInputMethod) {
   // Initialized environment
   FLAGS_operants_mode = "static";
-  paddle::prim::init_tensor_operants();
+  paddle::experimental::OperantsManager::Instance().static_operants =
+      &paddle::experimental::StaticTensorOperants::Instance();
 
   TestBaseProgram base_program = TestBaseProgram();
   auto* target_block = base_program.GetBlock(0);
@@ -298,7 +301,8 @@ TEST(StaticCompositeGradMaker, TestMutiInputMethod) {
 TEST(StaticCompositeGradMaker, TestMutiOutputMethod) {
   // Initialized environment
   FLAGS_operants_mode = "static";
-  paddle::prim::init_tensor_operants();
+  paddle::experimental::OperantsManager::Instance().static_operants =
+      &paddle::experimental::StaticTensorOperants::Instance();
 
   TestBaseProgram base_program = TestBaseProgram();
   auto* target_block = base_program.GetBlock(0);
