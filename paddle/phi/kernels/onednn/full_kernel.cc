@@ -36,8 +36,8 @@ class FillConstantOneDNNHandler
     dnnl::primitive_attr attrs;
     attrs.set_scales_mask(DNNL_ARG_SRC_0, /* mask = */ 0);
 
-    this->AcquireForwardPrimitiveDescriptor(
-        attrs, dnnl::algorithm::binary_add, src0_md, src1_md, src0_md);
+    this->fwd_pd_ = std::make_shared<dnnl::binary::primitive_desc>(
+        engine, dnnl::algorithm::binary_add, src0_md, src1_md, src0_md, attrs);
   }
 
   static const dnnl::memory::desc src1_md;
