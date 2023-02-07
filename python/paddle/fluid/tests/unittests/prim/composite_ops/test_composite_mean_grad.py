@@ -66,8 +66,13 @@ def fn(x):
     return tensor.mean(x, axis=attrs.axis, keepdim=attrs.keepdim)
 
 
-def expect_forward(inputs):
-    return fn(inputs)
+def expect_grad(inputs):
+    paddle.disable_static()
+    inputs.stop_gradient = False
+    res = fn(inputs)
+
+    gradients = paddle.grad(res, inputs)
+    return gradients
 
 
 class TestCompositeMean(unittest.TestCase):
@@ -77,42 +82,45 @@ class TestCompositeMean(unittest.TestCase):
         self.shapes = [[2, 3, 4], [2, 3]]
         self.axes = [-1, 0, 1]
 
-    def cal_composite(self, inputs):
+    def cal_composite_grad(self, inputs):
         paddle.enable_static()
-        core._set_prim_forward_enabled(True)
+        core._set_prim_all_enabled(True)
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
             x = paddle.static.data(
                 'x', shape=inputs.shape, dtype=str(inputs.dtype)
             )
+            x.stop_gradient = False
             y = fn(x)
             blocks = main_program.blocks
             paddle.incubate.autograd.to_prim(blocks)
 
+            z = paddle.static.gradients([y], x)
+
         exe = paddle.static.Executor()
         exe.run(startup_program)
-        res = exe.run(main_program, feed={'x': inputs}, fetch_list=[y])
+        res = exe.run(main_program, feed={'x': inputs}, fetch_list=[z])
         paddle.disable_static()
-        core._set_prim_forward_enabled(False)
+        core._set_prim_all_enabled(False)
         return res
 
-    def compare_forward(self):
+    def compare_backward(self):
         np_data = generate_data(attrs.shape, attrs.dtype)
         tensor_data = paddle.to_tensor(np_data)
 
-        expect = expect_forward(tensor_data).numpy()
-        actual = self.cal_composite(np_data)[0]
+        expect = expect_grad(tensor_data)[0].numpy()
+        actual = self.cal_composite_grad(np_data)[0]
 
         assert expect.dtype == actual.dtype
         np.testing.assert_allclose(
             expect,
             actual,
-            rtol=attrs.get_rtol("forward"),
-            atol=attrs.get_atol("forward"),
+            rtol=attrs.get_rtol("backward"),
+            atol=attrs.get_atol("backward"),
         )
 
-    def test_forward(self):
+    def test_backward(self):
         for i in self.axes:
             for j in self.dtypes:
                 for t in self.shapes:
@@ -121,7 +129,64 @@ class TestCompositeMean(unittest.TestCase):
                         attrs.set_dtype(j)
                         attrs.set_shape(t)
                         attrs.set_keepdim(k)
-                        self.compare_forward()
+                        self.compare_backward()
+
+
+class TestCompositeSoftmaxPrimBackward(unittest.TestCase):
+    "test composite mean and prim backward"
+
+    def setUp(self):
+        core._set_prim_backward_enabled(True)
+        self.dtypes = ["float32", "float64"]
+        self.keepdim = [False, True]
+        self.shapes = [[2, 3, 4], [2, 3]]
+        self.axes = [-1, 0, 1]
+
+    def cal_composite_grad(self, inputs):
+        paddle.enable_static()
+        startup_program = paddle.static.Program()
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            x = paddle.static.data(
+                'x', shape=inputs.shape, dtype=str(inputs.dtype)
+            )
+            x.stop_gradient = False
+            y = fn(x)
+            blocks = main_program.blocks
+            paddle.incubate.autograd.to_prim(blocks)
+            z = paddle.static.gradients([y], x)
+
+        exe = paddle.static.Executor()
+        exe.run(startup_program)
+        res = exe.run(main_program, feed={'x': inputs}, fetch_list=[z])
+        paddle.disable_static()
+        return res
+
+    def compare_backward(self):
+        np_data = generate_data(attrs.shape)
+        tensor_data = paddle.to_tensor(np_data)
+
+        expect = expect_grad(tensor_data)[0].numpy()
+        actual = self.cal_composite_grad(np_data)[0]
+
+        assert expect.dtype == actual.dtype
+        np.testing.assert_allclose(
+            expect,
+            actual,
+            rtol=attrs.get_rtol("prim_backward"),
+            atol=attrs.get_rtol("prim_backward"),
+        )
+
+    def test_prim_backward(self):
+        for i in self.axes:
+            for j in self.dtypes:
+                for t in self.shapes:
+                    for k in self.keepdim:
+                        attrs.set_axis(i)
+                        attrs.set_dtype(j)
+                        attrs.set_shape(t)
+                        attrs.set_keepdim(k)
+                        self.compare_backward()
 
 
 if __name__ == '__main__':
