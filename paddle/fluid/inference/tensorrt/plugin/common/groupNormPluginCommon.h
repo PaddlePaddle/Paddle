@@ -71,7 +71,7 @@ struct GroupNormNHWCParams {
   float eps;
   // for NCHW32 int8 use
   float dqScaleIn;
-  float qScale;
+  float inv_qScale;
 };
 
 }  // namespace plugin

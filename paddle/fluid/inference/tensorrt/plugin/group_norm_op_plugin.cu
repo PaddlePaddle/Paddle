@@ -388,11 +388,11 @@ __global__ void groupNormNCHW32ScaleKernelQDQ(
     // Store the scaled values.
     if (ci < params.c) {
       int8_t tmp_in[2];
-      int32_t tmpq0 = __float2int_rn(params.qScale * f2.x);
-      int32_t tmpq1 = __float2int_rn(params.qScale * f2.y);
-      tmpq0 = max(-127, tmpq0);
+      int32_t tmpq0 = __float2int_rn(params.inv_qScale * f2.x);
+      int32_t tmpq1 = __float2int_rn(params.inv_qScale * f2.y);
+      tmpq0 = max(-128, tmpq0);
       tmpq0 = min(127, tmpq0);
-      tmpq1 = max(-127, tmpq1);
+      tmpq1 = max(-128, tmpq1);
       tmpq1 = min(127, tmpq1);
       tmp_in[0] = tmpq0;
       tmp_in[1] = tmpq1;
@@ -708,7 +708,7 @@ bool GroupNormPluginDynamic::supportsFormatCombination(
        in.format == nvinfer1::PluginFormat::kHWC8);
 
   if (pos == 0) {
-    if (int8_support) {
+    if (with_int8_) {
       return int8_support || fp16_support;
     } else if (with_fp16_) {
       return fp16_support;
@@ -952,6 +952,13 @@ int GroupNormPluginDynamic::enqueue(
       params_.invHWC = 1.F / static_cast<float>(params_.hw * params_.cPerGroup);
       params_.groupsPerBlock = cPerBlock / params_.cPerGroup;
       params_.eps = eps_;
+      params_.dqScaleIn = input_desc[0].scale;
+      params_.inv_qScale = 1.f / output_desc[0].scale;
+
+      // Just used for TensorRTDynamicShapeGNTes in test_dynamic_engine.cc
+      // Do not Edit it
+      // params_.dqScaleIn = 1.f;
+      // params_.inv_qScale = 1 / 0.05f;
 
       cudaMemsetAsync(params_.redBuffer,
                       0,
@@ -961,7 +968,7 @@ int GroupNormPluginDynamic::enqueue(
       groupNormNCHW32ScaleQDQ(params_, stream);
     } else {
       PADDLE_THROW(platform::errors::Fatal(
-          "The Groupnorm TRT Plugin's only support nchw or nhwc8 input"));
+          "The Groupnorm TRT Plugin only support nchw32 input"));
     }
   } else {
     // input not float
