@@ -47,7 +47,7 @@ class SimpleNet(fluid.Layer):
             sparse=is_sparse,
             weight_attr=fluid.ParamAttr(
                 name='embedding_para',
-                initializer=fluid.initializer.UniformInitializer(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-init_scale, high=init_scale
                 ),
             ),
@@ -56,7 +56,7 @@ class SimpleNet(fluid.Layer):
             attr=fluid.ParamAttr(),
             shape=[self.vocab_size],
             dtype=dtype,
-            default_initializer=fluid.initializer.UniformInitializer(
+            default_initializer=paddle.nn.initializer.Uniform(
                 low=-self.init_scale, high=self.init_scale
             ),
         )
@@ -163,11 +163,12 @@ class TestDygraphSimpleNet(unittest.TestCase):
 
                     exe = fluid.Executor(place)
                     sgd = SGDOptimizer(learning_rate=1e-3)
-                    x = fluid.layers.data(
+                    x = paddle.static.data(
                         name="x", shape=[-1, num_steps], dtype='int64'
                     )
-                    y = fluid.layers.data(name="y", shape=[-1, 1], dtype=dtype)
-
+                    x.desc.set_need_check_feed(False)
+                    y = paddle.static.data(name="y", shape=[-1, 1], dtype=dtype)
+                    y.desc.set_need_check_feed(False)
                     static_loss = simple_net(x, y)
                     sgd.minimize(static_loss)
                     static_param_updated = dict()

@@ -39,7 +39,7 @@ def cnn_model(data):
         pool_stride=2,
         act="relu",
         param_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.01)
+            initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
     conv_pool_2 = fluid.nets.simple_img_conv_pool(
@@ -50,7 +50,7 @@ def cnn_model(data):
         pool_stride=2,
         act="relu",
         param_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.01)
+            initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
 
@@ -65,7 +65,7 @@ def cnn_model(data):
             size=SIZE,
             activation="softmax",
             weight_attr=fluid.param_attr.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01)
+                initializer=paddle.nn.initializer.Constant(value=0.01)
             ),
         )
         # To cover @RENAMED@GRADIENT
@@ -74,7 +74,7 @@ def cnn_model(data):
             size=SIZE,
             activation="softmax",
             weight_attr=fluid.param_attr.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01)
+                initializer=paddle.nn.initializer.Constant(value=0.01)
             ),
         )
         predict += predict2
@@ -85,10 +85,12 @@ class TestDistMnist2x2(TestDistRunnerBase):
     def get_model(self, batch_size=2, use_dgc=False, dist_strategy=None):
         # Input data
         with fluid.device_guard("gpu:0"):
-            images = fluid.layers.data(
-                name='pixel', shape=[1, 28, 28], dtype=DTYPE
+            images = paddle.static.data(
+                name='pixel', shape=[-1, 1, 28, 28], dtype=DTYPE
             )
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
 
             if dist_strategy:
                 data_loader = fluid.io.DataLoader.from_generator(

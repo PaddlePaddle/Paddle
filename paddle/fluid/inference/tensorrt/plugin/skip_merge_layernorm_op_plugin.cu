@@ -70,7 +70,7 @@ __global__ void merge_layernorm_v2(T *out,
     }
   }
 
-  mean = phi::funcs::blockReduceSum<float>(sum, FINAL_MASK);
+  mean = phi::funcs::BlockReduceSum<float>(sum, FINAL_MASK);
   if (tid == 0) {
     s_mean = mean / n;
   }
@@ -86,7 +86,7 @@ __global__ void merge_layernorm_v2(T *out,
     }
   }
 
-  variance = phi::funcs::blockReduceSum<float>(var, FINAL_MASK);
+  variance = phi::funcs::BlockReduceSum<float>(var, FINAL_MASK);
   if (tid == 0) {
     s_variance = rsqrtf(variance / n + layernorm_eps);
   }
