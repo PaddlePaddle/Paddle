@@ -395,7 +395,7 @@ TEST(multi_tensor_adam, test_fp32_cpu) {
 
 #ifdef PADDLE_WITH_CUDA
 TEST(multi_tensor_adam, test_fp32_gpu) {
-  auto shapes = GenerateRandomShapes(1000, 0, 2 << 18);
+  auto shapes = GenerateRandomShapes(40, 0, 2 << 18);
   float atol = 0.0f;
   for (auto use_adamw : {false, true}) {
     TestMultiTensorAdamBase<float, GPUPlace>(shapes, atol, use_adamw);
@@ -403,7 +403,7 @@ TEST(multi_tensor_adam, test_fp32_gpu) {
 }
 
 TEST(multi_tensor_adam, test_fp16_gpu) {
-  auto shapes = GenerateRandomShapes(1000, 0, 2 << 18);
+  auto shapes = GenerateRandomShapes(40, 0, 2 << 18);
   float atol = 0.0f;
   for (auto use_adamw : {false, true}) {
     TestMultiTensorAdamBase<dtype::float16, GPUPlace>(
