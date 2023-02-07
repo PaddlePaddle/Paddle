@@ -129,6 +129,19 @@ class TestInferenceBaseAPI(unittest.TestCase):
             in_handle.copy_from_cpu(list(in_data))
             predictor.run()
 
+    def test_share_external_data(self):
+        program, params = get_sample_model()
+        config = self.get_config(program, params)
+        predictor = create_predictor(config)
+        in_names = predictor.get_input_names()
+        in_handle = predictor.get_input_handle(in_names[0])
+        in_handle.share_external_data(
+            paddle.to_tensor(
+                np.full((1, 6, 32, 32), 1.0, "float32"), place=paddle.CPUPlace()
+            )
+        )
+        predictor.run()
+
 
 if __name__ == '__main__':
     unittest.main()
