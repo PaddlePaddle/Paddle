@@ -17,7 +17,9 @@ import math
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+
+import paddle
 
 
 class TestDetectionMAPOp(OpTest):
@@ -264,6 +266,8 @@ class TestDetectionMAPOp(OpTest):
 
     def setUp(self):
         self.op_type = "detection_map"
+        self.python_api = paddle._legacy_C_ops.detection_map
+        self.python_out_sig = ['Out']
         self.set_data()
 
     def test_check_output(self):
