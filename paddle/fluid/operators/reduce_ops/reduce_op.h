@@ -141,8 +141,22 @@ void HandleLargeDim(const framework::ExecutionContext& context,
 
   // transpose to 2D tensor whose shape is {unreduced, reduced}.
   const int64_t unreduced = output->numel();
-  const int64_t reduced = shuffled_input.numel() / unreduced;
+  const int64_t input_numel = shuffled_input.numel();
+  // assume: 0 / 0 == 0, which allow process 0 dim tensor
+  const int64_t reduced = (unreduced != 0) ? (input_numel / unreduced) : 0;
+
+  PADDLE_ENFORCE_EQ(
+      unreduced * reduced,
+      input_numel,
+      phi::errors::InvalidArgument(
+          "Reducing failed in HandleLargeDim, when try to transpose (%d) "
+          "operands into 2D tensor with shape (%d, %d).",
+          input_numel,
+          unreduced,
+          reduced));
+
   shuffled_input.Resize({unreduced, reduced});
+
   DDim output_dim = output->dims();
   output->Resize({unreduced});
   paddle::operators::ReduceFunctor<DeviceContext, OutT, 2, 1, Functor>(
@@ -163,7 +177,20 @@ void HandleLargeDimGrad(const framework::ExecutionContext& context,
                         Functor functor,
                         const std::vector<int>& dims) {
   const int64_t unreduced = out->numel();
-  const int64_t reduced = x->numel() / unreduced;
+  const int64_t x_numel = x->numel();
+  // assume: 0 / 0 == 0, which allow process 0 dim tensor
+  const int64_t reduced = (unreduced != 0) ? (x_numel / unreduced) : 0;
+
+  PADDLE_ENFORCE_EQ(
+      unreduced * reduced,
+      x_numel,
+      phi::errors::InvalidArgument(
+          "Reducing failed in HandleLargeDimGrad, when try to transpose (%d) "
+          "operands into 2D tensor with shape (%d, %d).",
+          x_numel,
+          unreduced,
+          reduced));
+
   DDim out_dim(out->dims());
   DDim x_dim(x->dims());
   // transpose and reshape X

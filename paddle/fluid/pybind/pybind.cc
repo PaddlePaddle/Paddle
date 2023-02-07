@@ -1246,6 +1246,9 @@ All parameter, weight, gradient are variables in Paddle.
         return static_cast<paddle::framework::proto::AttrType>(
             defalut_val.index() - 1);
       });
+  m.def("_add_skip_comp_ops", &paddle::prim::PrimCommonUtils::AddSkipCompOps);
+  m.def("_remove_skip_comp_ops",
+        &paddle::prim::PrimCommonUtils::RemoveSkipCompOps);
   m.def("get_grad_op_desc",
         [](const OpDesc &op_desc,
            const std::unordered_set<std::string> &no_grad_set,
@@ -1277,8 +1280,11 @@ All parameter, weight, gradient are variables in Paddle.
           // priority of CompGradOpMaker is less than GradCompMaker for better
           // performance.
           std::vector<std::unique_ptr<OpDesc>> grad_op_descs;
+          auto need_skip =
+              paddle::prim::PrimCommonUtils::CheckSkipCompOps(op_desc.Type());
+          VLOG(3) << "need skip: " << need_skip << std::endl;
           if (paddle::prim::PrimCommonUtils::IsBwdPrimEnabled()) {
-            if (grad_comp_op_maker != nullptr) {
+            if ((grad_comp_op_maker != nullptr) && (!need_skip)) {
               VLOG(3) << "Runing composite fun for " << op_desc.Type();
               grad_op_descs = grad_comp_op_maker(op_desc,
                                                  no_grad_set,

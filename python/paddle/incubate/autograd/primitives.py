@@ -11,11 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from functools import reduce  # noqa: F401
 from operator import mul  # noqa: F401
+
+from paddle.fluid.layers.nn import reduce_sum  # noqa: F401
+from paddle.fluid.layers.tensor import assign  # noqa: F401
 from paddle.fluid.layers.tensor import cast  # noqa: F401
 from paddle.fluid.layers.tensor import fill_constant  # noqa: F401
-from paddle.fluid.layers.nn import reduce_sum  # noqa: F401
 from paddle.tensor import abs  # noqa: F401
 from paddle.tensor import acos  # noqa: F401
 from paddle.tensor import acosh  # noqa: F401
@@ -43,17 +46,22 @@ from paddle.tensor import logcumsumexp  # noqa: F401
 from paddle.tensor import logit  # noqa: F401
 from paddle.tensor import logsumexp  # noqa: F401
 from paddle.tensor import max  # noqa: F401
+from paddle.tensor import mean  # noqa: F401
 from paddle.tensor import min  # noqa: F401
 from paddle.tensor import multiply  # noqa: F401
+from paddle.tensor import ones  # noqa: F401
 from paddle.tensor import pow  # noqa: F401
 from paddle.tensor import prod  # noqa: F401
+from paddle.tensor import reshape  # noqa: F401
 from paddle.tensor import sign  # noqa: F401
 from paddle.tensor import sin  # noqa: F401
 from paddle.tensor import sinh  # noqa: F401
+from paddle.tensor import sqrt  # noqa: F401
 from paddle.tensor import subtract  # noqa: F401
 from paddle.tensor import sum  # noqa: F401
 from paddle.tensor import tan  # noqa: F401
 from paddle.tensor import tanh  # noqa: F401
+from paddle.tensor import zeros  # noqa: F401
 
 math_op = [
     'add',
@@ -97,18 +105,28 @@ trigonometric_op = [
     'atanh',
 ]
 
+sub_prim = [
+    'mean',
+    'ones',
+    'zeros',
+    'sqrt',
+]
+
 others = [
     'cast',
     'broadcast_to',
+    'assign',
     'fill_constant',
+    'reshape',
     'reduce_sum',
     'reduce',
-    'mul'
+    'mul',
 ]
 
 __all__ = []
 __all__.extend(math_op)
 __all__.extend(trigonometric_op)
+__all__.extend(sub_prim)
 __all__.extend(others)
 
 __all__.sort()
