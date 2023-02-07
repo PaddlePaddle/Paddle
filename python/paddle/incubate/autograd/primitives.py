@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+from functools import reduce  # noqa: F401
+from operator import mul  # noqa: F401
 from paddle.fluid.layers.tensor import cast  # noqa: F401
 from paddle.fluid.layers.tensor import fill_constant  # noqa: F401
 from paddle.fluid.layers.nn import reduce_sum  # noqa: F401
@@ -101,6 +102,8 @@ others = [
     'broadcast_to',
     'fill_constant',
     'reduce_sum',
+    'reduce',
+    'mul'
 ]
 
 __all__ = []
