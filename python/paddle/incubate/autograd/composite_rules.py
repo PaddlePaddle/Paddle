@@ -106,21 +106,21 @@ def gelu_composite(x, approximate):
     M_2_PI = 0.63661977236758134308     #/* 2/pi */. copy from gelu-kernel.cc
     M_SQRT1_2 = 0.70710678118654752440	#/* 1/sqrt(2) */ copy from gelu-kernel.cc
 
+    # gelu(x) = 0.5 * x * (1 + tanh(sqrt(2 / \pi) * (x + 0.044715 * x^{3})))
     if approximate:
-        # gelu(x) = 0.5 * x * (1 + tanh(sqrt(2 / \pi) * (x + 0.044715 * x^{3})))
         ret = multiply(
-            fill_constant(x.shape, x.dtype, 0.5),
+            full(x.shape, 0.5, x.dtype),
             multiply(
                 x,
                 add(
                     ones(x.shape, x.dtype),
                     tanh(
                         multiply(
-                            sqrt(fill_constant(x.shape, x.dtype, M_2_PI)),
+                            sqrt(full(x.shape, M_2_PI, x.dtype)),
                             add(
                                 x,
                                 multiply(
-                                    fill_constant(x.shape, x.dtype, GELU_CONSTANT),
+                                    full(x.shape, GELU_CONSTANT, x.dtype),
                                     pow(x, 3)
                                 )
                             )
@@ -134,7 +134,7 @@ def gelu_composite(x, approximate):
     else:
         #gelu(x) = 0.5 * x *  (1 + erf(x / sqrt(2)))
         ret = multiply(
-            fill_constant(x.shape, x.dtype, 0.5),
+            full(x.shape, 0.5, x.dtype),
             multiply(
                 x,
                 add(
@@ -142,7 +142,7 @@ def gelu_composite(x, approximate):
                     erf(
                         multiply(
                             x,
-                            fill_constant(x.shape, x.dtype, M_SQRT1_2)
+                            full(x.shape, M_SQRT1_2, x.dtype)
                         )
                     )
                 )

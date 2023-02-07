@@ -57,6 +57,7 @@ from paddle.tensor import sum  # noqa: F401
 from paddle.tensor import tan  # noqa: F401
 from paddle.tensor import tanh  # noqa: F401
 from paddle.tensor import zeros  # noqa: F401
+from paddle.tensor import full #noqa: F401
 
 math_op = [
     'add',
@@ -113,6 +114,7 @@ others = [
     'assign',
     'fill_constant',
     'reshape',
+    'full',
 ]
 
 __all__ = []
