@@ -20,7 +20,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/prim/api/manual/backward/composite_backward_api.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
 #include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -206,7 +206,7 @@ class ExpandV2CompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     auto shape = this->Attr<std::vector<int>>("shape");
     prim::expand_grad<prim::DescTensor>(
         x, out_grad, paddle::experimental::IntArray(shape), x_grad_p);
-    VLOG(3) << "Runing expand_v2 composite func";
+    VLOG(6) << "Runing expand_v2 composite func";
     this->RecoverOutputName(x_grad, x_grad_name);
   }
 };
