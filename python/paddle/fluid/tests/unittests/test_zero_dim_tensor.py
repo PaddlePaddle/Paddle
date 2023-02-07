@@ -1590,6 +1590,32 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out2.grad.shape, [])
         self.assertEqual(x.grad.shape, [])
 
+    def test_while_loop(self):
+        def cond(i, x):
+            return paddle.less_than(i, eleven)
+
+        def body(i, x):
+            x = x + i
+            i = i + 1
+            return [i, x]
+
+        i = paddle.full([], 1.0, dtype='float32')
+        i.stop_gradient = False
+        eleven = paddle.full([], 11, dtype='float32')
+        x = paddle.full([], 0.0, dtype='float32')
+        x.stop_gradient = False
+        out_i, out_x = paddle.static.nn.while_loop(cond, body, [i, x])
+        out_x.backward()
+
+        self.assertEqual(out_i.shape, [])
+        np.testing.assert_allclose(out_i, np.array(11))
+        self.assertEqual(out_x.shape, [])
+        np.testing.assert_allclose(out_x, np.array(55))
+        self.assertEqual(i.grad.shape, [])
+        np.testing.assert_allclose(i.grad, np.array(10))
+        self.assertEqual(x.grad.shape, [])
+        np.testing.assert_allclose(x.grad, np.array(1.0))
+
 
 class TestSundryAPIStatic(unittest.TestCase):
     def setUp(self):
@@ -2591,6 +2617,43 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[3].shape, ())
         self.assertEqual(res[4].shape, ())
         self.assertEqual(res[5].shape, ())
+
+    @prog_scope()
+    def test_while_loop(self):
+        def cond(i, x):
+            return paddle.less_than(i, eleven)
+
+        def body(i, x):
+            x = x + i
+            i = i + 1
+            return [i, x]
+
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, paddle.static.Program()):
+            i = paddle.static.data(name='i', shape=[], dtype='float32')
+            i.stop_gradient = False
+            eleven = paddle.full([], 11, 'float32')
+            x = paddle.static.data(name='x', shape=[], dtype='float32')
+            x.stop_gradient = False
+            out_i, out_x = paddle.static.nn.while_loop(cond, body, [i, x])
+            paddle.static.append_backward(out_x)
+
+        res = self.exe.run(
+            main_program,
+            feed={
+                'i': np.array(1.0, dtype='float32'),
+                'x': np.array(0.0, dtype='float32'),
+            },
+            fetch_list=[out_i.name, out_x.name, i.grad_name, x.grad_name],
+        )
+        self.assertEqual(res[0].shape, ())
+        np.testing.assert_allclose(res[0], np.array(11))
+        self.assertEqual(res[1].shape, ())
+        np.testing.assert_allclose(res[1], np.array(55))
+        self.assertEqual(res[2].shape, ())
+        np.testing.assert_allclose(res[2], np.array(10))
+        self.assertEqual(res[3].shape, ())
+        np.testing.assert_allclose(res[3], np.array(1.0))
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.

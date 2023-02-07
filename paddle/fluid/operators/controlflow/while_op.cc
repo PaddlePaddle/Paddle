@@ -100,12 +100,12 @@ class WhileOp : public framework::OperatorBase {
 
     auto &cond = scope.FindVar(Input(kCondition))->Get<phi::DenseTensor>();
     PADDLE_ENFORCE_EQ(
-        cond.dims(),
-        phi::make_ddim({1}),
+        cond.numel(),
+        1,
         platform::errors::InvalidArgument(
-            "The shape of Input(Condition) of WhileOp must be 1. But now "
-            "the Condition's shape is ",
-            cond.dims().to_str(),
+            "The numel of Input(Condition) of WhileOp must be 1. But now "
+            "the Condition's numel is ",
+            cond.numel(),
             ".\n"));
 
 #ifdef PADDLE_WITH_MKLDNN
