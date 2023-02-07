@@ -129,17 +129,17 @@ inline void TensorIsfinite(const phi::DenseTensor& tensor,
 inline bool TensorContainsNAN(const phi::DenseTensor& tensor) {
   phi::DenseTensor out;
   TensorContainsNAN(tensor, &out);
-  return GetValue<bool>(&out);
+  return paddle::framework::GetValue<bool>(&out);
 }
 inline bool TensorContainsInf(const phi::DenseTensor& tensor) {
   phi::DenseTensor out;
   TensorContainsInf(tensor, &out);
-  return GetValue<bool>(&out);
+  return paddle::framework::GetValue<bool>(&out);
 }
 inline bool TensorIsfinite(const phi::DenseTensor& tensor) {
   phi::DenseTensor out;
   TensorIsfinite(tensor, &out);
-  return GetValue<bool>(&out);
+  return paddle::framework::GetValue<bool>(&out);
 }
 }  // namespace framework
 namespace operators {

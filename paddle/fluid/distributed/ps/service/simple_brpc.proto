@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,17 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+syntax = "proto2";
+package paddle.distributed.simple;
+option cc_generic_services = true;
 
-namespace phi {
+message SimpleRpcRequest {
+    required int64 archive_size = 1;
+};
 
-KernelSignature BroadcastTensorsGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "broadcast_tensors_grad", {"Out@GRAD"}, {}, {"X@GRAD"});
-}
+message SimpleRpcResponse {
+    required int64 archive_size = 1;
+};
 
-}  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(broadcast_tensors_grad,
-                           phi::BroadcastTensorsGradOpArgumentMapping);
+service SimpleRpcService {
+    rpc handle_request(SimpleRpcRequest) returns (SimpleRpcResponse);
+};

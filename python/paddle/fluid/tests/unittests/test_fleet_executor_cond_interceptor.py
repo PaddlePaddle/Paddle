@@ -33,7 +33,7 @@ def body(i, ten, data):
     return [i, ten, data]
 
 
-num_micro_batches = 3
+num_micro_batches = 4
 
 
 def batch_generator_creator():
@@ -126,7 +126,7 @@ class TestFleetExecutor(unittest.TestCase):
         task_a = TaskNode(
             0,
             num_micro_batches,
-            node_type="Compute",
+            node_type="Start",
             task_id=0,
             program=program_a,
             lazy_initialize=True,
