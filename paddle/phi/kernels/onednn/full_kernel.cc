@@ -34,7 +34,7 @@ class FillConstantOneDNNHandler
                                             dnnl::memory::format_tag::ab);
 
     dnnl::primitive_attr attrs;
-    attrs.set_scales(DNNL_ARG_SRC_0, /* mask = */ 0, {0.0f});
+    attrs.set_scales_mask(DNNL_ARG_SRC_0, /* mask = */ 0);
 
     this->AcquireForwardPrimitiveDescriptor(
         attrs, dnnl::algorithm::binary_add, src0_md, src1_md, src0_md);
@@ -71,10 +71,19 @@ void FullKernel(const Context& dev_ctx,
   auto fill_constant_p = handler.AcquireForwardPrimitive();
 
   auto& astream = OneDNNContext::tls().get_stream();
-  fill_constant_p->execute(astream,
-                           {{DNNL_ARG_SRC_0, *src0_memory_p},
-                            {DNNL_ARG_SRC_1, constant_value_memory},
-                            {DNNL_ARG_DST, *src0_memory_p}});
+
+  std::vector<float> zero(1, 0);
+  auto scales_md = dnnl::memory::desc(
+      {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
+  auto scales = dnnl::memory(scales_md, onednn_engine);
+
+  std::unordered_map<int, dnnl::memory> args;
+  args.insert({DNNL_ARG_SRC_0, *src0_memory_p});
+  args.insert({DNNL_ARG_SRC_1, constant_value_memory});
+  args.insert({DNNL_ARG_DST, *src0_memory_p});
+  args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC_0, scales});
+
+  fill_constant_p->execute(astream, args);
   astream.wait();
 
   // src0_memory_p's md was just to allow the usage of a binary
