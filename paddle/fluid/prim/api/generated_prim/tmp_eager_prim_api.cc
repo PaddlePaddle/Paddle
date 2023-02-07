@@ -77,9 +77,24 @@ Tensor sum<Tensor>(const Tensor& x,
 }
 
 template <>
+Tensor transpose<Tensor>(const Tensor& x, const std::vector<int>& perm) {
+  VLOG(4) << "Eager Prim API transpose_ad_func call";
+  return ::transpose_ad_func(x, perm);
+}
+
+template <>
 Tensor exp<Tensor>(const Tensor& x) {
   VLOG(4) << "Eager Prim API exp_ad_func call";
   return ::exp_ad_func(x);
+}
+
+template <>
+Tensor scatter<Tensor>(const Tensor& x,
+                       const Tensor& index,
+                       const Tensor& updates,
+                       bool overwrite) {
+  VLOG(4) << "Eager Prim API scatter_ad_func call";
+  return ::scatter_ad_func(x, index, updates, overwrite);
 }
 
 template <>

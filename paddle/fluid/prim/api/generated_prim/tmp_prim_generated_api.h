@@ -62,7 +62,16 @@ Tensor sum(const Tensor& x,
            bool keepdim = false);
 
 template <typename T>
+Tensor transpose(const Tensor& x, const std::vector<int>& perm);
+
+template <typename T>
 Tensor exp(const Tensor& x);
+
+template <typename T>
+Tensor scatter(const Tensor& x,
+               const Tensor& index,
+               const Tensor& updates,
+               bool overwrite = true);
 
 template <typename T>
 Tensor unsqueeze(const Tensor& x, const IntArray& axis = {});

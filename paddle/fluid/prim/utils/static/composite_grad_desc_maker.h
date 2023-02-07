@@ -34,9 +34,9 @@ namespace prim {
 
 /*
   This functor class is responsible for creating the gradient ops for the given
-  operator fwd_op. After it is called (through operator()), the pairs of
-  (gradient variable, corresponding input variable of fwd_op) will be added to
-  grad_to_var. If an input variable of fwd_op is contained in no_grad_set, its
+  operator fwd_op_. After it is called (through operator()), the pairs of
+  (gradient variable, corresponding input variable of fwd_op_) will be added to
+  grad_to_var. If an input variable of fwd_op_ is contained in no_grad_set, its
   gradient variable will be ignored or kEmptyVarName depending on the template
   argument DropEmptyIG in the derived classes.
  */
@@ -458,7 +458,7 @@ class CompositeGradOpMakerBase {
 
   framework::VarDesc* SingleForwardInput(const std::string& name) const {
     // Copy Var from original block to active block, or create a new one.
-    auto fwd_in_names = fwd_op.Input(name);
+    auto fwd_in_names = fwd_op_.Input(name);
     if (!fwd_in_names.empty()) {
       PADDLE_ENFORCE_EQ(
           fwd_in_names.size(),
@@ -466,7 +466,7 @@ class CompositeGradOpMakerBase {
           phi::errors::InvalidArgument(
               "When calling SingleForward for op: %s's Input: %s, we should "
               "only get one input tensor, but we got %d instead.",
-              fwd_op.Type(),
+              fwd_op_.Type(),
               name,
               fwd_in_names.size()));
       CopyVarFromOrig(fwd_op_.Input(name).at(0));
@@ -479,7 +479,7 @@ class CompositeGradOpMakerBase {
 
   framework::VarDesc* SingleForwardOutput(const std::string& name) const {
     // Copy Var from original block to active block, or create a new one.
-    auto fwd_out_names = fwd_op.Output(name);
+    auto fwd_out_names = fwd_op_.Output(name);
     if (!fwd_out_names.empty()) {
       PADDLE_ENFORCE_EQ(
           fwd_out_names.size(),
@@ -487,7 +487,7 @@ class CompositeGradOpMakerBase {
           phi::errors::InvalidArgument(
               "When calling SingleForward for op: %s's Output: %s, we should "
               "only get one input tensor, but we got %d instead.",
-              fwd_op.Type(),
+              fwd_op_.Type(),
               name,
               fwd_out_names.size()));
       CopyVarFromOrig(fwd_op_.Output(name).at(0));

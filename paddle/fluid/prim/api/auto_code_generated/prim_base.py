@@ -26,6 +26,7 @@ white_ops_list = [
     "sum",
     "exp",
     "scatter",
+    "transpose",
 ]
 
 inplace_out_type_map = {

@@ -38,6 +38,49 @@ namespace paddle {
 namespace prim {
 
 template <>
+Tensor transpose<DescTensor>(const Tensor& x, const std::vector<int>& perm) {
+  Tensor out = empty<DescTensor>({}, x.dtype(), paddle::Place());
+  framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
+  framework::OpDesc* op = block->AppendOp();
+  op->SetType("transpose");
+  op->SetInput("X",
+               {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
+  op->SetAttr("axis", perm);
+  op->SetOutput(
+      "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
+  op->CheckAttrs();
+  op->InferVarType(block);
+  op->InferShape(*block);
+  return out;
+}
+
+template <>
+Tensor scatter<DescTensor>(const Tensor& x,
+                           const Tensor& index,
+                           const Tensor& updates,
+                           bool overwrite) {
+  Tensor out = empty<DescTensor>({}, x.dtype(), paddle::Place());
+  framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
+  framework::OpDesc* op = block->AppendOp();
+  op->SetType("scatter");
+  op->SetInput("X",
+               {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
+  op->SetInput(
+      "Ids",
+      {std::static_pointer_cast<prim::DescTensor>(index.impl())->Name()});
+  op->SetInput(
+      "Updates",
+      {std::static_pointer_cast<prim::DescTensor>(updates.impl())->Name()});
+  op->SetAttr("overwrite", overwrite);
+  op->SetOutput(
+      "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
+  op->CheckAttrs();
+  op->InferVarType(block);
+  op->InferShape(*block);
+  return out;
+}
+
+template <>
 Tensor pow<DescTensor>(const Tensor& x, const Scalar& y) {
   Tensor out = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
   framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
