@@ -223,6 +223,24 @@ cc_library(
        phi_device_context
        generator)
 
+if(WITH_DISTRIBUTE)
+  set(BRPC_DEPS
+      brpc
+      ssl
+      crypto
+      protobuf
+      zlib
+      leveldb
+      snappy
+      gflags
+      glog)
+
+  cc_library(
+    rpc_utils
+    SRCS rpc_utils.cc
+    DEPS enforce ${BRPC_DEPS})
+endif()
+
 cc_library(
   collective_helper
   SRCS collective_helper.cc gen_comm_id_helper.cc

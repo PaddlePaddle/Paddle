@@ -39,6 +39,7 @@ class RpcCallOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() {
     AddInput("X", "(Tensor) Query to service.");
     AddInput("service", "(Tensor) Service name.");
+    AddInput("url", "(Tensor) Service URL.");
     AddOutput("Out", "(Tensor) Request id.");
     AddComment(R"DOC(
 Rpc Call Operator

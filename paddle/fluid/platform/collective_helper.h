@@ -14,13 +14,8 @@
 
 #pragma once
 
-#include <brpc/channel.h>
-
-#include <chrono>
-#include <condition_variable>
 #include <map>
 #include <memory>
-#include <mutex>
 #include <string>
 #include <vector>
 
@@ -458,86 +453,6 @@ class CNCLCommContext {
 };
 
 #endif
-
-class Semaphore {
- public:
-  explicit Semaphore(int count = 0) : count_(count) {}
-
-  void Signal() {
-    std::unique_lock<std::mutex> lock(mutex_);
-    ++count_;
-    cv_.notify_one();
-  }
-
-  void Wait() {
-    std::unique_lock<std::mutex> lock(mutex_);
-    cv_.wait(lock, [&] { return count_ > 0; });
-    --count_;
-  }
-
- private:
-  std::mutex mutex_;
-  std::condition_variable cv_;
-  int count_;
-};
-
-class RpcRequestStore {
- public:
-  static RpcRequestStore& Instance() {
-    static RpcRequestStore instance;
-    return instance;
-  }
-
-  int GetRequestId() {
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (request_id_ == INT32_MAX) {
-      request_id_ = 0;
-    } else {
-      ++request_id_;
-    }
-    return request_id_;
-  }
-
-  std::shared_ptr<Semaphore> GetEvent(int request_id) {
-    return id_to_event_map_[request_id];
-  }
-
-  std::string GetService(int request_id) {
-    return id_to_service_map_[request_id];
-  }
-
-  std::string GetResponse(int request_id) {
-    return id_to_resp_map_[request_id];
-  }
-
-  void InsertEvent(int request_id, const std::shared_ptr<Semaphore>& event) {
-    if (request_id == 0) {
-      LOG(WARNING) << "Total num of requests have exceeded int limits.";
-    }
-    id_to_event_map_.emplace(request_id, event);
-  }
-
-  void InsertService(int request_id, const std::string& service) {
-    if (request_id == 0) {
-      LOG(WARNING) << "Total num of requests have exceeded int limits.";
-    }
-    id_to_service_map_.emplace(request_id, service);
-  }
-
-  void InsertResponse(int request_id, const std::string& resp) {
-    if (request_id == 0) {
-      LOG(WARNING) << "Total num of requests have exceeded int limits.";
-    }
-    id_to_resp_map_.emplace(request_id, resp);
-  }
-
- private:
-  std::mutex mutex_;
-  int request_id_;
-  std::unordered_map<int, std::shared_ptr<Semaphore>> id_to_event_map_;
-  std::unordered_map<int, std::string> id_to_resp_map_;
-  std::unordered_map<int, std::string> id_to_service_map_;
-};
 
 }  // namespace platform
 }  // namespace paddle

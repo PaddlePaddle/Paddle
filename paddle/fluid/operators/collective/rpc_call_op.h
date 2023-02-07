@@ -22,7 +22,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/collective/thirdparty/json.h"
-#include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/fluid/platform/rpc_utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 
@@ -31,75 +31,55 @@ namespace operators {
 
 using json = nlohmann::json;
 
-void ResHandler(brpc::Controller* ctrl,
-                int request_id,
-                std::shared_ptr<platform::Semaphore> event) {
+// service payload builders
+std::string BuildTestServicePayload(const std::string& query) {
+  json payload = {{"data", {query}}};  // => {"data": [query]}
+  return payload.dump();
+}
+
+// req & res handlers
+void HandleServiceRequest(brpc::Controller* ctrl,
+                          int request_id,
+                          const std::string& payload) {
+  ctrl->request_attachment().append(payload);
+  VLOG(3) << "Request id " << request_id << " payload: " << payload;
+}
+
+void HandleServiceResponse(brpc::Controller* ctrl,
+                           int request_id,
+                           std::shared_ptr<bthread::CountdownEvent> event) {
   // make sure the controller will be deleted
   std::unique_ptr<brpc::Controller> ctrl_guard(ctrl);
   if (ctrl->Failed()) {
     PADDLE_THROW(
-        phi::errors::Unavailable("Rpc call op failed: access url error."));
+        platform::errors::Unavailable("Rpc send failed: access url error."));
   }
   const std::string res = ctrl->response_attachment().to_string();
   platform::RpcRequestStore::Instance().InsertResponse(request_id, res);
   // try to notify result op
-  event->Signal();
+  event->signal();
 }
 
 template <typename T>
 class RpcCallOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* service_tensor = ctx.Input<phi::DenseTensor>("service");
-    const std::string service(
-        reinterpret_cast<const char*>(service_tensor->data()));
-    std::string url;
-    if (service == "test") {
-      url = "http://10.127.2.19:8082/run/predict";
-    }
-    PADDLE_ENFORCE_NE(
-        url,
-        "",
-        phi::errors::InvalidArgument("Rpc call op failed: unknown service."));
+    auto InputTensor2String = [&](const std::string& name) {
+      auto* tensor = ctx.Input<phi::DenseTensor>(name);
+      return std::string(reinterpret_cast<const char*>(tensor->data()));
+    };
 
-    brpc::Channel channel;
-    brpc::ChannelOptions options;
-    options.protocol = "http";
-    options.timeout_ms = 10000 /*ms*/;
-    options.max_retry = 3;
-    PADDLE_ENFORCE_EQ(channel.Init(url.c_str(), /*load_balancer*/ "", &options),
-                      0,
-                      phi::errors::Unavailable(
-                          "Rpc call op failed: init brpc channel error."));
+    const std::string service = InputTensor2String("service");
+    const std::string url = InputTensor2String("url");
+    const std::string query = InputTensor2String("X");
 
-    int request_id = platform::RpcRequestStore::Instance().GetRequestId();
-    platform::RpcRequestStore::Instance().InsertService(request_id, service);
+    const std::string payload = BuildTestServicePayload(query);
+    int request_id = platform::RpcSend(
+        service, url, payload, &HandleServiceRequest, &HandleServiceResponse);
+
     VLOG(3) << "Request id " << request_id << " service: " << service;
     VLOG(3) << "Request id " << request_id << " url: " << url;
-
-    auto* query_tensor = ctx.Input<phi::DenseTensor>("X");
-    const std::string query(
-        reinterpret_cast<const char*>(query_tensor->data()));
     VLOG(3) << "Request id " << request_id << " query: " << query;
-
-    // if req is async, controller should be on heap to avoid deleting
-    auto* ctrl = new brpc::Controller();
-    ctrl->http_request().uri() = url.c_str();
-    ctrl->http_request().set_method(brpc::HTTP_METHOD_POST);
-    ctrl->http_request().SetHeader("Content-Type", "application/json");
-    if (service == "test") {
-      json req_payload = {{"data", {query}}};  // => {"data": [query]}
-      ctrl->request_attachment().append(req_payload.dump());
-      VLOG(3) << "Request id " << request_id << " payload: " << req_payload;
-    }
-
-    auto event = std::make_shared<platform::Semaphore>();
-    platform::RpcRequestStore::Instance().InsertEvent(request_id, event);
-    channel.CallMethod(nullptr,
-                       ctrl,
-                       nullptr,
-                       nullptr,
-                       brpc::NewCallback(&ResHandler, ctrl, request_id, event));
 
     auto* out = ctx.Output<phi::DenseTensor>("Out");
     std::vector<int> request_id_wrapper{request_id};

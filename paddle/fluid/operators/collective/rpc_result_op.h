@@ -20,7 +20,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/collective/thirdparty/json.h"
-#include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/fluid/platform/rpc_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -34,9 +34,12 @@ class RpcResultOpKernel : public framework::OpKernel<T> {
     auto* request_id_tensor = ctx.Input<phi::DenseTensor>("X");
     int request_id = request_id_tensor->data<int>()[0];
 
-    // wait for request event
+    // wait for call op's event notification
     auto event = platform::RpcRequestStore::Instance().GetEvent(request_id);
-    event->Wait();
+    if (event->wait() != 0) {
+      PADDLE_THROW(platform::errors::Unavailable("Rpc recv failed."));
+    }
+
     const std::string& resp =
         platform::RpcRequestStore::Instance().GetResponse(request_id);
     VLOG(3) << "Request id " << request_id << " raw response: " << resp;

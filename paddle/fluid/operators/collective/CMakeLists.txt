@@ -35,8 +35,10 @@ register_operators(
   DEPS
   ${COLLECTIVE_DEPS})
 
-op_library(rpc_call_op DEPS ${COLLECTIVE_DEPS} collective_helper ${BRPC_DEPS})
-op_library(rpc_result_op DEPS ${COLLECTIVE_DEPS} collective_helper ${BRPC_DEPS})
+if(WITH_DISTRIBUTE)
+  op_library(rpc_call_op DEPS rpc_utils ${COLLECTIVE_DEPS})
+  op_library(rpc_result_op DEPS rpc_utils ${COLLECTIVE_DEPS})
+endif()
 
 if(WITH_NCCL OR WITH_RCCL)
   set(COLLECTIVE_DEPS ${COLLECTIVE_DEPS} nccl_common collective_helper)
