@@ -87,8 +87,8 @@ class TestPrimForward(unittest.TestCase):
         if not use_prim:
             return
         fwd_ops = [op.type for op in net.forward.main_program.block(0).ops]
-        # Ensure that softmax is splitted into small ops
-        self.assertTrue('softmax' not in fwd_ops)
+        # Ensure that gelu is splitted into small ops
+        self.assertTrue('gelu' not in fwd_ops)
 
     def test_cinn_prim_forward(self):
         dy_res = self.train(use_prim=False)
@@ -142,8 +142,8 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         if not use_prim:
             return
         fwd_ops = [op.type for op in net.forward.main_program.block(0).ops]
-        # Ensure that softmax is splitted into small ops
-        self.assertTrue('softmax' not in fwd_ops)
+        # Ensure that gelu is splitted into small ops
+        self.assertTrue('gelu' not in fwd_ops)
 
     def test_cinn_prim(self):
         plat = platform.system()
