@@ -130,7 +130,7 @@ cc_test(
 cc_library(
   tensor
   SRCS tensor_util.cc
-  DEPS place memory data_type device_context dense_tensor phi_api_utils)
+  DEPS place memory data_type device_context dense_tensor)
 
 cc_test(
   tensor_test
@@ -689,6 +689,16 @@ cc_library(
   variable_helper
   SRCS variable_helper.cc
   DEPS lod_tensor)
+cc_library(
+  variable_utils
+  SRCS variable_utils.cc
+  DEPS dense_tensor
+       scalar
+       int_array
+       tensor
+       place
+       convert_utils
+       var_type_traits)
 
 if(TENSORRT_FOUND)
   cc_library(
@@ -771,7 +781,7 @@ if(WITH_DISTRIBUTE)
            ps_gpu_wrapper
            box_wrapper
            metrics
-           lodtensor_printer
+           lodtiprinter
            lod_rank_table
            feed_fetch_method
            collective_helper

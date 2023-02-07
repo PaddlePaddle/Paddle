@@ -14,11 +14,6 @@ limitations under the License. */
 
 #include "paddle/phi/api/lib/utils/tensor_utils.h"
 
-#include <utility>
-#include <vector>
-
-#include "paddle/phi/core/tensor_utils.h"
-
 namespace paddle {
 namespace experimental {
 
@@ -35,8 +30,6 @@ std::unique_ptr<phi::DenseTensor> MakePhiDenseTensor(
     const phi::DenseTensor& src) {
   return std::make_unique<phi::DenseTensor>(src);
 }
-
-phi::IntArray MakePhiIntArray(const phi::DenseTensor& src) { return {src}; }
 
 }  // namespace experimental
 }  // namespace paddle

@@ -16,20 +16,13 @@ limitations under the License. */
 
 #include <memory>
 
-#include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/common/int_array.h"
-#include "paddle/phi/common/scalar.h"
-#include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/kernel_factory.h"
 
 namespace paddle {
 namespace experimental {
 
 std::unique_ptr<phi::DenseTensor> MakePhiDenseTensor(
     const phi::DenseTensor& src);
-
-phi::IntArray MakePhiIntArray(const phi::DenseTensor& src);
 
 }  // namespace experimental
 }  // namespace paddle
