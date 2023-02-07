@@ -54,6 +54,7 @@ void UniqueConsecutiveKernel(const Context& dev_ctx,
   } else {
     // 'axis' is required.
     int valid_axis = axis[0];
+    if (valid_axis < 0) valid_axis += x.dims().size();
     phi::VisitDataTypeTiny(
         data_type,
         UniqueConsecutiveDimsCUDAFunctor<Context, T>(dev_ctx,

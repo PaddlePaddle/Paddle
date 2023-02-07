@@ -59,9 +59,6 @@ void SetOp(ProgramDesc* prog,
       op->SetAttr("fuse_residual_connection", false);
     }
     op->SetOutput("Output", {outputs[0]});
-    op->SetAttr("Scale_in", 1.0f);
-    op->SetAttr("Scale_out", 1.0f);
-    op->SetAttr("Scale_weights", std::vector<float>{1.0f});
   } else if (type == "pool2d" || type == "transpose2" || type == "reshape2" ||
              type == "nearest_interp" || type == "nearest_interp_v2") {
     op->SetInput("X", {inputs[0]});

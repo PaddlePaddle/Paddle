@@ -25,6 +25,7 @@ from paddle.common_ops_import import VarDesc, dygraph_only, dygraph_utils
 # TODO: define math functions
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
+from ..common_ops_import import Variable
 from ..fluid.data_feeder import (
     check_dtype,
     check_type,
@@ -38,7 +39,6 @@ from ..framework import (
     core,
     in_dygraph_mode,
 )
-from ..static import Variable
 from .creation import _complex_to_real_dtype
 from .layer_function_generator import generate_layer_fn, templatedoc
 from .manipulation import cast
@@ -480,31 +480,6 @@ OP_NAMEMAPPING = {
 }
 
 
-@dygraph_only
-def _elementwise_op_in_dygraph(
-    x, y, axis=-1, act=None, use_mkldnn=False, op_name=None
-):
-    def is_inplace(op_name):
-        return op_name[-1] == "_"
-
-    if op_name not in OP_NAMEMAPPING.keys() or axis != -1:
-        op = getattr(_legacy_C_ops, op_name)
-        out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
-    else:
-        if in_dygraph_mode():
-            op = getattr(
-                _C_ops,
-                OP_NAMEMAPPING[op_name] if not is_inplace(op_name) else op_name,
-            )
-            out = op(x, y)
-    if act is None:
-        return out
-    else:
-        return dygraph_utils._append_activation_in_dygraph(
-            out, act, use_mkldnn=use_mkldnn
-        )
-
-
 def _elementwise_op(helper):
     op_type = helper.layer_type
     original_op_type = helper.kwargs.get('original_op_type', op_type)
@@ -616,8 +591,6 @@ def add_(x, y, name=None):
     Inplace version of ``add`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_tensor_add`.
     """
-    op_type = 'elementwise_add_'
-    axis = -1
 
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
@@ -627,11 +600,7 @@ def add_(x, y, name=None):
             )
         )
 
-    if in_dygraph_mode():
-        return _C_ops.add_(x, y)
-    else:
-        out = _elementwise_op_in_dygraph(x, y, axis=axis, op_name=op_type)
-        return out
+    return _C_ops.add_(x, y)
 
 
 def subtract(x, y, name=None):
@@ -690,13 +659,10 @@ def subtract(x, y, name=None):
             # Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
             #        [ 4.  ,  inf., -inf.])
     """
-    op_type = 'elementwise_sub'
-    axis = -1
-    act = None
     if in_dygraph_mode():
         return _C_ops.subtract(x, y)
     else:
-        return _elementwise_op(LayerHelper(op_type, **locals()))
+        return _elementwise_op(LayerHelper('elementwise_sub', **locals()))
 
 
 @inplace_apis_in_dygraph_only
@@ -705,8 +671,6 @@ def subtract_(x, y, name=None):
     Inplace version of ``subtract`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_tensor_subtract`.
     """
-    axis = -1
-    act = None
 
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
@@ -716,13 +680,7 @@ def subtract_(x, y, name=None):
             )
         )
 
-    if in_dygraph_mode():
-        return _C_ops.subtract_(x, y)
-    else:
-        out = _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name='elementwise_sub_'
-        )
-        return out
+    return _C_ops.subtract_(x, y)
 
 
 def divide(x, y, name=None):
@@ -757,13 +715,10 @@ def divide(x, y, name=None):
             print(z)  # [2., 0.6, 2.]
 
     """
-    op_type = 'elementwise_div'
-    axis = -1
-    act = None
     if in_dygraph_mode():
         return _C_ops.divide(x, y)
     else:
-        return _elementwise_op(LayerHelper(op_type, **locals()))
+        return _elementwise_op(LayerHelper('elementwise_div', **locals()))
 
 
 def floor_divide(x, y, name=None):
@@ -800,12 +755,10 @@ def floor_divide(x, y, name=None):
             print(z)  # [2, 0, 2, 2]
 
     """
-    op_type = 'elementwise_floordiv'
-    axis = -1
     if in_dygraph_mode():
         return _C_ops.floor_divide(x, y)
     else:
-        return _elementwise_op(LayerHelper(op_type, **locals()))
+        return _elementwise_op(LayerHelper('elementwise_floordiv', **locals()))
 
 
 def remainder(x, y, name=None):
@@ -841,13 +794,10 @@ def remainder(x, y, name=None):
             print(z)  # [0, 3, 2, 1]
 
     """
-    op_type = 'elementwise_mod'
-    axis = -1
-
     if in_dygraph_mode():
         return _C_ops.remainder(x, y)
     else:
-        return _elementwise_op(LayerHelper(op_type, **locals()))
+        return _elementwise_op(LayerHelper('elementwise_mod', **locals()))
 
 
 @inplace_apis_in_dygraph_only
@@ -856,9 +806,6 @@ def remainder_(x, y, name=None):
     Inplace version of ``remainder`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_tensor_remainder`.
     """
-    op_type = 'elementwise_mod_'
-    axis = -1
-
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
         raise ValueError(
@@ -866,8 +813,7 @@ def remainder_(x, y, name=None):
                 out_shape, x.shape
             )
         )
-
-    return _elementwise_op_in_dygraph(x, y, axis=axis, op_name=op_type)
+    return _C_ops.remainder_(x, y)
 
 
 mod = remainder  # noqa: F841
@@ -911,10 +857,6 @@ def multiply(x, y, name=None):
             print(res) # [[[2, 4, 6], [2, 4, 6]]]
 
     """
-    op_type = 'elementwise_mul'
-    act = None
-    axis = -1
-
     if in_dygraph_mode():
         return _C_ops.multiply(x, y)
     else:
@@ -924,7 +866,7 @@ def multiply(x, y, name=None):
                 % (x.dtype, y.dtype)
             )
 
-        return _elementwise_op(LayerHelper(op_type, **locals()))
+        return _elementwise_op(LayerHelper('elementwise_mul', **locals()))
 
 
 @dygraph_only
@@ -958,7 +900,6 @@ def _add_with_axis(x, y, axis=-1, name=None):
         return _elementwise_op_with_axis_in_dygraph(x, y, axis, name, "add")
     else:
         op_type = 'elementwise_add'
-        act = None
         return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
@@ -970,7 +911,6 @@ def _subtract_with_axis(x, y, axis=-1, name=None):
         )
     else:
         op_type = 'elementwise_sub'
-        act = None
         return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
@@ -982,7 +922,6 @@ def _multiply_with_axis(x, y, axis=-1, name=None):
         )
     else:
         op_type = 'elementwise_mul'
-        act = None
         return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
@@ -992,7 +931,6 @@ def _divide_with_axis(x, y, axis=-1, name=None):
         return _elementwise_op_with_axis_in_dygraph(x, y, axis, name, "divide")
     else:
         op_type = 'elementwise_div'
-        act = None
         return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
@@ -1052,13 +990,10 @@ def maximum(x, y, name=None):
             # Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             #        [5.  , 3.  , inf.])
     """
-    op_type = 'elementwise_max'
-    axis = -1
-    act = None
     if in_dygraph_mode():
         return _C_ops.maximum(x, y)
     else:
-        return _elementwise_op(LayerHelper(op_type, **locals()))
+        return _elementwise_op(LayerHelper('elementwise_max', **locals()))
 
 
 def minimum(x, y, name=None):
@@ -1117,13 +1052,10 @@ def minimum(x, y, name=None):
             # Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
             #        [ 1.  , -inf.,  5.  ])
     """
-    op_type = 'elementwise_min'
-    axis = -1
-    act = None
     if in_dygraph_mode():
         return _C_ops.minimum(x, y)
     else:
-        return _elementwise_op(LayerHelper(op_type, **locals()))
+        return _elementwise_op(LayerHelper('elementwise_min', **locals()))
 
 
 def fmax(x, y, name=None):
@@ -1184,13 +1116,10 @@ def fmax(x, y, name=None):
             # Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             #        [5.  , 3.  , inf.])
     """
-    op_type = 'elementwise_fmax'
-    axis = -1
-    act = None
     if in_dygraph_mode():
         return _C_ops.fmax(x, y)
     else:
-        return _elementwise_op(LayerHelper(op_type, **locals()))
+        return _elementwise_op(LayerHelper('elementwise_fmax', **locals()))
 
 
 def fmin(x, y, name=None):
@@ -1251,13 +1180,10 @@ def fmin(x, y, name=None):
             # Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
             #        [ 1.  , -inf.,  5.  ])
     """
-    op_type = 'elementwise_fmin'
-    axis = -1
-    act = None
     if in_dygraph_mode():
         return _C_ops.fmin(x, y)
     else:
-        return _elementwise_op(LayerHelper(op_type, **locals()))
+        return _elementwise_op(LayerHelper('elementwise_fmin', **locals()))
 
 
 def sum(x, axis=None, dtype=None, keepdim=False, name=None):
@@ -4888,9 +4814,6 @@ def frac(x, name=None):
             #        [[ 0.22000003, -0.02999997],
             #         [-0.54999995,  0.66000003]])
     """
-    op_type = 'elementwise_sub'
-    axis = -1
-    act = None
     if x.dtype not in [
         paddle.int32,
         paddle.int64,
@@ -4917,7 +4840,7 @@ def frac(x, name=None):
         helper.append_op(
             type="trunc", inputs=inputs, attrs=attrs, outputs={"Out": y}
         )
-        return _elementwise_op(LayerHelper(op_type, **locals()))
+        return _elementwise_op(LayerHelper('elementwise_sub', **locals()))
 
 
 def sgn(x, name=None):

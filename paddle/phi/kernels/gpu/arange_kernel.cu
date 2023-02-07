@@ -23,19 +23,6 @@
 
 namespace phi {
 
-template <typename T, typename Context>
-inline T GetValue(const Context& dev_ctx, const DenseTensor& x) {
-  T value = static_cast<T>(0);
-  if (x.place() != CPUPlace()) {
-    DenseTensor cpu_x;
-    Copy(dev_ctx, x, CPUPlace(), true, &cpu_x);
-    value = cpu_x.data<T>()[0];
-  } else {
-    value = x.data<T>()[0];
-  }
-  return value;
-}
-
 template <typename T>
 __global__ void Range(T start, T step, int64_t size, T* out) {
   CUDA_KERNEL_LOOP(index, size) { out[index] = start + step * index; }

@@ -21,6 +21,9 @@ limitations under the License. */
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 namespace paddle {
 namespace distributed {
@@ -37,8 +40,8 @@ TEST(ComputeInterceptor, Compute) {
   // NOTE: don't delete, otherwise interceptor will use undefined node
   TaskNode* source =
       new TaskNode(0, SOURCE_ID, 3);  // rank, task_id, max_run_times
-  TaskNode* node_a = new TaskNode(0, 0, 0, 3, 0);
-  TaskNode* node_b = new TaskNode(0, 0, 1, 3, 0);
+  TaskNode* node_a = new TaskNode(0, 0, 0, 3);
+  TaskNode* node_b = new TaskNode(0, 0, 1, 3);
   TaskNode* sink = new TaskNode(0, SINK_ID, 3);
 
   // source->a->b->sink

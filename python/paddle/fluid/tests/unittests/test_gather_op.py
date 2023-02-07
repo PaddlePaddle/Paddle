@@ -225,8 +225,10 @@ class TestGatherOp4(TestGatherOp1):
 class API_TestGather(unittest.TestCase):
     def test_out1(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data1 = fluid.layers.data('data1', shape=[-1, 2], dtype='float64')
-            index = fluid.layers.data('index', shape=[-1, 1], dtype='int32')
+            data1 = paddle.static.data('data1', shape=[-1, 2], dtype='float64')
+            data1.desc.set_need_check_feed(False)
+            index = paddle.static.data('index', shape=[-1, 1], dtype='int32')
+            index.desc.set_need_check_feed(False)
             out = paddle.gather(data1, index)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)

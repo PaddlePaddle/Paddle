@@ -43,9 +43,11 @@ class TestCollectiveBroadcast(TestCollectiveRunnerBase):
         ring_id = 0
         rootid = 1
         with fluid.program_guard(main_prog, startup_program):
-            tindata = layers.data(
-                name="tindata", shape=[10, 1000], dtype='float32'
+            tindata = paddle.static.data(
+                name="tindata", shape=[-1, 10, 1000], dtype='float32'
             )
+            tindata.desc.set_need_check_feed(False)
+            
             toutdata = main_prog.current_block().create_var(
                 name="outofbroadcast",
                 dtype='float32',

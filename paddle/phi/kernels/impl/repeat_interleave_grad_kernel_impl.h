@@ -205,7 +205,7 @@ void RepeatInterleaveGradKernel(const Context& ctx,
     std::fill_n(index_vec.begin() + i * repeats, repeats, i);
   }
   index.Resize(phi::make_ddim({index_size}));
-  paddle::framework::TensorFromVector<int>(index_vec, ctx, &index);
+  phi::TensorFromVector<int>(index_vec, ctx, &index);
 
   const int* index_data = index.data<int>();
   int64_t index_nums = index.numel();

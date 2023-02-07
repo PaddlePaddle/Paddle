@@ -142,6 +142,26 @@ void KLDivInferMeta(const MetaTensor& x,
 }
 
 void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      y_dims.size(),
+      phi::errors::InvalidArgument("The rank (%d) of X shall be same as "
+                                   "rank (%d) of Y.",
+                                   x_dims.size(),
+                                   y_dims.size()));
+
+  if (x_dims.size() > 0)
+    PADDLE_ENFORCE_LE(x_dims[0],
+                      y_dims[0],
+                      phi::errors::InvalidArgument(
+                          "The count (%d) of elements of X shall not "
+                          "greater than count (%d) of elements of Y.",
+                          x_dims[0],
+                          y_dims[0]));
+
   out->share_meta(x);
   if (x.dtype() == DataType::INT32 || x.dtype() == DataType::INT64 ||
       y.dtype() == DataType::INT32 || y.dtype() == DataType::INT64) {
@@ -446,6 +466,13 @@ void ConvInferMeta(const MetaTensor& input,
   }
   const bool channel_last = (config.is_run_mkldnn_kernel == false) &&
                             (data_format == "NHWC" || data_format == "NDHWC");
+
+  for (int i = 0; i < 2; ++i) {
+    PADDLE_ENFORCE_NE(in_dims[i],
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The size of Op(Conv) inputs should not be 0."));
+  }
 
   PADDLE_ENFORCE_EQ(
       in_dims.size() == 4 || in_dims.size() == 5,

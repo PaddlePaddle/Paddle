@@ -80,7 +80,11 @@ function install_whl(){
 
 function set_cuda_env(){
   if [[ ${WITH_GPU} == "ON" ]]; then
-      sed -i "s#<setcuda>#ENV LD_LIBRARY_PATH=/usr/local/cuda-${ref_CUDA_MAJOR}/targets/x86_64-linux/lib:\$LD_LIBRARY_PATH #g" Dockerfile.tmp
+      sed -i "s#<setcuda>#ENV LD_LIBRARY_PATH=/usr/local/cuda-${ref_CUDA_MAJOR}/targets/x86_64-linux/lib:\$LD_LIBRARY_PATH \\
+\\
+RUN apt-key del 7fa2af80 \\
+RUN rm /etc/apt/sources.list.d/cuda.list \&\& rm /etc/apt/sources.list.d/nvidia-ml.list \\
+RUN apt-key adv --fetch-keys https://developer.download.nvidia.cn/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub #g" Dockerfile.tmp
   else
       sed -i 's#<setcuda>##g' Dockerfile.tmp
   fi

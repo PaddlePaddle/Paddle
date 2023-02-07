@@ -161,7 +161,7 @@ class QuantInt8MkldnnPass:
         }
 
         conv_op_node = graph.create_op_node(
-            op_type='conv2d',
+            op_type='fused_conv2d',
             attrs=attrs,
             inputs={'Input': input_var_node, 'Filter': weight_var_node},
             outputs={'Output': output_var_node},
