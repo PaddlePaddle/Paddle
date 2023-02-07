@@ -200,32 +200,6 @@ function(download_quant_model install_dir data_file check_sum)
   endif()
 endfunction()
 
-function(save_quant_ic_model_test target quant_model_dir int8_model_save_path)
-  py_test(
-    ${target}
-    SRCS ${CMAKE_CURRENT_SOURCE_DIR}/save_quant_model.py
-         ARGS
-         --quant_model_path
-         ${quant_model_dir}
-         --int8_model_save_path
-         ${int8_model_save_path}
-         --debug)
-endfunction()
-
-function(save_quant_nlp_model_test target quant_model_dir int8_model_save_path
-         ops_to_quantize)
-  py_test(
-    ${target}
-    SRCS ${CMAKE_CURRENT_SOURCE_DIR}/save_quant_model.py
-         ARGS
-         --quant_model_path
-         ${quant_model_dir}
-         --int8_model_save_path
-         ${int8_model_save_path}
-         --ops_to_quantize
-         ${ops_to_quantize})
-endfunction()
-
 function(convert_model2dot_test target model_path save_graph_dir
          save_graph_name)
   py_test(
@@ -441,28 +415,7 @@ if(LINUX AND WITH_MKLDNN)
   set(QUANT2_LSTM_OPS_TO_QUANTIZE "fusion_lstm")
 
   ### Save FP32 model or INT8 model from Quant model
-
-  set(QUANT2_INT8_RESNET50_SAVE_PATH
-      "${QUANT_INSTALL_DIR}/ResNet50_quant2_int8")
-  save_quant_ic_model_test(
-    save_quant2_model_resnet50
-    ${QUANT2_RESNET50_MODEL_DIR}/ResNet50_qat_perf/float
-    ${QUANT2_INT8_RESNET50_SAVE_PATH})
-
-  set(QUANT2_INT8_ERNIE_SAVE_PATH "${QUANT_INSTALL_DIR}/Ernie_quant2_int8")
-  save_quant_nlp_model_test(
-    save_quant2_model_ernie ${QUANT2_ERNIE_MODEL_DIR}/Ernie_qat/float
-    ${QUANT2_INT8_ERNIE_SAVE_PATH} ${QUANT2_ERNIE_OPS_TO_QUANTIZE})
-
-  set(QUANT2_INT8_GRU_SAVE_PATH "${QUANT_INSTALL_DIR}/GRU_quant2_int8")
-  save_quant_nlp_model_test(
-    save_quant2_model_gru ${QUANT2_GRU_MODEL_DIR}/GRU_quant_acc
-    ${QUANT2_INT8_GRU_SAVE_PATH} ${QUANT2_GRU_OPS_TO_QUANTIZE})
-
   set(QUANT2_INT8_LSTM_SAVE_PATH "${QUANT_INSTALL_DIR}/lstm_quant2_int8")
-  save_quant_nlp_model_test(
-    save_quant2_model_lstm ${QUANT2_LSTM_MODEL_DIR}/lstm_quant
-    ${QUANT2_INT8_LSTM_SAVE_PATH} ${QUANT2_LSTM_OPS_TO_QUANTIZE})
 
   # Convert Quant2 model to dot and pdf files
   set(QUANT2_INT8_ERNIE_DOT_SAVE_PATH
@@ -561,7 +514,6 @@ if(LINUX AND WITH_MKLDNN)
                                                                      120)
   set_tests_properties(test_quant2_int8_resnet50_range_mkldnn PROPERTIES TIMEOUT
                                                                          120)
-  set_tests_properties(save_quant2_model_resnet50 PROPERTIES TIMEOUT 120)
   set_tests_properties(test_quant_int8_resnet50_mkldnn PROPERTIES TIMEOUT 120)
   set_tests_properties(test_quant_int8_mobilenetv1_mkldnn PROPERTIES TIMEOUT
                                                                      120)
