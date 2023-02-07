@@ -166,9 +166,7 @@ void LaunchMultiHeadAttentionKernel(LaunchParams params,
   }
 
   if (!Attention::check_supported(p)) {
-    PADDLE_ENFORCE_EQ(
-        true,
-        false,
+    PADDLE_THROW(
         phi::errors::Unimplemented("The Params is not supported by cutlass "
                                    "fused multihead attention. "));
     return;
