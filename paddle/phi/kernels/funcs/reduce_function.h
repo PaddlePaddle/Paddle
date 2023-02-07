@@ -477,7 +477,7 @@ struct ReduceConfig {
     int device_id = paddle::platform::GetCurrentDeviceId();
     int max_mp = paddle::platform::GetGPUMultiProcessors(device_id);
     int max_threads_per_mp =
-        paddle::platform::GetGPUMaxThreadsPerMultiProcessor(device_id);
+        paddle::platform::GetGPUMaxThreadsPerMultiProcessor(device_id) * 3 / 4;
     int max_threads = max_threads_per_mp * max_mp;
     int num_threads = block_dim->x * block_dim->y;
     int max_num_blocks = max_threads / num_threads;
@@ -1050,6 +1050,7 @@ static void LaunchReduceKernel(const Tx* x_data,
       }
 
       int reduce_num_stage1 = config.grid.y * config.block.y;
+      int reduce_num_per_thread_stage1  = details::CeilingDiv(reduce_num_stage1, block.x);
 
       kps::DimConfig dimStage2 =
         kps::DimConfig(grid.x, grid.y, grid.z, block.x, reduce_num_stage1, 0);
@@ -1065,7 +1066,7 @@ static void LaunchReduceKernel(const Tx* x_data,
           init,
           reduce_num_stage1,
           1.f / config.reduce_num,
-          reduce_num_stage1 / block.x,
+          reduce_num_per_thread_stage1,
           config.left_num,
           config.reduce_last_dim,
           reduce_index_calculator,
