@@ -226,16 +226,8 @@ template PADDLE_API bool *Tensor::mutable_data<bool>(const Place &place);
 template PADDLE_API int8_t *Tensor::mutable_data<int8_t>(const Place &place);
 template PADDLE_API uint8_t *Tensor::mutable_data<uint8_t>(const Place &place);
 template PADDLE_API int16_t *Tensor::mutable_data<int16_t>(const Place &place);
-template PADDLE_API uint16_t *Tensor::mutable_data<uint16_t>(
-    const Place &place);
 template PADDLE_API int32_t *Tensor::mutable_data<int32_t>(const Place &place);
-template PADDLE_API uint32_t *Tensor::mutable_data<uint32_t>(
-    const Place &place);
 template PADDLE_API int64_t *Tensor::mutable_data<int64_t>(const Place &place);
-template PADDLE_API uint64_t *Tensor::mutable_data<uint64_t>(
-    const Place &place);
-template PADDLE_API phi::dtype::bfloat16 *
-Tensor::mutable_data<phi::dtype::bfloat16>(const Place &place);
 template PADDLE_API phi::dtype::float16 *
 Tensor::mutable_data<phi::dtype::float16>(const Place &place);
 template PADDLE_API float *Tensor::mutable_data<float>(const Place &place);
