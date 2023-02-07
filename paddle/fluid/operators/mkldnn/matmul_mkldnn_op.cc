@@ -476,9 +476,6 @@ class MatMulV1GradOneDNNKernel : public paddle::framework::OpKernel<T> {
               ctx.Attr<int>("head_number")));
     }
 
-    const auto &dev_ctx = ctx.template device_context<OneDNNContext>();
-    const auto &onednn_engine = dev_ctx.GetEngine();
-
     auto x = *ctx.Input<phi::DenseTensor>("X");
     auto y = *ctx.Input<phi::DenseTensor>("Y");
     auto dout = *ctx.Input<phi::DenseTensor>(GradVarName("Out"));
@@ -511,57 +508,17 @@ class MatMulV1GradOneDNNKernel : public paddle::framework::OpKernel<T> {
     }
 
     if (transpose_x && transpose_y) {
-      this->ExecuteMatMulGrad(
-          ctx, dev_ctx, onednn_engine, &y, true, true, &dout, true, false, dx);
-      this->ExecuteMatMulGrad(
-          ctx, dev_ctx, onednn_engine, &dout, true, true, &x, true, false, dy);
+      this->ExecuteMatMulV1Grad(ctx, &y, true, true, &dout, true, false, dx);
+      this->ExecuteMatMulV1Grad(ctx, &dout, true, true, &x, true, false, dy);
     } else if (transpose_x) {
-      this->ExecuteMatMulGrad(ctx,
-                              dev_ctx,
-                              onednn_engine,
-                              &y,
-                              false,
-                              false,
-                              &dout,
-                              true,
-                              false,
-                              dx);
-      this->ExecuteMatMulGrad(ctx,
-                              dev_ctx,
-                              onednn_engine,
-                              &x,
-                              false,
-                              false,
-                              &dout,
-                              false,
-                              true,
-                              dy);
+      this->ExecuteMatMulV1Grad(ctx, &y, false, false, &dout, true, false, dx);
+      this->ExecuteMatMulV1Grad(ctx, &x, false, false, &dout, false, true, dy);
     } else if (transpose_y) {
-      this->ExecuteMatMulGrad(ctx,
-                              dev_ctx,
-                              onednn_engine,
-                              &dout,
-                              false,
-                              false,
-                              &y,
-                              false,
-                              true,
-                              dx);
-      this->ExecuteMatMulGrad(
-          ctx, dev_ctx, onednn_engine, &dout, true, true, &x, false, true, dy);
+      this->ExecuteMatMulV1Grad(ctx, &dout, false, false, &y, false, true, dx);
+      this->ExecuteMatMulV1Grad(ctx, &dout, true, true, &x, false, true, dy);
     } else {
-      this->ExecuteMatMulGrad(ctx,
-                              dev_ctx,
-                              onednn_engine,
-                              &dout,
-                              false,
-                              false,
-                              &y,
-                              true,
-                              false,
-                              dx);
-      this->ExecuteMatMulGrad(
-          ctx, dev_ctx, onednn_engine, &x, true, true, &dout, false, true, dy);
+      this->ExecuteMatMulV1Grad(ctx, &dout, false, false, &y, true, false, dx);
+      this->ExecuteMatMulV1Grad(ctx, &x, true, true, &dout, false, true, dy);
     }
 
     if (dx) {
@@ -579,16 +536,15 @@ class MatMulV1GradOneDNNKernel : public paddle::framework::OpKernel<T> {
   }
 
  private:
-  void ExecuteMatMulGrad(const ExecutionContext &ctx,
-                         const OneDNNContext &dev_ctx,
-                         const dnnl::engine &engine,
-                         phi::DenseTensor *x,
-                         bool trans_x,
-                         bool is_fold_init_dims_x,
-                         phi::DenseTensor *y,
-                         bool trans_y,
-                         bool is_fold_init_dims_y,
-                         phi::DenseTensor *out) const {
+  void ExecuteMatMulV1Grad(const ExecutionContext &ctx,
+                           phi::DenseTensor *x,
+                           bool trans_x,
+                           bool is_fold_init_dims_x,
+                           phi::DenseTensor *y,
+                           bool trans_y,
+                           bool is_fold_init_dims_y,
+                           phi::DenseTensor *out) const {
+    const auto &dev_ctx = ctx.template device_context<OneDNNContext>();
     // gradient is calculated in a different way when broadcasting is used
     bool need_combine = (x->dims().size() == 3 || y->dims().size() == 3) &&
                         out->dims().size() == 2;
@@ -604,8 +560,8 @@ class MatMulV1GradOneDNNKernel : public paddle::framework::OpKernel<T> {
       y_combined = *y;
     }
 
-    MatMulV1OneDNNHandler<T, T, T> handler(engine,
-                                           ctx.GetPlace(),
+    MatMulV1OneDNNHandler<T, T, T> handler(dev_ctx.GetEngine(),
+                                           dev_ctx.GetPlace(),
                                            x_combined.dims(),
                                            trans_x,
                                            y_combined.dims(),
