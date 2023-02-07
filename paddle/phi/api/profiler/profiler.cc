@@ -96,7 +96,7 @@ RecordEvent::RecordEvent(const char *name,
                          const EventRole role) {
 #ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
-  if (g_enable_nvprof_hook) {
+  if (ProfilerHelper::g_enable_nvprof_hook) {
     dynload::nvtxRangePushA(name);
     is_pushed_ = true;
   }
@@ -130,7 +130,7 @@ RecordEvent::RecordEvent(const std::string &name,
                          const EventRole role) {
 #ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
-  if (g_enable_nvprof_hook) {
+  if (ProfilerHelper::g_enable_nvprof_hook) {
     dynload::nvtxRangePushA(name.c_str());
     is_pushed_ = true;
   }
@@ -163,7 +163,7 @@ RecordEvent::RecordEvent(const std::string &name,
                          const EventRole role) {
 #ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
-  if (g_enable_nvprof_hook) {
+  if (ProfilerHelper::g_enable_nvprof_hook) {
     dynload::nvtxRangePushA(name.c_str());
     is_pushed_ = true;
   }
@@ -212,7 +212,7 @@ void RecordEvent::OriginalConstruct(const std::string &name,
 void RecordEvent::End() {
 #ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
-  if (g_enable_nvprof_hook && is_pushed_) {
+  if (ProfilerHelper::g_enable_nvprof_hook && is_pushed_) {
     dynload::nvtxRangePop();
     is_pushed_ = false;
   }
