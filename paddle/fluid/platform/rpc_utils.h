@@ -44,6 +44,7 @@ class RpcVocabulary {
     while (vocab_file >> word >> id) {
       vocab_.emplace(id, word);
     }
+    path_ = path;
   }
 
   bool Contains(int id) { return vocab_.count(id) > 0; }
