@@ -37,29 +37,31 @@ class RpcResultOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* request_id_tensor = ctx.Input<phi::DenseTensor>("X");
-    int request_id = request_id_tensor->data<int>()[0];
+    std::vector<int> request_id_tensor_vec;
+    framework::TensorToVector(
+        *request_id_tensor, ctx.device_context(), &request_id_tensor_vec);
+    int request_id = request_id_tensor_vec[0];
 
     // wait for call op's event notification
     auto& rpc_store = platform::RpcRequestStore::Instance();
     auto event = rpc_store.GetEvent(request_id);
-    if (event->wait() != 0) {
-      PADDLE_THROW(platform::errors::Fatal("Something wrong with event."));
-    }
 
-    bool succeed = rpc_store.GetStatus(request_id);
-    if (succeed) {
+    bool ok = event->wait() == 0 && rpc_store.GetErrorCode(request_id) == 0;
+    if (ok) {
       const std::string& resp = rpc_store.GetResponse(request_id);
       VLOG(3) << "Request id " << request_id << " raw response: " << resp;
 
       // only support score service now
       auto* out = ctx.Output<phi::DenseTensor>("Out");
+      ctx.device_context().Alloc<float>(out);
       auto scores = ParseScoreServiceResponse(resp);
       framework::TensorFromVector(scores, out);
     }
 
-    auto* status = ctx.Output<phi::DenseTensor>("status");
-    std::vector<bool> status_wrapper{succeed};
-    framework::TensorFromVector(status_wrapper, status);
+    auto* succeed = ctx.Output<phi::DenseTensor>("succeed");
+    ctx.device_context().Alloc<bool>(succeed);
+    std::vector<bool> succeed_wrapper{ok};
+    framework::TensorFromVector(succeed_wrapper, succeed);
   }
 };
 

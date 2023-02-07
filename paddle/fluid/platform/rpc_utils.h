@@ -18,6 +18,7 @@
 #include <bthread/countdown_event.h>
 
 #include <condition_variable>
+#include <fstream>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -25,6 +26,35 @@
 
 namespace paddle {
 namespace platform {
+
+class RpcVocabulary {
+ public:
+  static RpcVocabulary& Instance() {
+    static RpcVocabulary instance;
+    return instance;
+  }
+
+  void Init(const std::string& path) {
+    if (path_ == path) {
+      return;
+    }
+    std::ifstream vocab_file(path);
+    std::string word;
+    int id;
+    while (vocab_file >> word >> id) {
+      vocab_.emplace(id, word);
+    }
+  }
+
+  bool Contains(int id) { return vocab_.count(id) > 0; }
+
+  // NOTE: an exception will be raised if id not exist
+  std::string Get(int id) { return vocab_.at(id); }
+
+ private:
+  std::string path_;
+  std::unordered_map<int, std::string> vocab_;
+};
 
 class RpcRequestStore {
  public:
@@ -47,7 +77,7 @@ class RpcRequestStore {
     return id_to_event_map_[request_id];
   }
 
-  bool GetStatus(int request_id) { return id_to_status_map_[request_id]; }
+  bool GetErrorCode(int request_id) { return id_to_err_map_[request_id]; }
 
   std::string GetResponse(int request_id) {
     return id_to_resp_map_[request_id];
@@ -61,11 +91,11 @@ class RpcRequestStore {
     id_to_event_map_.emplace(request_id, event);
   }
 
-  void InsertStatus(int request_id, bool succeed) {
+  void InsertErrorCode(int request_id, int error_code) {
     if (request_id == 0) {
       LOG(WARNING) << "Total num of requests have exceeded int limits.";
     }
-    id_to_status_map_.emplace(request_id, succeed);
+    id_to_err_map_.emplace(request_id, error_code);
   }
 
   void InsertResponse(int request_id, const std::string& resp) {
@@ -80,7 +110,7 @@ class RpcRequestStore {
   int request_id_;
   std::unordered_map<int, std::shared_ptr<bthread::CountdownEvent>>
       id_to_event_map_;
-  std::unordered_map<int, bool> id_to_status_map_;
+  std::unordered_map<int, int> id_to_err_map_;
   std::unordered_map<int, std::string> id_to_resp_map_;
 };
 

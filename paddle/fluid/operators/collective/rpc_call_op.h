@@ -62,11 +62,11 @@ void HandleServiceResponse(brpc::Controller* ctrl,
   std::unique_ptr<brpc::Controller> ctrl_guard(ctrl);
   auto& rpc_store = platform::RpcRequestStore::Instance();
   if (ctrl->Failed()) {
-    LOG(WARNING) << "Request id " << request_id << " failed: access url error.";
-    rpc_store.InsertStatus(request_id, false);
+    VLOG(3) << "Request id " << request_id << " failed: access url error.";
+    rpc_store.InsertErrorCode(request_id, ctrl->ErrorCode());
   } else {
     const std::string res = ctrl->response_attachment().to_string();
-    rpc_store.InsertStatus(request_id, true);
+    rpc_store.InsertErrorCode(request_id, 0);
     rpc_store.InsertResponse(request_id, res);
   }
   // try to notify result op
@@ -91,19 +91,26 @@ class RpcCallOpKernel : public framework::OpKernel<T> {
     // query
     auto src_ids_tensor = ctx.Input<phi::DenseTensor>("X");
     std::vector<int> src_ids_vec;
-    framework::TensorToVector(*src_ids_tensor, &src_ids_vec);
+    framework::TensorToVector(
+        *src_ids_tensor, ctx.device_context(), &src_ids_vec);
 
     auto vocab_path = ctx.Attr<std::string>("vocab_path");
-    auto vocab = GetVocabulary(vocab_path);
+    auto vocab = platform::RpcVocabulary::Instance();
+    vocab.Init(vocab_path);
+
     std::string query;
     for (int src_id : src_ids_vec) {
-      query += vocab[src_id];
+      if (!vocab.Contains(src_id)) {
+        break;
+      }
+      query += vocab.Get(src_id);
     }
 
     // url
     auto url_id_tensor = ctx.Input<phi::DenseTensor>("url_id");
     std::vector<int> url_id_vec;
-    framework::TensorToVector(*url_id_tensor, &url_id_vec);
+    framework::TensorToVector(
+        *url_id_tensor, ctx.device_context(), &url_id_vec);
     int url_id = url_id_vec[0];
 
     auto url_list = ctx.Attr<std::vector<std::string>>("url_list");
@@ -118,8 +125,9 @@ class RpcCallOpKernel : public framework::OpKernel<T> {
     VLOG(3) << "Request id " << request_id << " query: " << query;
 
     auto* out = ctx.Output<phi::DenseTensor>("Out");
+    ctx.device_context().Alloc<int>(out);
     std::vector<int> request_id_wrapper{request_id};
-    framework::TensorFromVector(request_id_wrapper, out);
+    framework::TensorFromVector(request_id_wrapper, ctx.device_context(), out);
   }
 };
 

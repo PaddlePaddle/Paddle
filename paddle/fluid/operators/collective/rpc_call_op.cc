@@ -59,3 +59,7 @@ REGISTER_OP_WITHOUT_GRADIENT(rpc_call, ops::RpcCallOp, ops::RpcCallOpMaker);
 REGISTER_OP_CPU_KERNEL(rpc_call,
                        ops::RpcCallOpKernel<int>,
                        ops::RpcCallOpKernel<int64_t>);
+
+REGISTER_OP_CUDA_KERNEL(rpc_call,
+                        ops::RpcCallOpKernel<int>,
+                        ops::RpcCallOpKernel<int64_t>);

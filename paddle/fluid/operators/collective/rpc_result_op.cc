@@ -38,7 +38,7 @@ class RpcResultOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() {
     AddInput("X", "(Tensor) Request id.");
     AddOutput("Out", "(Tensor) Response from service.");
-    AddOutput("status", "(bool) Request status, true means succeed.");
+    AddOutput("succeed", "(bool) Request status, true means succeed.");
     AddComment(R"DOC(
 Rpc Result Operator
 
@@ -56,3 +56,5 @@ REGISTER_OP_WITHOUT_GRADIENT(rpc_result,
                              ops::RpcResultOpMaker);
 
 REGISTER_OP_CPU_KERNEL(rpc_result, ops::RpcResultOpKernel<int>);
+
+REGISTER_OP_CUDA_KERNEL(rpc_result, ops::RpcResultOpKernel<int>);
