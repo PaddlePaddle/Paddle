@@ -24,7 +24,8 @@ if(WITH_XPU)
          int_array
          var_helper
          profiler
-         place)
+         place
+         variable_utils)
 else()
   cc_library(
     prepared_operator

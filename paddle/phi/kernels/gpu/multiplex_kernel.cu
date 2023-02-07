@@ -14,7 +14,7 @@
 
 #include "paddle/phi/kernels/multiplex_kernel.h"
 
-#include "paddle/phi/api/lib/utils/tensor_utils.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 

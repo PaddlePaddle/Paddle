@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/phi_utils.h"
+#include "paddle/fluid/framework/variable_utils.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"

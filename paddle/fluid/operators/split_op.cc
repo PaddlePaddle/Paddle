@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/variable_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
