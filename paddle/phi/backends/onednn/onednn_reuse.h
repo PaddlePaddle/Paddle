@@ -1211,12 +1211,14 @@ class ReductionOneDNNHandler
     const auto out_md = memory::desc(
         out_tz, OneDNNGetDataType<T>(), dnnl::memory::format_tag::any);
 
-    if (attrs)
-      this->AcquireForwardPrimitiveDescriptor(
-          attrs, algo, x->mem_desc(), out_md, p, eps);
-    else
-      this->AcquireForwardPrimitiveDescriptor(
-          algo, x->mem_desc(), out_md, p, eps);
+    if (attrs) {
+      // TODO(jczaja): use common function if applicable
+      this->fwd_pd_ = std::make_shared<dnnl::reduction::primitive_desc>(
+          engine, algo, x->mem_desc(), x->mem_desc(), p, eps, attrs);
+    } else {
+      this->fwd_pd_ = std::make_shared<dnnl::reduction::primitive_desc>(
+          engine, algo, x->mem_desc(), x->mem_desc(), p, eps);
+    }
   }
 };
 
