@@ -42,7 +42,7 @@ void AdadeltaKernel(const Context& dev_ctx,
   auto eigen_param = EigenVector<T>::Flatten(param);
   auto eigen_grad = EigenVector<T>::Flatten(grad);
   // Squared gradient accumulator
-  auto eigen_avg_squared_grad = EigenVector<T>::Flatten(avg_squared_grad);
+  // auto eigen_avg_squared_grad = EigenVector<T>::Flatten(avg_squared_grad);
   // Squared updates accumulator
   auto eigen_avg_squared_update = EigenVector<T>::Flatten(avg_squared_update);
   auto eigen_param_out = EigenVector<T>::Flatten(*param_out);
@@ -52,12 +52,11 @@ void AdadeltaKernel(const Context& dev_ctx,
       EigenVector<T>::Flatten(*avg_squared_update_out);
   auto& place = *dev_ctx.eigen_device();
 
-  eigen_avg_squared_grad_out.device(place) =
-      rho_ * eigen_avg_squared_grad + (1 - rho_) * eigen_grad.square();
-  auto update = -((eigen_avg_squared_update + epsilon_) /
-                  (eigen_avg_squared_grad_out + epsilon_))
-                     .sqrt() *
-                eigen_grad;
+  eigen_avg_squared_grad_out.device(place) = (1 - rho_) * eigen_grad.square();
+  //    rho_ * eigen_avg_squared_grad + (1 - rho_) * eigen_grad.square();
+  auto update =
+      -(eigen_avg_squared_update + epsilon_ - eigen_avg_squared_update).sqrt() *
+      eigen_grad / (eigen_avg_squared_grad_out + epsilon_).sqrt();
   eigen_avg_squared_update_out.device(place) =
       rho_ * eigen_avg_squared_update + (1 - rho_) * update.square();
   Eigen::DSizes<int, 1> m_dsize(avg_squared_update_out->numel());
