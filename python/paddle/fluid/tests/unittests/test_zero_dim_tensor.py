@@ -193,6 +193,7 @@ reduce_api_list = [
     paddle.all,
     paddle.any,
     paddle.var,
+    paddle.std,
 ]
 
 
