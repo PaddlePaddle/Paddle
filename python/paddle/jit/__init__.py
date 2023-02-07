@@ -17,19 +17,20 @@ from .api import save
 from .api import load
 from .api import to_static
 from .api import not_to_static
-from .dy2static.logging_utils import set_code_level, set_verbosity
+from .api import ignore_module
+from .dy2static.program_translator import enable_to_static
 
-from . import dy2static
-from .dy2static.program_translator import ProgramTranslator
+from .dy2static.logging_utils import set_code_level, set_verbosity
 from .translated_layer import TranslatedLayer
 
 __all__ = [  # noqa
     'save',
     'load',
     'to_static',
-    'ProgramTranslator',
+    'ignore_module',
     'TranslatedLayer',
     'set_code_level',
     'set_verbosity',
     'not_to_static',
+    'enable_to_static',
 ]

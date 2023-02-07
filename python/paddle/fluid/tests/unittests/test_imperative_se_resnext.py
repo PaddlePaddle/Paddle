@@ -444,10 +444,12 @@ class TestImperativeResneXt(unittest.TestCase):
                 drop_last=True,
             )
 
-            img = fluid.layers.data(
-                name='pixel', shape=[3, 224, 224], dtype='float32'
+            img = paddle.static.data(
+                name='pixel', shape=[-1, 3, 224, 224], dtype='float32'
             )
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
             out = se_resnext(img)
             softmax_out = paddle.nn.function.softmax(out)
             loss = paddle.nn.functional.cross_entropy(

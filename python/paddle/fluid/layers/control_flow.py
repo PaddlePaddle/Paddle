@@ -21,9 +21,7 @@ from ..framework import (
     Program,
     Variable,
     Operator,
-    _non_static_mode,
     static_only,
-    _in_legacy_dygraph,
     in_dygraph_mode,
 )
 from ..layer_helper import LayerHelper, unique_name
@@ -355,7 +353,7 @@ class StaticRNN:
                 word = rnn.step_input(x_emb)
                 # create prev memory parameter, batch size comes from word
                 prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
-                hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                hidden = paddle.static.nn.fc(x=[word, prev], size=hidden_size, activation='relu')
                 # use hidden to update prev
                 rnn.update_memory(prev, hidden)
                 # mark hidden as output
@@ -446,7 +444,7 @@ class StaticRNN:
                         word = rnn.step_input(x_emb)
                         # create prev memory parameter, batch size comes from word
                         prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
-                        hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                        hidden = paddle.static.nn.fc(x=[word, prev], size=hidden_size, activation='relu')
                         # use hidden to update prev
                         rnn.update_memory(prev, hidden)
 
@@ -468,14 +466,14 @@ class StaticRNN:
                         is_sparse=False)
                 # transform batch size to dim 1
                 x_emb = paddle.transpose(x_emb, perm=[1, 0, 2])
-                boot_memory = fluid.layers.data(name='boot', shape=[hidden_size], dtype='float32', lod_level=1)
+                boot_memory = paddle.static.data(name='boot', shape=[-1, hidden_size], dtype='float32', lod_level=1)
                 rnn = fluid.layers.StaticRNN()
                 with rnn.step():
                         # mark created x_emb as input, each step process a word
                         word = rnn.step_input(x_emb)
                         # init memory
                         prev = rnn.memory(init=boot_memory)
-                        hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                        hidden = paddle.static.nn.fc(x=[word, prev], size=hidden_size, activation='relu')
                         # update hidden with prev
                         rnn.update_memory(prev, hidden)
 
@@ -578,7 +576,7 @@ class StaticRNN:
                         word = rnn.step_input(x_emb)
                         # create prev memory parameter, batch size comes from word
                         prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
-                        hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                        hidden = paddle.static.nn.fc(x=[word, prev], size=hidden_size, activation='relu')
                         # use hidden to update prev
                         rnn.update_memory(prev, hidden)
 
@@ -631,7 +629,7 @@ class StaticRNN:
                         word = rnn.step_input(x_emb)
                         # create prev memory parameter, batch size comes from word
                         prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
-                        hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                        hidden = paddle.static.nn.fc(x=[word, prev], size=hidden_size, activation='relu')
                         # use hidden to update prev
                         rnn.update_memory(prev, hidden)
                         rnn.step_output(hidden)
@@ -693,7 +691,7 @@ class StaticRNN:
                         word = rnn.step_input(x_emb)
                         # create prev memory parameter, batch size comes from word
                         prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
-                        hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                        hidden = paddle.static.nn.fc(x=[word, prev], size=hidden_size, activation='relu')
                         # use hidden to update prev
                         rnn.update_memory(prev, hidden)
                         # mark each step's hidden and word as output
@@ -1145,16 +1143,14 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         raise ValueError("loop_vars in while_loop should not be empty")
 
     pre_cond = cond(*loop_vars)
-    check_variable_and_dtype(
-        pre_cond, 'var of cond returned', ['bool'], 'fluid.layers.while_loop'
-    )
+
     if reduce(lambda a, b: a * b, pre_cond.shape, 1) != 1:
         raise TypeError(
             "the shape of the variable returned by cond should be [1],"
             "but given shape as {0}.".format(list(pre_cond.shape))
         )
 
-    if _non_static_mode():
+    if in_dygraph_mode():
         now_cond = pre_cond.numpy()[0]
         while now_cond:
             output_vars = body(*loop_vars)
@@ -1168,33 +1164,39 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             now_cond = cond(*output_vars).numpy()[0]
             map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
         return loop_vars
-
-    while_loop_block = While(pre_cond, is_test, name)
-    has_mutable_vars_in_loop = hold_mutable_vars(loop_vars)
-    with while_loop_block.block():
-        # If a variable with mutable type is included in loop_vars, like `dict/list`,
-        # modifying it in the body function will cause origin variable to be modified
-        # synchronously. This will raise an assignment error out of while block.
-        # Here we make a copy of the mutable vars to avoid this problem.
-        if has_mutable_vars_in_loop:
-            new_loop_vars = copy_mutable_vars(loop_vars)
-            output_vars = body(*new_loop_vars)
-        else:
-            output_vars = body(*loop_vars)
-        if not isinstance(output_vars, (list, tuple)):
-            output_vars = [output_vars]
-        try:
-            loop_vars = _deal_with_undefined_var(output_vars, loop_vars)
-            assert_same_structure(output_vars, loop_vars, check_types=False)
-        except ValueError as e:
-            raise ValueError(
-                "body in while_loop should return the same arity "
-                "(length and structure) as loop_vars: {0}".format(e)
-            )
-        now_cond = cond(*output_vars)
-        map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
-        assign(now_cond, pre_cond)
-    return loop_vars
+    else:
+        check_variable_and_dtype(
+            pre_cond,
+            'var of cond returned',
+            ['bool'],
+            'fluid.layers.while_loop',
+        )
+        while_loop_block = While(pre_cond, is_test, name)
+        has_mutable_vars_in_loop = hold_mutable_vars(loop_vars)
+        with while_loop_block.block():
+            # If a variable with mutable type is included in loop_vars, like `dict/list`,
+            # modifying it in the body function will cause origin variable to be modified
+            # synchronously. This will raise an assignment error out of while block.
+            # Here we make a copy of the mutable vars to avoid this problem.
+            if has_mutable_vars_in_loop:
+                new_loop_vars = copy_mutable_vars(loop_vars)
+                output_vars = body(*new_loop_vars)
+            else:
+                output_vars = body(*loop_vars)
+            if not isinstance(output_vars, (list, tuple)):
+                output_vars = [output_vars]
+            try:
+                loop_vars = _deal_with_undefined_var(output_vars, loop_vars)
+                assert_same_structure(output_vars, loop_vars, check_types=False)
+            except ValueError as e:
+                raise ValueError(
+                    "body in while_loop should return the same arity "
+                    "(length and structure) as loop_vars: {0}".format(e)
+                )
+            now_cond = cond(*output_vars)
+            map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
+            assign(now_cond, pre_cond)
+        return loop_vars
 
 
 # (TODO: Mine) There exists dependency. It will be removed later.

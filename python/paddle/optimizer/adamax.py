@@ -62,7 +62,7 @@ class Adamax(Optimizer):
             different parameter groups such as the learning rate, weight decay, etc,
             then the parameters are list of dict. Note that the learning_rate in paramter groups
             represents the scale of base learning_rate.
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization.
             It canbe a float value as coeff of L2 regularization or
             :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
@@ -176,6 +176,8 @@ class Adamax(Optimizer):
 
         # Create accumulator tensors for first moment and infinity norm
         for p in parameters:
+            if p.name in self._already_create_accumulater:
+                continue
             self._add_accumulator(self._moment_acc_str, p)
             self._add_accumulator(self._inf_norm_acc_str, p)
             self._add_accumulator(
@@ -184,6 +186,7 @@ class Adamax(Optimizer):
                 fill_value=self._beta1,
                 shape=[1],
             )
+            self._already_create_accumulater.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)

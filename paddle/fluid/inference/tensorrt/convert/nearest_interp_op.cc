@@ -13,15 +13,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -34,6 +25,7 @@ class NearestInterpolateOpConverter : public OpConverter {
 
     framework::OpDesc op_desc(op, nullptr);
 
+    auto inputs = op_desc.Inputs();
     std::string input_name = op_desc.Input("X").front();
     std::string output_name = op_desc.Output("Out").front();
 

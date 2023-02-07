@@ -96,9 +96,9 @@ class Linear(Layer):
         in_features (int): The number of input units.
         out_features (int): The number of output units.
         weight_attr (ParamAttr, optional): The attribute for the learnable
-            weight of this layer. The default value is None and the weight will be
-            initialized to zero. For detailed information, please refer to
-            paddle.ParamAttr.
+            weight of this layer. The default value is None. If the Initializer of the
+            param_attr is not set, the parameter is initialized with Xavier.
+            For detailed information, please refer to paddle.ParamAttr.
         bias_attr (ParamAttr|bool, optional): The attribute for the learnable bias
             of this layer. If it is set to False, no bias will be added to the output.
             If it is set to None or one kind of ParamAttr, a bias parameter will
@@ -1737,8 +1737,8 @@ class Flatten(Layer):
         self.start_axis = start_axis
         self.stop_axis = stop_axis
 
-    def forward(self, x):
+    def forward(self, input):
         out = paddle.flatten(
-            x, start_axis=self.start_axis, stop_axis=self.stop_axis
+            input, start_axis=self.start_axis, stop_axis=self.stop_axis
         )
         return out

@@ -586,7 +586,6 @@ class IpuDynamicPatcher:
         """
         from ..fluid.dygraph.base import switch_to_static_graph
         from ..fluid import backward
-        from ..fluid.initializer import Constant
         from ..fluid.framework import device_guard
         import paddle
 
@@ -645,7 +644,10 @@ class IpuDynamicPatcher:
                     device = optimizer._get_device_for_param(param_name)
                     with device_guard(device):
                         optimizer.helper.set_variable_initializer(
-                            var, initializer=Constant(value=0.0)
+                            var,
+                            initializer=paddle.nn.initializer.Constant(
+                                value=0.0
+                            ),
                         )
                     param_or_lr_tensor = scope.find_var(
                         var_tmp.name
@@ -751,7 +753,7 @@ class IpuDynamicPatcher:
     def patch_lr_scheduler(ipu_strategy):
         from paddle.optimizer.lr import LRScheduler
 
-        # For IPU dynamic graph usage, lr_var is not synced in executor as static mode do.
+        # For IPU dynamic graph usage, lr_var is not synced in executor as static graph mode do.
         # Manually set lr to ipu_strategy to update the lr.
         old_step = LRScheduler.step
 

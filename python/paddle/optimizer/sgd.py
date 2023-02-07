@@ -39,7 +39,7 @@ class SGD(Optimizer):
             It can be a float value, a ``Tensor`` with a float type or a LearningRateDecay. The default value is 0.001.
         parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
             It canbe a float value as coeff of L2 regularization or \
             :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
@@ -129,8 +129,11 @@ class SGD(Optimizer):
 
         # Create accumulator tensors for first and second moments
         for p in parameters:
+            if p.name in self._already_create_accumulater:
+                continue
             if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
                 master_p = self._create_master_weight(p)
+                self._already_create_accumulater.add(p.name)
                 continue
             if (
                 p.dtype == core.VarDesc.VarType.FP16

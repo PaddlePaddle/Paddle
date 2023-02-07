@@ -21,10 +21,7 @@ from test_program_translator import get_source_code
 import paddle
 import paddle.fluid as fluid
 import paddle.jit.dy2static as _jst
-from paddle.jit import ProgramTranslator
 from paddle.jit.dy2static.convert_call_func import CONVERSION_OPTIONS
-
-program_translator = ProgramTranslator()
 
 SEED = 2020
 np.random.seed(SEED)
@@ -68,7 +65,7 @@ class A:
     def add(a, b):
         """
         dygraph mode, return a numpy object.
-        static mode, return a variable object.
+        static graph mode, return a variable object.
         """
         return paddle.to_tensor(a.numpy() + b.numpy())
 
@@ -93,13 +90,13 @@ class TestRecursiveCall1(unittest.TestCase):
         self.dyfunc = nested_func
 
     def get_dygraph_output(self):
-        program_translator.enable(False)
+        paddle.jit.enable_to_static(False)
         with fluid.dygraph.guard():
             res = self.dyfunc(self.input).numpy()
             return res
 
     def get_static_output(self):
-        program_translator.enable(True)
+        paddle.jit.enable_to_static(True)
         with fluid.dygraph.guard():
             res = self.dyfunc(self.input).numpy()
             return res
@@ -128,10 +125,10 @@ class MyConvLayer(fluid.dygraph.Layer):
             out_channels=2,
             kernel_size=3,
             weight_attr=paddle.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.99)
+                initializer=paddle.nn.initializer.Constant(value=0.99)
             ),
             bias_attr=paddle.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.5)
+                initializer=paddle.nn.initializer.Constant(value=0.5)
             ),
         )
 
@@ -193,11 +190,11 @@ class TestRecursiveCall2(unittest.TestCase):
             return res.numpy()
 
     def get_dygraph_output(self):
-        program_translator.enable(False)
+        paddle.jit.enable_to_static(False)
         return self._run()
 
     def get_static_output(self):
-        program_translator.enable(True)
+        paddle.jit.enable_to_static(True)
         return self._run()
 
     def test_transformed_static_result(self):

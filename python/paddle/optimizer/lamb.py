@@ -67,7 +67,7 @@ class Lamb(Optimizer):
             different parameter groups such as the learning rate, weight decay, etc, \
             then the parameters are list of dict. Note that the learning_rate in paramter groups \
             represents the scale of base learning_rate. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three cliping strategies
             ( :ref:`api_paddle_fluid_clip_ClipGradByGlobalNorm` , :ref:`api_paddle_fluid_clip_ClipGradByNorm` ,
@@ -190,11 +190,15 @@ class Lamb(Optimizer):
 
         # Create accumulator tensors for first and second moments
         for p in parameters:
+            if p.name in self._already_create_accumulater:
+                continue
             if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
                 master_p = self._create_master_weight(p)
                 self._add_moments_pows(master_p)
+                self._already_create_accumulater.add(p.name)
             else:
                 self._add_moments_pows(p)
+                self._already_create_accumulater.add(p.name)
 
     def _get_accumulator(self, name, param):
         """Utility function to fetch an accumulator for a parameter
@@ -293,7 +297,6 @@ class Lamb(Optimizer):
             self._used_master_weights[p_name] = master_weight.name
         else:
             master_weight = None
-        found_inf = self._get_auxiliary_var('found_inf')
 
         if framework.in_dygraph_mode():
             _C_ops.lamb_(
@@ -305,7 +308,7 @@ class Lamb(Optimizer):
                 beta1_pow_acc,
                 beta2_pow_acc,
                 master_weight,
-                found_inf,
+                None,
                 weight_decay,
                 self._beta1,
                 self._beta2,
@@ -343,6 +346,7 @@ class Lamb(Optimizer):
                 inputs["MasterParam"] = master_weight
                 outputs["MasterParamOut"] = master_weight
 
+            found_inf = self._get_auxiliary_var('found_inf')
             if found_inf:
                 inputs["SkipUpdate"] = found_inf
 

@@ -27,13 +27,11 @@ import paddle.fluid as fluid
 from paddle import _legacy_C_ops
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import _non_static_mode
-from paddle.jit import ProgramTranslator
 from paddle.jit.api import to_static
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 SEED = 2020
 
-program_translator = ProgramTranslator()
 # Add InputSpec to make unittest run faster.
 input_specs = [
     paddle.static.InputSpec([None, None], 'int64'),
@@ -100,7 +98,7 @@ class BiGRU(fluid.dygraph.Layer):
             in_features=input_dim,
             out_features=grnn_hidden_dim * 3,
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Uniform(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-init_bound, high=init_bound
                 ),
                 regularizer=fluid.regularizer.L2DecayRegularizer(
@@ -113,7 +111,7 @@ class BiGRU(fluid.dygraph.Layer):
             size=grnn_hidden_dim,
             h_0=h_0,
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Uniform(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-init_bound, high=init_bound
                 ),
                 regularizer=fluid.regularizer.L2DecayRegularizer(
@@ -126,7 +124,7 @@ class BiGRU(fluid.dygraph.Layer):
             in_features=input_dim,
             out_features=grnn_hidden_dim * 3,
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Uniform(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-init_bound, high=init_bound
                 ),
                 regularizer=fluid.regularizer.L2DecayRegularizer(
@@ -140,7 +138,7 @@ class BiGRU(fluid.dygraph.Layer):
             is_reverse=True,
             h_0=h_0,
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Uniform(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-init_bound, high=init_bound
                 ),
                 regularizer=fluid.regularizer.L2DecayRegularizer(
@@ -377,7 +375,7 @@ class LexNet(fluid.dygraph.Layer):
             weight_attr=fluid.ParamAttr(
                 learning_rate=self.emb_lr,
                 name="word_emb",
-                initializer=fluid.initializer.Uniform(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-self.init_bound, high=self.init_bound
                 ),
             ),
@@ -417,7 +415,7 @@ class LexNet(fluid.dygraph.Layer):
             in_features=self.grnn_hidden_dim * 2,
             out_features=self.num_labels,
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Uniform(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-self.init_bound, high=self.init_bound
                 ),
                 regularizer=fluid.regularizer.L2DecayRegularizer(
@@ -542,7 +540,7 @@ class TestLACModel(unittest.TestCase):
         self.dy_param_path = os.path.join(self.temp_dir.name, 'lac_dy_param')
 
     def train(self, args, to_static):
-        program_translator.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
         place = (
             fluid.CUDAPlace(0)
             if fluid.is_compiled_with_cuda()
@@ -622,8 +620,8 @@ class TestLACModel(unittest.TestCase):
                     output_spec=[crf_decode],
                 )
             else:
-                fluid.dygraph.save_dygraph(
-                    model.state_dict(), self.dy_param_path
+                paddle.save(
+                    model.state_dict(), self.dy_param_path + '.pdparams'
                 )
 
             return np.array(loss_data)
@@ -656,11 +654,11 @@ class TestLACModel(unittest.TestCase):
 
     def predict_dygraph(self, batch):
         words, targets, length = batch
-        program_translator.enable(False)
+        paddle.jit.enable_to_static(False)
         with fluid.dygraph.guard(self.place):
             model = LexNet(self.args)
             # load dygraph trained parameters
-            model_dict, _ = fluid.load_dygraph(self.dy_param_path + ".pdparams")
+            model_dict = paddle.load(self.dy_param_path + ".pdparams")
             model.set_dict(model_dict)
             model.eval()
 

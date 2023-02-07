@@ -31,6 +31,17 @@ set(GLOO_LIBRARIES
     "${GLOO_INSTALL_DIR}/lib/libgloo.a"
     CACHE FILEPATH "gloo library." FORCE)
 
+set(GLOO_PATCH_COMMAND "")
+if(WITH_GPU)
+  if(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0 AND ${CMAKE_CXX_COMPILER_VERSION}
+                                                  VERSION_GREATER 12.0)
+    file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/gloo/device.cc.patch
+         native_dst)
+    set(GLOO_PATCH_COMMAND patch -d ${GLOO_SOURCE_DIR}/gloo/transport/tcp <
+                           ${native_dst})
+  endif()
+endif()
+
 include_directories(${GLOO_INCLUDE_DIR})
 
 if(WITH_ASCEND OR WITH_ASCEND_CL)
@@ -44,8 +55,8 @@ if(WITH_ASCEND OR WITH_ASCEND_CL)
     CONFIGURE_COMMAND ""
     BUILD_COMMAND
       mkdir -p ${GLOO_SOURCE_DIR}/build && cd ${GLOO_SOURCE_DIR}/build && cmake
-      .. -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS} && make && mkdir -p
-      ${GLOO_LIBRARY_DIR} ${GLOO_INCLUDE_DIR}/gloo
+      .. -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS} && ${CMAKE_COMMAND} --build . &&
+      mkdir -p ${GLOO_LIBRARY_DIR} ${GLOO_INCLUDE_DIR}/gloo
     INSTALL_COMMAND ${CMAKE_COMMAND} -E copy
                     ${GLOO_SOURCE_DIR}/build/gloo/libgloo.a ${GLOO_LIBRARY_DIR}
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${GLOO_SOURCE_DIR}/gloo/"
@@ -59,11 +70,12 @@ else()
     GIT_TAG ${GLOO_TAG}
     PREFIX "${GLOO_PREFIX_DIR}"
     UPDATE_COMMAND ""
+    PATCH_COMMAND ${GLOO_PATCH_COMMAND}
     CONFIGURE_COMMAND ""
     BUILD_COMMAND
       mkdir -p ${GLOO_SOURCE_DIR}/build && cd ${GLOO_SOURCE_DIR}/build && cmake
-      .. -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS} && make && mkdir -p
-      ${GLOO_LIBRARY_DIR} ${GLOO_INCLUDE_DIR}/gloo
+      .. -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS} && ${CMAKE_COMMAND} --build . &&
+      mkdir -p ${GLOO_LIBRARY_DIR} ${GLOO_INCLUDE_DIR}/gloo
     INSTALL_COMMAND ${CMAKE_COMMAND} -E copy
                     ${GLOO_SOURCE_DIR}/build/gloo/libgloo.a ${GLOO_LIBRARY_DIR}
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${GLOO_SOURCE_DIR}/gloo/"

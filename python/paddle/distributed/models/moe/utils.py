@@ -13,9 +13,8 @@
 # limitations under the License.
 
 from paddle import _legacy_C_ops
-from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import in_dygraph_mode
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.common_ops_import import check_variable_and_dtype
+from paddle.framework import LayerHelper, in_dygraph_mode
 
 
 def _number_count(numbers, upper_range):
@@ -125,7 +124,7 @@ def _random_routing(topk_idx, topk_value, prob, topk=2):
         if in_dygraph_mode():
             return _legacy_C_ops.random_routing(prob, topk_value, topk_idx)
         else:
-            raise RuntimeError("Not supporting static mode now")
+            raise RuntimeError("Not supporting static graph mode now")
     else:
         raise RuntimeError("only topk=2 is supported now")
 

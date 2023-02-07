@@ -25,8 +25,6 @@
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/primitive/datamover_primitives.h"
 
-DECLARE_bool(cudnn_deterministic);
-
 namespace phi {
 
 template <typename T>
@@ -213,7 +211,7 @@ __inline__ __device__ T PartialBlockMin(T val,
 
   if (threadIdx.x < threshold) {
     shared_last_idx = (threshold >> 5) - 1;
-    val = phi::funcs::warpReduceMin(val, mask);
+    val = phi::funcs::WarpReduceMin(val, mask);
     if (lane == 0) {
       shared[wid] = val;
     }
@@ -228,7 +226,7 @@ __inline__ __device__ T PartialBlockMin(T val,
   if (threadIdx.x < threshold) {
     val = (lane <= shared_last_idx) ? shared[lane]
                                     : std::numeric_limits<T>::max();
-    val = phi::funcs::warpReduceMin(val, mask);
+    val = phi::funcs::WarpReduceMin(val, mask);
     shared_last_val = val;
   }
   __syncthreads();
@@ -294,13 +292,13 @@ __global__ void KeBilinearInterpBwShareMemory(T* in,
     s_data[1][threadIdx.x] = static_cast<MT>(0);
     int remain = nthreads - (tid & (-blockDim.x));
     int in_top_max_index =
-        phi::funcs::blockReduceMax(top_right_index, FINAL_MASK);
+        phi::funcs::BlockReduceMax(top_right_index, FINAL_MASK);
     int in_bot_max_index =
-        phi::funcs::blockReduceMax(bot_right_index, FINAL_MASK);
+        phi::funcs::BlockReduceMax(bot_right_index, FINAL_MASK);
 
     if (remain > blockDim.x) {
-      in_top_min_index = phi::funcs::blockReduceMin(input_index, FINAL_MASK);
-      in_bot_min_index = phi::funcs::blockReduceMin(bot_left_index, FINAL_MASK);
+      in_top_min_index = phi::funcs::BlockReduceMin(input_index, FINAL_MASK);
+      in_bot_min_index = phi::funcs::BlockReduceMin(bot_left_index, FINAL_MASK);
     } else {
       in_top_min_index = PartialBlockMin(input_index, remain, FINAL_MASK);
       in_bot_min_index = PartialBlockMin(bot_left_index, remain, FINAL_MASK);
@@ -1039,12 +1037,6 @@ static void Interpolate2DCUDABwd(
 #endif
 
     if (optimize_flag & is_nchw) {
-      if (FLAGS_cudnn_deterministic) {
-        VLOG(2)
-            << "Run grad kernel of bilinear interpolate 2d with single thread.";
-        config.block_per_grid = 1;
-        config.thread_per_block = 1;
-      }
       KeBilinearInterpBwShareMemory<T><<<config.block_per_grid,
                                          config.thread_per_block,
                                          0,
@@ -1063,27 +1055,21 @@ static void Interpolate2DCUDABwd(
     } else if (!optimize_flag & is_nchw) {
       const int num_kernels = n * c * out_h * out_w;
       const int num_threads = std::min(dev_ctx.GetMaxThreadsPerBlock(), 1024);
-      int block_per_grid = backends::gpu::DivUp(num_kernels, num_threads);
-      int thread_per_block = num_threads;
-      if (FLAGS_cudnn_deterministic) {
-        VLOG(2)
-            << "Run grad kernel of bilinear interpolate 2d with single thread.";
-        block_per_grid = 1;
-        thread_per_block = 1;
-      }
       KeBilinearInterpNCHWBw<T>
-          <<<block_per_grid, thread_per_block, 0, dev_ctx.stream()>>>(
-              input_grad_data,
-              in_h,
-              in_w,
-              out_h,
-              out_w,
-              n,
-              c,
-              ratio_h,
-              ratio_w,
-              output_grad_data,
-              align_type_value);
+          <<<backends::gpu::DivUp(num_kernels, num_threads),
+             num_threads,
+             0,
+             dev_ctx.stream()>>>(input_grad_data,
+                                 in_h,
+                                 in_w,
+                                 out_h,
+                                 out_w,
+                                 n,
+                                 c,
+                                 ratio_h,
+                                 ratio_w,
+                                 output_grad_data,
+                                 align_type_value);
     } else {
       int64_t cw = c * out_w;
       auto interp_divmods = funcs::FastDivModForInterpolate(c, out_chw, cw);
