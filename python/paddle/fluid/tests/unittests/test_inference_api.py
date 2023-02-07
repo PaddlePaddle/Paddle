@@ -14,9 +14,11 @@
 
 import unittest
 
+import paddle
+
+paddle.enable_static()
 import numpy as np
 
-import paddle
 import paddle.fluid as fluid
 from paddle.fluid.core import PaddleDType, PaddleTensor
 from paddle.inference import (
