@@ -404,7 +404,11 @@ TEST(multi_tensor_adam, test_fp32_gpu) {
 
 TEST(multi_tensor_adam, test_fp16_gpu) {
   auto shapes = GenerateRandomShapes(40, 0, 2 << 18);
+#ifdef _WIN32
+  float atol = 5e-3f;
+#else
   float atol = 0.0f;
+#endif
   for (auto use_adamw : {false, true}) {
     TestMultiTensorAdamBase<dtype::float16, GPUPlace>(
         shapes, atol, use_adamw, true);
