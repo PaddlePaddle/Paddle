@@ -23,9 +23,9 @@ const std::vector<int64_t> get_slice_strides(
     const std::vector<int64_t>& out_vec_dims,
     const dnnl::memory::desc& full_md,
     int axis) {
-  auto strides = full_md.data.format_desc.blocking.strides;
-  auto ndims = full_md.data.ndims;
-  auto full_dims = full_md.data.dims;
+  auto strides = full_md.get_strides();
+  auto ndims = static_cast<int16_t>(full_md.get_dims().size());
+  auto full_dims = full_md.get_dims();
   auto splitted_stride = strides[axis];
   std::vector<int64_t> slice_strides(ndims, splitted_stride);
   for (int16_t i = 0; i < ndims; ++i) {
