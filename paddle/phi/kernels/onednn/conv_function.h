@@ -266,6 +266,7 @@ void ComputeINT8(const OneDNNContext& dev_ctx,
         }
 
         auto& astream = OneDNNContext::tls().get_stream();
+        conv_p->SetOutputScaleIfNeeded(args);
         conv_p->execute(astream, args);
         astream.wait();
 
