@@ -17,6 +17,7 @@
 # 2. The name and args of target op must be corresponding with standard description of op in
 #    ops.yaml or legacy_ops.yaml.
 
+
 from .primitives import *  # noqa: F403
 from .primreg import REGISTER_COMPOSITE, lookup_composite
 
@@ -35,3 +36,64 @@ def softmax_composite(x, axis):
     denominator = sum(molecular, axis=axis, keepdim=True)
     res = divide(molecular, denominator)
     return res
+
+
+@REGISTER_COMPOSITE('batch_norm')
+def composite_batchnorm(
+    x,
+    run_mean,
+    run_var,
+    scale,
+    bias,
+    is_test,
+    momentum,
+    epsilon,
+    data_layout,
+    use_global_stats,
+    trainable_statistics,
+):
+    """define composite rule of op batch_norm"""
+
+    feature_axis = (
+        1 if data_layout in ('NC', 'NCL', 'NCHW', 'NCHWD') else len(x.shape) - 1
+    )
+    if use_global_stats is None:
+        use_global_stats = is_test
+        trainable_statistics = False
+    else:
+        trainable_statistics = not use_global_stats
+
+    use_run_stat = (is_test and (not trainable_statistics)) or use_global_stats
+    reduce_axes = tuple(i for i in range(len(x.shape)) if i != feature_axis)
+    stats_shape = tuple(
+        1 if i in reduce_axes else s for i, s in enumerate(x.shape)
+    )
+
+    batch_mean = zeros(run_mean.shape, run_mean.dtype)
+    batch_var = zeros(run_var.shape, run_var.dtype)
+    if not use_run_stat:
+        batch_mean = mean(x, reduce_axes, keepdim=True)
+        temp = mean(x * x, reduce_axes, keepdim=True)
+        batch_var = temp - batch_mean * batch_mean
+
+        x_hat = (x - reshape(batch_mean, stats_shape)) / sqrt(
+            reshape(batch_var, stats_shape) + epsilon
+        )
+
+        run_mean = momentum * run_mean + (1 - momentum) * batch_mean
+        run_var = momentum * run_var + (1 - momentum) * batch_var
+    else:
+        x_hat = (x - reshape(run_mean, stats_shape)) / sqrt(
+            reshape(run_var, stats_shape) + epsilon
+        )
+    y = reshape(scale, stats_shape) * x_hat + reshape(bias, stats_shape)
+
+    # add op assign to detach tensor in void unsafe change outside the rule.
+    batch_mean_ = assign(batch_mean)
+    batch_var_ = assign(batch_var)
+    run_mean_ = assign(run_mean)
+    run_var_ = assign(run_var)
+    if trainable_statistics or not is_test:
+        return run_mean_, None, batch_mean_, batch_var_, run_var_, y
+    else:
+        return run_mean_, batch_mean_, batch_var_, run_var_, y

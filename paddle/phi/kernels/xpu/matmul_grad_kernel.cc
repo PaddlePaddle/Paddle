@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/matmul_grad_kernel.h"
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -110,12 +109,10 @@ void MatmulWithFlattenGradKernel(const Context& dev_ctx,
                                  DenseTensor* y_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
-  auto x_matrix = x.dims().size() > 2
-                      ? paddle::framework::ReshapeToMatrix(x, x_num_col_dims)
-                      : static_cast<const DenseTensor&>(x);
-  auto y_matrix = y.dims().size() > 2
-                      ? paddle::framework::ReshapeToMatrix(y, y_num_col_dims)
-                      : static_cast<const DenseTensor&>(y);
+  auto x_matrix = x.dims().size() > 2 ? phi::ReshapeToMatrix(x, x_num_col_dims)
+                                      : static_cast<const DenseTensor&>(x);
+  auto y_matrix = y.dims().size() > 2 ? phi::ReshapeToMatrix(y, y_num_col_dims)
+                                      : static_cast<const DenseTensor&>(y);
   DenseTensor dout_mat;
   dout_mat.Resize({phi::flatten_to_2d(x.dims(), x_num_col_dims)[0],
                    phi::flatten_to_2d(y.dims(), y_num_col_dims)[1]});
