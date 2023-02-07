@@ -1302,88 +1302,6 @@ class Executor:
                 del trainer_instance
             self._default_executor.close()
 
-    def _run_parallel(
-        self,
-        program,
-        scope,
-        feed,
-        fetch_list,
-        fetch_var_name,
-        return_numpy,
-        return_merged,
-    ):
-        from paddle.optimizer.lr import LRScheduler
-
-        exe = program._executor
-        # TODO(zhenghuihuang): quantization uses Graph in CompiledProgram
-        # instead of program. We will add support for checking Vars in Graph
-        need_check_feed = program._program is not None
-        if need_check_feed:
-            global_block = program._program.global_block()
-        if isinstance(feed, dict):
-            feed_tensor_dict = dict()
-            for feed_name in feed:
-                feed_tensor = feed[feed_name]
-                var = global_block.var(feed_name) if need_check_feed else None
-                if not isinstance(feed_tensor, core.LoDTensor):
-                    # always set to CPU place, since the tensor need to be split
-                    # it is fast in CPU
-                    feed_tensor = _as_lodtensor(
-                        feed[feed_name],
-                        core.CPUPlace(),
-                        var.dtype if var else None,
-                    )
-                if need_check_feed:
-                    check_feed_shape_type(var, feed_tensor, exe.device_count())
-                feed_tensor_dict[feed_name] = feed_tensor
-            exe.feed_and_split_tensor_into_local_scopes(feed_tensor_dict)
-
-        elif isinstance(feed, list) or isinstance(feed, tuple):
-            res = list()
-            for i, each in enumerate(feed):
-                if not isinstance(each, dict):
-                    raise TypeError(
-                        "Each element of feed list should be a dict"
-                    )
-                res_dict = dict()
-                for feed_name in each:
-                    tensor = each[feed_name]
-                    var = (
-                        global_block.var(feed_name) if need_check_feed else None
-                    )
-                    if not isinstance(tensor, core.LoDTensor):
-                        tensor = _as_lodtensor(
-                            each[feed_name],
-                            program._places[i],
-                            var.dtype if var else None,
-                        )
-                    if need_check_feed:
-                        check_feed_shape_type(var, tensor)
-                    res_dict[feed_name] = tensor
-                res.append(res_dict)
-
-            exe.feed_tensors_into_local_scopes(res)
-
-        if hasattr(program._program, 'lr_sheduler'):
-            lr_sheduler = program._program.lr_sheduler
-            assert isinstance(lr_sheduler, LRScheduler), "must be LRScheduler"
-            lr_value = lr_sheduler()
-            lr_var = program._program.global_block().vars[lr_sheduler._var_name]
-            lr_tensor = _as_lodtensor(lr_value, core.CPUPlace(), lr_var.dtype)
-            if core.is_cuda_graph_capturing():
-                warnings.warn(
-                    "Caution!!! When capturing CUDA Graph, the learning rate scheduler would not "
-                    "take any effect! Please set the learning rate manually before each batch!"
-                )
-            else:
-                exe.feed_and_split_tensor_into_local_scopes(
-                    {lr_sheduler._var_name: lr_tensor}
-                )
-
-        fetch_var_names = list(map(_to_name_str, fetch_list))
-        tensors = exe.run(fetch_var_names, return_merged)._move_to_list()
-        return as_numpy(tensors) if return_numpy else tensors
-
     def run(
         self,
         program=None,
@@ -1634,11 +1552,7 @@ class Executor:
             if "startup_program" in program._pipeline_opt:
                 program = program._pipeline_opt["startup_program"]
             else:
-                return self._run_pipeline(
-                    program,
-                    fetch_list=fetch_list,
-                    use_program_cache=use_program_cache,
-                )
+                raise Exception("Executor deleted")
 
         if isinstance(program, Program) and program._heter_pipeline_opt:
             # print("program._heter_pipeline_opt: {}".format(
@@ -1887,146 +1801,15 @@ class Executor:
                 # _graph in program does not support inference since the _graph is optimized
                 # through optimizer.minimize function and should not be used as inference graph
                 # assert not program._graph._is_inference
-                return self._run_parallel(
-                    program._graph,
-                    scope=scope,
-                    feed=feed,
-                    fetch_list=fetch_list,
-                    fetch_var_name=fetch_var_name,
-                    return_numpy=return_numpy,
-                    return_merged=return_merged,
-                )
+                raise Exception("ParallelExecutor deleted")
 
-            return self._run_program(
-                program,
-                feed=feed,
-                fetch_list=fetch_list,
-                feed_var_name=feed_var_name,
-                fetch_var_name=fetch_var_name,
-                scope=scope,
-                return_numpy=return_numpy,
-                use_program_cache=use_program_cache,
-            )
+            raise Exception("Executor deleted")
 
         program._compile(scope, self.place)
         if program._is_inference:
             return self._run_inference(program._executor, feed)
         else:
-            return self._run_parallel(
-                program,
-                scope=scope,
-                feed=feed,
-                fetch_list=fetch_list,
-                fetch_var_name=fetch_var_name,
-                return_numpy=return_numpy,
-                return_merged=return_merged,
-            )
-
-    def _run_program(
-        self,
-        program,
-        feed,
-        fetch_list,
-        feed_var_name,
-        fetch_var_name,
-        scope,
-        return_numpy,
-        use_program_cache,
-    ):
-        from paddle.optimizer.lr import LRScheduler
-
-        if feed is None:
-            feed = {}
-        elif isinstance(feed, (list, tuple)):
-            assert len(feed) == 1, "Not compiled with data parallel"
-            feed = feed[0]
-
-        if not isinstance(feed, dict):
-            raise TypeError(
-                "feed requires dict as its Parameter. But you passed in %s"
-                % (type(feed))
-            )
-
-        assert program is not None, "The program should not be Empty"
-        if not isinstance(program, Program):
-            raise TypeError(
-                "Executor requires Program as its Parameter. But you passed in %s"
-                % (type(program))
-            )
-
-        if not isinstance(fetch_var_name, str):
-            raise TypeError(
-                "The name of fetch variable requires string as its Parameter. But you passed in %s"
-                % (type(fetch_var_name))
-            )
-
-        if use_program_cache:
-            cache_key = _get_strong_program_cache_key(program, feed, fetch_list)
-            cached_program = self._get_program_cache(cache_key)
-            cached_ctx = self._get_ctx_cache(cache_key)
-            cached_scope = self._get_scope_cache(cache_key)
-            if cached_program is None:
-                cached_program = _add_feed_fetch_ops(
-                    program=program,
-                    feed=feed,
-                    fetch_list=fetch_list,
-                    feed_var_name=feed_var_name,
-                    fetch_var_name=fetch_var_name,
-                )
-                self._add_program_cache(cache_key, cached_program)
-                fetch_list_str = list(map(_to_name_str, fetch_list))
-                cached_ctx = self._default_executor.prepare(
-                    cached_program.desc, 0, fetch_list_str, False
-                )
-                # currently, we cache program, vars, sub_scope here
-                # we suppose that in a life cycle of training, a user
-                # will not create many programs. So, here the basic
-                # rule of caching is to cache all unseen (program, var, scope)
-                # when a user use use_program_cache.
-                cached_scope = scope.new_scope()
-                self._default_executor.create_variables(
-                    cached_program.desc, cached_scope, 0
-                )
-                self._add_ctx_cache(cache_key, cached_ctx)
-                self._add_scope_cache(cache_key, cached_scope)
-            program = cached_program
-            ctx = cached_ctx
-            scope = cached_scope
-        else:
-            program = _add_feed_fetch_ops(
-                program=program,
-                feed=feed,
-                fetch_list=fetch_list,
-                feed_var_name=feed_var_name,
-                fetch_var_name=fetch_var_name,
-            )
-
-        self._feed_data(program, feed, feed_var_name, scope)
-        if hasattr(program, 'lr_sheduler'):
-            assert isinstance(
-                program.lr_sheduler, LRScheduler
-            ), "must be LRScheduler"
-            lr_sheduler = program.lr_sheduler
-            lr_value = lr_sheduler()
-            lr_var = program.global_block().vars[lr_sheduler._var_name]
-            data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
-            tensor = core.get_variable_tensor(scope, lr_sheduler._var_name)
-            tensor.set(data, self.place)
-
-        if not use_program_cache:
-            self._default_executor.run(
-                program.desc, scope, 0, True, True, [fetch_var_name]
-            )
-        else:
-            self._default_executor.run_prepared_ctx(
-                ctx, scope, False, False, False
-            )
-        arr = scope.find_var(fetch_var_name).get_fetch_list()
-        tensors = arr._move_to_list()
-        if return_numpy:
-            return as_numpy(tensors)
-        else:
-            return tensors
+            raise Exception("ParallelExecutor deleted")
 
     def _run_inference(self, exe, feed):
         return exe.run(feed)
