@@ -746,7 +746,7 @@ TEST_F(TensorRTDynamicTestFusedTokenPruneHalf, test_fused_token_prune) {
   LOG(INFO) << "finish";
 #endif
 }
-
+#if IS_TRT_VERSION_GE(8000)
 class TensorRTDynamicShapeGNTest : public ::testing::Test {
  protected:
   void SetUp() override {
@@ -1048,6 +1048,7 @@ TEST_F(TensorRTDynamicShapeGNTest, test_trt_dynamic_shape_groupnorm) {
   delete[] scale;
   return;
 }
+#endif
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
