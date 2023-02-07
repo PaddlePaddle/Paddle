@@ -71,32 +71,17 @@ void FeedInputVector(
     size_t state) {
   size_t i = 0;
 
-  std::cout << "mian 6: " << std::endl;
-
   for (auto &name : inputs_name) {
     (*input_vectors)[state][i].push_back(GetInputNode(op, name));
     i++;
   }
-
-  std::cout << "mian 7: " << std::endl;
-
   for (auto &name : outputs_name) {
     (*input_vectors)[state][i].push_back(GetOutputNode(op, name));
     i++;
   }
-
-  std::cout << "mian 8: " << std::endl;
-
   if (state & 1) {
-    std::cout << "state: " << state << std::endl;
-    std::cout << "mian 9: "
-              << "i: " << i << std::endl;
     (*input_vectors)[state][i++].push_back(GetInputNode(op, "MasterParam"));
-    std::cout << "mian 10: "
-              << "i: " << i << std::endl;
     (*input_vectors)[state][i].push_back(GetOutputNode(op, "MasterParamOut"));
-    std::cout << "mian 11: "
-              << "i: " << i << std::endl;
   }
 }
 
@@ -118,20 +103,13 @@ void InsertOp(Node *first_lr,
     float weight_decay = static_cast<float>(0.0);
     bool use_adamw = false;
 
-    std::cout << "1:" << std::endl;
-
     if (state & 2) {
       weight_decay = coeff;
       use_adamw = true;
     }
-
-    std::cout << "2: " << std::endl;
-
     if (input_vectors[state][0].size() > 0 && replace_adamw) {
       OpDesc fuse_adamw_op_desc(block);
       fuse_adamw_op_desc.SetType("multi_tensor_adam");
-
-      std::cout << "3: " << std::endl;
 
       size_t i = 0;
 
@@ -141,27 +119,18 @@ void InsertOp(Node *first_lr,
         i++;
       }
 
-      std::cout << "4: " << std::endl;
-
       fuse_adamw_op_desc.SetInput("LearningRate", {first_lr->Name()});
-
-      std::cout << "5: " << std::endl;
-
       if (use_skip_update) {
         fuse_adamw_op_desc.SetInput("SkipUpdate", {first_skip_update->Name()});
       } else {
         fuse_adamw_op_desc.SetInput("SkipUpdate", {});
       }
 
-      std::cout << "6:" << std::endl;
-
       for (auto &name : outputs_name) {
         fuse_adamw_op_desc.SetOutput(name,
                                      GetStringVector(input_vectors[state][i]));
         i++;
       }
-
-      std::cout << "7:" << std::endl;
 
       if (state & 1) {
         fuse_adamw_op_desc.SetInput("MasterParams",
@@ -172,8 +141,6 @@ void InsertOp(Node *first_lr,
         fuse_adamw_op_desc.SetInput("MasterParams", {});
       }
 
-      std::cout << "8:" << std::endl;
-
       fuse_adamw_op_desc.SetAttr("beta1", beta1);
       fuse_adamw_op_desc.SetAttr("beta2", beta2);
       fuse_adamw_op_desc.SetAttr("epsilon", epsilon);
@@ -183,18 +150,12 @@ void InsertOp(Node *first_lr,
       fuse_adamw_op_desc.SetAttr("multi_precision", state & 1 ? true : false);
       fuse_adamw_op_desc.SetAttr("use_global_beta_pow", use_global_beta_pow);
 
-      std::cout << "9:" << std::endl;
-
       auto fuse_adamw_node = graph->CreateOpNode(&fuse_adamw_op_desc);
-
-      std::cout << "10:" << std::endl;
 
       IR_NODE_LINK_TO(first_lr, fuse_adamw_node);
       if (use_skip_update) {
         IR_NODE_LINK_TO(first_skip_update, fuse_adamw_node);
       }
-
-      std::cout << "11:" << std::endl;
 
       for (size_t k = 0; k < input_vectors[state][0].size(); k++) {
         size_t j = 0;
@@ -202,25 +163,16 @@ void InsertOp(Node *first_lr,
         for (; j < inputs_name.size(); j++) {
           IR_NODE_LINK_TO(input_vectors[state][j][k], fuse_adamw_node);
         }
-
-        std::cout << "12:" << std::endl;
-
         for (; j < inputs_name.size() + outputs_name.size(); j++) {
           IR_NODE_LINK_TO(fuse_adamw_node, input_vectors[state][j][k]);
         }
-
-        std::cout << "13:" << std::endl;
 
         if (state & 1) {
           IR_NODE_LINK_TO(input_vectors[state][j][k], fuse_adamw_node);
           j++;
           IR_NODE_LINK_TO(fuse_adamw_node, input_vectors[state][j][k]);
         }
-
-        std::cout << "14:" << std::endl;
       }
-
-      std::cout << "15:" << std::endl;
     }
   }
 }
@@ -267,19 +219,12 @@ ir::Graph *FuseAdamWPass::FuseAdamWFun(ir::Graph *graph) const {
 
   for (auto &node : graph->Nodes()) {
     if (node->Name() == "adamw") {
-      std::cout << "mian 1: " << std::endl;
-
       adamw_op_vector.push_back(node);
       Node *adamw_op = node;
       Node *skip_update = nullptr;
-
       Node *learning_rate = GetInputNode(adamw_op, "LearningRate");
-
       auto adamw_op_desc = adamw_op->Op();
-
       auto input_names_vector = adamw_op_desc->InputNames();
-
-      std::cout << "mian 2: " << std::endl;
 
       for (auto &node : adamw_op->inputs) {
         auto in_name = adamw_op_desc->Input("SkipUpdate");
@@ -292,19 +237,13 @@ ir::Graph *FuseAdamWPass::FuseAdamWFun(ir::Graph *graph) const {
         }
       }
 
-      std::cout << "mian 3: " << std::endl;
-
       with_decay = PADDLE_GET_CONST(bool, adamw_op_desc->GetAttr("with_decay"));
       coeff = PADDLE_GET_CONST(float, adamw_op_desc->GetAttr("coeff"));
       multi_precision =
           PADDLE_GET_CONST(bool, adamw_op_desc->GetAttr("multi_precision"));
 
       state = with_decay << 1;
-      std::cout << "with_decay: " << with_decay << ","
-                << "state: " << state << std::endl;
       state += multi_precision;
-      std::cout << "multi_precision: " << with_decay << ","
-                << "state: " << state << std::endl;
 
       if (found_adamw_count == 0) {
         first_lr = learning_rate;
@@ -332,30 +271,21 @@ ir::Graph *FuseAdamWPass::FuseAdamWFun(ir::Graph *graph) const {
         }
       }
 
-      std::cout << "mian 4: " << std::endl;
-
       if (learning_rate->Name() != first_lr->Name() || coeff != first_coeff) {
         replace_adamw = false;
         return graph;
       }
-
       if (use_skip_update && skip_update->Name() != first_skip_update->Name()) {
         replace_adamw = false;
         return graph;
       }
 
-      std::cout << "mian 5: " << std::endl;
-
       FeedInputVector(
           &input_vectors, inputs_name, outputs_name, adamw_op, state);
-
-      std::cout << "mian 12: " << std::endl;
 
       found_adamw_count++;
     }
   }
-
-  std::cout << "mian 13: " << std::endl;
 
   if (replace_adamw &&
       (input_vectors[0][0].size() > 0 || input_vectors[1][0].size() > 0 ||
@@ -364,8 +294,6 @@ ir::Graph *FuseAdamWPass::FuseAdamWFun(ir::Graph *graph) const {
       GraphSafeRemoveNodes(graph, {adamw_op});
     }
   }
-
-  std::cout << "mian 14: " << std::endl;
 
   InsertOp(first_lr,
            first_skip_update,
@@ -381,8 +309,6 @@ ir::Graph *FuseAdamWPass::FuseAdamWFun(ir::Graph *graph) const {
            replace_adamw,
            use_skip_update,
            graph);
-
-  std::cout << "mian 15: " << std::endl;
 
   VLOG(4) << "replace adamw with fuse_adamw";
 
