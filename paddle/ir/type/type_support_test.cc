@@ -51,8 +51,7 @@ TEST(type_support, type_storage) {
   ir::TypeID a_id = ir::TypeID::Get<TypeA>();
   ir::AbstractType abstract_type_a = ir::AbstractType::Get(a_id);
 
-  ir::TypeStorage storage_a;
-  storage_a.Initialize(abstract_type_a);
+  ir::TypeStorage storage_a(&abstract_type_a);
 
   EXPECT_EQ(storage_a.GetAbstractType().GetTypeID(),
             abstract_type_a.GetTypeID());

@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <iostream>
+#include <functional>
 
 namespace ir {
 
@@ -25,7 +25,6 @@ namespace ir {
  * For example:
  *   class Type_A {};
  *   TypeID type_a_id = TypeID::Get<Type_A>();
- *   void* type_a_storage = type_a_id.GetStorage();
  */
 class TypeID {
   struct Storage {};
@@ -85,10 +84,8 @@ class AbstractType {
 class TypeStorage {
  public:
   const AbstractType &GetAbstractType() { return *abstract_type_; }
-  TypeStorage() {}
-  void Initialize(const AbstractType &abstract_type) {
-    abstract_type_ = const_cast<AbstractType *>(&abstract_type);
-  }
+  explicit TypeStorage(AbstractType *abstract_type)
+      : abstract_type_(abstract_type) {}
 
  private:
   AbstractType *abstract_type_{nullptr};
@@ -101,7 +98,7 @@ namespace std {
 template <>
 struct hash<ir::TypeID> {
   std::size_t operator()(const ir::TypeID &obj) const {
-    return std::hash<const void *>()(obj.storage_);
+    return std::hash<const void *>()(static_cast<const void *>(obj.storage_));
   }
 };
 }  // namespace std
