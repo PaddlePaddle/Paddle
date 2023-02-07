@@ -805,7 +805,7 @@ class TensorRTDynamicShapeGNTest : public ::testing::Test {
   void PrepareInputOutput(const std::vector<float> &input,
                           std::vector<int> output_shape) {
     paddle::framework::TensorFromVector(input, *ctx_, &x_);
-    y_.Resize(phi::make_ddim(output_shape));
+    paddle::framework::TensorFromVector(input, *ctx_, &y_);
   }
   void GetOutput(std::vector<float> *output) {
     paddle::framework::TensorToVector(y_, *ctx_, output);
@@ -1010,7 +1010,7 @@ TEST_F(TensorRTDynamicShapeGNTest, test_trt_dynamic_shape_groupnorm) {
 
   engine_->context()->setBindingDimensions(0, nvinfer1::Dims4{n_, c_, h_, w_});
 
-  auto *x_gpu_data = x_.mutable_data<float>(ctx_->GetPlace());
+  auto *x_gpu_data = x_.data<float>();
   auto *y_gpu_data = y_.mutable_data<float>(ctx_->GetPlace());
   std::vector<void *> buffers(2);
   buffers[0] = reinterpret_cast<void *>(x_gpu_data);
