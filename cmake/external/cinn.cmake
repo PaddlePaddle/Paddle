@@ -17,8 +17,8 @@ if(NOT WITH_CINN)
 endif()
 
 if(NOT CINN_GIT_TAG)
-  # 2023.01.28 commit
-  set(CINN_GIT_TAG 1449890f7724babf2a343c6f8073bd28a7bbc683)
+  # 2023.02.07 commit
+  set(CINN_GIT_TAG 04cbe3ca3cd17a8267a229ce7ab8d8b8b63c7f4e)
 endif()
 
 message(STATUS "CINN version: " ${CINN_GIT_TAG})
