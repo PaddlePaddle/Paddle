@@ -29,11 +29,10 @@ class SoftplusOneDNNHandler
       : funcs::OneDNNHandlerNoCachingT<T, dnnl::binary>(dev_ctx.GetEngine(),
                                                         dev_ctx.GetPlace()) {
     dnnl::post_ops post_ops;
-    post_ops.append_eltwise(
-        1.0f, dnnl::algorithm::eltwise_soft_relu, 0.0f, 0.0f);
+    post_ops.append_eltwise(dnnl::algorithm::eltwise_soft_relu, 0.0f, 0.0f);
     if (beta != 1.0f) {
       post_ops.append_eltwise(
-          1.0f, dnnl::algorithm::eltwise_linear, 1.0f / beta, 0.0f);
+          dnnl::algorithm::eltwise_linear, 1.0f / beta, 0.0f);
     }
     funcs::AppendActivation(dev_ctx, post_ops);
     dnnl::primitive_attr attrs;
