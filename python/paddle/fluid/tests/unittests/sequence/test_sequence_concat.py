@@ -134,6 +134,15 @@ class TestSequenceConcatOpError(unittest.TestCase):
 
         self.assertRaises(TypeError, test_dtype)
 
+        def test_0_shape():
+            # dtype must be 'float32', 'float64', 'int64'
+            x4_data = paddle.static.data(name="x4", shape=[0], dtype='float32')
+            y4_data = paddle.static.data(name="y4", shape=[1], dtype='float32')
+            input_list = [x4_data, y4_data]
+            paddle.static.nn.sequence_lod.sequence_concat(input=input_list)
+
+        self.assertRaises(ValueError, test_0_shape)
+
 
 if __name__ == '__main__':
     paddle.enable_static()
