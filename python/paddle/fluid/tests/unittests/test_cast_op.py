@@ -17,12 +17,23 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
+from eager_op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+)
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
+
+
+def cast_wrapper(out_dtype='float64'):
+    def inner_func(x):
+        return paddle.tensor.cast(x, out_dtype)
+
+    return inner_func
 
 
 class TestCastOpFp32ToFp64(OpTest):
@@ -35,6 +46,7 @@ class TestCastOpFp32ToFp64(OpTest):
             'out_dtype': int(core.VarDesc.VarType.FP64),
         }
         self.op_type = 'cast'
+        self.python_api = cast_wrapper()
 
     def test_check_output(self):
         self.check_output()
@@ -54,6 +66,7 @@ class TestCastOpFp16ToFp32(OpTest):
         }
         self.op_type = 'cast'
         self.__class__.no_need_check_grad = True
+        self.python_api = cast_wrapper('float32')
 
     def test_check_output(self):
         self.check_output(atol=1e-3)
@@ -70,6 +83,7 @@ class TestCastOpFp32ToFp16(OpTest):
         }
         self.op_type = 'cast'
         self.__class__.no_need_check_grad = True
+        self.python_api = cast_wrapper('float16')
 
     def test_check_output(self):
         self.check_output(atol=1e-3)
@@ -86,6 +100,7 @@ class TestCastOpBf16ToFp32(OpTest):
         }
         self.op_type = 'cast'
         self.__class__.no_need_check_grad = True
+        self.python_api = cast_wrapper('float32')
 
     def test_check_output(self):
         self.check_output()
@@ -102,6 +117,7 @@ class TestCastOpFp32ToBf16(OpTest):
         }
         self.op_type = 'cast'
         self.__class__.no_need_check_grad = True
+        self.python_api = cast_wrapper(core.VarDesc.VarType.BF16)
 
     def test_check_output(self):
         self.check_output()

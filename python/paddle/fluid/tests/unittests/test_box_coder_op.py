@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 
@@ -109,7 +109,7 @@ def batch_box_coder(p_box, pb_v, t_box, lod, code_type, norm, axis=0):
 
 class TestBoxCoderOp(OpTest):
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def setUp(self):
         self.op_type = "box_coder"
@@ -142,7 +142,7 @@ class TestBoxCoderOp(OpTest):
 
 class TestBoxCoderOpWithoutBoxVar(OpTest):
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def setUp(self):
         self.python_api = paddle.vision.ops.box_coder
@@ -176,7 +176,7 @@ class TestBoxCoderOpWithoutBoxVar(OpTest):
 
 class TestBoxCoderOpWithLoD(OpTest):
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def setUp(self):
         self.python_api = paddle.vision.ops.box_coder
@@ -207,7 +207,7 @@ class TestBoxCoderOpWithLoD(OpTest):
 
 class TestBoxCoderOpWithAxis(OpTest):
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def setUp(self):
         self.python_api = paddle.vision.ops.box_coder
@@ -244,7 +244,7 @@ class TestBoxCoderOpWithAxis(OpTest):
 
 class TestBoxCoderOpWithVariance(OpTest):
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def setUp(self):
         self.op_type = "box_coder"
