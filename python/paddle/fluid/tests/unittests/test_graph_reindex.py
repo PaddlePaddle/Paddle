@@ -256,7 +256,7 @@ class TestGeometricGraphReindex(unittest.TestCase):
         self.reindex_dst = np.array(reindex_dst, dtype="int64")
         self.num_nodes = np.max(np.concatenate([self.x, self.neighbors])) + 1
 
-    def test_reindex_result(self):
+    def test_reindex_error(self):
         paddle.disable_static()
 
         def test_reindex_0_error():
@@ -278,6 +278,8 @@ class TestGeometricGraphReindex(unittest.TestCase):
 
         self.assertRaises(ValueError, test_reindex_0_error)
 
+    def test_reindex_result(self):
+        paddle.disable_static()
         x = paddle.to_tensor(self.x)
         neighbors = paddle.to_tensor(self.neighbors)
         count = paddle.to_tensor(self.count)
