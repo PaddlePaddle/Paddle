@@ -197,6 +197,10 @@ void TestInitilized() {
   CHECK(test_tensor.is_initialized() == true);
   test_tensor.mutable_data<float>(paddle::PlaceType::kCPU);
   CHECK(test_tensor.is_initialized() == true);
+  void* tensor_ptr = test_tensor.data();
+  CHECK(tensor_ptr != nullptr);
+  const void* const_tensor_ptr = test_tensor.data();
+  CHECK(const_tensor_ptr != nullptr);
   float* tensor_data = test_tensor.mutable_data<float>();
   for (int i = 0; i < test_tensor.size(); i++) {
     tensor_data[i] = 0.5;
