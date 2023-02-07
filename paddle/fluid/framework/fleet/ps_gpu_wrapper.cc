@@ -437,7 +437,6 @@ void PSGPUWrapper::add_slot_feature(std::shared_ptr<HeterContext> gpu_task) {
   time_stage.Pause();
   divide_nodeid_cost = time_stage.ElapsedSec();
 #if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_GPU_GRAPH)
-  gpu_task->sub_graph_feas = new std::vector<GpuPsCommGraphFea>;
   gpu_task->sub_graph_feas =
       reinterpret_cast<void*>(new std::vector<GpuPsCommGraphFea>);
   std::vector<GpuPsCommGraphFea>& sub_graph_feas =
@@ -752,7 +751,7 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
 #endif
 #ifdef PADDLE_WITH_PSCORE
     while (true) {
-      auto tt = fleet_ptr->worker_ptr_->PullSparsePtr(
+      auto tt = fleet_ptr_->worker_ptr_->PullSparsePtr(
           i,
           reinterpret_cast<char**>(local_dim_ptr[i][j].data()),
           this->table_id_,
@@ -847,7 +846,7 @@ void PSGPUWrapper::MergePull(std::shared_ptr<HeterContext> gpu_task) {
   if (!multi_node_) {
     return;
   }
-#ifdef PADDLE_WITH_GPU_GRAPH
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_GPU_GRAPH)
   platform::Timer timeline;
   timeline.Start();
   // barrier
@@ -862,10 +861,9 @@ void PSGPUWrapper::MergePull(std::shared_ptr<HeterContext> gpu_task) {
   auto barrier_span = timeline.ElapsedSec();
 
   timeline.Start();
-  auto fleet_ptr = paddle::distributed::FleetWrapper::GetInstance();
   std::vector<std::future<void>> task_futures;
   for (int dim_id = 0; dim_id < multi_mf_dim_; ++dim_id) {
-    auto pass_values = fleet_ptr->worker_ptr_->TakePassSparseReferedValues(
+    auto pass_values = fleet_ptr_->worker_ptr_->TakePassSparseReferedValues(
         table_id_, gpu_task->pass_id_, dim_id);
     if (pass_values == nullptr) {
       continue;
