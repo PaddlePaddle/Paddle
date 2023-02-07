@@ -146,10 +146,11 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
     """
     if not in_dygraph_mode():
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'var')
-    if x.shape == []:
+    if len(x.shape) == 0:
         out = paddle.full([], 0)
         print(1234)
         print(out.shape)
+        return out
     else:
         print(4321)
         u = mean(x, axis, True, name)
@@ -165,6 +166,7 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
             n = where(n > one_const, n - 1.0, one_const)
         n.stop_gradient = True
         out /= n
+        print(out.shape)
     return out
 
 
