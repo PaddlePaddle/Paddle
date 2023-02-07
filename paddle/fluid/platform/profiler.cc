@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/host_tracer.h"
 #include "paddle/fluid/platform/profiler/profiler.h"
 #include "paddle/fluid/platform/profiler_helper.h"
-#include "paddle/phi/common/profiler/device_tracer.h"
+#include "paddle/phi/api/profiler/device_tracer.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/nvtx.h"
 #endif
@@ -141,7 +141,7 @@ RecordMemEvent::RecordMemEvent(const void *ptr,
                                const phi::Place &place,
                                size_t size,
                                const TracerMemEventType type) {
-  if (g_state == ProfilerState::kDisabled &&
+  if (phi::ProfilerHelper::g_state == ProfilerState::kDisabled &&
       FLAGS_enable_host_event_recorder_hook == false) {
     return;
   }
@@ -489,7 +489,7 @@ RecordMemEvent::RecordMemEvent(const void *ptr,
 void MemEvenRecorder::PushMemRecord(const void *ptr,
                                     const Place &place,
                                     size_t size) {
-  if (g_state == ProfilerState::kDisabled) {
+  if (phi::ProfilerHelper::g_state == ProfilerState::kDisabled) {
     return;
   }
   std::lock_guard<std::mutex> guard(mtx_);
@@ -529,7 +529,7 @@ void MemEvenRecorder::PushMemRecord(const void *ptr,
     // old profiler only analyse memory managed by paddle.
     return;
   }
-  if (g_state == ProfilerState::kDisabled) return;
+  if (phi::ProfilerHelper::g_state == ProfilerState::kDisabled) return;
   auto &events = address_memevent_[place];
   PADDLE_ENFORCE_EQ(events.count(ptr),
                     0,
@@ -541,7 +541,7 @@ void MemEvenRecorder::PushMemRecord(const void *ptr,
 }
 
 void MemEvenRecorder::PopMemRecord(const void *ptr, const Place &place) {
-  if (g_state == ProfilerState::kDisabled) {
+  if (phi::ProfilerHelper::g_state == ProfilerState::kDisabled) {
     return;
   }
   std::lock_guard<std::mutex> guard(mtx_);
@@ -579,7 +579,7 @@ void MemEvenRecorder::PopMemRecord(const void *ptr,
     // old profiler only analyse memory managed by paddle.
     return;
   }
-  if (g_state == ProfilerState::kDisabled) return;
+  if (phi::ProfilerHelper::g_state == ProfilerState::kDisabled) return;
   auto &events = address_memevent_[place];
   auto iter = events.find(ptr);
   // The ptr maybe not in address_memevent
@@ -628,7 +628,7 @@ MemEvenRecorder::RecordMemEvent::~RecordMemEvent() {
 RecordBlock::RecordBlock(int block_id)
     : is_enabled_(false), start_ns_(PosixInNsec()) {
   // lock is not needed, the code below is thread-safe
-  if (g_state == ProfilerState::kDisabled) return;
+  if (phi::ProfilerHelper::g_state == ProfilerState::kDisabled) return;
   is_enabled_ = true;
   phi::SetCurBlock(block_id);
   name_ = string::Sprintf("block_%d", block_id);
@@ -636,13 +636,17 @@ RecordBlock::RecordBlock(int block_id)
 
 RecordBlock::~RecordBlock() {
   // lock is not needed, the code below is thread-safe
-  if (g_state == ProfilerState::kDisabled || !is_enabled_) return;
+  if (phi::ProfilerHelper::g_state == ProfilerState::kDisabled || !is_enabled_)
+    return;
   phi::DeviceTracer *tracer = phi::GetDeviceTracer();
   if (tracer) {
     // We try to put all blocks at the same nested depth in the
     // same timeline lane. and distinguish the using thread_id.
-    tracer->AddCPURecords(
-        name_, start_ns_, PosixInNsec(), phi::BlockDepth(), g_thread_id);
+    tracer->AddCPURecords(name_,
+                          start_ns_,
+                          PosixInNsec(),
+                          phi::BlockDepth(),
+                          phi::ProfilerHelper::g_thread_id);
   }
   phi::ClearCurBlock();
 }
@@ -681,7 +685,8 @@ void Mark(const std::string &name) {
         name, 0, 0, EventRole::kOrdinary, TracerEventType::UserDefined);
     return;
   }
-  GetEventList().Record(EventType::kMark, name, g_thread_id);
+  GetEventList().Record(
+      EventType::kMark, name, phi::ProfilerHelper::g_thread_id);
 }
 
 void EnableProfiler(ProfilerState state) {
@@ -692,17 +697,18 @@ void EnableProfiler(ProfilerState state) {
                         "ProfilerState::kDisabled"));
   SynchronizeAllDevice();
   std::lock_guard<std::mutex> l(profiler_mu);
-  if (state == g_state) {
+  if (state == phi::ProfilerHelper::g_state) {
     return;
   }
-  g_state = state;
+  phi::ProfilerHelper::g_state = state;
   ProfilerOptions option;
   HostTraceLevel::GetInstance().SetLevel(option.trace_level);
   should_send_profile_state = true;
   phi::GetDeviceTracer()->Enable();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (g_state == ProfilerState::kCUDA || g_state == ProfilerState::kAll ||
-      g_state == ProfilerState::kCPU) {
+  if (phi::ProfilerHelper::g_state == ProfilerState::kCUDA ||
+      phi::ProfilerHelper::g_state == ProfilerState::kAll ||
+      phi::ProfilerHelper::g_state == ProfilerState::kCPU) {
     // Generate some dummy events first to reduce the startup overhead.
     DummyKernelAndEvent();
     phi::GetDeviceTracer()->Reset();
@@ -716,13 +722,15 @@ void ResetProfiler() {
   SynchronizeAllDevice();
   phi::GetDeviceTracer()->Reset();
   MemEvenRecorder::Instance().Flush();
-  std::lock_guard<std::mutex> guard(g_all_event_lists_mutex);
-  for (auto it = g_all_event_lists.begin(); it != g_all_event_lists.end();
+  std::lock_guard<std::mutex> guard(
+      phi::ProfilerHelper::g_all_event_lists_mutex);
+  for (auto it = phi::ProfilerHelper::g_all_event_lists.begin();
+       it != phi::ProfilerHelper::g_all_event_lists.end();
        ++it) {
     (*it)->Clear();
   }
-  for (auto it = g_all_mem_event_lists.begin();
-       it != g_all_mem_event_lists.end();
+  for (auto it = phi::ProfilerHelper::g_all_mem_event_lists.begin();
+       it != phi::ProfilerHelper::g_all_mem_event_lists.end();
        ++it) {
     (*it)->Clear();
   }
@@ -739,7 +747,7 @@ void DisableProfiler(EventSortingKey sorted_key,
   MemEvenRecorder::Instance().Flush();
 
   std::lock_guard<std::mutex> l(profiler_mu);
-  if (g_state == ProfilerState::kDisabled) return;
+  if (phi::ProfilerHelper::g_state == ProfilerState::kDisabled) return;
   // Mark the profiling stop.
   Mark("_stop_profiler_");
   DealWithShowName();
@@ -761,7 +769,7 @@ void DisableProfiler(EventSortingKey sorted_key,
   ParseMemEvents(all_mem_events);
 
   ResetProfiler();
-  g_state = ProfilerState::kDisabled;
+  phi::ProfilerHelper::g_state = ProfilerState::kDisabled;
   g_tracer_option = TracerOption::kDefault;
   should_send_profile_state = true;
 }
@@ -772,13 +780,10 @@ void CompleteProfilerEvents(phi::proto::Profile *tracer_profile,
   SynchronizeAllDevice();
   auto thr_events = DockHostEventRecorderHostPart();
   MemEvenRecorder::Instance().Flush();
-
   std::lock_guard<std::mutex> l(profiler_mu);
-  if (g_state == ProfilerState::kDisabled) return;
-
+  if (phi::ProfilerHelper::g_state == ProfilerState::kDisabled) return;
   // Mark the profiling stop.
   Mark("_stop_profiler_");
-
   phi::DeviceTracer *tracer = phi::GetDeviceTracer();
   if (tracer->IsEnabled() && tracer_profile != nullptr) {
     tracer->Disable();
@@ -786,31 +791,34 @@ void CompleteProfilerEvents(phi::proto::Profile *tracer_profile,
     tracer->GenEventKernelCudaElapsedTime();
     *tracer_profile = tracer->GetProfile();
   }
-
   if (time_events != nullptr) {
     *time_events = GetAllEvents();
   }
+
   if (mem_events != nullptr) {
     *mem_events = GetMemEvents();
   }
-
   ResetProfiler();
-  g_state = ProfilerState::kDisabled;
+  phi::ProfilerHelper::g_state = ProfilerState::kDisabled;
   g_tracer_option = TracerOption::kDefault;
   should_send_profile_state = true;
 }
 
 std::vector<std::vector<Event>> GetAllEvents() {
-  std::lock_guard<std::mutex> guard(g_all_event_lists_mutex);
+  std::lock_guard<std::mutex> guard(
+      phi::ProfilerHelper::g_all_event_lists_mutex);
   std::vector<std::vector<Event>> result;
-  for (auto it = g_all_event_lists.begin(); it != g_all_event_lists.end();
+  for (auto it = phi::ProfilerHelper::g_all_event_lists.begin();
+       it != phi::ProfilerHelper::g_all_event_lists.end();
        ++it) {
     result.emplace_back((*it)->Reduce());
   }
   return result;
 }
 
-bool IsProfileEnabled() { return g_state != ProfilerState::kDisabled; }
+bool IsProfileEnabled() {
+  return phi::ProfilerHelper::g_state != ProfilerState::kDisabled;
+}
 
 bool ShouldSendProfileState() { return should_send_profile_state; }
 
@@ -852,10 +860,12 @@ int64_t ListenerId() { return profiler_lister_id; }
 
 void NvprofEnableRecordEvent() {
   SynchronizeAllDevice();
-  g_enable_nvprof_hook = true;
+  phi::ProfilerHelper::g_enable_nvprof_hook = true;
 }
 
-void NvprofDisableRecordEvent() { g_enable_nvprof_hook = false; }
+void NvprofDisableRecordEvent() {
+  phi::ProfilerHelper::g_enable_nvprof_hook = false;
+}
 
 void EnableHostEventRecorder() { FLAGS_enable_host_event_recorder_hook = true; }
 
@@ -892,7 +902,7 @@ static void EmulateEventPushAndPop(
   for (const auto &thr_sec : host_sec.thr_sections) {
     uint64_t tid = thr_sec.thread_id;
     auto cur_thr_list = std::make_shared<EventList<Event>>();
-    g_all_event_lists.emplace_front(cur_thr_list);
+    phi::ProfilerHelper::g_all_event_lists.emplace_front(cur_thr_list);
     // for nesting events
     std::stack<size_t> evt_stk;
     std::stack<std::string> prefix_stk;

@@ -21,7 +21,6 @@
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/common/profiler/event_tracing.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -98,10 +97,6 @@ void TransDataLayoutFromOneDNN(DataLayout in_layout,
         handler.AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
 
     auto& astream = OneDNNContext::tls().get_stream();
-    ::phi::RecordEvent record_reorder("ext_reorder",
-                                      ::phi::TracerEventType::UserDefined,
-                                      1,
-                                      ::phi::EventRole::kUniqueOp);
     reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
     astream.wait();
   } else {

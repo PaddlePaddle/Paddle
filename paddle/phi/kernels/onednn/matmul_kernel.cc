@@ -237,10 +237,6 @@ class MulPrimitiveFactory {
 
     auto &astream = OneDNNContext::tls().get_stream();
     {
-      phi::RecordEvent record_reorder("int_reorder",
-                                      phi::TracerEventType::UserDefined,
-                                      2,
-                                      phi::EventRole::kUniqueOp);
       reorder.execute(astream, src_mem, dst_mem);
       astream.wait();
     }
@@ -423,10 +419,6 @@ class MulPrimitiveFactory {
 
     auto &astream = OneDNNContext::tls().get_stream();
     {
-      phi::RecordEvent record_reorder("int_reorder",
-                                      phi::TracerEventType::UserDefined,
-                                      2,
-                                      phi::EventRole::kUniqueOp);
       reorder.execute(astream, src_mem, dst_mem);
       astream.wait();
     }

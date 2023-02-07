@@ -98,7 +98,7 @@ void AddMemcpyRecord(const cnpapiActivityMemcpy* memcpy,
   event.correlation_id = memcpy->correlation_id;
   event.memcpy_info.num_bytes = memcpy->bytes;
   snprintf(event.memcpy_info.copy_kind,
-           kMemKindMaxLen,
+           phi::kMemKindMaxLen,
            "%s",
            MemcpyKind(memcpy->copy_type));
   collector->AddDeviceEvent(std::move(event));
@@ -122,7 +122,7 @@ void AddMemcpy2Record(const cnpapiActivityMemcpyPtoP* memcpy2,
   event.correlation_id = memcpy2->correlation_id;
   event.memcpy_info.num_bytes = memcpy2->bytes;
   snprintf(event.memcpy_info.copy_kind,
-           kMemKindMaxLen,
+           phi::kMemKindMaxLen,
            "%s",
            MemcpyKind(memcpy2->copy_type));
   collector->AddDeviceEvent(std::move(event));

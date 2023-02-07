@@ -21,7 +21,7 @@
 #include "paddle/fluid/framework/new_executor/workqueue/thread_data_registry.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/os_info.h"
-#include "paddle/phi/common/profiler/host_event_recorder.h"
+#include "paddle/phi/api/profiler/host_event_recorder.h"
 
 namespace paddle {
 namespace platform {

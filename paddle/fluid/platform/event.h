@@ -24,7 +24,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #endif
-#include "paddle/phi/common/profiler/event.h"
+#include "paddle/phi/api/profiler/event.h"
 
 namespace paddle {
 namespace platform {

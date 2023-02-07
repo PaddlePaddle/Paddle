@@ -25,7 +25,7 @@ limitations under the License. */
 #include <vector>
 #include "gflags/gflags.h"
 
-#include "paddle/phi/common/profiler/event_tracing.h"
+#include "paddle/phi/api/profiler/event_tracing.h"
 
 DECLARE_bool(enable_host_event_recorder_hook);
 

@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/common/profiler/profiler.h"
+#include "paddle/phi/api/profiler/profiler.h"
 
 #include <mutex>  // NOLINT
 #include <random>
@@ -20,11 +20,11 @@ limitations under the License. */
 #include <string>
 #include <type_traits>
 
-#include "paddle/phi/common/profiler/common_event.h"
-#include "paddle/phi/common/profiler/device_tracer.h"
-#include "paddle/phi/common/profiler/host_event_recorder.h"
-#include "paddle/phi/common/profiler/host_tracer.h"
-#include "paddle/phi/common/profiler/profiler_helper.h"
+#include "paddle/phi/api/profiler/common_event.h"
+#include "paddle/phi/api/profiler/device_tracer.h"
+#include "paddle/phi/api/profiler/host_event_recorder.h"
+#include "paddle/phi/api/profiler/host_tracer.h"
+#include "paddle/phi/api/profiler/profiler_helper.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/os_info.h"
 #ifdef PADDLE_WITH_CUDA
@@ -36,6 +36,19 @@ DEFINE_bool(enable_host_event_recorder_hook,
             "enable HostEventRecorder, hook Profiler");
 
 namespace phi {
+
+ProfilerState ProfilerHelper::g_state = ProfilerState::kDisabled;
+bool ProfilerHelper::g_enable_nvprof_hook = false;
+thread_local uint64_t ProfilerHelper::g_thread_id;
+uint32_t ProfilerHelper::g_next_thread_id = 0;
+std::mutex ProfilerHelper::g_all_event_lists_mutex;
+std::list<std::shared_ptr<EventList<Event>>> ProfilerHelper::g_all_event_lists;
+thread_local std::shared_ptr<EventList<Event>> ProfilerHelper::g_event_list;
+std::list<std::shared_ptr<EventList<MemEvent>>>
+    ProfilerHelper::g_all_mem_event_lists;
+thread_local std::shared_ptr<EventList<MemEvent>>
+    ProfilerHelper::g_mem_event_list;
+std::mutex ProfilerHelper::g_all_mem_event_lists_mutex;
 
 Event::Event(EventType type,
              std::string name,
@@ -69,11 +82,12 @@ Event *PushEvent(const std::string &name,
                  const EventRole role,
                  std::string attr) {
   return GetEventList().Record(
-      EventType::kPushRange, name, g_thread_id, role, attr);
+      EventType::kPushRange, name, ProfilerHelper::g_thread_id, role, attr);
 }
 
 void PopEvent(const std::string &name, const EventRole role, std::string attr) {
-  GetEventList().Record(EventType::kPopRange, name, g_thread_id, role, attr);
+  GetEventList().Record(
+      EventType::kPopRange, name, ProfilerHelper::g_thread_id, role, attr);
 }
 
 RecordEvent::RecordEvent(const char *name,
@@ -91,9 +105,9 @@ RecordEvent::RecordEvent(const char *name,
   if (UNLIKELY(HostTraceLevel::GetInstance().NeedTrace(level) == false)) {
     return;
   }
-
   if (FLAGS_enable_host_event_recorder_hook == false) {
-    if (g_state != ProfilerState::kDisabled) {  // avoid temp string
+    if (ProfilerHelper::g_state !=
+        ProfilerState::kDisabled) {  // avoid temp string
       if (type == TracerEventType::Operator ||
           type == TracerEventType::OperatorInner ||
           type == TracerEventType::UserDefined) {
@@ -179,7 +193,8 @@ RecordEvent::RecordEvent(const std::string &name,
 void RecordEvent::OriginalConstruct(const std::string &name,
                                     const EventRole role,
                                     const std::string &attr) {
-  if (g_state == ProfilerState::kDisabled || name.empty()) return;
+  if (ProfilerHelper::g_state == ProfilerState::kDisabled || name.empty())
+    return;
 
   // do some initialization
   name_ = new std::string(name);
@@ -224,13 +239,17 @@ void RecordEvent::End() {
     return;
   }
 
-  if (g_state == ProfilerState::kDisabled || !is_enabled_) return;
+  if (ProfilerHelper::g_state == ProfilerState::kDisabled || !is_enabled_)
+    return;
   // lock is not needed, the code below is thread-safe
   DeviceTracer *tracer = GetDeviceTracer();
   if (tracer) {
     uint64_t end_ns = PosixInNsec();
-    tracer->AddCPURecords(
-        CurAnnotationName(), start_ns_, end_ns, BlockDepth(), g_thread_id);
+    tracer->AddCPURecords(CurAnnotationName(),
+                          start_ns_,
+                          end_ns,
+                          BlockDepth(),
+                          ProfilerHelper::g_thread_id);
   }
   ClearCurAnnotation();
   PopEvent(*name_, role_);
@@ -241,8 +260,9 @@ void RecordEvent::End() {
 }
 
 bool RecordEvent::IsEnabled() {
-  return FLAGS_enable_host_event_recorder_hook || g_enable_nvprof_hook ||
-         g_state != ProfilerState::kDisabled;
+  return FLAGS_enable_host_event_recorder_hook ||
+         ProfilerHelper::g_enable_nvprof_hook ||
+         ProfilerHelper::g_state != ProfilerState::kDisabled;
 }
 
 }  // namespace phi

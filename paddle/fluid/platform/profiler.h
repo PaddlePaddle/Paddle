@@ -35,7 +35,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 
-#include "paddle/phi/common/profiler/profiler.h"
+#include "paddle/phi/api/profiler/profiler.h"
 
 namespace phi {
 namespace proto {
@@ -179,7 +179,8 @@ std::vector<std::vector<Event>> GetAllEvents();
 
 // Enable the profiling function.
 void EnableProfiler(ProfilerState state);
-// Clear the g_all_event_lists, which is total event lists of all threads.
+// Clear the phi::ProfilerHelper::g_all_event_lists, which is total event lists
+// of all threads.
 void ResetProfiler();
 void DisableProfiler(EventSortingKey sorted_key,
                      const std::string& profile_path);

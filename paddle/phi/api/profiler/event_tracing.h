@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/phi/common/profiler/event.h"
-#include "paddle/phi/common/profiler/trace_event.h"
+#include "paddle/phi/api/profiler/event.h"
+#include "paddle/phi/api/profiler/trace_event.h"
 
 namespace phi {
 

@@ -18,12 +18,10 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/event.h"
 #include "paddle/fluid/platform/profiler/trace_event.h"
-#include "paddle/phi/common/profiler/event_tracing.h"
+#include "paddle/phi/api/profiler/event_tracing.h"
 
 namespace paddle {
 namespace platform {
-
-using phi::kDefaultTraceLevel;
 
 // Host event tracing. A trace marks something that happens but has no duration
 // associated with it. For example, thread starts working.
@@ -39,7 +37,7 @@ struct RecordInstantEvent {
    */
   explicit RecordInstantEvent(const char* name,
                               TracerEventType type,
-                              uint32_t level = kDefaultTraceLevel);
+                              uint32_t level = phi::kDefaultTraceLevel);
 };
 
 using RecordEvent = phi::RecordEvent;

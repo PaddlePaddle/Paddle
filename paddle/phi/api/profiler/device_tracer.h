@@ -16,10 +16,10 @@ limitations under the License. */
 #include <chrono>  // NOLINT
 #include <string>
 
+#include "paddle/phi/api/profiler/event.h"
+#include "paddle/phi/api/profiler/profiler.pb.h"
 #include "paddle/phi/backends/dynload/cupti.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/common/profiler/event.h"
-#include "paddle/phi/common/profiler/profiler.pb.h"
 #include "paddle/phi/core/os_info.h"
 
 namespace phi {

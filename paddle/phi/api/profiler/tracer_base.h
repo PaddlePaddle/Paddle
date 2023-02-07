@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/common/profiler/trace_event_collector.h"
+#include "paddle/phi/api/profiler/trace_event_collector.h"
 
 namespace phi {
 

@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/platform/profiler/tracer_base.h"
-#include "paddle/phi/common/profiler/host_tracer.h"
+#include "paddle/phi/api/profiler/host_tracer.h"
 
 namespace paddle {
 namespace platform {

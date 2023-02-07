@@ -21,7 +21,7 @@
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/event.h"  // import EventRole, TODO(TIEXING): remove later
 #include "paddle/fluid/platform/profiler/trace_event.h"
-#include "paddle/phi/common/profiler/common_event.h"
+#include "paddle/phi/api/profiler/common_event.h"
 
 namespace paddle {
 namespace platform {

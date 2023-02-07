@@ -19,7 +19,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/type_defs.h"
-#include "paddle/phi/common/profiler/trace_event.h"
+#include "paddle/phi/api/profiler/trace_event.h"
 
 namespace paddle {
 namespace platform {
@@ -33,8 +33,6 @@ using HostTraceEvent = phi::HostTraceEvent;
 using RuntimeTraceEvent = phi::RuntimeTraceEvent;
 using DeviceTraceEvent = phi::DeviceTraceEvent;
 using MemTraceEvent = phi::MemTraceEvent;
-
-static constexpr size_t kMemKindMaxLen = 50;
 
 struct OperatorSupplementEvent {
   OperatorSupplementEvent() = default;
