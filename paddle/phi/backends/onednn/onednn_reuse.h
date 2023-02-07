@@ -298,19 +298,16 @@ class OneDNNHandlerT {
   typename std::enable_if<std::is_same<typename std::decay<First>::type,
                                        dnnl::primitive_attr>::value>::type
   CreateForwardPrimitiveDescriptor(First&& first, Args&&... args) {
-    auto fwd_desc = typename TForward::desc(std::forward<Args>(args)...);
     fwd_pd_ = std::make_shared<typename TForward::primitive_desc>(
-        fwd_desc, first, engine_);
+        engine_, std::forward<Args>(args)..., first);
   }
 
   template <class First, class... Args>
   typename std::enable_if<!std::is_same<typename std::decay<First>::type,
                                         dnnl::primitive_attr>::value>::type
   CreateForwardPrimitiveDescriptor(First&& first, Args&&... args) {
-    auto fwd_desc = typename TForward::desc(std::forward<First>(first),
-                                            std::forward<Args>(args)...);
-    fwd_pd_ =
-        std::make_shared<typename TForward::primitive_desc>(fwd_desc, engine_);
+    fwd_pd_ = std::make_shared<typename TForward::primitive_desc>(
+        engine_, std::forward<First>(first), std::forward<Args>(args)...);
   }
 
   template <typename... Args>
