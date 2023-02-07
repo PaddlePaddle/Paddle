@@ -55,7 +55,7 @@ def _decay_step_counter(begin=0):
     global_step = nn.autoincreased_step_counter(
         counter_name='@LR_DECAY_COUNTER@', begin=begin, step=1
     )
-    global_step = tensor.cast(global_step, 'float32')
+    global_step = paddle.cast(global_step, 'float32')
     return global_step
 
 
