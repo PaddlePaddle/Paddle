@@ -131,9 +131,8 @@ struct MultiTensorAdamFunctor {
         phi::Load<T, VecSize>(g_ptr + idx, &g_vec);
         phi::Load<MT, VecSize>(mom1_ptr + idx, &mom1_vec);
         phi::Load<MT, VecSize>(mom2_ptr + idx, &mom2_vec);
-      } else if (idx < n) {
+      } else {
         int size = n - idx;
-#pragma unroll
         for (int j = 0; j < size; j++) {
           if (IsMultiPrecision) {
             mp_vec[j] = mp_ptr[idx + j];
@@ -152,15 +151,6 @@ struct MultiTensorAdamFunctor {
           mom1_vec[j] = MT(0);
           mom2_vec[j] = MT(0);
         }
-      } else {
-#pragma unroll
-        for (int j = 0; j < VecSize; j++) {
-          g_vec[j] = T(0);
-          p_vec[j] = T(0);
-          mp_vec[j] = MT(0);
-          mom1_vec[j] = MT(0);
-          mom2_vec[j] = MT(0);
-        }
       }
 
 #pragma unroll
@@ -171,15 +161,14 @@ struct MultiTensorAdamFunctor {
                       static_cast<MT>(g_vec[j]),
                       beta1,
                       beta2);
-        p = UpdateParameter(p,
-                            mom1_vec[j],
-                            mom2_vec[j],
-                            beta1_pow,
-                            beta2_pow,
-                            lr,
-                            epsilon,
-                            decay);
-        mp_vec[j] = p;
+        mp_vec[j] = UpdateParameter(p,
+                                    mom1_vec[j],
+                                    mom2_vec[j],
+                                    beta1_pow,
+                                    beta2_pow,
+                                    lr,
+                                    epsilon,
+                                    decay);
       }
 
       if (idx <= n - VecSize) {
@@ -191,9 +180,8 @@ struct MultiTensorAdamFunctor {
         for (int j = 0; j < VecSize; j++) {
           p_ptr[idx + j] = static_cast<T>(mp_vec[j]);
         }
-      } else if (idx < n) {
+      } else {
         int size = n - idx;
-#pragma unroll
         for (int j = 0; j < size; j++) {
           if (IsMultiPrecision) {
             mp_ptr[idx + j] = mp_vec[j];
@@ -241,7 +229,7 @@ struct MultiTensorAdamFunctor {
 
 template <typename T, int N>
 __global__ void UpdateBetaPowGroup(
-    T* beta1_pow[N], T* beta2_pow[N], T beta1, T beta2, int n) {
+    Array<T*, N> beta1_pow, Array<T*, N> beta2_pow, T beta1, T beta2, int n) {
   auto idx = threadIdx.x;
   if (idx < n) {
     beta1_pow[idx][0] *= beta1;
@@ -263,7 +251,7 @@ static void CopyTensorIfDifferent(const Context& dev_ctx,
 
 template <typename T, typename TensorT>
 static int GetVecSizeFromTensors(const std::vector<TensorT*>& tensors,
-                                 int vec_size = -1) {
+                                 int vec_size = 4) {
   for (const auto* t : tensors) {
     vec_size = min(vec_size, GetVectorizedSize(t->template data<T>()));
   }
@@ -481,7 +469,7 @@ void MultiTensorAdamKernel(
       for (size_t i = 0; i < group_num; ++i) {
         size_t start = i * kGroupSize;
         size_t end = std::min((i + 1) * kGroupSize, n);
-        MPDType *beta1_ptrs[kGroupSize], *beta2_ptrs[kGroupSize];
+        Array<MPDType*, kGroupSize> beta1_ptrs, beta2_ptrs;
         for (size_t j = start; j < end; ++j) {
           size_t idx = j - start;
           beta1_ptrs[idx] = dev_ctx.template Alloc<MPDType>(beta1_pows_out[j]);
