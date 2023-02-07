@@ -230,9 +230,3 @@ class ParallelEnv:
     local_rank = rank
     nranks = world_size
     dev_id = device_id
-
-
-# NOTE: [ Compatible ] Originally this class name is `Env`. The semantics of the old class names
-# are inaccurate and may confuse users, so replace it with `ParallelEnv`, but to be compatible
-# with the old examples, here still need to keep this name.
-Env = ParallelEnv
