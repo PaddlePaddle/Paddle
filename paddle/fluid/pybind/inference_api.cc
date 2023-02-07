@@ -766,7 +766,7 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
            py::arg("use_static") = false,
            py::arg("use_calib_mode") = true,
-           py::arg("static_path"))
+           py::arg("static_path") = "")
       .def("enable_tensorrt_memory_optim",
            &AnalysisConfig::EnableTensorRTMemoryOptim,
            py::arg("engine_memory_sharing") = true,
