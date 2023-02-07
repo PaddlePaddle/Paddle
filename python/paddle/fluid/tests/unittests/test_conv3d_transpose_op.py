@@ -19,9 +19,10 @@ import numpy as np
 import paddle
 
 paddle.enable_static()
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle.fluid.core as core
+import paddle.nn.functional as F
 
 
 def conv3dtranspose_forward_naive(input_, filter_, attrs):
@@ -134,6 +135,29 @@ def conv3dtranspose_forward_naive(input_, filter_, attrs):
     return out
 
 
+def conv3d_transpose_wrapper(
+    stride=[1, 1, 1],
+    padding=[0, 0, 0],
+    padding_algorithm="EXPLICIT",
+    dilation=[1, 1, 1],
+    groups=1,
+    use_cudnn=False,
+    data_format='NCDHW',
+):
+    def inner_func(input, filter):
+        return F.conv3d_transpose(
+            input,
+            filter,
+            stride=stride,
+            padding=padding,
+            groups=groups,
+            dilation=dilation,
+            data_format=data_format,
+        )
+
+    return inner_func
+
+
 class TestConv3DTransposeOp(OpTest):
     def setUp(self):
         # init as conv transpose
@@ -159,7 +183,17 @@ class TestConv3DTransposeOp(OpTest):
             'use_cudnn': self.use_cudnn,
             'data_format': self.data_format,
         }
-
+        data_format = 'NCDHW'
+        if self.data_format == 'NHWC':
+            data_format = 'NDHWC'
+        self.python_api = conv3d_transpose_wrapper(
+            stride=self.stride,
+            padding=self.pad,
+            padding_algorithm=self.padding_algorithm,
+            groups=self.groups,
+            use_cudnn=self.use_cudnn,
+            data_format=data_format,
+        )
         output = conv3dtranspose_forward_naive(
             input_, filter_, self.attrs
         ).astype("float32")

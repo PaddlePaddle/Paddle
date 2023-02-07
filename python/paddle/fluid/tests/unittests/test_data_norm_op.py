@@ -223,7 +223,6 @@ class TestDataNormOpInference(unittest.TestCase):
                             [2, 3],
                             slot_dim=slot_dim,
                             enable_scale_and_shift=enable_scale_and_shift,
-                            check_dygraph=False,
                         )
 
 
@@ -388,7 +387,7 @@ class TestDataNormOpWithoutEnableScaleAndShift(OpTest):
         """
         test check forward, check output
         """
-        self.check_output(check_dyraph=False)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         """
@@ -456,7 +455,7 @@ class TestDataNormOpWithEnableScaleAndShift_1(OpTest):
         """
         test check backward, check grad
         """
-        self.check_grad(['X'], 'Y', no_grad_set=set([], check_dygraph=False))
+        self.check_grad(['X'], 'Y', no_grad_set=set([]), check_dygraph=False)
 
 
 class TestDataNormOpWithSlotDim(OpTest):

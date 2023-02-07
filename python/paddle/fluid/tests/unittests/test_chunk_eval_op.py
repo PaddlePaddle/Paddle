@@ -15,7 +15,9 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+
+import paddle
 
 
 class Segment:
@@ -32,6 +34,23 @@ class Segment:
         )
 
     __repr__ = __str__
+
+
+def chunk_eval_wrapper(num_chunk_types, chunk_scheme, excluded_chunk_types):
+    def inner_func(input, label, seq_length=None):
+        return paddle._legacy_C_ops.chunk_eval(
+            input,
+            label,
+            seq_length,
+            "num_chunk_types",
+            num_chunk_types,
+            "chunk_scheme",
+            chunk_scheme,
+            "excluded_chunk_types",
+            excluded_chunk_types,
+        )
+
+    return inner_func
 
 
 class TestChunkEvalOp(OpTest):
@@ -220,6 +239,9 @@ class TestChunkEvalOp(OpTest):
         self.op_type = 'chunk_eval'
         self.set_confs()
         self.set_data()
+        self.python_api = chunk_eval_wrapper(
+            self.num_chunk_types, self.scheme, self.excluded_chunk_types
+        )
 
     def test_check_output(self):
         self.check_output()
