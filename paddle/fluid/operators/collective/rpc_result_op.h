@@ -55,13 +55,14 @@ class RpcResultOpKernel : public framework::OpKernel<T> {
       auto* out = ctx.Output<phi::DenseTensor>("Out");
       ctx.device_context().Alloc<float>(out);
       auto scores = ParseScoreServiceResponse(resp);
-      framework::TensorFromVector(scores, out);
+      framework::TensorFromVector(scores, ctx.device_context(), out);
     }
 
     auto* succeed = ctx.Output<phi::DenseTensor>("succeed");
     ctx.device_context().Alloc<bool>(succeed);
     std::vector<bool> succeed_wrapper{ok};
-    framework::TensorFromVector(succeed_wrapper, succeed);
+    framework::TensorFromVector(
+        succeed_wrapper, , ctx.device_context(), succeed);
   }
 };
 
