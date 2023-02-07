@@ -47,9 +47,7 @@ class RpcRequestStore {
     return id_to_event_map_[request_id];
   }
 
-  std::string GetService(int request_id) {
-    return id_to_service_map_[request_id];
-  }
+  bool GetStatus(int request_id) { return id_to_status_map_[request_id]; }
 
   std::string GetResponse(int request_id) {
     return id_to_resp_map_[request_id];
@@ -63,11 +61,11 @@ class RpcRequestStore {
     id_to_event_map_.emplace(request_id, event);
   }
 
-  void InsertService(int request_id, const std::string& service) {
+  void InsertStatus(int request_id, bool succeed) {
     if (request_id == 0) {
       LOG(WARNING) << "Total num of requests have exceeded int limits.";
     }
-    id_to_service_map_.emplace(request_id, service);
+    id_to_status_map_.emplace(request_id, succeed);
   }
 
   void InsertResponse(int request_id, const std::string& resp) {
@@ -82,12 +80,11 @@ class RpcRequestStore {
   int request_id_;
   std::unordered_map<int, std::shared_ptr<bthread::CountdownEvent>>
       id_to_event_map_;
+  std::unordered_map<int, bool> id_to_status_map_;
   std::unordered_map<int, std::string> id_to_resp_map_;
-  std::unordered_map<int, std::string> id_to_service_map_;
 };
 
-int RpcSend(const std::string& service,
-            const std::string& url,
+int RpcSend(const std::string& url,
             const std::string& query,
             void (*payload_builder)(brpc::Controller*, int, const std::string&),
             void (*response_handler)(brpc::Controller*,

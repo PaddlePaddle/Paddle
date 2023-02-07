@@ -16,6 +16,7 @@
 
 #include <brpc/channel.h>
 
+#include <fstream>
 #include <memory>
 #include <string>
 
@@ -32,9 +33,18 @@ namespace operators {
 using json = nlohmann::json;
 
 // service payload builders
-std::string BuildTestServicePayload(const std::string& query) {
+std::string BuildScoreServicePayload(const std::string& query) {
   json payload = {{"data", {query}}};  // => {"data": [query]}
   return payload.dump();
+}
+
+std::string BuildServicePayload(const std::string& service,
+                                const std::string& query) {
+  if (service == "score") {
+    return BuildScoreServicePayload(query);
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument("Unknown service."));
+  }
 }
 
 // req & res handlers
@@ -50,34 +60,60 @@ void HandleServiceResponse(brpc::Controller* ctrl,
                            std::shared_ptr<bthread::CountdownEvent> event) {
   // make sure the controller will be deleted
   std::unique_ptr<brpc::Controller> ctrl_guard(ctrl);
+  auto& rpc_store = platform::RpcRequestStore::Instance();
   if (ctrl->Failed()) {
-    PADDLE_THROW(
-        platform::errors::Unavailable("Rpc send failed: access url error."));
+    LOG(WARNING) << "Request id " << request_id << " failed: access url error.";
+    rpc_store.InsertStatus(request_id, false);
+  } else {
+    const std::string res = ctrl->response_attachment().to_string();
+    rpc_store.InsertStatus(request_id, true);
+    rpc_store.InsertResponse(request_id, res);
   }
-  const std::string res = ctrl->response_attachment().to_string();
-  platform::RpcRequestStore::Instance().InsertResponse(request_id, res);
   // try to notify result op
   event->signal();
+}
+
+std::unordered_map<int, std::string> GetVocabulary(std::string path) {
+  std::unordered_map<int, std::string> vocab;
+  std::ifstream vocab_file(path);
+  std::string word;
+  int id;
+  while (vocab_file >> word >> id) {
+    vocab.emplace(id, word);
+  }
+  return vocab;
 }
 
 template <typename T>
 class RpcCallOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto InputTensor2String = [&](const std::string& name) {
-      auto* tensor = ctx.Input<phi::DenseTensor>(name);
-      return std::string(reinterpret_cast<const char*>(tensor->data()));
-    };
+    // query
+    auto src_ids_tensor = ctx.Input<phi::DenseTensor>("X");
+    std::vector<int> src_ids_vec;
+    framework::TensorToVector(*src_ids_tensor, &src_ids_vec);
 
-    const std::string service = InputTensor2String("service");
-    const std::string url = InputTensor2String("url");
-    const std::string query = InputTensor2String("X");
+    auto vocab_path = ctx.Attr<std::string>("vocab_path");
+    auto vocab = GetVocabulary(vocab_path);
+    std::string query;
+    for (int src_id : src_ids_vec) {
+      query += vocab[src_id];
+    }
 
-    const std::string payload = BuildTestServicePayload(query);
+    // url
+    auto url_id_tensor = ctx.Input<phi::DenseTensor>("url_id");
+    std::vector<int> url_id_vec;
+    framework::TensorToVector(*url_id_tensor, &url_id_vec);
+    int url_id = url_id_vec[0];
+
+    auto url_list = ctx.Attr<std::vector<std::string>>("url_list");
+    const std::string url = url_list[url_id];
+
+    // payload, only support score service now
+    const std::string payload = BuildServicePayload("score", query);
     int request_id = platform::RpcSend(
-        service, url, payload, &HandleServiceRequest, &HandleServiceResponse);
+        url, payload, &HandleServiceRequest, &HandleServiceResponse);
 
-    VLOG(3) << "Request id " << request_id << " service: " << service;
     VLOG(3) << "Request id " << request_id << " url: " << url;
     VLOG(3) << "Request id " << request_id << " query: " << query;
 

@@ -37,10 +37,11 @@ class RpcCallOp : public framework::OperatorWithKernel {
 class RpcCallOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
-    AddInput("X", "(Tensor) Query to service.");
-    AddInput("service", "(Tensor) Service name.");
-    AddInput("url", "(Tensor) Service URL.");
+    AddInput("X", "(Tensor) Src words' ids.");
+    AddInput("url_id", "(Tensor) Service URL's id.");
     AddOutput("Out", "(Tensor) Request id.");
+    AddAttr<std::vector<std::string>>("url_list", "URL list.");
+    AddAttr<std::string>("vocab_path", "Vocab's absolute path.");
     AddComment(R"DOC(
 Rpc Call Operator
 
@@ -55,4 +56,6 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_WITHOUT_GRADIENT(rpc_call, ops::RpcCallOp, ops::RpcCallOpMaker);
 
-REGISTER_OP_CPU_KERNEL(rpc_call, ops::RpcCallOpKernel<uint8_t>);
+REGISTER_OP_CPU_KERNEL(rpc_call,
+                       ops::RpcCallOpKernel<int>,
+                       ops::RpcCallOpKernel<int64_t>);

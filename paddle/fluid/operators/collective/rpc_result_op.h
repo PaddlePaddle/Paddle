@@ -27,6 +27,11 @@ namespace operators {
 
 using json = nlohmann::json;
 
+// service result parsers
+std::vector<float> ParseScoreServiceResponse(const std::string& response) {
+  return {1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
+}
+
 template <typename T>
 class RpcResultOpKernel : public framework::OpKernel<T> {
  public:
@@ -35,36 +40,26 @@ class RpcResultOpKernel : public framework::OpKernel<T> {
     int request_id = request_id_tensor->data<int>()[0];
 
     // wait for call op's event notification
-    auto event = platform::RpcRequestStore::Instance().GetEvent(request_id);
+    auto& rpc_store = platform::RpcRequestStore::Instance();
+    auto event = rpc_store.GetEvent(request_id);
     if (event->wait() != 0) {
-      PADDLE_THROW(platform::errors::Unavailable("Rpc recv failed."));
+      PADDLE_THROW(platform::errors::Fatal("Something wrong with event."));
     }
 
-    const std::string& resp =
-        platform::RpcRequestStore::Instance().GetResponse(request_id);
-    VLOG(3) << "Request id " << request_id << " raw response: " << resp;
+    bool succeed = rpc_store.GetStatus(request_id);
+    if (succeed) {
+      const std::string& resp = rpc_store.GetResponse(request_id);
+      VLOG(3) << "Request id " << request_id << " raw response: " << resp;
 
-    std::string res;
-    const std::string service =
-        platform::RpcRequestStore::Instance().GetService(request_id);
-    if (service == "test") {
-      json res_payload = json::parse(resp);
-      json res_payload_data =
-          json::parse(res_payload["data"][0].get<std::string>());
-
-      res = "搜索结果: ";
-      for (int i = 0; i < 3; ++i) {
-        res += "[";
-        res += std::to_string(i);
-        res += "]";
-        res += res_payload_data["results"][i]["abstract"];
-      }
+      // only support score service now
+      auto* out = ctx.Output<phi::DenseTensor>("Out");
+      auto scores = ParseScoreServiceResponse(resp);
+      framework::TensorFromVector(scores, out);
     }
-    VLOG(3) << "Request id " << request_id << " result: " << res;
 
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
-    std::vector<uint8_t> vec(res.begin(), res.end());
-    framework::TensorFromVector(vec, out);
+    auto* status = ctx.Output<phi::DenseTensor>("status");
+    std::vector<bool> status_wrapper{succeed};
+    framework::TensorFromVector(status_wrapper, status);
   }
 };
 

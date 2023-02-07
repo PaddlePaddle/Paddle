@@ -20,10 +20,9 @@
 namespace paddle {
 namespace platform {
 
-int RpcSend(const std::string& service,
-            const std::string& url,
+int RpcSend(const std::string& url,
             const std::string& query,
-            void (*payload_builder)(brpc::Controller*, int, const std::string&),
+            void (*request_handler)(brpc::Controller*, int, const std::string&),
             void (*response_handler)(brpc::Controller*,
                                      int,
                                      std::shared_ptr<bthread::CountdownEvent>),
@@ -44,7 +43,6 @@ int RpcSend(const std::string& service,
   int request_id = rpc_store.GetRequestId();
 
   auto event = std::make_shared<bthread::CountdownEvent>();
-  RpcRequestStore::Instance().InsertService(request_id, service);
   RpcRequestStore::Instance().InsertEvent(request_id, event);
 
   // if req is async, controller should be on heap to avoid deleting
@@ -52,7 +50,7 @@ int RpcSend(const std::string& service,
   ctrl->http_request().uri() = url.c_str();
   ctrl->http_request().set_method(http_method);
   ctrl->http_request().SetHeader("Content-Type", "application/json");
-  payload_builder(ctrl, request_id, query);
+  request_handler(ctrl, request_id, query);
 
   channel.CallMethod(
       nullptr,

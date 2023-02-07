@@ -38,6 +38,7 @@ class RpcResultOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() {
     AddInput("X", "(Tensor) Request id.");
     AddOutput("Out", "(Tensor) Response from service.");
+    AddOutput("status", "(bool) Request status, true means succeed.");
     AddComment(R"DOC(
 Rpc Result Operator
 

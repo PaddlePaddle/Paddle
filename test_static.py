@@ -18,42 +18,18 @@ import numpy as np
 
 paddle.enable_static()
 
-MAX_SIZE_SERVICE = 20
-MAX_SIZE_PAYLOAD = 100
+MAX_SIZE_QUERY = 5
 MAX_SIZE_RESPONSE = 1000
 
-# data
-def pad_or_truncate(s, limit):
-    """
-    pad_or_truncate
-
-    Args:
-        s (str)
-        limit (int)
-
-    Returns:
-        np.array
-    """
-    buf = bytearray(s, 'utf-8')
-    if len(buf) <= limit:
-        lack_size = limit - len(buf)
-        buf += bytearray(lack_size)
-    else:
-        buf = buf[:MAX_SIZE_PAYLOAD]
-    return np.frombuffer(buf, dtype='uint8')
-
-
-service_str = "test"
-service_tensor = pad_or_truncate(service_str, MAX_SIZE_SERVICE)
-
-query_str = "paddle是什么"
-query_tensor = pad_or_truncate(query_str, MAX_SIZE_PAYLOAD)
+query_tensor = np.array([2466, 2467, 2468, 2469, 2470], dtype='int32')
+url_id_tensor = np.array([0], dtype='int32')
 
 # network
-in_service = fluid.data(name='service', shape=[MAX_SIZE_SERVICE], dtype='uint8')
-in_query = fluid.data(name='X', shape=[MAX_SIZE_PAYLOAD], dtype='uint8')
-req_id = fluid.data(name='rid', shape=[1], dtype='int')
-out_data = fluid.data(name='Out', shape=[MAX_SIZE_RESPONSE], dtype='uint8')
+in_query = fluid.data(name='X', shape=[MAX_SIZE_QUERY], dtype='int32')
+in_url_id = fluid.data(name='url_id', shape=[1], dtype='int32')
+req_id = fluid.data(name='rid', shape=[1], dtype='int32')
+out_status = fluid.data(name='status', shape=[1], dtype='bool')
+out_data = fluid.data(name='Out', shape=[MAX_SIZE_RESPONSE], dtype='float32')
 
 default_prog = fluid.default_main_program()
 cur_block = default_prog.current_block()
@@ -61,26 +37,37 @@ cur_block.append_op(
     type='rpc_call',
     inputs={
         'X': in_query,
-        'service': in_service,
+        'url_id': in_url_id,
     },
     outputs={'Out': req_id},
+    attrs={
+        'url_list': ['http://10.127.2.19:8082/run/predict'],
+        'vocab_path': '/work/Paddle/vocab.txt',
+    },
 )
 cur_block.append_op(
     type='rpc_result',
     inputs={
         'X': req_id,
     },
-    outputs={'Out': out_data},
+    outputs={
+        'status': out_status,
+        'Out': out_data,
+    },
 )
 
+# run
 exe = fluid.Executor(fluid.CPUPlace())
 exe.run(fluid.default_startup_program())
-(out,) = exe.run(
+status, data, = exe.run(
     fluid.default_main_program(),
     feed={
         'X': query_tensor,
-        'service': service_tensor,
+        'url_id': url_id_tensor,
     },
-    fetch_list=[out_data],
+    fetch_list=[out_status, out_data],
 )
-print('output:', out.tobytes().decode('utf-8'))
+if status:
+    print('output:', data)
+else:
+    print('request failed')
