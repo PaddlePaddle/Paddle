@@ -21,8 +21,6 @@ import numpy as np
 from convert import convert_params_for_cell
 from rnn_numpy import RNN, BiRNN, GRUCell
 
-from paddle.fluid.layers import sequence_mask
-
 
 class TestRNNWrapper(unittest.TestCase):
     def __init__(self, time_major=True, direction="forward", place="cpu"):
@@ -91,7 +89,9 @@ class TestRNNWrapper(unittest.TestCase):
         y1, h1 = rnn1(x, sequence_length=sequence_length)
 
         seq_len = paddle.to_tensor(sequence_length)
-        mask = sequence_mask(seq_len, dtype=paddle.get_default_dtype())
+        mask = paddle.static.nn.sequence_lod.sequence_mask(
+            seq_len, dtype=paddle.get_default_dtype()
+        )
         if self.time_major:
             mask = paddle.transpose(mask, [1, 0])
         y2, h2 = rnn2(paddle.to_tensor(x), sequence_length=seq_len)
@@ -174,7 +174,9 @@ class TestBiRNNWrapper(unittest.TestCase):
         y1, (fw_h1, bw_h1) = rnn1(x, sequence_length=sequence_length)
 
         seq_len = paddle.to_tensor(sequence_length)
-        mask = sequence_mask(seq_len, dtype=paddle.get_default_dtype())
+        mask = paddle.static.nn.sequence_lod.sequence_mask(
+            seq_len, dtype=paddle.get_default_dtype()
+        )
         if self.time_major:
             mask = paddle.transpose(mask, [1, 0])
         y2, (fw_h2, bw_h2) = rnn2(paddle.to_tensor(x), sequence_length=seq_len)
