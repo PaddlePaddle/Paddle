@@ -94,9 +94,22 @@ class TestCompositeMean(unittest.TestCase):
             x.stop_gradient = False
             y = fn(x)
             blocks = main_program.blocks
+
+            fwd_ops = [op.type for op in blocks[0].ops]
+            # Ensure that reduce_mean in original block
+            self.assertTrue('reduce_mean' in fwd_ops)
+
             paddle.incubate.autograd.to_prim(blocks)
 
+            fwd_ops_new = [op.type for op in blocks[0].ops]
+            # Ensure that reduce_mean is splitted into small ops
+            self.assertTrue('reduce_mean' not in fwd_ops_new)
+
             z = paddle.static.gradients([y], x)
+            fwd_ops_grad = [op.type for op in blocks[0].ops]
+            # Ensure that reduce_mean_grad not in grad block
+
+            self.assertTrue('reduce_mean_grad' not in fwd_ops_grad)
 
         exe = paddle.static.Executor()
         exe.run(startup_program)
@@ -163,7 +176,7 @@ class TestCompositeSoftmaxPrimBackward(unittest.TestCase):
         return res
 
     def compare_backward(self):
-        np_data = generate_data(attrs.shape)
+        np_data = generate_data(attrs.shape, attrs.dtype)
         tensor_data = paddle.to_tensor(np_data)
 
         expect = expect_grad(tensor_data)[0].numpy()

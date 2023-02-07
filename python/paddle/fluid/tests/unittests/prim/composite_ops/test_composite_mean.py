@@ -88,7 +88,16 @@ class TestCompositeMean(unittest.TestCase):
             )
             y = fn(x)
             blocks = main_program.blocks
+
+            fwd_ops = [op.type for op in blocks[0].ops]
+            # Ensure that reduce_mean in original block
+            self.assertTrue('reduce_mean' in fwd_ops)
+
             paddle.incubate.autograd.to_prim(blocks)
+
+            fwd_ops_new = [op.type for op in blocks[0].ops]
+            # Ensure that reduce_mean is splitted into small ops
+            self.assertTrue('reduce_mean' not in fwd_ops_new)
 
         exe = paddle.static.Executor()
         exe.run(startup_program)
