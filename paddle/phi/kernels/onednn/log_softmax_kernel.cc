@@ -24,16 +24,20 @@ namespace phi {
 
 template <typename T>
 class LogSoftmaxOneDNNHandler
-    : public funcs::OneDNNHandlerNoCachingT<T, dnnl::logsoftmax_forward> {
+    : public funcs::OneDNNHandlerNoCachingT<T, dnnl::softmax_forward> {
  public:
   LogSoftmaxOneDNNHandler(const dnnl::engine onednn_engine,
                           Place cpu_place,
                           const DenseTensor& x,
                           const int axis)
-      : funcs::OneDNNHandlerNoCachingT<T, dnnl::logsoftmax_forward>(
-            onednn_engine, cpu_place) {
-    this->AcquireForwardPrimitiveDescriptor(
-        dnnl::prop_kind::forward_inference, x.mem_desc(), axis);
+      : funcs::OneDNNHandlerNoCachingT<T, dnnl::softmax_forward>(onednn_engine,
+                                                                 cpu_place) {
+    this->AcquireForwardPrimitiveDescriptor(onednn_engine,
+                                            dnnl::prop_kind::forward_inference,
+                                            dnnl::algorithm::softmax_log,
+                                            x.mem_desc(),
+                                            x.mem_desc(),
+                                            axis);
   }
 };
 
