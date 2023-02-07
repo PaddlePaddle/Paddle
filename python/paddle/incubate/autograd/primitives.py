@@ -117,8 +117,6 @@ others = [
     'fill_constant',
     'reshape',
     'reduce_sum',
-    'reduce',
-    'mul',
 ]
 
 __all__ = []
