@@ -583,18 +583,15 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x.grad.shape, [2, 3])
         self.assertEqual(out.grad.shape, [3])
 
-    def _test_gather_xD_axis_1(self):
+    def test_gather_xD_axis_1(self):
         x = paddle.to_tensor(
             [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], stop_gradient=False
         )
         index = paddle.full([], 1, 'int64')
         out = paddle.gather(x, index, axis=1)
-        out.backward()
 
         self.assertEqual(out.shape, [2])
         np.testing.assert_array_equal(out.numpy(), [2.0, 5.0])
-        self.assertEqual(x.grad.shape, [2, 3])
-        self.assertEqual(out.grad.shape, [2])
 
     def test_scatter_1D(self):
         x = paddle.to_tensor([1.0, 3.0, 5.0, 7.0, 9.0], stop_gradient=False)
