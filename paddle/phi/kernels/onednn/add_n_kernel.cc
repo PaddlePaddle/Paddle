@@ -56,7 +56,7 @@ class SumOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::sum> {
       const std::vector<float>& scales,
       const std::vector<dnnl::memory::desc>& srcs_md) {
     this->fwd_pd_.reset(
-        new dnnl::sum::primitive_desc(dst_md, scales, srcs_md, this->engine_));
+        new dnnl::sum::primitive_desc(this->engine_, dst_md, scales, srcs_md));
   }
 
   std::shared_ptr<dnnl::memory> AcquireSrcMemory(const DenseTensor* input,
