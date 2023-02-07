@@ -61,8 +61,7 @@ class RpcResultOpKernel : public framework::OpKernel<T> {
     auto* succeed = ctx.Output<phi::DenseTensor>("succeed");
     ctx.device_context().Alloc<bool>(succeed);
     std::vector<bool> succeed_wrapper{ok};
-    framework::TensorFromVector(
-        succeed_wrapper, , ctx.device_context(), succeed);
+    framework::TensorFromVector(succeed_wrapper, ctx.device_context(), succeed);
   }
 };
 
