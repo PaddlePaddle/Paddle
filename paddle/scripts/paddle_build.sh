@@ -77,19 +77,7 @@ function cmake_base() {
     SYSTEM=`uname -s`
     if [ "$SYSTEM" == "Darwin" ]; then
         echo "Using python abi: $1"
-        if [ "$1" == "cp36-cp36m" ] || [ "$1" == "" ]; then
-            if [ -d "/Library/Frameworks/Python.framework/Versions/3.6" ]; then
-                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.6/lib/
-                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.6/lib/
-                export PATH=/Library/Frameworks/Python.framework/Versions/3.6/bin/:${PATH}
-                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.6/bin/python3
-            -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.6/include/python3.6m/
-            -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.6/lib/libpython3.6m.dylib"
-                pip3.6 install --user -r ${PADDLE_ROOT}/python/requirements.txt
-            else
-                exit 1
-            fi
-        elif [ "$1" == "cp37-cp37m" ]; then
+        if [ "$1" == "cp37-cp37m" ] || [ "$1" == "" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.7" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.7/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.7/lib/
@@ -141,14 +129,7 @@ function cmake_base() {
     else
         if [ "$1" != "" ]; then
             echo "using python abi: $1"
-            if [ "$1" == "cp36-cp36m" ]; then
-                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.6.0/lib/:${LD_LIBRARY_PATH}
-                export PATH=/opt/_internal/cpython-3.6.0/bin/:${PATH}
-                export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.6.0/bin/python3
-            -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.6.0/include/python3.6m
-            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.6.0/lib/libpython3.so"
-                pip3.6 install -r ${PADDLE_ROOT}/python/requirements.txt
-            elif [ "$1" == "cp37-cp37m" ]; then
+            if [ "$1" == "cp37-cp37m" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.7.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.7.0/bin/:${PATH}
                 export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.7.0/bin/python3.7
@@ -176,14 +157,16 @@ function cmake_base() {
             -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.10.0/include/python3.10
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.10.0/lib/libpython3.so"
                 pip3.10 install -r ${PADDLE_ROOT}/python/requirements.txt
-           elif [ "$1" == "conda-python3.7" ]; then
+            elif [ "$1" == "conda-python3.7" ]; then
                 export LD_LIBRARY_PATH=/opt/conda/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/conda/bin/:${PATH}
                 export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/conda/bin/python
                                      -DPYTHON_INCLUDE_DIR:PATH=/opt/conda/include/python3.7m
                                      -DPYTHON_LIBRARIES:FILEPATH=/opt/conda/lib/libpython3.so"
                 /opt/conda/bin/pip install -r ${PADDLE_ROOT}/python/requirements.txt
-           fi
+            fi
+            # for CINN, to find libcuda.so.1
+            export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/cuda-11.2/compat/
         else
             pip install -r ${PADDLE_ROOT}/python/requirements.txt
         fi
@@ -645,9 +628,7 @@ EOF
         set -x
 
         set +ex
-        if [ "$1" == "cp36-cp36m" ]; then
-            pip3.6 uninstall -y paddlepaddle
-        elif [ "$1" == "cp37-cp37m" ]; then
+        if [ "$1" == "cp37-cp37m" ]; then
             pip3.7 uninstall -y paddlepaddle
         elif [ "$1" == "cp38-cp38" ]; then
             pip3.8 uninstall -y paddlepaddle
@@ -658,10 +639,7 @@ EOF
         fi
         set -ex
 
-        if [ "$1" == "cp36-cp36m" ]; then
-            pip3.6 install --user ${PADDLE_ROOT}/dist/*.whl
-            pip3.6 install --user hypothesis
-        elif [ "$1" == "cp37-cp37m" ]; then
+        if [ "$1" == "cp37-cp37m" ]; then
             pip3.7 install --user ${PADDLE_ROOT}/dist/*.whl
             pip3.7 install --user hypothesis
         elif [ "$1" == "cp38-cp38" ]; then
@@ -3024,42 +3002,25 @@ EOF
 
     ref_web=https://paddle-wheel.bj.bcebos.com/${PADDLE_BRANCH}-${ref_gpu}-${ref_mkl}
 
-    ref_paddle36=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp36-cp36m-linux_x86_64.whl
     ref_paddle37=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp37-cp37m-linux_x86_64.whl
     ref_paddle38=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp38-cp38-linux_x86_64.whl
     ref_paddle39=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp39-cp39-linux_x86_64.whl
     ref_paddle310=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp310-cp310-linux_x86_64.whl
 
-    ref_paddle36_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp36-cp36m-linux_x86_64.whl
     ref_paddle37_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp37-cp37m-linux_x86_64.whl
     ref_paddle38_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp38-cp38-linux_x86_64.whl
     ref_paddle39_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp39-cp39-linux_x86_64.whl
     ref_paddle310_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp310-cp310-linux_x86_64.whl
 
     if [[ ${PADDLE_BRANCH} != "0.0.0" && ${WITH_MKL} == "ON" && ${WITH_GPU} == "ON" ]]; then
-        ref_paddle36=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp36-cp36m-linux_x86_64.whl
         ref_paddle37=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp37-cp37m-linux_x86_64.whl
         ref_paddle38=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp38-cp38-linux_x86_64.whl
         ref_paddle39=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp39-cp39-linux_x86_64.whl
         ref_paddle310=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp310-cp310-linux_x86_64.whl
-        ref_paddle36_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp36-cp36m-linux_x86_64.whl
         ref_paddle37_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp37-cp37m-linux_x86_64.whl
         ref_paddle38_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp38-cp38-linux_x86_64.whl
         ref_paddle39_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp39-cp39-linux_x86_64.whl
         ref_paddle310_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp310-cp310-linux_x86_64.whl
-    fi
-
-    ref_paddle36_mv1=""
-    ref_paddle36_mv2=""
-    if [[ ${PADDLE_BRANCH} == "0.0.0" && ${WITH_GPU} == "ON" ]]; then
-        ref_paddle36_whl=paddlepaddle_gpu-1.5.1-cp36-cp36m-linux_x86_64.whl
-        ref_paddle36_mv1="mv ${ref_paddle36} ${ref_paddle36_whl} &&"
-        ref_paddle36_mv2="&& mv ${ref_paddle36_whl} ${ref_paddle36}"
-    fi
-    if [[ ${PADDLE_BRANCH} == "0.0.0" && ${WITH_GPU} != "ON" ]]; then
-        ref_paddle36_whl=paddlepaddle-1.5.1-cp36-cp36m-linux_x86_64.whl
-        ref_paddle36_mv1="mv ${ref_paddle36} ${ref_paddle36_whl} &&"
-        ref_paddle36_mv2="&& mv ${ref_paddle36_whl} ${ref_paddle36}"
     fi
 
     cat > ${PADDLE_ROOT}/build/Dockerfile <<EOF
@@ -3092,25 +3053,6 @@ EOF
     ${DOCKERFILE_CUBLAS_DSO}
     ${DOCKERFILE_CUBLASLT_DSO}
     ${DOCKERFILE_GPU_ENV}
-EOF
-    cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
-    # run paddle version to install python packages first
-    RUN apt-get update && ${NCCL_DEPS}
-    RUN apt-get install -y make build-essential libssl-dev zlib1g-dev libbz2-dev \
-        libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
-        xz-utils tk-dev libffi-dev liblzma-dev
-    RUN mkdir -p /root/python_build/ && wget -q https://www.sqlite.org/2018/sqlite-autoconf-3250300.tar.gz && \
-        tar -zxf sqlite-autoconf-3250300.tar.gz && cd sqlite-autoconf-3250300 && \
-        ./configure -prefix=/usr/local && make install -j8 && cd ../ && rm sqlite-autoconf-3250300.tar.gz && \
-        wget -q https://www.python.org/ftp/python/3.6.0/Python-3.6.0.tgz && \
-        tar -xzf Python-3.6.0.tgz && cd Python-3.6.0 && \
-        CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
-        make -j8 > /dev/null && make altinstall > /dev/null && cd ../ && rm Python-3.6.0.tgz
-    RUN apt-get install -y libgtk2.0-dev dmidecode python3-tk && ldconfig && \
-        wget ${ref_web}/${ref_paddle36} && ${ref_paddle36_mv1} pip3.6 install ${ref_paddle36_whl} ${ref_paddle36_mv2}; apt-get install -f -y && \
-        apt-get clean -y && \
-        rm -f ${ref_paddle36} && \
-        ldconfig
 EOF
     cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
     # run paddle version to install python packages first
@@ -3471,9 +3413,9 @@ function trt_convert_test() {
 }
 
 function build_pr_and_develop() {
-    run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number} 
+    run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
     if [ ! -d "${PADDLE_ROOT}/build/python/dist/" ]; then
-        mkdir ${PADDLE_ROOT}/build/python/dist/ 
+        mkdir ${PADDLE_ROOT}/build/python/dist/
     fi
     mv ${PADDLE_ROOT}/dist/*.whl ${PADDLE_ROOT}/build/python/dist/
     cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
@@ -3496,9 +3438,9 @@ function build_pr_and_develop() {
             rm -rf ${PADDLE_ROOT}/build/third_party
         fi
         git checkout -b develop_base_pr upstream/$BRANCH
-        run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number} 
+        run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
         if [ ! -d "${PADDLE_ROOT}/build/python/dist/" ]; then
-            mkdir ${PADDLE_ROOT}/build/python/dist/ 
+            mkdir ${PADDLE_ROOT}/build/python/dist/
         fi
         mv ${PADDLE_ROOT}/dist/*.whl ${PADDLE_ROOT}/build/python/dist/
         generate_api_spec "$1" "DEV"
@@ -3684,7 +3626,7 @@ function run_setup(){
     export WITH_MKL=${WITH_MKL:-ON}
     export WITH_AVX=${WITH_AVX:-OFF}
     export CUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
-    export NEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF} 
+    export NEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF}
     export NEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF}
     export NEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF}
     export WITH_PYTHON=${WITH_PYTHON:-ON}
@@ -3755,7 +3697,7 @@ function run_setup(){
             python setup.py $2;build_error=$?
         fi
     fi
-    
+
     # ci will collect ccache hit rate
     collect_ccache_hits
 
@@ -3980,7 +3922,7 @@ function run_setup_mac(){
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
-    
+
     build_size
 
     endTime_s=`date +%s`
@@ -4168,7 +4110,7 @@ function main() {
         if [ "${WITH_PYTHON}" == "OFF" ] ; then
             python ${PADDLE_ROOT}/tools/remove_grad_op_and_kernel.py
         fi
-        gen_fluid_lib_by_setup ${parallel_number} 
+        gen_fluid_lib_by_setup ${parallel_number}
         ;;
       gpu_inference)
         test_fluid_lib
@@ -4190,7 +4132,7 @@ function main() {
         run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       maccheck_py3)
-        run_setup_mac ${PYTHON_ABI:-""} bdist_wheel 
+        run_setup_mac ${PYTHON_ABI:-""} bdist_wheel
         run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       macbuild)
@@ -4198,20 +4140,14 @@ function main() {
         build_mac
         ;;
       cicheck_py37)
-        run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number} 
+        run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       test_cicheck_py37)
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
-      cpu_cicheck_py35)
-        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
-        ;;
-      gpu_cicheck_py35)
-        parallel_test
-        ;;
       build_gpubox)
-        run_setup ${PYTHON_ABI:-""} install ${parallel_number} 
+        run_setup ${PYTHON_ABI:-""} install ${parallel_number}
         ;;
       check_xpu)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
@@ -4241,10 +4177,6 @@ function main() {
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         parallel_test
         check_coverage
-        ;;
-      reuse_so_cicheck_py35)
-        reuse_so_cache
-        parallel_test
         ;;
       cmake_gen)
         cmake_gen ${PYTHON_ABI:-""}
