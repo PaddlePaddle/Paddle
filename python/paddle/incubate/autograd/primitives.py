@@ -107,7 +107,6 @@ sub_prim = [
 
 others = [
     'broadcast_to',
-    'assign',
     'fill_constant',
     'reshape',
 ]
