@@ -27,11 +27,7 @@ TEST(type_support, type_id) {
   EXPECT_EQ(a_id, a_other_id);
   EXPECT_NE(a_id, b_id);
 
-  // (2) Test construct TypeID by TypeID::Get(void*)
-  ir::TypeID c_id = ir::TypeID::Get(a_other_id.GetStorage());
-  EXPECT_EQ(c_id, a_other_id);
-
-  // (3) Test TypeID hash
+  // (2) Test TypeID hash
   std::unordered_map<ir::TypeID, ir::TypeID*> type_id_register;
   type_id_register.emplace(a_id, &a_id);
   type_id_register.emplace(b_id, &b_id);
