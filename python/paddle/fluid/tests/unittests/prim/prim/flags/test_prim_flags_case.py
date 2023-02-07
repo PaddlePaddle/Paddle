@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import platform
 import unittest
-
-import numpy as np
 
 import paddle
 import paddle.nn.functional as F
@@ -38,57 +37,6 @@ class PrimeNet(paddle.nn.Layer):
         return res
 
 
-class TestPrimForward(unittest.TestCase):
-    """
-    This case only tests prim_forward + to_static + cinn. Thus we need to
-    set this flag as False to avoid prim_backward.
-    core.set_prim_backward(False)
-    """
-
-    def setUp(self):
-        self.x = paddle.randn([2, 4])
-        self.x.stop_gradient = False
-
-    def train(self, use_prim):
-        net = PrimeNet()
-        sgd = paddle.optimizer.SGD(
-            learning_rate=0.1, parameters=net.parameters()
-        )
-        core._set_prim_forward_enabled(use_prim)
-        if use_prim:
-            net = apply_to_static(net, use_prim)
-
-        res = []
-        for _ in range(10):
-            out = net(self.x)
-            loss = paddle.mean(out)
-            loss.backward()
-            sgd.step()
-            sgd.clear_grad()
-
-            res.append(out.numpy())
-
-        self.check_prim(net, use_prim)
-
-        return res
-
-    def check_prim(self, net, use_prim):
-        if not use_prim:
-            return
-        fwd_ops = [op.type for op in net.forward.main_program.block(0).ops]
-        # Ensure that softmax is splitted into small ops
-        self.assertTrue('softmax' not in fwd_ops)
-
-    def _test_cinn_prim_forward(self):
-        dy_res = self.train(use_prim=False)
-        cinn_res = self.train(use_prim=True)
-
-        for i in range(len(dy_res)):
-            np.testing.assert_allclose(
-                cinn_res[i], dy_res[i], rtol=1e-7, atol=1e-7
-            )
-
-
 class TestPrimForwardAndBackward(unittest.TestCase):
     """
     Test PrimeNet with @to_static + prim forward + prim backward + cinn v.s Dygraph
@@ -98,42 +46,129 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         paddle.seed(2022)
         self.x = paddle.randn([2, 4])
         self.x.stop_gradient = False
+        self.flag = None
+
+    def reset_env_flag(self):
+        # core.check_and_set_prim_all_enabled()
+        os.environ["FLAGS_prim_backward"] = "False"
+        os.environ["FLAGS_prim_forward"] = "False"
+        if os.getenv("FLAGS_prim_all"):
+            del os.environ["FLAGS_prim_all"]
+        core.check_and_set_prim_all_enabled()
 
     def train(self, use_prim):
         net = PrimeNet()
-        core._set_prim_forward_enabled(use_prim)
-        if use_prim:
-            net = apply_to_static(net, False)
+        # core._set_prim_forward_enabled(use_prim)
+        net = apply_to_static(net, use_prim)
 
         out = net(self.x)
         loss = paddle.mean(out)
         loss.backward()
 
-        self.check_prim(net, use_prim)
-        breakpoint()
+        self.check_prim(net)
 
         return
 
-    def check_prim(self, net, use_prim):
-        if not use_prim:
-            return
-        fwd_ops = [op.type for op in net.forward.main_program.block(0).ops]
+    def check_prim(self, net):
+
         ops = [
             op.type
             for op in net.forward.program_cache.last()[-1][-1]
             .train_program.block(0)
             .ops
         ]
-        print(ops)
-        breakpoint()
-        # Ensure that softmax is splitted into small ops
-        self.assertTrue('softmax' not in fwd_ops)
 
-    def test_cinn_prim(self):
+        if self.flag in ["prim_all", "cinn_prim_all"]:
+            self.assertTrue('softmax' not in ops)
+            self.assertTrue('exp_grad' not in ops)
+        elif self.flag in ["prim_forward", "cinn_prim_forward"]:
+            self.assertTrue('softmax' not in ops)
+            self.assertTrue('exp_grad' in ops)
+        elif self.flag in ["prim_backward", "cinn_prim_backward"]:
+            self.assertTrue('softmax' in ops)
+            self.assertTrue('exp_grad' not in ops)
+        elif self.flag == "cinn":
+            self.assertTrue('softmax' in ops)
+            self.assertTrue('exp_grad' in ops)
+        else:
+            raise TypeError
+
+    def test_cinn_prim_all(self):
+        """cinn + prim forward + prim backward"""
+        self.reset_env_flag()
+        os.environ["FLAGS_prim_all"] = "True"
+        self.flag = "cinn_prim_all"
+        # breakpoint()
         plat = platform.system()
         if plat == "Linux":
-            # dy_res = self.train(use_prim=False)
-            cinn_res = self.train(use_prim=True)
+            _ = self.train(use_prim=True)
+        else:
+            pass
+
+    def test_prim_all(self):
+        """prim forward + prim backward"""
+        self.reset_env_flag()
+        os.environ["FLAGS_prim_all"] = "True"
+        self.flag = "prim_all"
+        plat = platform.system()
+        if plat == "Linux":
+            _ = self.train(use_prim=False)
+        else:
+            pass
+
+    def test_cinn_prim_forward(self):
+        """cinn + prim forward"""
+
+        self.reset_env_flag()
+
+        os.environ["FLAGS_prim_forward"] = "True"
+        self.flag = "cinn_prim_forward"
+        plat = platform.system()
+        if plat == "Linux":
+            _ = self.train(use_prim=True)
+        else:
+            pass
+
+    def test_prim_forward(self):
+        """only prim forward"""
+        self.reset_env_flag()
+        os.environ["FLAGS_prim_forward"] = "True"
+        self.flag = "prim_forward"
+        plat = platform.system()
+        if plat == "Linux":
+            _ = self.train(use_prim=False)
+        else:
+            pass
+
+    def test_cinn_prim_backward(self):
+        """cinn + prim_backward"""
+        self.reset_env_flag()
+        os.environ["FLAGS_prim_backward"] = "True"
+        self.flag = "cinn_prim_backward"
+        plat = platform.system()
+        if plat == "Linux":
+            _ = self.train(use_prim=True)
+        else:
+            pass
+
+    def test_prim_backward(self):
+        """only prim backward"""
+        self.reset_env_flag()
+        os.environ["FLAGS_prim_backward"] = "True"
+        self.flag = "prim_backward"
+        plat = platform.system()
+        if plat == "Linux":
+            _ = self.train(use_prim=False)
+        else:
+            pass
+
+    def test_cinn(self):
+        """only cinn"""
+        self.reset_env_flag()
+        self.flag = "cinn"
+        plat = platform.system()
+        if plat == "Linux":
+            _ = self.train(use_prim=True)
         else:
             pass
 
