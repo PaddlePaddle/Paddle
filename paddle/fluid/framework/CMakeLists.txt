@@ -130,7 +130,7 @@ cc_test(
 cc_library(
   tensor
   SRCS tensor_util.cc
-  DEPS place memory data_type device_context dense_tensor)
+  DEPS place memory data_type device_context dense_tensor phi_api_utils)
 
 cc_test(
   tensor_test

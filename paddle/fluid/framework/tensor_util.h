@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/dlpack_tensor.h"
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/memory/allocation/npu_pinned_allocator.h"
@@ -34,6 +35,7 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/memory/memory.h"
+#include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace paddle {
@@ -584,3 +586,16 @@ inline T GetValue(const phi::DenseTensor* x) {
 namespace phi {
 std::ostream& operator<<(std::ostream& os, const DenseTensor& t);
 }
+
+namespace paddle {
+namespace experimental {
+
+phi::Scalar MakePhiScalarFromVar(const framework::Variable& variable);
+
+phi::IntArray MakePhiIntArrayFromVar(const framework::Variable& variable);
+
+phi::IntArray MakePhiIntArrayFromVarList(
+    const std::vector<framework::Variable*>& variable_list);
+
+}  // namespace experimental
+}  // namespace paddle
