@@ -97,3 +97,55 @@ def composite_batchnorm(
         return run_mean_, None, batch_mean_, batch_var_, run_var_, y
     else:
         return run_mean_, batch_mean_, batch_var_, run_var_, y
+
+
+@REGISTER_COMPOSITE('gelu')
+def gelu_composite(x, approximate):
+    """define composite rule of op gelu"""
+    GELU_CONSTANT = 0.044715
+    M_2_PI = 0.63661977236758134308     #/* 2/pi */. copy from gelu-kernel.cc
+    M_SQRT1_2 = 0.70710678118654752440	#/* 1/sqrt(2) */ copy from gelu-kernel.cc
+
+    if approximate:
+        # gelu(x) = 0.5 * x * (1 + tanh(sqrt(2 / \pi) * (x + 0.044715 * x^{3})))
+        ret = multiply(
+            fill_constant(x.shape, x.dtype, 0.5),
+            multiply(
+                x,
+                add(
+                    ones(x.shape, x.dtype),
+                    tanh(
+                        multiply(
+                            sqrt(fill_constant(x.shape, x.dtype, M_2_PI)),
+                            add(
+                                x,
+                                multiply(
+                                    fill_constant(x.shape, x.dtype, GELU_CONSTANT),
+                                    pow(x, 3)
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        )
+        return ret
+        
+    else:
+        #gelu(x) = 0.5 * x *  (1 + erf(x / sqrt(2)))
+        ret = multiply(
+            fill_constant(x.shape, x.dtype, 0.5),
+            multiply(
+                x,
+                add(
+                    ones(x.shape, x.dtype),
+                    erf(
+                        multiply(
+                            x,
+                            fill_constant(x.shape, x.dtype, M_SQRT1_2)
+                        )
+                    )
+                )
+            )
+        )
+        return ret
