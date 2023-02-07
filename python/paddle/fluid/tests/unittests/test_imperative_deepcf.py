@@ -123,7 +123,7 @@ class DeepCF(fluid.Layer):
             shape=matrix.shape,
             dtype=matrix.dtype,
             is_bias=False,
-            default_initializer=fluid.initializer.NumpyArrayInitializer(matrix),
+            default_initializer=paddle.nn.initializer.Assign(matrix),
         )
         self._rating_matrix.stop_gradient = True
 
@@ -264,9 +264,9 @@ class TestDygraphDeepCF(unittest.TestCase):
 
         scope = fluid.core.Scope()
         with new_program_scope(main=main, startup=startup, scope=scope):
-            users = fluid.layers.data('users', [1], dtype='int32')
-            items = fluid.layers.data('items', [1], dtype='int32')
-            labels = fluid.layers.data('labels', [1], dtype='float32')
+            users = paddle.static.data('users', [-1, 1], dtype='int32')
+            items = paddle.static.data('items', [-1, 1], dtype='int32')
+            labels = paddle.static.data('labels', [-1, 1], dtype='float32')
 
             deepcf = DeepCF(num_users, num_items, matrix)
             prediction = deepcf(users, items)

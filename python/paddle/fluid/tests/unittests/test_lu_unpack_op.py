@@ -200,6 +200,19 @@ class TestLU_UnpackOp3(TestLU_UnpackOp):
         self.dtype = "float64"
 
 
+# batchsize = 0
+class TestLU_UnpackOp4(TestLU_UnpackOp):
+    """
+    case 4
+    """
+
+    def config(self):
+        self.x_shape = [10, 12]
+        self.unpack_ludata = True
+        self.unpack_pivots = True
+        self.dtype = "float64"
+
+
 class TestLU_UnpackAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2022)

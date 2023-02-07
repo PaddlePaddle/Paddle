@@ -24,8 +24,8 @@ import paddle.fluid.core as core
 
 
 def fc_with_batchnorm(use_feed):
-    img = fluid.layers.data(name='image', shape=[784], dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    img = paddle.static.data(name='image', shape=[-1, 784], dtype='float32')
+    label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
 
     hidden = img
     for _ in range(3):
@@ -34,7 +34,7 @@ def fc_with_batchnorm(use_feed):
             size=200,
             activation='tanh',
             bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0)
+                initializer=paddle.nn.initializer.Constant(value=1.0)
             ),
         )
 
