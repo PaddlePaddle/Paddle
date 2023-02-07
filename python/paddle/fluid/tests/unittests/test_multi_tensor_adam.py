@@ -347,12 +347,12 @@ class TestStaticMultiTensorAdam(unittest.TestCase):
 
         weight_attr1 = paddle.ParamAttr(
             name="weight1",
-            initializer=fluid.initializer.Constant(value=1.0),
+            initializer=nn.initializer.Constant(value=1.0),
             trainable=True,
         )
         weight_attr2 = paddle.ParamAttr(
             name="weight2",
-            initializer=fluid.initializer.Constant(value=2.0),
+            initializer=nn.initializer.Constant(value=2.0),
             trainable=True,
         )
         clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
