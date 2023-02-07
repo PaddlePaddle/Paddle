@@ -20,15 +20,15 @@ TEST(type_support, type_id) {
   class TypeA {};
   class TypeB {};
 
-  // (1) Test construct TypeID by TypeID::Get()
-  ir::TypeID a_id = ir::TypeID::Get<TypeA>();
-  ir::TypeID a_other_id = ir::TypeID::Get<TypeA>();
-  ir::TypeID b_id = ir::TypeID::Get<TypeB>();
+  // (1) Test construct TypeId by TypeId::Get()
+  ir::TypeId a_id = ir::TypeId::get<TypeA>();
+  ir::TypeId a_other_id = ir::TypeId::get<TypeA>();
+  ir::TypeId b_id = ir::TypeId::get<TypeB>();
   EXPECT_EQ(a_id, a_other_id);
   EXPECT_NE(a_id, b_id);
 
-  // (2) Test TypeID hash
-  std::unordered_map<ir::TypeID, ir::TypeID*> type_id_register;
+  // (2) Test TypeId hash
+  std::unordered_map<ir::TypeId, ir::TypeId*> type_id_register;
   type_id_register.emplace(a_id, &a_id);
   type_id_register.emplace(b_id, &b_id);
   for (auto kv : type_id_register) {
@@ -39,20 +39,19 @@ TEST(type_support, type_id) {
 TEST(type_support, abstract_type) {
   class TypeA {};
 
-  ir::TypeID a_id = ir::TypeID::Get<TypeA>();
-  ir::AbstractType abstract_type_a = ir::AbstractType::Get(a_id);
+  ir::TypeId a_id = ir::TypeId::get<TypeA>();
+  ir::AbstractType abstract_type_a = ir::AbstractType::get(a_id);
 
-  EXPECT_EQ(abstract_type_a.GetTypeID(), a_id);
+  EXPECT_EQ(abstract_type_a.type_id(), a_id);
 }
 
 TEST(type_support, type_storage) {
   class TypeA {};
 
-  ir::TypeID a_id = ir::TypeID::Get<TypeA>();
-  ir::AbstractType abstract_type_a = ir::AbstractType::Get(a_id);
+  ir::TypeId a_id = ir::TypeId::get<TypeA>();
+  ir::AbstractType abstract_type_a = ir::AbstractType::get(a_id);
 
   ir::TypeStorage storage_a(&abstract_type_a);
 
-  EXPECT_EQ(storage_a.GetAbstractType().GetTypeID(),
-            abstract_type_a.GetTypeID());
+  EXPECT_EQ(storage_a.abstract_type().type_id(), abstract_type_a.type_id());
 }
