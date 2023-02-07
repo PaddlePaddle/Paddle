@@ -398,10 +398,25 @@ class TestGathertError(unittest.TestCase):
                 shape=shape, dtype='float32', name='index_float'
             )
 
+            def test_x_type():
+                paddle.gather(x, index)
+
+            self.assertRaises(TypeError, test_x_type)
+
+            def test_index_type():
+                paddle.gather(x, index_float)
+
+            self.assertRaises(TypeError, test_index_type)
+
+            def test_axis_minsize():
+                paddle.gather(x, index, axis=-1)
+
+            self.assertRaises(ValueError, test_axis_minsize)
+
             def test_axis_maxsize():
                 paddle.gather(x, index, axis=512)
 
-            self.assertRaises(TypeError, test_axis_maxsize)
+            self.assertRaises(ValueError, test_axis_maxsize)
 
 
 class TestCheckOutType(unittest.TestCase):
