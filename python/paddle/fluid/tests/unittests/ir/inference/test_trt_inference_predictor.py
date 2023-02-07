@@ -230,7 +230,6 @@ class BackendPaddle:
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    # parser.add_argument('--type', required=True, choices=["cls", "shitu"])
     parser.add_argument('--batch_size', type=int, default=1)
     parser.add_argument('--cpu_threads', type=int, default=1)
     parser.add_argument('--inter_op_threads', type=int, default=1)
