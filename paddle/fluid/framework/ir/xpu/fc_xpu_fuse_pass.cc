@@ -339,3 +339,8 @@ void FcXPUFusePass::ApplyImpl(ir::Graph* graph,
 }  // namespace paddle
 
 REGISTER_PASS(fc_xpu_fuse_pass, paddle::framework::ir::FcXPUFusePass);
+
+REGISTER_PASS_CAPABILITY(fc_xpu_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination().EQ(
+            "fc_xpu", 0));

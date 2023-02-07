@@ -96,7 +96,6 @@ void AdaptivePool2dConvertGlobalPass::ApplyImpl(ir::Graph* graph) const {
       }
     }
   }
-  // LOG(INFO) << "---  processed " << num << " nodes";
   AddStatis(num);
 }
 

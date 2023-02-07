@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/xpu/quant_utils.h"
 #include <vector>
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace paddle {
@@ -143,7 +144,12 @@ void QuantWeight(phi::DenseTensor* weight,
   auto size = weight->numel();
   std::vector<float> transpose_data(weight_data, weight_data + size);
   if (transpose) {
-    PADDLE_ENFORCE_EQ(dims.size(), 2);
+    PADDLE_ENFORCE_EQ(
+        dims.size(),
+        2,
+        platform::errors::InvalidArgument(
+            "Only support 2D weight, but received weight rank is [%d].",
+            dims.size()));
     Transpose(weight_data, transpose_data.data(), dims[0], dims[1]);
     weight->Resize({dims[1], dims[0]});
   }
@@ -153,16 +159,16 @@ void QuantWeight(phi::DenseTensor* weight,
   std::vector<float> max_vec(max_ptr_size, max_val);
   weight_max->set_type(paddle::experimental::CppTypeToDataType<float>::Type());
   weight_max->Resize({max_ptr_size});
-  memcpy(weight_max->mutable_data<float>(phi::Place(phi::AllocationType::CPU)),
+  auto* dev_ctx = static_cast<phi::CPUContext*>(
+      platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+  memcpy(dev_ctx->Alloc<float>(weight_max),
          max_vec.data(),
          max_ptr_size * sizeof(float));
   // Quant
   std::vector<T> quant_data(size);
   QuantFP32ToIntX(weight_data, quant_data.data(), max_val, size);
   weight->set_type(paddle::experimental::CppTypeToDataType<T>::Type());
-  memcpy(weight->mutable_data<T>(phi::Place(phi::AllocationType::CPU)),
-         quant_data.data(),
-         size * sizeof(T));
+  memcpy(dev_ctx->Alloc<T>(weight), quant_data.data(), size * sizeof(T));
 }
 
 template void QuantWeight<int16_t>(phi::DenseTensor* weight,

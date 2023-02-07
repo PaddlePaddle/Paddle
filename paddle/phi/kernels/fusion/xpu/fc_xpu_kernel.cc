@@ -36,7 +36,7 @@ void FcXPUKernel(const Context& ctx,
   int k = in_mat_dims[1];
   int n = w.dims()[0];
   const float* bias_data =
-      bias.get_ptr()->numel() == 0 ? nullptr : bias.get_ptr()->data<T>();
+      bias.get_ptr() == nullptr ? nullptr : bias.get_ptr()->data<T>();
   xpu::Activation_t act(static_cast<xpu::Activation_t::act_enum>(act_type));
   if (act_type == 5) {
     act.leaky_alpha = act_alpha;
