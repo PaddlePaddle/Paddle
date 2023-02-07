@@ -39,7 +39,7 @@ list(
   flatten_op.cc
   flatten_contiguous_range_op.cc
   skip_layernorm.cc
-  generated_static_op.cc
+  scale_op.cc
   slice_op.cc
   hard_sigmoid_op.cc
   hard_swish_op.cc
