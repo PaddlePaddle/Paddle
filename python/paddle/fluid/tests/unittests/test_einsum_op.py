@@ -15,15 +15,26 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
+
+
+def einsum_wrapper(a, b):
+    assert isinstance(a, paddle.Tensor) or isinstance(
+        a[0], paddle.Tensor
+    ), type(a)
+    if not isinstance(a, list):
+        a = [a]
+    return paddle._C_ops.einsum(a, b)
 
 
 class TestEinsumBinary(OpTest):
     def setUp(self):
         paddle.enable_static()
         self.op_type = "einsum"
+        self.python_api = einsum_wrapper
+        self.python_out_sig = ['Out']
         self.disable = False
         self.set_mandatory()
         self.init_input()
