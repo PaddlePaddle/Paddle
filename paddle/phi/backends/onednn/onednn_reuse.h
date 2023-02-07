@@ -640,7 +640,7 @@ class OneDNNHandlerNoCachingT {
         fwd_pd_,
         errors::Unavailable("Get oneDNN Forward primitive %s failed."));
     bwd_pd_ = std::make_shared<typename TBackward::primitive_desc>(
-        std::forward<Args>(args)..., engine_, *fwd_pd_);
+        engine_, std::forward<Args>(args)..., *fwd_pd_);
   }
 
   template <typename... Args>
