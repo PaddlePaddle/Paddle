@@ -39,14 +39,6 @@ def str2bool(v):
     else:
         return False
 
-
-def str2list(v):
-    if len(v) == 0:
-        return []
-
-    return [list(map(int, item.split(","))) for item in v.split(":")]
-
-
 def getdtype(dtype="float32"):
     if dtype == "float32" or dtype == "float":
         return np.float32
@@ -240,7 +232,6 @@ def parse_args():
     parser = argparse.ArgumentParser()
     # parser.add_argument('--type', required=True, choices=["cls", "shitu"])
     parser.add_argument('--batch_size', type=int, default=1)
-    parser.add_argument('--input_shape', type=str2list, default=[])
     parser.add_argument('--cpu_threads', type=int, default=1)
     parser.add_argument('--inter_op_threads', type=int, default=1)
     parser.add_argument(
@@ -266,7 +257,6 @@ def parse_args():
     parser.add_argument('--enable_trt', type=str2bool, default=True)
     parser.add_argument('--enable_dynamic_shape', type=str2bool, default=True)
     parser.add_argument('--enable_tune', type=str2bool, default=False)
-    parser.add_argument('--gen_calib', type=str2bool, default=False)
     parser.add_argument('--enable_profile', type=str2bool, default=False)
     parser.add_argument('--enable_benchmark', type=str2bool, default=True)
     parser.add_argument('--save_result', type=str2bool, default=False)
