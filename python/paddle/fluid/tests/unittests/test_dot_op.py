@@ -92,6 +92,17 @@ class DotOp(OpTest):
         self.dtype = np.float64
 
 
+class DotOpEmptyInput(unittest.TestCase):
+    def test_1d_input(self):
+        data = np.array([], dtype=np.float32)
+        x = paddle.to_tensor(np.reshape(data, [0]), dtype='float32')
+        y = paddle.to_tensor(np.reshape(data, [0]), dtype='float32')
+        np_out = np.dot(data, data)
+        pd_out = paddle.dot(x, y)
+
+        self.assertEquals(np_out, pd_out)
+
+
 class DotOpBatch(DotOp):
     def init_input_output(self):
         self.x = (
