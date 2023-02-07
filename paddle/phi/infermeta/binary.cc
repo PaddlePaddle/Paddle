@@ -1314,16 +1314,17 @@ void GatherInferMeta(const MetaTensor& x,
 
   auto input_dim = x.dims();
   auto axis_v = axis.to<int>();
-  PADDLE_ENFORCE_LE(
-      axis_v,
-      -1,
-      phi::errors::InvalidArgument(
-          "The axis should be greater than -1, but we get %d", axis_v));
+
   PADDLE_ENFORCE_GE(
       axis_v,
-      10,
+      0,
       phi::errors::InvalidArgument(
-          "The axis should be less than 10, but we get %d", axis_v));
+          "The axis should be greater or equal than 0, but we get %d", axis_v));
+  PADDLE_ENFORCE_LE(
+      axis_v,
+      9,
+      phi::errors::InvalidArgument(
+          "The axis should be less or equal than 9, but we get %d", axis_v));
 
   if (index_dims.size() == 0) {
     // 0D index will decrease the dimension
