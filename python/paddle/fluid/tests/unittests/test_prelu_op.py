@@ -153,7 +153,7 @@ class TestNNPReluAPI(unittest.TestCase):
         x = paddle.to_tensor(self.x_np)
         m = paddle.nn.PReLU(
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(0.5)
+                initializer=paddle.nn.initializer.Constant(0.5)
             )
         )
         out = m(x)
@@ -438,7 +438,7 @@ def prelu_t(x, mode, param_attr=None, name=None, data_format='NCHW'):
         shape=alpha_shape,
         dtype='float32',
         is_bias=False,
-        default_initializer=fluid.initializer.ConstantInitializer(0.25),
+        default_initializer=paddle.nn.initializer.Constant(0.25),
     )
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(

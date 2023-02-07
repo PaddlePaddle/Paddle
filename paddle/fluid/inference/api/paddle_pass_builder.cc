@@ -136,6 +136,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
 #else
       "elementwise_groupnorm_act_pass",        //
       "preln_elementwise_groupnorm_act_pass",  //
+      "groupnorm_act_pass",                    //
 #endif
       "tensorrt_subgraph_pass",  //
       "conv_bn_fuse_pass",       //
@@ -264,9 +265,10 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv_elementwise_add_fuse_pass",      //
 #endif                                         //
         "transpose_flatten_concat_fuse_pass",  //
-        "conv2d_fusion_layout_transfer_pass",  //
-        "auto_mixed_precision_pass",           //
-        "inplace_op_var_pass",                 // should be the last pass.
+        // TODO(liuyuanle): rewrite this pass with new logic
+        // "conv2d_fusion_layout_transfer_pass",  //
+        "auto_mixed_precision_pass",  //
+        "inplace_op_var_pass",        // should be the last pass.
   });
 
   use_gpu_ = true;

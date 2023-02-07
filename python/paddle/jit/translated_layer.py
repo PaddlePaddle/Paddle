@@ -373,7 +373,7 @@ class _ProgramHolder:
     @switch_to_static_graph
     def _create_backward_train_program(self):
         whole_program = _build_program_by_desc(self._train_program_desc)
-        start_op_index = self._infer_program_desc.block(0).op_size() + 2 * len(
+        start_op_index = self._infer_program_desc.block(0).op_size() + len(
             self._output_descs
         )
         end_op_index = whole_program.desc.block(0).op_size()
