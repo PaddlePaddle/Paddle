@@ -122,43 +122,65 @@ class TestMatmulDoubleGradComp(unittest.TestCase):
     def test_matmul_grad_comp(self):
         def actual(primal0, primal1, trans_0, trans_1):
             core._set_prim_backward_enabled(True)
-            paddle.disable_static()
-            x = paddle.to_tensor(primal0, dtype='float32', stop_gradient=False)
-            y = paddle.to_tensor(primal1, dtype='float32', stop_gradient=False)
-            out = paddle.matmul(x, y, trans_0, trans_1)
-            dout = paddle.ones_like(out, dtype='float32')
-            dout.stop_gradient = False
-            res = paddle.grad(
-                [out], [x, y], dout, create_graph=True, retain_graph=True
-            )
-            res_double = paddle.grad(
-                res, [x, y, dout], create_graph=True, retain_graph=True
-            )
-            return (
-                res_double[0].numpy(),
-                res_double[1].numpy(),
-                res_double[2].numpy(),
-            )
+            mp, sp = paddle.static.Program(), paddle.static.Program()
+            with paddle.static.program_guard(mp, sp):
+                x = paddle.static.data('primal0', primal0.shape, primal0.dtype)
+                y = paddle.static.data('primal1', primal1.shape, primal1.dtype)
+                x.stop_gradient = False
+                y.stop_gradient = False
+                out = paddle.matmul(x, y, trans_0, trans_1)
+                dout = paddle.ones_like(out, dtype='float32')
+                dout.stop_gradient = False
+                res = paddle.static.gradients([out], [x, y], dout)
+                res_double = paddle.static.gradients(res, [x, y, dout])
+
+                exe = paddle.static.Executor()
+                exe.run(sp)
+                out = exe.run(
+                    program=mp,
+                    feed={
+                        'primal0': primal0,
+                        'primal1': primal1,
+                    },
+                    fetch_list=[
+                        res_double[0].name,
+                        res_double[1].name,
+                        res_double[2].name,
+                    ],
+                )
+
+            return out[0], out[1], out[2]
 
         def desired(primal0, primal1, trans_0, trans_1):
             core._set_prim_backward_enabled(False)
-            paddle.disable_static()
-            x = paddle.to_tensor(primal0, dtype='float32', stop_gradient=False)
-            y = paddle.to_tensor(primal1, dtype='float32', stop_gradient=False)
-            out = paddle.matmul(x, y, trans_0, trans_1)
-            dout = paddle.ones_like(out, dtype='float32')
-            dout.stop_gradient = False
-            res = paddle.grad(
-                out, [x, y], dout, create_graph=True, retain_graph=True
-            )
-            res_double = paddle.grad(
-                res, [x, y, dout], create_graph=True, retain_graph=True
-            )
-            return (
-                res_double[0].numpy(),
-                res_double[1].numpy(),
-                res_double[2].numpy(),
-            )
+            mp, sp = paddle.static.Program(), paddle.static.Program()
+            with paddle.static.program_guard(mp, sp):
+                x = paddle.static.data('primal0', primal0.shape, primal0.dtype)
+                y = paddle.static.data('primal1', primal1.shape, primal1.dtype)
+                x.stop_gradient = False
+                y.stop_gradient = False
+                out = paddle.matmul(x, y, trans_0, trans_1)
+                dout = paddle.ones_like(out, dtype='float32')
+                dout.stop_gradient = False
+                res = paddle.static.gradients([out], [x, y], dout)
+                res_double = paddle.static.gradients(res, [x, y, dout])
+
+                exe = paddle.static.Executor()
+                exe.run(sp)
+                out = exe.run(
+                    program=mp,
+                    feed={
+                        'primal0': primal0,
+                        'primal1': primal1,
+                    },
+                    fetch_list=[
+                        res_double[0].name,
+                        res_double[1].name,
+                        res_double[2].name,
+                    ],
+                )
+
+            return out[0], out[1], out[2]
 
         dx, dy, ddout = actual(
             self.primal0, self.primal1, self.trans_0, self.trans_1
@@ -186,7 +208,9 @@ class TestMatmulDoubleGradComp(unittest.TestCase):
             rtol=1e-6,
             atol=0,
         )
-        core._set_prim_backward_enabled(False)
+
+
+core._set_prim_backward_enabled(False)
 
 
 if __name__ == '__main__':

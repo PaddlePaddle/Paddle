@@ -103,15 +103,15 @@ Tensor matmul<DescTensor>(const Tensor& x,
   Tensor out = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
   framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
   framework::OpDesc* op = block->AppendOp();
-  op->SetType("MatMul");
+  op->SetType("matmul_v2");
   op->SetInput("X",
                {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
   op->SetInput("Y",
                {std::static_pointer_cast<prim::DescTensor>(y.impl())->Name()});
   op->SetOutput(
       "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
-  op->SetAttr("transpose_X", transpose_x);
-  op->SetAttr("transpose_Y", transpose_y);
+  op->SetAttr("trans_x", transpose_x);
+  op->SetAttr("trans_y", transpose_y);
   op->CheckAttrs();
   op->InferVarType(block);
   op->InferShape(*block);

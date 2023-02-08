@@ -85,20 +85,31 @@ static std::vector<int> get_reduce_dims(const Tensor& dx,
                                         const int& dout_ndim,
                                         const int& x_ndim,
                                         std::vector<int64_t>* x_dims) {
+  // this branch for broadcast with 1dim, we make 1dim to 2dim which make
+  // ddout_ndim > dout_dim, but ddout_ndim just can be used when grad_out_grad
+  // != nullptr
+  if (dout_ndim < x_ndim) {
+    return std::vector<int>({});
+  }
   const std::vector<std::int64_t> dx_dims = phi::vectorize(dx.dims());
+  VLOG(1) << "------------------1---------------";
   std::vector<std::int64_t> broadcast_dims(dout_ndim);
+  VLOG(1) << "------------------2---------------";
   std::fill(
       broadcast_dims.data(), broadcast_dims.data() + dout_ndim - x_ndim, 1);
+  VLOG(1) << "------------------3---------------";
   std::copy(x_dims->data(),
             x_dims->data() + x_ndim,
             broadcast_dims.data() + dout_ndim - x_ndim);
+  VLOG(1) << "------------------4---------------";
   std::vector<int> reduce_dims;
-
+  VLOG(1) << "------------------5---------------";
   for (int i = 0; i <= dout_ndim - 3; i++) {
     if (dx_dims[i] != 1 && broadcast_dims[i] == 1) {
       reduce_dims.push_back(i);
     }
   }
+  VLOG(1) << "---------------------------------";
   return reduce_dims;
 }
 
