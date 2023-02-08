@@ -267,7 +267,7 @@ def parse_args():
     parser.add_argument(
         '--shape_range_file', type=str, default="shape_range.pbtxt"
     )
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
     return args
 
 
