@@ -36,6 +36,9 @@ class TestCUDAGraphInFirstBatch(unittest.TestCase):
 
     @switch_to_static_graph
     def test_cuda_graph_in_first_batch(self):
+        if not can_use_cuda_graph():
+            return
+
         startup = paddle.static.Program()
         main = paddle.static.Program()
 
