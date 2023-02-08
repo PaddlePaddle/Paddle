@@ -256,7 +256,7 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
       auto lod = ids->lod()[0];
       int64_t out_width = d_output->dims()[1];
 
-      framework::Vector<int64_t> *new_rows = d_table->mutable_rows();
+      phi::Vector<int64_t> *new_rows = d_table->mutable_rows();
       new_rows->resize(ids_num);
       std::memcpy(&(*new_rows)[0], ids_data, ids_num * sizeof(int64_t));
 

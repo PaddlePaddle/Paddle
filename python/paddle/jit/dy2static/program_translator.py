@@ -1140,9 +1140,7 @@ class ProgramCache:
         enable_prim = cache_key.kwargs['build_strategy'].build_cinn_pass
         # NOTE(xiongkun): Need a global FLAGS to enable/disable fallback
         enable_fallback = enable_prim
-        if enable_prim:
-            # TODO(Jiabin): Change this to True if we need this to be default option
-            core.check_and_set_prim_all_enabled()
+        core.check_and_set_prim_all_enabled()
         try:
             concrete_program = ConcreteProgram.from_func_spec(
                 func_spec=cache_key.function_spec,

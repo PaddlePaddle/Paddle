@@ -26,7 +26,7 @@ def simple_fc_net_with_inputs(img, label, class_num=10):
             size=100,
             activation='relu',
             bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0)
+                initializer=paddle.nn.initializer.Constant(value=1.0)
             ),
         )
     prediction = paddle.static.nn.fc(
@@ -53,7 +53,7 @@ def batchnorm_fc_with_inputs(img, label, class_num=10):
             size=200,
             activation='relu',
             bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0)
+                initializer=paddle.nn.initializer.Constant(value=1.0)
             ),
         )
 
@@ -96,7 +96,9 @@ def bow_net(
     emb = fluid.layers.embedding(
         input=data, is_sparse=is_sparse, size=[dict_dim, emb_dim]
     )
-    bow = fluid.layers.sequence_pool(input=emb, pool_type='sum')
+    bow = paddle.static.nn.sequence_lod.sequence_pool(
+        input=emb, pool_type='sum'
+    )
     bow_tanh = paddle.tanh(bow)
     fc_1 = paddle.static.nn.fc(x=bow_tanh, size=hid_dim, activation="tanh")
     fc_2 = paddle.static.nn.fc(x=fc_1, size=hid_dim2, activation="tanh")

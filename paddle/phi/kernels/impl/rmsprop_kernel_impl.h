@@ -309,7 +309,7 @@ void RmspropSparseKernel(const Context &ctx,
 
   funcs::ForRange<Context> for_range(ctx, limit);
   auto &grad_merge_rows = merged_grad->rows();
-  paddle::framework::MixVector<int64_t> mixv_grad_merge_rows(&grad_merge_rows);
+  phi::MixVector<int64_t> mixv_grad_merge_rows(&grad_merge_rows);
   const int64_t *rows = mixv_grad_merge_rows.Data(ctx.GetPlace());
 
   auto &merged_tensor = merged_grad->value();
