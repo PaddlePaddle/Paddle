@@ -14,15 +14,24 @@ limitations under the License. */
 
 #pragma once
 
-#include <memory>
-
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace paddle {
 namespace experimental {
 
+template <typename DstLoD, typename SrcLoD>
+void SetLoD(DstLoD* dst, const SrcLoD& src) {
+  dst->reserve(src.size());
+  dst->clear();
+  for (auto&& v : src) {
+    dst->emplace_back(v);
+  }
+}
+
 std::unique_ptr<phi::DenseTensor> MakePhiDenseTensor(
-    const phi::DenseTensor& src);
+    const phi::DenseTensor& src) {
+  return std::make_unique<phi::DenseTensor>(src);
+}
 
 }  // namespace experimental
 }  // namespace paddle

@@ -20,7 +20,7 @@ cc_test(
   SRCS test_phi_exception.cc
   DEPS gtest)
 
-set(COMMON_API_TEST_DEPS phi_tensor phi_api phi_api_utils)
+set(COMMON_API_TEST_DEPS phi_tensor phi_api)
 cc_test(
   test_to_api
   SRCS test_to_api.cc

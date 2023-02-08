@@ -459,7 +459,7 @@ if(WITH_XPU)
          place
          phi
          var_type_traits
-         phi_api_utils
+         variable_utils
          op_info
          xpu_op_list)
 else()
@@ -471,7 +471,7 @@ else()
          place
          phi
          var_type_traits
-         phi_api_utils
+         variable_utils
          op_info)
 endif()
 
@@ -1193,7 +1193,7 @@ cc_library(
        place
        var_type_traits
        phi
-       phi_api_utils
+       variable_utils
        op_info
        shape_inference
        sparse_coo_tensor)
