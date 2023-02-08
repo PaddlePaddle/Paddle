@@ -133,6 +133,8 @@ void Int4GemmKernel(const Context &ctx,
       &ctx};
   if (activation == "none") {
     Int4GemmBias(params, sm);
+  } else if (activation == "relu") {
+    Int4GemmRelu(params, sm);
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Cutlass dose not support this activation on int4: %s.",
