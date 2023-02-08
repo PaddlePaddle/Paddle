@@ -845,6 +845,10 @@ void FusedAttentionsPass::ApplyImpl(Graph* graph) const {
   graph = PreMaskDropResFwd(graph, &cache);
   graph = PreMaskDropResBwd(graph, &cache);
   cache.ResetCache();
+
+  graph = PreMaskDropResMPFwd(graph, &cache);
+  graph = PreMaskDropResMPBwd(graph, &cache);
+  cache.ResetCache();
 }
 
 ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(
@@ -867,6 +871,28 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResBwd(
                                /* do_dropout */ true,
                                /* add_residual */ true,
                                /* use_mp */ false);
+}
+
+ir::Graph* FusedAttentionsPass::PreMaskDropResMPFwd(
+    Graph* graph, FusedAttentionPassCache* cache) const {
+  return ForwardHandlerHelper(graph,
+                              cache,
+                              /* pre_layer_norm */ true,
+                              /* has_attn_mask */ true,
+                              /* do_dropout */ true,
+                              /* add_residual */ true,
+                              /* use_mp */ true);
+}
+
+ir::Graph* FusedAttentionsPass::PreMaskDropResMPBwd(
+    Graph* graph, FusedAttentionPassCache* cache) const {
+  return BackwardHandlerHelper(graph,
+                               cache,
+                               /* pre_layer_norm */ true,
+                               /* has_attn_mask */ true,
+                               /* do_dropout */ true,
+                               /* add_residual */ true,
+                               /* use_mp */ true);
 }
 
 ir::Graph* FusedAttentionsPass::ForwardHandlerHelper(
@@ -939,10 +965,44 @@ ir::Graph* FusedAttentionsPass::ForwardHandlerHelper(
 
     GET_IR_NODE_FROM_SUBGRAPH(
         fuse_qkv_matmul_w_node, fuse_qkv_matmul_w, fused_attention_pattern);
+
+    std::unordered_set<const Node*> remove_nodes = {pre_layer_norm_op_node,
+                                                    fuse_qkv_matmul_op_node,
+                                                    fuse_qkv_ele_add_op_node,
+                                                    fuse_qkv_reshape_op_node,
+                                                    fuse_qkv_transpose_op_node,
+                                                    fuse_qkv_split_op_node,
+                                                    qk_matmul_op_node,
+                                                    qk_scale_op_node,
+                                                    add_mask_ele_add_op_node,
+                                                    qk_softmax_op_node,
+                                                    attn_dropout_op_node,
+                                                    qkv_matmul_op_node,
+                                                    qkv_transpose_op_node,
+                                                    qkv_reshape_op_node,
+                                                    out_linear_matmul_op_node,
+                                                    out_linear_ele_add_op_node,
+                                                    out_linear_dropout_op_node,
+                                                    residual_ele_add_op_node};
+
+    int ring_id = -1;
+    if (use_mp) {
+      GET_IR_NODE_FROM_SUBGRAPH(
+          c_identity_op_node, c_identity_op, fused_attention_pattern);
+      GET_IR_NODE_FROM_SUBGRAPH(mp_allreudce_sum_op_node,
+                                mp_allreudce_sum_op,
+                                fused_attention_pattern);
+      remove_nodes.insert(c_identity_op_node);
+      remove_nodes.insert(mp_allreudce_sum_op_node);
+      ring_id = PADDLE_GET_CONST(
+          int, mp_allreudce_sum_op_node->Op()->GetAttr("ring_id"));
+    }
+
     std::string cache_anchor_name = fuse_qkv_matmul_w_node->Var()->Name();
 
     OpDesc fused_attention_op_desc(pre_layer_norm_op_node->Op()->Block());
     fused_attention_op_desc.SetType("fused_attention");
+    fused_attention_op_desc.SetAttr("ring_id", ring_id);
     fused_attention_op_desc.SetInput("X", {subgraph.at(x)->Name()});
     cache->InsertIntoCache(GenerateCacheKey(cache_anchor_name, "X", block_id),
                            subgraph.at(x));
@@ -1189,25 +1249,7 @@ ir::Graph* FusedAttentionsPass::ForwardHandlerHelper(
     IR_NODE_LINK_TO(fused_attention_node, out_linear_dropout_mask_node);
     IR_NODE_LINK_TO(fused_attention_node, residual_ele_add_out_node);
 
-    GraphSafeRemoveNodes(g,
-                         {pre_layer_norm_op_node,
-                          fuse_qkv_matmul_op_node,
-                          fuse_qkv_ele_add_op_node,
-                          fuse_qkv_reshape_op_node,
-                          fuse_qkv_transpose_op_node,
-                          fuse_qkv_split_op_node,
-                          qk_matmul_op_node,
-                          qk_scale_op_node,
-                          add_mask_ele_add_op_node,
-                          qk_softmax_op_node,
-                          attn_dropout_op_node,
-                          qkv_matmul_op_node,
-                          qkv_transpose_op_node,
-                          qkv_reshape_op_node,
-                          out_linear_matmul_op_node,
-                          out_linear_ele_add_op_node,
-                          out_linear_dropout_op_node,
-                          residual_ele_add_op_node});
+    GraphSafeRemoveNodes(g, remove_nodes);
 
     found_fused_attention++;
   };
@@ -1301,6 +1343,41 @@ ir::Graph* FusedAttentionsPass::BackwardHandlerHelper(
     GET_IR_NODE_FROM_SUBGRAPH(grad_accumulation_sum_op_node,
                               grad_accumulation_sum_op,
                               fused_attention_grad_pattern);
+
+    std::unordered_set<const Node*> remove_nodes = {
+        residual_ele_add_grad_op_node,
+        out_linear_dropout_grad_op_node,
+        out_linear_ele_add_grad_op_node,
+        out_linear_matmul_grad_op_node,
+        qkv_reshape_grad_op_node,
+        qkv_transpose_grad_op_node,
+        qkv_matmul_grad_op_node,
+        attn_dropout_grad_op_node,
+        qk_softmax_grad_op_node,
+        add_mask_ele_add_grad_op_node,
+        qk_scale_grad_op_node,
+        qk_matmul_grad_op_node,
+        fuse_qkv_split_grad_op_node,
+        fuse_qkv_transpose_grad_op_node,
+        fuse_qkv_reshape_grad_op_node,
+        fuse_qkv_ele_add_grad_op_node,
+        fuse_qkv_matmul_grad_op_node,
+        pre_layer_norm_grad_op_node,
+        grad_accumulation_sum_op_node};
+
+    int ring_id = -1;
+    if (use_mp) {
+      GET_IR_NODE_FROM_SUBGRAPH(mp_allreudce_sum_grad_op_node,
+                                mp_allreudce_sum_grad_op,
+                                fused_attention_grad_pattern);
+      GET_IR_NODE_FROM_SUBGRAPH(c_identity_grad_op_node,
+                                c_identity_grad_op,
+                                fused_attention_grad_pattern);
+      remove_nodes.insert(mp_allreudce_sum_grad_op_node);
+      remove_nodes.insert(c_identity_grad_op_node);
+      ring_id = PADDLE_GET_CONST(
+          int, mp_allreudce_sum_grad_op_node->Op()->GetAttr("ring_id"));
+    }
 
     OpDesc fused_attention_grad_op_desc(
         residual_ele_add_grad_op_node->Op()->Block());
@@ -1449,7 +1526,7 @@ ir::Graph* FusedAttentionsPass::BackwardHandlerHelper(
         "ln_epsilon",
         PADDLE_GET_CONST(
             float, pre_layer_norm_grad_op_node->Op()->GetAttr("epsilon")));
-    fused_attention_grad_op_desc.SetAttr("ring_id", -1);
+    fused_attention_grad_op_desc.SetAttr("ring_id", ring_id);
 
     GET_IR_NODE_FROM_SUBGRAPH(qkv_matmul_grad_x_grad_node,
                               qkv_matmul_grad_x_grad,
@@ -1599,26 +1676,7 @@ ir::Graph* FusedAttentionsPass::BackwardHandlerHelper(
     IR_NODE_LINK_TO(src_mask_out_node, fused_attention_grad_node);
     IR_NODE_LINK_TO(transpose_out_2_node, fused_attention_grad_node);
 
-    GraphSafeRemoveNodes(g,
-                         {residual_ele_add_grad_op_node,
-                          out_linear_dropout_grad_op_node,
-                          out_linear_ele_add_grad_op_node,
-                          out_linear_matmul_grad_op_node,
-                          qkv_reshape_grad_op_node,
-                          qkv_transpose_grad_op_node,
-                          qkv_matmul_grad_op_node,
-                          attn_dropout_grad_op_node,
-                          qk_softmax_grad_op_node,
-                          add_mask_ele_add_grad_op_node,
-                          qk_scale_grad_op_node,
-                          qk_matmul_grad_op_node,
-                          fuse_qkv_split_grad_op_node,
-                          fuse_qkv_transpose_grad_op_node,
-                          fuse_qkv_reshape_grad_op_node,
-                          fuse_qkv_ele_add_grad_op_node,
-                          fuse_qkv_matmul_grad_op_node,
-                          pre_layer_norm_grad_op_node,
-                          grad_accumulation_sum_op_node});
+    GraphSafeRemoveNodes(g, remove_nodes);
 
     found_fused_attention++;
   };

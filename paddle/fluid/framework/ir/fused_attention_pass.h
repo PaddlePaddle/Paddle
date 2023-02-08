@@ -325,6 +325,12 @@ class FusedAttentionsPass : public FusePassBase {
   ir::Graph* PreMaskDropResBwd(Graph* graph,
                                FusedAttentionPassCache* cache) const;
 
+  ir::Graph* PreMaskDropResMPFwd(Graph* graph,
+                                 FusedAttentionPassCache* cache) const;
+
+  ir::Graph* PreMaskDropResMPBwd(Graph* graph,
+                                 FusedAttentionPassCache* cache) const;
+
   ir::Graph* ForwardHandlerHelper(Graph* graph,
                                   FusedAttentionPassCache* cache,
                                   bool pre_layer_norm,
