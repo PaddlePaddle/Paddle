@@ -381,6 +381,11 @@ void Carrier::CreateInterceptors() {
                                              /*fetch_names=*/{},
                                              /*skip_gc_vars =*/skip_gc_vars));
       }
+
+      for (size_t i = 1; i < cores.size(); ++i) {
+        cores[i]->ShareWorkQueueFrom(cores[i - 1]);
+      }
+
       interceptor->SetInterpreterCore(cores);
     } else {
       interceptor->SetGC(gc);
