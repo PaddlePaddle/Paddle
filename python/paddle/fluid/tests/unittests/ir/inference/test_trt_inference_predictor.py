@@ -290,10 +290,19 @@ def run_infer(model_path):
     conf.model_dir = model_path
 
     conf.enable_tune = True
+    # collect shape use CPU
+    conf.enable_gpu = False
     backend = BackendPaddle()
     backend.load(conf)
     backend.predict()
 
+    # collect shape use GPU
+    conf.enable_gpu = True
+    backend = BackendPaddle()
+    backend.load(conf)
+    backend.predict()
+
+    # run inference predictor
     conf.enable_tune = False
     backend = BackendPaddle()
     backend.load(conf)
