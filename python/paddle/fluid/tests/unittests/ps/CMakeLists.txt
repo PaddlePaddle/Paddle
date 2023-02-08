@@ -4,9 +4,7 @@ file(
   "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
-if(NOT WITH_HETERPS)
-  list(REMOVE_ITEM TEST_OPS "test_gpubox_ps")
-endif()
+list(REMOVE_ITEM TEST_OPS "test_gpubox_ps")
 
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
