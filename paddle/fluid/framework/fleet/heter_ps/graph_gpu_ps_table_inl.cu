@@ -466,7 +466,7 @@ void GpuPsGraphTable::move_result_to_source_gpu(int start_index,
 
 void GpuPsGraphTable::move_degree_to_source_gpu(
     int start_index, int gpu_num, int* h_left, int* h_right, int* node_degree) {
-  vector<int> shard_len(gpu_num, 0);
+  std::vector<int> shard_len(gpu_num, 0);
   for (int i = 0; i < gpu_num; i++) {
     if (h_left[i] == -1 || h_right[i] == -1) {
       continue;
