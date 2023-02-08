@@ -356,6 +356,61 @@ class TestRMSPropV2Group(TestRMSPropV2):
         adam.clear_gradients()
 
 
+class TestRMSOpMultiPrecison(unittest.TestCase):
+    def _test_rms_op_dygraph_place_amp(self, place, use_amp=False):
+        import paddle
+
+        paddle.disable_static()
+        paddle.seed(10)
+        paddle.set_device(place)
+
+        input = paddle.randn((5, 5))
+
+        model = paddle.nn.Linear(5, 5)
+
+        optimizer = paddle.optimizer.RMSProp(
+            learning_rate=0.01,
+            parameters=model.parameters(),
+            weight_decay=0.01,
+            multi_precision=use_amp,
+        )
+
+        for idx in range(2):
+            if place == 'gpu' and use_amp:
+                model = paddle.amp.decorate(models=model, level='O2')
+                scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+
+            if place == 'gpu' and use_amp:
+                with paddle.amp.auto_cast(level='O2'):
+                    output = model(input)
+                    loss = paddle.mean(output)
+                scaled = scaler.scale(loss)
+                scaled.backward()
+                scaler.step(optimizer)
+                optimizer.clear_grad()
+            else:
+                output = model(input)
+                loss = paddle.mean(output)
+                loss.backward()
+                optimizer.step()
+                optimizer.clear_grad()
+        paddle.enable_static()
+
+    def _get_places(self):
+        import paddle
+
+        places = ['cpu']
+        if paddle.is_compiled_with_cuda():
+            places.append('gpu')
+        return places
+
+    def test_main(self):
+        for place in self._get_places():
+            use_amp_list = [True, False]
+            for use_amp in use_amp_list:
+                self._test_rms_op_dygraph_place_amp(place, use_amp)
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
