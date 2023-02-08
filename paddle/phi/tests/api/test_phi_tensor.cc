@@ -207,21 +207,22 @@ void TestInitilized() {
   }
 }
 
-void TestData() {
+void TestDataInterface() {
+  // Test DenseTensor
   experimental::Tensor test_tensor(paddle::PlaceType::kCPU, {1, 1});
   CHECK(test_tensor.is_initialized() == true);
   void* tensor_ptr = test_tensor.data();
   CHECK(tensor_ptr != nullptr);
   const void* const_tensor_ptr = test_tensor.data();
   CHECK(const_tensor_ptr != nullptr);
-
-  phi::SelectedRows sr({1, 1}, 2);
-  experimental::Tensor sr_tensor =
-      experimental::Tensor(std::shared_ptr<phi::TensorBase>(&sr));
-  CHECK(sr_tensor.is_initialized() == true);
-  tensor_ptr = sr_tensor.data();
+  // Test SelectedRows
+  std::shared_ptr<phi::SelectedRows> selected_rows{
+      new phi::SelectedRows({1, 1}, 2)};
+  experimental::Tensor* sr_tensor = new experimental::Tensor(selected_rows);
+  CHECK(sr_tensor->is_initialized() == true);
+  tensor_ptr = sr_tensor->data();
   CHECK(tensor_ptr != nullptr);
-  const_tensor_ptr = test_tensor.data();
+  const_tensor_ptr = sr_tensor->data();
   CHECK(const_tensor_ptr != nullptr);
 }
 
@@ -245,8 +246,8 @@ TEST(PhiTensor, All) {
   GroupTestCast();
   VLOG(2) << "TestInitilized";
   TestInitilized();
-  VLOG(2) << "TestData";
-  TestData();
+  VLOG(2) << "TestDataInterface";
+  TestDataInterface();
   VLOG(2) << "TestJudgeTensorType";
   TestJudgeTensorType();
 }
