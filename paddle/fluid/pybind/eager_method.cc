@@ -1098,7 +1098,7 @@ static PyObject* tensor_method__check_index_is_all_tensor(TensorObject* self,
 
   std::vector<paddle::experimental::Tensor> indices_tensor;
 
-  bool isAllTensor = true;
+  bool isAdvanceIndex = true;
 
   // 增加Tensor数据类型检查，这样吧，统一cast成int64数据类型的Tensor往下传递，用Tensor.cast方法
   const int size = PyTuple_GET_SIZE(index_ptr);
@@ -1185,13 +1185,13 @@ static PyObject* tensor_method__check_index_is_all_tensor(TensorObject* self,
           "When index contains a built-in data, its dtype must be int or "
           "int64"));
     } else {
-      isAllTensor = false;
-      return ToPyObject(isAllTensor);
+      isAdvanceIndex = false;
+      return ToPyObject(isAdvanceIndex);
     }
   }
 
   index_put_ad_func(self->tensor, indices_tensor, value_tensor);
-  return ToPyObject(isAllTensor);
+  return ToPyObject(isAdvanceIndex);
 
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
