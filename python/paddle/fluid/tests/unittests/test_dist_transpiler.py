@@ -356,7 +356,9 @@ class TestFakeInit(TranspilerTest):
             size=[dict_size, embedding_size],
             param_attr=fluid.ParamAttr(
                 name='emb',
-                initializer=fluid.initializer.Uniform(-init_width, init_width),
+                initializer=paddle.nn.initializer.Uniform(
+                    -init_width, init_width
+                ),
             ),
         )
 
@@ -365,7 +367,8 @@ class TestFakeInit(TranspilerTest):
             is_sparse=True,
             size=[dict_size, embedding_size],
             param_attr=fluid.ParamAttr(
-                name='emb_w', initializer=fluid.initializer.Constant(value=0.0)
+                name='emb_w',
+                initializer=paddle.nn.initializer.Constant(value=0.0),
             ),
         )
 
@@ -374,7 +377,8 @@ class TestFakeInit(TranspilerTest):
             is_sparse=True,
             size=[dict_size, 1],
             param_attr=fluid.ParamAttr(
-                name='emb_b', initializer=fluid.initializer.Constant(value=0.0)
+                name='emb_b',
+                initializer=paddle.nn.initializer.Constant(value=0.0),
             ),
         )
 
@@ -712,7 +716,9 @@ class TestDistLookupTableBase(TranspilerTest):
                 is_sparse=is_sparse,
                 is_distributed=is_distributed,
             )
-            pool = fluid.layers.sequence_pool(input=emb, pool_type='average')
+            pool = paddle.static.nn.sequence_lod.sequence_pool(
+                input=emb, pool_type='average'
+            )
             return pool
 
         title_ids = paddle.static.data(
@@ -1327,7 +1333,7 @@ class TestRemoteNce(TestDistLookupTableBase):
                 shape=[num_total_classes, 10],
                 dtype='float32',
                 name='nce_w',
-                initializer=fluid.initializer.ConstantInitializer(),
+                initializer=paddle.nn.initializer.Constant(),
             )
         )
         b_param = (
@@ -1337,7 +1343,7 @@ class TestRemoteNce(TestDistLookupTableBase):
                 shape=[num_total_classes, 1],
                 dtype='float32',
                 name='nce_b',
-                initializer=fluid.initializer.ConstantInitializer(),
+                initializer=paddle.nn.initializer.Constant(),
             )
         )
 
@@ -1405,7 +1411,7 @@ class TestRemoteHsigmoid(TestDistLookupTableBase):
                 shape=[num_total_classes, 10],
                 dtype='float32',
                 name='hs_w',
-                initializer=fluid.initializer.ConstantInitializer(),
+                initializer=paddle.nn.initializer.Constant(),
             )
         )
         b_param = (
@@ -1415,7 +1421,7 @@ class TestRemoteHsigmoid(TestDistLookupTableBase):
                 shape=[3, 1],
                 dtype='float32',
                 name='hs_b',
-                initializer=fluid.initializer.ConstantInitializer(),
+                initializer=paddle.nn.initializer.Constant(),
             )
         )
 
@@ -1424,7 +1430,7 @@ class TestRemoteHsigmoid(TestDistLookupTableBase):
             is_sparse=is_sparse,
             size=[3, 3],
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Normal(
+                initializer=paddle.nn.initializer.Normal(
                     scale=1 / math.sqrt(num_total_classes)
                 )
             ),

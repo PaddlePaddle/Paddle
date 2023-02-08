@@ -20,6 +20,7 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/platform/timer.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -78,7 +79,11 @@ TEST(CpuLayerTest, Function) {
 TEST(CpuLayerTest, Construct) {
   auto place = phi::CPUPlace();
   std::string path = "./multi_program_load/export";
+  paddle::platform::Timer timer;
+  timer.Start();
   auto layer = jit::Load(path, place);
+  timer.Pause();
+  std::cout << "jit::Load coast" << timer.ElapsedMS() << std::endl;
 
   float fbias = layer.Attribute<float>("fbias");
   EXPECT_FLOAT_EQ(fbias, 1.4);
@@ -119,6 +124,41 @@ TEST(CpuLayerTest, Construct) {
   EXPECT_NEAR(out_data[0], pow(1.41562390, 2.0), 1e-6);
 }
 
+TEST(CpuLayerTest, Clone) {
+  auto place = phi::CPUPlace();
+  std::string path = "./multi_program_load/export";
+
+  paddle::platform::Timer timer;
+  timer.Start();
+  auto layer = jit::Load(path, place);
+  timer.Pause();
+  std::cout << "jit::Load cost " << timer.ElapsedMS() << " ms" << std::endl;
+
+  timer.Start();
+  auto layer2 = layer.Clone();
+  timer.Pause();
+  std::cout << "jit::Layer::Clone cost " << timer.ElapsedMS() << " ms"
+            << std::endl;
+
+  float fbias = layer2->Attribute<float>("fbias");
+  EXPECT_FLOAT_EQ(fbias, 1.4);
+
+  auto inputs = PrepareInputs(place);
+  auto outs = layer2->forward(inputs);
+  auto out_data = outs[0].data<float>();
+  EXPECT_NEAR(out_data[0], 0.02194316, 1e-6);
+
+  auto func = layer2->Function("infer");
+  EXPECT_TRUE(func.IsValid());
+  outs = func(inputs);
+  out_data = outs[0].data<float>();
+  EXPECT_NEAR(out_data[0], 1.41562390, 1e-6);
+  auto pow_out =
+      paddle::experimental::pow(outs[0], paddle::experimental::Scalar(2));
+  out_data = pow_out.data<float>();
+  EXPECT_NEAR(out_data[0], pow(1.41562390, 2.0), 1e-6);
+}
+
 #if defined(PADDLE_WITH_CUDA)
 TEST(GpuLayerTest, Construct) {
   auto place = phi::GPUPlace();
@@ -146,6 +186,22 @@ TEST(GpuLayerTest, Construct) {
   cpu_tensor = paddle::experimental::copy_to(sqrt_out, phi::CPUPlace(), true);
   out_data = cpu_tensor.data<float>();
   EXPECT_NEAR(out_data[0], sqrt(1.41562390), 1e-6);
+}
+
+TEST(GpuLayerTest, Clone) {
+  auto place = phi::GPUPlace();
+
+  std::string path = "./multi_program_load/export";
+  auto layer = jit::Load(path, place);
+  auto inputs = PrepareInputs(place);
+
+  auto layer2 = layer.Clone();
+  auto outs = layer2->forward(inputs);
+  auto gpu_tensor = outs[0];
+  auto cpu_tensor =
+      paddle::experimental::copy_to(gpu_tensor, phi::CPUPlace(), true);
+  auto out_data = cpu_tensor.data<float>();
+  EXPECT_NEAR(out_data[0], 0.02194316, 1e-6);
 }
 #endif
 

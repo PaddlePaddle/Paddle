@@ -62,7 +62,7 @@ inline std::vector<int> shuffle_int_vector(int n) {
     e = i++;
   }
   std::shuffle(ret.begin(), ret.end(), random_engine_wrapper.engine);
-  return std::move(ret);
+  return ret;
 }
 
 #define CUDA_CHECK(cmd)                                                       \
