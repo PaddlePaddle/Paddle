@@ -45,7 +45,7 @@ using LoD = std::vector<std::vector<size_t>>;
 /*
  * Transform an LoD from relative offsets to absolute offsets.
  */
-LoD ToAbsOffset(const LoD& in) {
+inline LoD ToAbsOffset(const LoD& in) {
   // the lowest level stores relative offsets
   if (in.empty() || in.size() == 1) return in;
   LoD result = in;
