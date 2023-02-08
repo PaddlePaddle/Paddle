@@ -21,6 +21,7 @@ import paddle
 import paddle.distributed.fleet as fleet
 import paddle.fluid as fluid
 import paddle.nn.functional as F
+from paddle.distributed.passes import PassManager, new_pass
 
 paddle.enable_static()
 
@@ -48,13 +49,18 @@ class MultiHeadAttentionWithMP(paddle.nn.Layer):
         assert (
             self.head_dim * num_heads == self.embed_dim
         ), "embed_dim must be divisible by num_heads"
-        self.mp_hidden_size = self.head_dim // 2
+        assert num_heads % 2 == 0
+        self.num_heads = num_heads // 2
 
         self.norm1 = paddle.nn.LayerNorm(embed_dim, epsilon=1e-5)
         self.norm2 = paddle.nn.LayerNorm(embed_dim, epsilon=1e-5)
 
-        self.qkv_proj = paddle.nn.Linear(embed_dim, 3 * self.mp_hidden_size)
-        self.out_proj = paddle.nn.Linear(self.mp_hidden_size, embed_dim)
+        self.qkv_proj = paddle.nn.Linear(
+            embed_dim, 3 * self.num_heads * self.head_dim
+        )
+        self.out_proj = paddle.nn.Linear(
+            self.num_heads * self.head_dim, embed_dim
+        )
         self.dropout = paddle.nn.Dropout(1e-10, mode="upscale_in_train")
 
     def forward(self, x, attn_mask=None):
@@ -133,7 +139,7 @@ class TestFusedAttentionPassWithMP(unittest.TestCase):
                 'float32'
             )
             self.mask_data = np.random.rand(
-                batch_size, num_heads, seq_len, seq_len
+                batch_size, num_heads // 2, seq_len, seq_len
             ).astype('float32')
 
         main_prog = paddle.static.Program()
@@ -150,7 +156,7 @@ class TestFusedAttentionPassWithMP(unittest.TestCase):
             if self.add_mask:
                 attn_mask = paddle.static.data(
                     name="attn_mask",
-                    shape=[-1, num_heads, seq_len, seq_len],
+                    shape=[-1, num_heads // 2, seq_len, seq_len],
                     dtype='float32',
                 )
             else:
@@ -172,11 +178,63 @@ class TestFusedAttentionPassWithMP(unittest.TestCase):
             sgd_optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.001)
             sgd_optimizer.minimize(loss)
 
-        return 0
+        startup_block = startup_prog.global_block()
+        nccl_id_var = startup_block.create_var(
+            name=fluid.unique_name.generate('nccl_id'),
+            persistable=True,
+            type=fluid.core.VarDesc.VarType.RAW,
+        )
+        startup_block.append_op(
+            type='c_gen_nccl_id',
+            inputs={},
+            outputs={'Out': nccl_id_var},
+            attrs={
+                'rank': self.rank,
+                'endpoint': self.current_endpoint,
+                'other_endpoints': self.other_endpoints,
+            },
+        )
+        startup_block.append_op(
+            type='c_comm_init',
+            inputs={'X': nccl_id_var},
+            outputs={},
+            attrs={
+                'nranks': self.nranks,
+                'rank': self.rank,
+                'ring_id': 0,
+                'device_id': self.gpu_id,
+            },
+        )
+
+        if use_pass:
+            pass_manager = PassManager([new_pass("fused_attention")])
+            pass_manager.apply([main_prog], [startup_prog])
+
+            ops = main_prog.global_block().ops
+            assert ops[2].type == 'fused_attention'
+            assert ops[3].type == 'reduce_mean'
+            assert ops[5].type == 'reduce_mean_grad'
+            assert ops[6].type == 'fused_attention_grad'
+            # two ops for linear, one op for reduce mean
+            # one fill constant
+            # one op for reduce mean grad, two ops for linear bwd
+            # the eighth op should be the optimizer
+            assert ops[9].type == 'sgd'
+
+        self.exe.run(startup_prog)
+        for i in range(2):
+            rst = self.exe.run(
+                main_prog,
+                feed={'x': self.x_data, 'attn_mask': self.mask_data},
+                fetch_list=[loss],
+            )
+
+        return rst
 
     def test_pass(self):
-        fused_rst = self.get_rst(use_pass=True)
+        fused_rst = self.get_rst()
         non_fused_rst = self.get_rst()
+        assert np.allclose(fused_rst, non_fused_rst)
 
 
 if __name__ == "__main__":
