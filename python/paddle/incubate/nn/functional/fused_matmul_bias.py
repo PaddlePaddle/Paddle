@@ -106,14 +106,16 @@ def fused_matmul_bias_int4(
 ):
     """
     Applies fused int4 gemm kernel.
-    This method requires SM_ARCH in sm75, sm80.
+    This method requires SM_ARCH in sm75, sm80, sm86.
     This methos also requires cutlass.
     Args:
         x (Tensor): the first input Tensor to be multiplied.
         y (Tensor): the second input Tensor to be multiplied. Its rank must be 2.
-        bias (Tensor|None): the input bias Tensor. If it is None, no bias addition would
+        bias (Tensor| None): the input bias Tensor. If it is None, no bias addition would
             be performed. Otherwise, the bias is added to the matrix multiplication result.
-        act_type (string): the Activation Type. Currently only support `none`, `relu`.
+        transpose_x (bool): Whether to transpose :math:`x` before multiplication.
+        transpose_y (bool): Whether to transpose :math:`y` before multiplication.
+        activation (string): the Activation Type. Currently only support `none`, `relu`.
     Returns:
         Tensor: the output Tensor.
     Examples:
@@ -121,10 +123,10 @@ def fused_matmul_bias_int4(
             # required: gpu
             import paddle
             from paddle.incubate.nn.functional import fused_matmul_bias_int4
-            x = paddle.randn([3, 4])
-            y = paddle.randn([4, 5])
-            bias = paddle.randn([5])
-            out = fused_matmul_bias_int4(x, y, bias)
+            x = paddle.randint(-5,5,[3,4],dtype='int32')
+            y = paddle.randint(-5,5,[4,5],dtype='int32')
+            bias = paddle.randint(-5,5,[5],dtype='int32')
+            out = fused_matmul_bias_int4(x, y, bias, False, False, 'none')
             print(out.shape) # [3, 5]
     """
     helper = LayerHelper('fused_matmul_bias_int4', **locals())
