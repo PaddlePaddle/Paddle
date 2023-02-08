@@ -40,10 +40,11 @@ class BasicApiTransformer(BaseTransformer):
     def transform(self):
         to_tensor_transformer = ToTensorTransformer(self.root)
         to_tensor_transformer.transform()
+        nameload_transformer = NameloadJstTransformer(self.root)
+        nameload_transformer.transform()
         attribute_transformer = AttributeJstTransformer(self.root)
         attribute_transformer.transform()
         self.visit(self.root)
-
         return self.wrapper_root
 
     def visit_Assign(self, node):
@@ -124,6 +125,61 @@ class ToTensorTransformer(BaseTransformer):
         if is_to_variable(node):
             node = to_assign_node(node)
         self.generic_visit(node)
+        return node
+
+
+class NameloadJstTransformer(BaseTransformer):
+    """
+    change name and attribute load to __jst.ld(name) pattern.
+    for example:
+        a.dtype -->  __jst.ld(__jst.ld(a).dtype)
+
+    In paddle science and deepxde, we have to support changing tensor into variable
+    in arbitrary occasion such as global tensor.
+
+    NOTE: we only deal with ctx=Load() case.
+    """
+
+    def __init__(self, node):
+        assert isinstance(
+            node, gast.AST
+        ), "Input non-gast.AST node for the initialization of ToTensorTransformer."
+        self.root = node
+
+    def transform(self):
+        self.visit(self.root)
+        return self.root
+
+    def _surround_with_ld(self, node):
+        node = (
+            gast.parse(
+                "_jst.ld({})".format(utils.ast_to_source_code(node).strip())
+            )
+            .body[0]
+            .value
+        )
+        return node
+
+    def visit_Call(self, node):
+        """
+        Can't convert name of function call, bacause this will affect CallTransformer.
+        """
+        node.args = [self.generic_visit(arg) for arg in node.args]
+        return node
+
+    def visit_Attribute(self, node):
+        assert isinstance(node, gast.Attribute)
+        assert isinstance(node.attr, str)
+        self.generic_visit(node)
+        if isinstance(node.ctx, gast.Load):
+            node = self._surround_with_ld(node)
+        return node
+
+    def visit_Name(self, node):
+        assert isinstance(node, gast.Name)
+        self.generic_visit(node)
+        if isinstance(node.ctx, gast.Load):
+            node = self._surround_with_ld(node)
         return node
 
 

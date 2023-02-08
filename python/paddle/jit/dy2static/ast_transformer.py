@@ -93,6 +93,7 @@ class DygraphToStaticAst(BaseTransformer):
 
         transformers = [
             EarlyReturnTransformer,
+            DecoratorTransformer,  # transform decorators to function call
             BasicApiTransformer,  # Basic Api
             TensorShapeTransformer,  # Tensor.shape -> paddle.shape(Tensor)
             BreakContinueTransformer,  # break/continue in loops
@@ -104,7 +105,6 @@ class DygraphToStaticAst(BaseTransformer):
             AssertTransformer,  # assert statement
             CallTransformer,  # transform call recursively
             CastTransformer,  # type casting statement
-            DecoratorTransformer,  # transform decorators to function call
             TypeHintTransformer,  # remove all typehint in gast.Name
         ]
 
