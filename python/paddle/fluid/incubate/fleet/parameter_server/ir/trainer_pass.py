@@ -20,7 +20,7 @@ import math
 
 from functools import reduce
 import paddle
-import paddle.framework.core as core
+from paddle.framework import core
 import paddle.framework as framework
 
 from paddle.fluid.transpiler.details.program_utils import delete_ops
