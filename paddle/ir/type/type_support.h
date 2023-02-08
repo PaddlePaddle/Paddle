@@ -20,7 +20,8 @@ namespace ir {
 
 /// \brief TypeId is the unique identification of Type, each Type corresponds to
 /// a unique TypeId, the same id indicates the same Type class. TypeId provides
-/// an instantiation interface: TypeId::get. For example: 
+/// an instantiation interface: TypeId::get.
+/// Example:
 /// \code{cpp}
 ///   class TypeA {};
 ///   TypeId type_a_id = TypeId::get<TypeA>();
@@ -79,7 +80,7 @@ class AbstractType {
 
  private:
   /// \brief The constructor is set to private and provides the user with the
-  /// Get method and LookUp method to obtain and manage the AstractType. 
+  /// get method to obtain and manage the AstractType.
   /// \param type_id The type id of the AbstractType.
   explicit AbstractType(TypeId type_id) : type_id_(type_id) {}
 
