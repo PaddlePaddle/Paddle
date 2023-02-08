@@ -21,7 +21,6 @@ import os
 import warnings
 import logging
 from paddle.framework import core
-from paddle.framework.core import CommContext
 from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 from paddle.fluid.incubate.fleet.parameter_server.ir import vars_metatools
 from paddle.fluid.incubate.fleet.parameter_server.ir.ps_dispatcher import (
@@ -414,7 +413,7 @@ class CompileTimeStrategy:
 
         trainer_id = self.get_role_id()
         aggregate = True
-        ctx = CommContext(
+        ctx = core.CommContext(
             name,
             names,
             eps,
@@ -492,7 +491,7 @@ class CompileTimeStrategy:
                     is_distributed,
                 )
 
-                ctx = CommContext(
+                ctx = core.CommContext(
                     param_ctx.var_name(),
                     param_ctx.split_varnames(),
                     param_ctx.split_endpoints(),
@@ -658,7 +657,7 @@ class CompileTimeStrategy:
                 ]
                 var_numel = reduce(lambda x, y: x * y, var.shape[1:])
 
-                sparse_ctx = CommContext(
+                sparse_ctx = core.CommContext(
                     grad_name,
                     [grad_name],
                     ["127.0.0.1:6071"],
@@ -713,7 +712,7 @@ class CompileTimeStrategy:
             grad_name = "Dense@Grad"
             trainer_id = self.get_role_id()
             aggregate = True
-            dense_ctx = CommContext(
+            dense_ctx = core.CommContext(
                 grad_name,
                 [grad_name],
                 ["127.0.0.1:6071"],
@@ -741,7 +740,7 @@ class CompileTimeStrategy:
                 var_numel = reduce(lambda x, y: x * y, var.shape)
                 grad_name = origin_varname
                 aggregate = True
-                dense_ctx = CommContext(
+                dense_ctx = core.CommContext(
                     grad_name,
                     [grad_name],
                     ["127.0.0.1:6071"],
@@ -808,7 +807,7 @@ class CompileTimeStrategy:
             shape = list(var.shape)
             shape[0] = 0 if is_distributed else shape[0]
 
-            sparse_ctx = CommContext(
+            sparse_ctx = core.CommContext(
                 grad_name,
                 splited_varname,
                 ep_list,
@@ -900,7 +899,7 @@ class CompileTimeStrategy:
         endpoints = self.get_ps_endpoints()
         sections = [1] * len(endpoints)
         names = [name] * len(endpoints)
-        ctx = CommContext(
+        ctx = core.CommContext(
             name,
             names,
             endpoints,
