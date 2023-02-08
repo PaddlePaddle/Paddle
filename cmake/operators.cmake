@@ -28,11 +28,7 @@ endfunction()
 
 function(find_phi_register FILENAME ADD_PATH PATTERN)
   # set op_name to OUTPUT
-  set(options "")
-  set(oneValueArgs "")
-  set(multiValueArgs "")
   file(READ ${FILENAME} CONTENT)
-
   string(
     REGEX
       MATCH
@@ -402,6 +398,7 @@ function(op_library TARGET)
     set(op_name "")
     # Add PHI Kernel Registry Message
     find_phi_register(${cc_src} ${pybind_file} "PD_REGISTER_KERNEL")
+    find_phi_register(${cc_src} ${pybind_file} "PD_REGISTER_STRUCT_KERNEL")
     find_phi_register(${cc_src} ${pybind_file} "PD_REGISTER_GENERAL_KERNEL")
     find_register(${cc_src} "REGISTER_OPERATOR" op_name)
     if(NOT ${op_name} EQUAL "")
@@ -453,6 +450,7 @@ function(op_library TARGET)
     set(op_name "")
     # Add PHI Kernel Registry Message
     find_phi_register(${cu_src} ${pybind_file} "PD_REGISTER_KERNEL")
+    find_phi_register(${cu_src} ${pybind_file} "PD_REGISTER_STRUCT_KERNEL")
     find_phi_register(${cu_src} ${pybind_file} "PD_REGISTER_GENERAL_KERNEL")
     find_register(${cu_src} "REGISTER_OP_CUDA_KERNEL" op_name)
     if(NOT ${op_name} EQUAL "")
