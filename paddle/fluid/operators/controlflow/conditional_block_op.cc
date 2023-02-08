@@ -90,11 +90,20 @@ class ConditionalBlockOp : public ConditionalOp {
       if (scope.kids().size() <= executor_scope_idx_) {
         VLOG(4) << "[ConditionalBlock] scopes kids size: "
                 << scope.kids().size()
-                << " cached_scope_idx: " << executor_scope_idx_;
-        scopes->clear();
+                << " cached_scope_idx: " << executor_scope_idx_
+                << " scopes.size: " << scopes->size();
+        // we don't clear cached scope because outer executor like PE、hogwild
+        // may drop scope.kids and lead to a double free
         scopes->front() = &scope.NewScope();
         executor_scope_idx_ = scope.kids().size() - 1;
       }
+
+      PADDLE_ENFORCE_GT(
+          scopes->size(),
+          0,
+          platform::errors::InvalidArgument(
+              "Expect Scope variable contains at least 1 scope, but got: %d",
+              scopes->size()));
 
       auto &cur_scope = *scopes->front();
 #ifdef PADDLE_WITH_MKLDNN
@@ -127,7 +136,7 @@ class ConditionalBlockOp : public ConditionalOp {
                                           /* used_for_control_flow_op */ true));
           VLOG(10) << "[interpreterCore cache]"
                    << "new created:" << core_;
-        } else if (&cur_scope != core_->GetVariableScope()->GetMutableScope()) {
+        } else {
           BuildScopeForControlFlowOp(*core_, *block, &cur_scope);
           core_->reset_scope(&cur_scope);
         }
@@ -240,7 +249,7 @@ class ConditionalBlockGradOp : public ConditionalOp {
                                           /* used_for_control_flow_op */ true));
           VLOG(10) << "[interpreterCore cache]"
                    << "new created:" << core_;
-        } else if (&cur_scope != core_->GetVariableScope()->GetMutableScope()) {
+        } else {
           BuildScopeForControlFlowOp(*core_, *block, &cur_scope);
           core_->reset_scope(&cur_scope);
         }
