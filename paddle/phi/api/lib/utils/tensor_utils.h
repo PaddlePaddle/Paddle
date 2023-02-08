@@ -20,7 +20,7 @@ namespace paddle {
 namespace experimental {
 
 template <typename DstLoD, typename SrcLoD>
-void SetLoD(DstLoD* dst, const SrcLoD& src) {
+inline void SetLoD(DstLoD* dst, const SrcLoD& src) {
   dst->reserve(src.size());
   dst->clear();
   for (auto&& v : src) {
@@ -28,7 +28,7 @@ void SetLoD(DstLoD* dst, const SrcLoD& src) {
   }
 }
 
-std::unique_ptr<phi::DenseTensor> MakePhiDenseTensor(
+inline std::unique_ptr<phi::DenseTensor> MakePhiDenseTensor(
     const phi::DenseTensor& src) {
   return std::make_unique<phi::DenseTensor>(src);
 }
