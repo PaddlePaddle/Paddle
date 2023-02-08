@@ -86,7 +86,15 @@ class TestFusedPassBaseList(unittest.TestCase):
         if get_cuda_version() >= 11060:
             for use_fused_passes in [True, False]:
                 engine = self.get_engine(
-                    use_fused_passes, ["fuse_bn_add_act", "fuse_gemm_epilogue"]
+                    use_fused_passes,
+                    [
+                        "fuse_bn_act",
+                        "fused_attention",
+                        "fuse_optimizer",
+                        "fuse_gemm_epilogue",
+                        "fuse_bn_add_act",
+                        "fuse_relu_depthwise_conv",
+                    ],
                 )
                 history = engine.fit(
                     self.dataset, 3, batch_size=self.batch_size

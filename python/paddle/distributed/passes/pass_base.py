@@ -301,7 +301,9 @@ def _find_longest_path(edges):
                     if paths[k][j]:
                         assert paths[k][j][0] == k
                     paths[i][j] = (
-                        paths[i][k] + paths[k][j][1:] if paths[k][j] else []
+                        (paths[i][k] + paths[k][j][1:] if paths[k][j] else [])
+                        if paths[i][k]
+                        else []
                     )
                     if dists[i][j] < min_dist:
                         min_dist = dists[i][j]
