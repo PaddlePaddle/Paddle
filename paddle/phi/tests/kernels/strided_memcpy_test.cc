@@ -90,10 +90,9 @@ TEST(StridedMemcpy, GPUCrop) {
   phi::CPUPlace cpu;
 
   phi::GPUContext ctx(gpu0);
-  ctx.SetAllocator(
-      paddle::paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(gpu0, ctx.stream())
-          .get());
+  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                       .GetAllocator(gpu0, ctx.stream())
+                       .get());
   ctx.PartialInitWithAllocator();
 
   auto src_allocation = paddle::memory::Alloc(gpu0, sizeof(src));
@@ -133,10 +132,9 @@ TEST(StridedMemcpy, GPUConcat) {
   phi::GPUPlace gpu0(0);
   phi::CPUPlace cpu;
   phi::GPUContext ctx(gpu0);
-  ctx.SetAllocator(
-      paddle::paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(gpu0, ctx.stream())
-          .get());
+  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                       .GetAllocator(gpu0, ctx.stream())
+                       .get());
   ctx.PartialInitWithAllocator();
   auto gpu_src_allocation = paddle::memory::Alloc(gpu0, sizeof(src));
   int* gpu_src = reinterpret_cast<int*>(gpu_src_allocation->ptr());
