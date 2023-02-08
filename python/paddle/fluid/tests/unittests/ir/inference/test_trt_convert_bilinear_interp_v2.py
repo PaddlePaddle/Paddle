@@ -106,7 +106,7 @@ class TrtConvertBilinearInterpV2Test(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            # here is consistent with op_teller.cc
+            # Here is consistent with op_teller.cc
             ver = paddle_infer.get_trt_compile_version()
             if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 7100:
                 return 0, 3
