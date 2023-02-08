@@ -35,12 +35,12 @@ struct StridedMemcpyFunctor<T, 0> {
     auto place = dev_ctx.GetPlace();
     if (place.GetType() == phi::AllocationType::CPU) {
       auto& cpu_place = place;
-      memory::Copy(cpu_place, dst, cpu_place, src, sizeof(T));
+      paddle::memory::Copy(cpu_place, dst, cpu_place, src, sizeof(T));
     } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       auto& gpu_place = place;
       auto& cuda_ctx = reinterpret_cast<const phi::GPUContext&>(dev_ctx);
-      memory::Copy(
+      paddle::memory::Copy(
           gpu_place, dst, gpu_place, src, sizeof(T), cuda_ctx.stream());
 #else
       PADDLE_THROW(
@@ -61,17 +61,18 @@ struct StridedMemcpyFunctor<T, 1> {
     auto place = dev_ctx.GetPlace();
     if (place.GetType() == phi::AllocationType::CPU) {
       auto& cpu_place = place;
-      memory::Copy(cpu_place, dst, cpu_place, src, sizeof(T) * dst_dim[0]);
+      paddle::memory::Copy(
+          cpu_place, dst, cpu_place, src, sizeof(T) * dst_dim[0]);
     } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       auto& gpu_place = place;
       auto& cuda_ctx = reinterpret_cast<const phi::GPUContext&>(dev_ctx);
-      memory::Copy(gpu_place,
-                   dst,
-                   gpu_place,
-                   src,
-                   sizeof(T) * dst_dim[0],
-                   cuda_ctx.stream());
+      paddle::memory::Copy(gpu_place,
+                           dst,
+                           gpu_place,
+                           src,
+                           sizeof(T) * dst_dim[0],
+                           cuda_ctx.stream());
 #else
       PADDLE_THROW(
           phi::errors::Unavailable("Paddle is not compiled with GPU."));
