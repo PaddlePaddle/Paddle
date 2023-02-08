@@ -247,7 +247,7 @@ void FcXPUFusePass::ApplyImpl(ir::Graph* graph,
       auto mul_w_max_tensor =
           scope->Var(mul_w_max_name)->GetMutable<phi::DenseTensor>();
       auto* xpu_ctx = static_cast<phi::XPUContext*>(
-          platform::DeviceContextPool::Instance().Get(platform::XPUPlace()));
+          platform::DeviceContextPool::Instance().Get(phi::XPUPlace()));
       int max_ptr_size = xpu_ctx->x_context()->max_ptr_size();
       bool transpose_w = false;
       if (mul_type == "matmul") {
