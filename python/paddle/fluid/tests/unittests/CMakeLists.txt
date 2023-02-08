@@ -198,7 +198,7 @@ elseif(WITH_GPU)
 endif()
 
 if(NOT WITH_CUTLASS)
-  list(REMOVE_ITEM TEST_OPS test_cutlass_int4_gemm)
+  list(REMOVE_ITEM TEST_OPS test_cutlass_int4_gemm_op)
 endif()
 
 if((NOT WITH_NCCL) AND (NOT WITH_RCCL))
