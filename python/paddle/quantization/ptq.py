@@ -14,6 +14,7 @@
 
 import copy
 
+import paddle.distributed.fleet as fleet
 from paddle.nn import Layer
 
 from .config import QuantConfig
@@ -27,6 +28,15 @@ class PTQ(Quantization):
 
     def __init__(self, config: QuantConfig):
         super(PTQ, self).__init__(config)
+
+    def _is_parallel_training(self):
+        try:
+            if fleet.worker_num() > 2:
+                return True
+            else:
+                return False
+        except Exception:  # fleet is not initialized
+            return False
 
     def quantize(self, model: Layer, inplace=False):
         r"""
@@ -44,19 +54,22 @@ class PTQ(Quantization):
 
         Examples:
         .. code-block:: python
-            from paddle.quantization import QAT, QuantConfig
+            from paddle.quantization import PTQ, QuantConfig
             from paddle.quantization.observers import AbsmaxObserver
             from paddle.vision.models import LeNet
 
             observer = AbsmaxObserver()
             q_config = QuantConfig(activation=observer, weight=observer)
-            qat = QAT(q_config)
+            ptq = PTQ(q_config)
             model = LeNet()
-            quant_model = qat.quantize(model)
+            quant_model = ptq.quantize(model)
             print(quant_model)
         """
         _model = model
         if not inplace:
+            assert (
+                not self._is_parallel_training()
+            ), "'inplace' is not compatible with parallel training."
             _model = copy.deepcopy(model)
             _model.eval()
         assert (

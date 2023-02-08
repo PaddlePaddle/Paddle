@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import paddle
 
 from ..base_observer import BaseObserver
@@ -49,14 +50,16 @@ class AbsmaxObserverLayer(BaseObserver):
     Per-tensor abs max quantizer.
     """
 
+    INIT_ABS_MAX = 1e-7
+
     def __init__(self, layer, quant_bits=8):
         super(AbsmaxObserverLayer, self).__init__()
         self._quant_bits = quant_bits
-        self.abs_max_val = 0
+        self.abs_max_val = paddle.to_tensor(AbsmaxObserverLayer.INIT_ABS_MAX)
 
     def forward(self, input):
-        abs_max_val = float(paddle.max(paddle.abs(input)).numpy())
-        self.abs_max_val = max(abs_max_val, self.abs_max_val)
+        abs_max_val = paddle.max(paddle.abs(input))
+        self.abs_max_val = paddle.maximum(abs_max_val, self.abs_max_val)
         return input
 
     def cal_thresholds(self):
