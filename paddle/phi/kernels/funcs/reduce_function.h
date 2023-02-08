@@ -613,9 +613,9 @@ __global__ void ReduceAnyKernel(const Tx* x,
     tid = THREAD_ID_X;
   } else {
     auto block = ReduceIndexMapping<false>(dim, left_num);
-    input_idx = block.BlockIdY() * block.BlockDimY();
-    left_idx = block.BlockIdX() * block.BlockDimX() + THREAD_ID_X;
-    stride = block.GridDimY() * block.BlockDimY();
+    input_idx = block.BlockIdY() * block.BlockDimY() * reduce_num_per_thread;
+    left_idx = block.BlockIdX() * block.BlockDimX() * block.GetLoopSize() + THREAD_ID_X;
+    stride = block.BlockDimY();
     block_size = block.BlockDimY();
     need_store = (THREAD_ID_Y == 0) && (left_idx < left_num);
     loop_left = min(block.GetLoopSize(), left_num - left_idx);
@@ -817,7 +817,6 @@ static void LaunchReduceKernel(const Tx* x_data,
 #endif
 
     if(config.should_reduce_again){
-
       auto TwoStageReduceKernel0 = ReduceAnyKernel<Tx, Ty, MPType, ReduceOp, TransformOp, OneDimIndexCal>;
       auto TwoStageReduceKernel1 = ReduceAnyKernel<Ty, Ty, MPType, ReduceOp, kps::IdentityFunctor<Ty, MPType>, OneDimIndexCal>;
 
@@ -936,7 +935,6 @@ static void LaunchReduceKernel(const Tx* x_data,
   }
 
   if (config.should_reduce_again) {
-    //printf("reduce again\n");
     dim3 block;
     dim3 grid;
     if (config.reduce_last_dim) {
@@ -946,9 +944,6 @@ static void LaunchReduceKernel(const Tx* x_data,
       block = dim3(config.block.x, 1, 1);
       grid = dim3(config.grid.x, 1, config.grid.z);
     }
-
-    //printf("");
-
 
     kps::DimConfig dim =
         kps::DimConfig(grid.x, grid.y, grid.z, block.x, config.grid.y, 0);
