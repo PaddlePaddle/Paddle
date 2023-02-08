@@ -515,6 +515,7 @@ class CompiledProgram:
             if place and not self._place._equals(place):
                 raise ValueError("Cannot compile program with different place.")
             return self
+        print("yoki111")
         self._compiled = True
 
         self._scope = scope

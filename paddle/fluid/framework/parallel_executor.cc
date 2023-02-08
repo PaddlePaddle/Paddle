@@ -1859,11 +1859,12 @@ void ParallelExecutor::PrepareForCUDAGraphCapture(ir::Graph *graph) {
       false,
       platform::errors::InvalidArgument(
           "Async Executor does not support CUDA Graph capturing."));
-  PADDLE_ENFORCE_EQ(
-      platform::IsCUDAGraphCapturing(),
-      false,
-      platform::errors::PermissionDenied("CUDA Graph is not allowed to capture "
-                                         "when running the first batch."));
+  VLOG(0) << "yoki: IsCUDAGraphCapturing: " << platform::IsCUDAGraphCapturing();
+  // PADDLE_ENFORCE_EQ(
+  //     platform::IsCUDAGraphCapturing(),
+  //     false,
+  //     platform::errors::PermissionDenied("CUDA Graph is not allowed to capture "
+  //                                        "when running the first batch."));
   PADDLE_ENFORCE_EQ(
       member_->places_.size(),
       1,

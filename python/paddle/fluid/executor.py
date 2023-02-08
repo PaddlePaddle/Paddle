@@ -801,12 +801,17 @@ class _ExecutorCache:
         # NOTE(Ruibiao): Wrap the lru_cache in constructor so that the cache is local to
         # the _ExecutorCache instance, otherwise a global cache may not be released after
         # the Executor instance deleted
-        self._get_cached_program_and_executor = lru_cache(maxsize=8)(
-            self._get_program_and_executor
-        )
+        # self._get_cached_program_and_executor = lru_cache(maxsize=8)(
+        #     self._get_program_and_executor
+        # )
+        self.yoki_last_program = None
+        self.yoki_last_original_program = None
+        self.yoki_last_exe = None
+        self._get_cached_program_and_executor = self._get_program_and_executor
 
     def clear(self):
-        self._get_cached_program_and_executor.cache_clear()
+        pass
+        # self._get_cached_program_and_executor.cache_clear()
 
     def get_program_and_executor(
         self,
@@ -831,7 +836,12 @@ class _ExecutorCache:
         )
 
     def _get_program_and_executor(self, cached_data):
+        print("yoki: enter", flush=True)
+        # if self.yoki_last_program and (isinstance(self.yoki_last_original_program, compiler.CompiledProgram) or not self.yoki_last_original_program._is_start_up_program_):
+        #     print("yoki: use cached program", flush=True)
+        #     return self.yoki_last_program, self.yoki_last_exe
         program = cached_data.program
+        ori_program = program
         inner_program = (
             program._program
             if isinstance(program, compiler.CompiledProgram)
@@ -865,6 +875,7 @@ class _ExecutorCache:
                 use_cuda_graph = True
                 build_strategy.allow_cuda_graph_capture = False
                 set_flags({"FLAGS_new_executor_use_cuda_graph": True})
+            print("yoki000", flush=True)
             compiled_program._compile(scope, place)
             if use_cuda_graph:
                 build_strategy.allow_cuda_graph_capture = True
@@ -915,6 +926,12 @@ class _ExecutorCache:
 
         new_program = program.clone()
         new_exe = _StandaloneExecutor(place, new_program, scope)
+        if self.yoki_last_program and (isinstance(self.yoki_last_original_program, compiler.CompiledProgram) or not self.yoki_last_original_program._is_start_up_program_):
+            print("yoki: use cached program", flush=True)
+            return new_program, new_exe
+        self.yoki_last_program = new_program
+        self.yoki_last_exe = new_exe
+        self.yoki_last_original_program = ori_program
         return new_program, new_exe
 
 
@@ -1876,14 +1893,17 @@ class Executor:
 
         acp._auto_checkpoint(self, program)
 
+        print("yoki0", flush=True)
         # For backward compatibility, run directly.
         if not compiled:
+            print("yoki1", flush=True)
             # In distributed training, the compiled program is saved in Program._graph
             has_compiled_graph = isinstance(
                 program._graph, compiler.CompiledProgram
             )
 
             if has_compiled_graph:
+                print("yoki2", flush=True)
                 program._graph._compile(scope, self.place)
                 # _graph in program does not support inference since the _graph is optimized
                 # through optimizer.minimize function and should not be used as inference graph
@@ -1896,8 +1916,10 @@ class Executor:
                     fetch_var_name=fetch_var_name,
                     return_numpy=return_numpy,
                     return_merged=return_merged,
+
                 )
 
+            print("yoki3", flush=True)
             return self._run_program(
                 program,
                 feed=feed,
@@ -1909,6 +1931,7 @@ class Executor:
                 use_program_cache=use_program_cache,
             )
 
+        print("yoki4", flush=True)
         program._compile(scope, self.place)
         if program._is_inference:
             return self._run_inference(program._executor, feed)
