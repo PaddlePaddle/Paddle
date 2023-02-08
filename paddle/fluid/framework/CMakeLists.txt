@@ -781,7 +781,7 @@ if(WITH_DISTRIBUTE)
            ps_gpu_wrapper
            box_wrapper
            metrics
-           lodtiprinter
+           lodtensor_printer
            lod_rank_table
            feed_fetch_method
            collective_helper
