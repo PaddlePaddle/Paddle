@@ -33,6 +33,7 @@ namespace patterns {
 // 2. Add attn mask for qk product before the softmax or not.
 // 3. Do attn dropout or not.
 // 4. Add residual to the out linear result or not.
+// 5. Use model tensor parallel or not.
 struct FusedAttentionPattern : public PatternBase {
   FusedAttentionPattern(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "fused_attention_pattern") {}
@@ -41,7 +42,8 @@ struct FusedAttentionPattern : public PatternBase {
                      bool pre_layer_norm,  // do pre ln or not
                      bool has_attn_mask,   // add attn mask to qk or not
                      bool do_dropout,      // dropout the softmax(qk) or not
-                     bool add_residual);   // add residual to out linear or not
+                     bool add_residual,    // add residual to out linear or not
+                     bool use_mp);         // use tensor parallel or not
 
   // pre layer norm
   PATTERN_DECL_NODE(pre_layer_norm_op);
@@ -131,13 +133,14 @@ struct FusedAttentionPattern : public PatternBase {
 // Declare the grad pattern for multi head attention
 struct FusedAttentionGradPattern : public PatternBase {
   FusedAttentionGradPattern(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "fused_attention_pattern") {}
+      : PatternBase(pattern, name_scope, "fused_attention_grad_pattern") {}
 
   PDNode* operator()(PDNode* x,
                      bool pre_layer_norm,  // pre ln
                      bool has_attn_mask,   // add attn mask to qk or not
                      bool do_dropout,      // dropout the softmax(qk) or not
-                     bool add_residual);   // add residual to out linear or not
+                     bool add_residual,    // add residual to out linear or not
+                     bool use_mp);         // use tensor parallel or not
 
   // post layer norm grad
   PATTERN_DECL_NODE(post_layer_norm_grad_op);
@@ -296,6 +299,7 @@ class FusedAttentionsPass : public FusePassBase {
   // 4. Add residual? [Res]
   // 5. Do post layer norm? [Post]
   // 6. Forward or Backward? [Fwd/Bwd]
+  // 7. Use tensor model parallel? [MP]
   // If true, the function name will have an abbreviation part.
   // If false, the function name won't contain an abbreviation for it.
 
@@ -304,6 +308,22 @@ class FusedAttentionsPass : public FusePassBase {
 
   ir::Graph* PreMaskDropResBwd(Graph* graph,
                                FusedAttentionPassCache* cache) const;
+
+  ir::Graph* ForwardHandlerHelper(Graph* graph,
+                                  FusedAttentionPassCache* cache,
+                                  bool pre_layer_norm,
+                                  bool has_attn_mask,
+                                  bool do_dropout,
+                                  bool add_residual,
+                                  bool use_mp) const;
+
+  ir::Graph* BackwardHandlerHelper(Graph* graph,
+                                   FusedAttentionPassCache* cache,
+                                   bool pre_layer_norm,
+                                   bool has_attn_mask,
+                                   bool do_dropout,
+                                   bool add_residual,
+                                   bool use_mp) const;
 
   const std::string GenerateCacheKey(const std::string anchor,
                                      const std::string var_name,

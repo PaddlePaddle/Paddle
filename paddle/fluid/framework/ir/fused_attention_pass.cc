@@ -24,7 +24,8 @@ PDNode* FusedAttentionPattern::operator()(PDNode* x,
                                           bool pre_layer_norm,
                                           bool has_attn_mask,
                                           bool do_dropout,
-                                          bool add_residual) {
+                                          bool add_residual,
+                                          bool use_mp) {
   // pre layer norm pattern
   PDNode* pre_layer_norm_out_node{nullptr};
   if (pre_layer_norm) {
@@ -324,7 +325,8 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
                                               bool pre_layer_norm,
                                               bool has_attn_mask,
                                               bool do_dropout,
-                                              bool add_residual) {
+                                              bool add_residual,
+                                              bool use_mp) {
   // post layer norm
   PDNode* post_layer_norm_grad_out_node{nullptr};
   if (!pre_layer_norm) {
@@ -775,6 +777,34 @@ void FusedAttentionsPass::ApplyImpl(Graph* graph) const {
 
 ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(
     Graph* graph, FusedAttentionPassCache* cache) const {
+  return ForwardHandlerHelper(graph,
+                              cache,
+                              /* pre_layer_norm */ true,
+                              /* has_attn_mask */ true,
+                              /* do_dropout */ true,
+                              /* add_residual */ true,
+                              /* use_mp */ false);
+}
+
+ir::Graph* FusedAttentionsPass::PreMaskDropResBwd(
+    Graph* graph, FusedAttentionPassCache* cache) const {
+  return BackwardHandlerHelper(graph,
+                               cache,
+                               /* pre_layer_norm */ true,
+                               /* has_attn_mask */ true,
+                               /* do_dropout */ true,
+                               /* add_residual */ true,
+                               /* use_mp */ false);
+}
+
+ir::Graph* FusedAttentionsPass::ForwardHandlerHelper(
+    Graph* graph,
+    FusedAttentionPassCache* cache,
+    bool pre_layer_norm,
+    bool has_attn_mask,
+    bool do_dropout,
+    bool add_residual,
+    bool use_mp) const {
   GraphPatternDetector gpd;
   auto* x = gpd.mutable_pattern()
                 ->NewNode(patterns::PDNodeName(name_scope_, "x"))
@@ -783,11 +813,8 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(
   patterns::FusedAttentionPattern fused_attention_pattern(
       gpd.mutable_pattern(), "fused_attention_pattern");
 
-  fused_attention_pattern(x,
-                          /* pre_layer_norm */ true,
-                          /* has_attn_mask */ true,
-                          /* do_dropout */ true,
-                          /* add_residual */ true);
+  fused_attention_pattern(
+      x, pre_layer_norm, has_attn_mask, do_dropout, add_residual, use_mp);
 
   int found_fused_attention = 0;
 
@@ -1119,8 +1146,14 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResFwd(
   return graph;
 }
 
-ir::Graph* FusedAttentionsPass::PreMaskDropResBwd(
-    Graph* graph, FusedAttentionPassCache* cache) const {
+ir::Graph* FusedAttentionsPass::BackwardHandlerHelper(
+    Graph* graph,
+    FusedAttentionPassCache* cache,
+    bool pre_layer_norm,
+    bool has_attn_mask,
+    bool do_dropout,
+    bool add_residual,
+    bool use_mp) const {
   GraphPatternDetector gpd;
   auto* x = gpd.mutable_pattern()
                 ->NewNode(patterns::PDNodeName(name_scope_, "x"))
@@ -1129,11 +1162,8 @@ ir::Graph* FusedAttentionsPass::PreMaskDropResBwd(
   patterns::FusedAttentionGradPattern fused_attention_grad_pattern(
       gpd.mutable_pattern(), "fused_attention_grad_pattern");
 
-  fused_attention_grad_pattern(x,
-                               /* pre_layer_norm */ true,
-                               /* has_attn_mask */ true,
-                               /* do_dropout */ true,
-                               /* add_residual */ true);
+  fused_attention_grad_pattern(
+      x, pre_layer_norm, has_attn_mask, do_dropout, add_residual, use_mp);
 
   int found_fused_attention = 0;
 
