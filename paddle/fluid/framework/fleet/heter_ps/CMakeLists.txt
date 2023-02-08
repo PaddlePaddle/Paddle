@@ -46,7 +46,8 @@ if(WITH_GPU)
            hashtable_kernel
            heter_ps
            ${HETERPS_DEPS}
-           graph_gpu_ps)
+           graph_gpu_ps
+           fleet_wrapper)
     nv_test(
       test_cpu_query
       SRCS test_cpu_query.cu

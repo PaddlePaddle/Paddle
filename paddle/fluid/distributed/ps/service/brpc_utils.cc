@@ -236,7 +236,7 @@ void DeserializeLodTensor(framework::Variable* var,
 
   framework::LoD lod;
   for (int i = 0; i < msg.lod_level(); ++i) {
-    framework::Vector<size_t> v;
+    phi::Vector<size_t> v;
     for (int j = 0; j < msg.lod(i).lod_data_size(); ++j) {
       v.push_back(msg.lod(i).lod_data(j));
     }

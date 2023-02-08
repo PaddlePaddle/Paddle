@@ -22,20 +22,22 @@ limitations under the License. */
 #include <vector>
 
 #include "glog/logging.h"
-#include "paddle/fluid/memory/allocation/allocator.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/allocator.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/errors.h"
 #include "paddle/utils/none.h"
 #include "paddle/utils/optional.h"
 
-namespace paddle {
-namespace framework {
+namespace phi {
 
 template <class T>
 using Vector = std::vector<T>;
 
-inline paddle::optional<platform::CUDAPlace> OptionalCUDAPlace(
-    const paddle::memory::allocation::AllocationPtr &gpu_) {
+inline paddle::optional<phi::GPUPlace> OptionalCUDAPlace(
+    const phi::Allocator::AllocationPtr &gpu_) {
   return gpu_ == nullptr ? paddle::none
-                         : paddle::optional<platform::CUDAPlace>(gpu_->place());
+                         : paddle::optional<phi::GPUPlace>(gpu_->place());
 }
 
 // Vector<T> implements the std::vector interface, and can get Data or
@@ -146,18 +148,18 @@ class MixVector {
     }
 
     // get cuda ptr. immutable
-    const T *CUDAData(platform::Place place) const {
+    const T *CUDAData(phi::Place place) const {
       PADDLE_ENFORCE_EQ(
-          platform::is_gpu_place(place),
+          place.GetType() == phi::AllocationType::GPU,
           true,
-          platform::errors::Unavailable(
+          phi::errors::Unavailable(
               "Place mismatch, CUDA Data must be on CUDA place."));
       ImmutableCUDA(place);
       return reinterpret_cast<T *>(gpu_->ptr());
     }
 
     // get cuda ptr. mutable
-    T *CUDAMutableData(platform::Place place) {
+    T *CUDAMutableData(phi::Place place) {
       const T *ptr = CUDAData(place);
       flag_ = kDirty | kDataInCUDA;
       return const_cast<T *>(ptr);
@@ -178,7 +180,7 @@ class MixVector {
 
     std::mutex &Mutex() const { return mtx_; }
 
-    paddle::optional<platform::CUDAPlace> CUDAPlace() const {
+    paddle::optional<phi::GPUPlace> CUDAPlace() const {
       return OptionalCUDAPlace(gpu_);
     }
 
@@ -199,7 +201,7 @@ class MixVector {
 
     void CopyToCPU() const;
 
-    void ImmutableCUDA(platform::Place place) const {
+    void ImmutableCUDA(phi::Place place) const {
       if (IsDirty()) {
         if (IsInCPU()) {
           CopyCPUDataToCUDA(place);
@@ -207,7 +209,7 @@ class MixVector {
           SetFlag(kDataInCUDA);
         } else if (IsInCUDA() && !(place == gpu_->place())) {
           PADDLE_THROW(
-              platform::errors::Unavailable("Unexpected data place mismatch."));
+              phi::errors::Unavailable("Unexpected data place mismatch."));
           // Still dirty
         } else {
           // Dirty && DataInCUDA && Device is same
@@ -220,7 +222,7 @@ class MixVector {
           SetFlag(kDataInCUDA);
         } else if (!(place == gpu_->place())) {
           PADDLE_THROW(
-              platform::errors::Unavailable("Unexpected data place mismatch."));
+              phi::errors::Unavailable("Unexpected data place mismatch."));
         } else {
           // Not Dirty && DataInCUDA && Device is same
           // Do nothing.
@@ -228,7 +230,7 @@ class MixVector {
       }
     }
 
-    void CopyCPUDataToCUDA(const platform::Place &place) const;
+    void CopyCPUDataToCUDA(const phi::Place &place) const;
 
     void ImmutableCPU() const {
       if (IsDirty() && !IsInCPU()) {  // If data has been changed in CUDA, or
@@ -249,7 +251,7 @@ class MixVector {
     bool IsInCPU() const { return flag_ & kDataInCPU; }
 
     std::vector<T> *cpu_;
-    mutable paddle::memory::allocation::AllocationPtr gpu_;
+    mutable phi::Allocator::AllocationPtr gpu_;
     mutable size_t gpu_memory_size_{0};
     mutable int flag_;
 
@@ -332,9 +334,9 @@ class MixVector {
   }
 
   // get cuda ptr. immutable
-  const T *CUDAData(platform::Place place) const {
+  const T *CUDAData(phi::Place place) const {
     {
-      platform::CUDAPlace p(place.GetDeviceId());
+      phi::GPUPlace p(place.GetDeviceId());
       auto &mtx = m_->Mutex();
       std::lock_guard<std::mutex> guard(mtx);
       auto cuda_place = m_->CUDAPlace();
@@ -348,9 +350,9 @@ class MixVector {
   }
 
   // get cuda ptr. mutable
-  T *CUDAMutableData(platform::Place place) {
+  T *CUDAMutableData(phi::Place place) {
     {
-      platform::CUDAPlace p(place.GetDeviceId());
+      phi::GPUPlace p(place.GetDeviceId());
       auto &mtx = m_->Mutex();
       std::lock_guard<std::mutex> guard(mtx);
       auto cuda_place = m_->CUDAPlace();
@@ -372,8 +374,8 @@ class MixVector {
   void reserve(size_t size) { m_->reserve(size); }
 
   // the unify method to access CPU or CUDA data. immutable.
-  const T *Data(platform::Place place) const {
-    if (platform::is_gpu_place(place)) {
+  const T *Data(phi::Place place) const {
+    if (place.GetType() == phi::AllocationType::GPU) {
       return CUDAData(place);
     } else {
       return data();
@@ -381,8 +383,8 @@ class MixVector {
   }
 
   // the unify method to access CPU or CUDA data. mutable.
-  T *MutableData(platform::Place place) {
-    if (platform::is_gpu_place(place)) {
+  T *MutableData(phi::Place place) {
+    if (place.GetType() == phi::AllocationType::GPU) {
       return CUDAMutableData(place);
     } else {
       return data();
@@ -397,5 +399,4 @@ class MixVector {
   mutable std::unique_ptr<VectorData> m_;
 };
 
-};  // namespace framework
-}  // namespace paddle
+};  // namespace phi
