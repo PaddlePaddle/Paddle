@@ -38,14 +38,14 @@ void gather_grad(const Tensor& x,
   int axis_value = axis.to<int>();
   tmp_perm.push_back(axis_value);
   // make other ranks
-  for (size_t i = 0; i < x.dims().size(); ++i) {
+  for (int i = 0; i < x.dims().size(); ++i) {
     if (i != axis_value) {
       tmp_perm.push_back(i);
     }
   }
   std::vector<int> reverse_perm(tmp_perm);
   // make origin ranks
-  for (size_t i = 0; i < tmp_perm.size(); ++i) {
+  for (int i = 0; i < static_cast<int>(tmp_perm.size()); ++i) {
     reverse_perm[tmp_perm[i]] = i;
   }
 
