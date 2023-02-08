@@ -1195,7 +1195,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                 )
             now_cond = cond(*output_vars)
             map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
-            assign(now_cond, pre_cond)
+            paddle.assign(now_cond, pre_cond)
         return loop_vars
 
 
