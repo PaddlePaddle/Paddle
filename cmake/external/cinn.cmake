@@ -18,7 +18,7 @@ endif()
 
 if(NOT CINN_GIT_TAG)
   # 2023.02.07 commit
-  set(CINN_GIT_TAG 04cbe3ca3cd17a8267a229ce7ab8d8b8b63c7f4e)
+  set(CINN_GIT_TAG 4382061008a54e526c26ffa0a049c635cb27f734)
 endif()
 
 message(STATUS "CINN version: " ${CINN_GIT_TAG})
@@ -50,7 +50,7 @@ set(CINN_LIB "${CINN_LIB_LOCATION}/${CINN_LIB_NAME}")
 ExternalProject_Add(
   external_cinn
   ${EXTERNAL_PROJECT_LOG_ARGS}
-  GIT_REPOSITORY "${GIT_URL}/PaddlePaddle/CINN.git"
+  GIT_REPOSITORY "${GIT_URL}/zhhsplendid/CINN.git"
   GIT_TAG ${CINN_GIT_TAG}
   PREFIX ${CINN_PREFIX_DIR}
   BUILD_COMMAND ${CINN_BUILD_COMMAND}
