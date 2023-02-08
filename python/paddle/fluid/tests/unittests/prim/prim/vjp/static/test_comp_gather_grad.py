@@ -99,7 +99,7 @@ class TestGatherGradComp(unittest.TestCase):
         core._set_prim_backward_enabled(use_prim)
         net = apply_to_static(net, use_cinn)
         out = net(self.x, self.index, 0)
-        res = paddle.autograd.grad(out, [self.x, self.y])
+        res = paddle.autograd.grad(out, [self.x])
 
         return res
 
