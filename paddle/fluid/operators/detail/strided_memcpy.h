@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/device_context.h"
 
 namespace paddle {
 namespace operators {
@@ -26,14 +26,14 @@ struct StridedMemcpyFunctor;
 
 template <typename T>
 struct StridedMemcpyFunctor<T, 0> {
-  void operator()(const platform::DeviceContext& dev_ctx,
+  void operator()(const phi::DeviceContext& dev_ctx,
                   const T* src,
                   const int64_t* src_stride,
                   const int64_t* dst_dim,
                   const int64_t* dst_stride,
                   T* dst) const {
     auto place = dev_ctx.GetPlace();
-    if (platform::is_cpu_place(place)) {
+    if (place.GetType() == phi::AllocationType::CPU) {
       auto& cpu_place = place;
       memory::Copy(cpu_place, dst, cpu_place, src, sizeof(T));
     } else {
@@ -44,7 +44,7 @@ struct StridedMemcpyFunctor<T, 0> {
           gpu_place, dst, gpu_place, src, sizeof(T), cuda_ctx.stream());
 #else
       PADDLE_THROW(
-          platform::errors::Unavailable("Paddle is not compiled with GPU."));
+          phi::errors::Unavailable("Paddle is not compiled with GPU."));
 #endif
     }
   }
@@ -52,14 +52,14 @@ struct StridedMemcpyFunctor<T, 0> {
 
 template <typename T>
 struct StridedMemcpyFunctor<T, 1> {
-  void operator()(const platform::DeviceContext& dev_ctx,
+  void operator()(const phi::DeviceContext& dev_ctx,
                   const T* src,
                   const int64_t* src_stride,
                   const int64_t* dst_dim,
                   const int64_t* dst_stride,
                   T* dst) const {
     auto place = dev_ctx.GetPlace();
-    if (platform::is_cpu_place(place)) {
+    if (place.GetType() == phi::AllocationType::CPU) {
       auto& cpu_place = place;
       memory::Copy(cpu_place, dst, cpu_place, src, sizeof(T) * dst_dim[0]);
     } else {
@@ -74,7 +74,7 @@ struct StridedMemcpyFunctor<T, 1> {
                    cuda_ctx.stream());
 #else
       PADDLE_THROW(
-          platform::errors::Unavailable("Paddle is not compiled with GPU."));
+          phi::errors::Unavailable("Paddle is not compiled with GPU."));
 #endif
     }
   }
@@ -82,7 +82,7 @@ struct StridedMemcpyFunctor<T, 1> {
 
 template <typename T, int Rank>
 struct StridedMemcpyFunctor {
-  void operator()(const platform::DeviceContext& dev_ctx,
+  void operator()(const phi::DeviceContext& dev_ctx,
                   const T* src,
                   const int64_t* src_stride,
                   const int64_t* dst_dim,
@@ -99,10 +99,10 @@ struct StridedMemcpyFunctor {
 
 template <typename T>
 struct StridedCopyDimVisitor {
-  StridedCopyDimVisitor(const platform::DeviceContext& dev_ctx,
+  StridedCopyDimVisitor(const phi::DeviceContext& dev_ctx,
                         const T* src,
-                        const framework::DDim& src_stride,
-                        const framework::DDim& dst_stride,
+                        const phi::DDim& src_stride,
+                        const phi::DDim& dst_stride,
                         T* dst)
       : dev_ctx_(dev_ctx),
         src_(src),
@@ -111,7 +111,7 @@ struct StridedCopyDimVisitor {
         dst_(dst) {}
 
   template <int D>
-  void operator()(const framework::Dim<D>& dst_dim) const {
+  void operator()(const phi::Dim<D>& dst_dim) const {
     StridedMemcpyFunctor<T, D> functor;
     functor(dev_ctx_,
             src_,
@@ -121,10 +121,10 @@ struct StridedCopyDimVisitor {
             dst_);
   }
 
-  const platform::DeviceContext& dev_ctx_;
+  const phi::DeviceContext& dev_ctx_;
   const T* src_;
-  const framework::DDim& src_stride_;
-  const framework::DDim& dst_stride_;
+  const phi::DDim& src_stride_;
+  const phi::DDim& dst_stride_;
   T* dst_;
 };
 

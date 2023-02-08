@@ -12,8 +12,9 @@ limitations under the License. */
 #pragma once
 #include <vector>
 
-#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/detail/strided_memcpy.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace paddle {
 namespace operators {
@@ -33,11 +34,11 @@ namespace operators {
 // NOTE: When use GPU, the memcpy is async. To sync memcpy, please invoke
 // `dev_ctx.Wait()`.
 template <typename T>
-inline void StridedMemcpy(const platform::DeviceContext& dev_ctx,
+inline void StridedMemcpy(const phi::DeviceContext& dev_ctx,
                           const T* src,
-                          const framework::DDim& src_stride,
-                          const framework::DDim& dst_dim,
-                          const framework::DDim& dst_stride,
+                          const phi::DDim& src_stride,
+                          const phi::DDim& dst_dim,
+                          const phi::DDim& dst_stride,
                           T* dst) {
   paddle::operators::detail::StridedCopyDimVisitor<T> func(
       dev_ctx, src, src_stride, dst_stride, dst);
@@ -52,12 +53,12 @@ inline void StridedMemcpy(const platform::DeviceContext& dev_ctx,
 // NOTE: The src and dst tensor should have the same elements
 // except the specified axis.
 template <typename T>
-inline void StridedNumelCopyWithAxis(const platform::DeviceContext& ctx,
+inline void StridedNumelCopyWithAxis(const phi::DeviceContext& ctx,
                                      int64_t axis,
                                      T* dst,
-                                     const framework::DDim& dst_stride_numel,
+                                     const phi::DDim& dst_stride_numel,
                                      const T* src,
-                                     const framework::DDim& src_stride_numel,
+                                     const phi::DDim& src_stride_numel,
                                      int64_t size) {
   int64_t before = dst_stride_numel[0] / dst_stride_numel[axis];
   int64_t src_after = src_stride_numel[axis];
@@ -66,7 +67,7 @@ inline void StridedNumelCopyWithAxis(const platform::DeviceContext& ctx,
 
   PADDLE_ENFORCE_EQ(src_stride_numel.size(),
                     dst_stride_numel.size(),
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Source and destination tensor should have the same "
                         "dimension size, but source tensor dimension size is "
                         "%u, destination tensor size is %u.",
@@ -78,7 +79,7 @@ inline void StridedNumelCopyWithAxis(const platform::DeviceContext& ctx,
       PADDLE_ENFORCE_EQ(
           src_stride_numel[i] / src_stride_numel[axis],
           dst_stride_numel[i] / dst_stride_numel[axis],
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Source and destination tensor should have the same number of "
               "elements except the specified axis, but the source elements "
               "number is %d, destination elements number is %d.",
@@ -90,7 +91,7 @@ inline void StridedNumelCopyWithAxis(const platform::DeviceContext& ctx,
       PADDLE_ENFORCE_EQ(
           src_stride_numel[i],
           dst_stride_numel[i],
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Source and destination tensor should have the same number of "
               "elements except the specified axis, but the source elements "
               "number is %d, destination elements number is %d.",
@@ -100,7 +101,7 @@ inline void StridedNumelCopyWithAxis(const platform::DeviceContext& ctx,
   }
 
   for (int64_t i = 0; i < before; ++i) {
-    if (platform::is_cpu_place(place)) {
+    if (place.GetType() == phi::AllocationType::CPU) {
       auto& cpu_place = place;
       memory::Copy(cpu_place,
                    dst + i * dst_after,
@@ -136,8 +137,8 @@ inline void StridedNumelCopyWithAxis(const platform::DeviceContext& ctx,
                    sizeof(T) * size,
                    mlu_ctx.stream());
 #else
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "Paddle is not compiled with GPU."));
+      PADDLE_THROW(
+          phi::errors::PreconditionNotMet("Paddle is not compiled with GPU."));
 #endif
     }
   }
@@ -145,11 +146,11 @@ inline void StridedNumelCopyWithAxis(const platform::DeviceContext& ctx,
 
 template <typename T>
 inline void StridedMemcpyWithAxis0(
-    const platform::DeviceContext& dev_ctx,
+    const phi::DeviceContext& dev_ctx,
     const phi::DenseTensor& input,
     const std::vector<const phi::DenseTensor*>& shape_refer,
     std::vector<phi::DenseTensor*>* outputs) {
-  const framework::DDim in_stride = stride_numel(input.dims());
+  const phi::DDim in_stride = stride_numel(input.dims());
   const int axis = 0;
   size_t input_offset = 0;
 
