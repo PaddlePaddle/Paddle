@@ -433,6 +433,7 @@ bool DistModel::PrepareFleetExe() {
   executor_desc_ = FleetExecutorDesc();
   executor_desc_.set_cur_rank(config_.local_rank);
   std::unordered_map<int64_t, int64_t> id_to_rank;
+
   for (int i = 0; i < config_.nranks; ++i) {
     RankInfo *rank_info = executor_desc_.add_cluster_info();
     rank_info->set_rank(i);
