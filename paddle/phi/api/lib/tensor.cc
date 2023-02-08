@@ -415,7 +415,7 @@ void Tensor::reset_inplace_version(bool set_to_zero) {
 }
 
 PADDLE_API Tensor operator*(const Tensor &x, const Tensor &y) {
-  return OperantsManager::Instance().multiply(x, y);
+  return paddle::operants::OperantsManager::Instance().multiply(x, y);
 }
 
 }  // namespace experimental

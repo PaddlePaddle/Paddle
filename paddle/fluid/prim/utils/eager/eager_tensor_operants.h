@@ -1,4 +1,4 @@
-//   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,18 +20,17 @@
 
 namespace paddle {
 
-namespace experimental {
+namespace operants {
 
-class StaticTensorOperants : public OperantsBase {
+class EagerTensorOperants : public OperantsBase {
  public:
-  static StaticTensorOperants& Instance();
+  EagerTensorOperants() = default;
 
   Tensor multiply(const Tensor& x, const Tensor& y) override;
 
  private:
-  StaticTensorOperants() = default;
-  DISABLE_COPY_AND_ASSIGN(StaticTensorOperants);
+  DISABLE_COPY_AND_ASSIGN(EagerTensorOperants);
 };
 
-}  // namespace experimental
+}  // namespace operants
 }  // namespace paddle

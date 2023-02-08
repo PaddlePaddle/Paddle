@@ -278,10 +278,9 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
     VLOG(3) << "Custom Operator: Run ComputeFunc.";
 
     FLAGS_operants_mode = "phi";
-    if (paddle::experimental::OperantsManager::Instance().phi_operants ==
-        nullptr) {
-      paddle::experimental::OperantsManager::Instance().phi_operants =
-          &paddle::experimental::PhiTensorOperants::Instance();
+    if (paddle::operants::OperantsManager::Instance().phi_operants == nullptr) {
+      paddle::operants::OperantsManager::Instance().phi_operants =
+          new paddle::operants::PhiTensorOperants();
       VLOG(4) << "Initialize phi tensor operants successfully";
     }
 

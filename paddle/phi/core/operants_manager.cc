@@ -1,4 +1,4 @@
-//   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ DECLARE_string(operants_mode);
 
 namespace paddle {
 
-namespace experimental {
+namespace operants {
 
 OperantsManager& OperantsManager::Instance() {
   static OperantsManager g_op_manager;
@@ -35,30 +35,33 @@ Tensor OperantsManager::multiply(const Tensor& x, const Tensor& y) {
     PADDLE_ENFORCE_NE(
         this->eager_operants,
         nullptr,
-        "The eager_operants of OperantsManager is not initialized yet");
+        phi::errors::Unavailable("The eager_operants pointer of "
+                                 "OperantsManager is not initialized"));
     VLOG(4) << "OperantsManager reaches eager mode";
     return this->eager_operants->multiply(x, y);
   } else if (FLAGS_operants_mode == "static") {
     PADDLE_ENFORCE_NE(
         this->static_operants,
         nullptr,
-        "The static_operants of OperantsManager is not initialized yet");
+        phi::errors::Unavailable("The static_operants pointer of "
+                                 "OperantsManager is not initialized"));
     VLOG(4) << "OperantsManager reaches static mode";
     return this->static_operants->multiply(x, y);
   } else if (FLAGS_operants_mode == "phi") {
     PADDLE_ENFORCE_NE(
         this->phi_operants,
         nullptr,
-        "The phi_operants of OperantsManager is not initialized yet");
+        phi::errors::Unavailable(
+            "The phi_operants pointer of OperantsManager is not initialized"));
     VLOG(4) << "OperantsManager reaches phi mode";
     return this->phi_operants->multiply(x, y);
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
-        "FLAGS_operants_mode is not is not initialized yet, please set "
-        "FLAGS_operants_mode first, currently FLAGS_operants_mode supports "
+        "FLAGS_operants_mode is not nitialized, please set FLAGS_operants_mode "
+        "first, currently FLAGS_operants_mode supports "
         "eager mode, phi mode and static mode"));
   }
 }
 
-}  // namespace experimental
+}  // namespace operants
 }  // namespace paddle

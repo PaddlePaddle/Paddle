@@ -1,4 +1,4 @@
-//   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,7 +18,9 @@
 
 namespace paddle {
 
-namespace experimental {
+namespace operants {
+
+using Tensor = paddle::experimental::Tensor;
 
 class OperantsBase {
  public:
@@ -27,5 +29,5 @@ class OperantsBase {
   virtual Tensor multiply(const Tensor& x, const Tensor& y) = 0;
 };
 
-}  // namespace experimental
+}  // namespace operants
 }  // namespace paddle

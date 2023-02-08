@@ -22,8 +22,6 @@ typedef SSIZE_T ssize_t;
 
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/all.h"
-#include "paddle/fluid/eager/api/utils/eager_tensor_operants.h"
-#include "paddle/fluid/eager/api/utils/static_tensor_operants.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/backward.h"
 #include "paddle/fluid/eager/custom_operator/custom_operator_node.h"
@@ -37,6 +35,8 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/prim/utils/eager/eager_tensor_operants.h"
+#include "paddle/fluid/prim/utils/static/static_tensor_operants.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
@@ -499,10 +499,10 @@ static PyObject* eager_api_init_eager_and_static_tensor_operants(
     PyObject* self, PyObject* args, PyObject* kwargs) {
   EAGER_TRY
 
-  paddle::experimental::OperantsManager::Instance().eager_operants =
-      &paddle::experimental::EagerTensorOperants::Instance();
-  paddle::experimental::OperantsManager::Instance().static_operants =
-      &paddle::experimental::StaticTensorOperants::Instance();
+  paddle::operants::OperantsManager::Instance().eager_operants =
+      new paddle::operants::EagerTensorOperants();
+  paddle::operants::OperantsManager::Instance().static_operants =
+      new paddle::operants::StaticTensorOperants();
   VLOG(4) << "Initialize eager and static tensor operants successfully";
 
   RETURN_PY_NONE
@@ -514,10 +514,9 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
                                          PyObject* kwargs) {
   EAGER_TRY
   FLAGS_operants_mode = "phi";
-  if (paddle::experimental::OperantsManager::Instance().phi_operants ==
-      nullptr) {
-    paddle::experimental::OperantsManager::Instance().phi_operants =
-        &paddle::experimental::PhiTensorOperants::Instance();
+  if (paddle::operants::OperantsManager::Instance().phi_operants == nullptr) {
+    paddle::operants::OperantsManager::Instance().phi_operants =
+        new paddle::operants::PhiTensorOperants();
     VLOG(4) << "Initialize phi tensor operants successfully";
   }
 

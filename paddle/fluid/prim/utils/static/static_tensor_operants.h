@@ -1,4 +1,4 @@
-//   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,23 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/eager/api/utils/eager_tensor_operants.h"
+#pragma once
 
-#include "glog/logging.h"
-#include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
+#include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/core/macros.h"
+#include "paddle/phi/core/operants_base.h"
 
 namespace paddle {
 
-namespace experimental {
+namespace operants {
 
-EagerTensorOperants& EagerTensorOperants::Instance() {
-  static EagerTensorOperants g_eager_operants;
-  return g_eager_operants;
-}
+class StaticTensorOperants : public OperantsBase {
+ public:
+  StaticTensorOperants() = default;
 
-Tensor EagerTensorOperants::multiply(const Tensor& x, const Tensor& y) {
-  return ::multiply_ad_func(x, y);
-}
+  Tensor multiply(const Tensor& x, const Tensor& y) override;
 
-}  // namespace experimental
+ private:
+  DISABLE_COPY_AND_ASSIGN(StaticTensorOperants);
+};
+
+}  // namespace operants
 }  // namespace paddle

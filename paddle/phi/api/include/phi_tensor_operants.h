@@ -1,4 +1,4 @@
-//   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,18 +20,17 @@
 
 namespace paddle {
 
-namespace experimental {
+namespace operants {
 
 class PhiTensorOperants : public OperantsBase {
  public:
-  static PhiTensorOperants& Instance();
+  PhiTensorOperants() = default;
 
   Tensor multiply(const Tensor& x, const Tensor& y) override;
 
  private:
-  PhiTensorOperants() = default;
   DISABLE_COPY_AND_ASSIGN(PhiTensorOperants);
 };
 
-}  // namespace experimental
+}  // namespace operants
 }  // namespace paddle
