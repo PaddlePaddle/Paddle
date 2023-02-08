@@ -783,7 +783,8 @@ void BatchNormGradRawKernel(const Context &ctx,
     }
     // CUDNN only support small batch size
     bool use_native_nhwc =
-        d_x ? (x_dims.size() == 4 && compute_format == DataLayout::kNHWC)
+        d_x ? (x_dims.size() == 4 && compute_format == DataLayout::kNHWC &&
+               H * W >= CUDNN_SPATIAL_THRESHOLD_EVAL)
             : false;
     const bool use_native_kernel =
         ((x_dims.size() == 2 && N >= CUDNN_PER_ACTIVATION_THRESHOLD) ||
