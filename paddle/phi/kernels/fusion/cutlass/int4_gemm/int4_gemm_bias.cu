@@ -16,6 +16,7 @@
 
 #include "cutlass/cutlass.h"
 #include "cutlass/gemm/device/gemm.h"
+#include "cutlass/layout/layout.h"
 
 #include "paddle/phi/kernels/fusion/cutlass/int4_gemm/int4_gemm_decl.h"
 #include "paddle/phi/kernels/fusion/cutlass/int4_gemm/int4_gemm_util.h"
@@ -80,11 +81,15 @@ cutlass::Status Int4GemmImpl(GemmAllParams params) {
 
   int split_k_slices = 1;  // in big shape,no need to split k
 
+  cutlass::layout::RowMajor layout_a(k);
+  cutlass::layout::ColumnMajor layout_b(k);
+  cutlass::layout::RowMajor layout_out(n);
+
   typename Gemm::Arguments arguments(problem_size,
-                                     {input, m},
-                                     {weight, n},
-                                     {bias, n},
-                                     {output, n},
+                                     {input, layout_a},
+                                     {weight, layout_b},
+                                     {bias, layout_out},
+                                     {output, layout_out},
                                      {alpha, beta},
                                      split_k_slices);
 

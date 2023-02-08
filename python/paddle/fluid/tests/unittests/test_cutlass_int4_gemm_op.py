@@ -40,12 +40,9 @@ class TestCutlassInt4GemmOp(OpTest):
         self.place = paddle.CUDAPlace(0)
         self.dtype = np.int32
         self.accumtype = np.int32
-        # self.x = np.random.randint(-7, 7, size=(64, 64)).astype(self.dtype)
-        # self.y = np.random.randint(-7, 7, size=(64, 64)).astype(self.dtype)
-        self.x = np.ones((64, 64)).astype(self.dtype)
-        self.y = np.ones((64, 64)).astype(self.dtype)
-        # self.bias = np.random.randint(-7, 7, size=(64)).astype(self.dtype)
-        self.bias = np.zeros((64), dtype=self.accumtype)
+        self.x = np.random.randint(-7, 7, size=(128, 64)).astype(self.dtype)
+        self.y = np.random.randint(-7, 7, size=(64, 128)).astype(self.dtype)
+        self.bias = np.random.randint(-7, 7, size=(128)).astype(self.dtype)
         self.inputs = {
             'X': paddle.to_tensor(self.x, place=self.place),
             'Y': paddle.to_tensor(self.y, place=self.place),
@@ -70,9 +67,6 @@ class TestCutlassInt4GemmOp(OpTest):
         out = self.GetInt4GemmOut().numpy()
         asum = np.sum(out)
         bsum = np.sum(out_ref)
-        print(f'Out:{asum} Ref:{bsum} check:{out_ref-out}')
-        print(f'0:{out[:,0]} 1:{out[:,1]}')
-        print(f'test sum:{np.sum(out,0)}')
         np.testing.assert_allclose(out_ref, out, rtol=1e-3, atol=1e-3)
 
 
