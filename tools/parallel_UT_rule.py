@@ -696,7 +696,6 @@ SECONDARY_HIGH_PARALLEL_JOB_NEW = [
     'test_pool2d_mkldnn_op',
     'test_flags_mkldnn_ops_on_off',
     'test_c_comm_init_op',
-    'test_fused_attention_pass_with_mp',
     'test_uniform_random_bf16_op',
     'test_custom_concat',
     'test_weight_quantization_mobilenetv1',
