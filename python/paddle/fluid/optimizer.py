@@ -18,7 +18,9 @@ import logging
 from collections import defaultdict
 
 import paddle
-from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
+from paddle.distributed.distribute_lookup_table import (
+    find_distributed_lookup_table,
+)
 from paddle.fluid.framework import (
     Program,
     Variable,
