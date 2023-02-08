@@ -450,6 +450,17 @@ cc_library(
   SRCS op_kernel_type.cc
   DEPS device_context place)
 
+cc_library(
+  variable_utils
+  SRCS variable_utils.cc
+  DEPS dense_tensor
+       scalar
+       int_array
+       tensor
+       place
+       convert_utils
+       var_type_traits)
+
 if(WITH_XPU)
   cc_library(
     phi_utils
@@ -689,16 +700,6 @@ cc_library(
   variable_helper
   SRCS variable_helper.cc
   DEPS lod_tensor)
-cc_library(
-  variable_utils
-  SRCS variable_utils.cc
-  DEPS dense_tensor
-       scalar
-       int_array
-       tensor
-       place
-       convert_utils
-       var_type_traits)
 
 if(TENSORRT_FOUND)
   cc_library(
