@@ -2745,8 +2745,6 @@ void OperatorWithKernel::ParseMultiInputDataType(
       const phi::DenseTensor* t = nullptr;
       if (var->IsType<phi::DenseTensor>()) {
         t = &var->Get<phi::DenseTensor>();
-      } else if (var->IsType<phi::DenseTensor>()) {
-        t = &var->Get<phi::DenseTensor>();
       } else if (var->IsType<phi::SelectedRows>()) {
         t = &(var->Get<phi::SelectedRows>().value());
       } else if (var->IsType<phi::SparseCooTensor>()) {
@@ -2865,8 +2863,6 @@ phi::DenseTensor* OperatorWithKernel::GetTensorFormInputSafely(
   // 2. get tensor and check
   phi::DenseTensor* t = nullptr;
   if (var->IsType<phi::DenseTensor>()) {
-    t = var->GetMutable<phi::DenseTensor>();
-  } else if (var->IsType<phi::DenseTensor>()) {
     t = var->GetMutable<phi::DenseTensor>();
   } else if (var->IsType<phi::SelectedRows>()) {
     t = var->GetMutable<phi::SelectedRows>()->mutable_value();

@@ -42,4 +42,34 @@ void FcXPUInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
+void MultiEncoderXPUInferMeta(
+    const MetaTensor& x,
+    const std::vector<const MetaTensor*>& fc_weight,
+    const std::vector<const MetaTensor*>& fc_weight_max,
+    const std::vector<const MetaTensor*>& fc_bias,
+    const std::vector<const MetaTensor*>& ln_scale,
+    const std::vector<const MetaTensor*>& ln_bias,
+    const MetaTensor& mask,
+    int layer_num,
+    bool norm_before,
+    int hidden_dim,
+    int head_num,
+    int size_per_head,
+    int ffn_hidden_dim_scale,
+    int act_type,
+    int relative_type,
+    MetaTensor* out,
+    MetaTensor* x_fp16,
+    MetaTensor* out_fp16) {
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+  x_fp16->set_dims(x.dims());
+  x_fp16->set_dtype(DataType::FLOAT16);
+  x_fp16->set_layout(x.layout());
+  out_fp16->set_dims(x.dims());
+  out_fp16->set_dtype(DataType::FLOAT16);
+  out_fp16->set_layout(x.layout());
+}
+
 }  // namespace phi
