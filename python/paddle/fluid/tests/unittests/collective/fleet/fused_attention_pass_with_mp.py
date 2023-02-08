@@ -66,11 +66,11 @@ class MultiHeadAttentionWithMP(paddle.nn.Layer):
     def forward(self, x, attn_mask=None):
         residual = x
 
-        x = paddle.distributed.collective._c_identity(x)
-
         if self.pre_ln:
             # pre layer norm
             x = self.norm1(x)
+
+        x = paddle.distributed.collective._c_identity(x)
 
         # compute qkv
         qkv = self.qkv_proj(x)

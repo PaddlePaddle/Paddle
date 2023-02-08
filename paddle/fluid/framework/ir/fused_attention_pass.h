@@ -53,6 +53,10 @@ struct FusedAttentionPattern : public PatternBase {
   PATTERN_DECL_NODE(pre_layer_norm_mean);
   PATTERN_DECL_NODE(pre_layer_norm_variance);
 
+  // c_identity for mp
+  PATTERN_DECL_NODE(c_identity_op);
+  PATTERN_DECL_NODE(c_identity_out);
+
   // fuse qkv projection
   PATTERN_DECL_NODE(fuse_qkv_matmul_op);
   PATTERN_DECL_NODE(fuse_qkv_matmul_w);
@@ -113,6 +117,10 @@ struct FusedAttentionPattern : public PatternBase {
   PATTERN_DECL_NODE(out_linear_ele_add_bias);
   PATTERN_DECL_NODE(out_linear_ele_add_out);
 
+  // allreudce for mp
+  PATTERN_DECL_NODE(mp_allreudce_sum_op);
+  PATTERN_DECL_NODE(mp_allreudce_sum_out);
+
   PATTERN_DECL_NODE(out_linear_dropout_op);
   PATTERN_DECL_NODE(out_linear_dropout_out);
   PATTERN_DECL_NODE(out_linear_dropout_mask);
@@ -164,6 +172,10 @@ struct FusedAttentionGradPattern : public PatternBase {
   PATTERN_DECL_NODE(out_linear_dropout_grad_op);
   PATTERN_DECL_NODE(out_linear_dropout_grad_mask);
   PATTERN_DECL_NODE(out_linear_dropout_grad_out);
+
+  // c_identity for mp
+  PATTERN_DECL_NODE(mp_allreudce_sum_grad_op);  // c_identity
+  PATTERN_DECL_NODE(mp_allreudce_sum_grad_out);
 
   PATTERN_DECL_NODE(out_linear_ele_add_grad_op);
   PATTERN_DECL_NODE(out_linear_ele_add_grad_x);
@@ -237,6 +249,10 @@ struct FusedAttentionGradPattern : public PatternBase {
   PATTERN_DECL_NODE(fuse_qkv_matmul_grad_w);
   PATTERN_DECL_NODE(fuse_qkv_matmul_grad_x_grad);
   PATTERN_DECL_NODE(fuse_qkv_matmul_grad_w_grad);
+
+  // allreduce for mp
+  PATTERN_DECL_NODE(c_identity_grad_op);  // mp_allreduce_sum
+  PATTERN_DECL_NODE(c_identity_grad_out);
 
   // pre layer norm grad
   PATTERN_DECL_NODE(pre_layer_norm_grad_op);

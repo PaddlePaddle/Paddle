@@ -52,6 +52,28 @@ PDNode* FusedAttentionPattern::operator()(PDNode* x,
                   pre_layer_norm_variance_node});
   }
 
+  // c_identity for mp
+  PDNode* c_identity_input_node = pre_layer_norm ? pre_layer_norm_out_node : x;
+  PDNode* c_identity_out_node{nullptr};
+  if (use_mp) {
+    auto* c_identity_node =
+        pattern->NewNode(c_identity_op_repr())->assert_is_op("c_identity");
+    if (pre_layer_norm) {
+      c_identity_input_node->assert_is_op_input("c_identity", "X");
+    }
+    c_identity_out_node = pattern->NewNode(c_identity_out_repr())
+                              ->assert_is_op_output("c_identity");
+    c_identity_node->LinksFrom({c_identity_input_node})
+        .LinksTo({c_identity_out_node});
+  }
+
+  PDNode* fuse_qkv_input_node = x;
+  if (use_mp) {
+    fuse_qkv_input_node = c_identity_out_node;
+  } else if (pre_layer_norm) {
+    fuse_qkv_input_node = pre_layer_norm_out_node;
+  }
+
   // fuse qkv pattern
   auto* fuse_qkv_matmul_node =
       pattern->NewNode(fuse_qkv_matmul_op_repr())->assert_is_op("matmul_v2");
@@ -59,15 +81,11 @@ PDNode* FusedAttentionPattern::operator()(PDNode* x,
                                      ->assert_is_op_input("matmul_v2", "Y");
   auto* fuse_qkv_matmul_out_node = pattern->NewNode(fuse_qkv_matmul_out_repr())
                                        ->assert_is_op_output("matmul_v2");
-  if (pre_layer_norm) {
-    pre_layer_norm_out_node->assert_is_op_input("matmul_v2", "X");
-    fuse_qkv_matmul_node
-        ->LinksFrom({pre_layer_norm_out_node, fuse_qkv_matmul_w_node})
-        .LinksTo({fuse_qkv_matmul_out_node});
-  } else {
-    fuse_qkv_matmul_node->LinksFrom({x, fuse_qkv_matmul_w_node})
-        .LinksTo({fuse_qkv_matmul_out_node});
+  if (pre_layer_norm || use_mp) {
+    fuse_qkv_input_node->assert_is_op_input("matmul_v2", "X");
   }
+  fuse_qkv_matmul_node->LinksFrom({fuse_qkv_input_node, fuse_qkv_matmul_w_node})
+      .LinksTo({fuse_qkv_matmul_out_node});
 
   auto* fuse_qkv_ele_add_node = pattern->NewNode(fuse_qkv_ele_add_op_repr())
                                     ->assert_is_op("elementwise_add");
@@ -247,6 +265,20 @@ PDNode* FusedAttentionPattern::operator()(PDNode* x,
       ->LinksFrom({out_linear_matmul_out_node, out_linear_ele_add_bias_node})
       .LinksTo({out_linear_ele_add_out_node});
 
+  PDNode* mp_allreduce_out_node{nullptr};
+  if (use_mp) {
+    mp_allreduce_out_node = pattern->NewNode(mp_allreudce_sum_out_repr())
+                                ->assert_is_op_output("mp_allreduce_sum");
+    auto* mp_allreduce_node = pattern->NewNode(mp_allreudce_sum_op_repr())
+                                  ->assert_is_op("mp_allreduce_sum");
+    out_linear_ele_add_out_node->assert_is_op_input("mp_allreduce_sum");
+    mp_allreduce_node->LinksFrom({out_linear_ele_add_out_node})
+        .LinksTo({mp_allreduce_out_node});
+  }
+
+  PDNode* out_linear_dropout_input_node =
+      use_mp ? mp_allreduce_out_node : out_linear_ele_add_out_node;
+
   auto* out_linear_dropout_node =
       pattern->NewNode(out_linear_dropout_op_repr())->assert_is_op("dropout");
   auto* out_linear_dropout_mask_node =
@@ -255,8 +287,8 @@ PDNode* FusedAttentionPattern::operator()(PDNode* x,
   auto* out_linear_dropout_out_node =
       pattern->NewNode(out_linear_dropout_out_repr())
           ->assert_is_op_output("dropout");
-  out_linear_ele_add_out_node->assert_is_op_input("dropout", "X");
-  out_linear_dropout_node->LinksFrom({out_linear_ele_add_out_node})
+  out_linear_dropout_input_node->assert_is_op_input("dropout", "X");
+  out_linear_dropout_node->LinksFrom({out_linear_dropout_input_node})
       .LinksTo({out_linear_dropout_mask_node, out_linear_dropout_out_node});
 
   if (!add_residual && pre_layer_norm) {
@@ -426,6 +458,20 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
           {out_linear_grad_input_node, out_linear_dropout_grad_mask_node})
       .LinksTo({out_linear_dropout_grad_out_node});
 
+  PDNode* mp_c_identity_out_node{nullptr};
+  if (use_mp) {
+    mp_c_identity_out_node = pattern->NewNode(mp_allreudce_sum_grad_out_repr())
+                                 ->assert_is_op_output("c_identity", "Out");
+    auto* mp_c_identity_node = pattern->NewNode(mp_allreudce_sum_grad_op_repr())
+                                   ->assert_is_op("c_identity");
+    out_linear_dropout_grad_out_node->assert_is_op_input("c_identity");
+    mp_c_identity_node->LinksFrom({out_linear_dropout_grad_out_node})
+        .LinksTo({mp_c_identity_out_node});
+  }
+
+  PDNode* out_linear_ele_add_grad_input_node =
+      use_mp ? mp_c_identity_out_node : out_linear_dropout_grad_out_node;
+
   auto* out_linear_ele_add_grad_node =
       pattern->NewNode(out_linear_ele_add_grad_op_repr())
           ->assert_is_op("elementwise_add_grad");
@@ -441,10 +487,10 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
   auto* out_linear_ele_add_grad_bias_grad_node =
       pattern->NewNode(out_linear_ele_add_grad_bias_grad_repr())
           ->assert_is_op_output("elementwise_add_grad", "Y@GRAD");
-  out_linear_dropout_grad_out_node->assert_is_op_input("elementwise_add_grad",
-                                                       "Out@GRAD");
+  out_linear_ele_add_grad_input_node->assert_is_op_input("elementwise_add_grad",
+                                                         "Out@GRAD");
   out_linear_ele_add_grad_node
-      ->LinksFrom({out_linear_dropout_grad_out_node,
+      ->LinksFrom({out_linear_ele_add_grad_input_node,
                    out_linear_ele_add_grad_x_node,
                    out_linear_ele_add_grad_bias_node})
       .LinksTo({out_linear_ele_add_grad_x_grad_node,
@@ -701,54 +747,78 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
       .LinksTo(
           {fuse_qkv_matmul_grad_x_grad_node, fuse_qkv_matmul_grad_w_grad_node});
 
-  if (!pre_layer_norm) {
-    return fuse_qkv_matmul_grad_x_grad_node;
+  PDNode* mp_allreduce_out_node{nullptr};
+  if (use_mp) {
+    mp_allreduce_out_node = pattern->NewNode(c_identity_grad_out_repr())
+                                ->assert_is_op_output("c_allreduce_sum", "Out");
+    auto* mp_allreduce_node = pattern->NewNode(c_identity_grad_op_repr())
+                                  ->assert_is_op("c_allreduce_sum");
+    fuse_qkv_matmul_grad_x_grad_node->assert_is_op_input("c_allreduce_sum",
+                                                         "X");
+    mp_allreduce_node->LinksFrom({fuse_qkv_matmul_grad_x_grad_node})
+        .LinksTo({mp_allreduce_out_node});
   }
 
-  // pre layer norm
-  auto* pre_layer_norm_grad_node =
-      pattern->NewNode(pre_layer_norm_grad_op_repr())
-          ->assert_is_op("layer_norm_grad");
-  auto* pre_layer_norm_grad_scale_node =
-      pattern->NewNode(pre_layer_norm_grad_scale_repr())
-          ->assert_is_op_input("layer_norm_grad", "Scale");
-  auto* pre_layer_norm_grad_bias_node =
-      pattern->NewNode(pre_layer_norm_grad_bias_repr())
-          ->assert_is_op_input("layer_norm_grad", "Bias");
-  auto* pre_layer_norm_grad_mean_node =
-      pattern->NewNode(pre_layer_norm_grad_mean_repr())
-          ->assert_is_op_input("layer_norm_grad", "Mean");
-  auto* pre_layer_norm_grad_variance_node =
-      pattern->NewNode(pre_layer_norm_grad_variance_repr())
-          ->assert_is_op_input("layer_norm_grad", "Variance");
-  auto* pre_layer_norm_grad_x_node =
-      add_residual ? residual_ele_add_grad_x_node
-                   : pattern->NewNode(pre_layer_norm_grad_x_repr())
-                         ->assert_is_op_input("layer_norm_grad", "X");
-  auto* pre_layer_norm_grad_scale_grad_node =
-      pattern->NewNode(pre_layer_norm_grad_scale_grad_repr())
-          ->assert_is_op_output("layer_norm_grad", "Scale@GRAD");
-  auto* pre_layer_norm_grad_bias_grad_node =
-      pattern->NewNode(pre_layer_norm_grad_bias_grad_repr())
-          ->assert_is_op_output("layer_norm_grad", "Bias@GRAD");
-  auto* pre_layer_norm_grad_x_grad_node =
-      pattern->NewNode(pre_layer_norm_grad_x_grad_repr())
-          ->assert_is_op_output("layer_norm_grad", "X@GRAD");
-  fuse_qkv_matmul_grad_x_grad_node->assert_is_op_input("layer_norm_grad",
-                                                       "Y@GRAD");
-  pre_layer_norm_grad_node
-      ->LinksFrom({fuse_qkv_matmul_grad_x_grad_node,
-                   pre_layer_norm_grad_scale_node,
-                   pre_layer_norm_grad_bias_node,
-                   pre_layer_norm_grad_mean_node,
-                   pre_layer_norm_grad_variance_node,
-                   pre_layer_norm_grad_x_node})
-      .LinksTo({pre_layer_norm_grad_scale_grad_node,
-                pre_layer_norm_grad_bias_grad_node,
-                pre_layer_norm_grad_x_grad_node});
+  PDNode* pre_layer_norm_input_node =
+      use_mp ? mp_allreduce_out_node : fuse_qkv_matmul_grad_x_grad_node;
+  if (!pre_layer_norm && !add_residual) {
+    return pre_layer_norm_input_node;
+  }
+
+  PDNode* pre_layer_norm_grad_x_grad_node{nullptr};
+
+  if (pre_layer_norm) {
+    // pre layer norm
+    auto* pre_layer_norm_grad_node =
+        pattern->NewNode(pre_layer_norm_grad_op_repr())
+            ->assert_is_op("layer_norm_grad");
+    auto* pre_layer_norm_grad_scale_node =
+        pattern->NewNode(pre_layer_norm_grad_scale_repr())
+            ->assert_is_op_input("layer_norm_grad", "Scale");
+    auto* pre_layer_norm_grad_bias_node =
+        pattern->NewNode(pre_layer_norm_grad_bias_repr())
+            ->assert_is_op_input("layer_norm_grad", "Bias");
+    auto* pre_layer_norm_grad_mean_node =
+        pattern->NewNode(pre_layer_norm_grad_mean_repr())
+            ->assert_is_op_input("layer_norm_grad", "Mean");
+    auto* pre_layer_norm_grad_variance_node =
+        pattern->NewNode(pre_layer_norm_grad_variance_repr())
+            ->assert_is_op_input("layer_norm_grad", "Variance");
+    auto* pre_layer_norm_grad_x_node =
+        add_residual ? residual_ele_add_grad_x_node
+                     : pattern->NewNode(pre_layer_norm_grad_x_repr())
+                           ->assert_is_op_input("layer_norm_grad", "X");
+    auto* pre_layer_norm_grad_scale_grad_node =
+        pattern->NewNode(pre_layer_norm_grad_scale_grad_repr())
+            ->assert_is_op_output("layer_norm_grad", "Scale@GRAD");
+    auto* pre_layer_norm_grad_bias_grad_node =
+        pattern->NewNode(pre_layer_norm_grad_bias_grad_repr())
+            ->assert_is_op_output("layer_norm_grad", "Bias@GRAD");
+    pre_layer_norm_grad_x_grad_node =
+        pattern->NewNode(pre_layer_norm_grad_x_grad_repr())
+            ->assert_is_op_output("layer_norm_grad", "X@GRAD");
+    pre_layer_norm_input_node->assert_is_op_input("layer_norm_grad", "Y@GRAD");
+    pre_layer_norm_grad_node
+        ->LinksFrom({pre_layer_norm_input_node,
+                     pre_layer_norm_grad_scale_node,
+                     pre_layer_norm_grad_bias_node,
+                     pre_layer_norm_grad_mean_node,
+                     pre_layer_norm_grad_variance_node,
+                     pre_layer_norm_grad_x_node})
+        .LinksTo({pre_layer_norm_grad_scale_grad_node,
+                  pre_layer_norm_grad_bias_grad_node,
+                  pre_layer_norm_grad_x_grad_node});
+  }
+
+  PDNode* grad_accumulation_x_input_node = fuse_qkv_matmul_grad_x_grad_node;
+  if (pre_layer_norm) {
+    grad_accumulation_x_input_node = pre_layer_norm_grad_x_grad_node;
+  } else if (use_mp) {
+    grad_accumulation_x_input_node = mp_allreduce_out_node;
+  }
 
   if (!add_residual) {
-    return pre_layer_norm_grad_x_grad_node;
+    return grad_accumulation_x_input_node;
   }
 
   auto* grad_accumulation_sum_node =
@@ -756,9 +826,11 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
   auto* grad_accumulation_sum_out_node =
       pattern->NewNode(grad_accumulation_out_repr())
           ->assert_is_op_output("sum");
+  residual_ele_add_grad_x_grad_node->assert_is_op_input("sum");
+  grad_accumulation_x_input_node->assert_is_op_input("sum");
   grad_accumulation_sum_node
       ->LinksFrom(
-          {pre_layer_norm_grad_x_grad_node, residual_ele_add_grad_x_grad_node})
+          {grad_accumulation_x_input_node, residual_ele_add_grad_x_grad_node})
       .LinksTo({grad_accumulation_sum_out_node});
 
   return grad_accumulation_sum_out_node;
