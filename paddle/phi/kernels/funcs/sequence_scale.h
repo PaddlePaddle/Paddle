@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/tensor_meta.h"
 
 namespace phi {
 namespace funcs {

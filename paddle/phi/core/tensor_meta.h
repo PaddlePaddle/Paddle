@@ -42,6 +42,22 @@ namespace phi {
  */
 using LoD = std::vector<std::vector<size_t>>;
 
+/*
+ * Transform an LoD from relative offsets to absolute offsets.
+ */
+LoD ToAbsOffset(const LoD& in) {
+  // the lowest level stores relative offsets
+  if (in.empty() || in.size() == 1) return in;
+  LoD result = in;
+  for (auto level = static_cast<int>(in.size() - 2); level >= 0; level--) {
+    for (size_t i = 0; i < in[level].size(); ++i) {
+      size_t index = in[level][i];
+      result[level][i] = result[level + 1][index];
+    }
+  }
+  return result;
+}
+
 /// \brief The meta data of dense tensor. Take the structure type
 /// and use all default operations.
 ///
