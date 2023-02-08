@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/mixed_vector.h"
+#include "paddle/phi/core/tensor_meta.h"
 
 namespace paddle {
 namespace framework {
@@ -65,7 +66,7 @@ LoD SliceInLevel(const LoD& in,
 /*
  * Transform an LoD from relative offsets to absolute offsets.
  */
-LoD ToAbsOffset(const LoD& in);
+using phi::ToAbsOffset;
 
 bool operator==(const LoD& a, const LoD& b);
 
