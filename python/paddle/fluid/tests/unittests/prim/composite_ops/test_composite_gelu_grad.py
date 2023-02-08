@@ -72,6 +72,74 @@ def expect_grad(inputs):
     return gradients
 
 
+class TestCompositeGelu(unittest.TestCase):
+    def setUp(self):
+        core._set_prim_backward_enabled(True)
+        self.dtypes = ["float32", "float64"]
+        self.shapes = [[2, 3, 4], [2, 3]]
+        self.approximates = [True, False]
+
+    def cal_composite_grad(self, inputs):
+        paddle.enable_static()
+        core._set_prim_forward_enabled(True)
+        startup_program = paddle.static.Program()
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            x = paddle.static.data(
+                'x', shape=inputs.shape, dtype=str(inputs.dtype)
+            )
+            x.stop_gradient = False
+            y = fn(x)
+            blocks = main_program.blocks
+
+            fwd_ops = [op.type for op in blocks[0].ops]
+            # Ensure that gelu in original block
+            self.assertTrue('gelu' in fwd_ops)
+
+            paddle.incubate.autograd.to_prim(blocks)
+
+            fwd_ops_new = [op.type for op in blocks[0].ops]
+            # Ensure that gelu is splitted into small ops
+            self.assertTrue('gelu' not in fwd_ops_new)
+
+            z = paddle.static.gradients([y], x)
+            fwd_ops_grad = [op.type for op in blocks[0].ops]
+            # Ensure that gelu_grad not in grad block
+
+            self.assertTrue('gelu_grad' not in fwd_ops_grad)
+
+        exe = paddle.static.Executor()
+        exe.run(startup_program)
+        res = exe.run(main_program, feed={'x': inputs}, fetch_list=[z])
+        paddle.disable_static()
+        core._set_prim_forward_enabled(False)
+        return res
+
+    def compare_backward(self):
+        np_data = generate_data(attrs.shape, attrs.dtype)
+        tensor_data = paddle.to_tensor(np_data)
+
+        expect = expect_grad(tensor_data)[0].numpy()
+        actual = self.cal_composite_grad(np_data)[0]
+
+        assert expect.dtype == actual.dtype
+        np.testing.assert_allclose(
+            expect,
+            actual,
+            rtol=attrs.get_rtol("backward"),
+            atol=attrs.get_atol("backward"),
+        )
+
+    def test_backward(self):
+        for i in self.approximates:
+            for j in self.dtypes:
+                for t in self.shapes:
+                    attrs.set_approximate(i)
+                    attrs.set_dtype(j)
+                    attrs.set_shape(t)
+                    self.compare_backward()
+
+
 class TestCompositeGeluPrimBackward(unittest.TestCase):
     "test composite gelu and prim backward"
 
