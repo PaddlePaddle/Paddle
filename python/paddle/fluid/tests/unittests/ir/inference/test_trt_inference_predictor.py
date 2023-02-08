@@ -39,6 +39,7 @@ def str2bool(v):
     else:
         return False
 
+
 def getdtype(dtype="float32"):
     if dtype == "float32" or dtype == "float":
         return np.float32
