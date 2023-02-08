@@ -22,6 +22,7 @@ limitations under the License. */
 #if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
 #include "paddle/fluid/inference/tensorrt/plugin/spmm_plugin.h"
 #endif
+#include <stdlib.h>
 #include "paddle/fluid/inference/tensorrt/plugin/fused_token_prune_op_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin/group_norm_op_plugin.h"
 #include "paddle/fluid/platform/enforce.h"
