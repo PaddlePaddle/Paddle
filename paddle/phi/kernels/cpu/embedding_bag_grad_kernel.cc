@@ -13,24 +13,24 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/embedding_bag_grad_kernel.h"
-#include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/funcs/embedding_util.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/embedding_util.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-struct EmbeddingBagGradCPUFunctor{
+struct EmbeddingBagGradCPUFunctor {
   EmbeddingBagGradCPUFunctor(const Context& dev_ctx,
-                              const DenseTensor& input,
-                              const DenseTensor& params,
-                              const DenseTensor& weight,
-                              const DenseTensor& out_grad,
-                              const std::string& mode,
-                              DenseTensor* params_grad,
-                              DenseTensor* weight_grad)
+                             const DenseTensor& input,
+                             const DenseTensor& params,
+                             const DenseTensor& weight,
+                             const DenseTensor& out_grad,
+                             const std::string& mode,
+                             DenseTensor* params_grad,
+                             DenseTensor* weight_grad)
 
       : dev_ctx_(dev_ctx),
         input_(input),
@@ -41,11 +41,10 @@ struct EmbeddingBagGradCPUFunctor{
         params_grad_(params_grad),
         weight_grad_(weight_grad) {}
 
-    using EigenVectorMap = Eigen::Map< Eigen::Vector<T, Eigen::Dynamic> >;
-    using ConstEigenVectorMap =
-        Eigen::Map< const Eigen::Vector<T, Eigen::Dynamic> >;
-    using EigenIndex = Eigen::Index;
-
+  using EigenVectorMap = Eigen::Map<Eigen::Vector<T, Eigen::Dynamic>>;
+  using ConstEigenVectorMap =
+      Eigen::Map<const Eigen::Vector<T, Eigen::Dynamic>>;
+  using EigenIndex = Eigen::Index;
 
   template <typename IdT>
   void apply() {
@@ -56,7 +55,7 @@ struct EmbeddingBagGradCPUFunctor{
     const EigenIndex output_dim = params_.dims()[1];
 
     std::unordered_map<IdT, EigenIndex> index_map;
-    std::vector< std::pair<IdT, std::vector<EigenIndex>>> index_vec;
+    std::vector<std::pair<IdT, std::vector<EigenIndex>>> index_vec;
 
     auto ids = CopyIdsToVector<IdT, IdT>(input_);
 
@@ -70,7 +69,7 @@ struct EmbeddingBagGradCPUFunctor{
 
     auto ids_num = static_cast<int64_t>(ids.size());
 
-    for (EigenIndex i = 0; i < ids_num ; ++i) {
+    for (EigenIndex i = 0; i < ids_num; ++i) {
       auto index = ids.data()[i];
       if (index_map.find(index) == index_map.end()) {
         index_map[index] = index_vec.size();
@@ -82,33 +81,34 @@ struct EmbeddingBagGradCPUFunctor{
     EigenIndex bags = input_.dims()[0];
     for (EigenIndex i = 0; i < bags; ++i) {
       EigenVectorMap params_grads_slice(
-          &d_params_grad[index_vec[i].first * output_dim], output_dim );
+          &d_params_grad[index_vec[i].first * output_dim], output_dim);
 
       for (EigenIndex index : index_vec[i].second) {
         const EigenIndex bag = index / sequence_length;
         const EigenIndex seq = index % sequence_length;
-        const ConstEigenVectorMap grads_slice(
-          &d_grad[bag*output_dim], output_dim);
+        const ConstEigenVectorMap grads_slice(&d_grad[bag * output_dim],
+                                              output_dim);
         params_grads_slice +=
-          grads_slice * d_weights[bag*sequence_length + seq];
+            grads_slice * d_weights[bag * sequence_length + seq];
       }
       if (mode_ == "mean") {
         params_grads_slice /= static_cast<T>(sequence_length);
       }
     }
 
-    for (EigenIndex i=0; i < bags; ++i) {
-      for (EigenIndex j=0; j < sequence_length; ++j) {
-        const ConstEigenVectorMap grads_slice(
-          &d_grad[i * output_dim ], output_dim );
+    for (EigenIndex i = 0; i < bags; ++i) {
+      for (EigenIndex j = 0; j < sequence_length; ++j) {
+        const ConstEigenVectorMap grads_slice(&d_grad[i * output_dim],
+                                              output_dim);
         const ConstEigenVectorMap params_slice(
-          &d_params[d_inputs[i*sequence_length+j] * output_dim ], output_dim );
+            &d_params[d_inputs[i * sequence_length + j] * output_dim],
+            output_dim);
         if (mode_ == "sum") {
           d_weight_grad[i * sequence_length + j] =
-            params_slice.dot(grads_slice);
+              params_slice.dot(grads_slice);
         } else {
           d_weight_grad[i * sequence_length + j] =
-            params_slice.dot(grads_slice) / static_cast<T>(sequence_length);
+              params_slice.dot(grads_slice) / static_cast<T>(sequence_length);
         }
       }
     }
@@ -134,15 +134,15 @@ void EmbeddingBagGradKernel(const Context& ctx,
                             const std::string& mode,
                             DenseTensor* params_grad,
                             DenseTensor* weight_grad) {
-  EmbeddingBagGradCPUFunctor<T, Context> functor(ctx, input, params,
-      weight, out_grad, mode, params_grad, weight_grad);
+  EmbeddingBagGradCPUFunctor<T, Context> functor(
+      ctx, input, params, weight, out_grad, mode, params_grad, weight_grad);
 
   if (input.dtype() == phi::DataType::INT32) {
     functor.template apply<int>();
   } else if (input.dtype() == phi::DataType::INT64) {
     functor.template apply<int64_t>();
   } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "emebdding input only support int32 and int64"));
   }
 }

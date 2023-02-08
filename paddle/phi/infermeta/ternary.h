@@ -203,8 +203,8 @@ void ViterbiDecodeInferMeta(const MetaTensor& input,
                             MetaConfig config = MetaConfig());
 
 void EmbeddingBagInferMeta(const MetaTensor& input,
-                            const MetaTensor& params,
-                            const MetaTensor& weight,
-                            MetaTensor* out);
+                           const MetaTensor& params,
+                           const MetaTensor& weight,
+                           MetaTensor* out);
 
 }  // namespace phi

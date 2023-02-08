@@ -16,17 +16,15 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 
-
 namespace phi {
-
 
 template <typename T, typename Context>
 void EmbeddingBagGradCUDAKernel(const Context& ctx,
-                            const DenseTensor& input,
-                            const DenseTensor& params,
-                            const DenseTensor& weight,
-                            const DenseTensor& out_grad,
-                            const std::string& mode,
-                            DenseTensor* params_grad,
-                            DenseTensor* weight_grad);
+                                const DenseTensor& input,
+                                const DenseTensor& params,
+                                const DenseTensor& weight,
+                                const DenseTensor& out_grad,
+                                const std::string& mode,
+                                DenseTensor* params_grad,
+                                DenseTensor* weight_grad);
 }  // namespace phi
