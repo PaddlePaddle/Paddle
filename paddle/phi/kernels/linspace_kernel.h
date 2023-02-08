@@ -11,15 +11,16 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
 template <typename T, typename Context>
 void LinspaceKernel(const Context& ctx,
-                    const DenseTensor& start,
-                    const DenseTensor& stop,
-                    const DenseTensor& number,
+                    const Scalar& start,
+                    const Scalar& stop,
+                    const Scalar& number,
                     DataType dtype,
                     DenseTensor* out);
 

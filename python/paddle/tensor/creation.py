@@ -307,15 +307,7 @@ def linspace(start, stop, num, dtype=None, name=None):
         check_type(num, 'num', (int), 'linspace')
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
-    if not isinstance(start, Variable):
-        with device_guard("cpu"):
-            tensor_start = fill_constant([1], dtype, start, force_cpu=True)
-    if not isinstance(stop, Variable):
-        with device_guard("cpu"):
-            tensor_stop = fill_constant([1], dtype, stop, force_cpu=True)
-    if not isinstance(num, Variable):
-        with device_guard("cpu"):
-            tensor_num = fill_constant([1], 'int32', num, force_cpu=True)
+
     if in_dygraph_mode():
         return _C_ops.linspace(
             tensor_start,
@@ -327,9 +319,6 @@ def linspace(start, stop, num, dtype=None, name=None):
     else:
         helper = LayerHelper("linspace", **locals())
 
-        start_dtype = convert_dtype(tensor_start.dtype)
-        stop_dtype = convert_dtype(tensor_stop.dtype)
-        out_dtype = convert_dtype(dtype)
         if isinstance(start, Variable):
             check_dtype(
                 start.dtype,
@@ -337,8 +326,10 @@ def linspace(start, stop, num, dtype=None, name=None):
                 ['float32', 'float64', 'int32', 'int64'],
                 'linspace',
             )
+            start_dtype = convert_dtype(tensor_start.dtype)
         else:
             check_type(start, 'start', (int, float), 'linspace')
+            start_dtype = dtype
 
         if isinstance(stop, Variable):
             check_dtype(
@@ -347,10 +338,17 @@ def linspace(start, stop, num, dtype=None, name=None):
                 ['float32', 'float64', 'int32', 'int64'],
                 'linspace',
             )
+            stop_dtype = convert_dtype(tensor_stop.dtype)
         else:
             check_type(stop, 'stop', (int, float), 'linspace')
+            stop_dtype = dtype
+
         if isinstance(num, Variable):
             check_dtype(num.dtype, 'num', ['int32'], 'linspace')
+            out_dtype = convert_dtype(dtype)
+        else:
+            out_dtype = dtype
+
         check_dtype(
             dtype, 'dtype', ['int32', 'int64', 'float32', 'float64'], 'linspace'
         )
