@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -102,12 +102,6 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"fused_output_scale", ExtraAttrProperty::ONEDNN},
         {"fuse_residual_connection", ExtraAttrProperty::ONEDNN},
         {"fuse_with_relu", ExtraAttrProperty::ONEDNN},
-        {"fused_reshape_Out", ExtraAttrProperty::ONEDNN},
-        {"fused_transpose_Out", ExtraAttrProperty::ONEDNN},
-        {"fused_reshape_X", ExtraAttrProperty::ONEDNN},
-        {"fused_reshape_Y", ExtraAttrProperty::ONEDNN},
-        {"fused_transpose_X", ExtraAttrProperty::ONEDNN},
-        {"fused_transpose_Y", ExtraAttrProperty::ONEDNN},
         {"mkldnn_data_type", ExtraAttrProperty::ONEDNN},
         {"scale_x", ExtraAttrProperty::ONEDNN},
         {"scale_y", ExtraAttrProperty::ONEDNN},
@@ -224,10 +218,7 @@ class ExtraInfoUtils {
 
   // TODO(chenweihang): move these extra inputs into op_compat.yaml
   std::unordered_map<std::string, std::vector<std::string>>
-      g_extra_input_names_map_ = {{"conv2d", {"Bias", "ResidualData"}},
-                                  {"conv2d_transpose", {"Bias"}},
-                                  {"conv2d_grad", {"Bias"}},
-                                  {"matmul_v2", {"ResidualData"}}};
+      g_extra_input_names_map_ = {{"conv2d_transpose", {"Bias"}}};
   std::vector<std::string> empty_extra_input_names_;
 };
 

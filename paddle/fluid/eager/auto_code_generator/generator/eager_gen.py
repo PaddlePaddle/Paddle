@@ -261,6 +261,9 @@ FORWARD_ONLY_FUNCTION_TEMPLATE = """
   // Get Outputs
 {}
   VLOG(4) << \"Finish AD API: {}";
+
+  // Check Inplace if needed
+{}{}
   // LOG IF DEBUG
   {}
   // Returns
@@ -330,7 +333,7 @@ NODE_CC_FILE_TEMPLATE = """
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/nodes/nodes.h"
-#include "paddle/fluid/prim/api/manual/backward/composite_backward_api.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
 #include "paddle/fluid/prim/api/all.h"
 #include "paddle/fluid/prim/utils/utils.h"
 DECLARE_bool(check_nan_inf);
@@ -1462,8 +1465,31 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             returns_str = ", ".join(returns_list)
             returns_str = f"{returns_type_str}{{{returns_str}}}"
 
+        # Check Inplace
+        check_inplace_str = ""
+        bump_inplace_version_str = ""
+        # Note: When the name of original api in yaml is end of '_', that means this api is a
+        # special inplace api and it doesn't require checking and bumping version (except assign_out_).
+        # This rule is obscure, so we maybe replace it by adding new design in the future.
+        if is_inplaced and (
+            self.forward_api_name[-1] != '_'
+            or self.forward_api_name == 'assign_out_'
+        ):
+            for inplace_name in forward_inplace_map.keys():
+                if (
+                    not self.is_forward_only
+                    and forward_api_name not in inplace_check_blacklist
+                ):
+                    check_inplace_str += CHECK_INPLACE_TEMPLATE.format(
+                        inplace_name, GetAutoGradMetaName(inplace_name)
+                    )
+                bump_inplace_version_str += (
+                    BUMP_INPLACE_VERSION_TEMPLATE.format(
+                        inplace_name, inplace_name
+                    )
+                )
+
         # Node Creation Pre-Processing
-        inputs_names = []
         if not self.is_forward_only:
             # 1. Get Input AutoGradMeta
             inputs_autograd_meta_list = []
@@ -1478,13 +1504,9 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 ) in backward_grad_outputs_map.items():
                     if pos == corresponding_pos:
                         has_corresponding_grad_output = True
-                if (
-                    has_corresponding_grad_output
-                    or (
-                        name in forward_inplace_map
-                        and forward_api_name not in inplace_check_blacklist
-                    )
-                    or self.is_forward_only
+                if has_corresponding_grad_output or (
+                    name in forward_inplace_map
+                    and forward_api_name not in inplace_check_blacklist
                 ):
                     input_autograd_meta_name = GetAutoGradMetaName(name)
                     if IsPlainTensorType(ttype):
@@ -1531,24 +1553,6 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
 
                 outputs_autograd_meta_list.append(output_autograd_meta)
             outputs_autograd_meta_str = "\n".join(outputs_autograd_meta_list)
-
-            # 3. Check Inplace
-            check_inplace_str = ""
-            bump_inplace_version_str = ""
-            if is_inplaced:
-                for inplace_name in forward_inplace_map.keys():
-                    if forward_api_name not in inplace_check_blacklist:
-                        inplace_autograd_meta_name = GetAutoGradMetaName(
-                            inplace_name
-                        )
-                        check_inplace_str += CHECK_INPLACE_TEMPLATE.format(
-                            inplace_name, inplace_autograd_meta_name
-                        )
-                    bump_inplace_version_str += (
-                        BUMP_INPLACE_VERSION_TEMPLATE.format(
-                            inplace_name, inplace_name
-                        )
-                    )
 
             # Node Creation
             self.GenerateNodeCreationCodes()
@@ -1643,6 +1647,8 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     forward_call_str,
                     get_outputs_str,
                     forward_api_name,
+                    check_inplace_str,
+                    bump_inplace_version_str,
                     log_str,
                     returns_str,
                 )
