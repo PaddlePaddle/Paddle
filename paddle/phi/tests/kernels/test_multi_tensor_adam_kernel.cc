@@ -25,6 +25,7 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/infermeta/multiary.h"
 #include "paddle/phi/kernels/abs_kernel.h"
 #include "paddle/phi/kernels/adam_kernel.h"
 #include "paddle/phi/kernels/adamw_kernel.h"
@@ -72,7 +73,7 @@ auto GenerateConstantTensorVectors(
   return tensors;
 }
 
-auto ToConstTensorPtrVector(const std::vector<DenseTensor> &tensors) {
+static auto ToConstTensorPtrVector(const std::vector<DenseTensor> &tensors) {
   std::vector<const DenseTensor *> results;
   for (const auto &t : tensors) {
     results.push_back(&t);
@@ -80,9 +81,36 @@ auto ToConstTensorPtrVector(const std::vector<DenseTensor> &tensors) {
   return results;
 }
 
-auto ToMutableTensorPtrVector(std::vector<DenseTensor> &tensors) {  // NOLINT
+static auto ToMutableTensorPtrVector(
+    std::vector<DenseTensor> &tensors) {  // NOLINT
   std::vector<DenseTensor *> results;
   for (auto &t : tensors) {
+    results.push_back(&t);
+  }
+  return results;
+}
+
+static auto ToMetaTensorVector(const std::vector<DenseTensor> &tensors) {
+  std::vector<MetaTensor> results;
+  for (auto &t : tensors) {
+    results.push_back(t);
+  }
+  return results;
+}
+
+static auto ToConstMetaTensorPtrVector(
+    const std::vector<MetaTensor> &meta_tensors) {
+  std::vector<const MetaTensor *> results;
+  for (auto &t : meta_tensors) {
+    results.push_back(&t);
+  }
+  return results;
+}
+
+static auto ToMutableMetaTensorPtrVector(
+    std::vector<MetaTensor> &meta_tensors) {  // NOLINT
+  std::vector<MetaTensor *> results;
+  for (auto &t : meta_tensors) {
     results.push_back(&t);
   }
   return results;
@@ -199,6 +227,41 @@ struct AdamInfo {
 
  private:
   void UpdateWithMultiTensorAdam(const std::vector<DenseTensor> &grads) {
+    auto param_metas = ToMetaTensorVector(params);
+    auto grad_metas = ToMetaTensorVector(grads);
+    auto master_param_metas = ToMetaTensorVector(master_params);
+    auto moment1_metas = ToMetaTensorVector(moment1s);
+    auto moment2_metas = ToMetaTensorVector(moment2s);
+    auto beta1_pow_metas = ToMetaTensorVector(beta1_pows);
+    auto beta2_pow_metas = ToMetaTensorVector(beta2_pows);
+
+    MultiTensorAdamInferMeta(
+        ToConstMetaTensorPtrVector(param_metas),
+        ToConstMetaTensorPtrVector(grad_metas),
+        learning_rate,
+        ToConstMetaTensorPtrVector(moment1_metas),
+        ToConstMetaTensorPtrVector(moment2_metas),
+        ToConstMetaTensorPtrVector(beta1_pow_metas),
+        ToConstMetaTensorPtrVector(beta2_pow_metas),
+        multi_precision ? paddle::make_optional(
+                              ToConstMetaTensorPtrVector(master_param_metas))
+                        : paddle::none,
+        MetaTensor(),
+        beta1,
+        beta2,
+        epsilon,
+        chunk_size,
+        weight_decay,
+        use_adamw,
+        multi_precision,
+        false,
+        ToMutableMetaTensorPtrVector(param_metas),
+        ToMutableMetaTensorPtrVector(moment1_metas),
+        ToMutableMetaTensorPtrVector(moment2_metas),
+        ToMutableMetaTensorPtrVector(beta1_pow_metas),
+        ToMutableMetaTensorPtrVector(beta2_pow_metas),
+        ToMutableMetaTensorPtrVector(master_param_metas));
+
     MultiTensorAdamKernel<T, Context>(
         *ctx,
         ToConstTensorPtrVector(params),
@@ -291,9 +354,9 @@ struct AdamInfo {
 };
 
 template <typename T, typename Context>
-static auto MaxDiff(const Context &ctx,
-                    const DenseTensor &x_t,
-                    const DenseTensor &y_t) {
+auto MaxDiff(const Context &ctx,
+             const DenseTensor &x_t,
+             const DenseTensor &y_t) {
   using MT = typename AdamInfo<T, Context>::MT;
   auto mp_dtype = paddle::experimental::CppTypeToDataType<MT>::Type();
   auto x = Cast<T, Context>(ctx, x_t, mp_dtype);
