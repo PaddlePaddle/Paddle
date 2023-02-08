@@ -81,13 +81,6 @@ class ConditionalBlockOp : public ConditionalOp {
       scopes->resize(1);
       scopes->front() = &scope.NewScope();
 
-      PADDLE_ENFORCE_GT(
-          scopes->size(),
-          0,
-          platform::errors::InvalidArgument(
-              "Expect Scope variable contains at least 1 scope, but got: %d",
-              scopes->size()));
-
       auto &cur_scope = *scopes->front();
 #ifdef PADDLE_WITH_MKLDNN
       // (jczaja) Executor on being destroyed clears oneDNN cache and
