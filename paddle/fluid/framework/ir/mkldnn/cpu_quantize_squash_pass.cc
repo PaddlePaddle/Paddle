@@ -354,7 +354,9 @@ void CPUQuantizeSquashPass::OpDequantSquash(Graph* graph) const {
           FindOutputNameByVarName(any_op->Op(), dequant_in->Name());
 
       if (output_name.empty()) return;
-
+      if (any_op->Op()->Type() == "conv2d") {
+        any_op->Op()->SetType("fused_conv2d");
+      }
       any_op->Op()->SetAttr("force_fp32_output", true);
       any_op->Op()->SetOutput(output_name,
                               std::vector<std::string>({dequant_out->Name()}));

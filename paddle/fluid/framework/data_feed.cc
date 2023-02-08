@@ -2717,6 +2717,16 @@ void SlotRecordInMemoryDataFeed::DoWalkandSage() {
 }
 #endif
 
+void SlotRecordInMemoryDataFeed::DumpWalkPath(std::string dump_path,
+                                              size_t dump_rate) {
+  VLOG(3) << "INTO SlotRecordInMemoryDataFeed::DumpWalkPath";
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+  std::string path =
+      string::format_string("%s/part-%03d", dump_path.c_str(), thread_id_);
+  gpu_graph_data_generator_.DumpWalkPath(path, dump_rate);
+#endif
+}
+
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
 void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {
   int offset_cols_size = (ins_num + 1);
@@ -2805,7 +2815,7 @@ void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {
       LoD& lod = (*feed->mutable_lod());
       lod.resize(1);
       lod[0].resize(offset_cols_size);
-      paddle::framework::MixVector<size_t> mixv_lod(&lod[0]);
+      phi::MixVector<size_t> mixv_lod(&lod[0]);
       memcpy(mixv_lod.MutableData(platform::CPUPlace()),
              off_start_ptr,
              offset_cols_size * sizeof(size_t));

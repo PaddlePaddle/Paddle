@@ -16,10 +16,10 @@ import numpy
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
+from paddle.common_ops_import import Variable, default_main_program
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers.tensor import fill_constant
 from paddle.framework import core, in_dynamic_mode
-from paddle.static import Variable, default_main_program
 from paddle.tensor.creation import full
 
 from ...fluid.data_feeder import (
@@ -318,11 +318,11 @@ def interpolate(
         size (list|tuple|Tensor|None): Output shape of image resize
              layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w)
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor.
-             Default: None. If a list/tuple, each element can be an integer or a Tensor of shape: [1].
+             Default: None. If a list/tuple, each element can be an integer or a Tensor of shape: [1] or [].
              If a Tensor, its dimensions size should be a 1.
         scale_factor (float|Tensor|list|tuple|None): The multiplier for the input height or width. At
              least one of :attr:`size` or :attr:`scale_factor` must be set.
-             And :attr:`size` has a higher priority than :attr:`scale_factor`.Has to match input size if it is either a list or a tuple or a Tensor.
+             And :attr:`size` has a higher priority than :attr:`scale_factor`.Has to match input size if it is either a list or a tuple or a Tensor.If a list/tuple, each element can be an integer or a Tensor of shape: [1] or [].
              Default: None.
         mode (str): The resample method. It supports 'linear', 'area', 'nearest', 'bilinear',
                        'bicubic' and 'trilinear' currently. Default: 'nearest'
@@ -870,12 +870,12 @@ def upsample(
         size (list|tuple|Tensor|None, optional): Output shape of image resize
              layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w)
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor.
-             Default: None. If a list/tuple, each element can be an integer or a Tensor of shape: [1].
+             Default: None. If a list/tuple, each element can be an integer or a Tensor of shape: [1] or [].
              If a Tensor , its dimensions size should be a 1.
         scale_factor (float|Tensor|list|tuple|None, optional): The multiplier for the input height or width. At
              least one of :attr:`size` or :attr:`scale_factor` must be set.
              And :attr:`size` has a higher priority than :attr:`scale_factor`.Has to match input size if
-             it is either a list or a tuple or a Tensor.
+             it is either a list or a tuple or a Tensor. If a list/tuple, each element can be an integer or a Tensor of shape: [1] or [].
              Default: None.
         mode (str, optional): The resample method. It supports 'linear', 'nearest', 'bilinear',
                        'bicubic' and 'trilinear' currently. Default: 'nearest'
@@ -1436,7 +1436,7 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
         random_tensor = paddle.uniform(
             input_shape, dtype='float32', min=0.0, max=1.0
         )
-        p = full(shape=[1], fill_value=p, dtype='float32')
+        p = full(shape=input_shape, fill_value=p, dtype='float32')
         keep_mask = paddle.greater_equal(random_tensor, p)
         keep_mask = paddle.cast(keep_mask, dtype)
         drop_mask = paddle.subtract(
@@ -1444,7 +1444,7 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
         )
 
         # apply mask
-        b = full(shape=[1], fill_value=b, dtype=dtype)
+        b = full(shape=input_shape, fill_value=b, dtype=dtype)
         y = paddle.add(
             paddle.multiply(x, keep_mask),
             paddle.scale(drop_mask, scale=alpha_p),

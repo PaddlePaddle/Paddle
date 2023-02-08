@@ -197,7 +197,7 @@ class TestRowConvLayer(unittest.TestCase):
                 out = paddle.static.nn.row_conv(
                     x,
                     self.context_length,
-                    param_attr=fluid.initializer.NumpyArrayInitializer(self.w),
+                    param_attr=paddle.nn.initializer.Assign(self.w),
                 )
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
