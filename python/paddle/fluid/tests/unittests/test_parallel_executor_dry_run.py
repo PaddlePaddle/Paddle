@@ -56,8 +56,6 @@ class TestBase(unittest.TestCase):
                 )
                 train_cp = compiler.CompiledProgram(
                     main_prog
-                ).with_data_parallel(
-                    loss_name=loss.name, exec_strategy=exe_strategy
                 )
                 for _ in range(iter):
                     for _ in range(iter_per_pe):

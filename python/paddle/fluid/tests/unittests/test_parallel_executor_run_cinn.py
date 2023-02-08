@@ -103,7 +103,7 @@ def train(dot_save_dir, prefix, seed=1234):
     build_strategy.debug_graphviz_path = os.path.join(dot_save_dir, prefix)
     compiled_program = paddle.static.CompiledProgram(
         main_program, build_strategy
-    ).with_data_parallel(loss_name=loss.name)
+    )
 
     iters = 100
     feed = rand_data(img.name, label.name, iters)

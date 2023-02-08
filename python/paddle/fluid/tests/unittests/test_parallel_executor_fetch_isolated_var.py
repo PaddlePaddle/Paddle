@@ -51,7 +51,7 @@ class TestParallelExecutorFetchIsolatedVarBase(unittest.TestCase):
 
     def test_main(self):
         for use_gpu in [False, True]:
-            for dev_cnt in [1, 2]:
+            for dev_cnt in [1]:
                 for is_training in [False, True]:
                     for use_experimental_executor in [False, True]:
                         for use_parallel_ssa_executor in [False, True]:
@@ -98,10 +98,6 @@ class TestParallelExecutorFetchIsolatedVarBase(unittest.TestCase):
 
         prog = fluid.CompiledProgram(
             fluid.default_main_program()
-        ).with_data_parallel(
-            loss_name=loss_name,
-            exec_strategy=self.exec_strategy(use_experimental_executor),
-            places=places,
         )
 
         BATCH_SIZE = 8 * dev_cnt

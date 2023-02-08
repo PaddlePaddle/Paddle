@@ -65,11 +65,7 @@ class TestFixOpRunOrder(unittest.TestCase):
         build_strategy.fix_op_run_order = fix_op_run_order
         build_strategy.fuse_bn_act_ops = True
         build_strategy.fuse_bn_add_act_ops = True
-        main_prog = paddle.static.CompiledProgram(main_prog).with_data_parallel(
-            loss_name=loss.name,
-            build_strategy=build_strategy,
-            places=[self.get_place()],
-        )
+        main_prog = paddle.static.CompiledProgram(main_prog)
 
         exe = paddle.static.Executor(self.get_place())
         with paddle.static.scope_guard(scope):

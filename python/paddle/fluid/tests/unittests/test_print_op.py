@@ -131,9 +131,7 @@ class TestPrintOpBackward(unittest.TestCase):
         exe = paddle.static.Executor(place)
         exe.run(startup)
 
-        binary = paddle.static.CompiledProgram(main).with_data_parallel(
-            loss_name=loss.name
-        )
+        binary = paddle.static.CompiledProgram(main)
 
         img, label = init_data()
         feed_dict = {"image": img, "label": label}

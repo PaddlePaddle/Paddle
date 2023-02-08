@@ -66,7 +66,7 @@ class TestFeedPersistableVar(unittest.TestCase):
             exe.run(program=startup)
             compiled_prog = fluid.compiler.CompiledProgram(
                 main
-            ).with_data_parallel(loss_name=loss.name)
+            )
 
             exe.run(program=compiled_prog, feed=feed_dict)
 
