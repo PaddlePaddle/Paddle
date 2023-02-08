@@ -801,12 +801,17 @@ class _ExecutorCache:
         # NOTE(Ruibiao): Wrap the lru_cache in constructor so that the cache is local to
         # the _ExecutorCache instance, otherwise a global cache may not be released after
         # the Executor instance deleted
-        self._get_cached_program_and_executor = lru_cache(maxsize=8)(
-            self._get_program_and_executor
-        )
+        # self._get_cached_program_and_executor = lru_cache(maxsize=8)(
+        #     self._get_program_and_executor
+        # )
+        self.yoki_last_program = None
+        self.yoki_last_original_program = None
+        self.yoki_last_exe = None
+        self._get_cached_program_and_executor = self._get_program_and_executor
 
     def clear(self):
-        self._get_cached_program_and_executor.cache_clear()
+        pass
+        # self._get_cached_program_and_executor.cache_clear()
 
     def get_program_and_executor(
         self,
@@ -831,7 +836,12 @@ class _ExecutorCache:
         )
 
     def _get_program_and_executor(self, cached_data):
+        print("yoki: enter", flush=True)
+        # if self.yoki_last_program and (isinstance(self.yoki_last_original_program, compiler.CompiledProgram) or not self.yoki_last_original_program._is_start_up_program_):
+        #     print("yoki: use cached program", flush=True)
+        #     return self.yoki_last_program, self.yoki_last_exe
         program = cached_data.program
+        ori_program = program
         inner_program = (
             program._program
             if isinstance(program, compiler.CompiledProgram)
@@ -865,6 +875,7 @@ class _ExecutorCache:
                 use_cuda_graph = True
                 build_strategy.allow_cuda_graph_capture = False
                 set_flags({"FLAGS_new_executor_use_cuda_graph": True})
+            print("yoki000", flush=True)
             compiled_program._compile(scope, place)
             if use_cuda_graph:
                 build_strategy.allow_cuda_graph_capture = True
@@ -915,6 +926,17 @@ class _ExecutorCache:
 
         new_program = program.clone()
         new_exe = _StandaloneExecutor(place, new_program, scope)
+        if self.yoki_last_program and (
+            isinstance(
+                self.yoki_last_original_program, compiler.CompiledProgram
+            )
+            or not self.yoki_last_original_program._is_start_up_program_
+        ):
+            print("yoki: use cached program", flush=True)
+            return new_program, self.yoki_last_exe
+        self.yoki_last_program = new_program
+        self.yoki_last_exe = new_exe
+        self.yoki_last_original_program = ori_program
         return new_program, new_exe
 
 
@@ -1862,6 +1884,7 @@ class Executor:
                 vardesc = global_block.desc.find_var(varname.encode())
                 varobj = global_block.vars[varname]
 
+                # Can not check var build by fluid.layers.data(), bucause fluid.layers.data() had not set need_check_feed
                 if (
                     vardesc.persistable() == False
                     and vardesc.type() == core.VarDesc.VarType.LOD_TENSOR
@@ -1875,14 +1898,17 @@ class Executor:
 
         acp._auto_checkpoint(self, program)
 
+        print("yoki0", flush=True)
         # For backward compatibility, run directly.
         if not compiled:
+            print("yoki1", flush=True)
             # In distributed training, the compiled program is saved in Program._graph
             has_compiled_graph = isinstance(
                 program._graph, compiler.CompiledProgram
             )
 
             if has_compiled_graph:
+                print("yoki2", flush=True)
                 program._graph._compile(scope, self.place)
                 # _graph in program does not support inference since the _graph is optimized
                 # through optimizer.minimize function and should not be used as inference graph
@@ -1897,6 +1923,7 @@ class Executor:
                     return_merged=return_merged,
                 )
 
+            print("yoki3", flush=True)
             return self._run_program(
                 program,
                 feed=feed,
@@ -1908,6 +1935,7 @@ class Executor:
                 use_program_cache=use_program_cache,
             )
 
+        print("yoki4", flush=True)
         program._compile(scope, self.place)
         if program._is_inference:
             return self._run_inference(program._executor, feed)
@@ -2464,7 +2492,6 @@ class Executor:
         program=None,
         scope=None,
         fleet_opt=None,
-        micro_scope_list=[],
         with_standalone_executor=False,
     ):
         num_micro_batches = (
@@ -2533,10 +2560,8 @@ class Executor:
             fleet_opt['task_id_to_rank'] = task_id_to_rank
         place = core.Place()
         place.set_place(self.place)
-
-        inference_root_scope_vars = (
-            fleet_opt["fetch_var"] if "fetch_var" in fleet_opt else []
-        )
+        # NOTE: the last argument is used to force create some vars in root scope,
+        # won't be used during train.
         self._fleet_executor.init(
             carrier_id,
             program.desc,
@@ -2545,8 +2570,7 @@ class Executor:
             num_micro_batches,
             tasks,
             task_id_to_rank,
-            inference_root_scope_vars,
-            micro_scope_list,
+            [],
         )
 
     def _run_using_fleet_executor(
@@ -2628,20 +2652,11 @@ class Executor:
                         )
                 fetch_task.set_program(fetch_program)
 
-            micro_scope_list = []
-            if (
-                "inference_generation" in fleet_opt
-                and fleet_opt["inference_generation"]
-            ):
-                for i in range(int(fleet_opt["num_micro_batches"])):
-                    micro_scope_list.append(cached_scope.new_scope())
-
             self._prepare_fleet_executor_carrier(
                 cache_key,
                 program=cached_program,
                 scope=cached_scope,
                 fleet_opt=fleet_opt,
-                micro_scope_list=micro_scope_list,
                 with_standalone_executor=with_standalone_executor,
             )
 
@@ -2665,18 +2680,6 @@ class Executor:
             tensor.set(data, self.place)
 
         self._fleet_executor.run(cache_key)
-
-        if "fetch_var" in fleet_opt:
-            # If we speed up the generation in evaluation, we need to generate
-            # multiple queries at the same time. Each query will in separate scope in order
-            # not mix up. It indicate that final result will in multiple scopes and need to
-            # fetch each.
-            result_list = []
-            for scope in micro_scope_list:
-                for var in fleet_opt["fetch_var"]:
-                    tensor = core.get_variable_tensor(scope, var)
-                result_list.append(as_numpy(tensor))
-            return result_list
 
         if fetch_list:
             arr = cached_scope.find_var(fetch_var_name).get_fetch_list()
