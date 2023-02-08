@@ -1082,8 +1082,6 @@ void ReduceKernel(const KPDevice& dev_ctx,
     return;
   }
 
-  // printf("reduce_num is not 1, reduce input dim, %d\n", config.reduce_num);
-
   config.SetOutputData(y_data, dev_ctx, &tmp);
   constexpr bool kIsTxFP16 = std::is_same<Tx, phi::dtype::float16>::value;
   bool use_cub_reduce = config.reduce_num == numel && !kIsTxFP16;
