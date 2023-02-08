@@ -19,6 +19,7 @@ import os
 import sys
 import warnings
 
+import paddle
 from paddle.framework import core
 from paddle.static import (
     default_main_program,
