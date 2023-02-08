@@ -1003,8 +1003,7 @@ TEST_F(TensorRTDynamicShapeGNTest, test_trt_dynamic_shape_groupnorm) {
 
   std::vector<float> x_v(input_num);
   for (int i = 0; i < input_num; i++) {
-    unsigned int seed = 1996;
-    x_v[i] = rand_r(&seed) % 32 - 16;
+    x_v[i] = rand(&seed) % 32 - 16;
   }
 
   PrepareInputOutput(x_v, shape_v);
