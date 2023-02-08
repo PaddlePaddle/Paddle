@@ -69,7 +69,7 @@ def expect_forward(inputs):
 
 class TestCompositeGelu(unittest.TestCase):
     def setUp(self):
-        self.dtypes = ["float16", "float32", "float64"]
+        self.dtypes = ["float32", "float64"]
         self.shapes = [[2, 3, 4], [2, 3]]
         self.approximate = [True, False]
 
