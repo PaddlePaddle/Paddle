@@ -412,10 +412,6 @@ if(LINUX AND WITH_MKLDNN)
   set(QUANT2_LSTM_MODEL_DIR "${QUANT_INSTALL_DIR}/lstm_quant_test")
   download_quant_model(${QUANT2_LSTM_MODEL_DIR} ${QUANT2_LSTM_MODEL_ARCHIVE}
                        40a693803b12ee9e251258f32559abcb)
-  set(QUANT2_LSTM_OPS_TO_QUANTIZE "fusion_lstm")
-
-  ### Save FP32 model or INT8 model from Quant model
-  set(QUANT2_INT8_LSTM_SAVE_PATH "${QUANT_INSTALL_DIR}/lstm_quant2_int8")
 
   # Convert Quant2 model to dot and pdf files
   set(QUANT2_INT8_ERNIE_DOT_SAVE_PATH
@@ -427,6 +423,7 @@ if(LINUX AND WITH_MKLDNN)
   ### PTQ INT8
 
   # PTQ int8 lstm model
+  set(QUANT2_INT8_LSTM_SAVE_PATH "${QUANT_INSTALL_DIR}/lstm_quant2_int8")
   set(LSTM_DATA_FILE "quant_lstm_input_data.tar.gz")
   set(LSTM_URL "${INFERENCE_URL}/int8/unittest_model_data")
   download_data(${QUANT2_INT8_LSTM_SAVE_PATH} ${LSTM_URL} ${LSTM_DATA_FILE}
