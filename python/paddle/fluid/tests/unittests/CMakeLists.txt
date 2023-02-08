@@ -897,14 +897,12 @@ if(WITH_TESTING)
 endif()
 
 set_tests_properties(
-  test_parallel_executor_test_while_train
   test_parallel_executor_mnist
   test_parallel_executor_feed_persistable_var
   test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
   test_data_norm_op
   test_dataloader_keep_order
   test_dataloader_unkeep_order
-  test_parallel_executor_inference_feed_partial_data
   test_parallel_ssa_graph_inference_feed_partial_data
   test_fetch_unmerged
   test_buffer_shared_memory_reuse_pass
@@ -1138,8 +1136,6 @@ set_tests_properties(test_matmul_v2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_slice_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_strided_slice_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_translated_layer PROPERTIES TIMEOUT 120)
-set_tests_properties(test_parallel_executor_inference_feed_partial_data
-                     PROPERTIES TIMEOUT 120)
 set_tests_properties(test_pad3d_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dataloader_keep_order PROPERTIES TIMEOUT 120)
 set_tests_properties(test_mean_op PROPERTIES TIMEOUT 120)
