@@ -270,7 +270,6 @@ class Adamax(Optimizer):
                 )
             )
         return self._accumulators[name][target_name]
->>>>>>> update
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
