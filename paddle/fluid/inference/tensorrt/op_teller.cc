@@ -849,12 +849,14 @@ struct SimpleOpTypeSetTeller : public Teller {
           PADDLE_GET_CONST(std::string, desc.GetAttr("interp_method"));
       if (interp_method != "nearest") return false;
 
+#if IS_TRT_VERSION_GE(8200)
       auto resize_inputs = desc.Inputs();
       if (with_dynamic_shape &&
           resize_inputs.find("SizeTensor") != resize_inputs.end() &&
           desc.Input("SizeTensor").size() == 2) {
         return true;
       }
+#endif
 
       auto scale = PADDLE_GET_CONST(std::vector<float>, desc.GetAttr("scale"));
       auto out_h = PADDLE_GET_CONST(int, desc.GetAttr("out_h"));
