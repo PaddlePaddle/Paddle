@@ -102,50 +102,20 @@ def composite_batchnorm(
 @REGISTER_COMPOSITE('gelu')
 def gelu_composite(x, approximate):
     """define composite rule of op gelu"""
-    GELU_CONSTANT = 0.044715
-    M_2_PI = 0.63661977236758134308     #/* 2/pi */. copy from gelu-kernel.cc
     M_SQRT1_2 = 0.70710678118654752440	#/* 1/sqrt(2) */ copy from gelu-kernel.cc
-
-    # gelu(x) = 0.5 * x * (1 + tanh(sqrt(2 / \pi) * (x + 0.044715 * x^{3})))
+    M_2_SQRTPI = 1.12837916709551257390	# /* 2/sqrt(pi) */
+    one = ones(x.shape, x.dtype)
+    half = full(x.shape, 0.5, x.dtype)
     if approximate:
-        ret = multiply(
-            full(x.shape, 0.5, x.dtype),
-            multiply(
-                x,
-                add(
-                    ones(x.shape, x.dtype),
-                    tanh(
-                        multiply(
-                            sqrt(full(x.shape, M_2_PI, x.dtype)),
-                            add(
-                                x,
-                                multiply(
-                                    full(x.shape, GELU_CONSTANT, x.dtype),
-                                    pow(x, 3)
-                                )
-                            )
-                        )
-                    )
-                )
-            )
-        )
-        return ret
+        # gelu(x) = 0.5 * x * (1 + tanh(sqrt(2 / \pi) * (x + 0.044715 * x^{3})))
+        kAlpha = full(x.shape, M_2_SQRTPI * M_SQRT1_2, x.dtype)
+        GELU_CONSTANT = full(x.shape, 0.044715, x.dtype)
+        tanh_out = tanh(kAlpha * (x + GELU_CONSTANT * pow(x, 3)))
+        out = x * half * (one + tanh_out)
+        return out
         
     else:
-        #gelu(x) = 0.5 * x *  (1 + erf(x / sqrt(2)))
-        ret = multiply(
-            full(x.shape, 0.5, x.dtype),
-            multiply(
-                x,
-                add(
-                    ones(x.shape, x.dtype),
-                    erf(
-                        multiply(
-                            x,
-                            full(x.shape, M_SQRT1_2, x.dtype)
-                        )
-                    )
-                )
-            )
-        )
-        return ret
+        # gelu(x) = 0.5 * x *  (1 + erf(x / sqrt(2)))
+        cdf = half * (one + erf(x * full(x.shape, M_SQRT1_2, x.dtype)))
+        out =  x * cdf
+        return out

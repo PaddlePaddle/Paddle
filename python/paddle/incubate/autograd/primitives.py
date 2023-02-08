@@ -34,6 +34,7 @@ from paddle.tensor import erf  # noqa: F401
 from paddle.tensor import erfinv  # noqa: F401
 from paddle.tensor import exp  # noqa: F401
 from paddle.tensor import expm1  # noqa: F401
+from paddle.tensor import full  # noqa: F401
 from paddle.tensor import lgamma  # noqa: F401
 from paddle.tensor import log  # noqa: F401
 from paddle.tensor import log1p  # noqa: F401
@@ -57,7 +58,6 @@ from paddle.tensor import sum  # noqa: F401
 from paddle.tensor import tan  # noqa: F401
 from paddle.tensor import tanh  # noqa: F401
 from paddle.tensor import zeros  # noqa: F401
-from paddle.tensor import full #noqa: F401
 
 math_op = [
     'add',
