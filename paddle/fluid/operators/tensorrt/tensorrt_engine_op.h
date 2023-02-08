@@ -182,7 +182,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
   bool enable_int8_;
   bool enable_fp16_;
   bool use_calib_mode_;
-  bool use_inspector_;
   std::string calibration_data_;
   std::string engine_key_;
   std::string calibration_engine_key_;
@@ -219,7 +218,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
     shape_range_info_path_ = Attr<std::string>("shape_range_info_path");
     allow_build_at_runtime_ = Attr<bool>("allow_build_at_runtime");
     use_static_engine_ = Attr<bool>("use_static_engine");
-    use_inspector_ = HasAttr("use_inspector") && Attr<bool>("use_inspector");
     if (use_static_engine_) {
       model_opt_cache_dir_ = Attr<std::string>("model_opt_cache_dir");
     }
@@ -331,9 +329,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
       return;
     }
     auto *trt_engine = GetEngine(scope, dev_place);
-    if (use_inspector_) {
-      trt_engine->GetEngineInfo();
-    }
     if (trt_engine->with_dynamic_shape()) {
       // get runtime input shapes.
       std::map<std::string, std::vector<int32_t>> runtime_input_shape;
@@ -438,11 +433,32 @@ class TensorRTEngineOp : public framework::OperatorBase {
       calib_res->calib_.reset(new TRTInt8Calibrator(
           calib_buffers, runtime_batch, calibration_engine_key_, dev_place));
       calib_res->thr_.reset(new std::thread([&]() {
+        std::map<std::string, std::vector<int>> min_input_shape;
+        std::map<std::string, std::vector<int>> max_input_shape;
+        std::map<std::string, std::vector<int>> opt_input_shape;
+        std::map<std::string, std::vector<int>> min_shape_tensor;
+        std::map<std::string, std::vector<int>> max_shape_tensor;
+        std::map<std::string, std::vector<int>> opt_shape_tensor;
+        if (shape_range_info_path_.size())
+          inference::DeserializeShapeRangeInfo(shape_range_info_path_,
+                                               &min_input_shape,
+                                               &max_input_shape,
+                                               &opt_input_shape,
+                                               &min_shape_tensor,
+                                               &max_shape_tensor,
+                                               &opt_shape_tensor);
+
         calib_res->engine_.reset(new TensorRTEngine(max_batch_size_,
                                                     workspace_size_,
                                                     precision_mode_,
                                                     calib_res->calib_.get(),
-                                                    dev_place.device));
+                                                    dev_place.device,
+                                                    min_input_shape,
+                                                    max_input_shape,
+                                                    opt_input_shape,
+                                                    min_shape_tensor,
+                                                    max_shape_tensor,
+                                                    opt_shape_tensor));
         VLOG(3) << "start the calib trt engine thread";
         PrepareTRTEngine(scope, calib_res->engine_.get());
       }));

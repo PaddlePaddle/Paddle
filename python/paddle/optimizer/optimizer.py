@@ -34,7 +34,6 @@ from paddle.fluid.framework import (
 from ..fluid import framework, unique_name
 from ..fluid.backward import _get_no_grad_set_name, append_backward
 from ..fluid.framework import Parameter, program_guard
-from ..fluid.initializer import Constant
 from ..fluid.layer_helper import LayerHelper
 from .lr import LRScheduler
 
@@ -276,6 +275,7 @@ class Optimizer:
 
         self._param_dict = self._create_multi_tensor_dict()
         self._auxiliary_vars = {}
+        self._already_create_accumulater = set()
 
     def _set_auxiliary_var(self, key, val):
         self._auxiliary_vars[key] = val
@@ -453,7 +453,8 @@ class Optimizer:
 
             lr_value = float(self._learning_rate())
             self.helper.set_variable_initializer(
-                lr_var, initializer=Constant(value=lr_value)
+                lr_var,
+                initializer=paddle.nn.initializer.Constant(value=lr_value),
             )
         elif isinstance(self._learning_rate, float):
             # only create global lr_var once
@@ -726,7 +727,10 @@ class Optimizer:
         else:
             with device_guard(device):
                 self.helper.set_variable_initializer(
-                    var, initializer=Constant(value=float(fill_value))
+                    var,
+                    initializer=paddle.nn.initializer.Constant(
+                        value=float(fill_value)
+                    ),
                 )
 
         if framework._non_static_mode():
@@ -920,31 +924,38 @@ class Optimizer:
                 self._create_accumulators(target_block, params_acc_dict)
 
             if framework._non_static_mode():
-                if isinstance(parameters_and_grads, list):
-                    for param_and_grad in parameters_and_grads:
-                        if param_and_grad[1] is None:
-                            continue
-                        if param_and_grad[0].stop_gradient is False:
-                            self._append_optimize_op(
-                                target_block, param_and_grad
-                            )
+                found_inf = self._get_auxiliary_var('found_inf')
+                if found_inf:
+                    if isinstance(found_inf, core.eager.Tensor):
+                        self._set_auxiliary_var('found_inf', True)
                 else:
-                    for param_and_grad in parameters_and_grads['params']:
-                        if param_and_grad[1] is None:
-                            continue
-                        if param_and_grad[0].stop_gradient is False:
-                            param_grad_dict = dict()
-                            param_grad_dict['params'] = param_and_grad
-                            param_grad_dict.update(
-                                {
-                                    k: v
-                                    for k, v in parameters_and_grads.items()
-                                    if k != 'params'
-                                }
-                            )
-                            self._append_optimize_op(
-                                target_block, param_grad_dict
-                            )
+                    if isinstance(found_inf, core.eager.Tensor):
+                        self._set_auxiliary_var('found_inf', False)
+                    if isinstance(parameters_and_grads, list):
+                        for param_and_grad in parameters_and_grads:
+                            if param_and_grad[1] is None:
+                                continue
+                            if param_and_grad[0].stop_gradient is False:
+                                self._append_optimize_op(
+                                    target_block, param_and_grad
+                                )
+                    else:
+                        for param_and_grad in parameters_and_grads['params']:
+                            if param_and_grad[1] is None:
+                                continue
+                            if param_and_grad[0].stop_gradient is False:
+                                param_grad_dict = dict()
+                                param_grad_dict['params'] = param_and_grad
+                                param_grad_dict.update(
+                                    {
+                                        k: v
+                                        for k, v in parameters_and_grads.items()
+                                        if k != 'params'
+                                    }
+                                )
+                                self._append_optimize_op(
+                                    target_block, param_grad_dict
+                                )
             else:
                 for param_and_grad in parameters_and_grads:
                     if param_and_grad[1] is None:

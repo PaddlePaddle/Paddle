@@ -81,7 +81,9 @@ class DnnWorkspaceHandle {
 class PADDLE_API GPUContext : public DeviceContext,
                               public TypeInfoTraits<DeviceContext, GPUContext> {
  public:
-  explicit GPUContext(const GPUPlace& place, bool init = true);
+  explicit GPUContext(const GPUPlace& place,
+                      bool init = true,
+                      int stream_priority = 0);
 
   GPUContext(GPUContext&&);
   GPUContext& operator=(GPUContext&&);
@@ -198,7 +200,7 @@ class PADDLE_API GPUContext : public DeviceContext,
 
   // Note that this is a trick implementation, which can be used to partially
   // initialize when the SetAllocator interface is not called.
-  void PartialInitWithoutAllocator();
+  void PartialInitWithoutAllocator(int stream_priority = 0);
   // Note that this is a trick implementation that can be used to initialize
   // resources that require an Allocator when the SetAllocator interface is
   // called.

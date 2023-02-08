@@ -24,7 +24,6 @@ import numpy as np
 import paddle
 from paddle.fluid import core, global_scope, program_guard
 from paddle.fluid.framework import dygraph_only
-from paddle.fluid.initializer import ConstantInitializer
 from paddle.incubate import asp
 
 from .supported_layer_list import (
@@ -882,7 +881,9 @@ class ASPHelper:
                             name=ASPHelper._get_mask_name(param.name),
                             shape=param.shape,
                             dtype=param.dtype,
-                            default_initializer=ConstantInitializer(value=1.0),
+                            default_initializer=paddle.nn.initializer.Constant(
+                                value=1.0
+                            ),
                         )
                         mask_param.stop_gradient = True
                         mask_param.trainable = False

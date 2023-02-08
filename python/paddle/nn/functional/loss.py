@@ -20,10 +20,10 @@ from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
 from paddle.framework import core
 from paddle.utils import deprecated
 
+from ...common_ops_import import Variable
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid.framework import _current_expected_place, in_dygraph_mode
 from ...fluid.layer_helper import LayerHelper
-from ...static import Variable
 from ...tensor.manipulation import reshape
 
 __all__ = []
@@ -254,19 +254,41 @@ def fluid_softmax_with_cross_entropy(
             #        [1.15328646])
     """
     if in_dygraph_mode():
-        if core.is_compiled_with_npu():
-            softmax, backprop, loss = _legacy_C_ops.softmax_with_cross_entropy(
-                logits,
-                label,
-                'soft_label',
-                soft_label,
-                'ignore_index',
-                ignore_index,
-                'numeric_stable_mode',
-                numeric_stable_mode,
-                'axis',
-                axis,
-            )
+        if core.is_compiled_with_custom_device("npu"):
+            if not soft_label:
+                valid_label = (
+                    paddle.cast(label != ignore_index, dtype=label.dtype)
+                    * label
+                )
+                softmax, loss = _legacy_C_ops.softmax_with_cross_entropy(
+                    logits,
+                    valid_label,
+                    'soft_label',
+                    soft_label,
+                    'ignore_index',
+                    ignore_index,
+                    'numeric_stable_mode',
+                    numeric_stable_mode,
+                    'axis',
+                    axis,
+                    'use_softmax',
+                    True,
+                )
+            else:
+                softmax, loss = _legacy_C_ops.softmax_with_cross_entropy(
+                    logits,
+                    label,
+                    'soft_label',
+                    soft_label,
+                    'ignore_index',
+                    ignore_index,
+                    'numeric_stable_mode',
+                    numeric_stable_mode,
+                    'axis',
+                    axis,
+                    'use_softmax',
+                    True,
+                )
         else:
             softmax, loss = _C_ops.cross_entropy_with_softmax(
                 logits,
@@ -293,7 +315,9 @@ def fluid_softmax_with_cross_entropy(
         loss = helper.create_variable_for_type_inference(dtype=logits.dtype)
 
         outputs = {'Softmax': softmax, 'Loss': loss}
-        if core.is_compiled_with_npu() or core.is_compiled_with_mlu():
+        if core.is_compiled_with_custom_device(
+            "npu"
+        ) or core.is_compiled_with_custom_device("mlu"):
             backprop = helper.create_variable_for_type_inference(
                 dtype=logits.dtype
             )
@@ -521,8 +545,7 @@ def edit_distance(
             # [4]
 
     """
-    check_variable_and_dtype(input, 'input', ['int64'], 'edit_distance')
-    check_variable_and_dtype(label, 'label', ['int64'], 'edit_distance')
+
     helper = LayerHelper("edit_distance", **locals())
 
     # remove some tokens from input and labels
@@ -551,6 +574,8 @@ def edit_distance(
             input, label, input_length, label_length, normalized
         )
 
+    check_variable_and_dtype(input, 'input', ['int64'], 'edit_distance')
+    check_variable_and_dtype(label, 'label', ['int64'], 'edit_distance')
     this_inputs = {"Hyps": [input], "Refs": [label]}
     if input_length is not None and label_length is not None:
         this_inputs['HypsLength'] = [input_length]
@@ -953,6 +978,11 @@ def hsigmoid_loss(
             #  [2.11009121]
             #  [1.92374969]]
     """
+    if num_classes < 2:
+        raise ValueError(
+            'Expected num_classes >= 2 (got {})'.format(num_classes)
+        )
+
     if in_dygraph_mode():
         out, _, _ = _C_ops.hsigmoid_loss(
             input,
@@ -1070,16 +1100,16 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
             print(output)
             # [0.068004]
     """
-    check_variable_and_dtype(
-        input, 'input', ['float32', 'float64'], 'smooth_l1_loss'
-    )
-    check_variable_and_dtype(
-        label, 'label', ['float32', 'float64'], 'smooth_l1_loss'
-    )
 
     if in_dygraph_mode():
         out, residual = _C_ops.huber_loss(input, label, delta)
     else:
+        check_variable_and_dtype(
+            input, 'input', ['float32', 'float64'], 'smooth_l1_loss'
+        )
+        check_variable_and_dtype(
+            label, 'label', ['float32', 'float64'], 'smooth_l1_loss'
+        )
         helper = LayerHelper('huber_loss', **locals())
         residual = helper.create_variable_for_type_inference(
             dtype=helper.input_dtype()
@@ -1372,10 +1402,29 @@ def nll_loss(
 
     input_shape = list(input.shape)
     input_dims = len(input_shape)
+    label_shape = list(label.shape)
+    label_dims = len(label_shape)
+
+    if input_dims - 1 != label_dims and input_dims != label_dims:
+        raise ValueError(
+            "Expected input_dims - 1 = label_dims or input_dims == label_dims\
+             (got input_dims{}, label_dims{})".format(
+                input_dims, label_dims
+            )
+        )
+
     if input_dims < 2:
         raise ValueError(
             'Expected 2 or more dimensions (got {})'.format(input_dims)
         )
+
+    if input_shape[1] < 1:
+        raise ValueError(
+            "Expected 1 or more classess (got num classes{})".format(
+                input_shape[1]
+            )
+        )
+
     n = input_shape[0]
     c = input_shape[1]
     if in_dygraph_mode():
@@ -2113,7 +2162,7 @@ def margin_cross_entropy(
     if input_dims - 1 != label_dims and input_dims != label_dims:
         raise ValueError(
             'Expected input_dims - 1 = label_dims or input_dims == label_dims\
-             (got nput_dims{}, label_dims{})'.format(
+             (got input_dims{}, label_dims{})'.format(
                 input_dims, label_dims
             )
         )
@@ -2540,13 +2589,6 @@ def cross_entropy(
         raise ValueError('The dimention of input should be larger than zero!')
 
     label_dims = len(list(label.shape))
-    if input_dims - 1 != label_dims and input_dims != label_dims:
-        raise ValueError(
-            'Expected nput_dims - 1 = label_dims or input_dims == label_dims\
-             (got nput_dims{}, label_dims{})'.format(
-                input_dims, label_dims
-            )
-        )
     if input_dims - 1 == label_dims:
         label = paddle.unsqueeze(label, axis=axis)
 
@@ -2555,9 +2597,11 @@ def cross_entropy(
             valid_label = (
                 paddle.cast(label != ignore_index, dtype=label.dtype) * label
             )
-        if core.is_compiled_with_npu() or core.is_compiled_with_mlu():
+        if core.is_compiled_with_custom_device(
+            "npu"
+        ) or core.is_compiled_with_custom_device("mlu"):
             if not soft_label:
-                _, _, out = _legacy_C_ops.softmax_with_cross_entropy(
+                _, out = _legacy_C_ops.softmax_with_cross_entropy(
                     input,
                     valid_label,
                     'soft_label',
@@ -2572,7 +2616,7 @@ def cross_entropy(
                     use_softmax,
                 )
             else:
-                _, _, out = _legacy_C_ops.softmax_with_cross_entropy(
+                _, out = _legacy_C_ops.softmax_with_cross_entropy(
                     input,
                     label,
                     'soft_label',
@@ -2726,7 +2770,9 @@ def cross_entropy(
         out = helper.create_variable_for_type_inference(dtype=input.dtype)
 
         outputs = {'Softmax': softmax, 'Loss': out}
-        if core.is_compiled_with_npu() or core.is_compiled_with_mlu():
+        if core.is_compiled_with_custom_device(
+            "npu"
+        ) or core.is_compiled_with_custom_device("mlu"):
             backprop = helper.create_variable_for_type_inference(
                 dtype=input.dtype
             )
@@ -2889,8 +2935,8 @@ def sigmoid_focal_loss(
             ``logit``. The target label whose value should be numbers between 0 and 1.
             Available dtype is float32, float64.
         normalizer (Tensor, optional): The number normalizes the focal loss. It has to be
-            a 1-D Tensor whose shape is `[1, ]`. The data type is float32, float64.
-            For object detection task, it is the number of positive samples.
+            a 1-D Tensor with shape `[1, ]` or 0-D Tensor with shape `[]`. The data type
+            is float32, float64. For object detection task, it is the number of positive samples.
             If set to None, the focal loss will not be normalized. Default is None.
         alpha(int|float, optional): Hyper-parameter to balance the positive and negative example,
             it should be between 0 and 1.  Default value is set to 0.25.
@@ -2941,7 +2987,7 @@ def sigmoid_focal_loss(
         normalizer_dims = len(normalizer_shape)
         if normalizer_dims > 1:
             raise ValueError(
-                "Expected one dimension of normalizer in sigmoid_focal_loss but got {}.".format(
+                "Expected zero or one dimension of normalizer in sigmoid_focal_loss but got {}.".format(
                     normalizer_dims
                 )
             )

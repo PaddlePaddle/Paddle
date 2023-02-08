@@ -19,6 +19,7 @@
 #ifdef PADDLE_WITH_HIP
 #include <miopen/miopen.h>
 #endif
+
 #include <glog/logging.h>
 
 #include <algorithm>
@@ -84,7 +85,8 @@ void PaddlePassBuilder::AppendAnalysisPass(const std::string &pass) {
 void PaddlePassBuilder::ClearPasses() { passes_.clear(); }
 
 const std::vector<std::string> kTRTSubgraphPasses({
-  "adaptive_pool2d_convert_global_pass",           //
+  "trt_support_nhwc_pass",
+      "adaptive_pool2d_convert_global_pass",       //
       "shuffle_channel_detect_pass",               //
       "quant_conv2d_dequant_fuse_pass",            //
       "delete_fill_constant_op_pass",              //
@@ -103,11 +105,13 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "trt_multihead_matmul_fuse_pass_v3",            //
       "multihead_matmul_roformer_fuse_pass",          //
       "constant_folding_pass",                        //
+      "trt_flash_multihead_matmul_fuse_pass",         //
+      "trt_cross_multihead_matmul_fuse_pass",         //
       "vit_attention_fuse_pass",                      //
 #if defined _WIN32  // Windows CI is TensorRT7.0. Remove this after upgrading.
 #else
-      "trt_skip_layernorm_fuse_pass",    //
-      "preln_skip_layernorm_fuse_pass",  //
+      "trt_skip_layernorm_fuse_pass",          //
+      "preln_skip_layernorm_fuse_pass",        //
 #endif
       "layernorm_shift_partition_fuse_pass",         //
       "merge_layernorm_fuse_pass",                   //
@@ -128,8 +132,14 @@ const std::vector<std::string> kTRTSubgraphPasses({
       // "yolo_box_fuse_pass",      //
       "dense_fc_to_sparse_pass",                //
       "dense_multihead_matmul_to_sparse_pass",  //
-      "tensorrt_subgraph_pass",                 //
-      "conv_bn_fuse_pass",                      //
+#if defined _WIN32  // Windows CI is TensorRT7.0. Remove this after upgrading.
+#else
+      "elementwise_groupnorm_act_pass",        //
+      "preln_elementwise_groupnorm_act_pass",  //
+      "groupnorm_act_pass",                    //
+#endif
+      "tensorrt_subgraph_pass",  //
+      "conv_bn_fuse_pass",       //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
                            // guaranteed at least v7
 // cudnn8.0 has memory leak problem in conv + eltwise + act, so we
@@ -162,12 +172,12 @@ const std::vector<std::string> kLiteSubgraphPasses({
 // support fp16/bf16 precision, temporarily use low precision pass to prevent
 // running errors. After fusion operator supports low precision, delete this.
 const std::vector<std::string> kGpuLowerPrecisionPasses{
+    "map_op_to_another_pass",
     "identity_scale_op_clean_pass",
     "simplify_with_basic_ops_pass",
     "silu_fuse_pass",
     "delete_quant_dequant_linear_op_pass",
     "delete_weight_dequant_linear_op_pass",
-    "map_depthwise_conv_to_conv_pass",
     "conv_bn_fuse_pass",
     "conv_eltwiseadd_bn_fuse_pass",
     "conv_elementwise_add_act_fuse_pass",
@@ -185,10 +195,11 @@ const std::vector<std::string> kGpuLowerPrecisionPasses{
     "fuse_multi_transformer_layer_pass",
     "gpu_cpu_map_matmul_v2_to_mul_pass",
     "gpu_cpu_map_matmul_v2_to_matmul_pass",
+    "gpu_cpu_map_matmul_to_mul_pass",
     "fc_fuse_pass",
-    "fc_elementwise_layernorm_fuse_pass",
+    // "fc_elementwise_layernorm_fuse_pass",
     "embedding_eltwise_layernorm_fuse_pass",
-};
+    "inplace_op_var_pass"};
 
 const std::vector<std::string> kTrtLowerPrecisionPasses{
     "simplify_with_basic_ops_pass",
@@ -212,12 +223,12 @@ const std::vector<std::string> kCINNCompilerPasses{
 
 GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
-    "identity_scale_op_clean_pass",                                     //
+    "map_op_to_another_pass",                                           //
+        "identity_scale_op_clean_pass",                                 //
         "is_test_pass",                                                 //
         "simplify_with_basic_ops_pass",                                 //
         "delete_quant_dequant_linear_op_pass",                          //
         "delete_weight_dequant_linear_op_pass",                         //
-        "map_depthwise_conv_to_conv_pass",                              //
         "constant_folding_pass",                                        //
         "silu_fuse_pass",                                               //
         "conv_bn_fuse_pass",                                            //
@@ -255,9 +266,10 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv_elementwise_add_fuse_pass",      //
 #endif                                         //
         "transpose_flatten_concat_fuse_pass",  //
-        "constant_folding_pass",               //
-        "conv2d_fusion_layout_transfer_pass",  //
-        "auto_mixed_precision_pass"
+        // TODO(liuyuanle): rewrite this pass with new logic
+        // "conv2d_fusion_layout_transfer_pass",  //
+        "auto_mixed_precision_pass",  //
+        "inplace_op_var_pass",        // should be the last pass.
   });
 
   use_gpu_ = true;

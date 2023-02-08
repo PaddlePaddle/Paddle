@@ -20,8 +20,8 @@ import paddle.nn.functional as F
 import paddle.static as static
 import paddle.utils as utils
 from paddle.distributed.auto_parallel.dist_attribute import (
-    OperatorDistributedAttribute,
-    TensorDistributedAttribute,
+    OperatorDistAttr,
+    TensorDistAttr,
 )
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.auto_parallel.planner import PlanSpace
@@ -98,10 +98,10 @@ def set_default_dist_attr(program, dist_context, process_mesh):
     ops = program.global_block().ops
     vars = program.global_block().vars
     for op in ops:
-        op_dist_attr = OperatorDistributedAttribute()
+        op_dist_attr = OperatorDistAttr()
         op_dist_attr.process_mesh = process_mesh
         for var_name in op.input_arg_names:
-            tensor_dist_attr = TensorDistributedAttribute()
+            tensor_dist_attr = TensorDistAttr()
             tensor_dist_attr.process_mesh = process_mesh
             tensor_dist_attr.dims_mapping = [-1 for i in vars[var_name].shape]
             dist_context.set_tensor_dist_attr_for_program(
@@ -112,7 +112,7 @@ def set_default_dist_attr(program, dist_context, process_mesh):
             )
 
         for var_name in op.output_arg_names:
-            tensor_dist_attr = TensorDistributedAttribute()
+            tensor_dist_attr = TensorDistAttr()
             tensor_dist_attr.process_mesh = process_mesh
             tensor_dist_attr.dims_mapping = [-1 for i in vars[var_name].shape]
             dist_context.set_tensor_dist_attr_for_program(

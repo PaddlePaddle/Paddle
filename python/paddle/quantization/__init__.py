@@ -50,9 +50,11 @@ from .imperative.qat import (
 from .config import QuantConfig
 from .base_quanter import BaseQuanter
 from .factory import quanter
+from .qat import QAT
 
 __all__ = [
     "QuantConfig",
     "BaseQuanter",
     "quanter",
+    "QAT",
 ]

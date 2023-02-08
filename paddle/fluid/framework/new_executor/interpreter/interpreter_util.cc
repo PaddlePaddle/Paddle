@@ -666,21 +666,28 @@ bool BuildOpFuncList(const platform::Place& place,
     op_func_node.output_index = outs_name2id;
 
     const OperatorDistAttr* dist_attr = block.Op(i)->DistAttr();
-    if (dist_attr &&
-        dist_attr->execution_stream() != distributed::auto_parallel::kDefault) {
-      op_func_node.execution_stream_ = dist_attr->execution_stream();
+    if (dist_attr) {
+      if (dist_attr->execution_stream() !=
+          distributed::auto_parallel::kDefault) {
+        op_func_node.execution_stream_ = dist_attr->execution_stream();
+      }
+      op_func_node.stream_priority_ = dist_attr->stream_priority();
+      op_func_node.scheduling_priority_ = dist_attr->scheduling_priority();
+    } else {
+      if (interpreter::IsCommunicationOp(op_type)) {
+        // NOTE(Ruibiao): Dispatching computation before communication improves
+        // multi-stream overlap when the time cost of communication less than
+        // that of the calculation (e.g., ResNet50_bs128_pure_fp16 N4C32
+        // training).
+        op_func_node.scheduling_priority_ = 1;
+      }
     }
 
-    if (dist_attr) {
-      op_func_node.priority_ = dist_attr->scheduling_priority();
-    } else if (interpreter::IsCommunicationOp(op_type)) {
-      // NOTE(Ruibiao): Dispatching computation before communication improves
-      // multi-stream overlap when the time cost of communication less than that
-      // of the calculation (e.g., ResNet50_bs128_pure_fp16 N4C32 training).
-      op_func_node.priority_ = 1;
-    }
-    VLOG(6) << "scheduling priority of " << op_type << " : "
-            << op_func_node.priority_;
+    VLOG(6) << op_type
+            << " : [execution_stream, stream_priority, scheduling_priority] = ["
+            << op_func_node.execution_stream_ << ", "
+            << op_func_node.stream_priority_ << ", "
+            << op_func_node.scheduling_priority_ << "]";
 
     SingleStreamGuard single_stream_guard(ops[i]);
 
@@ -820,7 +827,9 @@ bool BuildOpFuncList(const platform::Place& place,
         }
 
         // step 5. run kernel
-        if (run_phi_kernel) {
+        if (run_phi_kernel &&
+            op_func_node.phi_kernel_->GetKernelRegisteredType() ==
+                phi::KernelRegisteredType::FUNCTION) {
           phi::KernelContext phi_kernel_context;
           op_with_kernel->BuildPhiKernelContext(
               runtime_context, dev_ctx, &phi_kernel_context);
@@ -831,6 +840,12 @@ bool BuildOpFuncList(const platform::Place& place,
                                   op_with_kernel->PhiKernelSignature(),
                                   &phi_kernel_context);
           }
+        } else if (run_phi_kernel &&
+                   op_func_node.phi_kernel_->GetKernelRegisteredType() ==
+                       phi::KernelRegisteredType::STRUCTURE) {
+          ExecutionContext execution_context(
+              *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context);
+          (*op_func_node.phi_kernel_)(&execution_context);
         } else {
           // the place of exec_ctx maybe has changed.
           if (!skip_run) {

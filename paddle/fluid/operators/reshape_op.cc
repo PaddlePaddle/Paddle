@@ -59,6 +59,17 @@ class ReshapeOp : public framework::OperatorWithKernel {
                       platform::errors::InvalidArgument(
                           "Output(Out) of ReshapeOp should not be null."));
 
+    if (ctx->IsRuntime()) {
+      auto *x_var =
+          PADDLE_GET(framework::Variable *, ctx->GetInputVarPtrs("X")[0]);
+      auto *out_var =
+          PADDLE_GET(framework::Variable *, ctx->GetOutputVarPtrs("Out")[0]);
+      // inplace, can not to run infer shape.
+      if (x_var == out_var) {
+        return;
+      }
+    }
+
     if (ctx->HasInputs("ShapeTensor")) {
       // top prority shape
       auto ShapeTensor = ctx->Inputs("ShapeTensor");
@@ -413,27 +424,27 @@ class ReshapeKernel {
     }
     if (platform::is_cpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<phi::CPUContext>();
-      phi::ReshapeKernel(static_cast<const phi::CPUContext &>(dev_ctx),
-                         *in,
-                         pt_scalar_shape,
-                         out);
+      phi::ReshapeInferKernel(static_cast<const phi::CPUContext &>(dev_ctx),
+                              *in,
+                              pt_scalar_shape,
+                              out);
     }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<phi::GPUContext>();
-      phi::ReshapeKernel(static_cast<const phi::GPUContext &>(dev_ctx),
-                         *in,
-                         pt_scalar_shape,
-                         out);
+      phi::ReshapeInferKernel(static_cast<const phi::GPUContext &>(dev_ctx),
+                              *in,
+                              pt_scalar_shape,
+                              out);
     }
 #endif
 #ifdef PADDLE_WITH_XPU
     if (platform::is_xpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<platform::XPUDeviceContext>();
-      phi::ReshapeKernel(static_cast<const phi::XPUContext &>(dev_ctx),
-                         *in,
-                         pt_scalar_shape,
-                         out);
+      phi::ReshapeInferKernel(static_cast<const phi::XPUContext &>(dev_ctx),
+                              *in,
+                              pt_scalar_shape,
+                              out);
     }
 #endif
   }

@@ -71,6 +71,9 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                                             "Indices": ["indices_data"],
                                         },
                                         "op_attrs": dics[0],
+                                        "outputs_dtype": {
+                                            "indices_data": np.int32
+                                        },
                                     }
                                 ]
                                 ops = self.generate_op_config(ops_config)
