@@ -21,8 +21,8 @@ import paddle
 import paddle.nn.functional as F
 from paddle.fluid import core
 
-
 approximate_conds = [True, False]
+
 
 def apply_to_static(net, use_cinn):
     build_strategy = paddle.static.BuildStrategy()
@@ -51,7 +51,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         paddle.seed(2022)
         self.x = paddle.randn([2, 4])
         self.x.stop_gradient = False
-    
+
     def train(self, use_prim):
         for approximate in approximate_conds:
             return self._train(use_prim, approximate)

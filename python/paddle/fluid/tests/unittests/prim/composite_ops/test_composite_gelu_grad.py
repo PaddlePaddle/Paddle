@@ -71,6 +71,7 @@ def expect_grad(inputs):
     gradients = paddle.grad(res, inputs)
     return gradients
 
+
 class TestCompositeGeluPrimBackward(unittest.TestCase):
     "test composite gelu and prim backward"
 
@@ -106,7 +107,6 @@ class TestCompositeGeluPrimBackward(unittest.TestCase):
         expect = expect_grad(tensor_data)[0].numpy()
         actual = self.cal_composite_grad(np_data)[0]
 
-
         assert expect.dtype == actual.dtype
         np.testing.assert_allclose(
             expect,
@@ -125,7 +125,5 @@ class TestCompositeGeluPrimBackward(unittest.TestCase):
                     self.compare_backward()
 
 
-
 if __name__ == '__main__':
     unittest.main()
-

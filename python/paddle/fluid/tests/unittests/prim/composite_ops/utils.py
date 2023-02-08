@@ -24,6 +24,11 @@ TOLERANCE = {
         "backward": {"rtol": 1e-15, "atol": 1e-15},
         "prim_backward": {"rtol": 1e-15, "atol": 1e-15},
     },
+    "float16": {
+        "forward": {"rtol": 1e-15, "atol": 1e-15},
+        "backward": {"rtol": 1e-15, "atol": 1e-15},
+        "prim_backward": {"rtol": 1e-15, "atol": 1e-15},
+    },
 }
 
 # this tolerance is for big composite ops like batch_norm.

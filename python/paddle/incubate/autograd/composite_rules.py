@@ -102,8 +102,10 @@ def composite_batchnorm(
 @REGISTER_COMPOSITE('gelu')
 def gelu_composite(x, approximate):
     """define composite rule of op gelu"""
-    M_SQRT1_2 = 0.70710678118654752440	#/* 1/sqrt(2) */ copy from gelu-kernel.cc
-    M_2_SQRTPI = 1.12837916709551257390	# /* 2/sqrt(pi) */
+    M_SQRT1_2 = (
+        0.70710678118654752440  # /* 1/sqrt(2) */ copy from gelu-kernel.cc
+    )
+    M_2_SQRTPI = 1.12837916709551257390  # /* 2/sqrt(pi) */
     one = ones(x.shape, x.dtype)
     half = full(x.shape, 0.5, x.dtype)
     if approximate:
@@ -113,9 +115,9 @@ def gelu_composite(x, approximate):
         tanh_out = tanh(kAlpha * (x + GELU_CONSTANT * pow(x, 3)))
         out = x * half * (one + tanh_out)
         return out
-        
+
     else:
         # gelu(x) = 0.5 * x *  (1 + erf(x / sqrt(2)))
         cdf = half * (one + erf(x * full(x.shape, M_SQRT1_2, x.dtype)))
-        out =  x * cdf
+        out = x * cdf
         return out
