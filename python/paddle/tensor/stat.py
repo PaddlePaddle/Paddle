@@ -215,7 +215,8 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
     """
     if not in_dygraph_mode():
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'std')
-
+    if len(x.shape) == 0:
+        return x.clone()
     out = var(**locals())
     return paddle.sqrt(out)
 

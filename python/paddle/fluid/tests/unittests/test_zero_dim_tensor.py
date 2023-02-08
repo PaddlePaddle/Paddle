@@ -247,9 +247,6 @@ class TestReduceAPI(unittest.TestCase):
                 paddle.static.append_backward(out.sum())
 
                 out_empty_list = api(x, None)
-                print(api)
-                print(out_empty_list)
-                print(out_empty_list.shape)
                 self.assertEqual(out_empty_list.shape, ())
 
                 fetch_list = [x, out]
