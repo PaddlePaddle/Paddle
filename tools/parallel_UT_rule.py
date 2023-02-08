@@ -2120,7 +2120,6 @@ CPU_PARALLEL_JOB = [
     'test_dist_lookup_sparse_table_fuse_ops',
     'test_dist_fleet_a_sync_optimizer_async',
     'test_c_comm_init_op',
-    'test_fused_attention_pass_with_mp',
     'test_fleet_launch_nproc',
     'test_dist_fleet_simnet',
     'test_fleet_launch_cloud',
