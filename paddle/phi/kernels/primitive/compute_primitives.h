@@ -89,11 +89,7 @@ __device__ __forceinline__ T BlockXReduce(T val, ReduceOp reducer) {
   __syncthreads();
   using details::kWarpSize;
   __shared__ T shared[2 * kWarpSize];
-
-
-#if 1
   int block_dim_x = blockDim.x;
-
   if (blockDim.x > kWarpSize) {
     // Bit operation can be used when kWarpSize is 32 or 64 now
     constexpr int rshift_val =
@@ -108,14 +104,10 @@ __device__ __forceinline__ T BlockXReduce(T val, ReduceOp reducer) {
       shared[wid] = val;
     }
     __syncthreads();
-    //bool is_mask = tid < block_dim_x;
-    //val = is_mask ? shared[lane] : (T)(0.0f);
-    val = shared[bid * block_dim_x + lane];
-    //val = shared[tid];
+    bool is_mask = tid < block_dim_x;
+    val = is_mask ? shared[lane] : (T)(0.0f);
+    //val = shared[bid * block_dim_x + lane];
   }
-#else
-  int block_dim_x = kWarpSize;
-#endif
 
   unsigned mask = 0u;
   CREATE_SHFL_MASK(mask, true);
