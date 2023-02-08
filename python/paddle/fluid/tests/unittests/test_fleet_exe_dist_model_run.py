@@ -64,8 +64,6 @@ class TestDistModelRun(unittest.TestCase):
         # step 3: init the dist model to inference with fake data
         config = core.DistModelConfig()
         config.model_dir = path_prefix
-        config.trainer_endpoints = ["127.0.0.1:8000"]
-        config.current_endpoint = "127.0.0.1:8000"
         config.place = 'GPU'
         dist = core.DistModel(config)
         dist.init()
