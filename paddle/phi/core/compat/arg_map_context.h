@@ -56,6 +56,8 @@ struct KernelSignature {
         attr_names(attrs),
         output_names(outputs) {}
 
+  explicit KernelSignature(const char* kernel_name) : name(kernel_name) {}
+
   // TODO(chenweihang): add assign constructor to solve windows compile
   // problem, remove it later
   KernelSignature(const KernelSignature& other)
