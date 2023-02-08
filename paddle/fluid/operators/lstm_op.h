@@ -27,7 +27,7 @@ namespace operators {
 template <typename DeviceContext, typename T>
 inline void ReorderInitState(const DeviceContext& ctx,
                              const phi::DenseTensor& src,
-                             framework::Vector<size_t> index_lod,
+                             phi::Vector<size_t> index_lod,
                              phi::DenseTensor* dst,
                              bool indexed_src) {
   phi::funcs::CopyMatrixRowsFunctor<DeviceContext, T> row_shuffle;
@@ -95,7 +95,7 @@ class LSTMKernel : public framework::OpKernel<T> {
     lstm_value.prev_state_value = nullptr;
     phi::DenseTensor ordered_c0;
 
-    framework::Vector<size_t> order(batch_gate->lod()[2]);
+    phi::Vector<size_t> order(batch_gate->lod()[2]);
 
     if (cell_t0) {
       // Since the batch computing for LSTM reorders the input sequence
@@ -236,7 +236,7 @@ class LSTMGradKernel : public framework::OpKernel<T> {
     // ordered_h0_g/c0_g is the reordered gradient of hidden/cell
     // initialization.
     phi::DenseTensor ordered_h0, ordered_c0, ordered_h0_g, ordered_c0_g;
-    framework::Vector<size_t> order(batch_gate->lod()[2]);
+    phi::Vector<size_t> order(batch_gate->lod()[2]);
 
     if (c0) {
       ReorderInitState<DeviceContext, T>(
