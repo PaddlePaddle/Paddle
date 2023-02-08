@@ -75,7 +75,7 @@ class GRUKernel : public framework::OpKernel<T> {
         const_cast<T*>(weight_data + 2 * frame_size * frame_size);
     phi::DenseTensor ordered_h0;
 
-    framework::Vector<size_t> order(batch_gate->lod()[2]);
+    phi::Vector<size_t> order(batch_gate->lod()[2]);
 
     if (h0) {
       // Since the batch computing for GRU reorders the input sequences
