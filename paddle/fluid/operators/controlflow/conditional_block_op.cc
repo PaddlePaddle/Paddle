@@ -78,25 +78,8 @@ class ConditionalBlockOp : public ConditionalOp {
               "got a null Scope variable. Please set the Scope variable."));
 
       auto *scopes = scope_var->GetMutable<std::vector<framework::Scope *>>();
-
-      if (scopes->size() == 0 || !FLAGS_control_flow_use_new_executor) {
-        scopes->resize(1);
-        scopes->front() = &scope.NewScope();
-        executor_scope_idx_ = scope.kids().size() - 1;
-      }
-
-      // We need to know whether the scope we cached is still valid.
-      // If not, we need to create a new one.
-      if (scope.kids().size() <= executor_scope_idx_) {
-        VLOG(4) << "[ConditionalBlock] scopes kids size: "
-                << scope.kids().size()
-                << " cached_scope_idx: " << executor_scope_idx_
-                << " scopes.size: " << scopes->size();
-        // we don't clear cached scope because outer executor like PE、hogwild
-        // may drop scope.kids and lead to a double free
-        scopes->front() = &scope.NewScope();
-        executor_scope_idx_ = scope.kids().size() - 1;
-      }
+      scopes->resize(1);
+      scopes->front() = &scope.NewScope();
 
       PADDLE_ENFORCE_GT(
           scopes->size(),
@@ -167,7 +150,6 @@ class ConditionalBlockOp : public ConditionalOp {
   mutable std::shared_ptr<Executor> exec_{nullptr};
   mutable std::unique_ptr<ExecutorPrepareContext> ctx_{nullptr};
   mutable std::shared_ptr<InterpreterCore> core_{nullptr};
-  mutable size_t executor_scope_idx_{0};
 };
 
 class ConditionalBlockInferShape : public framework::InferShapeBase {
@@ -285,7 +267,6 @@ class ConditionalBlockGradOp : public ConditionalOp {
   mutable std::shared_ptr<Executor> exec_{nullptr};
   mutable std::unique_ptr<ExecutorPrepareContext> ctx_{nullptr};
   mutable std::shared_ptr<InterpreterCore> core_{nullptr};
-  mutable size_t executor_scope_idx_{0};
 
  private:
   void AssignLocalGradientToParentScope(
