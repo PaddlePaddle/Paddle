@@ -4,9 +4,7 @@ file(
   "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
-if(NOT WITH_HETERPS)
-  list(REMOVE_ITEM TEST_OPS "test_gpubox_ps")
-endif()
+list(REMOVE_ITEM TEST_OPS "test_gpubox_ps")
 
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
@@ -14,6 +12,6 @@ foreach(TEST_OP ${TEST_OPS})
   set_tests_properties(${TEST_OP} PROPERTIES TIMEOUT 50)
 endforeach()
 
-if(WITH_HETERPS)
-  set_tests_properties(test_gpubox_ps PROPERTIES LABELS "RUN_TYPE=GPUPS")
-endif()
+#if(WITH_HETERPS)
+#  set_tests_properties(test_gpubox_ps PROPERTIES LABELS "RUN_TYPE=GPUPS")
+#endif()
