@@ -2472,6 +2472,7 @@ USE_TRT_CONVERTER(rnn)
 USE_TRT_CONVERTER(fill_constant_batch_size_like)
 USE_TRT_CONVERTER(transformer_input_convert)
 USE_TRT_CONVERTER(cast)
+USE_TRT_CONVERTER(set_value)
 USE_TRT_CONVERTER(recover_padding)
 USE_TRT_CONVERTER(remove_padding)
 USE_TRT_CONVERTER(equal);
