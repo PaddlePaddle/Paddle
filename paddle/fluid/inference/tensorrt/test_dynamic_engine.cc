@@ -962,6 +962,7 @@ TEST_F(TensorRTDynamicShapeGNTest, test_trt_dynamic_shape_groupnorm) {
           ->getOutput(0);
 
   auto *q_layer = TRT_ENGINE_ADD_LAYER(engine_, Quantize, *x, *qscale_tensor);
+  q_layer->setAxis(1);
   auto *q_layer_tensor = q_layer->getOutput(0);
 
   int gn_num = n_ * groups_;
@@ -989,6 +990,7 @@ TEST_F(TensorRTDynamicShapeGNTest, test_trt_dynamic_shape_groupnorm) {
   auto *gn_tensor = groupnorm_layer->getOutput(0);
   auto *dq_layer =
       TRT_ENGINE_ADD_LAYER(engine_, Dequantize, *gn_tensor, *dqscale_tensor);
+  dq_layer->setAxis(1);
 
   PADDLE_ENFORCE_NOT_NULL(groupnorm_layer,
                           platform::errors::InvalidArgument(
