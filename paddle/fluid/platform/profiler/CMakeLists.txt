@@ -29,7 +29,7 @@ cc_library(
 cc_library(
   cpu_utilization
   SRCS cpu_utilization.cc
-  DEPS phi_backends os_info enforce glog)
+  DEPS phi_backends phi_os_info enforce glog)
 cc_library(
   new_profiler
   SRCS profiler.cc

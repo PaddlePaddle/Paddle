@@ -27,14 +27,10 @@ cc_test(
   cpu_info_test
   SRCS cpu_info_test.cc
   DEPS phi_backends)
-cc_library(
-  os_info
-  SRCS os_info.cc
-  DEPS enforce)
 cc_test(
   os_info_test
   SRCS os_info_test.cc
-  DEPS os_info)
+  DEPS phi_os_info)
 
 if(WITH_GPU)
   nv_library(
@@ -314,7 +310,7 @@ if(WITH_GPU)
   nv_library(
     profiler
     SRCS profiler.cc profiler.cu
-    DEPS os_info
+    DEPS phi_os_info
          phi_device_tracer
          gpu_info
          enforce
@@ -328,7 +324,7 @@ elseif(WITH_ROCM)
   hip_library(
     profiler
     SRCS profiler.cc profiler.cu
-    DEPS os_info
+    DEPS phi_os_info
          phi_device_tracer
          gpu_info
          enforce
@@ -341,7 +337,7 @@ else()
   cc_library(
     profiler
     SRCS profiler.cc
-    DEPS os_info
+    DEPS phi_os_info
          phi_device_tracer
          enforce
          new_profiler

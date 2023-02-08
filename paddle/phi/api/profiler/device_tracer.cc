@@ -22,7 +22,6 @@ limitations under the License. */
 #include <thread>  // NOLINT
 
 #include "glog/logging.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/enforce.h"
 
 DECLARE_bool(enable_host_event_recorder_hook);
@@ -689,14 +688,14 @@ class DeviceTracerImpl : public DeviceTracer {
       for (const auto &r : tmp) {
         auto *event = profile_pb.add_mem_events();
         event->set_device_id(0);
-        if (paddle::platform::is_cpu_place(r.place)) {
+        if (r.place.GetType() == phi::AllocationType::CPU) {
           event->set_place(proto::MemEvent::CPUPlace);
-        } else if (paddle::platform::is_gpu_place(r.place)) {
+        } else if (r.place.GetType() == phi::AllocationType::GPU) {
           event->set_place(proto::MemEvent::CUDAPlace);
           event->set_device_id(r.place.GetDeviceId());
-        } else if (paddle::platform::is_cuda_pinned_place(r.place)) {
+        } else if (r.place.GetType() == phi::AllocationType::GPUPINNED) {
           event->set_place(proto::MemEvent::CUDAPinnedPlace);
-        } else if (paddle::platform::is_npu_place(r.place)) {
+        } else if (r.place.GetType() == phi::AllocationType::NPU) {
           event->set_place(proto::MemEvent::NPUPlace);
         } else {
           PADDLE_THROW(
