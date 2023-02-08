@@ -34,7 +34,7 @@ limitations under the License. */
           phi::RegType::INNER,                                             \
           #kernel_name,                                                    \
           dev_type,                                                        \
-          DATALAYOUT(layout),                                              \
+          DATA_LAYOUT(layout),                                             \
           ::phi::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,      \
           [](const phi::KernelKey& kernel_key, phi::Kernel* kernel) {},    \
           PHI_KERNEL(kernel_fn),                                           \
