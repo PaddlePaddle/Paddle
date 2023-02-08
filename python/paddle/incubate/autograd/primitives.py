@@ -18,10 +18,12 @@ from paddle.tensor import acosh  # noqa: F401
 from paddle.tensor import add  # noqa: F401
 from paddle.tensor import asin  # noqa: F401
 from paddle.tensor import asinh  # noqa: F401
+from paddle.tensor import assign  # noqa: F401
 from paddle.tensor import atan  # noqa: F401
 from paddle.tensor import atanh  # noqa: F401
 from paddle.tensor import broadcast_shape  # noqa: F401
 from paddle.tensor import broadcast_to  # noqa: F401
+from paddle.tensor import cast  # noqa: F401
 from paddle.tensor import cos  # noqa: F401
 from paddle.tensor import cosh  # noqa: F401
 from paddle.tensor import cumprod  # noqa: F401
@@ -106,7 +108,9 @@ sub_prim = [
 ]
 
 others = [
+    'assign',
     'broadcast_to',
+    'cast',
     'fill_constant',
     'reshape',
 ]

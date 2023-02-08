@@ -19,6 +19,7 @@ from .attribute import shape  # noqa: F401
 from .attribute import real  # noqa: F401
 from .attribute import imag  # noqa: F401
 from .attribute import is_floating_point  # noqa: F401
+from .creation import assign  # noqa: F401
 from .creation import create_parameter  # noqa: F401
 from .creation import create_tensor  # noqa: F401
 from .creation import to_tensor  # noqa: F401
@@ -291,6 +292,7 @@ from .einsum import einsum  # noqa: F401
 
 # this list used in math_op_patch.py for _binary_creator_
 tensor_method_func = [  # noqa
+    'assign',
     'create_parameter',
     'create_tensor',
     'matmul',
