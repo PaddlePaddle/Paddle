@@ -120,38 +120,21 @@ class TestConvActOneDNNFusePass(PassAutoScanTest):
             )
         )
 
-        # 9. Generate legal input:ResidualData of conv2d
-        res_shape = []
-        if draw(st.booleans()):
-            res_shape = draw(
-                st.lists(
-                    st.integers(min_value=1, max_value=100),
-                    min_size=4,
-                    max_size=4,
-                )
-            )
-
         # 10. Generate legal shape of input:bias of conv2d
-        conv_bias_shape = []
         inputs = dict()
         weights = dict()
         if draw(st.booleans()):
-            conv_bias_shape = [f_shape[0]]
             inputs = {
                 'Input': ['input_x'],
                 'Filter': ['filter'],
-                'ResidualData': ['residualdata'],
-                'Bias': ['conv_bias'],
             }
             weights = {
                 'filter': TensorConfig(shape=f_shape),
-                'conv_bias': TensorConfig(shape=conv_bias_shape),
             }
         else:
             inputs = {
                 'Input': ['input_x'],
                 'Filter': ['filter'],
-                'ResidualData': ['residualdata'],
             }
             weights = {'filter': TensorConfig(shape=f_shape)}
 
@@ -235,7 +218,6 @@ class TestConvActOneDNNFusePass(PassAutoScanTest):
             weights=weights,
             inputs={
                 'input_x': TensorConfig(shape=x_shape),
-                'residualdata': TensorConfig(shape=res_shape),
             },
             outputs=ops[-1].outputs['Out'],
         )
