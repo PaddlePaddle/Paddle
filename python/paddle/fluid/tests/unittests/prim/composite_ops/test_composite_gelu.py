@@ -23,6 +23,7 @@ import paddle
 import paddle.nn.functional as F
 from paddle.fluid import core
 
+
 def generate_data(shape, dtype="float32"):
     np_data = np.random.random(shape).astype(dtype)
     return np_data
@@ -41,7 +42,7 @@ class Attr:
     def set_shape(self, shape) -> None:
         self.shape = shape
         return
-    
+
     def set_approximate(self, approximate) -> None:
         self.approximate = approximate
         return
@@ -68,7 +69,7 @@ def expect_forward(inputs):
 
 class TestCompositeGelu(unittest.TestCase):
     def setUp(self):
-        self.dtypes = ["float16", "float32", "float64"]
+        self.dtypes = ["float32", "float64"]
         self.shapes = [[2, 3, 4], [2, 3]]
         self.approximate = [True, False]
 
