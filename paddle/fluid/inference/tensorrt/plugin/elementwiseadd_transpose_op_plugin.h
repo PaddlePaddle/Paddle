@@ -17,6 +17,8 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 
 namespace paddle {
@@ -59,10 +61,10 @@ class ElementwiseAddTransposePluginDynamic : public DynamicPluginTensorRT {
                                  int nbInputs,
                                  int nbOutputs) TRT_NOEXCEPT override;
 
-  void configurePlugin(const nvinfer1::DynamicPluginTensorDesc* in,
+  void configurePlugin(const nvinfer1::DynamicPluginTensorDesc* input_desc,
                        int nbInputs,
-                       const nvinfer1::DynamicPluginTensorDesc* out,
-                       int nbOutputs) TRT_NOEXCEPT override {}
+                       const nvinfer1::DynamicPluginTensorDesc* output_desc,
+                       int nbOutputs) TRT_NOEXCEPT override;
 
   size_t getWorkspaceSize(const nvinfer1::PluginTensorDesc* inputs,
                           int nbInputs,
@@ -87,6 +89,13 @@ class ElementwiseAddTransposePluginDynamic : public DynamicPluginTensorRT {
  private:
   int axis_;
   std::vector<int> output_shape_;
+  phi::DenseTensorMeta x_meta_;
+  phi::DenseTensorMeta y_meta_;
+  phi::DenseTensorMeta out_meta_;
+  phi::DenseTensor ele_out_tensor_;
+  int x_numel_ = -1;
+  int y_numel_ = -1;
+  int out_numel_ = -1;
 };
 
 class ElementwiseAddTransposePluginDynamicCreator
