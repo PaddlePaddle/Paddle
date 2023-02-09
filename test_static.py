@@ -20,6 +20,7 @@ paddle.enable_static()
 
 MAX_SIZE_QUERY = 6
 MAX_SIZE_RESPONSE = 1000
+RES_DTYPE = 'str'
 
 # network
 in_query = fluid.data(name='X', shape=[MAX_SIZE_QUERY], dtype='int32')
@@ -55,7 +56,9 @@ cur_block.append_op(
         'succeed': out_succeed,
         'Out': out_data,
     },
-    attrs={'res_dtype': 'str'},
+    attrs={
+        'res_dtype': RES_DTYPE,
+    },
 )
 
 # data
@@ -78,6 +81,9 @@ succeed, data, = exe.run(
     fetch_list=[out_succeed, out_data],
 )
 if succeed:
-    print('output:', data)
+    if RES_DTYPE == 'str':
+        print('output:', data.tobytes().decode('utf-8'))
+    else:
+        print('output:', data)
 else:
     print('request failed')
