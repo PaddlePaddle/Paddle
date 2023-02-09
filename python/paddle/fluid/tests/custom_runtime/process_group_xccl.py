@@ -19,17 +19,16 @@ import numpy as np
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.dygraph.parallel import ParallelEnv
 
 
 def init_process_group(strategy=None):
-    nranks = ParallelEnv().nranks
-    rank = ParallelEnv().local_rank
+    nranks = paddle.distributed.ParallelEnv().nranks
+    rank = paddle.distributed.ParallelEnv().local_rank
     is_master = True if rank == 0 else False
     store = paddle.fluid.core.TCPStore("127.0.0.1", 6173, is_master, nranks)
     pg_group = core.ProcessGroupCustom.create(
         store,
-        ParallelEnv().device_type,
+        paddle.distributed.ParallelEnv().device_type,
         rank,
         nranks,
     )

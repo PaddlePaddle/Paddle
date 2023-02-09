@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import random
+import sys
 import unittest
 
 import numpy as np
@@ -20,26 +21,19 @@ from get_gpt_model import FakeDataset, generate_model
 
 import paddle
 from paddle.distributed.fleet import auto
+from paddle.fluid.dygraph.parallel import ParallelEnv
+
+sys.path.append("..")
+from test_sparse_addmm_op import get_cuda_version
 
 
-def apply_pass(use_amp=False, level=None):
+def apply_pass(use_fused_passes=False, fused_passes_list=[]):
     strategy = auto.Strategy()
     strategy.auto_mode = "semi"
     strategy.reinit = True
-    if use_amp:
-        amp = strategy.amp
-        amp.enable = True
-        amp.custom_white_list = ['softmax', 'layer_norm', 'gelu']
-        amp.custom_black_list = [
-            'c_softmax_with_cross_entropy',
-            'elementwise_div',
-            'reduce_sum',
-        ]
-        amp.init_loss_scaling = 32768
-        amp.use_fp16_guard = False
-        amp.use_pure_fp16 = level in ["o2", "o3"]
-        amp.use_optimizer_fp16 = level == "o3"
-        print("amp level: ", level)
+    fused_passes = strategy.fused_passes
+    fused_passes.enable = use_fused_passes
+    fused_passes.fused_passes_list = fused_passes_list
     return strategy
 
 
@@ -48,12 +42,12 @@ def reset_prog():
     paddle.fluid.framework.switch_startup_program(paddle.static.Program())
 
 
-class TestAMPPass(unittest.TestCase):
+class TestFusedPassBaseList(unittest.TestCase):
     def setUp(self):
         self.rtol = 1e-5
         self.atol = 1e-8
         self.batch_size = 1
-        self.batch_num = 10
+        self.batch_num = 1
         self.clip_norm = 0.2
         self.dataset = FakeDataset(self.batch_size * self.batch_num)
 
@@ -61,16 +55,16 @@ class TestAMPPass(unittest.TestCase):
         paddle.seed(2021)
         np.random.seed(2021)
         random.seed(2021)
-        place = paddle.fluid.CUDAPlace(paddle.distributed.ParallelEnv().dev_id)
+        place = paddle.fluid.CUDAPlace(ParallelEnv().dev_id)
         engine._executor = paddle.static.Executor(place)
 
-    def get_engine(self, use_amp=False, level=None):
+    def get_engine(self, use_fused_passes=False, fused_passes_list=[]):
         reset_prog()
 
-        strategy = apply_pass(use_amp, level)
+        strategy = apply_pass(use_fused_passes, fused_passes_list)
         clip = paddle.nn.ClipGradByGlobalNorm(self.clip_norm)
         opt = paddle.optimizer.AdamW(learning_rate=0.00001, grad_clip=clip)
-        model, loss = generate_model("mp")
+        model, loss = generate_model("serial")
 
         engine = auto.Engine(model, loss, opt, strategy=strategy)
         self.init(engine)
@@ -87,32 +81,26 @@ class TestAMPPass(unittest.TestCase):
             ),
         )
 
-    def test_amp_pass(self):
-        # mp2 training
-        mp_engine = self.get_engine()
-        history = mp_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        mp_losses = np.array(history.history["loss"])
-
-        # mp2 amp-o1 training
-        amp_o1_engine = self.get_engine(True, "o1")
-        history = amp_o1_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        amp_o1_losses = np.array(history.history["loss"])
-        amp_o1_engine.evaluate(self.dataset, 3, batch_size=self.batch_size)
-        # self.check_results(mp_losses, amp_o1_losses)
-
-        # mp2 amp-o2 training
-        amp_o2_engine = self.get_engine(True, "o2")
-        history = amp_o2_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        amp_o2_losses = np.array(history.history["loss"])
-        amp_o2_engine.evaluate(self.dataset, 3, batch_size=self.batch_size)
-        # self.check_results(mp_losses, amp_o2_losses)
-
-        # mp2 amp-o3 training
-        amp_o3_engine = self.get_engine(True, "o3")
-        history = amp_o3_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        amp_o3_losses = np.array(history.history["loss"])
-        amp_o3_engine.evaluate(self.dataset, 3, batch_size=self.batch_size)
-        # self.check_results(mp_losses, amp_o3_losses)
+    def test_passes(self):
+        losses = []
+        if get_cuda_version() >= 11060:
+            for use_fused_passes in [True, False]:
+                engine = self.get_engine(
+                    use_fused_passes,
+                    [
+                        "fuse_bn_act",
+                        "fused_attention",
+                        "fuse_optimizer",
+                        "fuse_gemm_epilogue",
+                        "fuse_bn_add_act",
+                        "fuse_relu_depthwise_conv",
+                    ],
+                )
+                history = engine.fit(
+                    self.dataset, 3, batch_size=self.batch_size
+                )
+                losses.append(np.array(history.history["loss"]))
+            self.check_results(losses[0], losses[1])
 
 
 if __name__ == "__main__":
