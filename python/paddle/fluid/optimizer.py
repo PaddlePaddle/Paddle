@@ -4229,9 +4229,7 @@ class ExponentialMovingAverage:
                 # bias correction
                 with layers.control_flow.Switch() as switch:
                     with switch.case(global_step > 0):
-                        paddle.assign(
-                            output=param, input=ema / (1.0 - decay_pow)
-                        )
+                        paddle.assign(ema / (1.0 - decay_pow), output=param)
                     with switch.default():
                         paddle.assign(ema, output=param)
 
