@@ -34,27 +34,21 @@ class RpcVocabulary {
     return instance;
   }
 
-  void Init(const std::string& path) {
-    if (path_ == path) {
-      return;
-    }
-    std::ifstream vocab_file(path);
-    std::string word;
-    int id;
-    while (vocab_file >> word >> id) {
-      vocab_.emplace(id, word);
-    }
-    path_ = path;
-  }
+  void Init(const std::string& path);
 
-  bool Contains(int id) { return vocab_.count(id) > 0; }
+  bool Contains(int id) { return ids_to_words_.count(id) > 0; }
 
   // NOTE: an exception will be raised if id not exist
-  std::string Get(int id) { return vocab_.at(id); }
+  std::string Get(int id) { return ids_to_words_.at(id); }
+
+  std::string Get(std::vector<int> ids,
+                  bool aggressive_break = false,
+                  const std::string& stop_token = "[gEND]");
 
  private:
   std::string path_;
-  std::unordered_map<int, std::string> vocab_;
+  std::unordered_map<int, std::string> ids_to_words_;
+  std::unordered_map<std::string, int> words_to_ids_;
 };
 
 class RpcRequestStore {

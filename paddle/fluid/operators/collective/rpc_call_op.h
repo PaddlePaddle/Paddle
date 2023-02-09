@@ -73,17 +73,6 @@ void HandleServiceResponse(brpc::Controller* ctrl,
   event->signal();
 }
 
-std::unordered_map<int, std::string> GetVocabulary(std::string path) {
-  std::unordered_map<int, std::string> vocab;
-  std::ifstream vocab_file(path);
-  std::string word;
-  int id;
-  while (vocab_file >> word >> id) {
-    vocab.emplace(id, word);
-  }
-  return vocab;
-}
-
 template <typename T>
 class RpcCallOpKernel : public framework::OpKernel<T> {
  public:
@@ -98,13 +87,7 @@ class RpcCallOpKernel : public framework::OpKernel<T> {
     auto vocab = platform::RpcVocabulary::Instance();
     vocab.Init(vocab_path);
 
-    std::string query;
-    for (int src_id : src_ids_vec) {
-      if (!vocab.Contains(src_id)) {
-        break;
-      }
-      query += vocab.Get(src_id);
-    }
+    const std::string query = vocab.Get(src_ids_vec);
 
     // url
     auto url_id_tensor = ctx.Input<phi::DenseTensor>("url_id");
