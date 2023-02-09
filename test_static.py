@@ -20,7 +20,9 @@ paddle.enable_static()
 
 MAX_SIZE_QUERY = 6
 MAX_SIZE_RESPONSE = 1000
-RES_DTYPE = 'str'
+
+USE_IDS = True
+RES_DTYPE = 'float'
 
 # network
 in_query = fluid.data(name='X', shape=[MAX_SIZE_QUERY], dtype='int32')
@@ -36,7 +38,6 @@ cur_block.append_op(
     inputs={
         'X': in_query,
         'url_id': in_url_id,
-        'use_ids': True,
     },
     outputs={'Out': req_id},
     attrs={
@@ -45,6 +46,7 @@ cur_block.append_op(
             'http://10.174.140.91:2001/wenxin/inference',
         ],
         'vocab_path': '/work/Paddle/vocab.txt',
+        'use_ids': USE_IDS,
     },
 )
 cur_block.append_op(
