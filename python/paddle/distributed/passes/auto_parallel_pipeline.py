@@ -18,17 +18,9 @@ import os
 from paddle.fluid import core
 from .pass_base import PassBase, register_pass
 from paddle.fluid.framework import Program, Parameter
-from paddle.distributed.fleet.fleet_executor_utils import (
-    TaskNode,
-    FleetExecutorUtils,
-)
-from paddle.distributed.fleet.meta_optimizers.common import (
-    OpRole,
-    OP_ROLE_KEY,
-    is_loss_grad_op,
-)
+from paddle.distributed.fleet.fleet_executor_utils import TaskNode
+from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
-# from paddle.distributed.auto_parallel.partitioner import __not_shape_var_type__
 from paddle.distributed.auto_parallel.utils import (
     is_forward_op,
     is_backward_op,
@@ -64,6 +56,7 @@ class PipelinePass(PassBase):
         self._dist_context = self.get_attr("dist_context")
         self._acc_steps = self.get_attr("accumulate_steps")
         self._mode = self.get_attr("schedule_mode")
+        self._gen_bsz = self.get_attr("generation_batch_size")
         self._program = main_program
 
         if self._mode == "1F1B":
@@ -244,29 +237,15 @@ class PipelinePass(PassBase):
             src_var = src_block._var_recursive(src_varname)
         if src_var.type in __not_shape_var_type__:
             persist = getattr(src_var, 'persistable', False)
-            try:
-                dst_block.create_var(
-                    type=src_var.type,
-                    name=src_var.name,
-                    shape=src_var.shape,
-                    dtype=src_var.dtype,
-                    lod_level=src_var.lod_level,
-                    persistable=persist,
-                    error_clip=src_var.error_clip,
-                    stop_gradient=src_var.stop_gradient,
-                    is_data=src_var.is_data,
-                    belong_to_optimizer=src_var.belong_to_optimizer,
-                )
-            except:
-                dst_block.create_var(
-                    type=src_var.type,
-                    name=src_var.name,
-                    persistable=persist,
-                    error_clip=src_var.error_clip,
-                    stop_gradient=src_var.stop_gradient,
-                    is_data=src_var.is_data,
-                    belong_to_optimizer=src_var.belong_to_optimizer,
-                )
+            dst_block.create_var(
+                type=src_var.type,
+                name=src_var.name,
+                persistable=persist,
+                error_clip=src_var.error_clip,
+                stop_gradient=src_var.stop_gradient,
+                is_data=src_var.is_data,
+                belong_to_optimizer=src_var.belong_to_optimizer,
+            )
         else:
             if isinstance(src_var, Parameter):
                 self._create_param(dst_block, src_var)
@@ -290,214 +269,6 @@ class PipelinePass(PassBase):
                 self._create_var(
                     src_block, dst_block, output_varname, force_create
                 )
-
-    def _task_1f1b(self):
-        cur_rank = int(os.getenv("PADDLE_TRAINER_ID", 0))
-        trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS", "").split(',')
-        nrank = len(trainer_endpoints)
-        pp_stages = len(self._dist_context.process_meshes)
-        num_of_functionality = 4
-
-        # compute current pp stage
-        for idx, process_mesh in enumerate(self._dist_context.process_meshes):
-            if cur_rank in process_mesh.processes:
-                pp_idx = idx
-                break
-        max_slot_times = int(pp_stages - pp_idx)
-
-        print("cur_rank:", cur_rank)
-        print("pp stage:", pp_idx)
-        print("process_meshes:", self._dist_context.process_meshes)
-        for process_mesh in self._dist_context.process_meshes:
-            print("    processes:", process_mesh.processes)
-
-        # create program with op_role
-        lr_prog, fwd_prog, bwd_prog, opt_prog = (
-            Program(),
-            Program(),
-            Program(),
-            Program(),
-        )
-        for idx, src_block in enumerate(self._program.blocks):
-            if idx == 0:
-                lr_block = lr_prog.block(0)
-                fwd_block = fwd_prog.block(0)
-                bwd_block = bwd_prog.block(0)
-                opt_block = opt_prog.block(0)
-            else:
-                lr_block = lr_prog._create_block(
-                    parent_idx=src_block.parent_idx
-                )
-                fwd_block = fwd_prog._create_block(
-                    parent_idx=src_block.parent_idx
-                )
-                bwd_block = bwd_prog._create_block(
-                    parent_idx=src_block.parent_idx
-                )
-                opt_block = opt_prog._create_block(
-                    parent_idx=src_block.parent_idx
-                )
-                lr_block._set_forward_block_idx(src_block.forward_block_idx)
-                fwd_block._set_forward_block_idx(src_block.forward_block_idx)
-                bwd_block._set_forward_block_idx(src_block.forward_block_idx)
-                opt_block._set_forward_block_idx(src_block.forward_block_idx)
-
-            # split the program based on the op_role
-            for op in src_block.ops:
-                if is_lr_sched_op(op):
-                    self._create_program(src_block, lr_block, op)
-                elif is_forward_op(op):
-                    self._create_program(src_block, fwd_block, op)
-                elif is_backward_op(op):
-                    self._create_program(src_block, bwd_block, op)
-                elif is_optimize_op(op):
-                    self._create_program(src_block, opt_block, op)
-                else:
-                    raise ValueError(
-                        "The op role: "
-                        + str(op.attr('op_role'))
-                        + " isn't one of LRSched, Forward, Backward or Optimizer."
-                    )
-
-        lr_prog._sync_with_cpp()
-        fwd_prog._sync_with_cpp()
-        bwd_prog._sync_with_cpp()
-        opt_prog._sync_with_cpp()
-
-        lr_prog._rollback()
-        fwd_prog._rollback()
-        bwd_prog._rollback()
-        opt_prog._rollback()
-        # print("lr*******************")
-        # print(lr_prog)
-        # print("fwd*******************")
-        # print(fwd_prog)
-        # print("bwd*******************")
-        # print(bwd_prog)
-        # print("opt*******************")
-        # print(opt_prog)
-
-        # Create task nodes.
-        lr_task_node = TaskNode(
-            rank=cur_rank,
-            max_run_times=self._acc_steps,
-            max_slot_times=max_slot_times,
-            program=lr_prog,
-            task_id=int(cur_rank * num_of_functionality + 0),
-            node_type="Amplifier",
-            lazy_initialize=True,
-        )
-        lr_task_node.set_run_pre_steps(self._acc_steps)
-        fwd_task_node = TaskNode(
-            rank=cur_rank,
-            max_run_times=self._acc_steps,
-            max_slot_times=max_slot_times,
-            program=fwd_prog,
-            task_id=int(cur_rank * num_of_functionality + 1),
-            node_type="Compute",
-            lazy_initialize=True,
-        )
-        bwd_task_node = TaskNode(
-            rank=cur_rank,
-            max_run_times=self._acc_steps,
-            max_slot_times=max_slot_times,
-            program=bwd_prog,
-            task_id=int(cur_rank * num_of_functionality + 2),
-            node_type="Compute",
-            lazy_initialize=True,
-        )
-        opt_task_node = TaskNode(
-            rank=cur_rank,
-            max_run_times=self._acc_steps,
-            max_slot_times=max_slot_times,
-            program=opt_prog,
-            task_id=int(cur_rank * num_of_functionality + 3),
-            node_type="Amplifier",
-            lazy_initialize=True,
-        )
-        opt_task_node.set_run_pre_steps(self._acc_steps)
-        opt_task_node.set_run_at_offset(self._acc_steps - 1)
-        task_nodes = {
-            "lr": lr_task_node,
-            "fwd": fwd_task_node,
-            "bwd": bwd_task_node,
-            "opt": opt_task_node,
-        }
-
-        # get upstream ranks and downstream ranks of cur_rank
-        up_down_streams = self._dist_context.up_down_streams
-        pp_upstream = up_down_streams.ups(cur_rank)
-        pp_downstream = up_down_streams.downs(cur_rank)
-
-        # set upstream/downstream for task_nodes of cur_rank
-        for i, (task_role, task_node) in enumerate(task_nodes.items()):
-
-            cur_id = int(cur_rank * num_of_functionality + i)
-            ups = []
-            downs = []
-
-            # set upstream/downstream and buffersize in pipeline stage
-            pp_buff_size = int(pp_stages - pp_idx)
-            prev_id = cur_id - 1
-            next_id = cur_id + 1
-            if task_role != "lr":
-                buf_size = pp_buff_size if task_role == "bwd" else 2
-                ups.append((prev_id, buf_size))
-            if task_role != "opt":
-                buf_size = pp_buff_size if task_role == "fwd" else 2
-                downs.append((next_id, buf_size))
-
-            # set upstream/downstream and buffersize cross pipeline stage
-            for upstream in pp_upstream:
-                upstream_id = int(upstream * num_of_functionality + i)
-                if task_role == "fwd":
-                    if upstream != -1:
-                        ups.append((upstream_id, 2))
-                elif task_role == "bwd":
-                    if upstream != -1:
-                        downs.append((upstream_id, 2))
-            for downstream in pp_downstream:
-                downstream_id = int(downstream * num_of_functionality + i)
-                if task_role == "fwd":
-                    if downstream != -1:
-                        downs.append((downstream_id, 2))
-                elif task_role == "bwd":
-                    if downstream != -1:
-                        ups.append((downstream_id, 2))
-
-            for up in ups:
-                print(
-                    "Task:",
-                    cur_id,
-                    "'s upstream includes:",
-                    up[0],
-                    ", buffer size is:",
-                    up[1],
-                )
-                task_node.add_upstream_task(up[0], up[1])
-            for down in downs:
-                print(
-                    "Task:",
-                    cur_id,
-                    "'s downstream includes:",
-                    down[0],
-                    ", buffer size is:",
-                    down[1],
-                )
-                task_node.add_downstream_task(down[0], down[1])
-
-        # record global message: task_id_to_rank
-        task_id_to_rank = {}
-        for i in range(nrank):
-            for j in range(num_of_functionality):
-                task_id_to_rank[int(i * num_of_functionality + j)] = i
-
-        self._program._pipeline_opt = {}
-        self._program._pipeline_opt['fleet_opt'] = {
-            "tasks": list(task_nodes.values()),
-            "task_id_to_rank": task_id_to_rank,
-            "num_micro_batches": self._acc_steps,
-        }
 
     def _get_pp_stage(self, rank):
         pp_idx = None
@@ -594,25 +365,25 @@ class PipelinePass(PassBase):
         send_prog._sync_with_cpp()
         recv_prog._sync_with_cpp()
 
-        print("=" * 20)
-        print("start_prog:")
-        print(start_prog)
+        # print("=" * 20)
+        # print("start_prog:")
+        # print(start_prog)
 
-        print("=" * 20)
-        print("cond_prog:")
-        print(cond_prog)
+        # print("=" * 20)
+        # print("cond_prog:")
+        # print(cond_prog)
 
-        print("=" * 20)
-        print("send_prog:")
-        print(send_prog)
+        # print("=" * 20)
+        # print("send_prog:")
+        # print(send_prog)
 
-        print("=" * 20)
-        print("recv_prog:")
-        print(recv_prog)
+        # print("=" * 20)
+        # print("recv_prog:")
+        # print(recv_prog)
 
-        print("=" * 20)
-        print("end_prog:")
-        print(end_prog)
+        # print("=" * 20)
+        # print("end_prog:")
+        # print(end_prog)
 
         assert cond_var_name is not None
 
@@ -659,25 +430,29 @@ class PipelinePass(PassBase):
         )
 
         # add dependencies for task nodes intra stage
-        inf = 2**31 - 1
+        inf = -1
         pp_buff_size = int(pp_stages - cur_pp_stage)
-        start_task_node.add_downstream_task(cond_task_node.task_id(), pp_stages)
+        start_task_node.add_downstream_task(
+            cond_task_node.task_id(), self._gen_bsz
+        )
         print(
             "Task ",
             start_task_node.task_id(),
             "'s downstream is:",
             cond_task_node.task_id(),
             ", buffer size is:",
-            pp_stages,
+            self._gen_bsz,
         )
-        cond_task_node.add_upstream_task(start_task_node.task_id(), pp_stages)
+        cond_task_node.add_upstream_task(
+            start_task_node.task_id(), self._gen_bsz
+        )
         print(
             "Task ",
             cond_task_node.task_id(),
             "'s upstream is:",
             start_task_node.task_id(),
             ", buffer size is:",
-            pp_stages,
+            self._gen_bsz,
         )
         cond_task_node.add_downstream_task(send_task_node.task_id(), inf)
         print(
