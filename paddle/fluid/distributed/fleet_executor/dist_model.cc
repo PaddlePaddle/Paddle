@@ -442,7 +442,6 @@ bool DistModel::PrepareFleetExe() {
     } else {
       rank_info->set_ip_port(config_.trainer_endpoints[i]);
     }
-    rank_info->set_ip_port(config_.trainer_endpoints[i]);
     id_to_rank.insert({i, i});
   }
   fleet_exe.reset(new FleetExecutor(executor_desc_));
