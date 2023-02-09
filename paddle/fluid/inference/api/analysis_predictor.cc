@@ -2492,7 +2492,6 @@ USE_TRT_CONVERTER(rnn)
 USE_TRT_CONVERTER(fill_constant_batch_size_like)
 USE_TRT_CONVERTER(transformer_input_convert)
 USE_TRT_CONVERTER(cast)
-USE_TRT_CONVERTER(set_value)
 USE_TRT_CONVERTER(recover_padding)
 USE_TRT_CONVERTER(remove_padding)
 USE_TRT_CONVERTER(equal);
@@ -2525,6 +2524,9 @@ USE_TRT_CONVERTER(preln_groupnorm_act)
 #if IS_TRT_VERSION_GE(8522)
 USE_TRT_CONVERTER(flash_multihead_matmul)
 USE_TRT_CONVERTER(cross_multihead_matmul)
+#endif
+#if IS_TRT_VERSION_GE(8200)
+USE_TRT_CONVERTER(set_value)
 #endif
 #if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
 USE_TRT_CONVERTER(sparse_fc)

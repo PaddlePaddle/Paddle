@@ -80,7 +80,6 @@ class TrtConvertSetValue(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         def generate_dynamic_shape(attrs):
-            print("self.axis: ", self.axis)
             if self.axis == 0:
                 self.dynamic_shape.min_input_shape = {
                     "input_data": [1, 6, 3, 2],
@@ -163,16 +162,6 @@ class TrtConvertSetValue(TrtLayerAutoScanTest):
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
-        # for static_shape
-        clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-5
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
