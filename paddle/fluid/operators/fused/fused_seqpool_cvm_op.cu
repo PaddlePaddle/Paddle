@@ -14,16 +14,16 @@
 
 #include <string>
 
-#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/operators/fused/fused_seqpool_cvm_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/phi/core/mixed_vector.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename T>
-using Vector = framework::Vector<T>;
+using Vector = phi::Vector<T>;
 
 #define CUDA_KERNEL_LOOP(i, n)                                  \
   for (auto i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
@@ -441,7 +441,7 @@ class FusedSeqpoolCVMCUDAKernel : public framework::OpKernel<T> {
 
     int embedding_size = inputs[0]->numel() / inputs[0]->dims()[0];
     int batch_size = -1;
-    std::vector<paddle::framework::MixVector<size_t> *> mix_lods_v(slot_size);
+    std::vector<phi::MixVector<size_t> *> mix_lods_v(slot_size);
 
     for (size_t i = 0; i < slot_size; ++i) {
       const auto *input = inputs[i];
@@ -480,7 +480,7 @@ class FusedSeqpoolCVMCUDAKernel : public framework::OpKernel<T> {
       }
       output_data[i] = reinterpret_cast<T *>(
           dev_ctx.Alloc<T>(output, output->numel() * sizeof(T)));
-      mix_lods_v[i] = new paddle::framework::MixVector<size_t>(&lods);
+      mix_lods_v[i] = new phi::MixVector<size_t>(&lods);
       lods_data[i] = mix_lods_v[i]->CUDAData(ctx.GetPlace());
       seqpool_outputs[i].Resize({batch_size, embedding_size});
       seqpool_output_data[i] = reinterpret_cast<T *>(dev_ctx.Alloc<T>(
@@ -527,7 +527,7 @@ class FusedSeqpoolCVMGradCUDAKernel : public framework::OpKernel<T> {
 
     int embedding_size = in_grads[0]->numel() / in_grads[0]->dims()[0];
     int batch_size = -1;
-    std::vector<paddle::framework::MixVector<size_t> *> mix_lods_v(slot_size);
+    std::vector<phi::MixVector<size_t> *> mix_lods_v(slot_size);
 
     for (size_t i = 0; i < slot_size; ++i) {
       auto *in_grad = in_grads[i];
@@ -563,7 +563,7 @@ class FusedSeqpoolCVMGradCUDAKernel : public framework::OpKernel<T> {
 
       in_grads_data[i] = reinterpret_cast<T *>(
           dev_ctx.Alloc<T>(in_grad, in_grad->numel() * sizeof(T)));
-      mix_lods_v[i] = new paddle::framework::MixVector<size_t>(&lods);
+      mix_lods_v[i] = new phi::MixVector<size_t>(&lods);
       lods_data[i] = mix_lods_v[i]->CUDAData(ctx.GetPlace());
       cvm_data[i] = reinterpret_cast<const T *>(cvm->data<T>());
     }

@@ -31,6 +31,11 @@ if(LINUX)
     message("cuda 11.7+ already support lazy module loading")
     return()
   endif()
+  if(${CUDA_VERSION} VERSION_LESS "11.2" AND ${CMAKE_CXX_COMPILER_VERSION}
+                                             VERSION_GREATER_EQUAL 12.0)
+    message("cuda less than 11.2 doesn't support gcc12")
+    return()
+  endif()
 
   message(
     "for cuda before 11.7, libcudart.so must be used for the lazy module loading trick to work, instead of libcudart_static.a"

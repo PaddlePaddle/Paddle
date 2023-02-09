@@ -53,7 +53,7 @@ class TestFusedMultiTransformerOp(OpTest):
         self.__class__.no_need_check_grad = False
 
         bias_attr = paddle.fluid.ParamAttr(
-            initializer=paddle.fluid.initializer.Constant(value=0.0005)
+            initializer=paddle.paddle.nn.initializer.Constant(value=0.0005)
         )
         self.q_proj = Linear(
             self.embed_dim,
@@ -1027,16 +1027,16 @@ class TestFusedMultiTransformerOpPreCacheStatic(TestFusedMultiTransformerOp):
         self.has_attn_mask = False
         self.x_type = np.float32
         self.weight_attr = paddle.ParamAttr(
-            initializer=paddle.fluid.initializer.Constant(0.0)
+            initializer=paddle.paddle.nn.initializer.Constant(0.0)
         )
         self.bias_attr = paddle.ParamAttr(
-            initializer=paddle.fluid.initializer.Constant(0.0005)
+            initializer=paddle.paddle.nn.initializer.Constant(0.0005)
         )
         self.ln_w_attr = paddle.ParamAttr(
-            initializer=paddle.fluid.initializer.Constant(1.0)
+            initializer=paddle.paddle.nn.initializer.Constant(1.0)
         )
         self.ln_b_attr = paddle.ParamAttr(
-            initializer=paddle.fluid.initializer.Constant(0.0)
+            initializer=paddle.paddle.nn.initializer.Constant(0.0)
         )
 
     def test_fused_multi_transformer_op(self):
@@ -1049,6 +1049,32 @@ class TestFusedMultiTransformerOpPreCacheStatic(TestFusedMultiTransformerOp):
             np.testing.assert_allclose(
                 final_out_ref, final_out, rtol=self.rtol, atol=self.atol
             )
+
+
+class TestFusedMultiAttentionAPIError(unittest.TestCase):
+    def test_errors(self):
+        def test_invalid_input_dim():
+            array = np.array([1.9], dtype=np.float32)
+            x = paddle.to_tensor(np.reshape(array, [1]), dtype='float32')
+            layer = paddle.incubate.nn.FusedMultiHeadAttention(
+                embed_dim=1, num_heads=1
+            )
+            out = layer(x)
+
+        self.assertRaises(ValueError, test_invalid_input_dim)
+
+
+class TestFusedMultiTransformerAPIError(unittest.TestCase):
+    def test_errors(self):
+        def test_invalid_input_dim():
+            array = np.array([], dtype=np.float32)
+            x = paddle.to_tensor(np.reshape(array, [0]), dtype='int32')
+            layer = paddle.incubate.nn.FusedTransformerEncoderLayer(
+                108, 108, 108, 0.0, 'relu'
+            )
+            out = layer(x)
+
+        self.assertRaises(ValueError, test_invalid_input_dim)
 
 
 if __name__ == "__main__":

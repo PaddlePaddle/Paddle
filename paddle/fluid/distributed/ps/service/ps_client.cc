@@ -20,6 +20,10 @@
 #include "paddle/fluid/distributed/ps/service/graph_brpc_client.h"
 #include "paddle/fluid/distributed/ps/service/ps_local_client.h"
 #include "paddle/fluid/distributed/ps/table/table.h"
+#if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_GPU_GRAPH)
+#include "paddle/fluid/distributed/ps/service/ps_graph_client.h"
+#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
+#endif
 
 namespace paddle {
 namespace distributed {
@@ -27,6 +31,9 @@ REGISTER_PSCORE_CLASS(PSClient, BrpcPsClient);
 REGISTER_PSCORE_CLASS(PSClient, PsLocalClient);
 REGISTER_PSCORE_CLASS(PSClient, GraphBrpcClient);
 REGISTER_PSCORE_CLASS(PSClient, CoordinatorClient);
+#if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_GPU_GRAPH)
+REGISTER_PSCORE_CLASS(PSClient, PsGraphClient);
+#endif
 
 int32_t PSClient::Configure(  // called in FleetWrapper::InitWorker
     const PSParameter &config,
@@ -77,8 +84,20 @@ PSClient *PSClientFactory::Create(const PSParameter &ps_config) {
   }
 
   const auto &service_param = config.downpour_server_param().service_param();
-  PSClient *client =
-      CREATE_PSCORE_CLASS(PSClient, service_param.client_class());
+  const auto &client_name = service_param.client_class();
+
+  PSClient *client = NULL;
+#if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_GPU_GRAPH)
+  auto gloo = paddle::framework::GlooWrapper::GetInstance();
+  if (client_name == "PsLocalClient" && gloo->Size() > 1) {
+    client = CREATE_PSCORE_CLASS(PSClient, "PsGraphClient");
+    LOG(WARNING) << "change PsLocalClient to PsGraphClient";
+  } else {
+    client = CREATE_PSCORE_CLASS(PSClient, client_name);
+  }
+#else
+  client = CREATE_PSCORE_CLASS(PSClient, client_name);
+#endif
   if (client == NULL) {
     LOG(ERROR) << "client is not registered, server_name:"
                << service_param.client_class();

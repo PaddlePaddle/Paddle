@@ -1013,6 +1013,17 @@ class TestConv2DTransposeRepr(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestConv2dTranspose(unittest.TestCase):
+    def error_weight_input(self):
+        array = np.array([1], dtype=np.float32)
+        x = paddle.to_tensor(np.reshape(array, [1, 1, 1, 1]), dtype='float32')
+        weight = paddle.to_tensor(np.reshape(array, [1]), dtype='float32')
+        paddle.nn.functional.conv2d_transpose(x, weight, bias=0)
+
+    def test_type_error(self):
+        self.assertRaises(ValueError, self.error_weight_input)
+
+
 class TestTensorOutputSize1(UnittestBase):
     def init_info(self):
         self.shapes = [[2, 3, 8, 8]]
