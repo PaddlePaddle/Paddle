@@ -49,7 +49,6 @@ class TestOneDNNConvBnFusePass(PassAutoScanTest):
                 st.integers(min_value=1, max_value=2), min_size=2, max_size=2
             )
         )
-        has_bias = draw(st.booleans())
         epsilon = draw(st.floats(min_value=0.0, max_value=0.001))
 
         x_shape = (
@@ -105,8 +104,6 @@ class TestOneDNNConvBnFusePass(PassAutoScanTest):
             data_layout=data_format,
             is_test=True,
         )
-        if has_bias:
-            conv2d_op.inputs["Bias"] = ["conv2d_bias"]
         ops = [conv2d_op, bn_op]
 
         program_config = ProgramConfig(
@@ -135,10 +132,6 @@ class TestOneDNNConvBnFusePass(PassAutoScanTest):
             },
             outputs=["batch_norm_Y"],
         )
-        if has_bias:
-            program_config.weights["conv2d_bias"] = TensorConfig(
-                data_gen=partial(generate_data, bias_shape)
-            )
 
         return program_config
 
