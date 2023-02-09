@@ -19,6 +19,10 @@ limitations under the License. */
 typedef SSIZE_T ssize_t;
 #endif
 #include <Python.h>
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
 
 #include <fstream>
 #include <vector>
