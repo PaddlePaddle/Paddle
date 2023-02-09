@@ -2552,16 +2552,20 @@ Scope* OperatorWithKernel::PrepareData(
         if (new_expected_kernel_key) {
           if (kernel_type_for_var.backend() == phi::Backend::GPU ||
               kernel_type_for_var.backend() == phi::Backend::GPUDNN ||
+              kernel_type_for_var.backend() == phi::Backend::XPU ||
               new_expected_kernel_key->backend() == phi::Backend::GPU ||
-              new_expected_kernel_key->backend() == phi::Backend::GPUDNN) {
+              new_expected_kernel_key->backend() == phi::Backend::GPUDNN ||
+              new_expected_kernel_key->backend() == phi::Backend::XPU) {
             new_scope = TryCreateTransferScope(
                 kernel_type_for_var, *new_expected_kernel_key, &scope);
             enable_cache_transfer_scope_ = true;
           }
         } else if (kernel_type_for_var.backend() == phi::Backend::GPU ||
                    kernel_type_for_var.backend() == phi::Backend::GPUDNN ||
+                   kernel_type_for_var.backend() == phi::Backend::XPU ||
                    expected_kernel_key.backend() == phi::Backend::GPU ||
-                   expected_kernel_key.backend() == phi::Backend::GPUDNN) {
+                   expected_kernel_key.backend() == phi::Backend::GPUDNN ||
+                   expected_kernel_key.backend() == phi::Backend::XPU) {
           new_scope = TryCreateTransferScope(
               kernel_type_for_var, expected_kernel_key, &scope);
           enable_cache_transfer_scope_ = true;
@@ -2570,16 +2574,6 @@ Scope* OperatorWithKernel::PrepareData(
 
       if (!new_scope) {
         new_scope = &scope.NewScope();
-      }
-      // For inference, if a gpu model has an op which could only run on CPU,
-      // each result of different input will be the same with the first one.
-      // The reason is that if a gpu tensor is the input of a cpu kernel,
-      // we will create a new cpu tensor in new scope.
-      // However, if enable_cache_runtime_context_, we get the cpu tensor each
-      // time, not the gpu tensor. Thus, we set pre_scope_ = nullptr
-      // to trigger `new RuntimeContext()` in RunImpl().
-      if (enable_cache_runtime_context_) {
-        pre_scope_ = nullptr;
       }
 
       // Create new var with the same name in transfer scopes
@@ -2676,8 +2670,14 @@ Scope* OperatorWithKernel::PrepareData(
   // so disable prepare optimization conservatively.
   bool force_prepare_data = HasAttr("inference_force_prepare_data") &&
                             Attr<bool>("inference_force_prepare_data");
-  if (pre_scope_ == &scope && new_scope == nullptr && !force_prepare_data) {
-    need_prepare_data_ = false;
+  if (enable_cache_runtime_context_) {
+    if ((pre_scope_ == &scope && !force_prepare_data)) {
+      need_prepare_data_ = false;
+    }
+  } else {
+    if (pre_scope_ == &scope && new_scope == nullptr && !force_prepare_data) {
+      need_prepare_data_ = false;
+    }
   }
 
   return new_scope;

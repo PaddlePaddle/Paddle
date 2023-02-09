@@ -46,6 +46,10 @@ class IrParamsSyncAmongDevicesPass : public AnalysisPass {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   void CopyParamsToCustomDevice(Argument *argument);
 #endif
+
+#ifdef PADDLE_WITH_XPU
+  void CopyParamsToXpu(Argument *argument);
+#endif
 };
 
 }  // namespace analysis
