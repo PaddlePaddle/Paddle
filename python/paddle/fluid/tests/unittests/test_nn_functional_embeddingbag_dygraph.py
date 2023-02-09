@@ -101,14 +101,14 @@ class EmbeddingBagDygraph(unittest.TestCase):
         weight = paddle.to_tensor(weight_data, stop_gradient=False)
 
         with self.assertRaises(ValueError):
-            embedding_bag = paddle.nn.EmbeddingBag(0,3,mode='mean')
-        
+            embedding_bag = paddle.nn.EmbeddingBag(0, 3, mode='mean')
+
         with self.assertRaises(ValueError):
-            embedding_bag = paddle.nn.EmbeddingBag(10,-1,mode='mean')
-        
+            embedding_bag = paddle.nn.EmbeddingBag(10, -1, mode='mean')
+
         with self.assertRaises(ValueError):
-            embedding_bag = paddle.nn.EmbeddingBag(10,3,mode='mean')
-            w0 = np.full(shape=(0, 3), fill_value=2).astype(np.float32)
+            embedding_bag = paddle.nn.EmbeddingBag(10, 3, mode='mean')
+            w0 = np.full(shape=(10, 3), fill_value=2).astype(np.float32)
             embedding_bag._embedding.set_value(w0)
             adam = paddle.optimizer.Adam(
                 parameters=[embedding_bag._embedding], learning_rate=0.01
@@ -122,6 +122,7 @@ class EmbeddingBagDygraph(unittest.TestCase):
         with _test_eager_guard():
             self.func_3()
         self.func_3()
+
 
 if __name__ == '__main__':
     unittest.main()
