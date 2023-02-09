@@ -88,7 +88,7 @@ class TestGatherGradComp(unittest.TestCase):
             x.stop_gradient = False
             index.stop_gradient = True
             out = paddle.gather(x, index, axis)
-            res = paddle.grad(out, [x], create_graph=True, retain_graph=True)
+            res = paddle.grad(out, [x], create_graph=False, retain_graph=True)
             return res[0].numpy()
 
         def desired(primal0, index, axis):
@@ -101,12 +101,12 @@ class TestGatherGradComp(unittest.TestCase):
             x.stop_gradient = False
             index.stop_gradient = True
             out = paddle.gather(x, index, axis)
-            res = paddle.grad(out, [x], create_graph=True, retain_graph=True)
+            res = paddle.grad(out, [x], create_graph=False, retain_graph=True)
             return res[0].numpy()
 
         np.testing.assert_allclose(
-            actual=actual(self.primal, self.index, self.axis),
-            desired=desired(self.primal, self.index, self.axis),
+            actual=actual(self.primal0, self.index, self.axis),
+            desired=desired(self.primal0, self.index, self.axis),
             rtol=1e-6,
             atol=0,
         )
