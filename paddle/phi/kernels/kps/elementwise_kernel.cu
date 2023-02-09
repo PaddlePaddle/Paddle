@@ -103,10 +103,10 @@ PD_REGISTER_KERNEL(fmax_raw,
                    float16,
                    int64_t) {}
 
-PD_REGISTER_KERNEL(fmin_raw,
+PD_REGISTER_KERNEL(fmin,
                    KPS,
                    ALL_LAYOUT,
-                   phi::FMinRawKernel,
+                   phi::FMinKernel,
                    float,
                    double,
                    int,

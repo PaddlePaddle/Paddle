@@ -314,13 +314,13 @@ void ElementwiseFMinGradKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& y,
                                const DenseTensor& out_grad,
-                               int axis,
                                DenseTensor* x_grad,
                                DenseTensor* y_grad) {
   funcs::ElementwiseGradPreProcess(out_grad, x_grad);
   auto out = out_grad;  // Fake out, not used
   auto x_dim = x.dims();
   auto y_dim = y.dims();
+  int axis = -1;
   if (x.dims() == y.dims()) {
     funcs::ElemwiseGradComputeNoBroadcast<Context,
                                           T,

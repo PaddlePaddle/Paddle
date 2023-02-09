@@ -131,14 +131,8 @@ PD_REGISTER_KERNEL(fmax_raw,
                    int,
                    int64_t) {}
 
-PD_REGISTER_KERNEL(fmin_raw,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::FMinRawKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t) {}
+PD_REGISTER_KERNEL(
+    fmin, CPU, ALL_LAYOUT, phi::FMinKernel, float, double, int, int64_t) {}
 
 PD_REGISTER_KERNEL(maximum_raw,
                    CPU,
