@@ -642,11 +642,11 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out2, 0)
 
         # checkout backward
-        self.assertEqual(x.grad.shape, [])
-        np.testing.assert_allclose(x.grad, 0)
         print("std")
         print("x.grad")
         print(x.grad)
+        self.assertEqual(x.grad.shape, [])
+        np.testing.assert_allclose(x.grad, 0)
 
     def test_var(self):
         x = paddle.rand([])
