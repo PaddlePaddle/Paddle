@@ -1368,10 +1368,14 @@ class BatchNormOneDNNHandler
     return std::make_tuple(scale_memory, shift_memory);
   }
 
-  std::shared_ptr<dnnl::memory> AcquireDiffScaleShiftMemory(
-      T* diff_scaleshift_data) {
-    return this->AcquireMemoryFromPrimitive(this->bwd_pd_->diff_weights_desc(),
-                                            diff_scaleshift_data);
+  std::tuple<dnnl::memory, dnnl::memory> AcquireDiffScaleShiftMemory(
+      T* diff_scale_data, T* diff_shift_data) {
+    auto diff_scale_memory = this->AcquireMemoryFromPrimitive(
+        this->bwd_pd_->diff_weights_desc(), diff_scale_data);
+    auto diff_shift_memory = this->AcquireMemoryFromPrimitive(
+        this->bwd_pd_->diff_weights_desc(), diff_shift_data);
+
+    return std::make_tuple(diff_scale_memory, diff_shift_memory);
   }
 
   std::shared_ptr<dnnl::memory> AcquireMeanMemory(const DenseTensor* mean) {
