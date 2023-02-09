@@ -1265,6 +1265,7 @@ class ClipOneDNNHandler
     this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
                                             dnnl::algorithm::eltwise_clip_v2,
                                             x->mem_desc(),
+                                            x->mem_desc(),
                                             alpha,
                                             beta);
 
