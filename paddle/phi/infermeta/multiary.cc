@@ -1220,27 +1220,6 @@ void EditDistanceInferMeta(const MetaTensor& hyps,
   sequencenum->set_dtype(DataType::FLOAT32);
 }
 
-void FcXPUInferMeta(const MetaTensor& x,
-                    const MetaTensor& w,
-                    const MetaTensor& w_max,
-                    const MetaTensor& bias,
-                    int in_num_col_dims,
-                    bool transpose_x,
-                    float alpha,
-                    float beta,
-                    int act_type,
-                    float act_alpha,
-                    MetaTensor* out) {
-  std::vector<int> out_shape(in_num_col_dims + 1);
-  for (int i = 0; i < in_num_col_dims; i++) {
-    out_shape[i] = x.dims()[i];
-  }
-  out_shape[in_num_col_dims] = w.dims()[0];
-  out->set_dims(DDim(out_shape.data(), out_shape.size()));
-  out->set_dtype(x.dtype());
-  out->set_layout(x.layout());
-}
-
 void GenerateProposalsV2InferMeta(const MetaTensor& scores,
                                   const MetaTensor& bbox_deltas,
                                   const MetaTensor& im_shape,
