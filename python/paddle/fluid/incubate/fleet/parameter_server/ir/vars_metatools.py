@@ -13,8 +13,8 @@
 # limitations under the License.
 from functools import reduce
 
-from paddle.fluid.framework import Variable
-from paddle.fluid import core
+from paddle.framework.io import Variable
+from paddle.framework import core
 
 dtype_to_size = {
     core.VarDesc.VarType.FP16: 2,
