@@ -1138,8 +1138,14 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
-- op : reduce_mean
+- op : mean (reduce_mean)
   backward : reduce_mean_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs :
+    {axis : dim, keepdim : keep_dim}
   extra :
     attrs : [bool use_mkldnn = false]
 

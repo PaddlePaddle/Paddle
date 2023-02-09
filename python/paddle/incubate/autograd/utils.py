@@ -183,7 +183,8 @@ def _get_args_values(op, phi_name):
                 and arg_name in op_content["attrs"].keys()
             ):
                 attrs.append(op.attr(op_content["attrs"][arg_name]))
-            attrs.append(op.attr(arg_name))
+            else:
+                attrs.append(op.attr(arg_name))
 
     return inputs, attrs
 
