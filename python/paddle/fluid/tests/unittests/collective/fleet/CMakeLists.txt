@@ -908,3 +908,15 @@ if((WITH_GPU) AND (LINUX))
   set_tests_properties(test_dygraph_save_for_auto_infer
                        PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
 endif()
+if(WITH_GPU)
+  bash_test_modules(
+    test_fused_attention_pass_with_mp
+    START_BASH
+    test_fused_attention_pass_with_mp.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=21400;http_proxy=;https_proxy=")
+  set_tests_properties(test_fused_attention_pass_with_mp PROPERTIES TIMEOUT
+                                                                    "120")
+endif()
