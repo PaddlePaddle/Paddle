@@ -18,9 +18,9 @@
 #include <vector>
 
 #include "glog/logging.h"
+#include "paddle/fluid/inference/tensorrt/plugin/layerNormKernel.h"
 #include "paddle/fluid/inference/tensorrt/plugin/layer_norm_op_plugin.h"
 #include "paddle/phi/kernels/layer_norm_kernel.h"
-
 namespace paddle {
 namespace inference {
 namespace tensorrt {
@@ -171,16 +171,40 @@ int LayerNormPlugin::enqueue(int batch_size,
 }
 
 int LayerNormPluginDynamic::initialize() TRT_NOEXCEPT {
-  cudaMalloc(&bias_gpu_, sizeof(float) * bias_.size());
-  cudaMemcpy(bias_gpu_,
-             bias_.data(),
-             bias_.size() * sizeof(float),
-             cudaMemcpyHostToDevice);
-  cudaMalloc(&scale_gpu_, sizeof(float) * scale_.size());
-  cudaMemcpy(scale_gpu_,
-             scale_.data(),
-             scale_.size() * sizeof(float),
-             cudaMemcpyHostToDevice);
+  if (!with_fp16_) {
+    cudaMalloc(&bias_gpu_, sizeof(float) * bias_.size());
+    cudaMemcpy(bias_gpu_,
+               bias_.data(),
+               bias_.size() * sizeof(float),
+               cudaMemcpyHostToDevice);
+    cudaMalloc(&scale_gpu_, sizeof(float) * scale_.size());
+    cudaMemcpy(scale_gpu_,
+               scale_.data(),
+               scale_.size() * sizeof(float),
+               cudaMemcpyHostToDevice);
+  } else {
+    cudaMalloc(&scale_gpu_, sizeof(half) * scale_.size());
+    cudaMalloc(&bias_gpu_, sizeof(half) * bias_.size());
+
+    std::vector<half> tmp_scale(scale_.size());
+    std::vector<half> tmp_bias(bias_.size());
+
+    for (int i = 0; i < bias_.size(); i++) {
+      tmp_bias[i] = __float2half(bias_[i]);
+    }
+    for (int i = 0; i < bias_.size(); i++) {
+      tmp_scale[i] = __float2half(scale_[i]);
+    }
+
+    cudaMemcpy(bias_gpu_,
+               tmp_bias.data(),
+               tmp_bias.size() * sizeof(half),
+               cudaMemcpyHostToDevice);
+    cudaMemcpy(scale_gpu_,
+               tmp_scale.data(),
+               tmp_scale.size() * sizeof(half),
+               cudaMemcpyHostToDevice);
+  }
   return 0;
 }
 
@@ -220,14 +244,21 @@ bool LayerNormPluginDynamic::supportsFormatCombination(
                                         pos,
                                         nb_inputs + nb_outputs));
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
+
+  bool int8_support = in.type == nvinfer1::DataType::kINT8 &&
+                      in.format == nvinfer1::PluginFormat::kLINEAR;
+  bool fp16_support = in.type == nvinfer1::DataType::kHALF &&
+                      in.format == nvinfer1::PluginFormat::kLINEAR;
+  bool fp32_support = in.type == nvinfer1::DataType::kFLOAT &&
+                      in.format == nvinfer1::PluginFormat::kLINEAR;
+
   if (pos == 0) {
-    if (with_fp16_) {
-      return ((in.type == nvinfer1::DataType::kFLOAT ||
-               in.type == nvinfer1::DataType::kHALF) &&
-              (in.format == nvinfer1::PluginFormat::kLINEAR));
+    if (with_int8_) {
+      return (int8_support || fp16_support);
+    } else if (with_fp16_) {
+      return fp16_support;
     } else {
-      return (in.type == nvinfer1::DataType::kFLOAT) &&
-             (in.format == nvinfer1::TensorFormat::kLINEAR);
+      return fp32_support;
     }
   }
   const nvinfer1::PluginTensorDesc &prev = in_out[pos - 1];
@@ -343,8 +374,8 @@ int LayerNormPluginDynamic::enqueue(
     layer_norm(stream,
                input,
                input_shape,
-               bias_gpu_,
-               scale_gpu_,
+               reinterpret_cast<float *>(bias_gpu_),
+               reinterpret_cast<float *>(scale_gpu_),
                output,
                mean_d,
                variance_d,
@@ -355,19 +386,30 @@ int LayerNormPluginDynamic::enqueue(
     const half *input = reinterpret_cast<const half *>(inputs[0]);
     half *output = static_cast<half *>(outputs[0]);
     phi::LayerNormDirectCUDAFunctor<half, float> layer_norm;
-    layer_norm(stream,
-               input,
-               input_shape,
-               bias_gpu_,
-               scale_gpu_,
-               output,
-               mean_d,
-               variance_d,
-               begin_norm_axis,
-               eps);
+
+    computeLayerNorm(input_shape[0] * input_shape[1],
+                     input_shape[2],
+                     input,
+                     reinterpret_cast<half *>(scale_gpu_),
+                     reinterpret_cast<half *>(bias_gpu_),
+                     output,
+                     eps,
+                     stream);
+
   } else {
-    PADDLE_THROW(platform::errors::Fatal(
-        "The LayerNorm TRT Plugin's input type should be float or half."));
+    VLOG(1) << "TRT Plugin DataType selected. LayerNorm-->int8";
+    const int8_t *input = reinterpret_cast<const int8_t *>(inputs[0]);
+    int8_t *output = static_cast<int8_t *>(outputs[0]);
+    computeLayerNormQDQ(input_shape[0] * input_shape[1],
+                        input_shape[2],
+                        input,
+                        reinterpret_cast<half *>(scale_gpu_),
+                        reinterpret_cast<half *>(bias_gpu_),
+                        output,
+                        input_desc[0].scale,
+                        1.f / output_desc[0].scale,
+                        eps,
+                        stream);
   }
   return cudaGetLastError() != cudaSuccess;
 }

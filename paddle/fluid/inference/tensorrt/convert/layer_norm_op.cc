@@ -62,6 +62,9 @@ class LayerNormOpConverter : public OpConverter {
       std::vector<int64_t> variance_shape{1};
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+    bool with_int8 = engine_->WithInt8();
+    // when int8 is on, allow fall back to fp16
+    if (with_int8) with_fp16 = true;
       plugin::LayerNormPluginDynamic* plugin =
           new plugin::LayerNormPluginDynamic(
               static_cast<const float*>(bias_weight.get().values),
@@ -72,7 +75,7 @@ class LayerNormOpConverter : public OpConverter {
               eps,
               mean_shape,
               variance_shape,
-              with_fp16);
+              with_fp16, with_int8);
       layernorm_layer = engine_->AddDynamicPlugin(&X, 1, plugin);
     } else {
       int statis_num = 1;
