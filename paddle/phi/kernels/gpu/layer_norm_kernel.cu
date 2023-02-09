@@ -21,134 +21,6 @@
 
 namespace phi {
 
-template <typename T>
-__device__ void WelfordOnline(float val, float *mean, float *m2, float *count) {
-  *count += 1;
-  float delta1 = val - *mean;
-  *mean += delta1 / (*count);
-  float delta2 = val - *mean;
-  *m2 += delta1 * delta2;
-}
-
-template <typename T>
-__device__ void WelfordOnline(float b_mean,
-                              float b_m2,
-                              float b_count,
-                              float *mean,
-                              float *m2,
-                              float *count) {
-  if (b_count == 0) {
-    return;
-  }
-  float new_count = *count + b_count;
-  float nb_n = b_count / new_count;
-  float delta = b_mean - *mean;
-  *mean += delta * nb_n;
-  *m2 += b_m2 + delta * delta * (*count) * nb_n;
-  *count = new_count;
-}
-
-__device__ void WelfordWarpAllReduce(float thread_mean,
-                                     float thread_m2,
-                                     float thread_count,
-                                     float *mean,
-                                     float *m2,
-                                     float *count) {
-  *mean = thread_mean;
-  *m2 = thread_m2;
-  *count = thread_count;
-  for (int mask = 1; mask < 32; mask *= 2) {
-    float b_mean = __shfl_down_sync(0xffffffff, *mean, mask);
-    float b_m2 = __shfl_down_sync(0xffffffff, *m2, mask);
-    float b_count = __shfl_down_sync(0xffffffff, *count, mask);
-    WelfordOnline(b_mean, b_m2, b_count, mean, m2, count);
-  }
-
-  *mean = __shfl_sync(0xffffffff, *mean, 0, 32);
-  *m2 = __shfl_sync(0xffffffff, *m2, 0, 32);
-  *count = __shfl_sync(0xffffffff, *count, 0, 32);
-}
-
-template <typename T, typename U>
-__global__ void LayerNormFwdWithWelford(T *input,
-                                        T *output,
-                                        T *gamma,
-                                        T *beta,
-                                        float *mean,
-                                        float *invvar,
-                                        int rows,
-                                        int cols,
-                                        double epsilon) {
-  int threadidx_x = threadIdx.x / 32;
-  int threadidx_y = threadIdx.x % 32;
-  int row_offset = blockIdx.x * 4 + threadidx_x;
-  int cols_per_thread = (cols + 31) / 32;
-  int cols_this_thread = cols_per_thread;
-
-  int last_y = (cols / cols_per_thread);
-
-  if (threadidx_y == last_y) {
-    cols_this_thread = cols - cols_per_thread * last_y;
-  } else if (threadidx_y > last_y) {
-    cols_this_thread = 0;
-  }
-
-  int lane_id = threadidx_y;
-
-  if (row_offset < rows) {
-    float buf[32];
-
-    float thread_mean = 0.f;
-    float thread_m2 = 0.f;
-    float thread_count = 0.f;
-
-    float warp_mean;
-    float warp_m2;
-    float warp_count;
-
-    T *row_input = input + row_offset * cols;
-    T *row_output = output + row_offset * cols;
-
-#pragma unroll
-    for (int i = 0; i < cols_this_thread; i++) {
-      buf[i] = static_cast<float>(row_input[lane_id * cols_per_thread + i]);
-    }
-
-#pragma unroll
-    for (int i = 0; i < cols_this_thread; i++) {
-      WelfordOnline(buf[i], &thread_mean, &thread_m2, &thread_count);
-    }
-
-    WelfordWarpAllReduce(thread_mean,
-                         thread_m2,
-                         thread_count,
-                         &warp_mean,
-                         &warp_m2,
-                         &warp_count);
-
-    float row_mean = warp_mean;
-    float row_variance = max(warp_m2 / warp_count, 0.f);
-    float row_inv_var = rsqrt(row_variance + epsilon);
-
-    if (lane_id == 0) {
-      mean[row_offset] = row_mean;
-      invvar[row_offset] = row_inv_var;
-    }
-
-#pragma unroll
-    for (int i = 0; i < cols_this_thread; ++i) {
-      buf[i] = (buf[i] - row_mean) * row_inv_var;
-    }
-
-#pragma unroll
-    for (int i = 0; i < cols_this_thread; ++i) {
-      row_output[lane_id * cols_per_thread + i] =
-          static_cast<T>(buf[i]) * gamma[lane_id * cols_per_thread + i] +
-          beta[lane_id * cols_per_thread + i];
-    }
-  }
-}
-
 template <typename T, typename U>
 void LayerNormDirectCUDAFunctor<T, U>::operator()(gpuStream_t stream,
                                                   const T *input,
@@ -203,12 +75,14 @@ void LayerNormKernel(const Context &dev_ctx,
   auto *mean_data = dev_ctx.template Alloc<U>(mean);
   auto *var_data = dev_ctx.template Alloc<U>(var);
 
-  auto *void_scale_data = (scale == nullptr ? nullptr : scale->data());
-  auto *void_bias_data = (bias == nullptr ? nullptr : bias->data());
+  bool valid_scale = scale != nullptr;
+  bool valid_bias = bias != nullptr;
+  auto *void_scale_data = valid_scale ? scale->data() : nullptr;
+  auto *void_bias_data = valid_bias ? bias->data() : nullptr;
 
   auto x_dtype = x.dtype();
   phi::DataType scale_bias_dtype;
-  if (void_scale_data != nullptr) {
+  if (valid_scale) {
     scale_bias_dtype = scale->dtype();
     if (void_bias_data != nullptr) {
       PADDLE_ENFORCE_EQ(
@@ -218,11 +92,10 @@ void LayerNormKernel(const Context &dev_ctx,
                                        "should have the same data type."));
     }
   } else {
-    scale_bias_dtype = (void_bias_data != nullptr ? bias->dtype() : x_dtype);
+    scale_bias_dtype = valid_bias ? bias->dtype() : x_dtype;
   }
 
-  bool is_scale_bias_same_dtype_with_x = x_dtype == scale_bias_dtype;
-  if (!is_scale_bias_same_dtype_with_x) {
+  if (x_dtype != scale_bias_dtype) {
     PADDLE_ENFORCE_EQ(scale_bias_dtype,
                       paddle::experimental::CppTypeToDataType<U>::Type(),
                       phi::errors::InvalidArgument(
@@ -329,11 +202,8 @@ void LayerNormKernel(const Context &dev_ctx,
     }
   } else {
 #endif
-    if (is_scale_bias_same_dtype_with_x) {
-      PADDLE_LAUNCH_LAYERNORM_FWD(T, true);
-    } else {
-      PADDLE_LAUNCH_LAYERNORM_FWD(U, false);
-    }
+
+    PADDLE_LAUNCH_LAYERNORM_FWD(T, true);
 #ifdef PADDLE_WITH_CUDA
   }
 #endif
