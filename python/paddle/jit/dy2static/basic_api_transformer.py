@@ -40,8 +40,6 @@ class BasicApiTransformer(BaseTransformer):
     def transform(self):
         to_tensor_transformer = ToTensorTransformer(self.root)
         to_tensor_transformer.transform()
-        nameload_transformer = NameloadJstTransformer(self.root)
-        nameload_transformer.transform()
         attribute_transformer = AttributeJstTransformer(self.root)
         attribute_transformer.transform()
         self.visit(self.root)
@@ -140,11 +138,13 @@ class NameloadJstTransformer(BaseTransformer):
     NOTE: we only deal with ctx=Load() case.
     """
 
-    def __init__(self, node):
+    def __init__(self, wrapper_root):
         assert isinstance(
-            node, gast.AST
-        ), "Input non-gast.AST node for the initialization of ToTensorTransformer."
-        self.root = node
+            wrapper_root, AstNodeWrapper
+        ), "Input non-AstNodeWrapper node for the initialization of BasicApiTransformer."
+
+        self.wrapper_root = wrapper_root
+        self.root = wrapper_root.node
 
     def transform(self):
         self.visit(self.root)
