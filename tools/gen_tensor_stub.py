@@ -32,6 +32,20 @@ MemberType: TypeAlias = Literal[
 ]
 
 
+@dataclass
+class Member:
+    id: int
+    name: str
+    type: MemberType
+    aliases: list[str]
+    decorators: list[str]
+    signature: str
+    doc: str | None
+
+    def add_alias(self, alias: str):
+        self.aliases.append(alias)
+
+
 class TensorGen:
     _future_features: list[str]
     _import_stmts: list[str]
@@ -118,20 +132,6 @@ class TensorGen:
 {self.tensor_aliases}
 """
         return code
-
-
-@dataclass
-class Member:
-    id: int
-    name: str
-    type: MemberType
-    aliases: list[str]
-    decorators: list[str]
-    signature: str
-    doc: str | None
-
-    def add_alias(self, alias: str):
-        self.aliases.append(alias)
 
 
 def is_inherited_member(name: str, cls: type) -> bool:
