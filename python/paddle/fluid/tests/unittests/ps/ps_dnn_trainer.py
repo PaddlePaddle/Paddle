@@ -233,7 +233,7 @@ def get_user_defined_strategy(config):
 
 
 def get_distributed_strategy(user_defined_strategy):  # pslib
-    from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
+    from paddle.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
         StrategyFactory,
     )
 

@@ -1113,7 +1113,7 @@ class TestDataset2(unittest.TestCase):
         train_program = fluid.Program()
         startup_program = fluid.Program()
         scope = fluid.Scope()
-        from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import (
+        from paddle.incubate.fleet.parameter_server.distribute_transpiler import (
             fleet,
         )
 
