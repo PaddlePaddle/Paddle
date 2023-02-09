@@ -14,7 +14,6 @@
 
 import os
 import unittest
-from functools import partial
 
 import numpy
 from simple_nets import init_data, simple_fc_net
@@ -64,9 +63,7 @@ class TestFeedPersistableVar(unittest.TestCase):
             optimizer.minimize(loss)
 
             exe.run(program=startup)
-            compiled_prog = fluid.compiler.CompiledProgram(
-                main
-            )
+            compiled_prog = fluid.compiler.CompiledProgram(main)
 
             exe.run(program=compiled_prog, feed=feed_dict)
 
@@ -74,11 +71,8 @@ class TestFeedPersistableVar(unittest.TestCase):
         self.check_feed_persistable_var(self.feed_dict)
         self.check_feed_persistable_var(self.feed_dict, use_cuda=True)
 
-        self.feed_dict['learning_rate'] = numpy.array([1.0]).astype(
-            "float32"
-        )
+        self.feed_dict['learning_rate'] = numpy.array([1.0]).astype("float32")
         self.check_feed_persistable_var(self.feed_dict, use_cuda=True)
-
 
 
 if __name__ == '__main__':

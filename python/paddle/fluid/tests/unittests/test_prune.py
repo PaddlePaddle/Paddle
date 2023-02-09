@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import contextlib
-import os
 import unittest
 
 import numpy as np
@@ -334,9 +333,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 sgd_optimizer.minimize(loss1)
                 exe = fluid.Executor(fluid.CPUPlace())
                 exe.run(startup_program)
-                compiled_prog = fluid.CompiledProgram(
-                    program
-                )
+                compiled_prog = fluid.CompiledProgram(program)
                 weight_init = np.array(
                     scope.find_var(w_param_attrs.name).get_tensor()
                 )
@@ -541,9 +538,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                     label_np = np.random.randint(1, size=(10, 1)).astype(
                         'int64'
                     )
-                    compiled_prog = fluid.CompiledProgram(
-                        program
-                    )
+                    compiled_prog = fluid.CompiledProgram(program)
                     for i in range(10):
                         res = exe.run(
                             compiled_prog,

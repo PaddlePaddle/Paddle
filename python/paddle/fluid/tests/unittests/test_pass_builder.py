@@ -12,22 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import math
-import os
-import sys
-import tempfile
 import unittest
 
-import numpy as np
-from simple_nets import simple_fc_net
-
 import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import compiler
 
 
 class TestPassBuilder(unittest.TestCase):
-
     def test_parallel_testing_with_new_strategy(self):
         build_strategy = fluid.BuildStrategy()
         self.assertFalse(build_strategy.fuse_elewise_add_act_ops)

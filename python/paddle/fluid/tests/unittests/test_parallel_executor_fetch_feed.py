@@ -84,7 +84,8 @@ class TestFetchAndFeed(unittest.TestCase):
         exec_strategy = fluid.ExecutionStrategy()
         exec_strategy.use_experimental_executor = use_faster_executor
         exec_strategy.num_threads = num_threads
-        train_cp = compiler.CompiledProgram(main_program,
+        train_cp = compiler.CompiledProgram(
+            main_program,
             build_strategy=build_strategy,
         )
 

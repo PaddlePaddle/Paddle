@@ -80,9 +80,7 @@ class TestProfiler(unittest.TestCase):
         if compile_program:
             # TODO(luotao): profiler tool may have bug with multi-thread parallel executor.
             # https://github.com/PaddlePaddle/Paddle/pull/25200#issuecomment-650483092
-            train_program = fluid.compiler.CompiledProgram(
-                main_program
-            )
+            train_program = fluid.compiler.CompiledProgram(main_program)
         else:
             train_program = main_program
         return train_program, startup_program, avg_cost, batch_size, batch_acc

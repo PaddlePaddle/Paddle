@@ -96,9 +96,7 @@ class TestParallelExecutorFetchIsolatedVarBase(unittest.TestCase):
 
         exe.run(fluid.default_startup_program())
 
-        prog = fluid.CompiledProgram(
-            fluid.default_main_program()
-        )
+        prog = fluid.CompiledProgram(fluid.default_main_program())
 
         BATCH_SIZE = 8 * dev_cnt
         for _ in range(10):
