@@ -1113,7 +1113,7 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
   const auto &rank_ = process_group_->GetRank();
   const auto &size_ = process_group_->GetSize();
 
-  framework::Vector<int64_t> rows_num_vector(size_);
+  phi::Vector<int64_t> rows_num_vector(size_);
   rows_num_vector[rank_] = static_cast<int64_t>(src_rows.size());
 
   Tensor rows_num_tensor = paddle::experimental::empty(
@@ -1183,7 +1183,7 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
     }
     process_group_->AllGather(in, out)->Synchronize();
 
-    framework::Vector<int64_t> dst_rows_vector(rows_num, 0);
+    phi::Vector<int64_t> dst_rows_vector(rows_num, 0);
     auto *dst_rows_dense_tensor =
         std::dynamic_pointer_cast<phi::DenseTensor>(dst_rows_tensor.impl())
             .get();
@@ -1262,7 +1262,7 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
 
     Tensor dst_rows_tensor =
         paddle::experimental::concat(rows_tensors, phi::Scalar(0));
-    framework::Vector<int64_t> dst_rows_vector(rows_num, 0);
+    phi::Vector<int64_t> dst_rows_vector(rows_num, 0);
     auto *dst_rows_dense_tensor =
         std::dynamic_pointer_cast<phi::DenseTensor>(dst_rows_tensor.impl())
             .get();

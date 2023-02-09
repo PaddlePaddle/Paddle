@@ -203,7 +203,7 @@ class SequencePoolFunctor<phi::GPUContext, T> {
     const size_t item_dim = output->numel() / output->dims()[0];
     dim3 threads(1024, 1);
     dim3 grid(std::max(static_cast<int>(lod.size()) - 1, 1), 1);
-    paddle::framework::MixVector<size_t> mix_vector(&lod);
+    phi::MixVector<size_t> mix_vector(&lod);
     if (pooltype == "MAX") {
       sequence_pool_kernel<T, MaxPoolFunctor<T>>
           <<<grid, threads, 0, context.stream()>>>(
@@ -421,7 +421,7 @@ class SequencePoolGradFunctor<phi::GPUContext, T> {
     const size_t item_dim = in_grad->numel() / in_grad->dims()[0];
     dim3 threads(1024, 1);
     dim3 grid(std::max(static_cast<int>(lod.size()) - 1, 1), 1);
-    paddle::framework::MixVector<size_t> mix_vector(&lod);
+    phi::MixVector<size_t> mix_vector(&lod);
     if (pooltype == "MAX") {
       sequence_pool_grad_kernel<T, MaxPoolGradFunctor<T>>
           <<<grid, threads, 0, context.stream()>>>(
