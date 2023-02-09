@@ -75,5 +75,11 @@ PD_REGISTER_KERNEL(grad_add,
                    phi::GradAddXPUKernel,
                    phi::dtype::float16,
                    float) {}
-PD_REGISTER_KERNEL(
-    add_raw, XPU, ALL_LAYOUT, phi::AddRawKernel, phi::dtype::float16, float) {}
+PD_REGISTER_KERNEL(add_raw,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::AddRawKernel,
+                   phi::dtype::float16,
+                   float,
+                   int,
+                   int64_t) {}

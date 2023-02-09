@@ -71,7 +71,7 @@ PD_REGISTER_KERNEL(full_sr,
                    phi::dtype::complex<double>) {}
 #endif
 
-#if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
+#if defined(PADDLE_WITH_XPU)
 PD_REGISTER_KERNEL(full_sr,
                    XPU,
                    ALL_LAYOUT,

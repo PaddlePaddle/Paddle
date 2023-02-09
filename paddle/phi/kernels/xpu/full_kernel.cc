@@ -28,32 +28,6 @@
 
 namespace phi {
 
-template <typename InType, typename OutType>
-void TensorSetConstantXPU(phi::DenseTensor* tensor,
-                          InType value,
-                          phi::Place place) {
-  auto* begin = tensor->mutable_data<OutType>(place);
-  int64_t numel = tensor->numel();
-  std::unique_ptr<OutType[]> data_cpu(new OutType[numel]);
-  std::fill(
-      data_cpu.get(), data_cpu.get() + numel, static_cast<OutType>(value));
-  paddle::memory::Copy(place,
-                       begin,
-                       phi::CPUPlace(),
-                       static_cast<void*>(data_cpu.get()),
-                       numel * sizeof(OutType));
-}
-
-template <typename T, typename Context, typename VType>
-void FullValueXPU(const Context& dev_ctx, DenseTensor* tensor, VType val) {
-  dev_ctx.template Alloc<T>(tensor);
-
-  PD_VISIT_ALL_TYPES(tensor->dtype(), "FullValueXPU", ([&] {
-                       TensorSetConstantXPU<VType, data_t>(
-                           tensor, val, dev_ctx.GetPlace());
-                     }));
-}
-
 template <typename T, typename Context>
 void FullKernel(const Context& dev_ctx,
                 const IntArray& shape,
@@ -64,13 +38,12 @@ void FullKernel(const Context& dev_ctx,
   out->Resize(phi::make_ddim(shape.GetData()));
   int numel = out->numel();
   dev_ctx.template Alloc<T>(out);
-  auto value = val.to<double>();
   auto out_data = reinterpret_cast<XPUInTDType*>(out->data<T>());
   if (numel > 0) {
     int r = xpu::constant(dev_ctx.x_context(),
                           out_data,
                           out->numel(),
-                          static_cast<XPUInTDType>(value));
+                          static_cast<XPUInTDType>(val.to<T>()));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
   }
 }

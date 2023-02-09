@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/instance_norm_grad_kernel.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/norm_utils.h"
 
 namespace phi {
 
@@ -24,46 +25,89 @@ void InstanceNormGradKernel(const Context& dev_ctx,
                             const paddle::optional<DenseTensor>& scale,
                             const DenseTensor& saved_mean,
                             const DenseTensor& saved_variance,
-                            const DenseTensor& y_grad,
+                            const DenseTensor& d_y,
                             float epsilon,
-                            DenseTensor* x_grad,
-                            DenseTensor* scale_grad,
-                            DenseTensor* bias_grad) {
+                            DenseTensor* d_x,
+                            DenseTensor* d_scale,
+                            DenseTensor* d_bias) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-
   const auto& x_dims = x.dims();
-  int n = x_dims[0];
-  int c = x_dims[1];
-  int h = x_dims[2];
-  int w = x_dims[3];
+  int N, C, H, W, D;
+  funcs::ExtractNCWHD(x_dims, DataLayout::kNCHW, &N, &C, &H, &W, &D);
+  PADDLE_ENFORCE_EQ(
+      x_dims.size() <= 5 && D == 1,
+      true,
+      phi::errors::InvalidArgument(
+          "The size of input's dimensions should be less equal than 5",
+          "and the dimension of D should be eaual to 1",
+          "But received: the size of input's dimensions is [%d]",
+          x_dims.size()));
 
-  dev_ctx.template Alloc<T>(x_grad);
-  if (bias_grad != nullptr) {
-    dev_ctx.template Alloc<float>(bias_grad);
-  }
-  if (scale_grad != nullptr) {
-    dev_ctx.template Alloc<float>(scale_grad);
+  dev_ctx.template Alloc<T>(d_x);
+  T* d_scale_data = nullptr;
+  T* d_bias_data = nullptr;
+  if (d_scale && d_bias) {
+    dev_ctx.template Alloc<float>(d_scale);
+    dev_ctx.template Alloc<float>(d_bias);
+    d_scale_data = d_scale->data<float>();
+    d_bias_data = d_bias->data<float>();
   }
 
   const auto scale_ptr = scale.get_ptr();
+  if (scale_ptr) {
+    PADDLE_ENFORCE_EQ(
+        scale_ptr->dims().size(),
+        1UL,
+        phi::errors::InvalidArgument(
+            "The `shape` in InstanceNormOp is invalid: "
+            "the size of scale's dimensions must be equal to 1. But "
+            "received: the size of scale's dimensions"
+            "is [%d]",
+            scale_ptr->dims().size()));
+    PADDLE_ENFORCE_EQ(scale_ptr->dims()[0],
+                      C,
+                      phi::errors::InvalidArgument(
+                          "The `shape` in InstanceNormOp is invalid: "
+                          "the first dimension of scale must be equal to "
+                          "Channels([%d]). But received: "
+                          "the first dimension of scale is [%d],"
+                          "the dimensions of scale is [%s], ",
+                          C,
+                          scale_ptr->dims()[0],
+                          scale_ptr->dims()));
+  }
 
-  int r = xpu::instance_norm_grad(
-      dev_ctx.x_context(),
-      reinterpret_cast<const XPUType*>(x.data<T>()),
-      reinterpret_cast<const XPUType*>(y_grad.data<T>()),
-      reinterpret_cast<XPUType*>(x_grad->data<T>()),
-      scale_ptr->data<float>(),
-      saved_mean.data<float>(),
-      saved_variance.data<float>(),
-      scale_grad->data<float>(),
-      bias_grad->data<float>(),
-      n,
-      c,
-      h,
-      w,
-      epsilon,
-      true);
+  DenseTensor scale_tmp;
+  int r;
+  if (!scale_ptr) {
+    scale_tmp.Resize({C});
+    dev_ctx.template Alloc<T>(&scale_tmp);
+    r = xpu::constant(dev_ctx.x_context(),
+                      reinterpret_cast<XPUType*>(scale_tmp.data<T>()),
+                      scale_tmp.numel(),
+                      static_cast<XPUType>(1));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
+  }
+  auto scale_ptr_tmp = scale_ptr ? scale_ptr : &scale_tmp;
 
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+  auto d_x_data =
+      d_x ? d_x->data<T>() : RAII_GUARD.alloc_l3_or_gm<T>(x.numel());
+  r = xpu::instance_norm_grad(dev_ctx.x_context(),
+                              reinterpret_cast<const XPUType*>(x.data<T>()),
+                              reinterpret_cast<const XPUType*>(d_y.data<T>()),
+                              reinterpret_cast<XPUType*>(d_x_data),
+                              scale_ptr_tmp->data<float>(),
+                              saved_mean.data<float>(),
+                              saved_variance.data<float>(),
+                              d_scale_data,
+                              d_bias_data,
+                              N,
+                              C,
+                              H,
+                              W,
+                              epsilon,
+                              true);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "instance_norm_grad");
 }
 
