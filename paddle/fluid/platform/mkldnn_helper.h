@@ -140,4 +140,32 @@ inline std::string FindOutputNameByVarName(framework::OpDesc* op,
       if (output_name == searched_name) ret = name;
   return ret;
 }
+
+inline bool FoundOneDNNKernel(const framework::OpDesc* op) {
+  auto op_type = op->Type();
+  auto& all_kernels = framework::OperatorWithKernel::AllOpKernels();
+  auto it = all_kernels.find(op_type);
+  if (it != all_kernels.end()) {
+    for (auto& kernel_pair : it->second) {
+      if (platform::is_cpu_place(kernel_pair.first.place_) &&
+          (kernel_pair.first.library_type_ ==
+           framework::LibraryType::kMKLDNN)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+inline bool FoundPhiOneDNNKernel(const framework::OpDesc* op) {
+  auto op_type = op->Type();
+  auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
+      phi::TransToPhiKernelName(op_type));
+
+  for (auto& kernel_pair : phi_kernels)
+    if (kernel_pair.first.backend() == phi::Backend::ONEDNN) return true;
+
+  return false;
+}
+
 }  // namespace paddle
