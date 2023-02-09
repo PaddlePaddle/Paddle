@@ -19,12 +19,11 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-from paddle.fluid.dygraph.parallel import ParallelEnv
 
 
 def init_process_group(strategy=None):
-    nranks = ParallelEnv().nranks
-    rank = ParallelEnv().local_rank
+    nranks = paddle.distributed.ParallelEnv().nranks
+    rank = dist.ParallelEnv().local_rank
     is_master = True if rank == 0 else False
     pg_group = dist.init_parallel_env()
 

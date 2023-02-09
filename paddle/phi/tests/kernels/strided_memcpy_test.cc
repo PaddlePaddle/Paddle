@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,13 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/strided_memcpy.h"
+#include "paddle/phi/kernels/funcs/strided_memcpy.h"
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
+namespace tests {
 
 TEST(StridedMemcpy, CPUCrop) {
   // clang-format off
@@ -29,14 +29,15 @@ TEST(StridedMemcpy, CPUCrop) {
   };
   // clang-format on
 
-  framework::DDim src_stride({5, 1});
+  phi::DDim src_stride({5, 1});
 
   int dst[4];
-  framework::DDim dst_dim({2, 2});
-  framework::DDim dst_stride({2, 1});
+  phi::DDim dst_dim({2, 2});
+  phi::DDim dst_stride({2, 1});
 
   phi::CPUContext ctx;
-  StridedMemcpy<int>(ctx, src + 1, src_stride, dst_dim, dst_stride, dst);
+  phi::funcs::StridedMemcpy<int>(
+      ctx, src + 1, src_stride, dst_dim, dst_stride, dst);
 
   ASSERT_EQ(1, dst[0]);
   ASSERT_EQ(2, dst[1]);
@@ -54,13 +55,15 @@ TEST(StridedMemcpy, CPUConcat) {
 
   int dst[8];
 
-  framework::DDim src_stride({2, 1});
-  framework::DDim dst_dim({2, 2});
-  framework::DDim dst_stride({4, 1});
+  phi::DDim src_stride({2, 1});
+  phi::DDim dst_dim({2, 2});
+  phi::DDim dst_stride({4, 1});
   phi::CPUContext ctx;
 
-  StridedMemcpy<int>(ctx, src, src_stride, dst_dim, dst_stride, dst);
-  StridedMemcpy<int>(ctx, src, src_stride, dst_dim, dst_stride, dst + 2);
+  phi::funcs::StridedMemcpy<int>(
+      ctx, src, src_stride, dst_dim, dst_stride, dst);
+  phi::funcs::StridedMemcpy<int>(
+      ctx, src, src_stride, dst_dim, dst_stride, dst + 2);
 
   // clang-format off
   int expect_dst[] = {
@@ -83,8 +86,8 @@ TEST(StridedMemcpy, GPUCrop) {
   };
   // clang-format on
 
-  platform::CUDAPlace gpu0(0);
-  platform::CPUPlace cpu;
+  phi::GPUPlace gpu0(0);
+  phi::CPUPlace cpu;
 
   phi::GPUContext ctx(gpu0);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
@@ -92,24 +95,24 @@ TEST(StridedMemcpy, GPUCrop) {
                        .get());
   ctx.PartialInitWithAllocator();
 
-  auto src_allocation = memory::Alloc(gpu0, sizeof(src));
+  auto src_allocation = paddle::memory::Alloc(gpu0, sizeof(src));
 
   int* gpu_src = reinterpret_cast<int*>(src_allocation->ptr());
-  memory::Copy(gpu0, gpu_src, cpu, src, sizeof(src), ctx.stream());
+  paddle::memory::Copy(gpu0, gpu_src, cpu, src, sizeof(src), ctx.stream());
 
-  framework::DDim src_stride({5, 1});
+  phi::DDim src_stride({5, 1});
 
   int dst[4];
-  auto dst_allocation = memory::Alloc(gpu0, sizeof(dst));
+  auto dst_allocation = paddle::memory::Alloc(gpu0, sizeof(dst));
   int* gpu_dst = reinterpret_cast<int*>(dst_allocation->ptr());
 
-  framework::DDim dst_dim({2, 2});
-  framework::DDim dst_stride({2, 1});
+  phi::DDim dst_dim({2, 2});
+  phi::DDim dst_stride({2, 1});
 
-  StridedMemcpy<int>(
+  phi::funcs::StridedMemcpy<int>(
       ctx, gpu_src + 1, src_stride, dst_dim, dst_stride, gpu_dst);
 
-  memory::Copy(cpu, dst, gpu0, gpu_dst, sizeof(dst), ctx.stream());
+  paddle::memory::Copy(cpu, dst, gpu0, gpu_dst, sizeof(dst), ctx.stream());
   ctx.Wait();
 
   ASSERT_EQ(1, dst[0]);
@@ -126,30 +129,31 @@ TEST(StridedMemcpy, GPUConcat) {
   };
   // clang-format on
 
-  platform::CUDAPlace gpu0(0);
-  platform::CPUPlace cpu;
+  phi::GPUPlace gpu0(0);
+  phi::CPUPlace cpu;
   phi::GPUContext ctx(gpu0);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(gpu0, ctx.stream())
                        .get());
   ctx.PartialInitWithAllocator();
-  auto gpu_src_allocation = memory::Alloc(gpu0, sizeof(src));
+  auto gpu_src_allocation = paddle::memory::Alloc(gpu0, sizeof(src));
   int* gpu_src = reinterpret_cast<int*>(gpu_src_allocation->ptr());
-  memory::Copy(gpu0, gpu_src, cpu, src, sizeof(src), ctx.stream());
+  paddle::memory::Copy(gpu0, gpu_src, cpu, src, sizeof(src), ctx.stream());
 
   int dst[8];
-  auto gpu_dst_allocation = memory::Alloc(gpu0, sizeof(dst));
+  auto gpu_dst_allocation = paddle::memory::Alloc(gpu0, sizeof(dst));
   int* gpu_dst = reinterpret_cast<int*>(gpu_dst_allocation->ptr());
 
-  framework::DDim src_stride({2, 1});
-  framework::DDim dst_dim({2, 2});
-  framework::DDim dst_stride({4, 1});
+  phi::DDim src_stride({2, 1});
+  phi::DDim dst_dim({2, 2});
+  phi::DDim dst_stride({4, 1});
 
-  StridedMemcpy<int>(ctx, gpu_src, src_stride, dst_dim, dst_stride, gpu_dst);
-  StridedMemcpy<int>(
+  phi::funcs::StridedMemcpy<int>(
+      ctx, gpu_src, src_stride, dst_dim, dst_stride, gpu_dst);
+  phi::funcs::StridedMemcpy<int>(
       ctx, gpu_src, src_stride, dst_dim, dst_stride, gpu_dst + 2);
 
-  memory::Copy(cpu, dst, gpu0, gpu_dst, sizeof(dst), ctx.stream());
+  paddle::memory::Copy(cpu, dst, gpu0, gpu_dst, sizeof(dst), ctx.stream());
   ctx.Wait();
 
   // clang-format off
@@ -164,5 +168,5 @@ TEST(StridedMemcpy, GPUConcat) {
 }
 
 #endif
-}  // namespace operators
-}  // namespace paddle
+}  // namespace tests
+}  // namespace phi

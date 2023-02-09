@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/concat_kernel.h"
 
-#include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
@@ -24,6 +23,7 @@
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
+#include "paddle/phi/kernels/funcs/strided_memcpy.h"
 
 namespace phi {
 
@@ -85,14 +85,13 @@ void ConcatKernel(const Context& dev_ctx,
       }
       auto in_stride = phi::stride_numel(in->dims());
       auto out_stride = phi::stride_numel(out->dims());
-      paddle::operators::StridedNumelCopyWithAxis<T>(
-          dev_ctx,
-          axis,
-          out->data<T>() + output_offset,
-          out_stride,
-          in->data<T>(),
-          in_stride,
-          in_stride[axis]);
+      phi::funcs::StridedNumelCopyWithAxis<T>(dev_ctx,
+                                              axis,
+                                              out->data<T>() + output_offset,
+                                              out_stride,
+                                              in->data<T>(),
+                                              in_stride,
+                                              in_stride[axis]);
       output_offset += in_stride[axis];
     }
   } else {
