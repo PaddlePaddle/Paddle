@@ -466,13 +466,13 @@ void GpuPsGraphTable::move_result_to_source_gpu(int start_index,
 
 void GpuPsGraphTable::move_degree_to_source_gpu(
     int start_index, int gpu_num, int* h_left, int* h_right, int* node_degree) {
-  int shard_len[gpu_num];
+  std::vector<int> shard_len(gpu_num, 0);
   for (int i = 0; i < gpu_num; i++) {
     if (h_left[i] == -1 || h_right[i] == -1) {
       continue;
     }
     shard_len[i] = h_right[i] - h_left[i] + 1;
-    int cur_step = (int)path_[start_index][i].nodes_.size() - 1;
+    int cur_step = static_cast<int>(path_[start_index][i].nodes_.size()) - 1;
     for (int j = cur_step; j > 0; j--) {
       CUDA_CHECK(
           cudaMemcpyAsync(path_[start_index][i].nodes_[j - 1].val_storage,
@@ -1566,8 +1566,12 @@ void GpuPsGraphTable::get_node_degree(
                     len * sizeof(int),
                     phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
   int* d_shard_degree_ptr = reinterpret_cast<int*>(d_shard_degree->ptr());
-  split_input_to_shard(
-      (uint64_t*)(key), d_idx_ptr, len, d_left_ptr, d_right_ptr, gpu_id);
+  split_input_to_shard(reinterpret_cast<uint64_t*>(key),
+                       d_idx_ptr,
+                       len,
+                       d_left_ptr,
+                       d_right_ptr,
+                       gpu_id);
   heter_comm_kernel_->fill_shard_key(
       d_shard_keys_ptr, key, d_idx_ptr, len, stream);
   CUDA_CHECK(cudaStreamSynchronize(stream));
@@ -1594,8 +1598,12 @@ void GpuPsGraphTable::get_node_degree(
         shard_len * sizeof(uint64_t),
         shard_len * sizeof(uint64_t) + sizeof(int) * shard_len + shard_len % 2);
   }
-  walk_to_dest(
-      gpu_id, total_gpu, h_left, h_right, (uint64_t*)(d_shard_keys_ptr), NULL);
+  walk_to_dest(gpu_id,
+               total_gpu,
+               h_left,
+               h_right,
+               reinterpret_cast<uint64_t*>(d_shard_keys_ptr),
+               NULL);
   for (int i = 0; i < total_gpu; ++i) {
     if (h_left[i] == -1) {
       continue;
@@ -1610,11 +1618,11 @@ void GpuPsGraphTable::get_node_degree(
         get_table_offset(i, GraphTableType::EDGE_TABLE, edge_idx);
     tables_[table_offset]->get(reinterpret_cast<uint64_t*>(node.key_storage),
                                reinterpret_cast<uint64_t*>(node.val_storage),
-                               (size_t)(h_right[i] - h_left[i] + 1),
+                               static_cast<size_t>(h_right[i] - h_left[i] + 1),
                                resource_->remote_stream(i, gpu_id));
     GpuPsNodeInfo* node_info_list =
         reinterpret_cast<GpuPsNodeInfo*>(node.val_storage);
-    int* node_degree_array = (int*)(node_info_list + shard_len);
+    int* node_degree_array = reinterpret_cast<int*>(node_info_list + shard_len);
     int grid_size_ = (shard_len - 1) / block_size_ + 1;
     get_node_degree_kernel<<<grid_size_,
                              block_size_,
