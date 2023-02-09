@@ -216,14 +216,18 @@ void TestDataInterface() {
   const void* const_tensor_ptr = test_tensor.data();
   CHECK(const_tensor_ptr != nullptr);
   // Test SelectedRows
-  std::shared_ptr<phi::SelectedRows> selected_rows{
-      new phi::SelectedRows({0, 4, 4, 7}, 10)};
-  selected_rows->mutable_value()->mutable_data<float>({{}}, phi::CPUPlace());
-  experimental::Tensor* sr_tensor = new experimental::Tensor(selected_rows);
-  CHECK(sr_tensor->is_initialized() == true);
-  tensor_ptr = sr_tensor->data();
+  std::vector<int64_t> rows = {0};
+  std::shared_ptr<phi::SelectedRows> selected_rows =
+      std::make_shared<phi::SelectedRows>(rows, 1);
+  selected_rows->mutable_value()->Resize(phi::make_ddim({1, 1}));
+  selected_rows->mutable_value()->mutable_data<float>(phi::CPUPlace())[0] =
+      static_cast<float>(10.0f);
+  paddle::experimental::Tensor sr_tensor =
+      paddle::experimental::Tensor(selected_rows);
+  CHECK(sr_tensor.is_initialized() == true);
+  tensor_ptr = sr_tensor.data();
   CHECK(tensor_ptr != nullptr);
-  const_tensor_ptr = sr_tensor->data();
+  const_tensor_ptr = sr_tensor.data();
   CHECK(const_tensor_ptr != nullptr);
 }
 
