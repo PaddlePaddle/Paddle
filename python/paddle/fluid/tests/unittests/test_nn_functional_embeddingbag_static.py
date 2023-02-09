@@ -21,7 +21,7 @@ import paddle.fluid as fluid
 import paddle.nn.functional as functional
 
 
-class EmbeddingStatic(unittest.TestCase):
+class EmbeddingBagStatic(unittest.TestCase):
     def test_1(self):
         paddle.enable_static()
         prog = fluid.Program()
