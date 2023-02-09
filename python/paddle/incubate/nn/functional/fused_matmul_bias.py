@@ -123,9 +123,9 @@ def fused_matmul_bias_int4(
             # required: gpu
             import paddle
             from paddle.incubate.nn.functional import fused_matmul_bias_int4
-            x = paddle.randint(-5,5,[3,4],dtype='int32')
-            y = paddle.randint(-5,5,[4,5],dtype='int32')
-            bias = paddle.randint(-5,5,[5],dtype='int32')
+            x = paddle.randint(-5,5,[64,128],dtype='int32')
+            y = paddle.randint(-5,5,[128,64],dtype='int32')
+            bias = paddle.randint(-5,5,[64],dtype='int32')
             out = fused_matmul_bias_int4(x, y, bias, False, False, 'none')
             print(out.shape) # [3, 5]
     """
