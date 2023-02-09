@@ -75,8 +75,8 @@ def expect_grad(inputs):
 class TestCompositeGelu(unittest.TestCase):
     def setUp(self):
         core._set_prim_backward_enabled(True)
-        self.dtypes = ["float32", "float64"]
-        self.shapes = [[2, 3, 4], [2, 3]]
+        self.dtypes = ["float16", "float32", "float64"]
+        self.shapes = [[16, 16, 64, 64], [2, 3, 4], [2, 3]]
         self.approximates = [True, False]
 
     def cal_composite_grad(self, inputs):
