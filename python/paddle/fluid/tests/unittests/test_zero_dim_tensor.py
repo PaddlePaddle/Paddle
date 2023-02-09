@@ -625,26 +625,50 @@ class TestSundryAPI(unittest.TestCase):
     def test_std(self):
         x = paddle.rand([])
         x.stop_gradient = False
-        out = paddle.std(x)
-        out.backward()
+        out1 = paddle.std(x)
+        out2 = paddle.std(x, [])
+        out1.backward()
+        out2.backward()
 
         # checkout shape of out
-        self.assertEqual(out.shape, [])
+        self.assertEqual(out1.shape, [])
+        self.assertEqual(out2.shape, [])
 
         # checkout value of out
-        self.assertEqual(out, 0)
+        self.assertEqual(out1, 0)
+        self.assertEqual(out2, 0)
+
+        # checkout backward
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(x.grad, 0)
+        self.assertEqual(out1.grad.shape, [])
+        self.assertEqual(out1.grad, 0)
+        self.assertEqual(out2.grad.shape, [])
+        self.assertEqual(out2.grad, 0)
 
     def test_var(self):
         x = paddle.rand([])
         x.stop_gradient = False
-        out = paddle.var(x)
-        out.backward()
+        out1 = paddle.var(x)
+        out2 = paddle.var(x, [])
+        out1.backward()
+        out2.backward()
 
         # checkout shape of out
-        self.assertEqual(out.shape, [])
+        self.assertEqual(out1.shape, [])
+        self.assertEqual(out2.shape, [])
 
         # checkout value of out
-        self.assertEqual(out, 0)
+        self.assertEqual(out1, 0)
+        self.assertEqual(out2, 0)
+
+        # checkout backward
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(x.grad, 0)
+        self.assertEqual(out1.grad.shape, [])
+        self.assertEqual(out1.grad, 0)
+        self.assertEqual(out2.grad.shape, [])
+        self.assertEqual(out2.grad, 0)
 
     def test_quantile(self):
         # 1) x is 0D
@@ -1735,22 +1759,56 @@ class TestSundryAPIStatic(unittest.TestCase):
     @prog_scope()
     def test_std(self):
         x = paddle.rand([])
-        out = paddle.std(x)
-        paddle.static.append_backward(out)
+        out1 = paddle.std(x)
+        out2 = paddle.std(x, [])
+        paddle.static.append_backward(out1)
+        paddle.static.append_backward(out2)
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out])
+        res = self.exe.run(
+            prog,
+            fetch_list=[
+                x,
+                out1,
+                out2,
+                x.grad_name,
+                out1.grad_name,
+                out2.grad_name,
+            ],
+        )
         self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[2].shape, ())
+        self.assertEqual(res[3].shape, ())
+        self.assertEqual(res[4].shape, ())
+        self.assertEqual(res[5].shape, ())
 
     @prog_scope()
     def test_var(self):
-        x = paddle.full([], 1, 'float32')
-        out = paddle.var(x)
-        paddle.static.append_backward(out)
+        x = paddle.rand([])
+        out1 = paddle.var(x)
+        out2 = paddle.var(x, [])
+        paddle.static.append_backward(out1)
+        paddle.static.append_backward(out2)
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out])
+        res = self.exe.run(
+            prog,
+            fetch_list=[
+                x,
+                out1,
+                out2,
+                x.grad_name,
+                out1.grad_name,
+                out2.grad_name,
+            ],
+        )
         self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[2].shape, ())
+        self.assertEqual(res[3].shape, ())
+        self.assertEqual(res[4].shape, ())
+        self.assertEqual(res[5].shape, ())
 
     @prog_scope()
     def test_quantile(self):
