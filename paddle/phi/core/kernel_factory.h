@@ -67,17 +67,19 @@ class KernelKey {
   KernelKey(Backend backend, DataLayout layout, DataType dtype)
       : backend_(backend), layout_(layout), dtype_(dtype) {}
 
-  explicit KernelKey(Place place)
+  explicit KernelKey(const Place& place)
       : backend_(TransToPhiBackend(place)),
         layout_(DataLayout::ALL_LAYOUT),
         dtype_(DataType::ALL_DTYPE) {}
 
-  explicit KernelKey(const int& dtype, Place place)
+  explicit KernelKey(const int& dtype, const Place& place)
       : backend_(TransToPhiBackend(place)),
         layout_(DataLayout::ALL_LAYOUT),
         dtype_(phi::TransToPhiDataType(dtype)) {}
 
-  explicit KernelKey(Place place, DataLayout layout, DataType dtype)
+  explicit KernelKey(const Place& place,
+                     const DataLayout& layout,
+                     const DataType& dtype)
       : backend_(TransToPhiBackend(place)), layout_(layout), dtype_(dtype) {}
 
   Backend backend() const { return backend_; }
