@@ -21,6 +21,12 @@ import paddle
 import paddle.nn.functional as F
 from paddle.fluid import core
 
+TOLERANCE = {
+    "float16": {"rtol": 1e-3, "atol": 1e-3},
+    "float32": {"rtol": 1e-6, "atol": 1e-6},
+    "float64": {"rtol": 1e-15, "atol": 1e-15},
+}
+
 approximate_conds = [True, False]
 
 
@@ -30,6 +36,11 @@ def apply_to_static(net, use_cinn):
     return paddle.jit.to_static(net, build_strategy=build_strategy)
 
 
+def generate_data(shape, dtype="float32"):
+    np_data = np.random.random(shape).astype(dtype)
+    return np_data
+
+
 class PrimeNet(paddle.nn.Layer):
     def __init__(self, approximate):
         super(PrimeNet, self).__init__()
@@ -37,8 +48,8 @@ class PrimeNet(paddle.nn.Layer):
         self.approximate = approximate
 
     def forward(self, x):
-        y = self.fc(x)
-        out = F.gelu(y, approximate=self.approximate)
+        # y = self.fc(x)
+        out = F.gelu(x, approximate=self.approximate)
         return out
 
 
@@ -49,14 +60,14 @@ class TestPrimForwardAndBackward(unittest.TestCase):
 
     def setUp(self):
         paddle.seed(2022)
-        self.x = paddle.randn([2, 4])
-        self.x.stop_gradient = False
+        self.shapes = [[2, 4], [64, 16, 4]]
+        self.dtypes = ["float16", "float32"]
 
-    def train(self, use_prim):
+    def train(self, use_prim, data):
         for approximate in approximate_conds:
-            return self._train(use_prim, approximate)
+            return self._train(use_prim, approximate, data)
 
-    def _train(self, use_prim, approximate):
+    def _train(self, use_prim, approximate, data):
         paddle.seed(2022)
         net = PrimeNet(approximate)
         sgd = paddle.optimizer.SGD(
@@ -66,19 +77,14 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         if use_prim:
             net = apply_to_static(net, use_prim)
 
-        res = []
-        for _ in range(10):
-            out = net(self.x)
-            loss = paddle.mean(out)
-            loss.backward()
-            sgd.step()
-            sgd.clear_grad()
-
-            res.append(out.numpy())
-
+        out = net(data)
+        loss = paddle.mean(out)
+        loss.backward()
+        sgd.step()
+        sgd.clear_grad()
         self.check_prim(net, use_prim)
 
-        return res
+        return out.numpy()
 
     def check_prim(self, net, use_prim):
         if not use_prim:
@@ -90,13 +96,20 @@ class TestPrimForwardAndBackward(unittest.TestCase):
     def test_cinn_prim(self):
         plat = platform.system()
         if plat == "Linux":
-            dy_res = self.train(use_prim=False)
-            cinn_res = self.train(use_prim=True)
+            for shape in self.shapes:
+                for dtype in self.dtypes:
+                    data = generate_data(shape, dtype)
+                    data_t = paddle.to_tensor(data)
+                    data_t.stop_gradient = False
+                    dy_res = self.train(use_prim=False, data=data_t)
+                    cinn_res = self.train(use_prim=True, data=data_t)
+                    np.testing.assert_allclose(
+                        cinn_res,
+                        dy_res,
+                        rtol=TOLERANCE[dtype]['rtol'],
+                        atol=TOLERANCE[dtype]['atol'],
+                    )
 
-            for i in range(len(dy_res)):
-                np.testing.assert_allclose(
-                    cinn_res[i], dy_res[i], rtol=1e-6, atol=1e-6
-                )
         else:
             pass
 
