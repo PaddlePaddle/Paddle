@@ -127,7 +127,7 @@ def fused_matmul_bias_int4(
             y = paddle.randint(-5,5,[128,64],dtype='int32')
             bias = paddle.randint(-5,5,[64],dtype='int32')
             out = fused_matmul_bias_int4(x, y, bias, False, False, 'none')
-            print(out.shape) # [3, 5]
+            print(out.shape) # [64, 64]
     """
     helper = LayerHelper('fused_matmul_bias_int4', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
