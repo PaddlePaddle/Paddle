@@ -12,20 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Convert the fluid program to distributed data-parallelism programs.
+Convert the static program to distributed data-parallelism programs.
 """
 
 import os
 import sys
 import warnings
 
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.framework import default_main_program
-from paddle.fluid.framework import default_startup_program
-from paddle.fluid.framework import Program
+import paddle
+from paddle.framework import core
+from paddle.static import (
+    default_main_program,
+    default_startup_program,
+    Program,
+    Executor,
+)
 from paddle.fluid.compiler import CompiledProgram
-from paddle.fluid.executor import Executor
 from paddle.fluid.parallel_executor import ParallelExecutor
 from paddle.fluid.optimizer import Optimizer
 
@@ -216,7 +218,7 @@ class FleetTranspiler(Fleet):
                 recv_type=1
             )
 
-        from paddle.fluid.communicator import Communicator
+        from paddle.distributed.communicator import Communicator
 
         self._communicator = Communicator(
             trainer_config.mode, kwargs, trainer_config.get_communicator_flags()
@@ -274,7 +276,7 @@ class FleetTranspiler(Fleet):
                 )
             )
 
-            fluid.io.load_vars(
+            paddle.static.load_vars(
                 self._executor,
                 main_program=self.main_program,
                 dirname=model_dir,
@@ -430,8 +432,8 @@ class FleetTranspiler(Fleet):
             )
 
         # Todo(MrChengmo): support recv&save GPU-Kernel for ps-gpu model save
-        if not isinstance(executor.place, fluid.CPUPlace):
-            save_executor = Executor(fluid.CPUPlace())
+        if not isinstance(executor.place, paddle.CPUPlace):
+            save_executor = Executor(paddle.CPUPlace())
         else:
             save_executor = executor
 
@@ -440,7 +442,7 @@ class FleetTranspiler(Fleet):
                 raise TypeError(
                     "in fleet.save_inference_model() function, main_program must be as Program type, CompiledProgram is not allowed"
                 )
-            fluid.io.save_inference_model(
+            paddle.static.save_inference_model(
                 dirname,
                 feeded_var_names,
                 target_vars,
@@ -451,7 +453,7 @@ class FleetTranspiler(Fleet):
                 export_for_deployment,
             )
         else:
-            fluid.io.save_inference_model(
+            paddle.static.save_inference_model(
                 dirname,
                 feeded_var_names,
                 target_vars,
@@ -474,7 +476,7 @@ class FleetTranspiler(Fleet):
             self.save_persistables(executor, dirname, program)
 
     def _load_sparse_params(self, dirname, varnames):
-        from paddle.fluid.communicator import LargeScaleKV
+        from paddle.distributed.communicator import LargeScaleKV
 
         scale_kv = LargeScaleKV()
         for varname in varnames:
@@ -733,7 +735,7 @@ class FleetTranspiler(Fleet):
             )
         )
 
-        fluid.io.save_vars(
+        paddle.static.save_vars(
             executor,
             main_program=main_program,
             dirname=dirname,
@@ -766,8 +768,8 @@ class FleetTranspiler(Fleet):
                 "in fleet.save_persistables() function, executor must be as Executor type"
             )
         # Todo(MrChengmo): support recv&save GPU-Kernel for ps-gpu model save
-        if not isinstance(executor.place, fluid.CPUPlace):
-            save_executor = Executor(fluid.CPUPlace())
+        if not isinstance(executor.place, paddle.CPUPlace):
+            save_executor = Executor(paddle.CPUPlace())
         else:
             save_executor = executor
 
@@ -894,8 +896,8 @@ class ParameterServerOptimizer(DistributedOptimizer):
         return _main, _startup
 
     def _build_pserver_programs(self, compiled_config):
-        _main = fluid.Program()
-        _startup = fluid.Program()
+        _main = paddle.static.Program()
+        _startup = paddle.static.Program()
 
         if not compiled_config.is_geo_mode():
             _main = server.add_listen_and_serv_pass(_main, compiled_config)

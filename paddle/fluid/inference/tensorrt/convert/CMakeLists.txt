@@ -92,6 +92,7 @@ list(
   take_along_axis_op.cc
   logsigmoid_op.cc
   preln_layernorm_shift_partition_op.cc
+  trans_layernorm_op.cc
   merge_layernorm_op.cc
   skip_merge_layernorm_op.cc
   generic_and_custom_plugin_creater.cc

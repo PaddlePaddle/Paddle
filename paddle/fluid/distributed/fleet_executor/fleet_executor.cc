@@ -111,7 +111,15 @@ void PreventVarsDelete(
 std::vector<std::string> GetUnusedVarsAfterWhile(
     const framework::ProgramDesc& program_desc,
     TaskNode* cond_task,
-    const std::vector<std::string> vars_not_gc) {
+    const std::vector<std::string>& vars_not_gc) {
+  // NOTE: Since while op won't appear in task node, in order to analyze
+  // the vars which should be free after calling while op, we rebuild the
+  // whole program and get the unused vars after calling while op.
+  // The vars in while block should not be free until the while op is finished.
+  // In a word, the vars need to be free after while op is:
+  //   1. Vars in parent block and being used in while block.
+  //   2. Local vars only defined in while block.
+  // The unused vars above will be free in cond interceptor.
   std::vector<std::string> while_block_vars;
   std::vector<std::unique_ptr<framework::OperatorBase>> ops;
   for (const auto& desc : program_desc.Block(0).AllOps()) {
@@ -123,6 +131,9 @@ std::vector<std::string> GetUnusedVarsAfterWhile(
     if (pair.first->Type() == "while") {
       for (const auto& var_name : pair.second) {
         while_block_vars.emplace_back(var_name);
+      }
+      for (auto& var : program_desc.Block(1).AllVars()) {
+        while_block_vars.emplace_back(var->Name());
       }
     }
   }
@@ -178,13 +189,6 @@ void FleetExecutor::Init(
   auto global_unused_vars =
       framework::GetUnusedVars(program_desc.Block(0), ops, {});
 
-  // Analyse the unused vars in block 1.
-  std::unordered_map<const framework::OperatorBase*, std::vector<std::string>>
-      sub_unused_vars;
-  if (program_desc.Size() > 1) {
-    sub_unused_vars = framework::GetUnusedVars(program_desc.Block(1), ops, {});
-    PreventVarsDelete(&sub_unused_vars, while_block_vars);
-  }
   for (auto& unique_op : ops) {
     unique_op.release();
   }
@@ -199,8 +203,6 @@ void FleetExecutor::Init(
   for (auto task_node : task_nodes) {
     if (sub_block_tasks.find(task_node) == sub_block_tasks.end()) {
       task_node->SetUnusedVars(global_unused_vars);
-    } else {
-      task_node->SetUnusedVars(sub_unused_vars);
     }
     int64_t interceptor_id = task_node->task_id();
     interceptor_id_to_task.emplace(interceptor_id, task_node);
