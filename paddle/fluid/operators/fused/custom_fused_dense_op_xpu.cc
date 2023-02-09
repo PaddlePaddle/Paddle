@@ -27,6 +27,7 @@ using Tensor = phi::DenseTensor;
 template <typename DeviceContext, typename T>
 class CustomFusedDenseXPUKernel : public framework::OpKernel<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
+  using biasType= typename XPUTypeTrait<float>::Type;
 
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -76,24 +77,41 @@ class CustomFusedDenseXPUKernel : public framework::OpKernel<T> {
     const XPUType* y_ptr = reinterpret_cast<const XPUType*>(y->data<T>());
     XPUType* out_ptr =
         reinterpret_cast<XPUType*>(out->mutable_data<T>(ctx.GetPlace()));
-    xpu::ctx_guard RAII_GUARD(xpu_ctx);
-    XPUType* fc_out_ptr = RAII_GUARD.alloc_l3_or_gm<XPUType>(out->numel());
-    phi::MatMulXPUFunction<XPUType>(
-        xpu_ctx, x_ptr, y_ptr, fc_out_ptr, fc_info, 1.0f);
+    // xpu::ctx_guard RAII_GUARD(xpu_ctx);
+    // XPUType* fc_out_ptr = RAII_GUARD.alloc_l3_or_gm<XPUType>(out->numel());
+    // phi::MatMulXPUFunction<XPUType>(
+        // xpu_ctx, x_ptr, y_ptr, fc_out_ptr, fc_info, 1.0f);
     XPUType* bias_out_ptr = out_ptr;
     if (activation != "none" && reserve_space) {
       bias_out_ptr = reinterpret_cast<XPUType*>(
           reserve_space->mutable_data<T>(ctx.GetPlace()));
     }
     // 2 bias
-    const XPUType* bias_ptr = reinterpret_cast<const XPUType*>(bias->data<T>());
-    r = xpu::broadcast_add(xpu_ctx,
-                           fc_out_ptr,
-                           bias_ptr,
-                           bias_out_ptr,
-                           {fc_info.m, fc_info.n},
-                           {fc_info.n});
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
+    const biasType* bias_ptr = reinterpret_cast<const biasType*>(bias->data<T>());
+
+    int m = fc_info.m;
+    int n = fc_info.n;
+    int k = fc_info.k;
+    int ldx = fc_info.stride_x;
+    int ldy = fc_info.stride_y;
+    int ldout = fc_info.stride_out;
+    bool trans_x = fc_info.trans_x;
+    bool trans_y = fc_info.trans_y;
+    float* max_x = fc_info.max_x;
+    float* max_y = fc_info.max_y;
+    float* max_out = fc_info.max_out;
+
+    r = xpu::fc_fusion<XPUType, XPUType, XPUType, int16_t>(xpu_ctx, x_ptr, y_ptr, bias_out_ptr, m, n, k, trans_x,
+        trans_y, max_x, max_y, max_out, ldx, ldy, ldout, 1.0f, 0.0f,
+        bias_ptr, xpu::Activation_t::LINEAR);
+
+    // r = xpu::broadcast_add(xpu_ctx,
+    //                        fc_out_ptr,
+    //                        bias_ptr,
+    //                        bias_out_ptr,
+    //                        {fc_info.m, fc_info.n},
+    //                        {fc_info.n});
+    // PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
     // 3 act
     if (activation == "relu") {
       r = xpu::relu(xpu_ctx, bias_out_ptr, out_ptr, out->numel());
