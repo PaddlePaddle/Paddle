@@ -1874,6 +1874,12 @@ def initialize_pg_in_full_mode(all_process_groups, cur_rank):
                             )
                         )
                         break
+        print(
+            "***process_group: id:",
+            process_group.id,
+            "rank:",
+            process_group.ranks,
+        )
         process_group.instantiate()
     server_socket.close()
 

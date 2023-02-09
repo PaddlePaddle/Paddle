@@ -185,11 +185,11 @@ class Engine:
         self._strategy = strategy or Strategy()
 
         self._logger = get_logger(logging.INFO)
-        if os.getenv("POD_NAME"):
-            self._logger.info(
-                "Distribute training by paddle.distributed.launch"
-            )
-            fleet.init(is_collective=True)
+        # if os.getenv("POD_NAME"):
+        #     self._logger.info(
+        #         "Distribute training by paddle.distributed.launch"
+        #     )
+        #     fleet.init(is_collective=True)
 
         self._executor = None
         self._cur_rank = paddle.distributed.get_rank()
@@ -338,7 +338,7 @@ class Engine:
 
         return inputs, labels
 
-    def _prepare_reader(self):
+    def _prepare_reader(self, feed_list=[]):
         dist_main_prog = self._dist_main_progs[self._mode][self._cur_rank]
         dist_context = self._dist_contexts[self._mode]
         dist_main_block = dist_main_prog.global_block()
@@ -361,10 +361,13 @@ class Engine:
             if op.type in related_reader_ops:
                 reader_op_indices.append(idx)
         # Step 2: insert the new reader ops to cpp
+        # record the read ops' desc to insert to program of forward task_node
+        read_ops_desc = []
         new_reader_ops = []
         for idx in reversed(reader_op_indices):
             new_op_desc = dist_main_block.desc._prepend_op()
             new_op_desc.copy_from(dist_main_block.ops[idx].desc)
+            read_ops_desc.append(new_op_desc)
             new_op = Operator(
                 dist_main_block, new_op_desc, type=new_op_desc.type()
             )
@@ -382,6 +385,29 @@ class Engine:
             dist_main_block.desc._remove_op(idx, idx + 1)
         dist_main_block._sync_with_cpp()
         self._has_prepared_reader[self._mode] = True
+
+        # Insert read op to forward TaskNode if 1F1B pass is setted
+        if self.main_program._pipeline_opt:
+            assert "tasks" in self.main_program._pipeline_opt["fleet_opt"]
+            fleet_opt = self.main_program._pipeline_opt["fleet_opt"]
+            fwd_task = fleet_opt["tasks"][1]
+            fwd_prog = fwd_task.get_program()
+            fwd_block = fwd_prog.global_block()
+
+            for var in feed_list:
+                if var.name not in fwd_block.vars:
+                    fwd_block._clone_variable(var)
+
+            for op_desc in read_ops_desc:
+                new_op_desc = fwd_block.desc._prepend_op()
+                new_op_desc.copy_from(op_desc)
+                new_op = Operator(
+                    fwd_block, new_op_desc, type=new_op_desc.type()
+                )
+                fwd_block.ops.insert(0, new_op)
+
+            fwd_block._sync_with_cpp()
+            fwd_task.set_program(fwd_prog)
 
     def _prepare_feed(self, data, user_feeds, mode):
         feeds = {}
@@ -581,7 +607,7 @@ class Engine:
                                     metric.compute(*(outputs + self._labels))
                                 )
                             )
-            else:
+            elif mode == "train":
                 assert isinstance(
                     self._loss, Variable
                 ), "the type of `loss` of the Engine arguments should be Variable."
@@ -748,49 +774,55 @@ class Engine:
             all_process_groups = get_all_process_groups()
 
             if self._strategy.auto_mode == "full":
-                initialize_pg_in_full_mode(all_process_groups, cur_rank)
+                initialize_pg_in_full_mode(all_process_groups, self._cur_rank)
             else:
                 for process_group in all_process_groups:
                     if self._cur_rank not in process_group.ranks:
                         continue
+                    print(
+                        "***process_group: id:",
+                        process_group.id,
+                        "rank:",
+                        process_group.ranks,
+                    )
                     process_group.instantiate()
 
-        place = _get_device()
-        if isinstance(place, fluid.CUDAPlace):
-            place = fluid.CUDAPlace(ParallelEnv().dev_id)
+        # place = _get_device()
+        # if isinstance(place, fluid.CUDAPlace):
+        #     place = fluid.CUDAPlace(ParallelEnv().dev_id)
 
-        if self._strategy.seed:
-            paddle.seed(self._strategy.seed + self._dp_ranks[0])
-            np.random.seed(self._strategy.seed + self._dp_ranks[0])
-            random.seed(self._strategy.seed + self._dp_ranks[0])
+        # if self._strategy.seed:
+        #     paddle.seed(self._strategy.seed + self._dp_ranks[0])
+        #     np.random.seed(self._strategy.seed + self._dp_ranks[0])
+        #     random.seed(self._strategy.seed + self._dp_ranks[0])
 
-        if self._dygraph_mode:
-            dist_context = self._dist_contexts[mode]
-            dist_main_program = self._dist_main_progs[mode][self._cur_rank]
-            self.program_helper.init(dist_main_program, place, dist_context)
+        # if self._dygraph_mode:
+        #     dist_context = self._dist_contexts[mode]
+        #     dist_main_program = self._dist_main_progs[mode][self._cur_rank]
+        #     self.program_helper.init(dist_main_program, place, dist_context)
 
-        if self._executor is None:
-            self._executor = paddle.static.Executor(place)
-            uninitialized = []
-            dist_startup_prog = self._dist_startup_progs[mode][self._cur_rank]
-            for var in dist_startup_prog.list_vars():
-                scope_var = global_scope().find_var(var.name)
-                if scope_var and scope_var.get_tensor()._is_initialized():
-                    continue
-                uninitialized.append(var)
-            if uninitialized:
-                prune_startup_prog = dist_startup_prog._prune(uninitialized)
-                self._executor.run(prune_startup_prog)
+        # if self._executor is None:
+        #     self._executor = paddle.static.Executor(place)
+        #     uninitialized = []
+        #     dist_startup_prog = self._dist_startup_progs[mode][self._cur_rank]
+        #     for var in dist_startup_prog.list_vars():
+        #         scope_var = global_scope().find_var(var.name)
+        #         if scope_var and scope_var.get_tensor()._is_initialized():
+        #             continue
+        #         uninitialized.append(var)
+        #     if uninitialized:
+        #         prune_startup_prog = dist_startup_prog._prune(uninitialized)
+        #         self._executor.run(prune_startup_prog)
 
-            if hasattr(self, "_state_dict") and hasattr(self, "_dist_attr"):
-                self._set_state_dict(
-                    mode, self._strict, self._state_dict, self._dist_attr
-                )
+        #     if hasattr(self, "_state_dict") and hasattr(self, "_dist_attr"):
+        #         self._set_state_dict(
+        #             mode, self._strict, self._state_dict, self._dist_attr
+        #         )
 
-        if self._strategy.reinit:
-            self._logger.info("NOTE: parameters will be re-initialized.")
-            dist_startup_prog = self._dist_startup_progs[mode][self._cur_rank]
-            self._executor.run(dist_startup_prog)
+        # if self._strategy.reinit:
+        #     self._logger.info("NOTE: parameters will be re-initialized.")
+        #     dist_startup_prog = self._dist_startup_progs[mode][self._cur_rank]
+        #     self._executor.run(dist_startup_prog)
 
     def fit(
         self,
@@ -1462,7 +1494,7 @@ class Engine:
                 data_parallel_world_size=self._dp_world_sizes,
                 data_parallel_rank=self._dp_ranks,
             )
-        self._prepare_reader()
+        self._prepare_reader(feed_list)
         return dataloader
 
     def _tune(self, tune_data, tune_sample_split=None, batch_size=1):
