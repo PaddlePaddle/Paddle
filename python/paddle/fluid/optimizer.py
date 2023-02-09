@@ -2676,6 +2676,34 @@ class AdamaxOptimizer(Optimizer):
         self._beta2 = beta2
         self._epsilon = epsilon
 
+    def _create_master_weight(self, param):
+        if param.name in self._master_weights:
+            var = self._master_weights[param.name]
+        else:
+            assert isinstance(self.helper, LayerHelper)
+
+            var_name = param.name + '_fp32_master'
+            var_name = unique_name.generate(var_name)
+            var = paddle.static.create_global_var(
+                name=var_name,
+                shape=param.shape,
+                value=0,
+                dtype='float32',
+                persistable=True,
+            )
+            block = self.helper.startup_program.global_block()
+            block.append_op(
+                type="cast",
+                inputs={"X": [param]},
+                outputs={"Out": [var]},
+                attrs={
+                    "in_dtype": param.dtype,
+                    "out_dtype": core.VarDesc.VarType.FP32,
+                },
+            )
+            self._master_weights[param.name] = var
+        return var
+        
     def _get_accumulator(self, name, param):
         """Utility function to fetch an accumulator for a parameter
         Args:
