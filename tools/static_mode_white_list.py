@@ -370,7 +370,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_pad_op',
     'test_pairwise_distance',
     'test_parallel_executor_drop_scope',
-    'test_parallel_executor_dry_run',
     'test_parallel_executor_feed_persistable_var',
     'test_parallel_executor_mnist',
     'test_parallel_executor_run_load_infer_program',

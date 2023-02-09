@@ -1251,8 +1251,6 @@ py_test_modules(
   test_eager_deletion_padding_rnn ENVS FLAGS_CONVERT_GRAPH_TO_PROGRAM=true)
 
 # ExecutionStrategy is deprecated in standalone executor
-set_tests_properties(test_parallel_executor_dry_run
-                     PROPERTIES ENVIRONMENT "FLAGS_USE_STANDALONE_EXECUTOR=0")
 set_tests_properties(test_parallel_executor_drop_scope
                      PROPERTIES ENVIRONMENT "FLAGS_USE_STANDALONE_EXECUTOR=0")
 
