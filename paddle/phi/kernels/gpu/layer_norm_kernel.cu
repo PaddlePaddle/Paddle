@@ -95,40 +95,15 @@ void LayerNormKernel(const Context &dev_ctx,
     scale_bias_dtype = valid_bias ? bias->dtype() : x_dtype;
   }
 
-  if (x_dtype != scale_bias_dtype) {
-    PADDLE_ENFORCE_EQ(scale_bias_dtype,
-                      paddle::experimental::CppTypeToDataType<U>::Type(),
-                      phi::errors::InvalidArgument(
-                          "Unsupported data type of Scale and Bias"));
-  }
+  PADDLE_ENFORCE_EQ(
+      scale_bias_dtype,
+      x_dtype,
+      phi::errors::InvalidArgument("Unsupported data type of Scale and Bias"));
 
   auto matrix_dim = phi::flatten_to_2d(x_dims, begin_norm_axis);
   int64_t batch_size = static_cast<int64_t>(matrix_dim[0]);
   int64_t feature_size = static_cast<int64_t>(matrix_dim[1]);
-
   auto stream = dev_ctx.stream();
-
-#define PADDLE_LAUNCH_LAYERNORM_FWD(ScaleBiasT, IsScaleBiasSameDTypeWithX) \
-  do {                                                                     \
-    switch (paddle::operators::GetDesiredBlockDim(feature_size)) {         \
-      FIXED_BLOCK_DIM_CASE(                                                \
-          paddle::operators::                                              \
-              LayerNormForward<T, U, kBlockDim, IsScaleBiasSameDTypeWithX> \
-          <<<batch_size, kBlockDim, 0, stream>>>(                          \
-              x_data,                                                      \
-              static_cast<const ScaleBiasT *>(void_scale_data),            \
-              static_cast<const ScaleBiasT *>(void_bias_data),             \
-              y_data,                                                      \
-              mean_data,                                                   \
-              var_data,                                                    \
-              epsilon,                                                     \
-              feature_size));                                              \
-      default:                                                             \
-        PADDLE_THROW(phi::errors::InvalidArgument(                         \
-            "Product from begin_norm_axis to end must be larger than 1")); \
-        break;                                                             \
-    }                                                                      \
-  } while (0)
 
 #define PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, feature_size)          \
   case (feature_size): {                                                     \
@@ -203,12 +178,27 @@ void LayerNormKernel(const Context &dev_ctx,
   } else {
 #endif
 
-    PADDLE_LAUNCH_LAYERNORM_FWD(T, true);
+    switch (paddle::operators::GetDesiredBlockDim(feature_size)) {
+      FIXED_BLOCK_DIM_CASE(
+          paddle::operators::LayerNormForward<T, U, kBlockDim, true>
+          <<<batch_size, kBlockDim, 0, stream>>>(
+              x_data,
+              static_cast<const T *>(void_scale_data),
+              static_cast<const T *>(void_bias_data),
+              y_data,
+              mean_data,
+              var_data,
+              epsilon,
+              feature_size));
+      default:
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "Product from begin_norm_axis to end must be larger than 1"));
+        break;
+    }
 #ifdef PADDLE_WITH_CUDA
   }
 #endif
 
-#undef PADDLE_LAUNCH_LAYERNORM_FWD
 #undef PADDLE_LAUNCH_FAST_LAYERNORM_FWD
 }
 
