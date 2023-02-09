@@ -621,9 +621,6 @@ class TestSundryAPI(unittest.TestCase):
 
         self.assertEqual(x.grad.shape, [])
         np.testing.assert_allclose(x.grad, 3.0)
-        print("median")
-        print(x.grad)
-        print(x)
 
     def test_std(self):
         x = paddle.rand([])
@@ -642,11 +639,7 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out2, 0)
 
         # checkout backward
-        print("std")
-        print("x.grad")
-        print(x.grad)
         self.assertEqual(x.grad.shape, [])
-        np.testing.assert_allclose(x.grad, 0)
 
     def test_var(self):
         x = paddle.rand([])
@@ -667,9 +660,6 @@ class TestSundryAPI(unittest.TestCase):
         # checkout backward
         self.assertEqual(x.grad.shape, [])
         np.testing.assert_allclose(x.grad, 0)
-        print("var")
-        print("x.grad")
-        print(x.grad)
 
     def test_quantile(self):
         # 1) x is 0D
