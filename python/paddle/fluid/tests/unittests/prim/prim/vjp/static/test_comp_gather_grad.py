@@ -20,6 +20,8 @@ import parameterized as param
 import paddle
 from paddle.fluid import core
 
+np.random.seed(2023)
+
 
 def apply_to_static(net, use_cinn):
     build_strategy = paddle.static.BuildStrategy()
