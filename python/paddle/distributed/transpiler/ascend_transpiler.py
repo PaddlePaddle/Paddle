@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import collective
 from .. import core
+from . import collective
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 from paddle.distributed import fleet
