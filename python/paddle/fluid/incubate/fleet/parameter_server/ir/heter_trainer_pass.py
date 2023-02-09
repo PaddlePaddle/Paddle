@@ -14,10 +14,9 @@
 
 import warnings
 
-import paddle.fluid.core as core
-import paddle.fluid.framework as framework
+import paddle.framework.core as core
+import paddle
 
-from paddle.fluid.transpiler.details.program_utils import delete_ops
 from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import (
     find_heter_ops,
 )
@@ -60,7 +59,7 @@ def split_heter_worker_ops_pass(program, config, stage_id, device):
 
     program_block_ops = union_forward_gradient_op(program_block_ops)
     block_vars_detail = find_block_joints(program, program_block_ops, heter_ops)
-    heter_program = framework.Program()
+    heter_program = paddle.static.Program()
     create_heter_program(
         program,
         config,

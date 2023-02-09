@@ -18,9 +18,6 @@ limitations under the License. */
 
 #include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #include "paddle/fluid/distributed/ps/table/table.h"
-#if defined PADDLE_WITH_HETERPS && defined PADDLE_WITH_PSCORE
-#include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
-#endif
 
 namespace paddle {
 namespace distributed {
@@ -131,14 +128,9 @@ void FleetWrapper::InitWorker(const std::string& dist_desc,
       worker_ptr_ = std::shared_ptr<paddle::distributed::PSClient>(
           paddle::distributed::PSClientFactory::Create(ps_param));
       worker_ptr_->Configure(ps_param, dense_pull_regions, ps_env_, index);
-#if defined PADDLE_WITH_HETERPS && defined PADDLE_WITH_PSCORE
-      VLOG(3) << "FleetWrapper::InitWorker InitializeGPUServer";
-      auto* accessor = worker_ptr_->GetTableAccessor(0);
-      auto ps_gpu_wrapper = paddle::framework::PSGPUWrapper::GetInstance();
-      ps_gpu_wrapper->InitializeGPUServer(ps_param);
-      ps_gpu_wrapper->SetTableAccessor(accessor);
-#endif
     }
+    dist_desc_ = dist_desc;
+    is_initialized_ = true;
   } else {
     VLOG(3) << "Client can be initialized only once";
   }
