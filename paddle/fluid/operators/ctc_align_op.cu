@@ -129,7 +129,7 @@ class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
       // merge elements and delete blank
       T* output_data = output->mutable_data<T>({num_tokens, 1}, ctx.GetPlace());
 
-      paddle::framework::MixVector<size_t> mixv_input_lod(&input_lod[level]);
+      phi::MixVector<size_t> mixv_input_lod(&input_lod[level]);
       MergeAndDelCudaKernel<T>
           <<<1, 1, 0, stream>>>(num_tokens,
                                 tokens,

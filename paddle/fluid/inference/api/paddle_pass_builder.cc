@@ -113,20 +113,24 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "trt_skip_layernorm_fuse_pass",          //
       "preln_skip_layernorm_fuse_pass",        //
 #endif
-      "layernorm_shift_partition_fuse_pass",         //
-      "merge_layernorm_fuse_pass",                   //
-      "preln_residual_bias_fuse_pass",               //
-      "preln_layernorm_x_fuse_pass",                 //
-      "reverse_roll_fuse_pass",                      //
-      "conv_bn_fuse_pass",                           //
-      "unsqueeze2_eltwise_fuse_pass",                //
-      "trt_squeeze2_matmul_fuse_pass",               //
-      "trt_flatten2_matmul_fuse_pass",               //
-      "trt_map_matmul_v2_to_mul_pass",               //
-      "trt_map_matmul_v2_to_matmul_pass",            //
-      "trt_map_matmul_to_mul_pass",                  //
-      "fc_fuse_pass",                                //
-      "conv_elementwise_add_fuse_pass",              //
+      "layernorm_shift_partition_fuse_pass",  //
+      "merge_layernorm_fuse_pass",            //
+      "preln_residual_bias_fuse_pass",        //
+      "preln_layernorm_x_fuse_pass",          //
+      "reverse_roll_fuse_pass",               //
+      "conv_bn_fuse_pass",                    //
+      "unsqueeze2_eltwise_fuse_pass",         //
+      "trt_squeeze2_matmul_fuse_pass",        //
+      "trt_flatten2_matmul_fuse_pass",        //
+      "trt_map_matmul_v2_to_mul_pass",        //
+      "trt_map_matmul_v2_to_matmul_pass",     //
+      "trt_map_matmul_to_mul_pass",           //
+      "fc_fuse_pass",                         //
+      "conv_elementwise_add_fuse_pass",       //
+#if defined _WIN32  // Windows CI is TensorRT7.0. Remove this after upgrading.
+#else
+      "trans_layernorm_fuse_pass",             //
+#endif
       "remove_padding_recover_padding_pass",         //
       "delete_remove_padding_recover_padding_pass",  //
       // "yolo_box_fuse_pass",      //
@@ -475,6 +479,7 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("cpu_quantize_placement_pass");
     passes_.push_back("cpu_quantize_pass");
     passes_.push_back("cpu_quantize_squash_pass");
+    passes_.push_back("quant_transpose2_dequant_onednn_fuse_pass");
     passes_.push_back("int8_scale_calculation_mkldnn_pass");
     passes_.push_back("params_quantization_mkldnn_pass");
   }
