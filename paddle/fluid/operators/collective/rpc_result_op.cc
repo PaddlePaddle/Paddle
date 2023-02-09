@@ -38,7 +38,8 @@ class RpcResultOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() {
     AddInput("X", "(Tensor) Request id.");
     AddOutput("Out", "(Tensor) Response from service.");
-    AddOutput("succeed", "(bool) Request status, true means succeed.");
+    AddOutput("succeed", "Request status, true means succeed.");
+    AddAttr<std::string>("res_dtype", "Data type returns.").SetDefault("float");
     AddComment(R"DOC(
 Rpc Result Operator
 

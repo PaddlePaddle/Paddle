@@ -111,7 +111,7 @@ class RpcRequestStore {
 
 int RpcSend(const std::string& url,
             const std::string& query,
-            void (*payload_builder)(brpc::Controller*, int, const std::string&),
+            void (*request_handler)(brpc::Controller*, int, const std::string&),
             void (*response_handler)(brpc::Controller*,
                                      int,
                                      std::shared_ptr<bthread::CountdownEvent>),

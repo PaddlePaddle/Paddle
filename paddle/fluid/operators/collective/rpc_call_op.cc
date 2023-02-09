@@ -40,8 +40,9 @@ class RpcCallOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(Tensor) Src words' ids.");
     AddInput("url_id", "(Tensor) Service URL's id.");
     AddOutput("Out", "(Tensor) Request id.");
-    AddAttr<std::vector<std::string>>("url_list", "URL list.");
-    AddAttr<std::string>("vocab_path", "Vocab's absolute path.");
+    AddAttr<std::vector<std::string>>("url_list", "URL list.").SetDefault({});
+    AddAttr<std::string>("vocab_path", "Vocab's absolute path.").SetDefault("");
+    AddAttr<bool>("use_ids", "If true, use ids directly.").SetDefault(true);
     AddComment(R"DOC(
 Rpc Call Operator
 

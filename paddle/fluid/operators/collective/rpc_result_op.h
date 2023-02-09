@@ -27,9 +27,14 @@ namespace operators {
 
 using json = nlohmann::json;
 
-// service result parsers
-std::vector<float> ParseScoreServiceResponse(const std::string& response) {
-  return {1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
+// resp parsers
+std::vector<double> ParseFloatResponse(const std::string& response) {
+  return {json::parse(response).get<double>()};
+}
+
+std::vector<uint8_t> ParseStrResponse(const std::string& response) {
+  const std::string res = json::parse(response).dump();
+  return std::vector<uint8_t>(res.begin(), res.end());
 }
 
 template <typename T>
@@ -51,13 +56,21 @@ class RpcResultOpKernel : public framework::OpKernel<T> {
       const std::string& resp = rpc_store.GetResponse(request_id);
       VLOG(3) << "Request id " << request_id << " raw response: " << resp;
 
-      // only support score service now
       auto* out = ctx.Output<phi::DenseTensor>("Out");
-      ctx.device_context().Alloc<float>(out);
-      auto scores = ParseScoreServiceResponse(resp);
-      framework::TensorFromVector(scores, ctx.device_context(), out);
+      const std::string res_dtype = ctx.Attr<std::string>("res_dtype");
+      if (res_dtype == "float") {
+        auto res = ParseFloatResponse(resp);
+        ctx.device_context().Alloc<double>(out);
+        framework::TensorFromVector(res, ctx.device_context(), out);
+      } else if (res_dtype == "str") {
+        auto res = ParseStrResponse(resp);
+        ctx.device_context().Alloc<uint8_t>(out);
+        framework::TensorFromVector(res, ctx.device_context(), out);
+      } else {
+        PADDLE_THROW(
+            platform::errors::InvalidArgument("Unknown result dtype."));
+      }
     }
-
     auto* succeed = ctx.Output<phi::DenseTensor>("succeed");
     ctx.device_context().Alloc<bool>(succeed);
     std::vector<bool> succeed_wrapper{ok};

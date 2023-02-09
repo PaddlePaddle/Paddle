@@ -32,16 +32,24 @@ namespace operators {
 
 using json = nlohmann::json;
 
-// service payload builders
-std::string BuildScoreServicePayload(const std::string& query) {
+// payload builders
+std::string BuildIdsPayload(const std::vector<int>& src_ids) {
+  json payload = {{"ids", src_ids}};  // => {"ids": [1, 2, 3, ...]}
+  return payload.dump();
+}
+
+std::string BuildStrPayload(const std::string& query) {
   json payload = {{"data", {query}}};  // => {"data": [query]}
   return payload.dump();
 }
 
-std::string BuildServicePayload(const std::string& service,
-                                const std::string& query) {
-  if (service == "score") {
-    return BuildScoreServicePayload(query);
+std::string BuildPayload(const std::string& service,
+                         const std::vector<int>& src_ids) {
+  if (service == "ids") {
+    return BuildIdsPayload(src_ids);
+  } else if (service == "str") {
+    const std::string query = platform::RpcVocabulary::Instance().Get(src_ids);
+    return BuildStrPayload(query);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument("Unknown service."));
   }
@@ -77,18 +85,6 @@ template <typename T>
 class RpcCallOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    // query
-    auto src_ids_tensor = ctx.Input<phi::DenseTensor>("X");
-    std::vector<int> src_ids_vec;
-    framework::TensorToVector(
-        *src_ids_tensor, ctx.device_context(), &src_ids_vec);
-
-    auto vocab_path = ctx.Attr<std::string>("vocab_path");
-    auto vocab = platform::RpcVocabulary::Instance();
-    vocab.Init(vocab_path);
-
-    const std::string query = vocab.Get(src_ids_vec);
-
     // url
     auto url_id_tensor = ctx.Input<phi::DenseTensor>("url_id");
     std::vector<int> url_id_vec;
@@ -99,13 +95,27 @@ class RpcCallOpKernel : public framework::OpKernel<T> {
     auto url_list = ctx.Attr<std::vector<std::string>>("url_list");
     const std::string url = url_list[url_id];
 
-    // payload, only support score service now
-    const std::string payload = BuildServicePayload("score", query);
+    // payload
+    auto src_ids_tensor = ctx.Input<phi::DenseTensor>("X");
+    std::vector<int> src_ids_vec;
+    framework::TensorToVector(
+        *src_ids_tensor, ctx.device_context(), &src_ids_vec);
+
+    bool use_ids = ctx.Attr<bool>("use_ids");
+    std::string service;
+    if (use_ids) {
+      service = "ids";
+    } else {
+      auto vocab_path = ctx.Attr<std::string>("vocab_path");
+      platform::RpcVocabulary::Instance().Init(vocab_path);
+      service = "str";
+    }
+    const std::string payload = BuildPayload(service, src_ids_vec);
+
     int request_id = platform::RpcSend(
         url, payload, &HandleServiceRequest, &HandleServiceResponse);
-
     VLOG(3) << "Request id " << request_id << " url: " << url;
-    VLOG(3) << "Request id " << request_id << " query: " << query;
+    VLOG(3) << "Request id " << request_id << " payload: " << payload;
 
     auto* out = ctx.Output<phi::DenseTensor>("Out");
     ctx.device_context().Alloc<int>(out);

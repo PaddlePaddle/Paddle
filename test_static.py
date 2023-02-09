@@ -18,11 +18,8 @@ import numpy as np
 
 paddle.enable_static()
 
-MAX_SIZE_QUERY = 5
+MAX_SIZE_QUERY = 6
 MAX_SIZE_RESPONSE = 1000
-
-query_tensor = np.array([2466, 2467, 2468, 2469, 2470], dtype='int32')
-url_id_tensor = np.array([0], dtype='int32')
 
 # network
 in_query = fluid.data(name='X', shape=[MAX_SIZE_QUERY], dtype='int32')
@@ -38,10 +35,14 @@ cur_block.append_op(
     inputs={
         'X': in_query,
         'url_id': in_url_id,
+        'use_ids': True,
     },
     outputs={'Out': req_id},
     attrs={
-        'url_list': ['http://10.127.2.19:8082/run/predict'],
+        'url_list': [
+            'http://10.127.2.19:8082/run/predict',
+            'http://10.174.140.91:2001/wenxin/inference',
+        ],
         'vocab_path': '/work/Paddle/vocab.txt',
     },
 )
@@ -54,7 +55,16 @@ cur_block.append_op(
         'succeed': out_succeed,
         'Out': out_data,
     },
+    attrs={'res_dtype': 'str'},
 )
+
+# data
+# 货物很好
+query_tensor = np.array([29989, 29981, 2264, 1708, 1672, 1598], dtype='int32')
+# 货物很差
+# query_tensor = np.array([29989, 29981, 2264, 1708, 1672, 2212], dtype='int32')
+
+url_id_tensor = np.array([1], dtype='int32')
 
 # run
 exe = fluid.Executor(fluid.CPUPlace())
