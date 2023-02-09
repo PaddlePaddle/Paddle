@@ -95,7 +95,6 @@ from . import parallel_executor
 from .parallel_executor import *
 from . import compiler
 from .compiler import *
-from paddle.distributed import distribute_lookup_table
 from paddle.fluid.layers.math_op_patch import monkey_patch_variable
 from . import install_check
 from .dygraph.layers import *
