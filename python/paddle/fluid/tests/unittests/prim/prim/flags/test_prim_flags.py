@@ -15,6 +15,10 @@
 import os
 import unittest
 
+import numpy as np
+
+import paddle
+import paddle.nn.functional as F
 from paddle.fluid import core
 
 
@@ -46,6 +50,84 @@ class TestPrimFlags(unittest.TestCase):
         os.environ['FLAGS_prim_forward'] = "False"
         core.check_and_set_prim_all_enabled()
         self.assertFalse(core._is_fwd_prim_enabled())
+
+        del os.environ['FLAGS_prim_backward']
+        core.check_and_set_prim_all_enabled()
+        self.assertFalse(core._is_bwd_prim_enabled())
+        del os.environ['FLAGS_prim_forward']
+        core.check_and_set_prim_all_enabled()
+        self.assertFalse(core._is_fwd_prim_enabled())
+
+        with self.assertRaises(TypeError):
+            core._test_use_sync("aaaa")
+
+
+class TestPrimBlacklistFlags(unittest.TestCase):
+    def not_in_blacklist(self):
+        inputs = np.random.random([2, 3, 4]).astype("float32")
+        paddle.enable_static()
+        core._set_prim_forward_enabled(True)
+        startup_program = paddle.static.Program()
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            x = paddle.static.data(
+                'x', shape=inputs.shape, dtype=str(inputs.dtype)
+            )
+            y = F.softmax(x)
+            blocks = main_program.blocks
+
+            fwd_ops = [op.type for op in blocks[0].ops]
+            # Ensure that softmax in original block
+            self.assertTrue('softmax' in fwd_ops)
+
+            paddle.incubate.autograd.to_prim(blocks)
+
+            fwd_ops_new = [op.type for op in blocks[0].ops]
+            # Ensure that softmax is splitted into small ops
+            self.assertTrue('softmax' not in fwd_ops_new)
+
+        exe = paddle.static.Executor()
+        exe.run(startup_program)
+        _ = exe.run(main_program, feed={'x': inputs}, fetch_list=[y])
+        paddle.disable_static()
+        core._set_prim_forward_enabled(False)
+        return
+
+    def in_blacklist(self):
+        inputs = np.random.random([2, 3, 4]).astype("float32")
+        paddle.enable_static()
+        core._set_prim_forward_enabled(True)
+        startup_program = paddle.static.Program()
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            x = paddle.static.data(
+                'x', shape=inputs.shape, dtype=str(inputs.dtype)
+            )
+            y = F.softmax(x)
+            blocks = main_program.blocks
+
+            fwd_ops = [op.type for op in blocks[0].ops]
+            # Ensure that softmax in original block
+            self.assertTrue('softmax' in fwd_ops)
+
+            paddle.incubate.autograd.to_prim(blocks)
+
+            fwd_ops_new = [op.type for op in blocks[0].ops]
+            # Ensure that softmax is splitted into small ops
+            self.assertTrue('softmax' in fwd_ops_new)
+
+        exe = paddle.static.Executor()
+        exe.run(startup_program)
+        _ = exe.run(main_program, feed={'x': inputs}, fetch_list=[y])
+        paddle.disable_static()
+        core._set_prim_forward_enabled(False)
+        return
+
+    def test_prim_forward_blackward(self):
+        # self.not_in_blacklist()
+
+        core._set_prim_forward_blacklist("softmax")
+        self.in_blacklist()
 
 
 if __name__ == '__main__':

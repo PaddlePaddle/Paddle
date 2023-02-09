@@ -129,6 +129,11 @@ def nce(
     check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'nce')
     check_variable_and_dtype(label, 'label', ['int64'], 'nce')
 
+    if input.ndim != 2:
+        raise ValueError(
+            f'The rank of `input` must be 2, but received {input.ndim}.'
+        )
+
     dim = input.shape[1]
     num_true_class = label.shape[1]
     w = helper.create_parameter(

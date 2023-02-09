@@ -330,6 +330,13 @@ class TestNCE_OpError(unittest.TestCase):
                 TypeError, paddle.static.nn.nce, input4, label4, 5
             )
 
+            input5 = paddle.static.data(name='x', shape=[1], dtype='float32')
+            label5 = paddle.static.data(name='label', shape=[1], dtype='int64')
+
+            self.assertRaises(
+                ValueError, paddle.static.nn.nce, input5, label5, 1
+            )
+
 
 if __name__ == '__main__':
     unittest.main()
