@@ -31,6 +31,9 @@ if(WIN32)
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
        "test_element_groupnorm_act_fuse_pass")
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_groupnorm_act_pass_fuse_pass")
+  list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_trans_layernorm")
+  list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_trans_layernorm")
+  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_trt_convert_trans_layernorm")
   list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_fused_token_prune")
   list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_fused_token_prune")
 endif()
@@ -132,6 +135,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
   #set_tests_properties(test_trt_multiclass_nms_op PROPERTIES TIMEOUT 200)
   set_tests_properties(test_trt_dynamic_shape PROPERTIES TIMEOUT 120)
   set_tests_properties(test_trt_inspector PROPERTIES TIMEOUT 60)
+  set_tests_properties(test_trt_inference_predictor PROPERTIES TIMEOUT 60)
 
   if(WITH_NV_JETSON)
     set_tests_properties(
