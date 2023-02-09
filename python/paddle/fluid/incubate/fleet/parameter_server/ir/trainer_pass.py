@@ -19,9 +19,9 @@ import warnings
 import math
 
 from functools import reduce
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.framework as framework
+import paddle
+from paddle.framework import core
+import paddle.framework as framework
 
 from paddle.fluid.transpiler.details.program_utils import delete_ops
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
@@ -962,7 +962,7 @@ def find_heter_ops(program, default_device="cpu"):
     if len(heter_ops) == 0:
         warnings.warn(
             "No heterogeneous OP was found in your program , "
-            " please using fluid.device_guard() to run OPs on different device."
+            " please using paddle.static.device_guard() to run OPs on different device."
         )
 
     total_heter_ops = 0
@@ -1824,7 +1824,7 @@ def screen_persistables(program, var_list):
         else:
             var = program.global_block().vars[var_name]
 
-        if fluid.io.is_persistable(var):
+        if paddle.static.is_persistable(var):
             need_remove.append(var_name)
 
     for var_name in need_remove:
