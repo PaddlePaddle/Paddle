@@ -109,7 +109,7 @@ TEST(StridedMemcpy, GPUCrop) {
   phi::DDim dst_stride({2, 1});
 
   phi::funcs::StridedMemcpy<int>(
-      ctx, gpu_src + 1, src_stride, dst_dim, dst_stride, gpu_dst);
+      *ctx, gpu_src + 1, src_stride, dst_dim, dst_stride, gpu_dst);
 
   paddle::memory::Copy(cpu, dst, gpu0, gpu_dst, sizeof(dst), ctx->stream());
   ctx->Wait();
@@ -147,9 +147,9 @@ TEST(StridedMemcpy, GPUConcat) {
   phi::DDim dst_stride({4, 1});
 
   phi::funcs::StridedMemcpy<int>(
-      ctx, gpu_src, src_stride, dst_dim, dst_stride, gpu_dst);
+      *ctx, gpu_src, src_stride, dst_dim, dst_stride, gpu_dst);
   phi::funcs::StridedMemcpy<int>(
-      ctx, gpu_src, src_stride, dst_dim, dst_stride, gpu_dst + 2);
+      *ctx, gpu_src, src_stride, dst_dim, dst_stride, gpu_dst + 2);
 
   paddle::memory::Copy(cpu, dst, gpu0, gpu_dst, sizeof(dst), ctx->stream());
   ctx->Wait();
