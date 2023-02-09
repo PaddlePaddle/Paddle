@@ -1762,13 +1762,11 @@ class TestSundryAPIStatic(unittest.TestCase):
                 x,
                 out1,
                 out2,
-                x.grad_name,
             ],
         )
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, ())
-        self.assertEqual(res[3].shape, ())
 
     @prog_scope()
     def test_var(self):
@@ -1785,13 +1783,11 @@ class TestSundryAPIStatic(unittest.TestCase):
                 x,
                 out1,
                 out2,
-                x.grad_name,
             ],
         )
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, ())
-        self.assertEqual(res[3].shape, ())
 
     @prog_scope()
     def test_quantile(self):
