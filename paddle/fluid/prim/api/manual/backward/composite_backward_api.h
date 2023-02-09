@@ -389,11 +389,13 @@ void matmul_double_grad(const Tensor& x,
     if (grad_y_grad) {
       yg_help = grad_y_grad.get();
     }
+    // out_help = empty_like<T>(grad_out, grad_out.dtype(), grad_out.place());
+    // by_pass<T>(grad_out, &out_help);
     out_help = grad_out;
   }
 
-  std::cout << "x_help.dims :" << xg_help.dims() << std::endl;
-  std::cout << "y_help.dims :" << yg_help.dims() << std::endl;
+  std::cout << "xg_help.dims :" << xg_help.dims() << std::endl;
+  std::cout << "yg_help.dims :" << yg_help.dims() << std::endl;
   std::cout << "out_help.dims :" << out_help.dims() << std::endl;
 
   VLOG(1) << "------------broadcast-----------";
