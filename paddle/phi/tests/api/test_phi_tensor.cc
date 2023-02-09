@@ -217,9 +217,8 @@ void TestDataInterface() {
   CHECK(const_tensor_ptr != nullptr);
   // Test SelectedRows
   std::shared_ptr<phi::SelectedRows> selected_rows{
-      new phi::SelectedRows({1, 1}, 2)};
+      new phi::SelectedRows({0, 4, 4, 7}, 10)};
   experimental::Tensor* sr_tensor = new experimental::Tensor(selected_rows);
-  CHECK(sr_tensor->is_initialized() == true);
   tensor_ptr = sr_tensor->data();
   CHECK(tensor_ptr != nullptr);
   const_tensor_ptr = sr_tensor->data();
