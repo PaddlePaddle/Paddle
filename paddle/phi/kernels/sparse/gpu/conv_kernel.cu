@@ -150,60 +150,18 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
       const IntT* gather_indices = rulebook_ptr + h_offsets_ptr[i];
       const IntT* scatter_indices =
           rulebook_ptr + rulebook_len + h_offsets_ptr[i];
-
-      if constexpr (std::is_same<T, phi::dtype::float16>::value &&
-                    std::is_same<IntT, int32_t>::value) {
-        fp16_gather_gemm_scatter gather_gemm_scatter =
-            getBestFp16Kernel(M, N, K);
-        gather_gemm_scatter(
-            dev_ctx,
-            reinterpret_cast<const cutlass::half_t*>(
-                x.non_zero_elements().data<T>()),
-            reinterpret_cast<const cutlass::half_t*>(tmp_kernel_ptr),
-            reinterpret_cast<cutlass::half_t*>(out_values_ptr),
-            reinterpret_cast<cutlass::half_t*>(out_values_ptr),
-            M,
-            N,
-            K,
-            static_cast<const int32_t*>(gather_indices),
-            static_cast<const int32_t*>(scatter_indices),
-            static_cast<cutlass::half_t>(1),
-            static_cast<cutlass::half_t>(1));
-      }
-      if constexpr (std::is_same<T, float>::value &&
-                    std::is_same<IntT, int32_t>::value) {
-        fp32_gather_gemm_scatter gather_gemm_scatter =
-            getBestFp32Kernel(M, N, K, dev_ctx.GetComputeCapability());
-        gather_gemm_scatter(dev_ctx,
-                            x.non_zero_elements().data<T>(),
-                            tmp_kernel_ptr,
-                            out_values_ptr,
-                            out_values_ptr,
-                            M,
-                            N,
-                            K,
-                            gather_indices,
-                            scatter_indices,
-                            static_cast<T>(1),
-                            static_cast<T>(1));
-      }
-      if constexpr (std::is_same<T, double>::value &&
-                    std::is_same<IntT, int32_t>::value) {
-        fp64_gather_gemm_scatter gather_gemm_scatter =
-            getBestFp64Kernel(M, N, K);
-        gather_gemm_scatter(dev_ctx,
-                            x.non_zero_elements().data<T>(),
-                            tmp_kernel_ptr,
-                            out_values_ptr,
-                            out_values_ptr,
-                            M,
-                            N,
-                            K,
-                            gather_indices,
-                            scatter_indices,
-                            static_cast<T>(1),
-                            static_cast<T>(1));
-      }
+      dispatchKernel(dev_ctx,
+		     x.non_zero_elements().data<T>(),
+		     tmp_kernel_ptr,
+		     out_values_ptr,
+		     out_values_ptr,
+		     M,
+		     N,
+		     K,
+		     gather_indices,
+		     scatter_indices,
+		     static_cast<T>(1),
+		     static_cast<T>(1));
     }
   } else {
 #endif
