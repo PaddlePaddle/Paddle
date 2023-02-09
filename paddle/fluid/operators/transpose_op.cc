@@ -32,6 +32,74 @@ class TransposeOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Transpose");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Transpose");
+    auto x_dims = ctx->GetInputDim("X");
+    std::vector<int> axis = ctx->Attrs().Get<std::vector<int>>("axis");
+
+    size_t x_rank = x_dims.size();
+    size_t axis_size = axis.size();
+
+    // Note: x_rank > axis_size when fuse squeeze2 + transpose2, else x_rank ==
+    // axis_size
+    PADDLE_ENFORCE_GE(x_rank,
+                      axis_size,
+                      platform::errors::InvalidArgument(
+                          "The input tensor's dimension "
+                          "should be equal to or greater than the axis's size. "
+                          "But received input tensor's dimension is %d, "
+                          "axis's size is %d",
+                          x_rank,
+                          axis_size));
+
+    std::vector<int> count(axis_size, 0);
+    for (size_t i = 0; i < axis_size; i++) {
+      PADDLE_ENFORCE_GE(axis[i],
+                        0,
+                        platform::errors::InvalidArgument(
+                            "The axis should be greater than or equal to 0."
+                            "But received %d of axis[%d]",
+                            axis[i],
+                            i));
+
+      PADDLE_ENFORCE_EQ(
+          axis[i] < static_cast<int>(axis_size) && ++count[axis[i]] == 1,
+          true,
+          platform::errors::InvalidArgument(
+              "Each element of Attribute axis should "
+              "be a unique value range from 0 to (dims - 1), "
+              "where the dims is the axis's size, "
+              "unique value means this axis value can appear only once. "
+              "But received axis[%d] is %d, axis_size is %d, "
+              "count[axis[%d]] is %d",
+              i,
+              axis[i],
+              axis_size,
+              i,
+              count[axis[i]]));
+    }
+
+    framework::DDim out_dims(x_dims);
+#ifdef PADDLE_WITH_MKLDNN
+    // Here we need to match dims to paddle layout
+    // as we are producing non-oneDNN result
+    if (ctx->IsRunMKLDNNKernel() && (x_dims.size() >= 3) &&
+        (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
+         phi::DataLayout::kNHWC)) {
+      auto dims = phi::vectorize<int>(x_dims);
+      std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
+      x_dims = x_dims.reshape(dims);
+      VLOG(3)
+          << "Rotating Shape in Transpose from: kMKLDNN to: kNHWC output_shape";
+    }
+#endif
+    for (size_t i = 0; i < axis_size; i++) {
+      out_dims[i] = x_dims[axis[i]];
+    }
+    ctx->SetOutputDim("Out", out_dims);
+  }
+
  protected:
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
