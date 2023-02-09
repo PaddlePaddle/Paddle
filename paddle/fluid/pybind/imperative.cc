@@ -2000,6 +2000,11 @@ void BindImperative(py::module *m_ptr) {
              auto *t = self->MutableVar()->GetMutable<phi::DenseTensor>();
              return t->numel();
            })
+      .def("_stride",
+           [](std::shared_ptr<imperative::VarBase> &self) {
+             auto *t = self->MutableVar()->GetMutable<phi::DenseTensor>();
+             return t->stride();
+           })
       .def("element_size", &imperative::VarBase::ElementSize, R"DOC(
         Returns the size in bytes of an element in the Tensor.
 

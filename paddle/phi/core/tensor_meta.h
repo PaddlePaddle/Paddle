@@ -50,10 +50,12 @@ struct DenseTensorMeta {
 
   DenseTensorMeta();
   DenseTensorMeta(DataType dtype, const DDim& dims);
+  DenseTensorMeta(DataType dtype, const DDim& dims, const DDim& strides);
   DenseTensorMeta(DataType dtype,
                   const DDim& dims,
                   DataLayout layout,
                   size_t offset = 0);
+
   DenseTensorMeta(DataType dtype,
                   const DDim& dims,
                   DataLayout layout,
@@ -64,6 +66,9 @@ struct DenseTensorMeta {
   /// \return Whether the metadata is valid.
   bool valid() const noexcept;
 
+  /// \brief Set strides
+  void setStride(DDim newStrides);
+
   bool is_scalar{false};
   /// \brief Determine whether using gpudnn speed-up library in the new dygraph.
   /// It maybe also support MKLDNN library in the near future.
@@ -73,13 +78,14 @@ struct DenseTensorMeta {
   DataLayout layout{DataLayout::NCHW};
   LoD lod;
   size_t offset{0};
+  DDim strides;
 };
 
 inline bool operator==(const DenseTensorMeta& lhs, const DenseTensorMeta& rhs) {
   return (lhs.is_scalar == rhs.is_scalar) && lhs.use_gpudnn == rhs.use_gpudnn &&
          (lhs.dims == rhs.dims) && (lhs.dtype == rhs.dtype) &&
          (lhs.layout == rhs.layout) && (lhs.lod == rhs.lod) &&
-         (lhs.offset == rhs.offset);
+         (lhs.offset == rhs.offset) && (lhs.strides == rhs.strides);
 }
 
 struct StringTensorMeta {

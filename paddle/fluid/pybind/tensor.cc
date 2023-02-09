@@ -471,6 +471,26 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                   t.set(np.ndarray([5, 30]), fluid.CPUPlace())
                   print(t.shape())  # [5, 30]
            )DOC")
+      .def(
+          "stride",
+          [](phi::DenseTensor &self) { return vectorize(self.dims()); },
+          R"DOC(
+           Return the strides of Tensor.
+
+           Returns:
+               list[int]: The strides of Tensor.
+
+
+           Examples:
+               .. code-block:: python
+
+                  import paddle.fluid as fluid
+                  import numpy as np
+
+                  t = fluid.Tensor()
+                  t.set(np.ndarray([5, 30]), fluid.CPUPlace())
+                  print(t.strides())  # [5, 1]
+           )DOC")
       .def("_to_dlpack",
            [](phi::DenseTensor &self) {
              DLManagedTensor *dmt = framework::toDLPack(self);

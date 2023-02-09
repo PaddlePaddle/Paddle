@@ -16,10 +16,36 @@ limitations under the License. */
 
 namespace phi {
 
+DDim calc_contiguous_strides(const DDim& dims) {
+  DDim strides(dims);
+  strides[dims.size() - 1] = 1;
+  for (int i = dims.size() - 2; i >= 0; --i) {
+    strides[i] = strides[i + 1] * dims[i + 1];
+  }
+  return strides;
+}
+
+DDim calc_channels_last_strides(const DDim& dims) {
+  DDim strides(dims);
+  strides[1] = 1;
+  strides[3] = dims[1];
+  strides[2] = strides[3] * dims[3];
+  strides[0] = strides[2] * dims[2];
+  return strides;
+}
+
 DenseTensorMeta::DenseTensorMeta() { use_gpudnn = true; }
 
 DenseTensorMeta::DenseTensorMeta(DataType dtype, const DDim& dims)
     : dims(dims), dtype(dtype) {
+  strides = calc_contiguous_strides(dims);
+  use_gpudnn = true;
+}
+
+DenseTensorMeta::DenseTensorMeta(DataType dtype,
+                                 const DDim& dims,
+                                 const DDim& strides)
+    : dims(dims), dtype(dtype), strides(strides) {
   use_gpudnn = true;
 }
 
@@ -28,6 +54,12 @@ DenseTensorMeta::DenseTensorMeta(DataType dtype,
                                  DataLayout layout,
                                  size_t offset)
     : dims(dims), dtype(dtype), layout(layout), offset(offset) {
+  if (layout == DataLayout::NHWC) {
+    strides = calc_channels_last_strides(dims);
+  } else {
+    strides = calc_contiguous_strides(dims);
+  }
+
   use_gpudnn = true;
 }
 
@@ -37,6 +69,11 @@ DenseTensorMeta::DenseTensorMeta(DataType dtype,
                                  const LoD& lod,
                                  size_t offset)
     : dims(dims), dtype(dtype), layout(layout), lod(lod), offset(offset) {
+  if (layout == DataLayout::NHWC) {
+    strides = calc_channels_last_strides(dims);
+  } else {
+    strides = calc_contiguous_strides(dims);
+  }
   use_gpudnn = true;
 }
 
@@ -47,6 +84,8 @@ bool DenseTensorMeta::valid() const noexcept {
   valid = valid && (is_scalar || product(dims) >= 0);
   return valid;
 }
+
+void DenseTensorMeta::setStride(DDim newStrides) { strides = newStrides; }
 
 StringTensorMeta::StringTensorMeta(const DDim& dims) : dims(dims) {}
 
