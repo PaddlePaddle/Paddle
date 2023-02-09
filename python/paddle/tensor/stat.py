@@ -146,23 +146,20 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
     """
     if not in_dygraph_mode():
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'var')
-    else:
-        u = mean(x, axis, True, name)
-        out = paddle.sum(
-            paddle.pow((x - u), 2), axis, keepdim=keepdim, name=name
-        )
 
-        dtype = x.dtype
-        n = paddle.cast(paddle.numel(x), paddle.int64) / paddle.cast(
-            paddle.numel(out), paddle.int64
-        )
-        n = n.astype(dtype)
-        if unbiased:
-            one_const = paddle.ones([], x.dtype)
-            n = where(n > one_const, n - 1.0, one_const)
-        n.stop_gradient = True
-        out /= n
-        print(out.shape)
+    u = mean(x, axis, True, name)
+    out = paddle.sum(paddle.pow((x - u), 2), axis, keepdim=keepdim, name=name)
+
+    dtype = x.dtype
+    n = paddle.cast(paddle.numel(x), paddle.int64) / paddle.cast(
+        paddle.numel(out), paddle.int64
+    )
+    n = n.astype(dtype)
+    if unbiased:
+        one_const = paddle.ones([], x.dtype)
+        n = where(n > one_const, n - 1.0, one_const)
+    n.stop_gradient = True
+    out /= n
     return out
 
 
