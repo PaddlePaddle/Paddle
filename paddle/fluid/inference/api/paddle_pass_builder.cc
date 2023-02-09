@@ -135,7 +135,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "delete_remove_padding_recover_padding_pass",  //
       // "yolo_box_fuse_pass",      //
       "dense_fc_to_sparse_pass",                //
-      //"dense_multihead_matmul_to_sparse_pass",  //
+      "dense_multihead_matmul_to_sparse_pass",  //
 #if defined _WIN32  // Windows CI is TensorRT7.0. Remove this after upgrading.
 #else
       // "elementwise_groupnorm_act_pass",        //
