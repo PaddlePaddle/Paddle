@@ -62,6 +62,7 @@ class PTQ(Quantization):
             q_config = QuantConfig(activation=observer, weight=observer)
             ptq = PTQ(q_config)
             model = LeNet()
+            model.eval()
             quant_model = ptq.quantize(model)
             print(quant_model)
         """
