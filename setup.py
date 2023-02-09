@@ -76,6 +76,11 @@ TOP_DIR = os.path.dirname(os.path.realpath(__file__))
 
 IS_WINDOWS = os.name == 'nt'
 
+missing_modules = '''
+Missing build dependency: {dependency}
+Please run 'pip install -r python/requirements.txt' to make sure you have all the dependencies installed.
+'''.strip()
+
 
 def filter_setup_args(input_args):
     cmake_and_build = True
@@ -1405,9 +1410,30 @@ def get_setup_parameters():
     )
 
 
+def check_build_dependency():
+    python_dependcies_module = [
+        'requests',
+        'numpy',
+        'protobuf',
+        'Pillow',
+        'decorator',
+        'astor',
+        'paddle-bfloat',
+        'opt-einsum',
+    ]
+    reqs = subprocess.check_output([sys.executable, '-m', 'pip', 'freeze'])
+    installed_packages = [r.decode().split('==')[0] for r in reqs.split()]
+    for dependency in python_dependcies_module:
+        if dependency not in installed_packages:
+            raise RuntimeError(missing_modules.format(dependency=dependency))
+
+
 def main():
     # Parse the command line and check arguments before we proceed with building steps and setup
     parse_input_command(filter_args_list)
+
+    # check build dependency
+    check_build_dependency()
 
     # Execute the build process,cmake and make
     if cmake_and_build:
