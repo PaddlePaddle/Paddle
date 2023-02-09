@@ -45,7 +45,6 @@ from .utils import (
 def topo_path(xs, ys, block=None):
     """Returns the list of ops on the path from `xs` to `ys` in topological
     order.
-
     TODO(Tongxin): supporting control flow and nested blocks.
     Args:
         xs: a list|tuple of vars as source
@@ -107,10 +106,8 @@ def topo_path(xs, ys, block=None):
 def output_vars_on_path(path):
     """Returns the output variables of all the ops on the path from `xs`
     to `ys`.
-
     Args:
         path: a list of ops on which to find the output variables
-
     Returns:
         vars: the output vars
     """
@@ -124,7 +121,6 @@ def output_vars_on_path(path):
 
 class VarMap:
     """A general map data structure for linking variables to variables.
-
     An example is linking variables to their gradients.
     """
 
@@ -266,19 +262,16 @@ class Transform:
     def linearize(self, xs, ys, xs_dot=None):
         """Performs the linearization transform, a.k.a, forward mode AD
         transform, on a primitive lowered program.
-
         Args:
             xs: a list of input variables
             ys: a list of output variables
             xs_dot: optional, a list of gradient input variables. The list size
                 must be equal to `len(xs)`. The shape and dtype of each element
                 must be the same as in `xs`
-
         Returns:
             (xs_dot, ys_dot): a tuple of two lists. `xs_dot` is the list of
             gradient inputs of the resulting linearized program. `ys_dot` is
             the list gradient outputs of the resulting linearized program
-
         """
         if xs_dot is None:
             xs_dot = [fill_const(1.0, shape=x.shape, dtype=x.dtype) for x in xs]
@@ -325,21 +318,17 @@ class Transform:
     def transpose(self, ys_dot, xs_dot, ys_bar=None, retain_fwd=False):
         """Performs the transpose transform, a.k.a, reverse mode AD
         transform, on a linearized primitive program.
-
         Note, `transpose` is supposed to be used in couple with `linearize`.
-
         Args:
             ys_dot: a list of outputs of the linearized program.
             xs_dot: a list of inputs of the linearized program.
             ys_bar: optional, a list of inputs of the resulting transposed
                 program. The list size must be equal to `len(ys_dot)`. The shape
                 and dtype of each element must be the same as in `ys_dot`
-
         Returns:
             (ys_bar, xs_bar): a tuple of two lists. `ys_bar` is the list of
             inputs of the resulting transposed program. `xs_bar` is
             the list outputs of the resulting transposed program
-
         """
         assert all(v is not None for v in xs_dot), '`xs_dot` includes None.'
         assert all(v is not None for v in ys_dot), '`ys_dot` includes None.'
@@ -721,12 +710,10 @@ def orig2prim(block=None):
     Note:
         **This API is ONLY available in the static graph mode.**
         **Args block must be None or current block of main program.**
-
     All operators in the target block are processed as follows.
     If it is an original operator, it will be transformed into
     one or a series of automatic differential basic operators with
     equivalent function.
-
     Args:
         block(paddle.static.Block|None, optional): The
             target block to process on. Default None, and will
@@ -746,12 +733,10 @@ def prim2orig(block=None, blacklist=None):
     Note:
         **ONLY available in the static graph mode.**
         **Args block must be None or current block of main program.**
-
     All operators in the target block are processed as follows.
     If it is an automatic differential basic operator, it will be
     transformed into one or a series of original operators with
     equivalent function to support execution.
-
     Args:
         block(paddle.static.Block|None, optional): The
             target block to process on. Default None, and will
@@ -760,17 +745,12 @@ def prim2orig(block=None, blacklist=None):
             differential basic operator that will not be transformed
             into original operators. Default None, and the blacklist
             is treated as empty list.
-
     Examples:
-
         .. code-block:: python
-
             import paddle
             from paddle.incubate.autograd import enable_prim, prim_enabled, prim2orig
-
             paddle.enable_static()
             enable_prim()
-
             x = paddle.ones(shape=[2, 2], dtype='float32')
             x.stop_gradients = False
             y = x * x
