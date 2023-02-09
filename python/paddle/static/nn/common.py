@@ -3730,14 +3730,9 @@ def embedding(
             paddle.enable_static()
 
             x = paddle.static.data(name="x", shape = [2, 4], dtype=np.int64)
-            embedding = paddle.static.nn.embedding(10, 3,
+            output = paddle.static.nn.embedding(x, (10, 3),
                         param_attr=paddle.nn.initializer.Constant(value=1.0))
-            adam = paddle.optimizer.SGD(parameters=[embedding.weight], learning_rate=0.01)
-            output = embedding(x)
             m_output=paddle.mean(output)
-
-            adam.minimize(m_output)
-
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
             exe.run(paddle.static.default_startup_program())
@@ -3761,55 +3756,6 @@ def embedding(
             #             [1., 1., 1.],
             #             [0., 0., 0.]]]
             # out.shape = [2, 4, 3]
-
-
-    Dygraph Examples:
-        .. code-block:: python
-
-            import paddle
-            import numpy as np
-
-            x_data = np.arange(3, 6).reshape((3, 1)).astype(np.int64)
-
-            # x is a Tensor.
-            # x.data = [[3], [4], [5]]
-            # x.shape = [3, 1]
-            x = paddle.to_tensor(x_data, stop_gradient=False)
-
-            # embedding weight shape = [10, 3]
-            embedding = paddle.static.nn.embedding(10, 3, is_sparse=True)
-
-            # embedding weight data = [10, 3]
-            w0 = np.full(shape=(10, 3), fill_value=2).astype(np.float32)
-
-            # embedding.weight.shape = [10, 3]
-            # embedding.weight.data =
-            #                        [[2., 2., 2.],
-            #                         [2., 2., 2.],
-            #                         [2., 2., 2.],
-            #                         [2., 2., 2.],
-            #                         [2., 2., 2.],
-            #                         [2., 2., 2.],
-            #                         [2., 2., 2.],
-            #                         [2., 2., 2.],
-            #                         [2., 2., 2.],
-            #                         [2., 2., 2.]]
-            embedding.weight.set_value(w0)
-
-            adam = paddle.optimizer.Adam(
-                parameters=[embedding.weight], learning_rate=0.01)
-            adam.clear_grad()
-
-            # out is Tensor
-            # out.shape: [3, 1, 3]
-            # out.layout: NCHW
-            # out.dtype: float
-            # out.data: [2 2 2 2 2 2 2 2 2]
-            out = embedding(x)
-
-            out.backward()
-            adam.step()
-
     """
 
     helper = LayerHelper('embedding', **locals())
