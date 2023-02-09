@@ -128,7 +128,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         inputs = {}
         if isinstance(value, Variable):
             if convert_dtype(value.dtype) != dtype:
-                value = cast(value, dtype)
+                value = paddle.cast(value, dtype)
             inputs['ValueTensor'] = value
 
         check_shape(shape)
