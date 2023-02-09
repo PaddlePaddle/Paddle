@@ -20,8 +20,6 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/phi/core/errors.h"
 
-DECLARE_bool(fleet_executor_with_standalone);
-
 namespace paddle {
 namespace distributed {
 
@@ -189,25 +187,18 @@ void ComputeInterceptor::ReplyCompletedToUpStream() {
 }
 
 void ComputeInterceptor::RunOps() {
-  if (FLAGS_fleet_executor_with_standalone) {
-    PADDLE_ENFORCE_LT(cur_scope_id_,
-                      microbatch_scopes_.size(),
-                      platform::errors::InvalidArgument(
-                          "Step out of range. There are %ld "
-                          "microbatch_scopes, but recevice scope index %ld",
-                          microbatch_scopes_.size(),
-                          cur_scope_id_));
+  PADDLE_ENFORCE_LT(cur_scope_id_,
+                    microbatch_scopes_.size(),
+                    platform::errors::InvalidArgument(
+                        "Step out of range. There are %ld "
+                        "microbatch_scopes, but recevice scope index %ld",
+                        microbatch_scopes_.size(),
+                        cur_scope_id_));
 
-    cores_.at(cur_scope_id_)->Run(/*feed_names=*/{}, /*need_fetch=*/false);
+  if (!cores_.empty()) {
+    cores_[cur_scope_id_]->Run(/*feed_names=*/{}, /*need_fetch=*/false);
   } else {
     for (auto op : node_->ops()) {
-      PADDLE_ENFORCE_LT(cur_scope_id_,
-                        microbatch_scopes_.size(),
-                        platform::errors::InvalidArgument(
-                            "Step out of range. There are %ld "
-                            "microbatch_scopes, but recevice scope index %ld",
-                            microbatch_scopes_.size(),
-                            cur_scope_id_));
       op->Run(*microbatch_scopes_[cur_scope_id_], place_);
       if (gc_) {
         framework::DeleteUnusedTensors(*microbatch_scopes_[cur_scope_id_],

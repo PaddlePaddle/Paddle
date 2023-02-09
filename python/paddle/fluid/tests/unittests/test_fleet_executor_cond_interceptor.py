@@ -131,6 +131,7 @@ class TestFleetExecutor(unittest.TestCase):
             program=program_a,
             lazy_initialize=True,
         )
+        print(f"task_0 program : {program_a}", flush=True)
         task_b = TaskNode(
             0,
             num_micro_batches,
@@ -148,6 +149,7 @@ class TestFleetExecutor(unittest.TestCase):
             program=program_b,
             lazy_initialize=True,
         )
+        print(f"task_2 program : {program_b}", flush=True)
         task_d = TaskNode(
             0,
             num_micro_batches,

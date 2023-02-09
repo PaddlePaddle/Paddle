@@ -102,7 +102,7 @@ void Carrier::Init(
   thread_pool_.SetThreadNum(thread_num_);
   thread_pool_.Start();
 
-  CreateInterceptors();
+  CreateInterceptors(inference_root_scope_vars);
   is_init_ = true;
 }
 
@@ -286,7 +286,8 @@ static std::shared_ptr<framework::GarbageCollector> GetGC(
   return gc;
 }
 
-void Carrier::CreateInterceptors() {
+void Carrier::CreateInterceptors(
+    const std::vector<std::string>& inference_root_scope_vars) {
   if (interceptor_id_to_node_.empty()) return;
 
   auto gc = GetGC(place_);
@@ -351,36 +352,37 @@ void Carrier::CreateInterceptors() {
     interceptor->SetMicroBatchScope(microbatch_scopes_);
     interceptor->SetRootScope(root_scope_);
 
-    if (FLAGS_fleet_executor_with_standalone) {
+    if (FLAGS_fleet_executor_with_standalone &&
+        (task_node->type() == "Amplifier" || task_node->type() == "Compute")) {
       std::vector<std::shared_ptr<InterpreterCore>> cores;
+      framework::interpreter::ExecutionConfig execution_config;
+      execution_config.create_local_scope = false;
+      execution_config.force_root_scope_vars = std::set<std::string>(
+          inference_root_scope_vars.begin(), inference_root_scope_vars.end());
+
+      const framework::ProgramDesc* program = task_node->program();
+      PADDLE_ENFORCE_NOT_NULL(
+          program,
+          phi::errors::InvalidArgument("TaskNode %d's program is not set.",
+                                       interceptor_id));
+      std::vector<framework::VarDesc*> all_vars = program->Block(0).AllVars();
+      for (framework::VarDesc* var : all_vars) {
+        execution_config.skip_gc_vars.insert(var->Name());
+      }
+
+      // ONLY unused vars can be GCed.
+      const std::unordered_map<const framework::OperatorBase*,
+                               std::vector<std::string>>& unused_vars =
+          task_node->unused_vars();
+      for (auto& item : unused_vars) {
+        for (const std::string& unused_var : item.second) {
+          execution_config.skip_gc_vars.erase(unused_var);
+        }
+      }
+
       for (framework::Scope* scope : microbatch_scopes_) {
-        std::set<std::string> skip_gc_vars;
-        const framework::ProgramDesc* program = task_node->program();
-        PADDLE_ENFORCE_NOT_NULL(
-            program,
-            phi::errors::InvalidArgument("TaskNode %d's program is not set.",
-                                         interceptor_id));
-        std::vector<framework::VarDesc*> all_vars = program->Block(0).AllVars();
-        for (framework::VarDesc* var : all_vars) {
-          skip_gc_vars.insert(var->Name());
-        }
-
-        // ONLY unused vars can be GCed.
-        const std::unordered_map<const framework::OperatorBase*,
-                                 std::vector<std::string>>& unused_vars =
-            task_node->unused_vars();
-        for (auto& item : unused_vars) {
-          for (const std::string& unused_var : item.second) {
-            skip_gc_vars.erase(unused_var);
-          }
-        }
-
-        cores.push_back(
-            framework::CreateInterpreterCore(place_,
-                                             *(task_node->program()),
-                                             scope,
-                                             /*fetch_names=*/{},
-                                             /*skip_gc_vars =*/skip_gc_vars));
+        cores.push_back(std::make_shared<InterpreterCore>(
+            place_, task_node->program()->Block(0), scope, execution_config));
       }
 
       for (size_t i = 1; i < cores.size(); ++i) {

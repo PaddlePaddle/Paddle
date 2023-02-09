@@ -276,15 +276,16 @@ GetUnusedVars(const BlockDesc& block,
 }
 
 void BuildVariableScope(const framework::BlockDesc& block,
-                        VariableScope* var_scope,
-                        bool use_local_scope) {
+                        const ExecutionConfig& config,
+                        VariableScope* var_scope) {
   VLOG(3) << "Creating Variables";
   auto inner_scope = var_scope->GetMutableScope();
 
   // NOTE(zhiqiu): if create_local_scope_ is true, the persistable is
   // created in var_scope.scope_ , and other scope is created in local scope.
-  Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
-                                       : var_scope->GetMutableScope();
+  Scope* local_scope = config.create_local_scope
+                           ? var_scope->GetMutableLocalScope()
+                           : var_scope->GetMutableScope();
 
   for (auto& var_desc : block.AllVars()) {
     auto var_name = var_desc->Name();
@@ -295,7 +296,8 @@ void BuildVariableScope(const framework::BlockDesc& block,
       continue;
     }
 
-    if (var_desc->Persistable()) {
+    if (var_desc->Persistable() ||
+        config.force_root_scope_vars.count(var_name)) {
       // In principle, we should put all trainable parameters in global scope,
       // which means the root of the scope tree. Some cases like quantization
       // will look up these parameters in global scope.
