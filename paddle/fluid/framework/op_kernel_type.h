@@ -16,13 +16,13 @@ limitations under the License. */
 
 #include <string>
 
-#include "glog/logging.h"
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/library_type.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_factory.h"
 
 namespace paddle {
