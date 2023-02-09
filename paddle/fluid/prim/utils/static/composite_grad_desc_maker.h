@@ -31,7 +31,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/flags.h"
 
-DECLARE_string(operants_mode);
+DECLARE_string(tensor_operants_mode);
 
 namespace paddle {
 namespace prim {
@@ -63,7 +63,7 @@ class CompositeGradOpMakerBase {
     // TODO(jiabin): This should always execute by one thread...
     VLOG(6) << "Constructing Composite Grad func for " << fwd_op_.Type()
             << "_grad ";
-    FLAGS_operants_mode = "static";
+    FLAGS_tensor_operants_mode = "static";
     StaticCompositeContext::Instance().SetBlock(
         acting_program_.MutableBlock(0));
   }

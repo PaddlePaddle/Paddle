@@ -314,5 +314,5 @@ cc_library(
 
 cc_library(
   phi_tensor_operants
-  SRCS phi_tensor_operants.cc
+  SRCS tensor_operants.cc
   DEPS phi_function_api)

@@ -20,11 +20,11 @@
 namespace paddle {
 namespace prim {
 
-void init_tensor_operants() {
-  paddle::operants::OperantsManager::Instance().eager_operants =
-      new paddle::operants::EagerTensorOperants();
-  paddle::operants::OperantsManager::Instance().static_operants =
-      new paddle::operants::StaticTensorOperants();
+void InitTensorOperants() {
+  paddle::operants::OperantsManager::Instance().eager_operants.reset(
+      new paddle::operants::EagerTensorOperants());
+  paddle::operants::OperantsManager::Instance().static_operants.reset(
+      new paddle::operants::StaticTensorOperants());
 }
 
 }  // namespace prim

@@ -19,7 +19,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 
-DECLARE_string(operants_mode);
+DECLARE_string(tensor_operants_mode);
 
 namespace paddle {
 
@@ -31,25 +31,25 @@ OperantsManager& OperantsManager::Instance() {
 }
 
 Tensor OperantsManager::multiply(const Tensor& x, const Tensor& y) {
-  if (FLAGS_operants_mode == "eager") {
+  if (FLAGS_tensor_operants_mode == "eager") {
     PADDLE_ENFORCE_NE(
-        this->eager_operants,
+        this->eager_operants.get(),
         nullptr,
         phi::errors::Unavailable("The eager_operants pointer of "
                                  "OperantsManager is not initialized"));
     VLOG(4) << "OperantsManager reaches eager mode";
     return this->eager_operants->multiply(x, y);
-  } else if (FLAGS_operants_mode == "static") {
+  } else if (FLAGS_tensor_operants_mode == "static") {
     PADDLE_ENFORCE_NE(
-        this->static_operants,
+        this->static_operants.get(),
         nullptr,
         phi::errors::Unavailable("The static_operants pointer of "
                                  "OperantsManager is not initialized"));
     VLOG(4) << "OperantsManager reaches static mode";
     return this->static_operants->multiply(x, y);
-  } else if (FLAGS_operants_mode == "phi") {
+  } else if (FLAGS_tensor_operants_mode == "phi") {
     PADDLE_ENFORCE_NE(
-        this->phi_operants,
+        this->phi_operants.get(),
         nullptr,
         phi::errors::Unavailable(
             "The phi_operants pointer of OperantsManager is not initialized"));
@@ -57,9 +57,9 @@ Tensor OperantsManager::multiply(const Tensor& x, const Tensor& y) {
     return this->phi_operants->multiply(x, y);
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
-        "FLAGS_operants_mode is not nitialized, please set FLAGS_operants_mode "
-        "first, currently FLAGS_operants_mode supports "
-        "eager mode, phi mode and static mode"));
+        "FLAGS_tensor_operants_mode is not nitialized, please set "
+        "FLAGS_tensor_operants_mode first, which currently supports eager, "
+        "phi, and static mode"));
   }
 }
 

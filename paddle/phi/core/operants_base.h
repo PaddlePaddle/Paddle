@@ -22,9 +22,9 @@ namespace operants {
 
 using Tensor = paddle::experimental::Tensor;
 
-class OperantsBase {
+class TensorOperantsBase {
  public:
-  virtual ~OperantsBase() = default;
+  virtual ~TensorOperantsBase() = default;
 
   virtual Tensor multiply(const Tensor& x, const Tensor& y) = 0;
 };

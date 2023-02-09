@@ -1209,7 +1209,7 @@ PADDLE_DEFINE_EXPORTED_bool(use_shm_cache,
 
 /**
  * Tensor operants related FLAG
- * Name: operants_mode
+ * Name: tensor_operants_mode
  * Since Version: 2.5.0
  * Value Range: string, {eager, phi, static}
  * default=eager
@@ -1219,4 +1219,6 @@ PADDLE_DEFINE_EXPORTED_bool(use_shm_cache,
  *       - phi mode: tensor operants with only phi forward API;
  *       - static mode: tensor operants within static graph.
  */
-PADDLE_DEFINE_EXPORTED_string(operants_mode, "eager", "Tensor operants mode");
+PADDLE_DEFINE_EXPORTED_string(tensor_operants_mode,
+                              "eager",
+                              "Tensor operants mode");

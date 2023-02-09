@@ -17,7 +17,7 @@
 namespace paddle {
 namespace prim {
 
-void init_tensor_operants();
+void InitTensorOperants();
 
 }  // namespace prim
 }  // namespace paddle

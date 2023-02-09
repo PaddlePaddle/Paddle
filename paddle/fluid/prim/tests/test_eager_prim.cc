@@ -27,7 +27,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
 
-DECLARE_string(operants_mode);
+DECLARE_string(tensor_operants_mode);
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(tanh, CPU, ALL_LAYOUT);
@@ -50,8 +50,8 @@ namespace prim {
 TEST(EagerPrim, TanhBackwardTest) {
   // 1. Initialized
   eager_test::InitEnv(paddle::platform::CPUPlace());
-  FLAGS_operants_mode = "eager";
-  paddle::prim::init_tensor_operants();
+  FLAGS_tensor_operants_mode = "eager";
+  paddle::prim::InitTensorOperants();
   // 2. pre
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
   paddle::experimental::Tensor tensor0 =

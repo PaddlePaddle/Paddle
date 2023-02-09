@@ -22,7 +22,7 @@ namespace paddle {
 
 namespace operants {
 
-class StaticTensorOperants : public OperantsBase {
+class StaticTensorOperants : public TensorOperantsBase {
  public:
   StaticTensorOperants() = default;
 

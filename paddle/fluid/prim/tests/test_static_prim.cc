@@ -28,7 +28,7 @@
 #include "paddle/phi/core/operants_manager.h"
 
 DECLARE_bool(prim_enabled);
-DECLARE_string(operants_mode);
+DECLARE_string(tensor_operants_mode);
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(tanh, CPU, ALL_LAYOUT);
@@ -147,9 +147,9 @@ class TestCompositeGradMaker : public CompositeGradOpMakerBase {
 
 TEST(StaticPrim, TanhBackwardComposite) {
   // Initialized environment
-  FLAGS_operants_mode = "static";
-  paddle::operants::OperantsManager::Instance().static_operants =
-      new paddle::operants::StaticTensorOperants();
+  FLAGS_tensor_operants_mode = "static";
+  paddle::operants::OperantsManager::Instance().static_operants.reset(
+      new paddle::operants::StaticTensorOperants());
 
   TestBaseProgram base_program = TestBaseProgram();
   auto* target_block = base_program.GetBlock(0);
@@ -233,9 +233,9 @@ TEST(StaticPrim, TanhBackwardComposite) {
 
 TEST(StaticCompositeGradMaker, TestMutiInputMethod) {
   // Initialized environment
-  FLAGS_operants_mode = "static";
-  paddle::operants::OperantsManager::Instance().static_operants =
-      new paddle::operants::StaticTensorOperants();
+  FLAGS_tensor_operants_mode = "static";
+  paddle::operants::OperantsManager::Instance().static_operants.reset(
+      new paddle::operants::StaticTensorOperants());
 
   TestBaseProgram base_program = TestBaseProgram();
   auto* target_block = base_program.GetBlock(0);
@@ -300,9 +300,9 @@ TEST(StaticCompositeGradMaker, TestMutiInputMethod) {
 
 TEST(StaticCompositeGradMaker, TestMutiOutputMethod) {
   // Initialized environment
-  FLAGS_operants_mode = "static";
-  paddle::operants::OperantsManager::Instance().static_operants =
-      new paddle::operants::StaticTensorOperants();
+  FLAGS_tensor_operants_mode = "static";
+  paddle::operants::OperantsManager::Instance().static_operants.reset(
+      new paddle::operants::StaticTensorOperants());
 
   TestBaseProgram base_program = TestBaseProgram();
   auto* target_block = base_program.GetBlock(0);

@@ -22,7 +22,7 @@ namespace paddle {
 
 namespace operants {
 
-class PhiTensorOperants : public OperantsBase {
+class PhiTensorOperants : public TensorOperantsBase {
  public:
   PhiTensorOperants() = default;
 

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/api/include/phi_tensor_operants.h"
+#include "paddle/phi/api/include/tensor_operants.h"
 #include "glog/logging.h"
 #include "paddle/phi/api/include/api.h"
 

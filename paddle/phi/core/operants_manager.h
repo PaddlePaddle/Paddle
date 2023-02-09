@@ -38,23 +38,23 @@ using Tensor = paddle::experimental::Tensor;
  *
  * We design OperantsManager to solve these two problems:
  *
- * 1. use `FLAGS_operants_mode` to handle overloading mode, set this flag at the
- * entry point of each mode:
+ * 1. use `FLAGS_tensor_operants_mode` to handle overloading mode, set this flag
+ * at the entry point of each mode:
  *
- * - FLAGS_operants_mode = "static": at the construction function of
+ * - FLAGS_tensor_operants_mode = "static": at the construction function of
  * `CompositeGradOpMakerBase`.
- * - FLAGS_operants_mode = "eager": at the beginning of dygraph_function.
- * - FLAGS_operants_mode = "phi": at the beginning of the
- * `eager_api_run_custom_op` function in eager mode and at the location of
- * registering kernels in static mode.
+ * - FLAGS_tensor_operants_mode = "eager": at the beginning of dygraph_function.
+ * - FLAGS_tensor_operants_mode = "phi": at the beginning of the
+ * `eager_api_run_custom_op` function in eager mode and at the beginning of
+ * calling kernels in static mode.
  *
  * In order to guarantee the performance, OperantsManager holds three pointers
  * to identify each mode respectively.
  *
- * 2. Decouple phi with the help of the polymorphism mechanism, OperantsBase
- * derives three child classes: PhiTensorOperants, EagerTensorOperants, and
- * StaticTensorOperants. We set eager and static tensor operants at the fluid
- * library and set phi operants at the phi library.
+ * 2. Decouple phi with the help of the polymorphism mechanism,
+ * TensorOperantsBase derives three child classes: PhiTensorOperants,
+ * EagerTensorOperants, and StaticTensorOperants. We set eager and static tensor
+ * operants at the fluid library and set phi operants at the phi library.
  *
  */
 class OperantsManager {
@@ -64,9 +64,9 @@ class OperantsManager {
   Tensor multiply(const Tensor& x, const Tensor& y);
 
  public:
-  OperantsBase* eager_operants = nullptr;
-  OperantsBase* static_operants = nullptr;
-  OperantsBase* phi_operants = nullptr;
+  std::unique_ptr<TensorOperantsBase> eager_operants{nullptr};
+  std::unique_ptr<TensorOperantsBase> static_operants{nullptr};
+  std::unique_ptr<TensorOperantsBase> phi_operants{nullptr};
 
  private:
   OperantsManager() = default;
