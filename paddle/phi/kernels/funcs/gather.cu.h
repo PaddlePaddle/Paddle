@@ -285,7 +285,8 @@ void GatherV2GradCUDAFunction(const DenseTensor* input,
 
   if (input->numel() == 0) return;
   int axis_index = axis;
-  int64_t input_index_dim_size = input_dim[axis_index];
+  int64_t input_index_dim_size =
+      index->dims().size() == 0 ? 1 : input_dim[axis_index];
 
   int64_t inner_dim_size = 1;
   int64_t outer_dim_size = 1;

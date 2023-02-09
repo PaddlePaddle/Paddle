@@ -46,6 +46,11 @@ class GroupNormOpConverter : public OpConverter {
     std::string scale_name = op_desc.Input("Scale").front();
     std::string bias_name = op_desc.Input("Bias").front();
 
+    bool with_silu = false;
+    if (op_desc.HasAttr("with_silu")) {
+      with_silu = PADDLE_GET_CONST(bool, op_desc.GetAttr("with_silu"));
+    }
+
     // get the presistable var's data
     auto GetWeight = [&](const std::string& var_name,
                          framework::DDim* dims) -> TensorRTEngine::Weight {
@@ -62,7 +67,9 @@ class GroupNormOpConverter : public OpConverter {
     auto scale_weights = GetWeight(scale_name, &scale_dims);
     auto bias_weights = GetWeight(bias_name, &bias_dims);
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
-
+    bool with_int8 = engine_->WithInt8();
+    // when int8 is on, allow fall back to fp16
+    if (with_int8) with_fp16 = true;
     if (engine_->with_dynamic_shape()) {
       int gn_num = groups;
       std::vector<int64_t> mean_shape({gn_num});
@@ -77,7 +84,9 @@ class GroupNormOpConverter : public OpConverter {
               groups,
               mean_shape,
               variance_shape,
-              with_fp16);
+              with_silu,
+              with_fp16,
+              with_int8);
       nvinfer1::ILayer* groupnorm_layer =
           engine_->AddDynamicPlugin(&input_itensor, 1, plugin);
       auto output_name = op_desc.Output("Y")[0];

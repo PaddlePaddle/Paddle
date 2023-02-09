@@ -55,8 +55,8 @@ class FleetCollectiveTest(unittest.TestCase):
             # Operator "gen_nccl_id" has not been registered
             return
 
-        data = fluid.layers.data(name='X', shape=[1], dtype='float32')
-        hidden = fluid.layers.fc(input=data, size=10)
+        data = paddle.static.data(name='X', shape=[-1, 1], dtype='float32')
+        hidden = paddle.static.nn.fc(x=data, size=10)
         loss = paddle.mean(hidden)
 
         optimizer = fluid.optimizer.AdamOptimizer()

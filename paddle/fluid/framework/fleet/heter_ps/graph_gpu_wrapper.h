@@ -22,7 +22,10 @@
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_node.h"
 namespace paddle {
 namespace framework {
+
 #ifdef PADDLE_WITH_HETERPS
+
+typedef paddle::distributed::GraphTableType GraphTableType;
 
 enum GpuGraphStorageMode {
   WHOLE_HBM = 1,
@@ -41,18 +44,20 @@ class GraphGpuWrapper {
   }
   static std::shared_ptr<GraphGpuWrapper> s_instance_;
   void init_conf(const std::string& first_node_type,
-                 const std::string& meta_path);
+                 const std::string& meta_path,
+                 const std::string& excluded_train_pair);
   void initialize();
   void finalize();
   void set_device(std::vector<int> ids);
   void init_service();
+  std::string get_reverse_etype(std::string etype);
+  std::vector<std::string> get_ntype_from_etype(std::string etype);
   void set_up_types(const std::vector<std::string>& edge_type,
                     const std::vector<std::string>& node_type);
-  void upload_batch(int type,
-                    int idx,
+  void upload_batch(int table_type,
                     int slice_num,
                     const std::string& edge_type);
-  void upload_batch(int type, int slice_num, int slot_num);
+  void upload_batch(int table_type, int slice_num, int slot_num);
   std::vector<GpuPsCommGraphFea> get_sub_graph_fea(
       std::vector<std::vector<uint64_t>>& node_ids, int slot_num);    // NOLINT
   void build_gpu_graph_fea(GpuPsCommGraphFea& sub_graph_fea, int i);  // NOLINT
@@ -64,17 +69,19 @@ class GraphGpuWrapper {
   void load_edge_file(std::string etype2files,
                       std::string graph_data_local_path,
                       int part_num,
-                      bool reverse);
+                      bool reverse,
+                      const std::vector<bool>& is_reverse_edge_map);
 
-  void load_node_file(std::string name, std::string filepath);
-  void load_node_file(std::string ntype2files,
-                      std::string graph_data_local_path,
-                      int part_num);
+  int load_node_file(std::string name, std::string filepath);
+  int load_node_file(std::string ntype2files,
+                     std::string graph_data_local_path,
+                     int part_num);
   void load_node_and_edge(std::string etype2files,
                           std::string ntype2files,
                           std::string graph_data_local_path,
                           int part_num,
-                          bool reverse);
+                          bool reverse,
+                          const std::vector<bool>& is_reverse_edge_map);
   int32_t load_next_partition(int idx);
   int32_t get_partition_num(int idx);
   void load_node_weight(int type_id, int idx, std::string path);
@@ -84,24 +91,26 @@ class GraphGpuWrapper {
   void make_complementary_graph(int idx, int64_t byte_size);
   void set_search_level(int level);
   void init_search_level(int level);
-  int get_all_id(int type,
+  int get_all_id(int table_type,
                  int slice_num,
                  std::vector<std::vector<uint64_t>>* output);
-  int get_all_neighbor_id(int type,
+  int get_all_neighbor_id(GraphTableType table_type,
                           int slice_num,
                           std::vector<std::vector<uint64_t>>* output);
-  int get_all_id(int type,
+  int get_all_id(int table_type,
                  int idx,
                  int slice_num,
                  std::vector<std::vector<uint64_t>>* output);
-  int get_all_neighbor_id(int type,
+  int get_all_neighbor_id(GraphTableType table_type,
                           int idx,
                           int slice_num,
                           std::vector<std::vector<uint64_t>>* output);
-  int get_all_feature_ids(int type,
+  int get_all_feature_ids(GraphTableType table_type,
                           int idx,
                           int slice_num,
                           std::vector<std::vector<uint64_t>>* output);
+  int get_node_embedding_ids(int slice_num,
+                             std::vector<std::vector<uint64_t>>* output);
   NodeQueryResult query_node_list(int gpu_id,
                                   int idx,
                                   int start,
@@ -120,6 +129,11 @@ class GraphGpuWrapper {
       int sample_size,
       int len,
       std::vector<std::shared_ptr<phi::Allocation>> edge_type_graphs);
+  void get_node_degree(int gpu_id,
+                       int edge_idx,
+                       uint64_t* key,
+                       int len,
+                       std::shared_ptr<phi::Allocation> node_degree);
   gpuStream_t get_local_stream(int gpuid);
   std::vector<uint64_t> graph_neighbor_sample(
       int gpu_id,
@@ -160,7 +174,7 @@ class GraphGpuWrapper {
   std::string& get_node_type_size(std::string first_node_type);
   std::string& get_edge_type_size();
 
-  std::unordered_map<std::string, int> edge_to_id, feature_to_id;
+  std::unordered_map<std::string, int> edge_to_id, node_to_id;
   std::vector<std::string> id_to_feature, id_to_edge;
   std::vector<std::unordered_map<std::string, int>> table_feat_mapping;
   std::vector<std::vector<std::string>> table_feat_conf_feat_name;
@@ -175,6 +189,7 @@ class GraphGpuWrapper {
   std::string feature_separator_ = std::string(" ");
   bool conf_initialized_ = false;
   std::vector<int> first_node_type_;
+  std::vector<uint8_t> excluded_train_pair_;
   std::vector<std::vector<int>> meta_path_;
 
   std::vector<std::set<int>> finish_node_type_;
@@ -187,6 +202,11 @@ class GraphGpuWrapper {
   std::vector<size_t> h_graph_train_keys_len_;
   std::vector<std::vector<std::shared_ptr<phi::Allocation>>>
       d_graph_all_type_total_keys_;
+  std::map<uint64_t,  // edge_id
+           uint64_t   // src_node_id << 32 | dst_node_id
+           >
+      edge_to_node_map_;
+
   std::vector<std::vector<uint64_t>> h_graph_all_type_keys_len_;
   std::string slot_feature_separator_ = std::string(" ");
 

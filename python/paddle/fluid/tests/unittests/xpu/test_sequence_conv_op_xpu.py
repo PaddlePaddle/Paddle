@@ -433,11 +433,10 @@ class TestSeqConvApi(unittest.TestCase):
     def test_api(self):
         import paddle.fluid as fluid
 
-        x = fluid.layers.data('x', shape=[32], lod_level=1)
-        y = fluid.layers.sequence_conv(
+        x = paddle.static.data('x', shape=[-1, 32], lod_level=1)
+        y = paddle.static.nn.sequence_lod.sequence_conv(
             input=x, num_filters=2, filter_size=3, padding_start=None
         )
-
         place = fluid.CPUPlace()
         x_tensor = fluid.create_lod_tensor(
             np.random.rand(10, 32).astype("float32"), [[2, 3, 1, 4]], place

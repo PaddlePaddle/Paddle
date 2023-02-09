@@ -42,11 +42,15 @@ def bow_net(
     emb = fluid.layers.embedding(
         input=data, is_sparse=is_sparse, size=[dict_dim, emb_dim]
     )
-    bow = fluid.layers.sequence_pool(input=emb, pool_type='sum')
+    bow = paddle.static.nn.sequence_lod.sequence_pool(
+        input=emb, pool_type='sum'
+    )
     bow_tanh = paddle.tanh(bow)
-    fc_1 = fluid.layers.fc(input=bow_tanh, size=hid_dim, act="tanh")
-    fc_2 = fluid.layers.fc(input=fc_1, size=hid_dim2, act="tanh")
-    prediction = fluid.layers.fc(input=[fc_2], size=class_dim, act="softmax")
+    fc_1 = paddle.static.nn.fc(x=bow_tanh, size=hid_dim, activation="tanh")
+    fc_2 = paddle.static.nn.fc(x=fc_1, size=hid_dim2, activation="tanh")
+    prediction = paddle.static.nn.fc(
+        x=[fc_2], size=class_dim, activation="softmax"
+    )
     cost = paddle.nn.functional.cross_entropy(
         input=prediction, label=label, reduction='none', use_softmax=False
     )
@@ -103,10 +107,12 @@ class TestRegularizer(unittest.TestCase):
         with self.scope_prog_guard(
             main_prog=main_prog, startup_prog=startup_prog
         ):
-            data = fluid.layers.data(
-                name="words", shape=[1], dtype="int64", lod_level=1
+            data = paddle.static.data(
+                name="words", shape=[-1, 1], dtype="int64", lod_level=1
             )
-            label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+            label = paddle.static.data(
+                name="label", shape=[-1, 1], dtype="int64"
+            )
 
             avg_cost = model(data, label, self.word_len)
 
@@ -127,10 +133,12 @@ class TestRegularizer(unittest.TestCase):
         with self.scope_prog_guard(
             main_prog=main_prog, startup_prog=startup_prog
         ):
-            data = fluid.layers.data(
-                name="words", shape=[1], dtype="int64", lod_level=1
+            data = paddle.static.data(
+                name="words", shape=[-1, 1], dtype="int64", lod_level=1
             )
-            label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+            label = paddle.static.data(
+                name="label", shape=[-1, 1], dtype="int64"
+            )
 
             avg_cost_l2 = model(data, label, self.word_len)
 
@@ -176,7 +184,7 @@ class TestRegularizer(unittest.TestCase):
         )
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             x = paddle.uniform([2, 2, 3])
-            out = fluid.layers.fc(x, 5, param_attr=fc_param_attr)
+            out = paddle.static.nn.fc(x, 5, weight_attr=fc_param_attr)
             loss = paddle.sum(out)
             sgd = fluid.optimizer.SGD(learning_rate=0.1, regularization=l2)
             sgd.minimize(loss)

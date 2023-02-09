@@ -20,7 +20,6 @@ import paddle.fluid as fluid
 from paddle import _C_ops, in_dynamic_mode
 from paddle.fluid.framework import in_dygraph_mode
 
-from ...fluid import dygraph_utils
 from ...fluid.data_feeder import check_type, check_variable_and_dtype
 from ...fluid.layer_helper import LayerHelper
 
@@ -78,6 +77,7 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
             #        [[0.        , 0.24253564, 0.37139067],
             #         [1.        , 0.97014254, 0.92847669]])
     """
+
     if in_dygraph_mode():
         eps = fluid.dygraph.base.to_variable([epsilon], dtype=x.dtype)
         out = _C_ops.p_norm(x, float(p), axis, epsilon, True, False)
@@ -210,10 +210,7 @@ def batch_norm(
             use_global_stats,
             trainable_statistics,
         )
-
-        return dygraph_utils._append_activation_in_dygraph(
-            batch_norm_out, act=None
-        )
+        return batch_norm_out
 
     else:
         check_variable_and_dtype(

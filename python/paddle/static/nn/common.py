@@ -28,9 +28,9 @@ from paddle.common_ops_import import (
 from paddle.fluid import core
 from paddle.fluid.data_feeder import check_dtype
 from paddle.fluid.framework import Variable, _non_static_mode, static_only
-from paddle.fluid.initializer import Constant, Normal
 from paddle.fluid.layers.layer_function_generator import templatedoc
 from paddle.fluid.param_attr import ParamAttr
+from paddle.nn.initializer import Constant, Normal
 
 __all__ = []
 
@@ -173,7 +173,64 @@ def fc(
               bias_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=1.0)))
           # out: [[1.8 1.8]]
     """
-    return paddle.fluid.layers.fc(
+
+    def fc_fluid(
+        input,
+        size,
+        num_flatten_dims=1,
+        param_attr=None,
+        bias_attr=None,
+        act=None,
+        name=None,
+    ):
+        helper = LayerHelper("fc", **locals())
+        check_type(input, 'input', (list, tuple, Variable), 'fc')
+        if isinstance(input, (list, tuple)):
+            for i, input_x in enumerate(input):
+                check_type(input_x, 'input[' + str(i) + ']', Variable, 'fc')
+        dtype = helper.input_dtype()
+        check_dtype(
+            dtype, 'input', ['float16', 'uint16', 'float32', 'float64'], 'fc'
+        )
+        mul_results = []
+        for input_var, param_attr in helper.iter_inputs_and_params():
+            input_shape = input_var.shape
+            if num_flatten_dims == -1:
+                num_flatten_dims = len(input_shape) - 1
+            param_shape = [
+                reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
+            ] + [size]
+
+            w = helper.create_parameter(
+                attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False
+            )
+            tmp = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type="mul",
+                inputs={"X": input_var, "Y": w},
+                outputs={"Out": tmp},
+                attrs={"x_num_col_dims": num_flatten_dims, "y_num_col_dims": 1},
+            )
+            mul_results.append(tmp)
+
+        if len(mul_results) == 1:
+            pre_bias = mul_results[0]
+        else:
+            pre_bias = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type="sum",
+                inputs={"X": mul_results},
+                outputs={"Out": pre_bias},
+                attrs={"use_mkldnn": False},
+            )
+        # add bias
+        pre_activation = helper.append_bias_op(
+            pre_bias, dim_start=num_flatten_dims
+        )
+        # add activation
+        return helper.append_activation(pre_activation)
+
+    return fc_fluid(
         input=x,
         size=size,
         num_flatten_dims=num_flatten_dims,
@@ -457,6 +514,12 @@ def data_norm(
     dtype = helper.input_dtype()
 
     input_shape = input.shape
+    if len(input_shape) < 2:
+        raise ValueError(
+            "The shape pf Input < 2 (got {}D input, input shape is: {})".format(
+                len(input_shape), input_shape
+            )
+        )
     if data_layout == 'NCHW':
         channel_num = input_shape[1]
     else:
@@ -955,7 +1018,7 @@ def conv2d(
                 "filter size.".format(filter_elem_num)
             )
         std = (2.0 / filter_elem_num) ** 0.5
-        return Normal(0.0, std, 0)
+        return Normal(0.0, std)
 
     filter_param = helper.create_parameter(
         attr=helper.param_attr,
@@ -1258,7 +1321,7 @@ def conv3d(
             )
 
         std = (2.0 / filter_elem_num) ** 0.5
-        return Normal(0.0, std, 0)
+        return Normal(0.0, std)
 
     filter_param = helper.create_parameter(
         attr=helper.param_attr,
@@ -1484,6 +1547,9 @@ def conv2d_transpose(
             "Input size should be 4, "
             "but received {}".format(len(input.shape))
         )
+
+    if num_filters == 0:
+        raise ValueError("num of filters should not be 0.")
 
     if data_format not in ['NCHW', 'NHWC']:
         raise ValueError(
@@ -2184,6 +2250,11 @@ def deformable_conv(
         mask, 'mask', (paddle.static.Variable, type(None)), 'deformable_conv'
     )
 
+    if input.ndim != 4:
+        raise ValueError(
+            f'The input should be of [N, C, H, W] format, but received {input.shape}'
+        )
+
     num_channels = input.shape[1]
     assert param_attr is not False, "param_attr should not be False here."
 
@@ -2198,6 +2269,8 @@ def deformable_conv(
     if groups is None:
         num_filter_channels = num_channels
     else:
+        if groups == 0:
+            raise ValueError("groups should not be 0.")
         if num_channels % groups != 0:
             raise ValueError("num_channels must be divisible by groups.")
         num_filter_channels = num_channels // groups
@@ -2219,7 +2292,7 @@ def deformable_conv(
                 "filter size.".format(filter_elem_num)
             )
         std = (2.0 / filter_elem_num) ** 0.5
-        return paddle.nn.initializer.normal.NormalInitializer(0.0, std, 0)
+        return paddle.nn.initializer.normal.Normal(0.0, std)
 
     filter_param = helper.create_parameter(
         attr=helper.param_attr,
@@ -2501,7 +2574,12 @@ def bilinear_tensor_product(
     """
     helper = LayerHelper('bilinear_tensor_product', **locals())
     dtype = helper.input_dtype('x')
-
+    if len(x.shape) != 2 or len(y.shape) != 2:
+        raise ValueError(
+            "Input x and y should be 2D tensor, but received x with the shape of {}, y with the shape of {}".format(
+                x.shape, y.shape
+            )
+        )
     param_shape = [size, x.shape[1], y.shape[1]]
 
     w = helper.create_parameter(
@@ -2669,6 +2747,12 @@ def batch_norm(
         dtype = core.VarDesc.VarType.FP32
 
     input_shape = input.shape
+    if len(input.shape) < 2 or len(input.shape) > 5:
+        raise ValueError(
+            'expected 2D or 3D or 4D or 5D input (got {}D input, input shape is: {})'.format(
+                len(input.shape), input_shape
+            )
+        )
     if data_layout == 'NCHW':
         channel_num = input_shape[1]
     else:
@@ -2684,7 +2768,7 @@ def batch_norm(
         attr=helper.param_attr,
         shape=param_shape,
         dtype=dtype,
-        default_initializer=paddle.fluid.initializer.Constant(1.0),
+        default_initializer=paddle.nn.initializer.Constant(1.0),
     )
     bias = helper.create_parameter(
         attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True
@@ -2693,7 +2777,7 @@ def batch_norm(
     mean = helper.create_parameter(
         attr=paddle.ParamAttr(
             name=moving_mean_name,
-            initializer=paddle.fluid.initializer.Constant(0.0),
+            initializer=paddle.nn.initializer.Constant(0.0),
             trainable=False,
             do_model_average=do_model_average_for_mean_and_var,
         ),
@@ -2705,7 +2789,7 @@ def batch_norm(
     variance = helper.create_parameter(
         attr=paddle.ParamAttr(
             name=moving_variance_name,
-            initializer=paddle.fluid.initializer.Constant(1.0),
+            initializer=paddle.nn.initializer.Constant(1.0),
             trainable=False,
             do_model_average=do_model_average_for_mean_and_var,
         ),
@@ -3359,11 +3443,12 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     # create intput and parameters
     input_shape = weight.shape
     assert weight.numel() > 0, "Any dimension of input cannot be equal to 0."
-    assert dim < len(input_shape), (
-        "The input `dim` should be less than the "
-        "rank of `weight`, but received dim="
-        "{}".format(dim)
-    )
+
+    if dim not in [0, 1]:
+        raise ValueError(
+            f"The input `dim` must be 0 (if weight in fc) or 1 (if weight in conv), but received dim={dim}"
+        )
+
     h = input_shape[dim]
     w = np.prod(input_shape) // h
 

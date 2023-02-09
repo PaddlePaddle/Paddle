@@ -73,29 +73,28 @@ def multi_head_attention(
         """
         Add linear projection to queries, keys, and values.
         """
-        q = layers.fc(
-            input=queries,
+        q = paddle.static.nn.fc(
+            x=queries,
             size=d_key * n_head,
-            param_attr=fluid.initializer.Xavier(
-                uniform=False, fan_in=d_model * d_key, fan_out=n_head * d_key
+            weight_attr=paddle.nn.initializer.XavierNormal(
+                fan_in=d_model * d_key, fan_out=n_head * d_key
             ),
             bias_attr=False,
             num_flatten_dims=2,
         )
-        k = layers.fc(
-            input=keys,
+        k = paddle.static.nn.fc(
+            x=keys,
             size=d_key * n_head,
-            param_attr=fluid.initializer.Xavier(
-                uniform=False, fan_in=d_model * d_key, fan_out=n_head * d_key
+            weight_attr=paddle.nn.initializer.XavierNormal(
+                fan_in=d_model * d_key, fan_out=n_head * d_key
             ),
             bias_attr=False,
             num_flatten_dims=2,
         )
-        v = layers.fc(
-            input=values,
+        v = paddle.static.nn.fc(
+            x=values,
             size=d_value * n_head,
-            param_attr=fluid.initializer.Xavier(
-                uniform=False,
+            weight_attr=paddle.nn.initializer.XavierNormal(
                 fan_in=d_model * d_value,
                 fan_out=n_head * d_value,
             ),
@@ -184,10 +183,10 @@ def multi_head_attention(
     out = __combine_heads(ctx_multiheads)
 
     # Project back to the model size.
-    proj_out = layers.fc(
-        input=out,
+    proj_out = paddle.static.nn.fc(
+        x=out,
         size=d_model,
-        param_attr=fluid.initializer.Xavier(uniform=False),
+        weight_attr=paddle.nn.initializer.XavierNormal(),
         bias_attr=False,
         num_flatten_dims=2,
     )
@@ -200,20 +199,20 @@ def positionwise_feed_forward(x, d_inner_hid, d_hid):
     This module consists of two linear transformations with a ReLU activation
     in between, which is applied to each position separately and identically.
     """
-    hidden = layers.fc(
-        input=x,
+    hidden = paddle.static.nn.fc(
+        x,
         size=d_inner_hid,
         num_flatten_dims=2,
-        param_attr=fluid.initializer.Uniform(
+        weight_attr=paddle.nn.initializer.Uniform(
             low=-(d_hid**-0.5), high=(d_hid**-0.5)
         ),
-        act="relu",
+        activation="relu",
     )
-    out = layers.fc(
-        input=hidden,
+    out = paddle.static.nn.fc(
+        x=hidden,
         size=d_hid,
         num_flatten_dims=2,
-        param_attr=fluid.initializer.Uniform(
+        weight_attr=paddle.nn.initializer.Uniform(
             low=-(d_inner_hid**-0.5), high=(d_inner_hid**-0.5)
         ),
     )
@@ -235,8 +234,8 @@ def pre_post_process_layer(prev_out, out, process_cmd, dropout=0.0):
             out = paddle.static.nn.layer_norm(
                 out,
                 begin_norm_axis=len(out.shape) - 1,
-                param_attr=fluid.initializer.Constant(1.0),
-                bias_attr=fluid.initializer.Constant(0.0),
+                param_attr=paddle.nn.initializer.Constant(1.0),
+                bias_attr=paddle.nn.initializer.Constant(0.0),
             )
         elif cmd == "d":  # add dropout
             if dropout:
@@ -269,7 +268,7 @@ def prepare_encoder(
         src_word,
         size=[src_vocab_size, src_emb_dim],
         padding_idx=src_pad_idx,
-        param_attr=fluid.initializer.Normal(0.0, 1.0),
+        param_attr=paddle.nn.initializer.Normal(0.0, 1.0),
     )
     src_pos_enc = layers.embedding(
         src_pos,
@@ -499,11 +498,13 @@ def build_inputs(max_length, n_head):
 
     all_inputs = []
     for name, shape, dtype in zip(names, shapes, dtypes):
-        all_inputs.append(
-            fluid.layers.data(
-                name=name, shape=shape, dtype=dtype, append_batch_size=False
-            )
+        data_input = paddle.static.data(
+            name=name,
+            shape=shape,
+            dtype=dtype,
         )
+        data_input.desc.set_need_check_feed(False)
+        all_inputs.append(data_input)
     return all_inputs
 
 
@@ -582,10 +583,10 @@ def transformer(
     # TODO(guosheng): Share the weight matrix between the embedding layers and
     # the pre-softmax linear transformation.
     predict = paddle.reshape(
-        x=layers.fc(
-            input=dec_output,
+        x=paddle.static.nn.fc(
+            x=dec_output,
             size=trg_vocab_size,
-            param_attr=fluid.initializer.Xavier(uniform=False),
+            weight_attr=paddle.nn.initializer.XavierNormal(),
             bias_attr=False,
             num_flatten_dims=2,
         ),

@@ -78,17 +78,8 @@ class ConditionalBlockOp : public ConditionalOp {
               "got a null Scope variable. Please set the Scope variable."));
 
       auto *scopes = scope_var->GetMutable<std::vector<framework::Scope *>>();
-
-      if (scopes->size() == 0 || !FLAGS_control_flow_use_new_executor) {
-        scopes->resize(1);
-        scopes->front() = &scope.NewScope();
-      }
-
-      // We need to know whether the scope we cached is still valid.
-      // If not, we need to create a new one.
-      if (scope.kids().size() == 0) {
-        scopes->front() = &scope.NewScope();
-      }
+      scopes->resize(1);
+      scopes->front() = &scope.NewScope();
 
       auto &cur_scope = *scopes->front();
 #ifdef PADDLE_WITH_MKLDNN

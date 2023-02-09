@@ -41,6 +41,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/utils/flat_hash_map.h"
 
@@ -290,7 +291,7 @@ class OperatorBase {
                        const platform::Place& place) const = 0;
 };
 
-class ExecutionContext {
+class ExecutionContext : public phi::KernelContext {
  public:
   ExecutionContext(const OperatorBase& op,
                    const Scope& scope,
@@ -550,6 +551,13 @@ class ExecutionArgumentMappingContext : public phi::ArgumentMappingContext {
     return var->IsType<phi::SparseCooTensor>();
   }
 
+  bool IsSparseCooTensorOutput(const std::string& name) const override {
+    auto vars = ctx_.MultiOutputVar(name);
+    return std::all_of(vars.begin(), vars.end(), [](const Variable* var) {
+      return var->IsType<phi::SparseCooTensor>();
+    });
+  }
+
   bool IsSparseCsrTensorInput(const std::string& name) const override {
     const auto* var = ctx_.InputVar(name);
     return var->IsType<phi::SparseCsrTensor>();
@@ -638,15 +646,21 @@ class OperatorWithKernel : public OperatorBase {
 
   bool SupportXPU() const override;
 
-  bool SupportsMKLDNN(proto::VarType::Type data_type) const;
+  bool SupportsMKLDNN(phi::DataType data_type) const;
 
-  bool SupportsCUDNN(proto::VarType::Type data_type) const;
+  bool SupportsCUDNN(phi::DataType data_type) const;
 
   bool SupportsKernelType(const OpKernelType& kernel_type,
                           const ExecutionContext& exe_ctx) const;
 
   bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
+                       phi::DataType data_type) const;
+
+  bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                        proto::VarType::Type data_type) const;
+
+  bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
+                      phi::DataType data_type) const;
 
   bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
                       proto::VarType::Type data_type) const;
@@ -665,14 +679,15 @@ class OperatorWithKernel : public OperatorBase {
       const std::string& name1,
       const std::string& name2) const;
 
-  virtual OpKernelType GetExpectedKernelType(const ExecutionContext& ctx) const;
+  virtual phi::KernelKey GetExpectedKernelType(
+      const ExecutionContext& ctx) const;
 
   // change this to public so that in dygraph mode we can call it to check if we
   // need transform data
-  virtual OpKernelType GetKernelTypeForVar(
+  virtual phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
-      const OpKernelType& expected_kernel_type) const;
+      const phi::KernelKey& expected_kernel_type) const;
 
   platform::Place GetExecutionPlace(
       const platform::Place& platform) const override {
@@ -734,9 +749,14 @@ class OperatorWithKernel : public OperatorBase {
    * transfered_inplace_vars is a output vector.
    */
   Scope* PrepareData(const Scope& scope,
-                     const OpKernelType& expected_kernel_key,
+                     const phi::KernelKey& expected_kernel_key,
                      std::vector<std::string>* transfered_inplace_vars,
-                     RuntimeContext* ctx) const;
+                     RuntimeContext* ctx,
+                     const phi::Place& place) const;
+
+  void CheckWhetherPreparePhiData(const VariableNameMap& innames,
+                                  const VariableNameMap& outnames,
+                                  const Scope& scope) const;
 
   void TransferInplaceVarsBack(const Scope& scope,
                                const std::vector<std::string>& inplace_vars,

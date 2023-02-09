@@ -105,7 +105,7 @@ class TestRunProgram(unittest.TestCase):
         )
         backward_program = _add_build_strategy_for(
             program,
-            main_program.desc.block(0).op_size() + 2,
+            main_program.desc.block(0).op_size() + 1,
             program.desc.block(0).op_size(),
         )
 
@@ -135,6 +135,10 @@ class TestRunProgram(unittest.TestCase):
             False,
             'program_id',
             _hash_with_id(program),
+            'param_grad_names',
+            ['Fake_var@GRAD'],
+            'out_grad_names',
+            [out.name + '@GRAD'],
         ]
 
         use_interpretorcore = (

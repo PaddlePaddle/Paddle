@@ -72,89 +72,95 @@ class TestPSPassWithBow(unittest.TestCase):
         is_sparse = True
 
         # query
-        q = fluid.layers.data(
-            name="query_ids", shape=[1], dtype="int64", lod_level=1
+        q = paddle.static.data(
+            name="query_ids", shape=[-1, 1], dtype="int64", lod_level=1
         )
         # embedding
         q_emb = fluid.contrib.layers.sparse_embedding(
             input=q,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__emb__",
                 learning_rate=emb_lr,
             ),
         )
         q_emb = paddle.reshape(q_emb, [-1, emb_dim])
         # vsum
-        q_sum = fluid.layers.sequence_pool(input=q_emb, pool_type='sum')
+        q_sum = paddle.static.nn.sequence_lod.sequence_pool(
+            input=q_emb, pool_type='sum'
+        )
         q_ss = paddle.nn.functional.softsign(q_sum)
         q_ss = paddle.static.nn.data_norm(input=q_ss)
         # fc layer after conv
-        q_fc = fluid.layers.fc(
-            input=q_ss,
+        q_fc = paddle.static.nn.fc(
+            x=q_ss,
             size=hid_dim,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
+            weight_attr=fluid.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__q_fc__",
                 learning_rate=base_lr,
             ),
         )
         # label data
-        label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+        label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
         # pt
-        pt = fluid.layers.data(
-            name="pos_title_ids", shape=[1], dtype="int64", lod_level=1
+        pt = paddle.static.data(
+            name="pos_title_ids", shape=[-1, 1], dtype="int64", lod_level=1
         )
         # embedding
         pt_emb = fluid.contrib.layers.sparse_embedding(
             input=pt,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__emb__",
                 learning_rate=emb_lr,
             ),
         )
         pt_emb = paddle.reshape(pt_emb, [-1, emb_dim])
         # vsum
-        pt_sum = fluid.layers.sequence_pool(input=pt_emb, pool_type='sum')
+        pt_sum = paddle.static.nn.sequence_lod.sequence_pool(
+            input=pt_emb, pool_type='sum'
+        )
         pt_ss = paddle.nn.functional.softsign(pt_sum)
         # fc layer
-        pt_fc = fluid.layers.fc(
-            input=pt_ss,
+        pt_fc = paddle.static.nn.fc(
+            x=pt_ss,
             size=hid_dim,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
+            weight_attr=fluid.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__fc__",
                 learning_rate=base_lr,
             ),
             bias_attr=fluid.ParamAttr(name="__fc_b__"),
         )
         # nt
-        nt = fluid.layers.data(
-            name="neg_title_ids", shape=[1], dtype="int64", lod_level=1
+        nt = paddle.static.data(
+            name="neg_title_ids", shape=[-1, 1], dtype="int64", lod_level=1
         )
         # embedding
         nt_emb = fluid.contrib.layers.sparse_embedding(
             input=nt,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__emb__",
                 learning_rate=emb_lr,
             ),
         )
         nt_emb = paddle.reshape(nt_emb, [-1, emb_dim])
         # vsum
-        nt_sum = fluid.layers.sequence_pool(input=nt_emb, pool_type='sum')
+        nt_sum = paddle.static.nn.sequence_lod.sequence_pool(
+            input=nt_emb, pool_type='sum'
+        )
         nt_ss = paddle.nn.functional.softsign(nt_sum)
         # fc layer
-        nt_fc = fluid.layers.fc(
-            input=nt_ss,
+        nt_fc = paddle.static.nn.fc(
+            x=nt_ss,
             size=hid_dim,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
+            weight_attr=fluid.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__fc__",
                 learning_rate=base_lr,
             ),

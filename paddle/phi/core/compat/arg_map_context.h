@@ -56,6 +56,8 @@ struct KernelSignature {
         attr_names(attrs),
         output_names(outputs) {}
 
+  explicit KernelSignature(const char* kernel_name) : name(kernel_name) {}
+
   // TODO(chenweihang): add assign constructor to solve windows compile
   // problem, remove it later
   KernelSignature(const KernelSignature& other)
@@ -110,6 +112,7 @@ class ArgumentMappingContext {
   virtual bool IsSelectedRowsInput(const std::string& name) const = 0;
   virtual bool IsSelectedRowsInputs(const std::string& name) const = 0;
   virtual bool IsSparseCooTensorInput(const std::string& name) const = 0;
+  virtual bool IsSparseCooTensorOutput(const std::string& name) const = 0;
   virtual bool IsSparseCsrTensorInput(const std::string& name) const = 0;
   // For compatibility with LoDTensorArray
   virtual bool IsDenseTensorVectorInput(const std::string& name) const = 0;

@@ -14,15 +14,13 @@
 
 # TODO: define functions to manipulate a tensor
 
-from collections import Counter
-
 import numpy as np
 
 import paddle
 from paddle import _C_ops
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
-from ..common_ops_import import fill_constant
+from ..common_ops_import import Variable, fill_constant
 from ..fluid.data_feeder import (
     check_dtype,
     check_type,
@@ -37,7 +35,6 @@ from ..framework import (
     dygraph_only,
     in_dygraph_mode,
 )
-from ..static import Variable
 from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
 
 __all__ = []
@@ -545,6 +542,10 @@ def unstack(x, axis=0, num=None):
             y = paddle.unstack(x, axis=1)  # unstack with second axis, which results 3 tensors with shape=[2, 5]
 
     """
+    if not (-x.ndim <= axis < x.ndim):
+        raise ValueError(
+            '`axis` must be in the range [-{0}, {0})'.format(x.ndim)
+        )
     if in_dygraph_mode():
         if num is None:
             num = x.shape[axis]
@@ -1272,7 +1273,7 @@ def broadcast_tensors(input, name=None):
                         last_index = output_shape_r_last_tensor_index[i]
                         raise TypeError(
                             "Input tensors to broadcast_tensors does not follow bcast semantics"
-                            "Tensor {last_index} conflicts with Tensor {j} in reversed dimension {i}"
+                            f"Tensor {last_index} conflicts with Tensor {j} in reversed dimension {i}"
                         )
                     if output_shape_r[i] <= shape[i]:
                         output_shape_r[i] = shape[i]
@@ -1541,41 +1542,49 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
     if not (isinstance(x, Variable)):
         raise ValueError("The input x should be a Tensor")
 
-    if not paddle.in_dynamic_mode():
+    x_dim = len(x.shape)
+    if x_dim == 0:
+        if not (isinstance(start_axis, int)) or start_axis not in [0, -1]:
+            raise ValueError(
+                "The start_axis should be int, and should be 0 or -1 when the input tensor is a 0D-Tensor"
+            )
+        if not (isinstance(stop_axis, int)) or stop_axis not in [0, -1]:
+            raise ValueError(
+                "The stop_axis should be int, and should be 0 or -1 when the input tensor is a 0D-Tensor"
+            )
+    else:
+        if (
+            not (isinstance(start_axis, int))
+            or (start_axis > x_dim - 1)
+            or start_axis < -x_dim
+        ):
+            raise ValueError(
+                "The start_axis should be a int, and in range [-rank(x), rank(x))"
+            )
+        if (
+            not (isinstance(stop_axis, int))
+            or (stop_axis > x_dim - 1)
+            or stop_axis < -x_dim
+        ):
+            raise ValueError(
+                "The stop_axis should be a int, and in range [-rank(x), rank(x))"
+            )
+        if start_axis < 0:
+            start_axis = start_axis + x_dim
+        if stop_axis < 0:
+            stop_axis = stop_axis + x_dim
+        if start_axis > stop_axis:
+            raise ValueError("The stop_axis should be larger than stat_axis")
+
+    if in_dygraph_mode():
+        return _C_ops.flatten(x, start_axis, stop_axis)
+    else:
         check_variable_and_dtype(
             x,
             'x',
             ['float32', 'float64', 'int8', 'int16', 'int32', 'int64', 'uint8'],
             'flatten',
         )
-
-    x_dim = len(x.shape)
-    if (
-        not (isinstance(start_axis, int))
-        or (start_axis > x_dim - 1)
-        or start_axis < -x_dim
-    ):
-        raise ValueError(
-            "The start_axis should be a int, and in range [-rank(x), rank(x))"
-        )
-    if (
-        not (isinstance(stop_axis, int))
-        or (stop_axis > x_dim - 1)
-        or stop_axis < -x_dim
-    ):
-        raise ValueError(
-            "The stop_axis should be a int, and in range [-rank(x), rank(x))"
-        )
-    if start_axis < 0:
-        start_axis = start_axis + x_dim
-    if stop_axis < 0:
-        stop_axis = stop_axis + x_dim
-    if start_axis > stop_axis:
-        raise ValueError("The stop_axis should be larger than stat_axis")
-
-    if in_dygraph_mode():
-        return _C_ops.flatten(x, start_axis, stop_axis)
-    else:
         helper = LayerHelper('flatten', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
         x_shape = helper.create_variable_for_type_inference(x.dtype)
@@ -1908,31 +1917,20 @@ def split(x, num_or_sections, axis=0, name=None):
     input = x
     dim = axis
     if in_dygraph_mode():
-        num = None
-        attrs = ()
-
         if isinstance(dim, Variable):
             dim = dim.numpy()
             dim = dim.item(0)
         assert len(input.shape) + dim >= 0, "(rank(x) + axis) must >= 0"
         dim = (len(input.shape) + dim) if dim < 0 else dim
-        attrs += ('axis', dim)
 
-        if isinstance(num_or_sections, int):
-            num = num_or_sections
-            attrs += ('num', num_or_sections)
-        elif isinstance(num_or_sections, (list, tuple)):
-            num = len(num_or_sections)
+        if isinstance(num_or_sections, (list, tuple)):
             if utils._contain_var(num_or_sections):
                 for index, item in enumerate(num_or_sections):
                     if isinstance(item, Variable):
                         num_or_sections[index] = num_or_sections[index].numpy()[
                             0
                         ]
-                attrs += ('sections', list(num_or_sections))
-            else:
-                attrs += ('sections', list(num_or_sections))
-        else:
+        elif not isinstance(num_or_sections, int):
             raise TypeError(
                 "The type of 'num_or_sections' in split must be int, list or tuple in imperative mode, but "
                 "received %s." % (type(num_or_sections))
@@ -2756,14 +2754,19 @@ def unbind(input, axis=0):
             # x2.shape [3, 5]
             # x3.shape [3, 5]
     """
+    if not isinstance(axis, (int)):
+        raise TypeError(
+            "The type of 'axis'  must be int, but received %s." % (type(axis))
+        )
+
+    if axis not in range(-input.ndim, input.ndim):
+        raise ValueError(
+            f'The axis must in range({-input.ndim}, {input.ndim}).'
+        )
+
     if in_dygraph_mode():
         return _C_ops.unbind(input, axis)
     else:
-        if not isinstance(axis, (int)):
-            raise TypeError(
-                "The type of 'axis'  must be int, but received %s."
-                % (type(axis))
-            )
         if isinstance(axis, np.generic):
             axis = np.asscalar(axis)
         input_shape = input.shape
@@ -3336,7 +3339,6 @@ def expand(x, shape, name=None):
 
     Both the number of dimensions of ``x`` and the number of elements in ``shape`` should be less than or equal to 6. And the number of dimensions of ``x`` should be less than the number of elements in ``shape``. The dimension to expand must have a value 1.
 
-
     Args:
         x (Tensor): The input Tensor, its data type is bool, float32, float64, int32 or int64.
         shape (list|tuple|Tensor): The result shape after expanding. The data type is int32. If shape is a list or tuple, all its elements
@@ -3450,7 +3452,7 @@ def reshape(x, shape, name=None):
     Args:
         x (Tensor): An N-D Tensor. The data type is ``float32``, ``float64``, ``int32``, ``int64`` or ``bool``
         shape (list|tuple|Tensor): Define the target shape. At most one dimension of the target shape can be -1.
-                        The data type is ``int32`` . If ``shape`` is a list or tuple, the elements of it should be integers or Tensors with shape [1].
+                        The data type is ``int32`` . If ``shape`` is a list or tuple, the elements of it should be integers or Tensors with shape [].
                         If ``shape`` is an Tensor, it should be an 1-D Tensor .
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -3574,10 +3576,6 @@ def reshape(x, shape, name=None):
             shape.stop_gradient = True
             inputs["Shape"] = shape
         elif isinstance(shape, (list, tuple)):
-            assert len(shape) > 0, (
-                "The size of 'shape' in reshape can't be zero, "
-                "but received %s." % len(shape)
-            )
             attrs["shape"] = get_attr_shape(shape)
             if utils._contain_var(shape):
                 inputs['ShapeTensor'] = utils._convert_to_tensor_list(shape)
@@ -4343,11 +4341,9 @@ def moveaxis(x, source, destination, name=None):
         dst
     ), "'source' must have the same number with 'destination'"
 
-    count = Counter(src).most_common(1)
-    if count[0][1] > 1:
+    if len(src) != len(set(src)):
         raise ValueError("Each elemment of 'source' must be unique!")
-    count = Counter(dst).most_common(1)
-    if count[0][1] > 1:
+    if len(dst) != len(set(dst)):
         raise ValueError("Each elemment of 'destination' must be unique!")
 
     ndim = len(x.shape)

@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -53,26 +53,31 @@ constexpr bool is_bfloat16() {
 
 static void AppendActivation(const OneDNNContext& dev_ctx,
                              dnnl::post_ops& post_ops,  // NOLINT
-                             float activation_scale = 1.0f) {
-  const auto invalid_attribute =
-      dev_ctx.HasDnnAttr("fuse_activation")
-          ? PADDLE_GET_CONST(std::string, dev_ctx.GetDnnAttr("fuse_activation"))
-                .empty()
-          : true;
-  if (invalid_attribute) return;
+                             float activation_scale = 1.0f,
+                             std::string fuse_activation = "",
+                             float fuse_alpha = 0.0f,
+                             float fuse_beta = 0.0f) {
+  if (fuse_activation == "") {
+    const auto invalid_attribute =
+        dev_ctx.HasDnnAttr("fuse_activation")
+            ? PADDLE_GET_CONST(std::string,
+                               dev_ctx.GetDnnAttr("fuse_activation"))
+                  .empty()
+            : true;
+    if (invalid_attribute) return;
 
-  const auto fuse_activation =
-      dev_ctx.HasDnnAttr("fuse_activation")
-          ? PADDLE_GET_CONST(std::string, dev_ctx.GetDnnAttr("fuse_activation"))
-          : "";
-  const auto fuse_alpha =
-      dev_ctx.HasDnnAttr("fuse_alpha")
-          ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fuse_alpha"))
-          : 0.0f;
-  const auto fuse_beta =
-      dev_ctx.HasDnnAttr("fuse_beta")
-          ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fuse_beta"))
-          : 0.0f;
+    fuse_activation =
+        dev_ctx.HasDnnAttr("fuse_activation")
+            ? PADDLE_GET_CONST(std::string,
+                               dev_ctx.GetDnnAttr("fuse_activation"))
+            : "";
+    fuse_alpha = dev_ctx.HasDnnAttr("fuse_alpha")
+                     ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fuse_alpha"))
+                     : 0.0f;
+    fuse_beta = dev_ctx.HasDnnAttr("fuse_beta")
+                    ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fuse_beta"))
+                    : 0.0f;
+  }
 
   if (fuse_activation == "hard_sigmoid") {
     post_ops.append_eltwise(activation_scale,
@@ -110,42 +115,6 @@ static void AppendActivation(const OneDNNContext& dev_ctx,
     post_ops.append_eltwise(
         activation_scale, activation_type->second, fuse_alpha, fuse_beta);
   }
-}
-
-static std::unordered_map<std::string, std::string> GetAttributeMap(
-    std::string act_type) {
-  std::unordered_map<std::string, std::string> attr_map;
-  if (act_type == "swish") {
-    attr_map.emplace("beta", "fuse_alpha");
-  } else if (act_type == "relu6") {
-    attr_map.emplace("threshold", "fuse_alpha");
-  } else if (act_type == "hard_sigmoid") {
-    attr_map.emplace("slope", "fuse_alpha");
-    attr_map.emplace("offset", "fuse_beta");
-  } else if (act_type == "clip") {
-    attr_map.emplace("min", "fuse_alpha");
-    attr_map.emplace("max", "fuse_beta");
-  } else {
-    attr_map.emplace("alpha", "fuse_alpha");
-    attr_map.emplace("beta", "fuse_beta");
-  }
-  return attr_map;
-}
-
-static std::vector<std::string> GetSupportedActivations() {
-  return std::vector<std::string>{"abs",
-                                  "clip",
-                                  "gelu",
-                                  "hard_sigmoid",
-                                  "hard_swish",
-                                  "leaky_relu",
-                                  "mish",
-                                  "relu",
-                                  "relu6",
-                                  "sigmoid",
-                                  "sqrt",
-                                  "swish",
-                                  "tanh"};
 }
 
 template <typename T,
@@ -1756,22 +1725,22 @@ static std::vector<int64_t> TransposeAxis(const std::vector<int64_t>& x,
   auto axis_set = std::set<int>(axis.begin(), axis.end());
   PADDLE_ENFORCE_EQ(axis_set.size(),
                     axis_size,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "In an axis array, elements must be unique."));
 
-  PADDLE_ENFORCE_EQ(in_rank,
-                    axis_size,
-                    paddle::platform::errors::InvalidArgument(
-                        "The input dimension's size "
-                        "should be equal to the axis's size. "
-                        "But received dimension is %d, "
-                        "axis's size is %d",
-                        in_rank,
-                        axis_size));
+  PADDLE_ENFORCE_EQ(
+      in_rank,
+      axis_size,
+      phi::errors::InvalidArgument("The input dimension's size "
+                                   "should be equal to the axis's size. "
+                                   "But received dimension is %d, "
+                                   "axis's size is %d",
+                                   in_rank,
+                                   axis_size));
 
   PADDLE_ENFORCE_LT(*std::max_element(axis.begin(), axis.end()),
                     axis_size,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Axis values must be ranging from 0 to (dims - 1)."));
 
   std::vector<int64_t> new_x(x.size());

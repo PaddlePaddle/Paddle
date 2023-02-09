@@ -296,7 +296,7 @@ def sequence_conv_pool(
     and :ref:`api_fluid_layers_sequence_pool` .
 
     Args:
-        input (Variable): 2-D LoDTensor, the input of sequence_conv,
+        input (Tensor): 2-D LoDTensor, the input of sequence_conv,
             which supports variable-time length input sequence.
             The underlying of input is a matrix with shape
             (T, N), where T is the total time steps in this mini-batch and N is
@@ -320,7 +320,7 @@ def sequence_conv_pool(
         It is a 2-D Tensor, with the same data type as :attr:`input`
 
     Return Type:
-        Variable
+        Tensor
 
     Examples:
         .. code-block:: python
@@ -341,7 +341,7 @@ def sequence_conv_pool(
     """
 
     check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'input')
-    conv_out = layers.sequence_conv(
+    conv_out = paddle.static.nn.sequence_lod.sequence_conv(
         input=input,
         num_filters=num_filters,
         filter_size=filter_size,
@@ -350,7 +350,9 @@ def sequence_conv_pool(
         act=act,
     )
 
-    pool_out = layers.sequence_pool(input=conv_out, pool_type=pool_type)
+    pool_out = paddle.static.nn.sequence_lod.sequence_pool(
+        input=conv_out, pool_type=pool_type
+    )
     return pool_out
 
 
@@ -554,9 +556,13 @@ def scaled_dot_product_attention(
         if num_heads == 1:
             return queries, keys, values
 
-        q = layers.fc(input=queries, size=queries.shape[-1], num_flatten_dims=2)
-        k = layers.fc(input=keys, size=keys.shape[-1], num_flatten_dims=2)
-        v = layers.fc(input=values, size=values.shape[-1], num_flatten_dims=2)
+        q = paddle.static.nn.fc(
+            x=queries, size=queries.shape[-1], num_flatten_dims=2
+        )
+        k = paddle.static.nn.fc(x=keys, size=keys.shape[-1], num_flatten_dims=2)
+        v = paddle.static.nn.fc(
+            x=values, size=values.shape[-1], num_flatten_dims=2
+        )
         return q, k, v
 
     def __split_heads(x, num_heads):
