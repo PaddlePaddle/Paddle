@@ -243,7 +243,9 @@ class TestSPMT(unittest.TestCase):
         print("===main_program====")
         print(main_program)
         print("===main_program====")
-        from paddle.fluid.transpiler.collective import SingleProcessMultiThread
+        from paddle.distributed.transpiler.collective import (
+            SingleProcessMultiThread,
+        )
 
         t = SingleProcessMultiThread()
         env = self.get_dist_env()

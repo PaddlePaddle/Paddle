@@ -51,7 +51,7 @@ from ..framework import (
 from .details import wait_server_ready, UnionFind, VarStruct, VarsDistributed
 from .details import delete_ops, find_op_by_output_arg
 from ..distribute_lookup_table import find_distributed_lookup_table
-from . import collective
+from paddle.distributed.transpiler import collective
 
 LOOKUP_TABLE_TYPE = ["lookup_table", "lookup_table_v2"]
 LOOKUP_TABLE_GRAD_TYPE = ["lookup_table_grad", "lookup_table_v2_grad"]
