@@ -216,7 +216,7 @@ class FleetTranspiler(Fleet):
                 recv_type=1
             )
 
-        from paddle.fluid.communicator import Communicator
+        from paddle.distributed.communicator import Communicator
 
         self._communicator = Communicator(
             trainer_config.mode, kwargs, trainer_config.get_communicator_flags()
@@ -474,7 +474,7 @@ class FleetTranspiler(Fleet):
             self.save_persistables(executor, dirname, program)
 
     def _load_sparse_params(self, dirname, varnames):
-        from paddle.fluid.communicator import LargeScaleKV
+        from paddle.distributed.communicator import LargeScaleKV
 
         scale_kv = LargeScaleKV()
         for varname in varnames:
