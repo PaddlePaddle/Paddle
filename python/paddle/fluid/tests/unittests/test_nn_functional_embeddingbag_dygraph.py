@@ -87,7 +87,7 @@ class EmbeddingBagDygraph(unittest.TestCase):
             self.func_2()
         self.func_2()
 
-    def func_wrong(self):
+    def func_3(self):
         paddle.disable_static(paddle.CPUPlace())
 
         indices_data = np.random.randint(low=0, high=10, size=(3, 2)).astype(
@@ -100,24 +100,28 @@ class EmbeddingBagDygraph(unittest.TestCase):
         )
         weight = paddle.to_tensor(weight_data, stop_gradient=False)
 
-        embedding_bag = paddle.nn.EmbeddingBag(0, 3, mode='mean')
+        with self.assertRaises(ValueError):
+            embedding_bag = paddle.nn.EmbeddingBag(0,3,mode='mean')
+        
+        with self.assertRaises(ValueError):
+            embedding_bag = paddle.nn.EmbeddingBag(10,-1,mode='mean')
+        
+        with self.assertRaises(ValueError):
+            embedding_bag = paddle.nn.EmbeddingBag(10,3,mode='mean')
+            w0 = np.full(shape=(0, 3), fill_value=2).astype(np.float32)
+            embedding_bag._embedding.set_value(w0)
+            adam = paddle.optimizer.Adam(
+                parameters=[embedding_bag._embedding], learning_rate=0.01
+            )
+            adam.clear_grad()
+            out = embedding_bag(input=indices, weight=weight)
+            out.backward()
+            adam.step()
 
-        w0 = np.full(shape=(0, 3), fill_value=2).astype(np.float32)
-        embedding_bag._embedding.set_value(w0)
-
-        adam = paddle.optimizer.Adam(
-            parameters=[embedding_bag._embedding], learning_rate=0.01
-        )
-        adam.clear_grad()
-
-        out = embedding_bag(input=indices, weight=weight)
-        out.backward()
-        adam.step()
-
-    def test_wrong(self):
+    def test_3(self):
         with _test_eager_guard():
-            self.func_wrong()
-        self.func_wrong()
+            self.func_3()
+        self.func_3()
 
 if __name__ == '__main__':
     unittest.main()
