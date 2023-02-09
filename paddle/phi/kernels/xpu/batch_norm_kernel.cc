@@ -64,6 +64,9 @@ void BatchNormKernel(const Context& dev_ctx,
   C = (C == 0) ? 1 : C;
   H = (H == 0) ? 1 : H;
   W = (W == 0) ? 1 : W;
+  D = (D == 0) ? 1 : D;
+
+  W = W * D;
 
   const auto* x_data = x.data<T>();
   const auto* scale_data = scale.data<float>();
@@ -75,6 +78,14 @@ void BatchNormKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<float>(variance_out);
   dev_ctx.template Alloc<float>(saved_mean);
   dev_ctx.template Alloc<float>(saved_variance);
+
+  PADDLE_ENFORCE_LE(
+      x_dims.size(),
+      5,
+      phi::errors::InvalidArgument(
+          "The size of input X's dimensions should be less than 6."
+          "But received: the size of input X's dimensionss is [%d]",
+          x_dims.size()));
 
   bool is_nchw = data_layout_str == "NCHW";
 
