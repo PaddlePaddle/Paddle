@@ -16,11 +16,13 @@
 __all__ = ["DistributedAdam", "FLEET_GLOBAL_DICT"]
 import paddle
 from paddle.framework import core
-from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
-from paddle.fluid.distribute_lookup_table import (
+from paddle.distributed.distribute_lookup_table import (
+    find_distributed_lookup_table,
+)
+from paddle.distributed.distribute_lookup_table import (
     find_distributed_lookup_table_inputs,
 )
-from paddle.fluid.distribute_lookup_table import (
+from paddle.distributed.distribute_lookup_table import (
     find_distributed_lookup_table_outputs,
 )
 from google.protobuf import text_format
