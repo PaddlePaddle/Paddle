@@ -69,15 +69,15 @@ def create_op(scope, op_type, inputs, outputs, attrs, cache_list=None):
     return Operator(op_type, **kwargs)
 
 
-def set_input(scope, op, inputs, place):
-    def __set_input__(var_name, var):
+def set_input(scope, op, inputs, outputs, place):
+    def __set_input__(var_name, var, out_dtype):
         if isinstance(var, tuple) or isinstance(var, np.ndarray):
             tensor = scope.find_var(var_name).get_tensor()
             if isinstance(var, tuple):
                 tensor.set_recursive_sequence_lengths(var[1])
                 var = var[0]
             tensor._set_dims(var.shape)
-            if var.dtype == np.float16:
+            if var.dtype == np.float16 and out_dtype.dtype == np.float32:
                 tensor.set(var.astype(np.float32), place)
             else:
                 tensor.set(var, place)
@@ -86,15 +86,25 @@ def set_input(scope, op, inputs, place):
         elif isinstance(var, int):
             scope.find_var(var_name).set_int(var)
 
+    for out_name, out_dup in Operator.get_op_outputs(op.type()):
+        if out_name in outputs:
+            if out_dup:
+                sub_out = inputs[out_name]
+                for item in sub_out:
+                    sub_out_name, sub_out_val = item[0], item[1]
+                    out_dtype = sub_out_val.dtype
+            else:
+                out_dtype = outputs[out_name].dtype
+
     for in_name, in_dup in Operator.get_op_inputs(op.type()):
         if in_name in inputs:
             if in_dup:
                 sub_in = inputs[in_name]
                 for item in sub_in:
                     sub_in_name, sub_in_val = item[0], item[1]
-                    __set_input__(sub_in_name, sub_in_val)
+                    __set_input__(sub_in_name, sub_in_val, out_dtype)
             else:
-                __set_input__(in_name, inputs[in_name])
+                __set_input__(in_name, inputs[in_name], out_dtype)
 
 
 def append_input_output(block, op_proto, np_list, is_input, dtype):

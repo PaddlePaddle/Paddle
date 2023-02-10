@@ -136,13 +136,14 @@ def get_numeric_gradient(
     scope,
     op,
     inputs,
+    outputs,
     input_to_check,
     output_names,
     delta=0.005,
     in_place=False,
 ):
     # FIXME: change this method by compile time concepts
-    set_input(scope, op, inputs, place)
+    set_input(scope, op, inputs, outputs, place)
 
     def product(dim):
         return functools.reduce(lambda a, b: a * b, dim, 1)
@@ -1624,6 +1625,10 @@ class OpTest(unittest.TestCase):
                     actual_np, expect_np
                 )
 
+                if self.op_test.dtype == np.float16:
+                    print(actual_np)
+                    print(expect_np)
+
                 # NOTE(zhiqiu): np.allclose([], [1.]) returns True
                 # see details: https://stackoverflow.com/questions/38331703/why-does-numpys-broadcasting-sometimes-allow-comparing-arrays-of-different-leng
                 if expect_np.size == 0:
@@ -2268,6 +2273,7 @@ class OpTest(unittest.TestCase):
                 self.scope,
                 self.op,
                 self.inputs,
+                self.outputs,
                 input_to_check,
                 output_names,
                 delta=numeric_grad_delta,
