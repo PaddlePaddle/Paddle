@@ -1957,7 +1957,17 @@ class MatmulOneDNNHandler : public OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
     this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
   }
 
-  float GetOutputScale() { return scale_out_; }
+  dnnl::memory GetOutputScale() {
+    if (scale_out_ != 1.0f) {
+      std::vector<float> scales(1, scale_out_);
+      auto scales_md = dnnl::memory::desc({static_cast<int64_t>(scales.size())},
+                                          dnnl::memory::data_type::f32,
+                                          dnnl::memory::format_tag::x);
+      return dnnl::memory(scales_md, this->engine_, scales);
+    } else {
+      dnnl::memory(dnnl::memory::desc(), this->engine_, DNNL_MEMORY_NONE);
+    }
+  }
 
   float ComputeOutputScale(const OneDNNContext& dev_ctx) {
     float alpha = dev_ctx.HasDnnAttr("alpha")
@@ -2136,9 +2146,10 @@ void ExecuteMatmul(const OneDNNContext& dev_ctx,
       {DNNL_ARG_WEIGHTS, *weights_memory_p},
       {DNNL_ARG_DST, *dst_memory_p}};
 
-  auto scale_out = handler.GetOutputScale();
-  if (scale_out != 1.0f) {
-    matmul_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, scale_out});
+  auto scales_mem = handler.GetOutputScale();
+
+  if (scales_mem.get_desc().is_zero() != 1.0f) {
+    matmul_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, scales_mem});
   }
 
   const auto* residual_data = dev_ctx.HasDnnInput("ResidualData")
