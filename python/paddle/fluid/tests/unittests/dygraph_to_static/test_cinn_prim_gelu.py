@@ -77,14 +77,18 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         if use_prim:
             net = apply_to_static(net, use_prim)
 
-        out = net(data)
-        loss = paddle.mean(out)
-        loss.backward()
-        sgd.step()
-        sgd.clear_grad()
+        res = []
+        for _ in range(10):
+            out = net(data)
+            loss = paddle.mean(out)
+            loss.backward()
+            sgd.step()
+            sgd.clear_grad()
+
+            res.append(out.numpy())
         self.check_prim(net, use_prim)
 
-        return out.numpy()
+        return res
 
     def check_prim(self, net, use_prim):
         if not use_prim:
@@ -109,12 +113,13 @@ class TestPrimForwardAndBackward(unittest.TestCase):
                     data_t.stop_gradient = False
                     dy_res = self.train(use_prim=False, data=data_t)
                     cinn_res = self.train(use_prim=True, data=data_t)
-                    np.testing.assert_allclose(
-                        cinn_res,
-                        dy_res,
-                        rtol=TOLERANCE[dtype]['rtol'],
-                        atol=TOLERANCE[dtype]['atol'],
-                    )
+                    for i in range(len(dy_res)):
+                        np.testing.assert_allclose(
+                            cinn_res[i],
+                            dy_res[i],
+                            rtol=TOLERANCE[dtype]['rtol'],
+                            atol=TOLERANCE[dtype]['atol'],
+                        )
 
         else:
             pass
