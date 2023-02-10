@@ -49,7 +49,7 @@ class TestPrimForward(unittest.TestCase):
     def setUp(self):
         paddle.seed(2022)
         self.x = paddle.randn([2, 4])
-        self.n_shape = x.shape[1:]
+        self.n_shape = self.x.shape
         self.w = paddle.randn([4])
         self.b = paddle.randn([4])
         self.x.stop_gradient = False
@@ -86,7 +86,7 @@ class TestPrimForward(unittest.TestCase):
         self.assertTrue('layer_norm' not in fwd_ops)
 
     def test_cinn_prim_forward(self):
-       
+
         dy_res = self.train(use_prim=False)
         cinn_res = self.train(use_prim=True)
 
@@ -94,7 +94,7 @@ class TestPrimForward(unittest.TestCase):
             np.testing.assert_allclose(
                 cinn_res[i], dy_res[i], rtol=1e-6, atol=1e-6
             )
-    
+
 
 class TestPrimForwardAndBackward(unittest.TestCase):
     """
@@ -104,7 +104,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
     def setUp(self):
         paddle.seed(2022)
         self.x = paddle.randn([2, 4])
-        self.n_shape = x.shape[1:]
+        self.n_shape = self.x.shape
         self.w = paddle.randn([4])
         self.b = paddle.randn([4])
         self.x.stop_gradient = False

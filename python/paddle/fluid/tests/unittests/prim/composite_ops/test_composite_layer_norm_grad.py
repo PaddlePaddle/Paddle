@@ -20,7 +20,6 @@ from utils import TOLERANCE
 import paddle
 import paddle.nn.functional as F
 from paddle.fluid import core
-from paddle import _C_ops, in_dynamic_mode
 
 
 def generate_data(shape1, shape2, shape3, dtype="float32"):
@@ -38,7 +37,6 @@ class Attr:
         self.shape1 = None
         self.shape2 = None
         self.shape3 = None
-       
 
     def set_dtype(self, dtype) -> None:
         self.dtype = dtype
@@ -66,6 +64,7 @@ attrs = Attr()
 def fn(x, norm_shape, w, b):
     return F.layer_norm(x, norm_shape, w, b)
 
+
 # def layer_norm_ (input, weight, bias, epsilon=1e-05, begin_norm_axis = 0):
 #     axis = np.arange(begin_norm_axis,len(input.shape))
 #     mean = paddle.mean(input, axis=axis, keepdim=True)
@@ -82,7 +81,7 @@ def fn(x, norm_shape, w, b):
 #     if bias is not None:
 #         bias = paddle.reshape(bias, input.shape[begin_norm_axis:])
 #         out = out + paddle.broadcast_to(bias, out.shape)
-    
+
 #     return out
 
 # def composite_forward(x, norm_shape, w, b):
@@ -90,11 +89,10 @@ def fn(x, norm_shape, w, b):
 #     return layer_norm_(x, w, b, begin_norm_axis=b_axis)
 
 
-
 def expect_backward(x, norm_shape, w, b):
     paddle.disable_static()
     x.stop_gradient = False
-    res = fn(x, norm_shape, w, b )
+    res = fn(x, norm_shape, w, b)
 
     gradients = paddle.grad(res, x)
     return gradients
@@ -103,10 +101,10 @@ def expect_backward(x, norm_shape, w, b):
 class TestCompositelayer_norm(unittest.TestCase):
     def setUp(self):
         self.dtypes = ["float16", "float32"]
-        self.n_shape = [[3, 4],[3], [2, 3]]
-        self.shape1s = [[3, 4],[2, 4, 3], [2, 2, 3]]
-        self.shape2s = [[12],[3],[6]]
-        self.shape3s = [[12],[3],[6]]
+        self.n_shape = [[3, 4], [3], [2, 3]]
+        self.shape1s = [[3, 4], [2, 4, 3], [2, 2, 3]]
+        self.shape2s = [[12], [3], [6]]
+        self.shape3s = [[12], [3], [6]]
 
     def cal_composite_backward(self, inputs, norm_shape, weight, bias):
         paddle.enable_static()
@@ -121,11 +119,9 @@ class TestCompositelayer_norm(unittest.TestCase):
             w = paddle.static.data(
                 'w', shape=weight.shape, dtype=str(weight.dtype)
             )
-            b = paddle.static.data(
-                'b', shape=bias.shape, dtype=str(bias.dtype)
-            )
+            b = paddle.static.data('b', shape=bias.shape, dtype=str(bias.dtype))
             y = fn(x, norm_shape, w, b)
-            
+
             blocks = main_program.blocks
 
             fwd_ops = [op.type for op in blocks[0].ops]
@@ -147,13 +143,14 @@ class TestCompositelayer_norm(unittest.TestCase):
         exe = paddle.static.Executor()
         exe.run(startup_program)
         res = exe.run(
-            main_program, 
+            main_program,
             feed={
                 'x': inputs,
                 'w': weight,
                 'b': bias,
-            }, 
-            fetch_list=[z])
+            },
+            fetch_list=[z],
+        )
         paddle.disable_static()
         core._set_prim_forward_enabled(False)
         return res
@@ -188,9 +185,14 @@ class TestCompositelayer_norm(unittest.TestCase):
 
     def test_backward(self):
         for j in self.dtypes:
-            for t in range(0,len(self.shape1s)):
+            for t in range(0, len(self.shape1s)):
                 attrs.set_dtype(j)
-                attrs.set_shape(self.n_shape[t], self.shape1s[t], self.shape2s[t], self.shape3s[t])
+                attrs.set_shape(
+                    self.n_shape[t],
+                    self.shape1s[t],
+                    self.shape2s[t],
+                    self.shape3s[t],
+                )
                 self.compare_backward()
 
 
@@ -198,10 +200,10 @@ class TestCompositelayer_normPrimBackward(unittest.TestCase):
     def setUp(self):
         core._set_prim_backward_enabled(True)
         self.dtypes = ["float16", "float32"]
-        self.n_shape = [[3, 4],[3], [2, 3]]
-        self.shape1s = [[3, 4],[2, 4, 3], [2, 2, 3]]
-        self.shape2s = [[12],[3],[6]]
-        self.shape3s = [[12],[3],[6]]
+        self.n_shape = [[3, 4], [3], [2, 3]]
+        self.shape1s = [[3, 4], [2, 4, 3], [2, 2, 3]]
+        self.shape2s = [[12], [3], [6]]
+        self.shape3s = [[12], [3], [6]]
 
     def cal_composite_backward(self, inputs, norm_shape, weight, bias):
         paddle.enable_static()
@@ -216,11 +218,9 @@ class TestCompositelayer_normPrimBackward(unittest.TestCase):
             w = paddle.static.data(
                 'w', shape=weight.shape, dtype=str(weight.dtype)
             )
-            b = paddle.static.data(
-                'b', shape=bias.shape, dtype=str(bias.dtype)
-            )
+            b = paddle.static.data('b', shape=bias.shape, dtype=str(bias.dtype))
             y = fn(x, norm_shape, w, b)
-            
+
             blocks = main_program.blocks
             paddle.incubate.autograd.to_prim(blocks)
             z = paddle.static.gradients([y], x)
@@ -228,13 +228,14 @@ class TestCompositelayer_normPrimBackward(unittest.TestCase):
         exe = paddle.static.Executor()
         exe.run(startup_program)
         res = exe.run(
-            main_program, 
+            main_program,
             feed={
                 'x': inputs,
                 'w': weight,
                 'b': bias,
-            }, 
-            fetch_list=[z])
+            },
+            fetch_list=[z],
+        )
         paddle.disable_static()
         core._set_prim_all_enabled(False)
         return res
@@ -269,9 +270,14 @@ class TestCompositelayer_normPrimBackward(unittest.TestCase):
 
     def test_prim_backward(self):
         for j in self.dtypes:
-            for t in range(0,len(self.shape1s)):
+            for t in range(0, len(self.shape1s)):
                 attrs.set_dtype(j)
-                attrs.set_shape(self.n_shape[t], self.shape1s[t], self.shape2s[t], self.shape3s[t])
+                attrs.set_shape(
+                    self.n_shape[t],
+                    self.shape1s[t],
+                    self.shape2s[t],
+                    self.shape3s[t],
+                )
                 self.compare_backward()
 
 

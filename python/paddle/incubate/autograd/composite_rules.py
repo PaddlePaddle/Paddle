@@ -104,21 +104,21 @@ def composite_batchnorm(
 
 
 @REGISTER_COMPOSITE('layer_norm')
-def layernorm_composite (x, scale, bias, epsilon, begin_norm_axis):
-    axis = np.arange(begin_norm_axis,len(x.shape))
+def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
+    axis = np.arange(begin_norm_axis, len(x.shape))
     mean_ = mean(x, axis=axis, keepdim=True)
     difference = x - mean_
-    var_tmp1 = pow( difference, 2.0)
-    variance = mean( var_tmp1, axis=axis, keepdim=True)
+    var_tmp1 = pow(difference, 2.0)
+    variance = mean(var_tmp1, axis=axis, keepdim=True)
     var_tmp3 = variance + epsilon
-    sqrt_var = sqrt( var_tmp3 )
+    sqrt_var = sqrt(var_tmp3)
     out = difference / sqrt_var
-     
+
     if scale is not None:
         scale = reshape(scale, x.shape[begin_norm_axis:])
-        out = t7 * broadcast_to(scale, out.shape)
+        out = out * broadcast_to(scale, out.shape)
     if bias is not None:
         bias = reshape(bias, x.shape[begin_norm_axis:])
         out = out + broadcast_to(bias, out.shape)
-    
+
     return out, mean_, variance
