@@ -73,7 +73,7 @@ void BatchNormGradRawKernel(const Context& dev_ctx,
        {DNNL_ARG_SHIFT, *(std::get<1>(scaleshift_mems))},
        {DNNL_ARG_DIFF_SRC, *diff_src_memory},
        {DNNL_ARG_DIFF_SCALE, *(std::get<0>(diff_scaleshift_mems))},
-       {DNNL_ARG_DIFF_SHIFT, *std::get<1>(diff_scaleshift_mems))}});
+       {DNNL_ARG_DIFF_SHIFT, *(std::get<1>(diff_scaleshift_mems))}});
   astream.wait();
 
   // copy back diff scale/shift to output tensors (diff scale/shift)
