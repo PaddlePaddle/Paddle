@@ -1319,19 +1319,21 @@ void GatherInferMeta(const MetaTensor& x,
   PADDLE_ENFORCE_GE(
       axis_v,
       (0 - input_dim.size()),
-      phi::errors::InvalidArgument(
-          "The axis is expected to be range of [%d,%d]. But received %d",
-          0,
-          9,
-          axis_v));
+      phi::errors::OutOfRange(
+          "Attr(axis) is out of range, It's expected "
+          "to be in range of [%d, %d]. But received Attr(axis) = %d.",
+          -input_dim.size(),
+          input_dim.size() - 1,
+          dim));
   PADDLE_ENFORCE_LT(
       axis_v,
       input_dim.size(),
-      phi::errors::InvalidArgument(
-          "The axis is expected to be range of [%d,%d]. But received %d",
-          0,
-          9,
-          axis_v));
+      phi::errors::OutOfRange(
+          "Attr(axis) is out of range, It's expected "
+          "to be in range of [%d, %d]. But received Attr(axis) = %d.",
+          -input_dim.size(),
+          input_dim.size() - 1,
+          dim));
 
   if (index_dims.size() == 0) {
     // 0D index will decrease the dimension
