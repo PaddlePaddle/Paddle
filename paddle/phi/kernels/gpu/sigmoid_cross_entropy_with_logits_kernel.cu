@@ -58,6 +58,9 @@ void SigmoidCrossEntropyWithLogitsKernel(const Context &dev_ctx,
                                          bool normalize,
                                          int ignore_index,
                                          DenseTensor *out) {
+  DenseTensor &xx = const_cast<phi::DenseTensor &>(x);
+  xx.inplace_version_counter_->setCanNotUse();
+  out->inplace_version_counter_->setCanNotUse();
   auto out_data = dev_ctx.template Alloc<T>(out);
 
   // Temporary memory

@@ -127,6 +127,9 @@ void LUKernel(const Context& dev_ctx,
               DenseTensor* out,
               DenseTensor* pivots,
               DenseTensor* infos) {
+  DenseTensor& xx = const_cast<phi::DenseTensor&>(x);
+  xx.inplace_version_counter_->setCanNotUse();
+  out->inplace_version_counter_->setCanNotUse();
 #ifdef __HIPCC__
   const int64_t kMaxBlockDim = 256;
 #else

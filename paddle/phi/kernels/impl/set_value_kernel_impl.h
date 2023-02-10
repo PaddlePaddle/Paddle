@@ -79,6 +79,9 @@ void SetValueImpl(const Context& dev_ctx,
                   const std::vector<int64_t>& decrease_axes,
                   const std::vector<int64_t>& none_axes,
                   DenseTensor* out) {
+  DenseTensor& xx = const_cast<phi::DenseTensor&>(in);
+  xx.inplace_version_counter_->setCanNotUse();
+  out->inplace_version_counter_->setCanNotUse();
   auto in_dims = in.dims();
   std::vector<int64_t> starts_local = starts.GetData();
   std::vector<int64_t> ends_local = ends.GetData();

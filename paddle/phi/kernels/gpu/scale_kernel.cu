@@ -48,6 +48,9 @@ void ScaleKernel(const Context& dev_ctx,
                  float bias,
                  bool bias_after_scale,
                  DenseTensor* out) {
+  DenseTensor& xx = const_cast<phi::DenseTensor&>(x);
+  xx.inplace_version_counter_->setCanNotUse();
+  out->inplace_version_counter_->setCanNotUse();
   std::vector<const DenseTensor*> inputs;
   std::vector<DenseTensor*> outputs;
   inputs.emplace_back(&x);

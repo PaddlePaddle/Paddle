@@ -33,6 +33,9 @@ void InstanceNormKernel(const Context &dev_ctx,
                         DenseTensor *y,
                         DenseTensor *saved_mean,
                         DenseTensor *saved_variance) {
+  DenseTensor &xx = const_cast<phi::DenseTensor &>(x);
+  xx.inplace_version_counter_->setCanNotUse();
+  y->inplace_version_counter_->setCanNotUse();
   double epsilon = static_cast<double>(epsilon_f);
   auto &x_dims = x.dims();
   PADDLE_ENFORCE_GE(x_dims.size(),

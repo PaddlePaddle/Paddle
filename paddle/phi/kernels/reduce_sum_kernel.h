@@ -46,6 +46,9 @@ DenseTensor Sum(const Context& dev_ctx,
   MetaTensor meta_out(&dense_out);
   SumInferMeta(x, axis, dtype, keep_dim, &meta_out);
   SumKernel<T, Context>(dev_ctx, x, axis, dtype, keep_dim, &dense_out);
+  DenseTensor& xx = const_cast<phi::DenseTensor&>(x);
+  xx.inplace_version_counter_->setCanNotUse();
+  dense_out.inplace_version_counter_->setCanNotUse();
   return dense_out;
 }
 

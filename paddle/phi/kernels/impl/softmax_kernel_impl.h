@@ -26,6 +26,9 @@ void SoftmaxKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    int axis,
                    DenseTensor* out) {
+  DenseTensor& xx = const_cast<phi::DenseTensor&>(x);
+  xx.inplace_version_counter_->setCanNotUse();
+  out->inplace_version_counter_->setCanNotUse();
   const int rank = x.dims().size();
   const int calc_axis = phi::funcs::CanonicalAxis(axis, rank);
   int axis_dim = x.dims()[calc_axis];

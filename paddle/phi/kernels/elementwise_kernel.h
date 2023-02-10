@@ -131,6 +131,11 @@ DenseTensor Maximum(const Context& dev_ctx,
   MetaTensor meta_out(&dense_out);
   ElementwiseInferMeta(x, y, &meta_out);
   MaximumKernel<T, Context>(dev_ctx, x, y, &dense_out);
+  DenseTensor& xx = const_cast<phi::DenseTensor&>(x);
+  DenseTensor& yy = const_cast<DenseTensor&>(y);
+  xx.inplace_version_counter_->setCanNotUse();
+  yy.inplace_version_counter_->setCanNotUse();
+  dense_out.inplace_version_counter_->setCanNotUse();
   return dense_out;
 }
 
@@ -142,6 +147,11 @@ DenseTensor Minimum(const Context& dev_ctx,
   MetaTensor meta_out(&dense_out);
   ElementwiseInferMeta(x, y, &meta_out);
   MinimumKernel<T, Context>(dev_ctx, x, y, &dense_out);
+  DenseTensor& xx = const_cast<phi::DenseTensor&>(x);
+  DenseTensor& yy = const_cast<DenseTensor&>(y);
+  xx.inplace_version_counter_->setCanNotUse();
+  yy.inplace_version_counter_->setCanNotUse();
+  dense_out.inplace_version_counter_->setCanNotUse();
   return dense_out;
 }
 
@@ -153,6 +163,11 @@ DenseTensor Remainder(const Context& dev_ctx,
   MetaTensor meta_out(&dense_out);
   ElementwiseInferMeta(x, y, &meta_out);
   RemainderKernel<T, Context>(dev_ctx, x, y, &dense_out);
+  DenseTensor& xx = const_cast<phi::DenseTensor&>(x);
+  DenseTensor& yy = const_cast<DenseTensor&>(y);
+  xx.inplace_version_counter_->setCanNotUse();
+  yy.inplace_version_counter_->setCanNotUse();
+  dense_out.inplace_version_counter_->setCanNotUse();
   return dense_out;
 }
 
@@ -164,6 +179,11 @@ DenseTensor FloorDivide(const Context& dev_ctx,
   MetaTensor meta_out(&dense_out);
   ElementwiseInferMeta(x, y, &meta_out);
   FloorDivideKernel<T, Context>(dev_ctx, x, y, &dense_out);
+  DenseTensor& xx = const_cast<phi::DenseTensor&>(x);
+  DenseTensor& yy = const_cast<DenseTensor&>(y);
+  xx.inplace_version_counter_->setCanNotUse();
+  yy.inplace_version_counter_->setCanNotUse();
+  dense_out.inplace_version_counter_->setCanNotUse();
   return dense_out;
 }
 
@@ -175,6 +195,11 @@ DenseTensor ElementwiseHeaviside(const Context& dev_ctx,
   MetaTensor meta_out(&dense_out);
   ElementwiseInferMeta(x, y, &meta_out);
   ElementwiseHeavisideKernel<T, Context>(dev_ctx, x, y, &dense_out);
+  DenseTensor& xx = const_cast<phi::DenseTensor&>(x);
+  DenseTensor& yy = const_cast<DenseTensor&>(y);
+  xx.inplace_version_counter_->setCanNotUse();
+  yy.inplace_version_counter_->setCanNotUse();
+  dense_out.inplace_version_counter_->setCanNotUse();
   return dense_out;
 }
 
@@ -186,6 +211,9 @@ DenseTensor ElementwisePow(const Context& dev_ctx,
   MetaTensor meta_out(&dense_out);
   ElementwiseInferMeta(x, y, &meta_out);
   ElementwisePowKernel<T, Context>(dev_ctx, x, y, &dense_out);
+  DenseTensor& xx = const_cast<phi::DenseTensor&>(x);
+  xx.inplace_version_counter_->setCanNotUse();
+  dense_out.inplace_version_counter_->setCanNotUse();
   return dense_out;
 }
 
