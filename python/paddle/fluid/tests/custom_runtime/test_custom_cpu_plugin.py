@@ -258,6 +258,41 @@ class TestCustomCPUPlugin(unittest.TestCase):
         avg_loss.backward()
         sgd.step()
 
+    def _test_custom_device_mix_precision(self):
+        import tempfile
+
+        import paddle
+        from paddle.inference import (
+            PlaceType,
+            PrecisionType,
+            convert_to_mixed_precision,
+        )
+        from paddle.jit import to_static
+        from paddle.static import InputSpec
+        from paddle.vision.models import resnet50
+
+        self.temp_dir = tempfile.TemporaryDirectory()
+        model = resnet50(True)
+        net = to_static(
+            model, input_spec=[InputSpec(shape=[None, 3, 224, 224], name='x')]
+        )
+        paddle.jit.save(
+            net, os.path.join(self.temp_dir.name, 'resnet50/inference')
+        )
+        convert_to_mixed_precision(
+            os.path.join(self.temp_dir.name, 'resnet50/inference.pdmodel'),
+            os.path.join(self.temp_dir.name, 'resnet50/inference.pdiparams'),
+            os.path.join(
+                self.temp_dir.name, 'mixed_precision/inference.pdmodel'
+            ),
+            os.path.join(
+                self.temp_dir.name, 'mixed_precision/inference.pdiparams'
+            ),
+            backend=PlaceType.CUSTOM,
+            mixed_precision=PrecisionType.Half,
+        )
+        self.temp_dir.cleanup()
+
     def _test_custom_device_py_api(self):
         import paddle
 
