@@ -338,8 +338,10 @@ class ListWithCondNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
+    # Add *args to test function.__self__ in FunctionSpec.
+    # DO NOT remove *args.
     @paddle.jit.to_static
-    def forward(self, x, index):
+    def forward(self, x, index, *args):
         y = paddle.nn.functional.relu(x)
         a = []
 
