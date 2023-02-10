@@ -430,6 +430,21 @@ cc_library(
   SRCS op_kernel_type.cc
   DEPS device_context place)
 
+cc_library(
+  variable_utils
+  SRCS variable_utils.cc
+  DEPS tensor_base
+       convert_utils
+       dense_tensor
+       lod_tensor
+       selected_rows_utils
+       place
+       var_type_traits
+       string_tensor
+       int_array
+       scalar
+       phi_api_utils)
+
 if(WITH_XPU)
   cc_library(
     phi_utils
@@ -439,7 +454,7 @@ if(WITH_XPU)
          place
          phi
          var_type_traits
-         phi_api_utils
+         variable_utils
          op_info
          xpu_op_list)
 else()
@@ -451,7 +466,7 @@ else()
          place
          phi
          var_type_traits
-         phi_api_utils
+         variable_utils
          op_info)
 endif()
 
@@ -1163,7 +1178,7 @@ cc_library(
        place
        var_type_traits
        phi
-       phi_api_utils
+       variable_utils
        op_info
        shape_inference
        sparse_coo_tensor)
