@@ -60,8 +60,7 @@ class PipelinePass(PassBase):
         self._program = main_program
 
         if self._mode == "1F1B":
-            self._insert_sync_ops_for_1f1b()
-            self._task_1f1b()
+            raise NotImplementedError("1F1B has not been implemented")
         elif self._mode == "F-Then-B":
             raise NotImplementedError("F-Then-B has not been implemented")
         elif self._mode == "stream":
@@ -72,93 +71,6 @@ class PipelinePass(PassBase):
                 "Now only 'F-then-B', '1F1B' and 'stream' are supported."
                 "The given value is {}.".format(self._mode)
             )
-
-    def _insert_sync_ops_for_1f1b(self):
-        """
-        This implementation refers to lots of Paddle/python/paddle/fluid/optimizer.py.
-        The difference between this function with 'PipelineOptimizer' is that
-        'send_v2' op and 'recv_v2' op have been inserted in program by 'reshard'.
-        """
-
-        for block in self._program.blocks:
-            offset = 0
-            first_optimize_index = None
-            for index, op in enumerate(list(block.ops)):
-                if is_optimize_op(op):
-                    first_optimize_index = index
-                    break
-
-            # insert sync ops
-            for index, op in enumerate(list(block.ops)):
-                if op.type == 'send_v2':
-                    # step1: set 'use_calc_stream' False
-                    op._set_attr("use_calc_stream", False)
-                    op_role = op.attr('op_role')
-                    ring_id = op.attr('ring_id')
-                    # step2: insert 'c_sync_calc_stream' op before 'send_v2' op
-                    var_name = op.input_arg_names[0]
-                    var = block.var(var_name)
-                    block._insert_op_without_sync(
-                        index=index + offset,
-                        type="c_sync_calc_stream",
-                        inputs={'X': [var]},
-                        outputs={'Out': [var]},
-                        attrs={'op_role': op_role},
-                    )
-                    offset += 1
-                    # step3: insert 'c_sync_comm_stream' op after 'send_v2' op or
-                    # before the first optimize op
-                    if int(op_role) == int(OpRole.Backward):
-                        index = first_optimize_index + offset
-                        new_op_role = OpRole.Optimize
-                    else:
-                        index = index + offset + 1
-                        new_op_role = OpRole.Backward
-                    sync_comm_op = block._insert_op_without_sync(
-                        index=index,
-                        type="c_sync_comm_stream",
-                        inputs={'X': [var]},
-                        outputs={'Out': [var]},
-                        attrs={
-                            'op_role': new_op_role,
-                            'ring_id': ring_id,
-                        },
-                    )
-                    # step4: If 'send_v2' op in forward parse, set 'pipeline_flag' to distinguish
-                    # whether the 'c_sync_comm_stream' op is inserted for pipeline.
-                    if int(op_role) == int(OpRole.Forward):
-                        sync_comm_op._set_attr('pipeline_flag', '')
-                        offset += 1
-            block._sync_with_cpp()
-
-            offset = 0
-            backward_recv_index = None
-            for index, op in enumerate(block.ops):
-                if op.type == "recv_v2" and is_backward_op(op):
-                    backward_recv_index = index
-                    break
-            if backward_recv_index is None:
-                continue
-
-            # replace 'c_sync_comm_stream' op with 'nop' op
-            for index, op in enumerate(list(block.ops)):
-                if index >= backward_recv_index:
-                    break
-                if op.type == 'c_sync_comm_stream' and op.has_attr(
-                    'pipeline_flag'
-                ):
-                    var_name = op.output_arg_names[0]
-                    var = block.var(var_name)
-                    block._remove_op(index + offset, sync=False)
-                    offset -= 1
-                    block._insert_op_without_sync(
-                        index=backward_recv_index,
-                        type="nop",
-                        inputs={'X': [var]},
-                        outputs={'Out': [var]},
-                        attrs={'op_role': OpRole.Backward},
-                    )
-            block._sync_with_cpp()
 
     def _insert_sync_ops_for_stream(self):
 

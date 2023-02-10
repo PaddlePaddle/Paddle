@@ -774,7 +774,8 @@ class Remover:
                         remove_op_idx.append(idx)
 
             for idx in remove_op_idx[::-1]:
-                block._remove_op(idx)
+                block._remove_op(idx, sync=False)
+            block._sync_with_cpp()
 
     @staticmethod
     def remove_no_need_vars(
@@ -926,7 +927,8 @@ class Remover:
             if is_no_need_op:
                 remove_op_idx.append(idx)
         for idx in remove_op_idx[::-1]:
-            startup_block._remove_op(idx)
+            startup_block._remove_op(idx, sync=False)
+        startup_block._sync_with_cpp()
 
 
 class Resharder:
