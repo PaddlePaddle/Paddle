@@ -23,6 +23,7 @@
 #include "cutlass/util/device_memory.h"
 #include "examples/common/helper.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/data_type.h"
 namespace phi {
 namespace sparse {
 typedef void (*fp16_gather_gemm_scatter)(const GPUContext& dev_ctx,
@@ -127,7 +128,8 @@ void dispatchKernel(const GPUContext& dev_ctx,
                     const void* c_d_indices,
                     void const alpha,
                     void const beta,
-		    const bool cutlass) {
+		    const bool cutlass,
+		    const phi::DataType type) {
   if (!cutlass) return;
   
   if (type == phi::DataType::FLOAT16) {
