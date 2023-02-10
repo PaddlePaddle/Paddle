@@ -151,17 +151,17 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
       const IntT* scatter_indices =
           rulebook_ptr + rulebook_len + h_offsets_ptr[i];
       dispatchKernel(dev_ctx,
-		     x.non_zero_elements().data<T>(),
-		     tmp_kernel_ptr,
-		     out_values_ptr,
-		     out_values_ptr,
-		     M,
-		     N,
-		     K,
-		     gather_indices,
-		     scatter_indices,
-		     static_cast<T>(1),
-		     static_cast<T>(1));
+                     x.non_zero_elements().data<T>(),
+                     tmp_kernel_ptr,
+                     out_values_ptr,
+                     out_values_ptr,
+                     M,
+                     N,
+                     K,
+                     gather_indices,
+                     scatter_indices,
+                     static_cast<T>(1),
+                     static_cast<T>(1));
     }
   } else {
 #endif
