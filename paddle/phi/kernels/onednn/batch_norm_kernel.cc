@@ -79,8 +79,8 @@ void BatchNormKernel(const Context &dev_ctx,
   auto &astream = OneDNNContext::tls().get_stream();
   batch_norm_p->execute(astream,
                         {{DNNL_ARG_SRC, *src_memory},
-                         {DNNL_ARG_SCALE, std::get<0>(scaleshift_mems)},
-                         {DNNL_ARG_SHIFT, std::get<1>(scaleshift_mems)},
+                         {DNNL_ARG_SCALE, *(std::get<0>(scaleshift_mems))},
+                         {DNNL_ARG_SHIFT, *(std::get<1>(scaleshift_mems))},
                          {DNNL_ARG_MEAN, *mean_memory},
                          {DNNL_ARG_VARIANCE, *variance_memory},
                          {DNNL_ARG_DST, *dst_memory}});

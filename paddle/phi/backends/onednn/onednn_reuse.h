@@ -1355,8 +1355,8 @@ class BatchNormOneDNNHandler
             dnnl::normalization_flags::use_shift);
   }
 
-  std::tuple<dnnl::memory, dnnl::memory> AcquireScaleShiftMemory(
-      const DenseTensor* scale, const DenseTensor* shift) {
+  std::tuple<std::shared_ptr<dnnl::memory>, std::shared_ptr<dnnl::memory>>
+  AcquireScaleShiftMemory(const DenseTensor* scale, const DenseTensor* shift) {
     auto scale_tz = vectorize(scale->dims());
     PADDLE_ENFORCE_EQ(
         scale_tz.size(),
