@@ -264,14 +264,18 @@ class DenseTensor : public TensorBase,
    public:
     bool IsUnique() const { return inplace_version_ == 0; }
     void Bump() { ++inplace_version_; }
+    void setVal(int a) { inplace_version_ += a; }
     uint32_t CurrentVersion() const { return inplace_version_; }
     void SetInplaceVersionToZero() { inplace_version_ = 0; }
+    bool canNotUse() { return can_not_use; }
+    void setCanNotUse() { can_not_use = true; }
 
-   private:
+   public:
     uint32_t inplace_version_{0};
+    bool can_not_use{false};
   };
 
- protected:
+ public:
   std::shared_ptr<InplaceVersion> inplace_version_counter_{
       std::make_shared<InplaceVersion>()};
 
