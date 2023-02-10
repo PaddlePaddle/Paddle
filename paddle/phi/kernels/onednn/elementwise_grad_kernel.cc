@@ -45,12 +45,11 @@ inline std::vector<int64_t> CalculateBroadcastedDims(
   return dst_tz_ex;
 }
 
-inline void AddSubNonBroadcast(
-    ReorderOneDNNHandler* reorder_handler,
-    phi::DenseTensor* grad_tensor,
-    const std::shared_ptr<dnnl::memory>& src_memory,
-    const std::shared_ptr<dnnl::memory>& dst_memory,
-    const std::shared_ptr<dnnl::memory>& scales_memory) {
+inline void AddSubNonBroadcast(ReorderOneDNNHandler* reorder_handler,
+                               phi::DenseTensor* grad_tensor,
+                               const std::shared_ptr<dnnl::memory>& src_memory,
+                               const std::shared_ptr<dnnl::memory>& dst_memory,
+                               const dnnl::memory& scales_memory) {
   dnnl::primitive_attr reorder_attr;
   reorder_attr.set_scales_mask(DNNL_ARG_DST, 0);
   auto reorder_p =
@@ -84,7 +83,7 @@ inline void BroadcastReduction(const Place& place,
   // Broadcasting
   if (is_sub) {
     dnnl::post_ops po;
-    po.append_eltwise(1.0f, dnnl::algorithm::eltwise_linear, scales[0], 0);
+    po.append_eltwise(dnnl::algorithm::eltwise_linear, scales[0], 0);
     broadcast_reduction_attr.set_post_ops(po);
   }
 
@@ -223,7 +222,7 @@ void ElementwiseGradKernel(const OneDNNContext& dev_ctx,
                                dnnl::memory::format_tag::x);
         auto scales_mem = dnnl::memory(scales_md, onednn_engine);
         AddSubNonBroadcast(
-            &reorder_handler, dy, reorder_src_memory, dst_memory, scales);
+            &reorder_handler, dy, reorder_src_memory, dst_memory, scales_mem);
       }
     } else {  // elementwise_mul & elementwise_div
       std::unordered_map<int, dnnl::memory> args;
