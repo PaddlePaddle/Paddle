@@ -93,6 +93,22 @@ if(WITH_MKLDNN)
   endforeach()
 endif()
 
+file(
+  GLOB TEST_XPU_IR_PASSES
+  RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+  "test_xpu_*.py")
+string(REPLACE ".py" "" TEST_XPU_IR_PASSES "${TEST_XPU_IR_PASSES}")
+foreach(TEST_XPU_IR_PASS ${TEST_XPU_IR_PASSES})
+  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES ${TEST_XPU_IR_PASS})
+endforeach()
+
+if(WITH_XPU)
+  foreach(target ${TEST_XPU_IR_PASSES})
+    py_test_modules(${target} MODULES ${target})
+    set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
+  endforeach()
+endif()
+
 # below are cutlass unitests
 file(
   GLOB TEST_CUTLASS
@@ -135,6 +151,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
   #set_tests_properties(test_trt_multiclass_nms_op PROPERTIES TIMEOUT 200)
   set_tests_properties(test_trt_dynamic_shape PROPERTIES TIMEOUT 120)
   set_tests_properties(test_trt_inspector PROPERTIES TIMEOUT 60)
+  set_tests_properties(test_trt_inference_predictor PROPERTIES TIMEOUT 60)
 
   if(WITH_NV_JETSON)
     set_tests_properties(
