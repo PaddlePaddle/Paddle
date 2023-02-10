@@ -1321,16 +1321,16 @@ void GatherInferMeta(const MetaTensor& x,
       (0 - input_dim.size()),
       phi::errors::InvalidArgument(
           "The axis is expected to be range of [%d,%d]. But received %d",
-          -input_dim.size(),
-          input_dim.size() - 1,
+          0,
+          9,
           axis_v));
   PADDLE_ENFORCE_LT(
       axis_v,
       input_dim.size(),
       phi::errors::InvalidArgument(
           "The axis is expected to be range of [%d,%d]. But received %d",
-          -input_dim.size(),
-          input_dim.size() - 1,
+          0,
+          9,
           axis_v));
 
   if (index_dims.size() == 0) {
