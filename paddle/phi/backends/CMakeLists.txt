@@ -47,7 +47,8 @@ list(
   device_manager.cc)
 
 if(WITH_CUSTOM_DEVICE)
-  list(APPEND BACKENDS_SRCS custom/custom_context.cc custom/custom_device.cc)
+  list(APPEND BACKENDS_SRCS custom/custom_context.cc custom/custom_device.cc
+       custom/custom_device_op_list.cc)
 endif()
 
 add_library(phi_backends "${BACKENDS_SRCS}")

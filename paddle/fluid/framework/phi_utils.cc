@@ -141,7 +141,8 @@ phi::KernelKey FallBackToCpu(const phi::KernelKey& kernel_key,
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   auto place = phi::TransToPhiPlace(kernel_key.backend());
-  if (platform::is_custom_place(place)) {
+  if (platform::is_custom_place(place) ||
+      phi::backends::custom_device::is_in_custom_black_list(op.Type())) {
     VLOG(3) << "phi missing " << place.GetDeviceType()
             << " kernel: " << op.Type()
             << ", expected_kernel_key:" << kernel_key
