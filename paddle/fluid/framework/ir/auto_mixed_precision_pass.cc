@@ -53,9 +53,13 @@ bool KernelSupportPrecision(
     phi::DataType precision,
     phi::DataLayout layout = phi::DataLayout::ALL_LAYOUT) {
   auto phi_op_type = phi::TransToPhiKernelName(op_type);
+
   bool support =
       PhiKernelSupportPrecision(phi_op_type, backend, precision, layout);
-
+  if (backend == phi::Backend::GPU) {
+    support |= PhiKernelSupportPrecision(
+        phi_op_type, phi::Backend::GPUDNN, precision, layout);
+  }
   if (!support) {
     const auto& all_kernels = framework::OperatorWithKernel::AllOpKernels();
     auto it = all_kernels.find(op_type);
