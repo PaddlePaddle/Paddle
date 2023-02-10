@@ -85,5 +85,5 @@ REGISTER_PASS(squeeze2_transpose2_onednn_fuse_pass,
 REGISTER_PASS_CAPABILITY(squeeze2_transpose2_onednn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .GE("squeeze2", 0)
-            .GE("transpose2", 0));
+            .EQ("squeeze2", 0)
+            .EQ("transpose2", 0));

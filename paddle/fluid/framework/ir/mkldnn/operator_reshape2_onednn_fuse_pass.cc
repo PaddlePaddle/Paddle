@@ -144,7 +144,7 @@ REGISTER_PASS(operator_reshape2_onednn_fuse_pass,
 REGISTER_PASS_CAPABILITY(operator_reshape2_onednn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .GE("fused_transpose", 0)
-            .GE("transpose2", 0)
-            .GE("reshape2", 0)
-            .GE("fc", 0));
+            .EQ("fused_transpose", 0)
+            .EQ("transpose2", 0)
+            .EQ("reshape2", 0)
+            .EQ("fc", 0));
