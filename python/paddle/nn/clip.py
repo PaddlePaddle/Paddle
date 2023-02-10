@@ -207,11 +207,8 @@ def _squared_l2_norm(x):
     """
 
     x = _cast_to_mp_type_if_enabled(x)
-    if (
-        core.is_compiled_with_xpu()
-        or x.dtype == core.VarDesc.VarType.FP16
-        or x.dtype == core.VarDesc.VarType.BF16
-    ):
+
+    if core.is_compiled_with_xpu():
         square = paddle.square(x)
         sum_square = paddle.sum(square)
         return sum_square
@@ -220,7 +217,7 @@ def _squared_l2_norm(x):
         return _C_ops.squared_l2_norm(x)
 
     op_type = 'squared_l2_norm'
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], op_type)
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'float16'], op_type)
     helper = LayerHelper(op_type, **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
 

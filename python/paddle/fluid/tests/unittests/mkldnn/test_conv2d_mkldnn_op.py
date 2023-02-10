@@ -99,6 +99,13 @@ class TestConv2DMKLDNNOp(TestConv2DOp):
             output = np.minimum(np.maximum(output, 0), self.fuse_alpha).astype(
                 self.dsttype
             )
+        if (
+            self.fuse_activation != ""
+            or self.fuse_bias
+            or self.fuse_residual_connection
+        ):
+            self.op_type = 'fused_conv2d'
+
         output = output.astype(self.dtype)
 
         self.attrs['fuse_bias'] = self.fuse_bias

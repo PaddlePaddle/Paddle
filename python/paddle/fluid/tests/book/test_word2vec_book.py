@@ -108,11 +108,13 @@ def train(
     word_dict = paddle.dataset.imikolov.build_dict()
     dict_size = len(word_dict)
 
-    first_word = fluid.layers.data(name='firstw', shape=[1], dtype='int64')
-    second_word = fluid.layers.data(name='secondw', shape=[1], dtype='int64')
-    third_word = fluid.layers.data(name='thirdw', shape=[1], dtype='int64')
-    forth_word = fluid.layers.data(name='forthw', shape=[1], dtype='int64')
-    next_word = fluid.layers.data(name='nextw', shape=[1], dtype='int64')
+    first_word = paddle.static.data(name='firstw', shape=[-1, 1], dtype='int64')
+    second_word = paddle.static.data(
+        name='secondw', shape=[-1, 1], dtype='int64'
+    )
+    third_word = paddle.static.data(name='thirdw', shape=[-1, 1], dtype='int64')
+    forth_word = paddle.static.data(name='forthw', shape=[-1, 1], dtype='int64')
+    next_word = paddle.static.data(name='nextw', shape=[-1, 1], dtype='int64')
 
     if not is_parallel:
         avg_cost, predict_word = __network__(

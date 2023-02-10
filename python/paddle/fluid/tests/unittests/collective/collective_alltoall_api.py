@@ -16,7 +16,6 @@ from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 
 paddle.enable_static()
 
@@ -27,9 +26,10 @@ class TestCollectiveAllToAllAPI(TestCollectiveAPIRunnerBase):
 
     def get_model(self, main_prog, startup_program, rank):
         with fluid.program_guard(main_prog, startup_program):
-            tindata = layers.data(
-                name="tindata", shape=[10, 1000], dtype='float32'
+            tindata = paddle.static.data(
+                name="tindata", shape=[-1, 10, 1000], dtype='float32'
             )
+            tindata.desc.set_need_check_feed(False)
             tindata = paddle.split(tindata, 2, axis=0)
             tout_data = []
             paddle.distributed.alltoall(tindata, tout_data)

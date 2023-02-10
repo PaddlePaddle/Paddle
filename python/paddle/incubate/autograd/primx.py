@@ -593,6 +593,9 @@ def _lower_composite(block, blacklist=[]):
         ops_to_remove = []
         vars_to_remove = set()
 
+        # if output var of composite rule is None, this means this var is not needed
+        none_vars_to_remove = set()
+
         # Step2: Process all ops in the target block
         for op_idx in range(len(block.ops)):
             op = block.ops[op_idx]
@@ -605,13 +608,16 @@ def _lower_composite(block, blacklist=[]):
                     expand_nested_list(get_output_var_list(op)),
                     expand_nested_list(as_tensors(lower_fn(op, *input_args))),
                 ):
-                    assert not (orig_out is None) ^ (
-                        new_out is None
-                    ), "orig_out and new_out should match."
-                    vars_to_remove.add(new_out.name)
-                    value_table[new_out.name] = new_out
-                    to_bind[orig_out.name] = new_out.name
-                    to_bind_rev[new_out.name] = orig_out.name
+                    if new_out is not None:
+                        assert not (orig_out is None) ^ (
+                            new_out is None
+                        ), "orig_out and new_out should match."
+                        vars_to_remove.add(new_out.name)
+                        value_table[new_out.name] = new_out
+                        to_bind[orig_out.name] = new_out.name
+                        to_bind_rev[new_out.name] = orig_out.name
+                    else:
+                        none_vars_to_remove.add(orig_out.name)
             else:
                 inputs = {}
                 for i in range(len(op.input_names)):
@@ -664,11 +670,16 @@ def _lower_composite(block, blacklist=[]):
                 block.desc._remove_var(var_name.encode())
                 del block.vars[var_name]
         block._sync_with_cpp()
+
+        for var_name in sorted(none_vars_to_remove):
+            block.desc._remove_var(var_name.encode())
+            del block.vars[var_name]
+        block._sync_with_cpp()
         return
 
     elif isinstance(block, typing.Sequence):
         for item in block:
-            _lower_composite(item)
+            _lower_composite(item, blacklist)
         return
     else:
         raise TypeError

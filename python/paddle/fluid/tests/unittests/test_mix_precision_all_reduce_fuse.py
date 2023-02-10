@@ -36,8 +36,10 @@ def loss_net(hidden, label):
 
 
 def conv_net(use_feed):
-    img = fluid.layers.data(name='image', shape=img_shape, dtype='float16')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    img = paddle.static.data(
+        name='image', shape=[-1] + img_shape, dtype='float16'
+    )
+    label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
 
     conv_pool_1 = fluid.nets.simple_img_conv_pool(
         input=img,

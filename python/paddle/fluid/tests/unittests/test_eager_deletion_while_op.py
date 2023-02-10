@@ -66,15 +66,9 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
                 else 1
             )
 
-        d0 = layers.data(
-            "d0", shape=[10], append_batch_size=False, dtype='float32'
-        )
-        d1 = layers.data(
-            "d1", shape=[10], append_batch_size=False, dtype='float32'
-        )
-        d2 = layers.data(
-            "d2", shape=[10], append_batch_size=False, dtype='float32'
-        )
+        d0 = paddle.static.data("d0", shape=[-1, 10], dtype='float32')
+        d1 = paddle.static.data("d1", shape=[-1, 10], dtype='float32')
+        d2 = paddle.static.data("d2", shape=[-1, 10], dtype='float32')
 
         i = layers.zeros(shape=[1], dtype='int64')
         i.stop_gradient = True

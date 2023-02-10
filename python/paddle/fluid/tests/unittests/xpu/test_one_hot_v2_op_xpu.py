@@ -167,7 +167,7 @@ class TestOneHotOpApi(unittest.TestCase):
             )
 
     def _run(self, depth):
-        label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+        label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
         one_hot_label = fluid.one_hot(input=label, depth=depth)
 
         place = fluid.XPUPlace(0)
@@ -191,10 +191,9 @@ class BadInputTestOnehotV2(unittest.TestCase):
         with fluid.program_guard(fluid.Program()):
 
             def test_bad_x():
-                label = fluid.layers.data(
+                label = paddle.static.data(
                     name="label",
                     shape=[4],
-                    append_batch_size=False,
                     dtype="float32",
                 )
                 one_hot_label = fluid.one_hot(input=label, depth=4)

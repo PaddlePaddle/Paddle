@@ -35,12 +35,6 @@ namespace phi {
 // Currently, CudaStream is used in python-side API only
 class CUDAStream {
  public:
-  enum class Priority : uint8_t {
-    kNull = 0x0,
-    kHigh = 0x1,
-    kNormal = 0x2,
-  };
-
   enum class StreamFlag : uint8_t {
     kDefaultFlag = 0x0,
     kStreamNonBlocking = 0x1,
@@ -50,29 +44,41 @@ class CUDAStream {
   CUDAStream(const Place& place, const Stream& stream)
       : place_(place), stream_(stream) {}
   CUDAStream(const Place& place,
-             const Priority& priority = Priority::kNormal,
+             const int priority = 0,
              const StreamFlag& flag = StreamFlag::kDefaultFlag) {
     place_ = place;
     gpuStream_t stream = nullptr;
     backends::gpu::GPUDeviceGuard guard(place_.device);
-    if (priority == Priority::kHigh) {
+
+    // Stream priorities follow a convention where lower numbers imply greater
+    // priorities
+    auto priority_range = backends::gpu::GetGpuStreamPriorityRange();
+    int least_priority = priority_range.first;      // 0 in V100
+    int greatest_priority = priority_range.second;  // -5 in V100
+
+    // NOTE(Ruibiao): Replacing the following `PADDLE_ENFORCE_EQ` with
+    // `PADDLE_ENFORCE` leads to a nvcc compile error. This is probably a bug.
+    PADDLE_ENFORCE_EQ(
+        priority <= least_priority && priority >= greatest_priority,
+        true,
+        phi::errors::InvalidArgument(
+            "Cannot create a stream with priority = %d because stream priority "
+            "must be inside the meaningful range [%d, %d].",
+            priority,
+            least_priority,
+            greatest_priority));
+
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreateWithPriority(
-          &stream, static_cast<unsigned int>(flag), -1));
+    PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreateWithPriority(
+        &stream, static_cast<unsigned int>(flag), priority));
 #else
-      PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreateWithPriority(
-          &stream, static_cast<unsigned int>(flag), -1));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreateWithPriority(
+        &stream, static_cast<unsigned int>(flag), priority));
 #endif
-    } else if (priority == Priority::kNormal) {
-#ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreateWithPriority(
-          &stream, static_cast<unsigned int>(flag), 0));
-#else
-      PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreateWithPriority(
-          &stream, static_cast<unsigned int>(flag), 0));
-#endif
-    }
-    VLOG(10) << "CUDAStream " << stream;
+
+    VLOG(10) << "Create CUDAStream " << stream
+             << " with priority = " << priority
+             << ", flag = " << static_cast<unsigned int>(flag);
     stream_ = Stream(reinterpret_cast<StreamId>(stream));
     owned_ = true;
   }

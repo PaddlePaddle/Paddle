@@ -105,6 +105,13 @@ void PNormKernel(const Context& dev_ctx,
   std::vector<int> reduce_axis =
       funcs::details::GetReduceDim(axis_dims, xdim.size(), asvector);
 
+  for (int i = 0; i < xdim.size(); i++) {
+    PADDLE_ENFORCE_LT(0,
+                      xdim[i],
+                      errors::InvalidArgument(
+                          "The dims of Input(X) should be greater than 0."));
+  }
+
   using MT = typename dtype::MPTypeTrait<T>::Type;
   if (porder == 0) {
     phi::funcs::ReduceKernel<T, T, kps::AddFunctor, NonzeroFunctor<T>>(

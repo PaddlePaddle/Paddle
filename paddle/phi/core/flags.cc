@@ -146,17 +146,17 @@ PADDLE_DEFINE_EXPORTED_bool(
  * CUDA related related FLAG
  * Name: FLAGS_gemm_use_half_precision_compute_type
  * Since Version: 2.4
- * Value Range: bool, default=true
+ * Value Range: bool, default=false
  * Example:
  * Note: whether to use fp16 compute type when the input and output is fp16,
  * faster but it may loss precision.
  */
 PADDLE_DEFINE_EXPORTED_bool(
     gemm_use_half_precision_compute_type,
-    true,
+    false,
     "Whether to use fp16 compute type when the input and output is fp16, "
     "faster but it may loss precision in most case. If true, the compute "
-    "type will be set to fp32. Default is true.");
+    "type will be set to fp16. Default is false.");
 
 /**
  * CUDA related FLAG
@@ -1198,11 +1198,11 @@ PADDLE_DEFINE_EXPORTED_bool(trt_ibuilder_cache,
  * mmap_allocator related FLAG
  * Name: use_shm_cache
  * Since Version: 2.5.0
- * Value Range: bool, default=true
+ * Value Range: bool, default=false
  * Example:
  * Note: . If True, mmap_allocator will cache shm file to decrease munmap
  * operation.
  */
 PADDLE_DEFINE_EXPORTED_bool(use_shm_cache,
-                            true,
+                            false,
                             "Use shm cache in mmap_allocator.");

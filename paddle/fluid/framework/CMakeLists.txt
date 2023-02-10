@@ -162,27 +162,7 @@ cc_test(
   eigen_test
   SRCS eigen_test.cc
   DEPS tensor)
-cc_library(
-  mixed_vector
-  SRCS mixed_vector.cc
-  DEPS device_context place memory)
 
-if(WITH_GPU)
-  nv_test(
-    mixed_vector_test
-    SRCS mixed_vector_test.cc mixed_vector_test.cu
-    DEPS mixed_vector place memory device_context tensor)
-elseif(WITH_ROCM)
-  hip_test(
-    mixed_vector_test
-    SRCS mixed_vector_test.cc mixed_vector_test.cu
-    DEPS mixed_vector place memory device_context tensor)
-else()
-  cc_test(
-    mixed_vector_test
-    SRCS mixed_vector_test.cc
-    DEPS mixed_vector place memory device_context tensor)
-endif()
 cc_library(
   lod_tensor
   SRCS lod_tensor.cc
@@ -618,7 +598,8 @@ if(WITH_PYTHON)
     fleet_proto_init
     pass_desc_py_proto
     ps_py_proto
-    ps_py_proto_init)
+    ps_py_proto_init
+    pslib_py_proto)
   if(NOT WIN32)
     add_custom_command(
       TARGET framework_py_proto
@@ -865,7 +846,8 @@ if(WITH_DISTRIBUTE)
            fleet
            heter_server
            brpc
-           fleet_executor)
+           fleet_executor
+           flags)
     set(DISTRIBUTE_COMPILE_FLAGS
         "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=parentheses"
     )

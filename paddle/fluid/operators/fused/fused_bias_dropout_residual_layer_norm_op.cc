@@ -35,16 +35,17 @@ class FusedBiasDropoutResidualLnOp : public framework::OperatorWithKernel {
                    "Output",
                    "LnVariance",
                    "FusedBiasDropoutResidualLnOp");
-    OP_INOUT_CHECK(ctx->HasOutput("BiasDropoutResidualOut"),
-                   "Output",
-                   "BiasDropoutResidualOut",
-                   "FusedBiasDropoutResidualLnOp");
     OP_INOUT_CHECK(ctx->HasOutput("DropoutMaskOut"),
                    "Output",
                    "DropoutMaskOut",
                    "FusedBiasDropoutResidualLnOp");
+    OP_INOUT_CHECK(ctx->HasOutput("BiasDropoutResidualOut"),
+                   "Output",
+                   "BiasDropoutResidualOut",
+                   "FusedBiasDropoutResidualLnOp");
     OP_INOUT_CHECK(
         ctx->HasOutput("Y"), "Output", "Y", "FusedBiasDropoutResidualLnOp");
+
     auto x_dim = ctx->GetInputDim("X");
     int left = 1;
     for (int i = 0; i < x_dim.size() - 1; i++) {

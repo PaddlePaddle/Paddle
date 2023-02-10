@@ -16,7 +16,7 @@ import unittest
 
 from paddle.fluid import core
 
-core.set_prim_enabled(True)
+core._set_prim_backward_enabled(True)
 
 import autograd
 import autograd.numpy
@@ -60,7 +60,7 @@ class TestSqrtGradComp(unittest.TestCase):
         self.x = paddle.randn([2, 4])
         self.x.stop_gradient = False
         net = PrimeNet()
-        core.set_prim_enabled(use_prim)
+        core._set_prim_backward_enabled(use_prim)
         net = apply_to_static(net, use_cinn)
         out = net(self.x)
         res = paddle.autograd.grad(out, [self.x])
@@ -70,7 +70,7 @@ class TestSqrtGradComp(unittest.TestCase):
     def test_cinn(self):
         paddle.disable_static()
         dy_res = self.train(use_prim=False, use_cinn=False)
-        comp_st_cinn_res = self.train(use_prim=True, use_cinn=False)
+        comp_st_cinn_res = self.train(use_prim=True, use_cinn=True)
 
         for i in range(len(dy_res)):
             np.testing.assert_allclose(
@@ -109,7 +109,7 @@ class TestSqrtGradComp(unittest.TestCase):
             rtol=1e-6,
             atol=0,
         )
-        core.set_prim_enabled(False)
+        core._set_prim_backward_enabled(False)
 
 
 if __name__ == '__main__':

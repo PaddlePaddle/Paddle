@@ -52,12 +52,11 @@ class TestFleet1(unittest.TestCase):
         startup_program = fluid.Program()
         scope = fluid.Scope()
         with fluid.program_guard(train_program, startup_program):
-            show = fluid.layers.data(
+            show = paddle.static.data(
                 name="show",
                 shape=[-1, 1],
                 dtype="int64",
                 lod_level=1,
-                append_batch_size=False,
             )
             emb = fluid.layers.embedding(
                 input=show,
@@ -67,12 +66,11 @@ class TestFleet1(unittest.TestCase):
                 param_attr=fluid.ParamAttr(name="embedding"),
             )
             fc = paddle.static.nn.fc(x=emb, size=1, activation=None)
-            label = fluid.layers.data(
+            label = paddle.static.data(
                 name="click",
                 shape=[-1, 1],
                 dtype="int64",
                 lod_level=1,
-                append_batch_size=False,
             )
             label_cast = fluid.layers.cast(label, dtype='float32')
             cost = paddle.nn.functional.log_loss(fc, label_cast)

@@ -1343,6 +1343,9 @@ paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
   } else if (type_name == "numpy.float32") {
     float value = CastPyArg2Float(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
+  } else if (type_name == "numpy.float16") {
+    float16 value = CastPyArg2Float16(obj, op_type, arg_pos);
+    return paddle::experimental::Scalar(value);
   } else if (type_name == "numpy.int64") {
     int64_t value = CastPyArg2Long(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
@@ -1352,7 +1355,7 @@ paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
-        "numpy.float32/float64, numpy.int32/int64, but got %s",
+        "numpy.float16/float32/float64, numpy.int32/int64, but got %s",
         op_type,
         arg_pos + 1,
         type_name));  // NOLINT

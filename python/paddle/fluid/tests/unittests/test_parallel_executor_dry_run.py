@@ -76,8 +76,8 @@ class TestMNISTDryRun(TestBase):
 
     @staticmethod
     def network_func():
-        img = fluid.layers.data(name='img', shape=[784], dtype='float32')
-        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+        img = paddle.static.data(name='img', shape=[-1, 784], dtype='float32')
+        label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
         hidden = img
         for _ in range(10):
             hidden = paddle.static.nn.fc(x=img, size=200, activation='tanh')

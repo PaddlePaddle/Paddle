@@ -81,8 +81,8 @@ void CrossKernel(const Context& dev_ctx,
   }
 
   std::vector<T> input_x_vec, input_y_vec;
-  paddle::framework::TensorToVector(input_x, dev_ctx, &input_x_vec);
-  paddle::framework::TensorToVector(input_y, dev_ctx, &input_y_vec);
+  phi::TensorToVector(input_x, dev_ctx, &input_x_vec);
+  phi::TensorToVector(input_y, dev_ctx, &input_y_vec);
   std::vector<T> out_vec(output->numel());
 
   dev_ctx.template Alloc<T>(output);
@@ -100,7 +100,7 @@ void CrossKernel(const Context& dev_ctx,
       }
     }
   }
-  paddle::framework::TensorFromVector(out_vec, dev_ctx, output);
+  phi::TensorFromVector(out_vec, dev_ctx, output);
   output->Resize(input_x_dims);
 }
 

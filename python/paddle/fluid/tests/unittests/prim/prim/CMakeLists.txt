@@ -9,3 +9,4 @@ foreach(TEST_OP ${TEST_OPS})
 endforeach()
 
 add_subdirectory(vjp)
+add_subdirectory(flags)
