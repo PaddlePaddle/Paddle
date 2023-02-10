@@ -62,7 +62,7 @@ class TestPrimForward(unittest.TestCase):
         self.shapes = [[2, 4], [64, 16, 4]]
         self.dtypes = ["float16", "float32", "float64"]
 
-    def train(self, use_prim):
+    def train(self, use_prim, data):
         paddle.seed(2022)
         net = PrimeNet()
         sgd = paddle.optimizer.SGD(
@@ -74,7 +74,7 @@ class TestPrimForward(unittest.TestCase):
 
         res = []
         for _ in range(10):
-            out = net(self.x)
+            out = net(data)
             loss = paddle.mean(out)
             loss.backward()
             sgd.step()
@@ -96,6 +96,10 @@ class TestPrimForward(unittest.TestCase):
     def test_cinn_prim_forward(self):
         for shape in self.shapes:
             for dtype in self.dtypes:
+                # mean-kernel on cpu not support float16
+                if paddle.device.get_device() == "cpu" and dtype == "float16":
+                    print("need pass this case")
+                    continue
                 data = generate_data(shape, dtype)
                 data_t = paddle.to_tensor(data)
                 data_t.stop_gradient = False
@@ -120,7 +124,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         self.shapes = [[2, 4], [64, 16, 4]]
         self.dtypes = ["float16", "float32", "float64"]
 
-    def train(self, use_prim):
+    def train(self, use_prim, data):
         paddle.seed(2022)
         net = PrimeNet()
         sgd = paddle.optimizer.SGD(
@@ -132,7 +136,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
 
         res = []
         for _ in range(10):
-            out = net(self.x)
+            out = net(data)
             loss = paddle.mean(out)
             loss.backward()
             sgd.step()
@@ -156,6 +160,13 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         if plat == "Linux":
             for shape in self.shapes:
                 for dtype in self.dtypes:
+                    # mean-kernel on cpu not support float16
+                    if (
+                        paddle.device.get_device() == "cpu"
+                        and dtype == "float16"
+                    ):
+                        print("need pass this case")
+                        continue
                     data = generate_data(shape, dtype)
                     data_t = paddle.to_tensor(data)
                     data_t.stop_gradient = False

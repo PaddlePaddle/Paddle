@@ -126,6 +126,13 @@ class TestCompositeMean(unittest.TestCase):
             for j in self.dtypes:
                 for t in self.shapes:
                     for k in self.keepdim:
+                        # mean-kernel on cpu not support float16
+                        if (
+                            paddle.device.get_device() == "cpu"
+                            and j == "float16"
+                        ):
+                            print("need pass this case")
+                            continue
                         attrs.set_axis(i)
                         attrs.set_dtype(j)
                         attrs.set_shape(t)
