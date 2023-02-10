@@ -201,8 +201,15 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
 
     ncclDataType_t dtype =
         platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
-        x->data<T>(), numel, dtype, peer, comm->comm(), stream));
+    // PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
+    //     x->data<T>(), numel, dtype, peer, comm->comm(), stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
+        reinterpret_cast<void*>(const_cast<T*>(x->data<T>())),
+        numel,
+        dtype,
+        comm->rank(),
+        comm->comm(),
+        stream));
     VLOG(3) << "rank " << comm->rank() << " send " << phi::product(x->dims())
             << " to " << peer;
 #else

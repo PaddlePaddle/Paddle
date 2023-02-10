@@ -215,8 +215,15 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
     } else {
       out->mutable_data<T>(out_dims, place);
     }
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
-        out->data<T>(), numel, dtype, peer, comm->comm(), stream));
+    // PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
+    //     out->data<T>(), numel, dtype, peer, comm->comm(), stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::ncclBcast(reinterpret_cast<void *>(out->data<T>()),
+                                     numel,
+                                     dtype,
+                                     peer,
+                                     comm->comm(),
+                                     stream));
     VLOG(3) << "rank " << comm->rank() << " recv " << phi::product(out->dims())
             << " from " << peer;
 #else
