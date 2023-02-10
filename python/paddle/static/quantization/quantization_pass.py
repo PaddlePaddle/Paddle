@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+import logging
 
 import numpy as np
 
@@ -27,7 +28,17 @@ from ...fluid.framework import IrGraph, IrNode
 from ...framework import _get_paddle_place, core
 from ...static import Program, data, program_guard, scope_guard
 from ...utils import unique_name
+from ..log_helper import get_logger
 from . import utils
+from .quant_config import (
+    SUPPORT_ACT_QUANTIZATION_OP_DICT,
+    SUPPORT_QUANTIZATION_OP_DICT,
+    SUPPORT_WEIGHT_QUANTIZATION_OP_DICT,
+)
+
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
+)
 
 _fake_quant_op_list = [
     'fake_quantize_abs_max',
@@ -231,7 +242,7 @@ class QuantizationTransformPass:
 
         self._quantizable_ops = quantizable_op_type
         for op in self._quantizable_ops:
-            assert op in utils._weight_supported_quantizable_op_type, (
+            assert op in list(SUPPORT_WEIGHT_QUANTIZATION_OP_DICT.keys()), (
                 op + " is not supported for quantization."
             )
         self._quantizable_grad_ops = [
@@ -1594,7 +1605,7 @@ class OutScaleForTrainingPass:
         self._place = _get_paddle_place(place)
         self._moving_rate = moving_rate
         self._is_test = is_test
-        self._teller_set = utils.QUANT_SUPPORTED_OP_TYPE_LIST
+        self._teller_set = list(SUPPORT_QUANTIZATION_OP_DICT.keys())
         self._scale_dict = scale_dict
 
     def apply(self, graph):
@@ -1749,7 +1760,7 @@ class OutScaleForInferencePass:
             scope(static.Scope): The scope is used to initialize these new parameters.
         """
         self._scope = scope
-        self._teller_set = utils.QUANT_SUPPORTED_OP_TYPE_LIST
+        self._teller_set = list(SUPPORT_QUANTIZATION_OP_DICT.keys())
 
     def apply(self, graph):
         """
@@ -1830,7 +1841,6 @@ class AddQuantDequantPass:
         quant_bits=8,
         skip_pattern=["skip_quant"],
         quantizable_op_type=["elementwise_add", "pool2d"],
-        is_full_quantized=False,
         is_test=None,
         scale_dict=None,
     ):
@@ -1851,10 +1861,6 @@ class AddQuantDequantPass:
                 Default is 'skip_quant'.
             quantizable_op_type(list[str], optional): List the type of ops that will be
                 quantized. Default is ["elementwise_add", "pool2d"].
-            is_full_quantized(bool, optional): If set is_full_quantized as True, apply
-                quantization to all supported quantizable op type. If set is_full_quantized
-                as False, only apply quantization to the op type according to the input
-                quantizable_op_type.
         """
         self._scope = scope
         self._place = _get_paddle_place(place)
@@ -1864,14 +1870,11 @@ class AddQuantDequantPass:
         self._skip_pattern = skip_pattern
         self._scale_dict = scale_dict
 
-        if is_full_quantized:
-            self._quantizable_op_type = utils._act_supported_quantizable_op_type
-        else:
-            self._quantizable_op_type = quantizable_op_type
-            for op_type in quantizable_op_type:
-                assert op_type in utils._act_supported_quantizable_op_type, (
-                    op_type + " is not supported for quantization."
-                )
+        self._quantizable_op_type = quantizable_op_type
+        for op_type in self._quantizable_op_type:
+            assert op_type in list(SUPPORT_ACT_QUANTIZATION_OP_DICT.keys()), (
+                op_type + " is not supported for quantization."
+            )
         self._quantizable_grad_op_type = [
             '%s_grad' % (op) for op in self._quantizable_op_type
         ]
@@ -2485,7 +2488,7 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
 
         self._quantizable_ops = quantizable_op_type
         for op in self._quantizable_ops:
-            assert op in utils._weight_supported_quantizable_op_type, (
+            assert op in list(SUPPORT_WEIGHT_QUANTIZATION_OP_DICT.keys()), (
                 op + " is not supported for quantization."
             )
         self._quantizable_grad_ops = [
@@ -2763,7 +2766,6 @@ class AddQuantDequantPassV2:
         quant_bits=8,
         skip_pattern=["skip_quant"],
         quantizable_op_type=["elementwise_add", "pool2d"],
-        is_full_quantized=False,
         is_test=None,
         scale_dict=None,
     ):
@@ -2782,10 +2784,6 @@ class AddQuantDequantPassV2:
                 Default is 'skip_quant'.
             quantizable_op_type(list[str], optional): List the type of ops that will be
                 quantized. Default is ["elementwise_add", "pool2d"].
-            is_full_quantized(bool, optional): If set is_full_quantized as True, apply
-                quantization to all supported quantizable op type. If set is_full_quantized
-                as False, only apply quantization to the op type according to the input
-                quantizable_op_type.
             scale_dict(dict, optional): calibration ranges of tensors output.
 
         Examples:
@@ -2811,14 +2809,11 @@ class AddQuantDequantPassV2:
         self._skip_pattern = skip_pattern
         self._scale_dict = scale_dict
 
-        if is_full_quantized:
-            self._quantizable_op_type = utils._act_supported_quantizable_op_type
-        else:
-            self._quantizable_op_type = quantizable_op_type
-            for op_type in quantizable_op_type:
-                assert op_type in utils._act_supported_quantizable_op_type, (
-                    op_type + " is not supported for quantization."
-                )
+        self._quantizable_op_type = quantizable_op_type
+        for op_type in self._quantizable_op_type:
+            assert op_type in list(SUPPORT_ACT_QUANTIZATION_OP_DICT.keys()), (
+                op_type + " is not supported for quantization."
+            )
         self._quantizable_grad_op_type = [
             '%s_grad' % (op) for op in self._quantizable_op_type
         ]
@@ -2895,6 +2890,19 @@ class AddQuantDequantPassV2:
                         )
                         if in_node.persistable():
                             continue
+
+                        if in_node.dtype() not in [
+                            paddle.float64,
+                            paddle.float32,
+                            paddle.float16,
+                        ]:
+                            _logger.warning(
+                                "Since the {} contains an input of type INT, the quantization of this layer is skipped.".format(
+                                    op_node.name()
+                                )
+                            )
+                            break
+
                         if arg_name in dequantized_vars_map:
                             dequant_var_node = dequantized_vars_map[arg_name]
                         else:
@@ -3142,7 +3150,7 @@ class QuantWeightPass:
         self._save_int_weight = save_int_weight
         assert self._scope is not None, "scope must not be None."
         assert self._place is not None, "place must not be None."
-        self._quantized_ops = set()
+        self._quantized_ops = {}
 
     def apply(self, graph):
         assert isinstance(
@@ -3181,7 +3189,6 @@ class QuantWeightPass:
                 quant_axis = _op.op().attr("quant_axis")
                 bits_length = _op.op().attr("bit_length")
                 if x_node.name() not in self._quantized_ops:
-                    self._quantized_ops.add(x_node.name())
                     quantized_param_v = utils.quant_tensor(
                         param_v.copy(),
                         scale_v,
@@ -3204,11 +3211,31 @@ class QuantWeightPass:
                         quantized_param_v = quantized_param_v.astype(
                             save_weight_dtype
                         )
-                    self._restore_var(x_node.name(), quantized_param_v)
+                    quant_weight_node = graph.create_persistable_node(
+                        name=self._quantized_var_name(x_node.name()),
+                        var_type=core.VarDesc.VarType.LOD_TENSOR,
+                        shape=x_node.shape(),
+                        var_dtype=core.VarDesc.VarType.INT8,
+                    )
+                    _init_var_node(
+                        quant_weight_node,
+                        quantized_param_v,
+                        self._scope,
+                        self._place,
+                    )
+                    self._quantized_ops[x_node.name()] = quant_weight_node
 
                 for next_op_node in out_node.outputs:
-                    graph.update_input_link(out_node, x_node, next_op_node)
-                graph.safe_remove_nodes(out_node)
+                    if (
+                        self._quantized_ops[x_node.name()].node
+                        in graph.graph.nodes()
+                    ):
+                        graph.update_input_link(
+                            out_node,
+                            self._quantized_ops[x_node.name()],
+                            next_op_node,
+                        )
+                graph.safe_remove_nodes(_op)
         self._remove_unused_var_nodes(graph)
 
     def _remove_unused_var_nodes(self, graph):
@@ -3233,9 +3260,11 @@ class QuantWeightPass:
     def _load_var(self, name):
         return np.array(self._scope.find_var(name).get_tensor())
 
-    def _restore_var(self, name, array):
-        tensor = self._scope.find_var(name).get_tensor()
-        tensor.set(array, self._place)
+    def _quantized_var_name(self, var_name):
+        """
+        Return quantized variable name for the input `var_name`.
+        """
+        return "%s.quantized" % (var_name)
 
 
 class AddQuantDequantForInferencePass:
@@ -3243,7 +3272,15 @@ class AddQuantDequantForInferencePass:
     When export quant model, it will traverse to find the output of each op, and then insert the quant/dequant op after it.
     """
 
-    def __init__(self, scope, place, quant_bits=8):
+    def __init__(
+        self,
+        scope,
+        place,
+        quant_bits=8,
+        quantizable_op_type=[],
+        calibration_range_dict=None,
+        only_observer=True,
+    ):
         """
         Args:
             scope(static.Scope): The scope is used to initialize these new parameters.
@@ -3254,7 +3291,13 @@ class AddQuantDequantForInferencePass:
         self._scope = scope
         self._place = place
         self._quant_bits = quant_bits
-        self._teller_set = utils.QUANT_SUPPORTED_OP_TYPE_LIST
+        self._only_observer = only_observer
+        self._teller_set = (
+            quantizable_op_type
+            if quantizable_op_type
+            else list(SUPPORT_QUANTIZATION_OP_DICT.keys())
+        )
+        self._calibration_range_dict = calibration_range_dict
 
     def apply(self, graph):
         """
@@ -3274,9 +3317,9 @@ class AddQuantDequantForInferencePass:
                         op_node.outputs, var_name
                     )
                     if out_node.dtype() not in [
-                        core.VarDesc.VarType.FP64,
-                        core.VarDesc.VarType.FP32,
-                        core.VarDesc.VarType.FP16,
+                        paddle.float64,
+                        paddle.float32,
+                        paddle.float16,
                     ]:
                         continue
                     if var_name in dequantized_vars_map:
@@ -3295,7 +3338,10 @@ class AddQuantDequantForInferencePass:
             else:
                 var_names = utils._get_op_input_var_names(op_node)
                 for var_name in var_names:
-                    if var_name in dequant_node_map:
+                    if (
+                        var_name in dequant_node_map
+                        and dequant_node_map[var_name]
+                    ):
                         in_node = graph._find_node_by_name(
                             op_node.inputs, var_name
                         )
@@ -3321,9 +3367,41 @@ class AddQuantDequantForInferencePass:
             shape=var_node.shape(),
             var_dtype=var_node.dtype(),
         )
-        scale_var_node = graph._find_node_by_name(
-            graph.all_persistable_nodes(), self._scale_name(var_name)
-        )
+
+        try:
+            scale_var_node = graph._find_node_by_name(
+                graph.all_persistable_nodes(), self._scale_name(var_name)
+            )
+        except:
+            if (
+                self._calibration_range_dict
+                and var_name in self._calibration_range_dict
+            ):
+                scale_value = self._calibration_range_dict[var_name]
+                scale_var_node = graph.create_persistable_node(
+                    name=self._scale_name(var_name),
+                    var_type=var_node.type(),
+                    shape=[1],
+                    var_dtype=var_node.dtype(),
+                )
+                data_type = (
+                    'float64'
+                    if var_node.dtype() == core.VarDesc.VarType.FP64
+                    else 'float32'
+                )
+                _init_var_node(
+                    scale_var_node,
+                    np.array(scale_value, dtype=data_type),
+                    self._scope,
+                    self._place,
+                )
+            else:
+                _logger.warning(
+                    "Cannot find the target node {} in scope, so skip adding quant node.".format(
+                        var_name
+                    )
+                )
+                return None
         try:
             zero_point_node = graph._find_node_by_name(
                 graph.all_persistable_nodes(),
@@ -3347,7 +3425,11 @@ class AddQuantDequantForInferencePass:
         if zero_point_node is not None:
             inputs["ZeroPoint"] = zero_point_node
 
-        attrs = {"quant_axis": quant_axis, "bit_length": self._quant_bits}
+        attrs = {
+            "quant_axis": quant_axis,
+            "bit_length": self._quant_bits,
+            "only_observer": self._only_observer,
+        }
         attrs["op_role"] = core.op_proto_and_checker_maker.OpRole.Forward
         outputs = {"Y": quant_var_node}
 
@@ -3376,7 +3458,11 @@ class AddQuantDequantForInferencePass:
         if zero_point_node is not None:
             inputs["ZeroPoint"] = zero_point_node
 
-        attrs = {"quant_axis": -1, "bit_length": self._quant_bits}
+        attrs = {
+            "quant_axis": -1,
+            "bit_length": self._quant_bits,
+            "only_observer": self._only_observer,
+        }
         attrs["op_role"] = core.op_proto_and_checker_maker.OpRole.Forward
 
         dequant_op_node = graph.create_op_node(

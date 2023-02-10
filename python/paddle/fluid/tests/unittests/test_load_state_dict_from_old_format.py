@@ -42,7 +42,9 @@ def convolutional_neural_network(img):
         pool_stride=2,
         act="relu",
     )
-    prediction = fluid.layers.fc(input=conv_pool_2, size=10, act='softmax')
+    prediction = paddle.static.nn.fc(
+        x=conv_pool_2, size=10, activation='softmax'
+    )
     return prediction
 
 
@@ -148,9 +150,6 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
         self.params_filename = None
         orig_param_dict = self.train_and_save_model()
 
-        load_param_dict, _ = fluid.load_dygraph(self.save_dirname)
-        self.check_load_state_dict(orig_param_dict, load_param_dict)
-
         new_load_param_dict = paddle.load(self.save_dirname)
         self.check_load_state_dict(orig_param_dict, new_load_param_dict)
 
@@ -161,11 +160,6 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
         self.model_filename = "static_mnist.model"
         self.params_filename = None
         orig_param_dict = self.train_and_save_model()
-
-        load_param_dict, _ = fluid.load_dygraph(
-            self.save_dirname, model_filename=self.model_filename
-        )
-        self.check_load_state_dict(orig_param_dict, load_param_dict)
 
         new_load_param_dict = paddle.load(
             self.save_dirname, model_filename=self.model_filename
@@ -179,11 +173,6 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
         self.model_filename = None
         self.params_filename = "static_mnist.params"
         orig_param_dict = self.train_and_save_model()
-
-        load_param_dict, _ = fluid.load_dygraph(
-            self.save_dirname, params_filename=self.params_filename
-        )
-        self.check_load_state_dict(orig_param_dict, load_param_dict)
 
         new_load_param_dict = paddle.load(
             self.save_dirname, params_filename=self.params_filename
@@ -199,13 +188,6 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
         self.params_filename = "static_mnist.params"
         orig_param_dict = self.train_and_save_model()
 
-        load_param_dict, _ = fluid.load_dygraph(
-            self.save_dirname,
-            params_filename=self.params_filename,
-            model_filename=self.model_filename,
-        )
-        self.check_load_state_dict(orig_param_dict, load_param_dict)
-
         new_load_param_dict = paddle.load(
             self.save_dirname,
             params_filename=self.params_filename,
@@ -219,9 +201,6 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
         )
         self.params_filename = None
         orig_param_dict = self.train_and_save_model(True)
-
-        load_param_dict, _ = fluid.load_dygraph(self.save_dirname)
-        self.check_load_state_dict(orig_param_dict, load_param_dict)
 
         new_load_param_dict = paddle.load(self.save_dirname)
         self.check_load_state_dict(orig_param_dict, new_load_param_dict)

@@ -13,8 +13,7 @@
 # limitations under the License.
 
 import paddle.fluid.data_feeder as data_feeder
-import paddle.fluid.framework as framework
-import paddle.fluid.layer_helper as layer_helper
+import paddle.framework as framework
 from paddle.distributed.communication.group import (
     _get_global_group,
     _get_or_throw_group_rank,
@@ -57,7 +56,7 @@ def _broadcast_in_static_mode(
     )
 
     op_type = 'c_broadcast'
-    helper = layer_helper.LayerHelper(op_type, **locals())
+    helper = framework.LayerHelper(op_type, **locals())
     ring_id = 0 if group is None else group.id
 
     helper.append_op(

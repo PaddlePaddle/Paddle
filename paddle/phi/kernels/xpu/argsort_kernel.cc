@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 
@@ -171,12 +172,19 @@ void ArgsortKernel(const Context& dev_ctx,
                    DenseTensor* output,
                    DenseTensor* indices) {
   auto in_dims = input.dims();
+  auto rank = in_dims.size();
   axis = (axis < 0) ? (in_dims.size() + axis) : axis;
   int n = in_dims[axis];
 
   auto input_data = input.data<T>();
   auto output_data = dev_ctx.template Alloc<T>(output);
   auto indices_data = dev_ctx.template Alloc<int64_t>(indices);
+
+  if (rank == 0) {
+    phi::Copy<Context>(dev_ctx, input, dev_ctx.GetPlace(), false, output);
+    phi::funcs::set_constant(dev_ctx, indices, 0);
+    return;
+  }
 
   int len_before = phi::product(phi::slice_ddim(in_dims, 0, axis));
   int len_after =

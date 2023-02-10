@@ -144,23 +144,24 @@ class UnsqueezeOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        framework::TransToProtoVarType(
-            ctx.Input<phi::DenseTensor>("X")->type()),
-        ctx.device_context());
+    return phi::KernelKey(framework::TransToProtoVarType(
+                              ctx.Input<phi::DenseTensor>("X")->type()),
+                          ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const override {
+      const phi::KernelKey &expected_kernel_type) const override {
     if (var_name == "AxesTensor" || var_name == "AxesTensorList") {
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
-    return framework::OpKernelType(
-        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+    return phi::KernelKey(
+        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
   }
 };
 
@@ -225,11 +226,11 @@ class UnsqueezeGradOp : public framework::OperatorWithKernel {
     ctx->ShareLoD("X", framework::GradVarName("X"));
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.GetPlace());
   }
 };
 

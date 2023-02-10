@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/layout_utils.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/common/layout.h"
@@ -245,34 +244,6 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNBackward(
   }
 }
 
-template <typename T>
-__device__ __forceinline__ void BlockReduceByVetical(
-    BatchNormParamType<T> x_sum,
-    BatchNormParamType<T> x_square_sum,
-    BatchNormParamType<T> *smem_sum,
-    BatchNormParamType<T> *smem_square_sum,
-    BatchNormParamType<T> *x_sum_out,
-    BatchNormParamType<T> *x_square_sum_out) {
-  int tid = threadIdx.x + threadIdx.y * blockDim.x;
-#pragma unroll
-  for (int offset = blockDim.y / 2; offset > 0; offset >>= 1) {
-    if (threadIdx.y < offset * 2) {
-      smem_sum[tid] = x_sum;
-      smem_square_sum[tid] = x_square_sum;
-    }
-    __syncthreads();
-    if (threadIdx.y < offset) {
-      int pair_tid = tid + offset * blockDim.x;
-      x_sum += smem_sum[pair_tid];
-      x_square_sum += smem_square_sum[pair_tid];
-    }
-  }
-  if (threadIdx.y == 0) {
-    *x_sum_out = x_sum;
-    *x_square_sum_out = x_square_sum;
-  }
-}
-
 template <typename T, int BlockDim>
 static __global__ void BNBackward2DChannelLastStage1(
     const T *x,
@@ -309,53 +280,25 @@ static __global__ void BNBackward2DChannelLastStage1(
     }
 
     // vertical block sum
-    BlockReduceByVetical<T>(x_sum,
-                            x_square_sum,
-                            &smem_sum[0],
-                            &smem_square_sum[0],
-                            &x_sum,
-                            &x_square_sum);
+    funcs::BlockReduceByVetical<T, BatchNormParamType<T>>(x_sum,
+                                                          x_square_sum,
+                                                          &smem_sum[0],
+                                                          &smem_square_sum[0],
+                                                          &x_sum,
+                                                          &x_square_sum);
 
     if (gridDim.y > 1) {
-      volatile BatchNormParamType<T> *staging_sum = block_data_ptr;
-      volatile BatchNormParamType<T> *staging_square_sum =
-          &block_data_ptr[C * gridDim.y];
-      // write block data to global memory
-      if (threadIdx.y == 0) {
-        staging_sum[i + blockIdx.y * C] = x_sum;
-        staging_square_sum[i + blockIdx.y * C] = x_square_sum;
-      }
-
-      // make sure write is visible to all blocks
-      __threadfence();
-      __syncthreads();
-
       __shared__ bool is_last_block_done;
-      // mark block done
-      if (threadIdx.x == 0 && threadIdx.y == 0) {
-        int old = atomicAdd(&flag_ptr[blockIdx.x], 1);
-        is_last_block_done = (old == (gridDim.y - 1));
-      }
-
-      __syncthreads();
-
+      funcs::ReduceSumPost<T, BatchNormParamType<T>>(C,
+                                                     i,
+                                                     &x_sum,
+                                                     &x_square_sum,
+                                                     &is_last_block_done,
+                                                     smem_sum,
+                                                     smem_square_sum,
+                                                     block_data_ptr,
+                                                     flag_ptr);
       if (is_last_block_done) {
-        x_sum = static_cast<BatchNormParamType<T>>(0);
-        x_square_sum = static_cast<BatchNormParamType<T>>(0);
-        // thread sum
-        for (int y = threadIdx.y; y < gridDim.y; y += blockDim.y) {
-          x_sum += staging_sum[i + y * C];
-          x_square_sum += staging_square_sum[i + y * C];
-        }
-
-        // vertical block sum
-        BlockReduceByVetical<T>(x_sum,
-                                x_square_sum,
-                                &smem_sum[0],
-                                &smem_square_sum[0],
-                                &x_sum,
-                                &x_square_sum);
-
         // final compute
         if (threadIdx.y == 0) {
           BatchNormParamType<T> compute_mean_val = x_sum / inner_size;
@@ -417,45 +360,21 @@ static __global__ void BNBackward2DChannelLastStage2(
     }
 
     // vertical block sum
-    BlockReduceByVetical<T>(
+    funcs::BlockReduceByVetical<T, BatchNormParamType<T>>(
         ds_sum, db_sum, &smem_ds_sum[0], &smem_db_sum[0], &ds_sum, &db_sum);
 
     if (gridDim.y > 1) {
-      volatile BatchNormParamType<T> *staging_ds_sum = block_data_ptr;
-      volatile BatchNormParamType<T> *staging_db_sum =
-          &block_data_ptr[C * gridDim.y];
-      // write block data to global memory
-      if (threadIdx.y == 0) {
-        staging_ds_sum[i + blockIdx.y * C] = ds_sum;
-        staging_db_sum[i + blockIdx.y * C] = db_sum;
-      }
-
-      // make sure write is visible to all blocks
-      __threadfence();
-      __syncthreads();
-
       __shared__ bool is_last_block_done;
-      // mark block done
-      if (threadIdx.x == 0 && threadIdx.y == 0) {
-        int old = atomicAdd(&flag_ptr[blockIdx.x], 1);
-        is_last_block_done = (old == (gridDim.y - 1));
-      }
-
-      __syncthreads();
-
+      funcs::ReduceSumPost<T, BatchNormParamType<T>>(C,
+                                                     i,
+                                                     &ds_sum,
+                                                     &db_sum,
+                                                     &is_last_block_done,
+                                                     smem_ds_sum,
+                                                     smem_db_sum,
+                                                     block_data_ptr,
+                                                     flag_ptr);
       if (is_last_block_done) {
-        ds_sum = static_cast<BatchNormParamType<T>>(0);
-        db_sum = static_cast<BatchNormParamType<T>>(0);
-        // thread sum
-        for (int y = threadIdx.y; y < gridDim.y; y += blockDim.y) {
-          ds_sum += staging_ds_sum[i + y * C];
-          db_sum += staging_db_sum[i + y * C];
-        }
-
-        // vertical block sum
-        BlockReduceByVetical<T>(
-            ds_sum, db_sum, &smem_ds_sum[0], &smem_db_sum[0], &ds_sum, &db_sum);
-
         // final compute
         if (threadIdx.y == 0) {
           dscale[i] = ds_sum * inv_var_val;
@@ -560,51 +479,6 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNBackwardData(
                dy_x_sub_mean_sum_val * inv_var_i * inv_var_i / inner_size) *
           scale[i] * inv_var_i;
     }
-  }
-}
-
-template <typename T, typename Context>
-void SetLaunchConfigInfoForChannelLast(const Context &ctx,
-                                       DenseTensor *block_data_tensor,
-                                       DenseTensor *flag_tensor,
-                                       BatchNormParamType<T> **block_data_ptr,
-                                       int **flag_ptr,
-                                       const int N,
-                                       const int H,
-                                       const int W,
-                                       const int D,
-                                       const int C,
-                                       const int block_size,
-                                       dim3 *block,
-                                       dim3 *grid) {
-  const int MAX_GRID_SIZE = 128;
-  const int WARP_SIZE = 32;
-
-  int block_x = std::min(phi::funcs::details::GetLastPow2(C), WARP_SIZE);
-  int block_y = std::min(phi::funcs::details::GetLastPow2(N * H * W * D / 16),
-                         block_size / block_x);
-  if (block_x * block_y != block_size) {
-    block_x =
-        std::min(phi::funcs::details::GetLastPow2(C), block_size / block_y);
-  }
-  int grid_x = (C + block_x - 1) / block_x;
-  int grid_y = std::min((N * H * W * D + block_y * 16 - 1) / (block_y * 16),
-                        MAX_GRID_SIZE);
-
-  block->x = block_x;
-  block->y = block_y;
-  grid->x = grid_x;
-  grid->y = grid_y;
-
-  if (grid->y > 1) {
-    *block_data_tensor =
-        phi::Empty<BatchNormParamType<T>, Context>(ctx, {2 * C * grid->y});
-    *flag_tensor = phi::Empty<int, Context>(ctx, {grid->x});
-
-    *block_data_ptr = block_data_tensor->data<BatchNormParamType<T>>();
-    *flag_ptr = flag_tensor->data<int>();
-    funcs::SetConstant<Context, int> set_zero;
-    set_zero(ctx, flag_tensor, static_cast<int>(0));
   }
 }
 
@@ -755,7 +629,7 @@ void BatchNormGradRawKernel(const Context &ctx,
   if (!use_global_stats) {
     if ((N * H * W * D) == 1) {
       if (d_x) {
-        paddle::framework::TensorCopy(*d_y, ctx.GetPlace(), d_x);
+        phi::Copy(ctx, *d_y, ctx.GetPlace(), false, d_x);
       }
       phi::funcs::SetConstant<Context, BatchNormParamType<T>> functor;
       functor(ctx, d_scale, static_cast<BatchNormParamType<T>>(0));
@@ -780,10 +654,9 @@ void BatchNormGradRawKernel(const Context &ctx,
     cudnnBatchNormMode_t mode_;
 
     PADDLE_ENFORCE_GPU_SUCCESS(
-        paddle::platform::dynload::cudnnCreateTensorDescriptor(&data_desc_));
+        phi::dynload::cudnnCreateTensorDescriptor(&data_desc_));
     PADDLE_ENFORCE_GPU_SUCCESS(
-        paddle::platform::dynload::cudnnCreateTensorDescriptor(
-            &bn_param_desc_));
+        phi::dynload::cudnnCreateTensorDescriptor(&bn_param_desc_));
 #endif
     if (epsilon <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
       LOG(ERROR) << "Provided epsilon is smaller than "
@@ -820,16 +693,14 @@ void BatchNormGradRawKernel(const Context &ctx,
 //     platform::dynload::miopenDeriveBNTensorDescriptor(bn_param_desc_,
 //                                                       data_desc_, mode_));
 #else
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        paddle::platform::dynload::cudnnSetTensorNdDescriptor(
-            data_desc_,
-            CudnnDataType<T>::type,
-            x_dims.size() > 3 ? x_dims.size() : 4,
-            dims.data(),
-            strides.data()));
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        paddle::platform::dynload::cudnnDeriveBNTensorDescriptor(
-            bn_param_desc_, data_desc_, mode_));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetTensorNdDescriptor(
+        data_desc_,
+        CudnnDataType<T>::type,
+        x_dims.size() > 3 ? x_dims.size() : 4,
+        dims.data(),
+        strides.data()));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnDeriveBNTensorDescriptor(
+        bn_param_desc_, data_desc_, mode_));
 #endif
 
     const auto *saved_mean_data =
@@ -907,15 +778,13 @@ void BatchNormGradRawKernel(const Context &ctx,
 #else
     }
     // CUDNN only support small batch size
-    // const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 131070;
-    const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 10240;
-    const size_t CUDNN_SPATIAL_THRESHOLD = 880801;
     bool use_native_nhwc =
-        d_x ? (x_dims.size() == 4 && compute_format == DataLayout::kNHWC)
+        d_x ? (x_dims.size() == 4 && compute_format == DataLayout::kNHWC &&
+               H * W >= CUDNN_SPATIAL_THRESHOLD_EVAL)
             : false;
     const bool use_native_kernel =
         ((x_dims.size() == 2 && N >= CUDNN_PER_ACTIVATION_THRESHOLD) ||
-         (x_dims.size() == 3 && N >= CUDNN_SPATIAL_THRESHOLD));
+         (x_dims.size() == 3 && N >= CUDNN_SPATIAL_THRESHOLD_TRAIN));
     if (use_native_nhwc || (d_x && d_scale && d_bias)) {
       if (use_native_kernel || use_native_nhwc) {
         if (x_dims.size() == 2 || use_native_nhwc) {
@@ -934,19 +803,20 @@ void BatchNormGradRawKernel(const Context &ctx,
           BatchNormParamType<T> *block_data_ptr = nullptr;
           int *flag_ptr = nullptr;
 
-          SetLaunchConfigInfoForChannelLast<T>(ctx,
-                                               &block_data_tensor,
-                                               &flag_tensor,
-                                               &block_data_ptr,
-                                               &flag_ptr,
-                                               N,
-                                               H,
-                                               W,
-                                               D,
-                                               C,
-                                               block_size,
-                                               &block,
-                                               &grid);
+          funcs::SetLaunchConfigInfoForChannelLast<T, BatchNormParamType<T>>(
+              ctx,
+              &block_data_tensor,
+              &flag_tensor,
+              &block_data_ptr,
+              &flag_ptr,
+              N,
+              H,
+              W,
+              D,
+              C,
+              block_size,
+              &block,
+              &grid);
 
           // 1. reduce_sum(x) => mean, inv_var
           auto *mean_ptr =
@@ -1060,26 +930,25 @@ void BatchNormGradRawKernel(const Context &ctx,
         auto reserve_space_size = reserve_space->memory_size();
         // --------------- cudnn batchnorm workspace ---------------
         PADDLE_ENFORCE_GPU_SUCCESS(
-            paddle::platform::dynload::
-                cudnnGetBatchNormalizationBackwardExWorkspaceSize(
-                    /*handle=*/ctx.cudnn_handle(),
-                    /*mode=*/mode_,
-                    /*bnIps=*/CUDNN_BATCHNORM_OPS_BN,
-                    /*xDesc=*/data_desc_,
-                    /*yDesc=*/data_desc_,
-                    /*dyDesc=*/data_desc_,
-                    /*dzDesc=*/nullptr,
-                    /*dxDesc=*/data_desc_,
-                    /*bnScaleBiasMeanVarDesc=*/bn_param_desc_,
-                    /*activationDesc=*/nullptr,
-                    /*sizeInBytes=*/&workspace_size));
+            phi::dynload::cudnnGetBatchNormalizationBackwardExWorkspaceSize(
+                /*handle=*/ctx.cudnn_handle(),
+                /*mode=*/mode_,
+                /*bnIps=*/CUDNN_BATCHNORM_OPS_BN,
+                /*xDesc=*/data_desc_,
+                /*yDesc=*/data_desc_,
+                /*dyDesc=*/data_desc_,
+                /*dzDesc=*/nullptr,
+                /*dxDesc=*/data_desc_,
+                /*bnScaleBiasMeanVarDesc=*/bn_param_desc_,
+                /*activationDesc=*/nullptr,
+                /*sizeInBytes=*/&workspace_size));
 
         workspace_tensor.Resize({static_cast<int64_t>(workspace_size)});
         workspace_ptr =
             static_cast<void *>(ctx.template Alloc<uint8_t>(&workspace_tensor));
 
         PADDLE_ENFORCE_GPU_SUCCESS(
-            paddle::platform::dynload::cudnnBatchNormalizationBackwardEx(
+            phi::dynload::cudnnBatchNormalizationBackwardEx(
                 /*handle=*/ctx.cudnn_handle(),
                 /*mode=*/mode_,
                 /*bnOps=*/CUDNN_BATCHNORM_OPS_BN,
@@ -1115,7 +984,7 @@ void BatchNormGradRawKernel(const Context &ctx,
                 /*reserveSpaceSizeInBytes=*/reserve_space_size));
 #else
         PADDLE_ENFORCE_GPU_SUCCESS(
-            paddle::platform::dynload::cudnnBatchNormalizationBackward(
+            phi::dynload::cudnnBatchNormalizationBackward(
                 ctx.cudnn_handle(),
                 mode_,
                 CudnnDataType<T>::kOne(),
@@ -1215,10 +1084,9 @@ void BatchNormGradRawKernel(const Context &ctx,
 #else
     // clean when exit.
     PADDLE_ENFORCE_GPU_SUCCESS(
-        paddle::platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));
+        phi::dynload::cudnnDestroyTensorDescriptor(data_desc_));
     PADDLE_ENFORCE_GPU_SUCCESS(
-        paddle::platform::dynload::cudnnDestroyTensorDescriptor(
-            bn_param_desc_));
+        phi::dynload::cudnnDestroyTensorDescriptor(bn_param_desc_));
 #endif
 
   } else {
@@ -1297,19 +1165,20 @@ void BatchNormGradRawKernel(const Context &ctx,
         BatchNormParamType<T> *block_data_ptr = nullptr;
         int *flag_ptr = nullptr;
 
-        SetLaunchConfigInfoForChannelLast<T>(ctx,
-                                             &block_data_tensor,
-                                             &flag_tensor,
-                                             &block_data_ptr,
-                                             &flag_ptr,
-                                             N,
-                                             H,
-                                             W,
-                                             D,
-                                             C,
-                                             block_size,
-                                             &block,
-                                             &grid);
+        funcs::SetLaunchConfigInfoForChannelLast<T, BatchNormParamType<T>>(
+            ctx,
+            &block_data_tensor,
+            &flag_tensor,
+            &block_data_ptr,
+            &flag_ptr,
+            N,
+            H,
+            W,
+            D,
+            C,
+            block_size,
+            &block,
+            &grid);
         BNBackward2DChannelLastStage2<T, block_size>
             <<<grid, block, 0, ctx.stream()>>>(
                 transformed_d_y.template data<T>(),

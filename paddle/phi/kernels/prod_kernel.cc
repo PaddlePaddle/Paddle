@@ -20,29 +20,41 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ProdKernel(const Context& dev_ctx,
-                const DenseTensor& x,
-                const IntArray& dims,
-                bool keep_dim,
-                DenseTensor* out) {
+void ProdInferKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const IntArray& dims,
+                     bool keep_dim,
+                     DenseTensor* out) {
   bool reduce_all = recompute_reduce_all(x, dims);
-  ProdRawKernel<T>(dev_ctx, x, dims, keep_dim, reduce_all, out);
+  ProdKernel<T>(dev_ctx, x, dims, keep_dim, reduce_all, out);
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    prod, CPU, ALL_LAYOUT, phi::ProdKernel, float, double, int, int64_t) {}
+PD_REGISTER_KERNEL(prod_infer,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ProdInferKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_KERNEL(
-    prod, GPU, ALL_LAYOUT, phi::ProdKernel, float, double, int, int64_t) {}
+PD_REGISTER_KERNEL(prod_infer,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::ProdInferKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
 #endif
 
 #if defined(PADDLE_WITH_XPU_KP) && !defined(PADDLE_WITH_XPU)
-PD_REGISTER_KERNEL(prod, KPS, ALL_LAYOUT, phi::ProdKernel, float) {}
+PD_REGISTER_KERNEL(prod_infer, KPS, ALL_LAYOUT, phi::ProdInferKernel, float) {}
 #endif
 
 #if defined(PADDLE_WITH_XPU)
-PD_REGISTER_KERNEL(prod, XPU, ALL_LAYOUT, phi::ProdKernel, float) {}
+PD_REGISTER_KERNEL(prod_infer, XPU, ALL_LAYOUT, phi::ProdInferKernel, float) {}
 #endif

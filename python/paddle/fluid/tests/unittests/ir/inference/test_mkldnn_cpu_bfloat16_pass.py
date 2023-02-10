@@ -33,7 +33,7 @@ class TestMKLDNNCpuBfloat16Pass(InferencePassTest):
             out = paddle.transpose(x, perm=[0, 1, 2, 3])
             out = paddle.reshape(out, [0, 0, 0, 0])
 
-            out = fluid.layers.fc(out, size=1)
+            out = paddle.static.nn.fc(out, size=1)
 
             self.feeds = {
                 "x": np.random.random([self.bs] + self.shape_x).astype(

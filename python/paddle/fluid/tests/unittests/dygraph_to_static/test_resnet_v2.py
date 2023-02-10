@@ -22,6 +22,7 @@ import numpy as np
 from predictor_utils import PredictorTools
 
 import paddle
+from paddle.fluid import core
 
 SEED = 2020
 IMAGENET1000 = 1281167
@@ -35,7 +36,6 @@ place = (
     paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
 )
 
-program_translator = paddle.jit.ProgramTranslator()
 
 if paddle.is_compiled_with_cuda():
     paddle.fluid.set_flags({'FLAGS_cudnn_deterministic': True})
@@ -307,8 +307,9 @@ class TestResnet(unittest.TestCase):
                     if to_static:
                         paddle.jit.save(resnet, self.model_save_prefix)
                     else:
-                        paddle.fluid.dygraph.save_dygraph(
-                            resnet.state_dict(), self.dy_state_dict_save_path
+                        paddle.save(
+                            resnet.state_dict(),
+                            self.dy_state_dict_save_path + '.pdparams',
                         )
                         # avoid dataloader throw abort signaal
                     data_loader._reset()
@@ -318,13 +319,11 @@ class TestResnet(unittest.TestCase):
         return total_loss.numpy()
 
     def predict_dygraph(self, data):
-        program_translator.enable(False)
+        paddle.jit.enable_to_static(False)
         paddle.disable_static(place)
         resnet = ResNet()
 
-        model_dict, _ = paddle.fluid.dygraph.load_dygraph(
-            self.dy_state_dict_save_path
-        )
+        model_dict = paddle.load(self.dy_state_dict_save_path + '.pdparams')
         resnet.set_dict(model_dict)
         resnet.eval()
 
@@ -381,7 +380,7 @@ class TestResnet(unittest.TestCase):
         return out
 
     def train(self, to_static):
-        program_translator.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
         return self.do_train(to_static)
 
     def verify_predict(self):
@@ -425,6 +424,20 @@ class TestResnet(unittest.TestCase):
             ),
         )
         self.verify_predict()
+
+    def test_resnet_composite(self):
+        core._set_prim_backward_enabled(True)
+        static_loss = self.train(to_static=True)
+        core._set_prim_backward_enabled(False)
+        dygraph_loss = self.train(to_static=False)
+        np.testing.assert_allclose(
+            static_loss,
+            dygraph_loss,
+            rtol=1e-05,
+            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
+                static_loss, dygraph_loss
+            ),
+        )
 
     def test_in_static_mode_mkldnn(self):
         paddle.fluid.set_flags({'FLAGS_use_mkldnn': True})

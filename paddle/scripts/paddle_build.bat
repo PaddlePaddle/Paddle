@@ -41,10 +41,8 @@ taskkill /f /im python.exe /t 2>NUL
 taskkill /f /im nvcc.exe /t 2>NUL
 taskkill /f /im cicc.exe /t 2>NUL
 taskkill /f /im ptxas.exe /t 2>NUL
-taskkill /f /im op_function_generator.exe /t 2>NUL
 taskkill /f /im eager_generator.exe /t 2>NUL
 taskkill /f /im eager_legacy_op_function_generator.exe /t 2>NUL
-wmic process where name="op_function_generator.exe" call terminate 2>NUL
 wmic process where name="eager_generator.exe" call terminate 2>NUL
 wmic process where name="eager_legacy_op_function_generator.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
@@ -456,7 +454,7 @@ echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -D
 -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
 -DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
 -DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT="%TENSORRT_ROOT%" -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
--DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% -DCUB_PATH=%THIRD_PARTY_HOME%/cub ^
+-DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% -DCUDA_ARCH_BIN=%CUDA_ARCH_BIN% -DCUB_PATH=%THIRD_PARTY_HOME%/cub ^
 -DCUDA_TOOLKIT_ROOT_DIR="%CUDA_TOOLKIT_ROOT_DIR%" -DNEW_RELEASE_ALL=%NEW_RELEASE_ALL% -DNEW_RELEASE_PYPI=%NEW_RELEASE_PYPI% ^
 -DNEW_RELEASE_JIT=%NEW_RELEASE_JIT% -DWITH_ONNXRUNTIME=%WITH_ONNXRUNTIME%
 
@@ -465,7 +463,7 @@ cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_
 -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
 -DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
 -DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT="%TENSORRT_ROOT%" -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
--DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% -DCUB_PATH=%THIRD_PARTY_HOME%/cub ^
+-DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% -DCUDA_ARCH_BIN=%CUDA_ARCH_BIN% -DCUB_PATH=%THIRD_PARTY_HOME%/cub ^
 -DCUDA_TOOLKIT_ROOT_DIR="%CUDA_TOOLKIT_ROOT_DIR%" -DNEW_RELEASE_ALL=%NEW_RELEASE_ALL% -DNEW_RELEASE_PYPI=%NEW_RELEASE_PYPI% ^
 -DNEW_RELEASE_JIT=%NEW_RELEASE_JIT% -DWITH_ONNXRUNTIME=%WITH_ONNXRUNTIME%
 goto:eof
@@ -533,10 +531,8 @@ taskkill /f /im csc.exe /t 2>NUL
 taskkill /f /im nvcc.exe /t 2>NUL
 taskkill /f /im cicc.exe /t 2>NUL
 taskkill /f /im ptxas.exe /t 2>NUL
-taskkill /f /im op_function_generator.exe /t 2>NUL
 taskkill /f /im eager_generator.exe /t 2>NUL
 taskkill /f /im eager_legacy_op_function_generator.exe /t 2>NUL
-wmic process where name="op_function_generator.exe" call terminate 2>NUL
 wmic process where name="eager_generator.exe" call terminate 2>NUL
 wmic process where name="eager_legacy_op_function_generator.exe" call terminate 2>NUL
 wmic process where name="cmake.exe" call terminate 2>NUL
@@ -630,6 +626,10 @@ setlocal enabledelayedexpansion
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set end=%%#
 set end=%end:~4,10%
 call :timestamp "%start%" "%end%" "Build"
+
+%cache_dir%\tools\busybox64.exe du -h -d 0 %cd%\paddle\fluid\pybind\libpaddle.dll > paddle_dll_size.txt
+set /p paddledllsize=< paddle_dll_size.txt
+for /F %%i in ("%paddledllsize%") do echo "Windows libpaddle.dll Size: %%i"
 
 %cache_dir%\tools\busybox64.exe du -h -d 0 %cd%\python\dist > whl_size.txt
 set /p whlsize=< whl_size.txt
@@ -768,13 +768,10 @@ echo    Step 5. Testing fluid library for inference ...
 echo    ========================================
 
 tree /F %cd%\paddle_inference_install_dir\paddle
-%cache_dir%\tools\busybox64.exe du -h -d 0 -k %cd%\paddle_inference_install_dir\paddle\lib > lib_size.txt
+%cache_dir%\tools\busybox64.exe du -h -d 0 %cd%\paddle_inference_install_dir > lib_size.txt
 set /p libsize=< lib_size.txt
-for /F %%i in ("%libsize%") do (
-    set /a libsize_m=%%i/1024
-    echo "Windows Paddle_Inference Size: !libsize_m!M"
-    echo ipipe_log_param_Windows_Paddle_Inference_Size: !libsize_m!M
-)
+for /F %%i in ("%libsize%") do echo "Windows Paddle_Inference Size: !libsize_m!M"
+for /F %%i in ("%libsize%") do echo ipipe_log_param_Windows_Paddle_Inference_Size: !libsize_m!M
 
 cd /d %work_dir%\paddle\fluid\inference\api\demo_ci
 %cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %WITH_TENSORRT% %TENSORRT_ROOT% %WITH_ONNXRUNTIME% %MSVC_STATIC_CRT% "%CUDA_TOOLKIT_ROOT_DIR%"
@@ -936,10 +933,8 @@ taskkill /f /im python.exe /t 2>NUL
 taskkill /f /im nvcc.exe /t 2>NUL
 taskkill /f /im cicc.exe /t 2>NUL
 taskkill /f /im ptxas.exe /t 2>NUL
-taskkill /f /im op_function_generator.exe /t 2>NUL
 taskkill /f /im eager_generator.exe /t 2>NUL
 taskkill /f /im eager_legacy_op_function_generator.exe /t 2>NUL
-wmic process where name="op_function_generator.exe" call terminate 2>NUL
 wmic process where name="eager_generator.exe" call terminate 2>NUL
 wmic process where name="eager_legacy_op_function_generator.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL

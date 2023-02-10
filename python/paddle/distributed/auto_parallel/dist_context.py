@@ -16,8 +16,7 @@ import copy
 from collections import defaultdict
 
 from paddle.distributed.passes import PassContext
-from paddle.fluid import core, framework
-from paddle.fluid.framework import set_flags
+from paddle.framework import IrGraph, core, set_flags
 
 from .dist_op import DistributedOperator
 from .dist_tensor import DistributedTensor
@@ -437,7 +436,7 @@ class DistributedContext:
 
             if with_graph:
                 set_flags({"FLAGS_convert_all_blocks": True})
-                self._serial_graph = framework.IrGraph(
+                self._serial_graph = IrGraph(
                     core.Graph(self._serial_main_program.desc)
                 )
                 self._init_dist_attr_for_graph()
@@ -448,7 +447,7 @@ class DistributedContext:
 
     def add_process_mesh(self, process_mesh):
         assert isinstance(
-            process_mesh, ProcessMesh
+            process_mesh, (ProcessMesh, core.ProcessMesh)
         ), 'The type of dim_mapping must be ProcessMesh.'
         if process_mesh not in self.process_meshes:
             self._process_meshes.append(process_mesh)
@@ -883,6 +882,7 @@ class DistributedContext:
                     dims_mapping[i] = -1
                 if dims_mapping[i] != -1 and len(process_mesh_processes) == 1:
                     dims_mapping[i] = -1
+            dist_attr.dims_mapping = dims_mapping
 
         for dist_op in self._dist_ops_for_program.values():
             serial_op = dist_op.serial_op
@@ -916,6 +916,7 @@ class DistributedContext:
                         and len(process_mesh_processes) == 1
                     ):
                         dims_mapping[i] = -1
+                dist_attr.set_input_dims_mapping(arg_name, dims_mapping)
             for arg_name in serial_op.output_arg_names:
                 if (
                     dist_op.get_serial_output(arg_name).type
@@ -940,6 +941,7 @@ class DistributedContext:
                         and len(process_mesh_processes) == 1
                     ):
                         dims_mapping[i] = -1
+                dist_attr.set_output_dims_mapping(arg_name, dims_mapping)
             if len(process_mesh_processes) == 1:
                 dist_op.dist_attr.impl_type = "default"
                 dist_op.dist_attr.impl_idx = 0

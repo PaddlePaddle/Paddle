@@ -26,8 +26,10 @@ BATCH_SIZE = 64
 
 def convolutional_neural_network(use_py_reader):
     with fluid.unique_name.guard():
-        img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
-        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+        img = paddle.static.data(
+            name='img', shape=[-1, 1, 28, 28], dtype='float32'
+        )
+        label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
 
         py_reader = None
         if use_py_reader:
@@ -56,7 +58,9 @@ def convolutional_neural_network(use_py_reader):
             act="relu",
         )
 
-        prediction = fluid.layers.fc(input=conv_pool_2, size=10, act='softmax')
+        prediction = paddle.static.nn.fc(
+            x=conv_pool_2, size=10, activation='softmax'
+        )
         loss = paddle.nn.functional.cross_entropy(
             input=prediction, label=label, reduction='none', use_softmax=False
         )

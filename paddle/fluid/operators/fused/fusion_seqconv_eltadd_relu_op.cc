@@ -88,10 +88,10 @@ void FusionSeqConvEltAddReluOp::InferShape(
   ctx->ShareLoD("X", "Out");
 }
 
-framework::OpKernelType FusionSeqConvEltAddReluOp::GetExpectedKernelType(
+phi::KernelKey FusionSeqConvEltAddReluOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.device_context());
+  return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                        ctx.GetPlace());
 }
 
 void FusionSeqConvEltAddReluOpMaker::Make() {

@@ -349,7 +349,7 @@ class DataFeeder:
             with fluid.program_guard(main_program, startup_program):
                 data_1 = fluid.data(name='data_1', shape=[None, 2, 2], dtype='float32')
                 data_2 = fluid.data(name='data_2', shape=[None, 1, 3], dtype='float32')
-                out = fluid.layers.fc(input=[data_1, data_2], size=2)
+                out = paddle.static.nn.fc(x=[data_1, data_2], size=2)
                 # ...
             feeder = fluid.DataFeeder([data_1, data_2], place)
 
@@ -584,7 +584,7 @@ class DataFeeder:
                 # a simple network sample
                 data = fluid.data(name='data', shape=[None, 4, 4], dtype='float32')
                 label = fluid.data(name='label', shape=[None, 1], dtype='int64')
-                hidden = fluid.layers.fc(input=data, size=10)
+                hidden = paddle.static.nn.fc(x=data, size=10)
 
                 feeder = fluid.DataFeeder(place=places[0], feed_list=[data, label])
                 reader = feeder.decorate_reader(reader, multi_devices=True, num_places=3, drop_last=True)

@@ -38,8 +38,10 @@ class TestASPStaticOptimize(unittest.TestCase):
             hidden = paddle.static.nn.conv2d(
                 input=img, num_filters=4, filter_size=3, padding=2, act="relu"
             )
-            hidden = fluid.layers.fc(input=hidden, size=32, act='relu')
-            prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
+            hidden = paddle.static.nn.fc(x=hidden, size=32, activation='relu')
+            prediction = paddle.static.nn.fc(
+                x=hidden, size=10, activation='softmax'
+            )
             return img, label, prediction
 
         with fluid.program_guard(self.main_program, self.startup_program):
@@ -213,11 +215,7 @@ class TestASPStaticOptimize(unittest.TestCase):
         if core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
             with fluid.program_guard(self.main_program, self.startup_program):
-                self.optimizer = (
-                    fluid.contrib.mixed_precision.decorator.decorate(
-                        self.optimizer
-                    )
-                )
+                self.optimizer = paddle.static.amp.decorate(self.optimizer)
                 self.optimizer = paddle.incubate.asp.decorate(self.optimizer)
                 self.optimizer.minimize(self.loss, self.startup_program)
 

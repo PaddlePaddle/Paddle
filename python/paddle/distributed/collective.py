@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import datetime
+import os
 
 import paddle
 
@@ -171,6 +172,16 @@ def _set_custom_gid(gid):
     _custom_gid = gid
 
 
+def _destroy_process_group_id_map():
+    """
+
+    Destroy the custom process group. Designed for CustomDevice.
+
+
+    """
+    core.ProcessGroupIdMap.destroy()
+
+
 def new_group(ranks=None, backend=None, timeout=_default_timeout):
     """
 
@@ -325,3 +336,29 @@ def is_available():
 
     """
     return core.is_compiled_with_dist()
+
+
+def _init_parallel_env(backend):
+    master_endpoint = os.getenv("PADDLE_MASTER", None)
+    if master_endpoint:
+        master_addr = master_endpoint.split(":")[0]
+        master_port = int(master_endpoint.split(":")[1])
+        global_env = _get_global_env()
+        rank = global_env.rank
+        world_size = global_env.world_size
+        dev_id = global_env.device_id
+        is_master = rank == 0
+        store = core.TCPStore(
+            master_addr,
+            master_port,
+            is_master,
+            world_size,
+        )
+        if backend == "gloo":
+            core.CommContextManager.create_gloo_comm_context(
+                store, 0, rank, world_size
+            )
+        elif backend == "nccl":
+            core.CommContextManager.create_nccl_comm_context(
+                store, dev_id, 0, rank, world_size
+            )

@@ -24,11 +24,10 @@ import sys
 import time
 
 import paddle
-import paddle.fluid.core as core
 from paddle.distributed.passes import PassContext, new_pass
 from paddle.distributed.utils.log_utils import get_logger
-from paddle.fluid import program_guard
-from paddle.fluid.backward import append_backward
+from paddle.framework import core
+from paddle.static import append_backward, program_guard
 
 from .cluster import Cluster
 from .completion import Completer

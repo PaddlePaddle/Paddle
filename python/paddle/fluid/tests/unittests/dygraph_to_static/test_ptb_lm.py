@@ -22,13 +22,10 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.jit import ProgramTranslator
 from paddle.jit.api import to_static
 
 PRINT_STEP = 20
 SEED = 2020
-
-program_translator = ProgramTranslator()
 
 
 class SimpleLSTMRNN(fluid.Layer):
@@ -52,26 +49,26 @@ class SimpleLSTMRNN(fluid.Layer):
         for i in range(self._num_layers):
             weight_1 = self.create_parameter(
                 attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.UniformInitializer(
+                    initializer=paddle.nn.initializer.Uniform(
                         low=-self._init_scale, high=self._init_scale
                     )
                 ),
                 shape=[self._hidden_size * 2, self._hidden_size * 4],
                 dtype="float32",
-                default_initializer=fluid.initializer.UniformInitializer(
+                default_initializer=paddle.nn.initializer.Uniform(
                     low=-self._init_scale, high=self._init_scale
                 ),
             )
             self.weight_1_arr.append(self.add_parameter('w_%d' % i, weight_1))
             bias_1 = self.create_parameter(
                 attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.UniformInitializer(
+                    initializer=paddle.nn.initializer.Uniform(
                         low=-self._init_scale, high=self._init_scale
                     )
                 ),
                 shape=[self._hidden_size * 4],
                 dtype="float32",
-                default_initializer=fluid.initializer.Constant(0.0),
+                default_initializer=paddle.nn.initializer.Constant(0.0),
             )
             self.bias_arr.append(self.add_parameter('b_%d' % i, bias_1))
 
@@ -161,7 +158,7 @@ class PtbModel(fluid.Layer):
             sparse=False,
             weight_attr=fluid.ParamAttr(
                 name='embedding_para',
-                initializer=fluid.initializer.UniformInitializer(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-init_scale, high=init_scale
                 ),
             ),
@@ -170,7 +167,7 @@ class PtbModel(fluid.Layer):
             attr=fluid.ParamAttr(),
             shape=[self.hidden_size, self.vocab_size],
             dtype="float32",
-            default_initializer=fluid.initializer.UniformInitializer(
+            default_initializer=paddle.nn.initializer.Uniform(
                 low=-self.init_scale, high=self.init_scale
             ),
         )
@@ -178,7 +175,7 @@ class PtbModel(fluid.Layer):
             attr=fluid.ParamAttr(),
             shape=[self.vocab_size],
             dtype="float32",
-            default_initializer=fluid.initializer.UniformInitializer(
+            default_initializer=paddle.nn.initializer.Uniform(
                 low=-self.init_scale, high=self.init_scale
             ),
         )
@@ -319,12 +316,12 @@ def train(place):
 
 
 def train_dygraph(place):
-    program_translator.enable(False)
+    paddle.jit.enable_to_static(False)
     return train(place)
 
 
 def train_static(place):
-    program_translator.enable(True)
+    paddle.jit.enable_to_static(True)
     return train(place)
 
 

@@ -20,7 +20,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-import paddle.fluid.initializer as initializer
 from paddle.fluid.core import VarDesc
 from paddle.regularizer import L2Decay
 
@@ -67,7 +66,7 @@ class TestConstantInitializer(unittest.TestCase):
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
-                initializer=initializer.ConstantInitializer(),
+                initializer=paddle.nn.initializer.Constant(),
             )
         num_ops = 1
         self.assertEqual(len(block.ops), num_ops)
@@ -86,7 +85,7 @@ class TestConstantInitializer(unittest.TestCase):
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
-                initializer=initializer.ConstantInitializer(2.3),
+                initializer=paddle.nn.initializer.Constant(2.3),
             )
         num_ops = 1
         self.assertEqual(len(block.ops), num_ops)
@@ -119,7 +118,7 @@ class TestUniformInitializer(unittest.TestCase):
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
-                initializer=initializer.UniformInitializer(),
+                initializer=paddle.nn.initializer.Uniform(),
             )
         num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
@@ -141,14 +140,14 @@ class TestUniformInitializer(unittest.TestCase):
                 shape=[5, 10],
                 lod_level=0,
                 name="param1",
-                initializer=initializer.UniformInitializer(),
+                initializer=paddle.nn.initializer.Uniform(),
             )
             block.create_parameter(
                 dtype="float32",
                 shape=[5, 10],
                 lod_level=0,
                 name="param2",
-                initializer=initializer.UniformInitializer(seed=456),
+                initializer=paddle.nn.initializer.UniformInitializer(seed=456),
             )
         init_op = block.ops[1]
         self.assertEqual(init_op.attr("seed"), 456)
@@ -165,7 +164,9 @@ class TestUniformInitializer(unittest.TestCase):
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
-                initializer=initializer.UniformInitializer(-4.2, 3.1, 123),
+                initializer=paddle.nn.initializer.UniformInitializer(
+                    -4.2, 3.1, 123
+                ),
             )
         num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
@@ -186,7 +187,9 @@ class TestUniformInitializer(unittest.TestCase):
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
-                initializer=initializer.UniformInitializer(-4.2, float(i), 123),
+                initializer=paddle.nn.initializer.UniformInitializer(
+                    -4.2, float(i), 123
+                ),
             )
         num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
@@ -226,7 +229,7 @@ class TestNormalInitializer(unittest.TestCase):
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
-                initializer=initializer.NormalInitializer(),
+                initializer=paddle.nn.initializer.Normal(),
             )
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
@@ -245,7 +248,9 @@ class TestNormalInitializer(unittest.TestCase):
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
-                initializer=initializer.NormalInitializer(2.3, 1.9, 123),
+                initializer=paddle.nn.initializer.NormalInitializer(
+                    2.3, 1.9, 123
+                ),
             )
         num_ops = 1
         self.assertEqual(len(block.ops), num_ops)
@@ -278,7 +283,7 @@ class TestXavierInitializer(unittest.TestCase):
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
-                initializer=initializer.XavierInitializer(),
+                initializer=paddle.nn.initializer.XavierUniform(),
             )
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
@@ -300,7 +305,7 @@ class TestXavierInitializer(unittest.TestCase):
                 shape=[5, 10, 15, 20],
                 lod_level=0,
                 name="param",
-                initializer=initializer.XavierInitializer(),
+                initializer=paddle.nn.initializer.XavierUniform(),
             )
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
@@ -325,7 +330,7 @@ class TestXavierInitializer(unittest.TestCase):
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
-                initializer=initializer.XavierInitializer(uniform=False),
+                initializer=paddle.nn.initializer.XavierNormal(),
             )
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
@@ -347,7 +352,7 @@ class TestXavierInitializer(unittest.TestCase):
                 shape=[5, 10, 15, 20],
                 lod_level=0,
                 name="param",
-                initializer=initializer.XavierInitializer(uniform=False),
+                initializer=paddle.nn.initializer.XavierNormal(),
             )
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
@@ -372,7 +377,7 @@ class TestXavierInitializer(unittest.TestCase):
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
-                initializer=initializer.XavierInitializer(
+                initializer=paddle.nn.initializer.XavierInitializer(
                     uniform=uniform, fan_in=12, fan_out=23, seed=134
                 ),
             )
@@ -421,7 +426,7 @@ class TestMSRAInitializer(unittest.TestCase):
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
-                initializer=initializer.MSRAInitializer(),
+                initializer=paddle.nn.initializer.KaimingUniform(),
             )
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
@@ -443,7 +448,7 @@ class TestMSRAInitializer(unittest.TestCase):
                 shape=[5, 10, 15, 20],
                 lod_level=0,
                 name="param",
-                initializer=initializer.MSRAInitializer(),
+                initializer=paddle.nn.initializer.KaimingUniform(),
             )
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
@@ -466,7 +471,7 @@ class TestMSRAInitializer(unittest.TestCase):
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
-                initializer=initializer.MSRAInitializer(uniform=False),
+                initializer=paddle.nn.initializer.KaimingNormal(),
             )
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
@@ -488,7 +493,7 @@ class TestMSRAInitializer(unittest.TestCase):
                 shape=[5, 10, 15, 20],
                 lod_level=0,
                 name="param",
-                initializer=initializer.MSRAInitializer(uniform=False),
+                initializer=paddle.nn.initializer.KaimingNormal(),
             )
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
@@ -509,7 +514,9 @@ class TestMSRAInitializer(unittest.TestCase):
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
-                initializer=initializer.MSRAInitializer(fan_in=12, seed=134),
+                initializer=paddle.nn.initializer.MSRAInitializer(
+                    fan_in=12, seed=134
+                ),
             )
         num_ops = 2 if dtype == "float16" else 1
         self.assertEqual(len(block.ops), num_ops)
@@ -542,7 +549,7 @@ class TestBilinearInitializer(unittest.TestCase):
                 shape=[8, 1, 3, 3],
                 lod_level=0,
                 name="param",
-                initializer=initializer.BilinearInitializer(),
+                initializer=paddle.nn.initializer.Bilinear(),
             )
         num_ops = 2 if dtype in ["float16", "uint16", "float64"] else 1
         self.assertEqual(len(block.ops), num_ops)
@@ -576,7 +583,7 @@ class TestBilinearInitializerDygraphAPI(unittest.TestCase):
         w_attr = paddle.ParamAttr(
             learning_rate=0.0,
             regularizer=L2Decay(0.0),
-            initializer=initializer.BilinearInitializer(),
+            initializer=paddle.nn.initializer.Bilinear(),
         )
         data = paddle.rand([B, 3, H, W], dtype='float32')
         conv_up = paddle.nn.Conv2DTranspose(
@@ -597,7 +604,7 @@ class TestBilinearInitializerDygraphAPI(unittest.TestCase):
         w_attr = paddle.ParamAttr(
             learning_rate=0.0,
             regularizer=L2Decay(0.0),
-            initializer=initializer.BilinearInitializer(),
+            initializer=paddle.nn.initializer.Bilinear(),
         )
         conv2d = paddle.nn.Conv2D(1, 2, 3, weight_attr=w_attr)
         paddle.set_default_dtype("float32")
@@ -632,7 +639,7 @@ class TestNumpyArrayInitializer(unittest.TestCase):
                 shape=np_array.shape,
                 lod_level=0,
                 name="param",
-                initializer=initializer.NumpyArrayInitializer(np_array),
+                initializer=paddle.nn.initializer.Assign(np_array),
             )
         num_ops = 2 if dtype in ["float16", "uint16"] else 1
         self.assertEqual(len(block.ops), num_ops)
@@ -657,7 +664,9 @@ class TestSetGlobalInitializer(unittest.TestCase):
         """Test Set Global Param initilizer with UniformInitializer"""
         main_prog = framework.Program()
         startup_prog = framework.Program()
-        fluid.set_global_initializer(initializer.Uniform(low=-0.5, high=0.5))
+        fluid.set_global_initializer(
+            paddle.nn.initializer.Uniform(low=-0.5, high=0.5)
+        )
         with fluid.program_guard(main_prog, startup_prog):
             x = fluid.data(name="x", shape=[1, 3, 32, 32])
             # default initilizer of param in layers.conv2d is NormalInitializer
@@ -683,8 +692,8 @@ class TestSetGlobalInitializer(unittest.TestCase):
         main_prog = framework.Program()
         startup_prog = framework.Program()
         fluid.set_global_initializer(
-            initializer.Uniform(low=-0.5, high=0.5),
-            bias_init=initializer.Normal(loc=0.0, scale=2.0),
+            paddle.nn.initializer.Uniform(low=-0.5, high=0.5),
+            bias_init=paddle.nn.initializer.Normal(0.0, 2.0),
         )
         with fluid.program_guard(main_prog, startup_prog):
             x = fluid.data(name="x", shape=[1, 3, 32, 32])
@@ -746,9 +755,7 @@ class TestXavierInitializerDygraph(unittest.TestCase):
         tensor = paddle.zeros([1024, 1024, 16])
         tensor.stop_gradient = False
 
-        xavier_ = paddle.fluid.initializer.XavierInitializer(
-            uniform=False, fan_in=3, fan_out=5
-        )
+        xavier_ = paddle.nn.initializer.XavierNormal(fan_in=3, fan_out=5)
         xavier_(tensor)
 
         hist, _ = output_hist(tensor.numpy())
@@ -771,9 +778,7 @@ class TestMSRAInitializerDygraph(unittest.TestCase):
         tensor = paddle.zeros([1024, 1024, 16])
         tensor.stop_gradient = False
 
-        msra_ = paddle.fluid.initializer.MSRAInitializer(
-            uniform=False, fan_in=4
-        )
+        msra_ = paddle.nn.initializer.KaimingNormal(fan_in=4)
         msra_(tensor)
 
         hist, _ = output_hist(tensor.numpy())
@@ -1174,6 +1179,22 @@ class TestDiracInitializer3(TestDiracInitializer1):
 
         with self.assertRaises(AssertionError):
             paddle.nn.Conv2D(5, 9, (3, 3), weight_attr=self.weight_attr)
+
+
+class TestKaimingUniform(unittest.TestCase):
+    def func_kaiminguniform_initializer_fan_in_zero(self):
+        paddle.enable_static()
+        x = paddle.static.data(name='x', shape=[1, 0, 0], dtype='float32')
+
+        kaiming = paddle.nn.initializer.KaimingUniform(0)
+        param_attr = paddle.ParamAttr(initializer=kaiming)
+
+        paddle.static.nn.prelu(x, 'all', param_attr=param_attr)
+
+    def test_type_error(self):
+        self.assertRaises(
+            ZeroDivisionError, self.func_kaiminguniform_initializer_fan_in_zero
+        )
 
 
 if __name__ == '__main__':

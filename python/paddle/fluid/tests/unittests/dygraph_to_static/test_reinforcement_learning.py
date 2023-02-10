@@ -23,11 +23,9 @@ import paddle
 import paddle.fluid as fluid
 import paddle.nn.functional as F
 from paddle.fluid.dygraph import Layer, to_variable
-from paddle.jit import ProgramTranslator
 from paddle.jit.api import to_static
 
 SEED = 2020
-program_translator = ProgramTranslator()
 
 
 class Policy(Layer):
@@ -61,7 +59,7 @@ class Args:
 
 
 def train(args, place, to_static):
-    program_translator.enable(to_static)
+    paddle.jit.enable_to_static(to_static)
 
     env = gym.make('CartPole-v0')
     env.seed(SEED)

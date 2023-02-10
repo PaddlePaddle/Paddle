@@ -15,7 +15,7 @@
 import paddle
 import paddle.distributed as dist
 import paddle.distributed.communication.stream as stream
-import paddle.fluid.framework as framework
+import paddle.framework as framework
 
 from .serialization_utils import (
     convert_object_to_tensor,

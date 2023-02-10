@@ -69,6 +69,11 @@ class SequenceConcatOp : public framework::OperatorWithKernel {
         out_dims = phi::vectorize(x_dim);
       }
       batch_size += x_dim[0];
+      PADDLE_ENFORCE_NE(
+          x_dim[0],
+          0,
+          platform::errors::InvalidArgument(
+              "The first dim of SequenceConcatOp inputs must not be 0."));
       if (feature_size == 0) {
         feature_size = phi::product(x_dim) / x_dim[0];
       } else {
@@ -121,11 +126,11 @@ class SeqConcatGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.GetPlace());
   }
 };
 

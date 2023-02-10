@@ -24,17 +24,19 @@ class DistributedFusedLambOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {}
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto dtype = framework::proto::VarType::FP32;  // dtype is not important
-    return framework::OpKernelType(dtype, ctx.GetPlace());
+    return phi::KernelKey(dtype, ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const override {
-    return expected_kernel_type;
+      const phi::KernelKey &expected_kernel_type) const override {
+    return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                          expected_kernel_type.layout(),
+                          expected_kernel_type.dtype());
   }
 };
 

@@ -20,7 +20,6 @@ from . import layers
 from .framework import Program, Variable, program_guard
 from . import unique_name
 from .layer_helper import LayerHelper
-from .initializer import Constant
 
 
 def _clone_var_(block, var):

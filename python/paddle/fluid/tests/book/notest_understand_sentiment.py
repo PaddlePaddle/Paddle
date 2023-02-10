@@ -44,8 +44,8 @@ def convolution_net(
         act="tanh",
         pool_type="sqrt",
     )
-    prediction = fluid.layers.fc(
-        input=[conv_3, conv_4], size=class_dim, act="softmax"
+    prediction = paddle.static.nn.fc(
+        x=[conv_3, conv_4], size=class_dim, activation="softmax"
     )
     cost = paddle.nn.functional.cross_entropy(
         input=prediction, label=label, reduction='none', use_softmax=False
@@ -68,10 +68,10 @@ def train(
     dict_dim = len(word_dict)
     class_dim = 2
 
-    data = fluid.layers.data(
-        name="words", shape=[1], dtype="int64", lod_level=1
+    data = paddle.static.data(
+        name="words", shape=[-1, 1], dtype="int64", lod_level=1
     )
-    label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+    label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
 
     if not parallel:
         cost, acc_out, prediction = net_method(

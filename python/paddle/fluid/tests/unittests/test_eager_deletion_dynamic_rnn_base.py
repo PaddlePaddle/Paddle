@@ -41,11 +41,11 @@ def train(network, use_cuda, use_parallel_executor, batch_size=32, pass_num=2):
     reader = fake_imdb_reader(word_dict_size, batch_size * 40)
     train_reader = paddle.batch(reader, batch_size=batch_size)
 
-    data = fluid.layers.data(
-        name="words", shape=[1], dtype="int64", lod_level=1
+    data = paddle.static.data(
+        name="words", shape=[-1, 1], dtype="int64", lod_level=1
     )
 
-    label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+    label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
 
     cost = network(data, label, word_dict_size)
     cost.persistable = True

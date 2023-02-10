@@ -354,7 +354,7 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
         }
         strategy.fuse_all_reduce_ops = True
         strategy.fuse_grad_size_in_MB = 32
-        clip = paddle.fluid.clip.GradientClipByGlobalNorm(1.0)
+        clip = paddle.nn.ClipGradByGlobalNorm(1.0)
 
         self.optimizer(
             avg_cost, strategy, train_prog, startup_prog, grad_clip=clip
@@ -552,7 +552,7 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
         strategy.fuse_all_reduce_ops = True
         strategy.fuse_grad_size_in_MB = 32
         strategy.fuse_grad_merge = True
-        clip = paddle.fluid.clip.GradientClipByGlobalNorm(1.0)
+        clip = paddle.nn.ClipGradByGlobalNorm(1.0)
 
         self.optimizer(
             avg_cost, strategy, train_prog, startup_prog, grad_clip=clip
@@ -940,7 +940,7 @@ class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
         }
         strategy.fuse_all_reduce_ops = True
         strategy.fuse_grad_size_in_MB = 32
-        clip = paddle.fluid.clip.GradientClipByGlobalNorm(1.0)
+        clip = paddle.nn.ClipGradByGlobalNorm(1.0)
 
         self.optimizer(
             avg_cost, strategy, train_prog, startup_prog, grad_clip=clip
@@ -1044,7 +1044,7 @@ class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
         }
         strategy.fuse_all_reduce_ops = True
         strategy.fuse_grad_size_in_MB = 32
-        clip = paddle.fluid.clip.GradientClipByGlobalNorm(1.0)
+        clip = paddle.nn.ClipGradByGlobalNorm(1.0)
 
         self.optimizer(
             avg_cost, strategy, train_prog, startup_prog, grad_clip=clip

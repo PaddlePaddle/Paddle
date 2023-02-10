@@ -84,7 +84,7 @@ size_t CinnCacheKey::Hash::operator()(const CinnCacheKey& key) const {
 
   for (const auto& name_shape : key.input_shapes_) {
     has_str << name_shape.first;
-    has_str << name_shape.second.to_str();
+    has_str << std::hash<phi::DDim>()(name_shape.second);
   }
 
   has_str << key.graph_hash_val_;

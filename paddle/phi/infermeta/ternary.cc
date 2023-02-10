@@ -598,9 +598,7 @@ void LerpInferMeta(const MetaTensor& x,
   auto w_dims = weight.dims();
   DDim out_dims;
   out_dims = funcs::GetOutputDims(x_dims, y_dims);
-  if (w_dims.size() > 1 || w_dims[0] != 1) {
-    out_dims = funcs::GetOutputDims(out_dims, w_dims);
-  }
+  out_dims = funcs::GetOutputDims(out_dims, w_dims);
   out->set_dims(out_dims);
   out->set_dtype(x.dtype());
   out->share_lod(x);

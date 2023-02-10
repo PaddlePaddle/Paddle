@@ -23,5 +23,6 @@ from .functional_layers import concat  # noqa: F401
 from .functional_layers import flatten  # noqa: F401
 from .functional_layers import matmul  # noqa: F401
 from .quant_layers import QuantStub  # noqa: F401
+from . import qat
 
 __all__ = []

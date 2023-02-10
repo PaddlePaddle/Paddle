@@ -33,8 +33,8 @@ class TestDygraphLoadStatic(unittest.TestCase):
         a = fluid.data(name="a", shape=[10, 10])
         conv_in = fluid.data(name="conv_in", shape=[None, 10, 10, 10])
 
-        fc_out1 = fluid.layers.fc(a, 10)
-        fc_out2 = fluid.layers.fc(a, 20)
+        fc_out1 = paddle.static.nn.fc(a, 10)
+        fc_out2 = paddle.static.nn.fc(a, 20)
 
         conv_out_1 = paddle.static.nn.conv2d(
             conv_in, num_filters=10, filter_size=5, act="relu"

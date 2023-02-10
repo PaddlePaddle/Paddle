@@ -66,15 +66,9 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
                 else 1
             )
 
-        d0 = layers.data(
-            "d0", shape=[10], append_batch_size=False, dtype='float32'
-        )
-        d1 = layers.data(
-            "d1", shape=[10], append_batch_size=False, dtype='float32'
-        )
-        d2 = layers.data(
-            "d2", shape=[10], append_batch_size=False, dtype='float32'
-        )
+        d0 = paddle.static.data("d0", shape=[-1, 10], dtype='float32')
+        d1 = paddle.static.data("d1", shape=[-1, 10], dtype='float32')
+        d2 = paddle.static.data("d2", shape=[-1, 10], dtype='float32')
 
         i = layers.zeros(shape=[1], dtype='int64')
         i.stop_gradient = True
@@ -130,7 +124,7 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
         sum_result.persistable = True
         tmp = paddle.unsqueeze(sum_result, axis=[0])
         tmp = paddle.expand(tmp, [10, -1])
-        fc = layers.fc(tmp, size=256)
+        fc = paddle.static.nn.fc(tmp, size=256)
         loss = paddle.mean(sum_result)
 
         optim = fluid.optimizer.Adam(learning_rate=1e-3)

@@ -286,11 +286,11 @@ class TestSigmoidCrossEntropyWithNorm2(OpTest):
                 def test_dtype():
                     # the input dtype of sigmoid_cross_entropy_with_logits must be float16 or float32 or float64
                     # float16 only can be set on GPU place
-                    x2 = fluid.layers.data(
-                        name='x2', shape=[3, 4, 5, 6], dtype="int32"
+                    x2 = paddle.static.data(
+                        name='x2', shape=[-1, 3, 4, 5, 6], dtype="int32"
                     )
-                    lab2 = fluid.layers.data(
-                        name='lab2', shape=[3, 4, 5, 6], dtype="int32"
+                    lab2 = paddle.static.data(
+                        name='lab2', shape=[-1, 3, 4, 5, 6], dtype="int32"
                     )
                     paddle.nn.functional.binary_cross_entropy_with_logits(
                         x2, lab2

@@ -211,7 +211,7 @@ __inline__ __device__ T PartialBlockMin(T val,
 
   if (threadIdx.x < threshold) {
     shared_last_idx = (threshold >> 5) - 1;
-    val = phi::funcs::warpReduceMin(val, mask);
+    val = phi::funcs::WarpReduceMin(val, mask);
     if (lane == 0) {
       shared[wid] = val;
     }
@@ -226,7 +226,7 @@ __inline__ __device__ T PartialBlockMin(T val,
   if (threadIdx.x < threshold) {
     val = (lane <= shared_last_idx) ? shared[lane]
                                     : std::numeric_limits<T>::max();
-    val = phi::funcs::warpReduceMin(val, mask);
+    val = phi::funcs::WarpReduceMin(val, mask);
     shared_last_val = val;
   }
   __syncthreads();
@@ -292,13 +292,13 @@ __global__ void KeBilinearInterpBwShareMemory(T* in,
     s_data[1][threadIdx.x] = static_cast<MT>(0);
     int remain = nthreads - (tid & (-blockDim.x));
     int in_top_max_index =
-        phi::funcs::blockReduceMax(top_right_index, FINAL_MASK);
+        phi::funcs::BlockReduceMax(top_right_index, FINAL_MASK);
     int in_bot_max_index =
-        phi::funcs::blockReduceMax(bot_right_index, FINAL_MASK);
+        phi::funcs::BlockReduceMax(bot_right_index, FINAL_MASK);
 
     if (remain > blockDim.x) {
-      in_top_min_index = phi::funcs::blockReduceMin(input_index, FINAL_MASK);
-      in_bot_min_index = phi::funcs::blockReduceMin(bot_left_index, FINAL_MASK);
+      in_top_min_index = phi::funcs::BlockReduceMin(input_index, FINAL_MASK);
+      in_bot_min_index = phi::funcs::BlockReduceMin(bot_left_index, FINAL_MASK);
     } else {
       in_top_min_index = PartialBlockMin(input_index, remain, FINAL_MASK);
       in_bot_min_index = PartialBlockMin(bot_left_index, remain, FINAL_MASK);

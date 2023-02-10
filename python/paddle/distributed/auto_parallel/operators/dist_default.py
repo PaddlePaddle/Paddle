@@ -20,7 +20,7 @@ from ..cost import (
     build_comp_desc_from_dist_op,
     build_dp_costs,
 )
-from ..dist_attribute import OperatorDistributedAttribute
+from ..dist_attribute import OperatorDistAttr
 from ..process_group import new_process_group
 from ..utils import (
     _get_comm_group,
@@ -86,7 +86,7 @@ def prim_operator_data_parallel_functor(ctx, src_op):
         ).dims_mapping
         dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         process_mesh = dist_attr.process_mesh
-        op_attr = OperatorDistributedAttribute()
+        op_attr = OperatorDistAttr()
         op_attr.process_mesh = process_mesh
         op_attr.set_output_dims_mapping(grad_var.name, dims_mapping)
         op_attr.set_input_dims_mapping(grad_var.name, dims_mapping)
@@ -404,6 +404,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                     and compatible_dim_mapping != dims_mapping[0]
                 ):
                     dims_mapping[0] = compatible_dim_mapping
+                    op_dist_attr.set_input_dims_mapping(arg_name, dims_mapping)
                     changed = True
             else:
                 if (
@@ -411,6 +412,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                     and compatible_dim_mapping != dims_mapping[1]
                 ):
                     dims_mapping[1] = compatible_dim_mapping
+                    op_dist_attr.set_input_dims_mapping(arg_name, dims_mapping)
                     changed = True
         for arg_name in op_desc.output_arg_names():
             if op_desc.type() == 'fill_any_like':
@@ -431,6 +433,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                     and compatible_dim_mapping != dims_mapping[0]
                 ):
                     dims_mapping[0] = compatible_dim_mapping
+                    op_dist_attr.set_output_dims_mapping(arg_name, dims_mapping)
                     changed = True
             else:
                 if (
@@ -438,6 +441,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                     and compatible_dim_mapping != dims_mapping[1]
                 ):
                     dims_mapping[1] = compatible_dim_mapping
+                    op_dist_attr.set_output_dims_mapping(arg_name, dims_mapping)
                     changed = True
 
         return changed
@@ -469,13 +473,15 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
             )
 
         # replicate op in dist program
-        dist_op_desc = main_block.append_op(type='nop').desc
+        dist_op = main_block.append_op(type='nop')
+        dist_op_desc = dist_op.desc
         dist_op_desc.copy_from(src_op.desc)
         set_dist_op_desc_original_id(dist_op_desc, src_op.desc, ctx)
         for input_name in src_op.desc.input_names():
             dist_op_desc.set_input(input_name, kwargs[input_name])
         for output_name in src_op.desc.output_names():
             dist_op_desc.set_output(output_name, kwargs[output_name])
+        # TODO: should we add a new dist attr for the new op here?
 
         if (
             src_op.has_attr('shape')
@@ -553,7 +559,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                         )
 
                         # set distributed attribute
-                        op_attr = OperatorDistributedAttribute()
+                        op_attr = OperatorDistAttr()
                         op_attr.process_mesh = process_mesh
                         op_attr.set_output_dims_mapping(
                             param.name, dims_mapping

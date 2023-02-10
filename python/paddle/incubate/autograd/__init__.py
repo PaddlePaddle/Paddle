@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from .functional import Hessian, Jacobian, jvp, vjp
-from .primapi import forward_grad, grad
+from .primapi import forward_grad, grad, to_prim
 from .primx import prim2orig
 from .utils import disable_prim, enable_prim, prim_enabled
 
@@ -25,4 +25,5 @@ __all__ = [  # noqa
     'disable_prim',
     'forward_grad',
     'grad',
+    'to_prim',
 ]

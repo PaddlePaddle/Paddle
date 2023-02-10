@@ -74,11 +74,10 @@ class TeacherStudentSigmoidLossOp : public framework::OperatorWithKernel {
   // Explicitly set that the data type of computation kernel of
   // teacher_student_sigmoid_loss
   // is determined by its input "X".
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -186,11 +185,10 @@ class TeacherStudentSigmoidLossGradientOp
   // Explicitly set that the data type of computation kernel of
   // teacher_student_sigmoid_loss
   // is determined by its input "X".
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 

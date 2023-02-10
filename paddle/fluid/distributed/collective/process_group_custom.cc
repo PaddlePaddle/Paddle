@@ -19,6 +19,7 @@
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/common/place.h"
 
 DECLARE_bool(xccl_blocking_wait);
@@ -97,12 +98,15 @@ bool ProcessGroupCustom::CustomTask::Wait(std::chrono::milliseconds timeout) {
 // Same as Wait
 void ProcessGroupCustom::CustomTask::Synchronize() { Wait(kWaitTimeout); }
 
-ProcessGroupCustom::ProcessGroupCustom(const std::shared_ptr<Store>& store,
-                                       const std::string& device_type,
-                                       int rank,
-                                       int size,
-                                       int gid)
-    : ProcessGroup(rank, size, gid), store_(store), device_type_(device_type) {}
+ProcessGroupCustom::ProcessGroupCustom(
+    const std::shared_ptr<phi::distributed::Store>& store,
+    const std::string& device_type,
+    int rank,
+    int size,
+    int gid)
+    : ProcessGroupWithoutStream(rank, size, gid),
+      store_(store),
+      device_type_(device_type) {}
 
 void ProcessGroupCustom::BroadcastUniqueCustomID(
     std::vector<phi::ccl::CCLRootId>& ccl_ids) {  // NOLINT
@@ -149,12 +153,10 @@ void ProcessGroupCustom::CreateCustomManagerCache(
   std::vector<std::unique_ptr<CustomDeviceContext>> dev_ctx;
   dev_ctx.resize(places.size());
 
-  std::unique_ptr<phi::ccl::CCLComm> comms(
-      new phi::ccl::CCLComm[places.size()]);
   for (size_t i = 0; i < places.size(); ++i) {
     phi::DeviceGuard guard(places[i]);
     ccl_comms[i] = CustomCCLCommManager::Create(
-        device_type, GetSize(), GetRank(), &ccl_id, comms.get() + i);
+        device_type, GetSize(), GetRank(), &ccl_id, new phi::ccl::CCLComm);
     dev_ctx[i].reset(new CustomDeviceContext(places[i]));
   }
 
@@ -435,7 +437,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
 
 std::shared_ptr<ProcessGroupCustom>
 ProcessGroupCustom::CreateProcessGroupCustom(
-    const std::shared_ptr<Store>& store,
+    const std::shared_ptr<phi::distributed::Store>& store,
     const std::string& device_type,
     int rank,
     int size,

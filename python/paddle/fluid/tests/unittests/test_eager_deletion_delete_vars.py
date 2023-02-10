@@ -32,19 +32,19 @@ fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
 
 
 def simple_fc_net():
-    image = fluid.layers.data(name='image', shape=[784], dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    image = paddle.static.data(name='image', shape=[-1, 784], dtype='float32')
+    label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
     hidden = image
     for _ in range(4):
-        hidden = fluid.layers.fc(
+        hidden = paddle.static.nn.fc(
             hidden,
             size=200,
-            act='tanh',
+            activation='tanh',
             bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0)
+                initializer=paddle.nn.initializer.Constant(value=1.0)
             ),
         )
-    prediction = fluid.layers.fc(hidden, size=10, act='softmax')
+    prediction = paddle.static.nn.fc(hidden, size=10, activation='softmax')
     loss = paddle.nn.functional.cross_entropy(
         input=prediction, label=label, reduction='none', use_softmax=False
     )

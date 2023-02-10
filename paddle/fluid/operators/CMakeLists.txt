@@ -95,7 +95,7 @@ if(WITH_UNITY_BUILD)
     include(unity_build_rule.cmake)
 endif()
 
-set(OP_HEADER_DEPS ${OP_HEADER_DEPS} phi phi_api_utils backward_infermeta sparse_backward_infermeta)
+set(OP_HEADER_DEPS ${OP_HEADER_DEPS} phi phi_api_utils backward_infermeta sparse_backward_infermeta static_prim_api)
 
 register_operators(EXCLUDES py_func_op warpctc_op dgc_op load_combine_op lstm_op run_program_op eye_op quantize_linear_op
         recurrent_op save_combine_op sparse_attention_op sync_batch_norm_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
@@ -147,8 +147,8 @@ cc_library(ops_extra_info SRCS ops_extra_info.cc DEPS attribute cudnn_workspace_
 
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} selected_rows_functor selected_rows_utils lapack_function
 lod_tensor maxouting unpooling pooling lod_rank_table context_project
-sequence_pooling executor generator)
-set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dynload_warpctc)
+sequence_pooling executor generator static_prim_api)
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dynload_warpctc static_prim_api static_utils static_global_utils prim_utils)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} sequence_padding sequence_scale cos_sim_functor memory jit_kernel_helper concat_and_split cross_entropy softmax vol2col im2col sampler sample_prob tree2col)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} sequence2batch lstm_compute matrix_bit_code gru_compute activation_functions beam_search fc_functor matrix_inverse matrix_solve)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} box_wrapper ps_gpu_wrapper)
@@ -188,7 +188,6 @@ cc_test(gather_test SRCS gather_test.cc DEPS tensor)
 cc_test(assign_op_test SRCS assign_op_test.cc DEPS assign_op)
 cc_test(scatter_test SRCS scatter_test.cc DEPS tensor math_function)
 cc_test(beam_search_decode_op_test SRCS beam_search_decode_op_test.cc DEPS lod_tensor)
-cc_test(strided_memcpy_test SRCS strided_memcpy_test.cc DEPS tensor memory)
 cc_test(save_load_op_test SRCS save_load_op_test.cc DEPS save_op load_op)
 cc_test(save_load_combine_op_test SRCS save_load_combine_op_test.cc DEPS save_combine_op load_combine_op)
 if (WITH_GPU)
@@ -216,7 +215,7 @@ endif()
 set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
 add_subdirectory(benchmark)
 
-cc_test(op_debug_string_test SRCS op_debug_string_test.cc DEPS elementwise_add_op)
+cc_test_old(op_debug_string_test SRCS op_debug_string_test.cc DEPS elementwise_add_op ${COMMON_OP_DEPS})
 if (WITH_ASCEND_CL)
     cc_test(transpose_op_npu_test SRCS transpose_op_npu_test.cc DEPS op_registry transpose_op scope device_context enforce executor)
 endif()

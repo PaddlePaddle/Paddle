@@ -64,5 +64,32 @@ struct FastDivMod {
   uint32_t multiplier;
 };
 
+template <typename IndexT>
+struct GeneralDivMod {
+ public:
+  explicit GeneralDivMod(IndexT d) { divmoder = phi::funcs::FastDivMod(d); }
+  __device__ inline phi::funcs::FastDivMod::DivModT div_mod(IndexT val) {
+    return divmoder.Divmod(val);
+  }
+
+  phi::funcs::FastDivMod divmoder;
+};
+
+template <>
+struct GeneralDivMod<int64_t> {
+ public:
+  using DivModT = phi::AlignedVector<int64_t, 2>;
+
+  explicit GeneralDivMod(int64_t d) { divisor = d; }
+  __device__ inline DivModT div_mod(int64_t val) {
+    DivModT data;
+    data[0] = val / divisor;
+    data[1] = val - data[0] * divisor;
+    return data;
+  }
+
+  int64_t divisor;
+};
+
 }  // namespace funcs
 }  // namespace phi

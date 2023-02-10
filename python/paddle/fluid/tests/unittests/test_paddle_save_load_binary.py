@@ -142,7 +142,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
         OUTPUT_NUM = 32
         with new_program_scope():
             x = fluid.data(name="x", shape=[None, IMAGE_SIZE], dtype='float32')
-            y = fluid.layers.fc(
+            y = paddle.static.nn.fc(
                 x,
                 OUTPUT_NUM,
                 name='fc_vars',

@@ -29,7 +29,7 @@ class InstanceNormOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override;
 };
 
@@ -38,7 +38,7 @@ class InstanceNormGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override;
 };
 
@@ -47,7 +47,7 @@ class InstanceNormDoubleGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override;
 };
 

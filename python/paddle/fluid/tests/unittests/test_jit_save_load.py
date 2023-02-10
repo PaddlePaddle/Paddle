@@ -430,7 +430,7 @@ class TestJitSaveLoad(unittest.TestCase):
             self.temp_dir.name, "test_jit_save_load.no_path/model_path"
         )
         with self.assertRaises(ValueError):
-            model_dict, _ = fluid.dygraph.load_dygraph(model_path)
+            model_dict = paddle.load(model_path)
 
     def test_jit_load_no_path(self):
         path = os.path.join(

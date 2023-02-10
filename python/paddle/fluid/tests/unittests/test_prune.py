@@ -25,9 +25,11 @@ import paddle.fluid.framework as framework
 
 class TestPrune(unittest.TestCase):
     def net(self):
-        x = fluid.layers.data(name='x', shape=[2], dtype='float32')
-        label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-        y = fluid.layers.fc(input=[x], size=2, act="softmax")
+        x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
+        x.desc.set_need_check_feed(False)
+        label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
+        label.desc.set_need_check_feed(False)
+        y = paddle.static.nn.fc(x=[x], size=2, activation="softmax")
         loss = paddle.nn.functional.cross_entropy(
             input=y, label=label, reduction='none', use_softmax=False
         )
@@ -161,16 +163,18 @@ def _mock_guard(mock):
 
 class TestExecutorRunAutoPrune(unittest.TestCase):
     def net1(self):
-        x = fluid.layers.data(name='x', shape=[2], dtype='float32')
-        label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+        x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
+        x.desc.set_need_check_feed(False)
+        label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
+        label.desc.set_need_check_feed(False)
         w_param_attrs = fluid.ParamAttr(
             name="fc_weight",
             learning_rate=0.5,
-            initializer=fluid.initializer.Constant(1.0),
+            initializer=paddle.nn.initializer.Constant(1.0),
             trainable=True,
         )
-        y = fluid.layers.fc(
-            input=[x], size=2, act="softmax", param_attr=w_param_attrs
+        y = paddle.static.nn.fc(
+            x=[x], size=2, activation="softmax", weight_attr=w_param_attrs
         )
         loss1 = paddle.nn.functional.cross_entropy(
             input=y, label=label, reduction='none', use_softmax=False
@@ -185,26 +189,29 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         return x, y, label, loss1, loss2, w_param_attrs
 
     def net2(self):
-        x1 = fluid.layers.data(name='x1', shape=[2], dtype='float32')
-        x2 = fluid.layers.data(name='x2', shape=[2], dtype='float32')
-        label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+        x1 = paddle.static.data(name='x1', shape=[-1, 2], dtype='float32')
+        x1.desc.set_need_check_feed(False)
+        x2 = paddle.static.data(name='x2', shape=[-1, 2], dtype='float32')
+        x2.desc.set_need_check_feed(False)
+        label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
+        label.desc.set_need_check_feed(False)
         w1_param_attrs = fluid.ParamAttr(
             name="fc_weight1",
             learning_rate=0.5,
-            initializer=fluid.initializer.Constant(1.0),
+            initializer=paddle.nn.initializer.Constant(1.0),
             trainable=True,
         )
         w2_param_attrs = fluid.ParamAttr(
             name="fc_weight2",
             learning_rate=0.5,
-            initializer=fluid.initializer.Constant(1.0),
+            initializer=paddle.nn.initializer.Constant(1.0),
             trainable=True,
         )
-        y1 = fluid.layers.fc(
-            input=[x1], size=2, act="softmax", param_attr=w1_param_attrs
+        y1 = paddle.static.nn.fc(
+            x=[x1], size=2, activation="softmax", weight_attr=w1_param_attrs
         )
-        y2 = fluid.layers.fc(
-            input=[x2], size=2, act="softmax", param_attr=w2_param_attrs
+        y2 = paddle.static.nn.fc(
+            x=[x2], size=2, activation="softmax", weight_attr=w2_param_attrs
         )
         loss1 = paddle.nn.functional.cross_entropy(
             input=y1, label=label, reduction='none', use_softmax=False

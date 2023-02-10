@@ -22,11 +22,12 @@ math_library(vol2col)
 math_library(softmax DEPS math_function)
 math_library(maxouting)
 math_library(matrix_bit_code)
+math_library(sequence_scale)
 
 cc_library(
   phi_data_layout_transform
   SRCS data_layout_transform.cc
-  DEPS tensor)
+  DEPS tensor blas)
 
 if(WITH_GPU OR WITH_ROCM)
   if(MKL_FOUND AND WITH_ONEMKL)

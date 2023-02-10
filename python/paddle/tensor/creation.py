@@ -35,7 +35,6 @@ from ..fluid.framework import (
     _in_eager_without_dygraph_check,
     device_guard,
 )
-from ..fluid.initializer import Constant, Initializer
 from ..fluid.layers import utils
 from ..fluid.param_attr import ParamAttr
 from ..framework import (
@@ -140,7 +139,10 @@ def create_global_var(
         stop_gradient=True,
     )
     helper.set_variable_initializer(
-        var, initializer=Constant(value=float(value), force_cpu=force_cpu)
+        var,
+        initializer=paddle.nn.initializer.ConstantInitializer(
+            value=float(value), force_cpu=force_cpu
+        ),
     )
 
     return var
@@ -214,7 +216,7 @@ def create_parameter(
     check_type(
         default_initializer,
         'default_initializer',
-        (type(None), Initializer),
+        (type(None), paddle.nn.initializer.Initializer),
         'create_parameter',
     )
 
@@ -538,6 +540,9 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
 
 def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
 
+    if isinstance(data, np.number):  # Special case for numpy scalars
+        data = np.array(data)
+
     if not isinstance(data, np.ndarray):
 
         def _handle_dtype(data, dtype):
@@ -632,6 +637,8 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
     if isinstance(data, Variable) and (dtype is None or dtype == data.dtype):
         output = data
     else:
+        if isinstance(data, np.number):  # Special case for numpy scalars
+            data = np.array(data)
 
         if not isinstance(data, np.ndarray):
             if np.isscalar(data) and not isinstance(data, str):
@@ -694,6 +701,18 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
 
     If the ``data`` is already a Tensor, copy will be performed and return a new tensor.
     If you only want to change stop_gradient property, please call ``Tensor.stop_gradient = stop_gradient`` directly.
+
+    .. code-block:: text
+
+        We use the dtype conversion rules following this:
+                Keep dtype
+        np.number ───────────► paddle.Tensor
+                                (0D-Tensor)
+                    default_dtype
+        Python Number ───────────────► paddle.Tensor
+                                        (1D-Tensor)
+                    Keep dtype
+        np.ndarray ───────────► paddle.Tensor
 
     Args:
         data(scalar|tuple|list|ndarray|Tensor): Initial data for the tensor.
@@ -878,7 +897,7 @@ def ones(shape, dtype=None, name=None):
             #  [1. 1.]]
     """
     if dtype is None:
-        dtype = 'float32'
+        dtype = core.VarDesc.VarType.FP32
     return fill_constant(value=1.0, shape=shape, dtype=dtype, name=name)
 
 
@@ -1031,8 +1050,8 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
     _check_attr(num_rows, "num_rows")
 
     if dtype is None:
-        dtype = 'float32'
-    if not isinstance(dtype, core.VarDesc.VarType):
+        dtype = core.VarDesc.VarType.FP32
+    elif not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
     if num_columns is not None:
         _check_attr(num_columns, "num_columns")
@@ -1186,14 +1205,6 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
         end = start
         start = 0
 
-    out_shape = None
-    if (
-        not isinstance(start, Variable)
-        and not isinstance(end, Variable)
-        and not isinstance(step, Variable)
-    ):
-        out_shape = [int(math.ceil((end - start) / step))]
-
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
@@ -1225,6 +1236,13 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
             'range/arange',
         )
         helper = LayerHelper('range', **locals())
+        out_shape = None
+        if (
+            not isinstance(start, Variable)
+            and not isinstance(end, Variable)
+            and not isinstance(step, Variable)
+        ):
+            out_shape = [int(math.ceil((end - start) / step))]
         out = helper.create_variable_for_type_inference(dtype, shape=out_shape)
         helper.append_op(
             type='range',

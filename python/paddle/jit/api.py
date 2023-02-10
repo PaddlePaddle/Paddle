@@ -16,13 +16,15 @@
 # Temporary disable isort to avoid circular import
 # This can be removed after the circular import is resolved
 # isort: skip_file
+from __future__ import annotations
+
 import os
 import pickle
 import warnings
 from collections import OrderedDict
 import inspect
 import threading
-from typing import Text, Tuple, Any, List
+from typing import Any, List
 
 import paddle
 from paddle.fluid import core, dygraph
@@ -41,6 +43,7 @@ from .dy2static import logging_utils
 from .dy2static.convert_call_func import (
     ConversionOptions,
     CONVERSION_OPTIONS,
+    add_ignore_module,
 )
 from .dy2static.program_translator import (
     ProgramTranslator,
@@ -71,8 +74,6 @@ from paddle.fluid.framework import (
 )
 from paddle.fluid.framework import dygraph_only, _non_static_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
-
-__all__ = []
 
 
 def create_program_from_desc(program_desc):
@@ -157,7 +158,7 @@ def _dygraph_to_static_func_(dygraph_func):
         if _non_static_mode() or not program_translator.enable_to_static:
             logging_utils.warn(
                 "The decorator 'dygraph_to_static_func' doesn't work in "
-                "dygraph mode or set ProgramTranslator.enable to False. "
+                "dygraph mode or set 'paddle.jit.enable_to_static' to False. "
                 "We will just return dygraph output."
             )
             return dygraph_func(*args, **kwargs)
@@ -188,6 +189,34 @@ def copy_decorator_attrs(original_func, decorated_obj):
         decorated_obj.__module__ = original_func.__module__
 
     return decorated_obj
+
+
+def ignore_module(modules: List[Any]):
+    """
+    Adds modules that ignore transcription.
+    Builtin modules that have been ignored are collections, pdb, copy, inspect, re, numpy, logging, six
+
+    Args:
+        modules (List[Any]): Ignored modules that you want to add
+
+    Examples:
+        .. code-block:: python
+
+            import scipy
+            import astor
+
+            import paddle
+            from paddle.jit import ignore_module
+
+            modules = [
+               scipy,
+               astor
+            ]
+
+            ignore_module(modules)
+
+    """
+    add_ignore_module(modules)
 
 
 def to_static(
@@ -705,12 +734,12 @@ def _run_save_pre_hooks(func):
     return wrapper
 
 
-def _save_property(filename: Text, property_vals: List[Tuple[Any, Text]]):
+def _save_property(filename: str, property_vals: list[tuple[Any, str]]):
     """class property serialization.
 
     Args:
-        filename (Text): *.meta
-        property_vals (List[Tuple): class property.
+        filename (str): *.meta
+        property_vals (list[tuple[Any, str]]): class property.
     """
 
     def set_property(meta, key, val):
@@ -880,7 +909,7 @@ def save(layer, path, input_spec=None, **configs):
     prog_translator = ProgramTranslator()
     if not prog_translator.enable_to_static:
         raise RuntimeError(
-            "The paddle.jit.save doesn't work when setting ProgramTranslator.enable to False."
+            "The paddle.jit.save doesn't work when setting 'paddle.jit.enable_to_static' to False."
         )
 
     if not (

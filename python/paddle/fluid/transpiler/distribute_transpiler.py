@@ -39,7 +39,7 @@ import logging
 import numpy as np
 
 from .ps_dispatcher import RoundRobin, PSDispatcher
-from .. import core, framework, unique_name, initializer
+from .. import core, framework, unique_name
 from ..framework import (
     Program,
     default_main_program,
@@ -50,7 +50,6 @@ from ..framework import (
 )
 from .details import wait_server_ready, UnionFind, VarStruct, VarsDistributed
 from .details import delete_ops, find_op_by_output_arg
-from ..distribute_lookup_table import find_distributed_lookup_table
 from . import collective
 
 LOOKUP_TABLE_TYPE = ["lookup_table", "lookup_table_v2"]
@@ -290,7 +289,7 @@ class DistributeTranspiler:
 
             x = fluid.data(name='x', shape=[1,13], dtype='float32')
             y = fluid.data(name='y', shape=[1], dtype='float32')
-            y_predict = fluid.layers.fc(input=x, size=1, act=None)
+            y_predict = paddle.static.nn.fc(x, size=1, activation=None)
 
             cost =paddle.nn.functional.square_error_cost(input=y_predict, label=y)
             avg_loss = paddle.mean(cost)
@@ -612,6 +611,9 @@ class DistributeTranspiler:
                     sync_mode=False,
                     current_endpoint="127.0.0.1:7000")
         """
+        from paddle.distributed.distribute_lookup_table import (
+            find_distributed_lookup_table,
+        )
 
         err_msg = """
 
@@ -2856,7 +2858,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                             dtype=var.dtype,
                             shape=var.shape,
                             persistable=var.persistable,
-                            initializer=initializer.Constant(1),
+                            initializer=paddle.nn.initializer.Constant(1),
                         )
                     op_role_attr_name = (
                         core.op_proto_and_checker_maker.kOpRoleAttrName()

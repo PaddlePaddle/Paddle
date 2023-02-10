@@ -16,6 +16,10 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
+
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -97,12 +101,13 @@ class TransposeOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     auto &data_format = ctx.Attr<std::string>("data_format");
     phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
-    return framework::OpKernelType(data_type, ctx.GetPlace(), layout_);
+    return phi::KernelKey(
+        ctx.GetPlace(), layout_, phi::TransToPhiDataType(data_type));
   }
 };
 
@@ -178,27 +183,15 @@ class TransposeOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "TransposeOpGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input",
-                   framework::GradVarName("Out"),
-                   "TransposeOpGrad");
-    auto x_dims = ctx->GetInputDim("X");
-    ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
-    if (ctx->HasOutput(framework::GradVarName("X"))) {
-      ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
-    }
-  }
-
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
     std::string data_format = ctx.Attr<std::string>("data_format");
     phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
-    return framework::OpKernelType(data_type, ctx.GetPlace(), layout_);
+    return phi::KernelKey(
+        ctx.GetPlace(), layout_, phi::TransToPhiDataType(data_type));
   }
 };
 
@@ -229,13 +222,14 @@ class Transpose2Op : public TransposeOp {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     framework::proto::VarType::Type data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "X");
     std::string data_format = ctx.Attr<std::string>("data_format");
     phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
-    return framework::OpKernelType(data_type, ctx.GetPlace(), layout_);
+    return phi::KernelKey(
+        ctx.GetPlace(), layout_, phi::TransToPhiDataType(data_type));
   }
 };
 
@@ -317,30 +311,16 @@ class Transpose2OpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(
-        ctx->HasInput("XShape"), "Input", "XShape", "Transpose2OpGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input",
-                   framework::GradVarName("Out"),
-                   "Transpose2OpGrad");
-    if (ctx->HasOutput(framework::GradVarName("X"))) {
-      auto xshape_dim = ctx->GetInputDim("XShape");
-      auto x_shape_dim = phi::slice_ddim(xshape_dim, 1, xshape_dim.size());
-      ctx->SetOutputDim(framework::GradVarName("X"), x_shape_dim);
-      ctx->ShareLoD("XShape", framework::GradVarName("X"));
-    }
-  }
-
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     framework::proto::VarType::Type data_type =
         OperatorWithKernel::IndicateVarDataType(ctx,
                                                 framework::GradVarName("Out"));
     std::string data_format = ctx.Attr<std::string>("data_format");
     phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
-    return framework::OpKernelType(data_type, ctx.GetPlace(), layout_);
+    return phi::KernelKey(
+        ctx.GetPlace(), layout_, phi::TransToPhiDataType(data_type));
   }
 };
 
@@ -355,6 +335,13 @@ class TransposeGradInferVarType : public framework::VarTypeInference {
 }  // namespace operators
 }  // namespace paddle
 
+DECLARE_INFER_SHAPE_FUNCTOR(transpose_grad,
+                            TransposeGradInferShapeFunctor,
+                            PD_INFER_META(phi::TransposeGradInferMeta));
+
+DECLARE_INFER_SHAPE_FUNCTOR(transpose2_grad,
+                            Transpose2GradInferShapeFunctor,
+                            PD_INFER_META(phi::TransposeGradInferMeta));
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
     transpose,
@@ -364,7 +351,8 @@ REGISTER_OPERATOR(
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
 REGISTER_OPERATOR(transpose_grad,
                   ops::TransposeOpGrad,
-                  ops::TransposeGradInferVarType);
+                  ops::TransposeGradInferVarType,
+                  TransposeGradInferShapeFunctor);
 
 REGISTER_OPERATOR(transpose2,
                   ops::Transpose2Op,
@@ -375,4 +363,5 @@ REGISTER_OPERATOR(transpose2_grad,
                   ops::Transpose2OpGrad,
                   ops::TransposeGradInferVarType,
                   ops::Transpose2DoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::Transpose2DoubleGradMaker<paddle::imperative::OpBase>);
+                  ops::Transpose2DoubleGradMaker<paddle::imperative::OpBase>,
+                  Transpose2GradInferShapeFunctor);

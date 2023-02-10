@@ -217,6 +217,15 @@ void SvdKernel(const Context& dev_ctx,
   int m = dims[rank - 2];
   int n = dims[rank - 1];
 
+  PADDLE_ENFORCE_LT(
+      0,
+      m,
+      errors::InvalidArgument("The row of Input(X) should be greater than 0."));
+  PADDLE_ENFORCE_LT(
+      0,
+      n,
+      errors::InvalidArgument("The col of Input(X) should be greater than 0."));
+
   auto* u_data = dev_ctx.template Alloc<phi::dtype::Real<T>>(U);
   auto* vh_data = dev_ctx.template Alloc<phi::dtype::Real<T>>(VH);
   auto* s_data = dev_ctx.template Alloc<phi::dtype::Real<T>>(S);

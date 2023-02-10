@@ -24,7 +24,6 @@ from tsm_config_utils import merge_configs, parse_config, print_configs
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
-from paddle.jit import ProgramTranslator
 from paddle.jit.api import to_static
 from paddle.nn import BatchNorm, Linear
 
@@ -290,8 +289,7 @@ def create_optimizer(cfg, params):
 
 
 def train(args, fake_data_reader, to_static):
-    program_translator = ProgramTranslator()
-    program_translator.enable(to_static)
+    paddle.jit.enable_to_static(to_static)
 
     config = parse_config(args.config)
     train_config = merge_configs(config, 'train', vars(args))

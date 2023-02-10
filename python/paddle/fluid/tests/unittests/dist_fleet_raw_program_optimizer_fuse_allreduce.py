@@ -40,7 +40,7 @@ def cnn_model(data):
         pool_stride=2,
         act="relu",
         param_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.01)
+            initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
     conv_pool_2 = fluid.nets.simple_img_conv_pool(
@@ -51,7 +51,7 @@ def cnn_model(data):
         pool_stride=2,
         act="relu",
         param_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.01)
+            initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
 
@@ -60,12 +60,12 @@ def cnn_model(data):
     param_shape = [reduce(lambda a, b: a * b, input_shape[1:], 1)] + [SIZE]
     scale = (2.0 / (param_shape[0] ** 2 * SIZE)) ** 0.5
 
-    predict = fluid.layers.fc(
-        input=conv_pool_2,
+    predict = paddle.static.nn.fc(
+        x=conv_pool_2,
         size=SIZE,
-        act="softmax",
-        param_attr=fluid.param_attr.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.01)
+        activation="softmax",
+        weight_attr=fluid.param_attr.ParamAttr(
+            initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
     return predict
@@ -74,8 +74,10 @@ def cnn_model(data):
 class TestFleetMetaOptimizerFuseAllReducePrecision(TestDistRunnerBase):
     def get_model(self, batch_size=2, single_device=False):
         # Input data
-        images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype=DTYPE)
-        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+        images = paddle.static.data(
+            name='pixel', shape=[-1, 1, 28, 28], dtype=DTYPE
+        )
+        label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
 
         # Train program
         predict = cnn_model(images)

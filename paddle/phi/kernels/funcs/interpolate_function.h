@@ -85,12 +85,14 @@ inline std::vector<int> get_new_shape(
   std::vector<int> vec_new_shape;
   for (size_t i = 0; i < list_new_shape_tensor.size(); ++i) {
     auto tensor = list_new_shape_tensor[i];
-    PADDLE_ENFORCE_EQ(
-        tensor->dims(),
-        phi::make_ddim({1}),
-        errors::InvalidArgument("The shape of dimension tensor should be [1],"
-                                "but received d%.",
-                                tensor->dims()));
+    PADDLE_ENFORCE_EQ(tensor->dims() == phi::make_ddim({1}) ||
+                          tensor->dims() == phi::make_ddim({}),
+                      true,
+                      errors::InvalidArgument(
+                          "The shape of dimension tensor should be [1] or [],"
+                          "but received d%.",
+                          tensor->dims()));
+
 #ifdef PADDLE_WITH_XPU
     if (tensor->place().GetType() == phi::AllocationType::XPU) {
       DenseTensor temp;

@@ -26,6 +26,9 @@ from ..layer_helper import LayerHelper
 from sys import version_info
 
 from collections.abc import Sequence
+from weakref import WeakKeyDictionary
+from collections import defaultdict
+from uuid import uuid4
 
 
 def convert_to_list(value, n, name, dtype=int):
@@ -107,13 +110,33 @@ def is_sequence(seq):
     return isinstance(seq, Sequence) and not isinstance(seq, str)
 
 
+class UniqueIdMap(WeakKeyDictionary):
+    def __init__(self):
+        super().__init__(self)
+        self.data = defaultdict(uuid4)
+
+
+uniqueidmap = UniqueIdMap()
+
+
+def uniqueid(obj):
+    if isinstance(obj, str):
+        return (hash(obj),)
+    elif isinstance(obj, list):
+        return (id(obj),)
+    else:
+        return (uniqueidmap[obj].int,)
+
+
 def _hash_with_id(*args):
     """
     Return int hash value calculated by id(arg) or tuple(id1,id2, ...).
     """
     assert len(args) > 0
-    info = tuple([id(v) for v in args])
-    return hash(info) & 0xFFFFFFF
+    info = ()
+    for v in args:
+        info = info + uniqueid(v)
+    return hash(info)
 
 
 def _sorted(dict_):

@@ -253,10 +253,10 @@ class YOLOv3(fluid.dygraph.Layer):
                     stride=1,
                     padding=0,
                     weight_attr=ParamAttr(
-                        initializer=fluid.initializer.Normal(0.0, 0.02)
+                        initializer=paddle.nn.initializer.Normal(0.0, 0.02)
                     ),
                     bias_attr=ParamAttr(
-                        initializer=fluid.initializer.Constant(0.0),
+                        initializer=paddle.nn.initializer.Constant(0.0),
                         regularizer=L2Decay(0.0),
                     ),
                 ),

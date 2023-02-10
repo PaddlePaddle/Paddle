@@ -25,8 +25,8 @@ struct BroadcastDimsSimplifier {
   typedef void (*MergeFunctor)(
       bool &, std::vector<DimVector> &, DimVector &, int, int);
 
-  int64_t N;
-  int64_t rank;
+  int N;
+  int rank;
   DimVector out_dims;
   std::vector<DimVector> in_dims;
 
@@ -103,41 +103,43 @@ struct BroadcastDimsSimplifier {
   // To compensate the lackage of input_tensors' dimension with axis.
   void ExtendInputDimensions(int N, int axis) {
     for (auto &in_dim : in_dims) {
-      int64_t in_idx = 0;
       if (in_dim.size() < rank) {
-        DimVector tmp_dim(rank, 1);
-        for (; in_idx < in_dim.size();) {
-          if (in_dim[in_idx] == out_dims[axis] || in_dim[in_idx] == 1) {
-            tmp_dim[axis] = in_dim[in_idx];
-            in_idx++;
-            axis++;
+        DimVector extended_in_dim(rank, 1);
+        int out_idx = axis;
+        for (int in_idx = 0; in_idx < in_dim.size(); in_idx++) {
+          if (in_dim[in_idx] == out_dims[out_idx] || in_dim[in_idx] == 1) {
+            extended_in_dim[out_idx] = in_dim[in_idx];
+            out_idx++;
           } else {
             PADDLE_THROW(phi::errors::InvalidArgument(
                 "The %d-th dimension of input tensor is expected to be equal "
                 "with the %d-th dimension of output tensor %d or 1, but "
-                "received %d.",
-                in_idx + 1,
-                axis + 1,
+                "received %d. The input's shape is {%s}, the output's shape is "
+                "{%s}.",
+                in_idx,
+                out_idx,
                 out_dims[axis],
-                in_dim[in_idx]));
+                in_dim[in_idx],
+                phi::make_ddim(in_dim),
+                phi::make_ddim(out_dims)));
           }
         }
         in_dim.resize(rank);
-        std::copy(tmp_dim.begin(), tmp_dim.end(), in_dim.begin());
+        std::copy(
+            extended_in_dim.begin(), extended_in_dim.end(), in_dim.begin());
       } else {
-        for (; in_idx < rank;) {
-          if (in_dim[in_idx] == out_dims[in_idx] || in_dim[in_idx] == 1) {
-            in_idx++;
-          } else {
-            PADDLE_THROW(phi::errors::InvalidArgument(
-                "The %d-th dimension of input tensor is expected to be equal "
-                "with the %d-th dimension of output tensor %d or 1, but "
-                "received %d.",
-                in_idx + 1,
-                in_idx + 1,
-                out_dims[in_idx],
-                in_dim[in_idx]));
-          }
+        for (int in_idx = 0; in_idx < rank; in_idx++) {
+          PADDLE_ENFORCE_EQ(
+              in_dim[in_idx] == out_dims[in_idx] || in_dim[in_idx] == 1,
+              true,
+              phi::errors::InvalidArgument(
+                  "The %d-th dimension of input tensor is expected to be equal "
+                  "with the %d-th dimension of output tensor %d or 1, but "
+                  "received %d.",
+                  in_idx,
+                  in_idx,
+                  out_dims[in_idx],
+                  in_dim[in_idx]));
         }
       }
       std::reverse(in_dim.begin(), in_dim.end());

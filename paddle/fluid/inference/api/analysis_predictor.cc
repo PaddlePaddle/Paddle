@@ -17,6 +17,7 @@
 #include <glog/logging.h>
 
 #include <algorithm>
+#include <cstdlib>
 #include <fstream>
 #include <memory>
 #include <set>
@@ -61,6 +62,7 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/kernels/funcs/data_type_transform.h"
 #include "paddle/utils/string/split.h"
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
@@ -1085,9 +1087,11 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
 }
 
 void AnalysisPredictor::PrepareArgument() {
+  VLOG(3) << "AnalysisPredictor::PrepareArgument";
   // Init std::unique_ptr argument_.
   argument_.reset(new Argument);
   argument_->SetUseGPU(config_.use_gpu());
+  argument_->SetUseCutlass(config_.use_cutlass_);
   argument_->SetUseFcPadding(config_.use_fc_padding());
   argument_->SetGPUDeviceId(config_.gpu_device_id());
   argument_->SetEnableIrOptim(config_.enable_ir_optim_);
@@ -1361,7 +1365,10 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   // The config and argument take a lot of storage,
   // when the predictor settings are complete, we release these stores.
   config_.PartiallyRelease();
+#if defined(PADDLE_WITH_TESTING)
   fusion_statis_ = *argument_->fusion_statis_ptr();
+#endif
+
 #if defined(_WIN32)
   argument_->PartiallyRelease();
 #else
@@ -1380,13 +1387,6 @@ template <>
 std::unique_ptr<PaddlePredictor>
 CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
     const AnalysisConfig &config) {
-  // TODO(NHZlX): Should add the link to the doc of
-  // paddle_infer::CreatePredictor<paddle_infer::Config>
-  if (config.glog_info_disabled()) {
-    FLAGS_logtostderr = 1;
-    FLAGS_minloglevel = 2;  // GLOG_ERROR
-  }
-  VLOG(3) << "create AnalysisConfig";
   PADDLE_ENFORCE_EQ(
       config.is_valid(),
       true,
@@ -1399,83 +1399,112 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
   std::call_once(custom_operators_registered,
                  []() { inference::RegisterAllCustomOperator(); });
 
-  if (config.use_gpu()) {
-    static std::once_flag gflags_initialized;
-    static bool process_level_allocator_enabled;
-
-    std::call_once(gflags_initialized, [&]() {
-      std::vector<std::string> gflags;
-      PADDLE_ENFORCE_GE(
-          config.memory_pool_init_size_mb(),
-          0.f,
+  auto SetGflags = [](const AnalysisConfig &config) {
+    auto SetGflag = [](const char *name, const char *value) {
+      std::string ret = ::GFLAGS_NAMESPACE::SetCommandLineOption(name, value);
+      PADDLE_ENFORCE_EQ(
+          ret.empty(),
+          false,
           platform::errors::InvalidArgument(
-              "The size of memory pool should be greater than 0."));
-      PADDLE_ENFORCE_GE(
-          config.gpu_device_id(),
-          0,
-          platform::errors::InvalidArgument(
-              "Invalid device id (%d). The device id should be greater than 0.",
-              config.gpu_device_id()));
-      gflags.push_back("dummy");
-
-      float fraction_of_gpu_memory = config.fraction_of_gpu_memory_for_pool();
-      if (fraction_of_gpu_memory > 0.95f) {
-        LOG(ERROR)
-            << "Allocate too much memory for the GPU memory pool, assigned "
-            << config.memory_pool_init_size_mb() << " MB";
-        LOG(ERROR) << "Try to shink the value by setting "
-                      "AnalysisConfig::EnableGpu(...)";
-      }
-
-      if (fraction_of_gpu_memory >= 0.0f || fraction_of_gpu_memory <= 0.95f) {
-        std::string flag = "--fraction_of_gpu_memory_to_use=" +
-                           std::to_string(fraction_of_gpu_memory);
-        VLOG(3) << "set flag: " << flag;
-        gflags.push_back(flag);
-      }
-
-      // TODO(Shixiaowei02): Add a mandatory scheme to use the thread local
-      // allocator when multi-stream is enabled.
-      if (config.thread_local_stream_enabled()) {
-        gflags.push_back("--allocator_strategy=thread_local");
-        process_level_allocator_enabled = false;
-      } else {
-        process_level_allocator_enabled = true;
-      }
-
-      // support set flags from enviorment.
-      const phi::ExportedFlagInfoMap &env_map = phi::GetExportedFlagInfoMap();
-      std::ostringstream os;
-      os << "--tryfromenv=";
-      for (auto &pair : env_map) {
-        os << pair.second.name << ",";
-      }
-      auto tryfromenv_str = os.str();
-      gflags.push_back(os.str().substr(0, tryfromenv_str.size() - 1));
-
-      if (framework::InitGflags(gflags)) {
-        VLOG(3) << "The following gpu analysis configurations only take effect "
-                   "for the first predictor: ";
-        for (size_t i = 1; i < gflags.size(); ++i) {
-          VLOG(3) << gflags[i];
-        }
-      } else {
-        LOG(WARNING) << "The one-time configuration of analysis predictor "
-                        "failed, which may be due to native predictor called "
-                        "first and its configurations taken effect.";
-      }
-    });
-
-    if (config.thread_local_stream_enabled() &&
-        process_level_allocator_enabled) {
-      PADDLE_THROW(platform::errors::Fatal(
-          "When binding threads and streams, the use of "
-          "process-level allocators will result in undefined result "
-          "errors due to memory asynchronous operations."
-          "The thread and stream binding configuration of all "
-          "predictors should be the same in a single process."));
+              "Fail to set gflag: %s, please make sure the gflag exists.",
+              name));
+      VLOG(3) << "set gflag: --" << name << "=" << value;
+    };
+    // TODO(NHZlX): Should add the link to the doc of
+    // paddle_infer::CreatePredictor<paddle_infer::Config>
+    if (config.glog_info_disabled()) {
+      FLAGS_logtostderr = 1;
+      FLAGS_minloglevel = 2;  // GLOG_ERROR
     }
-  }
+
+    if (config.use_gpu()) {
+      static std::once_flag gflags_initialized;
+      static bool process_level_allocator_enabled;
+
+      std::call_once(gflags_initialized, [&]() {
+        PADDLE_ENFORCE_GE(
+            config.memory_pool_init_size_mb(),
+            0.f,
+            platform::errors::InvalidArgument(
+                "The size of memory pool should be greater than 0."));
+        PADDLE_ENFORCE_GE(config.gpu_device_id(),
+                          0,
+                          platform::errors::InvalidArgument(
+                              "Invalid device id (%d). The device id should be "
+                              "greater than 0.",
+                              config.gpu_device_id()));
+
+        float fraction_of_gpu_memory = config.fraction_of_gpu_memory_for_pool();
+        if (fraction_of_gpu_memory > 0.95f) {
+          LOG(ERROR)
+              << "Allocate too much memory for the GPU memory pool, assigned "
+              << config.memory_pool_init_size_mb() << " MB";
+          LOG(ERROR) << "Try to shink the value by setting "
+                        "AnalysisConfig::EnableUseGpu(...)";
+        }
+        if (fraction_of_gpu_memory >= 0.0f || fraction_of_gpu_memory <= 0.95f) {
+          std::string value = std::to_string(fraction_of_gpu_memory);
+          SetGflag("fraction_of_gpu_memory_to_use", value.data());
+        }
+
+        // TODO(Shixiaowei02): Add a mandatory scheme to use the thread local
+        // allocator when multi-stream is enabled.
+        if (config.thread_local_stream_enabled()) {
+          SetGflag("allocator_strategy", "thread_local");
+          process_level_allocator_enabled = false;
+        } else {
+          process_level_allocator_enabled = true;
+        }
+
+        // for inference, the following default values are better.
+        if (std::getenv("FLAGS_conv_workspace_size_limit") == nullptr) {
+          SetGflag("conv_workspace_size_limit", "32");
+        }
+        if (std::getenv("FLAGS_initial_cpu_memory_in_mb") == nullptr) {
+          SetGflag("initial_cpu_memory_in_mb", "0");
+        }
+
+        // support set gflags from environment.
+        std::vector<std::string> gflags;
+        const phi::ExportedFlagInfoMap &env_map = phi::GetExportedFlagInfoMap();
+        std::ostringstream os;
+        for (auto &pair : env_map) {
+          os << pair.second.name << ",";
+        }
+        std::string tryfromenv_str = os.str();
+        if (!tryfromenv_str.empty()) {
+          tryfromenv_str.pop_back();
+          tryfromenv_str = "--tryfromenv=" + tryfromenv_str;
+          gflags.push_back(tryfromenv_str);
+        }
+        if (framework::InitGflags(gflags)) {
+          VLOG(3)
+              << "The following gpu analysis configurations only take effect "
+                 "for the first predictor: ";
+          for (const auto &gflag : gflags) {
+            VLOG(3) << gflag;
+          }
+        } else {
+          LOG(WARNING) << "The one-time configuration of analysis predictor "
+                          "failed, which may be due to native predictor called "
+                          "first and its configurations taken effect.";
+        }
+      });
+
+      if (config.thread_local_stream_enabled() &&
+          process_level_allocator_enabled) {
+        PADDLE_THROW(platform::errors::Fatal(
+            "When binding threads and streams, the use of "
+            "process-level allocators will result in undefined result "
+            "errors due to memory asynchronous operations."
+            "The thread and stream binding configuration of all "
+            "predictors should be the same in a single process."));
+      }
+    }
+  };
+  SetGflags(config);
+
+  VLOG(3) << "create AnalysisPredictor";
 
   std::unique_ptr<PaddlePredictor> predictor(new AnalysisPredictor(config));
   // Each config can only be used for one predictor.
@@ -1605,6 +1634,51 @@ std::vector<std::string> AnalysisPredictor::GetOutputNames() {
   return output_names;
 }
 
+std::map<std::string, std::vector<int64_t>>
+AnalysisPredictor::GetOutputTensorShape() {
+  std::map<std::string, std::vector<int64_t>> output_shapes;
+  std::vector<std::string> names = GetOutputNames();
+  for (std::string name : names) {
+    auto *var = inference_program_->Block(0).FindVar(name);
+    PADDLE_ENFORCE_NOT_NULL(var,
+                            platform::errors::PreconditionNotMet(
+                                "Output %s does not exist.", name));
+    output_shapes[name] = var->GetShape();
+  }
+  return output_shapes;
+}
+
+std::map<std::string, paddle_infer::DataType>
+AnalysisPredictor::GetOutputTypes() {
+  std::map<std::string, paddle_infer::DataType> output_type;
+  std::vector<std::string> names = GetOutputNames();
+  for (const auto &name : names) {
+    auto *var = inference_program_->Block(0).FindVar(name);
+    PADDLE_ENFORCE_NOT_NULL(
+        var,
+        platform::errors::PreconditionNotMet(
+            "Output %s does not exist inference_program_.", name));
+    auto dtype = var->GetDataType();
+    if (dtype == paddle::framework::proto::VarType::FP32) {
+      output_type[name] = paddle_infer::DataType::FLOAT32;
+    } else if (dtype == paddle::framework::proto::VarType::FP16) {
+      output_type[name] = paddle_infer::DataType::FLOAT16;
+    } else if (dtype == paddle::framework::proto::VarType::INT64) {
+      output_type[name] = paddle_infer::DataType::INT64;
+    } else if (dtype == paddle::framework::proto::VarType::INT32) {
+      output_type[name] = paddle_infer::DataType::INT32;
+    } else if (dtype == paddle::framework::proto::VarType::UINT8) {
+      output_type[name] = paddle_infer::DataType::UINT8;
+    } else if (dtype == paddle::framework::proto::VarType::INT8) {
+      output_type[name] = paddle_infer::DataType::INT8;
+    } else {
+      PADDLE_THROW(paddle::platform::errors::Unimplemented(
+          "Unsupported data type `%s` when get output dtype ", dtype));
+    }
+  }
+  return output_type;
+}
+
 std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
     const std::string &name) {
   framework::Scope *scope;
@@ -1651,7 +1725,8 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
     auto custom_place = place_;
     auto paddleplace = static_cast<PaddlePlace>(
         static_cast<size_t>(PaddlePlace::kCUSTOM) +
-        phi::GetOrRegisterGlobalDeviceTypeId(place_.GetDeviceType()));
+        phi::CustomRegisteredDeviceMap::Instance()
+            .GetOrRegisterGlobalDeviceTypeId(place_.GetDeviceType()));
     res->SetPlace(paddleplace, custom_place.GetDeviceId());
   } else {
     auto gpu_place = place_;
@@ -1706,7 +1781,8 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
     auto custom_place = place_;
     auto paddleplace = static_cast<PaddlePlace>(
         static_cast<size_t>(PaddlePlace::kCUSTOM) +
-        phi::GetOrRegisterGlobalDeviceTypeId(place_.GetDeviceType()));
+        phi::CustomRegisteredDeviceMap::Instance()
+            .GetOrRegisterGlobalDeviceTypeId(place_.GetDeviceType()));
     res->SetPlace(paddleplace, custom_place.GetDeviceId());
   } else {
     auto gpu_place = place_;
@@ -1815,16 +1891,16 @@ bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
 
 void AnalysisPredictor::CollectShapeRangeInfo() {
   // if use gpu, sync first.
+  paddle::platform::DeviceContextPool &pool =
+      paddle::platform::DeviceContextPool::Instance();
   if (config_.use_gpu()) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    paddle::platform::DeviceContextPool &pool =
-        paddle::platform::DeviceContextPool::Instance();
-    auto gpu_place = place_;
-    auto *dev_ctx = static_cast<const phi::GPUContext *>(pool.Get(gpu_place));
+    auto *dev_ctx = pool.Get(place_);
+    auto stream = static_cast<phi::GPUContext *>(dev_ctx)->stream();
 #ifdef PADDLE_WITH_HIP
-    hipStreamSynchronize(dev_ctx->stream());
+    hipStreamSynchronize(stream);
 #else
-    cudaStreamSynchronize(dev_ctx->stream());
+    cudaStreamSynchronize(stream);
 #endif
 #endif
   }
@@ -1836,6 +1912,7 @@ void AnalysisPredictor::CollectShapeRangeInfo() {
       continue;
     }
     auto tensor = var->Get<phi::DenseTensor>();
+    if (!tensor.initialized()) continue;
     framework::DDim dim = tensor.dims();
     std::vector<int32_t> shape(dim.size());
     for (size_t i = 0; i < shape.size(); ++i) shape[i] = dim[i];
@@ -1847,22 +1924,40 @@ void AnalysisPredictor::CollectShapeRangeInfo() {
     // This is a simple method to identify all shape tensors with some
     // mistakes, but it doesn't matter.
     auto is_shape_tensor = tensor.numel() <= 7 && tensor.numel() >= 1;
-    if (tensor.dtype() == paddle::experimental::DataType::INT32 &&
+    if ((tensor.dtype() == phi::DataType::INT32 ||
+         tensor.dtype() == phi::DataType::INT64) &&
         is_shape_tensor) {
       std::vector<int> int32_host(tensor.numel());
-      if (tensor.place() == platform::CPUPlace()) {
+
+      if (platform::is_cpu_place(tensor.place())) {
+        auto &int32_tensor = tensor;
+        if (tensor.dtype() == phi::DataType::INT64) {
+          auto *cpu_ctx = pool.Get(platform::CPUPlace());
+          int32_tensor = phi::funcs::TransDataType(
+              reinterpret_cast<const phi::CPUContext &>(*cpu_ctx),
+              tensor,
+              DataType::INT32);
+        }
         paddle::memory::Copy(platform::CPUPlace(),
                              int32_host.data(),
                              platform::CPUPlace(),
-                             tensor.data<int>(),
-                             tensor.numel() * sizeof(int));
-      } else if (tensor.place() == platform::CUDAPlace()) {
+                             int32_tensor.data<int>(),
+                             int32_tensor.numel() * sizeof(int));
+      } else if (platform::is_gpu_place(tensor.place())) {
 #if defined(PADDLE_WITH_CUDA)
+        auto *dev_ctx = pool.Get(tensor.place());
+        auto &int32_tensor = tensor;
+        if (tensor.dtype() == phi::DataType::INT64) {
+          int32_tensor = phi::funcs::TransDataType(
+              reinterpret_cast<const phi::GPUContext &>(*dev_ctx),
+              tensor,
+              DataType::INT32);
+        }
         paddle::memory::Copy(platform::CPUPlace(),
                              int32_host.data(),
-                             platform::CUDAPlace(),
-                             tensor.data<int>(),
-                             tensor.numel() * sizeof(int),
+                             int32_tensor.place(),
+                             int32_tensor.data<int>(),
+                             int32_tensor.numel() * sizeof(int),
                              nullptr);
 #endif
       }
@@ -2172,10 +2267,12 @@ AnalysisPredictor::~AnalysisPredictor() {
 }
 
 std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone(void *stream) {
+  VLOG(3) << "AnalysisPredictor::Clone";
   std::lock_guard<std::mutex> lk(clone_mutex_);
   auto *x = new AnalysisPredictor(config_);
   x->status_is_cloned_ = true;
   x->root_predictor_id_ = this->root_predictor_id_;
+  x->config_.apply_optim_ = false;
   if (config_.use_external_stream_ && stream == nullptr) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "config has been configured to use external stream, but the Clone "
@@ -2349,7 +2446,9 @@ USE_TRT_CONVERTER(reshape2);
 USE_TRT_CONVERTER(gather_nd);
 USE_TRT_CONVERTER(reduce_mean);
 USE_TRT_CONVERTER(reduce_max);
+USE_TRT_CONVERTER(reduce_min);
 USE_TRT_CONVERTER(reduce_sum);
+USE_TRT_CONVERTER(reduce_prod);
 USE_TRT_CONVERTER(tile);
 USE_TRT_CONVERTER(conv3d);
 USE_TRT_CONVERTER(conv3d_transpose);
@@ -2385,7 +2484,7 @@ USE_TRT_CONVERTER(rsqrt);
 USE_TRT_CONVERTER(fused_preln_embedding_eltwise_layernorm)
 USE_TRT_CONVERTER(fused_embedding_eltwise_layernorm);
 USE_TRT_CONVERTER(preln_skip_layernorm)
-USE_TRT_CONVERTER(preln_residual_bias)
+USE_TRT_CONVERTER(fused_bias_dropout_residual_layer_norm)
 USE_TRT_CONVERTER(c_allreduce_sum)
 USE_TRT_CONVERTER(roll)
 USE_TRT_CONVERTER(strided_slice)
@@ -2396,6 +2495,7 @@ USE_TRT_CONVERTER(cast)
 USE_TRT_CONVERTER(recover_padding)
 USE_TRT_CONVERTER(remove_padding)
 USE_TRT_CONVERTER(equal);
+USE_TRT_CONVERTER(not_equal);
 USE_TRT_CONVERTER(top_k)
 USE_TRT_CONVERTER(top_k_v2)
 USE_TRT_CONVERTER(range)
@@ -2410,6 +2510,7 @@ USE_TRT_CONVERTER(layernorm_shift_partition)
 USE_TRT_CONVERTER(reverse_roll)
 USE_TRT_CONVERTER(preln_layernorm_shift_partition)
 USE_TRT_CONVERTER(merge_layernorm)
+USE_TRT_CONVERTER(trans_layernorm)
 USE_TRT_CONVERTER(skip_merge_layernorm)
 USE_TRT_CONVERTER(generic_plugin_creater)
 USE_TRT_CONVERTER(custom_plugin_creater)
@@ -2418,6 +2519,12 @@ USE_TRT_CONVERTER(logsigmoid)
 USE_TRT_CONVERTER(lookup_table)
 USE_TRT_CONVERTER(expand_v2)
 USE_TRT_CONVERTER(take_along_axis)
+USE_TRT_CONVERTER(skip_groupnorm_act)
+USE_TRT_CONVERTER(preln_groupnorm_act)
+#if IS_TRT_VERSION_GE(8522)
+USE_TRT_CONVERTER(flash_multihead_matmul)
+USE_TRT_CONVERTER(cross_multihead_matmul)
+#endif
 #if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
 USE_TRT_CONVERTER(sparse_fc)
 USE_TRT_CONVERTER(sparse_multihead_matmul)
@@ -2462,6 +2569,10 @@ std::vector<std::string> Predictor::GetInputNames() {
   return predictor_->GetInputNames();
 }
 
+std::map<std::string, std::vector<int64_t>> Predictor::GetInputTensorShape() {
+  return predictor_->GetInputTensorShape();
+}
+
 std::map<std::string, DataType> Predictor::GetInputTypes() {
   return predictor_->GetInputTypes();
 }
@@ -2476,6 +2587,14 @@ std::vector<std::string> Predictor::GetOutputNames() {
 
 std::unique_ptr<Tensor> Predictor::GetOutputHandle(const std::string &name) {
   return predictor_->GetOutputTensor(name);
+}
+
+std::map<std::string, std::vector<int64_t>> Predictor::GetOutputTensorShape() {
+  return predictor_->GetOutputTensorShape();
+}
+
+std::map<std::string, DataType> Predictor::GetOutputTypes() {
+  return predictor_->GetOutputTypes();
 }
 
 bool Predictor::Run() { return predictor_->ZeroCopyRun(); }

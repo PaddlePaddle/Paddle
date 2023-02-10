@@ -142,7 +142,7 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
         VLOG(4) << "Execute the runtime program by InterpreterCore";
         auto* interpreter_core = launch_context->InitializeInterpreterCore(
             place, const_cast<framework::Scope*>(&scope));
-        interpreter_core->Run({});
+        interpreter_core->Run({}, false);
       } else {
         platform::RecordEvent record_event_4(
             "Step 4. Execute the runtime graph by PE.");

@@ -640,7 +640,7 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
         )
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'sharding')
-        clip = paddle.fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0)
+        clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
         self.optimizer(
             avg_cost, strategy, train_prog, startup_prog, grad_clip=clip
         )
@@ -1309,7 +1309,7 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
             "micro_batch_size": 2,
             "accumulate_steps": 4,
         }
-        clip = paddle.fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0)
+        clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
         self.optimizer(
             avg_cost, strategy, train_prog, startup_prog, grad_clip=clip
         )
@@ -1547,7 +1547,7 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
             "micro_batch_size": 2,
             "accumulate_steps": 4,
         }
-        clip = paddle.fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0)
+        clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
         self.optimizer(
             avg_cost,
             strategy,

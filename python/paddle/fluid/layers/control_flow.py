@@ -353,7 +353,7 @@ class StaticRNN:
                 word = rnn.step_input(x_emb)
                 # create prev memory parameter, batch size comes from word
                 prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
-                hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                hidden = paddle.static.nn.fc(x=[word, prev], size=hidden_size, activation='relu')
                 # use hidden to update prev
                 rnn.update_memory(prev, hidden)
                 # mark hidden as output
@@ -444,7 +444,7 @@ class StaticRNN:
                         word = rnn.step_input(x_emb)
                         # create prev memory parameter, batch size comes from word
                         prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
-                        hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                        hidden = paddle.static.nn.fc(x=[word, prev], size=hidden_size, activation='relu')
                         # use hidden to update prev
                         rnn.update_memory(prev, hidden)
 
@@ -466,14 +466,14 @@ class StaticRNN:
                         is_sparse=False)
                 # transform batch size to dim 1
                 x_emb = paddle.transpose(x_emb, perm=[1, 0, 2])
-                boot_memory = fluid.layers.data(name='boot', shape=[hidden_size], dtype='float32', lod_level=1)
+                boot_memory = paddle.static.data(name='boot', shape=[-1, hidden_size], dtype='float32', lod_level=1)
                 rnn = fluid.layers.StaticRNN()
                 with rnn.step():
                         # mark created x_emb as input, each step process a word
                         word = rnn.step_input(x_emb)
                         # init memory
                         prev = rnn.memory(init=boot_memory)
-                        hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                        hidden = paddle.static.nn.fc(x=[word, prev], size=hidden_size, activation='relu')
                         # update hidden with prev
                         rnn.update_memory(prev, hidden)
 
@@ -576,7 +576,7 @@ class StaticRNN:
                         word = rnn.step_input(x_emb)
                         # create prev memory parameter, batch size comes from word
                         prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
-                        hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                        hidden = paddle.static.nn.fc(x=[word, prev], size=hidden_size, activation='relu')
                         # use hidden to update prev
                         rnn.update_memory(prev, hidden)
 
@@ -629,7 +629,7 @@ class StaticRNN:
                         word = rnn.step_input(x_emb)
                         # create prev memory parameter, batch size comes from word
                         prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
-                        hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                        hidden = paddle.static.nn.fc(x=[word, prev], size=hidden_size, activation='relu')
                         # use hidden to update prev
                         rnn.update_memory(prev, hidden)
                         rnn.step_output(hidden)
@@ -691,7 +691,7 @@ class StaticRNN:
                         word = rnn.step_input(x_emb)
                         # create prev memory parameter, batch size comes from word
                         prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
-                        hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                        hidden = paddle.static.nn.fc(x=[word, prev], size=hidden_size, activation='relu')
                         # use hidden to update prev
                         rnn.update_memory(prev, hidden)
                         # mark each step's hidden and word as output
@@ -1143,9 +1143,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         raise ValueError("loop_vars in while_loop should not be empty")
 
     pre_cond = cond(*loop_vars)
-    check_variable_and_dtype(
-        pre_cond, 'var of cond returned', ['bool'], 'fluid.layers.while_loop'
-    )
+
     if reduce(lambda a, b: a * b, pre_cond.shape, 1) != 1:
         raise TypeError(
             "the shape of the variable returned by cond should be [1],"
@@ -1167,6 +1165,12 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
         return loop_vars
     else:
+        check_variable_and_dtype(
+            pre_cond,
+            'var of cond returned',
+            ['bool'],
+            'fluid.layers.while_loop',
+        )
         while_loop_block = While(pre_cond, is_test, name)
         has_mutable_vars_in_loop = hold_mutable_vars(loop_vars)
         with while_loop_block.block():

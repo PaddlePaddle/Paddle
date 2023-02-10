@@ -463,7 +463,7 @@ def prelu(x, weight, data_format="NCHW", name=None):
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
         weight (Tensor): The learnable parameter with data type same as ``x``.
-            The weight shape is [1] or [in], where `in` is the input channel of ``x``.
+            The weight shape is [], [1] or [in], where `in` is the input channel of ``x``.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
         data_format(str, optional): Data format that specifies the layout of input.
             It may be "NC", "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Default: "NCHW".
@@ -494,18 +494,12 @@ def prelu(x, weight, data_format="NCHW", name=None):
             #    [-1.25,  6.  ,  7.  , -2.  ],
             #    [ 6.  ,  7.  ,  8.  ,  9.  ]]]]
     """
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'prelu')
-    check_variable_and_dtype(
-        weight, 'weight', ['float16', 'float32', 'float64'], 'prelu'
-    )
-
     assert (
-        len(weight.shape) == 1
-    ), "The dim count of weight shape should be 1 in prelu()."
+        len(weight.shape) == 0 or len(weight.shape) == 1
+    ), "The dim count of weight shape should be 0 or 1 in prelu()."
 
     mode = 'all'
-    if weight.shape[0] > 1:
-
+    if len(weight.shape) == 1 and weight.shape[0] > 1:
         true_data_format = [
             'NC',
             'NCL',
@@ -541,6 +535,12 @@ def prelu(x, weight, data_format="NCHW", name=None):
     if in_dygraph_mode():
         return _C_ops.prelu(x, weight, data_format, mode)
     else:
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], 'prelu'
+        )
+        check_variable_and_dtype(
+            weight, 'weight', ['float16', 'float32', 'float64'], 'prelu'
+        )
         helper = LayerHelper('prelu', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
         helper.append_op(
@@ -622,12 +622,6 @@ def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
             #   [-1.3766339   6.          7.         -2.3465784 ]
             #   [ 6.          7.          8.          9.        ]]]]
     """
-
-    if not in_dynamic_mode():
-        check_variable_and_dtype(
-            x, 'X', ['float16', 'float32', 'float64'], 'rrelu'
-        )
-
     if not isinstance(lower, float) or not isinstance(upper, float):
         raise TypeError(
             "The lower and upper values must be float type. Received: lower {}, upper {}.".format(
@@ -659,11 +653,11 @@ def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
     is_test = not training
 
     if in_dygraph_mode():
-        out, noise = _legacy_C_ops.rrelu(
-            x, 'lower', lower, 'upper', upper, 'is_test', is_test
-        )
-        return out
+        return _C_ops.rrelu(x, lower, upper, is_test)
     else:
+        check_variable_and_dtype(
+            x, 'X', ['float16', 'float32', 'float64'], 'rrelu'
+        )
         helper = LayerHelper('rrelu', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
         noise = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -1628,6 +1622,13 @@ def glu(x, axis=-1, name=None):
     check_variable_and_dtype(
         x, 'input', ['float16', 'float32', 'float64'], "glu"
     )
+    rank = len(x.shape)
+    if not (-rank <= axis < rank):
+        raise ValueError(
+            "Expected value range of `axis` is [{}, {}), but received axis: {}".format(
+                -rank, rank, axis
+            )
+        )
     a, b = chunk(x, 2, axis=axis, name=name)
     gate = sigmoid(b, name=name)
     out = paddle.multiply(a, gate, name=name)

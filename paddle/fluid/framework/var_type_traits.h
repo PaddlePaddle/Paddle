@@ -221,6 +221,7 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
     Vocab,
     std::vector<int>,
     std::vector<float>,
+    std::vector<std::string>,
     RawTensor>;
 template <typename T>
 struct VarTypeTrait {

@@ -221,6 +221,9 @@ class SparseAPI(ForwardAPI):
     auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
         "{kernel_name}", {{kernel_backend, kernel_layout, kernel_data_type}});
     const auto& phi_kernel = kernel_result.kernel;
+    if (FLAGS_low_precision_op_list) {{
+      phi::KernelFactory::Instance().AddToLowPrecisionKernelList("{self.api}", kernel_data_type);
+    }}
     VLOG(6) << "{self.api} api sparse kernel: " << phi_kernel;
 
     auto* dev_ctx = GetDeviceContextByBackend(kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
@@ -324,6 +327,8 @@ def source_include(header_file_path):
 #include "paddle/phi/infermeta/sparse/unary.h"
 #include "paddle/phi/infermeta/sparse/binary.h"
 #include "paddle/phi/infermeta/sparse/multiary.h"
+
+DECLARE_int32(low_precision_op_list);
 """
 
 

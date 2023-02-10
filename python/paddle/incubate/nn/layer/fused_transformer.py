@@ -247,6 +247,12 @@ class FusedMultiHeadAttention(Layer):
             division by zero. Default: 1e-05.
         nranks (int, optional): Distributed tensor model parallel nranks. Default is 1, means not using tensor parallel.
         ring_id (int, optional): For distributed tensor model parallel. Default is -1, means not using tensor parallel.
+        transpose_qkv_wb (bool, optional): Support input qkv matmul weight shape as
+            [hidden_size, 3 * hidden_size] and qkv matmul bias shape as [3 * hidden_size].
+            Will transpose the weight to [3, num_head, head_dim, hidden_size] and transpose bias to
+            [3, num_head, hidden_size] in the fused_attention_op. Only support for GPU for now.
+            The default value is False, which is not do transpose to qkv_w and qkv_b.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Examples:
 
@@ -283,6 +289,7 @@ class FusedMultiHeadAttention(Layer):
         epsilon=1e-5,
         nranks=1,
         ring_id=-1,
+        transpose_qkv_wb=False,
         name=None,
     ):
         super().__init__()
@@ -315,22 +322,31 @@ class FusedMultiHeadAttention(Layer):
 
         # tensor model parallel
         assert num_heads % nranks == 0
-        num_heads = num_heads // nranks
+        self.num_heads = num_heads // nranks
+
+        self.transpose_qkv_wb = transpose_qkv_wb
+        if self.transpose_qkv_wb:
+            # For tensor model parallel, use num_head * head_dim to compute the real shape.
+            qkv_wight_shape = [embed_dim, 3 * self.num_heads * self.head_dim]
+            qkv_bias_shape = [3 * self.num_heads * self.head_dim]
+        else:
+            qkv_wight_shape = [3, self.num_heads, self.head_dim, embed_dim]
+            qkv_bias_shape = [3, self.num_heads, self.head_dim]
 
         self.qkv_weight = self.create_parameter(
-            shape=[3, num_heads, self.head_dim, embed_dim],
+            shape=qkv_wight_shape,
             attr=qkv_weight_attr,
             dtype=self._dtype,
             is_bias=False,
         )
         self.qkv_bias = self.create_parameter(
-            shape=[3, num_heads, self.head_dim],
+            shape=qkv_bias_shape,
             attr=qkv_bias_attr,
             dtype=self._dtype,
             is_bias=True,
         )
         self.linear_weight = self.create_parameter(
-            shape=[num_heads * self.head_dim, embed_dim],
+            shape=[self.num_heads * self.head_dim, embed_dim],
             attr=linear_weight_attr,
             dtype=self._dtype,
             is_bias=False,
@@ -436,6 +452,8 @@ class FusedMultiHeadAttention(Layer):
             ln_epsilon=self._epsilon,
             training=self.training,
             ring_id=self._ring_id,
+            num_heads=self.num_heads,
+            transpose_qkv_wb=self.transpose_qkv_wb,
             name=self.name,
         )
         return out

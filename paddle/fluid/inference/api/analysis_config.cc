@@ -115,6 +115,17 @@ void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
   Update();
 }
 
+void AnalysisConfig::Exp_EnableUseCutlass() {
+#if defined(PADDLE_WITH_CUTLASS)
+  use_cutlass_ = true;
+#else
+  LOG(ERROR) << "Please compile with cutlass to EnableUseCutlass()";
+  use_cutlass_ = false;
+#endif
+
+  Update();
+}
+
 void AnalysisConfig::SetExecStream(void *stream) {
   PADDLE_ENFORCE_NOT_NULL(
       stream,
@@ -389,6 +400,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(use_fc_padding_);
   // GPU related.
   CP_MEMBER(use_gpu_);
+  CP_MEMBER(use_cutlass_);
   CP_MEMBER(use_external_stream_);
   CP_MEMBER(exec_stream_);
   CP_MEMBER(use_cudnn_);
@@ -422,6 +434,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(shape_range_info_path_);
   CP_MEMBER(trt_use_inspector_);
   CP_MEMBER(trt_engine_memory_sharing_);
+  CP_MEMBER(trt_engine_memory_sharing_identifier_);
   // Dlnne related
   CP_MEMBER(use_dlnne_);
   CP_MEMBER(dlnne_min_subgraph_size_);
@@ -1249,6 +1262,7 @@ std::string AnalysisConfig::Summary() {
   // gpu info
   os.InsertRow({"use_gpu", use_gpu_ ? "true" : "false"});
   if (use_gpu_) {
+    os.InsertRow({"use_cutlass", use_cutlass_ ? "true" : "false"});
     os.InsertRow({"gpu_device_id", std::to_string(gpu_device_id_)});
     os.InsertRow({"enable_gpu_mixed", std::to_string(enable_gpu_mixed_)});
     os.InsertRow({"memory_pool_init_size",

@@ -109,7 +109,7 @@ class CorrelationOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "Input1");
@@ -118,7 +118,7 @@ class CorrelationOp : public framework::OperatorWithKernel {
                           ctx.Input<phi::DenseTensor>("Input2")->dtype()),
                       platform::errors::InvalidArgument(
                           "X and Y shoule have the same datatype"));
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -158,9 +158,9 @@ class CorrelationOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
+    return phi::KernelKey(
         OperatorWithKernel::IndicateVarDataType(ctx, "Input1"), ctx.GetPlace());
   }
 };

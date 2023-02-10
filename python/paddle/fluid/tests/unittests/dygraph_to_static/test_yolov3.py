@@ -22,7 +22,6 @@ from yolov3 import YOLOv3, cfg
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
-from paddle.jit import ProgramTranslator
 
 paddle.enable_static()
 random.seed(0)
@@ -78,8 +77,7 @@ fake_data_reader = FakeDataReader()
 
 
 def train(to_static):
-    program_translator = ProgramTranslator()
-    program_translator.enable(to_static)
+    paddle.jit.enable_to_static(to_static)
 
     random.seed(0)
     np.random.seed(0)

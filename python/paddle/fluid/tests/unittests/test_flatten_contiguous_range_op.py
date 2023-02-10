@@ -124,6 +124,20 @@ class TestFlattenOp_5(TestFlattenOp):
         }
 
 
+class TestFlattenOp_6(TestFlattenOp):
+    def init_test_case(self):
+        self.in_shape = tuple()
+        self.start_axis = 0
+        self.stop_axis = -1
+        self.new_shape = (1,)
+
+    def init_attrs(self):
+        self.attrs = {
+            "start_axis": self.start_axis,
+            "stop_axis": self.stop_axis,
+        }
+
+
 class TestFlattenOpSixDims(TestFlattenOp):
     def init_test_case(self):
         self.in_shape = (3, 2, 3, 2, 4, 4)
@@ -156,7 +170,7 @@ class TestFlatten2OpError(unittest.TestCase):
             x_var = paddle.static.data(
                 name="x", shape=image_shape, dtype='float32'
             )
-            out = paddle.flatten(x_var, start_axis=2, stop_axis=1)
+            out = paddle.flatten(x_var, start_axis=3, stop_axis=1)
 
         self.assertRaises(ValueError, test_ValueError1)
 
@@ -175,6 +189,22 @@ class TestFlatten2OpError(unittest.TestCase):
             paddle.flatten(x_var, start_axis=2, stop_axis=10)
 
         self.assertRaises(ValueError, test_ValueError3)
+
+        def test_ValueError4():
+            x_var = paddle.static.data(
+                name="x", shape=image_shape, dtype='float32'
+            )
+            paddle.flatten(x_var, start_axis=2.0, stop_axis=10)
+
+        self.assertRaises(ValueError, test_ValueError4)
+
+        def test_ValueError5():
+            x_var = paddle.static.data(
+                name="x", shape=image_shape, dtype='float32'
+            )
+            paddle.flatten(x_var, start_axis=2, stop_axis=10.0)
+
+        self.assertRaises(ValueError, test_ValueError5)
 
         def test_type():
             # dtype must be float32, float64, int8, int32, int64, uint8.
@@ -293,6 +323,28 @@ class TestDygraphInplaceFlattenPython(unittest.TestCase):
         res_shape = test_Negative()
         self.assertTrue((2, 3, 16) == res_shape)
         paddle.enable_static()
+
+
+class TestFlatten0DTensorOpError(unittest.TestCase):
+    def test_errors(self):
+        image_shape = tuple()
+        x = np.random.uniform(-1.0, 1.0, []).astype('float32')
+
+        def test_ValueError1():
+            x_var = paddle.static.data(
+                name="x", shape=image_shape, dtype='float32'
+            )
+            out = paddle.flatten(x_var, start_axis=10, stop_axis=0)
+
+        self.assertRaises(ValueError, test_ValueError1)
+
+        def test_ValueError2():
+            x_var = paddle.static.data(
+                name="x", shape=image_shape, dtype='float32'
+            )
+            out = paddle.flatten(x_var, start_axis=0, stop_axis=10)
+
+        self.assertRaises(ValueError, test_ValueError2)
 
 
 if __name__ == "__main__":
