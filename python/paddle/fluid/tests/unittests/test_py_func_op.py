@@ -79,7 +79,7 @@ def simple_fc_net(img, label, use_py_func_op):
             hidden,
             size=200,
             bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0)
+                initializer=paddle.nn.initializer.Constant(value=1.0)
             ),
         )
         if not use_py_func_op:

@@ -67,7 +67,6 @@ from . import metrics
 from . import transpiler
 from . import incubate
 from .input import embedding, one_hot
-from . import distribute_lookup_table
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
 

@@ -77,21 +77,23 @@ class TestPSMinimize(unittest.TestCase):
             input=q,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__emb__",
                 learning_rate=emb_lr,
             ),
         )
         q_emb = paddle.reshape(q_emb, [-1, emb_dim])
         # vsum
-        q_sum = fluid.layers.sequence_pool(input=q_emb, pool_type='sum')
+        q_sum = paddle.static.nn.sequence_lod.sequence_pool(
+            input=q_emb, pool_type='sum'
+        )
         q_ss = paddle.nn.functional.softsign(q_sum)
         # fc layer after conv
         q_fc = paddle.static.nn.fc(
             x=q_ss,
             size=hid_dim,
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__q_fc__",
                 learning_rate=base_lr,
             ),
@@ -107,21 +109,23 @@ class TestPSMinimize(unittest.TestCase):
             input=pt,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__emb__",
                 learning_rate=emb_lr,
             ),
         )
         pt_emb = paddle.reshape(pt_emb, [-1, emb_dim])
         # vsum
-        pt_sum = fluid.layers.sequence_pool(input=pt_emb, pool_type='sum')
+        pt_sum = paddle.static.nn.sequence_lod.sequence_pool(
+            input=pt_emb, pool_type='sum'
+        )
         pt_ss = paddle.nn.functional.softsign(pt_sum)
         # fc layer
         pt_fc = paddle.static.nn.fc(
             x=pt_ss,
             size=hid_dim,
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__fc__",
                 learning_rate=base_lr,
             ),
@@ -136,21 +140,23 @@ class TestPSMinimize(unittest.TestCase):
             input=nt,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__emb__",
                 learning_rate=emb_lr,
             ),
         )
         nt_emb = paddle.reshape(nt_emb, [-1, emb_dim])
         # vsum
-        nt_sum = fluid.layers.sequence_pool(input=nt_emb, pool_type='sum')
+        nt_sum = paddle.static.nn.sequence_lod.sequence_pool(
+            input=nt_emb, pool_type='sum'
+        )
         nt_ss = paddle.nn.functional.softsign(nt_sum)
         # fc layer
         nt_fc = paddle.static.nn.fc(
             x=nt_ss,
             size=hid_dim,
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__fc__",
                 learning_rate=base_lr,
             ),

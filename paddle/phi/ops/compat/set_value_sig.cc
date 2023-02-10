@@ -194,6 +194,19 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "shape",
                                     "bool_values"},
                                    {"Out"});
+          } else if (ctx.HasAttr("fp16_values")) {
+            // NOTE(LiuYang):Here any_cast doesn't support fp16 values.
+            return KernelSignature("set_value",
+                                   {"Input"},
+                                   {"StartsTensorList",
+                                    "EndsTensorList",
+                                    "steps",
+                                    "axes",
+                                    "decrease_axes",
+                                    "none_axes",
+                                    "shape",
+                                    "fp16_values"},
+                                   {"Out"});
           }
         }
       } else {

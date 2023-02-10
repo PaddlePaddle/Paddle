@@ -464,7 +464,7 @@ class DistributedOpsPass(PassBase):
                     "is_sparse": True,
                 },
             )
-            PSGPU = paddle.fluid.core.PSGPU()
+            PSGPU = core.PSGPU()
             try:
                 gpu_slot = [int(var.name) for var in gpups_inputs]
             except (ValueError):
@@ -1052,7 +1052,7 @@ class SplitHeterWorkerOpsPass(PassBase):
         block_vars_detail = find_block_joints(
             program, program_block_ops, heter_ops
         )
-        heter_program = framework.Program()
+        heter_program = paddle.framework.Program()
         self._create_heter_program(
             program,
             attrs,
@@ -1628,13 +1628,13 @@ class SplitFlOpsPass(PassBase):
         debug_program(_main_file, prog_b)
 
         if not self.is_part_b:
-            self.partA_program = framework.Program()
+            self.partA_program = paddle.framework.Program()
             self._get_partA_program(prog_a.global_block())
             pass_ctx._attrs['part_a_main_program'] = self.partA_program
             self._clear_op_device_flag(self.partA_program)
             check_program(self.partA_program)
         else:
-            self.partB_program = framework.Program()
+            self.partB_program = paddle.framework.Program()
             self._get_partB_program(prog_b.global_block())
             pass_ctx._attrs['part_b_main_program'] = self.partB_program
             self._clear_op_device_flag(self.partB_program)

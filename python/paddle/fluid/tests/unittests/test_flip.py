@@ -196,6 +196,23 @@ class TestFlipTripleGradCheck(unittest.TestCase):
             self.func(p)
 
 
+class TestFlipError(unittest.TestCase):
+    def test_axis(self):
+        paddle.enable_static()
+
+        def test_axis_rank():
+            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+            output = paddle.flip(input, axis=[[0]])
+
+        self.assertRaises(TypeError, test_axis_rank)
+
+        def test_axis_rank2():
+            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+            output = paddle.flip(input, axis=[[0, 0], [1, 1]])
+
+        self.assertRaises(TypeError, test_axis_rank2)
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

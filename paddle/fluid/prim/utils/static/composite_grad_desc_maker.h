@@ -57,6 +57,8 @@ class CompositeGradOpMakerBase {
         acting_program_(framework::ProgramDesc()),
         grad_block_(grad_block) {
     // TODO(jiabin): This should always execute by one thread...
+    VLOG(6) << "Constructing Composite Grad func for " << fwd_op_.Type()
+            << "_grad ";
     StaticCompositeContext::Instance().SetBlock(
         acting_program_.MutableBlock(0));
   }
@@ -64,6 +66,7 @@ class CompositeGradOpMakerBase {
   virtual ~CompositeGradOpMakerBase() = default;
 
   virtual std::vector<std::unique_ptr<framework::OpDesc>> operator()() {
+    VLOG(3) << "Runing Composite Grad func for " << fwd_op_.Type() << "_grad ";
     this->Apply();
     std::vector<std::unique_ptr<framework::OpDesc>> ops;
     // TODO(jiabin): Support multiple blocks later
@@ -318,6 +321,7 @@ class CompositeGradOpMakerBase {
       grad_var_name = framework::kEmptyVarName;
       if (drop_empty_grad) return nullptr;
     }
+
     if (original_block_->HasVar(grad_var_name)) {
       // Copy Var from original block to active block, or create a new one.
       CopyVarFromOrig(grad_var_name);
@@ -333,6 +337,12 @@ class CompositeGradOpMakerBase {
     auto grad_var_name = framework::GradVarName(var_name);
     (*this->grad_to_var_)[grad_var_name] = var_name;
     VLOG(8) << "Valid gradients: " << grad_var_name;
+
+    auto target_grad = StaticCompositeContext::Instance().GetTargetGradName();
+    if (target_grad.find(grad_var_name) != target_grad.end()) {
+      grad_var_name = target_grad.at(grad_var_name);
+    }
+
     if (original_block_->HasVar(grad_var_name)) {
       // Copy Var from original block to active block, or create a new one.
       CopyVarFromOrig(grad_var_name);
@@ -421,7 +431,11 @@ class CompositeGradOpMakerBase {
                      return g_name;
                    });
     std::vector<framework::VarDesc*> grad_out;
-    for (const auto& name : ret_val) {
+    for (auto name : ret_val) {
+      auto target_grad = StaticCompositeContext::Instance().GetTargetGradName();
+      if (target_grad.find(name) != target_grad.end()) {
+        name = target_grad.at(name);
+      }
       // TODO(jiabin): Will this cause fill zeros error?
       if (original_block_->HasVar(name)) {
         // Copy Var from original block to active block, or create a new one.

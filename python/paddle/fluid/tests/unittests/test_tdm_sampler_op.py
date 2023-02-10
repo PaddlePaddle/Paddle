@@ -290,12 +290,10 @@ class TestTDMSamplerShape(unittest.TestCase):
             layer_node_num_list,
             leaf_node_num,
             tree_travel_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(
-                    travel_array
-                )
+                initializer=paddle.nn.initializer.Assign(travel_array)
             ),
             tree_layer_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(layer_array)
+                initializer=paddle.nn.initializer.Assign(layer_array)
             ),
             output_positive=True,
             output_list=True,

@@ -1,6 +1,6 @@
 add_subdirectory(auto_code_generated)
-add_subdirectory(manual)
-add_subdirectory(generated)
+add_subdirectory(manual_prim)
+add_subdirectory(generated_prim)
 
 if(NOT (NOT WITH_PYTHON AND ON_INFER))
   cc_library(

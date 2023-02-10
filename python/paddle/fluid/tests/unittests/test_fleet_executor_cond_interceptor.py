@@ -33,7 +33,7 @@ def body(i, ten, data):
     return [i, ten, data]
 
 
-num_micro_batches = 3
+num_micro_batches = 4
 
 
 def batch_generator_creator():
@@ -126,7 +126,7 @@ class TestFleetExecutor(unittest.TestCase):
         task_a = TaskNode(
             0,
             num_micro_batches,
-            node_type="Compute",
+            node_type="Start",
             task_id=0,
             program=program_a,
             lazy_initialize=True,
@@ -165,19 +165,24 @@ class TestFleetExecutor(unittest.TestCase):
             lazy_initialize=True,
         )
 
+        infinite_buff_size = -1
         task_a.add_downstream_task(task_b.task_id(), 2)
         task_b.add_upstream_task(task_a.task_id(), 2)
-        task_b.add_downstream_task(task_c.task_id(), 100)
-        task_c.add_upstream_task(task_b.task_id(), 100)
+        task_b.add_downstream_task(task_c.task_id(), infinite_buff_size)
+        task_c.add_upstream_task(task_b.task_id(), infinite_buff_size)
         task_c.add_downstream_task(task_d.task_id(), 2)
         task_d.add_upstream_task(task_c.task_id(), 2)
-        task_d.add_downstream_task(task_b.task_id(), 100, core.DependType.LOOP)
-        task_b.add_upstream_task(task_d.task_id(), 100, core.DependType.LOOP)
+        task_d.add_downstream_task(
+            task_b.task_id(), infinite_buff_size, core.DependType.LOOP
+        )
+        task_b.add_upstream_task(
+            task_d.task_id(), infinite_buff_size, core.DependType.LOOP
+        )
         task_b.add_downstream_task(
-            task_e.task_id(), 100, core.DependType.STOP_LOOP
+            task_e.task_id(), infinite_buff_size, core.DependType.STOP_LOOP
         )
         task_e.add_upstream_task(
-            task_b.task_id(), 100, core.DependType.STOP_LOOP
+            task_b.task_id(), infinite_buff_size, core.DependType.STOP_LOOP
         )
 
         main_program._pipeline_opt = {

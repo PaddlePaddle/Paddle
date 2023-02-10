@@ -19,7 +19,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/prim/api/manual/utils/utils.h"
+#include "paddle/fluid/prim/api/manual_prim/utils/utils.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/fluid/prim/utils/utils.h"
 #include "paddle/phi/core/enforce.h"

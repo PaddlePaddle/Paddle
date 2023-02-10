@@ -153,12 +153,10 @@ void ProcessGroupCustom::CreateCustomManagerCache(
   std::vector<std::unique_ptr<CustomDeviceContext>> dev_ctx;
   dev_ctx.resize(places.size());
 
-  std::unique_ptr<phi::ccl::CCLComm> comms(
-      new phi::ccl::CCLComm[places.size()]);
   for (size_t i = 0; i < places.size(); ++i) {
     phi::DeviceGuard guard(places[i]);
     ccl_comms[i] = CustomCCLCommManager::Create(
-        device_type, GetSize(), GetRank(), &ccl_id, comms.get() + i);
+        device_type, GetSize(), GetRank(), &ccl_id, new phi::ccl::CCLComm);
     dev_ctx[i].reset(new CustomDeviceContext(places[i]));
   }
 

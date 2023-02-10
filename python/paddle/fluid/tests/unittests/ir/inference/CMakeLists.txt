@@ -18,15 +18,6 @@ string(REPLACE ".py" "" TEST_TRT_CONVERTER "${TEST_TRT_CONVERTER}")
 
 if(NOT WITH_DISTRIBUTE)
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_delete_c_identity_op_pass")
-  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
-       "test_trt_convert_preln_residual_bias")
-  list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_preln_residual_bias")
-  list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_preln_residual_bias")
-  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
-       "test_trt_convert_preln_residual_no_bias")
-  list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_preln_residual_no_bias")
-  list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_preln_residual_no_bias")
-
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_trt_convert_c_allreduce")
   list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_c_allreduce")
   list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_c_allreduce")
@@ -39,6 +30,10 @@ if(WIN32)
        "test_preln_groupnorm_act_fuse_pass")
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
        "test_element_groupnorm_act_fuse_pass")
+  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_groupnorm_act_pass_fuse_pass")
+  list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_trans_layernorm")
+  list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_trans_layernorm")
+  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_trt_convert_trans_layernorm")
   list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_fused_token_prune")
   list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_fused_token_prune")
 endif()
@@ -98,6 +93,22 @@ if(WITH_MKLDNN)
   endforeach()
 endif()
 
+file(
+  GLOB TEST_XPU_IR_PASSES
+  RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+  "test_xpu_*.py")
+string(REPLACE ".py" "" TEST_XPU_IR_PASSES "${TEST_XPU_IR_PASSES}")
+foreach(TEST_XPU_IR_PASS ${TEST_XPU_IR_PASSES})
+  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES ${TEST_XPU_IR_PASS})
+endforeach()
+
+if(WITH_XPU)
+  foreach(target ${TEST_XPU_IR_PASSES})
+    py_test_modules(${target} MODULES ${target})
+    set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
+  endforeach()
+endif()
+
 # below are cutlass unitests
 file(
   GLOB TEST_CUTLASS
@@ -140,6 +151,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
   #set_tests_properties(test_trt_multiclass_nms_op PROPERTIES TIMEOUT 200)
   set_tests_properties(test_trt_dynamic_shape PROPERTIES TIMEOUT 120)
   set_tests_properties(test_trt_inspector PROPERTIES TIMEOUT 60)
+  set_tests_properties(test_trt_inference_predictor PROPERTIES TIMEOUT 60)
 
   if(WITH_NV_JETSON)
     set_tests_properties(
@@ -193,6 +205,9 @@ if(WITH_GPU AND TENSORRT_FOUND)
                          PROPERTIES TIMEOUT 120)
     set_tests_properties(test_conv_elementwise_add_act_fuse_pass
                          PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_onednn_conv_bias_fuse_pass PROPERTIES TIMEOUT 300)
+    set_tests_properties(test_onednn_conv_concat_activation_fuse_pass
+                         PROPERTIES TIMEOUT 300)
     set_tests_properties(test_flatten2_matmul_fuse_pass PROPERTIES TIMEOUT 240)
     set_tests_properties(test_squeeze2_matmul_fuse_pass PROPERTIES TIMEOUT 240)
     set_tests_properties(test_reshape2_matmul_fuse_pass PROPERTIES TIMEOUT 240)
@@ -225,11 +240,13 @@ if(WITH_GPU AND TENSORRT_FOUND)
                            PROPERTIES TIMEOUT 120)
       set_tests_properties(test_preln_groupnorm_act_fuse_pass PROPERTIES TIMEOUT
                                                                          120)
+      set_tests_properties(test_groupnorm_act_pass_fuse_pass PROPERTIES TIMEOUT
+                                                                        120)
     endif()
   endif()
 
   if(WITH_MKLDNN)
-    set_tests_properties(test_mkldnn_conv_elementwise_add_fuse_pass
+    set_tests_properties(test_onednn_conv_elementwise_add_fuse_pass
                          PROPERTIES TIMEOUT 120)
     set_tests_properties(test_mkldnn_depthwise_conv_pass PROPERTIES TIMEOUT 120)
     set_tests_properties(test_onednn_reshape_transpose_matmul_fuse_pass

@@ -33,7 +33,7 @@ def simple_fc_net(use_feed):
             size=200,
             activation='tanh',
             bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0)
+                initializer=paddle.nn.initializer.Constant(value=1.0)
             ),
         )
     prediction = paddle.static.nn.fc(hidden, size=10, activation='softmax')
@@ -56,7 +56,7 @@ def fc_with_batchnorm(use_feed):
                 size=200,
                 activation='tanh',
                 bias_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant(value=1.0)
+                    initializer=paddle.nn.initializer.Constant(value=1.0)
                 ),
             )
 

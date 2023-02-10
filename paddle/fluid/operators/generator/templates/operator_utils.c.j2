@@ -665,7 +665,7 @@ class {{op_name | to_composite_grad_opmaker_name}} : public prim::CompositeGradO
 {%- endmacro %}
 
 {% macro call_composite_backward_api(composite_func_info) %}
-    VLOG(3) << "Runing {{composite_func_info["func_name"]}} composite func";
+    VLOG(6) << "Runing {{composite_func_info["func_name"]}} composite func";
     prim::{{composite_func_info["func_name"]}}<prim::DescTensor>({{composite_func_info["func_args"]}});
 {%- endmacro %}
 
