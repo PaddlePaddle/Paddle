@@ -112,7 +112,7 @@ def gelu_composite(x, approximate):
         # gelu(x) = 0.5 * x * (1 + tanh(sqrt(2 / \pi) * (x + 0.044715 * x^{3})))
         kAlpha = full(x.shape, M_2_SQRTPI * M_SQRT1_2, x.dtype)
         GELU_CONSTANT = full(x.shape, 0.044715, x.dtype)
-        tanh_out = tanh(kAlpha * (x + GELU_CONSTANT * pow(x, 3)))
+        tanh_out = tanh(kAlpha * (x + GELU_CONSTANT * x * x * x))
         out = x * half * (one + tanh_out)
         return out
 
