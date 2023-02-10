@@ -60,6 +60,7 @@ void InterpreterEngine::CreateInterpreterCore() {
   GraphToProgram(graph, &converted_prog_, nullptr);
 
   framework::interpreter::ExecutionConfig execution_config;
+  execution_config.create_local_scope = false;
   execution_config.used_for_jit = true;
 
   auto in_names = info_->InputArgNames();
