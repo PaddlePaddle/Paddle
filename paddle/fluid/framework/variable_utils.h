@@ -14,6 +14,7 @@
 #pragma once
 
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/common/scalar.h"
 
 namespace paddle {
