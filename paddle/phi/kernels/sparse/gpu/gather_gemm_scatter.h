@@ -116,20 +116,20 @@ void launchKernel(const GPUContext& dev_ctx,
   CUTLASS_CHECK(status);
   gemm_op(dev_ctx.stream());
 }
-void dispatchKernel(const GPUContext& dev_ctx,
-                    const void* const a,
-                    const void* const b,
-                    const void* const c,
-                    void* const d,
-                    const int m,
-                    const int n,
-                    const int k,
-                    const void* a_indices,
-                    const void* c_d_indices,
-		    const bool cutlass,
-		    const phi::DataType type) {
+static void dispatchKernel(const GPUContext& dev_ctx,
+                           const void* const a,
+                           const void* const b,
+                           const void* const c,
+                           void* const d,
+                           const int m,
+                           const int n,
+                           const int k,
+                           const void* a_indices,
+                           const void* c_d_indices,
+                           const bool cutlass,
+                           const phi::DataType type) {
   if (!cutlass) return;
-  
+
   if (type == phi::DataType::FLOAT16) {
     fp16_gather_gemm_scatter gather_gemm_scatter = getBestFp16Kernel(m, n, k);
     gather_gemm_scatter(dev_ctx,
