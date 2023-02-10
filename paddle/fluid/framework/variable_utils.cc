@@ -17,6 +17,7 @@
 
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/tensor_utils.h"
