@@ -1324,7 +1324,7 @@ void GatherInferMeta(const MetaTensor& x,
           "to be in range of [%d, %d]. But received Attr(axis) = %d.",
           -input_dim.size(),
           input_dim.size() - 1,
-          dim));
+          axis_v));
   PADDLE_ENFORCE_LT(
       axis_v,
       input_dim.size(),
@@ -1333,7 +1333,7 @@ void GatherInferMeta(const MetaTensor& x,
           "to be in range of [%d, %d]. But received Attr(axis) = %d.",
           -input_dim.size(),
           input_dim.size() - 1,
-          dim));
+          axis_v));
 
   if (index_dims.size() == 0) {
     // 0D index will decrease the dimension
