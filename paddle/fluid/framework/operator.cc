@@ -1627,12 +1627,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   if (!all_kernels_must_compute_runtime_shape_ &&
       HasAttr(kAllKernelsMustComputeRuntimeShape))
     all_kernels_must_compute_runtime_shape_ = true;
-  const Scope* cur_scope = &scope;
   CheckWhetherPreparePhiData(Inputs(), Outputs(), scope);
   if (!enable_cache_runtime_context_) {
     RuntimeContext ctx(Inputs(), Outputs(), scope);
     RunImpl(scope, place, &ctx);
-    pre_scope_ = cur_scope;
   } else if (run_phi_kernel_ && impl_ != nullptr && !need_prepare_data_ &&
              !need_prepare_phi_data_) {
     if (!all_kernels_must_compute_runtime_shape_ && impl_->NeedInferShape()) {
@@ -1640,12 +1638,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     }
     (*phi_kernel_)(impl_->getKernelContext());
   } else {
-    if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
+    if (runtime_ctx_.get() == nullptr) {
       std::lock_guard<std::mutex> lock(cache_update_mutex_);
-      if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
-        runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
-        pre_scope_ = cur_scope;
-      }
+      runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
     }
     RunImpl(scope, place, runtime_ctx_.get());
   }
@@ -2022,8 +2017,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // To solve issue #15032, have a discussion with @Luotao for cpu inference,
   // do not cache transfer scope, hence in this case delete transfer scope
   // after run to avoid memory leak
-  if (transfer_scope && !run_by_executor_ && !enable_cache_transfer_scope_) {
-    scope.DeleteScope(transfer_scope);
+  if (cache_transfer_scope_ && !run_by_executor_ &&
+      !enable_cache_transfer_scope_) {
+    scope.DeleteScope(cache_transfer_scope_);
   }
 }
 
@@ -2552,23 +2548,21 @@ Scope* OperatorWithKernel::PrepareData(
         if (new_expected_kernel_key) {
           if (kernel_type_for_var.backend() == phi::Backend::GPU ||
               kernel_type_for_var.backend() == phi::Backend::GPUDNN ||
-              kernel_type_for_var.backend() == phi::Backend::XPU ||
               new_expected_kernel_key->backend() == phi::Backend::GPU ||
-              new_expected_kernel_key->backend() == phi::Backend::GPUDNN ||
-              new_expected_kernel_key->backend() == phi::Backend::XPU) {
-            new_scope = TryCreateTransferScope(
+              new_expected_kernel_key->backend() == phi::Backend::GPUDNN) {
+            cache_transfer_scope_ = TryCreateTransferScope(
                 kernel_type_for_var, *new_expected_kernel_key, &scope);
             enable_cache_transfer_scope_ = true;
+            new_scope = cache_transfer_scope_;
           }
         } else if (kernel_type_for_var.backend() == phi::Backend::GPU ||
                    kernel_type_for_var.backend() == phi::Backend::GPUDNN ||
-                   kernel_type_for_var.backend() == phi::Backend::XPU ||
                    expected_kernel_key.backend() == phi::Backend::GPU ||
-                   expected_kernel_key.backend() == phi::Backend::GPUDNN ||
-                   expected_kernel_key.backend() == phi::Backend::XPU) {
-          new_scope = TryCreateTransferScope(
+                   expected_kernel_key.backend() == phi::Backend::GPUDNN) {
+          cache_transfer_scope_ = TryCreateTransferScope(
               kernel_type_for_var, expected_kernel_key, &scope);
           enable_cache_transfer_scope_ = true;
+          new_scope = cache_transfer_scope_;
         }
       }
 
@@ -2659,25 +2653,14 @@ Scope* OperatorWithKernel::PrepareData(
     }
   }
 
-  // If pre_scope = &scope, it means that scope is cached and the op is not in
-  // while block. If new_scope = nullptr, it means that for each input of this
-  // Op, there is no need to do PrepareData. So PrepareData could be skipped at
-  // the rest iterations to save the elapsed time.
   // We do not support skipping PrepareData in while block, because the Op's
   // input may be changed by subsequent Ops, which may cause an error.
-
   // For inference, ops that behind conditional branch aren't supported well,
   // so disable prepare optimization conservatively.
   bool force_prepare_data = HasAttr("inference_force_prepare_data") &&
                             Attr<bool>("inference_force_prepare_data");
-  if (enable_cache_runtime_context_) {
-    if ((pre_scope_ == &scope && !force_prepare_data)) {
-      need_prepare_data_ = false;
-    }
-  } else {
-    if (pre_scope_ == &scope && new_scope == nullptr && !force_prepare_data) {
-      need_prepare_data_ = false;
-    }
+  if (enable_cache_runtime_context_ && !force_prepare_data) {
+    need_prepare_data_ = false;
   }
 
   return new_scope;
