@@ -988,7 +988,7 @@ class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
     auto src0_dims = src0_md.get_dims();
     auto src1_dims = src1_md.get_dims();
     if (allow_hack && dst_tz.size() == 4 && src0_dims[2] != src1_dims[2]) {
-      auto are_strides_plain = [](int64_t* strides, int ndims) {
+      auto are_strides_plain = [](std::vector<int64_t>& strides, int ndims) {
         for (int i = 0; i < ndims - 1; ++i) {
           if (strides[i] < strides[i + 1]) {
             return false;
