@@ -126,8 +126,6 @@ void dispatchKernel(const GPUContext& dev_ctx,
                     const int k,
                     const void* a_indices,
                     const void* c_d_indices,
-                    void const alpha,
-                    void const beta,
 		    const bool cutlass,
 		    const phi::DataType type) {
   if (!cutlass) return;
@@ -159,8 +157,8 @@ void dispatchKernel(const GPUContext& dev_ctx,
                         k,
                         static_cast<const int32_t*>(a_indices),
                         static_cast<const int32_t*>(c_d_indices),
-                        static_cast<float>(alpha),
-                        static_cast<float>(beta));
+                        static_cast<float>(1),
+                        static_cast<float>(1));
   } else if (type == phi::DataType::FLOAT64) {
     fp64_gather_gemm_scatter gather_gemm_scatter = getBestFp64Kernel(m, n, k);
     gather_gemm_scatter(dev_ctx,
@@ -173,8 +171,8 @@ void dispatchKernel(const GPUContext& dev_ctx,
                         k,
                         static_cast<const int32_t*>(a_indices),
                         static_cast<const int32_t*>(c_d_indices),
-                        static_cast<double>(alpha),
-                        static_cast<double>(beta));
+                        static_cast<double>(1),
+                        static_cast<double>(1));
   }
 }
 
