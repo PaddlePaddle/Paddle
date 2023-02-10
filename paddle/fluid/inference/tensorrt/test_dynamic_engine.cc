@@ -24,6 +24,7 @@ limitations under the License. */
 #endif
 #include "paddle/fluid/inference/tensorrt/plugin/fused_token_prune_op_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin/group_norm_op_plugin.h"
+#include "paddle/fluid/inference/tensorrt/plugin/layer_norm_op_plugin.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/float16.h"
 
@@ -746,6 +747,7 @@ TEST_F(TensorRTDynamicTestFusedTokenPruneHalf, test_fused_token_prune) {
   LOG(INFO) << "finish";
 #endif
 }
+
 #if IS_TRT_VERSION_GE(8000)
 class TensorRTDynamicShapeGNTest : public ::testing::Test {
  protected:
@@ -1050,6 +1052,264 @@ TEST_F(TensorRTDynamicShapeGNTest, test_trt_dynamic_shape_groupnorm) {
   return;
 }
 #endif
+
+#if IS_TRT_VERSION_GE(8000)
+class TensorRTDynamicShapeLNTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    ctx_ = new phi::GPUContext(platform::CUDAPlace(0));
+    ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
+                           .get());
+    ctx_->SetHostAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(paddle::platform::CPUPlace())
+            .get());
+    ctx_->SetZeroAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetZeroAllocator(platform::CUDAPlace(0))
+            .get());
+    ctx_->SetPinnedAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(paddle::platform::CUDAPinnedPlace())
+            .get());
+    ctx_->PartialInitWithAllocator();
+
+    std::map<std::string, std::vector<int>> min_input_shape = {
+        {"x", {n_, c_, h_}}};
+    std::map<std::string, std::vector<int>> max_input_shape = {
+        {"x", {n_, c_, h_}}};
+    std::map<std::string, std::vector<int>> optim_input_shape = {
+        {"x", {n_, c_, h_}}};
+    std::map<std::string, std::vector<int>> min_input_value = {};
+    std::map<std::string, std::vector<int>> max_input_value = {};
+    std::map<std::string, std::vector<int>> optim_input_value = {};
+
+    engine_ = new TensorRTEngine(16,
+                                 1 << 10,
+                                 AnalysisConfig::Precision::kInt8,
+                                 nullptr,
+                                 0,
+                                 min_input_shape,
+                                 max_input_shape,
+                                 optim_input_shape,
+                                 min_input_value,
+                                 max_input_value,
+                                 optim_input_value,
+                                 false,
+                                 phi::DataType::FLOAT32,
+                                 NaiveLogger::Global());
+    engine_->InitNetwork();
+  }
+
+  void TearDown() override {
+    if (engine_) {
+      delete engine_;
+      engine_ = nullptr;
+    }
+  }
+
+  void PrepareInputOutput(const std::vector<float> &input,
+                          std::vector<int> output_shape) {
+    paddle::framework::TensorFromVector(input, *ctx_, &x_);
+    paddle::framework::TensorFromVector(input, *ctx_, &y_);
+  }
+  void GetOutput(std::vector<float> *output) {
+    paddle::framework::TensorToVector(y_, *ctx_, output);
+  }
+
+  struct logical_struct {
+    int m;
+    int n;
+  };
+
+  int rowmajor(struct logical_struct shape, struct logical_struct index) {
+    return index.m * shape.n + index.n;
+  }
+
+  // this function
+  void naive_qdq_cpu(
+      float *output, const float *input, int n, float q, float dq) {
+    for (int i = 0; i < n; i++) {
+      float tmp = input[i];
+      int32_t qtmp = std::round(tmp / q);
+      qtmp = std::max(-128, qtmp);
+      qtmp = std::min(127, qtmp);
+      output[i] = qtmp * dq;
+    }
+  }
+
+  void naive_layernorm_post_qdq(float *output,
+                                const float *input,
+                                int m,
+                                int n,
+                                float epsilon,
+                                float post_scale,
+                                const float *scale,
+                                const float *bias) {
+    struct logical_struct shape {
+      m, n
+    };
+
+    for (int i = 0; i < m; i++) {
+      float sum = 0.f;
+      float q2sum = 0.f;
+      for (int j = 0; j < n; j++) {
+        struct logical_struct index {
+          i, j
+        };
+        float tmp_data = *(input + rowmajor(shape, index));
+        sum += tmp_data;
+        q2sum += tmp_data * tmp_data;
+      }
+
+      float mean = sum / n;
+      float sigma = sqrtf(q2sum / n - mean * mean + epsilon);
+
+      for (int j = 0; j < n; j++) {
+        struct logical_struct index {
+          i, j
+        };
+        float tmp_data = *(input + rowmajor(shape, index));
+        float norm_data = (tmp_data - mean) / sigma;
+        float scale_v = *(scale + j);
+        float bias_v = *(bias + j);
+
+        norm_data = norm_data * scale_v + bias_v;
+        *(output + rowmajor(shape, index)) = norm_data;
+      }
+    }
+
+    naive_qdq_cpu(output, output, m * n, post_scale, post_scale);
+  }
+
+ protected:
+  phi::DenseTensor x_;
+  phi::DenseTensor y_;
+  TensorRTEngine *engine_;
+  phi::GPUContext *ctx_;
+  // case from SD
+  int n_ = 2;
+  int c_ = 128;
+  int h_ = 320;
+  float epsilon_ = 0.000009999999747378752;
+  const int begin_norm_axis_ = 2;
+};
+
+TEST_F(TensorRTDynamicShapeLNTest, test_trt_dynamic_shape_layernorm) {
+  tensorrt::plugin::TrtPluginRegistry::Global()->RegistToTrt();
+
+  float *bias = new float[h_];
+  float *scale = new float[h_];
+  for (int i = 0; i < h_; i++) {
+    bias[i] = (i % 100) / 100.f;
+  }
+  for (int i = 0; i < h_; i++) {
+    scale[i] = (i % 100) / 100.f;
+  }
+
+  auto *x = engine_->DeclareInput(
+      "x", nvinfer1::DataType::kFLOAT, nvinfer1::Dims3{n_, c_, h_});
+
+  nvinfer1::Dims scale_dims;
+  scale_dims.nbDims = 1;
+  scale_dims.d[0] = 1;
+  float qscale_data = 1.f;
+  float dqscale_data = 1.f;
+  TensorRTEngine::Weight q_weight(nvinfer1::DataType::kFLOAT, &qscale_data, 1);
+  TensorRTEngine::Weight dq_weight(
+      nvinfer1::DataType::kFLOAT, &dqscale_data, 1);
+
+  auto *qscale_tensor =
+      TRT_ENGINE_ADD_LAYER(engine_, Constant, scale_dims, q_weight.get())
+          ->getOutput(0);
+  auto *dqscale_tensor =
+      TRT_ENGINE_ADD_LAYER(engine_, Constant, scale_dims, dq_weight.get())
+          ->getOutput(0);
+
+  auto *q_layer = TRT_ENGINE_ADD_LAYER(engine_, Quantize, *x, *qscale_tensor);
+  q_layer->setAxis(1);
+  auto *q_layer_tensor = q_layer->getOutput(0);
+
+  bool with_fp16 = true;
+  bool with_int8 = true;
+  std::vector<int64_t> mean_shape{1};
+  std::vector<int64_t> variance_shape{1};
+  plugin::LayerNormPluginDynamic *plugin =
+      new plugin::LayerNormPluginDynamic(bias,
+                                         h_,
+                                         scale,
+                                         h_,
+                                         begin_norm_axis_,
+                                         epsilon_,
+                                         mean_shape,
+                                         variance_shape,
+                                         with_fp16,
+                                         with_int8);
+
+  nvinfer1::ILayer *layernorm_layer =
+      engine_->AddDynamicPlugin(&q_layer_tensor, 1, plugin);
+  layernorm_layer->setOutputType(0, nvinfer1::DataType::kINT8);
+  auto *gn_tensor = layernorm_layer->getOutput(0);
+  auto *dq_layer =
+      TRT_ENGINE_ADD_LAYER(engine_, Dequantize, *gn_tensor, *dqscale_tensor);
+  dq_layer->setAxis(1);
+
+  PADDLE_ENFORCE_NOT_NULL(layernorm_layer,
+                          platform::errors::InvalidArgument(
+                              "TRT GN plugin layer building failed."));
+
+  engine_->DeclareOutput(dq_layer, 0, "y");
+  engine_->FreezeNetwork();
+
+  int input_num = n_ * c_ * h_;
+  std::vector<int> shape_v = {n_, c_, h_};
+
+  std::vector<float> x_v(input_num);
+  for (int i = 0; i < input_num; i++) {
+    x_v[i] = i % 32 - 16;
+  }
+
+  PrepareInputOutput(x_v, shape_v);
+
+  engine_->context()->setBindingDimensions(0, nvinfer1::Dims3{n_, c_, h_});
+
+  auto *x_gpu_data = x_.data<float>();
+  auto *y_gpu_data = y_.mutable_data<float>(ctx_->GetPlace());
+  std::vector<void *> buffers(2);
+  buffers[0] = reinterpret_cast<void *>(x_gpu_data);
+  buffers[1] = reinterpret_cast<void *>(y_gpu_data);
+
+  engine_->Execute(-1, &buffers, ctx_->stream());
+  cudaStreamSynchronize(ctx_->stream());
+
+  std::vector<float> y_cpu;
+  GetOutput(&y_cpu);
+  std::vector<float> y_base(input_num);
+  naive_layernorm_post_qdq(y_base.data(),
+                           x_v.data(),
+                           n_ * c_,
+                           h_,
+                           epsilon_,
+                           dqscale_data,
+                           bias,
+                           scale);
+  float max_diff = -1;
+  int right_num = 0;
+  for (uint64_t i = 0; i < y_cpu.size(); i++) {
+    float diff = std::abs(y_base[i] - y_cpu[i]);
+    if (diff < 6e-2) right_num++;
+    if (diff > max_diff) max_diff = diff;
+  }
+
+  ASSERT_EQ(right_num, input_num);
+
+  delete[] bias;
+  delete[] scale;
+  return;
+}
+#endif
+
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle

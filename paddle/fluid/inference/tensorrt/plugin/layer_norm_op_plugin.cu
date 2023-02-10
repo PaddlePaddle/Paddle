@@ -400,14 +400,22 @@ int LayerNormPluginDynamic::enqueue(
     VLOG(1) << "TRT Plugin DataType selected. LayerNorm-->int8";
     const int8_t *input = reinterpret_cast<const int8_t *>(inputs[0]);
     int8_t *output = static_cast<int8_t *>(outputs[0]);
+    float dqScaleIn = input_desc[0].scale;
+    float inv_qScaleOut = 1.f / output_desc[0].scale;
+
+    // Just used for TensorRTDynamicShapeLNTes in test_dynamic_engine.cc
+    // Do not Edit it
+    // dqScaleIn = 0.5f;
+    // inv_qScaleOut = 1 / 0.5f;
+
     computeLayerNormQDQ(input_shape[0] * input_shape[1],
                         input_shape[2],
                         input,
                         reinterpret_cast<half *>(scale_gpu_),
                         reinterpret_cast<half *>(bias_gpu_),
                         output,
-                        input_desc[0].scale,
-                        1.f / output_desc[0].scale,
+                        dqScaleIn,
+                        inv_qScaleOut,
                         eps,
                         stream);
   }
