@@ -43,10 +43,10 @@ bool is_in_custom_black_list(const std::string& fluid_op_name) {
         tokenize(ops, ',', &cs_black_list);
       }
       inited = true;
-      VLOG(0) << "Custom Device Black List: ";
+      VLOG(3) << "Custom Device Black List: ";
       for (auto iter = cs_black_list.begin(); iter != cs_black_list.end();
            ++iter) {
-        VLOG(0) << *iter << " ";
+        VLOG(3) << *iter << " ";
       }
     }
   }
