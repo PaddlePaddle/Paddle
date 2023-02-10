@@ -210,6 +210,14 @@ if(WITH_IPU)
   pass_library(inference_dtype_transfer_pass base DIR ipu)
 endif()
 
+if(WITH_XPU)
+  cc_library(
+    quant_utils
+    SRCS xpu/quant_utils.cc
+    DEPS pass)
+  pass_library(fc_xpu_fuse_pass inference DIR xpu DEPS quant_utils)
+endif()
+
 cc_library(
   fuse_bn_act_pass
   SRCS fuse_bn_act_pass.cc
