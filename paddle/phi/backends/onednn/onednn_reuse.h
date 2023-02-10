@@ -815,10 +815,12 @@ class SoftmaxOneDNNHandler
     const int canonical_axis =
         funcs::CanonicalAxis(axis, out_grad->dims().size());
     this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_inference,
+                                            dnnl::algorithm::softmax_accurate,
                                             out->mem_desc(),
                                             out->mem_desc(),
                                             canonical_axis);
-    this->AcquireBackwardPrimitiveDescriptor(out_grad->mem_desc(),
+    this->AcquireBackwardPrimitiveDescriptor(dnnl::algorithm::softmax_accurate,
+                                             out_grad->mem_desc(),
                                              out_grad->mem_desc(),
                                              out->mem_desc(),
                                              canonical_axis);
