@@ -21,130 +21,142 @@
 
 namespace phi {
 
-template <typename T>
-__device__ void WelfordOnline(float val, float *mean, float *m2, float *count) {
+template <typename U>
+__device__ void WelfordOnline(U val, U *mean, U *square, U *count) {
   *count += 1;
-  float delta1 = val - *mean;
+  U delta1 = val - *mean;
   *mean += delta1 / (*count);
-  float delta2 = val - *mean;
-  *m2 += delta1 * delta2;
+  U delta2 = val - *mean;
+  *square += delta1 * delta2;
 }
 
-template <typename T>
-__device__ void WelfordOnline(float b_mean,
-                              float b_m2,
-                              float b_count,
-                              float *mean,
-                              float *m2,
-                              float *count) {
-  if (b_count == 0) {
+template <typename U>
+__device__ void WelfordOnline(
+    U b_mean, U b_square, U b_cnt, U *mean, U *square, U *count) {
+  if (b_cnt == 0) {
     return;
   }
-  float new_count = *count + b_count;
-  float nb_n = b_count / new_count;
-  float delta = b_mean - *mean;
+  U new_cnt = *count + b_cnt;
+  U nb_n = b_cnt / new_cnt;
+  U delta = b_mean - *mean;
   *mean += delta * nb_n;
-  *m2 += b_m2 + delta * delta * (*count) * nb_n;
-  *count = new_count;
+  *square += b_square + delta * delta * (*count) * nb_n;
+  *count = new_cnt;
 }
 
-__device__ void WelfordWarpAllReduce(float thread_mean,
-                                     float thread_m2,
-                                     float thread_count,
-                                     float *mean,
-                                     float *m2,
-                                     float *count) {
-  *mean = thread_mean;
-  *m2 = thread_m2;
-  *count = thread_count;
-  for (int mask = 1; mask < 32; mask *= 2) {
-    float b_mean = __shfl_down_sync(0xffffffff, *mean, mask);
-    float b_m2 = __shfl_down_sync(0xffffffff, *m2, mask);
-    float b_count = __shfl_down_sync(0xffffffff, *count, mask);
-    WelfordOnline(b_mean, b_m2, b_count, mean, m2, count);
+template <typename U>
+__device__ void WelfordWarpAllReduce(
+    U tid_mean, U tid_square, U tid_cnt, U *mean, U *square, U *count) {
+  constexpr int kWarpSize = 32;
+  *mean = tid_mean;
+  *square = tid_square;
+  *count = tid_cnt;
+  for (int mask = 1; mask < kWarpSize; mask *= 2) {
+    U b_mean = __shfl_down_sync(0xffffffff, *mean, mask);
+    U b_square = __shfl_down_sync(0xffffffff, *square, mask);
+    U b_cnt = __shfl_down_sync(0xffffffff, *count, mask);
+    WelfordOnline<U>(b_mean, b_square, b_cnt, mean, square, count);
   }
 
-  *mean = __shfl_sync(0xffffffff, *mean, 0, 32);
-  *m2 = __shfl_sync(0xffffffff, *m2, 0, 32);
-  *count = __shfl_sync(0xffffffff, *count, 0, 32);
+  *mean = __shfl_sync(0xffffffff, *mean, 0, kWarpSize);
+  *square = __shfl_sync(0xffffffff, *square, 0, kWarpSize);
+  *count = __shfl_sync(0xffffffff, *count, 0, kWarpSize);
 }
 
 template <typename T, typename U>
-__global__ void LayerNormFwdWithWelford(T *input,
-                                        T *output,
-                                        T *gamma,
-                                        T *beta,
-                                        float *mean,
-                                        float *invvar,
-                                        int rows,
-                                        int cols,
-                                        double epsilon) {
-  int threadidx_x = threadIdx.x / 32;
-  int threadidx_y = threadIdx.x % 32;
-  int row_offset = blockIdx.x * 4 + threadidx_x;
-  int cols_per_thread = (cols + 31) / 32;
-  int cols_this_thread = cols_per_thread;
+__global__ void LayerNormFwdWithWelford(const T *__restrict__ src_data,
+                                        T *dst_data,
+                                        const T *__restrict__ scale,
+                                        const T *__restrict__ bias,
+                                        U *mean,
+                                        U *var,
+                                        const float epsilon,
+                                        const int64_t rows,
+                                        const int64_t cols,
+                                        const bool valid_scale,
+                                        const bool valid_bias) {
+  constexpr int kWarpSize = 32;
+  constexpr int kRowPerBlk = 8;
 
+  // One block for 8 rows.
+  int row_offset = blockIdx.x * kRowPerBlk + threadIdx.y;
+  int cols_per_thread = (cols + (kWarpSize - 1)) / kWarpSize;
+  int cols_this_thread = cols_per_thread;
   int last_y = (cols / cols_per_thread);
 
-  if (threadidx_y == last_y) {
+  if (threadIdx.x == last_y) {
     cols_this_thread = cols - cols_per_thread * last_y;
-  } else if (threadidx_y > last_y) {
+  } else {
     cols_this_thread = 0;
   }
 
-  int lane_id = threadidx_y;
-
   if (row_offset < rows) {
-    float buf[32];
+    U buffer[kWarpSize];
+    U tid_mean = static_cast<U>(0);
+    U tid_cnt = static_cast<U>(0);
+    U tid_square = static_cast<U>(0);
 
-    float thread_mean = 0.f;
-    float thread_m2 = 0.f;
-    float thread_count = 0.f;
-
-    float warp_mean;
-    float warp_m2;
-    float warp_count;
-
-    T *row_input = input + row_offset * cols;
-    T *row_output = output + row_offset * cols;
-
+    U warp_mean, warp_square, warp_cnt;
+    const T *__restrict__ row_input = src_data + row_offset * cols;
+    T *row_output = dst_data + row_offset * cols;
 #pragma unroll
     for (int i = 0; i < cols_this_thread; i++) {
-      buf[i] = static_cast<float>(row_input[lane_id * cols_per_thread + i]);
+      buffer[i] = static_cast<U>(row_input[threadIdx.x * cols_per_thread + i]);
     }
 
 #pragma unroll
     for (int i = 0; i < cols_this_thread; i++) {
-      WelfordOnline(buf[i], &thread_mean, &thread_m2, &thread_count);
+      WelfordOnline<U>(buffer[i], &tid_mean, &tid_square, &tid_cnt);
     }
+    WelfordWarpAllReduce<U>(
+        tid_mean, tid_square, tid_cnt, &warp_mean, &warp_square, &warp_cnt);
+    U row_mean = warp_mean;
+    U row_variance = max(warp_square / warp_cnt, 0.f);
+    U row_inv_var = rsqrt(row_variance + epsilon);
 
-    WelfordWarpAllReduce(thread_mean,
-                         thread_m2,
-                         thread_count,
-                         &warp_mean,
-                         &warp_m2,
-                         &warp_count);
-
-    float row_mean = warp_mean;
-    float row_variance = max(warp_m2 / warp_count, 0.f);
-    float row_inv_var = rsqrt(row_variance + epsilon);
-
-    if (lane_id == 0) {
+    if (threadIdx.x == 0) {
       mean[row_offset] = row_mean;
-      invvar[row_offset] = row_inv_var;
+      var[row_offset] = row_variance;
     }
 
+    // No scale and no bias
+    if ((!valid_scale) && (!valid_bias)) {
 #pragma unroll
-    for (int i = 0; i < cols_this_thread; ++i) {
-      buf[i] = (buf[i] - row_mean) * row_inv_var;
-    }
-
+      for (int i = 0; i < cols_this_thread; ++i) {
+        int idx = threadIdx.x * cols_per_thread + i;
+        row_output[idx] = static_cast<T>((buffer[i] - row_mean) * row_inv_var);
+      }
+    } else if (valid_scale && valid_bias) {
+      // Has scale and bias
 #pragma unroll
-    for (int i = 0; i < cols_this_thread; ++i) {
-      row_output[lane_id * cols_per_thread + i] =
-          static_cast<T>(buf[i]) * gamma[lane_id * cols_per_thread + i] +
-          beta[lane_id * cols_per_thread + i];
+      for (int i = 0; i < cols_this_thread; ++i) {
+        int idx = threadIdx.x * cols_per_thread + i;
+        buffer[i] = (buffer[i] - row_mean) * row_inv_var;
+        row_output[idx] = static_cast<T>(
+            buffer[i] * static_cast<U>(scale[idx]) + static_cast<U>(bias[idx]));
+      }
+    } else {
+#pragma unroll
+      for (int i = 0; i < cols_this_thread; ++i) {
+        buffer[i] = (buffer[i] - row_mean) * row_inv_var;
+      }
+      // Only has scale
+      if (valid_scale) {
+#pragma unroll
+        for (int i = 0; i < cols_this_thread; ++i) {
+          int idx = threadIdx.x * cols_per_thread + i;
+          row_output[idx] =
+              static_cast<T>(buffer[i] * static_cast<U>(scale[idx]));
+        }
+      } else {
+        // Only has bias
+#pragma unroll
+        for (int i = 0; i < cols_this_thread; ++i) {
+          int idx = threadIdx.x * cols_per_thread + i;
+          row_output[idx] =
+              static_cast<T>(buffer[i] + static_cast<U>(bias[idx]));
+        }
+      }
     }
   }
 }
@@ -203,12 +215,14 @@ void LayerNormKernel(const Context &dev_ctx,
   auto *mean_data = dev_ctx.template Alloc<U>(mean);
   auto *var_data = dev_ctx.template Alloc<U>(var);
 
-  auto *void_scale_data = (scale == nullptr ? nullptr : scale->data());
-  auto *void_bias_data = (bias == nullptr ? nullptr : bias->data());
+  bool valid_scale = scale != nullptr;
+  bool valid_bias = bias != nullptr;
+  auto *void_scale_data = valid_scale ? scale->data() : nullptr;
+  auto *void_bias_data = valid_bias ? bias->data() : nullptr;
 
   auto x_dtype = x.dtype();
   phi::DataType scale_bias_dtype;
-  if (void_scale_data != nullptr) {
+  if (valid_scale) {
     scale_bias_dtype = scale->dtype();
     if (void_bias_data != nullptr) {
       PADDLE_ENFORCE_EQ(
@@ -218,7 +232,7 @@ void LayerNormKernel(const Context &dev_ctx,
                                        "should have the same data type."));
     }
   } else {
-    scale_bias_dtype = (void_bias_data != nullptr ? bias->dtype() : x_dtype);
+    scale_bias_dtype = valid_bias ? bias->dtype() : x_dtype;
   }
 
   bool is_scale_bias_same_dtype_with_x = x_dtype == scale_bias_dtype;
@@ -329,10 +343,27 @@ void LayerNormKernel(const Context &dev_ctx,
     }
   } else {
 #endif
-    if (is_scale_bias_same_dtype_with_x) {
-      PADDLE_LAUNCH_LAYERNORM_FWD(T, true);
+
+    if (feature_size <= 1024 && (!std::is_same<T, int8_t>::value)) {
+      constexpr int warp_size = 32;
+      constexpr int row_per_block = 8;
+      int64_t block_size = (batch_size + (row_per_block - 1)) / row_per_block;
+      dim3 threads(warp_size, row_per_block, 1);
+
+      LayerNormFwdWithWelford<T, U><<<block_size, threads, 0, stream>>>(
+          x_data,
+          y_data,
+          static_cast<const T *>(void_scale_data),
+          static_cast<const T *>(void_bias_data),
+          mean_data,
+          var_data,
+          epsilon,
+          batch_size,
+          feature_size,
+          valid_scale,
+          valid_bias);
     } else {
-      PADDLE_LAUNCH_LAYERNORM_FWD(U, false);
+      PADDLE_LAUNCH_LAYERNORM_FWD(T, true);
     }
 #ifdef PADDLE_WITH_CUDA
   }
