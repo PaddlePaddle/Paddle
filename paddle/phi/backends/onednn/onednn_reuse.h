@@ -2130,7 +2130,7 @@ void ExecuteMatmul(const OneDNNContext& dev_ctx,
       {DNNL_ARG_WEIGHTS, *weights_memory_p},
       {DNNL_ARG_DST, *dst_memory_p}};
 
-  auto scale_out = handler.GeOutputScale();
+  auto scale_out = handler.GetOutputScale();
   if (scale_out != 1.0f) {
     matmul_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, scale_out});
   }
