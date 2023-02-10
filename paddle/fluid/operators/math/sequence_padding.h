@@ -17,9 +17,8 @@ limitations under the License. */
 #include <algorithm>
 #include <vector>
 
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/lod_utils.h"
 
 namespace paddle {
 namespace operators {
