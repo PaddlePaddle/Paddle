@@ -447,10 +447,6 @@ class OneDNNHandlerT {
             paddle::platform::TracerEventType::UserDefined,
             1,
             paddle::platform::EventRole::kUniqueOp);
-        // Make args DNNL_ARG_FROM
-        reorder_p->execute(
-            astream,
-            {{DNNL_ARG_FROM, *user_memory_p}, {DNNL_ARG_TO, *target_memory_p}});
 
         std::unordered_map<int, dnnl::memory> reorder_args;
         reorder_args.insert({DNNL_ARG_SRC, *user_memory_p});
