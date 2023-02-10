@@ -24,6 +24,8 @@ void UnbindKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   int axis,
                   std::vector<DenseTensor*> outs) {
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  xx.inplace_version_counter_->setVal(-10);
   auto x_dims = x.dims();
   axis = axis < 0 ? x_dims.size() + axis : axis;
 
@@ -33,6 +35,9 @@ void UnbindKernel(const Context& dev_ctx,
     shape_refer.emplace_back(outs[j]);
   }
 
+  for (int i = 0; i < outs.size(); ++i) {
+    outs[i]->inplace_version_counter_->setVal(-10);
+  }
   phi::funcs::SplitFunctor<Context, T> functor;
   functor(dev_ctx, x, shape_refer, axis, &outs);
 }

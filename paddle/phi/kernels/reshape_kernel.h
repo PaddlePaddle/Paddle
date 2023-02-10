@@ -39,9 +39,12 @@ DenseTensor Reshape(const Context& dev_ctx,
                     const DenseTensor& x,
                     const std::vector<int64_t>& shape) {
   DenseTensor dense_out;
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  xx.inplace_version_counter_->setVal(-10);
   MetaTensor meta_out(&dense_out);
   InferMetaFromVecValue(x, shape, &meta_out);
   ReshapeInferKernel<Context>(dev_ctx, x, IntArray(shape), &dense_out);
+  dense_out.inplace_version_counter_->setVal(-10);
   return dense_out;
 }
 
