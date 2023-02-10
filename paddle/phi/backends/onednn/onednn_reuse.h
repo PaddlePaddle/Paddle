@@ -755,10 +755,15 @@ class ActivationOneDNNHandler
     this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
                                             algorithm,
                                             x->mem_desc(),
+                                            x->mem_desc(),
                                             alpha,
                                             beta);
-    this->AcquireBackwardPrimitiveDescriptor(
-        algorithm, dout->mem_desc(), x->mem_desc(), alpha, beta);
+    this->AcquireBackwardPrimitiveDescriptor(algorithm,
+                                             dout->mem_desc(),
+                                             dout->mem_desc(),
+                                             x->mem_desc(),
+                                             alpha,
+                                             beta);
   }
 
   std::shared_ptr<dnnl::memory> AcquireBackwardSrcMemory(
