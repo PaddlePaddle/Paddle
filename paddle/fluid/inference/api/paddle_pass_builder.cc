@@ -138,11 +138,10 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "dense_multihead_matmul_to_sparse_pass",  //
 #if defined _WIN32  // Windows CI is TensorRT7.0. Remove this after upgrading.
 #else
-      // "elementwise_groupnorm_act_pass",        //
-      // "preln_elementwise_groupnorm_act_pass",  //
+      "elementwise_groupnorm_act_pass",        //
+      "preln_elementwise_groupnorm_act_pass",  //
       "groupnorm_act_pass",                    //
 #endif
-      "constant_folding_pass",                        //
       "tensorrt_subgraph_pass",  //
       "conv_bn_fuse_pass",       //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
