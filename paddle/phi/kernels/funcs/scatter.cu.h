@@ -150,7 +150,6 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
 
   auto src_dims = src.dims();
   phi::DDim output_dims = output->dims();
-  // output_dims[0] = index_size;
 
   // slice size
   size_t slice_size = 1;
@@ -171,8 +170,6 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
   int64_t n = slice_size * index_size;
   dim3 grid = dim3((n + block - 1) / block);
   phi::backends::gpu::LimitGridDim(ctx, &grid);
-
-  VLOG(1) << "output_dims = " << output_dims;
 
   // if not overwrite mode, init data
   if (!overwrite) {
