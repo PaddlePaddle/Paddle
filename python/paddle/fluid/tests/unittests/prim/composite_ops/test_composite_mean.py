@@ -72,9 +72,9 @@ def expect_forward(inputs):
 
 class TestCompositeMean(unittest.TestCase):
     def setUp(self):
-        self.dtypes = ["float32", "float64"]
+        self.dtypes = ["float16", "float32", "float64"]
         self.keepdim = [False, True]
-        self.shapes = [[2, 3, 4], [2, 3]]
+        self.shapes = [[16, 16, 64, 64], [2, 3, 4], [2, 3]]
         self.axes = [-1, 0, 1]
 
     def cal_composite(self, inputs):

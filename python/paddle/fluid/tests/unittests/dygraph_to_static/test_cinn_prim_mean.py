@@ -21,11 +21,22 @@ import paddle
 import paddle.tensor as tensor
 from paddle.fluid import core
 
+TOLERANCE = {
+    "float16": {"rtol": 1e-3, "atol": 1e-3},
+    "float32": {"rtol": 1e-6, "atol": 1e-6},
+    "float64": {"rtol": 1e-15, "atol": 1e-15},
+}
+
 
 def apply_to_static(net, use_cinn):
     build_strategy = paddle.static.BuildStrategy()
     build_strategy.build_cinn_pass = use_cinn
     return paddle.jit.to_static(net, build_strategy=build_strategy)
+
+
+def generate_data(shape, dtype="float32"):
+    np_data = np.random.random(shape).astype(dtype)
+    return np_data
 
 
 class PrimeNet(paddle.nn.Layer):
@@ -48,8 +59,8 @@ class TestPrimForward(unittest.TestCase):
 
     def setUp(self):
         paddle.seed(2022)
-        self.x = paddle.randn([2, 4])
-        self.x.stop_gradient = False
+        self.shapes = [[2, 4], [64, 16, 4]]
+        self.dtypes = ["float16", "float32", "float64"]
 
     def train(self, use_prim):
         paddle.seed(2022)
@@ -83,13 +94,20 @@ class TestPrimForward(unittest.TestCase):
         self.assertTrue('reduce_mean' not in fwd_ops)
 
     def test_cinn_prim_forward(self):
-        dy_res = self.train(use_prim=False)
-        cinn_res = self.train(use_prim=True)
+        for shape in self.shapes:
+            for dtype in self.dtypes:
+                data = generate_data(shape, dtype)
+                data_t = paddle.to_tensor(data)
+                data_t.stop_gradient = False
+                dy_res = self.train(use_prim=False, data=data_t)
+                cinn_res = self.train(use_prim=True, data=data_t)
 
-        for i in range(len(dy_res)):
-            np.testing.assert_allclose(
-                cinn_res[i], dy_res[i], rtol=1e-7, atol=1e-7
-            )
+                np.testing.assert_allclose(
+                    cinn_res,
+                    dy_res,
+                    rtol=TOLERANCE[dtype]['rtol'],
+                    atol=TOLERANCE[dtype]['atol'],
+                )
 
 
 class TestPrimForwardAndBackward(unittest.TestCase):
@@ -99,8 +117,8 @@ class TestPrimForwardAndBackward(unittest.TestCase):
 
     def setUp(self):
         paddle.seed(2022)
-        self.x = paddle.randn([2, 4])
-        self.x.stop_gradient = False
+        self.shapes = [[2, 4], [64, 16, 4]]
+        self.dtypes = ["float16", "float32", "float64"]
 
     def train(self, use_prim):
         paddle.seed(2022)
@@ -136,13 +154,20 @@ class TestPrimForwardAndBackward(unittest.TestCase):
     def test_cinn_prim(self):
         plat = platform.system()
         if plat == "Linux":
-            dy_res = self.train(use_prim=False)
-            cinn_res = self.train(use_prim=True)
+            for shape in self.shapes:
+                for dtype in self.dtypes:
+                    data = generate_data(shape, dtype)
+                    data_t = paddle.to_tensor(data)
+                    data_t.stop_gradient = False
+                    dy_res = self.train(use_prim=False, data=data_t)
+                    cinn_res = self.train(use_prim=True, data=data_t)
 
-            for i in range(len(dy_res)):
-                np.testing.assert_allclose(
-                    cinn_res[i], dy_res[i], rtol=1e-6, atol=1e-6
-                )
+                    np.testing.assert_allclose(
+                        cinn_res,
+                        dy_res,
+                        rtol=TOLERANCE[dtype]['rtol'],
+                        atol=TOLERANCE[dtype]['atol'],
+                    )
         else:
             pass
 
