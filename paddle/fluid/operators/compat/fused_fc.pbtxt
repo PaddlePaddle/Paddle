@@ -31,7 +31,7 @@ extra {
   }
   attrs {
     name: "use_mkldnn"
-    type: BOOL
+    type: BOOLEAN
   }
   attrs {
     name: "mkldnn_data_type"
