@@ -113,7 +113,9 @@ def model():
         ),
         is_sparse=True,
     )
-    dnn_pool = fluid.layers.sequence_pool(input=dnn_embedding, pool_type="sum")
+    dnn_pool = paddle.static.nn.sequence_lod.sequence_pool(
+        input=dnn_embedding, pool_type="sum"
+    )
     dnn_out = dnn_pool
     for i, dim in enumerate(dnn_layer_dims[1:]):
         fc = paddle.static.nn.fc(
@@ -138,7 +140,9 @@ def model():
         ),
         is_sparse=True,
     )
-    lr_pool = fluid.layers.sequence_pool(input=lr_embbding, pool_type="sum")
+    lr_pool = paddle.static.nn.sequence_lod.sequence_pool(
+        input=lr_embbding, pool_type="sum"
+    )
 
     merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
 

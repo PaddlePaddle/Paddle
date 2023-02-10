@@ -716,7 +716,9 @@ class TestDistLookupTableBase(TranspilerTest):
                 is_sparse=is_sparse,
                 is_distributed=is_distributed,
             )
-            pool = fluid.layers.sequence_pool(input=emb, pool_type='average')
+            pool = paddle.static.nn.sequence_lod.sequence_pool(
+                input=emb, pool_type='average'
+            )
             return pool
 
         title_ids = paddle.static.data(
