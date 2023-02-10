@@ -1050,6 +1050,8 @@ class OpTest(unittest.TestCase):
         enable_inplace=None,
         for_inplace_test=None,
     ):
+        if in_dygraph_mode():
+            paddle.enable_static()
         program = Program()
         block = program.global_block()
         op = self._append_ops(block)
@@ -1108,6 +1110,7 @@ class OpTest(unittest.TestCase):
         )
         self.op = op
         self.program = original_program
+        paddle.disable_static()
         if for_inplace_test:
             return outs, fetch_list, feed_map, original_program, op.desc
         else:
@@ -1815,8 +1818,11 @@ class OpTest(unittest.TestCase):
                 raise AssertionError(
                     "no_check_set of op %s must be set to None." % self.op_type
                 )
+        if in_dygraph_mode():
+            paddle.enable_static()
         static_checker = StaticChecker(self, self.outputs)
         static_checker.check()
+        paddle.disable_static()
         outs, fetch_list = static_checker.outputs, static_checker.fetch_list
         if check_dygraph:
             dygraph_checker = DygraphChecker(self, self.outputs)
