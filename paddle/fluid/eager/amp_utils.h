@@ -128,7 +128,7 @@ inline paddle::experimental::DataType GetAmpDestDtype(
   VLOG(6) << "AMP GetAmpDestDtype:"
           << " op(" << op_name << ") amp_dtype(" << amp_dtype << ") amp_level("
           << static_cast<int>(amp_level) << ").";
-  auto return_amp_type = amp_dtype;
+  auto return_amp_type = paddle::experimental::DataType::FLOAT16;
 
   if (amp_dtype == "float16") {
     if (amp_level == paddle::imperative::AmpLevel::O1) {
