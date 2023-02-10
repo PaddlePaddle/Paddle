@@ -58,9 +58,24 @@ struct MemoryInterface {
    * @param[size_t]     size      memory size
    * @param[phi::Stream]stream    the stream that is used for allocator
    */
-
   std::shared_ptr<Allocation> (*alloc_shared_with_stream)(
       const phi::Place& place, size_t size, const phi::Stream& stream);
+
+  /**
+   * @brief whether the allocation is in the stream
+   *
+   * @param[Allocation] allocation  the allocation to check
+   * @param[phi::Stream]stream      the device's stream
+   */
+  bool (*in_same_stream)(const std::shared_ptr<Allocation>& allocation,
+                         const phi::Stream& stream);
+
+  /**
+   * @brief free allocation
+   *
+   * @param[Allocation] allocation  the allocation to be freed
+   */
+  void (*allocation_deleter)(Allocation* allocation);
 };
 
 class MemoryUtils {
@@ -93,6 +108,15 @@ class MemoryUtils {
   std::shared_ptr<Allocation> AllocShared(const phi::Place& place,
                                           size_t size) {
     return memory_method_->alloc_shared(place, size);
+  }
+
+  bool InSameStream(const std::shared_ptr<Allocation>& allocation,
+                    const phi::Stream& stream) {
+    return memory_method_->in_same_stream(allocation, stream);
+  }
+
+  void AllocationDeleter(Allocation* allocation) {
+    return memory_method_->allocation_deleter(allocation);
   }
 
  private:

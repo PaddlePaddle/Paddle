@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/memory/malloc.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
@@ -141,7 +140,7 @@ void* DenseTensor::mutable_data(const Place& place,
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + meta_.offset ||
       !(place.GetType() == phi::AllocationType::GPU &&
-        paddle::memory::InSameStream(holder_, stream))) {
+        MemoryUtils::Instance().InSameStream(holder_, stream))) {
     holder_.reset();
     holder_ = MemoryUtils::Instance().AllocShared(place, size, stream);
     meta_.offset = 0;

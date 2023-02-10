@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
-#include "paddle/fluid/memory/malloc.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/funcs/segmented_array.h"
@@ -610,10 +609,8 @@ void ConcatFunctorWithIndexType(const phi::GPUContext& ctx,
   ctx.AddStreamCallback([data_alloc_released, col_alloc_released] {
     VLOG(4) << "Delete cuda pinned at " << data_alloc_released;
     VLOG(4) << "Delete cuda pinned at " << col_alloc_released;
-    paddle::memory::allocation::Allocator::AllocationDeleter(
-        data_alloc_released);
-    paddle::memory::allocation::Allocator::AllocationDeleter(
-        col_alloc_released);
+    phi::MemoryUtils::Instance().AllocationDeleter(data_alloc_released);
+    phi::MemoryUtils::Instance().AllocationDeleter(col_alloc_released);
   });
 #endif
 }
@@ -841,10 +838,8 @@ void SplitFunctorDispatchWithIndexType(
   auto* data_alloc_released = data_alloc.release();
   auto* cols_alloc_released = cols_alloc.release();
   ctx.AddStreamCallback([data_alloc_released, cols_alloc_released] {
-    paddle::memory::allocation::Allocator::AllocationDeleter(
-        data_alloc_released);
-    paddle::memory::allocation::Allocator::AllocationDeleter(
-        cols_alloc_released);
+    phi::MemoryUtils::Instance().AllocationDeleter(data_alloc_released);
+    phi::MemoryUtils::Instance().AllocationDeleter(cols_alloc_released);
   });
 #endif
 }

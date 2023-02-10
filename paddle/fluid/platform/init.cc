@@ -467,6 +467,9 @@ void InitMemoryMethod() {
     memory_method->alloc_with_stream = paddle::memory::Alloc;
     memory_method->alloc_shared = paddle::memory::AllocShared;
     memory_method->alloc_shared_with_stream = paddle::memory::AllocShared;
+    memory_method->in_same_stream = paddle::memory::InSameStream;
+    memory_method->allocation_deleter =
+        paddle::memory::allocation::Allocator::AllocationDeleter;
     memory_utils.Init(std::move(memory_method));
   });
 }
