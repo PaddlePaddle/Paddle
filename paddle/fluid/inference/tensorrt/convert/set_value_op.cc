@@ -38,29 +38,6 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 // we use tensorrt ScatterElement to generate set value
-// set value operator is like:{
-//  outputs = inputs
-//  outputs[:,:,0:1] = updates
-// }
-// in particular, output = ScatterElement(inputs, indice, updates)
-// in this op, indice location is calculatd using axes, start, end, step
-// here is an example
-// inputs shape is (2, 3, 4)
-// inputs  = [[[1, 1, 1, 1], [1, 1, 1, 1], [1, 1, 1, 1]],
-//          [[1, 1, 1, 1], [1, 1, 1, 1], [1, 1, 1, 1]]]
-// axes = 2
-// start = 0
-// end = 1
-// step = 1
-// the updates should be (2, 3, 1)
-// updates = [[[2], [2], [2]],
-//           [[2], [2], [2]]]
-// the generated index shape should be the same as updates shape, which is (2,
-// 3, 1) indices = [[[0], [0], [0]],
-//           [[0], [0], [0]]]
-// output = [[[2, 1, 1, 1], [2, 1, 1, 1], [2, 1, 1, 1]],
-//          [[2, 1, 1, 1], [2, 1, 1, 1]], [2, 1, 1, 1]]
-
 // For example, if indices has dimensions [N,C,H,W] and axis is 2, then the
 // updates happen as: for n in [0,n)
 //     for c in [0,n)
@@ -113,57 +90,70 @@ class SetValueConverter : public OpConverter {
       platform::errors::InvalidArgument("The update dim error, should be %d",
                                         (input_dims.d[axes] - starts) / steps);
     }
-
-    // generate indice
-    int post_size = 1;
-    for (int j = axes + 1; j < update_dims.nbDims; ++j) {
-      post_size = post_size * update_dims.d[j];
-    }
-    std::vector<int> axes_index;
-    for (int i = starts; i < ends; i += steps) {
-      for (int j = 0; j < post_size; ++j) {
-        axes_index.emplace_back(i);
+    if (engine_->with_dynamic_shape()) {
+      // generate indice
+      int post_size = 1;
+      for (int j = axes + 1; j < update_dims.nbDims; ++j) {
+        post_size = post_size * update_dims.d[j];
       }
+      std::vector<int> axes_index;
+      for (int i = starts; i < ends; i += steps) {
+        for (int j = 0; j < post_size; ++j) {
+          axes_index.emplace_back(i);
+        }
+      }
+      int pre_size = 1;
+      for (int i = 0; i < axes; ++i) {
+        pre_size *= update_dims.d[i];
+      }
+      std::vector<int> indices;
+      for (int i = 0; i < pre_size; ++i) {
+        indices.insert(indices.end(), axes_index.begin(), axes_index.end());
+      }
+
+      nvinfer1::Dims indice_dims = update_dims;
+
+      // create a tensor to store data
+      std::vector<int> indice_dim_vec;
+      for (int i = 0; i < update_dims.nbDims; i++) {
+        indice_dim_vec.emplace_back(update_dims.d[i]);
+      }
+      auto indice_tensor_dims = phi::make_ddim(indice_dim_vec);
+      std::unique_ptr<phi::DenseTensor> indice_tensor(
+          std::make_unique<phi::DenseTensor>());
+      indice_tensor->Resize(indice_tensor_dims);
+
+      auto* dev_ctx = static_cast<phi::CPUContext*>(
+          platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
+      auto* weight_data = dev_ctx->template HostAlloc<int>(indice_tensor.get());
+
+      memcpy(weight_data, indices.data(), sizeof(int) * indice_tensor->numel());
+
+      TensorRTEngine::Weight weight{
+          nvinfer1::DataType::kINT32,
+          static_cast<void*>(weight_data),
+          static_cast<size_t>(indice_tensor->numel())};
+      auto output_name = op_desc.Output("Out")[0];
+      engine_->SetWeights("set_value_index_" + output_name,
+                          std::move(indice_tensor));
+
+      auto const_layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Constant, indice_dims, weight.get());
+
+      auto* layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                         Scatter,
+                                         *inputs,
+                                         *const_layer->getOutput(0),
+                                         *updates,
+                                         nvinfer1::ScatterMode::kELEMENT);
+
+      layer->setAxis(axes);
+
+      RreplenishLayerAndOutput(layer, "set_value", {output_name}, test_mode);
+    } else {
+      PADDLE_THROW(platform::errors::Fatal(
+          "static shape mode not supported in set value yet"));
     }
-    int pre_size = 1;
-    for (int i = 0; i < axes; ++i) {
-      pre_size *= update_dims.d[i];
-    }
-    std::vector<int> indices;
-    for (int i = 0; i < pre_size; ++i) {
-      indices.insert(indices.end(), axes_index.begin(), axes_index.end());
-    }
-
-    nvinfer1::Dims indice_dims = update_dims;
-
-    // create a tensor to store data
-    std::vector<int> indice_dim_vec;
-    for (int i = 0; i < update_dims.nbDims; i++) {
-      indice_dim_vec.emplace_back(update_dims.d[i]);
-    }
-    auto indice_tensor_dims = phi::make_ddim(indice_dim_vec);
-    std::unique_ptr<phi::DenseTensor> indice_tensor(new phi::DenseTensor());
-    indice_tensor->Resize(indice_tensor_dims);
-    auto* weight_data = indice_tensor->mutable_data<int>(platform::CPUPlace());
-
-    memcpy(weight_data, indices.data(), sizeof(int) * indice_tensor->numel());
-    TensorRTEngine::Weight weight{nvinfer1::DataType::kINT32,
-                                  static_cast<void*>(weight_data),
-                                  static_cast<size_t>(indice_tensor->numel())};
-    engine_->SetWeights("set_value_index_op", std::move(indice_tensor));
-
-    auto const_layer =
-        TRT_ENGINE_ADD_LAYER(engine_, Constant, indice_dims, weight.get());
-
-    auto* layer = TRT_ENGINE_ADD_LAYER(engine_,
-                                       Scatter,
-                                       *inputs,
-                                       *const_layer->getOutput(0),
-                                       *updates,
-                                       nvinfer1::ScatterMode::kELEMENT);
-
-    auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "set_value", {output_name}, test_mode);
   }
 };
 
