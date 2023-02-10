@@ -27,6 +27,8 @@ void ExpandKernel(const Context& ctx,
                   const DenseTensor& x,
                   const IntArray& shape,
                   DenseTensor* out) {
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  x.inplace_version_counter_->setVal(-10);  // setVal(-1);
   auto expand_shape = shape.GetData();
   auto diff = expand_shape.size() - x.dims().size();
   auto out_shape = phi::vectorize<int64_t>(x.dims());
@@ -73,6 +75,7 @@ void ExpandKernel(const Context& ctx,
   ctx.template Alloc<T>(out);
   std::vector<const DenseTensor*> ins = {&x};
   std::vector<DenseTensor*> outs = {out};
+  out->inplace_version_counter_->setVal(-10);
   phi::funcs::BroadcastKernel<ElementwiseType::kUnary, T, T>(
       ctx, ins, &outs, -1, kps::IdentityFunctor<T>());
 }
