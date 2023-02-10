@@ -39,6 +39,8 @@ void InitDevices();
 
 void InitDevices(const std::vector<int> devices);
 
+void InitMemoryMethod();
+
 #ifndef _WIN32
 class SignalMessageDumper {
  public:

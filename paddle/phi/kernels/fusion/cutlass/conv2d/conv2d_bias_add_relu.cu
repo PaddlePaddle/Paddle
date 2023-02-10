@@ -15,6 +15,7 @@
 #include <mutex>
 #include "cutlass/conv/kernel/default_conv2d_fprop_with_broadcast.h"
 #include "cutlass/epilogue/thread/linear_combination_residual_block.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/fusion/cutlass/conv2d/conv2d_util.h"
 
 namespace phi {
@@ -111,8 +112,8 @@ cutlass::Status Conv2dBiasAddReluImpl(ConvAllParams params) {
 
   auto ctx = params.ctx;
   auto stream = ctx->stream();
-  paddle::memory::allocation::AllocationPtr tmp_gpu_ptrs_data =
-      paddle::memory::Alloc(
+  phi::Allocator::AllocationPtr tmp_gpu_ptrs_data =
+      phi::MemoryUtils::Instance().Alloc(
           ctx->GetPlace(),
           bytes,
           phi::Stream(reinterpret_cast<phi::StreamId>(stream)));

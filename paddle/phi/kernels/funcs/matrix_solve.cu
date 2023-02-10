@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/matrix_solve.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -79,8 +80,8 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& context,
   }
 
   // Copy the addresses of A and tmp_b from host to device.
-  paddle::memory::allocation::AllocationPtr tmp_gpu_ptrs_data =
-      paddle::memory::Alloc(
+  phi::Allocator::AllocationPtr tmp_gpu_ptrs_data =
+      phi::MemoryUtils::Instance().Alloc(
           context.GetPlace(),
           cpu_ptrs.size() * sizeof(T*),
           phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
@@ -96,8 +97,8 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& context,
 
   // Allocate device memory for BatchedGETRF's info and pivots.
   int num_ints = n < 32 ? batch_size : batch_size * (n + 1);
-  paddle::memory::allocation::AllocationPtr tmp_gpu_info_data =
-      paddle::memory::Alloc(
+  phi::Allocator::AllocationPtr tmp_gpu_info_data =
+      phi::MemoryUtils::Instance().Alloc(
           context.GetPlace(),
           num_ints * sizeof(int),
           phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));

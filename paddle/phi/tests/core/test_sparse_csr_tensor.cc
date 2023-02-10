@@ -62,7 +62,7 @@ TEST(sparse_csr_tensor, construct) {
   CHECK_EQ(sparse.numel(), 9);
   CHECK(sparse.dims() == dense_dims);
   CHECK(sparse.dtype() == DataType::FLOAT32);
-  CHECK(sparse.place() == paddle::platform::CPUPlace());
+  CHECK(sparse.place() == phi::CPUPlace());
   CHECK(sparse.initialized() == true);
 }
 

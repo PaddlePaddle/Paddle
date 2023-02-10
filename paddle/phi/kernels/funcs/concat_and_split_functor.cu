@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/funcs/segmented_array.h"
 
 namespace phi {
@@ -94,12 +95,12 @@ struct PointerToPointer {
   PointerToPointer(const phi::GPUContext& ctx,
                    const std::vector<phi::DenseTensor>& ins,
                    const T** pre_alloced_host_ptr,
-                   paddle::memory::AllocationPtr* dev_ins_ptr) {
+                   phi::Allocator::AllocationPtr* dev_ins_ptr) {
     auto in_num = ins.size();
     for (auto i = 0; i < in_num; ++i) {
       pre_alloced_host_ptr[i] = ins[i].data<T>();
     }
-    *dev_ins_ptr = paddle::memory::Alloc(
+    *dev_ins_ptr = phi::MemoryUtils::Instance().Alloc(
         ctx.GetPlace(),
         in_num * sizeof(T*),
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
@@ -147,9 +148,9 @@ struct PointerToPointerAndCol {
                          const IndexT inputs_col_num,
                          const T** pre_alloced_host_ptr,
                          IndexT* inputs_col,
-                         paddle::memory::AllocationPtr* dev_ins_ptr,
-                         paddle::memory::AllocationPtr* dev_col_ptr) {
-    *dev_col_ptr = paddle::memory::Alloc(
+                         phi::Allocator::AllocationPtr* dev_ins_ptr,
+                         phi::Allocator::AllocationPtr* dev_col_ptr) {
+    *dev_col_ptr = phi::MemoryUtils::Instance().Alloc(
         ctx.GetPlace(),
         inputs_col_num * sizeof(IndexT),
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
@@ -279,8 +280,8 @@ void DispatchConcatWithDifferentShapeKernelLimitNum(
         <<<grid_dims, block_dims, 0, ctx.stream()>>>(
             ptr_col_array, inputs_col_num, out_row, out_col, output->data()));
     default: {
-      paddle::memory::AllocationPtr dev_ins_ptr{nullptr};
-      paddle::memory::AllocationPtr dev_col_ptr{nullptr};
+      phi::Allocator::AllocationPtr dev_ins_ptr{nullptr};
+      phi::Allocator::AllocationPtr dev_col_ptr{nullptr};
       PointerToPointerAndCol<T, IndexT> ptr_col_array(ctx,
                                                       ins,
                                                       inputs_col_num,
@@ -396,7 +397,7 @@ void DispatchConcatWithSameShapeKernelLimitNum(
         <<<grid_dims, block_dims, 0, ctx.stream()>>>(
             ptr_array, in_col, out_row, out_col, output->data()));
     default: {
-      paddle::memory::AllocationPtr dev_ins_ptr{nullptr};
+      phi::Allocator::AllocationPtr dev_ins_ptr{nullptr};
       PointerToPointer<T> ptr_array(ctx, ins, inputs_data, &dev_ins_ptr);
       ConcatTensorWithSameShape<IndexT, MovSize, decltype(ptr_array)>
           <<<grid_dims, block_dims, 0, ctx.stream()>>>(
@@ -570,10 +571,10 @@ void ConcatFunctorWithIndexType(const phi::GPUContext& ctx,
   IndexT* inputs_col = inputs_col_vec.data();
 #ifdef PADDLE_WITH_HIP
   // TODO(chentianyu03): try to find a method to remove the Alloc function
-  paddle::memory::AllocationPtr data_alloc = paddle::memory::Alloc(
+  phi::Allocator::AllocationPtr data_alloc = phi::MemoryUtils::Instance().Alloc(
       paddle::platform::CUDAPinnedPlace(), in_num * sizeof(T*));
   inputs_data = reinterpret_cast<const T**>(data_alloc->ptr());
-  paddle::memory::AllocationPtr col_alloc = paddle::memory::Alloc(
+  phi::Allocator::AllocationPtr col_alloc = phi::MemoryUtils::Instance().Alloc(
       paddle::platform::CUDAPinnedPlace(), inputs_col_num * sizeof(IndexT));
   inputs_col = reinterpret_cast<IndexT*>(col_alloc->ptr());
 #endif
@@ -786,14 +787,14 @@ void SplitFunctorDispatchWithIndexType(
 // 3.2.6.1. Concurrent Execution between Host and Device
 // Memory copies from host to device of a memory block of 64 KB or less
 #ifdef PADDLE_WITH_HIP
-  paddle::memory::AllocationPtr data_alloc, cols_alloc;
+  phi::Allocator::AllocationPtr data_alloc, cols_alloc;
   // TODO(chentianyu03): try to find a method to remove the Alloc function
-  data_alloc = paddle::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
-                                     out_num * sizeof(T*));
+  data_alloc = phi::MemoryUtils::Instance().Alloc(
+      paddle::platform::CUDAPinnedPlace(), out_num * sizeof(T*));
   outs_data = reinterpret_cast<T**>(data_alloc->ptr());
   // TODO(chentianyu03): try to find a method to remove the Alloc function
-  cols_alloc = paddle::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
-                                     (out_cols_num) * sizeof(IndexT));
+  cols_alloc = phi::MemoryUtils::Instance().Alloc(
+      paddle::platform::CUDAPinnedPlace(), (out_cols_num) * sizeof(IndexT));
   outs_cols = reinterpret_cast<IndexT*>(cols_alloc->ptr());
 #endif
 

@@ -22,8 +22,6 @@
 
 #include "cutlass/conv/device/implicit_gemm_convolution.h"
 
-#include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/fluid/memory/malloc.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/enforce.h"
 

@@ -241,6 +241,7 @@ def __bootstrap__():
     # don't init_p2p when in unittest to save time.
     core.init_devices()
     core.init_default_kernel_signatures()
+    core.init_memory_method()
 
 
 # TODO(panyx0718): Avoid doing complex initialization logic in __init__.py.
