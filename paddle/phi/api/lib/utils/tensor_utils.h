@@ -23,7 +23,7 @@ namespace experimental {
 std::unique_ptr<phi::DenseTensor> MakePhiDenseTensor(
     const phi::DenseTensor& src);
 
-inline phi::IntArray MakePhiIntArray(const phi::DenseTensor& src);
+phi::IntArray MakePhiIntArray(const phi::DenseTensor& src);
 
 }  // namespace experimental
 }  // namespace paddle

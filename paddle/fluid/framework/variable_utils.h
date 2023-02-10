@@ -19,13 +19,12 @@
 namespace paddle {
 namespace experimental {
 
-inline phi::Scalar MakePhiScalarFromVar(const framework::Variable& variable);
+phi::Scalar MakePhiScalarFromVar(const framework::Variable& variable);
 
-inline phi::IntArray MakePhiIntArrayFromVar(
-    const framework::Variable& variable);
+phi::IntArray MakePhiIntArrayFromVar(const framework::Variable& variable);
 
 // TODO(chentianyu03): Inplace with IntArray constructor
-inline phi::IntArray MakePhiIntArrayFromVarList(
+phi::IntArray MakePhiIntArrayFromVarList(
     const std::vector<framework::Variable*>& variable_list);
 
 }  // namespace experimental

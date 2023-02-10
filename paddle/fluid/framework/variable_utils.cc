@@ -25,7 +25,7 @@
 namespace paddle {
 namespace experimental {
 
-inline phi::Scalar MakePhiScalarFromVar(const framework::Variable& variable) {
+phi::Scalar MakePhiScalarFromVar(const framework::Variable& variable) {
   auto expected_place = phi::TransToPhiPlace(phi::Backend::CPU);
   if (variable.IsType<phi::DenseTensor>()) {
     const auto& tensor = variable.Get<phi::DenseTensor>();
@@ -51,8 +51,7 @@ inline phi::Scalar MakePhiScalarFromVar(const framework::Variable& variable) {
   }
 }
 
-inline phi::IntArray MakePhiIntArrayFromVar(
-    const framework::Variable& variable) {
+phi::IntArray MakePhiIntArrayFromVar(const framework::Variable& variable) {
   if (variable.IsType<phi::DenseTensor>()) {
     const auto& tensor = variable.Get<phi::DenseTensor>();
     return MakePhiIntArray(tensor);
@@ -65,7 +64,7 @@ inline phi::IntArray MakePhiIntArrayFromVar(
 }
 
 // TODO(chentianyu03): Inplace with IntArray constructor
-inline phi::IntArray MakePhiIntArrayFromVarList(
+phi::IntArray MakePhiIntArrayFromVarList(
     const std::vector<framework::Variable*>& variable_list) {
   if (variable_list.size() == 0) {
     return phi::IntArray();
