@@ -24,7 +24,7 @@ void SetInMemDescWithSqueeze2FuseSupport(
     const dnnl::memory::desc& in_md) {
   const std::set<int64_t> squeeze2_axes_set(fused_squeeze2_axes.begin(),
                                             fused_squeeze2_axes.end());
-  const std::vector<int64_t>& x_vec_dims = in_md.dims();
+  const std::vector<int64_t>& x_vec_dims = in_md.get_dims();
   std::vector<int64_t> squeezed_op_tz(
       x_vec_dims.size() - fused_squeeze2_axes.size(), 0);
 
@@ -59,7 +59,7 @@ void SetInMemDescWithLogicalLayoutFusesSupport(
           : std::vector<int>();
   if (fused_squeeze2_axes.empty()) {
     in->set_mem_desc(in_md);
-    in->Resize(make_ddim(in_md.dims()));
+    in->Resize(make_ddim(in_md.get_dims()));
   } else {
     SetInMemDescWithSqueeze2FuseSupport(fused_squeeze2_axes, in, in_md);
   }
@@ -92,20 +92,20 @@ void TransposeKernel(const Context& dev_ctx,
       x.mem_desc(), funcs::to_void_cast(x.data<T>()));
   auto dst_md =
       dnnl::memory::desc(x_vec_dims,
-                         x.mem_desc().data_type(),
+                         x.mem_desc().get_data_type(),
                          funcs::GetPlainOneDNNFormat(x_vec_dims.size()));
 
   // a trick is used here to fake transpose of out_md, so later it will be
   // "untransposed", leaving output data in plain format tag
   std::vector<int64_t> fake_strides(axis.size());
-  auto dims = dst_md.dims();
+  auto dims = dst_md.get_dims();
   int total_stride = 1;
   for (int i = static_cast<int>(dims.size()) - 1; i >= 0; --i) {
     fake_strides[axis[i]] = total_stride;
     total_stride *= dims[axis[i]];
   }
-  dst_md =
-      dnnl::memory::desc(x_vec_dims, x.mem_desc().data_type(), fake_strides);
+  dst_md = dnnl::memory::desc(
+      x_vec_dims, x.mem_desc().get_data_type(), fake_strides);
   auto dst_data = dev_ctx.template Alloc<T>(out);
   auto reorder_dst_memory_p =
       std::make_shared<dnnl::memory>(dst_md, dev_ctx.GetEngine(), dst_data);
