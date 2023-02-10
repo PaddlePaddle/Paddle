@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/ir/type/type_support.h"
 #include <gtest/gtest.h>
 #include <unordered_map>
+#include "paddle/ir/type/type_id.h"
 
 TEST(type_support, type_id) {
   class TypeA {};
