@@ -1349,6 +1349,7 @@ class BatchNormOneDNNHandler
     this->AcquireBackwardPrimitiveDescriptor(
         dnnl::prop_kind::backward,
         out_grad->mem_desc(),
+        out_grad->mem_desc(),
         in_x->mem_desc(),
         epsilon,
         dnnl::normalization_flags::use_scale |
