@@ -1958,12 +1958,10 @@ class MatmulOneDNNHandler : public OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
   }
 
   dnnl::memory GetOutputScale() {
-    if (scale_out_ != 1.0f) {
-      std::vector<float> scales(1, scale_out_);
-      auto scales_md = dnnl::memory::desc({static_cast<int64_t>(scales.size())},
-                                          dnnl::memory::data_type::f32,
-                                          dnnl::memory::format_tag::x);
-      return dnnl::memory(scales_md, this->engine_, scales);
+    if (this->scale_out_ != 1.0f) {
+      auto scales_md = dnnl::memory::desc(
+          {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
+      return dnnl::memory(scales_md, this->engine_, &scale_out_);
     } else {
       dnnl::memory(dnnl::memory::desc(), this->engine_, DNNL_MEMORY_NONE);
     }
