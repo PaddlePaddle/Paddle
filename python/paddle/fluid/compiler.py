@@ -324,6 +324,8 @@ class CompiledProgram:
         if self._places is not None:
             if not isinstance(self._places, (list, tuple)):
                 self._places = [self._places]
+        if len(self._places) > 1:
+            raise NotImplementedError("NewExe not supported")
 
         return self
 
