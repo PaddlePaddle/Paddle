@@ -51,7 +51,6 @@ from ..framework import (
 from .details import UnionFind, VarStruct, VarsDistributed
 from .details import delete_ops, find_op_by_output_arg
 from ..distribute_lookup_table import find_distributed_lookup_table
-from paddle.distributed.transpiler import collective
 from paddle.distributed.fleet.base.private_helper_function import (
     wait_server_ready,
 )
@@ -435,6 +434,8 @@ class DistributeTranspiler:
         main_program=None,
         wait_port=True,
     ):
+        from paddle.distributed.transpiler import collective
+
         if isinstance(trainers, str):
             endpoints = trainers.split(",")
         elif isinstance(trainers, list):
