@@ -1365,10 +1365,10 @@ class BatchNormOneDNNHandler
             "Dims of scale tensor must be 1, but received scale's size is %d",
             scale_tz.size()));
 
-    auto scale_memory =
-        this->AcquireMemoryFromPrimitive(this->fwd_pd_->weights_desc(), scale);
-    auto shift_memory =
-        this->AcquireMemoryFromPrimitive(this->fwd_pd_->weights_desc(), shift);
+    auto scale_memory = this->AcquireMemoryFromPrimitive(
+        this->fwd_pd_->weights_desc(), to_void_cast<T>(scale));
+    auto shift_memory = this->AcquireMemoryFromPrimitive(
+        this->fwd_pd_->weights_desc(), to_void_cast<T>(shift));
 
     return std::make_tuple(scale_memory, shift_memory);
   }
