@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/utils/pybind.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace pybind {
@@ -34,7 +34,7 @@ paddle::experimental::Tensor CastPyArg2Tensor(PyObject* obj, ssize_t arg_pos) {
                           reinterpret_cast<PyObject*>(p_string_tensor_type))) {
     return reinterpret_cast<TensorObject*>(obj)->tensor;
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "argument (position %d) must be "
         "Tensor, but got %s",
         arg_pos + 1,
@@ -60,8 +60,8 @@ PyObject* ToPyObject(const paddle::experimental::Tensor& value,
     new (&(v->tensor)) paddle::experimental::Tensor();
     v->tensor = value;
   } else {
-    PADDLE_THROW(platform::errors::Fatal(
-        "tp_alloc return null, can not new a PyObject."));
+    PADDLE_THROW(
+        phi::errors::Fatal("tp_alloc return null, can not new a PyObject."));
   }
   return obj;
 }
