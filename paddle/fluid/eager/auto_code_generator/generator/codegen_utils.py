@@ -34,6 +34,7 @@ ops_to_fill_zero_for_empty_grads = set(
         "multiply_double_grad",
         "multiply_triple_grad",
         "conv2d_grad_grad",
+        "conv2d_transpose_double_grad",
         "batch_norm_double_grad",
         "tanh_grad",
         "tanh_double_grad",
