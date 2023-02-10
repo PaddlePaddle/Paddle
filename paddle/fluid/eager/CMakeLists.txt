@@ -77,6 +77,6 @@ cc_library(
        op_registry
        variable_helper
        memcpy
-       generated_static_op
+       generated_op
        autograd_meta
        hook_utils)

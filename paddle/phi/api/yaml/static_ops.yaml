@@ -1,16 +1,3 @@
-- op : scale
-  args : (Tensor x, Scalar scale=1.0, float bias=0.0, bool bias_after_scale=true)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : scale {dense -> dense},
-           scale_sr {selected_rows -> selected_rows}
-    data_type : x
-  inplace : (x -> out)
-  backward : scale_grad
-
 - op : share_buffer
   args : (Tensor[] x, bool[] share_dims_and_dtype={})
   output : Tensor[](out){x.size()}, Tensor[](xout){x.size()}

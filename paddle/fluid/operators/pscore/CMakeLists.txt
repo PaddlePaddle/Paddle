@@ -86,7 +86,7 @@ cc_test_old(
   executor
   scope
   proto_desc
-  generated_static_op
+  generated_op
   eigen_function)
 
 set_source_files_properties(
@@ -100,7 +100,7 @@ cc_test_old(
   executor
   scope
   proto_desc
-  generated_static_op
+  generated_op
   send_and_recv_op
   ${RPC_DEPS}
   ${DISTRIBUTE_DEPS}
@@ -117,7 +117,7 @@ cc_test_old(
   executor
   scope
   proto_desc
-  generated_static_op
+  generated_op
   send_and_recv_op
   ${RPC_DEPS}
   ${DISTRIBUTE_DEPS}
@@ -134,7 +134,7 @@ cc_test_old(
   executor
   scope
   proto_desc
-  generated_static_op
+  generated_op
   heter_listen_and_serv_op
   ${RPC_DEPS}
   ${DISTRIBUTE_DEPS}
@@ -153,7 +153,7 @@ cc_binary(
   executor
   scope
   proto_desc
-  generated_static_op
+  generated_op
   heter_listen_and_serv_op
   ${RPC_DEPS}
   ${DISTRIBUTE_DEPS}
