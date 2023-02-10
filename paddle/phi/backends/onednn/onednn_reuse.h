@@ -322,9 +322,8 @@ class OneDNNHandlerT {
     bwd_pd_ = std::static_pointer_cast<typename TBackward::primitive_desc>(
         dev_ctx_.GetBlob(key_pd));
     if (bwd_pd_ == nullptr) {
-      auto bwd_desc = typename TBackward::desc(std::forward<Args>(args)...);
       bwd_pd_ = std::make_shared<typename TBackward::primitive_desc>(
-          bwd_desc, engine_, *fwd_pd_);
+          engine_, std::forward<Args>(args)..., *fwd_pd_);
       dev_ctx_.SetBlob(key_pd, bwd_pd_);
     }
   }
@@ -342,10 +341,8 @@ class OneDNNHandlerT {
         std::static_pointer_cast<typename TBackward_params::primitive_desc>(
             dev_ctx_.GetBlob(key_pd));
     if (bwd_w_pd_ == nullptr) {
-      auto bwd_desc =
-          typename TBackward_params::desc(std::forward<Args>(args)...);
       bwd_w_pd_ = std::make_shared<typename TBackward_params::primitive_desc>(
-          bwd_desc, engine_, *fwd_pd_);
+          engine_, std::forward<Args>(args)..., *fwd_pd_);
       dev_ctx_.SetBlob(key_pd, bwd_w_pd_);
     }
   }
