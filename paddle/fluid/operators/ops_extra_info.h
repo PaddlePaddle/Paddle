@@ -122,6 +122,9 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"Bias_scales", ExtraAttrProperty::ONEDNN},
         {"Output_shift_scale", ExtraAttrProperty::ONEDNN},
         {"Sum_scale", ExtraAttrProperty::ONEDNN},
+        {"scale", ExtraAttrProperty::ONEDNN},
+        {"shift", ExtraAttrProperty::ONEDNN},
+        {"output_data_type", ExtraAttrProperty::ONEDNN},
         // GPUDNN dedicated attributes
         {"exhaustive_search", ExtraAttrProperty::GPUDNN},
         {"fuse_relu_before_depthwise_conv", ExtraAttrProperty::GPUDNN},

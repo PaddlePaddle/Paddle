@@ -933,6 +933,17 @@
   outputs :
     out : Out
 
+- op : mean (reduce_mean)
+  backward : reduce_mean_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs :
+    {axis : dim, keepdim : keep_dim}
+  extra :
+    attrs : [bool use_mkldnn = false]
+
 - op : meshgrid
   backward : meshgrid_grad
   inputs :
@@ -1135,13 +1146,6 @@
 
 - op : reduce_max
   backward : reduce_max_grad
-  extra :
-    attrs : [bool use_mkldnn = false]
-
-- op : reduce_mean
-  backward : reduce_mean_grad
-  inputs:
-    x : X
   extra :
     attrs : [bool use_mkldnn = false]
 

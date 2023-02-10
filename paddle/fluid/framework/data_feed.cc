@@ -2815,7 +2815,7 @@ void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {
       LoD& lod = (*feed->mutable_lod());
       lod.resize(1);
       lod[0].resize(offset_cols_size);
-      paddle::framework::MixVector<size_t> mixv_lod(&lod[0]);
+      phi::MixVector<size_t> mixv_lod(&lod[0]);
       memcpy(mixv_lod.MutableData(platform::CPUPlace()),
              off_start_ptr,
              offset_cols_size * sizeof(size_t));
