@@ -104,6 +104,8 @@ void TransposeKernel(const Context& dev_ctx,
   reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
   astream.wait();
 
+  // it is needed because oneDNN's permute axis understand axes order in
+  // different way PaddlePaddle's transpose
   out->set_mem_desc(reorder_dst_memory_p->get_desc().permute_axes(
       funcs::TransposeToPermuteAxes(axis)));
 }
