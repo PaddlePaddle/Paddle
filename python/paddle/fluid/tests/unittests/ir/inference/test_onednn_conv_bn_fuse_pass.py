@@ -79,7 +79,7 @@ class TestOneDNNConvBnFusePass(PassAutoScanTest):
             paddings=paddings,
             strides=strides,
             use_mkldnn=use_mkldnn,
-            has_bias=True,
+            has_bias=False,
             is_test=True,
         )
         bn_op = OpConfig(
