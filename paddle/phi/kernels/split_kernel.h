@@ -42,7 +42,8 @@ std::vector<DenseTensor> Split(const Context& dev_ctx,
                                const Scalar& axis) {
   size_t out_number;
   out_number = sections.GetData().size();
-
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  xx.inplace_version_counter_->setVal(-10);
   std::vector<MetaTensor> out_meta;
   std::vector<MetaTensor*> out_meta_ptr;
   out_meta.reserve(out_number);
@@ -61,6 +62,9 @@ std::vector<DenseTensor> Split(const Context& dev_ctx,
   }
 
   SplitKernel<T, Context>(dev_ctx, x, sections, axis, outs);
+  for (int i = 0; i < result.size(); ++i) {
+    result[i].inplace_version_counter_->setVal(-10);
+  }
   return result;
 }
 
@@ -70,7 +74,8 @@ std::vector<DenseTensor> SplitWithNum(const Context& dev_ctx,
                                       int num,
                                       const Scalar& axis) {
   size_t out_number = num;
-
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  xx.inplace_version_counter_->setVal(-10);
   std::vector<MetaTensor> out_meta;
   std::vector<MetaTensor*> out_meta_ptr;
   out_meta.reserve(out_number);
@@ -90,7 +95,9 @@ std::vector<DenseTensor> SplitWithNum(const Context& dev_ctx,
   }
 
   SplitWithNumKernel<T, Context>(dev_ctx, x, num, axis, outs);
-
+  for (int i = 0; i < result.size(); ++i) {
+    result[i].inplace_version_counter_->setVal(-10);
+  }
   return result;
 }
 

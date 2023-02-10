@@ -23,10 +23,12 @@ namespace phi {
 
 template <typename T, typename Context>
 void ExpandGradKernel(const Context& ctx,
-                      const DenseTensor& x,
+                      const DenseTensor& xx,
                       const DenseTensor& out_grad,
                       const IntArray& shape,
                       DenseTensor* x_grad) {
+  DenseTensor& x = const_cast<DenseTensor&>(xx);
+
   ctx.template Alloc<T>(x_grad);
   if (x_grad->dims() == out_grad.dims()) {
     phi::Copy(ctx, out_grad, ctx.GetPlace(), false, x_grad);

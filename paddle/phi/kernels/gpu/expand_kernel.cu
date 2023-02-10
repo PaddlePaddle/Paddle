@@ -28,7 +28,7 @@ void ExpandKernel(const Context& ctx,
                   const IntArray& shape,
                   DenseTensor* out) {
   DenseTensor& xx = const_cast<DenseTensor&>(x);
-  x.inplace_version_counter_->setVal(-10);  // setVal(-1);
+  xx.inplace_version_counter_->setVal(-10);  // setVal(-1);
   auto expand_shape = shape.GetData();
   auto diff = expand_shape.size() - x.dims().size();
   auto out_shape = phi::vectorize<int64_t>(x.dims());

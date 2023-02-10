@@ -27,6 +27,8 @@ void UnsqueezeInferKernel(const Context& dev_ctx,
                           DenseTensor* out) {
   auto x_dims = x.dims();
   auto out_dims = out->dims();
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  xx.inplace_version_counter_->setVal(-10);
   if (axes.FromTensor()) {
     std::vector<int32_t> tmp;
     tmp.reserve(axes.GetData().size());
@@ -39,6 +41,7 @@ void UnsqueezeInferKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   out->Resize(out_dims);  // copy will reset the dims.
+  out->inplace_version_counter_->setVal(-10);
 }
 
 template <typename T, typename Context>

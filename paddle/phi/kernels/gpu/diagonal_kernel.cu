@@ -29,6 +29,8 @@ void DiagonalKernel(const Context& dev_ctx,
                     int axis2,
                     DenseTensor* out) {
   auto* input = &x;
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  xx.inplace_version_counter_->setVal(-10);
   const auto* input_data = input->data<T>();
   auto input_dim = input->dims().Get();
   auto input_dim_size = input->dims().size();

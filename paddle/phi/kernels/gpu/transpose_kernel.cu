@@ -31,6 +31,8 @@ void TransposeKernel(const Context& ctx,
                      const std::vector<int>& axis,
                      DenseTensor* out) {
   ctx.template Alloc<T>(out);
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  xx.inplace_version_counter_->setVal(-10);
   if (out->numel() == 0) {
     return;
   }
@@ -38,6 +40,7 @@ void TransposeKernel(const Context& ctx,
     phi::Copy<Context>(ctx, x, ctx.GetPlace(), false, out);
     return;
   }
+  out->inplace_version_counter_->setVal(-10);
   phi::funcs::TransposeGPUKernelDriver<T>(ctx, x, axis, out);
 }
 

@@ -30,6 +30,8 @@ void ExpandAs(const Context& context,
               const std::vector<int>& target_shape,
               DenseTensor* out) {
   auto in_dims = x.dims();
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  xx.inplace_version_counter_->setVal(-10);
   auto vec_in_dims = phi::vectorize<int>(in_dims);
   auto diff = target_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
@@ -82,6 +84,7 @@ void ExpandAs(const Context& context,
   phi::DDim out_dims = phi::make_ddim(target_shape);
 
   out->Resize(out_dims);
+  out->inplace_version_counter_->setVal(-10);
   context.template Alloc<T>(out);
   auto x0 = EigenTensor<T, Rank>::From(x, new_in_dims);
   auto y = EigenTensor<T, Rank>::From(*out, out_dims);
