@@ -1417,25 +1417,16 @@ Please run 'pip install -r python/requirements.txt' to make sure you have all th
         )  # Specify the dependencies to install
 
     python_dependcies_module = []
-    for dependency in build_dependencies:
-        if '>=' in dependency:
-            python_dependcies_module.append(
-                dependency.partition('>=')[0].replace('-', '').replace('_', '')
-            )
-        elif '==' in dependency:
-            python_dependcies_module.append(
-                dependency.partition('==')[0].replace('-', '').replace('_', '')
-            )
-        else:
-            python_dependcies_module.append(
-                dependency.replace('-', '').replace('_', '')
-            )
+    installed_packages = []
 
+    for dependency in build_dependencies:
+        python_dependcies_module.append(
+            re.sub("_|-", '', re.sub(r"==.*|>=.*|<=.*", '', dependency))
+        )
     reqs = subprocess.check_output([sys.executable, '-m', 'pip', 'freeze'])
-    installed_packages = [
-        r.decode().split('==')[0].replace('-', '').replace('_', '')
-        for r in reqs.split()
-    ]
+
+    for r in reqs.split():
+        installed_packages.append(re.sub("_|-", '', r.decode().split('==')[0]))
 
     for dependency in python_dependcies_module:
         if dependency not in installed_packages:
