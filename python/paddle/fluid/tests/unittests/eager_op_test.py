@@ -2454,6 +2454,8 @@ class OpTest(unittest.TestCase):
         user_defined_grad_outputs=None,
         parallel=False,
     ):
+        if in_dygraph_mode():
+            paddle.enable_static()
         prog = Program()
         scope = core.Scope()
         block = prog.global_block()
@@ -2525,6 +2527,7 @@ class OpTest(unittest.TestCase):
             )
             prog = compiled_prog
         executor = fluid.Executor(place)
+        paddle.disable_static()
         return list(
             map(
                 np.array,
