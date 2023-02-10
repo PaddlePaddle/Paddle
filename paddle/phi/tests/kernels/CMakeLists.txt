@@ -79,7 +79,7 @@ if(WITH_GPU)
   cc_test(
     test_multi_tensor_adam_kernel
     SRCS test_multi_tensor_adam_kernel.cc
-    DEPS gtest phi phi_api_utils)
+    DEPS gtest phi phi_api_utils op_registry)
 elseif(WITH_ROCM)
   hip_test(
     test_gpu_timer

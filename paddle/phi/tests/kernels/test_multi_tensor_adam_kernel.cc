@@ -22,6 +22,8 @@
 
 #include "gtest/gtest.h"
 
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -474,5 +476,26 @@ TEST(multi_tensor_adam, test_fp16_gpu) {
   }
 }
 #endif
+
+TEST(multi_tensor_adam, get_kernel_type_for_var) {
+  auto op = paddle::framework::OpRegistry::CreateOp(
+      "multi_tensor_adam", {}, {}, {}, false);
+  auto *op_ptr =
+      dynamic_cast<paddle::framework::OperatorWithKernel *>(op.release());
+  EXPECT_NE(op_ptr, nullptr);
+  std::unique_ptr<paddle::framework::OperatorWithKernel> op_with_kernel(op_ptr);
+
+  const auto &ctx =
+      *paddle::platform::DeviceContextPool::Instance().GetByPlace(CPUPlace());
+  DenseTensor t;
+  t.Resize({1});
+  ctx.Alloc<float>(&t);
+
+  for (auto name : {"Beta1Pows", "Beta2Pows", "SkipUpdate"}) {
+    auto key = op_with_kernel->GetKernelTypeForVar(
+        name, t, phi::KernelKey(CPUPlace()));
+    EXPECT_EQ(key.backend(), phi::Backend::ALL_BACKEND);
+  }
+}
 
 }  // namespace phi
