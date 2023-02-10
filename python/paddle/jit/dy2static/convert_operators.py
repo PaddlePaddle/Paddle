@@ -41,7 +41,12 @@ def convert_attr(x, attr):
 
 
 def convert_load(x):
-    if isinstance(x, paddle.fluid.core.eager.Tensor):
+    from paddle.fluid.dygraph.base import in_declarative_mode
+
+    if in_declarative_mode() and isinstance(x, paddle.fluid.core.eager.Tensor):
+        """
+        TODO:(@xiongkun) may run convert_load in dygraph mode, which should be fixed.
+        """
         return _convert_into_variable(x)
     return x
 
