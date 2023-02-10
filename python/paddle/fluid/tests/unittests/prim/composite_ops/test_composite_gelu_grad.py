@@ -73,8 +73,9 @@ def expect_grad(inputs):
 
 
 class TestCompositeGelu(unittest.TestCase):
+    "test composite gelu: prim forward"
+
     def setUp(self):
-        core._set_prim_backward_enabled(True)
         self.dtypes = ["float16", "float32", "float64"]
         self.shapes = [[16, 16, 64, 64], [2, 3, 4], [2, 3]]
         self.approximates = [True, False]
@@ -134,6 +135,9 @@ class TestCompositeGelu(unittest.TestCase):
         for i in self.approximates:
             for j in self.dtypes:
                 for t in self.shapes:
+                    if paddle.device.get_device() == "cpu" and j == "float16":
+                        print("need pass this case")
+                        continue
                     attrs.set_approximate(i)
                     attrs.set_dtype(j)
                     attrs.set_shape(t)
@@ -141,16 +145,16 @@ class TestCompositeGelu(unittest.TestCase):
 
 
 class TestCompositeGeluPrimBackward(unittest.TestCase):
-    "test composite gelu and prim backward"
+    "test composite gelu: prim forward and backward"
 
     def setUp(self):
-        core._set_prim_backward_enabled(True)
-        self.dtypes = ["float32", "float64"]
-        self.shapes = [[2, 3, 4], [2, 3]]
+        self.dtypes = ["float16", "float32", "float64"]
+        self.shapes = [[16, 16, 64, 64], [2, 3, 4], [2, 3]]
         self.approximates = [True, False]
 
     def cal_composite_grad(self, inputs):
         paddle.enable_static()
+        core._set_prim_all_enabled(True)
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
@@ -167,6 +171,7 @@ class TestCompositeGeluPrimBackward(unittest.TestCase):
         exe.run(startup_program)
         res = exe.run(main_program, feed={'x': inputs}, fetch_list=[z])
         paddle.disable_static()
+        core._set_prim_all_enabled(False)
         return res
 
     def compare_backward(self):
@@ -187,6 +192,9 @@ class TestCompositeGeluPrimBackward(unittest.TestCase):
         for i in self.approximates:
             for j in self.dtypes:
                 for t in self.shapes:
+                    if paddle.device.get_device() == "cpu" and j == "float16":
+                        print("need pass this case")
+                        continue
                     attrs.set_approximate(i)
                     attrs.set_dtype(j)
                     attrs.set_shape(t)

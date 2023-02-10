@@ -98,6 +98,12 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         if plat == "Linux":
             for shape in self.shapes:
                 for dtype in self.dtypes:
+                    if (
+                        paddle.device.get_device() == "cpu"
+                        and dtype == "float16"
+                    ):
+                        print("need pass this case")
+                        continue
                     data = generate_data(shape, dtype)
                     data_t = paddle.to_tensor(data)
                     data_t.stop_gradient = False

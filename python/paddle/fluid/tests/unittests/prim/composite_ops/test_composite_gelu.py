@@ -119,7 +119,10 @@ class TestCompositeGelu(unittest.TestCase):
         for i in self.approximate:
             for j in self.dtypes:
                 for t in self.shapes:
-                    print(i, j, t)
+                    # gelu-kernel on cpu not support float16
+                    if paddle.device.get_device() == "cpu" and j == "float16":
+                        print("need pass this case")
+                        continue
                     attrs.set_approximate(i)
                     attrs.set_dtype(j)
                     attrs.set_shape(t)
