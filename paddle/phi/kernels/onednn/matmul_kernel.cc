@@ -226,10 +226,14 @@ class MulPrimitiveFactory {
                           const std::vector<float> &scale) {
     auto mask = scale.size() > 1 ? 1 : 0;
     dnnl::primitive_attr attr;
-    attr.set_output_scales(mask, scale);
+    attr.set_scales_mask(DNNL_ARG_DST, mask);
 
     auto src_mem = memory(src_desc, engine_, src_data);
     auto dst_mem = memory(dst_desc, engine_);
+    auto scales_md = dnnl::memory::desc(
+        {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
+    auto scales_mem = dnnl::memory(
+        scales_md, engine_, funcs::to_void_cast<float>(scale.data()));
 
     auto reorder_pd = dnnl::reorder::primitive_desc(src_mem, dst_mem, attr);
 
@@ -242,6 +246,7 @@ class MulPrimitiveFactory {
           paddle::platform::TracerEventType::UserDefined,
           2,
           paddle::platform::EventRole::kUniqueOp);
+
       reorder.execute(astream, src_mem, dst_mem);
       astream.wait();
     }
@@ -250,9 +255,7 @@ class MulPrimitiveFactory {
   }
 
   memory QuantInputY(memory input_y, const std::vector<float> &scale_y) {
-    const auto &dims = input_y.get_desc().data.dims;
-    auto ndims = input_y.get_desc().data.ndims;
-    auto y_dims = std::vector<int64_t>(dims, dims + ndims);
+    auto y_dims = input_y.get_desc().get_dims();
 
     auto user_y_desc =
         CreateMemDescriptor<YT>(y_dims, funcs::OneDNNMemoryFormat::oi);
@@ -306,19 +309,17 @@ class MulPrimitiveFactory {
     const auto y_desc = y_memory.get_desc();
     inner_product_forward::primitive_desc mul_prim_desc;
 
-    const auto &mul_desc = inner_product_forward::desc(
-        prop_kind::forward, x_desc, y_desc, dst_desc);
-
     if (is_int8_) {
       bool force_fp32_output =
           dev_ctx.HasDnnAttr("force_fp32_output")
               ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("force_fp32_output"))
               : false;
       auto mul_attr = CreateMulAttr(dev_ctx, force_fp32_output);
-      mul_prim_desc =
-          inner_product_forward::primitive_desc(mul_desc, mul_attr, engine_);
+      mul_prim_desc = inner_product_forward::primitive_desc(
+          engine_, prop_kind::forward, x_desc, y_desc, dst_desc, mul_attr);
     } else {
-      mul_prim_desc = inner_product_forward::primitive_desc(mul_desc, engine_);
+      mul_prim_desc = inner_product_forward::primitive_desc(
+          engine_, prop_kind::forward, x_desc, y_desc, dst_desc);
     }
 
     output_ = CreateDstMemory(mul_prim_desc, dev_ctx, output);
@@ -536,7 +537,7 @@ void MatmulWithFlattenKernelINT8(const Context &dev_ctx,
     out->Resize(out_dims);
   }
 
-  auto in_md = memory::desc(*dnnl_primitive_desc_query_md(
+  auto in_md = memory::desc(dnnl_primitive_desc_query_md(
       mul.get_primitive_desc(), dnnl_query_dst_md, 0));
   out->set_mem_desc(in_md.reshape(vectorize<int64_t>(out->dims())));
 }
