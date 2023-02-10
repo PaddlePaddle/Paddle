@@ -1145,14 +1145,14 @@ void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
                         x_dims.to_str()));
 
   auto y_dims = y.dims();
-  PADDLE_ENFORCE_EQ(
-      true,
-      x_rank == static_cast<size_t>(y_dims.size()),
-      phi::errors::PreconditionNotMet(
-          "ShapeError: The shape of input tensor Y: %s should match with "
-          "input tenosr X: %s",
-          y_dims.to_str(),
-          x_dims.to_str()));
+  auto y_rank = static_cast<size_t>(y_dims.size());
+  PADDLE_ENFORCE_EQ(true,
+                    1 == y_rank || 2 == y_rank,
+                    phi::errors::PreconditionNotMet(
+                        "ShapeError: The dimensions of input tensor Y (%s) "
+                        "should be 1 or 2",
+                        y_dims.to_str()));
+
   bool shape_match = true;
   for (size_t i = 0; i < x_rank; ++i) {
     if (x_dims[i] != y_dims[i]) {
