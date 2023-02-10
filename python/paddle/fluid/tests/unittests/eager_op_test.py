@@ -2527,8 +2527,7 @@ class OpTest(unittest.TestCase):
             )
             prog = compiled_prog
         executor = fluid.Executor(place)
-        paddle.disable_static()
-        return list(
+        res = list(
             map(
                 np.array,
                 executor.run(
@@ -2536,6 +2535,8 @@ class OpTest(unittest.TestCase):
                 ),
             )
         )
+        paddle.disable_static()
+        return res
 
 
 class OpTestTool:
