@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ir/ir_context.h"
 #include <unordered_map>
-#include "paddle/ir/type/storage_uniquer.h"
+
+#include "paddle/ir/ir_context.h"
 #include "paddle/ir/type/type_support.h"
 #include "paddle/phi/api/ext/exception.h"
 

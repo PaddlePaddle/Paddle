@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ir/type/storage_uniquer.h"
 #include <memory>
 #include <unordered_map>
+
+#include "paddle/ir/type/storage_uniquer.h"
 #include "paddle/phi/api/ext/exception.h"
 
 namespace ir {
-
 struct ParametricStorageUniquer {
   using BaseStorage = StorageUniquer::BaseStorage;
 

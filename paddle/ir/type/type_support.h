@@ -16,7 +16,6 @@
 
 #include "paddle/ir/ir_context.h"
 #include "paddle/ir/type/storage_uniquer.h"
-#include "paddle/ir/type/type_id.h"
 
 namespace ir {
 /// \brief Abstract the properties and behaviors common to all Type classes into
