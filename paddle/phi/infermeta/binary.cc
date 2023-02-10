@@ -1314,17 +1314,24 @@ void GatherInferMeta(const MetaTensor& x,
 
   auto input_dim = x.dims();
   auto axis_v = axis.to<int>();
+  if (axis_v < 0) axis_v += input_dim.size();
 
   PADDLE_ENFORCE_GE(
       axis_v,
-      0,
+      (0 - input_dim.size()),
       phi::errors::InvalidArgument(
-          "The axis should be greater or equal than 0, but we get %d", axis_v));
-  PADDLE_ENFORCE_LE(
+          "The axis is expected to be range of [%d,%d]. But received %d",
+          -input_dim.size(),
+          input_dim.size() - 1,
+          axis_v));
+  PADDLE_ENFORCE_LT(
       axis_v,
-      9,
+      input_dim.size(),
       phi::errors::InvalidArgument(
-          "The axis should be less or equal than 9, but we get %d", axis_v));
+          "The axis is expected to be range of [%d,%d]. But received %d",
+          -input_dim.size(),
+          input_dim.size() - 1,
+          axis_v));
 
   if (index_dims.size() == 0) {
     // 0D index will decrease the dimension

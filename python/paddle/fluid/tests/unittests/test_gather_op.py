@@ -391,7 +391,7 @@ class TestGathertError(unittest.TestCase):
         ):
 
             shape = [8, 9, 6]
-            x = paddle.fluid.data(shape=shape, dtype='int8', name='x')
+            x = paddle.fluid.data(shape=shape, dtype='int32', name='x')
             axis = paddle.fluid.data(shape=[1], dtype='int32', name='axis')
             index = paddle.fluid.data(shape=shape, dtype='int32', name='index')
             index_float = paddle.fluid.data(
