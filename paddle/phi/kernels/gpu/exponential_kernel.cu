@@ -28,6 +28,9 @@ void ExponentialKernel(const Context &dev_ctx,
   phi::funcs::uniform_distribution<T> dist;
   phi::funcs::exponential_transform<T> trans(lambda);
   phi::funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);
+  DenseTensor &xx = const_cast<phi::DenseTensor &>(x);
+  xx.inplace_version_counter_->setCanNotUse();
+  out->inplace_version_counter_->setCanNotUse();
 }
 
 }  // namespace phi

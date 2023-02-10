@@ -27,6 +27,9 @@ void IdentityLossKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const int reduction,
                         DenseTensor* out) {
+  DenseTensor& xx = const_cast<phi::DenseTensor&>(x);
+  xx.inplace_version_counter_->setCanNotUse();
+  out->inplace_version_counter_->setCanNotUse();
   switch (reduction) {
     case 0:
       // sum

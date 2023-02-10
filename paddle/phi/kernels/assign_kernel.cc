@@ -25,6 +25,9 @@ void AssignKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   DenseTensor* out) {
   phi::Copy(dev_ctx, x, x.place(), false, out);
+  DenseTensor& xx = const_cast<phi::DenseTensor&>(x);
+  xx.inplace_version_counter_->setCanNotUse();
+  out->inplace_version_counter_->setCanNotUse();
 }
 
 template <typename Context>

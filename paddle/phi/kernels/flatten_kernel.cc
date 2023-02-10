@@ -45,6 +45,9 @@ void FlattenKernel(const Context& dev_ctx,
                    DenseTensor* out,
                    DenseTensor* xshape) {
   FlattenInferKernel<T, Context>(dev_ctx, x, start_axis, stop_axis, out);
+  DenseTensor& xx = const_cast<phi::DenseTensor&>(x);
+  xx.inplace_version_counter_->setCanNotUse();
+  out->inplace_version_counter_->setCanNotUse();
 }
 
 }  // namespace phi
