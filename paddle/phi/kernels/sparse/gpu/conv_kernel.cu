@@ -160,8 +160,8 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                      K,
                      gather_indices,
                      scatter_indices,
-		     cutlass,
-		     x.dtype());
+                     cutlass,
+                     x.dtype());
     }
   } else {
 #endif
