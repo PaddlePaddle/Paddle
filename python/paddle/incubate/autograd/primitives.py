@@ -18,12 +18,10 @@ from paddle.tensor import acosh  # noqa: F401
 from paddle.tensor import add  # noqa: F401
 from paddle.tensor import asin  # noqa: F401
 from paddle.tensor import asinh  # noqa: F401
-from paddle.tensor import assign  # noqa: F401
 from paddle.tensor import atan  # noqa: F401
 from paddle.tensor import atanh  # noqa: F401
 from paddle.tensor import broadcast_shape  # noqa: F401
 from paddle.tensor import broadcast_to  # noqa: F401
-from paddle.tensor import cast  # noqa: F401
 from paddle.tensor import cos  # noqa: F401
 from paddle.tensor import cosh  # noqa: F401
 from paddle.tensor import cumprod  # noqa: F401
@@ -57,6 +55,8 @@ from paddle.tensor import sum  # noqa: F401
 from paddle.tensor import tan  # noqa: F401
 from paddle.tensor import tanh  # noqa: F401
 from paddle.tensor import zeros  # noqa: F401
+from paddle.tensor.creation import assign  # noqa: F401
+from paddle.tensor.manipulation import cast  # noqa: F401
 
 math_op = [
     'add',
