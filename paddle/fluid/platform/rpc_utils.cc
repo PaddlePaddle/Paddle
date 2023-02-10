@@ -81,11 +81,18 @@ static inline uint8_t GetByte(const std::string& token) {
   return static_cast<uint8_t>(std::stoi(num_str, nullptr, 16));
 }
 
-static inline bool IsValidStartByte(uint8_t byte) {
-  // check if the byte starts with 0, 110, 1110, 11110, 111110, or 1111110
-  return (byte & 0x80) == 0 || (byte & 0xE0) == 0xC0 || (byte & 0xF0) == 0xE0 ||
-         (byte & 0xF8) == 0xF0 || (byte & 0xFC) == 0xF8 ||
-         (byte & 0xFE) == 0xFC;
+static inline int GetCharBytes(uint8_t byte) {
+  if ((byte & 0x80) == 0) {
+    return 1;
+  } else if ((byte & 0xE0) == 0xC0) {
+    return 2;
+  } else if ((byte & 0xF0) == 0xE0) {
+    return 3;
+  } else if ((byte & 0xF8) == 0xF0) {
+    return 4;
+  } else {
+    return -1;
+  }
 }
 
 static inline bool IsValidContinuationByte(uint8_t byte) {
@@ -94,18 +101,31 @@ static inline bool IsValidContinuationByte(uint8_t byte) {
 }
 
 static inline std::string GetRecoveredToken(const std::vector<uint8_t>& bytes) {
-  std::vector<uint8_t> valid_bytes;
+  std::string res;
   int n = bytes.size();
-  for (int i = 0; i < n; ++i) {
-    if (i == 0 && !IsValidStartByte(bytes[i])) {
-      break;
+  int i = 0;
+  while (i < n) {
+    int sz = 0;
+    while ((sz = GetCharBytes(bytes[i])) == -1) {
+      ++i;
     }
-    if (!IsValidContinuationByte(bytes[i])) {
-      break;
+    if (i + sz < n) {
+      std::vector<uint8_t> valid_bytes;
+      valid_bytes.emplace_back(bytes[i]);
+      for (int j = 1; j < sz; ++j) {
+        if (!IsValidContinuationByte(bytes[i])) {
+          break;
+        }
+        valid_bytes.emplace_back(bytes[i]);
+        ++i;
+      }
+      if (valid_bytes.size() == static_cast<size_t>(sz)) {
+        res += std::string(valid_bytes.begin(), valid_bytes.end());
+      }
     }
-    valid_bytes.emplace_back(bytes[i]);
+    ++i;
   }
-  return std::string(valid_bytes.begin(), valid_bytes.end());
+  return res;
 }
 
 std::vector<std::string> RecoverBfbTokens(
