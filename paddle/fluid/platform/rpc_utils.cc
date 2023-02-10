@@ -81,6 +81,33 @@ static inline uint8_t GetByte(const std::string& token) {
   return static_cast<uint8_t>(std::stoi(num_str, nullptr, 16));
 }
 
+static inline bool IsValidStartByte(uint8_t byte) {
+  // check if the byte starts with 0, 110, 1110, 11110, 111110, or 1111110
+  return (byte & 0x80) == 0 || (byte & 0xE0) == 0xC0 || (byte & 0xF0) == 0xE0 ||
+         (byte & 0xF8) == 0xF0 || (byte & 0xFC) == 0xF8 ||
+         (byte & 0xFE) == 0xFC;
+}
+
+static inline bool IsValidContinuationByte(uint8_t byte) {
+  // check if the byte starts with 10
+  return (byte & 0xC0) == 0x80;
+}
+
+static inline std::string GetRecoveredToken(const std::vector<uint8_t>& bytes) {
+  std::vector<uint8_t> valid_bytes;
+  int n = bytes.size();
+  for (int i = 0; i < n; ++i) {
+    if (i == 0 && !IsValidStartByte(bytes[i])) {
+      break;
+    }
+    if (!IsValidContinuationByte(bytes[i])) {
+      break;
+    }
+    valid_bytes.emplace_back(bytes[i]);
+  }
+  return std::string(valid_bytes.begin(), valid_bytes.end());
+}
+
 std::vector<std::string> RecoverBfbTokens(
     const std::vector<std::string>& tokens) {
   std::vector<std::string> new_tokens;
@@ -90,7 +117,7 @@ std::vector<std::string> RecoverBfbTokens(
       tmp_bytes.emplace_back(GetByte(token));
     } else {
       if (!tmp_bytes.empty()) {
-        std::string recovered_token(tmp_bytes.begin(), tmp_bytes.end());
+        const std::string recovered_token = GetRecoveredToken(tmp_bytes);
         if (!recovered_token.empty()) {
           new_tokens.emplace_back(recovered_token);
         }
@@ -99,6 +126,12 @@ std::vector<std::string> RecoverBfbTokens(
         new_tokens.emplace_back(token);
       }
       tmp_bytes.clear();
+    }
+  }
+  if (!tmp_bytes.empty()) {
+    const std::string recovered_token = GetRecoveredToken(tmp_bytes);
+    if (!recovered_token.empty()) {
+      new_tokens.emplace_back(recovered_token);
     }
   }
   return new_tokens;
@@ -125,14 +158,14 @@ std::vector<std::string> PostProcess(
   std::vector<std::string> new_text;
   auto words = RecoverBfbTokens(tokens);
   for (auto& word : words) {
-    if (break_words.find(word) != break_words.end() || word == stop_token) {
+    if (break_words.count(word) || word == stop_token) {
       break;
     }
     if (word.empty() || word == "[PAD]") {
       continue;
     }
     if (replace_words.count(word)) {
-      new_text.push_back(replace_words.at(word));
+      new_text.emplace_back(replace_words.at(word));
       continue;
     }
 
@@ -141,26 +174,26 @@ std::vector<std::string> PostProcess(
     bool is_chinese_char = IsChineseChar(unicode_word[0]);
     bool is_chinese_punct = IsChinesePunct(unicode_word[0]);
 
-    auto& last_word = new_text.back();
-    if (is_chinese_char || is_chinese_punct || !vocab.count(word)) {
+    if (is_chinese_char || is_chinese_punct || vocab.count(word) == 0) {
       // 当前字符为中文或者中文标点，则直接插入
-      if (!new_text.empty() && EndsWith(last_word, "@@")) {
+      if (!new_text.empty() && EndsWith(new_text.back(), "@@")) {
         //// 前一个字符以@@结尾，则去掉
+        auto& last_word = new_text.back();
         last_word = Replace(last_word, "@@", "");
       }
       new_text.emplace_back(word);
     } else if (!StartsWith(word, "##")) {
       // 当前字符不以##开头
-      if (!new_text.empty() && EndsWith(last_word, "@@")) {
+      if (!new_text.empty() && EndsWith(new_text.back(), "@@")) {
         //// 前一个字符以@@结尾
+        auto& last_word = new_text.back();
         last_word = Replace(last_word, "@@", "");
         new_text.emplace_back(word);
-      } else if (!new_text.empty() && EndsWith(last_word, "\n")) {
+      } else if (!new_text.empty() && EndsWith(new_text.back(), "\n")) {
         new_text.emplace_back(word);
       } else {
-        const auto unicode_last_word = converter.from_bytes(last_word);
-        if (!new_text.empty() && !last_word.empty() &&
-            IsChineseChar(unicode_last_word[0])) {
+        if (!new_text.empty() && !new_text.back().empty() &&
+            IsChineseChar(converter.from_bytes(new_text.back())[0])) {
           //// 不以@@结尾，但前一个字符为中文，则不加入空格
           new_text.emplace_back(word);
         } else {
@@ -172,8 +205,9 @@ std::vector<std::string> PostProcess(
         }
       }
     } else {
-      if (!new_text.empty() && EndsWith(last_word, "@@")) {
+      if (!new_text.empty() && EndsWith(new_text.back(), "@@")) {
         //// 前一个字符以@@结尾
+        auto& last_word = new_text.back();
         last_word = last_word.substr(0, last_word.size() - 2);
       }
       // 以##开头，则直接加入
