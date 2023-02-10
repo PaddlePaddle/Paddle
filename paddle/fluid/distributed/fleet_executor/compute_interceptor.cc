@@ -187,13 +187,15 @@ void ComputeInterceptor::ReplyCompletedToUpStream() {
 }
 
 void ComputeInterceptor::RunOps() {
-  PADDLE_ENFORCE_LT(cur_scope_id_,
-                    microbatch_scopes_.size(),
-                    platform::errors::InvalidArgument(
-                        "Step out of range. There are %ld "
-                        "microbatch_scopes, but recevice scope index %ld",
-                        microbatch_scopes_.size(),
-                        cur_scope_id_));
+  if (!cores_.empty() || !node_->ops().empty()) {
+    PADDLE_ENFORCE_LT(cur_scope_id_,
+                      microbatch_scopes_.size(),
+                      platform::errors::InvalidArgument(
+                          "Step out of range. There are %ld "
+                          "microbatch_scopes, but recevice scope index %ld",
+                          microbatch_scopes_.size(),
+                          cur_scope_id_));
+  }
 
   if (!cores_.empty()) {
     cores_[cur_scope_id_]->Run(/*feed_names=*/{}, /*need_fetch=*/false);

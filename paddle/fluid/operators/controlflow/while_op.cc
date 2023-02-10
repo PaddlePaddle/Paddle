@@ -206,7 +206,7 @@ class WhileOp : public framework::OperatorBase {
                                        // initialize InterpreterCore
         framework::interpreter::ExecutionConfig execution_config;
         execution_config.create_local_scope = false;
-        execution_config.used_for_jit = true;
+        execution_config.used_for_control_flow_op = true;
         execution_config.skip_gc_vars =
             std::set<std::string>(skip_vars.begin(), skip_vars.end());
 

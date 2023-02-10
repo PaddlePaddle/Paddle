@@ -490,7 +490,6 @@ framework::InterpreterCore* CinnLaunchContext::InitializeInterpreterCore(
     if (!interpreter_core_) {
       framework::interpreter::ExecutionConfig execution_config;
       execution_config.create_local_scope = false;
-      execution_config.used_for_cinn = true;
       execution_config.skip_gc_vars = skip_gc_vars_;
       interpreter_core_ = std::make_unique<framework::InterpreterCore>(
           place, runtime_program_desc_->Block(0), scope, execution_config);
