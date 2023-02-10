@@ -485,17 +485,23 @@ TEST(multi_tensor_adam, get_kernel_type_for_var) {
   EXPECT_NE(op_ptr, nullptr);
   std::unique_ptr<paddle::framework::OperatorWithKernel> op_with_kernel(op_ptr);
 
+  CPUPlace place;
   const auto &ctx =
-      *paddle::platform::DeviceContextPool::Instance().GetByPlace(CPUPlace());
+      *paddle::platform::DeviceContextPool::Instance().GetByPlace(place);
   DenseTensor t;
   t.Resize({1});
   ctx.Alloc<float>(&t);
 
-  for (auto name : {"Beta1Pows", "Beta2Pows", "SkipUpdate"}) {
-    auto key = op_with_kernel->GetKernelTypeForVar(
-        name, t, phi::KernelKey(CPUPlace()));
-    EXPECT_EQ(key.backend(), phi::Backend::ALL_BACKEND);
-  }
+  auto check_backend = [&](const std::string &name, phi::Backend backend) {
+    auto key =
+        op_with_kernel->GetKernelTypeForVar(name, t, phi::KernelKey(place));
+    EXPECT_EQ(key.backend(), backend);
+  };
+
+  check_backend("Beta1Pows", Backend::ALL_BACKEND);
+  check_backend("Beta2Pows", Backend::ALL_BACKEND);
+  check_backend("SkipUpdate", Backend::ALL_BACKEND);
+  check_backend("Params", Backend::CPU);
 }
 
 }  // namespace phi
