@@ -35,7 +35,7 @@ void UnbindKernel(const Context& dev_ctx,
     shape_refer.emplace_back(outs[j]);
   }
 
-  for (int i = 0; i < outs.size(); ++i) {
+  for (size_t i = 0; i < outs.size(); ++i) {
     outs[i]->inplace_version_counter_->setVal(-10);
   }
   phi::funcs::SplitFunctor<Context, T> functor;
