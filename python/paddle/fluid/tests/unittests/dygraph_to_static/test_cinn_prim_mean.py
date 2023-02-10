@@ -27,6 +27,9 @@ TOLERANCE = {
     "float64": {"rtol": 1e-15, "atol": 1e-15},
 }
 
+keepdim_conds = [True, False]
+axes_condis = [-1, 0, 1]
+
 
 def apply_to_static(net, use_cinn):
     build_strategy = paddle.static.BuildStrategy()
@@ -39,14 +42,16 @@ def generate_data(shape, dtype="float32"):
     return np_data
 
 
-class PrimeNet(paddle.nn.Layer):
+class PrimeNet(
+    paddle.nn.Layer,
+):
     def __init__(self):
         super(PrimeNet, self).__init__()
         self.fc = paddle.nn.Linear(4, 4)
 
     def forward(self, x):
-        y = self.fc(x)
-        out = tensor.mean(y)
+        # y = self.fc(x)
+        out = tensor.mean(x)
         return out
 
 
@@ -63,6 +68,11 @@ class TestPrimForward(unittest.TestCase):
         self.dtypes = ["float16", "float32", "float64"]
 
     def train(self, use_prim, data):
+        for keep_dim in keepdim_conds:
+            for axis in axes_condis:
+                return self._train(use_prim, data, axis, keep_dim)
+
+    def _train(self, use_prim, data, axis, keep_dim):
         paddle.seed(2022)
         net = PrimeNet()
         sgd = paddle.optimizer.SGD(
@@ -75,7 +85,7 @@ class TestPrimForward(unittest.TestCase):
         res = []
         for _ in range(10):
             out = net(data)
-            loss = paddle.mean(out)
+            loss = paddle.mean(out, axis, keep_dim)
             loss.backward()
             sgd.step()
             sgd.clear_grad()
@@ -125,6 +135,11 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         self.dtypes = ["float16", "float32", "float64"]
 
     def train(self, use_prim, data):
+        for keep_dim in keepdim_conds:
+            for axis in axes_condis:
+                return self._train(use_prim, data, axis, keep_dim)
+
+    def _train(self, use_prim, data, axis, keep_dim):
         paddle.seed(2022)
         net = PrimeNet()
         sgd = paddle.optimizer.SGD(
@@ -137,7 +152,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         res = []
         for _ in range(10):
             out = net(data)
-            loss = paddle.mean(out)
+            loss = paddle.mean(out, axis, keep_dim)
             loss.backward()
             sgd.step()
             sgd.clear_grad()
