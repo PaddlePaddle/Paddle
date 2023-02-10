@@ -1594,6 +1594,7 @@ class PoolingOneDNNHandler
         dst_md,
         copied_strides,
         copied_kernel_size,
+        {1, 1},  // dilation (no PP support)
         onednn_paddings[0],
         onednn_paddings[1]);
 
