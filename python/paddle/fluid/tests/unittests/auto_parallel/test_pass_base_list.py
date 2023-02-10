@@ -21,7 +21,7 @@ from get_gpt_model import FakeDataset, generate_model
 
 import paddle
 from paddle.distributed.fleet import auto
-from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.distributed.parallel import ParallelEnv
 
 sys.path.append("..")
 from test_sparse_addmm_op import get_cuda_version
