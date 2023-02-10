@@ -26,7 +26,6 @@ import paddle.distributed.auto_parallel.utils as auto_utils
 import paddle.utils as utils
 from paddle import static
 from paddle.distributed import fleet
-from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.fluid.executor import _to_name_str
 from paddle.fluid.layers.utils import flatten
 from paddle.framework import IrGraph
@@ -771,7 +770,9 @@ class Engine:
 
         self._place = _get_device()
         if isinstance(self._place, paddle.framework.CUDAPlace):
-            self._place = paddle.framework.CUDAPlace(ParallelEnv().dev_id)
+            self._place = paddle.framework.CUDAPlace(
+                paddle.distributed.ParallelEnv().dev_id
+            )
 
         if self._strategy.seed:
             paddle.seed(self._strategy.seed + self._dp_ranks[0])
