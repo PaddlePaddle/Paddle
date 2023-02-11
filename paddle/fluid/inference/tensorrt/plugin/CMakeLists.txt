@@ -42,7 +42,7 @@ list(
   lookup_table.cu
   many_emb_layernorm_plugin.cu
   many_emb_layernorm_kernel.cu
-  layerNormKernel.cu)
+  layer_norm_kernel.cu)
 
 if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
   list(APPEND TRT_FILES many_emb_layernorm_varseqlen_plugin.cu

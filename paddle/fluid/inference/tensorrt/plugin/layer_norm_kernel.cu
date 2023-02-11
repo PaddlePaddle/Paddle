@@ -12,8 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "layerNormKernel.h"
+#include "paddle/fluid/inference/tensorrt/plugin/layer_norm_kernel.h"
 #include <cub/cub.cuh>
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/errors.h"
+
+namespace paddle {
+namespace inference {
+namespace tensorrt {
+namespace plugin {
 
 template <typename T>
 using kvp = cub::KeyValuePair<T, T>;
@@ -81,7 +88,6 @@ __global__ void LayerNormSmallKernel(int32_t const nHiddenDimension,
   auto const sumKV = WarpReduce(temp).Reduce(threadData, mySum<OP_T>());
   if (threadIdx.x == 0) {
     mu = sumKV.key;
-    printf("%f\n", mu);
     rsigma = rsqrt(sumKV.value - mu * mu + static_cast<OP_T>(epsilon));
   }
   __syncthreads();
@@ -291,14 +297,14 @@ template __global__ void LayerNormQDQKernel<128, 8>(int32_t const,
                                                     float const);
 
 template <typename T>
-int32_t computeLayerNorm(int32_t const gridSize,
-                         int32_t const nHiddenDimension,
-                         T const* input,
-                         T const* gamma,
-                         T const* beta,
-                         T* output,
-                         float const epsilon,
-                         cudaStream_t stream) {
+cudaError_t computeLayerNorm(int32_t const gridSize,
+                             int32_t const nHiddenDimension,
+                             T const* input,
+                             T const* gamma,
+                             T const* beta,
+                             T* output,
+                             float const epsilon,
+                             cudaStream_t stream) {
   constexpr int32_t VPT = 16 / sizeof(T);
   if (nHiddenDimension <= 32) {
     constexpr int32_t TPB = 32;
@@ -325,37 +331,36 @@ int32_t computeLayerNorm(int32_t const gridSize,
     (LayerNormLargeKernel<T, float, TPB>)<<<gridSize, TPB, 0, stream>>>(
         nHiddenDimension, input, gamma, beta, output, epsilon);
   }
-  // PLUGIN_CHECK_CUDA(cudaPeekAtLastError());
-  return 0;
+  return cudaGetLastError();
 }
 
-template int computeLayerNorm<float>(int const,
-                                     int const,
-                                     float const*,
-                                     float const*,
-                                     float const*,
-                                     float*,
-                                     float const,
-                                     cudaStream_t);
-template int computeLayerNorm<half>(int const,
-                                    int const,
-                                    half const*,
-                                    half const*,
-                                    half const*,
-                                    half*,
-                                    float const,
-                                    cudaStream_t);
+template cudaError_t computeLayerNorm<float>(int const,
+                                             int const,
+                                             float const*,
+                                             float const*,
+                                             float const*,
+                                             float*,
+                                             float const,
+                                             cudaStream_t);
+template cudaError_t computeLayerNorm<half>(int const,
+                                            int const,
+                                            half const*,
+                                            half const*,
+                                            half const*,
+                                            half*,
+                                            float const,
+                                            cudaStream_t);
 
-int32_t computeLayerNormQDQ(int32_t const gridSize,
-                            int32_t const nHiddenDimension,
-                            int8_t const* input,
-                            __half const* gamma,
-                            __half const* beta,
-                            int8_t* output,
-                            float const dqScaleIn,
-                            float const qScale,
-                            float const epsilon,
-                            cudaStream_t stream) {
+cudaError_t computeLayerNormQDQ(int32_t const gridSize,
+                                int32_t const nHiddenDimension,
+                                int8_t const* input,
+                                __half const* gamma,
+                                __half const* beta,
+                                int8_t* output,
+                                float const dqScaleIn,
+                                float const qScale,
+                                float const epsilon,
+                                cudaStream_t stream) {
   constexpr int32_t VPT = 16 / sizeof(__half);
   if (nHiddenDimension == 320) {
     constexpr int32_t TPB = 320 / VPT;
@@ -391,9 +396,14 @@ int32_t computeLayerNormQDQ(int32_t const gridSize,
         qScale,
         epsilon);
   } else {
-    // PLUGIN_FAIL(("[computeLayerNormQDQ] Unsupport hidden dimension " +
-    // std::to_string(nHiddenDimension)).c_str());
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "[computeLayerNormQDQ] Unsupport hidden dimension: %d",
+        nHiddenDimension));
   }
-  // PLUGIN_CHECK_CUDA(cudaPeekAtLastError());
-  return 0;
+  return cudaGetLastError();
 }
+
+}  // namespace plugin
+}  // namespace tensorrt
+}  // namespace inference
+}  // namespace paddle
