@@ -20,7 +20,6 @@ from op_test import OpTest
 
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard
 
 
 def get_broadcast_shape(shp1, shp2):
@@ -1059,16 +1058,6 @@ class API_GeometricSendUERecvTest(unittest.TestCase):
                 np_sum, ret[0]
             ),
         )
-
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_compute_all_with_sum()
-            self.test_compute_all_with_mean()
-            self.test_compute_all_with_max()
-            self.test_compute_all_with_max_fp16()
-            self.test_compute_all_with_min()
-            self.test_compute_all_with_min_fp16()
-            self.test_reshape_lhs_rhs()
 
 
 if __name__ == "__main__":

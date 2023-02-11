@@ -341,6 +341,7 @@ void CPUQuantizeSquashPass::OpDequantSquash(Graph* graph) const {
 
     if (dequant_in->outputs.size() == 1) {
       if (any_op->Op()->Type() == "conv2d" ||
+          any_op->Op()->Type() == "fused_conv2d" ||
           any_op->Op()->Type() == "conv2d_transpose" ||
           any_op->Op()->Type() == "fc") {
         // do not squash if fuse residual connection is true
@@ -353,7 +354,9 @@ void CPUQuantizeSquashPass::OpDequantSquash(Graph* graph) const {
           FindOutputNameByVarName(any_op->Op(), dequant_in->Name());
 
       if (output_name.empty()) return;
-
+      if (any_op->Op()->Type() == "conv2d") {
+        any_op->Op()->SetType("fused_conv2d");
+      }
       any_op->Op()->SetAttr("force_fp32_output", true);
       any_op->Op()->SetOutput(output_name,
                               std::vector<std::string>({dequant_out->Name()}));

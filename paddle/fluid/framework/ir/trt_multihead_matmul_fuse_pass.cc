@@ -631,6 +631,7 @@ PDNode* TrtMultiHeadMatmulV3Pattern::operator()() {
 
   return transpose2_2_out_var;
 }
+
 }  // namespace patterns
 
 void TrtMultiHeadMatmulFusePass::ApplyImpl(Graph* graph) const {
@@ -1667,6 +1668,7 @@ REGISTER_PASS(trt_multihead_matmul_fuse_pass_v2,
               paddle::framework::ir::TrtMultiHeadMatmulV2FusePass);
 REGISTER_PASS(trt_multihead_matmul_fuse_pass_v3,
               paddle::framework::ir::TrtMultiHeadMatmulV3FusePass);
+
 REGISTER_PASS_CAPABILITY(trt_multihead_matmul_fuse_pass_v2)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
@@ -1677,6 +1679,7 @@ REGISTER_PASS_CAPABILITY(trt_multihead_matmul_fuse_pass_v2)
             .EQ("scale", 0)
             .LE("matmul", 1)
             .EQ("softmax", 0));
+
 REGISTER_PASS_CAPABILITY(trt_multihead_matmul_fuse_pass_v3)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()

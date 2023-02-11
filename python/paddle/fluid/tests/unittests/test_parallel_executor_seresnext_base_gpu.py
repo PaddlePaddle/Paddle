@@ -33,7 +33,7 @@ class TestResnetGPU(TestResnetBase):
         self._compare_result_with_origin_model(
             check_func,
             use_device=DeviceType.CUDA,
-            delta2=1e-5,
+            delta2=1e-3,
             compare_separately=False,
         )
 

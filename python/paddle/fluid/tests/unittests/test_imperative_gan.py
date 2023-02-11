@@ -21,7 +21,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.nn import Linear
 
@@ -56,7 +55,7 @@ class Generator(fluid.Layer):
 
 
 class TestDygraphGAN(unittest.TestCase):
-    def func_test_gan_float32(self):
+    def test_gan_float32(self):
         seed = 90
         paddle.seed(1)
         paddle.framework.random._manual_program_seed(1)
@@ -71,12 +70,8 @@ class TestDygraphGAN(unittest.TestCase):
             discriminator = Discriminator()
             generator = Generator()
 
-            img = fluid.layers.data(
-                name="img", shape=[2, 1], append_batch_size=False
-            )
-            noise = fluid.layers.data(
-                name="noise", shape=[2, 2], append_batch_size=False
-            )
+            img = paddle.static.data(name="img", shape=[2, 1])
+            noise = paddle.static.data(name="noise", shape=[2, 2])
 
             d_real = discriminator(img)
             d_loss_real = paddle.mean(
@@ -107,9 +102,7 @@ class TestDygraphGAN(unittest.TestCase):
             discriminator = Discriminator()
             generator = Generator()
 
-            noise = fluid.layers.data(
-                name="noise", shape=[2, 2], append_batch_size=False
-            )
+            noise = paddle.static.data(name="noise", shape=[2, 2])
 
             d_fake = discriminator(generator(noise))
             g_loss = paddle.mean(
@@ -270,11 +263,6 @@ class TestDygraphGAN(unittest.TestCase):
         self.assertEqual(dy_d_loss2, static_d_loss)
         for k, v in dy_params2.items():
             np.testing.assert_allclose(v, static_params[k], rtol=1e-05)
-
-    def test_gan_float32(self):
-        with _test_eager_guard():
-            self.func_test_gan_float32()
-        self.func_test_gan_float32()
 
 
 if __name__ == '__main__':

@@ -86,6 +86,7 @@ class TestMedian(unittest.TestCase):
         x = paddle.arange(12).reshape([3, 4])
         self.assertRaises(ValueError, paddle.median, x, 1.0)
         self.assertRaises(ValueError, paddle.median, x, 2)
+        self.assertRaises(ValueError, paddle.median, paddle.to_tensor([]))
 
 
 if __name__ == '__main__':

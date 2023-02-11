@@ -22,8 +22,8 @@ import paddle
 import paddle.distributed.fleet as fleet
 import paddle.fluid.core as core
 from paddle.distributed.fleet.meta_optimizers.common import CollectiveHelper
-from paddle.fluid.clip import ClipGradBase, _clip_by_global_norm_using_mp_type
 from paddle.incubate import DistributedFusedLamb
+from paddle.nn.clip import ClipGradBase, _clip_by_global_norm_using_mp_type
 from paddle.vision.models import resnet18 as resnet
 
 

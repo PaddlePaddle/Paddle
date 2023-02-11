@@ -60,7 +60,7 @@ class TestAssignValueOp3(TestAssignValueOp):
 class TestAssignValueOp4(TestAssignValueOp):
     def init_data(self):
         self.value = np.random.choice(a=[False, True], size=(2, 5)).astype(
-            np.bool
+            np.bool_
         )
         self.attrs["bool_values"] = [int(v) for v in self.value.flat]
 
@@ -106,7 +106,7 @@ class TestAssignApi4(TestAssignApi):
     def setUp(self):
         self.init_dtype()
         self.value = np.random.choice(a=[False, True], size=(2, 5)).astype(
-            np.bool
+            np.bool_
         )
         self.place = (
             fluid.CUDAPlace(0)

@@ -114,7 +114,7 @@ class GroupNormGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     const auto *var = ctx.InputVar(framework::GradVarName("Y"));
 
@@ -132,8 +132,8 @@ class GroupNormGradOp : public framework::OperatorWithKernel {
                             platform::errors::InvalidArgument(
                                 "Input(Y@GRAD) phi::DenseTensor of "
                                 "GroupNormGradOp should not be null"));
-    return framework::OpKernelType(framework::TransToProtoVarType(t->dtype()),
-                                   ctx.GetPlace());
+    return phi::KernelKey(framework::TransToProtoVarType(t->dtype()),
+                          ctx.GetPlace());
   }
 };
 

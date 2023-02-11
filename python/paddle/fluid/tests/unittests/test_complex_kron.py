@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 import paddle.fluid.dygraph as dg
 from paddle import fluid
-from paddle.fluid.framework import _test_eager_guard
 
 
 class ComplexKronTestCase(unittest.TestCase):
@@ -37,7 +36,6 @@ class ComplexKronTestCase(unittest.TestCase):
     def runTest(self):
         for place in self._places:
             self.test_kron_api(place)
-            self.test_eager(place)
 
     def test_kron_api(self, place):
         with dg.guard(place):
@@ -47,10 +45,6 @@ class ComplexKronTestCase(unittest.TestCase):
             np.testing.assert_allclose(
                 out_var.numpy(), self.ref_result, rtol=1e-05
             )
-
-    def test_eager(self, place):
-        with _test_eager_guard():
-            self.test_kron_api(place)
 
 
 def load_tests(loader, standard_tests, pattern):

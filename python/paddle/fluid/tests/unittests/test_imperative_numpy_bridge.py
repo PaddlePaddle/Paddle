@@ -18,7 +18,6 @@ import warnings
 import numpy as np
 
 import paddle.fluid as fluid
-from paddle.fluid.framework import _in_legacy_dygraph
 
 
 class TestImperativeNumpyBridge(unittest.TestCase):
@@ -44,12 +43,7 @@ class TestImperativeNumpyBridge(unittest.TestCase):
             np.testing.assert_array_equal(var2.numpy(), data_np)
             data_np[0][0] = -1
             self.assertEqual(data_np[0][0], -1)
-            if not _in_legacy_dygraph():
-                # eager_mode, var2 is Tensor, is not subscriptable
-                # TODO(wuweilong): to support slice in eager mode later
-                self.assertNotEqual(var2.numpy()[0][0], -1)
-            else:
-                self.assertNotEqual(var2[0][0].numpy()[0], -1)
+            self.assertNotEqual(var2[0][0].numpy()[0], -1)
             self.assertFalse(np.array_equal(var2.numpy(), data_np))
 
 

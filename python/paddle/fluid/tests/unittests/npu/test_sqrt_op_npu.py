@@ -104,8 +104,8 @@ class TestSqrtNet(unittest.TestCase):
             c = paddle.multiply(a, b)
             d = paddle.sqrt(c)
 
-            fc_1 = fluid.layers.fc(input=d, size=128)
-            prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
+            fc_1 = paddle.static.nn.fc(x=d, size=128)
+            prediction = paddle.static.nn.fc(x=fc_1, size=2, activation='softmax')
 
             cost = paddle.nn.functional.cross_entropy(input=prediction, label=label, reduction='none', use_softmax=False)
             loss = paddle.mean(cost)

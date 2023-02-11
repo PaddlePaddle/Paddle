@@ -22,7 +22,6 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.nn.functional as F
 from paddle.fluid import Program
-from paddle.fluid.framework import _test_eager_guard
 
 
 def ref_prelu(x, weight):
@@ -78,10 +77,6 @@ class TestFunctionalPReluAPI(unittest.TestCase):
     def test_dygraph_api(self):
         self.dygraph_check(self.weight_np_0)
         self.dygraph_check(self.weight_np_1)
-
-    def test_dygraph_api_eager(self):
-        with _test_eager_guard():
-            self.test_dygraph_api()
 
     def test_error(self):
         with paddle.static.program_guard(paddle.static.Program()):
@@ -158,7 +153,7 @@ class TestNNPReluAPI(unittest.TestCase):
         x = paddle.to_tensor(self.x_np)
         m = paddle.nn.PReLU(
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(0.5)
+                initializer=paddle.nn.initializer.Constant(0.5)
             )
         )
         out = m(x)
@@ -443,7 +438,7 @@ def prelu_t(x, mode, param_attr=None, name=None, data_format='NCHW'):
         shape=alpha_shape,
         dtype='float32',
         is_bias=False,
-        default_initializer=fluid.initializer.ConstantInitializer(0.25),
+        default_initializer=paddle.nn.initializer.Constant(0.25),
     )
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(

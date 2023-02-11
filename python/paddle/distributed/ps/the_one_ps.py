@@ -1171,8 +1171,6 @@ class TheOnePSRuntime(RuntimeBase):
             gpus_env = os.getenv("FLAGS_selected_gpus")
             gpus_env = [int(s) for s in gpus_env.split(",")]
             main_program._fleet_opt["worker_places"] = gpus_env
-            PSGPU = core.PSGPU()
-            PSGPU.init_gpu_ps(gpus_env)
 
         def sync_strategy_envs():
             kwargs = {}
@@ -1631,11 +1629,17 @@ class TheOnePSRuntime(RuntimeBase):
         fleet.util.barrier()
         return feasign_num
 
+    def _save_cache_table(self, table_id, pass_id, mem_cache_key_threshold):
+        if self.role_maker._is_first_worker():
+            self._worker.save_cache_table(
+                table_id, pass_id, mem_cache_key_threshold
+            )
+        fleet.util.barrier()
+
     def _check_save_pre_patch_done(self):
         fleet.util.barrier()
         if self.role_maker._is_first_worker():
             self._worker.check_save_pre_patch_done()
-        fleet.util.barrier()
 
     def _load_sparse_params(self, dirname, context, main_program, mode):
         distributed_varnames = get_sparse_tablenames(

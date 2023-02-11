@@ -33,14 +33,12 @@ def find_output_shape(input_list):
         rank = len(x.shape)
         output_rank = max(output_rank, rank)
 
-    output_shape = [0 for i in range(output_rank)]
+    output_shape = [1 for i in range(output_rank)]
     for i in range(output_rank):
         for x in input_list:
             shape = list(reversed(x.shape))
-            size = 1
-            if i < len(shape):
-                size = shape[i]
-            output_shape[i] = max(output_shape[i], size)
+            if i < len(shape) and shape[i] != 1:
+                output_shape[i] = shape[i]
 
     return list(reversed(output_shape))
 
@@ -80,6 +78,11 @@ def gen_mixed_tensors_test(dtype):
     return make_inputs_outputs(input_shapes, dtype)
 
 
+def gen_empty_tensors_test(dtype):
+    input_shapes = [(0), (0), (0)]
+    return make_inputs_outputs(input_shapes, dtype)
+
+
 class TestCPUBroadcastTensorsOp(OpTest):
     def set_place(self):
         self.place = core.CPUPlace()
@@ -95,6 +98,7 @@ class TestCPUBroadcastTensorsOp(OpTest):
             gen_rank_diff_test,
             gen_no_broadcast_test,
             gen_mixed_tensors_test,
+            gen_empty_tensors_test,
         ]
         self.set_place()
         self.set_dtypes()
@@ -164,11 +168,11 @@ class TestBroadcastTensorsAPI(unittest.TestCase):
     def test_api(self):
         def test_static():
             inputs = [
-                paddle.fluid.layers.data(
-                    shape=[4, 1, 4, 1], dtype='float32', name="x0"
+                paddle.static.data(
+                    shape=[-1, 4, 1, 4, 1], dtype='float32', name="x0"
                 ),
-                paddle.fluid.layers.data(
-                    shape=[1, 4, 1, 4], dtype='float32', name="x1"
+                paddle.static.data(
+                    shape=[-1, 1, 4, 1, 4], dtype='float32', name="x1"
                 ),
             ]
             paddle.broadcast_tensors(inputs)
@@ -196,33 +200,33 @@ class TestRaiseBroadcastTensorsError(unittest.TestCase):
     def test_errors(self):
         def test_type():
             inputs = [
-                paddle.fluid.layers.data(
-                    shape=[1, 1, 1, 1], dtype='float32', name="x4"
+                paddle.static.data(
+                    shape=[-1, 1, 1, 1, 1], dtype='float32', name="x4"
                 ),
-                paddle.fluid.layers.data(
-                    shape=[1, 4, 1, 1], dtype='float64', name="x5"
+                paddle.static.data(
+                    shape=[-1, 1, 4, 1, 1], dtype='float64', name="x5"
                 ),
             ]
             paddle.broadcast_tensors(inputs)
 
         def test_dtype():
             inputs = [
-                paddle.fluid.layers.data(
-                    shape=[1, 1, 1, 1], dtype='int8', name="x6"
+                paddle.static.data(
+                    shape=[-1, 1, 1, 1, 1], dtype='int8', name="x6"
                 ),
-                paddle.fluid.layers.data(
-                    shape=[1, 4, 1, 1], dtype='int8', name="x7"
+                paddle.static.data(
+                    shape=[-1, 1, 4, 1, 1], dtype='int8', name="x7"
                 ),
             ]
             paddle.broadcast_tensors(inputs)
 
         def test_bcast_semantics():
             inputs = [
-                paddle.fluid.layers.data(
-                    shape=[1, 3, 1, 1], dtype='float32', name="x9"
+                paddle.static.data(
+                    shape=[-1, 1, 3, 1, 1], dtype='float32', name="x9"
                 ),
-                paddle.fluid.layers.data(
-                    shape=[1, 8, 1, 1], dtype='float32', name="x10"
+                paddle.static.data(
+                    shape=[-1, 1, 8, 1, 1], dtype='float32', name="x10"
                 ),
             ]
             paddle.broadcast_tensors(inputs)

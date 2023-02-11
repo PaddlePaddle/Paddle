@@ -18,7 +18,6 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 
 
 def graph_send_recv_wrapper(
@@ -381,12 +380,6 @@ class API_GraphSendRecvOpTest(unittest.TestCase):
             )
         np.testing.assert_allclose(np_sum, ret[0], rtol=1e-05, atol=1e-06)
 
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_dygraph()
-            self.test_int32_input()
-            self.test_set_outsize_gpu()
-
 
 class API_GeometricSendURecvTest(unittest.TestCase):
     def test_static(self):
@@ -532,12 +525,6 @@ class API_GeometricSendURecvTest(unittest.TestCase):
                 fetch_list=[res_sum],
             )
         np.testing.assert_allclose(np_sum, ret[0], rtol=1e-05, atol=1e-06)
-
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_dygraph()
-            self.test_int32_input()
-            self.test_set_outsize_gpu()
 
 
 if __name__ == '__main__':

@@ -83,7 +83,7 @@ def case_generator(op_type, Xshape, diagonal, expected):
             paddle.enable_static()
 
             data = fluid.data(shape=Xshape, dtype='float32', name=cls_name)
-            with self.assertRaisesRegexp(
+            with self.assertRaisesRegex(
                 eval(expected.split(':')[-1]), errmsg[expected]
             ):
                 getattr(tensor, op_type)(x=data, diagonal=diagonal)

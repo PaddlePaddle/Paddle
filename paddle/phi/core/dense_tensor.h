@@ -125,7 +125,8 @@ class DenseTensor : public TensorBase,
   /// \return The mutable data pointer value of type T.
   void* AllocateFrom(Allocator* allocator,
                      DataType dtype,
-                     size_t requested_size = 0) override;
+                     size_t requested_size = 0,
+                     bool fake_alloc = false) override;
 
   /// \brief Check if allocation is shared with other objects.
   /// \return Whether the allocation is shared with other objects.

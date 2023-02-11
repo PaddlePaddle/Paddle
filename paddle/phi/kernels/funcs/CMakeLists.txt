@@ -19,11 +19,15 @@ math_library(matrix_solve DEPS dense_tensor eigen3 blas math_function)
 math_library(cross_entropy)
 math_library(im2col)
 math_library(vol2col)
+math_library(softmax DEPS math_function)
+math_library(maxouting)
+math_library(matrix_bit_code)
+math_library(sequence_scale)
 
 cc_library(
   phi_data_layout_transform
   SRCS data_layout_transform.cc
-  DEPS tensor)
+  DEPS tensor blas)
 
 if(WITH_GPU OR WITH_ROCM)
   if(MKL_FOUND AND WITH_ONEMKL)
@@ -48,4 +52,16 @@ if(WITH_MKLDNN)
 else()
   math_library(selected_rows_functor DEPS selected_rows_utils math_function
                blas mixed_vector)
+endif()
+
+if(WITH_ROCM)
+  hip_library(
+    gather_scatter_functor
+    SRCS gather_scatter_functor.cc gather_scatter_functor.cu
+    DEPS tensor)
+else()
+  cc_library(
+    gather_scatter_functor
+    SRCS gather_scatter_functor.cc gather_scatter_functor.cu
+    DEPS tensor)
 endif()

@@ -224,7 +224,7 @@ class TestOneHotOpApi(unittest.TestCase):
             )
 
     def _run(self, depth):
-        label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+        label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
         one_hot_label = fluid.one_hot(input=label, depth=depth)
 
         place = fluid.NPUPlace(0)

@@ -67,9 +67,7 @@ class Test_is_primitive(unittest.TestCase):
         self.assertTrue(is_primitive(2))
         self.assertTrue(is_primitive(2.1))
         self.assertTrue(is_primitive("2.1.1"))
-        self.assertFalse(
-            is_primitive("hello paddle".encode('UTF-8'))
-        )  # True for python2
+        self.assertFalse(is_primitive("hello paddle".encode('UTF-8')))
         self.assertFalse(is_primitive(1j))
         self.assertTrue(is_primitive(True))
 
@@ -80,7 +78,7 @@ class Test_is_primitive(unittest.TestCase):
         self.assertTrue(is_primitive([1, 2]))
         self.assertTrue(is_primitive((1.1, 2.2)))
         self.assertTrue(is_primitive(set([1, 2.3])))
-        self.assertFalse(is_primitive(range(3)))  # True for python2
+        self.assertFalse(is_primitive(range(3)))
         self.assertFalse(is_primitive({}))
         self.assertFalse(is_primitive([1, 1j]))
 

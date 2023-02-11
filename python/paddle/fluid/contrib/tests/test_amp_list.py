@@ -14,7 +14,7 @@
 
 import paddle
 import unittest
-from paddle.fluid.contrib.mixed_precision.fp16_lists import (
+from paddle.static.amp.fp16_lists import (
     AutoMixedPrecisionLists,
 )
 

@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import paddle.distributed.communication.stream as stream
-import paddle.fluid.framework as framework
 
 
 def alltoall(in_tensor_list, out_tensor_list, group=None, sync_op=True):
@@ -59,22 +57,9 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, sync_op=True):
             # [[[1, 2, 3], [4, 5, 6]], [[13, 14, 15], [16, 17, 18]]] (2 GPUs, out for rank 0)
             # [[[7, 8, 9], [10, 11, 12]], [[19, 20, 21], [22, 23, 24]]] (2 GPUs, out for rank 1)
     """
-    if not framework._in_legacy_dygraph():
-        return stream.alltoall(
-            out_tensor_list, in_tensor_list, group, sync_op, False
-        )
-
-    # code below will be removed after we remove the old dygraph
-    if group is not None and not group.is_member():
-        return
-    ring_id = 0 if group is None else group.id
-    temp = paddle.concat(in_tensor_list, axis=0)
-    nranks = len(in_tensor_list)
-    use_calc_stream = sync_op
-    out = paddle._legacy_C_ops.alltoall(
-        temp, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id
+    return stream.alltoall(
+        out_tensor_list, in_tensor_list, group, sync_op, False
     )
-    out_tensor_list.extend(paddle.split(out, nranks, 0))
 
 
 def alltoall_single(
@@ -149,13 +134,12 @@ def alltoall_single(
             # output for rank 1: [[0., 0.], [0., 0.], [1., 1.], [1., 1.]]
 
     """
-    if not framework._in_legacy_dygraph():
-        return stream.alltoall_single(
-            out_tensor,
-            in_tensor,
-            out_split_sizes,
-            in_split_sizes,
-            group,
-            sync_op,
-            False,
-        )
+    return stream.alltoall_single(
+        out_tensor,
+        in_tensor,
+        out_split_sizes,
+        in_split_sizes,
+        group,
+        sync_op,
+        False,
+    )

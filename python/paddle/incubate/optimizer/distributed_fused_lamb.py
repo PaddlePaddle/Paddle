@@ -16,11 +16,11 @@ import os
 
 import paddle
 from paddle.fluid import core, framework, unique_name
-from paddle.fluid.clip import ClipGradByGlobalNorm
 from paddle.fluid.executor import global_scope
 from paddle.fluid.framework import Variable, name_scope
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.optimizer import Optimizer
+from paddle.nn import ClipGradByGlobalNorm
 
 
 def init_communicator(block, rank, ranks, ring_id):

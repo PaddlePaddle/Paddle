@@ -24,8 +24,8 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.fluid.optimizer import AdamOptimizer
+from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import Linear
 
 SEED = 2020
@@ -259,7 +259,7 @@ class TestMNISTWithToStatic(TestMNIST):
                 input_spec=input_spec,
                 output_spec=[gt_out],
             )
-            # load in static mode
+            # load in static graph mode
             static_infer_out = self.jit_load_and_run_inference_static(
                 model_save_dir, model_filename, params_filename, inputs
             )

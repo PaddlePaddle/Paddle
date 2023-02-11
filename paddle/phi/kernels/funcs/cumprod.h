@@ -30,6 +30,18 @@ static void GetCumprodDimInfo(const DDim& dim,
           "rank of input x which is %d.But received dim=%d",
           -dim.size(),
           cumprod_dim));
+  if (dim.size() == 0) {
+    PADDLE_ENFORCE_LE(
+        cumprod_dim,
+        dim.size(),
+        phi::errors::InvalidArgument(
+            "The input dim of CumprodOp should be smaller than the "
+            "rank of input x which is %d.But received dim=%d",
+            dim.size(),
+            cumprod_dim));
+    return;
+  }
+
   PADDLE_ENFORCE_LT(cumprod_dim,
                     dim.size(),
                     phi::errors::InvalidArgument(

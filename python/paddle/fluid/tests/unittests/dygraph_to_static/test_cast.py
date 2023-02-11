@@ -17,40 +17,40 @@ import unittest
 import numpy as np
 
 import paddle.fluid as fluid
-from paddle.jit.api import declarative
+from paddle.jit.api import to_static
 
 SEED = 2020
 np.random.seed(SEED)
 
 
-@declarative
+@to_static
 def test_bool_cast(x):
     x = fluid.dygraph.to_variable(x)
     x = bool(x)
     return x
 
 
-@declarative
+@to_static
 def test_int_cast(x):
     x = fluid.dygraph.to_variable(x)
     x = int(x)
     return x
 
 
-@declarative
+@to_static
 def test_float_cast(x):
     x = fluid.dygraph.to_variable(x)
     x = float(x)
     return x
 
 
-@declarative
+@to_static
 def test_not_var_cast(x):
     x = int(x)
     return x
 
 
-@declarative
+@to_static
 def test_mix_cast(x):
     x = fluid.dygraph.to_variable(x)
     x = int(x)

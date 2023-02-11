@@ -42,6 +42,8 @@ limitations under the License. */
 #include "paddle/phi/core/stream.h"
 #include "paddle/utils/any.h"
 
+DECLARE_bool(trt_ibuilder_cache);
+
 namespace paddle {
 namespace inference {
 namespace tensorrt {
@@ -290,6 +292,9 @@ class TensorRTEngine {
                      const std::string& name);
   // Set the itensor_map_[name] as the network's output, and set its name.
   void DeclareOutput(const std::string& name);
+  // Set the itensor_map_[name] as the network's output, and set its name and
+  // data type.
+  void DeclareOutput(const std::string& name, nvinfer1::DataType dtype);
   void ClearTensorMap() { itensor_map_.clear(); }
 
   void DeleteITensor(const std::string& name, nvinfer1::ITensor* tensor);
@@ -326,6 +331,7 @@ class TensorRTEngine {
     std::unique_lock<std::mutex> lock(mutex_);
     infer_context_[predictor_id_per_thread].reset(nullptr);
     infer_context_.erase(predictor_id_per_thread);
+    cur_profile_num_ = 0;
   }
 
   nvinfer1::IHostMemory* Serialize() {
@@ -353,6 +359,12 @@ class TensorRTEngine {
     bool enable_fp16 = (precision_ == AnalysisConfig::Precision::kHalf);
     bool support_fp16 = infer_builder_->platformHasFastFp16();
     return enable_fp16 && support_fp16;
+  }
+
+  bool WithInt8() {
+    bool enable_int8 = (precision_ == AnalysisConfig::Precision::kInt8);
+    bool support_int8 = infer_builder_->platformHasFastInt8();
+    return enable_int8 && support_int8;
   }
 
   int GetDeviceId() { return device_id_; }
@@ -678,16 +690,6 @@ class TensorRTEngine {
   std::vector<std::unique_ptr<nvinfer1::IPluginV2IOExt>> owned_plugin_v2ioext_;
 
   // TensorRT related internal members
-  template <typename T>
-  struct Destroyer {
-    void operator()(T* x) {
-      if (x) {
-        x->destroy();
-      }
-    }
-  };
-  template <typename T>
-  using infer_ptr = std::unique_ptr<T, Destroyer<T>>;
   infer_ptr<nvinfer1::IBuilder> infer_builder_;
   infer_ptr<nvinfer1::INetworkDefinition> infer_network_;
   infer_ptr<nvinfer1::ICudaEngine> infer_engine_;
@@ -732,6 +734,15 @@ class TRTEngineManager {
   using AllocationPtr = phi::Allocator::AllocationPtr;
 
  public:
+  TRTEngineManager() {
+    // createInferBuilder loads trt kernels and take a few second
+    // But as long as one IBuilder lives, trt kernel will not be unloaded
+    // Hence, a persistent IBuilder to avoid TensorRT unload/reload kernels
+    if (FLAGS_trt_ibuilder_cache) {
+      holder_.reset(createInferBuilder(&NaiveLogger::Global()));
+    }
+  }
+
   bool Empty() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return engines_.size() == 0;
@@ -801,6 +812,9 @@ class TRTEngineManager {
   }
 
   void updateContextMemorySize(size_t mem_size, PredictorID predictor_id) {
+    VLOG(3) << "TensorRT engine context memory size is "
+            << mem_size / 1024.0 / 1024.0 << "MiB in predictor id "
+            << predictor_id;
     bool size_updated{false};
 
     {
@@ -824,7 +838,6 @@ class TRTEngineManager {
     if (context_memorys_.count(predictor_id) == 0) {
       auto context_memory =
           memory::Alloc(place, max_ctx_mem_size_ + alignment, stream);
-      // context_memory_[predictor_id].reset(context_memory.release());
       context_memorys_[predictor_id] = std::move(context_memory);
     }
     return getAlignedMemory(context_memorys_[predictor_id]->ptr(), alignment);
@@ -852,6 +865,7 @@ class TRTEngineManager {
   size_t max_ctx_mem_size_{0};
   std::unordered_map<PredictorID, AllocationPtr> context_memorys_;
   std::unordered_map<std::string, std::unique_ptr<TensorRTEngine>> engines_;
+  infer_ptr<nvinfer1::IBuilder> holder_;
 };
 
 }  // namespace tensorrt

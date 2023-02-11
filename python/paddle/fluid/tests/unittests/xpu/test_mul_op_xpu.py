@@ -22,9 +22,6 @@ import paddle
 sys.path.append("..")
 from op_test_xpu import XPUOpTest
 
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
-
 paddle.enable_static()
 
 from xpu.get_test_cover_info import (
@@ -32,23 +29,6 @@ from xpu.get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
-
-
-class TestMulOpError(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program(), Program()):
-            # The input type of mul_op must be Variable.
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.XPUPlace(0)
-            )
-            x2 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.XPUPlace(0)
-            )
-            self.assertRaises(TypeError, fluid.layers.mul, x1, x2)
-            # The input dtype of mul_op must be float32.
-            x3 = fluid.layers.data(name='x3', shape=[4], dtype="int32")
-            x4 = fluid.layers.data(name='x4', shape=[4], dtype="int32")
-            self.assertRaises(TypeError, fluid.layers.mul, x3, x4)
 
 
 class XPUTestMulOp(XPUOpTestWrapper):

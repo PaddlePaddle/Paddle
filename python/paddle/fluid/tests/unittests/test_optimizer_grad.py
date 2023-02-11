@@ -81,25 +81,25 @@ class SimpleNetWithCond:
             dtype="float32",
             shape=self.shape,
             attr=fluid.ParamAttr(learning_rate=self.param_lr, name="param_x"),
-            default_initializer=fluid.initializer.NumpyArrayInitializer(self.x),
+            default_initializer=paddle.nn.initializer.Assign(self.x),
         )
 
         param_y = paddle.create_parameter(
             dtype="float32",
             shape=self.shape,
             attr=fluid.ParamAttr(learning_rate=self.param_lr, name="param_y"),
-            default_initializer=fluid.initializer.NumpyArrayInitializer(self.y),
+            default_initializer=paddle.nn.initializer.Assign(self.y),
         )
         param_z = paddle.create_parameter(
             dtype="float32",
             shape=self.shape,
             attr=fluid.ParamAttr(learning_rate=self.param_lr, name="param_z"),
-            default_initializer=fluid.initializer.NumpyArrayInitializer(self.z),
+            default_initializer=paddle.nn.initializer.Assign(self.z),
         )
 
         sum_xy = paddle.add(param_x, param_y, name='sum_xy')
         sub_yz = paddle.subtract(param_y, param_z, name='sub_yz')
-        useless = fluid.layers.fc(param_x, size=1, name='fc_useless')
+        useless = paddle.static.nn.fc(param_x, size=1, name='fc_useless')
 
         def cond_true():
             cond_yz = paddle.add(param_y, param_z, name='sum_cond_yz')
@@ -251,7 +251,7 @@ class TestOptimizer(unittest.TestCase):
 )
 class TestSGDOptimizer(TestOptimizer):
     def test_optimizer_multiblock_except(self):
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             ValueError, "var param_y not in this block"
         ):
             self._check_grads(use_bf16=True)

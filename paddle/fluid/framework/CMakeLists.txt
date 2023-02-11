@@ -162,27 +162,7 @@ cc_test(
   eigen_test
   SRCS eigen_test.cc
   DEPS tensor)
-cc_library(
-  mixed_vector
-  SRCS mixed_vector.cc
-  DEPS device_context place memory)
 
-if(WITH_GPU)
-  nv_test(
-    mixed_vector_test
-    SRCS mixed_vector_test.cc mixed_vector_test.cu
-    DEPS mixed_vector place memory device_context tensor)
-elseif(WITH_ROCM)
-  hip_test(
-    mixed_vector_test
-    SRCS mixed_vector_test.cc mixed_vector_test.cu
-    DEPS mixed_vector place memory device_context tensor)
-else()
-  cc_test(
-    mixed_vector_test
-    SRCS mixed_vector_test.cc
-    DEPS mixed_vector place memory device_context tensor)
-endif()
 cc_library(
   lod_tensor
   SRCS lod_tensor.cc
@@ -618,7 +598,8 @@ if(WITH_PYTHON)
     fleet_proto_init
     pass_desc_py_proto
     ps_py_proto
-    ps_py_proto_init)
+    ps_py_proto_init
+    pslib_py_proto)
   if(NOT WIN32)
     add_custom_command(
       TARGET framework_py_proto
@@ -630,16 +611,18 @@ if(WITH_PYTHON)
               ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
       COMMENT "Copy generated python proto into directory paddle/fluid/proto."
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-    add_custom_target(
-      fleet_executor_proto_init ALL
-      DEPENDS fleet_proto_init fleet_executor_desc_py_proto
-      COMMAND
-        cp
-        ${PADDLE_BINARY_DIR}/paddle/fluid/distributed/fleet_executor/fleet_executor_*.py
-        ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
-      COMMENT
-        "Copy generated python proto into directory paddle/distributed/fleet/proto."
-    )
+    if(NOT WITH_ROCM)
+      add_custom_target(
+        fleet_executor_proto_init ALL
+        DEPENDS fleet_proto_init fleet_executor_desc_py_proto
+        COMMAND
+          cp
+          ${PADDLE_BINARY_DIR}/paddle/fluid/distributed/fleet_executor/fleet_executor_*.py
+          ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
+        COMMENT
+          "Copy generated python proto into directory paddle/distributed/fleet/proto."
+      )
+    endif()
   else()
     string(REPLACE "/" "\\" proto_dstpath
                    "${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/")
@@ -863,7 +846,8 @@ if(WITH_DISTRIBUTE)
            fleet
            heter_server
            brpc
-           fleet_executor)
+           fleet_executor
+           flags)
     set(DISTRIBUTE_COMPILE_FLAGS
         "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=parentheses"
     )
@@ -1219,7 +1203,9 @@ cc_library(
        string_helper
        phi_tensor
        op_meta_info
-       phi_api)
+       phi_api
+       phi_tensor_operants
+       operants_manager)
 
 set(FLUID_FRAMEWORK_MODULES
     proto_desc

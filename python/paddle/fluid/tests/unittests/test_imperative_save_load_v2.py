@@ -23,7 +23,6 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.learning_rate_scheduler import LearningRateDecay
-from paddle.fluid.framework import _test_eager_guard
 from paddle.nn import Embedding
 from paddle.optimizer import Adam
 
@@ -49,26 +48,26 @@ class SimpleLSTMRNN(fluid.Layer):
         for i in range(self._num_layers):
             weight_1 = self.create_parameter(
                 attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.UniformInitializer(
+                    initializer=paddle.nn.initializer.Uniform(
                         low=-self._init_scale, high=self._init_scale
                     )
                 ),
                 shape=[self._hidden_size * 2, self._hidden_size * 4],
                 dtype="float32",
-                default_initializer=fluid.initializer.UniformInitializer(
+                default_initializer=paddle.nn.initializer.Uniform(
                     low=-self._init_scale, high=self._init_scale
                 ),
             )
             self.weight_1_arr.append(self.add_parameter('w_%d' % i, weight_1))
             bias_1 = self.create_parameter(
                 attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.UniformInitializer(
+                    initializer=paddle.nn.initializer.Uniform(
                         low=-self._init_scale, high=self._init_scale
                     )
                 ),
                 shape=[self._hidden_size * 4],
                 dtype="float32",
-                default_initializer=fluid.initializer.Constant(0.0),
+                default_initializer=paddle.nn.initializer.Constant(0.0),
             )
             self.bias_arr.append(self.add_parameter('b_%d' % i, bias_1))
 
@@ -108,8 +107,8 @@ class SimpleLSTMRNN(fluid.Layer):
                 gate_input = paddle.matmul(x=nn, y=weight_1)
 
                 gate_input = paddle.add(gate_input, bias)
-                i, j, f, o = fluid.layers.split(
-                    gate_input, num_or_sections=4, dim=-1
+                i, j, f, o = paddle.split(
+                    gate_input, num_or_sections=4, axis=-1
                 )
                 c = pre_cell * paddle.nn.functional.sigmoid(
                     f
@@ -173,7 +172,7 @@ class PtbModel(fluid.Layer):
             sparse=False,
             weight_attr=fluid.ParamAttr(
                 name='embedding_para',
-                initializer=fluid.initializer.UniformInitializer(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-init_scale, high=init_scale
                 ),
             ),
@@ -183,7 +182,7 @@ class PtbModel(fluid.Layer):
             attr=fluid.ParamAttr(),
             shape=[self.hidden_size, self.vocab_size],
             dtype="float32",
-            default_initializer=fluid.initializer.UniformInitializer(
+            default_initializer=paddle.nn.initializer.Uniform(
                 low=-self.init_scale, high=self.init_scale
             ),
         )
@@ -191,7 +190,7 @@ class PtbModel(fluid.Layer):
             attr=fluid.ParamAttr(),
             shape=[self.vocab_size],
             dtype="float32",
-            default_initializer=fluid.initializer.UniformInitializer(
+            default_initializer=paddle.nn.initializer.Uniform(
                 low=-self.init_scale, high=self.init_scale
             ),
         )
@@ -845,9 +844,9 @@ class TestDygraphPtbRnn(unittest.TestCase):
             last_hidden = None
             last_cell = None
 
-            state_dict, opti_dict = fluid.load_dygraph(
-                os.path.join(self.temp_dir.name, "test_dy_v2")
-            )
+            model_prefix = os.path.join(self.temp_dir.name, "test_dy_v2")
+            state_dict = paddle.load(model_prefix + '.pdparams')
+            opti_dict = paddle.load(model_prefix + '.pdopt')
             adam.set_state_dict(opti_dict)
             ptb_model.set_dict(state_dict)
 
@@ -1072,17 +1071,6 @@ class TestDygraphPtbRnn(unittest.TestCase):
         self.func_testOnlyLoadParams()
         self.func_test_no_state_in_input_dict()
         self.func_test_state_shape_mismatch()
-        with _test_eager_guard():
-            self.func_setUp()
-            self.func_testLoadAndSetVarBase()
-            self.func_testSetVariable()
-            self.func_testSetNumpy()
-            self.func_testSetVariableBeforeTrain()
-            self.func_testLoadAndSetVarBaseBeforeTrain()
-            self.func_testSetNumpyBeforeTrain()
-            self.func_testOnlyLoadParams()
-            self.func_test_no_state_in_input_dict()
-            self.func_test_state_shape_mismatch()
 
 
 if __name__ == '__main__':

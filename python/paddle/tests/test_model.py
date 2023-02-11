@@ -25,7 +25,6 @@ import paddle.vision.models as models
 from paddle import Model, fluid, to_tensor
 from paddle.hapi.model import prepare_distributed_context
 from paddle.io import Dataset, DistributedBatchSampler
-from paddle.jit.dy2static.program_translator import ProgramTranslator
 from paddle.metric import Accuracy
 from paddle.nn import Conv2D, Linear, ReLU, Sequential
 from paddle.nn.layer.loss import CrossEntropyLoss
@@ -228,7 +227,7 @@ class TestModel(unittest.TestCase):
         if not os.path.exists(cls.save_dir):
             os.makedirs(cls.save_dir)
         cls.weight_path = os.path.join(cls.save_dir, 'lenet')
-        fluid.dygraph.save_dygraph(dy_lenet.state_dict(), cls.weight_path)
+        paddle.save(dy_lenet.state_dict(), cls.weight_path + '.pdparams')
 
         fluid.disable_dygraph()
 
@@ -826,8 +825,8 @@ class TestModelFunction(unittest.TestCase):
 
         for dynamic in [True, False]:
             paddle.disable_static() if dynamic else None
-            prog_translator = ProgramTranslator()
-            prog_translator.enable(False) if not dynamic else None
+            paddle.jit.enable_to_static(False) if not dynamic else None
+
             net = LeNet()
             inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
             model = Model(net, inputs)

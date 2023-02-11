@@ -21,49 +21,70 @@ limitations under the License. */
 #include <pybind11/stl.h>
 
 #include <chrono>
+#include <memory>
 #include <string>
 
-#include "paddle/fluid/distributed/store/tcp_store.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/store/tcp_store.h"
 
 namespace py = pybind11;
 
 namespace paddle {
 namespace pybind {
 
-using TCPStore = paddle::distributed::TCPStore;
+void BindCommContextManager(py::module *m) {
+  auto CommContextManager =
+      py::class_<phi::distributed::CommContextManager,
+                 std::shared_ptr<phi::distributed::CommContextManager>>(
+          *m, "CommContextManager")
+#if defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)
+          .def_static(
+              "create_nccl_comm_context",
+              &phi::distributed::CommContextManager::CreateNCCLCommContext,
+              py::call_guard<py::gil_scoped_release>())
+#endif
+#if defined(PADDLE_WITH_GLOO)
+          .def_static(
+              "create_gloo_comm_context",
+              &phi::distributed::CommContextManager::CreateGlooCommContext,
+              py::call_guard<py::gil_scoped_release>())
+#endif
+          .def("set_store", &phi::distributed::CommContextManager::SetStore);
+}
+
+using TCPStore = phi::distributed::TCPStore;
 
 void BindTCPStore(py::module *m) {
-  auto Store =
-      py::class_<distributed::Store, std::shared_ptr<distributed::Store>>(
-          *m, "Store")
-          .def(py::init<>())
-          .def(
-              "set",
-              [](distributed::Store &self,
-                 const std::string &key,
-                 const std::string &value) {
-                std::vector<uint8_t> data(value.begin(), value.end());
-                self.set(key, data);
-              },
-              py::arg("key"),
-              py::arg("value"),
-              py::call_guard<py::gil_scoped_release>())
-          .def(
-              "get",
-              [](distributed::Store &self,
-                 const std::string &key) -> py::bytes {
-                auto data = self.get(key);
-                return py::bytes(reinterpret_cast<char *>(data.data()),
-                                 data.size());
-              },
-              py::arg("key"),
-              py::call_guard<py::gil_scoped_release>())
-          .def("add",
-               &distributed::Store::add,
-               py::call_guard<py::gil_scoped_release>())
-          .def("wait",
-               &distributed::Store::wait,
-               py::call_guard<py::gil_scoped_release>());
+  auto Store = py::class_<phi::distributed::Store,
+                          std::shared_ptr<phi::distributed::Store>>(*m, "Store")
+                   .def(py::init<>())
+                   .def(
+                       "set",
+                       [](phi::distributed::Store &self,
+                          const std::string &key,
+                          const std::string &value) {
+                         std::vector<uint8_t> data(value.begin(), value.end());
+                         self.set(key, data);
+                       },
+                       py::arg("key"),
+                       py::arg("value"),
+                       py::call_guard<py::gil_scoped_release>())
+                   .def(
+                       "get",
+                       [](phi::distributed::Store &self,
+                          const std::string &key) -> py::bytes {
+                         auto data = self.get(key);
+                         return py::bytes(reinterpret_cast<char *>(data.data()),
+                                          data.size());
+                       },
+                       py::arg("key"),
+                       py::call_guard<py::gil_scoped_release>())
+                   .def("add",
+                        &phi::distributed::Store::add,
+                        py::call_guard<py::gil_scoped_release>())
+                   .def("wait",
+                        &phi::distributed::Store::wait,
+                        py::call_guard<py::gil_scoped_release>());
 
   py::class_<TCPStore, std::shared_ptr<TCPStore>>(*m, "TCPStore", Store)
       .def(py::init([](std::string hostname,

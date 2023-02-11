@@ -46,16 +46,16 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
 
         fleet.init(role_maker.PaddleCloudRoleMaker())
 
-        input_x = paddle.fluid.layers.data(name="x", shape=[1], dtype='int64')
-        input_y = paddle.fluid.layers.data(name="y", shape=[1], dtype='int64')
+        input_x = paddle.static.data(name="x", shape=[-1, 1], dtype='int64')
+        input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
         emb = paddle.fluid.layers.embedding(
             input=input_x, size=[100, 10], is_sparse=True
         )
 
-        fc_1 = paddle.fluid.layers.fc(input=emb, size=64, act='tanh')
-        fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
-        prediction = paddle.fluid.layers.fc(input=[fc_2], size=2, act='softmax')
+        fc_1 = paddle.static.nn.fc(x=emb, size=64, activation='tanh')
+        fc_2 = paddle.static.nn.fc(x=fc_1, size=64, activation='tanh')
+        prediction = paddle.static.nn.fc(x=[fc_2], size=2, activation='softmax')
         cost = paddle.nn.functional.cross_entropy(
             input=prediction, label=input_y, reduction='none', use_softmax=False
         )

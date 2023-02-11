@@ -452,6 +452,9 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
                      Graph* g) {
     VLOG(4) << "Quantize conv2d op";
     GET_IR_NODE_FROM_SUBGRAPH(conv_op, conv_op, conv_pattern);
+    if (conv_op->Op()->Type() == "conv2d") {
+      conv_op->Op()->SetType("fused_conv2d");
+    }
 
     // skip if should not be quantized
     if (!platform::HasOpINT8DataType(conv_op->Op())) {
@@ -1299,10 +1302,10 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
       platform::errors::InvalidArgument("Scope cannot be nullptr."));
 
   GetQuantInfo(graph);
-  QuantizeConv(graph, "conv2d", false /* with_residual_data */);
-  QuantizeConv(graph, "conv2d", true /* with_residual_data */);
   QuantizeConv(graph, "fused_conv2d", false /* with_residual_data */);
   QuantizeConv(graph, "fused_conv2d", true /* with_residual_data */);
+  QuantizeConv(graph, "conv2d", false /* with_residual_data */);
+  QuantizeConv(graph, "conv2d", true /* with_residual_data */);
   QuantizePool(graph);
   QuantizeConcat(graph);
   QuantizePriorBox(graph);

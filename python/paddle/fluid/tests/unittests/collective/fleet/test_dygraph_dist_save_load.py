@@ -33,6 +33,5 @@ class TestDistSaveLoad(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    os.environ["FLAGS_enable_eager_mode"] = "1"
     os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
     unittest.main()

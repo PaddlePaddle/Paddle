@@ -101,6 +101,9 @@ void FlipKernel(const Context& dev_ctx,
                 DenseTensor* out) {
   const size_t total_dims = x.dims().size();
   switch (total_dims) {
+    case 0:
+      LaunchFlipCudaKernel<T, Context, 0>(dev_ctx, x, axis, out);
+      break;
     case 1:
       LaunchFlipCudaKernel<T, Context, 1>(dev_ctx, x, axis, out);
       break;

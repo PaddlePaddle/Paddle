@@ -17,12 +17,12 @@
 #include <vector>
 
 #include "paddle/fluid/operators/math/sequence_padding.h"
-#include "paddle/fluid/operators/math/sequence_scale.h"
 #include "paddle/phi/backends/dynload/warpctc.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/sequence_scale.h"
 #include "paddle/utils/optional.h"
 
 namespace phi {
@@ -236,8 +236,8 @@ void WarpctcKernel(const Context& dev_ctx,
                    DenseTensor* loss,
                    DenseTensor* warpctcgrad) {
   size_t num_sequences, sequence_width, max_sequence_length;
-  paddle::framework::Vector<size_t> logits_lod;
-  paddle::framework::Vector<size_t> label_lod;
+  phi::Vector<size_t> logits_lod;
+  phi::Vector<size_t> label_lod;
   if (logits_length.is_initialized() && labels_length.is_initialized()) {
     num_sequences = logits.dims()[1];
     sequence_width = logits.dims()[2];
@@ -397,7 +397,7 @@ void WarpctcKernel(const Context& dev_ctx,
              paddle::operators::math::TotalSequenceLength(label_lod)),
          1});
     dev_ctx.template HostAlloc<int>(&warpctc_label);
-    std::vector<paddle::framework::Vector<size_t>> lod;
+    std::vector<phi::Vector<size_t>> lod;
     lod.push_back(label_lod);
     warpctc_label.set_lod(lod);
 

@@ -21,7 +21,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
 import paddle.nn.functional as F
-from paddle.fluid.framework import _test_eager_guard
 
 
 def gelu(x, approximate):
@@ -97,10 +96,6 @@ class TestGeluOp(unittest.TestCase):
         np.testing.assert_allclose(
             x_g_ref, x_g_fast_math, rtol=1e-05, atol=0.0005
         )
-
-    def test_fast_math_eager(self):
-        with _test_eager_guard():
-            self.test_fast_math()
 
 
 if __name__ == '__main__':

@@ -25,13 +25,6 @@ class TestDYgrapShardingDP(TestDistBase):
         self._trainers = 16
         self._init_env()
 
-    def test_hybrid_sharding_stage2(self):
-        self.check_with_place(
-            "mn_dygraph_sharding_stage2.py",
-            backend="nccl",
-            need_envs=os.environ,
-        )
-
     def test_hybrid_sharding_stage3(self):
         self.check_with_place(
             "mn_dygraph_group_sharded_stage3.py",

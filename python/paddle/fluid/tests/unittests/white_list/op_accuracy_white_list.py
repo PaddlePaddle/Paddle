@@ -75,6 +75,7 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'trilinear_interp_v2',
     'var_conv_2d',
     'warpctc',
+    'warprnnt',
     'bilateral_slice',
     'cast',
 ]

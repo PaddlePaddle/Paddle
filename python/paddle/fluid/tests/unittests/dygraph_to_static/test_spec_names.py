@@ -97,7 +97,7 @@ class TestArgsSpecName(unittest.TestCase):
             return name_ids[name]
 
         mode = [to_idx(name) for name in in_names]
-        self.assertEquals(mode, expect_mode)
+        self.assertEqual(mode, expect_mode)
 
 
 if __name__ == '__main__':

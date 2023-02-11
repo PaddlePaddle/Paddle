@@ -41,6 +41,15 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/utils/any.h"
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/backends/device_manager.h"
+#endif
+
+#include "gflags/gflags.h"
+#include "paddle/phi/api/include/tensor_operants.h"
+#include "paddle/phi/core/operants_manager.h"
+
+DECLARE_string(tensor_operants_mode);
 
 namespace paddle {
 namespace framework {
@@ -267,6 +276,15 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
 
   try {
     VLOG(3) << "Custom Operator: Run ComputeFunc.";
+
+    FLAGS_tensor_operants_mode = "phi";
+    if (paddle::operants::OperantsManager::Instance().phi_operants.get() ==
+        nullptr) {
+      paddle::operants::OperantsManager::Instance().phi_operants.reset(
+          new paddle::operants::PhiTensorOperants());
+      VLOG(4) << "Initialize phi tensor operants successfully";
+    }
+
     func(&kernel_ctx);
 
     // sync output tensor data into original output
@@ -419,9 +437,9 @@ class CustomOperator : public OperatorWithKernel {
    * The RAW type is used here as the data type, indicating that
    * it can only be determined at runtime.
    */
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(proto::VarType::RAW, ctx.GetPlace());
+    return phi::KernelKey(ctx.GetPlace());
   }
 
   /**
@@ -429,13 +447,13 @@ class CustomOperator : public OperatorWithKernel {
    * Because the kernel data type is RAW, we should skip the cast for
    * data type difference when PrepareData.
    */
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
-      const OpKernelType& expected_kernel_type) const override {
-    return OpKernelType(expected_kernel_type.data_type_,
-                        expected_kernel_type.place_,
-                        tensor.layout());
+      const phi::KernelKey& expected_kernel_type) const override {
+    return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                          tensor.layout(),
+                          expected_kernel_type.dtype());
   }
 };
 
@@ -711,6 +729,19 @@ static void RegisterOperatorKernel(const std::string& name,
 #if defined(PADDLE_WITH_XPU)
   RegisterOperatorKernelWithPlace(
       name, op_kernel_func, proto::VarType::RAW, platform::XPUPlace());
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+  for (const auto& dev_type : device_types) {
+    for (size_t dev_id = 0;
+         dev_id < phi::DeviceManager::GetDeviceCount(dev_type);
+         dev_id++) {
+      RegisterOperatorKernelWithPlace(name,
+                                      op_kernel_func,
+                                      proto::VarType::RAW,
+                                      platform::CustomPlace(dev_type, dev_id));
+    }
+  }
 #endif
 }
 

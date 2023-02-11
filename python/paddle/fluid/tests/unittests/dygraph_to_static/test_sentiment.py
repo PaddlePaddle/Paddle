@@ -20,12 +20,10 @@ from test_lac import DynamicGRU
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
-from paddle.jit import ProgramTranslator
-from paddle.jit.api import declarative
+from paddle.jit.api import to_static
 from paddle.nn import Embedding, Linear
 
 SEED = 2020
-program_translator = ProgramTranslator()
 
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
@@ -89,7 +87,7 @@ class CNN(fluid.dygraph.Layer):
         self._fc1_act = paddle.nn.Softmax()
         self._fc_prediction = Linear(self.fc_hid_dim, self.class_dim)
 
-    @declarative
+    @to_static
     def forward(self, inputs, label=None):
         emb = self.embedding(inputs)
         o_np_mask = (paddle.reshape(inputs, [-1, 1]) != self.dict_dim).astype(
@@ -133,7 +131,7 @@ class BOW(fluid.dygraph.Layer):
         self._fc2 = Linear(self.hid_dim, self.fc_hid_dim)
         self._fc_prediction = Linear(self.fc_hid_dim, self.class_dim)
 
-    @declarative
+    @to_static
     def forward(self, inputs, label=None):
         emb = self.embedding(inputs)
         o_np_mask = (paddle.reshape(inputs, [-1, 1]) != self.dict_dim).astype(
@@ -182,7 +180,7 @@ class GRU(fluid.dygraph.Layer):
         self._fc_prediction = Linear(self.fc_hid_dim, self.class_dim)
         self._gru = DynamicGRU(size=self.hid_dim, h_0=h_0)
 
-    @declarative
+    @to_static
     def forward(self, inputs, label=None):
         emb = self.embedding(inputs)
         o_np_mask = (paddle.reshape(inputs, [-1, 1]) != self.dict_dim).astype(
@@ -235,7 +233,7 @@ class BiGRU(fluid.dygraph.Layer):
             size=self.hid_dim, h_0=h_0, is_reverse=True
         )
 
-    @declarative
+    @to_static
     def forward(self, inputs, label=None):
         emb = self.embedding(inputs)
         o_np_mask = (paddle.reshape(inputs, [-1, 1]) != self.dict_dim).astype(
@@ -304,7 +302,7 @@ class Args:
 
 
 def train(args, to_static):
-    program_translator.enable(to_static)
+    paddle.jit.enable_to_static(to_static)
     place = (
         fluid.CUDAPlace(0)
         if fluid.is_compiled_with_cuda()

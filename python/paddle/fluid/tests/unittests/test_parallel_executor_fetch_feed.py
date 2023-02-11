@@ -25,15 +25,15 @@ from paddle.fluid import compiler
 
 
 def Lenet(data, class_dim):
-    conv1 = fluid.layers.conv2d(data, 4, 5, 1, act=None)
+    conv1 = paddle.static.nn.conv2d(data, 4, 5, 1, act=None)
     bn1 = paddle.static.nn.batch_norm(conv1, act='relu')
     pool1 = paddle.nn.functional.max_pool2d(bn1, 2, 2)
-    conv2 = fluid.layers.conv2d(pool1, 16, 5, 1, act=None)
+    conv2 = paddle.static.nn.conv2d(pool1, 16, 5, 1, act=None)
     bn2 = paddle.static.nn.batch_norm(conv2, act='relu')
     pool2 = paddle.nn.functional.max_pool2d(bn2, 2, 2)
 
-    fc1 = fluid.layers.fc(pool2, size=50, act='relu')
-    fc2 = fluid.layers.fc(fc1, size=class_dim, act='softmax')
+    fc1 = paddle.static.nn.fc(pool2, size=50, activation='relu')
+    fc2 = paddle.static.nn.fc(fc1, size=class_dim, activation='softmax')
 
     return fc2
 
@@ -55,10 +55,12 @@ class TestFetchAndFeed(unittest.TestCase):
         startup = fluid.Program()
         startup.random_seed = seed
         with fluid.program_guard(main_program, startup):
-            data = fluid.layers.data(
-                name='image', shape=[3, 224, 224], dtype='float32'
+            data = paddle.static.data(
+                name='image', shape=[-1, 3, 224, 224], dtype='float32'
             )
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
             out = Lenet(data, class_dim=102)
             loss = paddle.nn.functional.cross_entropy(
                 input=out, label=label, reduction='none', use_softmax=False

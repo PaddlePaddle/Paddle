@@ -42,12 +42,19 @@ else:
         print("export PY_VERSION = %s" % platform.python_version())
         python_version = platform.python_version()
         os.environ["PY_VERSION"] = python_version
+    else:
+        if os.getenv("PY_VERSION") != platform.python_version()[:3]:
+            raise RuntimeError(
+                "You set PY_VERSION=%s, but your current python environment is %s, you should keep them consistent!"
+                % (os.getenv("PY_VERSION"), platform.python_version()[:3])
+            )
 
 # check cmake
 CMAKE = find_executable('cmake3') or find_executable('cmake')
 assert (
     CMAKE
 ), 'The "cmake" executable is not found. Please check if Cmake is installed.'
+
 
 TOP_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -322,6 +329,22 @@ def get_cudnn_version():
         return 'False'
 
 
+def get_xpu_version():
+    with_xpu = env_dict.get("WITH_XPU")
+    if with_xpu == 'ON':
+        return env_dict.get("XPU_BASE_DATE")
+    else:
+        return 'False'
+
+
+def get_xpu_xccl_version():
+    with_xpu_xccl = env_dict.get("WITH_XPU_BKCL")
+    if with_xpu_xccl == 'ON':
+        return env_dict.get("XPU_XCCL_BASE_VERSION")
+    else:
+        return 'False'
+
+
 def is_taged():
     try:
         cmd = [
@@ -353,18 +376,20 @@ def is_taged():
 def write_version_py(filename='paddle/version/__init__.py'):
     cnt = '''# THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
 #
-full_version    = '%(major)d.%(minor)d.%(patch)s'
-major           = '%(major)d'
-minor           = '%(minor)d'
-patch           = '%(patch)s'
-rc              = '%(rc)d'
-cuda_version    = '%(cuda)s'
-cudnn_version   = '%(cudnn)s'
-istaged         = %(istaged)s
-commit          = '%(commit)s'
-with_mkl        = '%(with_mkl)s'
+full_version     = '%(major)d.%(minor)d.%(patch)s'
+major            = '%(major)d'
+minor            = '%(minor)d'
+patch            = '%(patch)s'
+rc               = '%(rc)d'
+cuda_version     = '%(cuda)s'
+cudnn_version    = '%(cudnn)s'
+xpu_version      = '%(xpu)s'
+xpu_xccl_version = '%(xpu_xccl)s'
+istaged          = %(istaged)s
+commit           = '%(commit)s'
+with_mkl         = '%(with_mkl)s'
 
-__all__ = ['cuda', 'cudnn', 'show']
+__all__ = ['cuda', 'cudnn', 'show', 'xpu', 'xpu_xccl']
 
 def show():
     """Get the version of paddle if `paddle` package if tagged. Otherwise, output the corresponding commit id.
@@ -387,6 +412,10 @@ def show():
 
         cudnn: the cudnn version of package. It will return `False` if CPU version paddle package is installed
 
+        xpu: the xpu version of package. It will return `False` if non-XPU version paddle package is installed
+
+        xpu_xccl: the xpu xccl version of package. It will return `False` if non-XPU version paddle package is installed
+
     Examples:
         .. code-block:: python
 
@@ -401,12 +430,16 @@ def show():
             # rc: 0
             # cuda: '10.2'
             # cudnn: '7.6.5'
+            # xpu: '20230114'
+            # xpu_xccl: '1.0.7'
 
             # Case 2: paddle is not tagged
             paddle.version.show()
             # commit: cfa357e984bfd2ffa16820e354020529df434f7d
             # cuda: '10.2'
             # cudnn: '7.6.5'
+            # xpu: '20230114'
+            # xpu_xccl: '1.0.7'
     """
     if istaged:
         print('full_version:', full_version)
@@ -418,6 +451,8 @@ def show():
         print('commit:', commit)
     print('cuda:', cuda_version)
     print('cudnn:', cudnn_version)
+    print('xpu:', xpu_version)
+    print('xpu_xccl:', xpu_xccl_version)
 
 def mkl():
     return with_mkl
@@ -455,6 +490,40 @@ def cudnn():
 
     """
     return cudnn_version
+
+def xpu():
+    """Get xpu version of paddle package.
+
+    Returns:
+        string: Return the version information of xpu. If paddle package is non-XPU version, it will return False.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            paddle.version.xpu()
+            # '20230114'
+
+    """
+    return xpu_version
+
+def xpu_xccl():
+    """Get xpu xccl version of paddle package.
+
+    Returns:
+        string: Return the version information of xpu xccl. If paddle package is non-XPU version, it will return False.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            paddle.version.xpu_xccl()
+            # '1.0.7'
+
+    """
+    return xpu_xccl_version
 '''
     commit = git_commit()
 
@@ -477,6 +546,8 @@ def cudnn():
                 'version': env_dict.get("PADDLE_VERSION"),
                 'cuda': get_cuda_version(),
                 'cudnn': get_cudnn_version(),
+                'xpu': get_xpu_version(),
+                'xpu_xccl': get_xpu_xccl_version(),
                 'commit': commit,
                 'istaged': is_taged(),
                 'with_mkl': env_dict.get("WITH_MKL"),
@@ -558,82 +629,14 @@ def options_process(args, build_options):
 
 
 def get_cmake_generator():
-    if os.getenv("CMAKE_GENERATOR"):
-        cmake_generator = os.getenv("CMAKE_GENERATOR")
+    if os.getenv("GENERATOR"):
+        cmake_generator = os.getenv("GENERATOR")
     else:
         cmake_generator = "Unix Makefiles"
-
     return cmake_generator
 
 
-def cmake_run(args, build_path):
-    with cd(build_path):
-        cmake_args = []
-        cmake_args.append(CMAKE)
-        cmake_args += args
-        cmake_args.append('-DWITH_SETUP_INSTALL=ON')
-        cmake_args.append(TOP_DIR)
-        print("cmake_args:", cmake_args)
-        subprocess.check_call(cmake_args)
-
-
-def build_run(args, build_path, envrion_var):
-    with cd(build_path):
-        build_args = []
-        build_args.append(CMAKE)
-        build_args += args
-        print(" ".join(build_args))
-        try:
-            subprocess.check_call(build_args, cwd=build_path, env=envrion_var)
-        except (CalledProcessError, KeyboardInterrupt) as e:
-            sys.exit(1)
-
-
-def run_cmake_build(build_path):
-    build_args = ["--build", ".", "--target", "install", "--config", 'Release']
-    max_jobs = os.getenv("MAX_JOBS")
-    if max_jobs is not None:
-        max_jobs = max_jobs or str(multiprocessing.cpu_count())
-
-        build_args += ["--"]
-        if IS_WINDOWS:
-            build_args += ["/p:CL_MPCount={}".format(max_jobs)]
-        else:
-            build_args += ["-j", max_jobs]
-    else:
-        build_args += ["-j", str(multiprocessing.cpu_count())]
-    environ_var = os.environ.copy()
-    build_run(build_args, build_path, environ_var)
-
-
-def build_steps():
-    print('------- Building start ------')
-    build_dir = os.getenv("BUILD_DIR")
-    if build_dir is not None:
-        build_dir = TOP_DIR + '/' + build_dir
-    else:
-        build_dir = TOP_DIR + '/build'
-    if not os.path.exists(build_dir):
-        _mkdir_p(build_dir)
-    build_path = build_dir
-    # run cmake to generate native build files
-    cmake_cache_file_path = os.path.join(build_path, "CMakeCache.txt")
-    # if rerun_cmake is True,remove CMakeCache.txt and rerun camke
-    if os.path.isfile(cmake_cache_file_path) and rerun_cmake is True:
-        os.remove(cmake_cache_file_path)
-
-    CMAKE_GENERATOR = get_cmake_generator()
-
-    if CMAKE_GENERATOR == "Ninja":
-        build_ninja_file_path = os.path.join(build_path, "build.ninja")
-        # if os.path.exists(cmake_cache_file_path) and not (USE_NINJA and not os.path.exists(build_ninja_file_path)):
-        if os.path.exists(cmake_cache_file_path) and os.path.exists(
-            build_ninja_file_path
-        ):
-            print("Do not need rerun camke,everything is ready,run build now")
-            run_cmake_build(build_path)
-            return
-
+def cmake_run(build_path):
     args = []
     env_var = os.environ.copy()  # get env variables
     paddle_build_options = {}
@@ -663,7 +666,7 @@ def build_steps():
                 "XPU_SDK_ROOT",
                 "MSVC_STATIC_CRT",
                 "NEW_RELEASE_ALL",
-                "CMAKE_GENERATOR",
+                "GENERATOR",
             )
         }
     )
@@ -680,15 +683,87 @@ def build_steps():
                 key = option_key + ":FILEPATH"
                 print(key)
             elif option_key == 'PYTHON_INCLUDE_DIR':
-                key = key = option_key + ':PATH'
+                key = option_key + ':PATH'
                 print(key)
+            elif option_key == 'GENERATOR':
+                key = 'CMAKE_' + option_key
             else:
                 key = other_options[option_key]
             if key not in paddle_build_options:
                 paddle_build_options[key] = option_value
+
     options_process(args, paddle_build_options)
     print("args:", args)
-    cmake_run(args, build_path)
+    with cd(build_path):
+        cmake_args = []
+        cmake_args.append(CMAKE)
+        cmake_args += args
+        cmake_args.append('-DWITH_SETUP_INSTALL=ON')
+        cmake_args.append(TOP_DIR)
+        print("cmake_args:", cmake_args)
+        subprocess.check_call(cmake_args)
+
+
+def build_run(args, build_path, envrion_var):
+    with cd(build_path):
+        build_args = []
+        build_args.append(CMAKE)
+        build_args += args
+        print(" ".join(build_args))
+        try:
+            subprocess.check_call(build_args, cwd=build_path, env=envrion_var)
+        except (CalledProcessError, KeyboardInterrupt) as e:
+            sys.exit(1)
+
+
+def run_cmake_build(build_path):
+    build_type = (
+        os.getenv("CMAKE_BUILD_TYPE")
+        if os.getenv("CMAKE_BUILD_TYPE") is not None
+        else "release"
+    )
+    build_args = ["--build", ".", "--target", "install", "--config", build_type]
+    max_jobs = os.getenv("MAX_JOBS")
+    if max_jobs is not None:
+        max_jobs = max_jobs or str(multiprocessing.cpu_count())
+
+        build_args += ["--"]
+        if IS_WINDOWS:
+            build_args += ["/p:CL_MPCount={}".format(max_jobs)]
+        else:
+            build_args += ["-j", max_jobs]
+    else:
+        build_args += ["-j", str(multiprocessing.cpu_count())]
+    environ_var = os.environ.copy()
+    build_run(build_args, build_path, environ_var)
+
+
+def build_steps():
+    print('------- Building start ------')
+    build_dir = os.getenv("BUILD_DIR")
+    if build_dir is not None:
+        build_dir = TOP_DIR + '/' + build_dir
+    else:
+        build_dir = TOP_DIR + '/build'
+    if not os.path.exists(build_dir):
+        _mkdir_p(build_dir)
+    build_path = build_dir
+    print("build_dir:", build_dir)
+    # run cmake to generate native build files
+    cmake_cache_file_path = os.path.join(build_path, "CMakeCache.txt")
+    # if rerun_cmake is True,remove CMakeCache.txt and rerun camke
+    if os.path.isfile(cmake_cache_file_path) and rerun_cmake is True:
+        os.remove(cmake_cache_file_path)
+
+    CMAKE_GENERATOR = get_cmake_generator()
+    bool_ninja = CMAKE_GENERATOR == "Ninja"
+    build_ninja_file_path = os.path.join(build_path, "build.ninja")
+    if os.path.exists(cmake_cache_file_path) and not (
+        bool_ninja and not os.path.exists(build_ninja_file_path)
+    ):
+        print("Do not need rerun camke, everything is ready, run build now")
+    else:
+        cmake_run(build_path)
     # make
     if only_cmake:
         print(
@@ -767,9 +842,11 @@ def get_package_data_and_package_dir():
     libs_path = paddle_binary_dir + '/python/paddle/libs'
     package_data['paddle.libs'] = []
     package_data['paddle.libs'] = [
-        ('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_suffix
+        ('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_suffix,
+        ('libwarprnnt' if os.name != 'nt' else 'warprnnt') + ext_suffix,
     ]
     shutil.copy(env_dict.get("WARPCTC_LIBRARIES"), libs_path)
+    shutil.copy(env_dict.get("WARPRNNT_LIBRARIES"), libs_path)
     package_data['paddle.libs'] += [
         os.path.basename(env_dict.get("LAPACK_LIB")),
         os.path.basename(env_dict.get("BLAS_LIB")),
@@ -857,6 +934,14 @@ def get_package_data_and_package_dir():
         )
         package_data['paddle.libs'] += ['libcinnapi.so']
         package_data['paddle.libs'] += ['cinn_cuda_runtime_source.cuh']
+
+        cinn_fp16_file = (
+            env_dict.get("CINN_INCLUDE_DIR") + '/cinn/runtime/cuda/float16.h'
+        )
+        if os.path.exists(cinn_fp16_file):
+            shutil.copy(cinn_fp16_file, libs_path)
+            package_data['paddle.libs'] += ['float16.h']
+
         if env_dict.get("CMAKE_BUILD_TYPE") == 'Release' and os.name != 'nt':
             command = (
                 "patchelf --set-rpath '$ORIGIN/' %s/" % libs_path
@@ -941,11 +1026,11 @@ def get_package_data_and_package_dir():
                         "command: %s" % command,
                     )
         shutil.copy(env_dict.get("XPU_API_LIB"), libs_path)
-        shutil.copy(env_dict.get("XPU_RT_LIB"), libs_path)
-        package_data['paddle.libs'] += [
-            env_dict.get("XPU_API_LIB_NAME"),
-            env_dict.get("XPU_RT_LIB_NAME"),
-        ]
+        package_data['paddle.libs'] += [env_dict.get("XPU_API_LIB_NAME")]
+        xpu_rt_lib_list = glob.glob(env_dict.get("XPU_RT_LIB") + '*')
+        for xpu_rt_lib_file in xpu_rt_lib_list:
+            shutil.copy(xpu_rt_lib_file, libs_path)
+            package_data['paddle.libs'] += [os.path.basename(xpu_rt_lib_file)]
 
     if env_dict.get("WITH_XPU_BKCL") == 'ON':
         shutil.copy(env_dict.get("XPU_BKCL_LIB"), libs_path)
@@ -957,7 +1042,7 @@ def get_package_data_and_package_dir():
     package_dir['paddle.libs'] = libs_path
 
     # change rpath of ${FLUID_CORE_NAME}.ext, add $ORIGIN/../libs/ to it.
-    # The reason is that libwarpctc.ext, libiomp5.ext etc are in paddle.libs, and
+    # The reason is that libwarpctc.ext, libwarprnnt.ext, libiomp5.ext etc are in paddle.libs, and
     # ${FLUID_CORE_NAME}.ext is in paddle.fluid, thus paddle/fluid/../libs will pointer to above libraries.
     # This operation will fix https://github.com/PaddlePaddle/Paddle/issues/3213
     if env_dict.get("CMAKE_BUILD_TYPE") == 'Release':
@@ -1192,22 +1277,13 @@ def get_setup_parameters():
         'paddle.inference.contrib.utils',
         'paddle.fluid',
         'paddle.fluid.dygraph',
-        'paddle.fluid.dygraph.amp',
         'paddle.fluid.proto',
         'paddle.fluid.proto.profiler',
-        'paddle.fluid.distributed',
         'paddle.fluid.layers',
         'paddle.fluid.dataloader',
         'paddle.fluid.contrib',
-        'paddle.fluid.contrib.quantize',
-        'paddle.fluid.contrib.slim',
-        'paddle.fluid.contrib.slim.quantization',
-        'paddle.fluid.contrib.slim.quantization.imperative',
         'paddle.fluid.contrib.extend_optimizer',
-        'paddle.fluid.contrib.mixed_precision',
-        'paddle.fluid.contrib.mixed_precision.bf16',
         'paddle.fluid.contrib.layers',
-        'paddle.fluid.contrib.sparsity',
         'paddle.fluid.transpiler',
         'paddle.fluid.transpiler.details',
         'paddle.fluid.incubate',
@@ -1248,6 +1324,8 @@ def get_setup_parameters():
         'paddle.incubate.distributed.models',
         'paddle.incubate.distributed.models.moe',
         'paddle.incubate.distributed.models.moe.gate',
+        'paddle.quantization',
+        'paddle.quantization.quanters',
         'paddle.sparse',
         'paddle.sparse.nn',
         'paddle.sparse.nn.layer',
@@ -1259,13 +1337,17 @@ def get_setup_parameters():
         'paddle.nn.functional',
         'paddle.nn.layer',
         'paddle.nn.quant',
+        'paddle.nn.quant.qat',
         'paddle.nn.initializer',
         'paddle.nn.utils',
         'paddle.metric',
         'paddle.static',
         'paddle.static.nn',
         'paddle.static.amp',
-        'paddle.static.sparsity',
+        'paddle.static.amp.bf16',
+        'paddle.static.quantization',
+        'paddle.quantization',
+        'paddle.quantization.imperative',
         'paddle.tensor',
         'paddle.onnx',
         'paddle.autograd',
@@ -1304,16 +1386,22 @@ def main():
     # Execute the build process,cmake and make
     if cmake_and_build:
         build_steps()
+
+    if os.getenv("WITH_PYTHON") == "OFF":
+        print("only compile, not package")
+        return
+
     build_dir = os.getenv("BUILD_DIR")
     if build_dir is not None:
         env_dict_path = TOP_DIR + '/' + build_dir + '/python'
     else:
         env_dict_path = TOP_DIR + "/build/python/"
-    sys.path.append(env_dict_path)
+    sys.path.insert(1, env_dict_path)
     from env_dict import env_dict as env_dict
 
     global env_dict
     global paddle_binary_dir, paddle_source_dir
+
     paddle_binary_dir = env_dict.get("PADDLE_BINARY_DIR")
     paddle_source_dir = env_dict.get("PADDLE_SOURCE_DIR")
 
@@ -1333,7 +1421,6 @@ def main():
             paddle_binary_dir
         )
     )
-
     (
         setup_requires,
         packages,
@@ -1346,7 +1433,7 @@ def main():
 
     # Log for PYPI, get long_description of setup()
     with open(
-        paddle_source_dir + '/python/paddle/README.rst', "r", encoding='UTF-8'
+        paddle_source_dir + '/python/paddle/README.md', "r", encoding='UTF-8'
     ) as f:
         long_description = f.read()
 
@@ -1399,11 +1486,10 @@ def main():
             'Intended Audience :: Science/Research',
             'License :: OSI Approved :: Apache Software License',
             'Programming Language :: C++',
-            'Programming Language :: Python :: 2.7',
-            'Programming Language :: Python :: 3.5',
-            'Programming Language :: Python :: 3.6',
             'Programming Language :: Python :: 3.7',
             'Programming Language :: Python :: 3.8',
+            'Programming Language :: Python :: 3.9',
+            'Programming Language :: Python :: 3.10',
         ],
     )
 

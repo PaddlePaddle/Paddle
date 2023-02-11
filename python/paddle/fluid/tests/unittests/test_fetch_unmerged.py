@@ -44,8 +44,10 @@ class TestFetchUnmerged(unittest.TestCase):
             pool_type='avg',
             act="relu",
         )
-        hidden = fluid.layers.fc(input=conv_pool_2, size=32, act='relu')
-        prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
+        hidden = paddle.static.nn.fc(x=conv_pool_2, size=32, activation='relu')
+        prediction = paddle.static.nn.fc(
+            x=hidden, size=10, activation='softmax'
+        )
         loss = paddle.nn.functional.cross_entropy(
             input=prediction, label=label, reduction='none', use_softmax=False
         )
@@ -55,11 +57,11 @@ class TestFetchUnmerged(unittest.TestCase):
     def build_program(self, main, startup, is_test):
         with fluid.unique_name.guard():
             with fluid.program_guard(main, startup):
-                img = fluid.layers.data(
-                    name='image', shape=[1, 28, 28], dtype='float32'
+                img = paddle.static.data(
+                    name='image', shape=[-1, 1, 28, 28], dtype='float32'
                 )
-                label = fluid.layers.data(
-                    name='label', shape=[1], dtype='int64'
+                label = paddle.static.data(
+                    name='label', shape=[-1, 1], dtype='int64'
                 )
                 loss, prediction = self.conv_net(img, label)
                 if not is_test:

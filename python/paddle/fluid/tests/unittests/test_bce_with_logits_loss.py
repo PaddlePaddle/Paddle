@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.framework import _test_eager_guard
 
 
 def call_bce_layer(
@@ -172,15 +171,6 @@ class TestBCEWithLogitsLoss(unittest.TestCase):
                     functional=True,
                 )
 
-                with _test_eager_guard():
-                    eager_functional = test_dygraph(
-                        place,
-                        logit_np,
-                        label_np,
-                        reduction=reduction,
-                        functional=True,
-                    )
-
                 np.testing.assert_allclose(
                     static_functional, expected, rtol=1e-05
                 )
@@ -188,9 +178,6 @@ class TestBCEWithLogitsLoss(unittest.TestCase):
                     static_functional, dy_functional, rtol=1e-05
                 )
                 np.testing.assert_allclose(dy_functional, expected, rtol=1e-05)
-                np.testing.assert_allclose(
-                    eager_functional, expected, rtol=1e-05
-                )
 
     def test_BCEWithLogitsLoss_weight(self):
         logit_np = np.random.uniform(0.1, 0.8, size=(2, 3, 4, 10)).astype(

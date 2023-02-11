@@ -311,6 +311,10 @@ class TestFunctionalRReluAPI(unittest.TestCase):
         self.assertRaises(ValueError, error_lower_upper)
 
 
+def rrelu(x, lower, upper, training):
+    return paddle.nn.functional.rrelu(x, lower, upper, training=not training)
+
+
 class RReluTest(OpTest):
     def setUp(self):
         self.op_type = "rrelu"
@@ -318,6 +322,10 @@ class RReluTest(OpTest):
         self.upper = 0.3
         self.is_test = True
         self.init_params()
+        self.python_api = rrelu
+        self.python_out_sig = [
+            "Out"
+        ]  # python out sig is customized output signature.
 
     def init_params(self):
         self.dtype = "float64"
@@ -337,10 +345,10 @@ class RReluTest(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(no_check_set=['Noise'], check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class RReluTrainingTest(RReluTest):
@@ -350,6 +358,10 @@ class RReluTrainingTest(RReluTest):
         self.upper = 0.300000009
         self.is_test = False
         self.init_params()
+        self.python_api = rrelu
+        self.python_out_sig = [
+            "Out"
+        ]  # python out sig is customized output signature.
 
 
 if __name__ == "__main__":

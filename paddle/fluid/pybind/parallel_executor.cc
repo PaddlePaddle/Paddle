@@ -72,7 +72,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
-#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
@@ -89,6 +88,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/io.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/utils/none.h"
@@ -633,7 +633,33 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
           [](BuildStrategy &self, int nranks) {
             self.hierarchical_allreduce_inter_nranks_ = nranks;
           })
+      .def_property(
+          "build_cinn_pass",
+          [](const BuildStrategy &self) { return self.build_cinn_pass_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE_NE(self.IsFinalized(),
+                              true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, "
+                                  "cannot be configured again."));
+            self.build_cinn_pass_ = b;
+          },
+          R"DOC((bool, optional): build_cinn_pass indicates whether
+                      to lowering some operators in graph into cinn ops
+                      to execute, which will speed up the process of execution.
+                      Default False.
 
+                      Examples:
+                          .. code-block:: python
+
+                              import paddle
+                              import paddle.static as static
+
+                              paddle.enable_static()
+
+                              build_strategy = static.BuildStrategy()
+                              build_strategy.build_cinn_pass = True
+                    )DOC")
       .def_property(
           "fuse_elewise_add_act_ops",
           [](const BuildStrategy &self) {
@@ -687,6 +713,32 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
 
                         build_strategy = static.BuildStrategy()
                         build_strategy.fuse_gemm_epilogue = True
+                     )DOC")
+      .def_property(
+          "fused_attention",
+          [](const BuildStrategy &self) { return self.fused_attention_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE_NE(self.IsFinalized(),
+                              true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
+            self.fused_attention_ = b;
+          },
+          R"DOC((bool, optional): fused_attention indicate whether
+                to fuse the whole multi head attention part with one op,
+                it may make the execution faster. Default is False.
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
+                        build_strategy.fused_attention = True
                      )DOC")
       .def_property(
           "fuse_bn_act_ops",

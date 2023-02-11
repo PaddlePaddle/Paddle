@@ -15,8 +15,8 @@
 #include "paddle/fluid/framework/ir/mkldnn/softplus_activation_mkldnn_fuse_pass.h"
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/ir/mkldnn/activation_onednn_fuse_pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/string/pretty_log.h"
 
@@ -27,7 +27,7 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void SoftplusActivationOneDNNPass::ApplyImpl(Graph *graph) const {
-  auto act_types = phi::funcs::GetSupportedActivations();
+  auto act_types = GetSupportedActivations();
 
   // Currently softplus can't be fused with hard_sigmoid
   act_types.erase(
@@ -42,7 +42,7 @@ void SoftplusActivationOneDNNPass::ApplyImpl(Graph *graph) const {
 void SoftplusActivationOneDNNPass::FuseSoftplusActivation(
     Graph *graph, const std::string &act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init("softplus_activation", graph);
 
   GraphPatternDetector gpd;
@@ -63,34 +63,8 @@ void SoftplusActivationOneDNNPass::FuseSoftplusActivation(
     GET_IR_NODE_FROM_SUBGRAPH(
         activation, activation, softplus_activation_pattern);
 
-    auto *softplus_op = softplus->Op();
-
-    if (softplus_op->HasAttr("use_mkldnn")) {
-      PADDLE_ENFORCE_EQ(
-          PADDLE_GET_CONST(bool, softplus_op->GetAttr("use_mkldnn")),
-          true,
-          platform::errors::PreconditionNotMet("The softplus + activation "
-                                               "fusion may happen only when "
-                                               "oneDNN library is used."));
-    }
-
-    auto *activation_op = activation->Op();
-    auto attr_map = phi::funcs::GetAttributeMap(act_type);
-    for (const auto &attr : attr_map) {
-      if (activation_op->HasAttr(attr.first)) {
-        softplus_op->SetAttr(attr.second, activation_op->GetAttr(attr.first));
-      }
-    }
-
-    if (act_type == "gelu" && activation_op->HasAttr("approximate") &&
-        PADDLE_GET_CONST(bool, activation_op->GetAttr("approximate")))
-      softplus_op->SetAttr("fuse_activation", std::string("gelu_tanh"));
-    else
-      softplus_op->SetAttr("fuse_activation", act_type);
-
-    softplus_op->SetAttr("use_mkldnn", true);
-
-    softplus_op->SetOutput("Out", {activation_out->Name()});
+    SetActivationAttrs(softplus->Op(), activation->Op(), act_type);
+    softplus->Op()->SetOutput("Out", {activation_out->Name()});
 
     IR_OP_VAR_LINK(softplus, activation_out);
     GraphSafeRemoveNodes(g, {activation, softplus_out});

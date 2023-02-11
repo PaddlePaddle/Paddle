@@ -33,11 +33,9 @@ OUT_SIZE = 2 * MODEL_PARALLEL_SIZE
 
 def get_param_attr(weight, bias):
     weight_attr = paddle.ParamAttr(
-        initializer=fluid.initializer.NumpyArrayInitializer(weight)
+        initializer=paddle.nn.initializer.Assign(weight)
     )
-    bias_attr = paddle.ParamAttr(
-        initializer=fluid.initializer.NumpyArrayInitializer(bias)
-    )
+    bias_attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Assign(bias))
     return weight_attr, bias_attr
 
 
@@ -61,11 +59,11 @@ def create_model(data, rank):
         )
     else:
         weight_attr, bias_attr = get_param_attr(np_weight, np_bias)
-        result = fluid.layers.fc(
+        result = paddle.static.nn.fc(
             data,
             size=OUT_SIZE,
-            param_attr=paddle.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(np_weight)
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Assign(np_weight)
             ),
             bias_attr=bias_attr,
         )

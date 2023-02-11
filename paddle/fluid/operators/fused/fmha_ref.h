@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/operators/dropout_impl.cu.h"
 #include "paddle/fluid/operators/fused/fused_softmax_mask.cu.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
+#include "paddle/phi/kernels/funcs/dropout_impl.cu.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/functors.h"
@@ -206,7 +206,7 @@ class FMHARef {
     stride_b = gemm_k * gemm_n;
 
     if (dropout_param_.dropout_prob_) {
-      DropoutFwGPUKernelDriver<T>(
+      phi::funcs::DropoutFwGPUKernelDriver<T>(
           static_cast<const phi::GPUContext&>(dev_ctx_),
           dropout_param_.is_test_,
           dropout_param_.dropout_prob_,
@@ -256,8 +256,7 @@ class FMHARef {
         dev_ctx_, *qktv_out_tensor, perm_3, fmha_out_tensor);
   }
 
-  void ComputeForwardWithoutTranspose(const phi::DenseTensor& qkv_input_tensor,
-                                      const phi::DenseTensor* cache_kv_tensor,
+  void ComputeForwardWithoutTranspose(const phi::DenseTensor* cache_kv_tensor,
                                       const phi::DenseTensor* src_mask_tensor,
                                       phi::DenseTensor* q_transpose_out_tensor,
                                       phi::DenseTensor* kv_transpose_out_tensor,
@@ -381,7 +380,7 @@ class FMHARef {
     stride_b = gemm_k * gemm_n;
 
     if (dropout_param_.dropout_prob_) {
-      DropoutFwGPUKernelDriver<T>(
+      phi::funcs::DropoutFwGPUKernelDriver<T>(
           static_cast<const phi::GPUContext&>(dev_ctx_),
           dropout_param_.is_test_,
           dropout_param_.dropout_prob_,
@@ -552,7 +551,7 @@ class FMHARef {
     }
     // dropout bw
     if (dropout_param_.dropout_prob_) {
-      DropoutGradGPUKernelDriver<T>(
+      phi::funcs::DropoutGradGPUKernelDriver<T>(
           static_cast<const phi::GPUContext&>(dev_ctx_),
           false,
           dropout_param_.dropout_prob_,

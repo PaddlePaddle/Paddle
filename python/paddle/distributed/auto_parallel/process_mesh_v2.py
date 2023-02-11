@@ -14,7 +14,7 @@
 
 import numpy as np
 
-from paddle.fluid import core
+from paddle.framework import core
 
 
 class ProcessMesh(core.ProcessMesh):

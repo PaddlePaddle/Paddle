@@ -670,6 +670,47 @@ TEST(BuildCinnPassTest, NoNeedBufferInput) {
       std::unordered_set<std::string>({"var5", "var6"}));
 }
 
+TEST(BuildCinnPassTest, TestSkipGcVars) {
+  auto g = BuildGraphWithOneCinnSubgraph();
+
+  std::unordered_set<std::string> all_skip_gc_vars = {"var1", "var3"};
+  g->SetNotOwned(kSkipGcVarNames, &all_skip_gc_vars);
+
+  auto pass =
+      paddle::framework::ir::PassRegistry::Instance().Get("build_cinn_pass");
+  pass->Apply(g.get());
+
+  // After search, the graph should as following
+  // fake1 --> v1 --
+  //                | --> kCinnLaunchOp --> v4 --> fake2
+  //           v2 --
+  const auto& nodes = g->Nodes();
+  ASSERT_EQ(nodes.size(), static_cast<size_t>(7));
+  ASSERT_TRUE(CheckGraphIndependence(nodes));
+
+  // A new op named kCinnLaunchOp should be added
+  ASSERT_TRUE(CheckNodeExisted(nodes, kCinnLaunchOp));
+
+  // After search, there should has just one cinn subgraph
+  // Note v3 has fetched because of v3 in kSkipGcVarNames
+  // And v1 is a feed var so v1 no need fetched though it in kSkipGcVarNames
+  // feed --> v1 --
+  //               | --> mul --> v3 --> relu --> v4 --> fetch
+  // feed --> v2 --                 --> fetch
+  auto compilation_keys = GetCompilationKeys(*g);
+  ASSERT_EQ(compilation_keys.size(), static_cast<size_t>(1));
+  auto* cinn_compiler = CinnCompiler::GetInstance();
+  const auto& subgraph = cinn_compiler->FindGraph(compilation_keys[0]);
+
+  const auto& subnodes = subgraph.Nodes();
+  ASSERT_EQ(subnodes.size(), static_cast<size_t>(10));
+  ASSERT_TRUE(CheckGraphIndependence(subnodes));
+
+  ASSERT_EQ(CountNode(subnodes, "feed"), 2);
+  // var3 and var4 should has fetch op
+  ASSERT_EQ(CountNode(subnodes, "fetch"), 2);
+}
+
 }  // namespace paddle2cinn
 }  // namespace framework
 }  // namespace paddle

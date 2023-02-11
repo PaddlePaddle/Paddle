@@ -31,42 +31,44 @@ class TestFusedBnAddActAPI(unittest.TestCase):
     def setUp(self):
         self.conv_param_attr1 = fluid.ParamAttr(
             name='conv2d_1.weight',
-            initializer=fluid.initializer.Xavier(uniform=False),
+            initializer=paddle.nn.initializer.XavierNormal(),
             learning_rate=0.001,
         )
         self.conv_param_attr2 = fluid.ParamAttr(
             name='conv2d_2.weight',
-            initializer=fluid.initializer.Xavier(uniform=False),
+            initializer=paddle.nn.initializer.XavierNormal(),
             learning_rate=0.001,
         )
         self.bn_param_attr1 = fluid.ParamAttr(
             name='batch_norm_w_1',
-            initializer=fluid.initializer.Constant(value=1.0),
+            initializer=paddle.nn.initializer.Constant(value=1.0),
         )
         self.bn_bias_attr1 = fluid.ParamAttr(
             name='batch_norm_b_1',
-            initializer=fluid.initializer.Constant(value=0.0),
+            initializer=paddle.nn.initializer.Constant(value=0.0),
         )
         self.bn_param_attr2 = fluid.ParamAttr(
             name='batch_norm_w_2',
-            initializer=fluid.initializer.Constant(value=1.0),
+            initializer=paddle.nn.initializer.Constant(value=1.0),
         )
         self.bn_bias_attr2 = fluid.ParamAttr(
             name='batch_norm_b_2',
-            initializer=fluid.initializer.Constant(value=0.0),
+            initializer=paddle.nn.initializer.Constant(value=0.0),
         )
         self.fc_param_attr = fluid.ParamAttr(
             name='fc.weight',
-            initializer=fluid.initializer.Xavier(uniform=False),
+            initializer=paddle.nn.initializer.XavierNormal(),
         )
 
     def build_fused_program(
         self, main_program, startup_program, use_cuda, seed=1
     ):
         with fluid.program_guard(main_program, startup_program):
-            x = fluid.layers.data(name='x', shape=[1, 28, 28], dtype='float32')
-            y = fluid.layers.data(name="y", shape=[1], dtype='int64')
-            conv1_1 = fluid.layers.conv2d(
+            x = paddle.static.data(
+                name='x', shape=[-1, 1, 28, 28], dtype='float32'
+            )
+            y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
+            conv1_1 = paddle.static.nn.conv2d(
                 input=x,
                 filter_size=3,
                 num_filters=32,
@@ -77,7 +79,7 @@ class TestFusedBnAddActAPI(unittest.TestCase):
                 bias_attr=False,
                 data_format='NHWC',
             )
-            conv1_2 = fluid.layers.conv2d(
+            conv1_2 = paddle.static.nn.conv2d(
                 input=x,
                 filter_size=3,
                 num_filters=32,
@@ -101,18 +103,18 @@ class TestFusedBnAddActAPI(unittest.TestCase):
                 param_attr=self.bn_param_attr2,
                 bias_attr=self.bn_bias_attr2,
             )
-            prediction = fluid.layers.fc(
-                input=fused_bn_add_act,
+            prediction = paddle.static.nn.fc(
+                x=fused_bn_add_act,
                 size=10,
-                act='softmax',
-                param_attr=self.fc_param_attr,
+                activation='softmax',
+                weight_attr=self.fc_param_attr,
             )
             loss = paddle.nn.functional.cross_entropy(
                 input=prediction, label=y, reduction='none', use_softmax=False
             )
             loss = paddle.mean(loss)
             sgd = fluid.optimizer.SGD(learning_rate=0.001)
-            sgd = fluid.contrib.mixed_precision.decorate(
+            sgd = paddle.static.amp.decorate(
                 sgd, use_dynamic_loss_scaling=True, init_loss_scaling=128.0
             )
             sgd.minimize(loss)
@@ -123,9 +125,11 @@ class TestFusedBnAddActAPI(unittest.TestCase):
         self, main_program, startup_program, use_cuda, seed=1
     ):
         with fluid.program_guard(main_program, startup_program):
-            x = fluid.layers.data(name='x', shape=[1, 28, 28], dtype='float32')
-            y = fluid.layers.data(name="y", shape=[1], dtype='int64')
-            conv1_1 = fluid.layers.conv2d(
+            x = paddle.static.data(
+                name='x', shape=[-1, 1, 28, 28], dtype='float32'
+            )
+            y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
+            conv1_1 = paddle.static.nn.conv2d(
                 input=x,
                 filter_size=3,
                 num_filters=32,
@@ -143,7 +147,7 @@ class TestFusedBnAddActAPI(unittest.TestCase):
                 act=None,
                 data_layout='NHWC',
             )
-            conv1_2 = fluid.layers.conv2d(
+            conv1_2 = paddle.static.nn.conv2d(
                 input=conv1_1,
                 filter_size=1,
                 num_filters=32,
@@ -162,15 +166,18 @@ class TestFusedBnAddActAPI(unittest.TestCase):
             )
             out = bn1 + bn2
             out = F.relu(out)
-            prediction = fluid.layers.fc(
-                input=out, size=10, act='softmax', param_attr=self.fc_param_attr
+            prediction = paddle.static.nn.fc(
+                x=out,
+                size=10,
+                activation='softmax',
+                weight_attr=self.fc_param_attr,
             )
             loss = paddle.nn.functional.cross_entropy(
                 input=prediction, label=y, reduction='none', use_softmax=False
             )
             loss = paddle.mean(loss)
             sgd = fluid.optimizer.SGD(learning_rate=0.001)
-            sgd = fluid.contrib.mixed_precision.decorate(
+            sgd = paddle.static.amp.decorate(
                 sgd, use_dynamic_loss_scaling=True, init_loss_scaling=128.0
             )
             sgd.minimize(loss)

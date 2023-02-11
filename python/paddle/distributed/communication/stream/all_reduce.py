@@ -13,8 +13,7 @@
 # limitations under the License.
 
 import paddle.fluid.data_feeder as data_feeder
-import paddle.fluid.framework as framework
-import paddle.fluid.layer_helper as layer_helper
+import paddle.framework as framework
 from paddle.distributed.communication.group import (
     _get_global_group,
     _warn_cur_rank_not_in_group,
@@ -58,9 +57,9 @@ def _all_reduce_in_static_mode(tensor, op, group, sync_op, use_calc_stream):
     if not isinstance(ring_id, int):
         raise ValueError("The type of 'ring_id' for all_reduce should be int.")
 
-    # TODO: Support task and use task.wait in static mode
+    # TODO: Support task and use task.wait in static graph mode
     #       Use use_calc_stream rather than sync_op
-    helper = layer_helper.LayerHelper(op_type, **locals())
+    helper = framework.LayerHelper(op_type, **locals())
     helper.append_op(
         type=op_type,
         inputs={'X': [tensor]},
@@ -123,7 +122,9 @@ def all_reduce(
             tensor, op, group, sync_op, use_calc_stream
         )
     else:
-        assert group is None, "Group can not be used in static mode for now."
+        assert (
+            group is None
+        ), "Group can not be used in static graph mode for now."
         return _all_reduce_in_static_mode(
             tensor, op, group, sync_op, use_calc_stream
         )

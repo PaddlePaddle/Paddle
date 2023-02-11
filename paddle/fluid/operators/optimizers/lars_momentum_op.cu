@@ -187,8 +187,8 @@ __global__ void L2NormKernel(
     g_tmp += (tmp1 * tmp1);
     tid += grid_stride;
   }
-  p_tmp = phi::funcs::blockReduceSum<MT>(p_tmp, FINAL_MASK);
-  g_tmp = phi::funcs::blockReduceSum<MT>(g_tmp, FINAL_MASK);
+  p_tmp = phi::funcs::BlockReduceSum<MT>(p_tmp, FINAL_MASK);
+  g_tmp = phi::funcs::BlockReduceSum<MT>(g_tmp, FINAL_MASK);
 
   if (threadIdx.x == 0) {
     p_buffer[blockIdx.x] = p_tmp;
@@ -198,8 +198,8 @@ __global__ void L2NormKernel(
   cg->sync();  // Grid sync for writring partial result to gloabl memory
   MT p_part_sum = threadIdx.x < gridDim.x ? p_buffer[threadIdx.x] : 0;
   MT g_part_sum = threadIdx.x < gridDim.x ? g_buffer[threadIdx.x] : 0;
-  MT tmp0 = phi::funcs::blockReduceSum<MT>(p_part_sum, FINAL_MASK);
-  MT tmp1 = phi::funcs::blockReduceSum<MT>(g_part_sum, FINAL_MASK);
+  MT tmp0 = phi::funcs::BlockReduceSum<MT>(p_part_sum, FINAL_MASK);
+  MT tmp1 = phi::funcs::BlockReduceSum<MT>(g_part_sum, FINAL_MASK);
   if (threadIdx.x == 0) {
     s_buffer[0] = tmp0;
     s_buffer[1] = tmp1;
@@ -393,8 +393,8 @@ __global__ void MomentumLarsKernel(const T* param,
   MT grad_part_norm = threadIdx.x < thresh ? g_buffer[threadIdx.x] : 0;
   __syncthreads();
   MT param_norm =
-      Sqrt(phi::funcs::blockReduceSum<MT>(param_part_norm, FINAL_MASK));
-  MT grad_norm = Sqrt(rescale_grad_pow * phi::funcs::blockReduceSum<MT>(
+      Sqrt(phi::funcs::BlockReduceSum<MT>(param_part_norm, FINAL_MASK));
+  MT grad_norm = Sqrt(rescale_grad_pow * phi::funcs::BlockReduceSum<MT>(
                                              grad_part_norm, FINAL_MASK));
 #endif
   MomentumUpdate<T, MT>(param,

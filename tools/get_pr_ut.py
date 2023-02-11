@@ -306,7 +306,7 @@ class PRChecker:
         file_ut_map = None
 
         ret = self.__urlretrieve(
-            'https://paddle-docker-tar.bj.bcebos.com/tmp_test/ut_file_map.json',
+            'https://paddle-docker-tar.bj.bcebos.com/precision_test_map_store/ut_file_map.json',
             'ut_file_map.json',
         )
         if not ret:
@@ -362,7 +362,7 @@ class PRChecker:
         if len(file_list) == 0:
             ut_list.append('filterfiles_placeholder')
             ret = self.__urlretrieve(
-                'https://paddle-docker-tar.bj.bcebos.com/tmp_test/prec_delta',
+                'https://paddle-docker-tar.bj.bcebos.com/precision_test_map_store/prec_delta',
                 'prec_delta',
             )
             if ret:
@@ -383,6 +383,10 @@ class PRChecker:
             print(
                 "ipipe_log_param_PRECISION_TEST_Cases_ratio: %s"
                 % PRECISION_TEST_Cases_ratio
+            )
+            print(
+                "The unittests in prec delta is shown as following: %s"
+                % ut_list
             )
             return '\n'.join(ut_list)
         else:
@@ -437,7 +441,9 @@ class PRChecker:
                                 ut_list.append('comment_placeholder')
                                 onlyCommentsFilesOrXpu.append(f_judge)
                             if self.file_is_unnit_test(f_judge):
-                                ut_list.append(f_judge.split(".")[0])
+                                ut_list.append(
+                                    os.path.split(f_judge)[1].split(".")[0]
+                                )
                             else:
                                 notHitMapFiles.append(f_judge)
                     else:
@@ -468,7 +474,7 @@ class PRChecker:
             else:
                 if ut_list:
                     ret = self.__urlretrieve(
-                        'https://paddle-docker-tar.bj.bcebos.com/tmp_test/prec_delta',
+                        'https://paddle-docker-tar.bj.bcebos.com/precision_test_map_store/prec_delta',
                         'prec_delta',
                     )
                     if ret:

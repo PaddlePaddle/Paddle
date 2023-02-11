@@ -20,7 +20,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.contrib.sparsity.asp import ASPHelper
+from paddle.incubate.asp import ASPHelper
 
 paddle.enable_static()
 
@@ -35,11 +35,13 @@ class TestASPHelperPruningBase(unittest.TestCase):
                 name='img', shape=[None, 3, 32, 32], dtype='float32'
             )
             label = fluid.data(name='label', shape=[None, 1], dtype='int64')
-            hidden = fluid.layers.conv2d(
+            hidden = paddle.static.nn.conv2d(
                 input=img, num_filters=4, filter_size=3, padding=2, act="relu"
             )
-            hidden = fluid.layers.fc(input=hidden, size=32, act='relu')
-            prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
+            hidden = paddle.static.nn.fc(x=hidden, size=32, activation='relu')
+            prediction = paddle.static.nn.fc(
+                x=hidden, size=10, activation='softmax'
+            )
             return img, label, prediction
 
         with fluid.program_guard(self.main_program, self.startup_program):
@@ -94,7 +96,7 @@ class TestASPHelperPruningBase(unittest.TestCase):
                     fluid.global_scope().find_var(param.name).get_tensor()
                 )
                 self.assertTrue(
-                    paddle.fluid.contrib.sparsity.check_sparsity(
+                    paddle.incubate.asp.check_sparsity(
                         mat.T, func_name=check_func_name, n=2, m=4
                     )
                 )

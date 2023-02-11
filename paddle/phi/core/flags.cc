@@ -53,6 +53,23 @@ PADDLE_DEFINE_EXPORTED_int32(paddle_num_threads,
                              "Number of threads for each paddle instance.");
 
 /**
+ * Low Precision Op related FLAG
+ * Name: FLAGS_low_precision_op_list
+ * Since Version: 2.5.0
+ * Value Range: int32, default=0
+ * Example:
+ * Note: Used to debug. Get the low precision op list of current module.
+ * FLAGS_check_nan_inf is set.
+ * - 1, return the low precision op list of current module.
+ * - 2, return the op list of current module.
+ */
+PADDLE_DEFINE_EXPORTED_int32(low_precision_op_list,
+                             0,
+                             "Setting the level of low precision op"
+                             "list printing. It will be return the "
+                             "low precision op list of current module.");
+
+/**
  * Operator related FLAG
  * Name: FLAGS_check_nan_inf
  * Since Version: 0.13.0
@@ -129,17 +146,17 @@ PADDLE_DEFINE_EXPORTED_bool(
  * CUDA related related FLAG
  * Name: FLAGS_gemm_use_half_precision_compute_type
  * Since Version: 2.4
- * Value Range: bool, default=true
+ * Value Range: bool, default=false
  * Example:
  * Note: whether to use fp16 compute type when the input and output is fp16,
  * faster but it may loss precision.
  */
 PADDLE_DEFINE_EXPORTED_bool(
     gemm_use_half_precision_compute_type,
-    true,
+    false,
     "Whether to use fp16 compute type when the input and output is fp16, "
     "faster but it may loss precision in most case. If true, the compute "
-    "type will be set to fp32. Default is true.");
+    "type will be set to fp16. Default is false.");
 
 /**
  * CUDA related FLAG
@@ -831,6 +848,20 @@ PADDLE_DEFINE_EXPORTED_bool(graph_load_in_parallel,
 
 /**
  * Distributed related FLAG
+ * Name: FLAGS_graph_metapath_split_opt
+ * Since Version: 2.2.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Control whether load graph node and edge with multi threads parallely
+ *       If it is not set, load graph data with one thread
+ */
+PADDLE_DEFINE_EXPORTED_bool(graph_metapath_split_opt,
+                            false,
+                            "It controls whether load graph node and edge with "
+                            "mutli threads parallely.");
+
+/**
+ * Distributed related FLAG
  * Name: FLAGS_graph_get_neighbor_id
  * Since Version: 2.2.0
  * Value Range: bool, default=false
@@ -842,6 +873,32 @@ PADDLE_DEFINE_EXPORTED_bool(
     graph_get_neighbor_id,
     false,
     "It controls get all neighbor id when running sub part graph.");
+
+/**
+ * Distributed related FLAG
+ * Name: enable_exit_when_partial_worker
+ * Since Version: 2.2.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Control  whether exit trainer when an worker has no ins.
+ *       If it is not set, trainer will exit until all worker finish train.
+ */
+PADDLE_DEFINE_EXPORTED_bool(
+    enable_exit_when_partial_worker,
+    false,
+    "It controls whether exit trainer when an worker has no ins.");
+
+/**
+ * Distributed related FLAG
+ * Name: enable_exit_when_partial_worker
+ * Since Version: 2.2.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: represent gpugraph storage mode, 1 for full hbm, 2 for hbm + mem + ssd.
+ */
+PADDLE_DEFINE_EXPORTED_int32(gpugraph_storage_mode,
+                             1,
+                             "gpugraph storage mode, default 1");
 
 /**
  * KP kernel related FLAG
@@ -926,6 +983,20 @@ PADDLE_DEFINE_EXPORTED_bool(enable_pe_launch_cinn,
 
 /*
  * CINN related FLAG
+ * Name: FLAGS_enable_interpretercore_launch_cinn
+ * Since Version: 2.4
+ * Value Range: bool, default=true
+ * Example: FLAGS_enable_interpretercore_launch_cinn=true would execute the CINN
+ * compiled instructions of a paddle graph with InterpreterCore, otherwise with
+ * the CINN compiled runtime program in sequential order.
+ */
+PADDLE_DEFINE_EXPORTED_bool(enable_interpretercore_launch_cinn,
+                            true,
+                            "It controls whether to execute cinn compiled "
+                            "program with InterpreterCore");
+
+/*
+ * CINN related FLAG
  * Name: FLAGS_enable_cinn_auto_tune
  * Since Version: 2.3
  * Value Range: bool, default=false
@@ -938,6 +1009,18 @@ PADDLE_DEFINE_EXPORTED_bool(enable_cinn_auto_tune,
                             "its auto-tune feature enabled");
 
 #endif
+
+/*
+ * CUDA Graph related FLAG
+ * Name: FLAGS_new_executor_use_cuda_graph
+ * Since Version: 2.4
+ * Value Range: bool, default=false
+ * Example: FLAGS_new_executor_use_cuda_graph=true would allow
+ * new executor to use CUDA Graph.
+ */
+PADDLE_DEFINE_EXPORTED_bool(new_executor_use_cuda_graph,
+                            false,
+                            "Use CUDA Graph in new executor");
 
 DEFINE_int32(record_pool_max_size,
              2000000,
@@ -971,6 +1054,9 @@ PADDLE_DEFINE_EXPORTED_uint64(
     gpugraph_merge_grads_segment_size,
     128,
     "segment size with segment gradient merge, default 128");
+PADDLE_DEFINE_EXPORTED_uint64(gpugraph_slot_feasign_max_num,
+                              5,
+                              "max feasign number in one slot, default 5");
 PADDLE_DEFINE_EXPORTED_int32(
     gpugraph_dedup_pull_push_mode,
     0,
@@ -978,7 +1064,27 @@ PADDLE_DEFINE_EXPORTED_int32(
 PADDLE_DEFINE_EXPORTED_bool(gpugraph_load_node_list_into_hbm,
                             true,
                             "enable load_node_list_into_hbm, default true");
-
+PADDLE_DEFINE_EXPORTED_int32(gpugraph_sparse_table_storage_mode,
+                             0,
+                             "parse_table_storage_mode, default 0");
+PADDLE_DEFINE_EXPORTED_bool(enable_auto_detect_gpu_topo,
+                            true,
+                            "enable auto detect gpu topo, default true");
+PADDLE_DEFINE_EXPORTED_bool(enable_auto_rdma_trans,
+                            true,
+                            "enable auto gpu rdma trans, default true");
+PADDLE_DEFINE_EXPORTED_bool(enable_tracker_all2all,
+                            false,
+                            "enable tracker all2all log, default false");
+PADDLE_DEFINE_EXPORTED_bool(enable_all2all_use_fp16,
+                            false,
+                            "enable all2all use fp16, default false");
+PADDLE_DEFINE_EXPORTED_bool(enable_sparse_inner_gather,
+                            false,
+                            "enable sparse inner gather, default false");
+PADDLE_DEFINE_EXPORTED_bool(gpugraph_debug_gpu_memory,
+                            false,
+                            "enable debug gpu memory, default false");
 /**
  * ProcessGroupNCCL related FLAG
  * Name: nccl_blocking_wait
@@ -1074,3 +1180,45 @@ PADDLE_DEFINE_EXPORTED_bool(enable_cudnn_frontend, false, "");
  */
 PADDLE_DEFINE_EXPORTED_int32(cudnn_cache_saturation_count, 1, "");
 #endif  // PADDLE_WITH_CUDNN_FRONTEND
+
+/**
+ * CI related FLAG
+ * Name: trt_ibuilder_cache
+ * Since Version: 2.5.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: This FLAG is only enabled when CI is running. If True, a persistent
+ * IBuilder is added to avoid TensorRT unload/reload kernels.
+ */
+PADDLE_DEFINE_EXPORTED_bool(trt_ibuilder_cache,
+                            false,
+                            "Add a persistent ibuilder.");
+
+/**
+ * mmap_allocator related FLAG
+ * Name: use_shm_cache
+ * Since Version: 2.5.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: . If True, mmap_allocator will cache shm file to decrease munmap
+ * operation.
+ */
+PADDLE_DEFINE_EXPORTED_bool(use_shm_cache,
+                            false,
+                            "Use shm cache in mmap_allocator.");
+
+/**
+ * Tensor operants related FLAG
+ * Name: tensor_operants_mode
+ * Since Version: 2.5.0
+ * Value Range: string, {eager, phi, static}
+ * default=eager
+ * Example:
+ * Note: For switching tensor operants mode of PaddlePaddle.
+ *       - eager mode: tensor operants with dygraph autograd;
+ *       - phi mode: tensor operants with only phi forward API;
+ *       - static mode: tensor operants within static graph.
+ */
+PADDLE_DEFINE_EXPORTED_string(tensor_operants_mode,
+                              "eager",
+                              "Tensor operants mode");

@@ -20,7 +20,6 @@ import test_collective_api_base as test_base
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 
 paddle.enable_static()
 
@@ -33,7 +32,9 @@ class TestCollectiveAllgatherAPI(test_base.TestCollectiveAPIRunnerBase):
         dtype = "float32" if dtype is None else dtype
         with fluid.program_guard(main_prog, startup_program):
             tensor_list = []
-            tindata = layers.data(name="tindata", shape=[10, 1000], dtype=dtype)
+            tindata = paddle.static.data(
+                name="tindata", shape=[-1, 10, 1000], dtype=dtype
+            )
             paddle.distributed.all_gather(tensor_list, tindata)
             return tensor_list
 
@@ -60,7 +61,7 @@ class TestCollectiveAllgatherAPI(test_base.TestCollectiveAPIRunnerBase):
         )
         assert (
             args['static_mode'] == 1
-        ), "collective_allgather_api only support static mode"
+        ), "collective_allgather_api only support static graph mode"
         result = self.get_model(
             train_prog, startup_prog, rank, dtype=args["dtype"]
         )

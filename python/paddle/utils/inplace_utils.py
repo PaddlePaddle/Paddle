@@ -20,14 +20,14 @@ from paddle.fluid.wrapped_decorator import wrap_decorator
 
 
 # NOTE(pangyoki): The Inplace APIs with underline(`_`) is only valid for the method of calling `_C_ops`
-# in dygraph mode. If static mode is used, the inplace mechanism will not be used, and the static method
+# in dygraph mode. If static graph mode is used, the inplace mechanism will not be used, and the static method
 # of the original API will be called.
 def _inplace_apis_in_dygraph_only_(func):
     def __impl__(*args, **kwargs):
         if not _non_static_mode():
             origin_api_name = func.__name__[:-1]
             warnings.warn(
-                "In static mode, {}() is the same as {}() and does not perform inplace operation.".format(
+                "In static graph mode, {}() is the same as {}() and does not perform inplace operation.".format(
                     func.__name__, origin_api_name
                 )
             )

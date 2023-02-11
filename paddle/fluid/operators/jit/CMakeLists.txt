@@ -9,7 +9,7 @@ file(APPEND ${jit_file} "\#include \"paddle/fluid/operators/jit/helper.h\"\n")
 file(APPEND ${jit_file}
      "\#include \"paddle/fluid/operators/jit/registry.h\"\n\n")
 
-set(JIT_KERNEL_DEPS cpu_info cblas gflags enforce place xxhash)
+set(JIT_KERNEL_DEPS device_context cblas gflags enforce place xxhash)
 
 file(
   GLOB jit_kernel_cc_srcs
@@ -39,14 +39,23 @@ cc_test(
   SRCS test.cc
   DEPS jit_kernel_helper)
 if(NOT WIN32)
-  cc_binary(
-    jit_kernel_benchmark
-    SRCS
-    benchmark.cc
-    DEPS
-    jit_kernel_helper
-    device_tracer
-    tensor)
+  set(cuda_less12_and_gcc_greater12 false)
+  if(DEFINED CMAKE_CUDA_COMPILER_VERSION)
+    if(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0
+       AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 12.0)
+      set(cuda_less12_and_gcc_greater12 true)
+    endif()
+  endif()
+  if(NOT cuda_less12_and_gcc_greater12)
+    cc_binary(
+      jit_kernel_benchmark
+      SRCS
+      benchmark.cc
+      DEPS
+      jit_kernel_helper
+      device_tracer
+      tensor)
+  endif()
 endif()
 if(WITH_TESTING AND TEST jit_kernel_test)
   set_tests_properties(jit_kernel_test PROPERTIES TIMEOUT 120)

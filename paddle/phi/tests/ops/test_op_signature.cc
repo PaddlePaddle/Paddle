@@ -618,18 +618,18 @@ TEST(ARG_MAP, reshape) {
   TestArgumentMappingContext arg_case1({"X", "ShapeTensor"}, {}, {}, {"Out"});
   auto signature1 =
       (*OpUtilsMap::Instance().GetArgumentMappingFn("reshape2"))(arg_case1);
-  EXPECT_STREQ(signature1.name, "reshape");
+  EXPECT_STREQ(signature1.name, "reshape_infer");
 
   TestArgumentMappingContext arg_case2({"X", "Shape"}, {}, {}, {"Out"});
   auto signature2 =
       (*OpUtilsMap::Instance().GetArgumentMappingFn("reshape2"))(arg_case2);
-  EXPECT_STREQ(signature2.name, "reshape");
+  EXPECT_STREQ(signature2.name, "reshape_infer");
 
   TestArgumentMappingContext arg_case3(
       {"X"}, {}, {{"shape", paddle::any(std::vector<int>({1, 2}))}}, {"Out"});
   auto signature3 =
       (*OpUtilsMap::Instance().GetArgumentMappingFn("reshape2"))(arg_case3);
-  EXPECT_STREQ(signature3.name, "reshape");
+  EXPECT_STREQ(signature3.name, "reshape_infer");
 }
 
 }  // namespace tests

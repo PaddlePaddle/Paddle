@@ -20,7 +20,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.nn.functional as F
-from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.vision.models import resnet50, resnet101
 
@@ -45,7 +44,7 @@ def random_var(size, low=-1, high=1, dtype='float32'):
 
 
 class TestEagerGrad(TestCase):
-    def func_simple_example_eager_grad(self):
+    def test_simple_example_eager_grad(self):
         np.random.seed(2021)
         paddle.set_device('cpu')
         np_x = np.random.random((3, 3))
@@ -62,12 +61,7 @@ class TestEagerGrad(TestCase):
         self.assertEqual(dx[0].stop_gradient, True)
         np.testing.assert_allclose(dx[0].numpy(), expected_dx, rtol=1e-05)
 
-    def test_simple_example_eager_grad(self):
-        with _test_eager_guard():
-            self.func_simple_example_eager_grad()
-        self.func_simple_example_eager_grad()
-
-    def func_simple_example_eager_grad_allow_unused(self):
+    def test_simple_example_eager_grad_allow_unused(self):
         np.random.seed(2021)
         paddle.set_device('cpu')
         np_x = np.random.random((3, 3))
@@ -88,12 +82,7 @@ class TestEagerGrad(TestCase):
         # x is unused input in the graph
         self.assertIsNone(dx[1])
 
-    def test_simple_example_eager_grad_allow_unused(self):
-        with _test_eager_guard():
-            self.func_simple_example_eager_grad_allow_unused()
-        self.func_simple_example_eager_grad_allow_unused()
-
-    def func_simple_example_eager_grad_not_allow_unused(self):
+    def test_simple_example_eager_grad_not_allow_unused(self):
         np.random.seed(2021)
         paddle.set_device('cpu')
         np_x = np.random.random((3, 3))
@@ -112,12 +101,7 @@ class TestEagerGrad(TestCase):
             error_msg = str(e)
             assert error_msg.find("allow_unused") > 0
 
-    def test_simple_example_eager_grad_not_allow_unused(self):
-        with _test_eager_guard():
-            self.func_simple_example_eager_grad_not_allow_unused()
-        self.func_simple_example_eager_grad_not_allow_unused()
-
-    def func_simple_example_eager_grad_duplicate_input(self):
+    def test_simple_example_eager_grad_duplicate_input(self):
         np.random.seed(2021)
         paddle.set_device('cpu')
         np_x = np.random.random((3, 3))
@@ -136,12 +120,7 @@ class TestEagerGrad(TestCase):
             error_msg = str(e)
             assert error_msg.find("duplicate") > 0
 
-    def test_simple_example_eager_grad_duplicate_input(self):
-        with _test_eager_guard():
-            self.func_simple_example_eager_grad_duplicate_input()
-        self.func_simple_example_eager_grad_duplicate_input()
-
-    def func_simple_example_eager_grad_duplicate_output(self):
+    def test_simple_example_eager_grad_duplicate_output(self):
         np.random.seed(2021)
         paddle.set_device('cpu')
         np_x = np.random.random((3, 3))
@@ -160,34 +139,28 @@ class TestEagerGrad(TestCase):
             error_msg = str(e)
             assert error_msg.find("duplicate") > 0
 
-    def test_simple_example_eager_grad_duplicate_output(self):
-        with _test_eager_guard():
-            self.func_simple_example_eager_grad_duplicate_output()
-        self.func_simple_example_eager_grad_duplicate_output()
-
     def test_simple_example_eager_two_grad_output(self):
-        with _test_eager_guard():
-            x1 = paddle.to_tensor([1.0, 2.0])
-            x1.stop_gradient = False
-            x2 = paddle.to_tensor([1.0, 2.0])
-            x2.stop_gradient = False
-            out1 = x1 * 2
-            out2 = x2 * 2
+        x1 = paddle.to_tensor([1.0, 2.0])
+        x1.stop_gradient = False
+        x2 = paddle.to_tensor([1.0, 2.0])
+        x2.stop_gradient = False
+        out1 = x1 * 2
+        out2 = x2 * 2
 
-            dout2_record_by_hook = []
+        dout2_record_by_hook = []
 
-            def record_hook(grad):
-                dout2_record_by_hook.append(grad)
+        def record_hook(grad):
+            dout2_record_by_hook.append(grad)
 
-            out2.register_hook(record_hook)
+        out2.register_hook(record_hook)
 
-            out3 = paddle.multiply(out1, out2)
-            out4 = paddle.mean(out3)
-            egr_dout2, egr_dout3 = paddle.grad([out4], [out2, out3])
+        out3 = paddle.multiply(out1, out2)
+        out4 = paddle.mean(out3)
+        egr_dout2, egr_dout3 = paddle.grad([out4], [out2, out3])
 
-            np.testing.assert_array_equal(
-                dout2_record_by_hook[0].numpy(), np.array([1.0, 2.0])
-            )
+        np.testing.assert_array_equal(
+            dout2_record_by_hook[0].numpy(), np.array([1.0, 2.0])
+        )
 
         x1 = paddle.to_tensor([1.0, 2.0])
         x1.stop_gradient = False
@@ -233,7 +206,7 @@ class TestDygraphDoubleGrad(TestCase):
         )
 
     @dygraph_guard
-    def func_exception(self):
+    def test_exception(self):
         with self.assertRaises(AssertionError):
             self.grad(None, None)
 
@@ -266,13 +239,8 @@ class TestDygraphDoubleGrad(TestCase):
         with self.assertRaises(AssertionError):
             self.grad([random_var(shape)], [random_var(shape)], no_grad_vars=1)
 
-    def test_exception(self):
-        with _test_eager_guard():
-            self.func_exception()
-        self.func_exception()
-
     @dygraph_guard
-    def func_simple_example(self):
+    def test_simple_example(self):
         x = random_var(self.shape)
         x.stop_gradient = False
         y = x + 1
@@ -306,13 +274,8 @@ class TestDygraphDoubleGrad(TestCase):
                 grad_with_none_and_not_none.stop_gradient, create_graph
             )
 
-    def test_simple_example(self):
-        with _test_eager_guard():
-            self.func_simple_example()
-        self.func_simple_example()
-
     @dygraph_guard
-    def func_example_no_grad_vars(self):
+    def test_example_no_grad_vars(self):
         x = random_var(self.shape)
         x_np = x.numpy()
         numel = x_np.size
@@ -343,13 +306,8 @@ class TestDygraphDoubleGrad(TestCase):
 
         np.testing.assert_allclose(dx_actual.numpy(), dx_expected, rtol=1e-05)
 
-    def test_example_no_grad_vars(self):
-        with _test_eager_guard():
-            self.func_example_no_grad_vars()
-        self.func_example_no_grad_vars()
-
     @dygraph_guard
-    def func_none_one_initial_gradient(self):
+    def test_none_one_initial_gradient(self):
         numel = 1
         for s in self.shape:
             numel *= s
@@ -425,13 +383,8 @@ class TestDygraphDoubleGrad(TestCase):
                             grad_z.numpy(), original_random_grad_z
                         )
 
-    def test_none_one_initial_gradient(self):
-        with _test_eager_guard():
-            self.func_none_one_initial_gradient()
-        self.func_none_one_initial_gradient()
-
     @dygraph_guard
-    def func_example_with_gradient_accumulation_and_create_graph(self):
+    def test_example_with_gradient_accumulation_and_create_graph(self):
         x = random_var(self.shape)
         x_np = x.numpy()
         numel = x_np.size
@@ -478,13 +431,8 @@ class TestDygraphDoubleGrad(TestCase):
                 x_grad_actual, x_grad_expected, rtol=1e-05
             )
 
-    def test_example_with_gradient_accumulation_and_create_graph(self):
-        with _test_eager_guard():
-            self.func_example_with_gradient_accumulation_and_create_graph()
-        self.func_example_with_gradient_accumulation_and_create_graph()
-
     @dygraph_guard
-    def func_example_with_gradient_accumulation_and_no_grad_vars(self):
+    def test_example_with_gradient_accumulation_and_no_grad_vars(self):
         x = random_var(self.shape)
         x_np = x.numpy()
         numel = x_np.size
@@ -529,13 +477,8 @@ class TestDygraphDoubleGrad(TestCase):
         ).astype('float32')
         np.testing.assert_allclose(x_grad_actual, x_grad_expected, rtol=1e-05)
 
-    def test_example_with_gradient_accumulation_and_no_grad_vars(self):
-        with _test_eager_guard():
-            self.func_example_with_gradient_accumulation_and_no_grad_vars()
-        self.func_example_with_gradient_accumulation_and_no_grad_vars()
-
     @dygraph_guard
-    def func_example_with_gradient_accumulation_and_not_create_graph(self):
+    def test_example_with_gradient_accumulation_and_not_create_graph(self):
         x = random_var(self.shape)
         x_np = x.numpy()
         numel = x_np.size
@@ -566,11 +509,6 @@ class TestDygraphDoubleGrad(TestCase):
         x_grad_expected = (2.0 * x_np / float(numel)).astype('float32')
         np.testing.assert_allclose(x_grad_actual, x_grad_expected, rtol=1e-05)
 
-    def test_example_with_gradient_accumulation_and_not_create_graph(self):
-        with _test_eager_guard():
-            self.func_example_with_gradient_accumulation_and_not_create_graph()
-        self.func_example_with_gradient_accumulation_and_not_create_graph()
-
 
 class TestDygraphDoubleGradSortGradient(TestDygraphDoubleGrad):
     def setUp(self):
@@ -579,7 +517,7 @@ class TestDygraphDoubleGradSortGradient(TestDygraphDoubleGrad):
 
 
 class TestDygraphDoubleGradVisitedUniq(TestCase):
-    def func_compare(self):
+    def test_compare(self):
         value = (
             np.random.uniform(-0.5, 0.5, 100)
             .reshape(10, 2, 5)
@@ -628,14 +566,9 @@ class TestDygraphDoubleGradVisitedUniq(TestCase):
 
         np.testing.assert_array_equal(grad_1, grad_2)
 
-    def test_compare(self):
-        with _test_eager_guard():
-            self.func_compare()
-        self.func_compare()
-
 
 class TestRaiseNoDoubleGradOp(TestCase):
-    def raise_no_grad_op(self):
+    def test_no_grad_op(self):
         with fluid.dygraph.guard():
             x = paddle.ones(shape=[2, 3, 2, 2], dtype='float32')
             x.stop_gradient = False
@@ -648,9 +581,6 @@ class TestRaiseNoDoubleGradOp(TestCase):
             loss = paddle.mean(dx)
             loss.backward()
 
-    def test_raise(self):
-        self.assertRaises(RuntimeError, self.raise_no_grad_op)
-
 
 class TestDoubleGradResNet(TestCase):
     def setUp(self):
@@ -660,20 +590,19 @@ class TestDoubleGradResNet(TestCase):
 
     @dygraph_guard
     def test_resnet_resnet50(self):
-        with _test_eager_guard():
-            model = resnet50(pretrained=False)
-            egr_data = paddle.to_tensor(self.data)
-            egr_data.stop_gradient = False
-            egr_out = model(egr_data)
-            egr_preds = paddle.argmax(egr_out, axis=1)
-            egr_label_onehot = paddle.nn.functional.one_hot(
-                paddle.to_tensor(egr_preds), num_classes=egr_out.shape[1]
-            )
-            egr_target = paddle.sum(egr_out * egr_label_onehot, axis=1)
+        model = resnet50(pretrained=False)
+        egr_data = paddle.to_tensor(self.data)
+        egr_data.stop_gradient = False
+        egr_out = model(egr_data)
+        egr_preds = paddle.argmax(egr_out, axis=1)
+        egr_label_onehot = paddle.nn.functional.one_hot(
+            paddle.to_tensor(egr_preds), num_classes=egr_out.shape[1]
+        )
+        egr_target = paddle.sum(egr_out * egr_label_onehot, axis=1)
 
-            egr_g = paddle.grad(outputs=egr_target, inputs=egr_out)[0]
-            egr_g_numpy = egr_g.numpy()
-            self.assertEqual(list(egr_g_numpy.shape), list(egr_out.shape))
+        egr_g = paddle.grad(outputs=egr_target, inputs=egr_out)[0]
+        egr_g_numpy = egr_g.numpy()
+        self.assertEqual(list(egr_g_numpy.shape), list(egr_out.shape))
 
         model = resnet50(pretrained=False)
         data = paddle.to_tensor(self.data)
@@ -694,20 +623,19 @@ class TestDoubleGradResNet(TestCase):
 
     @dygraph_guard
     def test_resnet_resnet101(self):
-        with _test_eager_guard():
-            model = resnet101(pretrained=False)
-            egr_data = paddle.to_tensor(self.data)
-            egr_data.stop_gradient = False
-            egr_out = model(egr_data)
-            egr_preds = paddle.argmax(egr_out, axis=1)
-            egr_label_onehot = paddle.nn.functional.one_hot(
-                paddle.to_tensor(egr_preds), num_classes=egr_out.shape[1]
-            )
-            egr_target = paddle.sum(egr_out * egr_label_onehot, axis=1)
+        model = resnet101(pretrained=False)
+        egr_data = paddle.to_tensor(self.data)
+        egr_data.stop_gradient = False
+        egr_out = model(egr_data)
+        egr_preds = paddle.argmax(egr_out, axis=1)
+        egr_label_onehot = paddle.nn.functional.one_hot(
+            paddle.to_tensor(egr_preds), num_classes=egr_out.shape[1]
+        )
+        egr_target = paddle.sum(egr_out * egr_label_onehot, axis=1)
 
-            egr_g = paddle.grad(outputs=egr_target, inputs=egr_out)[0]
-            egr_g_numpy = egr_g.numpy()
-            self.assertEqual(list(egr_g_numpy.shape), list(egr_out.shape))
+        egr_g = paddle.grad(outputs=egr_target, inputs=egr_out)[0]
+        egr_g_numpy = egr_g.numpy()
+        self.assertEqual(list(egr_g_numpy.shape), list(egr_out.shape))
 
         model = resnet101(pretrained=False)
         data = paddle.to_tensor(self.data)
@@ -730,41 +658,518 @@ class TestDoubleGradResNet(TestCase):
 class TestDoubleGradBasics(TestCase):
     def test_matmul(self):
         input_numpy = np.ones([3, 3]) * 2
-        with _test_eager_guard():
+        x = paddle.to_tensor(input_numpy, stop_gradient=False, dtype='float32')
+        y = paddle.to_tensor(input_numpy, stop_gradient=False, dtype='float32')
+        grad_out = paddle.to_tensor(
+            np.ones([3, 3]), stop_gradient=False, dtype='float32'
+        )
+
+        out = paddle.matmul(x, y, False, False)
+        new_x_g, new_y_g = paddle.grad(
+            [out], [x, y], [grad_out], retain_graph=True, create_graph=True
+        )
+        new_x_g.backward()
+
+        out_ref = np.ones([3, 3]) * 12.0
+        np.testing.assert_array_equal(out.numpy(), out_ref)
+
+        new_x_g_ref = np.ones([3, 3]) * 6.0
+        new_y_g_ref = np.ones([3, 3]) * 6.0
+        np.testing.assert_array_equal(new_x_g.numpy(), new_x_g_ref)
+        np.testing.assert_array_equal(new_y_g.numpy(), new_y_g_ref)
+
+        x_grad_ref = np.ones([3, 3]) * 0.0
+        np.testing.assert_array_equal(x.grad.numpy(), x_grad_ref)
+
+        y_grad_ref = np.ones([3, 3]) * 3.0
+        np.testing.assert_array_equal(y.grad.numpy(), y_grad_ref)
+
+        grad_out_grad_ref = np.ones([3, 3]) * 6.0
+        np.testing.assert_array_equal(grad_out.grad.numpy(), grad_out_grad_ref)
+
+
+class TestDygraphDoubleGradMatmul(TestCase):
+    # case1: ddy is none, no broadcast,dims != 1
+    def test_matmul_double_grad_case1(self):
+        input_numpy_x = np.random.random([3, 3]).astype('float32')
+        input_numpy_y = np.random.random([3, 3]).astype('float32')
+
+        def actual():
             x = paddle.to_tensor(
-                input_numpy, stop_gradient=False, dtype='float32'
+                input_numpy_x, stop_gradient=False, dtype='float32'
             )
             y = paddle.to_tensor(
-                input_numpy, stop_gradient=False, dtype='float32'
+                input_numpy_y, stop_gradient=False, dtype='float32'
             )
-            grad_out = paddle.to_tensor(
+            out = paddle.matmul(x, y, False, False)
+
+            dout = paddle.to_tensor(
                 np.ones([3, 3]), stop_gradient=False, dtype='float32'
             )
+            (dx,) = paddle.grad(
+                [out], [x], [dout], retain_graph=True, create_graph=True
+            )
+            ddx = paddle.to_tensor(
+                np.ones([3, 3]), stop_gradient=False, dtype='float32'
+            )
+            dx_double_grad, dy_double_grad, ddout = paddle.grad(
+                [dx],
+                [x, y, dout],
+                [ddx],
+                retain_graph=True,
+                create_graph=True,
+            )
+            return dx_double_grad, dy_double_grad, ddout
 
+        def expected():
+            dx_double_grad_expected = np.zeros([3, 3], dtype="float32")
+            dy_double_grad_expected = np.matmul(
+                np.ones([3, 3], dtype="float32"),
+                np.ones([3, 3], dtype="float32"),
+            )
+            ddout_expected = np.matmul(
+                np.ones([3, 3], dtype="float32"), input_numpy_y
+            )
+            return (
+                dx_double_grad_expected,
+                dy_double_grad_expected,
+                ddout_expected,
+            )
+
+        expected_results = expected()
+        places = ["cpu"]
+        if paddle.is_compiled_with_cuda():
+            places.append("gpu")
+        for place in places:
+            paddle.device.set_device(place)
+            actual_results = actual()
+            for expected_result, actual_result in zip(
+                expected_results, actual_results
+            ):
+                np.testing.assert_allclose(
+                    expected_result, actual_result, rtol=1e-6
+                )
+
+    # case2: ddx is none,no broadcast, dims != 1
+    def test_matmul_double_grad_case2(self):
+        input_numpy_x = np.random.random([3, 3]).astype('float32')
+        input_numpy_y = np.random.random([3, 3]).astype('float32')
+
+        def actual():
+            x = paddle.to_tensor(
+                input_numpy_x, stop_gradient=False, dtype='float32'
+            )
+            y = paddle.to_tensor(
+                input_numpy_y, stop_gradient=False, dtype='float32'
+            )
             out = paddle.matmul(x, y, False, False)
-            new_x_g, new_y_g = paddle.grad(
-                [out], [x, y], [grad_out], retain_graph=True, create_graph=True
+
+            dout = paddle.to_tensor(
+                np.ones([3, 3]), stop_gradient=False, dtype='float32'
             )
-            new_x_g.backward()
-
-            out_ref = np.ones([3, 3]) * 12.0
-            np.testing.assert_array_equal(out.numpy(), out_ref)
-
-            new_x_g_ref = np.ones([3, 3]) * 6.0
-            new_y_g_ref = np.ones([3, 3]) * 6.0
-            np.testing.assert_array_equal(new_x_g.numpy(), new_x_g_ref)
-            np.testing.assert_array_equal(new_y_g.numpy(), new_y_g_ref)
-
-            x_grad_ref = np.ones([3, 3]) * 0.0
-            np.testing.assert_array_equal(x.grad.numpy(), x_grad_ref)
-
-            y_grad_ref = np.ones([3, 3]) * 3.0
-            np.testing.assert_array_equal(y.grad.numpy(), y_grad_ref)
-
-            grad_out_grad_ref = np.ones([3, 3]) * 6.0
-            np.testing.assert_array_equal(
-                grad_out.grad.numpy(), grad_out_grad_ref
+            (dy,) = paddle.grad(
+                [out], [y], [dout], retain_graph=True, create_graph=True
             )
+            ddy = paddle.to_tensor(
+                np.ones([3, 3]), stop_gradient=False, dtype='float32'
+            )
+            dx_double_grad, dy_double_grad, ddout = paddle.grad(
+                [dy],
+                [x, y, dout],
+                [ddy],
+                retain_graph=True,
+                create_graph=True,
+            )
+            return dx_double_grad, dy_double_grad, ddout
+
+        def expected():
+            dx_double_grad_expected = np.matmul(
+                np.ones([3, 3], dtype="float32"),
+                np.ones([3, 3], dtype="float32"),
+            )
+            dy_double_grad_expected = np.zeros([3, 3], dtype="float32")
+            ddout_expected = np.matmul(
+                input_numpy_x, np.ones([3, 3], dtype="float32")
+            )
+            return (
+                dx_double_grad_expected,
+                dy_double_grad_expected,
+                ddout_expected,
+            )
+
+        expected_results = expected()
+        places = ["cpu"]
+        if paddle.is_compiled_with_cuda():
+            places.append("gpu")
+        for place in places:
+            paddle.device.set_device(place)
+            actual_results = actual()
+            for expected_result, actual_result in zip(
+                expected_results, actual_results
+            ):
+                np.testing.assert_allclose(
+                    expected_result, actual_result, rtol=1e-6
+                )
+
+    # case3: ddx is none, dims = 1
+    def test_matmul_double_grad_case3(self):
+        input_numpy_x = np.random.random([3]).astype('float32')
+        input_numpy_y = np.random.random([3]).astype('float32')
+
+        def actual():
+            x = paddle.to_tensor(
+                input_numpy_x, stop_gradient=False, dtype='float32'
+            )
+            y = paddle.to_tensor(
+                input_numpy_y, stop_gradient=False, dtype='float32'
+            )
+            out = paddle.matmul(x, y, False, False)
+
+            dout = paddle.to_tensor(
+                np.ones([1]), stop_gradient=False, dtype='float32'
+            )
+            (dy,) = paddle.grad(
+                [out], [y], [dout], retain_graph=True, create_graph=True
+            )
+            ddy = paddle.to_tensor(
+                np.ones([3]), stop_gradient=False, dtype='float32'
+            )
+            dx_double_grad, dy_double_grad, ddout = paddle.grad(
+                [dy],
+                [x, y, dout],
+                [ddy],
+                retain_graph=True,
+                create_graph=True,
+            )
+            return dx_double_grad, dy_double_grad, ddout
+
+        def expected():
+            dx_double_grad_expected = np.ones([3], dtype="float32")
+            dy_double_grad_expected = np.zeros([3], dtype="float32")
+            ddout_expected = np.matmul(
+                input_numpy_x, np.ones([3], dtype="float32")
+            )
+            return (
+                dx_double_grad_expected,
+                dy_double_grad_expected,
+                ddout_expected,
+            )
+
+        expected_results = expected()
+        places = ["cpu"]
+        if paddle.is_compiled_with_cuda():
+            places.append("gpu")
+        for place in places:
+            paddle.device.set_device(place)
+            actual_results = actual()
+            for expected_result, actual_result in zip(
+                expected_results, actual_results
+            ):
+                np.testing.assert_allclose(
+                    expected_result, actual_result, rtol=1e-6
+                )
+
+    # case4: ddy is none, dims = 1
+    def test_matmul_double_grad_case4(self):
+        input_numpy_x = np.random.random([3]).astype('float32')
+        input_numpy_y = np.random.random([3]).astype('float32')
+
+        def actual():
+            x = paddle.to_tensor(
+                input_numpy_x, stop_gradient=False, dtype='float32'
+            )
+            y = paddle.to_tensor(
+                input_numpy_y, stop_gradient=False, dtype='float32'
+            )
+            out = paddle.matmul(x, y, False, False)
+
+            dout = paddle.to_tensor(
+                np.ones([1]), stop_gradient=False, dtype='float32'
+            )
+            (dx,) = paddle.grad(
+                [out], [x], [dout], retain_graph=True, create_graph=True
+            )
+            ddx = paddle.to_tensor(
+                np.ones([3]), stop_gradient=False, dtype='float32'
+            )
+            dx_double_grad, dy_double_grad, ddout = paddle.grad(
+                [dx],
+                [x, y, dout],
+                [ddx],
+                retain_graph=True,
+                create_graph=True,
+            )
+            return dx_double_grad, dy_double_grad, ddout
+
+        def expected():
+            dx_double_grad_expected = np.zeros([3], dtype="float32")
+            dy_double_grad_expected = np.ones([3], dtype="float32")
+            ddout_expected = np.matmul(
+                input_numpy_y, np.ones([3], dtype="float32")
+            )
+            return (
+                dx_double_grad_expected,
+                dy_double_grad_expected,
+                ddout_expected,
+            )
+
+        expected_results = expected()
+        places = ["cpu"]
+        if paddle.is_compiled_with_cuda():
+            places.append("gpu")
+        for place in places:
+            paddle.device.set_device(place)
+            actual_results = actual()
+            for expected_result, actual_result in zip(
+                expected_results, actual_results
+            ):
+                np.testing.assert_allclose(
+                    expected_result, actual_result, rtol=1e-6
+                )
+
+    # case5: ddx is none, broadcast, dims != 1
+    def test_matmul_double_grad_case5(self):
+        input_numpy_x = np.random.random([2, 1]).astype('float32')
+        input_numpy_y = np.random.random([1]).astype('float32')
+
+        def actual():
+            x = paddle.to_tensor(
+                input_numpy_x, stop_gradient=False, dtype='float32'
+            )
+            y = paddle.to_tensor(
+                input_numpy_y, stop_gradient=False, dtype='float32'
+            )
+            out = paddle.matmul(x, y, False, False)
+
+            dout = paddle.to_tensor(
+                np.ones([2]), stop_gradient=False, dtype='float32'
+            )
+            (dy,) = paddle.grad(
+                [out], [y], [dout], retain_graph=True, create_graph=True
+            )
+            ddy = paddle.to_tensor(
+                np.ones([1]), stop_gradient=False, dtype='float32'
+            )
+            dx_double_grad, dy_double_grad, ddout = paddle.grad(
+                [dy],
+                [x, y, dout],
+                [ddy],
+                retain_graph=True,
+                create_graph=True,
+            )
+            return dx_double_grad, dy_double_grad, ddout
+
+        def expected():
+            dx_double_grad_expected = np.ones([2, 1], dtype="float32")
+            dy_double_grad_expected = np.zeros([1], dtype="float32")
+            ddout_expected = np.matmul(
+                input_numpy_x, np.ones([1], dtype="float32")
+            )
+            return (
+                dx_double_grad_expected,
+                dy_double_grad_expected,
+                ddout_expected,
+            )
+
+        expected_results = expected()
+        places = ["cpu"]
+        if paddle.is_compiled_with_cuda():
+            places.append("gpu")
+        for place in places:
+            paddle.device.set_device(place)
+            actual_results = actual()
+            for expected_result, actual_result in zip(
+                expected_results, actual_results
+            ):
+                np.testing.assert_allclose(
+                    expected_result, actual_result, rtol=1e-6
+                )
+
+    # case6: ddy is none, broadcast, dims != 1
+    def test_matmul_double_grad_case6(self):
+        input_numpy_x = np.random.random([2, 1]).astype('float32')
+        input_numpy_y = np.random.random([1]).astype('float32')
+
+        def actual():
+            x = paddle.to_tensor(
+                input_numpy_x, stop_gradient=False, dtype='float32'
+            )
+            y = paddle.to_tensor(
+                input_numpy_y, stop_gradient=False, dtype='float32'
+            )
+            out = paddle.matmul(x, y, False, False)
+
+            dout = paddle.to_tensor(
+                np.ones([2]), stop_gradient=False, dtype='float32'
+            )
+            (dx,) = paddle.grad(
+                [out], [x], [dout], retain_graph=True, create_graph=True
+            )
+            ddx = paddle.to_tensor(
+                np.ones([2, 1]), stop_gradient=False, dtype='float32'
+            )
+            dx_double_grad, dy_double_grad, ddout = paddle.grad(
+                [dx],
+                [x, y, dout],
+                [ddx],
+                retain_graph=True,
+                create_graph=True,
+            )
+            return dx_double_grad, dy_double_grad, ddout
+
+        def expected():
+            dx_double_grad_expected = np.zeros([2, 1], dtype="float32")
+            dy_double_grad_expected = np.ones([1], dtype="float32") * 2
+            ddout_expected = np.ones([2], dtype="float32") * input_numpy_y[0]
+            return (
+                dx_double_grad_expected,
+                dy_double_grad_expected,
+                ddout_expected,
+            )
+
+        expected_results = expected()
+        places = ["cpu"]
+        if paddle.is_compiled_with_cuda():
+            places.append("gpu")
+        for place in places:
+            paddle.device.set_device(place)
+            actual_results = actual()
+            for expected_result, actual_result in zip(
+                expected_results, actual_results
+            ):
+                np.testing.assert_allclose(
+                    expected_result, actual_result, rtol=1e-6
+                )
+
+    # case7: ddx is none, dims = 1, complex dtype
+    def test_matmul_double_grad_case7(self):
+        input_numpy_x = np.random.random([3]).astype(
+            'float32'
+        ) + 1j * np.random.random([3]).astype('float32')
+        input_numpy_y = np.random.random([3]).astype(
+            'float32'
+        ) + 1j * np.random.random([3]).astype('float32')
+        input_numpy_y_conj = np.conjugate(input_numpy_y)
+
+        def actual():
+            x = paddle.to_tensor(
+                input_numpy_x, stop_gradient=False, dtype='complex64'
+            )
+            y = paddle.to_tensor(
+                input_numpy_y, stop_gradient=False, dtype='complex64'
+            )
+            out = paddle.matmul(x, y, False, False)
+
+            dout = paddle.to_tensor(
+                np.ones([1]), stop_gradient=False, dtype='complex64'
+            )
+            (dx,) = paddle.grad(
+                [out], [x], [dout], retain_graph=True, create_graph=True
+            )
+            ddx = paddle.to_tensor(
+                np.ones([3]), stop_gradient=False, dtype='complex64'
+            )
+            dx_double_grad, dy_double_grad, ddout = paddle.grad(
+                [dx],
+                [x, y, dout],
+                [ddx],
+                retain_graph=True,
+                create_graph=True,
+            )
+            return dx_double_grad, dy_double_grad, ddout
+
+        def expected():
+            dx_double_grad_expected = np.zeros(
+                [3], dtype="float32"
+            ) + 0j * np.zeros([3], dtype="float32")
+            dy_double_grad_expected = np.ones(
+                [3], dtype="float32"
+            ) + 0j * np.ones([3], dtype="float32")
+            ddout_expected = np.matmul(
+                input_numpy_y_conj, np.ones([3], dtype="float32")
+            )
+            return (
+                dx_double_grad_expected,
+                dy_double_grad_expected,
+                ddout_expected,
+            )
+
+        expected_results = expected()
+        places = ["cpu"]
+        if paddle.is_compiled_with_cuda():
+            places.append("gpu")
+        for place in places:
+            paddle.device.set_device(place)
+            actual_results = actual()
+            for expected_result, actual_result in zip(
+                expected_results, actual_results
+            ):
+                np.testing.assert_allclose(
+                    expected_result, actual_result, rtol=1e-6
+                )
+
+    # case8: ddy is none, dims = 1, complex dtype
+    def test_matmul_double_grad_case8(self):
+        input_numpy_x = np.random.random([3]).astype(
+            'float32'
+        ) + 1j * np.random.random([3]).astype('float32')
+        input_numpy_y = np.random.random([3]).astype(
+            'float32'
+        ) + 1j * np.random.random([3]).astype('float32')
+        input_numpy_x_conj = np.conjugate(input_numpy_x)
+
+        def actual():
+            x = paddle.to_tensor(
+                input_numpy_x, stop_gradient=False, dtype='complex64'
+            )
+            y = paddle.to_tensor(
+                input_numpy_y, stop_gradient=False, dtype='complex64'
+            )
+            out = paddle.matmul(x, y, False, False)
+
+            dout = paddle.to_tensor(
+                np.ones([1]), stop_gradient=False, dtype='complex64'
+            )
+            (dy,) = paddle.grad(
+                [out], [y], [dout], retain_graph=True, create_graph=True
+            )
+            ddy = paddle.to_tensor(
+                np.ones([3]), stop_gradient=False, dtype='complex64'
+            )
+            dx_double_grad, dy_double_grad, ddout = paddle.grad(
+                [dy],
+                [x, y, dout],
+                [ddy],
+                retain_graph=True,
+                create_graph=True,
+            )
+            return dx_double_grad, dy_double_grad, ddout
+
+        def expected():
+            dx_double_grad_expected = np.ones([3], dtype="float32")
+            dy_double_grad_expected = np.zeros([3], dtype="float32")
+            ddout_expected = np.matmul(
+                input_numpy_x_conj, np.ones([3], dtype="float32")
+            )
+            return (
+                dx_double_grad_expected,
+                dy_double_grad_expected,
+                ddout_expected,
+            )
+
+        expected_results = expected()
+        places = ["cpu"]
+        if paddle.is_compiled_with_cuda():
+            places.append("gpu")
+        for place in places:
+            paddle.device.set_device(place)
+            actual_results = actual()
+            for expected_result, actual_result in zip(
+                expected_results, actual_results
+            ):
+                np.testing.assert_allclose(
+                    expected_result, actual_result, rtol=1e-6
+                )
 
 
 if __name__ == '__main__':

@@ -116,12 +116,12 @@ class SE_ResNeXt:
         drop = paddle.nn.functional.dropout(x=pool, p=0.2)
 
         stdv = 1.0 / math.sqrt(drop.shape[1] * 1.0)
-        out = fluid.layers.fc(
-            input=drop,
+        out = paddle.static.nn.fc(
+            x=drop,
             size=class_dim,
-            act='softmax',
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.05)
+            activation='softmax',
+            weight_attr=fluid.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.05)
             ),
         )
         return out
@@ -164,7 +164,7 @@ class SE_ResNeXt:
     def conv_bn_layer(
         self, input, num_filters, filter_size, stride=1, groups=1, act=None
     ):
-        conv = fluid.layers.conv2d(
+        conv = paddle.static.nn.conv2d(
             input=input,
             num_filters=num_filters,
             filter_size=filter_size,
@@ -174,7 +174,7 @@ class SE_ResNeXt:
             act=None,
             # avoid pserver CPU init differs from GPU
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.05)
+                initializer=paddle.nn.initializer.Constant(value=0.05)
             ),
             bias_attr=False,
         )
@@ -183,22 +183,22 @@ class SE_ResNeXt:
     def squeeze_excitation(self, input, num_channels, reduction_ratio):
         pool = paddle.nn.functional.adaptive_avg_pool2d(x=input, output_size=1)
         stdv = 1.0 / math.sqrt(pool.shape[1] * 1.0)
-        squeeze = fluid.layers.fc(
-            input=pool,
+        squeeze = paddle.static.nn.fc(
+            x=pool,
             size=num_channels // reduction_ratio,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.05)
+            weight_attr=fluid.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.05)
             ),
-            act='relu',
+            activation='relu',
         )
         stdv = 1.0 / math.sqrt(squeeze.shape[1] * 1.0)
-        excitation = fluid.layers.fc(
-            input=squeeze,
+        excitation = paddle.static.nn.fc(
+            x=squeeze,
             size=num_channels,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.05)
+            weight_attr=fluid.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.05)
             ),
-            act='sigmoid',
+            activation='sigmoid',
         )
         scale = paddle.tensor.math._multiply_with_axis(
             x=input, y=excitation, axis=0
@@ -209,10 +209,10 @@ class SE_ResNeXt:
 class DistSeResneXt2x2(TestDistRunnerBase):
     def get_model(self, batch_size=2, use_dgc=False):
         # Input data
-        image = fluid.layers.data(
-            name="data", shape=[3, 224, 224], dtype='float32'
+        image = paddle.static.data(
+            name="data", shape=[-1, 3, 224, 224], dtype='float32'
         )
-        label = fluid.layers.data(name="int64", shape=[1], dtype='int64')
+        label = paddle.static.data(name="int64", shape=[-1, 1], dtype='int64')
 
         # Train program
         model = SE_ResNeXt(layers=50)

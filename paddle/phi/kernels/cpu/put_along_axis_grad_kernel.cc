@@ -14,12 +14,12 @@
 
 #include "paddle/phi/kernels/put_along_axis_grad_kernel.h"
 
-#include "paddle/fluid/operators/gather_scatter_kernel.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/funcs/gather_scatter_functor.h"
 
 namespace phi {
 
@@ -41,7 +41,7 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
   if (x_grad) {
     phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     if (index_type == DataType::INT32) {
-      paddle::operators::cpu_scatter_input_grad_kernel<T, int32_t>(
+      phi::funcs::cpu_scatter_input_grad_kernel<T, int32_t>(
           // Here passing an unused argument out_grad, because it's
           // convenient to instantiate a bunch of template function with the
           // same arguments list.
@@ -51,7 +51,7 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
           *x_grad,
           dev_ctx);
     } else {
-      paddle::operators::cpu_scatter_input_grad_kernel<T, int64_t>(
+      phi::funcs::cpu_scatter_input_grad_kernel<T, int64_t>(
           out_grad, axis, index, *x_grad, dev_ctx);
     }
   }
@@ -60,10 +60,10 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
     value_grad->Resize(index.dims());
     dev_ctx.template Alloc<T>(value_grad);
     if (index_type == DataType::INT32) {
-      paddle::operators::cpu_gather_kernel<T, int32_t>(
+      phi::funcs::cpu_gather_kernel<T, int32_t>(
           out_grad, axis, index, *value_grad, dev_ctx);
     } else if (index_type == DataType::INT64) {
-      paddle::operators::cpu_gather_kernel<T, int64_t>(
+      phi::funcs::cpu_gather_kernel<T, int64_t>(
           out_grad, axis, index, *value_grad, dev_ctx);
     }
   }

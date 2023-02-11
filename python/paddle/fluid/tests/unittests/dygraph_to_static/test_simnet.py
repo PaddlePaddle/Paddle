@@ -21,7 +21,6 @@ from simnet_dygraph_model import BOW, HingeLoss
 
 import paddle
 import paddle.fluid as fluid
-from paddle.jit import ProgramTranslator
 
 SEED = 102
 random.seed(SEED)
@@ -104,8 +103,7 @@ def train(conf_dict, to_static):
     """
     train process
     """
-    program_translator = ProgramTranslator()
-    program_translator.enable(to_static)
+    paddle.jit.enable_to_static(to_static)
 
     # Get device
     if fluid.is_compiled_with_cuda():

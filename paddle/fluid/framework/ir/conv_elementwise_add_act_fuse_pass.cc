@@ -167,14 +167,19 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
           phi::DataType::FLOAT16 ||
       Get<bool>("enable_gpu_mixed");
   constexpr int CUTLASS_NHWC_ALIGNMENT = 8;
-  if (is_fp16_precision) {
+  bool cutlass_enable = Get<bool>("use_cutlass");
+  if (is_fp16_precision && cutlass_enable) {
 #ifdef PADDLE_WITH_CUTLASS
-    // cutlass now support these activations
-    // cutlass_act_set.insert("swish");
-    // cutlass_act_set.insert("relu");
-    // cutlass_act_set.insert("identity");
-    // cutlass_act_set.insert("leaky_relu");
-
+    const auto& prop = platform::GetDeviceProperties(Get<int>("gpu_device_id"));
+    int sm_version = prop.major * 10 + prop.minor;
+    // Now we only implement cutlass kernel on SM75.
+    if (sm_version == 75) {
+      // Cutlass now support these cba activations.
+      cutlass_act_set.insert("swish");
+      cutlass_act_set.insert("relu");
+      cutlass_act_set.insert("identity");
+      cutlass_act_set.insert("leaky_relu");
+    }
     all_act_set.insert(cutlass_act_set.begin(), cutlass_act_set.end());
 #endif
   }
@@ -198,8 +203,8 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
     auto* filter_var = scope->FindLocalVar(conv_filter->Name());
     auto* filter_tensor = filter_var->GetMutable<phi::DenseTensor>();
     CHECK_EQ(filter_tensor->dims().size() == 4UL, true);
-    // when this conv2d_fusion problem size is not supported by cutlass and not
-    // supported by cuDNN, we should not apply this pass
+    // When this conv2d_fusion problem size is not supported by cutlass and not
+    // supported by cuDNN, we should not apply this pass.
     int oc = filter_tensor->dims()[0];
     int ic = filter_tensor->dims()[1];
     bool cutlass_can_fuse = oc % CUTLASS_NHWC_ALIGNMENT == 0 &&

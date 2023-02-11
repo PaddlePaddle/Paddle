@@ -27,59 +27,68 @@ namespace paddle {
 namespace framework {
 namespace interpreter {
 
-bool DataTranferHelper::apply(const OpKernelType& kernel_type_for_var,
-                              const OpKernelType& expected_kernel_key,
-                              const std::string& var_name,
-                              std::string* new_var_name,
-                              std::vector<OpFuncNode>* op_func_nodes,
-                              bool use_local_scope,
-                              bool is_fetch_v2) {
+bool DataTranferHelper::apply(
+    const phi::KernelKey& kernel_type_for_var,
+    const framework::OpKernelType& expected_kernel_key,
+    const phi::DenseTensor* tensor,
+    const std::string& var_name,
+    std::string* new_var_name,
+    std::vector<OpFuncNode>* op_func_nodes,
+    bool use_local_scope,
+    bool is_fetch_v2,
+    bool skip_run) {
   bool is_transferred = false;
   auto* src_var_name = &var_name;
 
   // 1. layout transform
-  if (need_layout_transform(kernel_type_for_var, expected_kernel_key)) {
+  if (need_layout_transform(
+          kernel_type_for_var,
+          TransOpKernelTypeToPhiKernelKey(expected_kernel_key))) {
     auto op = TransferLayout(*src_var_name,
                              new_var_name,
-                             kernel_type_for_var.data_layout_,
+                             kernel_type_for_var.layout(),
                              expected_kernel_key.data_layout_,
                              var_scope_,
                              scope_,
                              is_fetch_v2);
     if (op) {
       RunAndConstructOpFuncNode(
-          op, *src_var_name, *new_var_name, op_func_nodes);
+          op, *src_var_name, *new_var_name, op_func_nodes, skip_run);
     }
     // update src_var_name
     src_var_name = new_var_name;
     is_transferred = true;
   }
   // 2. dype transform
-  if (need_dtype_transform(kernel_type_for_var, expected_kernel_key)) {
-    auto op = TransferDtype(*src_var_name,
-                            new_var_name,
-                            kernel_type_for_var.data_type_,
-                            expected_kernel_key.data_type_,
-                            var_scope_,
-                            scope_);
+  if (need_dtype_transform(
+          kernel_type_for_var,
+          TransOpKernelTypeToPhiKernelKey(expected_kernel_key))) {
+    auto op = TransferDtype(
+        *src_var_name,
+        new_var_name,
+        framework::TransToProtoVarType(kernel_type_for_var.dtype()),
+        expected_kernel_key.data_type_,
+        var_scope_,
+        scope_);
     if (op) {
       RunAndConstructOpFuncNode(
-          op, *src_var_name, *new_var_name, op_func_nodes);
+          op, *src_var_name, *new_var_name, op_func_nodes, skip_run);
     }
     // update src_var_name
     src_var_name = new_var_name;
     is_transferred = true;
   }
   // 3. device transform
-  if (need_device_transform(kernel_type_for_var, expected_kernel_key)) {
-    auto src_place = kernel_type_for_var.place_;
+  if (need_device_transform(
+          kernel_type_for_var, tensor, expected_kernel_key.place_)) {
+    auto src_place = tensor->place();
     auto dst_place = expected_kernel_key.place_;
 
     auto op = TransferDevice(
         *src_var_name, new_var_name, src_place, dst_place, var_scope_, scope_);
     if (op) {
       RunAndConstructOpFuncNode(
-          op, *src_var_name, *new_var_name, op_func_nodes);
+          op, *src_var_name, *new_var_name, op_func_nodes, skip_run);
     }
     is_transferred = true;
   }
@@ -89,7 +98,8 @@ bool DataTranferHelper::apply(const OpKernelType& kernel_type_for_var,
 void DataTranferHelper::RunAndConstructShareNode(
     const std::string& src_var_name,
     const std::string& dst_var_name,
-    std::vector<OpFuncNode>* op_func_nodes) {
+    std::vector<OpFuncNode>* op_func_nodes,
+    bool skip_run) {
   VariableNameMap in_name_map = {{"X", {src_var_name}}};
   VariableNameMap out_name_map = {{"Out", {dst_var_name}}};
   AttributeMap attr_map;
@@ -102,14 +112,16 @@ void DataTranferHelper::RunAndConstructShareNode(
   VLOG(3) << string::Sprintf(
       "Insert %s with %s -> %s.", op_type, src_var_name, dst_var_name);
 
-  RunAndConstructOpFuncNode(op, src_var_name, dst_var_name, op_func_nodes);
+  RunAndConstructOpFuncNode(
+      op, src_var_name, dst_var_name, op_func_nodes, skip_run);
 }
 
 void DataTranferHelper::RunAndConstructOpFuncNode(
     const std::shared_ptr<OperatorBase>& op,
     const std::string& var_name,
     const std::string& new_var_name,
-    std::vector<OpFuncNode>* new_op_func_nodes) {
+    std::vector<OpFuncNode>* new_op_func_nodes,
+    bool skip_run) {
   auto& op_type = op->Type();
 
   // 1. Construct RuntimeContext
@@ -132,15 +144,6 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place_);
   auto exec_ctx = ExecutionContext(*op, Scope(), *dev_ctx, runtime_context);
-  auto expected_kernel_key = op_with_kernel->GetExpectedKernelType(exec_ctx);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (op_with_kernel->CanCUDNNBeUsed(exec_ctx,
-                                     expected_kernel_key.data_type_)) {
-    expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
-  }
-#endif
-
-  VLOG(6) << "expected_kernel_key " << expected_kernel_key << "\n";
   VLOG(6) << "op_with_kernel Type() " << op_with_kernel->Type() << "\n";
 
   bool run_phi_kernel = false;
@@ -181,7 +184,13 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
     phi::KernelContext phi_kernel_context;
     op_with_kernel->BuildPhiKernelContext(
         runtime_context, dev_ctx, &phi_kernel_context);
-    (*new_op_func_node.phi_kernel_)(&phi_kernel_context);
+    if (!skip_run) {
+      (*new_op_func_node.phi_kernel_)(&phi_kernel_context);
+    } else {
+      FakeInitializeOutputs(new_op_func_node.phi_kernel_,
+                            op_with_kernel->PhiKernelSignature(),
+                            &phi_kernel_context);
+    }
   }
 
   const phi::Place& place = dev_ctx->GetPlace();
@@ -434,7 +443,8 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                         VariableScope* var_scope,
                         OpFuncNode* op_func_node,
                         std::vector<OpFuncNode>* new_op_func_nodes,
-                        bool use_local_scope) {
+                        bool use_local_scope,
+                        bool skip_run) {
   Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
                                        : var_scope->GetMutableScope();
 
@@ -509,7 +519,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                                      op_base->Type() == "fetch_v2");
             if (op) {
               data_transfer_helper.RunAndConstructOpFuncNode(
-                  op, var_name, new_var_name, new_op_func_nodes);
+                  op, var_name, new_var_name, new_op_func_nodes, skip_run);
             }
             is_transferred = true;
           } else {
@@ -524,16 +534,21 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
         auto kernel_type_for_var =
             static_cast<const framework::OperatorWithKernel*>(op_base)
                 ->GetKernelTypeForVar(
-                    var_name_item.first, *tensor_in, expected_kernel_key);
+                    var_name_item.first,
+                    *tensor_in,
+                    framework::TransOpKernelTypeToPhiKernelKey(
+                        expected_kernel_key));
         // apply data transform
         is_transferred =
             data_transfer_helper.apply(kernel_type_for_var,
                                        expected_kernel_key,
+                                       tensor_in,
                                        var_name,
                                        &new_var_name,
                                        new_op_func_nodes,
                                        use_local_scope,
-                                       op_base->Type() == "fetch_v2");
+                                       op_base->Type() == "fetch_v2",
+                                       skip_run);
       }
 
       if (is_transferred) {
@@ -584,7 +599,8 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
                                  VariableValueMap* out_vars,
                                  VariableScope* var_scope,
                                  std::vector<OpFuncNode>* op_func_nodes,
-                                 framework::Scope* local_scope) {
+                                 framework::Scope* local_scope,
+                                 bool skip_run) {
   DataTranferHelper data_transfer_helper(place, var_scope, local_scope);
   for (auto& var_name_item : out_names) {
     std::vector<Variable*>& vars = out_vars->at(var_name_item.first);
@@ -660,9 +676,9 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
       auto op = TransferDtype(
           var_name, &new_var_name, src_type, dst_type, var_scope, local_scope);
       data_transfer_helper.RunAndConstructOpFuncNode(
-          op, var_name, new_var_name, op_func_nodes);
+          op, var_name, new_var_name, op_func_nodes, skip_run);
       data_transfer_helper.RunAndConstructShareNode(
-          new_var_name, var_name, op_func_nodes);
+          new_var_name, var_name, op_func_nodes, skip_run);
     }
   }
 }

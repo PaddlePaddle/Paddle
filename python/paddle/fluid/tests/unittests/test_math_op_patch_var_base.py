@@ -19,7 +19,6 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestMathOpPatchesVarBase(unittest.TestCase):
@@ -27,7 +26,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         self.shape = [10, 1024]
         self.dtype = np.float32
 
-    def func_test_add(self):
+    def test_add(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         b_np = np.random.random(self.shape).astype(self.dtype)
         with fluid.dygraph.guard():
@@ -36,12 +35,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             res = a + b
             np.testing.assert_array_equal(res.numpy(), a_np + b_np)
 
-    def test_add(self):
-        with _test_eager_guard():
-            self.func_test_add()
-        self.func_test_add()
-
-    def func_test_sub(self):
+    def test_sub(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         b_np = np.random.random(self.shape).astype(self.dtype)
         with fluid.dygraph.guard():
@@ -50,12 +44,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             res = a - b
             np.testing.assert_array_equal(res.numpy(), a_np - b_np)
 
-    def test_sub(self):
-        with _test_eager_guard():
-            self.func_test_sub()
-        self.func_test_sub()
-
-    def func_test_mul(self):
+    def test_mul(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         b_np = np.random.random(self.shape).astype(self.dtype)
         with fluid.dygraph.guard():
@@ -64,12 +53,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             res = a * b
             np.testing.assert_array_equal(res.numpy(), a_np * b_np)
 
-    def test_mul(self):
-        with _test_eager_guard():
-            self.func_test_mul()
-        self.func_test_mul()
-
-    def func_test_div(self):
+    def test_div(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         b_np = np.random.random(self.shape).astype(self.dtype)
         with fluid.dygraph.guard():
@@ -79,12 +63,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             # NOTE: Not sure why array_equal fails on windows, allclose is acceptable
             np.testing.assert_allclose(res.numpy(), a_np / b_np, rtol=1e-05)
 
-    def test_div(self):
-        with _test_eager_guard():
-            self.func_test_div()
-        self.func_test_div()
-
-    def func_test_add_scalar(self):
+    def test_add_scalar(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         with fluid.dygraph.guard():
             a = fluid.dygraph.to_variable(a_np)
@@ -92,12 +71,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             res = a + b
             np.testing.assert_array_equal(res.numpy(), a_np + b)
 
-    def test_add_scalar(self):
-        with _test_eager_guard():
-            self.func_test_add_scalar()
-        self.func_test_add_scalar()
-
-    def func_test_add_scalar_reverse(self):
+    def test_add_scalar_reverse(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         with fluid.dygraph.guard():
             a = fluid.dygraph.to_variable(a_np)
@@ -105,12 +79,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             res = b + a
             np.testing.assert_array_equal(res.numpy(), b + a_np)
 
-    def test_add_scalar_reverse(self):
-        with _test_eager_guard():
-            self.func_test_add_scalar_reverse()
-        self.func_test_add_scalar_reverse()
-
-    def func_test_sub_scalar(self):
+    def test_sub_scalar(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         with fluid.dygraph.guard():
             a = fluid.dygraph.to_variable(a_np)
@@ -118,12 +87,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             res = a - b
             np.testing.assert_array_equal(res.numpy(), a_np - b)
 
-    def test_sub_scalar(self):
-        with _test_eager_guard():
-            self.func_test_sub_scalar()
-        self.func_test_sub_scalar()
-
-    def func_test_sub_scalar_reverse(self):
+    def test_sub_scalar_reverse(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         with fluid.dygraph.guard():
             a = fluid.dygraph.to_variable(a_np)
@@ -131,12 +95,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             res = b - a
             np.testing.assert_array_equal(res.numpy(), b - a_np)
 
-    def test_sub_scalar_reverse(self):
-        with _test_eager_guard():
-            self.func_test_sub_scalar_reverse()
-        self.func_test_sub_scalar_reverse()
-
-    def func_test_mul_scalar(self):
+    def test_mul_scalar(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         with fluid.dygraph.guard():
             a = fluid.dygraph.to_variable(a_np)
@@ -144,13 +103,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             res = a * b
             np.testing.assert_array_equal(res.numpy(), a_np * b)
 
-    def test_mul_scalar(self):
-        with _test_eager_guard():
-            self.func_test_mul_scalar()
-        self.func_test_mul_scalar()
-
     # div_scalar, not equal
-    def func_test_div_scalar(self):
+    def test_div_scalar(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         with fluid.dygraph.guard():
             a = fluid.dygraph.to_variable(a_np)
@@ -158,13 +112,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             res = a / b
             np.testing.assert_allclose(res.numpy(), a_np / b, rtol=1e-05)
 
-    def test_div_scalar(self):
-        with _test_eager_guard():
-            self.func_test_div_scalar()
-        self.func_test_div_scalar()
-
     # pow of float type, not equal
-    def func_test_pow(self):
+    def test_pow(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         b_np = np.random.random(self.shape).astype(self.dtype)
         with fluid.dygraph.guard():
@@ -173,12 +122,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             res = a**b
             np.testing.assert_allclose(res.numpy(), a_np**b_np, rtol=1e-05)
 
-    def test_pow(self):
-        with _test_eager_guard():
-            self.func_test_pow()
-        self.func_test_pow()
-
-    def func_test_floor_div(self):
+    def test_floor_div(self):
         a_np = np.random.randint(1, 100, size=self.shape)
         b_np = np.random.randint(1, 100, size=self.shape)
         with fluid.dygraph.guard():
@@ -187,12 +131,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             res = a // b
             np.testing.assert_array_equal(res.numpy(), a_np // b_np)
 
-    def test_floor_div(self):
-        with _test_eager_guard():
-            self.func_test_floor_div()
-        self.func_test_floor_div()
-
-    def func_test_mod(self):
+    def test_mod(self):
         a_np = np.random.randint(1, 100, size=self.shape)
         b_np = np.random.randint(1, 100, size=self.shape)
         with fluid.dygraph.guard():
@@ -201,13 +140,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             res = a % b
             np.testing.assert_array_equal(res.numpy(), a_np % b_np)
 
-    def test_mod(self):
-        with _test_eager_guard():
-            self.func_test_mod()
-        self.func_test_mod()
-
     # for bitwise and/or/xor/not
-    def func_test_bitwise(self):
+    def test_bitwise(self):
         paddle.disable_static()
 
         x_np = np.random.randint(-100, 100, [2, 3, 5])
@@ -231,13 +165,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         out = ~x
         np.testing.assert_array_equal(out.numpy(), out_np)
 
-    def test_bitwise(self):
-        with _test_eager_guard():
-            self.func_test_bitwise()
-        self.func_test_bitwise()
-
     # for logical compare
-    def func_test_equal(self):
+    def test_equal(self):
         a_np = np.asarray([1, 2, 3, 4, 5])
         b_np = np.asarray([1, 2, 3, 4, 5])
         c_np = np.asarray([1, 2, 2, 4, 5])
@@ -250,12 +179,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.testing.assert_array_equal(res1.numpy(), a_np == b_np)
             np.testing.assert_array_equal(res2.numpy(), a_np == c_np)
 
-    def test_equal(self):
-        with _test_eager_guard():
-            self.func_test_equal()
-        self.func_test_equal()
-
-    def func_test_not_equal(self):
+    def test_not_equal(self):
         a_np = np.asarray([1, 2, 3, 4, 5])
         b_np = np.asarray([1, 2, 3, 4, 5])
         c_np = np.asarray([1, 2, 2, 4, 5])
@@ -268,12 +192,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.testing.assert_array_equal(res1.numpy(), a_np != b_np)
             np.testing.assert_array_equal(res2.numpy(), a_np != c_np)
 
-    def test_not_equal(self):
-        with _test_eager_guard():
-            self.func_test_not_equal()
-        self.func_test_not_equal()
-
-    def func_test_less_than(self):
+    def test_less_than(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         b_np = np.random.random(self.shape).astype(self.dtype)
         with fluid.dygraph.guard():
@@ -282,12 +201,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             res = a < b
             np.testing.assert_array_equal(res.numpy(), a_np < b_np)
 
-    def test_less_than(self):
-        with _test_eager_guard():
-            self.func_test_less_than()
-        self.func_test_less_than()
-
-    def func_test_less_equal(self):
+    def test_less_equal(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         b_np = np.random.random(self.shape).astype(self.dtype)
         with fluid.dygraph.guard():
@@ -296,12 +210,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             res = a <= b
             np.testing.assert_array_equal(res.numpy(), a_np <= b_np)
 
-    def test_less_equal(self):
-        with _test_eager_guard():
-            self.func_test_less_equal()
-        self.func_test_less_equal()
-
-    def func_test_greater_than(self):
+    def test_greater_than(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         b_np = np.random.random(self.shape).astype(self.dtype)
         with fluid.dygraph.guard():
@@ -310,12 +219,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             res = a > b
             np.testing.assert_array_equal(res.numpy(), a_np > b_np)
 
-    def test_greater_than(self):
-        with _test_eager_guard():
-            self.func_test_greater_than()
-        self.func_test_greater_than()
-
-    def func_test_greater_equal(self):
+    def test_greater_equal(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         b_np = np.random.random(self.shape).astype(self.dtype)
         with fluid.dygraph.guard():
@@ -324,47 +228,27 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             res = a >= b
             np.testing.assert_array_equal(res.numpy(), a_np >= b_np)
 
-    def test_greater_equal(self):
-        with _test_eager_guard():
-            self.func_test_greater_equal()
-        self.func_test_greater_equal()
-
-    def func_test_neg(self):
+    def test_neg(self):
         a_np = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         with fluid.dygraph.guard():
             a = fluid.dygraph.to_variable(a_np)
             res = -a
             np.testing.assert_array_equal(res.numpy(), -a_np)
 
-    def test_neg(self):
-        with _test_eager_guard():
-            self.func_test_neg()
-        self.func_test_neg()
-
-    def func_test_float_int_long(self):
+    def test_float_int_long(self):
         with fluid.dygraph.guard():
             a = fluid.dygraph.to_variable(np.array([100.1]))
             self.assertTrue(float(a) == 100.1)
             self.assertTrue(int(a) == 100)
             self.assertTrue(int(a) == 100)
 
-    def test_float_int_long(self):
-        with _test_eager_guard():
-            self.func_test_float_int_long()
-        self.func_test_float_int_long()
-
-    def func_test_len(self):
+    def test_len(self):
         a_np = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         with fluid.dygraph.guard():
             a = fluid.dygraph.to_variable(a_np)
             self.assertTrue(len(a) == 10)
 
-    def test_len(self):
-        with _test_eager_guard():
-            self.func_test_len()
-        self.func_test_len()
-
-    def func_test_index(self):
+    def test_index(self):
         with fluid.dygraph.guard():
             var1 = fluid.dygraph.to_variable(np.array([2]))
             i_tmp = 0
@@ -376,12 +260,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             str1 = "just test"
             self.assertTrue(str1[var1] == 's')
 
-    def test_index(self):
-        with _test_eager_guard():
-            self.func_test_index()
-        self.func_test_index()
-
-    def func_test_np_left_mul(self):
+    def test_np_left_mul(self):
         with fluid.dygraph.guard():
             t = np.sqrt(2.0 * np.pi)
             x = paddle.ones((2, 2), dtype="float32")
@@ -394,12 +273,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
                 atol=0.0,
             )
 
-    def test_np_left_mul(self):
-        with _test_eager_guard():
-            self.func_test_np_left_mul()
-        self.func_test_np_left_mul()
-
-    def func_test_add_different_dtype(self):
+    def test_add_different_dtype(self):
         a_np = np.random.random(self.shape).astype(np.float32)
         b_np = np.random.random(self.shape).astype(np.float16)
         with fluid.dygraph.guard():
@@ -408,12 +282,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             res = a + b
             np.testing.assert_array_equal(res.numpy(), a_np + b_np)
 
-    def test_add_different_dtype(self):
-        with _test_eager_guard():
-            self.func_test_add_different_dtype()
-        self.func_test_add_different_dtype()
-
-    def func_test_floordiv_different_dtype(self):
+    def test_floordiv_different_dtype(self):
         a_np = np.full(self.shape, 10, np.int64)
         b_np = np.full(self.shape, 2, np.int32)
         with fluid.dygraph.guard():
@@ -422,12 +291,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             res = a // b
             np.testing.assert_array_equal(res.numpy(), a_np // b_np)
 
-    def test_floordiv_different_dtype(self):
-        with _test_eager_guard():
-            self.func_test_floordiv_different_dtype()
-        self.func_test_floordiv_different_dtype()
-
-    def func_test_astype(self):
+    def test_astype(self):
         a_np = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         with fluid.dygraph.guard():
             a = fluid.dygraph.to_variable(a_np)
@@ -441,12 +305,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.testing.assert_array_equal(res1.numpy(), res2.numpy())
             np.testing.assert_array_equal(res1.numpy(), res3.numpy())
 
-    def test_astype(self):
-        with _test_eager_guard():
-            self.func_test_astype()
-        self.func_test_astype()
-
-    def func_test_conpare_op_broadcast(self):
+    def test_conpare_op_broadcast(self):
         a_np = np.random.uniform(-1, 1, [10, 1, 10]).astype(self.dtype)
         b_np = np.random.uniform(-1, 1, [1, 1, 10]).astype(self.dtype)
         with fluid.dygraph.guard():
@@ -456,12 +315,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             self.assertEqual((a != b).dtype, fluid.core.VarDesc.VarType.BOOL)
             np.testing.assert_array_equal((a != b).numpy(), a_np != b_np)
 
-    def test_conpare_op_broadcast(self):
-        with _test_eager_guard():
-            self.func_test_conpare_op_broadcast()
-        self.func_test_conpare_op_broadcast()
-
-    def func_test_tensor_patch_method(self):
+    def test_tensor_patch_method(self):
         paddle.disable_static()
         x_np = np.random.uniform(-1, 1, [2, 3]).astype(self.dtype)
         y_np = np.random.uniform(-1, 1, [2, 3]).astype(self.dtype)
@@ -740,24 +594,14 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         self.assertTrue(inspect.ismethod(a.std))
         self.assertTrue(inspect.ismethod(a.numel))
 
-    def test_tensor_patch_method(self):
-        with _test_eager_guard():
-            self.func_test_tensor_patch_method()
-        self.func_test_tensor_patch_method()
-
-    def func_test_complex_scalar(self):
+    def test_complex_scalar(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         with fluid.dygraph.guard():
             a = fluid.dygraph.to_variable(a_np)
             res = 1j * a
             np.testing.assert_array_equal(res.numpy(), 1j * a_np)
 
-    def test_complex_scalar(self):
-        with _test_eager_guard():
-            self.func_test_complex_scalar()
-        self.func_test_complex_scalar()
-
-    def func_test_matmul(self):
+    def test_matmul(self):
         x_np = np.random.uniform(-1, 1, [2, 3]).astype(self.dtype)
         y_np = np.random.uniform(-1, 1, [3, 2]).astype(self.dtype)
         except_out = x_np @ y_np
@@ -767,11 +611,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             y = paddle.to_tensor(y_np)
             out = x @ y
             np.testing.assert_allclose(out.numpy(), except_out, atol=1e-03)
-
-    def test_matmul(self):
-        with _test_eager_guard():
-            self.func_test_matmul()
-        self.func_test_matmul()
 
 
 if __name__ == '__main__':

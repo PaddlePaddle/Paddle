@@ -154,7 +154,72 @@ void Pool2dKernel(const Context& ctx,
   }
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "pool2d");
 }
+
+template <typename T, typename Context>
+void MaxPool2dWithIndexKernel(const Context& ctx,
+                              const DenseTensor& x,
+                              const std::vector<int>& kernel_size,
+                              const std::vector<int>& strides_t,
+                              const std::vector<int>& paddings_t,
+                              bool global_pooling,
+                              bool adaptive,
+                              DenseTensor* out,
+                              DenseTensor* mask) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
+  ctx.template Alloc<int>(mask);
+  auto* index_data = mask->data<int>();
+
+  std::vector<int> ksize(kernel_size);
+  std::vector<int> strides(strides_t);
+  std::vector<int> paddings(paddings_t);
+
+  PADDLE_ENFORCE_EQ(ksize.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The Pool2d XPU OP only support 2 dimension pooling!"));
+  PADDLE_ENFORCE_EQ(!adaptive || (ksize[0] * ksize[1] == 1),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The Pool2d XPU OP does not support (adaptive == "
+                        "true && output_size != 1)"));
+  global_pooling = global_pooling || (adaptive && (ksize[0] * ksize[1] == 1));
+  if (global_pooling) {
+    for (size_t i = 0; i < ksize.size(); ++i) {
+      paddings[i] = 0;
+      ksize[i] = static_cast<int>(x.dims()[i + 2]);
+    }
+  }
+  const int n = x.dims()[0];
+  const int c = x.dims()[1];
+  const int in_h = x.dims()[2];
+  const int in_w = x.dims()[3];
+  auto input = reinterpret_cast<const XPUType*>(x.data<T>());
+  ctx.template Alloc<T>(out);
+  auto output = reinterpret_cast<XPUType*>(out->data<T>());
+  int r = xpu::Error_t::SUCCESS;
+  r = xpu::max_pool2d<XPUType>(ctx.x_context(),
+                               input,
+                               output,
+                               index_data,
+                               n,
+                               c,
+                               in_h,
+                               in_w,
+                               ksize,
+                               strides,
+                               paddings,
+                               true);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "max_pool2d_with_index");
+}
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
     pool2d, XPU, ALL_LAYOUT, phi::Pool2dKernel, float, phi::dtype::float16) {}
+
+PD_REGISTER_KERNEL(max_pool2d_with_index,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::MaxPool2dWithIndexKernel,
+                   float,
+                   phi::dtype::float16) {}

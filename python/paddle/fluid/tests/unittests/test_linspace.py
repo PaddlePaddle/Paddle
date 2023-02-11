@@ -20,7 +20,6 @@ from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, core, program_guard
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestLinspaceOpCommonCase(OpTest):
@@ -127,11 +126,6 @@ class TestLinspaceAPI(unittest.TestCase):
         self.assertEqual((out1.numpy() == np_out1).all(), True)
         self.assertEqual((out2.numpy() == np_out2).all(), True)
         self.assertEqual((out3.numpy() == np_out3).all(), True)
-
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_variable_input2()
-            self.test_imperative()
 
 
 class TestLinspaceOpError(unittest.TestCase):

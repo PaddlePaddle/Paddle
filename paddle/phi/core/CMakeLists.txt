@@ -1,5 +1,6 @@
 # compatible utils used for fluid op system
 add_subdirectory(compat)
+add_subdirectory(distributed)
 
 if(WITH_GPU)
   proto_library(external_error_proto SRCS external_error.proto)
@@ -112,6 +113,16 @@ cc_library(
   custom_kernel
   SRCS custom_kernel.cc
   DEPS kernel_factory)
+
+cc_library(
+  operants_manager
+  SRCS operants_manager.cc
+  DEPS flags)
+
+cc_library(
+  mixed_vector
+  SRCS mixed_vector.cc
+  DEPS device_context place memory)
 
 # Will remove once we implemented MKLDNN_Tensor
 if(WITH_MKLDNN)

@@ -22,6 +22,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
 import paddle.fluid.optimizer as optimizer
+from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Program, program_guard
 
 paddle.enable_static()
@@ -88,6 +89,158 @@ class TestAPICase(unittest.TestCase):
             np.testing.assert_allclose(res[2], 3, rtol=1e-05)
             np.testing.assert_allclose(res[3], 2, rtol=1e-05)
             np.testing.assert_allclose(res[4], 2, rtol=1e-05)
+
+    def test_0d_tensor(self):
+        def fn_1():
+            return paddle.full(shape=[], dtype='int32', fill_value=1)
+
+        def fn_2():
+            return paddle.full(shape=[], dtype='int32', fill_value=2)
+
+        def fn_3():
+            return paddle.full(shape=[], dtype='int32', fill_value=3)
+
+        main_program = Program()
+        startup_program = Program()
+        with program_guard(main_program, startup_program):
+            x = paddle.full(shape=[], dtype='float32', fill_value=0.3)
+            y = paddle.full(shape=[], dtype='float32', fill_value=0.1)
+            z = paddle.full(shape=[], dtype='float32', fill_value=0.2)
+            pred_2 = paddle.less_than(x, y)  # false: 0.3 < 0.1
+            pred_1 = paddle.less_than(z, x)  # true: 0.2 < 0.3
+
+            # call fn_1
+            out_0 = paddle.static.nn.control_flow.case(
+                pred_fn_pairs=[(pred_1, fn_1), (pred_1, fn_2)], default=fn_3
+            )
+
+            # call fn_2
+            out_1 = paddle.static.nn.control_flow.case(
+                pred_fn_pairs=[(pred_2, fn_1), (pred_1, fn_2)], default=fn_3
+            )
+
+            # call default fn_3
+            out_2 = paddle.static.nn.control_flow.case(
+                pred_fn_pairs=((pred_2, fn_1), (pred_2, fn_2)), default=fn_3
+            )
+
+            # no default, call fn_2
+            out_3 = paddle.static.nn.control_flow.case(
+                pred_fn_pairs=[(pred_1, fn_2)]
+            )
+
+            # no default, call fn_2. but pred_2 is false
+            out_4 = paddle.static.nn.control_flow.case(
+                pred_fn_pairs=[(pred_2, fn_2)]
+            )
+
+            place = (
+                fluid.CUDAPlace(0)
+                if core.is_compiled_with_cuda()
+                else fluid.CPUPlace()
+            )
+            exe = fluid.Executor(place)
+
+            res = exe.run(
+                main_program, fetch_list=[out_0, out_1, out_2, out_3, out_4]
+            )
+
+            np.testing.assert_allclose(res[0], 1, rtol=1e-05)
+            self.assertEqual(res[0].shape, ())
+            np.testing.assert_allclose(res[1], 2, rtol=1e-05)
+            self.assertEqual(res[1].shape, ())
+            np.testing.assert_allclose(res[2], 3, rtol=1e-05)
+            self.assertEqual(res[2].shape, ())
+            np.testing.assert_allclose(res[3], 2, rtol=1e-05)
+            self.assertEqual(res[3].shape, ())
+            np.testing.assert_allclose(res[4], 2, rtol=1e-05)
+            self.assertEqual(res[4].shape, ())
+
+    def test_0d_tensor_backward(self):
+        main_program = Program()
+        startup_program = Program()
+        with program_guard(main_program, startup_program):
+            x = paddle.full(shape=[], dtype='float32', fill_value=-2.0)
+            x.stop_gradient = False
+            pred = paddle.full(shape=[], dtype='bool', fill_value=0)
+            # pred is False, so out = -x
+            out = paddle.static.nn.case(
+                pred_fn_pairs=[(pred, lambda: x)], default=lambda: -x
+            )
+            append_backward(out)
+
+        place = (
+            fluid.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
+        exe = fluid.Executor(place)
+
+        res = exe.run(main_program, fetch_list=[out.name, x.grad_name])
+        np.testing.assert_allclose(
+            np.asarray(res[0]), np.array(2.0), rtol=1e-05
+        )
+        self.assertEqual(res[0].shape, ())
+        np.testing.assert_allclose(
+            np.asarray(res[1]), np.array(-1.0), rtol=1e-05
+        )
+        self.assertEqual(res[1].shape, ())
+
+    def test_0d_tensor_dygraph(self):
+        paddle.disable_static()
+
+        def fn_1():
+            return paddle.full(shape=[], dtype='int32', fill_value=1)
+
+        def fn_2():
+            return paddle.full(shape=[], dtype='int32', fill_value=2)
+
+        def fn_3():
+            return paddle.full(shape=[], dtype='int32', fill_value=3)
+
+        x = paddle.full(shape=[], dtype='float32', fill_value=0.3)
+        y = paddle.full(shape=[], dtype='float32', fill_value=0.1)
+        z = paddle.full(shape=[], dtype='float32', fill_value=0.2)
+        pred_2 = paddle.less_than(x, y)  # false: 0.3 < 0.1
+        pred_1 = paddle.less_than(z, x)  # true: 0.2 < 0.3
+
+        # call fn_1
+        out_0 = paddle.static.nn.control_flow.case(
+            pred_fn_pairs=[(pred_1, fn_1), (pred_1, fn_2)], default=fn_3
+        )
+
+        # call fn_2
+        out_1 = paddle.static.nn.control_flow.case(
+            pred_fn_pairs=[(pred_2, fn_1), (pred_1, fn_2)], default=fn_3
+        )
+
+        # call default fn_3
+        out_2 = paddle.static.nn.control_flow.case(
+            pred_fn_pairs=((pred_2, fn_1), (pred_2, fn_2)), default=fn_3
+        )
+
+        # no default, call fn_2
+        out_3 = paddle.static.nn.control_flow.case(
+            pred_fn_pairs=[(pred_1, fn_2)]
+        )
+
+        # no default, call fn_2. but pred_2 is false
+        out_4 = paddle.static.nn.control_flow.case(
+            pred_fn_pairs=[(pred_2, fn_2)]
+        )
+
+        np.testing.assert_allclose(out_0, 1, rtol=1e-05)
+        self.assertEqual(out_0.shape, [])
+        np.testing.assert_allclose(out_1, 2, rtol=1e-05)
+        self.assertEqual(out_1.shape, [])
+        np.testing.assert_allclose(out_2, 3, rtol=1e-05)
+        self.assertEqual(out_2.shape, [])
+        np.testing.assert_allclose(out_3, 2, rtol=1e-05)
+        self.assertEqual(out_3.shape, [])
+        np.testing.assert_allclose(out_4, 2, rtol=1e-05)
+        self.assertEqual(out_4.shape, [])
+
+        paddle.enable_static()
 
     def test_return_var_tuple(self):
         def fn_1():
@@ -235,6 +388,109 @@ class TestAPICase_Nested(unittest.TestCase):
             np.testing.assert_allclose(res[0], 1, rtol=1e-05)
             np.testing.assert_allclose(res[1], 2, rtol=1e-05)
             np.testing.assert_allclose(res[2], 3, rtol=1e-05)
+
+    def test_nested_0d_tensor(self):
+        def fn_1(x=1):
+            var_5 = paddle.full(shape=[], dtype='int32', fill_value=5)
+            var_6 = paddle.full(shape=[], dtype='int32', fill_value=6)
+            out = paddle.static.nn.control_flow.case(
+                pred_fn_pairs=[
+                    (
+                        var_5 < var_6,
+                        partial(
+                            paddle.full,
+                            shape=[],
+                            dtype='int32',
+                            fill_value=x,
+                        ),
+                    ),
+                    (
+                        var_5 == var_6,
+                        partial(
+                            paddle.full,
+                            shape=[],
+                            dtype='int32',
+                            fill_value=x,
+                        ),
+                    ),
+                ]
+            )
+            return out
+
+        def fn_2(x=2):
+            var_5 = paddle.full(shape=[], dtype='int32', fill_value=5)
+            var_6 = paddle.full(shape=[], dtype='int32', fill_value=6)
+            out = paddle.static.nn.control_flow.case(
+                pred_fn_pairs=[
+                    (var_5 < var_6, partial(fn_1, x=x)),
+                    (
+                        var_5 == var_6,
+                        partial(
+                            paddle.full,
+                            shape=[],
+                            dtype='int32',
+                            fill_value=x,
+                        ),
+                    ),
+                ]
+            )
+            return out
+
+        def fn_3():
+            var_5 = paddle.full(shape=[], dtype='int32', fill_value=5)
+            var_6 = paddle.full(shape=[], dtype='int32', fill_value=6)
+            out = paddle.static.nn.control_flow.case(
+                pred_fn_pairs=[
+                    (var_5 < var_6, partial(fn_2, x=3)),
+                    (
+                        var_5 == var_6,
+                        partial(
+                            paddle.full,
+                            shape=[],
+                            dtype='int32',
+                            fill_value=7,
+                        ),
+                    ),
+                ]
+            )
+            return out
+
+        main_program = Program()
+        startup_program = Program()
+        with program_guard(main_program, startup_program):
+            x = paddle.full(shape=[], dtype='float32', fill_value=0.3)
+            y = paddle.full(shape=[], dtype='float32', fill_value=0.1)
+            z = paddle.full(shape=[], dtype='float32', fill_value=0.2)
+            pred_2 = paddle.less_than(x, y)  # false: 0.3 < 0.1
+            pred_1 = paddle.less_than(z, x)  # true: 0.2 < 0.3
+
+            out_1 = paddle.static.nn.control_flow.case(
+                pred_fn_pairs=[(pred_1, fn_1), (pred_2, fn_2)], default=fn_3
+            )
+
+            out_2 = paddle.static.nn.control_flow.case(
+                pred_fn_pairs=[(pred_2, fn_1), (pred_1, fn_2)], default=fn_3
+            )
+
+            out_3 = paddle.static.nn.control_flow.case(
+                pred_fn_pairs=[(x == y, fn_1), (x == z, fn_2)], default=fn_3
+            )
+
+            place = (
+                fluid.CUDAPlace(0)
+                if core.is_compiled_with_cuda()
+                else fluid.CPUPlace()
+            )
+            exe = fluid.Executor(place)
+
+            res = exe.run(main_program, fetch_list=[out_1, out_2, out_3])
+
+            np.testing.assert_allclose(res[0], 1, rtol=1e-05)
+            self.assertEqual(res[0].shape, ())
+            np.testing.assert_allclose(res[1], 2, rtol=1e-05)
+            self.assertEqual(res[1].shape, ())
+            np.testing.assert_allclose(res[2], 3, rtol=1e-05)
+            self.assertEqual(res[2].shape, ())
 
 
 class TestAPICase_Error(unittest.TestCase):
