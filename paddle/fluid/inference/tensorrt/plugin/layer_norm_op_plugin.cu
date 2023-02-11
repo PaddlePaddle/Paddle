@@ -387,8 +387,8 @@ int LayerNormPluginDynamic::enqueue(
     half *output = static_cast<half *>(outputs[0]);
     phi::LayerNormDirectCUDAFunctor<half, float> layer_norm;
 
-    computeLayerNorm(input_shape[0] * input_shape[1],
-                     input_shape[2],
+    computeLayerNorm(matrix_dim[0],
+                     matrix_dim[1],
                      input,
                      reinterpret_cast<half *>(scale_gpu_),
                      reinterpret_cast<half *>(bias_gpu_),
@@ -408,8 +408,8 @@ int LayerNormPluginDynamic::enqueue(
     // dqScaleIn = 0.5f;
     // inv_qScaleOut = 1 / 0.5f;
 
-    computeLayerNormQDQ(input_shape[0] * input_shape[1],
-                        input_shape[2],
+    computeLayerNormQDQ(matrix_dim[0],
+                        matrix_dim[1],
                         input,
                         reinterpret_cast<half *>(scale_gpu_),
                         reinterpret_cast<half *>(bias_gpu_),
