@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/operants_manager.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
@@ -411,6 +412,10 @@ void Tensor::reset_inplace_version(bool set_to_zero) {
       inplace_version_counter.SetInplaceVersionToZero();
     }
   }
+}
+
+PADDLE_API Tensor operator*(const Tensor &x, const Tensor &y) {
+  return paddle::operants::OperantsManager::Instance().multiply(x, y);
 }
 
 }  // namespace experimental

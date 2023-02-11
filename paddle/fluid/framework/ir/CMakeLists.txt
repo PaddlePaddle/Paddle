@@ -140,6 +140,7 @@ if(WITH_TENSORRT)
   pass_library(delete_remove_padding_recover_padding_pass inference)
   pass_library(layernorm_shift_partition_fuse_pass inference)
   pass_library(reverse_roll_fuse_pass inference)
+  pass_library(elementwiseadd_transpose_pass inference)
   pass_library(preln_layernorm_x_fuse_pass inference)
   pass_library(trt_support_nhwc_pass inference)
   pass_library(elementwise_groupnorm_act_pass inference)
@@ -208,6 +209,14 @@ if(WITH_IPU)
   pass_library(delete_scale_op_pass base DIR ipu)
   pass_library(avg_shard_pass base DIR ipu)
   pass_library(inference_dtype_transfer_pass base DIR ipu)
+endif()
+
+if(WITH_XPU)
+  cc_library(
+    quant_utils
+    SRCS xpu/quant_utils.cc
+    DEPS pass)
+  pass_library(fc_xpu_fuse_pass inference DIR xpu DEPS quant_utils)
 endif()
 
 cc_library(

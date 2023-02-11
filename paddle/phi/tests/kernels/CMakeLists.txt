@@ -95,3 +95,8 @@ cc_test(
   test_cache
   SRCS test_cache.cc
   DEPS gtest cache)
+
+cc_test(
+  strided_memcpy_test
+  SRCS strided_memcpy_test.cc
+  DEPS device_context memory)
