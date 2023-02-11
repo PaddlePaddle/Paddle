@@ -98,6 +98,6 @@ def composite_batchnorm(
     run_mean_ = assign(run_mean)
     run_var_ = assign(run_var)
     if trainable_statistics or not is_test:
-        return run_mean_, None, batch_mean_, batch_var_, run_var_, y
+        return y, run_mean_, run_var_, batch_mean_, batch_var_, None
     else:
-        return run_mean_, batch_mean_, batch_var_, run_var_, y
+        return y, run_mean_, run_var_, batch_mean_, batch_var_

@@ -36,6 +36,7 @@ from .utils import (
     flatten_and_remove_none,
     get_input_var_list,
     get_output_var_list,
+    get_output_vars_from_comosite,
     prepare_python_api_arguments,
 )
 
@@ -605,14 +606,15 @@ def _lower_composite(block, blacklist=[]):
                 bind(input_args, to_bind, value_table)
 
                 for orig_out, new_out in zip(
-                    expand_nested_list(get_output_var_list(op)),
+                    expand_nested_list(get_output_vars_from_comosite(op)),
                     expand_nested_list(as_tensors(lower_fn(op, *input_args))),
                 ):
                     if new_out is not None:
-                        assert orig_out.shape == new_out.shape, (
-                            f'when replace origin op with composite rule, origin out shape should be equal to new out shape, '
-                            f'but orig_out.shape={orig_out.shape} and new_out.shape={new_out.shape}'
-                        )
+                        if orig_out.shape and new_out.shape:
+                            assert orig_out.shape == new_out.shape, (
+                                f'when replace origin op with composite rule, origin out shape should be equal to new out shape, '
+                                f'but orig_out.shape={orig_out.shape} and new_out.shape={new_out.shape}'
+                            )
                         assert not (orig_out is None) ^ (
                             new_out is None
                         ), "orig_out and new_out should match."
