@@ -25,7 +25,6 @@ set(FLASHATTN_TAG 5994ce06e9f90b9fac810a7a36a72ddb896cdf06)
 set(FLASHATTN_INCLUDE_DIR
     "${FLASHATTN_INSTALL_DIR}/include"
     CACHE PATH "flash-attn Directory" FORCE)
-# Used in unit test test_WarpCTCLayer
 set(FLASHATTN_LIB_DIR
     "${FLASHATTN_INSTALL_DIR}/lib"
     CACHE PATH "flash-attn Library Directory" FORCE)

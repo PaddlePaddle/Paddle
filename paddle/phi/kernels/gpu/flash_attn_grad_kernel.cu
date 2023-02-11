@@ -79,8 +79,8 @@ void FlashAttnGradKernel(const Context& ctx,
       ctx, 0, (batch_size + 1) * seq_len_k, seq_len_k, &cu_seqlens_k);
 
   float scale = 1.0f / std::sqrt(head_size);
-  int num_splits = 1;  // always 1 for now
-  bool zero_tensors = true;
+  int num_splits = 0;  // 0 for an internal heuristic, which is optimal
+  bool zero_tensors = false;
 
   std::vector<int64_t> seed_offset_vec;
   paddle::framework::TensorToVector<int64_t>(seed_offset, &seed_offset_vec);

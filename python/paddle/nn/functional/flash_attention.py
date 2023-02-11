@@ -103,9 +103,6 @@ def flash_attention(
         'q': query,
         'k': key,
         'v': value,
-        'dropout': dropout,
-        'causal': causal,
-        'return_softmax': return_softmax,
     }
     outputs = {
         'out': out,
@@ -113,5 +110,14 @@ def flash_attention(
         'softmax_lse': softmax_lse,
         'seed_offset': seed_offset,
     }
-    helper.append_op(type='flash_attn', inputs=inputs, outputs=outputs)
+    helper.append_op(
+        type='flash_attn',
+        inputs=inputs,
+        outputs=outputs,
+        attrs={
+            'dropout': dropout,
+            'causal': causal,
+            'return_softmax': return_softmax,
+        },
+    )
     return out, softmax

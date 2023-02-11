@@ -77,8 +77,8 @@ void FlashAttnKernel(const Context& ctx,
       ctx, 0, (batch_size + 1) * seq_len_k, seq_len_k, &cu_seqlens_k);
 
   float scale = 1.0f / std::sqrt(head_size);
-  int num_splits = 1;  // always 1 for now
-  bool zero_tensors = true;
+  int num_splits = 0;  // 0 for an internal heuristic, which is optimal
+  bool zero_tensors = false;
 
   auto gen = ctx.GetGenerator();
   uint64_t inc = batch_size * num_heads * 32;
@@ -93,7 +93,13 @@ void FlashAttnKernel(const Context& ctx,
   ctx.template Alloc<float>(softmax_lse);
 
   if (return_softmax) {
-    softmax->Resize({batch_size, num_heads, seq_len_q, seq_len_k});
+    // may allocate more space than *seq_len_k*
+    int64_t blocksize_c = head_size > 64 ? 128 : 256;
+    int64_t max_len_k_ =
+        ((seq_len_k + blocksize_c - 1) / blocksize_c) * blocksize_c;
+    int64_t max_len_k =
+        seq_len_k <= 128 ? 128 : (seq_len_k <= 256 ? 256 : max_len_k_);
+    softmax->Resize({batch_size, num_heads, seq_len_q, max_len_k});
     ctx.template Alloc<T>(softmax);
   }
 
