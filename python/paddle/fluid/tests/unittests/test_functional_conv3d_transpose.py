@@ -605,5 +605,26 @@ class TestFunctionalConv3DTransposeErrorCase11(
         self.data_format = "NCDHW"
 
 
+class TestFunctionalConv3DTransposeErrorCase12(
+    TestFunctionalConv3DTransposeError
+):
+    def test_exception(self):
+        with self.assertRaises(ValueError):
+            self.dygraph_case()
+
+    def dygraph_case(self):
+        with dg.guard():
+            array = np.array([], dtype=np.float32)
+            x = paddle.to_tensor(
+                np.reshape(array, [2, 7, 0, 7, 2]), dtype='float32'
+            )
+            weight = paddle.to_tensor(
+                np.reshape(array, [2, 7, 0, 2, 2]), dtype='float32'
+            )
+            paddle.nn.functional.conv3d_transpose(
+                x, weight, stride=2, data_format='NDHWC'
+            )
+
+
 if __name__ == "__main__":
     unittest.main()
