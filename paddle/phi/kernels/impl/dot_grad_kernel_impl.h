@@ -141,7 +141,6 @@ struct DotGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
                   const DenseTensor* tensor_dout,
                   DenseTensor* tensor_dx,
                   DenseTensor* tensor_dy) {
-    VLOG(1) << "disable route";
 #if defined(__NVCC__) || defined(__HIPCC__)
     if (1 == tensor_dout->dims().size()) {
       auto dout = EigenVector<T>::Flatten(*tensor_dout);
