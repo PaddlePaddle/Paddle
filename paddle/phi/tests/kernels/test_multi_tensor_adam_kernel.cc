@@ -477,6 +477,7 @@ TEST(multi_tensor_adam, test_fp16_gpu) {
 }
 #endif
 
+#ifndef _WIN32
 TEST(multi_tensor_adam, get_kernel_type_for_var) {
   auto op = paddle::framework::OpRegistry::CreateOp(
       "multi_tensor_adam", {}, {}, {}, false);
@@ -503,5 +504,6 @@ TEST(multi_tensor_adam, get_kernel_type_for_var) {
   check_backend("SkipUpdate", Backend::ALL_BACKEND);
   check_backend("Params", Backend::CPU);
 }
+#endif
 
 }  // namespace phi
