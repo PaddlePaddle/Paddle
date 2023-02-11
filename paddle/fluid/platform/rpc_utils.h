@@ -17,8 +17,8 @@
 #include <brpc/channel.h>
 #include <bthread/countdown_event.h>
 
-#include <condition_variable>
-#include <fstream>
+#include <codecvt>
+#include <locale>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -27,10 +27,10 @@
 namespace paddle {
 namespace platform {
 
-class RpcVocabulary {
+class RpcTokenizer {
  public:
-  static RpcVocabulary& Instance() {
-    static RpcVocabulary instance;
+  static RpcTokenizer& Instance() {
+    static RpcTokenizer instance;
     return instance;
   }
 
@@ -39,16 +39,18 @@ class RpcVocabulary {
   bool Contains(int id) { return ids_to_words_.count(id) > 0; }
 
   // NOTE: an exception will be raised if id not exist
-  std::string Get(int id) { return ids_to_words_.at(id); }
+  std::string GetWord(int id) { return ids_to_words_.at(id); }
 
-  std::string Get(std::vector<int> ids,
-                  bool aggressive_break = false,
-                  const std::string& stop_token = "[gEND]");
+  std::string GetWords(std::vector<int> ids,
+                       bool aggressive_break = false,
+                       const std::string& stop_token = "[gEND]");
 
  private:
+  std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> converter_;
+
   std::string path_;
   std::unordered_map<int, std::string> ids_to_words_;
-  std::unordered_map<std::string, int> words_to_ids_;
+  std::unordered_map<std::wstring, int> words_to_ids_;
 };
 
 class RpcRequestStore {

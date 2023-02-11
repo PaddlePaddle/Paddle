@@ -15,8 +15,7 @@
 #include "paddle/fluid/platform/rpc_utils.h"
 
 #include <algorithm>
-#include <codecvt>
-#include <locale>
+#include <fstream>
 #include <sstream>
 #include <unordered_set>
 
@@ -137,6 +136,8 @@ std::vector<std::string> RecoverBfbTokens(
       tmp_bytes.emplace_back(GetByte(token));
     } else {
       if (!tmp_bytes.empty()) {
+        // since there may be illegal bytes, we need this function
+        // if all bytes are legal, we can simply use string constructor
         const std::string recovered_token = GetRecoveredToken(tmp_bytes);
         if (!recovered_token.empty()) {
           new_tokens.emplace_back(recovered_token);
@@ -159,7 +160,7 @@ std::vector<std::string> RecoverBfbTokens(
 
 std::vector<std::string> PostProcess(
     const std::vector<std::string>& tokens,
-    const std::unordered_map<std::string, int>& vocab,
+    const std::unordered_map<std::wstring, int>& vocab,
     bool aggressive_break = false,
     const std::string& stop_token = "[gEND]") {
   std::unordered_set<std::string> break_words;
@@ -194,7 +195,7 @@ std::vector<std::string> PostProcess(
     bool is_chinese_char = IsChineseChar(unicode_word[0]);
     bool is_chinese_punct = IsChinesePunct(unicode_word[0]);
 
-    if (is_chinese_char || is_chinese_punct || vocab.count(word) == 0) {
+    if (is_chinese_char || is_chinese_punct || vocab.count(unicode_word) == 0) {
       // 当前字符为中文或者中文标点，则直接插入
       if (!new_text.empty() && EndsWith(new_text.back(), "@@")) {
         //// 前一个字符以@@结尾，则去掉
@@ -243,7 +244,7 @@ std::vector<std::string> PostProcess(
   return new_text;
 }
 
-void RpcVocabulary::Init(const std::string& path) {
+void RpcTokenizer::Init(const std::string& path) {
   if (path_ == path) {
     return;
   }
@@ -252,20 +253,20 @@ void RpcVocabulary::Init(const std::string& path) {
   int id;
   while (vocab_file >> word >> id) {
     ids_to_words_.emplace(id, word);
-    words_to_ids_.emplace(word, id);
+    words_to_ids_.emplace(converter_.from_bytes(word), id);
   }
   path_ = path;
 }
 
-std::string RpcVocabulary::Get(std::vector<int> ids,
-                               bool aggressive_break,
-                               const std::string& stop_token) {
+std::string RpcTokenizer::GetWords(std::vector<int> ids,
+                                   bool aggressive_break,
+                                   const std::string& stop_token) {
   std::vector<std::string> tokens;
   for (int id : ids) {
     if (!Contains(id)) {
       continue;
     }
-    tokens.emplace_back(Get(id));
+    tokens.emplace_back(GetWord(id));
   }
   return paddle::string::join_strings(
       PostProcess(tokens, words_to_ids_, aggressive_break, stop_token), "");

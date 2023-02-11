@@ -48,7 +48,8 @@ std::string BuildPayload(const std::string& service,
   if (service == "ids") {
     return BuildIdsPayload(src_ids);
   } else if (service == "str") {
-    const std::string query = platform::RpcVocabulary::Instance().Get(src_ids);
+    const std::string query =
+        platform::RpcTokenizer::Instance().GetWords(src_ids);
     return BuildStrPayload(query);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument("Unknown service."));
@@ -107,7 +108,7 @@ class RpcCallOpKernel : public framework::OpKernel<T> {
       service = "ids";
     } else {
       auto vocab_path = ctx.Attr<std::string>("vocab_path");
-      platform::RpcVocabulary::Instance().Init(vocab_path);
+      platform::RpcTokenizer::Instance().Init(vocab_path);
       service = "str";
     }
     const std::string payload = BuildPayload(service, src_ids_vec);
