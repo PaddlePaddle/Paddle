@@ -65,52 +65,35 @@ void Int4GemmKernel(const Context &ctx,
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Cutlass does not support int4 gemm on sm %d", sm));
   }
+
   auto stream = ctx.stream();
-
-  const T *source_x = reinterpret_cast<const T *>(x.data());
-  const T *source_y = reinterpret_cast<const T *>(y.data());
-
-  DenseTensor source_x_trans;
-  if (trans_x) {
-    source_x_trans = TransposeLast2Dim<T, Context>(ctx, x);
-    source_x = reinterpret_cast<const T *>(source_x_trans.data());
-  }
-  DenseTensor source_y_trans;
-  if (!trans_y) {
-    // Int4 GEMM need y in column-major,so action on y is opposite
-    source_y_trans = TransposeLast2Dim<T, Context>(ctx, y);
-    source_y = reinterpret_cast<const T *>(source_y_trans.data());
-  }
 
   size_t x_bytes = m * kx / 2;
   size_t y_bytes = ky * n / 2;
   size_t out_bytes = m * n * 4;
 
-  paddle::memory::allocation::AllocationPtr tmp_x = paddle::memory::Alloc(
+  auto tmp_x = paddle::memory::Alloc(
       ctx.GetPlace(),
       x_bytes,
       phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
-  paddle::memory::allocation::AllocationPtr tmp_y = paddle::memory::Alloc(
+  auto tmp_y = paddle::memory::Alloc(
       ctx.GetPlace(),
       y_bytes,
       phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
-  paddle::memory::allocation::AllocationPtr tmp_out = paddle::memory::Alloc(
+  auto tmp_out = paddle::memory::Alloc(
       ctx.GetPlace(),
       out_bytes,
       phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
-  paddle::memory::allocation::AllocationPtr tmp_bias = paddle::memory::Alloc(
+  auto tmp_bias = paddle::memory::Alloc(
       ctx.GetPlace(),
       out_bytes,
       phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
 
-  dim3 gridx(256);
-  dim3 blockx(512);
-
-  DynamicConvert<cutlass::int4b_t, T><<<gridx, blockx>>>(
-      source_x, reinterpret_cast<cutlass::int4b_t *>(tmp_x->ptr()), mk);
-
-  DynamicConvert<cutlass::int4b_t, T><<<gridx, blockx>>>(
-      source_y, reinterpret_cast<cutlass::int4b_t *>(tmp_y->ptr()), kn);
+  ConvertDataToInt4<T, Context>(
+      ctx, x, reinterpret_cast<cutlass::int4b_t *>(tmp_x->ptr()), mk, trans_x);
+  // Int4 GEMM need y in column-major,so action on y is opposite
+  ConvertDataToInt4<T, Context>(
+      ctx, y, reinterpret_cast<cutlass::int4b_t *>(tmp_y->ptr()), kn, !trans_y);
 
   dim3 gridb(128);
   dim3 blockb(n);
@@ -141,8 +124,12 @@ void Int4GemmKernel(const Context &ctx,
         activation.c_str()));
   }
 
+  constexpr int blocko_ = 256;
+  dim3 grido((mn + blocko_ - 1) / blocko_);
+  dim3 blocko(blocko_);
+
   DynamicConvert<T, int32_t>
-      <<<gridx, blockx>>>(reinterpret_cast<const int32_t *>(tmp_out->ptr()),
+      <<<grido, blocko>>>(reinterpret_cast<const int32_t *>(tmp_out->ptr()),
                           reinterpret_cast<T *>(out->data()),
                           mn);
 }

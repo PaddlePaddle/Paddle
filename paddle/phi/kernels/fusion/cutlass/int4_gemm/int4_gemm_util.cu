@@ -17,7 +17,11 @@
 #include "cutlass/cutlass.h"
 #include "cutlass/numeric_conversion.h"
 
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/fusion/cutlass/int4_gemm/int4_gemm_util.h"
+#include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace phi {
 namespace fusion {
@@ -136,6 +140,37 @@ template __global__ void ExpendKernel<int32_t>(const int32_t *vector,
                                                const int n,
                                                const int m,
                                                const int col_major);
+
+template <typename T, typename Context>
+void ConvertDataToInt4(const Context &ctx,
+                       const DenseTensor &source,
+                       cutlass::int4b_t *output,
+                       const size_t source_size,
+                       const bool transpose) {
+  auto stream = ctx.stream();
+  DenseTensor source_prepare;
+  if (transpose) {
+    source_prepare = TransposeLast2Dim<T, Context>(ctx, source);
+  } else {
+    source_prepare = source;
+  }
+
+  constexpr int block_ = 256;
+  dim3 grid((source_size + block_ - 1) / block_);
+  dim3 block(block_);
+  DynamicConvert<cutlass::int4b_t, T>
+      <<<grid, block>>>(reinterpret_cast<const T *>(source_prepare.data()),
+                        reinterpret_cast<cutlass::int4b_t *>(output),
+                        source_size);
+  return;
+}
+
+template void ConvertDataToInt4<int32_t, phi::GPUContext>(
+    const phi::GPUContext &ctx,
+    const DenseTensor &source,
+    cutlass::int4b_t *output,
+    const size_t source_size,
+    const bool transpose);
 
 }  // namespace cutlass_gemm_internal
 }  // namespace fusion

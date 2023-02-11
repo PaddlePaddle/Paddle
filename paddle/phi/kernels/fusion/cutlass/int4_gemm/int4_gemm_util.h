@@ -57,6 +57,13 @@ void __global__ ExpendKernel(const T *vector,
                              const int n,
                              const int m,
                              const int col_major = 0);
+
+template <typename T, typename Context>
+void ConvertDataToInt4(const Context &ctx,
+                       const DenseTensor &source,
+                       cutlass::int4b_t *output,
+                       const size_t source_size,
+                       const bool transpose);
 }  // namespace cutlass_gemm_internal
 }  // namespace fusion
 }  // namespace phi
