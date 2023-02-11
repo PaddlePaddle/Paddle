@@ -2981,6 +2981,49 @@ void YoloLossInferMeta(const MetaTensor& x,
   gt_match_mask->set_dtype(x.dtype());
 }
 
+void MultiTensorAdamInferMeta(
+    const std::vector<const MetaTensor*>& params,
+    const std::vector<const MetaTensor*>& grads,
+    const MetaTensor& learning_rate,
+    const std::vector<const MetaTensor*>& moments1,
+    const std::vector<const MetaTensor*>& moments2,
+    const std::vector<const MetaTensor*>& beta1_pows,
+    const std::vector<const MetaTensor*>& beta2_pows,
+    const paddle::optional<std::vector<const MetaTensor*>>& master_params,
+    const MetaTensor& skip_update,
+    const Scalar& beta1,
+    const Scalar& beta2,
+    const Scalar& epsilon,
+    int chunk_size,
+    float weight_decay,
+    bool use_adamw,
+    bool multi_precision,
+    bool use_global_beta_pow,
+    std::vector<MetaTensor*> params_out,
+    std::vector<MetaTensor*> moments1_out,
+    std::vector<MetaTensor*> moments2_out,
+    std::vector<MetaTensor*> beta1_pows_out,
+    std::vector<MetaTensor*> beta2_pows_out,
+    std::vector<MetaTensor*> master_params_out) {
+  size_t in_size = params.size();
+  for (size_t i = 0; i < in_size; i++) {
+    params_out[i]->set_dims(params[i]->dims());
+    params_out[i]->set_dtype(params[i]->dtype());
+    moments1_out[i]->set_dims(moments1[i]->dims());
+    moments1_out[i]->set_dtype(moments1[i]->dtype());
+    moments2_out[i]->set_dims(moments2[i]->dims());
+    moments2_out[i]->set_dtype(moments2[i]->dtype());
+    beta1_pows_out[i]->set_dims(beta1_pows[i]->dims());
+    beta1_pows_out[i]->set_dtype(beta1_pows[i]->dtype());
+    beta2_pows_out[i]->set_dims(beta2_pows[i]->dims());
+    beta2_pows_out[i]->set_dtype(beta2_pows[i]->dtype());
+    if (master_params && !master_params_out.empty()) {
+      master_params_out[i]->set_dims(master_params.get()[i]->dims());
+      master_params_out[i]->set_dtype(master_params.get()[i]->dtype());
+    }
+  }
+}
+
 void MoeInferMeta(const MetaTensor& x,
                   const MetaTensor& gate,
                   const MetaTensor& bmm0,
