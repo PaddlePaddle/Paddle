@@ -3462,7 +3462,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
   // we try to add these Attrs to the RuntimeAttrs, but these OpDesc will lose
   // the RuntimeAttrs information in the process of converting the Graph to
   // the Program, so additional record configuration will be introduced,
-  // which increases the The cost of development and understanding, so we
+  // which increases the cost of development and understanding, so we
   // still use Attrs to get and the attributes set by these passes from Attrs
   // for the time being. In the future, it is necessary to clarify the
   // positioning of RuntimeAttrs and expand related functions.

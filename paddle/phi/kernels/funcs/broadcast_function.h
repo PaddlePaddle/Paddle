@@ -862,7 +862,7 @@ void BroadcastKernelForDifferentVecSize(
       kArity,
       phi::errors::InvalidArgument("The number of inputs is expected to be "
                                    "equal to the "
-                                   "arity of functor. But recieved: the "
+                                   "arity of functor. But received: the "
                                    "number of inputs "
                                    "is %d, the arity of functor is %d.",
                                    ins.size(),

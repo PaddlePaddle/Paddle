@@ -37,7 +37,7 @@ def getFNDAFile(rootPath, test):
     os.system('touch %s' % fn_filename)
     try:
         f = open(filename)
-        print("oepn %s succesfully" % filename)
+        print("oepn %s successfully" % filename)
     except FileNotFoundError:
         print("%s is not found." % filename)
         return
@@ -83,7 +83,7 @@ def analysisFNDAFile(rootPath, test):
     if os.path.isfile(related_ut_map_file) and os.path.isfile(
         notrelated_ut_map_file
     ):
-        print("make related.txt and not_related.txt succesfully")
+        print("make related.txt and not_related.txt successfully")
     else:
         print("make related.txt and not_related.txt failed")
         return
@@ -91,7 +91,7 @@ def analysisFNDAFile(rootPath, test):
     fn_filename = '%s/build/ut_map/%s/fnda.tmp' % (rootPath, test)
     try:
         f = open(fn_filename)
-        print("oepn %s succesfully" % fn_filename)
+        print("oepn %s successfully" % fn_filename)
     except FileNotFoundError:
         print("%s is not found." % fn_filename)
         return
@@ -143,7 +143,7 @@ def getBaseFnda(rootPath, test):
     filename = '%s/build/ut_map/%s/coverage.info.tmp' % (rootPath, test)
     try:
         f = open(filename)
-        print("oepn %s succesfully" % filename)
+        print("oepn %s successfully" % filename)
     except FileNotFoundError:
         print("%s is not found." % filename)
     symbol_fnda = {}
@@ -220,7 +220,7 @@ def getCovinfo(rootPath, test):
         print("coverage.info is empty,collect coverage rate failed")
         return
     else:
-        print("get coverage.info succesfully")
+        print("get coverage.info successfully")
     os.system(
         "cd %s && lcov --extract coverage.info '/paddle/paddle/phi/*' '/paddle/paddle/utils/*' '/paddle/paddle/fluid/*' '/paddle/build/*' -o coverage.info.tmp --rc lcov_branch_coverage=0 > /dev/null 2>&1"
         % ut_map_path
@@ -231,7 +231,7 @@ def getCovinfo(rootPath, test):
         print("coverage.info.tmp is empty,collect coverage rate failed")
         return
     else:
-        print("get coverage.info.tmp succesfully")
+        print("get coverage.info.tmp successfully")
 
     os.system('rm -rf %s/paddle' % ut_map_path)
     os.system('rm -rf %s/coverage.info' % ut_map_path)

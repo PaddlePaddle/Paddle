@@ -121,7 +121,7 @@ class FusedBiasDropoutResidualLayerNorm(Layer):
         super().__init__()
         assert embed_dim > 0, (
             "Expected embed_dim to be greater than 0, "
-            "but recieved {}".format(embed_dim)
+            "but received {}".format(embed_dim)
         )
         self._dtype = self._helper.get_default_dtype()
         self._bias_attr = bias_attr
