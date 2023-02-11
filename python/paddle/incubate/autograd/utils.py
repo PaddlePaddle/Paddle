@@ -232,14 +232,20 @@ def get_output_vars_from_comosite(op):
                 origin_output_name = op_map[name]["outputs"][item]
                 if origin_output_name not in origin_output_names:
                     continue
-                origin_output_var = get_var_block(op.block, op.output(origin_output_name))
+                origin_output_var = get_var_block(
+                    op.block, op.output(origin_output_name)
+                )
                 res.append(origin_output_var)
         elif len(origin_output_names) == 1:
             # When origin output num is 1, map info is not needed.
-            origin_output_var = get_var_block(op.block, op.output(origin_output_names[0]))
+            origin_output_var = get_var_block(
+                op.block, op.output(origin_output_names[0])
+            )
             res.append(origin_output_var)
         else:
-            raise ValueError("When replace op with composite rule, there must exist output map info from origin op to composite rule.")
+            raise ValueError(
+                "When replace op with composite rule, there must exist output map info from origin op to composite rule."
+            )
         return res
 
 

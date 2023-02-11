@@ -597,11 +597,13 @@ def _lower_composite(block, blacklist=[]):
         # if output var of composite rule is None, this means this var is not needed
         none_vars_to_remove = set()
 
+        change = None
         # Step2: Process all ops in the target block
         for op_idx in range(len(block.ops)):
             op = block.ops[op_idx]
             ops_to_remove.append(op_idx)
             if lookup_fn(op.type) is not None and op.type not in blacklist:
+                change = True
                 input_args = prepare_python_api_arguments(op)
                 bind(input_args, to_bind, value_table)
 
@@ -681,6 +683,10 @@ def _lower_composite(block, blacklist=[]):
             block.desc._remove_var(var_name.encode())
             del block.vars[var_name]
         block._sync_with_cpp()
+
+        # composite ops may contain other ops, thus, call _lower_composite again.
+        if change:
+            _lower_composite(block, blacklist)
         return
 
     elif isinstance(block, typing.Sequence):

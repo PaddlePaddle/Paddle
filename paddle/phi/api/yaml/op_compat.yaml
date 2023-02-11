@@ -414,6 +414,17 @@
 
 - op : dropout
   backward : dropout_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+    mask : Mask
+  attrs :
+    p : dropout_prob
+    is_test : is_test
+    mode : dropout_implementation
+    seed : seed
+    fix_seed : fix_seed
   extra :
     attrs : [bool fix_seed = false, int seed = 0]
 
@@ -790,6 +801,14 @@
 
 - op : layer_norm
   backward : layer_norm_grad
+  inputs :
+    x : X
+    scale : Scale
+    bias : Bias
+  outputs :
+    out : Y
+    mean : Mean
+    variance : Variance
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
@@ -939,6 +958,17 @@
     x : X
   outputs :
     out : Out
+
+- op : mean (reduce_mean)
+  backward : reduce_mean_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs :
+    {axis : dim, keepdim : keep_dim}
+  extra :
+    attrs : [bool use_mkldnn = false]
 
 - op : meshgrid
   backward : meshgrid_grad
@@ -1142,17 +1172,6 @@
 
 - op : reduce_max
   backward : reduce_max_grad
-  extra :
-    attrs : [bool use_mkldnn = false]
-
-- op : mean (reduce_mean)
-  backward : reduce_mean_grad
-  inputs :
-    x : X
-  outputs :
-    out : Out
-  attrs :
-    {axis : dim, keepdim : keep_dim}
   extra :
     attrs : [bool use_mkldnn = false]
 
