@@ -92,10 +92,12 @@ list(
   take_along_axis_op.cc
   logsigmoid_op.cc
   preln_layernorm_shift_partition_op.cc
+  trans_layernorm_op.cc
   merge_layernorm_op.cc
   skip_merge_layernorm_op.cc
   generic_and_custom_plugin_creater.cc
   fused_lookup_tables_op.cc
+  elementwiseadd_transpose_op.cc
   skip_groupnorm_act_op.cc
   preln_groupnorm_act_op.cc
   expand_v2_op.cc)

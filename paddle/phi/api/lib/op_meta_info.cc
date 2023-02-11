@@ -19,7 +19,6 @@ limitations under the License. */
 #include <vector>
 
 #include "glog/logging.h"
-#include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 
@@ -243,17 +242,6 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferDtypeFn(InferDtypeFunc func) {
           "`X` by default."));
   info_ptr_->SetInferDtypeFn(std::forward<InferDtypeFunc>(func));
   return *this;
-}
-
-/////////////////////// Op register API /////////////////////////
-
-void RegisterAllCustomOperator() {
-  auto& op_meta_info_map = OpMetaInfoMap::Instance();
-  framework::RegisterOperatorWithMetaInfoMap(op_meta_info_map);
-}
-
-void LoadCustomOperatorLib(const std::string& dso_name) {
-  paddle::framework::LoadOpMetaInfoAndRegisterOp(dso_name);
 }
 }  // namespace paddle
 

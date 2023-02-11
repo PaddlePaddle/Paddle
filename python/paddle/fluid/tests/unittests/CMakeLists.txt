@@ -100,6 +100,7 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_fleet_executor_task_node)
   list(REMOVE_ITEM TEST_OPS test_fleet_exe_dist_model_run)
   list(REMOVE_ITEM TEST_OPS test_fleet_exe_dist_model_tensor)
+  list(REMOVE_ITEM TEST_OPS test_fleet_executor_cond_interceptor)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_deprecated_decorator)
@@ -837,7 +838,6 @@ add_subdirectory(sequence)
 add_subdirectory(dygraph_to_static)
 add_subdirectory(rnn)
 add_subdirectory(autograd)
-add_subdirectory(composite_ops)
 add_subdirectory(distribution)
 add_subdirectory(prim)
 
@@ -1242,17 +1242,6 @@ if(WITH_CINN AND WITH_TESTING)
       FLAGS_allow_cinn_ops="conv2d;conv2d_grad;elementwise_add;elementwise_add_grad;relu;relu_grad;sum"
   )
 endif()
-
-py_test_modules(
-  test_add_reader_dependency_for_interpretercore MODULES
-  test_add_reader_dependency ENVS FLAGS_CONVERT_GRAPH_TO_PROGRAM=true)
-
-set_tests_properties(test_add_reader_dependency_for_interpretercore
-                     PROPERTIES TIMEOUT 120)
-
-py_test_modules(
-  test_eager_deletion_padding_rnn_for_interpretercore MODULES
-  test_eager_deletion_padding_rnn ENVS FLAGS_CONVERT_GRAPH_TO_PROGRAM=true)
 
 # ExecutionStrategy is deprecated in standalone executor
 set_tests_properties(test_parallel_executor_dry_run

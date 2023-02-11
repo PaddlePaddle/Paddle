@@ -41,26 +41,23 @@ def net(batch_size=4, lr=0.01):
     dnn_input_dim, lr_input_dim = int(2), int(2)
 
     with fluid.device_guard("cpu"):
-        dnn_data = fluid.layers.data(
+        dnn_data = paddle.static.data(
             name="dnn_data",
             shape=[-1, 1],
             dtype="int64",
             lod_level=1,
-            append_batch_size=False,
         )
-        lr_data = fluid.layers.data(
+        lr_data = paddle.static.data(
             name="lr_data",
             shape=[-1, 1],
             dtype="int64",
             lod_level=1,
-            append_batch_size=False,
         )
-        label = fluid.layers.data(
+        label = paddle.static.data(
             name="click",
             shape=[-1, 1],
             dtype="float32",
             lod_level=0,
-            append_batch_size=False,
         )
 
         datas = [dnn_data, lr_data, label]
@@ -73,11 +70,11 @@ def net(batch_size=4, lr=0.01):
             size=[dnn_input_dim, dnn_layer_dims[0]],
             param_attr=fluid.ParamAttr(
                 name="deep_embedding",
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.Constant(value=0.01),
             ),
             is_sparse=True,
         )
-        dnn_pool = fluid.layers.sequence_pool(
+        dnn_pool = paddle.static.nn.sequence_lod.sequence_pool(
             input=dnn_embedding, pool_type="sum"
         )
         dnn_out = dnn_pool
@@ -89,11 +86,13 @@ def net(batch_size=4, lr=0.01):
             size=[lr_input_dim, 1],
             param_attr=fluid.ParamAttr(
                 name="wide_embedding",
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.Constant(value=0.01),
             ),
             is_sparse=True,
         )
-        lr_pool = fluid.layers.sequence_pool(input=lr_embbding, pool_type="sum")
+        lr_pool = paddle.static.nn.sequence_lod.sequence_pool(
+            input=lr_embbding, pool_type="sum"
+        )
 
     with fluid.device_guard("gpu"):
         for i, dim in enumerate(dnn_layer_dims[1:]):
@@ -102,7 +101,7 @@ def net(batch_size=4, lr=0.01):
                 size=dim,
                 activation="relu",
                 weight_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant(value=0.01)
+                    initializer=paddle.nn.initializer.Constant(value=0.01)
                 ),
                 name='dnn-fc-%d' % i,
             )

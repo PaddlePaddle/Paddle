@@ -46,8 +46,8 @@ def generator():
 
 
 def net():
-    x = fluid.layers.data(name="x", shape=[3], dtype='float32')
-    y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+    x = paddle.static.data(name="x", shape=[-1, 3], dtype='float32')
+    y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
     # test int64 value
     zero = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)

@@ -30,7 +30,7 @@ class ConditionalBlockTest(unittest.TestCase):
         main_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(main_program, startup_program):
-            data = layers.data(name='X', shape=[1], dtype='float32')
+            data = paddle.static.data(name='X', shape=[-1, 1], dtype='float32')
             data.stop_gradient = False
             cond = ConditionalBlock(inputs=[data])
             out = paddle.tensor.create_tensor(dtype='float32')

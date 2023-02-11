@@ -14,12 +14,19 @@
 
 import paddle
 from paddle.fluid import core
+from paddle.utils import deprecated
 
 __all__ = [
     'synchronize',
 ]
 
 
+@deprecated(
+    since="2.5.0",
+    update_to="paddle.device.synchronize",
+    level=1,
+    reason="synchronize in paddle.device.xpu will be removed in future",
+)
 def synchronize(device=None):
     '''
     Wait for the compute on the given XPU device to finish.

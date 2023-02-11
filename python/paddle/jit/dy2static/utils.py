@@ -1512,12 +1512,11 @@ def _out_grad_names(program_desc, fwd_end_op_index, out_size):
     """
     names = []
     for i in range(
-        fwd_end_op_index + 1,
-        min(fwd_end_op_index + 2 * out_size, program_desc.block(0).op_size()),
-        2,
+        fwd_end_op_index,
+        min(fwd_end_op_index + out_size, program_desc.block(0).op_size()),
     ):
         op = program_desc.block(0).op(i)
-        if op.type() == 'fill_constant':
+        if op.type() == 'fill_any_like':
             var_name = op.output('Out')[0]
             names.append(var_name)
     return names

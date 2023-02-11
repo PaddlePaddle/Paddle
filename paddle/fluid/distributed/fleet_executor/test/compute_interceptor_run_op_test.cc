@@ -77,9 +77,8 @@ TEST(ComputeInterceptor, Compute) {
   // FIXME: don't delete, otherwise interceptor will use undefined node
   TaskNode* source =
       new TaskNode(0, SOURCE_ID, 2);  // rank, task_id, max_run_times
-  TaskNode* node_a =
-      new TaskNode(0, ops, 0, 0, 2, 0);  // role, ops, rank, task_id
-  TaskNode* node_b = new TaskNode(0, 0, 1, 2, 0);
+  TaskNode* node_a = new TaskNode(0, ops, 0, 0, 2);  // role, ops, rank, task_id
+  TaskNode* node_b = new TaskNode(0, 0, 1, 2);
   TaskNode* sink = new TaskNode(0, SINK_ID, 2);
 
   // source->a->b->sink

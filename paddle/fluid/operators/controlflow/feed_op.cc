@@ -267,62 +267,15 @@ PD_REGISTER_GENERAL_KERNEL(
     ALL_LAYOUT,
     paddle::operators::FeedStringsKernel<phi::XPUContext>,
     ALL_DTYPE) {}
-#elif defined(PADDLE_WITH_ASCEND_CL)
-PD_REGISTER_GENERAL_KERNEL(
-    feed_dense_tensor,
-    npu,
-    ALL_LAYOUT,
-    paddle::operators::FeedDenseTensorKernel<phi::CustomContext>,
-    ALL_DTYPE) {}
-PD_REGISTER_GENERAL_KERNEL(
-    feed_sparse_coo_tensor,
-    npu,
-    ALL_LAYOUT,
-    paddle::operators::FeedSparseCooTensorKernel<phi::CustomContext>,
-    ALL_DTYPE) {}
-PD_REGISTER_GENERAL_KERNEL(
-    feed_strings,
-    npu,
-    ALL_LAYOUT,
-    paddle::operators::FeedStringsKernel<phi::CustomContext>,
-    ALL_DTYPE) {}
-#elif defined(PADDLE_WITH_MLU)
-PD_REGISTER_GENERAL_KERNEL(
-    feed_dense_tensor,
-    CustomMLU,
-    ALL_LAYOUT,
-    paddle::operators::FeedDenseTensorKernel<phi::CustomContext>,
-    ALL_DTYPE) {}
-PD_REGISTER_GENERAL_KERNEL(
-    feed_sparse_coo_tensor,
-    CustomMLU,
-    ALL_LAYOUT,
-    paddle::operators::FeedSparseCooTensorKernel<phi::CustomContext>,
-    ALL_DTYPE) {}
-PD_REGISTER_GENERAL_KERNEL(
-    feed_strings,
-    CustomMLU,
-    ALL_LAYOUT,
-    paddle::operators::FeedStringsKernel<phi::CustomContext>,
-    ALL_DTYPE) {}
-
-#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
-PD_REGISTER_GENERAL_KERNEL(
-    feed_dense_tensor,
-    custom_cpu,
-    ALL_LAYOUT,
-    paddle::operators::FeedDenseTensorKernel<phi::CustomContext>,
-    ALL_DTYPE) {}
-PD_REGISTER_GENERAL_KERNEL(
-    feed_sparse_coo_tensor,
-    custom_cpu,
-    ALL_LAYOUT,
-    paddle::operators::FeedSparseCooTensorKernel<phi::CustomContext>,
-    ALL_DTYPE) {}
-PD_REGISTER_GENERAL_KERNEL(
-    feed_strings,
-    custom_cpu,
-    ALL_LAYOUT,
-    paddle::operators::FeedStringsKernel<phi::CustomContext>,
-    ALL_DTYPE) {}
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+namespace paddle {
+namespace operators {
+template void FeedDenseTensorKernel<phi::CustomContext>(
+    const phi::CustomContext& dev_ctx,
+    const phi::ExtendedTensor& x,
+    int col,
+    phi::DenseTensor* out);
+}  // namespace operators
+}  // namespace paddle
 #endif

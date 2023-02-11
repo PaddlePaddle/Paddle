@@ -71,7 +71,7 @@ class TestExpandGradComp(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         paddle.disable_static()
-        core.set_prim_enabled(False)
+        core._set_prim_backward_enabled(False)
 
     def test_comp(self):
         def func(primal, cotangent, shape):
@@ -93,11 +93,11 @@ class TestExpandGradComp(unittest.TestCase):
             )[0]
 
         def actual(primal, cotangent, shape):
-            core.set_prim_enabled(True)
+            core._set_prim_backward_enabled(True)
             return func(primal, cotangent, shape)
 
         def desired(primal, cotangent, shape):
-            core.set_prim_enabled(False)
+            core._set_prim_backward_enabled(False)
             return func(primal, cotangent, shape)
 
         np.testing.assert_allclose(

@@ -18,7 +18,7 @@ import logging
 from collections import defaultdict
 
 import paddle
-from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
+
 from paddle.fluid.framework import (
     Program,
     Variable,
@@ -39,7 +39,6 @@ from .backward import (
     _get_no_grad_set_name,
 )
 from .framework import program_guard
-from .initializer import Constant
 from .layer_helper import LayerHelper
 from .dygraph import base as imperative_base
 from .dygraph import no_grad
@@ -397,7 +396,8 @@ class Optimizer:
 
             lr_value = float(self._learning_rate())
             self.helper.set_variable_initializer(
-                lr_var, initializer=Constant(value=lr_value)
+                lr_var,
+                initializer=paddle.nn.initializer.Constant(value=lr_value),
             )
             return
 
@@ -713,7 +713,10 @@ class Optimizer:
             device = self._get_device_for_param(param.name)
         with device_guard(device):
             self.helper.set_variable_initializer(
-                var, initializer=Constant(value=float(fill_value))
+                var,
+                initializer=paddle.nn.initializer.Constant(
+                    value=float(fill_value)
+                ),
             )
 
         if in_dygraph_mode():
@@ -774,7 +777,10 @@ class Optimizer:
             device = 'cpu'
         with device_guard(device):
             self.helper.set_variable_initializer(
-                var, initializer=Constant(value=float(fill_value))
+                var,
+                initializer=paddle.nn.initializer.Constant(
+                    value=float(fill_value)
+                ),
             )
 
         if in_dygraph_mode():
@@ -893,11 +899,18 @@ class Optimizer:
         self._create_global_learning_rate()
 
         if in_dygraph_mode():
-            for param_and_grad in parameters_and_grads:
-                if param_and_grad[1] is None:
-                    continue
-                if param_and_grad[0].trainable is True:
-                    self._append_optimize_op(target_block, param_and_grad)
+            found_inf = self._get_auxiliary_var('found_inf')
+            if found_inf:
+                if isinstance(found_inf, core.eager.Tensor):
+                    self._set_auxiliary_var('found_inf', True)
+            else:
+                if isinstance(found_inf, core.eager.Tensor):
+                    self._set_auxiliary_var('found_inf', False)
+                for param_and_grad in parameters_and_grads:
+                    if param_and_grad[1] is None:
+                        continue
+                    if param_and_grad[0].trainable is True:
+                        self._append_optimize_op(target_block, param_and_grad)
         else:
             for param_and_grad in parameters_and_grads:
                 if param_and_grad[1] is None:
@@ -931,6 +944,10 @@ class Optimizer:
         :param loss: the loss variable.
         :param startup_program: the startup program
         """
+        from paddle.distributed.distribute_lookup_table import (
+            find_distributed_lookup_table,
+        )
+
         program = framework.default_main_program()
         global_block = framework.default_main_program().global_block()
         table_name = find_distributed_lookup_table(program)
@@ -1218,10 +1235,12 @@ class Optimizer:
         # NOTE(zhiqiu): the initializer should be set after coalesce_tensor op,
         # so the shape of flatten_param and flatten_grad will be inferred.
         self.helper.set_variable_initializer(
-            flatten_param, initializer=Constant(0.0)
+            flatten_param,
+            initializer=paddle.nn.initializer.Constant(0.0),
         )
         self.helper.set_variable_initializer(
-            flatten_grad, initializer=Constant(0.0)
+            flatten_grad,
+            initializer=paddle.nn.initializer.Constant(0.0),
         )
 
         return [(flatten_param, flatten_grad)]
@@ -1431,8 +1450,8 @@ class SGDOptimizer(Optimizer):
             place = fluid.CPUPlace()
             main = fluid.Program()
             with fluid.program_guard(main):
-                x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-                y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+                x = paddle.static.data(name='x', shape=[-1, 13], dtype='float32')
+                y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
                 y_predict = paddle.static.nn.fc(x, size=1, activation=None)
                 cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
                 avg_cost = paddle.mean(cost)
@@ -1623,8 +1642,8 @@ class MomentumOptimizer(Optimizer):
             place = fluid.CPUPlace()
             main = fluid.Program()
             with fluid.program_guard(main):
-                x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-                y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+                x = paddle.static.data(name='x', shape=[-1, 13], dtype='float32')
+                y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
                 y_predict = paddle.static.nn.fc(x, size=1, activation=None)
                 cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
                 avg_cost = paddle.mean(cost)
@@ -1772,8 +1791,8 @@ class LarsMomentumOptimizer(Optimizer):
 
             paddle.enable_static()
             np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
-            inp = fluid.layers.data(
-                name="inp", shape=[2, 2], append_batch_size=False)
+            inp = paddle.static.data(
+                name="inp", shape=[2, 2], dtype='float32')
             out = paddle.static.nn.fc(inp, size=3)
             out = paddle.sum(out)
             optimizer = fluid.optimizer.LarsMomentumOptimizer(learning_rate=0.001, momentum=0.9)
@@ -2764,7 +2783,7 @@ class DpsgdOptimizer(Optimizer):
           train_program = fluid.Program()
           startup_program = fluid.Program()
           with fluid.program_guard(train_program, startup_program):
-              data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+              data = paddle.static.data(name='X', shape=[-1,1], dtype='float32')
               hidden = paddle.static.nn.fc(x=data, size=10)
               loss = paddle.mean(hidden)
               optimizer = fluid.optimizer.Dpsgd(learning_rate=0.01, clip=10.0, batch_size=16.0, sigma=1.0)
@@ -3217,8 +3236,8 @@ class RMSPropOptimizer(Optimizer):
             place = fluid.CPUPlace()
             main = fluid.Program()
             with fluid.program_guard(main):
-                x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-                y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+                x = paddle.static.data(name='x', shape=[-1, 13], dtype='float32')
+                y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
                 y_predict = paddle.static.nn.fc(x, size=1, activation=None)
                 cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
                 avg_cost = paddle.mean(cost)
@@ -3415,8 +3434,8 @@ class FtrlOptimizer(Optimizer):
             place = fluid.CPUPlace()
             main = fluid.Program()
             with fluid.program_guard(main):
-                x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-                y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+                x = paddle.static.data(name='x', shape=[-1, 13], dtype='float32')
+                y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
                 y_predict = paddle.static.nn.fc(x, size=1, activation=None)
                 cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
                 avg_cost = paddle.mean(cost)
@@ -4354,11 +4373,12 @@ class PipelineOptimizer:
             import paddle
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
+            import numpy as np
 
             paddle.enable_static()
             with fluid.device_guard("gpu:0"):
-                x = fluid.layers.data(name='x', shape=[1], dtype='int64', lod_level=0)
-                y = fluid.layers.data(name='y', shape=[1], dtype='int64', lod_level=0)
+                x = paddle.static.data(name='x', shape=[-1, 1], dtype='int64', lod_level=0)
+                y = paddle.static.data(name='y', shape=[-1, 1], dtype='int64', lod_level=0)
                 data_loader = fluid.io.DataLoader.from_generator(
                     feed_list=[x, y],
                     capacity=64,
@@ -6332,8 +6352,8 @@ class RecomputeOptimizer(Optimizer):
                 )
                 sum_cost = paddle.mean(cost)
                 return sum_cost, fc_1, prediction
-            input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
-            input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+            input_x = paddle.static.data(name="x", shape=[-1,32], dtype='float32')
+            input_y = paddle.static.data(name="y", shape=[-1,1], dtype='int64')
             cost, fc_1, pred = mlp(input_x, input_y)
 
             sgd = fluid.optimizer.Adam(learning_rate=0.01)
@@ -6410,8 +6430,8 @@ class RecomputeOptimizer(Optimizer):
                     sum_cost = paddle.mean(cost)
                     return sum_cost, fc_1, prediction
 
-                input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
-                input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+                input_x = paddle.static.data(name="x", shape=[-1,32], dtype='float32')
+                input_y = paddle.static.data(name="y", shape=[-1,1], dtype='int64')
                 cost, fc_1, pred = mlp(input_x, input_y)
                 print("Finished FF")
 
@@ -6458,8 +6478,8 @@ class RecomputeOptimizer(Optimizer):
                     return sum_cost, fc_1, prediction
 
 
-                input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
-                input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+                input_x = paddle.static.data(name="x", shape=[-1,32], dtype='float32')
+                input_y = paddle.static.data(name="y", shape=[-1,1], dtype='int64')
                 cost, fc_1, pred = mlp(input_x, input_y)
                 print("Finished FF")
 
@@ -6952,8 +6972,8 @@ class RecomputeOptimizer(Optimizer):
                     return sum_cost, fc_1, prediction
 
 
-                input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
-                input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+                input_x = paddle.static.data(name="x", shape=[-1,32], dtype='float32')
+                input_y = paddle.static.data(name="y", shape=[-1,1], dtype='int64')
                 cost, fc_1, pred = mlp(input_x, input_y)
                 print("Finished FF")
 
@@ -7033,8 +7053,8 @@ class RecomputeOptimizer(Optimizer):
                     sum_cost = paddle.mean(cost)
                     return sum_cost, fc_1, prediction
 
-                input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
-                input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+                input_x = paddle.static.data(name="x", shape=[-1,32], dtype='float32')
+                input_y = paddle.static.data(name="y", shape=[-1,1], dtype='int64')
                 cost, fc_1, pred = mlp(input_x, input_y)
                 print("Finished FF")
 
@@ -7120,8 +7140,8 @@ class LookaheadOptimizer:
 
             paddle.enable_static()
 
-            x = fluid.layers.data(name='x', shape=[2], dtype='float32')
-            label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+            x = paddle.static.data(name='x', shape=[-1,2], dtype='float32')
+            label = paddle.static.data(name="label", shape=[-1,1], dtype="int64")
             y = paddle.static.nn.fc(x=[x], size=2, activation="softmax")
             loss = paddle.nn.functional.cross_entropy(
                 input=y, label=label,
@@ -7311,8 +7331,8 @@ class GradientMergeOptimizer:
             sum_cost = paddle.mean(cost)
             return sum_cost, fc_1, prediction
 
-        input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
-        input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+        input_x = paddle.static.data(name="x", shape=[-1,32], dtype='float32')
+        input_y = paddle.static.data(name="y", shape=[-1,1], dtype='int64')
         cost, fc_1, pred = mlp(input_x, input_y)
         sgd = fluid.optimizer.Adam(learning_rate=0.01)
         sgd = fluid.optimizer.GradientMergeOptimizer(sgd, k_steps=4, avg=True)

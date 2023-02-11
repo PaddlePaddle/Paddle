@@ -22,7 +22,6 @@ from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import XPUOpTestWrapper, create_test_class
 
 import paddle
-import paddle.fluid as fluid
 
 
 def conv3d_forward_naive(
@@ -567,17 +566,15 @@ class XPUTestConv3DOp_v2(XPUOpTestWrapper):
 class TestConv3DAPI(unittest.TestCase):
     def test_api(self):
 
-        input_NDHWC = fluid.layers.data(
+        input_NDHWC = paddle.static.data(
             name="input_NDHWC",
             shape=[2, 5, 5, 5, 3],
-            append_batch_size=False,
             dtype="float32",
         )
 
-        input_NCDHW = fluid.layers.data(
+        input_NCDHW = paddle.static.data(
             name="input_NCDHW",
             shape=[2, 3, 5, 5, 3],
-            append_batch_size=False,
             dtype="float32",
         )
 
@@ -650,10 +647,9 @@ class TestConv3DAPI(unittest.TestCase):
 
 class TestConv3DAPI_Error(unittest.TestCase):
     def test_api(self):
-        input = fluid.layers.data(
+        input = paddle.static.data(
             name="input",
             shape=[2, 5, 5, 5, 4],
-            append_batch_size=False,
             dtype="float32",
         )
 
@@ -736,10 +732,9 @@ class TestConv3DAPI_Error(unittest.TestCase):
         self.assertRaises(ValueError, run_5)
 
         # ValueError: channel dimmention
-        x = fluid.layers.data(
+        x = paddle.static.data(
             name="x",
             shape=[2, 5, 5, 5, -1],
-            append_batch_size=False,
             dtype="float32",
         )
 

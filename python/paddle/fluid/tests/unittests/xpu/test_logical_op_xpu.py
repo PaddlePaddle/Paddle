@@ -47,7 +47,7 @@ class XPUTestLogicalAnd(XPUOpTestWrapper):
             self.op_type = 'logical_and'
 
             # special range for bool dtype
-            if self.dtype == np.dtype(np.bool):
+            if self.dtype == np.dtype(np.bool_):
                 self.low = 0
                 self.high = 2
 
@@ -108,7 +108,7 @@ class XPUTestLogicalOr(XPUOpTestWrapper):
             self.op_type = 'logical_or'
 
             # special range for bool dtype
-            if self.dtype == np.dtype(np.bool):
+            if self.dtype == np.dtype(np.bool_):
                 self.low = 0
                 self.high = 2
 
@@ -169,7 +169,7 @@ class XPUTestLogicalXor(XPUOpTestWrapper):
             self.op_type = 'logical_xor'
 
             # special range for bool dtype
-            if self.dtype == np.dtype(np.bool):
+            if self.dtype == np.dtype(np.bool_):
                 self.low = 0
                 self.high = 2
 
@@ -230,7 +230,7 @@ class XPUTestLogicalNot(XPUOpTestWrapper):
             self.op_type = 'logical_not'
 
             # special range for bool dtype
-            if self.dtype == np.dtype(np.bool):
+            if self.dtype == np.dtype(np.bool_):
                 self.low = 0
                 self.high = 2
 

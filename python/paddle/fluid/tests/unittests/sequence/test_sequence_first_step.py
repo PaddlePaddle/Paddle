@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 
-import paddle.fluid as fluid
+import paddle
 from paddle.fluid.framework import Program, program_guard
 
 sys.path.append("../")
@@ -29,20 +29,19 @@ class TestSequenceFirstStepOpError(unittest.TestCase):
             def test_Variable():
                 # the input must be Variable
                 input_data = np.random.randint(1, 5, [4]).astype("int64")
-                fluid.layers.sequence_last_step(input_data)
+                paddle.static.nn.sequence_lod.sequence_last_step(input_data)
 
             self.assertRaises(TypeError, test_Variable)
 
             def test_input_dtype():
                 # the dtype of input must be int64
-                type_data = fluid.layers.data(
+                type_data = paddle.static.data(
                     name='type_data',
                     shape=[7, 1],
-                    append_batch_size=False,
                     dtype='int64',
                     lod_level=1,
                 )
-                fluid.layers.sequence_last_step(type_data)
+                paddle.static.nn.sequence_lod.sequence_last_step(type_data)
 
             self.assertRaises(TypeError, test_input_dtype)
 

@@ -26,6 +26,11 @@ namespace framework {
 using FeedType =
     paddle::variant<phi::DenseTensor, Strings, phi::SparseCooTensor>;
 
+template <>
+struct PhiVectorType<FeedType> {
+  const char *type_name = "PhiVectorFeedType";
+};
+
 using FeedList = paddle::framework::PhiVector<FeedType>;
 
 using FetchType = paddle::variant<phi::DenseTensor,
