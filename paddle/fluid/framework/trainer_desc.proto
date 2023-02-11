@@ -14,8 +14,8 @@ limitations under the License. */
 
 syntax = "proto2";
 option optimize_for = LITE_RUNTIME;
-import "data_feed.proto";
-import "framework.proto";
+import "paddle/fluid/framework/data_feed.proto";
+import "paddle/fluid/framework/framework.proto";
 package paddle.framework;
 
 message TrainerDesc {
