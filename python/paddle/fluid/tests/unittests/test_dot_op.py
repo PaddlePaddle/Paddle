@@ -102,6 +102,21 @@ class DotOpEmptyInput(unittest.TestCase):
 
         self.assertEquals(np_out, pd_out)
 
+    def test_2d_input(self):
+        data = np.array([], dtype=np.float32)
+        x = paddle.to_tensor(np.reshape(data, [0, 0]), dtype='float32')
+        y = paddle.to_tensor(np.reshape(data, [0, 0]), dtype='float32')
+        pd_out = paddle.dot(x, y)
+
+        self.assertEqual(pd_out.shape, (0, 1))
+
+    def test_3d_input_error(self):
+        data = np.array([], dtype=np.float32)
+        x = paddle.to_tensor(np.reshape(data, [0, 0, 0]), dtype='float32')
+        y = paddle.to_tensor(np.reshape(data, [0, 0, 0]), dtype='float32')
+
+        self.assertRaises(Exception, paddle.dot, x, y)
+
 
 class DotOpBatch(DotOp):
     def init_input_output(self):
