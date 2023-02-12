@@ -38,18 +38,27 @@ def prim_enabled():
     """
     Note:
         **ONLY available in the static graph mode.**
+
     Shows whether the automatic differentiation mechanism based on
     automatic differential basic operators is ON. Defaults to OFF.
+
     Returns:
         flag(bool): Whether the automatic differentiation mechanism based on automatic differential basic operators is ON.
+
     Examples:
+
         .. code-block:: python
+
             import paddle
             from paddle.incubate.autograd import enable_prim, disable_prim, prim_enabled
+
             paddle.enable_static()
             enable_prim()
+
             print(prim_enabled()) # True
+
             disable_prim()
+
             print(prim_enabled()) # False
     """
     return prim_option.get_status()
@@ -60,14 +69,20 @@ def enable_prim():
     """
     Note:
         **ONLY available in the static graph mode.**
+
     Turns ON automatic differentiation mechanism based on automatic
     differential basic operators.
+
     Examples:
+
         .. code-block:: python
+
             import paddle
             from paddle.incubate.autograd import enable_prim, prim_enabled
+
             paddle.enable_static()
             enable_prim()
+
             print(prim_enabled()) # True
     """
     prim_option.set_status(True)
@@ -78,16 +93,24 @@ def disable_prim():
     """
     Note:
         **ONLY available in the static graph mode.**
+
     Turns OFF automatic differentiation mechanism based on automatic
     differential basic operators.
+
     Examples:
+
         .. code-block:: python
+
             import paddle
             from paddle.incubate.autograd import enable_prim, disable_prim, prim_enabled
+
             paddle.enable_static()
             enable_prim()
+
             print(prim_enabled()) # True
+
             disable_prim()
+
             print(prim_enabled()) # False
     """
     prim_option.set_status(False)
