@@ -40,8 +40,8 @@ std::vector<uint8_t> ParseStrResponse(const std::string& response) {
 
 std::vector<int> ParseIdsResponse(const std::string& response) {
   const std::string res = json::parse(response).dump();
-  // tokenize
-  return std::vector<int>(res.begin(), res.end());
+  // this op must be called after tokenizer init in rpc_call op
+  return platform::RpcTokenizer::Instance().GetIdsFromText(res);
 }
 
 void ParseResponse(phi::DenseTensor* out,

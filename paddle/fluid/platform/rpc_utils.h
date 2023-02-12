@@ -27,6 +27,17 @@
 namespace paddle {
 namespace platform {
 
+class BasicTokenizer {
+ public:
+  explicit BasicTokenizer(bool do_lower_case = false)
+      : do_lower_case_(do_lower_case) {}
+
+  std::vector<std::wstring> Tokenize(const std::wstring& text);
+
+ private:
+  bool do_lower_case_;
+};
+
 class WordpieceTokenizer {
  public:
   WordpieceTokenizer(const std::unordered_map<std::wstring, int>& vocab,
@@ -36,14 +47,40 @@ class WordpieceTokenizer {
         unk_token_(unk_token),
         max_chars_per_word_(max_chars_per_word) {}
 
+  WordpieceTokenizer(const std::wstring unk_token = L"[UNK]",
+                     int max_chars_per_word = 100)
+      : unk_token_(unk_token), max_chars_per_word_(max_chars_per_word) {}
+
+  void SetVocab(const std::unordered_map<std::wstring, int>& vocab) {
+    vocab_ = vocab;
+  }
+
   std::vector<std::wstring> Tokenize(const std::wstring& text);
 
  private:
-  std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> converter_;
-
+  std::unordered_map<std::wstring, int> vocab_;
   const std::wstring unk_token_;
   int max_chars_per_word_;
-  std::unordered_map<std::wstring, int> vocab_;
+};
+
+class FullTokenizer {
+ public:
+  FullTokenizer(const std::unordered_map<std::wstring, int>& vocab,
+                bool do_lower_case = false)
+      : basic_tokenizer_(do_lower_case), wordpiece_tokenizer_(vocab) {}
+
+  explicit FullTokenizer(bool do_lower_case = false)
+      : basic_tokenizer_(do_lower_case) {}
+
+  void SetVocab(const std::unordered_map<std::wstring, int>& vocab) {
+    wordpiece_tokenizer_.SetVocab(vocab);
+  }
+
+  std::vector<std::wstring> Tokenize(const std::string& text);
+
+ private:
+  BasicTokenizer basic_tokenizer_;
+  WordpieceTokenizer wordpiece_tokenizer_;
 };
 
 class RpcTokenizer {
@@ -64,13 +101,15 @@ class RpcTokenizer {
                               bool aggressive_break = false,
                               const std::string& stop_token = "[gEND]");
 
+  // NOTE: an exception will be raised if word not exist
+  int GetIdFromWord(const std::wstring& word) { return words_to_ids_.at(word); }
+
   std::vector<int> GetIdsFromText(const std::string& text);
 
  private:
-  std::vector<std::wstring> Tokenize(const std::string& text);
-
- private:
   std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> converter_;
+
+  FullTokenizer tokenizer_;
 
   std::string path_;
   std::unordered_map<int, std::string> ids_to_words_;

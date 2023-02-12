@@ -16,11 +16,13 @@
 
 #include <unicode/normlzr.h>
 #include <unicode/platform.h>
+#include <unicode/uchar.h>
 #include <unicode/uconfig.h>
 #include <unicode/unistr.h>
 
 #include <algorithm>
 #include <fstream>
+#include <regex>
 #include <sstream>
 #include <unordered_set>
 
@@ -30,6 +32,9 @@
 
 namespace paddle {
 namespace platform {
+
+// globals
+static std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> converter;
 
 // utils
 static inline bool StartsWith(const std::string& str,
@@ -58,6 +63,74 @@ static std::string Replace(const std::string& str,
   }
   ss << str.substr(start_pos);
   return ss.str();
+}
+
+static std::vector<std::string> Split(std::string split_text,
+                                      std::regex pattern) {
+  std::vector<std::string> output;
+  std::sregex_token_iterator substrings(
+      split_text.begin(), split_text.end(), pattern, -1);
+  std::sregex_token_iterator delimiters(
+      split_text.begin(), split_text.end(), pattern, 0);
+  std::sregex_token_iterator end;
+  while (substrings != end && delimiters != end) {
+    output.emplace_back(*substrings++);
+    output.emplace_back(*delimiters++);
+  }
+  if (substrings != end) {
+    output.emplace_back(*substrings++);
+  }
+  return output;
+}
+
+static void ToLower(std::wstring* input) {
+  for (unsigned int i = 0; i < input.length(); ++i) {
+    input[i] = towlower(input[i]);
+  }
+}
+
+static std::wstring SubStr(const std::wstring& input, int a) {
+  std::wstring substring;
+  for (int i = 0; static_cast<size_t>(i) < input.size() && i < a; i++) {
+    substring += input[i];
+  }
+  return substring;
+}
+
+static std::vector<std::wstring> WhitespaceTokenize(const std::wstring& text) {
+  std::vector<std::wstring> tokens;
+  std::wstringstream ss(text);
+  std::wstring token;
+  while (ss >> token) {
+    tokens.emplace_back(token);
+  }
+  return tokens;
+}
+
+static inline bool IsWhitespace(const wchar_t& c) {
+  if (c == L' ' | c == L'\t' || c == L'\n' || c == L'\r') {
+    return true;
+  }
+  int8_t category = u_charType(UChar32(c));
+  return (U_MASK(category) & U_GC_ZS_MASK);
+}
+
+static inline bool IsControl(const wchar_t& c) {
+  if (c == L'\t' || c == L'\n' || c == L'\r') {
+    return false;
+  }
+  int8_t category = u_charType(UChar32(c));
+  return (U_MASK(category) & U_GC_C_MASK);
+}
+
+static inline bool IsPunct(const wchar_t& c) {
+  uint32_t cp = uint32_t(c);
+  if ((cp >= 33 && cp <= 47) || (cp >= 58 && cp <= 64) ||
+      (cp >= 91 && cp <= 96) || (cp >= 123 && cp <= 126)) {
+    return true;
+  }
+  int8_t category = u_charType(UChar32(c));
+  return (U_MASK(category) & U_GC_P_MASK);
 }
 
 static inline bool IsChineseChar(wchar_t c) {
@@ -113,23 +186,134 @@ static inline std::string ByteToHex(uint8_t c) {
   return res;
 }
 
-// WordpieceTokenizer
-std::vector<std::wstring> WhitespaceTokenize(const std::wstring& text) {
-  std::vector<std::wstring> tokens;
-  std::wstringstream ss(text);
-  std::wstring token;
-  while (ss >> token) {
-    tokens.emplace_back(token);
+// BasicTokenizer
+std::wstring StripAccents(const std::wstring& text) {
+  UErrorCode err = U_ZERO_ERROR;
+  auto* normalizer = icu::Normalizer2::getNFDInstance(err);
+  if (U_FAILURE(err)) {
+    PADDLE_THROW(phi::errors::Unavailable("Cannot init unicode normalizer."));
   }
-  return tokens;
+
+  icu::UnicodeString unicode_text =
+      icu::UnicodeString::fromUTF8(converter.to_bytes(text));
+  unicode_text = normalizer->normalize(unicode_text, err);
+  if (U_FAILURE(err)) {
+    PADDLE_THROW(phi::errors::InvalidArgument("Cannot normalize the input."));
+  }
+
+  icu::UnicodeString normalized_text;
+  int sz = unicode_text.length();
+  for (int i = 0; i < sz; ++i) {
+    normalized_text += unicode_text[i];
+  }
+
+  std::string res;
+  unicode_text.toUTF8String(res);
+  return converter.from_bytes(res);
 }
 
+std::wstring SplitOnPunc(const std::wstring& text) {
+  std::wstring output;
+  std::wstring s;
+  int i = 0;
+  int n = text.size();
+  while (i < n) {
+    wchar_t c = text[i];
+    if (IsPunct(c)) {
+      if (s.size() > 0) {
+        output += s;
+        output += L' ';
+        s.clear();
+      }
+      if (IsChinesePunct(c)) {
+        s += c;
+        s += L' ';
+      } else if (i + 1 == n) {
+        if (n == 1) {
+          s += c;
+        } else {
+          s += L"##";
+          s += c;
+        }
+      } else {
+        if (i == 0) {
+          s += c;
+          s += L"@@ ";
+        } else {
+          s += L"##";
+          s += c;
+          s += L"@@ ";
+        }
+      }
+    } else {
+      s += c;
+    }
+    i += 1;
+  }
+  if (s.size() > 0) {
+    output += L' ';
+    output += s;
+    s.clear();
+  }
+  return output;
+}
+
+std::wstring TokenizeChineseChars(const std::wstring& text) {
+  std::wstring output;
+  for (const wchar_t& c : text) {
+    if (IsChineseChar(c)) {
+      output += L' ';
+      output += c;
+      output += L' ';
+    } else {
+      output += c;
+    }
+  }
+  return output;
+}
+
+std::wstring CleanText(const std::wstring& text) {
+  std::wstring output;
+  for (const wchar_t& c : text) {
+    if (c == 0 || c == 0xfffd || IsControl(c)) {
+      continue;
+    }
+    if (IsWhitespace(c)) {
+      output += L' ';
+    } else {
+      output += c;
+    }
+  }
+  return output;
+}
+
+std::vector<std::wstring> BasicTokenizer::Tokenize(const std::wstring& text) {
+  auto cleaned_text = CleanText(text);
+  auto chinese_tokenized_text = TokenizeChineseChars(cleaned_text);
+  auto orig_tokens = WhitespaceTokenize(chinese_tokenized_text);
+
+  std::wstring output_string;
+  for (auto& token : orig_tokens) {
+    if (do_lower_case_) {
+      ToLower(&token);
+    }
+    auto nfd_token = StripAccents(token);
+    if (output_string.size() > 0) {
+      output_string += L' ';
+    }
+    output_string += SplitOnPunc(nfd_token);
+  }
+  return WhitespaceTokenize(output_string);
+}
+
+// WordpieceTokenizer
 std::vector<std::wstring> WordpieceTokenizer::Tokenize(
     const std::wstring& text) {
   std::vector<std::wstring> output_tokens;
 
   for (auto& token : WhitespaceTokenize(text)) {
-    if (token.size() > max_chars_per_word_) {
+    int n = token.size();
+    if (n > max_chars_per_word_) {
       output_tokens.emplace_back(unk_token_);
       continue;
     }
@@ -138,7 +322,6 @@ std::vector<std::wstring> WordpieceTokenizer::Tokenize(
     std::vector<std::wstring> unk_tokens;
 
     int start = 0;
-    int n = token.size();
     while (start < n) {
       bool is_bad = false;
       int end = n;
@@ -165,10 +348,10 @@ std::vector<std::wstring> WordpieceTokenizer::Tokenize(
           } else if (end == start + 1) {
             unk_tokens.clear();
             is_bad = true;
-            for (auto& sub_byte : converter_.to_bytes(substr)) {
+            for (auto& sub_byte : converter.to_bytes(substr)) {
               std::string unk_token_str = "[BFB_" + ByteToHex(sub_byte) + "]";
               const std::wstring unk_token =
-                  converter_.from_bytes(unk_token_str);
+                  converter.from_bytes(unk_token_str);
               if (vocab_.count(unk_token) > 0) {
                 unk_tokens.emplace_back(unk_token);
               }
@@ -193,9 +376,54 @@ std::vector<std::wstring> WordpieceTokenizer::Tokenize(
   return output_tokens;
 }
 
-// BasicTokenizer
+// FullTokenizer
+std::vector<std::wstring> FullTokenizer::Tokenize(const std::string& text) {
+  std::vector<std::wstring> split_tokens;
+  if (text.empty()) {
+    return split_tokens;
+  }
 
-// final tokenizer
+  std::string processed_text =
+      std::regex_replace(text, std::regex("\n"), "[<N>]");
+  processed_text =
+      std::regex_replace(processed_text, std::regex("\t"), "[<T>]");
+  processed_text =
+      std::regex_replace(processed_text, std::regex(R"(\s{4})"), "[<T>]");
+  processed_text =
+      std::regex_replace(processed_text, std::regex(R"(\s{2})"), "[<t>]");
+
+  // cout << processed_text << endl;
+  std::regex seperator("\\[<(T|N|t)>\\]");
+  std::vector<std::string> text_ls = Split(processed_text, seperator);
+  std::string missed_token = "[<S>]";
+  std::string unknown_token = "[BFB_";
+  auto decoded_missed_token = converter.from_bytes(missed_token);
+  auto decoded_unknwon_token = converter.from_bytes(unknown_token);
+  for (const std::string& sent : text_ls) {
+    if (sent == "[<N>]" || sent == "[<T>]" || sent == "[<t>]") {
+      split_tokens.push_back(converter.from_bytes(sent));
+    } else {
+      auto decoded_sent = converter.from_bytes(sent);
+      auto tokens = basic_tokenizer_.Tokenize(decoded_sent);
+      for (const std::wstring& token : tokens) {
+        auto sub_tokens = wordpiece_tokenizer_.Tokenize(token);
+
+        if (!split_tokens.empty() &&
+            SubStr(split_tokens.back(), 5) == decoded_unknwon_token &&
+            sub_tokens.front().substr(0, 5) == decoded_unknwon_token) {
+          split_tokens.push_back(decoded_missed_token);
+        }
+        for (const std::wstring& sub_token : sub_tokens) {
+          split_tokens.push_back(sub_token);
+        }
+      }
+    }
+  }
+
+  return split_tokens;
+}
+
+// RpcTokenizer
 void RpcTokenizer::Init(const std::string& path) {
   if (path_ == path) {
     return;
@@ -205,8 +433,11 @@ void RpcTokenizer::Init(const std::string& path) {
   int id;
   while (vocab_file >> word >> id) {
     ids_to_words_.emplace(id, word);
-    words_to_ids_.emplace(converter_.from_bytes(word), id);
+    words_to_ids_.emplace(converter.from_bytes(word), id);
   }
+  // update tokenizer
+  tokenizer_.SetVocab(words_to_ids_);
+  // update members
   path_ = path;
 }
 
@@ -301,23 +532,18 @@ std::vector<std::string> PostProcess(
       continue;
     }
 
-    static std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> converter;
     auto unicode_word = converter.from_bytes(word);
     bool is_chinese_char = IsChineseChar(unicode_word[0]);
     bool is_chinese_punct = IsChinesePunct(unicode_word[0]);
 
     if (is_chinese_char || is_chinese_punct || vocab.count(unicode_word) == 0) {
-      // 当前字符为中文或者中文标点，则直接插入
       if (!new_text.empty() && EndsWith(new_text.back(), "@@")) {
-        //// 前一个字符以@@结尾，则去掉
         auto& last_word = new_text.back();
         last_word = Replace(last_word, "@@", "");
       }
       new_text.emplace_back(word);
     } else if (!StartsWith(word, "##")) {
-      // 当前字符不以##开头
       if (!new_text.empty() && EndsWith(new_text.back(), "@@")) {
-        //// 前一个字符以@@结尾
         auto& last_word = new_text.back();
         last_word = Replace(last_word, "@@", "");
         new_text.emplace_back(word);
@@ -326,10 +552,8 @@ std::vector<std::string> PostProcess(
       } else {
         if (!new_text.empty() && !new_text.back().empty() &&
             IsChineseChar(converter.from_bytes(new_text.back())[0])) {
-          //// 不以@@结尾，但前一个字符为中文，则不加入空格
           new_text.emplace_back(word);
         } else {
-          //// 不以@@结尾，则额外加入空格
           if (!new_text.empty()) {
             new_text.emplace_back(" ");
           }
@@ -338,11 +562,9 @@ std::vector<std::string> PostProcess(
       }
     } else {
       if (!new_text.empty() && EndsWith(new_text.back(), "@@")) {
-        //// 前一个字符以@@结尾
         auto& last_word = new_text.back();
         last_word = last_word.substr(0, last_word.size() - 2);
       }
-      // 以##开头，则直接加入
       new_text.emplace_back(Replace(word, "##", ""));
     }
   }
@@ -367,6 +589,16 @@ std::string RpcTokenizer::GetWordsFromIds(std::vector<int> ids,
   }
   return paddle::string::join_strings(
       PostProcess(tokens, words_to_ids_, aggressive_break, stop_token), "");
+}
+
+std::vector<int> RpcTokenizer::GetIdsFromText(const std::string& text) {
+  std::vector<int> ids;
+  auto tokens = tokenizer_.Tokenize(text);
+  for (const auto& token : tokens) {
+    VLOG(3) << converter.to_bytes(token);
+    ids.emplace_back(GetIdFromWord(token));
+  }
+  return ids;
 }
 
 int RpcSend(const std::string& url,
