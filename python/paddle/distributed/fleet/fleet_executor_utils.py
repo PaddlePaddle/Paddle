@@ -109,7 +109,7 @@ class TaskNode:
             if self.vars_to_shape:
                 self.node.set_vars_to_shape(self.vars_to_shape)
             if self.vars_to_dtype:
-                self.node.set_vars_to_shape(self.vars_to_dtype)
+                self.node.set_vars_to_dtype(self.vars_to_dtype)
             for up in self.upstreams:
                 self.node.add_upstream_task(up[0], up[1], up[2])
             for down in self.downstreams:

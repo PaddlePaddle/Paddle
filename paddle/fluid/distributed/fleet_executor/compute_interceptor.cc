@@ -21,6 +21,7 @@
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/utils/dim.h"
 
@@ -37,13 +38,16 @@ void SetVarResult(const std::string& name,
                   const platform::Place& place,
                   const std::vector<int64_t>& dim_vec) {
   auto* var = scope->FindVar(name);
-  auto* tensor = var->GetMutable<phi::DenseTensor>();
+  phi::DenseTensor* tensor;
   if (!var) {
     VLOG(3) << "Create var and memory for var " << name;
+    tensor = var->GetMutable<phi::DenseTensor>();
     var = scope->Var(name);
     phi::DDim dims = phi::make_ddim(dim_vec);
     tensor->Resize(dims);
     tensor->mutable_data<T>(dims, place);
+  } else {
+    tensor = var->GetMutable<phi::DenseTensor>();
   }
 
   PADDLE_ENFORCE_EQ(
