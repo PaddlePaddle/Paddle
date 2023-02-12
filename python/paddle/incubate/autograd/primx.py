@@ -684,7 +684,7 @@ def _lower_composite(block, blacklist=[]):
             del block.vars[var_name]
         block._sync_with_cpp()
 
-        # composite ops may contain other ops, thus, call _lower_composite again.
+        # composite ops may contain other composite ops, thus, call _lower_composite again.
         if change:
             _lower_composite(block, blacklist)
         return
