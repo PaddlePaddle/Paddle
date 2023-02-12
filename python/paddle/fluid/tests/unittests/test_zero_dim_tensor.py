@@ -1628,28 +1628,29 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x.grad.shape, [])
 
     def test_prelu(self):
-        x = paddle.full([], 1.0, 'float32')
-        x.stop_gradient = False
-
-        w1 = paddle.to_tensor([0.25], dtype='float32')
-        out1 = paddle.nn.functional.prelu(x, w1)
+        x1 = paddle.full([], 1.0, 'float32')
+        x1.stop_gradient = False
+        w1 = paddle.full([], 0.25, dtype='float32')
+        out1 = paddle.nn.functional.prelu(x1, w1)
         out1.retain_grads()
         out1.backward()
         self.assertEqual(out1.shape, [])
         self.assertEqual(out1.numpy(), 1.0)
         self.assertEqual(out1.grad.shape, [])
-        self.assertEqual(x.grad.shape, [])
-        self.assertEqual(x.grad.numpy(), 1.0)
+        self.assertEqual(x1.grad.shape, [])
+        self.assertEqual(x1.grad.numpy(), 1.0)
 
+        x2 = paddle.full([], -1.0, 'float32')
+        x2.stop_gradient = False
         w2 = paddle.full([], 0.25, dtype='float32')
-        out2 = paddle.nn.functional.prelu(x, w2)
+        out2 = paddle.nn.functional.prelu(x2, w2)
         out2.retain_grads()
         out2.backward()
         self.assertEqual(out2.shape, [])
-        self.assertEqual(out2.numpy(), 1.0)
+        self.assertEqual(out2.numpy(), -0.25)
         self.assertEqual(out2.grad.shape, [])
-        self.assertEqual(x.grad.shape, [])
-        self.assertEqual(x.grad.numpy(), 1.0)
+        self.assertEqual(x2.grad.shape, [])
+        self.assertEqual(x2.grad.numpy(), 0.25)
 
     def test_while_loop(self):
         def cond(i, x):
