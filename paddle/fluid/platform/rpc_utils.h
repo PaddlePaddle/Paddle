@@ -92,10 +92,25 @@ class RpcTokenizer {
 
   void Init(const std::string& path);
 
+  void Init(const std::string& path,
+            const std::unordered_map<std::string, std::string>& special_set);
+
+  void SetSpecialSet(
+      const std::unordered_map<std::string, std::string>& special_set) {
+    special_set_ = special_set;
+  }
+
   bool Contains(int id) { return ids_to_words_.count(id) > 0; }
 
   // NOTE: an exception will be raised if id not exist
-  std::string GetWordFromId(int id) { return ids_to_words_.at(id); }
+  std::string GetWordFromId(int id) {
+    auto q = ids_to_words_.at(id);
+    if (special_set_.count(q) == 1) {
+      return special_set_.at(q);
+    } else {
+      return q;
+    }
+  }
 
   std::string GetWordsFromIds(std::vector<int> ids,
                               bool aggressive_break = false,
@@ -114,6 +129,7 @@ class RpcTokenizer {
   std::string path_;
   std::unordered_map<int, std::string> ids_to_words_;
   std::unordered_map<std::wstring, int> words_to_ids_;
+  std::unordered_map<std::string, std::string> special_set_;
 };
 
 class RpcRequestStore {

@@ -108,9 +108,11 @@ class RpcCallOpKernel : public framework::OpKernel<T> {
       service = "ids";
     } else {
       auto vocab_path = ctx.Attr<std::string>("vocab_path");
-      platform::RpcTokenizer::Instance().Init(vocab_path);
+      std::unordered_map<std::string, std::string> special;
+      platform::RpcTokenizer::Instance().Init(vocab_path, special);
       service = "str";
 
+      // NOTE: test tokenizer; remove them in prod env
       platform::RpcTokenizer::Instance().GetIdsFromText(
           "开心的emoji是😄，俄罗斯的拼音是：é luó sī， New York的拼音是niǔyuē");
       platform::RpcTokenizer::Instance().GetIdsFromText(

@@ -79,16 +79,18 @@ class RpcResultOpKernel : public framework::OpKernel<T> {
     auto& rpc_store = platform::RpcRequestStore::Instance();
     auto event = rpc_store.GetEvent(request_id);
 
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     bool ok = event->wait() == 0 && rpc_store.GetErrorCode(request_id) == 0;
     if (ok) {
       const std::string& resp = rpc_store.GetResponse(request_id);
       VLOG(3) << "Request id " << request_id << " raw response: " << resp;
 
-      auto* out = ctx.Output<phi::DenseTensor>("Out");
       const std::string res_type = ctx.Attr<std::string>("res_type");
       VLOG(3) << "Request id " << request_id << " result type: " << res_type;
 
       ParseResponse(out, res_type, ctx.device_context(), resp);
+    } else {
+      ctx.device_context().Alloc<float>(out);
     }
 
     auto* succeed = ctx.Output<phi::DenseTensor>("succeed");

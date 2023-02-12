@@ -84,8 +84,8 @@ static std::vector<std::string> Split(std::string split_text,
 }
 
 static void ToLower(std::wstring* input) {
-  for (unsigned int i = 0; i < input.length(); ++i) {
-    input[i] = towlower(input[i]);
+  for (unsigned int i = 0; i < input->length(); ++i) {
+    input->at(i) = towlower(input->at(i));
   }
 }
 
@@ -439,6 +439,16 @@ void RpcTokenizer::Init(const std::string& path) {
   tokenizer_.SetVocab(words_to_ids_);
   // update members
   path_ = path;
+}
+
+void RpcTokenizer::Init(
+    const std::string& path,
+    const std::unordered_map<std::string, std::string>& special_set) {
+  if (path_ == path) {
+    return;
+  }
+  Init(path);
+  SetSpecialSet(special_set);
 }
 
 static inline std::string GetRecoveredToken(const std::vector<uint8_t>& bytes) {
