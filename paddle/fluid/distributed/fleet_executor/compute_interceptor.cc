@@ -41,8 +41,8 @@ void SetVarResult(const std::string& name,
   phi::DenseTensor* tensor;
   if (!var) {
     VLOG(3) << "Create var and memory for var " << name;
-    tensor = var->GetMutable<phi::DenseTensor>();
     var = scope->Var(name);
+    tensor = var->GetMutable<phi::DenseTensor>();
     phi::DDim dims = phi::make_ddim(dim_vec);
     tensor->Resize(dims);
     tensor->mutable_data<T>(dims, place);
