@@ -1636,16 +1636,20 @@ class TestSundryAPI(unittest.TestCase):
         out1.retain_grads()
         out1.backward()
         self.assertEqual(out1.shape, [])
+        self.assertEqual(out1.numpy(), 1.0)
         self.assertEqual(out1.grad.shape, [])
         self.assertEqual(x.grad.shape, [])
+        self.assertEqual(x.grad.numpy(), 1.0)
 
         w2 = paddle.full([], 0.25, dtype='float32')
         out2 = paddle.nn.functional.prelu(x, w2)
         out2.retain_grads()
         out2.backward()
         self.assertEqual(out2.shape, [])
+        self.assertEqual(out2.numpy(), 1.0)
         self.assertEqual(out2.grad.shape, [])
         self.assertEqual(x.grad.shape, [])
+        self.assertEqual(x.grad.numpy(), 1.0)
 
     def test_while_loop(self):
         def cond(i, x):
