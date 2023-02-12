@@ -185,6 +185,8 @@ void BindFleetExecutor(py::module* m) {
       .def("set_type", &TaskNode::SetType)
       .def("set_cond_var_name", &TaskNode::SetCondVarName)
       .def("role", &TaskNode::role)
+      .def("set_vars_to_shape", &TaskNode::SetVarsToShape)
+      .def("set_vars_to_dtype", &TaskNode::SetVarsToDtype)
       .def("init", [](TaskNode& self) { self.Init(); })
       .def("set_program", &TaskNode::SetProgram);
 

@@ -116,6 +116,15 @@ class TaskNode final {
                          int64_t buff_size = 1,
                          DependType type = DependType::NORMAL);
   std::string DebugString() const;
+  const std::map<std::string, std::string>& vars_to_dtype() const {
+    return vars_to_dtype_;
+  }
+  void SetVarsToDtype(const std::map<std::string, std::string>& vars_to_dtype);
+  const std::map<std::string, std::vector<int64_t>>& vars_to_shape() const {
+    return vars_to_shape_;
+  }
+  void SetVarsToShape(
+      const std::map<std::string, std::vector<int64_t>>& vars_to_shape);
 
  private:
   DISABLE_COPY_AND_ASSIGN(TaskNode);
@@ -134,6 +143,8 @@ class TaskNode final {
   std::unordered_map<const OperatorBase*, std::vector<std::string>>
       unused_vars_;
   std::vector<std::string> while_block_vars_;
+  std::map<std::string, std::string> vars_to_dtype_;
+  std::map<std::string, std::vector<int64_t>> vars_to_shape_;
 
   int32_t role_;
   int64_t rank_;

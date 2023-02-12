@@ -47,6 +47,8 @@ class ComputeInterceptor : public Interceptor {
 
  private:
   void PrepareDeps();
+  InterceptorMessage PrepareVarsMsg();
+  void DecodeMsgVars(const InterceptorMessage& msg);
 
   bool IsInputReady();
   bool CanWriteOutput();

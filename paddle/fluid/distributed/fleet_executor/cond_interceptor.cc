@@ -113,7 +113,8 @@ void CondInterceptor::Compute() {
 }
 
 void CondInterceptor::Run(const InterceptorMessage& msg) {
-  if (msg.message_type() == DATA_IS_READY) {
+  if (msg.message_type() == DATA_IS_READY ||
+      msg.message_type() == DATA_WITH_VARS) {
     cur_scope_id_ = msg.scope_idx();
     Compute();
   } else if (msg.message_type() == DATA_IS_USELESS) {

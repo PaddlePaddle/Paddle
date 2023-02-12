@@ -154,6 +154,7 @@ class TestFleetExecutor(unittest.TestCase):
             node_type="Compute",
             task_id=3,
             program=paddle.static.Program(),
+            vars_list={'x': 'float32', 'tmp_1': 'int64'},
             lazy_initialize=True,
         )
         task_e = TaskNode(

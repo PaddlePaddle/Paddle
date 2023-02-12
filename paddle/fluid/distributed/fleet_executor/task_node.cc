@@ -49,6 +49,16 @@ void TaskNode::SetProgram(paddle::framework::ProgramDesc* program) {
   program_ = program;
 }
 
+void TaskNode::SetVarsToDtype(
+    const std::map<std::string, std::string>& vars_to_dtype) {
+  vars_to_dtype_ = vars_to_dtype;
+}
+
+void TaskNode::SetVarsToShape(
+    const std::map<std::string, std::vector<int64_t>>& vars_to_shape) {
+  vars_to_shape_ = vars_to_shape;
+}
+
 void TaskNode::Init(bool use_feed_fetch_ops) {
   if (!use_feed_fetch_ops) {
     VLOG(3) << "TaskNode will be inited without feed and fetch ops";
