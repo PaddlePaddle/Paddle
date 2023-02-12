@@ -33,8 +33,8 @@ def softmax_composite(x, axis):
     max_temp = max(x, axis, keepdim=True)
     max_temp.stop_gradient = True
     molecular = exp(x - max_temp)
-    sqrt_var = sum(molecular, axis=axis, keepdim=True)
-    res = divide(molecular, sqrt_var)
+    denominator = sum(molecular, axis=axis, keepdim=True)
+    res = divide(molecular, denominator)
     return res
 
 
@@ -105,7 +105,7 @@ def composite_batchnorm(
 
 @REGISTER_COMPOSITE('layer_norm')
 def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
-    axis = np.arange(begin_norm_axis, len(x.shape))
+    axis = tuple(range(begin_norm_axis, len(x.shape)))
     mean_ = mean(x, axis=axis, keepdim=True)
     difference = x - mean_
     var_tmp1 = pow(difference, 2.0)
