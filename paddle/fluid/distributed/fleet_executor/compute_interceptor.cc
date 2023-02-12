@@ -324,7 +324,7 @@ void ComputeInterceptor::RunOps() {
 
 void ComputeInterceptor::Run() {
   while (IsInputReady() && CanWriteOutput()) {
-    VLOG(0) << "id=" << GetInterceptorId()
+    VLOG(3) << "id=" << GetInterceptorId()
             << " ComputeInterceptor running in scope " << cur_scope_id_;
 
     RunOps();

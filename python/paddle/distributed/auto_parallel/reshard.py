@@ -2346,7 +2346,7 @@ class Resharder:
                     assert set_lod is True
 
                 # cast int64 to bool
-                block._insert_op(
+                cast_op = block._insert_op(
                     idx + 2,
                     type='cast',
                     inputs={
@@ -2361,6 +2361,7 @@ class Resharder:
                         'op_role': op.attr('op_role'),
                     },
                 )
+                cast_op._set_attr('op_namescope', "/auto_parallel/reshard")
             else:
                 if var.lod_level != 0:
                     recv_out = block.create_var(

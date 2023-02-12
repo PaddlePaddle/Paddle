@@ -213,7 +213,13 @@ class PipelinePass(PassBase):
         send_prog = Program()
         recv_prog = Program()
 
+        # print("=" * 20)
+        # print("src_prog:")
+        # print(self._program)
+
         cond_var_name = None
+        send_vars_name = set()
+        recv_vars_name = dict()
         for ib, src_block in enumerate(self._program.blocks):
             if ib == 0:
                 strat_block = start_prog.block(0)
@@ -244,6 +250,26 @@ class PipelinePass(PassBase):
                 for op in src_block.ops:
                     if op.type == "send_v2" and not is_after_send_op:
                         is_after_send_op = True
+                        if cur_pp_stage == pp_stages - 1:
+                            if op.type in ["c_sync_calc_stream", "nop"]:
+                                continue
+                            if (
+                                op.type not in ["recv_2", "assign"]
+                                and op.has_attr('op_namescope')
+                                and "/auto_parallel/reshard"
+                                in op.attr('op_namescope')
+                            ):
+                                if (
+                                    len(op.desc.input_arg_names()) > 0
+                                    and "@RESHARD"
+                                    not in op.desc.input_arg_names()[0]
+                                ):
+                                    send_vars_name.add(
+                                        op.desc.input_arg_names()[0]
+                                    )
+                                    continue
+                                if op.type == "send_v2":
+                                    continue
                         self._create_program(
                             src_block, send_block, op, force_create=True
                         )
@@ -255,17 +281,98 @@ class PipelinePass(PassBase):
                         and op.type == "recv_v2"
                     ):
                         is_after_recv_op = True
+                        if op.has_attr(
+                            'op_namescope'
+                        ) and "/auto_parallel/reshard" in op.attr(
+                            'op_namescope'
+                        ):
+                            var_name = op.desc.output_arg_names()[0]
+                            index = var_name.find("@")
+                            if index > 0:
+                                old_var_name = var_name[:index]
+                            else:
+                                old_var_name = var_name
+                            recv_vars_name[var_name] = old_var_name
+                            if not src_block._find_var_recursive(old_var_name):
+                                src_var = src_block._var_recursive(var_name)
+                                recv_block.create_var(
+                                    type=src_var.type,
+                                    name=old_var_name,
+                                    shape=src_var.shape,
+                                    dtype=src_var.dtype,
+                                    lod_level=src_var.lod_level,
+                                    persistable=src_var.persistable,
+                                    error_clip=src_var.error_clip,
+                                    stop_gradient=src_var.stop_gradient,
+                                    is_data=src_var.is_data,
+                                    belong_to_optimizer=src_var.belong_to_optimizer,
+                                )
+                            continue
+
                         self._create_program(
                             src_block, recv_block, op, force_create=True
                         )
                         continue
 
                     if not is_after_send_op or not is_after_recv_op:
+                        if cur_pp_stage == pp_stages - 1:
+                            if op.type in ["c_sync_calc_stream", "nop"]:
+                                continue
+                            if (
+                                op.type not in ["recv_2", "assign"]
+                                and op.has_attr('op_namescope')
+                                and "/auto_parallel/reshard"
+                                in op.attr('op_namescope')
+                            ):
+                                if (
+                                    len(op.desc.input_arg_names()) > 0
+                                    and "@RESHARD"
+                                    not in op.desc.input_arg_names()[0]
+                                ):
+                                    send_vars_name.add(
+                                        op.desc.input_arg_names()[0]
+                                    )
+                                    continue
+                                if op.type == "send_v2":
+                                    continue
                         self._create_program(
                             src_block, send_block, op, force_create=True
                         )
 
                     if is_after_send_op and is_after_recv_op:
+                        if op.has_attr(
+                            'op_namescope'
+                        ) and "/auto_parallel/reshard" in op.attr(
+                            'op_namescope'
+                        ):
+                            var_name = op.desc.output_arg_names()[0]
+                            index = var_name.find("@")
+                            if index > 0:
+                                old_var_name = var_name[:index]
+                            else:
+                                old_var_name = var_name
+                            recv_vars_name[var_name] = old_var_name
+                            if not src_block._find_var_recursive(old_var_name):
+                                src_var = src_block._var_recursive(var_name)
+                                recv_block.create_var(
+                                    type=src_var.type,
+                                    name=old_var_name,
+                                    shape=src_var.shape,
+                                    dtype=src_var.dtype,
+                                    lod_level=src_var.lod_level,
+                                    persistable=src_var.persistable,
+                                    error_clip=src_var.error_clip,
+                                    stop_gradient=src_var.stop_gradient,
+                                    is_data=src_var.is_data,
+                                    belong_to_optimizer=src_var.belong_to_optimizer,
+                                )
+                            continue
+
+                        for in_name in op.desc.input_arg_names():
+                            if in_name in recv_vars_name:
+                                op.desc._rename_input(
+                                    in_name, recv_vars_name[in_name]
+                                )
                         self._create_program(
                             src_block, recv_block, op, force_create=True
                         )
@@ -276,6 +383,9 @@ class PipelinePass(PassBase):
         end_prog._sync_with_cpp()
         send_prog._sync_with_cpp()
         recv_prog._sync_with_cpp()
+
+        print("send_vars_name:", list(send_vars_name))
+        print("recv_vars_name:", list(set(recv_vars_name.values())))
 
         # print("=" * 20)
         # print("start_prog:")
@@ -298,6 +408,39 @@ class PipelinePass(PassBase):
         # print(end_prog)
 
         assert cond_var_name is not None
+
+        send_task_node_var_dtype = dict()
+        send_task_node_var_shape = dict()
+        recv_task_node_var_dtype = dict()
+        recv_task_node_var_shape = dict()
+        for var_name in list(send_vars_name):
+            var = send_prog.global_block().vars[var_name]
+            dtype = str(var.dtype)
+            send_task_node_var_dtype[var_name] = dtype[
+                dtype.find("paddle.") + len("paddle.") :
+            ]
+            send_task_node_var_shape[var_name] = var.shape
+        for var_name in list(list(set(recv_vars_name.values()))):
+            var = recv_prog.global_block().vars[var_name]
+            dtype = str(var.dtype)
+            recv_task_node_var_dtype[var_name] = dtype[
+                dtype.find("paddle.") + len("paddle.") :
+            ]
+            recv_task_node_var_shape[var_name] = var.shape
+
+        vars_to_dtype = []
+        vars_to_shape = []
+        if len(send_task_node_var_dtype) > 0:
+            assert len(recv_task_node_var_dtype) == 0
+            vars_to_dtype = send_task_node_var_dtype
+            vars_to_shape = send_task_node_var_shape
+        if len(recv_task_node_var_dtype) > 0:
+            assert len(send_task_node_var_dtype) == 0
+            vars_to_dtype = recv_task_node_var_dtype
+            vars_to_shape = recv_task_node_var_shape
+
+        print("vars_to_dtype:", vars_to_dtype)
+        print("vars_to_shape:", vars_to_shape)
 
         start_task_node = TaskNode(
             rank=cur_rank,
@@ -331,6 +474,8 @@ class PipelinePass(PassBase):
             task_id=int(cur_rank * num_of_functionality + 3),
             program=recv_prog,
             lazy_initialize=True,
+            vars_to_dtype=vars_to_dtype,
+            vars_to_shape=vars_to_shape,
         )
         end_task_node = TaskNode(
             rank=cur_rank,
