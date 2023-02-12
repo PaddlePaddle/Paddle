@@ -239,6 +239,7 @@ def get_output_vars_from_comosite(op):
             for item in op_map[name]["outputs"].keys():
                 origin_output_name = op_map[name]["outputs"][item]
                 if origin_output_name not in origin_output_names:
+                    # in some cases, some output of origin op is optional, so op name may not be in origin_output_names
                     continue
                 origin_output_var = get_var_block(
                     op.block, op.output(origin_output_name)
