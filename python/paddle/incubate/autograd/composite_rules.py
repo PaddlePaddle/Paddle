@@ -121,4 +121,6 @@ def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
         bias = reshape(bias, x.shape[begin_norm_axis:])
         out = out + broadcast_to(bias, out.shape)
 
+    mean_ = flatten(mean_)
+    variance = flatten(variance)
     return out, mean_, variance

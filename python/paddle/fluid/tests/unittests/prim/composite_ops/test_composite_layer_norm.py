@@ -65,31 +65,6 @@ def fn(x, norm_shape, w, b):
     return F.layer_norm(x, norm_shape, w, b)
 
 
-def layer_norm_(input, weight, bias, epsilon=1e-05, begin_norm_axis=0):
-    axis = np.arange(begin_norm_axis, len(input.shape))
-    mean = paddle.mean(input, axis=axis, keepdim=True)
-    t1 = input - mean
-    t2 = paddle.pow(t1, 2.0)
-    t3 = paddle.mean(t2, axis=axis, keepdim=True)
-    t4 = t3 + epsilon
-    t5 = paddle.sqrt(t4)
-    t7 = t1 / t5
-    out = t7
-    if weight is not None:
-        weight = paddle.reshape(weight, input.shape[begin_norm_axis:])
-        out = t7 * paddle.broadcast_to(weight, out.shape)
-    if bias is not None:
-        bias = paddle.reshape(bias, input.shape[begin_norm_axis:])
-        out = out + paddle.broadcast_to(bias, out.shape)
-
-    return out
-
-
-def composite_forward(x, norm_shape, w, b):
-    b_axis = len(x.shape) - len(norm_shape)
-    return layer_norm_(x, w, b, begin_norm_axis=b_axis)
-
-
 def expect_forward(x, norm_shape, w, b):
     return fn(x, norm_shape, w, b)
 
@@ -97,10 +72,10 @@ def expect_forward(x, norm_shape, w, b):
 class TestCompositelayer_norm(unittest.TestCase):
     def setUp(self):
         self.dtypes = ["float16", "float32"]
-        self.n_shape = [[3, 4], [3], [2, 3]]
+        self.n_shape = [[4], [3], [2, 3]]
         self.shape1s = [[3, 4], [2, 4, 3], [2, 2, 3]]
-        self.shape2s = [[12], [3], [6]]
-        self.shape3s = [[12], [3], [6]]
+        self.shape2s = [[4], [3], [6]]
+        self.shape3s = [[4], [3], [6]]
 
     def cal_composite(self, inputs, norm_shape, weight, bias):
         paddle.enable_static()
@@ -144,6 +119,43 @@ class TestCompositelayer_norm(unittest.TestCase):
         core._set_prim_forward_enabled(False)
         return res
 
+    def cal2_composite(self, inputs, norm_shape, weight, bias):
+        paddle.enable_static()
+        core._set_prim_forward_enabled(True)
+        startup_program = paddle.static.Program()
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            x = paddle.static.data(
+                'x', shape=inputs.shape, dtype=str(inputs.dtype)
+            )
+
+            y = fn(x, norm_shape, weight, bias)
+
+            blocks = main_program.blocks
+
+            fwd_ops = [op.type for op in blocks[0].ops]
+            # Ensure that layer_norm in original block
+            self.assertTrue('layer_norm' in fwd_ops)
+
+            paddle.incubate.autograd.to_prim(blocks)
+
+            fwd_ops_new = [op.type for op in blocks[0].ops]
+            # Ensure that layer_norm is splitted into small ops
+            self.assertTrue('layer_norm' not in fwd_ops_new)
+
+        exe = paddle.static.Executor()
+        exe.run(startup_program)
+        res = exe.run(
+            main_program,
+            feed={
+                'x': inputs,
+            },
+            fetch_list=[y],
+        )
+        paddle.disable_static()
+        core._set_prim_forward_enabled(False)
+        return res
+
     def compare_forward(self):
         x, w, b = generate_data(attrs.shape1, attrs.shape2, attrs.shape3)
         n_shape = attrs.n_shape
@@ -152,8 +164,7 @@ class TestCompositelayer_norm(unittest.TestCase):
         b_p = paddle.to_tensor(b)
 
         expect = expect_forward(x_p, n_shape, w_p, b_p).numpy()
-        # actual = self.cal_composite(x_p, n_shape, w_p, b_p)
-        actual = composite_forward(x_p, n_shape, w_p, b_p).numpy()
+        actual = self.cal_composite(x, n_shape, w, b)[0]
 
         assert expect.dtype == actual.dtype
         np.testing.assert_allclose(
@@ -164,7 +175,7 @@ class TestCompositelayer_norm(unittest.TestCase):
         )
 
         expect_2 = expect_forward(x_p, n_shape, None, None).numpy()
-        actual_2 = composite_forward(x_p, n_shape, None, None).numpy()
+        actual_2 = self.cal2_composite(x, n_shape, None, None)[0]
         assert expect_2.dtype == actual_2.dtype
         np.testing.assert_allclose(
             expect_2,
