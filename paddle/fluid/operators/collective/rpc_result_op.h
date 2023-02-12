@@ -20,6 +20,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/collective/thirdparty/json.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/rpc_utils.h"
 
 namespace paddle {
@@ -35,6 +36,33 @@ std::vector<double> ParseFloatResponse(const std::string& response) {
 std::vector<uint8_t> ParseStrResponse(const std::string& response) {
   const std::string res = json::parse(response).dump();
   return std::vector<uint8_t>(res.begin(), res.end());
+}
+
+std::vector<int> ParseIdsResponse(const std::string& response) {
+  const std::string res = json::parse(response).dump();
+  // tokenize
+  return std::vector<int>(res.begin(), res.end());
+}
+
+void ParseResponse(phi::DenseTensor* out,
+                   const std::string& res_type,
+                   const platform::DeviceContext& dev_ctx,
+                   const std::string& resp) {
+  if (res_type == "float") {
+    auto res = ParseFloatResponse(resp);
+    dev_ctx.Alloc<double>(out);
+    framework::TensorFromVector(res, dev_ctx, out);
+  } else if (res_type == "str") {
+    auto res = ParseStrResponse(resp);
+    dev_ctx.Alloc<uint8_t>(out);
+    framework::TensorFromVector(res, dev_ctx, out);
+  } else if (res_type == "ids") {
+    auto res = ParseIdsResponse(resp);
+    dev_ctx.Alloc<int>(out);
+    framework::TensorFromVector(res, dev_ctx, out);
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument("Unknown result type."));
+  }
 }
 
 template <typename T>
@@ -57,20 +85,12 @@ class RpcResultOpKernel : public framework::OpKernel<T> {
       VLOG(3) << "Request id " << request_id << " raw response: " << resp;
 
       auto* out = ctx.Output<phi::DenseTensor>("Out");
-      const std::string res_dtype = ctx.Attr<std::string>("res_dtype");
-      if (res_dtype == "float") {
-        auto res = ParseFloatResponse(resp);
-        ctx.device_context().Alloc<double>(out);
-        framework::TensorFromVector(res, ctx.device_context(), out);
-      } else if (res_dtype == "str") {
-        auto res = ParseStrResponse(resp);
-        ctx.device_context().Alloc<uint8_t>(out);
-        framework::TensorFromVector(res, ctx.device_context(), out);
-      } else {
-        PADDLE_THROW(
-            platform::errors::InvalidArgument("Unknown result dtype."));
-      }
+      const std::string res_type = ctx.Attr<std::string>("res_type");
+      VLOG(3) << "Request id " << request_id << " result type: " << res_type;
+
+      ParseResponse(out, res_type, ctx.device_context(), resp);
     }
+
     auto* succeed = ctx.Output<phi::DenseTensor>("succeed");
     ctx.device_context().Alloc<bool>(succeed);
     std::vector<bool> succeed_wrapper{ok};

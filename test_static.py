@@ -22,7 +22,7 @@ MAX_SIZE_QUERY = 6
 MAX_SIZE_RESPONSE = 1000
 
 USE_IDS = True
-RES_DTYPE = 'float'
+RES_TYPE = 'float'
 
 # network
 in_query = fluid.data(name='X', shape=[MAX_SIZE_QUERY], dtype='int32')
@@ -59,7 +59,7 @@ cur_block.append_op(
         'Out': out_data,
     },
     attrs={
-        'res_dtype': RES_DTYPE,
+        'res_dtype': RES_TYPE,
     },
 )
 
@@ -83,7 +83,7 @@ succeed, data, = exe.run(
     fetch_list=[out_succeed, out_data],
 )
 if succeed:
-    if RES_DTYPE == 'str':
+    if RES_TYPE == 'str':
         print('output:', data.tobytes().decode('utf-8'))
     else:
         print('output:', data)

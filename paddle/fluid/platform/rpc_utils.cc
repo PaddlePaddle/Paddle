@@ -14,6 +14,11 @@
 
 #include "paddle/fluid/platform/rpc_utils.h"
 
+#include <unicode/normlzr.h>
+#include <unicode/platform.h>
+#include <unicode/uconfig.h>
+#include <unicode/unistr.h>
+
 #include <algorithm>
 #include <fstream>
 #include <sstream>
@@ -26,7 +31,7 @@
 namespace paddle {
 namespace platform {
 
-// helpers
+// utils
 static inline bool StartsWith(const std::string& str,
                               const std::string& prefix) {
   return str.substr(0, prefix.length()) == prefix;
@@ -74,12 +79,6 @@ static inline bool IsChinesePunct(wchar_t c) {
   return puncts.count(c);
 }
 
-static inline uint8_t GetByte(const std::string& token) {
-  auto num_str = paddle::string::split_string(token, "_")[1];
-  num_str = num_str.substr(0, num_str.size() - 1);
-  return static_cast<uint8_t>(std::stoi(num_str, nullptr, 16));
-}
-
 static inline int GetCharBytes(uint8_t byte) {
   if ((byte & 0x80) == 0) {
     return 1;
@@ -97,6 +96,118 @@ static inline int GetCharBytes(uint8_t byte) {
 static inline bool IsValidContinuationByte(uint8_t byte) {
   // check if the byte starts with 10
   return (byte & 0xC0) == 0x80;
+}
+
+static inline uint8_t GetByteFromHex(const std::string& token) {
+  auto num_str = paddle::string::split_string(token, "_")[1];
+  num_str = num_str.substr(0, num_str.size() - 1);
+  return static_cast<uint8_t>(std::stoi(num_str, nullptr, 16));
+}
+
+static inline std::string ByteToHex(uint8_t c) {
+  const std::string& hex = "0123456789abcdef";
+  int val = static_cast<int>(c);
+  std::string res = "0x";
+  res += hex[val >> 4];
+  res += hex[val & 0x0F];
+  return res;
+}
+
+// WordpieceTokenizer
+std::vector<std::wstring> WhitespaceTokenize(const std::wstring& text) {
+  std::vector<std::wstring> tokens;
+  std::wstringstream ss(text);
+  std::wstring token;
+  while (ss >> token) {
+    tokens.emplace_back(token);
+  }
+  return tokens;
+}
+
+std::vector<std::wstring> WordpieceTokenizer::Tokenize(
+    const std::wstring& text) {
+  std::vector<std::wstring> output_tokens;
+
+  for (auto& token : WhitespaceTokenize(text)) {
+    if (token.size() > max_chars_per_word_) {
+      output_tokens.emplace_back(unk_token_);
+      continue;
+    }
+
+    std::vector<std::wstring> sub_tokens;
+    std::vector<std::wstring> unk_tokens;
+
+    int start = 0;
+    int n = token.size();
+    while (start < n) {
+      bool is_bad = false;
+      int end = n;
+      std::wstring cur_substr;
+      while (start < end) {
+        std::wstring substr = token.substr(start, end - start);
+        if (start > 0) {
+          substr = L"##" + substr;
+        }
+        if (vocab_.count(substr) > 0) {
+          cur_substr = substr;
+          break;
+        }
+        --end;
+      }
+      // added 2nd search start
+      if (cur_substr.empty()) {
+        end = n;
+        while (start < end) {
+          std::wstring substr = token.substr(start, end - start);
+          if (vocab_.count(substr) > 0) {
+            cur_substr = substr;
+            break;
+          } else if (end == start + 1) {
+            unk_tokens.clear();
+            is_bad = true;
+            for (auto& sub_byte : converter_.to_bytes(substr)) {
+              std::string unk_token_str = "[BFB_" + ByteToHex(sub_byte) + "]";
+              const std::wstring unk_token =
+                  converter_.from_bytes(unk_token_str);
+              if (vocab_.count(unk_token) > 0) {
+                unk_tokens.emplace_back(unk_token);
+              }
+            }
+            break;
+          }
+          --end;
+        }
+      }
+      // end
+      if (is_bad && !unk_tokens.empty()) {
+        sub_tokens.insert(
+            sub_tokens.end(), unk_tokens.begin(), unk_tokens.end());
+      } else {
+        sub_tokens.emplace_back(cur_substr);
+      }
+      start = end;
+    }
+    output_tokens.insert(
+        output_tokens.end(), sub_tokens.begin(), sub_tokens.end());
+  }
+  return output_tokens;
+}
+
+// BasicTokenizer
+
+// final tokenizer
+void RpcTokenizer::Init(const std::string& path) {
+  if (path_ == path) {
+    return;
+  }
+  std::ifstream vocab_file(path);
+  std::string word;
+  int id;
+  while (vocab_file >> word >> id) {
+    ids_to_words_.emplace(id, word);
+    words_to_ids_.emplace(converter_.from_bytes(word), id);
+  }
+  path_ = path;
 }
 
 static inline std::string GetRecoveredToken(const std::vector<uint8_t>& bytes) {
@@ -127,13 +238,13 @@ static inline std::string GetRecoveredToken(const std::vector<uint8_t>& bytes) {
   return res;
 }
 
-std::vector<std::string> RecoverBfbTokens(
+std::vector<std::string> RecoverBFBTokens(
     const std::vector<std::string>& tokens) {
   std::vector<std::string> new_tokens;
   std::vector<uint8_t> tmp_bytes;
   for (const auto& token : tokens) {
     if (StartsWith(token, "[BFB")) {
-      tmp_bytes.emplace_back(GetByte(token));
+      tmp_bytes.emplace_back(GetByteFromHex(token));
     } else {
       if (!tmp_bytes.empty()) {
         // since there may be illegal bytes, we need this function
@@ -177,7 +288,7 @@ std::vector<std::string> PostProcess(
   };
 
   std::vector<std::string> new_text;
-  auto words = RecoverBfbTokens(tokens);
+  auto words = RecoverBFBTokens(tokens);
   for (auto& word : words) {
     if (break_words.count(word) || word == stop_token) {
       break;
@@ -244,29 +355,15 @@ std::vector<std::string> PostProcess(
   return new_text;
 }
 
-void RpcTokenizer::Init(const std::string& path) {
-  if (path_ == path) {
-    return;
-  }
-  std::ifstream vocab_file(path);
-  std::string word;
-  int id;
-  while (vocab_file >> word >> id) {
-    ids_to_words_.emplace(id, word);
-    words_to_ids_.emplace(converter_.from_bytes(word), id);
-  }
-  path_ = path;
-}
-
-std::string RpcTokenizer::GetWords(std::vector<int> ids,
-                                   bool aggressive_break,
-                                   const std::string& stop_token) {
+std::string RpcTokenizer::GetWordsFromIds(std::vector<int> ids,
+                                          bool aggressive_break,
+                                          const std::string& stop_token) {
   std::vector<std::string> tokens;
   for (int id : ids) {
     if (!Contains(id)) {
       continue;
     }
-    tokens.emplace_back(GetWord(id));
+    tokens.emplace_back(GetWordFromId(id));
   }
   return paddle::string::join_strings(
       PostProcess(tokens, words_to_ids_, aggressive_break, stop_token), "");

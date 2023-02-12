@@ -27,6 +27,25 @@
 namespace paddle {
 namespace platform {
 
+class WordpieceTokenizer {
+ public:
+  WordpieceTokenizer(const std::unordered_map<std::wstring, int>& vocab,
+                     const std::wstring unk_token = L"[UNK]",
+                     int max_chars_per_word = 100)
+      : vocab_(vocab),
+        unk_token_(unk_token),
+        max_chars_per_word_(max_chars_per_word) {}
+
+  std::vector<std::wstring> Tokenize(const std::wstring& text);
+
+ private:
+  std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> converter_;
+
+  const std::wstring unk_token_;
+  int max_chars_per_word_;
+  std::unordered_map<std::wstring, int> vocab_;
+};
+
 class RpcTokenizer {
  public:
   static RpcTokenizer& Instance() {
@@ -39,11 +58,16 @@ class RpcTokenizer {
   bool Contains(int id) { return ids_to_words_.count(id) > 0; }
 
   // NOTE: an exception will be raised if id not exist
-  std::string GetWord(int id) { return ids_to_words_.at(id); }
+  std::string GetWordFromId(int id) { return ids_to_words_.at(id); }
 
-  std::string GetWords(std::vector<int> ids,
-                       bool aggressive_break = false,
-                       const std::string& stop_token = "[gEND]");
+  std::string GetWordsFromIds(std::vector<int> ids,
+                              bool aggressive_break = false,
+                              const std::string& stop_token = "[gEND]");
+
+  std::vector<int> GetIdsFromText(const std::string& text);
+
+ private:
+  std::vector<std::wstring> Tokenize(const std::string& text);
 
  private:
   std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> converter_;

@@ -49,7 +49,7 @@ std::string BuildPayload(const std::string& service,
     return BuildIdsPayload(src_ids);
   } else if (service == "str") {
     const std::string query =
-        platform::RpcTokenizer::Instance().GetWords(src_ids);
+        platform::RpcTokenizer::Instance().GetWordsFromIds(src_ids);
     return BuildStrPayload(query);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument("Unknown service."));
