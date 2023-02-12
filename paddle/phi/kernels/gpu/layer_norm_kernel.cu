@@ -13,14 +13,16 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/layer_norm_kernel.h"
-
 #include "paddle/fluid/operators/layer_norm_kernel.cu.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/layer_norm_util.h"
 
+namespace ops = paddle::operators;
+
 namespace phi {
 
+#ifdef PADDLE_WITH_CUDA
 template <typename U>
 __device__ void WelfordOnline(U val, U *mean, U *square, U *count) {
   *count += 1;
@@ -51,6 +53,7 @@ __device__ void WelfordWarpAllReduce(
   *mean = tid_mean;
   *square = tid_square;
   *count = tid_cnt;
+
   for (int mask = 1; mask < kWarpSize; mask *= 2) {
     U b_mean = __shfl_down_sync(0xffffffff, *mean, mask);
     U b_square = __shfl_down_sync(0xffffffff, *square, mask);
@@ -63,29 +66,113 @@ __device__ void WelfordWarpAllReduce(
   *count = __shfl_sync(0xffffffff, *count, 0, kWarpSize);
 }
 
-template <typename T, typename U, bool IsSameType>
+template <int VecSize>
+struct ThreadAssigner {
+  __device__ __forceinline__ int operator()(const int32_t cols,
+                                            const int32_t cols_per_thread) {
+    return cols_per_thread;
+  }
+};
+
+template <>
+struct ThreadAssigner<1> {
+  __device__ __forceinline__ int operator()(const int32_t cols,
+                                            const int32_t cols_per_thread) {
+    int cols_this_thread = cols_per_thread;
+    int last_y = (cols / cols_per_thread);
+    if (threadIdx.x == last_y) {
+      cols_this_thread = cols - cols_per_thread * last_y;
+    } else if (threadIdx.x > last_y) {
+      cols_this_thread = 0;
+    }
+    return cols_this_thread;
+  }
+};
+
+template <typename T, typename U, int VecSize>
+struct LayerNormDataReader {
+  __device__ __forceinline__ void operator()(const T *__restrict__ row_src,
+                                             U *buffer,
+                                             const int read_times,
+                                             const int cols_this_thread) {
+    using VecT = phi::AlignedVector<T, VecSize>;
+    const VecT *__restrict__ v_src =
+        reinterpret_cast<const VecT *__restrict__>(row_src);
+#pragma unroll
+    for (int i = 0; i < read_times; ++i) {
+      VecT temp_src = v_src[threadIdx.x * read_times + i];
+#pragma unroll
+      for (int j = 0; j < VecSize; ++j) {
+        buffer[i * VecSize + j] = static_cast<U>(temp_src[j]);
+      }
+    }
+  }
+};
+
+template <typename T, typename U>
+struct LayerNormDataReader<T, U, 1> {
+  __device__ __forceinline__ void operator()(const T *__restrict__ row_src,
+                                             U *buffer,
+                                             const int read_times,
+                                             const int cols_this_thread) {
+#pragma unroll
+    for (int i = 0; i < cols_this_thread; ++i) {
+      buffer[i] = static_cast<U>(row_src[threadIdx.x * read_times + i]);
+    }
+  }
+};
+
+template <typename T, typename U, int VecSize>
+struct LayerNormDataWritter {
+  __device__ __forceinline__ void operator()(T *__restrict__ row_dst,
+                                             U *__restrict__ buffer,
+                                             const int read_times,
+                                             const int cols_this_thread) {
+    using VecT = phi::AlignedVector<T, VecSize>;
+    VecT *v_dst = reinterpret_cast<VecT *>(row_dst);
+
+    for (int i = 0; i < read_times; ++i) {
+      VecT temp_dst;
+#pragma unroll
+      for (int j = 0; j < VecSize; ++j) {
+        temp_dst[j] = static_cast<T>(buffer[i * VecSize + j]);
+      }
+      v_dst[threadIdx.x * read_times + i] = temp_dst;
+    }
+  }
+};
+
+template <typename T, typename U>
+struct LayerNormDataWritter<T, U, 1> {
+  __device__ __forceinline__ void operator()(T *__restrict__ row_dst,
+                                             U *__restrict__ buffer,
+                                             const int read_times,
+                                             const int cols_this_thread) {
+#pragma unroll
+    for (int i = 0; i < cols_this_thread; ++i) {
+      row_dst[threadIdx.x * read_times + i] = static_cast<T>(buffer[i]);
+    }
+  }
+};
+
+template <typename T, typename U, bool IsSameType, int VecSize>
 __global__ void LayerNormFwdWithWelford(
     const T *__restrict__ src_data,
     T *dst_data,
-    const paddle::operators::LayerNormScaleBiasT<T, U, IsSameType> *scale,
-    const paddle::operators::LayerNormScaleBiasT<T, U, IsSameType> *bias,
+    const ops::LayerNormScaleBiasT<T, U, IsSameType> *__restrict__ scale,
+    const ops::LayerNormScaleBiasT<T, U, IsSameType> *__restrict__ bias,
     U *mean,
     U *var,
-    const float epsilon,
+    const U epsilon,
     const int64_t rows,
-    const int64_t cols,
+    const int32_t cols,
+    const int32_t cols_per_thread,
     const bool valid_scale,
     const bool valid_bias) {
   constexpr int kWarpSize = 32;
   int row_offset = blockIdx.x * blockDim.y + threadIdx.y;
-  int cols_per_thread = (cols + (kWarpSize - 1)) / kWarpSize;
-  int cols_this_thread = cols_per_thread;
-  int last_y = (cols / cols_per_thread);
-  if (threadIdx.x == last_y) {
-    cols_this_thread = cols - cols_per_thread * last_y;
-  } else if (threadIdx.x > last_y) {
-    cols_this_thread = 0;
-  }
+  int cols_this_thread = ThreadAssigner<VecSize>()(cols, cols_per_thread);
+  int read_times = cols_per_thread / VecSize;
 
   if (row_offset < rows) {
     U buffer[32];
@@ -96,12 +183,10 @@ __global__ void LayerNormFwdWithWelford(
     U warp_mean;
     U warp_square;
     U warp_cnt;
-    const T *__restrict__ row_input = src_data + row_offset * cols;
-    T *row_output = dst_data + row_offset * cols;
-
-    for (int i = 0; i < cols_this_thread; i++) {
-      buffer[i] = static_cast<U>(row_input[threadIdx.x * cols_per_thread + i]);
-    }
+    const T *__restrict__ row_src = src_data + row_offset * cols;
+    T *row_dst = dst_data + row_offset * cols;
+    LayerNormDataReader<T, U, VecSize>()(
+        row_src, buffer, read_times, cols_this_thread);
 
     for (int i = 0; i < cols_this_thread; i++) {
       WelfordOnline<U>(buffer[i], &tid_mean, &tid_square, &tid_cnt);
@@ -117,47 +202,103 @@ __global__ void LayerNormFwdWithWelford(
       var[row_offset] = row_variance;
     }
 
-    // No scale and no bias
-    if ((!valid_scale) && (!valid_bias)) {
 #pragma unroll
-      for (int i = 0; i < cols_this_thread; ++i) {
-        int idx = threadIdx.x * cols_per_thread + i;
-        row_output[idx] = static_cast<T>((buffer[i] - row_mean) * row_inv_var);
-      }
-    } else if (valid_scale && valid_bias) {
-      // Has scale and bias
-#pragma unroll
-      for (int i = 0; i < cols_this_thread; ++i) {
-        int idx = threadIdx.x * cols_per_thread + i;
-        buffer[i] = (buffer[i] - row_mean) * row_inv_var;
-        row_output[idx] = static_cast<T>(
-            buffer[i] * static_cast<U>(scale[idx]) + static_cast<U>(bias[idx]));
-      }
-    } else {
-#pragma unroll
-      for (int i = 0; i < cols_this_thread; ++i) {
-        buffer[i] = (buffer[i] - row_mean) * row_inv_var;
-      }
-      // Only has scale
-      if (valid_scale) {
+    for (int i = 0; i < cols_this_thread; ++i) {
+      buffer[i] = (buffer[i] - row_mean) * row_inv_var;
+    }
+
+    if (valid_scale || valid_bias) {
+      if (valid_scale && valid_bias) {
 #pragma unroll
         for (int i = 0; i < cols_this_thread; ++i) {
           int idx = threadIdx.x * cols_per_thread + i;
-          row_output[idx] =
-              static_cast<T>(buffer[i] * static_cast<U>(scale[idx]));
+          buffer[i] = buffer[i] * static_cast<U>(scale[idx]) +
+                      static_cast<U>(bias[idx]);
+        }
+      } else if (valid_scale) {
+#pragma unroll
+        for (int i = 0; i < cols_this_thread; ++i) {
+          int idx = threadIdx.x * cols_per_thread + i;
+          buffer[i] = buffer[i] * static_cast<U>(scale[idx]);
         }
       } else {
-        // Only has bias
 #pragma unroll
         for (int i = 0; i < cols_this_thread; ++i) {
           int idx = threadIdx.x * cols_per_thread + i;
-          row_output[idx] =
-              static_cast<T>(buffer[i] + static_cast<U>(bias[idx]));
+          buffer[i] = buffer[i] + static_cast<U>(bias[idx]);
         }
       }
     }
+    LayerNormDataWritter<T, U, VecSize>()(
+        row_dst, buffer, read_times, cols_this_thread);
   }
 }
+
+template <typename Context, typename T, typename U>
+void LaunchLayerNormKernel(const Context &dev_ctx,
+                           const T *x_data,
+                           T *y_data,
+                           const void *void_scale_data,
+                           const void *void_bias_data,
+                           U *mean_data,
+                           U *var_data,
+                           float epsilon,
+                           const int64_t rows,
+                           const int cols,
+                           const bool valid_scale,
+                           const bool valid_bias,
+                           const bool is_same_type) {
+  constexpr int WarpSize = 32;
+  constexpr int row_per_block = 8;
+  int64_t block_size = (rows + (row_per_block - 1)) / row_per_block;
+  dim3 threads(WarpSize, row_per_block, 1);
+
+  int vec_size = 1;
+  int cols_per_thread = (cols + (WarpSize - 1)) / WarpSize;
+  if (cols_per_thread > 1 && (cols % WarpSize == 0)) {
+    uint64_t addr = (reinterpret_cast<uint64_t>(x_data) |
+                     reinterpret_cast<uint64_t>(y_data));
+    int tmp_vec_size = phi::GetVectorizedSize<T>(reinterpret_cast<T *>(addr));
+    for (int size = tmp_vec_size; size > 0; size /= 2) {
+      if (cols_per_thread % size == 0) {
+        vec_size = size;
+        break;
+      }
+    }
+  }
+
+#define IMPL_LAYER_NORM_WELFORD_CASE(scale_t, is_same_, vec_size_) \
+  case (vec_size_): {                                              \
+    LayerNormFwdWithWelford<T, U, is_same_, vec_size_>             \
+        <<<block_size, threads, 0, dev_ctx.stream()>>>(            \
+            x_data,                                                \
+            y_data,                                                \
+            static_cast<const scale_t *>(void_scale_data),         \
+            static_cast<const scale_t *>(void_bias_data),          \
+            mean_data,                                             \
+            var_data,                                              \
+            static_cast<const U>(epsilon),                         \
+            rows,                                                  \
+            cols,                                                  \
+            cols_per_thread,                                       \
+            valid_scale,                                           \
+            valid_bias);                                           \
+  } break
+
+#define IMPL_LAYER_NORM_WELFORD(scale_t, is_same_)    \
+  IMPL_LAYER_NORM_WELFORD_CASE(scale_t, is_same_, 4); \
+  IMPL_LAYER_NORM_WELFORD_CASE(scale_t, is_same_, 2); \
+  IMPL_LAYER_NORM_WELFORD_CASE(scale_t, is_same_, 1);
+
+  if (is_same_type) {
+    switch (vec_size) { IMPL_LAYER_NORM_WELFORD(T, true); }
+  } else {
+    switch (vec_size) { IMPL_LAYER_NORM_WELFORD(U, false) }
+  }
+#undef IMPL_LAYER_NORM_WELFORD_CASE
+#undef IMPL_LAYER_NORM_WELFORD
+}
+#endif  // PADDLE_WITH_CUDA
 
 template <typename T, typename U>
 void LayerNormDirectCUDAFunctor<T, U>::operator()(gpuStream_t stream,
@@ -174,9 +315,9 @@ void LayerNormDirectCUDAFunctor<T, U>::operator()(gpuStream_t stream,
   auto matrix_dim = phi::flatten_to_2d(x_dims, begin_norm_axis);
   int64_t batch_size = static_cast<int64_t>(matrix_dim[0]);
   int64_t feature_size = static_cast<int64_t>(matrix_dim[1]);
-  switch (paddle::operators::GetDesiredBlockDim(feature_size)) {
+  switch (ops::GetDesiredBlockDim(feature_size)) {
     FIXED_BLOCK_DIM_CASE(
-        paddle::operators::LayerNormForward<T, U, kBlockDim>
+        ops::LayerNormForward<T, U, kBlockDim>
         <<<batch_size, kBlockDim, 0, stream>>>(
             input, scale, bias, output, mean, variance, eps, feature_size));
     default:
@@ -203,7 +344,7 @@ void LayerNormKernel(const Context &dev_ctx,
                      DenseTensor *y,
                      DenseTensor *mean,
                      DenseTensor *var) {
-  using U = paddle::operators::LayerNormParamType<T>;
+  using U = ops::LayerNormParamType<T>;
   auto *scale = scale_opt.get_ptr();
   auto *bias = bias_opt.get_ptr();
 
@@ -246,26 +387,25 @@ void LayerNormKernel(const Context &dev_ctx,
   int64_t feature_size = static_cast<int64_t>(matrix_dim[1]);
   auto stream = dev_ctx.stream();
 
-#define PADDLE_LAUNCH_LAYERNORM_FWD(ScaleBiasT, IsScaleBiasSameDTypeWithX) \
-  do {                                                                     \
-    switch (paddle::operators::GetDesiredBlockDim(feature_size)) {         \
-      FIXED_BLOCK_DIM_CASE(                                                \
-          paddle::operators::                                              \
-              LayerNormForward<T, U, kBlockDim, IsScaleBiasSameDTypeWithX> \
-          <<<batch_size, kBlockDim, 0, stream>>>(                          \
-              x_data,                                                      \
-              static_cast<const ScaleBiasT *>(void_scale_data),            \
-              static_cast<const ScaleBiasT *>(void_bias_data),             \
-              y_data,                                                      \
-              mean_data,                                                   \
-              var_data,                                                    \
-              epsilon,                                                     \
-              feature_size));                                              \
-      default:                                                             \
-        PADDLE_THROW(phi::errors::InvalidArgument(                         \
-            "Product from begin_norm_axis to end must be larger than 1")); \
-        break;                                                             \
-    }                                                                      \
+#define PADDLE_LAUNCH_LAYERNORM_FWD(ScaleBiasT, IsScaleBiasSameDTypeWithX)  \
+  do {                                                                      \
+    switch (ops::GetDesiredBlockDim(feature_size)) {                        \
+      FIXED_BLOCK_DIM_CASE(                                                 \
+          ops::LayerNormForward<T, U, kBlockDim, IsScaleBiasSameDTypeWithX> \
+          <<<batch_size, kBlockDim, 0, stream>>>(                           \
+              x_data,                                                       \
+              static_cast<const ScaleBiasT *>(void_scale_data),             \
+              static_cast<const ScaleBiasT *>(void_bias_data),              \
+              y_data,                                                       \
+              mean_data,                                                    \
+              var_data,                                                     \
+              epsilon,                                                      \
+              feature_size));                                               \
+      default:                                                              \
+        PADDLE_THROW(phi::errors::InvalidArgument(                          \
+            "Product from begin_norm_axis to end must be larger than 1"));  \
+        break;                                                              \
+    }                                                                       \
   } while (0)
 
 #define PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, feature_size)          \
@@ -279,13 +419,13 @@ void LayerNormKernel(const Context &dev_ctx,
     const int ROWS_PER_CTA = WARPS_M;                                        \
     const int grid = static_cast<int>(                                       \
         std::ceil(batch_size / static_cast<float>(ROWS_PER_CTA)));           \
-    paddle::operators::fast_ln_fwd_kernel<T,                                 \
-                                          U,                                 \
-                                          ScaleT,                            \
-                                          VecSize,                           \
-                                          WARPS_M,                           \
-                                          WARPS_N,                           \
-                                          BYTES_PER_LDG>                     \
+    ops::fast_ln_fwd_kernel<T,                                               \
+                            U,                                               \
+                            ScaleT,                                          \
+                            VecSize,                                         \
+                            WARPS_M,                                         \
+                            WARPS_N,                                         \
+                            BYTES_PER_LDG>                                   \
         <<<grid, THREADS_PER_CTA, 0, stream>>>(                              \
             batch_size,                                                      \
             feature_size,                                                    \
@@ -339,50 +479,30 @@ void LayerNormKernel(const Context &dev_ctx,
       }
     }
   } else {
-#endif
-
+    // WarpShuffle intrinsics is involved in LaunchLayerNormKernel.
     if (feature_size <= 1024 && (!std::is_same<T, int8_t>::value)) {
-      constexpr int warp_size = 32;
-      constexpr int row_per_block = 8;
-      int64_t block_size = (batch_size + (row_per_block - 1)) / row_per_block;
-      dim3 threads(warp_size, row_per_block, 1);
-
-      if (is_scale_bias_same_dtype_with_x) {
-        LayerNormFwdWithWelford<T, U, true><<<block_size, threads, 0, stream>>>(
-            x_data,
-            y_data,
-            static_cast<const T *>(void_scale_data),
-            static_cast<const T *>(void_bias_data),
-            mean_data,
-            var_data,
-            epsilon,
-            batch_size,
-            feature_size,
-            valid_scale,
-            valid_bias);
-      } else {
-        LayerNormFwdWithWelford<T, U, false>
-            <<<block_size, threads, 0, stream>>>(
-                x_data,
-                y_data,
-                static_cast<const U *>(void_scale_data),
-                static_cast<const U *>(void_bias_data),
-                mean_data,
-                var_data,
-                epsilon,
-                batch_size,
-                feature_size,
-                valid_scale,
-                valid_bias);
-      }
+      LaunchLayerNormKernel<Context, T, U>(dev_ctx,
+                                           x_data,
+                                           y_data,
+                                           void_scale_data,
+                                           void_bias_data,
+                                           mean_data,
+                                           var_data,
+                                           epsilon,
+                                           batch_size,
+                                           feature_size,
+                                           valid_scale,
+                                           valid_bias,
+                                           is_scale_bias_same_dtype_with_x);
     } else {
+#endif
       if (is_scale_bias_same_dtype_with_x) {
         PADDLE_LAUNCH_LAYERNORM_FWD(T, true);
       } else {
         PADDLE_LAUNCH_LAYERNORM_FWD(U, false);
       }
-    }
 #ifdef PADDLE_WITH_CUDA
+    }
   }
 #endif
 
