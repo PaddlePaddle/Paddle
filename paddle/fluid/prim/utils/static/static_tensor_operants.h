@@ -22,6 +22,9 @@ namespace paddle {
 
 namespace operants {
 
+using Tensor = paddle::experimental::Tensor;
+using TensorOperantsBase = paddle::operants::TensorOperantsBase;
+
 class StaticTensorOperants : public TensorOperantsBase {
  public:
   StaticTensorOperants() = default;
