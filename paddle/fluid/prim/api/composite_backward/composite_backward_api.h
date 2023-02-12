@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <math.h>
 #include "paddle/fluid/prim/api/all.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/ddim.h"
