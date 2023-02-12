@@ -134,7 +134,7 @@ void Conv2dFusionKernel(const Context& ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(conv2d_fusion_cutlass,
-                   GPU,
+                   CUTLASS,
                    ALL_LAYOUT,
                    phi::fusion::cutlass_internal::Conv2dFusionKernel,
                    float,

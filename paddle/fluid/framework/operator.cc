@@ -1442,6 +1442,38 @@ bool OperatorWithKernel::SupportsCUDNN(const phi::DataType data_type) const {
   }
 }
 
+bool OperatorWithKernel::SupportsCUTLASS(const phi::DataType data_type) const {
+  auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
+      phi::TransToPhiKernelName(type_));
+  auto has_phi_kernel =
+      std::any_of(phi_kernels.begin(),
+                  phi_kernels.end(),
+                  [data_type](phi::KernelKeyMap::const_reference kern_pair) {
+                    return kern_pair.first.backend() == phi::Backend::CUTLASS &&
+                           kern_pair.first.dtype() == data_type;
+                  });
+  if (has_phi_kernel) {
+    return true;
+  } else {
+    auto op_kernel_iter = OperatorWithKernel::AllOpKernels().find(type_);
+    if (op_kernel_iter == OperatorWithKernel::AllOpKernels().end()) {
+      return false;
+    } else {
+      auto& op_kernels = op_kernel_iter->second;
+      proto::VarType::Type fluid_data_type =
+          framework::TransToProtoVarType(data_type);
+      return std::any_of(
+          op_kernels.begin(),
+          op_kernels.end(),
+          [fluid_data_type](OpKernelMap::const_reference kern_pair) {
+            return platform::is_gpu_place(kern_pair.first.place_) &&
+                   kern_pair.first.library_type_ == LibraryType::kCUTLASS &&
+                   kern_pair.first.data_type_ == fluid_data_type;
+          });
+    }
+  }
+}
+
 bool OperatorWithKernel::SupportsKernelType(
     const OpKernelType& kernel_type, const ExecutionContext& exe_ctx) const {
   auto& all_op_kernels = AllOpKernels();
@@ -1545,6 +1577,32 @@ bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
 bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
                                         proto::VarType::Type data_type) const {
   return this->CanCUDNNBeUsed(ctx, phi::TransToPhiDataType(data_type));
+}
+
+bool OperatorWithKernel::CanCUTLASSBeUsed(
+    const framework::ExecutionContext& ctx, phi::DataType data_type) const {
+  bool use_cutlass = ctx.HasAttr("use_cutlass") &&
+                     ctx.Attr<bool>("use_cutlass") &&
+                     paddle::platform::is_gpu_place(ctx.GetPlace());
+
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_CUTLASS)
+  auto& dev_ctx = ctx.device_context<phi::GPUContext>();
+  if (use_cutlass && data_type == phi::DataType::BFLOAT16 &&
+      dev_ctx->GetComputeCapability() < 75) {
+    PADDLE_ENFORCE_GE(dev_ctx->GetComputeCapability(),
+                      75,
+                      platform::errors::InvalidArgument(
+                          "bfloat16 can only be used when CUDA SM >= 75"));
+  }
+#endif  // PADDLE_WITH_CUDA && PADDLE_WITH_CUTLASS
+
+  return use_cutlass && this->SupportsCUTLASS(data_type);
+}
+
+bool OperatorWithKernel::CanCUTLASSBeUsed(
+    const framework::ExecutionContext& ctx,
+    proto::VarType::Type data_type) const {
+  return this->CanCUTLASSBeUsed(ctx, phi::TransToPhiDataType(data_type));
 }
 
 void OperatorWithKernel::InferShape(InferShapeContext* ctx) const {
@@ -1775,6 +1833,12 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (this->CanCUDNNBeUsed(exe_ctx, kernel_type_->data_type_)) {
         kernel_type_->library_type_ = framework::LibraryType::kCUDNN;
+      }
+#endif
+
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_CUTLASS)
+      if (this->CanCUTLASSBeUsed(exe_ctx, kernel_type_->data_type_)) {
+        kernel_type_->library_type_ = framework::LibraryType::kCUTLASS;
       }
 #endif
 
@@ -2059,6 +2123,12 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (this->CanCUDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
     expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
+  }
+#endif
+
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_CUTLASS)
+  if (this->CanCUDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
+    expected_kernel_key.library_type_ = framework::LibraryType::kCUTLASS;
   }
 #endif
 
@@ -2518,6 +2588,8 @@ Scope* OperatorWithKernel::PrepareData(
         auto tensor_backend = phi::TransToPhiBackend(tensor_in->place());
         if ((in_def->backend != tensor_backend &&
              !(in_def->backend == phi::Backend::GPUDNN &&
+               tensor_backend == phi::Backend::GPU) &&
+             !(in_def->backend == phi::Backend::CUTLASS &&
                tensor_backend == phi::Backend::GPU) &&
              !(in_def->backend == phi::Backend::KPS &&
                tensor_backend == phi::Backend::XPU) &&

@@ -744,6 +744,12 @@ bool BuildOpFuncList(const platform::Place& place,
                                            expected_kernel_key.data_type_)) {
           expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
         }
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_CUTLASS)
+        if (op_with_kernel->CanCUTLASSBeUsed(exec_ctx,
+                                             expected_kernel_key.data_type_)) {
+          expected_kernel_key.library_type_ = framework::LibraryType::kCUTLASS;
+        }
+#endif
 #endif
         VLOG(4) << "expected_kernel_key : " << expected_kernel_key;
         // change device by the device_guard()

@@ -886,5 +886,9 @@ void MoeKernel(const Context& ctx,
 }  // namespace fusion
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    moe, GPU, ALL_LAYOUT, phi::fusion::MoeKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(moe,
+                   CUTLASS,
+                   ALL_LAYOUT,
+                   phi::fusion::MoeKernel,
+                   float,
+                   phi::dtype::float16) {}
