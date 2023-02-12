@@ -236,6 +236,9 @@ def to_prim(blocks):
             f"Expect block or sequence of blocks, but got {type(blocks)}."
         )
     with framework.program_guard(main_program):
-        print("Running lowering for forward...")
+        print("Running lowering for forward begin ...")
         primx._lower_composite(blocks, prim_config["forward_blacklist"])
+        replace_ops = prim_config["composite_ops_record"]
+        print(f"Replaced composite ops: {replace_ops}")
+        print("Running lowering for forward end ...")
     return

@@ -18,6 +18,7 @@ from collections import OrderedDict
 
 import paddle
 from paddle.fluid import framework as framework
+from paddle.fluid.core import prim_config
 from paddle.fluid.framework import Operator, default_main_program
 from paddle.incubate.autograd.utils import as_tensors
 
@@ -605,6 +606,7 @@ def _lower_composite(block, blacklist=[]):
             if lookup_fn(op.type) is not None and op.type not in blacklist:
                 change = True
                 op_name = op.type
+                prim_config["composite_ops_record"].add(op_name)
                 input_args = prepare_python_api_arguments(op)
                 bind(input_args, to_bind, value_table)
 
