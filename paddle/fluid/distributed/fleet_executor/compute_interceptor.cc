@@ -18,11 +18,12 @@
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/ddim.h"
-#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/errors.h"
+#include "paddle/phi/core/serialization.h"
 #include "paddle/phi/core/utils/dim.h"
 
 namespace paddle {
@@ -38,16 +39,13 @@ void SetVarResult(const std::string& name,
                   const platform::Place& place,
                   const std::vector<int64_t>& dim_vec) {
   auto* var = scope->FindVar(name);
-  phi::DenseTensor* tensor;
+  auto* tensor = var->GetMutable<phi::DenseTensor>();
   if (!var) {
     VLOG(3) << "Create var and memory for var " << name;
     var = scope->Var(name);
-    tensor = var->GetMutable<phi::DenseTensor>();
     phi::DDim dims = phi::make_ddim(dim_vec);
     tensor->Resize(dims);
     tensor->mutable_data<T>(dims, place);
-  } else {
-    tensor = var->GetMutable<phi::DenseTensor>();
   }
 
   PADDLE_ENFORCE_EQ(
@@ -259,29 +257,23 @@ InterceptorMessage ComputeInterceptor::PrepareVarsMsg() {
   InterceptorMessage ready_msg;
   ready_msg.set_message_type(DATA_WITH_VARS);
   ready_msg.set_scope_idx(cur_scope_id_);
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   for (auto iter : node_->vars_to_dtype()) {
-    VLOG(3) << "Prepare vars msg " << iter.first << " " << iter.second;
-
     VarList* vars = ready_msg.add_vars_list();
     const auto& var_name = iter.first;
-    const auto& dtype = iter.second;
     vars->set_name(var_name);
-    if (dtype == "float32") {
-      vars->set_type(FLOAT);
-      vars->set_f(GetVarResult<float>(var_name, cur_scope_id_, scope));
-    } else if (dtype == "int32") {
-      vars->set_type(INT3);
-      vars->set_i3(GetVarResult<int32_t>(var_name, cur_scope_id_, scope));
-    } else if (dtype == "int64") {
-      vars->set_type(INT6);
-      vars->set_i6(GetVarResult<int64_t>(var_name, cur_scope_id_, scope));
-    } else if (dtype == "bool") {
-      vars->set_type(BOOL);
-      vars->set_i6(GetVarResult<bool>(var_name, cur_scope_id_, scope));
-    }
-    for (auto dim : node_->vars_to_shape().at(var_name)) {
-      vars->add_shape(dim);
-    }
+    std::ostringstream ss;
+    auto& dev_ctx = *pool.Get(place_);
+    auto* var = scope->FindVar(var_name);
+    PADDLE_ENFORCE(
+        var,
+        platform::errors::NotFound(
+            "Variable %s not exists in scope %ld", var_name, cur_scope_id_));
+    const auto& tensor = var->Get<phi::DenseTensor>();
+    SerializeToStream(ss, tensor, dev_ctx);
+    vars->set_stensor(ss.str());
+    VLOG(3) << "Prepare vars msg " << var_name << " with dimension "
+            << tensor.dims() << " dtype " << tensor.dtype();
   }
   return ready_msg;
 }
@@ -354,26 +346,18 @@ void ComputeInterceptor::DecodeMsgVars(const InterceptorMessage& msg) {
                         microbatch_scopes_.size(),
                         scope_id));
   auto* scope = microbatch_scopes_[scope_id];
-  for (const auto& var : msg.vars_list()) {
-    const std::string& name = var.name();
-    std::vector<int64_t> dim_vec;
-    for (int i = 0; i < var.shape_size(); ++i) {
-      dim_vec.emplace_back(var.shape(i));
-    }
-    if (var.type() == FLOAT) {
-      float value = var.f();
-      SetVarResult<float>(name, value, scope_id, scope, place_, dim_vec);
-    } else if (var.type() == INT3) {
-      int32_t value = var.i3();
-      SetVarResult<int32_t>(name, value, scope_id, scope, place_, dim_vec);
-    } else if (var.type() == INT6) {
-      int64_t value = var.i6();
-      SetVarResult<int64_t>(name, value, scope_id, scope, place_, dim_vec);
-    } else if (var.type() == BOOL) {
-      bool value = var.b();
-      SetVarResult<bool>(name, value, scope_id, scope, place_, dim_vec);
-    }
-    VLOG(3) << "Set vars " << name << " with value in scope " << scope_id;
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  for (const auto& var_iter : msg.vars_list()) {
+    const std::string& name = var_iter.name();
+    auto& dev_ctx = *pool.Get(place_);
+    std::istringstream ss(var_iter.stensor());
+    auto* var = scope->Var(name);
+    auto* tensor = var->GetMutable<phi::DenseTensor>();
+    DeserializeFromStream(ss, tensor, dev_ctx);
+
+    VLOG(3) << "Set vars " << name << " with value in scope " << scope_id
+            << " with dims " << tensor->dims() << " with dtype "
+            << tensor->dtype();
   }
 }
 

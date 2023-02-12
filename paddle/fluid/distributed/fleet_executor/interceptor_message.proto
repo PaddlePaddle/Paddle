@@ -37,13 +37,7 @@ enum ValueType {
 
 message VarList {
   required string name = 1;
-  required ValueType type = 2;
-  optional int32 i3 = 3;
-  optional int64 i6 = 4;
-  optional float f = 5;
-  optional double d = 6;
-  optional bool b = 7;
-  repeated int64 shape = 8;
+  required string stensor = 2;
 }
 
 message InterceptorMessage {
