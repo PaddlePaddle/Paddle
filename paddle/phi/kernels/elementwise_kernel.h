@@ -237,7 +237,9 @@ DenseTensor ElementwisePow(const Context& dev_ctx,
   ElementwiseInferMeta(x, y, &meta_out);
   ElementwisePowKernel<T, Context>(dev_ctx, x, y, &dense_out);
   DenseTensor& xx = const_cast<phi::DenseTensor&>(x);
+  DenseTensor& yy = const_cast<phi::DenseTensor&>(y);
   xx.inplace_version_counter_->setCanNotUse();
+  yy.inplace_version_counter_->setCanNotUse();
   dense_out.inplace_version_counter_->setCanNotUse();
   if (xx.inplace_version_counter_->CurrentVersion() > 1000 ||
       dense_out.inplace_version_counter_->CurrentVersion() > 100 ||
