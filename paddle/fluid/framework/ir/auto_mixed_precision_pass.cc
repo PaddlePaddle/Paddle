@@ -200,13 +200,19 @@ void AutoMixedPrecisionPass::Init(Graph* graph) const {
   if (enable_gpu_mixed) {
     backend_ = phi::Backend::GPU;
   } else if (enable_custom_device_mixed) {
-    // transform Backend::CUSTOM to actual backend.
-    // Here, we only consider one custom backend.
+// transform Backend::CUSTOM to actual backend.
+// Here, we only consider one custom backend.
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
     auto device_type = phi::DeviceManager::GetAllCustomDeviceTypes()[0];
     backend_ = static_cast<phi::Backend>(
         static_cast<size_t>(phi::Backend::NUM_BACKENDS) +
         phi::CustomRegisteredDeviceMap::Instance()
             .GetOrRegisterGlobalDeviceTypeId(device_type));
+#else
+    PADDLE_THROW(paddle::platform::errors::Unavailable(
+        "Paddle is not compiled with CustomDevice. "
+        "Cannot enable custom_device_mixed."));
+#endif
   }
   skip_pass_ = !enable_gpu_mixed && !enable_custom_device_mixed;
 
