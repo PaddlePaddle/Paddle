@@ -42,7 +42,7 @@ class PrimeNet(paddle.nn.Layer):
     ('primal', 'cotangent', 'dtype'),
     [
         (np.random.rand(10, 10), np.random.rand(10, 10), np.float32),
-        (np.random.rand(16, 16, 16), np.random.rand(16, 16, 16), np.float32),
+        (np.random.rand(16, 16, 16), np.random.rand(16, 16, 16), np.float64),
     ],
 )
 class TestErfGradComp(unittest.TestCase):
@@ -89,6 +89,7 @@ class TestErfGradComp(unittest.TestCase):
                 )
                 y = paddle.erf(x)
                 x_cotangent = paddle.static.gradients(y, x, v)
+
             exe = paddle.static.Executor()
             exe.run(sp)
             return exe.run(

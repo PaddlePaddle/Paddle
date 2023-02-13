@@ -311,9 +311,10 @@ void exp_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
 template <typename T>
 void erf_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
+    // dx = dout * static_cast<T>(M_2_SQRTPI) * (-(in.square())).exp();
     auto m_2_sqrt_pi = full<T>(phi::vectorize(x.dims()), M_2_SQRTPI, x.dtype());
     auto neg_one = full<T>(phi::vectorize(x.dims()), -1.0, x.dtype());
-    auto neg_tmp = multiply<T>(neg_one, pow<T>(x, 2.0));
+    auto neg_tmp = neg_one * x * x;
     auto mul_tmp = multiply<T>(m_2_sqrt_pi, exp<T>(neg_tmp));
     set_output<T>(multiply<T>(out_grad, mul_tmp), x_grad);
   }
