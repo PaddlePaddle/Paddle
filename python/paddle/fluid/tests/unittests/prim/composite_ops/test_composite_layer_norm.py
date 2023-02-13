@@ -72,10 +72,10 @@ def expect_forward(x, norm_shape, w, b):
 class TestCompositelayer_norm(unittest.TestCase):
     def setUp(self):
         self.dtypes = ["float16", "float32"]
-        self.n_shape = [[4], [3], [2, 3]]
-        self.shape1s = [[3, 4], [2, 4, 3], [2, 2, 3]]
-        self.shape2s = [[4], [3], [6]]
-        self.shape3s = [[4], [3], [6]]
+        self.n_shape = [[4], [64, 128], [64]]
+        self.shape1s = [[3, 4], [64, 64, 128], [128, 64, 64]]
+        self.shape2s = [[4], [64 * 128], [64]]
+        self.shape3s = [[4], [64 * 128], [64]]
 
     def cal_composite(self, inputs, norm_shape, weight, bias):
         paddle.enable_static()

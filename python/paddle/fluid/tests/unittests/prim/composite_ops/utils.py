@@ -19,7 +19,6 @@ TOLERANCE = {
         "backward": {"rtol": 1e-3, "atol": 1e-3},
         "prim_backward": {"rtol": 1e-3, "atol": 1e-3},
     },
-
     "float32": {
         "forward": {"rtol": 1e-6, "atol": 1e-6},
         "backward": {"rtol": 1e-6, "atol": 1e-6},
@@ -34,6 +33,11 @@ TOLERANCE = {
 
 # this tolerance is for big composite ops like batch_norm.
 SUB_TOLERANCE = {
+    "float16": {
+        "forward": {"rtol": 1e-3, "atol": 1e-3},
+        "backward": {"rtol": 1e-3, "atol": 1e-3},
+        "prim_backward": {"rtol": 1e-3, "atol": 1e-3},
+    },
     "float32": {
         "forward": {"rtol": 1e-5, "atol": 1e-5},
         "backward": {"rtol": 1e-5, "atol": 1e-5},

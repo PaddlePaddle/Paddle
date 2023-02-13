@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from utils import TOLERANCE
+from utils import SUB_TOLERANCE
 
 import paddle
 import paddle.nn.functional as F
@@ -50,11 +50,11 @@ class Attr:
         return
 
     def get_rtol(self, flag):
-        rtol = TOLERANCE[self.dtype][flag].get("rtol")
+        rtol = SUB_TOLERANCE[self.dtype][flag].get("rtol")
         return rtol
 
     def get_atol(self, flag):
-        atol = TOLERANCE[self.dtype][flag].get("atol")
+        atol = SUB_TOLERANCE[self.dtype][flag].get("atol")
         return atol
 
 
@@ -63,30 +63,6 @@ attrs = Attr()
 
 def fn(x, norm_shape, w, b):
     return F.layer_norm(x, norm_shape, w, b)
-
-
-# def layer_norm_ (input, weight, bias, epsilon=1e-05, begin_norm_axis = 0):
-#     axis = np.arange(begin_norm_axis,len(input.shape))
-#     mean = paddle.mean(input, axis=axis, keepdim=True)
-#     t1 = input - mean
-#     t2 = paddle.pow( t1, 2.0)
-#     t3 = paddle.mean( t2, axis=axis, keepdim=True)
-#     t4 = t3 + epsilon
-#     t5 = paddle.sqrt( t4 )
-#     t7 = t1 / t5
-#     out = t7
-#     if weight is not None:
-#         weight = paddle.reshape(weight, input.shape[begin_norm_axis:])
-#         out = t7 * paddle.broadcast_to(weight, out.shape)
-#     if bias is not None:
-#         bias = paddle.reshape(bias, input.shape[begin_norm_axis:])
-#         out = out + paddle.broadcast_to(bias, out.shape)
-
-#     return out
-
-# def composite_forward(x, norm_shape, w, b):
-#     b_axis = len(x.shape) - len(norm_shape)
-#     return layer_norm_(x, w, b, begin_norm_axis=b_axis)
 
 
 def expect_backward(x, norm_shape, w, b):
@@ -101,10 +77,10 @@ def expect_backward(x, norm_shape, w, b):
 class TestCompositelayer_norm(unittest.TestCase):
     def setUp(self):
         self.dtypes = ["float16", "float32"]
-        self.n_shape = [[3, 4], [3], [2, 3]]
-        self.shape1s = [[3, 4], [2, 4, 3], [2, 2, 3]]
-        self.shape2s = [[12], [3], [6]]
-        self.shape3s = [[12], [3], [6]]
+        self.n_shape = [[4], [64, 128], [64]]
+        self.shape1s = [[3, 4], [64, 64, 128], [128, 64, 64]]
+        self.shape2s = [[4], [64 * 128], [64]]
+        self.shape3s = [[4], [64 * 128], [64]]
 
     def cal_composite_backward(self, inputs, norm_shape, weight, bias):
         paddle.enable_static()
@@ -155,6 +131,49 @@ class TestCompositelayer_norm(unittest.TestCase):
         core._set_prim_forward_enabled(False)
         return res
 
+    def cal2_composite_backward(self, inputs, norm_shape, weight, bias):
+        paddle.enable_static()
+        core._set_prim_forward_enabled(True)
+        startup_program = paddle.static.Program()
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            x = paddle.static.data(
+                'x', shape=inputs.shape, dtype=str(inputs.dtype)
+            )
+            x.stop_gradient = False
+            y = fn(x, norm_shape, weight, bias)
+
+            blocks = main_program.blocks
+
+            fwd_ops = [op.type for op in blocks[0].ops]
+            # Ensure that layer_norm in original block
+            self.assertTrue('layer_norm' in fwd_ops)
+
+            paddle.incubate.autograd.to_prim(blocks)
+
+            fwd_ops_new = [op.type for op in blocks[0].ops]
+            # Ensure that layer_norm is splitted into small ops
+            self.assertTrue('layer_norm' not in fwd_ops_new)
+
+            z = paddle.static.gradients([y], x)
+            fwd_ops_grad = [op.type for op in blocks[0].ops]
+            # Ensure that layer_norm_grad not in grad block
+
+            self.assertTrue('layer_norm_grad' not in fwd_ops_grad)
+
+        exe = paddle.static.Executor()
+        exe.run(startup_program)
+        res = exe.run(
+            main_program,
+            feed={
+                'x': inputs,
+            },
+            fetch_list=[z],
+        )
+        paddle.disable_static()
+        core._set_prim_forward_enabled(False)
+        return res
+
     def compare_backward(self):
         x, w, b = generate_data(attrs.shape1, attrs.shape2, attrs.shape3)
         n_shape = attrs.n_shape
@@ -162,25 +181,25 @@ class TestCompositelayer_norm(unittest.TestCase):
         w_p = paddle.to_tensor(w)
         b_p = paddle.to_tensor(b)
 
-        expect = expect_backward(x_p, n_shape, w_p, b_p).numpy()
-        actual = self.cal_composite_backward(x_p, n_shape, w_p, b_p)
+        expect = expect_backward(x_p, n_shape, w_p, b_p)[0].numpy()
+        actual = self.cal_composite_backward(x, n_shape, w, b)[0]
 
         assert expect.dtype == actual.dtype
         np.testing.assert_allclose(
             expect,
             actual,
-            rtol=attrs.get_rtol("forward"),
-            atol=attrs.get_atol("forward"),
+            rtol=attrs.get_rtol("backward"),
+            atol=attrs.get_atol("backward"),
         )
 
-        expect_2 = expect_backward(x_p, n_shape, None, None).numpy()
-        actual_2 = self.cal_composite_backward(x_p, n_shape, None, None).numpy()
+        expect_2 = expect_backward(x_p, n_shape, None, None)[0].numpy()
+        actual_2 = self.cal2_composite_backward(x, n_shape, None, None)[0]
         assert expect_2.dtype == actual_2.dtype
         np.testing.assert_allclose(
             expect_2,
             actual_2,
-            rtol=attrs.get_rtol("forward"),
-            atol=attrs.get_atol("forward"),
+            rtol=attrs.get_rtol("backward"),
+            atol=attrs.get_atol("backward"),
         )
 
     def test_backward(self):
@@ -200,10 +219,10 @@ class TestCompositelayer_normPrimBackward(unittest.TestCase):
     def setUp(self):
         core._set_prim_backward_enabled(True)
         self.dtypes = ["float16", "float32"]
-        self.n_shape = [[3, 4], [3], [2, 3]]
-        self.shape1s = [[3, 4], [2, 4, 3], [2, 2, 3]]
-        self.shape2s = [[12], [3], [6]]
-        self.shape3s = [[12], [3], [6]]
+        self.n_shape = [[4], [64, 128], [64]]
+        self.shape1s = [[3, 4], [64, 64, 128], [128, 64, 64]]
+        self.shape2s = [[4], [64 * 128], [64]]
+        self.shape3s = [[4], [64 * 128], [64]]
 
     def cal_composite_backward(self, inputs, norm_shape, weight, bias):
         paddle.enable_static()
@@ -240,6 +259,35 @@ class TestCompositelayer_normPrimBackward(unittest.TestCase):
         core._set_prim_all_enabled(False)
         return res
 
+    def cal2_composite_backward(self, inputs, norm_shape, weight, bias):
+        paddle.enable_static()
+        core._set_prim_all_enabled(True)
+        startup_program = paddle.static.Program()
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            x = paddle.static.data(
+                'x', shape=inputs.shape, dtype=str(inputs.dtype)
+            )
+            x.stop_gradient = False
+            y = fn(x, norm_shape, weight, bias)
+
+            blocks = main_program.blocks
+            paddle.incubate.autograd.to_prim(blocks)
+            z = paddle.static.gradients([y], x)
+
+        exe = paddle.static.Executor()
+        exe.run(startup_program)
+        res = exe.run(
+            main_program,
+            feed={
+                'x': inputs,
+            },
+            fetch_list=[z],
+        )
+        paddle.disable_static()
+        core._set_prim_all_enabled(False)
+        return res
+
     def compare_backward(self):
         x, w, b = generate_data(attrs.shape1, attrs.shape2, attrs.shape3)
         n_shape = attrs.n_shape
@@ -247,25 +295,25 @@ class TestCompositelayer_normPrimBackward(unittest.TestCase):
         w_p = paddle.to_tensor(w)
         b_p = paddle.to_tensor(b)
 
-        expect = expect_backward(x_p, n_shape, w_p, b_p).numpy()
-        actual = self.cal_composite_backward(x_p, n_shape, w_p, b_p)
+        expect = expect_backward(x_p, n_shape, w_p, b_p)[0].numpy()
+        actual = self.cal_composite_backward(x, n_shape, w, b)[0]
 
         assert expect.dtype == actual.dtype
         np.testing.assert_allclose(
             expect,
             actual,
-            rtol=attrs.get_rtol("forward"),
-            atol=attrs.get_atol("forward"),
+            rtol=attrs.get_rtol("prim_backward"),
+            atol=attrs.get_rtol("prim_backward"),
         )
 
-        expect_2 = expect_backward(x_p, n_shape, None, None).numpy()
-        actual_2 = self.cal_composite_backward(x_p, n_shape, None, None).numpy()
+        expect_2 = expect_backward(x_p, n_shape, None, None)[0].numpy()
+        actual_2 = self.cal2_composite_backward(x, n_shape, None, None)[0]
         assert expect_2.dtype == actual_2.dtype
         np.testing.assert_allclose(
             expect_2,
             actual_2,
-            rtol=attrs.get_rtol("forward"),
-            atol=attrs.get_atol("forward"),
+            rtol=attrs.get_rtol("prim_backward"),
+            atol=attrs.get_atol("prim_backward"),
         )
 
     def test_prim_backward(self):
