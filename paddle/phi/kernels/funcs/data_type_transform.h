@@ -37,16 +37,22 @@ phi::DenseTensor TransDataType(const Context& dev_ctx,
       return phi::Cast<double>(dev_ctx, x, dtype);
     case DataType::INT32:
       return phi::Cast<int32_t>(dev_ctx, x, dtype);
+#ifndef PADDLE_WITH_XPU
     case DataType::INT64:
       return phi::Cast<int64_t>(dev_ctx, x, dtype);
+#endif
     case DataType::FLOAT16:
       return phi::Cast<phi::dtype::float16>(dev_ctx, x, dtype);
+#ifndef PADDLE_WITH_XPU
     case DataType::BFLOAT16:
       return phi::Cast<phi::dtype::bfloat16>(dev_ctx, x, dtype);
+#endif
     case DataType::BOOL:
       return phi::Cast<bool>(dev_ctx, x, dtype);
+#ifndef PADDLE_WITH_XPU
     case DataType::INT16:
       return phi::Cast<int16_t>(dev_ctx, x, dtype);
+#endif
     case DataType::UINT8:
       return phi::Cast<uint8_t>(dev_ctx, x, dtype);
     default:
