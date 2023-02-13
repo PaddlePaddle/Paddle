@@ -29,6 +29,7 @@ from paddle.fluid.executor import (
 )
 from paddle.fluid.framework import _apply_pass
 from paddle.fluid.layers.utils import _hash_with_id, flatten, pack_sequence_as
+from paddle.incubate.autograd.primapi import to_prim
 
 from . import logging_utils
 from .return_transformer import RETURN_NO_VALUE_MAGIC_NUM
@@ -247,6 +248,9 @@ class PartialProgramLayer:
             paddle.static.amp.fp16_utils.cast_model_to_fp16(
                 pure_fp16_program, self._amp_list, use_fp16_guard=False
             )
+
+        core.check_and_set_prim_all_enabled()
+        to_prim(pure_fp16_program.blocks)
         if is_infer_mode:
             return pure_fp16_program
         else:
