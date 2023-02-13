@@ -20,7 +20,7 @@
 
 namespace paddle {
 
-namespace operants {
+namespace prim {
 
 using Tensor = paddle::experimental::Tensor;
 using TensorOperantsBase = paddle::operants::TensorOperantsBase;
@@ -35,5 +35,5 @@ class StaticTensorOperants : public TensorOperantsBase {
   DISABLE_COPY_AND_ASSIGN(StaticTensorOperants);
 };
 
-}  // namespace operants
+}  // namespace prim
 }  // namespace paddle
