@@ -54,7 +54,6 @@ KernelSignature Conv2dDoubleGradOpArgumentMapping(
 }
 
 KernelSignature Conv2dFusionArgumentMapping(const ArgumentMappingContext& ctx) {
-
   return KernelSignature("conv2d_fusion",
                          {"Input", "Filter", "Bias", "ResidualData"},
                          {
@@ -71,7 +70,6 @@ KernelSignature Conv2dFusionArgumentMapping(const ArgumentMappingContext& ctx) {
                              "fuse_alpha",
                          },
                          {"Output", "Outputs"});
-
 }
 }  // namespace phi
 

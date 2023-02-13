@@ -1747,16 +1747,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 #endif
       phi_kernel_key = TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
 
-      // if (phi_kernel_name == "conv2d_fusion" && 0) {
-      //   static int ii = 0;
-      //   std::cout << ii << std::endl;
-      //   if (ii > 0 && ii != 46 && ii != 53 && ii != 59) 
-      //   {
-      //    phi_kernel_key.set_backend(phi::Backend::CUTLASS);
-      //   }
-      //    ii++;
-      // }
-
       phi_kernel_.reset(
           new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
               phi_kernel_name, phi_kernel_key)));
@@ -1838,7 +1828,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       }
 #endif
       phi_kernel_key = TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
-      std::cout << "phi_kernel_key: " << phi_kernel_key << " " << kernel_signature_->name << std::endl;
+      //std::cout << "phi_kernel_key: " << phi_kernel_key << " " << kernel_signature_->name << std::endl;
     }
 
 // NOTE(Liu-xiandong): Determine whether the selected kernel is valid
