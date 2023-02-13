@@ -6,8 +6,6 @@ exclude =
     # https://github.com/PaddlePaddle/Paddle/pull/46290#discussion_r976392010
     ./python/paddle/fluid/[!t]**,
     ./python/paddle/fluid/tra**,
-    # Exclude auto-generated files
-    *_pb2.py,
     # Exclude third-party libraries
     ./python/paddle/utils/gast/**,
     # Exclude files that will be removed in the future, see more at
