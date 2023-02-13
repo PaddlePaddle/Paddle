@@ -113,7 +113,7 @@ Tensor matmul<DescTensor>(const Tensor& x,
   op->SetAttr("trans_y", transpose_y);
   op->CheckAttrs();
   op->InferVarType(block);
-  // op->InferShape(*block);
+  op->InferShape(*block);
   return out;
 }
 

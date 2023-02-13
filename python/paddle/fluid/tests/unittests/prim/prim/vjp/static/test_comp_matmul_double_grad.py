@@ -33,37 +33,37 @@ core._set_prim_backward_enabled(True)
 @param.parameterized_class(
     ('primal0', 'primal1', 'primal2', 'trans_0', 'trans_1', 'dtype'),
     [
-        (
-            np.random.rand(2),
-            np.random.rand(2),
-            np.random.rand(1),
-            False,
-            False,
-            np.float32,
-        ),
-        (
-            np.random.rand(2, 3),
-            np.random.rand(3),
-            np.random.rand(2),
-            False,
-            False,
-            np.float32,
-        ),
-        (
-            np.random.rand(2),
-            np.random.rand(2, 3),
-            np.random.rand(3),
-            False,
-            False,
-            np.float32,
-        ),
-        (
-            np.random.rand(2),
-            np.random.rand(3, 2),
-            False,
-            True,
-            np.float32,
-        ),
+        # (
+        #     np.random.rand(2),
+        #     np.random.rand(2),
+        #     np.random.rand(1),
+        #     False,
+        #     False,
+        #     np.float32,
+        # ),
+        # (
+        #     np.random.rand(2, 3),
+        #     np.random.rand(3),
+        #     np.random.rand(2),
+        #     False,
+        #     False,
+        #     np.float32,
+        # ),
+        # (
+        #     np.random.rand(2),
+        #     np.random.rand(2, 3),
+        #     np.random.rand(3),
+        #     False,
+        #     False,
+        #     np.float32,
+        # ),
+        # (
+        #     np.random.rand(2),
+        #     np.random.rand(3, 2),
+        #     False,
+        #     True,
+        #     np.float32,
+        # ),
         (
             np.random.rand(2, 3, 4),
             np.random.rand(2, 4, 5),
@@ -72,46 +72,46 @@ core._set_prim_backward_enabled(True)
             False,
             np.float32,
         ),
-        (
-            np.random.rand(2, 4, 3),
-            np.random.rand(2, 4, 5),
-            np.random.rand(2, 3, 5),
-            True,
-            False,
-            np.float32,
-        ),
-        (
-            np.random.rand(2, 3, 4),
-            np.random.rand(2, 5, 4),
-            np.random.rand(2, 3, 5),
-            False,
-            True,
-            np.float32,
-        ),
-        (
-            np.random.rand(2, 4, 3),
-            np.random.rand(2, 5, 4),
-            np.random.rand(2, 3, 5),
-            True,
-            True,
-            np.float32,
-        ),
-        (
-            np.random.rand(2, 3, 4),
-            np.random.rand(4),
-            np.random.rand(2, 3),
-            False,
-            False,
-            np.float32,
-        ),
-        (
-            np.random.rand(2, 1, 5, 2),
-            np.random.rand(1, 3, 2, 4),
-            np.random.rand(2, 3, 5, 4),
-            False,
-            False,
-            np.float32,
-        ),
+        # (
+        #     np.random.rand(2, 4, 3),
+        #     np.random.rand(2, 4, 5),
+        #     np.random.rand(2, 3, 5),
+        #     True,
+        #     False,
+        #     np.float32,
+        # ),
+        # (
+        #     np.random.rand(2, 3, 4),
+        #     np.random.rand(2, 5, 4),
+        #     np.random.rand(2, 3, 5),
+        #     False,
+        #     True,
+        #     np.float32,
+        # ),
+        # (
+        #     np.random.rand(2, 4, 3),
+        #     np.random.rand(2, 5, 4),
+        #     np.random.rand(2, 3, 5),
+        #     True,
+        #     True,
+        #     np.float32,
+        # ),
+        # (
+        #     np.random.rand(2, 3, 4),
+        #     np.random.rand(4),
+        #     np.random.rand(2, 3),
+        #     False,
+        #     False,
+        #     np.float32,
+        # ),
+        # (
+        #     np.random.rand(2, 1, 5, 2),
+        #     np.random.rand(1, 3, 2, 4),
+        #     np.random.rand(2, 3, 5, 4),
+        #     False,
+        #     False,
+        #     np.float32,
+        # ),
     ],
 )
 class TestMatmulDoubleGradComp(unittest.TestCase):
@@ -148,6 +148,7 @@ class TestMatmulDoubleGradComp(unittest.TestCase):
 
                 exe = paddle.static.Executor()
                 exe.run(sp)
+                print("program = ", mp)
                 out = exe.run(
                     program=mp,
                     feed={

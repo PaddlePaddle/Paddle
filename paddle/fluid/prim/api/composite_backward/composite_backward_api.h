@@ -15,9 +15,9 @@
 #pragma once
 
 #include "paddle/fluid/prim/api/all.h"
+#include "paddle/fluid/prim/api/generated_prim/prim_generated_api.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/ddim.h"
-
 namespace paddle {
 namespace prim {
 using Tensor = paddle::experimental::Tensor;
@@ -387,8 +387,6 @@ void matmul_double_grad(const Tensor& x,
     if (grad_y_grad) {
       yg_help = grad_y_grad.get();
     }
-    // out_help = empty_like<T>(grad_out, grad_out.dtype(), grad_out.place());
-    // by_pass<T>(grad_out, &out_help);
     out_help = grad_out;
   }
 
@@ -490,19 +488,23 @@ void matmul_double_grad(const Tensor& x,
     if (!transpose_x && !transpose_y) {
       if (x_grad) {
         dx = matmul<T>(out_help, yg_help, false, true);
+        std::cout << "after matmul dx.dims = " << dx.dims() << std::endl;
       }
       if (y_grad) {
         dy = matmul<T>(xg_help, out_help, true, false);
+        std::cout << "after matmul dy.dims = " << dy.dims() << std::endl;
       }
       if (grad_out_grad) {
         ddout_1 = matmul<T>(x_help, yg_help, false, false);
         ddout_2 = matmul<T>(xg_help, y_help, false, false);
         ddout = add<T>(ddout_1, ddout_2);
+        std::cout << "after matmul ddout.dims = " << ddout.dims() << std::endl;
       }
     } else if (!transpose_x && transpose_y) {
       if (x_grad) {
         dx = matmul<T>(out_help, yg_help, false, false);
       }
+
       if (y_grad) {
         dy = matmul<T>(out_help, xg_help, true, false);
       }
@@ -515,6 +517,7 @@ void matmul_double_grad(const Tensor& x,
       if (x_grad) {
         dx = matmul<T>(yg_help, out_help, false, true);
       }
+
       if (y_grad) {
         dy = matmul<T>(xg_help, out_help, false, false);
       }
@@ -561,6 +564,7 @@ void matmul_double_grad(const Tensor& x,
       auto x_grad_reduce_dims =
           get_reduce_dims(dx, tdout_ndim, tx_ndim, &tx_dims);
 
+      std::cout << "dx.dims = " << dx.dims() << std::endl;
       if (!x_grad_reduce_dims.empty()) {
         dx = sum<T>(dx, IntArray(x_grad_reduce_dims), dy.dtype(), true);
       }
@@ -604,6 +608,7 @@ void matmul_double_grad(const Tensor& x,
     if (dx.initialized() && dx_dims[0] == 1) {
       dx = reshape<T>(dx, IntArray(x_dims));
     }
+    std::cout << "after recover dx.dims = " << dx.dims() << std::endl;
     if (dy.initialized() && dy_dims.back() == 1) {
       dy = reshape<T>(dy, IntArray(y_dims));
     }
@@ -614,7 +619,9 @@ void matmul_double_grad(const Tensor& x,
     VLOG(1) << "---------recover x_ndim=1 ---------";
     if (dx.initialized() && dx_dims[0] == 1) {
       dx = reshape<T>(dx, IntArray(x_dims));
+      std::cout << "after recover dx.dims = " << dx.dims() << std::endl;
     }
+    std::cout << "after recover dx.dims = " << dx.dims() << std::endl;
     if (ddout.initialized() && ddout_dims[0] == 1) {
       ddout = reshape<T>(ddout,
                          IntArray(std::vector<int64_t>(
@@ -636,6 +643,7 @@ void matmul_double_grad(const Tensor& x,
   if (x_grad) {
     VLOG(1) << "-------------------set x_grad----------------";
     set_output<T>(dx, x_grad);
+    std::cout << "set x_grad dx.dims = " << x_grad->dims() << std::endl;
   }
   if (y_grad) {
     VLOG(1) << "-------------------set y_grad----------------";
