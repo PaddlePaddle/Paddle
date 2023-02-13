@@ -122,6 +122,9 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"Bias_scales", ExtraAttrProperty::ONEDNN},
         {"Output_shift_scale", ExtraAttrProperty::ONEDNN},
         {"Sum_scale", ExtraAttrProperty::ONEDNN},
+        {"scale", ExtraAttrProperty::ONEDNN},
+        {"shift", ExtraAttrProperty::ONEDNN},
+        {"output_data_type", ExtraAttrProperty::ONEDNN},
         // GPUDNN dedicated attributes
         {"exhaustive_search", ExtraAttrProperty::GPUDNN},
         {"fuse_relu_before_depthwise_conv", ExtraAttrProperty::GPUDNN},
@@ -218,9 +221,7 @@ class ExtraInfoUtils {
 
   // TODO(chenweihang): move these extra inputs into op_compat.yaml
   std::unordered_map<std::string, std::vector<std::string>>
-      g_extra_input_names_map_ = {{"conv2d", {"Bias", "ResidualData"}},
-                                  {"conv2d_transpose", {"Bias"}},
-                                  {"conv2d_grad", {"Bias"}}};
+      g_extra_input_names_map_ = {{"conv2d_transpose", {"Bias"}}};
   std::vector<std::string> empty_extra_input_names_;
 };
 

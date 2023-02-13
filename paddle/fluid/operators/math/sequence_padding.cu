@@ -124,7 +124,7 @@ class PaddingLoDTensorFunctor<phi::GPUContext, T> {
     T* pad_data = pad_tensor->data<T>();
     const T* pad_value_data = pad_value.data<T>();
 
-    paddle::framework::MixVector<size_t> mix_vector_seq_offsets(&seq_offsets);
+    phi::MixVector<size_t> mix_vector_seq_offsets(&seq_offsets);
     SequencePaddingKernel<T, kSeqToPad><<<grid, threads, 0, context.stream()>>>(
         pad_data,
         seq_data,
@@ -191,7 +191,7 @@ class UnpaddingLoDTensorFunctor<phi::GPUContext, T> {
     const T* pad_data = pad_tensor.data<T>();
     T* seq_data = seq_tensor->data<T>();
 
-    paddle::framework::MixVector<size_t> mixv_seq_offsets(&seq_offsets);
+    phi::MixVector<size_t> mixv_seq_offsets(&seq_offsets);
     SequencePaddingKernel<T, kPadToSeq><<<grid, threads, 0, context.stream()>>>(
         seq_data,
         pad_data,

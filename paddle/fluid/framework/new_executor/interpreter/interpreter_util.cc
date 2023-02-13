@@ -827,7 +827,9 @@ bool BuildOpFuncList(const platform::Place& place,
         }
 
         // step 5. run kernel
-        if (run_phi_kernel) {
+        if (run_phi_kernel &&
+            op_func_node.phi_kernel_->GetKernelRegisteredType() ==
+                phi::KernelRegisteredType::FUNCTION) {
           phi::KernelContext phi_kernel_context;
           op_with_kernel->BuildPhiKernelContext(
               runtime_context, dev_ctx, &phi_kernel_context);
@@ -838,6 +840,12 @@ bool BuildOpFuncList(const platform::Place& place,
                                   op_with_kernel->PhiKernelSignature(),
                                   &phi_kernel_context);
           }
+        } else if (run_phi_kernel &&
+                   op_func_node.phi_kernel_->GetKernelRegisteredType() ==
+                       phi::KernelRegisteredType::STRUCTURE) {
+          ExecutionContext execution_context(
+              *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context);
+          (*op_func_node.phi_kernel_)(&execution_context);
         } else {
           // the place of exec_ctx maybe has changed.
           if (!skip_run) {
