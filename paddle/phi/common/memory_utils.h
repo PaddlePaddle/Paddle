@@ -16,6 +16,7 @@
 
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/stream.h"
 
@@ -92,31 +93,75 @@ class MemoryUtils {
   Allocator::AllocationPtr Alloc(const phi::GPUPlace& place,
                                  size_t size,
                                  const phi::Stream& stream) {
+    CheckMemoryMethod();
     return memory_method_->alloc_with_stream(place, size, stream);
   }
 
   Allocator::AllocationPtr Alloc(const phi::Place& place, size_t size) {
+    CheckMemoryMethod();
     return memory_method_->alloc(place, size);
   }
 
   std::shared_ptr<Allocation> AllocShared(const phi::Place& place,
                                           size_t size,
                                           const phi::Stream& stream) {
+    CheckMemoryMethod();
     return memory_method_->alloc_shared_with_stream(place, size, stream);
   }
 
   std::shared_ptr<Allocation> AllocShared(const phi::Place& place,
                                           size_t size) {
+    CheckMemoryMethod();
     return memory_method_->alloc_shared(place, size);
   }
 
   bool InSameStream(const std::shared_ptr<Allocation>& allocation,
                     const phi::Stream& stream) {
+    CheckMemoryMethod();
     return memory_method_->in_same_stream(allocation, stream);
   }
 
   void AllocationDeleter(Allocation* allocation) {
+    CheckMemoryMethod();
     return memory_method_->allocation_deleter(allocation);
+  }
+
+  void CheckMemoryMethod() {
+    PADDLE_ENFORCE_NE(
+        memory_method_.get(),
+        nullptr,
+        phi::errors::Unavailable("memory_method_ in MemoryUtils is not "
+                                 "initiazed yet. You need init it first."));
+    PADDLE_ENFORCE_NE(
+        memory_method_->alloc,
+        nullptr,
+        phi::errors::Unavailable("alloc method in memory_method_ is not "
+                                 "initiazed yet. You need init it first."));
+    PADDLE_ENFORCE_NE(memory_method_->alloc_with_stream,
+                      nullptr,
+                      phi::errors::Unavailable(
+                          "alloc_with_stream method in memory_method_ is not "
+                          "initiazed yet. You need init it first."));
+    PADDLE_ENFORCE_NE(memory_method_->alloc_shared_with_stream,
+                      nullptr,
+                      phi::errors::Unavailable(
+                          "alloc_shared_with_stream method in memory_method_ "
+                          "is not initiazed yet. You need init it first."));
+    PADDLE_ENFORCE_NE(
+        memory_method_->alloc_shared,
+        nullptr,
+        phi::errors::Unavailable("alloc_shared method in memory_method_ is not "
+                                 "initiazed yet. You need init it first."));
+    PADDLE_ENFORCE_NE(
+        memory_method_->in_same_stream,
+        nullptr,
+        phi::errors::Unavailable("in_same_stream method in memory_method_ is "
+                                 "not initiazed yet. You need init it first."));
+    PADDLE_ENFORCE_NE(memory_method_->allocation_deleter,
+                      nullptr,
+                      phi::errors::Unavailable(
+                          "allocation_deleter method in memory_method_ is not "
+                          "initiazed yet. You need init it first."));
   }
 
  private:
