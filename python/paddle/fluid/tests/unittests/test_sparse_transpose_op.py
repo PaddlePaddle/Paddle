@@ -17,38 +17,36 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestTranspose(unittest.TestCase):
     # x: sparse, out: sparse
     def check_result(self, x_shape, dims, format):
-        with _test_eager_guard():
-            mask = paddle.randint(0, 2, x_shape).astype("float32")
-            # "+ 1" to make sure that all zero elements in "origin_x" is caused by multiplying by "mask",
-            # or the backward checks may fail.
-            origin_x = (paddle.rand(x_shape, dtype='float32') + 1) * mask
-            dense_x = origin_x.detach()
-            dense_x.stop_gradient = False
-            dense_out = paddle.transpose(dense_x, dims)
+        mask = paddle.randint(0, 2, x_shape).astype("float32")
+        # "+ 1" to make sure that all zero elements in "origin_x" is caused by multiplying by "mask",
+        # or the backward checks may fail.
+        origin_x = (paddle.rand(x_shape, dtype='float32') + 1) * mask
+        dense_x = origin_x.detach()
+        dense_x.stop_gradient = False
+        dense_out = paddle.transpose(dense_x, dims)
 
-            if format == "coo":
-                sp_x = origin_x.detach().to_sparse_coo(len(x_shape))
-            else:
-                sp_x = origin_x.detach().to_sparse_csr()
-            sp_x.stop_gradient = False
-            sp_out = paddle.sparse.transpose(sp_x, dims)
+        if format == "coo":
+            sp_x = origin_x.detach().to_sparse_coo(len(x_shape))
+        else:
+            sp_x = origin_x.detach().to_sparse_csr()
+        sp_x.stop_gradient = False
+        sp_out = paddle.sparse.transpose(sp_x, dims)
 
-            np.testing.assert_allclose(
-                sp_out.to_dense().numpy(), dense_out.numpy(), rtol=1e-05
-            )
-            dense_out.backward()
-            sp_out.backward()
-            np.testing.assert_allclose(
-                sp_x.grad.to_dense().numpy(),
-                (dense_x.grad * mask).numpy(),
-                rtol=1e-05,
-            )
+        np.testing.assert_allclose(
+            sp_out.to_dense().numpy(), dense_out.numpy(), rtol=1e-05
+        )
+        dense_out.backward()
+        sp_out.backward()
+        np.testing.assert_allclose(
+            sp_x.grad.to_dense().numpy(),
+            (dense_x.grad * mask).numpy(),
+            rtol=1e-05,
+        )
 
     def test_transpose_2d(self):
         self.check_result([2, 5], [0, 1], 'coo')

@@ -17,7 +17,6 @@ import numpy as np
 import paddle
 
 from operator import mul
-import paddle.fluid.core as core
 import paddle.fluid as fluid
 import paddle.nn.functional as F
 from functools import reduce
@@ -26,7 +25,7 @@ import sys
 sys.path.append('..')
 from op_test import _set_use_system_allocator
 from paddle.fluid import Program, program_guard
-from paddle.fluid.contrib.mixed_precision.fp16_utils import (
+from paddle.static.amp.fp16_utils import (
     _keep_layer_norm_scale_bias_to_fp32,
 )
 from test_layer_norm_op import (
@@ -142,7 +141,7 @@ class TestLayerNormOp(unittest.TestCase):
                     },
                 )
                 # generate backward op_desc
-                grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(
+                grad_op_desc_list, op_grad_to_var = paddle.get_grad_op_desc(
                     layer_norm_op.desc, set(), []
                 )
                 grad_op_desc = grad_op_desc_list[0]
@@ -154,7 +153,7 @@ class TestLayerNormOp(unittest.TestCase):
                 grad_op_desc.infer_shape(block.desc)
                 for arg in grad_op_desc.output_arg_names():
                     grad_var = block.desc.find_var(arg.encode("ascii"))
-                    grad_var.set_dtype(core.VarDesc.VarType.FP32)
+                    grad_var.set_dtype(paddle.VarDesc.VarType.FP32)
 
                 program._sync_with_cpp()
                 exe = fluid.Executor(place)
@@ -246,13 +245,12 @@ class TestLayerNormOp(unittest.TestCase):
 
 class TestLayerNormAPI(unittest.TestCase):
     def test_case(self):
-        x = fluid.layers.data(
+        x = paddle.static.data(
             name='x',
             shape=[64, 32, 256],
             dtype='float32',
-            append_batch_size=False,
         )
-        x = fluid.layers.layer_norm(
+        x = paddle.static.nn.layer_norm(
             x,
             scale=True,
             shift=True,
@@ -261,7 +259,7 @@ class TestLayerNormAPI(unittest.TestCase):
             param_attr=None,
             bias_attr=None,
         )
-        x = fluid.layers.layer_norm(
+        x = paddle.static.nn.layer_norm(
             x,
             scale=False,
             shift=False,
@@ -270,7 +268,7 @@ class TestLayerNormAPI(unittest.TestCase):
             param_attr=None,
             bias_attr=None,
         )
-        x = fluid.layers.layer_norm(
+        x = paddle.static.nn.layer_norm(
             x,
             scale=False,
             shift=False,
@@ -292,7 +290,7 @@ class TestDygraphLayerNormAPIError(unittest.TestCase):
             self.assertRaises(TypeError, layer_norm, x1)
 
             # the input dtype of LayerNorm must be float32 or float16
-            x2 = fluid.layers.data(name='x2', shape=[3, 32, 32], dtype="int32")
+            x2 = paddle.static.data(name='x2', shape=[-1, 3, 32, 32], dtype="int32")
             self.assertRaises(TypeError, layer_norm, x2)
 
 

@@ -255,7 +255,7 @@ bool EmbLayerNormVarSeqlenPluginBase::supportsFormatCombination(
            desc.dims.d[0] == prev.dims.d[0];
   }
   if (pos == nbInputs - 1) {  // mask id
-    return desc.type == prev.type;
+    return desc.type == mType;
   }
   // embedded sequence
   if (pos == nbInputs) {
@@ -265,11 +265,11 @@ bool EmbLayerNormVarSeqlenPluginBase::supportsFormatCombination(
   }
   // mask(HFace) or pre_layernorm_bias(MTron)
   if (pos == nbInputs + 1) {
-    return desc.type == prev.type;
+    return desc.type == mType;
   }
   // max seqlen
   if (pos == nbInputs + 2) {
-    return desc.type == prev.type;
+    return desc.type == mType;
   }
 }
 

@@ -31,4 +31,5 @@ void SendURecvGradKernel(const Context& ctx,
                          const DenseTensor& out_grad,
                          const std::string& reduce_op,
                          DenseTensor* x_grad);
+
 }  // namespace phi

@@ -979,6 +979,44 @@ PDNode *patterns::OperatorActivation::operator()(
   return activation_out;
 }
 
+PDNode *patterns::QuantTranspose2::operator()() {
+  auto *quant_in = pattern->NewNode(quant_in_repr())
+                       ->AsInput()
+                       ->assert_is_op_input("quantize", "Input");
+  auto *quant_op = pattern->NewNode(quant_op_repr())->assert_is_op("quantize");
+  auto *quant_out = pattern->NewNode(quant_out_repr())
+                        ->AsOutput()
+                        ->AsIntermediate()
+                        ->assert_has_n_outputs(1)
+                        ->assert_is_op_output("quantize")
+                        ->assert_is_op_input("transpose2", "X");
+  auto *transpose2_op =
+      pattern->NewNode(transpose2_op_repr())->assert_is_op("transpose2");
+
+  quant_op->LinksFrom({quant_in}).LinksTo({quant_out});
+  transpose2_op->LinksFrom({quant_out});
+
+  return transpose2_op;
+}
+
+PDNode *patterns::Transpose2Dequant::operator()() {
+  auto *transpose2_op =
+      pattern->NewNode(transpose2_op_repr())->assert_is_op("transpose2");
+  auto dequant_in = pattern->NewNode(dequant_in_repr())
+                        ->AsIntermediate()
+                        ->assert_has_n_inputs(1)
+                        ->assert_is_op_input("dequantize", "Input");
+  auto dequant_op =
+      pattern->NewNode(dequant_op_repr())->assert_is_op("dequantize");
+  auto dequant_out = pattern->NewNode(dequant_out_repr())
+                         ->AsOutput()
+                         ->assert_is_op_output("dequantize", "Output");
+
+  transpose2_op->LinksTo({dequant_in});
+  dequant_op->LinksFrom({dequant_in}).LinksTo({dequant_out});
+  return dequant_out;
+}
+
 PDNode *patterns::Squeeze2Transpose2::operator()() {
   auto *squeeze2_op_in = pattern->NewNode(squeeze2_op_in_repr())
                              ->AsInput()
@@ -1826,20 +1864,20 @@ PDNode *patterns::ConvBias::operator()(
   return eltwise_out_var;
 }
 
-PDNode *patterns::Conv::operator()() {
-  auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
+PDNode *patterns::Conv::operator()(const std::string &conv_type) {
+  auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op(conv_type);
 
   auto input_var = pattern->NewNode(conv_input_repr())
                        ->AsInput()
-                       ->assert_is_op_input("conv2d", "Input");
+                       ->assert_is_op_input(conv_type, "Input");
 
   auto filter_var = pattern->NewNode(conv_filter_repr())
                         ->AsInput()
-                        ->assert_is_op_input("conv2d", "Filter");
+                        ->assert_is_op_input(conv_type, "Filter");
 
   auto output_var = pattern->NewNode(conv_output_repr())
                         ->AsOutput()
-                        ->assert_is_op_output("conv2d", "Output");
+                        ->assert_is_op_output(conv_type, "Output");
 
   conv_op->LinksFrom({input_var, filter_var}).LinksTo({output_var});
   return output_var;
@@ -2658,10 +2696,12 @@ PDNode *patterns::ConvElementwiseadd::operator()(PDNode *conv_in) {
 }
 
 PDNode *patterns::ConvAffineChannel::operator()(
-    paddle::framework::ir::PDNode *conv_input, bool with_eltwise_add) {
+    paddle::framework::ir::PDNode *conv_input,
+    const std::string &conv_type,
+    bool with_eltwise_add) {
   // Create Operators
-  conv_input->assert_is_op_input("conv2d", "Input");
-  auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op("conv2d");
+  conv_input->assert_is_op_input(conv_type, "Input");
+  auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op(conv_type);
 
   PDNode *eltwise_op = nullptr;
   if (with_eltwise_add) {
@@ -2676,11 +2716,11 @@ PDNode *patterns::ConvAffineChannel::operator()(
   auto *conv_weight_var = pattern->NewNode(conv_weight_repr())
                               ->AsInput()
                               ->assert_is_persistable_var()
-                              ->assert_is_op_input("conv2d", "Filter");
+                              ->assert_is_op_input(conv_type, "Filter");
 
   auto *conv_out_var = pattern->NewNode(conv_out_repr())
                            ->AsIntermediate()
-                           ->assert_is_only_output_of_op("conv2d");
+                           ->assert_is_only_output_of_op(conv_type);
 
   PDNode *eltwise_y_in_var = nullptr;
   PDNode *eltwise_out_var = nullptr;
@@ -2817,6 +2857,7 @@ PDNode *patterns::Bfloat16Placement::operator()(
                                        "layer_norm",
                                        "matmul",
                                        "matmul_v2",
+                                       "fused_matmul",
                                        "pool2d",
                                        "prelu",
                                        "relu",

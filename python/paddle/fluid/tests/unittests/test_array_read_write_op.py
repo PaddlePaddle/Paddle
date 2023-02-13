@@ -62,9 +62,9 @@ class TestArrayReadWrite(unittest.TestCase):
     def test_read_write(self):
         paddle.enable_static()
         x = [
-            layers.data(name='x0', shape=[100]),
-            layers.data(name='x1', shape=[100]),
-            layers.data(name='x2', shape=[100]),
+            paddle.static.data(name='x0', shape=[-1, 100]),
+            paddle.static.data(name='x1', shape=[-1, 100]),
+            paddle.static.data(name='x2', shape=[-1, 100]),
         ]
         for each_x in x:
             each_x.stop_gradient = False

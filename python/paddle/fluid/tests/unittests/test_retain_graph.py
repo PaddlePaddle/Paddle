@@ -150,15 +150,10 @@ class TestRetainGraph(unittest.TestCase):
         loss_g.backward()
         optim_g.minimize(loss_g)
 
-    def func_retain(self):
+    def test_retain(self):
         self.run_retain(need_retain=True)
         if not fluid.framework.in_dygraph_mode():
             self.assertRaises(RuntimeError, self.run_retain, need_retain=False)
-
-    def test_retain(self):
-        with fluid.framework._test_eager_guard():
-            self.func_retain()
-        self.func_retain()
 
 
 if __name__ == '__main__':

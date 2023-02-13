@@ -20,7 +20,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.executor import Executor
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestTrunctedGaussianRandomOp(unittest.TestCase):
@@ -70,17 +69,16 @@ class TestTrunctedGaussianRandomOp(unittest.TestCase):
     # directly
     def gaussian_random_test_eager(self, place):
         with fluid.dygraph.guard(place):
-            with _test_eager_guard():
-                out = paddle._C_ops.truncated_gaussian_random(
-                    self.attrs["shape"],
-                    self.attrs["mean"],
-                    self.attrs["std"],
-                    self.attrs["seed"],
-                    core.VarDesc.VarType.FP32,
-                    place,
-                )
-                self.assertAlmostEqual(numpy.mean(out.numpy()), 0.0, delta=0.1)
-                self.assertAlmostEqual(numpy.var(out.numpy()), 0.773, delta=0.1)
+            out = paddle._C_ops.truncated_gaussian_random(
+                self.attrs["shape"],
+                self.attrs["mean"],
+                self.attrs["std"],
+                self.attrs["seed"],
+                core.VarDesc.VarType.FP32,
+                place,
+            )
+            self.assertAlmostEqual(numpy.mean(out.numpy()), 0.0, delta=0.1)
+            self.assertAlmostEqual(numpy.var(out.numpy()), 0.773, delta=0.1)
 
 
 if __name__ == "__main__":

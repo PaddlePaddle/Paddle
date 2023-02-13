@@ -52,12 +52,6 @@ typedef SSIZE_T ssize_t;
 namespace paddle {
 namespace pybind {
 
-extern PyTypeObject* p_tensor_type;
-
-bool PyCheckTensor(PyObject* obj) {
-  return PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type));
-}
-
 static bool PyCheckInteger(PyObject* obj) {
 #if PY_VERSION_HEX < 0x03000000
   return (PyLong_Check(obj) || PyInt_Check(obj)) && !PyBool_Check(obj);

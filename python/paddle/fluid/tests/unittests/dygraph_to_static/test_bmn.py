@@ -24,12 +24,11 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import ParamAttr
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-from paddle.jit import ProgramTranslator, to_static
+from paddle.jit import to_static
+from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 SEED = 2000
 DATATYPE = 'float32'
-program_translator = ProgramTranslator()
 
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
@@ -116,11 +115,11 @@ class Conv1D(fluid.dygraph.Layer):
         k = 1.0 / math.sqrt(fan_in)
         param_attr = ParamAttr(
             name=prefix + "_w",
-            initializer=fluid.initializer.Uniform(low=-k, high=k),
+            initializer=paddle.nn.initializer.Uniform(low=-k, high=k),
         )
         bias_attr = ParamAttr(
             name=prefix + "_b",
-            initializer=fluid.initializer.Uniform(low=-k, high=k),
+            initializer=paddle.nn.initializer.Uniform(low=-k, high=k),
         )
 
         self._conv2d = paddle.nn.Conv2D(
@@ -135,7 +134,7 @@ class Conv1D(fluid.dygraph.Layer):
         )
 
     def forward(self, x):
-        x = fluid.layers.unsqueeze(input=x, axes=[2])
+        x = paddle.unsqueeze(x, axis=[2])
         x = self._conv2d(x)
         x = paddle.squeeze(x, axis=[2])
         return x
@@ -662,7 +661,7 @@ class TestTrain(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def train_bmn(self, args, place, to_static):
-        program_translator.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
         loss_data = []
 
         with fluid.dygraph.guard(place):
@@ -747,8 +746,9 @@ class TestTrain(unittest.TestCase):
                         if to_static:
                             paddle.jit.save(bmn, self.model_save_prefix)
                         else:
-                            fluid.dygraph.save_dygraph(
-                                bmn.state_dict(), self.dy_param_path
+                            paddle.save(
+                                bmn.state_dict(),
+                                self.dy_param_path + '.pdparams',
                             )
                         break
             return np.array(loss_data)
@@ -821,11 +821,11 @@ class TestTrain(unittest.TestCase):
             break
 
     def predict_dygraph(self, data):
-        program_translator.enable(False)
+        paddle.jit.enable_to_static(False)
         with fluid.dygraph.guard(self.place):
             bmn = BMN(self.args)
             # load dygraph trained parameters
-            model_dict, _ = fluid.load_dygraph(self.dy_param_path + ".pdparams")
+            model_dict = paddle.load(self.dy_param_path + ".pdparams")
             bmn.set_dict(model_dict)
             bmn.eval()
 

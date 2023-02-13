@@ -27,9 +27,14 @@ import paddle
 from . import control_flow
 from . import nn
 from . import tensor
-from ..framework import default_main_program, Parameter, unique_name, name_scope
+from ..framework import (
+    default_main_program,
+    Parameter,
+    unique_name,
+    name_scope,
+    in_dygraph_mode,
+)
 from ..framework import Variable
-from ..framework import _non_static_mode
 from ..dygraph import learning_rate_scheduler as imperate_lr
 from ..data_feeder import check_variable_and_dtype, check_type
 
@@ -99,7 +104,7 @@ def noam_decay(d_model, warmup_steps, learning_rate=1.0):
                          learning_rate)
     """
     with default_main_program()._lr_schedule_guard():
-        if _non_static_mode():
+        if in_dygraph_mode():
             decay = imperate_lr.NoamDecay(
                 d_model, warmup_steps, learning_rate=learning_rate
             )
@@ -160,7 +165,7 @@ def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
 
     """
     with default_main_program()._lr_schedule_guard():
-        if _non_static_mode():
+        if in_dygraph_mode():
             decay = imperate_lr.ExponentialDecay(
                 learning_rate, decay_steps, decay_rate, staircase
             )
@@ -222,7 +227,7 @@ def natural_exp_decay(learning_rate, decay_steps, decay_rate, staircase=False):
 
     """
     with default_main_program()._lr_schedule_guard():
-        if _non_static_mode():
+        if in_dygraph_mode():
             decay = imperate_lr.NaturalExpDecay(
                 learning_rate, decay_steps, decay_rate, staircase
             )
@@ -282,7 +287,7 @@ def inverse_time_decay(learning_rate, decay_steps, decay_rate, staircase=False):
                     staircase=True))
     """
     with default_main_program()._lr_schedule_guard():
-        if _non_static_mode():
+        if in_dygraph_mode():
             decay = imperate_lr.InverseTimeDecay(
                 learning_rate, decay_steps, decay_rate, staircase
             )
@@ -337,7 +342,7 @@ def polynomial_decay(
 
     """
     with default_main_program()._lr_schedule_guard():
-        if _non_static_mode():
+        if in_dygraph_mode():
             decay = imperate_lr.PolynomialDecay(
                 learning_rate, decay_steps, end_learning_rate, power, cycle
             )
@@ -414,7 +419,7 @@ def piecewise_decay(boundaries, values):
         if len(values) - len(boundaries) != 1:
             raise ValueError("len(values) - len(boundaries) should be 1")
 
-        if _non_static_mode():
+        if in_dygraph_mode():
             decay = imperate_lr.PiecewiseDecay(boundaries, values, 0)
             return decay
         else:
@@ -488,7 +493,7 @@ def cosine_decay(learning_rate, step_each_epoch, epochs):
     )
 
     with default_main_program()._lr_schedule_guard():
-        if _non_static_mode():
+        if in_dygraph_mode():
             decay = imperate_lr.CosineDecay(
                 learning_rate, step_each_epoch, epochs
             )
@@ -569,7 +574,7 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
     linear_step = float(end_lr) - float(start_lr)
     with default_main_program()._lr_schedule_guard():
 
-        if _non_static_mode():
+        if in_dygraph_mode():
             lr = imperate_lr.LinearLrWarmup(
                 learning_rate, warmup_steps, start_lr, end_lr
             )

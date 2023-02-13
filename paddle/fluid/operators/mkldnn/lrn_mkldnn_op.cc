@@ -12,7 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/backends/onednn/onednn_reuse.h"
 
 namespace paddle {
 namespace operators {
@@ -25,13 +26,13 @@ class LRNOneDNNHandler
           OneDNNHandlerNoCachingT<T, dnnl::lrn_forward, dnnl::lrn_backward> {
  public:
   LRNOneDNNHandler(const framework::ExecutionContext& ctx,
-                   const dnnl::engine mkldnn_engine,
+                   const dnnl::engine onednn_engine,
                    platform::Place cpu_place,
                    const phi::DenseTensor* input)
 
       : phi::funcs::
             OneDNNHandlerNoCachingT<T, dnnl::lrn_forward, dnnl::lrn_backward>(
-                mkldnn_engine, cpu_place) {
+                onednn_engine, cpu_place) {
     const int n = ctx.Attr<int>("n");
     // MKL-DNN implements LRN in a caffe way:
     // http://caffe.berkeleyvision.org/tutorial/layers/lrn.html
@@ -56,14 +57,14 @@ class LRNOneDNNHandler
   }
 
   LRNOneDNNHandler(const framework::ExecutionContext& ctx,
-                   const dnnl::engine mkldnn_engine,
+                   const dnnl::engine onednn_engine,
                    platform::Place cpu_place,
                    const phi::DenseTensor* in_x,
                    const phi::DenseTensor* out_grad,
                    phi::DenseTensor* in_x_grad)
       : phi::funcs::
             OneDNNHandlerNoCachingT<T, dnnl::lrn_forward, dnnl::lrn_backward>(
-                mkldnn_engine, cpu_place) {
+                onednn_engine, cpu_place) {
     PADDLE_ENFORCE_EQ(
         ctx.Attr<bool>("is_test"),
         false,
@@ -125,13 +126,13 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                       paddle::platform::errors::PreconditionNotMet(
                           "Operator DNNL LRN must use CPUPlace"));
     auto& dev_ctx = ctx.template device_context<OneDNNContext>();
-    const auto& mkldnn_engine = dev_ctx.GetEngine();
+    const auto& onednn_engine = dev_ctx.GetEngine();
 
     auto x = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
     auto mid = ctx.Output<phi::DenseTensor>("MidOut");
 
-    LRNOneDNNHandler<T> handler(ctx, mkldnn_engine, ctx.GetPlace(), x);
+    LRNOneDNNHandler<T> handler(ctx, onednn_engine, ctx.GetPlace(), x);
 
     auto src_memory = handler.AcquireSrcMemory(x);
     auto dst_memory = handler.AcquireDstMemory(out);
@@ -179,10 +180,10 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto in_x_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     auto& dev_ctx = ctx.template device_context<OneDNNContext>();
-    const auto& mkldnn_engine = dev_ctx.GetEngine();
+    const auto& onednn_engine = dev_ctx.GetEngine();
 
     LRNOneDNNHandler<T> handler(
-        ctx, mkldnn_engine, ctx.GetPlace(), in_x, out_grad, in_x_grad);
+        ctx, onednn_engine, ctx.GetPlace(), in_x, out_grad, in_x_grad);
 
     auto src_memory = handler.AcquireSrcMemory(in_x);
     auto workspace = handler.AcquireBackwardWorkspaceMemory(mid);
@@ -207,11 +208,8 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_KERNEL(lrn,
-                   MKLDNN,
-                   paddle::platform::CPUPlace,
-                   ops::LRNMKLDNNOpKernel<float>);
+REGISTER_OP_KERNEL(lrn, MKLDNN, phi::CPUPlace, ops::LRNMKLDNNOpKernel<float>);
 REGISTER_OP_KERNEL(lrn_grad,
                    MKLDNN,
-                   paddle::platform::CPUPlace,
+                   phi::CPUPlace,
                    ops::LRNMKLDNNGradOpKernel<float>);

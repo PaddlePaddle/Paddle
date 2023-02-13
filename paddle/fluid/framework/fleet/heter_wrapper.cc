@@ -158,7 +158,7 @@ void HeterWrapper::DeSerializeToTensor(Scope* scope,
 
   LoD lod;
   for (int i = 0; i < req_var.lod_level(); ++i) {
-    framework::Vector<size_t> v;
+    phi::Vector<size_t> v;
     for (int j = 0; j < req_var.lod(i).lod_data_size(); ++j) {
       v.push_back(req_var.lod(i).lod_data(j));
     }
@@ -203,7 +203,7 @@ void HeterWrapper::DeSerializeToTensor(Scope* scope,
 
   LoD lod;
   for (int i = 0; i < req_var.lod_level(); ++i) {
-    framework::Vector<size_t> v;
+    phi::Vector<size_t> v;
     for (int j = 0; j < req_var.lod(i).lod_data_size(); ++j) {
       v.push_back(req_var.lod(i).lod_data(j));
     }
@@ -286,7 +286,7 @@ void HeterWrapper::EndPass(Scope* scope, int num) {
 void HeterWrapper::CallRemoteXpu(std::shared_ptr<HeterTask> task,
                                  HeterCpuWorker* worker,
                                  int mpi_rank,
-                                 std::vector<std::string>& send_vars) {
+                                 const std::vector<std::string>& send_vars) {
   HeterRequest request;
   request.set_cmd(0);
   request.set_cur_batch(task->cur_batch_);
@@ -329,10 +329,11 @@ void HeterWrapper::CallRemoteXpu(std::shared_ptr<HeterTask> task,
   stub.service(&done->cntl, &request, &done->response, done);
 }
 
-void HeterWrapper::CallRemoteXpuSync(std::shared_ptr<HeterTask> task,
-                                     HeterCpuWorker* worker,
-                                     int mpi_rank,
-                                     std::vector<std::string>& send_vars) {
+void HeterWrapper::CallRemoteXpuSync(
+    std::shared_ptr<HeterTask> task,
+    HeterCpuWorker* worker,
+    int mpi_rank,
+    const std::vector<std::string>& send_vars) {
   HeterRequest request;
   HeterResponse response;
   brpc::Controller cntl;

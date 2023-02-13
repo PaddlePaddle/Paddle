@@ -25,9 +25,8 @@ from predictor_utils import PredictorTools
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-from paddle.jit import ProgramTranslator
-from paddle.jit.api import declarative
+from paddle.jit.api import to_static
+from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import BatchNorm, Linear
 
 SEED = 2020
@@ -132,7 +131,7 @@ class SqueezeExcitation(fluid.dygraph.Layer):
             num_channels,
             num_channels // reduction_ratio,
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Uniform(-stdv, stdv)
+                initializer=paddle.nn.initializer.Uniform(-stdv, stdv)
             ),
         )
         stdv = 1.0 / math.sqrt(num_channels / 16.0 * 1.0)
@@ -140,7 +139,7 @@ class SqueezeExcitation(fluid.dygraph.Layer):
             num_channels // reduction_ratio,
             num_channels,
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Uniform(-stdv, stdv)
+                initializer=paddle.nn.initializer.Uniform(-stdv, stdv)
             ),
         )
 
@@ -317,11 +316,11 @@ class SeResNeXt(fluid.dygraph.Layer):
             self.pool2d_avg_output,
             class_dim,
             weight_attr=fluid.param_attr.ParamAttr(
-                initializer=fluid.initializer.Uniform(-stdv, stdv)
+                initializer=paddle.nn.initializer.Uniform(-stdv, stdv)
             ),
         )
 
-    @declarative
+    @to_static
     def forward(self, inputs, label):
         if self.layers == 50 or self.layers == 101:
             y = self.conv0(inputs)
@@ -374,8 +373,7 @@ class TestSeResnet(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def train(self, train_reader, to_static):
-        program_translator = ProgramTranslator()
-        program_translator.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
 
         np.random.seed(SEED)
 
@@ -460,9 +458,9 @@ class TestSeResnet(unittest.TestCase):
                                 output_spec=[pred],
                             )
                         else:
-                            fluid.dygraph.save_dygraph(
+                            paddle.save(
                                 se_resnext.state_dict(),
-                                self.dy_state_dict_save_path,
+                                self.dy_state_dict_save_path + '.pdparams',
                             )
                         break
             return (
@@ -473,14 +471,11 @@ class TestSeResnet(unittest.TestCase):
             )
 
     def predict_dygraph(self, data):
-        program_translator = ProgramTranslator()
-        program_translator.enable(False)
+        paddle.jit.enable_to_static(False)
         with fluid.dygraph.guard(place):
             se_resnext = SeResNeXt()
 
-            model_dict, _ = fluid.dygraph.load_dygraph(
-                self.dy_state_dict_save_path
-            )
+            model_dict = paddle.load(self.dy_state_dict_save_path + '.pdparams')
             se_resnext.set_dict(model_dict)
             se_resnext.eval()
 

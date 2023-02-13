@@ -17,7 +17,7 @@
 #include <stddef.h>  // offsetof
 
 #include "paddle/fluid/operators/jit/registry.h"
-#include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 
 namespace paddle {
 namespace operators {
@@ -109,7 +109,7 @@ void SgdJitCode::genCode() {
 class SgdCreator : public JitCodeCreator<sgd_attr_t> {
  public:
   bool CanBeUsed(const sgd_attr_t& attr) const override {
-    return platform::MayIUse(platform::avx) &&
+    return phi::backends::cpu::MayIUse(phi::backends::cpu::avx) &&
            attr.grad_width % YMM_FLOAT_BLOCK == 0;
   }
   size_t CodeSize(const sgd_attr_t& attr) const override { return 96 + 32 * 8; }

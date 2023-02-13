@@ -69,7 +69,7 @@ class StreamSendRecvTestCase:
             task.wait()
 
         result = test_data_list[src_rank]
-        assert np.allclose(tensor, result, rtol=1e-05, atol=1e-05)
+        np.testing.assert_allclose(tensor, result, rtol=1e-05, atol=1e-05)
 
 
 if __name__ == "__main__":

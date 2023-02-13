@@ -21,7 +21,6 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.framework import _test_eager_guard
 from paddle.nn import BatchNorm, Linear
 
 
@@ -78,12 +77,12 @@ class ConvBNPool(fluid.dygraph.Layer):
         filter_size = 3
         conv_std_0 = (2.0 / (filter_size**2 * channels[0])) ** 0.5
         conv_param_0 = fluid.ParamAttr(
-            initializer=fluid.initializer.Normal(0.0, conv_std_0)
+            initializer=paddle.nn.initializer.Normal(0.0, conv_std_0)
         )
 
         conv_std_1 = (2.0 / (filter_size**2 * channels[1])) ** 0.5
         conv_param_1 = fluid.ParamAttr(
-            initializer=fluid.initializer.Normal(0.0, conv_std_1)
+            initializer=paddle.nn.initializer.Normal(0.0, conv_std_1)
         )
 
         self.conv_0_layer = paddle.nn.Conv2D(
@@ -201,10 +200,11 @@ class EncoderNet(fluid.dygraph.Layer):
         super().__init__()
         self.rnn_hidden_size = rnn_hidden_size
         para_attr = fluid.ParamAttr(
-            initializer=fluid.initializer.Normal(0.0, 0.02)
+            initializer=paddle.nn.initializer.Normal(0.0, 0.02)
         )
         bias_attr = fluid.ParamAttr(
-            initializer=fluid.initializer.Normal(0.0, 0.02), learning_rate=2.0
+            initializer=paddle.nn.initializer.Normal(0.0, 0.02),
+            learning_rate=2.0,
         )
         if fluid.framework._non_static_mode():
             h_0 = np.zeros(
@@ -513,12 +513,11 @@ class TestDygraphOCRAttention(unittest.TestCase):
             dy_out, dy_param_init_value, dy_param_value = run_dygraph()
 
         with fluid.dygraph.guard():
-            with _test_eager_guard():
-                (
-                    eager_out,
-                    eager_param_init_value,
-                    eager_param_value,
-                ) = run_dygraph()
+            (
+                eager_out,
+                eager_param_init_value,
+                eager_param_value,
+            ) = run_dygraph()
 
         with new_program_scope():
             paddle.seed(seed)
@@ -539,15 +538,19 @@ class TestDygraphOCRAttention(unittest.TestCase):
 
             optimizer = fluid.optimizer.SGD(learning_rate=0.001)
 
-            images = fluid.layers.data(
-                name='pixel', shape=Config.DATA_SHAPE, dtype='float32'
+            images = paddle.static.data(
+                name='pixel', shape=[-1] + Config.DATA_SHAPE, dtype='float32'
             )
-            static_label_in = fluid.layers.data(
-                name='label_in', shape=[1], dtype='int64', lod_level=0
+            images.desc.set_need_check_feed(False)
+            static_label_in = paddle.static.data(
+                name='label_in', shape=[-1, 1], dtype='int64', lod_level=0
             )
-            static_label_out = fluid.layers.data(
-                name='label_out', shape=[1], dtype='int64', lod_level=0
+            static_label_in.desc.set_need_check_feed(False)
+            static_label_out = paddle.static.data(
+                name='label_out', shape=[-1, 1], dtype='int64', lod_level=0
             )
+            static_label_out.desc.set_need_check_feed(False)
+
             static_label_out.stop_gradient = True
             static_label_out.trainable = False
 

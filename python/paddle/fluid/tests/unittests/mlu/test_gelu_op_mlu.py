@@ -108,9 +108,9 @@ class TestGeluNet(unittest.TestCase):
 
             c = paddle.multiply(a, b)
 
-            fc_1 = fluid.layers.fc(input=c, size=128)
+            fc_1 = paddle.static.nn.fc(x=c, size=128)
             fc_1_gelu = paddle.nn.functional.gelu(fc_1)
-            prediction = fluid.layers.fc(input=fc_1_gelu, size=2, act='softmax')
+            prediction = paddle.static.nn.fc(x=fc_1_gelu, size=2, activation='softmax')
 
             cost = paddle.nn.functional.cross_entropy(input=prediction, label=label, reduction='none', use_softmax=False)
             loss = paddle.mean(cost)

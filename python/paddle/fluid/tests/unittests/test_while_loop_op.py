@@ -20,6 +20,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
+import paddle.nn.functional as F
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Program, program_guard
 
@@ -96,7 +97,7 @@ class TestApiWhileLoop(unittest.TestCase):
             test_list[0] = paddle.reshape(test_list[0], [2, -1]) + 1
 
             test_list_dict[0]["test_key"] += 1
-            test_list_dict[0]["test_key"] = fluid.layers.relu(
+            test_list_dict[0]["test_key"] = F.relu(
                 test_list_dict[0]["test_key"]
             )
 
@@ -607,7 +608,7 @@ class TestApiWhileLoopSliceInBody(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            x = fluid.layers.data(name='x', shape=[5], dtype='int32')
+            x = paddle.static.data(name='x', shape=[-1, 5], dtype='int32')
             z = fluid.layers.fill_constant([1], 'int32', 0)
             x_shape = paddle.shape(x)
             i = fluid.layers.fill_constant([1], 'int32', 0)

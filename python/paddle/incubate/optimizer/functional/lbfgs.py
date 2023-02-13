@@ -132,7 +132,7 @@ def minimize_lbfgs(
     tail = paddle.full(shape=[1], fill_value=0, dtype='int64')
 
     shape = initial_position.shape[0]
-    # Use tensor as array of fixed length, rather than flexible tensor array. Because in static mode,
+    # Use tensor as array of fixed length, rather than flexible tensor array. Because in static graph mode,
     # tensor array will produce tensor of shape[-1], which will cause error when calling jacobian. In this way, can not use append
     # or pop, so we need head and tail to record where is the newest data and where is the oldest.
     # Totally speaking, realized a stack by array.

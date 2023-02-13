@@ -21,8 +21,8 @@ import paddle
 from paddle.fluid import core
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.dygraph.io import TranslatedLayer
 from paddle.fluid.layers.utils import flatten, pack_sequence_as
+from paddle.jit.translated_layer import TranslatedLayer
 
 from . import logging_utils
 from .utils import (
@@ -54,7 +54,7 @@ class FunctionSpec:
         # parse *args
         self.varargs_name = parse_varargs_name(function)
         if self.varargs_name is not None and isinstance(
-            function.__self__, TranslatedLayer
+            getattr(function, '__self__', None), TranslatedLayer
         ):
             self._arg_names += function.__self__._input_args_names
 

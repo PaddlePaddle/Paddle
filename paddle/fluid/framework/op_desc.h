@@ -200,6 +200,8 @@ class OpDesc {
   OperatorDistAttr *MutableDistAttr();
   void SetDistAttr(const OperatorDistAttr &dist_attr);
 
+  void ResetBlock() { this->block_ = nullptr; }
+
  private:
   friend class ProgramDesc;
   // Find VarDesc from OpDesc located Block into global Block

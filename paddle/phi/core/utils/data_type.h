@@ -125,6 +125,7 @@ enum ProtoDataType {
   FP16 = 4,
   FP32 = 5,
   FP64 = 6,
+  RAW = 17,
   UINT8 = 20,
   INT8 = 21,
   BF16 = 22,
@@ -163,6 +164,8 @@ inline DataType TransToPhiDataType(const int& dtype) {
       return DataType::BOOL;
     case ProtoDataType::PSTRING:
       return DataType::PSTRING;
+    case ProtoDataType::RAW:
+      return DataType::ALL_DTYPE;
     default:
       return DataType::UNDEFINED;
   }
@@ -198,6 +201,8 @@ inline int TransToProtoVarType(const DataType& dtype) {
       return ProtoDataType::BOOL;
     case DataType::PSTRING:
       return ProtoDataType::PSTRING;
+    case DataType::UNDEFINED:
+      return ProtoDataType::RAW;
     default:
       PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported data type `%s` when casting it into "
@@ -205,5 +210,34 @@ inline int TransToProtoVarType(const DataType& dtype) {
           dtype));
   }
 }
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+inline ncclDataType_t ToNCCLDataType(DataType type) {
+  if (type == DataType::FLOAT32) {
+    return ncclFloat;
+  } else if (type == DataType::FLOAT64) {
+    return ncclDouble;
+  } else if (type == DataType::INT32) {
+    return ncclInt;
+  } else if (type == DataType::INT64) {
+    return ncclInt64;
+  } else if (type == DataType::FLOAT16) {
+    return ncclFloat16;
+  } else if (type == DataType::UINT8) {
+    return ncclUint8;
+  } else if (type == DataType::INT8) {
+    return ncclInt8;
+  } else if (type == DataType::BOOL) {
+    return ncclUint8;
+#if NCCL_VERSION_CODE >= 21000
+  } else if (type == DataType::BFLOAT16) {
+    return ncclBfloat16;
+#endif
+  } else {
+    PADDLE_THROW(
+        errors::Unimplemented("This datatype in nccl is not supported."));
+  }
+}
+#endif
 
 }  // namespace phi

@@ -21,7 +21,6 @@ from paddle.device.cuda import (
     memory_allocated,
 )
 from paddle.fluid import core
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestMaxMemoryAllocated(unittest.TestCase):
@@ -43,12 +42,7 @@ class TestMaxMemoryAllocated(unittest.TestCase):
                 peak_memory_allocated_size, max_memory_allocated(device)
             )
 
-    def test_max_memory_allocated(self):
-        with _test_eager_guard():
-            self.func_test_max_memory_allocated()
-        self.func_test_max_memory_allocated()
-
-    def func_test_max_memory_allocated_for_all_places(self):
+    def test_max_memory_allocated_for_all_places(self):
         if core.is_compiled_with_cuda():
             gpu_num = device_count()
             for i in range(gpu_num):
@@ -57,12 +51,7 @@ class TestMaxMemoryAllocated(unittest.TestCase):
                 self.func_test_max_memory_allocated(i)
                 self.func_test_max_memory_allocated("gpu:" + str(i))
 
-    def test_max_memory_allocated_for_all_places(self):
-        with _test_eager_guard():
-            self.func_test_max_memory_allocated_for_all_places()
-        self.func_test_max_memory_allocated_for_all_places()
-
-    def func_test_max_memory_allocated_exception(self):
+    def test_max_memory_allocated_exception(self):
         if core.is_compiled_with_cuda():
             wrong_device = [
                 core.CPUPlace(),
@@ -78,11 +67,6 @@ class TestMaxMemoryAllocated(unittest.TestCase):
         else:
             with self.assertRaises(BaseException):
                 max_memory_allocated()
-
-    def test_max_memory_allocated_exception(self):
-        with _test_eager_guard():
-            self.func_test_max_memory_allocated_exception()
-        self.func_test_max_memory_allocated_exception()
 
 
 if __name__ == "__main__":

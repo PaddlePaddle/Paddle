@@ -22,15 +22,12 @@ from test_basic_api_transformation import dyfunc_to_variable
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import Layer, to_variable
-from paddle.jit import ProgramTranslator
-from paddle.jit.api import declarative
+from paddle.jit.api import to_static
 from paddle.jit.dy2static.program_translator import (
     ConcreteProgram,
     StaticFunction,
 )
 from paddle.static import InputSpec
-
-program_trans = ProgramTranslator()
 
 
 class SimpleNet(Layer):
@@ -38,13 +35,12 @@ class SimpleNet(Layer):
         super().__init__()
         self.linear = paddle.nn.Linear(10, 3)
 
-    @declarative(input_spec=[InputSpec(shape=[None, 10], dtype='float32')])
+    @to_static(input_spec=[InputSpec(shape=[None, 10], dtype='float32')])
     def forward(self, x, a=1, b=2):
         y = self.inner_function(x)
         return y
 
-    # `declarative` is not essential, add it to test for robustness.
-    @declarative
+    @to_static
     def inner_function(self, x):
         y = self.linear(x)
         return y
@@ -53,14 +49,14 @@ class SimpleNet(Layer):
         z = x + y
         return z
 
-    @declarative(input_spec=[[InputSpec([None, 10]), InputSpec([None, 10])]])
+    @to_static(input_spec=[[InputSpec([None, 10]), InputSpec([None, 10])]])
     def func_with_list(self, l, int_val=1):
         x, y = l
         z = x + y
         z = z + int_val
         return z
 
-    @declarative(
+    @to_static(
         input_spec=[{'x': InputSpec([None, 10]), 'y': InputSpec([None, 10])}]
     )
     def func_with_dict(self, d):
@@ -70,7 +66,7 @@ class SimpleNet(Layer):
 
         return z
 
-    @declarative(
+    @to_static(
         input_spec=[
             [
                 InputSpec([None]),
@@ -135,8 +131,8 @@ class TestInputSpec(unittest.TestCase):
 
             # 3. we can decorate any method
             x_2 = to_variable(np.ones([4, 20]).astype('float32'))
-            # uses `declarative(func)` instead of `@declarative`
-            net.add_func = declarative(net.add_func)
+            # uses `to_static(func)` instead of `@to_static`
+            net.add_func = to_static(net.add_func)
             out = net.add_func(x_2, np.ones([20]).astype('float32'))
             self.assertTrue(len(net.add_func.program_cache) == 1)
 
@@ -164,7 +160,7 @@ class TestInputSpec(unittest.TestCase):
 
             # 2. requires len(input_spec) <= len(args)
             with self.assertRaises(ValueError):
-                net.add_func = declarative(
+                net.add_func = to_static(
                     net.add_func,
                     input_spec=[
                         InputSpec([-1, 10]),
@@ -182,7 +178,7 @@ class TestInputSpec(unittest.TestCase):
 
             net = SimpleNet()
             # We can get concrete_program by specificing InputSpec information. Faking input is no need.
-            net.add_func = declarative(
+            net.add_func = to_static(
                 net.add_func,
                 input_spec=[InputSpec([-1, 10]), InputSpec([-1, 10], name='y')],
             )
@@ -191,14 +187,14 @@ class TestInputSpec(unittest.TestCase):
             self.assertTrue(cp1.inputs[-1].name == 'y')
 
             # generate another program
-            net.add_func = declarative(
+            net.add_func = to_static(
                 net.add_func,
                 input_spec=[InputSpec([10]), InputSpec([10], name='label')],
             )
             cp2 = net.add_func.concrete_program
             self.assertTrue(cp2.inputs[-1].shape == (10,))
             self.assertTrue(cp2.inputs[-1].name == 'label')
-            # Note(Aurelius84): New instance will be returned if we use `declarative(foo)` every time.
+            # Note(Aurelius84): New instance will be returned if we use `to_static(foo)` every time.
             # So number of cache program is 1.
             self.assertTrue(len(net.add_func.program_cache) == 1)
             self.assertTrue(cp1 != cp2)
@@ -211,7 +207,7 @@ def foo_func(a, b, c=1, d=2):
 
 class TestDifferentInputSpecCacheProgram(unittest.TestCase):
     def setUp(self):
-        program_trans.enable(True)
+        paddle.jit.enable_to_static(True)
 
     def test_with_different_input(self):
         with fluid.dygraph.guard(fluid.CPUPlace()):
@@ -219,7 +215,7 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
             y_data = np.ones([10]).astype('float32') * 2
             z_data = np.ones([10]).astype('float32') * 2.2
 
-            foo = declarative(foo_func)
+            foo = to_static(foo_func)
 
             # [16, 10] + [10] (varbase)
             out_1 = foo(to_variable(x_data), to_variable(y_data))
@@ -260,7 +256,7 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
 
     def test_get_concrete_program(self):
 
-        foo = declarative(foo_func)
+        foo = to_static(foo_func)
 
         # 1. specific InputSpec for `x`/`y`
         concrete_program_1 = foo.get_concrete_program(
@@ -349,7 +345,7 @@ class TestInputDefaultName(unittest.TestCase):
 
 class TestDeclarativeAPI(unittest.TestCase):
     def test_error(self):
-        func = declarative(dyfunc_to_variable)
+        func = to_static(dyfunc_to_variable)
 
         paddle.enable_static()
 
@@ -358,7 +354,7 @@ class TestDeclarativeAPI(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             func(np.ones(5).astype("int32"))
 
-        program_trans.enable(False)
+        paddle.jit.enable_to_static(False)
         with self.assertRaises(AssertionError):
             # AssertionError: We Only support to_variable in imperative mode,
             #  please use fluid.dygraph.guard() as context to run it in imperative Mode
@@ -368,25 +364,25 @@ class TestDeclarativeAPI(unittest.TestCase):
 class TestDecorateModelDirectly(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
-        program_trans.enable(True)
+        paddle.jit.enable_to_static(True)
         self.x = to_variable(np.ones([4, 10]).astype('float32'))
 
     def test_fake_input(self):
         net = SimpleNet()
-        net = declarative(net)
+        net = to_static(net)
         y = net(self.x)
         self.assertTrue(len(net.forward.program_cache) == 1)
 
     def test_input_spec(self):
         net = SimpleNet()
-        net = declarative(net, input_spec=[InputSpec([None, 8, 10])])
+        net = to_static(net, input_spec=[InputSpec([None, 8, 10])])
         self.assertTrue(len(net.forward.inputs) == 1)
         self.assertTrue(len(net.forward.program_cache) == 1)
         input_shape = net.forward.inputs[0].shape
         self.assertListEqual(list(input_shape), [-1, 8, 10])
 
         # redecorate
-        net = declarative(net, input_spec=[InputSpec([None, 16, 10])])
+        net = to_static(net, input_spec=[InputSpec([None, 16, 10])])
         input_shape = net.forward.inputs[0].shape
         self.assertListEqual(list(input_shape), [-1, 16, 10])
 
@@ -397,17 +393,17 @@ class TestErrorWithInitFromStaticMode(unittest.TestCase):
         paddle.enable_static()
 
         net = SimpleNet()
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             RuntimeError, "only available in dynamic mode"
         ):
             net.forward.concrete_program
 
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             RuntimeError, "only available in dynamic mode"
         ):
             net.forward.inputs
 
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             RuntimeError, "only available in dynamic mode"
         ):
             net.forward.outputs

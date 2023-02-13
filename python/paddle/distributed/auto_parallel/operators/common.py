@@ -16,7 +16,7 @@ import abc
 
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 
-from ..dist_attribute import OperatorDistributedAttribute
+from ..dist_attribute import OperatorDistAttr
 from ..process_group import new_process_group
 from ..utils import _get_comm_group, _get_corresponding_rank, is_optimize_op
 
@@ -43,6 +43,15 @@ class ParallelMode:
     ModelParallel = "auto_parallel/model_parallel"
     PipelineParalel = "auto_parallel/pipeline_paralel"
     MoEParallel = "auto_parallel/moe_parallel"
+
+
+class SyncMode:
+    """
+    the synchorization mode for communication or auxiliary operator
+    """
+
+    AmpFlagSync = "auto_parallel/amp_flag_synchorization"
+    GlobalNormSync = "auto_parallel/global_norm_synchorization"
 
 
 def is_elementwise_op(op_type):
@@ -266,8 +275,12 @@ def is_parameter_related(varname, block):
         varname = varname[: varname.index(".subprog_")]
     if ".cast_fp" in varname:
         varname = varname[: varname.index(".cast_fp")]
+    if ".cast_bf" in varname:
+        varname = varname[: varname.index(".cast_bf")]
     if ".quantized" in varname:
         varname = varname[: varname.index(".quantized")]
+    # if "@RESHARD" in varname:
+    #     varname = varname[: varname.index("@RESHARD")]
     assert block._find_var_recursive(varname)
     var = block._var_recursive(varname)
     return var.is_parameter
@@ -275,7 +288,7 @@ def is_parameter_related(varname, block):
 
 def infer_shape(block, src_var, src_var_dist_attr, op_input_dist_attr):
     var_shape = block._var_recursive(src_var.name).shape
-    var_topoloy = src_var_dist_attr.process_mesh.topology
+    var_topoloy = src_var_dist_attr.process_mesh.shape
     var_dims_mapping = src_var_dist_attr.dims_mapping
 
     complete_shape = []
@@ -287,7 +300,7 @@ def infer_shape(block, src_var, src_var_dist_attr, op_input_dist_attr):
             complete_shape.append(new_shape)
 
     exact_shape = []
-    input_topology = op_input_dist_attr.process_mesh.topology
+    input_topology = op_input_dist_attr.process_mesh.shape
     input_dims_mapping = op_input_dist_attr.dims_mapping
     for idx, shape in enumerate(complete_shape):
         if input_dims_mapping[idx] == -1:
@@ -305,7 +318,7 @@ def set_comm_op_dist_attr_for_program(
     assert process_mesh is not None
     assert tensor_dist_attr is not None
 
-    new_op_dist_attr = OperatorDistributedAttribute()
+    new_op_dist_attr = OperatorDistAttr()
     new_op_dist_attr.process_mesh = process_mesh
     for input_varname in new_op.desc.input_arg_names():
         new_op_dist_attr.set_input_dist_attr(input_varname, tensor_dist_attr)
@@ -317,7 +330,7 @@ def set_comm_op_dist_attr_for_program(
 def naive_copy_op_dist_attr_for_program(new_op, ref_op, ctx):
 
     ref_dist_attr = ctx.get_op_dist_attr_for_program(ref_op)
-    new_op_dist_attr = OperatorDistributedAttribute()
+    new_op_dist_attr = OperatorDistAttr()
     new_op_dist_attr.process_mesh = ref_dist_attr.process_mesh
 
     for input_name in ref_op.input_names:
@@ -362,10 +375,10 @@ def get_data_parallel_group(dist_ctx, op, act_grad_names, rank):
 
     op_dist_attr = dist_ctx.get_op_dist_attr_for_program(op)
     process_mesh = op_dist_attr.process_mesh
-    mesh_shape = process_mesh.topology
+    mesh_shape = process_mesh.shape
     # FIXME Hack for Pipeline Parallelism where the current operator
     # not belong to the mesh the current rank belong to.
-    if rank not in process_mesh.processes:
+    if rank not in process_mesh.process_ids:
         rank = _get_corresponding_rank(dist_ctx, process_mesh, rank)
 
     for var_name in act_grad_names:
@@ -376,8 +389,8 @@ def get_data_parallel_group(dist_ctx, op, act_grad_names, rank):
 
         if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
             group_ranks = _get_comm_group(
-                process_mesh.processes,
-                process_mesh.topology,
+                process_mesh.process_ids,
+                process_mesh.shape,
                 batch_size_axis,
                 rank,
             )
@@ -437,12 +450,12 @@ def sync_and_scale_gradients(dist_ctx, op, dp_group, allreduce_var_names):
         dims_mapping = op_dist_attr.get_output_dims_mapping(grad_var.name)
         assert (
             dims_mapping is not None
-        ), "Unexception: dims_mapping of output [{}] of op [{}] is None".format(
+        ), "Unexpected: dims_mapping of output [{}] of op [{}] is None".format(
             grad_var.name, op_dist_attr.op_type
         )
         # NOTE auxiliary op's dist attr should follow dist_op not dist_tensor
         for new_op in added_ops:
-            new_op_attr = OperatorDistributedAttribute()
+            new_op_attr = OperatorDistAttr()
             new_op_attr.process_mesh = process_mesh
             new_op_attr.set_output_dims_mapping(grad_var.name, dims_mapping)
             new_op_attr.set_input_dims_mapping(grad_var.name, dims_mapping)
@@ -495,6 +508,22 @@ def is_data_parallel_reduce_op(op):
         op.type in ["c_reduce_sum", "c_allreduce_sum"]
         and op.desc.has_attr("op_namescope")
         and ParallelMode.DataParallel in op.desc.attr("op_namescope")
+    )
+
+
+def is_amp_flag_sync_op(op):
+    return (
+        op.type == "c_allreduce_max"
+        and op.desc.has_attr("op_namescope")
+        and SyncMode.AmpFlagSync in op.desc.attr("op_namescope")
+    )
+
+
+def is_global_norm_sync_op(op):
+    return (
+        op.type == "c_allreduce_sum"
+        and op.desc.has_attr("op_namescope")
+        and SyncMode.GlobalNormSync in op.desc.attr("op_namescope")
     )
 
 

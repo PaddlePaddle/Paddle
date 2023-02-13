@@ -74,13 +74,12 @@ class TestSyncBatchNormOpTraining(TestSyncBatchNormRunnerBase):
         use_cudnn = False
         with fluid.unique_name.guard():
             with fluid.program_guard(main, startup):
-                data = fluid.layers.data(
+                data = paddle.static.data(
                     name='input',
-                    shape=self.dshape,
+                    shape=[-1] + self.dshape,
                     dtype=self.dtype,
-                    append_batch_size=False,
                 )
-                conv = fluid.layers.conv2d(
+                conv = paddle.static.nn.conv2d(
                     input=data,
                     num_filters=32,
                     filter_size=1,

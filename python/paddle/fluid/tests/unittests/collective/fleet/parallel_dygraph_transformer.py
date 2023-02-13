@@ -242,10 +242,10 @@ class PrePostProcessLayer(Layer):
                 self._layer_norm = paddle.nn.LayerNorm(
                     normalized_shape=d_model,
                     weight_attr=fluid.ParamAttr(
-                        initializer=fluid.initializer.Constant(1.0)
+                        initializer=paddle.nn.initializer.Constant(1.0)
                     ),
                     bias_attr=fluid.ParamAttr(
-                        initializer=fluid.initializer.Constant(0.0)
+                        initializer=paddle.nn.initializer.Constant(0.0)
                     ),
                 )
 
@@ -513,7 +513,9 @@ class PrepareEncoderDecoderLayer(Layer):
             sparse=is_sparse,
             weight_attr=fluid.ParamAttr(
                 name=word_emb_param_name,
-                initializer=fluid.initializer.Normal(0.0, src_emb_dim**-0.5),
+                initializer=paddle.nn.initializer.Normal(
+                    0.0, src_emb_dim**-0.5
+                ),
             ),
         )
 
@@ -527,7 +529,7 @@ class PrepareEncoderDecoderLayer(Layer):
             sparse=is_sparse,
             weight_attr=fluid.ParamAttr(
                 name=pos_enc_param_name,
-                initializer=fluid.initializer.NumpyArrayInitializer(pos_inp),
+                initializer=paddle.nn.initializer.Assign(pos_inp),
                 trainable=False,
             ),
         )
@@ -932,8 +934,8 @@ class TransFormer(Layer):
         predict = self._wrap_decoder_layer(dec_inputs, enc_output)
         if self._label_smooth_eps:
             label_out = F.label_smooth(
-                label=fluid.layers.one_hot(
-                    input=label, depth=self._trg_vocab_size
+                label=paddle.squeeze(
+                    paddle.nn.functional.one_hot(label, self._trg_vocab_size)
                 ),
                 epsilon=self._label_smooth_eps,
             )

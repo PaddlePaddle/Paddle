@@ -20,7 +20,6 @@ from test_imperative_base import new_program_scope
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestTracerMode(unittest.TestCase):
@@ -47,7 +46,7 @@ class TestTracerMode(unittest.TestCase):
         finally:
             self.assertEqual(rlt, ans)
 
-    def func_main(self):
+    def test_main(self):
         with fluid.dygraph.guard():
             self.tracer = framework._dygraph_tracer()
             self.tracer._train_mode = self.init_mode
@@ -73,11 +72,6 @@ class TestTracerMode(unittest.TestCase):
         with new_program_scope():
             self.check_not_support_rlt(True)
 
-    def test_main(self):
-        with _test_eager_guard():
-            self.func_main()
-        self.func_main()
-
 
 class TestTracerMode2(TestTracerMode):
     def setUp(self):
@@ -91,7 +85,7 @@ class TestNoGradClass(unittest.TestCase):
         self.assertEqual(self.tracer._has_grad, False)
         return a
 
-    def func_main(self):
+    def test_main(self):
         paddle.disable_static()
 
         self.tracer = framework._dygraph_tracer()
@@ -127,11 +121,6 @@ class TestNoGradClass(unittest.TestCase):
             b += i
 
         self.assertEqual(a, b)
-
-    def test_main(self):
-        with _test_eager_guard():
-            self.func_main()
-        self.func_main()
 
 
 if __name__ == '__main__':

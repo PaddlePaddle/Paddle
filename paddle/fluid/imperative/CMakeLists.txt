@@ -23,7 +23,8 @@ if(WITH_XPU)
          scalar
          int_array
          var_helper
-         profiler)
+         profiler
+         place)
 else()
   cc_library(
     prepared_operator
@@ -40,7 +41,8 @@ else()
          scalar
          int_array
          var_helper
-         profiler)
+         profiler
+         place)
 endif()
 cc_library(
   layer

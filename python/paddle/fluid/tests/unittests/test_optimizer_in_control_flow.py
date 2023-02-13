@@ -46,28 +46,28 @@ def static(
     with program_guard(main_program, startup_program):
 
         def double_fc_net(image):
-            hidden = layers.fc(
+            hidden = paddle.static.nn.fc(
                 image,
                 size=FC_SIZE,
-                act='relu',
-                param_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant(value=0.99)
+                activation='relu',
+                weight_attr=fluid.ParamAttr(
+                    initializer=paddle.nn.initializer.Constant(value=0.99)
                 ),
                 bias_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant(value=0.5)
+                    initializer=paddle.nn.initializer.Constant(value=0.5)
                 ),
                 name="hidden",
             )
 
-            prediction = layers.fc(
+            prediction = paddle.static.nn.fc(
                 hidden,
                 size=CLASS_NUM,
-                act='softmax',
-                param_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant(value=1.2)
+                activation='softmax',
+                weight_attr=fluid.ParamAttr(
+                    initializer=paddle.nn.initializer.Constant(value=1.2)
                 ),
                 bias_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant(value=0.8)
+                    initializer=paddle.nn.initializer.Constant(value=0.8)
                 ),
                 name="prediction",
             )
@@ -264,8 +264,8 @@ class TestMultiOptimizersMultiCardsError(unittest.TestCase):
             def fn_2(opt, avg_loss):
                 opt.minimize(avg_loss)
 
-            x = fluid.layers.data("X", [10], 'float32')
-            hidden = layers.fc(x, 5)
+            x = paddle.static.data("X", [-1, 10], 'float32')
+            hidden = paddle.static.nn.fc(x, 5)
             avg_loss = paddle.mean(hidden)
 
             adam = optimizer.Adam(learning_rate=LR)

@@ -12,9 +12,8 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/operators/interpolate_op.h"
-#include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/phi/backends/onednn/onednn_reuse.h"
 
 namespace paddle {
 namespace operators {
@@ -25,6 +24,7 @@ using dnnl::reorder;
 using dnnl::resampling_forward;
 using dnnl::stream;
 using phi::DataLayout;
+using OneDNNMemoryFormat = dnnl::memory::format_tag;
 
 template <typename T = float>
 class InterpolateOneDNNHandler
@@ -131,7 +131,7 @@ class InterpolateOneDNNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto& dev_ctx = ctx.template device_context<phi::OneDNNContext>();
-    const auto& mkldnn_engine = dev_ctx.GetEngine();
+    const auto& onednn_engine = dev_ctx.GetEngine();
 
     const auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
@@ -146,7 +146,7 @@ class InterpolateOneDNNKernel : public framework::OpKernel<T> {
     out->Resize(dim_out);
 
     InterpolateOneDNNHandler<T> handler(
-        algo, mkldnn_engine, ctx.GetPlace(), x, out);
+        algo, onednn_engine, ctx.GetPlace(), x, out);
 
     auto src_memory_p = handler.AcquireSrcMemory(x);
     auto dst_memory_p = handler.AcquireDstMemory(out);
@@ -170,11 +170,11 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(nearest_interp,
                    MKLDNN,
-                   ::paddle::platform::CPUPlace,
+                   ::phi::CPUPlace,
                    ops::InterpolateOneDNNKernel<float>,
                    ops::InterpolateOneDNNKernel<int8_t>,
                    ops::InterpolateOneDNNKernel<uint8_t>);
 REGISTER_OP_KERNEL(bilinear_interp,
                    MKLDNN,
-                   ::paddle::platform::CPUPlace,
+                   ::phi::CPUPlace,
                    ops::InterpolateOneDNNKernel<float>);

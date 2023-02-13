@@ -20,7 +20,6 @@ from numpy.random import random as rand
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
 from paddle import tensor
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestComplexTraceLayer(unittest.TestCase):
@@ -43,10 +42,6 @@ class TestComplexTraceLayer(unittest.TestCase):
                     ).numpy()
                     target = np.trace(input, offset=1, axis1=0, axis2=2)
                     np.testing.assert_allclose(result, target, rtol=1e-05)
-
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_basic_api()
 
 
 if __name__ == '__main__':

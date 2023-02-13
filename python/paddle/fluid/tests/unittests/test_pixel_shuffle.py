@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -85,10 +85,13 @@ class TestPixelShuffleOp(OpTest):
         self.format = "NCHW"
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+        )
 
 
 class TestChannelLast(TestPixelShuffleOp):
@@ -226,6 +229,13 @@ class TestPixelShuffleError(unittest.TestCase):
                 pixel_shuffle = F.pixel_shuffle(paddle.to_tensor(x), 3.33)
 
         self.assertRaises(TypeError, error_upscale_factor)
+
+        def error_0_upscale_factor():
+            with paddle.fluid.dygraph.guard():
+                x = paddle.uniform([1, 1, 1, 1], dtype='float64')
+                pixel_shuffle = F.pixel_shuffle(x, 0)
+
+        self.assertRaises(ValueError, error_0_upscale_factor)
 
         def error_data_format():
             with paddle.fluid.dygraph.guard():

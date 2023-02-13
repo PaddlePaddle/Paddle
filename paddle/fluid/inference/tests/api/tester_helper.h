@@ -372,23 +372,15 @@ std::unordered_map<std::string, int> GetFuseStatis(PaddlePredictor *predictor,
                                                    int *num_ops) {
   std::unordered_map<std::string, int> res;
   auto *analysis_predictor = static_cast<AnalysisPredictor *>(predictor);
-  auto *fusion_status =
-      analysis_predictor->analysis_argument().fusion_statis_ptr();
-  if (!fusion_status) {
-    return res;
+  auto fusion_status = analysis_predictor->fusion_statis();
+  if (fusion_status.empty()) {
+    fusion_status = res;
   }
-  for (auto &item : *fusion_status) {
+  for (auto &item : fusion_status) {
     LOG(INFO) << "fused " << item.first << " " << item.second;
   }
-  int num = 0;
-  for (auto &node :
-       analysis_predictor->analysis_argument().main_graph().Nodes()) {
-    if (node->IsOp()) {
-      ++num;
-    }
-  }
-  *num_ops = num;
-  return *fusion_status;
+  *num_ops = 0;
+  return fusion_status;
 }
 
 void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,

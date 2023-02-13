@@ -25,7 +25,7 @@ class TestExecutor(unittest.TestCase):
         lr = fluid.data(name="lr", shape=[1], dtype='float32')
         x = fluid.data(name="x", shape=[None, 1], dtype='float32')
         y = fluid.data(name="y", shape=[None, 1], dtype='float32')
-        y_predict = fluid.layers.fc(input=x, size=1, act=None)
+        y_predict = paddle.static.nn.fc(x, size=1)
 
         cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_cost = paddle.mean(cost)

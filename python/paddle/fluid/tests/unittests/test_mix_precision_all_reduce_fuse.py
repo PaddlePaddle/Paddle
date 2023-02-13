@@ -27,7 +27,7 @@ img_shape = [1, 28, 28]
 
 
 def loss_net(hidden, label):
-    prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
+    prediction = paddle.static.nn.fc(x=hidden, size=10, activation='softmax')
     loss = paddle.nn.functional.cross_entropy(
         input=prediction, label=label, reduction='none', use_softmax=False
     )
@@ -36,8 +36,10 @@ def loss_net(hidden, label):
 
 
 def conv_net(use_feed):
-    img = fluid.layers.data(name='image', shape=img_shape, dtype='float16')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    img = paddle.static.data(
+        name='image', shape=[-1] + img_shape, dtype='float16'
+    )
+    label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
 
     conv_pool_1 = fluid.nets.simple_img_conv_pool(
         input=img,

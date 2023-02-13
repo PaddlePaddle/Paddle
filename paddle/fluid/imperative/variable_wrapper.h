@@ -234,16 +234,15 @@ class VariableWrapper {
     }
   }
 
-  bool hasCacheKey(const paddle::framework::OpKernelType& key) {
+  bool hasCacheKey(const phi::KernelKey& key) {
     return var_cache.find(key) != var_cache.end();
   }
 
-  std::shared_ptr<VariableWrapper> getCacheValue(
-      const paddle::framework::OpKernelType& key) {
+  std::shared_ptr<VariableWrapper> getCacheValue(const phi::KernelKey& key) {
     return var_cache[key];
   }
 
-  void setCacheValue(const paddle::framework::OpKernelType& key,
+  void setCacheValue(const phi::KernelKey& key,
                      std::shared_ptr<VariableWrapper> val) {
     var_cache[key] = val;
     return;
@@ -323,8 +322,7 @@ class VariableWrapper {
 
   // Used for cache the dtype promotioned variableWrapper in real and complex
   // compute of Paddle Quantum
-  std::map<paddle::framework::OpKernelType, std::shared_ptr<VariableWrapper>>
-      var_cache;
+  std::map<phi::KernelKey, std::shared_ptr<VariableWrapper>> var_cache;
   // add this property for users may set stop_gradient themselves and this
   // should override the frameworks setting (-1) unset, (1) true, (0) false
   int overrided_stop_gradient_{-1};

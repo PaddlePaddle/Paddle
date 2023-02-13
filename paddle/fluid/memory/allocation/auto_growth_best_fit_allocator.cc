@@ -49,7 +49,12 @@ AutoGrowthBestFitAllocator::AutoGrowthBestFitAllocator(
     : underlying_allocator_(underlying_allocator),
       alignment_(alignment),
       chunk_size_(std::max(AlignedSize(chunk_size, alignment), alignment)),
-      allow_free_idle_chunk_(allow_free_idle_chunk) {}
+      allow_free_idle_chunk_(allow_free_idle_chunk) {
+  total_alloc_times_ = 0;
+  total_alloc_size_ = 0;
+  total_free_times_ = 0;
+  total_free_size_ = 0;
+}
 
 phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
     size_t unaligned_size) {
@@ -112,6 +117,8 @@ phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
     VLOG(2) << "Not found and reallocate " << realloc_size << "("
             << static_cast<void *>(p) << "), and remaining " << remaining_size;
   }
+  ++total_alloc_times_;
+  total_alloc_size_ += size;
   VLOG(10) << "Alloc " << block_it->size_ << " bytes, ptr = " << block_it->ptr_;
   return new BlockAllocation(block_it);
 }
@@ -125,6 +132,9 @@ void AutoGrowthBestFitAllocator::FreeImpl(phi::Allocation *allocation) {
   std::lock_guard<SpinLock> guard(spinlock_);
   auto block_it = static_cast<BlockAllocation *>(allocation)->block_it_;
   auto &blocks = block_it->chunk_->blocks_;
+
+  total_free_times_ += 1;
+  total_free_size_ += block_it->size_;
 
   block_it->is_free_ = true;
 
@@ -176,7 +186,28 @@ uint64_t AutoGrowthBestFitAllocator::FreeIdleChunks() {
       ++chunk_it;
     }
   }
+
+  Trace();
   return bytes;
+}
+
+void AutoGrowthBestFitAllocator::Trace() const {
+  size_t cur_idle_bytes = 0;
+  auto it = free_blocks_.begin();
+  for (; it != free_blocks_.end(); ++it) {
+    cur_idle_bytes += it->second->size_;
+  }
+
+  VLOG(1) << "alloc:" << total_alloc_size_ / static_cast<double>(1024 * 1024)
+          << "m free:" << total_free_size_ / static_cast<double>(1024 * 1024)
+          << "m busy:"
+          << (total_alloc_size_ - total_free_size_) /
+                 static_cast<double>(1024 * 1024)
+          << "m idle:" << cur_idle_bytes / static_cast<double>(1024 * 1024)
+          << "m alloc_times:" << total_alloc_times_
+          << " free_times:" << total_free_times_
+          << " free_blocks_num:" << free_blocks_.size()
+          << " curr_chunks_num:" << chunks_.size();
 }
 
 }  // namespace allocation

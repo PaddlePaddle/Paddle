@@ -19,11 +19,10 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dygraph
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestImperativeLayerTrainable(unittest.TestCase):
-    def func_set_trainable(self):
+    def test_set_trainable(self):
         with fluid.dygraph.guard():
             label = np.random.uniform(-1, 1, [10, 10]).astype(np.float32)
 
@@ -44,11 +43,6 @@ class TestImperativeLayerTrainable(unittest.TestCase):
 
             with self.assertRaises(ValueError):
                 linear.weight.trainable = "1"
-
-    def test_set_trainable(self):
-        with _test_eager_guard():
-            self.func_set_trainable()
-        self.func_set_trainable()
 
 
 if __name__ == '__main__':

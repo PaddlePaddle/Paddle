@@ -319,7 +319,7 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
         data, result, data_num_);
     RecordStream(data_allocation, other_stream);
 
-    std::unique_ptr<platform::CUDAGraph> cuda_graph =
+    std::unique_ptr<phi::backends::gpu::CUDAGraph> cuda_graph =
         platform::EndCUDAGraphCapture();
 
     int replay_times = 10;

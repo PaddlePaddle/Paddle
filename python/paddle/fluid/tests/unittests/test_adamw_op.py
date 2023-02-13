@@ -21,7 +21,6 @@ from op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.framework import _test_eager_guard
 from paddle.framework import core
 
 
@@ -209,7 +208,7 @@ class TestAdamWOp(unittest.TestCase):
         with fluid.program_guard(train_prog, startup):
             with fluid.unique_name.guard():
                 data = fluid.data(name="data", shape=shape)
-                conv = fluid.layers.conv2d(data, 8, 3)
+                conv = paddle.static.nn.conv2d(data, 8, 3)
                 loss = paddle.mean(conv)
 
                 beta1 = paddle.static.create_global_var(
@@ -249,11 +248,6 @@ class TestAdamWOp(unittest.TestCase):
             adam = paddle.optimizer.AdamW(
                 0.1, epsilon=-1, parameters=linear.parameters()
             )
-
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_adamw_op_dygraph()
-            self.test_adamw_op_invalid_input()
 
 
 class TestAdamWOpGroup(TestAdamWOp):

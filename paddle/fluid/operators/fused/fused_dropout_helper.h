@@ -15,10 +15,10 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/framework/generator.h"
-#include "paddle/fluid/operators/dropout_impl_util.h"
 #include "paddle/fluid/operators/fused/fused_dropout_act_bias.h"
 #include "paddle/fluid/operators/fused/fused_layernorm_residual_dropout_bias.h"
 #include "paddle/fluid/operators/fused/fused_residual_dropout_bias.h"
+#include "paddle/phi/kernels/funcs/dropout_impl_util.h"
 #include "paddle/phi/kernels/funcs/functors.h"
 #include "paddle/phi/kernels/layer_norm_kernel.h"
 
@@ -106,7 +106,7 @@ struct DropoutParam {
 
   int UpdateSeedAndIncrement(const phi::GPUContext& ctx, const int offset) {
     uint64_t tmp_increment;
-    GetSeedDataAndIncrement(
+    phi::funcs::GetSeedDataAndIncrement(
         ctx, tensor_seed, fix_seed, seed_val, offset, &seed, &tmp_increment);
     increment = static_cast<int>(tmp_increment);
     return increment;
@@ -343,12 +343,12 @@ class FusedDropoutHelper {
 };
 
 template <typename T>
-struct PDDataTypeTraits {
+struct DataTypeTraits {
   using DataType = T;
 };
 
 template <>
-struct PDDataTypeTraits<phi::dtype::float16> {
+struct DataTypeTraits<phi::dtype::float16> {
   // Since LayerNormDirectCUDAFunctor register half type, we need to convert
   // phi::float16 to half.
   using DataType = half;
@@ -390,8 +390,8 @@ class FusedDropoutLayerNormHelper
                  OutType* out,
                  LayerNormParamType<T>* mean,
                  LayerNormParamType<T>* variance) {
-    using InDataType = typename PDDataTypeTraits<InType>::DataType;
-    using OutDataType = typename PDDataTypeTraits<OutType>::DataType;
+    using InDataType = typename DataTypeTraits<InType>::DataType;
+    using OutDataType = typename DataTypeTraits<OutType>::DataType;
 
     phi::LayerNormDirectCUDAFunctor<InDataType, LayerNormParamType<T>>
         layer_norm;

@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/operators/fused/fusion_gru_op.h"
 #include "paddle/fluid/operators/fused/mkldnn/fusion_rnn_mkldnn.h"
+#include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/expect.h"
 
 namespace paddle {
@@ -24,13 +25,14 @@ using phi::OneDNNContext;
 using phi::funcs::OneDNNGetDataType;
 using phi::funcs::OneDNNMemDesc;
 using phi::funcs::RNNReorderType;
+using OneDNNMemoryFormat = dnnl::memory::format_tag;
 
 template <typename T, typename T_out = T>
 class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
  public:
   GRUMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
                    const OneDNNContext& dev_ctx,
-                   const dnnl::engine mkldnn_engine,
+                   const dnnl::engine onednn_engine,
                    platform::Place cpu_place,
                    const phi::DenseTensor* input,
                    const phi::DenseTensor* weight_h,
@@ -44,7 +46,7 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
       : RNNMKLDNNHandler<T, dnnl::gru_forward, T_out>(
             ctx,
             dev_ctx,
-            mkldnn_engine,
+            onednn_engine,
             ctx.GetPlace(),
             input,
             weight_h,
@@ -256,7 +258,7 @@ class FusionGRUMKLDNNKernel : public framework::OpKernel<T> {
   template <typename Tout = T>
   void RunKernel(const framework::ExecutionContext& ctx) const {
     auto& dev_ctx = ctx.template device_context<OneDNNContext>();
-    const auto& mkldnn_engine = dev_ctx.GetEngine();
+    const auto& onednn_engine = dev_ctx.GetEngine();
 
     // Get Tensors
     const auto* input = ctx.Input<phi::DenseTensor>("X");
@@ -294,7 +296,7 @@ class FusionGRUMKLDNNKernel : public framework::OpKernel<T> {
     GRUMKLDNNHandler<T, Tout> handler(
         ctx,
         dev_ctx,
-        mkldnn_engine,
+        onednn_engine,
         ctx.GetPlace(),
         input,
         weight_h,
@@ -379,7 +381,7 @@ class FusionGRUMKLDNNKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(fusion_gru,
                    MKLDNN,
-                   paddle::platform::CPUPlace,
+                   phi::CPUPlace,
                    ops::FusionGRUMKLDNNKernel<float>,
                    ops::FusionGRUMKLDNNKernel<paddle::platform::bfloat16>,
                    ops::FusionGRUMKLDNNKernel<uint8_t>);

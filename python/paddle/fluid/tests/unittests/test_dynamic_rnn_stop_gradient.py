@@ -19,6 +19,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
+from paddle.tensor.manipulation import tensor_array_to_tensor
 
 paddle.enable_static()
 
@@ -47,7 +48,7 @@ def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
             bs = layers.cast(bs, 'int64')
         bs.stop_gradient = stop_gradient
         batch_pos = paddle.expand(
-            layers.unsqueeze(paddle.arange(0, bs, 1, dtype=bs.dtype), [1]),
+            paddle.unsqueeze(paddle.arange(0, bs, 1, dtype=bs.dtype), [1]),
             [-1, beam_size],
         )
         topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
@@ -58,7 +59,7 @@ def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
         length_cond = paddle.less_than(x=step_idx, y=max_len)
         layers.assign(length_cond, cond)
 
-    out = layers.tensor_array_to_tensor(scores, axis=0, use_stack=True)[0]
+    out = tensor_array_to_tensor(scores, axis=0, use_stack=True)[0]
     loss = paddle.mean(out)
     opt = fluid.optimizer.Adam(0.01)
     opt.minimize(loss)

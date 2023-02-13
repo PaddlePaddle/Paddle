@@ -33,7 +33,7 @@ class TensorRTSubgraphPassConvTest(InferencePassTest):
             data = fluid.data(
                 name="data", shape=[-1, 6, 64, 64], dtype="float32"
             )
-            conv_out = fluid.layers.conv2d(
+            conv_out = paddle.static.nn.conv2d(
                 input=data,
                 num_filters=self.conv_num_filters,
                 filter_size=self.conv_filter_size,
@@ -210,7 +210,7 @@ class DynamicShapeTensorRTSubgraphPassConvTest(InferencePassTest):
             data = fluid.data(
                 name="data", shape=[-1, 6, -1, -1], dtype="float32"
             )
-            conv_out = fluid.layers.conv2d(
+            conv_out = paddle.static.nn.conv2d(
                 input=data,
                 num_filters=self.conv_num_filters,
                 filter_size=self.conv_filter_size,

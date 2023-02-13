@@ -43,10 +43,12 @@ def simple_fc_net(places, use_legacy_py_reader, use_double_buffer):
 
     with fluid.unique_name.guard():
         with fluid.program_guard(main_prog, startup_prog):
-            image = fluid.layers.data(
-                name='image', shape=[784], dtype='float32'
+            image = paddle.static.data(
+                name='image', shape=[-1, 784], dtype='float32'
             )
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
             py_reader = fluid.io.DataLoader.from_generator(
                 feed_list=[image, label],
                 capacity=4,
@@ -55,17 +57,17 @@ def simple_fc_net(places, use_legacy_py_reader, use_double_buffer):
             )
             hidden = image
             for hidden_size in [10, 20, 30]:
-                hidden = fluid.layers.fc(
+                hidden = paddle.static.nn.fc(
                     hidden,
                     size=hidden_size,
-                    act='tanh',
+                    activation='tanh',
                     bias_attr=fluid.ParamAttr(
-                        initializer=fluid.initializer.Constant(value=1.0)
+                        initializer=paddle.nn.initializer.Constant(value=1.0)
                     ),
                 )
 
-            predict_label = fluid.layers.fc(
-                hidden, size=CLASS_NUM, act='softmax'
+            predict_label = paddle.static.nn.fc(
+                hidden, size=CLASS_NUM, activation='softmax'
             )
             loss = paddle.mean(
                 paddle.nn.functional.cross_entropy(

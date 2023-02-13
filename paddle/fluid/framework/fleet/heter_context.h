@@ -35,6 +35,14 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #include "paddle/fluid/framework/scope.h"
 
+#ifdef PADDLE_WITH_PSLIB
+#define CONV2FEATURE_PTR(ptr) \
+  reinterpret_cast<paddle::ps::DownpourFixedFeatureValue**>(ptr)
+#else
+#define CONV2FEATURE_PTR(ptr) \
+  reinterpret_cast<paddle::distributed::FixedFeatureValue*>(ptr)
+#endif
+
 namespace paddle {
 namespace framework {
 
@@ -85,7 +93,9 @@ class HeterContext {
   std::vector<std::vector<std::mutex*>> dim_mutex_;
   int multi_mf_dim_ = 0;
 
+  void* sub_graph_feas = NULL;
   uint32_t shard_num_ = 37;
+  uint16_t pass_id_ = 0;
   uint64_t size() {
     uint64_t total_size = 0;
     for (auto& keys : feature_keys_) {

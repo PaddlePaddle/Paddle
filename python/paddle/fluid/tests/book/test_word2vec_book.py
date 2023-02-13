@@ -90,11 +90,11 @@ def train(
         concat_embed = fluid.layers.concat(
             input=[embed_first, embed_second, embed_third, embed_forth], axis=1
         )
-        hidden1 = fluid.layers.fc(
-            input=concat_embed, size=HIDDEN_SIZE, act='sigmoid'
+        hidden1 = paddle.static.nn.fc(
+            x=concat_embed, size=HIDDEN_SIZE, activation='sigmoid'
         )
-        predict_word = fluid.layers.fc(
-            input=hidden1, size=dict_size, act='softmax'
+        predict_word = paddle.static.nn.fc(
+            x=hidden1, size=dict_size, activation='softmax'
         )
         cost = paddle.nn.functional.cross_entropy(
             input=predict_word,
@@ -108,11 +108,13 @@ def train(
     word_dict = paddle.dataset.imikolov.build_dict()
     dict_size = len(word_dict)
 
-    first_word = fluid.layers.data(name='firstw', shape=[1], dtype='int64')
-    second_word = fluid.layers.data(name='secondw', shape=[1], dtype='int64')
-    third_word = fluid.layers.data(name='thirdw', shape=[1], dtype='int64')
-    forth_word = fluid.layers.data(name='forthw', shape=[1], dtype='int64')
-    next_word = fluid.layers.data(name='nextw', shape=[1], dtype='int64')
+    first_word = paddle.static.data(name='firstw', shape=[-1, 1], dtype='int64')
+    second_word = paddle.static.data(
+        name='secondw', shape=[-1, 1], dtype='int64'
+    )
+    third_word = paddle.static.data(name='thirdw', shape=[-1, 1], dtype='int64')
+    forth_word = paddle.static.data(name='forthw', shape=[-1, 1], dtype='int64')
+    next_word = paddle.static.data(name='nextw', shape=[-1, 1], dtype='int64')
 
     if not is_parallel:
         avg_cost, predict_word = __network__(

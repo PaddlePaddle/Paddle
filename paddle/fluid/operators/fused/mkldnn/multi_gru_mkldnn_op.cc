@@ -17,11 +17,11 @@ limitations under the License. */
 #include <memory>
 
 #include "dnnl.hpp"  // NOLINT
-#include "paddle/fluid/framework/mixed_vector.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/fused/multi_gru_op.h"
-#include "paddle/fluid/platform/errors.h"
-#include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/phi/backends/onednn/onednn_reuse.h"
+#include "paddle/phi/core/mixed_vector.h"
 
 namespace paddle {
 namespace operators {
@@ -31,6 +31,7 @@ using phi::funcs::OneDNNGetDataType;
 using phi::funcs::OneDNNMemDesc;
 using Direction = dnnl::rnn_direction;
 using phi::OneDNNContext;
+using OneDNNMemoryFormat = dnnl::memory::format_tag;
 
 namespace {
 
@@ -677,7 +678,7 @@ class MultiGRUHandler {
   const std::vector<const phi::DenseTensor*> biases_;
   phi::DenseTensor* hidden_;
   std::vector<dnnl::primitive_attr> attrs_;
-  const paddle::framework::Vector<size_t>& x_lod_;
+  const phi::Vector<size_t>& x_lod_;
 };
 
 template <typename T>
@@ -721,6 +722,6 @@ class MultiGRUMKLDNNKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(multi_gru,
                    MKLDNN,
-                   paddle::platform::CPUPlace,
+                   phi::CPUPlace,
                    ops::MultiGRUMKLDNNKernel<float>,
                    ops::MultiGRUMKLDNNKernel<uint8_t>);

@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 import paddle.fluid.core as core
 from paddle.distributed.models.moe import utils
-from paddle.fluid.framework import _test_eager_guard
 
 
 def random_routing(topk_idx, topk_value, prob, topk=2):
@@ -54,18 +53,13 @@ class TestNumberCountAPIFp32(unittest.TestCase):
         )
         self.place = paddle.CUDAPlace(0)
 
-    def func_api_dygraph(self):
+    def test_api_dygraph(self):
         paddle.disable_static()
         x = paddle.to_tensor(self.x)
         value = paddle.to_tensor(self.topk_value)
         prob = paddle.to_tensor(self.prob)
         out = utils._random_routing(x, value, prob)
         assert np.allclose(out.numpy(), self.out)
-
-    def test_api_dygraph(self):
-        with _test_eager_guard():
-            self.func_api_dygraph()
-        self.func_api_dygraph()
 
 
 @unittest.skipIf(

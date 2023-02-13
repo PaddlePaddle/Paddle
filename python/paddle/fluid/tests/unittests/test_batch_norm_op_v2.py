@@ -20,7 +20,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestBatchNorm(unittest.TestCase):
@@ -91,13 +90,12 @@ class TestBatchNorm(unittest.TestCase):
 
         def compute_1d(x):
             with fluid.dygraph.guard(p):
-                with _test_eager_guard():
-                    bn = paddle.nn.BatchNorm1D(shape[1])
-                    x1 = paddle.to_tensor(x)
-                    x1.stop_gradient = False
-                    y = bn(x1)
-                    y.backward()
-                    return y.numpy(), x1.gradient()
+                bn = paddle.nn.BatchNorm1D(shape[1])
+                x1 = paddle.to_tensor(x)
+                x1.stop_gradient = False
+                y = bn(x1)
+                y.backward()
+                return y.numpy(), x1.gradient()
 
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
@@ -138,14 +136,13 @@ class TestBatchNorm(unittest.TestCase):
 
             def compute_v2(x):
                 with fluid.dygraph.guard(p):
-                    with _test_eager_guard():
-                        print("v2")
-                        bn = paddle.nn.BatchNorm2D(shape[1])
-                        x1 = paddle.to_tensor(x)
-                        x1.stop_gradient = False
-                        y = bn(x1)
-                        y.backward()
-                        return y.numpy(), x1.gradient()
+                    print("v2")
+                    bn = paddle.nn.BatchNorm2D(shape[1])
+                    x1 = paddle.to_tensor(x)
+                    x1.stop_gradient = False
+                    y = bn(x1)
+                    y.backward()
+                    return y.numpy(), x1.gradient()
 
             x = np.random.randn(*shape).astype("float32")
             y1, g1 = compute_v1(x)
@@ -175,9 +172,8 @@ class TestBatchNorm(unittest.TestCase):
                     bn = paddle.nn.BatchNorm2D(shape[1])
                     y = bn(paddle.to_tensor(x))
 
-                    with _test_eager_guard():
-                        bn = paddle.nn.BatchNorm2D(shape[1])
-                        eag_y = bn(paddle.to_tensor(x))
+                    bn = paddle.nn.BatchNorm2D(shape[1])
+                    eag_y = bn(paddle.to_tensor(x))
                     assert np.allclose(eag_y.numpy(), y.numpy())
                 return y.numpy()
 
@@ -187,11 +183,11 @@ class TestBatchNorm(unittest.TestCase):
                         shape[1],
                         is_test=is_test,
                         param_attr=fluid.ParamAttr(
-                            initializer=fluid.initializer.Constant(1.0),
+                            initializer=paddle.nn.initializer.Constant(1.0),
                             trainable=False,
                         ),
                         bias_attr=fluid.ParamAttr(
-                            initializer=fluid.initializer.Constant(0.0),
+                            initializer=paddle.nn.initializer.Constant(0.0),
                             trainable=False,
                         ),
                         trainable_statistics=trainable_statistics,
@@ -382,7 +378,7 @@ class TestBatchNormUseGlobalStats(unittest.TestCase):
                 net1 = paddle.nn.BatchNorm(
                     6,
                     param_attr=fluid.ParamAttr(
-                        initializer=fluid.initializer.Constant(1.0)
+                        initializer=paddle.nn.initializer.Constant(1.0)
                     ),
                     use_global_stats=self.use_global_stats,
                     trainable_statistics=self.trainable_statistics,

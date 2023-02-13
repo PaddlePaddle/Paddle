@@ -15,14 +15,14 @@
 import numpy as np
 
 import paddle.utils.deprecated as deprecated
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 from paddle.fluid.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
     convert_dtype,
 )
-from paddle.fluid.framework import Variable, _in_legacy_dygraph, in_dygraph_mode
+from paddle.fluid.framework import Variable, in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers.tensor import cast
 
@@ -124,19 +124,6 @@ def graph_send_recv(
 
     # TODO(daisiming): Should we add judgement for out_size: max(dst_index) + 1.
 
-    if _in_legacy_dygraph():
-        out_size = convert_out_size_to_list(out_size)
-        out, tmp = _legacy_C_ops.graph_send_recv(
-            x,
-            src_index,
-            dst_index,
-            None,
-            'reduce_op',
-            pool_type.upper(),
-            'out_size',
-            out_size,
-        )
-        return out
     if in_dygraph_mode():
         out_size = convert_out_size_to_list(out_size)
         return _C_ops.send_u_recv(
@@ -202,7 +189,7 @@ def convert_out_size_to_list(out_size):
 def get_out_size_tensor_inputs(inputs, attrs, out_size, op_type):
     """
     Convert out_size(int, np.int32, np.int64, Variable) to inputs
-    and attrs in static mode.
+    and attrs in static graph mode.
     """
     if out_size is None:
         attrs['out_size'] = [0]

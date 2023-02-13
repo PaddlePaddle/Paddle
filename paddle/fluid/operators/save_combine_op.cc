@@ -30,19 +30,19 @@ class SaveCombineOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {}
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(framework::proto::VarType::FP32,
-                                   ctx.GetPlace());
+    return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
   }
   // TODO(lujun): The override here is just to bypass transform
   //  in operator impl, which is not elegant enough.
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place());
+      const phi::KernelKey& expected_kernel_type) const override {
+    return phi::KernelKey(tensor.place(),
+                          phi::DataLayout::ALL_LAYOUT,
+                          expected_kernel_type.dtype());
   }
 };
 

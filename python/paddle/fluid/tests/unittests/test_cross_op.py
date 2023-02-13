@@ -69,18 +69,18 @@ class TestCrossAPI(unittest.TestCase):
     def input_data(self):
         self.data_x = np.array(
             [[1.0, 1.0, 1.0], [2.0, 2.0, 2.0], [3.0, 3.0, 3.0]]
-        )
+        ).astype('float32')
         self.data_y = np.array(
             [[1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]]
-        )
+        ).astype('float32')
 
     def test_cross_api(self):
         self.input_data()
 
         # case 1:
         with program_guard(Program(), Program()):
-            x = fluid.layers.data(name='x', shape=[-1, 3])
-            y = fluid.layers.data(name='y', shape=[-1, 3])
+            x = paddle.static.data(name='x', shape=[-1, 3], dtype="float32")
+            y = paddle.static.data(name='y', shape=[-1, 3], dtype="float32")
             z = paddle.cross(x, y, axis=1)
             exe = fluid.Executor(fluid.CPUPlace())
             (res,) = exe.run(
@@ -95,8 +95,8 @@ class TestCrossAPI(unittest.TestCase):
 
         # case 2:
         with program_guard(Program(), Program()):
-            x = fluid.layers.data(name='x', shape=[-1, 3])
-            y = fluid.layers.data(name='y', shape=[-1, 3])
+            x = paddle.static.data(name='x', shape=[-1, 3], dtype="float32")
+            y = paddle.static.data(name='y', shape=[-1, 3], dtype="float32")
             z = paddle.cross(x, y)
             exe = fluid.Executor(fluid.CPUPlace())
             (res,) = exe.run(

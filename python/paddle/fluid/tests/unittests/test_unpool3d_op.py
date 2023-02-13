@@ -195,6 +195,20 @@ class TestUnpool3DOpException(unittest.TestCase):
             ).astype("int32")
             F.max_unpool3d(data, indices, kernel_size=2, stride=2)
 
+        def x_rank_error():
+            data = paddle.rand(shape=[1, 1, 3, 3])
+            indices = paddle.reshape(
+                paddle.arange(0, 27), shape=[1, 1, 3, 3, 3]
+            ).astype("int32")
+            F.max_unpool3d(data, indices, kernel_size=2, stride=2)
+
+        def indices_rank_error():
+            data = paddle.rand(shape=[1, 1, 3, 3, 3])
+            indices = paddle.reshape(
+                paddle.arange(0, 27), shape=[1, 3, 3, 3]
+            ).astype("int32")
+            F.max_unpool3d(data, indices, kernel_size=2, stride=2)
+
         def indices_value_error():
             data = paddle.rand(shape=[1, 1, 3, 3, 3])
             indices = paddle.reshape(
@@ -237,6 +251,16 @@ class TestUnpool3DOpException(unittest.TestCase):
             ValueError,
             r"The dimensions of Input\(X\) must equal to",
             indices_size_error,
+        )
+        self.assertRaisesRegex(
+            ValueError,
+            r"The x should have \[N, C, D, H, W\] format",
+            x_rank_error,
+        )
+        self.assertRaisesRegex(
+            ValueError,
+            r"The indices should have \[N, C, D, H, W\] format",
+            indices_rank_error,
         )
         if not core.is_compiled_with_cuda():
             self.assertRaisesRegex(

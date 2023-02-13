@@ -106,7 +106,7 @@ class TensorRTSubgraphPassHardSwishPluginTest(
 
 class TensorRTSubgraphPassClipTest(TensorRTSubgraphPassActivationTest):
     def append_act(self, x):
-        return fluid.layers.clip(x, 0, 1)
+        return paddle.clip(x, 0, 1)
 
 
 class TensorRTSubgraphPassTanhTest(TensorRTSubgraphPassActivationTest):

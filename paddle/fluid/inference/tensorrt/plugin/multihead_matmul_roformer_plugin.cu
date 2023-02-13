@@ -137,7 +137,7 @@ __global__ void apply_scale(T *data, T scale, int n) {
 template <typename T>
 __global__ void RotrayKernel(const T *inputact,
                              const T *input1,
-                             const T *intput2,
+                             const T *input2,
                              T *output,
                              const int nElement,
                              const int lastdim) {
@@ -147,7 +147,7 @@ __global__ void RotrayKernel(const T *inputact,
   int col = index % lastdim;
   int half_lastdim = lastdim / 2;
   const int right_index = index - col + (col + half_lastdim) % lastdim;
-  output[index] = left_elemul_out + intput2[index] * inputact[right_index];
+  output[index] = left_elemul_out + input2[index] * inputact[right_index];
 }
 
 inline int round_up(int seq_len, int multiple = 32) {

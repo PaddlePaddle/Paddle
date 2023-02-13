@@ -124,6 +124,13 @@ class DistributedTranspose2Impl(DistributedOperatorImpl):
         for i in range(len(x_dims_mapping)):
             x_shape_dims_mapping[i + 1] = x_dims_mapping[i]
 
+        if changed:
+            op_dist_attr.set_input_dims_mapping(x_name, x_dims_mapping)
+            op_dist_attr.set_output_dims_mapping(out_name, out_dims_mapping)
+            op_dist_attr.set_output_dims_mapping(
+                x_shape_name, x_shape_dims_mapping
+            )
+
         return changed
 
     def calc_cost(self, op_role, dist_op, ctx, cluster):
@@ -140,7 +147,7 @@ class DistributedTranspose2Impl(DistributedOperatorImpl):
         desc_mapping = build_comp_desc_from_dist_op(
             dist_op=dist_op, dist_context=ctx
         )
-        processes = dist_op.dist_attr.process_mesh.processes
+        processes = dist_op.dist_attr.process_mesh.process_ids
         op_type = dist_op.serial_op.type
         cost_mapping = build_comp_costs_from_descs(
             Transpose2OpCost, ctx, processes, desc_mapping, cluster
@@ -157,7 +164,7 @@ class DistributedTranspose2Impl(DistributedOperatorImpl):
         )
         dist_attr = dist_op.dist_attr
         process_mesh = dist_attr.process_mesh
-        processes = process_mesh.processes
+        processes = process_mesh.process_ids
         op_type = dist_op.serial_op.type
         cost_mapping = build_comp_costs_from_descs(
             Transpose2GradOpCost, ctx, processes, desc_mapping, cluster
@@ -175,7 +182,7 @@ class DistributedTranspose2Impl(DistributedOperatorImpl):
                     # NOTE input var's dim_mapping of backward op should be the same with input var instead of corresponding varname of forward op
                     var_dim_mapping = dist_attr.get_input_dims_mapping(varname)
 
-                    mesh_shape = process_mesh.topology
+                    mesh_shape = process_mesh.shape
                     batch_size_axis = var_dim_mapping[0]
                     if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
                         parallel_axis = batch_size_axis

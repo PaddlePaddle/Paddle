@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.nn as nn
-from paddle.fluid.framework import _test_eager_guard
 
 
 class LeNetDygraph(fluid.dygraph.Layer):
@@ -56,9 +55,8 @@ class TestLayerChildren(unittest.TestCase):
             return y1, y2
 
     def test_func_apply_init_weight(self):
-        with _test_eager_guard():
-            paddle.seed(102)
-            self.new_y1, self.new_y2 = self.func_apply_init_weight()
+        paddle.seed(102)
+        self.new_y1, self.new_y2 = self.func_apply_init_weight()
         paddle.seed(102)
         self.ori_y1, self.ori_y2 = self.func_apply_init_weight()
 

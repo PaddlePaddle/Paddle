@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.nn as nn
-from paddle.fluid.framework import _test_eager_guard
 
 
 class LeNetDygraph(fluid.dygraph.Layer):
@@ -74,7 +73,7 @@ def init_weights(layer):
 
 
 class TestLayerApply(unittest.TestCase):
-    def func_apply_init_weight(self):
+    def test_apply_init_weight(self):
         with fluid.dygraph.guard():
             net = LeNetDygraph()
 
@@ -87,11 +86,6 @@ class TestLayerApply(unittest.TestCase):
                 elif type(layer) == nn.Conv2D:
                     np.testing.assert_allclose(layer.weight.numpy(), 0.7)
                     np.testing.assert_allclose(layer.bias.numpy(), -0.2)
-
-    def test_apply_init_weight(self):
-        with _test_eager_guard():
-            self.func_apply_init_weight()
-        self.func_apply_init_weight()
 
 
 if __name__ == '__main__':

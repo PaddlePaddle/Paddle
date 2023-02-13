@@ -69,11 +69,11 @@ class FTRLOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("SquaredAccumOut", param_dim);
     ctx->SetOutputDim("LinearAccumOut", param_dim);
   }
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "Param");
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 

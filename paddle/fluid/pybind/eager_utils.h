@@ -46,7 +46,7 @@ namespace py = ::pybind11;
 
 int TensorDtype2NumpyDtype(phi::DataType dtype);
 
-bool IsEagerTensor(PyObject* obj);
+bool PyCheckTensor(PyObject* obj);
 
 bool PyObject_CheckLongOrConvertToLong(PyObject** obj);
 bool PyObject_CheckFloatOrConvertToFloat(PyObject** obj);

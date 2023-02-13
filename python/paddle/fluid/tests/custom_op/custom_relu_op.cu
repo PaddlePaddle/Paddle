@@ -44,7 +44,7 @@ __global__ void relu_cuda_double_backward_kernel(const data_t* out_data,
                                                  data_t* ddout_data,
                                                  int64_t num) {
   int64_t gid = blockIdx.x * blockDim.x + threadIdx.x;
-  for (int64_t i = num; i < num; i += blockDim.x * gridDim.x) {
+  for (int64_t i = gid; i < num; i += blockDim.x * gridDim.x) {
     ddout_data[i] = ddx_data[i] * (out_data[i] > static_cast<data_t>(0.)
                                        ? static_cast<data_t>(1.)
                                        : static_cast<data_t>(0.));

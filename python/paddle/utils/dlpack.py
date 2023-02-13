@@ -69,7 +69,7 @@ def from_dlpack(dlpack):
         dlpack (PyCapsule): a PyCapsule object with the dltensor.
 
     Returns:
-        out (Tensor): a tensor decoded from DLPack. One thing to be noted, if we get
+        out (Tensor), a tensor decoded from DLPack. One thing to be noted, if we get
                       an input dltensor with data type as `bool`, we return the decoded
                       tensor as `uint8`.
 

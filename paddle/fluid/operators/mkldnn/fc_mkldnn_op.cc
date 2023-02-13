@@ -14,9 +14,10 @@ limitations under the License. */
 
 #include <memory>
 
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/fc_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
-#include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/phi/backends/onednn/onednn_reuse.h"
 
 namespace paddle {
 namespace operators {
@@ -51,10 +52,10 @@ class FCMKLDNNHandler
                   const phi::DenseTensor* bias,
                   phi::DenseTensor* out,
                   const int in_num_col_dims,
-                  dnnl::engine mkldnn_engine,
+                  dnnl::engine onednn_engine,
                   platform::Place cpu_place)
       : phi::funcs::OneDNNHandlerNoCachingT<T_in, dnnl::inner_product_forward>(
-            mkldnn_engine, cpu_place),
+            onednn_engine, cpu_place),
         dev_ctx_(dev_ctx) {
     this->memory_key_ = ctx.InputName("W");
 
@@ -122,7 +123,7 @@ class FCMKLDNNHandler
       post_operations.append_eltwise(
           activation_scale, dnnl::algorithm::eltwise_relu, 0.0f, 0.0f);
     }
-    platform::AppendActivation(ctx, post_operations, activation_scale);
+    AppendActivation(ctx, post_operations, activation_scale);
 
     if (ctx.HasAttr("fused_output_scale")) {
       float scale_alpha = ctx.Attr<float>("fused_output_scale");
@@ -151,6 +152,59 @@ class FCMKLDNNHandler
           bias_scales[i] = scale_in * scale_weights[i];
       }
       return bias_scales;
+    }
+  }
+
+  void AppendActivation(const ExecutionContext& ctx,
+                        dnnl::post_ops& post_ops,  // NOLINT
+                        float activation_scale = 1.0f) {
+    const auto invalid_attribute =
+        ctx.HasAttr("fuse_activation")
+            ? ctx.Attr<std::string>("fuse_activation").empty()
+            : true;
+    if (invalid_attribute) return;
+
+    const auto fuse_activation = ctx.Attr<std::string>("fuse_activation");
+    const auto fuse_alpha =
+        ctx.HasAttr("fuse_alpha") ? ctx.Attr<float>("fuse_alpha") : 0.0f;
+    const auto fuse_beta =
+        ctx.HasAttr("fuse_beta") ? ctx.Attr<float>("fuse_beta") : 0.0f;
+
+    if (fuse_activation == "hard_sigmoid") {
+      post_ops.append_eltwise(activation_scale,
+                              dnnl::algorithm::eltwise_linear,
+                              fuse_alpha,
+                              fuse_beta);
+      post_ops.append_eltwise(
+          activation_scale, dnnl::algorithm::eltwise_clip, 0.0f, 1.0f);
+    } else {
+      const std::unordered_map<std::string, dnnl::algorithm> activation_map = {
+          {"abs", dnnl::algorithm::eltwise_abs},
+          {"clip", dnnl::algorithm::eltwise_clip},
+          {"gelu", dnnl::algorithm::eltwise_gelu_erf},
+          {"gelu_erf", dnnl::algorithm::eltwise_gelu_erf},
+          {"gelu_tanh", dnnl::algorithm::eltwise_gelu_tanh},
+          {"hard_swish", dnnl::algorithm::eltwise_hardswish},
+          {"leaky_relu", dnnl::algorithm::eltwise_relu},
+          {"mish", dnnl::algorithm::eltwise_mish},
+          {"relu", dnnl::algorithm::eltwise_relu},
+          {"relu6", dnnl::algorithm::eltwise_bounded_relu},
+          {"sigmoid", dnnl::algorithm::eltwise_logistic},
+          {"sqrt", dnnl::algorithm::eltwise_sqrt},
+          {"swish", dnnl::algorithm::eltwise_swish},
+          {"tanh", dnnl::algorithm::eltwise_tanh}};
+
+      const auto& activation_type = activation_map.find(fuse_activation);
+
+      PADDLE_ENFORCE_NE(
+          activation_type,
+          activation_map.end(),
+          platform::errors::InvalidArgument(
+              "Activation '%s' not found in oneDNN algorithms mapper",
+              fuse_activation));
+
+      post_ops.append_eltwise(
+          activation_scale, activation_type->second, fuse_alpha, fuse_beta);
     }
   }
 
@@ -396,10 +450,76 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
     }
   }
 
+  void SetOutMemDescWithUnsqueeze2FuseSupport(
+      const framework::ExecutionContext& ctx,
+      phi::DenseTensor* out,
+      const dnnl::memory::desc& out_md) const {
+    const std::vector<int>& fused_unsqueeze2_axes =
+        ctx.Attr<std::vector<int>>("fused_unsqueeze2_axes");
+    const std::vector<int64_t>& op_tz = out_md.dims();
+    std::vector<int64_t> unsqueezed_op_tz(
+        op_tz.size() + fused_unsqueeze2_axes.size(), 0);
+
+    for (const auto& axis : fused_unsqueeze2_axes) {
+      int positive_axis = axis < 0 ? unsqueezed_op_tz.size() + axis : axis;
+      unsqueezed_op_tz[positive_axis] = 1;
+    }
+
+    int j = 0;
+    for (size_t i = 0; i < unsqueezed_op_tz.size(); ++i) {
+      if (unsqueezed_op_tz[i] == 0) {
+        unsqueezed_op_tz[i] = op_tz[j++];
+      }
+    }
+    out->set_mem_desc(out_md.reshape(unsqueezed_op_tz));
+    out->Resize(phi::make_ddim(unsqueezed_op_tz));
+  }
+
+  void SetOutMemDescWithReshape2FuseSupport(
+      const framework::ExecutionContext& ctx,
+      phi::DenseTensor* out,
+      const dnnl::memory::desc& out_md) const {
+    std::vector<int64_t> fused_reshape2_shape(
+        ctx.Attr<std::vector<int>>("fused_reshape2_shape").begin(),
+        ctx.Attr<std::vector<int>>("fused_reshape2_shape").end());
+
+    const int out_shape_numel = out->numel();
+    const int new_shape_numel = std::accumulate(fused_reshape2_shape.begin(),
+                                                fused_reshape2_shape.end(),
+                                                1,
+                                                std::multiplies<int64_t>());
+
+    for (size_t i = 0; i < fused_reshape2_shape.size(); ++i) {
+      if (fused_reshape2_shape[i] == -1) {
+        fused_reshape2_shape[i] = -out_shape_numel / new_shape_numel;
+        break;
+      }
+    }
+
+    out->set_mem_desc(out_md.reshape(fused_reshape2_shape));
+    out->Resize(phi::make_ddim(fused_reshape2_shape));
+  }
+
+  void SetOutMemDescWithLogicalLayoutFusesSupport(
+      const framework::ExecutionContext& ctx,
+      phi::DenseTensor* out,
+      const dnnl::memory::desc& out_md) const {
+    if (ctx.HasAttr("fused_unsqueeze2_axes")) {
+      SetOutMemDescWithUnsqueeze2FuseSupport(ctx, out, out_md);
+    } else if (ctx.HasAttr("fused_reshape2_shape")) {
+      SetOutMemDescWithReshape2FuseSupport(ctx, out, out_md);
+    } else if (ctx.HasAttr("fused_squeeze2_axes")) {
+      out->set_mem_desc(out_md);
+      out->Resize(phi::make_ddim(out_md.dims()));
+    } else {
+      out->set_mem_desc(out_md);
+    }
+  }
+
   template <typename T_out, typename T_w>
   void RunKernel(const framework::ExecutionContext& ctx) const {
     const auto& dev_ctx = ctx.template device_context<OneDNNContext>();
-    const auto& mkldnn_engine = dev_ctx.GetEngine();
+    const auto& onednn_engine = dev_ctx.GetEngine();
 
     const auto* x = ctx.Input<phi::DenseTensor>("Input");
     const auto* weights = ctx.Input<phi::DenseTensor>("W");
@@ -433,7 +553,7 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
           inner_product_cache->inner_product_p);
       src_memory_p =
           std::make_shared<dnnl::memory>(inner_product_cache->src_mem);
-      PrepareSrcMem(fc_p, src_memory_p, x, mkldnn_engine);
+      PrepareSrcMem(fc_p, src_memory_p, x, onednn_engine);
 
       weights_memory_p =
           std::make_shared<dnnl::memory>(inner_product_cache->weights_mem);
@@ -463,7 +583,7 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
                                                 bias,
                                                 out,
                                                 in_col_dims,
-                                                mkldnn_engine,
+                                                onednn_engine,
                                                 ctx.GetPlace());
 
       src_memory_p = handler.AcquireSrcMemoryWithReorder(x);
@@ -504,7 +624,7 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
       dev_ctx.SetBlob(cache_key, ip_cache);
     }
 
-    platform::SetOutMemDescWithLogicalLayoutFusesSupport(
+    SetOutMemDescWithLogicalLayoutFusesSupport(
         ctx,
         out,
         dst_memory_p->get_desc().reshape(phi::vectorize(out->dims())));
@@ -541,7 +661,7 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(fc,
                    MKLDNN,
-                   ::paddle::platform::CPUPlace,
+                   ::phi::CPUPlace,
                    ops::FCMKLDNNKernel<float>,
                    ops::FCMKLDNNKernel<paddle::platform::bfloat16>,
                    ops::FCMKLDNNKernel<uint8_t>,

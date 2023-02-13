@@ -195,6 +195,7 @@ function(create_dummy_static_lib TARGET_NAME)
   # the dummy target would be consisted of limit size libraries
   set(limit ${merge_LIMIT})
   list(LENGTH merge_LIBS libs_len)
+  message("libs_len ${libs_len}")
   foreach(lib ${merge_LIBS})
     list(APPEND merge_list ${lib})
     list(LENGTH merge_list listlen)
@@ -1062,8 +1063,8 @@ function(paddle_protobuf_generate_cpp SRCS HDRS)
     add_custom_command(
       OUTPUT "${_protobuf_protoc_src}" "${_protobuf_protoc_hdr}"
       COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}"
-      COMMAND ${PROTOBUF_PROTOC_EXECUTABLE} -I${CMAKE_CURRENT_SOURCE_DIR}
-              --cpp_out "${CMAKE_CURRENT_BINARY_DIR}" ${ABS_FIL}
+      COMMAND ${PROTOBUF_PROTOC_EXECUTABLE} -I${PADDLE_SOURCE_DIR} --cpp_out
+              "${PADDLE_BINARY_DIR}" ${ABS_FIL}
       # Set `EXTERN_PROTOBUF_DEPEND` only if need to compile `protoc.exe`.
       DEPENDS ${ABS_FIL} ${EXTERN_PROTOBUF_DEPEND}
       COMMENT "Running C++ protocol buffer compiler on ${FIL}"

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
@@ -21,9 +20,7 @@ from test_parallel_dygraph_dataparallel import TestMultipleGpus
 class TestModelParallelLayer(TestMultipleGpus):
     def test_hybrid_parallel_mp_layer(self):
         self.run_mnist_2gpu('hybrid_parallel_mp_layers.py')
-        self.run_mnist_2gpu('hybrid_parallel_mp_layers.py', eager_mode=False)
 
 
 if __name__ == "__main__":
-    os.environ["FLAGS_enable_eager_mode"] = "1"
     unittest.main()

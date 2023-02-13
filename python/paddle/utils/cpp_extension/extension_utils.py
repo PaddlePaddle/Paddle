@@ -1001,7 +1001,7 @@ def _custom_api_content(op_name):
         """
         import paddle.fluid.core as core
         from paddle.fluid.core import VarBase, CustomOpKernelContext
-        from paddle.fluid.framework import _non_static_mode, _dygraph_tracer, _in_legacy_dygraph, in_dygraph_mode
+        from paddle.fluid.framework import _dygraph_tracer, in_dygraph_mode
         from paddle.fluid.layer_helper import LayerHelper
 
         def {op_name}({inputs}):
@@ -1024,16 +1024,11 @@ def _custom_api_content(op_name):
                     ctx.add_outputs(outs[out_name])
                 core.eager._run_custom_op(ctx, "{op_name}", True)
             else:
-                if _in_legacy_dygraph():
-                    for out_name in out_names:
-                        outs[out_name] = VarBase()
-                    _dygraph_tracer().trace_op(type="{op_name}", inputs=ins, outputs=outs, attrs=attrs)
-                else:
-                    helper = LayerHelper("{op_name}", **locals())
-                    for out_name in out_names:
-                        outs[out_name] = helper.create_variable(dtype='float32')
+                helper = LayerHelper("{op_name}", **locals())
+                for out_name in out_names:
+                    outs[out_name] = helper.create_variable(dtype='float32')
 
-                    helper.append_op(type="{op_name}", inputs=ins, outputs=outs, attrs=attrs)
+                helper.append_op(type="{op_name}", inputs=ins, outputs=outs, attrs=attrs)
 
             res = [outs[out_name] for out_name in out_names]
 

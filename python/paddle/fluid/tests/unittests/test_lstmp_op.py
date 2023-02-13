@@ -17,9 +17,6 @@ import unittest
 import numpy as np
 import test_lstm_op as LstmTest
 
-from paddle import fluid
-from paddle.fluid import Program, program_guard
-
 ACTIVATION = {
     'identity': LstmTest.identity,
     'sigmoid': LstmTest.sigmoid,
@@ -376,65 +373,6 @@ class TestLstmpOpLen0Case1(TestLstmpOp):
 class TestLstmpOpLen0Case2(TestLstmpOp):
     def reset_argument(self):
         self.lod = [[2, 0, 3]]
-
-
-class TestLstmpOpError(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program(), Program()):
-
-            def test_Variable():
-                input_data = np.random.random((1, 2048)).astype("float32")
-                fluid.layers.dynamic_lstmp(
-                    input=input_data,
-                    size=2048,
-                    proj_size=256,
-                    use_peepholes=False,
-                    is_reverse=True,
-                    cell_activation="tanh",
-                    proj_activation="tanh",
-                )
-
-            self.assertRaises(TypeError, test_Variable)
-
-            def test_h_0():
-                in_data = fluid.data(
-                    name="input", shape=[None, 2048], dtype="float32"
-                )
-                h = fluid.data(name="h", shape=[None, 512], dtype="int32")
-                c = fluid.data(name="c", shape=[None, 512], dtype="float32")
-                fluid.layers.dynamic_lstmp(
-                    input=in_data,
-                    size=2048,
-                    proj_size=256,
-                    use_peepholes=False,
-                    is_reverse=True,
-                    cell_activation="tanh",
-                    proj_activation="tanh",
-                    h_0=h,
-                    c_0=c,
-                )
-
-            self.assertRaises(TypeError, test_h_0)
-
-            def test_c_0():
-                in_data_ = fluid.data(
-                    name="input_", shape=[None, 2048], dtype="float32"
-                )
-                h_ = fluid.data(name="h_", shape=[None, 512], dtype="float32")
-                c_ = fluid.data(name="c_", shape=[None, 512], dtype="int32")
-                fluid.layers.dynamic_lstmp(
-                    input=in_data_,
-                    size=2048,
-                    proj_size=256,
-                    use_peepholes=False,
-                    is_reverse=True,
-                    cell_activation="tanh",
-                    proj_activation="tanh",
-                    h_0=h_,
-                    c_0=c_,
-                )
-
-            self.assertRaises(TypeError, test_c_0)
 
 
 if __name__ == '__main__':

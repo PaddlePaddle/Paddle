@@ -161,12 +161,11 @@ class TestUniformRandomInplaceGrad(unittest.TestCase):
         self.shape = (1000, 784)
 
     def run_(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-
         def test_grad():
             tensor_a = paddle.ones(self.shape)
             tensor_a.stop_gradient = False
             tensor_b = tensor_a * 0.5
+            tensor_b.retain_grads()
             tensor_b.uniform_(min=-2, max=2)
             loss = tensor_b.sum()
             loss.backward()
@@ -179,7 +178,6 @@ class TestUniformRandomInplaceGrad(unittest.TestCase):
         for place in places:
             paddle.set_device(place)
             test_grad()
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_uniform_random_inplace_grad(self):
         self.run_()

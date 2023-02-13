@@ -19,7 +19,7 @@
 #include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_pass.h"  // NOLINT
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/imperative/type_defs.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace framework {
@@ -59,9 +59,6 @@ void SetOp(ProgramDesc* prog,
       op->SetAttr("fuse_residual_connection", false);
     }
     op->SetOutput("Output", {outputs[0]});
-    op->SetAttr("Scale_in", 1.0f);
-    op->SetAttr("Scale_out", 1.0f);
-    op->SetAttr("Scale_weights", std::vector<float>{1.0f});
   } else if (type == "pool2d" || type == "transpose2" || type == "reshape2" ||
              type == "nearest_interp" || type == "nearest_interp_v2") {
     op->SetInput("X", {inputs[0]});
@@ -146,7 +143,7 @@ void PreparePass(std::unique_ptr<ir::Graph>* graph,
                  int* current_nodes_num,
                  std::string var_without_scale = "",
                  std::string var_signed = "") {
-  auto place = paddle::platform::CPUPlace();
+  auto place = phi::CPUPlace();
   NaiveExecutor exe{place};
   Scope scope;
   exe.CreateVariables(prog, 0, true, &scope);
@@ -174,7 +171,7 @@ void PreparePass(std::unique_ptr<ir::Graph>* graph,
 void CheckScales(const OpDesc* op, float scale, float shift) {
   std::string type = op->Type();
   std::vector<std::string> scale_names;
-  if (type == "conv2d" || type == "fc") {
+  if (type == "conv2d" || type == "fused_conv2d" || type == "fc") {
     EXPECT_EQ(op->GetAttrIfExists<std::vector<float>>("Scale_weights")[0],
               scale);
     scale_names.push_back("Scale_in");
@@ -330,7 +327,7 @@ TEST(CpuQuantizePass, quantize) {
   // Insert nodes: 8 Quant + 8 IN + 7 OUT + 7 DEQUANT
   int added_nodes = 8 + 8 + 7 + 7;
   std::unordered_map<std::string, int> expected_operators = {
-      {"conv2d", 4}, {"pool2d", 2}, {"quantize", 8}, {"dequantize", 7}};
+      {"fused_conv2d", 4}, {"pool2d", 2}, {"quantize", 8}, {"dequantize", 7}};
   MainTest(BuildProgramDesc(use_mkldnn, mkldnn_data_type),
            variable_names,
            expected_operators,
@@ -343,7 +340,7 @@ TEST(CpuQuantizePass, do_not_quantize) {
   std::string mkldnn_data_type = "float32";
   int added_nodes = 0;
   std::unordered_map<std::string, int> expected_operators = {
-      {"conv2d", 4}, {"pool2d", 2}, {"quantize", 0}, {"dequantize", 0}};
+      {"fused_conv2d", 4}, {"pool2d", 2}, {"quantize", 0}, {"dequantize", 0}};
   MainTest(BuildProgramDesc(use_mkldnn, mkldnn_data_type),
            variable_names,
            expected_operators,

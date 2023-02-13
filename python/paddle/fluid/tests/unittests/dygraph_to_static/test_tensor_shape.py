@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.jit.api import declarative
 
 
 def dyfunc_tensor_shape_1(x):
@@ -252,7 +251,9 @@ class TestTensorShapeBasic(unittest.TestCase):
     def _run(self, to_static):
         with fluid.dygraph.guard():
             if to_static:
-                res = declarative(self.dygraph_func)(self.input).numpy()
+                res = paddle.jit.to_static(self.dygraph_func)(
+                    self.input
+                ).numpy()
             else:
                 res = self.dygraph_func(self.input).numpy()
             return res

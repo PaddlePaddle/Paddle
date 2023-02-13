@@ -20,8 +20,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-from paddle.fluid import ParamAttr
-from paddle.fluid.contrib.layers import basic_lstm
 from paddle.fluid.executor import Executor
 from paddle.fluid.layers.control_flow import StaticRNN as PaddingRNN
 
@@ -85,7 +83,7 @@ class RNNConfig:
         else:
             raise ValueError('Unsupported model_type.')
 
-        if rnn_model not in ('static', 'padding', 'cudnn', 'basic_lstm'):
+        if rnn_model not in ('static', 'padding', 'cudnn'):
             raise ValueError('Unsupported rnn_model.')
 
         self.batch_size = 12
@@ -131,7 +129,7 @@ def lm_model(
                 [hidden_size * 2, hidden_size * 4],
                 dtype="float32",
                 name="fc_weight1_" + str(i),
-                default_initializer=fluid.initializer.UniformInitializer(
+                default_initializer=paddle.nn.initializer.Uniform(
                     low=-init_scale, high=init_scale
                 ),
             )
@@ -140,7 +138,7 @@ def lm_model(
                 [hidden_size * 4],
                 dtype="float32",
                 name="fc_bias1_" + str(i),
-                default_initializer=fluid.initializer.Constant(0.0),
+                default_initializer=paddle.nn.initializer.Constant(0.0),
             )
             bias_arr.append(bias_1)
 
@@ -252,7 +250,7 @@ def lm_model(
                 [hidden_size * 2, hidden_size * 4],
                 dtype="float32",
                 name="fc_weight1_" + str(i),
-                default_initializer=fluid.initializer.UniformInitializer(
+                default_initializer=paddle.nn.initializer.Uniform(
                     low=-init_scale, high=init_scale
                 ),
             )
@@ -261,7 +259,7 @@ def lm_model(
                 [hidden_size * 4],
                 dtype="float32",
                 name="fc_bias1_" + str(i),
-                default_initializer=fluid.initializer.Constant(0.0),
+                default_initializer=paddle.nn.initializer.Constant(0.0),
             )
             bias_arr.append(bias_1)
 
@@ -277,8 +275,8 @@ def lm_model(
             cell_array.append(pre_cell)
 
         res = []
-        sliced_inputs = layers.split(
-            input_embedding, num_or_sections=len, dim=1
+        sliced_inputs = paddle.split(
+            input_embedding, num_or_sections=len, axis=1
         )
 
         for index in range(len):
@@ -294,7 +292,9 @@ def lm_model(
                 gate_input = paddle.matmul(x=nn, y=weight_1)
 
                 gate_input = paddle.add(gate_input, bias)
-                i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
+                i, j, f, o = paddle.split(
+                    gate_input, num_or_sections=4, axis=-1
+                )
 
                 c = pre_cell * paddle.nn.functional.sigmoid(
                     f
@@ -333,30 +333,22 @@ def lm_model(
         return real_res, last_hidden, last_cell
 
     batch_size_each = batch_size
-    x = layers.data(
-        name="x",
-        shape=[batch_size_each, num_steps, 1],
-        dtype='int64',
-        append_batch_size=False,
+    x = paddle.static.data(
+        name="x", shape=[batch_size_each, num_steps, 1], dtype='int64'
     )
-    y = layers.data(
-        name="y",
-        shape=[batch_size_each * num_steps, 1],
-        dtype='int64',
-        append_batch_size=False,
+    y = paddle.static.data(
+        name="y", shape=[batch_size_each * num_steps, 1], dtype='int64'
     )
 
-    init_hidden = layers.data(
+    init_hidden = paddle.static.data(
         name="init_hidden",
         shape=[num_layers, batch_size_each, hidden_size],
         dtype='float32',
-        append_batch_size=False,
     )
-    init_cell = layers.data(
+    init_cell = paddle.static.data(
         name="init_cell",
         shape=[num_layers, batch_size_each, hidden_size],
         dtype='float32',
-        append_batch_size=False,
     )
 
     init_cell.persistable = True
@@ -376,7 +368,7 @@ def lm_model(
         is_sparse=False,
         param_attr=fluid.ParamAttr(
             name='embedding_para',
-            initializer=fluid.initializer.UniformInitializer(
+            initializer=paddle.nn.initializer.Uniform(
                 low=-init_scale, high=init_scale
             ),
         ),
@@ -404,38 +396,6 @@ def lm_model(
             init_hidden=init_hidden_reshape,
             init_cell=init_cell_reshape,
         )
-    elif rnn_model == "cudnn":
-        x_emb = paddle.transpose(x_emb, perm=[1, 0, 2])
-        rnn_out, last_hidden, last_cell = layers.lstm(
-            x_emb,
-            init_hidden_reshape,
-            init_cell_reshape,
-            num_steps,
-            hidden_size,
-            num_layers,
-            is_bidirec=False,
-            default_initializer=fluid.initializer.UniformInitializer(
-                low=-init_scale, high=init_scale
-            ),
-        )
-        rnn_out = paddle.transpose(rnn_out, perm=[1, 0, 2])
-    elif rnn_model == "basic_lstm":
-        rnn_out, last_hidden, last_cell = basic_lstm(
-            x_emb,
-            init_hidden,
-            init_cell,
-            hidden_size,
-            num_layers=num_layers,
-            batch_first=True,
-            dropout_prob=dropout,
-            param_attr=ParamAttr(
-                initializer=fluid.initializer.UniformInitializer(
-                    low=-init_scale, high=init_scale
-                )
-            ),
-            bias_attr=ParamAttr(initializer=fluid.initializer.Constant(0.0)),
-            forget_bias=0.0,
-        )
     else:
         print("type not support")
         return
@@ -446,7 +406,7 @@ def lm_model(
         [hidden_size, vocab_size],
         dtype="float32",
         name="softmax_weight",
-        default_initializer=fluid.initializer.UniformInitializer(
+        default_initializer=paddle.nn.initializer.Uniform(
             low=-init_scale, high=init_scale
         ),
     )
@@ -454,7 +414,7 @@ def lm_model(
         [vocab_size],
         dtype="float32",
         name='softmax_bias',
-        default_initializer=fluid.initializer.UniformInitializer(
+        default_initializer=paddle.nn.initializer.Uniform(
             low=-init_scale, high=init_scale
         ),
     )
@@ -536,8 +496,8 @@ class PaddingRNNTestBase(unittest.TestCase):
                     self.feed_order,
                 ) = res_vars
 
-                fluid.clip.set_gradient_clip(
-                    clip=fluid.clip.GradientClipByGlobalNorm(
+                paddle.nn.clip.set_gradient_clip(
+                    clip=paddle.nn.ClipGradByGlobalNorm(
                         clip_norm=config.max_grad_norm
                     )
                 )
@@ -676,7 +636,7 @@ class PaddingRNNTestBase(unittest.TestCase):
         self, parallel=True, use_program_cache=True
     ):
         '''
-        Test that train ppl of padding mode is same to that of static mode
+        Test that train ppl of padding mode is same to that of static graph mode
         '''
         config = RNNConfig('test', 'padding')
         with fluid.scope_guard(fluid.Scope()):
@@ -690,7 +650,7 @@ class PaddingRNNTestBase(unittest.TestCase):
 class EagerDeletionPaddingRNNTest(PaddingRNNTestBase):
     def test_padding_mode_no_eager_deletion(self):
         '''
-        Test that train ppl of padding mode is same to that of static mode without eager deletion
+        Test that train ppl of padding mode is same to that of static graph mode without eager deletion
         '''
         fluid.core._set_eager_deletion_mode(-1.0, 1.0, True)
         # When parallel is True, use_program_cache does not make a difference.
@@ -698,7 +658,7 @@ class EagerDeletionPaddingRNNTest(PaddingRNNTestBase):
 
     def test_padding_mode_eager_deletion(self):
         '''
-        Test that train ppl of padding mode is same to that of static mode under eager deletion
+        Test that train ppl of padding mode is same to that of static graph mode under eager deletion
         '''
         fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
         # When parallel is True, use_program_cache does not make a difference.

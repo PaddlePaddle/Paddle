@@ -14,6 +14,7 @@
 
 import math
 import os
+import platform
 import tempfile
 import time
 import unittest
@@ -23,8 +24,8 @@ from predictor_utils import PredictorTools
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-from paddle.jit import ProgramTranslator
+from paddle.fluid import core
+from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import BatchNorm
 
 SEED = 2020
@@ -39,7 +40,6 @@ place = (
     fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
 )
 
-program_translator = ProgramTranslator()
 
 if fluid.is_compiled_with_cuda():
     fluid.set_flags({'FLAGS_cudnn_deterministic': True})
@@ -194,7 +194,7 @@ class ResNet(fluid.dygraph.Layer):
             self.pool2d_avg_output,
             class_dim,
             weight_attr=fluid.param_attr.ParamAttr(
-                initializer=fluid.initializer.Uniform(-stdv, stdv)
+                initializer=paddle.nn.initializer.Uniform(-stdv, stdv)
             ),
         )
 
@@ -237,7 +237,7 @@ class ResNetHelper:
 
     def train(self, to_static, build_strategy=None):
         """
-        Tests model decorated by `dygraph_to_static_output` in static mode. For users, the model is defined in dygraph mode and trained in static mode.
+        Tests model decorated by `dygraph_to_static_output` in static graph mode. For users, the model is defined in dygraph mode and trained in static graph mode.
         """
         with fluid.dygraph.guard(place):
             np.random.seed(SEED)
@@ -312,9 +312,9 @@ class ResNetHelper:
                         if to_static:
                             paddle.jit.save(resnet, self.model_save_prefix)
                         else:
-                            fluid.dygraph.save_dygraph(
+                            paddle.save(
                                 resnet.state_dict(),
-                                self.dy_state_dict_save_path,
+                                self.dy_state_dict_save_path + '.pdparams',
                             )
                         # avoid dataloader throw abort signaal
                         data_loader._reset()
@@ -323,13 +323,11 @@ class ResNetHelper:
         return total_loss.numpy()
 
     def predict_dygraph(self, data):
-        program_translator.enable(False)
+        paddle.jit.enable_to_static(False)
         with fluid.dygraph.guard(place):
             resnet = ResNet()
 
-            model_dict, _ = fluid.dygraph.load_dygraph(
-                self.dy_state_dict_save_path
-            )
+            model_dict = paddle.load(self.dy_state_dict_save_path + '.pdparams')
             resnet.set_dict(model_dict)
             resnet.eval()
 
@@ -384,7 +382,7 @@ class TestResnet(unittest.TestCase):
         self.resnet_helper = ResNetHelper()
 
     def train(self, to_static):
-        program_translator.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
         return self.resnet_helper.train(to_static)
 
     def verify_predict(self):
@@ -428,6 +426,38 @@ class TestResnet(unittest.TestCase):
             ),
         )
         self.verify_predict()
+
+    def test_resnet_composite_backward(self):
+        core._set_prim_backward_enabled(True)
+        static_loss = self.train(to_static=True)
+        core._set_prim_backward_enabled(False)
+        dygraph_loss = self.train(to_static=True)
+        np.testing.assert_allclose(
+            static_loss,
+            dygraph_loss,
+            rtol=1e-05,
+            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
+                static_loss, dygraph_loss
+            ),
+        )
+
+    def test_resnet_composite_forward_backward(self):
+        plat = platform.system()
+        if plat == "Linux":
+            core._set_prim_all_enabled(True)
+            static_loss = self.train(to_static=True)
+            core._set_prim_all_enabled(False)
+            dygraph_loss = self.train(to_static=True)
+            np.testing.assert_allclose(
+                static_loss,
+                dygraph_loss,
+                rtol=1e-02,
+                err_msg='static_loss: {} \n dygraph_loss: {}'.format(
+                    static_loss, dygraph_loss
+                ),
+            )
+        else:
+            pass
 
     def test_in_static_mode_mkldnn(self):
         fluid.set_flags({'FLAGS_use_mkldnn': True})

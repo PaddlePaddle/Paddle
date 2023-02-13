@@ -19,9 +19,10 @@ from darknet import ConvBNLayer, DarkNet53_conv_body
 
 import paddle
 import paddle.fluid as fluid
+from paddle import _legacy_C_ops
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
-from paddle.jit.api import declarative
+from paddle.jit.api import to_static
 
 
 class AttrDict(dict):
@@ -252,10 +253,10 @@ class YOLOv3(fluid.dygraph.Layer):
                     stride=1,
                     padding=0,
                     weight_attr=ParamAttr(
-                        initializer=fluid.initializer.Normal(0.0, 0.02)
+                        initializer=paddle.nn.initializer.Normal(0.0, 0.02)
                     ),
                     bias_attr=ParamAttr(
-                        initializer=fluid.initializer.Constant(0.0),
+                        initializer=paddle.nn.initializer.Constant(0.0),
                         regularizer=L2Decay(0.0),
                     ),
                 ),
@@ -276,7 +277,7 @@ class YOLOv3(fluid.dygraph.Layer):
                 self.route_blocks_2.append(route)
             self.upsample = Upsample()
 
-    @declarative
+    @to_static
     def forward(
         self,
         inputs,
@@ -351,7 +352,7 @@ class YOLOv3(fluid.dygraph.Layer):
             yolo_boxes = fluid.layers.concat(self.boxes, axis=1)
             yolo_scores = fluid.layers.concat(self.scores, axis=2)
 
-            pred = fluid.layers.multiclass_nms(
+            pred = _legacy_C_ops.multiclass_nms(
                 bboxes=yolo_boxes,
                 scores=yolo_scores,
                 score_threshold=cfg.valid_thresh,

@@ -20,7 +20,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.layers.utils import map_structure
-from paddle.jit.api import declarative
 
 SEED = 2020
 np.random.seed(SEED)
@@ -247,7 +246,7 @@ class TestListWithoutControlFlow(unittest.TestCase):
 
         with fluid.dygraph.guard():
             if to_static:
-                res = declarative(self.dygraph_func)(self.input)
+                res = paddle.jit.to_static(self.dygraph_func)(self.input)
             else:
                 res = self.dygraph_func(self.input)
             return self.varbase_to_numpy(res)
@@ -290,8 +289,10 @@ class TestListInWhileLoop(TestListWithoutControlFlow):
 
         with fluid.dygraph.guard():
             if to_static:
-                print(declarative(self.dygraph_func).code)
-                res = declarative(self.dygraph_func)(self.input, self.iter_num)
+                print(paddle.jit.to_static(self.dygraph_func).code)
+                res = paddle.jit.to_static(self.dygraph_func)(
+                    self.input, self.iter_num
+                )
             else:
                 res = self.dygraph_func(self.input, self.iter_num)
             return self.varbase_to_numpy(res)
@@ -337,8 +338,10 @@ class ListWithCondNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
+    # Add *args to test function.__self__ in FunctionSpec.
+    # DO NOT remove *args.
     @paddle.jit.to_static
-    def forward(self, x, index):
+    def forward(self, x, index, *args):
         y = paddle.nn.functional.relu(x)
         a = []
 

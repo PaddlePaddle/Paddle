@@ -53,16 +53,6 @@ cc_library(
 set_source_files_properties(
   tensor_accessor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 
-cc_library(
-  tensor_table
-  SRCS
-  DEPS eigen3
-       ps_framework_proto
-       executor
-       scope
-       device_context
-       tensor
-       ${TABLE_DEPS})
 set_source_files_properties(table.cc PROPERTIES COMPILE_FLAGS
                                                 ${DISTRIBUTE_COMPILE_FLAGS})
 
@@ -98,7 +88,6 @@ cc_library(
        table.cc
   DEPS ${TABLE_DEPS}
        common_table
-       tensor_table
        ps_framework_proto
        string_helper
        device_context

@@ -29,7 +29,7 @@ def softmax_mask_fuse_upper_triangle(x):
     .. math::
         out = softmax(LowerTriangular(x))
 
-    **Note**:
+    Note:
         This API only supports GPU.
 
     Args:

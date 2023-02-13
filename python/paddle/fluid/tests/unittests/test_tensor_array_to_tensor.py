@@ -20,6 +20,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
+from paddle.tensor.manipulation import tensor_array_to_tensor
 
 paddle.enable_static()
 
@@ -32,12 +33,12 @@ class TestTensorArrayToTensorError(unittest.TestCase):
             input_data = np.random.random((2, 4)).astype("float32")
 
             def test_Variable():
-                fluid.layers.tensor_array_to_tensor(input=input_data)
+                tensor_array_to_tensor(input=input_data)
 
             self.assertRaises(TypeError, test_Variable)
 
             def test_list_Variable():
-                fluid.layers.tensor_array_to_tensor(input=[input_data])
+                tensor_array_to_tensor(input=[input_data])
 
             self.assertRaises(TypeError, test_list_Variable)
 
@@ -198,7 +199,7 @@ class TestLoDTensorArrayStack(unittest.TestCase):
             for i, x in enumerate(self.inputs):
                 x = fluid.layers.assign(x)
                 paddle.tensor.array_write(x, idx + i, array)
-            output, output_index = fluid.layers.tensor_array_to_tensor(
+            output, output_index = tensor_array_to_tensor(
                 input=array, **self.attrs
             )
             loss = paddle.sum(output)
@@ -241,15 +242,13 @@ class TestTensorArrayToTensorAPI(unittest.TestCase):
         array = paddle.tensor.create_array(dtype='float32')
         paddle.tensor.array_write(x0, i, array)
         paddle.tensor.array_write(x1, i + 1, array)
-        output_stack, output_index_stack = fluid.layers.tensor_array_to_tensor(
+        output_stack, output_index_stack = tensor_array_to_tensor(
             input=array, axis=1, use_stack=True
         )
         (
             output_concat,
             output_index_concat,
-        ) = fluid.layers.tensor_array_to_tensor(
-            input=array, axis=1, use_stack=False
-        )
+        ) = tensor_array_to_tensor(input=array, axis=1, use_stack=False)
         return (
             output_stack,
             output_index_stack,

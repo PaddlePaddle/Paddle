@@ -20,7 +20,6 @@ import op_test
 import paddle
 import paddle.fluid.core as core
 from paddle.distributed.models.moe import utils
-from paddle.fluid.framework import _test_eager_guard
 
 
 def assign_pos(x, _cum_count):
@@ -118,18 +117,13 @@ class TestAssignPosAPI(unittest.TestCase):
             )
             assert_allclose(res[0], self.out, self.cum_count)
 
-    def func_api_dygraph(self):
+    def test_api_dygraph(self):
         paddle.disable_static()
         x = paddle.to_tensor(self.x)
         cum_count = paddle.to_tensor(self.cum_count).astype(x.dtype)
 
         out = utils._assign_pos(x, cum_count)
         assert_allclose(out.numpy(), self.out, self.cum_count)
-
-    def test_api_dygraph(self):
-        with _test_eager_guard():
-            self.func_api_dygraph()
-        self.func_api_dygraph()
 
 
 if __name__ == '__main__':

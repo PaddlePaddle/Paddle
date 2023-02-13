@@ -21,9 +21,7 @@ from ..framework import (
     Program,
     Variable,
     Operator,
-    _non_static_mode,
     static_only,
-    _in_legacy_dygraph,
     in_dygraph_mode,
 )
 from ..layer_helper import LayerHelper, unique_name
@@ -145,130 +143,6 @@ def select_input(inputs, mask):
     return out
 
 
-def split_lod_tensor(input, mask, level=0):
-    """
-    This function takes in an input that contains the complete lod information,
-    and takes in a mask which is used to mask certain parts of the input.
-    The output is the true branch and the false branch with the mask applied to
-    the input at a certain level in the tensor. Mainly used in IfElse to split
-    data into two parts.
-
-    Args:
-        input(Variable|tuple|list|None): The input tensor that contains complete
-                                lod information needed to construct the output.
-        mask(Variable|list): A bool column vector which masks the input.
-        level(int): The specific lod level to split.
-
-    Returns:
-        tuple(Variable, Variable):
-        The true branch of tensor as per the mask applied to input.
-
-        The false branch of tensor as per the mask applied to input.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          x = fluid.layers.data(name='x', shape=[1])
-          x.persistable = True
-
-          y = fluid.layers.data(name='y', shape=[1])
-          y.persistable = True
-
-          out_true, out_false = fluid.layers.split_lod_tensor(
-                input=x, mask=y, level=level)
-
-    """
-    check_type(
-        input,
-        'input',
-        (Variable, list, tuple, type(None)),
-        'fluid.layers.split_lod_tensor',
-    )
-    check_type(mask, 'mask', (Variable, list), 'fluid.layers.split_lod_tensor')
-    check_type(level, 'level', int, 'fluid.layers.split_lod_tensor')
-    helper = LayerHelper('split_lod_tensor', **locals())
-    out_true = helper.create_variable_for_type_inference(dtype=input.dtype)
-    out_false = helper.create_variable_for_type_inference(dtype=input.dtype)
-    helper.append_op(
-        type='split_lod_tensor',
-        inputs={
-            'X': input,
-            'Mask': mask,
-        },
-        outputs={'OutTrue': out_true, 'OutFalse': out_false},
-        attrs={'level': level},
-    )
-    return out_true, out_false
-
-
-def merge_lod_tensor(in_true, in_false, x, mask, level=0):
-    """
-    **merge_lod_tensor**
-
-    This function takes in an input :math:`x`, the True branch, the False
-    branch and a binary :math:`mask`. Using this information, this function
-    merges the True and False branches of the tensor into a single tensor as
-    output at a certain lod level indicated by :math:`level`. Used in IfElse
-    to merge the output if True block and False Block.
-
-    Args:
-        in_true(Variable|tuple|list|None): The True branch to be merged.
-        in_false(Variable|tuple|list|None): The False branch to be merged.
-        x(Variable|tuple|list|None): The input tensor that contains complete
-                            lod information needed to construct the output.
-        mask(Variable|list): A bool column vector which masks the input.
-        level(int): The specific lod level to merge.
-
-    Returns:
-        Variable: The merged output tensor.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          x = layers.data(
-                      name='x', shape=[1], dtype='float32', stop_gradient=False)
-          y = layers.data(
-                name='y', shape=[1], dtype='bool', stop_gradient=False)
-
-          level = 0
-
-          out_true, out_false = layers.split_lod_tensor(
-                input=x, mask=y, level=level)
-          out = layers.merge_lod_tensor(
-                in_true=out_true, in_false=out_false, mask=y, x=x, level=level)
-    """
-    helper = LayerHelper('merge_lod_tensor', **locals())
-    check_type(
-        x,
-        'x',
-        (Variable, list, tuple, type(None)),
-        'fluid.layers.merge_lod_tensor',
-    )
-    check_type(mask, 'mask', (Variable, list), 'fluid.layers.merge_lod_tensor')
-    check_type(
-        in_true,
-        'in_true',
-        (Variable, list, tuple, type(None)),
-        'fluid.layers.merge_lod_tensor',
-    )
-    check_type(
-        in_false,
-        'in_false',
-        (Variable, list, tuple, type(None)),
-        'fluid.layers.merge_lod_tensor',
-    )
-    out = helper.create_variable_for_type_inference(dtype=in_true.dtype)
-    helper.append_op(
-        type='merge_lod_tensor',
-        inputs={'X': x, 'Mask': mask, 'InTrue': in_true, 'InFalse': in_false},
-        outputs={'Out': out},
-        attrs={'level': level},
-    )
-    return out
-
-
 @static_only
 def Print(
     input,
@@ -294,27 +168,27 @@ def Print(
     tensor `t`.
 
     Args:
-        input (Variable): A Tensor to print.
-        summarize (int): Number of elements in the tensor to be print. If it's
-                value is -1, then all elements in the tensor will be print.
-        message (str): A string message to print as a prefix.
-        first_n (int): Only log `first_n` number of times.
+        input (Tensor): A Tensor to print.
+        first_n (int, optional): Only log `first_n` number of times. Default: -1.
+        message (str, optional): A string message to print as a prefix. Default: None.
+        summarize (int, optional): Number of elements in the tensor to be print. If
+                it's value is -1, then all elements in the tensor will be print.
         print_tensor_name (bool, optional): Print the tensor name. Default: True.
         print_tensor_type (bool, optional): Print the tensor type. Defaultt: True.
         print_tensor_shape (bool, optional): Print the tensor shape. Default: True.
         print_tensor_layout (bool, optional): Print the tensor layout. Default: True.
         print_tensor_lod (bool, optional): Print the tensor lod. Default: True.
-        print_phase (str): Which phase to displace, including 'forward',
+        print_phase (str, optional): Which phase to displace, including 'forward',
                 'backward' and 'both'. Default: 'both'. If set to 'backward', will
                 only print the gradients of input tensor; If set to 'both', will
                 both print the input tensor itself and the gradients of input tensor.
 
     Returns:
-        Variable: Output tensor.
+        Tensor: Output tensor.
 
     NOTES:
-        The input and output are two different variables, and in the
-        following process, you should use the output variable but not the input,
+        The input and output are two different Tensor, and in the
+        following process, you should use the output Tensor but not the input,
         otherwise, the print layer doesn't have backward.
 
     Examples:
@@ -479,7 +353,7 @@ class StaticRNN:
                 word = rnn.step_input(x_emb)
                 # create prev memory parameter, batch size comes from word
                 prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
-                hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                hidden = paddle.static.nn.fc(x=[word, prev], size=hidden_size, activation='relu')
                 # use hidden to update prev
                 rnn.update_memory(prev, hidden)
                 # mark hidden as output
@@ -570,7 +444,7 @@ class StaticRNN:
                         word = rnn.step_input(x_emb)
                         # create prev memory parameter, batch size comes from word
                         prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
-                        hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                        hidden = paddle.static.nn.fc(x=[word, prev], size=hidden_size, activation='relu')
                         # use hidden to update prev
                         rnn.update_memory(prev, hidden)
 
@@ -592,14 +466,14 @@ class StaticRNN:
                         is_sparse=False)
                 # transform batch size to dim 1
                 x_emb = paddle.transpose(x_emb, perm=[1, 0, 2])
-                boot_memory = fluid.layers.data(name='boot', shape=[hidden_size], dtype='float32', lod_level=1)
+                boot_memory = paddle.static.data(name='boot', shape=[-1, hidden_size], dtype='float32', lod_level=1)
                 rnn = fluid.layers.StaticRNN()
                 with rnn.step():
                         # mark created x_emb as input, each step process a word
                         word = rnn.step_input(x_emb)
                         # init memory
                         prev = rnn.memory(init=boot_memory)
-                        hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                        hidden = paddle.static.nn.fc(x=[word, prev], size=hidden_size, activation='relu')
                         # update hidden with prev
                         rnn.update_memory(prev, hidden)
 
@@ -702,7 +576,7 @@ class StaticRNN:
                         word = rnn.step_input(x_emb)
                         # create prev memory parameter, batch size comes from word
                         prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
-                        hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                        hidden = paddle.static.nn.fc(x=[word, prev], size=hidden_size, activation='relu')
                         # use hidden to update prev
                         rnn.update_memory(prev, hidden)
 
@@ -755,7 +629,7 @@ class StaticRNN:
                         word = rnn.step_input(x_emb)
                         # create prev memory parameter, batch size comes from word
                         prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
-                        hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                        hidden = paddle.static.nn.fc(x=[word, prev], size=hidden_size, activation='relu')
                         # use hidden to update prev
                         rnn.update_memory(prev, hidden)
                         rnn.step_output(hidden)
@@ -817,7 +691,7 @@ class StaticRNN:
                         word = rnn.step_input(x_emb)
                         # create prev memory parameter, batch size comes from word
                         prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
-                        hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                        hidden = paddle.static.nn.fc(x=[word, prev], size=hidden_size, activation='relu')
                         # use hidden to update prev
                         rnn.update_memory(prev, hidden)
                         # mark each step's hidden and word as output
@@ -1088,10 +962,10 @@ class While:
             cond = paddle.less_than(x=i, y=loop_len)
             while_op = fluid.layers.While(cond=cond)
             with while_op.block():
-                sums_tensor = fluid.layers.elementwise_add(x=data, y=data)
+                sums_tensor = paddle.add(x=data, y=data)
                 fluid.layers.assign(sums_tensor, sums)  # Update the value of sums_tensor defined in While to the sums which defined outside of While through layers.assign
                 i = paddle.increment(x=i, value=1)
-                data = fluid.layers.elementwise_add(x=data, y=one)
+                data = paddle.add(x=data, y=one)
                 paddle.assign(paddle.less_than(x=i, y=loop_len), cond)
 
             feed_data = np.ones(1).astype('float32')
@@ -1269,16 +1143,14 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         raise ValueError("loop_vars in while_loop should not be empty")
 
     pre_cond = cond(*loop_vars)
-    check_variable_and_dtype(
-        pre_cond, 'var of cond returned', ['bool'], 'fluid.layers.while_loop'
-    )
+
     if reduce(lambda a, b: a * b, pre_cond.shape, 1) != 1:
         raise TypeError(
             "the shape of the variable returned by cond should be [1],"
             "but given shape as {0}.".format(list(pre_cond.shape))
         )
 
-    if _non_static_mode():
+    if in_dygraph_mode():
         now_cond = pre_cond.numpy()[0]
         while now_cond:
             output_vars = body(*loop_vars)
@@ -1292,33 +1164,39 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             now_cond = cond(*output_vars).numpy()[0]
             map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
         return loop_vars
-
-    while_loop_block = While(pre_cond, is_test, name)
-    has_mutable_vars_in_loop = hold_mutable_vars(loop_vars)
-    with while_loop_block.block():
-        # If a variable with mutable type is included in loop_vars, like `dict/list`,
-        # modifying it in the body function will cause origin variable to be modified
-        # synchronously. This will raise an assignment error out of while block.
-        # Here we make a copy of the mutable vars to avoid this problem.
-        if has_mutable_vars_in_loop:
-            new_loop_vars = copy_mutable_vars(loop_vars)
-            output_vars = body(*new_loop_vars)
-        else:
-            output_vars = body(*loop_vars)
-        if not isinstance(output_vars, (list, tuple)):
-            output_vars = [output_vars]
-        try:
-            loop_vars = _deal_with_undefined_var(output_vars, loop_vars)
-            assert_same_structure(output_vars, loop_vars, check_types=False)
-        except ValueError as e:
-            raise ValueError(
-                "body in while_loop should return the same arity "
-                "(length and structure) as loop_vars: {0}".format(e)
-            )
-        now_cond = cond(*output_vars)
-        map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
-        assign(now_cond, pre_cond)
-    return loop_vars
+    else:
+        check_variable_and_dtype(
+            pre_cond,
+            'var of cond returned',
+            ['bool'],
+            'fluid.layers.while_loop',
+        )
+        while_loop_block = While(pre_cond, is_test, name)
+        has_mutable_vars_in_loop = hold_mutable_vars(loop_vars)
+        with while_loop_block.block():
+            # If a variable with mutable type is included in loop_vars, like `dict/list`,
+            # modifying it in the body function will cause origin variable to be modified
+            # synchronously. This will raise an assignment error out of while block.
+            # Here we make a copy of the mutable vars to avoid this problem.
+            if has_mutable_vars_in_loop:
+                new_loop_vars = copy_mutable_vars(loop_vars)
+                output_vars = body(*new_loop_vars)
+            else:
+                output_vars = body(*loop_vars)
+            if not isinstance(output_vars, (list, tuple)):
+                output_vars = [output_vars]
+            try:
+                loop_vars = _deal_with_undefined_var(output_vars, loop_vars)
+                assert_same_structure(output_vars, loop_vars, check_types=False)
+            except ValueError as e:
+                raise ValueError(
+                    "body in while_loop should return the same arity "
+                    "(length and structure) as loop_vars: {0}".format(e)
+                )
+            now_cond = cond(*output_vars)
+            map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
+            assign(now_cond, pre_cond)
+        return loop_vars
 
 
 # (TODO: Mine) There exists dependency. It will be removed later.

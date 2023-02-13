@@ -61,19 +61,20 @@ class CompareOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
+    phi::KernelKey kt = OperatorWithKernel::GetExpectedKernelType(ctx);
     // CompareOp kernel's device type is decided by input tensor place
     bool force_cpu = ctx.Attr<bool>("force_cpu");
     if (force_cpu) {
-      kt.place_ = platform::CPUPlace();
+      kt.set_backend(phi::Backend::CPU);
     } else {
       if (ctx.Input<phi::DenseTensor>("X")->place().GetType() !=
           phi::AllocationType::GPUPINNED) {
-        kt.place_ = ctx.Input<phi::DenseTensor>("X")->place();
+        kt.set_backend(
+            phi::TransToPhiBackend(ctx.Input<phi::DenseTensor>("X")->place()));
       } else {
-        kt.place_ = ctx.GetPlace();
+        kt.set_backend(phi::TransToPhiBackend(ctx.GetPlace()));
       }
     }
     return kt;

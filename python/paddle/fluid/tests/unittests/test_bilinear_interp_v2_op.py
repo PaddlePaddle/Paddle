@@ -733,7 +733,7 @@ class TestBilinearInterpOpAPI_dy4(unittest.TestCase):
 @unittest.skipIf(
     not fluid.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
-class TestBilinearInterpOpForFloat16(unittest.TestCase):
+class TestBilinearInterpOpZoomOutForFloat16(unittest.TestCase):
     def init_test_case(self):
         self.interp_method = 'bilinear'
         self.input_shape = [2, 3, 5, 5]
@@ -768,8 +768,127 @@ class TestBilinearInterpOpForFloat16(unittest.TestCase):
         y_np_1, x_g_np_1 = self.check_main(x_np, 'float16')
         y_np_2, x_g_np_2 = self.check_main(x_np, 'float32')
 
-        np.testing.assert_allclose(y_np_1, y_np_2)
-        np.testing.assert_allclose(x_g_np_1, x_g_np_2)
+        np.testing.assert_allclose(y_np_1, y_np_2, atol=1e-3, rtol=1e-3)
+        # Since atomicAdd half will bring some diff, here we relax tolerance to 1e-2.
+        np.testing.assert_allclose(x_g_np_1, x_g_np_2, atol=1e-2, rtol=1e-2)
+
+
+@unittest.skipIf(
+    not fluid.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestBilinearInterpOpZoomInForFloat16(unittest.TestCase):
+    def init_test_case(self):
+        self.interp_method = 'bilinear'
+        self.input_shape = [2, 3, 5, 5]
+        self.out_size = np.array([10, 10]).astype("int32")
+        self.align_corners = True
+        self.align_mode = 1
+        self.data_layout = 'NCHW'
+
+    def check_main(self, x_np, dtype):
+        paddle.disable_static()
+        x_np = x_np.astype(dtype)
+        x = paddle.to_tensor(x_np)
+        x.stop_gradient = False
+        y = interpolate(
+            x,
+            size=self.out_size.tolist(),
+            mode=self.interp_method,
+            align_mode=self.align_mode,
+            align_corners=self.align_corners,
+            data_format=self.data_layout,
+        )
+        x_g = paddle.grad(y, x)
+        y_np = y[0].numpy().astype('float32')
+        x_g_np = x_g[0].numpy().astype('float32')
+        paddle.enable_static()
+        return y_np, x_g_np
+
+    def test_main(self):
+        self.init_test_case()
+        x_np = np.random.random(self.input_shape).astype("float16")
+
+        y_np_1, x_g_np_1 = self.check_main(x_np, 'float16')
+        y_np_2, x_g_np_2 = self.check_main(x_np, 'float32')
+
+        np.testing.assert_allclose(y_np_1, y_np_2, atol=1e-3, rtol=1e-3)
+        # Since atomicAdd half will bring some diff, here we relax tolerance to 1e-2.
+        np.testing.assert_allclose(x_g_np_1, x_g_np_2, atol=1e-2, rtol=1e-2)
+
+
+class TestBilinearInterpOpAPI_0DTensorScale(unittest.TestCase):
+    def test_case(self):
+        import paddle
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        with fluid.dygraph.guard(place):
+            input_data = np.random.random((2, 3, 6, 6)).astype("float32")
+            input_x = paddle.to_tensor(input_data)
+            expect_res = bilinear_interp_np(
+                input_data, out_h=12, out_w=12, align_corners=False
+            )
+            scale_0d = paddle.full([], 2)
+            out = interpolate(
+                x=input_x,
+                scale_factor=scale_0d,
+                mode="bilinear",
+                align_corners=False,
+            )
+            np.testing.assert_allclose(out.numpy(), expect_res, rtol=1e-05)
+
+
+class TestBilinearInterpOpAPI_0DTensorScale2(unittest.TestCase):
+    def test_case(self):
+        import paddle
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        with fluid.dygraph.guard(place):
+            input_data = np.random.random((2, 3, 6, 6)).astype("float32")
+            input_x = paddle.to_tensor(input_data)
+            expect_res = bilinear_interp_np(
+                input_data, out_h=12, out_w=12, align_corners=False
+            )
+            scale_0d = [paddle.full([], 2), paddle.full([], 2)]
+            out = interpolate(
+                x=input_x,
+                scale_factor=scale_0d,
+                mode="bilinear",
+                align_corners=False,
+            )
+            np.testing.assert_allclose(out.numpy(), expect_res, rtol=1e-05)
+
+
+class TestBilinearInterpOpAPI_0DTensorOutSize(unittest.TestCase):
+    def test_case(self):
+        import paddle
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        with fluid.dygraph.guard(place):
+            input_data = np.random.random((2, 3, 6, 6)).astype("float32")
+            input_x = paddle.to_tensor(input_data)
+            expect_res = bilinear_interp_np(
+                input_data, out_h=12, out_w=12, align_corners=False
+            )
+            output_size = [
+                paddle.full([], 12, dtype="int32"),
+                paddle.full([], 12, dtype="int32"),
+            ]
+            out = interpolate(
+                x=input_x,
+                size=output_size,
+                mode="bilinear",
+                align_corners=False,
+            )
+            np.testing.assert_allclose(out.numpy(), expect_res, rtol=1e-05)
 
 
 if __name__ == "__main__":

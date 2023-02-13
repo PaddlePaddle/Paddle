@@ -134,7 +134,7 @@ class TestMin(TestMean):
 
 class TestSum(TestMean):
     def set_test_op(self):
-        self.op = paddle.paddle.sum
+        self.op = paddle.sum
 
 
 class TestLogsumexp(TestMean):
