@@ -19,7 +19,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace distributed {
@@ -50,7 +50,7 @@ inline int64_t canonical_dim(int dim, int ndim) {
   PADDLE_ENFORCE_EQ(
       dim >= -ndim && dim < ndim,
       true,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Dimension %d is outside of [-%d, %d).", dim, ndim, ndim));
   if (dim < 0) {
     return dim + ndim;
