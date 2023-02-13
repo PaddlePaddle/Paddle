@@ -58,6 +58,19 @@ void GraphReindexKernel(const Context& dev_ctx,
     }
     src[i] = node_map[node];
   }
+  // check x.dim must greater than count.dim
+  const int cs = count.dims()[0];
+  if (x == count || bs == cs) {
+    PADDLE_ENFORCE_GE(
+        bs,
+        cs,
+        phi::errors::OutOfRange(
+            "The input tensor X's dimensions should be larger than or equal to "
+            "count's dimensions."
+            "But received X's dimension = %d. count's dimension = %d",
+            bs,
+            cs));
+  }
   // Reindex Dst
   // Add support for multi-type edges reindex
   int num_edge_types = count.dims()[0] / bs;
