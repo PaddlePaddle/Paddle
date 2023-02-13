@@ -1641,19 +1641,13 @@ static phi::DDim ValidateShape(const std::vector<int64_t> shape,
                                const phi::DDim& in_dims) {
   const int64_t in_size = phi::product(in_dims);
   auto in_dims_vec = phi::vectorize(in_dims);
-  bool all_positive = std::all_of(in_dims_vec.cbegin(),
-                                  in_dims_vec.cend(),
-                                  [](int64_t i) { return i > 0; });
-  // only one dimension can be set to -1, whose size will be automatically
-  // infered.
-  const int64_t unk_dim_val = -1;
-  const int64_t copy_dim_val = 0;
-
   std::vector<int64_t> output_shape(shape.size(), 0);
   int64_t capacity = 1;
   int unk_dim_idx = -1;
+
   for (size_t i = 0; i < shape.size(); ++i) {
-    if (shape[i] == unk_dim_val) {
+    if (shape[i] == -1) {
+      // only one dimension can be set to -1, whose size will be infered.
       PADDLE_ENFORCE_EQ(
           unk_dim_idx,
           -1,
@@ -1663,19 +1657,27 @@ static phi::DDim ValidateShape(const std::vector<int64_t> shape,
               phi::make_ddim(shape),
               i));
       unk_dim_idx = i;
-    } else if (shape[i] == copy_dim_val) {
-      PADDLE_ENFORCE_LT(
-          static_cast<int>(i),
-          in_dims.size(),
-          phi::errors::InvalidArgument(
-              "The index of 0 in `shape` must be less than "
-              "the input tensor X's dimensions. "
-              "But received shape = [%s], shape[%d] = 0, X's shape = [%s], "
-              "X's dimensions = %d.",
-              phi::make_ddim(shape),
-              i,
-              in_dims,
-              in_dims.size()));
+    } else if (shape[i] == 0) {
+      // for 0-Size Tensor, 0 is 0
+      // for not 0-Size Tensor, 0 represent copy origin shape
+      if (in_size > 0) {
+        PADDLE_ENFORCE_LT(
+            static_cast<int>(i),
+            in_dims.size(),
+            phi::errors::InvalidArgument(
+                "The index of 0 in `shape` must be less than "
+                "the input tensor X's dimensions. "
+                "But received shape = [%s], shape[%d] = 0, X's shape = [%s], "
+                "X's dimensions = %d.",
+                phi::make_ddim(shape),
+                i,
+                in_dims,
+                in_dims.size()));
+        output_shape[i] = in_dims[i];
+      } else {
+        output_shape[i] = shape[i];
+      }
+      capacity *= output_shape[i];
     } else {
       PADDLE_ENFORCE_GT(
           shape[i],
@@ -1687,24 +1689,36 @@ static phi::DDim ValidateShape(const std::vector<int64_t> shape,
               phi::make_ddim(shape),
               i,
               shape[i]));
+      output_shape[i] = shape[i];
+      capacity *= output_shape[i];
     }
-
-    // NOTE all non-zero values will be converted to True (include negative
-    // value)
-    capacity *= (shape[i] ? shape[i] : in_dims[i]);
-    output_shape[i] = (shape[i] ? static_cast<int64_t>(shape[i]) : in_dims[i]);
   }
 
+  if (capacity == 0) {
+    PADDLE_ENFORCE_EQ(in_size,
+                      0,
+                      phi::errors::InvalidArgument(
+                          "Only Zero-Size Tensor'shape can contain 0"));
+    PADDLE_ENFORCE_EQ(unk_dim_idx,
+                      -1,
+                      phi::errors::InvalidArgument(
+                          "can not rehsape %s to %s, because the unspecified "
+                          "dimension %i can be any number and is ambiguous",
+                          in_dims,
+                          phi::make_ddim(shape),
+                          unk_dim_idx));
+  }
+
+  bool no_negative = std::all_of(in_dims_vec.cbegin(),
+                                 in_dims_vec.cend(),
+                                 [](int64_t i) { return i >= 0; });
   if (unk_dim_idx != -1) {
-    if (all_positive) {
-      // in_size < 0 and is un-determinate in compile time, skip the check,
-      // for example, in_dims = [-1, 8, 1, 1], shape = [-1, 3, 8],
-      // capacity = -24, in_size = -8, output_shape[0] = 0
-      // the following check will fail.
-      output_shape[unk_dim_idx] = -in_size / capacity;
+    // in compile time, no_negative may be False.
+    if (no_negative) {
+      output_shape[unk_dim_idx] = in_size / capacity;
       PADDLE_ENFORCE_EQ(
           output_shape[unk_dim_idx] * capacity,
-          -in_size,
+          in_size,
           phi::errors::InvalidArgument(
               "The 'shape' attribute in ReshapeOp is invalid. "
               "The input tensor X'size must be divisible by known "
@@ -1716,10 +1730,11 @@ static phi::DDim ValidateShape(const std::vector<int64_t> shape,
               phi::make_ddim(shape),
               capacity));
     } else {
+      // such as [-1, 8, 3]->[-1, 8], out_shape will remain [-1, 8]
       output_shape[unk_dim_idx] = -1;
     }
   } else {
-    if (all_positive) {
+    if (no_negative) {
       PADDLE_ENFORCE_EQ(
           capacity,
           in_size,
@@ -1736,24 +1751,6 @@ static phi::DDim ValidateShape(const std::vector<int64_t> shape,
     }
   }
 
-  // support reshape with zero-input(input tensor with product(shape) == 0)
-  // by now we require that if the input tensor is zero shape, the target
-  // shape of output must be zero
-  if (in_size == 0) {
-    PADDLE_ENFORCE_LE(
-        capacity,
-        in_size,
-        phi::errors::InvalidArgument(
-            "The 'shape' in ReshapeOp is invalid. "
-            "The input tensor X's shape = [%s], X's capacity = %d."
-            "But the target shape of Out is [%s],  the "
-            "capacity of 'Out' is %d.",
-            in_dims,
-            in_size,
-            phi::make_ddim(shape),
-            capacity));
-  }
-
   return phi::make_ddim(output_shape);
 }
 
@@ -1765,7 +1762,7 @@ void InferMetaFromVecValue(const MetaTensor& x,
   out->set_dims(out_dims);
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
-  if (x_dims[0] == out_dims[0]) {
+  if (x_dims.size() > 0 && (x_dims[0] == out_dims[0])) {
     // Only pass LoD when the first dimension of output and Input(X)
     // are the same.
     out->share_lod(x);

@@ -385,7 +385,11 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
 
 
 def _create_loss_op_desc_(loss):
-    create_shape = [] if len(loss.shape) == 0 else [1]
+    # 0D Tensor or 0-Size Tensor
+    if len(loss.shape) == 0 or 0 in loss.shape:
+        create_shape = loss.shape
+    else:
+        create_shape = [1]
     op_desc = _create_op_desc_(
         "fill_constant",
         {},
