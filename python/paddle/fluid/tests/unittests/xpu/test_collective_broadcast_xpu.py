@@ -27,27 +27,27 @@ from xpu.get_test_cover_info import XPUOpTestWrapper, create_test_class
 paddle.enable_static()
 
 
-class XPUTestCAllgatherOP(XPUOpTestWrapper):
+class XPUTestCBroadcastOP(XPUOpTestWrapper):
     def __init__(self):
-        self.op_name = 'c_allgather'
+        self.op_name = 'c_broadcast'
         self.use_dynamic_create_class = False
 
-    class TestCAllgatherOp(TestDistBase):
+    class TestCBroadcastOp(TestDistBase):
         def _setup_config(self):
             pass
 
-        def test_allgather(self):
+        def test_broadcast(self):
             self.check_with_place(
-                "collective_allgather_op_xpu.py", "allgather", self.in_type_str
+                "collective_broadcast_op_xpu.py", "broadcast", self.in_type_str
             )
 
 
-# support_types = get_xpu_op_support_types('c_allgather')
+# support_types = get_xpu_op_support_types('c_broadcast')
 support_types = ["float32"]
 for stype in support_types:
     create_test_class(
         globals(),
-        XPUTestCAllgatherOP,
+        XPUTestCBroadcastOP,
         stype,
         ignore_device_version=[core.XPUVersion.XPU1],
     )

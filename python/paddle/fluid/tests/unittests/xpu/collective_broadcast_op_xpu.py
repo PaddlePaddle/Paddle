@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 from test_collective_base_xpu import TestCollectiveRunnerBase, runtime_main
 
 import paddle
@@ -21,28 +23,29 @@ from paddle.fluid import core
 paddle.enable_static()
 
 
-class TestCollectiveAllGather(TestCollectiveRunnerBase):
+class TestCollectiveBroadcast(TestCollectiveRunnerBase):
     def __init__(self):
         self.global_ring_id = 0
 
     def get_model(self, main_prog, startup_program):
         ring_id = 0
-        nranks = 2
+        rootid = 1
         with fluid.program_guard(main_prog, startup_program):
             tindata = paddle.static.data(
                 name="tindata", shape=[10, 1000], dtype='float32'
             )
+
             toutdata = main_prog.current_block().create_var(
-                name="outofgather",
+                name="outofbroadcast",
                 dtype='float32',
                 type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
                 stop_gradient=False,
             )
             main_prog.global_block().append_op(
-                type="c_allgather",
+                type="c_broadcast",
                 inputs={'X': tindata},
-                attrs={'ring_id': ring_id, 'nranks': nranks},
+                attrs={'ring_id': ring_id, 'root': rootid},
                 outputs={'Out': toutdata},
             )
             main_prog.global_block().append_op(
@@ -55,4 +58,5 @@ class TestCollectiveAllGather(TestCollectiveRunnerBase):
 
 
 if __name__ == "__main__":
-    runtime_main(TestCollectiveAllGather, "allgather", 0)
+    os.environ["BKCL_PCIE_RING"] = "1"
+    runtime_main(TestCollectiveBroadcast, "broadcast", 0)
