@@ -120,22 +120,32 @@ class TrtConvertSetValue(TrtLayerAutoScanTest):
                 "input_data": [1, 6, 20, 50, 10, 3],
                 "update_data": [1, 6, 20, 50, 10, 1],
                 "output_data": [1, 6, 20, 50, 10, 3],
+                "set_output_data": [1, 6, 20, 50, 10, 3],
             }
             self.dynamic_shape.max_input_shape = {
                 "input_data": [1, 6, 20, 50, 10, 3],
                 "update_data": [1, 6, 20, 50, 10, 1],
                 "output_data": [1, 6, 20, 50, 10, 3],
+                "set_output_data": [1, 6, 20, 50, 10, 3],
             }
             self.dynamic_shape.opt_input_shape = {
                 "input_data": [1, 6, 20, 50, 10, 3],
                 "update_data": [1, 6, 20, 50, 10, 1],
                 "output_data": [1, 6, 20, 50, 10, 3],
+                "set_output_data": [1, 6, 20, 50, 10, 3],
             }
 
         def clear_dynamic_shape():
             self.dynamic_shape.max_input_shape = {}
             self.dynamic_shape.min_input_shape = {}
             self.dynamic_shape.opt_input_shape = {}
+
+        def generate_trt_nodes_num(attrs, dynamic_shape):
+            if dynamic_shape:
+                ver = paddle_infer.get_trt_compile_version()
+                if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8200:
+                    return 1, 5
+                return 1, 3
 
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
@@ -145,9 +155,13 @@ class TrtConvertSetValue(TrtLayerAutoScanTest):
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         self.trt_param.workspace_size = 2013265920
-        yield self.create_inference_config(), (1, 3), (1e-5, 1e-4)
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True
+        ), (1e-5, 1e-4)
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 3), (1e-3, 1e-3)
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True
+        ), (1e-3, 1e-3)
 
     def test(self):
         self.run_test()
