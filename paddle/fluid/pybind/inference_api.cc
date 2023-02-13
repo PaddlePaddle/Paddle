@@ -224,9 +224,8 @@ void ZeroCopyStringTensorCreate(ZeroCopyTensor &tensor,  // NOLINT
 }
 
 template <typename T>
-void PaddleInferTensorCreate(
-    paddle_infer::Tensor &tensor,  // NOLINT
-    py::array_t<T, py::array::c_style | py::array::forcecast> data) {
+void PaddleInferTensorCreate(paddle_infer::Tensor &tensor,  // NOLINT
+                             py::array_t<T, py::array::c_style> data) {
   std::vector<int> shape;
   std::copy_n(data.shape(), data.ndim(), std::back_inserter(shape));
   tensor.Reshape(std::move(shape));
