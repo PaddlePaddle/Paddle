@@ -124,6 +124,12 @@ void GroupNormKernel(const Context& dev_ctx,
                      DenseTensor* y,
                      DenseTensor* mean,
                      DenseTensor* var) {
+  if (x.IsSharedWith(*y) && x.share_buffer_with.size() > 0) {
+    DenseTensor& xx = const_cast<DenseTensor&>(x);
+    for (int i = 0; i < xx.share_buffer_with.size(); ++i) {
+      xx.share_buffer_with[i]->can_not_use = true;
+    }
+  }
   using AccT = typename kps::details::MPTypeTrait<T>::Type;
   const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   const auto scale_ptr = scale.get_ptr();

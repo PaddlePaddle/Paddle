@@ -57,6 +57,12 @@ class AffineChannelCUDAKernel : public framework::OpKernel<T> {
     auto* bias = ctx.Input<phi::DenseTensor>("Bias");
 
     auto* y = ctx.Output<phi::DenseTensor>("Out");
+    if (x->IsSharedWith(*y) && x->share_buffer_with.size() > 0) {
+      phi::DenseTensor* xx = const_cast<phi::DenseTensor*>(x);
+      for (int i = 0; i < xx->share_buffer_with.size(); ++i) {
+        xx->share_buffer_with[i]->can_not_use = true;
+      }
+    }
     y->mutable_data<T>(ctx.GetPlace());
 
     const phi::DataLayout layout =
