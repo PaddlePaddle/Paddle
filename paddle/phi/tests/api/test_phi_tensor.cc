@@ -150,7 +150,7 @@ void GroupTestCopy() {
   VLOG(2) << "Double cpu-cpu-gpu-gpu-cpu";
   TestCopyTensor<double>();
   VLOG(2) << "int cpu-cpu-gpu-gpu-cpu";
-  TestCopyTensor<int>();
+  TestCopyTensor<int32_t>();
   VLOG(2) << "int64 cpu-cpu-gpu-gpu-cpu";
   TestCopyTensor<int64_t>();
   VLOG(2) << "int16 cpu-cpu-gpu-gpu-cpu";
@@ -193,7 +193,7 @@ void GroupTestCast() {
 void GroupTestDtype() {
   CHECK(TestDtype<float>() == paddle::DataType::FLOAT32);
   CHECK(TestDtype<double>() == paddle::DataType::FLOAT64);
-  CHECK(TestDtype<int>() == paddle::DataType::INT32);
+  CHECK(TestDtype<int32_t>() == paddle::DataType::INT32);
   CHECK(TestDtype<int64_t>() == paddle::DataType::INT64);
   CHECK(TestDtype<int16_t>() == paddle::DataType::INT16);
   CHECK(TestDtype<int8_t>() == paddle::DataType::INT8);
