@@ -414,8 +414,20 @@ void Tensor::reset_inplace_version(bool set_to_zero) {
   }
 }
 
+PADDLE_API Tensor operator+(const Tensor &x, const Tensor &y) {
+  return paddle::OperantsManager::Instance().add(x, y);
+}
+
+PADDLE_API Tensor operator-(const Tensor &x, const Tensor &y) {
+  return paddle::OperantsManager::Instance().subtract(x, y);
+}
+
 PADDLE_API Tensor operator*(const Tensor &x, const Tensor &y) {
   return paddle::OperantsManager::Instance().multiply(x, y);
+}
+
+PADDLE_API Tensor operator/(const Tensor &x, const Tensor &y) {
+  return paddle::OperantsManager::Instance().divide(x, y);
 }
 
 }  // namespace experimental
