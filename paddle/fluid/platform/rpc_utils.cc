@@ -605,7 +605,6 @@ std::vector<int> RpcTokenizer::GetIdsFromText(const std::string& text) {
   std::vector<int> ids;
   auto tokens = tokenizer_.Tokenize(text);
   for (const auto& token : tokens) {
-    VLOG(3) << converter.to_bytes(token);
     ids.emplace_back(GetIdFromWord(token));
   }
   return ids;

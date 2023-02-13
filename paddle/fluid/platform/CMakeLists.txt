@@ -224,6 +224,8 @@ cc_library(
        generator)
 
 if(WITH_DISTRIBUTE)
+  set(EXTERNAL_LIB "-licuuc")
+
   set(BRPC_DEPS
       brpc
       ssl
@@ -238,7 +240,7 @@ if(WITH_DISTRIBUTE)
   cc_library(
     rpc_utils
     SRCS rpc_utils.cc
-    DEPS enforce ${BRPC_DEPS})
+    DEPS enforce ${BRPC_DEPS} ${EXTERNAL_LIB})
 endif()
 
 cc_library(

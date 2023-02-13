@@ -59,7 +59,7 @@ cur_block.append_op(
         'Out': out_data,
     },
     attrs={
-        'res_dtype': RES_TYPE,
+        'res_type': RES_TYPE,
     },
 )
 

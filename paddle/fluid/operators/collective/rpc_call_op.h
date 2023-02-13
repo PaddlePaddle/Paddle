@@ -111,21 +111,6 @@ class RpcCallOpKernel : public framework::OpKernel<T> {
       std::unordered_map<std::string, std::string> special;
       platform::RpcTokenizer::Instance().Init(vocab_path, special);
       service = "str";
-
-      // NOTE: test tokenizer; remove them in prod env
-      platform::RpcTokenizer::Instance().GetIdsFromText(
-          "开心的emoji是😄，俄罗斯的拼音是：é luó sī， New York的拼音是niǔyuē");
-      platform::RpcTokenizer::Instance().GetIdsFromText(
-          "의 무료 서비스는 다음과 같은 단어, 구문 및 웹페이지를 즉시 "
-          "번역합니다.");
-      platform::RpcTokenizer::Instance().GetIdsFromText(
-          "ལོ་གསར་ལ་བཀྲ ་ཤིས་བདེ་ལེགས་ཞུ།");
-      platform::RpcTokenizer::Instance().GetIdsFromText(
-          "あけましておめでとうございます");
-      platform::RpcTokenizer::Instance().GetIdsFromText(
-          "请生成小红书：开发区金字塔顶端楼盘，圈层格局烟台市-开发区-高级中学-"
-          "福莱山公园旁🔥\n城芯改善大盘—《盈科品园》二百万以下预算劝退，137-"
-          "154平。\n实景现房、依山傍水、精装体现");
     }
     const std::string payload = BuildPayload(service, src_ids_vec);
 
