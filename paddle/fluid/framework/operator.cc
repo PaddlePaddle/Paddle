@@ -1588,7 +1588,7 @@ bool OperatorWithKernel::CanCUTLASSBeUsed(
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_CUTLASS)
   auto& dev_ctx = ctx.device_context<phi::GPUContext>();
   if (use_cutlass && data_type == phi::DataType::BFLOAT16 &&
-      dev_ctx->GetComputeCapability() < 75) {
+      dev_ctx.GetComputeCapability() < 75) {
     PADDLE_ENFORCE_GE(
         dev_ctx.GetComputeCapability(),
         75,
