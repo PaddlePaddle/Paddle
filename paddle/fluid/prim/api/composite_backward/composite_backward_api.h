@@ -14,6 +14,10 @@
 
 #pragma once
 
+#ifndef _USE_MATH_DEFINES
+#define _USE_MATH_DEFINES
+#endif
+
 #include "paddle/fluid/prim/api/all.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/int_array.h"
