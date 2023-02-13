@@ -16,6 +16,8 @@
 
 #include <brpc/channel.h>
 #include <bthread/countdown_event.h>
+#include <unicode/normlzr.h>
+#include <unicode/utypes.h>
 
 #include <atomic>
 #include <codecvt>
@@ -33,6 +35,15 @@ class BasicTokenizer {
       : do_lower_case_(do_lower_case) {}
 
   std::vector<std::wstring> Tokenize(const std::wstring& text);
+
+ private:
+  std::wstring StripAccents(const std::wstring& text);
+
+  std::wstring SplitOnPunc(const std::wstring& text);
+
+  std::wstring TokenizeChineseChars(const std::wstring& text);
+
+  std::wstring CleanText(const std::wstring& text);
 
  private:
   bool do_lower_case_;
@@ -120,6 +131,18 @@ class RpcTokenizer {
   int GetIdFromWord(const std::wstring& word) { return words_to_ids_.at(word); }
 
   std::vector<int> GetIdsFromText(const std::string& text);
+
+ private:
+  std::string GetRecoveredToken(const std::vector<uint8_t>& bytes);
+
+  std::vector<std::string> RecoverBFBTokens(
+      const std::vector<std::string>& tokens);
+
+  std::vector<std::string> PostProcess(
+      const std::vector<std::string>& tokens,
+      const std::unordered_map<std::wstring, int>& vocab,
+      bool aggressive_break = false,
+      const std::string& stop_token = "[gEND]");
 
  private:
   std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> converter_;

@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/platform/rpc_utils.h"
 
-#include <unicode/normlzr.h>
 #include <unicode/platform.h>
 #include <unicode/uchar.h>
 #include <unicode/uconfig.h>
@@ -47,9 +46,9 @@ static inline bool EndsWith(const std::string& str, const std::string& suffix) {
          str.substr(str.length() - suffix.length()) == suffix;
 }
 
-static std::string Replace(const std::string& str,
-                           const std::string& old_str,
-                           const std::string& new_str) {
+static inline std::string Replace(const std::string& str,
+                                  const std::string& old_str,
+                                  const std::string& new_str) {
   if (old_str == new_str) {
     return str;
   }
@@ -65,8 +64,8 @@ static std::string Replace(const std::string& str,
   return ss.str();
 }
 
-static std::vector<std::string> Split(std::string split_text,
-                                      std::regex pattern) {
+static inline std::vector<std::string> Split(std::string split_text,
+                                             std::regex pattern) {
   std::vector<std::string> output;
   std::sregex_token_iterator substrings(
       split_text.begin(), split_text.end(), pattern, -1);
@@ -83,13 +82,13 @@ static std::vector<std::string> Split(std::string split_text,
   return output;
 }
 
-static void ToLower(std::wstring* input) {
+static inline void ToLower(std::wstring* input) {
   for (unsigned int i = 0; i < input->length(); ++i) {
     input->at(i) = towlower(input->at(i));
   }
 }
 
-static std::wstring SubStr(const std::wstring& input, int a) {
+static inline std::wstring SubStr(const std::wstring& input, int a) {
   std::wstring substring;
   for (int i = 0; static_cast<size_t>(i) < input.size() && i < a; i++) {
     substring += input[i];
@@ -97,7 +96,8 @@ static std::wstring SubStr(const std::wstring& input, int a) {
   return substring;
 }
 
-static std::vector<std::wstring> WhitespaceTokenize(const std::wstring& text) {
+static inline std::vector<std::wstring> WhitespaceTokenize(
+    const std::wstring& text) {
   std::vector<std::wstring> tokens;
   std::wstringstream ss(text);
   std::wstring token;
@@ -187,7 +187,7 @@ static inline std::string ByteToHex(uint8_t c) {
 }
 
 // BasicTokenizer
-std::wstring StripAccents(const std::wstring& text) {
+std::wstring BasicTokenizer::StripAccents(const std::wstring& text) {
   UErrorCode err = U_ZERO_ERROR;
   auto* normalizer = icu::Normalizer2::getNFDInstance(err);
   if (U_FAILURE(err)) {
@@ -212,7 +212,7 @@ std::wstring StripAccents(const std::wstring& text) {
   return converter.from_bytes(res);
 }
 
-std::wstring SplitOnPunc(const std::wstring& text) {
+std::wstring BasicTokenizer::SplitOnPunc(const std::wstring& text) {
   std::wstring output;
   std::wstring s;
   int i = 0;
@@ -258,7 +258,7 @@ std::wstring SplitOnPunc(const std::wstring& text) {
   return output;
 }
 
-std::wstring TokenizeChineseChars(const std::wstring& text) {
+std::wstring BasicTokenizer::TokenizeChineseChars(const std::wstring& text) {
   std::wstring output;
   for (const wchar_t& c : text) {
     if (IsChineseChar(c)) {
@@ -272,7 +272,7 @@ std::wstring TokenizeChineseChars(const std::wstring& text) {
   return output;
 }
 
-std::wstring CleanText(const std::wstring& text) {
+std::wstring BasicTokenizer::CleanText(const std::wstring& text) {
   std::wstring output;
   for (const wchar_t& c : text) {
     if (c == 0 || c == 0xfffd || IsControl(c)) {
@@ -451,7 +451,7 @@ void RpcTokenizer::Init(
   SetSpecialSet(special_set);
 }
 
-static inline std::string GetRecoveredToken(const std::vector<uint8_t>& bytes) {
+std::string RpcTokenizer::GetRecoveredToken(const std::vector<uint8_t>& bytes) {
   std::string res;
   int n = bytes.size();
   int i = 0;
@@ -479,7 +479,7 @@ static inline std::string GetRecoveredToken(const std::vector<uint8_t>& bytes) {
   return res;
 }
 
-std::vector<std::string> RecoverBFBTokens(
+std::vector<std::string> RpcTokenizer::RecoverBFBTokens(
     const std::vector<std::string>& tokens) {
   std::vector<std::string> new_tokens;
   std::vector<uint8_t> tmp_bytes;
@@ -510,11 +510,11 @@ std::vector<std::string> RecoverBFBTokens(
   return new_tokens;
 }
 
-std::vector<std::string> PostProcess(
+std::vector<std::string> RpcTokenizer::PostProcess(
     const std::vector<std::string>& tokens,
     const std::unordered_map<std::wstring, int>& vocab,
-    bool aggressive_break = false,
-    const std::string& stop_token = "[gEND]") {
+    bool aggressive_break,
+    const std::string& stop_token) {
   std::unordered_set<std::string> break_words;
   if (aggressive_break) {
     break_words = {"[END]", "[gEND]", "[<S>]", "[UNK]", "[CLS]"};
