@@ -1326,6 +1326,8 @@ def rfftfreq(n, d=1.0, dtype=None, name=None):
             #           [0.        , 0.66666669, 1.33333337])
 
     """
+    if d * n == 0:
+        raise ValueError("d or n should not be 0.")
 
     dtype = paddle.framework.get_default_dtype()
     val = 1.0 / (n * d)

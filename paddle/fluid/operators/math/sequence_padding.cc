@@ -28,7 +28,7 @@ namespace math {
 template <typename T>
 void CopyValidData(phi::DenseTensor* dst_tensor,
                    const phi::DenseTensor* src_tensor,
-                   const framework::Vector<size_t>& seq_offsets,
+                   const phi::Vector<size_t>& seq_offsets,
                    int pad_seq_len,
                    int step_width,
                    bool norm_by_len,

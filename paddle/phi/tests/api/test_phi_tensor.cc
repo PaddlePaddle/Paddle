@@ -18,6 +18,7 @@
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/selected_rows.h"
 
 namespace paddle {
 namespace tests {
@@ -191,13 +192,15 @@ void GroupTestCast() {
 }
 
 void GroupTestDtype() {
-  CHECK(TestDtype<float>() == paddle::DataType::FLOAT32);
-  CHECK(TestDtype<double>() == paddle::DataType::FLOAT64);
-  CHECK(TestDtype<int32_t>() == paddle::DataType::INT32);
-  CHECK(TestDtype<int64_t>() == paddle::DataType::INT64);
-  CHECK(TestDtype<int16_t>() == paddle::DataType::INT16);
+  CHECK(TestDtype<bool>() == paddle::DataType::BOOL);
   CHECK(TestDtype<int8_t>() == paddle::DataType::INT8);
   CHECK(TestDtype<uint8_t>() == paddle::DataType::UINT8);
+  CHECK(TestDtype<int16_t>() == paddle::DataType::INT16);
+  CHECK(TestDtype<int32_t>() == paddle::DataType::INT32);
+  CHECK(TestDtype<int64_t>() == paddle::DataType::INT64);
+  CHECK(TestDtype<paddle::float16>() == paddle::DataType::FLOAT16);
+  CHECK(TestDtype<float>() == paddle::DataType::FLOAT32);
+  CHECK(TestDtype<double>() == paddle::DataType::FLOAT64);
   CHECK(TestDtype<paddle::complex64>() == paddle::DataType::COMPLEX64);
   CHECK(TestDtype<paddle::complex128>() == paddle::DataType::COMPLEX128);
   CHECK(TestDtype<paddle::float16>() == paddle::DataType::FLOAT16);
@@ -213,6 +216,30 @@ void TestInitilized() {
   for (int i = 0; i < test_tensor.size(); i++) {
     CHECK(tensor_data[i] == 0.5);
   }
+}
+
+void TestDataInterface() {
+  // Test DenseTensor
+  experimental::Tensor test_tensor(paddle::PlaceType::kCPU, {1, 1});
+  CHECK(test_tensor.is_initialized() == true);
+  void* tensor_ptr = test_tensor.data();
+  CHECK(tensor_ptr != nullptr);
+  const void* const_tensor_ptr = test_tensor.data();
+  CHECK(const_tensor_ptr != nullptr);
+  // Test SelectedRows
+  std::vector<int64_t> rows = {0};
+  std::shared_ptr<phi::SelectedRows> selected_rows =
+      std::make_shared<phi::SelectedRows>(rows, 1);
+  selected_rows->mutable_value()->Resize(phi::make_ddim({1, 1}));
+  selected_rows->mutable_value()->mutable_data<float>(phi::CPUPlace())[0] =
+      static_cast<float>(10.0f);
+  paddle::experimental::Tensor sr_tensor =
+      paddle::experimental::Tensor(selected_rows);
+  CHECK(sr_tensor.is_initialized() == true);
+  tensor_ptr = sr_tensor.data();
+  CHECK(tensor_ptr != nullptr);
+  const_tensor_ptr = sr_tensor.data();
+  CHECK(const_tensor_ptr != nullptr);
 }
 
 void TestJudgeTensorType() {
@@ -235,6 +262,8 @@ TEST(PhiTensor, All) {
   GroupTestCast();
   VLOG(2) << "TestInitilized";
   TestInitilized();
+  VLOG(2) << "TestDataInterface";
+  TestDataInterface();
   VLOG(2) << "TestJudgeTensorType";
   TestJudgeTensorType();
 }

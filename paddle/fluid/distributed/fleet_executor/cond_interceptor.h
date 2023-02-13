@@ -39,7 +39,6 @@ class CondInterceptor final : public Interceptor {
   void SendDataReady(int64_t down_id);
   void ReplyDataIsUseless(int64_t up_id);
 
-  std::queue<int64_t> ready_queue_;
   int64_t cur_scope_id_;
 
   std::set<int64_t> normal_in_id_;

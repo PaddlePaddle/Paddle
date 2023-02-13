@@ -1095,7 +1095,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
              self.set_rows(rows);
 #else
-        Vector<int64_t> new_rows(rows);
+        std::vector<int64_t> new_rows(rows);
         self.set_rows(new_rows);
 #endif
            })
