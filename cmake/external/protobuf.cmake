@@ -327,6 +327,7 @@ elseif(WITH_IPU)
 elseif(WITH_ARM_BRPC)
   set(PROTOBUF_VERSION 21.12-baidu-ee-common)
 elseif(WIN32)
+  #Lower version prootbuf is used for widows
   set(PROTOBUF_VERSION 3.2)
 else()
   set(PROTOBUF_VERSION 21.12)
