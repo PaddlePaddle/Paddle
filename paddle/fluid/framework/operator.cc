@@ -1623,8 +1623,9 @@ void OperatorWithKernel::CheckWhetherPreparePhiData(
 //   runtime_ctx_.get() == nullptr, we need to create a new runtime context.
 // 2. When enable cache runtime context, if the program is not running for the
 // first time,
-//   but the input shape of the operator has changed, we cannot use the runtime
-//   context stored in the cache at this time, and need to create a new one.
+//   but the input shape or tensor layout of the operator has changed, we cannot
+//   use the runtime context stored in the cache at this time, and need to
+//   create a new one.
 bool OperatorWithKernel::NeedResetRuntimeContext(const Scope& scope) const {
   if (runtime_ctx_.get() == nullptr) return true;
   const auto& name_map = Inputs();
@@ -1657,7 +1658,10 @@ bool OperatorWithKernel::NeedResetRuntimeContext(const Scope& scope) const {
       auto* current_input_tensor =
           GetMutableLoDTensorOrSelectedRowsValueFromVar(current_input_var);
       auto current_input_tensor_dims = current_input_tensor->dims();
-      if (cache_input_tensor_dims != current_input_tensor_dims) {
+      if (cache_input_tensor_dims != current_input_tensor_dims ||
+          NeedTransformLayout(current_input_tensor->layout(),
+                              cache_input_tensor->layout())) {
+        need_prepare_data_ = true;
         return true;
       }
     }
