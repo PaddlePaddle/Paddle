@@ -60,7 +60,7 @@ void GraphReindexKernel(const Context& dev_ctx,
   }
   // check x.dim must greater than count.dim
   const int cs = count.dims()[0];
-  if (x == count || bs == cs) {
+  if (bs == cs == 1) {
     PADDLE_ENFORCE_GE(
         bs,
         cs,
@@ -71,6 +71,7 @@ void GraphReindexKernel(const Context& dev_ctx,
             bs,
             cs));
   }
+
   // Reindex Dst
   // Add support for multi-type edges reindex
   int num_edge_types = count.dims()[0] / bs;
