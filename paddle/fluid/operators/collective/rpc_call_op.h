@@ -100,7 +100,7 @@ class RpcCallOpKernel : public framework::OpKernel<T> {
 
     // payload
     auto src_ids_tensor = ctx.Input<phi::DenseTensor>("X");
-    std::vector<int> src_ids_vec;
+    std::vector<int64_t> src_ids_vec;
     framework::TensorToVector(
         *src_ids_tensor, ctx.device_context(), &src_ids_vec);
 
