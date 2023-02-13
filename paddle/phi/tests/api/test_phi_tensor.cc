@@ -41,18 +41,19 @@ Tensor InitCPUTensorForTest() {
 template <typename T>
 void TestCopyTensor() {
   auto t1 = InitCPUTensorForTest<T>();
-  auto t1_cpu_cp = t1.copy_to(phi::CPUPlace());
+  auto t1_cpu_cp = t1.copy_to(phi::CPUPlace(), /*blocking=*/false);
   CHECK((phi::CPUPlace() == t1_cpu_cp.place()));
   for (int64_t i = 0; i < t1.size(); i++) {
     CHECK_EQ(t1_cpu_cp.data<T>()[i], T(5));
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   VLOG(2) << "Do GPU copy test";
-  auto t1_gpu_cp = t1_cpu_cp.copy_to(phi::GPUPlace());
+  auto t1_gpu_cp = t1_cpu_cp.copy_to(phi::GPUPlace(), /*blocking=*/false);
   CHECK((phi::GPUPlace() == t1_gpu_cp.place()));
-  auto t1_gpu_cp_cp = t1_gpu_cp.copy_to(phi::GPUPlace());
+  auto t1_gpu_cp_cp = t1_gpu_cp.copy_to(phi::GPUPlace(), /*blocking=*/false);
   CHECK((phi::GPUPlace() == t1_gpu_cp_cp.place()));
-  auto t1_gpu_cp_cp_cpu = t1_gpu_cp_cp.copy_to(phi::CPUPlace());
+  auto t1_gpu_cp_cp_cpu =
+      t1_gpu_cp_cp.copy_to(phi::CPUPlace(), /*blocking=*/false);
   CHECK((phi::CPUPlace() == t1_gpu_cp_cp_cpu.place()));
   for (int64_t i = 0; i < t1.size(); i++) {
     CHECK_EQ(t1_gpu_cp_cp_cpu.data<T>()[i], T(5));
@@ -167,8 +168,8 @@ void GroupTestCopy() {
 }
 
 void GroupTestCast() {
-  VLOG(2) << "int cast";
-  TestCast<int>(paddle::DataType::FLOAT32);
+  VLOG(2) << "int16_t cast";
+  TestCast<int16_t>(paddle::DataType::FLOAT32);
   VLOG(2) << "int32 cast";
   TestCast<int32_t>(paddle::DataType::FLOAT32);
   VLOG(2) << "int64 cast";
