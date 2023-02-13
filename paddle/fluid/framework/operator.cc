@@ -1589,10 +1589,12 @@ bool OperatorWithKernel::CanCUTLASSBeUsed(
   auto& dev_ctx = ctx.device_context<phi::GPUContext>();
   if (use_cutlass && data_type == phi::DataType::BFLOAT16 &&
       dev_ctx->GetComputeCapability() < 75) {
-    PADDLE_ENFORCE_GE(dev_ctx->GetComputeCapability(),
-                      75,
-                      platform::errors::InvalidArgument(
-                          "bfloat16 can only be used when CUDA SM >= 75"));
+    PADDLE_ENFORCE_GE(
+        dev_ctx.GetComputeCapability(),
+        75,
+        phi::errors::PreconditionNotMet(
+            "Expect compute compatiblity to be less than 75, but got %d. ",
+            ctx.GetComputeCapability()));
   }
 #endif  // PADDLE_WITH_CUDA && PADDLE_WITH_CUTLASS
 
