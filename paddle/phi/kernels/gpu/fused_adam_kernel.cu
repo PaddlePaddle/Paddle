@@ -31,9 +31,9 @@ namespace phi {
 // https://github.com/NVIDIA/apex
 
 template <typename T, bool CPUBetaPows /*=true*/>
-struct MultiTensorAdamBetaPowInfo {
+struct FusedAdamBetaPowInfo {
   using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
-  MultiTensorAdamBetaPowInfo(const MPDType* beta1pow, const MPDType* beta2pow) {
+  FusedAdamBetaPowInfo(const MPDType* beta1pow, const MPDType* beta2pow) {
     beta1pow_ = *beta1pow;
     beta2pow_ = *beta2pow;
   }
@@ -48,9 +48,9 @@ struct MultiTensorAdamBetaPowInfo {
 };
 
 template <typename T>
-struct MultiTensorAdamBetaPowInfo<T, /*CPUBetaPows=*/false> {
+struct FusedAdamBetaPowInfo<T, /*CPUBetaPows=*/false> {
   using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
-  MultiTensorAdamBetaPowInfo(const MPDType* beta1pow, const MPDType* beta2pow) {
+  FusedAdamBetaPowInfo(const MPDType* beta1pow, const MPDType* beta2pow) {
     beta1pow_ = beta1pow;
     beta2pow_ = beta2pow;
   }
@@ -73,13 +73,13 @@ template <typename T,
           int N,
           int MaxTensorSize,
           int MaxBlockSize>
-struct MultiTensorAdamFunctor {
+struct FusedAdamFunctor {
   __device__ __forceinline__ void operator()(
       int chunk_size,
       const funcs::TensorAndBlockInfo<N, MaxTensorSize, MaxBlockSize>& t_info,
       MT beta1,
       MT beta2,
-      MultiTensorAdamBetaPowInfo<T, IsCPUBetaPow> beta_pow,
+      FusedAdamBetaPowInfo<T, IsCPUBetaPow> beta_pow,
       MT epsilon,
       const MT* learning_rate,
       MT decay) const {
@@ -261,7 +261,7 @@ static int GetVecSizeFromTensors(const std::vector<TensorT*>& tensors,
 }
 
 template <typename T, typename Context>
-void MultiTensorAdamKernel(
+void FusedAdamKernel(
     const Context& dev_ctx,
     const std::vector<const DenseTensor*>& params,
     const std::vector<const DenseTensor*>& grads,
@@ -365,17 +365,17 @@ void MultiTensorAdamKernel(
     constexpr int kMaxTensorSize = __multi_precision ? 48 : 60;              \
     constexpr int kMaxBlockSize = __multi_precision ? 320 : 320;             \
     constexpr int kBlockSize = 512;                                          \
-    MultiTensorAdamBetaPowInfo<T, __is_cpu_betapow> beta_pow_info(           \
+    FusedAdamBetaPowInfo<T, __is_cpu_betapow> beta_pow_info(                 \
         beta1_pow_first->data<MPDType>(), beta2_pow_first->data<MPDType>()); \
-    MultiTensorAdamFunctor<T,                                                \
-                           MPDType,                                          \
-                           __vec_size,                                       \
-                           __multi_precision,                                \
-                           __is_cpu_betapow,                                 \
-                           __use_adamw,                                      \
-                           kInputNum,                                        \
-                           kMaxTensorSize,                                   \
-                           kMaxBlockSize>                                    \
+    FusedAdamFunctor<T,                                                      \
+                     MPDType,                                                \
+                     __vec_size,                                             \
+                     __multi_precision,                                      \
+                     __is_cpu_betapow,                                       \
+                     __use_adamw,                                            \
+                     kInputNum,                                              \
+                     kMaxTensorSize,                                         \
+                     kMaxBlockSize>                                          \
         functor;                                                             \
     funcs::LaunchMultiTensorApplyKernel<kInputNum,                           \
                                         kMaxTensorSize,                      \
@@ -490,7 +490,7 @@ void MultiTensorAdamKernel(
 PD_REGISTER_KERNEL(fused_adam,
                    GPU,
                    ALL_LAYOUT,
-                   phi::MultiTensorAdamKernel,
+                   phi::FusedAdamKernel,
                    phi::dtype::float16,
                    float,
                    double) {
