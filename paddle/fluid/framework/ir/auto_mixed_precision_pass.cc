@@ -152,7 +152,16 @@ bool OpSupportPrecision(const std::string& op_type,
                         const std::unordered_set<std::string>& black_list) {
   bool support = false;
   if (black_list.count(op_type) == 0) {
-    support = KernelSupportPrecision(op_type, backend, precision);
+    // Actual custom backend will be added after the NUM_BACKENDS.
+    // We use this feature to determine whether backend is custom device.
+    if (backend == phi::Backend::GPU ||
+        static_cast<size_t>(backend) >
+            static_cast<size_t>(phi::Backend::NUM_BACKENDS)) {
+      support = KernelSupportPrecision(op_type, backend, precision);
+    } else {
+      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+          "Now, only support backend of GPU and Custom Device ."));
+    }
   }
   return support;
 }
@@ -190,9 +199,7 @@ void AutoMixedPrecisionPass::Init(Graph* graph) const {
   }
   if (enable_gpu_mixed) {
     backend_ = phi::Backend::GPU;
-  }
-
-  if (enable_custom_device_mixed) {
+  } else if (enable_custom_device_mixed) {
     // transform Backend::CUSTOM to actual backend.
     // Here, we only consider one custom backend.
     auto device_type = phi::DeviceManager::GetAllCustomDeviceTypes()[0];
