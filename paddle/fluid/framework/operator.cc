@@ -1462,7 +1462,7 @@ bool OperatorWithKernel::SupportsKernelType(
   if (paddle::platform::is_xpu_place(kernel_type.place_)) {
     bool use_xpu_kp_kernel_rt =
         FLAGS_run_kp_kernel &&
-        paddle::platform::is_xpu_support_op(
+        paddle::platform::is_xpu_kp_support_op(
             type_, framework::TransToPhiDataType(kernel_type.data_type_));
     bool use_xpu_kp_kernel_debug =
         paddle::platform::is_in_xpu_kpwhite_list(type_);
@@ -1708,7 +1708,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       if (paddle::platform::is_xpu_place(kernel_type_->place_)) {
         bool use_xpu_kp_kernel_rt =
             FLAGS_run_kp_kernel &&
-            paddle::platform::is_xpu_support_op(
+            paddle::platform::is_xpu_kp_support_op(
                 type_, framework::TransToPhiDataType(kernel_type_->data_type_));
         bool use_xpu_kp_kernel_debug =
             paddle::platform::is_in_xpu_kpwhite_list(type_);
@@ -1785,7 +1785,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       if (paddle::platform::is_xpu_place(kernel_type_->place_)) {
         bool use_xpu_kp_kernel_rt =
             FLAGS_run_kp_kernel &&
-            paddle::platform::is_xpu_support_op(
+            paddle::platform::is_xpu_kp_support_op(
                 type_, framework::TransToPhiDataType(kernel_type_->data_type_));
         bool use_xpu_kp_kernel_debug =
             paddle::platform::is_in_xpu_kpwhite_list(type_);
@@ -1834,7 +1834,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     bool use_xpu_kp_kernel_rt =
         paddle::platform::is_xpu_place(kernel_type_->place_) &&
         FLAGS_run_kp_kernel &&
-        paddle::platform::is_xpu_support_op(
+        paddle::platform::is_xpu_kp_support_op(
             type_, framework::TransToPhiDataType(kernel_type_->data_type_));
     bool use_xpu_kp_kernel_debug =
         paddle::platform::is_xpu_place(kernel_type_->place_) &&
@@ -2228,7 +2228,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
   if (paddle::platform::is_xpu_place(expected_kernel_key.place_)) {
     bool use_xpu_kp_kernel_rt =
         FLAGS_run_kp_kernel &&
-        paddle::platform::is_xpu_support_op(
+        paddle::platform::is_xpu_kp_support_op(
             type_,
             framework::TransToPhiDataType(expected_kernel_key.data_type_));
     bool use_xpu_kp_kernel_debug =

@@ -199,6 +199,23 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
       (kernel_iter == iter->second.end() ||
        phi::backends::custom_device::is_in_custom_black_list(
            TransToFluidOpName(kernel_name)))
+#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_KP)
+  VLOG(3) << "fluid_op_name: " << TransToFluidOpName(kernel_name);
+  VLOG(3) << " if kp support : "
+          << phi::backends::xpu::is_xpu_kp_support_op(
+                 TransToFluidOpName(kernel_name), kernel_key.dtype());
+  for (auto& p : iter->second) {
+    VLOG(3) << " bk: " << p.first;
+  }
+  kernel_key = KernelKey(Backend::KPS, kernel_key.layout(), kernel_key.dtype());
+  kernel_iter = iter->second.find(kernel_key);
+  auto kernel_iter_kp = iter->second.find(kernel_key);
+  VLOG(3) << " if kp support kp back: "
+          << (kernel_iter_kp == iter->second.end());
+  if ((FLAGS_enable_api_kernel_fallback &&
+       kernel_iter_kp == iter->second.end()) ||
+      !phi::backends::xpu::is_xpu_kp_support_op(TransToFluidOpName(kernel_name),
+                                                kernel_key.dtype())
 #else
   if ((FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end())
 #endif
