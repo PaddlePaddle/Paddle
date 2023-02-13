@@ -2250,7 +2250,7 @@ class OpTest(unittest.TestCase):
 
         for input_to_check in inputs_to_check:
             # we should change the dtype to FP32 for checking if the dtype of inputs is FP16
-            set_input(self.scope, self.op, self.inputs, place)
+            set_input(self.scope, self.op, self.inputs, self.outputs, place)
             tensor_to_check = self.scope.find_var(input_to_check).get_tensor()
             tensor_size = functools.reduce(
                 lambda a, b: a * b, tensor_to_check.shape(), 1
