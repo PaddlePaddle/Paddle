@@ -28,6 +28,7 @@ from paddle.utils import gast
 
 from . import error, logging_utils
 from .ast_transformer import DygraphToStaticAst
+from .convert_call_func import CONVERSION_OPTIONS
 from .function_spec import (
     FunctionSpec,
     _hash_spec_names,
@@ -152,6 +153,12 @@ def convert_to_static(function):
     """
     if getattr(function, ALREADY_D2S, None):
         return function
+
+    # Return directly if decorated with @not_to_static and DO NOT Cache it
+    options = getattr(function, CONVERSION_OPTIONS, None)
+    if options is not None and options.not_convert:
+        return function.__func__ if inspect.ismethod(function) else function
+
     with _CACHE_LOCK:
         static_func = _FUNCTION_CACHE.convert_with_cache(function)
         setattr(static_func, ALREADY_D2S, True)
@@ -957,6 +964,7 @@ class ConcreteProgram:
         # Transforms dygraph function into static function and caches it.
         dygraph_function = func_spec.dygraph_function
         static_func = convert_to_static(dygraph_function)
+        breakpoint()
         # apply pre\post hook for outermost layer
         hook_helper = HookHelper(
             dygraph_function, class_instance, kwargs.get("with_hook", False)
