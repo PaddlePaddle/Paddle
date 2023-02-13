@@ -37,7 +37,13 @@ void PutAlongAxisKernel(const Context& dev_ctx,
                         "PutAlongAxisCUDAKernel only runs on GPU device."));
 
   const auto& index_type = index.dtype();
-
+  phi::DenseTensor& xx = const_cast<phi::DenseTensor&>(x);
+  xx.inplace_version_counter_->setCanNotUse();
+  out->inplace_version_counter_->setCanNotUse();
+  if (xx.inplace_version_counter_->CurrentVersion() > 100 ||
+      out->inplace_version_counter_->CurrentVersion() > 100) {
+    VLOG(0) << "view ops outputs as the input of put_along_axis";
+  }
   phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   if (reduce == "add") {
     if (index_type == DataType::INT32) {

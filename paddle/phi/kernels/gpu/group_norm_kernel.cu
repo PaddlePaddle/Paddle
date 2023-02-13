@@ -127,6 +127,10 @@ void GroupNormKernel(const Context& dev_ctx,
   DenseTensor& xx = const_cast<phi::DenseTensor&>(x);
   xx.inplace_version_counter_->setCanNotUse();
   y->inplace_version_counter_->setCanNotUse();
+  if (xx.inplace_version_counter_->CurrentVersion() > 1000 ||
+      y->inplace_version_counter_->CurrentVersion() > 100) {
+    VLOG(0) << "view ops outputs as the input of groupNorm";
+  }
   using AccT = typename kps::details::MPTypeTrait<T>::Type;
   const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   const auto scale_ptr = scale.get_ptr();

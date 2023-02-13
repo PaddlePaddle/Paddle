@@ -30,6 +30,13 @@ void ScatterKernel(const Context &ctx,
                    DenseTensor *out) {
   phi::Copy(ctx, x, ctx.GetPlace(), false, out);
   // use template class to support int32_t and int64_t
+  DenseTensor &xx = const_cast<DenseTensor &>(x);
+  xx.inplace_version_counter_->setCanNotUse();
+  out->inplace_version_counter_->setCanNotUse();
+  if (xx.inplace_version_counter_->CurrentVersion() > 1000 ||
+      out->inplace_version_counter_->CurrentVersion() > 100) {
+    VLOG(0) << "view ops outputs as the input of scatter";
+  }
   auto index_type = index.dtype();
   bool index_type_match =
       index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64;

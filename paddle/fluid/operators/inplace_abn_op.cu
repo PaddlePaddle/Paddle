@@ -32,6 +32,10 @@ class InplaceABNKernel : public framework::OpKernel<T> {
     phi::DenseTensor* xx = const_cast<phi::DenseTensor*>(x);
     xx->inplace_version_counter_->setCanNotUse();
     y->inplace_version_counter_->setCanNotUse();
+    if (xx->inplace_version_counter_->CurrentVersion() > 1000 ||
+        y->inplace_version_counter_->CurrentVersion() > 100) {
+      VLOG(0) << "view ops outputs as the input of Abn";
+    }
     PADDLE_ENFORCE_EQ(x,
                       y,
                       platform::errors::InvalidArgument(

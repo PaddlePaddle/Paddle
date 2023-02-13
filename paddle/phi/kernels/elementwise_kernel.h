@@ -136,6 +136,11 @@ DenseTensor Maximum(const Context& dev_ctx,
   xx.inplace_version_counter_->setCanNotUse();
   yy.inplace_version_counter_->setCanNotUse();
   dense_out.inplace_version_counter_->setCanNotUse();
+  if (xx.inplace_version_counter_->CurrentVersion() > 1000 ||
+      dense_out.inplace_version_counter_->CurrentVersion() > 100 ||
+      yy.inplace_version_counter_->CurrentVersion() > 100) {
+    VLOG(0) << "view ops outputs as the input of max";
+  }
   return dense_out;
 }
 
@@ -152,6 +157,11 @@ DenseTensor Minimum(const Context& dev_ctx,
   xx.inplace_version_counter_->setCanNotUse();
   yy.inplace_version_counter_->setCanNotUse();
   dense_out.inplace_version_counter_->setCanNotUse();
+  if (xx.inplace_version_counter_->CurrentVersion() > 1000 ||
+      dense_out.inplace_version_counter_->CurrentVersion() > 100 ||
+      yy.inplace_version_counter_->CurrentVersion() > 100) {
+    VLOG(0) << "view ops outputs as the input of min";
+  }
   return dense_out;
 }
 
@@ -168,6 +178,11 @@ DenseTensor Remainder(const Context& dev_ctx,
   xx.inplace_version_counter_->setCanNotUse();
   yy.inplace_version_counter_->setCanNotUse();
   dense_out.inplace_version_counter_->setCanNotUse();
+  if (xx.inplace_version_counter_->CurrentVersion() > 1000 ||
+      dense_out.inplace_version_counter_->CurrentVersion() > 100 ||
+      yy.inplace_version_counter_->CurrentVersion() > 100) {
+    VLOG(0) << "view ops outputs as the input of remainder";
+  }
   return dense_out;
 }
 
@@ -184,6 +199,11 @@ DenseTensor FloorDivide(const Context& dev_ctx,
   xx.inplace_version_counter_->setCanNotUse();
   yy.inplace_version_counter_->setCanNotUse();
   dense_out.inplace_version_counter_->setCanNotUse();
+  if (xx.inplace_version_counter_->CurrentVersion() > 1000 ||
+      dense_out.inplace_version_counter_->CurrentVersion() > 100 ||
+      yy.inplace_version_counter_->CurrentVersion() > 100) {
+    VLOG(0) << "view ops outputs as the input of floordivide";
+  }
   return dense_out;
 }
 
@@ -200,6 +220,11 @@ DenseTensor ElementwiseHeaviside(const Context& dev_ctx,
   xx.inplace_version_counter_->setCanNotUse();
   yy.inplace_version_counter_->setCanNotUse();
   dense_out.inplace_version_counter_->setCanNotUse();
+  if (xx.inplace_version_counter_->CurrentVersion() > 1000 ||
+      dense_out.inplace_version_counter_->CurrentVersion() > 100 ||
+      yy.inplace_version_counter_->CurrentVersion() > 100) {
+    VLOG(0) << "view ops outputs as the input of heaviside";
+  }
   return dense_out;
 }
 
@@ -214,6 +239,11 @@ DenseTensor ElementwisePow(const Context& dev_ctx,
   DenseTensor& xx = const_cast<phi::DenseTensor&>(x);
   xx.inplace_version_counter_->setCanNotUse();
   dense_out.inplace_version_counter_->setCanNotUse();
+  if (xx.inplace_version_counter_->CurrentVersion() > 1000 ||
+      dense_out.inplace_version_counter_->CurrentVersion() > 100 ||
+      yy.inplace_version_counter_->CurrentVersion() > 100) {
+    VLOG(0) << "view ops outputs as the input of pow";
+  }
   return dense_out;
 }
 

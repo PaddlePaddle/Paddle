@@ -33,6 +33,10 @@ class LoDResetKernel : public framework::OpKernel<T> {
     phi::DenseTensor* xx = const_cast<phi::DenseTensor*>(in);
     xx->inplace_version_counter_->setCanNotUse();
     out->inplace_version_counter_->setCanNotUse();
+    if (xx->inplace_version_counter_->CurrentVersion() > 1000 ||
+        out->inplace_version_counter_->CurrentVersion() > 100) {
+      VLOG(0) << "view ops outputs as the input of lod_reset";
+    }
     bool append = ctx.Attr<bool>("append");
 
     framework::TensorCopy(*in, in->place(), out);

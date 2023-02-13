@@ -36,6 +36,10 @@ void InstanceNormKernel(const Context &dev_ctx,
   DenseTensor &xx = const_cast<phi::DenseTensor &>(x);
   xx.inplace_version_counter_->setCanNotUse();
   y->inplace_version_counter_->setCanNotUse();
+  if (xx.inplace_version_counter_->CurrentVersion() > 1000 ||
+      y->inplace_version_counter_->CurrentVersion() > 100) {
+    VLOG(0) << "view ops outputs as the input of instanceNorm";
+  }
   double epsilon = static_cast<double>(epsilon_f);
   auto &x_dims = x.dims();
   PADDLE_ENFORCE_GE(x_dims.size(),

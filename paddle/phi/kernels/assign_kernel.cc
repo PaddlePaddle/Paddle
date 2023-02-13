@@ -28,6 +28,10 @@ void AssignKernel(const Context& dev_ctx,
   DenseTensor& xx = const_cast<phi::DenseTensor&>(x);
   xx.inplace_version_counter_->setCanNotUse();
   out->inplace_version_counter_->setCanNotUse();
+  if (xx.inplace_version_counter_->CurrentVersion() > 1000 ||
+      out->inplace_version_counter_->CurrentVersion() > 100) {
+    VLOG(0) << "view ops outputs as the input of assign";
+  }
 }
 
 template <typename Context>

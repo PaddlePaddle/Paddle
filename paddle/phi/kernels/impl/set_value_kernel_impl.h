@@ -82,6 +82,10 @@ void SetValueImpl(const Context& dev_ctx,
   DenseTensor& xx = const_cast<phi::DenseTensor&>(in);
   xx.inplace_version_counter_->setCanNotUse();
   out->inplace_version_counter_->setCanNotUse();
+  if (xx.inplace_version_counter_->CurrentVersion() > 1000 ||
+      out->inplace_version_counter_->CurrentVersion() > 100) {
+    VLOG(0) << "view ops outputs as the input of set_value";
+  }
   auto in_dims = in.dims();
   std::vector<int64_t> starts_local = starts.GetData();
   std::vector<int64_t> ends_local = ends.GetData();

@@ -55,6 +55,10 @@ void IndexAddKernel(const Context& ctx,
   DenseTensor& xx = const_cast<phi::DenseTensor&>(x);
   xx.inplace_version_counter_->setCanNotUse();
   output->inplace_version_counter_->setCanNotUse();
+  if (xx.inplace_version_counter_->CurrentVersion() > 1000 ||
+      output->inplace_version_counter_->CurrentVersion() > 100) {
+    VLOG(0) << "view ops outputs as the input of indexAdd";
+  }
   auto input_dim = x.dims();
   auto output_dim = output->dims();
   auto add_value_dim = add_value.dims();
