@@ -152,7 +152,7 @@ class RpcRequestStore {
     return id_to_event_map_[request_id];
   }
 
-  bool GetErrorCode(int request_id) { return id_to_err_map_[request_id]; }
+  int GetErrorCode(int request_id) { return id_to_err_map_[request_id]; }
 
   std::string GetResponse(int request_id) {
     return id_to_resp_map_[request_id];

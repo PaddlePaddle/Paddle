@@ -29,7 +29,6 @@ namespace operators {
 using json = nlohmann::json;
 
 inline void ParseResponse(phi::DenseTensor* out,
-                          const std::string& res_type,
                           const platform::DeviceContext& dev_ctx,
                           const std::string& resp) {
   const std::string res_str = json::parse(resp).dump();
@@ -55,17 +54,16 @@ class RpcTokenResultOpKernel : public framework::OpKernel<T> {
     auto event = rpc_store.GetEvent(request_id);
 
     auto* out = ctx.Output<phi::DenseTensor>("Out");
-    bool ok = event->wait() == 0 && rpc_store.GetErrorCode(request_id) == 0;
+    int err_code = rpc_store.GetErrorCode(request_id);
+    bool ok = event->wait() == 0 && err_code == 0;
     if (ok) {
       const std::string& resp = rpc_store.GetResponse(request_id);
       VLOG(3) << "Request id " << request_id << " raw response: " << resp;
 
-      const std::string res_type = ctx.Attr<std::string>("res_type");
-      VLOG(3) << "Request id " << request_id << " result type: " << res_type;
-
-      ParseResponse(out, res_type, ctx.device_context(), resp);
+      ParseResponse(out, ctx.device_context(), resp);
     } else {
-      ctx.device_context().Alloc<float>(out);
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Request %s failed with error code %s.", request_id, err_code));
     }
 
     auto* succeed = ctx.Output<phi::DenseTensor>("succeed");

@@ -32,9 +32,28 @@ namespace operators {
 
 using json = nlohmann::json;
 
-inline std::string BuildPayload(const std::vector<int>& src_ids) {
+// payload builders
+inline std::string BuildIdsPayload(const std::vector<int>& src_ids) {
   json payload = {{"ids", src_ids}};  // => {"ids": [1, 2, 3, ...]}
   return payload.dump();
+}
+
+inline std::string BuildStrPayload(const std::string& query) {
+  json payload = {{"data", {query}}};  // => {"data": [query]}
+  return payload.dump();
+}
+
+inline std::string BuildPayload(const std::string& service,
+                                const std::vector<int>& src_ids) {
+  if (service == "ids") {
+    return BuildIdsPayload(src_ids);
+  } else if (service == "str") {
+    const std::string query =
+        platform::RpcTokenizer::Instance().GetWordsFromIds(src_ids);
+    return BuildStrPayload(query);
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument("Unknown service."));
+  }
 }
 
 // req & res handlers
@@ -53,8 +72,9 @@ inline void HandleServiceResponse(
   std::unique_ptr<brpc::Controller> ctrl_guard(ctrl);
   auto& rpc_store = platform::RpcRequestStore::Instance();
   if (ctrl->Failed()) {
-    VLOG(3) << "Request id " << request_id << " failed: access url error.";
     rpc_store.InsertErrorCode(request_id, ctrl->ErrorCode());
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Request id %s failed: access url error.", request_id));
   } else {
     const std::string res = ctrl->response_attachment().to_string();
     rpc_store.InsertErrorCode(request_id, 0);
@@ -78,17 +98,24 @@ class RpcCallOpKernel : public framework::OpKernel<T> {
     auto url_list = ctx.Attr<std::vector<std::string>>("url_list");
     const std::string url = url_list[url_id];
 
-    // init tokenizer
-    auto vocab_path = ctx.Attr<std::string>("vocab_path");
-    std::unordered_map<std::string, std::string> special;
-    platform::RpcTokenizer::Instance().Init(vocab_path, special);
-
     // payload
     auto src_ids_tensor = ctx.Input<phi::DenseTensor>("X");
     std::vector<int> src_ids_vec;
     framework::TensorToVector(
         *src_ids_tensor, ctx.device_context(), &src_ids_vec);
-    const std::string payload = BuildPayload(src_ids_vec);
+
+    bool use_ids = ctx.Attr<bool>("use_ids");
+    std::string service;
+    if (use_ids) {
+      service = "ids";
+    } else {
+      // init tokenizer
+      auto vocab_path = ctx.Attr<std::string>("vocab_path");
+      std::unordered_map<std::string, std::string> special;
+      platform::RpcTokenizer::Instance().Init(vocab_path, special);
+      service = "str";
+    }
+    const std::string payload = BuildPayload(service, src_ids_vec);
 
     int request_id = platform::RpcCommContext::RpcSend(
         url, payload, &HandleServiceRequest, &HandleServiceResponse);

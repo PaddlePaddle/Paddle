@@ -42,6 +42,7 @@ class RpcTokenCallOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor) Request id.");
     AddAttr<std::vector<std::string>>("url_list", "URL list.").SetDefault({});
     AddAttr<std::string>("vocab_path", "Vocab's absolute path.").SetDefault("");
+    AddAttr<bool>("use_ids", "If true, use ids directly.").SetDefault(true);
     AddComment(R"DOC(
 Rpc Token Call Operator
 

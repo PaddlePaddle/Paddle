@@ -28,18 +28,26 @@ namespace operators {
 
 using json = nlohmann::json;
 
+// resp parsers
+std::vector<double> ParseFloatResponse(const std::string& response) {
+  return {json::parse(response).get<double>()};
+}
+
+std::vector<uint8_t> ParseStrResponse(const std::string& response) {
+  const std::string res = json::parse(response).dump();
+  return std::vector<uint8_t>(res.begin(), res.end());
+}
+
 inline void ParseResponse(phi::DenseTensor* out,
                           const std::string& res_type,
                           const platform::DeviceContext& dev_ctx,
                           const std::string& resp) {
   if (res_type == "float") {
-    double res_double = json::parse(resp).get<double>();
-    std::vector<double> res{res_double};
+    auto res = ParseFloatResponse(resp);
     dev_ctx.Alloc<double>(out);
     framework::TensorFromVector(res, dev_ctx, out);
   } else if (res_type == "str") {
-    const std::string res_str = json::parse(resp).dump();
-    std::vector<uint8_t> res(res_str.begin(), res_str.end());
+    auto res = ParseStrResponse(resp);
     dev_ctx.Alloc<uint8_t>(out);
     framework::TensorFromVector(res, dev_ctx, out);
   } else {
@@ -62,7 +70,8 @@ class RpcResultOpKernel : public framework::OpKernel<T> {
     auto event = rpc_store.GetEvent(request_id);
 
     auto* out = ctx.Output<phi::DenseTensor>("Out");
-    bool ok = event->wait() == 0 && rpc_store.GetErrorCode(request_id) == 0;
+    int err_code = rpc_store.GetErrorCode(request_id);
+    bool ok = event->wait() == 0 && err_code == 0;
     if (ok) {
       const std::string& resp = rpc_store.GetResponse(request_id);
       VLOG(3) << "Request id " << request_id << " raw response: " << resp;
@@ -72,8 +81,8 @@ class RpcResultOpKernel : public framework::OpKernel<T> {
 
       ParseResponse(out, res_type, ctx.device_context(), resp);
     } else {
-      // alloc a default space
-      ctx.device_context().Alloc<float>(out);
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Request %s failed with error code %s.", request_id, err_code));
     }
 
     auto* succeed = ctx.Output<phi::DenseTensor>("succeed");
