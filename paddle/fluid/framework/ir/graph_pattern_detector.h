@@ -1104,6 +1104,19 @@ struct Pool : public PatternBase {
   PATTERN_DECL_NODE(pool_output);
 };
 
+// Softmax op
+// Forward pass for softmax.
+struct Softmax : public PatternBase {
+  Softmax(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "softmax") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(softmax_op);
+  PATTERN_DECL_NODE(softmax_input);
+  PATTERN_DECL_NODE(softmax_output);
+};
+
 // Elementwise ops
 // Forward pass for element-wise operators
 // elementwise_out is the result of the operator

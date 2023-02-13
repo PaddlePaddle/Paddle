@@ -54,6 +54,7 @@ class CPUQuantizePass : public FusePassBase {
                     bool with_residual_data) const;
   void QuantizeFc(Graph* graph, bool with_residual_data) const;
   void QuantizePool(Graph* graph) const;
+  void QuantizeSoftmax(Graph* graph) const;
   void QuantizeConcat(Graph* graph) const;
   void QuantizePriorBox(Graph* graph) const;
   void QuantizeMatmul(Graph* graph, bool with_residual) const;

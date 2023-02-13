@@ -57,5 +57,11 @@ void SoftmaxKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    softmax, OneDNN, ONEDNN, phi::SoftmaxKernel, float, phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(softmax,
+                   OneDNN,
+                   ONEDNN,
+                   phi::SoftmaxKernel,
+                   float,
+                   phi::dtype::bfloat16,
+                   int8_t,
+                   uint8_t) {}

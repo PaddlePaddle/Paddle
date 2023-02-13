@@ -2159,6 +2159,22 @@ PDNode *patterns::Pool::operator()() {
   return output_var;
 }
 
+PDNode *patterns::Softmax::operator()() {
+  auto softmax_op =
+      pattern->NewNode(softmax_op_repr())->assert_is_op("softmax");
+
+  auto softmax_input = pattern->NewNode(softmax_input_repr())
+                           ->AsInput()
+                           ->assert_is_op_input("softmax", "X");
+
+  auto softmax_output = pattern->NewNode(softmax_output_repr())
+                            ->AsOutput()
+                            ->assert_is_op_output("softmax", "Out");
+
+  softmax_op->LinksFrom({softmax_input}).LinksTo({softmax_output});
+  return softmax_output;
+}
+
 PDNode *patterns::Elementwise::operator()(PDNode *x_var,
                                           PDNode *y_var,
                                           const std::string &elementwise_type) {

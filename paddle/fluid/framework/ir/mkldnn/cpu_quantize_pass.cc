@@ -703,6 +703,52 @@ void CPUQuantizePass::QuantizePool(Graph* graph) const {
   LogQuantizedOpsCounter("pool2d", quantize_pool_count);
 }
 
+void CPUQuantizePass::QuantizeSoftmax(Graph* graph) const {
+  GraphPatternDetector gpd;
+  auto pattern = gpd.mutable_pattern();
+  patterns::Softmax softmax_pattern{pattern, name_scope_};
+  softmax_pattern();
+
+  int quantize_softmax_count = 0;
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* g) {
+    VLOG(4) << "Quantize softmax op";
+    GET_IR_NODE_FROM_SUBGRAPH(softmax_op, softmax_op, softmax_pattern);
+
+    // skip if should not be quantized
+    if (!platform::HasOpINT8DataType(softmax_op->Op())) {
+      LogQuantizationDisabled(softmax_op);
+      return;
+    }
+
+    GET_IR_NODE_FROM_SUBGRAPH(softmax_input, softmax_input, softmax_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(softmax_output, softmax_output, softmax_pattern);
+
+    if (!AreScalesPresentForNodes({softmax_input, softmax_output})) {
+      MarkAndLogCannotQuantizeOp(softmax_op,
+                                 "No scale available for the operator");
+      return;
+    }
+
+    bool is_input_unsigned{false};
+    auto input_scale = GetScaleValueForNode(softmax_input, &is_input_unsigned);
+    QuantizeInput(
+        g, softmax_op, softmax_input, "X", input_scale, is_input_unsigned);
+
+    bool is_output_unsigned{false};
+    auto output_scale =
+        GetScaleValueForNode(softmax_output, &is_output_unsigned);
+    DequantizeOutput(
+        g, softmax_op, softmax_output, "Out", output_scale, is_output_unsigned);
+
+    ++quantize_softmax_count;
+  };
+
+  gpd(graph, handler);
+  AddStatis(quantize_softmax_count);
+  LogQuantizedOpsCounter("softmax", quantize_softmax_count);
+}
+
 void CPUQuantizePass::QuantizeConcat(Graph* graph) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
@@ -1307,6 +1353,7 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   QuantizeConv(graph, "conv2d", false /* with_residual_data */);
   QuantizeConv(graph, "conv2d", true /* with_residual_data */);
   QuantizePool(graph);
+  QuantizeSoftmax(graph);
   QuantizeConcat(graph);
   QuantizePriorBox(graph);
   QuantizeFc(graph, false /* with_residual_data */);
