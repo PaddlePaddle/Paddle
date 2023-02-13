@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/multi_tensor_adam_kernel.h"
+#include "paddle/phi/kernels/fused_adam_kernel.h"
 #include <vector>
 
 #include "paddle/phi/core/kernel_registry.h"
@@ -29,7 +29,7 @@ static paddle::optional<DenseTensor> TensorPtrToOptionalTensor(
 }
 
 template <typename T, typename Context>
-void MultiTensorAdamKernel(
+void FusedAdamKernel(
     const Context& dev_ctx,
     const std::vector<const DenseTensor*>& params,
     const std::vector<const DenseTensor*>& grads,
@@ -157,9 +157,5 @@ void MultiTensorAdamKernel(
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(multi_tensor_adam,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::MultiTensorAdamKernel,
-                   float,
-                   double) {}
+PD_REGISTER_KERNEL(
+    fused_adam, CPU, ALL_LAYOUT, phi::FusedAdamKernel, float, double) {}

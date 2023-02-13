@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/multi_tensor_adam_kernel.h"
+#include "paddle/phi/kernels/fused_adam_kernel.h"
 #include <vector>
 #include "glog/logging.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -487,7 +487,7 @@ void MultiTensorAdamKernel(
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(multi_tensor_adam,
+PD_REGISTER_KERNEL(fused_adam,
                    GPU,
                    ALL_LAYOUT,
                    phi::MultiTensorAdamKernel,

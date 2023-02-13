@@ -2981,7 +2981,7 @@ void YoloLossInferMeta(const MetaTensor& x,
   gt_match_mask->set_dtype(x.dtype());
 }
 
-void MultiTensorAdamInferMeta(
+void FusedAdamInferMeta(
     const std::vector<const MetaTensor*>& params,
     const std::vector<const MetaTensor*>& grads,
     const MetaTensor& learning_rate,

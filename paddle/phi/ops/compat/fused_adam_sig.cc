@@ -18,8 +18,7 @@
 
 namespace phi {
 
-KernelSignature MultiTensorAdamOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+KernelSignature FusedAdamOpArgumentMapping(const ArgumentMappingContext& ctx) {
   paddle::small_vector<const char*> in_names = {"Params",
                                                 "Grads",
                                                 "LearningRate",
@@ -44,7 +43,7 @@ KernelSignature MultiTensorAdamOpArgumentMapping(
                                                   "multi_precision",
                                                   "use_global_beta_pow"};
 
-  return KernelSignature("multi_tensor_adam",
+  return KernelSignature("fused_adam",
                          std::move(in_names),
                          std::move(attr_names),
                          std::move(out_names));
@@ -52,5 +51,4 @@ KernelSignature MultiTensorAdamOpArgumentMapping(
 
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(multi_tensor_adam,
-                           phi::MultiTensorAdamOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(fused_adam, phi::FusedAdamOpArgumentMapping);
