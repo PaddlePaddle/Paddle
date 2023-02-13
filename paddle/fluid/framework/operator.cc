@@ -1594,7 +1594,7 @@ bool OperatorWithKernel::CanCUTLASSBeUsed(
         75,
         phi::errors::PreconditionNotMet(
             "Expect compute compatiblity to be less than 75, but got %d. ",
-            ctx.GetComputeCapability()));
+            dev_ctx.GetComputeCapability()));
   }
 #endif  // PADDLE_WITH_CUDA && PADDLE_WITH_CUTLASS
 
