@@ -61,12 +61,12 @@ void ScaleKernel(const Context& dev_ctx,
       inputs,
       &outputs,
       ScaleFunctor<T>(scale.to<T>(), static_cast<T>(bias), bias_after_scale));
-  /*if (x.IsSharedWith(*y) && x.share_buffer_with.size() > 0) {
-      DenseTensor& xx = const_cast<DenseTensor&>(x);
-      for(int i = 0; i < xx.share_buffer_with.size(); ++i) {
-        xx.share_buffer_with[i]->can_not_use = true;
-      }*/
-  //}
+  if (x.IsSharedWith(*out) && x.share_buffer_with.size() > 0) {
+    DenseTensor& xx = const_cast<DenseTensor&>(x);
+    for (size_t i = 0; i < xx.share_buffer_with.size(); ++i) {
+      xx.share_buffer_with[i]->can_not_use = true;
+    }
+  }
 }
 
 }  // namespace phi

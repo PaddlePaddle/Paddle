@@ -38,12 +38,12 @@ void FillKernel(const Context& dev_ctx,
 
   phi::funcs::SetConstant<Context, T> functor;
   functor(dev_ctx, out, fill_var);
-  /*if (x.share_buffer_with.size() > 0) {
-      DenseTensor& xx = const_cast<DenseTensor&>(x);
-      for(int i = 0; i < xx.share_buffer_with.size(); ++i) {
-        xx.share_buffer_with[i]->can_not_use = true;
-      }
-  }*/
+  if (x.share_buffer_with.size() > 0) {
+    DenseTensor& xx = const_cast<DenseTensor&>(x);
+    for (size_t i = 0; i < xx.share_buffer_with.size(); ++i) {
+      xx.share_buffer_with[i]->can_not_use = true;
+    }
+  }
 }
 
 }  // namespace phi

@@ -204,6 +204,12 @@ void SetValueImpl(const Context& dev_ctx,
 
   // Step 3: Set out tensor with value
   out_e.device(eigen_place) = out_e - pad_e;
+  if (in.IsSharedWith(*out) && in.share_buffer_with.size() > 0) {
+    DenseTensor& xx = const_cast<DenseTensor&>(in);
+    for (size_t i = 0; i < xx.share_buffer_with.size(); ++i) {
+      xx.share_buffer_with[i]->can_not_use = true;
+    }
+  }
 }
 
 template <typename T, typename Context>

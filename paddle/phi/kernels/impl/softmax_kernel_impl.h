@@ -48,6 +48,12 @@ void SoftmaxKernel(const Context& dev_ctx,
   X_2d.ShareDataWith(x).Resize({n, d});
   Out_2d.ShareDataWith(*out).Resize({n, d});
   phi::funcs::SoftmaxFunctor<Context, T>()(dev_ctx, axis_dim, &X_2d, &Out_2d);
+  if (x.IsSharedWith(*out) && x.share_buffer_with.size() > 0) {
+    DenseTensor& xx = const_cast<DenseTensor&>(x);
+    for (size_t i = 0; i < xx.share_buffer_with.size(); ++i) {
+      xx.share_buffer_with[i]->can_not_use = true;
+    }
+  }
 }
 
 }  // namespace phi
