@@ -165,6 +165,9 @@ class DenseTensor : public TensorBase,
 
   void* data();
 
+  bool can_not_use{false};
+
+  std::vector<DenseTensor*> share_buffer_with;
   /// \brief Get whether the storage_properties is inited.
   /// \return The init status of storage_properties.
   bool storage_properties_initialized() const;
@@ -267,7 +270,7 @@ class DenseTensor : public TensorBase,
     uint32_t inplace_version_{0};
   };
 
- protected:
+ public:
   std::shared_ptr<InplaceVersion> inplace_version_counter_{
       std::make_shared<InplaceVersion>()};
 
