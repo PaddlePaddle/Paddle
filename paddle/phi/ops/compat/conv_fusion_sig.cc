@@ -37,3 +37,5 @@ KernelSignature ConvFusionOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }  // namespace phi
 
 PD_REGISTER_ARG_MAPPING_FN(conv2d_fusion, phi::ConvFusionOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(conv2d_fusion_cutlass,
+                           phi::ConvFusionOpArgumentMapping);
