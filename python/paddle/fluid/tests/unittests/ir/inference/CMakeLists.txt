@@ -36,6 +36,12 @@ if(WIN32)
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_trt_convert_trans_layernorm")
   list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_fused_token_prune")
   list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_fused_token_prune")
+  list(REMOVE_ITEM TEST_TRT_IR_PASSES
+       "test_trt_convert_elementwiseadd_transpose")
+  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
+       "test_trt_convert_elementwiseadd_transpose")
+  list(REMOVE_ITEM TEST_TRT_CONVERTER
+       "test_trt_convert_elementwiseadd_transpose")
 endif()
 
 # Only for cpu(mkl + openblas)
