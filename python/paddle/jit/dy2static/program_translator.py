@@ -47,6 +47,7 @@ from .utils import (
     func_to_source_code,
     input_specs_compatible,
     make_hashable,
+    prim_or_cinn_is_enabled,
     type_name,
     unwrap,
 )
@@ -1039,17 +1040,6 @@ class ConcreteProgram:
         )
 
 
-def _extract_indeed_params_buffers(class_instance):
-    """
-    To filter not initialzed buffers.
-    """
-    params = list(get_parameters(class_instance).values())
-    buffers = list(get_buffers(class_instance).values())
-    buffers = [buffer for buffer in buffers if len(buffer.shape) != 0]
-
-    return params + buffers
-
-
 class ParametersRecorder:
     def __init__(self):
         self.params_dict = {}
@@ -1169,6 +1159,17 @@ class ProgramCache:
             else:
                 raise
 
+        if prim_or_cinn_is_enabled(cache_key.kwargs['build_strategy']):
+            for var in concrete_program.main_program.list_vars():
+                if -1 in var.shape:
+                    raise ValueError(
+                        "Now prim and cinn do not support -1 shape, but the shape of var {} is {}".format(
+                            var.name, var.shape
+                        )
+                    )
+            global MAX_TRACED_PROGRAM_COUNT
+            MAX_TRACED_PROGRAM_COUNT = 100
+
         concrete_program._to_prim()
         return concrete_program, partial_program_from(concrete_program)
 
@@ -1192,6 +1193,7 @@ class ProgramCache:
                         current_tracing_count, MAX_TRACED_PROGRAM_COUNT
                     )
                 )
+                self._caches.pop(self._caches.keys()[0])
 
         return self._caches[item_id]
 
