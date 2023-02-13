@@ -28,35 +28,19 @@ namespace operators {
 
 using json = nlohmann::json;
 
-// resp parsers
-std::vector<double> ParseFloatResponse(const std::string& response) {
-  return {json::parse(response).get<double>()};
-}
-
-std::vector<uint8_t> ParseStrResponse(const std::string& response) {
-  const std::string res = json::parse(response).dump();
-  return std::vector<uint8_t>(res.begin(), res.end());
-}
-
 inline void ParseResponse(phi::DenseTensor* out,
-                          const std::string& res_type,
                           const platform::DeviceContext& dev_ctx,
                           const std::string& resp) {
-  if (res_type == "float") {
-    auto res = ParseFloatResponse(resp);
-    dev_ctx.Alloc<double>(out);
-    framework::TensorFromVector(res, dev_ctx, out);
-  } else if (res_type == "str") {
-    auto res = ParseStrResponse(resp);
-    dev_ctx.Alloc<uint8_t>(out);
-    framework::TensorFromVector(res, dev_ctx, out);
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument("Unknown result type."));
-  }
+  const std::string res_str = json::parse(resp).dump();
+  // this must be called after tokenizer init in rpc_call op
+  std::vector<int> res =
+      platform::RpcTokenizer::Instance().GetIdsFromText(res_str);
+  dev_ctx.Alloc<int>(out);
+  framework::TensorFromVector(res, dev_ctx, out);
 }
 
 template <typename T>
-class RpcResultOpKernel : public framework::OpKernel<T> {
+class RpcTokenResultOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* request_id_tensor = ctx.Input<phi::DenseTensor>("X");
@@ -76,10 +60,7 @@ class RpcResultOpKernel : public framework::OpKernel<T> {
       const std::string& resp = rpc_store.GetResponse(request_id);
       VLOG(3) << "Request id " << request_id << " raw response: " << resp;
 
-      const std::string res_type = ctx.Attr<std::string>("res_type");
-      VLOG(3) << "Request id " << request_id << " result type: " << res_type;
-
-      ParseResponse(out, res_type, ctx.device_context(), resp);
+      ParseResponse(out, ctx.device_context(), resp);
     } else {
       PADDLE_THROW(platform::errors::Unavailable(
           "Request %s failed with error code %s.", request_id, err_code));

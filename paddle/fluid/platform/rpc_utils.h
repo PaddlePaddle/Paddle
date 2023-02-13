@@ -16,11 +16,13 @@
 
 #include <brpc/channel.h>
 #include <bthread/countdown_event.h>
+#include <unicode/normlzr.h>
+#include <unicode/utypes.h>
 
+#include <atomic>
 #include <codecvt>
 #include <locale>
 #include <memory>
-#include <mutex>
 #include <string>
 #include <unordered_map>
 
@@ -33,6 +35,15 @@ class BasicTokenizer {
       : do_lower_case_(do_lower_case) {}
 
   std::vector<std::wstring> Tokenize(const std::wstring& text);
+
+ private:
+  std::wstring StripAccents(const std::wstring& text);
+
+  std::wstring SplitOnPunc(const std::wstring& text);
+
+  std::wstring TokenizeChineseChars(const std::wstring& text);
+
+  std::wstring CleanText(const std::wstring& text);
 
  private:
   bool do_lower_case_;
@@ -122,6 +133,18 @@ class RpcTokenizer {
   std::vector<int> GetIdsFromText(const std::string& text);
 
  private:
+  std::string GetRecoveredToken(const std::vector<uint8_t>& bytes);
+
+  std::vector<std::string> RecoverBFBTokens(
+      const std::vector<std::string>& tokens);
+
+  std::vector<std::string> PostProcess(
+      const std::vector<std::string>& tokens,
+      const std::unordered_map<std::wstring, int>& vocab,
+      bool aggressive_break = false,
+      const std::string& stop_token = "[gEND]");
+
+ private:
   std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> converter_;
 
   FullTokenizer tokenizer_;
@@ -140,7 +163,6 @@ class RpcRequestStore {
   }
 
   int GetRequestId() {
-    std::lock_guard<std::mutex> lock(mutex_);
     if (request_id_ == INT32_MAX) {
       request_id_ = 0;
     } else {
@@ -153,7 +175,7 @@ class RpcRequestStore {
     return id_to_event_map_[request_id];
   }
 
-  bool GetErrorCode(int request_id) { return id_to_err_map_[request_id]; }
+  int GetErrorCode(int request_id) { return id_to_err_map_[request_id]; }
 
   std::string GetResponse(int request_id) {
     return id_to_resp_map_[request_id];
@@ -182,23 +204,26 @@ class RpcRequestStore {
   }
 
  private:
-  std::mutex mutex_;
-  int request_id_;
+  std::atomic<int> request_id_;
+
   std::unordered_map<int, std::shared_ptr<bthread::CountdownEvent>>
       id_to_event_map_;
   std::unordered_map<int, int> id_to_err_map_;
   std::unordered_map<int, std::string> id_to_resp_map_;
 };
 
-int RpcSend(const std::string& url,
-            const std::string& query,
-            void (*request_handler)(brpc::Controller*, int, const std::string&),
-            void (*response_handler)(brpc::Controller*,
-                                     int,
-                                     std::shared_ptr<bthread::CountdownEvent>),
-            brpc::HttpMethod http_method = brpc::HttpMethod::HTTP_METHOD_POST,
-            int timeout_ms = 10000,
-            int max_retry = 3);
+struct RpcCommContext {
+  static int RpcSend(
+      const std::string& url,
+      const std::string& query,
+      void (*request_handler)(brpc::Controller*, int, const std::string&),
+      void (*response_handler)(brpc::Controller*,
+                               int,
+                               std::shared_ptr<bthread::CountdownEvent>),
+      brpc::HttpMethod http_method = brpc::HttpMethod::HTTP_METHOD_POST,
+      int timeout_ms = 10000,
+      int max_retry = 3);
+};
 
 }  // namespace platform
 }  // namespace paddle
