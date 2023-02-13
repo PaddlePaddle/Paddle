@@ -525,6 +525,20 @@ void AutoInitStringTensorByStringTensor(
   InitStringTensorWithStringTensor(py_tensor_ptr, src_tensor, place, act_name);
 }
 
+PyDoc_STRVAR(
+    TensorDoc,
+    R"DOC(Tensor($self, /, value, place, persistable, zero_copy, name, stop_gradient, dims, dtype, type)
+--
+
+Tensor is the basic data structure in PaddlePaddle. There are some ways to create a Tensor:
+
+- Use the exsiting ``data`` to create a Tensor, please refer to :ref:`api_paddle_to_tensor`.
+- Create a Tensor with a specified ``shape``, please refer to :ref:`api_paddle_ones`,
+  :ref:`api_paddle_zeros`, :ref:`api_paddle_full`.
+- Create a Tensor with the same ``shape`` and ``dtype`` as other Tensor, please refer to
+  :ref:`api_paddle_ones_like`, :ref:`api_paddle_zeros_like`, :ref:`api_paddle_full_like`.
+)DOC");
+
 /** We should have init function with signature:
  * 1.
  * def __init__ ()
@@ -1133,20 +1147,6 @@ static void TensorDealloc(TensorObject* self) {
   self->tensor.~Tensor();
   Py_TYPE(self)->tp_free(reinterpret_cast<PyObject*>(self));
 }
-
-PyDoc_STRVAR(
-    TensorDoc,
-    R"DOC(Tensor($self, /, value, place, persistable, zero_copy, name, stop_gradient, dims, dtype, type)
---
-
-Tensor is the basic data structure in PaddlePaddle. There are some ways to create a Tensor:
-
-- Use the exsiting ``data`` to create a Tensor, please refer to :ref:`api_paddle_to_tensor`.
-- Create a Tensor with a specified ``shape``, please refer to :ref:`api_paddle_ones`,
-  :ref:`api_paddle_zeros`, :ref:`api_paddle_full`.
-- Create a Tensor with the same ``shape`` and ``dtype`` as other Tensor, please refer to
-  :ref:`api_paddle_ones_like`, :ref:`api_paddle_zeros_like`, :ref:`api_paddle_full_like`.
-)DOC");
 
 extern struct PyGetSetDef variable_properties[];
 extern struct PyGetSetDef string_tensor_variable_properties[];

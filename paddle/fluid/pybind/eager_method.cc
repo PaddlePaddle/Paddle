@@ -88,6 +88,27 @@ Py_ssize_t GetSliceIndexFromPyObject(PyObject* obj) {
   }
 }
 
+PyDoc_STRVAR(tensor_method_numpy__doc__, R"DOC(numpy($self, /)
+--
+
+Returns a numpy array shows the value of current Tensor.
+
+Returns:
+    ndarray, The numpy value of current Tensor, dtype is
+    same as current Tensor.
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        data = paddle.uniform([30, 10, 32], dtype="float32", min=-1, max=1)
+        linear = paddle.nn.Linear(32, 64)
+        data = paddle.to_tensor(data)
+        x = linear(data)
+        print(x.numpy())
+)DOC");
+
 static PyObject* tensor_method_numpy(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
@@ -283,27 +304,6 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   return array;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
-
-PyDoc_STRVAR(tensor_method_numpy__doc__, R"DOC(numpy($self, /)
---
-
-Returns a numpy array shows the value of current Tensor.
-
-Returns:
-    ndarray, The numpy value of current Tensor, dtype is
-    same as current Tensor.
-
-Examples:
-    .. code-block:: python
-
-        import paddle
-
-        data = paddle.uniform([30, 10, 32], dtype="float32", min=-1, max=1)
-        linear = paddle.nn.Linear(32, 64)
-        data = paddle.to_tensor(data)
-        x = linear(data)
-        print(x.numpy())
-)DOC");
 
 static PyObject* tensor_method_numpy_for_string_tensor(TensorObject* self,
                                                        PyObject* args,
@@ -509,27 +509,6 @@ static PyObject* tensor_method_copy_(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-static PyObject* tensor_method_clone(TensorObject* self,
-                                     PyObject* args,
-                                     PyObject* kwargs) {
-  EAGER_TRY
-  paddle::experimental::Tensor out;
-  {
-    eager_gil_scoped_release guard;
-    PADDLE_ENFORCE_EQ(
-        self->tensor.initialized(),
-        true,
-        paddle::platform::errors::InvalidArgument(
-            "We can only support initialized tensor in clone, however we got "
-            "uninitialized tensor %s, please check your code.",
-            self->tensor.name()));
-
-    out = assign_ad_func(self->tensor);
-  }
-  return ToPyObject(out);
-  EAGER_CATCH_AND_THROW_RETURN_NULL
-}
-
 PyDoc_STRVAR(tensor_method_clone__doc__, R"DOC(clone($self, /)
 --
 
@@ -565,6 +544,27 @@ Examples:
         print(x.grad)          # None
 )DOC");
 
+static PyObject* tensor_method_clone(TensorObject* self,
+                                     PyObject* args,
+                                     PyObject* kwargs) {
+  EAGER_TRY
+  paddle::experimental::Tensor out;
+  {
+    eager_gil_scoped_release guard;
+    PADDLE_ENFORCE_EQ(
+        self->tensor.initialized(),
+        true,
+        paddle::platform::errors::InvalidArgument(
+            "We can only support initialized tensor in clone, however we got "
+            "uninitialized tensor %s, please check your code.",
+            self->tensor.name()));
+
+    out = assign_ad_func(self->tensor);
+  }
+  return ToPyObject(out);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor_retain_grads(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
@@ -583,6 +583,36 @@ static PyObject* tensor_retain_grads(TensorObject* self,
 
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+
+PyDoc_STRVAR(tensor_clear_gradient__doc__,
+             R"DOC(clear_gradient($self, set_to_zero=True, /)
+--
+
+Only for Tensor that has gradient, normally we use this for Parameters since
+other temporary Tensor doesen't has gradient.
+
+The Gradient of current Tensor will be set to ``0`` elementwise or ``None``.
+
+Args:
+    set_to_zero (bool, optional): If set to ``True``, the gradient will be set
+        to ``0`` elementwise, otherwise the gradient will be set to ``None``.
+        Default: ``True``.
+
+Returns:
+    None.
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+        input = paddle.uniform([10, 2])
+        linear = paddle.nn.Linear(2, 3)
+        out = linear(input)
+        out.backward()
+        print("Before clear_gradient, linear.weight.grad: {}".format(linear.weight.grad))
+        linear.weight.clear_gradient()
+        print("After clear_gradient, linear.weight.grad: {}".format(linear.weight.grad))
+)DOC");
 
 static PyObject* tensor_clear_gradient(TensorObject* self,
                                        PyObject* args,
@@ -646,36 +676,6 @@ static PyObject* tensor_clear_gradient(TensorObject* self,
 
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
-
-PyDoc_STRVAR(tensor_clear_gradient__doc__,
-             R"DOC(clear_gradient($self, set_to_zero=True, /)
---
-
-Only for Tensor that has gradient, normally we use this for Parameters since
-other temporary Tensor doesen't has gradient.
-
-The Gradient of current Tensor will be set to ``0`` elementwise or ``None``.
-
-Args:
-    set_to_zero (bool, optional): If set to ``True``, the gradient will be set
-        to ``0`` elementwise, otherwise the gradient will be set to ``None``.
-        Default: ``True``.
-
-Returns:
-    None.
-
-Examples:
-    .. code-block:: python
-
-        import paddle
-        input = paddle.uniform([10, 2])
-        linear = paddle.nn.Linear(2, 3)
-        out = linear(input)
-        out.backward()
-        print("Before clear_gradient, linear.weight.grad: {}".format(linear.weight.grad))
-        linear.weight.clear_gradient()
-        print("After clear_gradient, linear.weight.grad: {}".format(linear.weight.grad))
-)DOC");
 
 static PyObject* tensor__zero_grads(TensorObject* self,
                                     PyObject* args,
@@ -809,34 +809,6 @@ static PyObject* tensor__is_shared_underline_tensor_with(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-static PyObject* tensor_method_detach(TensorObject* self,
-                                      PyObject* args,
-                                      PyObject* kwargs) {
-  EAGER_TRY
-  PADDLE_ENFORCE_EQ(
-      self->tensor.initialized(),
-      true,
-      platform::errors::InvalidArgument("Tensor %s has not been initialized!",
-                                        self->tensor.name()));
-
-  PyObject* obj = p_tensor_type->tp_alloc(p_tensor_type, 0);
-  if (obj) {
-    auto v = reinterpret_cast<TensorObject*>(obj);
-    new (&(v->tensor)) paddle::experimental::Tensor();
-    v->tensor.set_impl(self->tensor.impl());
-    v->tensor.set_name(egr::Controller::Instance().GenerateUniqueName());
-    auto autograd_meta_src = egr::EagerUtils::autograd_meta(&(self->tensor));
-    auto autograd_meta = egr::EagerUtils::autograd_meta(&(v->tensor));
-    autograd_meta->SetPersistable(autograd_meta_src->Persistable());
-  } else {
-    PADDLE_THROW(platform::errors::Fatal(
-        "tp_alloc return null, can not new a PyObject."));
-  }
-
-  return obj;
-  EAGER_CATCH_AND_THROW_RETURN_NULL
-}
-
 PyDoc_STRVAR(tensor_method_detach__doc__, R"DOC(detach($self, /)
 --
 
@@ -876,6 +848,34 @@ Examples:
         # It will raise Error:
         #   one of the variables needed for gradient computation has been modified by an inplace operation.
 )DOC");
+
+static PyObject* tensor_method_detach(TensorObject* self,
+                                      PyObject* args,
+                                      PyObject* kwargs) {
+  EAGER_TRY
+  PADDLE_ENFORCE_EQ(
+      self->tensor.initialized(),
+      true,
+      platform::errors::InvalidArgument("Tensor %s has not been initialized!",
+                                        self->tensor.name()));
+
+  PyObject* obj = p_tensor_type->tp_alloc(p_tensor_type, 0);
+  if (obj) {
+    auto v = reinterpret_cast<TensorObject*>(obj);
+    new (&(v->tensor)) paddle::experimental::Tensor();
+    v->tensor.set_impl(self->tensor.impl());
+    v->tensor.set_name(egr::Controller::Instance().GenerateUniqueName());
+    auto autograd_meta_src = egr::EagerUtils::autograd_meta(&(self->tensor));
+    auto autograd_meta = egr::EagerUtils::autograd_meta(&(v->tensor));
+    autograd_meta->SetPersistable(autograd_meta_src->Persistable());
+  } else {
+    PADDLE_THROW(platform::errors::Fatal(
+        "tp_alloc return null, can not new a PyObject."));
+  }
+
+  return obj;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
 
 static PyObject* tensor_method_get_underline_tensor(TensorObject* self,
                                                     PyObject* args,
@@ -1824,16 +1824,6 @@ static PyObject* tensor__inplace_version(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-static PyObject* tensor_method_element_size(TensorObject* self,
-                                            PyObject* args,
-                                            PyObject* kwargs) {
-  EAGER_TRY
-  uint32_t element_size = phi::SizeOf(self->tensor.dtype());
-
-  return ToPyObject(element_size);
-  EAGER_CATCH_AND_THROW_RETURN_NULL
-}
-
 PyDoc_STRVAR(tensor_method_element_size__doc__, R"DOC(element_size($self, /)
 --
 
@@ -1862,6 +1852,16 @@ Examples:
         x = paddle.to_tensor(1, dtype='complex128')
         x.element_size() # 16
 )DOC");
+
+static PyObject* tensor_method_element_size(TensorObject* self,
+                                            PyObject* args,
+                                            PyObject* kwargs) {
+  EAGER_TRY
+  uint32_t element_size = phi::SizeOf(self->tensor.dtype());
+
+  return ToPyObject(element_size);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
 
 static PyObject* tensor__bump_inplace_version(TensorObject* self,
                                               PyObject* args,
