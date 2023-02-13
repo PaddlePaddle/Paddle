@@ -23,9 +23,9 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/distributed/auto_parallel/auto_parallel.pb.h"
-#include "paddle/fluid/distributed/auto_parallel/utils.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/distributed/auto_parallel/auto_parallel.pb.h"
+#include "paddle/phi/distributed/auto_parallel/utils.h"
 
 namespace paddle {
 namespace distributed {

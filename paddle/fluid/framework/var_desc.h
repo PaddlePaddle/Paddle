@@ -20,10 +20,10 @@ limitations under the License. */
 #include <vector>
 
 #include "glog/logging.h"
-#include "paddle/fluid/distributed/auto_parallel/dist_attr.h"
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/type_defs.h"
+#include "paddle/phi/distributed/auto_parallel/dist_attr.h"
 
 namespace paddle {
 namespace framework {

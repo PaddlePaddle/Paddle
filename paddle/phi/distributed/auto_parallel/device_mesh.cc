@@ -15,8 +15,8 @@ limitations under the License. */
 #include <algorithm>
 #include <iterator>
 
-#include "paddle/fluid/distributed/auto_parallel/device_mesh.h"
-#include "paddle/fluid/distributed/auto_parallel/utils.h"
+#include "paddle/phi/distributed/auto_parallel/device_mesh.h"
+#include "paddle/phi/distributed/auto_parallel/utils.h"
 
 namespace paddle {
 namespace distributed {

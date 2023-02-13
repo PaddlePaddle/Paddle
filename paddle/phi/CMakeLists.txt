@@ -11,6 +11,8 @@ add_subdirectory(api)
 add_subdirectory(core)
 # phi components of specific backends
 add_subdirectory(backends)
+# phi components for distributed training
+add_subdirectory(distributed)
 # phi kernels for diff device
 add_subdirectory(kernels)
 # phi infermeta

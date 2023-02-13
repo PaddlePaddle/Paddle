@@ -17,11 +17,11 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 
-#include "paddle/fluid/distributed/auto_parallel/dist_attr.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
+#include "paddle/phi/distributed/auto_parallel/dist_attr.h"
 
 namespace paddle {
 namespace distributed {

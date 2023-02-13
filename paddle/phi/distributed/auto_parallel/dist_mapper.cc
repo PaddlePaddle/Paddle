@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include <algorithm>
 
-#include "paddle/fluid/distributed/auto_parallel/dist_mapper.h"
-#include "paddle/fluid/distributed/auto_parallel/utils.h"
+#include "paddle/phi/distributed/auto_parallel/dist_mapper.h"
+#include "paddle/phi/distributed/auto_parallel/utils.h"
 
 namespace paddle {
 namespace distributed {
