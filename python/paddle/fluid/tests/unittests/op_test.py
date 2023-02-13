@@ -237,7 +237,7 @@ def get_numeric_gradient(
     # we use a for loop to compute the gradient of every element.
     for i in range(tensor_size):
         if in_place:
-            set_input(scope, op, inputs, place)
+            set_input(scope, op, inputs, outputs, place)
 
         # get one input element throw it's index i.
         origin = __get_elem__(tensor_to_check, i)
@@ -247,7 +247,7 @@ def get_numeric_gradient(
         y_pos = get_output()
 
         if in_place:
-            set_input(scope, op, inputs, place)
+            set_input(scope, op, inputs, outputs, place)
 
         x_neg = origin - delta
         __set_elem__(tensor_to_check, i, x_neg)

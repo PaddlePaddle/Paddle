@@ -292,7 +292,7 @@ class XPUOpTest(OpTest):
                 )
 
         for input_to_check in inputs_to_check:
-            set_input(self.scope, self.op, self.inputs, place)
+            set_input(self.scope, self.op, self.inputs, self.outputs, place)
 
         if not type(output_names) is list:
             output_names = [output_names]
