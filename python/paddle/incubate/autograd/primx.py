@@ -622,7 +622,10 @@ def _lower_composite(block, blacklist=[]):
                     orig_outs,
                     new_outs,
                 ):
-                    if new_out is not None:
+                    if orig_out is None:
+                        # to keep same as phi op defination, orig_out may receive None
+                        continue
+                    elif new_out is not None:
                         if orig_out.shape and new_out.shape:
                             # Todo(cz), more attrs to be checked
                             assert orig_out.shape == new_out.shape, (

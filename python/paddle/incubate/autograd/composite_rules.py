@@ -101,7 +101,7 @@ def composite_batchnorm(
     batch_var_ = assign(reshape(batch_var, run_var.shape))
     run_mean_ = assign(run_mean)
     run_var_ = assign(run_var)
-    if trainable_statistics or not is_test:
-        return y, run_mean_, run_var_, batch_mean_, batch_var_, None
-    else:
-        return y, run_mean_, run_var_, batch_mean_, batch_var_
+    # reserve_space is not needed in composite rule, but still ruturn None to keep same as phi op defination.
+    reserve_space = None
+
+    return y, run_mean_, run_var_, batch_mean_, batch_var_, reserve_space
