@@ -89,17 +89,14 @@ def set_input(scope, op, inputs, outputs, place):
     for out_name, out_dup in Operator.get_op_outputs(op.type()):
         if out_name in outputs:
             if out_dup:
-                sub_out = inputs[out_name]
+                sub_out = outputs[out_name]
                 for item in sub_out:
                     sub_out_name, sub_out_val = item[0], item[1]
                     out_dtype = sub_out_val.dtype
             else:
-                # set_output_dtype(out_dtype, outputs[out_name])
-                # out_dtype = outputs[out_name].dtype
                 var = outputs[out_name]
                 if isinstance(var, tuple) or isinstance(var, np.ndarray):
                     if isinstance(var, tuple):
-                        # tensor.set_recursive_sequence_lengths(var[1])
                         var = var[0]
                     out_dtype = var.dtype
                 elif isinstance(var, float):
