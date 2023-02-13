@@ -268,6 +268,7 @@ class PADDLE_API GPUContext : public DeviceContext,
 // and Dnn kernel function, so if we using DnnContext = GPUContext, we
 // must use different function name for cudnn kernel
 using GPUDNNContext = GPUContext;
+using CUTLASSContext = GPUContext;
 
 // KPS (Kernel PrimitiveS API) needs to exist as a kind of backend,
 // because we want to implement a KPS-based kernel and make it run
