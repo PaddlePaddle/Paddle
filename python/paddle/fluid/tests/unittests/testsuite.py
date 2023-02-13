@@ -77,7 +77,7 @@ def set_input(scope, op, inputs, outputs, place):
                 tensor.set_recursive_sequence_lengths(var[1])
                 var = var[0]
             tensor._set_dims(var.shape)
-            if var.dtype == np.float16 and out_dtype.dtype == np.float32:
+            if var.dtype == np.float16 and out_dtype == np.float32:
                 tensor.set(var.astype(np.float32), place)
             else:
                 tensor.set(var, place)
@@ -94,7 +94,18 @@ def set_input(scope, op, inputs, outputs, place):
                     sub_out_name, sub_out_val = item[0], item[1]
                     out_dtype = sub_out_val.dtype
             else:
-                out_dtype = outputs[out_name].dtype
+                # set_output_dtype(out_dtype, outputs[out_name])
+                # out_dtype = outputs[out_name].dtype
+                var = outputs[out_name]
+                if isinstance(var, tuple) or isinstance(var, np.ndarray):
+                    if isinstance(var, tuple):
+                        # tensor.set_recursive_sequence_lengths(var[1])
+                        var = var[0]
+                    out_dtype = var.dtype
+                elif isinstance(var, float):
+                    out_dtype = np.float
+                elif isinstance(var, int):
+                    out_dtype = np.int
 
     for in_name, in_dup in Operator.get_op_inputs(op.type()):
         if in_name in inputs:
