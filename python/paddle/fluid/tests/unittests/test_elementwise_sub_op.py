@@ -144,16 +144,26 @@ class TestElementwiseFP16Op(TestElementwiseOp):
                 self.check_output_with_place(place, atol=1e-3)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=1e-3)
+        self.check_grad(
+            ['X', 'Y'], 'Out', max_relative_error=1e-3, check_eager=True
+        )
 
     def test_check_grad_ingore_y(self):
         self.check_grad(
-            ['X'], 'Out', max_relative_error=1e-3, no_grad_set=set("Y")
+            ['X'],
+            'Out',
+            max_relative_error=1e-3,
+            no_grad_set=set("Y"),
+            check_eager=True,
         )
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
-            ['Y'], 'Out', max_relative_error=1e-3, no_grad_set=set("X")
+            ['Y'],
+            'Out',
+            max_relative_error=1e-3,
+            no_grad_set=set("X"),
+            check_eager=True,
         )
 
 
