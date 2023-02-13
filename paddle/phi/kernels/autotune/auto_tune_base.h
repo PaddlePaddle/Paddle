@@ -146,15 +146,15 @@ template <typename T, typename ReturnType, typename... Args>
 class TransposeAutoTuner
     : public AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>> {
  public:
-  static AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>>* Instance(
+  static TransposeAutoTuner<T, ReturnType, Args...>* Instance(
       ReturnType (*func)(Args...)) {
     static std::once_flag transpose_init_flag_;
-    static std::unique_ptr<
-        AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>>>
+    static std::unique_ptr<TransposeAutoTuner<T, ReturnType, Args...>>
         instance_;
     std::call_once(transpose_init_flag_, [&] {
       auto obj = MakeCallback<T>(func);
-      instance_.reset(new AutoTuneBase<T, decltype(obj)>(obj));
+      instance_.reset(new TransposeAutoTuner<T, ReturnType, Args...>);
+      instance_->AddCallBack(func);
     });
     return instance_.get();
   }
@@ -197,8 +197,8 @@ class MatmulAutoTuner
 };
 
 template <typename T, typename ReturnType, typename... Args>
-static AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>>*
-MakeTransposeTuner(ReturnType (*func)(Args...)) {
+static TransposeAutoTuner<T, ReturnType, Args...>* MakeTransposeTuner(
+    ReturnType (*func)(Args...)) {
   return TransposeAutoTuner<T, ReturnType, Args...>::Instance(func);
 }
 
