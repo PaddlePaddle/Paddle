@@ -184,6 +184,7 @@ def _get_args_values(op, phi_name):
                 and arg_name in op_content["attrs"].keys()
             ):
                 arg_name = op_content["attrs"][arg_name]
+            # Note: in some cases, attrs may be optional , thus assign None. Such case must be recorded.
             if arg_name not in op.attr_names:
                 attrs.append(None)
             else:
@@ -211,6 +212,7 @@ def prepare_python_api_arguments(op):
             if item in op.input_names:
                 res.append(get_var_block(op.block, op.input(item)))
             else:
+                # Note: in some cases, inputs may be optional, thus assign None. Such case must be recorded.
                 res.append(None)
         if attrs:
             res.extend(attrs)
@@ -227,8 +229,8 @@ def get_output_var_list(op):
         ]
 
 
-def get_output_vars_from_comosite(op):
-    """origin op outputs must be mapped into outputs of composite rule."""
+def map_output_for_composite(op):
+    """origin op outputs must be mapped into outputs of composite rule. map info has been defined in op_compat.yaml"""
     origin_output_names = op.output_names
     if origin_output_names is None:
         return []
@@ -239,7 +241,7 @@ def get_output_vars_from_comosite(op):
             for item in op_map[name]["outputs"].keys():
                 origin_output_name = op_map[name]["outputs"][item]
                 if origin_output_name not in origin_output_names:
-                    # in some cases, some output of origin op is optional, so op name may not be in origin_output_names
+                    # Note: in some cases, some output of origin op is optional, so op name may not be in origin_output_names
                     continue
                 origin_output_var = get_var_block(
                     op.block, op.output(origin_output_name)

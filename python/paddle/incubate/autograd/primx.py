@@ -37,7 +37,7 @@ from .utils import (
     flatten_and_remove_none,
     get_input_var_list,
     get_output_var_list,
-    get_output_vars_from_comosite,
+    map_output_for_composite,
     prepare_python_api_arguments,
 )
 
@@ -610,9 +610,7 @@ def _lower_composite(block, blacklist=[]):
                 input_args = prepare_python_api_arguments(op)
                 bind(input_args, to_bind, value_table)
 
-                orig_outs = expand_nested_list(
-                    get_output_vars_from_comosite(op)
-                )
+                orig_outs = expand_nested_list(map_output_for_composite(op))
                 new_outs = expand_nested_list(
                     as_tensors(lower_fn(op, *input_args))
                 )
@@ -626,6 +624,7 @@ def _lower_composite(block, blacklist=[]):
                 ):
                     if new_out is not None:
                         if orig_out.shape and new_out.shape:
+                            # Todo(cz), more attrs to be checked
                             assert orig_out.shape == new_out.shape, (
                                 f'when replace origin op {op_name} with composite rule, origin out shape should be equal to new out shape, '
                                 f'but orig_out.shape={orig_out.shape} and new_out.shape={new_out.shape}'
