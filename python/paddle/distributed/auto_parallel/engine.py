@@ -816,6 +816,8 @@ class Engine:
         batch_size=1,
         epochs=1,
         steps_per_epoch=None,
+        steps_gap_per_valid=None,
+        steps_per_valid=None,
         log_freq=10,
         save_dir=None,
         save_freq=1,
@@ -843,6 +845,9 @@ class Engine:
             steps_per_epoch (int, optional): The total number of steps (batches of samples)
                 is executed in one epoch before stating the next one. If None, it is equal to
                 the number samples in your dataset divided by the batch size. Default: None.
+            steps_gap_per_valid (int, optional):Validate every steps_gap_per_valid steps during training
+            steps_per_valid (int, optional):Number of steps for each validation during training.
+                This is used in each epoch, not at the end of each epoch.
             valid_data (Dataset, optional): An instance of paddle paddle.io.Dataset used for
                 evaluation at the end of epoch. No evaluation will be done if set to None.
                 Default: None. (Unsupported for now)
@@ -954,6 +959,29 @@ class Engine:
                     self._mode,
                 )
                 cbks.on_batch_end('train', step, logs)
+
+                if (
+                    steps_gap_per_valid is not None
+                    and steps_per_valid is not None
+                ):
+                    if valid_data and (step + 1) % steps_gap_per_valid == 0:
+                        val_logs = self.evaluate(
+                            valid_data,
+                            valid_sample_split,
+                            batch_size,
+                            steps_per_valid,
+                            log_freq,
+                            collate_fn,
+                            callbacks,
+                            verbose,
+                        )
+                        val_logs = {
+                            "val_" + name: val for name, val in val_logs.items()
+                        }
+                        logs.update(val_logs)
+                        self._switch_mode("train")
+                    else:
+                        self._reset_metrics()
 
             if valid_data and (epoch + 1) % valid_freq == 0:
                 val_logs = self.evaluate(
