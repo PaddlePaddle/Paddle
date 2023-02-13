@@ -19,7 +19,6 @@
 #endif
 
 #include "paddle/fluid/prim/api/all.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/ddim.h"
 
@@ -310,7 +309,8 @@ void exp_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
 template <typename T>
 void erf_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
-    auto m_2_sqrt_pi = full<T>(phi::vectorize(x.dims()), M_2_SQRTPI, x.dtype());
+    auto M_2_SQRTPI = 1.12837916709551257390 auto m_2_sqrt_pi =
+        full<T>(phi::vectorize(x.dims()), M_2_SQRTPI, x.dtype());
     auto neg_one = full<T>(phi::vectorize(x.dims()), -1.0, x.dtype());
     auto neg_tmp = multiply<T>(neg_one, pow<T>(x, 2.0));
     auto mul_tmp = multiply<T>(m_2_sqrt_pi, exp<T>(neg_tmp));
