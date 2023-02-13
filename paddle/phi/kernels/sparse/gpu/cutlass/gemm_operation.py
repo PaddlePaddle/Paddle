@@ -69,7 +69,7 @@ class GemmOperation:
         swizzling_functor=SwizzlingFunctor.Identity8,
     ):
 
-        self.prefix = "3x" if gemm_kind == GemmKind.Universal3x else ""
+        self.prefix = ""
         self.operation_kind = OperationKind.Gemm
         self.arch = arch
         self.tile_description = tile_description
@@ -97,11 +97,6 @@ class GemmOperation:
 
     #
     def short_math_name(self):
-        if (
-            self.tile_description.math_instruction.math_operation
-            == MathOperation.multiply_add_complex_gaussian
-        ):
-            return "g%s" % ShortDataTypeNames[self.accumulator_type()]
         return ShortDataTypeNames[self.accumulator_type()]
 
     #
@@ -130,18 +125,9 @@ class GemmOperation:
                 else ''
             )
 
-            if self.gemm_kind == GemmKind.Universal3x:
-                inst_shape = "{0}x{1}x{2}".format(
-                    *tuple(
-                        self.tile_description.math_instruction.instruction_shape
-                    )
-                )
-            else:
-                inst_shape = "{0}{1}{2}".format(
-                    *tuple(
-                        self.tile_description.math_instruction.instruction_shape
-                    )
-                )
+            inst_shape = "{0}{1}{2}".format(
+                *tuple(self.tile_description.math_instruction.instruction_shape)
+            )
 
             inst_shape += math_op_string
 

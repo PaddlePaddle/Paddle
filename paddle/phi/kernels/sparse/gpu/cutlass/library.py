@@ -64,21 +64,6 @@ class DataType(enum.Enum):
     f32 = enum_auto()
     tf32 = enum_auto()
     f64 = enum_auto()
-    cf16 = enum_auto()
-    cbf16 = enum_auto()
-    cf32 = enum_auto()
-    ctf32 = enum_auto()
-    cf64 = enum_auto()
-    cs4 = enum_auto()
-    cs8 = enum_auto()
-    cs16 = enum_auto()
-    cs32 = enum_auto()
-    cs64 = enum_auto()
-    cu4 = enum_auto()
-    cu8 = enum_auto()
-    cu16 = enum_auto()
-    cu32 = enum_auto()
-    cu64 = enum_auto()
     invalid = enum_auto()
 
 
@@ -89,8 +74,6 @@ ShortDataTypeNames = {
     DataType.f16: 'h',
     DataType.f32: 's',
     DataType.f64: 'd',
-    DataType.cf32: 'c',
-    DataType.cf64: 'z',
 }
 
 DataTypeNames = {
@@ -112,21 +95,6 @@ DataTypeNames = {
     DataType.f32: "f32",
     DataType.tf32: "tf32",
     DataType.f64: "f64",
-    DataType.cf16: "cf16",
-    DataType.cbf16: "cbf16",
-    DataType.cf32: "cf32",
-    DataType.ctf32: "ctf32",
-    DataType.cf64: "cf64",
-    DataType.cu4: "cu4",
-    DataType.cu8: "cu8",
-    DataType.cu16: "cu16",
-    DataType.cu32: "cu32",
-    DataType.cu64: "cu64",
-    DataType.cs4: "cs4",
-    DataType.cs8: "cs8",
-    DataType.cs16: "cs16",
-    DataType.cs32: "cs32",
-    DataType.cs64: "cs64",
 }
 
 DataTypeTag = {
@@ -148,21 +116,6 @@ DataTypeTag = {
     DataType.f32: "float",
     DataType.tf32: "cutlass::tfloat32_t",
     DataType.f64: "double",
-    DataType.cf16: "cutlass::complex<cutlass::half_t>",
-    DataType.cbf16: "cutlass::complex<cutlass::bfloat16_t>",
-    DataType.cf32: "cutlass::complex<float>",
-    DataType.ctf32: "cutlass::complex<cutlass::tfloat32_t>",
-    DataType.cf64: "cutlass::complex<double>",
-    DataType.cu4: "cutlass::complex<cutlass::uint4b_t>",
-    DataType.cu8: "cutlass::complex<cutlass::uint8_t>",
-    DataType.cu16: "cutlass::complex<cutlass::uint16_t>",
-    DataType.cu32: "cutlass::complex<cutlass::uint32_t>",
-    DataType.cu64: "cutlass::complex<cutlass::uint64_t>",
-    DataType.cs4: "cutlass::complex<cutlass::int4b_t>",
-    DataType.cs8: "cutlass::complex<cutlass::int8_t>",
-    DataType.cs16: "cutlass::complex<cutlass::int16_t>",
-    DataType.cs32: "cutlass::complex<cutlass::int32_t>",
-    DataType.cs64: "cutlass::complex<cutlass::int64_t>",
 }
 
 DataTypeSize = {
@@ -184,32 +137,6 @@ DataTypeSize = {
     DataType.f32: 32,
     DataType.tf32: 32,
     DataType.f64: 64,
-    DataType.cf16: 32,
-    DataType.cbf16: 32,
-    DataType.cf32: 64,
-    DataType.ctf32: 32,
-    DataType.cf64: 128,
-    DataType.cu4: 8,
-    DataType.cu8: 16,
-    DataType.cu16: 32,
-    DataType.cu32: 64,
-    DataType.cu64: 128,
-    DataType.cs4: 8,
-    DataType.cs8: 16,
-    DataType.cs16: 32,
-    DataType.cs32: 64,
-    DataType.cs64: 128,
-}
-
-
-class BlasMode(enum.Enum):
-    symmetric = enum_auto()
-    hermitian = enum_auto()
-
-
-BlasModeTag = {
-    BlasMode.symmetric: 'cutlass::BlasMode::kSymmetric',
-    BlasMode.hermitian: 'cutlass::BlasMode::kHermitian',
 }
 
 
@@ -223,38 +150,6 @@ ComplexTransformTag = {
     ComplexTransform.conj: 'cutlass::ComplexTransform::kConjugate',
 }
 
-RealComplexBijection = [
-    (DataType.f16, DataType.cf16),
-    (DataType.f32, DataType.cf32),
-    (DataType.f64, DataType.cf64),
-]
-
-
-def is_complex(data_type):
-    for r, c in RealComplexBijection:
-        if data_type == c:
-            return True
-    return False
-
-
-def get_complex_from_real(real_type):
-    for r, c in RealComplexBijection:
-        if real_type == r:
-            return c
-    return DataType.invalid
-
-
-def get_real_from_complex(complex_type):
-    for r, c in RealComplexBijection:
-        if complex_type == c:
-            return r
-    return DataType.invalid
-
-
-class ComplexMultiplyOp(enum.Enum):
-    multiply_add = enum_auto()
-    gaussian = enum_auto()
-
 
 class MathOperation(enum.Enum):
     multiply_add = enum_auto()
@@ -263,21 +158,14 @@ class MathOperation(enum.Enum):
     multiply_add_fast_bf16 = enum_auto()
     multiply_add_fast_f16 = enum_auto()
     multiply_add_fast_f32 = enum_auto()
-    multiply_add_complex_fast_f32 = enum_auto()
-    multiply_add_complex = enum_auto()
-    multiply_add_complex_gaussian = enum_auto()
 
 
 MathOperationTag = {
     MathOperation.multiply_add: 'cutlass::arch::OpMultiplyAdd',
     MathOperation.multiply_add_saturate: 'cutlass::arch::OpMultiplyAddSaturate',
-    MathOperation.xor_popc: 'cutlass::arch::OpXorPopc',
     MathOperation.multiply_add_fast_bf16: 'cutlass::arch::OpMultiplyAddFastBF16',
     MathOperation.multiply_add_fast_f16: 'cutlass::arch::OpMultiplyAddFastF16',
     MathOperation.multiply_add_fast_f32: 'cutlass::arch::OpMultiplyAddFastF32',
-    MathOperation.multiply_add_complex_fast_f32: 'cutlass::arch::OpMultiplyAddComplexFastF32',
-    MathOperation.multiply_add_complex: 'cutlass::arch::OpMultiplyAddComplex',
-    MathOperation.multiply_add_complex_gaussian: 'cutlass::arch::OpMultiplyAddGaussianComplex',
 }
 
 
@@ -290,14 +178,6 @@ class LayoutType(enum.Enum):
     RowMajorInterleaved32 = enum_auto()
     ColumnMajorInterleaved64 = enum_auto()
     RowMajorInterleaved64 = enum_auto()
-    TensorNHWC = enum_auto()
-    TensorNDHWC = enum_auto()
-    TensorNCHW = enum_auto()
-    TensorNGHWC = enum_auto()
-    TensorNC32HW32 = enum_auto()
-    TensorNC64HW64 = enum_auto()
-    TensorC32RSK32 = enum_auto()
-    TensorC64RSK64 = enum_auto()
 
 
 LayoutTag = {
@@ -309,14 +189,6 @@ LayoutTag = {
     LayoutType.RowMajorInterleaved32: 'cutlass::layout::RowMajorInterleaved<32>',
     LayoutType.ColumnMajorInterleaved64: 'cutlass::layout::ColumnMajorInterleaved<64>',
     LayoutType.RowMajorInterleaved64: 'cutlass::layout::RowMajorInterleaved<64>',
-    LayoutType.TensorNHWC: 'cutlass::layout::TensorNHWC',
-    LayoutType.TensorNDHWC: 'cutlass::layout::TensorNDHWC',
-    LayoutType.TensorNCHW: 'cutlass::layout::TensorNCHW',
-    LayoutType.TensorNGHWC: 'cutlass::layout::TensorNGHWC',
-    LayoutType.TensorNC32HW32: 'cutlass::layout::TensorNCxHWx<32>',
-    LayoutType.TensorC32RSK32: 'cutlass::layout::TensorCxRSKx<32>',
-    LayoutType.TensorNC64HW64: 'cutlass::layout::TensorNCxHWx<64>',
-    LayoutType.TensorC64RSK64: 'cutlass::layout::TensorCxRSKx<64>',
 }
 
 TransposedLayout = {
@@ -328,7 +200,6 @@ TransposedLayout = {
     LayoutType.RowMajorInterleaved32: LayoutType.ColumnMajorInterleaved32,
     LayoutType.ColumnMajorInterleaved64: LayoutType.RowMajorInterleaved64,
     LayoutType.RowMajorInterleaved64: LayoutType.ColumnMajorInterleaved64,
-    LayoutType.TensorNHWC: LayoutType.TensorNHWC,
 }
 
 ShortLayoutTypeNames = {
@@ -340,14 +211,6 @@ ShortLayoutTypeNames = {
     LayoutType.RowMajorInterleaved2: 'n2',
     LayoutType.RowMajorInterleaved32: 'n32',
     LayoutType.RowMajorInterleaved64: 'n64',
-    LayoutType.TensorNHWC: 'nhwc',
-    LayoutType.TensorNDHWC: 'ndhwc',
-    LayoutType.TensorNCHW: 'nchw',
-    LayoutType.TensorNGHWC: 'nghwc',
-    LayoutType.TensorNC32HW32: 'nc32hw32',
-    LayoutType.TensorNC64HW64: 'nc64hw64',
-    LayoutType.TensorC32RSK32: 'c32rsk32',
-    LayoutType.TensorC64RSK64: 'c64rsk64',
 }
 
 ShortComplexLayoutNames = {
@@ -356,45 +219,6 @@ ShortComplexLayoutNames = {
     (LayoutType.RowMajor, ComplexTransform.none): 'n',
     (LayoutType.RowMajor, ComplexTransform.conj): 'h',
 }
-
-
-class SideMode(enum.Enum):
-    Left = enum_auto()
-    Right = enum_auto()
-
-
-SideModeTag = {
-    SideMode.Left: 'cutlass::SideMode::kLeft',
-    SideMode.Right: 'cutlass::SideMode::kRight',
-}
-
-ShortSideModeNames = {SideMode.Left: 'ls', SideMode.Right: 'rs'}
-
-
-class FillMode(enum.Enum):
-    Lower = enum_auto()
-    Upper = enum_auto()
-
-
-FillModeTag = {
-    FillMode.Lower: 'cutlass::FillMode::kLower',
-    FillMode.Upper: 'cutlass::FillMode::kUpper',
-}
-
-ShortFillModeNames = {FillMode.Lower: 'l', FillMode.Upper: 'u'}
-
-
-class DiagType(enum.Enum):
-    NonUnit = enum_auto()
-    Unit = enum_auto()
-
-
-DiagTypeTag = {
-    DiagType.NonUnit: 'cutlass::DiagType::kNonUnit',
-    DiagType.Unit: 'cutlass::DiagType::kUnit',
-}
-
-ShortDiagTypeNames = {DiagType.NonUnit: 'nu', DiagType.Unit: 'un'}
 
 
 class OpcodeClass(enum.Enum):
@@ -419,23 +243,9 @@ OpcodeClassTag = {
 
 class OperationKind(enum.Enum):
     Gemm = enum_auto()
-    RankK = enum_auto()
-    Rank2K = enum_auto()
-    Trmm = enum_auto()
-    Symm = enum_auto()
-    Conv2d = enum_auto()
-    Conv3d = enum_auto()
 
 
-OperationKindNames = {
-    OperationKind.Gemm: 'gemm',
-    OperationKind.RankK: 'rank_k',
-    OperationKind.Rank2K: 'rank_2k',
-    OperationKind.Trmm: 'trmm',
-    OperationKind.Symm: 'symm',
-    OperationKind.Conv2d: 'conv2d',
-    OperationKind.Conv3d: 'conv3d',
-}
+OperationKindNames = {OperationKind.Gemm: 'gemm'}
 
 
 class Target(enum.Enum):
@@ -480,45 +290,10 @@ def SubstituteTemplate(template, values):
 
 
 class GemmKind(enum.Enum):
-    Gemm = enum_auto()
-    Sparse = enum_auto()
-    Universal = enum_auto()
-    Universal3x = enum_auto()
-    PlanarComplex = enum_auto()
-    PlanarComplexArray = enum_auto()
-    Grouped = enum_auto()
-
-
-GemmKindNames = {
-    GemmKind.Gemm: "gemm",
-    GemmKind.Sparse: "spgemm",
-    GemmKind.Universal: "gemm",
-    GemmKind.Universal3x: "gemm",
-    GemmKind.PlanarComplex: "gemm_planar_complex",
-    GemmKind.PlanarComplexArray: "gemm_planar_complex_array",
-    GemmKind.Grouped: "gemm_grouped",
-}
-
-
-class RankKKind(enum.Enum):
     Universal = enum_auto()
 
 
-RankKKindNames = {RankKKind.Universal: "rank_k"}
-
-
-class TrmmKind(enum.Enum):
-    Universal = enum_auto()
-
-
-TrmmKindNames = {TrmmKind.Universal: "trmm"}
-
-
-class SymmKind(enum.Enum):
-    Universal = enum_auto()
-
-
-SymmKindNames = {SymmKind.Universal: "symm"}
+GemmKindNames = {GemmKind.Universal: "gemm"}
 
 
 class EpilogueFunctor(enum.Enum):
@@ -554,109 +329,6 @@ SwizzlingFunctorTag = {
     SwizzlingFunctor.StridedDgradIdentity4: 'cutlass::conv::threadblock::StridedDgradIdentityThreadblockSwizzle<4>',
     SwizzlingFunctor.StridedDgradHorizontal: 'cutlass::conv::threadblock::StridedDgradHorizontalThreadblockSwizzle',
     SwizzlingFunctor.StreamK: 'cutlass::gemm::threadblock::ThreadblockSwizzleStreamK',
-}
-
-
-class GroupScheduleMode(enum.Enum):
-    Device = (enum_auto(),)
-    Host = enum_auto()
-
-
-GroupScheduleModeTag = {
-    GroupScheduleMode.Device: 'cutlass::gemm::kernel::GroupScheduleMode::kDeviceOnly',
-    GroupScheduleMode.Host: 'cutlass::gemm::kernel::GroupScheduleMode::kHostPrecompute',
-}
-
-ShortGroupScheduleModeNames = {
-    GroupScheduleMode.Device: 'Device',
-    GroupScheduleMode.Host: 'Host',
-}
-
-
-class ConvKind(enum.Enum):
-    Fprop = enum_auto()
-    Dgrad = enum_auto()
-    Wgrad = enum_auto()
-
-
-ConvKindTag = {
-    ConvKind.Fprop: 'cutlass::conv::Operator::kFprop',
-    ConvKind.Dgrad: 'cutlass::conv::Operator::kDgrad',
-    ConvKind.Wgrad: 'cutlass::conv::Operator::kWgrad',
-}
-
-ConvKindNames = {
-    ConvKind.Fprop: 'fprop',
-    ConvKind.Dgrad: 'dgrad',
-    ConvKind.Wgrad: 'wgrad',
-}
-
-
-class IteratorAlgorithm(enum.Enum):
-    Analytic = enum_auto()
-    Optimized = enum_auto()
-    FixedChannels = enum_auto()
-    FewChannels = enum_auto()
-    FixedStrideDilation = enum_auto()
-
-
-IteratorAlgorithmTag = {
-    IteratorAlgorithm.Analytic: 'cutlass::conv::IteratorAlgorithm::kAnalytic',
-    IteratorAlgorithm.Optimized: 'cutlass::conv::IteratorAlgorithm::kOptimized',
-    IteratorAlgorithm.FixedChannels: 'cutlass::conv::IteratorAlgorithm::kFixedChannels',
-    IteratorAlgorithm.FewChannels: 'cutlass::conv::IteratorAlgorithm::kFewChannels',
-    IteratorAlgorithm.FixedStrideDilation: 'cutlass::conv::IteratorAlgorithm::kFixedStrideDilation',
-}
-
-IteratorAlgorithmNames = {
-    IteratorAlgorithm.Analytic: 'analytic',
-    IteratorAlgorithm.Optimized: 'optimized',
-    IteratorAlgorithm.FixedChannels: 'fixed_channels',
-    IteratorAlgorithm.FewChannels: 'few_channels',
-    IteratorAlgorithm.FixedStrideDilation: 'fixed_stride_dilation',
-}
-
-
-class StrideSupport(enum.Enum):
-    Strided = enum_auto()
-    Unity = enum_auto()
-    Fixed = enum_auto()
-
-
-StrideSupportTag = {
-    StrideSupport.Strided: 'cutlass::conv::StrideSupport::kStrided',
-    StrideSupport.Unity: 'cutlass::conv::StrideSupport::kUnity',
-    StrideSupport.Fixed: 'cutlass::conv::StrideSupport::kFixed',
-}
-
-StrideSupportNames = {
-    StrideSupport.Strided: '',
-    StrideSupport.Unity: 'unity_stride',
-    StrideSupport.Fixed: 'fixed_stride',
-}
-
-
-class GroupMode(enum.Enum):
-    NoneGroup = enum_auto()  # dense conv (G=1)
-    SingleGroup = enum_auto()  # grouped convolution (single group per CTA)
-    MultipleGroup = (
-        enum_auto()
-    )  # grouped convolution ( multiple groups per CTA)
-    Depthwise = enum_auto()  # Depthwise convolution ( C=K=G )
-
-
-GroupModeTag = {
-    GroupMode.NoneGroup: 'cutlass::conv::GroupMode::kNone',
-    GroupMode.SingleGroup: 'cutlass::conv::GroupMode::kSingleGroup',
-    GroupMode.MultipleGroup: 'cutlass::conv::GroupMode::kMultipleGroup',
-    GroupMode.Depthwise: 'cutlass::conv::GroupMode::kDepthwise',
-}
-
-GroupModeNames = {
-    GroupMode.NoneGroup: '',
-    GroupMode.SingleGroup: 'single_group',
-    GroupMode.MultipleGroup: 'multiple_group',
-    GroupMode.Depthwise: 'depthwise',
 }
 
 
@@ -727,44 +399,6 @@ class TensorDescription:
     ):
         self.element = element
         self.layout = layout
-        self.alignment = alignment
-        self.complex_transform = complex_transform
-
-
-class SymmetricTensorDescription:
-    def __init__(
-        self,
-        element,
-        layout,
-        fill_mode,
-        alignment=1,
-        complex_transform=ComplexTransform.none,
-        side_mode=SideMode.Left,
-    ):
-        self.element = element
-        self.layout = layout
-        self.fill_mode = fill_mode
-        self.alignment = alignment
-        self.complex_transform = complex_transform
-        self.side_mode = side_mode
-
-
-class TriangularTensorDescription:
-    def __init__(
-        self,
-        element,
-        layout,
-        side_mode,
-        fill_mode,
-        diag_type,
-        alignment=1,
-        complex_transform=ComplexTransform.none,
-    ):
-        self.element = element
-        self.layout = layout
-        self.side_mode = side_mode
-        self.fill_mode = fill_mode
-        self.diag_type = diag_type
         self.alignment = alignment
         self.complex_transform = complex_transform
 
