@@ -780,6 +780,7 @@ class OperatorWithKernel : public OperatorBase {
   // used for IndicateOrPromoteVarDataTypes
   phi::DenseTensor* GetTensorFormInputSafely(const ExecutionContext& ctx,
                                              const std::string& name) const;
+  bool NeedResetRuntimeContext(const Scope& scope) const;
 
  protected:
   mutable std::unique_ptr<OpKernelType> kernel_type_;

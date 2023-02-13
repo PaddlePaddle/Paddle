@@ -1618,6 +1618,53 @@ void OperatorWithKernel::CheckWhetherPreparePhiData(
   }
 }
 
+// When do we need to reset runtime context ?
+// 1. When enable cache runtime context, if the program runs for the first time,
+//   runtime_ctx_.get() == nullptr, we need to create a new runtime context.
+// 2. When enable cache runtime context, if the program is not running for the
+// first time,
+//   but the input shape of the operator has changed, we cannot use the runtime
+//   context stored in the cache at this time, and need to create a new one.
+bool OperatorWithKernel::NeedResetRuntimeContext(const Scope& scope) const {
+  if (runtime_ctx_.get() == nullptr) return true;
+  const auto& name_map = Inputs();
+  for (auto& var_name_item : name_map) {
+    auto& name_vec = var_name_item.second;
+    std::vector<Variable*>& cache_input_vars =
+        runtime_ctx_->inputs[var_name_item.first];
+    PADDLE_ENFORCE_EQ(
+        name_vec.size(),
+        cache_input_vars.size(),
+        platform::errors::InvalidArgument(
+            "The size of input variable names (%d) must be equal to "
+            "the size of cache input variable ptrs (%d).",
+            name_vec.size(),
+            cache_input_vars.size()));
+    for (size_t i = 0; i < name_vec.size(); i++) {
+      auto var_name = name_vec[i];
+      auto* cache_input_var = cache_input_vars[i];
+      if (!VarIsTensor(*cache_input_var)) continue;
+      auto* cache_input_tensor =
+          GetMutableLoDTensorOrSelectedRowsValueFromVar(cache_input_var);
+      auto cache_input_tensor_dims = cache_input_tensor->dims();
+      auto* current_input_var = scope.FindVar(var_name);
+      PADDLE_ENFORCE_NOT_NULL(
+          current_input_var,
+          platform::errors::NotFound(
+              "The variable %s is not found when "
+              "enable_cache_runtime_context_cache in origin scope.",
+              var_name));
+      auto* current_input_tensor =
+          GetMutableLoDTensorOrSelectedRowsValueFromVar(current_input_var);
+      auto current_input_tensor_dims = current_input_tensor->dims();
+      if (cache_input_tensor_dims != current_input_tensor_dims) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
   // To reduce the elapsed time of HasAttr, we use bool variable to record the
@@ -1638,7 +1685,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     }
     (*phi_kernel_)(impl_->getKernelContext());
   } else {
-    if (runtime_ctx_.get() == nullptr) {
+    if (NeedResetRuntimeContext(scope)) {
       std::lock_guard<std::mutex> lock(cache_update_mutex_);
       runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
     }
