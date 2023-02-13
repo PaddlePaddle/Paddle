@@ -42,15 +42,44 @@ __global__ void LinspaceSpecialKernel(T start, T* out) {
 }
 
 template <typename T, typename Context>
+T GetValueOfExpectedType(const Context& ctx, const DenseTensor& x) {
+  switch (x.dtype()) {
+    case DataType::FLOAT32:
+      return static_cast<T>(GetValue<float, Context>(ctx, x));
+    case DataType::FLOAT64:
+      return static_cast<T>(GetValue<double, Context>(ctx, x));
+    case DataType::INT32:
+      return static_cast<T>(GetValue<int32_t, Context>(ctx, x));
+    case DataType::INT64:
+      return static_cast<T>(GetValue<int64_t, Context>(ctx, x));
+    case DataType::FLOAT16:
+      return static_cast<T>(GetValue<phi::dtype::float16, Context>(ctx, x));
+    case DataType::BFLOAT16:
+      return static_cast<T>(GetValue<phi::dtype::bfloat16, Context>(ctx, x));
+    case DataType::BOOL:
+      return static_cast<T>(GetValue<bool, Context>(ctx, x));
+    case DataType::INT16:
+      return static_cast<T>(GetValue<int16_t, Context>(ctx, x));
+    case DataType::UINT8:
+      return static_cast<T>(GetValue<uint8_t, Context>(ctx, x));
+    default:
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Data type (%s) is not supported when casting data type.",
+          x.dtype()));
+  }
+}
+
+template <typename T, typename Context>
 void LinspaceKernel(const Context& ctx,
-                    const Scalar& start,
-                    const Scalar& stop,
-                    const Scalar& number,
+                    const DenseTensor& start,
+                    const DenseTensor& stop,
+                    const DenseTensor& number,
                     DataType dtype,
                     DenseTensor* out) {
-  T start_value = start.to<T>();
-  T stop_value = stop.to<T>();
-  int64_t num = number.to<int64_t>();
+  T start_value = GetValueOfExpectedType<T, Context>(ctx, start);
+  T stop_value = GetValueOfExpectedType<T, Context>(ctx, stop);
+  int64_t num = GetValueOfExpectedType<int64_t, Context>(ctx, number);
+
   PADDLE_ENFORCE_GT(
       num,
       0,

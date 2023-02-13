@@ -22,14 +22,17 @@ namespace phi {
 
 template <typename T, typename Context>
 void LinspaceKernel(const Context& ctx,
-                    const Scalar& start,
-                    const Scalar& stop,
-                    const Scalar& number,
+                    const DenseTensor& start,
+                    const DenseTensor& stop,
+                    const DenseTensor& number,
                     DataType dtype,
                     DenseTensor* out) {
-  T start_data = start.to<T>();
-  T stop_data = stop.to<T>();
-  int64_t num = number.to<int64_t>();
+  int32_t num = number.data<int32_t>()[0];
+  auto start_t = phi::funcs::TransDataType(ctx, start, dtype);
+  auto stop_t = phi::funcs::TransDataType(ctx, stop, dtype);
+
+  T start_data = start_t.template data<T>()[0];
+  T stop_data = stop_t.template data<T>()[0];
   PADDLE_ENFORCE_GT(
       num,
       0,

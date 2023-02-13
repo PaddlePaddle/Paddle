@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/common/int_array.h"
-#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/meta_tensor.h"
 
 namespace phi {
@@ -105,14 +104,14 @@ void LerpInferMeta(const MetaTensor& x,
                    const MetaTensor& weight,
                    MetaTensor* out);
 
-void LinspaceRawInferMeta(const Scalar& start,
-                          const Scalar& stop,
-                          const Scalar& number,
+void LinspaceRawInferMeta(const MetaTensor& start,
+                          const MetaTensor& stop,
+                          const MetaTensor& number,
                           MetaTensor* out);
 
-void LinspaceInferMeta(const Scalar& start,
-                       const Scalar& stop,
-                       const Scalar& number,
+void LinspaceInferMeta(const MetaTensor& start,
+                       const MetaTensor& stop,
+                       const MetaTensor& number,
                        DataType dtype,
                        MetaTensor* out);
 

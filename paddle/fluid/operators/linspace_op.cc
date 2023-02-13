@@ -23,54 +23,51 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-// class LinspaceOp : public framework::OperatorWithKernel {
-//  public:
-//   using framework::OperatorWithKernel::OperatorWithKernel;
+class LinspaceOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
 
-//  protected:
-//   phi::KernelKey GetExpectedKernelType(
-//       const framework::ExecutionContext &ctx) const override {
-//     return phi::KernelKey(
-//         framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
-//         ctx.GetPlace());
-//   }
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return phi::KernelKey(
+        framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
+        ctx.GetPlace());
+  }
 
-//   phi::KernelKey GetKernelTypeForVar(
-//       const std::string &var_name,
-//       const phi::DenseTensor &tensor,
-//       const phi::KernelKey &expected_kernel_type) const override {
-//     if (platform::is_xpu_place(tensor.place())) {
-//       return phi::KernelKey(
-//           tensor.place(), tensor.layout(), expected_kernel_type.dtype());
-//     }
-//     return phi::KernelKey(phi::Backend::ALL_BACKEND,
-//                           expected_kernel_type.layout(),
-//                           expected_kernel_type.dtype());
-//   }
-// };
+  phi::KernelKey GetKernelTypeForVar(
+      const std::string &var_name,
+      const phi::DenseTensor &tensor,
+      const phi::KernelKey &expected_kernel_type) const override {
+    if (platform::is_xpu_place(tensor.place())) {
+      return phi::KernelKey(
+          tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+    }
+    return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                          expected_kernel_type.layout(),
+                          expected_kernel_type.dtype());
+  }
+};
 
-// class LinspaceOpMaker : public framework::OpProtoAndCheckerMaker {
-//  public:
-//   void Make() override {
-//     AddInput("Start",
-//              "First entry in the sequence. It is a tensor of shape [1],
-//              should " "be of type float32 or float64.") .AsDispensable();
-//     AddInput("Stop",
-//              "Last entry in the sequence. It is a tensor of shape [1], should
-//              " "be of type float32 or float64.") .AsDispensable();
-//     AddInput("Num",
-//              "Number of entry in the sequence. It is a tensor of shape [1], "
-//              "should be of type int32.")
-//              .AsDispensable();
-//     AddAttr<int>("dtype", "The output data type.");
-//     AddOutput("Out", "A sequence of numbers.");
-//     AddComment(R"DOC(
-//     Return fixed number of evenly spaced values within a given interval.
-//     First entry is start, and last entry is stop. In the case when Num is 1,
-//     only Start is returned. Like linspace function of numpy.
-// )DOC");
-//   }
-// };
+class LinspaceOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("Start",
+             "First entry in the sequence. It is a tensor of shape [1], should "
+             "be of type float32 or float64.");
+    AddInput("Stop",
+             "Last entry in the sequence. It is a tensor of shape [1], should "
+             "be of type float32 or float64.");
+    AddInput("Num",
+             "Number of entry in the sequence. It is a tensor of shape [1], "
+             "should be of type int32.");
+    AddAttr<int>("dtype", "The output data type.");
+    AddOutput("Out", "A sequence of numbers.");
+    AddComment(R"DOC(
+    Return fixed number of evenly spaced values within a given interval. First entry is start, and last entry is stop. In the case when Num is 1, only Start is returned. Like linspace function of numpy.
+)DOC");
+  }
+};
 }  // namespace operators
 }  // namespace paddle
 
@@ -78,13 +75,13 @@ namespace ops = paddle::operators;
 DECLARE_INFER_SHAPE_FUNCTOR(linspace,
                             LinspaceInferShapeFunctor,
                             PD_INFER_META(phi::LinspaceRawInferMeta));
-// REGISTER_OPERATOR(
-//     linspace,
-//     ops::LinspaceOp,
-//     ops::LinspaceOpMaker,
-//     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-//     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-//     LinspaceInferShapeFunctor);
+REGISTER_OPERATOR(
+    linspace,
+    ops::LinspaceOp,
+    ops::LinspaceOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    LinspaceInferShapeFunctor);
 
 REGISTER_OP_VERSION(linspace).AddCheckpoint(
     R"ROC(

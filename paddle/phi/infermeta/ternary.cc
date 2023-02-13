@@ -604,31 +604,38 @@ void LerpInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
-void LinspaceRawInferMeta(const Scalar& start,
-                          const Scalar& stop,
-                          const Scalar& number,
+void LinspaceRawInferMeta(const MetaTensor& start,
+                          const MetaTensor& stop,
+                          const MetaTensor& number,
                           MetaTensor* out) {
-  // auto tensor_check = [&](const std::string& name, const Scalar& item) {
-  //   if (item.FromTensor()){
-  //     PADDLE_ENFORCE_EQ(
-  //       phi::product(item.dims()),
-  //       1,
-  //       phi::errors::InvalidArgument("The size of Input(%s) should be 1,"
-  //                                   "but got %d.",
-  //                                   name,
-  //                                   phi::product(item.dims())));
-  //   }
-  // };
-  // tensor_check("start", start);
-  // tensor_check("stop", start);
-  // tensor_check("number", start);
+  PADDLE_ENFORCE_EQ(
+      phi::product(start.dims()),
+      1,
+      phi::errors::InvalidArgument("The size of Input(start) should be 1,"
+                                   "but got %d.",
+                                   phi::product(start.dims())));
+
+  PADDLE_ENFORCE_EQ(
+      phi::product(stop.dims()),
+      1,
+      phi::errors::InvalidArgument("The size of Input(stop) should be 1,"
+                                   "but got %d.",
+                                   phi::product(stop.dims())));
+
+  PADDLE_ENFORCE_EQ(
+      phi::product(number.dims()),
+      1,
+      phi::errors::InvalidArgument("The size of Input(number) should be 1,"
+                                   "but got %d.",
+                                   phi::product(number.dims())));
+
   out->set_dims(phi::make_ddim({-1}));
   out->set_dtype(start.dtype());
 }
 
-void LinspaceInferMeta(const Scalar& start,
-                       const Scalar& stop,
-                       const Scalar& number,
+void LinspaceInferMeta(const MetaTensor& start,
+                       const MetaTensor& stop,
+                       const MetaTensor& number,
                        DataType dtype,
                        MetaTensor* out) {
   LinspaceRawInferMeta(start, stop, number, out);

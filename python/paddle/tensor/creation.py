@@ -307,7 +307,15 @@ def linspace(start, stop, num, dtype=None, name=None):
         check_type(num, 'num', (int), 'linspace')
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
-
+    if not isinstance(start, Variable):
+        with device_guard("cpu"):
+            tensor_start = fill_constant([1], dtype, start, force_cpu=True)
+    if not isinstance(stop, Variable):
+        with device_guard("cpu"):
+            tensor_stop = fill_constant([1], dtype, stop, force_cpu=True)
+    if not isinstance(num, Variable):
+        with device_guard("cpu"):
+            tensor_num = fill_constant([1], 'int32', num, force_cpu=True)
     if in_dygraph_mode():
         return _C_ops.linspace(
             tensor_start,
@@ -317,9 +325,11 @@ def linspace(start, stop, num, dtype=None, name=None):
             _current_expected_place(),
         )
     else:
-        inputs_ = {}
-        attrs_ = {'dtype': dtype}
+        helper = LayerHelper("linspace", **locals())
 
+        start_dtype = convert_dtype(tensor_start.dtype)
+        stop_dtype = convert_dtype(tensor_stop.dtype)
+        out_dtype = convert_dtype(dtype)
         if isinstance(start, Variable):
             check_dtype(
                 start.dtype,
@@ -327,13 +337,8 @@ def linspace(start, stop, num, dtype=None, name=None):
                 ['float32', 'float64', 'int32', 'int64'],
                 'linspace',
             )
-            start_dtype = convert_dtype(tensor_start.dtype)
-            start.stop_gradient = True
-            inputs_['Start'] = start
         else:
             check_type(start, 'start', (int, float), 'linspace')
-            start_dtype = dtype
-            attrs_['start'] = start
 
         if isinstance(stop, Variable):
             check_dtype(
@@ -342,26 +347,13 @@ def linspace(start, stop, num, dtype=None, name=None):
                 ['float32', 'float64', 'int32', 'int64'],
                 'linspace',
             )
-            stop_dtype = convert_dtype(tensor_stop.dtype)
-            stop.stop_gradient = True
-            inputs_['Stop'] = stop
         else:
             check_type(stop, 'stop', (int, float), 'linspace')
-            stop_dtype = dtype
-            attrs_['stop'] = stop
-
         if isinstance(num, Variable):
             check_dtype(num.dtype, 'num', ['int32'], 'linspace')
-            num.stop_gradient = True
-            inputs_['Number'] = num
-        else:
-            attrs_['number'] = int(num)
-
         check_dtype(
             dtype, 'dtype', ['int32', 'int64', 'float32', 'float64'], 'linspace'
         )
-
-        out_dtype = convert_dtype(dtype)
         if (
             (stop_dtype == "float64" or start_dtype == "float64")
             and out_dtype in ["float32", "int32"]
@@ -376,13 +368,16 @@ def linspace(start, stop, num, dtype=None, name=None):
                 )
             )
 
-        helper = LayerHelper("linspace", **locals())
         out = helper.create_variable_for_type_inference(dtype=dtype)
 
         helper.append_op(
             type='linspace',
-            inputs=inputs_,
-            attrs=attrs_,
+            inputs={
+                'Start': tensor_start,
+                'Stop': tensor_stop,
+                'Num': tensor_num,
+            },
+            attrs={'dtype': dtype},
             outputs={'Out': [out]},
         )
         if isinstance(num, int):

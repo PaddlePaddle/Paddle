@@ -970,7 +970,7 @@
   backward : linear_interp_grad
 
 - op : linspace
-  args : (Scalar start, Scalar stop, Scalar number, DataType dtype, Place place)
+  args : (Tensor start, Tensor stop, Tensor number, DataType dtype, Place place)
   output : Tensor(out)
   infer_meta :
     func : LinspaceInferMeta
