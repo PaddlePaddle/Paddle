@@ -2670,11 +2670,11 @@ class AdamaxOptimizer(Optimizer):
             name=name,
         )
         self.type = "adamax"
-        self._multi_precision = multi_precision
-        self._master_weights = {}
         self._beta1 = beta1
         self._beta2 = beta2
         self._epsilon = epsilon
+        self._multi_precision = multi_precision
+        self._master_weights = {}
 
     def _create_master_weight(self, param):
         if param.name in self._master_weights:
@@ -2703,34 +2703,6 @@ class AdamaxOptimizer(Optimizer):
             )
             self._master_weights[param.name] = var
         return var
-
-    def _get_accumulator(self, name, param):
-        """Utility function to fetch an accumulator for a parameter
-        Args:
-            name: name of the accumulator
-            param: parameter variable for which accumulator is to be fetched
-        Returns:
-            accumulator variable for the parameter
-        """
-        if self._name is not None:
-            name = self._name + "_" + name
-        find_master = (
-            self._multi_precision and param.dtype == core.VarDesc.VarType.FP16
-        )
-        target_param = (
-            self._master_weights[param.name] if find_master else param
-        )
-        target_name = target_param.name
-        if (
-            name not in self._accumulators
-            or target_name not in self._accumulators[name]
-        ):
-            raise Exception(
-                "Accumulator {} does not exist for parameter {}".format(
-                    name, target_name
-                )
-            )
-        return self._accumulators[name][target_name]
 
     def _create_accumulators(self, block, parameters):
         # Create accumulator tensors for first moment and infinity norm
@@ -2763,6 +2735,34 @@ class AdamaxOptimizer(Optimizer):
                 shape=[1],
             )
 
+    def _get_accumulator(self, name, param):
+        """Utility function to fetch an accumulator for a parameter
+        Args:
+            name: name of the accumulator
+            param: parameter variable for which accumulator is to be fetched
+        Returns:
+            accumulator variable for the parameter
+        """
+        if self._name is not None:
+            name = self._name + "_" + name
+        find_master = (
+            self._multi_precision and core.VarDesc.VarType.FP16 == param.dtype
+        )
+        target_param = (
+            self._master_weights[param.name] if find_master else param
+        )
+        target_name = target_param.name
+        if (
+            name not in self._accumulators
+            or target_name not in self._accumulators[name]
+        ):
+            raise Exception(
+                "Accumulator {} does not exist for parameter {}".format(
+                    name, target_name
+                )
+            )
+        return self._accumulators[name][target_name]
+
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
 
@@ -2783,7 +2783,6 @@ class AdamaxOptimizer(Optimizer):
             if find_master
             else None
         )
-
         if in_dygraph_mode():
             _C_ops.adamax_(
                 param_and_grad[0],

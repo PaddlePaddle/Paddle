@@ -308,6 +308,7 @@ class Adamax(Optimizer):
                 self._epsilon,
                 find_master,
             )
+
         else:
             # create the adamax optimize op
             inputs = {
@@ -330,6 +331,7 @@ class Adamax(Optimizer):
                 "beta1": self._beta1,
                 "beta2": self._beta2,
                 "epsilon": self._epsilon,
+                "multi_precision": find_master,
             }
             adamax_op = block.append_op(
                 type=self.type,
