@@ -54,17 +54,24 @@ KernelSignature Conv2dDoubleGradOpArgumentMapping(
 }
 
 KernelSignature Conv2dFusionArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("conv2d_fusion_cutlass",
+
+  return KernelSignature("conv2d_fusion",
                          {"Input", "Filter", "Bias", "ResidualData"},
-                         {"strides",
-                          "paddings",
-                          "padding_algorithm",
-                          "groups",
-                          "dilations",
-                          "data_format",
-                          "activation",
-                          "fuse_alpha"},
-                         {"Output"});
+                         {
+                             "strides",
+                             "paddings",
+                             "padding_algorithm",
+                             "dilations",
+                             "groups",
+                             "data_format",
+                             "activation",
+                             "exhaustive_search",
+                             "split_channels",
+                             "workspace_size_MB",
+                             "fuse_alpha",
+                         },
+                         {"Output", "Outputs"});
+
 }
 }  // namespace phi
 

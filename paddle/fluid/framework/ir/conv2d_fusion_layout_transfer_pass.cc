@@ -199,8 +199,9 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
       auto *op_desc = op_node->Op();
       op_desc->SetAttr("data_format", std::string{"NHWC"});
       if (cutlass_enable && CutlassIsValid(op_node)) {
-        op_desc->SetType("conv2d_fusion_cutlass");
+        op_desc->SetType("conv2d_fusion");
       }
+      op_desc->SetAttr("library", std::string{"CUTLASS"});
       op_desc->Flush();
 
       // transfer weights

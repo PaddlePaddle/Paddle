@@ -80,10 +80,31 @@ bool KernelFactory::HasStructuredKernel(const std::string& op_type) const {
 const Kernel& KernelFactory::SelectKernel(const std::string& kernel_name,
                                           const KernelKey& kernel_key) const {
   auto iter = kernels_.find(kernel_name);
+  // ite
   if (iter == kernels_.end()) {
     return empty_kernel;
   }
+
+  std::cout << "log______开始_____" << std::endl;
+  std::cout << "kernel_key : " <<kernel_key << std::endl;
+  for (auto k : iter->second) {
+
+    if (k.first == kernel_key)
+    {
+        std::cout << "找到啦！" << std::endl;
+        std::cout << k.first << std::endl;
+        std::cout << k.second << std::endl;
+        std::cout << k.second.IsValid()<< std::endl;
+    }
+  }
+  
+  std::cout << "log______结束_____" << std::endl;
+
   auto kernel_iter = iter->second.find(kernel_key);
+  
+  std::cout << kernel_iter->first << std::endl;
+  std::cout << kernel_iter->second << std::endl;
+
   if (kernel_iter == iter->second.end() &&
       kernel_key.layout() != phi::DataLayout::ALL_LAYOUT) {
     phi::KernelKey any_layout_kernel_key(

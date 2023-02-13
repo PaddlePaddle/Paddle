@@ -49,6 +49,7 @@ enum class Backend : uint8_t {
   GPU,
   // the third library backend
   GPUDNN,  // cuDNN and hipDNN
+  CUTLASS,
 
   // various acceleration devices' backends
   XPU,  // XPU currently does not exist at the same time as CUDA
@@ -125,6 +126,9 @@ inline std::ostream& operator<<(std::ostream& os, Backend backend) {
     case Backend::GPUDNN:
       os << "GPUDNN";
       break;
+    case Backend::CUTLASS:
+      os << "CUTLASS";
+      break;
     case Backend::KPS:
       os << "KPS";
       break;
@@ -161,6 +165,8 @@ inline Backend StringToBackend(const char* backend_cstr) {
     return Backend::XPU;
   } else if (s == std::string("NPU")) {
     return Backend::NPU;
+  } else if (s == std::string("CUTLASS")) {
+    return Backend::CUTLASS;
   } else if (s == std::string("MLU")) {
     return Backend::MLU;
   } else if (s == std::string("OneDNN")) {
@@ -193,6 +199,8 @@ inline std::string BackendToString(const Backend& backend) {
       return "CPU";
     case Backend::GPU:
       return "GPU";
+    case Backend::CUTLASS:
+      return "CUTLASS";
     case Backend::XPU:
       return "XPU";
     case Backend::NPU:

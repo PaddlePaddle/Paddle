@@ -35,6 +35,7 @@ enum class AllocationType : int8_t {
   NPUPINNED = 6,
   IPU = 7,
   MLU = 8,
+  //CUTLASS = 9,
   CUSTOM = 9,
 };
 

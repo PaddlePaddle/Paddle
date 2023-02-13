@@ -82,9 +82,15 @@ OpKernelType TransPhiKernelKeyToOpKernelType(const phi::KernelKey& kernel_key) {
 phi::KernelKey TransOpKernelTypeToPhiKernelKey(
     const OpKernelType& kernel_type) {
   phi::Backend backend = phi::TransToPhiBackend(kernel_type.place_);
+  
+  //std::cout << "kernel_type.library_type_" << (int)(kernel_type.library_type_) << std::endl;
+
   switch (kernel_type.library_type_) {
     case LibraryType::kCUDNN:
       backend = phi::Backend::GPUDNN;
+      break;
+    case LibraryType::kCUTLASS:
+      backend = phi::Backend::CUTLASS;
       break;
     case LibraryType::kMKLDNN:
       backend = phi::Backend::ONEDNN;

@@ -29,12 +29,16 @@ void Conv2dFusionKernel(const Context& ctx,
                         const std::vector<int>& strides,
                         const std::vector<int>& paddings,
                         const std::string& padding_algorithm,
-                        int groups,
                         const std::vector<int>& dilations,
+                        int groups,
                         const std::string& data_format,
                         const std::string& activation,
+                        bool exhaustive_search,
+                        const std::vector<int>& channels,
+                        int user_workspace_size,
                         float fuse_alpha,
-                        DenseTensor* output) {
+                        DenseTensor* output,
+                        std::vector<DenseTensor*> outs) {
   ctx.template Alloc<T>(output);
   auto in_dims = x.dims();
   auto filter_dims = filter.dims();
@@ -136,9 +140,14 @@ void Conv2dFusionKernel(const Context& ctx,
 }  // namespace fusion
 }  // namespace phi
 
-PD_REGISTER_KERNEL(conv2d_fusion_cutlass,
-                   GPU,
+PD_REGISTER_KERNEL(conv2d_fusion,
+                   CUTLASS,
                    ALL_LAYOUT,
                    phi::fusion::cutlass_internal::Conv2dFusionKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
+}

@@ -1689,6 +1689,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   std::string phi_kernel_name;
   if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(type_)) {
     if (kernel_signature_ == nullptr || phi_kernel_ == nullptr) {
+      std::cout << "type_.c_str():" <<  type_.c_str() << std::endl;
       if (phi::KernelFactory::Instance().HasStructuredKernel(type_)) {
         kernel_signature_.reset(new phi::KernelSignature(type_.c_str()));
       } else {
@@ -1701,6 +1702,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       kernel_type_.reset(
           new OpKernelType(std::move(InnerGetExpectedKernelType(exe_ctx))));
       dev_ctx = pool.Get(kernel_type_->place_);
+      std::cout << "kernel_signature_->name:" << kernel_signature_->name << std::endl;
+      std::cout << "kernel_type_->place_: " << kernel_type_->place_.DebugString() << std::endl;
+
 // NOTE(Liu-xiandong): The register kernel used KP have library_type[KP],
 // But the default library_type is Plain, so we need to modify the
 // library_type here, otherwise it can't work.
@@ -1742,6 +1746,17 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       }
 #endif
       phi_kernel_key = TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
+
+      // if (phi_kernel_name == "conv2d_fusion" && 0) {
+      //   static int ii = 0;
+      //   std::cout << ii << std::endl;
+      //   if (ii > 0 && ii != 46 && ii != 53 && ii != 59) 
+      //   {
+      //    phi_kernel_key.set_backend(phi::Backend::CUTLASS);
+      //   }
+      //    ii++;
+      // }
+
       phi_kernel_.reset(
           new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
               phi_kernel_name, phi_kernel_key)));
@@ -1776,6 +1791,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       if (this->CanCUDNNBeUsed(exe_ctx, kernel_type_->data_type_)) {
         kernel_type_->library_type_ = framework::LibraryType::kCUDNN;
       }
+      if (HasAttr("library") && Attr<std::string>("library") == "CUTLASS") {
+        kernel_type_->library_type_ = framework::LibraryType::kCUTLASS;
+      }
+
 #endif
 
 // NOTE(Liu-xiandong):In my ctest, this branch do not be executed,
@@ -1819,6 +1838,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       }
 #endif
       phi_kernel_key = TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
+      std::cout << "phi_kernel_key: " << phi_kernel_key << " " << kernel_signature_->name << std::endl;
     }
 
 // NOTE(Liu-xiandong): Determine whether the selected kernel is valid
@@ -2059,6 +2079,9 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (this->CanCUDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
     expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
+  }
+  if (HasAttr("library") && Attr<std::string>("library") == "CUTLASS") {
+     expected_kernel_key.library_type_ = framework::LibraryType::kCUTLASS;
   }
 #endif
 
