@@ -184,7 +184,10 @@ void AutoMixedPrecisionPass::SetDefaultBlacklist() const {
 
 void AutoMixedPrecisionPass::Init(Graph* graph) const {
   bool enable_gpu_mixed = Get<bool>("enable_gpu_mixed");
-  bool enable_custom_device_mixed = Get<bool>("enable_custom_device_mixed");
+  bool enable_custom_device_mixed = false;
+  if (Has("enable_custom_device_mixed")) {
+    enable_custom_device_mixed = Get<bool>("enable_custom_device_mixed");
+  }
   if (enable_gpu_mixed) {
     backend_ = phi::Backend::GPU;
   }
