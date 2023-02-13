@@ -964,7 +964,6 @@ class ConcreteProgram:
         # Transforms dygraph function into static function and caches it.
         dygraph_function = func_spec.dygraph_function
         static_func = convert_to_static(dygraph_function)
-        breakpoint()
         # apply pre\post hook for outermost layer
         hook_helper = HookHelper(
             dygraph_function, class_instance, kwargs.get("with_hook", False)
