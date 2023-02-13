@@ -3321,8 +3321,8 @@ class RMSPropOptimizer(Optimizer):
             )
             self._master_weights[param.name] = var
         return var
-        
-    def _get_accumulator(self, name, param):
+
+def _get_accumulator(self, name, param):
         """Utility function to fetch an accumulator for a parameter
         Args:
             name: name of the accumulator
