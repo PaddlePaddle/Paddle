@@ -1233,11 +1233,6 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
-- op : reduce_max
-  backward : reduce_max_grad
-  extra :
-    attrs : [bool use_mkldnn = false]
-
 - op : reduce_min
   backward : reduce_min_grad
   extra :
