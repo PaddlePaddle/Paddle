@@ -38,6 +38,8 @@
 			*paddle::ResourceManager*;
 			*paddle::GPUContextResource*;
 			*paddle::CPUContextResource*;
+			*paddle::OpMetaInfoBuilder*;
+			*paddle::CustomOpKernelContext*;
 
 			/* ut needs the following symbol, we need to modify all the ut to hidden such symbols */
 
