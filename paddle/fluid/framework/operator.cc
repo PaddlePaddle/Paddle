@@ -1618,7 +1618,7 @@ void OperatorWithKernel::CheckWhetherPreparePhiData(
   }
 }
 
-// When do we need to reset runtime context ?
+// When do we need to reset runtime context?
 // 1. When enable cache runtime context, if the program runs for the first time,
 //   runtime_ctx_.get() == nullptr, we need to create a new runtime context.
 // 2. When enable cache runtime context, if the program is not running for the
