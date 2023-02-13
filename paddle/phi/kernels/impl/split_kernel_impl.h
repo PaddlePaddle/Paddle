@@ -42,6 +42,15 @@ void SplitKernel(const Context& dev_ctx,
     phi::funcs::SplitFunctor<Context, T> functor;
     functor(dev_ctx, x, shape_refer, axis, &outs);
   }
+
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  // inplace_version += 1
+  xx.inplace_version_counter_->Bump();
+  for (size_t i = 0; i < outs.size(); ++i) {
+    outs[i]->inplace_version_counter_->Bump();
+    xx.share_buffer_with.push_back(outs[i]);
+    outs[i]->share_buffer_with.push_back(&xx);
+  }
 }
 
 template <typename T, typename Context>

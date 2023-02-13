@@ -152,6 +152,11 @@ void ExpandAsKernel(const Context& ctx,
       ExpandAs<Context, T, 6>(ctx, x, real_target_shape, out);
       break;
   }
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  xx.inplace_version_counter_->Bump();
+  out->inplace_version_counter_->Bump();
+  xx.share_buffer_with.push_back(out);
+  out->share_buffer_with.push_back(&xx);
 }
 
 }  // namespace phi

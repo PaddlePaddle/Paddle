@@ -34,6 +34,11 @@ void ReshapeInferKernel(const Context& dev_ctx,
   InferMetaFromVecValue(x, shape.GetData(), &meta_out);
   if (x.initialized() && x.Holder() == out->Holder()) {
     dev_ctx.Alloc(out, x.dtype());
+    DenseTensor& xx = const_cast<DenseTensor&>(x);
+    xx.inplace_version_counter_->Bump();
+    out->inplace_version_counter_->Bump();
+    xx.share_buffer_with.push_back(out);
+    out->share_buffer_with.push_back(&xx);
     return;
   }
   dev_ctx.Alloc(out, x.dtype());
@@ -43,6 +48,11 @@ void ReshapeInferKernel(const Context& dev_ctx,
   phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   out->Resize(dims);
   out->ResetLoD(x.lod());
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  xx.inplace_version_counter_->Bump();
+  out->inplace_version_counter_->Bump();
+  xx.share_buffer_with.push_back(out);
+  out->share_buffer_with.push_back(&xx);
 }
 
 #ifdef PADDLE_WITH_XPU
