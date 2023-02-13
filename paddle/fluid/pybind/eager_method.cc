@@ -1130,23 +1130,50 @@ static PyObject* tensor_method__check_index_is_all_tensor(TensorObject* self,
       }
     } else if (PyList_Check(slice_item)) {
       auto list_size = PyList_GET_SIZE(slice_item);
+      bool isBoolType = false;
 
       for (int i = 0; i < list_size; ++i) {
         auto item = PyList_GET_ITEM(slice_item, i);
-        if (py::isinstance<py::int_>(item)) {
-          continue;
+        // Note(LiuYang):Here bool type shoule be check first because py::bool_
+        // is also py::int_
+        if (py::isinstance<py::bool_>(item)) {
+          isBoolType = true;
+        } else if (py::isinstance<py::int_>(item)) {
+          if (isBoolType) {
+            PADDLE_THROW(platform::errors::InvalidArgument(
+                "When index contains a list, the dtype of element of it must "
+                "be the same"));
+          }
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "When index contains a list, the dtype of element of it must be "
-              "int or int64"));
+              "int, int64 or bool"));
         }
       }
 
-      indices_tensor.emplace_back(
-          PyListToTensor(paddle::experimental::DataType::INT64,
-                         self->tensor.place(),
-                         slice_item));
-
+      if (isBoolType) {
+        // Note(LiuYang):Here Paddle only support bool list when num of index
+        // list is 1 and dims of source tensor is 1
+        if (size != 1) {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "When index contains bool list, the length of it must be 1"));
+        }
+        auto non_zero_ix =
+            nonzero_ad_func(PyListToTensor(paddle::experimental::DataType::BOOL,
+                                           self->tensor.place(),
+                                           slice_item));
+        if (non_zero_ix.numel() == 0) {
+          return ToPyObject(true);
+        }
+        // swap 是否性能更好
+        indices_tensor =
+            split_with_num_ad_func(non_zero_ix, non_zero_ix.shape().back(), 1);
+      } else {
+        indices_tensor.emplace_back(
+            PyListToTensor(paddle::experimental::DataType::INT64,
+                           self->tensor.place(),
+                           slice_item));
+      }
     } else if (py::isinstance<py::int_>(slice_item)) {
       indices_tensor.emplace_back(
           PyValueToTensor(paddle::experimental::DataType::INT64,

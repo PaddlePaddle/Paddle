@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,53 +12,58 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/index_kernel.h"
-#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/kernels/index_put_kernel.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/array.h"
 #include "paddle/phi/kernels/expand_kernel.h"
 
 namespace phi {
 
-template <typename T1, typename T2, size_t Rank>
-void index_put_kernel(const int64_t N,
-                      T1* x,
-                      const T1* vals,
-                      const T2** indices,
-                      phi::Array<int64_t, Rank> stride,
-                      phi::Array<int64_t, Rank> shape,
-                      int64_t isSingleValTensor,
-                      T1* out) {
-#ifdef PADDLE_WITH_MKLML
-#pragma omp parallel for
-#endif
-  for (int64_t idx = 0; idx < N; ++idx) {
-    int64_t cur_ix = 0;
-    int64_t offset = 0;
-    for (size_t i = 0; i < Rank; ++i) {
-      cur_ix = (int64_t(*(indices[i] + idx)));
-      if (cur_ix < 0) {
-        cur_ix += shape[i];
-      }
-      offset += stride[i] * cur_ix;
-    }
+// TODO(LiuYang): Here when ix is negative, we need extra error handling code
+template <typename T, size_t Rank>
+__global__ void index_put_cuda_kernel(const int64_t N,
+                                      T* x,
+                                      const T* vals,
+                                      int64_t** indices,
+                                      phi::Array<int64_t, Rank> stride,
+                                      phi::Array<int64_t, Rank> shape,
+                                      int64_t isSingleValTensor,
+                                      T* out) {
+  int64_t idx = threadIdx.x + blockDim.x * blockIdx.x;
+  int64_t cur_ix = 0;
 
-    *(x + offset) = *(vals + (idx & isSingleValTensor));
+  if (idx >= N) {
+    return;
   }
+  int64_t offset = 0;
+  for (int i = 0; i < Rank; ++i) {
+    cur_ix = (int64_t(*(indices[i] + idx)));
+    if (cur_ix < 0) {
+      cur_ix += shape[i];
+    }
+    offset += stride[i] * cur_ix;
+  }
+
+  *(x + offset) = *(vals + (idx & isSingleValTensor));
+  // Note(LiuYang):Here temp test just for add backward,
+  //  *(out + offset) = *(vals + (idx & isSingleValTensor));
 }
 
 template <typename T, typename Context, size_t Rank>
-void LaunchIndexPutKernel(const Context& dev_ctx,
-                          const DenseTensor& x,
-                          const std::vector<const DenseTensor*>& indices_v,
-                          const DenseTensor& value,
-                          DenseTensor* out) {
+void LaunchIndexPutCudaKernel(const Context& dev_ctx,
+                              const DenseTensor& x,
+                              const std::vector<const DenseTensor*>& indices_v,
+                              const DenseTensor& value,
+                              DenseTensor* out) {
   auto* x_data = const_cast<T*>(x.data<T>());
   auto* val_data = value.data<T>();
   T* out_data = dev_ctx.template Alloc<T>(out);
 
   auto x_dims = x.dims();
   const int64_t numel = indices_v[0]->numel();
+  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
   auto x_stride = phi::stride(x_dims);
 
   phi::Array<int64_t, Rank> stride_a;
@@ -69,24 +74,23 @@ void LaunchIndexPutKernel(const Context& dev_ctx,
     shape_a[idx] = x_dims[idx];
   }
 
+  // Note(LiuYang):Here should we make it inplace or not?
   phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
 
   int64_t isSingleValTensor = (value.numel() == 1) ? 0 : INT64_MAX;
 
-  // get cpu pointer array
-  const int64_t* pd_indices[Rank];
-  for (size_t i = 0; i < Rank; ++i) {
-    pd_indices[i] = indices_v[i]->data<int64_t>();
-  }
-
-  index_put_kernel<T, int64_t, Rank>(numel,
-                                     x_data,
-                                     val_data,
-                                     pd_indices,
-                                     stride_a,
-                                     shape_a,
-                                     isSingleValTensor,
-                                     out_data);
+  // NOTE(LiuYang)：Here I can't make it const int64_t**
+  auto pd_indices = GetDevicePointerArray<int64_t, Context>(dev_ctx, indices_v);
+  index_put_cuda_kernel<T, Rank>
+      <<<config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
+          numel,
+          x_data,
+          val_data,
+          pd_indices,
+          stride_a,
+          shape_a,
+          isSingleValTensor,
+          out_data);
 }
 
 template <typename T, typename Context>
@@ -140,27 +144,27 @@ void IndexPutKernel(const Context& dev_ctx,
 
   switch (total_dims) {
     case 1:
-      LaunchIndexPutKernel<T, Context, 1>(
+      LaunchIndexPutCudaKernel<T, Context, 1>(
           dev_ctx, x, indices_v_offset, value, out);
       break;
     case 2:
-      LaunchIndexPutKernel<T, Context, 2>(
+      LaunchIndexPutCudaKernel<T, Context, 2>(
           dev_ctx, x, indices_v_offset, value, out);
       break;
     case 3:
-      LaunchIndexPutKernel<T, Context, 3>(
+      LaunchIndexPutCudaKernel<T, Context, 3>(
           dev_ctx, x, indices_v_offset, value, out);
       break;
     case 4:
-      LaunchIndexPutKernel<T, Context, 4>(
+      LaunchIndexPutCudaKernel<T, Context, 4>(
           dev_ctx, x, indices_v_offset, value, out);
       break;
     case 5:
-      LaunchIndexPutKernel<T, Context, 5>(
+      LaunchIndexPutCudaKernel<T, Context, 5>(
           dev_ctx, x, indices_v_offset, value, out);
       break;
     case 6:
-      LaunchIndexPutKernel<T, Context, 6>(
+      LaunchIndexPutCudaKernel<T, Context, 6>(
           dev_ctx, x, indices_v_offset, value, out);
       break;
     default:
@@ -173,7 +177,7 @@ void IndexPutKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(index_put,
-                   CPU,
+                   GPU,
                    ALL_LAYOUT,
                    phi::IndexPutKernel,
                    float,
