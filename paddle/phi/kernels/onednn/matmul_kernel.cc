@@ -24,7 +24,7 @@ using dnnl::inner_product_forward;
 using dnnl::memory;
 using dnnl::prop_kind;
 using dnnl::stream;
-using paddle::framework::ReshapeToMatrix;
+using phi::ReshapeToMatrix;
 
 namespace phi {
 

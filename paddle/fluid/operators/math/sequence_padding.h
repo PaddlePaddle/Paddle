@@ -29,7 +29,7 @@ enum PadLayout { kBatchLengthWidth = 0, kLengthBatchWidth };
 enum CopyType { kSeqToPad, kPadToSeq };
 
 inline static size_t MaximumSequenceLength(
-    const framework::Vector<size_t>& seq_offset) {
+    const phi::Vector<size_t>& seq_offset) {
   size_t seq_num = seq_offset.size() - 1;
   size_t max_seq_len = 0;
   for (size_t i = 0; i < seq_num; ++i) {
@@ -39,7 +39,7 @@ inline static size_t MaximumSequenceLength(
 }
 
 inline static size_t TotalSequenceLength(
-    const framework::Vector<size_t>& seq_offset) {
+    const phi::Vector<size_t>& seq_offset) {
   size_t seq_num = seq_offset.size() - 1;
   size_t total_seq_len = 0;
   for (size_t i = 0; i < seq_num; ++i) {
@@ -50,7 +50,7 @@ inline static size_t TotalSequenceLength(
 
 inline static void CheckDims(const framework::DDim& seq_tensor_dims,
                              const framework::DDim& pad_tensor_dims,
-                             const framework::Vector<size_t>& seq_offset,
+                             const phi::Vector<size_t>& seq_offset,
                              int64_t padded_seq_len,
                              int64_t step_width,
                              const PadLayout& layout) {

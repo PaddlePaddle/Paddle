@@ -16,13 +16,14 @@
 
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 using dnnl::engine;
 using dnnl::inner_product_forward;
 using dnnl::memory;
 using dnnl::prop_kind;
 using dnnl::stream;
-using paddle::framework::ReshapeToMatrix;
+using phi::ReshapeToMatrix;
 
 namespace phi {
 

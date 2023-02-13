@@ -867,4 +867,60 @@ template void TensorToVector(const phi::DenseTensor& src,
 template void TensorToVector(const phi::DenseTensor& src,
                              std::vector<phi::dtype::complex<double>>* dst);
 
+phi::DenseTensor ReshapeToMatrix(const phi::DenseTensor& src,
+                                 int num_col_dims) {
+  int rank = src.dims().size();
+  PADDLE_ENFORCE_GE(
+      rank,
+      2,
+      phi::errors::InvalidArgument(
+          "'ReshapeToMatrix()' is only used for flatten high rank "
+          "tensors to matrixs. The dimensions of phi::DenseTensor must be "
+          "greater or equal than 2. "
+          "But received dimensions of phi::DenseTensor is %d",
+          rank));
+  if (rank == 2) {
+    return src;
+  }
+  phi::DenseTensor res;
+  res.ShareDataWith(src);
+  res.Resize(phi::flatten_to_2d(src.dims(), num_col_dims));
+  return res;
+}
+
+template <typename T>
+T GetValue(const phi::DenseTensor* x) {
+  T value = static_cast<T>(0);
+  if (!paddle::platform::is_cpu_place(x->place())) {
+    phi::DenseTensor cpu_x{};
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+    phi::DeviceContext* dev_ctx = pool.Get(x->place());
+    phi::Copy(*dev_ctx, *x, phi::CPUPlace(), true, &cpu_x);
+    value = cpu_x.data<T>()[0];
+  } else {
+    value = x->data<T>()[0];
+  }
+  return value;
+}
+
+template bool GetValue(const phi::DenseTensor* x);
+
+template int16_t GetValue(const phi::DenseTensor* x);
+
+template int GetValue(const phi::DenseTensor* x);
+
+template int64_t GetValue(const phi::DenseTensor* x);
+
+template float GetValue(const phi::DenseTensor* x);
+
+template double GetValue(const phi::DenseTensor* x);
+
+template phi::dtype::bfloat16 GetValue(const phi::DenseTensor* x);
+
+template phi::dtype::float16 GetValue(const phi::DenseTensor* x);
+
+template phi::dtype::complex<float> GetValue(const phi::DenseTensor* x);
+
+template phi::dtype::complex<double> GetValue(const phi::DenseTensor* x);
+
 }  // namespace phi

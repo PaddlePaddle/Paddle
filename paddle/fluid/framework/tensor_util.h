@@ -560,27 +560,6 @@ inline void TensorToVector(const phi::DenseTensor& src,
 
 std::ostream& operator<<(std::ostream& os, const LoD& lod);
 
-inline phi::DenseTensor ReshapeToMatrix(const phi::DenseTensor& src,
-                                        int num_col_dims) {
-  int rank = src.dims().size();
-  PADDLE_ENFORCE_GE(
-      rank,
-      2,
-      platform::errors::InvalidArgument(
-          "'ReshapeToMatrix()' is only used for flatten high rank "
-          "tensors to matrixs. The dimensions of phi::DenseTensor must be "
-          "greater or equal than 2. "
-          "But received dimensions of phi::DenseTensor is %d",
-          rank));
-  if (rank == 2) {
-    return src;
-  }
-  phi::DenseTensor res;
-  res.ShareDataWith(src);
-  res.Resize(phi::flatten_to_2d(src.dims(), num_col_dims));
-  return res;
-}
-
 template <typename T>
 inline T GetValue(const phi::DenseTensor* x) {
   T value = static_cast<T>(0);

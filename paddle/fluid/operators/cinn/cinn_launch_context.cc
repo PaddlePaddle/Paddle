@@ -235,6 +235,9 @@ std::unordered_set<std::string> CinnLaunchContext::ExtractInternalVarNames(
       remain_var_names.erase(var_name + InplaceOutSuffix);
     }
   };
+
+  VLOG(1) << "Input var list: " << string::join_strings(input_var_names, ", ");
+  VLOG(1) << "Ouput var list: " << string::join_strings(output_var_names, ", ");
   std::for_each(
       input_var_names.begin(), input_var_names.end(), exclude_names_fn);
   std::for_each(
@@ -474,6 +477,8 @@ framework::InterpreterCore* CinnLaunchContext::InitializeInterpreterCore(
                "interpreter_core_: "
             << interpreter_core_.get() << "; scope: " << scope
             << "; cached_scope_: " << cached_scope_;
+    VLOG(1) << "Internal var list: "
+            << string::join_strings(internal_var_names_, ", ");
     for (auto&& var_name : internal_var_names_) {
       auto* var = scope->FindVar(var_name);
       if (var != nullptr) {
@@ -506,8 +511,7 @@ std::string CinnLaunchContext::RedirectVarName(const std::string& var_name) {
   }
   std::string remove_suffix_name = var_name.substr(0, pos);
   if (!inplace_var_names_.count(remove_suffix_name)) {
-    LOG(WARNING) << "Variable:" << remove_suffix_name
-                 << " was not marked as inplaced by Paddle, but CINN does";
+    return var_name;
   }
   VLOG(4) << "Inplaced variable:" << var_name << " redirect to "
           << remove_suffix_name;

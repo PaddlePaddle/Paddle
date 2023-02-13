@@ -2601,7 +2601,7 @@ def cross_entropy(
             "npu"
         ) or core.is_compiled_with_custom_device("mlu"):
             if not soft_label:
-                _, _, out = _legacy_C_ops.softmax_with_cross_entropy(
+                _, out = _legacy_C_ops.softmax_with_cross_entropy(
                     input,
                     valid_label,
                     'soft_label',
@@ -2616,7 +2616,7 @@ def cross_entropy(
                     use_softmax,
                 )
             else:
-                _, _, out = _legacy_C_ops.softmax_with_cross_entropy(
+                _, out = _legacy_C_ops.softmax_with_cross_entropy(
                     input,
                     label,
                     'soft_label',
