@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_placement_pass.h"
 
 #include <unordered_set>
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 
 namespace paddle {
 namespace framework {
@@ -69,6 +70,8 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
     if (op->Op()->GetAttrIfExists<int>("skip_quant") == 1) {
       return;
     }
+
+    ConvertToFusedOp(op->Op());
     op->Op()->SetAttr("mkldnn_data_type", std::string("int8"));
   };
   gpd(graph, handler);

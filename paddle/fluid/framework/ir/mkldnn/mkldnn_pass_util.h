@@ -153,6 +153,20 @@ static void GetInfoFromTheFirstOp(ir::Graph* graph,
   }
 }
 
+static void ConvertToFusedOp(OpDesc* op) {
+  const std::map<std::string, std::string> fused_ops = {
+      {"conv2d", "fused_conv2d"},
+      {"depthwise_conv2d", "fused_conv2d"},
+      {"matmul", "fused_matmul"},
+      {"matmul_v2", "fused_matmul"},
+      {"transpose2", "fused_transpose"}};
+
+  auto it = fused_ops.find(op->Type());
+  if (it != fused_ops.end()) {
+    op->SetType(it->second);
+  }
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
