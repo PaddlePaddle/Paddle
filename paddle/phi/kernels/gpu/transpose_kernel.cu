@@ -31,6 +31,11 @@ void TransposeKernel(const Context& ctx,
                      const std::vector<int>& axis,
                      DenseTensor* out) {
   ctx.template Alloc<T>(out);
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  xx.inplace_version_counter_->Bump();
+  out->inplace_version_counter_->Bump();
+  xx.share_buffer_with.push_back(out);
+  out->share_buffer_with.push_back(&xx);
   if (out->numel() == 0) {
     return;
   }

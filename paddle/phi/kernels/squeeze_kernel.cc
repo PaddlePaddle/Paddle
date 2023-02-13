@@ -37,6 +37,11 @@ void SqueezeKernel(const Context& dev_ctx,
                    const IntArray& axes,
                    DenseTensor* out,
                    DenseTensor* xshape) {
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  xx.inplace_version_counter_->Bump();
+  out->inplace_version_counter_->Bump();
+  xx.share_buffer_with.push_back(out);
+  out->share_buffer_with.push_back(&xx);
   SqueezeInferKernel<T, Context>(dev_ctx, x, axes, out);
 }
 

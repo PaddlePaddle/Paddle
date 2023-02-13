@@ -44,6 +44,11 @@ DenseTensor Flatten(const Context& dev_ctx,
   MetaTensor meta_out(&dense_out);
   FlattenInferMeta(x, start_axis, stop_axis, &meta_out);
   FlattenInferKernel<T, Context>(dev_ctx, x, start_axis, stop_axis, &dense_out);
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  xx.inplace_version_counter_->Bump();
+  dense_out.inplace_version_counter_->Bump();
+  xx.share_buffer_with.push_back(&dense_out);
+  dense_out->share_buffer_with.push_back(xx);
   return dense_out;
 }
 

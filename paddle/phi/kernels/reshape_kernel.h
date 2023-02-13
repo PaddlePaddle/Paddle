@@ -42,6 +42,11 @@ DenseTensor Reshape(const Context& dev_ctx,
   MetaTensor meta_out(&dense_out);
   InferMetaFromVecValue(x, shape, &meta_out);
   ReshapeInferKernel<Context>(dev_ctx, x, IntArray(shape), &dense_out);
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  xx.inplace_version_counter_->Bump();
+  dense_out.inplace_version_counter_->Bump();
+  xx.share_buffer_with.push_back(&dense_out);
+  dense_out.share_buffer_with.push_back(&xx);
   return dense_out;
 }
 

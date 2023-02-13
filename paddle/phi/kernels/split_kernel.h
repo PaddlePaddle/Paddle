@@ -56,8 +56,14 @@ std::vector<DenseTensor> Split(const Context& dev_ctx,
   SplitInferMeta(x, sections, axis, out_meta_ptr);
   std::vector<DenseTensor*> outs;
   outs.reserve(out_meta.size());
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  // inplace_version += 1
+  xx.inplace_version_counter_->Bump();
   for (size_t i = 0; i < out_meta.size(); ++i) {
     outs.push_back(&result[i]);
+    result[i].inplace_version_counter_->Bump();
+    xx.share_buffer_with.push_back(&result[i]);
+    result[i].share_buffer_with.push_back(&xx);
   }
 
   SplitKernel<T, Context>(dev_ctx, x, sections, axis, outs);
