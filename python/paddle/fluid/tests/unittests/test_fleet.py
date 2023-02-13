@@ -65,7 +65,9 @@ class TestFleet1(unittest.TestCase):
                 is_distributed=True,
                 param_attr=fluid.ParamAttr(name="embedding"),
             )
-            bow = fluid.layers.sequence_pool(input=emb, pool_type='sum')
+            bow = paddle.static.nn.sequence_lod.sequence_pool(
+                input=emb, pool_type='sum'
+            )
             bow = paddle.static.nn.data_norm(
                 input=bow, epsilon=1e-4, name="norm"
             )

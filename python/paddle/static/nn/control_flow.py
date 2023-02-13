@@ -467,7 +467,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         )
 
     if _non_static_mode():
-        now_cond = pre_cond.numpy()[0]
+        now_cond = pre_cond.numpy().item()
         while now_cond:
             output_vars = body(*loop_vars)
             if not isinstance(output_vars, (list, tuple)):
@@ -477,7 +477,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                     "body in while_loop should return the same arity "
                     "(length and structure) and types as loop_vars"
                 )
-            now_cond = cond(*output_vars).numpy()[0]
+            now_cond = cond(*output_vars).numpy().item()
             map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
         return loop_vars
 

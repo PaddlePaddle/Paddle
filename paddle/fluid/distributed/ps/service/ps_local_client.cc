@@ -13,10 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/ps/service/ps_local_client.h"
-
 #include "paddle/fluid/distributed/ps/table/table.h"
-
-// #define pslib_debug_dense_compress
 
 namespace paddle {
 namespace distributed {
@@ -36,13 +33,11 @@ int32_t PsLocalClient::Initialize() {
 
 ::std::future<int32_t> PsLocalClient::Shrink(uint32_t table_id,
                                              const std::string threshold) {
-  // TODO  // NOLINT
   return done();
 }
 
 ::std::future<int32_t> PsLocalClient::Load(const std::string& epoch,
                                            const std::string& mode) {
-  // TODO  // NOLINT
   for (auto& it : _table_map) {
     Load(it.first, epoch, mode);
   }
@@ -51,7 +46,6 @@ int32_t PsLocalClient::Initialize() {
 ::std::future<int32_t> PsLocalClient::Load(uint32_t table_id,
                                            const std::string& epoch,
                                            const std::string& mode) {
-  // TODO  // NOLINT
   auto* table_ptr = GetTable(table_id);
   table_ptr->Load(epoch, mode);
   return done();
@@ -59,7 +53,6 @@ int32_t PsLocalClient::Initialize() {
 
 ::std::future<int32_t> PsLocalClient::Save(const std::string& epoch,
                                            const std::string& mode) {
-  // TODO  // NOLINT
   for (auto& it : _table_map) {
     Save(it.first, epoch, mode);
   }
@@ -68,19 +61,14 @@ int32_t PsLocalClient::Initialize() {
 ::std::future<int32_t> PsLocalClient::Save(uint32_t table_id,
                                            const std::string& epoch,
                                            const std::string& mode) {
-  // TODO  // NOLINT
   auto* table_ptr = GetTable(table_id);
   table_ptr->Flush();
   table_ptr->Save(epoch, mode);
   return done();
 }
 
-::std::future<int32_t> PsLocalClient::Clear() {
-  // TODO  // NOLINT
-  return done();
-}
+::std::future<int32_t> PsLocalClient::Clear() { return done(); }
 ::std::future<int32_t> PsLocalClient::Clear(uint32_t table_id) {
-  // TODO  // NOLINT
   return done();
 }
 
@@ -234,42 +222,14 @@ int32_t PsLocalClient::Initialize() {
   return done();
 }
 
-// ::std::future<int32_t> PsLocalClient::PullSparse(float** select_values,
-//                                                  size_t table_id,
-//                                                  const uint64_t* keys,
-//                                                  size_t num) {
-//  // FIXME
-//  // auto timer =
-//  // std::make_shared<CostTimer>("pslib_downpour_client_pull_sparse");
-//  // auto local_timer =
-//  // std::make_shared<CostTimer>("pslib_downpour_client_pull_sparse_local");
-//  //将key拆分到各shard请求，并记录原始对应value指针
-//  auto* accessor = GetTableAccessor(table_id);
-//  auto* table_ptr = GetTable(table_id);
-//  size_t value_size = accessor->select_size();
-//
-//  // table_ptr->PullSparse(keys, num);
-//  std::vector<float> res_data;
-//  res_data.resize(num * value_size / sizeof(float));
-//  table_ptr->PullSparse(res_data.data(), keys, num);
-//  // memcpy(select_values[0], res_data->data(), res_data->size() *
-//  // sizeof(float));
-//  size_t offset = 0;
-//  for (int i = 0; i < num; ++i) {
-//    memcpy(select_values[i], (char*)res_data.data() + offset, value_size);
-//    offset += value_size;
-//  }
-//
-//  // return fut;
-//  return done();
-//}
-
-::std::future<int32_t> PsLocalClient::PullSparsePtr(int shard_id,
-                                                    char** select_values,
-                                                    size_t table_id,
-                                                    const uint64_t* keys,
-                                                    size_t num,
-                                                    uint16_t pass_id) {
+::std::future<int32_t> PsLocalClient::PullSparsePtr(
+    int shard_id,
+    char** select_values,
+    size_t table_id,
+    const uint64_t* keys,
+    size_t num,
+    uint16_t pass_id,
+    const uint16_t& /**dim_id*/) {
   // FIXME
   // auto timer =
   // std::make_shared<CostTimer>("pslib_downpour_client_pull_sparse");
