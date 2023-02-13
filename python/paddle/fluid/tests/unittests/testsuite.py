@@ -86,6 +86,7 @@ def set_input(scope, op, inputs, outputs, place):
         elif isinstance(var, int):
             scope.find_var(var_name).set_int(var)
 
+    out_dtype = np.float32
     for out_name, out_dup in Operator.get_op_outputs(op.type()):
         if out_name in outputs:
             if out_dup:
