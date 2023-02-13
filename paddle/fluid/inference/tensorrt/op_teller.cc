@@ -2496,6 +2496,13 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
     }
+    if (op_type == "fuse_eleadd_transpose") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "The fuse_eleadd_transpose op does not support "
+                   "static shape yet";
+        return false;
+      }
+    }
     if (op_type == "lookup_table") {
       if (!with_dynamic_shape) {
         VLOG(3) << "the lookup_table does not support "
@@ -2670,6 +2677,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "skip_merge_layernorm",
       "lookup_table_v2",
       "expand_v2",
+      "fuse_eleadd_transpose",
       "skip_groupnorm_act",
       "preln_groupnorm_act"};
 
@@ -2821,6 +2829,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "lookup_table",
       "lookup_table_v2",
       "expand_v2",
+      "fuse_eleadd_transpose",
       "skip_groupnorm_act",
       "preln_groupnorm_act"};
 };

@@ -54,7 +54,7 @@ class FunctionSpec:
         # parse *args
         self.varargs_name = parse_varargs_name(function)
         if self.varargs_name is not None and isinstance(
-            function.__self__, TranslatedLayer
+            getattr(function, '__self__', None), TranslatedLayer
         ):
             self._arg_names += function.__self__._input_args_names
 

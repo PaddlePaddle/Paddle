@@ -1203,7 +1203,9 @@ cc_library(
        string_helper
        phi_tensor
        op_meta_info
-       phi_api)
+       phi_api
+       phi_tensor_operants
+       operants_manager)
 
 set(FLUID_FRAMEWORK_MODULES
     proto_desc
