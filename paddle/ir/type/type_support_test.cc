@@ -12,10 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/ir/type/type_support.h"
 #include <gtest/gtest.h>
 #include <unordered_map>
+
 #include "paddle/ir/type/type_id.h"
+#include "paddle/ir/type/type_support.h"
 
 TEST(type_support, type_id) {
   class TypeA {};

@@ -18,42 +18,57 @@
 
 namespace ir {
 
+///
 /// \brief TypeId is the unique identification of Type, each Type corresponds to
 /// a unique TypeId, the same id indicates the same Type class. TypeId provides
 /// an instantiation interface: TypeId::get.
+///
 /// Example:
 /// \code{cpp}
 ///   class TypeA {};
 ///   TypeId type_a_id = TypeId::get<TypeA>();
 /// \endcode
+///
 class TypeId {
   struct Storage {};
 
  public:
+  ///
   /// \brief Returns the unique TypeId of Type T.
+  ///
   /// \return The unique TypeId of Type T.
+  ///
   template <typename T>
   static TypeId get() {
     static Storage instance;
     return TypeId(&instance);
   }
 
+  ///
   /// \brief Comparison operations.
+  ///
   inline bool operator==(const TypeId &other) const {
     return storage_ == other.storage_;
   }
 
+  ///
   /// \brief Comparison operations.
+  ///
   inline bool operator!=(const TypeId &other) const {
     return !(*this == other);
   }
 
+  ///
   /// \brief Enable hashing TypeId instances.
+  ///
   friend struct std::hash<TypeId>;
 
  private:
+  ///
   /// \brief Construct a TypeId and initialize storage.
+  ///
   /// \param storage The storage of this TypeId.
+  ///
   explicit TypeId(const Storage *storage) : storage_(storage) {}
 
   const Storage *storage_;
@@ -61,9 +76,10 @@ class TypeId {
 
 }  // namespace ir
 
-// Custom specialization of std::hash can be injected in namespace std.
 namespace std {
+///
 /// \brief Enable hashing TypeId instances.
+///
 template <>
 struct hash<ir::TypeId> {
   std::size_t operator()(const ir::TypeId &obj) const {

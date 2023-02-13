@@ -14,28 +14,32 @@
 
 #include <unordered_map>
 
+#include "paddle/ir/builtin_type.h"
 #include "paddle/ir/ir_context.h"
 #include "paddle/ir/type/type_support.h"
 #include "paddle/phi/api/ext/exception.h"
 
 namespace ir {
-/// The implementation class of the IrContext class
+// The implementation class of the IrContext class
 class IrContextImpl {
  public:
   IrContextImpl() {}
 
   ~IrContextImpl() {}
 
-  /// \brief Cached AbstractType instances.
+  // Cached AbstractType instances.
   std::unordered_map<TypeId, AbstractType *> registed_abstract_types_;
 
-  /// \brief TypeStorage uniquer and cache instances.
+  // TypeStorage uniquer and cache instances.
   StorageUniquer registed_storage_uniquer_;
 
-  // TODO(zhangbo9674): add some built type.
+  // Some built-in type.
+  Float32Type fp32_type;
 };
 
-IrContext::IrContext() : impl_(new IrContextImpl()) {}
+IrContext::IrContext() : impl_(new IrContextImpl()) {
+  impl_->fp32_type = TypeUniquer::get<Float32Type>(this);
+}
 
 StorageUniquer &IrContext::storage_uniquer() {
   return impl().registed_storage_uniquer_;
@@ -50,5 +54,7 @@ const AbstractType &AbstractType::lookup(TypeId type_id, IrContext *ctx) {
     return *(iter->second);
   }
 }
+
+Float32Type Float32Type::get(IrContext *ctx) { return ctx->impl().fp32_type; }
 
 }  // namespace ir

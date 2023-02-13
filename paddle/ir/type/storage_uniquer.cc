@@ -19,6 +19,8 @@
 #include "paddle/phi/api/ext/exception.h"
 
 namespace ir {
+// This is a structure for creating, caching, and looking up Storage of
+// parameteric types.
 struct ParametricStorageUniquer {
   using BaseStorage = StorageUniquer::BaseStorage;
 
@@ -31,8 +33,8 @@ struct ParametricStorageUniquer {
     }
   }
 
-  /// \brief Get the storage of parametric type, if not in the cache, create and
-  /// insert the cache.
+  // Get the storage of parametric type, if not in the cache, create and
+  // insert the cache.
   BaseStorage *GetOrCreateParametricStorage(
       std::size_t hash_value,
       std::function<bool(const BaseStorage *)> is_equal_func,
@@ -56,16 +58,19 @@ struct ParametricStorageUniquer {
   }
 
  private:
+  // In order to prevent hash conflicts, the unordered_multimap data structure
+  // is used for storage.
   std::unordered_multimap<size_t, BaseStorage *> parametric_instances_;
 
   std::function<void(BaseStorage *)> del_func_;
 };
 
+/// The implementation class of the StorageUniquer.
 struct StorageUniquerImpl {
   using BaseStorage = StorageUniquer::BaseStorage;
 
-  /// \brief Get the storage of parametric type, if not in the cache, create and
-  /// insert the cache.
+  // Get the storage of parametric type, if not in the cache, create and
+  // insert the cache.
   BaseStorage *GetOrCreateParametricStorage(
       TypeId type_id,
       std::size_t hash_value,
@@ -79,8 +84,7 @@ struct StorageUniquerImpl {
         hash_value, is_equal_func, ctor_func);
   }
 
-  /// \brief Get the storage of singleton type.
-  /// \param type_id The type id of the AbstractType.
+  // Get the storage of singleton type.
   BaseStorage *GetSingletonStorage(TypeId type_id) {
     if (singleton_instances_.find(type_id) == singleton_instances_.end())
       PD_THROW("The input data pointer is null.");
@@ -88,15 +92,19 @@ struct StorageUniquerImpl {
     return singleton_instance;
   }
 
+  // Register a new parametric storage class.
   void RegisterParametricStorageType(
       TypeId type_id, std::function<void(BaseStorage *)> del_func);
 
+  // Register a new singleton storage class.
   void RegisterSingletonStorageType(TypeId type_id,
                                     std::function<void()> init_func);
 
+  // This map is a mapping between type id and parameteric type storage.
   std::unordered_map<TypeId, std::unique_ptr<ParametricStorageUniquer>>
       parametric_uniquers_;
 
+  // This map is a mapping between type id and singleton type storage.
   std::unordered_map<TypeId, BaseStorage *> singleton_instances_;
 };
 

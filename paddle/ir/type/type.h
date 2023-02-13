@@ -17,14 +17,23 @@
 #include "paddle/ir/type/type_support.h"
 
 namespace ir {
-/// \brief class Type
+///
+/// \brief Unified interface of the Type class. Derivation of all Type classes
+/// only derives interfaces, not members. For example, DenseTensorType,
+/// Float32Type, etc. are all derived classes of Type, but no new member
+/// variables will be added.
+///
 class Type {
  public:
+  template <typename ConcreteType, typename BaseType, typename StorageType>
+  using TypeBase =
+      ir::StorageUserBase<ConcreteType, BaseType, StorageType, ir::TypeUniquer>;
+
   using ImplType = TypeStorage;
 
   constexpr Type() = default;
 
-  explicit Type(const ImplType *impl) : impl_(const_cast<ImplType *>(impl)) {}
+  Type(const ImplType *impl) : impl_(const_cast<ImplType *>(impl)) {}  // NOLINT
 
   Type(const Type &other) = default;
 

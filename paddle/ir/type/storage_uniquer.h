@@ -21,9 +21,12 @@
 #include "paddle/ir/type/type_id.h"
 
 namespace ir {
+///
 /// \brief The implementation of the class StorageUniquer.
+///
 struct StorageUniquerImpl;
 
+///
 /// \brief A utility class for getting or creating Storage class instances.
 /// Storage class must be a derived class of StorageUniquer::BaseStorage.
 /// There are two types of Storage class:
@@ -34,10 +37,13 @@ struct StorageUniquerImpl;
 /// hash method on the ParamKey for storage and access; (3) Need to provide
 /// method 'bool operator==(const ParamKey &) const', used to compare Storage
 /// instance and ParamKey instance.
+///
 class StorageUniquer {
  public:
-  /// This class is the base class of all storage classes,
+  ///
+  /// \brief This class is the base class of all storage classes,
   /// and any type of storage needs to inherit from this class.
+  ///
   class BaseStorage {
    protected:
     BaseStorage() = default;
@@ -47,11 +53,14 @@ class StorageUniquer {
 
   ~StorageUniquer();
 
+  ///
   /// \brief Get a unique storage instance of parametric Type.
+  ///
   /// \param init_func Used to initialize a newly inserted storage instance.
   /// \param type_id The type id of the AbstractType.
   /// \param args Parameters of the wrapped function.
   /// \return A uniqued instance of Storage.
+  ///
   template <typename Storage, typename... Args>
   Storage *get(std::function<void(Storage *)> init_func,
                TypeId type_id,
@@ -70,16 +79,22 @@ class StorageUniquer {
         type_id, hash_value, is_equal_func, ctor_func));
   }
 
+  ///
   /// \brief Get a unique storage instance of singleton Type.
+  ///
   /// \param type_id The type id of the AbstractType.
   /// \return A uniqued instance of Storage.
+  ///
   template <typename Storage>
   Storage *get(TypeId type_id) {
     return static_cast<Storage *>(GetSingletonStorageTypeImpl(type_id));
   }
 
+  ///
   /// \brief Register a new parametric storage class.
+  ///
   /// \param type_id The type id of the AbstractType.
+  ///
   template <typename Storage>
   void RegisterParametricStorageType(TypeId type_id) {
     if (std::is_trivially_destructible<Storage>::value) {
@@ -92,9 +107,12 @@ class StorageUniquer {
     }
   }
 
-  /// \brief Register a new parametric storage class.
+  ///
+  /// \brief Register a new singleton storage class.
+  ///
   /// \param type_id The type id of the AbstractType.
   /// \param init_func Used to initialize a newly inserted storage instance.
+  ///
   template <typename Storage>
   void RegisterSingletonStorageType(TypeId type_id,
                                     std::function<void(Storage *)> init_func) {
@@ -121,6 +139,8 @@ class StorageUniquer {
   void RegisterSingletonStorageTypeImpl(
       TypeId type_id, std::function<BaseStorage *()> ctor_func);
 
+  /// \brief StorageUniquerImpl is the implementation class of the
+  /// StorageUniquer.
   std::unique_ptr<StorageUniquerImpl> impl_;
 };
 

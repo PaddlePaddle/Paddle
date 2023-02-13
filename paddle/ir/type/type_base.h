@@ -18,13 +18,21 @@
 #include "paddle/ir/type/type_id.h"
 
 namespace ir {
+///
+/// \brief A utility class, when defining a concrete type ConcreteT, you need to
+/// consider its base class BaseT and the corresponding memory type StorageT. We
+/// connect the three by providing a TypeBase template tool class.
+///
 template <typename ConcreteT,
           typename BaseT,
           typename StorageT,
           typename UniquerT>
-class TypeBase : public BaseT {
+class StorageUserBase : public BaseT {
  public:
-  using Base = TypeBase<ConcreteT, BaseT, StorageT, UniquerT>;
+  using BaseT::BaseT;
+
+  using Base = StorageUserBase<ConcreteT, BaseT, StorageT, UniquerT>;
+
   using ImplType = StorageT;
 
   static TypeId type_id() { return TypeId::get<ConcreteT>(); }

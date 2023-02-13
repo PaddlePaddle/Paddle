@@ -20,12 +20,17 @@ namespace ir {
 class IrContextImpl;
 class StorageUniquer;
 
+///
 /// \brief IrContext is a global singleton class used to store and manage Type
 /// and its related data structures.
+///
 class IrContext {
  public:
+  ///
   /// \brief Initializes a new instance of IrContext.
+  ///
   /// \return Global singleton for IrContext.
+  ///
   static IrContext *Instance() {
     if (ir_context_ == nullptr) {
       ir_context_ = new IrContext();
@@ -35,14 +40,20 @@ class IrContext {
 
   ~IrContext();
 
+  ///
   /// \brief Get an instance of IrContextImpl, a private member of IrContext.
-  /// For the specific definition of IrContextImpl, see ir_context.cc. \return
-  /// The instance of IrContextImpl.
+  /// For the specific definition of IrContextImpl, see ir_context.cc.
+  ///
+  /// \return The instance of IrContextImpl.
+  ///
   IrContextImpl &impl() { return *impl_; }
 
   /// \brief Returns the storage uniquer used for constructing TypeStorage
-  /// instances. \return The storage uniquer used for constructing TypeStorage
   /// instances.
+  ///
+  /// \return The storage uniquer used for constructing TypeStorage
+  /// instances.
+  ///
   StorageUniquer &storage_uniquer();
 
  private:

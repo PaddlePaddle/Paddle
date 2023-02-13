@@ -8,3 +8,8 @@ cc_library(
   ir_context
   SRCS ir_context.cc
   DEPS storage_uniquer)
+
+cc_test(
+  ir_context_test
+  SRCS ir_context_test.cc
+  DEPS gtest ir_context)
