@@ -62,9 +62,7 @@ static void LaunchCastKernel(const phi::GPUContext &ctx,
       static_cast<const void *>(x),
       static_cast<void *>(y),
       platform::errors::InvalidArgument("Inplace cast is not supported yet."));
-  uint64_t addr =
-      (reinterpret_cast<uint64_t>(x) | reinterpret_cast<uint64_t>(y));
-  int vec_size = phi::GetVectorizedSize<T>(reinterpret_cast<T *>(addr));
+  int vec_size = std::min(phi::GetVectorizedSize(x), phi::GetVectorizedSize(y));
   switch (vec_size) {
     case 4:
       return details::VecCastKernel<InT, OutT, 4>(ctx, x, y, n);

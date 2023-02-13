@@ -57,7 +57,7 @@ struct LoaderTypeClassifier {
           (out_addr | reinterpret_cast<uint64_t>((*outs)[i]->data<OutT>()));
     }
     int out_vec_size =
-        phi::GetVectorizedSize<OutT>(reinterpret_cast<OutT *>(addr));
+        phi::GetVectorizedSize<OutT>(reinterpret_cast<OutT *>(out_addr));
 
     uint64_t in_addr = static_cast<uint64_t>(0);
     numel = (*outs)[0]->numel();
