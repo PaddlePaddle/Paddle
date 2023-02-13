@@ -17,10 +17,10 @@
 #include <brpc/channel.h>
 #include <bthread/countdown_event.h>
 
+#include <atomic>
 #include <codecvt>
 #include <locale>
 #include <memory>
-#include <mutex>
 #include <string>
 #include <unordered_map>
 
@@ -140,7 +140,6 @@ class RpcRequestStore {
   }
 
   int GetRequestId() {
-    std::lock_guard<std::mutex> lock(mutex_);
     if (request_id_ == INT32_MAX) {
       request_id_ = 0;
     } else {
@@ -182,23 +181,26 @@ class RpcRequestStore {
   }
 
  private:
-  std::mutex mutex_;
-  int request_id_;
+  std::atomic<int> request_id_;
+
   std::unordered_map<int, std::shared_ptr<bthread::CountdownEvent>>
       id_to_event_map_;
   std::unordered_map<int, int> id_to_err_map_;
   std::unordered_map<int, std::string> id_to_resp_map_;
 };
 
-int RpcSend(const std::string& url,
-            const std::string& query,
-            void (*request_handler)(brpc::Controller*, int, const std::string&),
-            void (*response_handler)(brpc::Controller*,
-                                     int,
-                                     std::shared_ptr<bthread::CountdownEvent>),
-            brpc::HttpMethod http_method = brpc::HttpMethod::HTTP_METHOD_POST,
-            int timeout_ms = 10000,
-            int max_retry = 3);
+struct RpcCommContext {
+  static int RpcSend(
+      const std::string& url,
+      const std::string& query,
+      void (*request_handler)(brpc::Controller*, int, const std::string&),
+      void (*response_handler)(brpc::Controller*,
+                               int,
+                               std::shared_ptr<bthread::CountdownEvent>),
+      brpc::HttpMethod http_method = brpc::HttpMethod::HTTP_METHOD_POST,
+      int timeout_ms = 10000,
+      int max_retry = 3);
+};
 
 }  // namespace platform
 }  // namespace paddle

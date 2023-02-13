@@ -65,7 +65,7 @@ inline void HandleServiceResponse(
 }
 
 template <typename T>
-class RpcCallOpKernel : public framework::OpKernel<T> {
+class RpcTokenCallOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     // url
@@ -100,6 +100,8 @@ class RpcCallOpKernel : public framework::OpKernel<T> {
     std::vector<int> request_id_wrapper{request_id};
     framework::TensorFromVector(request_id_wrapper, ctx.device_context(), out);
   }
+
+ private:
 };
 
 }  // namespace operators

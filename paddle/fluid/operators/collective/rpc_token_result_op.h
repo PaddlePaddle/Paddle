@@ -32,23 +32,16 @@ inline void ParseResponse(phi::DenseTensor* out,
                           const std::string& res_type,
                           const platform::DeviceContext& dev_ctx,
                           const std::string& resp) {
-  if (res_type == "float") {
-    double res_double = json::parse(resp).get<double>();
-    std::vector<double> res{res_double};
-    dev_ctx.Alloc<double>(out);
-    framework::TensorFromVector(res, dev_ctx, out);
-  } else if (res_type == "str") {
-    const std::string res_str = json::parse(resp).dump();
-    std::vector<uint8_t> res(res_str.begin(), res_str.end());
-    dev_ctx.Alloc<uint8_t>(out);
-    framework::TensorFromVector(res, dev_ctx, out);
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument("Unknown result type."));
-  }
+  const std::string res_str = json::parse(resp).dump();
+  // this must be called after tokenizer init in rpc_call op
+  std::vector<int> res =
+      platform::RpcTokenizer::Instance().GetIdsFromText(res_str);
+  dev_ctx.Alloc<int>(out);
+  framework::TensorFromVector(res, dev_ctx, out);
 }
 
 template <typename T>
-class RpcResultOpKernel : public framework::OpKernel<T> {
+class RpcTokenResultOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* request_id_tensor = ctx.Input<phi::DenseTensor>("X");
@@ -72,7 +65,6 @@ class RpcResultOpKernel : public framework::OpKernel<T> {
 
       ParseResponse(out, res_type, ctx.device_context(), resp);
     } else {
-      // alloc a default space
       ctx.device_context().Alloc<float>(out);
     }
 

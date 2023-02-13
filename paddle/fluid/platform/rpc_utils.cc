@@ -610,15 +610,16 @@ std::vector<int> RpcTokenizer::GetIdsFromText(const std::string& text) {
   return ids;
 }
 
-int RpcSend(const std::string& url,
-            const std::string& query,
-            void (*request_handler)(brpc::Controller*, int, const std::string&),
-            void (*response_handler)(brpc::Controller*,
-                                     int,
-                                     std::shared_ptr<bthread::CountdownEvent>),
-            brpc::HttpMethod http_method,
-            int timeout_ms,
-            int max_retry) {
+int RpcCommContext::RpcSend(
+    const std::string& url,
+    const std::string& query,
+    void (*request_handler)(brpc::Controller*, int, const std::string&),
+    void (*response_handler)(brpc::Controller*,
+                             int,
+                             std::shared_ptr<bthread::CountdownEvent>),
+    brpc::HttpMethod http_method,
+    int timeout_ms,
+    int max_retry) {
   brpc::Channel channel;
   brpc::ChannelOptions options;
   options.protocol = "http";

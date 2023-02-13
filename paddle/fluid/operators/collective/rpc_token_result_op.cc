@@ -12,15 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/collective/rpc_call_op.h"
+#include "paddle/fluid/operators/collective/rpc_token_result_op.h"
 
 #include "paddle/fluid/framework/op_proto_maker.h"
-#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 
-class RpcCallOp : public framework::OperatorWithKernel {
+class RpcTokenResultOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -34,16 +33,14 @@ class RpcCallOp : public framework::OperatorWithKernel {
   }
 };
 
-class RpcCallOpMaker : public framework::OpProtoAndCheckerMaker {
+class RpcTokenResultOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
-    AddInput("X", "(Tensor) Src words' ids.");
-    AddInput("url_id", "(Tensor) Service URL's id.");
-    AddOutput("Out", "(Tensor) Request id.");
-    AddAttr<std::vector<std::string>>("url_list", "URL list.").SetDefault({});
-    AddAttr<std::string>("vocab_path", "Vocab's absolute path.").SetDefault("");
+    AddInput("X", "(Tensor) Request id.");
+    AddOutput("Out", "(Tensor) Response from service.");
+    AddOutput("succeed", "Request status, true means succeed.");
     AddComment(R"DOC(
-Rpc Call Operator
+Rpc Token Result Operator
 
 )DOC");
   }
@@ -54,12 +51,10 @@ Rpc Call Operator
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_WITHOUT_GRADIENT(rpc_call, ops::RpcCallOp, ops::RpcCallOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(rpc_token_result,
+                             ops::RpcTokenResultOp,
+                             ops::RpcTokenResultOpMaker);
 
-REGISTER_OP_CPU_KERNEL(rpc_call,
-                       ops::RpcCallOpKernel<int>,
-                       ops::RpcCallOpKernel<int64_t>);
+REGISTER_OP_CPU_KERNEL(rpc_token_result, ops::RpcTokenResultOpKernel<int>);
 
-REGISTER_OP_CUDA_KERNEL(rpc_call,
-                        ops::RpcCallOpKernel<int>,
-                        ops::RpcCallOpKernel<int64_t>);
+REGISTER_OP_CUDA_KERNEL(rpc_token_result, ops::RpcTokenResultOpKernel<int>);

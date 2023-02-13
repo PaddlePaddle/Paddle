@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/collective/rpc_call_op.h"
+#include "paddle/fluid/operators/collective/rpc_token_call_op.h"
 
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -20,7 +20,7 @@
 namespace paddle {
 namespace operators {
 
-class RpcCallOp : public framework::OperatorWithKernel {
+class RpcTokenCallOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -34,7 +34,7 @@ class RpcCallOp : public framework::OperatorWithKernel {
   }
 };
 
-class RpcCallOpMaker : public framework::OpProtoAndCheckerMaker {
+class RpcTokenCallOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddInput("X", "(Tensor) Src words' ids.");
@@ -43,7 +43,7 @@ class RpcCallOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<std::string>>("url_list", "URL list.").SetDefault({});
     AddAttr<std::string>("vocab_path", "Vocab's absolute path.").SetDefault("");
     AddComment(R"DOC(
-Rpc Call Operator
+Rpc Token Call Operator
 
 )DOC");
   }
@@ -54,12 +54,14 @@ Rpc Call Operator
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_WITHOUT_GRADIENT(rpc_call, ops::RpcCallOp, ops::RpcCallOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(rpc_token_call,
+                             ops::RpcTokenCallOp,
+                             ops::RpcTokenCallOpMaker);
 
-REGISTER_OP_CPU_KERNEL(rpc_call,
-                       ops::RpcCallOpKernel<int>,
-                       ops::RpcCallOpKernel<int64_t>);
+REGISTER_OP_CPU_KERNEL(rpc_token_call,
+                       ops::RpcTokenCallOpKernel<int>,
+                       ops::RpcTokenCallOpKernel<int64_t>);
 
-REGISTER_OP_CUDA_KERNEL(rpc_call,
-                        ops::RpcCallOpKernel<int>,
-                        ops::RpcCallOpKernel<int64_t>);
+REGISTER_OP_CUDA_KERNEL(rpc_token_call,
+                        ops::RpcTokenCallOpKernel<int>,
+                        ops::RpcTokenCallOpKernel<int64_t>);
