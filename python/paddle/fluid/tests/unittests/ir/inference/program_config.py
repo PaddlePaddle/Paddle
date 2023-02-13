@@ -450,6 +450,8 @@ def create_quant_model(
         "layer_norm",
         "fusion_gru",
         "multi_gru",
+        "quantize",
+        "dequantize",
     ]
     op_real_in_out_name = {
         "conv2d": [["Input", "Filter"], ["Output"]],
@@ -501,6 +503,8 @@ def create_quant_model(
         "flatten2": [["X"], ["Out"]],
         "fusion_gru": [["X", "WeightX", "WeightH"], ["Hidden", "XX"]],
         "multi_gru": [["X", "WeightX", "WeightH"], ["Hidden"]],
+        "quantize": [["Input"], ["Output"]],
+        "dequantize": [["Input"], ["Output"]],
     }
 
     def _get_op_output_var_names(op):

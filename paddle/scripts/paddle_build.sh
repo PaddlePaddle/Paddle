@@ -1861,12 +1861,12 @@ function precise_card_test_single {
             mkdir ${PADDLE_ROOT}/build/ut_map/$case
         fi
         set -x
-        find paddle/fluid -name '*.gcda'|xargs -I {} cp --path {} ut_map/$case
-        find paddle/phi -name '*.gcda'|xargs -I {} cp --path {} ut_map/$case
-        find paddle/utils -name '*.gcda'|xargs -I {} cp --path {} ut_map/$case
-        find paddle/phi -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
-        find paddle/utils -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
-        find paddle/fluid -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
+        find paddle/fluid -name '*.gcda'|xargs -I {} cp --parents {} ut_map/$case
+        find paddle/phi -name '*.gcda'|xargs -I {} cp --parents {} ut_map/$case
+        find paddle/utils -name '*.gcda'|xargs -I {} cp --parents {} ut_map/$case
+        find paddle/phi -name '*.gcno'|xargs -I {} cp --parents {} ut_map/$case
+        find paddle/utils -name '*.gcno'|xargs -I {} cp --parents {} ut_map/$case
+        find paddle/fluid -name '*.gcno'|xargs -I {} cp --parents {} ut_map/$case
         python ${PADDLE_ROOT}/tools/get_single_test_cov.py ${PADDLE_ROOT} $case &
 
         # python
@@ -1953,7 +1953,7 @@ function precise_card_test() {
     echo "****************************************************************"
 
     tmpfile=$tmp_dir/$testcases".log"
-    env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I 0,,1 -R "($testcases)" --timeout 500 --output-on-failure -V -j 1 > $tmpfile
+    env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I 0,,1 -R "($testcases)" -E "($disable_ut_quickly)" --timeout 500 --output-on-failure -V -j 1 > $tmpfile
     set +m
 }
 
@@ -2010,7 +2010,7 @@ set +x
                 fi
             else
                 single_card_test_num=$(($single_card_test_num+1))
-                if [[ $single_card_test_num -gt 3000 ]];then
+                if [[ $single_card_test_num -gt 1000 ]];then
                     if [[ "$single_card_tests_1" == "" ]]; then
                         single_card_tests_1="^$testcase$"
                     else
@@ -2034,14 +2034,19 @@ set +x
 set -x
     mkdir -p ${PADDLE_ROOT}/build/ut_map
     mkdir -p ${PADDLE_ROOT}/build/pytest
-    #run all unittest to get the coverage information of .c and .h files
+    #get disabled tests,not run these disabled ut
+    get_quickly_disable_ut||disable_ut_quickly='disable_ut'
+
+    # run all unittest to get the coverage information of .c and .h files
     precise_card_test_single "^simple_precision_test$" 1
     wait;
     precise_card_test_single "$single_card_tests" 1
+    wait;
     precise_card_test_single "$single_card_tests_1" 1
     precise_card_test_single "$multiple_card_tests" 2
     precise_card_test_single "$exclusive_tests"
     wait;
+    
     #get notSuccessut including the failed uniitests and not executed unittests
     python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_not_success_ut' ${PADDLE_ROOT}
 
@@ -3423,7 +3428,6 @@ function build_pr_and_develop() {
     generate_api_spec "$1" "PR"
     mkdir ${PADDLE_ROOT}/build/pr_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl
     rm -f ${PADDLE_ROOT}/build/python/dist/*.whl && rm -f ${PADDLE_ROOT}/build/python/build/.timestamp
-
 
     git fetch upstream develop
     git checkout develop
