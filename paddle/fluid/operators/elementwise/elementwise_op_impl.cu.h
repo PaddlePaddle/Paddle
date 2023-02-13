@@ -18,7 +18,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 
 // only can include the headers in paddle/top/api dirs
-#include "paddle/fluid/framework/variable_utils.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 
 namespace paddle {

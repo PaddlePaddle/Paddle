@@ -46,7 +46,7 @@ cc_test(
        math_function
        phi_tensor
        phi_api
-       variable_utils)
+       phi_utils)
 cc_test(
   test_layer
   SRCS test_layer.cc

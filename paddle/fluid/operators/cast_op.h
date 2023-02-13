@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/variable_utils.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/platform/transform.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 
