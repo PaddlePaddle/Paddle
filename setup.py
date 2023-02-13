@@ -1350,6 +1350,7 @@ def get_setup_parameters():
         'paddle.incubate.distributed.models',
         'paddle.incubate.distributed.models.moe',
         'paddle.incubate.distributed.models.moe.gate',
+        'paddle.incubate.fleet.parameter_server.distribute_transpiler',
         'paddle.quantization',
         'paddle.quantization.quanters',
         'paddle.sparse',
