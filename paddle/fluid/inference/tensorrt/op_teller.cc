@@ -2489,7 +2489,20 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
     }
-
+    if (op_type == "trans_layernorm") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "The trans_layernorm op does not support "
+                   "static shape yet";
+        return false;
+      }
+    }
+    if (op_type == "fuse_eleadd_transpose") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "The fuse_eleadd_transpose op does not support "
+                   "static shape yet";
+        return false;
+      }
+    }
     if (op_type == "lookup_table") {
       if (!with_dynamic_shape) {
         VLOG(3) << "the lookup_table does not support "
@@ -2659,10 +2672,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       "logsigmoid",
       "preln_layernorm_shift_partition",
       "lookup_table",
+      "trans_layernorm",
       "merge_layernorm",
       "skip_merge_layernorm",
       "lookup_table_v2",
       "expand_v2",
+      "fuse_eleadd_transpose",
       "skip_groupnorm_act",
       "preln_groupnorm_act"};
 
@@ -2808,11 +2823,13 @@ struct SimpleOpTypeSetTeller : public Teller {
       "take_along_axis",
       "logsigmoid",
       "preln_layernorm_shift_partition",
+      "trans_layernorm",
       "merge_layernorm",
       "skip_merge_layernorm",
       "lookup_table",
       "lookup_table_v2",
       "expand_v2",
+      "fuse_eleadd_transpose",
       "skip_groupnorm_act",
       "preln_groupnorm_act"};
 };
