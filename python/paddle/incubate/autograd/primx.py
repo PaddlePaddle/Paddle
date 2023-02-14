@@ -626,8 +626,11 @@ def _lower_composite(block, blacklist=[]):
                         # to keep same as phi op defination, orig_out may receive None
                         continue
                     elif new_out is not None:
+                        assert orig_out.dtype == new_out.dtype, (
+                            f'when replace origin op {op_name} with composite rule, origin out dtype should be equal to new out dtype, '
+                            f'but orig_out.dtype={orig_out.dtype} and new_out.dtype={new_out.dtype}'
+                        )
                         if orig_out.shape and new_out.shape:
-                            # Todo(cz), more attrs to be checked
                             assert orig_out.shape == new_out.shape, (
                                 f'when replace origin op {op_name} with composite rule, origin out shape should be equal to new out shape, '
                                 f'but orig_out.shape={orig_out.shape} and new_out.shape={new_out.shape}'
