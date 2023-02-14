@@ -2046,12 +2046,9 @@ PDNode *patterns::Reshape2Matmul::operator()() {
   return matmul_out;
 }
 
-PDNode *patterns::MatmulWithInputOps::operator()(bool with_residual) {
-  std::unordered_set<std::string> matmul_ops{
-      "matmul", "matmul_v2", "fused_matmul"};
-
+PDNode *patterns::FusedMatmul::operator()(bool with_residual) {
   auto matmul_op =
-      pattern->NewNode(matmul_op_repr())->assert_is_ops(matmul_ops);
+      pattern->NewNode(matmul_op_repr())->assert_is_op("fused_matmul");
 
   if (!with_residual) {
     matmul_op->assert_more([&](Node *x) {
@@ -2062,21 +2059,21 @@ PDNode *patterns::MatmulWithInputOps::operator()(bool with_residual) {
 
   auto matmul_in_x = pattern->NewNode(matmul_in_x_repr())
                          ->AsInput()
-                         ->assert_is_ops_input(matmul_ops, "X");
+                         ->assert_is_op_input("fused_matmul", "X");
   auto matmul_in_y = pattern->NewNode(matmul_in_y_repr())
                          ->AsInput()
-                         ->assert_is_ops_input(matmul_ops, "Y");
+                         ->assert_is_op_input("fused_matmul", "Y");
   auto matmul_out = pattern->NewNode(matmul_out_repr())
                         ->AsOutput()
-                        ->assert_is_ops_output(matmul_ops, "Out")
-                        ->assert_is_only_output_of_ops(matmul_ops);
+                        ->assert_is_op_output("fused_matmul", "Out")
+                        ->assert_is_only_output_of_op("fused_matmul");
   std::vector<PDNode *> links_from{matmul_in_x, matmul_in_y};
 
   if (with_residual) {
     auto matmul_residual_data =
         pattern->NewNode(matmul_residual_data_repr())
             ->AsInput()
-            ->assert_is_ops_input(matmul_ops, "ResidualData");
+            ->assert_is_op_input("fused_matmul", "ResidualData");
     links_from.push_back(matmul_residual_data);
   }
 
@@ -2834,6 +2831,9 @@ PDNode *patterns::QuantizePlacement::operator()(
     const std::unordered_set<std::string> &quantize_enabled_op_types) {
   auto *op =
       pattern->NewNode(op_repr())->assert_is_ops(quantize_enabled_op_types);
+  op->assert_more([&](Node *node) {
+    return node->Op()->GetAttrIfExists<bool>("use_mkldnn");
+  });
   return op;
 }
 

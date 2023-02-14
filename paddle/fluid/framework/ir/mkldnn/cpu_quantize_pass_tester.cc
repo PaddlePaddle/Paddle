@@ -87,7 +87,8 @@ void SetOp(ProgramDesc* prog,
     op->SetInput("Input", {inputs[0]});
     op->SetOutput("Output", {outputs[0]});
     op->SetAttr("Scale", 1.0f);
-  } else if (type == "matmul" || type == "matmul_v2") {
+  } else if (type == "matmul" || type == "matmul_v2" ||
+             type == "fused_matmul") {
     op->SetInput("X", {inputs[0]});
     if (inputs.size() > 1) op->SetInput("Y", {inputs[1]});
     if (inputs.size() > 2) op->SetInput("ResidualData", {inputs[2]});
@@ -594,7 +595,7 @@ ProgramDesc BuildProgramDescMatmul() {
   }
   SetOp(&prog, "dequantize", "Dequantize1", {"a"}, {"b"}, true);
   SetOp(&prog, "dequantize", "Dequantize2", {"c"}, {"d"}, true);
-  SetOp(&prog, "matmul", "Matmul", {"b", "d"}, {"e"}, true, "int8");
+  SetOp(&prog, "fused_matmul", "FusedMatmul", {"b", "d"}, {"e"}, true, "int8");
   SetOp(&prog, "dropout", "Dropout", {"e"}, {"f"}, true, "float32");
 
   return prog;
@@ -608,7 +609,13 @@ ProgramDesc BuildProgramDescMatmulResidual() {
   SetOp(&prog, "dequantize", "Dequantize1", {"a"}, {"b"}, true);
   SetOp(&prog, "dequantize", "Dequantize2", {"c"}, {"d"}, true);
   SetOp(&prog, "dequantize", "Dequantize3", {"e"}, {"f"}, true);
-  SetOp(&prog, "matmul_v2", "MatmulV2", {"b", "d", "f"}, {"g"}, true, "int8");
+  SetOp(&prog,
+        "fused_matmul",
+        "FusedMatmul",
+        {"b", "d", "f"},
+        {"g"},
+        true,
+        "int8");
   SetOp(&prog, "dropout", "Dropout", {"g"}, {"h"}, true, "float32");
 
   return prog;

@@ -880,7 +880,7 @@ void CPUQuantizePass::QuantizeImmutable(Graph* graph,
 void CPUQuantizePass::QuantizeMatmul(Graph* graph, bool with_residual) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
-  patterns::MatmulWithInputOps matmul_pattern{pattern, name_scope_};
+  patterns::FusedMatmul matmul_pattern{pattern, name_scope_};
   matmul_pattern(with_residual);
 
   int quantize_matmul_count = 0;
@@ -925,11 +925,6 @@ void CPUQuantizePass::QuantizeMatmul(Graph* graph, bool with_residual) const {
                           "are different: x(%d), y(%d).",
                           is_x_unsigned,
                           is_y_unsigned));
-
-    if (matmul_op->Op()->Type() == "matmul" ||
-        matmul_op->Op()->Type() == "matmul_v2") {
-      matmul_op->Op()->SetType("fused_matmul");
-    }
 
     if (with_residual) {
       GET_IR_NODE_FROM_SUBGRAPH(

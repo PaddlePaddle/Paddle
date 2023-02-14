@@ -22,6 +22,18 @@ namespace ir {
 
 class Graph;
 
+void ReplaceWithFusedOp(Node* op) {
+  const std::string matmul_type = op->Op()->Type();
+  if (matmul_type == "matmul" || matmul_type == "matmul_v2") {
+    op->Op()->SetType("fused_matmul");
+    if (matmul_type == "matmul") {
+      op->Op()->SetAttr("trans_x", op->Op()->GetAttr("transpose_X"));
+      op->Op()->SetAttr("trans_y", op->Op()->GetAttr("transpose_Y"));
+      op->Op()->SetAttr("matmul_alpha", op->Op()->GetAttr("alpha"));
+    }
+  }
+}
+
 void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Marks operators which are to be quantized.";
   std::unordered_set<std::string> supported_op_types =
@@ -84,6 +96,8 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
     if (op->Op()->GetAttrIfExists<int>("skip_quant") == 1) {
       return;
     }
+
+    ReplaceWithFusedOp(op);
     op->Op()->SetAttr("mkldnn_data_type", std::string("int8"));
   };
   gpd(graph, handler);
