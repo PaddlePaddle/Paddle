@@ -85,3 +85,4 @@ paddle/fluid/pybind/eager_op_function_impl.h
 paddle/fluid/pybind/eager_op_function_impl.h
 paddle/fluid/pybind/op_function_impl.h
 paddle/fluid/pybind/*final_state_op_function_impl.h
+paddle/fluid/prim/api/generated/prim_api/*

@@ -18,6 +18,8 @@
 #    ops.yaml or legacy_ops.yaml.
 
 
+import paddle
+
 from .primitives import *  # noqa: F403
 from .primreg import REGISTER_COMPOSITE, lookup_composite
 
@@ -93,10 +95,12 @@ def composite_batchnorm(
     y = reshape(scale, stats_shape) * x_hat + reshape(bias, stats_shape)
 
     # add op assign to detach tensor in void unsafe change outside the rule.
-    batch_mean_ = assign(reshape(batch_mean, run_mean.shape))
-    batch_var_ = assign(reshape(batch_var, run_var.shape))
-    run_mean_ = assign(run_mean)
-    run_var_ = assign(run_var)
+
+    batch_mean_ = paddle.assign(batch_mean)
+    batch_var_ = paddle.assign(batch_var)
+    run_mean_ = paddle.assign(run_mean)
+    run_var_ = paddle.assign(run_var)
+
     if trainable_statistics or not is_test:
         return run_mean_, None, batch_mean_, batch_var_, run_var_, y
     else:
