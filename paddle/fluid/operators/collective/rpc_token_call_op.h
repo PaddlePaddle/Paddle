@@ -57,14 +57,14 @@ inline std::string BuildPayload(const std::string& service,
 }
 
 // req & res handlers
-inline void HandleServiceRequest(brpc::Controller* ctrl,
-                                 int request_id,
-                                 const std::string& payload) {
+static inline void HandleServiceRequest(brpc::Controller* ctrl,
+                                        int request_id,
+                                        const std::string& payload) {
   ctrl->request_attachment().append(payload);
   VLOG(3) << "Request id " << request_id << " payload: " << payload;
 }
 
-inline void HandleServiceResponse(
+static inline void HandleServiceResponse(
     brpc::Controller* ctrl,
     int request_id,
     std::shared_ptr<bthread::CountdownEvent> event) {
@@ -117,8 +117,14 @@ class RpcTokenCallOpKernel : public framework::OpKernel<T> {
     }
     const std::string payload = BuildPayload(service, src_ids_vec);
 
-    int request_id = platform::RpcCommContext::RpcSend(
-        url, payload, &HandleServiceRequest, &HandleServiceResponse);
+    int request_id =
+        platform::RpcCommContext::RpcSend(url,
+                                          payload,
+                                          &HandleServiceRequest,
+                                          &HandleServiceResponse,
+                                          brpc::HttpMethod::HTTP_METHOD_POST,
+                                          60 * 1000,
+                                          10);
     VLOG(3) << "Request id " << request_id << " url: " << url;
     VLOG(3) << "Request id " << request_id << " payload: " << payload;
 

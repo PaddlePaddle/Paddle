@@ -38,21 +38,45 @@ std::vector<uint8_t> ParseStrResponse(const std::string& response) {
   return std::vector<uint8_t>(res.begin(), res.end());
 }
 
-inline void ParseResponse(phi::DenseTensor* out,
-                          const std::string& res_type,
-                          const platform::DeviceContext& dev_ctx,
-                          const std::string& resp) {
+static inline void ParseResponse(phi::DenseTensor* out,
+                                 const std::string& res_type,
+                                 const platform::DeviceContext& dev_ctx,
+                                 const std::string& resp) {
   if (res_type == "float") {
     auto res = ParseFloatResponse(resp);
-    dev_ctx.Alloc<double>(out);
+    // dev_ctx.Alloc<float>(out);
     framework::TensorFromVector(res, dev_ctx, out);
   } else if (res_type == "str") {
     auto res = ParseStrResponse(resp);
-    dev_ctx.Alloc<uint8_t>(out);
+    // dev_ctx.Alloc<uint8_t>(out);
     framework::TensorFromVector(res, dev_ctx, out);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument("Unknown result type."));
   }
+}
+
+static bool get_response(const framework::ExecutionContext& ctx,
+                         const int& request_id,
+                         const phi::DenseTensor& out,
+                         const std::string& res_type) {
+  // wait for call op's event notification
+  auto& rpc_store = platform::RpcRequestStore::Instance();
+  auto event = rpc_store.GetEvent(request_id);
+  int err_code = rpc_store.GetErrorCode(request_id);
+  bool ok = event->wait() == 0 && err_code == 0;
+  if (ok) {
+    const std::string& resp = rpc_store.GetResponse(request_id);
+    VLOG(3) << "Request id " << request_id << " raw response: " << resp;
+    VLOG(3) << "Request id " << request_id << " result type: " << res_type;
+
+    auto out_ = const_cast<phi::DenseTensor&>(out);
+
+    ParseResponse(&out_, res_type, ctx.device_context(), resp);
+  } else {
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Request %s failed with error code %s.", request_id, err_code));
+  }
+  return true;
 }
 
 template <typename T>
@@ -63,31 +87,31 @@ class RpcResultOpKernel : public framework::OpKernel<T> {
     std::vector<int> request_id_tensor_vec;
     framework::TensorToVector(
         *request_id_tensor, ctx.device_context(), &request_id_tensor_vec);
-    int request_id = request_id_tensor_vec[0];
-
-    // wait for call op's event notification
-    auto& rpc_store = platform::RpcRequestStore::Instance();
-    auto event = rpc_store.GetEvent(request_id);
 
     auto* out = ctx.Output<phi::DenseTensor>("Out");
-    int err_code = rpc_store.GetErrorCode(request_id);
-    bool ok = event->wait() == 0 && err_code == 0;
-    if (ok) {
-      const std::string& resp = rpc_store.GetResponse(request_id);
-      VLOG(3) << "Request id " << request_id << " raw response: " << resp;
-
-      const std::string res_type = ctx.Attr<std::string>("res_type");
-      VLOG(3) << "Request id " << request_id << " result type: " << res_type;
-
-      ParseResponse(out, res_type, ctx.device_context(), resp);
+    const std::string res_type = ctx.Attr<std::string>("res_type");
+    int out_len = ctx.Attr<int>("out_len");
+    out->Resize({static_cast<int64_t>(request_id_tensor->dims()[0]),
+                 static_cast<int64_t>(out_len)});
+    VLOG(0) << "out dims: " << out->dims().to_str()
+            << "numel: " << out->numel();
+    if (res_type == "str") {
+      ctx.device_context().Alloc<uint8_t>(out);
+    } else if (res_type == "float") {
+      ctx.device_context().Alloc<float>(out);
     } else {
-      PADDLE_THROW(platform::errors::Unavailable(
-          "Request %s failed with error code %s.", request_id, err_code));
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Unknown result type. error type: %s", res_type.c_str()));
+    }
+    VLOG(0) << "out dims: " << out->dims().to_str();
+    for (auto i = 0; i < request_id_tensor->dims()[0]; i++) {
+      get_response(
+          ctx, request_id_tensor_vec[0], out->Slice(i, i + 1), res_type);
     }
 
     auto* succeed = ctx.Output<phi::DenseTensor>("succeed");
     ctx.device_context().Alloc<bool>(succeed);
-    std::vector<bool> succeed_wrapper{ok};
+    std::vector<bool> succeed_wrapper{true};
     framework::TensorFromVector(succeed_wrapper, ctx.device_context(), succeed);
   }
 };

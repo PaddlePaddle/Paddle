@@ -33,18 +33,18 @@ namespace operators {
 using json = nlohmann::json;
 
 // payload builders
-inline std::string BuildIdsPayload(const std::vector<int>& src_ids) {
+static inline std::string BuildIdsPayload(const std::vector<int>& src_ids) {
   json payload = {{"ids", src_ids}};  // => {"ids": [1, 2, 3, ...]}
   return payload.dump();
 }
 
-inline std::string BuildStrPayload(const std::string& query) {
+static inline std::string BuildStrPayload(const std::string& query) {
   json payload = {{"data", {query}}};  // => {"data": [query]}
   return payload.dump();
 }
 
-inline std::string BuildPayload(const std::string& service,
-                                const std::vector<int>& src_ids) {
+static inline std::string BuildPayload(const std::string& service,
+                                       const std::vector<int>& src_ids) {
   if (service == "ids") {
     return BuildIdsPayload(src_ids);
   } else if (service == "str") {
@@ -57,14 +57,15 @@ inline std::string BuildPayload(const std::string& service,
 }
 
 // req & res handlers
-inline void HandleServiceRequest(brpc::Controller* ctrl,
-                                 int request_id,
-                                 const std::string& payload) {
+static inline void HandleServiceRequest(brpc::Controller* ctrl,
+                                        int request_id,
+                                        const std::string& payload) {
   ctrl->request_attachment().append(payload);
+  VLOG(3) << "Request id " << request_id << "payload size:" << payload.size();
   VLOG(3) << "Request id " << request_id << " payload: " << payload;
 }
 
-inline void HandleServiceResponse(
+static inline void HandleServiceResponse(
     brpc::Controller* ctrl,
     int request_id,
     std::shared_ptr<bthread::CountdownEvent> event) {
@@ -74,7 +75,10 @@ inline void HandleServiceResponse(
   if (ctrl->Failed()) {
     rpc_store.InsertErrorCode(request_id, ctrl->ErrorCode());
     PADDLE_THROW(platform::errors::Unavailable(
-        "Request id %s failed: access url error.", request_id));
+        "Request id %s failed: access url error. error code: %d, http code: %d",
+        request_id,
+        ctrl->ErrorCode(),
+        ctrl->http_response().status_code()));
   } else {
     const std::string res = ctrl->response_attachment().to_string();
     rpc_store.InsertErrorCode(request_id, 0);
@@ -82,6 +86,20 @@ inline void HandleServiceResponse(
   }
   // try to notify result op
   event->signal();
+}
+
+static int send_sequence(const framework::ExecutionContext& ctx,
+                         const std::string& service,
+                         const phi::DenseTensor& src_ids_tensor,
+                         const std::string& url) {
+  std::vector<int> src_ids_vec;
+  framework::TensorToVector(src_ids_tensor, ctx.device_context(), &src_ids_vec);
+  const std::string payload = BuildPayload(service, src_ids_vec);
+  int request_id = platform::RpcCommContext::RpcSend(
+      url, payload, &HandleServiceRequest, &HandleServiceResponse);
+  VLOG(3) << "Request id " << request_id << " url: " << url;
+  VLOG(3) << "Request id " << request_id << " payload: " << payload;
+  return request_id;
 }
 
 template <typename T>
@@ -100,9 +118,9 @@ class RpcCallOpKernel : public framework::OpKernel<T> {
 
     // payload
     auto src_ids_tensor = ctx.Input<phi::DenseTensor>("X");
-    std::vector<int> src_ids_vec;
-    framework::TensorToVector(
-        *src_ids_tensor, ctx.device_context(), &src_ids_vec);
+    auto x_dims = src_ids_tensor->dims();
+
+    std::vector<int> request_ids(x_dims[0]);
 
     bool use_ids = ctx.Attr<bool>("use_ids");
     std::string service;
@@ -115,17 +133,16 @@ class RpcCallOpKernel : public framework::OpKernel<T> {
       platform::RpcTokenizer::Instance().Init(vocab_path, special);
       service = "str";
     }
-    const std::string payload = BuildPayload(service, src_ids_vec);
 
-    int request_id = platform::RpcCommContext::RpcSend(
-        url, payload, &HandleServiceRequest, &HandleServiceResponse);
-    VLOG(3) << "Request id " << request_id << " url: " << url;
-    VLOG(3) << "Request id " << request_id << " payload: " << payload;
+    for (auto i = 0; i < x_dims[0]; i++) {
+      request_ids[i] =
+          send_sequence(ctx, service, src_ids_tensor->Slice(i, i + 1), url);
+    }
 
     auto* out = ctx.Output<phi::DenseTensor>("Out");
+    out->Resize({static_cast<int64_t>(request_ids.size())});
     ctx.device_context().Alloc<int>(out);
-    std::vector<int> request_id_wrapper{request_id};
-    framework::TensorFromVector(request_id_wrapper, ctx.device_context(), out);
+    framework::TensorFromVector(request_ids, ctx.device_context(), out);
   }
 };
 

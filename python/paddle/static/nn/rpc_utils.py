@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from multiprocessing.sharedctypes import Value
 from paddle import fluid
 import paddle
 
@@ -40,7 +41,7 @@ def rpc_call(src_ids=None, url_id=None, url_list=[], voc_path="", cvt2str=True):
         .create_var(
             name=id_gen("rpc_request_id"),
             dtype="int32",
-            shape=[1],
+            shape=[src_ids.shape[0]],
             persistable=False,
             stop_gradient=True,
         )
@@ -63,18 +64,35 @@ def rpc_call(src_ids=None, url_id=None, url_list=[], voc_path="", cvt2str=True):
     return request_id
 
 
-def rpc_result(request_id, result_dtype):
-    res = (
-        fluid.default_main_program()
-        .block(0)
-        .create_var(
-            name=id_gen("rpc_res"),
-            dtype="float32",
-            shape=[1000],
-            persistable=False,
-            stop_gradient=True,
+def rpc_result(request_id, result_dtype, out_len):
+    if result_dtype == "float":
+        res = (
+            fluid.default_main_program()
+            .block(0)
+            .create_var(
+                name=id_gen("rpc_res"),
+                dtype="float32",
+                shape=[request_id.shape[0], out_len],
+                persistable=False,
+                stop_gradient=True,
+            )
         )
-    )
+    elif result_dtype == "str":
+        res = (
+            fluid.default_main_program()
+            .block(0)
+            .create_var(
+                name=id_gen("rpc_res"),
+                dtype="uint8",
+                shape=[request_id.shape[0], out_len],
+                persistable=False,
+                stop_gradient=True,
+            )
+        )
+    else:
+        raise ValueError("result dtype must be one of str ot float")
+
+    print("res: ", res)
     success = (
         fluid.default_main_program()
         .block(0)
@@ -90,6 +108,6 @@ def rpc_result(request_id, result_dtype):
         type="rpc_result",
         inputs={"X": [request_id]},
         outputs={"Out": [res], "succeed": [success]},
-        attrs={"res_type": result_dtype},
+        attrs={"res_type": result_dtype, "out_len": out_len},
     )
     return res, success
