@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/operants_manager.h"
+#include "paddle/phi/api/include/operants_manager.h"
 
 #include "gflags/gflags.h"
 #include "glog/logging.h"
@@ -22,8 +22,6 @@
 DECLARE_string(tensor_operants_mode);
 
 namespace paddle {
-
-namespace operants {
 
 OperantsManager& OperantsManager::Instance() {
   static OperantsManager g_op_manager;
@@ -63,5 +61,4 @@ Tensor OperantsManager::multiply(const Tensor& x, const Tensor& y) {
   }
 }
 
-}  // namespace operants
 }  // namespace paddle
