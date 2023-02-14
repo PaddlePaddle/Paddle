@@ -117,7 +117,7 @@ cc_library(
 cc_library(
   operants_manager
   SRCS operants_manager.cc
-  DEPS flags)
+  DEPS phi_enforce)
 
 cc_library(
   mixed_vector
