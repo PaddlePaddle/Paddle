@@ -47,6 +47,7 @@ class XPUTestReduceSumOp(XPUOpTestWrapper):
                 'use_xpu': True,
                 'reduce_all': self.reduce_all,
                 'keep_dim': self.keep_dim,
+                'dim': self.axis,
             }
             self.inputs = {'X': np.random.random(self.shape).astype(self.dtype)}
             if self.attrs['reduce_all']:

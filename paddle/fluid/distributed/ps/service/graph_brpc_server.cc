@@ -126,9 +126,10 @@ int32_t GraphBrpcService::clear_nodes(Table *table,
                                       const PsRequestMessage &request,
                                       PsResponseMessage &response,
                                       brpc::Controller *cntl) {
-  GraphTableType type_id = *(GraphTableType *)(request.params(0).c_str());
-  int idx_ = *(int *)(request.params(1).c_str());
-  ((GraphTable *)table)->clear_nodes(type_id, idx_);
+  GraphTableType type_id =
+      *(reinterpret_cast<const GraphTableType *>(request.params(0).c_str()));
+  int idx_ = *(reinterpret_cast<const int *>(request.params(1).c_str()));
+  (reinterpret_cast<GraphTable *>(table))->clear_nodes(type_id, idx_);
   return 0;
 }
 
@@ -380,11 +381,12 @@ int32_t GraphBrpcService::pull_graph_list(Table *table,
         response, -1, "pull_graph_list request requires at least 5 arguments");
     return 0;
   }
-  GraphTableType type_id = *(GraphTableType *)(request.params(0).c_str());
-  int idx = *(int *)(request.params(1).c_str());
-  int start = *(int *)(request.params(2).c_str());
-  int size = *(int *)(request.params(3).c_str());
-  int step = *(int *)(request.params(4).c_str());
+  GraphTableType type_id =
+      *(reinterpret_cast<const GraphTableType *>(request.params(0).c_str()));
+  int idx = *(reinterpret_cast<const int *>(request.params(1).c_str()));
+  int start = *(reinterpret_cast<const int *>(request.params(2).c_str()));
+  int size = *(reinterpret_cast<const int *>(request.params(3).c_str()));
+  int step = *(reinterpret_cast<const int *>(request.params(4).c_str()));
   std::unique_ptr<char[]> buffer;
   int actual_size;
   (reinterpret_cast<GraphTable *>(table))
@@ -432,9 +434,11 @@ int32_t GraphBrpcService::graph_random_sample_nodes(
     const PsRequestMessage &request,
     PsResponseMessage &response,
     brpc::Controller *cntl) {
-  GraphTableType type_id = *(GraphTableType *)(request.params(0).c_str());
-  int idx_ = *(int *)(request.params(1).c_str());
-  size_t size = *(uint64_t *)(request.params(2).c_str());
+  GraphTableType type_id =
+      *(reinterpret_cast<const GraphTableType *>(request.params(0).c_str()));
+  int idx_ = *(reinterpret_cast<const int *>(request.params(1).c_str()));
+  size_t size =
+      *(reinterpret_cast<const uint64_t *>(request.params(2).c_str()));
   // size_t size = *(int64_t *)(request.params(0).c_str());
   std::unique_ptr<char[]> buffer;
   int actual_size;

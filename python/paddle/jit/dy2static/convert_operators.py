@@ -17,7 +17,7 @@ import re
 import paddle
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.framework import Variable, core
-from paddle.fluid.layers import Print, assign, cast, control_flow, fill_constant
+from paddle.fluid.layers import Print, control_flow, fill_constant
 from paddle.fluid.layers.control_flow import while_loop
 from paddle.fluid.layers.utils import copy_mutable_vars
 from paddle.jit.dy2static.utils import (
@@ -675,7 +675,7 @@ def convert_shape_compare(left, *args):
 def cast_bool_if_necessary(var):
     assert isinstance(var, Variable)
     if convert_dtype(var.dtype) not in ['bool']:
-        var = cast(var, dtype="bool")
+        var = paddle.cast(var, dtype="bool")
     return var
 
 
@@ -705,7 +705,7 @@ def convert_var_dtype(var, dtype):
             'int': 'int32',
             'float': 'float32',
         }
-        return cast(var, dtype=cast_map[dtype])
+        return paddle.cast(var, dtype=cast_map[dtype])
     else:
         return eval('{}(var)'.format(dtype))
 
@@ -715,7 +715,7 @@ def convert_assert(cond, message=""):
     A function representation of a Python ``assert`` statement.
     """
     if isinstance(cond, Variable):
-        cond = cast(cond, "bool")
+        cond = paddle.cast(cond, "bool")
         # NOTE: message is not used because Paddle Assert has no corresponding parameter to use.
         from paddle.static.nn.control_flow import Assert
 
@@ -788,7 +788,7 @@ def _run_paddle_pop(array, *args):
     new_array = _slice_tensor_array(array, 0, idx)
     i = idx + 1
     _, new_array = while_loop(cond, body, [i, new_array])
-    assign(input=new_array, output=array)
+    paddle.assign(new_array, output=array)
 
     return pop_item
 

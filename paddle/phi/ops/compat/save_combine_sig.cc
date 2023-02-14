@@ -35,4 +35,6 @@ KernelSignature SaveCombineOpArgumentMapping(
 
 }  // namespace phi
 
+PD_REGISTER_BASE_KERNEL_NAME(save_combine, save_combine_tensor);
+
 PD_REGISTER_ARG_MAPPING_FN(save_combine, phi::SaveCombineOpArgumentMapping);
