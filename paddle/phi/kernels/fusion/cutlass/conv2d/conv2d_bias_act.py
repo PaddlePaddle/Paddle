@@ -215,6 +215,52 @@ epilogue_functors = [
 ]
 
 
+# iterate over iterator_algorithms and tiles
+# cba_name is like conv2d_bias_silu_sm75, it's added at the end of kernel_signature
+def generate_conv_kernels(
+    conv_kind,
+    iterator_algorithms,
+    tiles,
+    A,
+    B,
+    C,
+    element_epilogue,
+    stride_kind,
+    epilogue_functor,
+    swizzling_functor,
+    cba_name,
+):
+    sm75_code = ""
+    all_kernel_names = ""
+    for iterator_algorithm in iterator_algorithms:
+        for tile in tiles:
+            conv2d_operation = Conv2dOperation(
+                conv_kind,
+                iterator_algorithm,
+                tile.minimum_compute_capability,
+                tile,
+                A,
+                B,
+                C,
+                element_epilogue,
+                stride_kind,
+                epilogue_functor,
+                swizzling_functor,
+            )
+            kernel_dict = {}
+            kernel_dict["kernel_sig"] = conv2d_operation.configuration_name()
+            kernel_dict["kernel_function_name"] = (
+                kernel_dict["kernel_sig"] + cba_name
+            )
+            kernel_dict[
+                "kenel_tmplate_instantiate"
+            ] = EmitConv2dInstance().emit(conv2d_operation)
+            all_kernel_names += kernel_dict["kernel_function_name"] + ", \n"
+            # Generate kernel code
+            sm75_code += SubstituteTemplate(cba_kernel, kernel_dict)
+    return (sm75_code, all_kernel_names)
+
+
 def generate_sm75_1688():
     iterator_algorithms = [
         IteratorAlgorithm.Optimized,
@@ -293,37 +339,25 @@ def generate_sm75_1688():
                         [128, 64, 32], 2, [2, 2, 1], math_inst, min_cc, max_cc
                     ),
                 ]
-                for iterator_algorithm in iterator_algorithms:
-                    for tile in tiles:
-                        conv2d_operation = Conv2dOperation(
-                            conv_kind,
-                            iterator_algorithm,
-                            tile.minimum_compute_capability,
-                            tile,
-                            A,
-                            B,
-                            C,
-                            element_epilogue,
-                            stride_kind,
-                            epilogue_functor,
-                            swizzling_functor,
-                        )
-                        kernel_dict = {}
-                        kernel_dict[
-                            "kernel_sig"
-                        ] = conv2d_operation.configuration_name()
-                        kernel_dict["kernel_function_name"] = (
-                            kernel_dict["kernel_sig"] + op_dict["cba_name"]
-                        )
-                        kernel_dict[
-                            "kenel_tmplate_instantiate"
-                        ] = EmitConv2dInstance().emit(conv2d_operation)
-                        all_kernel_names += (
-                            kernel_dict["kernel_function_name"] + ", \n"
-                        )
-                        # Generate kernel code
-                        sm75_code += SubstituteTemplate(cba_kernel, kernel_dict)
-            # Generate op code
+                # Generate kernel code
+                # iterate over tils and iterator_algorithms
+                return_value = generate_conv_kernels(
+                    conv_kind,
+                    iterator_algorithms,
+                    tiles,
+                    A,
+                    B,
+                    C,
+                    element_epilogue,
+                    stride_kind,
+                    epilogue_functor,
+                    swizzling_functor,
+                    op_dict["cba_name"],
+                )
+                sm75_code += return_value[0]
+                all_kernel_names += return_value[1]
+
+        # Generate op code
         op_dict["all_kernel_function_name"] = all_kernel_names
         sm75_code += SubstituteTemplate(cba_function, op_dict)
     return sm75_code
