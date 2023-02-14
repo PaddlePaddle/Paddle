@@ -1962,7 +1962,8 @@ class MatmulOneDNNHandler : public OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
           {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
       return dnnl::memory(scales_md, this->engine_, &scale_out_);
     } else {
-      dnnl::memory(dnnl::memory::desc(), this->engine_, DNNL_MEMORY_NONE);
+      return dnnl::memory(
+          dnnl::memory::desc(), this->engine_, DNNL_MEMORY_NONE);
     }
   }
 
