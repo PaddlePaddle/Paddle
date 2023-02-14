@@ -48,7 +48,7 @@ if [ "$api_spec_diff" != "" -o "${api_params_diff}" != "" ]; then
     echo_line="${echo_line} leiqing1/LeiQing for inference related APIs.\n"
 
     check_approval 1 46782768 8555991 47554610 7845005
-    check_approval 1 29231 79295425 23093488 39876205 65896652 54695910
+    check_approval 1 29231 70642955 23093488 39876205 65896652 54695910
 fi
 
 api_doc_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.doc  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.doc` 
@@ -58,7 +58,7 @@ if [ "$api_doc_spec_diff" != "" ]; then
     echo_line="${echo_line} liuTINA0907/LiuShuangQiao for distributed related API docs.\n"
     echo_line="${echo_line} leiqing1/LeiQing for inference related API docs.\n"
 
-    check_approval 1 29231 79295425 23093488 39876205 65896652 54695910
+    check_approval 1 29231 70642955 23093488 39876205 65896652 54695910
 fi
 
 api_yaml_diff=`python ${PADDLE_ROOT}/tools/check_api_yaml_same.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec ${BRANCH} ${PADDLE_ROOT}` 
