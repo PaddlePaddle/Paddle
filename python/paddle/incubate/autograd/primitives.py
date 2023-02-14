@@ -36,6 +36,7 @@ from paddle.tensor import erf  # noqa: F401
 from paddle.tensor import erfinv  # noqa: F401
 from paddle.tensor import exp  # noqa: F401
 from paddle.tensor import expm1  # noqa: F401
+from paddle.tensor import full  # noqa: F401
 from paddle.tensor import lgamma  # noqa: F401
 from paddle.tensor import log  # noqa: F401
 from paddle.tensor import log1p  # noqa: F401
@@ -115,6 +116,7 @@ others = [
     'assign',
     'fill_constant',
     'reshape',
+    'full',
 ]
 
 __all__ = []
