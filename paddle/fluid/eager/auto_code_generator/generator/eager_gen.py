@@ -2045,26 +2045,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
             is_optional = name in self.optional_inputs
             tensor_wrapper_recover_str = f"{indent}auto {transformed_tensor_name} = egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name});"
-            check_func = """
-            void check_not_use(std::vector<paddle::experimental::Tensor>& xx) {
-                //for(size_t i = 0; i < xx.size(); ++i) {
-                //    if(xx[i].can_not_use()) {
-                //         VLOG(0) <<\"Find Input Which Can Not Use.\";
-                //    }
-                //}
-            };
-            void check_not_use(paddle::experimental::Tensor& xx) {
-                //if(xx[i].can_not_use()) {
-                //         VLOG(0) <<\"Find Input Which Can Not Use.\";
-                //    }
-            };
-            """
-            # tensor_wrapper_recover_str += (
-            #    "{} ;check_not_use({})".format(
-            #        check_func,
-            #        transformed_tensor_name
-            #    )
-            # )
+
             if backward_inplace_map and name in backward_inplace_map.keys():
                 if has_higher_order_node:
                     if (
@@ -2094,6 +2075,14 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                 inplace_grad_input_str = transformed_tensor_name
             if is_optional:
                 if backward_input_type == "std::vector<Tensor>":
+                    if transformed_tensor_name != "size_tensor":
+                        tensor_wrapper_recover_str += """
+                        for(size_t i = 0; i < {}.size(); ++i)
+                            if({}.can_not_use())
+                            VLOG(0) <<\"Find Input Which Can Not Use.\";
+                        """.format(
+                            transformed_tensor_name, transformed_tensor_name
+                        )
                     tensor_wrapper_recover_str += (
                         "\n"
                         + CREATE_RECOVER_OPTIONAL_VECTOR_TENSOR_TEMPLATE.format(
@@ -2104,6 +2093,12 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                         )
                     )
                 else:
+                    tensor_wrapper_recover_str += """
+                        if({}.can_not_use())
+                                VLOG(0) <<\"Find Input Which Can Not Use.\";
+                        """.format(
+                        transformed_tensor_name
+                    )
                     tensor_wrapper_recover_str += (
                         "\n"
                         + CREATE_RECOVER_OPTIONAL_TENSOR_TEMPLATE.format(
@@ -2120,7 +2115,29 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
             else:
                 grad_api_args[grad_api_position] = transformed_tensor_name
-
+            if (
+                backward_input_type == "std::vector<Tensor>"
+                and transformed_tensor_name
+                not in [
+                    'weight_list',
+                    'inner_cache',
+                    'pre_state',
+                    "size_tensor",
+                    'x_shape',
+                ]
+            ):
+                pass
+                #      tensor_wrapper_recover_str += """
+                #      for(size_t i = 0; i < {}.size(); ++i)
+                #          if( {}.size() > 1 && {}.can_not_use())
+                #          VLOG(0) <<\"Find Input Which Can Not Use.\";
+                #      """.format(transformed_tensor_name, transformed_tensor_name, transformed_tensor_name)
+            else:
+                pass
+                # tensor_wrapper_recover_str += """
+                #        if({}.can_not_use())
+                #                VLOG(0) <<\"Find Input Which Can Not Use.\";
+                #        """.format(transformed_tensor_name)
             get_grad_in_args_list.append(tensor_wrapper_recover_str)
 
         # Grad Ins from grads
