@@ -296,6 +296,12 @@ XPUOpMap& get_kl1_ops() {
                      phi::DataType::UINT8,
                      phi::DataType::FLOAT32})},
       {"where_index", XPUKernelSet({phi::DataType::BOOL})},
+      {"sin", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"cos", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"linspace",
+       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::INT32})},
+      {"randint", XPUKernelSet({phi::DataType::INT32, phi::DataType::INT64})},
+      {"group_norm", XPUKernelSet({phi::DataType::FLOAT32})}
       // AddMore
   };
 
