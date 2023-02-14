@@ -2782,11 +2782,9 @@ class OpTest(unittest.TestCase):
                 raise AssertionError(
                     "no_check_set of op %s must be set to None." % self.op_type
                 )
-        paddle.enable_static()
         static_checker = StaticChecker(self, self.outputs)
         static_checker.check()
         outs, fetch_list = static_checker.outputs, static_checker.fetch_list
-        paddle.disable_static()
         if check_dygraph:
             dygraph_checker = DygraphChecker(self, self.outputs)
             dygraph_checker.check()
