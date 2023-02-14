@@ -1060,64 +1060,72 @@ class OpTest(unittest.TestCase):
         enable_inplace=None,
         for_inplace_test=None,
     ):
-        program = Program()
-        block = program.global_block()
-        op = self._append_ops(block)
+        with paddle.fluid.framework._dygraph_guard(None):
+            program = Program()
+            block = program.global_block()
+            op = self._append_ops(block)
 
-        inputs = self._get_inputs(block)
-        outputs = self._get_outputs(block)
-        feed_map = self.feed_var(inputs, place)
+            inputs = self._get_inputs(block)
+            outputs = self._get_outputs(block)
+            feed_map = self.feed_var(inputs, place)
 
-        if for_inplace_test:
-            # Some variables' tensors hold no buffer (tensor's _holder is NULL), like XShape in reshape2 op,
-            # and the shapes of those variables contain 0 (eg. Xshape.shape = [0, 2, 5]).
-            # Set persistable for those variables in order to get them from global_scope for inplace grad test directly other than feed them,
-            # since feed op calls check_memory_size() which fails when tensor's holder_ is NULL.
-            for out_name in op.output_arg_names:
-                var = block.var(out_name)
-                if 0 in var.shape:
-                    var.persistable = True
-        original_program = program
-        if parallel:
-            use_cuda = False
-            if isinstance(place, fluid.CUDAPlace):
-                use_cuda = True
-            compiled_prog = fluid.CompiledProgram(program).with_data_parallel(
-                loss_name=loss.name if loss else None, places=place
+            if for_inplace_test:
+                # Some variables' tensors hold no buffer (tensor's _holder is NULL), like XShape in reshape2 op,
+                # and the shapes of those variables contain 0 (eg. Xshape.shape = [0, 2, 5]).
+                # Set persistable for those variables in order to get them from global_scope for inplace grad test directly other than feed them,
+                # since feed op calls check_memory_size() which fails when tensor's holder_ is NULL.
+                for out_name in op.output_arg_names:
+                    var = block.var(out_name)
+                    if 0 in var.shape:
+                        var.persistable = True
+            original_program = program
+            if parallel:
+                use_cuda = False
+                if isinstance(place, fluid.CUDAPlace):
+                    use_cuda = True
+                compiled_prog = fluid.CompiledProgram(
+                    program
+                ).with_data_parallel(
+                    loss_name=loss.name if loss else None, places=place
+                )
+                program = compiled_prog
+            fetch_list = getattr(self, "fetch_list", [])
+            # if the fetch_list is customized by user, we use it directly.
+            # if not, fill the fetch_list by the user configured outputs in test.
+            if len(fetch_list) == 0:
+                for var_name, var in outputs.items():
+                    if no_check_set is not None and var_name in no_check_set:
+                        continue
+                    if isinstance(var, list):
+                        for v in var:
+                            fetch_list.append(v.name)
+                    else:
+                        fetch_list.append(var.name)
+            # if the fetch_list still empty, fill the fetch_list by the operator output.
+            if len(fetch_list) == 0:
+                for out_name, out_dup in Operator.get_op_outputs(self.op_type):
+                    fetch_list.append(str(out_name))
+
+            if enable_inplace is not None:
+                build_strategy = fluid.BuildStrategy()
+                build_strategy.enable_inplace = enable_inplace
+
+                compiled_prog = fluid.CompiledProgram(
+                    program
+                ).with_data_parallel(
+                    build_strategy=build_strategy, places=place
+                )
+                program = compiled_prog
+
+            executor = Executor(place)
+            outs = executor.run(
+                program,
+                feed=feed_map,
+                fetch_list=fetch_list,
+                return_numpy=False,
             )
-            program = compiled_prog
-        fetch_list = getattr(self, "fetch_list", [])
-        # if the fetch_list is customized by user, we use it directly.
-        # if not, fill the fetch_list by the user configured outputs in test.
-        if len(fetch_list) == 0:
-            for var_name, var in outputs.items():
-                if no_check_set is not None and var_name in no_check_set:
-                    continue
-                if isinstance(var, list):
-                    for v in var:
-                        fetch_list.append(v.name)
-                else:
-                    fetch_list.append(var.name)
-        # if the fetch_list still empty, fill the fetch_list by the operator output.
-        if len(fetch_list) == 0:
-            for out_name, out_dup in Operator.get_op_outputs(self.op_type):
-                fetch_list.append(str(out_name))
-
-        if enable_inplace is not None:
-            build_strategy = fluid.BuildStrategy()
-            build_strategy.enable_inplace = enable_inplace
-
-            compiled_prog = fluid.CompiledProgram(program).with_data_parallel(
-                build_strategy=build_strategy, places=place
-            )
-            program = compiled_prog
-
-        executor = Executor(place)
-        outs = executor.run(
-            program, feed=feed_map, fetch_list=fetch_list, return_numpy=False
-        )
-        self.op = op
-        self.program = original_program
+            self.op = op
+            self.program = original_program
         if for_inplace_test:
             return outs, fetch_list, feed_map, original_program, op.desc
         else:
@@ -2561,85 +2569,93 @@ class OpTest(unittest.TestCase):
         user_defined_grad_outputs=None,
         parallel=False,
     ):
-        prog = Program()
-        scope = core.Scope()
-        block = prog.global_block()
-        self._append_ops(block)
+        with paddle.fluid.framework._dygraph_guard(None):
+            prog = Program()
+            scope = core.Scope()
+            block = prog.global_block()
+            self._append_ops(block)
 
-        inputs = self._get_inputs(block)
-        outputs = self._get_outputs(block)
-        feed_dict = self.feed_var(inputs, place)
+            inputs = self._get_inputs(block)
+            outputs = self._get_outputs(block)
+            feed_dict = self.feed_var(inputs, place)
 
-        if user_defined_grad_outputs is None:
-            if self.dtype == np.uint16:
-                cast_inputs = list(map(block.var, output_names))
-                cast_outputs = block.create_var(
-                    dtype="float32", shape=cast_inputs[0].shape
+            if user_defined_grad_outputs is None:
+                if self.dtype == np.uint16:
+                    cast_inputs = list(map(block.var, output_names))
+                    cast_outputs = block.create_var(
+                        dtype="float32", shape=cast_inputs[0].shape
+                    )
+                    cast_op = block.append_op(
+                        inputs={"X": cast_inputs},
+                        outputs={"Out": cast_outputs},
+                        type="cast",
+                        attrs={
+                            "in_dtype": core.VarDesc.VarType.BF16,
+                            "out_dtype": core.VarDesc.VarType.FP32,
+                        },
+                    )
+                    cast_op.desc.infer_var_type(block.desc)
+                    cast_op.desc.infer_shape(block.desc)
+                    output_names = [cast_outputs.name]
+                loss = append_loss_ops(block, output_names)
+                param_grad_list = append_backward(
+                    loss=loss,
+                    parameter_list=input_to_check,
+                    no_grad_set=no_grad_set,
                 )
-                cast_op = block.append_op(
-                    inputs={"X": cast_inputs},
-                    outputs={"Out": cast_outputs},
-                    type="cast",
-                    attrs={
-                        "in_dtype": core.VarDesc.VarType.BF16,
-                        "out_dtype": core.VarDesc.VarType.FP32,
-                    },
+                fetch_list = [g for p, g in param_grad_list]
+            else:
+                assert (
+                    parallel is False
+                ), "unsupported parallel mode when giving custom grad outputs."
+                # user_defined_grad_outputs here are numpy arrays
+                if not isinstance(user_defined_grad_outputs, list):
+                    user_defined_grad_outputs = [user_defined_grad_outputs]
+                grad_outputs = []
+                for grad_out_value in user_defined_grad_outputs:
+                    # `presistable` is used to avoid executor create new var in local scope
+                    var = block.create_var(
+                        shape=grad_out_value.shape,
+                        dtype=grad_out_value.dtype,
+                        persistable=True,
+                    )
+                    true_var = scope.var(var.name)
+                    tensor = true_var.get_tensor()
+                    tensor.set(grad_out_value, place)
+                    grad_outputs.append(var)
+                targets = [
+                    outputs[name] for name in outputs if name in output_names
+                ]
+                inputs = [
+                    inputs[name] for name in input_to_check if name in inputs
+                ]
+                grad_inputs = paddle.static.gradients(
+                    targets, inputs, grad_outputs, no_grad_set
                 )
-                cast_op.desc.infer_var_type(block.desc)
-                cast_op.desc.infer_shape(block.desc)
-                output_names = [cast_outputs.name]
-            loss = append_loss_ops(block, output_names)
-            param_grad_list = append_backward(
-                loss=loss,
-                parameter_list=input_to_check,
-                no_grad_set=no_grad_set,
-            )
-            fetch_list = [g for p, g in param_grad_list]
-        else:
-            assert (
-                parallel is False
-            ), "unsupported parallel mode when giving custom grad outputs."
-            # user_defined_grad_outputs here are numpy arrays
-            if not isinstance(user_defined_grad_outputs, list):
-                user_defined_grad_outputs = [user_defined_grad_outputs]
-            grad_outputs = []
-            for grad_out_value in user_defined_grad_outputs:
-                # `presistable` is used to avoid executor create new var in local scope
-                var = block.create_var(
-                    shape=grad_out_value.shape,
-                    dtype=grad_out_value.dtype,
-                    persistable=True,
-                )
-                true_var = scope.var(var.name)
-                tensor = true_var.get_tensor()
-                tensor.set(grad_out_value, place)
-                grad_outputs.append(var)
-            targets = [
-                outputs[name] for name in outputs if name in output_names
-            ]
-            inputs = [inputs[name] for name in input_to_check if name in inputs]
-            grad_inputs = paddle.static.gradients(
-                targets, inputs, grad_outputs, no_grad_set
-            )
-            fetch_list = grad_inputs
+                fetch_list = grad_inputs
 
-        if parallel:
-            use_cuda = False
-            if isinstance(place, fluid.CUDAPlace):
-                use_cuda = True
-            compiled_prog = fluid.CompiledProgram(prog).with_data_parallel(
-                loss_name=loss.name, places=place
+            if parallel:
+                use_cuda = False
+                if isinstance(place, fluid.CUDAPlace):
+                    use_cuda = True
+                compiled_prog = fluid.CompiledProgram(prog).with_data_parallel(
+                    loss_name=loss.name, places=place
+                )
+                prog = compiled_prog
+            executor = fluid.Executor(place)
+            res = list(
+                map(
+                    np.array,
+                    executor.run(
+                        prog,
+                        feed_dict,
+                        fetch_list,
+                        scope=scope,
+                        return_numpy=False,
+                    ),
+                )
             )
-            prog = compiled_prog
-        executor = fluid.Executor(place)
-        return list(
-            map(
-                np.array,
-                executor.run(
-                    prog, feed_dict, fetch_list, scope=scope, return_numpy=False
-                ),
-            )
-        )
+        return res
 
 
 class OpTestTool:
