@@ -14,11 +14,15 @@
 
 #pragma once
 
+#include <glog/logging.h>
 #include <memory>
+#include <unordered_map>
 
 namespace ir {
 class IrContextImpl;
 class StorageUniquer;
+class AbstractType;
+class TypeId;
 
 ///
 /// \brief IrContext is a global singleton class used to store and manage Type
@@ -32,9 +36,12 @@ class IrContext {
   /// \return Global singleton for IrContext.
   ///
   static IrContext *Instance() {
+    VLOG(4) << "=> Instance called with context (ir_context_ == " << ir_context_
+            << ").";
     if (ir_context_ == nullptr) {
       ir_context_ = new IrContext();
     }
+    VLOG(4) << "    |-> (ir_context_ == " << ir_context_ << ").";
     return ir_context_;
   }
 
@@ -48,6 +55,7 @@ class IrContext {
   ///
   IrContextImpl &impl() { return *impl_; }
 
+  ///
   /// \brief Returns the storage uniquer used for constructing TypeStorage
   /// instances.
   ///
@@ -55,6 +63,15 @@ class IrContext {
   /// instances.
   ///
   StorageUniquer &storage_uniquer();
+
+  ///
+  /// \brief Returns the storage uniquer used for constructing TypeStorage
+  /// instances.
+  ///
+  /// \return The storage uniquer used for constructing TypeStorage
+  /// instances.
+  ///
+  std::unordered_map<TypeId, AbstractType *> &registed_abstracted_type();
 
  private:
   IrContext();

@@ -116,6 +116,7 @@ class StorageUniquer {
   template <typename Storage>
   void RegisterSingletonStorageType(TypeId type_id,
                                     std::function<void(Storage *)> init_func) {
+    VLOG(4) << "==> StorageUniquer::RegisterSingletonStorageType()";
     auto ctor_func = [&]() {
       auto *storage = new Storage(nullptr);
       if (init_func) init_func(storage);

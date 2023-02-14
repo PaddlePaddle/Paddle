@@ -64,6 +64,8 @@ class AbstractType {
   TypeId type_id_;
 };
 
+struct TypeUniquer;
+
 ///
 /// \brief TypeStorage is used to store all information of a Type. A Type object
 /// contains a TypeStorage. For non-parameter type, the information includes:
@@ -74,6 +76,7 @@ class AbstractType {
 ///
 class TypeStorage : public StorageUniquer::BaseStorage {
   friend StorageUniquer;
+  friend TypeUniquer;
 
  public:
   ///

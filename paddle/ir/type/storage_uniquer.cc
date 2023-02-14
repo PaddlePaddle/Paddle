@@ -16,7 +16,6 @@
 #include <unordered_map>
 
 #include "paddle/ir/type/storage_uniquer.h"
-#include "paddle/phi/api/ext/exception.h"
 
 namespace ir {
 // This is a structure for creating, caching, and looking up Storage of
@@ -77,7 +76,7 @@ struct StorageUniquerImpl {
       std::function<bool(const BaseStorage *)> is_equal_func,
       std::function<BaseStorage *()> ctor_func) {
     if (parametric_uniquers_.find(type_id) == parametric_uniquers_.end())
-      PD_THROW("The input data pointer is null.");
+      throw("The input data pointer is null.");
     ParametricStorageUniquer &parametric_storage =
         *parametric_uniquers_[type_id];
     return parametric_storage.GetOrCreateParametricStorage(
@@ -86,19 +85,12 @@ struct StorageUniquerImpl {
 
   // Get the storage of singleton type.
   BaseStorage *GetSingletonStorage(TypeId type_id) {
+    VLOG(4) << "==> StorageUniquerImpl::GetSingletonStorage().";
     if (singleton_instances_.find(type_id) == singleton_instances_.end())
-      PD_THROW("The input data pointer is null.");
+      throw("TypeId not found in IrContext.");
     BaseStorage *singleton_instance = singleton_instances_[type_id];
     return singleton_instance;
   }
-
-  // Register a new parametric storage class.
-  void RegisterParametricStorageType(
-      TypeId type_id, std::function<void(BaseStorage *)> del_func);
-
-  // Register a new singleton storage class.
-  void RegisterSingletonStorageType(TypeId type_id,
-                                    std::function<void()> init_func);
 
   // This map is a mapping between type id and parameteric type storage.
   std::unordered_map<TypeId, std::unique_ptr<ParametricStorageUniquer>>
@@ -109,6 +101,8 @@ struct StorageUniquerImpl {
 };
 
 StorageUniquer::StorageUniquer() : impl_(new StorageUniquerImpl()) {}
+
+StorageUniquer::~StorageUniquer() = default;
 
 StorageUniquer::BaseStorage *StorageUniquer::GetParametricStorageTypeImpl(
     TypeId type_id,
@@ -132,9 +126,10 @@ void StorageUniquer::RegisterParametricStorageTypeImpl(
 
 void StorageUniquer::RegisterSingletonStorageTypeImpl(
     TypeId type_id, std::function<BaseStorage *()> ctor_func) {
+  VLOG(4) << "==> StorageUniquer::RegisterSingletonStorageTypeImpl()";
   if (impl_->singleton_instances_.find(type_id) !=
       impl_->singleton_instances_.end())
-    PD_THROW("storage class already registered");
+    throw("storage class already registered");
   impl_->singleton_instances_.emplace(type_id, ctor_func());
 }
 

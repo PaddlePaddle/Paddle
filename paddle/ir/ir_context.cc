@@ -17,7 +17,6 @@
 #include "paddle/ir/builtin_type.h"
 #include "paddle/ir/ir_context.h"
 #include "paddle/ir/type/type_support.h"
-#include "paddle/phi/api/ext/exception.h"
 
 namespace ir {
 // The implementation class of the IrContext class
@@ -37,7 +36,15 @@ class IrContextImpl {
   Float32Type fp32_type;
 };
 
+IrContext *IrContext::ir_context_ = nullptr;
+
 IrContext::IrContext() : impl_(new IrContextImpl()) {
+  VLOG(4) << "==> Constructor for IrContext.";
+  VLOG(4) << "==> Register Float32Type.";
+  AbstractType *abstract_type = new AbstractType(
+      std::move(AbstractType::get(TypeId::get<Float32Type>())));
+  registed_abstracted_type().emplace(TypeId::get<Float32Type>(), abstract_type);
+  TypeUniquer::RegisterType<Float32Type>(this);
   impl_->fp32_type = TypeUniquer::get<Float32Type>(this);
 }
 
@@ -45,11 +52,18 @@ StorageUniquer &IrContext::storage_uniquer() {
   return impl().registed_storage_uniquer_;
 }
 
+std::unordered_map<TypeId, AbstractType *>
+    &IrContext::registed_abstracted_type() {
+  return impl().registed_abstract_types_;
+}
+
 const AbstractType &AbstractType::lookup(TypeId type_id, IrContext *ctx) {
+  VLOG(4) << "==> Get registed abstract type (" << &type_id
+          << ") from IrContext (" << ctx << ").";
   auto &impl = ctx->impl();
   auto iter = impl.registed_abstract_types_.find(type_id);
   if (iter == impl.registed_abstract_types_.end()) {
-    PD_THROW("The input data pointer is null.");
+    throw("Abstract type not found in IrContext.");
   } else {
     return *(iter->second);
   }
