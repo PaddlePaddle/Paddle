@@ -15,6 +15,7 @@
 import paddle
 import paddle.fluid as fluid
 import numpy as np
+import os
 
 paddle.enable_static()
 
@@ -34,11 +35,11 @@ in_url_id = fluid.data(name='url_id', shape=[1], dtype='int32')
 req_ids = paddle.static.nn.rpc_call(
     in_query,
     in_url_id,
-    ["http://10.127.2.19:8082/run/predict"],
+    [os.environ.get("url_list")],
     "/code_lp/ernie-bot/post-train/ernie_3.0_100b_no_distill/config/ernie3.0_vocab_multi_prompt_v9.txt",
     True,
 )
-out_data, out_succeed = paddle.static.nn.rpc_result(req_ids, "float", 4096)
+out_data, out_succeed = paddle.static.nn.rpc_result(req_ids, "str", 4096)
 paddle.static.Print(in_query)
 paddle.static.Print(req_ids)
 paddle.static.Print(out_data.astype("int32"))

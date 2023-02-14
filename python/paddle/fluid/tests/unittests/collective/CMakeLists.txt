@@ -379,5 +379,11 @@ if((WITH_ROCM OR WITH_GPU) AND (LINUX))
     "PADDLE_DIST_UT_PORT=21532;http_proxy=;https_proxy=")
   set_tests_properties(test_world_size_and_rank PROPERTIES TIMEOUT "120")
 endif()
+if((WITH_ROCM OR WITH_GPU) AND (LINUX))
+  py_test_modules(test_rpc_call_result MODULES test_rpc_call_result ENVS
+                  "http_proxy=;https_proxy=")
+  set_tests_properties(test_rpc_call_result PROPERTIES TIMEOUT "120" LABELS
+                                                       "RUN_TYPE=DIST")
+endif()
 add_subdirectory(fleet)
 add_subdirectory(multinode)
