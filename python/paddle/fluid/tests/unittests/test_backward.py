@@ -415,7 +415,6 @@ class TestBackwardUninitializedVariable(unittest.TestCase):
     """
 
     def test(self):
-        paddle.set_device('gpu')
         paddle.enable_static()
         main_prg, startup_prg = paddle.static.Program(), paddle.static.Program()
         with paddle.static.program_guard(main_prg, startup_prg):
