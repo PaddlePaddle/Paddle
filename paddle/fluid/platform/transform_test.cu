@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/platform/transform.h"
+#include "paddle/phi/common/transform.h"
 #include "paddle/phi/core/hostdevice.h"
 
 template <typename T>
@@ -44,7 +44,7 @@ using paddle::platform::CUDAPlace;
 using phi::CPUContext;
 using phi::GPUContext;
 
-using paddle::platform::Transform;
+using paddle::experimental::Transform;
 
 TEST(Transform, CPUUnary) {
   CPUContext ctx;

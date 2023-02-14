@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ limitations under the License. */
 #include "thrust/device_ptr.h"
 
 namespace paddle {
-namespace platform {
+namespace experimental {
 namespace details {
 
 // PointerToThrustDevicePtr has two speicalizations, one casts a (CUDA
@@ -67,5 +67,5 @@ auto CastToCUDATransformIterator(T t) ->
 }
 
 }  // namespace details
-}  // namespace platform
+}  // namespace experimental
 }  // namespace paddle

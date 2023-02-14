@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,20 +17,19 @@ limitations under the License. */
 #include <algorithm>
 #include <type_traits>
 
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/hostdevice.h"
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) xxxxxxw
 #include <thrust/execution_policy.h>
 #include <thrust/transform.h>
 
-#include "paddle/fluid/platform/details/cuda_transform_iterator_cast.h"
+#include "paddle/phi/common/details/cuda_transform_iterator_cast.h"
 #endif
 
 namespace paddle {
-namespace platform {
+namespace experimental {
 
 // Transform applys a unary or a binary functor on each element in a
 // range defined by a pair of iterators.
@@ -40,16 +39,16 @@ namespace platform {
 //
 // NOTE: We need to define InputIter and OutputIter defined as
 //       different types, because the InputIter points op's inputs and
-//       OutputIter pints to op's outputs.
+//       OutputIter points to op's outputs.
 //
 // NOTE: We don't assume that InputIter to be const InputType* and
 //       OutputIter to be OutputType*, because we might use a iterator
 //       class, paddle::fluid::operators::RowwiseTRansformIterator.
-template <typename DeviceContext>
+template <typename Context>
 struct Transform {
   // The unary version.
   template <typename InputIter, typename OutputIter, typename UnaryOperation>
-  void operator()(const DeviceContext& context,
+  void operator()(const Context& context,
                   InputIter first,
                   InputIter last,
                   OutputIter result,
@@ -60,7 +59,7 @@ struct Transform {
             typename InputIter2,
             typename OutputIter,
             typename BinaryOperation>
-  void operator()(const DeviceContext& context,
+  void operator()(const Context& context,
                   InputIter1 first1,
                   InputIter1 last1,
                   InputIter2 first2,
@@ -106,9 +105,9 @@ struct Transform<phi::GPUContext> {
                   OutputIter result,
                   UnaryOperation op) {
     auto place = context.GetPlace();
-    PADDLE_ENFORCE_EQ(is_gpu_place(place),
+    PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::GPU,
                       true,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "The CUDA Transform must be used in GPU place."));
 #ifdef __HIPCC__
     thrust::transform(thrust::hip::par.on(context.stream()),
@@ -136,9 +135,9 @@ struct Transform<phi::GPUContext> {
                   OutputIter result,
                   BinaryOperation op) {
     auto place = context.GetPlace();
-    PADDLE_ENFORCE_EQ(is_gpu_place(place),
+    PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::GPU,
                       true,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "The CUDA Transform must be used in GPU place."));
 #ifdef __HIPCC__
     thrust::transform(thrust::hip::par.on(context.stream()),
@@ -159,5 +158,5 @@ struct Transform<phi::GPUContext> {
 };
 #endif
 
-}  // namespace platform
+}  // namespace experimental
 }  // namespace paddle
