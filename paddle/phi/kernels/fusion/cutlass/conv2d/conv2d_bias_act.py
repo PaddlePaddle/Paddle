@@ -230,7 +230,7 @@ def generate_conv_kernels(
     swizzling_functor,
     cba_name,
 ):
-    sm75_code = ""
+    all_kernel_code = ""
     all_kernel_names = ""
     for iterator_algorithm in iterator_algorithms:
         for tile in tiles:
@@ -257,8 +257,8 @@ def generate_conv_kernels(
             ] = EmitConv2dInstance().emit(conv2d_operation)
             all_kernel_names += kernel_dict["kernel_function_name"] + ", \n"
             # Generate kernel code
-            sm75_code += SubstituteTemplate(cba_kernel, kernel_dict)
-    return (sm75_code, all_kernel_names)
+            all_kernel_code += SubstituteTemplate(cba_kernel, kernel_dict)
+    return (all_kernel_code, all_kernel_names)
 
 
 def generate_sm75_1688():
@@ -294,9 +294,7 @@ def generate_sm75_1688():
         ),
     ]
 
-    alignment_constraints = [
-        8,
-    ]
+    alignment_constraints = [8]
 
     sm75_code = ""
     for epilogue_functor in epilogue_functors:
@@ -341,7 +339,7 @@ def generate_sm75_1688():
                 ]
                 # Generate kernel code
                 # iterate over tils and iterator_algorithms
-                return_value = generate_conv_kernels(
+                return_tuple = generate_conv_kernels(
                     conv_kind,
                     iterator_algorithms,
                     tiles,
@@ -354,8 +352,8 @@ def generate_sm75_1688():
                     swizzling_functor,
                     op_dict["cba_name"],
                 )
-                sm75_code += return_value[0]
-                all_kernel_names += return_value[1]
+                sm75_code += return_tuple[0]
+                all_kernel_names += return_tuple[1]
 
         # Generate op code
         op_dict["all_kernel_function_name"] = all_kernel_names
