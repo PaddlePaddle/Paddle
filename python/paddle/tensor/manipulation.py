@@ -1582,7 +1582,16 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['float32', 'float64', 'int8', 'int16', 'int32', 'int64', 'uint8'],
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int8',
+                'int16',
+                'int32',
+                'int64',
+                'uint8',
+            ],
             'flatten',
         )
         helper = LayerHelper('flatten', **locals())
@@ -3285,7 +3294,7 @@ def broadcast_to(x, shape, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['bool', 'float32', 'float64', 'int32', 'int64'],
+            ['bool', 'float16' 'float32', 'float64', 'int32', 'int64'],
             'broadcast_to',
         )
         check_type(shape, 'shape', (list, tuple, Variable), 'broadcast_to')

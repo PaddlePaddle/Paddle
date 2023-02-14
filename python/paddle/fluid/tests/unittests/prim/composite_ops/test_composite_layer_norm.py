@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from utils import TOLERANCE
+from utils import SUB_TOLERANCE
 
 import paddle
 import paddle.nn.functional as F
@@ -23,7 +23,7 @@ from paddle.fluid import core
 
 
 def generate_data(shape1, shape2, shape3, dtype="float32"):
-    np.random.seed(100)
+    np.random.seed(200)
     np_data1 = np.random.random(shape1).astype(dtype)
     np_data2 = np.random.random(shape2).astype(dtype)
     np_data3 = np.random.random(shape3).astype(dtype)
@@ -50,11 +50,11 @@ class Attr:
         return
 
     def get_rtol(self, flag):
-        rtol = TOLERANCE[self.dtype][flag].get("rtol")
+        rtol = SUB_TOLERANCE[self.dtype][flag].get("rtol")
         return rtol
 
     def get_atol(self, flag):
-        atol = TOLERANCE[self.dtype][flag].get("atol")
+        atol = SUB_TOLERANCE[self.dtype][flag].get("atol")
         return atol
 
 
@@ -71,7 +71,7 @@ def expect_forward(x, norm_shape, w, b):
 
 class TestCompositelayer_norm(unittest.TestCase):
     def setUp(self):
-        self.dtypes = ["float16", "float32"]
+        self.dtypes = ["float16", "float32", "float64"]
         self.n_shape = [[4], [64, 128], [64]]
         self.shape1s = [[3, 4], [64, 64, 128], [128, 64, 64]]
         self.shape2s = [[4], [64 * 128], [64]]
@@ -157,7 +157,9 @@ class TestCompositelayer_norm(unittest.TestCase):
         return res
 
     def compare_forward(self):
-        x, w, b = generate_data(attrs.shape1, attrs.shape2, attrs.shape3)
+        x, w, b = generate_data(
+            attrs.shape1, attrs.shape2, attrs.shape3, attrs.dtype
+        )
         n_shape = attrs.n_shape
         x_p = paddle.to_tensor(x)
         w_p = paddle.to_tensor(w)

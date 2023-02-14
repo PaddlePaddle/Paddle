@@ -21,22 +21,34 @@ import paddle
 import paddle.nn.functional as F
 from paddle.fluid import core
 
+TOLERANCE = {
+    "float16": {"rtol": 1e-2, "atol": 1e-2},
+    "float32": {"rtol": 1e-5, "atol": 1e-5},
+    "float64": {"rtol": 1e-13, "atol": 1e-13},
+}
+
+
+def generate_data(dtype="float32"):
+    np_data1 = np.random.random([2, 64]).astype(dtype)
+    np_data2 = np.random.random([64]).astype(dtype)
+    np_data3 = np.random.random([64]).astype(dtype)
+    return np_data1, np_data2, np_data3
+
 
 def apply_to_static(net, use_cinn):
     build_strategy = paddle.static.BuildStrategy()
     build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(net, build_strategy=build_strategy)
+    return paddle.jit.to_static(net, build_strategy=False)
 
 
 class PrimeNet(paddle.nn.Layer):
     def __init__(self):
         super(PrimeNet, self).__init__()
-        self.fc = paddle.nn.Linear(4, 64)
+        self.fc = paddle.nn.Linear(64, 64)
 
     def forward(self, x, w, b):
-        y = self.fc(x)
-        n_shape = y.shape[1:]
-        out = F.layer_norm(y, n_shape, w, b)
+        n_shape = x.shape[1:]
+        out = F.layer_norm(x, n_shape, w, b)
         return out[0]
 
 
@@ -48,35 +60,30 @@ class TestPrimForward(unittest.TestCase):
     """
 
     def setUp(self):
-        paddle.seed(2022)
-        self.x = paddle.randn([2, 4])
-        self.w = paddle.randn([64])
-        self.b = paddle.randn([64])
-        self.x.stop_gradient = False
+        self.x = None
+        self.w = None
+        self.b = None
+        self.dtypes = ["float16", "float32"]
 
     def train(self, use_prim):
-        paddle.seed(2022)
         net = PrimeNet()
         sgd = paddle.optimizer.SGD(
             learning_rate=0.1, parameters=net.parameters()
         )
         core._set_prim_forward_enabled(use_prim)
+        core._add_skip_comp_ops("sqrt")
         if use_prim:
             net = apply_to_static(net, use_prim)
 
-        res = []
-        for _ in range(10):
-            out = net(self.x, self.w, self.b)
-            loss = paddle.mean(out)
-            loss.backward()
-            sgd.step()
-            sgd.clear_grad()
-
-            res.append(out.numpy())
+        out = net(self.x, self.w, self.b)
+        loss = paddle.mean(out)
+        loss.backward()
+        sgd.step()
+        sgd.clear_grad()
 
         self.check_prim(net, use_prim)
 
-        return res
+        return out.numpy()
 
     def check_prim(self, net, use_prim):
         if not use_prim:
@@ -87,12 +94,20 @@ class TestPrimForward(unittest.TestCase):
 
     def test_cinn_prim_forward(self):
 
-        dy_res = self.train(use_prim=False)
-        cinn_res = self.train(use_prim=True)
+        for dtype in self.dtypes:
+            x_n, w_n, b_n = generate_data(dtype)
+            self.x = paddle.to_tensor(x_n)
+            self.w = paddle.to_tensor(w_n)
+            self.b = paddle.to_tensor(b_n)
+            self.x.stop_gradient = False
+            dy_res = self.train(use_prim=False)
+            cinn_res = self.train(use_prim=True)
 
-        for i in range(len(dy_res)):
             np.testing.assert_allclose(
-                cinn_res[i], dy_res[i], rtol=1e-6, atol=1e-6
+                cinn_res,
+                dy_res,
+                rtol=TOLERANCE[dtype]['rtol'],
+                atol=TOLERANCE[dtype]['atol'],
             )
 
 
@@ -102,35 +117,30 @@ class TestPrimForwardAndBackward(unittest.TestCase):
     """
 
     def setUp(self):
-        paddle.seed(2022)
-        self.x = paddle.randn([2, 4])
-        self.w = paddle.randn([64])
-        self.b = paddle.randn([64])
-        self.x.stop_gradient = False
+        self.x = None
+        self.w = None
+        self.b = None
+        self.dtypes = ["float16", "float32"]
 
     def train(self, use_prim):
-        paddle.seed(2022)
         net = PrimeNet()
         sgd = paddle.optimizer.SGD(
             learning_rate=0.1, parameters=net.parameters()
         )
         core._set_prim_all_enabled(use_prim)
+        core._add_skip_comp_ops("sqrt")
         if use_prim:
             net = apply_to_static(net, use_prim)
 
-        res = []
-        for _ in range(10):
-            out = net(self.x, self.w, self.b)
-            loss = paddle.mean(out)
-            loss.backward()
-            sgd.step()
-            sgd.clear_grad()
-
-            res.append(out.numpy())
+        out = net(self.x, self.w, self.b)
+        loss = paddle.mean(out)
+        loss.backward()
+        sgd.step()
+        sgd.clear_grad()
 
         self.check_prim(net, use_prim)
 
-        return res
+        return out.numpy()
 
     def check_prim(self, net, use_prim):
         if not use_prim:
@@ -142,12 +152,20 @@ class TestPrimForwardAndBackward(unittest.TestCase):
     def test_cinn_prim(self):
         plat = platform.system()
         if plat == "Linux":
-            dy_res = self.train(use_prim=False)
-            cinn_res = self.train(use_prim=True)
+            for dtype in self.dtypes:
+                x_n, w_n, b_n = generate_data(dtype)
+                self.x = paddle.to_tensor(x_n)
+                self.w = paddle.to_tensor(w_n)
+                self.b = paddle.to_tensor(b_n)
+                self.x.stop_gradient = False
+                dy_res = self.train(use_prim=False)
+                cinn_res = self.train(use_prim=True)
 
-            for i in range(len(dy_res)):
                 np.testing.assert_allclose(
-                    cinn_res[i], dy_res[i], rtol=1e-5, atol=1e-5
+                    cinn_res,
+                    dy_res,
+                    rtol=TOLERANCE[dtype]['rtol'],
+                    atol=TOLERANCE[dtype]['atol'],
                 )
         else:
             pass

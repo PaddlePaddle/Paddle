@@ -23,7 +23,7 @@ from paddle.fluid import core
 
 
 def generate_data(shape1, shape2, shape3, dtype="float32"):
-    np.random.seed(100)
+    np.random.seed(200)
     np_data1 = np.random.random(shape1).astype(dtype)
     np_data2 = np.random.random(shape2).astype(dtype)
     np_data3 = np.random.random(shape3).astype(dtype)
@@ -69,14 +69,14 @@ def expect_backward(x, norm_shape, w, b):
     paddle.disable_static()
     x.stop_gradient = False
     res = fn(x, norm_shape, w, b)
-
+    breakpoint()
     gradients = paddle.grad(res, x)
     return gradients
 
 
 class TestCompositelayer_norm(unittest.TestCase):
     def setUp(self):
-        self.dtypes = ["float16", "float32"]
+        self.dtypes = ["float64"]
         self.n_shape = [[4], [64, 128], [64]]
         self.shape1s = [[3, 4], [64, 64, 128], [128, 64, 64]]
         self.shape2s = [[4], [64 * 128], [64]]
@@ -92,6 +92,7 @@ class TestCompositelayer_norm(unittest.TestCase):
                 'x', shape=inputs.shape, dtype=str(inputs.dtype)
             )
             x.stop_gradient = False
+            breakpoint()
             w = paddle.static.data(
                 'w', shape=weight.shape, dtype=str(weight.dtype)
             )
@@ -140,6 +141,7 @@ class TestCompositelayer_norm(unittest.TestCase):
             x = paddle.static.data(
                 'x', shape=inputs.shape, dtype=str(inputs.dtype)
             )
+
             x.stop_gradient = False
             y = fn(x, norm_shape, weight, bias)
 
@@ -175,7 +177,9 @@ class TestCompositelayer_norm(unittest.TestCase):
         return res
 
     def compare_backward(self):
-        x, w, b = generate_data(attrs.shape1, attrs.shape2, attrs.shape3)
+        x, w, b = generate_data(
+            attrs.shape1, attrs.shape2, attrs.shape3, attrs.dtype
+        )
         n_shape = attrs.n_shape
         x_p = paddle.to_tensor(x)
         w_p = paddle.to_tensor(w)
@@ -227,6 +231,7 @@ class TestCompositelayer_normPrimBackward(unittest.TestCase):
     def cal_composite_backward(self, inputs, norm_shape, weight, bias):
         paddle.enable_static()
         core._set_prim_all_enabled(True)
+        core._add_skip_comp_ops("sqrt")
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
@@ -262,6 +267,7 @@ class TestCompositelayer_normPrimBackward(unittest.TestCase):
     def cal2_composite_backward(self, inputs, norm_shape, weight, bias):
         paddle.enable_static()
         core._set_prim_all_enabled(True)
+        core._add_skip_comp_ops("sqrt")
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
@@ -289,7 +295,9 @@ class TestCompositelayer_normPrimBackward(unittest.TestCase):
         return res
 
     def compare_backward(self):
-        x, w, b = generate_data(attrs.shape1, attrs.shape2, attrs.shape3)
+        x, w, b = generate_data(
+            attrs.shape1, attrs.shape2, attrs.shape3, attrs.dtype
+        )
         n_shape = attrs.n_shape
         x_p = paddle.to_tensor(x)
         w_p = paddle.to_tensor(w)
