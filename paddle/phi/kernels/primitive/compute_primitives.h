@@ -106,7 +106,7 @@ __device__ __forceinline__ T BlockXReduce(T val, ReduceOp reducer) {
     __syncthreads();
     bool is_mask = tid < block_dim_x;
     val = is_mask ? shared[lane] : (T)(0.0f);
-    //val = shared[bid * block_dim_x + lane];
+    // val = shared[bid * block_dim_x + lane];
   }
 
   unsigned mask = 0u;
