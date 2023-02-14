@@ -20,6 +20,7 @@
 
 TEST(ir_context, ir_context) {
   ir::IrContext *ctx = ir::IrContext::Instance();
-  auto &impl = ctx->impl();
-  ir::Type fp32 = ir::Float32Type::get(ctx);
+  ir::Type fp32_1 = ir::Float32Type::get(ctx);
+  ir::Type fp32_2 = ir::Float32Type::get(ctx);
+  EXPECT_EQ(fp32_1 == fp32_2, 1);
 }
