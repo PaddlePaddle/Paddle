@@ -1110,7 +1110,7 @@ void BindPaddleInferTensor(py::module *m) {
            [](paddle_infer::Tensor &self, const py::handle &input) {
              PyObject *obj = input.ptr();
              PaddleTensorShareExternalData(self,
-                                           std::move(CastPyArg2Tensor(obj, 1)));
+                                           std::move(CastPyArg2Tensor(obj, 0)));
            })
       .def("copy_to_cpu", &PaddleInferTensorToNumpy)
       .def("shape", &paddle_infer::Tensor::shape)
