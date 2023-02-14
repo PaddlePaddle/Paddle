@@ -2526,6 +2526,9 @@ USE_TRT_CONVERTER(preln_groupnorm_act)
 USE_TRT_CONVERTER(flash_multihead_matmul)
 USE_TRT_CONVERTER(cross_multihead_matmul)
 #endif
+#if IS_TRT_VERSION_GE(8200)
+USE_TRT_CONVERTER(set_value)
+#endif
 #if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
 USE_TRT_CONVERTER(sparse_fc)
 USE_TRT_CONVERTER(sparse_multihead_matmul)
