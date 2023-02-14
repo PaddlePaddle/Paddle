@@ -824,20 +824,6 @@ static void LaunchReduceKernel(const Tx* x_data,
                                         0);
     dim.SetRem(config.reduce_num % config.block.x, 0, 0);
 
-    printf("stage0: grid=[%d, %d], block=[%d, %d]\n",
-           config.grid.x,
-           config.grid.y,
-           config.block.x,
-           config.block.y);
-    // printf("stage1: grid=[%d, %d], block=[%d, %d]\n", grid.x, grid.y,
-    // block.x, block.y);
-    printf("stage0 left_num=%d, reduce_num=%d, reduce_num_per_t=%d\n",
-           config.left_num,
-           config.reduce_num,
-           config.reduce_num_per_thread);
-    // printf("stage1 left_num=%d, reduce_num=%d, reduce_num_per_t=%d\n",
-    // config.left_num, reduce_num_stage1, reduce_num_per_thread_stage1);
-
 #ifdef PADDLE_WITH_XPU_KP
     auto grid_num = 8;
     auto block_num = 64;
@@ -880,20 +866,6 @@ static void LaunchReduceKernel(const Tx* x_data,
                                         config.block.y,
                                         0);
     dim.SetRem(config.reduce_num % config.block.x, 0, 0);
-
-    printf("stage0: grid=[%d, %d], block=[%d, %d]\n",
-           config.grid.x,
-           config.grid.y,
-           config.block.x,
-           config.block.y);
-    // printf("stage1: grid=[%d, %d], block=[%d, %d]\n", grid.x, grid.y,
-    // block.x, block.y);
-    printf("stage0 left_num=%d, reduce_num=%d, reduce_num_per_t=%d\n",
-           config.left_num,
-           config.reduce_num,
-           config.reduce_num_per_thread);
-    // printf("stage1 left_num=%d, reduce_num=%d, reduce_num_per_t=%d\n",
-    // config.left_num, reduce_num_stage1, reduce_num_per_thread_stage1);
 
 #ifdef PADDLE_WITH_XPU_KP
     auto grid_num = 8;
@@ -939,25 +911,6 @@ static void LaunchReduceKernel(const Tx* x_data,
     dimStage1.SetRem(config.left_num % block.x, 0, 0);
 
     auto reduce_index_calculator_stage1 = OneDimIndexCal(1);
-
-    printf("stage0: grid=[%d, %d], block=[%d, %d]\n",
-           config.grid.x,
-           config.grid.y,
-           config.block.x,
-           config.block.y);
-    printf("stage1: grid=[%d, %d], block=[%d, %d]\n",
-           grid.x,
-           grid.y,
-           block.x,
-           block.y);
-    printf("stage0 left_num=%d, reduce_num=%d, reduce_num_per_t=%d\n",
-           config.left_num,
-           config.reduce_num,
-           config.reduce_num_per_thread);
-    printf("stage1 left_num=%d, reduce_num=%d, reduce_num_per_t=%d\n",
-           config.left_num,
-           reduce_num_stage1,
-           reduce_num_per_thread_stage1);
 
     auto TwoStageReduceKernel1 =
         ReduceAnyKernel<Ty,
