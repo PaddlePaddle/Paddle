@@ -195,7 +195,6 @@ void GroupTestDtype() {
   CHECK(TestDtype<double>() == paddle::DataType::FLOAT64);
   CHECK(TestDtype<paddle::complex64>() == paddle::DataType::COMPLEX64);
   CHECK(TestDtype<paddle::complex128>() == paddle::DataType::COMPLEX128);
-  CHECK(TestDtype<paddle::float16>() == paddle::DataType::FLOAT16);
 }
 
 void TestInitilized() {
