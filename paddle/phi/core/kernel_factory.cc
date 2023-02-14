@@ -195,9 +195,10 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
       !phi::backends::xpu::is_xpu_support_op(TransToFluidOpName(kernel_name),
                                              kernel_key.dtype())
 #elif defined(PADDLE_WITH_CUSTOM_DEVICE)
-  if ((FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end()) ||
-      phi::backends::custom_device::is_in_custom_black_list(
-          TransToFluidOpName(kernel_name))
+  if (FLAGS_enable_api_kernel_fallback &&
+      (kernel_iter == iter->second.end() ||
+       phi::backends::custom_device::is_in_custom_black_list(
+           TransToFluidOpName(kernel_name)))
 #else
   if ((FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end())
 #endif
