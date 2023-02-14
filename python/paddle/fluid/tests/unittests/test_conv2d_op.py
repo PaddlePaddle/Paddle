@@ -213,7 +213,13 @@ def create_test_cudnn_bf16_class(parent):
                 scope, self.op_type, self.inputs, self.outputs, self.attrs
             )
             return get_numeric_gradient(
-                place, scope, op, self.inputs_fp32, check_name, ['Output']
+                place,
+                scope,
+                op,
+                self.inputs_fp32,
+                self.outputs,
+                check_name,
+                ['Output'],
             )
 
         def init_kernel_type(self):
