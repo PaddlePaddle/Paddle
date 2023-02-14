@@ -166,7 +166,8 @@ class TestLbfgs(unittest.TestCase):
 
     def test_exceptionOne(self):
         def func(x):
-            return lambda x: paddle.dot(x, x)
+            x = lambda x: paddle.dot(x, x)
+            return x
 
         x0 = np.array([2.4]).astype('float32')
         self.assertRaises(
