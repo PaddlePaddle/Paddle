@@ -110,7 +110,7 @@ def mean_composite(x, axis, keepdim):
     """define composite rule of op mean"""
     axes = axis or list(range(0, len(x.shape)))
     axes = [axes] if isinstance(axes, int) else axes
-    sum_x = reduce_sum(x, dim=axes, keep_dim=keepdim)
+    sum_x = sum(x, axis=axes, keepdim=keepdim)
     value_to_fill = functools.reduce(
         operator.mul, [x.shape[axis] for axis in axes]
     )

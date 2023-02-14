@@ -13,7 +13,6 @@
 # limitations under the License.
 
 
-from paddle.fluid.layers.nn import reduce_sum  # noqa: F401
 from paddle.fluid.layers.tensor import assign  # noqa: F401
 from paddle.fluid.layers.tensor import cast  # noqa: F401
 from paddle.fluid.layers.tensor import fill_constant  # noqa: F401
@@ -116,7 +115,6 @@ others = [
     'assign',
     'fill_constant',
     'reshape',
-    'reduce_sum',
 ]
 
 __all__ = []
