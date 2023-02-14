@@ -83,6 +83,8 @@ fused_attentionGradNodeCompat::operator()(
             egr::EagerUtils::RecoverTensorWrapper(&this->X_))},
        {"Y@GRAD", egr::EagerUtils::TrySyncToVars(hooked_grads0[19])}};
   std::map<std::string, std::vector<std::shared_ptr<egr::EagerVariable>>> outs0;
+  auto xx = egr::EagerUtils::RecoverTensorWrapper(&this->X_);
+  if (xx.can_not_use()) VLOG(0) << "Find Input Which Can Not Use.";
 
   if ((!out_metas[7].empty()) && (!(out_metas[7][0].IsStopGradient()))) {
     outs0.insert({"OutLinearW@GRAD",

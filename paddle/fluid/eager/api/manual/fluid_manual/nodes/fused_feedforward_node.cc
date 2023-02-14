@@ -69,7 +69,8 @@ fused_feedforwardGradNodeCompat::operator()(
        {"X",
         egr::EagerUtils::TrySyncToVars(
             egr::EagerUtils::RecoverTensorWrapper(&this->X_))}};
-
+  auto xx = egr::EagerUtils::RecoverTensorWrapper(&this->X_);
+  if (xx.can_not_use()) VLOG(0) << "Find Input Which Can Not Use.";
   std::map<std::string, std::vector<std::shared_ptr<egr::EagerVariable>>> outs0;
 
   auto Linear1Bias = egr::EagerUtils::RecoverTensorWrapper(&this->Linear1Bias_);
