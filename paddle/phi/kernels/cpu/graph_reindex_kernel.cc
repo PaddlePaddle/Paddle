@@ -58,18 +58,22 @@ void GraphReindexKernel(const Context& dev_ctx,
     }
     src[i] = node_map[node];
   }
-  // check x.dim must greater than count.dim
+  /*
+  check if x dim and count dim all equal 1
+  the count's data must less or equal to 10
+  */
   const int cs = count.dims()[0];
-  if (bs == cs == 1) {
-    PADDLE_ENFORCE_GE(
-        bs,
-        cs,
-        phi::errors::OutOfRange(
-            "The input tensor X's dimensions should be larger than or equal to "
-            "count's dimensions."
-            "But received X's dimension = %d. count's dimension = %d",
-            bs,
-            cs));
+  if ((bs == 1) && (cs == 1)) {
+    if (count_data[0] > 10) {
+      PADDLE_ENFORCE_LE(
+          count_data[0],
+          10,
+          phi::errors::OutOfRange(
+              "When X's dimension and count's dimension all equal to 1,"
+              "The count's data should be smaller or equal to 10."
+              "But received count's data = %d",
+              count_data[0]));
+    }
   }
 
   // Reindex Dst
