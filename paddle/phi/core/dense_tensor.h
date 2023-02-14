@@ -167,7 +167,8 @@ class DenseTensor : public TensorBase,
 
   bool can_not_use{false};
 
-  std::shared_ptr<bool> can_not_use_;
+  std::shared_ptr<bool> canNotUse;
+
   std::vector<std::shared_ptr<bool>> can_not_uses;
 
   std::vector<DenseTensor*> share_buffer_with;

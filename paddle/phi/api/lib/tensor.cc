@@ -407,7 +407,7 @@ uint32_t Tensor::current_inplace_version() {
 bool Tensor::can_not_use() {
   if (is_dense_tensor()) {
     bool can_not_use_ =
-        static_cast<phi::DenseTensor *>(impl_.get())->can_not_use;
+        static_cast<phi::DenseTensor *>(impl_.get())->canNotUse != nullptr;
     return can_not_use_;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(

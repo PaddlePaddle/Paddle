@@ -29,10 +29,10 @@ class InplaceABNKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* y = ctx.Output<phi::DenseTensor>("Y");
     auto* x = ctx.Input<phi::DenseTensor>("X");
-    if (x->IsSharedWith(*y) && x->share_buffer_with.size() > 0) {
+    if (x->IsSharedWith(*y) && x->can_not_uses.size() > 0) {
       phi::DenseTensor* xx = const_cast<phi::DenseTensor*>(x);
-      for (int i = 0; i < xx->share_buffer_with.size(); ++i) {
-        xx->share_buffer_with[i]->can_not_use = true;
+      for (int i = 0; i < xx->can_not_uses.size(); ++i) {
+        xx->can_not_uses[i] = std::make_shared<bool>(true);
       }
     }
     PADDLE_ENFORCE_EQ(x,

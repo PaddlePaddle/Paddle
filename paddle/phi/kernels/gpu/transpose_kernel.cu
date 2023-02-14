@@ -34,8 +34,8 @@ void TransposeKernel(const Context& ctx,
   DenseTensor& xx = const_cast<DenseTensor&>(x);
   out->inplace_version_counter_ = xx.inplace_version_counter_;
 
-  xx.can_not_uses.push_back(out->can_not_use_);
-  out->can_not_uses.push_back(xx.can_not_use_);
+  xx.can_not_uses.push_back(out->canNotUse);
+  out->can_not_uses.push_back(xx.canNotUse);
   if (out->numel() == 0) {
     return;
   }

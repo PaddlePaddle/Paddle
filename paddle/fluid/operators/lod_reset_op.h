@@ -30,10 +30,10 @@ class LoDResetKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<phi::DenseTensor>("Out");
     auto* in = ctx.Input<phi::DenseTensor>("X");
     auto* lod_t = ctx.Input<phi::DenseTensor>("Y");
-    if (in->IsSharedWith(*out) && in->share_buffer_with.size() > 0) {
+    if (in->IsSharedWith(*out) && in->can_not_uses.size() > 0) {
       phi::DenseTensor* xx = const_cast<phi::DenseTensor*>(in);
-      for (size_t i = 0; i < in->share_buffer_with.size(); ++i) {
-        xx->share_buffer_with[i]->can_not_use = true;
+      for (size_t i = 0; i < in->can_not_uses.size(); ++i) {
+        xx->can_not_uses[i] = std::make_shared<bool>(true);
       }
     }
     bool append = ctx.Attr<bool>("append");

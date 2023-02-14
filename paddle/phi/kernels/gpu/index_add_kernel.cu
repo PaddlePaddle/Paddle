@@ -52,10 +52,10 @@ void IndexAddKernel(const Context& ctx,
                     const DenseTensor& add_value,
                     int axis,
                     DenseTensor* output) {
-  if (x.IsSharedWith(*output) && x.share_buffer_with.size() > 0) {
+  if (x.IsSharedWith(*output) && x.can_not_uses.size() > 0) {
     DenseTensor& xx = const_cast<DenseTensor&>(x);
-    for (int i = 0; i < xx.share_buffer_with.size(); ++i) {
-      xx.share_buffer_with[i]->can_not_use = true;
+    for (int i = 0; i < xx.can_not_uses.size(); ++i) {
+      xx.can_not_uses[i] = std::make_shared<bool>(true);
     }
   }
   auto input_dim = x.dims();
