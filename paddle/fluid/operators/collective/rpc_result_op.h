@@ -95,7 +95,7 @@ class RpcResultOpKernel : public framework::OpKernel<T> {
     int out_len = ctx.Attr<int>("out_len");
     out->Resize({static_cast<int64_t>(request_id_tensor->dims()[0]),
                  static_cast<int64_t>(out_len)});
-    VLOG(0) << "out dims: " << out->dims().to_str()
+    VLOG(3) << "out dims: " << out->dims().to_str()
             << "numel: " << out->numel();
     if (res_type == "str") {
       ctx.device_context().Alloc<uint8_t>(out);
@@ -105,7 +105,7 @@ class RpcResultOpKernel : public framework::OpKernel<T> {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Unknown result type. error type: %s", res_type.c_str()));
     }
-    VLOG(0) << "out dims: " << out->dims().to_str();
+    VLOG(3) << "out dims: " << out->dims().to_str();
     for (auto i = 0; i < request_id_tensor->dims()[0]; i++) {
       get_response(
           ctx, request_id_tensor_vec[0], out->Slice(i, i + 1), res_type);
