@@ -125,7 +125,6 @@ class HeterComm {
 #else
   void pull_sparse(int num, KeyType* d_keys, float* d_vals, size_t len);
 #endif
-#endif
   void build_ps(int num,
                 KeyType* h_keys,
                 char* pool,

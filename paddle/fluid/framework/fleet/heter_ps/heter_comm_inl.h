@@ -1962,11 +1962,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::pull_sparse(
       pull_normal_sparse(num, d_keys, d_vals, len);
     }
   }
-#endif
 }
-#endif
-
-
 
 #elif defined(PADDLE_WITH_XPU_KP)
 template <typename KeyType,

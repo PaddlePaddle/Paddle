@@ -278,12 +278,12 @@ class CommonFeatureValueAccessor {
   }
 
   // // build阶段从cpu_val赋值给gpu_val
+#ifdef PADDLE_WITH_PSCORE
   __host__ void BuildFill(
       float* gpu_val,
       void* cpu,
       paddle::distributed::ValueAccessor* cpu_table_accessor,
       int mf_dim) {
-#ifdef PADDLE_WITH_PSCORE
     paddle::distributed::CtrDymfAccessor* cpu_accessor =
         dynamic_cast<paddle::distributed::CtrDymfAccessor*>(cpu_table_accessor);
     paddle::distributed::FixedFeatureValue* cpu_ptr =
@@ -329,14 +329,15 @@ class CommonFeatureValueAccessor {
         gpu_val[x] = 0;
       }
     }
-#endif
   }
+#endif
+
 
   // dump_to_cpu阶段从gpu_val赋值给cpu_val
+#ifdef PADDLE_WITH_PSCORE
   __host__ void DumpFill(float* gpu_val,
                          paddle::distributed::ValueAccessor* cpu_table_accessor,
                          int mf_dim) {
-#ifdef PADDLE_WITH_PSCORE
     paddle::distributed::CtrDymfAccessor* cpu_accessor =
         dynamic_cast<paddle::distributed::CtrDymfAccessor*>(cpu_table_accessor);
 
@@ -376,8 +377,8 @@ class CommonFeatureValueAccessor {
             gpu_val[common_feature_value.EmbedxG2SumIndex() + x];
       }
     }
-#endif
   }
+#endif
 
   // dy_mf_fill_dvals_kernel 阶段 gpukernel
   // 中从src_val赋值给dest_val
@@ -722,6 +723,7 @@ class VirtualAccessor {
 
   virtual size_t GetPullValueSize(int& mf_dim) = 0;  // NOLINT
 
+#ifdef PADDLE_WITH_PSCORE
   virtual void BuildFill(void* gpu_val,
                          void* cpu_val,
                          paddle::distributed::ValueAccessor* cpu_table_accessor,
@@ -730,6 +732,7 @@ class VirtualAccessor {
   virtual void DumpFill(float* gpu_val,
                         paddle::distributed::ValueAccessor* cpu_table_accessor,
                         int mf_dim) = 0;
+#endif
 
   virtual void CopyForPull(const paddle::platform::Place& place,
                            uint64_t** gpu_keys,
@@ -826,6 +829,7 @@ class AccessorWrapper : public VirtualAccessor {
 
   GPUAccessor* AccessorPtr() { return &gpu_accessor_; }
 
+#ifdef PADDLE_WITH_PSCORE
   virtual void BuildFill(void* gpu_val,
                          void* cpu_val,
                          paddle::distributed::ValueAccessor* cpu_table_accessor,
@@ -839,6 +843,7 @@ class AccessorWrapper : public VirtualAccessor {
                         int mf_dim) {
     gpu_accessor_.DumpFill(gpu_val, cpu_table_accessor, mf_dim);
   }
+#endif
 
   virtual void CopyForPull(const paddle::platform::Place& place,
                            uint64_t** gpu_keys,

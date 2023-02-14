@@ -243,7 +243,7 @@ class HashTable {
            char* d_vals,
            size_t len,
            StreamType stream,
-           GPUAccessor& fv_accessor);
+           const GPUAccessor& fv_accessor);
 
 #elif defined(PADDLE_WITH_XPU_KP)
   template <typename GradType, typename StreamType>
