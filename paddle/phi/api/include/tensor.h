@@ -362,21 +362,21 @@ class PADDLE_API Tensor final {
   Tensor slice(int64_t begin_idx, int64_t end_idx) const;
 
   /**
-   * @brief Return the implemention of current Tensor.
+   * @brief Return the implementation of current Tensor.
    *
    * @return std::shared_ptr<phi::TensorBase>
    */
   const std::shared_ptr<phi::TensorBase>& impl() const;
 
   /**
-   * @brief Set the implemention of current Tensor.
+   * @brief Set the implementation of current Tensor.
    *
    * @param impl
    */
   void set_impl(const std::shared_ptr<phi::TensorBase>& impl);
 
   /**
-   * @brief Set the implemention of current Tensor.
+   * @brief Set the implementation of current Tensor.
    *
    * @param impl
    */
