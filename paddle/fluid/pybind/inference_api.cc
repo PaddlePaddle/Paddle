@@ -1096,17 +1096,17 @@ void BindPaddleInferTensor(py::module *m) {
       .def("reshape",
            py::overload_cast<const std::size_t &>(
                &paddle_infer::Tensor::ReshapeStrings))
-      .def("copy_from_cpu_bind", &PaddleInferTensorCreate<int8_t>)
-      .def("copy_from_cpu_bind", &PaddleInferTensorCreate<uint8_t>)
-      .def("copy_from_cpu_bind", &PaddleInferTensorCreate<int32_t>)
-      .def("copy_from_cpu_bind", &PaddleInferTensorCreate<int64_t>)
-      .def("copy_from_cpu_bind", &PaddleInferTensorCreate<float>)
-      .def("copy_from_cpu_bind",
+      .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<int8_t>)
+      .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<uint8_t>)
+      .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<int32_t>)
+      .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<int64_t>)
+      .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<float>)
+      .def("_copy_from_cpu_bind",
            &PaddleInferTensorCreate<paddle_infer::float16>)
-      .def("copy_from_cpu_bind", &PaddleInferTensorCreate<bool>)
-      .def("copy_from_cpu_bind", &PaddleInferStringTensorCreate)
-      .def("share_external_data_bind", &PaddleInferShareExternalData)
-      .def("share_external_data_paddle_tensor_bind",
+      .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<bool>)
+      .def("_copy_from_cpu_bind", &PaddleInferStringTensorCreate)
+      .def("_share_external_data_bind", &PaddleInferShareExternalData)
+      .def("_share_external_data_paddle_tensor_bind",
            [](paddle_infer::Tensor &self, const py::handle &input) {
              PyObject *obj = input.ptr();
              PaddleTensorShareExternalData(self,
