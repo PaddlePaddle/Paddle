@@ -200,11 +200,6 @@ interpreter::CostInfo InterpreterCore::DryRun(
 }
 
 void InterpreterCore::RunImpl() {
-  // For the program that only run once, it is no need to
-  // create work_queue, so the async_work_queue_ is created
-  // until the second step run.
-  async_work_queue_ = GetWorkQueue();
-
   // lazy initialization of gc, do not create gc is the program only run once
   if (!gc_) {
     gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
@@ -215,6 +210,11 @@ void InterpreterCore::RunImpl() {
     VLOG(4) << "Tracing Instruction List";
     TraceInstructionList(vec_instruction_);
   } else {
+    VLOG(4) << "Non-tracing";
+    // For the program that only run once, it is no need to
+    // create work_queue, so the async_work_queue_ is created
+    // until the second step run.
+    async_work_queue_ = GetWorkQueue();
     ExecuteInstructionList(vec_instruction_);
   }
 #ifdef PADDLE_WITH_ASCEND_CL
