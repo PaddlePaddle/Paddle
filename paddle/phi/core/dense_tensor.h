@@ -266,7 +266,7 @@ class DenseTensor : public TensorBase,
     uint32_t CurrentVersion() const { return inplace_version_; }
     void SetInplaceVersionToZero() { inplace_version_ = 0; }
 
-   private:
+   public:
     uint32_t inplace_version_{0};
   };
 

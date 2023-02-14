@@ -74,8 +74,9 @@ void ExpandKernel(const Context& ctx,
   std::vector<const DenseTensor*> ins = {&x};
   std::vector<DenseTensor*> outs = {out};
   DenseTensor& xx = const_cast<DenseTensor&>(x);
-  xx.inplace_version_counter_->Bump();
-  out->inplace_version_counter_->Bump();
+  out->inplace_version_counter_->inplace_version_ =
+      xx.inplace_version_counter_->inplace_version_;
+
   xx.share_buffer_with.push_back(out);
   out->share_buffer_with.push_back(&xx);
   phi::funcs::BroadcastKernel<ElementwiseType::kUnary, T, T>(

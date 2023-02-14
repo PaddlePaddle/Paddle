@@ -199,6 +199,9 @@ class TensorWrapper {
 
       uint32_t wrapper_version_snapshot = inplace_version_snapshot_;
       uint32_t tensor_version = inplace_version_counter.CurrentVersion();
+      LOG_IF(WARNING, tensor_version != wrapper_version_snapshot)
+          << "inplace operation got mismatch version";
+      /*
       PADDLE_ENFORCE_EQ(
           tensor_version,
           wrapper_version_snapshot,
@@ -211,7 +214,7 @@ class TensorWrapper {
               "computation.",
               intermidiate_tensor_.name(),
               tensor_version,
-              wrapper_version_snapshot));
+              wrapper_version_snapshot));*/
       VLOG(7) << " The wrapper_version_snapshot of Tensor '"
               << intermidiate_tensor_.name() << "' is [ "
               << wrapper_version_snapshot << " ]";

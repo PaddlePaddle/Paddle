@@ -40,8 +40,9 @@ void AsRealKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   out->set_type(paddle::experimental::CppTypeToDataType<
                 typename T::value_type>::Type());  // restored the dtype.
   DenseTensor& xx = const_cast<DenseTensor&>(x);
-  xx.inplace_version_counter_->Bump();
-  out->inplace_version_counter_->Bump();
+  out->inplace_version_counter_->inplace_version_ =
+      xx.inplace_version_counter_->inplace_version_;
+
   xx.share_buffer_with.push_back(out);
   out->share_buffer_with.push_back(&xx);
 }

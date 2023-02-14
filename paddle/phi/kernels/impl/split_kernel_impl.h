@@ -45,9 +45,10 @@ void SplitKernel(const Context& dev_ctx,
 
   DenseTensor& xx = const_cast<DenseTensor&>(x);
   // inplace_version += 1
-  xx.inplace_version_counter_->Bump();
   for (size_t i = 0; i < outs.size(); ++i) {
-    outs[i]->inplace_version_counter_->Bump();
+    outs[i]->inplace_version_counter_->inplace_version_ =
+        xx.inplace_version_counter_->inplace_version_;
+
     xx.share_buffer_with.push_back(outs[i]);
     outs[i]->share_buffer_with.push_back(&xx);
   }

@@ -40,8 +40,9 @@ void UnsqueezeInferKernel(const Context& dev_ctx,
   phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   out->Resize(out_dims);  // copy will reset the dims.
   DenseTensor& xx = const_cast<DenseTensor&>(x);
-  xx.inplace_version_counter_->Bump();
-  out->inplace_version_counter_->Bump();
+  out->inplace_version_counter_->inplace_version_ =
+      xx.inplace_version_counter_->inplace_version_;
+
   xx.share_buffer_with.push_back(out);
   out->share_buffer_with.push_back(&xx);
 }

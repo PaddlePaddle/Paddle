@@ -404,6 +404,16 @@ uint32_t Tensor::current_inplace_version() {
   return 0;
 }
 
+bool Tensor::can_not_use() {
+  if (is_dense_tensor()) {
+    bool can_not_use =
+        static_cast<phi::DenseTensor *>(impl_.get())->can_not_use;
+    return can_not_use;
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "can_not_use is only supported on DenseTensor now."));
+  }
+}
 void Tensor::reset_inplace_version(bool set_to_zero) {
   if (set_to_zero) {
     if (is_dense_tensor()) {

@@ -43,8 +43,9 @@ void Squeeze(const Context& dev_ctx,
   SqueezeInferMeta(x, axes, &meta_out);
   SqueezeInferKernel<T, Context>(dev_ctx, x, axes, out);
   DenseTensor& xx = const_cast<DenseTensor&>(x);
-  xx.inplace_version_counter_->Bump();
-  out->inplace_version_counter_->Bump();
+  out->inplace_version_counter_->inplace_version_ =
+      xx.inplace_version_counter_->inplace_version_;
+
   xx.share_buffer_with.push_back(out);
   out->share_buffer_with.push_back(&xx);
 }
