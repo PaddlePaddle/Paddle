@@ -24,14 +24,13 @@ namespace paddle {
 namespace tests {
 
 using Tensor = paddle::experimental::Tensor;
+using DataType = paddle::experimental::DataType;
 
 template <typename T>
 Tensor InitCPUTensorForTest() {
   std::vector<int64_t> tensor_shape{5, 5};
-  Tensor t1 =
-      paddle::experimental::empty(tensor_shape,
-                                  experimental::CppTypeToDataType<T>::type(),
-                                  phi::CPUPlace());
+  DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
+  Tensor t1 = paddle::experimental::empty(tensor_shape, dtype, phi::CPUPlace());
   auto* p_data_ptr = t1.data<T>();
   for (int64_t i = 0; i < t1.size(); i++) {
     p_data_ptr[i] = T(5);
@@ -119,27 +118,20 @@ void TestAPISlice() {
 template <typename T>
 paddle::DataType TestDtype() {
   std::vector<int64_t> tensor_shape = {5, 5};
-  auto t1 =
-      paddle::experimental::empty(tensor_shape,
-                                  experimental::CppTypeToDataType<T>::type(),
-                                  phi::CPUPlace());
+  DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
+  auto t1 = paddle::experimental::empty(tensor_shape, dtype, phi::CPUPlace());
   return t1.type();
 }
 
 template <typename T>
 void TestCast(paddle::DataType data_type) {
   std::vector<int64_t> tensor_shape = {5, 5};
-  auto t1 =
-      paddle::experimental::empty(tensor_shape,
-                                  experimental::CppTypeToDataType<T>::type(),
-                                  phi::CPUPlace());
+  DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
+  auto t1 = paddle::experimental::empty(tensor_shape, dtype, phi::CPUPlace());
   auto t2 = t1.cast(data_type);
   CHECK(t2.type() == data_type);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  auto tg1 =
-      paddle::experimental::empty(tensor_shape,
-                                  experimental::CppTypeToDataType<T>::type(),
-                                  phi::GPUPlace());
+  auto tg1 = paddle::experimental::empty(tensor_shape, dtype, phi::GPUPlace());
   auto tg2 = tg1.cast(data_type);
   CHECK(tg2.type() == data_type);
 #endif
