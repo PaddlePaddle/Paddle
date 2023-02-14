@@ -110,7 +110,7 @@ class BRpcServiceImpl : public SimpleRpcService {
       delete head.request;
       PADDLE_ENFORCE_NE(
           head.service,
-          0,
+          nullptr,
           phi::errors::PreconditionNotMet("Service should not be nullptr."));
       head.service->decrease_request();
     } else {
@@ -150,8 +150,9 @@ void BaiduRpcServer::initialize() {
     return;
   }
 
-  PADDLE_ENFORCE_NE(
-      _gloo, NULL, phi::errors::PreconditionNotMet("Gloo not allow nullptr."));
+  PADDLE_ENFORCE_NE(_gloo,
+                    nullptr,
+                    phi::errors::PreconditionNotMet("Gloo not allow nullptr."));
   _gloo->Barrier();
   _server->set_version(google::VersionString());
   brpc::ServerOptions option;
@@ -237,7 +238,7 @@ static void handle_baidu_rpc_response(brpc::Controller *cntl,
       delete head.request;
       PADDLE_ENFORCE_NE(
           head.service,
-          0,
+          nullptr,
           phi::errors::PreconditionNotMet("Service should not be nullptr."));
       head.service->decrease_request();
     } else {

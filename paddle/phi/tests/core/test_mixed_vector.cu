@@ -23,13 +23,14 @@
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/mixed_vector.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/mixed_vector.h"
 
 template <typename T>
-using vec = paddle::framework::MixVector<T>;
-using gpuStream_t = paddle::gpuStream_t;
+using vec = phi::MixVector<T>;
+using gpuStream_t = phi::gpuStream_t;
 
 static __global__ void multiply_10(int* ptr) {
   for (int i = 0; i < 10; ++i) {
@@ -37,9 +38,9 @@ static __global__ void multiply_10(int* ptr) {
   }
 }
 
-gpuStream_t GetCUDAStream(paddle::platform::CUDAPlace place) {
+gpuStream_t GetCUDAStream(phi::GPUPlace place) {
   return reinterpret_cast<const phi::GPUContext*>(
-             paddle::platform::DeviceContextPool::Instance().Get(place))
+             phi::DeviceContextPool::Instance().Get(place))
       ->stream();
 }
 
@@ -50,7 +51,7 @@ TEST(mixed_vector, GPU_VECTOR) {
   }
   vec<int> tmp(&x);
   ASSERT_EQ(tmp.size(), 10UL);
-  paddle::platform::CUDAPlace gpu(0);
+  phi::GPUPlace gpu(0);
 
 #ifdef PADDLE_WITH_HIP
   hipLaunchKernelGGL(multiply_10,
@@ -69,7 +70,7 @@ TEST(mixed_vector, GPU_VECTOR) {
 }
 
 TEST(mixed_vector, MultiGPU) {
-  if (paddle::platform::GetGPUDeviceCount() < 2) {
+  if (phi::backends::gpu::GetGPUDeviceCount() < 2) {
     LOG(WARNING) << "Skip mixed_vector.MultiGPU since there are not multiple "
                     "GPUs in your machine.";
     return;
@@ -81,8 +82,8 @@ TEST(mixed_vector, MultiGPU) {
   }
   vec<int> tmp(&x);
   ASSERT_EQ(tmp.size(), 10UL);
-  paddle::platform::CUDAPlace gpu0(0);
-  paddle::platform::SetDeviceId(0);
+  phi::GPUPlace gpu0(0);
+  phi::backends::gpu::SetDeviceId(0);
 
 #ifdef PADDLE_WITH_HIP
   hipLaunchKernelGGL(multiply_10,
@@ -94,9 +95,9 @@ TEST(mixed_vector, MultiGPU) {
 #else
   multiply_10<<<1, 1, 0, GetCUDAStream(gpu0)>>>(tmp.MutableData(gpu0));
 #endif
-  paddle::platform::CUDAPlace gpu1(1);
+  phi::GPUPlace gpu1(1);
   auto* gpu1_ptr = tmp.MutableData(gpu1);
-  paddle::platform::SetDeviceId(1);
+  phi::backends::gpu::SetDeviceId(1);
 
 #ifdef PADDLE_WITH_HIP
   hipLaunchKernelGGL(

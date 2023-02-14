@@ -14,15 +14,13 @@
 
 from functools import reduce
 
+import paddle
 import collections
 import math
 import os
 import warnings
 import logging
-import paddle.fluid as fluid
-from paddle.fluid import core
-from paddle.fluid.core import CommContext
-import paddle.fluid.framework as framework
+from paddle.framework import core
 from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 from paddle.fluid.incubate.fleet.parameter_server.ir import vars_metatools
 from paddle.fluid.incubate.fleet.parameter_server.ir.ps_dispatcher import (
@@ -415,7 +413,7 @@ class CompileTimeStrategy:
 
         trainer_id = self.get_role_id()
         aggregate = True
-        ctx = CommContext(
+        ctx = core.CommContext(
             name,
             names,
             eps,
@@ -493,7 +491,7 @@ class CompileTimeStrategy:
                     is_distributed,
                 )
 
-                ctx = CommContext(
+                ctx = core.CommContext(
                     param_ctx.var_name(),
                     param_ctx.split_varnames(),
                     param_ctx.split_endpoints(),
@@ -659,7 +657,7 @@ class CompileTimeStrategy:
                 ]
                 var_numel = reduce(lambda x, y: x * y, var.shape[1:])
 
-                sparse_ctx = CommContext(
+                sparse_ctx = core.CommContext(
                     grad_name,
                     [grad_name],
                     ["127.0.0.1:6071"],
@@ -714,7 +712,7 @@ class CompileTimeStrategy:
             grad_name = "Dense@Grad"
             trainer_id = self.get_role_id()
             aggregate = True
-            dense_ctx = CommContext(
+            dense_ctx = core.CommContext(
                 grad_name,
                 [grad_name],
                 ["127.0.0.1:6071"],
@@ -742,7 +740,7 @@ class CompileTimeStrategy:
                 var_numel = reduce(lambda x, y: x * y, var.shape)
                 grad_name = origin_varname
                 aggregate = True
-                dense_ctx = CommContext(
+                dense_ctx = core.CommContext(
                     grad_name,
                     [grad_name],
                     ["127.0.0.1:6071"],
@@ -809,7 +807,7 @@ class CompileTimeStrategy:
             shape = list(var.shape)
             shape[0] = 0 if is_distributed else shape[0]
 
-            sparse_ctx = CommContext(
+            sparse_ctx = core.CommContext(
                 grad_name,
                 splited_varname,
                 ep_list,
@@ -901,7 +899,7 @@ class CompileTimeStrategy:
         endpoints = self.get_ps_endpoints()
         sections = [1] * len(endpoints)
         names = [name] * len(endpoints)
-        ctx = CommContext(
+        ctx = core.CommContext(
             name,
             names,
             endpoints,
@@ -1417,7 +1415,7 @@ def _get_lr_sheduler_program(lr_sheduler, lr_param_dict, lr_decay_steps):
         NaturalExpDecay,
         InverseTimeDecay,
     )
-    from paddle.fluid.layers.learning_rate_scheduler import (
+    from paddle.static.learning_rate_scheduler import (
         exponential_decay,
         noam_decay,
         piecewise_decay,
@@ -1425,12 +1423,14 @@ def _get_lr_sheduler_program(lr_sheduler, lr_param_dict, lr_decay_steps):
         inverse_time_decay,
     )
 
-    decay_main_program = fluid.framework.Program()
-    decay_startup_program = fluid.framework.Program()
+    decay_main_program = paddle.static.Program()
+    decay_startup_program = paddle.static.Program()
     lr_name = ""
 
     if isinstance(lr_sheduler, ExponentialDecay):
-        with fluid.program_guard(decay_main_program, decay_startup_program):
+        with paddle.static.program_guard(
+            decay_main_program, decay_startup_program
+        ):
             lr = exponential_decay(1.0, lr_decay_steps, lr_sheduler.gamma, True)
             lr_name = lr.name
             logging.warn(
@@ -1441,7 +1441,9 @@ def _get_lr_sheduler_program(lr_sheduler, lr_param_dict, lr_decay_steps):
                 % lr_decay_steps
             )
     elif isinstance(lr_sheduler, NoamDecay):
-        with fluid.program_guard(decay_main_program, decay_startup_program):
+        with paddle.static.program_guard(
+            decay_main_program, decay_startup_program
+        ):
             lr = noam_decay(lr_sheduler.d_model, lr_sheduler.warmup_steps, 1.0)
             lr_name = lr.name
             logging.warn(
@@ -1449,7 +1451,9 @@ def _get_lr_sheduler_program(lr_sheduler, lr_param_dict, lr_decay_steps):
                 % lr_sheduler.warmup_steps
             )
     elif isinstance(lr_sheduler, NaturalExpDecay):
-        with fluid.program_guard(decay_main_program, decay_startup_program):
+        with paddle.static.program_guard(
+            decay_main_program, decay_startup_program
+        ):
             lr = natural_exp_decay(1.0, lr_decay_steps, lr_sheduler.gamma, True)
             lr_name = lr.name
             logging.warn(
@@ -1460,7 +1464,9 @@ def _get_lr_sheduler_program(lr_sheduler, lr_param_dict, lr_decay_steps):
                 % lr_decay_steps
             )
     elif isinstance(lr_sheduler, InverseTimeDecay):
-        with fluid.program_guard(decay_main_program, decay_startup_program):
+        with paddle.static.program_guard(
+            decay_main_program, decay_startup_program
+        ):
             lr = inverse_time_decay(
                 1.0, lr_decay_steps, lr_sheduler.gamma, True
             )

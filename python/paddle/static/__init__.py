@@ -76,6 +76,7 @@ from ..fluid.io import batch  # noqa: F401
 
 from ..fluid.contrib.layers import ctr_metric_bundle  # noqa: F401
 from ..fluid.layers import exponential_decay  # noqa: F401
+from ..fluid.layers import learning_rate_scheduler  # noqa: F401
 
 from .nn.metric import auc  # noqa: F401
 from .nn.metric import accuracy  # noqa: F401

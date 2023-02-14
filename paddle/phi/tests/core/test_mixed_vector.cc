@@ -12,7 +12,7 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/fluid/framework/mixed_vector.h"
+#include "paddle/phi/core/mixed_vector.h"
 
 #include "glog/logging.h"
 #include "gtest/gtest-message.h"
@@ -21,7 +21,7 @@
 #include "gtest/gtest_pred_impl.h"
 
 template <typename T>
-using vec = paddle::framework::Vector<T>;
+using vec = phi::Vector<T>;
 
 TEST(mixed_vector, CPU_VECTOR) {
   vec<int> tmp;
@@ -44,7 +44,7 @@ TEST(mixed_vector, CPU_VECTOR) {
 }
 
 TEST(mixed_vector, InitWithCount) {
-  paddle::framework::Vector<int> vec(10, 10);
+  phi::Vector<int> vec(10, 10);
   for (int i = 0; i < 10; ++i) {
     ASSERT_EQ(vec[i], 10);
   }
@@ -58,7 +58,7 @@ TEST(mixed_vector, ForEach) {
 }
 
 TEST(mixed_vector, Reserve) {
-  paddle::framework::Vector<int> vec;
+  phi::Vector<int> vec;
   vec.reserve(1);
   vec.push_back(0);
   vec.push_back(0);
@@ -66,7 +66,7 @@ TEST(mixed_vector, Reserve) {
 }
 
 TEST(mixed_vector, Resize) {
-  paddle::framework::Vector<int> vec;
+  phi::Vector<int> vec;
   vec.resize(1);
   vec.push_back(0);
   vec.push_back(0);

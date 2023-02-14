@@ -350,7 +350,7 @@ class TestWhereDygraphAPI(unittest.TestCase):
             y = paddle.where(x)
             self.assertEqual(type(y), tuple)
             self.assertEqual(len(y), 2)
-            z = fluid.layers.concat(list(y), axis=1)
+            z = paddle.concat(list(y), axis=1)
             exe = fluid.Executor(fluid.CPUPlace())
             (res,) = exe.run(
                 feed={'x': data}, fetch_list=[z.name], return_numpy=False
@@ -364,7 +364,7 @@ class TestWhereDygraphAPI(unittest.TestCase):
             y = paddle.where(x)
             self.assertEqual(type(y), tuple)
             self.assertEqual(len(y), 1)
-            z = fluid.layers.concat(list(y), axis=1)
+            z = paddle.concat(list(y), axis=1)
             exe = fluid.Executor(fluid.CPUPlace())
             (res,) = exe.run(
                 feed={'x': data}, fetch_list=[z.name], return_numpy=False

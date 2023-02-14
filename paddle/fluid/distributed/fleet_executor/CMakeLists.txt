@@ -6,7 +6,7 @@ proto_library(interceptor_message_proto SRCS interceptor_message.proto)
 
 if(WITH_ARM_BRPC)
   set(BRPC_DEPS arm_brpc snappy gflags glog)
-elseif(WITH_DISTRIBUTE)
+elseif(WITH_DISTRIBUTE AND NOT WITH_PSLIB)
   set(BRPC_DEPS
       brpc
       ssl
