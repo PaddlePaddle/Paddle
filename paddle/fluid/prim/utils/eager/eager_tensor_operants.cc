@@ -19,11 +19,11 @@
 
 namespace paddle {
 
-namespace operants {
+namespace prim {
 
 Tensor EagerTensorOperants::multiply(const Tensor& x, const Tensor& y) {
   return ::multiply_ad_func(x, y);
 }
 
-}  // namespace operants
+}  // namespace prim
 }  // namespace paddle
