@@ -26,8 +26,13 @@
 #include <string>
 #include <unordered_map>
 
+#include "paddle/utils/string/string_helper.h"
+
 namespace paddle {
 namespace platform {
+
+using WordToIdMap = std::unordered_map<std::wstring, int64_t>;
+using IdToWordMap = std::unordered_map<int64_t, std::string>;
 
 class BasicTokenizer {
  public:
@@ -51,7 +56,7 @@ class BasicTokenizer {
 
 class WordpieceTokenizer {
  public:
-  WordpieceTokenizer(const std::unordered_map<std::wstring, int>& vocab,
+  WordpieceTokenizer(const WordToIdMap& vocab,
                      const std::wstring unk_token = L"[UNK]",
                      int max_chars_per_word = 100)
       : vocab_(vocab),
@@ -62,28 +67,25 @@ class WordpieceTokenizer {
                      int max_chars_per_word = 100)
       : unk_token_(unk_token), max_chars_per_word_(max_chars_per_word) {}
 
-  void SetVocab(const std::unordered_map<std::wstring, int>& vocab) {
-    vocab_ = vocab;
-  }
+  void SetVocab(const WordToIdMap& vocab) { vocab_ = vocab; }
 
   std::vector<std::wstring> Tokenize(const std::wstring& text);
 
  private:
-  std::unordered_map<std::wstring, int> vocab_;
+  WordToIdMap vocab_;
   const std::wstring unk_token_;
   int max_chars_per_word_;
 };
 
 class FullTokenizer {
  public:
-  FullTokenizer(const std::unordered_map<std::wstring, int>& vocab,
-                bool do_lower_case = false)
-      : basic_tokenizer_(do_lower_case), wordpiece_tokenizer_(vocab) {}
+  explicit FullTokenizer(const WordToIdMap& vocab, bool do_lower_case = false)
+      : wordpiece_tokenizer_(vocab), basic_tokenizer_(do_lower_case) {}
 
   explicit FullTokenizer(bool do_lower_case = false)
       : basic_tokenizer_(do_lower_case) {}
 
-  void SetVocab(const std::unordered_map<std::wstring, int>& vocab) {
+  void SetVocab(const WordToIdMap& vocab) {
     wordpiece_tokenizer_.SetVocab(vocab);
   }
 
@@ -111,10 +113,10 @@ class RpcTokenizer {
     special_set_ = special_set;
   }
 
-  bool Contains(int id) { return ids_to_words_.count(id) > 0; }
+  bool Contains(int64_t id) { return ids_to_words_.count(id) > 0; }
 
   // NOTE: an exception will be raised if id not exist
-  std::string GetWordFromId(int id) {
+  std::string GetWordFromId(int64_t id) {
     auto q = ids_to_words_.at(id);
     if (special_set_.count(q) == 1) {
       return special_set_.at(q);
@@ -123,14 +125,34 @@ class RpcTokenizer {
     }
   }
 
-  std::string GetWordsFromIds(std::vector<int> ids,
+  template <typename T = int64_t>
+  std::string GetWordsFromIds(const std::vector<T>& ids,
                               bool aggressive_break = false,
-                              const std::string& stop_token = "[gEND]");
+                              const std::string& stop_token = "[gEND]") {
+    std::vector<std::string> tokens;
+    for (auto id : ids) {
+      if (!Contains(id)) {
+        continue;
+      }
+      tokens.emplace_back(GetWordFromId(id));
+    }
+    return paddle::string::join_strings(
+        PostProcess(tokens, words_to_ids_, aggressive_break, stop_token), "");
+  }
 
   // NOTE: an exception will be raised if word not exist
-  int GetIdFromWord(const std::wstring& word) { return words_to_ids_.at(word); }
+  int64_t GetIdFromWord(const std::wstring& word) {
+    return words_to_ids_.at(word);
+  }
 
-  std::vector<int> GetIdsFromText(const std::string& text);
+  std::vector<int64_t> GetIdsFromText(const std::string& text) {
+    std::vector<int64_t> ids;
+    auto tokens = tokenizer_.Tokenize(text);
+    for (const auto& token : tokens) {
+      ids.emplace_back(GetIdFromWord(token));
+    }
+    return ids;
+  }
 
  private:
   std::string GetRecoveredToken(const std::vector<uint8_t>& bytes);
@@ -140,7 +162,7 @@ class RpcTokenizer {
 
   std::vector<std::string> PostProcess(
       const std::vector<std::string>& tokens,
-      const std::unordered_map<std::wstring, int>& vocab,
+      const WordToIdMap& vocab,
       bool aggressive_break = false,
       const std::string& stop_token = "[gEND]");
 
@@ -150,8 +172,8 @@ class RpcTokenizer {
   FullTokenizer tokenizer_;
 
   std::string path_;
-  std::unordered_map<int, std::string> ids_to_words_;
-  std::unordered_map<std::wstring, int> words_to_ids_;
+  IdToWordMap ids_to_words_;
+  WordToIdMap words_to_ids_;
   std::unordered_map<std::string, std::string> special_set_;
 };
 

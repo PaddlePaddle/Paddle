@@ -25,7 +25,7 @@ USE_IDS = True
 RES_TYPE = 'float'
 
 # network
-in_query = fluid.data(name='X', shape=[MAX_SIZE_QUERY], dtype='int32')
+in_query = fluid.data(name='X', shape=[MAX_SIZE_QUERY], dtype='int64')
 in_url_id = fluid.data(name='url_id', shape=[1], dtype='int32')
 req_id = fluid.data(name='rid', shape=[1], dtype='int32')
 out_succeed = fluid.data(name='succeed', shape=[1], dtype='bool')
@@ -65,9 +65,9 @@ cur_block.append_op(
 
 # data
 # 货物很好
-query_tensor = np.array([29989, 29981, 2264, 1708, 1672, 1598], dtype='int32')
+query_tensor = np.array([29989, 29981, 2264, 1708, 1672, 1598])
 # 货物很差
-# query_tensor = np.array([29989, 29981, 2264, 1708, 1672, 2212], dtype='int32')
+# query_tensor = np.array([29989, 29981, 2264, 1708, 1672, 2212])
 
 url_id_tensor = np.array([1], dtype='int32')
 

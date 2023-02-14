@@ -33,18 +33,20 @@ namespace operators {
 using json = nlohmann::json;
 
 // payload builders
-inline std::string BuildIdsPayload(const std::vector<int>& src_ids) {
+template <typename T>
+static inline std::string BuildIdsPayload(const std::vector<T>& src_ids) {
   json payload = {{"ids", src_ids}};  // => {"ids": [1, 2, 3, ...]}
   return payload.dump();
 }
 
-inline std::string BuildStrPayload(const std::string& query) {
+static inline std::string BuildStrPayload(const std::string& query) {
   json payload = {{"data", {query}}};  // => {"data": [query]}
   return payload.dump();
 }
 
-inline std::string BuildPayload(const std::string& service,
-                                const std::vector<int>& src_ids) {
+template <typename T>
+static inline std::string BuildPayload(const std::string& service,
+                                       const std::vector<T>& src_ids) {
   if (service == "ids") {
     return BuildIdsPayload(src_ids);
   } else if (service == "str") {
@@ -57,14 +59,14 @@ inline std::string BuildPayload(const std::string& service,
 }
 
 // req & res handlers
-inline void HandleServiceRequest(brpc::Controller* ctrl,
-                                 int request_id,
-                                 const std::string& payload) {
+static inline void HandleServiceRequest(brpc::Controller* ctrl,
+                                        int request_id,
+                                        const std::string& payload) {
   ctrl->request_attachment().append(payload);
   VLOG(3) << "Request id " << request_id << " payload: " << payload;
 }
 
-inline void HandleServiceResponse(
+static inline void HandleServiceResponse(
     brpc::Controller* ctrl,
     int request_id,
     std::shared_ptr<bthread::CountdownEvent> event) {
@@ -88,19 +90,19 @@ template <typename T>
 class RpcTokenCallOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    // url
+    // url, assume num of urls is limited
     auto url_id_tensor = ctx.Input<phi::DenseTensor>("url_id");
     std::vector<int> url_id_vec;
     framework::TensorToVector(
         *url_id_tensor, ctx.device_context(), &url_id_vec);
-    int url_id = url_id_vec[0];
+    auto url_id = url_id_vec[0];
 
     auto url_list = ctx.Attr<std::vector<std::string>>("url_list");
     const std::string url = url_list[url_id];
 
     // payload
     auto src_ids_tensor = ctx.Input<phi::DenseTensor>("X");
-    std::vector<int> src_ids_vec;
+    std::vector<T> src_ids_vec;
     framework::TensorToVector(
         *src_ids_tensor, ctx.device_context(), &src_ids_vec);
 

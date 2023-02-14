@@ -29,19 +29,21 @@ namespace operators {
 using json = nlohmann::json;
 
 // resp parsers
-std::vector<double> ParseFloatResponse(const std::string& response) {
+static inline std::vector<double> ParseFloatResponse(
+    const std::string& response) {
   return {json::parse(response).get<double>()};
 }
 
-std::vector<uint8_t> ParseStrResponse(const std::string& response) {
+static inline std::vector<uint8_t> ParseStrResponse(
+    const std::string& response) {
   const std::string res = json::parse(response).dump();
   return std::vector<uint8_t>(res.begin(), res.end());
 }
 
-inline void ParseResponse(phi::DenseTensor* out,
-                          const std::string& res_type,
-                          const platform::DeviceContext& dev_ctx,
-                          const std::string& resp) {
+static inline void ParseResponse(phi::DenseTensor* out,
+                                 const std::string& res_type,
+                                 const platform::DeviceContext& dev_ctx,
+                                 const std::string& resp) {
   if (res_type == "float") {
     auto res = ParseFloatResponse(resp);
     dev_ctx.Alloc<double>(out);
