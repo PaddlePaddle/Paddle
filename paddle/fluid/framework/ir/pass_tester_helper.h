@@ -933,6 +933,21 @@ static int GetNumOpNodes(const std::unique_ptr<Graph>& graph,
   return num_nodes;
 }
 
+static void RegisterOpKernel(std::vector<std::string>&& op_types) {
+  auto& all_kernels = OperatorWithKernel::AllOpKernels();
+
+  platform::CPUPlace place = platform::CPUPlace();
+  OpKernelType mkldnn_kernel_type = OpKernelType(proto::VarType::FP32,
+                                                 place,
+                                                 DataLayout::kAnyLayout,
+                                                 LibraryType::kMKLDNN);
+
+  auto fake_kernel_func = [](const ExecutionContext&) -> void {};
+
+  for (auto& op_name : op_types)
+    all_kernels[op_name][mkldnn_kernel_type] = fake_kernel_func;
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

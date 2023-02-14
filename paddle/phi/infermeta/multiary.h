@@ -538,8 +538,8 @@ void MultiTensorAdamInferMeta(
     const MetaTensor& learning_rate,
     const std::vector<const MetaTensor*>& moments1,
     const std::vector<const MetaTensor*>& moments2,
-    const std::vector<const MetaTensor*>& beta1_pow,
-    const std::vector<const MetaTensor*>& beta2_pow,
+    const std::vector<const MetaTensor*>& beta1_pows,
+    const std::vector<const MetaTensor*>& beta2_pows,
     const paddle::optional<std::vector<const MetaTensor*>>& master_params,
     const MetaTensor& skip_update,
     const Scalar& beta1,
@@ -553,8 +553,8 @@ void MultiTensorAdamInferMeta(
     std::vector<MetaTensor*> params_out,
     std::vector<MetaTensor*> moments1_out,
     std::vector<MetaTensor*> moments2_out,
-    std::vector<MetaTensor*> beta1_pow_out,
-    std::vector<MetaTensor*> beta2_pow_out,
+    std::vector<MetaTensor*> beta1_pows_out,
+    std::vector<MetaTensor*> beta2_pows_out,
     std::vector<MetaTensor*> master_params_out);
 
 void MoeInferMeta(const MetaTensor& x,

@@ -83,9 +83,9 @@ void LaunchMultiTensorApplyKernel(
       errors::InvalidArgument(
           "input_vector[0].size() is not > 0, please cheack params."));
   auto place = input_vector[0][0]->place();
-  PADDLE_ENFORCE_NE(
+  PADDLE_ENFORCE_EQ(
       place,
-      CPUPlace(),
+      GPUPlace(),
       errors::InvalidArgument(
           "expected input to be on gpu, but input is on cpu now."));
   for (size_t i = 0; i < input_vector.size(); i++) {
@@ -110,6 +110,7 @@ void LaunchMultiTensorApplyKernel(
   size_t tensors_size = input_vector[0].size();
 
   TensorAndBlockInfo<InputNum, MaxTensorSize, MaxBlockSize> t_info;
+  t_info.start_chunk_id = 0;
 
   auto stream = dev_ctx.stream();
   int block_id = 0;
@@ -123,7 +124,6 @@ void LaunchMultiTensorApplyKernel(
     tensor_id++;
     int chunks_this_tensor =
         (input_vector[0][t]->numel() + chunk_size - 1) / chunk_size;
-    t_info.start_chunk_id = 0;
 
     constexpr auto kMaxChunkId = std::numeric_limits<uint16_t>::max();
     for (int chunk = 0; chunk < chunks_this_tensor; chunk++) {

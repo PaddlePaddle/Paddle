@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ using string::PrettyLogDetail;
 void FuseOperatorScaleOneDNNPass::ApplyImpl(Graph *graph) const {
   const std::vector<std::string> fusable_ops{
       "fc",
+      "fused_matmul",
       "matmul",
       "matmul_v2",
       "elementwise_add",
@@ -85,6 +86,19 @@ void FuseOperatorScaleOneDNNPass::FuseScale(Graph *graph,
       scale = *(scale_tensor->data<float>());
     }
 
+    if (op_type == "matmul") {
+      operator_op->Op()->SetType("fused_matmul");
+      operator_op->Op()->SetAttr("trans_x",
+                                 operator_op->Op()->GetAttr("transpose_X"));
+      operator_op->Op()->SetAttr("trans_y",
+                                 operator_op->Op()->GetAttr("transpose_Y"));
+      operator_op->Op()->SetAttr("matmul_alpha",
+                                 operator_op->Op()->GetAttr("alpha"));
+    }
+    if (op_type == "matmul_v2") {
+      operator_op->Op()->SetType("fused_matmul");
+    }
+
     operator_op->Op()->SetAttr("fused_output_scale", scale);
     operator_op->Op()->SetOutput("Out", {scale_out->Name()});
 
@@ -111,6 +125,7 @@ REGISTER_PASS_CAPABILITY(operator_scale_onednn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .EQ("fc", 0)
+            .EQ("fused_matmul", 0)
             .LE("matmul", 1)
             .EQ("matmul_v2", 0)
             .LE("elementwise_add", 1)

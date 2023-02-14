@@ -114,6 +114,16 @@ cc_library(
   SRCS custom_kernel.cc
   DEPS kernel_factory)
 
+cc_library(
+  operants_manager
+  SRCS operants_manager.cc
+  DEPS phi_enforce)
+
+cc_library(
+  mixed_vector
+  SRCS mixed_vector.cc
+  DEPS device_context place memory)
+
 # Will remove once we implemented MKLDNN_Tensor
 if(WITH_MKLDNN)
   add_dependencies(dense_tensor mkldnn)

@@ -128,7 +128,7 @@ def get_mov_combined_features():
         input=category_id, size=[CATEGORY_DICT_SIZE, 32], is_sparse=IS_SPARSE
     )
 
-    mov_categories_hidden = layers.sequence_pool(
+    mov_categories_hidden = paddle.static.nn.sequence_lod.sequence_pool(
         input=mov_categories_emb, pool_type="sum"
     )
 

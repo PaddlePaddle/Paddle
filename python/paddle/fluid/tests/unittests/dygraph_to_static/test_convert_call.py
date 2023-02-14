@@ -125,10 +125,10 @@ class MyConvLayer(fluid.dygraph.Layer):
             out_channels=2,
             kernel_size=3,
             weight_attr=paddle.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.99)
+                initializer=paddle.nn.initializer.Constant(value=0.99)
             ),
             bias_attr=paddle.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.5)
+                initializer=paddle.nn.initializer.Constant(value=0.5)
             ),
         )
 

@@ -19,13 +19,17 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/prim/api/manual/utils/utils.h"
+#include "paddle/fluid/prim/api/manual_prim/utils/utils.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
+#include "paddle/fluid/prim/utils/static/static_tensor_operants.h"
 #include "paddle/fluid/prim/utils/utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/operants_manager.h"
 
 DECLARE_bool(prim_enabled);
+DECLARE_string(tensor_operants_mode);
+
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(tanh, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(tanh_grad, CPU, ALL_LAYOUT);
@@ -135,13 +139,18 @@ struct TestBaseProgram {
   int idx_{0};
 };
 
-class TestGradCompositeGradMaker : public GradCompositeOpMakerBase {
+class TestCompositeGradMaker : public CompositeGradOpMakerBase {
  public:
-  using prim::GradCompositeOpMakerBase::GradCompositeOpMakerBase;
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
   void Apply() override {}
 };
 
 TEST(StaticPrim, TanhBackwardComposite) {
+  // Initialized environment
+  FLAGS_tensor_operants_mode = "static";
+  paddle::operants::OperantsManager::Instance().static_operants.reset(
+      new paddle::operants::StaticTensorOperants());
+
   TestBaseProgram base_program = TestBaseProgram();
   auto* target_block = base_program.GetBlock(0);
   // Prepare for forward tanh
@@ -177,7 +186,7 @@ TEST(StaticPrim, TanhBackwardComposite) {
   std::vector<std::unique_ptr<framework::OpDesc>> grad_ops =
       std::move(framework::OpInfoMap::Instance()
                     .Get(forward_opdesc->Type())
-                    .GradCompOpMaker()(*forward_opdesc,
+                    .CompGradOpMaker()(*forward_opdesc,
                                        std::unordered_set<std::string>(),
                                        &grad_to_var,
                                        target_block,
@@ -223,6 +232,11 @@ TEST(StaticPrim, TanhBackwardComposite) {
 }
 
 TEST(StaticCompositeGradMaker, TestMutiInputMethod) {
+  // Initialized environment
+  FLAGS_tensor_operants_mode = "static";
+  paddle::operants::OperantsManager::Instance().static_operants.reset(
+      new paddle::operants::StaticTensorOperants());
+
   TestBaseProgram base_program = TestBaseProgram();
   auto* target_block = base_program.GetBlock(0);
   std::vector<int64_t> shape = {2, 2};
@@ -250,11 +264,11 @@ TEST(StaticCompositeGradMaker, TestMutiInputMethod) {
   auto* forward_opdesc = target_block->AllOps()[0];
   std::unordered_map<std::string, std::string> grad_to_var;
   std::vector<framework::BlockDesc*> grad_sub_block;
-  auto test = TestGradCompositeGradMaker(*forward_opdesc,
-                                         std::unordered_set<std::string>(),
-                                         &grad_to_var,
-                                         target_block,
-                                         grad_sub_block);
+  auto test = TestCompositeGradMaker(*forward_opdesc,
+                                     std::unordered_set<std::string>(),
+                                     &grad_to_var,
+                                     target_block,
+                                     grad_sub_block);
   test();
   std::vector<paddle::experimental::Tensor> muti_fw_input =
       test.GetMultiForwardInput("X");
@@ -285,6 +299,11 @@ TEST(StaticCompositeGradMaker, TestMutiInputMethod) {
 }
 
 TEST(StaticCompositeGradMaker, TestMutiOutputMethod) {
+  // Initialized environment
+  FLAGS_tensor_operants_mode = "static";
+  paddle::operants::OperantsManager::Instance().static_operants.reset(
+      new paddle::operants::StaticTensorOperants());
+
   TestBaseProgram base_program = TestBaseProgram();
   auto* target_block = base_program.GetBlock(0);
   std::vector<int64_t> shape = {4, 2};
@@ -312,11 +331,11 @@ TEST(StaticCompositeGradMaker, TestMutiOutputMethod) {
   auto* forward_opdesc = target_block->AllOps()[0];
   std::unordered_map<std::string, std::string> grad_to_var;
   std::vector<framework::BlockDesc*> grad_sub_block;
-  auto test = TestGradCompositeGradMaker(*forward_opdesc,
-                                         std::unordered_set<std::string>(),
-                                         &grad_to_var,
-                                         target_block,
-                                         grad_sub_block);
+  auto test = TestCompositeGradMaker(*forward_opdesc,
+                                     std::unordered_set<std::string>(),
+                                     &grad_to_var,
+                                     target_block,
+                                     grad_sub_block);
   test();
   paddle::experimental::Tensor fw_input = test.GetSingleForwardInput("X");
   paddle::optional<paddle::experimental::Tensor> opt_fw_input =

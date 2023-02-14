@@ -523,6 +523,11 @@ class TestDataNormOpErrorr(unittest.TestCase):
                 input=x2, param_attr={}, enable_scale_and_shift=True
             )
 
+            # Test input with dimension 1
+            paddle.enable_static()
+            x3 = paddle.static.data("", shape=[0], dtype="float32")
+            self.assertRaises(ValueError, paddle.static.nn.data_norm, x3)
+
 
 if __name__ == '__main__':
     unittest.main()

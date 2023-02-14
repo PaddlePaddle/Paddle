@@ -71,18 +71,18 @@ void ShareIntoScope(const std::vector<std::string> &ordered_input_names,
 }
 
 void ShareParamsIntoScope(const std::vector<std::string> &param_names,
-                          const VariableMap &params_dict,
+                          const std::shared_ptr<VariableMap> &params_dict,
                           framework::Scope *scope) {
   for (size_t i = 0; i < param_names.size(); ++i) {
     std::string name = param_names[i];
-    PADDLE_ENFORCE_EQ(params_dict.count(name),
+    PADDLE_ENFORCE_EQ(params_dict->count(name),
                       1,
                       phi::errors::InvalidArgument(
                           "Parameter named %s is not existed in params_dict. "
                           "Please check that your model was saved correctly",
                           name));
 
-    auto &param = params_dict.find(name)->second;
+    auto &param = params_dict->find(name)->second;
     auto &dense_tensor = param->Get<DenseTensor>();
     auto *var = scope->Var(name);
     auto *dst_tensor = var->GetMutable<DenseTensor>();

@@ -131,9 +131,8 @@ struct MultiTensorAdamFunctor {
         phi::Load<T, VecSize>(g_ptr + idx, &g_vec);
         phi::Load<MT, VecSize>(mom1_ptr + idx, &mom1_vec);
         phi::Load<MT, VecSize>(mom2_ptr + idx, &mom2_vec);
-      } else if (idx < n) {
+      } else {
         int size = n - idx;
-#pragma unroll
         for (int j = 0; j < size; j++) {
           if (IsMultiPrecision) {
             mp_vec[j] = mp_ptr[idx + j];
@@ -152,15 +151,6 @@ struct MultiTensorAdamFunctor {
           mom1_vec[j] = MT(0);
           mom2_vec[j] = MT(0);
         }
-      } else {
-#pragma unroll
-        for (int j = 0; j < VecSize; j++) {
-          g_vec[j] = T(0);
-          p_vec[j] = T(0);
-          mp_vec[j] = MT(0);
-          mom1_vec[j] = MT(0);
-          mom2_vec[j] = MT(0);
-        }
       }
 
 #pragma unroll
@@ -171,15 +161,14 @@ struct MultiTensorAdamFunctor {
                       static_cast<MT>(g_vec[j]),
                       beta1,
                       beta2);
-        p = UpdateParameter(p,
-                            mom1_vec[j],
-                            mom2_vec[j],
-                            beta1_pow,
-                            beta2_pow,
-                            lr,
-                            epsilon,
-                            decay);
-        mp_vec[j] = p;
+        mp_vec[j] = UpdateParameter(p,
+                                    mom1_vec[j],
+                                    mom2_vec[j],
+                                    beta1_pow,
+                                    beta2_pow,
+                                    lr,
+                                    epsilon,
+                                    decay);
       }
 
       if (idx <= n - VecSize) {
@@ -191,9 +180,8 @@ struct MultiTensorAdamFunctor {
         for (int j = 0; j < VecSize; j++) {
           p_ptr[idx + j] = static_cast<T>(mp_vec[j]);
         }
-      } else if (idx < n) {
+      } else {
         int size = n - idx;
-#pragma unroll
         for (int j = 0; j < size; j++) {
           if (IsMultiPrecision) {
             mp_ptr[idx + j] = mp_vec[j];
@@ -239,27 +227,37 @@ struct MultiTensorAdamFunctor {
   }
 };
 
-template <typename T>
-__global__ void UpdateBetaPow(T beta1,
-                              T beta2,
-                              const T* beta1_pow_,
-                              const T* beta2_pow_,
-                              T* beta1_pow_out,
-                              T* beta2_pow_out) {
-  *beta1_pow_out = beta1 * beta1_pow_[0];
-  *beta2_pow_out = beta2 * beta2_pow_[0];
+template <typename T, int N>
+__global__ void UpdateBetaPowGroup(
+    Array<T*, N> beta1_pow, Array<T*, N> beta2_pow, T beta1, T beta2, int n) {
+  auto idx = threadIdx.x;
+  if (idx < n) {
+    beta1_pow[idx][0] *= beta1;
+    beta2_pow[idx][0] *= beta2;
+  }
 }
 
 template <typename Context>
 static void CopyTensorIfDifferent(const Context& dev_ctx,
                                   const std::vector<const DenseTensor*>& src,
-                                  const std::vector<DenseTensor*>& dst) {
+                                  const std::vector<DenseTensor*>& dst,
+                                  bool use_src_place = false) {
   for (size_t i = 0; i < src.size(); ++i) {
     if (src[i] != dst[i]) {
       VLOG(10) << "Copy Tensor " << i;
-      phi::Copy<Context>(dev_ctx, *(src[i]), dev_ctx.GetPlace(), false, dst[i]);
+      phi::Place place = (use_src_place ? src[i]->place() : dev_ctx.GetPlace());
+      phi::Copy<Context>(dev_ctx, *(src[i]), place, false, dst[i]);
     }
   }
+}
+
+template <typename T, typename TensorT>
+static int GetVecSizeFromTensors(const std::vector<TensorT*>& tensors,
+                                 int vec_size = 4) {
+  for (const auto* t : tensors) {
+    vec_size = min(vec_size, GetVectorizedSize(t->template data<T>()));
+  }
+  return vec_size;
 }
 
 template <typename T, typename Context>
@@ -270,8 +268,8 @@ void MultiTensorAdamKernel(
     const DenseTensor& learning_rate,
     const std::vector<const DenseTensor*>& moments1,
     const std::vector<const DenseTensor*>& moments2,
-    const std::vector<const DenseTensor*>& beta1_pow,
-    const std::vector<const DenseTensor*>& beta2_pow,
+    const std::vector<const DenseTensor*>& beta1_pows,
+    const std::vector<const DenseTensor*>& beta2_pows,
     const paddle::optional<std::vector<const DenseTensor*>>& master_params,
     const paddle::optional<DenseTensor>& skip_update,
     const Scalar& beta1,
@@ -285,36 +283,44 @@ void MultiTensorAdamKernel(
     std::vector<DenseTensor*> params_out,
     std::vector<DenseTensor*> moments1_out,
     std::vector<DenseTensor*> moments2_out,
-    std::vector<DenseTensor*> beta1_pow_out,
-    std::vector<DenseTensor*> beta2_pow_out,
+    std::vector<DenseTensor*> beta1_pows_out,
+    std::vector<DenseTensor*> beta2_pows_out,
     std::vector<DenseTensor*> master_params_out) {
   using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
 
-  auto beta1_pow_first = beta1_pow[0];
-  auto beta2_pow_first = beta2_pow[0];
+  auto n = params.size();
+  auto beta1_pow_first = beta1_pows[0];
+  auto beta2_pow_first = beta2_pows[0];
 
-  for (int i = 1; i < beta1_pow.size(); i++) {
+  for (int i = 1; i < beta1_pows.size(); i++) {
     PADDLE_ENFORCE_EQ(beta1_pow_first->place(),
-                      beta1_pow[i]->place(),
+                      beta1_pows[i]->place(),
                       phi::errors::InvalidArgument(
-                          "all Beta1Pow must be in the same place."));
+                          "All Beta1Pow must be in the same place."));
     PADDLE_ENFORCE_EQ(beta2_pow_first->place(),
-                      beta2_pow[i]->place(),
+                      beta2_pows[i]->place(),
                       phi::errors::InvalidArgument(
-                          "all Beta2Pow must be in the same place."));
+                          "All Beta2Pow must be in the same place."));
   }
 
   PADDLE_ENFORCE_EQ(
       beta1_pow_first->place(),
       beta2_pow_first->place(),
       phi::errors::InvalidArgument(
-          "Input(Beta1Pow) and Input(Beta2Pow) must be in the same place."));
+          "Input(Beta1Pows) and Input(Beta2Pows) must be in the same place."));
 
   bool is_cpu_betapow = (beta1_pow_first->place() == CPUPlace());
 
   VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
-  MPDType beta1_tmp = beta1.to<MPDType>();
-  MPDType beta2_tmp = beta2.to<MPDType>();
+
+  CopyTensorIfDifferent(dev_ctx, params, params_out);
+  CopyTensorIfDifferent(dev_ctx, moments1, moments1_out);
+  CopyTensorIfDifferent(dev_ctx, moments2, moments2_out);
+  CopyTensorIfDifferent(dev_ctx, beta1_pows, beta1_pows_out, true);
+  CopyTensorIfDifferent(dev_ctx, beta2_pows, beta2_pows_out, true);
+  if (master_params) {
+    CopyTensorIfDifferent(dev_ctx, master_params.get(), master_params_out);
+  }
 
   bool skip_update_value = false;
   if (skip_update.is_initialized()) {
@@ -333,32 +339,11 @@ void MultiTensorAdamKernel(
   // skip_update=true
   if (skip_update_value) {
     VLOG(4) << "Adam skip update";
-    for (size_t i = 0; i < params.size(); i++) {
-      phi::Copy(dev_ctx, *params[i], dev_ctx.GetPlace(), false, params_out[i]);
-      phi::Copy(
-          dev_ctx, *moments1[i], dev_ctx.GetPlace(), false, moments1_out[i]);
-      phi::Copy(
-          dev_ctx, *moments2[i], dev_ctx.GetPlace(), false, moments2_out[i]);
-      phi::Copy(dev_ctx,
-                *beta1_pow[i],
-                beta1_pow[i]->place(),
-                false,
-                beta1_pow_out[i]);
-      phi::Copy(dev_ctx,
-                *beta2_pow[i],
-                beta2_pow[i]->place(),
-                false,
-                beta2_pow_out[i]);
-    }
     return;
   }
 
-  CopyTensorIfDifferent(dev_ctx, params, params_out);
-  CopyTensorIfDifferent(dev_ctx, moments1, moments1_out);
-  CopyTensorIfDifferent(dev_ctx, moments2, moments2_out);
-  if (master_params) {
-    CopyTensorIfDifferent(dev_ctx, master_params.get(), master_params_out);
-  }
+  MPDType beta1_tmp = beta1.to<MPDType>();
+  MPDType beta2_tmp = beta2.to<MPDType>();
 
   std::vector<std::vector<DenseTensor*>> input_vector;
   input_vector.reserve(4);
@@ -373,7 +358,7 @@ void MultiTensorAdamKernel(
   VLOG(4) << "use_adamw: " << use_adamw;
   VLOG(4) << "multi_precision: " << multi_precision;
 
-#define PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL(                            \
+#define PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL_BASE(                       \
     __multi_precision, __is_cpu_betapow, __use_adamw, __vec_size)            \
   do {                                                                       \
     constexpr int kInputNum = __multi_precision ? 5 : 4;                     \
@@ -409,55 +394,92 @@ void MultiTensorAdamKernel(
         static_cast<MPDType>(weight_decay));                                 \
   } while (0)
 
-  constexpr auto kVecSize = 4;
-  if (multi_precision) {
-    if (is_cpu_betapow) {
-      if (use_adamw) {
-        PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL(true, true, true, kVecSize);
-      } else {
-        PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL(true, true, false, kVecSize);
-      }
-    } else {
-      if (use_adamw) {
-        PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL(true, false, true, kVecSize);
-      } else {
-        PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL(true, false, false, kVecSize);
-      }
-    }
-  } else {
-    if (is_cpu_betapow) {
-      if (use_adamw) {
-        PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL(false, true, true, kVecSize);
-      } else {
-        PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL(false, true, false, kVecSize);
-      }
-    } else {
-      if (use_adamw) {
-        PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL(false, false, true, kVecSize);
-      } else {
-        PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL(false, false, false, kVecSize);
-      }
-    }
+#define PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL(__vec_size) \
+  case __vec_size: {                                         \
+    if (multi_precision) {                                   \
+      if (is_cpu_betapow) {                                  \
+        if (use_adamw) {                                     \
+          PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL_BASE(     \
+              true, true, true, __vec_size);                 \
+        } else {                                             \
+          PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL_BASE(     \
+              true, true, false, __vec_size);                \
+        }                                                    \
+      } else {                                               \
+        if (use_adamw) {                                     \
+          PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL_BASE(     \
+              true, false, true, __vec_size);                \
+        } else {                                             \
+          PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL_BASE(     \
+              true, false, false, __vec_size);               \
+        }                                                    \
+      }                                                      \
+    } else {                                                 \
+      if (is_cpu_betapow) {                                  \
+        if (use_adamw) {                                     \
+          PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL_BASE(     \
+              false, true, true, __vec_size);                \
+        } else {                                             \
+          PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL_BASE(     \
+              false, true, false, __vec_size);               \
+        }                                                    \
+      } else {                                               \
+        if (use_adamw) {                                     \
+          PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL_BASE(     \
+              false, false, true, __vec_size);               \
+        } else {                                             \
+          PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL_BASE(     \
+              false, false, false, __vec_size);              \
+        }                                                    \
+      }                                                      \
+    }                                                        \
+  } break
+
+  int vec_size = GetVecSizeFromTensors<T>(params_out);
+  vec_size = GetVecSizeFromTensors<MPDType>(moments1_out, vec_size);
+  vec_size = GetVecSizeFromTensors<MPDType>(moments2_out, vec_size);
+  if (master_params) {
+    vec_size = GetVecSizeFromTensors<MPDType>(master_params_out, vec_size);
+  }
+
+  switch (vec_size) {
+    PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL(4);
+    PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL(2);
+    PD_LAUNCH_MULTI_TENSOR_APPLY_ADAM_KERNEL(1);
+    default:
+      PADDLE_THROW(
+          errors::InvalidArgument("Unsupported vectorized size %d", vec_size));
+      break;
   }
 
   if (!use_global_beta_pow) {
-    for (size_t i = 0; i < beta1_pow.size(); i++) {
-      if (is_cpu_betapow) {
+    if (is_cpu_betapow) {
+      for (size_t i = 0; i < n; i++) {
         VLOG(10) << "CPU Update BetaPow here...";
-        dev_ctx.template HostAlloc<MPDType>(beta1_pow_out[i])[0] =
-            beta1_tmp * beta1_pow[i]->data<MPDType>()[0];
-        dev_ctx.template HostAlloc<MPDType>(beta2_pow_out[i])[0] =
-            beta2_tmp * beta2_pow[i]->data<MPDType>()[0];
-      } else {
-        VLOG(10) << "GPU Update BetaPow here...";
-        // Update with gpu
-        UpdateBetaPow<MPDType><<<1, 1, 0, dev_ctx.stream()>>>(
-            beta1_tmp,
-            beta2_tmp,
-            beta1_pow[i]->data<MPDType>(),
-            beta2_pow[i]->data<MPDType>(),
-            dev_ctx.template Alloc<MPDType>(beta1_pow_out[i]),
-            dev_ctx.template Alloc<MPDType>(beta2_pow_out[i]));
+        auto* beta1_ptr =
+            dev_ctx.template HostAlloc<MPDType>(beta1_pows_out[i]);
+        (*beta1_ptr) *= beta1_tmp;
+
+        auto* beta2_ptr =
+            dev_ctx.template HostAlloc<MPDType>(beta2_pows_out[i]);
+        (*beta2_ptr) *= beta2_tmp;
+      }
+    } else {
+      constexpr size_t kGroupSize = 32;
+      auto group_num = (n + kGroupSize - 1) / kGroupSize;
+      VLOG(10) << "GPU Update BetaPow here...";
+      for (size_t i = 0; i < group_num; ++i) {
+        size_t start = i * kGroupSize;
+        size_t end = std::min((i + 1) * kGroupSize, n);
+        Array<MPDType*, kGroupSize> beta1_ptrs, beta2_ptrs;
+        for (size_t j = start; j < end; ++j) {
+          size_t idx = j - start;
+          beta1_ptrs[idx] = dev_ctx.template Alloc<MPDType>(beta1_pows_out[j]);
+          beta2_ptrs[idx] = dev_ctx.template Alloc<MPDType>(beta2_pows_out[j]);
+        }
+        UpdateBetaPowGroup<MPDType, kGroupSize>
+            <<<1, kGroupSize, 0, dev_ctx.stream()>>>(
+                beta1_ptrs, beta2_ptrs, beta1_tmp, beta2_tmp, end - start);
       }
     }
   }

@@ -170,7 +170,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         w_param_attrs = fluid.ParamAttr(
             name="fc_weight",
             learning_rate=0.5,
-            initializer=fluid.initializer.Constant(1.0),
+            initializer=paddle.nn.initializer.Constant(1.0),
             trainable=True,
         )
         y = paddle.static.nn.fc(
@@ -198,13 +198,13 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         w1_param_attrs = fluid.ParamAttr(
             name="fc_weight1",
             learning_rate=0.5,
-            initializer=fluid.initializer.Constant(1.0),
+            initializer=paddle.nn.initializer.Constant(1.0),
             trainable=True,
         )
         w2_param_attrs = fluid.ParamAttr(
             name="fc_weight2",
             learning_rate=0.5,
-            initializer=fluid.initializer.Constant(1.0),
+            initializer=paddle.nn.initializer.Constant(1.0),
             trainable=True,
         )
         y1 = paddle.static.nn.fc(

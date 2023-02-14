@@ -29,7 +29,9 @@ import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.nn.functional as F
 
-const_para_attr = fluid.ParamAttr(initializer=fluid.initializer.Constant(0.001))
+const_para_attr = fluid.ParamAttr(
+    initializer=paddle.nn.initializer.Constant(0.001)
+)
 const_bias_attr = const_para_attr
 
 # Fix seed for test
@@ -1253,8 +1255,8 @@ def pre_post_process_layer(prev_out, out, process_cmd, dropout_rate=0.0):
             out = layers.layer_norm(
                 out,
                 begin_norm_axis=len(out.shape) - 1,
-                param_attr=fluid.initializer.Constant(1.0),
-                bias_attr=fluid.initializer.Constant(0.0),
+                param_attr=paddle.nn.initializer.Constant(1.0),
+                bias_attr=paddle.nn.initializer.Constant(0.0),
             )
         elif cmd == "d":  # add dropout
             if dropout_rate:
@@ -1292,7 +1294,7 @@ def prepare_encoder(
             size=[src_vocab_size, src_emb_dim],
             param_attr=fluid.ParamAttr(
                 name=word_emb_param_name,
-                initializer=fluid.initializer.ConstantInitializer(0.001),
+                initializer=paddle.nn.initializer.Constant(0.001),
             ),
         )
     else:
@@ -1301,7 +1303,9 @@ def prepare_encoder(
             size=[src_vocab_size, src_emb_dim],
             param_attr=fluid.ParamAttr(
                 name=word_emb_param_name,
-                initializer=fluid.initializer.Normal(0.0, src_emb_dim**-0.5),
+                initializer=paddle.nn.initializer.Normal(
+                    0.0, src_emb_dim**-0.5
+                ),
             ),
         )
 
@@ -1312,7 +1316,7 @@ def prepare_encoder(
         param_attr=fluid.ParamAttr(
             name=pos_enc_param_name,
             trainable=False,
-            initializer=fluid.initializer.ConstantInitializer(0.001),
+            initializer=paddle.nn.initializer.Constant(0.001),
         ),
     )
     src_pos_enc.stop_gradient = True

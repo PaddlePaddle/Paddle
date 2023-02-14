@@ -46,7 +46,7 @@ class ScaleLoDTensorFunctor<phi::GPUContext, T> {
     const size_t seq_width = seq->numel() / seq->dims()[0];
     auto abs_offset_lod = paddle::framework::ToAbsOffset(lod);
     T* seq_data = context.template Alloc<T>(seq);
-    paddle::framework::MixVector<size_t> mix_vector(&(abs_offset_lod[level]));
+    phi::MixVector<size_t> mix_vector(&(abs_offset_lod[level]));
 
 #ifdef PADDLE_WITH_HIP
     hipLaunchKernelGGL(

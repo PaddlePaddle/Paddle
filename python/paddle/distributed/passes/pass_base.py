@@ -249,9 +249,12 @@ PassBase._AFTER_WHITE_LISTS_DICT = {
 
 # The index of pass in this list represent the order in which the pass is processed.
 PassBase._PASS_PROCESS_ORDER_LIST = [
+    "fuse_relu_depthwise_conv",
     "fuse_bn_add_act",
-    "fuse_gemm_epilogue",
+    "fuse_bn_act",
     "fused_attention",
+    "fuse_gemm_epilogue",
+    "fuse_optimizer",
 ]
 
 PassBase._COMMON_RULES = [
@@ -295,8 +298,12 @@ def _find_longest_path(edges):
                     dists[i][j] = dists[i][k] + dists[k][j]
                     if paths[i][k]:
                         assert paths[i][k][-1] == k
+                    else:
+                        continue
                     if paths[k][j]:
                         assert paths[k][j][0] == k
+                    else:
+                        continue
                     paths[i][j] = (
                         paths[i][k] + paths[k][j][1:] if paths[k][j] else []
                     )
