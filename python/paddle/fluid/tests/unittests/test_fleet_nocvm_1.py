@@ -72,7 +72,7 @@ class TestFleet1(unittest.TestCase):
                 dtype="int64",
                 lod_level=1,
             )
-            label_cast = fluid.layers.cast(label, dtype='float32')
+            label_cast = paddle.cast(label, dtype='float32')
             cost = paddle.nn.functional.log_loss(fc, label_cast)
         try:
             adam = fluid.optimizer.Adam(learning_rate=0.000005)

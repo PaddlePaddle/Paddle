@@ -4,17 +4,20 @@ if(WITH_GPU)
   nv_library(
     phi_tensor_raw
     SRCS tensor.cc
-    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool)
+    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool
+         operants_manager)
 elseif(WITH_ROCM)
   hip_library(
     phi_tensor_raw
     SRCS tensor.cc
-    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool)
+    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool
+         operants_manager)
 else()
   cc_library(
     phi_tensor_raw
     SRCS tensor.cc
-    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool)
+    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool
+         operants_manager)
 endif()
 
 set(api_gen_base ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/api_base.py)
@@ -308,3 +311,12 @@ cc_library(
   api_int_array
   SRCS int_array.cc
   DEPS tensor_copy)
+
+cc_library(
+  phi_tensor_operants
+  SRCS tensor_operants.cc
+  DEPS phi_function_api)
+cc_library(
+  operants_manager
+  SRCS operants_manager.cc
+  DEPS flags)
