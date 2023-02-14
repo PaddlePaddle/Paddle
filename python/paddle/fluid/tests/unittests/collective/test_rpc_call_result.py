@@ -35,7 +35,7 @@ in_url_id = fluid.data(name='url_id', shape=[1], dtype='int32')
 req_ids = paddle.static.nn.rpc_call(
     in_query,
     in_url_id,
-    [os.environ.get("url_list")],
+    os.environ.get("url_list").split(","),
     "/code_lp/ernie-bot/post-train/ernie_3.0_100b_no_distill/config/ernie3.0_vocab_multi_prompt_v9.txt",
     True,
 )
