@@ -14,16 +14,20 @@
 
 #include <sstream>
 
+#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/eager/api/utils/hook_utils.h"
 #include "paddle/fluid/eager/backward.h"
 #include "paddle/fluid/eager/tests/test_utils.h"
+#include "paddle/fluid/prim/tests/init_env_utils.h"
 #include "paddle/fluid/prim/utils/utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
+
+DECLARE_string(tensor_operants_mode);
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(tanh, CPU, ALL_LAYOUT);
@@ -46,6 +50,8 @@ namespace prim {
 TEST(EagerPrim, TanhBackwardTest) {
   // 1. Initialized
   eager_test::InitEnv(paddle::platform::CPUPlace());
+  FLAGS_tensor_operants_mode = "eager";
+  paddle::prim::InitTensorOperants();
   // 2. pre
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
   paddle::experimental::Tensor tensor0 =

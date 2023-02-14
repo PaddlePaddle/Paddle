@@ -14,7 +14,7 @@
 
 import itertools
 import re
-from typing import Dict, List
+from typing import Dict, List, Sequence
 
 from type_mapping import (
     attr_types_map,
@@ -78,6 +78,10 @@ def to_dense_output_type(s):
 def to_sr_output_type(s):
     "Convert types in yaml to selected rows type in phi"
     return sr_output_types_map[s]
+
+
+def filter_intermediate(items: Sequence):
+    return tuple([item for item in items if not item.get('intermediate')])
 
 
 # -------------- transform argument names from yaml to opmaker ------------
