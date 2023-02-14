@@ -69,14 +69,13 @@ def expect_backward(x, norm_shape, w, b):
     paddle.disable_static()
     x.stop_gradient = False
     res = fn(x, norm_shape, w, b)
-    breakpoint()
     gradients = paddle.grad(res, x)
     return gradients
 
 
 class TestCompositelayer_norm(unittest.TestCase):
     def setUp(self):
-        self.dtypes = ["float64"]
+        self.dtypes = ["float16", "float32"]
         self.n_shape = [[4], [64, 128], [64]]
         self.shape1s = [[3, 4], [64, 64, 128], [128, 64, 64]]
         self.shape2s = [[4], [64 * 128], [64]]
@@ -92,7 +91,6 @@ class TestCompositelayer_norm(unittest.TestCase):
                 'x', shape=inputs.shape, dtype=str(inputs.dtype)
             )
             x.stop_gradient = False
-            breakpoint()
             w = paddle.static.data(
                 'w', shape=weight.shape, dtype=str(weight.dtype)
             )
