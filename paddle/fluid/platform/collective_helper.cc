@@ -312,7 +312,6 @@ class BKCLCommImpl : public BKCLComm {
 
 BKCLComm* BKCLCommContext::CreateComm(
     BKCLUniqueId* bkcl_id, int nranks, int rank, int dev_id, int ring_id) {
-  VLOG(3) << "BKCLCommContext::CreateComm";
   PADDLE_ENFORCE_NOT_NULL(bkcl_id,
                           platform::errors::InvalidArgument(
                               "The bkcl unique id should not be null."));
@@ -341,9 +340,7 @@ BKCLComm* BKCLCommContext::CreateComm(
   BKCLContext_t comm = nullptr;
   platform::SetXPUDeviceId(dev_id);
   PADDLE_ENFORCE_XPU_SUCCESS(bkcl_init_rank(&comm, rank, nranks, bkcl_id));
-  VLOG(3) << "BKCLCommContext::CreateComm";
   auto* comm_wrapper = AssignBKCLComm(comm, nranks, rank, dev_id, ring_id);
-  VLOG(3) << "BKCLCommContext::CreateComm";
   VLOG(1) << "bkcl communicator of rank " << rank << " in ring " << ring_id
           << " has been created on device " << dev_id;
 
