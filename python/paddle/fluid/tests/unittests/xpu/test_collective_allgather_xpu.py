@@ -22,7 +22,11 @@ from paddle.fluid import core
 
 sys.path.append("..")
 
-from xpu.get_test_cover_info import XPUOpTestWrapper, create_test_class
+from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
 
 paddle.enable_static()
 
@@ -42,8 +46,7 @@ class XPUTestCAllgatherOP(XPUOpTestWrapper):
             )
 
 
-# support_types = get_xpu_op_support_types('c_allgather')
-support_types = ["float32"]
+support_types = get_xpu_op_support_types('c_allgather')
 for stype in support_types:
     create_test_class(
         globals(),

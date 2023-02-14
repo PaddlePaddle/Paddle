@@ -270,18 +270,23 @@ bool AnalysisPredictor::Init(
 
   // no matter with or without MKLDNN
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
+
   if (!PrepareScope(parent_scope)) {
     return false;
   }
+
   InitPlace();
+
   if (!CreateExecutor()) {
     return false;
   }
   if (!PrepareProgram(program)) {
     return false;
   }
+
   // Get the feed_target_names and fetch_target_names
   PrepareFeedFetch();
+
   // Prepare executor, create local variables.
   if (!PrepareExecutor()) {
     return true;

@@ -302,10 +302,6 @@ class BKCLCommunicator {
         int dev_id = places[p].device;
         platform::SetXPUDeviceId(dev_id);
         auto &ctx = flat_ctxs_[ring_id]->contexts_.at(dev_id);
-        VLOG(3) << "BKCL_HELPER: nranks: " << nranks;
-        VLOG(3) << "BKCL_HELPER: rank: " << rank;
-        VLOG(3) << "BKCL_HELPER: dev_id: " << dev_id;
-        VLOG(3) << "BKCL_HELPER: ring_id: " << ring_id;
         BKCLCommContext::Instance().AssignBKCLComm(
             ctx.comm_, nranks, rank, dev_id, ring_id);
       }

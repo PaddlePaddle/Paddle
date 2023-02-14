@@ -89,10 +89,6 @@ class CCommInitAllOp : public framework::OperatorBase {
       ptr->init();
 
       for (size_t i = 0; i < devices.size(); ++i) {
-        VLOG(3) << "COMMALL: nranks: " << devices.size();
-        VLOG(3) << "COMMALL: rank: " << devices[i];
-        VLOG(3) << "COMMALL: dev_id: " << devices[i];
-        VLOG(3) << "COMMALL: ring_id: " << ring_id;
         platform::BKCLCommContext::Instance().AssignBKCLComm(
             ptr->contexts_.at(devices[i]).comm_,
             devices.size(),

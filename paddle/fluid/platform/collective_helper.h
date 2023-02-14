@@ -327,10 +327,6 @@ class BKCLCommContext {
 
   // retrieve a communicator by the ring id and the device id
   BKCLComm* Get(int ring_id, int dev_id) const {
-    for (auto it = comm_map_.begin(); it != comm_map_.end(); ++it) {
-      std::cout << "comm_map_: " << it->first << std::endl;
-    }
-
     PADDLE_ENFORCE_GT(
         comm_map_.count(ring_id),
         0,

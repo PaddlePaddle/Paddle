@@ -356,55 +356,43 @@ BKCLComm* BKCLCommContext::CreateComm(
 
 BKCLComm* BKCLCommContext::AssignBKCLComm(
     BKCLContext_t comm, int nranks, int rank, int dev_id, int ring_id) {
-  VLOG(3) << "BKCLCommContext::AssignBKCLComm";
   std::unique_ptr<XPUDeviceContext> dev_ctx(
       new XPUDeviceContext(XPUPlace(dev_id)));
-  VLOG(3) << "BKCLCommContext::AssignBKCLComm";
   dev_ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                             .GetAllocator(XPUPlace(dev_id))
                             .get());
-  VLOG(3) << "BKCLCommContext::AssignBKCLComm";
   dev_ctx->SetHostAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(paddle::platform::CPUPlace())
           .get());
-  VLOG(3) << "BKCLCommContext::AssignBKCLComm";
   dev_ctx->SetZeroAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetZeroAllocator(XPUPlace(dev_id))
           .get());
-  VLOG(3) << "BKCLCommContext::AssignBKCLComm";
   dev_ctx->SetHostZeroAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetZeroAllocator(paddle::platform::CPUPlace())
           .get());
-  VLOG(3) << "BKCLCommContext::AssignBKCLComm";
   BKCLCommImpl* c = new BKCLCommImpl;
   c->set_ring_id(ring_id);
   c->set_nranks(nranks);
   c->set_rank(rank);
   c->set_comm(comm);
   c->set_dev_ctx(std::move(dev_ctx));
-  VLOG(3) << "BKCLCommContext::AssignBKCLComm";
   comm_map_mutex_.lock();
   if (comm_map_.count(ring_id) == 0) {
     comm_map_.emplace(ring_id, std::map<int, std::unique_ptr<BKCLComm>>());
   }
-  VLOG(3) << "BKCLCommContext::AssignBKCLComm";
   auto& dev2comm = comm_map_[ring_id];
-  VLOG(3) << "BKCLCommContext::AssignBKCLComm";
   dev2comm.emplace(dev_id, std::unique_ptr<BKCLComm>(c));
   comm_map_mutex_.unlock();
-  VLOG(3) << "BKCLCommContext::AssignBKCLComm";
   if (ring_id == 0) {
-    VLOG(3) << "BKCLCommContext::AssignBKCLComm";
     auto* dev_ctx = static_cast<platform::XPUDeviceContext*>(
         platform::DeviceContextPool::Instance().Get(
             platform::XPUPlace(dev_id)));
     dev_ctx->SetBkclContext(comm);
   }
-  VLOG(3) << "BKCLCommContext::AssignBKCLComm";
-  VLOG(4) << "add bkcl comm: " << comm_map_[ring_id][dev_id].get()
+  VLOG(3) << "add bkcl comm: " << comm_map_[ring_id][dev_id].get()
           << ", ring_id:" << ring_id << ", dev_id:" << dev_id;
   return comm_map_[ring_id][dev_id].get();
 }

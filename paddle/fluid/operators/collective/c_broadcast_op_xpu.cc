@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -52,14 +52,14 @@ class CBroadcastOpXPUKernel : public framework::OpKernel<T> {
     VLOG(3) << "begin bkcl broadcast, parameter is: "
             << "root " << root << ", comm: " << comm->comm()
             << ", stream: " << stream;
-    // const void* sendbuff = x->data<T>();
-    // void* recvbuff = out->mutable_data<T>(ctx.GetPlace());
     void* send_recv_buffer = nullptr;
     if (root == comm->rank()) {
-      // API: BKCLResult_t bkcl_broadcast(const BKCLContext_t ctx, const void*
-      // sendbuf, void* recvbuf,
-      //        size_t count, BKCLDataType datatype, int root, XPUStream
-      //        stream);
+      // API: BKCLResult_t bkcl_broadcast(const BKCLContext_t ctx,
+      //                                  const void* sendbuf,
+      //                                  void* recvbuf,
+      //                                  size_t count, BKCLDataType datatype,
+      //                                  int root,
+      //                                  XPUStream stream);
       send_recv_buffer = reinterpret_cast<void*>(const_cast<T*>(x->data<T>()));
       auto ret = bkcl_broadcast(comm->comm(),
                                 send_recv_buffer,

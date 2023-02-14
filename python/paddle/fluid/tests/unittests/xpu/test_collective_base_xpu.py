@@ -239,8 +239,6 @@ class TestDistBase(unittest.TestCase):
 
         tr0_out, tr0_err = tr0_proc.communicate()
         tr1_out, tr1_err = tr1_proc.communicate()
-        # sys.stderr.write('trainer 0 tr0_out: %s\n' % tr0_out)
-        # sys.stderr.write('trainer 1 tr1_out: %s\n' % tr1_out)
         sys.stderr.write('trainer 0 stderr: %s\n' % tr0_err)
         sys.stderr.write('trainer 1 stderr: %s\n' % tr1_err)
         # close trainer file
