@@ -17,6 +17,7 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 
@@ -66,7 +67,6 @@ struct EmbeddingBagGradCPUFunctor {
     auto* d_params_grad = params_grad_->data<T>();
     auto* d_weight_grad = weight_grad_->data<T>();
 
-    auto ids_num = static_cast<int64_t>(ids.size());
     EigenIndex bags = input_.dims()[0];
 
     for (EigenIndex i = 0; i < bags * sequence_length; ++i) {
