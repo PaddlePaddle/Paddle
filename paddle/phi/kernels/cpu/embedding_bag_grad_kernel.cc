@@ -17,7 +17,6 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/funcs/embedding_util.h"
 
 namespace phi {
 
@@ -57,20 +56,21 @@ struct EmbeddingBagGradCPUFunctor {
     std::unordered_map<IdT, EigenIndex> index_map;
     std::vector<std::pair<IdT, std::vector<EigenIndex>>> index_vec;
 
-    auto ids = CopyIdsToVector<IdT, IdT>(input_);
-
     auto* d_grad = out_grad_.data<T>();
     auto* d_weights = weight_.data<T>();
     auto* d_params = params_.data<T>();
     auto* d_inputs = input_.data<IdT>();
 
+    phi::funcs::SetConstant<Context, T>()(
+        dev_ctx_, params_grad_, static_cast<T>(0));
     auto* d_params_grad = params_grad_->data<T>();
     auto* d_weight_grad = weight_grad_->data<T>();
 
     auto ids_num = static_cast<int64_t>(ids.size());
+    EigenIndex bags = input_.dims()[0];
 
-    for (EigenIndex i = 0; i < ids_num; ++i) {
-      auto index = ids.data()[i];
+    for (EigenIndex i = 0; i < bags * sequence_length; ++i) {
+      auto index = d_inputs[i];
       if (index_map.find(index) == index_map.end()) {
         index_map[index] = index_vec.size();
         index_vec.push_back({index, {}});
@@ -78,8 +78,8 @@ struct EmbeddingBagGradCPUFunctor {
       index_vec[index_map[index]].second.push_back(i);
     }
 
-    EigenIndex bags = input_.dims()[0];
-    for (EigenIndex i = 0; i < bags; ++i) {
+    auto ids_num = static_cast<int64_t>(index_vec.size());
+    for (EigenIndex i = 0; i < ids_num; ++i) {
       EigenVectorMap params_grads_slice(
           &d_params_grad[index_vec[i].first * output_dim], output_dim);
 
@@ -88,8 +88,7 @@ struct EmbeddingBagGradCPUFunctor {
         const EigenIndex seq = index % sequence_length;
         const ConstEigenVectorMap grads_slice(&d_grad[bag * output_dim],
                                               output_dim);
-        params_grads_slice +=
-            grads_slice * d_weights[bag * sequence_length + seq];
+        params_grads_slice += grads_slice * d_weights[index];
       }
       if (mode_ == "mean") {
         params_grads_slice /= static_cast<T>(sequence_length);
