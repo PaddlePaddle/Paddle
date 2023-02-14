@@ -26,7 +26,7 @@ namespace ir {
 std::vector<std::string> GetStringVector(std::vector<Node *> node_vector) {
   std::vector<std::string> out_vector;
   for (auto i : node_vector) {
-    out_vector.push_back(i->Name());
+    out_vector.emplace_back(i->Name());
   }
   return out_vector;
 }
@@ -72,16 +72,17 @@ void FeedInputVector(
   size_t i = 0;
 
   for (auto &name : inputs_name) {
-    (*input_vectors)[state][i].push_back(GetInputNode(op, name));
+    (*input_vectors)[state][i].emplace_back(GetInputNode(op, name));
     i++;
   }
   for (auto &name : outputs_name) {
-    (*input_vectors)[state][i].push_back(GetOutputNode(op, name));
+    (*input_vectors)[state][i].emplace_back(GetOutputNode(op, name));
     i++;
   }
   if (state & 1) {
-    (*input_vectors)[state][i++].push_back(GetInputNode(op, "MasterParam"));
-    (*input_vectors)[state][i].push_back(GetOutputNode(op, "MasterParamOut"));
+    (*input_vectors)[state][i++].emplace_back(GetInputNode(op, "MasterParam"));
+    (*input_vectors)[state][i].emplace_back(
+        GetOutputNode(op, "MasterParamOut"));
   }
 }
 
@@ -95,6 +96,7 @@ void InsertOp(Node *first_lr,
               float beta2,
               float epsilon,
               float coeff,
+              int op_role,
               bool use_global_beta_pow,
               bool replace_adamw,
               bool use_skip_update,
@@ -143,6 +145,7 @@ void InsertOp(Node *first_lr,
 
       fuse_adamw_op_desc.SetAttr("beta1", beta1);
       fuse_adamw_op_desc.SetAttr("beta2", beta2);
+      fuse_adamw_op_desc.SetAttr("op_role", op_role);
       fuse_adamw_op_desc.SetAttr("epsilon", epsilon);
       fuse_adamw_op_desc.SetAttr("chunk_size", 32 * 2048);
       fuse_adamw_op_desc.SetAttr("weight_decay", weight_decay);
@@ -194,6 +197,7 @@ ir::Graph *FuseAdamWPass::FuseAdamWFun(ir::Graph *graph) const {
 
   Node *first_lr = nullptr, *first_skip_update = nullptr;
   std::vector<Node *> adamw_op_vector;
+  int op_role = 0;
   float beta1 = 0.9, beta2 = 0.999, epsilon = 1.0e-8, first_coeff = 0.0,
         coeff = 0.0, lr_ratio = 1.0;
   bool lazy_mode = false, multi_precision = false, use_global_beta_pow = false,
@@ -219,7 +223,7 @@ ir::Graph *FuseAdamWPass::FuseAdamWFun(ir::Graph *graph) const {
 
   for (auto &node : graph->Nodes()) {
     if (node->Name() == "adamw") {
-      adamw_op_vector.push_back(node);
+      adamw_op_vector.emplace_back(node);
       Node *adamw_op = node;
       Node *skip_update = nullptr;
       Node *learning_rate = GetInputNode(adamw_op, "LearningRate");
@@ -251,6 +255,7 @@ ir::Graph *FuseAdamWPass::FuseAdamWFun(ir::Graph *graph) const {
         block = adamw_op_desc->Block();
         beta1 = PADDLE_GET_CONST(float, adamw_op_desc->GetAttr("beta1"));
         beta2 = PADDLE_GET_CONST(float, adamw_op_desc->GetAttr("beta2"));
+        op_role = PADDLE_GET_CONST(int, adamw_op_desc->GetAttr("op_role"));
         epsilon = PADDLE_GET_CONST(float, adamw_op_desc->GetAttr("epsilon"));
         first_coeff = coeff;
         lazy_mode = PADDLE_GET_CONST(bool, adamw_op_desc->GetAttr("lazy_mode"));
@@ -305,6 +310,7 @@ ir::Graph *FuseAdamWPass::FuseAdamWFun(ir::Graph *graph) const {
            beta2,
            epsilon,
            coeff,
+           op_role,
            use_global_beta_pow,
            replace_adamw,
            use_skip_update,
