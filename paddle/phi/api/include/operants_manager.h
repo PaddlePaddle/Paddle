@@ -14,15 +14,14 @@
 
 #pragma once
 
+#include "paddle/phi/api/include/operants_base.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/macros.h"
-#include "paddle/phi/core/operants_base.h"
 
 namespace paddle {
 
-namespace operants {
-
 using Tensor = paddle::experimental::Tensor;
+using TensorOperantsBase = paddle::operants::TensorOperantsBase;
 
 /**
  * [ Why need OperantsManager? ]
@@ -73,5 +72,4 @@ class OperantsManager {
   DISABLE_COPY_AND_ASSIGN(OperantsManager);
 };
 
-}  // namespace operants
 }  // namespace paddle
