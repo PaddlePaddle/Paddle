@@ -14,7 +14,7 @@
 
 import numpy as np
 from op_test import OpTest
-from testsuite import append_loss_ops, create_op, set_input
+from testsuite import append_loss_ops, create_op, infer_ref_dtype, set_input
 from white_list import no_grad_set_white_list, op_threshold_white_list
 from xpu.get_test_cover_info import (
     get_xpu_op_support_types,
@@ -296,8 +296,11 @@ class XPUOpTest(OpTest):
                     + " Op."
                 )
 
+        ref_dtype = infer_ref_dtype(self.outputs)
         for input_to_check in inputs_to_check:
-            set_input(self.scope, self.op, self.inputs, self.outputs, place)
+            set_input(
+                self.scope, self.op, self.inputs, self.outputs, place, ref_dtype
+            )
 
         if not type(output_names) is list:
             output_names = [output_names]

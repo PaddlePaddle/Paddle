@@ -41,7 +41,13 @@ from paddle.fluid.op import Operator
 from paddle.jit.dy2static.utils import parse_arg_and_kwargs
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
-from testsuite import append_input_output, append_loss_ops, create_op, set_input
+from testsuite import (
+    append_input_output,
+    append_loss_ops,
+    create_op,
+    infer_ref_dtype,
+    set_input,
+)
 from white_list import (
     check_shape_white_list,
     compile_vs_runtime_white_list,
@@ -130,7 +136,8 @@ def get_numeric_gradient(
     in_place=False,
 ):
     # FIXME: change this method by compile time concepts
-    set_input(scope, op, inputs, outputs, place)
+    ref_dtype = infer_ref_dtype(op, outputs)
+    set_input(scope, op, inputs, place, ref_dtype)
 
     def product(dim):
         return functools.reduce(lambda a, b: a * b, dim, 1)
@@ -224,7 +231,7 @@ def get_numeric_gradient(
     # we use a for loop to compute the gradient of every element.
     for i in range(tensor_size):
         if in_place:
-            set_input(scope, op, inputs, outputs, place)
+            set_input(scope, op, inputs, place)
 
         # get one input element throw it's index i.
         origin = __get_elem__(tensor_to_check, i)
@@ -234,7 +241,7 @@ def get_numeric_gradient(
         y_pos = get_output()
 
         if in_place:
-            set_input(scope, op, inputs, outputs, place)
+            set_input(scope, op, inputs, place)
 
         x_neg = origin - delta
         __set_elem__(tensor_to_check, i, x_neg)
@@ -2152,8 +2159,9 @@ class OpTest(unittest.TestCase):
                     + " Op."
                 )
 
+        ref_dtype = infer_ref_dtype(self.op, self.outputs)
         for input_to_check in inputs_to_check:
-            set_input(self.scope, self.op, self.inputs, self.outputs, place)
+            set_input(self.scope, self.op, self.inputs, place, ref_dtype)
             tensor_to_check = self.scope.find_var(input_to_check).get_tensor()
             tensor_size = functools.reduce(
                 lambda a, b: a * b, tensor_to_check.shape(), 1

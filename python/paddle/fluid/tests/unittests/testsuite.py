@@ -18,6 +18,29 @@ import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 
 
+def infer_ref_dtype(op, outputs):
+    ref_dtype = np.float64
+    for out_name, out_dup in Operator.get_op_outputs(op.type()):
+        if out_name in outputs:
+            if out_dup:
+                sub_out = outputs[out_name]
+                for item in sub_out:
+                    sub_out_name, sub_out_val = item[0], item[1]
+                    out_dtype = sub_out_val.dtype
+                    print("1 s")
+            else:
+                var = outputs[out_name]
+                if isinstance(var, tuple) or isinstance(var, np.ndarray):
+                    if isinstance(var, tuple):
+                        var = var[0]
+                    ref_dtype = var.dtype
+                elif isinstance(var, float):
+                    ref_dtype = np.float
+                elif isinstance(var, int):
+                    ref_dtype = np.int
+    return ref_dtype
+
+
 def create_op(scope, op_type, inputs, outputs, attrs, cache_list=None):
     kwargs = dict()
 
@@ -69,15 +92,15 @@ def create_op(scope, op_type, inputs, outputs, attrs, cache_list=None):
     return Operator(op_type, **kwargs)
 
 
-def set_input(scope, op, inputs, outputs, place):
-    def __set_input__(var_name, var, out_dtype):
+def set_input(scope, op, inputs, place, ref_dtype=np.float16):
+    def __set_input__(var_name, var):
         if isinstance(var, tuple) or isinstance(var, np.ndarray):
             tensor = scope.find_var(var_name).get_tensor()
             if isinstance(var, tuple):
                 tensor.set_recursive_sequence_lengths(var[1])
                 var = var[0]
             tensor._set_dims(var.shape)
-            if var.dtype == np.float16 and out_dtype == np.float32:
+            if var.dtype == np.float16 and ref_dtype == np.float32:
                 tensor.set(var.astype(np.float32), place)
             else:
                 tensor.set(var, place)
@@ -86,34 +109,15 @@ def set_input(scope, op, inputs, outputs, place):
         elif isinstance(var, int):
             scope.find_var(var_name).set_int(var)
 
-    out_dtype = np.float32
-    for out_name, out_dup in Operator.get_op_outputs(op.type()):
-        if out_name in outputs:
-            if out_dup:
-                sub_out = outputs[out_name]
-                for item in sub_out:
-                    sub_out_name, sub_out_val = item[0], item[1]
-                    out_dtype = sub_out_val.dtype
-            else:
-                var = outputs[out_name]
-                if isinstance(var, tuple) or isinstance(var, np.ndarray):
-                    if isinstance(var, tuple):
-                        var = var[0]
-                    out_dtype = var.dtype
-                elif isinstance(var, float):
-                    out_dtype = np.float
-                elif isinstance(var, int):
-                    out_dtype = np.int
-
     for in_name, in_dup in Operator.get_op_inputs(op.type()):
         if in_name in inputs:
             if in_dup:
                 sub_in = inputs[in_name]
                 for item in sub_in:
                     sub_in_name, sub_in_val = item[0], item[1]
-                    __set_input__(sub_in_name, sub_in_val, out_dtype)
+                    __set_input__(sub_in_name, sub_in_val)
             else:
-                __set_input__(in_name, inputs[in_name], out_dtype)
+                __set_input__(in_name, inputs[in_name])
 
 
 def append_input_output(block, op_proto, np_list, is_input, dtype):
