@@ -143,6 +143,12 @@ void ConcatDenseTensorWithType(const phi::XPUContext &dev_ctx,
     case phi::DataType::FLOAT32:
       ConcatDenseTensor<phi::XPUContext, float>()(dev_ctx, t_list, p_out);
       break;
+    case phi::DataType::INT32:
+      ConcatDenseTensor<phi::XPUContext, int32_t>()(dev_ctx, t_list, p_out);
+      break;
+    case phi::DataType::INT64:
+      ConcatDenseTensor<phi::XPUContext, int64_t>()(dev_ctx, t_list, p_out);
+      break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Data type (%s) is not supported when it concats tensors.", type));
@@ -204,6 +210,12 @@ void SplitDenseTensorWithType(const phi::XPUContext &dev_ctx,
       break;
     case phi::DataType::FLOAT32:
       SplitDenseTensor<phi::XPUContext, float>()(dev_ctx, t_in, p_list);
+      break;
+    case phi::DataType::INT32:
+      SplitDenseTensor<phi::XPUContext, int32_t>()(dev_ctx, t_in, p_list);
+      break;
+    case phi::DataType::INT64:
+      SplitDenseTensor<phi::XPUContext, int64_t>()(dev_ctx, t_in, p_list);
       break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(

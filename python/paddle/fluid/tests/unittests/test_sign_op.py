@@ -28,6 +28,7 @@ from paddle.fluid import Program, program_guard
 class TestSignOp(OpTest):
     def setUp(self):
         self.op_type = "sign"
+        self.python_api = paddle.sign
         self.inputs = {
             'X': np.random.uniform(-10, 10, (10, 10)).astype("float64")
         }

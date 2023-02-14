@@ -36,7 +36,9 @@ def bow_net(
     emb = fluid.layers.embedding(
         input=data, is_sparse=True, size=[dict_dim, emb_dim]
     )
-    bow = fluid.layers.sequence_pool(input=emb, pool_type='sum')
+    bow = paddle.static.nn.sequence_lod.sequence_pool(
+        input=emb, pool_type='sum'
+    )
     bow_tanh = paddle.tanh(bow)
     fc_1 = paddle.static.nn.fc(x=bow_tanh, size=hid_dim, activation="tanh")
     fc_2 = paddle.static.nn.fc(x=fc_1, size=hid_dim2, activation="tanh")
@@ -254,10 +256,8 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
         self.assertListEqual(
             ops,
             [
-                'square',
-                'reduce_sum',
-                'square',
-                'reduce_sum',
+                'squared_l2_norm',
+                'squared_l2_norm',
                 'sum',
                 'cast',
                 'sqrt',

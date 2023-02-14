@@ -32,12 +32,12 @@ namespace framework {
 
 using OpKernelComputeFunc = std::function<void(const ExecutionContext&)>;
 
-using Priority = int64_t;
+using SchedulingPriority = int64_t;
 
 constexpr const char* kCoalesceTensor = "coalesce_tensor";
 
 // stream types
-constexpr const char* kCustomStream = "CustromStream";
+constexpr const char* kCustomStream = "CustomStream";
 constexpr const char* kDefaultStream = "DefaultStream";
 constexpr const char* kD2HStream = "D2HStream";
 constexpr const char* kH2DStream = "H2DStream";
@@ -263,6 +263,7 @@ enum class OpFuncType {
 class RuntimeInferShapeContext;
 
 struct OpFuncNode {
+  int stream_priority_{0};  // lower value, higher priority
   // fit for phi kernel
   phi::Kernel* phi_kernel_{nullptr};  // not owned
   platform::DeviceContext* dev_ctx_;  // not owned
@@ -279,7 +280,7 @@ struct OpFuncNode {
   OpFuncType type_;
   OpKernelComputeFunc kernel_func_;
 
-  Priority priority_{0};  // lower value, higher priority
+  SchedulingPriority scheduling_priority_{0};  // lower value, higher priority
 };
 
 class Instruction {
@@ -369,7 +370,9 @@ class Instruction {
 
   void ClearInplace();
 
-  Priority GetPriority() const { return op_func_node_.priority_; }
+  SchedulingPriority GetSchedulingPriority() const {
+    return op_func_node_.scheduling_priority_;
+  }
 
  private:
   bool is_artificial_;  // Instruction is artificial means that it is only used

@@ -129,6 +129,24 @@ void PrelnResidualBias::operator()(PDNode *x, PDNode *y) {
 
 }  // namespace patterns
 
+void setIntermediateOut(OpDesc *desc,
+                        const std::string &out_name,
+                        const std::string &scope_name) {
+  std::string new_name = scope_name + "/at." + out_name + ".new";
+  desc->SetOutput(out_name, {new_name});
+}
+
+void addIntermediateOut(Node *op_node,
+                        const std::string &out_name,
+                        const std::string &scope_name,
+                        Graph *graph) {
+  std::string new_name = scope_name + "/at." + out_name + ".new";
+  VarDesc out_var(new_name);
+  out_var.SetPersistable(false);
+  auto *node_var = graph->CreateVarNode(&out_var);
+  IR_NODE_LINK_TO(op_node, node_var);
+}
+
 int PrelnResidualBiasFusePass::ApplyPattern(ir::Graph *graph,
                                             bool with_bias) const {
   PADDLE_ENFORCE_NOT_NULL(
@@ -207,7 +225,7 @@ int PrelnResidualBiasFusePass::ApplyPattern(ir::Graph *graph,
     // on each other, so we make below check to ensure only one
     // PrelnResidualBias pattern is delalted with.
     for (auto op : elementwise1_out->inputs) {
-      if (op->Name() == "preln_residual_bias") return;
+      if (op->Name() == "fused_bias_dropout_residual_layer_norm") return;
     }
 
     if (!IsCompat(subgraph, graph)) {
@@ -218,31 +236,37 @@ int PrelnResidualBiasFusePass::ApplyPattern(ir::Graph *graph,
     std::unordered_set<const Node *> del_node_set;
     // Create an PrelnResidualBias op node
     OpDesc new_desc;
-    new_desc.SetType("preln_residual_bias");
+    new_desc.SetType("fused_bias_dropout_residual_layer_norm");
     // inputs
     new_desc.SetInput("X", {subgraph.at(x)->Name()});
-    new_desc.SetInput("Y", {subgraph.at(y)->Name()});
-    new_desc.SetInput("Scale", {layer_norm_scale->Name()});
-    new_desc.SetInput("Bias", {layer_norm_bias->Name()});
+    new_desc.SetInput("Residual", {subgraph.at(y)->Name()});
+    new_desc.SetInput("LnScale", {layer_norm_scale->Name()});
+    new_desc.SetInput("LnBias", {layer_norm_bias->Name()});
     if (with_bias) {
-      new_desc.SetInput("EleBias", {elementwise_bias->Name()});
+      new_desc.SetInput("Bias", {elementwise_bias->Name()});
     }
     // outputs
-    new_desc.SetOutput("Out_0", {layer_norm_out->Name()});
-    new_desc.SetOutput("Out_1", {elementwise1_out->Name()});
+    new_desc.SetOutput("Y", {layer_norm_out->Name()});
+    new_desc.SetOutput("BiasDropoutResidualOut", {elementwise1_out->Name()});
+    new_desc.SetOutput("LnMean", {layer_norm_mean->Name()});
+    new_desc.SetOutput("LnVariance", {layer_norm_variance->Name()});
+    setIntermediateOut(&new_desc, "DropoutMaskOut", "preln_residual_bias_fuse");
     // attrs
-    new_desc.SetAttr("epsilon", layer_norm->Op()->GetAttr("epsilon"));
+    new_desc.SetAttr("ln_epsilon", layer_norm->Op()->GetAttr("epsilon"));
+    new_desc.SetAttr("dropout_rate", 0.0f);
+    new_desc.SetAttr("is_test", true);
     new_desc.SetAttr("begin_norm_axis",
                      layer_norm->Op()->GetAttr("begin_norm_axis"));
     auto fused_node = graph->CreateOpNode(&new_desc);  // OpDesc will be copied.
+    addIntermediateOut(
+        fused_node, "DropoutMaskOut", "preln_residual_bias_fuse", graph);
+
     if (with_bias) {
       del_node_set.insert(elementwise0);
       del_node_set.insert(elementwise0_out);
     }
     del_node_set.insert(elementwise1);
     del_node_set.insert(layer_norm);
-    del_node_set.insert(layer_norm_mean);
-    del_node_set.insert(layer_norm_variance);
     GraphSafeRemoveNodes(graph, del_node_set);
     IR_NODE_LINK_TO(subgraph.at(x), fused_node);
     IR_NODE_LINK_TO(subgraph.at(y), fused_node);
@@ -253,6 +277,9 @@ int PrelnResidualBiasFusePass::ApplyPattern(ir::Graph *graph,
     IR_NODE_LINK_TO(layer_norm_bias, fused_node);
     IR_NODE_LINK_TO(fused_node, layer_norm_out);
     IR_NODE_LINK_TO(fused_node, elementwise1_out);
+    IR_NODE_LINK_TO(fused_node, layer_norm_mean);
+    IR_NODE_LINK_TO(fused_node, layer_norm_variance);
+
     found_subgraph_count++;
   };
 
@@ -261,6 +288,8 @@ int PrelnResidualBiasFusePass::ApplyPattern(ir::Graph *graph,
 }
 
 void PrelnResidualBiasFusePass::ApplyImpl(ir::Graph *graph) const {
+  VLOG(1) << "Fuse PrelnResidualBias into "
+             "fused_bias_dropout_residual_layer_norm op with dropout rate = 0";
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init("preln_residual_bias_fuse", graph);

@@ -140,10 +140,13 @@ if(WITH_TENSORRT)
   pass_library(delete_remove_padding_recover_padding_pass inference)
   pass_library(layernorm_shift_partition_fuse_pass inference)
   pass_library(reverse_roll_fuse_pass inference)
+  pass_library(elementwiseadd_transpose_pass inference)
   pass_library(preln_layernorm_x_fuse_pass inference)
   pass_library(trt_support_nhwc_pass inference)
   pass_library(elementwise_groupnorm_act_pass inference)
   pass_library(preln_elementwise_groupnorm_act_pass inference)
+  pass_library(groupnorm_act_pass inference)
+  pass_library(trans_layernorm_fuse_pass inference)
   pass_library(trt_embedding_eltwise_layernorm_fuse_pass inference)
   pass_library(preln_embedding_eltwise_layernorm_fuse_pass inference)
 endif()
@@ -176,6 +179,7 @@ if(WITH_MKLDNN)
   pass_library(matmul_activation_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(layer_norm_onednn_optimization_pass inference DIR mkldnn)
   pass_library(operator_scale_onednn_fuse_pass inference DIR mkldnn)
+  pass_library(quant_transpose2_dequant_onednn_fuse_pass inference DIR mkldnn)
   pass_library(squeeze2_transpose2_onednn_fuse_pass inference DIR mkldnn)
   pass_library(operator_unsqueeze2_onednn_fuse_pass inference DIR mkldnn)
   pass_library(operator_reshape2_onednn_fuse_pass inference DIR mkldnn)
@@ -205,6 +209,14 @@ if(WITH_IPU)
   pass_library(delete_scale_op_pass base DIR ipu)
   pass_library(avg_shard_pass base DIR ipu)
   pass_library(inference_dtype_transfer_pass base DIR ipu)
+endif()
+
+if(WITH_XPU)
+  cc_library(
+    quant_utils
+    SRCS xpu/quant_utils.cc
+    DEPS pass)
+  pass_library(fc_xpu_fuse_pass inference DIR xpu DEPS quant_utils)
 endif()
 
 cc_library(
@@ -387,21 +399,9 @@ if(WITH_MKLDNN)
     SRCS mkldnn/depthwise_conv_mkldnn_pass_tester.cc
     DEPS depthwise_conv_mkldnn_pass)
   cc_test(
-    test_conv_bias_mkldnn_fuse_pass_cc
-    SRCS mkldnn/conv_bias_mkldnn_fuse_pass_tester.cc
-    DEPS conv_bias_mkldnn_fuse_pass naive_executor)
-  cc_test(
     test_conv_activation_mkldnn_fuse_pass
     SRCS mkldnn/conv_activation_mkldnn_fuse_pass_tester.cc
     DEPS conv_activation_mkldnn_fuse_pass)
-  cc_test(
-    test_conv_concat_relu_mkldnn_fuse_pass
-    SRCS mkldnn/conv_concat_relu_mkldnn_fuse_pass_tester.cc
-    DEPS conv_activation_mkldnn_fuse_pass)
-  cc_test_old(
-    test_conv_elementwise_add_mkldnn_fuse_pass SRCS
-    mkldnn/conv_elementwise_add_mkldnn_fuse_pass_tester.cc DEPS
-    conv_elementwise_add_mkldnn_fuse_pass pass_test_util)
   cc_test_old(
     test_int8_scale_calculation_mkldnn_pass SRCS
     mkldnn/int8_scale_calculation_mkldnn_pass_tester.cc DEPS

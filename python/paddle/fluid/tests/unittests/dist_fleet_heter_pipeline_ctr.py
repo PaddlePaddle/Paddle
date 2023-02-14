@@ -78,11 +78,11 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
                 size=[dnn_input_dim, dnn_layer_dims[0]],
                 param_attr=fluid.ParamAttr(
                     name="deep_embedding",
-                    initializer=fluid.initializer.Constant(value=0.01),
+                    initializer=paddle.nn.initializer.Constant(value=0.01),
                 ),
                 is_sparse=True,
             )
-            dnn_pool = fluid.layers.sequence_pool(
+            dnn_pool = paddle.static.nn.sequence_lod.sequence_pool(
                 input=dnn_embedding, pool_type="sum"
             )
             dnn_out = dnn_pool
@@ -94,11 +94,11 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
                 size=[lr_input_dim, 1],
                 param_attr=fluid.ParamAttr(
                     name="wide_embedding",
-                    initializer=fluid.initializer.Constant(value=0.01),
+                    initializer=paddle.nn.initializer.Constant(value=0.01),
                 ),
                 is_sparse=True,
             )
-            lr_pool = fluid.layers.sequence_pool(
+            lr_pool = paddle.static.nn.sequence_lod.sequence_pool(
                 input=lr_embbding, pool_type="sum"
             )
 
@@ -109,7 +109,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
                     size=dim,
                     activation="relu",
                     weight_attr=fluid.ParamAttr(
-                        initializer=fluid.initializer.Constant(value=0.01)
+                        initializer=paddle.nn.initializer.Constant(value=0.01)
                     ),
                     name='dnn-fc-%d' % i,
                 )

@@ -361,6 +361,12 @@ class TensorRTEngine {
     return enable_fp16 && support_fp16;
   }
 
+  bool WithInt8() {
+    bool enable_int8 = (precision_ == AnalysisConfig::Precision::kInt8);
+    bool support_int8 = infer_builder_->platformHasFastInt8();
+    return enable_int8 && support_int8;
+  }
+
   int GetDeviceId() { return device_id_; }
 
   nvinfer1::IPluginV2Layer* AddPlugin(nvinfer1::ITensor* const* inputs,

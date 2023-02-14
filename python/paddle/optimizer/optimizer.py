@@ -34,7 +34,6 @@ from paddle.fluid.framework import (
 from ..fluid import framework, unique_name
 from ..fluid.backward import _get_no_grad_set_name, append_backward
 from ..fluid.framework import Parameter, program_guard
-from ..fluid.initializer import Constant
 from ..fluid.layer_helper import LayerHelper
 from .lr import LRScheduler
 
@@ -276,6 +275,7 @@ class Optimizer:
 
         self._param_dict = self._create_multi_tensor_dict()
         self._auxiliary_vars = {}
+        self._already_create_accumulater = set()
 
     def _set_auxiliary_var(self, key, val):
         self._auxiliary_vars[key] = val
@@ -453,7 +453,8 @@ class Optimizer:
 
             lr_value = float(self._learning_rate())
             self.helper.set_variable_initializer(
-                lr_var, initializer=Constant(value=lr_value)
+                lr_var,
+                initializer=paddle.nn.initializer.Constant(value=lr_value),
             )
         elif isinstance(self._learning_rate, float):
             # only create global lr_var once
@@ -726,7 +727,10 @@ class Optimizer:
         else:
             with device_guard(device):
                 self.helper.set_variable_initializer(
-                    var, initializer=Constant(value=float(fill_value))
+                    var,
+                    initializer=paddle.nn.initializer.Constant(
+                        value=float(fill_value)
+                    ),
                 )
 
         if framework._non_static_mode():

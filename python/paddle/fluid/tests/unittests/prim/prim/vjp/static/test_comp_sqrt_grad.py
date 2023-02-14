@@ -78,7 +78,7 @@ class TestSqrtGradComp(unittest.TestCase):
     def test_cinn(self):
         paddle.disable_static()
         dy_res = self.train(use_prim=False, use_cinn=False)
-        comp_st_cinn_res = self.train(use_prim=True, use_cinn=False)
+        comp_st_cinn_res = self.train(use_prim=True, use_cinn=True)
 
         for i in range(len(dy_res)):
             np.testing.assert_allclose(
