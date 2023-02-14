@@ -21,6 +21,7 @@ limitations under the License. */
 #include "glog/logging.h"
 
 #include "paddle/phi/api/include/context_pool.h"
+#include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
@@ -297,6 +298,26 @@ template PADDLE_API phi::dtype::complex<float>
 template PADDLE_API phi::dtype::complex<double>
     *Tensor::data<phi::dtype::complex<double>>();
 
+const void *Tensor::data() const {
+  if (is_dense_tensor()) {
+    return static_cast<phi::DenseTensor *>(impl_.get())->data();
+  } else if (is_selected_rows()) {
+    return static_cast<phi::SelectedRows *>(impl_.get())->value().data();
+  }
+  return nullptr;
+}
+
+void *Tensor::data() {
+  if (is_dense_tensor()) {
+    return static_cast<phi::DenseTensor *>(impl_.get())->data();
+  } else if (is_selected_rows()) {
+    return static_cast<phi::SelectedRows *>(impl_.get())
+        ->mutable_value()
+        ->data();
+  }
+  return nullptr;
+}
+
 // TODO(chenweihang): replace slice impl by API
 Tensor Tensor::slice(int64_t begin_idx, int64_t end_idx) const {
   if (is_dense_tensor()) {
@@ -411,6 +432,10 @@ void Tensor::reset_inplace_version(bool set_to_zero) {
       inplace_version_counter.SetInplaceVersionToZero();
     }
   }
+}
+
+PADDLE_API Tensor operator*(const Tensor &x, const Tensor &y) {
+  return paddle::OperantsManager::Instance().multiply(x, y);
 }
 
 }  // namespace experimental
