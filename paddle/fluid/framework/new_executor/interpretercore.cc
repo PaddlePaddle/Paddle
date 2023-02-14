@@ -858,8 +858,6 @@ void InterpreterCore::RunOperator(const Instruction& instr_node) {
                                        : var_scope_.GetMutableScope();
   VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
 
-  SetDeviceId(place);
-
 #ifdef PADDLE_WITH_ASCEND_CL
   if (platform::is_npu_place(place)) {
     // NOTE(wangxi): nan/inf cannot be detected on NPU by checking the
@@ -988,6 +986,8 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   auto* op = instr_node.OpBase();
   platform::RecordEvent instruction_event(
       op->Type(), platform::TracerEventType::Operator, 1);
+
+  SetDeviceId(instr_node.DeviceContext().GetPlace());
 
   try {
     instr_node.WaitEvent(place_);
