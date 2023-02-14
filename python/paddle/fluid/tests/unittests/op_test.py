@@ -1625,10 +1625,6 @@ class OpTest(unittest.TestCase):
                     actual_np, expect_np
                 )
 
-                if self.op_test.dtype == np.float16:
-                    print(actual_np)
-                    print(expect_np)
-
                 # NOTE(zhiqiu): np.allclose([], [1.]) returns True
                 # see details: https://stackoverflow.com/questions/38331703/why-does-numpys-broadcasting-sometimes-allow-comparing-arrays-of-different-leng
                 if expect_np.size == 0:
