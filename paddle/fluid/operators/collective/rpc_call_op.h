@@ -33,7 +33,8 @@ namespace operators {
 using json = nlohmann::json;
 
 // payload builders
-static inline std::string BuildIdsPayload(const std::vector<int>& src_ids) {
+template <typename T = int64_t>
+static inline std::string BuildIdsPayload(const std::vector<T>& src_ids) {
   json payload = {{"ids", src_ids}};  // => {"ids": [1, 2, 3, ...]}
   return payload.dump();
 }
@@ -43,8 +44,9 @@ static inline std::string BuildStrPayload(const std::string& query) {
   return payload.dump();
 }
 
+template <typename T = int64_t>
 static inline std::string BuildPayload(const std::string& service,
-                                       const std::vector<int>& src_ids) {
+                                       const std::vector<T>& src_ids) {
   if (service == "ids") {
     return BuildIdsPayload(src_ids);
   } else if (service == "str") {
@@ -106,12 +108,12 @@ template <typename T>
 class RpcCallOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    // url
+    // url, assume num of urls is limited
     auto url_id_tensor = ctx.Input<phi::DenseTensor>("url_id");
     std::vector<int> url_id_vec;
     framework::TensorToVector(
         *url_id_tensor, ctx.device_context(), &url_id_vec);
-    int url_id = url_id_vec[0];
+    auto url_id = url_id_vec[0];
 
     auto url_list = ctx.Attr<std::vector<std::string>>("url_list");
     const std::string url = url_list[url_id];
@@ -119,6 +121,13 @@ class RpcCallOpKernel : public framework::OpKernel<T> {
     // payload
     auto src_ids_tensor = ctx.Input<phi::DenseTensor>("X");
     auto x_dims = src_ids_tensor->dims();
+
+    PADDLE_ENFORCE_EQ(
+        x_dims.size(),
+        2,
+        platform::errors::PreconditionNotMet(
+            "The input src ids' dim size must be 2. However the dim is %d",
+            x_dims.size()));
 
     std::vector<int> request_ids(x_dims[0]);
 

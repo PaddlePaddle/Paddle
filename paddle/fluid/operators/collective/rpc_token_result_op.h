@@ -28,14 +28,13 @@ namespace operators {
 
 using json = nlohmann::json;
 
-inline void ParseResponse(phi::DenseTensor* out,
-                          const platform::DeviceContext& dev_ctx,
-                          const std::string& resp) {
+static inline void ParseResponse(phi::DenseTensor* out,
+                                 const platform::DeviceContext& dev_ctx,
+                                 const std::string& resp) {
   const std::string res_str = json::parse(resp).dump();
   // this must be called after tokenizer init in rpc_call op
-  std::vector<int> res =
-      platform::RpcTokenizer::Instance().GetIdsFromText(res_str);
-  dev_ctx.Alloc<int>(out);
+  auto res = platform::RpcTokenizer::Instance().GetIdsFromText(res_str);
+  dev_ctx.Alloc<int64_t>(out);
   framework::TensorFromVector(res, dev_ctx, out);
 }
 

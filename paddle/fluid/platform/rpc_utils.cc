@@ -27,7 +27,6 @@
 
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
-#include "paddle/utils/string/string_helper.h"
 
 namespace paddle {
 namespace platform {
@@ -512,7 +511,7 @@ std::vector<std::string> RpcTokenizer::RecoverBFBTokens(
 
 std::vector<std::string> RpcTokenizer::PostProcess(
     const std::vector<std::string>& tokens,
-    const std::unordered_map<std::wstring, int>& vocab,
+    const WordToIdMap& vocab,
     bool aggressive_break,
     const std::string& stop_token) {
   std::unordered_set<std::string> break_words;
@@ -585,29 +584,6 @@ std::vector<std::string> RpcTokenizer::PostProcess(
   }
 
   return new_text;
-}
-
-std::string RpcTokenizer::GetWordsFromIds(std::vector<int> ids,
-                                          bool aggressive_break,
-                                          const std::string& stop_token) {
-  std::vector<std::string> tokens;
-  for (int id : ids) {
-    if (!Contains(id)) {
-      continue;
-    }
-    tokens.emplace_back(GetWordFromId(id));
-  }
-  return paddle::string::join_strings(
-      PostProcess(tokens, words_to_ids_, aggressive_break, stop_token), "");
-}
-
-std::vector<int> RpcTokenizer::GetIdsFromText(const std::string& text) {
-  std::vector<int> ids;
-  auto tokens = tokenizer_.Tokenize(text);
-  for (const auto& token : tokens) {
-    ids.emplace_back(GetIdFromWord(token));
-  }
-  return ids;
 }
 
 int RpcCommContext::RpcSend(

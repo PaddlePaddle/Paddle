@@ -29,11 +29,13 @@ namespace operators {
 using json = nlohmann::json;
 
 // resp parsers
-std::vector<double> ParseFloatResponse(const std::string& response) {
+static inline std::vector<double> ParseFloatResponse(
+    const std::string& response) {
   return {json::parse(response).get<double>()};
 }
 
-std::vector<uint8_t> ParseStrResponse(const std::string& response) {
+static inline std::vector<uint8_t> ParseStrResponse(
+    const std::string& response) {
   const std::string res = json::parse(response).dump();
   return std::vector<uint8_t>(res.begin(), res.end());
 }
