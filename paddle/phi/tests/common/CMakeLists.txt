@@ -23,10 +23,18 @@ if(WITH_GPU)
     phi_test_scalar
     SRCS test_scalar.cu
     DEPS scalar api_scalar)
+  nv_test(
+    transform_test
+    SRCS transform_test.cu
+    DEPS memory place device_context)
 endif()
 if(WITH_ROCM)
   hip_test(
     phi_test_scalar
     SRCS test_scalar.cu
     DEPS scalar api_scalar)
+  hip_test(
+    transform_test
+    SRCS transform_test.cu
+    DEPS memory place device_context)
 endif()
