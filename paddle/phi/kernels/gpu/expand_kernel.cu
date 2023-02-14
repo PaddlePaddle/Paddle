@@ -76,8 +76,8 @@ void ExpandKernel(const Context& ctx,
   DenseTensor& xx = const_cast<DenseTensor&>(x);
   out->inplace_version_counter_ = xx.inplace_version_counter_;
 
-  xx.share_buffer_with.push_back(out);
-  out->share_buffer_with.push_back(&xx);
+  xx.can_not_uses.push_back(out->can_not_use_);
+  out->can_not_uses.push_back(xx.can_not_use_);
   phi::funcs::BroadcastKernel<ElementwiseType::kUnary, T, T>(
       ctx, ins, &outs, -1, kps::IdentityFunctor<T>());
 }

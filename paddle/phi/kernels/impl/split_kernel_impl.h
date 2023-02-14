@@ -48,8 +48,8 @@ void SplitKernel(const Context& dev_ctx,
   for (size_t i = 0; i < outs.size(); ++i) {
     outs[i]->inplace_version_counter_ = xx.inplace_version_counter_;
 
-    xx.share_buffer_with.push_back(outs[i]);
-    outs[i]->share_buffer_with.push_back(&xx);
+    xx.can_not_uses.push_back(outs[i]->can_not_use_);
+    outs[i]->can_not_uses.push_back(xx.can_not_use_);
   }
 }
 
