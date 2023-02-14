@@ -38,7 +38,7 @@ req_ids = paddle.static.nn.rpc_call(
     "/code_lp/ernie-bot/post-train/ernie_3.0_100b_no_distill/config/ernie3.0_vocab_multi_prompt_v9.txt",
     True,
 )
-out_data, out_succeed = paddle.static.nn.rpc_result(req_ids, "str", 1024)
+out_data, out_succeed = paddle.static.nn.rpc_result(req_ids, "float", 4096)
 paddle.static.Print(in_query)
 paddle.static.Print(req_ids)
 paddle.static.Print(out_data.astype("int32"))
