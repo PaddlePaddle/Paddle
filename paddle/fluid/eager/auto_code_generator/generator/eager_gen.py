@@ -420,13 +420,14 @@ BUMP_INPLACE_VERSION_TEMPLATE = """
   VLOG(3) << \"Tensor(\" << {}.name() << \") uses Inplace Strategy.\";
 """
 CHECK_CAN_NOT_USE_TEMPLATE = """
-    VLOG(5) << "Check DenseTensor whether Can Not Use";
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> input_tensors_vector = {};
-    for(auto& xx : input_tensors_vector) {
-        if (xx.can_not_use()) {
-            VLOG(WARNING) << "Find a Tensor Can Not Use For Input";
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> check_tensors_vector = {};
+"""
+CHECK_CAN_NOT_USE_OTHER = """
+   for(size_t i = 0; i < check_tensors_vector.size(); ++i) {
+        if (check_tensors_vector[i][0].can_not_use()) {
+            VLOG(0) << "Find a Tensor Which Can Not Use";
         }
-    }
+   }
 """
 AMP_LOGIC_TEMPLATE = """  if (egr::Controller::Instance().GetAMPLevel() != paddle::imperative::AmpLevel::O0) {{
     VLOG(5) << "Check and Prepare For AMP";
@@ -1599,8 +1600,9 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             f"return {forward_ad_function_name}({amp_inputs_call_args_str});"
         )
         can_not_use_check_str = CHECK_CAN_NOT_USE_TEMPLATE.format(
-            amp_tensors_vector_list_str
+            amp_tensors_vector_list_str,
         )
+        can_not_use_check_str += CHECK_CAN_NOT_USE_OTHER
         if is_inplaced or (forward_api_name == "cast"):
             amp_logic_str = "\n VLOG(5) << \" No AMP for {} because it is a inplace or cast api. \"; ".format(
                 forward_ad_function_name
@@ -2043,10 +2045,8 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
             is_optional = name in self.optional_inputs
             tensor_wrapper_recover_str = f"{indent}auto {transformed_tensor_name} = egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name});"
-            tensor_wrapper_recover_str += (
-                "if {}->can_not_use() VLOG(WARNING) <<{};".format(
-                    transformed_tensor_name, "Find Input Which Can Not Use"
-                )
+            tensor_wrapper_recover_str += "if ({}->can_not_use()) VLOG(0) <<\"Find Input Which Can Not Use.\";".format(
+                transformed_tensor_name
             )
             if backward_inplace_map and name in backward_inplace_map.keys():
                 if has_higher_order_node:
