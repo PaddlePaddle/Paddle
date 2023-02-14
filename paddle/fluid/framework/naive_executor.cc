@@ -73,6 +73,7 @@ void NaiveExecutor::Run() {
       }
     }
 
+    LOG(INFO) << "op: " << op->Type();
     op->Run(*scope_, place_);
 
     // Update the shared_holder so that only records the max one.

@@ -77,14 +77,12 @@ FcXPUPattern::FcXPUPattern(PDPattern* pattern,
                     ->assert_is_op_input(mul_type_, "Y")
                     ->assert_is_persistable_var()
                     ->assert_more([](Node* node) {
-                      return true;
                       return node->Var()->GetShape().size() == 2;
                     });
   auto* mul =
       pattern->NewNode(mul_repr())
           ->assert_is_op(mul_type_)
           ->assert_more([](Node* node) {
-            return true;
             auto op_type = node->Op()->Type();
             if (op_type == "matmul") {
               return !PADDLE_GET_CONST(bool,
