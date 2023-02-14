@@ -32,6 +32,16 @@ paddle::experimental::Tensor conv2d_ad_func(
     std::vector<int> dilations,
     int groups,
     std::string data_format) {
+  paddle::experimental::Tensor& xx =
+      const_cast<paddle::experimental::Tensor&>(input);
+  if (xx.can_not_use()) {
+    VLOG(0) << "Find a Tensor Which Can Not Use";
+  }
+  paddle::experimental::Tensor& weight =
+      const_cast<paddle::experimental::Tensor&>(filter);
+  if (weight.can_not_use()) {
+    VLOG(0) << "Find a Tensor Which Can Not Use";
+  }
   // Dygraph Record Event
   paddle::platform::RecordEvent dygraph_entrance_record_event(
       "conv2d dygraph", paddle::platform::TracerEventType::Operator, 1);

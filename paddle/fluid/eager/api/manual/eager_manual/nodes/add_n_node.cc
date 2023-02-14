@@ -38,6 +38,13 @@ AddNGradNodeFinal::operator()(
 
   // Collect GradIn Tensors, Attrs and Recovered TensorWrappers
   auto x = egr::EagerUtils::RecoverTensorWrapper(&this->x_);
+  for (size_t i = 0; i < x.size(); ++i) {
+    paddle::experimental::Tensor& xx =
+        const_cast<paddle::experimental::Tensor&>(x[i]);
+    if (xx.can_not_use()) {
+      VLOG(0) << "Find a Tensor Which Can Not Use";
+    }
+  }
   auto& out_grad = hooked_grads[0][0];
   // Prepare Grad function call
 
