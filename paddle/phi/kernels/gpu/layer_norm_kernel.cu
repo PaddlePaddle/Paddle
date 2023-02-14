@@ -13,11 +13,13 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/layer_norm_kernel.h"
+#include "gflags/gflags.h"
 #include "paddle/fluid/operators/layer_norm_kernel.cu.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/layer_norm_util.h"
 
+DECLARE_bool(use_fast_math);
 namespace ops = paddle::operators;
 
 namespace phi {
@@ -47,13 +49,9 @@ __device__ void WelfordOnline(
 }
 
 template <typename U>
-__device__ void WelfordWarpAllReduce(
-    U tid_mean, U tid_square, U tid_cnt, U *mean, U *square, U *count) {
+__device__ void WelfordWarpAllReduce(U *mean, U *square, U *count) {
   constexpr int kWarpSize = 32;
-  *mean = tid_mean;
-  *square = tid_square;
-  *count = tid_cnt;
-
+#pragma unroll
   for (int mask = 1; mask < kWarpSize; mask *= 2) {
     U b_mean = __shfl_down_sync(0xffffffff, *mean, mask);
     U b_square = __shfl_down_sync(0xffffffff, *square, mask);
@@ -122,40 +120,130 @@ struct LayerNormDataReader<T, U, 1> {
   }
 };
 
-template <typename T, typename U, int VecSize>
+template <typename T, typename U, bool IsSameType, int VecSize>
 struct LayerNormDataWritter {
-  __device__ __forceinline__ void operator()(T *__restrict__ row_dst,
-                                             U *__restrict__ buffer,
-                                             const int read_times,
-                                             const int cols_this_thread) {
+  __device__ __forceinline__ void operator()(
+      T *__restrict__ row_dst,
+      U *__restrict__ buffer,
+      const ops::LayerNormScaleBiasT<T, U, IsSameType> *__restrict__ scale,
+      const ops::LayerNormScaleBiasT<T, U, IsSameType> *__restrict__ bias,
+      const U row_mean,
+      const U row_inv_var,
+      const int write_times,
+      const int cols_this_thread,
+      const bool valid_scale,
+      const bool valid_bias) {
     using VecT = phi::AlignedVector<T, VecSize>;
     VecT *v_dst = reinterpret_cast<VecT *>(row_dst);
 
-    for (int i = 0; i < read_times; ++i) {
-      VecT temp_dst;
+    // cols_this_thread is just cols_per_thread
+    int thread_init_idx = threadIdx.x * cols_this_thread;
+    if ((!valid_scale) && (!valid_bias)) {
 #pragma unroll
-      for (int j = 0; j < VecSize; ++j) {
-        temp_dst[j] = static_cast<T>(buffer[i * VecSize + j]);
+      for (int i = 0; i < write_times; ++i) {
+        VecT temp_dst;
+#pragma unroll
+        for (int j = 0; j < VecSize; ++j) {
+          temp_dst[j] = static_cast<T>((buffer[i * VecSize + j] - row_mean) *
+                                       row_inv_var);
+        }
+        v_dst[threadIdx.x * write_times + i] = temp_dst;
       }
-      v_dst[threadIdx.x * read_times + i] = temp_dst;
-    }
-  }
-};
-
-template <typename T, typename U>
-struct LayerNormDataWritter<T, U, 1> {
-  __device__ __forceinline__ void operator()(T *__restrict__ row_dst,
-                                             U *__restrict__ buffer,
-                                             const int read_times,
-                                             const int cols_this_thread) {
+    } else if (valid_scale && valid_bias) {
 #pragma unroll
-    for (int i = 0; i < cols_this_thread; ++i) {
-      row_dst[threadIdx.x * read_times + i] = static_cast<T>(buffer[i]);
+      for (int i = 0; i < write_times; ++i) {
+        VecT temp_dst;
+#pragma unroll
+        for (int j = 0; j < VecSize; ++j) {
+          int idx = thread_init_idx + i * VecSize + j;
+          temp_dst[j] = static_cast<T>(
+              static_cast<U>(scale[idx]) *
+                  (buffer[i * VecSize + j] - row_mean) * row_inv_var +
+              static_cast<U>(bias[idx]));
+        }
+        v_dst[threadIdx.x * write_times + i] = temp_dst;
+      }
+    } else {
+      if (valid_scale) {
+#pragma unroll
+        for (int i = 0; i < write_times; ++i) {
+          VecT temp_dst;
+#pragma unroll
+          for (int j = 0; j < VecSize; ++j) {
+            int idx = thread_init_idx + i * VecSize + j;
+            temp_dst[j] = static_cast<T>(static_cast<U>(scale[idx]) *
+                                         (buffer[i * VecSize + j] - row_mean) *
+                                         row_inv_var);
+          }
+          v_dst[threadIdx.x * write_times + i] = temp_dst;
+        }
+      } else {
+#pragma unroll
+        for (int i = 0; i < write_times; ++i) {
+          VecT temp_dst;
+#pragma unroll
+          for (int j = 0; j < VecSize; ++j) {
+            int idx = thread_init_idx + i * VecSize + j;
+            temp_dst[j] = static_cast<T>((buffer[i * VecSize + j] - row_mean) *
+                                             row_inv_var +
+                                         static_cast<U>(bias[idx]));
+          }
+          v_dst[threadIdx.x * write_times + i] = temp_dst;
+        }
+      }
     }
   }
 };
 
-template <typename T, typename U, bool IsSameType, int VecSize>
+template <typename T, typename U, bool IsSameType>
+struct LayerNormDataWritter<T, U, IsSameType, 1> {
+  __device__ __forceinline__ void operator()(
+      T *__restrict__ row_dst,
+      U *__restrict__ buffer,
+      const ops::LayerNormScaleBiasT<T, U, IsSameType> *__restrict__ scale,
+      const ops::LayerNormScaleBiasT<T, U, IsSameType> *__restrict__ bias,
+      const U row_mean,
+      const U row_inv_var,
+      const int write_times,
+      const int cols_this_thread,
+      const bool valid_scale,
+      const bool valid_bias) {
+    // write_times is just col_per_thread.
+    if ((!valid_scale) && (!valid_bias)) {
+#pragma unroll
+      for (int i = 0; i < cols_this_thread; ++i) {
+        row_dst[threadIdx.x * write_times + i] =
+            (buffer[i] - row_mean) * row_inv_var;
+      }
+    } else if (valid_scale && valid_bias) {
+#pragma unroll
+      for (int i = 0; i < cols_this_thread; ++i) {
+        int idx = threadIdx.x * write_times + i;
+        row_dst[idx] = static_cast<T>(static_cast<U>(scale[idx]) *
+                                          (buffer[i] - row_mean) * row_inv_var +
+                                      static_cast<U>(bias[idx]));
+      }
+    } else {
+      if (valid_scale) {
+#pragma unroll
+        for (int i = 0; i < cols_this_thread; ++i) {
+          int idx = threadIdx.x * write_times + i;
+          row_dst[idx] = static_cast<T>(static_cast<U>(scale[idx]) *
+                                        (buffer[i] - row_mean) * row_inv_var);
+        }
+      } else {
+#pragma unroll
+        for (int i = 0; i < cols_this_thread; ++i) {
+          int idx = threadIdx.x * write_times + i;
+          row_dst[idx] = static_cast<T>((buffer[i] - row_mean) * row_inv_var +
+                                        static_cast<U>(bias[idx]));
+        }
+      }
+    }
+  }
+};
+
+template <typename IndexT, typename T, typename U, bool IsSameType, int VecSize>
 __global__ void LayerNormFwdWithWelford(
     const T *__restrict__ src_data,
     T *dst_data,
@@ -164,25 +252,22 @@ __global__ void LayerNormFwdWithWelford(
     U *mean,
     U *var,
     const U epsilon,
-    const int64_t rows,
+    const IndexT rows,
     const int32_t cols,
     const int32_t cols_per_thread,
     const bool valid_scale,
     const bool valid_bias) {
   constexpr int kWarpSize = 32;
-  int row_offset = blockIdx.x * blockDim.y + threadIdx.y;
+  IndexT row_offset = blockIdx.x * blockDim.y + threadIdx.y;
   int cols_this_thread = ThreadAssigner<VecSize>()(cols, cols_per_thread);
   int read_times = cols_per_thread / VecSize;
 
   if (row_offset < rows) {
-    U buffer[32];
-    U tid_mean = static_cast<U>(0);
+    U buffer[kWarpSize];
     U tid_cnt = static_cast<U>(0);
+    U tid_mean = static_cast<U>(0);
     U tid_square = static_cast<U>(0);
 
-    U warp_mean;
-    U warp_square;
-    U warp_cnt;
     const T *__restrict__ row_src = src_data + row_offset * cols;
     T *row_dst = dst_data + row_offset * cols;
     LayerNormDataReader<T, U, VecSize>()(
@@ -191,46 +276,31 @@ __global__ void LayerNormFwdWithWelford(
     for (int i = 0; i < cols_this_thread; i++) {
       WelfordOnline<U>(buffer[i], &tid_mean, &tid_square, &tid_cnt);
     }
-    WelfordWarpAllReduce<U>(
-        tid_mean, tid_square, tid_cnt, &warp_mean, &warp_square, &warp_cnt);
-    U row_mean = warp_mean;
-    U row_variance = max(warp_square / warp_cnt, 0.f);
-    U row_inv_var = rsqrt(row_variance + epsilon);
 
+    U warp_cnt = tid_cnt;
+    U warp_mean = tid_mean;
+    U warp_square = tid_square;
+    WelfordWarpAllReduce<U>(&warp_mean, &warp_square, &warp_cnt);
+
+    U row_variance = max(warp_square / warp_cnt, 0.f);
+    U row_inv_var = ops::rsqrt_(row_variance + epsilon);
+
+    // TODO(limingshu): make code below vectorization.
     if (threadIdx.x == 0) {
-      mean[row_offset] = row_mean;
+      // warp_mean is just row_mean here.
+      mean[row_offset] = warp_mean;
       var[row_offset] = row_variance;
     }
-
-#pragma unroll
-    for (int i = 0; i < cols_this_thread; ++i) {
-      buffer[i] = (buffer[i] - row_mean) * row_inv_var;
-    }
-
-    if (valid_scale || valid_bias) {
-      if (valid_scale && valid_bias) {
-#pragma unroll
-        for (int i = 0; i < cols_this_thread; ++i) {
-          int idx = threadIdx.x * cols_per_thread + i;
-          buffer[i] = buffer[i] * static_cast<U>(scale[idx]) +
-                      static_cast<U>(bias[idx]);
-        }
-      } else if (valid_scale) {
-#pragma unroll
-        for (int i = 0; i < cols_this_thread; ++i) {
-          int idx = threadIdx.x * cols_per_thread + i;
-          buffer[i] = buffer[i] * static_cast<U>(scale[idx]);
-        }
-      } else {
-#pragma unroll
-        for (int i = 0; i < cols_this_thread; ++i) {
-          int idx = threadIdx.x * cols_per_thread + i;
-          buffer[i] = buffer[i] + static_cast<U>(bias[idx]);
-        }
-      }
-    }
-    LayerNormDataWritter<T, U, VecSize>()(
-        row_dst, buffer, read_times, cols_this_thread);
+    LayerNormDataWritter<T, U, IsSameType, VecSize>()(row_dst,
+                                                      buffer,
+                                                      scale,
+                                                      bias,
+                                                      warp_mean,
+                                                      row_inv_var,
+                                                      read_times,
+                                                      cols_this_thread,
+                                                      valid_scale,
+                                                      valid_bias);
   }
 }
 
@@ -249,17 +319,17 @@ void LaunchLayerNormKernel(const Context &dev_ctx,
                            const bool valid_bias,
                            const bool is_same_type) {
   constexpr int WarpSize = 32;
-  constexpr int row_per_block = 8;
-  int64_t block_size = (rows + (row_per_block - 1)) / row_per_block;
-  dim3 threads(WarpSize, row_per_block, 1);
+  constexpr int RowPerBlock = 4;
+  int64_t block_size = (rows + (RowPerBlock - 1)) / RowPerBlock;
+  dim3 threads(WarpSize, RowPerBlock, 1);
 
   int vec_size = 1;
   int cols_per_thread = (cols + (WarpSize - 1)) / WarpSize;
   if (cols_per_thread > 1 && (cols % WarpSize == 0)) {
     uint64_t addr = (reinterpret_cast<uint64_t>(x_data) |
                      reinterpret_cast<uint64_t>(y_data));
-    int tmp_vec_size = phi::GetVectorizedSize<T>(reinterpret_cast<T *>(addr));
-    for (int size = tmp_vec_size; size > 0; size /= 2) {
+    int data_vec_size = phi::GetVectorizedSize<T>(reinterpret_cast<T *>(addr));
+    for (int size = data_vec_size; size > 0; size /= 2) {
       if (cols_per_thread % size == 0) {
         vec_size = size;
         break;
@@ -267,33 +337,41 @@ void LaunchLayerNormKernel(const Context &dev_ctx,
     }
   }
 
-#define IMPL_LAYER_NORM_WELFORD_CASE(scale_t, is_same_, vec_size_) \
-  case (vec_size_): {                                              \
-    LayerNormFwdWithWelford<T, U, is_same_, vec_size_>             \
-        <<<block_size, threads, 0, dev_ctx.stream()>>>(            \
-            x_data,                                                \
-            y_data,                                                \
-            static_cast<const scale_t *>(void_scale_data),         \
-            static_cast<const scale_t *>(void_bias_data),          \
-            mean_data,                                             \
-            var_data,                                              \
-            static_cast<const U>(epsilon),                         \
-            rows,                                                  \
-            cols,                                                  \
-            cols_per_thread,                                       \
-            valid_scale,                                           \
-            valid_bias);                                           \
+#define IMPL_LAYER_NORM_WELFORD_CASE(index_t, scale_t, is_same_, vec_size_) \
+  case (vec_size_): {                                                       \
+    LayerNormFwdWithWelford<index_t, T, U, is_same_, vec_size_>             \
+        <<<block_size, threads, 0, dev_ctx.stream()>>>(                     \
+            x_data,                                                         \
+            y_data,                                                         \
+            static_cast<const scale_t *>(void_scale_data),                  \
+            static_cast<const scale_t *>(void_bias_data),                   \
+            mean_data,                                                      \
+            var_data,                                                       \
+            static_cast<const U>(epsilon),                                  \
+            rows,                                                           \
+            cols,                                                           \
+            cols_per_thread,                                                \
+            valid_scale,                                                    \
+            valid_bias);                                                    \
   } break
 
-#define IMPL_LAYER_NORM_WELFORD(scale_t, is_same_)    \
-  IMPL_LAYER_NORM_WELFORD_CASE(scale_t, is_same_, 4); \
-  IMPL_LAYER_NORM_WELFORD_CASE(scale_t, is_same_, 2); \
-  IMPL_LAYER_NORM_WELFORD_CASE(scale_t, is_same_, 1);
+#define IMPL_LAYER_NORM_WELFORD(index_t, scale_t, is_same_)    \
+  IMPL_LAYER_NORM_WELFORD_CASE(index_t, scale_t, is_same_, 4); \
+  IMPL_LAYER_NORM_WELFORD_CASE(index_t, scale_t, is_same_, 2); \
+  IMPL_LAYER_NORM_WELFORD_CASE(index_t, scale_t, is_same_, 1);
 
-  if (is_same_type) {
-    switch (vec_size) { IMPL_LAYER_NORM_WELFORD(T, true); }
+  if (rows < std::numeric_limits<int32_t>::max()) {
+    if (is_same_type) {
+      switch (vec_size) { IMPL_LAYER_NORM_WELFORD(int32_t, T, true); }
+    } else {
+      switch (vec_size) { IMPL_LAYER_NORM_WELFORD(int32_t, U, false); }
+    }
   } else {
-    switch (vec_size) { IMPL_LAYER_NORM_WELFORD(U, false) }
+    if (is_same_type) {
+      switch (vec_size) { IMPL_LAYER_NORM_WELFORD(int64_t, T, true); }
+    } else {
+      switch (vec_size) { IMPL_LAYER_NORM_WELFORD(int64_t, U, false); }
+    }
   }
 #undef IMPL_LAYER_NORM_WELFORD_CASE
 #undef IMPL_LAYER_NORM_WELFORD
@@ -480,7 +558,8 @@ void LayerNormKernel(const Context &dev_ctx,
     }
   } else {
     // WarpShuffle intrinsics is involved in LaunchLayerNormKernel.
-    if (feature_size <= 1024 && (!std::is_same<T, int8_t>::value)) {
+    if (/*FLAGS_use_fast_math=*/1 && feature_size <= 1024 &&
+        (!std::is_same<T, int8_t>::value)) {
       LaunchLayerNormKernel<Context, T, U>(dev_ctx,
                                            x_data,
                                            y_data,
