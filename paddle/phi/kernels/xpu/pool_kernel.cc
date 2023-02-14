@@ -44,9 +44,10 @@ void Pool2dKernel(const Context& ctx,
                     phi::errors::InvalidArgument(
                         "The Pool2d XPU OP only support 2 dimension pooling!"));
 
-  PADDLE_ENFORCE_EQ(
+  // old model's data_format maybe AnyLayout
+  PADDLE_ENFORCE_NE(
       data_format,
-      "NCHW",
+      "NHWC",
       phi::errors::InvalidArgument("The Pool2d XPU OP only support "
                                    "data_format is 'NCHW', but received %s",
                                    data_format));
