@@ -24,7 +24,7 @@ namespace phi {
 // TODO(LiuYang): Here when ix is negative, we need extra error handling code
 template <typename T, size_t Rank>
 __global__ void index_put_cuda_kernel(const int64_t N,
-                                      T* x,
+                                      const T* x,
                                       const T* vals,
                                       int64_t** indices,
                                       phi::Array<int64_t, Rank> stride,
@@ -46,9 +46,9 @@ __global__ void index_put_cuda_kernel(const int64_t N,
     offset += stride[i] * cur_ix;
   }
 
-  *(x + offset) = *(vals + (idx & isSingleValTensor));
+  // *(x + offset) = *(vals + (idx & isSingleValTensor));
   // Note(LiuYang):Here temp test just for add backward,
-  //  *(out + offset) = *(vals + (idx & isSingleValTensor));
+  *(out + offset) = *(vals + (idx & isSingleValTensor));
 }
 
 template <typename T, typename Context, size_t Rank>
@@ -57,9 +57,11 @@ void LaunchIndexPutCudaKernel(const Context& dev_ctx,
                               const std::vector<const DenseTensor*>& indices_v,
                               const DenseTensor& value,
                               DenseTensor* out) {
-  auto* x_data = const_cast<T*>(x.data<T>());
+  // auto* x_data = const_cast<T*>(x.data<T>());
+  auto* x_data = x.data<T>();
   auto* val_data = value.data<T>();
   T* out_data = dev_ctx.template Alloc<T>(out);
+  // T* out_data = out->data<T>();
 
   auto x_dims = x.dims();
   const int64_t numel = indices_v[0]->numel();
@@ -75,7 +77,7 @@ void LaunchIndexPutCudaKernel(const Context& dev_ctx,
   }
 
   // Note(LiuYang):Here should we make it inplace or not?
-  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+  // phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
 
   int64_t isSingleValTensor = (value.numel() == 1) ? 0 : INT64_MAX;
 

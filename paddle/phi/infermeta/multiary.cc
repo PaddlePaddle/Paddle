@@ -2984,7 +2984,9 @@ void IndexPutInferMeta(const MetaTensor& x,
       phi::errors::InvalidArgument(
           "The rank of input should be less than 7, but received %d.",
           in_dims.size()));
-  out->set_dims(in_dims);
+  out->share_meta(x);
+  // out->set_dims(in_dims);
+  // out->set_dtype(x.dtype());
 }
 
 void MoeInferMeta(const MetaTensor& x,

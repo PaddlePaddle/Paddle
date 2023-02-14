@@ -553,6 +553,7 @@ void SetTensorFromPyArray(phi::DenseTensor *self,
   }
 }
 
+// NOTE(LiuYang): Here I need add other dtype support such as fp16...
 static paddle::experimental::Tensor PyArrayToTensor(
     const paddle::experimental::DataType &dtype,
     const phi::Place &place,

@@ -22,7 +22,7 @@ namespace phi {
 
 template <typename T, size_t Rank>
 void index_put_kernel(const int64_t N,
-                      T* x,
+                      const T* x,
                       const T* vals,
                       const int64_t** indices,
                       phi::Array<int64_t, Rank> stride,
@@ -43,7 +43,8 @@ void index_put_kernel(const int64_t N,
       offset += stride[i] * cur_ix;
     }
 
-    *(x + offset) = *(vals + (idx & isSingleValTensor));
+    // *(x + offset) = *(vals + (idx & isSingleValTensor));
+    *(out + offset) = *(vals + (idx & isSingleValTensor));
   }
 }
 
@@ -53,9 +54,11 @@ void LaunchIndexPutKernel(const Context& dev_ctx,
                           const std::vector<const DenseTensor*>& indices_v,
                           const DenseTensor& value,
                           DenseTensor* out) {
-  auto* x_data = const_cast<T*>(x.data<T>());
+  // auto* x_data = const_cast<T*>(x.data<T>());
+  auto* x_data = x.data<T>();
   auto* val_data = value.data<T>();
   T* out_data = dev_ctx.template Alloc<T>(out);
+  // T* out_data = out->data<T>();
 
   auto x_dims = x.dims();
   const int64_t numel = indices_v[0]->numel();
@@ -69,7 +72,7 @@ void LaunchIndexPutKernel(const Context& dev_ctx,
     shape_a[idx] = x_dims[idx];
   }
 
-  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+  // phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
 
   int64_t isSingleValTensor = (value.numel() == 1) ? 0 : INT64_MAX;
 

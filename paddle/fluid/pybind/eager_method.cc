@@ -1217,7 +1217,7 @@ static PyObject* tensor_method__check_index_is_all_tensor(TensorObject* self,
     }
   }
 
-  index_put_ad_func(self->tensor, indices_tensor, value_tensor);
+  index_put__ad_func(self->tensor, indices_tensor, value_tensor);
   return ToPyObject(isAdvanceIndex);
 
   EAGER_CATCH_AND_THROW_RETURN_NULL
