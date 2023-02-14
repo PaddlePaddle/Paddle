@@ -1225,7 +1225,7 @@ if($ENV{USE_STANDALONE_EXECUTOR})
                        PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
 endif()
 
-set(TEST_CINN_OPS test_softmax_op test_expand_v2 test_reduce_op)
+set(TEST_CINN_OPS test_softmax_op test_expand_v2_op test_reduce_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)
