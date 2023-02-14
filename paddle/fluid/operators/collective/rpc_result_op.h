@@ -28,10 +28,29 @@ namespace operators {
 
 using json = nlohmann::json;
 
-// resp parsers
-template <typename T>
-static inline std::vector<T> ParseFloatResponse(const std::string& response) {
-  return {json::parse(response).get<T>()};
+#define PARSE_DIRECT_FLOAT 0
+/*
+1.23
+*/
+#define PARSE_RESULT_FLOAT 1
+/*
+{"result": ["1.23"]}
+*/
+
+static inline std::vector<float> ParseFloatResponse(const std::string& response,
+                                                    int parse_way) {
+  auto obj = json::parse(response);
+  switch (parse_way) {
+    case PARSE_RESULT_FLOAT: {
+      auto res = obj["result"][0].get<std::string>();
+      return {std::stof(res, nullptr)};
+    }
+    case PARSE_DIRECT_FLOAT:
+      return {obj.get<float>()};
+    default:
+      break;
+  }
+  return {static_cast<float>(0)};
 }
 
 static inline std::vector<uint8_t> ParseStrResponse(
@@ -45,7 +64,7 @@ static inline void ParseResponse(phi::DenseTensor* out,
                                  const platform::DeviceContext& dev_ctx,
                                  const std::string& resp) {
   if (res_type == "float") {
-    auto res = ParseFloatResponse<float>(resp);
+    auto res = ParseFloatResponse(resp, PARSE_RESULT_FLOAT);
     framework::TensorFromVector(res, dev_ctx, out);
   } else if (res_type == "str") {
     auto res = ParseStrResponse(resp);

@@ -30,6 +30,14 @@
 namespace paddle {
 namespace operators {
 
+#define DATA_STRLIST 0
+/*
+{"data": ["你好"]}
+*/
+#define TEXT_STR 1
+/*
+{"text": "nihao"}
+*/
 using json = nlohmann::json;
 
 // payload builders
@@ -39,8 +47,20 @@ static inline std::string BuildIdsPayload(const std::vector<T>& src_ids) {
   return payload.dump();
 }
 
-static inline std::string BuildStrPayload(const std::string& query) {
-  json payload = {{"data", {query}}};  // => {"data": [query]}
+static inline std::string BuildStrPayload(const std::string& query,
+                                          int build_way) {
+  json payload;
+  switch (build_way) {
+    case DATA_STRLIST:
+      payload = {{"data", {query}}};  //=> {"data": [query]}
+      break;
+    case TEXT_STR:
+      payload = {{"text", query}};  //=> {"text": query}
+      break;
+    default:
+      break;
+  }
+
   return payload.dump();
 }
 
@@ -52,7 +72,7 @@ static inline std::string BuildPayload(const std::string& service,
   } else if (service == "str") {
     const std::string query =
         platform::RpcTokenizer::Instance().GetWordsFromIds(src_ids);
-    return BuildStrPayload(query);
+    return BuildStrPayload(query, TEXT_STR);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument("Unknown service."));
   }

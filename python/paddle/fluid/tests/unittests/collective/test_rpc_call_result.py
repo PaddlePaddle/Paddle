@@ -23,7 +23,7 @@ MAX_SIZE_QUERY = 6
 MAX_SIZE_RESPONSE = 1000
 
 USE_IDS = True
-RES_TYPE = 'str'
+RES_TYPE = 'float'
 
 # network
 in_query = fluid.data(name='X', shape=[-1, MAX_SIZE_QUERY], dtype='int32')
@@ -36,10 +36,10 @@ req_ids = paddle.static.nn.rpc_call(
     "/code_lp/ernie-bot/post-train/ernie_3.0_100b_no_distill/config/ernie3.0_vocab_multi_prompt_v9.txt",
     True,
 )
-out_data, out_succeed = paddle.static.nn.rpc_result(req_ids, RES_TYPE, 4096)
+out_data, out_succeed = paddle.static.nn.rpc_result(req_ids, RES_TYPE, 1)
 paddle.static.Print(in_query)
 paddle.static.Print(req_ids)
-paddle.static.Print(out_data.astype("int32"))
+paddle.static.Print(out_data.astype("float32"))
 
 # data
 # 货物很好
