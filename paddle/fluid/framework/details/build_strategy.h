@@ -131,6 +131,8 @@ struct BuildStrategy {
   bool fuse_gemm_epilogue_{false};
   // Fused multi head attention
   bool fused_attention_{false};
+  // Fuse adamw
+  bool fuse_adamw_{false};
 
   // mkldnn_enabled_op_types specify the operator type list to
   // use MKLDNN acceleration. It is null in default, means
