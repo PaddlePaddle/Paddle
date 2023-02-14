@@ -44,6 +44,12 @@ limitations under the License. */
 #include "paddle/phi/backends/device_manager.h"
 #endif
 
+#include "gflags/gflags.h"
+#include "paddle/phi/api/include/tensor_operants.h"
+#include "paddle/phi/core/operants_manager.h"
+
+DECLARE_string(tensor_operants_mode);
+
 namespace paddle {
 namespace framework {
 
@@ -269,6 +275,15 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
 
   try {
     VLOG(3) << "Custom Operator: Run ComputeFunc.";
+
+    FLAGS_tensor_operants_mode = "phi";
+    if (paddle::operants::OperantsManager::Instance().phi_operants.get() ==
+        nullptr) {
+      paddle::operants::OperantsManager::Instance().phi_operants.reset(
+          new paddle::operants::PhiTensorOperants());
+      VLOG(4) << "Initialize phi tensor operants successfully";
+    }
+
     func(&kernel_ctx);
 
     // sync output tensor data into original output

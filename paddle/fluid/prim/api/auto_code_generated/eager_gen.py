@@ -55,7 +55,9 @@ using DataType = paddle::experimental::DataType;
     )
 
 
-def generate_api(api_yaml_path, header_file_path, eager_prim_source_file_path):
+def generate_api(
+    api_yaml_path, header_file_path, eager_prim_source_file_path, api_prim_path
+):
     apis = []
 
     for each_api_yaml in api_yaml_path:
@@ -76,8 +78,11 @@ def generate_api(api_yaml_path, header_file_path, eager_prim_source_file_path):
     eager_prim_source_file.write(eager_source_include())
     eager_prim_source_file.write(namespace[0])
 
+    with open(api_prim_path, 'rt') as f:
+        api_prims = yaml.safe_load(f)
+
     for api in apis:
-        prim_api = EagerPrimAPI(api)
+        prim_api = EagerPrimAPI(api, api_prims)
         if prim_api.is_prim_api:
             header_file.write(prim_api.gene_prim_api_declaration())
             eager_prim_source_file.write(prim_api.gene_eager_prim_api_code())
@@ -112,16 +117,24 @@ def main():
         default='paddle/fluid/prim/api/generated_prim/eager_prim_api.cc',
     )
 
+    parser.add_argument(
+        '--api_prim_yaml_path',
+        help='Primitive API list yaml file.',
+        default='paddle/fluid/prim/api/auto_code_generated/api.yaml',
+    )
+
     options = parser.parse_args()
 
     api_yaml_path = options.api_yaml_path
     prim_api_header_file_path = options.prim_api_header_path
     eager_prim_api_source_file_path = options.eager_prim_api_source_path
+    api_prim_yaml_path = options.api_prim_yaml_path
 
     generate_api(
         api_yaml_path,
         prim_api_header_file_path,
         eager_prim_api_source_file_path,
+        api_prim_yaml_path,
     )
 
 
