@@ -545,10 +545,10 @@ class ConvOneDNNHandlerT
             dnnl::memory::data_type::f32,
             dnnl::memory::format_tag::x);
         output_shift_scale_ = dnnl::memory(scales_md, this->engine_);
-        std::copy(output_shift_scale.begin(),
-                  output_shift_scale.end(),
-                  output_shift_scale_.get_data_handle());
-        output_shift_scale_.set_data_handle(output_shift_scale.data());
+        auto mem_buf = output_shift_scale_.get_data_handle();
+        memcpy(mem_buf,
+               output_shift_scale.data(),
+               output_shift_scale.size() * sizeof(float));
       }
     }
 
