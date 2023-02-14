@@ -15,7 +15,7 @@
 from ..wrapped_decorator import signature_safe_contextmanager
 
 from .layer_function_generator import templatedoc
-from .tensor import assign, cast, fill_constant
+from .tensor import fill_constant
 from .. import core
 from ..framework import (
     Program,
@@ -1058,7 +1058,7 @@ def assign_skip_lod_tensor_array(input, output):
         if isinstance(output, Variable) and isinstance(
             input, support_ret_buildin_type
         ):
-            assign(input, output)
+            paddle.assign(input, output)
         else:
             output = input
         return
@@ -1069,7 +1069,7 @@ def assign_skip_lod_tensor_array(input, output):
             main_program.current_block().parent_idx
         )
         if parent_block and not parent_block._find_var_recursive(input.name):
-            assign(input, output)
+            paddle.assign(input, output)
     else:
         if (
             isinstance(output, Variable)
@@ -1081,7 +1081,7 @@ def assign_skip_lod_tensor_array(input, output):
                     input.shape, output.shape
                 )
             )
-        assign(input, output)
+        paddle.assign(input, output)
 
 
 # (TODO: Mine) There exists dependency (jit.dy2static.convert_operators). It will be removed later.
@@ -1195,7 +1195,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                 )
             now_cond = cond(*output_vars)
             map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
-            assign(now_cond, pre_cond)
+            paddle.assign(now_cond, pre_cond)
         return loop_vars
 
 

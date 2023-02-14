@@ -115,11 +115,6 @@ cc_library(
   DEPS kernel_factory)
 
 cc_library(
-  operants_manager
-  SRCS operants_manager.cc
-  DEPS flags)
-
-cc_library(
   mixed_vector
   SRCS mixed_vector.cc
   DEPS device_context place memory)

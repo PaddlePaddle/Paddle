@@ -16,12 +16,12 @@ import logging
 import unittest
 
 import numpy as np
-from test_program_translator import get_source_code
 
 import paddle
 import paddle.fluid as fluid
 import paddle.jit.dy2static as _jst
 from paddle.jit.dy2static.convert_call_func import CONVERSION_OPTIONS
+from paddle.jit.dy2static.utils import func_to_source_code
 
 SEED = 2020
 np.random.seed(SEED)
@@ -141,7 +141,7 @@ class MyConvLayer(fluid.dygraph.Layer):
 
     @paddle.jit.to_static
     def dymethod(self, x_v):
-        x_v = fluid.layers.assign(x_v)
+        x_v = paddle.assign(x_v)
         return x_v
 
 
@@ -216,103 +216,57 @@ class TestStaticMethod(TestRecursiveCall2):
 # Situation 2 : test not_to_static
 
 
-def func_sum(x):
-    res = paddle.sum(x)
-    return res
+class NotToStaticHelper(paddle.nn.Layer):
+    def __init__(self):
+        super(NotToStaticHelper, self).__init__()
 
+    def sum(self, x):
+        if x.shape[0] > 1:
+            res = x + 1
+        res = paddle.sum(x)
+        return res
 
-@paddle.jit.not_to_static
-def func_not_to_static(x):
-    res = func_sum(x)
-    return res
+    def outer(self, x):
+        res = self.sum(x)
+        return res
 
-
-@paddle.jit.to_static
-def func_convert_then_not_to_static(x):
-    y = func_not_to_static(x)
-    return y
-
-
-class TestClass(paddle.nn.Layer):
-    @paddle.jit.not_to_static
-    def called_member(self, x):
-        return paddle.sum(x)
-
-    @paddle.jit.to_static
-    def forward(self, x):
-        y = self.called_member(x)
-        return y
+    def inner(self, x):
+        return self.outer(x)
 
 
 class TestNotToConvert(TestRecursiveCall2):
     def set_func(self):
-        self.dygraph_func = func_not_to_static
+        self.net = NotToStaticHelper()
+        paddle.jit.not_to_static(self.net.sum)
+        self.dygraph_func = paddle.jit.to_static(self.net.outer)
 
     def test_conversion_options(self):
-        options = getattr(self.dygraph_func, CONVERSION_OPTIONS, None)
+        options = getattr(self.net.sum, CONVERSION_OPTIONS, None)
         self.assertIsNotNone(options)
         self.assertTrue(options.not_convert)
+
+    def test_code(self):
+        # check 'if statement' is not converted
+        self.assertIn(
+            "if x.shape[0] > 1", func_to_source_code(_jst.Call(self.net.sum))
+        )
 
 
 class TestNotToConvert2(TestRecursiveCall2):
     def set_func(self):
-        self.dygraph_func = func_convert_then_not_to_static
+        self.net = NotToStaticHelper()
+        # for to_static(not_to_static(function))  == enable_static
+        paddle.jit.not_to_static(self.net.sum)
+        self.dygraph_func = paddle.jit.to_static(self.net.sum)
 
-
-class TestNotToConvert3(TestRecursiveCall2):
-    def set_func(self):
-        self.dygraph_func = TestClass()
-
-
-class TestDynamicToStaticCode(unittest.TestCase):
-    def setUp(self):
-        self.set_func()
-        self.set_answer_func()
-
-    def set_func(self):
-        self.func = func_not_to_static
-
-    def set_answer_func(self):
-        class StaticCode:
-            @paddle.jit.not_to_static
-            def func_not_to_static(x):
-                res = func_sum(x)
-                return res
-
-        self.answer_func = StaticCode.func_not_to_static
-
-    def _get_answer_code(self):
-        return get_source_code(self.answer_func)
-
-    def _get_transformed_code(self):
-        transformed_func = _jst.Call(self.func)
-        return get_source_code(transformed_func)
+    def test_conversion_options(self):
+        options = getattr(self.net.sum, CONVERSION_OPTIONS, None)
+        self.assertIsNotNone(options)
+        self.assertTrue(options.not_convert)
 
     def test_code(self):
-        transformed_code = self._get_transformed_code()
-        answer_code = self._get_answer_code()
-        self.assertEqual(
-            answer_code,
-            transformed_code,
-            msg="\ntransformed_code : \n{}\nanswer_code : \n{}".format(
-                transformed_code, answer_code
-            ),
-        )
-
-
-class TestDynamicToStaticCode2(TestDynamicToStaticCode):
-    def set_func(self):
-        self.func = func_convert_then_not_to_static
-
-    def set_answer_func(self):
-        class StaticCode:
-            def func_convert_then_not_to_static(x):
-                __return_value_0 = None
-                y = _jst.Call(func_not_to_static)(x)
-                __return_value_0 = y
-                return __return_value_0
-
-        self.answer_func = StaticCode.func_convert_then_not_to_static
+        # check 'if statement' is not converted
+        self.assertIn("if x.shape[0] > 1", self.dygraph_func.code)
 
 
 if __name__ == '__main__':
