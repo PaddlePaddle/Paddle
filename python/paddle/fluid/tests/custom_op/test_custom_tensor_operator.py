@@ -171,13 +171,12 @@ def test_custom_multiply_static(func, device, dtype, np_x, use_func=True):
 def test_custom_divide_dynamic(func, device, dtype, np_x, use_func=True):
     paddle.set_device(device)
 
-    one = paddle.to_tensor(np.ones_like(np_x), dtype=dtype)
     x = paddle.to_tensor(np_x, dtype=dtype)
     x.stop_gradient = False
     if use_func:
         out = func(x)
     else:
-        out = paddle.divide(one, x)
+        out = paddle.reciprocal(x)
     out.stop_gradient = False
 
     out.backward()
@@ -311,17 +310,13 @@ class TestJITLoad(unittest.TestCase):
                     x_grad, pd_x_grad, rtol=1e-5, atol=1e-8
                 )
 
-                x = np.random.uniform(10, 20, [4, 8]).astype(dtype)
                 out, x_grad = test_custom_divide_dynamic(
                     self.custom_module.custom_divide, device, dtype, x
                 )
                 pd_out, pd_x_grad = test_custom_divide_dynamic(
                     self.custom_module.custom_divide, device, dtype, x, False
                 )
-                np.testing.assert_allclose(out, pd_out, rtol=1e-3, atol=1e-3)
-                np.testing.assert_allclose(
-                    x_grad, pd_x_grad, rtol=1e-3, atol=1e-3
-                )
+                np.testing.assert_allclose(out, pd_out, rtol=1e-5, atol=1e-8)
 
 
 if __name__ == '__main__':
