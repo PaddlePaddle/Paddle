@@ -23,8 +23,6 @@ from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
 from .fp16_lists import AutoMixedPrecisionLists
 
-__all__ = ["fp16_guard", "cast_model_to_fp16", "cast_parameters_to_fp16"]
-
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )

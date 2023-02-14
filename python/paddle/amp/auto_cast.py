@@ -29,6 +29,7 @@ WHITE_LIST = {
     'conv2d',
     'matmul',
     'matmul_v2',
+    'max_pool2d_with_index',
     'mul',
     'fake_quantize_dequantize_abs_max',
     'fake_quantize_dequantize_moving_average_abs_max',
@@ -699,7 +700,7 @@ def auto_cast(
 
         with paddle.amp.auto_cast():
             conv = conv2d(data)
-            print(conv.dtype) # paddle.float32
+            print(conv.dtype) # paddle.float16
 
         with paddle.amp.auto_cast(enable=False):
             conv = conv2d(data)
@@ -713,11 +714,11 @@ def auto_cast(
         b = paddle.rand([2,3])
         with paddle.amp.auto_cast(custom_white_list={'elementwise_add'}):
             c = a + b
-            print(c.dtype) # paddle.float32
+            print(c.dtype) # paddle.float16
 
         with paddle.amp.auto_cast(custom_white_list={'elementwise_add'}, level='O2'):
             d = a + b
-            print(d.dtype) # paddle.float32
+            print(d.dtype) # paddle.float16
 
     """
     return amp_guard(enable, custom_white_list, custom_black_list, level, dtype)

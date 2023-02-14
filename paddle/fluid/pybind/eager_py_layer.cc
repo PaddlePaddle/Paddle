@@ -10,6 +10,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 // disable numpy compile error
 #include <Python.h>
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
 
 #include <set>
 #include <string>
@@ -49,12 +53,12 @@ std::set<paddle::experimental::Tensor*> GetTensorsFromPyObject(PyObject* obj) {
   if (obj == nullptr) {
     return result;
   }
-  if (IsEagerTensor(obj)) {
+  if (PyCheckTensor(obj)) {
     result.insert(&reinterpret_cast<TensorObject*>(obj)->tensor);  // NOLINT
   } else if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
     for (Py_ssize_t i = 0; i < len; i++) {
-      if (IsEagerTensor(PyList_GetItem(obj, i))) {
+      if (PyCheckTensor(PyList_GetItem(obj, i))) {
         result.insert(
             &reinterpret_cast<TensorObject*>(PyList_GetItem(obj, i))  // NOLINT
                  ->tensor);
@@ -63,7 +67,7 @@ std::set<paddle::experimental::Tensor*> GetTensorsFromPyObject(PyObject* obj) {
   } else if (PyTuple_Check(obj)) {
     Py_ssize_t len = PyTuple_Size(obj);
     for (Py_ssize_t i = 0; i < len; i++) {
-      if (IsEagerTensor(PyTuple_GetItem(obj, i))) {
+      if (PyCheckTensor(PyTuple_GetItem(obj, i))) {
         result.insert(
             &reinterpret_cast<TensorObject*>(PyTuple_GetItem(obj, i))  // NOLINT
                  ->tensor);
@@ -177,7 +181,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
     } else {
       obj = PyTuple_GET_ITEM(args, i);
     }
-    if (IsEagerTensor(obj)) {
+    if (PyCheckTensor(obj)) {
       input_tensorbases.insert(
           reinterpret_cast<TensorObject*>(obj)->tensor.impl().get());
       auto autograd_meta = egr::EagerUtils::nullable_autograd_meta(
@@ -196,7 +200,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
       Py_ssize_t len = PyList_Size(obj);
       for (Py_ssize_t j = 0; j < len; j++) {
         PyObject* o = PyList_GetItem(obj, j);
-        if (IsEagerTensor(o)) {
+        if (PyCheckTensor(o)) {
           input_tensorbases.insert(
               reinterpret_cast<TensorObject*>(o)->tensor.impl().get());
           tensors.push_back(&(reinterpret_cast<TensorObject*>(o)->tensor));
@@ -219,7 +223,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
       Py_ssize_t len = PyTuple_Size(obj);
       for (Py_ssize_t j = 0; j < len; j++) {
         PyObject* o = PyTuple_GetItem(obj, j);
-        if (IsEagerTensor(o)) {
+        if (PyCheckTensor(o)) {
           input_tensorbases.insert(
               reinterpret_cast<TensorObject*>(o)->tensor.impl().get());
           tensors.push_back(&(reinterpret_cast<TensorObject*>(o)->tensor));
@@ -292,7 +296,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
   ctx->forward_output_tensor_is_duplicable.reserve(outputs_size);
   for (Py_ssize_t i = 0; i < outputs_size; i++) {
     PyObject* obj = PyTuple_GET_ITEM(outputs_tuple, i);
-    if (IsEagerTensor(obj)) {
+    if (PyCheckTensor(obj)) {
       outputs_tensor.push_back(
           {&(reinterpret_cast<TensorObject*>(obj)->tensor)});
       outputs_autograd_meta.push_back({egr::EagerUtils::autograd_meta(
@@ -316,7 +320,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
       Py_ssize_t len = PyList_Size(obj);
       for (Py_ssize_t j = 0; j < len; j++) {
         PyObject* o = PyList_GetItem(obj, j);
-        if (IsEagerTensor(o)) {
+        if (PyCheckTensor(o)) {
           tensors.push_back(&(reinterpret_cast<TensorObject*>(o)->tensor));
           if (input_tensorbases.count(
                   reinterpret_cast<TensorObject*>(o)->tensor.impl().get())) {
@@ -344,7 +348,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
       Py_ssize_t len = PyTuple_Size(obj);
       for (Py_ssize_t j = 0; j < len; j++) {
         PyObject* o = PyTuple_GetItem(obj, j);
-        if (IsEagerTensor(o)) {
+        if (PyCheckTensor(o)) {
           tensors.push_back(&(reinterpret_cast<TensorObject*>(o)->tensor));
           if (input_tensorbases.count(
                   reinterpret_cast<TensorObject*>(o)->tensor.impl().get())) {
@@ -432,12 +436,10 @@ PyObject* pylayer_method_apply(PyObject* cls,
         for (auto t : outputs_tensor[i]) {
           grad_node->SetGradInMeta(*t, i);
         }
-        egr::EagerUtils::CheckAndRetainGrad(outputs_tensor[i]);
       } else {
         egr::EagerUtils::SetOutRankWithSlot(outputs_autograd_meta[i][0], i);
         egr::EagerUtils::SetHistory(outputs_autograd_meta[i][0], grad_node);
         grad_node->SetGradInMeta(*outputs_tensor[i][0], i);
-        egr::EagerUtils::CheckAndRetainGrad(*outputs_tensor[i][0]);
       }
     }
     VLOG(6) << "PyLayer construct backward node finish...";
@@ -538,7 +540,7 @@ void call_pack_hook(PyLayerObject* self, PyObject* value) {
 
   for (Py_ssize_t i = 0; i < saved_value_size; i++) {
     PyObject* obj = PyTuple_GET_ITEM(saved_value, i);
-    if (IsEagerTensor(obj)) {
+    if (PyCheckTensor(obj)) {
       PyTuple_SET_ITEM(packed_value,
                        i,
                        reinterpret_cast<PyObject*>(
@@ -548,7 +550,7 @@ void call_pack_hook(PyLayerObject* self, PyObject* value) {
       auto tmp_list = PyList_New(len);
       for (Py_ssize_t j = 0; j < len; j++) {
         PyObject* o = PyList_GetItem(obj, j);
-        if (IsEagerTensor(o)) {
+        if (PyCheckTensor(o)) {
           PyTuple_SET_ITEM(tmp_list,
                            j,
                            reinterpret_cast<PyObject*>(
@@ -565,7 +567,7 @@ void call_pack_hook(PyLayerObject* self, PyObject* value) {
       auto tmp_tuple = PyTuple_New(len);
       for (Py_ssize_t j = 0; j < len; j++) {
         PyObject* o = PyTuple_GetItem(obj, j);
-        if (IsEagerTensor(o)) {
+        if (PyCheckTensor(o)) {
           PyTuple_SET_ITEM(tmp_tuple,
                            j,
                            reinterpret_cast<PyObject*>(

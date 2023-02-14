@@ -103,6 +103,10 @@ extern std::shared_ptr<FILE> fs_open_write(const std::string& path,
                                            int* err_no,
                                            const std::string& converter);
 
+extern std::shared_ptr<FILE> fs_open_append_write(const std::string& path,
+                                                  int* err_no,
+                                                  const std::string& converter);
+
 extern std::shared_ptr<FILE> fs_open(const std::string& path,
                                      const std::string& mode,
                                      int* err_no,

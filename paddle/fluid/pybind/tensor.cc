@@ -13,6 +13,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <Python.h>
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
 
 #include <algorithm>
 #include <cctype>
@@ -182,6 +186,7 @@ limitations under the License. */
 #include "pybind11/stl.h"
 
 DECLARE_bool(use_mkldnn);
+DECLARE_bool(use_shm_cache);
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
@@ -472,22 +477,15 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            )DOC")
       .def("_to_dlpack",
            [](phi::DenseTensor &self) {
-             DLPackTensor dlpack_tensor(self, 1);
-             DLManagedTensor *dmt = dlpack_tensor.ToDLManagedTensor();
-             auto capsule = py::capsule(
+             DLManagedTensor *dmt = framework::toDLPack(self);
+             auto capsule = pybind11::capsule(
                  static_cast<void *>(dmt), "dltensor", [](PyObject *ptr) {
-                   if (ptr) {
-                     auto dltensor = new DLManagedTensor;
-                     try {
-                       dltensor = reinterpret_cast<DLManagedTensor *>(
-                           PyCapsule_GetPointer(ptr, "used_dltensor"));
-                       return;
-                     } catch (...) {
-                       dltensor = reinterpret_cast<DLManagedTensor *>(
-                           PyCapsule_GetPointer(ptr, "dltensor"));
-                     }
-                     dltensor->deleter(dltensor);
+                   if (!PyCapsule_IsValid(ptr, "dltensor")) {
+                     return;
                    }
+                   DLManagedTensor *dmt = static_cast<DLManagedTensor *>(
+                       PyCapsule_GetPointer(ptr, "dltensor"));
+                   dmt->deleter(dmt);
                  });
              return capsule;
            })
@@ -910,9 +908,16 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                int flags = memory::allocation::MAPPED_SHAREDMEM |
                            memory::allocation::MAPPED_EXCLUSIVE;
                std::string handle = memory::allocation::GetIPCName();
+               int find_id = -1;
+               if (FLAGS_use_shm_cache) {
+                 find_id = memory::allocation::MemoryMapAllocationPool::Instance().FindFromCache(flags, data_size); // NOLINT
+               }
+               if (find_id != -1) {
+                 handle = memory::allocation::MemoryMapAllocationPool::Instance().GetById(find_id).file_name_; // NOLINT
+               }
                auto shared_holder =
                    memory::allocation::AllocateRefcountedMemoryMapAllocation(
-                       handle, flags, data_size);
+                       handle, flags, data_size, find_id);
 
                // copy data & reset holder
                if (platform::is_cuda_pinned_place(holder->place())) {
@@ -961,10 +966,13 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              size_t size = t[1].cast<size_t>();
              int flags = memory::allocation::MAPPED_SHAREDMEM |
                          memory::allocation::MAPPED_NOCREATE;
-
+             int find_id = -1;
+             if (FLAGS_use_shm_cache) {
+               find_id = memory::allocation::MemoryMapAllocationPool::Instance().FindFromCache(flags, size, ipc_name, /*check_refcount*/ false); // NOLINT
+             }
              auto shared_holder =
                  memory::allocation::AllocateRefcountedMemoryMapAllocation(
-                     ipc_name, flags, size);
+                     ipc_name, flags, size, find_id);
 
              // 3. Rebuild Tensor
              tensor.ResetHolderWithType(
@@ -1091,7 +1099,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
              self.set_rows(rows);
 #else
-        Vector<int64_t> new_rows(rows);
+        std::vector<int64_t> new_rows(rows);
         self.set_rows(new_rows);
 #endif
            })

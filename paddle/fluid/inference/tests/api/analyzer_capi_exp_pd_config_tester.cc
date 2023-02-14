@@ -85,6 +85,10 @@ TEST(PD_Config, interface) {
 
   PD_ConfigEnableMkldnnBfloat16(config);
   PD_ConfigSetBfloat16Op(config, 1, &ops_name);
+
+  PD_ConfigEnableMkldnnInt8(config);
+  bool mkldnn_int8_enabled = PD_ConfigMkldnnInt8Enabled(config);
+  EXPECT_TRUE(mkldnn_int8_enabled);
 #endif
 
   PD_ConfigEnableONNXRuntime(config);

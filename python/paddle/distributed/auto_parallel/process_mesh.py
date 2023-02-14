@@ -17,7 +17,7 @@ import copy
 import numpy as np
 
 import paddle
-from paddle.fluid import core
+from paddle.framework import core
 
 # Use to store the previous and current process mesh
 _g_previous_process_mesh = None

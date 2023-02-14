@@ -86,7 +86,7 @@ class DynamicGRU(fluid.dygraph.Layer):
 
         if self.is_reverse:
             res = res[::-1]
-        res = fluid.layers.concat(res, axis=1)
+        res = paddle.concat(res, axis=1)
         return res
 
 
@@ -98,7 +98,7 @@ class BiGRU(fluid.dygraph.Layer):
             in_features=input_dim,
             out_features=grnn_hidden_dim * 3,
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Uniform(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-init_bound, high=init_bound
                 ),
                 regularizer=fluid.regularizer.L2DecayRegularizer(
@@ -111,7 +111,7 @@ class BiGRU(fluid.dygraph.Layer):
             size=grnn_hidden_dim,
             h_0=h_0,
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Uniform(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-init_bound, high=init_bound
                 ),
                 regularizer=fluid.regularizer.L2DecayRegularizer(
@@ -124,7 +124,7 @@ class BiGRU(fluid.dygraph.Layer):
             in_features=input_dim,
             out_features=grnn_hidden_dim * 3,
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Uniform(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-init_bound, high=init_bound
                 ),
                 regularizer=fluid.regularizer.L2DecayRegularizer(
@@ -138,7 +138,7 @@ class BiGRU(fluid.dygraph.Layer):
             is_reverse=True,
             h_0=h_0,
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Uniform(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-init_bound, high=init_bound
                 ),
                 regularizer=fluid.regularizer.L2DecayRegularizer(
@@ -154,7 +154,7 @@ class BiGRU(fluid.dygraph.Layer):
         res_pre_gru_r = self.pre_gru_r(input_feature)
         res_gru_r = self.gru_r(res_pre_gru_r)
 
-        bi_merge = fluid.layers.concat(input=[res_gru, res_gru_r], axis=-1)
+        bi_merge = paddle.concat([res_gru, res_gru_r], axis=-1)
         return bi_merge
 
 
@@ -375,7 +375,7 @@ class LexNet(fluid.dygraph.Layer):
             weight_attr=fluid.ParamAttr(
                 learning_rate=self.emb_lr,
                 name="word_emb",
-                initializer=fluid.initializer.Uniform(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-self.init_bound, high=self.init_bound
                 ),
             ),
@@ -415,7 +415,7 @@ class LexNet(fluid.dygraph.Layer):
             in_features=self.grnn_hidden_dim * 2,
             out_features=self.num_labels,
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Uniform(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-self.init_bound, high=self.init_bound
                 ),
                 regularizer=fluid.regularizer.L2DecayRegularizer(

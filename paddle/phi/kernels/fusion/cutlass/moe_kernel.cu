@@ -17,7 +17,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
-#include "paddle/phi/kernels/fusion/cutlass/moe_kernel_impl.h"
+#include "paddle/phi/kernels/fusion/cutlass/moe/moe_kernel_impl.h"
 
 // Ignore CUTLASS warnings about type punning
 #pragma GCC diagnostic push
@@ -32,13 +32,15 @@
 #include "cutlass/gemm/kernel/default_gemm_grouped.h"
 #include "cutlass/numeric_conversion.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
-#include "paddle/phi/kernels/fusion/cutlass/default_moe_fc_traits.h"
-#include "paddle/phi/kernels/fusion/cutlass/linear_combination_ft_gelu.h"
-#include "paddle/phi/kernels/fusion/cutlass/moe_cutlass_kernel.h"
+#include "paddle/phi/kernels/fusion/cutlass/moe/default_moe_fc_traits.h"
+#include "paddle/phi/kernels/fusion/cutlass/moe/linear_combination_ft_gelu.h"
+#include "paddle/phi/kernels/fusion/cutlass/moe/moe_cutlass_kernel.h"
 #pragma GCC diagnostic pop
+
 namespace phi {
 
 namespace {
+
 inline int getSMVersion() {
   const int device = phi::backends::gpu::GetCurrentDeviceId();
   const phi::gpuDeviceProp prop =

@@ -42,19 +42,6 @@ __global__ void LinspaceSpecialKernel(T start, T* out) {
 }
 
 template <typename T, typename Context>
-T GetValue(const Context& ctx, const DenseTensor& x) {
-  T value = static_cast<T>(0);
-  if (x.place() != CPUPlace()) {
-    DenseTensor cpu_x;
-    Copy(ctx, x, CPUPlace(), true, &cpu_x);
-    value = cpu_x.data<T>()[0];
-  } else {
-    value = x.data<T>()[0];
-  }
-  return value;
-}
-
-template <typename T, typename Context>
 T GetValueOfExpectedType(const Context& ctx, const DenseTensor& x) {
   switch (x.dtype()) {
     case DataType::FLOAT32:

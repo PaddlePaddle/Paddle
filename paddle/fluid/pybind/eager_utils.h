@@ -16,6 +16,10 @@ typedef SSIZE_T ssize_t;
 #endif
 
 #include <Python.h>
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
 
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -46,7 +50,7 @@ namespace py = ::pybind11;
 
 int TensorDtype2NumpyDtype(phi::DataType dtype);
 
-bool IsEagerTensor(PyObject* obj);
+bool PyCheckTensor(PyObject* obj);
 
 bool PyObject_CheckLongOrConvertToLong(PyObject** obj);
 bool PyObject_CheckFloatOrConvertToFloat(PyObject** obj);

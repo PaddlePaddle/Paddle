@@ -18,7 +18,6 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/phi/common/layout.h"
@@ -30,43 +29,11 @@ namespace framework {
 namespace ir {
 namespace {
 
-void TransDataLayout(DataLayout from_layout,
-                     DataLayout to_layout,
-                     const phi::DenseTensor &in,
-                     phi::DenseTensor *out) {
-  PADDLE_ENFORCE_EQ(
-      arity(in.dims()),
-      4,
-      platform::errors::InvalidArgument(
-          "Input dimension arity only can be 4, the input dimension is %s.",
-          in.dims()));
-
-  auto &pool = platform::DeviceContextPool::Instance();
-
-  auto src_dim = in.dims();
-  std::vector<int64_t> dst_dim;
-
-  auto axis = GetAxis(from_layout, to_layout);
-  dst_dim.resize(axis.size());
-  for (size_t i = 0; i < axis.size(); i++) {
-    dst_dim[i] = src_dim[axis[i]];
-  }
-
-  out->Resize(phi::make_ddim(dst_dim));
-  out->mutable_data(phi::CPUPlace(), in.dtype());
-
-  framework::VisitDataType(
-      framework::TransToProtoVarType(in.dtype()),
-      CastDataLayout(pool.Get(phi::CPUPlace()), axis, in, out));
-
-  out->set_layout(to_layout);
-}
-
 void InsertLayoutTransOp(ir::Graph *graph,
                          ir::Node *prev_node,
                          ir::Node *next_node,
-                         DataLayout from_layout,
-                         DataLayout to_layout,
+                         phi::DataLayout from_layout,
+                         phi::DataLayout to_layout,
                          framework::BlockDesc *block_desc,
                          std::unordered_map<ir::Node *, ir::Node *> *cache) {
   auto do_insert = [&](const std::string &in_var_name,
@@ -91,7 +58,7 @@ void InsertLayoutTransOp(ir::Graph *graph,
       op_out_var_desc->SetPersistable(false);
       op_out_var_desc->SetDataType(prev_node->Var()->GetDataType());
       auto to_shape = prev_node->Var()->GetShape();
-      if (from_layout == DataLayout::kNCHW) {
+      if (from_layout == phi::DataLayout::kNCHW) {
         auto n = to_shape[0];
         auto c = to_shape[1];
         auto h = to_shape[2];
@@ -117,12 +84,13 @@ void InsertLayoutTransOp(ir::Graph *graph,
     IR_NODE_UNLINK(prev_node, next_node);
   };
 
-  if (from_layout == DataLayout::kNCHW && to_layout == DataLayout::kNHWC) {
+  if (from_layout == phi::DataLayout::kNCHW &&
+      to_layout == phi::DataLayout::kNHWC) {
     auto in_var_name = prev_node->Var()->Name();
     auto out_var_name = in_var_name + "_nchw_to_nhwc";
     do_insert(in_var_name, out_var_name);
-  } else if (from_layout == DataLayout::kNHWC &&
-             to_layout == DataLayout::kNCHW) {
+  } else if (from_layout == phi::DataLayout::kNHWC &&
+             to_layout == phi::DataLayout::kNCHW) {
     auto in_var_name = prev_node->Var()->Name();
     auto out_var_name = in_var_name + "_nhwc_to_nchw";
     do_insert(in_var_name, out_var_name);
@@ -135,7 +103,7 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph,
       platform::errors::PreconditionNotMet("graph should not be nullptr."));
-  FusePassBase::Init("data_layout_transfer", graph);
+  FusePassBase::Init("conv2d_fusion_layout_transfer", graph);
   auto *scope = param_scope();
 
   // only float16 compute precision need insert transfer_layout.
@@ -170,7 +138,7 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
 
   // Not support multiple block now.
   std::unordered_map<ir::Node *, ir::Node *> cache;
-  auto op_nodes = ir::TopologySortOperations(*graph);
+  auto op_nodes = TopologySortOperations(*graph);
   auto iter = op_nodes.cbegin();
   auto *block_desc = (*iter)->Op()->Block();
 
@@ -186,7 +154,7 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
         op_node->Op()->GetAttrIfExists<std::string>("data_format");
     if (data_format != "NCHW") return false;
     auto filter_names = op_node->Op()->Input("Filter");
-    constexpr int CUTLASS_NHWC_ALIGNMENT = 8;
+    constexpr int NHWC_ALIGNMENT = 8;
     // If filter's channel is not multiple of 8, conv2d_fusion not run at nhwc.
     for (const auto &filter_name : filter_names) {
       auto *filter_var = scope->FindLocalVar(filter_name);
@@ -195,7 +163,7 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
       int oc = filter_tensor.dims()[0];
       int ic = filter_tensor.dims()[1];
       bool cutlass_can_support =
-          oc % CUTLASS_NHWC_ALIGNMENT == 0 && ic % CUTLASS_NHWC_ALIGNMENT == 0;
+          oc % NHWC_ALIGNMENT == 0 && ic % NHWC_ALIGNMENT == 0;
       if (!cutlass_can_support) {
         return false;
       }
@@ -229,8 +197,7 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
     if (cuDNNIsValid(op_node)) {
       valid_ops.insert(op_node);
       auto *op_desc = op_node->Op();
-      auto nhwc_attr = framework::Attribute(std::string("NHWC"));
-      op_desc->SetAttr("data_format", nhwc_attr);
+      op_desc->SetAttr("data_format", std::string{"NHWC"});
       if (cutlass_enable && CutlassIsValid(op_node)) {
         op_desc->SetType("conv2d_fusion_cutlass");
       }
@@ -244,8 +211,11 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
         phi::DenseTensor temp_tensor = *filter_tensor;
         filter_tensor->clear();
 
-        TransDataLayout(
-            DataLayout::kNCHW, DataLayout::kNHWC, temp_tensor, filter_tensor);
+        framework::TransDataLayout(phi::DataLayout::kNCHW,
+                                   phi::DataLayout::kNHWC,
+                                   phi::CPUPlace{},
+                                   temp_tensor,
+                                   filter_tensor);
       }
       auto op_inputs = op_node->inputs;
       for (auto *in_var_node : op_inputs) {
@@ -290,8 +260,8 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
         InsertLayoutTransOp(graph,
                             in_var_node,
                             op_node,
-                            DataLayout::kNCHW,
-                            DataLayout::kNHWC,
+                            phi::DataLayout::kNCHW,
+                            phi::DataLayout::kNHWC,
                             block_desc,
                             &cache);
       }
@@ -304,8 +274,8 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
           InsertLayoutTransOp(graph,
                               in_var_node,
                               op_node,
-                              DataLayout::kNHWC,
-                              DataLayout::kNCHW,
+                              phi::DataLayout::kNHWC,
+                              phi::DataLayout::kNCHW,
                               block_desc,
                               &cache);
         }

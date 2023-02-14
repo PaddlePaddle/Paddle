@@ -223,14 +223,6 @@ class EagerUtils {
       const std::vector<paddle::experimental::Tensor*>& out_var,
       std::vector<paddle::experimental::Tensor>* result);
 
-  // end Intermidate needed.
-
-  static void CheckAndRetainGrad(const paddle::experimental::Tensor& tensor);
-  static void CheckAndRetainGrad(
-      const std::vector<paddle::experimental::Tensor>& tensors);
-  static void CheckAndRetainGrad(
-      const std::vector<paddle::experimental::Tensor*>& tensors);
-
   static std::shared_ptr<egr::GradNodeBase> GetGradAccumulationNode(
       const paddle::experimental::Tensor& tensor);
 

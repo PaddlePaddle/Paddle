@@ -333,12 +333,7 @@ class TestLayerNormOp(unittest.TestCase):
 
 class TestLayerNormAPI(unittest.TestCase):
     def test_case(self):
-        x = fluid.layers.data(
-            name='x',
-            shape=[64, 32, 256],
-            dtype='float32',
-            append_batch_size=False,
-        )
+        x = paddle.static.data(name='x', shape=[64, 32, 256], dtype='float32')
         x = paddle.static.nn.layer_norm(
             x,
             scale=True,
@@ -380,7 +375,9 @@ class TestDygraphLayerNormAPIError(unittest.TestCase):
 
             # the input dtype of LayerNorm must be float32 or float64
             # float16 only can be set on GPU place
-            x2 = fluid.layers.data(name='x2', shape=[3, 32, 32], dtype="int32")
+            x2 = paddle.static.data(
+                name='x2', shape=[-1, 3, 32, 32], dtype="int32"
+            )
             self.assertRaises(TypeError, layer_norm, x2)
 
 

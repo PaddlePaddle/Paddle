@@ -117,6 +117,15 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
     return var_type == proto::VarType::SPARSE_COO;
   }
 
+  bool IsSparseCooTensorOutput(const std::string& name) const override {
+    auto var_types = ctx_.GetOutputsVarType(name);
+    return std::all_of(var_types.begin(),
+                       var_types.end(),
+                       [](const proto::VarType::Type& type) {
+                         return type == proto::VarType::SPARSE_COO;
+                       });
+  }
+
   bool IsSparseCsrTensorInput(const std::string& name) const override {
     auto var_type = ctx_.GetInputVarType(name);
     return var_type == proto::VarType::SPARSE_CSR;

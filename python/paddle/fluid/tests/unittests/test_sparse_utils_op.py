@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
 
 devices = ['cpu', 'gpu']
@@ -148,7 +147,6 @@ class TestSparseConvert(unittest.TestCase):
         assert np.array_equal(dense_x.grad.numpy(), out_grad.to_dense().numpy())
 
     def test_coo_to_dense(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
         values = [1.0, 2.0, 3.0, 4.0, 5.0]
         indices_dtypes = ['int32', 'int64']
@@ -159,6 +157,7 @@ class TestSparseConvert(unittest.TestCase):
                 shape=[3, 4],
                 stop_gradient=False,
             )
+            sparse_x.retain_grads()
             dense_tensor = sparse_x.to_dense()
             # test to_dense_grad backward
             out_grad = [
@@ -180,12 +179,12 @@ class TestSparseConvert(unittest.TestCase):
                 shape=[3, 4],
                 stop_gradient=False,
             )
+            sparse_x_cpu.retain_grads()
             dense_tensor_cpu = sparse_x_cpu.to_dense()
             dense_tensor_cpu.backward(paddle.to_tensor(out_grad))
             assert np.array_equal(
                 correct_x_grad, sparse_x_cpu.grad.values().numpy()
             )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_to_sparse_csr(self):
         x = [[0, 1, 0, 2], [0, 0, 3, 0], [4, 5, 0, 0]]
@@ -202,7 +201,6 @@ class TestSparseConvert(unittest.TestCase):
         assert np.array_equal(dense_tensor.numpy(), x)
 
     def test_coo_values_grad(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
         values = [1.0, 2.0, 3.0, 4.0, 5.0]
         sparse_x = paddle.sparse.sparse_coo_tensor(
@@ -211,6 +209,7 @@ class TestSparseConvert(unittest.TestCase):
             shape=[3, 4],
             stop_gradient=False,
         )
+        sparse_x.retain_grads()
         values_tensor = sparse_x.values()
         out_grad = [2.0, 3.0, 5.0, 8.0, 9.0]
         # test coo_values_grad
@@ -230,6 +229,7 @@ class TestSparseConvert(unittest.TestCase):
             shape=[3, 4, 2],
             stop_gradient=False,
         )
+        sparse_x.retain_grads()
         values_tensor = sparse_x.values()
         out_grad = [
             [2.0, 2.0],
@@ -241,7 +241,6 @@ class TestSparseConvert(unittest.TestCase):
         # test coo_values_grad
         values_tensor.backward(paddle.to_tensor(out_grad))
         assert np.array_equal(out_grad, sparse_x.grad.values().numpy())
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_sparse_coo_tensor_grad(self):
         for device in devices:

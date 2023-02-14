@@ -15,11 +15,7 @@
 # limitations under the License.
 
 import numpy as np
-from dygraph_group_sharded_stage2 import (
-    MLP,
-    optimizer_setting,
-    reader_decorator,
-)
+from dygraph_group_sharded_stage2 import MLP, RandomDataset, optimizer_setting
 
 import paddle
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_optimizer_stage2 import (
@@ -41,30 +37,39 @@ np.random.seed(seed)
 paddle.seed(seed)
 
 
-def train_mlp(model, offload=False):
+def train_mlp(model, offload=False, test=False):
     optimizer = optimizer_setting(model=model, use_pure_fp16=True)
 
     model = paddle.amp.decorate(models=model, level='O2', save_dtype='float32')
     scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
     scaler = GroupShardedScaler(scaler)
 
+    dp_group = (
+        None
+        if not test
+        else paddle.distributed.new_group(
+            list(range(paddle.distributed.get_world_size()))
+        )
+    )
     optimizer = GroupShardedOptimizerStage2(
-        params=optimizer._parameter_list, optim=optimizer, offload=offload
+        params=optimizer._parameter_list,
+        optim=optimizer,
+        offload=offload,
+        dp_group=dp_group,
     )
-    model = GroupShardedStage2(model, optimizer, buffer_max_size=2**21)
+    model = GroupShardedStage2(
+        model, optimizer, buffer_max_size=2**21, dp_group=dp_group
+    )
 
-    train_reader = paddle.batch(
-        reader_decorator(linear_size), batch_size=batch_size, drop_last=True
+    paddle.seed(2023)
+    np.random.seed(2023)
+    train_loader = paddle.io.DataLoader(
+        RandomDataset(),
+        batch_size=batch_size,
+        shuffle=False,
+        drop_last=True,
+        num_workers=0,
     )
-
-    train_loader = paddle.io.DataLoader.from_generator(
-        capacity=32,
-        use_double_buffer=True,
-        iterable=True,
-        return_list=True,
-        use_multiprocess=True,
-    )
-    train_loader.set_sample_list_generator(train_reader)
 
     for eop in range(epoch):
         model.train()
@@ -110,6 +115,13 @@ def test_sharding_stage2_offload():
             rtol=5e-3,
             atol=5e-3,
         )
+
+    # just to test assert error for the rate of coverage
+    try:
+        train_mlp(mlp_offload, offload=True, test=True)
+    except Exception as e:
+        assert isinstance(e, AssertionError)
+
     return
 
 

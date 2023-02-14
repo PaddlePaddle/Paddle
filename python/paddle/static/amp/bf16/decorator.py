@@ -25,8 +25,6 @@ from .amp_utils import (
     rewrite_program_bf16,
 )
 
-__all__ = ["decorate_bf16"]
-
 
 class OptimizerWithMixedPrecision:
     """

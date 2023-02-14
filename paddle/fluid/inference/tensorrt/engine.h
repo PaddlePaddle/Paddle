@@ -292,6 +292,9 @@ class TensorRTEngine {
                      const std::string& name);
   // Set the itensor_map_[name] as the network's output, and set its name.
   void DeclareOutput(const std::string& name);
+  // Set the itensor_map_[name] as the network's output, and set its name and
+  // data type.
+  void DeclareOutput(const std::string& name, nvinfer1::DataType dtype);
   void ClearTensorMap() { itensor_map_.clear(); }
 
   void DeleteITensor(const std::string& name, nvinfer1::ITensor* tensor);
@@ -356,6 +359,12 @@ class TensorRTEngine {
     bool enable_fp16 = (precision_ == AnalysisConfig::Precision::kHalf);
     bool support_fp16 = infer_builder_->platformHasFastFp16();
     return enable_fp16 && support_fp16;
+  }
+
+  bool WithInt8() {
+    bool enable_int8 = (precision_ == AnalysisConfig::Precision::kInt8);
+    bool support_int8 = infer_builder_->platformHasFastInt8();
+    return enable_int8 && support_int8;
   }
 
   int GetDeviceId() { return device_id_; }

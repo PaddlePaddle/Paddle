@@ -20,10 +20,10 @@ from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
 from paddle.framework import core
 from paddle.utils import deprecated
 
+from ...common_ops_import import Variable
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid.framework import _current_expected_place, in_dygraph_mode
 from ...fluid.layer_helper import LayerHelper
-from ...static import Variable
 from ...tensor.manipulation import reshape
 
 __all__ = []
@@ -254,19 +254,41 @@ def fluid_softmax_with_cross_entropy(
             #        [1.15328646])
     """
     if in_dygraph_mode():
-        if core.is_compiled_with_npu():
-            softmax, backprop, loss = _legacy_C_ops.softmax_with_cross_entropy(
-                logits,
-                label,
-                'soft_label',
-                soft_label,
-                'ignore_index',
-                ignore_index,
-                'numeric_stable_mode',
-                numeric_stable_mode,
-                'axis',
-                axis,
-            )
+        if core.is_compiled_with_custom_device("npu"):
+            if not soft_label:
+                valid_label = (
+                    paddle.cast(label != ignore_index, dtype=label.dtype)
+                    * label
+                )
+                softmax, loss = _legacy_C_ops.softmax_with_cross_entropy(
+                    logits,
+                    valid_label,
+                    'soft_label',
+                    soft_label,
+                    'ignore_index',
+                    ignore_index,
+                    'numeric_stable_mode',
+                    numeric_stable_mode,
+                    'axis',
+                    axis,
+                    'use_softmax',
+                    True,
+                )
+            else:
+                softmax, loss = _legacy_C_ops.softmax_with_cross_entropy(
+                    logits,
+                    label,
+                    'soft_label',
+                    soft_label,
+                    'ignore_index',
+                    ignore_index,
+                    'numeric_stable_mode',
+                    numeric_stable_mode,
+                    'axis',
+                    axis,
+                    'use_softmax',
+                    True,
+                )
         else:
             softmax, loss = _C_ops.cross_entropy_with_softmax(
                 logits,
@@ -293,7 +315,9 @@ def fluid_softmax_with_cross_entropy(
         loss = helper.create_variable_for_type_inference(dtype=logits.dtype)
 
         outputs = {'Softmax': softmax, 'Loss': loss}
-        if core.is_compiled_with_npu() or core.is_compiled_with_mlu():
+        if core.is_compiled_with_custom_device(
+            "npu"
+        ) or core.is_compiled_with_custom_device("mlu"):
             backprop = helper.create_variable_for_type_inference(
                 dtype=logits.dtype
             )
@@ -521,8 +545,7 @@ def edit_distance(
             # [4]
 
     """
-    check_variable_and_dtype(input, 'input', ['int64'], 'edit_distance')
-    check_variable_and_dtype(label, 'label', ['int64'], 'edit_distance')
+
     helper = LayerHelper("edit_distance", **locals())
 
     # remove some tokens from input and labels
@@ -551,6 +574,8 @@ def edit_distance(
             input, label, input_length, label_length, normalized
         )
 
+    check_variable_and_dtype(input, 'input', ['int64'], 'edit_distance')
+    check_variable_and_dtype(label, 'label', ['int64'], 'edit_distance')
     this_inputs = {"Hyps": [input], "Refs": [label]}
     if input_length is not None and label_length is not None:
         this_inputs['HypsLength'] = [input_length]
@@ -1075,16 +1100,16 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
             print(output)
             # [0.068004]
     """
-    check_variable_and_dtype(
-        input, 'input', ['float32', 'float64'], 'smooth_l1_loss'
-    )
-    check_variable_and_dtype(
-        label, 'label', ['float32', 'float64'], 'smooth_l1_loss'
-    )
 
     if in_dygraph_mode():
         out, residual = _C_ops.huber_loss(input, label, delta)
     else:
+        check_variable_and_dtype(
+            input, 'input', ['float32', 'float64'], 'smooth_l1_loss'
+        )
+        check_variable_and_dtype(
+            label, 'label', ['float32', 'float64'], 'smooth_l1_loss'
+        )
         helper = LayerHelper('huber_loss', **locals())
         residual = helper.create_variable_for_type_inference(
             dtype=helper.input_dtype()
@@ -2572,9 +2597,11 @@ def cross_entropy(
             valid_label = (
                 paddle.cast(label != ignore_index, dtype=label.dtype) * label
             )
-        if core.is_compiled_with_npu() or core.is_compiled_with_mlu():
+        if core.is_compiled_with_custom_device(
+            "npu"
+        ) or core.is_compiled_with_custom_device("mlu"):
             if not soft_label:
-                _, _, out = _legacy_C_ops.softmax_with_cross_entropy(
+                _, out = _legacy_C_ops.softmax_with_cross_entropy(
                     input,
                     valid_label,
                     'soft_label',
@@ -2589,7 +2616,7 @@ def cross_entropy(
                     use_softmax,
                 )
             else:
-                _, _, out = _legacy_C_ops.softmax_with_cross_entropy(
+                _, out = _legacy_C_ops.softmax_with_cross_entropy(
                     input,
                     label,
                     'soft_label',
@@ -2743,7 +2770,9 @@ def cross_entropy(
         out = helper.create_variable_for_type_inference(dtype=input.dtype)
 
         outputs = {'Softmax': softmax, 'Loss': out}
-        if core.is_compiled_with_npu() or core.is_compiled_with_mlu():
+        if core.is_compiled_with_custom_device(
+            "npu"
+        ) or core.is_compiled_with_custom_device("mlu"):
             backprop = helper.create_variable_for_type_inference(
                 dtype=input.dtype
             )
@@ -3846,7 +3875,7 @@ def soft_margin_loss(input, label, reduction='mean', name=None):
     if not (input.shape == label.shape):
         raise ValueError("input's shape must equal to " "label's shape")
 
-    label = fluid.layers.cast(label, input.dtype)
+    label = paddle.cast(label, input.dtype)
     out = paddle.log(1 + paddle.exp(-label * input))
 
     if reduction == 'sum':

@@ -345,19 +345,16 @@ void FCFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
                     errors::PermissionDenied(
                         "Weight padding in fc can not be used in GPU scope."));
   auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
-  blas.GEMM(false,
-            false,
+  blas.GEMM(CblasNoTrans,
+            CblasNoTrans,
             M,
             N,
             K,
             static_cast<T>(1.0),
             X,
-            K,
             W,
-            N,
             static_cast<T>(0.0),
-            Y,
-            N);
+            Y);
   if (B == NULL) {
     return;
   }

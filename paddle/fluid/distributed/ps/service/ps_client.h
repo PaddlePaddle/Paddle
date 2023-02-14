@@ -24,6 +24,7 @@
 #include "paddle/fluid/distributed/common/cost_timer.h"
 #include "paddle/fluid/distributed/ps/service/env.h"
 #include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
+#include "paddle/fluid/distributed/ps/service/sparse_shard_value.h"
 #include "paddle/fluid/distributed/ps/table/accessor.h"
 #include "paddle/fluid/distributed/ps/table/graph/graph_node.h"
 #include "paddle/fluid/distributed/the_one_ps.pb.h"
@@ -67,12 +68,12 @@ class PSClient {
   PSClient(PSClient &&) = delete;
   PSClient(const PSClient &) = delete;
 
-  virtual int32_t Configure(
+  virtual int32_t Configure(  // NOLINT
       const PSParameter &config,
       const std::map<uint64_t, std::vector<paddle::distributed::Region>>
           &regions,
       PSEnvironment &_env,  // NOLINT
-      size_t client_id) final;
+      size_t client_id);
 
   virtual int32_t CreateClient2ClientConnection(int pserver_timeout_ms,
                                                 int pserver_connect_timeout_ms,
@@ -153,7 +154,8 @@ class PSClient {
                                                size_t table_id,
                                                const uint64_t *keys,
                                                size_t num,
-                                               uint16_t pass_id) {
+                                               uint16_t pass_id,
+                                               const uint16_t &dim_id = 0) {
     VLOG(0) << "Did not implement";
     std::promise<int32_t> promise;
     std::future<int> fut = promise.get_future();
@@ -328,6 +330,12 @@ class PSClient {
     std::future<int> fut = promise.get_future();
     promise.set_value(-1);
     return fut;
+  }
+  // add
+  virtual std::shared_ptr<SparseShardValues> TakePassSparseReferedValues(
+      const size_t &table_id, const uint16_t &pass_id, const uint16_t &dim_id) {
+    VLOG(0) << "Did not implement";
+    return nullptr;
   }
 
  protected:

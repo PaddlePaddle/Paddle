@@ -26,7 +26,7 @@ from paddle.fluid.executor import (
     _is_dy2st_enable_standalone_executor,
     _is_enable_standalone_executor,
 )
-from paddle.fluid.framework import _in_eager_mode_
+from paddle.fluid.framework import global_var
 from paddle.fluid.layers.utils import _hash_with_id
 
 paddle.enable_static()
@@ -131,7 +131,7 @@ class RunProgramOpTest(unittest.TestCase):
         forward_program = _add_build_strategy_for(program, 0, forward_op_num)
         backward_program = _add_build_strategy_for(
             program,
-            forward_op_num + 2 * output_num,
+            forward_op_num + output_num,
             program.desc.block(0).op_size(),
         )
         return forward_program.desc, backward_program.desc
@@ -177,7 +177,7 @@ class RunProgramOpTest(unittest.TestCase):
 
     def prepare_dygraph_input(self, place, return_param_list=False):
         def create_var_base(is_input, name, np_value, stop_gradient):
-            if _in_eager_mode_:
+            if global_var._in_eager_mode_:
                 var = core.eager.Tensor(
                     value=np_value, name=name, place=place, zero_copy=True
                 )
@@ -218,7 +218,7 @@ class RunProgramOpTest(unittest.TestCase):
         for name in self.output_names['Out']:
             outputs['Out'].append(create_var_base(False, name))
 
-        if _in_eager_mode_:
+        if global_var._in_eager_mode_:
             outputs['OutScope'] = [core.Scope()]
         else:
             outputs['OutScope'] = framework._varbase_creator(
@@ -403,7 +403,7 @@ class TestRunProgramOpWithFC(RunProgramOpTest):
         weight_attr = fluid.ParamAttr(
             name=self.input_names['Params'][0],
             learning_rate=0.5,
-            initializer=fluid.initializer.NumpyArrayInitializer(
+            initializer=paddle.nn.initializer.Assign(
                 self.inputs['Params'][self.input_names['Params'][0]]
             ),
             trainable=True,
@@ -411,7 +411,7 @@ class TestRunProgramOpWithFC(RunProgramOpTest):
         bias_attr = fluid.ParamAttr(
             name=self.input_names['Params'][1],
             learning_rate=0.5,
-            initializer=fluid.initializer.NumpyArrayInitializer(
+            initializer=paddle.nn.initializer.Assign(
                 self.inputs['Params'][self.input_names['Params'][1]]
             ),
             trainable=True,
@@ -460,8 +460,8 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
 
     def build_model(self):
         # 1. simple model
-        x = fluid.layers.data(
-            name=self.input_names['X'][0], shape=[5], dtype='int64'
+        x = paddle.static.data(
+            name=self.input_names['X'][0], shape=[-1, 5], dtype='int64'
         )
         emb = fluid.input.embedding(
             input=x,
@@ -469,7 +469,7 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
             param_attr=fluid.ParamAttr(
                 name="emb_weight",
                 learning_rate=10,
-                initializer=fluid.initializer.NumpyArrayInitializer(
+                initializer=paddle.nn.initializer.Assign(
                     self.inputs['Params'][self.input_names['Params'][0]]
                 ),
             ),

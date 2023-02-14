@@ -22,6 +22,7 @@ import numpy as np
 from predictor_utils import PredictorTools
 
 import paddle
+from paddle.fluid import core
 
 SEED = 2020
 IMAGENET1000 = 1281167
@@ -423,6 +424,20 @@ class TestResnet(unittest.TestCase):
             ),
         )
         self.verify_predict()
+
+    def test_resnet_composite(self):
+        core._set_prim_backward_enabled(True)
+        static_loss = self.train(to_static=True)
+        core._set_prim_backward_enabled(False)
+        dygraph_loss = self.train(to_static=False)
+        np.testing.assert_allclose(
+            static_loss,
+            dygraph_loss,
+            rtol=1e-05,
+            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
+                static_loss, dygraph_loss
+            ),
+        )
 
     def test_in_static_mode_mkldnn(self):
         paddle.fluid.set_flags({'FLAGS_use_mkldnn': True})

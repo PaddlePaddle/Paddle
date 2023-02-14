@@ -13,9 +13,8 @@
 # limitations under the License.
 
 from paddle import _legacy_C_ops
-from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import in_dygraph_mode
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.common_ops_import import check_variable_and_dtype
+from paddle.framework import LayerHelper, in_dygraph_mode
 
 
 def _number_count(numbers, upper_range):

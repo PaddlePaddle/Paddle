@@ -44,8 +44,7 @@ struct LoaderTypeClassifier {
   LoaderTypeClassifier() {}
   LoaderTypeClassifier(const std::vector<const DenseTensor *> &ins,
                        std::vector<DenseTensor *> *outs) {
-    int out_vec_size =
-        std::min(4, phi::GetVectorizedSize<OutT>((*outs)[0]->data<OutT>()));
+    uint64_t out_addr = reinterpret_cast<uint64_t>((*outs)[0]->data<OutT>());
     for (auto i = 1; i < outs->size(); ++i) {
       PADDLE_ENFORCE_EQ(
           (*outs)[i]->dims(),
@@ -54,10 +53,13 @@ struct LoaderTypeClassifier {
               "The shape of each output tensor shall be identical yet, but "
               "%d-th output tensor`s shape is not.",
               i));
-      out_vec_size = std::min(
-          phi::GetVectorizedSize<OutT>((*outs)[i]->data<OutT>()), out_vec_size);
+      out_addr =
+          (out_addr | reinterpret_cast<uint64_t>((*outs)[i]->data<OutT>()));
     }
+    int out_vec_size =
+        phi::GetVectorizedSize<OutT>(reinterpret_cast<OutT *>(out_addr));
 
+    uint64_t in_addr = static_cast<uint64_t>(0);
     numel = (*outs)[0]->numel();
     for (int i = 0; i < Arity; ++i) {
       auto in_data = ins[i]->data<InT>();
@@ -66,19 +68,17 @@ struct LoaderTypeClassifier {
       bool is_same_dim = ins[i]->numel() == numel;
       if (is_same_dim) {
         use_broadcast[i] = false;
-        auto temp_size = phi::GetVectorizedSize<InT>(in_data);
-        in_vec_size = std::min(temp_size, in_vec_size);
+        in_addr = (in_addr | reinterpret_cast<uint64_t>(in_data));
       } else {
         use_broadcast[i] = true;
         broadcast_num++;
       }
       all_elementwise &= is_same_dim;
     }
+    int in_vec_size = std::min(
+        4, phi::GetVectorizedSize<InT>(reinterpret_cast<InT *>(in_addr)));
     vec_size = std::min(out_vec_size, in_vec_size);
   }
-
- private:
-  int in_vec_size{4};
 };
 
 #ifndef PADDLE_WITH_XPU_KP

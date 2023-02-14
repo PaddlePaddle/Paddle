@@ -15,7 +15,7 @@
 from ..wrapped_decorator import signature_safe_contextmanager
 
 from .layer_function_generator import templatedoc
-from .tensor import assign, cast, fill_constant
+from .tensor import fill_constant
 from .. import core
 from ..framework import (
     Program,
@@ -466,7 +466,7 @@ class StaticRNN:
                         is_sparse=False)
                 # transform batch size to dim 1
                 x_emb = paddle.transpose(x_emb, perm=[1, 0, 2])
-                boot_memory = fluid.layers.data(name='boot', shape=[hidden_size], dtype='float32', lod_level=1)
+                boot_memory = paddle.static.data(name='boot', shape=[-1, hidden_size], dtype='float32', lod_level=1)
                 rnn = fluid.layers.StaticRNN()
                 with rnn.step():
                         # mark created x_emb as input, each step process a word
@@ -1058,7 +1058,7 @@ def assign_skip_lod_tensor_array(input, output):
         if isinstance(output, Variable) and isinstance(
             input, support_ret_buildin_type
         ):
-            assign(input, output)
+            paddle.assign(input, output)
         else:
             output = input
         return
@@ -1069,7 +1069,7 @@ def assign_skip_lod_tensor_array(input, output):
             main_program.current_block().parent_idx
         )
         if parent_block and not parent_block._find_var_recursive(input.name):
-            assign(input, output)
+            paddle.assign(input, output)
     else:
         if (
             isinstance(output, Variable)
@@ -1081,7 +1081,7 @@ def assign_skip_lod_tensor_array(input, output):
                     input.shape, output.shape
                 )
             )
-        assign(input, output)
+        paddle.assign(input, output)
 
 
 # (TODO: Mine) There exists dependency (jit.dy2static.convert_operators). It will be removed later.
@@ -1143,9 +1143,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         raise ValueError("loop_vars in while_loop should not be empty")
 
     pre_cond = cond(*loop_vars)
-    check_variable_and_dtype(
-        pre_cond, 'var of cond returned', ['bool'], 'fluid.layers.while_loop'
-    )
+
     if reduce(lambda a, b: a * b, pre_cond.shape, 1) != 1:
         raise TypeError(
             "the shape of the variable returned by cond should be [1],"
@@ -1167,6 +1165,12 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
         return loop_vars
     else:
+        check_variable_and_dtype(
+            pre_cond,
+            'var of cond returned',
+            ['bool'],
+            'fluid.layers.while_loop',
+        )
         while_loop_block = While(pre_cond, is_test, name)
         has_mutable_vars_in_loop = hold_mutable_vars(loop_vars)
         with while_loop_block.block():
@@ -1191,7 +1195,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                 )
             now_cond = cond(*output_vars)
             map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
-            assign(now_cond, pre_cond)
+            paddle.assign(now_cond, pre_cond)
         return loop_vars
 
 

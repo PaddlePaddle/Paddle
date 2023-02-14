@@ -142,6 +142,26 @@ void KLDivInferMeta(const MetaTensor& x,
 }
 
 void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      y_dims.size(),
+      phi::errors::InvalidArgument("The rank (%d) of X shall be same as "
+                                   "rank (%d) of Y.",
+                                   x_dims.size(),
+                                   y_dims.size()));
+
+  if (x_dims.size() > 0)
+    PADDLE_ENFORCE_LE(x_dims[0],
+                      y_dims[0],
+                      phi::errors::InvalidArgument(
+                          "The count (%d) of elements of X shall not "
+                          "greater than count (%d) of elements of Y.",
+                          x_dims[0],
+                          y_dims[0]));
+
   out->share_meta(x);
   if (x.dtype() == DataType::INT32 || x.dtype() == DataType::INT64 ||
       y.dtype() == DataType::INT32 || y.dtype() == DataType::INT64) {
@@ -381,7 +401,11 @@ void CompareAllInferMeta(const MetaTensor& x,
       errors::InvalidArgument(
           "The size of dim_y should not be greater than dim_x's."));
   out->share_lod(x);
-  out->set_dims(make_ddim({1}));
+  if (!x.dims().size() || !y.dims().size()) {
+    out->set_dims(make_ddim({}));
+  } else {
+    out->set_dims(make_ddim({1}));
+  }
   out->set_dtype(DataType::BOOL);
 }
 
@@ -442,6 +466,13 @@ void ConvInferMeta(const MetaTensor& input,
   }
   const bool channel_last = (config.is_run_mkldnn_kernel == false) &&
                             (data_format == "NHWC" || data_format == "NDHWC");
+
+  for (int i = 0; i < 2; ++i) {
+    PADDLE_ENFORCE_NE(in_dims[i],
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The size of Op(Conv) inputs should not be 0."));
+  }
 
   PADDLE_ENFORCE_EQ(
       in_dims.size() == 4 || in_dims.size() == 5,
@@ -1290,6 +1321,27 @@ void GatherInferMeta(const MetaTensor& x,
 
   auto input_dim = x.dims();
   auto axis_v = axis.to<int>();
+  if (axis_v < 0) axis_v += input_dim.size();
+
+  PADDLE_ENFORCE_GE(
+      axis_v,
+      (0 - input_dim.size()),
+      phi::errors::OutOfRange(
+          "Attr(axis) is out of range, It's expected "
+          "to be in range of [%d, %d]. But received Attr(axis) = %d.",
+          -input_dim.size(),
+          input_dim.size() - 1,
+          axis_v));
+  PADDLE_ENFORCE_LT(
+      axis_v,
+      input_dim.size(),
+      phi::errors::OutOfRange(
+          "Attr(axis) is out of range, It's expected "
+          "to be in range of [%d, %d]. But received Attr(axis) = %d.",
+          -input_dim.size(),
+          input_dim.size() - 1,
+          axis_v));
+
   if (index_dims.size() == 0) {
     // 0D index will decrease the dimension
     if (input_dim.size() == 1) {

@@ -27,15 +27,9 @@ paddle.enable_static()
 
 class TestWhileOp(unittest.TestCase):
     def simple_net(self):
-        d0 = layers.data(
-            "d0", shape=[10], append_batch_size=False, dtype='float32'
-        )
-        d1 = layers.data(
-            "d1", shape=[10], append_batch_size=False, dtype='float32'
-        )
-        d2 = layers.data(
-            "d2", shape=[10], append_batch_size=False, dtype='float32'
-        )
+        d0 = paddle.static.data("d0", shape=[10], dtype='float32')
+        d1 = paddle.static.data("d1", shape=[10], dtype='float32')
+        d2 = paddle.static.data("d2", shape=[10], dtype='float32')
         i = layers.zeros(shape=[1], dtype='int64')
         i.stop_gradient = True
         init = layers.zeros(shape=[10], dtype='float32')
@@ -60,7 +54,7 @@ class TestWhileOp(unittest.TestCase):
         with while_op.block():
             d = paddle.tensor.array_read(array=data_array, i=i)
             prev = paddle.tensor.array_read(array=mem_array, i=i)
-            result = layers.sums(input=[d, prev])
+            result = paddle.add_n([d, prev])
 
             i = paddle.increment(x=i)
             paddle.tensor.array_write(result, i=i, array=mem_array)
@@ -69,7 +63,7 @@ class TestWhileOp(unittest.TestCase):
             with while_op2.block():
                 d2 = paddle.tensor.array_read(array=data_array, i=j)
                 prev2 = paddle.tensor.array_read(array=mem_array, i=j)
-                result2 = layers.sums(input=[d2, prev2])
+                result2 = paddle.add_n([d2, prev2])
 
                 j = paddle.increment(x=j)
                 paddle.tensor.array_write(result2, i=j, array=mem_array)
@@ -122,7 +116,7 @@ class TestWhileOp(unittest.TestCase):
         cond = paddle.less_than(x=i, y=array_len)
         with self.assertRaises(TypeError):
             paddle.static.nn.control_flow.While(cond=cond)
-        cond = layers.cast(cond, dtype='float64')
+        cond = paddle.cast(cond, dtype='float64')
         with self.assertRaises(TypeError):
             paddle.static.nn.control_flow.While(cond=cond)
 
