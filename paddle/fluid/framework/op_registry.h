@@ -485,11 +485,28 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
   USE_OP_KERNEL(op_type)
 // clang-format on
 
+template <typename StructureKernel, typename enable = void>
+struct StructKernelImpl;
+
 template <typename StructureKernel>
-struct StructKernelImpl {
+struct StructKernelImpl<
+    StructureKernel,
+    typename std::enable_if<std::is_base_of<paddle::framework::OpKernelBase,
+                                            StructureKernel>::value>::type> {
   static void Compute(phi::KernelContext* ctx) {
     auto exe_ctx = static_cast<paddle::framework::ExecutionContext*>(ctx);
     StructureKernel().Compute(*exe_ctx);
+  }
+};
+
+template <typename StructureKernel>
+struct StructKernelImpl<
+    StructureKernel,
+    typename std::enable_if<!std::is_base_of<paddle::framework::OpKernelBase,
+                                             StructureKernel>::value>::type> {
+  static void Compute(phi::KernelContext* ctx) {
+    auto exe_ctx = static_cast<paddle::framework::ExecutionContext*>(ctx);
+    StructureKernel()(*exe_ctx);
   }
 };
 
