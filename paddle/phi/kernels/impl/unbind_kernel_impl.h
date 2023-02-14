@@ -32,8 +32,7 @@ void UnbindKernel(const Context& dev_ctx,
   for (size_t j = 0; j < outs.size(); ++j) {
     dev_ctx.template Alloc<T>(outs[j]);
     shape_refer.emplace_back(outs[j]);
-    outs[j]->inplace_version_counter_->inplace_version_ =
-        xx.inplace_version_counter_->inplace_version_;
+    outs[j]->inplace_version_counter_ = xx.inplace_version_counter_;
 
     outs[j]->share_buffer_with.push_back(&xx);
     xx.share_buffer_with.push_back(outs[j]);

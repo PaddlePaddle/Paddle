@@ -57,8 +57,7 @@ void DiagonalKernel(const Context& dev_ctx,
   int threads = PADDLE_CUDA_NUM_THREADS;
   int blocks = (out_numel + threads - 1) / threads;
   DenseTensor& xx = const_cast<DenseTensor&>(x);
-  out->inplace_version_counter_->inplace_version_ =
-      xx.inplace_version_counter_->inplace_version_;
+  out->inplace_version_counter_ = xx.inplace_version_counter_;
 
   xx.share_buffer_with.push_back(out);
   out->share_buffer_with.push_back(&xx);

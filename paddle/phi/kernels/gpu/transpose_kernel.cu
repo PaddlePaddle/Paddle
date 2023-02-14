@@ -32,8 +32,7 @@ void TransposeKernel(const Context& ctx,
                      DenseTensor* out) {
   ctx.template Alloc<T>(out);
   DenseTensor& xx = const_cast<DenseTensor&>(x);
-  out->inplace_version_counter_->inplace_version_ =
-      xx.inplace_version_counter_->inplace_version_;
+  out->inplace_version_counter_ = xx.inplace_version_counter_;
 
   xx.share_buffer_with.push_back(out);
   out->share_buffer_with.push_back(&xx);

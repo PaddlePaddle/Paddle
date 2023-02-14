@@ -35,8 +35,7 @@ void ReshapeInferKernel(const Context& dev_ctx,
   if (x.initialized() && x.Holder() == out->Holder()) {
     dev_ctx.Alloc(out, x.dtype());
     DenseTensor& xx = const_cast<DenseTensor&>(x);
-    out->inplace_version_counter_->inplace_version_ =
-        xx.inplace_version_counter_->inplace_version_;
+    out->inplace_version_counter_ = xx.inplace_version_counter_;
     xx.share_buffer_with.push_back(out);
     out->share_buffer_with.push_back(&xx);
     return;
@@ -49,8 +48,7 @@ void ReshapeInferKernel(const Context& dev_ctx,
   out->Resize(dims);
   out->ResetLoD(x.lod());
   DenseTensor& xx = const_cast<DenseTensor&>(x);
-  out->inplace_version_counter_->inplace_version_ =
-      xx.inplace_version_counter_->inplace_version_;
+  out->inplace_version_counter_ = xx.inplace_version_counter_;
 
   xx.share_buffer_with.push_back(out);
   out->share_buffer_with.push_back(&xx);
