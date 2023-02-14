@@ -83,8 +83,14 @@ PD_REGISTER_KERNEL(
 #endif
 
 #if defined(PADDLE_WITH_XPU)
-PD_REGISTER_KERNEL(
-    sum, XPU, ALL_LAYOUT, phi::SumKernel, float, int8_t, int64_t) {
+PD_REGISTER_KERNEL(sum,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::SumKernel,
+                   float,
+                   phi::dtype::float16,
+                   int8_t,
+                   int64_t) {
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
 }
 #endif

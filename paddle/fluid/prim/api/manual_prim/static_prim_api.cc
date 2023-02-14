@@ -38,111 +38,18 @@ namespace paddle {
 namespace prim {
 
 template <>
-Tensor pow<DescTensor>(const Tensor& x, const Scalar& y) {
-  Tensor out = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
+Tensor reshape<DescTensor>(const Tensor& x, const IntArray& shape) {
   framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
   framework::OpDesc* op = block->AppendOp();
-  op->SetType("pow");
+  // TODO(cxxly): Fix test_resnet_prim_cinn error when SetType("reshape2")
+  op->SetType("reshape");
   op->SetInput("X",
                {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
+  // Tensor out = empty<DescTensor>({}, x.dtype(), paddle::Place());
+  auto out = empty<DescTensor>({}, x.dtype(), paddle::Place());
   op->SetOutput(
       "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
-  op->SetAttr("factor", y.to<float>());
-  op->CheckAttrs();
-  op->InferVarType(block);
-  op->InferShape(*block);
-  return out;
-}
-
-template <>
-Tensor scale<DescTensor>(const Tensor& x,
-                         const Scalar& scale,
-                         float bias,
-                         bool bias_after_scale) {
-  Tensor out = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
-  framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
-  framework::OpDesc* op = block->AppendOp();
-  op->SetType("scale");
-  op->SetInput("X",
-               {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
-  op->SetOutput(
-      "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
-  op->SetAttr("scale", scale.to<float>());
-  op->SetAttr("bias", bias);
-  op->SetAttr("bias_after_scale", bias_after_scale);
-  op->CheckAttrs();
-  op->InferVarType(block);
-  op->InferShape(*block);
-  return out;
-}
-
-template <>
-Tensor multiply<DescTensor>(const Tensor& x, const Tensor& y) {
-  // Grad infershape
-  Tensor out = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
-  framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
-  framework::OpDesc* op = block->AppendOp();
-  op->SetType("elementwise_mul");
-  op->SetInput("X",
-               {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
-  op->SetInput("Y",
-               {std::static_pointer_cast<prim::DescTensor>(y.impl())->Name()});
-  op->SetOutput(
-      "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
-  op->CheckAttrs();
-  op->InferVarType(block);
-  op->InferShape(*block);
-  return out;
-}
-
-template <>
-Tensor unsqueeze<DescTensor>(const Tensor& x, const IntArray& axis) {
-  Tensor out = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
-  framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
-  framework::OpDesc* op = block->AppendOp();
-  op->SetType("unsqueeze2");
-  op->SetInput("X",
-               {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
-  op->SetOutput(
-      "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
-  std::vector<int> new_shape(axis.GetData().begin(), axis.GetData().end());
-  op->SetAttr("axes", new_shape);
-  op->CheckAttrs();
-  op->InferVarType(block);
-  op->InferShape(*block);
-  return out;
-}
-
-template <>
-Tensor expand<DescTensor>(const Tensor& x, const IntArray& shape) {
-  Tensor out = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
-  framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
-  framework::OpDesc* op = block->AppendOp();
-  op->SetType("expand_v2");
-  op->SetInput("X",
-               {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
-  op->SetOutput(
-      "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
-  std::vector<int> new_shape(shape.GetData().begin(), shape.GetData().end());
-  op->SetAttr("shape", new_shape);
-  op->CheckAttrs();
-  op->InferVarType(block);
-  return out;
-}
-
-template <>
-Tensor divide<DescTensor>(const Tensor& x, const Tensor& y) {
-  // Grad infershape
-  Tensor out = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
-  framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
-  framework::OpDesc* op = block->AppendOp();
-  op->SetType("elementwise_div");
-  op->SetInput("X",
-               {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
-  op->SetInput("Y",
-               {std::static_pointer_cast<prim::DescTensor>(y.impl())->Name()});
-  op->SetOutput(
-      "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
+  op->SetAttr("shape", unsafe_vector_cast<int64_t, int>(shape.GetData()));
   op->CheckAttrs();
   op->InferVarType(block);
   op->InferShape(*block);
@@ -186,70 +93,5 @@ Tensor full<DescTensor>(const IntArray& shape,
   return out;
 }
 
-template <>
-Tensor sum<DescTensor>(const Tensor& x,
-                       const IntArray& axis,
-                       DataType dtype,
-                       bool keepdim) {
-  // Grad infershape
-  Tensor out = empty<DescTensor>({}, dtype, paddle::Place());
-  framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
-  framework::OpDesc* op = block->AppendOp();
-  op->SetType("reduce_sum");
-  op->SetInput("X",
-               {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
-  std::vector<int> res;
-  for (auto value : axis.GetData()) {
-    res.push_back(static_cast<int>(value));
-  }
-  op->SetAttr("dim", res);
-  op->SetAttr("keep_dim", keepdim);
-  op->SetAttr("dtype", paddle::framework::TransToProtoVarType(dtype));
-  op->SetOutput(
-      "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
-  op->CheckAttrs();
-  op->InferVarType(block);
-  op->InferShape(*block);
-  return out;
-}
-
-template <>
-Tensor reshape<DescTensor>(const Tensor& x, const IntArray& shape) {
-  // Grad infershape
-  Tensor out = empty<DescTensor>({}, x.dtype(), paddle::Place());
-  framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
-  framework::OpDesc* op = block->AppendOp();
-  op->SetType("reshape");
-  op->SetInput("X",
-               {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
-  std::vector<int> res;
-  for (auto value : shape.GetData()) {
-    // TODO(jiabin): This cast is not safe for now, find a way to handle this.
-    res.push_back(static_cast<int>(value));
-  }
-  op->SetAttr("shape", res);
-  op->SetOutput(
-      "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
-  op->CheckAttrs();
-  op->InferVarType(block);
-  op->InferShape(*block);
-  return out;
-}
-
-template <>
-Tensor exp<DescTensor>(const Tensor& x) {
-  Tensor out = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
-  framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
-  framework::OpDesc* op = block->AppendOp();
-  op->SetType("exp");
-  op->SetInput("X",
-               {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
-  op->SetOutput(
-      "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
-  op->CheckAttrs();
-  op->InferVarType(block);
-  op->InferShape(*block);
-  return out;
-}
 }  // namespace prim
 }  // namespace paddle

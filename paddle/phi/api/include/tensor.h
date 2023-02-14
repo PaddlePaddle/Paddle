@@ -348,6 +348,24 @@ class PADDLE_API Tensor final {
   T* data();
 
   /**
+   * @brief Get the const memory pointer directly.
+   * It's usually used to get the output data pointer.
+   *
+   * @tparam T
+   * @return T*
+   */
+  const void* data() const;
+
+  /**
+   * @brief Get the memory pointer directly.
+   * It's usually used to get the mutable output data pointer.
+   *
+   * @tparam T
+   * @return T*
+   */
+  void* data();
+
+  /**
    * @brief Return a sub-tensor of the given tensor.
    * It is usually used to extract a sub-tensor (which supports
    * modifying the data of the original tensor) to perform further
@@ -614,6 +632,8 @@ class PADDLE_API Tensor final {
    */
   std::string name_{""};
 };
+
+PADDLE_API Tensor operator*(const Tensor& x, const Tensor& y);
 
 }  // namespace experimental
 }  // namespace paddle
