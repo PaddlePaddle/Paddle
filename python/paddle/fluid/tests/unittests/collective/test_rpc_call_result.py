@@ -28,9 +28,6 @@ RES_TYPE = 'str'
 # network
 in_query = fluid.data(name='X', shape=[-1, MAX_SIZE_QUERY], dtype='int32')
 in_url_id = fluid.data(name='url_id', shape=[1], dtype='int32')
-# req_id = fluid.data(name='rid', shape=[-1], dtype='int32')
-# out_succeed = fluid.data(name='succeed', shape=[1], dtype='bool')
-# out_data = fluid.data(name='Out', shape=[-1, MAX_SIZE_RESPONSE], dtype='uint8')
 
 req_ids = paddle.static.nn.rpc_call(
     in_query,
@@ -39,56 +36,22 @@ req_ids = paddle.static.nn.rpc_call(
     "/code_lp/ernie-bot/post-train/ernie_3.0_100b_no_distill/config/ernie3.0_vocab_multi_prompt_v9.txt",
     True,
 )
-out_data, out_succeed = paddle.static.nn.rpc_result(req_ids, "str", 4096)
+out_data, out_succeed = paddle.static.nn.rpc_result(req_ids, RES_TYPE, 4096)
 paddle.static.Print(in_query)
 paddle.static.Print(req_ids)
 paddle.static.Print(out_data.astype("int32"))
 
-# default_prog = fluid.default_main_program()
-# cur_block = default_prog.current_block()
-# cur_block.append_op(
-#     type='rpc_call',
-#     inputs={
-#         'X': in_query,
-#         'url_id': in_url_id,
-#     },
-#     outputs={'Out': req_id},
-#     attrs={
-#         'url_list': [
-#             'http://10.127.2.19:8082/run/predict',
-#             'http://10.174.140.91:2001/wenxin/inference',
-#         ],
-#         'vocab_path': '/work/Paddle/vocab.txt',
-#         'use_ids': USE_IDS,
-#     },
-# )
-# cur_block.append_op(
-#     type='rpc_result',
-#     inputs={
-#         'X': req_id,
-#     },
-#     outputs={
-#         'succeed': out_succeed,
-#         'Out': out_data,
-#     },
-#     attrs={
-#         'res_type': RES_TYPE,
-#     },
-# )
-
 # data
 # 货物很好
+# 货物很差
+
 query_tensor = np.array(
     [
         [29989, 29981, 2264, 1708, 1672, 1598],
-        [29989, 29981, 2264, 1708, 1672, 1598],
+        [29989, 29981, 2264, 1708, 1672, 2212],
     ]
 ).astype("int32")
-# 货物很差
-# query_tensor = np.array([29989, 29981, 2264, 1708, 1672, 2212])
-
 url_id_tensor = np.array([0], dtype='int32')
-
 
 # run
 exe = fluid.Executor(fluid.CUDAPlace(0))
