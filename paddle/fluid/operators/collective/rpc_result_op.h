@@ -108,7 +108,7 @@ class RpcResultOpKernel : public framework::OpKernel<T> {
     VLOG(3) << "out dims: " << out->dims().to_str();
     for (auto i = 0; i < request_id_tensor->dims()[0]; i++) {
       get_response(
-          ctx, request_id_tensor_vec[0], out->Slice(i, i + 1), res_type);
+          ctx, request_id_tensor_vec[i], out->Slice(i, i + 1), res_type);
     }
 
     auto* succeed = ctx.Output<phi::DenseTensor>("succeed");
