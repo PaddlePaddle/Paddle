@@ -183,6 +183,8 @@ def cast(x, dtype):
     if in_dygraph_mode():
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
+        if dtype == x.dtype:
+            return x
         return _C_ops.cast(x, dtype)
     else:
         check_variable_and_dtype(
