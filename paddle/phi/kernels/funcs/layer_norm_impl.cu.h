@@ -24,6 +24,7 @@ namespace cub = hipcub;
 
 #include <iostream>
 
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/core/ddim.h"
@@ -988,7 +989,7 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx,
 
     if (mask_ptr != nullptr) {
       if (d_dropout_src_ptr == nullptr) {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "To compute fused_dropout_residual_ln grad, d_dropout_src_ptr "
             "can't be null"));
       }
@@ -1100,8 +1101,8 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx,
     // #blocks: 32，#threads_per_block: 512
     // Note: it is not supported for double type.
     if (sizeof(U) > 4) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Only support float and fp16 type"));
+      PADDLE_THROW(
+          phi::errors::InvalidArgument("Only support float and fp16 type"));
     } else {
       int gridx_2 = 0;
 
@@ -1134,7 +1135,7 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx,
 #undef LAUNCH_LN_BWD_BETA_GAMMMA_KERNEL
     }
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "Fast layer_norm kernel is only used when feature_size is 1024"));
   }
 }
@@ -1922,11 +1923,11 @@ static void LayerNormBackward(
         constexpr int part_size = BDIMY2 * VPT;
         const dim3 blocks2((feature_size + BDIMX2 - 1) / BDIMX2, part_size, 1);
 
-        auto part_grad_gamma_ptr = memory::Alloc(
+        auto part_grad_gamma_ptr = paddle::memory::Alloc(
             dev_ctx.GetPlace(),
             part_size * feature_size * sizeof(U),
             phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-        auto part_grad_beta_ptr = memory::Alloc(
+        auto part_grad_beta_ptr = paddle::memory::Alloc(
             dev_ctx.GetPlace(),
             part_size * feature_size * sizeof(U),
             phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
