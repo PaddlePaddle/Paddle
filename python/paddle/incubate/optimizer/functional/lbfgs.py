@@ -103,6 +103,7 @@ def minimize_lbfgs(
         )
 
     op_name = 'minimize_lbfgs'
+    check_input_type(objective_func, 'objective_func', op_name)
     check_input_type(initial_position, 'initial_position', op_name)
 
     if initial_inverse_hessian_estimate is None:
