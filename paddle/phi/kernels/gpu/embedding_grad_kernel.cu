@@ -27,6 +27,16 @@ DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 
+#ifdef PADDLE_WITH_HIP
+#define WARP_SIZE 64
+#define BLOCKDIMY 16
+#else
+#define WARP_SIZE 32
+#define BLOCKDIMY 32
+#endif
+
+#define MASK 0xffffffff
+
 template <typename InT, typename OutT>
 __global__ void InputTypeConvert(const InT* in_ids,
                                  const int64_t K,
@@ -58,6 +68,81 @@ __global__ void EmbeddingGrad(T* table,
     }
 #endif
     idy += blockDim.y * gridDim.x;
+  }
+}
+
+template <typename T, typename IdT>
+__global__ void EmbeddingGradDeterministic(T* table,
+                                           const T* output,
+                                           const IdT* ids,
+                                           const int64_t K,
+                                           const int64_t D) {
+  extern __shared__ char buf[];
+  T* smem = reinterpret_cast<T*>(buf);
+  T* my_s = smem + WARP_SIZE * threadIdx.y;
+  int* indices_batch =
+      reinterpret_cast<int*>(buf + sizeof(T) * WARP_SIZE * blockDim.y);
+
+  const int s = static_cast<int>(D);
+
+  const int f = threadIdx.x + blockIdx.x * blockDim.x;
+
+  for (int batch_start = 0; batch_start < K;
+       batch_start += blockDim.x * blockDim.y) {
+    int tid = threadIdx.x + threadIdx.y * blockDim.x;
+    if (batch_start + tid < K)
+      indices_batch[tid] = static_cast<int>(ids[batch_start + tid]);
+
+    int batch_end = batch_start + blockDim.x * blockDim.y < K
+                        ? batch_start + blockDim.x * blockDim.y
+                        : K;
+
+    for (int chunk_start = batch_start; chunk_start < batch_end;
+         chunk_start += blockDim.y) {
+      __syncthreads();
+
+      int n_this_chunk = (batch_end - chunk_start) < blockDim.y
+                             ? (batch_end - chunk_start)
+                             : blockDim.y;
+
+      int src_row = chunk_start + threadIdx.y;
+      int dst_row = indices_batch[src_row - batch_start];
+      if (src_row < K && f < s)
+        my_s[threadIdx.x] = static_cast<T>(output[src_row * D + f]);
+
+      __syncthreads();
+
+      if (src_row < K) {
+        int match_found_this_thread = 0;
+        if (threadIdx.x < n_this_chunk)
+          match_found_this_thread =
+              (dst_row ==
+               indices_batch[chunk_start - batch_start + threadIdx.x]);
+#ifdef PADDLE_WITH_HIP
+        uint64_t matchmask = __ballot(match_found_this_thread);
+        int first_remaining_peer = __ffsll(matchmask) - 1;
+#else
+        unsigned int matchmask = __ballot_sync(MASK, match_found_this_thread);
+        int first_remaining_peer = __ffs(matchmask) - 1;
+#endif
+
+        if (threadIdx.y == first_remaining_peer) {
+          matchmask ^= (1 << first_remaining_peer);
+          while (matchmask) {
+#ifdef PADDLE_WITH_HIP
+            first_remaining_peer = __ffsll(matchmask) - 1;
+#else
+            first_remaining_peer = __ffs(matchmask) - 1;
+#endif
+            my_s[threadIdx.x] +=
+                smem[threadIdx.x + WARP_SIZE * first_remaining_peer];
+            matchmask ^= (1 << first_remaining_peer);
+          }
+          if (f < s)
+            table[dst_row * D + f] += static_cast<T>(my_s[threadIdx.x]);
+        }
+      }
+    }
   }
 }
 
@@ -104,13 +189,20 @@ struct EmbeddingGradCUDAFunctor {
       dim3 threads(128, 8);
       dim3 grids(gridx, 1);
 
+      dim3 threads2(WARP_SIZE, BLOCKDIMY);
+      dim3 grids2(static_cast<int>((D + WARP_SIZE - 1) / WARP_SIZE));
+
       if (FLAGS_cudnn_deterministic) {
-        VLOG(2) << "Run grad kernel of embedding with single thread.";
-        grids.x = 1;
-        threads.y = 1;
+        EmbeddingGradDeterministic<T, IdT>
+            <<<grids2,
+               threads2,
+               sizeof(T) * WARP_SIZE * BLOCKDIMY +
+                   sizeof(int) * WARP_SIZE * BLOCKDIMY,
+               dev_ctx_.stream()>>>(d_table, d_output, ids, K, D);
+      } else {
+        EmbeddingGrad<T, IdT><<<grids, threads, 0, dev_ctx_.stream()>>>(
+            d_table, d_output, ids, N, K, D);
       }
-      EmbeddingGrad<T, IdT><<<grids, threads, 0, dev_ctx_.stream()>>>(
-          d_table, d_output, ids, N, K, D);
     }
   }
 
