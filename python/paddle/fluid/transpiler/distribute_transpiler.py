@@ -50,7 +50,6 @@ from ..framework import (
 )
 from .details import wait_server_ready, UnionFind, VarStruct, VarsDistributed
 from .details import delete_ops, find_op_by_output_arg
-from ..distribute_lookup_table import find_distributed_lookup_table
 from . import collective
 
 LOOKUP_TABLE_TYPE = ["lookup_table", "lookup_table_v2"]
@@ -612,6 +611,9 @@ class DistributeTranspiler:
                     sync_mode=False,
                     current_endpoint="127.0.0.1:7000")
         """
+        from paddle.distributed.distribute_lookup_table import (
+            find_distributed_lookup_table,
+        )
 
         err_msg = """
 
