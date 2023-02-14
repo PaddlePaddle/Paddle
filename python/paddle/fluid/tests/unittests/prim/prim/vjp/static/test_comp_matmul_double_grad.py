@@ -33,37 +33,38 @@ core._set_prim_backward_enabled(True)
 @param.parameterized_class(
     ('primal0', 'primal1', 'primal2', 'trans_0', 'trans_1', 'dtype'),
     [
-        # (
-        #     np.random.rand(2),
-        #     np.random.rand(2),
-        #     np.random.rand(1),
-        #     False,
-        #     False,
-        #     np.float32,
-        # ),
-        # (
-        #     np.random.rand(2, 3),
-        #     np.random.rand(3),
-        #     np.random.rand(2),
-        #     False,
-        #     False,
-        #     np.float32,
-        # ),
-        # (
-        #     np.random.rand(2),
-        #     np.random.rand(2, 3),
-        #     np.random.rand(3),
-        #     False,
-        #     False,
-        #     np.float32,
-        # ),
-        # (
-        #     np.random.rand(2),
-        #     np.random.rand(3, 2),
-        #     False,
-        #     True,
-        #     np.float32,
-        # ),
+        (
+            np.random.rand(2),
+            np.random.rand(2),
+            np.random.rand(1),
+            False,
+            False,
+            np.float32,
+        ),
+        (
+            np.random.rand(2, 3),
+            np.random.rand(3),
+            np.random.rand(2),
+            False,
+            False,
+            np.float32,
+        ),
+        (
+            np.random.rand(2),
+            np.random.rand(2, 3),
+            np.random.rand(3),
+            False,
+            False,
+            np.float32,
+        ),
+        (
+            np.random.rand(2),
+            np.random.rand(3, 2),
+            np.random.rand(3),
+            False,
+            True,
+            np.float32,
+        ),
         (
             np.random.rand(2, 3, 4),
             np.random.rand(2, 4, 5),
@@ -72,46 +73,46 @@ core._set_prim_backward_enabled(True)
             False,
             np.float32,
         ),
-        # (
-        #     np.random.rand(2, 4, 3),
-        #     np.random.rand(2, 4, 5),
-        #     np.random.rand(2, 3, 5),
-        #     True,
-        #     False,
-        #     np.float32,
-        # ),
-        # (
-        #     np.random.rand(2, 3, 4),
-        #     np.random.rand(2, 5, 4),
-        #     np.random.rand(2, 3, 5),
-        #     False,
-        #     True,
-        #     np.float32,
-        # ),
-        # (
-        #     np.random.rand(2, 4, 3),
-        #     np.random.rand(2, 5, 4),
-        #     np.random.rand(2, 3, 5),
-        #     True,
-        #     True,
-        #     np.float32,
-        # ),
-        # (
-        #     np.random.rand(2, 3, 4),
-        #     np.random.rand(4),
-        #     np.random.rand(2, 3),
-        #     False,
-        #     False,
-        #     np.float32,
-        # ),
-        # (
-        #     np.random.rand(2, 1, 5, 2),
-        #     np.random.rand(1, 3, 2, 4),
-        #     np.random.rand(2, 3, 5, 4),
-        #     False,
-        #     False,
-        #     np.float32,
-        # ),
+        (
+            np.random.rand(2, 4, 3),
+            np.random.rand(2, 4, 5),
+            np.random.rand(2, 3, 5),
+            True,
+            False,
+            np.float32,
+        ),
+        (
+            np.random.rand(2, 3, 4),
+            np.random.rand(2, 5, 4),
+            np.random.rand(2, 3, 5),
+            False,
+            True,
+            np.float32,
+        ),
+        (
+            np.random.rand(2, 4, 3),
+            np.random.rand(2, 5, 4),
+            np.random.rand(2, 3, 5),
+            True,
+            True,
+            np.float32,
+        ),
+        (
+            np.random.rand(2, 3, 4),
+            np.random.rand(4),
+            np.random.rand(2, 3),
+            False,
+            False,
+            np.float32,
+        ),
+        (
+            np.random.rand(2, 1, 5, 2),
+            np.random.rand(1, 3, 2, 4),
+            np.random.rand(2, 3, 5, 4),
+            False,
+            False,
+            np.float32,
+        ),
     ],
 )
 class TestMatmulDoubleGradComp(unittest.TestCase):
@@ -177,10 +178,8 @@ class TestMatmulDoubleGradComp(unittest.TestCase):
                 y.stop_gradient = False
                 z.stop_gradient = False
                 out = paddle.matmul(x, y, trans_0, trans_1)
-                dout = paddle.ones_like(out, dtype='float32')
-                dout.stop_gradient = False
-                res = paddle.static.gradients([out], [x, y], dout)
-                res_double = paddle.static.gradients(res, [x, y, dout])
+                res = paddle.static.gradients([out], [x, y], z)
+                res_double = paddle.static.gradients(res, [x, y, z])
 
                 exe = paddle.static.Executor()
                 exe.run(sp)
@@ -204,35 +203,35 @@ class TestMatmulDoubleGradComp(unittest.TestCase):
             self.primal0, self.primal1, self.primal2, self.trans_0, self.trans_1
         )
 
-        # dx_, dy_, ddout_ = desired(
-        #     self.primal0, self.primal1, self.primal2, self.trans_0, self.trans_1
-        # )
+        dx_, dy_, ddout_ = desired(
+            self.primal0, self.primal1, self.primal2, self.trans_0, self.trans_1
+        )
 
-        print("dx:", dx)
-        print("dy:", dy)
-        print("ddout:", ddout)
+        # print("dx:", dx)
+        # print("dy:", dy)
+        # print("ddout:", ddout)
         # print("dx_: ", dx_)
         # print("dy_: ", dy_)
         # print("ddout_: ", ddout_)
 
-        # np.testing.assert_allclose(
-        #     actual=dx,
-        #     desired=dx_,
-        #     rtol=1e-6,
-        #     atol=0,
-        # )
-        # np.testing.assert_allclose(
-        #     actual=dy,
-        #     desired=dy_,
-        #     rtol=1e-6,
-        #     atol=0,
-        # )
-        # np.testing.assert_allclose(
-        #     actual=ddout,
-        #     desired=ddout_,
-        #     rtol=1e-6,
-        #     atol=0,
-        # )
+        np.testing.assert_allclose(
+            actual=dx,
+            desired=dx_,
+            rtol=1e-6,
+            atol=0,
+        )
+        np.testing.assert_allclose(
+            actual=dy,
+            desired=dy_,
+            rtol=1e-6,
+            atol=0,
+        )
+        np.testing.assert_allclose(
+            actual=ddout,
+            desired=ddout_,
+            rtol=1e-6,
+            atol=0,
+        )
 
 
 core._set_prim_backward_enabled(False)

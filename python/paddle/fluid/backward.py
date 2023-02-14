@@ -1488,23 +1488,31 @@ def _append_backward_ops_(
                 or name in input_grad_names_set
             )
             is_append_grad = False
-            for op_desc in grad_op_desc:
-                input_grad_names = [
-                    name
-                    for name in op_desc.input_arg_names()
-                    if is_grad_name(name)
-                ]
-                # some code of gradient ops, like increment, are not very
-                # standard, there is no @GRAD in these ops' inputs.
-                if len(input_grad_names) == 0:
-                    is_append_grad = True
-                    break
+            if core._is_bwd_prim_enabled():
+                for op_desc in grad_op_desc:
 
-                if _some_in_set_(input_grad_names, input_grad_names_set):
                     grad_op_descs.append(op_desc)
                     is_append_grad = True
                     for name in op_desc.output_arg_names():
                         input_grad_names_set.add(name)
+            else:
+                for op_desc in grad_op_desc:
+                    input_grad_names = [
+                        name
+                        for name in op_desc.input_arg_names()
+                        if is_grad_name(name)
+                    ]
+                    # some code of gradient ops, like increment, are not very
+                    # standard, there is no @GRAD in these ops' inputs.
+                    if len(input_grad_names) == 0:
+                        is_append_grad = True
+                        break
+
+                    if _some_in_set_(input_grad_names, input_grad_names_set):
+                        grad_op_descs.append(op_desc)
+                        is_append_grad = True
+                        for name in op_desc.output_arg_names():
+                            input_grad_names_set.add(name)
             if is_append_grad:
                 grad_to_var.update(op_grad_to_var)
         else:
