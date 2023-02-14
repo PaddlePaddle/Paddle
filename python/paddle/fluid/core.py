@@ -401,7 +401,7 @@ set_paddle_lib_path()
 # else:
 # # # _set_prim_all_enabled > FLAGS_prim_all == check_and_set_prim_all_enabled == _set_prim_backward_enabled == _set_prim_backward_enabled > FLAGS_prim_forward == FLAGS_prim_backward
 def __sync_stat_with_flag(flag):
-    if flag is "FLAGS_prim_forward":
+    if flag == "FLAGS_prim_forward":
         flag_value = os.getenv("FLAGS_prim_forward")
         assert flag_value is not None
         flag_value = flag_value.lower()
@@ -412,7 +412,7 @@ def __sync_stat_with_flag(flag):
         else:
             raise TypeError(f"flag {flag} should be true or false.")
         print("forward prim enabled: ", bool(_is_fwd_prim_enabled()))
-    elif flag is "FLAGS_prim_backward":
+    elif flag == "FLAGS_prim_backward":
         flag_value = os.getenv("FLAGS_prim_backward")
         assert flag_value is not None
         flag_value = flag_value.lower()
@@ -423,7 +423,7 @@ def __sync_stat_with_flag(flag):
         else:
             raise TypeError(f"flag {flag} should be true or false.")
         print("backward prim enabled: ", bool(_is_bwd_prim_enabled()))
-    elif flag is "FLAGS_prim_all":
+    elif flag == "FLAGS_prim_all":
         flag_value = os.getenv("FLAGS_prim_all")
         assert flag_value is not None
         flag_value = flag_value.lower()
