@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -97,7 +97,7 @@ static inline void CheckReduceRank(int reduce_rank, int rank) {
   }
 }
 
-static inline std::vector<int> GetReduceDim(const std::vector<int64_t>& dims,
+static inline std::vector<int> GetReduceDim(const std::vector<int64_t> &dims,
                                             int dim_size,
                                             bool reduce_all) {
   std::vector<int> reduce_dims;
@@ -137,8 +137,8 @@ static inline int64_t CeilingDiv(int64_t a, int64_t b) {
 }
 
 // Get strides of x_dim, reduce_dim and left_dim for reduceLastDim and reduceAny
-static inline std::vector<int> GetDimStrides(const std::vector<int>& dims,
-                                             const std::vector<int>& idx) {
+static inline std::vector<int> GetDimStrides(const std::vector<int> &dims,
+                                             const std::vector<int> &idx) {
   int n = static_cast<int>(idx.size());
   if (n == 0) return std::vector<int>();
   std::vector<int> strides(n);
@@ -160,7 +160,7 @@ template <bool ReduceLastDim = false>
 struct ReduceIndexMapping {
   const kps::DimConfig dim;
   int loop_size;
-  HOSTDEVICE ReduceIndexMapping(const kps::DimConfig& dims, int max_loop = 1)
+  HOSTDEVICE ReduceIndexMapping(const kps::DimConfig &dims, int max_loop = 1)
       : dim(dims), loop_size(max_loop) {}
 
 #ifdef PADDLE_WITH_XPU_KP
@@ -235,8 +235,8 @@ struct OneDimIndexCal {
 // reduce config
 template <typename Ty>
 struct ReduceConfig {
-  ReduceConfig(const std::vector<int>& origin_reduce_dims,
-               const std::vector<int>& origin_x_dim)
+  ReduceConfig(const std::vector<int> &origin_reduce_dims,
+               const std::vector<int> &origin_x_dim)
       : reduce_dims_origin(origin_reduce_dims), x_dim(origin_x_dim) {}
 
   std::vector<int> reduce_dims_origin;
@@ -251,12 +251,12 @@ struct ReduceConfig {
   bool should_reduce_again = false;
   bool reduce_last_dim = false;
   bool vectorize_input = false;
-  Ty* output_data;
+  Ty *output_data;
   dim3 block;
   dim3 grid;
 
   // Get the parameters of reduceKernel
-  void Run(const KPDevice& dev_ctx) {
+  void Run(const KPDevice &dev_ctx) {
     // step1: update the reduce_dim left_dim and x_dim
     SetReduceDim();
 
@@ -285,9 +285,9 @@ struct ReduceConfig {
 #endif  // PADDLE_WITH_XPU_KP
 
   // If should_reduce_again, we need malloc temp space for temp data
-  void SetOutputData(Ty* y_data,
-                     const KPDevice& dev_ctx,
-                     phi::DenseTensor* tmp) {
+  void SetOutputData(Ty *y_data,
+                     const KPDevice &dev_ctx,
+                     phi::DenseTensor *tmp) {
     if (should_reduce_again) {
       tmp->Resize(phi::make_ddim(
           {static_cast<int64_t>(left_num * grid.z * grid.y * sizeof(Ty))}));
@@ -434,7 +434,7 @@ struct ReduceConfig {
   }
 
 #ifndef PADDLE_WITH_XPU_KP
-  void SetBlockDimForReduceAny(dim3* block_dim, dim3* grid_dim) {
+  void SetBlockDimForReduceAny(dim3 *block_dim, dim3 *grid_dim) {
     constexpr int min_reduce_num_per_thread = 16;
     constexpr int max_reduce_num_per_thread = 256;
     constexpr int max_num_threads = kps::details::kReduceMaxThread;
@@ -455,8 +455,10 @@ struct ReduceConfig {
       block_dim->x = block_x;
       block_dim->y =
           std::min(block_y, static_cast<int>(max_num_threads / block_dim->x));
-      if(block_dim->y < static_cast<int>(max_num_threads / block_dim->x)){
+      if (block_dim->y < static_cast<int>(max_num_threads / block_dim->x)) {
         block_dim->x = GetBlockDim(reduce_num);
+        block_dim->y =
+            std::min(block_y, static_cast<int>(max_num_threads / block_dim->x));
       }
       grid_num = details::CeilingDiv(left_num, block_dim->y);
       reduce_num_per_thread_tmp = details::CeilingDiv(reduce_num, block_dim->x);
@@ -473,8 +475,9 @@ struct ReduceConfig {
     }
     int device_id = paddle::platform::GetCurrentDeviceId();
     int max_mp = paddle::platform::GetGPUMultiProcessors(device_id);
+    // This kernels max occupancy is 75%. So max threads is 2048*3/4=1536
     int max_threads_per_mp =
-        paddle::platform::GetGPUMaxThreadsPerMultiProcessor(device_id) * 3 / 4; // This kernels max occupancy is 75%. So max threads is 2048*3/4=1536
+        paddle::platform::GetGPUMaxThreadsPerMultiProcessor(device_id) * 3 / 4;
     int max_threads = max_threads_per_mp * max_mp;
     int num_threads = block_dim->x * block_dim->y;
     int max_num_blocks = max_threads / num_threads;
@@ -488,11 +491,13 @@ struct ReduceConfig {
     // to make each thread process as mush data as possible. Meanwhile,
     // the number cannot be larger than max_reduce_num_per_thread, so we
     // choose the maximum between the result above and input_split_num_2.
-    int input_split_num_1 =
-        details::CeilingDiv(reduce_num_per_thread_tmp, min_reduce_num_per_thread);
-    int input_split_num_2 =
-        details::CeilingDiv(reduce_num_per_thread_tmp, max_reduce_num_per_thread);
-    int input_split_num_3 = details::CeilingDiv(max_num_blocks, grid_num);
+    int input_split_num_1 = details::CeilingDiv(reduce_num_per_thread_tmp,
+                                                min_reduce_num_per_thread);
+    int input_split_num_2 = details::CeilingDiv(reduce_num_per_thread_tmp,
+                                                max_reduce_num_per_thread);
+    int input_split_num_3 = grid_num > 2 * max_mp
+                                ? 1
+                                : details::CeilingDiv(max_num_blocks, grid_num);
 
     grid_dim->x = grid_num;
     grid_dim->y = std::max(std::min(input_split_num_1, input_split_num_3),
@@ -501,15 +506,17 @@ struct ReduceConfig {
     // if grid.y > 1, we need launch reduce kernel again.
     if (grid_dim->y > 1) {
       should_reduce_again = true;
-      reduce_num_per_thread = details::CeilingDiv(reduce_num_per_thread_tmp, grid_dim->y);
     }
+
+    reduce_num_per_thread =
+        details::CeilingDiv(reduce_num_per_thread_tmp, grid_dim->y);
   }
 
   // Set block and grid for launch kernel
   // for ReduceHigherDim: if block is enough -> splite reduce_num
   //                     else init block(32, 1) grid(block_num, 1)
   // for others: block(block_num, 1) , grid(left_num, 1)
-  void SetBlockDimForHigher(dim3* block_dim, dim3* grid_dim) {
+  void SetBlockDimForHigher(dim3 *block_dim, dim3 *grid_dim) {
     int last_dim_num = x_dim.back();
     // Update left_num
     int grid_z = left_num / last_dim_num;
@@ -578,8 +585,8 @@ template <typename Tx,
           typename ReduceOp,
           typename TransformOp,
           typename Calculator>
-__global__ void ReduceAnyKernel(const Tx* x,
-                                Ty* y,
+__global__ void ReduceAnyKernel(const Tx *x,
+                                Ty *y,
                                 ReduceOp reducer,
                                 TransformOp transformer,
                                 MPType init,
@@ -603,24 +610,29 @@ __global__ void ReduceAnyKernel(const Tx* x,
   if (reduce_last_dim) {
     auto block = ReduceIndexMapping<true>(dim, left_num);
     input_idx = block.BlockIdY() * block.BlockDimX() * reduce_num_per_thread;
-    left_idx = block.BlockIdX() * block.BlockDimY() * block.GetLoopSize() + THREAD_ID_Y;
+    left_idx = block.BlockIdX() * block.BlockDimY() * block.GetLoopSize() +
+               THREAD_ID_Y;
     stride = block.BlockDimX();
     block_size = block.BlockDimX();
     need_store = (THREAD_ID_X == 0) && (left_idx < left_num);
-    store_offset = block.BlockIdY() * left_num + left_idx;
+    // store_offset = block.BlockIdY() * left_num + left_idx;
+    store_offset = block.BlockIdY() + left_idx * block.GridDimY();
     loop_left = min(block.GetLoopSize(), left_num - left_idx);
     stride_left = 1;
     tid = THREAD_ID_X;
+
   } else {
     auto block = ReduceIndexMapping<false>(dim, left_num);
     input_idx = block.BlockIdY() * block.BlockDimY() * reduce_num_per_thread;
-    left_idx = block.BlockIdX() * block.BlockDimX() * block.GetLoopSize() + THREAD_ID_X;
+    left_idx = block.BlockIdX() * block.BlockDimX() * block.GetLoopSize() +
+               THREAD_ID_X;
     stride = block.BlockDimY();
     block_size = block.BlockDimY();
     need_store = (THREAD_ID_Y == 0) && (left_idx < left_num);
     loop_left = min(block.GetLoopSize(), left_num - left_idx);
     stride_left = block.BlockDimX() * block.GridDimX();
-    store_offset = block.BlockIdY() * left_num + left_idx;
+    // store_offset = block.BlockIdY() * left_num + left_idx;
+    store_offset = block.BlockIdY() + left_idx * block.GridDimY();
     tid = THREAD_ID_Y;
   }
   // calculate the offset, means the addr where each thread really start.
@@ -633,10 +645,11 @@ __global__ void ReduceAnyKernel(const Tx* x,
   int bound = min(input_idx_tmp + reduce_num_per_thread * stride, reduce_num);
   for (int i = 0; i < loop_left; i += stride_left) {
     int input_offset = left_index_calculator(left_idx + i);
-    const _ptr_ Tx* input = x + input_offset;
+    const _ptr_ Tx *input = x + input_offset;
     MPType reduce_var = init;
-    
+
     input_idx = input_idx_tmp;
+
     for (; input_idx + REDUCE_VEC_SIZE * stride < bound;
          input_idx += REDUCE_VEC_SIZE * stride) {
       kps::ReadDataReduce<Tx,
@@ -656,6 +669,7 @@ __global__ void ReduceAnyKernel(const Tx* x,
                                  stride,
                                  kps::IdentityFunctor<Tx>(),
                                  reduce_last_dim);
+
       kps::ElementwiseUnary<Tx, MPType, REDUCE_VEC_SIZE, 1, TransformOp>(
           &input_compute[0], &input_reg[0], transformer);
       kps::Reduce<MPType,
@@ -684,6 +698,7 @@ __global__ void ReduceAnyKernel(const Tx* x,
                               stride,
                               transformer,
                               reduce_last_dim);
+
     kps::Reduce<MPType,
                 REDUCE_VEC_SIZE,
                 1,
@@ -693,6 +708,7 @@ __global__ void ReduceAnyKernel(const Tx* x,
 
     kps::Reduce<MPType, 1, 1, ReduceOp, kps::details::kGlobalMode>(
         &reduce_var, &reduce_var, reducer, reduce_last_dim);
+
     if (is_mean) {
       reduce_var = reduce_var * static_cast<MPType>(inverse_reduce_num);
     }
@@ -707,8 +723,8 @@ template <typename Tx,
           typename MPType,
           typename ReduceOp,
           typename TransformOp>
-__global__ void ReduceHigherDimKernel(const Tx* x,
-                                      Ty* y,
+__global__ void ReduceHigherDimKernel(const Tx *x,
+                                      Ty *y,
                                       ReduceOp reducer,
                                       TransformOp transformer,
                                       MPType init,
@@ -729,7 +745,7 @@ __global__ void ReduceHigherDimKernel(const Tx* x,
   int loop_size = min(reduce_num - idy, blocking_size);
   int store_offset = block.BlockIdY() * left_num + idz * block.GridDimY();
   int block_offset = idy * left_num + idz * reduce_num;
-  const _ptr_ Tx* input = x + block_offset;
+  const _ptr_ Tx *input = x + block_offset;
   Tx reduce_input;
 
   for (; idx < size; idx += stride) {
@@ -785,10 +801,10 @@ template <typename Tx,
           typename MPType,
           typename ReduceOp,
           typename TransformOp>
-static void LaunchReduceKernel(const Tx* x_data,
-                               Ty* y_data,
-                               const ReduceOp& reducer,
-                               const TransformOp& transform,
+static void LaunchReduceKernel(const Tx *x_data,
+                               Ty *y_data,
+                               const ReduceOp &reducer,
+                               const TransformOp &transform,
                                MPType init,
                                KPStream stream,
                                ReduceConfig<Ty> config,
@@ -816,11 +832,7 @@ static void LaunchReduceKernel(const Tx* x_data,
     auto block_num = config.block;
 #endif
 
-    if(config.should_reduce_again){
-      auto TwoStageReduceKernel0 = ReduceAnyKernel<Tx, Ty, MPType, ReduceOp, TransformOp, OneDimIndexCal>;
-      auto TwoStageReduceKernel1 = ReduceAnyKernel<Ty, Ty, MPType, ReduceOp, kps::IdentityFunctor<Ty, MPType>, OneDimIndexCal>;
-
-      TwoStageReduceKernel0
+    ReduceAnyKernel<Tx, Ty, MPType, ReduceOp, TransformOp, OneDimIndexCal>
         <<<grid_num, block_num, 0, stream>>>(
             x_data,
             config.output_data,
@@ -837,60 +849,6 @@ static void LaunchReduceKernel(const Tx* x_data,
             dim,
             is_mean && (!config.should_reduce_again));
 
-      dim3 block;
-      dim3 grid;
-      if (config.reduce_last_dim) {
-        block = dim3(128, 1, 1);
-        grid = dim3(details::CeilingDiv(config.left_num, 128), 1, 1);
-      } else {
-        block = dim3(config.block.x, 1, 1);
-        grid = dim3(config.grid.x, 1, config.grid.z);
-      }
-
-      int reduce_num_stage1 = config.grid.y * config.block.y;
-      int reduce_num_per_thread_stage1  = details::CeilingDiv(reduce_num_stage1, block.x);
-
-      kps::DimConfig dimStage2 =
-        kps::DimConfig(grid.x, grid.y, grid.z, block.x, reduce_num_stage1, 0);
-      dimStage2.SetRem(config.left_num % block.x, 0, 0);
-
-
-      TwoStageReduceKernel1
-        <<<grid, block, 0, stream>>>(
-          config.output_data,
-          y_data,
-          reducer,
-          kps::IdentityFunctor<Ty, MPType>(),
-          init,
-          reduce_num_stage1,
-          1.f / config.reduce_num,
-          reduce_num_per_thread_stage1,
-          config.left_num,
-          config.reduce_last_dim,
-          reduce_index_calculator,
-          left_index_calculator,
-          dimStage2,
-          is_mean
-        );
-      return;
-    } else {
-      ReduceAnyKernel<Tx, Ty, MPType, ReduceOp, TransformOp, OneDimIndexCal>
-        <<<grid_num, block_num, 0, stream>>>(
-            x_data,
-            config.output_data,
-            reducer,
-            transform,
-            init,
-            config.reduce_num,
-            1.f / config.reduce_num,
-            config.reduce_num,
-            config.left_num,
-            config.reduce_last_dim,
-            reduce_index_calculator,
-            left_index_calculator,
-            dim,
-            is_mean && (!config.should_reduce_again));
-    }
   } else {
     int reduce_rank = config.reduce_strides.size();
     int left_rank = config.left_strides.size();
@@ -937,6 +895,52 @@ static void LaunchReduceKernel(const Tx* x_data,
   if (config.should_reduce_again) {
     dim3 block;
     dim3 grid;
+    int reduce_num_stage1 = config.grid.y;
+    int block_dim_x_stage1 = min(128, reduce_num_stage1);
+    int block_dim_y_stage1 = details::CeilingDiv(128, block_dim_x_stage1);
+
+    block = dim3(block_dim_x_stage1, block_dim_y_stage1, 1);
+    grid = dim3(details::CeilingDiv(config.left_num, block_dim_y_stage1), 1, 1);
+
+    int reduce_num_per_thread_stage1 =
+        details::CeilingDiv(reduce_num_stage1, block.x);
+    auto left_index_calculator_stage1 = OneDimIndexCal(config.grid.y);
+
+    kps::DimConfig dimStage1 =
+        kps::DimConfig(grid.x, grid.y, grid.z, block.x, reduce_num_stage1, 0);
+    dimStage1.SetRem(config.left_num % block.x, 0, 0);
+
+    auto reduce_index_calculator_stage1 = OneDimIndexCal(1);
+
+    auto TwoStageReduceKernel1 =
+        ReduceAnyKernel<Ty,
+                        Ty,
+                        MPType,
+                        ReduceOp,
+                        kps::IdentityFunctor<Ty, MPType>,
+                        OneDimIndexCal>;
+
+    TwoStageReduceKernel1<<<grid, block, 0, stream>>>(
+        config.output_data,
+        y_data,
+        reducer,
+        kps::IdentityFunctor<Ty, MPType>(),
+        init,
+        reduce_num_stage1,
+        1.f / config.reduce_num,
+        reduce_num_per_thread_stage1,
+        config.left_num,
+        true,
+        reduce_index_calculator_stage1,
+        left_index_calculator_stage1,
+        dimStage1,
+        is_mean);
+  }
+
+#if 0
+  if (config.should_reduce_again) {
+    dim3 block;
+    dim3 grid;
     if (config.reduce_last_dim) {
       block = dim3(32, 1, 1);
       grid = dim3(details::CeilingDiv(config.left_num, 32), 1, 1);
@@ -973,6 +977,7 @@ static void LaunchReduceKernel(const Tx* x_data,
             config.reduce_num,
             is_mean);
   }
+#endif
 }
 
 #if !defined(PADDLE_WITH_XPU_KP)
@@ -983,15 +988,15 @@ template <typename Tx,
           typename TransformOp>
 static typename std::enable_if<!std::is_same<Tx, phi::dtype::float16>::value,
                                void>::type
-CubTensorReduceImpl(const Tx* x_data,
-                    Ty* y_data,
-                    const TransformOp& transform,
+CubTensorReduceImpl(const Tx *x_data,
+                    Ty *y_data,
+                    const TransformOp &transform,
                     int reduce_num,
-                    const KPDevice& dev_ctx,
+                    const KPDevice &dev_ctx,
                     KPStream stream) {
   auto reducer = ReduceOp<Ty>();
-  cub::TransformInputIterator<Ty, TransformOp, const Tx*> trans_x(x_data,
-                                                                  transform);
+  cub::TransformInputIterator<Ty, TransformOp, const Tx *> trans_x(x_data,
+                                                                   transform);
   size_t temp_storage_bytes = 0;
   cub::DeviceReduce::Reduce(nullptr,
                             temp_storage_bytes,
@@ -1004,7 +1009,7 @@ CubTensorReduceImpl(const Tx* x_data,
   phi::DenseTensor tmp = phi::Empty<uint8_t, phi::GPUContext>(
       dev_ctx, {static_cast<int64_t>(temp_storage_bytes)});
 
-  auto* temp_storage = dev_ctx.Alloc<uint8_t>(&tmp);
+  auto *temp_storage = dev_ctx.Alloc<uint8_t>(&tmp);
 
   cub::DeviceReduce::Reduce(temp_storage,
                             temp_storage_bytes,
@@ -1023,11 +1028,11 @@ template <typename Tx,
           typename TransformOp>
 static typename std::enable_if<std::is_same<Tx, phi::dtype::float16>::value,
                                void>::type
-CubTensorReduceImpl(const Tx* x_data,
-                    Ty* y_data,
-                    const TransformOp& transform,
+CubTensorReduceImpl(const Tx *x_data,
+                    Ty *y_data,
+                    const TransformOp &transform,
                     int reduce_num,
-                    const KPDevice& dev_ctx,
+                    const KPDevice &dev_ctx,
                     KPStream stream) {
   PADDLE_THROW(phi::errors::InvalidArgument(
       "Tx should not be float16 when using cub::DeviceReduce::Reduce()."));
@@ -1039,11 +1044,11 @@ template <typename Tx,
           template <typename>
           class ReduceOp,
           typename TransformOp>
-void ReduceKernel(const KPDevice& dev_ctx,
-                  const phi::DenseTensor& x,
-                  phi::DenseTensor* y,
-                  const TransformOp& transform,
-                  const std::vector<int>& origin_reduce_dims,
+void ReduceKernel(const KPDevice &dev_ctx,
+                  const phi::DenseTensor &x,
+                  phi::DenseTensor *y,
+                  const TransformOp &transform,
+                  const std::vector<int> &origin_reduce_dims,
                   bool is_mean = false) {
 #ifdef PADDLE_WITH_XPU_KP
   auto stream = dev_ctx.x_context()->xpu_stream;
@@ -1055,8 +1060,8 @@ void ReduceKernel(const KPDevice& dev_ctx,
   auto x_dim = phi::vectorize<int>(x.dims());
 
   if (x_dim.size() == 0) {
-    std::vector<const DenseTensor*> inputs = {&x};
-    std::vector<DenseTensor*> outputs = {y};
+    std::vector<const DenseTensor *> inputs = {&x};
+    std::vector<DenseTensor *> outputs = {y};
     funcs::ElementwiseKernel<Ty>(dev_ctx, inputs, &outputs, transform);
     return;
   }
@@ -1076,8 +1081,8 @@ void ReduceKernel(const KPDevice& dev_ctx,
   auto y_data = y->data<Ty>();
 
   if (config.reduce_num == 1) {
-    std::vector<const DenseTensor*> inputs = {&x};
-    std::vector<DenseTensor*> outputs = {y};
+    std::vector<const DenseTensor *> inputs = {&x};
+    std::vector<DenseTensor *> outputs = {y};
     funcs::ElementwiseKernel<Ty>(dev_ctx, inputs, &outputs, transform);
     return;
   }
@@ -1200,10 +1205,10 @@ template <typename DeviceContext,
           size_t D,
           size_t R_D,
           typename Functor>
-void ReduceFunctor(const DeviceContext& context,
-                   const phi::DenseTensor& input,
-                   phi::DenseTensor* output,
-                   const std::vector<int64_t>& dims,
+void ReduceFunctor(const DeviceContext &context,
+                   const phi::DenseTensor &input,
+                   phi::DenseTensor *output,
+                   const std::vector<int64_t> &dims,
                    bool keep_dim) {
   auto x = EigenTensor<T, D>::From(input);
   auto x_rank = static_cast<int>(x.dimensions().size());
@@ -1225,7 +1230,7 @@ void ReduceFunctor(const DeviceContext& context,
                       dims_vector.end());
     out_dims = phi::make_ddim(dims_vector);
   }
-  auto& place = *context.eigen_device();
+  auto &place = *context.eigen_device();
   Functor functor;
 
   if (D == 1) {
@@ -1244,10 +1249,10 @@ void ReduceFunctor(const DeviceContext& context,
   }
 //////////////// HandleLargeDim
 
-inline void GetShuffledDim(const DDim& src_dims,
-                           DDim* dst_dims,
-                           const std::vector<int64_t>& reduced_dims,
-                           std::vector<int>* perm_axis) {
+inline void GetShuffledDim(const DDim &src_dims,
+                           DDim *dst_dims,
+                           const std::vector<int64_t> &reduced_dims,
+                           std::vector<int> *perm_axis) {
   // check if it's a reduced dim
   std::vector<bool> src_dims_check(src_dims.size(), false);
   size_t src_size = src_dims.size();
@@ -1277,10 +1282,10 @@ inline void GetShuffledDim(const DDim& src_dims,
 }
 
 template <typename DeviceContext, typename OutT>
-void GetShuffledInput(const DeviceContext& dev_ctx,
-                      const phi::DenseTensor& input,
-                      phi::DenseTensor* shuffled_input,
-                      const std::vector<int64_t>& dims) {
+void GetShuffledInput(const DeviceContext &dev_ctx,
+                      const phi::DenseTensor &input,
+                      phi::DenseTensor *shuffled_input,
+                      const std::vector<int64_t> &dims) {
   DDim shuffled_dims(input.dims());
   std::vector<int> perm_axis(input.dims().size());
   GetShuffledDim(input.dims(), &shuffled_dims, dims, &perm_axis);
@@ -1293,10 +1298,10 @@ void GetShuffledInput(const DeviceContext& dev_ctx,
 }
 
 template <typename DeviceContext, typename OutT, typename Functor>
-void HandleLargeDim(const DeviceContext& dev_ctx,
-                    const phi::DenseTensor& input,
-                    phi::DenseTensor* output,
-                    const std::vector<int64_t>& dims,
+void HandleLargeDim(const DeviceContext &dev_ctx,
+                    const phi::DenseTensor &input,
+                    phi::DenseTensor *output,
+                    const std::vector<int64_t> &dims,
                     bool keep_dim) {
   //  shuffle the reduced dim to the end
   phi::DenseTensor shuffled_input;
@@ -1330,10 +1335,10 @@ void HandleLargeDim(const DeviceContext& dev_ctx,
 ////////////// ReduceKernel
 
 template <typename DeviceContext, typename T, typename OutT, typename Functor>
-void ReduceKernelImpl(const DeviceContext& dev_ctx,
-                      const phi::DenseTensor& input,
-                      phi::DenseTensor* output,
-                      const std::vector<int64_t>& dims,
+void ReduceKernelImpl(const DeviceContext &dev_ctx,
+                      const phi::DenseTensor &input,
+                      phi::DenseTensor *output,
+                      const std::vector<int64_t> &dims,
                       bool keep_dim,
                       bool reduce_all) {
   dev_ctx.template Alloc<OutT>(output);
@@ -1342,7 +1347,7 @@ void ReduceKernelImpl(const DeviceContext& dev_ctx,
     // Flatten and reduce 1-D tensor
     auto x = EigenVector<OutT>::Flatten(input);
     auto out = EigenScalar<OutT>::From(*output);
-    auto& dev = *dev_ctx.eigen_device();
+    auto &dev = *dev_ctx.eigen_device();
     auto reduce_dim = Eigen::array<int, 1>({{0}});
 
     Functor functor;
