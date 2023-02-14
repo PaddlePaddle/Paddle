@@ -164,6 +164,15 @@ class TestLbfgs(unittest.TestCase):
             ValueError, test_static_graph_H0, func, x2, H0=H1, dtype='float64'
         )
 
+    def test_exceptionOne(self):
+        def func(x):
+            return lambda x: paddle.dot(x, x)
+
+        x0 = np.array([2.4]).astype('float32')
+        self.assertRaises(
+            ValueError, test_static_graph, func, x0, dtype='float32'
+        )
+
 
 if __name__ == '__main__':
     unittest.main()
