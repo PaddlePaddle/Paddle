@@ -195,6 +195,8 @@ FORWARD_FUNCTION_TEMPLATE = """
   VLOG(3) << \"Running AD API: \" << \"{}\";
   // Dygraph Record Event
 {}
+  // Check Inputs whether Can Not Use
+{}
   // AMP Logic
 {}
   // Layout autotune
@@ -250,6 +252,8 @@ FORWARD_ONLY_FUNCTION_TEMPLATE = """
   FLAGS_tensor_operants_mode = "eager";
   VLOG(3) << \"Running AD API: \" << \"{}\";
   // Dygraph Record Event
+{}
+  // CHECK Inputs Whether Can Not Use
 {}
   // AMP Logic
 {}
@@ -415,7 +419,15 @@ BUMP_INPLACE_VERSION_TEMPLATE = """
   {}.bump_inplace_version();
   VLOG(3) << \"Tensor(\" << {}.name() << \") uses Inplace Strategy.\";
 """
-
+CHECK_CAN_NOT_USE_TEMPLATE = """
+    VLOG(5) << "Check DenseTensor whether Can Not Use";
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> input_tensors_vector = {};
+    for(auto& xx : input_tensors_vector) {
+        if (xx.can_not_use()) {
+            VLOG(WARNING) << "Find a Tensor Can Not Use For Input";
+        }
+    }
+"""
 AMP_LOGIC_TEMPLATE = """  if (egr::Controller::Instance().GetAMPLevel() != paddle::imperative::AmpLevel::O0) {{
     VLOG(5) << "Check and Prepare For AMP";
     {}
@@ -1586,6 +1598,9 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         amp_call_str = (
             f"return {forward_ad_function_name}({amp_inputs_call_args_str});"
         )
+        can_not_use_check_str = CHECK_CAN_NOT_USE_TEMPLATE.format(
+            amp_tensors_vector_list_str
+        )
         if is_inplaced or (forward_api_name == "cast"):
             amp_logic_str = "\n VLOG(5) << \" No AMP for {} because it is a inplace or cast api. \"; ".format(
                 forward_ad_function_name
@@ -1643,6 +1658,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     inputs_args_definition_str,
                     forward_api_name,
                     dygraph_event_str,
+                    can_not_use_check_str,
                     amp_logic_str,
                     layout_logic_str,
                     forward_api_name,
@@ -1663,6 +1679,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 inputs_args_definition_str,
                 forward_api_name,
                 dygraph_event_str,
+                can_not_use_check_str,
                 amp_logic_str,
                 layout_logic_str,
                 inputs_autograd_meta_str,
@@ -2026,6 +2043,11 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
             is_optional = name in self.optional_inputs
             tensor_wrapper_recover_str = f"{indent}auto {transformed_tensor_name} = egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name});"
+            tensor_wrapper_recover_str += (
+                "if {}->can_not_use() VLOG(WARNING) <<{};".format(
+                    transformed_tensor_name, "Find Input Which Can Not Use"
+                )
+            )
             if backward_inplace_map and name in backward_inplace_map.keys():
                 if has_higher_order_node:
                     if (
