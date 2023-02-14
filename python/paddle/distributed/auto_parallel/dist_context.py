@@ -442,14 +442,13 @@ class DistributedContext:
                 self._serial_graph = framework.IrGraph(
                     core.Graph(self._serial_main_program.desc)
                 )
-                print("context-graph-build: ", time.time() - start_time, flush=True)
+                # print("context-graph-build: ", time.time() - start_time, flush=True)
                 self._init_dist_attr_for_graph()
                 start_time = time.time()
                 self._need_copy_dist_attr_to_graph = False
-                print("context-graph-dist: ", time.time() - start_time, flush=True)
+                # print("context-graph-dist: ", time.time() - start_time, flush=True)
 
         if self._need_copy_dist_attr_to_graph and with_graph:
-            # print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% here 1234", flush=True)
             self.copy_dist_attr_from_program_to_graph()
 
     def add_process_mesh(self, process_mesh):
@@ -649,7 +648,7 @@ class DistributedContext:
         for idx, graph in enumerate(self._serial_graph.all_sub_graphs()):
             for node in graph.all_nodes():
                 all_nodes.append(node)
-        print("context-graph-dist-ordering-0: ", time.time() - start_time, flush=True)
+        # print("context-graph-dist-ordering-0: ", time.time() - start_time, flush=True)
         start_time = time.time()
         for node in all_nodes:
             if node.is_var() and node.var() is not None:
@@ -657,17 +656,17 @@ class DistributedContext:
                 visited[_node_id(node)] = False
             if node.is_op() and node.op() is not None:
                 serial_ordered_op_nodes.append(node)
-        print("context-graph-dist-ordering-1: ", time.time() - start_time, flush=True)
+        # print("context-graph-dist-ordering-1: ", time.time() - start_time, flush=True)
         start_time = time.time()
         serial_ordered_tensor_nodes.sort(
             key=lambda node: node.node.original_desc_id()
         )
-        print("context-graph-dist-ordering-2: ", time.time() - start_time, flush=True)
+        # print("context-graph-dist-ordering-2: ", time.time() - start_time, flush=True)
         start_time = time.time()
         serial_ordered_op_nodes.sort(
             key=lambda node: node.node.original_desc_id()
         )
-        print("context-graph-dist-ordering-3: ", time.time() - start_time, flush=True)
+        # print("context-graph-dist-ordering-3: ", time.time() - start_time, flush=True)
         start_time = time.time()
         num_nodes_before = len(serial_ordered_tensor_nodes) + len(
             serial_ordered_op_nodes
@@ -720,18 +719,18 @@ class DistributedContext:
             tensor_nodes.sort(key=lambda node: node.node.original_desc_id())
             tmp_time += time.time() - inner_start_time
             new_serial_ordered_nodes.extend(tensor_nodes)
-        print("context-graph-dist-ordering-4: ", tmp_time, flush=True)
-        print("context-graph-dist-ordering-5: ", time.time() - start_time, flush=True)
+        # print("context-graph-dist-ordering-4: ", tmp_time, flush=True)
+        # print("context-graph-dist-ordering-5: ", time.time() - start_time, flush=True)
         start_time = time.time()
         new_serial_ordered_tensor_nodes.sort(
             key=lambda node: node.node.original_desc_id()
         )
-        print("context-graph-dist-ordering-6: ", time.time() - start_time, flush=True)
+        # print("context-graph-dist-ordering-6: ", time.time() - start_time, flush=True)
         start_time = time.time()
         new_serial_ordered_op_nodes.sort(
             key=lambda node: node.node.original_desc_id()
         )
-        print("context-graph-dist-ordering-7: ", time.time() - start_time, flush=True)
+        # print("context-graph-dist-ordering-7: ", time.time() - start_time, flush=True)
         start_time = time.time()
         self._serial_ordered_tensor_nodes = new_serial_ordered_tensor_nodes
         self._serial_ordered_op_nodes = new_serial_ordered_op_nodes
@@ -749,12 +748,7 @@ class DistributedContext:
                 if self._tensor_nodes_with_same_name[graph_id].get(tensor_name, None) is None:
                     self._tensor_nodes_with_same_name[graph_id][tensor_name] = []
                 self._tensor_nodes_with_same_name[graph_id][tensor_name].append((idx, node))
-        # for graph_id, graph_nodes in self._tensor_nodes_with_same_name.items():
-        #     print("graph nodes: ", graph_id, flush=True)
-        #     for tensor_name, tensor_nodes in graph_nodes.items():
-        #         print("tensor nodes: ", tensor_name, tensor_nodes, flush=True)
-
-        print("context-graph-dist-ordering-8: ", time.time() - start_time, flush=True)
+        # print("context-graph-dist-ordering-8: ", time.time() - start_time, flush=True)
 
         start_time = time.time()
         self._serial_orphan_tensor_nodes = []
@@ -766,25 +760,13 @@ class DistributedContext:
             print(
                 "WARNING: there are some orphan tensors or ops which are not used in the execution."
             )
-        print("context-graph-dist-ordering-9: ", time.time() - start_time, flush=True)
-        for node in serial_ordered_tensor_nodes:
-            print("[before ordering] t: ", _node_id(node), node.var().name(),flush=True)
-        for node in serial_ordered_op_nodes:
-            print("[before ordering] o: ", _node_id(node), node.op().type(), flush=True)
-        for node in new_serial_ordered_tensor_nodes:
-            print("[after  ordering] t: ", _node_id(node), node.var().name(),flush=True)
-        for node in new_serial_ordered_op_nodes:
-            print("[after  ordering] o: ", _node_id(node), node.op().type(), flush=True)
-        for node in self._serial_orphan_tensor_nodes:
-            print("[after  ordering] a: ", _node_id(node), node.var().name(), flush=True)
-        for node in new_serial_ordered_nodes:
-            print("[after  ordering] o: ", _node_id(node), flush=True)
+        # print("context-graph-dist-ordering-9: ", time.time() - start_time, flush=True)
 
     def _init_dist_attr_for_graph(self):
         # Convert program to graph and initialize the distributed attributes
         start_time = time.time()
         self._order_nodes_by_program_order()
-        print("context-graph-dist-ordering: ", time.time() - start_time, flush=True)
+        # print("context-graph-dist-ordering: ", time.time() - start_time, flush=True)
         start_time = time.time()
         self._tensor_original_id_to_id = {}
         self._op_original_id_to_id = {}
@@ -794,7 +776,7 @@ class DistributedContext:
         for op_id, op in self._dist_ops_for_program.items():
             original_id = op.serial_op.desc.original_id()
             self._op_original_id_to_id[original_id] = op_id
-        print("context-graph-dist-mapping: ", time.time() - start_time, flush=True)
+        # print("context-graph-dist-mapping: ", time.time() - start_time, flush=True)
         start_time = time.time()
         for node in self.serial_ordered_nodes:
             if node.is_var() and node.var() is not None:
@@ -841,15 +823,7 @@ class DistributedContext:
                     dist_op.serial_op, dist_op.dist_attr
                 )
                 self._dist_ops_for_graph[serial_op_node_id] = new_dist_op
-        print("context-graph-dist-init: ", time.time() - start_time, flush=True)
-        for node_id, dist_tensor in self._dist_tensors_for_graph.items():
-            print("graph dist tensor: ", node_id, dist_tensor.serial_tensor.desc.id(), flush=True)
-        for node_id, dist_op in self._dist_ops_for_graph.items():
-            print("graph dist     op: ", node_id, dist_op.serial_op.desc.id(), flush=True)
-        for node_id, id in self._node_id_to_tensor_id.items():
-            print("graph dist tensor node_id: ", node_id, id, flush=True)
-        for node_id, id in self._node_id_to_op_id.items():
-            print("graph dist     op node_id: ", node_id, id, flush=True)
+        # print("context-graph-dist-init: ", time.time() - start_time, flush=True)
 
     def clear_dist_info_for_program(self):
         self._dist_tensors_for_program.clear()
@@ -1308,10 +1282,10 @@ class UpDownStream:
         self.add_up_stream(down, up)
         self.add_down_stream(up, down)
         self.add_down_stream(down, -1)
-        print(up, "'s upstream is ", self.ups(up))
-        print(down, "'s upstream is ", self.ups(down))
-        print(up, "'s downstream is ", self.downs(up))
-        print(down, "'s downstream is ", self.downs(down))
+        # print(up, "'s upstream is ", self.ups(up))
+        # print(down, "'s upstream is ", self.ups(down))
+        # print(up, "'s downstream is ", self.downs(up))
+        # print(down, "'s downstream is ", self.downs(down))
 
     def ups(self, rank):
         ups = self._ups.get(rank, None)

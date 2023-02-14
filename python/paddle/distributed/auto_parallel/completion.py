@@ -798,20 +798,20 @@ class Completer:
 
             start_time = time.time()
             self._prepare()
-            print("completion-prepare: ", time.time() - start_time, flush=True)
+            # print("completion-prepare: ", time.time() - start_time, flush=True)
 
             start_time = time.time()
             self._update_process_mesh()
-            print("completion-mesh: ", time.time() - start_time, flush=True)
+            # print("completion-mesh: ", time.time() - start_time, flush=True)
 
             start_time = time.time()
             self._update_dims_mapping()
-            print("graph-dims: ", time.time() - start_time, flush=True)
+            # print("graph-dims: ", time.time() - start_time, flush=True)
 
             start_time = time.time()
             # Copy the corresponding distributed attribute from graph to serial_main_program
             self._dist_context.copy_dist_attr_from_graph_to_program()
-            print("completion-copy: ", time.time() - start_time, flush=True)
+            # print("completion-copy: ", time.time() - start_time, flush=True)
         else:
             self._dist_context.initialize(with_graph=False)
 
