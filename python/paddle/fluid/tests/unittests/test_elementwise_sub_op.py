@@ -120,6 +120,7 @@ class TestBF16ElementwiseOp(OpTest):
 class TestElementwiseFP16Op(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
+        self.python_api = sub_wrapper()
         self.dtype = np.float16
         ref_dtype = np.float32
 
