@@ -824,6 +824,20 @@ static void LaunchReduceKernel(const Tx* x_data,
                                         0);
     dim.SetRem(config.reduce_num % config.block.x, 0, 0);
 
+    printf("stage0: grid=[%d, %d], block=[%d, %d]\n",
+           config.grid.x,
+           config.grid.y,
+           config.block.x,
+           config.block.y);
+    // printf("stage1: grid=[%d, %d], block=[%d, %d]\n", grid.x, grid.y,
+    // block.x, block.y);
+    printf("stage0 left_num=%d, reduce_num=%d, reduce_num_per_t=%d\n",
+           config.left_num,
+           config.reduce_num,
+           config.reduce_num_per_thread);
+    // printf("stage1 left_num=%d, reduce_num=%d, reduce_num_per_t=%d\n",
+    // config.left_num, reduce_num_stage1, reduce_num_per_thread_stage1);
+
 #ifdef PADDLE_WITH_XPU_KP
     auto grid_num = 8;
     auto block_num = 64;
@@ -867,6 +881,20 @@ static void LaunchReduceKernel(const Tx* x_data,
                                         0);
     dim.SetRem(config.reduce_num % config.block.x, 0, 0);
 
+    printf("stage0: grid=[%d, %d], block=[%d, %d]\n",
+           config.grid.x,
+           config.grid.y,
+           config.block.x,
+           config.block.y);
+    // printf("stage1: grid=[%d, %d], block=[%d, %d]\n", grid.x, grid.y,
+    // block.x, block.y);
+    printf("stage0 left_num=%d, reduce_num=%d, reduce_num_per_t=%d\n",
+           config.left_num,
+           config.reduce_num,
+           config.reduce_num_per_thread);
+    // printf("stage1 left_num=%d, reduce_num=%d, reduce_num_per_t=%d\n",
+    // config.left_num, reduce_num_stage1, reduce_num_per_thread_stage1);
+
 #ifdef PADDLE_WITH_XPU_KP
     auto grid_num = 8;
     auto block_num = 64;
@@ -883,7 +911,7 @@ static void LaunchReduceKernel(const Tx* x_data,
             init,
             config.reduce_num,
             1.f / config.reduce_num,
-            config.reduce_num,
+            config.reduce_num_per_thread,
             config.left_num,
             config.reduce_last_dim,
             reduce_index_calculator,
@@ -896,7 +924,7 @@ static void LaunchReduceKernel(const Tx* x_data,
     dim3 block;
     dim3 grid;
     int reduce_num_stage1 = config.grid.y;
-    int block_dim_x_stage1 = min(128, reduce_num_stage1);
+    int block_dim_x_stage1 = min(128, details::GetLastPow2(reduce_num_stage1));
     int block_dim_y_stage1 = details::CeilingDiv(128, block_dim_x_stage1);
 
     block = dim3(block_dim_x_stage1, block_dim_y_stage1, 1);
@@ -911,6 +939,25 @@ static void LaunchReduceKernel(const Tx* x_data,
     dimStage1.SetRem(config.left_num % block.x, 0, 0);
 
     auto reduce_index_calculator_stage1 = OneDimIndexCal(1);
+
+    printf("stage0: grid=[%d, %d], block=[%d, %d]\n",
+           config.grid.x,
+           config.grid.y,
+           config.block.x,
+           config.block.y);
+    printf("stage1: grid=[%d, %d], block=[%d, %d]\n",
+           grid.x,
+           grid.y,
+           block.x,
+           block.y);
+    printf("stage0 left_num=%d, reduce_num=%d, reduce_num_per_t=%d\n",
+           config.left_num,
+           config.reduce_num,
+           config.reduce_num_per_thread);
+    printf("stage1 left_num=%d, reduce_num=%d, reduce_num_per_t=%d\n",
+           config.left_num,
+           reduce_num_stage1,
+           reduce_num_per_thread_stage1);
 
     auto TwoStageReduceKernel1 =
         ReduceAnyKernel<Ty,
