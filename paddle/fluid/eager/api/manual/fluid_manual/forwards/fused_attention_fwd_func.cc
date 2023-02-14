@@ -53,6 +53,11 @@ fused_attention_dygraph_function(
     const paddle::experimental::Tensor& Ln2Scale,
     const paddle::experimental::Tensor& Ln2Bias,
     const paddle::framework::AttributeMap& attr_map) {
+  paddle::experimental::Tensor& xx =
+      const_cast<paddle::experimental::Tensor&>(X);
+  if (xx.can_not_use()) {
+    VLOG(0) << "Find a Tensor Which Can Not Use";
+  }
   paddle::platform::RecordEvent dygraph_entrance_record_event(
       "fused_attention dygraph",
       paddle::platform::TracerEventType::Operator,
