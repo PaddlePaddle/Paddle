@@ -536,7 +536,7 @@ class TestGraphReindex2(unittest.TestCase):
     def setUp(self):
         self.x = np.arange(16).astype("int64")
         self.neighbors = np.arange(16).astype("int64")
-        self.count = np.arange(16).astype("int64")
+        self.count = np.arange(16).astype("int32")
 
     def test_reindex_countValue(self):
         paddle.disable_static()
@@ -565,7 +565,7 @@ class TestGraphReindex2(unittest.TestCase):
             )
 
             def test_countValue_static():
-                paddle.incubate.graph_reindex(x, neighbors, count)
+                paddle.geometric.reindex_heter_graph(x, neighbors, count)
 
             self.assertRaises(ValueError, test_countValue_static)
 

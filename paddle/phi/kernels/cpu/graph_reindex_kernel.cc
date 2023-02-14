@@ -64,16 +64,14 @@ void GraphReindexKernel(const Context& dev_ctx,
   */
   const int cs = count.dims()[0];
   if ((bs == 1) && (cs == 1)) {
-    if (count_data[0] > 10) {
-      PADDLE_ENFORCE_LE(
-          count_data[0],
-          10,
-          phi::errors::OutOfRange(
-              "When X's dimension and count's dimension all equal to 1,"
-              "The count's data should be smaller or equal to 10."
-              "But received count's data = %d",
-              count_data[0]));
-    }
+    PADDLE_ENFORCE_LE(
+        count_data[0],
+        10,
+        phi::errors::OutOfRange(
+            "When X's dimension and count's dimension all equal to 1,"
+            "The count's data should be smaller or equal to 10."
+            "But received count's data = %d",
+            count_data[0]));
   }
 
   // Reindex Dst
