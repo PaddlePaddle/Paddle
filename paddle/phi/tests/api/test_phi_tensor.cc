@@ -44,7 +44,7 @@ void TestCopyTensor() {
   auto t1_cpu_cp = t1.copy_to(phi::CPUPlace(), /*blocking=*/false);
   CHECK((phi::CPUPlace() == t1_cpu_cp.place()));
   for (int64_t i = 0; i < t1.size(); i++) {
-    CHECK_EQ(t1_cpu_cp.data<T>()[i], T(5));
+    CHECK_EQ(t1_cpu_cp.template data<T>()[i], T(5));
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   VLOG(2) << "Do GPU copy test";
@@ -56,7 +56,7 @@ void TestCopyTensor() {
       t1_gpu_cp_cp.copy_to(phi::CPUPlace(), /*blocking=*/false);
   CHECK((phi::CPUPlace() == t1_gpu_cp_cp_cpu.place()));
   for (int64_t i = 0; i < t1.size(); i++) {
-    CHECK_EQ(t1_gpu_cp_cp_cpu.data<T>()[i], T(5));
+    CHECK_EQ(t1_gpu_cp_cp_cpu.template data<T>()[i], T(5));
   }
 #endif
 }

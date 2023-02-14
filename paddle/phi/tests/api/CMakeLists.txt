@@ -2,17 +2,17 @@ if(WITH_GPU)
   nv_test(
     test_phi_tensor
     SRCS test_phi_tensor.cc
-    DEPS phi_tensor glog selected_rows)
+    DEPS phi_tensor glog selected_rows phi_function_api)
 elseif(WITH_ROCM)
   hip_test(
     test_phi_tensor
     SRCS test_phi_tensor.cc
-    DEPS phi_tensor glog selected_rows)
+    DEPS phi_tensor glog selected_rows phi_function_api)
 else()
   cc_test(
     test_phi_tensor
     SRCS test_phi_tensor.cc
-    DEPS phi_tensor glog selected_rows)
+    DEPS phi_tensor glog selected_rows phi_function_api)
 endif()
 
 cc_test(
