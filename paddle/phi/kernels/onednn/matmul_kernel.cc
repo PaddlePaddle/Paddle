@@ -550,8 +550,9 @@ void MatmulWithFlattenKernelINT8(const Context &dev_ctx,
     out->Resize(out_dims);
   }
 
-  auto in_md = memory::desc(dnnl_primitive_desc_query_md(
-      mul.get_primitive_desc(), dnnl_query_dst_md, 0));
+  auto pd = inner_product_forward::primitive_desc(
+      const_cast<dnnl_primitive_desc_t>(mul.get_primitive_desc()));
+  auto in_md = pd.dst_desc();
   out->set_mem_desc(in_md.reshape(vectorize<int64_t>(out->dims())));
 }
 
