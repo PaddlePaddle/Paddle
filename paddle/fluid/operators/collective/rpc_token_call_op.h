@@ -33,7 +33,7 @@ namespace operators {
 using json = nlohmann::json;
 
 // payload builders
-template <typename T>
+template <typename T = int64_t>
 static inline std::string BuildIdsPayload(const std::vector<T>& src_ids) {
   json payload = {{"ids", src_ids}};  // => {"ids": [1, 2, 3, ...]}
   return payload.dump();
@@ -44,7 +44,7 @@ static inline std::string BuildStrPayload(const std::string& query) {
   return payload.dump();
 }
 
-template <typename T>
+template <typename T = int64_t>
 static inline std::string BuildPayload(const std::string& service,
                                        const std::vector<T>& src_ids) {
   if (service == "ids") {

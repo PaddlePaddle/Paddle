@@ -92,8 +92,8 @@ class FullTokenizer {
   std::vector<std::wstring> Tokenize(const std::string& text);
 
  private:
-  BasicTokenizer basic_tokenizer_;
   WordpieceTokenizer wordpiece_tokenizer_;
+  BasicTokenizer basic_tokenizer_;
 };
 
 class RpcTokenizer {
