@@ -20,7 +20,11 @@ import numpy as np
 sys.path.append("..")
 
 from op_test_xpu import XPUOpTest, convert_np_dtype_to_dtype_
-from xpu.get_test_cover_info import XPUOpTestWrapper, create_test_class
+from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
 
 import paddle
 
@@ -74,7 +78,7 @@ class XPUTestLinspaceOp(XPUOpTestWrapper):
             self.outputs = {'Out': np.array(10, dtype=self.dtype)}
 
 
-support_types = ['float32', 'int32']
+support_types = get_xpu_op_support_types('linspace')
 for stype in support_types:
     create_test_class(globals(), XPUTestLinspaceOp, stype)
 

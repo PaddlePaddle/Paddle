@@ -20,7 +20,11 @@ import numpy as np
 sys.path.append("..")
 
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import XPUOpTestWrapper, create_test_class
+from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
 
 import paddle
 
@@ -69,7 +73,7 @@ class XPUTestRandIntOp(XPUOpTestWrapper):
             np.testing.assert_allclose(hist, prob, rtol=0, atol=0.001)
 
 
-support_types = ['float32']
+support_types = get_xpu_op_support_types('randint')
 for stype in support_types:
     create_test_class(globals(), XPUTestRandIntOp, stype)
 

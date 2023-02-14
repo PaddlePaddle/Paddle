@@ -84,7 +84,7 @@ void GroupNormKernel(const Context& dev_ctx,
                                reinterpret_cast<const XPUType*>(bias_data),
                                reinterpret_cast<XPUType*>(mean_data),
                                reinterpret_cast<XPUType*>(var_data),
-                               !channel_first);
+                               channel_first);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "group_norm");
 }
 

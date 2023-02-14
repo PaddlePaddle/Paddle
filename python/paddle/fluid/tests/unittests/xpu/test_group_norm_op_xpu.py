@@ -55,25 +55,16 @@ class XPUTestGroupNormOp(XPUOpTestWrapper):
         self.use_dynamic_create_class = False
 
     class TestGroupNormOp(XPUOpTest):
-        def set_attrs(self):
-            self.attrs = {
-                'epsilon': 1e-4,
-                'beta1': 0.78,
-                'beta2': 0.836,
-                'weight_decay': 0.01,
-            }
-
         def init_test_case(self):
             self.data_format = "NCHW"
-            self.shape = (2, 100, 3, 5)
             self.attrs = {'epsilon': 1e-5, 'groups': 2, 'data_layout': "NCHW"}
 
         def setUp(self):
             '''Test GroupNorm Op with supplied attributes'''
             self.__class__.op_type = 'group_norm'
             self.dtype = self.in_type
+            self.shape = (2, 100, 3, 5)
             self.init_test_case()
-            self.set_attrs()
             input = np.random.random(self.shape).astype(self.dtype)
             if self.data_format == "NHWC":
                 input = np.transpose(input, (0, 2, 3, 1))
@@ -106,7 +97,6 @@ class XPUTestGroupNormOp(XPUOpTestWrapper):
     class TestGroupNormOp2(TestGroupNormOp):
         def init_test_case(self):
             self.data_format = "NHWC"
-            self.shape = (2, 3, 5, 100)
             self.attrs = {'epsilon': 1e-5, 'groups': 2, 'data_layout': "NHWC"}
 
 
