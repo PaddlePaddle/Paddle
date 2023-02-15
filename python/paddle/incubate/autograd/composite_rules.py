@@ -18,8 +18,6 @@
 #    ops.yaml or legacy_ops.yaml.
 
 
-import paddle
-
 from .primitives import *  # noqa: F403
 from .primreg import REGISTER_COMPOSITE, lookup_composite
 
@@ -61,7 +59,7 @@ def composite_batchnorm(
     if convert_dtype(x.dtype) == "float16":
         print("Running batch_norm in amp")
         is_amp = True
-        x = paddle.cast(x, paddle.float32)
+        x = cast(x, "float32")
 
     feature_axis = (
         1 if data_layout in ('NC', 'NCL', 'NCHW', 'NCHWD') else len(x.shape) - 1
@@ -102,13 +100,13 @@ def composite_batchnorm(
     y = reshape(scale, stats_shape) * x_hat + reshape(bias, stats_shape)
     if is_amp:
         print("Running batch_norm in amp")
-        y = paddle.cast(y, paddle.float16)
+        y = cast(y, "float16")
 
     # add op assign to detach tensor in void unsafe change outside the rule.
-    batch_mean_ = paddle.assign(reshape(batch_mean, run_mean.shape))
-    batch_var_ = paddle.assign(reshape(batch_var, run_var.shape))
-    run_mean_ = paddle.assign(run_mean)
-    run_var_ = paddle.assign(run_var)
+    batch_mean_ = assign(reshape(batch_mean, run_mean.shape))
+    batch_var_ = assign(reshape(batch_var, run_var.shape))
+    run_mean_ = assign(run_mean)
+    run_var_ = assign(run_var)
 
     if trainable_statistics or not is_test:
         return run_mean_, None, batch_mean_, batch_var_, run_var_, y
