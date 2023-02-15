@@ -56,7 +56,6 @@ std::vector<DenseTensor> Split(const Context& dev_ctx,
   SplitInferMeta(x, sections, axis, out_meta_ptr);
   std::vector<DenseTensor*> outs;
   outs.reserve(out_meta.size());
-
   for (size_t i = 0; i < out_meta.size(); ++i) {
     outs.push_back(&result[i]);
   }

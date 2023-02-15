@@ -38,7 +38,8 @@ class TensorWrapper {
  public:
   TensorWrapper() = default;
   explicit TensorWrapper(const paddle::experimental::Tensor& tensor,
-                         bool no_need_buffer = false) {
+                         bool no_need_buffer = false,
+                         std::string name = "op_name") {
     // set inplace_version_snapshot_ according to tensor's current inplace
     // version.
     if (tensor.impl() && phi::DenseTensor::classof(tensor.impl().get())) {
@@ -55,6 +56,7 @@ class TensorWrapper {
      * **/
     auto* tensor_autograd_meta = EagerUtils::nullable_autograd_meta(tensor);
     no_need_buffer_ = no_need_buffer;
+    op_name = name;
     // shallow copy tensor_impl here
     if (no_need_buffer) {
       if (phi::DenseTensor::classof(tensor.impl().get())) {
@@ -109,6 +111,7 @@ class TensorWrapper {
 #ifndef PADDLE_NO_PYTHON
   TensorWrapper(const TensorWrapper& other) {
     no_need_buffer_ = other.no_need_buffer_;
+    op_name = other.op_name;
     intermidiate_tensor_ = other.intermidiate_tensor_;
     weak_grad_node_ = other.weak_grad_node_;
     inplace_version_snapshot_ = other.inplace_version_snapshot_;
@@ -121,6 +124,7 @@ class TensorWrapper {
 
   TensorWrapper& operator=(const TensorWrapper& other) {
     no_need_buffer_ = other.no_need_buffer_;
+    op_name = other.op_name;
     intermidiate_tensor_ = other.intermidiate_tensor_;
     weak_grad_node_ = other.weak_grad_node_;
     inplace_version_snapshot_ = other.inplace_version_snapshot_;
@@ -200,7 +204,8 @@ class TensorWrapper {
       uint32_t wrapper_version_snapshot = inplace_version_snapshot_;
       uint32_t tensor_version = inplace_version_counter.CurrentVersion();
       LOG_IF(WARNING, tensor_version != wrapper_version_snapshot)
-          << "inplace operation got mismatch version";
+          << "Stride Testing: " << op_name
+          << " inplace operation got mismatch version";
       /*
       PADDLE_ENFORCE_EQ(
           tensor_version,
@@ -223,6 +228,7 @@ class TensorWrapper {
               << " ]";
     }
   }
+  std::string op_name = "op_name";
 
  private:
   bool no_need_buffer_ = false;

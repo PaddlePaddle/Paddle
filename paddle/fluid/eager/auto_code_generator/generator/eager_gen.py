@@ -82,7 +82,7 @@ def ParseArguments():
 # Code Gen Templates #
 ######################
 SET_PLAIN_TENSOR_WRAPPER_TEMPLATE = """  void SetTensorWrapper{}(const paddle::experimental::Tensor& {}) {{
-    {} = egr::TensorWrapper({}, {});
+    {} = egr::TensorWrapper({}, {}, "{}");
   }}
 """
 
@@ -419,15 +419,18 @@ BUMP_INPLACE_VERSION_TEMPLATE = """
   {}.bump_inplace_version();
   VLOG(3) << \"Tensor(\" << {}.name() << \") uses Inplace Strategy.\";
 """
+
 CHECK_CAN_NOT_USE_TEMPLATE = """
     paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> check_tensors_vector = {};
 """
+
 CHECK_CAN_NOT_USE_OTHER = """
    for(size_t i = 0; i < check_tensors_vector.size(); ++i)
         if (check_tensors_vector[i][0].can_not_use())
               LOG(WARNING) << "Stride Test Log: "
                        <<"{}" << " Find a Tensor Which Can Not Use.";
 """
+
 AMP_LOGIC_TEMPLATE = """  if (egr::Controller::Instance().GetAMPLevel() != paddle::imperative::AmpLevel::O0) {{
     VLOG(5) << "Check and Prepare For AMP";
     {}
@@ -1912,7 +1915,12 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             if IsPlainTensorType(ttype):
                 set_tensor_wrapper_methods_str += (
                     SET_PLAIN_TENSOR_WRAPPER_TEMPLATE.format(
-                        tname, tname, tensor_wrapper_name, tname, no_need_buffer
+                        tname,
+                        tname,
+                        tensor_wrapper_name,
+                        tname,
+                        no_need_buffer,
+                        forward_op_name,
                     )
                 )
 
@@ -2080,9 +2088,11 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                         tensor_wrapper_recover_str += """
                         for(size_t i = 0; i < {}.size(); ++i)
                             if({}.can_not_use())
-                            VLOG(0) <<\"Find Input Which Can Not Use.\";
+                            LOG(WARNING) <<\"Stride Test Log:" << \"{}\"<< \" Find Input Which Can Not Use.\";
                         """.format(
-                            transformed_tensor_name, transformed_tensor_name
+                            transformed_tensor_name,
+                            transformed_tensor_name,
+                            backward_api_name,
                         )
                     tensor_wrapper_recover_str += (
                         "\n"
@@ -2096,9 +2106,9 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                 else:
                     tensor_wrapper_recover_str += """
                         if({}.can_not_use())
-                                VLOG(0) <<\"Find Input Which Can Not Use.\";
+                            LOG(WARNING) <<\"Stride Test Log:" << \"{}\"<< \" Find Input Which Can Not Use.\";
                         """.format(
-                        transformed_tensor_name
+                        transformed_tensor_name, backward_api_name
                     )
                     tensor_wrapper_recover_str += (
                         "\n"
@@ -2116,29 +2126,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
             else:
                 grad_api_args[grad_api_position] = transformed_tensor_name
-            if (
-                backward_input_type == "std::vector<Tensor>"
-                and transformed_tensor_name
-                not in [
-                    'weight_list',
-                    'inner_cache',
-                    'pre_state',
-                    "size_tensor",
-                    'x_shape',
-                ]
-            ):
-                pass
-                #      tensor_wrapper_recover_str += """
-                #      for(size_t i = 0; i < {}.size(); ++i)
-                #          if( {}.size() > 1 && {}.can_not_use())
-                #          VLOG(0) <<\"Find Input Which Can Not Use.\";
-                #      """.format(transformed_tensor_name, transformed_tensor_name, transformed_tensor_name)
-            else:
-                pass
-                # tensor_wrapper_recover_str += """
-                #        if({}.can_not_use())
-                #                VLOG(0) <<\"Find Input Which Can Not Use.\";
-                #        """.format(transformed_tensor_name)
+
             get_grad_in_args_list.append(tensor_wrapper_recover_str)
 
         # Grad Ins from grads
