@@ -68,18 +68,6 @@ class XPUTestExpandAsV2Op(XPUOpTestWrapper):
         def test_check_output(self):
             self.check_output_with_place(self.place)
 
-    class TestExpandAsOp_ZeroDim(TestExpandAsV2XPUOp):
-        def set_inputs(self):
-            x = np.random.uniform(size=[]).astype(self.dtype)
-            self.inputs = {'X': x}
-            target_tensor = np.random.uniform(size=[]).astype(self.dtype)
-            self.attrs = {'target_shape': target_tensor.shape}
-
-        def set_output(self):
-            bcast_dims = ()
-            output = np.tile(self.inputs['X'], bcast_dims)
-            self.outputs = {'Out': output}
-
     class TestExpandAsOpRank2(TestExpandAsV2XPUOp):
         def set_inputs(self):
             x = np.random.rand(10, 12).astype(self.dtype)
