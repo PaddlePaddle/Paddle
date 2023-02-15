@@ -17,8 +17,8 @@ import numbers
 # TODO: define normalization api
 import paddle
 import paddle.fluid as fluid
-from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
-from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from paddle import _C_ops, in_dynamic_mode
+from paddle.fluid.framework import in_dygraph_mode
 
 from ...fluid.data_feeder import check_type, check_variable_and_dtype
 from ...fluid.layer_helper import LayerHelper
@@ -82,12 +82,6 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
         eps = fluid.dygraph.base.to_variable([epsilon], dtype=x.dtype)
         out = _C_ops.p_norm(x, float(p), axis, epsilon, True, False)
         return x / _C_ops.maximum(out, eps)
-
-    elif _in_legacy_dygraph():
-        _, out = _legacy_C_ops.norm(
-            x, 'axis', 1 if axis is None else axis, 'epsilon', epsilon
-        )
-        return out
 
     else:
         check_type(p, 'p', (float, int), 'normalize')
