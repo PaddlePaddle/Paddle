@@ -27,11 +27,9 @@ RES_TYPE = 'float'
 
 # network
 in_query = fluid.data(name='X', shape=[-1, MAX_SIZE_QUERY], dtype='int32')
-in_url_id = fluid.data(name='url_id', shape=[1], dtype='int32')
 
 req_ids = paddle.static.nn.rpc_call(
     in_query,
-    in_url_id,
     os.environ.get("url_list"),
     "/code_lp/ernie-bot/post-train/ernie_3.0_100b_no_distill/config/ernie3.0_vocab_multi_prompt_v9.txt",
     True,
@@ -51,7 +49,6 @@ query_tensor = np.array(
         [29989, 29981, 2264, 1708, 1672, 2212],
     ]
 ).astype("int32")
-url_id_tensor = np.array([0], dtype='int32')
 
 # run
 exe = fluid.Executor(fluid.CUDAPlace(0))
@@ -64,7 +61,6 @@ for _ in range(1):
         fluid.default_main_program(),
         feed={
             'X': query_tensor,
-            'url_id': url_id_tensor,
         },
         fetch_list=[out_succeed, out_data],
     )
