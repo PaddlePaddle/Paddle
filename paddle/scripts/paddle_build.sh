@@ -395,7 +395,7 @@ function build_base() {
     if [ "$WITH_ARM" == "ON" ];then
         make TARGET=ARMV8 -j ${parallel_number};build_error=$?
     else
-        make install -j ${parallel_number};build_error=$?
+        make -j ${parallel_number};build_error=$?
     fi
 
     # ci will collect ccache hit rate
@@ -501,7 +501,7 @@ EOF
     # reset ccache zero stats for collect PR's actual hit rate
     ccache -z
 
-    make install -j 8;build_error=$?
+    make -j 8;build_error=$?
 
     # ci will collect ccache hit rate
     collect_ccache_hits
