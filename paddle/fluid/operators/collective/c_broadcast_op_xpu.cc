@@ -80,9 +80,9 @@ class CBroadcastOpXPUKernel : public framework::OpKernel<T> {
             static_cast<phi::DenseTensor*>(out));
       }
     } else {
-      // ctx.template Alloc<T>(out);
-      // send_recv_buffer = out->data<T>()
-      send_recv_buffer = out->mutable_data<T>(place);
+      auto& dev_ctx = ctx.template device_context<platform::XPUDeviceContext>();
+      dev_ctx.template Alloc<T>(out);
+      send_recv_buffer = out->data<T>();
       auto ret = bkcl_broadcast(comm->comm(),
                                 send_recv_buffer,
                                 send_recv_buffer,
