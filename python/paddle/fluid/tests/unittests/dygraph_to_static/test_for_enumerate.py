@@ -341,6 +341,18 @@ def for_zip(x, y):
     return x + y
 
 
+@paddle.jit.to_static
+def tensor_array_slice_in_enumerate():
+    feats = {}
+    feats['key'] = []
+    feats_idx = paddle.arange(0, 10)
+    for i, idx in enumerate(feats_idx):
+        if i > 1:
+            feat_n2 = feats['key'][-2]
+        feats['key'].append(idx)
+    return feat_n2
+
+
 class TestTransformBase(unittest.TestCase):
     def setUp(self):
         self.place = (
@@ -531,6 +543,14 @@ class TestForOriginalList(TestTransformForOriginalList):
 class TestForOriginalTuple(TestTransformForOriginalList):
     def set_test_func(self):
         self.dygraph_func = for_original_tuple
+
+    def test_transformed_result_compare(self):
+        self.transformed_result_compare()
+
+
+class TestSliceTensorArrayInEnumerate(TestTransformForOriginalList):
+    def set_test_func(self):
+        self.dygraph_func = tensor_array_slice_in_enumerate
 
     def test_transformed_result_compare(self):
         self.transformed_result_compare()

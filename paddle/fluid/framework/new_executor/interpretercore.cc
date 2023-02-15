@@ -126,6 +126,7 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
 
   execution_config_.used_for_jit = used_for_jit;
+  execution_config_.used_for_cinn = used_for_cinn;
   execution_config_.used_for_control_flow_op = used_for_control_flow_op;
   execution_config_.create_local_scope =
       !used_for_jit && FLAGS_new_executor_use_local_scope &&
@@ -199,20 +200,21 @@ interpreter::CostInfo InterpreterCore::DryRun(
 }
 
 void InterpreterCore::RunImpl() {
-  // For the program that only run once, it is no need to
-  // create work_queue, so the async_work_queue_ is created
-  // until the second step run.
-  async_work_queue_ = GetWorkQueue();
-
   // lazy initialization of gc, do not create gc is the program only run once
   if (!gc_) {
     gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
   }
 
-  if (execution_config_.used_for_jit && (sync_op_num_ == 0)) {
+  if ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
+      (sync_op_num_ == 0)) {
     VLOG(4) << "Tracing Instruction List";
     TraceInstructionList(vec_instruction_);
   } else {
+    VLOG(4) << "Non-tracing";
+    // For the program that only run once, it is no need to
+    // create work_queue, so the async_work_queue_ is created
+    // until the second step run.
+    async_work_queue_ = GetWorkQueue();
     ExecuteInstructionList(vec_instruction_);
   }
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -409,7 +411,7 @@ std::shared_ptr<interpreter::AsyncWorkQueue> InterpreterCore::GetWorkQueue() {
     async_work_queue_ = std::make_shared<interpreter::AsyncWorkQueue>(
         execution_config_.host_num_threads,
         execution_config_.deivce_num_threads,
-        &main_thread_blocker_);
+        nullptr);
   }
   return async_work_queue_;
 }
