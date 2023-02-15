@@ -152,7 +152,7 @@ def train(args, place, to_static):
                 cur_loss = paddle.multiply(_R, log_prob)
                 policy_loss.append(cur_loss)
 
-            policy_loss = fluid.layers.concat(policy_loss)
+            policy_loss = paddle.concat(policy_loss)
             policy_loss = paddle.sum(policy_loss)
 
             policy_loss.backward()

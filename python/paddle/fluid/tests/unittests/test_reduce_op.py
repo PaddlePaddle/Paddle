@@ -507,8 +507,8 @@ class TestAllOpError(unittest.TestCase):
             input1 = 12
             self.assertRaises(TypeError, paddle.all, input1)
             # The input dtype of reduce_all_op must be bool.
-            input2 = fluid.layers.data(
-                name='input2', shape=[12, 10], dtype="int32"
+            input2 = paddle.static.data(
+                name='input2', shape=[-1, 12, 10], dtype="int32"
             )
             self.assertRaises(TypeError, paddle.all, input2)
 
@@ -624,8 +624,8 @@ class TestAnyOpError(unittest.TestCase):
             input1 = 12
             self.assertRaises(TypeError, paddle.any, input1)
             # The input dtype of reduce_any_op must be bool.
-            input2 = fluid.layers.data(
-                name='input2', shape=[12, 10], dtype="int32"
+            input2 = paddle.static.data(
+                name='input2', shape=[-1, 12, 10], dtype="int32"
             )
             self.assertRaises(TypeError, paddle.any, input2)
 
@@ -918,7 +918,7 @@ class TestReduceSumOpError(unittest.TestCase):
             )
             self.assertRaises(TypeError, paddle.sum, x1)
             # The input dtype of reduce_sum_op  must be float32 or float64 or int32 or int64.
-            x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint8")
+            x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="uint8")
             self.assertRaises(TypeError, paddle.sum, x2)
 
 
@@ -1030,8 +1030,8 @@ class TestAllAPI(unittest.TestCase):
         for place in self.places:
             with fluid.dygraph.guard(place):
                 np_x = np.random.randint(0, 2, (12, 10)).astype(np.bool_)
-                x = fluid.layers.assign(np_x)
-                x = fluid.layers.cast(x, 'bool')
+                x = paddle.assign(np_x)
+                x = paddle.cast(x, 'bool')
 
                 out1 = paddle.all(x)
                 np_out1 = out1.numpy()
@@ -1087,8 +1087,8 @@ class TestAnyAPI(unittest.TestCase):
         for place in self.places:
             with fluid.dygraph.guard(place):
                 np_x = np.random.randint(0, 2, (12, 10)).astype(np.bool_)
-                x = fluid.layers.assign(np_x)
-                x = fluid.layers.cast(x, 'bool')
+                x = paddle.assign(np_x)
+                x = paddle.cast(x, 'bool')
 
                 out1 = paddle.any(x)
                 np_out1 = out1.numpy()

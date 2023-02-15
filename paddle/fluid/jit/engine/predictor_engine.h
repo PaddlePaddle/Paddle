@@ -20,6 +20,7 @@
 
 namespace paddle {
 class AnalysisPredictor;
+class PaddlePredictor;
 
 namespace framework {
 class Scope;
@@ -30,17 +31,26 @@ namespace jit {
 class PredictorEngine : public BaseEngine {
  public:
   PredictorEngine(const std::shared_ptr<FunctionInfo> &info,
-                  const VariableMap &params_dict,
+                  const std::shared_ptr<VariableMap> &params_dict,
                   const phi::Place &place);
+
+  PredictorEngine(const std::shared_ptr<FunctionInfo> &info,
+                  const std::shared_ptr<framework::Scope> &scope,
+                  const phi::Place &place,
+                  const std::shared_ptr<PaddlePredictor> &predictor);
 
   ~PredictorEngine() noexcept {}
 
-  std::vector<Tensor> operator()(const std::vector<Tensor> &inputs);
+  std::vector<Tensor> operator()(const std::vector<Tensor> &inputs) override;
 
-  std::vector<DenseTensor> operator()(const std::vector<DenseTensor> &inputs);
+  std::vector<DenseTensor> operator()(
+      const std::vector<DenseTensor> &inputs) override;
+
+  std::unique_ptr<BaseEngine> Clone(void *stream = nullptr) override;
 
  private:
   std::shared_ptr<FunctionInfo> info_;
+  std::shared_ptr<VariableMap> params_dict_;
   std::shared_ptr<framework::Scope> scope_;
   phi::Place place_;
   std::shared_ptr<AnalysisPredictor> predictor_;

@@ -572,7 +572,7 @@ static void Interpolate1DCPUFwd(
   dev_ctx.template Alloc<T>(output);
 
   if (in_w == out_w) {
-    paddle::framework::TensorCopy(x, dev_ctx.GetPlace(), output);
+    phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, output);
     return;
   }
 
@@ -702,7 +702,7 @@ static void Interpolate2DCPUFwd(
   dev_ctx.template Alloc<T>(output);
 
   if (in_h == out_h && in_w == out_w) {
-    paddle::framework::TensorCopy(x, dev_ctx.GetPlace(), output);
+    phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, output);
     return;
   }
 
@@ -897,7 +897,7 @@ static void Interpolate3DCPUFwd(
   dev_ctx.template Alloc<T>(output);
 
   if (in_d == out_d && in_h == out_h && in_w == out_w) {
-    paddle::framework::TensorCopy(x, dev_ctx.GetPlace(), output);
+    phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, output);
     return;
   }
 

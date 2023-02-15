@@ -80,12 +80,8 @@ class TestRecurrentFeed(unittest.TestCase):
         with new_program_scope():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
-            in1 = fluid.layers.data(
-                name="inp1", shape=[2, 2], append_batch_size=False
-            )
-            in2 = fluid.layers.data(
-                name="inp2", shape=[2, 2], append_batch_size=False
-            )
+            in1 = paddle.static.data(name="inp1", shape=[2, 2])
+            in2 = paddle.static.data(name="inp2", shape=[2, 2])
             rt1 = RecurrentTest("RecurrentTest")
             static_sum_out, static_out = rt1(in1, in2)
             fluid.backward.append_backward(static_sum_out)

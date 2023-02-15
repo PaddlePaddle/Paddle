@@ -131,6 +131,21 @@ std::shared_ptr<FILE> localfs_open_write(std::string path,
   return fs_open_internal(path, is_pipe, "w", localfs_buffer_size());
 }
 
+std::shared_ptr<FILE> localfs_open_append_write(std::string path,
+                                                const std::string& converter) {
+  shell_execute(
+      string::format_string("mkdir -p $(dirname \"%s\")", path.c_str()));
+
+  bool is_pipe = false;
+
+  if (fs_end_with_internal(path, ".gz")) {
+    fs_add_write_converter_internal(path, is_pipe, "gzip");
+  }
+
+  fs_add_write_converter_internal(path, is_pipe, converter);
+  return fs_open_internal(path, is_pipe, "a", localfs_buffer_size());
+}
+
 int64_t localfs_file_size(const std::string& path) {
   struct stat buf;
   if (0 != stat(path.c_str(), &buf)) {
@@ -419,6 +434,25 @@ std::shared_ptr<FILE> fs_open_write(const std::string& path,
   switch (fs_select_internal(path)) {
     case 0:
       return localfs_open_write(path, converter);
+
+    case 1:
+      return hdfs_open_write(path, err_no, converter);
+
+    default:
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupport file system. Now only supports local file system and "
+          "HDFS."));
+  }
+
+  return {};
+}
+
+std::shared_ptr<FILE> fs_open_append_write(const std::string& path,
+                                           int* err_no,
+                                           const std::string& converter) {
+  switch (fs_select_internal(path)) {
+    case 0:
+      return localfs_open_append_write(path, converter);
 
     case 1:
       return hdfs_open_write(path, err_no, converter);

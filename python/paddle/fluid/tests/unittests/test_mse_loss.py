@@ -79,12 +79,14 @@ class TestNNMseLoss(unittest.TestCase):
                 else fluid.CPUPlace()
             )
             with fluid.program_guard(prog, startup_prog):
-                input = fluid.layers.data(
-                    name='input', shape=dim, dtype='float32'
+                input = paddle.static.data(
+                    name='input', shape=[-1] + dim, dtype='float32'
                 )
-                label = fluid.layers.data(
-                    name='label', shape=dim, dtype='float32'
+                input.desc.set_need_check_feed(False)
+                label = paddle.static.data(
+                    name='label', shape=[-1] + dim, dtype='float32'
                 )
+                label.desc.set_need_check_feed(False)
                 mse_loss = paddle.nn.loss.MSELoss()
                 ret = mse_loss(input, label)
 
@@ -123,12 +125,14 @@ class TestNNMseLoss(unittest.TestCase):
                 else fluid.CPUPlace()
             )
             with fluid.program_guard(prog, startup_prog):
-                input = fluid.layers.data(
-                    name='input', shape=dim, dtype='float32'
+                input = paddle.static.data(
+                    name='input', shape=[-1] + dim, dtype='float32'
                 )
-                label = fluid.layers.data(
-                    name='label', shape=dim, dtype='float32'
+                input.desc.set_need_check_feed(False)
+                label = paddle.static.data(
+                    name='label', shape=[-1] + dim, dtype='float32'
                 )
+                label.desc.set_need_check_feed(False)
                 mse_loss = paddle.nn.loss.MSELoss(reduction='sum')
                 ret = mse_loss(input, label)
 
@@ -167,12 +171,14 @@ class TestNNMseLoss(unittest.TestCase):
                 else fluid.CPUPlace()
             )
             with fluid.program_guard(prog, startup_prog):
-                input = fluid.layers.data(
-                    name='input', shape=dim, dtype='float32'
+                input = paddle.static.data(
+                    name='input', shape=[-1] + dim, dtype='float32'
                 )
-                label = fluid.layers.data(
-                    name='label', shape=dim, dtype='float32'
+                input.desc.set_need_check_feed(False)
+                label = paddle.static.data(
+                    name='label', shape=[-1] + dim, dtype='float32'
                 )
+                label.desc.set_need_check_feed(False)
                 mse_loss = paddle.nn.loss.MSELoss(reduction='none')
                 ret = mse_loss(input, label)
 

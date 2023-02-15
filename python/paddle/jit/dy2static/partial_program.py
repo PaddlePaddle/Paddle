@@ -571,17 +571,11 @@ class PartialProgramLayer:
                 targets.append(program.global_block().var(out.name))
 
         if targets:
-            enable_prim = self._build_strategy.build_cinn_pass
-            if enable_prim and core.enable_prim_backward():
-                core.set_prim_enabled(True)
-                backward.gradients(targets=targets, inputs=[])
-                core.set_prim_enabled(False)
-            else:
-                backward.gradients(targets=targets, inputs=[])
+            # TODO(CZ): later when use cinn, set_prim_all_enabled and check_and_set_prim_all_enabled will be set at else branch.
+            core.check_and_set_prim_all_enabled()
+            backward.gradients(targets=targets, inputs=[])
 
-        start_idx = len(main_program.block(0).ops) + 2 * len(
-            self._outputs.tolist()
-        )
+        start_idx = len(main_program.block(0).ops) + len(self._outputs.tolist())
 
         self.prepare_gradient_aggregation(start_idx, main_program, program)
 
@@ -756,7 +750,7 @@ class PartialProgramLayer:
     ):
         # NOTE(dev): We apply build_strategy for backward firstly to
         # avoid skipping more gc variables.
-        backward_start_op_index = forward_end_op_index + 2 * len(
+        backward_start_op_index = forward_end_op_index + len(
             self._outputs.var_ids
         )
         backward_end_op_index = whole_program.desc.block(0).op_size()

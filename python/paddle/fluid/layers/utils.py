@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 import collections
 import copy
 import numpy as np
@@ -26,6 +27,9 @@ from ..layer_helper import LayerHelper
 from sys import version_info
 
 from collections.abc import Sequence
+from weakref import WeakKeyDictionary
+from collections import defaultdict
+from uuid import uuid4
 
 
 def convert_to_list(value, n, name, dtype=int):
@@ -107,13 +111,33 @@ def is_sequence(seq):
     return isinstance(seq, Sequence) and not isinstance(seq, str)
 
 
+class UniqueIdMap(WeakKeyDictionary):
+    def __init__(self):
+        super().__init__(self)
+        self.data = defaultdict(uuid4)
+
+
+uniqueidmap = UniqueIdMap()
+
+
+def uniqueid(obj):
+    if isinstance(obj, str):
+        return (hash(obj),)
+    elif isinstance(obj, list):
+        return (id(obj),)
+    else:
+        return (uniqueidmap[obj].int,)
+
+
 def _hash_with_id(*args):
     """
     Return int hash value calculated by id(arg) or tuple(id1,id2, ...).
     """
     assert len(args) > 0
-    info = tuple([id(v) for v in args])
-    return hash(info) & 0xFFFFFFF
+    info = ()
+    for v in args:
+        info = info + uniqueid(v)
+    return hash(info)
 
 
 def _sorted(dict_):
@@ -364,7 +388,7 @@ def _contain_var(list_or_tuple):
 
 
 def get_shape_tensor_inputs(inputs, attrs, shape, op_type):
-    from .tensor import fill_constant, cast
+    from .tensor import fill_constant
 
     def _get_attr_shape(list_shape):
         attr_shape = []
@@ -388,7 +412,7 @@ def get_shape_tensor_inputs(inputs, attrs, shape, op_type):
                     '(When type of shape in' + op_type + 'is list or tuple.)',
                 )
                 if convert_dtype(dim.dtype) == 'int64':
-                    dim = cast(x=dim, dtype='int32')
+                    dim = paddle.cast(x=dim, dtype='int32')
                 shape_tensor_list.append(dim)
             else:
                 temp_out = fill_constant([1], 'int32', dim, force_cpu=True)
@@ -405,7 +429,7 @@ def get_shape_tensor_inputs(inputs, attrs, shape, op_type):
             '(When type of shape in' + op_type + ' is Variable.)',
         )
         if convert_dtype(shape.dtype) == 'int64':
-            shape = cast(shape, 'int32')
+            shape = paddle.cast(shape, 'int32')
         inputs["ShapeTensor"] = shape
     elif isinstance(shape, (list, tuple)):
         attrs["shape"] = _get_attr_shape(shape)

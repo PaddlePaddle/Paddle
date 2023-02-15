@@ -28,7 +28,9 @@ import subprocess
 import multiprocessing
 import sys
 import logging
-from .proto import framework_pb2
+
+from .proto import framework_pb2, data_feed_pb2
+
 
 from . import core
 from . import unique_name
@@ -1701,7 +1703,7 @@ class Variable(metaclass=VariableMetaClass):
                         tmp = fluid.dygraph.base.to_variable(x)
                         tmp.stop_gradient=False
                         inputs2.append(tmp)
-                    ret2 = fluid.layers.sums(inputs2)
+                    ret2 = paddle.add_n(inputs2)
                     loss2 = paddle.sum(ret2)
                     loss2.backward()
                     print(loss2.gradient())
@@ -1749,7 +1751,7 @@ class Variable(metaclass=VariableMetaClass):
                         tmp = fluid.dygraph.base.to_variable(x)
                         tmp.stop_gradient=False
                         inputs2.append(tmp)
-                    ret2 = fluid.layers.sums(inputs2)
+                    ret2 = paddle.add_n(inputs2)
                     loss2 = paddle.sum(ret2)
                     loss2.backward()
                     print(loss2.gradient())
@@ -6957,9 +6959,10 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
             .. code-block:: python
 
                 import paddle.fluid as fluid
+                import paddle
 
                 prog = fluid.default_main_program()
-                rlt = fluid.layers.data("fake_data", shape=[1,1], dtype='float32')
+                rlt = paddle.static.data("fake_data", shape=[-1,1,1], dtype='float32')
                 debug_str = prog.to_string(throw_on_error=True, with_details=False)
                 print(debug_str)
         """

@@ -141,9 +141,11 @@ phi::KernelKey FallBackToCpu(const phi::KernelKey& kernel_key,
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   auto place = phi::TransToPhiPlace(kernel_key.backend());
-  if (platform::is_custom_place(place)) {
-    VLOG(3) << "phi missing " << place.GetDeviceType()
-            << " kernel: " << op.Type()
+  bool is_custom_place = platform::is_custom_place(place);
+  if (is_custom_place ||
+      phi::backends::custom_device::is_in_custom_black_list(op.Type())) {
+    std::string info = is_custom_place ? "phi missing " : "phi in black list ";
+    VLOG(3) << info << place.GetDeviceType() << " kernel: " << op.Type()
             << ", expected_kernel_key:" << kernel_key
             << ", fallback to CPU one!";
     return phi::KernelKey(

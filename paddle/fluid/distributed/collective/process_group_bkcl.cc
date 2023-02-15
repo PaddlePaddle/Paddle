@@ -352,41 +352,17 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Reduce(
           const phi::DenseTensor& input,
           BKCLContext_t comm,
           const XPUStream& stream) {
-        phi::DenseTensor output_t;
-        paddle::framework::TensorCopy(*output, platform::XPUPlace(), &output_t);
-        const auto& place = input.place();
-        auto* calc_ctx = static_cast<phi::XPUContext*>(
-            platform::DeviceContextPool::Instance().Get(place));
-        switch (input.dtype()) {
-          case phi::DataType::FLOAT32:
-            calc_ctx->template Alloc<float>(&output_t);
-            break;
-          case phi::DataType::FLOAT16:
-            calc_ctx->template Alloc<float16>(&output_t);
-            break;
-          case phi::DataType::INT32:
-            calc_ctx->template Alloc<int>(&output_t);
-            break;
-          default:
-            VLOG(0) << "Error: type " << input.dtype() << " not supported for "
-                    << GetBackendName();
-            break;
-        }
-        int ret =
-            bkcl_all_reduce(comm,
-                            input.data(),
-                            output_t.data(),
-                            input.numel(),
-                            platform::ToBKCLDataType(
-                                framework::TransToProtoVarType(input.type())),
-                            ToBKCLRedType(opts.reduce_op),
-                            stream);
-        if (rank_ == opts.root_rank) {
-          *output = output_t;
-        }
-        return ret;
+        return bkcl_reduce(comm,
+                           input.data(),
+                           output->data(),
+                           input.numel(),
+                           platform::ToBKCLDataType(
+                               framework::TransToProtoVarType(input.type())),
+                           ToBKCLRedType(opts.reduce_op),
+                           opts.root_rank,
+                           stream);
       },
-      CommType::ALLREDUCE,
+      CommType::REDUCE,
       sync_op,
       use_calc_stream);
 }

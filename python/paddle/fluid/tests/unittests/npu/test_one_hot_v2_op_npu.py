@@ -210,7 +210,7 @@ class TestOneHotOpApi(unittest.TestCase):
         self._run(depth)
 
     def test_api_with_depthTensor(self):
-        depth = fluid.layers.assign(input=np.array([10], dtype=np.int32))
+        depth = paddle.assign(np.array([10], dtype=np.int32))
         self._run(depth)
 
     def test_api_with_dygraph(self):
@@ -224,7 +224,7 @@ class TestOneHotOpApi(unittest.TestCase):
             )
 
     def _run(self, depth):
-        label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+        label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
         one_hot_label = fluid.one_hot(input=label, depth=depth)
 
         place = fluid.NPUPlace(0)

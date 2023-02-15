@@ -23,7 +23,6 @@ import paddle.fluid.io as io
 from paddle.fluid.dygraph import guard
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import ParamBase, Variable, default_main_program
-from paddle.fluid.initializer import ConstantInitializer
 
 paddle.enable_static()
 main_program = default_main_program()
@@ -38,7 +37,7 @@ class ParameterChecks(unittest.TestCase):
             name='fc.w',
             shape=shape,
             dtype='float32',
-            initializer=ConstantInitializer(val),
+            initializer=paddle.nn.initializer.Constant(val),
         )
         self.assertIsNotNone(param)
         self.assertEqual('fc.w', param.name)

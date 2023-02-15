@@ -102,10 +102,10 @@ class TestCompiledProgramError(unittest.TestCase):
         self.assertRaises(TypeError, fluid.CompiledProgram, "program")
 
     def build_simple_model(self):
-        img = fluid.layers.data(
-            name='image', shape=[1, 28, 28], dtype='float32'
+        img = paddle.static.data(
+            name='image', shape=[-1, 1, 28, 28], dtype='float32'
         )
-        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+        label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
         prediction = paddle.static.nn.fc(x=img, size=10, activation='softmax')
         loss = paddle.nn.functional.cross_entropy(
             input=prediction, label=label, reduction='none', use_softmax=False
