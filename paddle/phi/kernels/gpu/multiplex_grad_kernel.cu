@@ -40,7 +40,7 @@ void MultiplexGradKernel(const Context& ctx,
   auto rows = ins_grad[idx]->dims()[0];
   auto cols = ins_grad[idx]->numel() / rows;
   DenseTensor index_t_cpu;
-  paddle::framework::TensorCopySync(ids, phi::CPUPlace(), &index_t_cpu);
+  phi::Copy(ctx, ids, phi::CPUPlace(), true, &index_t_cpu);
   auto* index = index_t_cpu.data<int32_t>();
   auto stream = ctx.stream();
   for (auto i = 0; i < rows; i++) {

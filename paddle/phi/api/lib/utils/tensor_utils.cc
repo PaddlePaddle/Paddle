@@ -17,6 +17,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/tensor_utils.h"
 
 namespace paddle {
@@ -49,7 +50,9 @@ phi::Scalar MakePhiScalarFromVar(const framework::Variable& variable) {
                                           tensor.numel()));
     if (!platform::is_same_place(tensor.place(), expected_place)) {
       phi::DenseTensor tmp_tensor;
-      framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
+      phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+      auto* dev_ctx = pool.Get(tensor.place());
+      phi::Copy(dev_ctx, tensor, expected_place, true, &tmp_tensor);
       return {tmp_tensor};
     } else {
       return {tensor};
@@ -97,7 +100,9 @@ phi::IntArray MakePhiIntArrayFromVarList(
         if (tensor.IsInitialized() &&
             !platform::is_same_place(tensor.place(), expected_place)) {
           phi::DenseTensor tmp_tensor;
-          framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
+          phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+          auto* dev_ctx = pool.Get(tensor.place());
+          phi::Copy(dev_ctx, tensor, expected_place, true, &tmp_tensor);
           vector_data.push_back(*tmp_tensor.data<int64_t>());
         } else {
           vector_data.push_back(*tensor.data<int64_t>());
@@ -107,7 +112,9 @@ phi::IntArray MakePhiIntArrayFromVarList(
         if (tensor.IsInitialized() &&
             !platform::is_same_place(tensor.place(), expected_place)) {
           phi::DenseTensor tmp_tensor;
-          framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
+          phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+          auto* dev_ctx = pool.Get(tensor.place());
+          phi::Copy(dev_ctx, tensor, expected_place, true, &tmp_tensor);
           vector_data.push_back(*tmp_tensor.data<int32_t>());
         } else {
           vector_data.push_back(*tensor.data<int32_t>());
