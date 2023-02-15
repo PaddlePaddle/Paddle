@@ -32,6 +32,10 @@ def _composite(op, *args):
 @REGISTER_COMPOSITE('softmax')
 def softmax_composite(x, axis):
     """define composite rule of op softmax"""
+    if not x.shape:
+        # do not return 1, to ensure gradients
+        res = divide(x + 1e-5, x + 1e-5)
+        return res
     max_temp = max(x, axis, keepdim=True)
     max_temp.stop_gradient = True
     molecular = exp(x - max_temp)
