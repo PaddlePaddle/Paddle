@@ -30,6 +30,10 @@ def _composite(op, *args):
 @REGISTER_COMPOSITE('softmax')
 def softmax_composite(x, axis):
     """define composite rule of op softmax"""
+    if not x.shape:
+        # do not return 1, to ensure gradients
+        res = divide(x + 1e-5, x + 1e-5)
+        return res
     max_temp = max(x, axis, keepdim=True)
     max_temp.stop_gradient = True
     molecular = exp(x - max_temp)
@@ -97,7 +101,32 @@ def composite_batchnorm(
     batch_var_ = assign(reshape(batch_var, run_var.shape))
     run_mean_ = assign(run_mean)
     run_var_ = assign(run_var)
-    if trainable_statistics or not is_test:
-        return run_mean_, None, batch_mean_, batch_var_, run_var_, y
+
+    # reserve_space is not needed in composite rule, but still ruturn None to keep same as phi op defination.
+    reserve_space = None
+
+    return y, run_mean_, run_var_, batch_mean_, batch_var_, reserve_space
+
+
+@REGISTER_COMPOSITE('gelu')
+def gelu_composite(x, approximate):
+    """define composite rule of op gelu"""
+    M_SQRT1_2 = (
+        0.70710678118654752440  # /* 1/sqrt(2) */ copy from gelu-kernel.cc
+    )
+    M_2_SQRTPI = 1.12837916709551257390  # /* 2/sqrt(pi) */
+    one = ones(x.shape, x.dtype)
+    half = full(x.shape, 0.5, x.dtype)
+    if approximate:
+        # gelu(x) = 0.5 * x * (1 + tanh(sqrt(2 / \pi) * (x + 0.044715 * x^{3})))
+        kAlpha = full(x.shape, M_2_SQRTPI * M_SQRT1_2, x.dtype)
+        GELU_CONSTANT = full(x.shape, 0.044715, x.dtype)
+        tanh_out = tanh(kAlpha * (x + GELU_CONSTANT * x * x * x))
+        out = x * half * (one + tanh_out)
+        return out
+
     else:
-        return run_mean_, batch_mean_, batch_var_, run_var_, y
+        # gelu(x) = 0.5 * x *  (1 + erf(x / sqrt(2)))
+        cdf = half * (one + erf(x * full(x.shape, M_SQRT1_2, x.dtype)))
+        out = x * cdf
+        return out

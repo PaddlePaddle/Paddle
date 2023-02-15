@@ -1867,6 +1867,7 @@ function precise_card_test_single {
         find paddle/phi -name '*.gcno'|xargs -I {} cp --parents {} ut_map/$case
         find paddle/utils -name '*.gcno'|xargs -I {} cp --parents {} ut_map/$case
         find paddle/fluid -name '*.gcno'|xargs -I {} cp --parents {} ut_map/$case
+        wait;
         python ${PADDLE_ROOT}/tools/get_single_test_cov.py ${PADDLE_ROOT} $case &
 
         # python
@@ -3428,7 +3429,6 @@ function build_pr_and_develop() {
     generate_api_spec "$1" "PR"
     mkdir ${PADDLE_ROOT}/build/pr_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl
     rm -f ${PADDLE_ROOT}/build/python/dist/*.whl && rm -f ${PADDLE_ROOT}/build/python/build/.timestamp
-
 
     git fetch upstream develop
     git checkout develop

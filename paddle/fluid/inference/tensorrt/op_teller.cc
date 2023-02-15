@@ -75,6 +75,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 #if IS_TRT_VERSION_GE(8200)
     teller_set.insert("round");
     int8_teller_set.insert("round");
+    teller_set.insert("set_value");
 #endif
   }
 
@@ -2367,6 +2368,27 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
         return false;
       }
+    }
+
+    if (op_type == "set_value") {
+#if !IS_TRT_VERSION_GE(8200)
+      return false;
+#endif
+      if (!(desc.HasAttr("axes") && desc.HasAttr("starts") &&
+            desc.HasAttr("steps"))) {
+        VLOG(3) << "the " << op_type
+                << " does not have attr (axes or "
+                   "starts or steps)";
+        return false;
+      }
+      auto* block = desc.Block();
+      auto input_name = desc.Input("Input")[0];
+      auto* input_desc = block->FindVar(input_name);
+      const auto input_shape = input_desc->GetShape();
+      auto update_name = desc.Input("ValueTensor")[0];
+      auto* update_desc = block->FindVar(update_name);
+      const auto update_shape = update_desc->GetShape();
+      if (update_shape.size() != input_shape.size()) return false;
     }
 
     if (op_type == "top_k_v2" || op_type == "top_k") {

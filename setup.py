@@ -1287,7 +1287,6 @@ def get_setup_parameters():
         'paddle.fluid.transpiler',
         'paddle.fluid.transpiler.details',
         'paddle.fluid.incubate',
-        'paddle.fluid.incubate.data_generator',
         'paddle.fluid.incubate.fleet',
         'paddle.fluid.incubate.checkpoint',
         'paddle.fluid.incubate.fleet.base',
@@ -1324,6 +1323,7 @@ def get_setup_parameters():
         'paddle.incubate.distributed.models',
         'paddle.incubate.distributed.models.moe',
         'paddle.incubate.distributed.models.moe.gate',
+        'paddle.incubate.fleet.parameter_server.distribute_transpiler',
         'paddle.quantization',
         'paddle.quantization.quanters',
         'paddle.sparse',
@@ -1379,9 +1379,40 @@ def get_setup_parameters():
     )
 
 
+def check_build_dependency():
+
+    missing_modules = '''Missing build dependency: {dependency}
+Please run 'pip install -r python/requirements.txt' to make sure you have all the dependencies installed.
+'''.strip()
+
+    with open(TOP_DIR + '/python/requirements.txt') as f:
+        build_dependencies = (
+            f.read().splitlines()
+        )  # Specify the dependencies to install
+
+    python_dependcies_module = []
+    installed_packages = []
+
+    for dependency in build_dependencies:
+        python_dependcies_module.append(
+            re.sub("_|-", '', re.sub(r"==.*|>=.*|<=.*", '', dependency))
+        )
+    reqs = subprocess.check_output([sys.executable, '-m', 'pip', 'freeze'])
+
+    for r in reqs.split():
+        installed_packages.append(re.sub("_|-", '', r.decode().split('==')[0]))
+
+    for dependency in python_dependcies_module:
+        if dependency not in installed_packages:
+            raise RuntimeError(missing_modules.format(dependency=dependency))
+
+
 def main():
     # Parse the command line and check arguments before we proceed with building steps and setup
     parse_input_command(filter_args_list)
+
+    # check build dependency
+    check_build_dependency()
 
     # Execute the build process,cmake and make
     if cmake_and_build:

@@ -78,5 +78,11 @@ static phi::DDim get_reduce_dims(const phi::DDim& x_dims,
   return get_reduce_dims_from_out(out_dims, x_dims);
 }
 
+// TODO(cxxly): Check and throws InvalidCastException when overflow.
+template <typename SRC_T, typename DST_T>
+static std::vector<DST_T> unsafe_vector_cast(const std::vector<SRC_T>& src) {
+  std::vector<DST_T> dst(src.begin(), src.end());
+  return dst;
+}
 }  // namespace prim
 }  // namespace paddle
