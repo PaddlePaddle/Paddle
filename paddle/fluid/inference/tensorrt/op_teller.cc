@@ -1316,7 +1316,21 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
     }
-
+    if (op_type == "fused_bias_dropout_residual_layer_norm") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "fused_bias_dropout_residual_layer_norm should run on "
+                   "dynamic shape mode.";
+        return false;
+      }
+      float dropout_rate =
+          PADDLE_GET_CONST(float, desc.GetAttr("dropout_rate"));
+      if (dropout_rate != 0.0f) {
+        VLOG(4) << "preln_residual_bias trt layer can not work with "
+                   "fused_bias_dropout_residual_layer_norm op in which the "
+                   "dropout_rate != 0, stop convert";
+        return false;
+      }
+    }
     if (op_type == "fused_preln_embedding_eltwise_layernorm") {
       if (!with_dynamic_shape) {
         VLOG(3) << "fused_preln_embedding_eltwise_layernorm should run on "
@@ -2223,7 +2237,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "slice",
       "strided_slice",
       "fused_preln_embedding_eltwise_layernorm",
-      "preln_residual_bias",
+      "fused_bias_dropout_residual_layer_norm",
       "c_allreduce_sum",
       "c_allreduce_min",
       "c_allreduce_max",
@@ -2337,7 +2351,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "strided_slice",
       "fused_preln_embedding_eltwise_layernorm",
       "preln_skip_layernorm",
-      "preln_residual_bias",
+      "fused_bias_dropout_residual_layer_norm",
       "c_allreduce_sum",
       "c_allreduce_min",
       "c_allreduce_max",
