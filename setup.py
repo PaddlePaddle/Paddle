@@ -1287,7 +1287,6 @@ def get_setup_parameters():
         'paddle.fluid.transpiler',
         'paddle.fluid.transpiler.details',
         'paddle.fluid.incubate',
-        'paddle.fluid.incubate.data_generator',
         'paddle.fluid.incubate.fleet',
         'paddle.fluid.incubate.checkpoint',
         'paddle.fluid.incubate.fleet.base',
