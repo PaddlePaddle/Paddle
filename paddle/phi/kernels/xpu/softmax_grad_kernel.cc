@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 
