@@ -130,9 +130,14 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
     cpu_bad_out_data = cpu_bad_in_data + 1;
     if (cpu_bad_out_data == decr_every_n_nan_or_inf) {
       MPDType new_loss_scaling = cpu_pre_loss_scaling_data * decr_ratio;
+      //   cpu_updated_loss_scaling_data =
+      //       (new_loss_scaling < static_cast<MPDType>(1))
+      //           ? (static_cast<MPDType>(1))
+      //           : (new_loss_scaling);
+      // Todo: fix mplerf bert calc bug
       cpu_updated_loss_scaling_data =
-          (new_loss_scaling < static_cast<MPDType>(1))
-              ? (static_cast<MPDType>(1))
+          (new_loss_scaling < static_cast<MPDType>(1 / 256.0))
+              ? (static_cast<MPDType>(1 / 256.0))
               : (new_loss_scaling);
       cpu_bad_out_data = 0;
     }
@@ -163,6 +168,15 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
                        phi::CPUPlace(),
                        &cpu_updated_loss_scaling_data,
                        sizeof(MPDType));
+
+  printf(
+      "update_loss_scaling ===> cur: %f, last: %f, cpu_bad: %d, tar:%d, "
+      "good_tar: %d\n",
+      cpu_updated_loss_scaling_data,
+      cpu_pre_loss_scaling_data,
+      cpu_bad_out_data,
+      decr_every_n_nan_or_inf,
+      incr_every_n_steps);
 }
 
 template <typename T, typename Context>

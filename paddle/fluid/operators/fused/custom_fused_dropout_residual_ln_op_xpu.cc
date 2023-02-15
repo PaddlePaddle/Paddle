@@ -278,10 +278,26 @@ class CustomFusedDropoutResidualLnXPUGradKernel
         ln_dbias_fp32_ptr,
         (const xpu::DropoutAddLayernormParam)dropout_param);
 
+    // ret = api::clip<float>(ctx, dx_tmp, dx_tmp, xm * n, -65504.0, 65504.0);
     if (x->dtype() == phi::DataType::FLOAT16) {
-      int r = xpu::cast<float, XPUType>(
+      int r = xpu::clip<float>(xpu_ctx,
+                               ln_dscale_fp32_ptr,
+                               ln_dscale_fp32_ptr,
+                               grad_ln_scale->numel(),
+                               -65504.0,
+                               65504.0);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "clip");
+      r = xpu::cast<float, XPUType>(
           xpu_ctx, ln_dscale_fp32_ptr, d_ln_scale_ptr, grad_ln_scale->numel());
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+
+      r = xpu::clip<float>(xpu_ctx,
+                           ln_dbias_fp32_ptr,
+                           ln_dbias_fp32_ptr,
+                           grad_ln_bias->numel(),
+                           -65504.0,
+                           65504.0);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "clip");
       r = xpu::cast<float, XPUType>(
           xpu_ctx, ln_dbias_fp32_ptr, d_ln_bias_ptr, grad_ln_bias->numel());
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
