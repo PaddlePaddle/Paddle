@@ -1681,7 +1681,7 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
                     new_inputs.append(grad_var_name)
             assert (
                 len(new_inputs) > 0
-            ), "After remove, sum op have no inputs. Error happens."
+            ), "After remove invalid variables, sum op have no inputs."
             op_desc.set_input("X", new_inputs)
 
         new_vars = set()
