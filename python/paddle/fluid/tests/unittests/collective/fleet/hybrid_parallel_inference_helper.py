@@ -122,19 +122,19 @@ class TestHybridParallelInferenceHelperClass(unittest.TestCase):
 
                     # update cond and assign to cond_int, we will sync cond_int
                     paddle.assign(paddle.less_than(x=step_idx, y=max_len), cond)
-                    layers.assign(layers.cast(cond, dtype="int32"), cond_int)
+                    paddle.assign(paddle.cast(cond, dtype="int32"), cond_int)
 
                 with paddle.fluid.device_guard(f'{device}:all'):
                     # the code below must at end of while block and exists in device:all
-                    layers.assign(layers.cast(cond_int, dtype='bool'), cond)
+                    paddle.assign(paddle.cast(cond_int, dtype='bool'), cond)
 
             with paddle.fluid.device_guard(f'{device}:all'):
                 out = paddle.tensor.create_array(data.dtype)
-                layers.assign(data, out)
+                paddle.assign(data, out)
 
             with paddle.fluid.device_guard(f'{device}:all'):
                 # use a empty lod_tensor_array to clear lod_tensor_array
-                layers.assign(paddle.tensor.create_array(data.dtype), data)
+                paddle.assign(paddle.tensor.create_array(data.dtype), data)
 
         helper = HybridParallelInferenceHelper(
             startup_program,

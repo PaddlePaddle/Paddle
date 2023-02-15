@@ -20,12 +20,12 @@
 
 namespace paddle {
 
-namespace operants {
+namespace prim {
 using DescTensor = paddle::prim::DescTensor;
 
 Tensor StaticTensorOperants::multiply(const Tensor& x, const Tensor& y) {
   return paddle::prim::multiply<DescTensor>(x, y);
 }
 
-}  // namespace operants
+}  // namespace prim
 }  // namespace paddle
