@@ -61,8 +61,8 @@ typedef SSIZE_T ssize_t;
 #endif
 
 #include "gflags/gflags.h"
+#include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/include/tensor_operants.h"
-#include "paddle/phi/core/operants_manager.h"
 
 DECLARE_string(tensor_operants_mode);
 
@@ -503,10 +503,10 @@ static PyObject* eager_api_init_eager_and_static_tensor_operants(
     PyObject* self, PyObject* args, PyObject* kwargs) {
   EAGER_TRY
 
-  paddle::operants::OperantsManager::Instance().eager_operants.reset(
-      new paddle::operants::EagerTensorOperants());
-  paddle::operants::OperantsManager::Instance().static_operants.reset(
-      new paddle::operants::StaticTensorOperants());
+  paddle::OperantsManager::Instance().eager_operants.reset(
+      new paddle::prim::EagerTensorOperants());
+  paddle::OperantsManager::Instance().static_operants.reset(
+      new paddle::prim::StaticTensorOperants());
   VLOG(4) << "Initialize eager and static tensor operants successfully";
 
   RETURN_PY_NONE
@@ -518,9 +518,8 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
                                          PyObject* kwargs) {
   EAGER_TRY
   FLAGS_tensor_operants_mode = "phi";
-  if (paddle::operants::OperantsManager::Instance().phi_operants.get() ==
-      nullptr) {
-    paddle::operants::OperantsManager::Instance().phi_operants.reset(
+  if (paddle::OperantsManager::Instance().phi_operants.get() == nullptr) {
+    paddle::OperantsManager::Instance().phi_operants.reset(
         new paddle::operants::PhiTensorOperants());
     VLOG(4) << "Initialize phi tensor operants successfully";
   }

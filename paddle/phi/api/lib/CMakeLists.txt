@@ -316,3 +316,7 @@ cc_library(
   phi_tensor_operants
   SRCS tensor_operants.cc
   DEPS phi_function_api)
+cc_library(
+  operants_manager
+  SRCS operants_manager.cc
+  DEPS phi_enforce)
