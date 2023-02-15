@@ -191,21 +191,23 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
 
 #if defined(PADDLE_WITH_XPU_KP)
   VLOG(6) << "fluid_op_name: " << TransToFluidOpName(kernel_name);
+  auto kernel_key_flage = kernel_key;
+  auto kernel_iter_flage = kernel_iter;
+
   bool is_xpu_kp_supported = phi::backends::xpu::is_xpu_kp_support_op(
       TransToFluidOpName(kernel_name), kernel_key.dtype());
-  auto kernel_key_flage = kernel_key;
-  bool use_kp = FLAGS_run_kp_kernel && is_xpu_kp_supported;
-  if (use_kp) {
+  if (is_xpu_kp_supported && FLAGS_run_kp_kernel) {
     auto kernel_key_tmp =
         KernelKey(Backend::KPS, kernel_key.layout(), kernel_key.dtype());
     auto kernel_iter_kp = iter->second.find(kernel_key_tmp);
-    is_kp_kernel = !(kernel_iter_kp == iter->second.end());
+    bool is_kp_kernel = (kernel_iter_kp != iter->second.end());
     kernel_key = is_kp_kernel ? kernel_key_tmp : kernel_key_flage;
+    kernel_iter = is_kp_kernel ? kernel_iter_kp : kernel_iter;
   }
   VLOG(3) << "Current KernelKey is " << kernel_key;
   if ((kernel_key == kernel_key_flage) &&
       ((FLAGS_enable_api_kernel_fallback &&
-        kernel_iter == iter->second.end()) ||
+        kernel_iter_flage == iter->second.end()) ||
        !phi::backends::xpu::is_xpu_support_op(TransToFluidOpName(kernel_name),
                                               kernel_key.dtype()))
 #elif defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
