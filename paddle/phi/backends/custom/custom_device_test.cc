@@ -17,10 +17,10 @@
 #include <string>
 
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/custom/fake_cpu_device.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 void RegisterDevice() {
   CustomRuntimeParams runtime_params;
@@ -39,11 +39,11 @@ void InitDevice() {
   RegisterDevice();
   EXPECT_GT(static_cast<int>(phi::DeviceManager::GetAllDeviceTypes().size()),
             0);
-  auto place = paddle::platform::CustomPlace(DEVICE_TYPE, 0);
+  auto place = phi::CustomPlace(DEVICE_TYPE, 0);
   auto device = phi::DeviceManager::GetDeviceWithPlace(place);
   EXPECT_NE(device, nullptr);
 
-  std::vector<paddle::platform::Place> places;
+  std::vector<phi::Place> places;
   auto device_types = phi::DeviceManager::GetAllDeviceTypes();
   for (auto dev_type : device_types) {
     auto devices = phi::DeviceManager::GetDeviceList(dev_type);
@@ -57,9 +57,9 @@ void InitDevice() {
   paddle::platform::DeviceContextPool::Init(places);
 }
 
-void TestDeviceInterface(const paddle::platform::Place& place) {
+void TestDeviceInterface(const phi::Place& place) {
   std::cout << "TestDeviceInterface on " << place << std::endl;
-  if (paddle::platform::is_custom_place(place)) {
+  if (place.GetType() == phi::AllocationType::CUSTOM) {
     auto device = phi::DeviceManager::GetDeviceWithPlace(place);
     auto dev_type = paddle::platform::PlaceHelper::GetDeviceType(place);
     auto p1 =
@@ -72,7 +72,7 @@ void TestDeviceInterface(const paddle::platform::Place& place) {
   }
 }
 
-void TestTensorMutableData(const paddle::platform::Place& place) {
+void TestTensorMutableData(const phi::Place& place) {
   std::cout << "TestTensorInitialization on " << place << std::endl;
   phi::DenseTensor src_tensor;
   float* p1 = nullptr;
@@ -97,7 +97,7 @@ void TestTensorMutableData(const paddle::platform::Place& place) {
   EXPECT_EQ(p1, p2);
 }
 
-void TestTensorShareDataWith(const paddle::platform::Place& place) {
+void TestTensorShareDataWith(const phi::Place& place) {
   std::cout << "TestTensorShareDataWith on " << place << std::endl;
   phi::DenseTensor src_tensor;
   phi::DenseTensor dst_tensor;
@@ -106,28 +106,28 @@ void TestTensorShareDataWith(const paddle::platform::Place& place) {
   ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
 }
 
-void TestTensorUtils(const paddle::platform::Place& place) {
+void TestTensorUtils(const phi::Place& place) {
   std::cout << "TestTensorUtils on " << place << std::endl;
-  if (paddle::platform::is_custom_place(place) == false) {
+  if (place.GetType() == phi::AllocationType::CUSTOM) {
     return;
   }
   phi::DenseTensor src_tensor;
   phi::DenseTensor gpu_tensor;
   phi::DenseTensor dst_tensor;
 
-  int* src_ptr = src_tensor.mutable_data<int>(phi::make_ddim({3, 3}),
-                                              paddle::platform::CPUPlace());
+  int* src_ptr =
+      src_tensor.mutable_data<int>(phi::make_ddim({3, 3}), phi::CPUPlace());
 
   int arr[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
   memcpy(src_ptr, arr, 9 * sizeof(int));
 
   // CPU Tensor to GPU Tensor
   paddle::platform::CustomDeviceContext gpu_ctx(place);
-  paddle::framework::TensorCopy(src_tensor, place, gpu_ctx, &gpu_tensor);
+  phi::Copy(gpu_ctx, src_tensor, place, false, &gpu_tensor);
 #if 0
   // GPU Tensor to CPU Tensor
   auto cpu_place = new paddle::platform::CPUPlace();
-  paddle::framework::TensorCopy(gpu_tensor, *cpu_place, gpu_ctx, &dst_tensor);
+  phi::Copy(gpu_ctx, gpu_tensor, *cpu_place, false, &dst_tensor);
 
   // Sync before Compare Tensors
   gpu_ctx.Wait();
@@ -138,7 +138,7 @@ void TestTensorUtils(const paddle::platform::Place& place) {
   }
 
   // Copy the same tensor
-  paddle::framework::TensorCopy(gpu_tensor, place, gpu_ctx, &gpu_tensor);
+  phi::Copy(gpu_ctx, gpu_tensor, place, false, &gpu_tensor);
   gpu_ctx.Wait();
   const int* dst_ptr_tmp = dst_tensor.data<int>();
   EXPECT_NE(src_ptr, dst_ptr_tmp);
@@ -149,10 +149,10 @@ void TestTensorUtils(const paddle::platform::Place& place) {
   phi::DenseTensor slice_tensor = src_tensor.Slice(1, 2);
 
   // CPU Slice Tensor to GPU Tensor
-  paddle::framework::TensorCopy(slice_tensor, place, gpu_ctx, &gpu_tensor);
+  phi::Copy(gpu_ctx, slice_tensor, place, false, &gpu_tensor);
 
   // GPU Tensor to CPU Tensor
-  paddle::framework::TensorCopy(gpu_tensor, *cpu_place, gpu_ctx, &dst_tensor);
+  phi::Copy(gpu_ctx, gpu_tensor, *cpu_place, false, &dst_tensor);
 
   // Sync before Compare Slice Tensors
   gpu_ctx.Wait();
@@ -167,9 +167,9 @@ void TestTensorUtils(const paddle::platform::Place& place) {
 #endif
 }
 
-void TestCustomCCL(const paddle::platform::Place& place) {
+void TestCustomCCL(const phi::Place& place) {
   std::cout << "TestCustomCCL on " << place << std::endl;
-  if (paddle::platform::is_custom_place(place) == false) {
+  if (place.GetType() == phi::AllocationType::CUSTOM) {
     return;
   }
   std::string dev_type = place.GetDeviceType();
