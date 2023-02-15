@@ -79,9 +79,13 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
     """
 
     if in_dygraph_mode():
-        eps = fluid.dygraph.base.to_variable([epsilon], dtype=x.dtype)
-        out = _C_ops.p_norm(x, float(p), axis, epsilon, True, False)
-        return x / _C_ops.maximum(out, eps)
+        if p == 2:
+            out, _ = _C_ops.norm(x, 1 if axis is None else axis, epsilon, False)
+            return out
+        else:
+            eps = fluid.dygraph.base.to_variable([epsilon], dtype=x.dtype)
+            out = _C_ops.p_norm(x, float(p), axis, epsilon, True, False)
+            return x / _C_ops.maximum(out, eps)
 
     else:
         check_type(p, 'p', (float, int), 'normalize')
@@ -95,43 +99,21 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
                     axis
                 )
             )
-        elif len(x.shape) == 1:
-            axis = 0
 
-        if p == 2:
-            attrs = {
-                "axis": 1 if axis is None else axis,
-                "epsilon": epsilon,
-            }
-            helper = LayerHelper("l2_normalize", **locals())
-            out = helper.create_variable_for_type_inference(dtype=x.dtype)
-            norm = helper.create_variable_for_type_inference(dtype=x.dtype)
-            helper.append_op(
-                type="norm",
-                inputs={"X": x},
-                outputs={"Out": out, "Norm": norm},
-                attrs=attrs,
-            )
-            return out
-
-        else:
-            attrs = {
-                'axis': axis,
-                'porder': float(p),
-                'keepdim': True,
-                'epsilon': epsilon,
-            }
-            helper = LayerHelper('p_norm', **locals())
-            out = helper.create_variable_for_type_inference(dtype=x.dtype)
-            helper.append_op(
-                type='p_norm',
-                inputs={'X': x},
-                outputs={'Out': out},
-                attrs=attrs,
-            )
-            eps = out.block.create_var(dtype=out.dtype)
-            eps = paddle.full(shape=[1], fill_value=epsilon, dtype=out.dtype)
-            return paddle.divide(x, paddle.maximum(out, eps), name=name)
+        attrs = {
+            'axis': axis,
+            'porder': float(p),
+            'keepdim': True,
+            'epsilon': epsilon,
+        }
+        helper = LayerHelper('p_norm', **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='p_norm', inputs={'X': x}, outputs={'Out': out}, attrs=attrs
+        )
+        eps = out.block.create_var(dtype=out.dtype)
+        eps = paddle.full(shape=[1], fill_value=epsilon, dtype=out.dtype)
+        return paddle.divide(x, paddle.maximum(out, eps), name=name)
 
 
 def batch_norm(
