@@ -70,7 +70,8 @@ class CBroadcastOpXPUKernel : public framework::OpKernel<T> {
                                 stream);
       PADDLE_ENFORCE_EQ(ret,
                         BKCL_SUCCESS,
-                        platform::errors::Unavailable("BKCL broadcast failed"));
+                        platform::errors::PreconditionNotMet(
+                            "XPU BKCL c_broadcast execute failed"));
       if (out != x) {
         framework::TensorCopy(
             *static_cast<const phi::DenseTensor*>(x),
@@ -79,17 +80,19 @@ class CBroadcastOpXPUKernel : public framework::OpKernel<T> {
             static_cast<phi::DenseTensor*>(out));
       }
     } else {
-      send_recv_buffer = out->mutable_data<T>(place);
-      auto ret = bkcl_broadcast(comm->comm(),
-                                send_recv_buffer,
-                                send_recv_buffer,
-                                numel,
-                                dtype,
-                                root,
-                                stream);
+      ctx.template Alloc<T>(out);
+      send_recv_buffer = out->data<T>() auto ret =
+          bkcl_broadcast(comm->comm(),
+                         send_recv_buffer,
+                         send_recv_buffer,
+                         numel,
+                         dtype,
+                         root,
+                         stream);
       PADDLE_ENFORCE_EQ(ret,
                         BKCL_SUCCESS,
-                        platform::errors::Unavailable("BKCL broadcast failed"));
+                        platform::errors::PreconditionNotMet(
+                            "XPU BKCL c_broadcast execute failed"));
     }
 
     VLOG(3) << "rank " << comm->rank() << " invoke Bcast. received "

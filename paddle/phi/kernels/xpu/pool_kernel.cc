@@ -48,8 +48,8 @@ void Pool2dKernel(const Context& ctx,
   PADDLE_ENFORCE_NE(
       data_format,
       "NHWC",
-      phi::errors::InvalidArgument("The Pool2d XPU OP only support "
-                                   "data_format is 'NCHW', but received %s",
+      phi::errors::InvalidArgument("The Pool2d XPU OP does not support "
+                                   "data_format is 'NHWC', but received %s",
                                    data_format));
 
   if (global_pooling) {
