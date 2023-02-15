@@ -59,6 +59,7 @@ class L1Decay(fluid.regularizer.L1Decay):
             momentum.clear_grad()
             
         .. code-block:: python
+        
             # Example2: set Regularizer in parameters
             # Set L1 regularization in parameters.
             # Global regularizer does not take effect on my_conv2d for this case.
