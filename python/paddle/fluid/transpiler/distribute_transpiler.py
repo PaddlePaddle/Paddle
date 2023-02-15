@@ -169,7 +169,7 @@ class DistributeTranspilerConfig:
           We can use bandwidth efficiently when data size is larger than 2MB.If you
           want to change it, please be sure you have read the slice_variable function. You can find
           the definition of slice_variable in
-          https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/transpiler/distribute_transpiler.py
+          https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/transpiler/distribute_transpiler.py
           .
 
     Examples:
