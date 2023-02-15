@@ -16,7 +16,7 @@
 
 #include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
-#if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
+#if defined(PADDLE_WITH_XPU)
 #include "paddle/phi/backends/xpu/xpu_op_list.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #endif
@@ -28,7 +28,7 @@
 
 DECLARE_int32(low_precision_op_list);
 DECLARE_bool(enable_api_kernel_fallback);
-
+DECLARE_bool(run_kp_kernel);
 namespace phi {
 
 const static Kernel empty_kernel;  // NOLINT
@@ -189,7 +189,26 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
           kernel_name,
           KernelSelectionErrorMessage(kernel_name, kernel_key)));
 
-#if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
+#if defined(PADDLE_WITH_XPU_KP)
+  VLOG(6) << "fluid_op_name: " << TransToFluidOpName(kernel_name);
+  bool is_xpu_kp_supported = phi::backends::xpu::is_xpu_kp_support_op(
+      TransToFluidOpName(kernel_name), kernel_key.dtype());
+  auto kernel_key_flage = kernel_key;
+  bool use_kp = FLAGS_run_kp_kernel && is_xpu_kp_supported;
+  if (use_kp) {
+    auto kernel_key_tmp =
+        KernelKey(Backend::KPS, kernel_key.layout(), kernel_key.dtype());
+    auto kernel_iter_kp = iter->second.find(kernel_key_tmp);
+    is_kp_kernel = !(kernel_iter_kp == iter->second.end());
+    kernel_key = is_kp_kernel ? kernel_key_tmp : kernel_key_flage;
+  }
+  VLOG(3) << "Current KernelKey is " << kernel_key;
+  if ((kernel_key == kernel_key_flage) &&
+      ((FLAGS_enable_api_kernel_fallback &&
+        kernel_iter == iter->second.end()) ||
+       !phi::backends::xpu::is_xpu_support_op(TransToFluidOpName(kernel_name),
+                                              kernel_key.dtype()))
+#elif defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
   VLOG(6) << "fluid_op_name: " << TransToFluidOpName(kernel_name);
   if ((FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end()) ||
       !phi::backends::xpu::is_xpu_support_op(TransToFluidOpName(kernel_name),
@@ -199,23 +218,6 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
       (kernel_iter == iter->second.end() ||
        phi::backends::custom_device::is_in_custom_black_list(
            TransToFluidOpName(kernel_name)))
-#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_KP)
-  VLOG(3) << "fluid_op_name: " << TransToFluidOpName(kernel_name);
-  VLOG(3) << " if kp support : "
-          << phi::backends::xpu::is_xpu_kp_support_op(
-                 TransToFluidOpName(kernel_name), kernel_key.dtype());
-  for (auto& p : iter->second) {
-    VLOG(3) << " bk: " << p.first;
-  }
-  kernel_key = KernelKey(Backend::KPS, kernel_key.layout(), kernel_key.dtype());
-  kernel_iter = iter->second.find(kernel_key);
-  auto kernel_iter_kp = iter->second.find(kernel_key);
-  VLOG(3) << " if kp support kp back: "
-          << (kernel_iter_kp == iter->second.end());
-  if ((FLAGS_enable_api_kernel_fallback &&
-       kernel_iter_kp == iter->second.end()) ||
-      !phi::backends::xpu::is_xpu_kp_support_op(TransToFluidOpName(kernel_name),
-                                                kernel_key.dtype())
 #else
   if ((FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end())
 #endif
