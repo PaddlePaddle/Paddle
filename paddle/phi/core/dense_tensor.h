@@ -165,8 +165,6 @@ class DenseTensor : public TensorBase,
 
   void* data();
 
-  std::shared_ptr<bool> canNotUse;
-
   std::vector<std::shared_ptr<bool>> can_not_uses;
 
   /// \brief Get whether the storage_properties is inited.

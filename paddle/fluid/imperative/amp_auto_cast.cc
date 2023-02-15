@@ -106,7 +106,7 @@ OpSupportedInfos(const std::string& place,
   return std::make_tuple(
       std::move(all_ops), std::move(supported_ops), std::move(unsupported_ops));
 }
-
+bool can_not_use() { return false; }
 AutoCastGuard::AutoCastGuard(std::shared_ptr<Tracer> tracer, AmpLevel level)
     : tracer_(tracer) {
   pre_amp_level_ = tracer_->GetAmpLevel();
@@ -326,12 +326,11 @@ static inline framework::proto::VarType::Type GetPromoteType(
 }
 
 template <typename VarType>
-void AutoCheckNotUseInputs(const std::string& op_type,
-                           const NameVarMap<VarType>& ins) {
+NameVarMap<VarType> AutoCheckNotUseInputs(const std::string& op_type,
+                                          const NameVarMap<VarType>& ins) {
   NameVarMap<VarType> new_ins(ins);
   if (AmpOperators::Instance().GetMutableAllowOps()->count(op_type)) {
     for (auto& pair : new_ins) {
-      // NOTE(zhiqiu): batch_norm and layer_norm support only input x is fp16.
       if ((op_type == "batch_norm" || op_type == "layer_norm" ||
            op_type == "sync_batch_norm") &&
           pair.first != "X") {
@@ -350,11 +349,8 @@ void AutoCheckNotUseInputs(const std::string& op_type,
           continue;
         }
       }
-
-      VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
-              << GetDtypeStr(*pair.second.cbegin()) << " to float16";
       for (auto& var : pair.second) {
-        if (var.can_not_use()) {
+        if (var->can_not_use()) {
           LOG(WARNING) << "Stride Test Log: " << op_type
                        << " Find a Tensor Which Can Not Use.";
         }
@@ -364,56 +360,43 @@ void AutoCheckNotUseInputs(const std::string& op_type,
              AmpOperators::Instance().GetMutableUnsupportedFp16Ops()->count(
                  op_type)) {
     for (auto& pair : new_ins) {
-      VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
-              << GetDtypeStr(*pair.second.cbegin()) << " to float";
       for (auto& var : pair.second) {
-        if (var.can_not_use()) {
+        if (var->can_not_use()) {
           LOG(WARNING) << "Stride Test Log: " << op_type
                        << " Find a Tensor Which Can Not Use.";
         }
       }
     }
   } else {
-    auto dst_type =
-        GetPromoteType<VarType>(op_type, ins, framework::proto::VarType::FP16);
-
-    // NOTE(zhiqiu): if the op has op fp16 kernel, fall back to fp32.
-    if (dst_type == framework::proto::VarType::FP16 &&
-        AmpOperators::Instance().GetMutableUnsupportedFp16Ops()->count(
-            op_type)) {
-      dst_type = framework::proto::VarType::FP32;
-    }
     for (auto& pair : new_ins) {
-      // NOTE(zhiqiu): batch_norm and layer_norm support only input x is fp16.
       if ((op_type == "batch_norm" || op_type == "layer_norm" ||
            op_type == "sync_batch_norm") &&
-          pair.first == "X" && dst_type == framework::proto::VarType::FP32) {
+          pair.first == "X") {
         continue;
       }
       if ((op_type == "max_pool2d_with_index_grad" ||
            op_type == "max_pool2d_with_index") &&
-          pair.first != "Mask" && dst_type == framework::proto::VarType::FP32) {
+          pair.first != "Mask") {
         continue;
       }
-      if ((op_type == "fused_attention" || op_type == "fused_feedforwad") &&
-          dst_type == framework::proto::VarType::FP32) {
+      if ((op_type == "fused_attention" || op_type == "fused_feedforwad")) {
         if (pair.first != "LnScale" && pair.first != "LnBias" &&
             pair.first != "Ln2Scale" && pair.first != "Ln2Bias" &&
             pair.first != "Ln1Scale" && pair.first != "Ln1Bias") {
           continue;
         }
       }
-      VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
-              << GetDtypeStr(*pair.second.cbegin()) << " to "
-              << framework::DataTypeToString(dst_type);
+
       for (auto& var : pair.second) {
-        if (var.can_not_use()) {
+        if (var->can_not_use()) {
           LOG(WARNING) << "Stride Test Log: " << op_type
                        << " Find a Tensor Which Can Not Use.";
         }
       }
     }
   }
+  NameVarMap<VarType> res;
+  return res;
 }
 
 template <typename VarType>
@@ -503,9 +486,15 @@ NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
   }
   return new_ins;
 }
+
 template NameVarMap<VarBase> AutoCastInputs<VarBase>(
     const std::string& op_type, const NameVarMap<VarBase>& ins);
 template NameVarMap<egr::EagerVariable> AutoCastInputs<egr::EagerVariable>(
+    const std::string& op_type, const NameVarMap<egr::EagerVariable>& ins);
+template NameVarMap<VarBase> AutoCheckNotUseInputs<VarBase>(
+    const std::string& op_type, const NameVarMap<VarBase>& ins);
+template NameVarMap<egr::EagerVariable>
+AutoCheckNotUseInputs<egr::EagerVariable>(
     const std::string& op_type, const NameVarMap<egr::EagerVariable>& ins);
 template <typename VarType>
 NameVarMap<VarType> CastPureFp16Inputs(const std::string& op_type,

@@ -204,7 +204,7 @@ class TensorWrapper {
       uint32_t wrapper_version_snapshot = inplace_version_snapshot_;
       uint32_t tensor_version = inplace_version_counter.CurrentVersion();
       LOG_IF(WARNING, tensor_version != wrapper_version_snapshot)
-          << "Stride Testing: " << op_name
+          << "Stride Test Log: " << op_name
           << " inplace operation got mismatch version";
       /*
       PADDLE_ENFORCE_EQ(
