@@ -58,7 +58,6 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
     const int nranks = ctx.Attr<int>("nranks");
     const int rank = ctx.Attr<int>("rank");
 
-    const auto& place = ctx.GetPlace();
     auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
 
     auto map = distributed::ProcessGroupMapFromGid::getInstance();
@@ -67,8 +66,8 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
     opts.reduce_op = distributed::ReduceOp::MAX;
 
     // allocate memory on device.
-    softmax->mutable_data<T>(place);
-    loss->mutable_data<T>(place);
+    dev_ctx.template Alloc(softmax, logits->dtype());
+    dev_ctx.template Alloc(loss, logits->dtype());
 
     const auto& logits_dims = logits->dims();
 
@@ -76,10 +75,13 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
     const int N = phi::funcs::SizeToAxis(axis, logits_dims);
     const int D = phi::funcs::SizeFromAxis(axis, logits_dims);
 
-    phi::DenseTensor logits_2d, softmax_2d, loss_2d;
-    logits_2d.ShareDataWith(*logits).Resize({N, D});
-    softmax_2d.ShareDataWith(*softmax).Resize({N, D});
-    loss_2d.ShareDataWith(*loss).Resize({N, 1});
+    phi::DenseTensor logits_2d, softmax_2d;
+    framework::TensorCopy(
+        *logits, ctx.GetPlace(), ctx.device_context(), &logits_2d);
+    framework::TensorCopy(
+        *softmax, ctx.GetPlace(), ctx.device_context(), &softmax_2d);
+    logits_2d.Resize({N, D});
+    softmax_2d.Resize({N, D});
 
     int ret = -1;
     // step 1, obtain logit_max
@@ -128,7 +130,6 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
     phi::DenseTensor predicted_logits;
     predicted_logits =
         ctx.AllocateTmpTensor<T, phi::XPUContext>({N, 1}, dev_ctx);
-    predicted_logits.mutable_data<T>(place);
     const int start_index = rank * D;
     const int end_index = start_index + D;
     const auto& label_type = framework::TransToProtoVarType(labels->dtype());
@@ -218,9 +219,12 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
         dev_ctx.x_context(),
         reinterpret_cast<const XPUType*>(sum_exp_logits.data<T>()),
         reinterpret_cast<const XPUType*>(predicted_logits.data<T>()),
-        reinterpret_cast<XPUType*>(loss_2d.data<T>()),
+        reinterpret_cast<XPUType*>(loss->data<T>()),
         N * 1);
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "sub");
+
+    framework::TensorCopy(
+        softmax_2d, ctx.GetPlace(), ctx.device_context(), softmax);
   }
 };
 
@@ -247,8 +251,8 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
                             ->stream();
 
     // allocate memory on device.
-    softmax->mutable_data<T>(place);
-    loss->mutable_data<T>(place);
+    dev_ctx.template Alloc(softmax, logits->dtype());
+    dev_ctx.template Alloc(loss, logits->dtype());
 
     const auto& logits_dims = logits->dims();
 
@@ -256,16 +260,19 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
     const int N = phi::funcs::SizeToAxis(axis, logits_dims);
     const int D = phi::funcs::SizeFromAxis(axis, logits_dims);
 
-    phi::DenseTensor logits_2d, softmax_2d, loss_2d;
-    logits_2d.ShareDataWith(*logits).Resize({N, D});
-    softmax_2d.ShareDataWith(*softmax).Resize({N, D});
-    loss_2d.ShareDataWith(*loss).Resize({N, 1});
+    phi::DenseTensor logits_2d, softmax_2d;
+    framework::TensorCopy(
+        *logits, ctx.GetPlace(), ctx.device_context(), &logits_2d);
+    framework::TensorCopy(
+        *softmax, ctx.GetPlace(), ctx.device_context(), &softmax_2d);
+    logits_2d.Resize({N, D});
+    softmax_2d.Resize({N, D});
 
     int ret = -1;
     // step 1, obtain logit_max
     phi::DenseTensor logits_max;
     logits_max = ctx.AllocateTmpTensor<T, phi::XPUContext>({N, 1}, dev_ctx);
-    void* logits_max_buff = logits_max.mutable_data<T>(place);
+    void* logits_max_buff = logits_max.data<T>();
     {
       int dims[1] = {1};
       auto f = [](xpu::Context* ctx,
@@ -314,7 +321,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
     phi::DenseTensor predicted_logits;
     predicted_logits =
         ctx.AllocateTmpTensor<T, phi::XPUContext>({N, 1}, dev_ctx);
-    predicted_logits.mutable_data<T>(place);
+    void* predict_logits_buff = predicted_logits.data<T>();
     ret = xpu::constant<XPUType>(
         dev_ctx.x_context(),
         reinterpret_cast<XPUType*>(predicted_logits.data<T>()),
@@ -349,7 +356,6 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
     }
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "mask_label_by_index");
 
-    void* predict_logits_buff = predicted_logits.mutable_data<T>(place);
     PADDLE_ENFORCE_XPU_SUCCESS(bkcl_all_reduce(
         comm->comm(),
         predict_logits_buff,
@@ -392,7 +398,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
       PADDLE_ENFORCE_XDNN_SUCCESS(ret, "reduce_max");
     }
 
-    void* sum_exp_logits_buff = sum_exp_logits.mutable_data<T>(place);
+    void* sum_exp_logits_buff = sum_exp_logits.data<T>();
     PADDLE_ENFORCE_XPU_SUCCESS(bkcl_all_reduce(
         comm->comm(),
         sum_exp_logits_buff,
@@ -426,9 +432,12 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
         dev_ctx.x_context(),
         reinterpret_cast<const XPUType*>(sum_exp_logits.data<T>()),
         reinterpret_cast<const XPUType*>(predicted_logits.data<T>()),
-        reinterpret_cast<XPUType*>(loss_2d.data<T>()),
+        reinterpret_cast<XPUType*>(loss->data<T>()),
         N * 1);
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "sub");
+
+    framework::TensorCopy(
+        softmax_2d, ctx.GetPlace(), ctx.device_context(), softmax);
   }
 };
 
@@ -456,9 +465,6 @@ class CSoftmaxWithCrossEntropyGrad : public framework::OpKernel<T> {
     const int N = phi::funcs::SizeToAxis(axis, softmax_dims);
     const int D = phi::funcs::SizeFromAxis(axis, softmax_dims);
 
-    phi::DenseTensor logit_grad_2d;
-    logit_grad_2d.ShareDataWith(*logit_grad).Resize({N, D});
-
     const int start_index = rank * D;
     const int end_index = start_index + D;
     const auto& label_type = framework::TransToProtoVarType(labels->dtype());
@@ -469,7 +475,7 @@ class CSoftmaxWithCrossEntropyGrad : public framework::OpKernel<T> {
           dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(loss_grad->data<T>()),
           labels->data<int32_t>(),
-          reinterpret_cast<XPUType*>(logit_grad_2d.data<T>()),
+          reinterpret_cast<XPUType*>(logit_grad->data<T>()),
           start_index,
           end_index,
           N,
@@ -479,7 +485,7 @@ class CSoftmaxWithCrossEntropyGrad : public framework::OpKernel<T> {
           dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(loss_grad->data<T>()),
           labels->data<int64_t>(),
-          reinterpret_cast<XPUType*>(logit_grad_2d.data<T>()),
+          reinterpret_cast<XPUType*>(logit_grad->data<T>()),
           start_index,
           end_index,
           N,
