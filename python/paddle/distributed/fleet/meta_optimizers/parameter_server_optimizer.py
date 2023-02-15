@@ -131,7 +131,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             _startup = worker.fake_init_ops_pass(_startup, compiled_config)
             if use_ps_gpu:
                 _main = worker.ps_gpu_pass(_main)
-                from paddle.distributed.transpiler.collective import (
+                from paddle.fluid.transpiler.collective import (
                     SingleProcessMultiThread,
                 )
 

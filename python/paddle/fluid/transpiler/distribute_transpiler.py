@@ -48,8 +48,9 @@ from ..framework import (
     Parameter,
     grad_var_name,
 )
-from .details import UnionFind, VarStruct, VarsDistributed
+from .details import wait_server_ready, UnionFind, VarStruct, VarsDistributed
 from .details import delete_ops, find_op_by_output_arg
+from . import collective
 
 LOOKUP_TABLE_TYPE = ["lookup_table", "lookup_table_v2"]
 LOOKUP_TABLE_GRAD_TYPE = ["lookup_table_grad", "lookup_table_v2_grad"]
@@ -371,10 +372,6 @@ class DistributeTranspiler:
         startup_program=None,
         wait_port=True,
     ):
-        from paddle.distributed.fleet.base.private_helper_function import (
-            wait_server_ready,
-        )
-
         if not startup_program:
             startup_program = default_startup_program()
         if trainer_id >= 0:
@@ -434,8 +431,6 @@ class DistributeTranspiler:
         main_program=None,
         wait_port=True,
     ):
-        from paddle.distributed.transpiler import collective
-
         if isinstance(trainers, str):
             endpoints = trainers.split(",")
         elif isinstance(trainers, list):
@@ -1129,9 +1124,6 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         """
         # remove optimize ops and add a send op to main_program
         # FIXME(typhoonzero): Also ops like clip_gradient, lrn_decay?
-        from paddle.distributed.fleet.base.private_helper_function import (
-            wait_server_ready,
-        )
 
         self._delete_trainer_optimizer(is_startup=True)
         sparse_table_names = self._get_sparse_table_names()

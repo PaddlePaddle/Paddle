@@ -12,14 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+import math
+from functools import reduce
 import os
 
-from paddle.distributed.fleet.base.private_helper_function import (
-    wait_server_ready,
-)
-from paddle.fluid import unique_name
-from paddle.framework import core
-from paddle.static import default_main_program, default_startup_program
+import collections
+import logging
+
+import numpy as np
+
+from .. import core, unique_name
+from ..framework import Program, default_main_program, default_startup_program
+from .details import wait_server_ready
+
+__all__ = ['GradAllReduce', 'LocalSGD', 'MultiThread']
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 
@@ -533,7 +540,7 @@ class SingleProcessMultiThread(GradAllReduce):
         for idx, op in reversed(list(enumerate(block.ops))):
             if not self._is_backward_op(op):
                 continue
-            if self.op_role_var_key not in op.attr_names:
+            if not self.op_role_var_key in op.attr_names:
                 continue
             op_role_var = op.all_attrs()[self.op_role_var_key]
             if len(op_role_var) == 0:
