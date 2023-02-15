@@ -22,7 +22,7 @@ from ..format import ConvertibleQuantedLayer
 
 class QuantedConv2D(ConvertibleQuantedLayer):
     """
-    The computational logic of QuantizedConv2D is the same with Conv2D.
+    The computational logic of QuantizedConv2D is the same as Conv2D.
     The only difference is that its inputs are all fake quantized.
     """
 

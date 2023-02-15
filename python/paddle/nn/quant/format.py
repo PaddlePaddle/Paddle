@@ -1,4 +1,3 @@
-"""Define some layers used to export quantization model with ONNX style."""
 # Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,13 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+"""Define some layers used to export quantization model with ONNX style."""
 import abc
 from typing import List, Tuple
 
 import paddle
 from paddle import _legacy_C_ops as _C_ops
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.framework import in_dygraph_mode
 from paddle.nn import Layer
 
 
@@ -147,9 +146,9 @@ class LinearDequanter(Layer):
 
 class ConvertibleQuantedLayer(Layer, metaclass=abc.ABCMeta):
     r"""Abstract class to help convert quantized layer to inference model.
-    It Defined some function convert quanters and observers to quantize or
-    dequantize operators who maitains quantization parameters used during
-    inference.
+    It defines some functions to convert quantizers and observers to quantize
+    or dequantize operators that maintain the quantization parameters used
+    during inference.
     Examples:
        .. code-block:: python
 
@@ -181,12 +180,13 @@ class ConvertibleQuantedLayer(Layer, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def weights_to_quanters(self) -> List[Tuple[str, str]]:
-        r"""Get the name pairs of weights to be quantized and corresponding quanters.
-        In convert function of this abstract class, it will call the 'weights_to_quanters' function.
-        And do something as bellow:
-        For each pair, the quanter will be converted to quantize operator and
-        dequantize operator. And then quantize the weight by quantize operator.
-        Finally, remove the quantize operator and store the weights in integer data type.
+        r"""Get the name pairs of weights to be quantized and their corresponding
+        quantizers. In the convert function of this abstract class, it will call
+        the ‘weights_to_quanters’ function and do something as follows:
+        For each pair, the quantizer will be converted to a quantize operator and
+        a dequantize operator. Then, the weight will be quantized by the quantize
+        operator. Finally, the quantize operator will be removed and the weights
+        will be stored in integer data type.
 
         Returns: A list of name pairs. Each pair contains two names. The first is name of weight
         to be quantized and the second is name of corresponding quanter.

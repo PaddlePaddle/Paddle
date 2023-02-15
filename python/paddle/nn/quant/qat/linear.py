@@ -21,7 +21,7 @@ from ..format import ConvertibleQuantedLayer
 
 class QuantedLinear(ConvertibleQuantedLayer):
     """
-    The computational logic of QuantizedLinear is the same with Linear.
+    The computational logic of QuantizedLinear is the same as Linear.
     The only difference is that its inputs are all fake quantized.
     """
 
