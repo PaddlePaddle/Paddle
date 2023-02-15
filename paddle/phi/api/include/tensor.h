@@ -544,6 +544,8 @@ class PADDLE_API Tensor final {
   uint32_t current_inplace_version();
 
   bool can_not_use();
+
+  void set_can_not_use();
   /**
    * @brief Reset inplace version
    */

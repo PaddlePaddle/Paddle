@@ -414,6 +414,17 @@ bool Tensor::can_not_use() {
         "can_not_use is only supported on DenseTensor now."));
   }
 }
+
+void Tensor::set_can_not_use() {
+  if (is_dense_tensor()) {
+    auto dense_tensor_ = static_cast<phi::DenseTensor *>(impl_.get());
+    if (dense_tensor_->can_not_uses.size() > 0)
+      dense_tensor_->canNotUse = std::make_shared<bool>(true);
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "set_can_not_use is only supported on DenseTensor now."));
+  }
+}
 void Tensor::reset_inplace_version(bool set_to_zero) {
   if (set_to_zero) {
     if (is_dense_tensor()) {
