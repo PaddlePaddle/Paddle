@@ -554,7 +554,8 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
 
             std::unique_ptr<phi::KernelKey>
                 expected_kernel_key_for_argument_def = nullptr;
-            if (argument_def) {
+            if (argument_def &&
+                argument_def->backend != phi::Backend::ALL_BACKEND) {
               const phi::Backend& tensor_backend =
                   phi::TransToPhiBackend(tensor_in->place());
               const phi::Backend& def_backend = argument_def->backend;
