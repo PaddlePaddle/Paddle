@@ -93,7 +93,7 @@ class StaticCompositeContext {
   StaticCompositeContext()
       : current_block_desc_(nullptr),
         generator_(new UniqueNameGenerator()),
-        skip_comp_ops_({"matmul_v2"}) {}
+        skip_comp_ops_({"matmul_v2", "matmul_v2_grad"}) {}
 
   framework::BlockDesc* current_block_desc_;
   std::unique_ptr<UniqueNameGenerator> generator_;
