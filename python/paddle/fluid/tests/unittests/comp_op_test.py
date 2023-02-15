@@ -385,6 +385,9 @@ class PrimForwardChecker:
         )
         return kernel_sig
 
+    def is_only_check_prim(self):
+        return self.only_prim
+
     def get_eager_desire(self):
         paddle.disable_static()
         if type(self.place) is paddle.fluid.libpaddle.CPUPlace:
