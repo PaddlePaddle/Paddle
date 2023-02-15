@@ -198,10 +198,6 @@ def apply_to_static(net, use_cinn):
 
 
 class PrimForwardChecker:
-    """base class for check with self.outputs.
-    currently don't support check between checkers.
-    """
-
     def __init__(self, op_test, place):
         self.checker_name = "PrimForwardChecker"
         self.place = place
