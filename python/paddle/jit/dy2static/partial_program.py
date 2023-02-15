@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 from paddle import _legacy_C_ops
-from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
 from paddle.fluid import backward, core, framework, program_guard
 from paddle.fluid.compiler import BuildStrategy
 from paddle.fluid.dygraph import layers
@@ -29,7 +28,6 @@ from paddle.fluid.executor import (
 )
 from paddle.fluid.framework import _apply_pass
 from paddle.fluid.layers.utils import _hash_with_id, flatten, pack_sequence_as
-from paddle.incubate.autograd.primapi import to_prim
 
 from . import logging_utils
 from .return_transformer import RETURN_NO_VALUE_MAGIC_NUM
@@ -250,6 +248,8 @@ class PartialProgramLayer:
             )
 
         core.check_and_set_prim_all_enabled()
+        from paddle.incubate.autograd.primapi import to_prim
+
         to_prim(pure_fp16_program.blocks)
         if is_infer_mode:
             return pure_fp16_program
@@ -405,6 +405,8 @@ class PartialProgramLayer:
         """
         Return current train or eval program hash id.
         """
+        from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
+
         if self.training:
             if _in_amp_guard():
                 return self._train_amp_program_id
@@ -422,6 +424,8 @@ class PartialProgramLayer:
 
     @property
     def train_program(self):
+        from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
+
         if _in_amp_guard():
             return self._train_amp_program
         elif _in_pure_fp16_guard():
@@ -431,6 +435,8 @@ class PartialProgramLayer:
 
     @property
     def infer_program(self):
+        from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
+
         if _in_amp_guard():
             return self._infer_amp_program
         elif _in_pure_fp16_guard():
@@ -440,6 +446,8 @@ class PartialProgramLayer:
 
     @property
     def forward_program(self):
+        from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
+
         if self.training:
             if _in_amp_guard():
                 progs = self._train_amp_forward_backward_program
@@ -453,6 +461,8 @@ class PartialProgramLayer:
 
     @property
     def backward_program(self):
+        from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
+
         if self.training:
             if _in_amp_guard():
                 progs = self._train_amp_forward_backward_program
@@ -637,6 +647,8 @@ class PartialProgramLayer:
         return self._valid_vars(double_grads)
 
     def _get_end_op_index(self):
+        from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
+
         if _in_amp_guard():
             infer_program = self._infer_amp_program
         elif _in_pure_fp16_guard():
@@ -724,6 +736,8 @@ class PartialProgramLayer:
         return self._remove_no_value(restored_nest_out)
 
     def _cast_fp16_if_pure_fp16(self, in_vars):
+        from paddle.amp.auto_cast import _in_pure_fp16_guard
+
         if _in_pure_fp16_guard():
             for i, var in enumerate(in_vars):
                 name = var.name
