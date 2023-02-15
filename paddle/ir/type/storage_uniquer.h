@@ -65,9 +65,9 @@ class StorageUniquer {
   Storage *get(std::function<void(Storage *)> init_func,
                TypeId type_id,
                Args &&...args) {
-    auto derived_param_key = Storage::ParamKey(std::forward<Args>(args)...);
+    auto derived_param_key = GetParamKey<Storage>(std::forward<Args>(args)...);
     std::size_t hash_value = Storage::HashValue(derived_param_key);
-    bool is_equal_func = [&derived_param_key](const BaseStorage *existing) {
+    auto is_equal_func = [&derived_param_key](const BaseStorage *existing) {
       return static_cast<const Storage &>(*existing) == derived_param_key;
     };
     auto ctor_func = [&]() {
@@ -118,7 +118,7 @@ class StorageUniquer {
                                     std::function<void(Storage *)> init_func) {
     VLOG(4) << "==> StorageUniquer::RegisterSingletonStorageType()";
     auto ctor_func = [&]() {
-      auto *storage = new Storage(nullptr);
+      auto *storage = new Storage();
       if (init_func) init_func(storage);
       return storage;
     };
@@ -139,6 +139,11 @@ class StorageUniquer {
 
   void RegisterSingletonStorageTypeImpl(
       TypeId type_id, std::function<BaseStorage *()> ctor_func);
+
+  template <typename ImplTy, typename... Args>
+  static typename ImplTy::ParamKey GetParamKey(Args &&...args) {
+    return typename ImplTy::ParamKey(args...);
+  }
 
   /// \brief StorageUniquerImpl is the implementation class of the
   /// StorageUniquer.

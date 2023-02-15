@@ -22,10 +22,54 @@ namespace ir {
 /// Type fp32 = Float32Type::get(ctx);
 ///
 class Float32Type
-    : public Type::TypeBase<Float32Type, ir::Type, ir::TypeStorage> {
+    : public ir::Type::TypeBase<Float32Type, ir::Type, ir::TypeStorage> {
  public:
   using Base::Base;
   static Float32Type get(ir::IrContext *context);
+};
+
+struct IntegerTypeStorage;
+class IntegerType
+    : public ir::Type::TypeBase<IntegerType, ir::Type, ir::IntegerTypeStorage> {
+ public:
+  using Base::Base;
+
+  /// Integer representation maximal bitwidth.
+  /// Note: This is aligned with the maximum width of llvm::IntegerType.
+  static constexpr unsigned kMaxWidth = (1 << 24) - 1;
+
+  static IntegerType get(ir::IrContext *context,
+                         unsigned width,
+                         unsigned signedness = 0);
+};
+
+struct IntegerTypeStorage : public TypeStorage {
+  IntegerTypeStorage(unsigned width, unsigned signedness)
+      : width_(width), signedness_(signedness) {}
+  using ParamKey = std::pair<unsigned, unsigned>;
+
+  static std::size_t HashValue(const ParamKey &key) {
+    return hash_combine(std::hash<unsigned>()(std::get<0>(key)),
+                        std::hash<unsigned>()(std::get<1>(key)));
+  }
+
+  bool operator==(const ParamKey &key) const {
+    return ParamKey(width_, signedness_) == key;
+  }
+
+  static IntegerTypeStorage *Construct(ParamKey key) {
+    return new IntegerTypeStorage(key.first, key.second);
+  }
+
+  ParamKey GetAsKey() const { return ParamKey(width_, signedness_); }
+
+  unsigned width_ : 30;
+  unsigned signedness_ : 2;
+
+ private:
+  static std::size_t hash_combine(std::size_t lhs, std::size_t rhs) {
+    return lhs ^= rhs + 0x9e3779b9 + (lhs << 6) + (lhs >> 2);
+  }
 };
 
 }  // namespace ir

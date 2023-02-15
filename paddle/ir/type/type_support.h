@@ -87,6 +87,8 @@ class TypeStorage : public StorageUniquer::BaseStorage {
   explicit TypeStorage(AbstractType *abstract_type)
       : abstract_type_(abstract_type) {}
 
+  TypeStorage() {}
+
   ///
   /// \brief Returns the AbstractType of the TypeStorage.
   ///

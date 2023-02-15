@@ -39,8 +39,10 @@ class Type {
 
   Type &operator=(const Type &other) = default;
 
+  ///
+  /// \brief Comparison operations.
+  ///
   bool operator==(Type other) const { return impl_ == other.impl_; }
-
   bool operator!=(Type other) const { return impl_ != other.impl_; }
 
   explicit operator bool() const { return impl_; }
@@ -53,8 +55,25 @@ class Type {
 
   ImplType *impl() const { return impl_; }
 
+  ///
+  /// \brief Enable hashing Type.
+  ///
+  friend struct std::hash<Type>;
+
  protected:
   ImplType *impl_{nullptr};
 };
 
 }  // namespace ir
+
+namespace std {
+///
+/// \brief Enable hashing Type.
+///
+template <>
+struct hash<ir::Type> {
+  std::size_t operator()(const ir::Type &obj) const {
+    return std::hash<ir::Type::ImplType *>()(obj.impl_);
+  }
+};
+}  // namespace std

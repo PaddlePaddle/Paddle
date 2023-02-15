@@ -51,10 +51,6 @@ class TypeId {
   inline bool operator==(const TypeId &other) const {
     return storage_ == other.storage_;
   }
-
-  ///
-  /// \brief Comparison operations.
-  ///
   inline bool operator!=(const TypeId &other) const {
     return !(*this == other);
   }

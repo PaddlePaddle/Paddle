@@ -34,18 +34,29 @@ class IrContextImpl {
 
   // Some built-in type.
   Float32Type fp32_type;
+  IntegerType int1Ty;
 };
 
 IrContext *IrContext::ir_context_ = nullptr;
 
 IrContext::IrContext() : impl_(new IrContextImpl()) {
   VLOG(4) << "==> Constructor for IrContext.";
+
   VLOG(4) << "==> Register Float32Type.";
-  AbstractType *abstract_type = new AbstractType(
+  AbstractType *fp32_abstract_type = new AbstractType(
       std::move(AbstractType::get(TypeId::get<Float32Type>())));
-  registed_abstracted_type().emplace(TypeId::get<Float32Type>(), abstract_type);
+  registed_abstracted_type().emplace(TypeId::get<Float32Type>(),
+                                     fp32_abstract_type);
   TypeUniquer::RegisterType<Float32Type>(this);
   impl_->fp32_type = TypeUniquer::get<Float32Type>(this);
+
+  VLOG(4) << "==> Register IntegerType.";
+  AbstractType *int_abstract_type = new AbstractType(
+      std::move(AbstractType::get(TypeId::get<IntegerType>())));
+  registed_abstracted_type().emplace(TypeId::get<IntegerType>(),
+                                     int_abstract_type);
+  TypeUniquer::RegisterType<IntegerType>(this);
+  impl_->int1Ty = TypeUniquer::get<IntegerType>(this, 1, 0);
 }
 
 StorageUniquer &IrContext::storage_uniquer() {
@@ -70,5 +81,26 @@ const AbstractType &AbstractType::lookup(TypeId type_id, IrContext *ctx) {
 }
 
 Float32Type Float32Type::get(IrContext *ctx) { return ctx->impl().fp32_type; }
+
+static IntegerType GetCachedIntegerType(unsigned width,
+                                        unsigned signedness,
+                                        IrContext *context) {
+  if (signedness != 0) return IntegerType();
+
+  switch (width) {
+    case 1:
+      return context->impl().int1Ty;
+    default:
+      return IntegerType();
+  }
+}
+
+IntegerType IntegerType::get(ir::IrContext *context,
+                             unsigned width,
+                             unsigned signedness) {
+  if (auto cached = GetCachedIntegerType(width, signedness, context))
+    return cached;
+  return Base::get(context, width, signedness);
+}
 
 }  // namespace ir
