@@ -595,7 +595,7 @@ __global__ void ReduceAnyKernel(const Tx* x,
                                 TransformOp transformer,
                                 MPType init,
                                 int reduce_num,
-                                float inverse_reduce_num,
+                                int out_reduce_num,
                                 int reduce_num_per_thread,
                                 int left_num,
                                 bool reduce_last_dim,
@@ -714,7 +714,7 @@ __global__ void ReduceAnyKernel(const Tx* x,
         &reduce_var, &reduce_var, reducer, reduce_last_dim);
 
     if (is_mean) {
-      reduce_var = reduce_var * static_cast<MPType>(inverse_reduce_num);
+      reduce_var = reduce_var / static_cast<MPType>(out_reduce_num);
     }
     Ty result = static_cast<Ty>(reduce_var);
     kps::details::WriteData<Ty>(
@@ -844,7 +844,7 @@ static void LaunchReduceKernel(const Tx* x_data,
             transform,
             init,
             config.reduce_num,
-            1.f / config.reduce_num,
+            config.reduce_num,
             config.reduce_num_per_thread,
             config.left_num,
             config.reduce_last_dim,
@@ -886,7 +886,7 @@ static void LaunchReduceKernel(const Tx* x_data,
             transform,
             init,
             config.reduce_num,
-            1.f / config.reduce_num,
+            config.reduce_num,
             config.reduce_num_per_thread,
             config.left_num,
             config.reduce_last_dim,
@@ -916,25 +916,6 @@ static void LaunchReduceKernel(const Tx* x_data,
 
     auto reduce_index_calculator_stage1 = OneDimIndexCal(1);
 
-    printf("stage0: grid=[%d, %d], block=[%d, %d]\n",
-           config.grid.x,
-           config.grid.y,
-           config.block.x,
-           config.block.y);
-    printf("stage1: grid=[%d, %d], block=[%d, %d]\n",
-           grid.x,
-           grid.y,
-           block.x,
-           block.y);
-    printf("stage0 left_num=%d, reduce_num=%d, reduce_num_per_t=%d\n",
-           config.left_num,
-           config.reduce_num,
-           config.reduce_num_per_thread);
-    printf("stage1 left_num=%d, reduce_num=%d, reduce_num_per_t=%d\n",
-           config.left_num,
-           reduce_num_stage1,
-           reduce_num_per_thread_stage1);
-
     auto TwoStageReduceKernel1 =
         ReduceAnyKernel<Ty,
                         Ty,
@@ -950,7 +931,7 @@ static void LaunchReduceKernel(const Tx* x_data,
         kps::IdentityFunctor<Ty, MPType>(),
         init,
         reduce_num_stage1,
-        1.f / config.reduce_num,
+        config.reduce_num,
         reduce_num_per_thread_stage1,
         config.left_num,
         true,
@@ -959,48 +940,6 @@ static void LaunchReduceKernel(const Tx* x_data,
         dimStage1,
         is_mean);
   }
-
-#if 0
-  if (config.should_reduce_again) {
-    dim3 block;
-    dim3 grid;
-    if (config.reduce_last_dim) {
-      block = dim3(32, 1, 1);
-      grid = dim3(details::CeilingDiv(config.left_num, 32), 1, 1);
-    } else {
-      block = dim3(config.block.x, 1, 1);
-      grid = dim3(config.grid.x, 1, config.grid.z);
-    }
-
-    kps::DimConfig dim =
-        kps::DimConfig(grid.x, grid.y, grid.z, block.x, config.grid.y, 0);
-    dim.SetRem(config.left_num % block.x, 0, 0);
-#ifdef PADDLE_WITH_XPU_KP
-    int grid_size = 8;
-    int block_size = 64;
-#else
-    auto grid_size = grid;
-    auto block_size = block;
-#endif
-    ReduceHigherDimKernel<Ty,
-                          Ty,
-                          MPType,
-                          ReduceOp,
-                          kps::IdentityFunctor<Ty, MPType>>
-        <<<grid_size, block_size, 0, stream>>>(
-            config.output_data,
-            y_data,
-            reducer,
-            kps::IdentityFunctor<Ty, MPType>(),
-            init,
-            config.grid.y,
-            config.left_num,
-            config.grid.y,
-            dim,
-            config.reduce_num,
-            is_mean);
-  }
-#endif
 }
 
 #if !defined(PADDLE_WITH_XPU_KP)
