@@ -57,8 +57,9 @@ from paddle.incubate.fleet.parameter_server.distribute_transpiler.distributed_st
     StrategyFactory,
 )
 
-from paddle.fluid.transpiler.details.checkport import wait_server_ready
-
+from paddle.distributed.fleet.base.private_helper_function import (
+    wait_server_ready,
+)
 from paddle.fluid.incubate.fleet.parameter_server.mode import PSMode
 from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 
