@@ -1488,7 +1488,6 @@ def _append_backward_ops_(
                 or name in input_grad_names_set
             )
             is_append_grad = False
-
             for op_desc in grad_op_desc:
                 input_grad_names = [
                     name
@@ -1506,7 +1505,6 @@ def _append_backward_ops_(
                     is_append_grad = True
                     for name in op_desc.output_arg_names():
                         input_grad_names_set.add(name)
-
             if is_append_grad:
                 grad_to_var.update(op_grad_to_var)
         else:
