@@ -274,6 +274,11 @@ class PrimForwardChecker:
             if hasattr(self.op_test, 'enable_check_jit_comp_with_cinn')
             else True
         )
+        self.only_prim = (
+            self.op_test.only_prim
+            if hasattr(self.op_test, 'only_prim')
+            else False
+        )
         self.kernel_sig = self.get_kernel_sig()
 
     def init_checker_threshold(self):
