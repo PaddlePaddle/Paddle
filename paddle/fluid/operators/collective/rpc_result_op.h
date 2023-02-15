@@ -68,7 +68,6 @@ static inline void ParseResponse(phi::DenseTensor* out,
     framework::TensorFromVector(res, dev_ctx, out);
   } else if (res_type == "str") {
     auto res = ParseStrResponse(resp);
-    // dev_ctx.Alloc<uint8_t>(out);
     framework::TensorFromVector(res, dev_ctx, out);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument("Unknown result type."));

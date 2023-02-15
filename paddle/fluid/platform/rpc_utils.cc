@@ -58,75 +58,6 @@ static inline std::string Replace(const std::string& str,
   return ss.str();
 }
 
-static inline std::vector<std::string> Split(std::string split_text,
-                                             std::regex pattern) {
-  std::vector<std::string> output;
-  std::sregex_token_iterator substrings(
-      split_text.begin(), split_text.end(), pattern, -1);
-  std::sregex_token_iterator delimiters(
-      split_text.begin(), split_text.end(), pattern, 0);
-  std::sregex_token_iterator end;
-  while (substrings != end && delimiters != end) {
-    output.emplace_back(*substrings++);
-    output.emplace_back(*delimiters++);
-  }
-  if (substrings != end) {
-    output.emplace_back(*substrings++);
-  }
-  return output;
-}
-
-static inline void ToLower(std::wstring* input) {
-  for (unsigned int i = 0; i < input->length(); ++i) {
-    input->at(i) = towlower(input->at(i));
-  }
-}
-
-static inline std::wstring SubStr(const std::wstring& input, int a) {
-  std::wstring substring;
-  for (int i = 0; static_cast<size_t>(i) < input.size() && i < a; i++) {
-    substring += input[i];
-  }
-  return substring;
-}
-
-static inline std::vector<std::wstring> WhitespaceTokenize(
-    const std::wstring& text) {
-  std::vector<std::wstring> tokens;
-  std::wstringstream ss(text);
-  std::wstring token;
-  while (ss >> token) {
-    tokens.emplace_back(token);
-  }
-  return tokens;
-}
-
-static inline bool IsWhitespace(const wchar_t& c) {
-  if (c == L' ' | c == L'\t' || c == L'\n' || c == L'\r') {
-    return true;
-  }
-  int8_t category = u_charType(UChar32(c));
-  return (U_MASK(category) & U_GC_ZS_MASK);
-}
-
-static inline bool IsControl(const wchar_t& c) {
-  if (c == L'\t' || c == L'\n' || c == L'\r') {
-    return false;
-  }
-  int8_t category = u_charType(UChar32(c));
-  return (U_MASK(category) & U_GC_C_MASK);
-}
-
-static inline bool IsPunct(const wchar_t& c) {
-  uint32_t cp = uint32_t(c);
-  if ((cp >= 33 && cp <= 47) || (cp >= 58 && cp <= 64) ||
-      (cp >= 91 && cp <= 96) || (cp >= 123 && cp <= 126)) {
-    return true;
-  }
-  int8_t category = u_charType(UChar32(c));
-  return (U_MASK(category) & U_GC_P_MASK);
-}
-
 static inline bool IsChineseChar(wchar_t c) {
   return (c >= 0x4E00 && c <= 0x9FFF) || (c >= 0x3400 && c <= 0x4DBF) ||
          (c >= 0x20000 && c <= 0x2A6DF) || (c >= 0x2A700 && c <= 0x2B73F) ||
@@ -144,6 +75,194 @@ static inline bool IsChinesePunct(wchar_t c) {
       L'〗', L'〘', L'〙', L'〚', L'〛', L'〜', L'〝', L'〞', L'〟', L'〰',
       L'〾', L'〿',  L'–',  L'—',  L'“',  L'”',  L'‘',  L'’'};
   return puncts.count(c);
+}
+
+static inline int GetCharBytes(uint8_t byte) {
+  if ((byte & 0x80) == 0) {
+    return 1;
+  } else if ((byte & 0xE0) == 0xC0) {
+    return 2;
+  } else if ((byte & 0xF0) == 0xE0) {
+    return 3;
+  } else if ((byte & 0xF8) == 0xF0) {
+    return 4;
+  } else {
+    return -1;
+  }
+}
+
+static inline bool IsValidContinuationByte(uint8_t byte) {
+  // check if the byte starts with 10
+  return (byte & 0xC0) == 0x80;
+}
+
+static inline uint8_t GetByteFromHex(const std::string& token) {
+  auto num_str = paddle::string::split_string(token, "_")[1];
+  num_str = num_str.substr(0, num_str.size() - 1);
+  return static_cast<uint8_t>(std::stoi(num_str, nullptr, 16));
+}
+
+// RpcTokenizer
+void RpcTokenizer::Init(const std::string& path) {
+  if (path_ == path) {
+    return;
+  }
+  std::ifstream vocab_file(path);
+  std::string word;
+  int id;
+  while (vocab_file >> word >> id) {
+    ids_to_words_.emplace(id, word);
+    words_to_ids_.emplace(converter.from_bytes(word), id);
+  }
+
+  // update members
+  path_ = path;
+}
+
+void RpcTokenizer::Init(
+    const std::string& path,
+    const std::unordered_map<std::string, std::string>& special_set) {
+  if (path_ == path) {
+    return;
+  }
+  Init(path);
+  SetSpecialSet(special_set);
+}
+
+std::string RpcTokenizer::GetRecoveredToken(const std::vector<uint8_t>& bytes) {
+  std::string res;
+  int n = bytes.size();
+  int i = 0;
+  while (i < n) {
+    int sz = 0;
+    while ((sz = GetCharBytes(bytes[i])) == -1) {
+      ++i;
+    }
+    if (i + sz < n) {
+      std::vector<uint8_t> valid_bytes;
+      valid_bytes.emplace_back(bytes[i]);
+      for (int j = 1; j < sz; ++j) {
+        if (!IsValidContinuationByte(bytes[i])) {
+          break;
+        }
+        valid_bytes.emplace_back(bytes[i]);
+        ++i;
+      }
+      if (valid_bytes.size() == static_cast<size_t>(sz)) {
+        res += std::string(valid_bytes.begin(), valid_bytes.end());
+      }
+    }
+    ++i;
+  }
+  return res;
+}
+
+std::vector<std::string> RpcTokenizer::RecoverBFBTokens(
+    const std::vector<std::string>& tokens) {
+  std::vector<std::string> new_tokens;
+  std::vector<uint8_t> tmp_bytes;
+  for (const auto& token : tokens) {
+    if (StartsWith(token, "[BFB")) {
+      tmp_bytes.emplace_back(GetByteFromHex(token));
+    } else {
+      if (!tmp_bytes.empty()) {
+        // since there may be illegal bytes, we need this function
+        // if all bytes are legal, we can simply use string constructor
+        const std::string recovered_token = GetRecoveredToken(tmp_bytes);
+        if (!recovered_token.empty()) {
+          new_tokens.emplace_back(recovered_token);
+        }
+      }
+      if (token != "[UNK]") {
+        new_tokens.emplace_back(token);
+      }
+      tmp_bytes.clear();
+    }
+  }
+  if (!tmp_bytes.empty()) {
+    const std::string recovered_token = GetRecoveredToken(tmp_bytes);
+    if (!recovered_token.empty()) {
+      new_tokens.emplace_back(recovered_token);
+    }
+  }
+  return new_tokens;
+}
+
+std::vector<std::string> RpcTokenizer::PostProcess(
+    const std::vector<std::string>& tokens,
+    const WordToIdMap& vocab,
+    bool aggressive_break,
+    const std::string& stop_token) {
+  std::unordered_set<std::string> break_words;
+  if (aggressive_break) {
+    break_words = {"[END]", "[gEND]", "[<S>]", "[UNK]", "[CLS]"};
+  } else {
+    break_words = {"[END]", "[gEND]"};
+  }
+  static const std::unordered_map<std::string, std::string> replace_words{
+      {"[<S>]", " "},
+      {"[<N>]", "\n"},
+      {"[<T>]", "\t"},
+      {"[<t>]", "  "},
+  };
+
+  std::vector<std::string> new_text;
+  auto words = RecoverBFBTokens(tokens);
+  for (auto& word : words) {
+    if (break_words.count(word) || word == stop_token) {
+      break;
+    }
+    if (word.empty() || word == "[PAD]") {
+      continue;
+    }
+    if (replace_words.count(word)) {
+      new_text.emplace_back(replace_words.at(word));
+      continue;
+    }
+
+    auto unicode_word = converter.from_bytes(word);
+    bool is_chinese_char = IsChineseChar(unicode_word[0]);
+    bool is_chinese_punct = IsChinesePunct(unicode_word[0]);
+
+    if (is_chinese_char || is_chinese_punct || vocab.count(unicode_word) == 0) {
+      if (!new_text.empty() && EndsWith(new_text.back(), "@@")) {
+        auto& last_word = new_text.back();
+        last_word = Replace(last_word, "@@", "");
+      }
+      new_text.emplace_back(word);
+    } else if (!StartsWith(word, "##")) {
+      if (!new_text.empty() && EndsWith(new_text.back(), "@@")) {
+        auto& last_word = new_text.back();
+        last_word = Replace(last_word, "@@", "");
+        new_text.emplace_back(word);
+      } else if (!new_text.empty() && EndsWith(new_text.back(), "\n")) {
+        new_text.emplace_back(word);
+      } else {
+        if (!new_text.empty() && !new_text.back().empty() &&
+            IsChineseChar(converter.from_bytes(new_text.back())[0])) {
+          new_text.emplace_back(word);
+        } else {
+          if (!new_text.empty()) {
+            new_text.emplace_back(" ");
+          }
+          new_text.emplace_back(word);
+        }
+      }
+    } else {
+      if (!new_text.empty() && EndsWith(new_text.back(), "@@")) {
+        auto& last_word = new_text.back();
+        last_word = last_word.substr(0, last_word.size() - 2);
+      }
+      new_text.emplace_back(Replace(word, "##", ""));
+    }
+  }
+
+  if (!new_text.empty()) {
+    auto& last_word = new_text.back();
+    last_word = Replace(last_word, "@@", "");
+  }
+
+  return new_text;
 }
 
 int RpcCommContext::RpcSend(

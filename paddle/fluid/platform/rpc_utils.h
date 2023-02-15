@@ -32,6 +32,76 @@ namespace platform {
 using WordToIdMap = std::unordered_map<std::wstring, int64_t>;
 using IdToWordMap = std::unordered_map<int64_t, std::string>;
 
+class RpcTokenizer {
+ public:
+  static RpcTokenizer& Instance() {
+    static RpcTokenizer instance;
+    return instance;
+  }
+
+  void Init(const std::string& path);
+
+  void Init(const std::string& path,
+            const std::unordered_map<std::string, std::string>& special_set);
+
+  void SetSpecialSet(
+      const std::unordered_map<std::string, std::string>& special_set) {
+    special_set_ = special_set;
+  }
+
+  bool Contains(int64_t id) { return ids_to_words_.count(id) > 0; }
+
+  // NOTE: an exception will be raised if id not exist
+  std::string GetWordFromId(int64_t id) {
+    auto q = ids_to_words_.at(id);
+    if (special_set_.count(q) == 1) {
+      return special_set_.at(q);
+    } else {
+      return q;
+    }
+  }
+
+  template <typename T = int64_t>
+  std::string GetWordsFromIds(const std::vector<T>& ids,
+                              bool aggressive_break = false,
+                              const std::string& stop_token = "[gEND]") {
+    std::vector<std::string> tokens;
+    for (auto id : ids) {
+      if (!Contains(id)) {
+        continue;
+      }
+      tokens.emplace_back(GetWordFromId(id));
+    }
+    return paddle::string::join_strings(
+        PostProcess(tokens, words_to_ids_, aggressive_break, stop_token), "");
+  }
+
+  // NOTE: an exception will be raised if word not exist
+  int64_t GetIdFromWord(const std::wstring& word) {
+    return words_to_ids_.at(word);
+  }
+
+ private:
+  std::string GetRecoveredToken(const std::vector<uint8_t>& bytes);
+
+  std::vector<std::string> RecoverBFBTokens(
+      const std::vector<std::string>& tokens);
+
+  std::vector<std::string> PostProcess(
+      const std::vector<std::string>& tokens,
+      const WordToIdMap& vocab,
+      bool aggressive_break = false,
+      const std::string& stop_token = "[gEND]");
+
+ private:
+  std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> converter_;
+
+  std::string path_;
+  IdToWordMap ids_to_words_;
+  WordToIdMap words_to_ids_;
+  std::unordered_map<std::string, std::string> special_set_;
+};
+
 class RpcRequestStore {
  public:
   static RpcRequestStore& Instance() {
