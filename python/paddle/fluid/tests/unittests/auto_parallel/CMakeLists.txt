@@ -83,6 +83,8 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   set_tests_properties(test_fused_linear_pass PROPERTIES TIMEOUT 20)
   py_test_modules(test_pass_base_list MODULES test_pass_base_list)
   set_tests_properties(test_pass_base_list PROPERTIES TIMEOUT 20)
+  py_test_modules(test_fuse_adamw_pass MODULES test_fuse_adamw_pass)
+  set_tests_properties(test_fuse_adamw_pass PROPERTIES TIMEOUT 20)
 
   py_test_modules(test_while_op_completion MODULES test_while_op_completion
                   ENVS ${dist_ENVS})
