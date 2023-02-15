@@ -396,9 +396,8 @@ void CudnnConvBwdDataV8(const DenseTensor* dy_tensor,
       alpha,
       beta);
 
-  if (plan_cache_bwd_data.FindPlan(op_graph, use_addto)) {
-    auto engine_config =
-        plan_cache_bwd_data.GetConfig(op_graph, handle, use_addto);
+  if (plan_cache_bwd_data.FindPlan(op_graph)) {
+    auto engine_config = plan_cache_bwd_data.GetConfig(op_graph, handle);
     auto cached_plan = cudnn_frontend::ExecutionPlanBuilder()
                            .setHandle(handle)
                            .setEngineConfig(engine_config, op_graph.getTag())
@@ -448,8 +447,8 @@ void CudnnConvBwdDataV8(const DenseTensor* dy_tensor,
           },
           workspace_size);
       if (!exhaustive_search ||
-          plan_cache_bwd_data.IsStable(op_graph, plan.getTag(), use_addto)) {
-        plan_cache_bwd_data.InsertPlan(op_graph, plan, use_addto);
+          plan_cache_bwd_data.IsStable(op_graph, plan.getTag())) {
+        plan_cache_bwd_data.InsertPlan(op_graph, plan);
       }
       return;
     } catch (cudnn_frontend::cudnnException& e) {

@@ -26,12 +26,12 @@ if(CUDNN_VERSION LESS 8000)
   )
 endif()
 
-# Version: v0.7.1
+# Version: v0.8-rc
 set(CUDNN_FRONTEND_PREFIX_DIR ${THIRD_PARTY_PATH}/cudnn-frontend)
 set(CUDNN_FRONTEND_SOURCE_DIR
     ${THIRD_PARTY_PATH}/cudnn-frontend/src/extern_cudnn_frontend/include)
 set(CUDNN_FRONTEND_REPOSITORY https://github.com/NVIDIA/cudnn-frontend.git)
-set(CUDNN_FRONTEND_TAG v0.7.1)
+set(CUDNN_FRONTEND_TAG e14ac9a398e73e896748a466c4e3106d557cf140)
 
 set(CUDNN_FRONTEND_INCLUDE_DIR ${CUDNN_FRONTEND_SOURCE_DIR})
 include_directories(${CUDNN_FRONTEND_INCLUDE_DIR})
