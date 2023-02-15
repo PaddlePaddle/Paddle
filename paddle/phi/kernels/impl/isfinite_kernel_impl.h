@@ -28,7 +28,7 @@ namespace phi {
       const Context& ctx, const DenseTensor& x, DenseTensor* out) {        \
     auto* out_ptr = ctx.template Alloc<bool>(out);                         \
     funcs::functor<T> unary_func;                                          \
-    paddle::experimental::Transform<Context> trans;                        \
+    phi::Transform<Context> trans;                                         \
     trans(ctx, x.data<T>(), x.data<T>() + x.numel(), out_ptr, unary_func); \
   }
 

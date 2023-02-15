@@ -82,7 +82,7 @@ void HSigmoidLossKernel(const Context& ctx,
   }
   bit_code->Mul(pre_out, w, x);
   // clip to [-40, 40]
-  paddle::experimental::Transform<Context> trans;
+  phi::Transform<Context> trans;
   trans(ctx,
         pre_out_data,
         pre_out_data + pre_out->numel(),

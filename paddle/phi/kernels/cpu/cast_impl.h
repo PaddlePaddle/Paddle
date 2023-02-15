@@ -36,7 +36,7 @@ void CastKernelImpl(const CPUContext& dev_ctx,
 
   auto* out_begin = dev_ctx.Alloc<OutT>(out);
 
-  paddle::experimental::Transform<CPUContext> trans;
+  phi::Transform<CPUContext> trans;
   trans(dev_ctx,
         in_begin,
         in_end,

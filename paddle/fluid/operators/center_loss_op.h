@@ -94,7 +94,7 @@ class CenterLossKernel : public framework::OpKernel<T> {
     T *center_out_index;
     T *center_loss_diff_index;
     T *acc_index;
-    experimental::Transform<DeviceContext> trans;
+    phi::Transform<DeviceContext> trans;
 
     for (int i = 0; i < batch_size; ++i) {
       tLabel = label_data[i];

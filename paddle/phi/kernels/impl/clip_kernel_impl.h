@@ -67,7 +67,7 @@ void ClipKernel(const Context& dev_ctx,
     phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
 #endif
   } else {
-    paddle::experimental::Transform<Context> trans;
+    phi::Transform<Context> trans;
     trans(
         dev_ctx, x_data, x_data + numel, out_data, ClipFunctor<T>(min_, max_));
   }

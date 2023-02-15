@@ -220,12 +220,12 @@ class TransformFunctor {
   }
 
   inline void Run() const {
-    paddle::experimental::Transform<DeviceContext> trans;
+    phi::Transform<DeviceContext> trans;
     trans(ctx_, x_, x_ + nx_, y_, z_, func_);
   }
 
   inline void RunRowWise(int n, int pre) const {
-    paddle::experimental::Transform<DeviceContext> trans;
+    phi::Transform<DeviceContext> trans;
     if (is_xsize_larger_) {
       trans(ctx_,
             x_,
@@ -244,7 +244,7 @@ class TransformFunctor {
   }
 
   inline void RunMidWise(int n, int pre, int post) const {
-    paddle::experimental::Transform<DeviceContext> trans;
+    phi::Transform<DeviceContext> trans;
     if (is_xsize_larger_) {
       trans(ctx_,
             x_,

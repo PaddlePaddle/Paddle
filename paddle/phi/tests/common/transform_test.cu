@@ -45,7 +45,7 @@ using paddle::platform::CUDAPlace;
 using phi::CPUContext;
 using phi::GPUContext;
 
-using paddle::experimental::Transform;
+using phi::Transform;
 
 TEST(Transform, CPUUnary) {
   CPUContext ctx;

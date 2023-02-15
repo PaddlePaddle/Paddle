@@ -47,7 +47,7 @@ void LogicalNotKernel(const Context& dev_ctx,
   auto* out_ptr = dev_ctx.template Alloc<bool>(out);
   funcs::LogicalNotFunctor<T> unary_func;
 
-  paddle::experimental::Transform<Context> trans;
+  phi::Transform<Context> trans;
   trans(dev_ctx, x.data<T>(), x.data<T>() + x.numel(), out_ptr, unary_func);
 }
 

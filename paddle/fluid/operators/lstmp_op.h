@@ -29,7 +29,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using experimental::Transform;
+using phi::Transform;
 
 template <typename T,
           int MajorType = Eigen::RowMajor,
