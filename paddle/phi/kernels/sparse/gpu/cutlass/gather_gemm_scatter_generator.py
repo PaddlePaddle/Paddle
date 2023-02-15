@@ -1,18 +1,101 @@
-import sys
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import os
+import sys
+
 sys.path.append(os.getcwd() + "/cutlass")
-from manifest import GeneratorTarget
 from gather_gemm_scatter_manifest import GatherGemmScatterManifest
-from generator import (CudaToolkitVersionSatisfies,
-                       CreateGemmOperator,
-                       )
-from library import (LayoutType,
-                     MathInstruction,
-                     DataType,
-                     OpcodeClass,
-                     MathOperation,
-                     TileDescription,
-                     )
+from gather_gemm_scatter_operation import GatherGemmScatterOperation
+from generator import (
+    ComplexTransform,
+    CudaToolkitVersionSatisfies,
+    EpilogueFunctor,
+    GemmKind,
+    SwizzlingFunctor,
+    TensorDescription,
+)
+from library import (
+    DataType,
+    LayoutType,
+    MathInstruction,
+    MathOperation,
+    OpcodeClass,
+    TileDescription,
+)
+from manifest import GeneratorTarget
+
+
+def CreateGatherGemmScatterOperator(
+    manifest,
+    layouts,
+    tile_descriptions,
+    data_type,
+    alignment_constraints,
+    complex_transforms=None,
+    epilogue_functor=EpilogueFunctor.LinearCombination,
+    swizzling_functor=SwizzlingFunctor.Identity8,
+):
+    # To use StreamK decomposition for basic GEMMs, set `swizzling_functor = SwizzlingFunctor.StreamK`
+
+    if complex_transforms is None:
+        complex_transforms = [
+            (ComplexTransform.none, ComplexTransform.none),
+        ]
+
+    element_a, element_b, element_c, element_epilogue = data_type
+
+    operations = []
+
+    # by default, only generate the largest tile and largest alignment
+    # if manifest.kernel_filter == '':
+    #  tile_descriptions = [tile_descriptions[0],]
+    #  alignment_constraints = [alignment_constraints[0],]
+
+    for layout in layouts:
+        for tile_description in tile_descriptions:
+            for alignment in alignment_constraints:
+                for complex_transform in complex_transforms:
+
+                    alignment_c = min(8, alignment)
+
+                    A = TensorDescription(
+                        element_a, layout[0], alignment, complex_transform[0]
+                    )
+                    B = TensorDescription(
+                        element_b, layout[1], alignment, complex_transform[1]
+                    )
+                    C = TensorDescription(element_c, layout[2], alignment_c)
+
+                    new_operation = GatherGemmScatterOperation(
+                        GemmKind.Universal,
+                        tile_description.minimum_compute_capability,
+                        tile_description,
+                        A,
+                        B,
+                        C,
+                        element_epilogue,
+                        epilogue_functor,
+                        swizzling_functor,
+                    )
+
+                    manifest.append(new_operation)
+                    operations.append(new_operation)
+
+    return operations
+
+
 def GenerateSM70_TensorOp_884(manifest, cuda_version):
 
     if not CudaToolkitVersionSatisfies(cuda_version, 10, 1):
@@ -81,7 +164,7 @@ def GenerateSM70_TensorOp_884(manifest, cuda_version):
             math_inst.element_accumulator,
         ]
 
-        CreateGemmOperator(
+        CreateGatherGemmScatterOperator(
             manifest,
             layouts,
             tile_descriptions,
@@ -99,7 +182,7 @@ def GenerateSM70_TensorOp_884(manifest, cuda_version):
                 math_inst.element_accumulator,
             ]
 
-            CreateGemmOperator(
+            CreateGatherGemmScatterOperator(
                 manifest,
                 layouts,
                 tile_descriptions,
@@ -168,5 +251,3 @@ if __name__ == "__main__":
     GenerateSM70(manifest, args.cuda_version)
 
     manifest.emit(GeneratorTarget.Library)
-#
-###################################################################################################

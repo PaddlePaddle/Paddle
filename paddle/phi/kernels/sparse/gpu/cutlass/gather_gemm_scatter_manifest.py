@@ -1,13 +1,39 @@
-from manifest import (EmitOperationKindLibrary,
-                      Manifest,
-                      )
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import os
+import shutil
+
+from gather_gemm_scatter_operation import (
+    EmitGatherGemmScatterConfigurationLibrary,
+)
+from library import OperationKind
+from manifest import EmitOperationKindLibrary, GeneratorTarget, Manifest
+
+
 class GatherGemmScatterEmitOperationKindLibrary(EmitOperationKindLibrary):
     def __init__(self, generated_path, kind, args):
+        super().__init__(generated_path, kind, args)
+        self.emitters = {
+            OperationKind.Gemm: EmitGatherGemmScatterConfigurationLibrary
+        }
         self.header_template = "#pragma once\n#ifdef PADDLE_WITH_CUTLASS\n"
+        self.entry_template = ""
         self.configuration_prototype_template = ""
         self.configuration_template = ""
         self.epilogue_template = "#endif"
-        
+
     def emit(self, configuration_name, operations):
         with self.emitters[self.kind](
             self.operation_path, configuration_name
@@ -26,10 +52,13 @@ class GatherGemmScatterEmitOperationKindLibrary(EmitOperationKindLibrary):
             + '.h"\n'
         )
 
+
 class GatherGemmScatterManifest(Manifest):
     def emit(self, target=GeneratorTarget.Library):
 
-        operation_emitters = {GeneratorTarget.Library: EmitOperationKindLibrary}
+        operation_emitters = {
+            GeneratorTarget.Library: GatherGemmScatterEmitOperationKindLibrary
+        }
 
         generated_path = os.path.join(self.curr_build_dir, 'generated')
 
@@ -44,7 +73,7 @@ class GatherGemmScatterManifest(Manifest):
         # for each operation kind, emit initializer for all configurations
         for operation_kind, configurations in self.operations.items():
             with operation_emitters[target](
-                    generated_path, operation_kind, self.args
+                generated_path, operation_kind, self.args
             ) as operation_kind_emitter:
                 for configuration_name, operations in configurations.items():
                     operation_kind_emitter.emit(configuration_name, operations)

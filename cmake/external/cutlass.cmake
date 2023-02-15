@@ -42,39 +42,10 @@ add_library(cutlass INTERFACE)
 
 add_dependencies(cutlass extern_cutlass)
 
-message("haha===============================================")
-message("haha===============================================")
-message("haha===============================================")
-message("haha===============================================")
-message("haha===============================================")
-message("haha===============================================")
-message("haha===============================================")
-message("haha===============================================")
-message("haha===============================================")
-message("haha===============================================")
-message("haha===============================================")
-message("haha===============================================")
-message("${CMAKE_CURRENT_SOURCE_DIR}")
-message("${PYTON_EXECUTABLE}")
-message("===============================================haha")
-message("===============================================haha")
-message("===============================================haha")
-message("===============================================haha")
-message("===============================================haha")
-message("===============================================haha")
-message("===============================================haha")
-message("===============================================haha")
-message("===============================================haha")
-message("===============================================haha")
-message("===============================================haha")
-message("===============================================haha")
-message("===============================================haha")
-message("===============================================haha")
-message("===============================================haha")
-message("===============================================haha")
-message("===============================================haha")
-message("===============================================haha")
 execute_process(
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass
-  COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass/generator.py
+  WORKING_DIRECTORY
+    ${CMAKE_CURRENT_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass
+  COMMAND
+    ${PYTHON_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass/gather_gemm_scatter_generator.py
 )

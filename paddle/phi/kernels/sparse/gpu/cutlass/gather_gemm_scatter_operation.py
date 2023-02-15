@@ -1,3 +1,42 @@
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import enum
+import os.path
+
+from gemm_operation import (
+    EmitGemmConfigurationLibrary,
+    EmitGemmInstance,
+    EpilogueFunctor,
+    GemmOperation,
+    SwizzlingFunctor,
+)
+from library import (
+    ComplexTransformTag,
+    DataTypeSize,
+    DataTypeTag,
+    EpilogueFunctorTag,
+    GemmKind,
+    LayoutTag,
+    LayoutType,
+    MathOperationTag,
+    OpcodeClassTag,
+    SubstituteTemplate,
+    SwizzlingFunctorTag,
+)
+
+
 class EmitGatherGemmScatterInstance(EmitGemmInstance):
     def __init__(self, operation_suffix=''):
         self.operation_suffix = operation_suffix
@@ -25,9 +64,9 @@ struct ${operation_name} {
   using Gemm =
     cutlass::gemm::device::GemmUniversal<
       ${element_a},
-      ${layout_a}, ${transform_a}, ${align_a},
+      ${layout_a},
       ${element_b},
-      ${layout_b}, ${transform_b}, ${align_b},
+      ${layout_b},
       ${element_c},
       ${layout_c},
       ${element_accumulator},
@@ -50,6 +89,7 @@ struct ${operation_name} {
     >;
 };
 """
+
     def instance_template(self):
         return ""
 
@@ -166,7 +206,8 @@ struct ${operation_name} {
 
         return SubstituteTemplate(gemm_template, values)
 
-class EmitGatherGemmScatterConfigurationLibrary:
+
+class EmitGatherGemmScatterConfigurationLibrary(EmitGemmConfigurationLibrary):
     def __init__(self, operation_path, configuration_name):
         self.configuration_name = configuration_name
         self.configuration_path = os.path.join(
@@ -174,7 +215,7 @@ class EmitGatherGemmScatterConfigurationLibrary:
         ).replace('\\', '/')
 
         self.instance_emitter = {
-            GemmKind.Universal: EmitGemmUniversalInstance,
+            GemmKind.Universal: EmitGatherGemmScatterInstance,
         }
 
         self.gemm_kind_wrappers = {
@@ -207,6 +248,7 @@ namespace sparse {
 }  // namespace phi
 #endif
 """
+
     def __exit__(self, exception_type, exception_value, traceback):
 
         # Write includes
@@ -226,3 +268,55 @@ namespace sparse {
 
         self.configuration_file.write(self.epilogue_template)
         self.configuration_file.close()
+
+
+class GatherGemmScatterOperation(GemmOperation):
+    # cutlass transpose A and B in the library.py, so we transpose it back here
+    def __init__(
+        self,
+        gemm_kind,
+        arch,
+        tile_description,
+        A,
+        B,
+        C,
+        element_epilogue,
+        epilogue_functor=EpilogueFunctor.LinearCombination,
+        swizzling_functor=SwizzlingFunctor.Identity8,
+    ):
+
+        super().__init__(
+            gemm_kind,
+            arch,
+            tile_description,
+            A,
+            B,
+            C,
+            element_epilogue,
+            epilogue_functor=EpilogueFunctor.LinearCombination,
+            swizzling_functor=SwizzlingFunctor.Identity8,
+        )
+        self.ShortLayoutTypeNames = {
+            LayoutType.ColumnMajor: 't',
+            LayoutType.ColumnMajorInterleaved2: 't2',
+            LayoutType.ColumnMajorInterleaved32: 't32',
+            LayoutType.ColumnMajorInterleaved64: 't64',
+            LayoutType.RowMajor: 'n',
+            LayoutType.RowMajorInterleaved2: 'n2',
+            LayoutType.RowMajorInterleaved32: 'n32',
+            LayoutType.RowMajorInterleaved64: 'n64',
+            LayoutType.TensorNHWC: 'nhwc',
+            LayoutType.TensorNDHWC: 'ndhwc',
+            LayoutType.TensorNCHW: 'nchw',
+            LayoutType.TensorNGHWC: 'nghwc',
+            LayoutType.TensorNC32HW32: 'nc32hw32',
+            LayoutType.TensorNC64HW64: 'nc64hw64',
+            LayoutType.TensorC32RSK32: 'c32rsk32',
+            LayoutType.TensorC64RSK64: 'c64rsk64',
+        }
+
+    def layout_name(self):
+        return "%s%s" % (
+            self.ShortLayoutTypeNames[self.A.layout],
+            self.ShortLayoutTypeNames[self.B.layout],
+        )
