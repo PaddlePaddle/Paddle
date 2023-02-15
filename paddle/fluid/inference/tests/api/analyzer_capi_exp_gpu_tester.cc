@@ -174,25 +174,6 @@ TEST(PD_Config, trt_fp16) {
   PD_PredictorDestroy(predictor);
 }
 
-TEST(PD_Config, trt_static_path) {
-  std::string model_dir = FLAGS_infer_model + "/mobilenet";
-  std::string static_path = FLAGS_infer_model + "/trt_engine";
-  PD_Config* config = PD_ConfigCreate();
-  PD_ConfigEnableUseGpu(config, 100, 0, 0);
-  PD_ConfigEnableTensorRtEngine(config,
-                                1 << 20,
-                                1,
-                                3,
-                                PD_PRECISION_HALF,
-                                FALSE,
-                                FALSE,
-                                static_path.c_str());
-  bool trt_enable = PD_ConfigTensorRtEngineEnabled(config);
-  EXPECT_TRUE(trt_enable);
-  PD_Predictor* predictor = PD_PredictorCreate(config);
-  PD_PredictorDestroy(predictor);
-}
-
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle

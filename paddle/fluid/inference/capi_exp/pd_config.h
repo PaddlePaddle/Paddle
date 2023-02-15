@@ -340,8 +340,7 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigEnableTensorRtEngine(
     int32_t min_subgraph_size,
     PD_PrecisionType precision,
     PD_Bool use_static,
-    PD_Bool use_calib_mode,
-    const char* static_path = "");
+    PD_Bool use_calib_mode);
 ///
 /// \brief A boolean state telling whether the TensorRT engine is used.
 ///

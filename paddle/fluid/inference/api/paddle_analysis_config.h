@@ -572,7 +572,8 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \param use_calib_mode Use TRT int8 calibration(post training
   /// quantization).
   /// \param static_path save or reload path for TensorRT engine
-  /// serialization in use_static mode.
+  /// serialization in use_static mode, only support Predictor with
+  /// single TensorRT engine.
   ///
   void EnableTensorRtEngine(int64_t workspace_size = 1 << 30,
                             int max_batch_size = 1,
