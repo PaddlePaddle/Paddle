@@ -16,9 +16,10 @@ import collections
 import inspect
 import textwrap
 import threading
+import warnings
 import weakref
 
-from paddle.fluid import _non_static_mode, framework
+from paddle.fluid import _non_static_mode, core, framework
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import param_guard, switch_to_static_graph
@@ -27,6 +28,7 @@ from paddle.utils import gast
 
 from . import error, logging_utils
 from .ast_transformer import DygraphToStaticAst
+from .convert_call_func import CONVERSION_OPTIONS
 from .function_spec import (
     FunctionSpec,
     _hash_spec_names,
@@ -151,6 +153,12 @@ def convert_to_static(function):
     """
     if getattr(function, ALREADY_D2S, None):
         return function
+
+    # Return directly if decorated with @not_to_static and DO NOT Cache it
+    options = getattr(function, CONVERSION_OPTIONS, None)
+    if options is not None and options.not_convert:
+        return function.__func__ if inspect.ismethod(function) else function
+
     with _CACHE_LOCK:
         static_func = _FUNCTION_CACHE.convert_with_cache(function)
         setattr(static_func, ALREADY_D2S, True)
@@ -930,6 +938,13 @@ class ConcreteProgram:
         self.function = function
         self.kwargs = kwargs
 
+    @switch_to_static_graph
+    def _to_prim(self):
+        # TODO(Aurelius84): Fix this cycle import problem
+        from paddle.incubate.autograd.primapi import to_prim
+
+        to_prim(self.main_program.blocks)
+
     @staticmethod
     @switch_to_static_graph
     def from_func_spec(
@@ -1070,10 +1085,55 @@ class ParametersRecorder:
         return id(program)
 
 
+class FallbackProgramLayer(object):
+    __slots__ = [
+        '_instance',
+        '_dy_func',
+        'training',
+        '_cuda_graph_capture_mode',
+        '_cuda_graph_pool_id',
+    ]
+
+    def __init__(self, instance, dy_func):
+        self._instance = instance
+        self._dy_func = dy_func
+
+    def __call__(self, inputs):
+        return self._dy_func(*inputs)
+
+    def __getattr__(self, key):
+        if key not in self.__slots__:
+            raise RuntimeError(
+                "There raises a exception after applying `@paddle.jit.to_static()` and already switch into fallback mode. \n"
+                "You can't get attribute for a fallback program layer. Please check `to_static.error` file for detail."
+            )
+        elif key in ['training']:
+            if self._instance is not None:
+                return getattr(self._instance, key)
+            return
+
+        return super().__getattr__(key)
+
+    def __setattr__(self, key, value):
+        if key not in self.__slots__:
+            raise RuntimeError(
+                "There raises a exception after applying `@paddle.jit.to_static()` and already switch into fallback mode. \n"
+                "You can't get attribute for a fallback program layer. Please check `to_static.error` file for detail."
+            )
+        elif key in ['training']:
+            if self._instance is not None:
+                return setattr(self._instance, key, value)
+            return
+
+        return super().__setattr__(key, value)
+
+
 class ProgramCache:
     """
     Wrapper class for the program functions defined by dygraph function.
     """
+
+    dy2static_error_file = "to_static.error"
 
     def __init__(self):
         # {hash_id : (concrete_program, partial_layer)}
@@ -1083,13 +1143,40 @@ class ProgramCache:
         self._recent_cache_key = None
 
     def _build_once(self, cache_key):
-        concrete_program = ConcreteProgram.from_func_spec(
-            func_spec=cache_key.function_spec,
-            input_spec=cache_key.input_args_with_spec,
-            input_kwargs_spec=cache_key.input_kwargs_with_spec,
-            class_instance=cache_key.class_instance,
-            **cache_key.kwargs
-        )
+        # TODO(Aurelius84): Need a gloabl FLAGS to enable/disable to_prim
+        enable_prim = cache_key.kwargs['build_strategy'].build_cinn_pass
+        # NOTE(xiongkun): Need a global FLAGS to enable/disable fallback
+        enable_fallback = enable_prim
+        # TODO(CZ): later when use cinn, set_prim_all_enabled and check_and_set_prim_all_enabled will be set at else branch.
+        core.check_and_set_prim_all_enabled()
+        try:
+            concrete_program = ConcreteProgram.from_func_spec(
+                func_spec=cache_key.function_spec,
+                input_spec=cache_key.input_args_with_spec,
+                input_kwargs_spec=cache_key.input_kwargs_with_spec,
+                class_instance=cache_key.class_instance,
+                **cache_key.kwargs
+            )
+        except Exception as e:
+            if enable_fallback:
+                warnings.warn(
+                    "Exception is thrown while applying @paddle.jit.to_static. It will fallback into dygraph mode for training.\n"
+                    "1. You can check `to_static.error` file in current workspace directory for detail.\n"
+                    "2. In fallback mode, you can only do training, can't call paddle.jit.save(). Please modify model code according `to_static.error` firstly"
+                )
+                # TODO(xiongkun) change different file name to avoid overwrite.
+                with open(self.dy2static_error_file, "w") as fp:
+                    fp.write(str(e))
+
+                fallback_layer = FallbackProgramLayer(
+                    cache_key.class_instance,
+                    cache_key.function_spec.dygraph_function,
+                )
+                return fallback_layer, fallback_layer
+            else:
+                raise
+
+        concrete_program._to_prim()
         return concrete_program, partial_program_from(concrete_program)
 
     def __getitem__(self, item):

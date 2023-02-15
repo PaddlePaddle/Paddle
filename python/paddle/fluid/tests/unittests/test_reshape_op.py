@@ -505,17 +505,18 @@ class TestReshapeZeroTensor(unittest.TestCase):
 class TestReshapeAPI_ZeroDim(unittest.TestCase):
     def test_dygraph(self):
         paddle.disable_static()
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         x = paddle.rand([])
         x.stop_gradient = False
 
         out = paddle.reshape(x, [1])
+        out.retain_grads()
         out.backward()
         self.assertEqual(x.grad.shape, [])
         self.assertEqual(out.shape, [1])
         self.assertEqual(out.grad.shape, [1])
 
         out = paddle.reshape(x, [-1, 1])
+        out.retain_grads()
         out.backward()
         self.assertEqual(x.grad.shape, [])
         self.assertEqual(out.shape, [1, 1])
@@ -524,6 +525,7 @@ class TestReshapeAPI_ZeroDim(unittest.TestCase):
         x = paddle.rand([1])
         x.stop_gradient = False
         out = paddle.reshape(x, [])
+        out.retain_grads()
         out.backward()
         self.assertEqual(x.grad.shape, [1])
         self.assertEqual(out.shape, [])

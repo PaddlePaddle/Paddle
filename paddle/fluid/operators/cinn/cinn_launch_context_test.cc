@@ -90,6 +90,8 @@ const Graph& InitDefaultSubgraph() {
         new std::vector<std::string>({"var5"}));
     graph->GetOrInit<Name2VarInfoMap>(
         framework::paddle2cinn::kMemOptVarInfoFromMainGraph);
+    graph->GetOrInit<std::unordered_set<std::string>>(
+        framework::paddle2cinn::kInplaceVarNames);
   });
   return *graph.get();
 }

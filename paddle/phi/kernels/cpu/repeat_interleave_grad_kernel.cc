@@ -94,7 +94,7 @@ void RepeatInterleaveGradKernel(const Context& ctx,
     std::fill_n(index_vec.begin() + i * repeats, repeats, i);
   }
   index.Resize(phi::make_ddim({index_size}));
-  paddle::framework::TensorFromVector<int>(index_vec, &index);
+  phi::TensorFromVector<int>(index_vec, ctx, &index);
   const DenseTensor index_copy = index;
   IndexSelectGradInner<Context, T, int>(ctx, out_grad, index_copy, x_grad, dim);
 }

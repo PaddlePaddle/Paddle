@@ -67,12 +67,12 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         use_cudnn = self.dtype == np.float16
         with fluid.unique_name.guard():
             with fluid.program_guard(main, startup):
-                data = fluid.layers.data(
+                data = paddle.static.data(
                     name='input',
                     shape=self.dshape,
                     dtype=self.dtype,
-                    append_batch_size=False,
                 )
+                data.desc.set_need_check_feed(False)
                 conv = paddle.static.nn.conv2d(
                     input=data,
                     num_filters=32,
@@ -91,9 +91,9 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                     is_test=only_forward,
                 )
                 if core.is_compiled_with_rocm():
-                    bn = fluid.layers.cast(bn, 'float32')
+                    bn = paddle.cast(bn, 'float32')
                 else:
-                    bn = fluid.layers.cast(bn, 'float64')
+                    bn = paddle.cast(bn, 'float64')
                 sigmoid = paddle.nn.functional.sigmoid(bn)
                 out = paddle.sum(sigmoid)
                 if not sync_bn:
@@ -248,7 +248,10 @@ class TestDygraphSyncBatchNormAPIError(unittest.TestCase):
 
             # the input dtype of SyncBatchNorm must be float16 or float32 or float64
             # float16 only can be set on GPU place
-            x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
+            x2 = paddle.static.data(
+                name='x2', shape=[-1, 3, 4, 5, 6], dtype="int32"
+            )
+            x2.desc.set_need_check_feed(False)
             self.assertRaises(TypeError, my_sync_batch_norm, x2)
 
 

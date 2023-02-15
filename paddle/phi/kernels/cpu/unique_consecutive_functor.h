@@ -14,9 +14,8 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/tensor_util.h"
-
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/unique_functor.h"
@@ -52,9 +51,11 @@ static void UniqueConsecutiveFlattenedTensor(const Context& context,
     }
   }
 
-  int64_t output_size = p - out_vec.data() + 1;
+  bool is_empty = in.numel() == 0;
+  int64_t output_size = is_empty ? 0 : (p - out_vec.data() + 1);
+
   if (return_counts) {
-    *q = in.numel() - last;
+    if (!is_empty) *q = in.numel() - last;
     counts_vec.resize(output_size);
   }
   out_vec.resize(output_size);
@@ -210,10 +211,10 @@ static void UniqueConsecutiveDim(const Context& context,
   phi::funcs::TransCompute<Context, InT>(
       out_trans.dims().size(), context, out_trans, out, permute);
   if (return_inverse) {
-    paddle::framework::TensorFromVector(inverse_vec, context, inverse);
+    phi::TensorFromVector(inverse_vec, context, inverse);
   }
   if (return_counts) {
-    paddle::framework::TensorFromVector(counts_vec, context, count);
+    phi::TensorFromVector(counts_vec, context, count);
   }
 }
 

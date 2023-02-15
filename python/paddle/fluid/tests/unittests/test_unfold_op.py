@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -123,6 +123,7 @@ class TestUnfoldOp(OpTest):
 
     def setUp(self):
         self.op_type = 'unfold'
+        self.python_api = paddle.nn.functional.unfold
         self.set_data()
 
     def test_check_output(self):
@@ -139,6 +140,7 @@ class TestUnfoldAPI(TestUnfoldOp):
 
     def setUp(self):
         self.op_type = 'unfold'
+        self.python_api = paddle.nn.functional.unfold
         self.set_data()
         self.places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():

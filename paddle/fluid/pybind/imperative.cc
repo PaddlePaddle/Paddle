@@ -15,6 +15,11 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 
 #include <Python.h>
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
+
 #include <pybind11/chrono.h>
 #include <pybind11/complex.h>
 #include <pybind11/functional.h>
@@ -624,6 +629,11 @@ void BindImperative(py::module *m_ptr) {
 
   m.def("_cleanup_mmap_fds",
         []() { memory::allocation::MemoryMapFdSet::Instance().Clear(); });
+
+  m.def("_set_max_memory_map_allocation_pool_size", [](int32_t size) {
+    memory::allocation::MemoryMapAllocationPool::Instance().SetMaxPoolSize(
+        size);
+  });
 #endif
 
   m.def("start_imperative_gperf_profiler",

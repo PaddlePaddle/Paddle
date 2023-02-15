@@ -1181,10 +1181,12 @@ class TestRecomputeOptimizer(unittest.TestCase):
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             with program_guard(main_program, startup_program):
-                input_x = fluid.layers.data(
-                    name="x", shape=[3], dtype='float32'
+                input_x = paddle.static.data(
+                    name="x", shape=[-1, 3], dtype='float32'
                 )
-                input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+                input_y = paddle.static.data(
+                    name="y", shape=[-1, 1], dtype='int64'
+                )
                 drop_res, prediction, cost = mlp(input_x, input_y)
                 sgd = fluid.optimizer.Adam(learning_rate=0.01)
                 sgd = fluid.optimizer.RecomputeOptimizer(sgd)
@@ -1243,10 +1245,12 @@ class TestRecomputeOptimizerCUDA(unittest.TestCase):
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             with program_guard(main_program, startup_program):
-                input_x = fluid.layers.data(
-                    name="x", shape=[3], dtype='float32'
+                input_x = paddle.static.data(
+                    name="x", shape=[-1, 3], dtype='float32'
                 )
-                input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+                input_y = paddle.static.data(
+                    name="y", shape=[-1, 1], dtype='int64'
+                )
                 drop_res, prediction, cost = mlp(input_x, input_y)
                 sgd = fluid.optimizer.Adam(learning_rate=0.01)
                 sgd = fluid.optimizer.RecomputeOptimizer(sgd)

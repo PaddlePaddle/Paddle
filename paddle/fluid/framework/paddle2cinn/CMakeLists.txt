@@ -60,6 +60,7 @@ if(WITH_TESTING)
     elementwise_add_op
     generated_op)
   set_tests_properties(build_cinn_pass_test PROPERTIES LABELS "RUN_TYPE=CINN")
+  target_link_libraries(build_cinn_pass_test ${PYTHON_LIBRARIES})
 
   cc_test_old(transform_desc_test SRCS transform_desc_test.cc DEPS
               transform_desc)

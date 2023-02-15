@@ -59,26 +59,26 @@ class SimpleLSTMRNN(fluid.Layer):
         for i in range(self._num_layers):
             weight_1 = self.create_parameter(
                 attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.UniformInitializer(
+                    initializer=paddle.nn.initializer.Uniform(
                         low=-self._init_scale, high=self._init_scale
                     )
                 ),
                 shape=[self._hidden_size * 2, self._hidden_size * 4],
                 dtype="float32",
-                default_initializer=fluid.initializer.UniformInitializer(
+                default_initializer=paddle.nn.initializer.Uniform(
                     low=-self._init_scale, high=self._init_scale
                 ),
             )
             self.weight_1_arr.append(self.add_parameter('w_%d' % i, weight_1))
             bias_1 = self.create_parameter(
                 attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.UniformInitializer(
+                    initializer=paddle.nn.initializer.Uniform(
                         low=-self._init_scale, high=self._init_scale
                     )
                 ),
                 shape=[self._hidden_size * 4],
                 dtype="float32",
-                default_initializer=fluid.initializer.Constant(0.0),
+                default_initializer=paddle.nn.initializer.Constant(0.0),
             )
             self.bias_arr.append(self.add_parameter('b_%d' % i, bias_1))
 
@@ -114,7 +114,7 @@ class SimpleLSTMRNN(fluid.Layer):
                 weight_1 = self.weight_1_arr[k]
                 bias = self.bias_arr[k]
 
-                nn = fluid.layers.concat([self._input, pre_hidden], 1)
+                nn = paddle.concat([self._input, pre_hidden], 1)
                 gate_input = paddle.matmul(x=nn, y=weight_1)
 
                 gate_input = paddle.add(gate_input, bias)
@@ -138,14 +138,14 @@ class SimpleLSTMRNN(fluid.Layer):
             res.append(
                 paddle.reshape(self._input, shape=[1, -1, self._hidden_size])
             )
-        real_res = fluid.layers.concat(res, 0)
+        real_res = paddle.concat(res, 0)
         real_res = paddle.transpose(x=real_res, perm=[1, 0, 2])
-        last_hidden = fluid.layers.concat(self.hidden_array, 1)
+        last_hidden = paddle.concat(self.hidden_array, 1)
         last_hidden = paddle.reshape(
             last_hidden, shape=[-1, self._num_layers, self._hidden_size]
         )
         last_hidden = paddle.transpose(x=last_hidden, perm=[1, 0, 2])
-        last_cell = fluid.layers.concat(self.cell_array, 1)
+        last_cell = paddle.concat(self.cell_array, 1)
         last_cell = paddle.reshape(
             last_cell, shape=[-1, self._num_layers, self._hidden_size]
         )
@@ -184,7 +184,7 @@ class PtbModel(fluid.Layer):
             embedding_dim=hidden_size,
             weight_attr=fluid.ParamAttr(
                 name='embedding_para',
-                initializer=fluid.initializer.UniformInitializer(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-init_scale, high=init_scale
                 ),
             ),
@@ -193,7 +193,7 @@ class PtbModel(fluid.Layer):
             attr=fluid.ParamAttr(),
             shape=[self.hidden_size, self.vocab_size],
             dtype="float32",
-            default_initializer=fluid.initializer.UniformInitializer(
+            default_initializer=paddle.nn.initializer.Uniform(
                 low=-self.init_scale, high=self.init_scale
             ),
         )
@@ -201,7 +201,7 @@ class PtbModel(fluid.Layer):
             attr=fluid.ParamAttr(),
             shape=[self.vocab_size],
             dtype="float32",
-            default_initializer=fluid.initializer.UniformInitializer(
+            default_initializer=paddle.nn.initializer.Uniform(
                 low=-self.init_scale, high=self.init_scale
             ),
         )
@@ -216,7 +216,7 @@ class PtbModel(fluid.Layer):
         )
 
         # NPU 'tok_k' kernel only support `int32` dtype, so cast `input` from `int64` to `int32`.
-        input = fluid.layers.cast(input, "int32")
+        input = paddle.cast(input, "int32")
         x_emb = self.embedding(input)
         x_emb = paddle.reshape(
             x_emb, shape=[-1, self.num_steps, self.hidden_size]
@@ -281,16 +281,20 @@ class TestSaveLoadBase(unittest.TestCase):
             place = self.set_place()
             exe = fluid.Executor(place)
             sgd = Adam(learning_rate=1e-3)
-            x = fluid.layers.data(
+            x = paddle.static.data(
                 name="x", shape=[-1, num_steps], dtype='int64'
             )
-            y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
-            init_hidden = fluid.layers.data(
-                name="init_hidden", shape=[1], dtype='float32'
+            x.desc.set_need_check_feed(False)
+            y = paddle.static.data(name="y", shape=[-1, 1], dtype='float32')
+            y.desc.set_need_check_feed(False)
+            init_hidden = paddle.static.data(
+                name="init_hidden", shape=[-1, 1], dtype='float32'
             )
-            init_cell = fluid.layers.data(
-                name="init_cell", shape=[1], dtype='float32'
+            init_hidden.desc.set_need_check_feed(False)
+            init_cell = paddle.static.data(
+                name="init_cell", shape=[-1, 1], dtype='float32'
             )
+            init_cell.desc.set_need_check_feed(False)
 
             static_loss, static_last_hidden, static_last_cell = ptb_model(
                 x, y, init_hidden, init_cell
@@ -406,16 +410,20 @@ class TestSaveLoadPartial(unittest.TestCase):
             place = self.set_place()
             exe = fluid.Executor(place)
             sgd = Adam(learning_rate=1e-3)
-            x = fluid.layers.data(
+            x = paddle.static.data(
                 name="x", shape=[-1, num_steps], dtype='int64'
             )
-            y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
-            init_hidden = fluid.layers.data(
-                name="init_hidden", shape=[1], dtype='float32'
+            x.desc.set_need_check_feed(False)
+            y = paddle.static.data(name="y", shape=[-1, 1], dtype='float32')
+            y.desc.set_need_check_feed(False)
+            init_hidden = paddle.static.data(
+                name="init_hidden", shape=[-1, 1], dtype='float32'
             )
-            init_cell = fluid.layers.data(
-                name="init_cell", shape=[1], dtype='float32'
+            init_hidden.desc.set_need_check_feed(False)
+            init_cell = paddle.static.data(
+                name="init_cell", shape=[-1, 1], dtype='float32'
             )
+            init_cell.desc.set_need_check_feed(False)
 
             static_loss, static_last_hidden, static_last_cell = ptb_model(
                 x, y, init_hidden, init_cell
@@ -544,16 +552,20 @@ class TestSaveLoadSetStateDict(unittest.TestCase):
             place = self.set_place()
             exe = fluid.Executor(place)
             sgd = Adam(learning_rate=1e-3)
-            x = fluid.layers.data(
+            x = paddle.static.data(
                 name="x", shape=[-1, num_steps], dtype='int64'
             )
-            y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
-            init_hidden = fluid.layers.data(
-                name="init_hidden", shape=[1], dtype='float32'
+            x.desc.set_need_check_feed(False)
+            y = paddle.static.data(name="y", shape=[-1, 1], dtype='float32')
+            y.desc.set_need_check_feed(False)
+            init_hidden = paddle.static.data(
+                name="init_hidden", shape=[-1, 1], dtype='float32'
             )
-            init_cell = fluid.layers.data(
-                name="init_cell", shape=[1], dtype='float32'
+            init_hidden.desc.set_need_check_feed(False)
+            init_cell = paddle.static.data(
+                name="init_cell", shape=[-1, 1], dtype='float32'
             )
+            init_cell.desc.set_need_check_feed(False)
 
             static_loss, static_last_hidden, static_last_cell = ptb_model(
                 x, y, init_hidden, init_cell
@@ -665,16 +677,20 @@ class TestProgramStatePartial(unittest.TestCase):
             place = self.set_place()
             exe = fluid.Executor(place)
             sgd = Adam(learning_rate=1e-3)
-            x = fluid.layers.data(
+            x = paddle.static.data(
                 name="x", shape=[-1, num_steps], dtype='int64'
             )
-            y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
-            init_hidden = fluid.layers.data(
-                name="init_hidden", shape=[1], dtype='float32'
+            x.desc.set_need_check_feed(False)
+            y = paddle.static.data(name="y", shape=[-1, 1], dtype='float32')
+            y.desc.set_need_check_feed(False)
+            init_hidden = paddle.static.data(
+                name="init_hidden", shape=[-1, 1], dtype='float32'
             )
-            init_cell = fluid.layers.data(
-                name="init_cell", shape=[1], dtype='float32'
+            init_hidden.desc.set_need_check_feed(False)
+            init_cell = paddle.static.data(
+                name="init_cell", shape=[-1, 1], dtype='float32'
             )
+            init_cell.desc.set_need_check_feed(False)
 
             static_loss, static_last_hidden, static_last_cell = ptb_model(
                 x, y, init_hidden, init_cell
@@ -992,16 +1008,20 @@ class TestLoadFromOldInterface(unittest.TestCase):
             place = self.set_place()
             exe = fluid.Executor(place)
             sgd = Adam(learning_rate=1e-3)
-            x = fluid.layers.data(
+            x = paddle.static.data(
                 name="x", shape=[-1, num_steps], dtype='int64'
             )
-            y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
-            init_hidden = fluid.layers.data(
-                name="init_hidden", shape=[1], dtype='float32'
+            x.desc.set_need_check_feed(False)
+            y = paddle.static.data(name="y", shape=[-1, 1], dtype='float32')
+            y.desc.set_need_check_feed(False)
+            init_hidden = paddle.static.data(
+                name="init_hidden", shape=[-1, 1], dtype='float32'
             )
-            init_cell = fluid.layers.data(
-                name="init_cell", shape=[1], dtype='float32'
+            init_hidden.desc.set_need_check_feed(False)
+            init_cell = paddle.static.data(
+                name="init_cell", shape=[-1, 1], dtype='float32'
             )
+            init_cell.desc.set_need_check_feed(False)
 
             static_loss, static_last_hidden, static_last_cell = ptb_model(
                 x, y, init_hidden, init_cell
@@ -1131,17 +1151,20 @@ class TestLoadFromOldInterface(unittest.TestCase):
             place = self.set_place()
             exe = fluid.Executor(place)
             sgd = Adam(learning_rate=1e-3)
-            x = fluid.layers.data(
+            x = paddle.static.data(
                 name="x", shape=[-1, num_steps], dtype='int64'
             )
-            y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
-            init_hidden = fluid.layers.data(
-                name="init_hidden", shape=[1], dtype='float32'
+            x.desc.set_need_check_feed(False)
+            y = paddle.static.data(name="y", shape=[-1, 1], dtype='float32')
+            y.desc.set_need_check_feed(False)
+            init_hidden = paddle.static.data(
+                name="init_hidden", shape=[-1, 1], dtype='float32'
             )
-            init_cell = fluid.layers.data(
-                name="init_cell", shape=[1], dtype='float32'
+            init_hidden.desc.set_need_check_feed(False)
+            init_cell = paddle.static.data(
+                name="init_cell", shape=[-1, 1], dtype='float32'
             )
-
+            init_cell.desc.set_need_check_feed(False)
             static_loss, static_last_hidden, static_last_cell = ptb_model(
                 x, y, init_hidden, init_cell
             )
@@ -1271,16 +1294,20 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
             place = self.set_place()
             exe = fluid.Executor(place)
             sgd = Adam(learning_rate=1e-3)
-            x = fluid.layers.data(
+            x = paddle.static.data(
                 name="x", shape=[-1, num_steps], dtype='int64'
             )
-            y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
-            init_hidden = fluid.layers.data(
-                name="init_hidden", shape=[1], dtype='float32'
+            x.desc.set_need_check_feed(False)
+            y = paddle.static.data(name="y", shape=[-1, 1], dtype='float32')
+            y.desc.set_need_check_feed(False)
+            init_hidden = paddle.static.data(
+                name="init_hidden", shape=[-1, 1], dtype='float32'
             )
-            init_cell = fluid.layers.data(
-                name="init_cell", shape=[1], dtype='float32'
+            init_hidden.desc.set_need_check_feed(False)
+            init_cell = paddle.static.data(
+                name="init_cell", shape=[-1, 1], dtype='float32'
             )
+            init_cell.desc.set_need_check_feed(False)
 
             static_loss, static_last_hidden, static_last_cell = ptb_model(
                 x, y, init_hidden, init_cell
@@ -1462,16 +1489,20 @@ class TestProgramStateOldSave(unittest.TestCase):
             place = self.set_place()
             exe = fluid.Executor(place)
             sgd = Adam(learning_rate=1e-3)
-            x = fluid.layers.data(
+            x = paddle.static.data(
                 name="x", shape=[-1, num_steps], dtype='int64'
             )
-            y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
-            init_hidden = fluid.layers.data(
-                name="init_hidden", shape=[1], dtype='float32'
+            x.desc.set_need_check_feed(False)
+            y = paddle.static.data(name="y", shape=[-1, 1], dtype='float32')
+            y.desc.set_need_check_feed(False)
+            init_hidden = paddle.static.data(
+                name="init_hidden", shape=[-1, 1], dtype='float32'
             )
-            init_cell = fluid.layers.data(
-                name="init_cell", shape=[1], dtype='float32'
+            init_hidden.desc.set_need_check_feed(False)
+            init_cell = paddle.static.data(
+                name="init_cell", shape=[-1, 1], dtype='float32'
             )
+            init_cell.desc.set_need_check_feed(False)
 
             static_loss, static_last_hidden, static_last_cell = ptb_model(
                 x, y, init_hidden, init_cell
@@ -1634,16 +1665,20 @@ class TestProgramStateOldSaveSingleModel(unittest.TestCase):
             place = self.set_place()
             exe = fluid.Executor(place)
             sgd = Adam(learning_rate=1e-3)
-            x = fluid.layers.data(
+            x = paddle.static.data(
                 name="x", shape=[-1, num_steps], dtype='int64'
             )
-            y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
-            init_hidden = fluid.layers.data(
-                name="init_hidden", shape=[1], dtype='float32'
+            x.desc.set_need_check_feed(False)
+            y = paddle.static.data(name="y", shape=[-1, 1], dtype='float32')
+            y.desc.set_need_check_feed(False)
+            init_hidden = paddle.static.data(
+                name="init_hidden", shape=[-1, 1], dtype='float32'
             )
-            init_cell = fluid.layers.data(
-                name="init_cell", shape=[1], dtype='float32'
+            init_hidden.desc.set_need_check_feed(False)
+            init_cell = paddle.static.data(
+                name="init_cell", shape=[-1, 1], dtype='float32'
             )
+            init_cell.desc.set_need_check_feed(False)
 
             static_loss, static_last_hidden, static_last_cell = ptb_model(
                 x, y, init_hidden, init_cell
@@ -1769,6 +1804,7 @@ class TestStaticSaveLoadPickle(unittest.TestCase):
                 shape=[None, 10],
                 dtype='float32',
             )
+            x.desc.set_need_check_feed(False)
             z = paddle.static.nn.fc(x, 10, bias_attr=False)
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
@@ -1838,6 +1874,7 @@ class TestSaveLoadInferenceModel(unittest.TestCase):
         main_program = framework.Program()
         with framework.program_guard(main_program):
             x = paddle.static.data(name="x", shape=[10, 10], dtype='float32')
+            x.desc.set_need_check_feed(False)
             y = x + x
 
             place = paddle.CPUPlace()

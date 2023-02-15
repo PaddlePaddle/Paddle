@@ -16,7 +16,8 @@ import logging
 import typing
 
 import paddle
-from paddle.fluid import backward, framework
+from paddle.fluid import backward, core, framework
+from paddle.fluid.core import prim_config
 from paddle.incubate.autograd import primx, utils
 
 
@@ -218,13 +219,23 @@ def grad(outputs, inputs, grad_outputs=None):
 @framework.static_only
 def to_prim(blocks):
     """Search nonbasic ops which have be registered composite rules and replace them with primitive ops."""
+    if not core._is_fwd_prim_enabled():
+        return
     if isinstance(blocks, paddle.fluid.framework.Block):
         logging.info("Atomize composite op to primitive ops begin.")
-        primx._lower_composite(blocks)
-        return
+        main_program = blocks.program
     elif isinstance(blocks, typing.Sequence):
         for item in blocks:
-            to_prim(item)
-        return
+            if not isinstance(item, paddle.fluid.framework.Block):
+                raise TypeError(
+                    f"Expect block or sequence of blocks, but sequence contains {type(item)}."
+                )
+        main_program = blocks[0].program
     else:
-        raise TypeError
+        raise TypeError(
+            f"Expect block or sequence of blocks, but got {type(blocks)}."
+        )
+    with framework.program_guard(main_program):
+        print("Running lowering for forward...")
+        primx._lower_composite(blocks, prim_config["forward_blacklist"])
+    return

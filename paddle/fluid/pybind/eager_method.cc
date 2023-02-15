@@ -16,6 +16,10 @@ typedef SSIZE_T ssize_t;
 #endif
 
 #include <Python.h>
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
 
 #include <string>
 #include <unordered_map>
@@ -1503,7 +1507,7 @@ static PyObject* tensor_method_set_string_list(TensorObject* self,
                                                PyObject* args,
                                                PyObject* kwargs) {
   EAGER_TRY
-  using Strings = std::vector<std::string>;
+  using Strings = paddle::framework::Strings;
   auto strings = CastPyArg2VectorOfString(PyTuple_GET_ITEM(args, 0), 0);
   auto var_tensor = std::make_shared<egr::VariableCompatTensor>();
   *var_tensor->GetMutable<Strings>() = strings;

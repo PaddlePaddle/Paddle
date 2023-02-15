@@ -17,7 +17,7 @@
 #include <string>
 
 #include "paddle/fluid/framework/infershape_utils.h"
-#include "paddle/fluid/prim/api/manual/backward/composite_backward_api.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 
@@ -64,9 +64,9 @@ class ReduceSumOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-class ReduceSumCompositeGradOpMaker : public prim::GradCompositeOpMakerBase {
+class ReduceSumCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
  public:
-  using prim::GradCompositeOpMakerBase::GradCompositeOpMakerBase;
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
   void Apply() override {
     // get inputs
     paddle::experimental::Tensor x = this->GetSingleForwardInput("X");
@@ -84,7 +84,7 @@ class ReduceSumCompositeGradOpMaker : public prim::GradCompositeOpMakerBase {
 
     // get output orginal name
     std::string x_grad_name = this->GetOutputName(x_grad_t);
-
+    VLOG(6) << "Runing sum_grad composite func";
     // call composite backward func
     prim::sum_grad<prim::DescTensor>(
         x, out_grad, axis, keep_dim, reduce_all, x_grad);

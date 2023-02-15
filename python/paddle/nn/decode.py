@@ -19,8 +19,8 @@ import warnings
 import numpy as np
 
 import paddle
+from paddle.common_ops_import import default_main_program
 from paddle.framework import _non_static_mode
-from paddle.static import default_main_program
 
 from ..fluid.data_feeder import convert_dtype
 from ..fluid.layers.utils import flatten, map_structure

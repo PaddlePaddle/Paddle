@@ -927,6 +927,15 @@ def max_unpool2d(
             # unpool_out shape: [1, 1, 7, 7]
 
     """
+    if x.ndim != 4:
+        raise ValueError(
+            f'The x should have [N, C, H, W] format, but received {x.shape}.'
+        )
+    if indices.ndim != 4:
+        raise ValueError(
+            f'The indices should have [N, C, H, W] format, but received {indices.shape}.'
+        )
+
     kernel_size = utils.convert_to_list(kernel_size, 2, 'pool_size')
     if stride is None:
         stride = kernel_size
@@ -1061,6 +1070,15 @@ def max_unpool3d(
             # unpool_out shape: [1, 1, 4, 4, 6]
 
     """
+    if x.ndim != 5:
+        raise ValueError(
+            f'The x should have [N, C, D, H, W] format, but received {x.shape}.'
+        )
+    if indices.ndim != 5:
+        raise ValueError(
+            f'The indices should have [N, C, D, H, W] format, but received {indices.shape}.'
+        )
+
     kernel_size = utils.convert_to_list(kernel_size, 3, 'pool_size')
     if stride is None:
         stride = kernel_size

@@ -51,6 +51,7 @@ void UniqueConsecutiveKernel(const Context& dev_ctx,
             dev_ctx, x, out, return_inverse, return_counts, index, counts));
   } else {
     int valid_axis = axis[0];
+    if (valid_axis < 0) valid_axis += x.dims().size();
     phi::VisitDataTypeTiny(
         data_type,
         UniqueConsecutiveDimFunctor<Context, T>(dev_ctx,

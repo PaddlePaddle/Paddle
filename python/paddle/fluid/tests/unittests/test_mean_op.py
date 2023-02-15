@@ -23,7 +23,6 @@ from test_sum_op import TestReduceOPTensorAxisBase
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 from paddle.fluid import Program, program_guard
 
 np.random.seed(10)
@@ -82,12 +81,12 @@ class TestMeanOpError(unittest.TestCase):
             input1 = 12
             self.assertRaises(TypeError, paddle.mean, input1)
             # The input dtype of mean_op must be float16, float32, float64.
-            input2 = fluid.layers.data(
-                name='input2', shape=[12, 10], dtype="int32"
+            input2 = paddle.static.data(
+                name='input2', shape=[-1, 12, 10], dtype="int32"
             )
             self.assertRaises(TypeError, paddle.mean, input2)
-            input3 = fluid.layers.data(
-                name='input3', shape=[4], dtype="float16"
+            input3 = paddle.static.data(
+                name='input3', shape=[-1, 4], dtype="float16"
             )
             paddle.nn.functional.softmax(input3)
 
@@ -442,7 +441,7 @@ class TestMeanDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [3, 4, 5], False, dtype)
+        data = paddle.static.data('data', [3, 4, 5], dtype)
         data.persistable = True
         out = paddle.mean(data)
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
@@ -473,7 +472,7 @@ class TestMeanTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [3, 4, 5], False, dtype)
+        data = paddle.static.data('data', [3, 4, 5], dtype)
         data.persistable = True
         out = paddle.mean(data)
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)

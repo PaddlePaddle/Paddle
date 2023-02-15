@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
+import typing
 from collections import OrderedDict
 
 import paddle
@@ -575,90 +577,112 @@ def _lower_composite(block, blacklist=[]):
                 return_list.append(x)
         return return_list
 
-    # Step1: Do some preparatory work for lower
-    lower_fn = _composite
-    lookup_fn = lookup_composite
+    if isinstance(block, paddle.fluid.framework.Block):
+        logging.info("Atomize composite op to primitive ops begin.")
 
-    value_table = {}
-    to_bind = {}
-    to_bind_rev = {}
-    for var in block.desc.all_vars():
-        value_table[var.name()] = block.var(var.name())
+        # Step1: Do some preparatory work for lower
+        lower_fn = _composite
+        lookup_fn = lookup_composite
 
-    ops_to_remove = []
-    vars_to_remove = set()
+        value_table = {}
+        to_bind = {}
+        to_bind_rev = {}
+        for var in block.desc.all_vars():
+            value_table[var.name()] = block.var(var.name())
 
-    # Step2: Process all ops in the target block
-    for op_idx in range(len(block.ops)):
-        op = block.ops[op_idx]
-        ops_to_remove.append(op_idx)
-        if lookup_fn(op.type) is not None and op.type not in blacklist:
-            input_args = prepare_python_api_arguments(op)
-            bind(input_args, to_bind, value_table)
+        ops_to_remove = []
+        vars_to_remove = set()
 
-            for orig_out, new_out in zip(
-                expand_nested_list(get_output_var_list(op)),
-                expand_nested_list(as_tensors(lower_fn(op, *input_args))),
-            ):
-                assert not (orig_out is None) ^ (
-                    new_out is None
-                ), "orig_out and new_out should match."
-                vars_to_remove.add(new_out.name)
-                value_table[new_out.name] = new_out
-                to_bind[orig_out.name] = new_out.name
-                to_bind_rev[new_out.name] = orig_out.name
-        else:
-            inputs = {}
-            for i in range(len(op.input_names)):
-                inputs[op.input_names[i]] = bind_name(
-                    op.input(op.input_names[i]), to_bind
-                )
+        # if output var of composite rule is None, this means this var is not needed
+        none_vars_to_remove = set()
 
-            outputs = {}
-            for i in range(len(op.output_names)):
-                outputs[op.output_names[i]] = op.output(op.output_names[i])
+        # Step2: Process all ops in the target block
+        for op_idx in range(len(block.ops)):
+            op = block.ops[op_idx]
+            ops_to_remove.append(op_idx)
+            if lookup_fn(op.type) is not None and op.type not in blacklist:
+                input_args = prepare_python_api_arguments(op)
+                bind(input_args, to_bind, value_table)
 
-            attrs = {}
-            for name in sorted(op.attr_names):
-                attrs[name] = op.attr(name)
-            from paddle.fluid.dygraph.base import param_guard
+                for orig_out, new_out in zip(
+                    expand_nested_list(get_output_var_list(op)),
+                    expand_nested_list(as_tensors(lower_fn(op, *input_args))),
+                ):
+                    if new_out is not None:
+                        assert not (orig_out is None) ^ (
+                            new_out is None
+                        ), "orig_out and new_out should match."
+                        vars_to_remove.add(new_out.name)
+                        value_table[new_out.name] = new_out
+                        to_bind[orig_out.name] = new_out.name
+                        to_bind_rev[new_out.name] = orig_out.name
+                    else:
+                        none_vars_to_remove.add(orig_out.name)
+            else:
+                inputs = {}
+                for i in range(len(op.input_names)):
+                    inputs[op.input_names[i]] = bind_name(
+                        op.input(op.input_names[i]), to_bind
+                    )
 
-            new_op_desc = block.desc.append_op()
-            with param_guard(inputs), param_guard(outputs):
-                op = Operator(
-                    block=block,
-                    desc=new_op_desc,
-                    type=op.type,
-                    inputs=inputs,
-                    outputs=outputs,
-                    attrs=attrs,
-                )
-            block.ops.append(op)
+                outputs = {}
+                for i in range(len(op.output_names)):
+                    outputs[op.output_names[i]] = op.output(op.output_names[i])
 
-    # Step3: Do some post-processing work
-    for op_idx in reversed(ops_to_remove):
-        block.desc._remove_op(op_idx, op_idx + 1)
-        del block.ops[op_idx]
-    block._sync_with_cpp()
+                attrs = {}
+                for name in sorted(op.attr_names):
+                    attrs[name] = op.attr(name)
+                from paddle.fluid.dygraph.base import param_guard
 
-    for op_idx in range(len(block.ops)):
-        op = block.ops[op_idx]
-        for in_name in op.input_arg_names:
-            if in_name in to_bind_rev:
-                op._rename_input(in_name, to_bind_rev[in_name])
+                new_op_desc = block.desc.append_op()
+                with param_guard(inputs), param_guard(outputs):
+                    op = Operator(
+                        block=block,
+                        desc=new_op_desc,
+                        type=op.type,
+                        inputs=inputs,
+                        outputs=outputs,
+                        attrs=attrs,
+                    )
+                block.ops.append(op)
 
-        for out_name in op.output_arg_names:
-            if out_name in to_bind_rev:
-                op._rename_output(out_name, to_bind_rev[out_name])
+        # Step3: Do some post-processing work
+        for op_idx in reversed(ops_to_remove):
+            block.desc._remove_op(op_idx, op_idx + 1)
+            del block.ops[op_idx]
+        block._sync_with_cpp()
 
-    for var_name in sorted(vars_to_remove):
-        assert (
-            var_name in to_bind_rev
-        ), 'var_name "{}" is not in to_bind_rev.'.format(var_name)
-        if var_name != to_bind_rev[var_name]:
+        for op_idx in range(len(block.ops)):
+            op = block.ops[op_idx]
+            for in_name in op.input_arg_names:
+                if in_name in to_bind_rev:
+                    op._rename_input(in_name, to_bind_rev[in_name])
+
+            for out_name in op.output_arg_names:
+                if out_name in to_bind_rev:
+                    op._rename_output(out_name, to_bind_rev[out_name])
+
+        for var_name in sorted(vars_to_remove):
+            assert (
+                var_name in to_bind_rev
+            ), 'var_name "{}" is not in to_bind_rev.'.format(var_name)
+            if var_name != to_bind_rev[var_name]:
+                block.desc._remove_var(var_name.encode())
+                del block.vars[var_name]
+        block._sync_with_cpp()
+
+        for var_name in sorted(none_vars_to_remove):
             block.desc._remove_var(var_name.encode())
             del block.vars[var_name]
-    block._sync_with_cpp()
+        block._sync_with_cpp()
+        return
+
+    elif isinstance(block, typing.Sequence):
+        for item in block:
+            _lower_composite(item, blacklist)
+        return
+    else:
+        raise TypeError
 
 
 @framework.static_only

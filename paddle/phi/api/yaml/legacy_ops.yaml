@@ -318,15 +318,6 @@
     func : box_coder
   optional : prior_box_var
 
-- op : broadcast_tensors
-  args: (Tensor[] input)
-  output: Tensor[]{input.size()}
-  infer_meta:
-    func: BroadcastTensorsInferMeta
-  kernel:
-    func: broadcast_tensors
-  backward: broadcast_tensors_grad
-
 - op : cast
   args : (Tensor x, DataType dtype)
   output : Tensor
@@ -1234,6 +1225,17 @@
   optional : master_param
   inplace : (param -> param_out), (velocity -> velocity_out), (master_param -> master_param_out)
 
+- op : multi_tensor_adam_
+  args : (Tensor[] params, Tensor[] grads, Tensor learning_rate, Tensor[] moments1, Tensor[] moments2, Tensor[] beta1_pows, Tensor[] beta2_pows, Tensor[] master_params, Tensor skip_update, Scalar beta1, Scalar beta2, Scalar epsilon, int chunk_size, float weight_decay, bool use_adamw, bool multi_precision, bool use_global_beta_pow)
+  output : Tensor[](params_out){params.size()}, Tensor[](moments1_out){params.size()}, Tensor[](moments2_out){params.size()}, Tensor[](beta1_pows_out){params.size()}, Tensor[](beta2_pows_out){params.size()}, Tensor[](master_params_out){params.size()}
+  infer_meta :
+    func : MultiTensorAdamInferMeta
+  kernel :
+    func : multi_tensor_adam
+    data_type : params
+  optional : skip_update, master_params
+  inplace : (params -> params_out), (moments1 -> moments1_out), (moments2 -> moments2_out), (beta1_pows -> beta1_pows_out), (beta2_pows -> beta2_pows_out), (master_params -> master_params_out)
+
 - op : multiclass_nms3
   args : (Tensor bboxes, Tensor scores, Tensor rois_num, float score_threshold, int nms_top_k, int keep_top_k, float nms_threshold=0.3, bool normalized=true, float nms_eta=1.0, int background_label=0)
   output : Tensor(out), Tensor(index), Tensor(nms_rois_num)
@@ -1297,16 +1299,6 @@
     func : CompareInferMeta
   kernel :
     func : not_equal
-
-- op : numel
-  args : (Tensor x)
-  output : Tensor(size)
-  infer_meta :
-    func : NumelInferMeta
-  kernel :
-    func : numel
-  data_transform:
-    skip_transform : x
 
 - op : one_hot
   args : (Tensor x, Scalar(int) num_classes)
@@ -1374,17 +1366,6 @@
     func : pool3d
     param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
   backward : pool3d_grad
-
-- op : pow
-  args : (Tensor x, Scalar y)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-    param: [x]
-  kernel :
-    func : pow
-    data_type : x
-  backward : pow_grad
 
 - op : prelu
   args : (Tensor x, Tensor alpha, str data_format, str mode)
@@ -1459,7 +1440,7 @@
 
 - op : remainder
   args : (Tensor x, Tensor y)
-  output : Tensor
+  output : Tensor (out)
   infer_meta :
     func : ElementwiseInferMeta
   kernel :
@@ -1588,28 +1569,6 @@
     data_type : x
   backward : segment_pool_grad
 
-- op : send_u_recv
-  args : (Tensor x, Tensor src_index, Tensor dst_index, str reduce_op = "SUM", IntArray out_size = {0})
-  output : Tensor(out), Tensor(dst_count)
-  infer_meta :
-    func : SendURecvInferMeta
-  kernel :
-    func : send_u_recv
-    data_type : x
-  intermediate : dst_count
-  backward : send_u_recv_grad
-
-- op : send_ue_recv
-  args : (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str message_op, str reduce_op, IntArray out_size)
-  output : Tensor(out), Tensor(dst_count)
-  infer_meta :
-    func : SendUERecvInferMeta
-  kernel :
-    func : send_ue_recv
-    data_type : x
-  intermediate : dst_count
-  backward : send_ue_recv_grad
-
 - op : sgd_
   args : (Tensor param, Tensor learning_rate, Tensor grad, Tensor master_param, bool multi_precision)
   output : Tensor(param_out), Tensor(master_param_out)
@@ -1662,15 +1621,6 @@
   kernel :
     func : slice
   backward : slice_grad
-
-- op : slogdet
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : slogdet
-  backward : slogdet_grad
 
 - op : softmax
   args : (Tensor x, int axis)

@@ -15,6 +15,7 @@
 import ast
 import atexit
 import copy
+import functools
 import importlib.util
 import inspect
 import os
@@ -23,7 +24,6 @@ import sys
 import tempfile
 import textwrap
 import warnings
-from functools import reduce
 from importlib.machinery import SourceFileLoader
 
 import astor
@@ -33,7 +33,6 @@ import paddle
 from paddle.fluid import core, unique_name
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.layers import assign
 from paddle.utils import gast
 
 __all__ = []
@@ -156,7 +155,7 @@ def create_undefined_variable():
     helper = LayerHelper('create_undefined_variable', **locals())
     saved_block_ids = helper.main_program.current_block_idx
     helper.main_program.current_block_idx = 0
-    assign(RETURN_NO_VALUE_MAGIC_NUM, var)
+    paddle.assign(RETURN_NO_VALUE_MAGIC_NUM, var)
     helper.main_program.current_block_idx = saved_block_ids
     return var
 
@@ -638,6 +637,8 @@ def func_to_source_code(function, dedent=True):
     """
     Transforms function into raw string of source code.
     """
+    if isinstance(function, functools.partial):
+        function = function.func
     if not (inspect.isfunction(function) or inspect.ismethod(function)):
         raise TypeError(
             "The type of 'function' should be a function or method, but received {}.".format(
@@ -1430,7 +1431,9 @@ class GetterSetterHelper:
     def __init__(self, getter_func, setter_func, *name_lists):
         name_lists = map(lambda x: [] if x is None else x, name_lists)
         name_sets = map(lambda x: set(x), name_lists)
-        self._union = list(reduce(lambda x, y: x | y, name_sets, set()))
+        self._union = list(
+            functools.reduce(lambda x, y: x | y, name_sets, set())
+        )
         self._union.sort()
         self.getter = getter_func
         self.setter = setter_func
@@ -1483,3 +1486,40 @@ def create_name_str(name_ids):
 
     names_str = ["'%s'" % (name.replace("'", "\\'")) for name in name_ids]
     return "(%s, )" % ','.join(names_str)
+
+
+def _param_grad_names(program_desc, params):
+    """
+    Parse PARAM@GARD name from original train and infer program.
+    """
+    names = []
+    # NOTE: `names` and `self._params` must be in the same order so that
+    # the param grad name can be set correctly in the run_program.
+    for param in params:
+        candidate = [
+            var.name()
+            for var in program_desc.block(0).all_vars()
+            if var.name().endswith(param.name + '@GRAD')
+        ]
+        if candidate:
+            names.append(max(candidate, key=lambda name: name.count('grad/')))
+        else:
+            names.append(param.name + '@GRAD')
+
+    return names
+
+
+def _out_grad_names(program_desc, fwd_end_op_index, out_size):
+    """
+    Parse Out@GARD name from original train and infer program.
+    """
+    names = []
+    for i in range(
+        fwd_end_op_index,
+        min(fwd_end_op_index + out_size, program_desc.block(0).op_size()),
+    ):
+        op = program_desc.block(0).op(i)
+        if op.type() == 'fill_any_like':
+            var_name = op.output('Out')[0]
+            names.append(var_name)
+    return names

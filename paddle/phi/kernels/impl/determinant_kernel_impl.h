@@ -20,8 +20,8 @@
 #include <cmath>
 #include <vector>
 
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/determinant_kernel.h"
 
 namespace phi {
@@ -71,7 +71,7 @@ struct DeterminantFunctor {
                   DenseTensor* output) {
     std::vector<T> input_vec;
     std::vector<T> output_vec;
-    paddle::framework::TensorToVector(input, dev_ctx, &input_vec);
+    phi::TensorToVector(input, dev_ctx, &input_vec);
     for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
       auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
@@ -85,7 +85,7 @@ struct DeterminantFunctor {
       }
       output_vec.push_back(matrix.determinant());
     }
-    paddle::framework::TensorFromVector(output_vec, output);
+    phi::TensorFromVector(output_vec, dev_ctx, output);
   }
 };
 

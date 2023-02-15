@@ -381,7 +381,11 @@ void SparseBlas<phi::GPUContext>::SPMV(bool transa,
                                           &beta,
                                           out_descriptor.descriptor(),
                                           gpu_type,
+#if CUDA_VERSION >= 11040
+                                          CUSPARSE_SPMV_ALG_DEFAULT,
+#else
                                           CUSPARSE_MV_ALG_DEFAULT,
+#endif
                                           &buffer_size);
   });
 
@@ -399,7 +403,11 @@ void SparseBlas<phi::GPUContext>::SPMV(bool transa,
                                &beta,
                                out_descriptor.descriptor(),
                                gpu_type,
+#if CUDA_VERSION >= 11040
+                               CUSPARSE_SPMV_ALG_DEFAULT,
+#else
                                CUSPARSE_MV_ALG_DEFAULT,
+#endif
                                tmp_buffer_ptr);
   });
 }

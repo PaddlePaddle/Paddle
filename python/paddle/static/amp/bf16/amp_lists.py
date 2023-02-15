@@ -20,8 +20,6 @@ from ..fp16_lists import black_list as black_list_fp16
 from ..fp16_lists import gray_list as gray_list_fp16
 from ..fp16_lists import white_list as white_list_fp16
 
-__all__ = ["AutoMixedPrecisionListsBF16"]
-
 
 class AutoMixedPrecisionListsBF16:
     """

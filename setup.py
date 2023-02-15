@@ -22,7 +22,6 @@ import re
 import shutil
 import subprocess
 import sys
-import sysconfig
 from contextlib import contextmanager
 from distutils.spawn import find_executable
 from subprocess import CalledProcessError
@@ -43,6 +42,12 @@ else:
         print("export PY_VERSION = %s" % platform.python_version())
         python_version = platform.python_version()
         os.environ["PY_VERSION"] = python_version
+    else:
+        if os.getenv("PY_VERSION") != platform.python_version()[:3]:
+            raise RuntimeError(
+                "You set PY_VERSION=%s, but your current python environment is %s, you should keep them consistent!"
+                % (os.getenv("PY_VERSION"), platform.python_version()[:3])
+            )
 
 # check cmake
 CMAKE = find_executable('cmake3') or find_executable('cmake')
@@ -50,27 +55,6 @@ assert (
     CMAKE
 ), 'The "cmake" executable is not found. Please check if Cmake is installed.'
 
-# CMAKE: full path to python library
-if platform.system() == "Windows":
-    cmake_python_library = "{}/libs/python{}.lib".format(
-        sysconfig.get_config_var("prefix"), sysconfig.get_config_var("VERSION")
-    )
-    # Fix virtualenv builds
-    if not os.path.exists(cmake_python_library):
-        cmake_python_library = "{}/libs/python{}.lib".format(
-            sys.base_prefix, sysconfig.get_config_var("VERSION")
-        )
-else:
-    cmake_python_library = "{}/{}".format(
-        sysconfig.get_config_var("LIBDIR"),
-        sysconfig.get_config_var("INSTSONAME"),
-    )
-    if not os.path.exists(cmake_python_library):
-        libname = sysconfig.get_config_var("INSTSONAME")
-        libdir = sysconfig.get_config_var('LIBDIR') + (
-            sysconfig.get_config_var("multiarchsubdir") or ""
-        )
-        cmake_python_library = os.path.join(libdir, libname)
 
 TOP_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -345,6 +329,22 @@ def get_cudnn_version():
         return 'False'
 
 
+def get_xpu_version():
+    with_xpu = env_dict.get("WITH_XPU")
+    if with_xpu == 'ON':
+        return env_dict.get("XPU_BASE_DATE")
+    else:
+        return 'False'
+
+
+def get_xpu_xccl_version():
+    with_xpu_xccl = env_dict.get("WITH_XPU_BKCL")
+    if with_xpu_xccl == 'ON':
+        return env_dict.get("XPU_XCCL_BASE_VERSION")
+    else:
+        return 'False'
+
+
 def is_taged():
     try:
         cmd = [
@@ -376,18 +376,20 @@ def is_taged():
 def write_version_py(filename='paddle/version/__init__.py'):
     cnt = '''# THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
 #
-full_version    = '%(major)d.%(minor)d.%(patch)s'
-major           = '%(major)d'
-minor           = '%(minor)d'
-patch           = '%(patch)s'
-rc              = '%(rc)d'
-cuda_version    = '%(cuda)s'
-cudnn_version   = '%(cudnn)s'
-istaged         = %(istaged)s
-commit          = '%(commit)s'
-with_mkl        = '%(with_mkl)s'
+full_version     = '%(major)d.%(minor)d.%(patch)s'
+major            = '%(major)d'
+minor            = '%(minor)d'
+patch            = '%(patch)s'
+rc               = '%(rc)d'
+cuda_version     = '%(cuda)s'
+cudnn_version    = '%(cudnn)s'
+xpu_version      = '%(xpu)s'
+xpu_xccl_version = '%(xpu_xccl)s'
+istaged          = %(istaged)s
+commit           = '%(commit)s'
+with_mkl         = '%(with_mkl)s'
 
-__all__ = ['cuda', 'cudnn', 'show']
+__all__ = ['cuda', 'cudnn', 'show', 'xpu', 'xpu_xccl']
 
 def show():
     """Get the version of paddle if `paddle` package if tagged. Otherwise, output the corresponding commit id.
@@ -410,6 +412,10 @@ def show():
 
         cudnn: the cudnn version of package. It will return `False` if CPU version paddle package is installed
 
+        xpu: the xpu version of package. It will return `False` if non-XPU version paddle package is installed
+
+        xpu_xccl: the xpu xccl version of package. It will return `False` if non-XPU version paddle package is installed
+
     Examples:
         .. code-block:: python
 
@@ -424,12 +430,16 @@ def show():
             # rc: 0
             # cuda: '10.2'
             # cudnn: '7.6.5'
+            # xpu: '20230114'
+            # xpu_xccl: '1.0.7'
 
             # Case 2: paddle is not tagged
             paddle.version.show()
             # commit: cfa357e984bfd2ffa16820e354020529df434f7d
             # cuda: '10.2'
             # cudnn: '7.6.5'
+            # xpu: '20230114'
+            # xpu_xccl: '1.0.7'
     """
     if istaged:
         print('full_version:', full_version)
@@ -441,6 +451,8 @@ def show():
         print('commit:', commit)
     print('cuda:', cuda_version)
     print('cudnn:', cudnn_version)
+    print('xpu:', xpu_version)
+    print('xpu_xccl:', xpu_xccl_version)
 
 def mkl():
     return with_mkl
@@ -478,6 +490,40 @@ def cudnn():
 
     """
     return cudnn_version
+
+def xpu():
+    """Get xpu version of paddle package.
+
+    Returns:
+        string: Return the version information of xpu. If paddle package is non-XPU version, it will return False.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            paddle.version.xpu()
+            # '20230114'
+
+    """
+    return xpu_version
+
+def xpu_xccl():
+    """Get xpu xccl version of paddle package.
+
+    Returns:
+        string: Return the version information of xpu xccl. If paddle package is non-XPU version, it will return False.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            paddle.version.xpu_xccl()
+            # '1.0.7'
+
+    """
+    return xpu_xccl_version
 '''
     commit = git_commit()
 
@@ -500,6 +546,8 @@ def cudnn():
                 'version': env_dict.get("PADDLE_VERSION"),
                 'cuda': get_cuda_version(),
                 'cudnn': get_cudnn_version(),
+                'xpu': get_xpu_version(),
+                'xpu_xccl': get_xpu_xccl_version(),
                 'commit': commit,
                 'istaged': is_taged(),
                 'with_mkl': env_dict.get("WITH_MKL"),
@@ -578,16 +626,6 @@ def options_process(args, build_options):
     for key, value in sorted(build_options.items()):
         if value is not None:
             args.append("-D{}={}".format(key, value))
-    if 'PYTHON_EXECUTABLE:FILEPATH' not in build_options.keys():
-        args.append("-D{}={}".format('PYTHON_EXECUTABLE', sys.executable))
-    if 'PYTHON_INCLUDE_DIR:PATH' not in build_options.keys():
-        args.append(
-            '-D{}={}'.format(
-                'PYTHON_INCLUDE_DIR', sysconfig.get_path("include")
-            )
-        )
-    if 'PYTHON_LIBRARY:FILEPATH' not in build_options.keys():
-        args.append('-D{}={}'.format('PYTHON_LIBRARY', cmake_python_library))
 
 
 def get_cmake_generator():
@@ -1341,9 +1379,40 @@ def get_setup_parameters():
     )
 
 
+def check_build_dependency():
+
+    missing_modules = '''Missing build dependency: {dependency}
+Please run 'pip install -r python/requirements.txt' to make sure you have all the dependencies installed.
+'''.strip()
+
+    with open(TOP_DIR + '/python/requirements.txt') as f:
+        build_dependencies = (
+            f.read().splitlines()
+        )  # Specify the dependencies to install
+
+    python_dependcies_module = []
+    installed_packages = []
+
+    for dependency in build_dependencies:
+        python_dependcies_module.append(
+            re.sub("_|-", '', re.sub(r"==.*|>=.*|<=.*", '', dependency))
+        )
+    reqs = subprocess.check_output([sys.executable, '-m', 'pip', 'freeze'])
+
+    for r in reqs.split():
+        installed_packages.append(re.sub("_|-", '', r.decode().split('==')[0]))
+
+    for dependency in python_dependcies_module:
+        if dependency not in installed_packages:
+            raise RuntimeError(missing_modules.format(dependency=dependency))
+
+
 def main():
     # Parse the command line and check arguments before we proceed with building steps and setup
     parse_input_command(filter_args_list)
+
+    # check build dependency
+    check_build_dependency()
 
     # Execute the build process,cmake and make
     if cmake_and_build:

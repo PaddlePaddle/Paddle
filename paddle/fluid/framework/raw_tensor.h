@@ -23,8 +23,8 @@ namespace paddle {
 namespace framework {
 
 /// \brief Fluid Kernel and PHI Kernel will be unified in the future.
-/// So, we need a class in PHI that can represent the RAW type in Fluid.
-/// The RawTensor is for PHI Kernel that has RAW type arguments.
+/// So, we need a class in PHI that can represent the RawTensor type in Fluid.
+/// The RawTensor is for PHI Kernel that has RawTensor type arguments.
 class RawTensor : public phi::ExtendedTensor,
                   public phi::TypeInfoTraits<phi::TensorBase, RawTensor> {
  public:
@@ -37,12 +37,34 @@ class RawTensor : public phi::ExtendedTensor,
   RawTensor& operator=(RawTensor&& other) = default;
 
   /// \brief Destroy the RawTensor and release exclusive resources.
-  virtual ~RawTensor() = default;
+  virtual ~RawTensor() {
+    if (!data_.empty()) {
+      data_deleter_();
+    }
+  }
 
  public:
   /// \brief Returns the name of the class for type traits.
   /// \return The name of the class.
   static const char* name() { return "RawTensor"; }
+
+  template <typename T>
+  T& Get() const {
+    PADDLE_ENFORCE_EQ(data_.empty(),
+                      false,
+                      platform::errors::PreconditionNotMet(
+                          "The data in RawTensor is empty. Please set data "
+                          "before using it."));
+
+    try {
+      return *(paddle::any_cast<T*>(data_));
+    } catch (paddle::bad_any_cast&) {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Invalid data type error, expected %s, actual %s.",
+          typeid(T).name(),
+          data_type_.name()));
+    }
+  }
 
   template <typename T>
   T* GetMutable() {
@@ -70,7 +92,7 @@ class RawTensor : public phi::ExtendedTensor,
 
  private:
   paddle::any data_;
-  std::function<void(void)> data_deleter_;
+  std::function<void(void)> data_deleter_ = []() {};
   std::type_index data_type_ = std::type_index(typeid(void));
 };
 

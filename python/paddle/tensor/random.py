@@ -16,8 +16,8 @@
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
+from paddle.common_ops_import import Variable
 from paddle.fluid.framework import _current_expected_place, in_dygraph_mode
-from paddle.static import Variable
 
 from ..fluid.data_feeder import (
     check_dtype,
