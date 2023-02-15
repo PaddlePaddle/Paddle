@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from paddle.fluid.layers.tensor import assign  # noqa: F401
-from paddle.fluid.layers.tensor import cast  # noqa: F401
 from paddle.fluid.layers.tensor import fill_constant  # noqa: F401
 from paddle.tensor import abs  # noqa: F401
 from paddle.tensor import acos  # noqa: F401
@@ -34,6 +32,7 @@ from paddle.tensor import erf  # noqa: F401
 from paddle.tensor import erfinv  # noqa: F401
 from paddle.tensor import exp  # noqa: F401
 from paddle.tensor import expm1  # noqa: F401
+from paddle.tensor import full  # noqa: F401
 from paddle.tensor import lgamma  # noqa: F401
 from paddle.tensor import log  # noqa: F401
 from paddle.tensor import log1p  # noqa: F401
@@ -57,6 +56,8 @@ from paddle.tensor import sum  # noqa: F401
 from paddle.tensor import tan  # noqa: F401
 from paddle.tensor import tanh  # noqa: F401
 from paddle.tensor import zeros  # noqa: F401
+from paddle.tensor.creation import assign  # noqa: F401
+from paddle.tensor.manipulation import cast  # noqa: F401
 
 math_op = [
     'add',
@@ -108,11 +109,12 @@ sub_prim = [
 ]
 
 others = [
-    'cast',
-    'broadcast_to',
     'assign',
+    'broadcast_to',
+    'cast',
     'fill_constant',
     'reshape',
+    'full',
 ]
 
 __all__ = []

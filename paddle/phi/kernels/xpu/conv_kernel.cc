@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
+#include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
 
 namespace phi {
 
@@ -87,7 +88,29 @@ void ConvKernel(const Context& dev_ctx,
     filter_data_ptr = reinterpret_cast<const XPUT*>(filter_data_tmp);
   }
 
-  int r = xpu::conv2d<XPUT, XPUT, XPUT, int16_t>(dev_ctx.x_context(),
+  int fccal_type = FCCalcType<XPUT>();
+  if (fccal_type == 1) {
+    int r = xpu::conv2d<XPUT, XPUT, XPUT, int>(dev_ctx.x_context(),
+                                               input_data,
+                                               filter_data_ptr,
+                                               output_data,
+                                               batch_size,
+                                               img_c,
+                                               img_h,
+                                               img_w,
+                                               f,
+                                               ksize,
+                                               strides,
+                                               paddings,
+                                               dilations,
+                                               groups,
+                                               nullptr,
+                                               nullptr,
+                                               nullptr,
+                                               is_nchw);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d");
+  } else if (fccal_type == 2) {
+    int r = xpu::conv2d<XPUT, XPUT, XPUT, float>(dev_ctx.x_context(),
                                                  input_data,
                                                  filter_data_ptr,
                                                  output_data,
@@ -105,7 +128,28 @@ void ConvKernel(const Context& dev_ctx,
                                                  nullptr,
                                                  nullptr,
                                                  is_nchw);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d");
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d");
+  } else {
+    int r = xpu::conv2d<XPUT, XPUT, XPUT, int16_t>(dev_ctx.x_context(),
+                                                   input_data,
+                                                   filter_data_ptr,
+                                                   output_data,
+                                                   batch_size,
+                                                   img_c,
+                                                   img_h,
+                                                   img_w,
+                                                   f,
+                                                   ksize,
+                                                   strides,
+                                                   paddings,
+                                                   dilations,
+                                                   groups,
+                                                   nullptr,
+                                                   nullptr,
+                                                   nullptr,
+                                                   is_nchw);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d");
+  }
 }
 
 template <typename T, typename Context>
@@ -194,7 +238,30 @@ void Conv3DKernel(const Context& dev_ctx,
     filter_data_ptr = reinterpret_cast<const XPUT*>(filter_data_tmp);
   }
 
-  int r = xpu::conv3d<XPUT, XPUT, XPUT, int16_t>(dev_ctx.x_context(),
+  int fccal_type = FCCalcType<XPUT>();
+  if (fccal_type == 1) {
+    int r = xpu::conv3d<XPUT, XPUT, XPUT, int>(dev_ctx.x_context(),
+                                               input_data,
+                                               filter_data_ptr,
+                                               output_data,
+                                               batch_size,
+                                               img_c,
+                                               img_d,
+                                               img_h,
+                                               img_w,
+                                               f,
+                                               ksize,
+                                               strides,
+                                               paddings,
+                                               dilations,
+                                               groups,
+                                               nullptr,
+                                               nullptr,
+                                               nullptr,
+                                               is_ncdhw);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv3d");
+  } else if (fccal_type == 2) {
+    int r = xpu::conv3d<XPUT, XPUT, XPUT, float>(dev_ctx.x_context(),
                                                  input_data,
                                                  filter_data_ptr,
                                                  output_data,
@@ -213,7 +280,30 @@ void Conv3DKernel(const Context& dev_ctx,
                                                  nullptr,
                                                  nullptr,
                                                  is_ncdhw);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv3d");
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv3d");
+
+  } else {
+    int r = xpu::conv3d<XPUT, XPUT, XPUT, int16_t>(dev_ctx.x_context(),
+                                                   input_data,
+                                                   filter_data_ptr,
+                                                   output_data,
+                                                   batch_size,
+                                                   img_c,
+                                                   img_d,
+                                                   img_h,
+                                                   img_w,
+                                                   f,
+                                                   ksize,
+                                                   strides,
+                                                   paddings,
+                                                   dilations,
+                                                   groups,
+                                                   nullptr,
+                                                   nullptr,
+                                                   nullptr,
+                                                   is_ncdhw);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv3d");
+  }
 }
 
 }  // namespace phi

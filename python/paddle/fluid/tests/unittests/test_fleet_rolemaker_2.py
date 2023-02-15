@@ -39,7 +39,7 @@ class TestCloudRoleMaker2(unittest.TestCase):
             GeneralRoleMaker,
             RoleMakerBase,
         )
-        from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import (
+        from paddle.incubate.fleet.parameter_server.distribute_transpiler import (
             fleet,
         )
 
@@ -70,7 +70,7 @@ class TestCloudRoleMaker2(unittest.TestCase):
             label = paddle.static.data(
                 name="click", shape=[-1, 1], dtype="int64", lod_level=1
             )
-            label_cast = fluid.layers.cast(label, dtype='float32')
+            label_cast = paddle.cast(label, dtype='float32')
             cost = paddle.nn.functional.log_loss(fc, label_cast)
         try:
             adam = fluid.optimizer.Adam(learning_rate=0.000005)

@@ -14,9 +14,11 @@ limitations under the License. */
 
 #include "paddle/phi/common/scalar.h"
 
-#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/tensor_utils.h"
 namespace paddle {
 namespace experimental {
 
@@ -31,9 +33,11 @@ ScalarBase<phi::DenseTensor>::ScalarBase(const phi::DenseTensor& tensor_in)
                         "now Tensor has `%d` elements",
                         tensor_in.numel()));
   auto cpu_place = phi::CPUPlace();
-  if (!paddle::platform::is_same_place(tensor_in.place(), cpu_place)) {
+  if (tensor_in.place().GetType() != phi::AllocationType::CPU) {
     phi::DenseTensor tensor;
-    framework::TensorCopySync(tensor_in, cpu_place, &tensor);
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+    auto dev_ctx = pool.Get(tensor_in.place());
+    phi::Copy(*dev_ctx, tensor_in, cpu_place, true, &tensor);
     GetDataFromTensor(tensor);
   } else {
     GetDataFromTensor(tensor_in);

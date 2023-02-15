@@ -28,7 +28,6 @@ from xpu.get_test_cover_info import (
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-import paddle.fluid.layers as layers
 
 paddle.enable_static()
 
@@ -95,7 +94,7 @@ class TestAssignApi(unittest.TestCase):
         main_program = fluid.Program()
         with fluid.program_guard(main_program):
             x = paddle.tensor.create_tensor(dtype=self.dtype)
-            layers.assign(input=self.value, output=x)
+            paddle.assign(self.value, output=x)
 
         exe = fluid.Executor(self.place)
         [fetched_x] = exe.run(main_program, feed={}, fetch_list=[x])
