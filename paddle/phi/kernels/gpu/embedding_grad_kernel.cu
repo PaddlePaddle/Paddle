@@ -119,7 +119,7 @@ __global__ void EmbeddingGradDeterministic(T* table,
               (dst_row ==
                indices_batch[chunk_start - batch_start + threadIdx.x]);
 #ifdef PADDLE_WITH_HIP
-        uint64_t matchmask = __ballot(match_found_this_thread);
+        unsigned long long int matchmask = __ballot(match_found_this_thread);
         int first_remaining_peer = __ffsll(matchmask) - 1;
 #else
         unsigned int matchmask = __ballot_sync(MASK, match_found_this_thread);
