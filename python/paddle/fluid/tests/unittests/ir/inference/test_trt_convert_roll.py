@@ -32,7 +32,7 @@ class TrtConvertRollTest(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def generate_input1(attrs: List[Dict[str, Any]]):
-            return np.ones([1, 56, 56, 192]).astype(np.float32)
+            return np.random.random([1, 56, 56, 192]).astype(np.float32)
 
         for axis in [[1, 2]]:
             for shifts in [[-1, -1], [-3, -3]]:
