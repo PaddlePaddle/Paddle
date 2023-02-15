@@ -979,12 +979,12 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx,
     // get temp space for dscale and dbias.
     phi::DenseTensor dscale_temp;
     dscale_temp.Resize({gridx, cols});
-    dscale_temp.mutable_data<U>(dev_ctx.GetPlace());
+    dev_ctx.template Alloc<U>(dscale_temp);
     U *dscale_temp_ptr = dscale_temp.data<U>();
 
     phi::DenseTensor dbias_temp;
     dbias_temp.Resize({gridx, cols});
-    dbias_temp.mutable_data<U>(dev_ctx.GetPlace());
+    dev_ctx.template Alloc<U>(dbias_temp);
     U *dbias_temp_ptr = dbias_temp.data<U>();
 
     if (mask_ptr != nullptr) {
