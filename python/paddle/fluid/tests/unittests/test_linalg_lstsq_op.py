@@ -278,5 +278,38 @@ class LinalgLstsqTestCaseLarge2(LinalgLstsqTestCase):
         self._input_shape_2 = (50, 300)
 
 
+class TestLinalgLstsqAPIError(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def test_api_errors(self):
+        def test_x_bad_shape():
+            x = paddle.to_tensor(np.random.random(size=(5)), dtype=np.float32)
+            y = paddle.to_tensor(
+                np.random.random(size=(5, 15)), dtype=np.float32
+            )
+            out = paddle.linalg.lstsq(x, y, driver='gelsy')
+
+        def test_y_bad_shape():
+            x = paddle.to_tensor(
+                np.random.random(size=(5, 10)), dtype=np.float32
+            )
+            y = paddle.to_tensor(np.random.random(size=(5)), dtype=np.float32)
+            out = paddle.linalg.lstsq(x, y, driver='gelsy')
+
+        def test_shape_dismatch():
+            x = paddle.to_tensor(
+                np.random.random(size=(5, 10)), dtype=np.float32
+            )
+            y = paddle.to_tensor(
+                np.random.random(size=(4, 15)), dtype=np.float32
+            )
+            out = paddle.linalg.lstsq(x, y, driver='gelsy')
+
+        self.assertRaises(ValueError, test_x_bad_shape)
+        self.assertRaises(ValueError, test_y_bad_shape)
+        self.assertRaises(ValueError, test_shape_dismatch)
+
+
 if __name__ == '__main__':
     unittest.main()

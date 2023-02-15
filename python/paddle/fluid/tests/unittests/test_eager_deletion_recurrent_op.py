@@ -312,7 +312,7 @@ class EagerDeletionRecurrentOpTest2(EagerDeletionRecurrentOpTest1):
                 size=self.input_dim,
                 weight_attr=ParamAttr(
                     name='W',
-                    initializer=fluid.initializer.ConstantInitializer(1.0),
+                    initializer=paddle.nn.initializer.Constant(1.0),
                 ),
                 bias_attr=False,
             )
@@ -321,7 +321,7 @@ class EagerDeletionRecurrentOpTest2(EagerDeletionRecurrentOpTest1):
                 size=self.input_dim,
                 weight_attr=ParamAttr(
                     name='U',
-                    initializer=fluid.initializer.ConstantInitializer(0.0),
+                    initializer=paddle.nn.initializer.Constant(0.0),
                 ),
                 bias_attr=False,
             )
@@ -427,7 +427,7 @@ class EagerDeletionRecurrentOpMultipleMemoryTest(EagerDeletionRecurrentOpTest1):
 
             mem1 = paddle.scale(x=h_pre1, scale=1.0)
             mem2 = paddle.scale(x=h_pre2, scale=1.0)
-            out = layers.sums(input=[mem1, x_t, mem2])
+            out = paddle.add_n([mem1, x_t, mem2])
 
             rnn.update_memory(h_pre1, mem1)
             rnn.update_memory(h_pre2, mem2)

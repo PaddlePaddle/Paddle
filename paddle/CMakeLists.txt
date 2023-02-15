@@ -13,6 +13,8 @@ add_subdirectory(phi)
 add_subdirectory(infrt)
 add_subdirectory(fluid)
 
+add_subdirectory(ir)
+
 # NOTE(zhiqiu): The changes of cc tests
 # Before, (1) the source file of cc tests are distributed in different sub-directories,
 # (2) the tests are added and configured by calling `cc_test()` in each `CMakeLists.txt`,

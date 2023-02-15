@@ -63,7 +63,7 @@ using OpRegistryClasses = std::tuple<                                // NOLINT
     TypePair<OpProtoAndCheckerMaker, kOpProtoAndCheckerMaker>,       // NOLINT
     TypePair<GradOpDescMakerBase, kGradOpDescMaker>,                 // NOLINT
     TypePair<imperative::GradOpBaseMakerBase, kGradOpBaseMaker>,     // NOLINT
-    TypePair<prim::GradCompositeOpMakerBase, kGradCompOpDescMaker>,  // NOLINT
+    TypePair<prim::CompositeGradOpMakerBase, kGradCompOpDescMaker>,  // NOLINT
     TypePair<VarTypeInference, kVarTypeInference>,                   // NOLINT
     TypePair<InferShapeBase, kShapeInference>,                       // NOLINT
     TypePair<InplaceOpInference, kInplaceOpInference>,               // NOLINT
@@ -262,7 +262,7 @@ struct OpInfoFiller<T, kGradCompOpDescMaker> {
         info->grad_comp_op_maker_,
         nullptr,
         platform::errors::AlreadyExists(
-            "GradCompositeOpMakerBase of %s has been registered", op_type));
+            "CompositeGradOpMakerBase of %s has been registered", op_type));
 
     info->grad_comp_op_maker_ =
         [](const OpDesc& fwd_op,

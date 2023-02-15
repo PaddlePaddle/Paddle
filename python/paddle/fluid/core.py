@@ -306,6 +306,8 @@ try:
     from .libpaddle import _Profiler, _ProfilerResult, _RecordEvent
     from .libpaddle import _set_current_stream
     from .libpaddle import _get_phi_kernel_name
+    from .libpaddle import _add_skip_comp_ops
+    from .libpaddle import _remove_skip_comp_ops
 
     # prim controller flags
     from .libpaddle import __set_bwd_prim_enabled
@@ -313,6 +315,14 @@ try:
     from .libpaddle import __set_fwd_prim_enabled
     from .libpaddle import _is_fwd_prim_enabled
     from .libpaddle import __set_all_prim_enabled
+    from .libpaddle import _set_prim_target_grad_name
+
+    # custom devivce
+    from .libpaddle import _get_current_custom_device_stream
+    from .libpaddle import _set_current_custom_device_stream
+    from .libpaddle import _synchronize_custom_device
+    from .libpaddle import CustomDeviceStream
+    from .libpaddle import CustomDeviceEvent
 
     if sys.platform != 'win32':
         from .libpaddle import _set_process_pids
@@ -391,7 +401,7 @@ set_paddle_lib_path()
 # else:
 # # # _set_prim_all_enabled > FLAGS_prim_all == check_and_set_prim_all_enabled == _set_prim_backward_enabled == _set_prim_backward_enabled > FLAGS_prim_forward == FLAGS_prim_backward
 def __sync_stat_with_flag(flag):
-    if flag is "FLAGS_prim_forward":
+    if flag == "FLAGS_prim_forward":
         flag_value = os.getenv("FLAGS_prim_forward")
         assert flag_value is not None
         flag_value = flag_value.lower()
@@ -401,8 +411,8 @@ def __sync_stat_with_flag(flag):
             __set_fwd_prim_enabled(True)
         else:
             raise TypeError(f"flag {flag} should be true or false.")
-        logging.debug("forward prim enabled: ", bool(_is_fwd_prim_enabled()))
-    elif flag is "FLAGS_prim_backward":
+        print("forward prim enabled: ", bool(_is_fwd_prim_enabled()))
+    elif flag == "FLAGS_prim_backward":
         flag_value = os.getenv("FLAGS_prim_backward")
         assert flag_value is not None
         flag_value = flag_value.lower()
@@ -412,8 +422,8 @@ def __sync_stat_with_flag(flag):
             __set_bwd_prim_enabled(True)
         else:
             raise TypeError(f"flag {flag} should be true or false.")
-        logging.debug("backward prim enabled: ", bool(_is_bwd_prim_enabled()))
-    elif flag is "FLAGS_prim_all":
+        print("backward prim enabled: ", bool(_is_bwd_prim_enabled()))
+    elif flag == "FLAGS_prim_all":
         flag_value = os.getenv("FLAGS_prim_all")
         assert flag_value is not None
         flag_value = flag_value.lower()
@@ -423,7 +433,7 @@ def __sync_stat_with_flag(flag):
             __set_all_prim_enabled(True)
         else:
             raise TypeError(f"flag {flag} should be true or false.")
-        logging.debug(
+        print(
             "all prim enabled: ",
             bool(_is_fwd_prim_enabled() and _is_bwd_prim_enabled()),
         )
@@ -433,19 +443,48 @@ def __sync_stat_with_flag(flag):
         )
 
 
+# Alert!!! This method is only for test coveraget, user should never use it directly, this may cause serious system errors.
+def _test_use_sync(value):
+    __sync_stat_with_flag(value)
+
+
+# ops in forward_blacklisk will not be replaced by composite ops.
+prim_config = {"forward_blacklist": []}
+
+
+def _set_prim_forward_blacklist(ops=None):
+    if ops is None:
+        prim_config["forward_blacklist"] = []
+    elif isinstance(ops, str):
+        prim_config["forward_blacklist"].append(ops)
+    elif isinstance(ops, (list, tuple)):
+        for item in ops:
+            if not isinstance(item, str):
+                raise TypeError(
+                    "ops set in forward_blacklist must belong to [str, str of tuple or list]"
+                )
+            else:
+                prim_config["forward_blacklist"].append(item)
+    else:
+        raise TypeError(
+            "ops set in forward_blacklist must belong to [str, str of tuple or list]"
+        )
+    return
+
+
 def _set_prim_backward_enabled(value):
     __set_bwd_prim_enabled(bool(value))
-    logging.debug("backward prim enabled: ", bool(_is_bwd_prim_enabled()))
+    print("backward prim enabled: ", bool(_is_bwd_prim_enabled()))
 
 
 def _set_prim_forward_enabled(value):
     __set_fwd_prim_enabled(bool(value))
-    logging.debug("forward prim enabled: ", bool(_is_fwd_prim_enabled()))
+    print("forward prim enabled: ", bool(_is_fwd_prim_enabled()))
 
 
 def _set_prim_all_enabled(value):
     __set_all_prim_enabled(bool(value))
-    logging.debug(
+    print(
         "all prim enabled: ",
         bool(_is_fwd_prim_enabled() and _is_bwd_prim_enabled()),
     )
@@ -454,7 +493,7 @@ def _set_prim_all_enabled(value):
 def __sync_prim_backward_status():
     flag_value = os.getenv("FLAGS_prim_backward")
     if flag_value is None:
-        logging.debug("backward prim enabled: ", bool(_is_bwd_prim_enabled()))
+        print("backward prim enabled: ", bool(_is_bwd_prim_enabled()))
     else:
         __sync_stat_with_flag("FLAGS_prim_backward")
 
@@ -462,7 +501,7 @@ def __sync_prim_backward_status():
 def __sync_prim_forward_status():
     flag_value = os.getenv("FLAGS_prim_forward")
     if flag_value is None:
-        logging.debug("forward prim enabled: ", bool(_is_fwd_prim_enabled()))
+        print("forward prim enabled: ", bool(_is_fwd_prim_enabled()))
     else:
         __sync_stat_with_flag("FLAGS_prim_forward")
 

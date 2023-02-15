@@ -162,27 +162,7 @@ cc_test(
   eigen_test
   SRCS eigen_test.cc
   DEPS tensor)
-cc_library(
-  mixed_vector
-  SRCS mixed_vector.cc
-  DEPS device_context place memory)
 
-if(WITH_GPU)
-  nv_test(
-    mixed_vector_test
-    SRCS mixed_vector_test.cc mixed_vector_test.cu
-    DEPS mixed_vector place memory device_context tensor)
-elseif(WITH_ROCM)
-  hip_test(
-    mixed_vector_test
-    SRCS mixed_vector_test.cc mixed_vector_test.cu
-    DEPS mixed_vector place memory device_context tensor)
-else()
-  cc_test(
-    mixed_vector_test
-    SRCS mixed_vector_test.cc
-    DEPS mixed_vector place memory device_context tensor)
-endif()
 cc_library(
   lod_tensor
   SRCS lod_tensor.cc
@@ -601,13 +581,10 @@ if(WITH_PYTHON)
   py_proto_compile(pass_desc_py_proto SRCS pass_desc.proto)
   #Generate an empty \
   #__init__.py to make framework_py_proto as a valid python module.
-  add_custom_target(
-    fleet_proto_init ALL
-    COMMAND ${CMAKE_COMMAND} -E make_directory
-            ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
-    COMMAND
-      ${CMAKE_COMMAND} -E touch
-      ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py)
+  file(MAKE_DIRECTORY
+       ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto)
+  file(TOUCH
+       ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py)
   add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E
                                                         touch __init__.py)
   add_dependencies(
@@ -615,10 +592,8 @@ if(WITH_PYTHON)
     framework_py_proto_init
     trainer_py_proto
     distributed_strategy_py_proto
-    fleet_proto_init
     pass_desc_py_proto
     ps_py_proto
-    ps_py_proto_init
     pslib_py_proto)
   if(NOT WIN32)
     add_custom_command(
@@ -634,7 +609,7 @@ if(WITH_PYTHON)
     if(NOT WITH_ROCM)
       add_custom_target(
         fleet_executor_proto_init ALL
-        DEPENDS fleet_proto_init fleet_executor_desc_py_proto
+        DEPENDS fleet_executor_desc_py_proto
         COMMAND
           cp
           ${PADDLE_BINARY_DIR}/paddle/fluid/distributed/fleet_executor/fleet_executor_*.py
@@ -666,7 +641,7 @@ endif()
 if(WITH_PSCORE)
   add_custom_target(
     index_dataset_proto_init ALL
-    DEPENDS fleet_proto_init index_dataset_py_proto
+    DEPENDS index_dataset_py_proto
     COMMAND
       cp
       ${PADDLE_BINARY_DIR}/paddle/fluid/distributed/index_dataset/index_dataset_*.py
@@ -1223,7 +1198,9 @@ cc_library(
        string_helper
        phi_tensor
        op_meta_info
-       phi_api)
+       phi_api
+       phi_tensor_operants
+       operants_manager)
 
 set(FLUID_FRAMEWORK_MODULES
     proto_desc

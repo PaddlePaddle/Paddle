@@ -86,11 +86,11 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         inference = bool(int(os.getenv("INFERENCE", "0")))
 
         if initializer == 0:
-            init = fluid.initializer.Constant(value=0.01)
+            init = paddle.nn.initializer.Constant(value=0.01)
         elif initializer == 1:
-            init = fluid.initializer.Uniform()
+            init = paddle.nn.initializer.Uniform()
         elif initializer == 2:
-            init = fluid.initializer.Normal()
+            init = paddle.nn.initializer.Normal()
         else:
             raise ValueError("error initializer code: {}".format(initializer))
 
@@ -103,7 +103,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             entry=entry,
             param_attr=fluid.ParamAttr(name="deep_embedding", initializer=init),
         )
-        dnn_pool = fluid.layers.sequence_pool(
+        dnn_pool = paddle.static.nn.sequence_lod.sequence_pool(
             input=dnn_embedding, pool_type="sum"
         )
         dnn_out = dnn_pool
@@ -113,7 +113,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                 size=dim,
                 activation="relu",
                 weight_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant(value=0.01)
+                    initializer=paddle.nn.initializer.Constant(value=0.01)
                 ),
                 name='dnn-fc-%d' % i,
             )
@@ -127,12 +127,15 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             entry=entry,
             param_attr=fluid.ParamAttr(
                 name="wide_embedding",
-                initializer=fluid.initializer.Constant(value=0.01),
+                initializer=paddle.nn.initializer.Constant(value=0.01),
             ),
         )
 
-        lr_pool = fluid.layers.sequence_pool(input=lr_embbding, pool_type="sum")
-        merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
+        lr_pool = paddle.static.nn.sequence_lod.sequence_pool(
+            input=lr_embbding, pool_type="sum"
+        )
+        merge_layer = paddle.concat([dnn_out, lr_pool], axis=1)
+
         predict = paddle.static.nn.fc(
             x=merge_layer, size=2, activation='softmax'
         )

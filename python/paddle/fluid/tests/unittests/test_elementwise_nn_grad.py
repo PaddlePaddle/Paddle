@@ -222,7 +222,7 @@ class TestElementwiseDivDoubleGradCheck(unittest.TestCase):
         y = paddle.static.data('y', shape, dtype)
         x.persistable = True
         y.persistable = True
-        out = paddle.tensor.math._divide_with_axis(x, y, axis=0)
+        out = paddle.tensor.math.divide(x, y)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr[np.abs(y_arr) < 0.005] = 0.02

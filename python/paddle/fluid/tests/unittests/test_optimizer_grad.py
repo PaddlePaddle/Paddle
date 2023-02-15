@@ -81,20 +81,20 @@ class SimpleNetWithCond:
             dtype="float32",
             shape=self.shape,
             attr=fluid.ParamAttr(learning_rate=self.param_lr, name="param_x"),
-            default_initializer=fluid.initializer.NumpyArrayInitializer(self.x),
+            default_initializer=paddle.nn.initializer.Assign(self.x),
         )
 
         param_y = paddle.create_parameter(
             dtype="float32",
             shape=self.shape,
             attr=fluid.ParamAttr(learning_rate=self.param_lr, name="param_y"),
-            default_initializer=fluid.initializer.NumpyArrayInitializer(self.y),
+            default_initializer=paddle.nn.initializer.Assign(self.y),
         )
         param_z = paddle.create_parameter(
             dtype="float32",
             shape=self.shape,
             attr=fluid.ParamAttr(learning_rate=self.param_lr, name="param_z"),
-            default_initializer=fluid.initializer.NumpyArrayInitializer(self.z),
+            default_initializer=paddle.nn.initializer.Assign(self.z),
         )
 
         sum_xy = paddle.add(param_x, param_y, name='sum_xy')
@@ -114,7 +114,7 @@ class SimpleNetWithCond:
             cond_useless = paddle.multiply(param_z, param_z)
             return cond_res
 
-        cond_i = fluid.layers.assign(np.array([cond_i], dtype='float32'))
+        cond_i = paddle.assign(np.array([cond_i], dtype='float32'))
         sum_cond = paddle.static.nn.cond(cond_i > 1.0, cond_true, cond_false)
         sum_all = paddle.add_n([sum_xy, sub_yz, sum_cond])
         mean_out = paddle.mean(sum_all)
