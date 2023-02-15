@@ -146,8 +146,14 @@ class TestInferenceBaseAPI(unittest.TestCase):
         in_names = predictor.get_input_names()
         in_handle = predictor.get_input_handle(in_names[0])
         in_data = np.ones((1, 6, 32, 32)).astype(np.float32)
-        in_handle.share_external_data(paddle.Tensor(in_data))
-        predictor.run()
+        in_data2 = paddle.fluid.create_lod_tensor(
+            np.full((1, 6, 32, 32), 1.0, "float32"),
+            [[1]],
+            paddle.fluid.CPUPlace(),
+        )
+        for data in [in_data, in_data2]:
+            in_handle.share_external_data(paddle.Tensor(in_data))
+            predictor.run()
 
 
 if __name__ == '__main__':
