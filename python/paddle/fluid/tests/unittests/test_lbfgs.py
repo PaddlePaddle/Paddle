@@ -193,7 +193,7 @@ class TestLbfgs(unittest.TestCase):
 
         x3 = np.array([[2.4]]).astype('float32')
         H3 = np.array([[2.4]]).astype('float32')
-        results = test_static_graph_H1(func, x3, dtype='float32')
+        results = test_static_graph_H1(func, x3, H3, dtype='float32')
         np.testing.assert_allclose([0.0, 0.0], results[2], rtol=1e-05)
         self.assertTrue(results[0][0])
 
