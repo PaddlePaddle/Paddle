@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <string>
+
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -26,20 +27,24 @@ template <typename DeviceContext, typename T>
 class SequencePoolFunctor {
  public:
   /* max pool has index output */
-  void operator()(const DeviceContext& context, const std::string pooltype,
-                  T pad_value, const framework::LoDTensor& input,
-                  framework::LoDTensor* output, bool is_test = false,
-                  framework::Tensor* index = nullptr);
+  void operator()(const DeviceContext& context,
+                  const std::string pooltype,
+                  T pad_value,
+                  const phi::DenseTensor& input,
+                  phi::DenseTensor* output,
+                  bool is_test = false,
+                  phi::DenseTensor* index = nullptr);
 };
 
 template <typename DeviceContext, typename T>
 class SequencePoolGradFunctor {
  public:
-  void operator()(const DeviceContext& context, const std::string pooltype,
-                  const framework::LoDTensor& out_grad,
-                  framework::LoDTensor* in_grad,
+  void operator()(const DeviceContext& context,
+                  const std::string pooltype,
+                  const phi::DenseTensor& out_grad,
+                  phi::DenseTensor* in_grad,
                   /* max pool has index */
-                  const framework::Tensor* index = nullptr);
+                  const phi::DenseTensor* index = nullptr);
 };
 
 }  // namespace math

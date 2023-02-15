@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,9 +18,7 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
-
 from paddle.incubate.optimizer.functional.bfgs import minimize_bfgs
-from paddle.fluid.framework import _test_eager_guard
 
 np.random.seed(123)
 
@@ -46,20 +44,20 @@ def test_static_graph_H0(func, x0, H0, dtype='float32'):
     with paddle.static.program_guard(main, startup):
         X = paddle.static.data(name='x', shape=[x0.shape[0]], dtype=dtype)
         H = paddle.static.data(
-            name='h', shape=[H0.shape[0], H0.shape[1]], dtype=dtype)
+            name='h', shape=[H0.shape[0], H0.shape[1]], dtype=dtype
+        )
         Y = minimize_bfgs(
-            func, X, initial_inverse_hessian_estimate=H, dtype=dtype)
+            func, X, initial_inverse_hessian_estimate=H, dtype=dtype
+        )
 
     exe = paddle.static.Executor()
     exe.run(startup)
     return exe.run(main, feed={'x': x0, 'h': H0}, fetch_list=[Y])
 
 
-def test_dynamic_graph(func,
-                       x0,
-                       H0=None,
-                       line_search_fn='strong_wolfe',
-                       dtype='float32'):
+def test_dynamic_graph(
+    func, x0, H0=None, line_search_fn='strong_wolfe', dtype='float32'
+):
     paddle.disable_static()
     x0 = paddle.to_tensor(x0)
     if H0 is not None:
@@ -69,7 +67,8 @@ def test_dynamic_graph(func,
         x0,
         initial_inverse_hessian_estimate=H0,
         line_search_fn=line_search_fn,
-        dtype=dtype)
+        dtype=dtype,
+    )
 
 
 class TestBfgs(unittest.TestCase):
@@ -82,14 +81,19 @@ class TestBfgs(unittest.TestCase):
                 minimum_ = paddle.assign(minimum)
                 scale_ = paddle.assign(scale)
                 return paddle.sum(
-                    paddle.multiply(scale_, (F.square_error_cost(x, minimum_))))
+                    paddle.multiply(scale_, (F.square_error_cost(x, minimum_)))
+                )
 
             x0 = np.random.random(size=[dimension]).astype('float32')
             results = test_static_graph(func=func, x0=x0)
-            self.assertTrue(np.allclose(minimum, results[2]))
+            np.testing.assert_allclose(
+                minimum, results[2], rtol=1e-05, atol=1e-8
+            )
 
             results = test_dynamic_graph(func=func, x0=x0)
-            self.assertTrue(np.allclose(minimum, results[2].numpy()))
+            np.testing.assert_allclose(
+                minimum, results[2].numpy(), rtol=1e-05, atol=1e-8
+            )
 
     def test_inf_minima(self):
         extream_point = np.array([-1, 2]).astype('float32')
@@ -97,9 +101,11 @@ class TestBfgs(unittest.TestCase):
         def func(x):
             # df = 3(x - 1.01)(x - 0.99)
             # f = x^3 - 3x^2 + 3*1.01*0.99x
-            return x * x * x / 3.0 - (
-                extream_point[0] + extream_point[1]
-            ) * x * x / 2 + extream_point[0] * extream_point[1] * x
+            return (
+                x * x * x / 3.0
+                - (extream_point[0] + extream_point[1]) * x * x / 2
+                + extream_point[0] * extream_point[1] * x
+            )
 
         x0 = np.array([-1.7]).astype('float32')
         results = test_static_graph(func, x0)
@@ -109,16 +115,16 @@ class TestBfgs(unittest.TestCase):
         def func(x):
             # df = 12(x + 1.1)(x - 0.2)(x - 0.8)
             # f = 3*x^4+0.4*x^3-5.46*x^2+2.112*x
-            # minimum = -1.1 or 0.8. 
+            # minimum = -1.1 or 0.8.
             # All these minima may be reached from appropriate starting points.
             return 3 * x**4 + 0.4 * x**3 - 5.64 * x**2 + 2.112 * x
 
         x0 = np.array([0.82], dtype='float64')
 
         results = test_static_graph(func, x0, dtype='float64')
-        self.assertTrue(np.allclose(0.8, results[2]))
+        np.testing.assert_allclose(0.8, results[2], rtol=1e-05, atol=1e-8)
 
-    def func_rosenbrock(self):
+    def test_rosenbrock(self):
         # The Rosenbrock function is a standard optimization test case.
         a = np.random.random(size=[1]).astype('float32')
         minimum = [a.item(), (a**2).item()]
@@ -128,19 +134,14 @@ class TestBfgs(unittest.TestCase):
             # f(x, y) = (a - x)^2 + b (y - x^2)^2
             # minimum = (a, a^2)
             x, y = position[0], position[1]
-            c = (a - x)**2 + b * (y - x**2)**2
+            c = (a - x) ** 2 + b * (y - x**2) ** 2
             # the return cant be np array[1], or in jacobin will cause flat error
             return c[0]
 
         x0 = np.random.random(size=[2]).astype('float32')
 
         results = test_dynamic_graph(func, x0)
-        self.assertTrue(np.allclose(minimum, results[2]))
-
-    def test_rosenbrock(self):
-        with _test_eager_guard():
-            self.func_rosenbrock()
-        self.func_rosenbrock()
+        np.testing.assert_allclose(minimum, results[2], rtol=1e-05, atol=1e-8)
 
     def test_exception(self):
         def func(x):
@@ -151,7 +152,9 @@ class TestBfgs(unittest.TestCase):
 
         # test initial_inverse_hessian_estimate is good
         results = test_static_graph_H0(func, x0, H0, dtype='float32')
-        self.assertTrue(np.allclose([0., 0.], results[2]))
+        np.testing.assert_allclose(
+            [0.0, 0.0], results[2], rtol=1e-05, atol=1e-8
+        )
         self.assertTrue(results[0][0])
 
         # test initial_inverse_hessian_estimate is bad
@@ -164,7 +167,8 @@ class TestBfgs(unittest.TestCase):
             test_static_graph,
             func,
             x0,
-            line_search_fn='other')
+            line_search_fn='other',
+        )
 
 
 if __name__ == '__main__':

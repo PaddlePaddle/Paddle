@@ -14,14 +14,13 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/momentum_kernel.h"
-
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/funcs/algorithm.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
+#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
+#include "paddle/phi/kernels/momentum_kernel.h"
 
 namespace phi {
 
@@ -548,11 +547,11 @@ void MomentumSparseImpl(const Context& ctx,
 
   phi::SelectedRows tmp_merged_grad;
   phi::SelectedRows* merged_grad = &tmp_merged_grad;
-  paddle::operators::math::scatter::MergeAdd<Context, T> merge_func;
+  phi::funcs::scatter::MergeAdd<Context, T> merge_func;
   merge_func(ctx, grad, merged_grad);
 
   auto* grad_merge_rows = merged_grad->mutable_rows();
-  paddle::framework::MixVector<int64_t> mixv_grad_merge_rows(grad_merge_rows);
+  phi::MixVector<int64_t> mixv_grad_merge_rows(grad_merge_rows);
   const int64_t* rows = mixv_grad_merge_rows.Data(ctx.GetPlace());
   int64_t row_numel = merged_grad->value().numel() / merged_grad->rows().size();
   funcs::ForRange<Context> for_range(ctx, param.numel());

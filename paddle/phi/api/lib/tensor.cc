@@ -20,7 +20,10 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#include "paddle/phi/api/include/context_pool.h"
+#include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -33,28 +36,8 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/core/tensor_utils.h"
 
-#include "paddle/fluid/platform/stream/cuda_stream.h"
-
 namespace paddle {
 namespace experimental {
-namespace detail {
-static Place GetCorrectPlaceByPlaceType(const Place &place_type) {
-  auto alloc_type = place_type.GetType();
-  switch (alloc_type) {
-    case AllocationType::CPU:
-      return place_type;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    case AllocationType::GPU:
-      return phi::Place(AllocationType::GPU,
-                        phi::backends::gpu::GetCurrentDeviceId());
-#endif
-    default:
-      PADDLE_THROW(phi::errors::Unavailable(
-          "The PlaceType is a legacy design, only supports CPU and GPU, "
-          "and will not support other place types in the future."));
-  }
-}
-}  // namespace detail
 
 /////// Tensor Methods ////////
 
@@ -76,7 +59,7 @@ Tensor::Tensor(const Place &place) {
          "Reason: A legal tensor cannot be constructed only based on "
          "the `place`, and datatype, shape, layout, etc. is also "
          "required.";
-  DefaultAllocator alloc(detail::GetCorrectPlaceByPlaceType(place));
+  DefaultAllocator alloc(place);
   impl_ = std::move(std::make_shared<phi::DenseTensor>(
       &alloc,
       std::move(phi::DenseTensorMeta(
@@ -92,7 +75,7 @@ Tensor::Tensor(const Place &place, const std::vector<int64_t> &shape) {
          "Reason: A legal tensor cannot be constructed only based on "
          "the `place` and `shape`, and datatype, layout, etc. is also "
          "required.";
-  DefaultAllocator alloc(detail::GetCorrectPlaceByPlaceType(place));
+  DefaultAllocator alloc(place);
   impl_ = std::move(std::make_shared<phi::DenseTensor>(
       &alloc,
       std::move(phi::DenseTensorMeta(phi::DataType::FLOAT32,
@@ -175,6 +158,12 @@ bool Tensor::is_gpu_pinned() const {
   return paddle::platform::is_cuda_pinned_place(place());
 }
 
+bool Tensor::is_xpu() const { return paddle::platform::is_xpu_place(place()); }
+
+bool Tensor::is_custom_device() const {
+  return paddle::platform::is_custom_place(place());
+}
+
 /* Part 4: Data Access methods */
 
 template <typename T>
@@ -196,20 +185,25 @@ T *Tensor::mutable_data() {
   return nullptr;
 }
 
+template PADDLE_API bool *Tensor::mutable_data<bool>();
+template PADDLE_API int8_t *Tensor::mutable_data<int8_t>();
+template PADDLE_API uint8_t *Tensor::mutable_data<uint8_t>();
+template PADDLE_API int16_t *Tensor::mutable_data<int16_t>();
+template PADDLE_API uint16_t *Tensor::mutable_data<uint16_t>();
+template PADDLE_API int32_t *Tensor::mutable_data<int32_t>();
+template PADDLE_API uint32_t *Tensor::mutable_data<uint32_t>();
+template PADDLE_API int64_t *Tensor::mutable_data<int64_t>();
+template PADDLE_API uint64_t *Tensor::mutable_data<uint64_t>();
+template PADDLE_API phi::dtype::bfloat16 *
+Tensor::mutable_data<phi::dtype::bfloat16>();
+template PADDLE_API phi::dtype::float16 *
+Tensor::mutable_data<phi::dtype::float16>();
 template PADDLE_API float *Tensor::mutable_data<float>();
 template PADDLE_API double *Tensor::mutable_data<double>();
-template PADDLE_API int64_t *Tensor::mutable_data<int64_t>();
-template PADDLE_API int32_t *Tensor::mutable_data<int32_t>();
-template PADDLE_API uint8_t *Tensor::mutable_data<uint8_t>();
-template PADDLE_API int8_t *Tensor::mutable_data<int8_t>();
-template PADDLE_API int16_t *Tensor::mutable_data<int16_t>();
-template PADDLE_API bool *Tensor::mutable_data<bool>();
 template PADDLE_API phi::dtype::complex<float>
     *Tensor::mutable_data<phi::dtype::complex<float>>();
 template PADDLE_API phi::dtype::complex<double>
     *Tensor::mutable_data<phi::dtype::complex<double>>();
-template PADDLE_API phi::dtype::float16 *
-Tensor::mutable_data<phi::dtype::float16>();
 
 template <typename T>
 T *Tensor::mutable_data(const Place &place) {
@@ -229,20 +223,20 @@ T *Tensor::mutable_data(const Place &place) {
   return nullptr;
 }
 
+template PADDLE_API bool *Tensor::mutable_data<bool>(const Place &place);
+template PADDLE_API int8_t *Tensor::mutable_data<int8_t>(const Place &place);
+template PADDLE_API uint8_t *Tensor::mutable_data<uint8_t>(const Place &place);
+template PADDLE_API int16_t *Tensor::mutable_data<int16_t>(const Place &place);
+template PADDLE_API int32_t *Tensor::mutable_data<int32_t>(const Place &place);
+template PADDLE_API int64_t *Tensor::mutable_data<int64_t>(const Place &place);
+template PADDLE_API phi::dtype::float16 *
+Tensor::mutable_data<phi::dtype::float16>(const Place &place);
 template PADDLE_API float *Tensor::mutable_data<float>(const Place &place);
 template PADDLE_API double *Tensor::mutable_data<double>(const Place &place);
-template PADDLE_API int64_t *Tensor::mutable_data<int64_t>(const Place &place);
-template PADDLE_API int32_t *Tensor::mutable_data<int32_t>(const Place &place);
-template PADDLE_API uint8_t *Tensor::mutable_data<uint8_t>(const Place &place);
-template PADDLE_API int8_t *Tensor::mutable_data<int8_t>(const Place &place);
-template PADDLE_API int16_t *Tensor::mutable_data<int16_t>(const Place &place);
-template PADDLE_API bool *Tensor::mutable_data<bool>(const Place &place);
 template PADDLE_API phi::dtype::complex<float>
     *Tensor::mutable_data<phi::dtype::complex<float>>(const Place &place);
 template PADDLE_API phi::dtype::complex<double>
     *Tensor::mutable_data<phi::dtype::complex<double>>(const Place &place);
-template PADDLE_API phi::dtype::float16 *
-Tensor::mutable_data<phi::dtype::float16>(const Place &place);
 
 template <typename T>
 const T *Tensor::data() const {
@@ -254,22 +248,25 @@ const T *Tensor::data() const {
   return nullptr;
 }
 
+template PADDLE_API const bool *Tensor::data<bool>() const;
+template PADDLE_API const int8_t *Tensor::data<int8_t>() const;
+template PADDLE_API const uint8_t *Tensor::data<uint8_t>() const;
+template PADDLE_API const int16_t *Tensor::data<int16_t>() const;
+template PADDLE_API const uint16_t *Tensor::data<uint16_t>() const;
+template PADDLE_API const int32_t *Tensor::data<int32_t>() const;
+template PADDLE_API const uint32_t *Tensor::data<uint32_t>() const;
+template PADDLE_API const int64_t *Tensor::data<int64_t>() const;
+template PADDLE_API const uint64_t *Tensor::data<uint64_t>() const;
+template PADDLE_API const phi::dtype::bfloat16 *
+Tensor::data<phi::dtype::bfloat16>() const;
+template PADDLE_API const phi::dtype::float16 *
+Tensor::data<phi::dtype::float16>() const;
 template PADDLE_API const float *Tensor::data<float>() const;
 template PADDLE_API const double *Tensor::data<double>() const;
-template PADDLE_API const int64_t *Tensor::data<int64_t>() const;
-template PADDLE_API const int32_t *Tensor::data<int32_t>() const;
-template PADDLE_API const uint8_t *Tensor::data<uint8_t>() const;
-template PADDLE_API const int8_t *Tensor::data<int8_t>() const;
-template PADDLE_API const int16_t *Tensor::data<int16_t>() const;
-template PADDLE_API const bool *Tensor::data<bool>() const;
 template PADDLE_API const phi::dtype::complex<float>
     *Tensor::data<phi::dtype::complex<float>>() const;
 template PADDLE_API const phi::dtype::complex<double>
     *Tensor::data<phi::dtype::complex<double>>() const;
-template PADDLE_API const phi::dtype::float16 *
-Tensor::data<phi::dtype::float16>() const;
-template PADDLE_API const phi::dtype::bfloat16 *
-Tensor::data<phi::dtype::bfloat16>() const;
 
 template <typename T>
 T *Tensor::data() {
@@ -283,19 +280,43 @@ T *Tensor::data() {
   return nullptr;
 }
 
+template PADDLE_API bool *Tensor::data<bool>();
+template PADDLE_API int8_t *Tensor::data<int8_t>();
+template PADDLE_API uint8_t *Tensor::data<uint8_t>();
+template PADDLE_API int16_t *Tensor::data<int16_t>();
+template PADDLE_API uint16_t *Tensor::data<uint16_t>();
+template PADDLE_API int32_t *Tensor::data<int32_t>();
+template PADDLE_API uint32_t *Tensor::data<uint32_t>();
+template PADDLE_API int64_t *Tensor::data<int64_t>();
+template PADDLE_API uint64_t *Tensor::data<uint64_t>();
+template PADDLE_API phi::dtype::bfloat16 *Tensor::data<phi::dtype::bfloat16>();
+template PADDLE_API phi::dtype::float16 *Tensor::data<phi::dtype::float16>();
 template PADDLE_API float *Tensor::data<float>();
 template PADDLE_API double *Tensor::data<double>();
-template PADDLE_API int64_t *Tensor::data<int64_t>();
-template PADDLE_API int32_t *Tensor::data<int32_t>();
-template PADDLE_API uint8_t *Tensor::data<uint8_t>();
-template PADDLE_API int8_t *Tensor::data<int8_t>();
-template PADDLE_API int16_t *Tensor::data<int16_t>();
-template PADDLE_API bool *Tensor::data<bool>();
 template PADDLE_API phi::dtype::complex<float>
     *Tensor::data<phi::dtype::complex<float>>();
 template PADDLE_API phi::dtype::complex<double>
     *Tensor::data<phi::dtype::complex<double>>();
-template PADDLE_API phi::dtype::float16 *Tensor::data<phi::dtype::float16>();
+
+const void *Tensor::data() const {
+  if (is_dense_tensor()) {
+    return static_cast<phi::DenseTensor *>(impl_.get())->data();
+  } else if (is_selected_rows()) {
+    return static_cast<phi::SelectedRows *>(impl_.get())->value().data();
+  }
+  return nullptr;
+}
+
+void *Tensor::data() {
+  if (is_dense_tensor()) {
+    return static_cast<phi::DenseTensor *>(impl_.get())->data();
+  } else if (is_selected_rows()) {
+    return static_cast<phi::SelectedRows *>(impl_.get())
+        ->mutable_value()
+        ->data();
+  }
+  return nullptr;
+}
 
 // TODO(chenweihang): replace slice impl by API
 Tensor Tensor::slice(int64_t begin_idx, int64_t end_idx) const {
@@ -323,7 +344,10 @@ void Tensor::set_impl(std::shared_ptr<phi::TensorBase> &&impl) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 gpuStream_t Tensor::stream() const {
-  return platform::stream::get_current_stream(-1)->raw_stream();
+  int device_id = phi::backends::gpu::GetCurrentDeviceId();
+  auto *gpu_context = DeviceContextPool::Instance().Get<AllocationType::GPU>(
+      GPUPlace(device_id));
+  return gpu_context->stream();
 }
 #endif
 
@@ -408,6 +432,10 @@ void Tensor::reset_inplace_version(bool set_to_zero) {
       inplace_version_counter.SetInplaceVersionToZero();
     }
   }
+}
+
+PADDLE_API Tensor operator*(const Tensor &x, const Tensor &y) {
+  return paddle::OperantsManager::Instance().multiply(x, y);
 }
 
 }  // namespace experimental

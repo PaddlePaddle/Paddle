@@ -24,16 +24,19 @@ class DistributedFusedLambOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {}
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto dtype = framework::proto::VarType::FP32;  // dtype is not important
-    return framework::OpKernelType(dtype, ctx.GetPlace());
+    return phi::KernelKey(dtype, ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const framework::Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const override {
-    return expected_kernel_type;
+  phi::KernelKey GetKernelTypeForVar(
+      const std::string &var_name,
+      const phi::DenseTensor &tensor,
+      const phi::KernelKey &expected_kernel_type) const override {
+    return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                          expected_kernel_type.layout(),
+                          expected_kernel_type.dtype());
   }
 };
 
@@ -141,11 +144,19 @@ class DistributedFusedLambOpMaker : public framework::OpProtoAndCheckerMaker {
         "NCCL communication data. If it is false, it would be less accurate "
         "and be less NCCL communication data.")
         .SetDefault(true);
+    AddAttr<bool>("use_master_acc_grad",
+                  "Whether to use master gradient when acc_steps > 1.")
+        .SetDefault(true);
     AddAttr<bool>("is_grad_scaled_by_nranks",
                   "Whether the input gradient has been scaled by nranks.")
         .SetDefault(true);
-    AddAttr<int>("ring_id", "The ring id of the NCCL communicator.")
-        .SetDefault(0);
+    AddAttr<int64_t>("nranks", "The world size.").SetDefault(1);
+    AddAttr<std::vector<int>>("ring_id",
+                              "The ring id of the NCCL communicator.")
+        .SetDefault({0});
+    AddAttr<bool>("use_hierarchical_allreduce",
+                  "Whether to use hierarchical allreduce")
+        .SetDefault(false);
     AddComment("The DistributedFusedLamb optimizer.");
   }
 };
@@ -161,4 +172,4 @@ REGISTER_OP_WITHOUT_GRADIENT(distributed_fused_lamb,
 
 REGISTER_OP_CPU_KERNEL(
     distributed_fused_lamb,
-    ops::DistributedFusedLambOpKernel<plat::CPUDeviceContext, float>);
+    ops::DistributedFusedLambOpKernel<phi::CPUContext, float>);

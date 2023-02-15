@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
+
 sys.path.append('..')
 from op_test import OpTest
 from paddle.fluid import core
@@ -36,7 +35,8 @@ class TestAllocContinuousSpace(OpTest):
         self.set_constant = attrs["set_constant"]
         self.Inputs = self.init_input()
         self.Outputs, self.FusedOutput = self.init_output(
-            self.Inputs, self.set_constant, self.constant)
+            self.Inputs, self.set_constant, self.constant
+        )
         self.inputs = {'Input': self.Inputs}
         self.attrs = attrs
         self.outputs = {'Output': self.Outputs, 'FusedOutput': self.FusedOutput}
@@ -59,7 +59,7 @@ class TestAllocContinuousSpace(OpTest):
             "copy_data": True,
             "set_constant": False,
             "constant": 0.0,
-            "dtype": self.fluid_dtype
+            "dtype": self.fluid_dtype,
         }
 
     def init_output(self, input_list, set_constant, constant):
@@ -76,16 +76,18 @@ class TestAllocContinuousSpace(OpTest):
         coalesce_tensor_var = np.concatenate([input for input in inputs])
         if set_constant:
             coalesce_tensor_var = np.ones((len(coalesce_tensor_var))) * constant
-            outputs = [(out[0],
-                        np.ones(out[1].shape).astype(self.dtype) * constant)
-                       for out in outputs]
+            outputs = [
+                (out[0], np.ones(out[1].shape).astype(self.dtype) * constant)
+                for out in outputs
+            ]
         return outputs, coalesce_tensor_var
 
     def test_check_output(self):
         self.check_output_with_place(
             place=paddle.device.MLUPlace(0),
             no_check_set=["FusedOutput"],
-            atol=1e-5)
+            atol=1e-5,
+        )
 
 
 class TestAllocContinuousSpace2(TestAllocContinuousSpace):
@@ -95,14 +97,15 @@ class TestAllocContinuousSpace2(TestAllocContinuousSpace):
             "set_constant": True,
             "constant": 5,
             "dtype": self.fluid_dtype,
-            "user_defined_size_of_dtype": 2
+            "user_defined_size_of_dtype": 2,
         }
 
     def test_check_output(self):
         self.check_output_with_place(
             place=paddle.device.MLUPlace(0),
             no_check_set=["FusedOutput"],
-            atol=1e-5)
+            atol=1e-5,
+        )
 
 
 if __name__ == '__main__':

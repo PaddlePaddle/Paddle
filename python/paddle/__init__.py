@@ -14,16 +14,19 @@
 try:
     from paddle.version import full_version as __version__
     from paddle.version import commit as __git_commit__
-    from paddle.cuda_env import *
+    from paddle.cuda_env import *  # noqa: F403
 except ImportError:
     import sys
-    sys.stderr.write('''Warning with import paddle: you should not
+
+    sys.stderr.write(
+        '''Warning with import paddle: you should not
      import paddle from the source directory; please install paddlepaddle*.whl firstly.'''
-                     )
+    )
 
 from .batch import batch  # noqa: F401
 from .framework import monkey_patch_variable
 from .framework import monkey_patch_math_varbase
+
 monkey_patch_variable()
 monkey_patch_math_varbase()
 
@@ -34,7 +37,10 @@ from .framework import set_flags  # noqa: F401
 from .framework import disable_static  # noqa: F401
 from .framework import enable_static  # noqa: F401
 from .framework import in_dynamic_mode  # noqa: F401
+from .fluid.dataset import *  # noqa: F401, F403
+from .fluid.lazy_init import LazyGuard  # noqa: F401
 
+from .framework.dtype import iinfo  # noqa: F401
 from .framework.dtype import dtype as dtype  # noqa: F401
 from .framework.dtype import uint8  # noqa: F401
 from .framework.dtype import int8  # noqa: F401
@@ -48,12 +54,13 @@ from .framework.dtype import bfloat16  # noqa: F401
 from .framework.dtype import bool  # noqa: F401
 from .framework.dtype import complex64  # noqa: F401
 from .framework.dtype import complex128  # noqa: F401
-if fluid.framework._in_eager_mode_:
+
+if fluid.framework.global_var._in_eager_mode_:
     Tensor = framework.core.eager.Tensor
 else:
     from .framework import VarBase as Tensor  # noqa: F401
+
 Tensor.__qualname__ = 'Tensor'  # noqa: F401
-import paddle.compat  # noqa: F401
 import paddle.distributed  # noqa: F401
 import paddle.sysconfig  # noqa: F401
 import paddle.distribution  # noqa: F401
@@ -75,7 +82,10 @@ import paddle.onnx  # noqa: F401
 import paddle.reader  # noqa: F401
 import paddle.static  # noqa: F401
 import paddle.vision  # noqa: F401
+import paddle.audio  # noqa: F401
+import paddle.geometric  # noqa: F401
 import paddle.sparse  # noqa: F401
+import paddle.quantization  # noqa: F401
 
 from .tensor.attribute import is_complex  # noqa: F401
 from .tensor.attribute import is_integer  # noqa: F401
@@ -84,6 +94,7 @@ from .tensor.attribute import shape  # noqa: F401
 from .tensor.attribute import real  # noqa: F401
 from .tensor.attribute import imag  # noqa: F401
 from .tensor.attribute import is_floating_point  # noqa: F401
+from .tensor.creation import create_parameter  # noqa: F401
 from .tensor.creation import to_tensor  # noqa: F401
 from .tensor.creation import diag  # noqa: F401
 from .tensor.creation import diagflat  # noqa: F401
@@ -105,7 +116,8 @@ from .tensor.creation import empty_like  # noqa: F401
 from .tensor.creation import assign  # noqa: F401
 from .tensor.creation import complex  # noqa: F401
 from .tensor.creation import clone  # noqa: F401
-from .tensor.creation import tril_indices  #noqa: F401
+from .tensor.creation import tril_indices  # noqa: F401
+from .tensor.creation import triu_indices  # noqa: F401
 from .tensor.linalg import matmul  # noqa: F401
 from .tensor.linalg import dot  # noqa: F401
 from .tensor.linalg import norm  # noqa: F401
@@ -159,6 +171,7 @@ from .tensor.manipulation import shard_index  # noqa: F401
 from .tensor.manipulation import slice  # noqa: F401
 from .tensor.manipulation import crop  # noqa: F401
 from .tensor.manipulation import split  # noqa: F401
+from .tensor.manipulation import vsplit  # noqa: F401
 from .tensor.manipulation import squeeze  # noqa: F401
 from .tensor.manipulation import squeeze_  # noqa: F401
 from .tensor.manipulation import stack  # noqa: F401
@@ -181,6 +194,8 @@ from .tensor.manipulation import as_complex  # noqa: F401
 from .tensor.manipulation import as_real  # noqa: F401
 from .tensor.manipulation import moveaxis  # noqa: F401
 from .tensor.manipulation import repeat_interleave  # noqa: F401
+from .tensor.manipulation import index_add  # noqa: F401
+from .tensor.manipulation import index_add_  # noqa: F401
 from .tensor.math import abs  # noqa: F401
 from .tensor.math import acos  # noqa: F401
 from .tensor.math import asin  # noqa: F401
@@ -192,6 +207,7 @@ from .tensor.math import tan  # noqa: F401
 from .tensor.math import cosh  # noqa: F401
 from .tensor.math import cumsum  # noqa: F401
 from .tensor.math import cumprod  # noqa: F401
+from .tensor.math import logcumsumexp  # noqa: F401
 from .tensor.math import logit  # noqa: F401
 from .tensor.math import exp  # noqa: F401
 from .tensor.math import expm1  # noqa: F401
@@ -215,8 +231,10 @@ from .tensor.math import sqrt  # noqa: F401
 from .tensor.math import square  # noqa: F401
 from .tensor.math import stanh  # noqa: F401
 from .tensor.math import sum  # noqa: F401
+from .tensor.math import nan_to_num  # noqa: F401
 from .tensor.math import nansum  # noqa: F401
 from .tensor.math import nanmean  # noqa: F401
+from .tensor.math import count_nonzero  # noqa: F401
 from .tensor.math import tanh  # noqa: F401
 from .tensor.math import tanh_  # noqa: F401
 from .tensor.math import add_n  # noqa: F401
@@ -230,6 +248,7 @@ from .tensor.math import mm  # noqa: F401
 from .tensor.math import divide  # noqa: F401
 from .tensor.math import floor_divide  # noqa: F401
 from .tensor.math import remainder  # noqa: F401
+from .tensor.math import remainder_  # noqa: F401
 from .tensor.math import mod  # noqa: F401
 from .tensor.math import floor_mod  # noqa: F401
 from .tensor.math import multiply  # noqa: F401
@@ -272,6 +291,9 @@ from .tensor.math import inner  # noqa: F401
 from .tensor.math import outer  # noqa: F401
 from .tensor.math import heaviside  # noqa: F401
 from .tensor.math import frac  # noqa: F401
+from .tensor.math import sgn  # noqa: F401
+from .tensor.math import take  # noqa: F401
+from .tensor.math import frexp  # noqa: F401
 
 from .tensor.random import bernoulli  # noqa: F401
 from .tensor.random import poisson  # noqa: F401
@@ -288,6 +310,7 @@ from .tensor.search import argmax  # noqa: F401
 from .tensor.search import argmin  # noqa: F401
 from .tensor.search import argsort  # noqa: F401
 from .tensor.search import searchsorted  # noqa: F401
+from .tensor.search import bucketize  # noqa: F401
 from .tensor.search import masked_select  # noqa: F401
 from .tensor.search import topk  # noqa: F401
 from .tensor.search import where  # noqa: F401
@@ -304,8 +327,9 @@ from .tensor.einsum import einsum  # noqa: F401
 from .framework.random import seed  # noqa: F401
 from .framework.random import get_cuda_rng_state  # noqa: F401
 from .framework.random import set_cuda_rng_state  # noqa: F401
+from .framework.random import get_rng_state  # noqa: F401
+from .framework.random import set_rng_state  # noqa: F401
 from .framework import ParamAttr  # noqa: F401
-from .framework import create_parameter  # noqa: F401
 from .framework import CPUPlace  # noqa: F401
 from .framework import IPUPlace  # noqa: F401
 from .framework import CUDAPlace  # noqa: F401
@@ -344,6 +368,7 @@ from .device import is_compiled_with_mlu  # noqa: F401
 from .device import is_compiled_with_cinn  # noqa: F401
 from .device import is_compiled_with_cuda  # noqa: F401
 from .device import is_compiled_with_rocm  # noqa: F401
+from .device import is_compiled_with_custom_device  # noqa: F401
 from .device import XPUPlace  # noqa: F401
 
 # high-level api
@@ -364,281 +389,296 @@ from .tensor.random import check_shape  # noqa: F401
 # CINN has to set a flag to include a lib
 if is_compiled_with_cinn():
     import os
+
     package_dir = os.path.dirname(os.path.abspath(__file__))
     runtime_include_dir = os.path.join(package_dir, "libs")
     cuh_file = os.path.join(runtime_include_dir, "cinn_cuda_runtime_source.cuh")
     if os.path.exists(cuh_file):
-        os.environ['runtime_include_dir'] = runtime_include_dir
+        os.environ.setdefault('runtime_include_dir', runtime_include_dir)
 
 disable_static()
-
 __all__ = [  # noqa
-           'dtype',
-           'uint8',
-           'int8',
-           'int16',
-           'int32',
-           'int64',
-           'float16',
-           'float32',
-           'float64',
-           'bfloat16',
-           'bool',
-           'complex64',
-           'complex128',
-           'addmm',
-           'allclose',
-           'isclose',
-           't',
-           'add',
-           'subtract',
-           'diag',
-           'diagflat',
-           'isnan',
-           'scatter_nd_add',
-           'unstack',
-           'get_default_dtype',
-           'save',
-           'multinomial',
-           'get_cuda_rng_state',
-           'rank',
-           'empty_like',
-           'eye',
-           'cumsum',
-           'cumprod',
-           'logit',
-           'sign',
-           'is_empty',
-           'equal',
-           'equal_all',
-           'is_tensor',
-           'is_complex',
-           'is_integer',
-           'cross',
-           'where',
-           'log1p',
-           'cos',
-           'tan',
-           'mean',
-           'mode',
-           'mv',
-           'in_dynamic_mode',
-           'min',
-           'amin',
-           'any',
-           'slice',
-           'normal',
-           'logsumexp',
-           'full',
-           'unsqueeze',
-           'unsqueeze_',
-           'argmax',
-           'Model',
-           'summary',
-           'flops',
-           'sort',
-           'searchsorted',
-           'split',
-           'logical_and',
-           'full_like',
-           'less_than',
-           'kron',
-           'clip',
-           'Tensor',
-           'crop',
-           'ParamAttr',
-           'stanh',
-           'randint',
-           'randint_like',
-           'assign',
-           'gather',
-           'scale',
-           'zeros',
-           'rsqrt',
-           'squeeze',
-           'squeeze_',
-           'to_tensor',
-           'gather_nd',
-           'isinf',
-           'uniform',
-           'floor_divide',
-           'remainder',
-           'floor_mod',
-           'roll',
-           'batch',
-           'max',
-           'amax',
-           'logical_or',
-           'bitwise_and',
-           'bitwise_or',
-           'bitwise_xor',
-           'bitwise_not',
-           'mm',
-           'flip',
-           'rot90',
-           'bincount',
-           'histogram',
-           'multiplex',
-           'CUDAPlace',
-           'NPUPlace',
-           'empty',
-           'shape',
-           'real',
-           'imag',
-           'is_floating_point',
-           'complex',
-           'reciprocal',
-           'rand',
-           'less_equal',
-           'triu',
-           'sin',
-           'dist',
-           'unbind',
-           'meshgrid',
-           'arange',
-           'load',
-           'numel',
-           'median',
-           'nanmedian',
-           'quantile',
-           'nanquantile',
-           'no_grad',
-           'set_grad_enabled',
-           'is_grad_enabled',
-           'mod',
-           'abs',
-           'tril',
-           'pow',
-           'zeros_like',
-           'maximum',
-           'topk',
-           'index_select',
-           'CPUPlace',
-           'matmul',
-           'seed',
-           'acos',
-           'logical_xor',
-           'exp',
-           'expm1',
-           'bernoulli',
-           'poisson',
-           'sinh',
-           'round',
-           'DataParallel',
-           'argmin',
-           'prod',
-           'broadcast_shape',
-           'conj',
-           'neg',
-           'lgamma',
-           'lerp',
-           'erfinv',
-           'inner',
-           'outer',
-           'square',
-           'divide',
-           'ceil',
-           'atan',
-           'atan2',
-           'rad2deg',
-           'deg2rad',
-           'gcd',
-           'lcm',
-           'expand',
-           'broadcast_to',
-           'ones_like',
-           'index_sample',
-           'cast',
-           'grad',
-           'all',
-           'ones',
-           'not_equal',
-           'sum',
-           'nansum',
-           'nanmean',
-           'tile',
-           'greater_equal',
-           'isfinite',
-           'create_parameter',
-           'dot',
-           'increment',
-           'erf',
-           'bmm',
-           'chunk',
-           'tolist',
-           'tensordot',
-           'greater_than',
-           'shard_index',
-           'argsort',
-           'tanh',
-           'tanh_',
-           'transpose',
-           'randn',
-           'strided_slice',
-           'unique',
-           'unique_consecutive',
-           'set_cuda_rng_state',
-           'set_printoptions',
-           'std',
-           'flatten',
-           'asin',
-           'multiply',
-           'disable_static',
-           'masked_select',
-           'var',
-           'trace',
-           'enable_static',
-           'scatter_nd',
-           'set_default_dtype',
-           'disable_signal_handler',
-           'expand_as',
-           'stack',
-           'sqrt',
-           'randperm',
-           'linspace',
-           'logspace',
-           'reshape',
-           'reshape_',
-           'reverse',
-           'nonzero',
-           'CUDAPinnedPlace',
-           'logical_not',
-           'add_n',
-           'minimum',
-           'scatter',
-           'scatter_',
-           'floor',
-           'cosh',
-           'log',
-           'log2',
-           'log10',
-           'concat',
-           'check_shape',
-           'trunc',
-           'frac',
-           'digamma',
-           'standard_normal',
-           'diagonal',
-           'broadcast_tensors',
-           'einsum',
-           'set_flags',
-           'get_flags',
-           'asinh',
-           'acosh',
-           'atanh',
-           'as_complex',
-           'as_real',
-           'diff',
-           'angle',
-           'fmax',
-           'fmin',
-           'moveaxis',
-           'repeat_interleave',
-           'clone',
-           'kthvalue',
-           'renorm',
-           'take_along_axis',
-           'put_along_axis',
-           'heaviside',
-           'tril_indices',
+    'iinfo',
+    'dtype',
+    'uint8',
+    'int8',
+    'int16',
+    'int32',
+    'int64',
+    'float16',
+    'float32',
+    'float64',
+    'bfloat16',
+    'bool',
+    'complex64',
+    'complex128',
+    'addmm',
+    'allclose',
+    'isclose',
+    't',
+    'add',
+    'subtract',
+    'diag',
+    'diagflat',
+    'isnan',
+    'scatter_nd_add',
+    'unstack',
+    'get_default_dtype',
+    'save',
+    'multinomial',
+    'get_cuda_rng_state',
+    'get_rng_state',
+    'rank',
+    'empty_like',
+    'eye',
+    'cumsum',
+    'cumprod',
+    'logcumsumexp',
+    'logit',
+    'LazyGuard',
+    'sign',
+    'is_empty',
+    'equal',
+    'equal_all',
+    'is_tensor',
+    'is_complex',
+    'is_integer',
+    'cross',
+    'where',
+    'log1p',
+    'cos',
+    'tan',
+    'mean',
+    'mode',
+    'mv',
+    'in_dynamic_mode',
+    'min',
+    'amin',
+    'any',
+    'slice',
+    'normal',
+    'logsumexp',
+    'full',
+    'unsqueeze',
+    'unsqueeze_',
+    'argmax',
+    'Model',
+    'summary',
+    'flops',
+    'sort',
+    'searchsorted',
+    'bucketize',
+    'split',
+    'vsplit',
+    'logical_and',
+    'full_like',
+    'less_than',
+    'kron',
+    'clip',
+    'Tensor',
+    'crop',
+    'ParamAttr',
+    'stanh',
+    'randint',
+    'randint_like',
+    'assign',
+    'gather',
+    'scale',
+    'zeros',
+    'rsqrt',
+    'squeeze',
+    'squeeze_',
+    'to_tensor',
+    'gather_nd',
+    'isinf',
+    'uniform',
+    'floor_divide',
+    'remainder',
+    'floor_mod',
+    'roll',
+    'batch',
+    'max',
+    'amax',
+    'logical_or',
+    'bitwise_and',
+    'bitwise_or',
+    'bitwise_xor',
+    'bitwise_not',
+    'mm',
+    'flip',
+    'rot90',
+    'bincount',
+    'histogram',
+    'multiplex',
+    'CUDAPlace',
+    'NPUPlace',
+    'empty',
+    'shape',
+    'real',
+    'imag',
+    'is_floating_point',
+    'complex',
+    'reciprocal',
+    'rand',
+    'less_equal',
+    'triu',
+    'sin',
+    'dist',
+    'unbind',
+    'meshgrid',
+    'arange',
+    'load',
+    'numel',
+    'median',
+    'nanmedian',
+    'quantile',
+    'nanquantile',
+    'no_grad',
+    'set_grad_enabled',
+    'is_grad_enabled',
+    'mod',
+    'abs',
+    'tril',
+    'pow',
+    'zeros_like',
+    'maximum',
+    'topk',
+    'index_select',
+    'CPUPlace',
+    'matmul',
+    'seed',
+    'acos',
+    'logical_xor',
+    'exp',
+    'expm1',
+    'bernoulli',
+    'poisson',
+    'sinh',
+    'round',
+    'DataParallel',
+    'argmin',
+    'prod',
+    'broadcast_shape',
+    'conj',
+    'neg',
+    'lgamma',
+    'lerp',
+    'erfinv',
+    'inner',
+    'outer',
+    'square',
+    'divide',
+    'ceil',
+    'atan',
+    'atan2',
+    'rad2deg',
+    'deg2rad',
+    'gcd',
+    'lcm',
+    'expand',
+    'broadcast_to',
+    'ones_like',
+    'index_sample',
+    'cast',
+    'grad',
+    'all',
+    'ones',
+    'not_equal',
+    'sum',
+    'nansum',
+    'nanmean',
+    'count_nonzero',
+    'tile',
+    'greater_equal',
+    'isfinite',
+    'create_parameter',
+    'dot',
+    'increment',
+    'erf',
+    'bmm',
+    'chunk',
+    'tolist',
+    'tensordot',
+    'greater_than',
+    'shard_index',
+    'argsort',
+    'tanh',
+    'tanh_',
+    'transpose',
+    'randn',
+    'strided_slice',
+    'unique',
+    'unique_consecutive',
+    'set_cuda_rng_state',
+    'set_rng_state',
+    'set_printoptions',
+    'std',
+    'flatten',
+    'asin',
+    'multiply',
+    'disable_static',
+    'masked_select',
+    'var',
+    'trace',
+    'enable_static',
+    'scatter_nd',
+    'set_default_dtype',
+    'disable_signal_handler',
+    'expand_as',
+    'stack',
+    'sqrt',
+    'randperm',
+    'linspace',
+    'logspace',
+    'reshape',
+    'reshape_',
+    'reverse',
+    'nonzero',
+    'CUDAPinnedPlace',
+    'logical_not',
+    'add_n',
+    'minimum',
+    'scatter',
+    'scatter_',
+    'floor',
+    'cosh',
+    'log',
+    'log2',
+    'log10',
+    'concat',
+    'check_shape',
+    'trunc',
+    'frac',
+    'digamma',
+    'standard_normal',
+    'diagonal',
+    'broadcast_tensors',
+    'einsum',
+    'set_flags',
+    'get_flags',
+    'asinh',
+    'acosh',
+    'atanh',
+    'as_complex',
+    'as_real',
+    'diff',
+    'angle',
+    'fmax',
+    'fmin',
+    'moveaxis',
+    'repeat_interleave',
+    'clone',
+    'kthvalue',
+    'renorm',
+    'take_along_axis',
+    'put_along_axis',
+    'nan_to_num',
+    'heaviside',
+    'tril_indices',
+    'index_add',
+    "index_add_",
+    'sgn',
+    'triu_indices',
+    'take',
+    'frexp',
 ]

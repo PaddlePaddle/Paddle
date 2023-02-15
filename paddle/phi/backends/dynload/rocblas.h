@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <hip/hip_runtime.h>
 #include <rocblas.h>
+
 #include <mutex>  // NOLINT
 #include <type_traits>
 

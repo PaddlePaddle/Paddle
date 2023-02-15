@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+
 #include <cmath>
 
 #include "gflags/gflags.h"
@@ -62,8 +63,8 @@ TEST(Analyzer_Resnet50_ipu, compare_results_1_batch) {
   float* data_o = static_cast<float*>(outputs[0].data.data());
 
   for (size_t j = 0; j < outputs[0].data.length() / sizeof(float); j += 10) {
-    EXPECT_NEAR((data_o[j] - truth_values[j / 10]) / truth_values[j / 10], 0.,
-                12e-5);
+    EXPECT_NEAR(
+        (data_o[j] - truth_values[j / 10]) / truth_values[j / 10], 0., 12e-5);
   }
 }
 
@@ -101,13 +102,77 @@ TEST(Analyzer_Resnet50_ipu, compare_results_2_batch) {
 
   auto num_output_per_batch = outputs[0].data.length() / sizeof(float) / 2;
   for (size_t j = 0; j < num_output_per_batch; j += 10) {
-    EXPECT_NEAR((data_o[j] - truth_values[j / 10]) / truth_values[j / 10], 0.,
-                12e-5);
+    EXPECT_NEAR(
+        (data_o[j] - truth_values[j / 10]) / truth_values[j / 10], 0., 12e-5);
     EXPECT_NEAR((data_o[j + num_output_per_batch] - truth_values[j / 10]) /
                     truth_values[j / 10],
-                0., 12e-5);
+                0.,
+                12e-5);
   }
 }
 
+// multi threading
+TEST(Analyzer_Resnet50_ipu, model_runtime_multi_thread) {
+  std::string model_dir = FLAGS_infer_model + "/" + "model";
+  AnalysisConfig config;
+  const int thread_num = 10;
+  // ipu_device_num, ipu_micro_batch_size, ipu_enable_pipelining
+  config.EnableIpu(1, 1, false);
+  config.SetIpuConfig(false, 1, 1.0, false, true);
+  config.SetModel(model_dir + "/model", model_dir + "/params");
+
+  auto main_predictor = CreatePaddlePredictor(config);
+  std::vector<std::vector<PaddleTensor>> inputs;
+  std::vector<std::vector<PaddleTensor>> outputs;
+  std::vector<decltype(main_predictor)> predictors;
+  std::vector<std::thread> threads;
+  outputs.resize(thread_num);
+  inputs.resize(thread_num);
+
+  const int batch = 1;
+  const int channel = 3;
+  const int height = 318;
+  const int width = 318;
+  const int input_num = batch * channel * height * width;
+  std::vector<float> input(input_num, 1);
+
+  PaddleTensor in;
+  in.shape = {batch, channel, height, width};
+  in.data =
+      PaddleBuf(static_cast<void*>(input.data()), input_num * sizeof(float));
+  in.dtype = PaddleDType::FLOAT32;
+
+  for (int i = 0; i < thread_num; ++i) {
+    inputs[i].emplace_back(in);
+    predictors.emplace_back(std::move(main_predictor->Clone()));
+  }
+
+  auto run = [](PaddlePredictor* predictor,
+                std::vector<PaddleTensor>& input,
+                std::vector<PaddleTensor>& output) {
+    ASSERT_TRUE(predictor->Run(input, &output));
+  };
+
+  for (int i = 0; i < thread_num; ++i) {
+    threads.emplace_back(
+        run, predictors[i].get(), std::ref(inputs[i]), std::ref(outputs[i]));
+  }
+
+  for (int i = 0; i < thread_num; ++i) {
+    threads[i].join();
+  }
+
+  const size_t expected_size = 1;
+  for (int i = 0; i < thread_num; ++i) {
+    EXPECT_EQ(outputs[i].size(), expected_size);
+    float* data_o = static_cast<float*>(outputs[i][0].data.data());
+
+    for (size_t j = 0; j < outputs[i][0].data.length() / sizeof(float);
+         j += 10) {
+      EXPECT_NEAR(
+          (data_o[j] - truth_values[j / 10]) / truth_values[j / 10], 0., 12e-5);
+    }
+  }
+}
 }  // namespace inference
 }  // namespace paddle

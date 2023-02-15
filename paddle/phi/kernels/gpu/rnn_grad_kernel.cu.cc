@@ -14,14 +14,12 @@
 
 #include "paddle/phi/kernels/rnn_grad_kernel.h"
 
+#include "paddle/fluid/operators/utils.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/gpu/rnn_functor.h"
-
-#include "paddle/fluid/operators/utils.h"
 
 namespace phi {
 
@@ -250,7 +248,7 @@ void RnnGradKernel(const Context &dev_ctx,
                      is_test);
 
   rnn.Create<T>(handle,
-                dev_ctx.GetPlace(),
+                dev_ctx,
                 SequenceLength,
                 &workspace_size,
                 &reserve_size,

@@ -12,16 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
+from op_test import OpTest
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
-from op_test import OpTest
-import paddle
-from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 
@@ -55,7 +54,7 @@ class TestSparseSGDOp(unittest.TestCase):
     def check_with_place(self, place):
         scope = core.Scope()
 
-        # create and initialize Grad Variable   
+        # create and initialize Grad Variable
         height = 10
         rows = [0, 4, 7]
         self.conf()
@@ -86,7 +85,8 @@ class TestSparseSGDOp(unittest.TestCase):
             Param='Param',
             Grad='Grad',
             ParamOut='Param',
-            LearningRate='LearningRate')
+            LearningRate='LearningRate',
+        )
         sgd_op.run(scope, place)
 
         # get and compare result
@@ -168,8 +168,9 @@ class TestSGDOpOptimizeSelectedRows(unittest.TestCase):
         # optimize with Python
         w_after_optimize = np.copy(w_before_optimize)
         for index, id in enumerate(grad_rows):
-            w_after_optimize[id] = w_before_optimize[
-                id] - lr_value * grad_array[index]
+            w_after_optimize[id] = (
+                w_before_optimize[id] - lr_value * grad_array[index]
+            )
 
         # create and run sgd operator
         sgd_op = Operator(
@@ -177,7 +178,8 @@ class TestSGDOpOptimizeSelectedRows(unittest.TestCase):
             Param='Param',
             Grad='Grad',
             ParamOut='Param',
-            LearningRate='LearningRate')
+            LearningRate='LearningRate',
+        )
         sgd_op.run(scope, place)
 
         # get and compare result
@@ -196,12 +198,13 @@ class TestSGDOpWithLargeInput(unittest.TestCase):
         paddle.enable_static()
         data = fluid.layers.fill_constant(shape=[1], value=128, dtype='int64')
         label = fluid.layers.fill_constant(
-            shape=[1, 150], value=0.5, dtype='float32')
+            shape=[1, 150], value=0.5, dtype='float32'
+        )
         emb = fluid.embedding(input=data, size=(10000000, 150), dtype='float32')
-        out = fluid.layers.l2_normalize(x=emb, axis=-1)
+        out = paddle.nn.functional.normalize(x=emb, axis=-1)
 
-        cost = fluid.layers.square_error_cost(input=out, label=label)
-        avg_cost = fluid.layers.mean(cost)
+        cost = paddle.nn.functional.square_error_cost(input=out, label=label)
+        avg_cost = paddle.mean(cost)
         sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
         sgd_optimizer.minimize(avg_cost)
 
@@ -209,7 +212,8 @@ class TestSGDOpWithLargeInput(unittest.TestCase):
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
         compiled_prog = fluid.compiler.CompiledProgram(
-            fluid.default_main_program())
+            fluid.default_main_program()
+        )
         result = exe.run(compiled_prog, fetch_list=[avg_cost])
 
 
@@ -220,9 +224,11 @@ class TestSGDV2(unittest.TestCase):
         a = paddle.to_tensor(value)
         linear = paddle.nn.Linear(13, 5)
         # This can be any optimizer supported by dygraph.
-        adam = paddle.optimizer.SGD(learning_rate=0.01,
-                                    parameters=linear.parameters(),
-                                    weight_decay=0.01)
+        adam = paddle.optimizer.SGD(
+            learning_rate=0.01,
+            parameters=linear.parameters(),
+            weight_decay=0.01,
+        )
         out = linear(a)
         out.backward()
         adam.step()
@@ -240,21 +246,26 @@ class TestSGDV2(unittest.TestCase):
                 shape=[5, 10],
                 lod_level=0,
                 name="mul.x",
-                optimize_attr=optimizer_attr)
+                optimize_attr=optimizer_attr,
+            )
             mul_y = block.create_var(
-                dtype="float32", shape=[10, 8], lod_level=0, name="mul.y")
+                dtype="float32", shape=[10, 8], lod_level=0, name="mul.y"
+            )
             mul_out = block.create_var(
-                dtype="float32", shape=[5, 8], lod_level=0, name="mul.out")
+                dtype="float32", shape=[5, 8], lod_level=0, name="mul.out"
+            )
             mean_out = block.create_var(
-                dtype="float32", shape=[1], lod_level=0, name="mean.out")
+                dtype="float32", shape=[1], lod_level=0, name="mean.out"
+            )
             block.append_op(
                 type="mul",
-                inputs={"X": mul_x,
-                        "Y": mul_y},
+                inputs={"X": mul_x, "Y": mul_y},
                 outputs={"Out": mul_out},
-                attrs={"x_num_col_dims": 1})
+                attrs={"x_num_col_dims": 1},
+            )
             block.append_op(
-                type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out})
+                type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out}
+            )
             sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.01)
             opts, _ = sgd_optimizer.minimize(mean_out, init_program)
             return opts
@@ -277,25 +288,23 @@ class TestSGDV2(unittest.TestCase):
         linear_1 = paddle.nn.Linear(13, 5)
         linear_2 = paddle.nn.Linear(5, 3)
         # This can be any optimizer supported by dygraph.
-        adam = paddle.optimizer.SGD(learning_rate=0.01,
-                                    parameters=[{
-                                        'params': linear_1.parameters()
-                                    }, {
-                                        'params': linear_2.parameters(),
-                                        'weight_decay': 0.001,
-                                        'learning_rate': 0.1
-                                    }],
-                                    weight_decay=0.01)
+        adam = paddle.optimizer.SGD(
+            learning_rate=0.01,
+            parameters=[
+                {'params': linear_1.parameters()},
+                {
+                    'params': linear_2.parameters(),
+                    'weight_decay': 0.001,
+                    'learning_rate': 0.1,
+                },
+            ],
+            weight_decay=0.01,
+        )
         out = linear_1(a)
         out = linear_2(out)
         out.backward()
         adam.step()
         adam.clear_gradients()
-
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_sgd_dygraph()
-            self.test_sgd_group_dygraph()
 
 
 class TestSGDMultiPrecision2_0(unittest.TestCase):
@@ -305,14 +314,15 @@ class TestSGDMultiPrecision2_0(unittest.TestCase):
         paddle.set_device('gpu')
         input = paddle.randn((2, 2))
         model = paddle.nn.Linear(2, 2)
-        optimizer = paddle.optimizer.SGD(parameters=model.parameters(),
-                                         multi_precision=mp)
-        if mp == True:
+        optimizer = paddle.optimizer.SGD(
+            parameters=model.parameters(), multi_precision=mp
+        )
+        if mp:
             model = paddle.amp.decorate(models=model, level='O2')
             scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
 
         for idx in range(5):
-            if mp == True:
+            if mp:
                 with paddle.amp.auto_cast(level='O2'):
                     output = model(input)
                     loss = paddle.mean(output)
@@ -343,16 +353,19 @@ class TestSGDMultiPrecision2_0(unittest.TestCase):
                 init_loss_scaling=128.0,
                 use_dynamic_loss_scaling=True,
                 use_pure_fp16=True,
-                use_fp16_guard=False)
+                use_fp16_guard=False,
+            )
         with paddle.static.program_guard(train_program, startup_program):
             if mp:
                 data = paddle.static.data(
-                    shape=[2, 2], name='X', dtype='float16')
+                    shape=[2, 2], name='X', dtype='float16'
+                )
             else:
                 data = paddle.static.data(
-                    shape=[2, 2], name='X', dtype='float32')
+                    shape=[2, 2], name='X', dtype='float32'
+                )
             hidden = paddle.static.nn.fc(x=data, size=10)
-            loss = paddle.fluid.layers.mean(hidden)
+            loss = paddle.mean(hidden)
             optimizer.minimize(loss)
         exe.run(startup_program)
 
@@ -363,9 +376,9 @@ class TestSGDMultiPrecision2_0(unittest.TestCase):
             x = np.random.random(size=(2, 2)).astype('float32')
         out = []
         for idx in range(5):
-            loss_data, = exe.run(train_program,
-                                 feed={"X": x},
-                                 fetch_list=[loss.name])
+            (loss_data,) = exe.run(
+                train_program, feed={"X": x}, fetch_list=[loss.name]
+            )
             out.append(loss_data)
         return out
 
@@ -375,29 +388,29 @@ class TestSGDMultiPrecision2_0(unittest.TestCase):
         "Test dygraph mode"
         output1_dy, params1_dy = self.dygraph_sgd_mp(mp=True)
         output2_dy, params2_dy = self.dygraph_sgd_mp(mp=False)
-        self.assertEqual(
-            np.allclose(
-                output1_dy.astype('float32').numpy(),
-                output2_dy.astype('float32').numpy(),
-                atol=1e-01),
-            True)
+        np.testing.assert_allclose(
+            output1_dy.astype('float32').numpy(),
+            output2_dy.astype('float32').numpy(),
+            rtol=1e-05,
+            atol=0.1,
+        )
         for idx in range(len(params1_dy)):
-            self.assertEqual(
-                np.allclose(
-                    params1_dy[idx].astype('float32').numpy(),
-                    params2_dy[idx].astype('float32').numpy(),
-                    atol=1e-01),
-                True)
-        "Test static mode"
+            np.testing.assert_allclose(
+                params1_dy[idx].astype('float32').numpy(),
+                params2_dy[idx].astype('float32').numpy(),
+                rtol=1e-05,
+                atol=0.1,
+            )
+        "Test static graph mode"
         output1_st = self.static_sgd_mp(mp=True)
         output2_st = self.static_sgd_mp(mp=False)
         for idx in range(len(output1_st)):
-            self.assertEqual(
-                np.allclose(
-                    output1_st[idx].astype('float32'),
-                    output2_st[idx].astype('float32'),
-                    atol=1e-01),
-                True)
+            np.testing.assert_allclose(
+                output1_st[idx].astype('float32'),
+                output2_st[idx].astype('float32'),
+                rtol=1e-05,
+                atol=0.1,
+            )
 
 
 class TestSGDMultiPrecision1_0(unittest.TestCase):
@@ -410,13 +423,14 @@ class TestSGDMultiPrecision1_0(unittest.TestCase):
         optimizer = paddle.fluid.optimizer.SGD(
             learning_rate=0.001,
             parameter_list=model.parameters(),
-            multi_precision=mp)
-        if mp == True:
+            multi_precision=mp,
+        )
+        if mp:
             model = paddle.amp.decorate(models=model, level='O2')
             scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
 
         for idx in range(5):
-            if mp == True:
+            if mp:
                 with paddle.amp.auto_cast(level='O2'):
                     output = model(input)
                     loss = paddle.mean(output)
@@ -439,8 +453,9 @@ class TestSGDMultiPrecision1_0(unittest.TestCase):
         exe = paddle.static.Executor('gpu')
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
-        optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.001,
-                                               multi_precision=mp)
+        optimizer = paddle.fluid.optimizer.SGD(
+            learning_rate=0.001, multi_precision=mp
+        )
 
         if mp:
             optimizer = paddle.static.amp.decorate(
@@ -448,16 +463,19 @@ class TestSGDMultiPrecision1_0(unittest.TestCase):
                 init_loss_scaling=128.0,
                 use_dynamic_loss_scaling=True,
                 use_pure_fp16=True,
-                use_fp16_guard=False)
+                use_fp16_guard=False,
+            )
         with paddle.static.program_guard(train_program, startup_program):
             if mp:
                 data = paddle.static.data(
-                    shape=[2, 2], name='X', dtype='float16')
+                    shape=[2, 2], name='X', dtype='float16'
+                )
             else:
                 data = paddle.static.data(
-                    shape=[2, 2], name='X', dtype='float32')
+                    shape=[2, 2], name='X', dtype='float32'
+                )
             hidden = paddle.static.nn.fc(x=data, size=10)
-            loss = paddle.fluid.layers.mean(hidden)
+            loss = paddle.mean(hidden)
             optimizer.minimize(loss)
         exe.run(startup_program)
 
@@ -468,9 +486,9 @@ class TestSGDMultiPrecision1_0(unittest.TestCase):
             x = np.random.random(size=(2, 2)).astype('float32')
         out = []
         for idx in range(5):
-            loss_data, = exe.run(train_program,
-                                 feed={"X": x},
-                                 fetch_list=[loss.name])
+            (loss_data,) = exe.run(
+                train_program, feed={"X": x}, fetch_list=[loss.name]
+            )
             out.append(loss_data)
         return out
 
@@ -480,29 +498,29 @@ class TestSGDMultiPrecision1_0(unittest.TestCase):
         "Test dygraph mode"
         output1_dy, params1_dy = self.dygraph_sgd_mp(mp=True)
         output2_dy, params2_dy = self.dygraph_sgd_mp(mp=False)
-        self.assertEqual(
-            np.allclose(
-                output1_dy.astype('float32').numpy(),
-                output2_dy.astype('float32').numpy(),
-                atol=1e-01),
-            True)
+        np.testing.assert_allclose(
+            output1_dy.astype('float32').numpy(),
+            output2_dy.astype('float32').numpy(),
+            rtol=1e-05,
+            atol=0.1,
+        )
         for idx in range(len(params1_dy)):
-            self.assertEqual(
-                np.allclose(
-                    params1_dy[idx].astype('float32').numpy(),
-                    params2_dy[idx].astype('float32').numpy(),
-                    atol=1e-01),
-                True)
-        "Test static mode"
+            np.testing.assert_allclose(
+                params1_dy[idx].astype('float32').numpy(),
+                params2_dy[idx].astype('float32').numpy(),
+                rtol=1e-05,
+                atol=0.1,
+            )
+        "Test static graph mode"
         output1_st = self.static_sgd_mp(mp=True)
         output2_st = self.static_sgd_mp(mp=False)
         for idx in range(len(output1_st)):
-            self.assertEqual(
-                np.allclose(
-                    output1_st[idx].astype('float32'),
-                    output2_st[idx].astype('float32'),
-                    atol=1e-01),
-                True)
+            np.testing.assert_allclose(
+                output1_st[idx].astype('float32'),
+                output2_st[idx].astype('float32'),
+                rtol=1e-05,
+                atol=0.1,
+            )
 
 
 if __name__ == "__main__":

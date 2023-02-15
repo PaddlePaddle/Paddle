@@ -14,9 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/kernels/addmm_kernel.h"
-
 #include <type_traits>
+
+#include "paddle/phi/kernels/addmm_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
@@ -37,8 +37,8 @@ void AddmmKernel(const Context& dev_ctx,
                  const DenseTensor& input,
                  const DenseTensor& x,
                  const DenseTensor& y,
-                 float alpha,
                  float beta,
+                 float alpha,
                  DenseTensor* out) {
   auto input_dims = input.dims();
   auto x_dims = x.dims();

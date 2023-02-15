@@ -36,6 +36,24 @@ inline DDim GetOutputSqueezeShape(const std::vector<int> squeeze_dims,
     }
   } else {
     for (size_t i = 0; i < num_squeeze_dims; ++i) {
+      if (in_dims.size() == 0) {
+        PADDLE_ENFORCE_GE(
+            squeeze_dims[i],
+            -1,
+            phi::errors::InvalidArgument(
+                "For 0D Tensor, Each axis in Attr(axes) should be in the range "
+                "of [-1, 0]"
+                "But current axis is:%d, input tensor's shape = [%s]."));
+        PADDLE_ENFORCE_LE(
+            squeeze_dims[i],
+            0,
+            phi::errors::InvalidArgument(
+                "For 0D Tensor, Each axis in Attr(axes) should be in the range "
+                "of [-1, 0]"
+                "But current axis is:%d, input tensor's shape = [%s]."));
+        continue;
+      }
+
       int current = squeeze_dims[i] < 0 ? squeeze_dims[i] + in_dims.size()
                                         : squeeze_dims[i];
 

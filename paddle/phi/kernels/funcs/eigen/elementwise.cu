@@ -55,5 +55,22 @@ struct EigenSub<Eigen::GpuDevice, T> {
 
 template struct EigenSub<Eigen::GpuDevice, float>;
 
+template <typename T>
+struct EigenDiv<Eigen::GpuDevice, T> {
+  using InType = Eigen::TensorMap<
+      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using OutType =
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  static void Eval(const Eigen::GpuDevice& dev,
+                   OutType out,
+                   const InType& in,
+                   const T value) {
+    out.device(dev) = in / value;
+  }
+};
+
+template struct EigenDiv<Eigen::GpuDevice, float>;
+template struct EigenDiv<Eigen::GpuDevice, double>;
+
 }  // namespace funcs
 }  // namespace phi

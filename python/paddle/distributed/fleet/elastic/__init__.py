@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,7 +13,8 @@
 # limitations under the License.
 
 import signal
-import os, sys
+import os
+import sys
 
 from .manager import ElasticManager
 from .manager import ElasticStatus
@@ -25,12 +26,12 @@ from paddle.distributed.fleet.launch_utils import DistributeMode
 
 
 def enable_elastic(args, distribute_mode):
-    #elastic_level = os.getenv('PADDLE_ELASTIC_FAULT_TOLERANC_LEVEL')
-    #if not elastic_level and (elastic_level != ElasticLevel.FAULT_TOLERANCE and
+    # elastic_level = os.getenv('PADDLE_ELASTIC_FAULT_TOLERANC_LEVEL')
+    # if not elastic_level and (elastic_level != ElasticLevel.FAULT_TOLERANCE and
     #                          elastic_level != ElasticLevel.ELASTIC):
     #    return False
 
-    #if distribute_mode != DistributeMode.COLLECTIVE:
+    # if distribute_mode != DistributeMode.COLLECTIVE:
     #    return False
 
     if not args.elastic_server and not os.getenv('PADDLE_ELASTIC_SERVER'):
@@ -50,6 +51,7 @@ def launch_elastic(args, distribute_mode):
     server = args.elastic_server or os.getenv('PADDLE_ELASTIC_SERVER')
     srv, port = server.split(':')
     import etcd3
+
     etcd_client = etcd3.client(host=srv, port=port)
     elastic = ElasticManager(args, etcd_client)
 

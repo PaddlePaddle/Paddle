@@ -10,25 +10,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import sys
-sys.path.append("..")
-import unittest
-import numpy as np
-import math
-import paddle.fluid.core as core
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import random
 
-from op_test import OpTest
+sys.path.append("..")
+import random
+import unittest
+
+import numpy as np
 from op_test_xpu import XPUOpTest
+
+import paddle
+import paddle.fluid.core as core
+
 sys.path.append("../rnn")
-from rnn_numpy import SimpleRNN, LSTM, GRU
 from convert import get_params_for_net
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from rnn_numpy import LSTM
+from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
 
 random.seed(2)
 np.set_printoptions(threshold=np.inf)
@@ -60,8 +61,8 @@ class XPUTestRNNOp(XPUOpTestWrapper):
             input = np.random.uniform(
                 low=-0.1,
                 high=0.1,
-                size=(self.seq_length, self.batch_size,
-                      self.input_size)).astype(self.dtype)
+                size=(self.seq_length, self.batch_size, self.input_size),
+            ).astype(self.dtype)
             input[11][1:][:] = 0
             input[10][2:][:] = 0
             input[9][3:][:] = 0
@@ -74,25 +75,35 @@ class XPUTestRNNOp(XPUOpTestWrapper):
                 time_major=True,
                 direction=direction,
                 dropout=self.dropout,
-                dtype=self.dtype)
+                dtype=self.dtype,
+            )
 
             flat_w = get_params_for_net(rnn1)
             output, (last_hidden, last_cell) = rnn1(
-                input, sequence_length=self.sequence_length)
+                input, sequence_length=self.sequence_length
+            )
 
             init_h = np.zeros(
-                (self.num_layers * self.direction_num, self.batch_size,
-                 self.hidden_size)).astype(self.dtype)
+                (
+                    self.num_layers * self.direction_num,
+                    self.batch_size,
+                    self.hidden_size,
+                )
+            ).astype(self.dtype)
             init_c = np.zeros(
-                (self.num_layers * self.direction_num, self.batch_size,
-                 self.hidden_size)).astype(self.dtype)
+                (
+                    self.num_layers * self.direction_num,
+                    self.batch_size,
+                    self.hidden_size,
+                )
+            ).astype(self.dtype)
             state_out = np.ndarray((300)).astype("uint8")
 
             self.inputs = {
                 'Input': input,
                 'WeightList': flat_w,
                 'PreState': [('init_h', init_h), ('init_c', init_c)],
-                'SequenceLength': self.sequence_length
+                'SequenceLength': self.sequence_length,
             }
             if self.sequence_length is None:
                 self.inputs = {
@@ -107,14 +118,16 @@ class XPUTestRNNOp(XPUOpTestWrapper):
                 'hidden_size': self.hidden_size,
                 'num_layers': self.num_layers,
                 'mode': self.mode,
-                'is_test': self.is_test
+                'is_test': self.is_test,
             }
             self.outputs = {
                 'Out': output,
-                "State":
-                [('last_hidden', last_hidden), ('last_cell', last_cell)],
+                "State": [
+                    ('last_hidden', last_hidden),
+                    ('last_cell', last_cell),
+                ],
                 'Reserve': np.ndarray((400)).astype("uint8"),
-                'DropoutState': state_out
+                'DropoutState': state_out,
             }
 
         def init_dtype(self):
@@ -127,17 +140,19 @@ class XPUTestRNNOp(XPUOpTestWrapper):
 
         def test_check_output(self):
             self.check_output_with_place(
-                self.place, atol=0.01,
-                no_check_set=['Reserve', 'DropoutState'])
+                self.place, atol=0.01, no_check_set=['Reserve', 'DropoutState']
+            )
 
         def test_grad(self):
             if not self.is_test:
                 var_name_list = self.get_weight_names()
                 grad_check_list = ['Input', 'init_h', 'init_c']
                 grad_check_list.extend(var_name_list)
-                self.check_grad_with_place(self.place,
-                                           set(grad_check_list),
-                                           ['Out', 'last_hidden', 'last_cell'])
+                self.check_grad_with_place(
+                    self.place,
+                    set(grad_check_list),
+                    ['Out', 'last_hidden', 'last_cell'],
+                )
 
         def init_size(self):
             self.seq_length = 12
@@ -200,7 +215,8 @@ for stype in support_types:
         globals(),
         XPUTestRNNOp,
         stype,
-        ignore_deivce_version=[core.XPUVersion.XPU1])
+        ignore_device_version=[core.XPUVersion.XPU1],
+    )
 
 if __name__ == '__main__':
     unittest.main()

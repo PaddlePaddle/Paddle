@@ -15,6 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/fill_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(fill, ops::FillKernel<float>, ops::FillKernel<double>,
-                        ops::FillKernel<int64_t>, ops::FillKernel<int>,
+REGISTER_OP_CUDA_KERNEL(fill,
+                        ops::FillKernel<float>,
+                        ops::FillKernel<double>,
+                        ops::FillKernel<int64_t>,
+                        ops::FillKernel<int>,
                         ops::FillKernel<paddle::platform::float16>);

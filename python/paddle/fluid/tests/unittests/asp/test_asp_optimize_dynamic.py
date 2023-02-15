@@ -1,33 +1,33 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 # Copyright (c) 2022 NVIDIA Corporation.  All rights reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.contrib.sparsity.asp import ASPHelper
+
 import numpy as np
+
+import paddle
+import paddle.fluid.core as core
+from paddle.incubate.asp import ASPHelper
 
 
 class MyLayer(paddle.nn.Layer):
     def __init__(self):
-        super(MyLayer, self).__init__()
+        super().__init__()
         self.conv1 = paddle.nn.Conv2D(
-            in_channels=3, out_channels=2, kernel_size=3, padding=2)
+            in_channels=3, out_channels=2, kernel_size=3, padding=2
+        )
         self.linear1 = paddle.nn.Linear(1352, 32)
         self.linear2 = paddle.nn.Linear(32, 32)
         self.linear3 = paddle.nn.Linear(32, 10)
@@ -51,41 +51,84 @@ class TestASPDynamicOptimize(unittest.TestCase):
             self.place = paddle.CUDAPlace(0)
 
         self.optimizer = paddle.optimizer.SGD(
-            learning_rate=0.01, parameters=self.layer.parameters())
+            learning_rate=0.01, parameters=self.layer.parameters()
+        )
 
     def test_is_supported_layers(self):
         program = paddle.static.default_main_program()
 
         names = [
-            'embedding_0.w_0', 'fack_layer_0.w_0', 'conv2d_0.w_0',
-            'conv2d_0.b_0', 'conv2d_1.w_0', 'conv2d_1.b_0', 'fc_0.w_0',
-            'fc_0.b_0', 'fc_1.w_0', 'fc_1.b_0', 'linear_2.w_0', 'linear_2.b_0'
+            'embedding_0.w_0',
+            'fack_layer_0.w_0',
+            'conv2d_0.w_0',
+            'conv2d_0.b_0',
+            'conv2d_1.w_0',
+            'conv2d_1.b_0',
+            'fc_0.w_0',
+            'fc_0.b_0',
+            'fc_1.w_0',
+            'fc_1.b_0',
+            'linear_2.w_0',
+            'linear_2.b_0',
         ]
         ref = [
-            False, False, True, False, True, False, True, False, True, False,
-            True, False
+            False,
+            False,
+            True,
+            False,
+            True,
+            False,
+            True,
+            False,
+            True,
+            False,
+            True,
+            False,
         ]
         for i, name in enumerate(names):
             self.assertTrue(
-                ref[i] == ASPHelper._is_supported_layer(program, name))
+                ref[i] == ASPHelper._is_supported_layer(program, name)
+            )
 
         paddle.incubate.asp.set_excluded_layers(['fc_1', 'conv2d_0'])
         ref = [
-            False, False, False, False, True, False, True, False, False, False,
-            True, False
+            False,
+            False,
+            False,
+            False,
+            True,
+            False,
+            True,
+            False,
+            False,
+            False,
+            True,
+            False,
         ]
         for i, name in enumerate(names):
             self.assertTrue(
-                ref[i] == ASPHelper._is_supported_layer(program, name))
+                ref[i] == ASPHelper._is_supported_layer(program, name)
+            )
 
         paddle.incubate.asp.reset_excluded_layers()
         ref = [
-            False, False, True, False, True, False, True, False, True, False,
-            True, False
+            False,
+            False,
+            True,
+            False,
+            True,
+            False,
+            True,
+            False,
+            True,
+            False,
+            True,
+            False,
         ]
         for i, name in enumerate(names):
             self.assertTrue(
-                ref[i] == ASPHelper._is_supported_layer(program, name))
+                ref[i] == ASPHelper._is_supported_layer(program, name)
+            )
 
     def test_decorate(self):
         param_names = [param.name for param in self.layer.parameters()]
@@ -95,11 +138,12 @@ class TestASPDynamicOptimize(unittest.TestCase):
 
         for name in param_names:
             mask_var = ASPHelper._get_program_asp_info(program).mask_vars.get(
-                name, None)
+                name, None
+            )
             if ASPHelper._is_supported_layer(program, name):
-                self.assertTrue(mask_var is not None)
+                self.assertIsNotNone(mask_var)
             else:
-                self.assertTrue(mask_var is None)
+                self.assertIsNone(mask_var)
 
     def test_asp_training(self):
         self.optimizer = paddle.incubate.asp.decorate(self.optimizer)
@@ -110,13 +154,14 @@ class TestASPDynamicOptimize(unittest.TestCase):
             np.random.randn(32, 3, 24, 24),
             dtype='float32',
             place=self.place,
-            stop_gradient=False)
+            stop_gradient=False,
+        )
         labels = paddle.to_tensor(
-            np.random.randint(
-                10, size=(32, 1)),
+            np.random.randint(10, size=(32, 1)),
             dtype='float32',
             place=self.place,
-            stop_gradient=False)
+            stop_gradient=False,
+        )
 
         loss_fn = paddle.nn.MSELoss(reduction='mean')
 
@@ -128,11 +173,19 @@ class TestASPDynamicOptimize(unittest.TestCase):
 
         for param in self.layer.parameters():
             if ASPHelper._is_supported_layer(
-                    paddle.static.default_main_program(), param.name):
+                paddle.static.default_main_program(), param.name
+            ):
                 mat = param.numpy()
-                self.assertTrue(
-                    paddle.fluid.contrib.sparsity.check_sparsity(
-                        mat.T, n=2, m=4))
+                if (len(param.shape) == 4 and param.shape[1] < 4) or (
+                    len(param.shape) == 2 and param.shape[0] < 4
+                ):
+                    self.assertFalse(
+                        paddle.incubate.asp.check_sparsity(mat.T, n=2, m=4)
+                    )
+                else:
+                    self.assertTrue(
+                        paddle.incubate.asp.check_sparsity(mat.T, n=2, m=4)
+                    )
 
     def test_asp_training_with_amp(self):
         self.optimizer = paddle.incubate.asp.decorate(self.optimizer)
@@ -143,13 +196,14 @@ class TestASPDynamicOptimize(unittest.TestCase):
             np.random.randn(32, 3, 24, 24),
             dtype='float32',
             place=self.place,
-            stop_gradient=False)
+            stop_gradient=False,
+        )
         labels = paddle.to_tensor(
-            np.random.randint(
-                10, size=(32, 1)),
+            np.random.randint(10, size=(32, 1)),
             dtype='float32',
             place=self.place,
-            stop_gradient=False)
+            stop_gradient=False,
+        )
 
         loss_fn = paddle.nn.MSELoss(reduction='mean')
         scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
@@ -164,11 +218,20 @@ class TestASPDynamicOptimize(unittest.TestCase):
 
         for param in self.layer.parameters():
             if ASPHelper._is_supported_layer(
-                    paddle.static.default_main_program(), param.name):
+                paddle.static.default_main_program(), param.name
+            ):
                 mat = param.numpy()
-                self.assertTrue(
-                    paddle.fluid.contrib.sparsity.check_sparsity(
-                        mat.T, n=2, m=4))
+                if (len(param.shape) == 4 and param.shape[1] < 4) or (
+                    len(param.shape) == 2 and param.shape[0] < 4
+                ):
+                    self.assertFalse(
+                        paddle.incubate.asp.check_sparsity(mat.T, n=2, m=4)
+                    )
+                else:
+
+                    self.assertTrue(
+                        paddle.incubate.asp.check_sparsity(mat.T, n=2, m=4)
+                    )
 
 
 if __name__ == '__main__':

@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
-
 #include "paddle/phi/kernels/impl/matmul_grad_kernel_impl.h"
 
 PD_REGISTER_KERNEL(matmul_grad,

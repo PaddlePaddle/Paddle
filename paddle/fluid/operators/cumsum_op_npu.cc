@@ -19,9 +19,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
-static void CumsumImp(const Tensor& input, Tensor* output,
+static void CumsumImp(const phi::DenseTensor& input,
+                      phi::DenseTensor* output,
                       const framework::NPUAttributeMap& attr_input,
                       const framework::ExecutionContext& ctx) {
   auto stream =
@@ -29,16 +28,18 @@ static void CumsumImp(const Tensor& input, Tensor* output,
           .stream();
   if (framework::TransToProtoVarType(input.dtype()) ==
       framework::proto::VarType::INT64) {
-    Tensor tmp_input;
+    phi::DenseTensor tmp_input;
     tmp_input.mutable_data<float>(input.dims(), ctx.GetPlace());
     auto dst_acl_dtype =
         ConvertToNpuDtype(framework::TransToProtoVarType(tmp_input.type()));
     const auto& cast_runner_1 =
-        NpuOpRunner("Cast", {input}, {tmp_input},
+        NpuOpRunner("Cast",
+                    {input},
+                    {tmp_input},
                     {{"dst_type", static_cast<int>(dst_acl_dtype)}});
     cast_runner_1.Run(stream);
 
-    Tensor tmp_output;
+    phi::DenseTensor tmp_output;
     tmp_output.mutable_data<float>(output->dims(), ctx.GetPlace());
     const auto& runner =
         NpuOpRunner("CumsumD", {tmp_input}, {tmp_output}, attr_input);
@@ -47,7 +48,9 @@ static void CumsumImp(const Tensor& input, Tensor* output,
     dst_acl_dtype =
         ConvertToNpuDtype(framework::TransToProtoVarType(output->type()));
     const auto& cast_runner_2 =
-        NpuOpRunner("Cast", {tmp_output}, {*output},
+        NpuOpRunner("Cast",
+                    {tmp_output},
+                    {*output},
                     {{"dst_type", static_cast<int>(dst_acl_dtype)}});
     cast_runner_2.Run(stream);
   } else {
@@ -60,8 +63,8 @@ template <typename DeviceContext, typename T>
 class CumSumNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     int axis = ctx.Attr<int>("axis");
     bool exclusive = ctx.Attr<bool>("exclusive");
     bool reverse = ctx.Attr<bool>("reverse");
@@ -74,12 +77,14 @@ class CumSumNPUKernel : public framework::OpKernel<T> {
     bool flatten = ctx.Attr<bool>("flatten");
     if (flatten) {
       PADDLE_ENFORCE_EQ(
-          axis, -1,
+          axis,
+          -1,
           platform::errors::InvalidArgument(
               "when flatten is true, attr axis must be default %d, but got %d",
-              -1, axis));
+              -1,
+              axis));
 
-      Tensor new_x(x->type());
+      phi::DenseTensor new_x(x->type());
       new_x.ShareDataWith(*x);
 
       new_x.Resize(phi::make_ddim({x->numel()}));
@@ -97,7 +102,8 @@ class CumSumNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_NPU_KERNEL(
-    cumsum, ops::CumSumNPUKernel<plat::NPUDeviceContext, int>,
+    cumsum,
+    ops::CumSumNPUKernel<plat::NPUDeviceContext, int>,
 #ifdef PADDLE_WITH_ASCEND_INT64
     ops::CumSumNPUKernel<plat::NPUDeviceContext, int64_t>,
 #endif

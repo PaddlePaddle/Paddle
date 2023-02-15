@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+
 #include "paddle/fluid/platform/event.h"
 #include "paddle/fluid/platform/profiler/trace_event.h"
 
@@ -37,7 +38,8 @@ struct RecordInstantEvent {
    * @param level: Used to filter events, works like glog VLOG(level).
    * RecordEvent will works if HostTraceLevel >= level.
    */
-  explicit RecordInstantEvent(const char* name, TracerEventType type,
+  explicit RecordInstantEvent(const char* name,
+                              TracerEventType type,
                               uint32_t level = kDefaultTraceLevel);
 };
 
@@ -46,6 +48,7 @@ struct RecordInstantEvent {
 // Chrome Trace Viewer Format: Duration Event/Complte Event
 class RecordEvent {
  public:
+  static bool IsEnabled();
   /**
    * @param name: If your string argument has a longer lifetime (e.g.: string
    * literal, static variables, etc) than the event, use 'const char* name'.
@@ -70,12 +73,14 @@ class RecordEvent {
    * @param level: Used to filter events, works like glog VLOG(level).
    * RecordEvent will works if HostTraceLevel >= level.
    */
-  explicit RecordEvent(const char* name, const TracerEventType type =
-                                             TracerEventType::UserDefined,
-                       uint32_t level = kDefaultTraceLevel,
-                       const EventRole role = EventRole::kOrdinary);
+  explicit RecordEvent(
+      const char* name,
+      const TracerEventType type = TracerEventType::UserDefined,
+      uint32_t level = kDefaultTraceLevel,
+      const EventRole role = EventRole::kOrdinary);
 
-  RecordEvent(const std::string& name, const std::string& attr,
+  RecordEvent(const std::string& name,
+              const std::string& attr,
               const TracerEventType type = TracerEventType::UserDefined,
               uint32_t level = kDefaultTraceLevel,
               const EventRole role = EventRole::kOrdinary);
@@ -87,7 +92,8 @@ class RecordEvent {
   ~RecordEvent() { End(); }
 
  private:
-  void OriginalConstruct(const std::string& name, const EventRole role,
+  void OriginalConstruct(const std::string& name,
+                         const EventRole role,
                          const std::string& attr);
 
   bool is_enabled_{false};

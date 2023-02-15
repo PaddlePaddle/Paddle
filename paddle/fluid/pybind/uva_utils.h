@@ -15,6 +15,11 @@
 #pragma once
 
 #include <Python.h>
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
+
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
@@ -23,8 +28,7 @@
 namespace paddle {
 namespace pybind {
 
-static void tensor_uva(paddle::framework::LoDTensor *self_tensor,
-                       int device_id) {
+static void tensor_uva(phi::DenseTensor *self_tensor, int device_id) {
   VLOG(4) << "Running in _uva interface.";
 #if defined(PADDLE_WITH_CUDA)
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
@@ -45,12 +49,14 @@ static void tensor_uva(paddle::framework::LoDTensor *self_tensor,
   // Get device pointer from the function of cudaHostGetDevicePointer
   void *cuda_device_pointer = nullptr;
   cudaHostGetDevicePointer(reinterpret_cast<void **>(&cuda_device_pointer),
-                           reinterpret_cast<void *>(data_ptr), 0);
+                           reinterpret_cast<void *>(data_ptr),
+                           0);
 
   // Reset the memory with device pointer
   std::shared_ptr<memory::allocation::Allocation> holder =
       std::make_shared<memory::allocation::Allocation>(
-          cuda_device_pointer, need_allocate_size,
+          cuda_device_pointer,
+          need_allocate_size,
           platform::CUDAPlace(device_id));
   self_tensor->ResetHolderWithType(holder, self_tensor->dtype());
 #endif

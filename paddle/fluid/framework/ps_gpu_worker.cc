@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
+#include "paddle/fluid/operators/isfinite_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
 #include "paddle/fluid/string/string_helper.h"
@@ -128,16 +129,16 @@ void PSGPUWorker::TrainFiles() {
   timeline.Start();
 
   int total_ins_num = 0;
-
-  // how to accumulate fetched values here
-  device_reader_->Start();
-  int cur_batch;
-  int batch_cnt = 0;
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   platform::SetDeviceId(thread_id_);
 #elif defined(PADDLE_WITH_XPU_BKCL)
   platform::SetXPUDeviceId(thread_id_);
 #endif
+
+  // how to accumulate fetched values here
+  device_reader_->Start();
+  int cur_batch;
+  int batch_cnt = 0;
   while ((cur_batch = device_reader_->Next()) > 0) {
     total_ins_num += cur_batch;
     for (auto& op : ops_) {
@@ -164,7 +165,7 @@ void PSGPUWorker::TrainFiles() {
       if (var == nullptr) {
         continue;
       }
-      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
       if (tensor == nullptr || !tensor->IsInitialized()) {
         continue;
       }

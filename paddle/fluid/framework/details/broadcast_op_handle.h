@@ -56,7 +56,8 @@ namespace details {
 struct BroadcastOpHandle : public OpHandleBase {
  public:
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  BroadcastOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
+  BroadcastOpHandle(ir::Node *node,
+                    const std::vector<Scope *> &local_scopes,
                     const std::vector<platform::Place> &places,
                     const platform::NCCLContextMap *nccl_ctxs)
       : OpHandleBase(node),
@@ -72,7 +73,8 @@ struct BroadcastOpHandle : public OpHandleBase {
   }
 #endif
 #if defined(PADDLE_WITH_XPU_BKCL)
-  BroadcastOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
+  BroadcastOpHandle(ir::Node *node,
+                    const std::vector<Scope *> &local_scopes,
                     const std::vector<platform::Place> &places,
                     const platform::BKCLContextMap *bkcl_ctxs)
       : OpHandleBase(node),
@@ -87,7 +89,8 @@ struct BroadcastOpHandle : public OpHandleBase {
     }
   }
 #endif
-  BroadcastOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
+  BroadcastOpHandle(ir::Node *node,
+                    const std::vector<Scope *> &local_scopes,
                     const std::vector<platform::Place> &places)
       : OpHandleBase(node), local_scopes_(local_scopes), places_(places) {}
 

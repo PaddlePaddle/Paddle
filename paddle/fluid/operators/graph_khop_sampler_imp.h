@@ -23,12 +23,12 @@ inline __device__ size_t Hash(IdType id, int64_t size) {
 }
 
 template <typename IdType>
-inline __device__ bool AttemptInsert(size_t pos, IdType id, int64_t index,
-                                     IdType* keys, int64_t* key_index) {
+inline __device__ bool AttemptInsert(
+    size_t pos, IdType id, int64_t index, IdType* keys, int64_t* key_index) {
   if (sizeof(IdType) == 4) {
-    const IdType key =
-        atomicCAS(reinterpret_cast<unsigned int*>(&keys[pos]),
-                  static_cast<unsigned int>(-1), static_cast<unsigned int>(id));
+    const IdType key = atomicCAS(reinterpret_cast<unsigned int*>(&keys[pos]),
+                                 static_cast<unsigned int>(-1),
+                                 static_cast<unsigned int>(id));
     if (key == -1 || key == id) {
       atomicMin(
           reinterpret_cast<unsigned long long int*>(&key_index[pos]),  // NOLINT
@@ -54,8 +54,8 @@ inline __device__ bool AttemptInsert(size_t pos, IdType id, int64_t index,
 }
 
 template <typename IdType>
-inline __device__ void Insert(IdType id, int64_t index, int64_t size,
-                              IdType* keys, int64_t* key_index) {
+inline __device__ void Insert(
+    IdType id, int64_t index, int64_t size, IdType* keys, int64_t* key_index) {
   size_t pos = Hash(id, size);
   size_t delta = 1;
   while (!AttemptInsert(pos, id, index, keys, key_index)) {
@@ -78,17 +78,23 @@ inline __device__ int64_t Search(IdType id, const IdType* keys, int64_t size) {
 }
 
 template <typename IdType>
-__global__ void BuildHashTable(const IdType* items, int64_t num_items,
-                               int64_t size, IdType* keys, int64_t* key_index) {
+__global__ void BuildHashTable(const IdType* items,
+                               int64_t num_items,
+                               int64_t size,
+                               IdType* keys,
+                               int64_t* key_index) {
   CUDA_KERNEL_LOOP_TYPE(index, num_items, int64_t) {
     Insert(items[index], index, size, keys, key_index);
   }
 }
 
 template <typename IdType>
-__global__ void GetItemIndexCount(const IdType* items, int* item_count,
-                                  int64_t num_items, int64_t size,
-                                  const IdType* keys, int64_t* key_index) {
+__global__ void GetItemIndexCount(const IdType* items,
+                                  int* item_count,
+                                  int64_t num_items,
+                                  int64_t size,
+                                  const IdType* keys,
+                                  int64_t* key_index) {
   CUDA_KERNEL_LOOP_TYPE(i, num_items, int64_t) {
     int64_t pos = Search(items[i], keys, size);
     if (key_index[pos] == i) {
@@ -98,10 +104,14 @@ __global__ void GetItemIndexCount(const IdType* items, int* item_count,
 }
 
 template <typename IdType>
-__global__ void FillUniqueItems(const IdType* items, int64_t num_items,
-                                int64_t size, IdType* unique_items,
-                                const int* item_count, const IdType* keys,
-                                IdType* values, int64_t* key_index) {
+__global__ void FillUniqueItems(const IdType* items,
+                                int64_t num_items,
+                                int64_t size,
+                                IdType* unique_items,
+                                const int* item_count,
+                                const IdType* keys,
+                                IdType* values,
+                                int64_t* key_index) {
   CUDA_KERNEL_LOOP_TYPE(i, num_items, int64_t) {
     int64_t pos = Search(items[i], keys, size);
     if (key_index[pos] == i) {
@@ -112,8 +122,10 @@ __global__ void FillUniqueItems(const IdType* items, int64_t num_items,
 }
 
 template <typename IdType>
-__global__ void ReindexSrcOutput(IdType* src_output, int64_t num_items,
-                                 int64_t size, const IdType* keys,
+__global__ void ReindexSrcOutput(IdType* src_output,
+                                 int64_t num_items,
+                                 int64_t size,
+                                 const IdType* keys,
                                  const IdType* values) {
   CUDA_KERNEL_LOOP_TYPE(i, num_items, int64_t) {
     int64_t pos = Search(src_output[i], keys, size);
@@ -122,9 +134,12 @@ __global__ void ReindexSrcOutput(IdType* src_output, int64_t num_items,
 }
 
 template <typename IdType>
-__global__ void ReindexInputNodes(const IdType* nodes, int64_t num_items,
-                                  IdType* reindex_nodes, int64_t size,
-                                  const IdType* keys, const IdType* values) {
+__global__ void ReindexInputNodes(const IdType* nodes,
+                                  int64_t num_items,
+                                  IdType* reindex_nodes,
+                                  int64_t size,
+                                  const IdType* keys,
+                                  const IdType* values) {
   CUDA_KERNEL_LOOP_TYPE(i, num_items, int64_t) {
     int64_t pos = Search(nodes[i], keys, size);
     reindex_nodes[i] = values[pos];

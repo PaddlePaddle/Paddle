@@ -13,13 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/executor_thread_worker.h"
+
 #include <algorithm>
 #include <utility>
+
+#include "gflags/gflags.h"
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
-
-#include "gflags/gflags.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
@@ -89,7 +90,7 @@ std::future<int32_t> DensePullThread::pull_dense(uint64_t table_id) {
   for (auto i = 0u; i < variables.size(); ++i) {
     auto& t = variables[i];
     Variable* var = _root_scope->FindVar(t);
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
 
     float* w = tensor->data<float>();
     paddle::ps::Region reg(w, tensor->numel());
@@ -180,8 +181,8 @@ void ExecutorThreadWorker::BindingDataFeedMemory() {
 void ExecutorThreadWorker::SetFetchVarNames(
     const std::vector<std::string>& fetch_var_names) {
   fetch_var_names_.clear();
-  fetch_var_names_.insert(fetch_var_names_.end(), fetch_var_names.begin(),
-                          fetch_var_names.end());
+  fetch_var_names_.insert(
+      fetch_var_names_.end(), fetch_var_names.begin(), fetch_var_names.end());
 }
 
 void ExecutorThreadWorker::SetDevice() {
@@ -218,7 +219,8 @@ void ExecutorThreadWorker::SetDevice() {
 }
 
 template <typename T>
-void print_lod_tensor(std::string var_name, const LoDTensor& lod_tensor) {
+void print_lod_tensor(std::string var_name,
+                      const phi::DenseTensor& lod_tensor) {
   auto inspect = lod_tensor.data<T>();
   auto element_num = lod_tensor.numel();
 
@@ -234,7 +236,7 @@ void print_lod_tensor(std::string var_name, const LoDTensor& lod_tensor) {
 }
 
 static void print_fetch_var(Scope* scope, const std::string& var_name) {
-  auto& tensor = scope->FindVar(var_name)->Get<LoDTensor>();
+  auto& tensor = scope->FindVar(var_name)->Get<phi::DenseTensor>();
 
 #define PrintLoDTensorCallback(cpp_type, proto_type)                    \
   do {                                                                  \
@@ -284,8 +286,11 @@ void ExecutorThreadWorker::TrainFilesWithTimer() {
     if (thread_id_ == 0) {
       if (batch_cnt > 0 && batch_cnt % 100 == 0) {
         for (size_t i = 0; i < ops_.size(); ++i) {
-          fprintf(stderr, "op_name:[%zu][%s], op_mean_time:[%fs]\n", i,
-                  op_name[i].c_str(), op_total_time[i] / batch_cnt);
+          fprintf(stderr,
+                  "op_name:[%zu][%s], op_mean_time:[%fs]\n",
+                  i,
+                  op_name[i].c_str(),
+                  op_total_time[i] / batch_cnt);
         }
         fprintf(stderr, "mean read time: %fs\n", read_time / batch_cnt);
         int fetch_var_num = fetch_var_names_.size();
@@ -474,15 +479,15 @@ void AsyncExecutorThreadWorker::PushDense(int table_id) {
   for (auto& t : _param_config->dense_gradient_variable_name[table_id]) {
     Variable* var = thread_scope_->FindVar(t);
     CHECK(var != nullptr) << "var[" << t << "] not found";
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     int count = tensor->numel();
     float* g = tensor->data<float>();
     paddle::ps::Region reg(g, count);
     regions.emplace_back(std::move(reg));
   }
 
-  auto status = _pslib_ptr->_worker_ptr->push_dense(regions.data(),
-                                                    regions.size(), table_id);
+  auto status = _pslib_ptr->_worker_ptr->push_dense(
+      regions.data(), regions.size(), table_id);
   _push_dense_status.push_back(std::move(status));
 }
 
@@ -498,7 +503,7 @@ void AsyncExecutorThreadWorker::PullSparse(int table_id) {
   // slot_idx = 0 is label TODO
   for (auto slot_idx = 1u; slot_idx < feed_vec.size(); ++slot_idx) {
     Variable* var = thread_scope_->FindVar(feed_vec[slot_idx]);
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     int64_t* ids = tensor->data<int64_t>();
     int len = tensor->numel();
     for (auto i = 0u; i < len; ++i) {
@@ -542,12 +547,12 @@ void AsyncExecutorThreadWorker::FillSparse(int table_id) {
   // slot_idx = 0 is label TODO
   for (auto slot_idx = 1u; slot_idx < feed_vec.size(); ++slot_idx) {
     Variable* var = thread_scope_->FindVar(feed_vec[slot_idx]);
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     int64_t* ids = tensor->data<int64_t>();
     int len = tensor->numel();
     Variable* var_emb = thread_scope_->FindVar(
         _param_config->slot_input_vec[table_id][slot_idx - 1]);
-    LoDTensor* tensor_emb = var_emb->GetMutable<LoDTensor>();
+    phi::DenseTensor* tensor_emb = var_emb->GetMutable<phi::DenseTensor>();
     float* ptr =
         tensor_emb->mutable_data<float>({len, slot_dim}, platform::CPUPlace());
     memset(ptr, 0, sizeof(float) * len * slot_dim);
@@ -558,11 +563,13 @@ void AsyncExecutorThreadWorker::FillSparse(int table_id) {
 
     for (auto index = 0u; index < len; ++index) {
       if (ids[index] == 0u) {
-        memcpy(ptr + slot_dim * index, init_value.data() + 2,
+        memcpy(ptr + slot_dim * index,
+               init_value.data() + 2,
                sizeof(float) * slot_dim);
         continue;
       }
-      memcpy(ptr + slot_dim * index, fea_value[fea_idx].data() + 2,
+      memcpy(ptr + slot_dim * index,
+             fea_value[fea_idx].data() + 2,
              sizeof(float) * slot_dim);
       fea_idx++;
     }
@@ -597,7 +604,7 @@ void AsyncExecutorThreadWorker::PushSparse(int table_id) {
     CHECK(g_var != nullptr)
         << "var[" << _param_config->gradient_var[table_id][slot_idx - 1]
         << "] not found";
-    LoDTensor* g_tensor = g_var->GetMutable<LoDTensor>();
+    phi::DenseTensor* g_tensor = g_var->GetMutable<phi::DenseTensor>();
     if (g_tensor == NULL) {
       LOG(ERROR) << "var["
                  << _param_config->gradient_var[table_id][slot_idx - 1]
@@ -608,7 +615,7 @@ void AsyncExecutorThreadWorker::PushSparse(int table_id) {
 
     Variable* var = thread_scope_->FindVar(feed_vec[slot_idx]);
     CHECK(var != nullptr) << "var[" << feed_vec[slot_idx] << "] not found";
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     if (tensor == NULL) {
       LOG(ERROR) << "var[" << feed_vec[slot_idx] << "] not found";
       exit(-1);
@@ -616,8 +623,8 @@ void AsyncExecutorThreadWorker::PushSparse(int table_id) {
     int len = tensor->numel();
     CHECK(slot_dim * len == g_tensor->numel())
         << "len:" << len << " g_numel:" << g_tensor->numel();
-    CHECK(len == tensor->numel()) << "len:" << len
-                                  << "t_numel:" << tensor->numel();
+    CHECK(len == tensor->numel())
+        << "len:" << len << "t_numel:" << tensor->numel();
     int64_t* ids = tensor->data<int64_t>();
     for (auto id_idx = 0u; id_idx < len; ++id_idx) {
       if (ids[id_idx] == 0) {
@@ -626,24 +633,26 @@ void AsyncExecutorThreadWorker::PushSparse(int table_id) {
       }
       memcpy(push_g[fea_idx].data() + offset, g, sizeof(float) * slot_dim);
       push_g[fea_idx][0] = 1.0f;
-      CHECK(fea_idx < fea_info.size()) << "fea_idx:" << fea_idx
-                                       << " size:" << fea_info.size();
+      CHECK(fea_idx < fea_info.size())
+          << "fea_idx:" << fea_idx << " size:" << fea_info.size();
       push_g[fea_idx][1] = static_cast<float>(fea_info[fea_idx].label);
       g += slot_dim;
       fea_idx++;
     }
   }
-  CHECK(fea_idx == features.size()) << "fea_idx:" << fea_idx
-                                    << " features size:" << features.size();
+  CHECK(fea_idx == features.size())
+      << "fea_idx:" << fea_idx << " features size:" << features.size();
   CHECK_GT(features.size(), 0);
 
   std::vector<float*> push_g_vec;
   for (auto i = 0u; i < features.size(); ++i) {
     push_g_vec.push_back(push_g[i].data());
   }
-  auto status = _pslib_ptr->_worker_ptr->push_sparse(
-      table_id, features.data(), (const float**)push_g_vec.data(),
-      features.size());
+  auto status =
+      _pslib_ptr->_worker_ptr->push_sparse(table_id,
+                                           features.data(),
+                                           (const float**)push_g_vec.data(),
+                                           features.size());
   _push_sparse_status.push_back(std::move(status));
 }
 
@@ -653,13 +662,13 @@ void AsyncExecutorThreadWorker::collect_feasign_info(int table_id) {
   fea_info.resize(feature.size());
   const std::vector<std::string>& feed_vec = thread_reader_->GetUseSlotAlias();
   Variable* var = thread_scope_->FindVar(feed_vec[0]);
-  LoDTensor* tensor = var->GetMutable<LoDTensor>();
+  phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
   int64_t* label = tensor->data<int64_t>();
 
   int global_index = 0;
   for (auto slot_idx = 1u; slot_idx < feed_vec.size(); ++slot_idx) {
     Variable* var = thread_scope_->FindVar(feed_vec[slot_idx]);
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     int64_t* ids = tensor->data<int64_t>();
 
     int fea_idx = 0;
@@ -680,7 +689,8 @@ void AsyncExecutorThreadWorker::collect_feasign_info(int table_id) {
 
 void AsyncExecutorThreadWorker::check_pull_push_memory(
     const std::vector<uint64_t>& features,
-    std::vector<std::vector<float>>* push_g, int dim) {
+    std::vector<std::vector<float>>* push_g,
+    int dim) {
   push_g->resize(features.size() + 1);
   for (auto& t : *push_g) {
     t.resize(dim);
@@ -688,7 +698,8 @@ void AsyncExecutorThreadWorker::check_pull_push_memory(
 }
 
 void AsyncExecutorThreadWorker::check_pull_push_memory(
-    const std::vector<uint64_t>& features, std::vector<float*>* push_g,
+    const std::vector<uint64_t>& features,
+    std::vector<float*>* push_g,
     int dim) {
   if (features.size() > push_g->size()) {
     push_g->reserve(features.size() + 1);
@@ -701,5 +712,5 @@ void AsyncExecutorThreadWorker::check_pull_push_memory(
 }
 #endif
 
-}  // einit_modelnd namespace framework
+}  // namespace framework
 }  // end namespace paddle

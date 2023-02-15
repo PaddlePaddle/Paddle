@@ -14,11 +14,9 @@ limitations under the License. */
 
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
-#endif
-#include "paddle/fluid/platform/cudnn_workspace_helper.h"
+#include "paddle/phi/backends/gpu/cuda/cudnn_workspace_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -33,20 +31,27 @@ class ConvInceptionFusionOp : public framework::OperatorWithKernel {
     auto w_dims = ctx->GetInputsDim("Filter");
 
     PADDLE_ENFORCE_EQ(
-        in_dims.size(), 4,
+        in_dims.size(),
+        4,
         platform::errors::InvalidArgument("Conv intput should be 4-D tensor."));
-    PADDLE_ENFORCE_EQ(w_dims.size(), 4, platform::errors::InvalidArgument(
-                                            "There should be 4 filters."));
-    PADDLE_ENFORCE_EQ(w_dims[0][1], in_dims[1],
+    PADDLE_ENFORCE_EQ(
+        w_dims.size(),
+        4,
+        platform::errors::InvalidArgument("There should be 4 filters."));
+    PADDLE_ENFORCE_EQ(w_dims[0][1],
+                      in_dims[1],
                       platform::errors::InvalidArgument(
                           "Invalid fileter channel number %d, which should be "
                           "equal to input channel number %d.",
-                          w_dims[0][1], in_dims[1]));
-    PADDLE_ENFORCE_EQ(w_dims[1][1], in_dims[1],
+                          w_dims[0][1],
+                          in_dims[1]));
+    PADDLE_ENFORCE_EQ(w_dims[1][1],
+                      in_dims[1],
                       platform::errors::InvalidArgument(
                           "Invalid fileter channel number %d, which should be "
                           "equal to input channel number %d.",
-                          w_dims[1][1], in_dims[1]));
+                          w_dims[1][1],
+                          in_dims[1]));
 
     int n = in_dims[0];
     // compute output channel
@@ -66,11 +71,10 @@ class ConvInceptionFusionOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+                          ctx.GetPlace());
   }
 };
 
@@ -108,7 +112,7 @@ class ConvInceptionFusionOpMaker : public framework::OpProtoAndCheckerMaker {
                  "allocated/freed each time the operator runs, larger "
                  "workspace size can increase performance but also requires "
                  "better hardware. This size should be chosen carefully.")
-        .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB());
+        .SetDefault(phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB());
     AddComment(R"DOC(
 )DOC");
   }
@@ -119,7 +123,8 @@ class ConvInceptionFusionOpMaker : public framework::OpProtoAndCheckerMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    conv2d_inception_fusion, ops::ConvInceptionFusionOp,
+    conv2d_inception_fusion,
+    ops::ConvInceptionFusionOp,
     ops::ConvInceptionFusionOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

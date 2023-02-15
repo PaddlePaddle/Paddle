@@ -1,25 +1,23 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-import unittest
-import numpy as np
-import paddle
-import paddle.fluid.core as core
-from paddle import _C_ops
-from paddle.fluid.framework import _test_eager_guard
 import copy
+import unittest
+
+import numpy as np
+
+import paddle
 
 
 class TestMaxPool3DFunc(unittest.TestCase):
@@ -43,30 +41,31 @@ class TestMaxPool3DFunc(unittest.TestCase):
         self.setPadding()
 
     def test(self):
-        with _test_eager_guard():
-            self.setUp()
-            self.dense_x.stop_gradient = False
-            sparse_x = self.dense_x.to_sparse_coo(4)
-            sparse_out = paddle.sparse.functional.max_pool3d(
-                sparse_x,
-                self.kernel_sizes,
-                stride=self.strides,
-                padding=self.paddings)
-            out = sparse_out.to_dense()
-            out.backward(out)
+        self.setUp()
+        self.dense_x.stop_gradient = False
+        sparse_x = self.dense_x.to_sparse_coo(4)
+        sparse_out = paddle.sparse.nn.functional.max_pool3d(
+            sparse_x,
+            self.kernel_sizes,
+            stride=self.strides,
+            padding=self.paddings,
+        )
+        out = sparse_out.to_dense()
+        out.backward(out)
 
-            dense_x = copy.deepcopy(self.dense_x)
-            dense_out = paddle.nn.functional.max_pool3d(
-                dense_x,
-                self.kernel_sizes,
-                stride=self.strides,
-                padding=self.paddings,
-                data_format='NDHWC')
-            dense_out.backward(dense_out)
+        dense_x = copy.deepcopy(self.dense_x)
+        dense_out = paddle.nn.functional.max_pool3d(
+            dense_x,
+            self.kernel_sizes,
+            stride=self.strides,
+            padding=self.paddings,
+            data_format='NDHWC',
+        )
+        dense_out.backward(dense_out)
 
-            #compare with dense
-            assert np.allclose(dense_out.numpy(), out.numpy())
-            assert np.allclose(dense_x.grad.numpy(), self.dense_x.grad.numpy())
+        # compare with dense
+        assert np.allclose(dense_out.numpy(), out.numpy())
+        assert np.allclose(dense_x.grad.numpy(), self.dense_x.grad.numpy())
 
 
 class TestStride(TestMaxPool3DFunc):
@@ -101,17 +100,18 @@ class TestInput(TestMaxPool3DFunc):
 
 class TestMaxPool3DAPI(unittest.TestCase):
     def test(self):
-        with _test_eager_guard():
-            dense_x = paddle.randn((2, 3, 6, 6, 3))
-            sparse_x = dense_x.to_sparse_coo(4)
-            max_pool3d = paddle.sparse.MaxPool3D(
-                kernel_size=3, data_format='NDHWC')
-            out = max_pool3d(sparse_x)
-            out = out.to_dense()
+        dense_x = paddle.randn((2, 3, 6, 6, 3))
+        sparse_x = dense_x.to_sparse_coo(4)
+        max_pool3d = paddle.sparse.nn.MaxPool3D(
+            kernel_size=3, data_format='NDHWC'
+        )
+        out = max_pool3d(sparse_x)
+        out = out.to_dense()
 
-            dense_out = paddle.nn.functional.max_pool3d(
-                dense_x, 3, data_format='NDHWC')
-            assert np.allclose(dense_out.numpy(), out.numpy())
+        dense_out = paddle.nn.functional.max_pool3d(
+            dense_x, 3, data_format='NDHWC'
+        )
+        assert np.allclose(dense_out.numpy(), out.numpy())
 
 
 if __name__ == "__main__":

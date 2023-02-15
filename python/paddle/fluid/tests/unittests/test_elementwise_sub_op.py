@@ -12,21 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
+
 import numpy as np
+from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.core as core
-from op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
+
+
+def sub_wrapper(shape=None):
+    def inner_wrapper(x, y, axis=-1):
+        if shape is None:
+            return x - y
+        else:
+            return x - y.reshape(shape)
+
+    return inner_wrapper
 
 
 class TestElementwiseOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_sub"
+        self.python_api = sub_wrapper()
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64"),
-            'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64")
+            'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64"),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
@@ -38,16 +49,52 @@ class TestElementwiseOp(OpTest):
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
-            ['Y'], 'Out', max_relative_error=0.005, no_grad_set=set("X"))
+            ['Y'], 'Out', max_relative_error=0.005, no_grad_set=set("X")
+        )
 
     def test_check_grad_ingore_y(self):
         self.check_grad(
-            ['X'], 'Out', max_relative_error=0.005, no_grad_set=set('Y'))
+            ['X'], 'Out', max_relative_error=0.005, no_grad_set=set('Y')
+        )
+
+
+class TestElementwiseSubOp_ZeroDim1(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.python_api = sub_wrapper()
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, []).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, []).astype("float64"),
+        }
+        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+
+
+class TestElementwiseSubOp_ZeroDim2(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.python_api = sub_wrapper()
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, []).astype("float64"),
+        }
+        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+
+
+class TestElementwiseSubOp_ZeroDim3(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.python_api = sub_wrapper()
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, []).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64"),
+        }
+        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
 
 class TestBF16ElementwiseOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_sub"
+        self.python_api = sub_wrapper()
         self.dtype = np.uint16
         x = np.random.uniform(0.1, 1, [13, 17]).astype(np.float32)
         y = np.random.uniform(0.1, 1, [13, 17]).astype(np.float32)
@@ -55,7 +102,7 @@ class TestBF16ElementwiseOp(OpTest):
 
         self.inputs = {
             'X': convert_float_to_uint16(x),
-            'Y': convert_float_to_uint16(y)
+            'Y': convert_float_to_uint16(y),
         }
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
@@ -73,13 +120,15 @@ class TestBF16ElementwiseOp(OpTest):
 
 
 @skip_check_grad_ci(
-    reason="[skip shape check] Use y_shape(1) to test broadcast.")
+    reason="[skip shape check] Use y_shape(1) to test broadcast."
+)
 class TestElementwiseSubOp_scalar(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
+        self.python_api = sub_wrapper()
         self.inputs = {
             'X': np.random.rand(10, 3, 4).astype(np.float64),
-            'Y': np.random.rand(1).astype(np.float64)
+            'Y': np.random.rand(1).astype(np.float64),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
@@ -87,9 +136,10 @@ class TestElementwiseSubOp_scalar(TestElementwiseOp):
 class TestElementwiseSubOp_Vector(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
+        self.python_api = sub_wrapper()
         self.inputs = {
-            'X': np.random.random((100, )).astype("float64"),
-            'Y': np.random.random((100, )).astype("float64")
+            'X': np.random.random((100,)).astype("float64"),
+            'Y': np.random.random((100,)).astype("float64"),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
@@ -97,9 +147,10 @@ class TestElementwiseSubOp_Vector(TestElementwiseOp):
 class TestElementwiseSubOp_broadcast_0(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
+        self.python_api = sub_wrapper(shape=[100, 1, 1])
         self.inputs = {
             'X': np.random.rand(100, 3, 2).astype(np.float64),
-            'Y': np.random.rand(100).astype(np.float64)
+            'Y': np.random.rand(100).astype(np.float64),
         }
 
         self.attrs = {'axis': 0}
@@ -111,9 +162,10 @@ class TestElementwiseSubOp_broadcast_0(TestElementwiseOp):
 class TestElementwiseSubOp_broadcast_1(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
+        self.python_api = sub_wrapper(shape=[1, 100, 1])
         self.inputs = {
             'X': np.random.rand(2, 100, 3).astype(np.float64),
-            'Y': np.random.rand(100).astype(np.float64)
+            'Y': np.random.rand(100).astype(np.float64),
         }
 
         self.attrs = {'axis': 1}
@@ -125,9 +177,10 @@ class TestElementwiseSubOp_broadcast_1(TestElementwiseOp):
 class TestElementwiseSubOp_broadcast_2(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
+        self.python_api = sub_wrapper(shape=[1, 1, 100])
         self.inputs = {
             'X': np.random.rand(2, 3, 100).astype(np.float64),
-            'Y': np.random.rand(100).astype(np.float64)
+            'Y': np.random.rand(100).astype(np.float64),
         }
 
         self.outputs = {
@@ -138,9 +191,10 @@ class TestElementwiseSubOp_broadcast_2(TestElementwiseOp):
 class TestElementwiseSubOp_broadcast_3(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
+        self.python_api = sub_wrapper(shape=[1, 10, 12, 1])
         self.inputs = {
             'X': np.random.rand(2, 10, 12, 3).astype(np.float64),
-            'Y': np.random.rand(10, 12).astype(np.float64)
+            'Y': np.random.rand(10, 12).astype(np.float64),
         }
 
         self.attrs = {'axis': 1}
@@ -152,9 +206,10 @@ class TestElementwiseSubOp_broadcast_3(TestElementwiseOp):
 class TestElementwiseSubOp_broadcast_4(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
+        self.python_api = sub_wrapper()
         self.inputs = {
             'X': np.random.rand(2, 5, 3, 12).astype(np.float64),
-            'Y': np.random.rand(2, 5, 1, 12).astype(np.float64)
+            'Y': np.random.rand(2, 5, 1, 12).astype(np.float64),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
@@ -162,9 +217,10 @@ class TestElementwiseSubOp_broadcast_4(TestElementwiseOp):
 class TestElementwiseSubOp_commonuse_1(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
+        self.python_api = sub_wrapper()
         self.inputs = {
             'X': np.random.rand(2, 3, 100).astype(np.float64),
-            'Y': np.random.rand(1, 1, 100).astype(np.float64)
+            'Y': np.random.rand(1, 1, 100).astype(np.float64),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
@@ -172,9 +228,10 @@ class TestElementwiseSubOp_commonuse_1(TestElementwiseOp):
 class TestElementwiseSubOp_commonuse_2(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
+        self.python_api = sub_wrapper()
         self.inputs = {
             'X': np.random.rand(10, 3, 1, 4).astype(np.float64),
-            'Y': np.random.rand(10, 1, 12, 1).astype(np.float64)
+            'Y': np.random.rand(10, 1, 12, 1).astype(np.float64),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
@@ -182,9 +239,14 @@ class TestElementwiseSubOp_commonuse_2(TestElementwiseOp):
 class TestElementwiseSubOp_xsize_lessthan_ysize(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
+
+        def sub_func(x, y, axis=2):
+            return x.reshape([1, 1, 10, 12]) - y
+
+        self.python_api = sub_func
         self.inputs = {
             'X': np.random.rand(10, 12).astype(np.float64),
-            'Y': np.random.rand(2, 3, 10, 12).astype(np.float64)
+            'Y': np.random.rand(2, 3, 10, 12).astype(np.float64),
         }
 
         self.attrs = {'axis': 2}
@@ -197,6 +259,7 @@ class TestElementwiseSubOp_xsize_lessthan_ysize(TestElementwiseOp):
 class TestComplexElementwiseSubOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_sub"
+        self.python_api = sub_wrapper()
         self.dtype = np.float64
         self.shape = (2, 3, 4, 5)
         self.init_input_output()
@@ -204,7 +267,7 @@ class TestComplexElementwiseSubOp(OpTest):
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
         }
         self.attrs = {'axis': -1, 'use_mkldnn': False}
         self.outputs = {'Out': self.out}
@@ -214,14 +277,17 @@ class TestComplexElementwiseSubOp(OpTest):
 
     def init_input_output(self):
         self.x = np.random.random(self.shape).astype(
-            self.dtype) + 1J * np.random.random(self.shape).astype(self.dtype)
+            self.dtype
+        ) + 1j * np.random.random(self.shape).astype(self.dtype)
         self.y = np.random.random(self.shape).astype(
-            self.dtype) + 1J * np.random.random(self.shape).astype(self.dtype)
+            self.dtype
+        ) + 1j * np.random.random(self.shape).astype(self.dtype)
         self.out = self.x - self.y
 
     def init_grad_input_output(self):
-        self.grad_out = np.ones(self.shape, self.dtype) + 1J * np.ones(
-            self.shape, self.dtype)
+        self.grad_out = np.ones(self.shape, self.dtype) + 1j * np.ones(
+            self.shape, self.dtype
+        )
         self.grad_x = self.grad_out
         self.grad_y = -self.grad_out
 
@@ -233,7 +299,8 @@ class TestComplexElementwiseSubOp(OpTest):
             ['X', 'Y'],
             'Out',
             user_defined_grads=[self.grad_x, self.grad_y],
-            user_defined_grad_outputs=[self.grad_out])
+            user_defined_grad_outputs=[self.grad_out],
+        )
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
@@ -241,7 +308,8 @@ class TestComplexElementwiseSubOp(OpTest):
             'Out',
             no_grad_set=set("X"),
             user_defined_grads=[self.grad_y],
-            user_defined_grad_outputs=[self.grad_out])
+            user_defined_grad_outputs=[self.grad_out],
+        )
 
     def test_check_grad_ingore_y(self):
         self.check_grad(
@@ -249,19 +317,22 @@ class TestComplexElementwiseSubOp(OpTest):
             'Out',
             no_grad_set=set('Y'),
             user_defined_grads=[self.grad_x],
-            user_defined_grad_outputs=[self.grad_out])
+            user_defined_grad_outputs=[self.grad_out],
+        )
 
 
 class TestRealComplexElementwiseSubOp(TestComplexElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.random(self.shape).astype(self.dtype)
         self.y = np.random.random(self.shape).astype(
-            self.dtype) + 1J * np.random.random(self.shape).astype(self.dtype)
+            self.dtype
+        ) + 1j * np.random.random(self.shape).astype(self.dtype)
         self.out = self.x - self.y
 
     def init_grad_input_output(self):
-        self.grad_out = np.ones(self.shape, self.dtype) + 1J * np.ones(
-            self.shape, self.dtype)
+        self.grad_out = np.ones(self.shape, self.dtype) + 1j * np.ones(
+            self.shape, self.dtype
+        )
         self.grad_x = np.real(self.grad_out)
         self.grad_y = -self.grad_out
 
@@ -284,7 +355,7 @@ class TestSubtractApi(unittest.TestCase):
             def gen_data():
                 return {
                     "x": np.array([2, 3, 4]).astype('float32'),
-                    "y": np.array([1, 5, 2]).astype('float32')
+                    "y": np.array([1, 5, 2]).astype('float32'),
                 }
 
             x = fluid.data(name="x", shape=[3], dtype='float32')
@@ -293,7 +364,7 @@ class TestSubtractApi(unittest.TestCase):
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             z_value = exe.run(feed=gen_data(), fetch_list=[z.name])
-            z_expected = np.array([1., -2., 2.])
+            z_expected = np.array([1.0, -2.0, 2.0])
             self.assertEqual((z_value == z_expected).all(), True)
 
     def test_dygraph(self):
@@ -304,7 +375,7 @@ class TestSubtractApi(unittest.TestCase):
             y = fluid.dygraph.to_variable(np_y)
             z = self._executed_api(x, y)
             np_z = z.numpy()
-            z_expected = np.array([1., -2., 2.])
+            z_expected = np.array([1.0, -2.0, 2.0])
             self.assertEqual((np_z == z_expected).all(), True)
 
 
@@ -369,6 +440,66 @@ class TestSubtractInplaceBroadcastError3(TestSubtractInplaceBroadcastError):
     def init_data(self):
         self.x_numpy = np.random.rand(5, 2, 1, 4).astype('float')
         self.y_numpy = np.random.rand(2, 3, 4).astype('float')
+
+
+class TestFloatElementwiseSubop(unittest.TestCase):
+    def test_dygraph_sub(self):
+        paddle.disable_static()
+
+        np_a = np.random.random((2, 3, 4)).astype(np.float64)
+        np_b = np.random.random((2, 3, 4)).astype(np.float64)
+
+        tensor_a = paddle.to_tensor(np_a, dtype="float32")
+        tensor_b = paddle.to_tensor(np_b, dtype="float32")
+
+        # normal case: tensor - tensor
+        expect_out = np_a - np_b
+        actual_out = tensor_a - tensor_b
+        np.testing.assert_allclose(
+            actual_out, expect_out, rtol=1e-07, atol=1e-07
+        )
+
+        # normal case: tensor - scalar
+        expect_out = np_a - 1
+        actual_out = tensor_a - 1
+        np.testing.assert_allclose(
+            actual_out, expect_out, rtol=1e-07, atol=1e-07
+        )
+
+        # normal case: scalar - tenor
+        expect_out = 1 - np_a
+        actual_out = 1 - tensor_a
+        np.testing.assert_allclose(
+            actual_out, expect_out, rtol=1e-07, atol=1e-07
+        )
+
+        paddle.enable_static()
+
+
+class TestFloatElementwiseSubop1(unittest.TestCase):
+    def test_dygraph_sub(self):
+        paddle.disable_static()
+
+        np_a = np.random.random((2, 3, 4)).astype(np.float32)
+        np_b = np.random.random((2, 3, 4)).astype(np.float32)
+
+        tensor_a = paddle.to_tensor(np_a, dtype="float32")
+        tensor_b = paddle.to_tensor(np_b, dtype="float32")
+
+        # normal case: nparray - tenor
+        expect_out = np_a - np_b
+        actual_out = np_a - tensor_b
+        np.testing.assert_allclose(
+            actual_out, expect_out, rtol=1e-07, atol=1e-07
+        )
+
+        # normal case: tenor - nparray
+        actual_out = tensor_a - np_b
+        np.testing.assert_allclose(
+            actual_out, expect_out, rtol=1e-07, atol=1e-07
+        )
+
+        paddle.enable_static()
 
 
 if __name__ == '__main__':

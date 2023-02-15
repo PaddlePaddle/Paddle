@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -39,7 +38,8 @@ class TestAllocContinuousSpace(OpTest):
         self.set_constant = attrs["set_constant"]
         self.Inputs = self.init_input()
         self.Outputs, self.FusedOutput = self.init_output(
-            self.Inputs, self.set_constant, self.constant)
+            self.Inputs, self.set_constant, self.constant
+        )
         self.inputs = {'Input': self.Inputs}
         self.attrs = attrs
         self.outputs = {'Output': self.Outputs, 'FusedOutput': self.FusedOutput}
@@ -59,7 +59,7 @@ class TestAllocContinuousSpace(OpTest):
             "set_constant": False,
             "constant": 0.0,
             "use_align": True,
-            "dtype": self.fluid_dtype
+            "dtype": self.fluid_dtype,
         }
 
     def init_output(self, input_list, set_constant, constant):
@@ -80,7 +80,8 @@ class TestAllocContinuousSpace(OpTest):
         self.check_output_with_place(
             place=paddle.NPUPlace(0),
             no_check_set=["FusedOutput"],
-            atol=1e-5, )
+            atol=1e-5,
+        )
 
 
 class TestAllocContinuousSpace2(TestAllocContinuousSpace):
@@ -91,14 +92,15 @@ class TestAllocContinuousSpace2(TestAllocContinuousSpace):
             "constant": 0.5,
             "use_align": True,
             "dtype": self.fluid_dtype,
-            "user_defined_size_of_dtype": 2
+            "user_defined_size_of_dtype": 2,
         }
 
     def test_check_output(self):
         self.check_output_with_place(
             place=paddle.NPUPlace(0),
             no_check_set=["FusedOutput"],
-            atol=1e-5, )
+            atol=1e-5,
+        )
 
 
 if __name__ == '__main__':

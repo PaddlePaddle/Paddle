@@ -68,9 +68,8 @@ void AddSupportInt8Pass::ApplyImpl(ir::Graph* graph) const {
                    i++) {
                 if (quanted_op_desc->Output(quanted_op_desc->OutputNames()[i])
                             .size() > 0 &&
-                    input_name ==
-                        quanted_op_desc->Output(
-                            quanted_op_desc->OutputNames()[i])[0]) {
+                    input_name == quanted_op_desc->Output(
+                                      quanted_op_desc->OutputNames()[i])[0]) {
                   outscale_flag = true;
                   quanted_op_desc->SetAttr(
                       quanted_op_desc->OutputNames()[i],

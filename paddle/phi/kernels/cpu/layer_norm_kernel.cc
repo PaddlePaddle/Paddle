@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/layer_norm_kernel.h"
+
 #include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/funcs/layer_norm_util.h"
 #if !defined(PADDLE_WITH_CUDA) && !defined(_WIN32) && !defined(__APPLE__) && \
@@ -34,7 +35,6 @@ void LayerNormKernel(const Context& dev_ctx,
                      const paddle::optional<DenseTensor>& bias_opt,
                      float epsilon,
                      int begin_norm_axis,
-                     bool is_test,
                      DenseTensor* y,
                      DenseTensor* mean,
                      DenseTensor* var) {
@@ -134,7 +134,7 @@ void LayerNormKernel(const Context& dev_ctx,
       scale ? scale->data<T>() : nullptr,
       bias ? bias->data<T>() : nullptr,
       static_cast<int>(left),
-      static_cast<const float>(epsilon),
+      static_cast<float>(epsilon),
       right);
 #endif
 }

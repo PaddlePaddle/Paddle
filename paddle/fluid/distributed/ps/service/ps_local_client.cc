@@ -15,14 +15,12 @@
 #include "paddle/fluid/distributed/ps/service/ps_local_client.h"
 #include "paddle/fluid/distributed/ps/table/table.h"
 
-//#define pslib_debug_dense_compress
-
 namespace paddle {
 namespace distributed {
 int32_t PsLocalClient::Initialize() {
   const auto& downpour_param = _config.server_param().downpour_server_param();
   TableManager::Instance().Initialize();
-  for (size_t i = 0; i < downpour_param.downpour_table_param_size(); ++i) {
+  for (int i = 0; i < downpour_param.downpour_table_param_size(); ++i) {
     auto* table = CREATE_PSCORE_CLASS(
         Table, downpour_param.downpour_table_param(i).table_class());
     table->SetShard(0, 1);
@@ -35,13 +33,11 @@ int32_t PsLocalClient::Initialize() {
 
 ::std::future<int32_t> PsLocalClient::Shrink(uint32_t table_id,
                                              const std::string threshold) {
-  // TODO
   return done();
 }
 
 ::std::future<int32_t> PsLocalClient::Load(const std::string& epoch,
                                            const std::string& mode) {
-  // TODO
   for (auto& it : _table_map) {
     Load(it.first, epoch, mode);
   }
@@ -50,7 +46,6 @@ int32_t PsLocalClient::Initialize() {
 ::std::future<int32_t> PsLocalClient::Load(uint32_t table_id,
                                            const std::string& epoch,
                                            const std::string& mode) {
-  // TODO
   auto* table_ptr = GetTable(table_id);
   table_ptr->Load(epoch, mode);
   return done();
@@ -58,7 +53,6 @@ int32_t PsLocalClient::Initialize() {
 
 ::std::future<int32_t> PsLocalClient::Save(const std::string& epoch,
                                            const std::string& mode) {
-  // TODO
   for (auto& it : _table_map) {
     Save(it.first, epoch, mode);
   }
@@ -67,19 +61,14 @@ int32_t PsLocalClient::Initialize() {
 ::std::future<int32_t> PsLocalClient::Save(uint32_t table_id,
                                            const std::string& epoch,
                                            const std::string& mode) {
-  // TODO
   auto* table_ptr = GetTable(table_id);
   table_ptr->Flush();
   table_ptr->Save(epoch, mode);
   return done();
 }
 
-::std::future<int32_t> PsLocalClient::Clear() {
-  // TODO
-  return done();
-}
+::std::future<int32_t> PsLocalClient::Clear() { return done(); }
 ::std::future<int32_t> PsLocalClient::Clear(uint32_t table_id) {
-  // TODO
   return done();
 }
 
@@ -117,14 +106,17 @@ int32_t PsLocalClient::Initialize() {
   size_t shard_data_size = num_per_shard;
   size_t shard_buffer_remain = shard_data_size * sizeof(float);
   PADDLE_ENFORCE_EQ(
-      shard_buffer_remain, region_buffer.size() * sizeof(float),
+      shard_buffer_remain,
+      region_buffer.size() * sizeof(float),
       platform::errors::PreconditionNotMet("pull dense size error."));
   size_t index = 0;
   while (shard_buffer_remain > 0 && region_idx < region_num) {
     auto& region = regions[region_idx];
     if (region.size - region_data_idx >= shard_buffer_remain) {
-      memcpy((void*)(region.data + region_data_idx),
-             (uint8_t*)(void*)(region_buffer.data()) + index,
+      memcpy(reinterpret_cast<void*>(region.data + region_data_idx),
+             reinterpret_cast<uint8_t*>(
+                 reinterpret_cast<void*>(region_buffer.data())) +
+                 index,
              shard_buffer_remain);
       region_data_idx += shard_buffer_remain;
       shard_buffer_remain = 0;
@@ -132,8 +124,10 @@ int32_t PsLocalClient::Initialize() {
       ++region_idx;
       region_data_idx = 0;
     } else {
-      memcpy((void*)(region.data + region_data_idx),
-             (uint8_t*)(void*)(region_buffer.data()) + index,
+      memcpy(reinterpret_cast<void*>(region.data + region_data_idx),
+             reinterpret_cast<uint8_t*>(
+                 reinterpret_cast<void*>(region_buffer.data())) +
+                 index,
              region.size - region_data_idx);
       shard_buffer_remain -= (region.size - region_data_idx);
       index += (region.size - region_data_idx);
@@ -173,7 +167,9 @@ int32_t PsLocalClient::Initialize() {
 }
 
 ::std::future<int32_t> PsLocalClient::PushDenseRawGradient(
-    int table_id, float* total_send_data, size_t total_send_data_size,
+    int table_id,
+    float* total_send_data,
+    size_t total_send_data_size,
     void* callback) {
   VLOG(1) << "wxx push_dense_raw_gradient";
 
@@ -205,10 +201,13 @@ int32_t PsLocalClient::Initialize() {
   for (size_t i = 0, offset = 0; i < region_num; ++i) {
     uint32_t data_num = regions[i].size / sizeof(float);
     PADDLE_ENFORCE_LE(
-        offset + data_num, data_size,
+        offset + data_num,
+        data_size,
         platform::errors::PreconditionNotMet(
-            "invalid dense size, cur pos[%d] data_num[%d] size[%d]", offset,
-            data_num, data_size));
+            "invalid dense size, cur pos[%d] data_num[%d] size[%d]",
+            offset,
+            data_num,
+            data_size));
     memcpy(region_buffer.data() + offset, regions[i].data, regions[i].size);
     offset += data_num;
   }
@@ -223,46 +222,20 @@ int32_t PsLocalClient::Initialize() {
   return done();
 }
 
-//::std::future<int32_t> PsLocalClient::PullSparse(float** select_values,
-//                                                  size_t table_id,
-//                                                  const uint64_t* keys,
-//                                                  size_t num) {
-//  // FIXME
-//  // auto timer =
-//  // std::make_shared<CostTimer>("pslib_downpour_client_pull_sparse");
-//  // auto local_timer =
-//  // std::make_shared<CostTimer>("pslib_downpour_client_pull_sparse_local");
-//  //将key拆分到各shard请求，并记录原始对应value指针
-//  auto* accessor = GetTableAccessor(table_id);
-//  auto* table_ptr = GetTable(table_id);
-//  size_t value_size = accessor->select_size();
-//
-//  // table_ptr->PullSparse(keys, num);
-//  std::vector<float> res_data;
-//  res_data.resize(num * value_size / sizeof(float));
-//  table_ptr->PullSparse(res_data.data(), keys, num);
-//  // memcpy(select_values[0], res_data->data(), res_data->size() *
-//  // sizeof(float));
-//  size_t offset = 0;
-//  for (int i = 0; i < num; ++i) {
-//    memcpy(select_values[i], (char*)res_data.data() + offset, value_size);
-//    offset += value_size;
-//  }
-//
-//  // return fut;
-//  return done();
-//}
-
-::std::future<int32_t> PsLocalClient::PullSparsePtr(char** select_values,
-                                                    size_t table_id,
-                                                    const uint64_t* keys,
-                                                    size_t num) {
+::std::future<int32_t> PsLocalClient::PullSparsePtr(
+    int shard_id,
+    char** select_values,
+    size_t table_id,
+    const uint64_t* keys,
+    size_t num,
+    uint16_t pass_id,
+    const uint16_t& /**dim_id*/) {
   // FIXME
   // auto timer =
   // std::make_shared<CostTimer>("pslib_downpour_client_pull_sparse");
   // auto local_timer =
   // std::make_shared<CostTimer>("pslib_downpour_client_pull_sparse_local");
-  //将key拆分到各shard请求，并记录原始对应value指针
+  // 将key拆分到各shard请求，并记录原始对应value指针
   auto* table_ptr = GetTable(table_id);
 
   TableContext table_context;
@@ -271,6 +244,8 @@ int32_t PsLocalClient::Initialize() {
   table_context.pull_context.ptr_values = select_values;
   table_context.use_ptr = true;
   table_context.num = num;
+  table_context.shard_id = shard_id;
+  table_context.pass_id = pass_id;
 
   //  table_ptr->PullSparsePtr(select_values, keys, num);
   table_ptr->Pull(table_context);
@@ -278,11 +253,35 @@ int32_t PsLocalClient::Initialize() {
   return done();
 }
 
+::std::future<int32_t> PsLocalClient::PrintTableStat(uint32_t table_id) {
+  auto* table_ptr = GetTable(table_id);
+  std::pair<int64_t, int64_t> ret = table_ptr->PrintTableStat();
+  VLOG(0) << "table id: " << table_id << ", feasign size: " << ret.first
+          << ", mf size: " << ret.second;
+  return done();
+}
+
+::std::future<int32_t> PsLocalClient::SaveCacheTable(uint32_t table_id,
+                                                     uint16_t pass_id,
+                                                     size_t threshold) {
+  auto* table_ptr = GetTable(table_id);
+  std::pair<int64_t, int64_t> ret = table_ptr->PrintTableStat();
+  VLOG(1) << "table id: " << table_id << ", feasign size: " << ret.first
+          << ", mf size: " << ret.second;
+  if (ret.first > (int64_t)threshold) {
+    VLOG(1) << "run cache table";
+    table_ptr->CacheTable(pass_id);
+  }
+  return done();
+}
+
 ::std::future<int32_t> PsLocalClient::PushSparseRawGradient(
-    size_t table_id, const uint64_t* keys, const float** update_values,
-    size_t num, void* callback) {
+    size_t table_id,
+    const uint64_t* keys,
+    const float** update_values,
+    size_t num,
+    void* callback) {
   PSClientClosure* closure = reinterpret_cast<PSClientClosure*>(callback);
-  auto* accessor = GetTableAccessor(table_id);
   auto* table_ptr = GetTable(table_id);
 
   TableContext table_context;
@@ -302,7 +301,6 @@ int32_t PsLocalClient::Initialize() {
                                                  const uint64_t* keys,
                                                  const float** update_values,
                                                  size_t num) {
-  auto* accessor = GetTableAccessor(table_id);
   auto* table_ptr = GetTable(table_id);
 
   TableContext table_context;
@@ -316,5 +314,5 @@ int32_t PsLocalClient::Initialize() {
   table_ptr->Push(table_context);
   return done();
 }
-}
-}
+}  // namespace distributed
+}  // namespace paddle

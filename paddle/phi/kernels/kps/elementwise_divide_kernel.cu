@@ -25,19 +25,9 @@ namespace phi {
 // Create the definition of Divide
 DEFINE_CUDA_ELEMENTWISE_OP(Divide)
 
-template <typename T, typename Context>
-void DivideKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const DenseTensor& y,
-                  DenseTensor* out) {
-  int axis = -1;
-  DivideRawKernel<T>(dev_ctx, x, y, axis, out);
-}
-
 }  // namespace phi
 
 #ifdef PADDLE_WITH_XPU_KP
-PD_REGISTER_KERNEL(divide, KPS, ALL_LAYOUT, phi::DivideKernel, float) {}
 PD_REGISTER_KERNEL(divide_raw, KPS, ALL_LAYOUT, phi::DivideRawKernel, float) {}
 #else
 
@@ -59,16 +49,4 @@ PD_REGISTER_KERNEL(divide_raw,
                    complex64,
                    complex128) {}
 
-PD_REGISTER_KERNEL(divide,
-                   KPS,
-                   ALL_LAYOUT,
-                   phi::DivideKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   complex64,
-                   complex128) {}
 #endif

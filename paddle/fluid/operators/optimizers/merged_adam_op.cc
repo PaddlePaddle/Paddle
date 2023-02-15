@@ -10,35 +10,38 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/optimizers/merged_adam_op.h"
+#include "paddle/fluid/framework/op_registry.h"
+
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
-
-using Tensor = framework::Tensor;
 
 class MergedAdamOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {}
-
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto param_dtype =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "Param");
-    return framework::OpKernelType(param_dtype, ctx.GetPlace());
+    return phi::KernelKey(param_dtype, ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
+  phi::KernelKey GetKernelTypeForVar(
+      const std::string& var_name,
+      const phi::DenseTensor& tensor,
+      const phi::KernelKey& expected_kernel_type) const override {
     if (var_name == "Beta1Pow" || var_name == "Beta2Pow" ||
         var_name == "SkipUpdate") {
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     } else {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(), tensor.layout());
+      return phi::KernelKey(
+          tensor.place(), tensor.layout(), expected_kernel_type.dtype());
     }
   }
 };
@@ -127,12 +130,15 @@ $$
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(merged_adam, ops::MergedAdamOp,
-                             ops::MergedAdamOpMaker);
-REGISTER_OP_WITHOUT_GRADIENT(merged_adamw, ops::MergedAdamOp,
-                             ops::MergedAdamOpMaker);
 
-REGISTER_OP_CPU_KERNEL(
+DECLARE_INFER_SHAPE_FUNCTOR(merged_adam,
+                            MergedAdamInferMetaFunctor,
+                            PD_INFER_META(phi::MergedAdamInferMeta));
+
+REGISTER_OPERATOR(
     merged_adam,
-    ops::MergedAdamOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MergedAdamOpKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::MergedAdamOp,
+    ops::MergedAdamOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    MergedAdamInferMetaFunctor);

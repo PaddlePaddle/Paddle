@@ -12,23 +12,24 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/sum_op.h"
+#include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using SelectedRows = phi::SelectedRows;
 
 template <typename DeviceContext, typename T>
 class SumMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto out_var = ctx.OutputVar("Out");
-    if (out_var->IsType<framework::LoDTensor>()) {
+    if (out_var->IsType<phi::DenseTensor>()) {
       // init
-      auto *out = out_var->GetMutable<framework::LoDTensor>();
-      auto ins = ctx.MultiInput<Tensor>("X");
+      auto *out = out_var->GetMutable<phi::DenseTensor>();
+      auto ins = ctx.MultiInput<phi::DenseTensor>("X");
       out->mutable_data<T>(ctx.GetPlace());
       auto place = ctx.GetPlace();
       int ins_size = static_cast<int>(ins.size());
@@ -48,15 +49,19 @@ class SumMLUKernel : public framework::OpKernel<T> {
         inputs.push_back(GetBasePtr(ins[i]));
       }
       // init out tensors
-      MLUCnnlTensorDesc output_desc(*out, CNNL_LAYOUT_ARRAY,
-                                    ToCnnlDataType(out->dtype()));
+      MLUCnnlTensorDesc output_desc(
+          *out, CNNL_LAYOUT_ARRAY, ToCnnlDataType(out->dtype()));
       uint32_t ins_size_t = static_cast<uint32_t>(ins_size);
-      MLUCnnl::AddN(ctx, ins_size_t, desc_vector.data(), inputs.data(),
-                    output_desc.get(), GetBasePtr(out));
+      MLUCnnl::AddN(ctx,
+                    ins_size_t,
+                    desc_vector.data(),
+                    inputs.data(),
+                    output_desc.get(),
+                    GetBasePtr(out));
 
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Expected type of Output(out) must be Tensor or But got "
+          "Expected type of Output(out) must be phi::DenseTensor or But got "
           "unsupport type: %s.",
           framework::ToTypeName(out_var->Type())));
     }
@@ -69,6 +74,7 @@ class SumMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_MLU_KERNEL(
-    sum, ops::SumMLUKernel<paddle::platform::MLUDeviceContext, float>,
+    sum,
+    ops::SumMLUKernel<paddle::platform::MLUDeviceContext, float>,
     ops::SumMLUKernel<paddle::platform::MLUDeviceContext,
                       paddle::platform::float16>);

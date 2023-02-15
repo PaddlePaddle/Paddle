@@ -15,7 +15,6 @@
 #pragma once
 
 #include "glog/logging.h"
-
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
@@ -26,6 +25,7 @@
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/scale_kernel.h"
 
+DECLARE_int32(low_precision_op_list);
 namespace paddle {
 namespace experimental {
 
@@ -52,8 +52,13 @@ PADDLE_API Tensor scale_kernel_context(const Tensor& x,
       kernel_data_type = kernel_key.dtype();
     }
   }
-  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "scale", {kernel_backend, kernel_layout, kernel_data_type});
+  const auto& kernel = kernel_result.kernel;
+  if (FLAGS_low_precision_op_list) {
+    phi::KernelFactory::Instance().AddToLowPrecisionKernelList(
+        "scale", kernel_data_type);
+  }
   VLOG(6) << "scale API kernel key: [" << kernel_backend << ", "
           << kernel_layout << ", " << kernel_data_type << "]";
   VLOG(6) << "scale API kernel: " << kernel;
@@ -129,7 +134,7 @@ static void ScaleCPU(DataType kernel_dtype,
       break;
     }
     default: {
-      PADDLE_THROW(paddle::platform::errors::Fatal(
+      PADDLE_THROW(phi::errors::Fatal(
           "Detected unsupported data type."
           "Only Float64, Float32, BFloat16, Int64, Int32, Int16, Int8, UInt8 "
           "are supported for now."));
@@ -188,7 +193,7 @@ static void ScaleGPU(DataType kernel_dtype,
       break;
     }
     default: {
-      PADDLE_THROW(paddle::platform::errors::Fatal(
+      PADDLE_THROW(phi::errors::Fatal(
           "Detected unsupported data type."
           "Only Float64, Float32, Float16, Int64, Int32, Int16, Int8, UInt8 "
           "are "
@@ -222,8 +227,13 @@ Tensor scale_switch_case(const Tensor& x,
       kernel_data_type = kernel_key.dtype();
     }
   }
-  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "scale", {kernel_backend, kernel_layout, kernel_data_type});
+  const auto& kernel = kernel_result.kernel;
+  if (FLAGS_low_precision_op_list) {
+    phi::KernelFactory::Instance().AddToLowPrecisionKernelList(
+        "scale", kernel_data_type);
+  }
   VLOG(6) << "scale API kernel key: [" << kernel_backend << ", "
           << kernel_layout << ", " << kernel_data_type << "]";
   VLOG(6) << "scale API kernel: " << kernel;
@@ -261,7 +271,7 @@ Tensor scale_switch_case(const Tensor& x,
       break;
 #endif
     default:
-      PADDLE_THROW(paddle::platform::errors::Fatal(
+      PADDLE_THROW(phi::errors::Fatal(
           "Detected unsupported backend."
           "Only CPU and CUDA Backend are supported for now."
           "Please double check if your backend falls into the above two "

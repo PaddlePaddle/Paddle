@@ -12,21 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/api/onnxruntime_predictor.h"
-
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+
 #include <string>
 #include <thread>  // NOLINT
 #include <vector>
+
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/inference/api/onnxruntime_predictor.h"
 #include "paddle/fluid/inference/api/paddle_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
-#include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 
 DEFINE_string(dirname, "", "dirname to tests.");
 

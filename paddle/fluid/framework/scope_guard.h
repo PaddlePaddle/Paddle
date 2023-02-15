@@ -16,6 +16,7 @@
 
 #include <type_traits>
 #include <utility>
+
 #include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
@@ -41,12 +42,12 @@ class ScopeGuard {
 #define _PADDLE_CONCAT_TOKEN(x, y) x##y
 #define PADDLE_CONCAT_TOKEN(x, y) _PADDLE_CONCAT_TOKEN(x, y)
 
-#define DEFINE_PADDLE_SCOPE_GUARD(...)                                     \
-  auto PADDLE_CONCAT_TOKEN(__scope_guard_func, __LINE__) = __VA_ARGS__;    \
-  ::paddle::framework::ScopeGuard<typename std::remove_reference<decltype( \
-      PADDLE_CONCAT_TOKEN(__scope_guard_func, __LINE__))>::type>           \
-      PADDLE_CONCAT_TOKEN(__scope_guard, __LINE__)(                        \
-          PADDLE_CONCAT_TOKEN(__scope_guard_func, __LINE__))
+#define DEFINE_PADDLE_SCOPE_GUARD(...)                                    \
+  auto PADDLE_CONCAT_TOKEN(__scope_guard_func, __LINE__) = __VA_ARGS__;   \
+  ::paddle::framework::ScopeGuard<typename std::remove_reference<         \
+      decltype(PADDLE_CONCAT_TOKEN(__scope_guard_func, __LINE__))>::type> \
+  PADDLE_CONCAT_TOKEN(__scope_guard, __LINE__)(                           \
+      PADDLE_CONCAT_TOKEN(__scope_guard_func, __LINE__))
 
 }  // namespace framework
 }  // namespace paddle

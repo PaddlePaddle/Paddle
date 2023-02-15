@@ -12,14 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import sys
+
+import numpy as np
+
 sys.path.append("..")
-import paddle
-from op_test import OpTest, skip_check_grad_ci
-from op_test_xpu import XPUOpTest
 import unittest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+
+from op_test import skip_check_grad_ci
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
+
+import paddle
 
 paddle.enable_static()
 
@@ -39,7 +47,7 @@ class XPUTestElementwiseSubOp(XPUOpTestWrapper):
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype),
-                'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype)
+                'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype),
             }
             self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
@@ -57,35 +65,64 @@ class XPUTestElementwiseSubOp(XPUOpTestWrapper):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
                 self.check_grad_with_place(
-                    place, ['Y'],
+                    place,
+                    ['Y'],
                     'Out',
                     max_relative_error=0.005,
-                    no_grad_set=set("X"))
+                    no_grad_set=set("X"),
+                )
 
         def test_check_grad_ingore_y(self):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
                 self.check_grad_with_place(
-                    place, ['X'],
+                    place,
+                    ['X'],
                     'Out',
                     max_relative_error=0.005,
-                    no_grad_set=set('Y'))
+                    no_grad_set=set('Y'),
+                )
+
+    class TestElementwiseSubOp_ZeroDim1(TestElementwiseOp):
+        def init_input_output(self):
+            self.inputs = {
+                'X': np.random.uniform(-1, 1, []).astype(self.dtype),
+                'Y': np.random.uniform(-1, 1, []).astype(self.dtype),
+            }
+            self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+
+    class TestElementwiseSubOp_ZeroDim2(TestElementwiseOp):
+        def init_input_output(self):
+            self.inputs = {
+                'X': np.random.uniform(-1, 1, [13, 17]).astype(self.dtype),
+                'Y': np.random.uniform(-1, 1, []).astype(self.dtype),
+            }
+            self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+
+    class TestElementwiseSubOp_ZeroDim3(TestElementwiseOp):
+        def init_input_output(self):
+            self.inputs = {
+                'X': np.random.uniform(-1, 1, []).astype(self.dtype),
+                'Y': np.random.uniform(-1, 1, [13, 17]).astype(self.dtype),
+            }
+            self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
     @skip_check_grad_ci(
-        reason="[skip shape check] Use y_shape(1) to test broadcast.")
+        reason="[skip shape check] Use y_shape(1) to test broadcast."
+    )
     class TestElementwiseSubOp_scalar(TestElementwiseOp):
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.rand(10, 3, 4).astype(self.dtype),
-                'Y': np.random.rand(1).astype(self.dtype)
+                'Y': np.random.rand(1).astype(self.dtype),
             }
             self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
     class TestElementwiseSubOp_Vector(TestElementwiseOp):
         def init_input_output(self):
             self.inputs = {
-                'X': np.random.random((100, )).astype(self.dtype),
-                'Y': np.random.random((100, )).astype(self.dtype)
+                'X': np.random.random((100,)).astype(self.dtype),
+                'Y': np.random.random((100,)).astype(self.dtype),
             }
             self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
@@ -93,7 +130,7 @@ class XPUTestElementwiseSubOp(XPUOpTestWrapper):
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.rand(100, 3, 2).astype(self.dtype),
-                'Y': np.random.rand(100).astype(self.dtype)
+                'Y': np.random.rand(100).astype(self.dtype),
             }
 
             self.attrs = {'axis': 0}
@@ -105,7 +142,7 @@ class XPUTestElementwiseSubOp(XPUOpTestWrapper):
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.rand(2, 100, 3).astype(self.dtype),
-                'Y': np.random.rand(100).astype(self.dtype)
+                'Y': np.random.rand(100).astype(self.dtype),
             }
 
             self.attrs = {'axis': 1}
@@ -117,7 +154,7 @@ class XPUTestElementwiseSubOp(XPUOpTestWrapper):
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.rand(2, 3, 100).astype(self.dtype),
-                'Y': np.random.rand(100).astype(self.dtype)
+                'Y': np.random.rand(100).astype(self.dtype),
             }
 
             self.outputs = {
@@ -128,7 +165,7 @@ class XPUTestElementwiseSubOp(XPUOpTestWrapper):
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.rand(2, 10, 12, 3).astype(self.dtype),
-                'Y': np.random.rand(10, 12).astype(self.dtype)
+                'Y': np.random.rand(10, 12).astype(self.dtype),
             }
 
             self.attrs = {'axis': 1}
@@ -140,7 +177,7 @@ class XPUTestElementwiseSubOp(XPUOpTestWrapper):
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.rand(2, 5, 3, 12).astype(self.dtype),
-                'Y': np.random.rand(2, 5, 1, 12).astype(self.dtype)
+                'Y': np.random.rand(2, 5, 1, 12).astype(self.dtype),
             }
             self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
@@ -148,7 +185,7 @@ class XPUTestElementwiseSubOp(XPUOpTestWrapper):
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.rand(2, 3, 100).astype(self.dtype),
-                'Y': np.random.rand(1, 1, 100).astype(self.dtype)
+                'Y': np.random.rand(1, 1, 100).astype(self.dtype),
             }
             self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
@@ -156,7 +193,7 @@ class XPUTestElementwiseSubOp(XPUOpTestWrapper):
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.rand(10, 3, 1, 4).astype(self.dtype),
-                'Y': np.random.rand(10, 1, 12, 1).astype(self.dtype)
+                'Y': np.random.rand(10, 1, 12, 1).astype(self.dtype),
             }
             self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
@@ -164,7 +201,7 @@ class XPUTestElementwiseSubOp(XPUOpTestWrapper):
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.rand(10, 12).astype(self.dtype),
-                'Y': np.random.rand(2, 3, 10, 12).astype(self.dtype)
+                'Y': np.random.rand(2, 3, 10, 12).astype(self.dtype),
             }
 
             self.attrs = {'axis': 2}

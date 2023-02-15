@@ -18,10 +18,9 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
 using DDim = framework::DDim;
 
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 
 template <typename T>
 class NormDataType;
@@ -53,12 +52,12 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
     using U = LayerNormParamType<T>;
     const auto begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
     const auto epsilon = ctx.Attr<float>("epsilon");
-    const auto* x = ctx.Input<Tensor>("X");
-    const auto* scale = ctx.Input<Tensor>("Scale");
-    const auto* bias = ctx.Input<Tensor>("Bias");
-    auto* y = ctx.Output<Tensor>("Y");
-    auto* mean = ctx.Output<Tensor>("Mean");
-    auto* variance = ctx.Output<Tensor>("Variance");
+    const auto* x = ctx.Input<phi::DenseTensor>("X");
+    const auto* scale = ctx.Input<phi::DenseTensor>("Scale");
+    const auto* bias = ctx.Input<phi::DenseTensor>("Bias");
+    auto* y = ctx.Output<phi::DenseTensor>("Y");
+    auto* mean = ctx.Output<phi::DenseTensor>("Mean");
+    auto* variance = ctx.Output<phi::DenseTensor>("Variance");
     const auto& x_dims = x->dims();
     std::vector<int> axes;
     auto matrix_dim = phi::flatten_to_2d(x_dims, begin_norm_axis);
@@ -75,10 +74,10 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    Tensor default_scale(x->type());
+    phi::DenseTensor default_scale(x->type());
     if (!scale) {
       default_scale.mutable_data<T>(phi::make_ddim(axes), place);
-      Tensor value(x->type());
+      phi::DenseTensor value(x->type());
       value.mutable_data<T>({1}, place);
       FillNpuTensorWithConstant<T>(&value, static_cast<T>(1.0));
       const auto& runner =
@@ -86,13 +85,13 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
       runner.Run(stream);
       scale = &default_scale;
     } else {
-      const_cast<Tensor*>(scale)->Resize(phi::make_ddim(axes));
+      const_cast<phi::DenseTensor*>(scale)->Resize(phi::make_ddim(axes));
     }
 
-    Tensor default_bias(x->type());
+    phi::DenseTensor default_bias(x->type());
     if (!bias) {
       default_bias.mutable_data<T>(phi::make_ddim(axes), place);
-      Tensor value(x->type());
+      phi::DenseTensor value(x->type());
       value.mutable_data<T>({1}, place);
       FillNpuTensorWithConstant<T>(&value, static_cast<T>(0));
       const auto& runner =
@@ -100,11 +99,11 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
       runner.Run(stream);
       bias = &default_bias;
     } else {
-      const_cast<Tensor*>(bias)->Resize(phi::make_ddim(axes));
+      const_cast<phi::DenseTensor*>(bias)->Resize(phi::make_ddim(axes));
     }
 
     // cast scale from LayerNormParamType to T if needed
-    Tensor cast_scale(x->type());
+    phi::DenseTensor cast_scale(x->type());
     if (framework::TransToProtoVarType(x->dtype()) ==
             framework::proto::VarType::FP16 &&
         framework::TransToProtoVarType(scale->dtype()) ==
@@ -114,7 +113,9 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
       auto dst_dtype =
           ConvertToNpuDtype(framework::TransToProtoVarType(x->type()));
       const auto& runner_cast_scale =
-          NpuOpRunner("Cast", {*scale}, {cast_scale},
+          NpuOpRunner("Cast",
+                      {*scale},
+                      {cast_scale},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast_scale.Run(stream);
     } else {
@@ -122,7 +123,7 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
     }
 
     // cast bias from LayerNormParamType to T if needed
-    Tensor cast_bias(x->type());
+    phi::DenseTensor cast_bias(x->type());
     if (framework::TransToProtoVarType(x->dtype()) ==
             framework::proto::VarType::FP16 &&
         framework::TransToProtoVarType(bias->dtype()) ==
@@ -132,7 +133,9 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
       auto dst_dtype =
           ConvertToNpuDtype(framework::TransToProtoVarType(x->type()));
       const auto& runner_cast_bias =
-          NpuOpRunner("Cast", {*bias}, {cast_bias},
+          NpuOpRunner("Cast",
+                      {*bias},
+                      {cast_bias},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast_bias.Run(stream);
     } else {
@@ -142,8 +145,8 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
     y->mutable_data<T>(ctx.GetPlace());
 
     // mean should be of  U type
-    Tensor* tmp_mean = mean;
-    Tensor cast_mean(x->type());
+    phi::DenseTensor* tmp_mean = mean;
+    phi::DenseTensor cast_mean(x->type());
     if (framework::TransToProtoVarType(x->dtype()) ==
             framework::proto::VarType::FP16 &&
         (framework::TransToProtoVarType(scale->dtype()) ==
@@ -159,8 +162,8 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
     }
 
     // same for variance
-    Tensor* tmp_variance = variance;
-    Tensor cast_variance(x->type());
+    phi::DenseTensor* tmp_variance = variance;
+    phi::DenseTensor cast_variance(x->type());
     if (framework::TransToProtoVarType(x->dtype()) ==
             framework::proto::VarType::FP16 &&
         (framework::TransToProtoVarType(scale->dtype()) ==
@@ -175,7 +178,8 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
       variance->mutable_data<T>(ctx.GetPlace());
     }
 
-    const auto& runner = NpuOpRunner("LayerNorm", {*x, cast_scale, cast_bias},
+    const auto& runner = NpuOpRunner("LayerNorm",
+                                     {*x, cast_scale, cast_bias},
                                      {*y, *tmp_mean, *tmp_variance},
                                      {{"begin_norm_axis", begin_norm_axis},
                                       {"begin_params_axis", begin_norm_axis},
@@ -190,7 +194,9 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
       auto dst_dtype =
           ConvertToNpuDtype(framework::TransToProtoVarType(mean->type()));
       const auto& runner_cast_mean =
-          NpuOpRunner("Cast", {*tmp_mean}, {*mean},
+          NpuOpRunner("Cast",
+                      {*tmp_mean},
+                      {*mean},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast_mean.Run(stream);
     }
@@ -202,7 +208,9 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
       auto dst_dtype =
           ConvertToNpuDtype(framework::TransToProtoVarType(variance->type()));
       const auto& runner_cast_variance =
-          NpuOpRunner("Cast", {*tmp_variance}, {*variance},
+          NpuOpRunner("Cast",
+                      {*tmp_variance},
+                      {*variance},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast_variance.Run(stream);
     }
@@ -210,8 +218,8 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
     // revert shape of scale and bias
     // TODO(zhiqiu): better implementation, use tmp tensor to avoid write input
     // tensor.
-    const_cast<Tensor*>(scale)->Resize(phi::make_ddim({right}));
-    const_cast<Tensor*>(bias)->Resize(phi::make_ddim({right}));
+    const_cast<phi::DenseTensor*>(scale)->Resize(phi::make_ddim({right}));
+    const_cast<phi::DenseTensor*>(bias)->Resize(phi::make_ddim({right}));
   }
 };
 
@@ -221,15 +229,16 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     using U = LayerNormParamType<T>;
     const auto begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
-    const auto* x = ctx.Input<Tensor>("X");
+    const auto* x = ctx.Input<phi::DenseTensor>("X");
     const auto& x_dims = x->dims();
-    const auto* mean = ctx.Input<Tensor>("Mean");
-    const auto* variance = ctx.Input<Tensor>("Variance");
-    const auto* scale = ctx.Input<Tensor>("Scale");
-    const auto* dy = ctx.Input<Tensor>(framework::GradVarName("Y"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dscale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
-    auto* dbias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
+    const auto* mean = ctx.Input<phi::DenseTensor>("Mean");
+    const auto* variance = ctx.Input<phi::DenseTensor>("Variance");
+    const auto* scale = ctx.Input<phi::DenseTensor>("Scale");
+    const auto* dy = ctx.Input<phi::DenseTensor>(framework::GradVarName("Y"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dscale =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Scale"));
+    auto* dbias = ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
 
     auto matrix_dim = phi::flatten_to_2d(x_dims, begin_norm_axis);
     int right = static_cast<int>(matrix_dim[1]);
@@ -259,13 +268,14 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
     }
 
     auto mean_dims = mean->dims();
-    const_cast<Tensor*>(mean)->Resize(phi::make_ddim({new_shape}));
-    const_cast<Tensor*>(variance)->Resize(phi::make_ddim({new_shape}));
+    const_cast<phi::DenseTensor*>(mean)->Resize(phi::make_ddim({new_shape}));
+    const_cast<phi::DenseTensor*>(variance)->Resize(
+        phi::make_ddim({new_shape}));
 
-    Tensor default_scale(x->type());
+    phi::DenseTensor default_scale(x->type());
     if (!scale) {
       default_scale.mutable_data<T>(phi::make_ddim(axes), place);
-      Tensor value(x->type());
+      phi::DenseTensor value(x->type());
       value.mutable_data<T>({1}, place);
       FillNpuTensorWithConstant<T>(&value, static_cast<T>(1.0));
       const auto& runner =
@@ -273,11 +283,11 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
       runner.Run(stream);
       scale = &default_scale;
     } else {
-      const_cast<Tensor*>(scale)->Resize(phi::make_ddim(axes));
+      const_cast<phi::DenseTensor*>(scale)->Resize(phi::make_ddim(axes));
     }
 
     // cast scale from LayerNormParamType to T if needed
-    Tensor cast_scale(x->type());
+    phi::DenseTensor cast_scale(x->type());
     if (framework::TransToProtoVarType(x->dtype()) ==
             framework::proto::VarType::FP16 &&
         framework::TransToProtoVarType(scale->dtype()) ==
@@ -287,7 +297,9 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
       auto dst_dtype =
           ConvertToNpuDtype(framework::TransToProtoVarType(x->type()));
       const auto& runner_cast_scale =
-          NpuOpRunner("Cast", {*scale}, {cast_scale},
+          NpuOpRunner("Cast",
+                      {*scale},
+                      {cast_scale},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast_scale.Run(stream);
     } else {
@@ -295,7 +307,7 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
     }
 
     // cast mean from LayerNormParamType to T if needed
-    Tensor cast_mean(x->type());
+    phi::DenseTensor cast_mean(x->type());
     if (framework::TransToProtoVarType(x->dtype()) ==
             framework::proto::VarType::FP16 &&
         framework::TransToProtoVarType(mean->dtype()) ==
@@ -305,7 +317,9 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
       auto dst_dtype =
           ConvertToNpuDtype(framework::TransToProtoVarType(x->type()));
       const auto& runner_cast_mean =
-          NpuOpRunner("Cast", {*mean}, {cast_mean},
+          NpuOpRunner("Cast",
+                      {*mean},
+                      {cast_mean},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast_mean.Run(stream);
     } else {
@@ -313,7 +327,7 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
     }
 
     // cast variance from LayerNormParamType to T if needed
-    Tensor cast_variance(x->type());
+    phi::DenseTensor cast_variance(x->type());
     if (framework::TransToProtoVarType(x->dtype()) ==
             framework::proto::VarType::FP16 &&
         framework::TransToProtoVarType(variance->dtype()) ==
@@ -323,14 +337,16 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
       auto dst_dtype =
           ConvertToNpuDtype(framework::TransToProtoVarType(x->type()));
       const auto& runner_cast_variance =
-          NpuOpRunner("Cast", {*variance}, {cast_variance},
+          NpuOpRunner("Cast",
+                      {*variance},
+                      {cast_variance},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast_variance.Run(stream);
     } else {
       cast_variance.ShareDataWith(*variance);
     }
 
-    Tensor dx_(dy->type()), dscale_(dy->type()), dbias_(dy->type());
+    phi::DenseTensor dx_(dy->type()), dscale_(dy->type()), dbias_(dy->type());
     dx = (dx == nullptr) ? &dx_ : dx;
     dscale = (dscale == nullptr) ? &dscale_ : dscale;
     dbias = (dbias == nullptr) ? &dbias_ : dbias;
@@ -343,8 +359,8 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
     dbias->Resize(phi::make_ddim(axes));
 
     // dscale should be of  U type
-    Tensor* tmp_dscale = dscale;
-    Tensor cast_dscale(x->type());
+    phi::DenseTensor* tmp_dscale = dscale;
+    phi::DenseTensor cast_dscale(x->type());
     if (framework::TransToProtoVarType(x->dtype()) ==
             framework::proto::VarType::FP16 &&
         (framework::TransToProtoVarType(mean->dtype()) ==
@@ -360,8 +376,8 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
     }
 
     // same for dbias
-    Tensor* tmp_dbias = dbias;
-    Tensor cast_dbias(x->type());
+    phi::DenseTensor* tmp_dbias = dbias;
+    phi::DenseTensor cast_dbias(x->type());
     if (framework::TransToProtoVarType(x->dtype()) ==
             framework::proto::VarType::FP16 &&
         (framework::TransToProtoVarType(mean->dtype()) ==
@@ -376,9 +392,11 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
       dbias->mutable_data<T>(ctx.GetPlace());
     }
 
-    const auto& runner = NpuOpRunner(
-        "LayerNormGrad", {*dy, *x, cast_variance, cast_mean, cast_scale},
-        {*dx, *tmp_dscale, *tmp_dbias}, {});
+    const auto& runner =
+        NpuOpRunner("LayerNormGrad",
+                    {*dy, *x, cast_variance, cast_mean, cast_scale},
+                    {*dx, *tmp_dscale, *tmp_dbias},
+                    {});
     runner.Run(stream);
 
     // cast back from FP16 to FP32
@@ -389,7 +407,9 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
       auto dst_dtype =
           ConvertToNpuDtype(framework::TransToProtoVarType(dscale->type()));
       const auto& runner_cast_dscale =
-          NpuOpRunner("Cast", {*tmp_dscale}, {*dscale},
+          NpuOpRunner("Cast",
+                      {*tmp_dscale},
+                      {*dscale},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast_dscale.Run(stream);
     }
@@ -401,14 +421,16 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
       auto dst_dtype =
           ConvertToNpuDtype(framework::TransToProtoVarType(dbias->type()));
       const auto& runner_cast_dbias =
-          NpuOpRunner("Cast", {*tmp_dbias}, {*dbias},
+          NpuOpRunner("Cast",
+                      {*tmp_dbias},
+                      {*dbias},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast_dbias.Run(stream);
     }
 
-    const_cast<Tensor*>(mean)->Resize(mean_dims);
-    const_cast<Tensor*>(variance)->Resize(mean_dims);
-    const_cast<Tensor*>(scale)->Resize(phi::make_ddim({right}));
+    const_cast<phi::DenseTensor*>(mean)->Resize(mean_dims);
+    const_cast<phi::DenseTensor*>(variance)->Resize(mean_dims);
+    const_cast<phi::DenseTensor*>(scale)->Resize(phi::make_ddim({right}));
     dscale->Resize(phi::make_ddim({right}));
     dbias->Resize(phi::make_ddim({right}));
   }
@@ -420,7 +442,9 @@ class LayerNormGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(layer_norm, ops::LayerNormNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(layer_norm,
+                       ops::LayerNormNPUKernel<float>,
                        ops::LayerNormNPUKernel<plat::float16>);
-REGISTER_OP_NPU_KERNEL(layer_norm_grad, ops::LayerNormGradNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(layer_norm_grad,
+                       ops::LayerNormGradNPUKernel<float>,
                        ops::LayerNormGradNPUKernel<plat::float16>);

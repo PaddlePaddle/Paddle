@@ -15,13 +15,12 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
     def setUp(self):
         self.set_atol()
@@ -45,17 +44,18 @@ class TestBase(IPUOpTest):
         self.attrs = {
             "transpose_x": False,
             "transpose_y": False,
-            "alpha": 1.0,
         }
 
     @IPUOpTest.static_graph
     def build_model(self):
         x = paddle.static.data(
-            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32')
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
         y = paddle.static.data(
-            name=self.feed_list[1], shape=self.feed_shape[1], dtype='float32')
+            name=self.feed_list[1], shape=self.feed_shape[1], dtype='float32'
+        )
 
-        out = paddle.fluid.layers.matmul(x, y, **self.attrs)
+        out = paddle.matmul(x, y, **self.attrs)
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
@@ -74,7 +74,6 @@ class TestCase1(TestBase):
         self.attrs = {
             "transpose_x": True,
             "transpose_y": True,
-            "alpha": 1.0,
         }
 
 
@@ -83,7 +82,6 @@ class TestCase2(TestBase):
         self.attrs = {
             "transpose_x": True,
             "transpose_y": True,
-            "alpha": 3.14,
         }
 
     def set_atol(self):
@@ -140,20 +138,22 @@ class TestCase6_2(TestCase6):
         self.attrs = {
             "transpose_x": True,
             "transpose_y": True,
-            "alpha": 1.0,
         }
 
 
 class TestCase7(TestBase):
     def set_data_feed(self):
-        x = np.random.uniform(size=[1, 12, 128, 64])
-        y = np.random.uniform(size=[1, 12, 128, 64])
+        x = np.random.uniform(size=[1, 3, 4, 5])
+        y = np.random.uniform(size=[1, 3, 4, 5])
 
         self.feed_fp32 = {"x": x.astype(np.float32), "y": y.astype(np.float32)}
         self.feed_fp16 = {"x": x.astype(np.float16), "y": y.astype(np.float16)}
 
     def set_op_attrs(self):
-        self.attrs = {"transpose_x": False, "transpose_y": True, "alpha": 0.125}
+        self.attrs = {
+            "transpose_x": False,
+            "transpose_y": True,
+        }
 
 
 class TestCase8(TestBase):
@@ -178,7 +178,6 @@ class TestCase8_2(TestBase):
         self.attrs = {
             "transpose_x": True,
             "transpose_y": True,
-            "alpha": 1.0,
         }
 
 
@@ -189,6 +188,34 @@ class TestCase9(TestBase):
 
         self.feed_fp32 = {"x": x.astype(np.float32), "y": x.astype(np.float32)}
         self.feed_fp16 = {"x": x.astype(np.float16), "y": x.astype(np.float16)}
+
+
+class TestCase10(TestBase):
+    def set_op_attrs(self):
+        self.attrs = {
+            "transpose_y": True,
+        }
+
+    def set_data_feed(self):
+        x = np.random.uniform(size=[4, 2, 3])
+        y = np.random.uniform(size=[2, 3])
+
+        self.feed_fp32 = {"x": x.astype(np.float32), "y": y.astype(np.float32)}
+        self.feed_fp16 = {"x": x.astype(np.float16), "y": y.astype(np.float16)}
+
+
+class TestCase11(TestBase):
+    def set_op_attrs(self):
+        self.attrs = {
+            "transpose_x": True,
+        }
+
+    def set_data_feed(self):
+        x = np.random.uniform(size=[4, 3, 2])
+        y = np.random.uniform(size=[3, 2])
+
+        self.feed_fp32 = {"x": x.astype(np.float32), "y": y.astype(np.float32)}
+        self.feed_fp16 = {"x": x.astype(np.float16), "y": y.astype(np.float16)}
 
 
 if __name__ == "__main__":

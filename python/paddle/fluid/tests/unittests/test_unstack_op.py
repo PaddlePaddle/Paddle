@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from op_test import OpTest
-import numpy as np
 import unittest
+
+import numpy as np
+from op_test import OpTest
+
+import paddle
 
 
 class TestUnStackOpBase(OpTest):
@@ -36,6 +39,7 @@ class TestUnStackOpBase(OpTest):
         self.initDefaultParameters()
         self.initParameters()
         self.op_type = 'unstack'
+        self.python_api = paddle.unstack
         self.x = np.random.random(size=self.input_dim).astype(self.dtype)
 
         outs = np.split(self.x, self.input_dim[self.axis], self.axis)
@@ -43,18 +47,21 @@ class TestUnStackOpBase(OpTest):
         del new_shape[self.axis]
         y_names = self.get_y_names()
         tmp = []
+        tmp_names = []
         for i in range(self.input_dim[self.axis]):
             tmp.append((y_names[i], np.reshape(outs[i], new_shape)))
+            tmp_names.append(y_names[i])
 
+        self.python_out_sig = tmp_names
         self.inputs = {'X': self.x}
         self.outputs = {'Y': tmp}
         self.attrs = {'axis': self.axis, 'num': self.input_dim[self.axis]}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], self.get_y_names())
+        self.check_grad(['X'], self.get_y_names(), check_eager=True)
 
 
 class TestStackOp3(TestUnStackOpBase):
@@ -75,6 +82,30 @@ class TestStackOp5(TestUnStackOpBase):
 class TestStackOp6(TestUnStackOpBase):
     def initParameters(self):
         self.axis = 2
+
+
+class TestUnstackZeroInputOp(unittest.TestCase):
+    def unstack_zero_input_static(self):
+
+        paddle.enable_static()
+
+        array = np.array([], dtype=np.float32)
+        x = paddle.to_tensor(np.reshape(array, [0]), dtype='float32')
+        paddle.unstack(x, axis=1)
+
+    def unstack_zero_input_dynamic(self):
+
+        array = np.array([], dtype=np.float32)
+        x = paddle.to_tensor(np.reshape(array, [0]), dtype='float32')
+        paddle.unstack(x, axis=1)
+
+    def test_type_error(self):
+        paddle.disable_static()
+
+        self.assertRaises(ValueError, self.unstack_zero_input_dynamic)
+        self.assertRaises(ValueError, self.unstack_zero_input_static)
+
+        paddle.disable_static()
 
 
 if __name__ == '__main__':

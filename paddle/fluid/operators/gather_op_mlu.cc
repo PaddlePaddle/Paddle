@@ -23,36 +23,44 @@ template <typename T>
 class GatherOpMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *x = ctx.Input<Tensor>("X");
-    auto *index = ctx.Input<Tensor>("Index");
+    auto *x = ctx.Input<phi::DenseTensor>("X");
+    auto *index = ctx.Input<phi::DenseTensor>("Index");
     auto axis = ctx.Attr<int>("axis");
 
     const auto index_dims = index->dims();
     if (index_dims.size() == 2) {
       PADDLE_ENFORCE_EQ(
-          index_dims[1], 1,
+          index_dims[1],
+          1,
           platform::errors::InvalidArgument(
               "The last dim of index should be 1 when it is 2D, but we get %d",
               index_dims[1]));
     } else {
       PADDLE_ENFORCE_EQ(
-          index_dims.size(), 1,
+          index_dims.size(),
+          1,
           platform::errors::InvalidArgument(
               "The index should be 1D, when it is not 2D, but we get %d",
               index_dims.size()));
     }
 
-    auto *out = ctx.Output<Tensor>("Out");
+    auto *out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
     MLUCnnlTensorDesc x_desc(*x);
     int index_shape_1d[1] = {static_cast<int>(index_dims[0])};
-    MLUCnnlTensorDesc index_desc(1, index_shape_1d,
-                                 ToCnnlDataType(index->dtype()));
+    MLUCnnlTensorDesc index_desc(
+        1, index_shape_1d, ToCnnlDataType(index->dtype()));
     MLUCnnlTensorDesc out_desc(*out);
-    MLUCnnl::GatherFunctor(ctx, axis, 0 /*batch_dims*/, x_desc.get(),
-                           GetBasePtr(x), index_desc.get(), GetBasePtr(index),
-                           out_desc.get(), GetBasePtr(out));
+    MLUCnnl::GatherFunctor(ctx,
+                           axis,
+                           0 /*batch_dims*/,
+                           x_desc.get(),
+                           GetBasePtr(x),
+                           index_desc.get(),
+                           GetBasePtr(index),
+                           out_desc.get(),
+                           GetBasePtr(out));
   }
 };
 
@@ -60,20 +68,22 @@ template <typename T>
 class GatherGradOpMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *index = ctx.Input<Tensor>("Index");
-    auto *dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto *dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto *index = ctx.Input<phi::DenseTensor>("Index");
+    auto *dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto *dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     const auto index_dims = index->dims();
     if (index_dims.size() == 2) {
       PADDLE_ENFORCE_EQ(
-          index_dims[1], 1,
+          index_dims[1],
+          1,
           platform::errors::InvalidArgument(
               "The last dim of index should be 1 when it is 2D, but we get %d",
               index_dims[1]));
     } else {
       PADDLE_ENFORCE_EQ(
-          index_dims.size(), 1,
+          index_dims.size(),
+          1,
           platform::errors::InvalidArgument(
               "The index should be 1D, when it is not 2D, but we get %d",
               index_dims.size()));
@@ -83,17 +93,22 @@ class GatherGradOpMLUKernel : public framework::OpKernel<T> {
 
     MLUCnnlTensorDesc dx_desc(*dx);
     auto value = static_cast<T>(0);
-    MLUCnnl::Fill(ctx, CNNL_POINTER_MODE_HOST, &value, dx_desc.get(),
-                  GetBasePtr(dx));
+    MLUCnnl::Fill(
+        ctx, CNNL_POINTER_MODE_HOST, &value, dx_desc.get(), GetBasePtr(dx));
 
     int index_shape_1d[1] = {static_cast<int>(index_dims[0])};
-    MLUCnnlTensorDesc index_desc(1, index_shape_1d,
-                                 ToCnnlDataType(index->dtype()));
+    MLUCnnlTensorDesc index_desc(
+        1, index_shape_1d, ToCnnlDataType(index->dtype()));
     MLUCnnlTensorDesc dout_desc(*dout);
     const cnnlScatterRefMode_t mode = CNNL_SCATTERREF_UPDATE;
-    MLUCnnl::ScatterFunctor(ctx, dx_desc.get(), GetBasePtr(dx), dout_desc.get(),
-                            GetBasePtr(dout), index_desc.get(),
-                            GetBasePtr(index), mode);
+    MLUCnnl::ScatterRefFunctor(ctx,
+                               dx_desc.get(),
+                               GetBasePtr(dx),
+                               dout_desc.get(),
+                               GetBasePtr(dout),
+                               index_desc.get(),
+                               GetBasePtr(index),
+                               mode);
   }
 };
 
@@ -101,10 +116,12 @@ class GatherGradOpMLUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_MLU_KERNEL(gather, ops::GatherOpMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(gather,
+                       ops::GatherOpMLUKernel<float>,
                        ops::GatherOpMLUKernel<paddle::platform::float16>,
                        ops::GatherOpMLUKernel<int>);
 
-REGISTER_OP_MLU_KERNEL(gather_grad, ops::GatherGradOpMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(gather_grad,
+                       ops::GatherGradOpMLUKernel<float>,
                        ops::GatherGradOpMLUKernel<paddle::platform::float16>,
                        ops::GatherGradOpMLUKernel<int>);

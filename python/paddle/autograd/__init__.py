@@ -17,14 +17,13 @@ from ..fluid.dygraph.base import no_grad_ as no_grad  # noqa: F401
 from ..framework import is_grad_enabled, set_grad_enabled  # noqa: F401
 from . import backward_mode  # noqa: F401
 from .backward_mode import backward  # noqa: F401
-from .py_layer import PyLayer, PyLayerContext, EagerPyLayer, EagerPyLayerContext  # noqa: F401
-from ..framework import set_grad_enabled, is_grad_enabled  # noqa: F401
-from ..fluid.dygraph.base import no_grad_ as no_grad  # noqa: F401
-from .functional import vjp, jvp, Jacobian, Hessian  # noqa: F401
-from .functional import jacobian, hessian, batch_jacobian, batch_hessian, vhp  # noqa: F401
+from .py_layer import PyLayer as PyLayer  # noqa: F401
+from .py_layer import PyLayerContext as PyLayerContext  # noqa: F401
+from .saved_tensors_hooks import saved_tensors_hooks
 
 __all__ = [  # noqa
     'backward',
     'PyLayer',
     'PyLayerContext',
+    'saved_tensors_hooks',
 ]

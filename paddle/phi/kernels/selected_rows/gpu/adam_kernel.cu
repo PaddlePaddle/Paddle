@@ -14,15 +14,14 @@
 
 #include "paddle/phi/kernels/selected_rows/adam_kernel.h"
 
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/adam_functors.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
+#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
 namespace phi {
 namespace sr {
@@ -129,7 +128,7 @@ void AdamDenseParamSparseGradKernel(
         errors::InvalidArgument("Input(SkipUpdate) size must be 1, but get %d",
                                 skip_update->numel()));
     std::vector<bool> skip_update_vec;
-    paddle::framework::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
+    phi::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
     skip_update_ = skip_update_vec[0];
   }
   // skip_update=true, just copy input to output, and TensorCopy will call
@@ -191,7 +190,7 @@ void AdamDenseParamSparseGradKernel(
   } else {
     // merge duplicated rows if any.
     // The rows of grad_merge have been sorted inside MergeAdd functor
-    paddle::operators::math::scatter::MergeAdd<Context, T> merge_func;
+    phi::funcs::scatter::MergeAdd<Context, T> merge_func;
     merge_func(dev_ctx, grad, &tmp_grad_merge, true);
     grad_merge_ptr = &tmp_grad_merge;
   }
@@ -199,7 +198,7 @@ void AdamDenseParamSparseGradKernel(
   auto& grad_tensor = grad_merge.value();
   const T* grad_data = grad_tensor.template data<T>();
   auto* grad_merge_rows = &grad_merge.rows();
-  paddle::framework::MixVector<int64_t> mixv_grad_merge_rows(grad_merge_rows);
+  phi::MixVector<int64_t> mixv_grad_merge_rows(grad_merge_rows);
   const int64_t* rows = mixv_grad_merge_rows.Data(dev_ctx.GetPlace());
   auto row_numel = grad_tensor.numel() / grad_merge.rows().size();
 
@@ -208,28 +207,28 @@ void AdamDenseParamSparseGradKernel(
     int ndim = param.numel();
     int blocks = (ndim + threads - 1) / threads;
 
-    SparseAdamCUDAKernelREG<T,
-                            MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
-        beta1_,
-        beta2_,
-        epsilon_,
-        *beta1_pow.data<MPDType>(),
-        *beta2_pow.data<MPDType>(),
-        moment1.data<MPDType>(),
-        dev_ctx.template Alloc<MPDType>(moment1_out),
-        moment2.data<MPDType>(),
-        dev_ctx.template Alloc<MPDType>(moment2_out),
-        learning_rate.data<MPDType>(),
-        grad_data,
-        param.data<T>(),
-        dev_ctx.template Alloc<T>(param_out),
-        master_in_data,
-        master_out_data,
-        rows,
-        row_numel,
-        grad_merge.rows().size(),
-        lazy_mode,
-        ndim);
+    SparseAdamCUDAKernelREG<T, MPDType>
+        <<<blocks, threads, 0, dev_ctx.stream()>>>(
+            beta1_,
+            beta2_,
+            epsilon_,
+            *beta1_pow.data<MPDType>(),
+            *beta2_pow.data<MPDType>(),
+            moment1.data<MPDType>(),
+            dev_ctx.template Alloc<MPDType>(moment1_out),
+            moment2.data<MPDType>(),
+            dev_ctx.template Alloc<MPDType>(moment2_out),
+            learning_rate.data<MPDType>(),
+            grad_data,
+            param.data<T>(),
+            dev_ctx.template Alloc<T>(param_out),
+            master_in_data,
+            master_out_data,
+            rows,
+            row_numel,
+            grad_merge.rows().size(),
+            lazy_mode,
+            ndim);
     if (!use_global_beta_pow) {
       // Update with cpu
       dev_ctx.template HostAlloc<MPDType>(beta1_pow_out)[0] =

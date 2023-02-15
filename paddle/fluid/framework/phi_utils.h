@@ -21,11 +21,10 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
-
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
@@ -36,6 +35,9 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/backends/custom/custom_device_op_list.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -44,8 +46,7 @@ namespace framework {
 
 OpKernelType TransPhiKernelKeyToOpKernelType(const phi::KernelKey& kernel_key);
 phi::KernelKey TransOpKernelTypeToPhiKernelKey(const OpKernelType& kernel_type);
-phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
-                             const phi::KernelKey& kernel_key,
+phi::KernelKey FallBackToCpu(const phi::KernelKey& kernel_key,
                              const framework::OperatorBase& op);
 
 /* Kernel Args parse */
@@ -67,13 +68,13 @@ struct ConvertToPhiContext {
 };
 
 template <>
-struct ConvertToPhiContext<platform::CPUDeviceContext> {
+struct ConvertToPhiContext<phi::CPUContext> {
   using TYPE = phi::CPUContext;
 };
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <>
-struct ConvertToPhiContext<platform::CUDADeviceContext> {
+struct ConvertToPhiContext<phi::GPUContext> {
   using TYPE = phi::GPUContext;
 };
 #endif

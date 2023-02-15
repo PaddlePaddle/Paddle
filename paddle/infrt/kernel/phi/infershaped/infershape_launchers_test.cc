@@ -26,9 +26,9 @@ namespace infrt {
 namespace kernel {
 
 namespace {
-static void ElementwiseAddTest(const ::phi::DenseTensor& a,
-                               const ::phi::DenseTensor& b,
-                               ::phi::DenseTensor* c);
+static void ElementwiseAddTest(const ::Tensor& a,
+                               const ::Tensor& b,
+                               ::Tensor* c);
 }
 
 TEST(utils, registry) {
@@ -66,9 +66,9 @@ TEST(ElementwiseAdd, launcher_registry) {
   auto fancy_allocator = std::unique_ptr<::phi::Allocator>(new FancyAllocator);
   auto* alloc = fancy_allocator.get();
 
-  ::phi::DenseTensor a(alloc, meta);
-  ::phi::DenseTensor b(alloc, meta);
-  ::phi::DenseTensor c(alloc, meta);
+  ::Tensor a(alloc, meta);
+  ::Tensor b(alloc, meta);
+  ::Tensor c(alloc, meta);
 
   auto place = ::phi::CPUPlace();
   float* a_data = a.mutable_data<float>(place);
@@ -81,7 +81,6 @@ TEST(ElementwiseAdd, launcher_registry) {
 
   ::phi::CPUContext context;
   context.SetAllocator(alloc);
-  context.Init();
 
   host_context::KernelFrameBuilder kernel_frame_builder;
   kernel_frame_builder.AddArgument(new host_context::Value(std::move(context)));

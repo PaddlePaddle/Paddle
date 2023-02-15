@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-import paddle
 from op_test import OpTest
+
+import paddle
 
 
 class TestEinsumBinary(OpTest):
@@ -36,8 +36,14 @@ class TestEinsumBinary(OpTest):
         self.attrs = {"equation": self.equation}
         self.outputs = {
             'Out': out,
-            "InnerCache": [('cache_' + str(i), np.array([1.0]))
-                           for i in range(len(self.operands))]
+            "InnerCache": [
+                ('cache_' + str(i), np.array([1.0]))
+                for i in range(len(self.operands))
+            ],
+            "XShape": [
+                ('xshape_' + str(i), np.array([1.0]))
+                for i in range(len(self.operands))
+            ],
         }
 
     def init_input(self):
@@ -46,14 +52,13 @@ class TestEinsumBinary(OpTest):
             self.inputs.append(np.random.random(s).astype(t))
 
     def set_mandatory(self):
-        self.disable = False
         self.shapes = [(10, 10, 20), (20, 6)]
         self.types = [np.float64, np.float64]
         self.equation = "mij,jk->ki"
 
     def test_check_output(self):
         if not self.disable:
-            self.check_output(no_check_set=["InnerCache"])
+            self.check_output(no_check_set=["InnerCache", "XShape"])
 
     def test_grad(self):
         if not self.disable:
@@ -149,6 +154,55 @@ class TestEinsumWithBroadcast6(TestEinsumBinary):
         self.shapes = [(100), (100)]
         self.types = [np.float64, np.float64]
         self.equation = "i,i->"
+
+
+class TestEinsumWithDiagonal(TestEinsumBinary):
+    def set_mandatory(self):
+        self.shapes = [(10, 10)]
+        self.types = [np.float64]
+        self.equation = "ii->"
+
+
+class TestEinsumWithDiagonal2(TestEinsumBinary):
+    def set_mandatory(self):
+        self.shapes = [(10, 3, 10)]
+        self.types = [np.float64]
+        self.equation = "iji->j"
+
+
+class TestEinsumWithDiagonal3(TestEinsumBinary):
+    def set_mandatory(self):
+        self.shapes = [(5, 3, 2, 1, 4, 5)]
+        self.types = [np.float64]
+        self.equation = "a...a->..."
+
+
+class TestEinsumWithDiagonal4(TestEinsumBinary):
+    def set_mandatory(self):
+        self.shapes = [(5, 3, 2, 1, 4, 5)]
+        self.types = [np.float64]
+        self.equation = "a...a->a..."
+
+
+class TestEinsumWithDiagonal5(TestEinsumBinary):
+    def set_mandatory(self):
+        self.shapes = [(8, 8, 8)]
+        self.types = [np.float64]
+        self.equation = "aaa->a"
+
+
+class TestEinsumWithDiagonal6(TestEinsumBinary):
+    def set_mandatory(self):
+        self.shapes = [(3, 5, 7, 3), (5, 7, 5, 7)]
+        self.types = [np.float64, np.float64]
+        self.equation = "ijki,jkjk->ik"
+
+
+class TestEinsumWithDiagonal8(TestEinsumBinary):
+    def set_mandatory(self):
+        self.shapes = [(3, 5, 7, 3), (5, 7, 5, 7)]
+        self.types = [np.float64, np.float64]
+        self.equation = "ijki,jkjk->"
 
 
 if __name__ == "__main__":

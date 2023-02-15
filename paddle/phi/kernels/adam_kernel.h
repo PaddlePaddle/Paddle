@@ -44,4 +44,27 @@ void AdamDenseKernel(const Context& dev_ctx,
                      DenseTensor* beta2_pow_out,
                      DenseTensor* master_param_outs);
 
+template <typename T, typename Context>
+void MergedAdamKernel(
+    const Context& dev_ctx,
+    const std::vector<const DenseTensor*>& param,
+    const std::vector<const DenseTensor*>& grad,
+    const std::vector<const DenseTensor*>& learning_rate,
+    const std::vector<const DenseTensor*>& moment1,
+    const std::vector<const DenseTensor*>& moment2,
+    const std::vector<const DenseTensor*>& beta1_pow,
+    const std::vector<const DenseTensor*>& beta2_pow,
+    const paddle::optional<std::vector<const DenseTensor*>>& master_param,
+    const Scalar& beta1,
+    const Scalar& beta2,
+    const Scalar& epsilon,
+    bool multi_precision,
+    bool use_global_beta_pow,
+    std::vector<DenseTensor*> param_out,
+    std::vector<DenseTensor*> moment1_out,
+    std::vector<DenseTensor*> moment2_out,
+    std::vector<DenseTensor*> beta1_pow_out,
+    std::vector<DenseTensor*> beta2_pow_out,
+    std::vector<DenseTensor*> master_param_out);
+
 }  // namespace phi

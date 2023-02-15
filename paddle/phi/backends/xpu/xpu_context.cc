@@ -17,8 +17,8 @@
 #include <memory>
 
 #include "paddle/phi/api/ext/exception.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/common/place.h"
-
 #include "xpu/runtime.h"
 #include "xpu/runtime_ex.h"
 #include "xpu/xdnn.h"
@@ -46,8 +46,8 @@ struct XPUContext::Impl {
         }
         if (l3ptrs[place_.GetDeviceId()] != nullptr) {
           context_->_l3_mgr.set(l3ptrs[place_.GetDeviceId()], l3_size);
-          VLOG(3) << "xpu place " << place_.GetDeviceId() << " set l3 size "
-                  << l3_size;
+          VLOG(3) << "xpu place " << static_cast<int>(place_.GetDeviceId())
+                  << " set l3 size " << l3_size;
         }
         break;
       }
@@ -60,12 +60,22 @@ struct XPUContext::Impl {
 
   ~Impl() {
     if (owned_ && context_ != nullptr) {
+      backends::xpu::XPUDeviceGuard guard(place_.GetDeviceId());
+      xpu_wait(context_->xpu_stream);
+      if (context_->xpu_stream) {
+        // manually destroy XPUStream here until xpu::api integrates this work
+        // into Context dtor
+        xpu_stream_destroy(context_->xpu_stream);
+        context_->xpu_stream = nullptr;
+      }
       xpu::destroy_context(context_);
       context_ = nullptr;
     }
   }
 
   const Place& GetPlace() const { return place_; }
+
+  XPUStream stream() const { return context_->xpu_stream; }
 
   xpu::Context* GetXContext() const {
     PD_CHECK(context_ != nullptr, "the xpu context is nullptr.");
@@ -78,7 +88,7 @@ struct XPUContext::Impl {
   }
 
   void Wait() const {
-    backends::xpu::SetXPUDeviceId(place_.GetDeviceId());
+    backends::xpu::XPUDeviceGuard guard(place_.GetDeviceId());
     PD_CHECK(context_ != nullptr, "the xpu context is nullptr.");
     xpu_wait(context_->xpu_stream);
   }
@@ -86,8 +96,8 @@ struct XPUContext::Impl {
   void Init() {
     owned_ = true;
     backends::xpu::XPUDeviceGuard guard(place_.GetDeviceId());
-    LOG_FIRST_N(WARNING, 1) << "Please NOTE: xpu device: "
-                            << static_cast<int>(place_.device);
+    LOG_FIRST_N(WARNING, 1)
+        << "Please NOTE: xpu device: " << static_cast<int>(place_.device);
     context_ = xpu::create_context();
     xpu_version_ = backends::xpu::get_xpu_version(place_.device);
     SetL3Cache();
@@ -96,6 +106,14 @@ struct XPUContext::Impl {
   void SetXContext(xpu::Context* context) { context_ = context; }
 
   void SetBkclContext(xpu::BKCLContext_t context) { bkcl_context_ = context; }
+
+  void CreateStream() {
+    if (context_->xpu_stream) {
+      VLOG(3) << "xpu stream is already created for current context";
+      return;
+    }
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&context_->xpu_stream));
+  }
 
   bool owned_{false};
   Place place_;
@@ -115,6 +133,8 @@ XPUContext::XPUContext(const XPUPlace& place)
 XPUContext::~XPUContext() = default;
 
 const Place& XPUContext::GetPlace() const { return impl_->GetPlace(); }
+
+XPUStream XPUContext::stream() const { return impl_->stream(); }
 
 backends::xpu::XPUVersion XPUContext::xpu_version() const {
   return impl_->xpu_version_;
@@ -137,6 +157,8 @@ void XPUContext::SetL3Cache(int l3_size) { impl_->SetL3Cache(l3_size); }
 void XPUContext::SetBkclContext(xpu::BKCLContext_t context) {
   impl_->SetBkclContext(context);
 }
+
+void XPUContext::CreateStream() { impl_->CreateStream(); }
 
 void XPUContext::Init() { impl_->Init(); }
 

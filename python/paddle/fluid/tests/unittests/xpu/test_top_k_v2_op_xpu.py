@@ -12,16 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import unittest
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
+
 sys.path.append("..")
 from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
+
 import paddle
-import paddle.fluid.core as core
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 
 paddle.enable_static()
 
@@ -62,10 +66,11 @@ class XPUTestTopKV2Op(XPUOpTestWrapper):
             self.attrs = {
                 'k': self.k,
                 'axis': self.axis,
-                'largest': self.largest
+                'largest': self.largest,
             }
             output, indices = numpy_topk(
-                self.input_data, axis=self.axis, k=self.k, largest=self.largest)
+                self.input_data, axis=self.axis, k=self.k, largest=self.largest
+            )
             self.outputs = {'Out': output, 'Indices': indices}
 
         def test_check_output(self):

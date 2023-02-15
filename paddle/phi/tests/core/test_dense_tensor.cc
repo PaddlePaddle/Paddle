@@ -12,9 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "gtest/gtest.h"
-
 #include "glog/logging.h"
+#include "gtest/gtest.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/tests/core/allocator.h"
 
@@ -128,6 +127,60 @@ TEST(dense_tensor, shallow_copy) {
 
   DenseTensor tensor_1(tensor_0);
   CHECK(tensor_0.meta() == tensor_1.meta());
+}
+
+struct TestStorageProperties
+    : public StorageProperties,
+      public TypeInfoTraits<StorageProperties, NPUStorageProperties> {
+  virtual ~TestStorageProperties() = default;
+  static const char* name() { return "TestStorageProperties"; }
+};
+
+TEST(dense_tensor, storage_properties) {
+  const DataType dtype{DataType::FLOAT32};
+  const DDim dims({1, 2});
+  DenseTensorMeta meta(dtype, dims);
+
+  auto fancy_allocator = std::unique_ptr<Allocator>(new FancyAllocator);
+  DenseTensor tensor(fancy_allocator.get(), meta);
+
+  // test no storage properties
+  bool caught_exception = false;
+  try {
+    tensor.storage_properties<NPUStorageProperties>();
+  } catch (phi::enforce::EnforceNotMet& error) {
+    caught_exception = true;
+  }
+  EXPECT_TRUE(caught_exception);
+
+  // test custom device storage properties
+  EXPECT_FALSE(tensor.storage_properties_initialized());
+  auto npu_properties = std::make_unique<NPUStorageProperties>();
+  npu_properties->storage_format = 3;
+  npu_properties->storage_dims = {1, 1, 1, 1, 16};
+  tensor.set_storage_properties(std::move(npu_properties));
+  EXPECT_TRUE(tensor.storage_properties_initialized());
+  auto get_npu_properties = tensor.storage_properties<NPUStorageProperties>();
+  CHECK_EQ(get_npu_properties.storage_format, 3);
+  CHECK_EQ(get_npu_properties.storage_dims.size(), 5);
+
+  // test error type storage properties
+#ifdef PADDLE_WITH_MKLDNN
+  caught_exception = false;
+  try {
+    tensor.storage_properties<OneDNNStorageProperties>();
+  } catch (phi::enforce::EnforceNotMet& error) {
+    caught_exception = true;
+  }
+  EXPECT_TRUE(caught_exception);
+#endif
+
+  // test copy storage properties
+  auto cp_tensor = tensor;
+  auto get_cp_npu_properties =
+      cp_tensor.storage_properties<NPUStorageProperties>();
+  CHECK_EQ(get_cp_npu_properties.storage_format, 3);
+  CHECK_EQ(get_cp_npu_properties.storage_dims.size(), 5);
 }
 
 }  // namespace tests

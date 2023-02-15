@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 
@@ -35,7 +34,9 @@ class TestClipByNormOp(OpTest):
         input = np.random.random(self.shape).astype(self.dtype)
         input[np.abs(input) < self.max_relative_error] = 0.5
         self.op_type = "clip_by_norm"
-        self.inputs = {'X': input, }
+        self.inputs = {
+            'X': input,
+        }
         self.attrs = {}
         self.attrs['max_norm'] = self.max_norm
         norm = np.sqrt(np.sum(np.square(input)))
@@ -53,7 +54,7 @@ class TestClipByNormOp(OpTest):
         self.check_output_with_place(self.place)
 
     def initTestCase(self):
-        self.shape = (100, )
+        self.shape = (100,)
         self.max_norm = 1.0
 
     def init_dtype(self):
@@ -62,7 +63,7 @@ class TestClipByNormOp(OpTest):
 
 class TestCase1(TestClipByNormOp):
     def initTestCase(self):
-        self.shape = (100, )
+        self.shape = (100,)
         self.max_norm = 1e20
 
 
@@ -88,7 +89,7 @@ class TestClipByNormOpFp16(TestClipByNormOp):
 
 class TestClipByNormOpFp16Case1(TestClipByNormOpFp16):
     def initTestCase(self):
-        self.shape = (100, )
+        self.shape = (100,)
         self.max_norm = 1e20
 
 

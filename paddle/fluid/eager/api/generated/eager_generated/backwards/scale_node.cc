@@ -13,59 +13,75 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/scale_node.h"
+
+#include "glog/logging.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/eager_tensor.h"
-
-#include "paddle/phi/kernels/scale_kernel.h"
-
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
-
-#include "glog/logging.h"
+#include "paddle/phi/kernels/scale_kernel.h"
 
 namespace egr {
 
 template <typename DeviceContext>
 static void ScaleDeviceDispatch(const phi::DenseTensor& dense_tensor,
-                                const DeviceContext& dev_ctx, float scale,
-                                float bias, bool bias_after_scale,
+                                const DeviceContext& dev_ctx,
+                                float scale,
+                                float bias,
+                                bool bias_after_scale,
                                 phi::DenseTensor* dense_out) {
   switch (dense_tensor.dtype()) {
     case phi::DataType::FLOAT64: {
-      phi::ScaleKernel<double, typename paddle::framework::ConvertToPhiContext<
-                                   DeviceContext>::TYPE>(
+      phi::ScaleKernel<
+          double,
+          typename paddle::framework::ConvertToPhiContext<DeviceContext>::TYPE>(
           static_cast<const typename paddle::framework::ConvertToPhiContext<
               DeviceContext>::TYPE&>(dev_ctx),
-          dense_tensor /* tensor */, scale /* scale */, bias /* bias */,
-          bias_after_scale /* bias_after_scale */, dense_out /* out tensor */);
+          dense_tensor /* tensor */,
+          scale /* scale */,
+          bias /* bias */,
+          bias_after_scale /* bias_after_scale */,
+          dense_out /* out tensor */);
       break;
     }
     case phi::DataType::FLOAT32: {
-      phi::ScaleKernel<float, typename paddle::framework::ConvertToPhiContext<
-                                  DeviceContext>::TYPE>(
+      phi::ScaleKernel<
+          float,
+          typename paddle::framework::ConvertToPhiContext<DeviceContext>::TYPE>(
           static_cast<const typename paddle::framework::ConvertToPhiContext<
               DeviceContext>::TYPE&>(dev_ctx),
-          dense_tensor /* tensor */, scale /* scale */, bias /* bias */,
-          bias_after_scale /* bias_after_scale */, dense_out /* out tensor */);
+          dense_tensor /* tensor */,
+          scale /* scale */,
+          bias /* bias */,
+          bias_after_scale /* bias_after_scale */,
+          dense_out /* out tensor */);
       break;
     }
     case phi::DataType::INT64: {
-      phi::ScaleKernel<int64_t, typename paddle::framework::ConvertToPhiContext<
-                                    DeviceContext>::TYPE>(
+      phi::ScaleKernel<
+          int64_t,
+          typename paddle::framework::ConvertToPhiContext<DeviceContext>::TYPE>(
           static_cast<const typename paddle::framework::ConvertToPhiContext<
               DeviceContext>::TYPE&>(dev_ctx),
-          dense_tensor /* tensor */, scale /* scale */, bias /* bias */,
-          bias_after_scale /* bias_after_scale */, dense_out /* out tensor */);
+          dense_tensor /* tensor */,
+          scale /* scale */,
+          bias /* bias */,
+          bias_after_scale /* bias_after_scale */,
+          dense_out /* out tensor */);
       break;
     }
     case phi::DataType::INT32: {
-      phi::ScaleKernel<int32_t, typename paddle::framework::ConvertToPhiContext<
-                                    DeviceContext>::TYPE>(
+      phi::ScaleKernel<
+          int32_t,
+          typename paddle::framework::ConvertToPhiContext<DeviceContext>::TYPE>(
           static_cast<const typename paddle::framework::ConvertToPhiContext<
               DeviceContext>::TYPE&>(dev_ctx),
-          dense_tensor /* tensor */, scale /* scale */, bias /* bias */,
-          bias_after_scale /* bias_after_scale */, dense_out /* out tensor */);
+          dense_tensor /* tensor */,
+          scale /* scale */,
+          bias /* bias */,
+          bias_after_scale /* bias_after_scale */,
+          dense_out /* out tensor */);
       break;
     }
     default: {
@@ -77,8 +93,11 @@ static void ScaleDeviceDispatch(const phi::DenseTensor& dense_tensor,
   }
 }
 
-void ScaleAPI(const paddle::experimental::Tensor& x, float scale, float bias,
-              bool bias_after_scale, paddle::experimental::Tensor* out) {
+void ScaleAPI(const paddle::experimental::Tensor& x,
+              float scale,
+              float bias,
+              bool bias_after_scale,
+              paddle::experimental::Tensor* out) {
   // TODO(jiabin): Support multiple tensor here, Create DenseTensor is not a
   // proper way to Demo it
   // Run Forward Function
@@ -98,31 +117,37 @@ void ScaleAPI(const paddle::experimental::Tensor& x, float scale, float bias,
       paddle::platform::DeviceContextPool::Instance();
 
   if (expected_kernel_place == paddle::platform::CPUPlace()) {
-    auto* dev_ctx = dynamic_cast<paddle::platform::CPUDeviceContext*>(
-        pool.Get(expected_kernel_place));
+    auto* dev_ctx =
+        dynamic_cast<phi::CPUContext*>(pool.Get(expected_kernel_place));
     if (!dev_ctx) {
       PADDLE_THROW(paddle::platform::errors::Fatal(
-          "Cannot convert device_context to CPUDeviceContext."
+          "Cannot convert device_context to phi::CPUContext."
           "This indicates backend mismatch."
           "Pleas double check your expected place"));
     }
-    ScaleDeviceDispatch<paddle::platform::CPUDeviceContext>(
-        *dense_tensor.get(), *dev_ctx, scale, bias, bias_after_scale,
-        dense_out.get());
+    ScaleDeviceDispatch<phi::CPUContext>(*dense_tensor.get(),
+                                         *dev_ctx,
+                                         scale,
+                                         bias,
+                                         bias_after_scale,
+                                         dense_out.get());
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   } else if (expected_kernel_place == paddle::platform::CUDAPlace()) {
-    auto* dev_ctx = dynamic_cast<paddle::platform::CUDADeviceContext*>(
-        pool.Get(expected_kernel_place));
+    auto* dev_ctx =
+        dynamic_cast<phi::GPUContext*>(pool.Get(expected_kernel_place));
     if (!dev_ctx) {
       PADDLE_THROW(paddle::platform::errors::Fatal(
           "Cannot convert device_context to CUDADeviceContext."
           "This indicates backend mismatch."
           "Pleas double check your expected place"));
     }
-    ScaleDeviceDispatch<paddle::platform::CUDADeviceContext>(
-        *dense_tensor.get(), *dev_ctx, scale, bias, bias_after_scale,
-        dense_out.get());
+    ScaleDeviceDispatch<phi::GPUContext>(*dense_tensor.get(),
+                                         *dev_ctx,
+                                         scale,
+                                         bias,
+                                         bias_after_scale,
+                                         dense_out.get());
 #endif
   } else {
     PADDLE_THROW(paddle::platform::errors::Fatal(
@@ -170,11 +195,14 @@ GradNodeScale::operator()(
     paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                          kSlotSmallVectorSize>
         hooked_grads = ApplyGradientHooks(grads);
-    ScaleAPI(/* slot by slot set */ hooked_grads[0][0], scale_, 0.0 /* bias */,
-             true /* bias_after_scale */, &out);
-  } else {
-    ScaleAPI(grads[0][0], scale_, 0.0 /* bias */, true /* bias_after_scale */,
+    ScaleAPI(/* slot by slot set */ hooked_grads[0][0],
+             scale_,
+             0.0 /* bias */,
+             true /* bias_after_scale */,
              &out);
+  } else {
+    ScaleAPI(
+        grads[0][0], scale_, 0.0 /* bias */, true /* bias_after_scale */, &out);
   }
 
   return {{out}};

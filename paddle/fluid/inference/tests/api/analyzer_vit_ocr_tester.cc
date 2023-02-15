@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <fstream>
 #include <iostream>
+
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
@@ -71,11 +72,6 @@ void SetConfig(AnalysisConfig *cfg, bool use_mkldnn = false) {
   if (use_mkldnn) {
     cfg->EnableMKLDNN();
     cfg->SwitchIrOptim();
-
-    size_t insertingIndex = cfg->pass_builder()->GetPassIndex(
-        "fc_elementwise_add_mkldnn_fuse_pass");
-    cfg->pass_builder()->InsertPass(insertingIndex, "fc_act_mkldnn_fuse_pass");
-    cfg->pass_builder()->InsertPass(insertingIndex, "fc_mkldnn_pass");
   }
 }
 
@@ -103,12 +99,12 @@ TEST(Analyzer_vit_ocr, fuse_status) {
   SetConfig(&cfg, true);
   int num_ops;
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
-  auto fuse_status = GetFuseStatis(
+  auto fuse_statis = GetFuseStatis(
       static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
 
-  CHECK_EQ(fuse_status.at("fc_mkldnn_pass"), 33);
-  CHECK_EQ(fuse_status.at("conv_activation_mkldnn_fuse"), 2);
-  CHECK_EQ(fuse_status.at("fc_elementwise_add_mkldnn_fuse"), 16);
+  CHECK_EQ(fuse_statis.at("fc_mkldnn_pass"), 33);
+  CHECK_EQ(fuse_statis.at("fused_conv2d_gelu_mkldnn_fuse_pass"), 2);
+  CHECK_EQ(fuse_statis.at("fc_elementwise_add_mkldnn_fuse"), 16);
 }
 #endif
 

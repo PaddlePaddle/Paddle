@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
+import gradient_checker
 import numpy as np
+from decorator_helper import prog_scope
+from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
-from op_test import OpTest
 
 
 class TestFlipOp_API(unittest.TestCase):
@@ -41,14 +42,15 @@ class TestFlipOp_API(unittest.TestCase):
             exe = fluid.Executor(place)
             exe.run(startup_program)
             img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
-            res = exe.run(train_program,
-                          feed={'input': img},
-                          fetch_list=[output])
+            res = exe.run(
+                train_program, feed={'input': img}, fetch_list=[output]
+            )
             out_np = np.array(res[0])
             out_ref = np.array([[3, 2, 1], [6, 5, 4]]).astype(np.float32)
             self.assertTrue(
                 (out_np == out_ref).all(),
-                msg='flip output is wrong, out =' + str(out_np))
+                msg='flip output is wrong, out =' + str(out_np),
+            )
 
     def test_dygraph(self):
         img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
@@ -61,7 +63,8 @@ class TestFlipOp_API(unittest.TestCase):
 
             self.assertTrue(
                 (ret.numpy() == out_ref).all(),
-                msg='flip output is wrong, out =' + str(ret.numpy()))
+                msg='flip output is wrong, out =' + str(ret.numpy()),
+            )
 
 
 class TestFlipOp(OpTest):
@@ -129,6 +132,85 @@ class TestFlipOpNegAxis(TestFlipOp):
     def init_test_case(self):
         self.in_shape = (6, 4, 2, 2)
         self.axis = [-1]
+
+
+class TestFlipDoubleGradCheck(unittest.TestCase):
+    def flip_wrapper(self, x):
+        return paddle.flip(x[0], [0, 1])
+
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        eps = 0.005
+        dtype = np.float32
+
+        data = paddle.static.data('data', [3, 2, 2], dtype)
+        data.persistable = True
+        out = paddle.flip(data, [0, 1])
+        data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
+
+        gradient_checker.double_grad_check(
+            [data], out, x_init=[data_arr], place=place, eps=eps
+        )
+        gradient_checker.double_grad_check_for_dygraph(
+            self.flip_wrapper, [data], out, x_init=[data_arr], place=place
+        )
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestFlipTripleGradCheck(unittest.TestCase):
+    def flip_wrapper(self, x):
+        return paddle.flip(x[0], [0, 1])
+
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        eps = 0.005
+        dtype = np.float32
+
+        data = paddle.static.data('data', [3, 2, 2], dtype)
+        data.persistable = True
+        out = paddle.flip(data, [0, 1])
+        data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
+
+        gradient_checker.triple_grad_check(
+            [data], out, x_init=[data_arr], place=place, eps=eps
+        )
+        gradient_checker.triple_grad_check_for_dygraph(
+            self.flip_wrapper, [data], out, x_init=[data_arr], place=place
+        )
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestFlipError(unittest.TestCase):
+    def test_axis(self):
+        paddle.enable_static()
+
+        def test_axis_rank():
+            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+            output = paddle.flip(input, axis=[[0]])
+
+        self.assertRaises(TypeError, test_axis_rank)
+
+        def test_axis_rank2():
+            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+            output = paddle.flip(input, axis=[[0, 0], [1, 1]])
+
+        self.assertRaises(TypeError, test_axis_rank2)
 
 
 if __name__ == "__main__":

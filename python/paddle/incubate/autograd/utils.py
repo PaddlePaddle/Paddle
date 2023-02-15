@@ -11,12 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import typing
 
 import paddle
 from paddle.fluid import framework as framework
 
+from .phi_ops_map import op_info, op_map
 
-class PrimOption(object):
+
+class PrimOption:
     def __init__(self):
         self.enable_prim = False
 
@@ -33,12 +36,12 @@ prim_option = PrimOption()
 @framework.static_only
 def prim_enabled():
     """
-    .. note::
-        **ONLY available in the static mode.**
+    Note:
+        **ONLY available in the static graph mode.**
 
-    Shows whether the automatic differentiation mechanism based on 
+    Shows whether the automatic differentiation mechanism based on
     automatic differential basic operators is ON. Defaults to OFF.
-     
+
     Returns:
         flag(bool): Whether the automatic differentiation mechanism based on automatic differential basic operators is ON.
 
@@ -48,7 +51,7 @@ def prim_enabled():
 
             import paddle
             from paddle.incubate.autograd import enable_prim, disable_prim, prim_enabled
-            
+
             paddle.enable_static()
             enable_prim()
 
@@ -64,19 +67,19 @@ def prim_enabled():
 @framework.static_only
 def enable_prim():
     """
-    .. note::
-        **ONLY available in the static mode.**
+    Note:
+        **ONLY available in the static graph mode.**
 
-    Turns ON automatic differentiation mechanism based on automatic 
+    Turns ON automatic differentiation mechanism based on automatic
     differential basic operators.
-    
+
     Examples:
 
         .. code-block:: python
 
             import paddle
             from paddle.incubate.autograd import enable_prim, prim_enabled
-            
+
             paddle.enable_static()
             enable_prim()
 
@@ -88,19 +91,19 @@ def enable_prim():
 @framework.static_only
 def disable_prim():
     """
-    .. note::
-        **ONLY available in the static mode.**
+    Note:
+        **ONLY available in the static graph mode.**
 
-    Turns OFF automatic differentiation mechanism based on automatic 
+    Turns OFF automatic differentiation mechanism based on automatic
     differential basic operators.
-    
+
     Examples:
 
         .. code-block:: python
 
             import paddle
             from paddle.incubate.autograd import enable_prim, disable_prim, prim_enabled
-            
+
             paddle.enable_static()
             enable_prim()
 
@@ -147,6 +150,64 @@ def get_input_var_list(op):
         ]
 
 
+def _solve_arg(item):
+    if "=" not in item:
+        res = item
+    else:
+        res = item.split('=')[0]
+    [arg_type, arg_name] = res.strip().split()
+    return arg_type.strip(), arg_name.strip()
+
+
+def _get_args_values(op, phi_name):
+    "get attrs' values for api args' values"
+    args = op_info[phi_name]
+    args_list = args["args"].split(",")
+    inputs = []
+    attrs = []
+    for item in args_list:
+        arg_type, arg_name = _solve_arg(item)
+        op_content = op_map[op.type]
+        if arg_type in ("Tensor", "Tensor[]"):
+            if (
+                "inputs" in op_content.keys()
+                and arg_name in op_content["inputs"].keys()
+            ):
+                inputs.append(op_content["inputs"][arg_name])
+            else:
+                inputs.append(arg_name)
+        else:
+            op_content = op_map[op.type]
+            if (
+                "attrs" in op_content.keys()
+                and arg_name in op_content["attrs"].keys()
+            ):
+                attrs.append(op.attr(op_content["attrs"][arg_name]))
+            attrs.append(op.attr(arg_name))
+
+    return inputs, attrs
+
+
+def prepare_python_api_arguments(op):
+    """
+    Generate all args inputs of composite op. Because inputs of composite op is
+    the same as phi op desribed in ops.yaml. So we need to map origin op to phi op
+    and then push input data and attrs of origin op to correspondng phi op.
+    """
+    if op.input_names is None:
+        return []
+    else:
+        if op.type in op_map:
+            phi_name = op_map[op.type]["phi_name"]
+        else:
+            phi_name = op.type
+        inputs, attrs = _get_args_values(op, phi_name)
+        res = [get_var_block(op.block, op.input(n)) for n in inputs]
+        if attrs:
+            res.extend(attrs)
+        return res
+
+
 def get_output_var_list(op):
     if op.output_names is None:
         return []
@@ -155,13 +216,6 @@ def get_output_var_list(op):
             get_var_block(op.block, op.output(n))
             for n in sorted(op.output_names)
         ]
-
-
-def to_tensors(xs):
-    if isinstance(xs, paddle.fluid.framework.Variable):
-        return [xs]
-    else:
-        return xs
 
 
 def flatten(inp):
@@ -176,3 +230,12 @@ def flatten(inp):
 def flatten_and_remove_none(inp):
     flattened = flatten(inp)
     return [var for var in flattened if var is not None]
+
+
+def as_tensors(xs):
+    if isinstance(xs, framework.Variable):
+        return (xs,)
+    elif isinstance(xs, typing.Sequence):
+        return tuple(xs)
+    else:
+        return xs

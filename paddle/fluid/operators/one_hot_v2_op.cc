@@ -14,6 +14,7 @@
 
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -28,21 +29,23 @@ class OneHotV2Op : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
+  phi::KernelKey GetKernelTypeForVar(
+      const std::string& var_name,
+      const phi::DenseTensor& tensor,
+      const phi::KernelKey& expected_kernel_type) const override {
     if (var_name == "depth_tensor") {
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return phi::KernelKey(
+        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
   }
 };
 
@@ -50,7 +53,8 @@ class OneHotV2OpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(LoDTensor, LoDTensor<int>) Input variable with rank at least 2. "
+             "(phi::DenseTensor, phi::DenseTensor<int>) Input variable with "
+             "rank at least 2. "
              "The last dimension of X should be 1. Each value of X is an index "
              "to indicate the position.");
     AddInput("depth_tensor", "(Tensor, Tensor<int>), Length of one-hot vector")
@@ -99,11 +103,14 @@ Out is a LoDTensor:
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(one_hot_v2, OneHotInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(one_hot_v2,
+                            OneHotInferShapeFunctor,
                             PD_INFER_META(phi::OneHotRawInferMeta));
 
 REGISTER_OPERATOR(
-    one_hot_v2, ops::OneHotV2Op, ops::OneHotV2OpMaker,
+    one_hot_v2,
+    ops::OneHotV2Op,
+    ops::OneHotV2OpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     OneHotInferShapeFunctor);

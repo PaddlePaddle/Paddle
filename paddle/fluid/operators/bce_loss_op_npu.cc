@@ -18,15 +18,13 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
 template <typename DeviceContext, typename T>
 class BCELossNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* labels = ctx.Input<Tensor>("Label");
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* labels = ctx.Input<phi::DenseTensor>("Label");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     out->mutable_data<T>(ctx.GetPlace());
 
@@ -35,7 +33,9 @@ class BCELossNPUKernel : public framework::OpKernel<T> {
             .stream();
 
     const auto& runner =
-        NpuOpRunner("BinaryCrossEntropy", {*x, *labels}, {*out},
+        NpuOpRunner("BinaryCrossEntropy",
+                    {*x, *labels},
+                    {*out},
                     {{"reduction", static_cast<std::string>("none")}});
     runner.Run(stream);
   }
@@ -45,10 +45,10 @@ template <typename DeviceContext, typename T>
 class BCELossGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* labels = ctx.Input<Tensor>("Label");
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* labels = ctx.Input<phi::DenseTensor>("Label");
+    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     dx->mutable_data<T>(ctx.GetPlace());
 
@@ -57,7 +57,9 @@ class BCELossGradNPUKernel : public framework::OpKernel<T> {
             .stream();
 
     const auto& runner =
-        NpuOpRunner("BinaryCrossEntropyGrad", {*x, *labels, *dout}, {*dx},
+        NpuOpRunner("BinaryCrossEntropyGrad",
+                    {*x, *labels, *dout},
+                    {*dx},
                     {{"reduction", static_cast<std::string>("none")}});
     runner.Run(stream);
   }
@@ -70,9 +72,11 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(
-    bce_loss, ops::BCELossNPUKernel<plat::NPUDeviceContext, float>,
+    bce_loss,
+    ops::BCELossNPUKernel<plat::NPUDeviceContext, float>,
     ops::BCELossNPUKernel<plat::NPUDeviceContext, plat::float16>);
 
 REGISTER_OP_NPU_KERNEL(
-    bce_loss_grad, ops::BCELossGradNPUKernel<plat::NPUDeviceContext, float>,
+    bce_loss_grad,
+    ops::BCELossGradNPUKernel<plat::NPUDeviceContext, float>,
     ops::BCELossGradNPUKernel<plat::NPUDeviceContext, plat::float16>);

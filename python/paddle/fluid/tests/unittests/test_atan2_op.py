@@ -12,16 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import unittest
 
+import numpy as np
 from op_test import OpTest
+
 import paddle
-import paddle.nn as nn
-import paddle.nn.functional as F
-import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid import compiler, Program, program_guard
 
 paddle.enable_static()
 np.random.seed(0)
@@ -65,10 +62,13 @@ class TestAtan2_float(TestAtan2):
             self.check_grad(
                 ['X1', 'X2'],
                 'Out',
-                user_defined_grads=atan2_grad(self.inputs['X1'],
-                                              self.inputs['X2'],
-                                              1 / self.inputs['X1'].size),
-                check_eager=True)
+                user_defined_grads=atan2_grad(
+                    self.inputs['X1'],
+                    self.inputs['X2'],
+                    1 / self.inputs['X1'].size,
+                ),
+                check_eager=True,
+            )
 
 
 class TestAtan2_float16(TestAtan2_float):
@@ -111,7 +111,7 @@ class TestAtan2API(unittest.TestCase):
                 res = exe.run(feed={'X1': self.x1, 'X2': self.x2})
             out_ref = np.arctan2(self.x1, self.x2)
             for r in res:
-                self.assertEqual(np.allclose(out_ref, r), True)
+                np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
         for place in self.place:
             run(place)
@@ -123,11 +123,23 @@ class TestAtan2API(unittest.TestCase):
             X2 = paddle.to_tensor(self.x2)
             out = paddle.atan2(X1, X2)
             out_ref = np.arctan2(self.x1, self.x2)
-            self.assertEqual(np.allclose(out_ref, out.numpy()), True)
+            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
             paddle.enable_static()
 
         for place in self.place:
             run(place)
+
+
+class TestAtan2Error(unittest.TestCase):
+    def test_mismatch(self):
+        paddle.enable_static()
+
+        def test_mismatch_numel():
+            X = paddle.fluid.data('X', (1,), dtype=np.float64)
+            Y = paddle.fluid.data('Y', (0,), dtype=np.float64)
+            out = paddle.atan2(X, Y)
+
+        self.assertRaises(ValueError, test_mismatch_numel)
 
 
 if __name__ == '__main__':

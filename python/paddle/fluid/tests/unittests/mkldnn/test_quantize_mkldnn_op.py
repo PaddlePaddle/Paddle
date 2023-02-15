@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest
+
 import paddle
+from paddle.fluid.tests.unittests.op_test import OpTest
 
 
 class TestQuantizeOp(OpTest):
@@ -39,25 +39,28 @@ class TestQuantizeOp(OpTest):
     def prepare_input(self):
         if self.is_negative:
             # input data values are from interval [-1.0, 1.0)
-            self.input = (2 * np.random.random_sample(self.input_size) - 1
-                          ).astype('float32')
+            self.input = (
+                2 * np.random.random_sample(self.input_size) - 1
+            ).astype('float32')
         else:
             # input data values are from interval [0.0, 1.0)
-            self.input = (
-                np.random.random_sample(self.input_size)).astype('float32')
+            self.input = (np.random.random_sample(self.input_size)).astype(
+                'float32'
+            )
 
         self.inputs = {'Input': OpTest.np_dtype_to_fluid_dtype(self.input)}
         self.attrs = {
             'Scale': self.scale,
             'Shift': self.shift,
             'is_negative_input': self.is_negative,
-            'output_format': self.output_format
+            'output_format': self.output_format,
         }
 
     def prepare_output(self):
         input_data_type = 'int8' if self.is_negative else 'uint8'
         output = np.rint(self.input * self.scale + self.shift).astype(
-            input_data_type)
+            input_data_type
+        )
         self.outputs = {'Output': output}
 
     def test_check_output(self):

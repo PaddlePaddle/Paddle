@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,22 +20,25 @@
 #   Licensed under the Apache License, Version 2.0 (the "License").
 
 import math
+
 import paddle
 import paddle.nn.functional as F
-import numpy as np
-from .naive_gate import NaiveGate
+
 from ..utils import limit_by_capacity
+from .naive_gate import NaiveGate
 
 
 class GShardGate(NaiveGate):
-    def __init__(self,
-                 d_model,
-                 num_expert,
-                 world_size,
-                 topk=2,
-                 capacity=(1.2, 2.4),
-                 random_routing=True,
-                 group=None):
+    def __init__(
+        self,
+        d_model,
+        num_expert,
+        world_size,
+        topk=2,
+        capacity=(1.2, 2.4),
+        random_routing=True,
+        group=None,
+    ):
         assert topk == 2, "topk should be 2 in gshard"
         super().__init__(d_model, num_expert, world_size)
         self.capacity = capacity
@@ -44,15 +47,19 @@ class GShardGate(NaiveGate):
 
     def forward(self, x):
         topk_val, topk_idx, gate_score = super().forward(
-            x, return_all_scores=True)
+            x, return_all_scores=True
+        )
         s = gate_score.shape[0]
         top1_idx = topk_idx.flatten()
-        c_e = paddle.scatter(
-            paddle.zeros(shape=[self.tot_expert]),
-            top1_idx,
-            paddle.ones_like(
-                top1_idx, dtype="float32"),
-            overwrite=False) / s
+        c_e = (
+            paddle.scatter(
+                paddle.zeros(shape=[self.tot_expert]),
+                top1_idx,
+                paddle.ones_like(top1_idx, dtype="float32"),
+                overwrite=False,
+            )
+            / s
+        )
         m_e = paddle.mean(F.softmax(gate_score, axis=1), axis=0)
         loss = paddle.mean(c_e * m_e) * (self.num_expert**2)
         self.set_loss(loss)
@@ -64,11 +71,14 @@ class GShardGate(NaiveGate):
             self.num_expert,
             self.world_size,
             capacity,
-            group=self.group)
+            group=self.group,
+        )
 
         if self.random_routing:
             rand_routing_prob = paddle.rand(
-                shape=[gate_score.shape[0]], dtype="float32")
+                shape=[gate_score.shape[0]], dtype="float32"
+            )
             topk_idx = paddle.distributed.models.moe.utils._random_routing(
-                topk_idx, topk_val, rand_routing_prob)
+                topk_idx, topk_val, rand_routing_prob
+            )
         return topk_val, topk_idx

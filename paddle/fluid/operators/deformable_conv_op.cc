@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <memory>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -112,11 +113,10 @@ class DeformableConvOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+                          ctx.device_context().GetPlace());
   }
 };
 
@@ -153,8 +153,10 @@ class DeformableConvGradOp : public framework::OperatorWithKernel {
     auto offset_dims = ctx->GetInputDim("Offset");
     auto mask_dims = ctx->GetInputDim("Mask");
 
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Output")), "Input",
-                   "Output@Grad", "deformable_conv_grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Output")),
+                   "Input",
+                   "Output@Grad",
+                   "deformable_conv_grad");
     if (ctx->HasOutput(framework::GradVarName("Input"))) {
       ctx->SetOutputDim(framework::GradVarName("Input"), in_dims);
     }
@@ -170,21 +172,22 @@ class DeformableConvGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+                          ctx.device_context().GetPlace());
   }
 };
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(deformable_conv, DeformableConvInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(deformable_conv,
+                            DeformableConvInferShapeFunctor,
                             PD_INFER_META(phi::DeformableConvInferMeta));
 
-REGISTER_OPERATOR(deformable_conv, ops::DeformableConvOp,
+REGISTER_OPERATOR(deformable_conv,
+                  ops::DeformableConvOp,
                   ops::DeformableConvOpMaker,
                   ops::DeformableConvGradOpMaker<paddle::framework::OpDesc>,
                   ops::DeformableConvGradOpMaker<paddle::imperative::OpBase>,

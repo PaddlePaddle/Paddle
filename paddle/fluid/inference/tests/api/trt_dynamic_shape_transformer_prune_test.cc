@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include "gflags/gflags.h"
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/inference/tests/api/trt_test_helper.h"
 
 namespace paddle {
@@ -77,8 +77,8 @@ void run(const AnalysisConfig& config, std::vector<float>* out_data) {
   auto output_names = predictor->GetOutputNames();
   auto output_t = predictor->GetOutputTensor(output_names[0]);
   std::vector<int> output_shape = output_t->shape();
-  int out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
-                                std::multiplies<int>());
+  int out_num = std::accumulate(
+      output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
   out_data->resize(out_num);
   output_t->copy_to_cpu(out_data->data());
 }
@@ -120,8 +120,8 @@ void trt_ernie(bool with_fp16, std::vector<float> result) {
     precision = AnalysisConfig::Precision::kHalf;
   }
   config.EnableTensorRtEngine(1 << 30, 1, 12, precision, false, false);
-  config.SetTRTDynamicShapeInfo(min_input_shape, max_input_shape,
-                                opt_input_shape);
+  config.SetTRTDynamicShapeInfo(
+      min_input_shape, max_input_shape, opt_input_shape);
   std::vector<float> out_data;
   run(config, &out_data);
 

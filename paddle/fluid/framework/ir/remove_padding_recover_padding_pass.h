@@ -32,6 +32,24 @@ namespace paddle {
 namespace framework {
 namespace ir {
 namespace patterns {
+struct EmbEltwiseLayernorm : public PatternBase {
+  EmbEltwiseLayernorm(PDPattern *pattern, const std::string &name_scope)
+      : PatternBase(pattern, name_scope, "emb_elt_layernorm") {}
+
+  void operator()();
+  PATTERN_DECL_NODE(emb_elt_layernorm_op);
+  PATTERN_DECL_NODE(emb_elt_layernorm_out);
+};
+
+struct PrelnEmbEltwiseLayernorm : public PatternBase {
+  PrelnEmbEltwiseLayernorm(PDPattern *pattern, const std::string &name_scope)
+      : PatternBase(pattern, name_scope, "preln_emb_elt_layernorm") {}
+
+  void operator()();
+  PATTERN_DECL_NODE(preln_emb_elt_layernorm_op);
+  PATTERN_DECL_NODE(preln_emb_elt_layernorm_out_0);
+  PATTERN_DECL_NODE(preln_emb_elt_layernorm_out_1);
+};
 
 struct SkipLayernorm : public PatternBase {
   SkipLayernorm(PDPattern *pattern, const std::string &name_scope)
@@ -43,6 +61,19 @@ struct SkipLayernorm : public PatternBase {
   PATTERN_DECL_NODE(skip_layernorm_y);
   PATTERN_DECL_NODE(skip_layernorm_op);
   PATTERN_DECL_NODE(skip_layernorm_out);
+};
+
+struct PrelnSkipLayernorm : public PatternBase {
+  PrelnSkipLayernorm(PDPattern *pattern, const std::string &name_scope)
+      : PatternBase(pattern, name_scope, "preln_skip_layernorm") {}
+
+  void operator()();
+
+  PATTERN_DECL_NODE(preln_skip_layernorm_x);
+  PATTERN_DECL_NODE(preln_skip_layernorm_y);
+  PATTERN_DECL_NODE(preln_skip_layernorm_op);
+  PATTERN_DECL_NODE(preln_skip_layernorm_out_0);
+  PATTERN_DECL_NODE(preln_skip_layernorm_out_1);
 };
 
 struct MultiheadMatmul : public PatternBase {
@@ -64,7 +95,6 @@ struct Fc : public PatternBase {
 
   PATTERN_DECL_NODE(fc_input);
   PATTERN_DECL_NODE(fc_op);
-  PATTERN_DECL_NODE(fc_out);
 };
 
 struct Activation : public PatternBase {
@@ -76,6 +106,17 @@ struct Activation : public PatternBase {
   PATTERN_DECL_NODE(activation_input);
   PATTERN_DECL_NODE(activation_op);
   PATTERN_DECL_NODE(activation_out);
+};
+
+struct FusedTokenPrune : public PatternBase {
+  FusedTokenPrune(PDPattern *pattern, const std::string &name_scope)
+      : PatternBase(pattern, name_scope, "fused_token_prune") {}
+
+  void operator()();
+
+  PATTERN_DECL_NODE(fused_token_prune_input);
+  PATTERN_DECL_NODE(fused_token_prune_op);
+  PATTERN_DECL_NODE(fused_token_prune_output);
 };
 }  // namespace patterns
 

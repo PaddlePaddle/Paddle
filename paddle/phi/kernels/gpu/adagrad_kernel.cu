@@ -14,11 +14,11 @@
 
 #include "paddle/phi/kernels/adagrad_kernel.h"
 
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 #include "paddle/phi/kernels/impl/adagrad_kernel_impl.h"
 
 namespace phi {
@@ -47,7 +47,7 @@ __global__ void MergeGradKernel(const T* grad,
   grad += ty * row_numel;
   grad_merge += grad_merge_idx * row_numel;
   for (int index = tid; index < row_numel; index += block_size) {
-    paddle::platform::CudaAtomicAdd(grad_merge + index, grad[index]);
+    phi::CudaAtomicAdd(grad_merge + index, grad[index]);
   }
 }
 
@@ -69,9 +69,9 @@ __global__ void SparseAdagradFunctorKernel(const T* grad,
   for (int index = tid; index < row_numel; index += block_size) {
     // Since index in rows of SelectedRows can be duplicate, we have to use
     // Atomic Operation to avoid concurrent write error.
-    paddle::platform::CudaAtomicAdd(param + index,
-                                    -1.0 * learning_rate[0] * grad[index] /
-                                        (sqrt(moment[index]) + epsilon));
+    phi::CudaAtomicAdd(param + index,
+                       -1.0 * learning_rate[0] * grad[index] /
+                           (sqrt(moment[index]) + epsilon));
   }
 }
 
@@ -85,16 +85,15 @@ struct SparseAdagradFunctor<phi::GPUContext, T> {
                   DenseTensor* param) {
     // 1. g_m.rows = set(g.rows)
     auto grad_width = grad.value().dims()[1];
-    paddle::operators::math::scatter::MergeAdd<phi::GPUContext, T> merge_func;
+    phi::funcs::scatter::MergeAdd<phi::GPUContext, T> merge_func;
     auto grad_merge = merge_func(context, grad);
     auto* grad_merge_data = grad_merge.mutable_value()->template data<T>();
-    paddle::framework::Vector<int64_t> merge_rows(grad_merge.rows());
+    phi::Vector<int64_t> merge_rows(grad_merge.rows());
     // 2. m += g_m * g_m
     auto grad_square =
         SquareSelectedRows<phi::GPUContext, T>(context, grad_merge);
 
-    paddle::operators::math::SelectedRowsAddToTensor<phi::GPUContext, T>
-        functor;
+    phi::funcs::SelectedRowsAddToTensor<phi::GPUContext, T> functor;
     functor(context, grad_square, moment);
 
     // 3. update parameter
@@ -105,20 +104,19 @@ struct SparseAdagradFunctor<phi::GPUContext, T> {
     const int block_size = 256;
     dim3 threads(block_size, 1);
     dim3 grid2(1, merge_rows.size());
-    paddle::framework::MixVector<int64_t> mixv_merge_rows(&merge_rows);
-    SparseAdagradFunctorKernel<
-        T,
-        256><<<grid2,
-               threads,
-               0,
-               reinterpret_cast<const phi::GPUContext&>(context).stream()>>>(
-        grad_merge_data,
-        mixv_merge_rows.CUDAMutableData(context.GetPlace()),
-        lr,
-        param_data,
-        moment_data,
-        grad_width,
-        epsilon);
+    phi::MixVector<int64_t> mixv_merge_rows(&merge_rows);
+    SparseAdagradFunctorKernel<T, 256>
+        <<<grid2,
+           threads,
+           0,
+           reinterpret_cast<const phi::GPUContext&>(context).stream()>>>(
+            grad_merge_data,
+            mixv_merge_rows.CUDAMutableData(context.GetPlace()),
+            lr,
+            param_data,
+            moment_data,
+            grad_width,
+            epsilon);
     mixv_merge_rows.CopyToCPU();
   }
 };

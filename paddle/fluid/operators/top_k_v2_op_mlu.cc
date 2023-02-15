@@ -22,9 +22,9 @@ template <typename T>
 class TopkV2MLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<framework::LoDTensor>("X");
-    auto* output = ctx.Output<framework::LoDTensor>("Out");
-    auto* indices = ctx.Output<framework::LoDTensor>("Indices");
+    auto* input = ctx.Input<phi::DenseTensor>("X");
+    auto* output = ctx.Output<phi::DenseTensor>("Out");
+    auto* indices = ctx.Output<phi::DenseTensor>("Indices");
     const auto& place = ctx.GetPlace();
 
     const auto& sorted = static_cast<bool>(ctx.Attr<bool>("sorted"));
@@ -38,12 +38,16 @@ class TopkV2MLUKernel : public framework::OpKernel<T> {
     }
 
     size_t k = static_cast<int>(ctx.Attr<int>("k"));
-    auto* k_t = ctx.Input<Tensor>("K");
+    auto* k_t = ctx.Input<phi::DenseTensor>("K");
     if (k_t) {
       auto k_t_ptr = static_cast<const void*>(k_t->data<int>());
       auto size = k_t->numel() * sizeof(int);
-      memory::Copy(platform::CPUPlace(), reinterpret_cast<void*>(&k),
-                   k_t->place(), k_t_ptr, size, nullptr);
+      memory::Copy(platform::CPUPlace(),
+                   reinterpret_cast<void*>(&k),
+                   k_t->place(),
+                   k_t_ptr,
+                   size,
+                   nullptr);
       framework::DDim output_dims = output->dims();
       // accroding to axis to set K value in the dim
       output_dims[axis] = k;
@@ -55,23 +59,33 @@ class TopkV2MLUKernel : public framework::OpKernel<T> {
     indices->mutable_data<int64_t>(place);
 
     // cnnl only support int32/int16 type of indices
-    framework::Tensor indices_int32(framework::TransToPhiDataType(VT::INT32));
+    phi::DenseTensor indices_int32(framework::TransToPhiDataType(VT::INT32));
     indices_int32.Resize(indices->dims());
     indices_int32.mutable_data<int32_t>(place);
 
     MLUCnnlTensorDesc input_desc(*input);
     MLUCnnlTensorDesc values_output_desc(*output);
     MLUCnnlTensorDesc indices_int32_desc(indices_int32);
-    MLUCnnl::TopK(ctx, k, axis, largest, sorted, input_desc.get(),
-                  GetBasePtr(input), values_output_desc.get(),
-                  GetBasePtr(output), indices_int32_desc.get(),
+    MLUCnnl::TopK(ctx,
+                  k,
+                  axis,
+                  largest,
+                  sorted,
+                  input_desc.get(),
+                  GetBasePtr(input),
+                  values_output_desc.get(),
+                  GetBasePtr(output),
+                  indices_int32_desc.get(),
                   GetBasePtr(&indices_int32));
 
     // cast indices type to int64
     MLUCnnlTensorDesc cast_output_desc(*indices);
     cnnlCastDataType_t cast_type = GetCastDataType(VT::INT32, VT::INT64);
-    MLUCnnl::Cast(ctx, cast_type, indices_int32_desc.get(),
-                  GetBasePtr(&indices_int32), cast_output_desc.get(),
+    MLUCnnl::Cast(ctx,
+                  cast_type,
+                  indices_int32_desc.get(),
+                  GetBasePtr(&indices_int32),
+                  cast_output_desc.get(),
                   GetBasePtr(indices));
   }
 };
@@ -80,5 +94,6 @@ class TopkV2MLUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_MLU_KERNEL(top_k_v2, ops::TopkV2MLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(top_k_v2,
+                       ops::TopkV2MLUKernel<float>,
                        ops::TopkV2MLUKernel<paddle::platform::float16>);

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 from paddle.fluid import unique_name
 from paddle.fluid.dygraph.base import switch_to_static_graph
 
@@ -34,8 +32,9 @@ def rename_var_with_generator(names_old):
             else:
                 temp_name = "_".join(temp_name)
             name_new = _generate_unique_var_name_sync_with_main_program(
-                temp_name)
-            if name_new not in names_old[:var_idx] + names_old[var_idx + 1:]:
+                temp_name
+            )
+            if name_new not in names_old[:var_idx] + names_old[var_idx + 1 :]:
                 break
         dict_rename_var_old_new[name_old] = name_new
     return dict_rename_var_old_new

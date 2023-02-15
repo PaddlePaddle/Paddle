@@ -12,22 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import sys
+
 sys.path.append("..")
-import paddle
-import paddle.fluid as fluid
-import numpy as np
 import unittest
+
+import numpy as np
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
+
+import paddle
 
 paddle.enable_static()
 
 
 def bce_loss(input, label):
-    return -1 * (label * np.log(input) + (1. - label) * np.log(1. - input))
+    return -1 * (label * np.log(input) + (1.0 - label) * np.log(1.0 - input))
 
 
 class XPUTestBceLossOp(XPUOpTestWrapper):
@@ -41,8 +45,9 @@ class XPUTestBceLossOp(XPUOpTestWrapper):
             self.dtype = self.in_type
             self.place = paddle.XPUPlace(0)
             self.init_test_case()
-            input_np = np.random.uniform(0.1, 0.8,
-                                         self.shape).astype(self.dtype)
+            input_np = np.random.uniform(0.1, 0.8, self.shape).astype(
+                self.dtype
+            )
             label_np = np.random.randint(0, 2, self.shape).astype(self.dtype)
             output_np = bce_loss(input_np, label_np)
 

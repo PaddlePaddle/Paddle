@@ -27,20 +27,23 @@
 #include <curand_kernel.h>
 #endif
 
-#include "paddle/phi/kernels/graph_sample_neighbors_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/graph_sample_neighbors_kernel.h"
 
 namespace phi {
 
 template <typename T>
 struct DegreeFunctor {
   const T* col_ptr;
-  HOSTDEVICE explicit inline DegreeFunctor(const T* x) { this->col_ptr = x; }
+  int64_t len_col_ptr;
+  HOSTDEVICE explicit inline DegreeFunctor(const T* x, int64_t len_col_ptr) {
+    this->col_ptr = x;
+    this->len_col_ptr = len_col_ptr;
+  }
   HOSTDEVICE inline int operator()(T i) const {
-    return col_ptr[i + 1] - col_ptr[i];
+    return i > len_col_ptr - 1 ? 0 : col_ptr[i + 1] - col_ptr[i];
   }
 };
 
@@ -51,14 +54,15 @@ struct MaxFunctor {
     if (x > cap) {
       return cap;
     }
-    return x;
+    return x >= 0 ? x : 0;
   }
 };
 
-template <typename T, int WARP_SIZE, int BLOCK_WARPS, int TILE_SIZE>
+template <typename T, int CTA_SIZE, int BLOCK_CTAS, int TILE_SIZE>
 __global__ void SampleKernel(const uint64_t rand_seed,
                              int k,
                              const int64_t num_nodes,
+                             const int64_t len_col_ptr,
                              const T* nodes,
                              const T* row,
                              const T* col_ptr,
@@ -67,8 +71,7 @@ __global__ void SampleKernel(const uint64_t rand_seed,
                              T* output_eids,
                              int* output_ptr,
                              bool return_eids) {
-  assert(blockDim.x == WARP_SIZE);
-  assert(blockDim.y == BLOCK_WARPS);
+  assert(blockDim.x == CTA_SIZE);
 
   int64_t out_row = blockIdx.x * TILE_SIZE + threadIdx.y;
   const int64_t last_row =
@@ -76,39 +79,43 @@ __global__ void SampleKernel(const uint64_t rand_seed,
 #ifdef PADDLE_WITH_HIP
   hiprandState rng;
   hiprand_init(rand_seed * gridDim.x + blockIdx.x,
-               threadIdx.y * WARP_SIZE + threadIdx.x,
+               threadIdx.y * CTA_SIZE + threadIdx.x,
                0,
                &rng);
 #else
-  curandState rng;
+  curandStatePhilox4_32_10_t rng;
   curand_init(rand_seed * gridDim.x + blockIdx.x,
-              threadIdx.y * WARP_SIZE + threadIdx.x,
+              threadIdx.y * CTA_SIZE + threadIdx.x,
               0,
               &rng);
 #endif
 
   while (out_row < last_row) {
     T node = nodes[out_row];
+    if (node > len_col_ptr - 1) {
+      out_row += BLOCK_CTAS;
+      continue;
+    }
     T in_row_start = col_ptr[node];
     int deg = col_ptr[node + 1] - in_row_start;
     int out_row_start = output_ptr[out_row];
 
     if (deg <= k) {
-      for (int idx = threadIdx.x; idx < deg; idx += WARP_SIZE) {
+      for (int idx = threadIdx.x; idx < deg; idx += CTA_SIZE) {
         output[out_row_start + idx] = row[in_row_start + idx];
         if (return_eids) {
           output_eids[out_row_start + idx] = eids[in_row_start + idx];
         }
       }
     } else {
-      for (int idx = threadIdx.x; idx < k; idx += WARP_SIZE) {
+      for (int idx = threadIdx.x; idx < k; idx += CTA_SIZE) {
         output[out_row_start + idx] = idx;
       }
 #ifdef PADDLE_WITH_CUDA
-      __syncwarp();
+      __syncthreads();
 #endif
 
-      for (int idx = k + threadIdx.x; idx < deg; idx += WARP_SIZE) {
+      for (int idx = k + threadIdx.x; idx < deg; idx += CTA_SIZE) {
 #ifdef PADDLE_WITH_HIP
         const int num = hiprand(&rng) % (idx + 1);
 #else
@@ -121,10 +128,10 @@ __global__ void SampleKernel(const uint64_t rand_seed,
         }
       }
 #ifdef PADDLE_WITH_CUDA
-      __syncwarp();
+      __syncthreads();
 #endif
 
-      for (int idx = threadIdx.x; idx < k; idx += WARP_SIZE) {
+      for (int idx = threadIdx.x; idx < k; idx += CTA_SIZE) {
         T perm_idx = output[out_row_start + idx] + in_row_start;
         output[out_row_start + idx] = row[perm_idx];
         if (return_eids) {
@@ -133,17 +140,19 @@ __global__ void SampleKernel(const uint64_t rand_seed,
       }
     }
 
-    out_row += BLOCK_WARPS;
+    out_row += BLOCK_CTAS;
   }
 }
 
 template <typename T, typename Context>
 int GetTotalSampleNum(const thrust::device_ptr<const T> input,
                       const T* col_ptr,
+                      int64_t len_col_ptr,
                       thrust::device_ptr<int> output_count,
                       int sample_size,
                       int bs) {
-  thrust::transform(input, input + bs, output_count, DegreeFunctor<T>(col_ptr));
+  thrust::transform(
+      input, input + bs, output_count, DegreeFunctor<T>(col_ptr, len_col_ptr));
   if (sample_size >= 0) {
     thrust::transform(
         output_count, output_count + bs, output_count, MaxFunctor(sample_size));
@@ -164,43 +173,43 @@ void SampleNeighbors(const Context& dev_ctx,
                      int sample_size,
                      int bs,
                      int total_sample_num,
+                     int64_t len_col_ptr,
                      bool return_eids) {
   thrust::device_vector<int> output_ptr;
   output_ptr.resize(bs);
   thrust::exclusive_scan(
       output_count, output_count + bs, output_ptr.begin(), 0);
 
-  constexpr int WARP_SIZE = 32;
-  constexpr int BLOCK_WARPS = 128 / WARP_SIZE;
-  constexpr int TILE_SIZE = BLOCK_WARPS * 16;
-  const dim3 block(WARP_SIZE, BLOCK_WARPS);
+  constexpr int CTA_SIZE = 128;
+  constexpr int BLOCK_CTAS = 128 / CTA_SIZE;
+  constexpr int TILE_SIZE = BLOCK_CTAS;
+  const dim3 block(CTA_SIZE, BLOCK_CTAS);
   const dim3 grid((bs + TILE_SIZE - 1) / TILE_SIZE);
-  SampleKernel<T,
-               WARP_SIZE,
-               BLOCK_WARPS,
-               TILE_SIZE><<<grid, block, 0, dev_ctx.stream()>>>(
-      0,
-      sample_size,
-      bs,
-      thrust::raw_pointer_cast(input),
-      row,
-      col_ptr,
-      eids,
-      thrust::raw_pointer_cast(output),
-      thrust::raw_pointer_cast(output_eids),
-      thrust::raw_pointer_cast(output_ptr.data()),
-      return_eids);
+  SampleKernel<T, CTA_SIZE, BLOCK_CTAS, TILE_SIZE>
+      <<<grid, block, 0, dev_ctx.stream()>>>(
+          0,
+          sample_size,
+          bs,
+          len_col_ptr,
+          thrust::raw_pointer_cast(input),
+          row,
+          col_ptr,
+          eids,
+          thrust::raw_pointer_cast(output),
+          thrust::raw_pointer_cast(output_eids),
+          thrust::raw_pointer_cast(output_ptr.data()),
+          return_eids);
 }
 
-template <typename T, int WARP_SIZE, int BLOCK_WARPS, int TILE_SIZE>
+template <typename T, int CTA_SIZE, int BLOCK_CTAS, int TILE_SIZE>
 __global__ void FisherYatesSampleKernel(const uint64_t rand_seed,
                                         int k,
                                         const int64_t num_rows,
+                                        const int64_t len_col_ptr,
                                         const T* in_rows,
                                         T* src,
                                         const T* dst_count) {
-  assert(blockDim.x == WARP_SIZE);
-  assert(blockDim.y == BLOCK_WARPS);
+  assert(blockDim.x == CTA_SIZE);
 
   int64_t out_row = blockIdx.x * TILE_SIZE + threadIdx.y;
   const int64_t last_row =
@@ -210,13 +219,17 @@ __global__ void FisherYatesSampleKernel(const uint64_t rand_seed,
   hiprand_init(
       rand_seed * gridDim.x + blockIdx.x, threadIdx.y + threadIdx.x, 0, &rng);
 #else
-  curandState rng;
+  curandStatePhilox4_32_10_t rng;
   curand_init(
       rand_seed * gridDim.x + blockIdx.x, threadIdx.y + threadIdx.x, 0, &rng);
 #endif
 
   while (out_row < last_row) {
     const T row = in_rows[out_row];
+    if (row > len_col_ptr - 1) {
+      out_row += BLOCK_CTAS;
+      continue;
+    }
     const T in_row_start = dst_count[row];
     const int deg = dst_count[row + 1] - in_row_start;
     int split;
@@ -226,7 +239,7 @@ __global__ void FisherYatesSampleKernel(const uint64_t rand_seed,
       } else {
         split = deg - k;
       }
-      for (int idx = split + threadIdx.x; idx <= deg - 1; idx += WARP_SIZE) {
+      for (int idx = split + threadIdx.x; idx <= deg - 1; idx += CTA_SIZE) {
 #ifdef PADDLE_WITH_HIP
         const int num = hiprand(&rng) % (idx + 1);
 #else
@@ -239,14 +252,14 @@ __global__ void FisherYatesSampleKernel(const uint64_t rand_seed,
                            src[in_row_start + idx])));
       }
 #ifdef PADDLE_WITH_CUDA
-      __syncwarp();
+      __syncthreads();
 #endif
     }
-    out_row += BLOCK_WARPS;
+    out_row += BLOCK_CTAS;
   }
 }
 
-template <typename T, int WARP_SIZE, int BLOCK_WARPS, int TILE_SIZE>
+template <typename T, int CTA_SIZE, int BLOCK_CTAS, int TILE_SIZE>
 __global__ void GatherEdge(int k,
                            int64_t num_rows,
                            const T* in_rows,
@@ -258,8 +271,7 @@ __global__ void GatherEdge(int k,
                            int* output_ptr,
                            T* perm_data,
                            bool return_eids) {
-  assert(blockDim.x == WARP_SIZE);
-  assert(blockDim.y == BLOCK_WARPS);
+  assert(blockDim.x == CTA_SIZE);
 
   int64_t out_row = blockIdx.x * TILE_SIZE + threadIdx.y;
   const int64_t last_row =
@@ -272,7 +284,7 @@ __global__ void GatherEdge(int k,
     const T out_row_start = output_ptr[out_row];
 
     if (deg <= k) {
-      for (int idx = threadIdx.x; idx < deg; idx += WARP_SIZE) {
+      for (int idx = threadIdx.x; idx < deg; idx += CTA_SIZE) {
         outputs[out_row_start + idx] = src[in_row_start + idx];
         if (return_eids) {
           output_eids[out_row_start + idx] = eids[in_row_start + idx];
@@ -289,7 +301,7 @@ __global__ void GatherEdge(int k,
         end = deg;
       }
 
-      for (int idx = begin + threadIdx.x; idx < end; idx += WARP_SIZE) {
+      for (int idx = begin + threadIdx.x; idx < end; idx += CTA_SIZE) {
         outputs[out_row_start + idx - begin] =
             src[perm_data[in_row_start + idx]];
         if (return_eids) {
@@ -298,7 +310,7 @@ __global__ void GatherEdge(int k,
         }
       }
     }
-    out_row += BLOCK_WARPS;
+    out_row += BLOCK_CTAS;
   }
 }
 
@@ -315,39 +327,41 @@ void FisherYatesSampleNeighbors(const Context& dev_ctx,
                                 int sample_size,
                                 int bs,
                                 int total_sample_num,
+                                int64_t len_col_ptr,
                                 bool return_eids) {
   thrust::device_vector<int> output_ptr;
   output_ptr.resize(bs);
   thrust::exclusive_scan(
       output_count, output_count + bs, output_ptr.begin(), 0);
 
-  constexpr int WARP_SIZE = 32;
-  constexpr int BLOCK_WARPS = 128 / WARP_SIZE;
-  constexpr int TILE_SIZE = BLOCK_WARPS * 16;
-  const dim3 block(WARP_SIZE, BLOCK_WARPS);
+  constexpr int CTA_SIZE = 128;
+  constexpr int BLOCK_CTAS = 128 / CTA_SIZE;
+  constexpr int TILE_SIZE = BLOCK_CTAS;
+  const dim3 block(CTA_SIZE, BLOCK_CTAS);
   const dim3 grid((bs + TILE_SIZE - 1) / TILE_SIZE);
 
-  FisherYatesSampleKernel<T,
-                          WARP_SIZE,
-                          BLOCK_WARPS,
-                          TILE_SIZE><<<grid, block, 0, dev_ctx.stream()>>>(
-      0, sample_size, bs, thrust::raw_pointer_cast(input), perm_data, col_ptr);
+  FisherYatesSampleKernel<T, CTA_SIZE, BLOCK_CTAS, TILE_SIZE>
+      <<<grid, block, 0, dev_ctx.stream()>>>(0,
+                                             sample_size,
+                                             bs,
+                                             len_col_ptr,
+                                             thrust::raw_pointer_cast(input),
+                                             perm_data,
+                                             col_ptr);
 
-  GatherEdge<T,
-             WARP_SIZE,
-             BLOCK_WARPS,
-             TILE_SIZE><<<grid, block, 0, dev_ctx.stream()>>>(
-      sample_size,
-      bs,
-      thrust::raw_pointer_cast(input),
-      row,
-      col_ptr,
-      eids,
-      thrust::raw_pointer_cast(output),
-      thrust::raw_pointer_cast(output_eids),
-      thrust::raw_pointer_cast(output_ptr.data()),
-      perm_data,
-      return_eids);
+  GatherEdge<T, CTA_SIZE, BLOCK_CTAS, TILE_SIZE>
+      <<<grid, block, 0, dev_ctx.stream()>>>(
+          sample_size,
+          bs,
+          thrust::raw_pointer_cast(input),
+          row,
+          col_ptr,
+          eids,
+          thrust::raw_pointer_cast(output),
+          thrust::raw_pointer_cast(output_eids),
+          thrust::raw_pointer_cast(output_ptr.data()),
+          perm_data,
+          return_eids);
 }
 
 template <typename T, typename Context>
@@ -368,6 +382,7 @@ void GraphSampleNeighborsKernel(
   auto* col_ptr_data = col_ptr.data<T>();
   auto* x_data = x.data<T>();
   int bs = x.dims()[0];
+  int64_t len_col_ptr = col_ptr.dims()[0];
 
   const thrust::device_ptr<const T> input(x_data);
 
@@ -376,7 +391,7 @@ void GraphSampleNeighborsKernel(
   thrust::device_ptr<int> output_count(out_count_data);
 
   int total_sample_size = GetTotalSampleNum<T, Context>(
-      input, col_ptr_data, output_count, sample_size, bs);
+      input, col_ptr_data, len_col_ptr, output_count, sample_size, bs);
 
   out->Resize({static_cast<int>(total_sample_size)});
   T* out_data = dev_ctx.template Alloc<T>(out);
@@ -399,6 +414,7 @@ void GraphSampleNeighborsKernel(
                                   sample_size,
                                   bs,
                                   total_sample_size,
+                                  len_col_ptr,
                                   return_eids);
     } else {
       DenseTensor perm_buffer_out(perm_buffer->type());
@@ -417,6 +433,7 @@ void GraphSampleNeighborsKernel(
                                              sample_size,
                                              bs,
                                              total_sample_size,
+                                             len_col_ptr,
                                              return_eids);
     }
   } else {
@@ -434,6 +451,7 @@ void GraphSampleNeighborsKernel(
                                   sample_size,
                                   bs,
                                   total_sample_size,
+                                  len_col_ptr,
                                   return_eids);
     } else {
       DenseTensor perm_buffer_out(perm_buffer->type());
@@ -452,6 +470,7 @@ void GraphSampleNeighborsKernel(
                                              sample_size,
                                              bs,
                                              total_sample_size,
+                                             len_col_ptr,
                                              return_eids);
     }
   }

@@ -15,9 +15,9 @@
 #pragma once
 
 #include <glog/logging.h>
-#include <unordered_map>
 
 #include <memory>
+#include <unordered_map>
 
 #include "paddle/infrt/common/macros.h"
 #include "paddle/infrt/common/target.h"

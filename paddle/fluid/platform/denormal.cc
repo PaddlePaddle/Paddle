@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/denormal.h"
+
 #include <tuple>
 #include <utility>
 

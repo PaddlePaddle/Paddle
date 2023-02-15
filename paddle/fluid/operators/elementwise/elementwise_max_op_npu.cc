@@ -18,8 +18,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
 template <typename DeviceContext, typename T>
 class ElementwiseMaxNPUKernel : public framework::OpKernel<T> {
  public:
@@ -27,9 +25,9 @@ class ElementwiseMaxNPUKernel : public framework::OpKernel<T> {
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
 
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
     int axis = ctx.Attr<int>("axis");
 
@@ -51,9 +49,9 @@ class ElementwiseMaxNPUKernel : public framework::OpKernel<T> {
       const auto& runner = NpuOpRunner("Maximum", {*x, *y}, {*out}, {});
       runner.Run(stream);
     } else {
-      Tensor transformed_x, transformed_y;
-      NpuElementWiseOpBroadcast<T>(dev_ctx, x, y, axis, &transformed_x,
-                                   &transformed_y);
+      phi::DenseTensor transformed_x, transformed_y;
+      NpuElementWiseOpBroadcast<T>(
+          dev_ctx, x, y, axis, &transformed_x, &transformed_y);
       const auto& runner =
           NpuOpRunner("Maximum", {transformed_x, transformed_y}, {*out}, {});
       runner.Run(stream);
@@ -67,11 +65,11 @@ class ElementwiseMaxGradNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
     int axis = ctx.Attr<int>("axis");
 
     // The ascend elementwise_max_grad op only supports broadcast
@@ -85,9 +83,9 @@ class ElementwiseMaxGradNPUKernel : public framework::OpKernel<T> {
     auto x_dims = x->dims();
     auto y_dims = y->dims();
     axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
-    Tensor transformed_x, transformed_y;
-    NpuElementWiseOpBroadcast<T>(dev_ctx, x, y, axis, &transformed_x,
-                                 &transformed_y);
+    phi::DenseTensor transformed_x, transformed_y;
+    NpuElementWiseOpBroadcast<T>(
+        dev_ctx, x, y, axis, &transformed_x, &transformed_y);
 
     auto dout_dims = dout->dims();
     auto stream = dev_ctx.stream();
@@ -99,14 +97,15 @@ class ElementwiseMaxGradNPUKernel : public framework::OpKernel<T> {
     if (dx && dy) {
       dx->mutable_data<T>(ctx.GetPlace());
       dy->mutable_data<T>(ctx.GetPlace());
-      Tensor tmp_dx;
+      phi::DenseTensor tmp_dx;
       tmp_dx.mutable_data<T>(dout_dims, ctx.GetPlace());
-      Tensor tmp_dy;
+      phi::DenseTensor tmp_dy;
       tmp_dy.mutable_data<T>(dout_dims, ctx.GetPlace());
 
-      const auto& runner =
-          NpuOpRunner("MaximumGrad", {*dout, transformed_x, transformed_y},
-                      {tmp_dx, tmp_dy}, attr_input);
+      const auto& runner = NpuOpRunner("MaximumGrad",
+                                       {*dout, transformed_x, transformed_y},
+                                       {tmp_dx, tmp_dy},
+                                       attr_input);
       runner.Run(stream);
 
       if (x_dims != dout_dims) {
@@ -120,7 +119,9 @@ class ElementwiseMaxGradNPUKernel : public framework::OpKernel<T> {
         }
         if (!reduce_axes.empty()) {
           const auto& runner =
-              NpuOpRunner("ReduceSumD", {tmp_dx}, {*dx},
+              NpuOpRunner("ReduceSumD",
+                          {tmp_dx},
+                          {*dx},
                           {{"axes", reduce_axes}, {"keep_dims", false}});
           runner.Run(stream);
         }
@@ -139,7 +140,9 @@ class ElementwiseMaxGradNPUKernel : public framework::OpKernel<T> {
         }
         if (!reduce_axes.empty()) {
           const auto& runner =
-              NpuOpRunner("ReduceSumD", {tmp_dy}, {*dy},
+              NpuOpRunner("ReduceSumD",
+                          {tmp_dy},
+                          {*dy},
                           {{"axes", reduce_axes}, {"keep_dims", false}});
           runner.Run(stream);
         }
@@ -148,17 +151,18 @@ class ElementwiseMaxGradNPUKernel : public framework::OpKernel<T> {
       }
 
     } else if (dx) {
-      Tensor zero_tensor(dout->type());
+      phi::DenseTensor zero_tensor(dout->type());
       zero_tensor.mutable_data<T>(dout_dims, ctx.GetPlace());
       FillNpuTensorWithConstant<T>(&zero_tensor, static_cast<T>(0));
 
       dx->mutable_data<T>(ctx.GetPlace());
-      Tensor tmp_dx;
+      phi::DenseTensor tmp_dx;
       tmp_dx.mutable_data<T>(dout_dims, ctx.GetPlace());
 
-      const auto& runner =
-          NpuOpRunner("MaximumGrad", {*dout, transformed_x, transformed_y},
-                      {tmp_dx, zero_tensor}, attr_input);
+      const auto& runner = NpuOpRunner("MaximumGrad",
+                                       {*dout, transformed_x, transformed_y},
+                                       {tmp_dx, zero_tensor},
+                                       attr_input);
       runner.Run(stream);
 
       if (x_dims != dout_dims) {
@@ -173,7 +177,9 @@ class ElementwiseMaxGradNPUKernel : public framework::OpKernel<T> {
         }
         if (!reduce_axes.empty()) {
           const auto& runner =
-              NpuOpRunner("ReduceSumD", {tmp_dx}, {*dx},
+              NpuOpRunner("ReduceSumD",
+                          {tmp_dx},
+                          {*dx},
                           {{"axes", reduce_axes}, {"keep_dims", false}});
           runner.Run(stream);
         }
@@ -182,17 +188,18 @@ class ElementwiseMaxGradNPUKernel : public framework::OpKernel<T> {
       }
 
     } else if (dy) {
-      Tensor zero_tensor(dout->type());
+      phi::DenseTensor zero_tensor(dout->type());
       zero_tensor.mutable_data<T>(dout_dims, ctx.GetPlace());
       FillNpuTensorWithConstant<T>(&zero_tensor, static_cast<T>(0));
 
       dy->mutable_data<T>(ctx.GetPlace());
-      Tensor tmp_dy;
+      phi::DenseTensor tmp_dy;
       tmp_dy.mutable_data<T>(dout_dims, ctx.GetPlace());
 
-      const auto& runner =
-          NpuOpRunner("MaximumGrad", {*dout, transformed_x, transformed_y},
-                      {zero_tensor, tmp_dy}, attr_input);
+      const auto& runner = NpuOpRunner("MaximumGrad",
+                                       {*dout, transformed_x, transformed_y},
+                                       {zero_tensor, tmp_dy},
+                                       attr_input);
       runner.Run(stream);
 
       if (y_dims != dout_dims) {
@@ -207,7 +214,9 @@ class ElementwiseMaxGradNPUKernel : public framework::OpKernel<T> {
         }
         if (!reduce_axes.empty()) {
           const auto& runner =
-              NpuOpRunner("ReduceSumD", {tmp_dy}, {*dy},
+              NpuOpRunner("ReduceSumD",
+                          {tmp_dy},
+                          {*dy},
                           {{"axes", reduce_axes}, {"keep_dims", false}});
           runner.Run(stream);
         }

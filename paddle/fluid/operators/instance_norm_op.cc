@@ -13,9 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/instance_norm_op.h"
+
 #include <memory>
 #include <string>
 #include <unordered_map>
+
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -27,7 +29,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-framework::OpKernelType InstanceNormOp::GetExpectedKernelType(
+phi::KernelKey InstanceNormOp::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
   auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
   // By default, the type of the scale, bias, mean,
@@ -38,26 +40,29 @@ framework::OpKernelType InstanceNormOp::GetExpectedKernelType(
     in_param_type = framework::proto::VarType::FP64;
   }
   if (ctx.HasInput("Scale")) {
-    PADDLE_ENFORCE_EQ(in_param_type, framework::TransToProtoVarType(
-                                         ctx.Input<Tensor>("Scale")->dtype()),
+    PADDLE_ENFORCE_EQ(in_param_type,
+                      framework::TransToProtoVarType(
+                          ctx.Input<phi::DenseTensor>("Scale")->dtype()),
                       platform::errors::InvalidArgument(
                           "Scale input should be of float type"));
   }
   if (ctx.HasInput("Bias")) {
-    PADDLE_ENFORCE_EQ(in_param_type, framework::TransToProtoVarType(
-                                         ctx.Input<Tensor>("Bias")->dtype()),
+    PADDLE_ENFORCE_EQ(in_param_type,
+                      framework::TransToProtoVarType(
+                          ctx.Input<phi::DenseTensor>("Bias")->dtype()),
                       platform::errors::InvalidArgument(
                           "Bias input should be of float type"));
   }
 
-  return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  return phi::KernelKey(input_data_type, ctx.GetPlace());
 }
 
 void InstanceNormOpMaker::Make() {
   AddAttr<float>("epsilon", "")
       .SetDefault(1e-5)
       .AddCustomChecker([](const float &epsilon) {
-        PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 0.001f, true,
+        PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 0.001f,
+                          true,
                           platform::errors::InvalidArgument(
                               "'epsilon' should be between 0.0 and 0.001."));
       });
@@ -93,46 +98,46 @@ NCHW `[batch, in_channels, in_height, in_width]`
 )DOC");
 }
 
-framework::OpKernelType InstanceNormGradOp::GetExpectedKernelType(
+phi::KernelKey InstanceNormGradOp::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
   const auto *var = ctx.InputVar(framework::GradVarName("Y"));
   if (var == nullptr) {
     PADDLE_THROW(
         platform::errors::NotFound("cannot find gradient variable of Y"));
   }
-  const Tensor *t = nullptr;
-  if (var->IsType<Tensor>()) {
-    t = &var->Get<Tensor>();
-  } else if (var->IsType<LoDTensor>()) {
-    t = &var->Get<LoDTensor>();
+  const phi::DenseTensor *t = nullptr;
+  if (var->IsType<phi::DenseTensor>()) {
+    t = &var->Get<phi::DenseTensor>();
+  } else if (var->IsType<phi::DenseTensor>()) {
+    t = &var->Get<phi::DenseTensor>();
   }
   if (t == nullptr) {
     PADDLE_THROW(
         platform::errors::InvalidArgument("gradient variable of Y is empty"));
   }
-  return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+  return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                        ctx.GetPlace());
 }
 
-framework::OpKernelType InstanceNormDoubleGradOp::GetExpectedKernelType(
+phi::KernelKey InstanceNormDoubleGradOp::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
   const auto *var = ctx.InputVar("DY");
   if (var == nullptr) {
     PADDLE_THROW(
         platform::errors::NotFound("cannot find gradient variable of Y"));
   }
-  const Tensor *t = nullptr;
-  if (var->IsType<Tensor>()) {
-    t = &var->Get<Tensor>();
-  } else if (var->IsType<LoDTensor>()) {
-    t = &var->Get<LoDTensor>();
+  const phi::DenseTensor *t = nullptr;
+  if (var->IsType<phi::DenseTensor>()) {
+    t = &var->Get<phi::DenseTensor>();
+  } else if (var->IsType<phi::DenseTensor>()) {
+    t = &var->Get<phi::DenseTensor>();
   }
   if (t == nullptr) {
     PADDLE_THROW(
         platform::errors::InvalidArgument("gradient variable of Y is empty"));
   }
-  return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+  return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                        ctx.GetPlace());
 }
 
 DECLARE_INPLACE_OP_INFERER(InstanceNormDoubleGradOpInplaceInferer,
@@ -142,24 +147,30 @@ DECLARE_INPLACE_OP_INFERER(InstanceNormDoubleGradOpInplaceInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(instance_norm, InstanceNormInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(instance_norm,
+                            InstanceNormInferShapeFunctor,
                             PD_INFER_META(phi::InstanceNormInferMeta));
 DECLARE_INFER_SHAPE_FUNCTOR(instance_norm_grad,
                             InstanceNormGradInferShapeFunctor,
                             PD_INFER_META(phi::InstanceNormGradInferMeta));
 DECLARE_INFER_SHAPE_FUNCTOR(
-    instance_norm_grad_grad, InstanceNormDoubleGradInferShapeFunctor,
+    instance_norm_grad_grad,
+    InstanceNormDoubleGradInferShapeFunctor,
     PD_INFER_META(phi::InstanceNormDoubleGradInferMeta));
-REGISTER_OPERATOR(instance_norm, ops::InstanceNormOp, ops::InstanceNormOpMaker,
+REGISTER_OPERATOR(instance_norm,
+                  ops::InstanceNormOp,
+                  ops::InstanceNormOpMaker,
                   ops::InstanceNormOpInferVarType,
                   ops::InstanceNormGradMaker<paddle::framework::OpDesc>,
                   ops::InstanceNormGradMaker<paddle::imperative::OpBase>,
                   InstanceNormInferShapeFunctor);
-REGISTER_OPERATOR(instance_norm_grad, ops::InstanceNormGradOp,
+REGISTER_OPERATOR(instance_norm_grad,
+                  ops::InstanceNormGradOp,
                   ops::InstanceNormDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::InstanceNormDoubleGradMaker<paddle::imperative::OpBase>,
                   InstanceNormGradInferShapeFunctor);
-REGISTER_OPERATOR(instance_norm_grad_grad, ops::InstanceNormDoubleGradOp,
+REGISTER_OPERATOR(instance_norm_grad_grad,
+                  ops::InstanceNormDoubleGradOp,
                   ops::InstanceNormDoubleGradOpInplaceInferer,
                   InstanceNormDoubleGradInferShapeFunctor);
 

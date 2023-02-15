@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+
 import paddle
-import paddle.fluid as fluid
 from paddle.framework import core
-from paddle.fluid.dygraph.base import switch_to_static_graph
 
 paddle.enable_static()
 
@@ -29,6 +27,7 @@ class TestTakeAlongAxisOp(OpTest):
     def setUp(self):
         self.init_data()
         self.op_type = "take_along_axis"
+        self.python_api = paddle.tensor.take_along_axis
         self.xnp = np.random.random(self.x_shape).astype(self.x_type)
         self.target = np.take_along_axis(self.xnp, self.index, self.axis)
         broadcast_shape_list = list(self.x_shape)
@@ -52,8 +51,9 @@ class TestTakeAlongAxisOp(OpTest):
         self.x_type = "float64"
         self.x_shape = (5, 5, 5)
         self.index_type = "int32"
-        self.index = np.array(
-            [[[1]], [[1]], [[2]], [[4]], [[3]]]).astype(self.index_type)
+        self.index = np.array([[[1]], [[1]], [[2]], [[4]], [[3]]]).astype(
+            self.index_type
+        )
         self.axis = 2
         self.axis_type = "int64"
 
@@ -87,13 +87,14 @@ class TestTakeAlongAxisAPI(unittest.TestCase):
             index = paddle.fluid.data('Index', self.index_shape, "int64")
             out = paddle.take_along_axis(x, index, self.axis)
             exe = paddle.static.Executor(self.place[0])
-            res = exe.run(feed={'X': self.x_np,
-                                'Index': self.index_np},
-                          fetch_list=[out])
+            res = exe.run(
+                feed={'X': self.x_np, 'Index': self.index_np}, fetch_list=[out]
+            )
         out_ref = np.array(
-            np.take_along_axis(self.x_np, self.index_np, self.axis))
+            np.take_along_axis(self.x_np, self.index_np, self.axis)
+        )
         for out in res:
-            self.assertEqual(np.allclose(out, out_ref, rtol=1e-03), True)
+            np.testing.assert_allclose(out, out_ref, rtol=0.001)
 
     def test_api_dygraph(self):
         paddle.disable_static(self.place[0])
@@ -101,8 +102,9 @@ class TestTakeAlongAxisAPI(unittest.TestCase):
         self.index = paddle.to_tensor(self.index_np)
         out = paddle.take_along_axis(x_tensor, self.index, self.axis)
         out_ref = np.array(
-            np.take_along_axis(self.x_np, self.index_np, self.axis))
-        self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-03), True)
+            np.take_along_axis(self.x_np, self.index_np, self.axis)
+        )
+        np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
         paddle.enable_static()
 
 
@@ -111,8 +113,9 @@ class TestTakeAlongAxisAPICase1(TestTakeAlongAxisAPI):
         np.random.seed(0)
         self.shape = [2, 2]
         self.index_shape = [4, 2]
-        self.index_np = np.array(
-            [[0, 0], [1, 0], [0, 0], [1, 0]]).astype('int64')
+        self.index_np = np.array([[0, 0], [1, 0], [0, 0], [1, 0]]).astype(
+            'int64'
+        )
         self.x_np = np.random.random(self.shape).astype(np.float32)
         self.place = [paddle.CPUPlace()]
         self.axis = 0

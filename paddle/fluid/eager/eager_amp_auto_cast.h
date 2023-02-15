@@ -27,7 +27,8 @@ static inline bool NeedCast(const paddle::experimental::Tensor& tensor,
       paddle::platform::is_xpu_place(place) ||
       paddle::platform::is_mlu_place(place) ||
       paddle::platform::is_npu_place(place) ||
-      paddle::platform::is_npu_pinned_place(place)) {
+      paddle::platform::is_npu_pinned_place(place) ||
+      paddle::platform::is_custom_place(place)) {
     // CudaPinndePlace is added for varbase created by dataloader
     if ((data_type == paddle::experimental::DataType::FLOAT32 ||
          data_type == paddle::experimental::DataType::FLOAT16 ||
@@ -39,18 +40,40 @@ static inline bool NeedCast(const paddle::experimental::Tensor& tensor,
   return false;
 }
 
+inline paddle::experimental::Tensor Cast(
+    const paddle::experimental::Tensor& input,
+    const paddle::experimental::DataType& dst_dtype,
+    const bool trace_backward = true) {
+  if (input.is_sparse_coo_tensor() || input.is_sparse_csr_tensor()) {
+    if (trace_backward) {
+      return sparse::cast_ad_func(
+          input, paddle::experimental::DataType::UNDEFINED, dst_dtype);
+    } else {
+      return paddle::experimental::sparse::cast(
+          input, paddle::experimental::DataType::UNDEFINED, dst_dtype);
+    }
+  } else {
+    if (trace_backward) {
+      return cast_ad_func(input, dst_dtype);
+    } else {
+      return paddle::experimental::cast(input, dst_dtype);
+    }
+  }
+}
+
 inline std::vector<paddle::experimental::Tensor> EagerAmpAutoCasts(
     const std::string& inputs_name,
     const std::vector<paddle::experimental::Tensor>& inputs,
-    const paddle::experimental::DataType& dst_dtype, std::string op_name) {
+    const paddle::experimental::DataType& dst_dtype,
+    std::string op_name,
+    bool trace_backward = true) {
   VLOG(6) << "AMP AmpAutoCasts:"
           << " inputs(" << inputs_name << ") dst_dtype("
-          << paddle::framework::DataType2String(dst_dtype) << ").";
+          << phi::DataTypeToString(dst_dtype) << ").";
   std::vector<paddle::experimental::Tensor> inputs_casted;
   for (auto& input : inputs) {
     if (NeedCast(input, dst_dtype)) {
-      inputs_casted.emplace_back(
-          std::move(cast_final_state_dygraph_function(input, dst_dtype)));
+      inputs_casted.emplace_back(std::move(Cast(input, dst_dtype)));
     } else {
       inputs_casted.emplace_back(input);
     }
@@ -59,12 +82,14 @@ inline std::vector<paddle::experimental::Tensor> EagerAmpAutoCasts(
 }
 
 inline paddle::experimental::Tensor EagerAmpAutoCast(
-    const std::string& input_name, const paddle::experimental::Tensor& input,
+    const std::string& input_name,
+    const paddle::experimental::Tensor& input,
     const paddle::experimental::DataType& dst_dtype,
-    const std::string& op_name) {
+    const std::string& op_name,
+    bool trace_backward = true) {
   VLOG(6) << "AMP AmpAutoCasts:"
-          << " input(" << input_name << ") dst_dtype("
-          << paddle::framework::DataType2String(dst_dtype) << ").";
+          << " input(" << egr::EagerUtils::TensorStr(input) << " to dst_dtype("
+          << phi::DataTypeToString(dst_dtype) << ").";
   if (dst_dtype == paddle::experimental::DataType::FLOAT16) {
     if (op_name == "run_program") {
       return input;
@@ -83,7 +108,8 @@ inline paddle::experimental::Tensor EagerAmpAutoCast(
     }
   }
   if (NeedCast(input, dst_dtype)) {
-    return cast_final_state_dygraph_function(input, dst_dtype);
+    VLOG(6) << "Input : " << input.impl() << "NeedCast";
+    return Cast(input, dst_dtype, trace_backward);
   }
   return input;
 }
@@ -92,11 +118,27 @@ inline paddle::optional<paddle::experimental::Tensor> EagerAmpAutoCast(
     const std::string& input_name,
     const paddle::optional<paddle::experimental::Tensor>& input,
     const paddle::experimental::DataType& dst_dtype,
-    const std::string& op_name) {
+    const std::string& op_name,
+    bool trace_backward = true) {
   if (input) {
-    return EagerAmpAutoCast(input_name, *input, dst_dtype, op_name);
+    return EagerAmpAutoCast(
+        input_name, *input, dst_dtype, op_name, trace_backward);
   }
   return paddle::none;
+}
+
+inline paddle::optional<std::vector<paddle::experimental::Tensor>>
+EagerAmpAutoCasts(
+    const std::string& inputs_name,
+    const paddle::optional<std::vector<paddle::experimental::Tensor>>& inputs,
+    const paddle::experimental::DataType& dst_dtype,
+    std::string op_name,
+    bool trace_backward = true) {
+  if (inputs) {
+    return EagerAmpAutoCasts(
+        inputs_name, *inputs, dst_dtype, op_name, trace_backward);
+  }
+  return paddle::optional<std::vector<paddle::experimental::Tensor>>();
 }
 
 }  // namespace egr

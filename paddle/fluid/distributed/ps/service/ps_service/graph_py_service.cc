@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/ps/service/ps_service/graph_py_service.h"
+
 #include <thread>  // NOLINT
+
 #include "butil/endpoint.h"
 #include "iomanip"
 #include "paddle/fluid/distributed/ps/table/table.h"
@@ -21,7 +23,7 @@
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 namespace paddle {
 namespace distributed {
-std::vector<std::string> GraphPyService::split(std::string& str,
+std::vector<std::string> GraphPyService::split(const std::string& str,
                                                const char pattern) {
   std::vector<std::string> res;
   std::stringstream input(str);
@@ -42,14 +44,14 @@ void GraphPyService::add_table_feat_conf(std::string table_name,
     if (table_feat_mapping[idx].find(feat_name) ==
         table_feat_mapping[idx].end()) {
       VLOG(0) << "for table name not found,make a new one";
-      int res = (int)table_feat_mapping[idx].size();
+      int res = static_cast<int>(table_feat_mapping[idx].size());
       table_feat_mapping[idx][feat_name] = res;
       VLOG(0) << "seq id = " << table_feat_mapping[idx][feat_name];
     }
     int feat_idx = table_feat_mapping[idx][feat_name];
     VLOG(0) << "table_name " << table_name << " mapping id " << idx;
     VLOG(0) << " feat name " << feat_name << " feat id" << feat_idx;
-    if (feat_idx < table_feat_conf_feat_name[idx].size()) {
+    if (static_cast<size_t>(feat_idx) < table_feat_conf_feat_name[idx].size()) {
       // overide
       table_feat_conf_feat_name[idx][feat_idx] = feat_name;
       table_feat_conf_feat_dtype[idx][feat_idx] = feat_dtype;
@@ -64,12 +66,14 @@ void GraphPyService::add_table_feat_conf(std::string table_name,
   VLOG(0) << "add conf over";
 }
 
-void add_graph_node(std::string name, std::vector<int64_t> node_ids,
+void add_graph_node(std::string name,
+                    std::vector<int64_t> node_ids,
                     std::vector<bool> weight_list) {}
 void remove_graph_node(std::string name, std::vector<int64_t> node_ids) {}
-void GraphPyService::set_up(std::string ips_str, int shard_num,
-                            std::vector<std::string> node_types,
-                            std::vector<std::string> edge_types) {
+void GraphPyService::set_up(std::string ips_str,
+                            int shard_num,
+                            const std::vector<std::string> node_types,
+                            const std::vector<std::string> edge_types) {
   set_shard_num(shard_num);
   set_num_node_types(node_types.size());
   /*
@@ -82,12 +86,12 @@ void GraphPyService::set_up(std::string ips_str, int shard_num,
     */
   id_to_edge = edge_types;
   for (size_t table_id = 0; table_id < edge_types.size(); table_id++) {
-    int res = (int)edge_to_id.size();
+    int res = static_cast<int>(edge_to_id.size());
     edge_to_id[edge_types[table_id]] = res;
   }
   id_to_feature = node_types;
   for (size_t table_id = 0; table_id < node_types.size(); table_id++) {
-    int res = (int)feature_to_id.size();
+    int res = static_cast<int>(feature_to_id.size());
     feature_to_id[node_types[table_id]] = res;
   }
   table_feat_mapping.resize(node_types.size());
@@ -264,7 +268,8 @@ void GraphPyServer::start_server(bool block) {
 
   return worker_fleet_desc;
 }
-void GraphPyClient::load_edge_file(std::string name, std::string filepath,
+void GraphPyClient::load_edge_file(std::string name,
+                                   std::string filepath,
                                    bool reverse) {
   // 'e' means load edge
   std::string params = "e";
@@ -307,8 +312,8 @@ void GraphPyClient::clear_nodes(std::string name) {
 }
 
 void GraphPyClient::add_graph_node(std::string name,
-                                   std::vector<int64_t>& node_ids,
-                                   std::vector<bool>& weight_list) {
+                                   std::vector<int64_t>& node_ids,    // NOLINT
+                                   std::vector<bool>& weight_list) {  // NOLINT
   // if (this->table_id_map.count(name)) {
   //   uint32_t table_id = this->table_id_map[name];
   //   auto status =
@@ -357,7 +362,8 @@ void GraphPyClient::load_node_file(std::string name, std::string filepath) {
 std::pair<std::vector<std::vector<int64_t>>, std::vector<float>>
 GraphPyClient::batch_sample_neighbors(std::string name,
                                       std::vector<int64_t> node_ids,
-                                      int sample_size, bool return_weight,
+                                      int sample_size,
+                                      bool return_weight,
                                       bool return_edges) {
   std::vector<std::vector<int64_t>> v;
   std::vector<std::vector<float>> v1;
@@ -407,13 +413,13 @@ std::vector<int64_t> GraphPyClient::random_sample_nodes(std::string name,
   std::vector<int64_t> v;
   if (feature_to_id.find(name) != feature_to_id.end()) {
     int idx = feature_to_id[name];
-    auto status = get_ps_client()->random_sample_nodes(0, 1, idx, server_index,
-                                                       sample_size, v);
+    auto status = get_ps_client()->random_sample_nodes(
+        0, 1, idx, server_index, sample_size, v);
     status.wait();
   } else if (edge_to_id.find(name) != edge_to_id.end()) {
     int idx = edge_to_id[name];
-    auto status = get_ps_client()->random_sample_nodes(0, 0, idx, server_index,
-                                                       sample_size, v);
+    auto status = get_ps_client()->random_sample_nodes(
+        0, 0, idx, server_index, sample_size, v);
     status.wait();
   }
   // if (this->table_id_map.count(name)) {
@@ -428,7 +434,8 @@ std::vector<int64_t> GraphPyClient::random_sample_nodes(std::string name,
 
 // (name, dtype, ndarray)
 std::vector<std::vector<std::string>> GraphPyClient::get_node_feat(
-    std::string name, std::vector<int64_t> node_ids,
+    std::string name,
+    std::vector<int64_t> node_ids,
     std::vector<std::string> feature_names) {
   std::vector<std::vector<std::string>> v(
       feature_names.size(), std::vector<std::string>(node_ids.size()));
@@ -448,13 +455,14 @@ std::vector<std::vector<std::string>> GraphPyClient::get_node_feat(
 }
 
 void GraphPyClient::set_node_feat(
-    std::string name, std::vector<int64_t> node_ids,
+    std::string name,
+    std::vector<int64_t> node_ids,
     std::vector<std::string> feature_names,
     const std::vector<std::vector<std::string>> features) {
   if (feature_to_id.find(name) != feature_to_id.end()) {
     int idx = feature_to_id[name];
-    auto status = get_ps_client()->set_node_feat(0, idx, node_ids,
-                                                 feature_names, features);
+    auto status = get_ps_client()->set_node_feat(
+        0, idx, node_ids, feature_names, features);
     status.wait();
   }
 
@@ -468,10 +476,8 @@ void GraphPyClient::set_node_feat(
   return;
 }
 
-std::vector<FeatureNode> GraphPyClient::pull_graph_list(std::string name,
-                                                        int server_index,
-                                                        int start, int size,
-                                                        int step) {
+std::vector<FeatureNode> GraphPyClient::pull_graph_list(
+    std::string name, int server_index, int start, int size, int step) {
   std::vector<FeatureNode> res;
   // if (this->table_id_map.count(name)) {
   //   uint32_t table_id = this->table_id_map[name];
@@ -481,13 +487,13 @@ std::vector<FeatureNode> GraphPyClient::pull_graph_list(std::string name,
   // }
   if (feature_to_id.find(name) != feature_to_id.end()) {
     int idx = feature_to_id[name];
-    auto status = get_ps_client()->pull_graph_list(0, 1, idx, server_index,
-                                                   start, size, step, res);
+    auto status = get_ps_client()->pull_graph_list(
+        0, 1, idx, server_index, start, size, step, res);
     status.wait();
   } else if (edge_to_id.find(name) != edge_to_id.end()) {
     int idx = edge_to_id[name];
-    auto status = get_ps_client()->pull_graph_list(0, 0, idx, server_index,
-                                                   start, size, step, res);
+    auto status = get_ps_client()->pull_graph_list(
+        0, 0, idx, server_index, start, size, step, res);
     status.wait();
   }
   return res;
@@ -501,5 +507,5 @@ void GraphPyClient::StopServer() {
   if (status.get() == 0) stoped_ = true;
 }
 void GraphPyClient::FinalizeWorker() { this->worker_ptr->FinalizeWorker(); }
-}
-}
+}  // namespace distributed
+}  // namespace paddle

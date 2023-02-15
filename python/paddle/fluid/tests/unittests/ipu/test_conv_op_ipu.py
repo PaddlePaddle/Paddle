@@ -15,13 +15,12 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
     def setUp(self):
         self.set_atol()
@@ -55,8 +54,9 @@ class TestBase(IPUOpTest):
     @IPUOpTest.static_graph
     def build_model(self):
         x = paddle.static.data(
-            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32')
-        x = paddle.fluid.layers.conv2d(x, **self.attrs)
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
+        x = paddle.static.nn.conv2d(x, **self.attrs)
         self.fetch_list = [x.name]
 
     def run_model(self, exec_mode):
@@ -101,6 +101,7 @@ class TestCase4(TestBase):
 
 
 class TestCase5(TestBase):
+    # Depthwise conv2d
     def set_op_attrs(self):
         super().set_op_attrs()
         self.attrs['groups'] = 3
@@ -122,6 +123,38 @@ class TestCase8(TestBase):
     def set_op_attrs(self):
         super().set_op_attrs()
         self.attrs['padding'] = [1, 2, 2, 3]
+
+
+# depthwise_conv2d Op
+class TestCase9(TestBase):
+    def set_feed(self):
+        data = np.random.uniform(size=[1, 3, 10, 10])
+        weight = np.random.uniform(size=[3, 1, 3, 3])
+        self.feed_fp32 = {
+            'in_0': data.astype(np.float32),
+            'in_1': weight.astype(np.float32),
+        }
+        self.feed_fp16 = {
+            'in_0': data.astype(np.float16),
+            'in_1': weight.astype(np.float16),
+        }
+        self.feed_shape = [x.shape for x in self.feed_fp32.values()]
+        self.feed_list = list(self.feed_fp32.keys())
+
+    def set_op_attrs(self):
+        self.attrs = {}
+        self.attrs['groups'] = 3
+
+    @IPUOpTest.static_graph
+    def build_model(self):
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
+        weight = paddle.static.data(
+            name=self.feed_list[1], shape=self.feed_shape[1], dtype='float32'
+        )
+        x = paddle.nn.functional.conv2d(x, weight, **self.attrs)
+        self.fetch_list = [x.name]
 
 
 if __name__ == "__main__":

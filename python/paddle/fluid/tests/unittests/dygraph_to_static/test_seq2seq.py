@@ -18,16 +18,16 @@ import time
 import unittest
 
 import numpy as np
-import paddle.fluid as fluid
-from paddle.fluid.clip import GradientClipByGlobalNorm
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
+from seq2seq_dygraph_model import AttentionModel, BaseModel
+from seq2seq_utils import Seq2SeqModelHyperParams, get_data_iter
 
-from seq2seq_dygraph_model import BaseModel, AttentionModel
-from seq2seq_utils import Seq2SeqModelHyperParams
-from seq2seq_utils import get_data_iter
-place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace(
+import paddle
+import paddle.fluid as fluid
+from paddle.nn import ClipGradByGlobalNorm
+
+place = (
+    fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
 )
-program_translator = ProgramTranslator()
 STEP_NUM = 10
 PRINT_STEP = 2
 
@@ -57,7 +57,8 @@ def train(args, attn_model=False):
                 args.batch_size,
                 num_layers=args.num_layers,
                 init_scale=args.init_scale,
-                dropout=args.dropout)
+                dropout=args.dropout,
+            )
         else:
             model = BaseModel(
                 args.hidden_size,
@@ -66,12 +67,15 @@ def train(args, attn_model=False):
                 args.batch_size,
                 num_layers=args.num_layers,
                 init_scale=args.init_scale,
-                dropout=args.dropout)
+                dropout=args.dropout,
+            )
 
-        gloabl_norm_clip = GradientClipByGlobalNorm(args.max_grad_norm)
-        optimizer = fluid.optimizer.SGD(args.learning_rate,
-                                        parameter_list=model.parameters(),
-                                        grad_clip=gloabl_norm_clip)
+        gloabl_norm_clip = ClipGradByGlobalNorm(args.max_grad_norm)
+        optimizer = fluid.optimizer.SGD(
+            args.learning_rate,
+            parameter_list=model.parameters(),
+            grad_clip=gloabl_norm_clip,
+        )
 
         model.train()
         train_data_iter = get_data_iter(args.batch_size)
@@ -97,8 +101,15 @@ def train(args, attn_model=False):
             if batch_id % PRINT_STEP == 0:
                 print(
                     "Batch:[%d]; Time: %.5f s; loss: %.5f; total_loss: %.5f; word num: %.5f; ppl: %.5f"
-                    % (batch_id, batch_time, loss.numpy(), total_loss.numpy(),
-                       word_count, np.exp(total_loss.numpy() / word_count)))
+                    % (
+                        batch_id,
+                        batch_time,
+                        loss.numpy(),
+                        total_loss.numpy(),
+                        word_count,
+                        np.exp(total_loss.numpy() / word_count),
+                    )
+                )
 
             if attn_model:
                 # NOTE: Please see code of AttentionModel.
@@ -109,12 +120,14 @@ def train(args, attn_model=False):
                 if batch_id + 1 >= STEP_NUM:
                     break
 
-        model_path = args.attn_model_path if attn_model else args.base_model_path
+        model_path = (
+            args.attn_model_path if attn_model else args.base_model_path
+        )
         model_dir = os.path.join(model_path)
 
         if not os.path.exists(model_dir):
             os.makedirs(model_dir)
-        fluid.save_dygraph(model.state_dict(), model_dir)
+        paddle.save(model.state_dict(), model_dir + '.pdparams')
         return loss.numpy()
 
 
@@ -131,7 +144,8 @@ def infer(args, attn_model=False):
                 num_layers=args.num_layers,
                 init_scale=args.init_scale,
                 dropout=0.0,
-                mode='beam_search')
+                mode='beam_search',
+            )
         else:
             model = BaseModel(
                 args.hidden_size,
@@ -142,10 +156,13 @@ def infer(args, attn_model=False):
                 num_layers=args.num_layers,
                 init_scale=args.init_scale,
                 dropout=0.0,
-                mode='beam_search')
+                mode='beam_search',
+            )
 
-        model_path = args.attn_model_path if attn_model else args.base_model_path
-        state_dict, _ = fluid.dygraph.load_dygraph(model_path)
+        model_path = (
+            args.attn_model_path if attn_model else args.base_model_path
+        )
+        state_dict = paddle.load(model_path + '.pdparams')
         model.set_dict(state_dict)
         model.eval()
         train_data_iter = get_data_iter(args.batch_size, mode='infer')
@@ -164,25 +181,28 @@ class TestSeq2seq(unittest.TestCase):
     def setUp(self):
         self.args = Seq2SeqModelHyperParams
         self.temp_dir = tempfile.TemporaryDirectory()
-        self.args.base_model_path = os.path.join(self.temp_dir.name,
-                                                 self.args.base_model_path)
-        self.args.attn_model_path = os.path.join(self.temp_dir.name,
-                                                 self.args.attn_model_path)
-        self.args.reload_model = os.path.join(self.temp_dir.name,
-                                              self.args.reload_model)
+        self.args.base_model_path = os.path.join(
+            self.temp_dir.name, self.args.base_model_path
+        )
+        self.args.attn_model_path = os.path.join(
+            self.temp_dir.name, self.args.attn_model_path
+        )
+        self.args.reload_model = os.path.join(
+            self.temp_dir.name, self.args.reload_model
+        )
 
     def tearDown(self):
         self.temp_dir.cleanup()
 
     def run_dygraph(self, mode="train", attn_model=False):
-        program_translator.enable(False)
+        paddle.jit.enable_to_static(False)
         if mode == "train":
             return train(self.args, attn_model)
         else:
             return infer(self.args, attn_model)
 
     def run_static(self, mode="train", attn_model=False):
-        program_translator.enable(True)
+        paddle.jit.enable_to_static(True)
         if mode == "train":
             return train(self.args, attn_model)
         else:
@@ -194,8 +214,10 @@ class TestSeq2seq(unittest.TestCase):
         result = np.allclose(dygraph_loss, static_loss)
         self.assertTrue(
             result,
-            msg="\ndygraph_loss = {} \nstatic_loss = {}".format(dygraph_loss,
-                                                                static_loss))
+            msg="\ndygraph_loss = {} \nstatic_loss = {}".format(
+                dygraph_loss, static_loss
+            ),
+        )
 
     def _test_predict(self, attn_model=False):
         pred_dygraph = self.run_dygraph(mode="test", attn_model=attn_model)
@@ -203,8 +225,10 @@ class TestSeq2seq(unittest.TestCase):
         result = np.allclose(pred_static, pred_dygraph)
         self.assertTrue(
             result,
-            msg="\npred_dygraph = {} \npred_static = {}".format(pred_dygraph,
-                                                                pred_static))
+            msg="\npred_dygraph = {} \npred_static = {}".format(
+                pred_dygraph, pred_static
+            ),
+        )
 
     def test_base_model(self):
         self._test_train(attn_model=False)
@@ -217,6 +241,4 @@ class TestSeq2seq(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    # switch into new eager mode
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

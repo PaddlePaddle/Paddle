@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "paddle/fluid/eager/eager_tensor.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/operator.h"
@@ -28,8 +29,7 @@
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/var_helper.h"
-
-#include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/selected_rows.h"
@@ -39,7 +39,7 @@ DECLARE_bool(use_mkldnn);
 namespace paddle {
 namespace imperative {
 
-const framework::Tensor* GetTensorFromVar(const framework::Variable& var);
+const phi::DenseTensor* GetTensorFromVar(const framework::Variable& var);
 
 template <typename VarType>
 static void SetForwardDataTypeOfGradVar(const std::shared_ptr<VarType>& var);
@@ -74,24 +74,28 @@ void SetForwardDataTypeOfGradVar<egr::EagerVariable>(
 
 template <typename VarType>
 std::shared_ptr<NameVarMap<VarType>> PrepareData(
-    const framework::OperatorWithKernel& op, const NameVarMap<VarType>& ins,
-    const framework::OpKernelType& expected_kernel_key) {
+    const framework::OperatorWithKernel& op,
+    const NameVarMap<VarType>& ins,
+    const phi::KernelKey& expected_kernel_key,
+    const phi::Place& place) {
   std::shared_ptr<NameVarMap<VarType>> tmp_ins_ptr = nullptr;
   for (const auto& name_pair : ins) {
     for (size_t i = 0; i < name_pair.second.size(); ++i) {
       auto& template_var = name_pair.second[i];
       SetForwardDataTypeOfGradVar(template_var);
       const auto* tensor = GetTensorFromVar(template_var->Var());
-      if (tensor && tensor->IsInitialized()) {
+      if (tensor && tensor->IsInitialized() && (tensor->memory_size() != 0)) {
         auto kernel_type_for_var = op.GetKernelTypeForVar(
             name_pair.first, *tensor, expected_kernel_key);
-        if (!NeedTransform(kernel_type_for_var, expected_kernel_key)) {
+        if (!framework::NeedTransform(
+                kernel_type_for_var, expected_kernel_key, *tensor)) {
           continue;
         } else {
           VLOG(3) << "Transform Variable " << GetNameFromVar(template_var)
                   << " from " << kernel_type_for_var << " to "
                   << expected_kernel_key;
-
+          VLOG(3) << GetNameFromVar(template_var)
+                  << " memory size is: " << tensor->memory_size();
           if (CheckCachedKey(template_var, expected_kernel_key)) {
             VLOG(3) << "Hit variable_wrapper cache: key="
                     << expected_kernel_key;
@@ -105,15 +109,15 @@ std::shared_ptr<NameVarMap<VarType>> PrepareData(
             auto tmp_var =
                 std::make_shared<VarType>(GetNameFromVar(template_var));
             SetType(tmp_var, GetType(template_var));
-            SetTensorToVariable(cache_var->Var(), *tensor,
-                                tmp_var->MutableVar());
+            SetTensorToVariable(
+                cache_var->Var(), *tensor, tmp_var->MutableVar());
             (*tmp_ins_ptr)[name_pair.first][i] = tmp_var;
           } else {
-            framework::Tensor out;
-            TransformData(expected_kernel_key, kernel_type_for_var, *tensor,
-                          &out);
-            if (NeedTransformDataType(kernel_type_for_var,
-                                      expected_kernel_key)) {
+            phi::DenseTensor out;
+            framework::TransformData(
+                expected_kernel_key, kernel_type_for_var, *tensor, &out, place);
+            if (framework::NeedTransformDataType(kernel_type_for_var,
+                                                 expected_kernel_key)) {
               // To avoid NameVarMap copy construction overhead in general
               // scenarios, if inplace transformed, return original input
               // directly
@@ -123,8 +127,8 @@ std::shared_ptr<NameVarMap<VarType>> PrepareData(
               auto tmp_var =
                   std::make_shared<VarType>(GetNameFromVar(template_var));
               SetType(tmp_var, GetType(template_var));
-              SetTensorToVariable(template_var->Var(), out,
-                                  tmp_var->MutableVar());
+              SetTensorToVariable(
+                  template_var->Var(), out, tmp_var->MutableVar());
               (*tmp_ins_ptr)[name_pair.first][i] = tmp_var;
               SetCachedValue(template_var, expected_kernel_key, tmp_var);
               VLOG(3) << "Set cache to variable_wrapper: key="
@@ -133,8 +137,8 @@ std::shared_ptr<NameVarMap<VarType>> PrepareData(
               // if dtype is same, transform inplace will not change the
               // original
               // value, transform inplace to avoid multiple copy
-              SetTensorToVariable(template_var->Var(), out,
-                                  template_var->MutableVar());
+              SetTensorToVariable(
+                  template_var->Var(), out, template_var->MutableVar());
             }
           }
         }
@@ -148,7 +152,7 @@ class PreparedOp {
  public:
   PreparedOp(const framework::OperatorBase& op,
              const framework::RuntimeContext& ctx,
-             const framework::OpKernelType& kernel_type,
+             const phi::KernelKey& kernel_key,
              const framework::OperatorWithKernel::OpKernelFunc& func,
              const phi::ArgumentMappingFn* arg_map_fn,
              const phi::KernelSignature* default_kernel_signature,
@@ -156,11 +160,12 @@ class PreparedOp {
 
   PreparedOp(const framework::OperatorBase& op,
              const framework::RuntimeContext& ctx,
-             const framework::OpKernelType& kernel_type,
+             const phi::KernelKey& kernel_key,
              const phi::ArgumentMappingFn* arg_map_fn,
              const phi::KernelSignature* default_kernel_signature,
              phi::KernelSignature&& kernel_signature,
-             const phi::Kernel& phi_kernel, platform::DeviceContext* dev_ctx);
+             const phi::Kernel& phi_kernel,
+             platform::DeviceContext* dev_ctx);
 
   static PreparedOp Prepare(const NameVarMap<VarBase>& ins,
                             const NameVarMap<VarBase>& outs,
@@ -183,7 +188,8 @@ class PreparedOp {
                             const framework::AttributeMap& attrs,
                             const framework::AttributeMap& default_attrs);
 
-  void Run(const NameVarMap<VarBase>& in, const NameVarMap<VarBase>& out,
+  void Run(const NameVarMap<VarBase>& in,
+           const NameVarMap<VarBase>& out,
            const framework::AttributeMap& attrs,
            const framework::AttributeMap& default_attrs);
 
@@ -197,12 +203,14 @@ class PreparedOp {
            const framework::AttributeMap& attrs,
            const framework::AttributeMap& default_attrs);
 
-  const framework::OpKernelType& kernel_type() const { return kernel_type_; }
+  const phi::KernelKey& kernel_key() const { return kernel_key_; }
+
+  const phi::Place& place() const { return dev_ctx_->GetPlace(); }
 
  private:
   const framework::OperatorBase& op_;
   const framework::RuntimeContext& ctx_;
-  framework::OpKernelType kernel_type_;
+  phi::KernelKey kernel_key_;
   framework::OperatorWithKernel::OpKernelFunc func_;
   platform::DeviceContext* dev_ctx_;
   // NOTE(chenweihang): Similar op members are used to adapt to
@@ -222,7 +230,8 @@ class PreparedOp {
 
 const inline framework::Attribute* GetAttr(
     const framework::AttributeMap& attrs,
-    const framework::AttributeMap& default_attrs, const std::string& name) {
+    const framework::AttributeMap& default_attrs,
+    const std::string& name) {
   auto it = attrs.find(name);
   bool found = it != attrs.end();
   if (!found) {
@@ -254,23 +263,35 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
   auto& output_defs = phi_kernel.args_def().output_defs();
   auto& attr_defs = phi_kernel.args_def().attribute_defs();
 
-  PADDLE_ENFORCE_EQ(input_names.size(), input_defs.size(),
-                    platform::errors::InvalidArgument(
-                        "the size of inputs_args names (%d) must be equal to "
-                        "the size of kernel input_defs (%d).",
-                        input_names.size(), input_defs.size()));
+  PADDLE_ENFORCE_EQ(
+      input_names.size(),
+      input_defs.size(),
+      platform::errors::InvalidArgument(
+          "Op %s: the size of inputs_args names (%d) must be equal to "
+          "the size of kernel input_defs (%d).",
+          kernel_signature.name,
+          input_names.size(),
+          input_defs.size()));
 
-  PADDLE_ENFORCE_EQ(output_names.size(), output_defs.size(),
-                    platform::errors::InvalidArgument(
-                        "the size of outputs_args names (%d) must be equal to "
-                        "the size of kernel output_defs (%d).",
-                        output_names.size(), output_defs.size()));
+  PADDLE_ENFORCE_EQ(
+      output_names.size(),
+      output_defs.size(),
+      platform::errors::InvalidArgument(
+          "Op %s: the size of outputs_args names (%d) must be equal to "
+          "the size of kernel output_defs (%d).",
+          kernel_signature.name,
+          output_names.size(),
+          output_defs.size()));
 
-  PADDLE_ENFORCE_EQ(attr_names.size(), attr_defs.size(),
-                    platform::errors::InvalidArgument(
-                        "the size of attribute_args names (%d) must be equal "
-                        "to the size of kernel attribute_defs (%d).",
-                        attr_names.size(), attr_defs.size()));
+  PADDLE_ENFORCE_EQ(
+      attr_names.size(),
+      attr_defs.size(),
+      platform::errors::InvalidArgument(
+          "Op %s: the size of attribute_args names (%d) must be equal "
+          "to the size of kernel attribute_defs (%d).",
+          kernel_signature.name,
+          attr_names.size(),
+          attr_defs.size()));
 
   for (size_t i = 0; i < input_names.size(); ++i) {
     auto it = ins.find(input_names[i]);
@@ -296,7 +317,8 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
             "Can not find input variable '%s' for %s OP, please check whether "
             "the name setting in OpArgumentMapping is consistent with that in "
             "OpMaker.",
-            input_names[i], kernel_signature.name));
+            input_names[i],
+            kernel_signature.name));
       }
     }
 
@@ -313,13 +335,8 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
         tensor_in = &(var.template Get<phi::SelectedRows>());
         kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
       } else if (var.template IsType<framework::LoDTensorArray>()) {
-        paddle::small_vector<const phi::TensorBase*> tensor_vector;
-        auto& tensor_array = var.template Get<framework::LoDTensorArray>();
-        for (auto& t : tensor_array) {
-          tensor_vector.emplace_back(&t);
-        }
-        kernel_ctx->EmplaceBackInputsWithoutSetRange(tensor_vector);
-        end_idx += tensor_array.size() - 1;
+        tensor_in = &(var.template Get<framework::LoDTensorArray>());
+        kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported input `%s` type when call pt kernel.",
@@ -335,7 +352,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
 
     auto iter = outs.find(output_names[i]);
     if (iter == outs.end()) {
-      kernel_ctx->EmplaceBackOutputWithoutSetRange({nullptr});
+      kernel_ctx->EmplaceBackOutputWithoutSetRange(nullptr);
       kernel_ctx->AssignOutputRange(std::make_pair(start_idx, start_idx + 1),
                                     i);
       continue;
@@ -346,7 +363,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
 
     for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
       if (outs_vector[offset] == nullptr) {
-        kernel_ctx->EmplaceBackOutputWithoutSetRange({nullptr});
+        kernel_ctx->EmplaceBackOutputWithoutSetRange(nullptr);
         continue;
       }
 
@@ -360,14 +377,8 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
           tensor_out = var->template GetMutable<phi::SelectedRows>();
           kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else if (var->template IsType<framework::LoDTensorArray>()) {
-          paddle::small_vector<phi::TensorBase*> tensor_vector;
-          auto* tensor_array =
-              var->template GetMutable<framework::LoDTensorArray>();
-          for (auto& t : *tensor_array) {
-            tensor_vector.emplace_back(&t);
-          }
-          kernel_ctx->EmplaceBackOutputsWithoutSetRange(tensor_vector);
-          end_idx += tensor_array->size() - 1;
+          tensor_out = var->template GetMutable<framework::LoDTensorArray>();
+          kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "Unsupported output `%s` type when call pt kernel.",
@@ -393,15 +404,27 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
           switch (AttrTypeID(attr)) {
             case framework::proto::AttrType::FLOAT:
               kernel_ctx->EmplaceBackAttr(
-                  std::move(phi::Scalar(BOOST_GET_CONST(float, attr))));
+                  std::move(phi::Scalar(PADDLE_GET_CONST(float, attr))));
+              break;
+            case framework::proto::AttrType::FLOAT64:
+              kernel_ctx->EmplaceBackAttr(
+                  std::move(phi::Scalar(PADDLE_GET_CONST(double, attr))));
               break;
             case framework::proto::AttrType::INT:
               kernel_ctx->EmplaceBackAttr(
-                  std::move(phi::Scalar(BOOST_GET_CONST(int, attr))));
+                  std::move(phi::Scalar(PADDLE_GET_CONST(int, attr))));
+              break;
+            case framework::proto::AttrType::LONG:
+              kernel_ctx->EmplaceBackAttr(
+                  std::move(phi::Scalar(PADDLE_GET_CONST(int64_t, attr))));
               break;
             case framework::proto::AttrType::STRING:
               kernel_ctx->EmplaceBackAttr(
-                  std::move(phi::Scalar(BOOST_GET_CONST(std::string, attr))));
+                  std::move(phi::Scalar(PADDLE_GET_CONST(std::string, attr))));
+              break;
+            case framework::proto::AttrType::BOOLEAN:
+              kernel_ctx->EmplaceBackAttr(
+                  std::move(phi::Scalar(PADDLE_GET_CONST(bool, attr))));
               break;
             default:
               PADDLE_THROW(platform::errors::Unimplemented(
@@ -421,19 +444,19 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
           switch (AttrTypeID(attr)) {
             case framework::proto::AttrType::INTS:
               kernel_ctx->EmplaceBackAttr(std::move(
-                  phi::IntArray(BOOST_GET_CONST(std::vector<int32_t>, attr))));
+                  phi::IntArray(PADDLE_GET_CONST(std::vector<int32_t>, attr))));
               break;
             case framework::proto::AttrType::LONGS:
               kernel_ctx->EmplaceBackAttr(std::move(
-                  phi::IntArray(BOOST_GET_CONST(std::vector<int64_t>, attr))));
+                  phi::IntArray(PADDLE_GET_CONST(std::vector<int64_t>, attr))));
               break;
             case framework::proto::AttrType::INT:
-              kernel_ctx->EmplaceBackAttr(
-                  std::move(phi::IntArray(&BOOST_GET_CONST(int32_t, attr), 1)));
+              kernel_ctx->EmplaceBackAttr(std::move(
+                  phi::IntArray(&PADDLE_GET_CONST(int32_t, attr), 1)));
               break;
             case framework::proto::AttrType::LONG:
-              kernel_ctx->EmplaceBackAttr(
-                  std::move(phi::IntArray(&BOOST_GET_CONST(int64_t, attr), 1)));
+              kernel_ctx->EmplaceBackAttr(std::move(
+                  phi::IntArray(&PADDLE_GET_CONST(int64_t, attr), 1)));
               break;
             default:
               PADDLE_THROW(platform::errors::Unimplemented(
@@ -466,7 +489,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
         auto& attr = *attr_ptr;
         switch (AttrTypeID(attr)) {
           case framework::proto::AttrType::INTS: {
-            const auto& vec = BOOST_GET_CONST(std::vector<int32_t>, attr);
+            const auto& vec = PADDLE_GET_CONST(std::vector<int32_t>, attr);
             std::vector<phi::Scalar> scalar_list;
             scalar_list.reserve(vec.size());
             for (const auto& val : vec) {
@@ -475,7 +498,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
             kernel_ctx->EmplaceBackAttr(std::move(scalar_list));
           } break;
           case framework::proto::AttrType::LONGS: {
-            const auto& vec = BOOST_GET_CONST(std::vector<int64_t>, attr);
+            const auto& vec = PADDLE_GET_CONST(std::vector<int64_t>, attr);
             std::vector<phi::Scalar> scalar_list;
             scalar_list.reserve(vec.size());
             for (const auto& val : vec) {
@@ -484,7 +507,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
             kernel_ctx->EmplaceBackAttr(std::move(scalar_list));
           } break;
           case framework::proto::AttrType::FLOATS: {
-            const auto& vec = BOOST_GET_CONST(std::vector<float>, attr);
+            const auto& vec = PADDLE_GET_CONST(std::vector<float>, attr);
             std::vector<phi::Scalar> scalar_list;
             scalar_list.reserve(vec.size());
             for (const auto& val : vec) {
@@ -493,7 +516,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
             kernel_ctx->EmplaceBackAttr(std::move(scalar_list));
           } break;
           case framework::proto::AttrType::FLOAT64S: {
-            const auto& vec = BOOST_GET_CONST(std::vector<double>, attr);
+            const auto& vec = PADDLE_GET_CONST(std::vector<double>, attr);
             std::vector<phi::Scalar> scalar_list;
             scalar_list.reserve(vec.size());
             for (const auto& val : vec) {
@@ -502,7 +525,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
             kernel_ctx->EmplaceBackAttr(std::move(scalar_list));
           } break;
           case framework::proto::AttrType::BOOLEANS: {
-            const auto& vec = BOOST_GET_CONST(std::vector<bool>, attr);
+            const auto& vec = PADDLE_GET_CONST(std::vector<bool>, attr);
             std::vector<phi::Scalar> scalar_list;
             scalar_list.reserve(vec.size());
             for (const auto& val : vec) {
@@ -526,40 +549,43 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
         auto& attr = *attr_ptr;
         switch (attr_defs[i].type_index) {
           case phi::AttributeType::FLOAT32:
-            kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(float, attr));
+            kernel_ctx->EmplaceBackAttr(PADDLE_GET_CONST(float, attr));
+            break;
+          case phi::AttributeType::FLOAT64:
+            kernel_ctx->EmplaceBackAttr(PADDLE_GET_CONST(double, attr));
             break;
           case phi::AttributeType::INT32:
-            kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(int, attr));
+            kernel_ctx->EmplaceBackAttr(PADDLE_GET_CONST(int, attr));
             break;
           case phi::AttributeType::BOOL:
-            kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
+            kernel_ctx->EmplaceBackAttr(PADDLE_GET_CONST(bool, attr));
             break;
           case phi::AttributeType::INT64:
-            kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(int64_t, attr));
+            kernel_ctx->EmplaceBackAttr(PADDLE_GET_CONST(int64_t, attr));
             break;
           case phi::AttributeType::INT32S:
             kernel_ctx->EmplaceBackAttr(
-                BOOST_GET_CONST(std::vector<int>, attr));
+                PADDLE_GET_CONST(std::vector<int>, attr));
             break;
           case phi::AttributeType::DATA_TYPE: {
             auto data_type = framework::TransToPhiDataType(
                 static_cast<framework::proto::VarType::Type>(
-                    BOOST_GET_CONST(int, attr)));
+                    PADDLE_GET_CONST(int, attr)));
             kernel_ctx->EmplaceBackAttr(data_type);
           } break;
           case phi::AttributeType::STRING:
             kernel_ctx->EmplaceBackAttr(
-                std::move(BOOST_GET_CONST(std::string, attr)));
+                std::move(PADDLE_GET_CONST(std::string, attr)));
             break;
           case phi::AttributeType::INT64S: {
             switch (AttrTypeID(attr)) {
               case framework::proto::AttrType::LONGS:
                 kernel_ctx->EmplaceBackAttr(
-                    BOOST_GET_CONST(std::vector<int64_t>, attr));
+                    PADDLE_GET_CONST(std::vector<int64_t>, attr));
                 break;
               case framework::proto::AttrType::INTS: {
                 const auto& vector_int_attr =
-                    BOOST_GET_CONST(std::vector<int>, attr);
+                    PADDLE_GET_CONST(std::vector<int>, attr);
                 const std::vector<int64_t> vector_int64_attr(
                     vector_int_attr.begin(), vector_int_attr.end());
                 kernel_ctx->EmplaceBackAttr(vector_int64_attr);
@@ -574,11 +600,11 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
           } break;
           case phi::AttributeType::FLOAT32S:
             kernel_ctx->EmplaceBackAttr(
-                BOOST_GET_CONST(std::vector<float>, attr));
+                PADDLE_GET_CONST(std::vector<float>, attr));
             break;
           case phi::AttributeType::STRINGS:
             kernel_ctx->EmplaceBackAttr(
-                BOOST_GET_CONST(std::vector<std::string>, attr));
+                PADDLE_GET_CONST(std::vector<std::string>, attr));
             break;
           default:
             PADDLE_THROW(platform::errors::Unimplemented(
@@ -599,11 +625,13 @@ void PreparePhiData(const phi::Kernel& phi_kernel,
   const auto& input_names = kernel_signature.input_names;
   auto& input_defs = phi_kernel.args_def().input_defs();
 
-  PADDLE_ENFORCE_EQ(input_names.size(), input_defs.size(),
+  PADDLE_ENFORCE_EQ(input_names.size(),
+                    input_defs.size(),
                     platform::errors::InvalidArgument(
                         "the size of inputs_args names (%d) must be equal to "
                         "the size of kernel input_defs (%d).",
-                        input_names.size(), input_defs.size()));
+                        input_names.size(),
+                        input_defs.size()));
 
   for (size_t i = 0; i < input_names.size(); ++i) {
     auto& in_def = input_defs.at(i);
@@ -616,7 +644,8 @@ void PreparePhiData(const phi::Kernel& phi_kernel,
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
       auto& var = ins_vector[offset];
       const auto* tensor_in = GetTensorFromVar(var->Var());
-      if (tensor_in && tensor_in->IsInitialized()) {
+      if (tensor_in && tensor_in->IsInitialized() &&
+          (tensor_in->memory_size() != 0)) {
         if (in_def.backend == phi::Backend::ALL_BACKEND) {
           continue;
         }
@@ -632,7 +661,7 @@ void PreparePhiData(const phi::Kernel& phi_kernel,
         VLOG(3) << "Phi Transform Variable " << input_names[i] << " from "
                 << tensor_in->place() << " to " << expected_place;
 
-        framework::Tensor tmp_tensor;
+        phi::DenseTensor tmp_tensor;
         framework::TensorCopySync(*tensor_in, expected_place, &tmp_tensor);
 
         SetTensorToVariable(var->Var(), tmp_tensor, var->MutableVar());

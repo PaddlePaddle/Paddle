@@ -16,10 +16,12 @@
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
+
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 
 #include <mutex>  // NOLINT
+
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/place.h"
 

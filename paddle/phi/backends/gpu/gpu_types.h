@@ -67,6 +67,16 @@ DECLARE_CONSTANT_FOR_GPU(gpuErrorOutOfMemory,
 DECLARE_CONSTANT_FOR_GPU(gpuErrorNotReady, cudaErrorNotReady, hipErrorNotReady);
 DECLARE_CONSTANT_FOR_GPU(gpuSuccess, cudaSuccess, hipSuccess);
 
+DECLARE_CONSTANT_FOR_GPU(gpuMemcpyHostToDevice,
+                         cudaMemcpyKind::cudaMemcpyHostToDevice,
+                         hipMemcpyKind::hipMemcpyHostToDevice);
+DECLARE_CONSTANT_FOR_GPU(gpuMemcpyDeviceToHost,
+                         cudaMemcpyKind::cudaMemcpyDeviceToHost,
+                         hipMemcpyKind::hipMemcpyDeviceToHost);
+DECLARE_CONSTANT_FOR_GPU(gpuMemcpyDeviceToDevice,
+                         cudaMemcpyKind::cudaMemcpyDeviceToDevice,
+                         hipMemcpyKind::hipMemcpyDeviceToDevice);
+
 #undef DECLARE_CONSTANT_FOR_GPU
 }  // namespace phi
 

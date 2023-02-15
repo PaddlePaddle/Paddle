@@ -36,8 +36,9 @@ CinnCacheKey::CinnCacheKey(GraphHashStrategy graph_hash)
 
 CinnCacheKey::CinnCacheKey(
     const ir::Graph& graph,
-    const std::map<std::string, const LoDTensor*>& input_tensors,
-    const std::string& arch_str, GraphHashStrategy graph_hash)
+    const std::map<std::string, const phi::DenseTensor*>& input_tensors,
+    const std::string& arch_str,
+    GraphHashStrategy graph_hash)
     : graph_hash_(graph_hash) {
   this->SetKey(graph, input_tensors, arch_str);
 }
@@ -52,7 +53,7 @@ CinnCacheKey::CinnCacheKey(const ir::Graph& graph,
 
 void CinnCacheKey::SetKey(
     const ir::Graph& graph,
-    const std::map<std::string, const LoDTensor*>& input_tensors,
+    const std::map<std::string, const phi::DenseTensor*>& input_tensors,
     const std::string& arch_str) {
   graph_hash_val_ = graph_hash_(graph);
   for (const auto& name_tensor : input_tensors) {
@@ -83,7 +84,7 @@ size_t CinnCacheKey::Hash::operator()(const CinnCacheKey& key) const {
 
   for (const auto& name_shape : key.input_shapes_) {
     has_str << name_shape.first;
-    has_str << name_shape.second.to_str();
+    has_str << std::hash<phi::DDim>()(name_shape.second);
   }
 
   has_str << key.graph_hash_val_;
@@ -100,7 +101,7 @@ size_t CinnCacheKeyByStructure::HashGraph(const ir::Graph& graph) {
 
   // graph.Nodes() return unordered_set, here using set to avoid the same graph
   // may return different result
-  std::set<ir::Node *, bool (*)(ir::Node *, ir::Node *)> node_set(compare),
+  std::set<ir::Node*, bool (*)(ir::Node*, ir::Node*)> node_set(compare),
       output_set(compare);
   node_set.insert(graph.Nodes().begin(), graph.Nodes().end());
 

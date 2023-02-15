@@ -14,9 +14,11 @@ limitations under the License. */
 
 #pragma once
 #include <math.h>
+
 #include <stdexcept>
 #include <string>
-#include "paddle/fluid/platform/cpu_info.h"
+
+#include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/core/hostdevice.h"
 
 namespace phi {

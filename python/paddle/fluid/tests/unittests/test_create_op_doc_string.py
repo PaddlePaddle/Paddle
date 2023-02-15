@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-import paddle.fluid.layers as layers
+
+import paddle
 
 
 class TestDocString(unittest.TestCase):
     def test_layer_doc_string(self):
-        print(layers.dropout.__doc__)
+        print(paddle.nn.functional.dropout.__doc__)
 
 
 if __name__ == '__main__':

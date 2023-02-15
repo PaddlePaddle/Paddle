@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/diagonal_grad_kernel.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/diagonal.h"
@@ -89,4 +90,7 @@ PD_REGISTER_KERNEL(diagonal_grad,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

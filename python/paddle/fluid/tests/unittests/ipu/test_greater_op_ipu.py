@@ -15,13 +15,12 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestGreaterThan(IPUOpTest):
     def setUp(self):
         self.set_atol()
@@ -37,9 +36,11 @@ class TestGreaterThan(IPUOpTest):
     @IPUOpTest.static_graph
     def build_model(self):
         x = paddle.static.data(
-            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32')
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
         y = paddle.static.data(
-            name=self.feed_list[1], shape=self.feed_shape[1], dtype='float32')
+            name=self.feed_list[1], shape=self.feed_shape[1], dtype='float32'
+        )
         out = self.op(x, y, **self.attrs)
         self.fetch_list = [out.name]
 
@@ -120,6 +121,16 @@ class TestLessThan(TestGreaterThan):
 class TestEqual(TestGreaterThan):
     def set_test_op(self):
         self.op = paddle.fluid.layers.equal
+
+
+class TestGreaterEqual(TestGreaterThan):
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.greater_equal
+
+
+class TestLessEqual(TestGreaterThan):
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.less_equal
 
 
 if __name__ == "__main__":

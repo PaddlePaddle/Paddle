@@ -19,18 +19,17 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
 template <typename T>
 class PadNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* x = context.Input<Tensor>("X");
-    auto* out = context.Output<Tensor>("Out");
+    auto* x = context.Input<phi::DenseTensor>("X");
+    auto* out = context.Output<phi::DenseTensor>("Out");
     auto paddings = context.Attr<std::vector<int>>("paddings");
     float pad_value = context.Attr<float>("pad_value");
 
-    PADDLE_ENFORCE_LT(abs(pad_value), 1e-5,
+    PADDLE_ENFORCE_LT(abs(pad_value),
+                      1e-5,
                       platform::errors::Unimplemented(
                           "Ascend npu only support pad_value=0 right now,"
                           "but received pad_value is %f .",
@@ -55,8 +54,9 @@ template <typename T>
 class PadGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto* d_x = context.Output<Tensor>(framework::GradVarName("X"));
+    auto* d_out =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* d_x = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto paddings = context.Attr<std::vector<int>>("paddings");
 
     d_x->mutable_data<T>(context.GetPlace());
@@ -75,8 +75,8 @@ class PadGradNPUKernel : public framework::OpKernel<T> {
         context.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    const auto& runner = NpuOpRunner("SliceD", {*d_out}, {*d_x},
-                                     {{"offsets", offsets}, {"size", size}});
+    const auto& runner = NpuOpRunner(
+        "SliceD", {*d_out}, {*d_x}, {{"offsets", offsets}, {"size", size}});
     runner.Run(stream);
   }
 };
@@ -87,8 +87,11 @@ class PadGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(pad, ops::PadNPUKernel<plat::float16>,
-                       ops::PadNPUKernel<float>, ops::PadNPUKernel<int>);
+REGISTER_OP_NPU_KERNEL(pad,
+                       ops::PadNPUKernel<plat::float16>,
+                       ops::PadNPUKernel<float>,
+                       ops::PadNPUKernel<int>);
 
-REGISTER_OP_NPU_KERNEL(pad_grad, ops::PadGradNPUKernel<plat::float16>,
+REGISTER_OP_NPU_KERNEL(pad_grad,
+                       ops::PadGradNPUKernel<plat::float16>,
                        ops::PadGradNPUKernel<float>);

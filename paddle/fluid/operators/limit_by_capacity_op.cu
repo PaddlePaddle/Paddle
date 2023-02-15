@@ -20,26 +20,23 @@
 //      Copyright 2021, Jiaao He. All rights reserved.
 //  Licensed under the Apache License, Version 2.0 (the "License").
 
-#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/limit_by_capacity_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
-using Tensor = framework::Tensor;
-
 template <typename T>
-__global__ void limit_by_capacity_impl(const T* expc, T* cap, T* out,
-                                       const int n_expert, const int n_worker) {
+__global__ void limit_by_capacity_impl(
+    const T* expc, T* cap, T* out, const int n_expert, const int n_worker) {
   int eid, wid;
   CUDA_KERNEL_LOOP(i, (n_expert * n_worker)) {
     wid = i / n_expert;
     eid = i % n_expert;
     auto proposal = expc[wid * n_expert + eid];
-    auto cap_left = paddle::platform::CudaAtomicAdd(cap + eid, proposal * (-1));
+    auto cap_left = phi::CudaAtomicAdd(cap + eid, proposal * (-1));
     if (cap_left >= proposal) {
       out[wid * n_expert + eid] = proposal;
     } else if (cap_left >= 0) {
@@ -54,22 +51,21 @@ template <typename T>
 class LimitByCapacityOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto expert_count = context.Input<Tensor>("expert_count");
-    auto capacity = context.Input<Tensor>("capacity");
+    auto expert_count = context.Input<phi::DenseTensor>("expert_count");
+    auto capacity = context.Input<phi::DenseTensor>("capacity");
     auto n_worker = context.Attr<int>("n_worker");
-    auto out = context.Output<Tensor>("Out");
+    auto out = context.Output<phi::DenseTensor>("Out");
 
     auto n_expert = expert_count->numel() / n_worker;
     const auto place = context.GetPlace();
-    const auto& dev_ctx =
-        context.template device_context<platform::CUDADeviceContext>();
+    const auto& dev_ctx = context.template device_context<phi::GPUContext>();
 
     dim3 grid_dim(256);
     dim3 block_dim(1024);
     auto out_data = out->mutable_data<T>(place);
     const T* ec_data = expert_count->data<T>();
 
-    framework::Tensor capacity_copy;
+    phi::DenseTensor capacity_copy;
     framework::TensorCopy(*capacity, place, dev_ctx, &capacity_copy);
     T* cap_data = capacity_copy.mutable_data<T>(place);
 

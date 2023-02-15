@@ -12,19 +12,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/math/im2col.h"
+#include "paddle/phi/kernels/funcs/im2col.h"
+
 #include <gtest/gtest.h>
-#include "paddle/fluid/operators/math/im2col_cfo_cpu.h"
+
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/kernels/funcs/im2col_cfo_cpu.h"
 
 template <typename DeviceContext, typename Place>
 void testIm2col() {
-  paddle::framework::Tensor input_tmp;
-  paddle::framework::Tensor input;
-  paddle::framework::Tensor output_cfo;
-  paddle::framework::Tensor output_ocf;
-  paddle::framework::Tensor output_tmp;
+  phi::DenseTensor input_tmp;
+  phi::DenseTensor input;
+  phi::DenseTensor output_cfo;
+  phi::DenseTensor output_ocf;
+  phi::DenseTensor output_tmp;
 
   /**
    * input = [0, 1, 2,
@@ -74,11 +77,9 @@ void testIm2col() {
       {output_height, output_width, 1, filter_size, filter_size}, *place);
 
   // Im2Col
-  paddle::operators::math::Im2ColFunctor<
-      paddle::operators::math::ColFormat::kCFO, DeviceContext, float>
+  phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, float>
       im2col;
-  paddle::operators::math::Im2ColFunctor<
-      paddle::operators::math::ColFormat::kOCF, DeviceContext, float>
+  phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, float>
       im2col_ocf;
 
   im2col(*context, input, dilation, stride, padding, &output_cfo);
@@ -91,8 +92,8 @@ void testIm2col() {
   if (paddle::platform::is_cpu_place(*place)) {
     out_cfo_ptr = output_cfo.data<float>();
   } else {
-    paddle::framework::TensorCopySync(output_cfo, paddle::platform::CPUPlace(),
-                                      &output_tmp);
+    paddle::framework::TensorCopySync(
+        output_cfo, paddle::platform::CPUPlace(), &output_tmp);
     out_cfo_ptr = output_tmp.data<float>();
   }
   for (int i = 0; i < 6; ++i) {
@@ -103,8 +104,8 @@ void testIm2col() {
   if (paddle::platform::is_cpu_place(*place)) {
     out_ocf_ptr = output_ocf.data<float>();
   } else {
-    paddle::framework::TensorCopySync(output_ocf, paddle::platform::CPUPlace(),
-                                      &output_tmp);
+    paddle::framework::TensorCopySync(
+        output_ocf, paddle::platform::CPUPlace(), &output_tmp);
     out_ocf_ptr = output_tmp.data<float>();
   }
 
@@ -113,11 +114,9 @@ void testIm2col() {
   }
 
   // Col2Im: kCFO
-  paddle::operators::math::Col2ImFunctor<
-      paddle::operators::math::ColFormat::kCFO, DeviceContext, float>
+  phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, float>
       col2im;
-  paddle::operators::math::Col2ImFunctor<
-      paddle::operators::math::ColFormat::kOCF, DeviceContext, float>
+  phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, float>
       col2im_ocf;
   float col2im_data[] = {0, 2, 2, 3, 8, 5};
 
@@ -134,8 +133,8 @@ void testIm2col() {
   if (paddle::platform::is_cpu_place(*place)) {
     in_ptr = input.data<float>();
   } else {
-    paddle::framework::TensorCopySync(input, paddle::platform::CPUPlace(),
-                                      &input_tmp);
+    paddle::framework::TensorCopySync(
+        input, paddle::platform::CPUPlace(), &input_tmp);
     in_ptr = input_tmp.data<float>();
   }
   for (int i = 0; i < 6; ++i) {
@@ -155,8 +154,8 @@ void testIm2col() {
   if (paddle::platform::is_cpu_place(*place)) {
     in_ptr = input.data<float>();
   } else {
-    paddle::framework::TensorCopySync(input, paddle::platform::CPUPlace(),
-                                      &input_tmp);
+    paddle::framework::TensorCopySync(
+        input, paddle::platform::CPUPlace(), &input_tmp);
     in_ptr = input_tmp.data<float>();
   }
   for (int i = 0; i < 6; ++i) {
@@ -169,13 +168,12 @@ void testIm2col() {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <>
-void testIm2col<paddle::platform::CUDADeviceContext,
-                paddle::platform::CUDAPlace>() {
-  paddle::framework::Tensor input_tmp;
-  paddle::framework::Tensor input;
-  paddle::framework::Tensor output_cfo;
-  paddle::framework::Tensor output_ocf;
-  paddle::framework::Tensor output_tmp;
+void testIm2col<phi::GPUContext, paddle::platform::CUDAPlace>() {
+  phi::DenseTensor input_tmp;
+  phi::DenseTensor input;
+  phi::DenseTensor output_cfo;
+  phi::DenseTensor output_ocf;
+  phi::DenseTensor output_tmp;
 
   /**
    * input = [0, 1, 2,
@@ -212,7 +210,7 @@ void testIm2col<paddle::platform::CUDADeviceContext,
   memcpy(input_ptr, arr, 6 * sizeof(float));
 
   auto* place = new paddle::platform::CUDAPlace();
-  auto* context = new paddle::platform::CUDADeviceContext(*place);
+  auto* context = new phi::GPUContext(*place);
   context->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                             .GetAllocator(*place, context->stream())
                             .get());
@@ -228,13 +226,9 @@ void testIm2col<paddle::platform::CUDADeviceContext,
       {output_height, output_width, 1, filter_size, filter_size}, *place);
 
   // Im2Col
-  paddle::operators::math::Im2ColFunctor<
-      paddle::operators::math::ColFormat::kCFO,
-      paddle::platform::CUDADeviceContext, float>
+  phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kCFO, phi::GPUContext, float>
       im2col;
-  paddle::operators::math::Im2ColFunctor<
-      paddle::operators::math::ColFormat::kOCF,
-      paddle::platform::CUDADeviceContext, float>
+  phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kOCF, phi::GPUContext, float>
       im2col_ocf;
 
   im2col(*context, input, dilation, stride, padding, &output_cfo);
@@ -247,8 +241,8 @@ void testIm2col<paddle::platform::CUDADeviceContext,
   if (paddle::platform::is_cpu_place(*place)) {
     out_cfo_ptr = output_cfo.data<float>();
   } else {
-    paddle::framework::TensorCopySync(output_cfo, paddle::platform::CPUPlace(),
-                                      &output_tmp);
+    paddle::framework::TensorCopySync(
+        output_cfo, paddle::platform::CPUPlace(), &output_tmp);
     out_cfo_ptr = output_tmp.data<float>();
   }
   for (int i = 0; i < 6; ++i) {
@@ -259,8 +253,8 @@ void testIm2col<paddle::platform::CUDADeviceContext,
   if (paddle::platform::is_cpu_place(*place)) {
     out_ocf_ptr = output_ocf.data<float>();
   } else {
-    paddle::framework::TensorCopySync(output_ocf, paddle::platform::CPUPlace(),
-                                      &output_tmp);
+    paddle::framework::TensorCopySync(
+        output_ocf, paddle::platform::CPUPlace(), &output_tmp);
     out_ocf_ptr = output_tmp.data<float>();
   }
 
@@ -269,13 +263,9 @@ void testIm2col<paddle::platform::CUDADeviceContext,
   }
 
   // Col2Im: kCFO
-  paddle::operators::math::Col2ImFunctor<
-      paddle::operators::math::ColFormat::kCFO,
-      paddle::platform::CUDADeviceContext, float>
+  phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kCFO, phi::GPUContext, float>
       col2im;
-  paddle::operators::math::Col2ImFunctor<
-      paddle::operators::math::ColFormat::kOCF,
-      paddle::platform::CUDADeviceContext, float>
+  phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kOCF, phi::GPUContext, float>
       col2im_ocf;
   float col2im_data[] = {0, 2, 2, 3, 8, 5};
 
@@ -292,8 +282,8 @@ void testIm2col<paddle::platform::CUDADeviceContext,
   if (paddle::platform::is_cpu_place(*place)) {
     in_ptr = input.data<float>();
   } else {
-    paddle::framework::TensorCopySync(input, paddle::platform::CPUPlace(),
-                                      &input_tmp);
+    paddle::framework::TensorCopySync(
+        input, paddle::platform::CPUPlace(), &input_tmp);
     in_ptr = input_tmp.data<float>();
   }
   for (int i = 0; i < 6; ++i) {
@@ -313,8 +303,8 @@ void testIm2col<paddle::platform::CUDADeviceContext,
   if (paddle::platform::is_cpu_place(*place)) {
     in_ptr = input.data<float>();
   } else {
-    paddle::framework::TensorCopySync(input, paddle::platform::CPUPlace(),
-                                      &input_tmp);
+    paddle::framework::TensorCopySync(
+        input, paddle::platform::CPUPlace(), &input_tmp);
     in_ptr = input_tmp.data<float>();
   }
   for (int i = 0; i < 6; ++i) {
@@ -327,19 +317,18 @@ void testIm2col<paddle::platform::CUDADeviceContext,
 #endif
 
 TEST(math, im2col) {
-  testIm2col<paddle::platform::CPUDeviceContext, paddle::platform::CPUPlace>();
+  testIm2col<phi::CPUContext, paddle::platform::CPUPlace>();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  testIm2col<paddle::platform::CUDADeviceContext,
-             paddle::platform::CUDAPlace>();
+  testIm2col<phi::GPUContext, paddle::platform::CUDAPlace>();
 #endif
 }
 
 #define PREPARE_IM2COL_CPU                                                   \
   paddle::platform::CPUPlace place;                                          \
-  paddle::platform::CPUDeviceContext context(place);                         \
-  paddle::framework::Tensor input;                                           \
-  paddle::framework::Tensor out;                                             \
-  paddle::framework::Tensor ref;                                             \
+  phi::CPUContext context(place);                                            \
+  phi::DenseTensor input;                                                    \
+  phi::DenseTensor out;                                                      \
+  phi::DenseTensor ref;                                                      \
   std::vector<int> padding({ph, pw});                                        \
   std::vector<int> stride({1, 1});                                           \
   std::vector<int> dilation({1, 1});                                         \
@@ -351,17 +340,15 @@ TEST(math, im2col) {
   int output_width = (iw - fw + padding[1] * 2) / stride[1] + 1;             \
   out.mutable_data<float>({ic, fh, fw, output_height, output_width}, place); \
   ref.mutable_data<float>({ic, fh, fw, output_height, output_width}, place); \
-  paddle::operators::math::Im2ColFunctor<                                    \
-      paddle::operators::math::ColFormat::kCFO,                              \
-      paddle::platform::CPUDeviceContext, float>                             \
-      im2col
+  phi::funcs::                                                               \
+      Im2ColFunctor<phi::funcs::ColFormat::kCFO, phi::CPUContext, float>     \
+          im2col
 
 void testIm2colCPU(int ic, int ih, int iw, int fh, int fw, int ph, int pw) {
   PREPARE_IM2COL_CPU;
 
   im2col(context, input, dilation, stride, padding, &out);
-  paddle::operators::math::im2col_common<float>(input, dilation, stride,
-                                                padding, &ref);
+  phi::funcs::im2col_common<float>(input, dilation, stride, padding, &ref);
 
   float* ref_data = ref.data<float>();
   float* out_data = out.data<float>();
@@ -385,8 +372,7 @@ void benchIm2col(int ic, int ih, int iw, int fh, int fw, int ph, int pw) {
   auto t2 = GetCurrentMs();
 
   for (int i = 0; i < repeat; ++i) {
-    paddle::operators::math::im2col_common<float>(input, dilation, stride,
-                                                  padding, &ref);
+    phi::funcs::im2col_common<float>(input, dilation, stride, padding, &ref);
   }
   auto t3 = GetCurrentMs();
 
@@ -399,38 +385,88 @@ TEST(math, im2col_cputest) {
   // padding_h == padding_w
   for (int p = 0; p < 4; ++p) {
     // width == height
-    testIm2colCPU(/*ic*/ 2, /*ih*/ 5, /*iw*/ 5, /*fh*/ 4, /*fw*/ 4, /*ph*/ p,
+    testIm2colCPU(/*ic*/ 2,
+                  /*ih*/ 5,
+                  /*iw*/ 5,
+                  /*fh*/ 4,
+                  /*fw*/ 4,
+                  /*ph*/ p,
                   /*pw*/ p);
-    testIm2colCPU(/*ic*/ 2, /*ih*/ 4, /*iw*/ 4, /*fh*/ 3, /*fw*/ 3, /*ph*/ p,
+    testIm2colCPU(/*ic*/ 2,
+                  /*ih*/ 4,
+                  /*iw*/ 4,
+                  /*fh*/ 3,
+                  /*fw*/ 3,
+                  /*ph*/ p,
                   /*pw*/ p);
-    testIm2colCPU(/*ic*/ 2, /*ih*/ 4, /*iw*/ 4, /*fh*/ 2, /*fw*/ 2, /*ph*/ p,
+    testIm2colCPU(/*ic*/ 2,
+                  /*ih*/ 4,
+                  /*iw*/ 4,
+                  /*fh*/ 2,
+                  /*fw*/ 2,
+                  /*ph*/ p,
                   /*pw*/ p);
 
     // height != width
-    testIm2colCPU(/*ic*/ 2, /*ih*/ 5, /*iw*/ 4, /*fh*/ 2, /*fw*/ 3, /*ph*/ p,
+    testIm2colCPU(/*ic*/ 2,
+                  /*ih*/ 5,
+                  /*iw*/ 4,
+                  /*fh*/ 2,
+                  /*fw*/ 3,
+                  /*ph*/ p,
                   /*pw*/ p);
-    testIm2colCPU(/*ic*/ 2, /*ih*/ 5, /*iw*/ 4, /*fh*/ 1, /*fw*/ 3, /*ph*/ p,
+    testIm2colCPU(/*ic*/ 2,
+                  /*ih*/ 5,
+                  /*iw*/ 4,
+                  /*fh*/ 1,
+                  /*fw*/ 3,
+                  /*ph*/ p,
                   /*pw*/ p);
-    testIm2colCPU(/*ic*/ 2, /*ih*/ 4, /*iw*/ 5, /*fh*/ 3, /*fw*/ 1, /*ph*/ p,
+    testIm2colCPU(/*ic*/ 2,
+                  /*ih*/ 4,
+                  /*iw*/ 5,
+                  /*fh*/ 3,
+                  /*fw*/ 1,
+                  /*ph*/ p,
                   /*pw*/ p);
 
     // filter == 1
-    testIm2colCPU(/*ic*/ 3, /*ih*/ 4, /*iw*/ 4, /*fh*/ 1, /*fw*/ 1, /*ph*/ p,
+    testIm2colCPU(/*ic*/ 3,
+                  /*ih*/ 4,
+                  /*iw*/ 4,
+                  /*fh*/ 1,
+                  /*fw*/ 1,
+                  /*ph*/ p,
                   /*pw*/ p);
-    testIm2colCPU(/*ic*/ 3, /*ih*/ 3, /*iw*/ 4, /*fh*/ 1, /*fw*/ 1, /*ph*/ p,
+    testIm2colCPU(/*ic*/ 3,
+                  /*ih*/ 3,
+                  /*iw*/ 4,
+                  /*fh*/ 1,
+                  /*fw*/ 1,
+                  /*ph*/ p,
                   /*pw*/ p);
   }
 
   // padding_h != padding_w
-  testIm2colCPU(/*ic*/ 2, /*ih*/ 4, /*iw*/ 4, /*fh*/ 2, /*fw*/ 3, /*ph*/ 1,
+  testIm2colCPU(/*ic*/ 2,
+                /*ih*/ 4,
+                /*iw*/ 4,
+                /*fh*/ 2,
+                /*fw*/ 3,
+                /*ph*/ 1,
                 /*pw*/ 2);
 
   // benchmark
   for (int p : {0, 1}) {
     for (int k : {1, 3, 5}) {
       LOG(INFO) << "padding == " << p << ", filter == " << k;
-      benchIm2col(/*ic*/ 3, /*ih*/ 224, /*iw*/ 224, /*fh*/ k, /*fw*/ k,
-                  /*ph*/ p, /*pw*/ p);
+      benchIm2col(/*ic*/ 3,
+                  /*ih*/ 224,
+                  /*iw*/ 224,
+                  /*fh*/ k,
+                  /*fw*/ k,
+                  /*ph*/ p,
+                  /*pw*/ p);
     }
   }
 }

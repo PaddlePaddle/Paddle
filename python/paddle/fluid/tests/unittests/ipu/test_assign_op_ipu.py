@@ -15,13 +15,12 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
     def setUp(self):
         self.set_atol()
@@ -41,9 +40,10 @@ class TestBase(IPUOpTest):
     @IPUOpTest.static_graph
     def build_model(self):
         x = paddle.static.data(
-            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32')
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
         x = paddle.assign(x)
-        out = paddle.fluid.layers.elementwise_add(x, x)
+        out = paddle.add(x, x)
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
@@ -69,9 +69,10 @@ class TestAssignFp32Value(TestBase):
     @IPUOpTest.static_graph
     def build_model(self):
         x = paddle.static.data(
-            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32')
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
         assign = paddle.assign(self.assign_fp32)
-        out = paddle.fluid.layers.elementwise_add(x, assign)
+        out = paddle.add(x, assign)
         self.fetch_list = [out.name]
 
 
@@ -81,12 +82,13 @@ class TestAssignBoolValue(TestBase):
         self.feed_fp32 = {'in_0': data.astype(np.float32)}
         self.feed_fp16 = {'in_0': data.astype(np.float16)}
         data = np.random.choice([True, False], size=(2, 3, 1))
-        self.assign_bool = data.astype(np.bool)
+        self.assign_bool = data.astype(np.bool_)
 
     @IPUOpTest.static_graph
     def build_model(self):
         x = paddle.static.data(
-            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32')
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
         x = paddle.less_than(x, x)
         assign = paddle.assign(self.assign_bool)
         x = paddle.logical_and(x, assign)

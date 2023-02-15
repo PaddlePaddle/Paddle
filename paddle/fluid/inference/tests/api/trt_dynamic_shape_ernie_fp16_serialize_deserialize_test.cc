@@ -22,8 +22,8 @@ limitations under the License. */
 #define GLOG_NO_ABBREVIATED_SEVERITIES
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include "gflags/gflags.h"
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/inference/tests/api/trt_dynamic_shape_ernie_serialize_deserialize_test.h"
 
 namespace paddle {

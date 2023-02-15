@@ -21,7 +21,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using framework::Tensor;
 
 void LodTensorArray2LodTensorVector(const framework::Scope &scope,
                                     const std::string &base_name,
@@ -33,15 +32,15 @@ void LodTensorArray2LodTensorVector(const framework::Scope &scope,
     std::string var_name = base_name + std::to_string(i);
     framework::Variable *g_feed_value =
         const_cast<framework::Scope &>(scope).Var(var_name);
-    auto &feed_input =
-        *(g_feed_value->GetMutable<paddle::framework::LoDTensor>());
+    auto &feed_input = *(g_feed_value->GetMutable<phi::DenseTensor>());
     feed_input.ShareDataWith(inx[i]);
     res_names->push_back(var_name);
   }
 }
 
 void LodTensorVectorResizeFromLodTensorArray(
-    const framework::Scope &scope, const std::string &base_name,
+    const framework::Scope &scope,
+    const std::string &base_name,
     const std::string &lod_tensor_array_name,
     std::vector<std::string> *res_names) {
   auto &inx =
@@ -50,8 +49,7 @@ void LodTensorVectorResizeFromLodTensorArray(
     std::string var_name = base_name + std::to_string(i);
     framework::Variable *g_feed_value =
         const_cast<framework::Scope &>(scope).Var(var_name);
-    auto &feed_input =
-        *(g_feed_value->GetMutable<paddle::framework::LoDTensor>());
+    auto &feed_input = *(g_feed_value->GetMutable<phi::DenseTensor>());
     auto dims = inx[i].dims();
     feed_input.Resize(dims);
     res_names->push_back(var_name);
@@ -71,8 +69,7 @@ void LodTensorArrayCreateFromLodTensorArray(
     std::string var_name = output_lod_tensor_array_name + std::to_string(i);
     framework::Variable *g_feed_value =
         const_cast<framework::Scope &>(scope).Var(var_name);
-    auto &feed_input =
-        *(g_feed_value->GetMutable<paddle::framework::LoDTensor>());
+    auto &feed_input = *(g_feed_value->GetMutable<phi::DenseTensor>());
     grad_inx.push_back(feed_input);
   }
 }
@@ -90,16 +87,17 @@ class LoDTensorArray2TensorOp : public framework::OperatorBase {
     attrs["axis"] = axis;
 
     auto &inx = scope.FindVar(Input("X"))->Get<framework::LoDTensorArray>();
-    auto &out =
-        *scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensor>();
+    auto &out = *scope.FindVar(Output("Out"))->GetMutable<phi::DenseTensor>();
     auto &out_inx =
-        *scope.FindVar(Output("OutIndex"))->GetMutable<framework::LoDTensor>();
+        *scope.FindVar(Output("OutIndex"))->GetMutable<phi::DenseTensor>();
 
     const size_t n = inx.size();
-    PADDLE_ENFORCE_GT(n, 0, platform::errors::InvalidArgument(
-                                "Input tensorarray size should > 0,"
-                                "but the received is %d",
-                                n));
+    PADDLE_ENFORCE_GT(
+        n,
+        0,
+        platform::errors::InvalidArgument("Input tensorarray size should > 0,"
+                                          "but the received is %d",
+                                          n));
 
     std::string base_name = Inputs("X")[0];
     std::vector<std::string> names;
@@ -129,8 +127,8 @@ class LoDTensorArray2TensorOp : public framework::OperatorBase {
     // Invoke concat Op or stack Op
     auto op =
         use_stack
-            ? framework::OpRegistry::CreateOp("stack", {{"X", names}},
-                                              {{"Y", {Output("Out")}}}, attrs)
+            ? framework::OpRegistry::CreateOp(
+                  "stack", {{"X", names}}, {{"Y", {Output("Out")}}}, attrs)
             : framework::OpRegistry::CreateOp(
                   "concat", {{"X", names}}, {{"Out", {Output("Out")}}}, attrs);
 
@@ -235,10 +233,12 @@ class LoDTensorArray2TensorGradOp : public framework::OperatorBase {
 
     auto &inx = scope.FindVar(Input("X"))->Get<framework::LoDTensorArray>();
     const size_t n = inx.size();
-    PADDLE_ENFORCE_GT(n, 0, platform::errors::InvalidArgument(
-                                "Input tensorarray size should > 0, "
-                                "but the received is: %d. ",
-                                n));
+    PADDLE_ENFORCE_GT(
+        n,
+        0,
+        platform::errors::InvalidArgument("Input tensorarray size should > 0, "
+                                          "but the received is: %d. ",
+                                          n));
 
     std::string base_name = Inputs("X")[0];
     std::vector<std::string> names;
@@ -255,18 +255,21 @@ class LoDTensorArray2TensorGradOp : public framework::OperatorBase {
     // multi-thread that will cause wrong calculation result.
     std::string grad_base_name = base_name + "_temp_grad_";
 
-    LodTensorVectorResizeFromLodTensorArray(scope, grad_base_name, Input("X"),
-                                            &grad_names);
+    LodTensorVectorResizeFromLodTensorArray(
+        scope, grad_base_name, Input("X"), &grad_names);
 
     auto use_stack = Attr<bool>("use_stack");
 
-    auto grad_op = use_stack ? framework::OpRegistry::CreateOp(
-                                   "stack_grad", {{"Y@GRAD", {dout_name}}},
-                                   {{"X@GRAD", grad_names}}, attrs)
-                             : framework::OpRegistry::CreateOp(
-                                   "concat_grad",
-                                   {{"X", names}, {"Out@GRAD", {dout_name}}},
-                                   {{"X@GRAD", grad_names}}, attrs);
+    auto grad_op =
+        use_stack ? framework::OpRegistry::CreateOp("stack_grad",
+                                                    {{"Y@GRAD", {dout_name}}},
+                                                    {{"X@GRAD", grad_names}},
+                                                    attrs)
+                  : framework::OpRegistry::CreateOp(
+                        "concat_grad",
+                        {{"X", names}, {"Out@GRAD", {dout_name}}},
+                        {{"X@GRAD", grad_names}},
+                        attrs);
 
     grad_op->Run(scope, place);
 
@@ -276,7 +279,7 @@ class LoDTensorArray2TensorGradOp : public framework::OperatorBase {
 
     for (size_t i = 0; i < grad_names.size(); i++) {
       std::string var_name = grad_names[i];
-      auto &feed_input = scope.FindVar(var_name)->Get<framework::LoDTensor>();
+      auto &feed_input = scope.FindVar(var_name)->Get<phi::DenseTensor>();
       grad_inx[i].ShareDataWith(feed_input);
     }
   }
@@ -303,10 +306,13 @@ USE_OP_ITSELF(concat);
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    tensor_array_to_tensor, ops::LoDTensorArray2TensorOp,
-    ops::LoDTensorArray2TensorOpMaker, ops::LoDTensorArray2TensorOpInferShape,
+    tensor_array_to_tensor,
+    ops::LoDTensorArray2TensorOp,
+    ops::LoDTensorArray2TensorOpMaker,
+    ops::LoDTensorArray2TensorOpInferShape,
     ops::TensorArrayToTensorGradOpMaker<paddle::framework::OpDesc>,
     ops::TensorArrayToTensorGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(tensor_array_to_tensor_grad, ops::LoDTensorArray2TensorGradOp,
+REGISTER_OPERATOR(tensor_array_to_tensor_grad,
+                  ops::LoDTensorArray2TensorGradOp,
                   ops::LoDTensorArray2TensorGradInferShape,
                   ops::LoDTensorArray2TensorGradInferVarType);

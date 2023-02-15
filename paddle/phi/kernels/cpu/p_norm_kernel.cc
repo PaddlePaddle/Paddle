@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/p_norm_kernel.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
@@ -59,6 +60,13 @@ void PNormKernel(const Context& dev_ctx,
   if (axis < 0) axis = xdim.size() + axis;
   int pre, n, post;
   GetDims(xdim, axis, &pre, &n, &post, asvector);
+
+  for (int i = 0; i < xdim.size(); i++) {
+    PADDLE_ENFORCE_LT(0,
+                      xdim[i],
+                      errors::InvalidArgument(
+                          "The dims of Input(X) should be greater than 0."));
+  }
 
   auto* place = dev_ctx.eigen_device();
 

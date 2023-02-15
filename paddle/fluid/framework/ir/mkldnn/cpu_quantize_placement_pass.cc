@@ -26,11 +26,13 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Marks operators which are to be quantized.";
   std::unordered_set<std::string> supported_op_types =
       std::unordered_set<std::string>(
-          {"concat", "conv2d", "depthwise_conv2d", "elementwise_add",
-           "elementwise_mul", "elementwise_sub", "fc", "matmul",
-           "nearest_interp", "nearest_interp_v2", "pool2d", "prior_box",
-           "reshape2", "transpose2", "fusion_gru", "fusion_lstm", "multi_gru",
-           "slice"});
+          {"concat",          "conv2d",          "depthwise_conv2d",
+           "fused_conv2d",    "fused_conv3d",    "elementwise_add",
+           "elementwise_mul", "elementwise_sub", "fc",
+           "matmul",          "nearest_interp",  "nearest_interp_v2",
+           "pool2d",          "prior_box",       "reshape2",
+           "transpose2",      "fusion_gru",      "fusion_lstm",
+           "multi_gru",       "slice",           "split"});
   const auto& excluded_ids_list =
       Get<std::unordered_set<int>>("quantize_excluded_op_ids");
   const auto& op_types_list =
@@ -40,7 +42,8 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
     // Verify that all user-specified operators can be quantized.
     for (const auto& op : op_types_list) {
       PADDLE_ENFORCE_NE(
-          supported_op_types.count(op), 0,
+          supported_op_types.count(op),
+          0,
           platform::errors::InvalidArgument(
               "Pass attribute quantize_enabled_op_types contains operator %s "
               "that is not supported by OneDNN quantization.",
@@ -57,8 +60,8 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     GET_IR_NODE_FROM_SUBGRAPH(op, op, quantize_placement_pattern);
-
-    if (std::find(excluded_ids_list.begin(), excluded_ids_list.end(),
+    if (std::find(excluded_ids_list.begin(),
+                  excluded_ids_list.end(),
                   op->id()) != excluded_ids_list.end()) {
       return;
     }
@@ -66,7 +69,6 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
     if (op->Op()->GetAttrIfExists<int>("skip_quant") == 1) {
       return;
     }
-
     op->Op()->SetAttr("mkldnn_data_type", std::string("int8"));
   };
   gpd(graph, handler);

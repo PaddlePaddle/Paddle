@@ -16,7 +16,6 @@
 
 #include <llvm/ADT/SmallVector.h>
 
-#include <boost/optional.hpp>
 #include <memory>         // NOLINT
 #include <string>         //NOLINT
 #include <unordered_map>  // NOLINT
@@ -75,7 +74,7 @@ class MlirToRuntimeTranslator {
   bool EmitCallOp(mlir::Operation* op, function_defs_t* function_table);
 
   template <typename T>
-  boost::optional<T> EmitAttribute(const mlir::Attribute& attr);
+  paddle::optional<T> EmitAttribute(const mlir::Attribute& attr);
 
   Value* GetOpResult(mlir::Operation* op);
 

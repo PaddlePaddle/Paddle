@@ -28,13 +28,10 @@ class WarpCTCOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    framework::LibraryType library_{framework::LibraryType::kPlain};
-    framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Logits"), ctx.GetPlace(),
-        layout_, library_);
+    return phi::KernelKey(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Logits"), ctx.GetPlace());
   }
 };
 
@@ -42,8 +39,8 @@ class WarpCTCOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Logits",
-             "(2-D LoDTensor<float>) or (3-D Tensor<float>), the "
-             "unscaled probabilities of variable-length sequences."
+             "(2-D phi::DenseTensor<float>) or (3-D phi::DenseTensor<float>), "
+             "the unscaled probabilities of variable-length sequences."
              "When is a 2-D Tensor with LoD information, "
              "it's shape is [Lp, num_classes + 1], "
              "where Lp is the sum of all input sequences' length "
@@ -54,7 +51,7 @@ class WarpCTCOpMaker : public framework::OpProtoAndCheckerMaker {
              "where max_logit_length is the length of the longest "
              "logit sequence.");
     AddInput("Label",
-             "(2-D LoDTensor<int>) or (2-D Tensor<int>), the "
+             "(2-D phi::DenseTensor<int>), the "
              "ground truth of variable-length sequence. "
              "When it is a 2-D Tensor with LoD information, "
              "it is of the shape [Lg, 1], where Lg is th sum of "
@@ -132,21 +129,23 @@ class WarpCTCGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("WarpCTCGrad"), "Input", "WarpCTCGrad",
+    OP_INOUT_CHECK(
+        ctx->HasInput("WarpCTCGrad"), "Input", "WarpCTCGrad", "WarpCTCGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Logits")),
+                   "Output",
+                   framework::GradVarName("Logits"),
                    "WarpCTCGrad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Logits")), "Output",
-                   framework::GradVarName("Logits"), "WarpCTCGrad");
     ctx->SetOutputDim(framework::GradVarName("Logits"),
                       ctx->GetInputDim("Logits"));
     ctx->ShareLoD("Logits", /*->*/ framework::GradVarName("Logits"));
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Loss")),
-                                   ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Loss")),
+                          ctx.GetPlace());
   }
 };
 
@@ -157,11 +156,15 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(WarpCTCGradOpNoNeedBufferVarInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(warpctc, WarpctcInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(warpctc,
+                            WarpctcInferShapeFunctor,
                             PD_INFER_META(phi::WarpctcInferMeta));
-REGISTER_OPERATOR(warpctc, ops::WarpCTCOp, ops::WarpCTCOpMaker,
+REGISTER_OPERATOR(warpctc,
+                  ops::WarpCTCOp,
+                  ops::WarpCTCOpMaker,
                   ops::WarpCTCGradOpMaker<paddle::framework::OpDesc>,
                   ops::WarpCTCGradOpMaker<paddle::imperative::OpBase>,
                   WarpctcInferShapeFunctor);
-REGISTER_OPERATOR(warpctc_grad, ops::WarpCTCGradOp,
+REGISTER_OPERATOR(warpctc_grad,
+                  ops::WarpCTCGradOp,
                   ops::WarpCTCGradOpNoNeedBufferVarInferer);

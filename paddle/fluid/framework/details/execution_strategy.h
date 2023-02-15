@@ -14,6 +14,7 @@
 
 #pragma once
 #include <cstddef>  // for size_t
+
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {

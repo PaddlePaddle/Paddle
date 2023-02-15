@@ -13,6 +13,7 @@
  * limitations under the License. */
 
 #include "paddle/fluid/operators/jit/more/mix/mix.h"
+
 #include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/fluid/operators/jit/registry.h"
 

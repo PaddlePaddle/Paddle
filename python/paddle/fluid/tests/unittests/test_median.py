@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
+
 import paddle
 from paddle.static import Program, program_guard
 
@@ -57,9 +57,11 @@ class TestMedian(unittest.TestCase):
         w = 4
         l = 2
         x = np.arange(h * w * l).reshape([h, w, l])
-        lis_tests = [[x, axis, keepdims]
-                     for axis in [-1, 0, 1, 2, None]
-                     for keepdims in [False, True]]
+        lis_tests = [
+            [x, axis, keepdims]
+            for axis in [-1, 0, 1, 2, None]
+            for keepdims in [False, True]
+        ]
         for lis_test in lis_tests:
             self.static_single_test_median(lis_test)
 
@@ -69,9 +71,11 @@ class TestMedian(unittest.TestCase):
         w = 4
         l = 2
         x = np.arange(h * w * l).reshape([h, w, l])
-        lis_tests = [[x, axis, keepdims]
-                     for axis in [-1, 0, 1, 2, None]
-                     for keepdims in [False, True]]
+        lis_tests = [
+            [x, axis, keepdims]
+            for axis in [-1, 0, 1, 2, None]
+            for keepdims in [False, True]
+        ]
         for lis_test in lis_tests:
             self.dygraph_single_test_median(lis_test)
 
@@ -82,6 +86,7 @@ class TestMedian(unittest.TestCase):
         x = paddle.arange(12).reshape([3, 4])
         self.assertRaises(ValueError, paddle.median, x, 1.0)
         self.assertRaises(ValueError, paddle.median, x, 2)
+        self.assertRaises(ValueError, paddle.median, paddle.to_tensor([]))
 
 
 if __name__ == '__main__':

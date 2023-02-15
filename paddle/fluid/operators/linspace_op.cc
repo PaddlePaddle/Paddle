@@ -28,21 +28,24 @@ class LinspaceOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
+    return phi::KernelKey(
         framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
         ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const framework::Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const override {
+  phi::KernelKey GetKernelTypeForVar(
+      const std::string &var_name,
+      const phi::DenseTensor &tensor,
+      const phi::KernelKey &expected_kernel_type) const override {
     if (platform::is_xpu_place(tensor.place())) {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(), tensor.layout());
+      return phi::KernelKey(
+          tensor.place(), tensor.layout(), expected_kernel_type.dtype());
     }
-    return expected_kernel_type;
+    return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                          expected_kernel_type.layout(),
+                          expected_kernel_type.dtype());
   }
 };
 
@@ -69,18 +72,20 @@ class LinspaceOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(linspace, LinspaceInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(linspace,
+                            LinspaceInferShapeFunctor,
                             PD_INFER_META(phi::LinspaceRawInferMeta));
 REGISTER_OPERATOR(
-    linspace, ops::LinspaceOp, ops::LinspaceOpMaker,
+    linspace,
+    ops::LinspaceOp,
+    ops::LinspaceOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     LinspaceInferShapeFunctor);
 
-REGISTER_OP_VERSION(linspace)
-    .AddCheckpoint(
-        R"ROC(
+REGISTER_OP_VERSION(linspace).AddCheckpoint(
+    R"ROC(
       Upgrade linspace to add a new attribute [dtype].
     )ROC",
-        paddle::framework::compatible::OpVersionDesc().NewAttr(
-            "dtype", "In order to change output data type ", 5));
+    paddle::framework::compatible::OpVersionDesc().NewAttr(
+        "dtype", "In order to change output data type ", 5));

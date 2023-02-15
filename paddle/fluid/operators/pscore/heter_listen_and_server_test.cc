@@ -14,11 +14,11 @@ limitations under the License. */
 
 #include <stdlib.h>
 #include <unistd.h>
-#include <string>
-#include <thread>  // NOLINT
 
 #include <random>
 #include <sstream>
+#include <string>
+#include <thread>  // NOLINT
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/ps/service/heter_client.h"
@@ -88,56 +88,59 @@ void GetHeterListenAndServProgram(framework::ProgramDesc* program,
 
 void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
   auto x_var = scope->Var("x");
-  x_var->GetMutable<framework::LoDTensor>();
+  x_var->GetMutable<phi::DenseTensor>();
 
   auto micro_var = scope->Var("microbatch_id");
-  micro_var->GetMutable<framework::LoDTensor>();
+  micro_var->GetMutable<phi::DenseTensor>();
 
   auto res_var = scope->Var("res");
-  res_var->GetMutable<framework::LoDTensor>();
+  res_var->GetMutable<phi::DenseTensor>();
 }
 
-void InitTensorsOnClient(framework::Scope* scope, platform::CPUPlace* place,
+void InitTensorsOnClient(framework::Scope* scope,
+                         platform::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
-  auto x_var = scope->Var("x")->GetMutable<framework::LoDTensor>();
+  auto x_var = scope->Var("x")->GetMutable<phi::DenseTensor>();
   float* x_ptr =
       x_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) x_ptr[i] = 1.0;
 
   auto micro_id_var =
-      scope->Var("microbatch_id")->GetMutable<framework::LoDTensor>();
+      scope->Var("microbatch_id")->GetMutable<phi::DenseTensor>();
   float* micro_id_ptr =
       micro_id_var->mutable_data<float>(framework::DDim({1}), *place);
   micro_id_ptr[0] = 0;
 
-  auto res_var = scope->Var("res")->GetMutable<framework::LoDTensor>();
+  auto res_var = scope->Var("res")->GetMutable<phi::DenseTensor>();
   float* res_ptr =
       res_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) res_ptr[i] = 1.0;
 }
 
-void InitTensorsOnClient2(framework::Scope* scope, platform::CPUPlace* place,
+void InitTensorsOnClient2(framework::Scope* scope,
+                          platform::CPUPlace* place,
                           int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
-  auto x_var = scope->Var("x")->GetMutable<framework::LoDTensor>();
+  auto x_var = scope->Var("x")->GetMutable<phi::DenseTensor>();
   float* x_ptr =
       x_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) x_ptr[i] = 1.0;
 
   auto micro_id_var =
-      scope->Var("microbatch_id")->GetMutable<framework::LoDTensor>();
+      scope->Var("microbatch_id")->GetMutable<phi::DenseTensor>();
   float* micro_id_ptr =
       micro_id_var->mutable_data<float>(framework::DDim({1}), *place);
   micro_id_ptr[0] = 1;
 
-  auto res_var = scope->Var("res")->GetMutable<framework::LoDTensor>();
+  auto res_var = scope->Var("res")->GetMutable<phi::DenseTensor>();
   float* res_ptr =
       res_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) res_ptr[i] = 1.0;
 }
 
-void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place,
+void InitTensorsOnServer(framework::Scope* scope,
+                         platform::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
 }
@@ -147,7 +150,7 @@ void RunHeterServerOp(std::string endpoint) {
   framework::Scope scope;
   platform::CPUPlace place;
   framework::Executor exe(place);
-  platform::CPUDeviceContext ctx(place);
+  phi::CPUContext ctx(place);
 
   LOG(INFO) << "before GetHeterListenAndServProgram";
   GetHeterListenAndServProgram(&program, endpoint);
@@ -192,9 +195,10 @@ TEST(HETER_LISTEN_AND_SERV, CPU) {
       std::unordered_map<int,
                          std::shared_ptr<::paddle::framework::BlockingQueue<
                              std::pair<std::string, int>>>>;
-  using SharedTaskQueue = std::shared_ptr<std::unordered_map<
-      int, std::shared_ptr<::paddle::framework::BlockingQueue<
-               std::pair<std::string, int>>>>>;
+  using SharedTaskQueue = std::shared_ptr<
+      std::unordered_map<int,
+                         std::shared_ptr<::paddle::framework::BlockingQueue<
+                             std::pair<std::string, int>>>>>;
   SharedTaskQueue task_queue_(new TaskQueue{});
   (*task_queue_)[0] = std::make_shared<
       ::paddle::framework::BlockingQueue<std::pair<std::string, int>>>();
@@ -207,7 +211,7 @@ TEST(HETER_LISTEN_AND_SERV, CPU) {
 
   framework::Scope* scope = (*micro_scope)[0];
   platform::CPUPlace place;
-  platform::CPUDeviceContext ctx(place);
+  phi::CPUContext ctx(place);
 
   // create var on local scope
   int64_t rows_numel = 10;
@@ -220,21 +224,23 @@ TEST(HETER_LISTEN_AND_SERV, CPU) {
   std::vector<std::string> recv_var = {};
 
   LOG(INFO) << "before SendAndRecvAsync";
-  heter_client_ptr_->SendAndRecvAsync(ctx, *scope, in_var_name, send_var,
-                                      recv_var, "forward");
+  heter_client_ptr_->SendAndRecvAsync(
+      ctx, *scope, in_var_name, send_var, recv_var, "forward");
   auto task = (*task_queue_)[0]->Pop();
   PADDLE_ENFORCE_EQ(
-      task.first, "x",
+      task.first,
+      "x",
       platform::errors::InvalidArgument(
           "Recv message and Send message name not match, Check your Code"));
 
   InitTensorsOnClient2((*micro_scope)[1], &place, rows_numel);
   LOG(INFO) << "before SendAndRecvAsync 2";
-  heter_client_ptr_->SendAndRecvAsync(ctx, *((*micro_scope)[1]), in_var_name,
-                                      send_var, recv_var, "backward");
+  heter_client_ptr_->SendAndRecvAsync(
+      ctx, *((*micro_scope)[1]), in_var_name, send_var, recv_var, "backward");
   auto task2 = (*task_queue_)[0]->Pop();
   PADDLE_ENFORCE_EQ(
-      task2.first, "x",
+      task2.first,
+      "x",
       platform::errors::InvalidArgument(
           "Recv message and Send message name not match, Check your Code"));
 

@@ -34,16 +34,17 @@ namespace tensorrt {
 class ClipOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
 #if IS_TRT_VERSION_GE(5130)
     VLOG(3) << "convert a paddle clip op to tensorrt IActivationLayer.";
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
-    float min = BOOST_GET_CONST(float, op_desc.GetAttr("min"));
-    float max = BOOST_GET_CONST(float, op_desc.GetAttr("max"));
-    auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Activation, *input,
-                                       nvinfer1::ActivationType::kCLIP);
+    float min = PADDLE_GET_CONST(float, op_desc.GetAttr("min"));
+    float max = PADDLE_GET_CONST(float, op_desc.GetAttr("max"));
+    auto* layer = TRT_ENGINE_ADD_LAYER(
+        engine_, Activation, *input, nvinfer1::ActivationType::kCLIP);
     layer->setAlpha(min);
     layer->setBeta(max);
 

@@ -59,7 +59,8 @@ void DeleteUnusedTensors(const Scope &scope,
 
 // Collect unused tensors after op runs
 void DeleteUnusedTensors(
-    const Scope &scope, const OperatorBase *op,
+    const Scope &scope,
+    const OperatorBase *op,
     const std::unordered_map<const OperatorBase *, std::vector<std::string>>
         &delete_vars_map,
     GarbageCollector *gc);
@@ -69,6 +70,12 @@ void DeleteUnusedTensors(
 // result is in the format: result[block_idx][op_idx][delete_var_idx]
 std::vector<std::vector<std::vector<std::string>>> GetEagerDeletionCleanVars(
     const ProgramDesc &program, const std::vector<std::string> &skip_vars = {});
+
+std::vector<std::vector<std::vector<std::string>>>
+GetEagerDeletionCleanVarsForPartial(
+    const ProgramDesc &program,
+    const std::vector<std::string> &skip_vars = {},
+    const bool &for_partial_block = false);
 
 }  // namespace framework
 }  // namespace paddle

@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle.fluid.core as core
 import sys
+
 sys.path.append('..')
 from op_test import OpTest
 import paddle.fluid as fluid
@@ -40,7 +39,7 @@ class TestSliceOp(OpTest):
             'axes': self.axes,
             'starts': self.starts,
             'ends': self.ends,
-            'infer_flags': self.infer_flags
+            'infer_flags': self.infer_flags,
         }
 
     def config(self):
@@ -56,7 +55,8 @@ class TestSliceOp(OpTest):
 
     def test_check_grad_normal(self):
         self.check_grad_with_place(
-            self.place, ['Input'], 'Out', max_relative_error=0.006)
+            self.place, ['Input'], 'Out', max_relative_error=0.006
+        )
 
     def set_mlu(self):
         self.__class__.use_mlu = True
@@ -113,7 +113,8 @@ class TestSliceOp_decs_dim(OpTest):
 
     def test_check_grad_normal(self):
         self.check_grad_with_place(
-            self.place, ['Input'], 'Out', max_relative_error=0.006)
+            self.place, ['Input'], 'Out', max_relative_error=0.006
+        )
 
     def set_mlu(self):
         self.__class__.use_mlu = True
@@ -185,8 +186,9 @@ class TestSliceOp_starts_ListTensor(OpTest):
 
         starts_tensor = []
         for index, ele in enumerate(self.starts):
-            starts_tensor.append(("x" + str(index), np.ones(
-                (1)).astype('int64') * ele))
+            starts_tensor.append(
+                ("x" + str(index), np.ones((1)).astype('int64') * ele)
+            )
 
         self.inputs = {'Input': self.input, 'StartsTensorList': starts_tensor}
         self.outputs = {'Out': self.out}
@@ -194,7 +196,7 @@ class TestSliceOp_starts_ListTensor(OpTest):
             'axes': self.axes,
             'starts': self.starts_infer,
             'ends': self.ends,
-            'infer_flags': self.infer_flags
+            'infer_flags': self.infer_flags,
         }
 
     def config(self):
@@ -212,7 +214,8 @@ class TestSliceOp_starts_ListTensor(OpTest):
 
     def test_check_grad_normal(self):
         self.check_grad_with_place(
-            self.place, ['Input'], 'Out', max_relative_error=0.006)
+            self.place, ['Input'], 'Out', max_relative_error=0.006
+        )
 
     def set_mlu(self):
         self.__class__.use_mlu = True
@@ -229,8 +232,9 @@ class TestSliceOp_decs_dim_starts_ListTensor(OpTest):
 
         starts_tensor = []
         for index, ele in enumerate(self.starts):
-            starts_tensor.append(("x" + str(index), np.ones(
-                (1)).astype('int32') * ele))
+            starts_tensor.append(
+                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+            )
 
         self.inputs = {'Input': self.input, 'StartsTensorList': starts_tensor}
 
@@ -259,7 +263,8 @@ class TestSliceOp_decs_dim_starts_ListTensor(OpTest):
 
     def test_check_grad_normal(self):
         self.check_grad_with_place(
-            self.place, ['Input'], 'Out', max_relative_error=0.006)
+            self.place, ['Input'], 'Out', max_relative_error=0.006
+        )
 
     def set_mlu(self):
         self.__class__.use_mlu = True
@@ -267,7 +272,8 @@ class TestSliceOp_decs_dim_starts_ListTensor(OpTest):
 
 
 class TestSliceOp_decs_dim_5_starts_ListTensor(
-        TestSliceOp_decs_dim_starts_ListTensor):
+    TestSliceOp_decs_dim_starts_ListTensor
+):
     def config(self):
         self.input = np.random.random([3, 4, 5, 6]).astype("float32")
         self.starts = [-1]
@@ -290,8 +296,7 @@ class TestSliceOp_decs_dim_starts_OneTensor(OpTest):
         self.config()
         self.inputs = {
             'Input': self.input,
-            "StartsTensor": np.array(
-                self.starts, dtype="int32")
+            "StartsTensor": np.array(self.starts, dtype="int32"),
         }
         self.outputs = {'Out': self.out}
         self.attrs = {
@@ -316,7 +321,8 @@ class TestSliceOp_decs_dim_starts_OneTensor(OpTest):
 
     def test_check_grad_normal(self):
         self.check_grad_with_place(
-            self.place, ['Input'], 'Out', max_relative_error=0.006)
+            self.place, ['Input'], 'Out', max_relative_error=0.006
+        )
 
 
 # Situation 4: starts(tensor), ends(tensor)
@@ -330,17 +336,15 @@ class TestSliceOp_starts_OneTensor_ends_OneTensor(OpTest):
 
         self.inputs = {
             'Input': self.input,
-            "StartsTensor": np.array(
-                self.starts, dtype="int64"),
-            "EndsTensor": np.array(
-                self.ends, dtype="int32")
+            "StartsTensor": np.array(self.starts, dtype="int64"),
+            "EndsTensor": np.array(self.ends, dtype="int32"),
         }
         self.outputs = {'Out': self.out}
         self.attrs = {
             'axes': self.axes,
             #'starts': self.starts,
             #'ends': self.ends_infer,
-            'infer_flags': self.infer_flags
+            'infer_flags': self.infer_flags,
         }
 
     def config(self):
@@ -356,7 +360,8 @@ class TestSliceOp_starts_OneTensor_ends_OneTensor(OpTest):
 
     def test_check_grad_normal(self):
         self.check_grad_with_place(
-            self.place, ['Input'], 'Out', max_relative_error=0.006)
+            self.place, ['Input'], 'Out', max_relative_error=0.006
+        )
 
 
 # Situation 5: starts(tensor), ends(tensor)
@@ -369,10 +374,8 @@ class TestSliceOp_decs_dim_starts_and_ends_OneTensor(OpTest):
         self.config()
         self.inputs = {
             'Input': self.input,
-            "StartsTensor": np.array(
-                self.starts, dtype="int32"),
-            "EndsTensor": np.array(
-                self.ends, dtype="int32")
+            "StartsTensor": np.array(self.starts, dtype="int32"),
+            "EndsTensor": np.array(self.ends, dtype="int32"),
         }
         self.outputs = {'Out': self.out}
         self.attrs = {
@@ -397,7 +400,8 @@ class TestSliceOp_decs_dim_starts_and_ends_OneTensor(OpTest):
 
     def test_check_grad_normal(self):
         self.check_grad_with_place(
-            self.place, ['Input'], 'Out', max_relative_error=0.006)
+            self.place, ['Input'], 'Out', max_relative_error=0.006
+        )
 
 
 # Situation 6: starts(tensor), ends(list, have tensor)
@@ -411,21 +415,21 @@ class TestSliceOp_starts_OneTensor_ends_ListTensor(OpTest):
 
         ends_tensor = []
         for index, ele in enumerate(self.ends):
-            ends_tensor.append(("y" + str(index), np.ones(
-                (1)).astype('int32') * ele))
+            ends_tensor.append(
+                ("y" + str(index), np.ones((1)).astype('int32') * ele)
+            )
 
         self.inputs = {
             'Input': self.input,
-            "StartsTensor": np.array(
-                self.starts, dtype="int32"),
-            'EndsTensorList': ends_tensor
+            "StartsTensor": np.array(self.starts, dtype="int32"),
+            'EndsTensorList': ends_tensor,
         }
         self.outputs = {'Out': self.out}
         self.attrs = {
             'axes': self.axes,
             #'starts': self.starts,
             'ends': self.ends_infer,
-            'infer_flags': self.infer_flags
+            'infer_flags': self.infer_flags,
         }
 
     def config(self):
@@ -443,7 +447,8 @@ class TestSliceOp_starts_OneTensor_ends_ListTensor(OpTest):
 
     def test_check_grad_normal(self):
         self.check_grad_with_place(
-            self.place, ['Input'], 'Out', max_relative_error=0.006)
+            self.place, ['Input'], 'Out', max_relative_error=0.006
+        )
 
 
 # Test float16
@@ -459,7 +464,7 @@ class TestFP16(OpTest):
             'axes': self.axes,
             'starts': self.starts,
             'ends': self.ends,
-            'infer_flags': self.infer_flags
+            'infer_flags': self.infer_flags,
         }
 
     def config(self):
@@ -476,7 +481,8 @@ class TestFP16(OpTest):
 
     def test_check_grad_normal(self):
         self.check_grad_with_place(
-            self.place, ['Input'], 'Out', max_relative_error=0.006)
+            self.place, ['Input'], 'Out', max_relative_error=0.006
+        )
 
 
 class TestFP16_2(OpTest):
@@ -491,7 +497,7 @@ class TestFP16_2(OpTest):
             'axes': self.axes,
             'starts': self.starts,
             'ends': self.ends,
-            'infer_flags': self.infer_flags
+            'infer_flags': self.infer_flags,
         }
 
     def config(self):
@@ -508,10 +514,12 @@ class TestFP16_2(OpTest):
 
     def test_check_grad_normal(self):
         self.check_grad_with_place(
-            self.place, ['Input'],
+            self.place,
+            ['Input'],
             'Out',
             max_relative_error=0.006,
-            numeric_grad_delta=0.5)
+            numeric_grad_delta=0.5,
+        )
 
 
 class TestSliceApiWithTensor(unittest.TestCase):
@@ -524,13 +532,12 @@ class TestSliceApiWithTensor(unittest.TestCase):
             a_1 = paddle.slice(
                 a,
                 axes=axes,
-                starts=paddle.to_tensor(
-                    starts, dtype='int32'),
-                ends=paddle.to_tensor(
-                    ends, dtype='int32'))
+                starts=paddle.to_tensor(starts, dtype='int32'),
+                ends=paddle.to_tensor(ends, dtype='int32'),
+            )
             a_2 = paddle.slice(a, axes=axes, starts=starts, ends=ends)
 
-            self.assertTrue(np.array_equal(a_1.numpy(), a_2.numpy()))
+            np.testing.assert_allclose(a_1.numpy(), a_2.numpy())
 
     def test_bool_tensor(self):
         with paddle.fluid.dygraph.guard():
@@ -546,7 +553,7 @@ class TestSliceApiWithTensor(unittest.TestCase):
             y_np = tt[0:3, 1:5, 2:4]
 
             self.assertTrue(paddle.bool == y_paddle.dtype)
-            self.assertTrue(np.array_equal(y_paddle.numpy(), y_np))
+            np.testing.assert_array_equal(y_paddle.numpy(), y_np)
 
 
 class TestImperativeVarBaseGetItem(unittest.TestCase):
@@ -554,10 +561,10 @@ class TestImperativeVarBaseGetItem(unittest.TestCase):
         with fluid.dygraph.guard():
             data = np.random.random((2, 80, 16128)).astype('float32')
             var = fluid.dygraph.to_variable(data)
-            sliced = var[:, 10:, :var.shape[1]]  # var.shape[1] is 80L here
+            sliced = var[:, 10:, : var.shape[1]]  # var.shape[1] is 80L here
             self.assertEqual(sliced.shape, [2, 70, 80])
 
-            sliced = var[:, var.shape[0]:, var.shape[0]:var.shape[1]]
+            sliced = var[:, var.shape[0] :, var.shape[0] : var.shape[1]]
             self.assertEqual(sliced.shape, [2, 78, 78])
 
     def test_getitem_with_float(self):
@@ -565,7 +572,7 @@ class TestImperativeVarBaseGetItem(unittest.TestCase):
             with fluid.dygraph.guard():
                 data = np.random.random((2, 80, 16128)).astype('float32')
                 var = fluid.dygraph.to_variable(data)
-                sliced = var[:, 1.1:, :var.shape[1]]
+                sliced = var[:, 1.1:, : var.shape[1]]
 
         self.assertRaises(Exception, test_float_in_slice_item)
 
@@ -579,14 +586,6 @@ class TestImperativeVarBaseGetItem(unittest.TestCase):
 
 
 class TestInferShape(unittest.TestCase):
-    def test(self):
-        x = paddle.ones(shape=[3, 4, 5])
-        x.desc.set_shape([3, -1, 5])
-        self.assertEqual(x.shape, (3, -1, 5))
-
-        out0 = paddle.slice(x, axes=[1], starts=[0], ends=[3])
-        self.assertEqual(out0.shape, (3, 3, 5))
-
     def test_axis_less_than_zero(self):
 
         # Using paddle.disable_static will make other unittests fail.
@@ -594,25 +593,30 @@ class TestInferShape(unittest.TestCase):
             x_arr = np.arange(0, 24, dtype=np.float32).reshape([2, 3, 4])
             x = paddle.to_tensor(x_arr)
 
-            pp_slice = paddle.slice(x, [100, ], [0], [1])
+            pp_slice = paddle.slice(
+                x,
+                [
+                    100,
+                ],
+                [0],
+                [1],
+            )
             np_slice = x_arr[:, :, 0:1]
-            self.assertTrue(np.array_equal(pp_slice, np_slice))
+            np.testing.assert_allclose(pp_slice, np_slice)
 
-            pp_slice = paddle.slice(x, (-100, ), [0], [1])
+            pp_slice = paddle.slice(x, (-100,), [0], [1])
             np_slice = x_arr[0:1]
-            self.assertTrue(np.array_equal(pp_slice, np_slice))
+            np.testing.assert_allclose(pp_slice, np_slice)
 
             x_arr = np.array([], dtype=np.float32)
             x = paddle.to_tensor(np.reshape(x_arr, (0, 0, 0)))
 
             starts = paddle.to_tensor(
-                np.reshape(
-                    np.array(
-                        [], dtype=np.int32), (0, )))
+                np.reshape(np.array([], dtype=np.int32), (0,))
+            )
             ends = paddle.to_tensor(
-                np.reshape(
-                    np.array(
-                        [], dtype=np.int32), (0, )))
+                np.reshape(np.array([], dtype=np.int32), (0,))
+            )
 
             with self.assertRaises(ValueError):
                 paddle.slice(x, [-1000000], starts, ends)

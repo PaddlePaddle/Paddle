@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/fc_fuse_pass.h"
+
 #include <string>
 
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -125,21 +126,21 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
     VLOG(4) << "handle FC fuse";
     GET_IR_NODE_FROM_SUBGRAPH(w, w, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(bias, bias, fc_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_out, elementwise_add_out,
-                              fc_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        elementwise_add_out, elementwise_add_out, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul, mul, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_add, elementwise_add, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul_out, mul_out, fc_pattern);
 
-    // Only support 2D-Tensor as weight for FC
+    // Only support 2D-phi::DenseTensor as weight for FC
     std::vector<int64_t> w_shape = w->Var()->GetShape();
     size_t w_rank = w_shape.size();
     if (w_rank != 2) return;
 
     // axis of elementwise_add should be -1 or x_num_col_dims
     auto x_num_col_dims =
-        BOOST_GET_CONST(int, mul->Op()->GetAttr("x_num_col_dims"));
-    auto axis = BOOST_GET_CONST(int, elementwise_add->Op()->GetAttr("axis"));
+        PADDLE_GET_CONST(int, mul->Op()->GetAttr("x_num_col_dims"));
+    auto axis = PADDLE_GET_CONST(int, elementwise_add->Op()->GetAttr("axis"));
     if (axis != -1 && axis != x_num_col_dims) return;
 
     // Shape of bias should be [1, out_size] or [out_size]
@@ -194,7 +195,7 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
     auto* w_node = g->CreateVarNode(&w_key);
     if (!use_gpu && use_fc_padding) {
       auto* scope = param_scope();
-      auto* weight = scope->FindVar(w->Name())->GetMutable<LoDTensor>();
+      auto* weight = scope->FindVar(w->Name())->GetMutable<phi::DenseTensor>();
       auto* weight_data = weight->data<float>();
       auto weight_dims = weight->dims();
       int weight_num = product(weight_dims);
@@ -202,18 +203,20 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
       int w_w = weight_dims[1];
       if (w_h % 128 == 0 && w_w % 128 == 0) {
         auto* w_var = scope->Var(w_name);
-        auto* w_tensor = w_var->GetMutable<framework::LoDTensor>();
+        auto* w_tensor = w_var->GetMutable<phi::DenseTensor>();
 
         auto* weight_data_tmp = new float[weight_num];
         for (int i = 0; i < w_h; i++) {
-          memcpy(weight_data_tmp + i * w_w, weight_data + i * w_w,
+          memcpy(weight_data_tmp + i * w_w,
+                 weight_data + i * w_w,
                  w_w * sizeof(float));
         }
         w_tensor->Resize(DDim{weight_dims[0] + 4, weight_dims[1] + 4});
         auto* weight_data_new =
             w_tensor->mutable_data<float>(platform::CPUPlace());
         for (int i = 0; i < w_h; i++) {
-          memcpy(weight_data_new + i * (w_w + 4), weight_data_tmp + i * w_w,
+          memcpy(weight_data_new + i * (w_w + 4),
+                 weight_data_tmp + i * w_w,
                  w_w * sizeof(float));
         }
         delete[] weight_data_tmp;
@@ -258,9 +261,9 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
     // out_thrshold of fc
     auto out_threshold_attr =
         elementwise_add_op_desc->GetNullableAttr("out_threshold");
-    if (out_threshold_attr.which()) {
+    if (out_threshold_attr.index()) {
       VLOG(4) << "setting out_threshold: "
-              << BOOST_GET_CONST(float, out_threshold_attr);
+              << PADDLE_GET_CONST(float, out_threshold_attr);
       desc.SetAttr("out_threshold", out_threshold_attr);
     }
     desc.Flush();

@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
+
 sys.path.append('..')
 from op_test import OpTest, convert_float_to_uint16
 import paddle
@@ -33,7 +32,9 @@ class TestTransposeOp(OpTest):
         self.initKernelType()
         self.initTestCase()
         self.inputs = {'X': np.random.random(self.shape).astype("float32")}
-        self.attrs = {'axis': list(self.axis), }
+        self.attrs = {
+            'axis': list(self.axis),
+        }
         self.outputs = {'Out': self.inputs['X'].transpose(self.axis)}
 
     def init_op_type(self):
@@ -56,8 +57,8 @@ class TestTransposeOp(OpTest):
 
 class TestCase0(TestTransposeOp):
     def initTestCase(self):
-        self.shape = (100, )
-        self.axis = (0, )
+        self.shape = (100,)
+        self.axis = (0,)
 
 
 class TestCase1(TestTransposeOp):
@@ -121,8 +122,8 @@ class TestTransposeOpBool(TestTransposeOp):
 
 class TestTransposeOpBool1D(TestTransposeOpBool):
     def initTestCase(self):
-        self.shape = (100, )
-        self.axis = (0, )
+        self.shape = (100,)
+        self.axis = (0,)
         self.inputs = {'X': np.random.random(self.shape).astype("bool")}
         self.outputs = {'Out': self.inputs['X'].transpose(self.axis)}
 
@@ -187,30 +188,30 @@ class TestTransposeOpError(unittest.TestCase):
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
-            x = fluid.layers.data(name='x', shape=[10, 5, 3], dtype='float32')
+            x = paddle.static.data(name='x', shape=[-1, 10, 5, 3], dtype='float32')
 
             def test_x_Variable_check():
                 # the Input(x)'s type must be Variable
-                fluid.layers.transpose("not_variable", perm=[1, 0, 2])
+                paddle.transpose("not_variable", perm=[1, 0, 2])
 
             self.assertRaises(TypeError, test_x_Variable_check)
 
             def test_perm_list_check():
                 # Input(perm)'s type must be list
-                fluid.layers.transpose(x, perm="[1, 0, 2]")
+                paddle.transpose(x, perm="[1, 0, 2]")
 
             self.assertRaises(TypeError, test_perm_list_check)
 
             def test_perm_length_and_x_dim_check():
                 # Input(perm) is the permutation of dimensions of Input(input)
                 # its length should be equal to dimensions of Input(input)
-                fluid.layers.transpose(x, perm=[1, 0, 2, 3, 4])
+                paddle.transpose(x, perm=[1, 0, 2, 3, 4])
 
             self.assertRaises(ValueError, test_perm_length_and_x_dim_check)
 
             def test_each_elem_value_check():
                 # Each element in Input(perm) should be less than Input(x)'s dimension
-                fluid.layers.transpose(x, perm=[3, 5, 7])
+                paddle.transpose(x, perm=[3, 5, 7])
 
             self.assertRaises(ValueError, test_each_elem_value_check)
 
@@ -225,8 +226,9 @@ class TestTransposeApi(unittest.TestCase):
             place = paddle.MLUPlace(0)
             exe = paddle.static.Executor(place)
             x_np = np.random.random([2, 3, 4]).astype("float32")
-            result1, result2 = exe.run(feed={"x": x_np},
-                                       fetch_list=[x_trans1, x_trans2])
+            result1, result2 = exe.run(
+                feed={"x": x_np}, fetch_list=[x_trans1, x_trans2]
+            )
             expected_result1 = np.transpose(x_np, [1, 0, 2])
             expected_result2 = np.transpose(x_np, (2, 1, 0))
 
@@ -259,7 +261,7 @@ class TestTAPI(unittest.TestCase):
             place = fluid.MLUPlace(0)
             exe = fluid.Executor(place)
             data_np = np.random.random([10]).astype("float32")
-            result, = exe.run(feed={"data": data_np}, fetch_list=[data_t])
+            (result,) = exe.run(feed={"data": data_np}, fetch_list=[data_t])
             expected_result = np.transpose(data_np)
         self.assertEqual((result == expected_result).all(), True)
 
@@ -269,7 +271,7 @@ class TestTAPI(unittest.TestCase):
             place = fluid.MLUPlace(0)
             exe = fluid.Executor(place)
             data_np = np.random.random([10, 5]).astype("float32")
-            result, = exe.run(feed={"data": data_np}, fetch_list=[data_t])
+            (result,) = exe.run(feed={"data": data_np}, fetch_list=[data_t])
             expected_result = np.transpose(data_np)
         self.assertEqual((result == expected_result).all(), True)
 
@@ -279,7 +281,7 @@ class TestTAPI(unittest.TestCase):
             place = fluid.MLUPlace(0)
             exe = fluid.Executor(place)
             data_np = np.random.random([1, 5]).astype("float32")
-            result, = exe.run(feed={"data": data_np}, fetch_list=[data_t])
+            (result,) = exe.run(feed={"data": data_np}, fetch_list=[data_t])
             expected_result = np.transpose(data_np)
         self.assertEqual((result == expected_result).all(), True)
 
@@ -329,13 +331,13 @@ class TestMoveAxis(unittest.TestCase):
             exe = paddle.static.Executor()
             out_np = exe.run(feed={"x": x_np}, fetch_list=[out])[0]
 
-        self.assertEqual(np.array_equal(out_np, expected), True)
+        np.testing.assert_array_equal(out_np, expected)
 
         paddle.disable_static()
         x = paddle.to_tensor(x_np)
         out = paddle.moveaxis(x, [0, 4, 3, 2], [1, 3, 2, 0])
         self.assertEqual(out.shape, [4, 2, 5, 7, 3])
-        self.assertEqual(np.array_equal(out.numpy(), expected), True)
+        np.testing.assert_array_equal(out.numpy(), expected)
         paddle.enable_static()
 
     def test_moveaxis2(self):
@@ -349,13 +351,13 @@ class TestMoveAxis(unittest.TestCase):
             exe = paddle.static.Executor()
             out_np = exe.run(feed={"x": x_np}, fetch_list=[out])[0]
 
-        self.assertEqual(np.array_equal(out_np, expected), True)
+        np.testing.assert_array_equal(out_np, expected)
 
         paddle.disable_static()
         x = paddle.to_tensor(x_np)
         out = x.moveaxis(-2, -1)
         self.assertEqual(out.shape, [2, 5, 3])
-        self.assertEqual(np.array_equal(out.numpy(), expected), True)
+        np.testing.assert_array_equal(out.numpy(), expected)
         paddle.enable_static()
 
     def test_error(self):

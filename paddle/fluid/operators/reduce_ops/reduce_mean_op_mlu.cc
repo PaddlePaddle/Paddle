@@ -29,9 +29,11 @@ template <typename T>
 class ReduceMeanGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* input = context.Input<Tensor>("X");
-    auto* output_grad = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto* input_grad = context.Output<Tensor>(framework::GradVarName("X"));
+    auto* input = context.Input<phi::DenseTensor>("X");
+    auto* output_grad =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* input_grad =
+        context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     input_grad->mutable_data<T>(context.GetPlace());
 
     bool reduce_all = context.Attr<bool>("reduce_all");
@@ -52,7 +54,7 @@ class ReduceMeanGradMLUKernel : public framework::OpKernel<T> {
       reduce_numel *= input_dims[d];
     }
 
-    Tensor tmp_output_grad(output_grad->dtype());
+    phi::DenseTensor tmp_output_grad(output_grad->dtype());
     auto tmp_output_dims = input_dims;
     for (auto d : reduce_dims) {
       tmp_output_dims[d] = 1;
@@ -60,22 +62,31 @@ class ReduceMeanGradMLUKernel : public framework::OpKernel<T> {
     tmp_output_grad.ShareDataWith(*output_grad);
     tmp_output_grad.Resize(phi::make_ddim(tmp_output_dims));
 
-    MLUCnnlTensorDesc output_grad_desc(tmp_output_grad, CNNL_LAYOUT_ARRAY,
+    MLUCnnlTensorDesc output_grad_desc(tmp_output_grad,
+                                       CNNL_LAYOUT_ARRAY,
                                        ToCnnlDataType(tmp_output_grad.dtype()));
-    MLUCnnlTensorDesc input_grad_desc(*input_grad, CNNL_LAYOUT_ARRAY,
-                                      ToCnnlDataType(input_grad->dtype()));
+    MLUCnnlTensorDesc input_grad_desc(
+        *input_grad, CNNL_LAYOUT_ARRAY, ToCnnlDataType(input_grad->dtype()));
 
     auto value = static_cast<T>(1.0 / static_cast<float>(reduce_numel));
-    MLUCnnl::Fill(context, CNNL_POINTER_MODE_HOST, &value,
-                  input_grad_desc.get(), GetBasePtr(input_grad));
+    MLUCnnl::Fill(context,
+                  CNNL_POINTER_MODE_HOST,
+                  &value,
+                  input_grad_desc.get(),
+                  GetBasePtr(input_grad));
 
-    MLUCnnlOpTensorDesc op_tensor_desc(CNNL_OP_TENSOR_MUL, ToCnnlDataType<T>(),
-                                       CNNL_NOT_PROPAGATE_NAN);
+    MLUCnnlOpTensorDesc op_tensor_desc(
+        CNNL_OP_TENSOR_MUL, ToCnnlDataType<T>(), CNNL_NOT_PROPAGATE_NAN);
 
-    MLUCnnl::OpTensor(context, op_tensor_desc.get(), output_grad_desc.get(),
-                      GetBasePtr(&tmp_output_grad), input_grad_desc.get(),
-                      GetBasePtr(input_grad), input_grad_desc.get(),
-                      GetBasePtr(input_grad), ToCnnlDataType<T>());
+    MLUCnnl::OpTensor(context,
+                      op_tensor_desc.get(),
+                      output_grad_desc.get(),
+                      GetBasePtr(&tmp_output_grad),
+                      input_grad_desc.get(),
+                      GetBasePtr(input_grad),
+                      input_grad_desc.get(),
+                      GetBasePtr(input_grad),
+                      ToCnnlDataType<T>());
   }
 };
 }  // namespace operators
@@ -84,7 +95,9 @@ class ReduceMeanGradMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_MLU_KERNEL(reduce_mean, ops::ReduceMeanMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(reduce_mean,
+                       ops::ReduceMeanMLUKernel<float>,
                        ops::ReduceMeanMLUKernel<plat::float16>);
-REGISTER_OP_MLU_KERNEL(reduce_mean_grad, ops::ReduceMeanGradMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(reduce_mean_grad,
+                       ops::ReduceMeanGradMLUKernel<float>,
                        ops::ReduceMeanGradMLUKernel<plat::float16>);

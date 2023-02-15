@@ -14,12 +14,11 @@
 
 #include "paddle/fluid/operators/pull_gpups_sparse_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
-using platform::PADDLE_CUDA_NUM_THREADS;
-using LoDTensor = framework::LoDTensor;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T>
 class PullGpuPSSparseCUDAKernel : public framework::OpKernel<T> {

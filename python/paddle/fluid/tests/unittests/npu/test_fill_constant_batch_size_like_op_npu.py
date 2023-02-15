@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -48,11 +47,12 @@ class TestFillConstantBatchSizeLike(OpTest):
             'dtype': self.dtype,
             'force_cpu': self.force_cpu,
             'input_dim_idx': self.input_dim_idx,
-            'output_dim_idx': self.output_dim_idx
+            'output_dim_idx': self.output_dim_idx,
         }
         self.outputs = {
-            'Out': np.full(self.output_shape, self.output_value,
-                           self.output_dtype)
+            'Out': np.full(
+                self.output_shape, self.output_value, self.output_dtype
+            )
         }
 
     def set_npu(self):
@@ -169,11 +169,12 @@ class TestFillConstantBatchSizeLikeLodTensor(TestFillConstantBatchSizeLike):
             'dtype': self.dtype,
             'force_cpu': self.force_cpu,
             'input_dim_idx': self.input_dim_idx,
-            'output_dim_idx': self.output_dim_idx
+            'output_dim_idx': self.output_dim_idx,
         }
         self.outputs = {
-            'Out': np.full(self.output_shape, self.output_value,
-                           self.output_dtype)
+            'Out': np.full(
+                self.output_shape, self.output_value, self.output_dtype
+            )
         }
 
     def init_shape(self):
@@ -183,7 +184,8 @@ class TestFillConstantBatchSizeLikeLodTensor(TestFillConstantBatchSizeLike):
 
 
 class TestFillConstantBatchSizeLikeLodTensor2(
-        TestFillConstantBatchSizeLikeLodTensor):
+    TestFillConstantBatchSizeLikeLodTensor
+):
     # test LodTensor with 'input_dim_idx' != 0
     def init_shape(self):
         self.input_shape = [10, 20]

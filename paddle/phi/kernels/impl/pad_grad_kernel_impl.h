@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #pragma once
+
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/padding.h"
 namespace phi {
@@ -20,7 +22,7 @@ template <typename T, typename Context>
 void PadGradKernel(const Context& dev_ctx,
                    const DenseTensor& d_out,
                    const std::vector<int>& paddings,
-                   float pad_value,
+                   const Scalar& pad_value,
                    DenseTensor* d_x) {
   if (d_x == nullptr) {
     return;

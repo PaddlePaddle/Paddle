@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/device_code.h"
+
 #include <utility>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/init.h"
@@ -54,9 +56,9 @@ TEST(DeviceCode, cuda) {
   paddle::platform::CUDAPlace place = paddle::platform::CUDAPlace(0);
   paddle::platform::CUDADeviceCode code(place, "saxpy_kernel", saxpy_code);
 
-  paddle::framework::Tensor cpu_x;
-  paddle::framework::Tensor cpu_y;
-  paddle::framework::Tensor cpu_z;
+  phi::DenseTensor cpu_x;
+  phi::DenseTensor cpu_y;
+  phi::DenseTensor cpu_z;
 
   float scale = 2;
   auto dims =
@@ -72,9 +74,9 @@ TEST(DeviceCode, cuda) {
     cpu_y.data<float>()[i] = static_cast<float>(0.5);
   }
 
-  paddle::framework::Tensor x;
-  paddle::framework::Tensor y;
-  paddle::framework::Tensor z;
+  phi::DenseTensor x;
+  phi::DenseTensor y;
+  phi::DenseTensor z;
 
   float* x_data = x.mutable_data<float>(dims, place);
   float* y_data = y.mutable_data<float>(dims, place);

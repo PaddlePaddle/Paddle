@@ -17,9 +17,9 @@
 #include <algorithm>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
-
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 
@@ -50,8 +50,10 @@ class PReluPlugin : public PluginTensorRT {
     SerializeValue(&buffer, data_format_.c_str());
   }
 
-  PReluPlugin(const float* weight, const int weight_num,
-              std::string const& mode, std::string const& data_format)
+  PReluPlugin(const float* weight,
+              const int weight_num,
+              std::string const& mode,
+              std::string const& data_format)
       : mode_(mode), data_format_(data_format) {
     weight_.resize(weight_num);
     std::copy(weight, weight + weight_num, weight_.data());
@@ -84,14 +86,20 @@ class PReluPlugin : public PluginTensorRT {
     return "prelu_plugin";
   }
   int getNbOutputs() const TRT_NOEXCEPT override { return 1; }
-  nvinfer1::Dims getOutputDimensions(int index, const nvinfer1::Dims* inputs,
+  nvinfer1::Dims getOutputDimensions(int index,
+                                     const nvinfer1::Dims* inputs,
                                      int nbInputDims) TRT_NOEXCEPT override;
 #if IS_TRT_VERSION_LT(8000)
-  int enqueue(int batchSize, const void* const* inputs, void** outputs,
+  int enqueue(int batchSize,
+              const void* const* inputs,
+              void** outputs,
 #else
-  int enqueue(int batchSize, const void* const* inputs, void* const* outputs,
+  int enqueue(int batchSize,
+              const void* const* inputs,
+              void* const* outputs,
 #endif
-              void* workspace, cudaStream_t stream) TRT_NOEXCEPT override;
+              void* workspace,
+              cudaStream_t stream) TRT_NOEXCEPT override;
 };
 
 class PReluPluginCreator : public TensorRTPluginCreator {
@@ -102,9 +110,10 @@ class PReluPluginCreator : public TensorRTPluginCreator {
 
   const char* getPluginVersion() const TRT_NOEXCEPT override { return "1"; }
 
-  nvinfer1::IPluginV2* deserializePlugin(
-      const char* name, const void* serial_data,
-      size_t serial_length) TRT_NOEXCEPT override {
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serial_data,
+                                         size_t serial_length)
+      TRT_NOEXCEPT override {
     return new PReluPlugin(serial_data, serial_length);
   }
 };
@@ -113,8 +122,10 @@ REGISTER_TRT_PLUGIN_V2(PReluPluginCreator);
 #if IS_TRT_VERSION_GE(6000)
 class PReluPluginDynamic : public DynamicPluginTensorRT {
  public:
-  PReluPluginDynamic(const float* weight, const int weight_num,
-                     std::string const& mode, std::string const& data_format)
+  PReluPluginDynamic(const float* weight,
+                     const int weight_num,
+                     std::string const& mode,
+                     std::string const& data_format)
       : mode_(mode), data_format_(data_format) {
     weight_.resize(weight_num);
     std::copy(weight, weight + weight_num, weight_.data());
@@ -123,8 +134,8 @@ class PReluPluginDynamic : public DynamicPluginTensorRT {
   PReluPluginDynamic(void const* serialData, size_t serialLength);
   ~PReluPluginDynamic() {}
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
-    auto ptr = new PReluPluginDynamic(weight_.data(), weight_.size(), mode_,
-                                      data_format_);
+    auto ptr = new PReluPluginDynamic(
+        weight_.data(), weight_.size(), mode_, data_format_);
     ptr->p_gpu_weight_ = p_gpu_weight_;
     return ptr;
   }
@@ -139,9 +150,11 @@ class PReluPluginDynamic : public DynamicPluginTensorRT {
   size_t getSerializationSize() const TRT_NOEXCEPT override;
   void serialize(void* buffer) const TRT_NOEXCEPT override;
 
-  nvinfer1::DimsExprs getOutputDimensions(
-      int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
-      nvinfer1::IExprBuilder& expr_builder) TRT_NOEXCEPT override;
+  nvinfer1::DimsExprs getOutputDimensions(int output_index,
+                                          const nvinfer1::DimsExprs* inputs,
+                                          int nb_inputs,
+                                          nvinfer1::IExprBuilder& expr_builder)
+      TRT_NOEXCEPT override;
 
   bool supportsFormatCombination(int pos,
                                  const nvinfer1::PluginTensorDesc* inOut,
@@ -162,11 +175,14 @@ class PReluPluginDynamic : public DynamicPluginTensorRT {
 
   int enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
               const nvinfer1::PluginTensorDesc* outputDesc,
-              const void* const* inputs, void* const* outputs, void* workspace,
+              const void* const* inputs,
+              void* const* outputs,
+              void* workspace,
               cudaStream_t stream) TRT_NOEXCEPT override;
-  nvinfer1::DataType getOutputDataType(
-      int index, const nvinfer1::DataType* inputTypes,
-      int nbInputs) const TRT_NOEXCEPT override;
+  nvinfer1::DataType getOutputDataType(int index,
+                                       const nvinfer1::DataType* inputTypes,
+                                       int nbInputs) const
+      TRT_NOEXCEPT override;
 
   void destroy() TRT_NOEXCEPT override { delete this; }
 
@@ -186,9 +202,10 @@ class PReluPluginDynamicCreator : public TensorRTPluginCreator {
 
   const char* getPluginVersion() const TRT_NOEXCEPT override { return "1"; }
 
-  nvinfer1::IPluginV2* deserializePlugin(
-      const char* name, const void* serial_data,
-      size_t serial_length) TRT_NOEXCEPT override {
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serial_data,
+                                         size_t serial_length)
+      TRT_NOEXCEPT override {
     return new PReluPluginDynamic(serial_data, serial_length);
   }
 };

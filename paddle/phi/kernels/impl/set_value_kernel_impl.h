@@ -17,8 +17,7 @@
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
-
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -317,7 +316,7 @@ void SetValueKernel(const Context& dev_ctx,
     assgin_values.push_back(val.to<T>());
   }
   DenseTensor value_tensor = Empty<T>(dev_ctx, shape);
-  paddle::framework::TensorFromVector(assgin_values, dev_ctx, &value_tensor);
+  phi::TensorFromVector(assgin_values, dev_ctx, &value_tensor);
   value_tensor.Resize(phi::make_ddim(shape));
 
   SetTensorValueKernel<T, Context>(dev_ctx,

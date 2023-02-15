@@ -20,16 +20,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
 class AdadeltaOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Param"), ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Param"),
+                          ctx.GetPlace());
   }
 };
 
@@ -82,10 +80,13 @@ $$
 
 namespace ops = paddle::operators;
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(adadelta, AdadeltaInferMetaFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(adadelta,
+                            AdadeltaInferMetaFunctor,
                             PD_INFER_META(phi::AdadeltaInferMeta));
 REGISTER_OPERATOR(
-    adadelta, ops::AdadeltaOp, ops::AdadeltaOpMaker,
+    adadelta,
+    ops::AdadeltaOp,
+    ops::AdadeltaOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     AdadeltaInferMetaFunctor);

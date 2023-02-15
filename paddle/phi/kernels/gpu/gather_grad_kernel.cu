@@ -12,14 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/gather_kernel.h"
-
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/scatter.cu.h"
+#include "paddle/phi/kernels/gather_kernel.h"
 
 namespace phi {
 
@@ -56,6 +55,10 @@ void GatherGradKernel(const Context& dev_ctx,
   } else if (index_type == DataType::INT64) {
     phi::funcs::GPUScatterAssign<T, int64_t>(
         dev_ctx, out_grad, index, x_grad, overwrite);
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The data type of Input(Index) of gather_grad must be int32 or int64 "
+        "on GPU."));
   }
 }
 

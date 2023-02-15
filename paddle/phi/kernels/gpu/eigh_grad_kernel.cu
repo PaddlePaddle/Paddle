@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/eigh_grad_kernel.h"
-#include "paddle/phi/kernels/impl/eigh_grad_kernel_impl.h"
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/impl/eigh_grad_kernel_impl.h"
 
 PD_REGISTER_KERNEL(eigh_grad,
                    GPU,
@@ -25,4 +25,7 @@ PD_REGISTER_KERNEL(eigh_grad,
                    float,
                    double,
                    phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::dtype::complex<double>) {
+  kernel->InputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
+  kernel->InputAt(2).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
+}

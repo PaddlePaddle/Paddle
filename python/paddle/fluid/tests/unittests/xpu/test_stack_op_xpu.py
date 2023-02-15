@@ -12,19 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import sys
+
 sys.path.append("..")
 import unittest
+
 import numpy as np
-import paddle.fluid.core as core
-from op_test import OpTest, skip_check_grad_ci
+from op_test import skip_check_grad_ci
 from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
+
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
-from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 
 paddle.enable_static()
 
@@ -50,7 +52,8 @@ class XPUTestStackOp(XPUOpTestWrapper):
             self.x = []
             for i in range(self.num_inputs):
                 self.x.append(
-                    np.random.random(size=self.input_dim).astype(self.dtype))
+                    np.random.random(size=self.input_dim).astype(self.dtype)
+                )
 
             tmp = []
             x_names = self.get_x_names()
@@ -81,7 +84,8 @@ class XPUTestStackOp(XPUOpTestWrapper):
                 pass
             else:
                 self.check_grad_with_place(
-                    paddle.XPUPlace(0), self.get_x_names(), 'Y')
+                    paddle.XPUPlace(0), self.get_x_names(), 'Y'
+                )
 
     class TestStackOp1(TestStackOp):
         def initParameters(self):

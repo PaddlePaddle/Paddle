@@ -17,14 +17,15 @@ limitations under the License. */
 
 namespace plat = paddle::platform;
 namespace ops = paddle::operators;
-using CUDACtx = paddle::platform::CUDADeviceContext;
+using CUDACtx = phi::GPUContext;
 REGISTER_OP_CUDA_KERNEL(cross_entropy,
                         ops::CrossEntropyOpKernel<CUDACtx, float>,
                         ops::CrossEntropyOpKernel<CUDACtx, double>,
                         ops::CrossEntropyOpKernel<CUDACtx, plat::float16>);
 
 REGISTER_OP_CUDA_KERNEL(
-    cross_entropy_grad, ops::CrossEntropyGradientOpKernel<CUDACtx, float>,
+    cross_entropy_grad,
+    ops::CrossEntropyGradientOpKernel<CUDACtx, float>,
     ops::CrossEntropyGradientOpKernel<CUDACtx, double>,
     ops::CrossEntropyGradientOpKernel<CUDACtx, plat::float16>);
 
@@ -34,6 +35,7 @@ REGISTER_OP_CUDA_KERNEL(cross_entropy2,
                         ops::CrossEntropyOpKernel2<CUDACtx, plat::float16>);
 
 REGISTER_OP_CUDA_KERNEL(
-    cross_entropy_grad2, ops::CrossEntropyGradientOpKernel2<CUDACtx, float>,
+    cross_entropy_grad2,
+    ops::CrossEntropyGradientOpKernel2<CUDACtx, float>,
     ops::CrossEntropyGradientOpKernel2<CUDACtx, double>,
     ops::CrossEntropyGradientOpKernel2<CUDACtx, plat::float16>);

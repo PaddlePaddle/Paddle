@@ -15,13 +15,12 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
     def setUp(self):
         self.set_atol()
@@ -46,8 +45,9 @@ class TestBase(IPUOpTest):
     @IPUOpTest.static_graph
     def build_model(self):
         x = paddle.static.data(
-            name=self.feed_list[0], shape=self.feed_shape[0], dtype="float32")
-        out = paddle.fluid.layers.expand(x, **self.attrs)
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype="float32"
+        )
+        out = paddle.expand(x, **self.attrs)
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
@@ -78,11 +78,12 @@ class TestCase1(TestBase):
     @IPUOpTest.static_graph
     def build_model(self):
         x = paddle.static.data(
-            name=self.feed_list[0], shape=self.feed_shape[0], dtype="float32")
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype="float32"
+        )
         expand_times = paddle.fluid.layers.fill_constant(
-            shape=[len(self.feed_shape[0])], dtype="int32", value=2)
-        out = paddle.fluid.layers.expand(
-            x, expand_times=expand_times, **self.attrs)
+            shape=[len(self.feed_shape[0])], dtype="int32", value=2
+        )
+        out = paddle.expand(x, expand_times, **self.attrs)
         self.fetch_list = [out.name]
 
 

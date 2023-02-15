@@ -30,13 +30,14 @@ namespace tensorrt {
 class TransposeOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
     int dims = input->getDimensions().nbDims;
     std::vector<int> axis =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("axis"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("axis"));
     if (!engine_->with_dynamic_shape()) {
       for (size_t i = 1; i < axis.size(); i++) {
         axis[i]--;
@@ -60,3 +61,4 @@ class TransposeOpConverter : public OpConverter {
 }  // namespace paddle
 
 REGISTER_TRT_OP_CONVERTER(transpose, TransposeOpConverter);
+REGISTER_TRT_OP_CONVERTER(transpose2, TransposeOpConverter);

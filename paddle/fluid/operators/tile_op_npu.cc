@@ -18,52 +18,59 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
 using NPUDeviceContext = platform::NPUDeviceContext;
 
 template <typename T>
 class TileNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto rank = context.Input<Tensor>("X")->dims().size();
+    auto rank = context.Input<phi::DenseTensor>("X")->dims().size();
     PADDLE_ENFORCE_GE(
-        rank, 1, platform::errors::InvalidArgument(
-                     "The rank of the input 'x' for tile op must be a positive "
-                     "integer, but the value received is %d.",
-                     rank));
+        rank,
+        1,
+        platform::errors::InvalidArgument(
+            "The rank of the input 'x' for tile op must be a positive "
+            "integer, but the value received is %d.",
+            rank));
     PADDLE_ENFORCE_LE(
-        rank, MAX_RANK_SUPPORTED,
+        rank,
+        MAX_RANK_SUPPORTED,
         platform::errors::InvalidArgument(
             "The rank of the input 'x' for tile op "
             "must be less than or equal to %d, but the value received is %d.",
-            MAX_RANK_SUPPORTED, rank));
+            MAX_RANK_SUPPORTED,
+            rank));
     auto repeat_times = get_repeat_times(context);
     int repeat_times_size = repeat_times.size();
     PADDLE_ENFORCE_GE(
-        repeat_times_size, 1,
+        repeat_times_size,
+        1,
         platform::errors::InvalidArgument(
             "The number of elements of the input 'repeat_times' for tile "
             "op must be positive, but the value received is %d.",
             repeat_times_size));
     PADDLE_ENFORCE_LE(
-        repeat_times_size, MAX_RANK_SUPPORTED,
+        repeat_times_size,
+        MAX_RANK_SUPPORTED,
         platform::errors::InvalidArgument(
             "The number of elements of the input 'repeat_times' for tile op "
             "must be less than or equal to %d, but the value received is %d.",
-            MAX_RANK_SUPPORTED, repeat_times_size));
+            MAX_RANK_SUPPORTED,
+            repeat_times_size));
     rank = std::max(rank, repeat_times_size);
     Tile(context);
   }
 
  protected:
   void Tile(const framework::ExecutionContext& context) const {
-    auto* in0 = context.Input<framework::Tensor>("X");
+    auto* in0 = context.Input<phi::DenseTensor>("X");
 
     auto in_dims = in0->dims();
     auto repeat_times = get_repeat_times(context);
     for (size_t i = 0; i < repeat_times.size(); ++i) {
       PADDLE_ENFORCE_GT(
-          repeat_times[i], 0,
+          repeat_times[i],
+          0,
           platform::errors::InvalidArgument(
               "All elements of the input 'repeat_times' for tile op must "
               "be positive integers, but the value received is %d.",
@@ -78,12 +85,14 @@ class TileNPUKernel : public framework::OpKernel<T> {
       vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
     }
     PADDLE_ENFORCE_EQ(
-        repeat_times.size(), vec_in_dims.size(),
+        repeat_times.size(),
+        vec_in_dims.size(),
         platform::errors::InvalidArgument(
             "The rank (%d) of the input 'x' and the rank (%d) of the input "
             "'repeat_times' for tile op must match after promotion.",
-            vec_in_dims.size(), repeat_times.size()));
-    auto* out0 = context.Output<framework::Tensor>("Out");
+            vec_in_dims.size(),
+            repeat_times.size()));
+    auto* out0 = context.Output<phi::DenseTensor>("Out");
 
     framework::DDim new_in_dims = phi::make_ddim(vec_in_dims);
     framework::DDim out_dims(new_in_dims);
@@ -97,7 +106,8 @@ class TileNPUKernel : public framework::OpKernel<T> {
 
     std::vector<int> temp(repeat_times.size(), 1);
     if (repeat_times == temp) {
-      framework::TensorCopy(*in0, context.GetPlace(),
+      framework::TensorCopy(*in0,
+                            context.GetPlace(),
                             context.template device_context<NPUDeviceContext>(),
                             out0);
       return;
@@ -119,7 +129,9 @@ class TileNPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_NPU_KERNEL(tile, ops::TileNPUKernel<float>, ops::TileNPUKernel<int>,
+REGISTER_OP_NPU_KERNEL(tile,
+                       ops::TileNPUKernel<float>,
+                       ops::TileNPUKernel<int>,
 #ifdef PADDLE_WITH_ASCEND_INT64
                        ops::TileNPUKernel<int64_t>,
 #endif

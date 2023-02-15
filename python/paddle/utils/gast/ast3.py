@@ -49,23 +49,22 @@ class Ast3ToGAst(AstToGAst):
     if sys.version_info.minor < 8:
 
         def visit_Module(self, node):
-            new_node = gast.Module(
-                self._visit(node.body),
-                []  # type_ignores
-            )
+            new_node = gast.Module(self._visit(node.body), [])  # type_ignores
             return new_node
 
         def visit_Num(self, node):
             new_node = gast.Constant(
                 node.n,
-                None, )
+                None,
+            )
             gast.copy_location(new_node, node)
             return new_node
 
         def visit_Ellipsis(self, node):
             new_node = gast.Constant(
                 Ellipsis,
-                None, )
+                None,
+            )
             gast.copy_location(new_node, node)
             new_node.end_lineno = new_node.end_col_offset = None
             return new_node
@@ -73,14 +72,16 @@ class Ast3ToGAst(AstToGAst):
         def visit_Str(self, node):
             new_node = gast.Constant(
                 node.s,
-                None, )
+                None,
+            )
             gast.copy_location(new_node, node)
             return new_node
 
         def visit_Bytes(self, node):
             new_node = gast.Constant(
                 node.s,
-                None, )
+                None,
+            )
             gast.copy_location(new_node, node)
             return new_node
 
@@ -169,7 +170,8 @@ class Ast3ToGAst(AstToGAst):
             new_node = gast.Call(
                 self._visit(node.func),
                 self._visit(node.args) + starred,
-                self._visit(node.keywords) + kwargs, )
+                self._visit(node.keywords) + kwargs,
+            )
             gast.copy_location(new_node, node)
             return new_node
 
@@ -191,7 +193,8 @@ class Ast3ToGAst(AstToGAst):
                 self._visit(node.kwonlyargs),
                 self._visit(node.kw_defaults),
                 self._visit(node.kwarg),
-                self._visit(node.defaults), )
+                self._visit(node.defaults),
+            )
             gast.copy_location(new_node, node)
             return new_node
 
@@ -200,7 +203,8 @@ class Ast3ToGAst(AstToGAst):
             self._visit(node.id),
             self._visit(node.ctx),
             None,
-            None, )
+            None,
+        )
         ast.copy_location(new_node, node)
         return new_node
 
@@ -224,7 +228,8 @@ class Ast3ToGAst(AstToGAst):
             new_node = gast.ExceptHandler(
                 self._visit(node.type),
                 gast.Name(node.name, gast.Store(), None, None),
-                self._visit(node.body))
+                self._visit(node.body),
+            )
             ast.copy_location(new_node, node)
             return new_node
         else:
@@ -237,7 +242,8 @@ class Ast3ToGAst(AstToGAst):
                 target=self._visit(node.target),
                 iter=self._visit(node.iter),
                 ifs=self._visit(node.ifs),
-                is_async=0, )
+                is_async=0,
+            )
             return ast.copy_location(new_node, node)
 
 
@@ -253,9 +259,9 @@ class GAstToAst3(GAstToAst):
 
             if isinstance(node.slice, gast.Tuple):
                 if any(isinstance(elt, gast.slice) for elt in node.slice.elts):
-                    new_slice = ast.ExtSlice([
-                        adjust_slice(x) for x in self._visit(node.slice.elts)
-                    ])
+                    new_slice = ast.ExtSlice(
+                        [adjust_slice(x) for x in self._visit(node.slice.elts)]
+                    )
                 else:
                     value = ast.Tuple(self._visit(node.slice.elts), ast.Load())
                     ast.copy_location(value, node.slice)
@@ -267,7 +273,8 @@ class GAstToAst3(GAstToAst):
             new_node = ast.Subscript(
                 self._visit(node.value),
                 new_slice,
-                self._visit(node.ctx), )
+                self._visit(node.ctx),
+            )
             ast.copy_location(new_node, node)
             return new_node
 
@@ -300,23 +307,26 @@ class GAstToAst3(GAstToAst):
         if sys.version_info.minor < 8:
             extra_args = tuple()
         else:
-            extra_args = self._visit(node.type_comment),
+            extra_args = (self._visit(node.type_comment),)
 
         new_node = ast.arg(
-            self._visit(node.id), self._visit(node.annotation), *extra_args)
+            self._visit(node.id), self._visit(node.annotation), *extra_args
+        )
         return ast.copy_location(new_node, node)
 
     def visit_Name(self, node):
         new_node = ast.Name(
             self._visit(node.id),
-            self._visit(node.ctx), )
+            self._visit(node.ctx),
+        )
         ast.copy_location(new_node, node)
         return new_node
 
     def visit_ExceptHandler(self, node):
         if node.name:
             new_node = ast.ExceptHandler(
-                self._visit(node.type), node.name.id, self._visit(node.body))
+                self._visit(node.type), node.name.id, self._visit(node.body)
+            )
             return ast.copy_location(new_node, node)
         else:
             return self.generic_visit(node)
@@ -343,7 +353,8 @@ class GAstToAst3(GAstToAst):
                 self._visit(args),
                 self._visit(keywords),
                 self._visit(starargs),
-                self._visit(kwargs), )
+                self._visit(kwargs),
+            )
             ast.copy_location(new_node, node)
             return new_node
 
@@ -356,7 +367,8 @@ class GAstToAst3(GAstToAst):
                 body=self._visit(node.body),
                 decorator_list=self._visit(node.decorator_list),
                 starargs=None,
-                kwargs=None, )
+                kwargs=None,
+            )
             return ast.copy_location(new_node, node)
 
     elif sys.version_info.minor < 8:
@@ -367,7 +379,8 @@ class GAstToAst3(GAstToAst):
                 self._visit(node.args),
                 self._visit(node.body),
                 self._visit(node.decorator_list),
-                self._visit(node.returns), )
+                self._visit(node.returns),
+            )
             ast.copy_location(new_node, node)
             return new_node
 
@@ -377,7 +390,8 @@ class GAstToAst3(GAstToAst):
                 self._visit(node.args),
                 self._visit(node.body),
                 self._visit(node.decorator_list),
-                self._visit(node.returns), )
+                self._visit(node.returns),
+            )
             ast.copy_location(new_node, node)
             return new_node
 
@@ -386,7 +400,8 @@ class GAstToAst3(GAstToAst):
                 self._visit(node.target),
                 self._visit(node.iter),
                 self._visit(node.body),
-                self._visit(node.orelse), )
+                self._visit(node.orelse),
+            )
             ast.copy_location(new_node, node)
             return new_node
 
@@ -404,14 +419,16 @@ class GAstToAst3(GAstToAst):
         def visit_With(self, node):
             new_node = ast.With(
                 self._visit(node.items),
-                self._visit(node.body), )
+                self._visit(node.body),
+            )
             ast.copy_location(new_node, node)
             return new_node
 
         def visit_AsyncWith(self, node):
             new_node = ast.AsyncWith(
                 self._visit(node.items),
-                self._visit(node.body), )
+                self._visit(node.body),
+            )
             ast.copy_location(new_node, node)
             return new_node
 
@@ -419,7 +436,8 @@ class GAstToAst3(GAstToAst):
             new_node = ast.Call(
                 self._visit(node.func),
                 self._visit(node.args),
-                self._visit(node.keywords), )
+                self._visit(node.keywords),
+            )
             ast.copy_location(new_node, node)
             return new_node
 
@@ -434,10 +452,13 @@ class GAstToAst3(GAstToAst):
         if sys.version_info.minor >= 8:
             new_node = ast.arguments(
                 [self._make_arg(arg) for arg in node.posonlyargs],
-                [self._make_arg(n) for n in node.args], *extra_args)
+                [self._make_arg(n) for n in node.args],
+                *extra_args
+            )
         else:
-            new_node = ast.arguments([self._make_arg(n) for n in node.args],
-                                     *extra_args)
+            new_node = ast.arguments(
+                [self._make_arg(n) for n in node.args], *extra_args
+            )
         return new_node
 
 

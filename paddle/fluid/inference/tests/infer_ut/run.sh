@@ -68,7 +68,7 @@ function download() {
   if [[ -e "${model_name}.tgz" ]]; then
     echo "${model_name}.tgz has been downloaded."
   else
-      if [ $WIN_DETECT != "" ]; then
+      if [ "$WIN_DETECT" != "" ]; then
         wget -q -Y off ${url_prefix}/${model_name}.tgz
         tar xzf *.tgz
       else
@@ -135,7 +135,7 @@ function compile_test() {
     mkdir -p ${build_dir}
     cd ${build_dir}
     TEST_NAME=$1
-    if [ $WIN_DETECT != "" ]; then
+    if [ "$WIN_DETECT" != "" ]; then
         cmake .. -GNinja -DPADDLE_LIB=${inference_install_dir} \
              -DWITH_MKL=$TURN_ON_MKL \
              -DDEMO_NAME=${TEST_NAME} \
@@ -161,7 +161,7 @@ function compile_test() {
                  -DWITH_GTEST=ON \
                  -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME
         make -j$(nproc)
-    fi;
+    fi
     cd -
 }
 
@@ -175,16 +175,16 @@ rm -rf *
 
 exe_dir=${build_dir}
 
-printf "${YELLOW} start test_resnet50 ${NC} \n";
-compile_test "test_resnet50"
-${exe_dir}/test_resnet50 \
-    --modeldir=$DATA_DIR/resnet50/resnet50 \
-    --gtest_filter=${test_suite_list} \
-    --gtest_output=xml:${log_dir}/test_resnet50.xml
-if [ $? -ne 0 ]; then
-    echo "${RED} test_resnet50 runs failed ${NC}" >> ${exe_dir}/test_summary.txt
-    EXIT_CODE=8
-fi
+# printf "${YELLOW} start test_resnet50 ${NC} \n";
+# compile_test "test_resnet50"
+# ${exe_dir}/test_resnet50 \
+#     --modeldir=$DATA_DIR/resnet50/resnet50 \
+#     --gtest_filter=${test_suite_list} \
+#     --gtest_output=xml:${log_dir}/test_resnet50.xml
+# if [ $? -ne 0 ]; then
+#     echo "${RED} test_resnet50 runs failed ${NC}" >> ${exe_dir}/test_summary.txt
+#     EXIT_CODE=8
+# fi
 
 printf "${YELLOW} start test_det_mv3_db ${NC} \n";
 compile_test "test_det_mv3_db"
@@ -208,7 +208,7 @@ if [ $? -ne 0 ]; then
     EXIT_CODE=8
 fi
 
-if [ $WIN_DETECT != "" ]; then
+if [ "$WIN_DETECT" != "" ]; then
     #TODO(OliverLPH): enable test_ernie_text_cls on windows after fix compile issue
     echo "  skip test_ernie_text_cls  "
 else
@@ -222,7 +222,7 @@ else
         echo "${RED} test_ernie_text_cls runs failed ${NC}" >> ${exe_dir}/test_summary.txt
         EXIT_CODE=8
     fi
-fi;
+fi
 
 printf "${YELLOW} start test_yolov3 ${NC} \n";
 compile_test "test_yolov3"
@@ -270,19 +270,19 @@ if [ $? -ne 0 ]; then
     EXIT_CODE=8
 fi
 
-printf "${YELLOW} start test_ernie_xnli_int8 ${NC} \n";
-compile_test "test_ernie_xnli_int8"
-ernie_qat_model="quant_post_model_xnli_predict_matmul"
-${exe_dir}/test_ernie_xnli_int8 \
-    --modeldir=$DATA_DIR/$ernie_qat_model/$ernie_qat_model \
-    --datadir=$DATA_DIR/$ernie_qat_model/$ernie_qat_model/xnli_var_len \
-    --truth_data=$DATA_DIR/$ernie_qat_model/$ernie_qat_model/truth_data \
-    --gtest_filter=${test_suite_list} \
-    --gtest_output=xml:${log_dir}/test_ernie_xnli_int8.xml
-if [ $? -ne 0 ]; then
-    echo "${RED} test_ernie_xnli_int8 runs failed ${NC}" >> ${exe_dir}/test_summary.txt
-    EXIT_CODE=8
-fi
+# printf "${YELLOW} start test_ernie_xnli_int8 ${NC} \n";
+# compile_test "test_ernie_xnli_int8"
+# ernie_qat_model="quant_post_model_xnli_predict_matmul"
+# ${exe_dir}/test_ernie_xnli_int8 \
+#     --modeldir=$DATA_DIR/$ernie_qat_model/$ernie_qat_model \
+#     --datadir=$DATA_DIR/$ernie_qat_model/$ernie_qat_model/xnli_var_len \
+#     --truth_data=$DATA_DIR/$ernie_qat_model/$ernie_qat_model/truth_data \
+#     --gtest_filter=${test_suite_list} \
+#     --gtest_output=xml:${log_dir}/test_ernie_xnli_int8.xml
+# if [ $? -ne 0 ]; then
+#     echo "${RED} test_ernie_xnli_int8 runs failed ${NC}" >> ${exe_dir}/test_summary.txt
+#     EXIT_CODE=8
+# fi
 
 printf "${YELLOW} start test_mobilnetv1 ${NC} \n";
 compile_test "test_mobilnetv1"

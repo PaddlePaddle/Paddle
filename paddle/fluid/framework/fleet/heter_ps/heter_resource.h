@@ -24,6 +24,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU_KP
 #include <xpu/runtime.h>  // NOLINT
+
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #endif
 
@@ -96,6 +97,34 @@ using DevPlace = platform::XPUPlace;
 using AnyDeviceGuard = platform::XPUDeviceGuard;
 #endif
 
+#if defined(PADDLE_WITH_CUDA)
+class GpuRDMAChecker {
+ public:
+  static GpuRDMAChecker* get(int device_num);
+
+ public:
+  explicit GpuRDMAChecker(int device_num);
+  // rdma
+  bool need_rdma_trans(void);
+  bool is_device_support_rdma(int devid);
+  // device num
+  int device_num(void) { return device_num_; }
+  // topo_aware
+  bool topo_aware(void) { return topo_aware_; }
+
+ private:
+  bool check_device_status(const int& device_count,
+                           std::vector<int>* gpu_status);
+
+ private:
+  int device_num_ = 0;
+  bool topo_aware_ = false;
+  // rdma
+  bool rdma_trans_ = false;
+  std::vector<int> rdma_status_;
+};
+#endif
+
 class HeterPsResource {
  public:
   explicit HeterPsResource(const std::vector<int>& dev_ids);
@@ -113,12 +142,17 @@ class HeterPsResource {
   ppStream local_stream(int dev_num, int stream_num);
   ppStream remote_stream(int dev_num, int stream_num);
   ppStream comm_stream(int dev_num, int stream_num);
+  // node
+  bool multi_node(void) { return multi_node_; }
+  void set_multi_node(bool multi_node) { multi_node_ = multi_node; }
 
   std::vector<std::shared_ptr<DevResource>> resources_;
   std::vector<int> dev_ids_;
   std::map<int, int> devid_2_index_;
   int multi_mf_dim_{0};
   int max_mf_dim_{0};
+  // multi node
+  bool multi_node_ = false;
 };
 
 }  // end namespace framework

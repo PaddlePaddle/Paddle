@@ -73,8 +73,8 @@ struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
           platform::errors::PreconditionNotMet("Not compiled with XPU."));
 #endif
     } else {
-      op_handle_ = new FusedBroadcastOpHandle(nodes_.back().get(),
-                                              local_scopes_, place_list_);
+      op_handle_ = new FusedBroadcastOpHandle(
+          nodes_.back().get(), local_scopes_, place_list_);
     }
 
     op_handle_->SetLocalExecScopes(scope_map);
@@ -83,9 +83,12 @@ struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
       // add input var handle
       nodes_.emplace_back(ir::CreateNodeForTest("in_node" + std::to_string(i),
                                                 ir::Node::Type::kVariable));
-      VarHandle* in_var_handle = new VarHandle(
-          nodes_.back().get(), 1, input_scope_idxes[i],
-          "in_var" + std::to_string(i), place_list_[input_scope_idxes[i]]);
+      VarHandle* in_var_handle =
+          new VarHandle(nodes_.back().get(),
+                        1,
+                        input_scope_idxes[i],
+                        "in_var" + std::to_string(i),
+                        place_list_[input_scope_idxes[i]]);
       vars_.emplace_back(in_var_handle);
       op_handle_->AddInput(in_var_handle);
 
@@ -93,9 +96,11 @@ struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
       for (size_t j = 0; j < place_list_.size(); ++j) {
         nodes_.emplace_back(ir::CreateNodeForTest(
             "out_node" + std::to_string(i), ir::Node::Type::kVariable));
-        VarHandle* out_var_handle =
-            new VarHandle(nodes_.back().get(), 2, j,
-                          "out_var" + std::to_string(i), place_list_[j]);
+        VarHandle* out_var_handle = new VarHandle(nodes_.back().get(),
+                                                  2,
+                                                  j,
+                                                  "out_var" + std::to_string(i),
+                                                  place_list_[j]);
         vars_.emplace_back(out_var_handle);
         op_handle_->AddOutput(out_var_handle);
       }
@@ -132,8 +137,8 @@ struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
     for (size_t i = 0; i < input_scope_idxes.size(); ++i) {
       const std::string varname("in_var" + std::to_string(i));
       float val_scalar = static_cast<float>(i);
-      send_vector.push_back(InitSelectedRows(varname, input_scope_idxes[i],
-                                             rows, height, val_scalar));
+      send_vector.push_back(InitSelectedRows(
+          varname, input_scope_idxes[i], rows, height, val_scalar));
     }
 
     DeviceType use_device = p::kCPU;
@@ -143,8 +148,8 @@ struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
     for (size_t i = 0; i < input_scope_idxes.size(); ++i) {
       const std::string& varname("out_var" + std::to_string(i));
       for (size_t j = 0; j < place_list_.size(); ++j) {
-        SelectedRowsEqual(varname, input_scope_idxes[i], send_vector[i], rows,
-                          height);
+        SelectedRowsEqual(
+            varname, input_scope_idxes[i], send_vector[i], rows, height);
       }
     }
   }

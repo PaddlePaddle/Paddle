@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op_function.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -68,8 +69,10 @@ class LogsumexpGrapOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "logsumexp");
     OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out", "logsumexp");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "logsumexp");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "logsumexp");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };
@@ -93,9 +96,12 @@ class LogsumexpGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(logsumexp, LogsumexpInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(logsumexp,
+                            LogsumexpInferShapeFunctor,
                             PD_INFER_META(phi::LogsumexpInferMeta));
-REGISTER_OPERATOR(logsumexp, ops::LogsumexpOp, ops::LogsumexpOpMaker,
+REGISTER_OPERATOR(logsumexp,
+                  ops::LogsumexpOp,
+                  ops::LogsumexpOpMaker,
                   ops::LogsumexpGradOpMaker<paddle::framework::OpDesc>,
                   ops::LogsumexpGradOpMaker<paddle::imperative::OpBase>,
                   LogsumexpInferShapeFunctor);

@@ -15,6 +15,10 @@
 #pragma once
 
 #include <Python.h>
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
 
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/grad_node_info.h"
@@ -26,13 +30,23 @@ namespace egr {
 
 class GradNodePyLayer : public GradNodeBase {
  public:
-  GradNodePyLayer(PyObject* ctx, size_t bwd_in_slot_num,
+  GradNodePyLayer(PyObject* ctx,
+                  size_t bwd_in_slot_num,
                   size_t bwd_out_slot_num)
       : GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {
     ctx_ = ctx;
+    name_ = "GradNodePyLayer_" + std::string(Py_TYPE(ctx_)->tp_name);
+    Py_INCREF(ctx_);
   }
 
-  ~GradNodePyLayer() override { Py_XDECREF(ctx_); };
+  GradNodePyLayer(const GradNodePyLayer& other) : GradNodeBase(other) {
+    this->ctx_ = other.ctx_;
+    Py_INCREF(this->ctx_);
+    this->forward_outputs_meta_ = other.forward_outputs_meta_;
+    this->forward_outputs_place_ = other.forward_outputs_place_;
+  }
+
+  ~GradNodePyLayer() override;
 
   virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                                kSlotSmallVectorSize>
@@ -43,9 +57,7 @@ class GradNodePyLayer : public GradNodeBase {
 
   void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
 
-  std::string name() {
-    return "GradNodePyLayer_" + std::string(Py_TYPE(ctx_)->tp_name);
-  }
+  std::string name() override { return name_; }
 
   void SaveForwardOutputsMeta(
       const std::vector<std::vector<paddle::experimental::Tensor*>>&
@@ -75,6 +87,7 @@ class GradNodePyLayer : public GradNodeBase {
 
  private:
   PyObject* ctx_{nullptr};
+  std::string name_{""};
   std::vector<std::vector<phi::DenseTensorMeta>> forward_outputs_meta_;
   std::vector<std::vector<paddle::platform::Place>> forward_outputs_place_;
 };

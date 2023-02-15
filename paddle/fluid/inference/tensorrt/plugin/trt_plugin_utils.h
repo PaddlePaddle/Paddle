@@ -13,10 +13,12 @@
 // limitations under the License.
 
 #pragma once
+#include <cuda_fp16.h>
 #include <cstring>
 #include <string>
 #include <type_traits>
 #include <vector>
+
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -35,7 +37,8 @@ template <typename T>
 inline void SerializeValue(void** buffer, T const& value);
 
 template <typename T>
-inline void DeserializeValue(void const** buffer, size_t* buffer_size,
+inline void DeserializeValue(void const** buffer,
+                             size_t* buffer_size,
                              T* value);
 
 namespace details {
@@ -44,9 +47,11 @@ template <typename T, class Enable = void>
 struct Serializer {};
 
 template <typename T>
-struct Serializer<T, typename std::enable_if<std::is_arithmetic<T>::value ||
-                                             std::is_enum<T>::value ||
-                                             std::is_pod<T>::value>::type> {
+struct Serializer<
+    T,
+    typename std::enable_if<std::is_arithmetic<T>::value ||
+                            std::is_enum<T>::value || std::is_pod<T>::value ||
+                            std::is_same<T, half>::value>::type> {
   static size_t SerializedSize(T const& value) { return sizeof(T); }
 
   static void Serialize(void** buffer, T const& value) {
@@ -71,7 +76,8 @@ struct Serializer<const char*> {
     reinterpret_cast<char*&>(*buffer) += strlen(value) + 1;
   }
 
-  static void Deserialize(void const** buffer, size_t* buffer_size,
+  static void Deserialize(void const** buffer,
+                          size_t* buffer_size,
                           const char** value) {
     *value = static_cast<char const*>(*buffer);
     size_t data_size = strnlen(*value, *buffer_size) + 1;
@@ -82,10 +88,11 @@ struct Serializer<const char*> {
 };
 
 template <typename T>
-struct Serializer<std::vector<T>,
-                  typename std::enable_if<std::is_arithmetic<T>::value ||
-                                          std::is_enum<T>::value ||
-                                          std::is_pod<T>::value>::type> {
+struct Serializer<
+    std::vector<T>,
+    typename std::enable_if<std::is_arithmetic<T>::value ||
+                            std::is_enum<T>::value || std::is_pod<T>::value ||
+                            std::is_same<T, half>::value>::type> {
   static size_t SerializedSize(std::vector<T> const& value) {
     return sizeof(value.size()) + value.size() * sizeof(T);
   }
@@ -97,17 +104,20 @@ struct Serializer<std::vector<T>,
     reinterpret_cast<char*&>(*buffer) += nbyte;
   }
 
-  static void Deserialize(void const** buffer, size_t* buffer_size,
+  static void Deserialize(void const** buffer,
+                          size_t* buffer_size,
                           std::vector<T>* value) {
     size_t size;
     DeserializeValue(buffer, buffer_size, &size);
     value->resize(size);
     size_t nbyte = value->size() * sizeof(T);
-    PADDLE_ENFORCE_GE(*buffer_size, nbyte,
+    PADDLE_ENFORCE_GE(*buffer_size,
+                      nbyte,
                       platform::errors::InvalidArgument(
                           "Insufficient data in buffer, expect contains %d "
                           "byte, but actually only contains %d byte.",
-                          *buffer_size, nbyte));
+                          *buffer_size,
+                          nbyte));
     std::memcpy(value->data(), *buffer, nbyte);
     reinterpret_cast<char const*&>(*buffer) += nbyte;
     *buffer_size -= nbyte;
@@ -127,7 +137,8 @@ inline void SerializeValue(void** buffer, T const& value) {
 }
 
 template <typename T>
-inline void DeserializeValue(void const** buffer, size_t* buffer_size,
+inline void DeserializeValue(void const** buffer,
+                             size_t* buffer_size,
                              T* value) {
   return details::Serializer<T>::Deserialize(buffer, buffer_size, value);
 }

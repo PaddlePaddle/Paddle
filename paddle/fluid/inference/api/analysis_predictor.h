@@ -18,6 +18,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "paddle/phi/common/data_type.h"
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 #endif
@@ -28,6 +29,7 @@
 #include "paddle/fluid/inference/api/details/reset_tensor_array.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/api/resource_manager.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/string/printf.h"
@@ -41,7 +43,7 @@ using float16 = paddle::platform::float16;
 namespace experimental {
 class InternalUtils;
 };
-}
+}  // namespace paddle_infer
 ///
 /// \file analysis_predictor.h
 ///
@@ -55,10 +57,10 @@ class InternalUtils;
 
 namespace paddle {
 
-using inference::analysis::Argument;
-using inference::analysis::Analyzer;
-using framework::proto::ProgramDesc;
 using framework::NaiveExecutor;
+using framework::proto::ProgramDesc;
+using inference::analysis::Analyzer;
+using inference::analysis::Argument;
 
 ///
 /// \class AnalysisPredictor
@@ -100,9 +102,21 @@ class AnalysisPredictor : public PaddlePredictor {
   explicit AnalysisPredictor(const AnalysisConfig &config) : config_(config) {
     if (config_.shape_range_info_collected()) {
       config_.SwitchIrOptim(false);
-      config_.EnableMemoryOptim(false);
     }
-    predictor_id_ = inference::GetUniqueId();
+    int trt_identifier = config_.trt_engine_memory_sharing_identifier_;
+    if (trt_identifier > 0) {
+      // NOTE(liuyuanle): For convenience, we set the id of the predictor to
+      // negative sharing_identifier directly. In the future, this may affect
+      // the meaning of negative predictor id.
+      predictor_id_ = -trt_identifier;
+      LOG(WARNING)
+          << "Since the engine context memory of multiple predictors "
+             "is enabled in Paddle-TRT, we set the id of these predictors to "
+             "negative sharing_identifier you specified : "
+          << predictor_id_;
+    } else {
+      predictor_id_ = inference::GetUniqueId();
+    }
   }
   ///
   /// \brief Destroy the Analysis Predictor object
@@ -141,13 +155,13 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \return input names
   ///
-  std::vector<std::string> GetInputNames();
+  std::vector<std::string> GetInputNames() override;
   ///
   /// \brief Get the output names
   ///
   /// \return output names
   ///
-  std::vector<std::string> GetOutputNames();
+  std::vector<std::string> GetOutputNames() override;
 
   ///
   /// \brief Get the Input Tensor object
@@ -171,6 +185,24 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \return the map of input names and shapes
   ///
   std::map<std::string, std::vector<int64_t>> GetInputTensorShape() override;
+  ///
+  /// \brief Get all input names and their corresponding type
+  ///
+  /// \return the map of input names and type
+  ///
+  std::map<std::string, paddle_infer::DataType> GetInputTypes() override;
+  ///
+  /// \brief Get all output names and their corresponding shapes
+  ///
+  /// \return the map of output names and shapes
+  ///
+  std::map<std::string, std::vector<int64_t>> GetOutputTensorShape() override;
+  ///
+  /// \brief Get all output names and their corresponding type
+  ///
+  /// \return the map of output names and type
+  ///
+  std::map<std::string, paddle_infer::DataType> GetOutputTypes() override;
 
   ///
   /// \brief Run the prediction engine
@@ -183,6 +215,14 @@ class AnalysisPredictor : public PaddlePredictor {
   // Note: Can only be used under thread_local semantics.
   bool ExpRunWithExternalStream(const gpuStream_t stream);
 #endif
+
+  ///
+  /// \brief Get the execution stream on devices with a concept of stream,
+  /// otherwise returns nullptr.
+  ///
+  /// \return The execution stream or nullptr (CPU).
+  ///
+  void *GetExecStream() const override;
 
   ///
   /// \brief Create feed fetch variables
@@ -211,7 +251,7 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \brief Clear the intermediate tensors of the predictor
   ///
   ///
-  void ClearIntermediateTensor();
+  void ClearIntermediateTensor() override;
 
   ///
   /// \brief Release all tmp tensor to compress the size of the memory pool.
@@ -229,13 +269,13 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \return the argument obtained by config
   ///
-  Argument &analysis_argument() { return argument_; }
+  Argument &analysis_argument() { return *argument_; }
   ///
   /// \brief Clone to get the new predictor. thread safe.
   ///
   /// \return get a new predictor
   ///
-  std::unique_ptr<PaddlePredictor> Clone() override;
+  std::unique_ptr<PaddlePredictor> Clone(void *stream = nullptr) override;
   ///
   /// \brief Get the scope used by predictor
   ///
@@ -255,6 +295,23 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \return the serialized program
   ///
   std::string GetSerializedProgram() const override;
+
+  ///
+  /// \brief Get the fusion_statis_t
+  ///
+  /// \return the fusion_statis_t
+  ///
+  Argument::fusion_statis_t fusion_statis() { return fusion_statis_; }
+
+  ///
+  /// \brief Register a output hook function to operate the intermediate tensor
+  /// of op output. when using this function, memory reuse should be tured off.
+  /// The hook function signature is void(const std::string&, const
+  /// std::string&, const Tensor&>). Here, the first parameter is op's
+  /// type, the second param is output var name of the op, and the third
+  /// parameter is output tensor with the var name.
+  ///
+  void RegisterOutputHook(const Exp_OutputHookFunc &hookfunc) override;
 
   ///
   /// \brief Initialize mkldnn quantizer and execute mkldnn quantization pass
@@ -337,8 +394,7 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \param[out] output_data output tensor
   ///
   template <typename T>
-  void GetFetchOne(const framework::LoDTensor &fetchs,
-                   PaddleTensor *output_data);
+  void GetFetchOne(const phi::DenseTensor &fetchs, PaddleTensor *output_data);
   ///
   /// \brief PreSet for Mkldnn multi-thread and dynamic shape input.
   ///
@@ -367,7 +423,7 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   void MkldnnPostReset();
 
-#if PADDLE_WITH_TENSORRT
+#ifdef PADDLE_WITH_TENSORRT
   ///
   /// \brief save calibration table
   ///
@@ -393,9 +449,16 @@ class AnalysisPredictor : public PaddlePredictor {
   FRIEND_TEST(AnalysisPredictor, with_gpu);
 #endif
 
+ protected:
+  const void *GetDeviceContexts() const override;
+
  private:
   void StatisticShapeRangeInfo();
   void CollectShapeRangeInfo();
+
+  void InitPlace();
+  void InitDeviceContexts();
+  void InitResourceManager(void *stream);
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   // fleet exe related
@@ -438,14 +501,18 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \param[in] block: the block to insert comm ops
   /// \param[in] ring_id: the ring id to be used to init NCCL env
   ///
-  void InsertCommOp(std::string tmp_var_name, int nranks, int rank,
+  void InsertCommOp(std::string tmp_var_name,
+                    int nranks,
+                    int rank,
                     const std::vector<std::string> &peer_endpoints,
-                    framework::BlockDesc *block, int ring_id);
+                    framework::BlockDesc *block,
+                    int ring_id);
 #endif
 
  private:
   AnalysisConfig config_;
-  Argument argument_;
+  std::unique_ptr<Argument> argument_;
+  Argument::fusion_statis_t fusion_statis_;
   std::unique_ptr<NaiveExecutor> executor_;
   platform::Place place_;
   std::shared_ptr<framework::Scope> scope_;
@@ -459,6 +526,8 @@ class AnalysisPredictor : public PaddlePredictor {
   std::vector<framework::OpDesc *> fetches_;
   std::map<size_t, std::string> idx2fetches_;
 
+  phi::DataType model_precision_{phi::DataType::FLOAT32};
+
 #if PADDLE_WITH_MKLDNN
   // Helper class to perform quantization
   class MkldnnQuantizer;
@@ -471,7 +540,7 @@ class AnalysisPredictor : public PaddlePredictor {
 
   // Memory buffer for feed inputs. The temporary LoDTensor will cause serious
   // concurrency problems, wrong results and memory leak, so cache them.
-  std::vector<framework::LoDTensor> feed_tensors_;
+  std::vector<phi::DenseTensor> feed_tensors_;
   details::TensorArrayBatchCleaner tensor_array_batch_cleaner_;
   // A mutex help to make Clone thread safe.
   std::mutex clone_mutex_;
@@ -481,13 +550,22 @@ class AnalysisPredictor : public PaddlePredictor {
   int need_collect_var_shapes_{-1};  // -1 for default, 0 for false, 1 for true.
   std::vector<std::map<std::string, std::vector<int>>> batch_var_shapes_;
   int predictor_id_;
+  int root_predictor_id_{-1};
 
  private:
+  std::vector<Exp_OutputHookFunc> hookfuncs_;
+
   // Some status here that help to determine the status inside the predictor.
   bool status_is_cloned_{false};
 
   std::map<std::string, std::vector<std::vector<int32_t>>> shape_info_;
+  std::map<std::string, std::vector<std::vector<int32_t>>> shape_tensor_value_;
   static int clone_num_;
+
+  bool private_context_{false};
+  void *predictor_stream_{nullptr};
+  std::map<phi::Place, std::shared_future<std::unique_ptr<phi::DeviceContext>>>
+      device_contexts_;
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   // fleet executor related

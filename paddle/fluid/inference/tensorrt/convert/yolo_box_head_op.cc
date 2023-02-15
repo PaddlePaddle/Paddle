@@ -28,14 +28,15 @@ namespace tensorrt {
 class YoloBoxHeadOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(3) << "convert a yolo_box_head op to tensorrt plugin";
 
     framework::OpDesc op_desc(op, nullptr);
     auto* x_tensor = engine_->GetITensor(op_desc.Input("X").front());
     std::vector<int> anchors =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("anchors"));
-    int class_num = BOOST_GET_CONST(int, op_desc.GetAttr("class_num"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("anchors"));
+    int class_num = PADDLE_GET_CONST(int, op_desc.GetAttr("class_num"));
 
     auto* yolo_box_plugin = new plugin::YoloBoxHeadPlugin(anchors, class_num);
     std::vector<nvinfer1::ITensor*> yolo_box_inputs;
@@ -44,8 +45,8 @@ class YoloBoxHeadOpConverter : public OpConverter {
         yolo_box_inputs.data(), yolo_box_inputs.size(), *yolo_box_plugin);
     std::vector<std::string> output_names;
     output_names.push_back(op_desc.Output("Out").front());
-    RreplenishLayerAndOutput(yolo_box_head_layer, "yolo_box_head", output_names,
-                             test_mode);
+    RreplenishLayerAndOutput(
+        yolo_box_head_layer, "yolo_box_head", output_names, test_mode);
   }
 };
 

@@ -16,13 +16,12 @@ import tempfile
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
     def setUp(self):
         self.set_atol()
@@ -61,7 +60,8 @@ class TestBase(IPUOpTest):
         startup_prog.random_seed = self.SEED
         generator = paddle.fluid.unique_name.UniqueNameGenerator()
         self.full_name = '/'.join(
-            [self.attrs['path'].name, self.attrs['model_name']])
+            [self.attrs['path'].name, self.attrs['model_name']]
+        )
 
         with paddle.fluid.unique_name.guard(generator):
             with paddle.static.scope_guard(scope):
@@ -69,13 +69,15 @@ class TestBase(IPUOpTest):
                     x = paddle.static.data(
                         name=self.feed_list[0],
                         shape=self.feed_shape[0],
-                        dtype='float32')
+                        dtype='float32',
+                    )
                     conv1 = paddle.static.nn.conv2d(
                         x,
                         num_filters=3,
                         filter_size=3,
                         bias_attr=False,
-                        name='conv2d')
+                        name='conv2d',
+                    )
                     loss = paddle.mean(conv1)
 
                     if self.attrs['is_training']:
@@ -96,20 +98,22 @@ class TestBase(IPUOpTest):
 
                 ipu_strategy = paddle.static.IpuStrategy()
                 ipu_strategy.set_graph_config(
-                    is_training=self.attrs['is_training'])
+                    is_training=self.attrs['is_training']
+                )
                 program = paddle.static.IpuCompiledProgram(
-                    main_prog, ipu_strategy=ipu_strategy).compile(
-                        self.feed_list, fetch_list)
+                    main_prog, ipu_strategy=ipu_strategy
+                ).compile(self.feed_list, fetch_list)
 
                 result = []
                 for i in range(self.attrs['steps']):
-                    tmp = exe.run(program,
-                                  feed=self.feed,
-                                  fetch_list=fetch_list)
+                    tmp = exe.run(
+                        program, feed=self.feed, fetch_list=fetch_list
+                    )
                     result.append(tmp)
 
                 paddle.static.save_inference_model(
-                    self.full_name, x, loss, exe, program=program.org_program)
+                    self.full_name, x, loss, exe, program=program.org_program
+                )
 
     def _test_load(self, run_ipu):
         if run_ipu:
@@ -118,8 +122,11 @@ class TestBase(IPUOpTest):
             place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
 
-        [inference_program, feed_target_names, fetch_targets] = (
-            paddle.static.load_inference_model(self.full_name, exe))
+        [
+            inference_program,
+            feed_target_names,
+            fetch_targets,
+        ] = paddle.static.load_inference_model(self.full_name, exe)
 
         if run_ipu:
             feed_list = feed_target_names
@@ -127,8 +134,8 @@ class TestBase(IPUOpTest):
             ipu_strategy = paddle.static.IpuStrategy()
             ipu_strategy.set_graph_config(is_training=False)
             program = paddle.static.IpuCompiledProgram(
-                inference_program,
-                ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
+                inference_program, ipu_strategy=ipu_strategy
+            ).compile(feed_list, fetch_list)
         else:
             program = inference_program
 
@@ -141,7 +148,7 @@ class TestBase(IPUOpTest):
         cpu_res = self._test_load(False)
         ipu_res = self._test_load(True)
 
-        self.assertTrue(np.allclose(cpu_res, ipu_res, atol=self.atol))
+        np.testing.assert_allclose(cpu_res, ipu_res, rtol=1e-05, atol=self.atol)
         self.attrs['path'].cleanup()
 
 

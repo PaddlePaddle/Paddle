@@ -15,6 +15,8 @@
 #include "paddle/fluid/eager/nan_inf_utils.h"
 
 #include "paddle/fluid/framework/details/nan_inf_utils_detail.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
 
@@ -38,9 +40,8 @@ void CheckTensorHasNanOrInf(const std::string& api_name, const Tensor& tensor) {
     auto& place = dense_tensor->place();
     if (paddle::platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      paddle::framework::details::tensor_check<
-          paddle::platform::CUDADeviceContext>(api_name, tensor_name,
-                                               *dense_tensor, place);
+      paddle::framework::details::tensor_check<phi::GPUContext>(
+          api_name, tensor_name, *dense_tensor, place);
 #else
       PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
           "Tensor[%s] use gpu place. PaddlePaddle must compile with GPU.",
@@ -48,9 +49,8 @@ void CheckTensorHasNanOrInf(const std::string& api_name, const Tensor& tensor) {
 #endif
       return;
     }
-    paddle::framework::details::tensor_check<
-        paddle::platform::CPUDeviceContext>(api_name, tensor_name,
-                                            *dense_tensor, place);
+    paddle::framework::details::tensor_check<phi::CPUContext>(
+        api_name, tensor_name, *dense_tensor, place);
   }
 }
 
@@ -114,6 +114,7 @@ void CheckTensorHasNanOrInf(const std::string& api_name,
                             const TupleOfTensorAndVector& tensors) {
   CheckTensorHasNanOrInf(api_name, std::get<0>(tensors));
   CheckTensorHasNanOrInf(api_name, std::get<1>(tensors));
+  CheckTensorHasNanOrInf(api_name, std::get<2>(tensors));
 }
 
 }  // namespace egr

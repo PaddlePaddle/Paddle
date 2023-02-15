@@ -18,6 +18,7 @@
 #include <thrust/host_vector.h>
 #include <thrust/random.h>
 #include <thrust/transform.h>
+
 #include <limits>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"

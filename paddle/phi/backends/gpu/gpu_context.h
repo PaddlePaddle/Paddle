@@ -18,14 +18,18 @@ limitations under the License. */
 #include <array>
 #include <functional>
 #include <mutex>
+
 #include "paddle/phi/backends/gpu/forwards.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/backends/gpu/gpu_helper.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/attribute.h"
 #include "paddle/phi/core/device_context.h"
 
 namespace phi {
+
+class CUDAStream;
 
 class DnnWorkspaceHandle {
  public:
@@ -74,13 +78,15 @@ class DnnWorkspaceHandle {
   std::unique_ptr<std::mutex> mtx_;
 };
 
-class PADDLE_API GPUContext : public DeviceContext {
+class PADDLE_API GPUContext : public DeviceContext,
+                              public TypeInfoTraits<DeviceContext, GPUContext> {
  public:
-  GPUContext();
+  explicit GPUContext(const GPUPlace& place,
+                      bool init = true,
+                      int stream_priority = 0);
+
   GPUContext(GPUContext&&);
   GPUContext& operator=(GPUContext&&);
-
-  explicit GPUContext(const GPUPlace& place);
 
   virtual ~GPUContext();
 
@@ -89,6 +95,9 @@ class PADDLE_API GPUContext : public DeviceContext {
 
   /*! \brief  Return gpu stream in the device context. */
   gpuStream_t stream() const;
+
+  /*! \brief  Return CUDAStream in the device context. */
+  CUDAStream* cuda_stream() const;
 
   /*! \brief  Return cudnn  handle in the device context. */
   dnnHandle_t cudnn_handle() const;
@@ -161,6 +170,14 @@ class PADDLE_API GPUContext : public DeviceContext {
 
   void WaitStreamCallback() const;
 
+  // Several methods for adapting Dnn-specific attributes
+  bool HasDnnAttr(const std::string& attr_name) const;
+  const Attribute& GetDnnAttr(const std::string& attr_name) const;
+  void SetDnnAttr(const std::string& attr_name, Attribute attr);
+  void ClearDnnAttr();
+
+  static const char* name() { return "GPUContext"; }
+
  public:
   /*! \brief  Return nccl communicators. */
   ncclComm_t nccl_comm() const;
@@ -183,11 +200,16 @@ class PADDLE_API GPUContext : public DeviceContext {
 
   // Note that this is a trick implementation, which can be used to partially
   // initialize when the SetAllocator interface is not called.
-  void PartialInitWithoutAllocator();
+  void PartialInitWithoutAllocator(int stream_priority = 0);
   // Note that this is a trick implementation that can be used to initialize
   // resources that require an Allocator when the SetAllocator interface is
   // called.
   void PartialInitWithAllocator();
+
+  // Note that this function is a trick implementation since all 'set' methods
+  // are protected by default.
+  // clear: whether clear the original CUDAStream or not
+  void SetCUDAStream(CUDAStream*, bool clear = true);
 
  protected:
   // NOTE: External users manage resources. Used in inference scenarios.
@@ -196,20 +218,28 @@ class PADDLE_API GPUContext : public DeviceContext {
   void SetStream(gpuStream_t);
 
   void SetEigenDevice(Eigen::GpuDevice*);
+  void SetEigenDevice(std::function<Eigen::GpuDevice*()>&&);
 
   void SetBlasHandle(blasHandle_t);
+  void SetBlasHandle(std::function<blasHandle_t()>&&);
 
   void SetBlasTensorCoreHandle(blasHandle_t);
+  void SetBlasTensorCoreHandle(std::function<blasHandle_t()>&&);
 
   void SetBlasTF32Handle(blasHandle_t);
+  void SetBlasTF32Handle(std::function<blasHandle_t()>&&);
 
   void SetBlasLtHandle(blasLtHandle_t);
+  void SetBlasLtHandle(std::function<blasLtHandle_t()>&&);
 
   void SetDnnHandle(dnnHandle_t);
+  void SetDnnHandle(std::function<dnnHandle_t()>&&);
 
   void SetSolverHandle(solverHandle_t);
+  void SetSolverHandle(std::function<solverHandle_t()>&&);
 
   void SetSparseHandle(sparseHandle_t);
+  void SetSparseHandle(std::function<sparseHandle_t()>&&);
 
   void SetDnnWorkspaceHandle(DnnWorkspaceHandle*);
 
@@ -232,10 +262,10 @@ class PADDLE_API GPUContext : public DeviceContext {
   std::unique_ptr<Impl> impl_;
 };
 
-// Note: In order to register the kernel of CUDNN, GPUDNNContext is required.
+// Note: In order to register the kernel of CUDNN, DnnContext is required.
 // Currently, CUDNN kernel directly uses GPUContext. But if the kernel function
 // has the same name, this will lead to duplicate instantiations of GPU kernel
-// and GPUDNN kernel function, so if we using GPUDNNContext = GPUContext, we
+// and Dnn kernel function, so if we using DnnContext = GPUContext, we
 // must use different function name for cudnn kernel
 using GPUDNNContext = GPUContext;
 

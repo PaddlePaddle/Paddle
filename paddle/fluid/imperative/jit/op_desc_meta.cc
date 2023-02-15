@@ -18,7 +18,8 @@ namespace paddle {
 namespace imperative {
 namespace jit {
 
-OpDescMeta::OpDescMeta(const std::string &type, const NameVarBaseMap &inputs,
+OpDescMeta::OpDescMeta(const std::string &type,
+                       const NameVarBaseMap &inputs,
                        const NameVarBaseMap &outputs,
                        const framework::AttributeMap &attrs)
     : type_(type), attrs_(attrs) {

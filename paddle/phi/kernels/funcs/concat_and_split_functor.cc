@@ -37,6 +37,11 @@ struct ConcatFunctor<phi::CPUContext, T> {
     }
     int64_t out_rows = rows, out_cols = 0;
 
+    PADDLE_ENFORCE_NE(
+        rows,
+        0,
+        phi::errors::InvalidArgument("The input size should not be 0."));
+
     std::vector<int64_t> input_cols(input.size());
     for (size_t i = 0; i < num; ++i) {
       int64_t t_cols = input[i].numel() / rows;

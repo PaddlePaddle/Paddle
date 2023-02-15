@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import op_test
 import unittest
+
 import numpy as np
+import op_test
+
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
 
 
 def create_test_not_equal_class(op_type, typename, callback):
@@ -108,8 +106,8 @@ for _type_name in {'float32', 'float64', 'int32', 'int64', 'bool'}:
 
 class TestEqualReduceAPI(unittest.TestCase):
     def test_name(self):
-        x = fluid.layers.assign(np.array([3, 4], dtype="int32"))
-        y = fluid.layers.assign(np.array([3, 4], dtype="int32"))
+        x = paddle.assign(np.array([3, 4], dtype="int32"))
+        y = paddle.assign(np.array([3, 4], dtype="int32"))
         out = paddle.equal_all(x, y, name='equal_res')
         assert 'equal_res' in out.name
 
@@ -118,7 +116,7 @@ class TestEqualReduceAPI(unittest.TestCase):
         x = paddle.ones(shape=[10, 10], dtype="int32")
         y = paddle.ones(shape=[10, 10], dtype="int32")
         out = paddle.equal_all(x, y)
-        assert out.numpy()[0] == True
+        assert out.numpy()[0] is np.True_
         paddle.enable_static()
 
 

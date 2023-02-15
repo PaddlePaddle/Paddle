@@ -13,11 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/batch_norm_kernel.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
-
-#include "paddle/fluid/framework/tensor_util.h"
 
 namespace phi {
 
@@ -36,17 +35,16 @@ using ConstEigenVectorArrayMap =
 template <typename T, typename Context>
 void BatchNormKernel(const Context& ctx,
                      const DenseTensor& x,
-                     const DenseTensor& scale,
-                     const DenseTensor& bias,
                      const DenseTensor& mean,
                      const DenseTensor& variance,
+                     const DenseTensor& scale,
+                     const DenseTensor& bias,
+                     bool is_test,
                      float momentum,
                      float epsilon,
                      const std::string& data_layout_str,
-                     bool is_test,
                      bool use_global_stats,
                      bool trainable_statistics,
-                     bool fuse_with_relu,
                      DenseTensor* y,
                      DenseTensor* mean_out,
                      DenseTensor* variance_out,
@@ -57,7 +55,7 @@ void BatchNormKernel(const Context& ctx,
 
   bool global_stats = test_mode || use_global_stats;
 
-  auto data_layout = paddle::framework::StringToDataLayout(data_layout_str);
+  auto data_layout = phi::StringToDataLayout(data_layout_str);
 
   const auto& x_dims = x.dims();
   PADDLE_ENFORCE_GE(
@@ -107,7 +105,7 @@ void BatchNormKernel(const Context& ctx,
     if ((N * sample_size) == 1) {
       // Only 1 element in normalization dimension,
       // we skip the batch norm calculation, let y = x.
-      paddle::framework::TensorCopy(x, ctx.GetPlace(), y);
+      phi::Copy(ctx, x, ctx.GetPlace(), false, y);
       return;
     }
 

@@ -15,13 +15,12 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
     def setUp(self):
         self.set_atol()
@@ -46,13 +45,14 @@ class TestBase(IPUOpTest):
             "embedding_dim": 16,
             "sparse": False,
             "padding_idx": -1,
-            "weight_attr": None
+            "weight_attr": None,
         }
 
     @IPUOpTest.static_graph
     def build_model(self):
         x = paddle.static.data(
-            name=self.feed_list[0], shape=self.feed_shape[0], dtype='int64')
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='int64'
+        )
         embedding = paddle.nn.Embedding(**self.attrs)
         out = embedding(x)
         if self.is_training:

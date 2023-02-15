@@ -15,13 +15,12 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
     def setUp(self):
         self.set_atol()
@@ -58,22 +57,26 @@ class TestBase(IPUOpTest):
     @IPUOpTest.static_graph
     def build_model(self):
         x = paddle.static.data(
-            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32')
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
         if self.is_training:
             ch = self.feed_shape[0][1]
             conv1 = paddle.static.nn.conv2d(
-                x, num_filters=ch, filter_size=3, bias_attr=False)
+                x, num_filters=ch, filter_size=3, bias_attr=False
+            )
             scale = paddle.ParamAttr(trainable=True)
             bias = paddle.ParamAttr(trainable=True)
-            out = paddle.fluid.layers.nn.layer_norm(
-                conv1, param_attr=scale, bias_attr=bias, **self.attrs)
+            out = paddle.static.nn.layer_norm(
+                conv1, param_attr=scale, bias_attr=bias, **self.attrs
+            )
             loss = paddle.mean(out)
             self.fetch_list = [loss.name]
         else:
             scale = self.attrs['scale']
             bias = self.attrs['shift']
-            out = paddle.fluid.layers.nn.layer_norm(
-                x, param_attr=scale, bias_attr=bias, **self.attrs)
+            out = paddle.static.nn.layer_norm(
+                x, param_attr=scale, bias_attr=bias, **self.attrs
+            )
             self.fetch_list = [out.name]
 
         if self.is_training:
@@ -84,7 +87,8 @@ class TestBase(IPUOpTest):
                 optimizer = paddle.optimizer.Adam(learning_rate=1e-2)
             elif self.optimizer == 'lamb':
                 optimizer = paddle.optimizer.Lamb(
-                    learning_rate=1e-2, lamb_weight_decay=0.0)
+                    learning_rate=1e-2, lamb_weight_decay=0.0
+                )
             if optimizer is not None:
                 optimizer.minimize(loss)
 
@@ -138,7 +142,7 @@ class TestTrainCase1(TestBase):
             "scale": True,
             "shift": True,
             "begin_norm_axis": 1,
-            "epsilon": 1e-05
+            "epsilon": 1e-05,
         }
         self.optimizer = 'sgd'
 
@@ -161,7 +165,7 @@ class TestTrainCase3(TestBase):
             "scale": True,
             "shift": True,
             "begin_norm_axis": 2,
-            "epsilon": 1e-05
+            "epsilon": 1e-05,
         }
         self.optimizer = 'lamb'
 

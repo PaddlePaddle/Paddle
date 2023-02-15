@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -53,11 +52,11 @@ class TestAtan(OpTest):
     def test_out_name(self):
         with fluid.program_guard(fluid.Program()):
             np_x = np.array([0.1])
-            data = fluid.layers.data(name="X", shape=[1])
+            data = paddle.static.data(name="X", shape=[1])
             out = paddle.atan(data, name='Y')
             place = paddle.NPUPlace(0)
             exe = fluid.Executor(place)
-            result, = exe.run(feed={"X": np_x}, fetch_list=[out])
+            (result,) = exe.run(feed={"X": np_x}, fetch_list=[out])
             expected = np.arctan(np_x)
             self.assertEqual(result, expected)
 

@@ -59,6 +59,7 @@ struct EigenPad<Eigen::GpuDevice, T, Rank> {
   template struct FUNCTOR<Eigen::GpuDevice, TYPE, 5>; \
   template struct FUNCTOR<Eigen::GpuDevice, TYPE, 6>
 INSTANTIATION(EigenPad, bool);
+INSTANTIATION(EigenPad, uint8_t);
 INSTANTIATION(EigenPad, int);
 INSTANTIATION(EigenPad, int64_t);
 INSTANTIATION(EigenPad, float);

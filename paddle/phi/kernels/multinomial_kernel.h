@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -21,7 +22,7 @@ namespace phi {
 template <typename T, typename Context>
 void MultinomialKernel(const Context& dev_ctx,
                        const DenseTensor& x,
-                       int num_samples,
+                       const Scalar& num_samples,
                        bool replacement,
                        DenseTensor* out);
 

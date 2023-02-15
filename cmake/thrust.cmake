@@ -1,6 +1,8 @@
 function(add_thrust_patches_if_necessary)
   set(thrust_detect_file ${PROJECT_BINARY_DIR}/detect_thrust.cu)
-  file(WRITE ${thrust_detect_file} ""
+  file(
+    WRITE ${thrust_detect_file}
+    ""
     "#include \"thrust/version.h\"\n"
     "#include \"thrust/shuffle.h\"\n"
     "#include \"stdio.h\"\n"
@@ -10,10 +12,11 @@ function(add_thrust_patches_if_necessary)
     "  return 0;\n"
     "}\n")
 
-  execute_process(COMMAND "${CUDA_NVCC_EXECUTABLE}"
-                  "--run" "${thrust_detect_file}"
-                  WORKING_DIRECTORY "${PROJECT_BINARY_DIR}/CMakeFiles/"
-                  RESULT_VARIABLE nvcc_res ERROR_QUIET)
+  execute_process(
+    COMMAND "${CUDA_NVCC_EXECUTABLE}" "--run" "${thrust_detect_file}"
+    WORKING_DIRECTORY "${PROJECT_BINARY_DIR}/CMakeFiles/"
+    RESULT_VARIABLE nvcc_res
+    ERROR_QUIET)
   if(NOT nvcc_res EQUAL 0)
     set(thrust_patches "${PADDLE_SOURCE_DIR}/patches/thrust")
     message(STATUS "Add thrust patches: ${thrust_patches}")

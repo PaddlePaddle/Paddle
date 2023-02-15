@@ -31,7 +31,8 @@ using TupleOfFourTensors = std::tuple<Tensor, Tensor, Tensor, Tensor>;
 using TupleOfFiveTensors = std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor>;
 using TupleOfSixTensors =
     std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor>;
-using TupleOfTensorAndVector = std::tuple<Tensor, std::vector<Tensor>>;
+using TupleOfTensorAndVector =
+    std::tuple<Tensor, std::vector<Tensor>, std::vector<Tensor>>;
 
 void CheckTensorHasNanOrInf(const std::string& api_name, const Tensor& tensor);
 
@@ -61,4 +62,25 @@ void CheckTensorHasNanOrInf(
     const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                                egr::kSlotSmallVectorSize>& tensors);
 
+template <typename TupleT, size_t N, size_t Last>
+struct NanInfChecker {
+  void operator()(const std::string& api_name, const TupleT& tensors) {
+    CheckTensorHasNanOrInf(api_name, std::get<N>(tensors));
+    NanInfChecker<TupleT, N + 1, Last>()(api_name, tensors);
+  }
+};
+
+template <typename TupleT, size_t N>
+struct NanInfChecker<TupleT, N, N> {
+  void operator()(const std::string& api_name, const TupleT& tensors) {
+    CheckTensorHasNanOrInf(api_name, std::get<N>(tensors));
+  }
+};
+
+template <typename TupleT>
+void CheckTensorHasNanOrInf(const std::string& api_name,
+                            const TupleT& tensors) {
+  constexpr size_t size = std::tuple_size<TupleT>::value;
+  NanInfChecker<TupleT, 0, size - 1>()(api_name, tensors);
+}
 }  // namespace egr

@@ -16,10 +16,11 @@
 
 #include <algorithm>
 #include <vector>
+
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 namespace phi {
 
@@ -207,19 +208,19 @@ void PsroiPoolKernel(const Context& ctx,
   int threads = kNumCUDAThreads;
 
   // call cuda kernel function
-  GPUPSROIPoolForward<T><<<blocks, threads, 0, ctx.stream()>>>(
-      output_size,
-      x.data<T>(),
-      rois.data<T>(),
-      spatial_scale,
-      input_channels,
-      height,
-      width,
-      output_channels,
-      pooled_height,
-      pooled_width,
-      rois_batch_id_list_gpu.data<int>(),
-      ctx.template Alloc<T>(out));
+  GPUPSROIPoolForward<T>
+      <<<blocks, threads, 0, ctx.stream()>>>(output_size,
+                                             x.data<T>(),
+                                             rois.data<T>(),
+                                             spatial_scale,
+                                             input_channels,
+                                             height,
+                                             width,
+                                             output_channels,
+                                             pooled_height,
+                                             pooled_width,
+                                             rois_batch_id_list_gpu.data<int>(),
+                                             ctx.template Alloc<T>(out));
 }
 
 }  // namespace phi

@@ -14,13 +14,11 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/meshgrid_kernel.h"
-
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/meshgrid_kernel.h"
 
 namespace phi {
 
@@ -59,8 +57,7 @@ void MeshgridForward(const Context& ctx,
     view_shape[i] = shape[i];
 
     DenseTensor reshape_ins_tensor;
-    paddle::framework::TensorCopy(
-        *ins[i], ctx.GetPlace(), ctx, &reshape_ins_tensor);
+    phi::Copy(ctx, *ins[i], ctx.GetPlace(), false, &reshape_ins_tensor);
     DDim out_dims_reshape = phi::make_ddim(view_shape);
     reshape_ins_tensor.Resize(out_dims_reshape);
     DDim out_dims = phi::make_ddim(shape);

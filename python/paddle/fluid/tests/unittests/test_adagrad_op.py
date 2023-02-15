@@ -12,24 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
+import math
 import unittest
+
 import numpy as np
+from eager_op_test import OpTest
+
+import paddle
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
-from op_test import OpTest
-import math
-import paddle
+
+
+def adamgrad_wrapper(param, grad, moment, learning_rate, epsilon):
+    paddle._C_ops.adagrad_(param, grad, moment, learning_rate, epsilon)
 
 
 class TestAdagradOp1(OpTest):
-    ''' Test Adagrad operator with explicit attributes
-    '''
+    '''Test Adagrad operator with explicit attributes'''
 
     def setUp(self):
         self.op_type = "adagrad"
-
+        self.python_api = adamgrad_wrapper
+        self.python_out_sig = ['out']
         param = np.random.random((123, 321)).astype("float32")
         grad = np.random.random((123, 321)).astype("float32")
         moment = np.zeros((123, 321)).astype("float32")
@@ -40,7 +44,7 @@ class TestAdagradOp1(OpTest):
             'Param': param,
             'Grad': grad,
             'Moment': moment,
-            'LearningRate': np.array([lr]).astype("float32")
+            'LearningRate': np.array([lr]).astype("float32"),
         }
 
         self.attrs = {'epsilon': epsilon}
@@ -55,11 +59,12 @@ class TestAdagradOp1(OpTest):
 
 
 class TestAdagradOp2(OpTest):
-    ''' Test Adagrad operator with default attributes
-    '''
+    '''Test Adagrad operator with default attributes'''
 
     def setUp(self):
         self.op_type = "adagrad"
+        self.python_api = adamgrad_wrapper
+        self.python_out_sig = ['out']
 
         param = np.random.random((123, 321)).astype("float32")
         grad = np.random.random((123, 321)).astype("float32")
@@ -71,7 +76,7 @@ class TestAdagradOp2(OpTest):
             'Param': param,
             'Grad': grad,
             'Moment': moment,
-            'LearningRate': np.array([lr]).astype("float32")
+            'LearningRate': np.array([lr]).astype("float32"),
         }
 
         self.attrs = {'epsilon': epsilon}
@@ -89,7 +94,7 @@ class TestSparseAdagradOp(unittest.TestCase):
     def check_with_place(self, place):
         scope = core.Scope()
 
-        # create and initialize Grad Variable   
+        # create and initialize Grad Variable
         height = 10
         rows = [0, 4, 7, 4]
         row_numel = 12
@@ -128,7 +133,8 @@ class TestSparseAdagradOp(unittest.TestCase):
             Moment='Moment',
             MomentOut='Moment',
             LearningRate='LearningRate',
-            epsilon=2.0)
+            epsilon=2.0,
+        )
 
         adagrad_op.run(scope, place)
 
@@ -153,33 +159,34 @@ class TestSparseAdagradOp(unittest.TestCase):
             return param - lr * grad / (math.sqrt(m) + epsilon)
 
         self.assertAlmostEqual(
-            get_out(5.0, 2.0, 2.0, 6.0, 2.0),
-            result_array[rows[0], 0],
-            places=5)
+            get_out(5.0, 2.0, 2.0, 6.0, 2.0), result_array[rows[0], 0], places=5
+        )
         self.assertAlmostEqual(
-            get_out(5.0, 2.0, 1.0, 3.0, 2.0),
-            result_array[rows[0], 2],
-            places=5)
+            get_out(5.0, 2.0, 1.0, 3.0, 2.0), result_array[rows[0], 2], places=5
+        )
         self.assertAlmostEqual(
-            get_out(5.0, 2.0, 0.0, 2.0, 2.0), result_array[1, 0], places=5)
+            get_out(5.0, 2.0, 0.0, 2.0, 2.0), result_array[1, 0], places=5
+        )
 
         # grad_merge = 1.0 + 1.0
         # m = 6.0
         self.assertAlmostEqual(
             get_out(5.0, 2.0, 2.0, 6.0, 2.0),
             result_array[rows[1], 10],
-            places=5)
+            places=5,
+        )
 
         self.assertAlmostEqual(
-            get_out(5.0, 2.0, 0.0, 2.0, 2.0), result_array[5, 8], places=5)
+            get_out(5.0, 2.0, 0.0, 2.0, 2.0), result_array[5, 8], places=5
+        )
         self.assertAlmostEqual(
-            get_out(5.0, 2.0, 1.0, 3.0, 2.0),
-            result_array[rows[2], 1],
-            places=5)
+            get_out(5.0, 2.0, 1.0, 3.0, 2.0), result_array[rows[2], 1], places=5
+        )
         self.assertAlmostEqual(
             get_out(5.0, 2.0, 4.0, 18.0, 2.0),
             result_array[rows[2], 8],
-            places=5)
+            places=5,
+        )
 
     def test_sparse_adagrad(self):
         places = [core.CPUPlace()]

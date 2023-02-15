@@ -94,8 +94,9 @@ void PipelineTrainer::CopyParameters(int microbatch_id,
 
 void PipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
                                      const platform::Place& place) {
-  PADDLE_ENFORCE_NOT_NULL(root_scope_, platform::errors::InvalidArgument(
-                                           "root_scope_ can not be nullptr"));
+  PADDLE_ENFORCE_NOT_NULL(
+      root_scope_,
+      platform::errors::InvalidArgument("root_scope_ can not be nullptr"));
   microbatch_scopes_.resize(num_microbatches_);
 
   VLOG(3) << "Create minibatch and microbatch scopes...";

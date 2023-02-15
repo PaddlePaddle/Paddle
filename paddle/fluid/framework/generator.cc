@@ -15,14 +15,47 @@ limitations under the License. */
 #include "paddle/fluid/framework/generator.h"
 
 #include <glog/logging.h>
+
 #include <memory>
 #include <utility>
 
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
+
+const std::shared_ptr<Generator>& DefaultXPUGenerator(int64_t device_id) {
+#if defined(PADDLE_WITH_XPU)
+
+  static int64_t num_xpu_devices = -1;
+  static std::once_flag num_devices_init_flag;
+  static std::deque<std::once_flag> xpu_device_flags;
+  static std::vector<std::shared_ptr<Generator>> default_xpu_generators;
+
+  std::call_once(num_devices_init_flag, []() {
+    num_xpu_devices = paddle::platform::GetXPUDeviceCount();
+    xpu_device_flags.resize(num_xpu_devices);
+    default_xpu_generators.resize(num_xpu_devices);
+  });
+  if (device_id < 0) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "xpu device id shoule be greater than 0"));
+  }
+
+  std::call_once(xpu_device_flags[device_id], [device_id]() {
+    default_xpu_generators[device_id] =
+        std::make_shared<Generator>(GetRandomSeed(), device_id);
+    VLOG(4) << "initial seed: "
+            << default_xpu_generators[device_id]->GetCurrentSeed();
+  });
+  return default_xpu_generators[device_id];
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "getDefaultXPUGenerator only support in XPU place"));
+#endif
+}
 
 const std::shared_ptr<Generator>& DefaultCUDAGenerator(int64_t device_id) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -72,14 +105,16 @@ const std::shared_ptr<Generator>& SetRandomSeedGenerator(
     const std::string& name, uint64_t seed) {
   auto& rng_map = GetRandomSeedGeneratorMap();
   auto iter = rng_map.find(name);
-  PADDLE_ENFORCE_EQ(iter == rng_map.end(), true,
+  PADDLE_ENFORCE_EQ(iter == rng_map.end(),
+                    true,
                     platform::errors::AlreadyExists(
                         "%s RandomSeedGenerator is already exist", name));
 
   auto generator = std::make_shared<Generator>(seed);
   bool emplace_success = rng_map.emplace(name, generator).second;
   PADDLE_ENFORCE_EQ(
-      emplace_success, true,
+      emplace_success,
+      true,
       platform::errors::PermissionDenied(
           "SetRandomSeedGenerator cannot emplace %s RandomSeedGenerator",
           name));
@@ -90,7 +125,8 @@ const std::shared_ptr<Generator>& GetRandomSeedGenerator(
     const std::string& name) {
   auto& rng_map = GetRandomSeedGeneratorMap();
   auto iter = rng_map.find(name);
-  PADDLE_ENFORCE_EQ(iter != rng_map.end(), true,
+  PADDLE_ENFORCE_EQ(iter != rng_map.end(),
+                    true,
                     platform::errors::NotFound(
                         "%s RandomSeedGenerator is not found, please "
                         "use `set_random_seed_generator` to set rng first",
@@ -127,6 +163,11 @@ std::shared_ptr<std::mt19937_64> GetCPURandomEngine(uint64_t seed) {
 phi::Generator::GeneratorState Generator::GetState() {
   std::lock_guard<std::mutex> lock(this->mu_);
   state_.cpu_engine = *engine_;
+  VLOG(4) << "Get Random state: "
+          << "device id: " << (uint64_t)(this->state_.device)
+          << ", current_seed: " << this->state_.current_seed
+          << ", thread_offset: " << this->state_.thread_offset
+          << ", cpu engine: " << *(this->engine_);
   return this->state_;
 }
 
@@ -134,6 +175,11 @@ void Generator::SetState(const phi::Generator::GeneratorState& state) {
   std::lock_guard<std::mutex> lock(this->mu_);
   this->state_ = state;
   this->engine_ = std::make_shared<std::mt19937_64>(state.cpu_engine);
+  VLOG(4) << "Set Random state: "
+          << "device id: " << (uint64_t)(this->state_.device)
+          << ", current_seed: " << this->state_.current_seed
+          << ", thread_offset: " << this->state_.thread_offset
+          << ", cpu engine: " << *(this->engine_);
 }
 
 uint64_t Generator::GetCurrentSeed() {

@@ -18,6 +18,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/var_type_inference.h"
 #include "paddle/fluid/imperative/type_defs.h"
@@ -67,19 +68,20 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
     return (it != outputs_.end() && it->second.size() > 0);
   }
 
-  size_t InputSize(const std::string& name) const {
+  size_t InputSize(const std::string& name) const override {
     return inputs_.at(name).size();
   }
 
   const std::string& InputVarName(const std::string& name,
-                                  const int index = 0) const {
+                                  const int index = 0) const override {
     return GetNameFromVar(inputs_.at(name)[index]);
   }
 
   bool InputTypeAnyOf(const std::string& name,
                       framework::proto::VarType::Type type) const override {
     auto& inputs = inputs_.at(name);
-    return std::any_of(inputs.begin(), inputs.end(),
+    return std::any_of(inputs.begin(),
+                       inputs.end(),
                        [&type](const std::shared_ptr<VarType>& var) {
                          return GetType(var) == type;
                        });
@@ -88,7 +90,8 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
   bool InputTypeAllOf(const std::string& name,
                       framework::proto::VarType::Type type) const override {
     auto& inputs = inputs_.at(name);
-    return std::all_of(inputs.begin(), inputs.end(),
+    return std::all_of(inputs.begin(),
+                       inputs.end(),
                        [&type](const std::shared_ptr<VarType>& var) {
                          return GetType(var) == type;
                        });

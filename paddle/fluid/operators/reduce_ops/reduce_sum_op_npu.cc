@@ -26,8 +26,8 @@ template <typename DeviceContext, typename T>
 class ReduceSumNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::Tensor>("X");
-    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     bool reduce_all = ctx.Attr<bool>("reduce_all");
     bool keep_dims = ctx.Attr<bool>("keep_dim");
     auto dims = ctx.Attr<std::vector<int>>("dim");
@@ -43,8 +43,8 @@ class ReduceSumNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    framework::Tensor cast_x;
-    framework::Tensor cast_out;
+    phi::DenseTensor cast_x;
+    phi::DenseTensor cast_out;
     // NOTE: ReduceSumD only supports fp32 and fp16
     if (framework::TransToProtoVarType(x->dtype()) !=
             framework::proto::VarType::FP32 &&
@@ -71,13 +71,17 @@ class ReduceSumNPUKernel : public framework::OpKernel<T> {
       }
 
       const auto& runner =
-          NpuOpRunner("ReduceSumD", {cast_x}, {cast_out},
+          NpuOpRunner("ReduceSumD",
+                      {cast_x},
+                      {cast_out},
                       {{"axes", dim_vec}, {"keep_dims", keep_dims}});
       runner.Run(stream);
 
     } else {
       const auto& runner =
-          NpuOpRunner("ReduceSumD", {cast_x}, {cast_out},
+          NpuOpRunner("ReduceSumD",
+                      {cast_x},
+                      {cast_out},
                       {{"axes", dims}, {"keep_dims", keep_dims}});
       runner.Run(stream);
     }
@@ -89,7 +93,9 @@ class ReduceSumNPUKernel : public framework::OpKernel<T> {
       auto dst_dtype =
           ConvertToNpuDtype(framework::TransToProtoVarType(out->dtype()));
       const auto& runner_cast =
-          NpuOpRunner("Cast", {cast_out}, {*out},
+          NpuOpRunner("Cast",
+                      {cast_out},
+                      {*out},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast.Run(stream);
     }
@@ -100,10 +106,9 @@ template <typename DeviceContext, typename T>
 class ReduceSumGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::Tensor>("X");
-    auto* out_grad =
-        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto* x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* x_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     bool reduce_all = ctx.Attr<bool>("reduce_all");
     bool keep_dims = ctx.Attr<bool>("keep_dim");
     auto dims = ctx.Attr<std::vector<int>>("dim");
@@ -114,7 +119,9 @@ class ReduceSumGradNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
     if (keep_dims || reduce_all) {
-      const auto& runner = NpuOpRunner("BroadcastToD", {*out_grad}, {*x_grad},
+      const auto& runner = NpuOpRunner("BroadcastToD",
+                                       {*out_grad},
+                                       {*x_grad},
                                        {{"shape", phi::vectorize(x->dims())}});
       runner.Run(stream);
     } else {
@@ -122,18 +129,20 @@ class ReduceSumGradNPUKernel : public framework::OpKernel<T> {
       out_dims = UnsqueezeKernel<DeviceContext, T>::GetOutputShape(
           dims, out_grad->dims());
 
-      Tensor out_grad_tmp(out_grad->type());
+      phi::DenseTensor out_grad_tmp(out_grad->type());
       out_grad_tmp.Resize(out_dims);
       out_grad_tmp.mutable_data<T>(ctx.GetPlace());
       framework::TensorCopy(
-          *out_grad, ctx.GetPlace(),
+          *out_grad,
+          ctx.GetPlace(),
           ctx.template device_context<platform::DeviceContext>(),
           &out_grad_tmp);
       out_grad_tmp.Resize(out_dims);
 
-      const auto& runner =
-          NpuOpRunner("BroadcastToD", {out_grad_tmp}, {*x_grad},
-                      {{"shape", phi::vectorize(x->dims())}});
+      const auto& runner = NpuOpRunner("BroadcastToD",
+                                       {out_grad_tmp},
+                                       {*x_grad},
+                                       {{"shape", phi::vectorize(x->dims())}});
       runner.Run(stream);
     }
   }

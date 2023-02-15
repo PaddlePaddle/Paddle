@@ -18,27 +18,36 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
 template <typename T>
-static void Mul(const framework::ExecutionContext& ctx, const Tensor& X,
-                const Tensor& Y, Tensor* Out) {
+static void Mul(const framework::ExecutionContext& ctx,
+                const phi::DenseTensor& X,
+                const phi::DenseTensor& Y,
+                phi::DenseTensor* Out) {
   Out->mutable_data<T>(ctx.GetPlace());
 
   MLUCnnlTensorDesc x_desc(X, CNNL_LAYOUT_ARRAY, ToCnnlDataType<T>());
   MLUCnnlTensorDesc y_desc(Y, CNNL_LAYOUT_ARRAY, ToCnnlDataType<T>());
   MLUCnnlTensorDesc out_desc(*Out, CNNL_LAYOUT_ARRAY, ToCnnlDataType<T>());
 
-  MLUCnnlOpTensorDesc mul_op_desc(CNNL_OP_TENSOR_MUL, ToCnnlDataType<T>(),
-                                  CNNL_NOT_PROPAGATE_NAN);
-  MLUCnnl::OpTensor(ctx, mul_op_desc.get(), x_desc.get(), GetBasePtr(&X),
-                    y_desc.get(), GetBasePtr(&Y), out_desc.get(),
-                    GetBasePtr(Out), ToCnnlDataType<T>());
+  MLUCnnlOpTensorDesc mul_op_desc(
+      CNNL_OP_TENSOR_MUL, ToCnnlDataType<T>(), CNNL_NOT_PROPAGATE_NAN);
+  MLUCnnl::OpTensor(ctx,
+                    mul_op_desc.get(),
+                    x_desc.get(),
+                    GetBasePtr(&X),
+                    y_desc.get(),
+                    GetBasePtr(&Y),
+                    out_desc.get(),
+                    GetBasePtr(Out),
+                    ToCnnlDataType<T>());
 }
 
 template <typename T>
-static void MatMul2D(const framework::ExecutionContext& ctx, const Tensor& X,
-                     const Tensor& Y, Tensor* Out, const bool trans_x,
+static void MatMul2D(const framework::ExecutionContext& ctx,
+                     const phi::DenseTensor& X,
+                     const phi::DenseTensor& Y,
+                     phi::DenseTensor* Out,
+                     const bool trans_x,
                      const bool trans_y) {
   Out->mutable_data<T>(ctx.GetPlace());
 
@@ -46,14 +55,54 @@ static void MatMul2D(const framework::ExecutionContext& ctx, const Tensor& X,
   MLUCnnlTensorDesc y_desc(Y, CNNL_LAYOUT_ARRAY, ToCnnlDataType<T>());
   MLUCnnlTensorDesc out_desc(*Out, CNNL_LAYOUT_ARRAY, ToCnnlDataType<T>());
 
-  MLUCnnl::Matmul(ctx, trans_x, trans_y, x_desc.get(), GetBasePtr(&X),
-                  y_desc.get(), GetBasePtr(&Y), out_desc.get(),
+  MLUCnnl::Matmul(ctx,
+                  trans_x,
+                  trans_y,
+                  x_desc.get(),
+                  GetBasePtr(&X),
+                  y_desc.get(),
+                  GetBasePtr(&Y),
+                  out_desc.get(),
                   GetBasePtr(Out));
 }
 
 template <typename T>
-static void MatMulND(const framework::ExecutionContext& ctx, const Tensor& X,
-                     const Tensor& Y, Tensor* Out, const bool trans_x,
+static void MatMul2DwithReduceBatch(const framework::ExecutionContext& ctx,
+                                    const phi::DenseTensor& X,
+                                    const phi::DenseTensor& Y,
+                                    phi::DenseTensor* Out,
+                                    const bool trans_x,
+                                    const bool trans_y) {
+  if (!Out->initialized()) {
+    Out->mutable_data<T>(ctx.GetPlace());
+  }
+  // reshape to 2D matmul
+  std::vector<int64_t> x_dims = phi::vectorize(X.dims());
+  std::vector<int64_t> y_dims = phi::vectorize(Y.dims());
+  std::vector<int> realx_dims(
+      {static_cast<int>(x_dims[0] * x_dims[1]), static_cast<int>(x_dims[2])});
+  std::vector<int> realy_dims(
+      {static_cast<int>(y_dims[0] * y_dims[1]), static_cast<int>(y_dims[2])});
+  MLUCnnlTensorDesc x_desc(2, realx_dims.data(), ToCnnlDataType<T>());
+  MLUCnnlTensorDesc y_desc(2, realy_dims.data(), ToCnnlDataType<T>());
+  MLUCnnlTensorDesc out_desc(*Out, CNNL_LAYOUT_ARRAY, ToCnnlDataType<T>());
+  MLUCnnl::Matmul(ctx,
+                  trans_x,
+                  trans_y,
+                  x_desc.get(),
+                  GetBasePtr(&X),
+                  y_desc.get(),
+                  GetBasePtr(&Y),
+                  out_desc.get(),
+                  GetBasePtr(Out));
+}
+
+template <typename T>
+static void MatMulND(const framework::ExecutionContext& ctx,
+                     const phi::DenseTensor& X,
+                     const phi::DenseTensor& Y,
+                     phi::DenseTensor* Out,
+                     const bool trans_x,
                      const bool trans_y) {
   if (!Out->initialized()) {
     Out->mutable_data<T>(ctx.GetPlace());
@@ -63,16 +112,23 @@ static void MatMulND(const framework::ExecutionContext& ctx, const Tensor& X,
   MLUCnnlTensorDesc y_desc(Y, CNNL_LAYOUT_ARRAY, ToCnnlDataType<T>());
   MLUCnnlTensorDesc out_desc(*Out, CNNL_LAYOUT_ARRAY, ToCnnlDataType<T>());
 
-  MLUCnnl::BatchMatmul(ctx, trans_x, trans_y, x_desc.get(), GetBasePtr(&X),
-                       y_desc.get(), GetBasePtr(&Y), out_desc.get(),
+  MLUCnnl::BatchMatmul(ctx,
+                       trans_x,
+                       trans_y,
+                       x_desc.get(),
+                       GetBasePtr(&X),
+                       y_desc.get(),
+                       GetBasePtr(&Y),
+                       out_desc.get(),
                        GetBasePtr(Out));
 }
 
 template <typename T>
 static void ReduceDims(const framework::ExecutionContext& ctx,
                        const std::vector<int64_t>& dims,
-                       const std::vector<int64_t>& bcast_dims, const Tensor& in,
-                       Tensor* out) {
+                       const std::vector<int64_t>& bcast_dims,
+                       const phi::DenseTensor& in,
+                       phi::DenseTensor* out) {
   std::vector<int64_t> axes;
   int64_t size = bcast_dims.size();
   int64_t diff = bcast_dims.size() - dims.size();
@@ -91,22 +147,33 @@ static void ReduceDims(const framework::ExecutionContext& ctx,
   MLUCnnlTensorDesc out_desc(*out, CNNL_LAYOUT_ARRAY, ToCnnlDataType<T>());
 
   std::vector<int> reduce_dims(axes.begin(), axes.end());
-  MLUCnnlReduceDesc reduce_desc(reduce_dims, CNNL_REDUCE_ADD,
-                                ToCnnlDataType<T>(), CNNL_NOT_PROPAGATE_NAN,
-                                CNNL_REDUCE_NO_INDICES, CNNL_32BIT_INDICES);
+  MLUCnnlReduceDesc reduce_desc(reduce_dims,
+                                CNNL_REDUCE_ADD,
+                                ToCnnlDataType<T>(),
+                                CNNL_NOT_PROPAGATE_NAN,
+                                CNNL_REDUCE_NO_INDICES,
+                                CNNL_32BIT_INDICES);
 
-  MLUCnnl::Reduce(ctx, true /*need_workspace*/, reduce_desc.get(), nullptr,
-                  in_desc.get(), GetBasePtr(&in), 0 /*indices_size*/, nullptr,
-                  nullptr, out_desc.get(), GetBasePtr(out));
+  MLUCnnl::Reduce(ctx,
+                  true /*need_workspace*/,
+                  reduce_desc.get(),
+                  nullptr,
+                  in_desc.get(),
+                  GetBasePtr(&in),
+                  0 /*indices_size*/,
+                  nullptr,
+                  nullptr,
+                  out_desc.get(),
+                  GetBasePtr(out));
 }
 
 template <typename T>
 class MatMulV2MLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* X = ctx.Input<framework::Tensor>("X");
-    auto* Y = ctx.Input<framework::Tensor>("Y");
-    auto* Out = ctx.Output<framework::Tensor>("Out");
+    auto* X = ctx.Input<phi::DenseTensor>("X");
+    auto* Y = ctx.Input<phi::DenseTensor>("Y");
+    auto* Out = ctx.Output<phi::DenseTensor>("Out");
     const bool trans_x = ctx.Attr<bool>("trans_x");
     const bool trans_y = ctx.Attr<bool>("trans_y");
 
@@ -124,7 +191,7 @@ class MatMulV2MLUKernel : public framework::OpKernel<T> {
     }
 
     // Resize dim 1 to 2
-    Tensor x_temp, y_temp;
+    phi::DenseTensor x_temp, y_temp;
     x_temp.ShareDataWith(*X);
     y_temp.ShareDataWith(*Y);
     if (x_ndim == 1) {
@@ -152,19 +219,27 @@ class MatMulV2MLUKernel : public framework::OpKernel<T> {
 
     const int K = trans_x ? x_dims[x_ndim - 2] : x_dims[x_ndim - 1];
     if (trans_y) {
-      PADDLE_ENFORCE_EQ(y_dims[y_ndim - 1], K,
-                        platform::errors::InvalidArgument(
-                            "Input(Y) has error dim."
-                            "Y'dims[%d] must be equal to %d"
-                            "But received Y'dims[%d] is %d",
-                            y_ndim - 1, K, y_ndim - 1, y_dims[y_ndim - 1]));
+      PADDLE_ENFORCE_EQ(
+          y_dims[y_ndim - 1],
+          K,
+          platform::errors::InvalidArgument("Input(Y) has error dim."
+                                            "Y'dims[%d] must be equal to %d"
+                                            "But received Y'dims[%d] is %d",
+                                            y_ndim - 1,
+                                            K,
+                                            y_ndim - 1,
+                                            y_dims[y_ndim - 1]));
     } else {
-      PADDLE_ENFORCE_EQ(y_dims[y_ndim - 2], K,
-                        platform::errors::InvalidArgument(
-                            "Input(Y) has error dim."
-                            "Y'dims[%d] must be equal to %d"
-                            "But received Y'dims[%d] is %d",
-                            y_ndim - 2, K, y_ndim - 2, y_dims[y_ndim - 2]));
+      PADDLE_ENFORCE_EQ(
+          y_dims[y_ndim - 2],
+          K,
+          platform::errors::InvalidArgument("Input(Y) has error dim."
+                                            "Y'dims[%d] must be equal to %d"
+                                            "But received Y'dims[%d] is %d",
+                                            y_ndim - 2,
+                                            K,
+                                            y_ndim - 2,
+                                            y_dims[y_ndim - 2]));
     }
 
     if (x_ndim == 2 && y_ndim == 2) {
@@ -186,11 +261,11 @@ template <typename T>
 class MatMulGradV2MLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* X = ctx.Input<framework::Tensor>("X");
-    auto* Y = ctx.Input<framework::Tensor>("Y");
-    auto* dOut = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto* dX = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-    auto* dY = ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
+    auto* X = ctx.Input<phi::DenseTensor>("X");
+    auto* Y = ctx.Input<phi::DenseTensor>("Y");
+    auto* dOut = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* dX = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dY = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
     const bool trans_x = ctx.Attr<bool>("trans_x");
     const bool trans_y = ctx.Attr<bool>("trans_y");
 
@@ -213,7 +288,7 @@ class MatMulGradV2MLUKernel : public framework::OpKernel<T> {
     }
 
     // Resize dim 1 to 2
-    Tensor x_temp, y_temp, dout_temp;
+    phi::DenseTensor x_temp, y_temp, dout_temp;
     x_temp.ShareDataWith(*X);
     y_temp.ShareDataWith(*Y);
     dout_temp.ShareDataWith(*dOut);
@@ -267,7 +342,7 @@ class MatMulGradV2MLUKernel : public framework::OpKernel<T> {
     std::copy(y_dims.end() - 2, y_dims.end(), y_bcast_dims.end() - 2);
 
     if (dX) {
-      Tensor dx_temp(X->type());
+      phi::DenseTensor dx_temp(X->type());
       if (x_dims != x_bcast_dims) {
         dx_temp.Resize(phi::make_ddim(x_bcast_dims));
       } else {
@@ -287,22 +362,32 @@ class MatMulGradV2MLUKernel : public framework::OpKernel<T> {
     }
 
     if (dY) {
-      Tensor dy_temp(Y->type());
-      if (y_dims != y_bcast_dims) {
-        dy_temp.Resize(phi::make_ddim(y_bcast_dims));
+      // Case 3: [B, M, K] x [K, N] =  [B, M, N]  better performance
+      // otherwise, tensor dy_temp in else branch might encounter
+      // numel overflow due to cnnlTensorDescriptor limitation
+      if (x_dims.size() == 3 && phi::vectorize(Y->dims()).size() == 2) {
+        if (trans_y) {
+          MatMul2DwithReduceBatch<T>(ctx, dout_temp, x_temp, dY, true, trans_x);
+        } else {
+          MatMul2DwithReduceBatch<T>(
+              ctx, x_temp, dout_temp, dY, !trans_x, false);
+        }
       } else {
-        dY->mutable_data<T>(ctx.GetPlace());
-        dy_temp.ShareDataWith(*dY);
-      }
-
-      if (trans_y) {
-        MatMulND<T>(ctx, dout_temp, x_temp, &dy_temp, true, trans_x);
-      } else {
-        MatMulND<T>(ctx, x_temp, dout_temp, &dy_temp, !trans_x, false);
-      }
-
-      if (y_dims != y_bcast_dims) {
-        ReduceDims<T>(ctx, y_dims, y_bcast_dims, dy_temp, dY);
+        phi::DenseTensor dy_temp(Y->type());
+        if (y_dims != y_bcast_dims) {
+          dy_temp.Resize(phi::make_ddim(y_bcast_dims));
+        } else {
+          dY->mutable_data<T>(ctx.GetPlace());
+          dy_temp.ShareDataWith(*dY);
+        }
+        if (trans_y) {
+          MatMulND<T>(ctx, dout_temp, x_temp, &dy_temp, true, trans_x);
+        } else {
+          MatMulND<T>(ctx, x_temp, dout_temp, &dy_temp, !trans_x, false);
+        }
+        if (y_dims != y_bcast_dims) {
+          ReduceDims<T>(ctx, y_dims, y_bcast_dims, dy_temp, dY);
+        }
       }
     }
   }
@@ -313,7 +398,9 @@ class MatMulGradV2MLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_MLU_KERNEL(matmul_v2, ops::MatMulV2MLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(matmul_v2,
+                       ops::MatMulV2MLUKernel<float>,
                        ops::MatMulV2MLUKernel<plat::float16>);
-REGISTER_OP_MLU_KERNEL(matmul_v2_grad, ops::MatMulGradV2MLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(matmul_v2_grad,
+                       ops::MatMulGradV2MLUKernel<float>,
                        ops::MatMulGradV2MLUKernel<plat::float16>);

@@ -14,7 +14,6 @@
 
 import os
 import sys
-import time
 
 
 def train():
@@ -25,8 +24,7 @@ def train():
     worker_endpoints = worker_endpoints_env
     trainers_num = len(worker_endpoints.split(','))
 
-    name = "worker_endpoints:{}" \
-        .format(worker_endpoints)
+    name = "worker_endpoints:{}".format(worker_endpoints)
 
     print(name)
     file_name = os.getenv("PADDLE_LAUNCH_LOG")

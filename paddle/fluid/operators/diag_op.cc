@@ -28,7 +28,8 @@ class DiagOp : public framework::OperatorWithKernel {
     auto s_dims = ctx->GetInputDim("Diagonal");
 
     PADDLE_ENFORCE_EQ(
-        s_dims.size(), 1UL,
+        s_dims.size(),
+        1UL,
         platform::errors::InvalidArgument(
             "The dimension of 'diagonal' must be 1, but now it is %d.",
             s_dims.size()));
@@ -44,7 +45,7 @@ class DiagOpMaker : public framework::OpProtoAndCheckerMaker {
              "Diagonal values of square matrix. It is a tensor with rank 1.");
     AddOutput("Out", "A square matrix.");
     AddComment(R"DOC(
-    Return a square matrix with specified diagonal values. 
+    Return a square matrix with specified diagonal values.
 )DOC");
   }
 };
@@ -53,11 +54,13 @@ class DiagOpMaker : public framework::OpProtoAndCheckerMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    diag, ops::DiagOp, ops::DiagOpMaker,
+    diag,
+    ops::DiagOp,
+    ops::DiagOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(
-    diag, ops::DiagKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::DiagKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::DiagKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::DiagKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(diag,
+                       ops::DiagKernel<phi::CPUContext, int>,
+                       ops::DiagKernel<phi::CPUContext, float>,
+                       ops::DiagKernel<phi::CPUContext, double>,
+                       ops::DiagKernel<phi::CPUContext, int64_t>);

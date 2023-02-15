@@ -12,11 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef _USE_MATH_DEFINES
+#define _USE_MATH_DEFINES  // use M_2_SQRTPI on Windows
+#endif
+
 #include "paddle/phi/kernels/erfinv_grad_kernel.h"
-#include "paddle/phi/kernels/impl/erfinv_grad_kernel_impl.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/erfinv_grad_kernel_impl.h"
 
 PD_REGISTER_KERNEL(
     erfinv_grad, CPU, ALL_LAYOUT, phi::ErfinvGradKernel, float, double) {}

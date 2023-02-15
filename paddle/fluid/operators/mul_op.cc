@@ -16,56 +16,25 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "paddle/fluid/framework/op_registry.h"
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
 
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/binary.h"
 namespace paddle {
 namespace operators {
 
-using framework::OpKernelType;
-using framework::Tensor;
-
-constexpr int kMULMKLDNNINT8 = 1;
-constexpr int kMULMKLDNNFP32 = 2;
+using phi::KernelKey;
 
 class MulOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const {
-    framework::LibraryType library = framework::LibraryType::kPlain;
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
-    int customized_type_value =
-        framework::OpKernelType::kDefaultCustomizedTypeValue;
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-#ifdef PADDLE_WITH_MKLDNN
-    if (library == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      library = framework::LibraryType::kMKLDNN;
-      layout = framework::DataLayout::kMKLDNN;
-
-      if (input_data_type == framework::DataTypeTrait<int8_t>::DataType() ||
-          input_data_type == framework::DataTypeTrait<uint8_t>::DataType()) {
-        customized_type_value = kMULMKLDNNINT8;
-      } else if (input_data_type ==
-                     framework::DataTypeTrait<
-                         paddle::platform::bfloat16>::DataType() ||
-                 input_data_type ==
-                     framework::DataTypeTrait<float>::DataType()) {
-        customized_type_value = kMULMKLDNNFP32;
-      }
-    }
-#endif
-
-    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
-                                   library, customized_type_value);
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -75,10 +44,6 @@ class MulOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(Tensor), The first input tensor of mul op.");
     AddInput("Y", "(Tensor), The second input tensor of mul op.");
     AddOutput("Out", "(Tensor), The output tensor of mul op.");
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
     AddAttr<int>(
         "x_num_col_dims",
         R"DOC((int, default 1), The mul_op can take tensors with more than two
@@ -109,31 +74,6 @@ class MulOpMaker : public framework::OpProtoAndCheckerMaker {
         )DOC")
         .SetDefault(1)
         .EqualGreaterThan(1);
-    AddAttr<float>(
-        "scale_x",
-        "scale_x to be used for int8 mul input data x. scale_x has the"
-        "same purpose as scale_in in OPs that support quantization."
-        "Only to be used with MKL-DNN INT8")
-        .SetDefault(1.0f)
-        .AsExtra();
-    AddAttr<std::vector<float>>(
-        "scale_y",
-        "scale_y to be used for int8 mul input data y. scale_y has the"
-        "same purpose as scale_weights in OPs that support quantization."
-        "Only to be used with MKL-DNN INT8")
-        .SetDefault({1.0f})
-        .AsExtra();
-    AddAttr<float>("scale_out",
-                   "scale_out to be used for int8 output data."
-                   "Only used with MKL-DNN INT8")
-        .SetDefault(1.0f)
-        .AsExtra();
-    AddAttr<bool>(
-        "force_fp32_output",
-        "(bool, default false) Force quantize kernel output FP32, only "
-        "used in quantized MKL-DNN.")
-        .SetDefault(false)
-        .AsExtra();
     AddComment(R"DOC(
 Mul Operator.
 
@@ -163,34 +103,10 @@ class MulGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const {
-    framework::LibraryType library = framework::LibraryType::kPlain;
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
-    int customized_type_value =
-        framework::OpKernelType::kDefaultCustomizedTypeValue;
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-#ifdef PADDLE_WITH_MKLDNN
-    if (library == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      library = framework::LibraryType::kMKLDNN;
-      layout = framework::DataLayout::kMKLDNN;
-
-      if (input_data_type == framework::DataTypeTrait<int8_t>::DataType() ||
-          input_data_type == framework::DataTypeTrait<uint8_t>::DataType()) {
-        customized_type_value = kMULMKLDNNINT8;
-      } else if (input_data_type ==
-                     framework::DataTypeTrait<
-                         paddle::platform::bfloat16>::DataType() ||
-                 input_data_type ==
-                     framework::DataTypeTrait<float>::DataType()) {
-        customized_type_value = kMULMKLDNNFP32;
-      }
-    }
-#endif
-
-    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
-                                   library, customized_type_value);
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -267,16 +183,22 @@ class MulDoubleGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(mul, MulInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(mul,
+                            MulInferShapeFunctor,
                             PD_INFER_META(phi::MatmulWithFlattenInferMeta));
-REGISTER_OPERATOR(mul, ops::MulOp, ops::MulOpMaker, ops::MulOpInferVarType,
+REGISTER_OPERATOR(mul,
+                  ops::MulOp,
+                  ops::MulOpMaker,
+                  ops::MulOpInferVarType,
                   ops::MulOpGradMaker<paddle::framework::OpDesc>,
                   ops::MulOpGradMaker<paddle::imperative::OpBase>,
                   MulInferShapeFunctor);
 
-DECLARE_INFER_SHAPE_FUNCTOR(mul_grad, MulGradInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(mul_grad,
+                            MulGradInferShapeFunctor,
                             PD_INFER_META(phi::GeneralBinaryGradInferMeta));
-REGISTER_OPERATOR(mul_grad, ops::MulGradOp,
+REGISTER_OPERATOR(mul_grad,
+                  ops::MulGradOp,
                   ops::MulDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::MulDoubleGradMaker<paddle::imperative::OpBase>,
                   MulGradInferShapeFunctor);

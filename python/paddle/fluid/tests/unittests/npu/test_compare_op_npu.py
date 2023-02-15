@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -45,9 +44,9 @@ def create_test_class(op_type, typename, callback):
         def test_errors(self):
             paddle.enable_static()
             with program_guard(Program(), Program()):
-                a = fluid.layers.data(name='a', shape=[2], dtype='float32')
-                b = fluid.layers.data(name='b', shape=[2], dtype='float32')
-                c = fluid.layers.data(name='c', shape=[2], dtype='int16')
+                a = paddle.static.data(name='a', shape=[-1, 2], dtype='float32')
+                b = paddle.static.data(name='b', shape=[-1, 2], dtype='float32')
+                c = paddle.static.data(name='c', shape=[-1, 2], dtype='int16')
                 d = fluid.create_lod_tensor(np.array([[-1]]), [[1]], self.place)
 
                 op = eval("fluid.layers.%s" % self.op_type)
@@ -77,18 +76,20 @@ def create_test_class(op_type, typename, callback):
             paddle.enable_static()
             with program_guard(Program(), Program()):
                 x = paddle.static.data(
-                    name='x', shape=[1, 2, 1, 3], dtype=typename)
+                    name='x', shape=[1, 2, 1, 3], dtype=typename
+                )
                 y = paddle.static.data(
-                    name='y', shape=[1, 2, 3], dtype=typename)
+                    name='y', shape=[1, 2, 3], dtype=typename
+                )
                 op = eval("paddle.%s" % (self.op_type))
                 out = op(x, y)
                 exe = paddle.static.Executor(self.place)
                 input_x = np.arange(1, 7).reshape((1, 2, 1, 3)).astype(typename)
                 input_y = np.arange(0, 6).reshape((1, 2, 3)).astype(typename)
                 real_result = callback(input_x, input_y)
-                res, = exe.run(feed={"x": input_x,
-                                     "y": input_y},
-                               fetch_list=[out])
+                (res,) = exe.run(
+                    feed={"x": input_x, "y": input_y}, fetch_list=[out]
+                )
             self.assertEqual((res == real_result).all(), True)
 
         @unittest.skipIf(typename == 'float16', "float16 is not supported now")
@@ -96,18 +97,20 @@ def create_test_class(op_type, typename, callback):
             paddle.enable_static()
             with program_guard(Program(), Program()):
                 x = paddle.static.data(
-                    name='x', shape=[1, 2, 3], dtype=typename)
+                    name='x', shape=[1, 2, 3], dtype=typename
+                )
                 y = paddle.static.data(
-                    name='y', shape=[1, 2, 1, 3], dtype=typename)
+                    name='y', shape=[1, 2, 1, 3], dtype=typename
+                )
                 op = eval("paddle.%s" % (self.op_type))
                 out = op(x, y)
                 exe = paddle.static.Executor(self.place)
                 input_x = np.arange(0, 6).reshape((1, 2, 3)).astype(typename)
                 input_y = np.arange(1, 7).reshape((1, 2, 1, 3)).astype(typename)
                 real_result = callback(input_x, input_y)
-                res, = exe.run(feed={"x": input_x,
-                                     "y": input_y},
-                               fetch_list=[out])
+                (res,) = exe.run(
+                    feed={"x": input_x, "y": input_y}, fetch_list=[out]
+                )
             self.assertEqual((res == real_result).all(), True)
 
         @unittest.skipIf(typename == 'float16', "float16 is not supported now")
@@ -122,17 +125,17 @@ def create_test_class(op_type, typename, callback):
                 input_x = np.arange(0, 5).reshape((5)).astype(typename)
                 input_y = np.array([5, 3, 2]).reshape((3, 1)).astype(typename)
                 real_result = callback(input_x, input_y)
-                res, = exe.run(feed={"x": input_x,
-                                     "y": input_y},
-                               fetch_list=[out])
+                (res,) = exe.run(
+                    feed={"x": input_x, "y": input_y}, fetch_list=[out]
+                )
             self.assertEqual((res == real_result).all(), True)
 
         @unittest.skipIf(typename == 'float16', "float16 is not supported now")
         def test_attr_name(self):
             paddle.enable_static()
             with program_guard(Program(), Program()):
-                x = fluid.layers.data(name='x', shape=[4], dtype=typename)
-                y = fluid.layers.data(name='y', shape=[4], dtype=typename)
+                x = paddle.static.data(name='x', shape=[-1, 4], dtype=typename)
+                y = paddle.static.data(name='y', shape=[-1, 4], dtype=typename)
                 op = eval("paddle.%s" % (self.op_type))
                 out = op(x=x, y=y, name="name_%s" % (self.op_type))
             self.assertEqual("name_%s" % (self.op_type) in out.name, True)

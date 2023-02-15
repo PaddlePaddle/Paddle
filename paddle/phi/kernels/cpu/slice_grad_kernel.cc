@@ -13,15 +13,42 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/slice_grad_kernel.h"
-#include "paddle/phi/kernels/impl/slice_grad_kernel_impl.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/slice_grad_kernel_impl.h"
 
 PD_REGISTER_KERNEL(slice_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::SliceGradRawKernel,
+                   bool,
+                   uint8_t,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(slice_array_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::SliceArrayGradKernel,
+                   bool,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(slice_array_dense_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::SliceArrayDenseGradKernel,
                    bool,
                    int,
                    int64_t,

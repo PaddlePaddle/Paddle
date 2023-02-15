@@ -14,14 +14,13 @@
 
 #include "paddle/phi/kernels/roi_pool_grad_kernel.h"
 
+#include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-
-#include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace phi {
 
@@ -64,7 +63,7 @@ __global__ void GPURoiPoolBackward(const int nthreads,
 
     int arg_max = offset_arg_max_data[ph * pooled_width + pw];
     if (arg_max != -1) {
-      paddle::platform::CudaAtomicAdd(
+      phi::CudaAtomicAdd(
           offset_input_grad + arg_max,
           static_cast<T>(offset_output_grad[ph * pooled_width + pw]));
     }
@@ -121,7 +120,10 @@ void RoiPoolGradKernel(const Context& dev_ctx,
       }
     }
     int bytes = box_batch_id_list.numel() * sizeof(int);
-    auto roi_ptr = paddle::memory::Alloc(dev_ctx, bytes);
+    auto roi_ptr = paddle::memory::Alloc(
+        dev_ctx.GetPlace(),
+        bytes,
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
     int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
     paddle::memory::Copy(gplace,
                          roi_id_data,
@@ -139,20 +141,20 @@ void RoiPoolGradKernel(const Context& dev_ctx,
     int threads = kNumCUDAThreads;
 
     if (output_grad_size > 0) {
-      GPURoiPoolBackward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
-          output_grad_size,
-          boxes.data<T>(),
-          out_grad.data<T>(),
-          arg_max.data<int64_t>(),
-          rois_num,
-          spatial_scale,
-          channels,
-          height,
-          width,
-          pooled_height,
-          pooled_width,
-          roi_id_data,
-          dx->data<T>());
+      GPURoiPoolBackward<T>
+          <<<blocks, threads, 0, dev_ctx.stream()>>>(output_grad_size,
+                                                     boxes.data<T>(),
+                                                     out_grad.data<T>(),
+                                                     arg_max.data<int64_t>(),
+                                                     rois_num,
+                                                     spatial_scale,
+                                                     channels,
+                                                     height,
+                                                     width,
+                                                     pooled_height,
+                                                     pooled_width,
+                                                     roi_id_data,
+                                                     dx->data<T>());
     }
   }
 }

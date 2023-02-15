@@ -19,7 +19,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -91,26 +92,31 @@ void ScaleMatmulFusePass::ApplyImpl(ir::Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(scale_out, scale_out, scale_matmul_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_op, matmul_op, scale_matmul_pattern);
 
+    if ((scale_out->outputs).size() != 1) {
+      return;
+    }
+
     if (scale_op->Op()->GetAttrIfExists<float>("bias") == 0.0) {
       auto matmul_alpha = matmul_op->Op()->GetAttrIfExists<float>("alpha");
       auto scale_scale = scale_op->Op()->GetAttrIfExists<float>("scale");
       PADDLE_ENFORCE_GT(
-          matmul_alpha, 0.0f,
+          matmul_alpha,
+          0.0f,
           platform::errors::InvalidArgument(
               "Alpha(%f) of matmul op should have positive value.",
               matmul_alpha));
-      PADDLE_ENFORCE_GT(scale_scale, 0.0f,
+      PADDLE_ENFORCE_GT(scale_scale,
+                        0.0f,
                         platform::errors::InvalidArgument(
                             "Scale(%f) of scale op should have positive value.",
                             scale_scale));
 
-      std::string matmul_op_input_name;
-      for (auto name : matmul_op->Op()->InputNames())
-        for (auto input_name : matmul_op->Op()->Input(name))
-          if (input_name == scale_out->Name()) matmul_op_input_name = name;
+      std::string matmul_op_input_name =
+          FindInputNameByVarName(matmul_op->Op(), scale_out->Name());
 
       PADDLE_ENFORCE_NE(
-          matmul_op_input_name.empty(), true,
+          matmul_op_input_name.empty(),
+          true,
           platform::errors::NotFound("Operator after scale operator(%s) "
                                      "should have scale output as input.",
                                      scale_out->Name()));
@@ -129,7 +135,8 @@ void ScaleMatmulFusePass::ApplyImpl(ir::Graph* graph) const {
   };
   gpd(graph, handler);
   AddStatis(found_scale_matmul_fuse_count);
-  if (!Has("disable_logs") || !Get<bool>("disable_logs"))
+  if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
+      (found_scale_matmul_fuse_count > 0))
     PrettyLogDetail("---    fused %d scale with matmul",
                     found_scale_matmul_fuse_count);
 }

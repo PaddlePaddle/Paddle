@@ -48,11 +48,13 @@ inline bool CompareVersion(const std::string& str_first,
   auto vec_second_version = ConvertStr2Int(str_second);
 
   // first version id
-  PADDLE_ENFORCE_EQ(vec_first_version.size(), vec_second_version.size(),
+  PADDLE_ENFORCE_EQ(vec_first_version.size(),
+                    vec_second_version.size(),
                     platform::errors::InvalidArgument(
                         "Version information size is not equal, the first is "
                         "[%d], the second is [%d].",
-                        vec_first_version.size(), vec_second_version.size()));
+                        vec_first_version.size(),
+                        vec_second_version.size()));
 
   for (size_t i = 0; i < vec_first_version.size() - 1; ++i) {
     if (vec_first_version[i] != vec_second_version[i]) {

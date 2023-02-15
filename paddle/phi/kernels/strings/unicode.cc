@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/strings/unicode.h"
+
 #include <utf8proc.h>
+
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/kernels/strings/unicode_flag.h"
 

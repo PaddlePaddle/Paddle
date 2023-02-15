@@ -16,21 +16,20 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <unordered_map>
+
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 
 class InstanceNormOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override;
 };
 
@@ -39,7 +38,7 @@ class InstanceNormGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override;
 };
 
@@ -48,7 +47,7 @@ class InstanceNormDoubleGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override;
 };
 

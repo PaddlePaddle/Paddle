@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/utils/string/pretty_log.h"
+
 #include "gflags/gflags.h"
 
 DEFINE_bool(color, true, "Whether to turn on pretty log");

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/trainer.h"
+
 #include "io/fs.h"
 
 namespace paddle {
@@ -57,7 +58,6 @@ void TrainerBase::DumpWork(int tid) {
   int err_no = 0;
   // GetDumpPath is implemented in each Trainer
   std::string path = GetDumpPath(tid);
-
   std::shared_ptr<FILE> fp = fs_open_write(path, &err_no, dump_converter_);
   while (1) {
     std::string out_str;

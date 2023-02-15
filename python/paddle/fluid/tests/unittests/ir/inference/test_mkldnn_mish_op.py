@@ -12,20 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import MkldnnAutoScanTest
-from program_config import TensorConfig, ProgramConfig, OpConfig
-import numpy as np
-from functools import partial
 import unittest
-from hypothesis import given
+from functools import partial
+
 import hypothesis.strategies as st
+import numpy as np
+from auto_scan_test import MkldnnAutoScanTest
+from hypothesis import given
+from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 class TestMkldnnMishOp(MkldnnAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         # if mode is channel, and in_shape is 1 rank
-        if len(program_config.inputs['input_data'].
-               shape) == 1 and program_config.ops[0].attrs['mode'] == 'channel':
+        if (
+            len(program_config.inputs['input_data'].shape) == 1
+            and program_config.ops[0].attrs['mode'] == 'channel'
+        ):
             return False
         return True
 
@@ -39,17 +42,20 @@ class TestMkldnnMishOp(MkldnnAutoScanTest):
             outputs={"Out": ["output_data"]},
             attrs={
                 "mode": kwargs['mode'],
-                "data_format": kwargs['data_format']
-            })
+                "data_format": kwargs['data_format'],
+            },
+        )
 
         program_config = ProgramConfig(
             ops=[mish_op],
             weights={},
             inputs={
-                "input_data": TensorConfig(data_gen=partial(generate_input,
-                                                            *args, **kwargs)),
+                "input_data": TensorConfig(
+                    data_gen=partial(generate_input, *args, **kwargs)
+                ),
             },
-            outputs=["output_data"])
+            outputs=["output_data"],
+        )
 
         yield program_config
 
@@ -61,8 +67,9 @@ class TestMkldnnMishOp(MkldnnAutoScanTest):
         mode=st.sampled_from(['all', 'channel', 'element']),
         data_format=st.sampled_from(['NCHW', 'NHWC']),
         in_shape=st.lists(
-            st.integers(
-                min_value=1, max_value=32), min_size=1, max_size=4))
+            st.integers(min_value=1, max_value=32), min_size=1, max_size=4
+        ),
+    )
     def test(self, *args, **kwargs):
         self.run_test(quant=False, *args, **kwargs)
 

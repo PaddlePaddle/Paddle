@@ -14,6 +14,7 @@
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
+
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
 namespace paddle {
@@ -57,14 +58,17 @@ CudaStreamResourcePool& CudaStreamResourcePool::Instance() {
 
 std::shared_ptr<CudaStreamObject> CudaStreamResourcePool::New(int dev_idx) {
   PADDLE_ENFORCE_GE(
-      dev_idx, 0,
+      dev_idx,
+      0,
       platform::errors::InvalidArgument(
           "The dev_idx should be not less than 0, but got %d.", dev_idx));
   PADDLE_ENFORCE_LT(
-      dev_idx, pool_.size(),
+      dev_idx,
+      pool_.size(),
       platform::errors::OutOfRange(
           "The dev_idx should be less than device count %d, but got %d.",
-          pool_.size(), dev_idx));
+          pool_.size(),
+          dev_idx));
   return pool_[dev_idx]->New();
 }
 
@@ -105,14 +109,17 @@ CudaEventResourcePool& CudaEventResourcePool::Instance() {
 
 std::shared_ptr<CudaEventObject> CudaEventResourcePool::New(int dev_idx) {
   PADDLE_ENFORCE_GE(
-      dev_idx, 0,
+      dev_idx,
+      0,
       platform::errors::InvalidArgument(
           "The dev_idx should be not less than 0, but got %d.", dev_idx));
   PADDLE_ENFORCE_LT(
-      dev_idx, pool_.size(),
+      dev_idx,
+      pool_.size(),
       platform::errors::OutOfRange(
           "The dev_idx should be less than device count %d, but got %d.",
-          pool_.size(), dev_idx));
+          pool_.size(),
+          dev_idx));
   return pool_[dev_idx]->New();
 }
 

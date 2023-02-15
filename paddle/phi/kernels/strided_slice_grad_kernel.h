@@ -16,6 +16,7 @@
 
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/tensor_array.h"
 
 namespace phi {
 
@@ -42,15 +43,14 @@ void StridedSliceGradKernel(const Context& dev_ctx,
                             DenseTensor* x_grad);
 
 template <typename T, typename Context>
-void StridedSliceArrayGradKernel(
-    const Context& dev_ctx,
-    const std::vector<const DenseTensor*>& x,
-    const std::vector<const DenseTensor*>& out_grad,
-    const std::vector<int>& axes,
-    const IntArray& starts,
-    const IntArray& ends,
-    const IntArray& strides,
-    const std::vector<int>& infer_flags,
-    const std::vector<int>& decrease_axis,
-    std::vector<DenseTensor*> x_grad);
+void StridedSliceArrayGradKernel(const Context& dev_ctx,
+                                 const TensorArray& x,
+                                 const TensorArray& out_grad,
+                                 const std::vector<int>& axes,
+                                 const IntArray& starts,
+                                 const IntArray& ends,
+                                 const IntArray& strides,
+                                 const std::vector<int>& infer_flags,
+                                 const std::vector<int>& decrease_axis,
+                                 TensorArray* x_grad);
 }  // namespace phi

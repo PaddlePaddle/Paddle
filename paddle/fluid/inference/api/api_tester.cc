@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+
 #include <exception>
 #include <string>
 
@@ -45,7 +46,9 @@ class DemoPredictor : public PaddlePredictor {
     return false;
   }
 
-  std::unique_ptr<PaddlePredictor> Clone() override { return nullptr; }
+  std::unique_ptr<PaddlePredictor> Clone(void *stream = nullptr) override {
+    return nullptr;
+  }
 
   ~DemoPredictor() override {}
 };
@@ -84,7 +87,9 @@ TEST(paddle_inference_api, UpdateDllFlag) {
 TEST(paddle_inference_api, AnalysisConfigCopyCtor) {
   AnalysisConfig cfg1;
   cfg1.EnableUseGpu(10);
+#ifdef PADDLE_WITH_TENSORRT
   cfg1.EnableTensorRtEngine();
+#endif
   std::string delete_pass("skip_layernorm_fuse_pass");
   cfg1.pass_builder()->DeletePass(delete_pass);
   AnalysisConfig cfg2(cfg1);

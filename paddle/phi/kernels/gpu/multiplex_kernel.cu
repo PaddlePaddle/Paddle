@@ -41,7 +41,7 @@ void MultiplexKernel(const Context& ctx,
   paddle::framework::TensorCopySync(ids, phi::CPUPlace(), &index_t_cpu);
   auto* index = index_t_cpu.data<int32_t>();
   auto stream = ctx.stream();
-  for (auto i = 0; i < rows; i++) {
+  for (auto i = 0; i < ids.dims()[0]; i++) {
     int32_t k = index[i];
     PADDLE_ENFORCE_GE(
         k, 0, errors::PreconditionNotMet("index must be nonnegative."));

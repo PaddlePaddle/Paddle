@@ -16,6 +16,7 @@
 
 #include <sstream>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "paddle_infer_declare.h"  // NOLINT
@@ -106,13 +107,20 @@ class PD_INFER_DECL PaddlePassBuilder {
     return passes;
   }
 
+  const std::unordered_set<std::string> &GetAllDeletedPasses() const {
+    return deleted_passes_;
+  }
+
  protected:
   /// \cond Protected
   std::vector<std::string> analysis_passes_{
-      {"ir_graph_build_pass", "ir_graph_clean_pass", "ir_analysis_pass",
-       "ir_params_sync_among_devices_pass", "adjust_cudnn_workspace_size_pass",
+      {"ir_graph_build_pass",
+       "ir_analysis_pass",
+       "ir_params_sync_among_devices_pass",
+       "adjust_cudnn_workspace_size_pass",
        "inference_op_replace_pass"}};
   std::vector<std::string> passes_;
+  std::unordered_set<std::string> deleted_passes_;
   /// \endcond
 };
 
@@ -129,9 +137,6 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   /// \brief Enable the use of cuDNN kernel.
   virtual void EnableCUDNN() {}
 
-  /// \brief Enable use gpu fp16 kernel.
-  virtual void Exp_EnableUseGpuFp16() {}
-
   /// \brief Enable the use of MKLDNN.
   /// The MKLDNN control exists in both CPU and GPU mode, because there can
   /// still be some CPU kernels running in GPU mode.
@@ -146,13 +151,12 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   /// \brief Enable MKLDNN int8.
   virtual void EnableMkldnnInt8() {}
 
+  /// \brief Disable MKLDNN fc passes.
+  virtual void DisableMkldnnFcPasses() {}
+
   /// \brief Check if we are using gpu.
   /// \return A bool variable implying whether we are in gpu mode.
   bool use_gpu() const { return use_gpu_; }
-
-  /// \brief Check if we are using gpu fp16 kernel.
-  /// \return A bool variable implying whether we are in gpu fp16 mode.
-  bool use_gpu_fp16() const { return use_gpu_fp16_; }
 
   /// \brief Check if we are using xpu.
   /// \return A bool variable implying whether we are in xpu mode.
@@ -180,8 +184,9 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   bool use_npu_{false};
   bool use_ipu_{false};
   bool use_mkldnn_{false};
-  bool use_gpu_fp16_{false};
   bool use_custom_device_{false};
+
+  bool use_gpu_low_precision_{false};
   /// \endcond
 };
 
@@ -202,6 +207,7 @@ class PD_INFER_DECL CpuPassStrategy : public PassStrategy {
     use_mkldnn_quantizer_ = other.use_mkldnn_quantizer_;
     use_mkldnn_bfloat16_ = other.use_mkldnn_bfloat16_;
     use_mkldnn_int8_ = other.use_mkldnn_int8_;
+    disable_mkldnn_fc_passes_ = other.disable_mkldnn_fc_passes_;
   }
   /// \brief Default destructor.
   virtual ~CpuPassStrategy() = default;
@@ -221,11 +227,18 @@ class PD_INFER_DECL CpuPassStrategy : public PassStrategy {
   /// \brief Enable MKLDNN int8.
   void EnableMkldnnInt8() override;
 
+  /// \brief Disable MKLDNN fc passes.
+  void DisableMkldnnFcPasses() override;
+
  protected:
+  /// \brief Erase MKLDNN fc passes.
+  void EraseFcMkldnnPasses();
+
   /// \cond Protected
   bool use_mkldnn_quantizer_{false};
   bool use_mkldnn_bfloat16_{false};
   bool use_mkldnn_int8_{false};
+  bool disable_mkldnn_fc_passes_{false};
   /// \endcond
 };
 
@@ -248,9 +261,6 @@ class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
   /// \brief Enable the use of cuDNN kernel.
   void EnableCUDNN() override;
 
-  /// \brief Enable the use of gpu fp16 kernel.
-  void Exp_EnableUseGpuFp16() override;
-
   /// \brief Not supported in GPU mode yet.
   void EnableMKLDNN() override;
 
@@ -263,13 +273,15 @@ class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
   /// \brief Not supported in GPU mode yet.
   void EnableMkldnnInt8() override;
 
+  /// \brief Disable MKLDNN fc passes.
+  void DisableMkldnnFcPasses() override;
+
   /// \brief Default destructor.
   virtual ~GpuPassStrategy() = default;
 
  protected:
   /// \cond Protected
   bool use_cudnn_{false};
-  bool use_gpu_fp16_{false};
   /// \endcond
 };
 
@@ -278,7 +290,7 @@ class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
 /// mode.
 class PD_INFER_DECL XpuPassStrategy final : public PassStrategy {
  public:
-  XpuPassStrategy() : PassStrategy({}) { use_xpu_ = true; }
+  XpuPassStrategy();
 };
 
 /// \class NpuPassStrategy
@@ -336,5 +348,14 @@ PD_INFER_DECL extern const std::vector<std::string> kDlnneSubgraphPasses;
 
 /// \brief List of lite subgraph passes.
 PD_INFER_DECL extern const std::vector<std::string> kLiteSubgraphPasses;
+
+/// \brief List of cinn compiler passes.
+PD_INFER_DECL extern const std::vector<std::string> kCINNCompilerPasses;
+
+/// \brief TODO(inference): Most of the existing pass fusion operators do not
+/// support fp16/bf16 precision, temporarily use low precision pass to prevent
+/// running errors. After fusion operator supports low precision, delete this.
+PD_INFER_DECL extern const std::vector<std::string> kGpuLowerPrecisionPasses;
+PD_INFER_DECL extern const std::vector<std::string> kTrtLowerPrecisionPasses;
 
 }  // namespace paddle

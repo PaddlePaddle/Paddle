@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
 import paddle
@@ -27,7 +28,7 @@ def drop_path(x, training=False):
 
 class DropPath(paddle.nn.Layer):
     def __init__(self):
-        super(DropPath, self).__init__()
+        super().__init__()
 
     @paddle.jit.to_static
     def forward(self, x):
@@ -46,9 +47,9 @@ class TestTrainEval(unittest.TestCase):
         eval_out = x.numpy()
         train_out = x.numpy() * 2
         self.model.train()
-        self.assertTrue(np.allclose(self.model(x).numpy(), train_out))
+        np.testing.assert_allclose(self.model(x).numpy(), train_out, rtol=1e-05)
         self.model.eval()
-        self.assertTrue(np.allclose(self.model(x).numpy(), eval_out))
+        np.testing.assert_allclose(self.model(x).numpy(), eval_out, rtol=1e-05)
 
 
 if __name__ == "__main__":

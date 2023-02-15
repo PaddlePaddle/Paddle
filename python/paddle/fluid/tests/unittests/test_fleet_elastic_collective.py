@@ -12,16 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
-import time
-import json
-import unittest
-import argparse
 import tempfile
-import traceback
-from warnings import catch_warnings
+import unittest
 
 from paddle.distributed.fleet.elastic.collective import CollectiveLauncher
 from paddle.distributed.fleet.launch import launch_collective
@@ -33,11 +26,15 @@ print("test")
 
 class TestCollectiveLauncher(unittest.TestCase):
     def setUp(self):
-        file_dir = os.path.dirname(os.path.abspath(__file__))
-
-        self.code_path = os.path.join(file_dir, "fake_python_for_elastic.py")
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.code_path = os.path.join(
+            self.temp_dir.name, "fake_python_for_elastic.py"
+        )
         with open(self.code_path, "w") as f:
             f.write(fake_python_code)
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     def test_launch(self):
         class Argument:
@@ -56,7 +53,7 @@ class TestCollectiveLauncher(unittest.TestCase):
             run_mode = "cpuonly"
             servers = None
             rank_mapping_path = None
-            training_script = "fake_python_for_elastic.py"
+            training_script = self.code_path
             training_script_args = ["--use_amp false"]
             log_dir = None
 
@@ -94,7 +91,7 @@ class TestCollectiveLauncher(unittest.TestCase):
             run_mode = "cpuonly"
             servers = None
             rank_mapping_path = None
-            training_script = "fake_python_for_elastic.py"
+            training_script = self.code_path
             training_script_args = ["--use_amp false"]
             log_dir = None
 

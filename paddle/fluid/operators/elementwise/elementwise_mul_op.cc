@@ -13,10 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
+
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/platform/complex.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 
 namespace paddle {
 namespace operators {
@@ -26,15 +31,17 @@ class ElementwiseMulOpMaker : public ElementwiseOpMaker {
   std::string GetEquation() const override { return "Out = X \\\\odot Y"; }
 
   void AddInputX() override {
-    AddInput("X",
-             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
-             "should be int32, int64, float32, float64.");
+    AddInput(
+        "X",
+        "(Variable), Tensor or phi::DenseTensor of any dimensions. Its dtype "
+        "should be int32, int64, float32, float64.");
   }
 
   void AddInputY() override {
-    AddInput("Y",
-             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
-             "should be int32, int64, float32, float64.");
+    AddInput(
+        "Y",
+        "(Variable), Tensor or phi::DenseTensor of any dimensions. Its dtype "
+        "should be int32, int64, float32, float64.");
   }
 
   std::string GetOpFuntionality() const override {
@@ -56,6 +63,34 @@ class ElementwiseMulOpGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetAttrMap(this->Attrs());
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+  }
+};
+
+class ElementwiseMulCompositeGradOpMaker
+    : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    auto x = this->GetSingleForwardInput("X");
+    auto y = this->GetSingleForwardInput("Y");
+    auto out_grad = this->GetSingleOutputGrad("Out");
+    auto x_grad = this->GetSingleInputGrad("X");
+    auto x_grad_p = this->GetOutputPtr(&x_grad);
+    auto x_grad_name = this->GetOutputName(x_grad);
+    auto y_grad = this->GetSingleInputGrad("Y");
+    auto y_grad_p = this->GetOutputPtr(&y_grad);
+    auto y_grad_name = this->GetOutputName(y_grad);
+    prim::multiply_grad<prim::DescTensor>(
+        x,
+        y,
+        out_grad,
+        static_cast<int>(this->Attr<int>("axis")),
+        x_grad_p,
+        y_grad_p);
+    VLOG(6) << "Runing mul_grad composite func";
+    this->RecoverOutputName(x_grad, x_grad_name);
+    this->RecoverOutputName(y_grad, y_grad_name);
   }
 };
 
@@ -114,17 +149,22 @@ class ElementwiseMulTripleGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(elementwise_mul, ops::ElementwiseMulOp,
-                  ops::ElementwiseMulOpMaker, ops::ElementwiseOpInferVarType,
+REGISTER_OPERATOR(elementwise_mul,
+                  ops::ElementwiseMulOp,
+                  ops::ElementwiseMulOpMaker,
+                  ops::ElementwiseOpInferVarType,
                   ops::ElementwiseMulOpGradMaker<paddle::framework::OpDesc>,
-                  ops::ElementwiseMulOpGradMaker<paddle::imperative::OpBase>);
+                  ops::ElementwiseMulOpGradMaker<paddle::imperative::OpBase>,
+                  ops::ElementwiseMulCompositeGradOpMaker);
 REGISTER_OPERATOR(
-    elementwise_mul_grad, ops::ElementwiseOpGrad,
+    elementwise_mul_grad,
+    ops::ElementwiseOpGrad,
     ops::ElementwiseMulDoubleGradMaker<paddle::framework::OpDesc>,
     ops::ElementwiseMulDoubleGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(
-    elementwise_mul_grad_grad, ops::ElementwiseOpDoubleGrad,
+    elementwise_mul_grad_grad,
+    ops::ElementwiseOpDoubleGrad,
     ops::ElementwiseDoubleGradOpInplaceInferer,
     ops::ElementwiseMulTripleGradMaker<paddle::framework::OpDesc>,
     ops::ElementwiseMulTripleGradMaker<paddle::imperative::OpBase>);

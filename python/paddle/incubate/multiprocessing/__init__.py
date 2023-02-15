@@ -19,8 +19,6 @@ __all__ = []
 
 from multiprocessing import *  # noqa: F403
 
-__all__ += multiprocessing.__all__  # type: ignore[attr-defined]
-
 # Only support linux for now
 # Only support file_system sharing strategy.
 

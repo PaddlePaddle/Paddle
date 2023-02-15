@@ -12,50 +12,81 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import os
 import json
-
-import paddle
-from paddle.distributed.auto_parallel.cluster import Cluster
-from paddle.distributed.auto_parallel.cost.comp_op_cost import AssignOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import AssignValueOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import BeamSearchOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import BeamSearchDecodeOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import CastOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import ConcatOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import ElementwiseAddOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import ElementwiseAddGradOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import ElementwiseDivOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import ElementwiseDivGradOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import ElementwiseMulOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import ElementwiseMulGradOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import ElementwiseSubOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import EmbeddingOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import EmbeddingGradOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import FillConstantOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import FillConstantBatchSizeLikeOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import FillConstantBatchSizeLikeGradOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import GatherOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import GeluOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import GeluGradOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import GreaterEqualOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import IncrementOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import IsEmptyOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import LayerNormOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import LayerNormGradOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import LessThanOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import LogicalNotOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import LogicalAndOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import LodResetOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import LogOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import LookupTableV2OpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import LookupTableV2GradOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import MatmulOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import MatmulGradOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import MatmulV2OpCost
+import os
+import unittest
 
 from test_cluster import cluster_json
+
+from paddle.distributed.auto_parallel.cluster import Cluster
+from paddle.distributed.auto_parallel.cost.comp_op_cost import (
+    AssignOpCost,
+    AssignValueOpCost,
+    BeamSearchDecodeOpCost,
+    BeamSearchOpCost,
+    CastOpCost,
+    ConcatOpCost,
+    DropoutGradOpCost,
+    ElementwiseAddGradOpCost,
+    ElementwiseAddOpCost,
+    ElementwiseDivGradOpCost,
+    ElementwiseDivOpCost,
+    ElementwiseMulGradOpCost,
+    ElementwiseMulOpCost,
+    ElementwiseSubOpCost,
+    EmbeddingGradOpCost,
+    EmbeddingOpCost,
+    FillConstantBatchSizeLikeOpCost,
+    FillConstantOpCost,
+    FusedSoftmaxMaskUpperTriangleGradOpCost,
+    FusedSoftmaxMaskUpperTriangleOpCost,
+    GatherOpCost,
+    GeluGradOpCost,
+    GeluOpCost,
+    GreaterEqualOpCost,
+    IncrementOpCost,
+    IsEmptyOpCost,
+    LayerNormGradOpCost,
+    LayerNormOpCost,
+    LessThanOpCost,
+    LodResetOpCost,
+    LogicalAndOpCost,
+    LogicalNotOpCost,
+    LogOpCost,
+    LookupTableV2GradOpCost,
+    LookupTableV2OpCost,
+    MatmulOpCost,
+    MatmulV2GradOpCost,
+    MatmulV2OpCost,
+    MemcpyOpCost,
+    MulGradOpCost,
+    MulOpCost,
+    OneHotOpCost,
+    ReadFromArrayOpCost,
+    ReduceMeanGradOpCost,
+    ReduceMeanOpCost,
+    ReduceSumGradOpCost,
+    ReduceSumOpCost,
+    Reshape2GradOpCost,
+    Reshape2OpCost,
+    SamplingIdOpCost,
+    ScaleOpCost,
+    SliceOpCost,
+    SoftmaxGradOpCost,
+    SoftmaxOpCost,
+    SoftmaxWithCrossEntropyGradOpCost,
+    SoftmaxWithCrossEntropyOpCost,
+    SplitOpCost,
+    SquareGradOpCost,
+    SquareOpCost,
+    Squeeze2OpCost,
+    SumOpCost,
+    TopKOpCost,
+    Transpose2GradOpCost,
+    Transpose2OpCost,
+    Unsqueeze2OpCost,
+    WriteToArrayOpCost,
+)
 
 
 class TestCompOpCost(unittest.TestCase):
@@ -154,11 +185,6 @@ class TestCompOpCost(unittest.TestCase):
         self.assertTrue(op_cost.time >= 0)
         self.assertTrue(op_cost.memory >= 0)
 
-        op_cost = FillConstantBatchSizeLikeGradOpCost(cluster=cluster)
-        self.assertTrue(op_cost.flops >= 0)
-        self.assertTrue(op_cost.time >= 0)
-        self.assertTrue(op_cost.memory >= 0)
-
         op_cost = GatherOpCost(cluster=cluster)
         self.assertTrue(op_cost.flops >= 0)
         self.assertTrue(op_cost.time >= 0)
@@ -240,6 +266,171 @@ class TestCompOpCost(unittest.TestCase):
         self.assertTrue(op_cost.memory >= 0)
 
         op_cost = MatmulV2OpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = MatmulV2GradOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = MemcpyOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = MulOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = MulGradOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = OneHotOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = ReadFromArrayOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = ReduceSumOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = ReduceSumGradOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = Reshape2OpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = MatmulV2OpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = Reshape2GradOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = ReduceMeanOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = ReduceMeanGradOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = SamplingIdOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = ScaleOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = SliceOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = SoftmaxOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = SoftmaxGradOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = SoftmaxWithCrossEntropyOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = SoftmaxWithCrossEntropyGradOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = SplitOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = Squeeze2OpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = SquareOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = SquareGradOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = SumOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = TopKOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = Transpose2OpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = Transpose2GradOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = Unsqueeze2OpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = WriteToArrayOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = DropoutGradOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = FusedSoftmaxMaskUpperTriangleOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = FusedSoftmaxMaskUpperTriangleGradOpCost(cluster=cluster)
         self.assertTrue(op_cost.flops >= 0)
         self.assertTrue(op_cost.time >= 0)
         self.assertTrue(op_cost.memory >= 0)

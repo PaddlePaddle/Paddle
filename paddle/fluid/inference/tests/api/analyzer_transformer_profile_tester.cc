@@ -25,14 +25,14 @@ void profile(bool use_mkldnn = false) {
   std::vector<std::vector<PaddleTensor>> outputs;
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
-    cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
-    cfg.pass_builder()->AppendPass("fc_act_mkldnn_fuse_pass");
   }
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
   TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-                 input_slots_all, &outputs, FLAGS_num_threads);
+                 input_slots_all,
+                 &outputs,
+                 FLAGS_num_threads);
 }
 
 TEST(Analyzer_Transformer, profile) { profile(); }

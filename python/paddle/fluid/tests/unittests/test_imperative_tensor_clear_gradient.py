@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
-import paddle
-from paddle.fluid.wrapped_decorator import wrap_decorator
 import unittest
 from unittest import TestCase
+
 import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid.wrapped_decorator import wrap_decorator
 
 
 def _dygraph_guard_(func):
@@ -63,7 +65,7 @@ class TestDygraphClearGradient(TestCase):
         # default arg set_to_zero is true
         # so, False means real clear gradient
         linear.weight.clear_gradient(False)
-        # before ._gradient_set_empty(False), 
+        # before ._gradient_set_empty(False),
         # the return of ._is_gradient_set_empty() should be True
         if not fluid.framework.in_dygraph_mode():
             self.assertTrue(linear.weight._is_gradient_set_empty())
@@ -73,7 +75,7 @@ class TestDygraphClearGradient(TestCase):
         # reset, because ClearGradient will call SetIsEmpty(True), but this is not our expectation.
         if not fluid.framework.in_dygraph_mode():
             linear.weight._gradient_set_empty(False)
-            # after ._gradient_set_empty(False), 
+            # after ._gradient_set_empty(False),
             # the return of ._is_gradient_set_empty() should be False
             self.assertFalse(linear.weight._is_gradient_set_empty())
 

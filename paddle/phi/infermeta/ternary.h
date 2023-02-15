@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/meta_tensor.h"
 
 namespace phi {
@@ -43,14 +44,24 @@ void AccuracyInferMeta(const MetaTensor& out,
 void AddmmInferMeta(const MetaTensor& input,
                     const MetaTensor& x,
                     const MetaTensor& y,
-                    float alpha,
                     float beta,
+                    float alpha,
                     MetaTensor* out);
 
 void ArangeInferMeta(const MetaTensor& start,
                      const MetaTensor& end,
                      const MetaTensor& step,
                      MetaTensor* out);
+
+void BoxCoderInferMeta(const MetaTensor& prior_box,
+                       const MetaTensor& prior_box_var,
+                       const MetaTensor& target_box,
+                       const std::string& code_type,
+                       bool box_normalized,
+                       int axis,
+                       const std::vector<float>& variance,
+                       MetaTensor* output_box,
+                       MetaConfig config = MetaConfig());
 
 void InstanceNormInferMeta(const MetaTensor& x,
                            const MetaTensor& scale,
@@ -61,20 +72,21 @@ void InstanceNormInferMeta(const MetaTensor& x,
                            MetaTensor* saved_variance,
                            MetaConfig config = MetaConfig());
 
-void GraphSendRecvInferMeta(const MetaTensor& x,
-                            const MetaTensor& src_index,
-                            const MetaTensor& dst_index,
-                            const std::string& pool_type,
-                            int64_t out_size,
-                            MetaTensor* out,
-                            MetaTensor* dst_count);
+void GroupNormInferMeta(const MetaTensor& x,
+                        const MetaTensor& scale,
+                        const MetaTensor& bias,
+                        float epsilon,
+                        int groups,
+                        const std::string& data_layout,
+                        MetaTensor* y,
+                        MetaTensor* mean,
+                        MetaTensor* variance);
 
 void LayerNormInferMeta(const MetaTensor& x,
                         const MetaTensor& scale,
                         const MetaTensor& bias,
                         float epsilon,
                         int begin_norm_axis,
-                        bool is_test,
                         MetaTensor* out,
                         MetaTensor* mean,
                         MetaTensor* variance,
@@ -102,6 +114,21 @@ void LinspaceInferMeta(const MetaTensor& start,
                        const MetaTensor& number,
                        DataType dtype,
                        MetaTensor* out);
+
+void MultiClassNMSInferMeta(const MetaTensor& bboxes,
+                            const MetaTensor& scores,
+                            const MetaTensor& rois_num,
+                            float score_threshold,
+                            int nms_top_k,
+                            int keep_top_k,
+                            float nms_threshold,
+                            bool normalized,
+                            float nms_eta,
+                            int background_label,
+                            MetaTensor* out,
+                            MetaTensor* index,
+                            MetaTensor* nms_rois_num,
+                            MetaConfig config = MetaConfig());
 
 void NllLossRawInferMeta(const MetaTensor& input,
                          const MetaTensor& label,
@@ -149,6 +176,23 @@ void ScatterNdAddInferMeta(const MetaTensor& x,
                            const MetaTensor& index,
                            const MetaTensor& updates,
                            MetaTensor* out);
+
+void SendURecvInferMeta(const MetaTensor& x,
+                        const MetaTensor& src_index,
+                        const MetaTensor& dst_index,
+                        const std::string& reduce_op,
+                        const IntArray& out_size,
+                        MetaTensor* out,
+                        MetaTensor* dst_count);
+
+void SpectralNormInferMeta(const MetaTensor& weight,
+                           const MetaTensor& u,
+                           const MetaTensor& v,
+                           int dim,
+                           int power_iters,
+                           float eps,
+                           MetaTensor* out,
+                           MetaConfig config = MetaConfig());
 
 void ViterbiDecodeInferMeta(const MetaTensor& input,
                             const MetaTensor& transition,

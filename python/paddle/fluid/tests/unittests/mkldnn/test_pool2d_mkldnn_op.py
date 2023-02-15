@@ -12,11 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-from paddle.fluid.tests.unittests.test_pool2d_op import TestPool2D_Op, TestCase1, TestCase2, TestCase3, TestCase4, TestCase5, avg_pool2D_forward_naive
+
+from paddle.fluid.tests.unittests.test_pool2d_op import (
+    TestCase1,
+    TestCase2,
+    TestCase3,
+    TestCase4,
+    TestCase5,
+    TestPool2D_Op,
+    avg_pool2D_forward_naive,
+)
 
 
 def create_test_mkldnn_use_ceil_class(parent):
@@ -198,5 +206,6 @@ class TestAsymPadValidNHWC(TestAsymPadValid):
 
 if __name__ == '__main__':
     from paddle import enable_static
+
     enable_static()
     unittest.main()

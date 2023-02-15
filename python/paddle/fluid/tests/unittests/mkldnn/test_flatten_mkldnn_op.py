@@ -12,14 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
+
 import paddle
 import paddle.fluid.core as core
-
-from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    OpTestTool,
+    convert_float_to_uint16,
+)
 
 
 @OpTestTool.skip_if_not_cpu_bf16()
@@ -94,15 +97,18 @@ def create_flatten_bf16_test_classes(parent):
 
         def test_check_output(self):
             self.check_output_with_place(
-                core.CPUPlace(), no_check_set=["XShape"])
+                core.CPUPlace(), no_check_set=["XShape"]
+            )
 
         def test_check_grad(self):
             self.calculate_grads()
             self.check_grad_with_place(
-                core.CPUPlace(), ["X"],
+                core.CPUPlace(),
+                ["X"],
                 "Out",
                 user_defined_grads=[self.dx],
-                user_defined_grad_outputs=[self.dout])
+                user_defined_grad_outputs=[self.dout],
+            )
 
     cls_name = "{0}_{1}".format(parent.__name__, "Flatten2_BF16")
     TestFlatten2BF16OneDNNOp.__name__ = cls_name
@@ -132,10 +138,12 @@ def create_flatten_bf16_test_classes(parent):
         def test_check_grad(self):
             self.calculate_grads()
             self.check_grad_with_place(
-                core.CPUPlace(), ["X"],
+                core.CPUPlace(),
+                ["X"],
                 "Out",
                 user_defined_grads=[self.dx],
-                user_defined_grad_outputs=[convert_float_to_uint16(self.dout)])
+                user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
+            )
 
     cls_name = "{0}_{1}".format(parent.__name__, "Flatten_BF16")
     TestFlattenBF16OneDNNOp.__name__ = cls_name

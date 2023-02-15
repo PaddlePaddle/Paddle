@@ -13,9 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/cinn/cinn_launch_context.h"
+
 #include <memory>
 #include <set>
 #include <utility>
+
 #include "cinn/auto_schedule/auto_tuner.h"
 #include "cinn/common/target.h"
 #include "cinn/common/type.h"
@@ -39,10 +41,9 @@ namespace paddle {
 namespace operators::details {
 
 using framework::OpDesc;
-using framework::ProgramDesc;
-using framework::LoDTensor;
-using framework::ir::Graph;
 using framework::ParallelExecutor;
+using framework::ProgramDesc;
+using framework::ir::Graph;
 using framework::paddle2cinn::Name2VarInfoMap;
 using CinnShape = ::cinn::hlir::framework::Shape;
 using CinnInstruction = ::cinn::hlir::framework::Instruction;
@@ -61,16 +62,20 @@ const Graph& InitDefaultSubgraph() {
     block->Var("var4");
     auto* var5 = block->Var("var5");
     var5->SetIsParameter(true);
-    auto add_op = std::unique_ptr<OpDesc>(
-        new OpDesc("elementwise_add", {{"X", {"var1"}}, {"Y", {"var2"}}},
-                   {{"Out", {"var3"}}}, {}));
+    auto add_op =
+        std::unique_ptr<OpDesc>(new OpDesc("elementwise_add",
+                                           {{"X", {"var1"}}, {"Y", {"var2"}}},
+                                           {{"Out", {"var3"}}},
+                                           {}));
     block->AppendAllocatedOp(std::move(add_op));
     auto mul_op = std::unique_ptr<OpDesc>(new OpDesc(
         "mul", {{"X", {"var1"}}, {"Y", {"var2"}}}, {{"Out", {"var4"}}}, {}));
     block->AppendAllocatedOp(std::move(mul_op));
-    auto res_op = std::unique_ptr<OpDesc>(
-        new OpDesc("elementwise_add", {{"X", {"var3"}}, {"Y", {"var4"}}},
-                   {{"Out", {"var5"}}}, {}));
+    auto res_op =
+        std::unique_ptr<OpDesc>(new OpDesc("elementwise_add",
+                                           {{"X", {"var3"}}, {"Y", {"var4"}}},
+                                           {{"Out", {"var5"}}},
+                                           {}));
     block->AppendAllocatedOp(std::move(res_op));
     graph = std::make_unique<Graph>(program);
 
@@ -85,6 +90,8 @@ const Graph& InitDefaultSubgraph() {
         new std::vector<std::string>({"var5"}));
     graph->GetOrInit<Name2VarInfoMap>(
         framework::paddle2cinn::kMemOptVarInfoFromMainGraph);
+    graph->GetOrInit<std::unordered_set<std::string>>(
+        framework::paddle2cinn::kInplaceVarNames);
   });
   return *graph.get();
 }
@@ -121,15 +128,24 @@ CinnCompiledObject* InitDefaultCompiledObject() {
 
     auto& runtime_program = result->runtime_program;
     std::vector<std::unique_ptr<CinnInstruction>> instructions;
-    instructions.emplace_back(new CinnInstruction(
-        cinn::common::DefaultHostTarget(), scope.get(),
-        {"cinn_var1", "cinn_var2"}, {"cinn_var3"}, "elementwise_add"));
     instructions.emplace_back(
-        new CinnInstruction(cinn::common::DefaultHostTarget(), scope.get(),
-                            {"cinn_var1", "cinn_var2"}, {"cinn_var4"}, "mul"));
-    instructions.emplace_back(new CinnInstruction(
-        cinn::common::DefaultHostTarget(), scope.get(),
-        {"cinn_var3", "cinn_var4"}, {"cinn_var5"}, "elementwise_add"));
+        new CinnInstruction(cinn::common::DefaultHostTarget(),
+                            scope.get(),
+                            {"cinn_var1", "cinn_var2"},
+                            {"cinn_var3"},
+                            "elementwise_add"));
+    instructions.emplace_back(
+        new CinnInstruction(cinn::common::DefaultHostTarget(),
+                            scope.get(),
+                            {"cinn_var1", "cinn_var2"},
+                            {"cinn_var4"},
+                            "mul"));
+    instructions.emplace_back(
+        new CinnInstruction(cinn::common::DefaultHostTarget(),
+                            scope.get(),
+                            {"cinn_var3", "cinn_var4"},
+                            {"cinn_var5"},
+                            "elementwise_add"));
     runtime_program =
         std::make_unique<CinnRuntimeProgram>(scope, std::move(instructions));
     result->cached_index = 110;
@@ -188,8 +204,8 @@ TEST_F(CinnLaunchContextTest, TestConstructResult) {
 TEST_F(CinnLaunchContextTest, TestCheckTensorEquivalent) {
   platform::CPUPlace place;
   framework::Scope scope;
-  auto* tensor1 = scope.Var("var1")->GetMutable<LoDTensor>();
-  auto* tensor2 = scope.Var("var2")->GetMutable<LoDTensor>();
+  auto* tensor1 = scope.Var("var1")->GetMutable<phi::DenseTensor>();
+  auto* tensor2 = scope.Var("var2")->GetMutable<phi::DenseTensor>();
 
   // dimension not equivalent
   tensor1->mutable_data<float>(phi::make_ddim({3, 5}), place);
@@ -249,7 +265,7 @@ TEST_F(CinnLaunchContextTest, TestCallbackAssignment) {
   launch_context->UpdateCapturedEnv(scope, place);
 
   // assign external variables
-  auto* tensor1 = scope.Var("var1")->GetMutable<LoDTensor>();
+  auto* tensor1 = scope.Var("var1")->GetMutable<phi::DenseTensor>();
   float* data1 = tensor1->mutable_data<float>(phi::make_ddim({3, 4}), place);
   data1[0] = 9.99f;
   data1[10] = 19.99f;

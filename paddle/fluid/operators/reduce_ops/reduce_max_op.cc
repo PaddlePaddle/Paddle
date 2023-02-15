@@ -12,9 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/reduce_ops/reduce_min_max_op.h"
-
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_min_max_op.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 
@@ -26,11 +25,15 @@ class ReduceMaxOpMaker : public ops::ReduceOpMaker {
   virtual std::string GetOpType() const { return "Reduce reduce_max"; }
 };
 
-DECLARE_INFER_SHAPE_FUNCTOR(reduce_max, ReduceMaxInferShapeFunctor,
-                            PD_INFER_META(phi::ReduceInferMetaBase));
+DECLARE_INFER_SHAPE_FUNCTOR(
+    reduce_max,
+    ReduceMaxInferShapeFunctor,
+    PD_INFER_META(phi::ReduceIntArrayAxisInferMetaBase));
 
 REGISTER_OPERATOR(
-    reduce_max, ops::ReduceOp, ReduceMaxOpMaker,
+    reduce_max,
+    ops::ReduceOp,
+    ReduceMaxOpMaker,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>,
     ReduceMaxInferShapeFunctor);

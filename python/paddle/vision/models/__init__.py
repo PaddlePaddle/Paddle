@@ -1,16 +1,16 @@
 #  Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserve.
 #
-#Licensed under the Apache License, Version 2.0 (the "License");
-#you may not use this file except in compliance with the License.
-#You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
 #    http://www.apache.org/licenses/LICENSE-2.0
 #
-#Unless required by applicable law or agreed to in writing, software
-#distributed under the License is distributed on an "AS IS" BASIS,
-#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#See the License for the specific language governing permissions and
-#limitations under the License.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 from .resnet import ResNet  # noqa: F401
 from .resnet import resnet18  # noqa: F401
@@ -64,7 +64,7 @@ from .shufflenetv2 import shufflenet_v2_x1_5  # noqa: F401
 from .shufflenetv2 import shufflenet_v2_x2_0  # noqa: F401
 from .shufflenetv2 import shufflenet_v2_swish  # noqa: F401
 
-__all__ = [ #noqa
+__all__ = [  # noqa
     'ResNet',
     'resnet18',
     'resnet34',
@@ -115,5 +115,5 @@ __all__ = [ #noqa
     'shufflenet_v2_x1_0',
     'shufflenet_v2_x1_5',
     'shufflenet_v2_x2_0',
-    'shufflenet_v2_swish'
+    'shufflenet_v2_swish',
 ]

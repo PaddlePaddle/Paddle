@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <thread>  // NOLINT
-
 #include "paddle/fluid/imperative/bkcl_context.h"
+
+#include <thread>  // NOLINT
 
 #include "gtest/gtest.h"
 

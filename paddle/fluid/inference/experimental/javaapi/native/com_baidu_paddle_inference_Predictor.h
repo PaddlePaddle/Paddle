@@ -16,8 +16,7 @@
 #include <jni.h>
 /* Header for class com_baidu_paddle_inference_Predictor */
 
-#ifndef PADDLE_FLUID_INFERENCE_JAVAAPI_NATIVE_COM_BAIDU_PADDLE_INFERENCE_PREDICTOR_H_
-#define PADDLE_FLUID_INFERENCE_JAVAAPI_NATIVE_COM_BAIDU_PADDLE_INFERENCE_PREDICTOR_H_
+#pragma once
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -27,7 +26,8 @@ extern "C" {
  * Signature: (J)V
  */
 JNIEXPORT void JNICALL
-Java_com_baidu_paddle_inference_Predictor_cppPredictorDestroy(JNIEnv *, jobject,
+Java_com_baidu_paddle_inference_Predictor_cppPredictorDestroy(JNIEnv *,
+                                                              jobject,
                                                               jlong);
 
 /*
@@ -55,7 +55,8 @@ Java_com_baidu_paddle_inference_Predictor_predictorClearIntermediateTensor(
  * Signature: (J)J
  */
 JNIEXPORT jlong JNICALL
-Java_com_baidu_paddle_inference_Predictor_createPredictor(JNIEnv *, jobject,
+Java_com_baidu_paddle_inference_Predictor_createPredictor(JNIEnv *,
+                                                          jobject,
                                                           jlong);
 
 /*
@@ -80,8 +81,10 @@ JNIEXPORT jlong JNICALL Java_com_baidu_paddle_inference_Predictor_getOutputNum(
  * Signature: (JJ)Ljava/lang/String;
  */
 JNIEXPORT jstring JNICALL
-Java_com_baidu_paddle_inference_Predictor_getInputNameByIndex(JNIEnv *, jobject,
-                                                              jlong, jlong);
+Java_com_baidu_paddle_inference_Predictor_getInputNameByIndex(JNIEnv *,
+                                                              jobject,
+                                                              jlong,
+                                                              jlong);
 
 /*
  * Class:     com_baidu_paddle_inference_Predictor
@@ -90,7 +93,8 @@ Java_com_baidu_paddle_inference_Predictor_getInputNameByIndex(JNIEnv *, jobject,
  */
 JNIEXPORT jstring JNICALL
 Java_com_baidu_paddle_inference_Predictor_getOutputNameByIndex(JNIEnv *,
-                                                               jobject, jlong,
+                                                               jobject,
+                                                               jlong,
                                                                jlong);
 
 /*
@@ -100,7 +104,8 @@ Java_com_baidu_paddle_inference_Predictor_getOutputNameByIndex(JNIEnv *,
  */
 JNIEXPORT jlong JNICALL
 Java_com_baidu_paddle_inference_Predictor_getInputHandleByName(JNIEnv *,
-                                                               jobject, jlong,
+                                                               jobject,
+                                                               jlong,
                                                                jstring);
 
 /*
@@ -110,7 +115,8 @@ Java_com_baidu_paddle_inference_Predictor_getInputHandleByName(JNIEnv *,
  */
 JNIEXPORT jlong JNICALL
 Java_com_baidu_paddle_inference_Predictor_getOutputHandleByName(JNIEnv *,
-                                                                jobject, jlong,
+                                                                jobject,
+                                                                jlong,
                                                                 jstring);
 
 /*
@@ -124,4 +130,3 @@ Java_com_baidu_paddle_inference_Predictor_runPD(JNIEnv *, jobject, jlong);
 #ifdef __cplusplus
 }
 #endif
-#endif  // PADDLE_FLUID_INFERENCE_JAVAAPI_NATIVE_COM_BAIDU_PADDLE_INFERENCE_PREDICTOR_H_

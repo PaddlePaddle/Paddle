@@ -15,11 +15,13 @@
 #pragma once
 #include <stdint.h>
 #include <stdio.h>
+
 #include <vector>
+
 #include "paddle/fluid/distributed/common/registerer.h"
-#include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/table/accessor.h"
 #include "paddle/fluid/distributed/ps/table/sparse_sgd_rule.h"
+#include "paddle/fluid/distributed/the_one_ps.pb.h"
 
 namespace paddle {
 namespace distributed {
@@ -73,10 +75,12 @@ class CtrDoubleAccessor : public ValueAccessor {
       return val[CtrDoubleFeatureValue::DeltaScoreIndex()];
     }
     static double& Show(float* val) {
-      return ((double*)(val + CtrDoubleFeatureValue::ShowIndex()))[0];
+      return (reinterpret_cast<double*>(val +
+                                        CtrDoubleFeatureValue::ShowIndex()))[0];
     }
     static double& Click(float* val) {
-      return ((double*)(val + CtrDoubleFeatureValue::ClickIndex()))[0];
+      return (reinterpret_cast<double*>(
+          val + CtrDoubleFeatureValue::ClickIndex()))[0];
     }
     static float& Slot(float* val) {
       return val[CtrDoubleFeatureValue::SlotIndex()];
@@ -166,11 +170,12 @@ class CtrDoubleAccessor : public ValueAccessor {
   // param = 0, save all feature
   // param = 1, save delta feature
   // param = 3, save all feature with time decay
-  virtual bool Save(float* value, int param) override;
-  bool SaveCache(float* value, int param,
+  bool Save(float* value, int param) override;
+  bool SaveCache(float* value,
+                 int param,
                  double global_cache_threshold) override;
   // update delta_score and unseen_days after save
-  virtual void UpdateStatAfterSave(float* value, int param) override;
+  void UpdateStatAfterSave(float* value, int param) override;
   // 判断该value是否保存到ssd
   virtual bool SaveSSD(float* value);
   // virtual bool save_cache(float* value, int param, double
@@ -179,24 +184,27 @@ class CtrDoubleAccessor : public ValueAccessor {
   // 要求value的内存由外部调用者分配完毕
   virtual int32_t Create(float** value, size_t num);
   // 从values中选取到select_values中
-  virtual int32_t Select(float** select_values, const float** values,
+  virtual int32_t Select(float** select_values,
+                         const float** values,
                          size_t num);
   // 将update_values聚合到一起
   virtual int32_t Merge(float** update_values,
-                        const float** other_update_values, size_t num);
+                        const float** other_update_values,
+                        size_t num);
   // 将update_values聚合到一起，通过it.next判定是否进入下一个key
   // virtual int32_t Merge(float** update_values, iterator it);
   // 将update_values更新应用到values中
-  virtual int32_t Update(float** values, const float** update_values,
+  virtual int32_t Update(float** values,
+                         const float** update_values,
                          size_t num);
-  virtual std::string ParseToString(const float* value, int param) override;
-  virtual int32_t ParseFromString(const std::string& str, float* v) override;
+  std::string ParseToString(const float* value, int param) override;
+  int32_t ParseFromString(const std::string& str, float* v) override;
   virtual bool CreateValue(int type, const float* value);
-  //这个接口目前只用来取show
-  virtual float GetField(float* value, const std::string& name) override {
-    CHECK(name == "show");
+  // 这个接口目前只用来取show
+  float GetField(float* value, const std::string& name) override {
+    CHECK_EQ(name, "show");
     if (name == "show") {
-      return (float)CtrDoubleFeatureValue::Show(value);
+      return static_cast<float>(CtrDoubleFeatureValue::Show(value));
     }
     return 0.0;
   }

@@ -40,8 +40,10 @@ class StepScopes {
  public:
   StepScopes(const platform::DeviceContext &dev_ctx,
              const framework::Scope &parent,
-             std::vector<framework::Scope *> *scopes, bool is_train,
-             size_t seq_len, bool is_backward = false);
+             std::vector<framework::Scope *> *scopes,
+             bool is_train,
+             size_t seq_len,
+             bool is_backward = false);
 
   // Get the current scope
   framework::Scope &CurScope();
@@ -118,13 +120,18 @@ class RecurrentBase : public framework::OperatorBase {
                                      const std::vector<std::string> &dst_vars,
                                      Callback callback,
                                      bool is_backward = false) {
-    PADDLE_ENFORCE_EQ(src_vars.size(), dst_vars.size(),
+    PADDLE_ENFORCE_EQ(src_vars.size(),
+                      dst_vars.size(),
                       platform::errors::InvalidArgument(
                           "Sizes of source vars and destination vars are not "
                           "equal in LinkTensor."));
     for (size_t i = 0; i < dst_vars.size(); ++i) {
       VLOG(10) << "Link " << src_vars[i] << " to " << dst_vars[i];
-      AccessTensor(src_scope, src_vars[i], dst_scope, dst_vars[i], callback,
+      AccessTensor(src_scope,
+                   src_vars[i],
+                   dst_scope,
+                   dst_vars[i],
+                   callback,
                    is_backward);
     }
   }
@@ -139,13 +146,18 @@ class RecurrentBase : public framework::OperatorBase {
                                      const std::vector<std::string> &dst_vars,
                                      Callback callback,
                                      bool is_backward = false) {
-    PADDLE_ENFORCE_EQ(src_vars.size(), dst_vars.size(),
+    PADDLE_ENFORCE_EQ(src_vars.size(),
+                      dst_vars.size(),
                       platform::errors::InvalidArgument(
                           "Sizes of source vars and destination vars are not "
                           "equal in LinkTensor."));
     for (size_t i = 0; i < dst_vars.size(); ++i) {
       VLOG(10) << "Link " << src_vars[i] << " to " << dst_vars[i];
-      AccessTensor(src_scope, src_vars[i], dst_scope, dst_vars[i], callback,
+      AccessTensor(src_scope,
+                   src_vars[i],
+                   dst_scope,
+                   dst_vars[i],
+                   callback,
                    is_backward);
     }
   }
@@ -159,19 +171,21 @@ class RecurrentBase : public framework::OperatorBase {
   static void AccessTensor(const framework::Scope &src_scope,
                            const std::string &src_var_name,
                            framework::Scope *dst_scope,
-                           const std::string &dst_var_name, Callback callback,
+                           const std::string &dst_var_name,
+                           Callback callback,
                            bool is_backward = false) {
     auto *src_var = src_scope.FindVar(src_var_name);
     if (is_backward && src_var == nullptr) {
       return;
     }
     PADDLE_ENFORCE_NOT_NULL(
-        src_var, platform::errors::NotFound("Source variable %s is not found.",
-                                            src_var_name));
-    auto &src_tensor = src_var->Get<framework::LoDTensor>();
+        src_var,
+        platform::errors::NotFound("Source variable %s is not found.",
+                                   src_var_name));
+    auto &src_tensor = src_var->Get<phi::DenseTensor>();
 
     auto *dst_var = dst_scope->Var(dst_var_name);
-    auto *dst_tensor = dst_var->GetMutable<framework::LoDTensor>();
+    auto *dst_tensor = dst_var->GetMutable<phi::DenseTensor>();
     callback(src_tensor, dst_tensor);
   }
 
@@ -179,7 +193,8 @@ class RecurrentBase : public framework::OperatorBase {
   static void AccessTensor(const framework::Scope &src_scope,
                            const std::string &src_var_name,
                            const framework::Scope &dst_scope,
-                           const std::string &dst_var_name, Callback callback,
+                           const std::string &dst_var_name,
+                           Callback callback,
                            bool is_backward = false) {
     auto *dst_var = dst_scope.FindVar(dst_var_name);
     if (is_backward && dst_var == nullptr) {
@@ -187,20 +202,23 @@ class RecurrentBase : public framework::OperatorBase {
     }
     auto *src_var = src_scope.FindVar(src_var_name);
     PADDLE_ENFORCE_NOT_NULL(
-        src_var, platform::errors::NotFound("Source variable %s is not found.",
-                                            src_var_name));
-    auto &src_tensor = src_var->Get<framework::LoDTensor>();
+        src_var,
+        platform::errors::NotFound("Source variable %s is not found.",
+                                   src_var_name));
+    auto &src_tensor = src_var->Get<phi::DenseTensor>();
     PADDLE_ENFORCE_NOT_NULL(
-        dst_var, platform::errors::NotFound(
-                     "Destination variable %s is not found.", src_var_name));
-    auto *dst_tensor = dst_var->GetMutable<framework::LoDTensor>();
+        dst_var,
+        platform::errors::NotFound("Destination variable %s is not found.",
+                                   src_var_name));
+    auto *dst_tensor = dst_var->GetMutable<phi::DenseTensor>();
     callback(src_tensor, dst_tensor);
   }
 };
 
 class RecurrentOp : public RecurrentBase {
  public:
-  RecurrentOp(const std::string &type, const framework::VariableNameMap &inputs,
+  RecurrentOp(const std::string &type,
+              const framework::VariableNameMap &inputs,
               const framework::VariableNameMap &outputs,
               const framework::AttributeMap &attrs);
 

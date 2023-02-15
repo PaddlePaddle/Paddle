@@ -12,6 +12,7 @@ limitations under the License. */
 #include <algorithm>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 
@@ -22,20 +23,23 @@ class BinaryLogicalOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     OpComment comment;
-    AddInput("X", string::Sprintf("Left hand operand of %s operator. Must be "
-                                  "a Variable of type being one of bool, int8, "
-                                  "int16, int32, int64, float32, float64.",
-                                  comment.type));
-    AddInput("Y", string::Sprintf("Right hand operand of %s operator. Must be "
-                                  "a Variable of type being one of bool, int8, "
-                                  "int16, int32, int64, float32, float64.",
-                                  comment.type));
+    AddInput("X",
+             string::Sprintf("Left hand operand of %s operator. Must be "
+                             "a Variable of type being one of bool, int8, "
+                             "int16, int32, int64, float32, float64.",
+                             comment.type));
+    AddInput("Y",
+             string::Sprintf("Right hand operand of %s operator. Must be "
+                             "a Variable of type being one of bool, int8, "
+                             "int16, int32, int64, float32, float64.",
+                             comment.type));
     AddOutput("Out", string::Sprintf("n-dim bool Variable"));
     AddComment(string::Sprintf(R"DOC(%s Operator
-It operates element-wise on X and Y, and returns the Out. X, Y and Out are N-dim LoDTensor or Tensor.
+It operates element-wise on X and Y, and returns the Out. X, Y and Out are N-dim phi::DenseTensor or Tensor.
 Each element of Out is calculated by %s
 )DOC",
-                               comment.type, comment.equation));
+                               comment.type,
+                               comment.equation));
   }
 };
 
@@ -45,16 +49,18 @@ class UnaryLogicalOpProtoMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     OpComment comment;
     AddInput("X",
-             string::Sprintf("Operand of %s operator. Must be "
-                             "a LoDTensor or Tensor of type being one of bool, "
-                             "int8, int16, int32, int64, float32, float64.",
-                             comment.type));
-    AddOutput("Out", string::Sprintf("n-dim bool LoDTensor or Tensor."));
+             string::Sprintf(
+                 "Operand of %s operator. Must be "
+                 "a phi::DenseTensor or Tensor of type being one of bool, "
+                 "int8, int16, int32, int64, float32, float64.",
+                 comment.type));
+    AddOutput("Out", string::Sprintf("n-dim bool phi::DenseTensor or Tensor."));
     AddComment(string::Sprintf(R"DOC(%s Operator
-It operates element-wise on X, and returns the Out. X and Out are N-dim LoDTensor or Tensor.
+It operates element-wise on X, and returns the Out. X and Out are N-dim phi::DenseTensor or Tensor.
 Each element of Out is calculated by %s
 )DOC",
-                               comment.type, comment.equation));
+                               comment.type,
+                               comment.equation));
   }
 };
 
@@ -63,11 +69,12 @@ class LogicalOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
+    phi::KernelKey kt = OperatorWithKernel::GetExpectedKernelType(ctx);
     // LogicalOp kernel's device type is decided by input tensor place
-    kt.place_ = ctx.Input<framework::LoDTensor>("X")->place();
+    kt.set_backend(
+        phi::TransToPhiBackend(ctx.Input<phi::DenseTensor>("X")->place()));
     return kt;
   }
 };
@@ -106,9 +113,13 @@ class BinaryLogicalOp : public LogicalOp {
       std::vector<int> x_dims_array(max_dim);
       std::vector<int> y_dims_array(max_dim);
       std::vector<int> out_dims_array(max_dim);
-      GetBroadcastDimsArrays(dim_x, dim_y, x_dims_array.data(),
-                             y_dims_array.data(), out_dims_array.data(),
-                             max_dim, axis);
+      GetBroadcastDimsArrays(dim_x,
+                             dim_y,
+                             x_dims_array.data(),
+                             y_dims_array.data(),
+                             out_dims_array.data(),
+                             max_dim,
+                             axis);
       context->SetOutputDim("Out", phi::make_ddim(out_dims_array));
     }
     context->ShareLoD("X", "Out");
@@ -126,7 +137,8 @@ class BinaryLogicalOp : public LogicalOp {
   char _##op_type##Comment::type[]{#op_type};                              \
   char _##op_type##Comment::equation[]{_equation};                         \
   REGISTER_OPERATOR(                                                       \
-      op_type, ::paddle::operators::BinaryLogicalOp<_##op_type##Comment>,  \
+      op_type,                                                             \
+      ::paddle::operators::BinaryLogicalOp<_##op_type##Comment>,           \
       ::paddle::operators::BinaryLogicalOpProtoMaker<_##op_type##Comment>, \
       ::paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,    \
       ::paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
@@ -139,7 +151,8 @@ class BinaryLogicalOp : public LogicalOp {
   char _##op_type##Comment::type[]{#op_type};                             \
   char _##op_type##Comment::equation[]{_equation};                        \
   REGISTER_OPERATOR(                                                      \
-      op_type, ::paddle::operators::UnaryLogicalOp<_##op_type##Comment>,  \
+      op_type,                                                            \
+      ::paddle::operators::UnaryLogicalOp<_##op_type##Comment>,           \
       ::paddle::operators::UnaryLogicalOpProtoMaker<_##op_type##Comment>, \
       ::paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,   \
       ::paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

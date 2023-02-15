@@ -88,7 +88,8 @@ struct DataRecord {
     num_samples = num_lines / 2;
   }
 };
-void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
+void PrepareInputs(std::vector<PaddleTensor> *input_slots,
+                   DataRecord *data,
                    int batch_size) {
   PaddleTensor feed_tensor;
   feed_tensor.name = "feed";
@@ -131,19 +132,24 @@ TEST(Analyzer_rnn2, profile) {
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
   TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-                 input_slots_all, &outputs, FLAGS_num_threads);
+                 input_slots_all,
+                 &outputs,
+                 FLAGS_num_threads);
 
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
     // the first inference result
-    PADDLE_ENFORCE_GT(outputs.size(), 0,
+    PADDLE_ENFORCE_GT(outputs.size(),
+                      0,
                       paddle::platform::errors::Fatal(
                           "The size of output should be greater than 0."));
     auto output = outputs.back();
-    PADDLE_ENFORCE_GT(output.size(), 0,
+    PADDLE_ENFORCE_GT(output.size(),
+                      0,
                       paddle::platform::errors::Fatal(
                           "The size of output should be greater than 0."));
     size_t size = GetSize(output[0]);
-    PADDLE_ENFORCE_GT(size, 0,
+    PADDLE_ENFORCE_GT(size,
+                      0,
                       paddle::platform::errors::Fatal(
                           "The size of output should be greater than 0."));
     float *result = static_cast<float *>(output[0].data.data());

@@ -22,7 +22,7 @@ namespace phi {
 template <typename T, typename Context>
 void MeanRawKernel(const Context& dev_ctx,
                    const DenseTensor& x,
-                   const std::vector<int64_t>& dims,
+                   const IntArray& dims,
                    bool keep_dim,
                    bool reduce_all,
                    DenseTensor* out);
@@ -30,14 +30,14 @@ void MeanRawKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void MeanKernel(const Context& dev_ctx,
                 const DenseTensor& x,
-                const std::vector<int64_t>& dims,
+                const IntArray& dims,
                 bool keep_dim,
                 DenseTensor* out);
 
 template <typename T, typename Context>
 DenseTensor Mean(const Context& dev_ctx,
                  const DenseTensor& x,
-                 const std::vector<int64_t>& axis,
+                 const IntArray& axis,
                  bool keep_dim) {
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);

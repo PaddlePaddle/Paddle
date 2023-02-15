@@ -13,14 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <unistd.h>
+
 #include <string>
 #include <thread>  // NOLINT
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
 #include "paddle/fluid/distributed/ps/service/brpc_ps_server.h"
 #include "paddle/fluid/distributed/ps/service/env.h"
+#include "paddle/fluid/distributed/the_one_ps.pb.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -48,23 +49,24 @@ namespace distributed = paddle::distributed;
 
 void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
   auto x_var = scope->Var("x");
-  x_var->GetMutable<framework::LoDTensor>();
+  x_var->GetMutable<phi::DenseTensor>();
   auto x_g_var = scope->Var("x@GRAD");
-  x_g_var->GetMutable<framework::LoDTensor>();
+  x_g_var->GetMutable<phi::DenseTensor>();
 }
 
-void InitTensorsOnClient(framework::Scope* scope, platform::CPUPlace* place,
+void InitTensorsOnClient(framework::Scope* scope,
+                         platform::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
 
-  auto x_var = scope->Var("x")->GetMutable<framework::LoDTensor>();
+  auto x_var = scope->Var("x")->GetMutable<phi::DenseTensor>();
   float* x_ptr =
       x_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) x_ptr[i] = 1.0;
 
   auto g_size = rows_numel +
                 30;  // hard code here: key_num * (fea_dim + 3), show/clk/slot
-  auto x_g_var = scope->Var("x@GRAD")->GetMutable<framework::LoDTensor>();
+  auto x_g_var = scope->Var("x@GRAD")->GetMutable<phi::DenseTensor>();
   float* x_g_ptr =
       x_g_var->mutable_data<float>(framework::DDim({1, g_size}), *place);
   for (int64_t i = 0; i < g_size; ++i) x_g_ptr[i] = 1.0;
@@ -160,7 +162,7 @@ void GetDownpourSparseTableProto(
 
 /*-------------------------------------------------------------------------*/
 
-std::string ip_ = "127.0.0.1";
+std::string ip_ = "127.0.0.1";  // NOLINT
 uint32_t port_ = 4209;
 
 std::vector<std::string> host_sign_list_;
@@ -214,7 +216,7 @@ void RunBrpcPushSparse() {
       std::pair<uint64_t, std::vector<paddle::distributed::Region>>(0, {}));
   auto regions = dense_regions[0];
   framework::Variable* var = client_scope.FindVar("x");
-  framework::LoDTensor* tensor = var->GetMutable<framework::LoDTensor>();
+  phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
 
   RunClient(dense_regions);
   std::vector<uint64_t> fea_keys(10);
@@ -252,21 +254,24 @@ void RunBrpcPushSparse() {
       });
 
   framework::Variable* g_var = client_scope.FindVar("x@GRAD");
-  framework::LoDTensor* g_tensor = g_var->GetMutable<framework::LoDTensor>();
+  phi::DenseTensor* g_tensor = g_var->GetMutable<phi::DenseTensor>();
 
   LOG(INFO) << "Run push_sparse_grad";
   std::vector<float*> push_g_vec;
   for (auto i = 0; i < static_cast<int>(fea_keys.size()); ++i) {
     push_g_vec.push_back(g_tensor->data<float>() + i * 13);
   }
-  auto push_grad_status = worker_ptr_->PushSparseRawGradient(
-      0, fea_keys.data(), (const float**)push_g_vec.data(), fea_keys.size(),
-      closure_push_grad);
+  auto push_grad_status =
+      worker_ptr_->PushSparseRawGradient(0,
+                                         fea_keys.data(),
+                                         (const float**)push_g_vec.data(),
+                                         fea_keys.size(),
+                                         closure_push_grad);
   push_grad_status.wait();
 
   // pull
-  pull_status = worker_ptr_->PullSparse(fea_value_ptr.data(), 0,
-                                        fea_keys.data(), fea_keys.size(), true);
+  pull_status = worker_ptr_->PullSparse(
+      fea_value_ptr.data(), 0, fea_keys.data(), fea_keys.size(), true);
   pull_status.wait();
 
   paddle::distributed::DownpourBrpcClosure* closure_push_grad1 =
@@ -284,9 +289,12 @@ void RunBrpcPushSparse() {
       });
 
   // push again, embedx update this time
-  push_grad_status = worker_ptr_->PushSparseRawGradient(
-      0, fea_keys.data(), (const float**)push_g_vec.data(), fea_keys.size(),
-      closure_push_grad1);
+  push_grad_status =
+      worker_ptr_->PushSparseRawGradient(0,
+                                         fea_keys.data(),
+                                         (const float**)push_g_vec.data(),
+                                         fea_keys.size(),
+                                         closure_push_grad1);
   push_grad_status.wait();
 
   // pull update
@@ -294,7 +302,7 @@ void RunBrpcPushSparse() {
       fea_temp_value_ptr.data(), 0, fea_keys.data(), fea_keys.size(), true);
   pull_update_status.wait();
 
-  for (size_t idx = 0; idx < tensor->numel(); ++idx) {
+  for (int64_t idx = 0; idx < tensor->numel(); ++idx) {
     EXPECT_FLOAT_EQ(fea_temp_values[idx], fea_values[idx] - 1.0);
   }
 

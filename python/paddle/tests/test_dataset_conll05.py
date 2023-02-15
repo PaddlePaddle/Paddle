@@ -14,6 +14,7 @@
 
 import os
 import unittest
+
 import numpy as np
 
 from paddle.text.datasets import Conll05st

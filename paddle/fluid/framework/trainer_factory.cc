@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/trainer_factory.h"
 
 #include <stdlib.h>
+
 #include <memory>
 #include <string>
 

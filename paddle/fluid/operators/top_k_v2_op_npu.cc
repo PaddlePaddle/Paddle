@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
@@ -25,10 +26,10 @@ template <typename T>
 class TopkV2NPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* input = context.Input<Tensor>("X");
-    auto* k_tensor = context.Input<Tensor>("K");
-    auto* out = context.Output<Tensor>("Out");
-    auto* indices = context.Output<Tensor>("Indices");  // type: INT64
+    auto* input = context.Input<phi::DenseTensor>("X");
+    auto* k_tensor = context.Input<phi::DenseTensor>("K");
+    auto* out = context.Output<phi::DenseTensor>("Out");
+    auto* indices = context.Output<phi::DenseTensor>("Indices");  // type: INT64
 
     int32_t k = static_cast<int32_t>(context.Attr<int>("k"));
     int axis = static_cast<int>(context.Attr<int>("axis"));
@@ -57,7 +58,7 @@ class TopkV2NPUKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(context.GetPlace());
     indices->mutable_data<int64_t>(context.GetPlace());
 
-    framework::Tensor indices_int32(experimental::DataType::INT32);
+    phi::DenseTensor indices_int32(experimental::DataType::INT32);
     indices_int32.Resize(output_dims);
     indices_int32.mutable_data<int32_t>(context.GetPlace());
 
@@ -80,7 +81,9 @@ class TopkV2NPUKernel : public framework::OpKernel<T> {
     auto dst_dtype =
         ConvertToNpuDtype(framework::TransToProtoVarType(indices->type()));
     const auto& npu_op_runner_cast =
-        NpuOpRunner("Cast", {indices_int32}, {*indices},
+        NpuOpRunner("Cast",
+                    {indices_int32},
+                    {*indices},
                     {{"dst_type", static_cast<int>(dst_dtype)}});
     npu_op_runner_cast.Run(npu_stream);
   }
@@ -90,7 +93,8 @@ class TopkV2NPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_NPU_KERNEL(top_k_v2, ops::TopkV2NPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(top_k_v2,
+                       ops::TopkV2NPUKernel<float>,
                        ops::TopkV2NPUKernel<plat::float16>,
                        ops::TopkV2NPUKernel<double>,
                        ops::TopkV2NPUKernel<int32_t>,

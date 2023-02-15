@@ -33,14 +33,13 @@ class DygraphInferShapeTest {
   void AddInput(const std::string& name, const framework::DDim& dim) {
     std::shared_ptr<imperative::VarBase> vin(
         new imperative::VarBase(false, name));
-    vin->MutableVar()->GetMutable<framework::LoDTensor>()->Resize(dim);
+    vin->MutableVar()->GetMutable<phi::DenseTensor>()->Resize(dim);
     ins_[name] = {vin};
   }
   void AddOutput(const std::string& name, const framework::DDim& expected_dim) {
     std::shared_ptr<imperative::VarBase> vout(
         new imperative::VarBase(false, name));
-    vout->MutableVar()
-        ->GetMutable<framework::LoDTensor>();  // InitializeVariable
+    vout->MutableVar()->GetMutable<phi::DenseTensor>();  // InitializeVariable
     outs_[name] = {vout};
     expected_dims_[name] = expected_dim;
   }
@@ -53,7 +52,7 @@ class DygraphInferShapeTest {
     for (const auto& pair : expected_dims_) {
       auto out = outs_[pair.first][0];
       ASSERT_EQ(pair.second,
-                out->MutableVar()->GetMutable<framework::LoDTensor>()->dims());
+                out->MutableVar()->GetMutable<phi::DenseTensor>()->dims());
     }
   }
 

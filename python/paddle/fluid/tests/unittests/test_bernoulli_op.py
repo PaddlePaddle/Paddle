@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-import paddle
-from op_test import OpTest
+
 import numpy as np
-import os
+from op_test import OpTest
+
+import paddle
 
 
 def output_hist(out):
@@ -41,9 +40,7 @@ class TestBernoulliOp(OpTest):
 
     def verify_output(self, outs):
         hist, prob = output_hist(np.array(outs[0]))
-        self.assertTrue(
-            np.allclose(
-                hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
 class TestBernoulliApi(unittest.TestCase):
@@ -53,20 +50,17 @@ class TestBernoulliApi(unittest.TestCase):
         out = paddle.bernoulli(x)
         paddle.enable_static()
         hist, prob = output_hist(out.numpy())
-        self.assertTrue(
-            np.allclose(
-                hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
     def test_static(self):
         x = paddle.rand([1024, 1024])
         out = paddle.bernoulli(x)
         exe = paddle.static.Executor(paddle.CPUPlace())
-        out = exe.run(paddle.static.default_main_program(),
-                      fetch_list=[out.name])
+        out = exe.run(
+            paddle.static.default_main_program(), fetch_list=[out.name]
+        )
         hist, prob = output_hist(out[0])
-        self.assertTrue(
-            np.allclose(
-                hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
 class TestRandomValue(unittest.TestCase):
@@ -89,8 +83,8 @@ class TestRandomValue(unittest.TestCase):
         self.assertEqual(np.sum(index0), 260028995)
         self.assertEqual(np.sum(index1), 8582429431)
         self.assertEqual(np.sum(index2), 8581445798)
-        expect = [0., 0., 0., 0., 0., 0., 0., 1., 1., 1.]
-        self.assertTrue(np.array_equal(y[16, 500, 500:510], expect))
+        expect = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0]
+        np.testing.assert_array_equal(y[16, 500, 500:510], expect)
 
         x = paddle.to_tensor(x_np, dtype='float32')
         y = paddle.bernoulli(x).numpy()
@@ -98,8 +92,8 @@ class TestRandomValue(unittest.TestCase):
         self.assertEqual(np.sum(index0), 260092343)
         self.assertEqual(np.sum(index1), 8583509076)
         self.assertEqual(np.sum(index2), 8582778540)
-        expect = [0., 0., 1., 1., 1., 1., 0., 1., 1., 1.]
-        self.assertTrue(np.array_equal(y[16, 500, 500:510], expect))
+        expect = [0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0]
+        np.testing.assert_array_equal(y[16, 500, 500:510], expect)
 
         paddle.enable_static()
 

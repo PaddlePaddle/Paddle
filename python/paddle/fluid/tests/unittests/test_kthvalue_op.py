@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
 
@@ -48,7 +48,8 @@ class TestKthvalueOp(OpTest):
         self.inputs = {'X': self.input_data}
         self.attrs = {'k': self.k, 'axis': self.axis}
         output, indices = cal_kthvalue(
-            self.input_data, k=self.k, axis=self.axis)
+            self.input_data, k=self.k, axis=self.axis
+        )
         self.outputs = {'Out': output, 'Indices': indices}
 
     def test_check_output(self):
@@ -74,7 +75,8 @@ class TestKthvalueOpWithKeepdim(OpTest):
         self.inputs = {'X': self.input_data}
         self.attrs = {'k': self.k, 'axis': self.axis, 'keepdim': True}
         output, indices = cal_kthvalue(
-            self.input_data, k=self.k, axis=self.axis, keepdim=True)
+            self.input_data, k=self.k, axis=self.axis, keepdim=True
+        )
         self.outputs = {'Out': output, 'Indices': indices}
 
     def test_check_output(self):
@@ -102,8 +104,10 @@ class TestKthvalueOpKernels(unittest.TestCase):
             for axis in self.axises:
                 value_expect, indice_expect = cal_kthvalue(inputs, k, axis)
                 v, inds = paddle.kthvalue(tensor, k, axis)
-                self.assertTrue(np.allclose(v.numpy(), value_expect))
-                self.assertTrue(np.allclose(inds.numpy(), indice_expect))
+                np.testing.assert_allclose(v.numpy(), value_expect, rtol=1e-05)
+                np.testing.assert_allclose(
+                    inds.numpy(), indice_expect, rtol=1e-05
+                )
 
         def test_gpu_kernel():
             shape = (2, 30, 250)
@@ -114,8 +118,10 @@ class TestKthvalueOpKernels(unittest.TestCase):
             for axis in self.axises:
                 value_expect, indice_expect = cal_kthvalue(inputs, k, axis)
                 v, inds = paddle.kthvalue(tensor, k, axis)
-                self.assertTrue(np.allclose(v.numpy(), value_expect))
-                self.assertTrue(np.allclose(inds.numpy(), indice_expect))
+                np.testing.assert_allclose(v.numpy(), value_expect, rtol=1e-05)
+                np.testing.assert_allclose(
+                    inds.numpy(), indice_expect, rtol=1e-05
+                )
 
         test_cpu_kernel()
         if fluid.core.is_compiled_with_cuda():
@@ -171,6 +177,12 @@ class TestKthvalueOpErrors(unittest.TestCase):
 
         self.assertRaises(ValueError, test_dim_range_error)
 
+        def test_k_error_0_dim_input():
+            x_0d = paddle.full([], 1)
+            x_0d.kthvalue(k=8)
+
+        self.assertRaises(ValueError, test_k_error_0_dim_input)
+
 
 class TestModeOpInStatic(unittest.TestCase):
     def setUp(self):
@@ -180,16 +192,19 @@ class TestModeOpInStatic(unittest.TestCase):
 
     def test_run_static(self):
         paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             input_tensor = paddle.static.data(
-                name="x", shape=[2, 20, 1, 2, 80], dtype="float64")
+                name="x", shape=[2, 20, 1, 2, 80], dtype="float64"
+            )
             result = paddle.kthvalue(input_tensor, self.k, axis=1)
             expect_value = cal_kthvalue(self.input_data, self.k, axis=1)[0]
             exe = paddle.static.Executor(paddle.CPUPlace())
-            paddle_result = exe.run(feed={"x": self.input_data},
-                                    fetch_list=[result])[0]
-            self.assertTrue(np.allclose(paddle_result, expect_value))
+            paddle_result = exe.run(
+                feed={"x": self.input_data}, fetch_list=[result]
+            )[0]
+            np.testing.assert_allclose(paddle_result, expect_value, rtol=1e-05)
 
 
 if __name__ == '__main__':

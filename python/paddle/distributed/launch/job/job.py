@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,7 +19,7 @@ class JobMode:
     HETER = 'heter'
 
 
-class Job(object):
+class Job:
     def __init__(self, jid='default', mode=JobMode.COLLECTIVE, nnodes="1"):
         self._mode = mode
         self._id = jid
@@ -33,8 +33,13 @@ class Job(object):
 
     def __str__(self):
         return "Job: {}, mode {}, replicas {}[{}:{}], elastic {}".format(
-            self.id, self.mode, self._replicas, self._replicas_min,
-            self._replicas_max, self.elastic)
+            self.id,
+            self.mode,
+            self._replicas,
+            self._replicas_min,
+            self._replicas_max,
+            self.elastic,
+        )
 
     @property
     def mode(self):
@@ -75,6 +80,9 @@ class Job(object):
             self._elastic = True
         else:
             self._replicas = int(np)
-            self._replicas_min, self._replicas_max = self._replicas, self._replicas
+            self._replicas_min, self._replicas_max = (
+                self._replicas,
+                self._replicas,
+            )
 
             self._elastic = False

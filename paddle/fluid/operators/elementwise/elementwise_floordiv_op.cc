@@ -25,9 +25,6 @@ class EmptyGradOpMaker;
 namespace imperative {
 class OpBase;
 }  // namespace imperative
-namespace platform {
-class CPUDeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -38,15 +35,17 @@ class ElementwiseFloorDivOpMaker : public ElementwiseOpMaker {
   std::string GetEquation() const override { return "Out = X // Y"; }
 
   void AddInputX() override {
-    AddInput("X",
-             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
-             "should be int32, int64.");
+    AddInput(
+        "X",
+        "(Variable), Tensor or phi::DenseTensor of any dimensions. Its dtype "
+        "should be int32, int64.");
   }
 
   void AddInputY() override {
-    AddInput("Y",
-             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
-             "should be int32, int64.");
+    AddInput(
+        "Y",
+        "(Variable), Tensor or phi::DenseTensor of any dimensions. Its dtype "
+        "should be int32, int64.");
   }
 
   std::string GetOpFuntionality() const override {
@@ -58,7 +57,8 @@ class ElementwiseFloorDivOpMaker : public ElementwiseOpMaker {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_WITHOUT_GRADIENT(elementwise_floordiv, ops::ElementwiseOp,
+REGISTER_OP_WITHOUT_GRADIENT(elementwise_floordiv,
+                             ops::ElementwiseOp,
                              ops::ElementwiseFloorDivOpMaker);
 
 REGISTER_OP_VERSION(elementwise_floordiv)

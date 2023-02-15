@@ -20,12 +20,13 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
 #include "butil/endpoint.h"
 #include "google/protobuf/service.h"
 #include "paddle/fluid/distributed/common/registerer.h"
-#include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/service/env.h"
 #include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
+#include "paddle/fluid/distributed/the_one_ps.pb.h"
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -66,7 +67,9 @@ class PSServer {
   PSServer(const PSServer &) = delete;
 
   virtual int32_t Configure(
-      const PSParameter &config, PSEnvironment &env, size_t server_rank,
+      const PSParameter &config,
+      PSEnvironment &env,  // NOLINT
+      size_t server_rank,
       const std::vector<framework::ProgramDesc> &server_sub_program = {});
 
   virtual uint64_t Start(const std::string &ip, uint32_t port) = 0;
@@ -107,7 +110,8 @@ class PSServer {
     _msg_handler_map[msg_type] = handler;
     return 0;
   }
-  virtual int HandlePServer2PServerMsg(int msg_type, int from_pserver_id,
+  virtual int HandlePServer2PServerMsg(int msg_type,
+                                       int from_pserver_id,
                                        const std::string &msg) {
     auto itr = _msg_handler_map.find(msg_type);
     if (itr == _msg_handler_map.end()) {
@@ -120,7 +124,8 @@ class PSServer {
     }
     return itr->second(msg_type, from_pserver_id, msg);
   }
-  virtual int32_t ReceiveFromPServer(int msg_type, int pserver_id,
+  virtual int32_t ReceiveFromPServer(int msg_type,
+                                     int pserver_id,
                                      const std::string &msg) {
     LOG(FATAL) << "NotImplementError::PSServer::ReceiveFromPServer";
     return -1;
@@ -149,14 +154,14 @@ typedef std::function<void(void *)> PServerCallBack;
 
 class PServerClosure : public google::protobuf::Closure {
  public:
-  PServerClosure(PServerCallBack callback) : _callback(callback) {}
+  explicit PServerClosure(PServerCallBack callback) : _callback(callback) {}
   virtual ~PServerClosure() {}
   virtual void set_promise_value(int value) {
     for (auto &promise : _promises) {
       promise->set_value(value);
     }
   }
-  void add_promise(std::shared_ptr<std::promise<int32_t>> &promise) {
+  void add_promise(const std::shared_ptr<std::promise<int32_t>> &promise) {
     _promises.push_back(promise);
   }
 
@@ -176,12 +181,13 @@ class PsBaseService : public PsService {
     _config = _server->Config();
     return 0;
   }
-  virtual void service(::google::protobuf::RpcController *controller,
-                       const PsRequestMessage *request,
-                       PsResponseMessage *response,
-                       ::google::protobuf::Closure *done) override = 0;
+  void service(::google::protobuf::RpcController *controller,
+               const PsRequestMessage *request,
+               PsResponseMessage *response,
+               ::google::protobuf::Closure *done) override = 0;
 
-  virtual void set_response_code(PsResponseMessage &response, int err_code,
+  virtual void set_response_code(PsResponseMessage &response,  // NOLINT
+                                 int err_code,
                                  const char *err_msg) {
     response.set_err_msg(err_msg);
     response.set_err_code(err_code);

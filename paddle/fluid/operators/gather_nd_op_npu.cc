@@ -21,16 +21,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
 using NPUDeviceContext = platform::NPUDeviceContext;
 
 template <typename T>
 class GatherNdNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *x = ctx.Input<Tensor>("X");
-    auto *index = ctx.Input<Tensor>("Index");
-    auto *out = ctx.Output<Tensor>("Out");
+    auto *x = ctx.Input<phi::DenseTensor>("X");
+    auto *index = ctx.Input<phi::DenseTensor>("Index");
+    auto *out = ctx.Output<phi::DenseTensor>("Out");
 
     out->template mutable_data<T>(ctx.GetPlace());
 
@@ -44,7 +43,8 @@ class GatherNdNPUKernel : public framework::OpKernel<T> {
     const auto &index_type = framework::TransToProtoVarType(index->dtype());
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;
-    PADDLE_ENFORCE_EQ(index_type_match, true,
+    PADDLE_ENFORCE_EQ(index_type_match,
+                      true,
                       platform::errors::InvalidArgument(
                           "Index holds the wrong type, it holds [%s],"
                           "but desires to be [%s] or [%s]",
@@ -64,10 +64,10 @@ template <typename T>
 class GatherNdGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *index = ctx.Input<Tensor>("Index");
-    auto *x = ctx.Input<Tensor>("X");
-    auto *dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto *dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto *index = ctx.Input<phi::DenseTensor>("Index");
+    auto *x = ctx.Input<phi::DenseTensor>("X");
+    auto *dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto *dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto *p = dx->mutable_data<T>(ctx.GetPlace());
 
     if (dx->numel() == 0) return;
@@ -77,8 +77,8 @@ class GatherNdGradNPUKernel : public framework::OpKernel<T> {
       return;
     }
 
-    framework::Tensor tmp_tensor(index->type());
-    framework::Tensor tmp_tensor2(dout->type());
+    phi::DenseTensor tmp_tensor(index->type());
+    phi::DenseTensor tmp_tensor2(dout->type());
     const auto index_dims = index->dims();
     if (index_dims.size() == 1) {
       tmp_tensor.ShareDataWith(*index);
@@ -96,8 +96,8 @@ class GatherNdGradNPUKernel : public framework::OpKernel<T> {
     }
 
     auto stream = ctx.template device_context<NPUDeviceContext>().stream();
-    platform::NPUMemsetAsync(static_cast<void *>(p), 0, dx->numel() * sizeof(T),
-                             stream);
+    platform::NPUMemsetAsync(
+        static_cast<void *>(p), 0, dx->numel() * sizeof(T), stream);
 
     const auto &runner_scatter = NpuOpRunner(
         "ScatterNdAdd", {*dx, *index, *dout}, {*dx}, {{"use_locking", false}});

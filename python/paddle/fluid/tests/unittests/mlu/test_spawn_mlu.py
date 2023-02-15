@@ -1,18 +1,17 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import os
 
@@ -20,13 +19,17 @@ import paddle
 import paddle.nn as nn
 import paddle.optimizer as opt
 import paddle.distributed as dist
-from paddle.distributed.spawn import _get_subprocess_env_list, _options_valid_check, _get_default_nprocs
+from paddle.distributed.spawn import (
+    _get_subprocess_env_list,
+    _options_valid_check,
+    _get_default_nprocs,
+)
 from paddle.fluid import core
 
 
 class LinearNet(nn.Layer):
     def __init__(self):
-        super(LinearNet, self).__init__()
+        super().__init__()
         self._linear1 = nn.Linear(10, 10)
         self._linear2 = nn.Linear(10, 1)
 
@@ -100,12 +103,13 @@ class TestSpawn(unittest.TestCase):
         self.assertEqual(nprocs, core.get_mlu_device_count())
 
     def test_spawn(self):
-        context = dist.spawn(train, backend='cncl', nprocs=4)
+        num_devs = core.get_mlu_device_count()
+        context = dist.spawn(train, backend='cncl', nprocs=num_devs)
         rank_list = []
-        for i in range(4):
+        for i in range(num_devs):
             rank_list.append(context.return_queues[i].get())
         rank_list.sort()
-        self.assertEqual(rank_list, list(range(4)))
+        self.assertEqual(rank_list, list(range(num_devs)))
 
 
 if __name__ == '__main__':

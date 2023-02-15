@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/profiler/mlu/mlu_tracer.h"
+
 #include <string>
 #include <unordered_map>
+
 #include "glog/logging.h"
 #include "paddle/fluid/framework/new_executor/workqueue/workqueue_utils.h"
 #include "paddle/fluid/platform/os_info.h"
@@ -35,7 +37,8 @@ namespace platform {
 
 namespace {
 
-void BufferRequestedCallback(uint64_t** buffer, size_t* size,
+void BufferRequestedCallback(uint64_t** buffer,
+                             size_t* size,
                              size_t* max_num_records) {
   constexpr size_t kBufferSize = 1 << 23;  // 8 MB
   constexpr size_t kBufferAlignSize = 8;
@@ -67,14 +70,16 @@ MluTracer::MluTracer() {
 
 void MluTracer::PrepareTracing() {
   PADDLE_ENFORCE_EQ(
-      state_ == TracerState::UNINITED || state_ == TracerState::STOPED, true,
+      state_ == TracerState::UNINITED || state_ == TracerState::STOPED,
+      true,
       platform::errors::PreconditionNotMet("MluTracer must be UNINITED"));
   EnableCnpapiActivity();
   state_ = TracerState::READY;
 }
 
 void MluTracer::StartTracing() {
-  PADDLE_ENFORCE_EQ(state_ == TracerState::READY, true,
+  PADDLE_ENFORCE_EQ(state_ == TracerState::READY,
+                    true,
                     platform::errors::PreconditionNotMet(
                         "MluTracer must be READY or STOPPED"));
   tracing_start_ns_ = PosixInNsec();
@@ -83,7 +88,8 @@ void MluTracer::StartTracing() {
 
 void MluTracer::StopTracing() {
   PADDLE_ENFORCE_EQ(
-      state_, TracerState::STARTED,
+      state_,
+      TracerState::STARTED,
       platform::errors::PreconditionNotMet("MluTracer must be STARTED"));
   DisableCnpapiActivity();
   state_ = TracerState::STOPED;
@@ -91,7 +97,8 @@ void MluTracer::StopTracing() {
 
 void MluTracer::CollectTraceData(TraceEventCollector* collector) {
   PADDLE_ENFORCE_EQ(
-      state_, TracerState::STOPED,
+      state_,
+      TracerState::STOPED,
       platform::errors::PreconditionNotMet("MluTracer must be STOPED"));
   for (auto he : collector_.HostEvents()) {
     collector->AddHostEvent(std::move(he));
@@ -115,8 +122,8 @@ void MluTracer::ProcessCnpapiActivity(uint64_t* buffer, size_t valid_size) {
     cnpapiResult status =
         cnpapiActivityGetNextRecord(buffer, valid_size, &record);
     if (status == CNPAPI_SUCCESS) {
-      details::ProcessCnpapiActivityRecord(record, tracing_start_ns_,
-                                           &collector_);
+      details::ProcessCnpapiActivityRecord(
+          record, tracing_start_ns_, &collector_);
     } else if (status == CNPAPI_ERROR_INSUFFICIENT_MEMORY ||
                status == CNPAPI_ERROR_MAX_LIMIT_REACHED) {
       break;

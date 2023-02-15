@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/eager/autograd_meta.h"
+
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-
-#include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/tests/data_structure_tests/grad_node_test.h"

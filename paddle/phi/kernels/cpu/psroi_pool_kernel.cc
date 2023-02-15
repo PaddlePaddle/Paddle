@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/psroi_pool_kernel.h"
 
 #include <algorithm>
+
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {

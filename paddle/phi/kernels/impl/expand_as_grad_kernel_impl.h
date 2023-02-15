@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/impl/expand_as_kernel_impl.h"
 
 namespace phi {

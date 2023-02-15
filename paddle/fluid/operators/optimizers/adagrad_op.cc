@@ -15,26 +15,24 @@ limitations under the License. */
 #include <cmath>
 #include <vector>
 
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
-
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/multiary.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
 class AdagradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Param"), ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Param"),
+                          ctx.GetPlace());
   }
 };
 
@@ -76,7 +74,10 @@ for numerical stability to avoid the division by zero error.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(adagrad, AdagradInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(adagrad,
+                            AdagradInferShapeFunctor,
                             PD_INFER_META(phi::AdagradInferMeta));
-REGISTER_OP_WITHOUT_GRADIENT(adagrad, ops::AdagradOp, ops::AdagradOpMaker,
+REGISTER_OP_WITHOUT_GRADIENT(adagrad,
+                             ops::AdagradOp,
+                             ops::AdagradOpMaker,
                              AdagradInferShapeFunctor);

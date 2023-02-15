@@ -63,7 +63,7 @@ class AbstractAutogradMeta {
  * computation.
  *
  * This is a new Tensor design, which is independent of the original
- * framework::Tensor in fluid. The original Tensor will be gradually discarded
+ * phi::DenseTensor in fluid. The original Tensor will be gradually discarded
  * in the future.
  *
  * Note: Tensor can be NULL state, Tensor is meaningful only when the
@@ -211,7 +211,7 @@ class PADDLE_API Tensor final {
    *
    * @return DataLayout
    */
-  DataLayout layout() const;
+  phi::DataLayout layout() const;
 
   /**
    * @brief Determine whether tensor is DenseTensor
@@ -286,6 +286,22 @@ class PADDLE_API Tensor final {
    */
   bool is_gpu_pinned() const;
 
+  /**
+   * @brief Determine whether the tensor device is XPU
+   *
+   * @return true
+   * @return false
+   */
+  bool is_xpu() const;
+
+  /**
+   * @brief Determine whether the tensor device is CustomDevice
+   *
+   * @return true
+   * @return false
+   */
+  bool is_custom_device() const;
+
   /* Part 4: Data Access methods */
 
   /**
@@ -330,6 +346,24 @@ class PADDLE_API Tensor final {
    */
   template <typename T>
   T* data();
+
+  /**
+   * @brief Get the const memory pointer directly.
+   * It's usually used to get the output data pointer.
+   *
+   * @tparam T
+   * @return T*
+   */
+  const void* data() const;
+
+  /**
+   * @brief Get the memory pointer directly.
+   * It's usually used to get the mutable output data pointer.
+   *
+   * @tparam T
+   * @return T*
+   */
+  void* data();
 
   /**
    * @brief Return a sub-tensor of the given tensor.
@@ -566,7 +600,7 @@ class PADDLE_API Tensor final {
    * unified to Tensor, but Tensor itself is heterogeneous.
    *
    * Tensor can generally be represented by void* and size_t, place.
-   * This is suitable for most scenarios including CPU, GPU, HIP, CPU, etc.,
+   * This is suitable for most scenarios including CPU, GPU, HIP, NPU, etc.,
    * but there are a few cases where this definition cannot be described,
    * such as the Tensor representation in third-party lib such as Metal,
    * OpenCL, etc., as well as some special Tensor implementations, including
@@ -598,6 +632,8 @@ class PADDLE_API Tensor final {
    */
   std::string name_{""};
 };
+
+PADDLE_API Tensor operator*(const Tensor& x, const Tensor& y);
 
 }  // namespace experimental
 }  // namespace paddle

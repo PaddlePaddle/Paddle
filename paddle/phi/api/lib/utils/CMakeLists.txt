@@ -1,2 +1,13 @@
-cc_library(phi_api_utils SRCS tensor_utils.cc DEPS
-tensor_base convert_utils dense_tensor lod_tensor selected_rows_utils place var_type_traits string_tensor int_array scalar)
+cc_library(
+  phi_api_utils
+  SRCS tensor_utils.cc
+  DEPS tensor_base
+       convert_utils
+       dense_tensor
+       lod_tensor
+       selected_rows_utils
+       place
+       var_type_traits
+       string_tensor
+       int_array
+       scalar)

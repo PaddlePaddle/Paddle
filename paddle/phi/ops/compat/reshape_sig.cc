@@ -20,21 +20,19 @@ KernelSignature ReshapeOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.HasOutput("XShape")) {
     if (ctx.InputSize("ShapeTensor") > 0) {
       return KernelSignature(
-          "reshape_with_xshape", {"X"}, {"ShapeTensor"}, {"Out", "XShape"});
+          "reshape", {"X"}, {"ShapeTensor"}, {"Out", "XShape"});
     } else if (ctx.HasInput("Shape")) {
-      return KernelSignature(
-          "reshape_with_xshape", {"X"}, {"Shape"}, {"Out", "XShape"});
+      return KernelSignature("reshape", {"X"}, {"Shape"}, {"Out", "XShape"});
     } else {
-      return KernelSignature(
-          "reshape_with_xshape", {"X"}, {"shape"}, {"Out", "XShape"});
+      return KernelSignature("reshape", {"X"}, {"shape"}, {"Out", "XShape"});
     }
   } else {
     if (ctx.InputSize("ShapeTensor") > 0) {
-      return KernelSignature("reshape", {"X"}, {"ShapeTensor"}, {"Out"});
+      return KernelSignature("reshape_infer", {"X"}, {"ShapeTensor"}, {"Out"});
     } else if (ctx.HasInput("Shape")) {
-      return KernelSignature("reshape", {"X"}, {"Shape"}, {"Out"});
+      return KernelSignature("reshape_infer", {"X"}, {"Shape"}, {"Out"});
     } else {
-      return KernelSignature("reshape", {"X"}, {"shape"}, {"Out"});
+      return KernelSignature("reshape_infer", {"X"}, {"shape"}, {"Out"});
     }
   }
 }

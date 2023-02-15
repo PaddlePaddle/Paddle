@@ -15,6 +15,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
@@ -111,7 +112,8 @@ struct DataRecord {
   }
 };
 
-void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
+void PrepareInputs(std::vector<PaddleTensor> *input_slots,
+                   DataRecord *data,
                    int batch_size) {
   auto one_batch = data->NextBatch();
   batch_size = one_batch.batch_data_shape[0][0];
@@ -152,7 +154,7 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
 
   init_idx.name = "init_idx";
   init_idx.shape.assign({batch_size});
-  init_idx.dtype = PaddleDType::INT32;
+  init_idx.dtype = PaddleDType::INT64;
   TensorAssignData<int64_t>(&init_idx, one_batch.init_idx);
 
   trg_src_attn_bias.name = "trg_src_attn_bias";
@@ -161,8 +163,13 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   trg_src_attn_bias.dtype = PaddleDType::FLOAT32;
   TensorAssignData<float>(&trg_src_attn_bias, one_batch.trg_src_attn_bias);
 
-  input_slots->assign({src_word, src_pos, src_slf_attn_bias, trg_word,
-                       init_score, init_idx, trg_src_attn_bias});
+  input_slots->assign({src_word,
+                       src_pos,
+                       src_slf_attn_bias,
+                       trg_word,
+                       init_score,
+                       init_idx,
+                       trg_src_attn_bias});
 }
 
 void SetConfig(AnalysisConfig *cfg) {

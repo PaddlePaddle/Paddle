@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/custom_operator/custom_operator_node.h"
+
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/op_meta_info_helper.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
@@ -49,7 +50,8 @@ static void ConstructFwdAndBwdMap(
   // Prepare pos map for grad_outputs
   VLOG(7) << "Prepare pos map for grad_outputs";
   PADDLE_ENFORCE_LE(
-      grad_outputs_names.size(), inputs_names.size(),
+      grad_outputs_names.size(),
+      inputs_names.size(),
       paddle::platform::errors::InvalidArgument(
           "Grad outputs num should be less equal than forward inputs num."));
   for (size_t i = 0; i < grad_outputs_names.size(); i++) {
@@ -113,7 +115,8 @@ static void ConstructFwdAndBwdMap(
         }
       }
     } else {
-      if (std::find(outputs_names.begin(), outputs_names.end(),
+      if (std::find(outputs_names.begin(),
+                    outputs_names.end(),
                     grad_inputs_names[i]) != outputs_names.end()) {
         for (size_t j = 0; j < outputs_names.size(); j++) {
           if (grad_inputs_names[i] == outputs_names[j]) {
@@ -142,7 +145,8 @@ static void ConstructFwdAndBwdMap(
   for (size_t i = 0; i < grad_attrs_names.size(); i++) {
     auto end =
         std::find(attrs_names.begin(), attrs_names.end(), grad_attrs_names[i]);
-    PADDLE_ENFORCE_NE(end, attrs_names.end(),
+    PADDLE_ENFORCE_NE(end,
+                      attrs_names.end(),
                       paddle::platform::errors::NotFound(
                           "All Grad attrs should be one of forward attrs and "
                           "we got %s is not one of them, please check your "
@@ -165,7 +169,8 @@ paddle::small_vector<std::vector<paddle::experimental::Tensor>,
 RunCustomOpNode::operator()(
     paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                          kSlotSmallVectorSize>& grads,
-    bool create_graph, bool is_new_grad) {  // NOLINT
+    bool create_graph,
+    bool is_new_grad) {  // NOLINT
   paddle::CustomOpKernelContext ctx;
   auto grad_inputs_name = paddle::framework::OpMetaInfoHelper::GetInputs(
       egr::Controller::Instance().GetOpMetaInfoMap().at(op_type_)[1]);
@@ -212,18 +217,20 @@ RunCustomOpNode::operator()(
   VLOG(6) << "Prepare Grad outputs for size: " << grad_outputs_names.size();
   for (size_t i = 0; i < OutputMeta().size(); i++) {
     if (map[0][0].find(i) != map[0][0].end()) {
+      int grad_output_idx = map[0][0][i];
       VLOG(7) << "Insert grad outputs: " << i
-              << " with size: " << OutputMeta()[i].size()
-              << " to tmp_outputs: " << map[0][0][i];
-      for (size_t j = 0; j < OutputMeta()[i].size(); j++) {
-        outs[i].emplace_back(/* init it incase of copy nullptr of shared_ptr */
-                             std::make_shared<phi::DenseTensor>(
-                                 phi::DataType::UNDEFINED),
-                             egr::Controller::Instance().GenerateUniqueName(
-                                 "custom_tmp_grad"));
-        egr::EagerUtils::autograd_meta(&(outs[i][j]));
+              << " with size: " << OutputMeta()[grad_output_idx].size()
+              << " to tmp_outputs: " << grad_output_idx;
+      for (size_t j = 0; j < OutputMeta()[grad_output_idx].size(); j++) {
+        outs[grad_output_idx]
+            .emplace_back(/* init it incase of copy nullptr of shared_ptr */
+                          std::make_shared<phi::DenseTensor>(
+                              phi::DataType::UNDEFINED),
+                          egr::Controller::Instance().GenerateUniqueName(
+                              "custom_tmp_grad"));
+        egr::EagerUtils::autograd_meta(&(outs[grad_output_idx][j]));
       }
-      tmp_outs[map[0][0][i]] = outs[i];
+      tmp_outs[grad_output_idx] = outs[grad_output_idx];
     }
   }
   for (size_t i = 0; i < tmp_outs.size(); i++) {
@@ -262,12 +269,13 @@ RunCustomOpNode::operator()(
                                 trace_backward, &(ins_auto_grad_metas[i]));
   }
 
-  if (require_any_grad) {
-    auto meta_info_map = egr::Controller::Instance().GetOpMetaInfoMap();
-    const auto& vec_map = meta_info_map.at(op_type_);
+  auto meta_info_map = egr::Controller::Instance().GetOpMetaInfoMap();
+  const auto& vec_map = meta_info_map.at(op_type_);
+  if (require_any_grad && (vec_map.size() > 2)) {
     paddle::platform::RecordEvent node_creation_record_event(
         "Custom Op " + op_type_ + " double_grad node_creation",
-        paddle::platform::TracerEventType::OperatorInner, 1);
+        paddle::platform::TracerEventType::OperatorInner,
+        1);
     VLOG(6) << " Construct Grad for Custom Op: " << op_type_;
     ConstructFwdAndBwdMap(vec_map, op_type_);
     for (size_t i = 0; i < outs_auto_grad_metas.size(); i++) {
@@ -302,7 +310,6 @@ RunCustomOpNode::operator()(
       egr::EagerUtils::SetOutRankWithSlot(&(outs_auto_grad_metas[i]), i);
       egr::EagerUtils::SetHistory(&(outs_auto_grad_metas[i]), grad_node);
       grad_node->SetGradInMeta(out_tensors, i);
-      egr::EagerUtils::CheckAndRetainGrad(out_tensors);
     }
 
     // Prepare Grad inputs with fwd outputs
@@ -345,7 +352,8 @@ paddle::small_vector<std::vector<paddle::experimental::Tensor>,
 RunCustomOpDoubleGradNode::operator()(
     paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                          kSlotSmallVectorSize>& grads,
-    bool create_graph, bool is_new_grad) {  // NOLINT
+    bool create_graph,
+    bool is_new_grad) {  // NOLINT
   paddle::CustomOpKernelContext ctx;
   auto meta_info_map = egr::Controller::Instance().GetOpMetaInfoMap();
   const auto& vec_map = meta_info_map.at(op_type_);
@@ -401,17 +409,19 @@ RunCustomOpDoubleGradNode::operator()(
 
   for (size_t i = 0; i < OutputMeta().size(); i++) {
     if (map[1][0].find(i) != map[1][0].end()) {
+      int grad_output_idx = map[1][0][i];
       VLOG(7) << "Insert grad outputs: " << i
-              << " with size: " << OutputMeta()[i].size()
-              << " to tmp_outputs: " << map[1][0][i];
-      for (size_t j = 0; j < OutputMeta()[i].size(); j++) {
-        outs[i].emplace_back(/* init it incase of copy nullptr of shared_ptr */
-                             std::make_shared<phi::DenseTensor>(
-                                 phi::DataType::UNDEFINED),
-                             egr::Controller::Instance().GenerateUniqueName(
-                                 "custom_tmp_grad"));
+              << " with size: " << OutputMeta()[grad_output_idx].size()
+              << " to tmp_outputs: " << grad_output_idx;
+      for (size_t j = 0; j < OutputMeta()[grad_output_idx].size(); j++) {
+        outs[grad_output_idx]
+            .emplace_back(/* init it incase of copy nullptr of shared_ptr */
+                          std::make_shared<phi::DenseTensor>(
+                              phi::DataType::UNDEFINED),
+                          egr::Controller::Instance().GenerateUniqueName(
+                              "custom_tmp_grad"));
       }
-      tmp_outs[map[1][0][i]] = outs[i];
+      tmp_outs[grad_output_idx] = outs[grad_output_idx];
     }
   }
   for (size_t i = 0; i < tmp_outs.size(); i++) {

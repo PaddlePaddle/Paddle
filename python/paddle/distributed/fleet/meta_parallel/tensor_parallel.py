@@ -12,19 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.dygraph.layers import Layer
-from .meta_parallel_base import MetaParallelBase
-from ..utils.hybrid_parallel_util import broadcast_dp_parameters
-from ..utils.hybrid_parallel_util import broadcast_input_data
-from ..utils.hybrid_parallel_util import broadcast_mp_parameters, broadcast_sharding_parameters
+from ..utils.hybrid_parallel_util import (
+    broadcast_dp_parameters,
+    broadcast_input_data,
+    broadcast_mp_parameters,
+    broadcast_sharding_parameters,
+)
 from ..utils.log_util import logger
+from .meta_parallel_base import MetaParallelBase
 
 __all__ = []
 
 
 class TensorParallel(MetaParallelBase):
     def __init__(self, layers, hcg, **kwargs):
-        super(TensorParallel, self).__init__(layers, hcg, **kwargs)
+        super().__init__(layers, hcg, **kwargs)
 
     def _prepare_for_model(self):
         logger.info("start broadcast mp parameters")

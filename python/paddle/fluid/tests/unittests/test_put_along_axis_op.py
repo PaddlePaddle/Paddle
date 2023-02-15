@@ -12,16 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import unittest
-import numpy as np
 import copy
-from op_test import OpTest
+import unittest
+
+import numpy as np
+from eager_op_test import OpTest
+
 import paddle
-import paddle.fluid as fluid
 from paddle.framework import core
-from paddle.fluid.dygraph.base import switch_to_static_graph
 
 paddle.enable_static()
 
@@ -32,6 +30,7 @@ class TestPutAlongAxisOp(OpTest):
         self.reduce_op = "assign"
         self.dtype = 'float64'
         self.op_type = "put_along_axis"
+        self.python_api = paddle.tensor.put_along_axis
         self.xnp = np.random.random(self.x_shape).astype(self.x_type)
         # numpy put_along_axis is an inplace opearion.
         self.xnp_result = copy.deepcopy(self.xnp)
@@ -45,7 +44,7 @@ class TestPutAlongAxisOp(OpTest):
         self.inputs = {
             'Input': self.xnp,
             'Index': self.index_broadcast,
-            'Value': self.value_broadcast
+            'Value': self.value_broadcast,
         }
         self.attrs = {'Axis': self.axis, 'Reduce': self.reduce_op}
         self.outputs = {'Result': self.target}
@@ -92,20 +91,23 @@ class TestPutAlongAxisAPI(unittest.TestCase):
                 value = paddle.fluid.data('Value', self.value_shape)
                 out = paddle.put_along_axis(x, index, value, self.axis)
                 exe = paddle.static.Executor(self.place[0])
-                res = exe.run(feed={
-                    'X': self.x_feed,
-                    'Value': self.value_np,
-                    'Index': self.index_np
-                },
-                              fetch_list=[out])
+                res = exe.run(
+                    feed={
+                        'X': self.x_feed,
+                        'Value': self.value_np,
+                        'Index': self.index_np,
+                    },
+                    fetch_list=[out],
+                )
 
-            np.put_along_axis(self.x_np, self.index_np, self.value_np,
-                              self.axis)
+            np.put_along_axis(
+                self.x_np, self.index_np, self.value_np, self.axis
+            )
             # numpy put_along_axis is an inplace opearion.
             out_ref = self.x_np
 
             for out in res:
-                self.assertEqual(np.allclose(out, out_ref, rtol=1e-03), True)
+                np.testing.assert_allclose(out, out_ref, rtol=0.001)
 
         for place in self.place:
             run(place)
@@ -116,21 +118,24 @@ class TestPutAlongAxisAPI(unittest.TestCase):
             x_tensor = paddle.to_tensor(self.x_np)
             index_tensor = paddle.to_tensor(self.index_np)
             value_tensor = paddle.to_tensor(self.value_np)
-            out = paddle.put_along_axis(x_tensor, index_tensor, value_tensor,
-                                        self.axis)
+            out = paddle.put_along_axis(
+                x_tensor, index_tensor, value_tensor, self.axis
+            )
             np.array(
-                np.put_along_axis(self.x_np, self.index_np, self.value_np,
-                                  self.axis))
+                np.put_along_axis(
+                    self.x_np, self.index_np, self.value_np, self.axis
+                )
+            )
             out_ref = self.x_np
-            self.assertEqual(
-                np.allclose(
-                    out.numpy(), out_ref, rtol=1e-03), True)
+            np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
 
             # for ci coverage, numpy put_along_axis did not support argument of 'reduce'
-            paddle.put_along_axis(x_tensor, index_tensor, value_tensor,
-                                  self.axis, 'mul')
-            paddle.put_along_axis(x_tensor, index_tensor, value_tensor,
-                                  self.axis, 'add')
+            paddle.put_along_axis(
+                x_tensor, index_tensor, value_tensor, self.axis, 'mul'
+            )
+            paddle.put_along_axis(
+                x_tensor, index_tensor, value_tensor, self.axis, 'add'
+            )
 
             paddle.enable_static()
 
@@ -147,13 +152,13 @@ class TestPutAlongAxisAPI(unittest.TestCase):
             x_tensor.put_along_axis_(index_tensor, value_tensor, self.axis)
 
             np.array(
-                np.put_along_axis(self.x_np, self.index_np, self.value_np,
-                                  self.axis))
+                np.put_along_axis(
+                    self.x_np, self.index_np, self.value_np, self.axis
+                )
+            )
             out_ref = self.x_np
 
-            self.assertEqual(
-                np.allclose(
-                    x_tensor.numpy(), out_ref, rtol=1e-03), True)
+            np.testing.assert_allclose(x_tensor.numpy(), out_ref, rtol=0.001)
             paddle.enable_static()
 
         for place in self.place:
@@ -181,8 +186,9 @@ class TestPutAlongAxisAPICase3(TestPutAlongAxisAPI):
         np.random.seed(0)
         self.shape = [2, 2]
         self.index_shape = [4, 2]
-        self.index_np = np.array(
-            [[0, 0], [1, 0], [0, 0], [1, 0]]).astype('int64')
+        self.index_np = np.array([[0, 0], [1, 0], [0, 0], [1, 0]]).astype(
+            'int64'
+        )
         self.x_np = np.random.random(self.shape).astype(np.float32)
         self.place = [paddle.CPUPlace()]
         self.axis = 0

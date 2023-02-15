@@ -15,13 +15,13 @@
 import unittest
 
 import numpy as np
+
 import paddle
+import paddle.nn.functional as F
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
     def setUp(self):
         self.set_atol()
@@ -52,15 +52,19 @@ class TestBase(IPUOpTest):
     @IPUOpTest.static_graph
     def build_model(self):
         x = paddle.static.data(
-            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32')
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
         conv1 = paddle.static.nn.conv2d(
-            x, num_filters=3, filter_size=3, bias_attr=False)
+            x, num_filters=3, filter_size=3, bias_attr=False
+        )
         conv2 = paddle.static.nn.conv2d(
-            x, num_filters=3, filter_size=3, bias_attr=False)
+            x, num_filters=3, filter_size=3, bias_attr=False
+        )
         add1 = conv1 + conv2
         conv3 = paddle.static.nn.conv2d(
-            add1, num_filters=8, filter_size=8, bias_attr=False)
-        out = paddle.fluid.layers.relu(conv3, **self.attrs)
+            add1, num_filters=8, filter_size=8, bias_attr=False
+        )
+        out = F.relu(conv3, **self.attrs)
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
@@ -90,10 +94,12 @@ class TestIntInput(TestBase):
     @IPUOpTest.static_graph
     def build_model(self):
         x = paddle.static.data(
-            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32')
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
         y = paddle.static.data(
-            name=self.feed_list[1], shape=self.feed_shape[1], dtype='int32')
-        out = paddle.fluid.layers.gather(x, index=y)
+            name=self.feed_list[1], shape=self.feed_shape[1], dtype='int32'
+        )
+        out = paddle.gather(x, index=y)
         self.fetch_list = [out.name]
 
 

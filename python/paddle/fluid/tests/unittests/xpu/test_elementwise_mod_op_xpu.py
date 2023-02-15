@@ -12,16 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import sys
+
 sys.path.append("..")
 import unittest
+
 import numpy as np
 from op_test import OpTest
-import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
 
 import paddle
-from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+import paddle.fluid as fluid
 
 paddle.enable_static()
 
@@ -41,7 +46,7 @@ class XPUTestElementwiseModOp(XPUOpTestWrapper):
             self.out = np.mod(self.x, self.y)
             self.inputs = {
                 'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-                'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+                'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
             }
             self.outputs = {'Out': self.out}
             self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
@@ -71,7 +76,7 @@ class XPUTestElementwiseModOp(XPUOpTestWrapper):
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.rand(2, 100, 3).astype(self.dtype),
-                'Y': np.random.rand(2, 100, 3).astype(self.dtype)
+                'Y': np.random.rand(2, 100, 3).astype(self.dtype),
             }
 
             self.attrs = {'axis': 1}
@@ -81,7 +86,7 @@ class XPUTestElementwiseModOp(XPUOpTestWrapper):
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.rand(22, 128, 3).astype(self.dtype),
-                'Y': np.random.rand(22, 128, 3).astype(self.dtype)
+                'Y': np.random.rand(22, 128, 3).astype(self.dtype),
             }
 
             self.attrs = {'axis': 1}
@@ -100,12 +105,12 @@ class XPUTestElementwiseModOp(XPUOpTestWrapper):
                 self.assertEqual((np_z == z_expected).all(), True)
 
                 np_x = np.array([-3.3, 11.5, -2, 3.5])
-                np_y = np.array([-1.2, 2., 3.3, -2.3])
+                np_y = np.array([-1.2, 2.0, 3.3, -2.3])
                 x = paddle.to_tensor(np_x)
                 y = paddle.to_tensor(np_y)
                 z = x % y
                 z_expected = np.array([-0.9, 1.5, 1.3, -1.1])
-                self.assertEqual(np.allclose(z_expected, z.numpy()), True)
+                np.testing.assert_allclose(z_expected, z.numpy(), rtol=1e-05)
 
                 np_x = np.random.rand(22, 128, 3).astype('int32')
                 np_y = np.random.rand(22, 128, 3).astype('int32')
@@ -122,7 +127,7 @@ class XPUTestElementwiseModOp(XPUOpTestWrapper):
                 y = paddle.to_tensor(np_y, dtype="float16")
                 z = x % y
                 z_expected = np.array([0, 1, 1, -1])
-                self.assertEqual(np.allclose(z_expected, z.numpy()), True)
+                np.testing.assert_allclose(z_expected, z.numpy(), rtol=1e-05)
 
 
 support_types = get_xpu_op_support_types('elementwise_mod')

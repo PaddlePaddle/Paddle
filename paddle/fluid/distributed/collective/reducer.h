@@ -16,7 +16,8 @@
 
 #include <map>
 #include <vector>
-#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+
+#include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/utils/hook_utils.h"
 #include "paddle/fluid/eager/api/utils/tensor_utils.h"
@@ -39,7 +40,8 @@ using IntArray =
 using Backend = paddle::experimental::Backend;
 
 std::vector<std::vector<size_t>> Eager_AssignGroupBySize(
-    const std::vector<Tensor>, const std::vector<bool> &is_sparse_gradient,
+    const std::vector<Tensor>,
+    const std::vector<bool> &is_sparse_gradient,
     const std::vector<size_t> &group_size_limits,
     const std::vector<int64_t> &tensor_indices = {});
 
@@ -72,7 +74,8 @@ class EagerGroup {
   void ConcatTensors(const platform::Place &);
 
   // context is used to select the stream for split
-  void SplitTensors(const platform::Place &);
+
+  void SplitTensors(const platform::DeviceContext &);
 
   friend std::ostream &operator<<(std::ostream &, const EagerGroup &);
 };

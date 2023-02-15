@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/abs_grad_kernel.h"
+
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/abs_grad_kernel.h"
 #include "paddle/phi/kernels/impl/abs_grad_kernel_impl.h"
 
 using phi::dtype::complex;
@@ -29,8 +31,11 @@ PD_REGISTER_KERNEL(abs_grad,
                    int,
                    int64_t,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    complex<float>,
-                   complex<double>) {}
+                   complex<double>) {
+  kernel->InputAt(1).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
+}
 PD_REGISTER_KERNEL(abs_double_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -41,4 +46,6 @@ PD_REGISTER_KERNEL(abs_double_grad,
                    int64_t,
                    phi::dtype::float16,
                    complex<float>,
-                   complex<double>) {}
+                   complex<double>) {
+  kernel->InputAt(1).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
+}

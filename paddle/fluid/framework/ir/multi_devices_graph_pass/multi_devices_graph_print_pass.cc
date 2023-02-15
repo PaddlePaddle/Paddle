@@ -25,7 +25,8 @@ class SSAGraghBuilderWithPrinterPass : public ir::Pass {
     std::unique_ptr<std::ostream> fout(
         new std::ofstream(Get<std::string>(kGraphvizPath)));
     PADDLE_ENFORCE_EQ(
-        fout->good(), true,
+        fout->good(),
+        true,
         platform::errors::Unavailable("Open file fail! kGraphvizPath = %s.",
                                       Get<std::string>(kGraphvizPath)));
     if (Has("graph_printer")) {

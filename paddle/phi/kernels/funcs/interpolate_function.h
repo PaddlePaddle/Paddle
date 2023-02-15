@@ -14,13 +14,12 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-#include "paddle/fluid/platform/fast_divmod.h"
+#include "paddle/phi/kernels/primitive/datamover_primitives.h"
 #endif
 
 namespace phi {
@@ -28,26 +27,28 @@ namespace funcs {
 
 template <typename T>
 HOSTDEVICE inline T CubicConvolution1(T x, T A) {
-  return ((A + 2) * x - (A + 3)) * x * x + 1;
+  return ((A + static_cast<T>(2)) * x - (A + static_cast<T>(3))) * x * x +
+         static_cast<T>(1);
 }
 
 template <typename T>
 HOSTDEVICE inline T CubicConvolution2(T x, T A) {
-  return ((A * x - 5 * A) * x + 8 * A) * x - 4 * A;
+  return ((A * x - static_cast<T>(5) * A) * x + static_cast<T>(8) * A) * x -
+         static_cast<T>(4) * A;
 }
 
 template <typename T>
 HOSTDEVICE inline void get_cubic_upsample_coefficients(T coeffs[4], T t) {
-  T A = -0.75;
+  T A = static_cast<T>(-0.75);
 
   T x1 = t;
-  coeffs[0] = CubicConvolution2<T>(x1 + 1.0, A);
+  coeffs[0] = CubicConvolution2<T>(x1 + static_cast<T>(1.0), A);
   coeffs[1] = CubicConvolution1<T>(x1, A);
 
   // opposite coefficients
-  T x2 = 1.0 - t;
+  T x2 = static_cast<T>(1.0) - t;
   coeffs[2] = CubicConvolution1<T>(x2, A);
-  coeffs[3] = CubicConvolution2<T>(x2 + 1.0, A);
+  coeffs[3] = CubicConvolution2<T>(x2 + static_cast<T>(1.0), A);
 }
 
 inline void ExtractNCDWH(const DDim& dims,
@@ -81,18 +82,29 @@ inline std::vector<int> get_new_shape(
     const std::vector<const DenseTensor*>& list_new_shape_tensor) {
   // get tensor from
   std::vector<int> vec_new_shape;
+  auto& pool = phi::DeviceContextPool::Instance();
   for (size_t i = 0; i < list_new_shape_tensor.size(); ++i) {
     auto tensor = list_new_shape_tensor[i];
-    PADDLE_ENFORCE_EQ(
-        tensor->dims(),
-        phi::make_ddim({1}),
-        errors::InvalidArgument("The shape of dimension tensor should be [1],"
-                                "but received d%.",
-                                tensor->dims()));
-    if (paddle::platform::is_gpu_place(tensor->place())) {
+    phi::DeviceContext* dev_ctx = pool.Get(tensor->place());
+    PADDLE_ENFORCE_EQ(tensor->dims() == phi::make_ddim({1}) ||
+                          tensor->dims() == phi::make_ddim({}),
+                      true,
+                      errors::InvalidArgument(
+                          "The shape of dimension tensor should be [1] or [],"
+                          "but received d%.",
+                          tensor->dims()));
+
+#ifdef PADDLE_WITH_XPU
+    if (tensor->place().GetType() == phi::AllocationType::XPU) {
       DenseTensor temp;
-      paddle::framework::TensorCopySync(
-          *tensor, paddle::platform::CPUPlace(), &temp);
+      phi::Copy(*dev_ctx, *tensor, phi::CPUPlace(), true, &temp);
+      vec_new_shape.push_back(static_cast<int32_t>(*temp.data<int32_t>()));
+      continue;
+    }
+#endif
+    if (tensor->place().GetType() == phi::AllocationType::GPU) {
+      DenseTensor temp;
+      phi::Copy(*dev_ctx, *tensor, phi::CPUPlace(), true, &temp);
       vec_new_shape.push_back(static_cast<int32_t>(*temp.data<int32_t>()));
     } else {
       vec_new_shape.push_back(static_cast<int32_t>(*tensor->data<int32_t>()));
@@ -108,22 +120,24 @@ inline std::vector<T> get_new_data_from_tensor(
   std::vector<T> vec_new_data;
   auto* new_data = new_data_tensor->data<T>();
   DenseTensor cpu_starts_tensor;
+  auto& pool = phi::DeviceContextPool::Instance();
+  phi::DeviceContext* dev_ctx = pool.Get(new_data_tensor->place());
   if (paddle::platform::is_gpu_place(new_data_tensor->place())) {
-    paddle::framework::TensorCopySync(
-        *new_data_tensor, paddle::platform::CPUPlace(), &cpu_starts_tensor);
+    phi::Copy(
+        *dev_ctx, *new_data_tensor, phi::CPUPlace(), true, &cpu_starts_tensor);
     new_data = cpu_starts_tensor.data<T>();
   }
 #ifdef PADDLE_WITH_ASCEND_CL
   if (paddle::platform::is_npu_place(new_data_tensor->place())) {
-    paddle::framework::TensorCopySync(
-        *new_data_tensor, paddle::platform::CPUPlace(), &cpu_starts_tensor);
+    phi::Copy(
+        *dev_ctx, *new_data_tensor, phi::CPUPlace(), true, &cpu_starts_tensor);
     new_data = cpu_starts_tensor.data<T>();
   }
 #endif
 #ifdef PADDLE_WITH_XPU
   if (paddle::platform::is_xpu_place(new_data_tensor->place())) {
-    paddle::framework::TensorCopySync(
-        *new_data_tensor, paddle::platform::CPUPlace(), &cpu_starts_tensor);
+    phi::Copy(
+        *dev_ctx, *new_data_tensor, phi::CPUPlace(), true, &cpu_starts_tensor);
     new_data = cpu_starts_tensor.data<T>();
   }
 #endif
@@ -132,7 +146,7 @@ inline std::vector<T> get_new_data_from_tensor(
 }
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-using paddle::platform::FastDivMod;
+using phi::kps::details::FastDivMod;
 
 struct FastDivModForInterpolate {
  public:

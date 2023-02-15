@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <stdint.h>
+
 #include <atomic>
 #include <deque>
 #include <iostream>  // temp for debug
@@ -105,6 +106,8 @@ struct Generator : public phi::Generator {
 const std::shared_ptr<Generator>& DefaultCPUGenerator();
 
 const std::shared_ptr<Generator>& DefaultCUDAGenerator(int64_t device_id = -1);
+
+const std::shared_ptr<Generator>& DefaultXPUGenerator(int64_t device_id = -1);
 
 std::shared_ptr<std::mt19937_64> GetCPURandomEngine(uint64_t);
 

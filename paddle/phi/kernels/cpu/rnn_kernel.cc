@@ -16,7 +16,7 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/cpu/rnn_functor.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
@@ -49,7 +49,8 @@ struct Cell {
 };
 
 template <typename T,
-          template <typename> class EigenActivationFunctor,
+          template <typename>
+          class EigenActivationFunctor,
           funcs::detail::ActivationType act_type>
 struct SimpleRNNCell : Cell<T> {
   void operator()(const CPUContext* dev_ctx,

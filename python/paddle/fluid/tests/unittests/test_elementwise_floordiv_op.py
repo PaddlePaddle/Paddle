@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+import random
 import unittest
+
 import numpy as np
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 from op_test import OpTest
 
-import random
+import paddle
+import paddle.fluid as fluid
 
 
 class TestElementwiseModOp(OpTest):
@@ -39,7 +38,7 @@ class TestElementwiseModOp(OpTest):
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
         }
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': self.out}
@@ -57,6 +56,27 @@ class TestElementwiseModOp(OpTest):
 
     def init_axis(self):
         pass
+
+
+class TestElementwiseFloorDivOp_ZeroDim1(TestElementwiseModOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0, 10000, []).astype(self.dtype)
+        self.y = np.random.uniform(0, 1000, []).astype(self.dtype)
+        self.out = np.floor_divide(self.x, self.y)
+
+
+class TestElementwiseFloorDivOp_ZeroDim2(TestElementwiseModOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0, 10000, [10, 10]).astype(self.dtype)
+        self.y = np.random.uniform(0, 1000, []).astype(self.dtype)
+        self.out = np.floor_divide(self.x, self.y)
+
+
+class TestElementwiseFloorDivOp_ZeroDim3(TestElementwiseModOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0, 10000, []).astype(self.dtype)
+        self.y = np.random.uniform(0, 1000, [10, 10]).astype(self.dtype)
+        self.out = np.floor_divide(self.x, self.y)
 
 
 class TestElementwiseModOp_scalar(TestElementwiseModOp):
@@ -96,7 +116,7 @@ class TestFloorDivideOp(unittest.TestCase):
             self.assertEqual((np_z == z_expected).all(), True)
 
         with fluid.dygraph.guard(fluid.CPUPlace()):
-            # divide by zero 
+            # divide by zero
             np_x = np.array([2, 3, 4])
             np_y = np.array([0])
             x = paddle.to_tensor(np_x)
@@ -106,7 +126,7 @@ class TestFloorDivideOp(unittest.TestCase):
             except Exception as e:
                 print("Error: Divide by zero encounter in floor_divide\n")
 
-            # divide by zero 
+            # divide by zero
             np_x = np.array([2])
             np_y = np.array([0, 0, 0])
             x = paddle.to_tensor(np_x, dtype="int32")

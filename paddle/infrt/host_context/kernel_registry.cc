@@ -39,8 +39,8 @@ const std::vector<const char *> &KernelRegistry::GetAttrNameList(
 void KernelRegistry::AddKernel(const std::string &key,
                                KernelImplementation fn,
                                const std::vector<const char *> &attr_order) {
-  CHECK(!impl_->data.count(key)) << "kernel [" << key
-                                 << "] is registered twice";
+  CHECK(!impl_->data.count(key))
+      << "kernel [" << key << "] is registered twice";
   impl_->data.emplace(
       key, std::make_pair([fn]() { return fn; }, std::move(attr_order)));
 }
@@ -48,8 +48,8 @@ void KernelRegistry::AddKernel(const std::string &key,
 void KernelRegistry::AddKernel(const std::string &key,
                                KernelLauncher fn,
                                const std::vector<const char *> &attr_order) {
-  CHECK(!impl_->data.count(key)) << "kernel [" << key
-                                 << "] is registered twice";
+  CHECK(!impl_->data.count(key))
+      << "kernel [" << key << "] is registered twice";
   impl_->data.emplace(key,
                       std::make_pair(std::move(fn), std::move(attr_order)));
 }

@@ -22,8 +22,8 @@ template <typename DeviceContext, typename T>
 class TrilTriuNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     int diagonal = ctx.Attr<int>("diagonal");
     bool lower = ctx.Attr<bool>("lower");
 
@@ -55,12 +55,18 @@ class TrilTriuNPUKernel : public framework::OpKernel<T> {
     if (framework::TransToProtoVarType(x->dtype()) ==
         framework::proto::VarType::BOOL) {
       if (lower) {
-        NpuOpRunner::TypeAdapter({*x}, {*out}, attr_input, dev_ctx,
+        NpuOpRunner::TypeAdapter({*x},
+                                 {*out},
+                                 attr_input,
+                                 dev_ctx,
                                  op_func_tril,
                                  {framework::proto::VarType::UINT8},
                                  {framework::proto::VarType::UINT8});
       } else {
-        NpuOpRunner::TypeAdapter({*x}, {*out}, attr_input, dev_ctx,
+        NpuOpRunner::TypeAdapter({*x},
+                                 {*out},
+                                 attr_input,
+                                 dev_ctx,
                                  op_func_triu,
                                  {framework::proto::VarType::UINT8},
                                  {framework::proto::VarType::UINT8});
@@ -78,7 +84,8 @@ class TrilTriuNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_NPU_KERNEL(
-    tril_triu, ops::TrilTriuNPUKernel<plat::NPUDeviceContext, float>,
+    tril_triu,
+    ops::TrilTriuNPUKernel<plat::NPUDeviceContext, float>,
     ops::TrilTriuNPUKernel<plat::NPUDeviceContext, int>,
     ops::TrilTriuNPUKernel<plat::NPUDeviceContext, bool>,
     ops::TrilTriuNPUKernel<plat::NPUDeviceContext, plat::float16>);

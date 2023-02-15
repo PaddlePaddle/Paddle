@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import unittest
-import paddle
+
 import numpy as np
+
+import paddle
 from paddle.distributed.models.moe import utils
 from paddle.fluid import core
-from paddle.fluid.framework import _test_eager_guard
 
 
 def limit_by_capacity(expert_count, _capacity, n_worker):
@@ -43,14 +44,17 @@ def all_close(exp, out, n_worker):
     return np.allclose(exp.sum(0), out.sum(0))
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestLimitByCapacityInt64API(unittest.TestCase):
     def init_test_case(self):
         self.expert_count = np.random.randint(
-            0, 1000, size=(len(self.capacity) * self.n_worker))
-        self.out = limit_by_capacity(self.expert_count, self.capacity,
-                                     self.n_worker)
+            0, 1000, size=(len(self.capacity) * self.n_worker)
+        )
+        self.out = limit_by_capacity(
+            self.expert_count, self.capacity, self.n_worker
+        )
         self.expert_count = self.expert_count.astype("int64")
         self.capacity = self.capacity.astype("int64")
         self.place = paddle.CUDAPlace(0)
@@ -64,36 +68,38 @@ class TestLimitByCapacityInt64API(unittest.TestCase):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             capacity = paddle.static.data(
-                'capacity', shape=self.capacity.shape, dtype="int64")
+                'capacity', shape=self.capacity.shape, dtype="int64"
+            )
             expert_count_tensor = paddle.static.data(
-                'ExpertCount', shape=self.expert_count.shape, dtype="int64")
-            out = utils._limit_by_capacity(expert_count_tensor, capacity,
-                                           self.n_worker)
+                'ExpertCount', shape=self.expert_count.shape, dtype="int64"
+            )
+            out = utils._limit_by_capacity(
+                expert_count_tensor, capacity, self.n_worker
+            )
             exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={
-                'capacity': self.capacity,
-                'ExpertCount': self.expert_count,
-            },
-                          fetch_list=out)
+            res = exe.run(
+                feed={
+                    'capacity': self.capacity,
+                    'ExpertCount': self.expert_count,
+                },
+                fetch_list=out,
+            )
 
         assert all_close(self.out, res[0], self.n_worker)
 
-    def func_dygraph_api(self):
+    def test_dygraph_api(self):
         paddle.disable_static(self.place)
         capacity = paddle.to_tensor(self.capacity)
         expert_count_tensor = paddle.to_tensor(self.expert_count)
-        out = utils._limit_by_capacity(expert_count_tensor, capacity,
-                                       self.n_worker)
+        out = utils._limit_by_capacity(
+            expert_count_tensor, capacity, self.n_worker
+        )
         assert all_close(self.out, out.numpy(), self.n_worker)
 
-    def test_dygraph_api(self):
-        with _test_eager_guard():
-            self.func_dygraph_api()
-        self.func_dygraph_api()
 
-
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestLimitByCapacityInt64API_SmallWorker(TestLimitByCapacityInt64API):
     def setUp(self):
         self.capacity = np.array([100, 12000, 1200, 0, 4700, 1000, 57, 200])

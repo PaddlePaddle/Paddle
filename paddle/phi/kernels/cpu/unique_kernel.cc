@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/unique_kernel.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
@@ -95,6 +96,7 @@ void UniqueRawKernel(const Context& context,
                                                             return_counts));
   } else {
     int axis_value = axis[0];
+    axis_value = (axis_value == -1) ? (x.dims().size() - 1) : axis_value;
     phi::VisitDataTypeTiny(
         dtype,
         phi::funcs::UniqueDimFunctor<Context, T>(context,

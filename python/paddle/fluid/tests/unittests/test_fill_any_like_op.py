@@ -12,21 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+import unittest
+
+import numpy as np
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
-import paddle.compat as cpt
-import unittest
-import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+
+
+def fill_any_like_wrapper(x, value):
+    x.fill_(value)
+    return x
 
 
 class TestFillAnyLikeOp(OpTest):
     def setUp(self):
         self.op_type = "fill_any_like"
+        self.python_api = fill_any_like_wrapper
         self.dtype = np.int32
         self.value = 0.0
         self.init()
@@ -47,18 +50,21 @@ class TestFillAnyLikeOpFloat32(TestFillAnyLikeOp):
         self.value = 0.0
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestFillAnyLikeOpBfloat16(OpTest):
     def setUp(self):
         self.op_type = "fill_any_like"
+        self.python_api = fill_any_like_wrapper
         self.dtype = np.uint16
         self.value = 0.0
         self.inputs = {'X': np.random.random((219, 232)).astype(np.float32)}
         self.attrs = {'value': self.value, 'dtype': core.VarDesc.VarType.BF16}
         self.outputs = {
-            'Out':
-            convert_float_to_uint16(self.value * np.ones_like(self.inputs["X"]))
+            'Out': convert_float_to_uint16(
+                self.value * np.ones_like(self.inputs["X"])
+            )
         }
 
     def test_check_output(self):
@@ -84,17 +90,18 @@ class TestFillAnyLikeOpValue3(TestFillAnyLikeOp):
 class TestFillAnyLikeOpType(TestFillAnyLikeOp):
     def setUp(self):
         self.op_type = "fill_any_like"
+        self.python_api = fill_any_like_wrapper
         self.dtype = np.int32
         self.value = 0.0
         self.init()
         self.inputs = {'X': np.random.random((219, 232)).astype(self.dtype)}
         self.attrs = {
             'value': self.value,
-            'dtype': int(core.VarDesc.VarType.FP32)
+            'dtype': int(core.VarDesc.VarType.FP32),
         }
         self.outputs = {
-            'Out':
-            self.value * np.ones_like(self.inputs["X"]).astype(np.float32)
+            'Out': self.value
+            * np.ones_like(self.inputs["X"]).astype(np.float32)
         }
 
 

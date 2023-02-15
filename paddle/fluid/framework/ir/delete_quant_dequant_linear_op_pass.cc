@@ -31,8 +31,7 @@ namespace ir {
   GET_IR_NODE(quantize_linear_op);       \
   GET_IR_NODE(quantize_linear_op_out);   \
   GET_IR_NODE(dequantize_linear_op);     \
-  GET_IR_NODE(dequantize_linear_op_out); \
-  GET_IR_NODE(any_op2);
+  GET_IR_NODE(dequantize_linear_op_out);
 
 DeleteQuantDequantLinearOpPass::DeleteQuantDequantLinearOpPass() {
   AddOpCompat(OpCompat("quantize_linear"))
@@ -54,6 +53,10 @@ DeleteQuantDequantLinearOpPass::DeleteQuantDequantLinearOpPass() {
       .End()
       .AddAttr("quant_axis")
       .IsType<int>()
+      .End()
+      .AddAttr("round_type")
+      .IsOptional()
+      .IsType<int>()
       .End();
   AddOpCompat(OpCompat("dequantize_linear"))
       .AddInput("X")
@@ -73,6 +76,10 @@ DeleteQuantDequantLinearOpPass::DeleteQuantDequantLinearOpPass() {
       .IsType<int>()
       .End()
       .AddAttr("quant_axis")
+      .IsType<int>()
+      .End()
+      .AddAttr("round_type")
+      .IsOptional()
       .IsType<int>()
       .End();
 }
@@ -104,35 +111,51 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
     }
     */
     std::unordered_set<const Node*> nodes2rm = {};
-    int bit_length =
-        BOOST_GET_CONST(int, quantize_linear_op->Op()->GetAttr("bit_length"));
-    int range = ((1 << (bit_length - 1)) - 1);
 
     // Get input scale from tensor
-    const LoDTensor& input_scale_tensor =
-        scope->GetVar(quantize_linear_op_scale->Name())->Get<LoDTensor>();
+    const phi::DenseTensor& input_scale_tensor =
+        scope->GetVar(quantize_linear_op_scale->Name())
+            ->Get<phi::DenseTensor>();
     PADDLE_ENFORCE_EQ(
-        paddle::platform::is_cpu_place(input_scale_tensor.place()), true,
+        paddle::platform::is_cpu_place(input_scale_tensor.place()),
+        true,
         platform::errors::InvalidArgument(
             "Input scale tensor's place should be CPU."));
-    const float* input_scale_data = input_scale_tensor.data<float>();
-    float input_scale = input_scale_data[0] / range;
 
-    auto* any_op2_desc = any_op2->Op();
-    any_op2_desc->SetAttr("Input_scale_" + quantize_linear_op_x->Var()->Name(),
-                          input_scale);
+    float input_scale;
+    if (input_scale_tensor.dtype() == paddle::experimental::DataType::FLOAT32) {
+      const float* input_scale_data = input_scale_tensor.data<float>();
+      input_scale = input_scale_data[0];
+    } else if (input_scale_tensor.dtype() ==
+               paddle::experimental::DataType::FLOAT16) {
+      const phi::dtype::float16* input_scale_data =
+          input_scale_tensor.data<phi::dtype::float16>();
+      input_scale = static_cast<float>(input_scale_data[0]);
+    } else {
+      PADDLE_THROW(platform::errors::Unimplemented("%d is not supported.",
+                                                   input_scale_tensor.dtype()));
+    }
 
-    nodes2rm.insert(quantize_linear_op_scale);
+    int nums_any_ops = dequantize_linear_op_out->outputs.size();
+    for (int i = 0; i < nums_any_ops; ++i) {
+      auto* any_op_desc = dequantize_linear_op_out->outputs[i]->Op();
+      any_op_desc->SetAttr("Input_scale_" + quantize_linear_op_x->Var()->Name(),
+                           input_scale);
+
+      // link x to any_op2
+      any_op_desc->RenameInput(dequantize_linear_op_out->Var()->Name(),
+                               quantize_linear_op_x->Var()->Name());
+      any_op_desc->Flush();
+      IR_NODE_LINK_TO(quantize_linear_op_x,
+                      dequantize_linear_op_out->outputs[i]);
+    }
+    // Forbid removing weight tensor when weight is shared between ops
+    if (quantize_linear_op_scale->outputs.size() <= 1UL)
+      nodes2rm.insert(quantize_linear_op_scale);
     nodes2rm.insert(quantize_linear_op);
     nodes2rm.insert(quantize_linear_op_out);
     nodes2rm.insert(dequantize_linear_op);
     nodes2rm.insert(dequantize_linear_op_out);
-
-    // link x to any_op2
-    any_op2_desc->RenameInput(dequantize_linear_op_out->Var()->Name(),
-                              quantize_linear_op_x->Var()->Name());
-    any_op2_desc->Flush();
-    IR_NODE_LINK_TO(quantize_linear_op_x, any_op2);
     GraphSafeRemoveNodes(graph, nodes2rm);
     found_count++;
   };

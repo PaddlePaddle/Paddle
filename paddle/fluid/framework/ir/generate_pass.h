@@ -129,14 +129,16 @@ class SubgraphHelper {
 
   void AddOutputVars(const VarHelper& var_helper);
 
-  template <size_t i, typename... Ts,
+  template <size_t i,
+            typename... Ts,
             std::enable_if_t<i + 1 < sizeof...(Ts)>* = nullptr>
   void AddOutputVars(const std::tuple<Ts...>& outputs) {
     AddOutputVars(std::get<i>(outputs));
     AddOutputVars<i + 1>(outputs);
   }
 
-  template <size_t i, typename... Ts,
+  template <size_t i,
+            typename... Ts,
             std::enable_if_t<i + 1 == sizeof...(Ts)>* = nullptr>
   void AddOutputVars(const std::tuple<Ts...>& outputs) {
     AddOutputVars(std::get<i>(outputs));

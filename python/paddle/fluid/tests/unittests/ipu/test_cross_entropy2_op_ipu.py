@@ -15,13 +15,12 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
     def setUp(self):
         self.set_atol()
@@ -35,11 +34,11 @@ class TestBase(IPUOpTest):
         label = np.arange(3).reshape([3, 1])
         self.feed_fp32 = {
             "x": x.astype(np.float32),
-            "label": label.astype(np.int64)
+            "label": label.astype(np.int64),
         }
         self.feed_fp16 = {
             "x": x.astype(np.float16),
-            "label": label.astype(np.int32)
+            "label": label.astype(np.int32),
         }
 
     def set_feed_attr(self):
@@ -47,20 +46,30 @@ class TestBase(IPUOpTest):
         self.feed_list = list(self.feed_fp32.keys())
 
     def set_op_attrs(self):
-        self.attrs = {'soft_label': False, }
+        self.attrs = {
+            'soft_label': False,
+        }
 
     @IPUOpTest.static_graph
     def build_model(self, on_ipu):
         x = paddle.static.data(
-            name=self.feed_list[0], shape=self.feed_shape[0], dtype="float32")
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype="float32"
+        )
         if on_ipu:
             label = paddle.static.data(
-                name=self.feed_list[1], shape=self.feed_shape[1], dtype='int32')
+                name=self.feed_list[1], shape=self.feed_shape[1], dtype='int32'
+            )
         else:
             label = paddle.static.data(
-                name=self.feed_list[1], shape=self.feed_shape[1], dtype='int64')
-        out = paddle.fluid.layers.cross_entropy(
-            input=x, label=label, **self.attrs)
+                name=self.feed_list[1], shape=self.feed_shape[1], dtype='int64'
+            )
+        out = paddle.nn.functional.cross_entropy(
+            input=x,
+            label=label,
+            reduction='none',
+            use_softmax=False,
+            **self.attrs
+        )
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
@@ -90,18 +99,48 @@ class TestCase2(TestBase):
         label = np.arange(30).reshape([30, 1])
         self.feed_fp32 = {
             "x": x.astype(np.float32),
-            "label": label.astype(np.int64)
+            "label": label.astype(np.int64),
         }
         self.feed_fp16 = {
             "x": x.astype(np.float16),
-            "label": label.astype(np.int32)
+            "label": label.astype(np.int32),
         }
 
 
 @unittest.skip("soft_label=True is not supported")
 class TestCase3(TestBase):
     def set_op_attrs(self):
-        self.attrs = {'soft_label': True, }
+        self.attrs = {
+            'soft_label': True,
+        }
+
+
+class TestCase4(TestBase):
+    def set_data_feed(self):
+        x = np.random.uniform(size=[3, 5, 7])
+        label = np.random.randint(0, 7, [3, 5, 1], dtype='int64')
+        self.feed_fp32 = {
+            "x": x.astype(np.float32),
+            "label": label.astype(np.int64),
+        }
+        self.feed_fp16 = {
+            "x": x.astype(np.float16),
+            "label": label.astype(np.int32),
+        }
+
+
+class TestCase5(TestBase):
+    def set_data_feed(self):
+        x = np.random.uniform(size=[3, 5, 6, 7])
+        label = np.random.randint(0, 7, [3, 5, 6], dtype='int64')
+        self.feed_fp32 = {
+            "x": x.astype(np.float32),
+            "label": label.astype(np.int64),
+        }
+        self.feed_fp16 = {
+            "x": x.astype(np.float16),
+            "label": label.astype(np.int32),
+        }
 
 
 if __name__ == "__main__":

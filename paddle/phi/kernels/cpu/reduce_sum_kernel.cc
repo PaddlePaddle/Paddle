@@ -24,7 +24,7 @@ namespace phi {
 template <typename T, typename Context>
 void SumRawKernel(const Context& dev_ctx,
                   const DenseTensor& x,
-                  const std::vector<int64_t>& dims,
+                  const IntArray& dims,
                   bool keep_dim,
                   bool reduce_all,
                   DataType out_dtype,
@@ -33,7 +33,7 @@ void SumRawKernel(const Context& dev_ctx,
     out_dtype = out->dtype();
   }
   phi::Reduce<CPUContext, T, phi::funcs::SumFunctor>(
-      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
+      dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
 }
 
 }  // namespace phi

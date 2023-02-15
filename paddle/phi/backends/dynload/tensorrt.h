@@ -21,8 +21,8 @@ limitations under the License. */
 
 #include <mutex>  // NOLINT
 
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace phi {
 namespace dynload {

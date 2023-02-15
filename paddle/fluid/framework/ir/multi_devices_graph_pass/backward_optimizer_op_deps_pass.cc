@@ -24,7 +24,8 @@ namespace ir {
 
 class BackWardOpDepsPass : public ir::Pass {
  protected:
-  void AddDep(ir::Graph* graph, details::OpHandleBase* l,
+  void AddDep(ir::Graph* graph,
+              details::OpHandleBase* l,
               details::OpHandleBase* r) const {
     auto* dep_var = new details::DummyVarHandle(graph->CreateControlDepVar());
     graph->Get<details::GraphDepVars>(details::kGraphDepVars).emplace(dep_var);
@@ -68,7 +69,8 @@ class BackWardOpDepsPass : public ir::Pass {
     }
 
     VLOG(10) << "add deps between backward and optimze:";
-    AddDep(graph, backward_op_handles[backward_op_handles.size() - 1],
+    AddDep(graph,
+           backward_op_handles[backward_op_handles.size() - 1],
            opt_handles[0]);
   }
 
@@ -125,7 +127,8 @@ class BackWardOpDepsPass : public ir::Pass {
       op_handles.emplace_back(std::make_pair(op, order));
     }
 
-    sort(op_handles.begin(), op_handles.end(),
+    sort(op_handles.begin(),
+         op_handles.end(),
          [](const std::pair<details::OpHandleBase*, int>& left,
             const std::pair<details::OpHandleBase*, int>& right) -> bool {
            return left.second < right.second;
@@ -158,7 +161,8 @@ class BackWardOpDepsPass : public ir::Pass {
   }
 
   void GetBackWardOpHandles(
-      ir::Node* node, std::vector<details::OpHandleBase*>* backward_op_handles,
+      ir::Node* node,
+      std::vector<details::OpHandleBase*>* backward_op_handles,
       details::ParamsAndGrads* params_grads) const {
     auto& op_desc = *(node->Op());
     bool is_bk_op = details::IsOpRole(op_desc, OpRole::kBackward);
@@ -168,7 +172,8 @@ class BackWardOpDepsPass : public ir::Pass {
     // broadcast, and each gradient is only broadcast once.
     auto backward_vars = details::GetOpRoleVarsOrEmpty(op_desc);
     PADDLE_ENFORCE_EQ(
-        node->IsWrappedBy<details::OpHandleBase>(), true,
+        node->IsWrappedBy<details::OpHandleBase>(),
+        true,
         platform::errors::InvalidArgument(
             "Node(%s) must be wrapped by OpHandleBase.", node->Name()));
 

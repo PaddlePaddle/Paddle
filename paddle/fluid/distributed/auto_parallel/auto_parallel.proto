@@ -1,0 +1,173 @@
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless optional by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
+syntax = "proto2";
+
+package paddle.distributed.auto_parallel;
+
+// ProcessMesh is used to organize processes and like n-dimension array.
+message ProcessMeshProto {
+  // The size of each dimension.
+  repeated int64 shape = 1;
+
+  // These process ids are stored by a row-major way.
+  // There are no duplicate process ids within one process mesh.
+  repeated int64 process_ids = 2;
+
+  // The name of each dimension. 
+  repeated string dim_names = 3;
+
+}
+
+// This distributed attribute describes how to distribute the corresponding tensor,
+// and store any other information needed by auto parallel.
+message TensorDistAttrProto {
+  // The process mesh where a tensor is distributed.
+  optional ProcessMeshProto process_mesh = 1;
+
+  // The length of dims_mapping is same as the length of the tensor shape.
+  // The i-th dimension of the tensor will be sharded by the dims_mapping[i]-th dimension 
+  // of the above process mesh. If dims_mapping[i] is -1, the i-th dimension of the tensor
+  // will not be sharded. For example, given a tensor shape [2, 6, 12], a process mesh
+  // shape [2, 3] and a dims_mapping [-1, 1, 0], each sharded tensor will have a shape [2, 2, 6].
+  repeated int64 dims_mapping = 2;
+
+  // The batch dimension of the corresponding tensor. 
+  optional int64 batch_dim = 3;
+
+  // If the dynamic_dims[i] is True, the i-th dimension of the corresponding tensor 
+  // is dynamic changed. Otherwise, the i-th dimension of the tensor is static determined. 
+  repeated bool dynamic_dims = 4;
+}
+
+// This distributed attribute describes how to distribute the corresponding operator,
+// and store any other information needed by auto parallel.
+message OperatorDistAttrProto {
+  message TensorDistAttrMappingEntryProto {
+    optional string name = 1;
+    optional TensorDistAttrProto tensor_dist_attr = 2;
+  } 
+  // The key of this map is the input tensor name and the value is the distributed attribute
+  // of the input tensor required by this corresponding operator.   
+  // The distributed attribute of the actual tensor may be not the same as that within 
+  // the distributed attribute of the operator.
+  repeated TensorDistAttrMappingEntryProto input_dist_attrs = 1;
+
+  // The key of this map is the output tensor name and the value is the distributed attribute
+  // of the output tensor required by this corresponding operator.   
+  // The distributed attribute of the actual tensor may be not the same as that within 
+  // the distributed attribute of the operator.
+  repeated TensorDistAttrMappingEntryProto output_dist_attrs = 2;
+
+  // The process mesh where a op is distributed.
+  optional ProcessMeshProto process_mesh = 3;
+
+  // A operator ideally has a distributed operator which may have multiple distributed implementations.
+  // This filed is usually same as the operator type. However, some operators such as the element-wise operators
+  // may shared the same distributed operator, the field is use for this scenario.
+  optional string impl_type = 4;
+
+  // This field tells which distributed implementations of this corresponding operator 
+  // will be selected for the actual computation.
+  optional int64 impl_idx = 5;
+}
+
+// This proto describes the capability of one device such as the computation and memory.
+message DeviceCapabilityProto {
+  optional double single_precision_flops = 1;
+
+  optional double double_precision_flops = 2;
+
+  optional double memory_size_in_bytes = 3;
+
+  optional double clock_rate_in_ghz = 4;
+}
+
+// This proto represents a device.
+message DeviceProto {
+  // The global id of this device within the cluster.
+  optional int64 global_id = 1;
+
+  // The local id of this device within the machine.
+  optional int64 local_id = 2;
+
+  // The id of the machine own this device.
+  optional int64 machine_id = 3;
+
+  // The id of the machine has this device.
+  optional string type = 4;
+
+  // The capability of this device.
+  optional DeviceCapabilityProto capability = 5; 
+}
+
+// This proto describes the capability of the link between two devices.        
+message LinkCapabilityProto {        
+  optional int64 bandwidth = 1; // Bytes/s       
+  optional int64 latency = 2;        
+}
+
+message LinkProto {
+  // The global id of the source device.
+  optional int64 source_id = 1;
+
+  // The global id of the source device.
+  optional int64 target_id = 2;
+
+  // Represent the link type.
+  optional string type = 3;
+      
+  // The capability of this link.
+  optional LinkCapabilityProto capability = 4; 
+}
+
+// DeviceMesh is used to organize devices and like n-dimension array.
+message DeviceMeshProto {
+  // The global id of this mesh. 
+  optional string name = 1;
+
+  // The size of each dimension.
+  repeated int64 shape = 2;
+
+  // These device ids are stored by a row-major way.
+  // There are no duplicate device ids within one device mesh.
+  repeated int64 device_ids = 3;
+
+  // The name of each dimension. 
+  repeated string dim_names = 4;
+
+  // The devices of this mesh.
+  repeated DeviceProto devices = 5;
+
+  // The links are between devices. 
+  repeated LinkProto links = 6;
+}
+
+// Record the mapping between the logical processes and the physical devices.
+message DistributedMapperProto {
+  // The device meshes used by this distributed computation,
+  // which may be shared by different multiple device meshes.
+  repeated DeviceMeshProto device_meshes = 1;
+
+  message MapperEntryProto {
+    optional int64 process_id = 1;
+    optional string device_mesh_name = 2;
+    repeated int64 device_ids = 3;
+  }
+
+  // The mapping from process ids to device ids.
+  // It is also possible for one process to use multiple devices.
+  // It is possible for one device shared by multiple processes.
+  repeated MapperEntryProto process_id_to_device_ids = 2;
+}

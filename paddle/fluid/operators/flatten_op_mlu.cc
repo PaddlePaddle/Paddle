@@ -20,16 +20,18 @@ template <typename DeviceContext, typename T>
 class FlattenMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *in = context.Input<framework::LoDTensor>("X");
-    auto *out = context.Output<framework::LoDTensor>("Out");
+    auto *in = context.Input<phi::DenseTensor>("X");
+    auto *out = context.Output<phi::DenseTensor>("Out");
 
     auto &axes = context.Attr<int>("axis");
     auto x_dims = in->dims();
     auto out_dims = phi::make_ddim(GetOutputShape(axes, x_dims));
     out->mutable_data(context.GetPlace(), in->type());
     framework::TensorCopy(
-        *in, context.GetPlace(),
-        context.template device_context<platform::DeviceContext>(), out);
+        *in,
+        context.GetPlace(),
+        context.template device_context<platform::DeviceContext>(),
+        out);
     out->Resize(out_dims);
   }
 
@@ -54,15 +56,16 @@ template <typename DeviceContext, typename T>
 class FlattenGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *d_x = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    auto *d_out =
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
-    auto in_dims = ctx.Input<framework::LoDTensor>("X")->dims();
+    auto *d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto *d_out = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto in_dims = ctx.Input<phi::DenseTensor>("X")->dims();
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopy(
-        *d_out, ctx.GetPlace(),
-        ctx.template device_context<platform::MLUDeviceContext>(), d_x);
+        *d_out,
+        ctx.GetPlace(),
+        ctx.template device_context<platform::MLUDeviceContext>(),
+        d_x);
     d_x->Resize(in_dims);
   }
 };
@@ -73,18 +76,20 @@ class Flatten2MLUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     auto &axes = context.Attr<int>("axis");
 
-    auto *in = context.Input<framework::LoDTensor>("X");
+    auto *in = context.Input<phi::DenseTensor>("X");
     auto x_dims = in->dims();
 
-    auto *out = context.Output<framework::LoDTensor>("Out");
+    auto *out = context.Output<phi::DenseTensor>("Out");
 
     auto out_dims = phi::make_ddim(
         FlattenMLUKernel<DeviceContext, T>::GetOutputShape(axes, x_dims));
 
     out->mutable_data(context.GetPlace(), in->type());
     framework::TensorCopy(
-        *in, context.GetPlace(),
-        context.template device_context<platform::DeviceContext>(), out);
+        *in,
+        context.GetPlace(),
+        context.template device_context<platform::DeviceContext>(),
+        out);
     out->Resize(out_dims);
   }
 };
@@ -93,17 +98,18 @@ template <typename DeviceContext, typename T>
 class Flatten2GradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *d_x = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    auto *d_out =
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+    auto *d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto *d_out = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
-    auto xshape_dims = ctx.Input<framework::LoDTensor>("XShape")->dims();
+    auto xshape_dims = ctx.Input<phi::DenseTensor>("XShape")->dims();
     auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopy(
-        *d_out, ctx.GetPlace(),
-        ctx.template device_context<platform::DeviceContext>(), d_x);
+        *d_out,
+        ctx.GetPlace(),
+        ctx.template device_context<platform::DeviceContext>(),
+        d_x);
     d_x->Resize(x_dims);
   }
 };
@@ -112,8 +118,8 @@ template <typename DeviceContext, typename T>
 class FlattenContiguousRangeMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *in = context.Input<framework::LoDTensor>("X");
-    auto *out = context.Output<framework::LoDTensor>("Out");
+    auto *in = context.Input<phi::DenseTensor>("X");
+    auto *out = context.Output<phi::DenseTensor>("Out");
     out->mutable_data(context.GetPlace(), in->type());
     auto &start_axis = context.Attr<int>("start_axis");
     auto &stop_axis = context.Attr<int>("stop_axis");
@@ -123,8 +129,10 @@ class FlattenContiguousRangeMLUKernel : public framework::OpKernel<T> {
     auto out_dims =
         phi::make_ddim(GetOutputShape(start_axis, stop_axis, in_dims));
     framework::TensorCopy(
-        *in, context.GetPlace(),
-        context.template device_context<platform::DeviceContext>(), out);
+        *in,
+        context.GetPlace(),
+        context.template device_context<platform::DeviceContext>(),
+        out);
     out->Resize(out_dims);
   }
   static std::vector<int32_t> GetOutputShape(const int start_axis,
@@ -165,17 +173,18 @@ template <typename DeviceContext, typename T>
 class FlattenContiguousRangeGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *d_x = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    auto *d_out =
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+    auto *d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto *d_out = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
-    auto xshape_dims = ctx.Input<framework::LoDTensor>("XShape")->dims();
+    auto xshape_dims = ctx.Input<phi::DenseTensor>("XShape")->dims();
     auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopy(
-        *d_out, ctx.GetPlace(),
-        ctx.template device_context<paddle::platform::MLUDeviceContext>(), d_x);
+        *d_out,
+        ctx.GetPlace(),
+        ctx.template device_context<paddle::platform::MLUDeviceContext>(),
+        d_x);
     d_x->Resize(x_dims);
   }
 };
@@ -186,7 +195,8 @@ class FlattenContiguousRangeGradMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_MLU_KERNEL(
-    flatten, ops::FlattenMLUKernel<paddle::platform::MLUDeviceContext, float>,
+    flatten,
+    ops::FlattenMLUKernel<paddle::platform::MLUDeviceContext, float>,
     ops::FlattenMLUKernel<paddle::platform::MLUDeviceContext, double>,
     ops::FlattenMLUKernel<paddle::platform::MLUDeviceContext, uint8_t>,
     ops::FlattenMLUKernel<paddle::platform::MLUDeviceContext, int>,
@@ -201,7 +211,8 @@ REGISTER_OP_MLU_KERNEL(
     ops::FlattenGradMLUKernel<paddle::platform::MLUDeviceContext, int8_t>,
     ops::FlattenGradMLUKernel<paddle::platform::MLUDeviceContext, int64_t>);
 REGISTER_OP_MLU_KERNEL(
-    flatten2, ops::Flatten2MLUKernel<paddle::platform::MLUDeviceContext, float>,
+    flatten2,
+    ops::Flatten2MLUKernel<paddle::platform::MLUDeviceContext, float>,
     ops::Flatten2MLUKernel<paddle::platform::MLUDeviceContext, double>,
     ops::Flatten2MLUKernel<paddle::platform::MLUDeviceContext, uint8_t>,
     ops::Flatten2MLUKernel<paddle::platform::MLUDeviceContext, int>,

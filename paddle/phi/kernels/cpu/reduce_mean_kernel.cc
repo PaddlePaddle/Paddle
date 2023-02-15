@@ -24,13 +24,14 @@ namespace phi {
 template <typename T, typename Context>
 void MeanRawKernel(const Context& dev_ctx,
                    const DenseTensor& x,
-                   const std::vector<int64_t>& dims,
+                   const IntArray& dims,
                    bool keep_dim,
                    bool reduce_all,
                    DenseTensor* out) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto out_dtype = x.dtype();
   phi::Reduce<CPUContext, T, phi::funcs::MeanFunctor>(
-      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
+      dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
 }
 
 }  // namespace phi

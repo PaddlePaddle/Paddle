@@ -26,10 +26,10 @@ class CBroadcastOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -64,10 +64,12 @@ Reference: https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/us
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_WITHOUT_GRADIENT(c_broadcast, ops::CBroadcastOp,
+REGISTER_OP_WITHOUT_GRADIENT(c_broadcast,
+                             ops::CBroadcastOp,
                              ops::CBroadcastOpMaker);
 
-REGISTER_OP_CPU_KERNEL(c_broadcast, ops::CBroadcastOpCPUKernel<float>,
+REGISTER_OP_CPU_KERNEL(c_broadcast,
+                       ops::CBroadcastOpCPUKernel<float>,
                        ops::CBroadcastOpCPUKernel<double>,
                        ops::CBroadcastOpCPUKernel<int>,
                        ops::CBroadcastOpCPUKernel<int64_t>,

@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest, skip_check_grad_ci
 import paddle
@@ -40,7 +39,7 @@ class TestCast1(OpTest):
 
         self.attrs = {
             'in_dtype': int(core.VarDesc.VarType.FP32),
-            'out_dtype': int(core.VarDesc.VarType.FP16)
+            'out_dtype': int(core.VarDesc.VarType.FP16),
         }
 
     def set_npu(self):
@@ -63,7 +62,7 @@ class TestCast2(OpTest):
 
         self.attrs = {
             'in_dtype': int(core.VarDesc.VarType.FP16),
-            'out_dtype': int(core.VarDesc.VarType.FP32)
+            'out_dtype': int(core.VarDesc.VarType.FP32),
         }
 
     def set_npu(self):
@@ -86,7 +85,7 @@ class TestCast3(OpTest):
 
         self.attrs = {
             'in_dtype': int(core.VarDesc.VarType.INT32),
-            'out_dtype': int(core.VarDesc.VarType.INT32)
+            'out_dtype': int(core.VarDesc.VarType.INT32),
         }
 
     def set_npu(self):

@@ -21,9 +21,10 @@ KernelSignature SplitOpArgumentMapping(const ArgumentMappingContext& ctx) {
   // priority: AxisTensor > axis
   if (paddle::any_cast<int>(ctx.Attr("num")) > 0) {
     if (ctx.HasInput("AxisTensor")) {
-      return KernelSignature("split", {"X"}, {"num", "AxisTensor"}, {"Out"});
+      return KernelSignature(
+          "split_with_num", {"X"}, {"num", "AxisTensor"}, {"Out"});
     } else {
-      return KernelSignature("split", {"X"}, {"num", "axis"}, {"Out"});
+      return KernelSignature("split_with_num", {"X"}, {"num", "axis"}, {"Out"});
     }
   }
 

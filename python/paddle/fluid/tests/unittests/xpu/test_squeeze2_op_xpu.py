@@ -1,4 +1,4 @@
-#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,16 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-import unittest
 import sys
+import unittest
+
 sys.path.append("..")
 
 import numpy as np
-
-from op_test import OpTest
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
+
 import paddle
 
 paddle.enable_static()
@@ -35,6 +38,7 @@ class XPUTestSqueeze2Op(XPUOpTestWrapper):
     class TestSqueeze2Op(XPUOpTest):
         def setUp(self):
             self.op_type = "squeeze2"
+            self.__class__.op_type = "squeeze2"
             self.use_mkldnn = False
             self.init_dtype()
             self.init_test_case()
@@ -43,7 +47,7 @@ class XPUTestSqueeze2Op(XPUOpTestWrapper):
             }
             self.outputs = {
                 "Out": self.inputs["X"].reshape(self.new_shape),
-                "XShape": np.random.random(self.ori_shape).astype(self.dtype)
+                "XShape": np.random.random(self.ori_shape).astype(self.dtype),
             }
             self.init_attrs()
 
@@ -64,17 +68,10 @@ class XPUTestSqueeze2Op(XPUOpTestWrapper):
 
         def test_check_grad(self):
             place = paddle.XPUPlace(0)
-            if self.dtype in [np.float32, np.float64]:
-                self.check_grad_with_place(place, ['X'], 'Out')
-            elif self.dtype == np.bool_:
+            if self.dtype == np.bool_:
                 return
             else:
-                user_defined_grad_outputs = np.random.random(
-                    self.new_shape).astype(self.dtype)
-                self.check_grad_with_place(
-                    place, ['X'],
-                    'Out',
-                    user_defined_grad_outputs=user_defined_grad_outputs)
+                self.check_grad_with_place(place, ['X'], 'Out')
 
     # Correct: There is mins axis.
     class TestSqueeze2Op1(TestSqueeze2Op):
@@ -90,7 +87,7 @@ class XPUTestSqueeze2Op(XPUOpTestWrapper):
             self.axes = ()
             self.new_shape = (20, 5)
 
-    # Correct: Just part of axes be squeezed. 
+    # Correct: Just part of axes be squeezed.
     class TestSqueeze2Op3(TestSqueeze2Op):
         def init_test_case(self):
             self.ori_shape = (6, 1, 5, 1, 4, 1)

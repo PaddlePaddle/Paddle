@@ -16,7 +16,6 @@ limitations under the License. */
 #include <unordered_map>
 
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
@@ -34,7 +33,6 @@ class PingPongInterceptor : public Interceptor {
 
   void PingPong(const InterceptorMessage& msg) {
     if (msg.message_type() == STOP) {
-      stop_ = true;
       return;
     }
     std::cout << GetInterceptorId() << " recv msg, count=" << count_

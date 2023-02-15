@@ -12,21 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/split_op.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
+#include "paddle/fluid/operators/split_op.h"
 
 namespace paddle {
 namespace operators {
-
-using Tensor = framework::Tensor;
 
 template <typename T>
 class SplitMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     // init parameter
-    auto* in = ctx.Input<framework::Tensor>("X");
-    auto outs = ctx.MultiOutput<framework::Tensor>("Out");
+    auto* in = ctx.Input<phi::DenseTensor>("X");
+    auto outs = ctx.MultiOutput<phi::DenseTensor>("Out");
     int num = ctx.Attr<int>("num");
     std::vector<int> sections = ctx.Attr<std::vector<int>>("sections");
     int axis = ctx.Attr<int>("axis");
@@ -36,12 +34,12 @@ class SplitMLUKernel : public framework::OpKernel<T> {
 
     bool need_resize_outs_dims = false;
     if (ctx.HasInput("AxisTensor")) {
-      auto* axis_tensor = ctx.Input<framework::Tensor>("AxisTensor");
+      auto* axis_tensor = ctx.Input<phi::DenseTensor>("AxisTensor");
       axis = GetDataFromTensor(axis_tensor)[0];
       need_resize_outs_dims = true;
     }
     auto sections_tensor_list =
-        ctx.MultiInput<framework::Tensor>("SectionsTensorList");
+        ctx.MultiInput<phi::DenseTensor>("SectionsTensorList");
     if (sections_tensor_list.size() > 0) {
       sections = GetDataFromTensorList(sections_tensor_list);
       need_resize_outs_dims = true;
@@ -66,12 +64,17 @@ class SplitMLUKernel : public framework::OpKernel<T> {
       vct_tensor.push_back(GetBasePtr(outs[i]));
     }
     // init in tensors
-    MLUCnnlTensorDesc input_desc(*in, CNNL_LAYOUT_ARRAY,
-                                 ToCnnlDataType(in->dtype()));
+    MLUCnnlTensorDesc input_desc(
+        *in, CNNL_LAYOUT_ARRAY, ToCnnlDataType(in->dtype()));
 
     // MLU should do sth
-    MLUCnnl::Split(ctx, num_tensor, axis, input_desc.get(), GetBasePtr(in),
-                   desc_vector.data(), vct_tensor.data());
+    MLUCnnl::Split(ctx,
+                   num_tensor,
+                   axis,
+                   input_desc.get(),
+                   GetBasePtr(in),
+                   desc_vector.data(),
+                   vct_tensor.data());
   }
 };
 
@@ -81,7 +84,9 @@ class SplitMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_MLU_KERNEL(split, ops::SplitMLUKernel<float>,
-                       ops::SplitMLUKernel<int64_t>, ops::SplitMLUKernel<int>,
+REGISTER_OP_MLU_KERNEL(split,
+                       ops::SplitMLUKernel<float>,
+                       ops::SplitMLUKernel<int64_t>,
+                       ops::SplitMLUKernel<int>,
                        ops::SplitMLUKernel<bool>,
                        ops::SplitMLUKernel<plat::float16>);

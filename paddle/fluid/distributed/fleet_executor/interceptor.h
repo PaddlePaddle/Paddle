@@ -33,7 +33,7 @@ namespace paddle {
 namespace framework {
 class Scope;
 class GarbageCollector;
-}
+}  // namespace framework
 namespace distributed {
 
 class TaskNode;
@@ -93,7 +93,6 @@ class Interceptor {
   TaskNode* node_;
 
   // for stop
-  bool stop_{false};
   void StopCarrier();
 
   // for runtime
@@ -114,9 +113,6 @@ class Interceptor {
 
   std::mutex mutex_;
   std::deque<InterceptorMessage> messages_;
-
-  int64_t already_run_times_{0};
-  int64_t used_slot_nums_{0};
 };
 
 class InterceptorFactory {
@@ -129,7 +125,8 @@ class InterceptorFactory {
   static void Register(const std::string& type, CreateInterceptorFunc func);
 
   static std::unique_ptr<Interceptor> Create(const std::string& type,
-                                             int64_t id, TaskNode* node);
+                                             int64_t id,
+                                             TaskNode* node);
 };
 
 template <typename InterceptorClass>

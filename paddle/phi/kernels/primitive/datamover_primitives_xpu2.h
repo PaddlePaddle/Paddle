@@ -21,6 +21,18 @@ namespace phi {
 namespace kps {
 namespace details {
 
+static inline int RoundUpDiv(int n, int k) { return (n + k - 1) / k; }
+
+static inline int GetXpuReadLens(int numel, int block_num, int grid_num) {
+  const int buf_size = 256;
+  int nthreads = block_num * grid_num;
+  if (numel / nthreads == 1) {
+    return numel / nthreads * 4;
+  }
+  int read_lens = std::min(buf_size, RoundUpDiv(numel, 32 * nthreads) * 32);
+  return read_lens;
+}
+
 enum class OptType {    // Optimize type of calc after input shape compressed
   CanNotOptimize = -1,  // can not optimize, broadcast first
   N_1,                  // just like {1} op {100} or {100} op {1}
@@ -96,8 +108,10 @@ struct BroadcastConfig {
       strides_out_tmp[i] = strides_out_tmp[i - 1] * out_dims[i - 1];
     }
 
+    int numel_out = 1;
     for (int i = 0; i < dim_size; i++) {
       dim_tmp[i] = in_dims[i];
+      numel_out = out_dims[i] * numel_out;
     }
     kDims = dim_size;
     memcpy(strides_in, strides_in_tmp.data(), kDims * sizeof(int));
@@ -106,12 +120,24 @@ struct BroadcastConfig {
 
     cmp_res = get_mnk_for_broadcast_ops(in_dims, y_in_dims);
     get_opt_type();
-    buf_len = get_buf_len();
+    buf_len = get_buf_len(numel_out);
+    int numel_x = 1;
+    int numel_y = 1;
+    for (int i = 0; i < dim_size; i++) {
+      numel_x = in_dims[i] * numel_x;
+      numel_y = y_in_dims[i] * numel_y;
+    }
+    if (numel_out == numel_x && numel_out == numel_y) {
+      buf_len = GetXpuReadLens(numel_out, 8, 64);
+    }
   }
 
-  int get_buf_len() {
+  int get_buf_len(int numel) {
     if (cmp_type == OptType::CanNotOptimize) {
       return 256;
+    }
+    if (cmp_type == OptType::N_1) {
+      return kps::details::GetXpuReadLens(numel, 8, 64);
     }
     int max_buf_len = 512;
     int buf_len = m / 16 * 16;
@@ -294,6 +320,7 @@ __device__ __forceinline__ void WriteData(T _global_ptr_* dst,
                                           T* src,
                                           int num) {
   if (num > 0) {
+    mfence_local();
     LM2GM(src, dst, num * sizeof(T));
   }
 }
@@ -310,7 +337,6 @@ __device__ __forceinline__ void WriteData(T _global_ptr_* dst,
  * Ty: The type of data that needs to be stored in registers.
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
- * BlockSize: Identifies the current device thread index method. For xpu,
  * core_id() is used as the index.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
  * judgment. When the number of data processed by the block is less than
@@ -327,12 +353,7 @@ __device__ __forceinline__ void WriteData(T _global_ptr_* dst,
  * stride_nx: Each read one element stride stride_nx elements in the last dim.
  * stride_ny: Each read one element stride stride_ny elements in the first dim.
  */
-template <typename Tx,
-          typename Ty,
-          int NX,
-          int NY,
-          int BlockSize,
-          bool IsBoundary = false>
+template <typename Tx, typename Ty, int NX, int NY, bool IsBoundary = false>
 __device__ __inline__ void ReadData(Ty* dst,
                                     const Tx _global_ptr_* src,
                                     int size_nx,
@@ -361,6 +382,7 @@ __device__ __inline__ void ReadData(Ty* dst,
           break;
         }
       }
+      mfence_local();
       GM2LM(src + thread_offset + idy * stride_ny, in_temp, sizeof(Tx));
       dst[idy] = static_cast<Ty>(in_temp[0]);
     }
@@ -372,6 +394,7 @@ __device__ __inline__ void ReadData(Ty* dst,
           break;
         }
       }
+      mfence_local();
       GM2LM(src + thread_offset + idx * stride_nx, in_temp, sizeof(Tx));
       dst[idx] = static_cast<Ty>(in_temp[0]);
     }
@@ -386,6 +409,7 @@ __device__ __inline__ void ReadData(Ty* dst,
           }
         }
         int fix = thread_offset + idx * stride_nx + idy * stride_ny;
+        mfence_local();
         GM2LM(src + fix, in_temp, sizeof(Tx));
         dst[idy * NX + idx] = static_cast<Ty>(in_temp[0]);
       }
@@ -425,9 +449,10 @@ __device__ __inline__ void Init(T* dst, T init_data, int read_lens) {
  * it supports different data types of inputs.
  */
 template <typename T, typename ArgsT, int Index, int NX>
-__device__ __forceinline__ void Init(ArgsT* dst, T init_data) {
+__device__ __forceinline__ void Init(ArgsT* dst, T init_data, int read_lens) {
+  mfence();
 #pragma unroll
-  for (int i = 0; i < NX; i++) {
+  for (int i = 0; i < read_lens; i++) {
     std::get<Index>(dst[i]) = init_data;
   }
 }
@@ -441,7 +466,6 @@ __device__ __forceinline__ void Init(ArgsT* dst, T init_data) {
  * T: The type of data.
  * NX: Each thread load NX data from global memory continuously.
  * NY: Each thread need to load NY rows, only NY = 1 was supported.
- * BlockSize: Identifies the current device thread index method. For xpu,
  * core_id() is used as the index.
  * IsBoundary: Whether to make an out-of-bounds judgment on access to memory.
  * When the number of data processed by this block is less than
@@ -453,18 +477,17 @@ __device__ __forceinline__ void Init(ArgsT* dst, T init_data) {
  * src: The data pointer of the current block.
  * size: The current block needs to load size data continuously.
  */
-template <typename T, int NX, int NY, int BlockSize, bool IsBoundary>
+template <typename T, int NX, int NY, bool IsBoundary>
 __device__ __inline__ void ReadData(T* dst,
                                     const T _global_ptr_* src,
                                     int num) {
+  mfence_local();
   int thread_offset = core_id() * NX;
-  __local__ T in_temp[1];
   if (IsBoundary) {  // core_num() * NX > num
 #pragma unroll
     for (int idx = 0; idx < NX; ++idx) {
       if (idx + thread_offset < num) {
-        GM2LM(src + thread_offset + idx, in_temp, sizeof(T));
-        dst[idx] = in_temp[0];
+        GM2LM(src + thread_offset + idx, dst + idx, sizeof(T));
       }
     }
   } else {  // core_num() * NX < num
@@ -472,19 +495,18 @@ __device__ __inline__ void ReadData(T* dst,
   }
 }
 
-template <typename T, int NX, int NY, int BlockSize, bool IsBoundary>
+template <typename T, int NX, int NY, bool IsBoundary>
 __device__ __inline__ void ReadData(T* dst,
                                     const T _global_ptr_* src,
                                     int num,
                                     int read_lens) {
   int thread_offset = core_id() * read_lens;
-  __local__ T in_temp[1];
+  mfence_local();
   if (IsBoundary) {  // core_num() * read_lens > num
 #pragma unroll
     for (int idx = 0; idx < read_lens; ++idx) {
       if (idx + thread_offset < num) {
-        GM2LM(src + thread_offset + idx, in_temp, sizeof(T));
-        dst[idx] = in_temp[0];
+        GM2LM(src + thread_offset + idx, dst + idx, sizeof(T));
       }
     }
   } else {  // core_num() * read_lens < num
@@ -502,7 +524,6 @@ __device__ __inline__ void ReadData(T* dst,
  * NY: Each thread need to load NY rows, only NY = 1 was supported.
  * ArgsT: The Type if dst, ArgsT can be std::tuple<T> or std::tuple<Args>
  * Index: The index of data stored in dst.
- * BlockSize: Identifies the current device thread index method. For xpu,
  * core_id() is used as the index.
  * IsBoundary: Whether to make an out-of-bounds judgment on access to memory.
  * When the number of data processed by this block is less than
@@ -517,28 +538,29 @@ __device__ __inline__ void ReadData(T* dst,
 template <typename T,
           int NX,
           int NY,
-          int BlockSize,
           typename ArgsT,
           int Index,
           bool IsBoundary>
 __device__ __forceinline__ void ReadData(ArgsT* dst,
                                          const T _global_ptr_* src,
-                                         int num) {
-  int thread_offset = core_id() * NX;
+                                         int num,
+                                         int read_lens) {
+  int thread_offset = core_id() * read_lens;
   __local__ T in_temp[1];
   __local__ T in_vec[NX];
-  if (IsBoundary) {  // core_num() * NX > num
+  if (IsBoundary) {  // core_num() * read_lens > num
 #pragma unroll
-    for (int idx = 0; idx < NX; ++idx) {
+    for (int idx = 0; idx < read_lens; ++idx) {
       if (idx + thread_offset < num) {
         GM2LM(src + thread_offset + idx, in_temp, sizeof(T));
         std::get<Index>(dst[idx]) = in_temp[0];
+        mfence();
       }
     }
-  } else {  // core_num() * NX < num
-    GM2LM(src + thread_offset, in_vec, NX * sizeof(T));
+  } else {  // core_num() * read_lens < num
+    GM2LM(src + thread_offset, in_vec, read_lens * sizeof(T));
 #pragma unroll
-    for (int idx = 0; idx < NX; ++idx) {
+    for (int idx = 0; idx < read_lens; ++idx) {
       std::get<Index>(dst[idx]) = in_vec[idx];
     }
   }
@@ -551,7 +573,6 @@ __device__ __forceinline__ void ReadData(ArgsT* dst,
  * T: The type of data stored in the global memory.
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
- * BlockSize: Identifies the current device thread index method. For xpu,
  * core_id() is used as the index.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
  * judgment. When the number of data processed by the block is less than
@@ -568,7 +589,7 @@ __device__ __forceinline__ void ReadData(ArgsT* dst,
  * stride_nx: Each read one element stride stride_nx elements in the last dim.
  * stride_ny: Each read one element stride stride_ny elements in the first dim.
  */
-template <typename T, int NX, int NY, int BlockSize, bool IsBoundary = false>
+template <typename T, int NX, int NY, bool IsBoundary = false>
 __device__ __inline__ void ReadDataBc(T* dst,
                                       const T _global_ptr_* src,
                                       uint32_t block_offset,
@@ -578,8 +599,7 @@ __device__ __inline__ void ReadDataBc(T* dst,
                                       int stride_ny) {
   uint32_t thread_offset = block_offset + core_id();
   uint32_t index_src = 0;
-  __local__ T in_temp[1];
-
+  mfence_local();
 #pragma unroll
   for (int ny = 0; ny < NY; ++ny) {
 #pragma unroll
@@ -592,8 +612,7 @@ __device__ __inline__ void ReadDataBc(T* dst,
         }
       }
       index_src = config(index_output);
-      GM2LM(src + index_src, in_temp, sizeof(T));
-      dst[nx + ny * NX] = in_temp[0];
+      GM2LM(src + index_src, dst + nx + ny * NX, sizeof(T));
     }
   }
 }
@@ -605,7 +624,6 @@ __device__ __inline__ void ReadDataBc(T* dst,
  * T: The type of data.
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
- * BlockSize: Identifies the current device thread index method. For xpu,
  * core_id() is used as the index.
  * Rank: The shape size of out. eg in[1, 35], out[32, 35] then shape size is 2.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
@@ -633,7 +651,6 @@ template <typename Tx,
           typename Ty,
           int NX,
           int NY,
-          int BlockSize,
           int Rank,
           typename IndexCal,
           typename Functor,
@@ -669,8 +686,10 @@ __device__ __forceinline__ void ReadDataReduce(
         }
       }
       uint32_t index_src = index_cal(thread_offset + block_offset);
+      mfence_local();
       GM2LM(src + index_src, in_temp, sizeof(Tx));
       dst[ny] = static_cast<Ty>(func(in_temp[0]));
+
       thread_offset += stride_ny;
     }
   } else {
@@ -685,6 +704,7 @@ __device__ __forceinline__ void ReadDataReduce(
           }
         }
         uint32_t index_src = index_cal(thread_offset + block_offset);
+        mfence_local();
         GM2LM(src + index_src, in_temp, sizeof(Tx));
         dst[nx + ny * NX] = static_cast<Ty>(func(in_temp[0]));
         thread_offset += stride_ny;
@@ -701,7 +721,6 @@ __device__ __forceinline__ void ReadDataReduce(
  * T: The type of data.
  * NX: The number of data continuously writed by each thread.
  * NY: The number of data rows loaded by each thread, only NY = 1 was supported.
- * BlockSize: Identifies the current device thread index method. For xpu,
  * core_id() is used as the index.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
  * judgment. When the number of data processed by the block is less than
@@ -714,20 +733,19 @@ __device__ __forceinline__ void ReadDataReduce(
  * size: The current block needs to load size elements continuously.
  */
 
-template <typename T, int NX, int NY, int BlockSize, bool IsBoundary>
+template <typename T, int NX, int NY, bool IsBoundary>
 __device__ void WriteData(T _global_ptr_* dst,
                           const T* src,
                           int num,
                           int read_lens) {
   int thread_offset = core_id() * read_lens;
-  __local__ T in_temp[1];
+  mfence_local();
 
   if (IsBoundary) {  // core_num() * read_lens > num
 #pragma unroll
     for (int idx = 0; idx < read_lens; ++idx) {
       if (idx + thread_offset < num) {
-        in_temp[0] = src[idx];
-        LM2GM(in_temp, dst + idx + thread_offset, sizeof(T));
+        LM2GM(src + idx, dst + idx + thread_offset, sizeof(T));
       }
     }
   } else {  // core_num() * read_lens < num
@@ -735,20 +753,20 @@ __device__ void WriteData(T _global_ptr_* dst,
   }
 }
 
-template <typename T, int NX, int NY, int BlockSize, bool IsBoundary>
+template <typename T, int NX, int NY, bool IsBoundary>
 __device__ void WriteData(T _global_ptr_* dst, const T* src, int num) {
   int thread_offset = core_id() * NX;
-  __local__ T in_temp[1];
+  mfence_local();
 
   if (IsBoundary) {  // core_num() * NX > num
 #pragma unroll
     for (int idx = 0; idx < NX; ++idx) {
       if (idx + thread_offset < num) {
-        in_temp[0] = src[idx];
-        LM2GM(in_temp, dst + idx + thread_offset, sizeof(T));
+        LM2GM(src + idx, dst + idx + thread_offset, sizeof(T));
       }
     }
   } else {  // core_num() * NX < num
+    mfence_local();
     LM2GM(src, dst + thread_offset, NX * sizeof(T));
   }
 }
@@ -762,7 +780,6 @@ __device__ void WriteData(T _global_ptr_* dst, const T* src, int num) {
  * Ty: The type of data stored in the global memory.
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
- * BlockSize: Identifies the current device thread index method. For xpu,
  * core_id() is used as the index.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
  * judgment. When the number of data processed by the block is less than
@@ -779,12 +796,7 @@ __device__ void WriteData(T _global_ptr_* dst, const T* src, int num) {
  * stride_nx: Each read one element stride stride_nx elements in the last dim.
  * stride_ny: Each read one element stride stride_ny elements in the first dim.
  */
-template <typename Tx,
-          typename Ty,
-          int NX,
-          int NY,
-          int BlockSize,
-          bool IsBoundary = false>
+template <typename Tx, typename Ty, int NX, int NY, bool IsBoundary = false>
 __device__ __inline__ void WriteData(Ty _global_ptr_* dst,
                                      const Tx* src,
                                      int size_nx,
@@ -800,10 +812,12 @@ __device__ __inline__ void WriteData(Ty _global_ptr_* dst,
     if (IsBoundary) {
       if (left_size_nx > 0) {
         in_temp[0] = static_cast<Ty>(src[0]);
+        mfence_local();
         LM2GM(in_temp, dst + thread_offset, sizeof(Ty));
       }
     } else {
       in_temp[0] = static_cast<Ty>(src[0]);
+      mfence_local();
       LM2GM(in_temp, dst + thread_offset, sizeof(Ty));
     }
   } else if (NX == 1) {
@@ -816,6 +830,7 @@ __device__ __inline__ void WriteData(Ty _global_ptr_* dst,
       }
 
       in_temp[0] = static_cast<Ty>(src[idy]);
+      mfence_local();
       LM2GM(in_temp, dst + thread_offset + idy * stride_ny, sizeof(Ty));
     }
   } else if (NY == 1) {  // for NY == 1 and NX != 1
@@ -828,6 +843,7 @@ __device__ __inline__ void WriteData(Ty _global_ptr_* dst,
       }
 
       in_temp[0] = static_cast<Ty>(src[idx]);
+      mfence_local();
       LM2GM(in_temp, dst + thread_offset + idx * stride_nx, sizeof(Ty));
     }
   } else {  // for NX != 1 and NY != 1
@@ -846,6 +862,7 @@ __device__ __inline__ void WriteData(Ty _global_ptr_* dst,
           }
         }
         in_temp[0] = static_cast<Ty>(src[idx + idy * NX]);
+        mfence_local();
         LM2GM(in_temp,
               dst + thread_offset + idx * stride_nx + idy * stride_ny,
               sizeof(Ty));
@@ -998,6 +1015,7 @@ __device__ __inline__ void ReadDataBc1NMn(
     for (int i = 0; i < last_col; i++) {
       dst[i] = in_temp;
     }
+    mfence_local();
     GM2LM(src + index_base + 1, &in_temp, sizeof(T));
     for (int i = 0; i < read_lens - last_col; i++) {
       dst[last_col + i] = in_temp;
@@ -1052,6 +1070,7 @@ __device__ __inline__ void ReadDataBc1N1Mnk(
     } else {
       next_part_index = 0;
     }
+    mfence_local();
     GM2LM(src + next_part_index, &in_temp, sizeof(T));
     for (int i = 0; i < read_lens - last_col; i++) {
       dst[last_col + i] = in_temp;
@@ -1138,6 +1157,7 @@ __device__ __inline__ void ReadDataBcCanNotCmp(
     if (index_src >= index_base && index_src < index_base + cache_size) {
       in_temp = src_temp[index_src - index_base];
     } else {
+      mfence_local();
       GM2LM(src + index_src, &in_temp, sizeof(T));
     }
     dst[nx] = in_temp;
@@ -1151,7 +1171,6 @@ __device__ __inline__ void ReadDataBcCanNotCmp(
  * T: The type of data stored in the global memory.
  * NX: The number of data continuously loaded by each thread.
  * NY: The number of data rows loaded by each thread, only NY = 1 was supported.
- * BlockSize: Identifies the current device thread index method. For xpu,
  * core_id() is used as the index.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
  * judgment. When the number of data processed by the block is less than
@@ -1167,7 +1186,7 @@ __device__ __inline__ void ReadDataBcCanNotCmp(
  * read_lens: The number of data continuously loaded by each thread.
  * total_num_output: Total number of original output.
  */
-template <typename T, int NX, int NY, int BlockSize, bool IsBoundary = false>
+template <typename T, int NX, int NY, bool IsBoundary = false>
 __device__ __inline__ void ReadDataBc(T* dst,
                                       const T _global_ptr_* src,
                                       uint32_t block_offset,
@@ -1199,14 +1218,13 @@ __device__ __inline__ void ReadDataBc(T* dst,
  * T: Data type of register.
  * NX: Number of data to initialize.
  * NY: Number of data to initialize, NY only can be 1.
- * BlockSize: Identifies the current device thread index method. For xpu,
  * core_id() is used as the index.
  *
  * @param：
  * dst: The register pointer of the thread, the size is NX.
  * init_data: The register pointer of init data, the size is NX.
  */
-template <typename T, int NX, int NY, int BlockSize>
+template <typename T, int NX, int NY>
 __device__ __forceinline__ void InitWithDataIndex(T* dst, int block_offset) {
   int thread_offset = block_offset + core_id() * NX;
 #pragma unroll

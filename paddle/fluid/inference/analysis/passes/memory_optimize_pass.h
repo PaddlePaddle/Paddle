@@ -35,16 +35,15 @@ namespace inference {
 namespace analysis {
 
 /* Memory optimization.
-* We will perform the following operation:
-* 1. Collect all var's lifetime.
-* 2. Make reuse plan: the vars can be reused if there is no overlap(on lifetime)
-* between
-* them.
-* The final plan is a mapping table in which the key represents the original
-* name of var and the value in the table represents the current name of var.
-* 3. Perform reuse plan: Replace all var's name in the model according to the
-* mapping table.
-*/
+ * We will perform the following operation:
+ * 1. Collect all var's lifetime.
+ * 2. Make reuse plan: the vars can be reused if there is no overlap(on
+ * lifetime) between them. The final plan is a mapping table in which the key
+ * represents the original name of var and the value in the table represents the
+ * current name of var.
+ * 3. Perform reuse plan: Replace all var's name in the model according to the
+ * mapping table.
+ */
 class MemoryOptimizePass : public AnalysisPass {
  public:
   using space_table_t = std::unordered_map<std::string, size_t>;

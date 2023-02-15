@@ -47,7 +47,8 @@ struct VarHandleBase;
 
 struct FetchBarrierOpHandle : public OpHandleBase {
  public:
-  FetchBarrierOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
+  FetchBarrierOpHandle(ir::Node *node,
+                       const std::vector<Scope *> &local_scopes,
                        const std::vector<platform::Place> &places);
 
   bool IsMultiDeviceTransfer() override;

@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest, _set_use_system_allocator
 import paddle
@@ -54,10 +53,16 @@ class TestTransposeOp(OpTest):
         self.check_grad_with_place(self.place, ['X'], 'Out')
 
 
+class TestCase_ZeroDim(TestTransposeOp):
+    def init_shape_axis(self):
+        self.shape = ()
+        self.axis = ()
+
+
 class TestCase0(TestTransposeOp):
     def init_shape_axis(self):
-        self.shape = (100, )
-        self.axis = (0, )
+        self.shape = (100,)
+        self.axis = (0,)
 
 
 class TestCase1(TestTransposeOp):

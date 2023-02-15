@@ -1,4 +1,4 @@
-// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/fc_act_mkldnn_fuse_pass.h"
-#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+
+#include "paddle/fluid/framework/ir/mkldnn/activation_onednn_fuse_pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -25,55 +25,33 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void FuseFCActOneDNNPass::ApplyImpl(Graph *graph) const {
-  std::vector<std::string> act_types = {"gelu", "tanh", "sigmoid", "mish",
-                                        "hard_swish"};
+  auto act_types = GetSupportedActivations();
 
-  for (std::string act_type : act_types) FuseFCAct(graph, act_type);
+  for (auto act_type : act_types) FuseFCAct(graph, act_type);
 }
 
 void FuseFCActOneDNNPass::FuseFCAct(Graph *graph,
                                     const std::string &act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
-  FusePassBase::Init("fc_act", graph);
+      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+  FusePassBase::Init("fc_" + act_type + "_mkldnn_fuse_pass", graph);
 
   GraphPatternDetector gpd;
-  patterns::FCActOneDNN fc_act_pattern(gpd.mutable_pattern(), "fc_act");
-  fc_act_pattern(act_type);
+  patterns::OperatorActivation fc_act_pattern(
+      gpd.mutable_pattern(), "fc_" + act_type + "_mkldnn_fuse_pass");
+  fc_act_pattern("fc", act_type);
 
   int found_fc_act_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
     VLOG(4) << "Fuse fc with activation op.";
-    // FC output
-    GET_IR_NODE_FROM_SUBGRAPH(fc_out, fc_out, fc_act_pattern);
-    // ACT output
-    GET_IR_NODE_FROM_SUBGRAPH(act_out, act_out, fc_act_pattern);
-    // ops
-    GET_IR_NODE_FROM_SUBGRAPH(fc, fc, fc_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(act, act, fc_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fc, preceding_op, fc_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fc_out, preceding_op_out, fc_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(act, activation, fc_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(act_out, activation_out, fc_act_pattern);
 
-    auto *fc_op = fc->Op();
-    auto *act_op = act->Op();
-
-    if (fc_op->HasAttr("use_mkldnn")) {
-      PADDLE_ENFORCE(
-          BOOST_GET_CONST(bool, fc_op->GetAttr("use_mkldnn")),
-          platform::errors::PreconditionNotMet(
-              "The FC+Act fusion may happen only when oneDNN library "
-              "is used."));
-    }
-
-    if (act_type == "gelu" && act_op->HasAttr("approximate")) {
-      bool approximate = BOOST_GET_CONST(bool, act_op->GetAttr("approximate"));
-      std::string type = approximate ? "_tanh" : "_erf";
-      fc_op->SetAttr("activation_type", act_type + type);
-    } else {
-      fc_op->SetAttr("activation_type", act_type);
-    }
-    fc_op->SetAttr("use_mkldnn", true);
-
-    fc_op->SetOutput("Out", {act_out->Name()});
+    SetActivationAttrs(fc->Op(), act->Op(), act_type);
+    fc->Op()->SetOutput("Out", {act_out->Name()});
 
     IR_OP_VAR_LINK(fc, act_out);
     GraphSafeRemoveNodes(g, {act, fc_out});
@@ -82,9 +60,10 @@ void FuseFCActOneDNNPass::FuseFCAct(Graph *graph,
 
   gpd(graph, handler);
   AddStatis(found_fc_act_count);
-  if (!Has("disable_logs") || !Get<bool>("disable_logs"))
-    PrettyLogDetail("---    fused %d fc with %s activation", found_fc_act_count,
-                    act_type);
+  if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
+      found_fc_act_count > 0)
+    PrettyLogDetail(
+        "---    fused %d fc with %s activation", found_fc_act_count, act_type);
 }
 
 }  // namespace ir
@@ -97,8 +76,16 @@ REGISTER_PASS_CAPABILITY(fc_act_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("fc", 0)
-            .LE("gelu", 0)
-            .LE("sigmoid", 0)
-            .LE("mish", 1)
+            .EQ("abs", 0)
+            .LE("clip", 1)
+            .EQ("gelu", 0)
+            .EQ("hard_sigmoid", 0)
             .LE("hard_swish", 0)
-            .LE("tanh", 0));
+            .LE("leaky_relu", 1)
+            .LE("mish", 1)
+            .EQ("relu", 0)
+            .EQ("relu6", 0)
+            .EQ("sigmoid", 0)
+            .EQ("sqrt", 0)
+            .EQ("swish", 0)
+            .EQ("tanh", 0));

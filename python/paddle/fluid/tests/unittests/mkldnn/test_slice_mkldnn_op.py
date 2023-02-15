@@ -12,19 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
+
 import paddle
+import paddle.fluid.core as core
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    OpTestTool,
+    convert_float_to_uint16,
+)
 
 
-@OpTestTool.skip_if(core.is_compiled_with_cuda(),
-                    "CUDA required dygraph so oneDNN UT must be skipped")
+@OpTestTool.skip_if(
+    core.is_compiled_with_cuda(),
+    "CUDA required dygraph so oneDNN UT must be skipped",
+)
 class TestSliceOneDNNOp(OpTest):
     def setUp(self):
         self.op_type = "slice"
@@ -36,7 +40,7 @@ class TestSliceOneDNNOp(OpTest):
             'starts': self.starts,
             'ends': self.ends,
             'infer_flags': self.infer_flags,
-            'use_mkldnn': True
+            'use_mkldnn': True,
         }
         self.set_attrs()
 
@@ -151,7 +155,8 @@ class TestSlice3DOneDNNOp(TestSliceDecrease1AxisOneDNNOp):
 
 
 class TestSliceOneDNNOp_decs_dim_starts_ListTensor(
-        TestSliceDecrease1AxisOneDNNOp):
+    TestSliceDecrease1AxisOneDNNOp
+):
     def set_inputs(self):
         starts_tensor = []
         for index, ele in enumerate(self.starts):
@@ -208,8 +213,12 @@ def create_bf16_test_class(parent):
             for i in range(len(self.axes)):
                 begin[self.axes[i]] = self.starts[i]
                 end[self.axes[i]] = self.ends[i]
-            self.dx[begin[0]:end[0], begin[1]:end[1], begin[2]:end[2], begin[3]:
-                    end[3]] = self.dout
+            self.dx[
+                begin[0] : end[0],
+                begin[1] : end[1],
+                begin[2] : end[2],
+                begin[3] : end[3],
+            ] = self.dout
 
         def test_check_output(self):
             self.check_output_with_place(core.CPUPlace())
@@ -217,10 +226,12 @@ def create_bf16_test_class(parent):
         def test_check_grad(self):
             self.calculate_grads()
             self.check_grad_with_place(
-                core.CPUPlace(), ["Input"],
+                core.CPUPlace(),
+                ["Input"],
                 "Out",
                 user_defined_grads=[self.dx],
-                user_defined_grad_outputs=[convert_float_to_uint16(self.dout)])
+                user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
+            )
 
     cls_name = "{0}_{1}".format(parent.__name__, "BF16")
     TestSliceBF16OneDNNOp.__name__ = cls_name

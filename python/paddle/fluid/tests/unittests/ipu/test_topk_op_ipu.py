@@ -15,13 +15,12 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestTopKOp(IPUOpTest):
     def setUp(self):
         self.set_atol()
@@ -32,7 +31,7 @@ class TestTopKOp(IPUOpTest):
         self.set_op_attrs()
 
     def set_test_op(self):
-        self.op = paddle.fluid.layers.topk
+        self.op = paddle.topk
 
     def set_data_feed(self):
         data = np.random.uniform(size=[3, 5])
@@ -52,13 +51,15 @@ class TestTopKOp(IPUOpTest):
     @IPUOpTest.static_graph
     def build_model(self):
         x = paddle.static.data(
-            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32')
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
         if not self.use_k_as_const_variable:
             topk_values, topk_indices = self.op(x, **self.attrs)
         else:
             # !important, popart cannot accept non const tensor
             K_t = paddle.fluid.layers.fill_constant(
-                shape=[1], dtype='int32', value=self.k, name="in_2")
+                shape=[1], dtype='int32', value=self.k, name="in_2"
+            )
             topk_values, topk_indices = self.op(x, K_t, **self.attrs)
         self.fetch_list = [topk_values.name, topk_indices.name]
 

@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/capi_exp/pd_predictor.h"
+
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/capi_exp/pd_config.h"
 #include "paddle/fluid/inference/capi_exp/pd_types.h"
 #include "paddle/fluid/inference/capi_exp/pd_utils.h"
 #include "paddle/fluid/inference/capi_exp/types_internal.h"
@@ -30,13 +32,13 @@
 extern "C" {
 __pd_give PD_Predictor* PD_PredictorCreate(__pd_take PD_Config* pd_config) {
   PADDLE_ENFORCE_NOT_NULL(
-      pd_config, paddle::platform::errors::InvalidArgument(
-                     "The pointer of paddle predictor shouldn't be nullptr"));
+      pd_config,
+      paddle::platform::errors::InvalidArgument(
+          "The pointer of paddle predictor shouldn't be nullptr"));
   PD_Predictor* pd_predictor = new PD_Predictor();
   paddle_infer::Config* config =
       reinterpret_cast<paddle_infer::Config*>(pd_config);
   pd_predictor->predictor = paddle_infer::CreatePredictor(*config);
-  delete config;
   return pd_predictor;
 }
 
@@ -55,11 +57,59 @@ __pd_give PD_OneDimArrayCstr* PD_PredictorGetInputNames(
   return paddle_infer::CvtVecToOneDimArrayCstr(names);
 }
 
+__pd_give PD_IOInfos* PD_PredictorGetInputInfos(
+    __pd_keep PD_Predictor* pd_predictor) {
+  CHECK_AND_CONVERT_PD_PREDICTOR;
+  std::vector<std::string> names = predictor->GetInputNames();
+  std::map<std::string, std::vector<int64_t>> input_shapes =
+      predictor->GetInputTensorShape();
+  std::map<std::string, paddle_infer::DataType> input_dtypes =
+      predictor->GetInputTypes();
+
+  PD_IOInfos* input_infos = new PD_IOInfos;
+  input_infos->size = names.size();
+  input_infos->io_info = names.empty() ? NULL : new PD_IOInfo*[names.size()];
+  for (size_t i = 0; i < names.size(); i++) {
+    const std::string& name = names[i];
+    input_infos->io_info[i] = new PD_IOInfo;
+    input_infos->io_info[i]->name = paddle_infer::CvtStrToCstr(name);
+    input_infos->io_info[i]->shape =
+        paddle_infer::CvtVecToOneDimArrayInt64(input_shapes[name]);
+    input_infos->io_info[i]->dtype =
+        paddle_infer::CvtFromCxxDatatype(input_dtypes[name]);
+  }
+  return input_infos;
+}
+
 __pd_give PD_OneDimArrayCstr* PD_PredictorGetOutputNames(
     __pd_keep PD_Predictor* pd_predictor) {
   CHECK_AND_CONVERT_PD_PREDICTOR;
   std::vector<std::string> names = predictor->GetOutputNames();
   return paddle_infer::CvtVecToOneDimArrayCstr(names);
+}
+
+__pd_give PD_IOInfos* PD_PredictorGetOutputInfos(
+    __pd_keep PD_Predictor* pd_predictor) {
+  CHECK_AND_CONVERT_PD_PREDICTOR;
+  std::vector<std::string> names = predictor->GetOutputNames();
+  std::map<std::string, std::vector<int64_t>> output_shapes =
+      predictor->GetOutputTensorShape();
+  std::map<std::string, paddle_infer::DataType> output_dtypes =
+      predictor->GetOutputTypes();
+
+  PD_IOInfos* output_infos = new PD_IOInfos;
+  output_infos->size = names.size();
+  output_infos->io_info = names.empty() ? NULL : new PD_IOInfo*[names.size()];
+  for (size_t i = 0; i < names.size(); i++) {
+    const std::string& name = names[i];
+    output_infos->io_info[i] = new PD_IOInfo;
+    output_infos->io_info[i]->name = paddle_infer::CvtStrToCstr(name);
+    output_infos->io_info[i]->shape =
+        paddle_infer::CvtVecToOneDimArrayInt64(output_shapes[name]);
+    output_infos->io_info[i]->dtype =
+        paddle_infer::CvtFromCxxDatatype(output_dtypes[name]);
+  }
+  return output_infos;
 }
 
 size_t PD_PredictorGetInputNum(__pd_keep PD_Predictor* pd_predictor) {

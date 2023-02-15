@@ -1,4 +1,4 @@
-/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,4 +18,6 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_XPU_KERNEL(c_allreduce_sum,
-                       ops::CAllReduceOpXPUKernel<ops::kRedSum, float>)
+                       ops::CAllReduceOpXPUKernel<ops::kRedSum, float>,
+                       ops::CAllReduceOpXPUKernel<ops::kRedSum, plat::float16>,
+                       ops::CAllReduceOpXPUKernel<ops::kRedSum, int>)

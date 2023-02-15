@@ -15,16 +15,14 @@ limitations under the License. */
 #include "paddle/fluid/operators/sequence_ops/sequence_reshape_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    sequence_reshape,
-    ops::SequenceReshapeKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SequenceReshapeKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::SequenceReshapeKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::SequenceReshapeKernel<paddle::platform::CUDADeviceContext, int64_t>);
+REGISTER_OP_CUDA_KERNEL(sequence_reshape,
+                        ops::SequenceReshapeKernel<phi::GPUContext, float>,
+                        ops::SequenceReshapeKernel<phi::GPUContext, double>,
+                        ops::SequenceReshapeKernel<phi::GPUContext, int>,
+                        ops::SequenceReshapeKernel<phi::GPUContext, int64_t>);
 REGISTER_OP_CUDA_KERNEL(
     sequence_reshape_grad,
-    ops::SequenceReshapeGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SequenceReshapeGradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::SequenceReshapeGradKernel<paddle::platform::CUDADeviceContext,
-                                   int64_t>,
-    ops::SequenceReshapeGradKernel<paddle::platform::CUDADeviceContext, int>);
+    ops::SequenceReshapeGradKernel<phi::GPUContext, float>,
+    ops::SequenceReshapeGradKernel<phi::GPUContext, double>,
+    ops::SequenceReshapeGradKernel<phi::GPUContext, int64_t>,
+    ops::SequenceReshapeGradKernel<phi::GPUContext, int>);

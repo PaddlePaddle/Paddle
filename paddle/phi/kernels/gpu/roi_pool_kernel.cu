@@ -14,12 +14,11 @@
 
 #include "paddle/phi/kernels/roi_pool_kernel.h"
 
+#include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
-
-#include "paddle/fluid/memory/memory.h"
 
 namespace phi {
 
@@ -62,18 +61,18 @@ __global__ void GPURoiPoolForward(const int nthreads,
     int box_width = max(box_end_w - box_start_w + 1, 1);
     int box_height = max(box_end_h - box_start_h + 1, 1);
 
-    int hstart = static_cast<int>(floor(static_cast<double>(ph) *
-                                        static_cast<double>(box_height) /
-                                        static_cast<double>(pooled_height)));
-    int wstart = static_cast<int>(floor(static_cast<double>(pw) *
-                                        static_cast<double>(box_width) /
-                                        static_cast<double>(pooled_width)));
-    int hend = static_cast<int>(ceil(static_cast<double>(ph + 1) *
-                                     static_cast<double>(box_height) /
-                                     static_cast<double>(pooled_height)));
-    int wend = static_cast<int>(ceil(static_cast<double>(pw + 1) *
-                                     static_cast<double>(box_width) /
-                                     static_cast<double>(pooled_width)));
+    int hstart = static_cast<int>(
+        floor(static_cast<double>(ph) * static_cast<double>(box_height) /
+              static_cast<double>(pooled_height)));
+    int wstart = static_cast<int>(
+        floor(static_cast<double>(pw) * static_cast<double>(box_width) /
+              static_cast<double>(pooled_width)));
+    int hend = static_cast<int>(
+        ceil(static_cast<double>(ph + 1) * static_cast<double>(box_height) /
+             static_cast<double>(pooled_height)));
+    int wend = static_cast<int>(
+        ceil(static_cast<double>(pw + 1) * static_cast<double>(box_width) /
+             static_cast<double>(pooled_width)));
     hstart = min(max(hstart + box_start_h, 0), height);
     hend = min(max(hend + box_start_h, 0), height);
     wstart = min(max(wstart + box_start_w, 0), width);
@@ -185,7 +184,10 @@ void RoiPoolKernel(const Context& dev_ctx,
   }
 
   int bytes = box_batch_id_list.numel() * sizeof(int);
-  auto box_ptr = paddle::memory::Alloc(dev_ctx, bytes);
+  auto box_ptr = paddle::memory::Alloc(
+      dev_ctx.GetPlace(),
+      bytes,
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   int* box_id_data = reinterpret_cast<int*>(box_ptr->ptr());
   paddle::memory::Copy(gplace,
                        box_id_data,
@@ -197,19 +199,19 @@ void RoiPoolKernel(const Context& dev_ctx,
   T* output_data = dev_ctx.template Alloc<T>(out);
   int64_t* arg_max_data = dev_ctx.template Alloc<int64_t>(arg_max);
 
-  GPURoiPoolForward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
-      output_size,
-      x.data<T>(),
-      boxes.data<T>(),
-      spatial_scale,
-      channels,
-      height,
-      width,
-      pooled_height,
-      pooled_width,
-      box_id_data,
-      output_data,
-      arg_max_data);
+  GPURoiPoolForward<T>
+      <<<blocks, threads, 0, dev_ctx.stream()>>>(output_size,
+                                                 x.data<T>(),
+                                                 boxes.data<T>(),
+                                                 spatial_scale,
+                                                 channels,
+                                                 height,
+                                                 width,
+                                                 pooled_height,
+                                                 pooled_width,
+                                                 box_id_data,
+                                                 output_data,
+                                                 arg_max_data);
 }
 
 }  // namespace phi

@@ -26,22 +26,34 @@ namespace math {
 template <typename T>
 class PreluChannelWiseDirectCUDAFunctor {
  public:
-  void operator()(gpuStream_t stream, const T *input, const T *alpha, T *output,
-                  size_t batch_size, size_t channel, bool channel_last,
+  void operator()(gpuStream_t stream,
+                  const T *input,
+                  const T *alpha,
+                  T *output,
+                  size_t batch_size,
+                  size_t channel,
+                  bool channel_last,
                   size_t numel);
 };
 
 template <typename T>
 class PreluElementWiseDirectCUDAFunctor {
  public:
-  void operator()(gpuStream_t stream, const T *input, const T *alpha, T *output,
-                  size_t batch_size, size_t numel);
+  void operator()(gpuStream_t stream,
+                  const T *input,
+                  const T *alpha,
+                  T *output,
+                  size_t batch_size,
+                  size_t numel);
 };
 
 template <typename T>
 class PreluScalarDirectCUDAFunctor {
  public:
-  void operator()(gpuStream_t stream, const T *input, const T *alpha, T *output,
+  void operator()(gpuStream_t stream,
+                  const T *input,
+                  const T *alpha,
+                  T *output,
                   size_t numel);
 };
 

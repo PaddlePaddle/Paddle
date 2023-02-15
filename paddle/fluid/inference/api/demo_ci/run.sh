@@ -52,15 +52,17 @@ if [ $7 == ON ]; then
   mkdir -p MobileNetV2
   cd MobileNetV2
   if [[ -e "MobileNetV2.inference.model.tar.gz" ]]; then
-    echo "MobileNetV2.inference.model.tar.gz has been downloaded."
-  else
+    rm -rf MobileNetV2.inference.model.tar.gz
+  fi
+    # echo "MobileNetV2.inference.model.tar.gz has been downloaded."
+  # else
     if [ $WIN_DETECT != "" ]; then
       wget -q -Y off http://paddle-inference-dist.bj.bcebos.com/MobileNetV2.inference.model.tar.gz
     else
       wget -q --no-proxy http://paddle-inference-dist.bj.bcebos.com/MobileNetV2.inference.model.tar.gz
     fi
     tar xzf *.tar.gz
-  fi
+  # fi
   cd ..
 fi
 
@@ -265,7 +267,8 @@ for WITH_STATIC_LIB in ON OFF; do
         -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME
       make -j$(nproc)
       ./onnxruntime_mobilenet_demo \
-        --modeldir=$DATA_DIR/MobileNetV2/MobileNetV2
+        --modeldir=$DATA_DIR/MobileNetV2/MobileNetV2 \
+        --data=$DATA_DIR/MobileNetV2/MobileNetV2/data.txt
       if [ $? -ne 0 ]; then
         echo "onnxruntime_mobilenet_demo runs failed " >> ${current_dir}/test_summary.txt
         EXIT_CODE=1

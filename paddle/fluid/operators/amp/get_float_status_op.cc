@@ -26,16 +26,17 @@ class GetFloatStatusOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasOutput("FloatStatusOut"), "Output", "FloatStatusOut",
+    OP_INOUT_CHECK(ctx->HasOutput("FloatStatusOut"),
+                   "Output",
+                   "FloatStatusOut",
                    "get_float_status");
     ctx->SetOutputDim("FloatStatusOut", ctx->GetInputDim("FloatStatus"));
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(framework::proto::VarType::FP32,
-                                   ctx.GetPlace());
+    return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
   }
 };
 
@@ -65,10 +66,12 @@ class GetFloatStatusKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUDeviceContext;
+using CPU = phi::CPUContext;
 
 REGISTER_OPERATOR(
-    get_float_status, ops::GetFloatStatusOp, ops::GetFloatStatusMaker,
+    get_float_status,
+    ops::GetFloatStatusOp,
+    ops::GetFloatStatusMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 

@@ -17,8 +17,8 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/backends/dynload/cupti_lib_path.h"
+#include "paddle/phi/core/enforce.h"
 
 #if defined(_WIN32)
 #include <windows.h>
@@ -75,6 +75,8 @@ DEFINE_string(mkl_dir,
               "dlopen will search mkl from LD_LIBRARY_PATH");
 
 DEFINE_string(op_dir, "", "Specify path for loading user-defined op library.");
+
+DEFINE_string(cusparselt_dir, "", "Specify path for loading libcusparseLt.so.");
 
 #ifdef PADDLE_WITH_HIP
 
@@ -324,7 +326,7 @@ void* GetCublasDsoHandle() {
 
 void* GetCublasLtDsoHandle() {
 // APIs available after CUDA 10.1
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10100
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10010
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublasLt.so");
 #else
   std::string warning_msg(
@@ -468,6 +470,20 @@ void* GetWarpCTCDsoHandle() {
 #endif
 }
 
+void* GetWarpRNNTDsoHandle() {
+  std::string warprnnt_dir = "";
+  if (!s_py_site_pkg_path.path.empty()) {
+    warprnnt_dir = s_py_site_pkg_path.path;
+  }
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(warprnnt_dir, "libwarprnnt.dylib");
+#elif defined(_WIN32)
+  return GetDsoHandleFromSearchPath(warprnnt_dir, "warprnnt.dll");
+#else
+  return GetDsoHandleFromSearchPath(warprnnt_dir, "libwarprnnt.so");
+#endif
+}
+
 void* GetNCCLDsoHandle() {
 #ifdef PADDLE_WITH_HIP
   std::string warning_msg(
@@ -477,7 +493,7 @@ void* GetNCCLDsoHandle() {
 #else
   std::string warning_msg(
       "You may need to install 'nccl2' from NVIDIA official website: "
-      "https://developer.nvidia.com/nccl/nccl-download"
+      "https://developer.nvidia.com/nccl/nccl-download "
       "before install PaddlePaddle.");
 #endif
 
@@ -575,6 +591,19 @@ void* GetMKLRTDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_mkl_dir, "mkl_rt.dll");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_mkl_dir, "libmkl_rt.so");
+#endif
+}
+
+void* GetCusparseLtDsoHandle() {
+// APIs available after CUDA 11.2
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020
+  return GetDsoHandleFromSearchPath(FLAGS_cusparselt_dir, "libcusparseLt.so");
+#else
+  std::string warning_msg(
+      "Your CUDA_VERSION less 11.2, not support cusparseLt. "
+      "If you want to use cusparseLt, please upgrade CUDA and rebuild "
+      "PaddlePaddle.");
+  return nullptr;
 #endif
 }
 

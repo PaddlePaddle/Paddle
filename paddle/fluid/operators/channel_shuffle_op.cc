@@ -52,9 +52,9 @@ class ChannelShuffleOpMaker : public framework::OpProtoAndCheckerMaker {
         while keeping the original tensor shape.
 
     Please refer to the paper:
-        `ShuffleNet: An Extremely Efficient Convolutional Neural Network for 
+        `ShuffleNet: An Extremely Efficient Convolutional Neural Network for
         Mobile Devices <https://arxiv.org/abs/1707.01083>`_
-        by Zhang et. al (2017) for more details. 
+        by Zhang et. al (2017) for more details.
 
         )DOC");
   }
@@ -83,10 +83,12 @@ class ChannelShuffleGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(channel_shuffle, ChannelShuffleInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(channel_shuffle,
+                            ChannelShuffleInferShapeFunctor,
                             PD_INFER_META(phi::ChannelShuffleInferMeta));
 
-REGISTER_OPERATOR(channel_shuffle, ops::ChannelShuffleOp,
+REGISTER_OPERATOR(channel_shuffle,
+                  ops::ChannelShuffleOp,
                   ops::ChannelShuffleOpMaker,
                   ops::ChannelShuffleGradOpMaker<paddle::framework::OpDesc>,
                   ops::ChannelShuffleGradOpMaker<paddle::imperative::OpBase>,
@@ -96,5 +98,6 @@ DECLARE_INFER_SHAPE_FUNCTOR(channel_shuffle_grad,
                             ChannelShuffleGradInferShapeFunctor,
                             PD_INFER_META(phi::ChannelShuffleGradInferMeta));
 
-REGISTER_OPERATOR(channel_shuffle_grad, ops::ChannelShuffleGradOp,
+REGISTER_OPERATOR(channel_shuffle_grad,
+                  ops::ChannelShuffleGradOp,
                   ChannelShuffleGradInferShapeFunctor);

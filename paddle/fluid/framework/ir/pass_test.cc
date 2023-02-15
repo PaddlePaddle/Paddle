@@ -84,8 +84,9 @@ TEST(PassTest, TestPassAttrCheck) {
     } catch (paddle::platform::EnforceNotMet& e) {
       exception = std::string(e.what());
     }
-    std::string msg = "Invalid type for attritube test_pass_attr, expected: " +
-                      try_type + ", actual: int";
+    std::string msg =
+        "Invalid type for attritube test_pass_attr, expected: " + try_type +
+        ", actual: int";
     ASSERT_TRUE(exception.find(msg) != exception.npos);
   }
 
@@ -168,8 +169,9 @@ TEST(PassTest, TestPassAttrCheckConvertAllBlocks) {
     } catch (paddle::platform::EnforceNotMet& e) {
       exception = std::string(e.what());
     }
-    std::string msg = "Invalid type for attritube test_pass_attr, expected: " +
-                      try_type + ", actual: int";
+    std::string msg =
+        "Invalid type for attritube test_pass_attr, expected: " + try_type +
+        ", actual: int";
     ASSERT_TRUE(exception.find(msg) != exception.npos);
   }
 

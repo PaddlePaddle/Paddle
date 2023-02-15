@@ -18,14 +18,12 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
 template <typename T>
 class CumSumMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     int axis = ctx.Attr<int>("axis");
     bool exclusive = ctx.Attr<bool>("exclusive");
     bool reverse = ctx.Attr<bool>("reverse");
@@ -33,14 +31,16 @@ class CumSumMLUKernel : public framework::OpKernel<T> {
 
     out->mutable_data<T>(ctx.GetPlace());
 
-    Tensor* input_ptr = const_cast<Tensor*>(x);
-    Tensor flat_x(x->type());
+    phi::DenseTensor* input_ptr = const_cast<phi::DenseTensor*>(x);
+    phi::DenseTensor flat_x(x->type());
     if (flatten) {
       PADDLE_ENFORCE_EQ(
-          axis, -1,
+          axis,
+          -1,
           platform::errors::InvalidArgument(
               "when flatten is true, attr axis must be default %d, but got %d",
-              -1, axis));
+              -1,
+              axis));
 
       flat_x.ShareDataWith(*x);
       flat_x.Resize(phi::make_ddim({x->numel()}));
@@ -51,8 +51,14 @@ class CumSumMLUKernel : public framework::OpKernel<T> {
     MLUCnnlTensorDesc input_desc(*input_ptr);
     MLUCnnlTensorDesc out_desc(*out);
 
-    MLUCnnl::Cumsum(ctx, true_axis, exclusive, reverse, input_desc.get(),
-                    GetBasePtr(input_ptr), out_desc.get(), GetBasePtr(out));
+    MLUCnnl::Cumsum(ctx,
+                    true_axis,
+                    exclusive,
+                    reverse,
+                    input_desc.get(),
+                    GetBasePtr(input_ptr),
+                    out_desc.get(),
+                    GetBasePtr(out));
   }
 };
 
@@ -62,6 +68,7 @@ class CumSumMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_MLU_KERNEL(cumsum, ops::CumSumMLUKernel<int>,
+REGISTER_OP_MLU_KERNEL(cumsum,
+                       ops::CumSumMLUKernel<int>,
                        ops::CumSumMLUKernel<float>,
                        ops::CumSumMLUKernel<plat::float16>);

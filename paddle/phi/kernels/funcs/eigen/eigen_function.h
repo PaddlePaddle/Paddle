@@ -18,6 +18,8 @@ limitations under the License. */
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
+
+#include "paddle/phi/kernels/funcs/eigen/extensions.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace phi {
@@ -116,6 +118,18 @@ struct EigenSub {
                    OutType out,
                    const InType& left,
                    const InType& right);
+};
+
+template <typename EigenDevice, typename T>
+struct EigenDiv {
+  using InType = Eigen::TensorMap<
+      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using OutType =
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  static void Eval(const EigenDevice& dev,
+                   OutType out,
+                   const InType& in,
+                   const T value);
 };
 
 template <typename EigenDevice, typename T, int Rank>

@@ -12,18 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import os
 import json
+import os
+import tempfile
+import unittest
+
+from test_cluster import cluster_json
 
 import paddle
 import paddle.distributed.auto_parallel.cost as cost_model
-from paddle.distributed.auto_parallel.cost.base_cost import parse_to_desc
-from paddle.distributed.auto_parallel.cost.base_cost import parse_desc_to_str
-from paddle.distributed.auto_parallel.cost.base_cost import calc_time_by_modeling
 from paddle.distributed.auto_parallel.cluster import Cluster
 from paddle.distributed.auto_parallel.cost import CommContext
-from test_cluster import cluster_json, multi_cluster_json
+from paddle.distributed.auto_parallel.cost.base_cost import (
+    build_comp_desc_from_op,
+    build_comp_desc_str_for_predict,
+    calc_time_by_modeling,
+)
 
 paddle.enable_static()
 
@@ -35,6 +39,12 @@ def check_cost(cost):
 
 
 class TestCost(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def test_base_cost(self):
         cost = cost_model.Cost(memory=100, flops=200, time=0.5)
         self.assertTrue(check_cost(cost))
@@ -51,9 +61,10 @@ class TestCost(unittest.TestCase):
                 matmul_v2_op = op
                 break
         matmul_v2_cost = cost_model._g_op_cost_factory["matmul_v2"](
-            op=matmul_v2_op)
-        desc = parse_to_desc(op=matmul_v2_op)
-        desc_str = parse_desc_to_str(desc)
+            op=matmul_v2_op
+        )
+        desc = build_comp_desc_from_op(op=matmul_v2_op)
+        desc_str = build_comp_desc_str_for_predict(desc)
         self.assertIsNotNone(desc_str)
         self.assertTrue(check_cost(matmul_v2_cost.cost))
         time = calc_time_by_modeling(op=matmul_v2_op)
@@ -64,8 +75,9 @@ class TestCost(unittest.TestCase):
 
     def test_comm_cost(self):
         # Build cluster
-        file_dir = os.path.dirname(os.path.abspath(__file__))
-        cluster_json_path = os.path.join(file_dir, "auto_parallel_cluster.json")
+        cluster_json_path = os.path.join(
+            self.temp_dir.name, "auto_parallel_cluster.json"
+        )
         cluster_json_object = json.loads(cluster_json)
         with open(cluster_json_path, "w") as cluster_json_file:
             json.dump(cluster_json_object, cluster_json_file)
@@ -81,7 +93,8 @@ class TestCost(unittest.TestCase):
         desc["inputs"] = {"X": [(paddle.float32, [100, 200])]}
         desc["group_ranks"] = [0, 1]
         allreduce_cost = cost_model._g_op_cost_factory["c_allreduce_sum"](
-            op_desc=desc, comm_context=CommContext(cluster))
+            op_desc=desc, comm_context=CommContext(cluster)
+        )
         self.assertTrue(check_cost(allreduce_cost.cost))
 
         # Remove unnecessary files
@@ -89,9 +102,25 @@ class TestCost(unittest.TestCase):
             os.remove(cluster_json_path)
 
     def test_cost_estimator(self):
+        # Build cluster
+        cluster_json_path = os.path.join(
+            self.temp_dir.name, "auto_parallel_cluster.json"
+        )
+        cluster_json_object = json.loads(cluster_json)
+        with open(cluster_json_path, "w") as cluster_json_file:
+            json.dump(cluster_json_object, cluster_json_file)
+        cluster = Cluster()
+        cluster.build_from_file(cluster_json_path)
+
         train_program = paddle.static.Program()
-        cost_estimator = cost_model.CostEstimator(train_program)
+        cost_estimator = cost_model.CostEstimator(
+            train_program, cluster=cluster
+        )
         self.assertIsNotNone(cost_estimator)
+
+        # Remove unnecessary files
+        if os.path.exists(cluster_json_path):
+            os.remove(cluster_json_path)
 
 
 if __name__ == "__main__":

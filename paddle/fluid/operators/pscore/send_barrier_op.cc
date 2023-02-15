@@ -84,7 +84,9 @@ class SendBarrierOpShapeInference : public framework::InferShapeBase {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(
-    send_barrier, ops::SendBarrierOp,
+    send_barrier,
+    ops::SendBarrierOp,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    ops::SendBarrierOpMaker, ops::SendBarrierOpShapeInference);
+    ops::SendBarrierOpMaker,
+    ops::SendBarrierOpShapeInference);

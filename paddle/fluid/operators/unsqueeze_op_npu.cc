@@ -23,7 +23,8 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(
-    unsqueeze, ops::UnsqueezeKernel<plat::NPUDeviceContext, float>,
+    unsqueeze,
+    ops::UnsqueezeKernel<plat::NPUDeviceContext, float>,
     ops::UnsqueezeKernel<plat::NPUDeviceContext, double>,
     ops::UnsqueezeKernel<plat::NPUDeviceContext, plat::float16>,
     ops::UnsqueezeKernel<plat::NPUDeviceContext, bool>,
@@ -31,7 +32,8 @@ REGISTER_OP_NPU_KERNEL(
     ops::UnsqueezeKernel<plat::NPUDeviceContext, int8_t>,
     ops::UnsqueezeKernel<plat::NPUDeviceContext, int64_t>);
 REGISTER_OP_NPU_KERNEL(
-    unsqueeze2, ops::UnsqueezeKernel<plat::NPUDeviceContext, float>,
+    unsqueeze2,
+    ops::UnsqueezeKernel<plat::NPUDeviceContext, float>,
     ops::UnsqueezeKernel<plat::NPUDeviceContext, double>,
     ops::UnsqueezeKernel<plat::NPUDeviceContext, plat::float16>,
     ops::UnsqueezeKernel<plat::NPUDeviceContext, bool>,
@@ -39,7 +41,8 @@ REGISTER_OP_NPU_KERNEL(
     ops::UnsqueezeKernel<plat::NPUDeviceContext, int8_t>,
     ops::UnsqueezeKernel<plat::NPUDeviceContext, int64_t>);
 REGISTER_OP_NPU_KERNEL(
-    unsqueeze_grad, ops::UnsqueezeGradKernel<plat::NPUDeviceContext, float>,
+    unsqueeze_grad,
+    ops::UnsqueezeGradKernel<plat::NPUDeviceContext, float>,
     ops::UnsqueezeGradKernel<plat::NPUDeviceContext, double>,
     ops::UnsqueezeGradKernel<plat::NPUDeviceContext, plat::float16>,
     ops::UnsqueezeGradKernel<plat::NPUDeviceContext, bool>,
@@ -47,7 +50,8 @@ REGISTER_OP_NPU_KERNEL(
     ops::UnsqueezeGradKernel<plat::NPUDeviceContext, int8_t>,
     ops::UnsqueezeGradKernel<plat::NPUDeviceContext, int64_t>);
 REGISTER_OP_NPU_KERNEL(
-    unsqueeze2_grad, ops::Unsqueeze2GradKernel<plat::NPUDeviceContext, float>,
+    unsqueeze2_grad,
+    ops::Unsqueeze2GradKernel<plat::NPUDeviceContext, float>,
     ops::Unsqueeze2GradKernel<plat::NPUDeviceContext, double>,
     ops::Unsqueeze2GradKernel<plat::NPUDeviceContext, plat::float16>,
     ops::Unsqueeze2GradKernel<plat::NPUDeviceContext, bool>,

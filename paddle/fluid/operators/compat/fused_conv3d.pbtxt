@@ -1,0 +1,54 @@
+type: "fused_conv3d"
+def {
+  inputs {
+    name: "Input"
+  }
+  inputs {
+    name: "Filter"
+  }
+  inputs {
+    name: "Bias"
+  }
+  inputs {
+    name: "ResidualData"
+  }
+  outputs {
+    name: "Output"
+  }
+  attrs {
+    name: "strides"
+    type: INTS
+  }
+  attrs {
+    name: "paddings"
+    type: INTS
+  }
+  attrs {
+    name: "padding_algorithm"
+    type: STRING
+  }
+  attrs {
+    name: "groups"
+    type: INT
+  }
+  attrs {
+    name: "dilations"
+    type: INTS
+  }
+  attrs {
+    name: "data_format"
+    type: STRING
+  }
+  attrs {
+    name: "fuse_activation"
+    type: STRING
+  }
+  attrs {
+    name: "fuse_residual_connection"
+    type: BOOLEAN
+  }
+  attrs {
+    name: "force_fp32_output"
+    type: BOOLEAN
+  }
+}

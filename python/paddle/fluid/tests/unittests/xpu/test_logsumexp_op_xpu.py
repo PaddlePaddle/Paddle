@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import unittest
 import sys
+import unittest
+
+import paddle
+
 sys.path.append("..")
 import numpy as np
-from op_test import OpTest
 from op_test_xpu import XPUOpTest
 
 paddle.enable_static()
@@ -25,7 +26,7 @@ paddle.enable_static()
 
 def ref_logsumexp(x, axis=None, keepdim=False, reduce_all=False):
     if isinstance(axis, int):
-        axis = (axis, )
+        axis = (axis,)
     elif isinstance(axis, list):
         axis = tuple(axis)
     if reduce_all:
@@ -53,7 +54,7 @@ class XPUTestLogsumexp(XPUOpTest):
         self.attrs = {
             'axis': self.axis,
             'keepdim': self.keepdim,
-            'reduce_all': self.reduce_all
+            'reduce_all': self.reduce_all,
         }
 
     def set_attrs(self):

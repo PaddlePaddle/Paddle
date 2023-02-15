@@ -18,6 +18,13 @@
 
 namespace phi {
 
+/**
+ * @brief This kernel generate random value that obey poisson distribution.
+ * @param  ctx   device context
+ * @param  x     The input tensor of poisson kernel
+ * @param  out   The output tensor of poisson kernel, it has the same shape and
+ *               dtype with input. Each element corresponds to input tensor
+ */
 template <typename T, typename Context>
 void PoissonKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out);
 

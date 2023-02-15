@@ -13,10 +13,13 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/stream_safe_cuda_allocator.h"
+#include <thread>
+
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/device/gpu/cuda/cuda_graph.h"
+#include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
 #endif
 
 namespace paddle {
@@ -24,11 +27,13 @@ namespace memory {
 namespace allocation {
 
 StreamSafeCUDAAllocation::StreamSafeCUDAAllocation(
-    DecoratedAllocationPtr underlying_allocation, gpuStream_t owning_stream,
+    DecoratedAllocationPtr underlying_allocation,
+    gpuStream_t owning_stream,
     StreamSafeCUDAAllocator* allocator)
     : Allocation(underlying_allocation->ptr(),
                  underlying_allocation->base_ptr(),
-                 underlying_allocation->size(), underlying_allocation->place()),
+                 underlying_allocation->size(),
+                 underlying_allocation->place()),
       underlying_allocation_(std::move(underlying_allocation)),
       owning_stream_(std::move(owning_stream)),
       allocator_(allocator->shared_from_this()) {}
@@ -39,9 +44,12 @@ void StreamSafeCUDAAllocation::RecordStream(gpuStream_t stream) {
     return;
   }
 
+  std::call_once(once_flag_,
+                 [this] { phi::backends::gpu::SetDeviceId(place_.device); });
+
   std::lock_guard<SpinLock> lock_guard(outstanding_event_map_lock_);
 #ifdef PADDLE_WITH_CUDA
-  if (UNLIKELY(platform::CUDAGraph::IsThisThreadCapturing())) {
+  if (UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing())) {
     graph_capturing_stream_set_.insert(stream);
     return;
   }
@@ -53,16 +61,20 @@ void StreamSafeCUDAAllocation::RecordStream(gpuStream_t stream) {
 
 bool StreamSafeCUDAAllocation::CanBeFreed() {
 #ifdef PADDLE_WITH_CUDA
-  if (UNLIKELY(platform::CUDAGraph::IsThisThreadCapturing())) {
+  if (UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing())) {
     return graph_capturing_stream_set_.empty() &&
            outstanding_event_map_.empty();
   }
 #endif
 
+  std::call_once(once_flag_,
+                 [this] { phi::backends::gpu::SetDeviceId(place_.device); });
+
   RecordGraphCapturingStreams();
 
   for (auto it = outstanding_event_map_.begin();
-       it != outstanding_event_map_.end(); ++it) {
+       it != outstanding_event_map_.end();
+       ++it) {
     gpuEvent_t& event = it->second;
 #ifdef PADDLE_WITH_CUDA
     gpuError_t err = cudaEventQuery(event);
@@ -131,8 +143,10 @@ void StreamSafeCUDAAllocation::RecordStreamWithNoGraphCapturing(
 }
 
 StreamSafeCUDAAllocator::StreamSafeCUDAAllocator(
-    std::shared_ptr<Allocator> underlying_allocator, platform::CUDAPlace place,
-    gpuStream_t default_stream, bool in_cuda_graph_capturing)
+    std::shared_ptr<Allocator> underlying_allocator,
+    platform::CUDAPlace place,
+    gpuStream_t default_stream,
+    bool in_cuda_graph_capturing)
     : underlying_allocator_(std::move(underlying_allocator)),
       place_(std::move(place)),
       default_stream_(std::move(default_stream)),
@@ -186,9 +200,11 @@ phi::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
   }
   StreamSafeCUDAAllocation* allocation = new StreamSafeCUDAAllocation(
       static_unique_ptr_cast<Allocation>(std::move(underlying_allocation)),
-      default_stream_, this);
-  VLOG(8) << "Allocate " << allocation->size() << " bytes at address "
-          << allocation->ptr();
+      default_stream_,
+      this);
+  VLOG(8) << "Thread " << std::this_thread::get_id() << " Allocate "
+          << allocation->size() << " bytes at address " << allocation->ptr()
+          << "  , stream: " << default_stream_;
   return allocation;
 }
 
@@ -249,6 +265,8 @@ uint64_t StreamSafeCUDAAllocator::ProcessUnfreedAllocationsAndRelease() {
   ProcessUnfreedAllocations();
   return underlying_allocator_->Release(place_);
 }
+
+thread_local std::once_flag StreamSafeCUDAAllocation::once_flag_;
 
 std::map<platform::Place, std::vector<StreamSafeCUDAAllocator*>>
     StreamSafeCUDAAllocator::allocator_map_;

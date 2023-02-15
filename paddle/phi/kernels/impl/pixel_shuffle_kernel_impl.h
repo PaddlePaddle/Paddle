@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <string>
 #include <vector>
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 

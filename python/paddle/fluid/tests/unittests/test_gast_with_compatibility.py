@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import ast
-from paddle.utils import gast
 import sys
 import textwrap
 import unittest
+
+from paddle.utils import gast
 
 
 class GastNodeTransformer(gast.NodeTransformer):
@@ -144,12 +143,12 @@ class TestPythonCompatibility(unittest.TestCase):
         self._check_compatibility(source, target)
 
     # The 0.3.3 version of gast has a bug in python3.8 that
-    # would cause the following tests to fail. But this 
-    # problem doesn't affect the use of Paddle's related 
-    # functions, therefore, the following tests would be 
+    # would cause the following tests to fail. But this
+    # problem doesn't affect the use of Paddle's related
+    # functions, therefore, the following tests would be
     # disable in python3.8.
     #
-    # This problem had been fixed and updated to version 
+    # This problem had been fixed and updated to version
     # 0.4.1 of gast.
     #
     # More information please refer to:

@@ -15,29 +15,28 @@ limitations under the License. */
 #pragma once
 
 #include <glog/logging.h>
+
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/mixed_vector.h"
-#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/mixed_vector.h"
 
 namespace paddle {
 namespace framework {
 
-using LoDTensor = phi::DenseTensor;
+// Split phi::DenseTensor and copy to each place specified in places.
+std::vector<phi::DenseTensor> SplitLoDTensor(
+    const phi::DenseTensor& src, const std::vector<platform::Place> places);
 
-// Split Tensor and copy to each place specified in places.
-std::vector<LoDTensor> SplitLoDTensor(
-    const LoDTensor& src, const std::vector<platform::Place> places);
-
-void MergeLoDTensor(LoDTensor* target,
-                    const std::vector<const LoDTensor*>& lod_tensors,
+void MergeLoDTensor(phi::DenseTensor* target,
+                    const std::vector<const phi::DenseTensor*>& lod_tensors,
                     platform::Place dst_place);
 
 /*
@@ -55,11 +54,13 @@ void MergeLoDTensor(LoDTensor* target,
  *    0 2 4 7
  *    0 2 5 7 10 12 15 20
  */
-using LoD = std::vector<Vector<size_t>>;
+using LoD = std::vector<phi::Vector<size_t>>;
 
 std::string LoDToString(const LoD& lod);
 
-LoD SliceInLevel(const LoD& in, size_t level, size_t elem_begin,
+LoD SliceInLevel(const LoD& in,
+                 size_t level,
+                 size_t elem_begin,
                  size_t elem_end);
 /*
  * Transform an LoD from relative offsets to absolute offsets.
@@ -102,23 +103,25 @@ bool CheckAbsLoD(const LoD& in, int tensor_height = -1);
 
 /*
  * Expand the `source` to fit the LoD of `lod`. For example, a `source`
- * LoDTensor is
+ * phi::DenseTensor is
  *  - LoD: [0, 2]
  *  - tensor: [a0, a1]
  * a `lod` is
  *  - LoD: [0 3 5]
- * returns a new LoDTensor
+ * returns a new phi::DenseTensor
  *  - [a0 a0 a0 a1 a1]
  */
 template <typename T>
-LoDTensor LodExpand(const LoDTensor& source, const LoD& lod, size_t level,
-                    const platform::Place& place) {
+phi::DenseTensor LodExpand(const phi::DenseTensor& source,
+                           const LoD& lod,
+                           size_t level,
+                           const platform::Place& place) {
   LoD abs_lod = ToAbsOffset(lod);
   const auto& lod_level = lod[level];
   size_t num_instances = source.dims()[0];
 
   // new tensor
-  LoDTensor tensor;
+  phi::DenseTensor tensor;
   tensor.set_lod(lod);
   auto dims = source.dims();
   dims[0] = lod_level.back();
@@ -126,17 +129,22 @@ LoDTensor LodExpand(const LoDTensor& source, const LoD& lod, size_t level,
   tensor.mutable_data<T>(place);
 
   PADDLE_ENFORCE_EQ(
-      num_instances, lod_level.size() - 1,
+      num_instances,
+      lod_level.size() - 1,
       platform::errors::InvalidArgument(
-          "The input LoDTensor instance number should be equal to the LoD "
+          "The input phi::DenseTensor instance number should be equal to the "
+          "LoD "
           "level size minus 1."
           "The input instance number is %zu, LoD level size is %zu.",
-          num_instances, lod_level.size()));
+          num_instances,
+          lod_level.size()));
   for (size_t ins = 0; ins < num_instances; ins++) {
     for (size_t elem = lod_level[ins]; elem < lod_level[ins + 1]; elem++) {
       auto slice = tensor.Slice(elem, elem + 1);
-      TensorCopy(source.Slice(ins, ins + 1), platform::CPUPlace(),
-                 platform::CPUDeviceContext(), &slice);
+      TensorCopy(source.Slice(ins, ins + 1),
+                 platform::CPUPlace(),
+                 phi::CPUContext(),
+                 &slice);
     }
   }
   return tensor;
@@ -158,24 +166,27 @@ std::pair<LoD, std::pair<size_t, size_t>> GetSubLoDAndAbsoluteOffset(
     const LoD& lod, size_t start_idx, size_t end_idx, size_t start_level);
 
 /*
- * Serialize/Desiralize LoDTensor to std::ostream
+ * Serialize/Desiralize phi::DenseTensor to std::ostream
  * You can pass ofstream or ostringstream to serilize to file
  * or to a in memory string. GPU tensor will be copied to CPU.
  */
-void SerializeToStream(std::ostream& os, const LoDTensor& tensor,
+void SerializeToStream(std::ostream& os,
+                       const phi::DenseTensor& tensor,
                        const platform::DeviceContext& dev_ctx);
-void DeserializeFromStream(std::istream& is, LoDTensor* tensor,
+void DeserializeFromStream(std::istream& is,
+                           phi::DenseTensor* tensor,
                            const platform::DeviceContext& dev_ctx);
-void DeserializeFromStream(std::istream& is, LoDTensor* tensor,
+void DeserializeFromStream(std::istream& is,
+                           phi::DenseTensor* tensor,
                            const platform::DeviceContext& dev_ctx,
                            const size_t& seek,
                            const std::vector<int64_t>& shape);
 
 LoD ConvertToOffsetBasedLoD(const LoD& length_lod);
 
-void SerializeToStream(std::ostream& os, const LoDTensor& tensor);
+void SerializeToStream(std::ostream& os, const phi::DenseTensor& tensor);
 
-void DeserializeFromStream(std::istream& os, LoDTensor* tensor);
+void DeserializeFromStream(std::istream& os, phi::DenseTensor* tensor);
 
 }  // namespace framework
 }  // namespace paddle

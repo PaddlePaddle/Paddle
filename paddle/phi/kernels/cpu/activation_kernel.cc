@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/activation_kernel.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
@@ -79,6 +80,7 @@ DEFINE_CPU_ACTIVATION_KERNEL(Reciprocal, ReciprocalFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Square, SquareFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Sqrt, SqrtFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Rsqrt, RsqrtFunctor)
+DEFINE_CPU_ACTIVATION_KERNEL(Softsign, SoftsignFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Sigmoid, SigmoidFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(LogSigmoid, LogSigmoidFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Log, LogFunctor)
@@ -88,19 +90,21 @@ DEFINE_CPU_ACTIVATION_KERNEL(Log1p, Log1pFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Round, RoundFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Floor, FloorFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Ceil, CeilFunctor)
+DEFINE_CPU_ACTIVATION_KERNEL(Negative, NegativeFunctor)
 
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, LeakyReluFunctor, alpha)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(ThresholdedRelu,
                                      ThresholdedReluFunctor,
                                      threshold)
+DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(Relu6Raw, Relu6Functor, threshold)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(Mish, MishFunctor, threshold)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(HardShrink, HardShrinkFunctor, threshold)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(SoftShrink, SoftShrinkFunctor, lambda)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(Elu, ELUFunctor, alpha)
-DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(Swish, SwishFunctor, beta)
+DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(SwishRaw, SwishFunctor, beta)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(Celu, CELUFunctor, alpha)
 
-DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(BRelu, BReluFunctor, t_min, t_max)
+DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(HardTanh, HardTanhFunctor, t_min, t_max)
 DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(STanh, STanhFunctor, scale_a, scale_b)
 DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(Softplus, SoftplusFunctor, beta, threshold)
 DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(HardSigmoid,
@@ -109,12 +113,12 @@ DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(HardSigmoid,
                                      offset)
 
 template <typename T, typename Context>
-void HardSwishKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     float threshold,
-                     float scale,
-                     float offset,
-                     DenseTensor* out) {
+void HardSwishRawKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        float threshold,
+                        float scale,
+                        float offset,
+                        DenseTensor* out) {
   funcs::HardSwishFunctor<T> functor;
   auto attrs = functor.GetAttrs();
   *(attrs[0].second) = threshold;
@@ -142,11 +146,12 @@ PD_REGISTER_ACTIVATION_KERNEL(asinh, AsinhKernel)
 PD_REGISTER_ACTIVATION_KERNEL(acosh, AcoshKernel)
 PD_REGISTER_ACTIVATION_KERNEL(atanh, AtanhKernel)
 PD_REGISTER_ACTIVATION_KERNEL(tanh, TanhKernel)
-PD_REGISTER_ACTIVATION_KERNEL(brelu, BReluKernel)
+PD_REGISTER_ACTIVATION_KERNEL(hardtanh, HardTanhKernel)
 PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyReluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(thresholded_relu, ThresholdedReluKernel)
+PD_REGISTER_ACTIVATION_KERNEL(relu6_raw, Relu6RawKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hard_shrink, HardShrinkKernel)
-PD_REGISTER_ACTIVATION_KERNEL(soft_shrink, SoftShrinkKernel)
+PD_REGISTER_ACTIVATION_KERNEL(softshrink, SoftShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(tanh_shrink, TanhShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(elu, EluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(silu, SiluKernel)
@@ -169,6 +174,7 @@ PD_REGISTER_KERNEL(expm1,
 PD_REGISTER_KERNEL(logit, CPU, ALL_LAYOUT, phi::LogitKernel, float, double) {}
 PD_REGISTER_KERNEL(
     square, CPU, ALL_LAYOUT, phi::SquareKernel, float, double, int, int64_t) {}
+PD_REGISTER_ACTIVATION_KERNEL(softsign, SoftsignKernel)
 PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(logsigmoid, LogSigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hard_sigmoid, HardSigmoidKernel)
@@ -176,11 +182,20 @@ PD_REGISTER_ACTIVATION_KERNEL(log, LogKernel)
 PD_REGISTER_ACTIVATION_KERNEL(log2, Log2Kernel)
 PD_REGISTER_ACTIVATION_KERNEL(log10, Log10Kernel)
 PD_REGISTER_ACTIVATION_KERNEL(log1p, Log1pKernel)
-PD_REGISTER_ACTIVATION_KERNEL(hard_swish, HardSwishKernel)
-PD_REGISTER_ACTIVATION_KERNEL(swish, SwishKernel)
+PD_REGISTER_ACTIVATION_KERNEL(swish_raw, SwishRawKernel)
+PD_REGISTER_ACTIVATION_KERNEL(hardswish_raw, HardSwishRawKernel)
 PD_REGISTER_ACTIVATION_KERNEL(round, RoundKernel)
 PD_REGISTER_ACTIVATION_KERNEL(floor, FloorKernel)
 PD_REGISTER_ACTIVATION_KERNEL(ceil, CeilKernel)
+PD_REGISTER_KERNEL(negative,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::NegativeKernel,
+                   float,
+                   double,
+                   int16_t,
+                   int,
+                   int64_t) {}
 PD_REGISTER_ACTIVATION_KERNEL(celu, CeluKernel)
 PD_REGISTER_KERNEL(
     pow, CPU, ALL_LAYOUT, phi::PowKernel, float, double, int, int64_t) {}

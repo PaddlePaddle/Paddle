@@ -21,8 +21,21 @@
 PD_REGISTER_KERNEL(einsum,
                    GPU,
                    ALL_LAYOUT,
-                   phi::EinsumKernelRaw,
+                   phi::EinsumKernel,
                    float,
                    double,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+
+PD_REGISTER_KERNEL(einsum_infer,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::EinsumInferKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

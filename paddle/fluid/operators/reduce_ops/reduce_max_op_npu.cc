@@ -18,13 +18,12 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
 template <typename DeviceContext, typename T>
 class ReduceMaxNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     auto dims = ctx.Attr<std::vector<int>>("dim");
     bool keep_dim = ctx.Attr<bool>("keep_dim");
     bool reduce_all = ctx.Attr<bool>("reduce_all");
@@ -32,7 +31,7 @@ class ReduceMaxNPUKernel : public framework::OpKernel<T> {
 
     auto place = ctx.GetPlace();
 
-    framework::Tensor cast_out(x->type());
+    phi::DenseTensor cast_out(x->type());
     cast_out.Resize(out->dims());
     cast_out.mutable_data<T>(place);
 
@@ -77,8 +76,8 @@ class ReduceMaxNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
     if (framework::TransToProtoVarType(x->dtype()) ==
         framework::proto::VarType::INT64) {
-      auto op_func = [](const std::vector<Tensor>& inputs,
-                        const std::vector<Tensor>& outputs,
+      auto op_func = [](const std::vector<phi::DenseTensor>& inputs,
+                        const std::vector<phi::DenseTensor>& outputs,
                         const NPUAttributeMap& attrs,
                         const platform::NPUDeviceContext& dev_ctx) {
         const auto& runner =
@@ -86,7 +85,11 @@ class ReduceMaxNPUKernel : public framework::OpKernel<T> {
         runner.Run(dev_ctx.stream());
       };
 
-      NpuOpRunner::TypeAdapter({*x}, {cast_out}, attr_input, dev_ctx, op_func,
+      NpuOpRunner::TypeAdapter({*x},
+                               {cast_out},
+                               attr_input,
+                               dev_ctx,
+                               op_func,
                                {framework::proto::VarType::INT32},
                                {framework::proto::VarType::INT32});
     } else {
@@ -98,7 +101,9 @@ class ReduceMaxNPUKernel : public framework::OpKernel<T> {
     if (framework::TransToProtoVarType(x->dtype()) != cast_out_dtype) {
       auto dst_dtype = ConvertToNpuDtype(cast_out_dtype);
       const auto& runner_cast =
-          NpuOpRunner("Cast", {cast_out}, {*out},
+          NpuOpRunner("Cast",
+                      {cast_out},
+                      {*out},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast.Run(dev_ctx.stream());
     }
@@ -109,17 +114,22 @@ template <typename DeviceContext, typename T>
 class ReduceMaxGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* x = context.Input<Tensor>("X");
-    auto* out = context.Input<Tensor>("Out");
-    auto* out_grad = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* x = context.Input<phi::DenseTensor>("X");
+    auto* out = context.Input<phi::DenseTensor>("Out");
+    auto* out_grad =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto reduce_dims = context.Attr<std::vector<int>>("dim");
+    bool reduce_all = context.Attr<bool>("reduce_all");
     int in_dtype = context.Attr<int>("in_dtype");
 
     PADDLE_ENFORCE_EQ(
-        in_dtype == -1, true,
+        in_dtype == -1,
+        true,
         platform::errors::InvalidArgument(
             "NPU only support in_dtype == -1 in reduce_max_grad op."));
 
-    auto* x_grad = context.Output<Tensor>(framework::GradVarName("X"));
+    auto* x_grad =
+        context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     x_grad->mutable_data<T>(context.GetPlace());
 
     auto& dev_ctx =
@@ -129,34 +139,55 @@ class ReduceMaxGradNPUKernel : public framework::OpKernel<T> {
 
     // broadcast
     auto x_dims_vec = phi::vectorize(x->dims());
-    Tensor transformed_out(x->type());
+    if (reduce_all) {
+      reduce_dims.clear();
+      for (size_t d = 0; d < x_dims_vec.size(); ++d) {
+        reduce_dims.push_back(static_cast<int>(d));
+      }
+    }
+
+    phi::DenseTensor tmp_out, tmp_out_grad;
+    auto tmp_out_dims_vec = x_dims_vec;
+    for (auto d : reduce_dims) {
+      if (d < 0) {
+        d += x_dims_vec.size();
+      }
+      tmp_out_dims_vec[d] = 1;
+    }
+
+    tmp_out.ShareDataWith(*out);
+    tmp_out.Resize(phi::make_ddim(tmp_out_dims_vec));
+    tmp_out_grad.ShareDataWith(*out_grad);
+    tmp_out_grad.Resize(phi::make_ddim(tmp_out_dims_vec));
+
+    phi::DenseTensor transformed_out(x->type());
     transformed_out.Resize(phi::make_ddim(x_dims_vec));
     transformed_out.mutable_data<T>(place);
     NpuOpRunner r_brd_out;
     r_brd_out.SetType("BroadcastTo")
-        .AddInput(*out)
+        .AddInput(tmp_out)
         .AddInput(std::move(x_dims_vec))
         .AddOutput(transformed_out)
         .Run(stream);
-    Tensor transformed_out_grad(x->type());
+    phi::DenseTensor transformed_out_grad(x->type());
     transformed_out_grad.Resize(phi::make_ddim(x_dims_vec));
     transformed_out_grad.mutable_data<T>(place);
     NpuOpRunner r_brd_out_grad;
     r_brd_out_grad.SetType("BroadcastTo")
-        .AddInput(*out_grad)
+        .AddInput(tmp_out_grad)
         .AddInput(std::move(x_dims_vec))
         .AddOutput(transformed_out_grad)
         .Run(stream);
 
     // compare
-    Tensor equal_cond;
+    phi::DenseTensor equal_cond;
     equal_cond.mutable_data<bool>(x_grad->dims(), place);
     const auto& r_equal =
         NpuOpRunner("Equal", {*x, transformed_out}, {equal_cond}, {});
     r_equal.Run(stream);
 
     // select
-    Tensor t_zero;
+    phi::DenseTensor t_zero;
     t_zero.mutable_data<T>(x_grad->dims(), place);
     FillNpuTensorWithConstant(&t_zero, static_cast<T>(0));
     t_zero.Resize(x_grad->dims());
@@ -173,12 +204,14 @@ class ReduceMaxGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_NPU_KERNEL(
-    reduce_max, ops::ReduceMaxNPUKernel<plat::NPUDeviceContext, float>,
+    reduce_max,
+    ops::ReduceMaxNPUKernel<plat::NPUDeviceContext, float>,
     ops::ReduceMaxNPUKernel<plat::NPUDeviceContext, plat::float16>,
     ops::ReduceMaxNPUKernel<plat::NPUDeviceContext, int64_t>,
     ops::ReduceMaxNPUKernel<plat::NPUDeviceContext, int>);
 REGISTER_OP_NPU_KERNEL(
-    reduce_max_grad, ops::ReduceMaxGradNPUKernel<plat::NPUDeviceContext, float>,
+    reduce_max_grad,
+    ops::ReduceMaxGradNPUKernel<plat::NPUDeviceContext, float>,
     ops::ReduceMaxGradNPUKernel<plat::NPUDeviceContext, plat::float16>,
     ops::ReduceMaxGradNPUKernel<plat::NPUDeviceContext, int64_t>,
     ops::ReduceMaxGradNPUKernel<plat::NPUDeviceContext, int>);

@@ -15,14 +15,12 @@
 #include <sstream>
 
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/tests/data_structure_tests/grad_node_test.h"
 #include "paddle/fluid/eager/tests/test_utils.h"
 #include "paddle/fluid/eager/utils.h"
-
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -84,7 +82,7 @@ TEST(EagerUtils, AutoGradMeta) {
   CHECK_NOTNULL(grad_node0.get());
 
   EagerUtils::SetHistory(autograd_meta1, test_node);
-  EagerUtils::SetHistory({autograd_meta1}, test_node);
+  EagerUtils::SetHistory(autograd_meta1, test_node);
   std::shared_ptr<GradNodeBase> grad_node1 = EagerUtils::grad_node(et1);
   CHECK_NOTNULL(grad_node1.get());
 
@@ -140,15 +138,15 @@ TEST(EagerUtils, ComputeRequireGrad) {
   VLOG(6) << "Multi Test ComputeRequireGrad";
   auto_grad0->SetStopGradient(false);
   auto_grad1->SetStopGradient(true);
-  CHECK(egr::EagerUtils::ComputeRequireGrad(true, auto_grad0.get(),
-                                            auto_grad1.get()) == true);
-  CHECK(egr::EagerUtils::ComputeRequireGrad(false, auto_grad0.get(),
-                                            auto_grad1.get()) == false);
+  CHECK(egr::EagerUtils::ComputeRequireGrad(
+            true, auto_grad0.get(), auto_grad1.get()) == true);
+  CHECK(egr::EagerUtils::ComputeRequireGrad(
+            false, auto_grad0.get(), auto_grad1.get()) == false);
   auto_grad0->SetStopGradient(true);
-  CHECK(egr::EagerUtils::ComputeRequireGrad(true, auto_grad0.get(),
-                                            auto_grad1.get()) == false);
-  CHECK(egr::EagerUtils::ComputeRequireGrad(false, auto_grad0.get(),
-                                            auto_grad1.get()) == false);
+  CHECK(egr::EagerUtils::ComputeRequireGrad(
+            true, auto_grad0.get(), auto_grad1.get()) == false);
+  CHECK(egr::EagerUtils::ComputeRequireGrad(
+            false, auto_grad0.get(), auto_grad1.get()) == false);
 }
 
 TEST(EagerUtils, PassStopGradient) {
@@ -160,9 +158,12 @@ TEST(EagerUtils, PassStopGradient) {
   VLOG(6) << "Test PassStopGradient";
   egr::EagerUtils::PassStopGradient(false, auto_grad0.get());
   CHECK(auto_grad0->StopGradient() == false);
-  egr::EagerUtils::PassStopGradient(true, auto_grad0.get(), auto_grad1.get(),
-                                    auto_grad2.get(), auto_grad3.get());
-  CHECK(auto_grad0->StopGradient() == false);
+  egr::EagerUtils::PassStopGradient(true,
+                                    auto_grad0.get(),
+                                    auto_grad1.get(),
+                                    auto_grad2.get(),
+                                    auto_grad3.get());
+  CHECK(auto_grad0->StopGradient() == true);
   CHECK(auto_grad1->StopGradient() == true);
   CHECK(auto_grad2->StopGradient() == true);
   CHECK(auto_grad3->StopGradient() == true);
@@ -175,7 +176,7 @@ TEST(EagerUtils, TrySyncToVar) {
       egr::EagerUtils::TrySyncToVar(tensor)};
 
   paddle::framework::Variable* var = var_bases[0]->MutableVar();
-  const auto& framework_tensor = var->Get<paddle::framework::LoDTensor>();
+  const auto& framework_tensor = var->Get<phi::DenseTensor>();
 
   const float* ptr = framework_tensor.data<float>();
   VLOG(6) << "Check Value for SyncToVarsSingle";
@@ -196,7 +197,7 @@ TEST(EagerUtils, TrySyncToVars) {
 
   {
     paddle::framework::Variable* var = var_bases[0]->MutableVar();
-    const auto& framework_tensor = var->Get<paddle::framework::LoDTensor>();
+    const auto& framework_tensor = var->Get<phi::DenseTensor>();
 
     const float* ptr = framework_tensor.data<float>();
     CHECK_EQ(framework_tensor.numel(), tensors[0].numel());
@@ -208,7 +209,7 @@ TEST(EagerUtils, TrySyncToVars) {
 
   {
     paddle::framework::Variable* var = var_bases[1]->MutableVar();
-    const auto& framework_tensor = var->Get<paddle::framework::LoDTensor>();
+    const auto& framework_tensor = var->Get<phi::DenseTensor>();
 
     const float* ptr = framework_tensor.data<float>();
     VLOG(6) << "Check Value for SyncToVarsMultiple";
@@ -250,7 +251,7 @@ TEST(EagerUtils, GetGradAccumulationNode) {
   ASSERT_ANY_THROW(egr::EagerUtils::GetGradAccumulationNode(t0));
 }
 
-TEST(EagerUtils, FillZeroForEmptyGradInputs) {
+TEST(EagerUtils, FillZeroForEmptyOptionalGradInput) {
   paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                        egr::kSlotSmallVectorSize>
       grads = {std::vector<paddle::experimental::Tensor>(1)};
@@ -263,7 +264,7 @@ TEST(EagerUtils, FillZeroForEmptyGradInputs) {
   slot_metas[0][0].SetTensorMeta(tensor_meta);
   slot_metas[0][0].SetPlace(phi::CPUPlace());
 
-  EagerUtils::FillZeroForEmptyGradInputs(&grads, slot_metas);
+  EagerUtils::FillZeroForEmptyOptionalGradInput(&grads[0], slot_metas[0]);
   eager_test::CompareTensorWithValue<float>(grads[0][0], 0.0);
 }
 

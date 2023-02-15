@@ -15,8 +15,14 @@ limitations under the License. */
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+
 #include <string>
 #include <vector>
+
+#if defined(PADDLE_WITH_CUDA)
+#include <cuda_runtime.h>
+#endif
+
 #include "paddle/fluid/inference/capi_exp/pd_inference_api.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
@@ -35,7 +41,7 @@ TEST(PD_Config, gpu_interface) {
   PD_ConfigSetModel(config, prog_file.c_str(), param_file.c_str());
   PD_ConfigSetOptimCacheDir(config, opt_cache_dir.c_str());
 
-  PD_ConfigEnableUseGpu(config, 100, 0);
+  PD_ConfigEnableUseGpu(config, 100, 0, 0);
   bool use_gpu = PD_ConfigUseGpu(config);
   EXPECT_TRUE(use_gpu);
   int init_size = PD_ConfigMemoryPoolInitSizeMb(config);
@@ -48,8 +54,8 @@ TEST(PD_Config, gpu_interface) {
   bool cudnn = PD_ConfigCudnnEnabled(config);
   EXPECT_TRUE(cudnn);
 
-  PD_ConfigEnableTensorRtEngine(config, 1 << 20, 1, 3, PD_PRECISION_INT8, FALSE,
-                                TRUE);
+  PD_ConfigEnableTensorRtEngine(
+      config, 1 << 20, 1, 3, PD_PRECISION_INT8, FALSE, TRUE);
   bool trt_enable = PD_ConfigTensorRtEngineEnabled(config);
   EXPECT_TRUE(trt_enable);
 
@@ -61,11 +67,16 @@ TEST(PD_Config, gpu_interface) {
   int32_t* min_shape_ptr = min_shape;
   int32_t* max_shape_ptr = max_shape;
   int32_t* opt_shape_ptr = opt_shape;
-  PD_ConfigSetTrtDynamicShapeInfo(config, 1, &tensor_name, shapes_num,
-                                  &min_shape_ptr, &max_shape_ptr,
-                                  &opt_shape_ptr, FALSE);
+  PD_ConfigSetTrtDynamicShapeInfo(config,
+                                  1,
+                                  &tensor_name,
+                                  shapes_num,
+                                  &min_shape_ptr,
+                                  &max_shape_ptr,
+                                  &opt_shape_ptr,
+                                  FALSE);
   PD_ConfigDisableTensorRtOPs(config, 1, &ops_name);
-  PD_ConfigEnableTensorRtOSS(config);
+  PD_ConfigEnableVarseqlen(config);
   bool oss_enabled = PD_ConfigTensorRtOssEnabled(config);
   EXPECT_TRUE(oss_enabled);
 
@@ -76,6 +87,14 @@ TEST(PD_Config, gpu_interface) {
   PD_ConfigEnableGpuMultiStream(config);
   bool thread_local_thread = PD_ConfigThreadLocalStreamEnabled(config);
   EXPECT_TRUE(thread_local_thread);
+
+#if defined(PADDLE_WITH_CUDA)
+  {
+    cudaStream_t external_stream;
+    cudaStreamCreate(&external_stream);
+    PD_ConfigSetExecStream(config, external_stream);
+  }
+#endif
 
   PD_ConfigDisableGpu(config);
   PD_ConfigDestroy(config);
@@ -97,7 +116,7 @@ TEST(PD_Config, use_gpu) {
   const char* model_dir_ = PD_ConfigGetModelDir(config);
   LOG(INFO) << model_dir_;
 
-  PD_ConfigEnableUseGpu(config, 100, 0);
+  PD_ConfigEnableUseGpu(config, 100, 0, 0);
   bool use_gpu = PD_ConfigUseGpu(config);
   EXPECT_TRUE(use_gpu);
   int device_id = PD_ConfigGpuDeviceId(config);
@@ -116,8 +135,8 @@ TEST(PD_Config, use_gpu) {
   bool ir_optim = PD_ConfigIrOptim(config);
   EXPECT_TRUE(ir_optim);
 
-  PD_ConfigEnableTensorRtEngine(config, 1 << 20, 1, 3, PD_PRECISION_FLOAT32,
-                                FALSE, FALSE);
+  PD_ConfigEnableTensorRtEngine(
+      config, 1 << 20, 1, 3, PD_PRECISION_FLOAT32, FALSE, FALSE);
   bool trt_enable = PD_ConfigTensorRtEngineEnabled(config);
   EXPECT_TRUE(trt_enable);
   PD_ConfigEnableMemoryOptim(config, true);
@@ -135,9 +154,9 @@ TEST(PD_Config, use_gpu) {
 TEST(PD_Config, trt_int8) {
   std::string model_dir = FLAGS_infer_model + "/mobilenet";
   PD_Config* config = PD_ConfigCreate();
-  PD_ConfigEnableUseGpu(config, 100, 0);
-  PD_ConfigEnableTensorRtEngine(config, 1 << 20, 1, 3, PD_PRECISION_INT8, FALSE,
-                                TRUE);
+  PD_ConfigEnableUseGpu(config, 100, 0, 0);
+  PD_ConfigEnableTensorRtEngine(
+      config, 1 << 20, 1, 3, PD_PRECISION_INT8, FALSE, TRUE);
   bool trt_enable = PD_ConfigTensorRtEngineEnabled(config);
   EXPECT_TRUE(trt_enable);
   PD_ConfigDestroy(config);
@@ -146,9 +165,9 @@ TEST(PD_Config, trt_int8) {
 TEST(PD_Config, trt_fp16) {
   std::string model_dir = FLAGS_infer_model + "/mobilenet";
   PD_Config* config = PD_ConfigCreate();
-  PD_ConfigEnableUseGpu(config, 100, 0);
-  PD_ConfigEnableTensorRtEngine(config, 1 << 20, 1, 3, PD_PRECISION_HALF, FALSE,
-                                FALSE);
+  PD_ConfigEnableUseGpu(config, 100, 0, 0);
+  PD_ConfigEnableTensorRtEngine(
+      config, 1 << 20, 1, 3, PD_PRECISION_HALF, FALSE, FALSE);
   bool trt_enable = PD_ConfigTensorRtEngineEnabled(config);
   EXPECT_TRUE(trt_enable);
   PD_Predictor* predictor = PD_PredictorCreate(config);

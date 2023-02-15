@@ -14,14 +14,11 @@
 
 import unittest
 
-import numpy as np
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
     def setUp(self):
         self.set_atol()
@@ -50,7 +47,7 @@ class TestBase(IPUOpTest):
     @IPUOpTest.static_graph
     def build_model(self):
         x = paddle.fluid.layers.fill_constant(**self.attrs)
-        out = paddle.fluid.layers.elementwise_add(x, x)
+        out = paddle.add(x, x)
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):

@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 #include <vector>
+
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {

@@ -15,13 +15,12 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestLogicalAnd(IPUOpTest):
     def setUp(self):
         self.set_atol()
@@ -33,7 +32,7 @@ class TestLogicalAnd(IPUOpTest):
         return False
 
     def set_test_op(self):
-        self.op = paddle.fluid.layers.logical_and
+        self.op = paddle.logical_and
 
     def set_op_attrs(self):
         self.attrs = {}
@@ -43,11 +42,13 @@ class TestLogicalAnd(IPUOpTest):
         x = paddle.static.data(
             name=self.feed_list[0],
             shape=self.feed_shape[0],
-            dtype=self.feed_dtype[0])
+            dtype=self.feed_dtype[0],
+        )
         y = paddle.static.data(
             name=self.feed_list[1],
             shape=self.feed_shape[1],
-            dtype=self.feed_dtype[1])
+            dtype=self.feed_dtype[1],
+        )
         out = self.op(x, y, **self.attrs)
         self.fetch_list = [out.name]
 
@@ -83,7 +84,7 @@ class TestLogicalAnd(IPUOpTest):
 
 class TestLogicalOr(TestLogicalAnd):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.logical_or
+        self.op = paddle.logical_or
 
 
 if __name__ == "__main__":

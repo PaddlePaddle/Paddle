@@ -33,7 +33,8 @@ enum class AmpLevel {
   O3,      // fp16
 };
 
-std::tuple<std::unordered_set<std::string>, std::unordered_set<std::string>,
+std::tuple<std::unordered_set<std::string>,
+           std::unordered_set<std::string>,
            std::unordered_set<std::string>>
 OpSupportedInfos(const std::string& place,
                  framework::proto::VarType::Type dtype);

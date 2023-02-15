@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest
@@ -54,8 +52,8 @@ class TestMLUCumSumOp2(TestMLUCumSumOp):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.outputs = {
             'Out': np.flip(
-                np.flip(
-                    self.inputs['X'], axis=2).cumsum(axis=2), axis=2)
+                np.flip(self.inputs['X'], axis=2).cumsum(axis=2), axis=2
+            )
         }
 
 
@@ -92,9 +90,12 @@ class TestNPUCumSumExclusive1(TestMLUCumSumOp):
         self.inputs = {'X': a}
         self.outputs = {
             'Out': np.concatenate(
-                (np.zeros(
-                    (4, 5, 1), dtype=self.dtype), a[:, :, :-1].cumsum(axis=2)),
-                axis=2)
+                (
+                    np.zeros((4, 5, 1), dtype=self.dtype),
+                    a[:, :, :-1].cumsum(axis=2),
+                ),
+                axis=2,
+            )
         }
 
 
@@ -105,9 +106,12 @@ class TestNPUCumSumExclusive2(TestMLUCumSumOp):
         self.inputs = {'X': a}
         self.outputs = {
             'Out': np.concatenate(
-                (np.zeros(
-                    (1, 1, 1), dtype=self.dtype), a[:, :, :-1].cumsum(axis=2)),
-                axis=2)
+                (
+                    np.zeros((1, 1, 1), dtype=self.dtype),
+                    a[:, :, :-1].cumsum(axis=2),
+                ),
+                axis=2,
+            )
         }
 
 
@@ -118,9 +122,12 @@ class TestNPUCumSumExclusive3(TestMLUCumSumOp):
         self.inputs = {'X': a}
         self.outputs = {
             'Out': np.concatenate(
-                (np.zeros(
-                    (4, 5, 1), dtype=self.dtype), a[:, :, :-1].cumsum(axis=2)),
-                axis=2)
+                (
+                    np.zeros((4, 5, 1), dtype=self.dtype),
+                    a[:, :, :-1].cumsum(axis=2),
+                ),
+                axis=2,
+            )
         }
 
 
@@ -131,9 +138,12 @@ class TestNPUCumSumExclusive4(TestMLUCumSumOp):
         self.inputs = {'X': a}
         self.outputs = {
             'Out': np.concatenate(
-                (np.zeros(
-                    (1, 1, 1), dtype=self.dtype), a[:, :, :-1].cumsum(axis=2)),
-                axis=2)
+                (
+                    np.zeros((1, 1, 1), dtype=self.dtype),
+                    a[:, :, :-1].cumsum(axis=2),
+                ),
+                axis=2,
+            )
         }
 
 
@@ -144,9 +154,12 @@ class TestNPUCumSumExclusive5(TestMLUCumSumOp):
         self.inputs = {'X': a}
         self.outputs = {
             'Out': np.concatenate(
-                (np.zeros(
-                    (4, 5, 1), dtype=self.dtype), a[:, :, :-1].cumsum(axis=2)),
-                axis=2)
+                (
+                    np.zeros((4, 5, 1), dtype=self.dtype),
+                    a[:, :, :-1].cumsum(axis=2),
+                ),
+                axis=2,
+            )
         }
 
 
@@ -158,10 +171,12 @@ class TestNPUCumSumReverseExclusive(TestMLUCumSumOp):
         a = np.flip(a, axis=2)
         self.outputs = {
             'Out': np.concatenate(
-                (np.flip(
-                    a[:, :, :-1].cumsum(axis=2), axis=2), np.zeros(
-                        (4, 5, 1), dtype=self.dtype)),
-                axis=2)
+                (
+                    np.flip(a[:, :, :-1].cumsum(axis=2), axis=2),
+                    np.zeros((4, 5, 1), dtype=self.dtype),
+                ),
+                axis=2,
+            )
         }
 
 

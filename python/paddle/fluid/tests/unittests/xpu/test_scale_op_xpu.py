@@ -12,22 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import unittest
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
+
 sys.path.append("..")
 
-import paddle
-import paddle.fluid as fluid
-from paddle.fluid import core
-from paddle.fluid import compiler, Program, program_guard
-
-import op_test
-from op_test import OpTest, skip_check_grad_ci
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
+
+import paddle
+from paddle.fluid import Program, program_guard
 
 
 class XPUTestScaleOp(XPUOpTestWrapper):
@@ -43,9 +43,7 @@ class XPUTestScaleOp(XPUOpTestWrapper):
             self.place = paddle.XPUPlace(0)
             self.set_inputs()
             self.set_attrs()
-            self.outputs = {
-                'Out': self.inputs['X'] * self.dtype(self.attrs['scale'])
-            }
+            self.set_output()
 
         def set_xpu(self):
             self.__class__.use_xpu = True
@@ -54,6 +52,16 @@ class XPUTestScaleOp(XPUOpTestWrapper):
 
         def set_inputs(self):
             self.inputs = {'X': np.random.random((10, 10)).astype(self.dtype)}
+
+        def set_output(self):
+            if "float16" == self.in_type:
+                output = self.inputs['X'] * np.float16(self.attrs['scale'])
+            elif "int64" == self.in_type:
+                output = self.inputs['X'] * np.int64(self.attrs['scale'])
+            else:
+                output = self.inputs['X'] * np.float32(self.attrs['scale'])
+
+            self.outputs = {'Out': output}
 
         def init_dtype(self):
             if "float16" == self.in_type:
@@ -106,7 +114,7 @@ class TestScaleApiStatic(unittest.TestCase):
 
         exe = paddle.static.Executor(place=paddle.CPUPlace())
         out = exe.run(main_prog, feed={"x": input}, fetch_list=[out])
-        self.assertEqual(np.array_equal(out[0], input * 2.0 + 3.0), True)
+        np.testing.assert_array_equal(out[0], input * 2.0 + 3.0)
 
 
 class TestScaleInplaceApiStatic(TestScaleApiStatic):
@@ -123,7 +131,7 @@ class TestScaleApiDygraph(unittest.TestCase):
         input = np.random.random([2, 25]).astype("float32")
         x = paddle.to_tensor(input)
         out = self._executed_api(x, scale=2.0, bias=3.0)
-        self.assertEqual(np.array_equal(out.numpy(), input * 2.0 + 3.0), True)
+        np.testing.assert_array_equal(out.numpy(), input * 2.0 + 3.0)
         paddle.enable_static()
 
 

@@ -28,7 +28,9 @@ namespace gen {
 // horizontal operand vector
 class HOPVJitCode : public JitCode {
  public:
-  explicit HOPVJitCode(int d, operand_type type, size_t code_size = 256 * 1024,
+  explicit HOPVJitCode(int d,
+                       operand_type type,
+                       size_t code_size = 256 * 1024,
                        void* code_ptr = nullptr)
       : JitCode(code_size, code_ptr), num_(d), type_(type) {
     if (!(type_ == operand_type::MAX || type_ == operand_type::ADD)) {

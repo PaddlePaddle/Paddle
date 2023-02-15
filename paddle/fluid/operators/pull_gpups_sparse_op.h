@@ -15,6 +15,7 @@
 #pragma once
 #include <memory>
 #include <vector>
+
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -24,8 +25,8 @@ namespace operators {
 
 template <typename T>
 static void PullGpuPSSparseFunctor(const framework::ExecutionContext &ctx) {
-  auto inputs = ctx.MultiInput<framework::Tensor>("Ids");
-  auto outputs = ctx.MultiOutput<framework::Tensor>("Out");
+  auto inputs = ctx.MultiInput<phi::DenseTensor>("Ids");
+  auto outputs = ctx.MultiOutput<phi::DenseTensor>("Out");
   auto embedding_size_vec = ctx.Attr<std::vector<int>>("size");
   const auto slot_size = inputs.size();
   std::vector<const uint64_t *> all_keys(slot_size);
@@ -44,16 +45,21 @@ static void PullGpuPSSparseFunctor(const framework::ExecutionContext &ctx) {
   }
 #ifdef PADDLE_WITH_HETERPS
   auto gpu_ps_ptr = paddle::framework::PSGPUWrapper::GetInstance();
-  gpu_ps_ptr->PullSparse(ctx.GetPlace(), 0, all_keys, all_values, slot_lengths,
-                         embedding_size_vec, 0);
+  gpu_ps_ptr->PullSparse(ctx.GetPlace(),
+                         0,
+                         all_keys,
+                         all_values,
+                         slot_lengths,
+                         embedding_size_vec,
+                         0);
 #endif
 }
 
 template <typename T>
 static void PushGpuPSSparseFunctor(const framework::ExecutionContext &ctx) {
-  auto inputs = ctx.MultiInput<framework::LoDTensor>("Ids");
+  auto inputs = ctx.MultiInput<phi::DenseTensor>("Ids");
   auto d_output =
-      ctx.MultiInput<framework::Tensor>(framework::GradVarName("Out"));
+      ctx.MultiInput<phi::DenseTensor>(framework::GradVarName("Out"));
   const auto slot_size = inputs.size();
   std::vector<const uint64_t *> all_keys(slot_size);
   std::vector<const float *> all_grad_values(slot_size);
@@ -70,7 +76,8 @@ static void PushGpuPSSparseFunctor(const framework::ExecutionContext &ctx) {
     if (batch_size == -1) {
       batch_size = cur_batch_size;
     } else {
-      PADDLE_ENFORCE_EQ(batch_size, cur_batch_size,
+      PADDLE_ENFORCE_EQ(batch_size,
+                        cur_batch_size,
                         platform::errors::PreconditionNotMet(
                             "The batch size of all input slots should be same, "
                             "please cheack"));
@@ -80,12 +87,16 @@ static void PushGpuPSSparseFunctor(const framework::ExecutionContext &ctx) {
   }
 #ifdef PADDLE_WITH_HETERPS
   auto gpu_ps_ptr = paddle::framework::PSGPUWrapper::GetInstance();
-  gpu_ps_ptr->PushSparseGrad(ctx.GetPlace(), 0, all_keys, all_grad_values,
-                             slot_lengths, 0, batch_size);
+  gpu_ps_ptr->PushSparseGrad(ctx.GetPlace(),
+                             0,
+                             all_keys,
+                             all_grad_values,
+                             slot_lengths,
+                             0,
+                             batch_size);
 #endif
 }
 
-using LoDTensor = framework::LoDTensor;
 template <typename T>
 class PullGpuPSSparseCPUKernel : public framework::OpKernel<T> {
  public:

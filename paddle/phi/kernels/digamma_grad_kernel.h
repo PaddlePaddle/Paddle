@@ -24,4 +24,4 @@ void DigammaGradKernel(const Context& ctx,
                        const DenseTensor& out_grad,
                        DenseTensor* x_grad);
 
-}  // namepsace phi
+}  // namespace phi

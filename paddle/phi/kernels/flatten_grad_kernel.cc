@@ -13,9 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/flatten_grad_kernel.h"
+
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 namespace phi {
 
@@ -37,6 +38,7 @@ PD_REGISTER_KERNEL(flatten_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::FlattenGradKernel,
+                   phi::dtype::bfloat16,
                    float,
                    double,
                    uint8_t,
@@ -51,6 +53,7 @@ PD_REGISTER_KERNEL(flatten_grad,
                    phi::FlattenGradKernel,
                    float,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    double,
                    uint8_t,
                    int8_t,

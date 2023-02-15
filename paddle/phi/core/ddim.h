@@ -155,7 +155,7 @@ class DDim {
 
   std::string to_str() const;
 
-  DDim reshape(std::vector<int>& shape) const;
+  DDim reshape(std::vector<int>& shape) const;  // NOLINT
 
   DDim transpose(const std::vector<int>& axis) const;
 
@@ -238,10 +238,10 @@ int arity(const DDim& ddim);
 std::ostream& operator<<(std::ostream&, const DDim&);
 
 /**
-* \brief Flatten dim to 3d
-* e.g., DDim d = mak_ddim({1, 2, 3, 4, 5, 6})
-*       flatten_to_3d(d, 2, 4); ===> {1*2, 3*4, 5*6} ===> {2, 12, 30}
-*/
+ * \brief Flatten dim to 3d
+ * e.g., DDim d = mak_ddim({1, 2, 3, 4, 5, 6})
+ *       flatten_to_3d(d, 2, 4); ===> {1*2, 3*4, 5*6} ===> {2, 12, 30}
+ */
 DDim flatten_to_3d(const DDim& src, int num_row_dims, int num_col_dims);
 
 // Reshape a tensor to a matrix. The matrix's first dimension(column length)
@@ -262,3 +262,10 @@ using DDim = phi::DDim;
 
 }  // namespace framework
 }  // namespace paddle
+
+namespace std {
+template <>
+struct hash<phi::DDim> {
+  std::size_t operator()(phi::DDim const& ddim) const;
+};
+}  // namespace std

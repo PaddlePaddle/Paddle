@@ -59,11 +59,11 @@ class MeanGradOp : public framework::OperatorWithKernel {
     ctx->ShareLoD("X", framework::GradVarName("X"));
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -87,12 +87,17 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(MeanGradNoNeedBufferVarsInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(mean, MeanInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(mean,
+                            MeanInferShapeFunctor,
                             PD_INFER_META(phi::MeanAllInferMeta));
-REGISTER_OPERATOR(mean, ops::MeanOp, ops::MeanOpMaker, ops::MeanOpInferVarType,
+REGISTER_OPERATOR(mean,
+                  ops::MeanOp,
+                  ops::MeanOpMaker,
+                  ops::MeanOpInferVarType,
                   ops::MeanGradMaker<paddle::framework::OpDesc>,
                   ops::MeanGradMaker<paddle::imperative::OpBase>,
                   MeanInferShapeFunctor);
 
-REGISTER_OPERATOR(mean_grad, ops::MeanGradOp,
+REGISTER_OPERATOR(mean_grad,
+                  ops::MeanGradOp,
                   ops::MeanGradNoNeedBufferVarsInferer);

@@ -12,20 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import sys
 
 sys.path.append("..")
 import unittest
-import numpy as np
 
-import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard, core
-import paddle
-from op_test import OpTest, skip_check_grad_ci
+import numpy as np
+from op_test import skip_check_grad_ci
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
+
+import paddle
 
 paddle.enable_static()
 
@@ -49,13 +50,16 @@ class XPUTestConcatOp(XPUOpTestWrapper):
             self.attrs = {'axis': self.axis}
             if self.axis < 0:
                 self.actual_axis = self.axis + len(self.x0.shape)
-                self.actual_axis = self.actual_axis if self.actual_axis > 0 else 0
+                self.actual_axis = (
+                    self.actual_axis if self.actual_axis > 0 else 0
+                )
             else:
                 self.actual_axis = self.axis
 
             self.outputs = {
                 'Out': np.concatenate(
-                    (self.x0, self.x1, self.x2), axis=self.actual_axis)
+                    (self.x0, self.x1, self.x2), axis=self.actual_axis
+                )
             }
 
         def set_inputs(self):
@@ -117,7 +121,8 @@ class XPUTestConcatOp(XPUOpTestWrapper):
             self.axis = -3
 
     @skip_check_grad_ci(
-        reason="The function 'check_grad' for large inputs is too slow.")
+        reason="The function 'check_grad' for large inputs is too slow."
+    )
     class TestConcatOp3(TestConcatOp):
         def set_inputs(self):
             self.x0 = np.random.random((1, 256, 170, 256)).astype(self.dtype)

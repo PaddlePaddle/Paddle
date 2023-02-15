@@ -12,17 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-from paddle.fluid.incubate.fleet.parameter_server.ir.ps_dispatcher import RoundRobin, HashName, PSDispatcher
+
+from paddle.fluid.incubate.fleet.parameter_server.ir.ps_dispatcher import (
+    HashName,
+    PSDispatcher,
+    RoundRobin,
+)
 
 
 class TestPsDispatcher(unittest.TestCase):
     def setUp(self):
         self.points = [
-            "127.0.0.1:1001", "127.0.0.1:1002", "127.0.0.1:1003",
-            "127.0.0.1:1004"
+            "127.0.0.1:1001",
+            "127.0.0.1:1002",
+            "127.0.0.1:1003",
+            "127.0.0.1:1004",
         ]
 
     def test_base(self):

@@ -1,4 +1,4 @@
-#   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,21 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import sys
+
 sys.path.append("..")
 import unittest
-import numpy as np
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from op_test_xpu import OpTest, XPUOpTest
-import paddle
-from paddle.fluid import Program, program_guard
 
-import op_test
+import numpy as np
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
+
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid import Program, core, program_guard
 
 
 class XPUTestClipOp(XPUOpTestWrapper):
@@ -50,7 +51,7 @@ class XPUTestClipOp(XPUOpTestWrapper):
 
         def set_xpu(self):
             self.__class__.use_xpu = True
-            self.__class__.no_need_check_grad = True
+            self.__class__.no_need_check_grad = False
             self.__class__.op_type = self.dtype
 
         def init_data(self):
@@ -89,6 +90,16 @@ class XPUTestClipOp(XPUOpTestWrapper):
             paddle.enable_static()
             self.check_output_with_place(self.place)
             paddle.disable_static()
+
+        def test_check_grad(self):
+            if hasattr(self, "no_need_check_grad") and self.no_need_check_grad:
+                return
+            if core.is_compiled_with_xpu():
+                paddle.enable_static()
+                self.check_grad_with_place(
+                    self.place, ['X'], 'Out', check_eager=True
+                )
+                paddle.disable_static()
 
     class TestClipOp1(TestClipOp):
         def init_data(self):
@@ -130,15 +141,9 @@ class TestClipOpError(unittest.TestCase):
             input_data = np.random.random((2, 4)).astype("float32")
 
             def test_Variable():
-                fluid.layers.clip(x=input_data, min=-1.0, max=1.0)
+                paddle.clip(x=input_data, min=-1.0, max=1.0)
 
             self.assertRaises(TypeError, test_Variable)
-
-            def test_dtype():
-                x2 = fluid.layers.data(name='x2', shape=[1], dtype='int32')
-                fluid.layers.clip(x=x2, min=-1.0, max=1.0)
-
-            self.assertRaises(TypeError, test_dtype)
         paddle.disable_static()
 
 
@@ -154,8 +159,11 @@ class TestClipAPI(unittest.TestCase):
         min = fluid.data(name='min', shape=[1], dtype='float32')
         max = fluid.data(name='max', shape=[1], dtype='float32')
 
-        place = fluid.XPUPlace(0) if fluid.core.is_compiled_with_xpu(
-        ) else fluid.CPUPlace()
+        place = (
+            fluid.XPUPlace(0)
+            if fluid.core.is_compiled_with_xpu()
+            else fluid.CPUPlace()
+        )
         exe = fluid.Executor(place)
 
         out_1 = self._executed_api(images, min=min, max=max)
@@ -164,7 +172,7 @@ class TestClipAPI(unittest.TestCase):
         out_4 = self._executed_api(images, max=0.7)
         out_5 = self._executed_api(images, min=min)
         out_6 = self._executed_api(images, max=max)
-        out_7 = self._executed_api(images, max=-1.)
+        out_7 = self._executed_api(images, max=-1.0)
         out_8 = self._executed_api(images)
 
         res1, res2, res3, res4, res5, res6, res7, res8 = exe.run(
@@ -172,26 +180,28 @@ class TestClipAPI(unittest.TestCase):
             feed={
                 "image": data,
                 "min": np.array([0.2]).astype('float32'),
-                "max": np.array([0.8]).astype('float32')
+                "max": np.array([0.8]).astype('float32'),
             },
-            fetch_list=[
-                out_1, out_2, out_3, out_4, out_5, out_6, out_7, out_8
-            ])
+            fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6, out_7, out_8],
+        )
 
-        self.assertTrue(np.allclose(res1, data.clip(0.2, 0.8)))
-        self.assertTrue(np.allclose(res2, data.clip(0.2, 0.9)))
-        self.assertTrue(np.allclose(res3, data.clip(min=0.3)))
-        self.assertTrue(np.allclose(res4, data.clip(max=0.7)))
-        self.assertTrue(np.allclose(res5, data.clip(min=0.2)))
-        self.assertTrue(np.allclose(res6, data.clip(max=0.8)))
-        self.assertTrue(np.allclose(res7, data.clip(max=-1)))
-        self.assertTrue(np.allclose(res8, data))
+        np.testing.assert_allclose(res1, data.clip(0.2, 0.8))
+        np.testing.assert_allclose(res2, data.clip(0.2, 0.9))
+        np.testing.assert_allclose(res3, data.clip(min=0.3))
+        np.testing.assert_allclose(res4, data.clip(max=0.7))
+        np.testing.assert_allclose(res5, data.clip(min=0.2))
+        np.testing.assert_allclose(res6, data.clip(max=0.8))
+        np.testing.assert_allclose(res7, data.clip(max=-1))
+        np.testing.assert_allclose(res8, data)
         paddle.disable_static()
 
     def test_clip_dygraph(self):
         paddle.disable_static()
-        place = fluid.XPUPlace(0) if fluid.core.is_compiled_with_xpu(
-        ) else fluid.CPUPlace()
+        place = (
+            fluid.XPUPlace(0)
+            if fluid.core.is_compiled_with_xpu()
+            else fluid.CPUPlace()
+        )
         paddle.disable_static(place)
         data_shape = [1, 9, 9, 4]
         data = np.random.random(data_shape).astype('float32')
@@ -205,9 +215,9 @@ class TestClipAPI(unittest.TestCase):
         images = paddle.to_tensor(data, dtype='float32')
         out_3 = self._executed_api(images, min=v_min, max=v_max)
 
-        self.assertTrue(np.allclose(out_1.numpy(), data.clip(0.2, 0.8)))
-        self.assertTrue(np.allclose(out_2.numpy(), data.clip(0.2, 0.9)))
-        self.assertTrue(np.allclose(out_3.numpy(), data.clip(0.2, 0.8)))
+        np.testing.assert_allclose(out_1.numpy(), data.clip(0.2, 0.8))
+        np.testing.assert_allclose(out_2.numpy(), data.clip(0.2, 0.9))
+        np.testing.assert_allclose(out_3.numpy(), data.clip(0.2, 0.8))
 
     def test_errors(self):
         paddle.enable_static()
