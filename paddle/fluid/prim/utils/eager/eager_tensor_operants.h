@@ -14,13 +14,16 @@
 
 #pragma once
 
+#include "paddle/phi/api/include/operants_base.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/macros.h"
-#include "paddle/phi/core/operants_base.h"
 
 namespace paddle {
 
-namespace operants {
+namespace prim {
+
+using Tensor = paddle::experimental::Tensor;
+using TensorOperantsBase = paddle::operants::TensorOperantsBase;
 
 class EagerTensorOperants : public TensorOperantsBase {
  public:
@@ -32,5 +35,5 @@ class EagerTensorOperants : public TensorOperantsBase {
   DISABLE_COPY_AND_ASSIGN(EagerTensorOperants);
 };
 
-}  // namespace operants
+}  // namespace prim
 }  // namespace paddle
