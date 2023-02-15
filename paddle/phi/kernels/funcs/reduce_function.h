@@ -439,6 +439,9 @@ struct ReduceConfig {
     constexpr int max_reduce_num_per_thread = 256;
     constexpr int max_num_threads = kps::details::kReduceMaxThread;
 
+    int device_id = paddle::platform::GetCurrentDeviceId();
+    int max_mp = paddle::platform::GetGPUMultiProcessors(device_id);
+
     // Set block size.
     // 1. If reduce_last_dim == true, all the threads whose threadIdx.y are same
     //    will process the reduction for one output.
@@ -450,7 +453,9 @@ struct ReduceConfig {
     int block_x, block_y;
     int grid_num, reduce_num_per_thread_tmp;
     if (reduce_last_dim) {
-      block_x = std::min(kps::details::kWarpSize, GetBlockDim(reduce_num));
+      block_x = left_num < 2 * max_mp ? GetBlockDim(reduce_num)
+                                      : std::min(kps::details::kWarpSize,
+                                                 GetBlockDim(reduce_num));
       block_y = GetBlockDim(left_num);
       block_dim->x = block_x;
       block_dim->y =
@@ -473,8 +478,7 @@ struct ReduceConfig {
       grid_num = details::CeilingDiv(left_num, block_dim->x);
       reduce_num_per_thread_tmp = details::CeilingDiv(reduce_num, block_dim->y);
     }
-    int device_id = paddle::platform::GetCurrentDeviceId();
-    int max_mp = paddle::platform::GetGPUMultiProcessors(device_id);
+
     // This kernels max occupancy is 75%. So max threads is 2048*3/4=1536
     int max_threads_per_mp =
         paddle::platform::GetGPUMaxThreadsPerMultiProcessor(device_id) * 3 / 4;
@@ -911,6 +915,25 @@ static void LaunchReduceKernel(const Tx* x_data,
     dimStage1.SetRem(config.left_num % block.x, 0, 0);
 
     auto reduce_index_calculator_stage1 = OneDimIndexCal(1);
+
+    printf("stage0: grid=[%d, %d], block=[%d, %d]\n",
+           config.grid.x,
+           config.grid.y,
+           config.block.x,
+           config.block.y);
+    printf("stage1: grid=[%d, %d], block=[%d, %d]\n",
+           grid.x,
+           grid.y,
+           block.x,
+           block.y);
+    printf("stage0 left_num=%d, reduce_num=%d, reduce_num_per_t=%d\n",
+           config.left_num,
+           config.reduce_num,
+           config.reduce_num_per_thread);
+    printf("stage1 left_num=%d, reduce_num=%d, reduce_num_per_t=%d\n",
+           config.left_num,
+           reduce_num_stage1,
+           reduce_num_per_thread_stage1);
 
     auto TwoStageReduceKernel1 =
         ReduceAnyKernel<Ty,
