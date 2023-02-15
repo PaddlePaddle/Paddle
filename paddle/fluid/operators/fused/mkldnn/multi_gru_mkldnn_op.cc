@@ -199,6 +199,7 @@ class MultiGRUHandler {
                         OneDNNMemoryFormat::ntc);
 
       pd = std::make_shared<dnnl::gru_forward::primitive_desc>(
+          engine_,
           dnnl::prop_kind::forward_inference,
           dir,
           x_md,
@@ -208,8 +209,7 @@ class MultiGRUHandler {
           b_md,
           h_md,
           dnnl::memory::desc(),
-          attrs_[2 * layer + (dir == R2L)],
-          engine_);
+          attrs_[2 * layer + (dir == R2L)]);
       PADDLE_ENFORCE_NOT_NULL(
           pd,
           platform::errors::InvalidArgument(
