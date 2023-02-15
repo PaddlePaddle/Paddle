@@ -97,8 +97,8 @@ inline void run_program_ad_func(
     grad_node->SetGradOutMeta(params, /*slot id*/ 1);
 
     VLOG(2) << "clear_no_grad_edges.";
-    auto* forward_ar = PADDLE_GET_CONST(paddle::framework::BlockDesc*,
-                                        attrs.at("forward_global_block"));
+    auto* forward_global_block = PADDLE_GET_CONST(
+        paddle::framework::BlockDesc*, attrs.at("forward_global_block"));
     auto* backward_global_block = PADDLE_GET_CONST(
         paddle::framework::BlockDesc*, attrs.at("backward_global_block"));
     clear_no_grad_edges_with_partial_block(params,
