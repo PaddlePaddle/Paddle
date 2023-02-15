@@ -138,7 +138,7 @@ inline __device__ void CalculateDBias(const T *tmp_sum,
   int reduce_num_pre_thread = (BlockSizeX * VecSize + 31) / 32;
   // reduce 32 to 1
   for (int i = 0; i < reduce_num_pre_thread; i++) {
-    sum[i] = WarpReduceSum(sum[i]);
+    sum[i] = phi::funcs::WarpReduceSum(sum[i]);
   }
 
   // save sum to dbias

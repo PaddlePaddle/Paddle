@@ -48,7 +48,7 @@ class AttnLayerNorm {
                       const float quant_min_bound = -127.0) {
     auto stream = dev_ctx_.stream();
 
-    switch (GetDesiredBlockDim(feature_size_)) {
+    switch (phi::funcs::GetDesiredBlockDim(feature_size_)) {
       FIXED_BLOCK_DIM_CASE(
           phi::funcs::LayerNormForward<T,
                                        phi::funcs::LayerNormParamType<T>,
