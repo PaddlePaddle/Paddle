@@ -37,7 +37,7 @@ USE_OP_ITSELF(dropout);
 USE_OP_ITSELF(layer_norm);
 
 template <typename T>
-using CudnnDataType = platform::CudnnDataType<T>;
+using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
 template <typename T>
 using LayerNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
