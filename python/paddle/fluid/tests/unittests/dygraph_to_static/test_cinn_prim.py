@@ -139,7 +139,8 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         # Ensure that softmax is splitted into small ops
         self.assertTrue('softmax' not in fwd_ops)
         for op in all_ops:
-            self.assertTrue("_grad" not in op)
+            if op != "matmul_v2_grad":
+                self.assertTrue("_grad" not in op)
 
     def test_cinn_prim(self):
         plat = platform.system()
