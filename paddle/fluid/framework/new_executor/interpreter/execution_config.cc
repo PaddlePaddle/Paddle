@@ -130,6 +130,7 @@ void ExecutionConfig::Log(int log_level) {
   std::stringstream log_str;
   log_str << "ExecutionConfig:\n"
           << "create_local_scope = " << create_local_scope << "\n"
+          << "used_for_cinn = " << used_for_cinn << "\n"
           << "used_for_control_flow_op = " << used_for_control_flow_op << "\n"
           << "used_for_jit = " << used_for_jit << "\n"
           << "deivce_num_threads = " << device_num_threads << "\n"
