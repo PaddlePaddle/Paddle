@@ -28,10 +28,10 @@ void ExponentialKernel(const Context &dev_ctx,
   phi::funcs::uniform_distribution<T> dist;
   phi::funcs::exponential_transform<T> trans(lambda);
   phi::funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);
-  if (x.IsSharedWith(*out) && x.share_buffer_with.size() > 0) {
+  if (x.IsSharedWith(*out) && x.can_not_uses.size() > 0) {
     DenseTensor &xx = const_cast<DenseTensor &>(x);
-    for (int i = 0; i < xx.share_buffer_with.size(); ++i) {
-      xx.share_buffer_with[i]->can_not_use = true;
+    for (int i = 0; i < xx.can_not_uses.size(); ++i) {
+      xx.can_not_uses[i] = std::make_shared<bool>(true);
     }
   }
 }
