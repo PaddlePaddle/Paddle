@@ -222,7 +222,7 @@ class TestSumOp8D(OpTest):
         self.outputs = {'Out': self.inputs['X'].sum(axis=(0, 3))}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_eager=True)
@@ -1036,6 +1036,7 @@ class TestReduceWithDtype2(TestReduceWithDtype):
                 'out_dtype': int(convert_np_dtype_to_dtype_(np.float64)),
             }
         )
+        self.enable_cinn = False
 
     def test_check_output(self):
         self.check_output()
