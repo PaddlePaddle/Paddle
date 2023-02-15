@@ -1752,7 +1752,7 @@ class Model:
                 Dataloader, this parameter will be ignored. Default: 0.
             collate_fn(callable, optional): function to generate mini-batch data by merging
                 the sample list, None for only stack each fields of sample in axis
-                0(same as :attr::`np.stack(..., axis=0)`). Default None
+                0(same as :attr::`np.stack(..., axis=0)`). Default: None.
             callbacks (Callback|None, optional): A list of `Callback` instances to apply
                 during training. If None, :ref:`api_paddle_callbacks_ProgBarLogger` and
                 :ref:`api_paddle_callbacks_ModelCheckpoint` are automatically inserted. Default: None.
@@ -1981,7 +1981,7 @@ class Model:
                 this parameter will be ignored. Default: 0.
             collate_fn(callable, optional): function to generate mini-batch data by merging
                 the sample list, None for only stack each fields of sample in axis
-                0(same as :attr::`np.stack(..., axis=0)`). Default None
+                0(same as :attr::`np.stack(..., axis=0)`). Default: None.
             callbacks (Callback|None, optional): A list of `Callback` instances to apply
                 during training. If None, `ProgBarLogger` and `ModelCheckpoint`
                 are automatically inserted. Default: None.
@@ -2091,7 +2091,7 @@ class Model:
                 this argument will be ignored. Default: 0.
             collate_fn(callable, optional): function to generate mini-batch data by merging
                 the sample list, None for only stack each fields of sample in axis
-                0(same as :attr::`np.stack(..., axis=0)`). Default None
+                0(same as :attr::`np.stack(..., axis=0)`). Default: None.
             stack_outputs (bool, optional): Whether stack output field like a batch, as for an output
                 field of a sample is in shape [X, Y], test_data contains N samples, predict
                 output field will be in shape [N, X, Y] if stack_output is True, and will
