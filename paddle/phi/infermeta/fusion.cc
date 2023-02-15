@@ -58,18 +58,25 @@ void MultiEncoderXPUInferMeta(
     int ffn_hidden_dim_scale,
     int act_type,
     int relative_type,
+    int slice_idx,
     MetaTensor* out,
     MetaTensor* x_fp16,
     MetaTensor* out_fp16) {
-  out->set_dims(x.dims());
-  out->set_dtype(x.dtype());
-  out->set_layout(x.layout());
-  x_fp16->set_dims(x.dims());
+  auto x_dims = x.dims();
+  x_fp16->set_dims(x_dims);
   x_fp16->set_dtype(DataType::FLOAT16);
   x_fp16->set_layout(x.layout());
-  out_fp16->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
   out_fp16->set_dtype(DataType::FLOAT16);
   out_fp16->set_layout(x.layout());
+  if (slice_idx == -1) {
+    out->set_dims(x_dims);
+    out_fp16->set_dims(x_dims);
+  } else {
+    out->set_dims({x_dims[0], x_dims[2]});
+    out_fp16->set_dims({x_dims[0], x_dims[2]});
+  }
 }
 
 }  // namespace phi

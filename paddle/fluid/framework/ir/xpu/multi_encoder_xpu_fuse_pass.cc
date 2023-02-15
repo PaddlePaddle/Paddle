@@ -1190,6 +1190,7 @@ bool MultiEncoderXPUFusePass::ApplyMultiEncoderXPUFuse(ir::Graph* graph) const {
         attr_name,
         PADDLE_GET_CONST(int, single_encoders[0]->Op()->GetAttr(attr_name)));
   }
+  op_desc.SetAttr("slice_idx", static_cast<int>(-1));
   op_desc.SetOutput("out", {out_name});
   op_desc.SetOutput("x_fp16", {x_fp16_name});
   op_desc.SetOutput("out_fp16", {out_fp16_name});

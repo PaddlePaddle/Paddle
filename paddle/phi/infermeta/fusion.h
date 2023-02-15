@@ -50,6 +50,7 @@ void MultiEncoderXPUInferMeta(
     int ffn_hidden_dim_scale,
     int act_type,
     int relative_type,
+    int slice_idx,
     MetaTensor* out,
     MetaTensor* x_fp16,
     MetaTensor* out_fp16);

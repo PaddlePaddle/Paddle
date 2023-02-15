@@ -1766,7 +1766,6 @@ struct DeleteDropoutOpPattern : public PatternBase {
   PATTERN_DECL_NODE(dropout_op_x);
   PATTERN_DECL_NODE(dropout_op);
   PATTERN_DECL_NODE(dropout_op_out);
-  PATTERN_DECL_NODE(dropout_op_mask);
 };
 
 struct DeleteQuantDequantOpPattern : public PatternBase {

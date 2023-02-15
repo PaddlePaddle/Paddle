@@ -41,7 +41,6 @@ void DeleteDropoutOpPass::ApplyImpl(ir::Graph* graph) const {
     GET_IR_NODE(dropout_op_x);
     GET_IR_NODE(dropout_op);
     GET_IR_NODE(dropout_op_out);
-    GET_IR_NODE(dropout_op_mask);
 
     // link dropout_op_out to pre_op
     auto dropout_op_x_name = dropout_op_x->Var()->Name();
@@ -63,8 +62,7 @@ void DeleteDropoutOpPass::ApplyImpl(ir::Graph* graph) const {
     IR_NODE_LINK_TO(pre_ops[0], dropout_op_out);
 
     // delete useless node
-    std::unordered_set<const Node*> delete_nodes{
-        dropout_op_x, dropout_op, dropout_op_mask};
+    std::unordered_set<const Node*> delete_nodes{dropout_op_x, dropout_op};
     GraphSafeRemoveNodes(graph, delete_nodes);
     found_subgraph_count++;
   };
