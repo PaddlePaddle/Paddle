@@ -18,6 +18,12 @@ set(tmp_static_prim_api_cc_path
 set(tmp_prim_api_h_path
     "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/api/generated_prim/prim_generated_api.h.tmp"
 )
+set(tmp_eager_tensor_operants_cc_path
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/utils/eager/eager_tensor_operants.cc.tmp"
+)
+set(tmp_eager_tensor_operants_h_path
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/utils/eager/eager_tensor_operants.h.tmp"
+)
 set(eager_prim_api_cc_path
     "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/api/generated_prim/eager_prim_api.cc"
 )
@@ -27,6 +33,13 @@ set(static_prim_api_cc_path
 set(prim_api_h_path
     "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/api/generated_prim/prim_generated_api.h"
 )
+set(eager_tensor_operants_cc_path
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/utils/eager/eager_tensor_operants.cc"
+)
+set(eager_tensor_operants_h_path
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/utils/eager/eager_tensor_operants.h"
+)
+
 set(static_prim_api_template_path
     "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/api/auto_code_generated/template/static_prim_api.cc.tpl"
 )
@@ -44,7 +57,10 @@ execute_process(
     ${PYTHON_EXECUTABLE} ${eager_prim_api_gen_file} --api_yaml_path
     ${legacy_api_yaml_path} ${api_yaml_path} --prim_api_header_path
     ${tmp_prim_api_h_path} --eager_prim_api_source_path
-    ${tmp_eager_prim_api_cc_path} --api_prim_yaml_path ${api_prim_yaml_path}
+    ${tmp_eager_prim_api_cc_path} --eager_tensor_operants_header_path
+    ${tmp_eager_tensor_operants_h_path} --eager_tensor_operants_source_path
+    ${tmp_eager_tensor_operants_cc_path} --api_prim_yaml_path
+    ${api_prim_yaml_path}
   RESULT_VARIABLE _result)
 if(${_result})
   message(FATAL_ERROR "Eager prim api generate failed, exiting.")
@@ -54,6 +70,13 @@ execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
 execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
                         ${tmp_eager_prim_api_cc_path} ${eager_prim_api_cc_path})
 message("copy tmp_xxx_prim_api to xxx_prim_api")
+execute_process(
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+          ${tmp_eager_tensor_operants_h_path} ${eager_tensor_operants_h_path})
+execute_process(
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+          ${tmp_eager_tensor_operants_cc_path} ${eager_tensor_operants_cc_path})
+message("copy eager_tensor_operants.tmp to eager_tensor_operants")
 
 message("Static prim api code generator")
 execute_process(
