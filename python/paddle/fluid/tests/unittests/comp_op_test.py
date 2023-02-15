@@ -638,6 +638,7 @@ class PrimForwardChecker:
                 )
                 raise RuntimeError(msg)
         core._set_prim_forward_enabled(False)
+        jit_api.program_cache.clear()
 
     def check_jit_comp_with_cinn(self):
         if self.comp_op_type == "prim":
@@ -715,6 +716,7 @@ class PrimForwardChecker:
                 )
                 raise RuntimeError(msg)
         core._set_prim_forward_enabled(False)
+        jit_api.program_cache.clear()
 
 
 class PrimGradChecker(PrimForwardChecker):
