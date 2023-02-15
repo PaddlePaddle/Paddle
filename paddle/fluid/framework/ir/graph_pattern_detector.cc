@@ -3043,7 +3043,10 @@ void patterns::DeleteDropoutOpPattern::operator()() {
                                          std::string("upscale_in_train"));
   auto dropout_op_out = pattern->NewNode(dropout_op_out_repr())
                             ->assert_is_op_output("dropout", "Out");
-  dropout_op->LinksFrom({dropout_op_x}).LinksTo({dropout_op_out});
+  auto dropout_op_mask = pattern->NewNode(dropout_op_mask_repr())
+                             ->assert_is_op_output("dropout", "Mask");
+  dropout_op->LinksFrom({dropout_op_x})
+      .LinksTo({dropout_op_out, dropout_op_mask});
 }
 
 void patterns::DeleteQuantOpFuse::operator()(PDNode *input_act_node,
