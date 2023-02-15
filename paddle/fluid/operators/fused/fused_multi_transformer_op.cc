@@ -182,6 +182,8 @@ class FusedMultiTransformerOpOpMaker
     AddInput("TimeStep",
              "(optional, int) The time step for generation inference.")
         .AsDispensable();
+    AddInput("SeqLengths", "(optional) The sequence length tensor of inputs.")
+        .AsDispensable();
     AddInput("SrcMask", "(optional) The attention mask tensor in fmha.")
         .AsDispensable();
     AddInput("OutLinearW", "The out_linear weight tensor.").AsDuplicable();

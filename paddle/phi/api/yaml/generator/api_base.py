@@ -1207,9 +1207,9 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  auto* dev_ctx = GetDeviceContextByBackend(kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
 {input_tensors}
 {output_create}
-{code_indent}  paddle::platform::RecordEvent *infer_shape_record_event = nullptr;
-{code_indent}  if(paddle::platform::RecordEvent::IsEnabled()){{
-{code_indent}    infer_shape_record_event = new paddle::platform::RecordEvent(\"{self.api} infer_meta\", paddle::platform::TracerEventType::OperatorInner, 1);
+{code_indent}  phi::RecordEvent *infer_shape_record_event = nullptr;
+{code_indent}  if(phi::RecordEvent::IsEnabled()){{
+{code_indent}    infer_shape_record_event = new phi::RecordEvent(\"{self.api} infer_meta\", phi::TracerEventType::OperatorInner, 1);
 {code_indent}  }}
 {self.gene_infer_meta(kernel_output_names, code_indent)}
 {code_indent}  if(infer_shape_record_event != nullptr){{
@@ -1217,9 +1217,9 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  }}
 {code_indent}  using kernel_signature = {kernel_signature};
 {code_indent}  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-{code_indent}  paddle::platform::RecordEvent* kernel_record_event = nullptr;
-{code_indent}  if(paddle::platform::RecordEvent::IsEnabled()){{
-{code_indent}    kernel_record_event = new paddle::platform::RecordEvent(\"{self.api} compute\", paddle::platform::TracerEventType::OperatorInner, 1);
+{code_indent}  phi::RecordEvent* kernel_record_event = nullptr;
+{code_indent}  if(phi::RecordEvent::IsEnabled()){{
+{code_indent}    kernel_record_event = new phi::RecordEvent(\"{self.api} compute\", phi::TracerEventType::OperatorInner, 1);
 {code_indent}  }}
 {code_indent}    (*kernel_fn)({kernel_args}, {", ".join(outputs_args)});
 {code_indent}  if(kernel_record_event != nullptr){{
