@@ -34,6 +34,27 @@ void tanh_grad(const Tensor& out, const Tensor& grad_out, Tensor* grad_x) {
 }
 
 template <typename T>
+void reshape_grad(const Tensor& xshape,
+                  const Tensor& grad_out,
+                  Tensor* grad_x) {
+  auto grad_x_tmp = reshape<T>(grad_out, IntArray(xshape));
+  set_output<T>(grad_x_tmp, grad_x);
+}
+
+template <typename T>
+void transpose_grad(const Tensor& grad_out,
+                    const std::vector<int>& perm,
+                    Tensor* grad_x) {
+  std::vector<int> reverse_perm(perm);
+  // make origin ranks
+  for (int i = 0; i < static_cast<int>(perm.size()); ++i) {
+    reverse_perm[perm[i]] = i;
+  }
+  auto grad_x_tmp = transpose<T>(grad_out, reverse_perm);
+  set_output<T>(grad_x_tmp, grad_x);
+}
+
+template <typename T>
 void subtract_grad(const Tensor& x,
                    const Tensor& y,
                    const Tensor& out_grad,

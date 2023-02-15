@@ -38,6 +38,27 @@ namespace paddle {
 namespace prim {
 
 template <>
+Tensor transpose<DescTensor>(const Tensor& x, const std::vector<int>& perm) {
+  Tensor out = empty<DescTensor>({}, x.dtype(), paddle::Place());
+  Tensor xshape = empty<DescTensor>({}, x.dtype(), paddle::Place());
+  framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
+  framework::OpDesc* op = block->AppendOp();
+  op->SetType("transpose2");
+  op->SetInput("X",
+               {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
+  op->SetAttr("axis", perm);
+  op->SetOutput(
+      "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
+  op->SetOutput(
+      "XShape",
+      {std::static_pointer_cast<prim::DescTensor>(xshape.impl())->Name()});
+  op->CheckAttrs();
+  op->InferVarType(block);
+  op->InferShape(*block);
+  return out;
+}
+
+template <>
 Tensor pow<DescTensor>(const Tensor& x, const Scalar& y) {
   Tensor out = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
   framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
@@ -217,9 +238,10 @@ template <>
 Tensor reshape<DescTensor>(const Tensor& x, const IntArray& shape) {
   // Grad infershape
   Tensor out = empty<DescTensor>({}, x.dtype(), paddle::Place());
+  Tensor xshape = empty<DescTensor>({}, x.dtype(), paddle::Place());
   framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
   framework::OpDesc* op = block->AppendOp();
-  op->SetType("reshape");
+  op->SetType("reshape2");
   op->SetInput("X",
                {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
   std::vector<int> res;
@@ -230,6 +252,9 @@ Tensor reshape<DescTensor>(const Tensor& x, const IntArray& shape) {
   op->SetAttr("shape", res);
   op->SetOutput(
       "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
+  op->SetOutput(
+      "XShape",
+      {std::static_pointer_cast<prim::DescTensor>(xshape.impl())->Name()});
   op->CheckAttrs();
   op->InferVarType(block);
   op->InferShape(*block);

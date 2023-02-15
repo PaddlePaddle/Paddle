@@ -65,7 +65,7 @@ class TestTanhGradComp(unittest.TestCase):
     def tearDown(self):
         paddle.disable_static()
 
-    def test_tanh_grad_comp(self):
+    def test_add_grad_comp(self):
         def actual(primal0, primal1):
             core._set_prim_backward_enabled(True)
             paddle.disable_static()
