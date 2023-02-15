@@ -239,9 +239,6 @@ if(WITH_DISTRIBUTE)
     rpc_utils
     SRCS rpc_utils.cc
     DEPS enforce ${BRPC_DEPS})
-
-  find_package(ICU REQUIRED COMPONENTS uc)
-  target_link_libraries(rpc_utils ${ICU_LIBRARIES})
 endif()
 
 cc_library(

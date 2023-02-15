@@ -32,16 +32,12 @@ register_operators(
   c_gen_cncl_id_op
   rpc_call_op
   rpc_result_op
-  rpc_token_call_op
-  rpc_token_result_op
   DEPS
   ${COLLECTIVE_DEPS})
 
 if(WITH_DISTRIBUTE)
   op_library(rpc_call_op DEPS rpc_utils ${COLLECTIVE_DEPS})
   op_library(rpc_result_op DEPS rpc_utils ${COLLECTIVE_DEPS})
-  op_library(rpc_token_call_op DEPS rpc_utils ${COLLECTIVE_DEPS})
-  op_library(rpc_token_result_op DEPS rpc_utils ${COLLECTIVE_DEPS})
 endif()
 
 if(WITH_NCCL OR WITH_RCCL)
