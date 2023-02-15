@@ -217,6 +217,7 @@ if(WITH_XPU)
     SRCS xpu/quant_utils.cc
     DEPS pass)
   pass_library(fc_xpu_fuse_pass inference DIR xpu DEPS quant_utils)
+  pass_library(embedding_with_eltwise_add_xpu_fuse_pass inference DIR xpu)
 endif()
 
 cc_library(

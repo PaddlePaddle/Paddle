@@ -34,4 +34,9 @@ void FcXPUInferMeta(const MetaTensor& x,
                     float act_alpha,
                     MetaTensor* out);
 
+void EmbeddingWithEltwiseAddXPUInferMeta(
+    const std::vector<const MetaTensor*>& ids,
+    const std::vector<const MetaTensor*>& tables,
+    MetaTensor* out);
+
 }  // namespace phi

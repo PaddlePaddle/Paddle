@@ -80,6 +80,8 @@ XPUOpMap& get_kl1_ops() {
       {"elementwise_pow", XPUKernelSet({phi::DataType::FLOAT32})},
       {"elementwise_sub_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"elementwise_sub", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"embedding_with_eltwise_add_xpu",
+       XPUKernelSet({phi::DataType::FLOAT32})},
       {"equal", XPUKernelSet({phi::DataType::INT64})},
       {"expand_as_v2",
        XPUKernelSet({phi::DataType::INT32,

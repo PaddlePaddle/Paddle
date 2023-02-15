@@ -42,4 +42,26 @@ void FcXPUInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
+void EmbeddingWithEltwiseAddXPUInferMeta(
+    const std::vector<const MetaTensor*>& ids,
+    const std::vector<const MetaTensor*>& tables,
+    MetaTensor* out) {
+  PADDLE_ENFORCE_GT(ids.size(),
+                    0UL,
+                    phi::errors::InvalidArgument(
+                        "The input ids in EmbeddingWithEltwiseAddXPUInferMeta "
+                        "can't be empty."));
+  PADDLE_ENFORCE_GT(tables.size(),
+                    0UL,
+                    phi::errors::InvalidArgument(
+                        "The input tables in "
+                        "EmbeddingWithEltwiseAddXPUInferMeta can't be empty."));
+
+  auto id_dims = ids[0]->dims();
+  auto table_dims = tables[0]->dims();
+  out->set_dims(phi::make_ddim({id_dims[0], id_dims[1], table_dims[1]}));
+  out->set_dtype(tables[0]->dtype());
+  out->set_layout(ids[0]->layout());
+}
+
 }  // namespace phi
