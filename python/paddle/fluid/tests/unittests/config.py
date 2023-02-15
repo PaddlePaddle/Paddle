@@ -15,54 +15,6 @@
 import numpy as np
 
 TOLERANCE = {
-    np.float64: {
-        "jit_comp": {"rtol": 1e-15, "atol": 1e-15},
-        "fw_comp": {"rtol": 1e-15, "atol": 1e-15},
-        "rev_comp": {"rtol": 1e-15, "atol": 1e-15},
-        "cinn": {"rtol": 1e-14, "atol": 1e-14},
-    },
-    np.float32: {
-        "jit_comp": {"rtol": 1e-6, "atol": 1e-6},
-        "fw_comp": {"rtol": 1e-6, "atol": 1e-6},
-        "rev_comp": {"rtol": 1e-6, "atol": 1e-6},
-        "cinn": {"rtol": 1e-5, "atol": 1e-5},
-    },
-    np.float16: {
-        "jit_comp": {"rtol": 1e-3, "atol": 1e-3},
-        "fw_comp": {"rtol": 1e-3, "atol": 1e-3},
-        "rev_comp": {"rtol": 1e-3, "atol": 1e-3},
-        "cinn": {"rtol": 1e-2, "atol": 1e-2},
-    },
-    np.uint16: {
-        "jit_comp": {"rtol": 1e-6, "atol": 1e-6},
-        "fw_comp": {"rtol": 1e-6, "atol": 1e-6},
-        "rev_comp": {"rtol": 1e-6, "atol": 1e-6},
-        "cinn": {"rtol": 1e-5, "atol": 1e-5},
-    },
-    'float64': {
-        "jit_comp": {"rtol": 1e-15, "atol": 1e-15},
-        "fw_comp": {"rtol": 1e-15, "atol": 1e-15},
-        "rev_comp": {"rtol": 1e-15, "atol": 1e-15},
-        "cinn": {"rtol": 1e-14, "atol": 1e-14},
-    },
-    'float32': {
-        "jit_comp": {"rtol": 1e-6, "atol": 1e-6},
-        "fw_comp": {"rtol": 1e-6, "atol": 1e-6},
-        "rev_comp": {"rtol": 1e-6, "atol": 1e-6},
-        "cinn": {"rtol": 1e-5, "atol": 1e-5},
-    },
-    'float16': {
-        "jit_comp": {"rtol": 1e-3, "atol": 1e-3},
-        "fw_comp": {"rtol": 1e-3, "atol": 1e-3},
-        "rev_comp": {"rtol": 1e-3, "atol": 1e-3},
-        "cinn": {"rtol": 1e-2, "atol": 1e-2},
-    },
-    'uint16': {
-        "jit_comp": {"rtol": 1e-6, "atol": 1e-6},
-        "fw_comp": {"rtol": 1e-6, "atol": 1e-6},
-        "rev_comp": {"rtol": 1e-6, "atol": 1e-6},
-        "cinn": {"rtol": 1e-5, "atol": 1e-5},
-    },
     np.dtype('float64'): {
         "jit_comp": {"rtol": 1e-15, "atol": 1e-15},
         "fw_comp": {"rtol": 1e-15, "atol": 1e-15},
