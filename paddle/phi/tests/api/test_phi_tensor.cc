@@ -211,7 +211,7 @@ void TestInitilized() {
 
 void TestDataInterface() {
   // Test DenseTensor
-  experimental::Tensor test_tensor(paddle::PlaceType::kCPU, {1, 1});
+  auto test_tensor = paddle::experimental::empty({1, 1});
   CHECK(test_tensor.is_initialized() == true);
   void* tensor_ptr = test_tensor.data();
   CHECK(tensor_ptr != nullptr);
