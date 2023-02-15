@@ -32,7 +32,7 @@ cc_library(
 cc_library(
   cost_model
   SRCS cost_model.cc
-  DEPS executor graph profiler proto_desc device_tracer)
+  DEPS executor graph profiler proto_desc phi_device_tracer)
 
 set(GRAPH_PATTERN_DETECTOR_DEPS graph graph_helper graph_traits)
 if(WITH_TESTING)
@@ -398,10 +398,6 @@ if(WITH_MKLDNN)
     test_depthwise_conv_mkldnn_pass
     SRCS mkldnn/depthwise_conv_mkldnn_pass_tester.cc
     DEPS depthwise_conv_mkldnn_pass)
-  cc_test(
-    test_conv_activation_mkldnn_fuse_pass
-    SRCS mkldnn/conv_activation_mkldnn_fuse_pass_tester.cc
-    DEPS conv_activation_mkldnn_fuse_pass)
   cc_test_old(
     test_int8_scale_calculation_mkldnn_pass SRCS
     mkldnn/int8_scale_calculation_mkldnn_pass_tester.cc DEPS

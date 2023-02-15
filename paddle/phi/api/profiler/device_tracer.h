@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,14 +16,13 @@ limitations under the License. */
 #include <chrono>  // NOLINT
 #include <string>
 
-#include "paddle/fluid/platform/dynload/cupti.h"
-#include "paddle/fluid/platform/event.h"
-#include "paddle/fluid/platform/os_info.h"
-#include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/profiler.pb.h"
+#include "paddle/phi/api/profiler/event.h"
+#include "paddle/phi/api/profiler/profiler.pb.h"
+#include "paddle/phi/backends/dynload/cupti.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/os_info.h"
 
-namespace paddle {
-namespace platform {
+namespace phi {
 
 ///////////////////////
 // WARN: Under Development. Don't depend on it yet.
@@ -164,5 +163,4 @@ int BlockDepth();
 
 // Set current thread id, so we can map the system thread id to thread id.
 void RecoreCurThreadId(uint64_t id);
-}  // namespace platform
-}  // namespace paddle
+}  // namespace phi

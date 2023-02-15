@@ -19,11 +19,6 @@ from dist_fleet_simnet_bow import train_network
 import paddle
 import paddle.fluid as fluid
 import paddle.incubate.distributed.fleet.role_maker as role_maker
-
-# from paddle.fluid.incubate.fleet.parameter_server import TranspilerOptimizer
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import (
-    fleet,
-)
 from paddle.fluid.transpiler.distribute_transpiler import (
     DistributeTranspilerConfig,
 )
@@ -33,6 +28,9 @@ from paddle.incubate.distributed.fleet.role_maker import (
     UserDefinedCollectiveRoleMaker,
     UserDefinedRoleMaker,
 )
+
+# from paddle.incubate.fleet.parameter_server import TranspilerOptimizer
+from paddle.incubate.fleet.parameter_server.distribute_transpiler import fleet
 
 
 class DistributeTranspilerConfigTest(unittest.TestCase):
