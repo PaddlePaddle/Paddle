@@ -23,10 +23,6 @@ from paddle.fluid import backward, core, framework, program_guard
 from paddle.fluid.compiler import BuildStrategy
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.executor import (
-    _is_dy2st_enable_standalone_executor,
-    _is_enable_standalone_executor,
-)
 from paddle.fluid.framework import _apply_pass
 from paddle.fluid.layers.utils import _hash_with_id, flatten, pack_sequence_as
 
@@ -190,6 +186,28 @@ class PartialProgramLayer:
 
         # program_id -> list(scope)
         self._scope_cache = {}
+
+    def __call__(self, inputs):
+        """
+        Execute static graph by Interpreter and Return dynamic Tensors.
+        """
+        in_vars, out_vars = self._prepare(inputs)
+        self._cast_fp16_if_pure_fp16(in_vars)
+        attrs = self._prepare_attributes()
+
+        _legacy_C_ops.run_program(
+            self._valid_vars(in_vars),
+            self._valid_vars(self._params),
+            self._valid_vars(out_vars),
+            self._create_scope_vec(
+                program_id=self.program_id, use_scope_cache=True
+            ),
+            self._double_grads,
+            self._cuda_graph_vec,
+            *attrs
+        )
+        restored_nest_out = self._restore_out(out_vars)
+        return self._remove_no_value(restored_nest_out)
 
     def _get_scope(self, program_id=None, use_scope_cache=False):
         if use_scope_cache:
@@ -632,27 +650,24 @@ class PartialProgramLayer:
                     double_grads.append(var_base)
         return self._valid_vars(double_grads)
 
-    def _get_end_op_index(self):
-        if _in_amp_guard():
-            infer_program = self._infer_amp_program
-        elif _in_pure_fp16_guard():
-            infer_program = self._infer_pure_fp16_program
-        else:
-            infer_program = self._infer_program
-        return infer_program.desc.block(0).op_size()
+    def _cast_fp16_if_pure_fp16(self, in_vars):
+        if _in_pure_fp16_guard():
+            for i, var in enumerate(in_vars):
+                name = var.name
+                if (
+                    self.program.global_block().has_var(name)
+                    and self.program.global_block().var(name).dtype
+                    == paddle.float16
+                ):
+                    in_vars[i] = var.astype('float16')
+                    in_vars[i].name = name
 
-    def __call__(self, inputs):
-        in_vars, out_vars = self._prepare(inputs)
-
-        self._cast_fp16_if_pure_fp16(in_vars)
-
+    def _prepare_attributes(self):
         attrs = [
-            'global_block',
-            self.program.desc.block(0),
-            'start_op_index',
-            0,
-            'end_op_index',
-            self._get_end_op_index(),
+            'forward_global_block',
+            self.forward_program.desc.block(0),
+            'backward_global_block',
+            self.backward_program.desc.block(0),
             'is_test',
             not self.training,
             'program_id',
@@ -679,57 +694,7 @@ class PartialProgramLayer:
                     self._cuda_graph_pool_id,
                 )
             )
-
-        use_interpretorcore = (
-            _is_enable_standalone_executor()
-            and _is_dy2st_enable_standalone_executor()
-        )
-        attrs.extend(('use_interpretorcore', use_interpretorcore))
-        if use_interpretorcore:
-            attrs.extend(
-                (
-                    'forward_global_block',
-                    self.forward_program.desc.block(0),
-                    'backward_global_block',
-                    self.backward_program.desc.block(0),
-                )
-            )
-
-            _legacy_C_ops.run_program(
-                self._valid_vars(in_vars),
-                self._valid_vars(self._params),
-                self._valid_vars(out_vars),
-                self._create_scope_vec(
-                    program_id=self.program_id, use_scope_cache=True
-                ),
-                self._double_grads,
-                self._cuda_graph_vec,
-                *attrs
-            )
-        else:
-            _legacy_C_ops.run_program(
-                self._valid_vars(in_vars),
-                self._valid_vars(self._params),
-                self._valid_vars(out_vars),
-                self._create_scope_vec(),
-                self._double_grads,
-                self._cuda_graph_vec,
-                *attrs
-            )
-        restored_nest_out = self._restore_out(out_vars)
-        return self._remove_no_value(restored_nest_out)
-
-    def _cast_fp16_if_pure_fp16(self, in_vars):
-        if _in_pure_fp16_guard():
-            for i, var in enumerate(in_vars):
-                name = var.name
-                if (
-                    self.program.global_block().has_var(name)
-                    and self.program.global_block().var(name).dtype
-                    == paddle.float16
-                ):
-                    in_vars[i] = var.astype('float16')
-                    in_vars[i].name = name
+        return attrs
 
     @switch_to_static_graph
     def _build_infer_program(self, infer_program, forward_end_op_index):
