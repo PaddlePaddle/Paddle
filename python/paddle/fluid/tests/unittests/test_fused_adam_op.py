@@ -53,22 +53,22 @@ def fused_adam_step(inputs, attributes, num):
         beta2 = inputs['Beta2Tensor'][0][0]
 
     for i in range(num):
-        moments1_out.append(beta1 * moments1[i] + (1 - beta1) * grads[i])
+        moments1_out.append(beta1 * moments1[i][1] + (1 - beta1) * grads[i][1])
         moments2_out.append(
-            beta2 * moments2[i] + (1 - beta2) * np.square(grads[i])
+            beta2 * moments2[i][1] + (1 - beta2) * np.square(grads[i][1])
         )
-        lr_t = lr * np.sqrt(1 - beta2_pows[i]) / (1 - beta1_pows[i])
+        lr_t = lr * np.sqrt(1 - beta2_pows[i][1]) / (1 - beta1_pows[i][1])
         params_out.append(
-            params[i]
+            params[i][1]
             - lr_t * (moments1_out[i] / (np.sqrt(moments2_out[i]) + epsilon))
         )
 
     for i in range(num):
         beta1_pows_out.append(
-            np.array([beta1_pows[i]]).astype("float32") * beta1
+            np.array([beta1_pows[i][1]]).astype("float32") * beta1
         )
         beta2_pows_out.append(
-            np.array([beta2_pows[i]]).astype("float32") * beta2
+            np.array([beta2_pows[i][1]]).astype("float32") * beta2
         )
 
     return (
@@ -86,9 +86,7 @@ class TestFusedAdamOp(OpTest):
         self.__class__.op_type = "fused_adam"
 
         num = 10
-
         inputs_list = [[0] * num] * 6
-
         learning_rate = 0.004
         beta1 = 0.78
         beta2 = 0.836
@@ -96,7 +94,12 @@ class TestFusedAdamOp(OpTest):
         beta1_pow = beta1**10
         beta2_pow = beta2**10
 
-        self.attrs = {'epsilon': epsilon, 'beta1': beta1, 'beta2': beta2}
+        self.attrs = {
+            'epsilon': epsilon,
+            'beta1': beta1,
+            'beta2': beta2,
+            "chunk_size": 32 * 2048,
+        }
 
         for i in range(num):
 
@@ -114,17 +117,29 @@ class TestFusedAdamOp(OpTest):
             inputs_list[5][i] = np.array([beta2_pow]).astype("float32")
 
         self.inputs = {
-            'Params': inputs_list[0],
-            'Grads': inputs_list[1],
-            'Moments1': inputs_list[2],
-            'Moments2': inputs_list[3],
+            'Params': [
+                ("params" + str(i), inputs_list[0][i]) for i in range(num)
+            ],
+            'Grads': [
+                ("grads" + str(i), inputs_list[1][i]) for i in range(num)
+            ],
+            'Moments1': [
+                ("moments1" + str(i), inputs_list[2][i]) for i in range(num)
+            ],
+            'Moments2': [
+                ("moments2" + str(i), inputs_list[3][i]) for i in range(num)
+            ],
             'LearningRate': np.array([learning_rate]).astype("float32"),
-            'Beta1Pows': inputs_list[4],
-            'Beta2Pows': inputs_list[5],
+            'Beta1Pows': [
+                ("beta1_pows" + str(i), inputs_list[4][i]) for i in range(num)
+            ],
+            'Beta2Pows': [
+                ("beta2_pows" + str(i), inputs_list[5][i]) for i in range(num)
+            ],
         }
 
         (
-            param_out,
+            params_out,
             moments1_out,
             moments2_out,
             beta1_pows_out,
@@ -132,11 +147,23 @@ class TestFusedAdamOp(OpTest):
         ) = fused_adam_step(self.inputs, self.attrs, num)
 
         self.outputs = {
-            'Moments1Out': moments1_out,
-            'Moments2Out': moments2_out,
-            'ParamsOut': param_out,
-            'Beta1PowsOut': beta1_pows_out,
-            'Beta2PowsOut': beta2_pows_out,
+            'Moments1Out': [
+                ("moments1_out" + str(i), moments1_out[i]) for i in range(num)
+            ],
+            'Moments2Out': [
+                ("moments2_out" + str(i), moments2_out[i]) for i in range(num)
+            ],
+            'ParamsOut': [
+                ("params_out" + str(i), params_out[i]) for i in range(num)
+            ],
+            'Beta1PowsOut': [
+                ("beta1_pows_out" + str(i), beta1_pows_out[i])
+                for i in range(num)
+            ],
+            'Beta2PowsOut': [
+                ("beta2_pows_out" + str(i), beta2_pows_out[i])
+                for i in range(num)
+            ],
         }
 
     def test_check_output(self):
