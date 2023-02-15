@@ -1230,7 +1230,7 @@ class DownpourOptimizer(DistributedOptimizer):
         fleet._main_programs = programs
         fleet._scopes = scopes
         if opt_info["use_ps_gpu"]:
-            from paddle.fluid.transpiler.collective import MultiThread
+            from paddle.distributed.transpiler.collective import MultiThread
 
             # check start program
             if program_mode not in [
