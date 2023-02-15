@@ -472,6 +472,7 @@ void CumInferMeta(const MetaTensor& x,
     out->set_dims(x_dims);
     out->set_dtype(x.dtype());
   }
+
   out->share_lod(x);
 }
 
@@ -970,7 +971,7 @@ void ExpandInferMeta(const MetaTensor& x,
                                    MAX_RANK_SUPPORTED));
   PADDLE_ENFORCE_GE(
       expand_shape.size(),
-      1,
+      0,
       phi::errors::InvalidArgument("The number of elements (%d) of 'shape' for "
                                    "must be a positive integer.",
                                    expand_shape.size()));
@@ -1005,7 +1006,7 @@ void ExpandInferMeta(const MetaTensor& x,
 
   out->set_dims(make_ddim(out_shape));
   out->set_dtype(x.dtype());
-  if (out_shape[0] == x_dims[0]) {
+  if (out_rank > 0 && out_shape[0] == x_dims[0]) {
     out->share_lod(x);
   }
 }
@@ -4100,14 +4101,23 @@ void TopKInferMeta(const MetaTensor& x,
                    MetaConfig config) {
   auto input_dims = x.dims();
   const int& dim_size = input_dims.size();
-  PADDLE_ENFORCE_EQ(
-      (axis < dim_size) && (axis >= (-1 * dim_size)),
-      true,
-      phi::errors::InvalidArgument(
-          "the axis of topk must be [-%d, %d), but you set axis is %d",
-          dim_size,
-          dim_size,
-          axis));
+  if (dim_size != 0) {
+    PADDLE_ENFORCE_EQ(
+        (axis < dim_size) && (axis >= (-1 * dim_size)),
+        true,
+        phi::errors::InvalidArgument(
+            "the axis of topk must be [-%d, %d), but you set axis is %d",
+            dim_size,
+            dim_size,
+            axis));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        (axis == dim_size) || (axis == -1),
+        true,
+        phi::errors::InvalidArgument("the axis of topk must be 0 or -1 when "
+                                     "x.dims() = 0, but you set axis is %d",
+                                     axis));
+  }
 
   if (axis < 0) axis += dim_size;
 
@@ -4125,12 +4135,13 @@ void TopKInferMeta(const MetaTensor& x,
 
   PADDLE_ENFORCE_GE(
       input_dims.size(),
-      1,
-      phi::errors::InvalidArgument("input of topk must have >= 1d shape"));
+      0,
+      phi::errors::InvalidArgument("input of topk must have >= 0d shape"));
 
   phi::DDim dims = input_dims;
-
-  dims[axis] = k;
+  if (input_dims.size() > 0) {
+    dims[axis] = k;
+  }
   out->set_dims(dims);
   out->share_lod(x);
   out->set_dtype(x.dtype());

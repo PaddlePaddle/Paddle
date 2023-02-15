@@ -571,6 +571,104 @@ class TestSundryAPI(unittest.TestCase):
         paddle.disable_static()
         self.x = paddle.rand([])
 
+    def test_expand(self):
+        x = paddle.full([], 1, 'float32')
+        x.stop_gradient = False
+        out = paddle.expand(x, shape=[1])
+        out.backward()
+        self.assertEqual(x.shape, [])
+        self.assertEqual(x.item(), 1.0)
+        self.assertEqual(x.grad.shape, [1])
+        self.assertEqual(x.grad.item(0), 1.0)
+        self.assertEqual(out.shape, [1])
+        self.assertEqual(out.item(0), 1.0)
+        self.assertEqual(out.grad, None)
+
+        x1 = paddle.full([], 1, 'float32')
+        x1.stop_gradient = False
+        out1 = paddle.expand(x1, shape=[])
+        out1.backward()
+        self.assertEqual(x1.shape, [])
+        self.assertEqual(x1.item(), 1.0)
+        self.assertEqual(x1.grad.shape, [])
+        self.assertEqual(x1.grad.item(), 1.0)
+        self.assertEqual(out1.shape, [])
+        self.assertEqual(out1.item(), 1.0)
+        self.assertEqual(out1.grad, None)
+
+    def test_expand_as(self):
+        x = paddle.full([], 1, 'float32')
+        x.stop_gradient = False
+        y = paddle.full([], 1, 'float32')
+        y.stop_gradient = False
+        out = paddle.expand_as(x, y)
+        out.backward()
+        self.assertEqual(x.shape, [])
+        self.assertEqual(x.item(), 1.0)
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(x.grad.item(), 1.0)
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.item(), 1.0)
+        self.assertEqual(out.grad, None)
+
+        x1 = paddle.full([], 1, 'float32')
+        x1.stop_gradient = False
+        y1 = paddle.full([1], 1, 'float32')
+        out1 = paddle.expand_as(x1, y1)
+        out1.backward()
+        self.assertEqual(x1.shape, [])
+        self.assertEqual(x1.item(), 1.0)
+        self.assertEqual(x1.grad.shape, [1])
+        self.assertEqual(x1.grad.item(0), 1.0)
+        self.assertEqual(out1.shape, [1])
+        self.assertEqual(out1.item(0), 1.0)
+        self.assertEqual(out1.grad, None)
+
+    def test_top_k(self):
+        x = paddle.full([], 1, 'float32')
+        x.stop_gradient = False
+        out, indices = paddle.topk(x, k=1, axis=0)
+        self.assertEqual(x.shape, [])
+        self.assertEqual(x.item(), 1.0)
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.item(), 1.0)
+
+        x1 = paddle.full([], 1, 'float32')
+        x1.stop_gradient = False
+        out1, indices1 = paddle.topk(x1, k=1, axis=-1)
+        self.assertEqual(x1.shape, [])
+        self.assertEqual(x1.item(), 1.0)
+        self.assertEqual(out1.shape, [])
+        self.assertEqual(out1.item(), 1.0)
+
+        with self.assertRaises(ValueError):
+            tmp = paddle.topk(x1, k=1, axis=2)
+
+    def test_broadcast_to(self):
+        x = paddle.full([], 1, 'float32')
+        x.stop_gradient = False
+        out = paddle.broadcast_to(x, shape=[1])
+        out.backward()
+        self.assertEqual(x.shape, [])
+        self.assertEqual(x.item(), 1.0)
+        self.assertEqual(x.grad.shape, [1])
+        self.assertEqual(x.grad.item(0), 1.0)
+        self.assertEqual(out.shape, [1])
+        self.assertEqual(out.item(0), 1.0)
+        self.assertEqual(out.grad, None)
+
+        x1 = paddle.full([], 1, 'float32')
+        x1.stop_gradient = False
+        out1 = paddle.broadcast_to(x1, shape=[])
+        out1.backward()
+        self.assertEqual(x1.shape, [])
+        self.assertEqual(x1.item(), 1.0)
+        self.assertEqual(x1.grad.shape, [])
+        self.assertEqual(x1.grad.item(), 1.0)
+        self.assertEqual(out1.shape, [])
+        self.assertEqual(out1.item(), 1.0)
+        self.assertEqual(out1.grad, None)
+
     def test_argmin(self):
         x = paddle.rand([])
         out1 = paddle.argmin(x, 0)
@@ -1680,6 +1778,143 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.exe = paddle.static.Executor()
 
     @prog_scope()
+    def test_expand(self):
+        x = paddle.full([], 1, 'float32')
+        x.stop_gradient = False
+        out = paddle.expand(x, shape=[1])
+        paddle.static.append_backward(out.sum())
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog, fetch_list=[x, out, x.grad_name, out.grad_name]
+        )
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[0], 1.0)
+        self.assertEqual(res[1].shape, (1,))
+        self.assertEqual(res[1], 1.0)
+        self.assertEqual(res[2].shape, (1,))
+        self.assertEqual(res[2], 1.0)
+        self.assertEqual(res[3].shape, (1,))
+        self.assertEqual(res[3], 1.0)
+
+        x1 = paddle.full([], 1, 'float32')
+        x1.stop_gradient = False
+        out1 = paddle.expand(x1, shape=[])
+        paddle.static.append_backward(out1.sum())
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog, fetch_list=[x1, out1, x1.grad_name, out1.grad_name]
+        )
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[0], 1.0)
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[1], 1.0)
+        self.assertEqual(res[2].shape, ())
+        self.assertEqual(res[2], 1.0)
+        self.assertEqual(res[3].shape, ())
+        self.assertEqual(res[3], 1.0)
+
+    @prog_scope()
+    def test_expand_as(self):
+        x = paddle.full([], 1, 'float32')
+        x.stop_gradient = False
+        y = paddle.full([], 1, 'float32')
+        y.stop_gradient = False
+        out = paddle.expand_as(x, y)
+        paddle.static.append_backward(out.sum())
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog, fetch_list=[x, out, x.grad_name, out.grad_name]
+        )
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[0], 1.0)
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[1], 1.0)
+        self.assertEqual(res[2].shape, ())
+        self.assertEqual(res[2], 1.0)
+        self.assertEqual(res[3].shape, ())
+        self.assertEqual(res[3], 1.0)
+
+        x1 = paddle.full([], 1, 'float32')
+        x1.stop_gradient = False
+        y1 = paddle.full([1], 1, 'float32')
+        y1.stop_gradient = False
+        out1 = paddle.expand_as(x1, y1)
+        paddle.static.append_backward(out1.sum())
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog, fetch_list=[x1, out1, x1.grad_name, out1.grad_name]
+        )
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[0], 1.0)
+        self.assertEqual(res[1].shape, (1,))
+        self.assertEqual(res[1], 1.0)
+        self.assertEqual(res[2].shape, (1,))
+        self.assertEqual(res[2], 1.0)
+        self.assertEqual(res[3].shape, (1,))
+        self.assertEqual(res[3], 1.0)
+
+    @prog_scope()
+    def test_top_k(self):
+        x = paddle.full([], 1, 'float32')
+        out, indices = paddle.topk(x, k=1, axis=0)
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[x, out])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[0], 1.0)
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[1], 1.0)
+
+        x1 = paddle.full([], 1, 'float32')
+        out1, indices1 = paddle.topk(x1, k=1, axis=-1)
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[x1, out1])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[0], 1.0)
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[1], 1.0)
+
+        with self.assertRaises(ValueError):
+            tmp = paddle.topk(x1, k=1, axis=2)
+
+    @prog_scope()
+    def test_broadcast_to(self):
+        x = paddle.full([], 1, 'float32')
+        x.stop_gradient = False
+        out = paddle.broadcast_to(x, shape=[1])
+        paddle.static.append_backward(out.sum())
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog, fetch_list=[x, out, x.grad_name, out.grad_name]
+        )
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[0], 1.0)
+        self.assertEqual(res[1].shape, (1,))
+        self.assertEqual(res[1], 1.0)
+        self.assertEqual(res[2].shape, (1,))
+        self.assertEqual(res[2], 1.0)
+        self.assertEqual(res[3].shape, (1,))
+        self.assertEqual(res[3], 1.0)
+
+        x1 = paddle.full([], 1, 'float32')
+        x1.stop_gradient = False
+        out1 = paddle.broadcast_to(x1, shape=[])
+        paddle.static.append_backward(out1.sum())
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog, fetch_list=[x1, out1, x1.grad_name, out1.grad_name]
+        )
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[0], 1.0)
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[1], 1.0)
+        self.assertEqual(res[2].shape, ())
+        self.assertEqual(res[2], 1.0)
+        self.assertEqual(res[3].shape, ())
+        self.assertEqual(res[3], 1.0)
+
     def test_argmin(self):
         x = paddle.rand([])
         out1 = paddle.argmin(x, 0)

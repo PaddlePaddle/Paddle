@@ -3269,18 +3269,18 @@ def broadcast_to(x, shape, name=None):
         return _C_ops.expand(x, shape)
     else:
         if isinstance(shape, Variable):
-            assert len(shape.shape) == 1, 'shape must be an 1-D Tensor.'
+            assert len(shape.shape) <= 1, 'shape must be an 0-D or 1-D Tensor.'
         else:
+            type_tuple = (int, np.int32, np.int64)
             for elem in shape:
                 if isinstance(elem, Variable):
                     assert (
-                        len(elem.shape) == 1
-                    ), 'Elements in shape must be 1-D Tensors or integers.'
+                        len(elem.shape) <= 1
+                    ), 'Elements in shape must be 0-D or 1-D Tensors or integers.'
                 else:
-                    type_tuple = (int, np.int32, np.int64)
                     assert isinstance(
                         elem, type_tuple
-                    ), 'Elements in shape must be 1-D Tensors or integers.'
+                    ), 'Elements in shape must be 0-D or 1-D Tensors or integers.'
 
         check_variable_and_dtype(
             x,
@@ -3363,18 +3363,18 @@ def expand(x, shape, name=None):
         return _C_ops.expand(x, shape)
     else:
         if isinstance(shape, Variable):
-            assert len(shape.shape) == 1, 'shape must be an 1-D Tensor.'
+            assert len(shape.shape) <= 1, 'shape must be an 0-D or 1-D Tensor.'
         else:
             for elem in shape:
                 if isinstance(elem, Variable):
                     assert (
-                        len(elem.shape) == 1
-                    ), 'Elements in shape must be 1-D Tensors or integers.'
+                        len(elem.shape) <= 1
+                    ), 'Elements in shape must be 0-D or 1-D Tensors or integers.'
                 else:
                     type_tuple = (int, np.int32, np.int64)
                     assert isinstance(
                         elem, type_tuple
-                    ), 'Elements in shape must be 1-D Tensors or integers.'
+                    ), 'Elements in shape must be 0-D or 1-D Tensors or integers.'
 
         check_variable_and_dtype(
             x,
