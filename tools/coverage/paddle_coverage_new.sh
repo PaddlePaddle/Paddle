@@ -29,6 +29,7 @@ function lcov_init(){
     tar -xf /home/lcov-1.14.tar.gz -C /
     cd /lcov-1.14
     make install
+    cd -
 }
 
 function gen_cpp_covinfo(){
@@ -149,10 +150,10 @@ function gen_py_covinfo(){
     # python coverage
 
     export COVERAGE_FILE=/paddle/build/python-coverage.data
-    coverage combine `$(ls python-coverage.data.*)` || NO_PYTHON_COVERAGE_DATA=1
-    `$(coverage xml -i -o python-coverage.xml)` || [[ "${NO_PYTHON_COVERAGE_DATA}" == "1" ]]
+    coverage combine $(ls python-coverage.data.*) || NO_PYTHON_COVERAGE_DATA=1
+    $(coverage xml -i -o python-coverage.xml) || [[ "${NO_PYTHON_COVERAGE_DATA}" == "1" ]]
     sed -i 's/mnt\/paddle/paddle/g' python-coverage.xml
-    `$(python ${PADDLE_ROOT}/tools/coverage/python_coverage.py > python-coverage.info)` || [[ "${NO_PYTHON_COVERAGE_DATA}" == "1" ]]
+    $(python ${PADDLE_ROOT}/tools/coverage/python_coverage.py > python-coverage.info) || [[ "${NO_PYTHON_COVERAGE_DATA}" == "1" ]]
 }
 
 
@@ -219,14 +220,14 @@ function covinfo_combine_full(){
         echo "Cannot found coverage.info"
     fi
 
-    if [ -f "other-python-coverage-full.info" ];then
-        if [ -f "infer-python-coverage-full.info" ];then
-            lcov -a other-python-coverage-full.info -a infer-python-coverage-full.info -o python-coverage-full.info
+    if [ -f "other-python-coverage.info" ];then
+        if [ -f "infer-python-coverage.info" ];then
+            lcov -a other-python-coverage.info -a infer-python-coverage.info -o python-coverage.info
         else
-            mv other-python-coverage-full.info python-coverage-full.info
+            mv other-python-coverage.info python-coverage.info
         fi
-    elif [ -f "infer-coverage.info" ];then
-        mv infer-python-coverage-full.info python-coverage-full.info
+    elif [ -f "infer-python-coverage.info" ];then
+        mv infer-python-coverage.info python-coverage.info
     else
         echo "Cannot found python coverage.info"
     fi  
