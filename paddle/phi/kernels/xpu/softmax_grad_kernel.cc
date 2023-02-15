@@ -35,6 +35,12 @@ void SoftmaxGradKernel(const Context& dev_ctx,
     return;
   }
 
+  // For 0D Tensor
+  if (rank == 0) {
+    phi::funcs::set_constant(dev_ctx, x_grad, 0.0);
+    return;
+  }
+
   std::vector<int> x_dims;
   for (int i = 0; i < rank; i++) {
     x_dims.push_back(x_grad->dims()[i]);
