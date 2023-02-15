@@ -274,7 +274,7 @@ void FcXPUFusePass::ApplyImpl(ir::Graph* graph,
     if (mul_type == "mul") {
       fc_xpu_op_desc.SetAttr(
           "in_num_col_dims",
-          PADDLE_GET_CONST(int, mul->Op()->GetAttr("in_num_col_dims")));
+          PADDLE_GET_CONST(int, mul->Op()->GetAttr("x_num_col_dims")));
     }
     fc_xpu_op_desc.SetAttr("transpose_x", false);
     fc_xpu_op_desc.SetAttr("alpha", 1.f);

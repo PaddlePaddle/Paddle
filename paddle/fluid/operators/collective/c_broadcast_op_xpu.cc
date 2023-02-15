@@ -70,7 +70,7 @@ class CBroadcastOpXPUKernel : public framework::OpKernel<T> {
                                 stream);
       PADDLE_ENFORCE_EQ(ret,
                         BKCL_SUCCESS,
-                        platform::errors::Unavailable("bkcl_broadcast failed"));
+                        platform::errors::Unavailable("BKCL broadcast failed"));
       if (out != x) {
         framework::TensorCopy(
             *static_cast<const phi::DenseTensor*>(x),
@@ -89,7 +89,7 @@ class CBroadcastOpXPUKernel : public framework::OpKernel<T> {
                                 stream);
       PADDLE_ENFORCE_EQ(ret,
                         BKCL_SUCCESS,
-                        platform::errors::Unavailable("bkcl_broadcast failed"));
+                        platform::errors::Unavailable("BKCL broadcast failed"));
     }
 
     VLOG(3) << "rank " << comm->rank() << " invoke Bcast. received "
@@ -98,7 +98,7 @@ class CBroadcastOpXPUKernel : public framework::OpKernel<T> {
     out->set_lod(x->lod());
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "PaddlePaddle should be compiled with XPU and bkcl."));
+        "PaddlePaddle should be compiled with XPU and BKCL."));
 #endif
   }
 };
