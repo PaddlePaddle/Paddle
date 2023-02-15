@@ -41,11 +41,6 @@ fused_gate_attention_dygraph_function(
     const paddle::experimental::Tensor& OutLinearWeight,
     const paddle::experimental::Tensor& OutLinearBias,
     const paddle::framework::AttributeMap& attr_map) {
-  paddle::experimental::Tensor& xx =
-      const_cast<paddle::experimental::Tensor&>(Query);
-  if (xx.can_not_use()) {
-    VLOG(0) << "Find a Tensor Which Can Not Use";
-  }
   paddle::platform::RecordEvent dygraph_entrance_record_event(
       "fused_gate_attention dygraph",
       paddle::platform::TracerEventType::Operator,

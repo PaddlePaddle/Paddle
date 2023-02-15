@@ -25,16 +25,6 @@ paddle::experimental::Tensor fused_gemm_epilogue_dygraph_function(
     const paddle::experimental::Tensor& Y,
     const paddle::experimental::Tensor& Bias,
     const paddle::framework::AttributeMap& attr_map) {
-  paddle::experimental::Tensor& xx =
-      const_cast<paddle::experimental::Tensor&>(X);
-  if (xx.can_not_use()) {
-    VLOG(0) << "Find a Tensor Which Can Not Use";
-  }
-  paddle::experimental::Tensor& yy =
-      const_cast<paddle::experimental::Tensor&>(Y);
-  if (yy.can_not_use()) {
-    VLOG(0) << "Find a Tensor Which Can Not Use";
-  }
   paddle::platform::RecordEvent dygraph_entrance_record_event(
       "fused_gemm_epilogue dygraph",
       paddle::platform::TracerEventType::Operator,

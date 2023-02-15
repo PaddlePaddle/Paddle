@@ -43,16 +43,6 @@ Conv2dGradNodeFinal::operator()(
   // Collect GradIn Tensors, Attrs and Recovered TensorWrappers
   auto input = egr::EagerUtils::RecoverTensorWrapper(&this->input_);
   auto filter = egr::EagerUtils::RecoverTensorWrapper(&this->filter_);
-  paddle::experimental::Tensor& xx =
-      const_cast<paddle::experimental::Tensor&>(input);
-  if (xx.can_not_use()) {
-    VLOG(0) << "Find a Tensor Which Can Not Use";
-  }
-  paddle::experimental::Tensor& weight =
-      const_cast<paddle::experimental::Tensor&>(filter);
-  if (weight.can_not_use()) {
-    VLOG(0) << "Find a Tensor Which Can Not Use";
-  }
   auto& grad_out = hooked_grads[0][0];
   auto& strides = this->strides_;
   auto& paddings = this->paddings_;

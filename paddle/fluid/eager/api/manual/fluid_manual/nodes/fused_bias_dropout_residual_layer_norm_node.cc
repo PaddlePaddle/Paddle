@@ -58,8 +58,6 @@ fused_bias_dropout_residual_layer_normGradNodeCompat::operator()(
             egr::EagerUtils::RecoverTensorWrapper(&this->X_))},
        {"Y@GRAD", egr::EagerUtils::TrySyncToVars(hooked_grads0[4])}};
 
-  auto xx = egr::EagerUtils::RecoverTensorWrapper(&this->X_);
-  if (xx.can_not_use()) VLOG(0) << "Find Input Which Can Not Use.";
   auto Bias = egr::EagerUtils::RecoverTensorWrapper(&this->Bias_);
 
   if (Bias.defined()) ins0["Bias"] = egr::EagerUtils::TrySyncToVars(Bias);

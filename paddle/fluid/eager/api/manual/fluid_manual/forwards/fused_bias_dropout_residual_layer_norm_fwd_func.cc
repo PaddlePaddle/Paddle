@@ -32,11 +32,6 @@ fused_bias_dropout_residual_layer_norm_dygraph_function(
     const paddle::experimental::Tensor& LnScale,
     const paddle::experimental::Tensor& LnBias,
     const paddle::framework::AttributeMap& attr_map) {
-  paddle::experimental::Tensor& xx =
-      const_cast<paddle::experimental::Tensor&>(X);
-  if (xx.can_not_use()) {
-    VLOG(0) << "Find a Tensor Which Can Not Use";
-  }
   paddle::platform::RecordEvent dygraph_entrance_record_event(
       "fused_bias_dropout_residual_layer_norm dygraph",
       paddle::platform::TracerEventType::Operator,

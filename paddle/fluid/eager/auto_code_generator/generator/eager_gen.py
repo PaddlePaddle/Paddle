@@ -423,11 +423,10 @@ CHECK_CAN_NOT_USE_TEMPLATE = """
     paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> check_tensors_vector = {};
 """
 CHECK_CAN_NOT_USE_OTHER = """
-   for(size_t i = 0; i < check_tensors_vector.size(); ++i) {
-        if (check_tensors_vector[i][0].can_not_use()) {
-            VLOG(0) << "Find a Tensor Which Can Not Use";
-        }
-   }
+   for(size_t i = 0; i < check_tensors_vector.size(); ++i)
+        if (check_tensors_vector[i][0].can_not_use())
+              LOG(WARNING) << "Stride Test Log: "
+                       <<"{}" << " Find a Tensor Which Can Not Use.";
 """
 AMP_LOGIC_TEMPLATE = """  if (egr::Controller::Instance().GetAMPLevel() != paddle::imperative::AmpLevel::O0) {{
     VLOG(5) << "Check and Prepare For AMP";
@@ -1602,7 +1601,9 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         can_not_use_check_str = CHECK_CAN_NOT_USE_TEMPLATE.format(
             amp_tensors_vector_list_str,
         )
-        can_not_use_check_str += CHECK_CAN_NOT_USE_OTHER
+        can_not_use_check_str += CHECK_CAN_NOT_USE_OTHER.format(
+            str(forward_api_name)
+        )
         if is_inplaced or (forward_api_name == "cast"):
             amp_logic_str = "\n VLOG(5) << \" No AMP for {} because it is a inplace or cast api. \"; ".format(
                 forward_ad_function_name

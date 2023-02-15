@@ -44,10 +44,6 @@ fused_gemm_epilogueGradNodeCompat::operator()(
        {"Y",
         egr::EagerUtils::TrySyncToVars(
             egr::EagerUtils::RecoverTensorWrapper(&this->Y_))}};
-  auto xx = egr::EagerUtils::RecoverTensorWrapper(&this->X_);
-  if (xx.can_not_use()) VLOG(0) << "Find Input Which Can Not Use.";
-  auto yy = egr::EagerUtils::RecoverTensorWrapper(&this->Y_);
-  if (yy.can_not_use()) VLOG(0) << "Find Input Which Can Not Use.";
   std::map<std::string, std::vector<std::shared_ptr<egr::EagerVariable>>> outs0;
   if ((!out_metas[2].empty()) && (!(out_metas[2][0].IsStopGradient()))) {
     outs0.insert({"DBias",

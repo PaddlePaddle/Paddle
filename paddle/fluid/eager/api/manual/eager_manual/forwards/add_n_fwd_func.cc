@@ -28,13 +28,6 @@ paddle::experimental::Tensor add_n_ad_func(
   paddle::platform::RecordEvent dygraph_entrance_record_event(
       "add_n dygraph", paddle::platform::TracerEventType::Operator, 1);
 
-  for (size_t i = 0; i < x.size(); ++i) {
-    paddle::experimental::Tensor& xx =
-        const_cast<paddle::experimental::Tensor&>(x[i]);
-    if (xx.can_not_use()) {
-      VLOG(0) << "Find a Tensor Which Can Not Use";
-    }
-  }
   // AMP Logic
   if (egr::Controller::Instance().GetAMPLevel() !=
       paddle::imperative::AmpLevel::O0) {
