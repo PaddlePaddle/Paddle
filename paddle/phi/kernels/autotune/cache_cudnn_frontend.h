@@ -58,11 +58,10 @@ class CudnnFrontendPlanCache {
     cache_misses_ = 0;
   }
 
-  bool FindPlan(const cudnn_frontend::OperationGraph& op_graph,
-                bool use_addto = false) {
+  bool FindPlan(const cudnn_frontend::OperationGraph& op_graph) {
     bool ret = false;
     std::lock_guard<std::mutex> lock(*cache_mutex_);
-    if (map_.count(MakeKey(op_graph, use_addto)) > 0) {
+    if (map_.count(op_graph.getFeatureVector()) > 0) {
       cache_hits_++;
       ret = true;
     } else {
@@ -72,48 +71,37 @@ class CudnnFrontendPlanCache {
   }
 
   cudnn_frontend::ManagedOpaqueDescriptor GetConfig(
-      const cudnn_frontend::OperationGraph& op_graph,
-      cudnnHandle_t handle,
-      bool use_addto = false) {
+      const cudnn_frontend::OperationGraph& op_graph, cudnnHandle_t handle) {
     std::lock_guard<std::mutex> lock(*cache_mutex_);
-    auto engine_config = map_[MakeKey(op_graph, use_addto)];
+    auto engine_config = map_[op_graph.getFeatureVector()];
     return engine_config;
   }
 
   void InsertPlan(const cudnn_frontend::OperationGraph& op_graph,
-                  const cudnn_frontend::ExecutionPlan& plan,
-                  bool use_addto = false) {
+                  const cudnn_frontend::ExecutionPlan& plan) {
     VLOG(4) << "[cudnn_frontend] cache: Insert graph tag: "
             << op_graph.getTag();
     std::lock_guard<std::mutex> lock(*cache_mutex_);
     map_.insert(
-        std::make_pair(MakeKey(op_graph, use_addto), plan.GetEngineConfig()));
+        std::make_pair(op_graph.getFeatureVector(), plan.GetEngineConfig()));
   }
 
   bool IsStable(const cudnn_frontend::OperationGraph& op_graph,
-                const std::string& tag,
-                bool use_addto = false) {
+                const std::string& tag) {
     if (saturation_count_ == 1) {
       return true;
     }
     std::lock_guard<std::mutex> lock(*cache_mutex_);
-    if (map_.count(MakeKey(op_graph, use_addto))) {
+    if (map_.count(op_graph.getFeatureVector())) {
       return false;
     }
-    int cnt = tracker_[std::make_pair(MakeKey(op_graph, use_addto), tag)] += 1;
+    int cnt = tracker_[std::make_pair(op_graph.getFeatureVector(), tag)] += 1;
     VLOG(4) << "[cudnn_frontend] SaturationTracker: " << op_graph.getTag()
             << " " << tag << " " << cnt;
     return cnt >= saturation_count_;
   }
 
  private:
-  static cudnn_frontend::feature_vector_t MakeKey(
-      const cudnn_frontend::OperationGraph& op_graph, bool use_addto) {
-    auto key = op_graph.getFeatureVector();
-    key.push_back(static_cast<uint64_t>(use_addto));
-    return key;
-  }
-
   std::map<cudnn_frontend::feature_vector_t,
            cudnn_frontend::ManagedOpaqueDescriptor>
       map_;
