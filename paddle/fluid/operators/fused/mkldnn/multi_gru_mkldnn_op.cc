@@ -234,7 +234,7 @@ class MultiGRUHandler {
 
       std::vector<dnnl::memory::desc> src_mds{in_md, in_md};
       pd = std::make_shared<dnnl::concat::primitive_desc>(
-          axis, src_mds, engine_);
+          engine_, axis, src_mds);
       dev_ctx_.SetBlob(pd_key, pd);
     }
     concat_pds_[layer] = pd;
