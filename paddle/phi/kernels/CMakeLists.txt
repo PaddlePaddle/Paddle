@@ -106,6 +106,23 @@ file(
   "fusion/gpu/*.cu")
 
 if(WITH_CUTLASS)
+
+  # set(TEST_FILE0 "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d/conv2d_bias_silu.cu")
+  # set(TEST_FILE1 "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d/conv2d_bias_act.py")
+  # add_custom_command(OUTPUT  ${TEST_FILE0}
+  #   COMMAND python ${TEST_FILE1} > ${TEST_FILE0}
+  # )
+  # add_custom_target(Test1 ALL DEPENDS ${TEST_FILE0} ${TEST_FILE1})
+
+  set(sh_cmd "sh")
+  set(sh_arg0 "generate_cutlass_code.sh")
+  set(sh_arg1
+      "${PADDLE_BINARY_DIR}/third_party/cutlass/src/extern_cutlass/tools/library/scripts/"
+  )
+  execute_process(
+    COMMAND ${sh_cmd} ${sh_arg0} ${sh_arg1}
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass")
+
   file(GLOB cutlass_cu "fusion/cutlass/conv2d/*.cu" "fusion/cutlass/*.cu")
   list(APPEND kernel_cu ${cutlass_cu})
 endif()
@@ -153,6 +170,7 @@ set(ADD_PHI_KERNELS phi_cpu)
 if(WITH_GPU OR WITH_ROCM)
   if(WITH_GPU)
     add_library(phi_gpu ${kernel_cu})
+    #ADD_DEPENDENCIES(phi_gpu Test1)
   elseif(WITH_ROCM)
     hip_add_library(phi_gpu STATIC ${kernel_cu})
   endif()
