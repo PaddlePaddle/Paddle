@@ -32,7 +32,7 @@ in_url_id = fluid.data(name='url_id', shape=[1], dtype='int32')
 req_ids = paddle.static.nn.rpc_call(
     in_query,
     in_url_id,
-    os.environ.get("url_list").split(","),
+    os.environ.get("url_list"),
     "/code_lp/ernie-bot/post-train/ernie_3.0_100b_no_distill/config/ernie3.0_vocab_multi_prompt_v9.txt",
     True,
 )
@@ -56,14 +56,21 @@ url_id_tensor = np.array([0], dtype='int32')
 # run
 exe = fluid.Executor(fluid.CUDAPlace(0))
 exe.run(fluid.default_startup_program())
-succeed, data, = exe.run(
-    fluid.default_main_program(),
-    feed={
-        'X': query_tensor,
-        'url_id': url_id_tensor,
-    },
-    fetch_list=[out_succeed, out_data],
-)
+import time
+
+t1 = time.time()
+for _ in range(1):
+    succeed, data, = exe.run(
+        fluid.default_main_program(),
+        feed={
+            'X': query_tensor,
+            'url_id': url_id_tensor,
+        },
+        fetch_list=[out_succeed, out_data],
+    )
+t2 = time.time()
+print("speed: ", (t2 - t1) / 1, "s/step")
+
 if succeed:
     if RES_TYPE == 'str':
         for d in data:

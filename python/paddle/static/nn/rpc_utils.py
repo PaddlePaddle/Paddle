@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from multiprocessing.sharedctypes import Value
 from paddle import fluid
 import paddle
 
@@ -34,7 +33,9 @@ class IDGen:
 id_gen = IDGen()
 
 
-def rpc_call(src_ids=None, url_id=None, url_list=[], voc_path="", cvt2str=True):
+def rpc_call(
+    src_ids=None, url="", voc_path="", cvt2str=True, op_device="gpu:all"
+):
     request_id = (
         fluid.default_main_program()
         .block(0)
@@ -46,8 +47,9 @@ def rpc_call(src_ids=None, url_id=None, url_list=[], voc_path="", cvt2str=True):
             stop_gradient=True,
         )
     )
-    if url_id is None:
-        url_id = paddle.assign(0).astype("int32")
+    url_id = paddle.assign(0).astype("int32")
+    src_ids = src_ids.astype("int32")
+
     fluid.default_main_program().block(0).append_op(
         type="rpc_call",
         inputs={
@@ -56,15 +58,24 @@ def rpc_call(src_ids=None, url_id=None, url_list=[], voc_path="", cvt2str=True):
         },
         outputs={"Out": [request_id]},
         attrs={
-            "url_list": url_list,
+            "url_list": [url],
             "vocab_path": voc_path,
             "use_ids": not cvt2str,
         },
     )
+    fluid.default_main_program().block(0).ops[-1]._set_attr(
+        "op_device", op_device
+    )
+    fluid.default_main_program().block(0).ops[-2]._set_attr(
+        "op_device", op_device
+    )
+    fluid.default_main_program().block(0).ops[-3]._set_attr(
+        "op_device", op_device
+    )
     return request_id
 
 
-def rpc_result(request_id, result_dtype, out_len):
+def rpc_result(request_ids, result_dtype, out_len):
     if result_dtype == "float":
         res = (
             fluid.default_main_program()
@@ -72,7 +83,7 @@ def rpc_result(request_id, result_dtype, out_len):
             .create_var(
                 name=id_gen("rpc_res"),
                 dtype="float32",
-                shape=[request_id.shape[0], out_len],
+                shape=[request_ids.shape[0], out_len],
                 persistable=False,
                 stop_gradient=True,
             )
@@ -84,7 +95,7 @@ def rpc_result(request_id, result_dtype, out_len):
             .create_var(
                 name=id_gen("rpc_res"),
                 dtype="uint8",
-                shape=[request_id.shape[0], out_len],
+                shape=[request_ids.shape[0], out_len],
                 persistable=False,
                 stop_gradient=True,
             )
@@ -106,7 +117,7 @@ def rpc_result(request_id, result_dtype, out_len):
     )
     fluid.default_main_program().block(0).append_op(
         type="rpc_result",
-        inputs={"X": [request_id]},
+        inputs={"X": [request_ids]},
         outputs={"Out": [res], "succeed": [success]},
         attrs={"res_type": result_dtype, "out_len": out_len},
     )
