@@ -462,8 +462,11 @@ class MultiHeadAttention(Layer):
                 glb = 128
                 wnd = 64
                 seq_len = q.shape[-2]
+                batch_size = q.shape[0]
                 mask = self.ernie_sparse_mask(seq_len, glb, wnd)
-                mask = np.repeat(mask[None, :, :], [self.num_heads], axis=0)
+                mask = np.repeat(
+                    mask[None, :, :], [batch_size * self.num_heads], axis=0
+                )
                 self.sparse_mask = (
                     paddle.to_tensor(mask).astype('float32').to_sparse_csr()
                 )
