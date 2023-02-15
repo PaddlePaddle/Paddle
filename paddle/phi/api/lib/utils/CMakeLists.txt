@@ -10,4 +10,5 @@ cc_library(
        var_type_traits
        string_tensor
        int_array
-       scalar)
+       scalar
+       phi_tensor_utils)

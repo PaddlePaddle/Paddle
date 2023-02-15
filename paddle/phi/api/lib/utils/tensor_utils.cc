@@ -52,7 +52,7 @@ phi::Scalar MakePhiScalarFromVar(const framework::Variable& variable) {
       phi::DenseTensor tmp_tensor;
       phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
       auto* dev_ctx = pool.Get(tensor.place());
-      phi::Copy(dev_ctx, tensor, expected_place, true, &tmp_tensor);
+      phi::Copy(*dev_ctx, tensor, expected_place, true, &tmp_tensor);
       return {tmp_tensor};
     } else {
       return {tensor};
@@ -102,7 +102,7 @@ phi::IntArray MakePhiIntArrayFromVarList(
           phi::DenseTensor tmp_tensor;
           phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
           auto* dev_ctx = pool.Get(tensor.place());
-          phi::Copy(dev_ctx, tensor, expected_place, true, &tmp_tensor);
+          phi::Copy(*dev_ctx, tensor, expected_place, true, &tmp_tensor);
           vector_data.push_back(*tmp_tensor.data<int64_t>());
         } else {
           vector_data.push_back(*tensor.data<int64_t>());
@@ -114,7 +114,7 @@ phi::IntArray MakePhiIntArrayFromVarList(
           phi::DenseTensor tmp_tensor;
           phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
           auto* dev_ctx = pool.Get(tensor.place());
-          phi::Copy(dev_ctx, tensor, expected_place, true, &tmp_tensor);
+          phi::Copy(*dev_ctx, tensor, expected_place, true, &tmp_tensor);
           vector_data.push_back(*tmp_tensor.data<int32_t>());
         } else {
           vector_data.push_back(*tensor.data<int32_t>());
