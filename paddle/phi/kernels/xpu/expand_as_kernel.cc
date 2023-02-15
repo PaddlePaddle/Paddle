@@ -49,10 +49,21 @@ void ExpandAs(const Context& context,
               target_shape[i]));
     }
   }
+  if (target_shape.size() == 0) {
+    int r = xpu::copy<XPUType>(context.x_context(),
+                               reinterpret_cast<const XPUType*>(x.data<T>()),
+                               reinterpret_cast<XPUType*>(out->data<T>()),
+                               x.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
+    return;
+  }
   phi::DDim out_dims = phi::make_ddim(target_shape);
   out->Resize(out_dims);
   context.template Alloc<T>(out);
   auto& x_shape = vec_in_dims;
+  if (x.dims().size() == 0) {
+    x_shape = std::vector<int>({1});
+  }
   auto out_shape = phi::vectorize<int>(out_dims);
 
   int r = XPU_SUCCESS;
@@ -95,7 +106,7 @@ void ExpandAsKernel(const Context& ctx,
                         rank));
   PADDLE_ENFORCE_GE(
       rank,
-      1,
+      0,
       phi::errors::InvalidArgument("The rank (%d) of the input 'x' for "
                                    "expand_as_v2 op must be positive.",
                                    rank));
