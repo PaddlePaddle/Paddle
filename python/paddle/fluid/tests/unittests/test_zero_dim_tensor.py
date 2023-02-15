@@ -669,6 +669,22 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out1.item(), 1.0)
         self.assertEqual(out1.grad, None)
 
+    def test_broadcast_shape(self):
+        x = []
+        y = [3, 5]
+        out = paddle.broadcast_shape(x, y)
+        self.assertEqual(out, [3, 5])
+
+        x = [3, 5]
+        y = []
+        out = paddle.broadcast_shape(x, y)
+        self.assertEqual(out, [3, 5])
+
+        x = []
+        y = []
+        out = paddle.broadcast_shape(x, y)
+        self.assertEqual(out, [])
+
     def test_argmin(self):
         x = paddle.rand([])
         out1 = paddle.argmin(x, 0)
