@@ -186,7 +186,7 @@ class TestGatherGradComp(unittest.TestCase):
         dx = actual(self.primal0, self.index, self.axis, self.v)
 
         ddx = desired(self.primal0, self.index, self.axis, self.v)
-        if (self.count == 3) and (
+        if (self.count != 3) and (
             framework._current_expected_place() == core.CPUPlace()
         ):
             np.testing.assert_allclose(
