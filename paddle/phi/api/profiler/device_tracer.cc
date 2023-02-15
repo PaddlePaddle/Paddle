@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/device_tracer.h"
+#include "paddle/phi/api/profiler/device_tracer.h"
 
 #include <deque>
 #include <forward_list>
@@ -22,11 +22,11 @@ limitations under the License. */
 #include <thread>  // NOLINT
 
 #include "glog/logging.h"
+#include "paddle/phi/core/enforce.h"
 
 DECLARE_bool(enable_host_event_recorder_hook);
 
-namespace paddle {
-namespace platform {
+namespace phi {
 
 // Used only by DeviceTracer
 uint64_t GetThreadIdFromSystemThreadId(uint32_t id);
@@ -192,7 +192,7 @@ void CUPTIAPI bufferCompleted(CUcontext ctx,
   PADDLE_ENFORCE_EQ(
       std::this_thread::get_id(),
       cupti_thread_id,
-      platform::errors::PermissionDenied(
+      errors::PermissionDenied(
           "Only one thread is allowed to call bufferCompleted()."));
   CUptiResult status;
   CUpti_Activity *record = NULL;
@@ -688,18 +688,18 @@ class DeviceTracerImpl : public DeviceTracer {
       for (const auto &r : tmp) {
         auto *event = profile_pb.add_mem_events();
         event->set_device_id(0);
-        if (platform::is_cpu_place(r.place)) {
+        if (r.place.GetType() == phi::AllocationType::CPU) {
           event->set_place(proto::MemEvent::CPUPlace);
-        } else if (platform::is_gpu_place(r.place)) {
+        } else if (r.place.GetType() == phi::AllocationType::GPU) {
           event->set_place(proto::MemEvent::CUDAPlace);
           event->set_device_id(r.place.GetDeviceId());
-        } else if (platform::is_cuda_pinned_place(r.place)) {
+        } else if (r.place.GetType() == phi::AllocationType::GPUPINNED) {
           event->set_place(proto::MemEvent::CUDAPinnedPlace);
-        } else if (platform::is_npu_place(r.place)) {
+        } else if (r.place.GetType() == phi::AllocationType::NPU) {
           event->set_place(proto::MemEvent::NPUPlace);
         } else {
-          PADDLE_THROW(platform::errors::Unimplemented(
-              "The current place is not supported."));
+          PADDLE_THROW(
+              errors::Unimplemented("The current place is not supported."));
         }
         event->set_alloc_in(r.alloc_in);
         event->set_free_in(r.free_in);
@@ -910,5 +910,4 @@ void initCuptiCbidStr() {
 }  // namespace
 #endif  // PADDLE_WITH_CUPTI
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace phi

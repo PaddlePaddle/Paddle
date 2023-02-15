@@ -74,7 +74,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         }
 
     def _get_distributed_strategy(self):
-        from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
+        from paddle.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
             StrategyFactory,
         )
 
@@ -131,7 +131,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             _startup = worker.fake_init_ops_pass(_startup, compiled_config)
             if use_ps_gpu:
                 _main = worker.ps_gpu_pass(_main)
-                from paddle.fluid.transpiler.collective import (
+                from paddle.distributed.transpiler.collective import (
                     SingleProcessMultiThread,
                 )
 
