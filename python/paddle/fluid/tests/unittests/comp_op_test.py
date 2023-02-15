@@ -970,6 +970,7 @@ class PrimGradChecker(PrimForwardChecker):
         else:
             xs.append(inputs_dict[self.inputs_to_check])
         ret = paddle.grad(ys, xs, allow_unused=True)
+        ret = map_structure(lambda x: x.numpy(), ret)
         # check jit comp grad out
         if len(ret) != len(self.eager_desire):
             msg = (
@@ -1070,6 +1071,7 @@ class PrimGradChecker(PrimForwardChecker):
         else:
             xs.append(inputs_dict[self.inputs_to_check])
         ret = paddle.grad(ys, xs, allow_unused=True)
+        ret = map_structure(lambda x: x.numpy(), ret)
         # check jit comp grad out
         if len(ret) != len(self.eager_desire):
             msg = (
