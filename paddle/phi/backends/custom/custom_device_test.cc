@@ -122,15 +122,16 @@ void TestTensorUtils(const phi::Place& place) {
   memcpy(src_ptr, arr, 9 * sizeof(int));
 
   // CPU Tensor to GPU Tensor
-  paddle::platform::CustomDeviceContext gpu_ctx(place);
-  phi::Copy(gpu_ctx, src_tensor, place, false, &gpu_tensor);
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+  auto* gpu_ctx = pool.Get(place);
+  phi::Copy(*gpu_ctx, src_tensor, place, false, &gpu_tensor);
 #if 0
   // GPU Tensor to CPU Tensor
   auto cpu_place = new paddle::platform::CPUPlace();
-  phi::Copy(gpu_ctx, gpu_tensor, *cpu_place, false, &dst_tensor);
+  phi::Copy(*gpu_ctx, gpu_tensor, *cpu_place, false, &dst_tensor);
 
   // Sync before Compare Tensors
-  gpu_ctx.Wait();
+  gpu_ctx->Wait();
   const int* dst_ptr = dst_tensor.data<int>();
   EXPECT_NE(src_ptr, dst_ptr);
   for (size_t i = 0; i < 9; ++i) {
@@ -138,8 +139,8 @@ void TestTensorUtils(const phi::Place& place) {
   }
 
   // Copy the same tensor
-  phi::Copy(gpu_ctx, gpu_tensor, place, false, &gpu_tensor);
-  gpu_ctx.Wait();
+  phi::Copy(*gpu_ctx, gpu_tensor, place, false, &gpu_tensor);
+  gpu_ctx->Wait();
   const int* dst_ptr_tmp = dst_tensor.data<int>();
   EXPECT_NE(src_ptr, dst_ptr_tmp);
   for (size_t i = 0; i < 9; ++i) {
@@ -149,13 +150,13 @@ void TestTensorUtils(const phi::Place& place) {
   phi::DenseTensor slice_tensor = src_tensor.Slice(1, 2);
 
   // CPU Slice Tensor to GPU Tensor
-  phi::Copy(gpu_ctx, slice_tensor, place, false, &gpu_tensor);
+  phi::Copy(*gpu_ctx, slice_tensor, place, false, &gpu_tensor);
 
   // GPU Tensor to CPU Tensor
-  phi::Copy(gpu_ctx, gpu_tensor, *cpu_place, false, &dst_tensor);
+  phi::Copy(*gpu_ctx, gpu_tensor, *cpu_place, false, &dst_tensor);
 
   // Sync before Compare Slice Tensors
-  gpu_ctx.Wait();
+  gpu_ctx->Wait();
   const int* slice_ptr = slice_tensor.data<int>();
   dst_ptr = dst_tensor.data<int>();
   EXPECT_NE(dst_ptr, slice_ptr);
