@@ -17,21 +17,23 @@
 
 #include "paddle/extension.h"
 
-// y = x + x
+// y = x + 1
 std::vector<paddle::Tensor> AddForward(const paddle::Tensor& x) {
   if (x.is_cpu() || x.is_gpu()) {
-    return {x + x};
+    paddle::Tensor ones = paddle::full(x.shape(), 1.0, x.dtype(), x.place());
+    return {x + ones};
   } else {
     PD_THROW("Not implemented.");
   }
 }
 
-// dy / dx = 2 * grad_out
+// dy / dx = 1 * grad_out
 std::vector<paddle::Tensor> AddBackward(const paddle::Tensor& x,
                                         const paddle::Tensor& out,
                                         const paddle::Tensor& grad_out) {
   if (x.is_cpu() || x.is_gpu()) {
-    return {grad_out + grad_out};
+    paddle::Tensor ones = paddle::full(x.shape(), 1.0, x.dtype(), x.place());
+    return {grad_out * ones};
   } else {
     PD_THROW("Not implemented.");
   }
@@ -78,22 +80,25 @@ PD_BUILD_GRAD_OP(custom_subtract)
     .Outputs({paddle::Grad("X")})
     .SetKernelFn(PD_KERNEL(SubtractBackward));
 
-// y = x * x
+// y = x * 5
 std::vector<paddle::Tensor> MultiplyForward(const paddle::Tensor& x) {
   if (x.is_cpu() || x.is_gpu()) {
-    return {x * x};
+    paddle::Tensor ones = paddle::full(x.shape(), 1.0, x.dtype(), x.place());
+    paddle::Tensor fives = paddle::experimental::fill(ones, 5);
+    return {x * fives};
   } else {
     PD_THROW("Not implemented.");
   }
 }
 
-// dy / dx = 2 * x * grad_out
+// dy / dx = 5 * grad_out
 std::vector<paddle::Tensor> MultiplyBackward(const paddle::Tensor& x,
                                              const paddle::Tensor& out,
                                              const paddle::Tensor& grad_out) {
   if (x.is_cpu() || x.is_gpu()) {
-    paddle::Tensor middle_result = grad_out * x;
-    return {paddle::add(middle_result, middle_result)};
+    paddle::Tensor ones = paddle::full(x.shape(), 1.0, x.dtype(), x.place());
+    paddle::Tensor fives = paddle::experimental::fill(ones, 5);
+    return {fives * grad_out};
   } else {
     PD_THROW("Not implemented.");
   }

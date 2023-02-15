@@ -41,7 +41,7 @@ def test_custom_add_dynamic(func, device, dtype, np_x, use_func=True):
     if use_func:
         out = func(x)
     else:
-        out = paddle.add(x, x)
+        out = x + 1
     out.stop_gradient = False
 
     out.backward()
@@ -62,7 +62,7 @@ def test_custom_add_static(func, device, dtype, np_x, use_func=True):
             if use_func:
                 out = func(x)
             else:
-                out = x * 2
+                out = x + 1
             static.append_backward(out)
 
             exe = static.Executor()
@@ -131,7 +131,7 @@ def test_custom_multiply_dynamic(func, device, dtype, np_x, use_func=True):
     if use_func:
         out = func(x)
     else:
-        out = paddle.pow(x, 2)
+        out = x * 5
     out.stop_gradient = False
 
     out.backward()
@@ -152,7 +152,7 @@ def test_custom_multiply_static(func, device, dtype, np_x, use_func=True):
             if use_func:
                 out = func(x)
             else:
-                out = paddle.pow(x, 2)
+                out = x * 5
             static.append_backward(out)
 
             exe = static.Executor()
