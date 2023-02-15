@@ -198,7 +198,7 @@ class MultiGRUHandler {
                                                : OneDNNGetDataType<T>(),
                         OneDNNMemoryFormat::ntc);
 
-      auto desc = std::make_shared<dnnl::gru_forward::desc>(
+      pd = std::make_shared<dnnl::gru_forward::primitive_desc>(
           dnnl::prop_kind::forward_inference,
           dir,
           x_md,
@@ -207,9 +207,9 @@ class MultiGRUHandler {
           wh_md,
           b_md,
           h_md,
-          dnnl::memory::desc());
-      pd = std::make_shared<dnnl::gru_forward::primitive_desc>(
-          *desc, attrs_[2 * layer + (dir == R2L)], engine_);
+          dnnl::memory::desc(),
+          attrs_[2 * layer + (dir == R2L)],
+          engine_);
       PADDLE_ENFORCE_NOT_NULL(
           pd,
           platform::errors::InvalidArgument(
@@ -612,7 +612,7 @@ class MultiGRUHandler {
 
   bool isNTC(const dnnl::memory::desc& md) {
     auto ntc_md = dnnl::memory::desc(
-        md.dims(), md.data_type(), dnnl::memory::format_tag::ntc);
+        md.get_dims(), md.get_data_type(), dnnl::memory::format_tag::ntc);
     return md == ntc_md;
   }
 
