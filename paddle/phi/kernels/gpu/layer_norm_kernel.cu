@@ -40,6 +40,7 @@ __device__ void WelfordOnline(
   if (b_cnt == 0) {
     return;
   }
+
   U new_cnt = *count + b_cnt;
   U nb_n = b_cnt / new_cnt;
   U delta = b_mean - *mean;
@@ -558,7 +559,7 @@ void LayerNormKernel(const Context &dev_ctx,
     }
   } else {
     // WarpShuffle intrinsics is involved in LaunchLayerNormKernel.
-    if (/*FLAGS_use_fast_math=*/1 && feature_size <= 1024 &&
+    if (FLAGS_use_fast_math && feature_size <= 1024 &&
         (!std::is_same<T, int8_t>::value)) {
       LaunchLayerNormKernel<Context, T, U>(dev_ctx,
                                            x_data,
