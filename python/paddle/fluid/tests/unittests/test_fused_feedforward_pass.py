@@ -126,8 +126,8 @@ class TestFusedFeedforwadPass(unittest.TestCase):
             pass_manager.apply([main_prog], [startup_prog])
 
             ops = main_prog.global_block().ops
-            assert ops[2].type == 'fused_feedforward'
-            assert ops[10].type == 'fused_feedforward_grad'
+            assert 'fused_feedforward' in [op.type for op in ops]
+            assert 'fused_feedforward_grad' in [op.type for op in ops]
 
         exe = paddle.static.Executor(paddle.CUDAPlace(0))
         exe.run(startup_prog)

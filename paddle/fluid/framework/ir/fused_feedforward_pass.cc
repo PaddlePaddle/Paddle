@@ -127,6 +127,14 @@ ir::Graph *FusedFeedForwardPass::FusedFeedForwardFwd(ir::Graph *graph,
     GET_IR_NODE_FROM_SUBGRAPH(
         dropout_out_2, dropout_out_2, fused_feedforward_pattern);
 
+    if (PADDLE_GET_CONST(bool, dropout_op_1->Op()->GetAttr("is_test")) !=
+        PADDLE_GET_CONST(bool, dropout_op_2->Op()->GetAttr("is_test"))) {
+      LOG(WARNING)
+          << "Dropout 1 and dropout 2 attribute is_test set different values. "
+          << "Skip fused_feedforward pattern replacement.";
+      return;
+    }
+
     OpDesc fused_feedforward_op_desc(layer_norm_op->Op()->Block());
 
     fused_feedforward_op_desc.SetType("fused_feedforward");
@@ -184,7 +192,9 @@ ir::Graph *FusedFeedForwardPass::FusedFeedForwardFwd(ir::Graph *graph,
         "dropout2_implementation",
         dropout_op_2->Op()->GetAttr("dropout_implementation"));
     // These attributes set default value
-    fused_feedforward_op_desc.SetAttr("is_test", false);
+    fused_feedforward_op_desc.SetAttr(
+        "is_test",
+        PADDLE_GET_CONST(bool, dropout_op_1->Op()->GetAttr("is_test")));
     fused_feedforward_op_desc.SetAttr("dropout1_fix_seed", false);
     fused_feedforward_op_desc.SetAttr("dropout2_fix_seed", false);
     fused_feedforward_op_desc.SetAttr("dropout1_seed", 0);
@@ -361,6 +371,15 @@ ir::Graph *FusedFeedForwardPass::FusedFeedForwardBwd(ir::Graph *graph,
         dropout_mask_2, dropout_mask_2, fused_feedforward_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
         dropout_in_grad_2, dropout_in_grad_2, fused_feedforward_pattern);
+
+    if (PADDLE_GET_CONST(bool, dropout_op_grad_1->Op()->GetAttr("is_test")) ||
+        PADDLE_GET_CONST(bool, dropout_op_grad_2->Op()->GetAttr("is_test"))) {
+      LOG(WARNING)
+          << "Dropout_grad 1 and dropout_grad 2 attribute is_test should "
+          << "both be set false. Skip fused_feedforward_grad pattern "
+             "replacement";
+      return;
+    }
 
     OpDesc fused_feedforward_op_desc(layer_norm_op_grad->Op()->Block());
 
