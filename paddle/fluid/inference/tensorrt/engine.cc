@@ -199,8 +199,8 @@ void TensorRTEngine::FreezeNetwork() {
     LOG(INFO) << "Run Paddle-TRT Dynamic Shape mode.";
     for (int i = 0; i < max_profile_num_; i++) {
       for (auto &input : min_input_shape_) {
-#if IS_TRT_VERSION_LT(7000)
-        // trt6 will check all_of input > 0
+#if IS_TRT_VERSION_LT(7100)
+        // trt6/trt7011 will check all_of input > 0
         if (!(std::all_of(input.second.begin(),
                           input.second.end(),
                           [](int x) { return x > 0; }) &&

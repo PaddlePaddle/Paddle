@@ -112,8 +112,8 @@ class SliceOpConverter : public OpConverter {
         }
       }
 
-// CI failed in trt 6015 but success in 7134, may be a trt bug
-#if IS_TRT_VERSION_GE(7134)
+// CI failed in trt 6015 but success in 7011/7134, may be a trt bug
+#if IS_TRT_VERSION_GE(7000)
       auto* size_tensor =
           Sub(Min(Concat(end_vec_tensor), shape_tensor), start_tensor);
 #else
