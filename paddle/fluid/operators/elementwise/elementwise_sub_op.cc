@@ -74,7 +74,8 @@ class ElementwiseSubCompositeGradOpMaker
         axis,
         -1,
         phi::errors::InvalidArgument(
-            "We only support axis = -1 in composite but we got: ", axis));
+            "We only support axis = -1 in composite sub_grad but we got: ",
+            axis));
     VLOG(6) << "Runing sub_grad composite func";
     prim::subtract_grad<prim::DescTensor>(x, y, out_grad, axis, dx_ptr, dy_ptr);
     this->RecoverOutputName(dx, dx_name);

@@ -30,6 +30,10 @@ def _composite(op, *args):
 @REGISTER_COMPOSITE('softmax')
 def softmax_composite(x, axis):
     """define composite rule of op softmax"""
+    if not x.shape:
+        # do not return 1, to ensure gradients
+        res = divide(x + 1e-5, x + 1e-5)
+        return res
     max_temp = max(x, axis, keepdim=True)
     max_temp.stop_gradient = True
     molecular = exp(x - max_temp)
@@ -108,10 +112,10 @@ def composite_batchnorm(
     run_mean_ = assign(run_mean)
     run_var_ = assign(run_var)
 
-    if trainable_statistics or not is_test:
-        return run_mean_, None, batch_mean_, batch_var_, run_var_, y
-    else:
-        return run_mean_, batch_mean_, batch_var_, run_var_, y
+    # reserve_space is not needed in composite rule, but still ruturn None to keep same as phi op defination.
+    reserve_space = None
+
+    return y, run_mean_, run_var_, batch_mean_, batch_var_, reserve_space
 
 
 @REGISTER_COMPOSITE('gelu')

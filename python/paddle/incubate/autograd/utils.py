@@ -169,6 +169,7 @@ def _get_args_values(op, phi_name):
         arg_type, arg_name = _solve_arg(item)
         op_content = op_map[op.type]
         if arg_type in ("Tensor", "Tensor[]"):
+            # assume Tensor type must belong to inputs
             if (
                 "inputs" in op_content.keys()
                 and arg_name in op_content["inputs"].keys()
@@ -182,8 +183,12 @@ def _get_args_values(op, phi_name):
                 "attrs" in op_content.keys()
                 and arg_name in op_content["attrs"].keys()
             ):
-                attrs.append(op.attr(op_content["attrs"][arg_name]))
-            attrs.append(op.attr(arg_name))
+                arg_name = op_content["attrs"][arg_name]
+            # Note: in some cases, attrs may be optional , thus assign None. Such case must be recorded.
+            if arg_name not in op.attr_names:
+                attrs.append(None)
+            else:
+                attrs.append(op.attr(arg_name))
 
     return inputs, attrs
 
@@ -202,7 +207,13 @@ def prepare_python_api_arguments(op):
         else:
             phi_name = op.type
         inputs, attrs = _get_args_values(op, phi_name)
-        res = [get_var_block(op.block, op.input(n)) for n in inputs]
+        res = []
+        for item in inputs:
+            if item in op.input_names:
+                res.append(get_var_block(op.block, op.input(item)))
+            else:
+                # Note: in some cases, inputs may be optional, thus assign None. Such case must be recorded.
+                res.append(None)
         if attrs:
             res.extend(attrs)
         return res
@@ -216,6 +227,38 @@ def get_output_var_list(op):
             get_var_block(op.block, op.output(n))
             for n in sorted(op.output_names)
         ]
+
+
+def map_output_for_composite(op):
+    """origin op outputs must be mapped into outputs of composite rule. map info has been defined in op_compat.yaml"""
+    origin_output_names = op.output_names
+    if origin_output_names is None:
+        return []
+    else:
+        name = op.type
+        res = []
+        if op_map[name].get("outputs"):
+            for item in op_map[name]["outputs"].keys():
+                origin_output_name = op_map[name]["outputs"][item]
+                if origin_output_name not in origin_output_names:
+                    res.append(None)
+                    # Note: in some cases, some output of origin op is optional, so op name may not be in origin_output_names
+                    continue
+                origin_output_var = get_var_block(
+                    op.block, op.output(origin_output_name)
+                )
+                res.append(origin_output_var)
+        elif len(origin_output_names) == 1:
+            # When origin output num is 1, map info is not needed.
+            origin_output_var = get_var_block(
+                op.block, op.output(origin_output_names[0])
+            )
+            res.append(origin_output_var)
+        else:
+            raise ValueError(
+                "When replace op with composite rule, there must exist output map info from origin op to composite rule."
+            )
+        return res
 
 
 def flatten(inp):
