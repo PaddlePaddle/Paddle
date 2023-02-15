@@ -128,9 +128,9 @@ class TestCollectiveAPIRunnerBase:
         )
         if args['static_mode']:
             result = (
-                self.get_model_new(train_prog, startup_prog, rank)
+                self.get_model_new(train_prog, startup_prog, rank, dtype=args["dtype"])
                 if args["use_comm_context"]
-                else self.get_model(train_prog, startup_prog, rank)
+                else self.get_model(train_prog, startup_prog, rank, dtype=args["dtype"])
             )
             exe = fluid.Executor(place)
             exe.run(startup_prog)
