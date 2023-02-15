@@ -555,5 +555,18 @@ class TestCUDNNWithGroups_NHWC(TestWithGroups):
         self.op_type = "conv3d_transpose"
 
 
+class TestConv3dTranspose(unittest.TestCase):
+    def error_weight_input(self):
+        array = np.array([1], dtype=np.float32)
+        x = paddle.to_tensor(
+            np.reshape(array, [1, 1, 1, 1, 1]), dtype='float32'
+        )
+        weight = paddle.to_tensor(np.reshape(array, [1]), dtype='float32')
+        paddle.nn.functional.conv3d_transpose(x, weight, bias=0)
+
+    def test_type_error(self):
+        self.assertRaises(ValueError, self.error_weight_input)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -1169,6 +1169,12 @@ class InMemoryDataset(DatasetBase):
         """
         return self.pass_id
 
+    def dump_walk_path(self, path, dump_rate=1000):
+        """
+        dump_walk_path
+        """
+        self.dataset.dump_walk_path(path, dump_rate)
+
 
 class QueueDataset(DatasetBase):
     """

@@ -74,7 +74,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         }
 
     def _get_distributed_strategy(self):
-        from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
+        from paddle.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
             StrategyFactory,
         )
 

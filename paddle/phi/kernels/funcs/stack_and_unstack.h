@@ -192,7 +192,7 @@ void LaunchUnStackKernel(const Context& ctx,
           << ", out_col=" << out_col << ", num_splits=" << num_splits;
 
   auto x_ptr = x.data<T>();
-  PointerArraySetter<Context, T, Size> setter(ctx, outs);
+  PointerArraySetter<Context, T, Size> setter(ctx, outs, /*need_alloc=*/true);
 
   if (out_col == 1) {
     // For the case axis == (x.dims().size() - 1)

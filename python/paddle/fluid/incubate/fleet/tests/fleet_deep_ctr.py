@@ -19,10 +19,10 @@ import time
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import (
+from paddle.incubate.fleet.parameter_server.distribute_transpiler import (
     fleet,
 )
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
+from paddle.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
     StrategyFactory,
 )
 
@@ -109,11 +109,13 @@ def model():
         size=[dnn_input_dim, dnn_layer_dims[0]],
         param_attr=fluid.ParamAttr(
             name="deep_embedding",
-            initializer=fluid.initializer.Constant(value=0.01),
+            initializer=paddle.nn.initializer.Constant(value=0.01),
         ),
         is_sparse=True,
     )
-    dnn_pool = fluid.layers.sequence_pool(input=dnn_embedding, pool_type="sum")
+    dnn_pool = paddle.static.nn.sequence_lod.sequence_pool(
+        input=dnn_embedding, pool_type="sum"
+    )
     dnn_out = dnn_pool
     for i, dim in enumerate(dnn_layer_dims[1:]):
         fc = paddle.static.nn.fc(
@@ -121,7 +123,7 @@ def model():
             size=dim,
             activation="relu",
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01)
+                initializer=paddle.nn.initializer.Constant(value=0.01)
             ),
             name='dnn-fc-%d' % i,
         )
@@ -134,13 +136,15 @@ def model():
         size=[lr_input_dim, 1],
         param_attr=fluid.ParamAttr(
             name="wide_embedding",
-            initializer=fluid.initializer.Constant(value=0.01),
+            initializer=paddle.nn.initializer.Constant(value=0.01),
         ),
         is_sparse=True,
     )
-    lr_pool = fluid.layers.sequence_pool(input=lr_embbding, pool_type="sum")
+    lr_pool = paddle.static.nn.sequence_lod.sequence_pool(
+        input=lr_embbding, pool_type="sum"
+    )
 
-    merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
+    merge_layer = paddle.concat([dnn_out, lr_pool], axis=1)
 
     predict = paddle.static.nn.fc(x=merge_layer, size=2, activation='softmax')
     acc = paddle.static.accuracy(input=predict, label=label)
