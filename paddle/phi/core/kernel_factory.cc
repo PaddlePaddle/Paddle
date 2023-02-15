@@ -204,7 +204,7 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
     kernel_key = is_kp_kernel ? kernel_key_tmp : kernel_key_flage;
     kernel_iter = is_kp_kernel ? kernel_iter_kp : kernel_iter;
   }
-  VLOG(3) << "Current KernelKey is " << kernel_key;
+  VLOG(6) << "Current KernelKey is " << kernel_key;
   if ((kernel_key == kernel_key_flage) &&
       ((FLAGS_enable_api_kernel_fallback &&
         kernel_iter_flage == iter->second.end()) ||
