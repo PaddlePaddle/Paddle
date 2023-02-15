@@ -151,8 +151,9 @@ class GatherCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     int axis = static_cast<int>(this->Attr<int>("axis"));
     VLOG(3) << "Runing gather_grad composite func";
     if (tensor_axis.is_initialized()) {
-      prim::gather_grad<prim::DescTensor>(
-          x, index, dout, paddle::prim::Scalar(tensor_axis), false, dx_ptr);
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "We don't support dynamic index from tensor for gather composite "
+          "grad for now. "));
     } else {
       prim::gather_grad<prim::DescTensor>(x, index, dout, axis, false, dx_ptr);
     }
