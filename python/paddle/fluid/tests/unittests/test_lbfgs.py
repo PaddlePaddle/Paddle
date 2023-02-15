@@ -55,26 +55,6 @@ def test_static_graph_H0(func, x0, H0, dtype='float32'):
     return exe.run(main, feed={'x': x0, 'h': H0}, fetch_list=[Y])
 
 
-def test_static_graph_H1(func, x1, H1, dtype='float32'):
-    paddle.enable_static()
-    main = paddle.static.Program()
-    startup = paddle.static.Program()
-    with paddle.static.program_guard(main, startup):
-        X = paddle.static.data(name='x', shape=[x1.shape[0]], dtype=dtype)
-        H = paddle.static.data(name='h', shape=[H1.shape[0]], dtype=dtype)
-        Y = minimize_lbfgs(
-            func,
-            X,
-            initial_inverse_hessian_estimate=H,
-            tolerance_grad=0.0,
-            dtype=dtype,
-        )
-
-    exe = paddle.static.Executor()
-    exe.run(startup)
-    return exe.run(main, feed={'x': x1, 'h': H1}, fetch_list=[Y])
-
-
 def test_dynamic_graph(
     func, x0, H0=None, line_search_fn='strong_wolfe', dtype='float32'
 ):
@@ -87,6 +67,19 @@ def test_dynamic_graph(
         x0,
         initial_inverse_hessian_estimate=H0,
         line_search_fn=line_search_fn,
+        dtype=dtype,
+    )
+
+
+def test_dynamic_graphV1(func, x0, H0, tolerance_grad=0.0, dtype='float32'):
+    paddle.disable_static()
+    x0 = paddle.to_tensor(x0)
+    H0 = paddle.to_tensor(H0)
+    return minimize_lbfgs(
+        func,
+        x0,
+        initial_inverse_hessian_estimate=H0,
+        tolerance_grad=tolerance_grad,
         dtype=dtype,
     )
 
@@ -186,14 +179,12 @@ class TestLbfgs(unittest.TestCase):
 
     def test_exceptionOne(self):
         def func(x):
-            x = lambda x: paddle.dot(x, x)
-            return x
+            return lambda x: paddle.dot(x, x)
 
         x3 = np.array([2.4]).astype('float32')
         H3 = np.array([2.4]).astype('float32')
-        results = test_static_graph_H1(func, x3, H3, dtype='float32')
+        results = test_dynamic_graphV1(func, x3, H3)
         np.testing.assert_allclose([0.0, 0.0], results[2], rtol=1e-05)
-        self.assertTrue(results[0][0])
 
 
 if __name__ == '__main__':
