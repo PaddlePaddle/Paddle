@@ -61,8 +61,7 @@ def cross_entropy(softmax, label, soft_label, axis, ignore_index=-1):
     return result.reshape(label.shape)
 
 
-def softmax_with_cross_entropy_grad(softmax, label, loss, axis):
-    loss_grad = loss
+def softmax_with_cross_entropy_grad(softmax, label, loss_grad, axis):
     logit_grad = softmax.copy()
     shape = softmax.shape
     axis %= len(shape)
@@ -88,8 +87,8 @@ class XPUTestCSoftmaxWithCEOP(XPUOpTestWrapper):
             pass
 
         def test_softmax_with_ce(self):
-            self.batch_size = 1
-            self.num_class = 2
+            self.batch_size = 10
+            self.num_class = 1000
             self.check_with_place(
                 "collective_softmax_with_cross_entropy_op_xpu.py",
                 "softmax_with_ce",
@@ -117,44 +116,56 @@ class XPUTestCSoftmaxWithCEOP(XPUOpTestWrapper):
             if check_error_log:
                 required_envs["GLOG_v"] = "3"
                 required_envs["GLOG_logtostderr"] = "1"
+            np_data_type = DataTypeCast(data_type)
+
             tr0_out, tr1_out, pid0, pid1 = self._run_cluster(
                 model_file, required_envs
             )
-            np_data_type = DataTypeCast(data_type)
+
+            # get data that is shared by both ranks
             np.random.seed(os.getuid())
             label = np.random.randint(
                 0, self.num_class, size=(self.batch_size, 1), dtype='int32'
             )
+            loss_grad = np.random.uniform(
+                low=-10.0, high=10.0, size=(self.batch_size, 1)
+            ).astype(np_data_type)
+
             local_elements = int(self.num_class / 2)
+            # get input data for rank 0
             np.random.seed(pid0)
+            input0 = np.random.uniform(
+                low=-10.0, high=10.0, size=(self.batch_size, local_elements)
+            ).astype(np_data_type)
+
+            # get input data for rank 1
+            np.random.seed(pid1)
             input1 = np.random.uniform(
                 low=-10.0, high=10.0, size=(self.batch_size, local_elements)
             ).astype(np_data_type)
-            loss_grad1 = np.random.uniform(
-                low=-10.0, high=10.0, size=(self.batch_size, 1)
-            ).astype(np_data_type)
-            np.random.seed(pid1)
-            input2 = np.random.uniform(
-                low=-10.0, high=10.0, size=(self.batch_size, local_elements)
-            ).astype(np_data_type)
-            loss_grad2 = np.random.uniform(
-                low=-10.0, high=10.0, size=(self.batch_size, 1)
-            ).astype(np_data_type)
-            inputs = np.concatenate((input1, input2), axis=1)
+
+            # get combined input data
+            inputs = np.concatenate((input0, input1), axis=1)
+
+            # calculate analytic result
             need_softmax = np.apply_along_axis(stable_softmax, 1, inputs)
             need_loss = cross_entropy(need_softmax, label, False, 1)
             need_logits_grad = softmax_with_cross_entropy_grad(
-                need_softmax, label, need_loss, axis=1
+                need_softmax, label, loss_grad, axis=1
             )
+
+            # get real result
             loss0, softmax0, logits_grad0 = tr0_out
             loss1, softmax1, logits_grad1 = tr1_out
             softmax = np.concatenate((softmax0, softmax1), axis=1)
             logits_grad = np.concatenate((logits_grad0, logits_grad1), axis=1)
+
+            # compare results
             rtol = 1e-6
             np.testing.assert_allclose(loss0, need_loss, rtol=rtol)
             np.testing.assert_allclose(loss1, need_loss, rtol=rtol)
             np.testing.assert_allclose(softmax, need_softmax, rtol=rtol)
-            # np.testing.assert_allclose(logits_grad, need_logits_grad, rtol=rtol)
+            np.testing.assert_allclose(logits_grad, need_logits_grad, rtol=rtol)
 
 
 support_types = get_xpu_op_support_types('c_softmax_with_cross_entropy')

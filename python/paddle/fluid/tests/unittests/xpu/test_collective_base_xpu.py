@@ -221,7 +221,6 @@ class TestDistBase(unittest.TestCase):
         tr1_cmd = tr_cmd % (self._python_interp, model_file)
         path0 = os.path.join(self.temp_dir.name, "/tmp/tr0_err.log")
         path1 = os.path.join(self.temp_dir.name, "/tmp/tr1_err.log")
-        print("jameszhang", tr0_cmd.strip().split())
         tr0_pipe = open(path0, "wb")
         tr1_pipe = open(path1, "wb")
         tr0_proc = subprocess.Popen(

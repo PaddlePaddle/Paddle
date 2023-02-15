@@ -462,12 +462,13 @@ class CSoftmaxWithCrossEntropyGrad : public framework::OpKernel<T> {
     const int start_index = rank * D;
     const int end_index = start_index + D;
     const auto& label_type = framework::TransToProtoVarType(labels->dtype());
+
     int ret = 0;
     if (label_type == framework::proto::VarType::INT32) {
-      ret = xpu::mask_label_by_index_grad<XPUType, int64_t>(
+      ret = xpu::mask_label_by_index_grad<XPUType, int32_t>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(loss_grad->data<T>()),
-          reinterpret_cast<const int64_t*>(labels->data<int32_t>()),
+          labels->data<int32_t>(),
           reinterpret_cast<XPUType*>(logit_grad_2d.data<T>()),
           start_index,
           end_index,

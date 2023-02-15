@@ -25,7 +25,6 @@ from test_collective_base_xpu import (
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 from paddle.fluid import core
 
 paddle.enable_static()
@@ -34,19 +33,20 @@ paddle.enable_static()
 class TestCollectiveSoftmaxWithCE(TestCollectiveRunnerBase):
     def __init__(self):
         self.global_ring_id = 0
-        self.batch_size = 1
-        self.num_class = 2
+        self.batch_size = 10
+        self.num_class = 1000
+        self.nranks = 2
+        self.ring_id = 0
+        self.local_elements = int(self.num_class / self.nranks)
 
-    def get_model(self, main_prog, grad_prog, startup_program, rank):
-        ring_id = 0
-        nranks = 2
+    def get_model(self, main_prog, startup_program, rank):
         with fluid.program_guard(main_prog, startup_program):
-            logits = layers.data(
+            logits = fluid.data(
                 name="Logits",
-                shape=[self.batch_size, self.num_class],
+                shape=[self.batch_size, self.local_elements],
                 dtype='float32',
             )
-            label = layers.data(
+            label = fluid.data(
                 name="Label", shape=[self.batch_size, 1], dtype='int32'
             )
             softmax = main_prog.current_block().create_var(
@@ -65,8 +65,11 @@ class TestCollectiveSoftmaxWithCE(TestCollectiveRunnerBase):
             )
             loss_grad = main_prog.current_block().create_var(
                 name="Loss@GRAD",
+                shape=[self.batch_size, 1],
                 dtype=logits.dtype,
                 type=core.VarDesc.VarType.LOD_TENSOR,
+                persistable=False,
+                stop_gradient=False,
             )
             block = main_prog.global_block()
             with paddle.static.device_guard("xpu"):
@@ -74,7 +77,11 @@ class TestCollectiveSoftmaxWithCE(TestCollectiveRunnerBase):
                     type="c_softmax_with_cross_entropy",
                     inputs={'Logits': logits, 'Label': label},
                     outputs={'Softmax': softmax, 'Loss': loss},
-                    attrs={'ring_id': ring_id, 'rank': rank, 'nranks': nranks},
+                    attrs={
+                        'ring_id': self.ring_id,
+                        'rank': rank,
+                        'nranks': self.nranks,
+                    },
                 )
                 # generate backward op_desc
                 grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(
@@ -96,23 +103,20 @@ class TestCollectiveSoftmaxWithCE(TestCollectiveRunnerBase):
 
     def run_trainer(self, args):
         train_prog = fluid.Program()
-        grad_prog = fluid.Program()
         startup_prog = fluid.Program()
         endpoints = args["endpoints"].split(",")
         rank = args["trainerid"]
         current_endpoint = args["currentendpoint"]
-        nranks = 2
         self.initCommunicator(
-            startup_prog, rank, nranks, True, current_endpoint, endpoints
+            startup_prog, rank, self.nranks, True, current_endpoint, endpoints
         )
-        self.rank = rank
-        loss, softmax = self.get_model(
-            train_prog, grad_prog, startup_prog, rank
-        )
+        np_data_type = DataTypeCast(args["data_type"])
+        loss, softmax = self.get_model(train_prog, startup_prog, rank)
         device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
         place = fluid.XPUPlace(device_id)
         exe = fluid.Executor(place)
         exe.run(startup_prog)
+
         # NOTE use uid here to assure that two xpus share the same label
         np.random.seed(os.getuid())
         label = np.random.randint(
@@ -121,14 +125,15 @@ class TestCollectiveSoftmaxWithCE(TestCollectiveRunnerBase):
             size=(self.batch_size, 1),
             dtype='int32',
         )
-        np.random.seed(os.getpid())
-        np_data_type = DataTypeCast(args["data_type"])
-        local_elements = (int)(self.num_class / nranks)
-        logits = np.random.uniform(
-            low=-10.0, high=10.0, size=(self.batch_size, local_elements)
-        ).astype(np_data_type)
+        # use FAKE loss_grad here, only to examine the correctness of grad func
         loss_grad = np.random.uniform(
             low=-10.0, high=10.0, size=(self.batch_size, 1)
+        ).astype(np_data_type)
+
+        # each xpu uses own half of logits
+        np.random.seed(os.getpid())
+        logits = np.random.uniform(
+            low=-10.0, high=10.0, size=(self.batch_size, self.local_elements)
         ).astype(np_data_type)
         out = exe.run(
             train_prog,
@@ -140,5 +145,4 @@ class TestCollectiveSoftmaxWithCE(TestCollectiveRunnerBase):
 
 if __name__ == "__main__":
     os.environ["BKCL_PCIE_RING"] = "1"
-    os.environ["BKCL_CCIX_RING"] = "0"
     runtime_main(TestCollectiveSoftmaxWithCE, "softmax_with_ce", 0)
