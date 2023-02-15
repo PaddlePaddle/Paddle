@@ -14,21 +14,20 @@
 """Fleet Utils."""
 
 import collections
-import copy
 import json
 import logging
 import math
-import numpy as np
 import os
 import sys
 import time
-import paddle.fluid as fluid
-from paddle.fluid import core
-from paddle.fluid.log_helper import get_logger
-from paddle.distributed.fleet.utils.fs import LocalFS, HDFSClient, AFSClient
-from . import utils
 
-OpRole = core.op_proto_and_checker_maker.OpRole
+import numpy as np
+
+import paddle.fluid as fluid
+from paddle.distributed.fleet.utils.fs import HDFSClient
+from paddle.fluid.log_helper import get_logger
+
+from . import utils
 
 __all__ = ["FleetUtil", "GPUPSUtil"]
 
@@ -46,7 +45,7 @@ class FleetUtil:
     Examples:
         .. code-block:: python
 
-          from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+          from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
           fleet_util = FleetUtil()
           fleet_util.rank0_print("my log")
 
@@ -54,8 +53,6 @@ class FleetUtil:
 
     def __init__(self, mode="pslib"):
         global fleet
-        op_maker = core.op_proto_and_checker_maker
-        self.op_role_key = op_maker.kOpRoleAttrName()
         if mode == "pslib":
             from paddle.fluid.incubate.fleet.parameter_server.pslib import (
                 fleet as fleet_pslib,
@@ -83,7 +80,7 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
               fleet_util = FleetUtil()
               fleet_util.rank0_print("my log")
 
@@ -103,7 +100,7 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
               fleet_util = FleetUtil()
               fleet_util.rank0_info("my log info")
 
@@ -122,7 +119,7 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
               fleet_util = FleetUtil()
               fleet_util.rank0_error("my log error")
 
@@ -150,7 +147,7 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
               fleet_util = FleetUtil()
               fleet_util.set_zero(myvar.name, myscope)
 
@@ -178,7 +175,7 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
               fleet_util = FleetUtil()
               fleet_util.print_global_auc(myscope, stat_pos=stat_pos.name,
                                           stat_neg=stat_neg.name)
@@ -220,7 +217,7 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
               fleet_util = FleetUtil()
               auc_value, _ = fleet_util.get_global_auc(myscope,
                                                        stat_pos=stat_pos,
@@ -290,7 +287,7 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
               fleet_util = FleetUtil()
               fleet_util.load_fleet_model("hdfs:/my/model/path", table_id=1)
         """
@@ -308,7 +305,7 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
               fleet_util = FleetUtil()
 
               fleet_util.load_fleet_model("hdfs:/my/model/path")
@@ -330,7 +327,7 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
               fleet_util = FleetUtil()
               fleet_util.save_fleet_model("hdfs:/my/model/path")
 
@@ -408,7 +405,7 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
               fleet_util = FleetUtil()
               fleet_util.write_model_donefile(output_path="hdfs:/my/output",
                                               model_path="hdfs:/my/model",
@@ -510,7 +507,7 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
               fleet_util = FleetUtil()
               fleet_util.write_xbox_donefile(
                   output_path="hdfs:/my/output/",
@@ -629,7 +626,7 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
               fleet_util = FleetUtil()
               fleet_util.write_cache_donefile(
                   output_path="hdfs:/my/output/",
@@ -688,7 +685,7 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
               fleet_util = FleetUtil()
               fleet_util.load_model("hdfs:/my/path", 20190722, 88)
 
@@ -713,7 +710,7 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
               fleet_util = FleetUtil()
               fleet_util.save_model("hdfs:/my/path", 20190722, 88)
 
@@ -737,7 +734,7 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
               fleet_util = FleetUtil()
               fleet_util.save_batch_model("hdfs:/my/path", 20190722)
 
@@ -761,7 +758,7 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
               fleet_util = FleetUtil()
               fleet_util.save_batch_model("hdfs:/my/path", 20190722, 88)
 
@@ -785,7 +782,7 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
               fleet_util = FleetUtil()
               fleet_util.save_xbox_base_model("hdfs:/my/path", 20190722, 88)
 
@@ -815,7 +812,7 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
               fleet_util = FleetUtil()
               fleet_util.save_cache_model("hdfs:/my/path", 20190722, 88)
 
@@ -850,7 +847,7 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
               fleet_util = FleetUtil()
               fleet_util.save_cache_base_model("hdfs:/my/path", 20190722)
 
@@ -877,7 +874,7 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
               fleet_util = FleetUtil()
               fleet_util.pull_all_dense_params(my_scope, my_program)
 
@@ -952,7 +949,7 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
               fleet_util = FleetUtil()
               fleet_util.save_paddle_inference_model(exe,
                                                      join_scope,
@@ -1048,7 +1045,7 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
               fleet_util = FleetUtil()
               fleet_util.save_paddle_params(exe,
                                             join_scope,
@@ -1141,7 +1138,7 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
               fleet_util = FleetUtil()
               last_save_day, last_path, xbox_base_key = \
                   fleet_util.get_last_save_xbox_base("hdfs:/my/path", 20190722,
@@ -1189,7 +1186,7 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
               fleet_util = FleetUtil()
               last_save_day, last_save_pass, last_path, xbox_base_key = \
                   fleet_util.get_last_save_xbox("hdfs:/my/path", 20190722, 88)
@@ -1237,7 +1234,7 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
               fleet_util = FleetUtil()
               last_save_day, last_save_pass, last_path, xbox_base_key = \
                   fleet_util.get_last_save_model("hdfs:/my/path", 20190722, 88)
@@ -1281,7 +1278,7 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
               fleet_util = FleetUtil()
               online_pass_interval = fleet_util.get_online_pass_interval(
                   days="{20190720..20190729}",
@@ -1358,7 +1355,7 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
               fleet_util = FleetUtil()
               metric_list = fleet_util.get_global_metrics(myscope,
                                                           stat_pos.name,
@@ -1558,7 +1555,7 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
               fleet_util = FleetUtil()
               fleet_util.print_global_metrics(myscope,
                                               stat_pos.name,
@@ -1658,11 +1655,14 @@ class FleetUtil:
     def program_type_trans(self, prog_dir, prog_fn, is_text):
         return utils.program_type_trans(prog_dir, prog_fn, is_text)
 
+    def load_program(self, model_filename, is_text):
+        return utils.load_program_binary(model_filename, is_text)
+
     def draw_from_program_file(
         self, model_filename, is_text, output_dir, output_filename
     ):
         """draw program from file"""
-        program = utils.load_program(model_filename, is_text)
+        program = self.load_program(model_filename, is_text)
         utils.graphviz(program.global_block(), output_dir, output_filename)
 
     def draw_from_program(self, program, output_dir, output_name):
@@ -1670,10 +1670,10 @@ class FleetUtil:
         utils.graphviz(program.global_block(), output_dir, output_name)
 
     def check_two_programs(self, config):
-        train_prog = utils.load_program(
+        train_prog = self.load_program(
             config.train_prog_path, config.is_text_train_program
         )
-        pruned_prog = utils.load_program(
+        pruned_prog = self.load_program(
             config.pruned_prog_path, config.is_text_pruned_program
         )
         if config.draw:
@@ -1720,151 +1720,15 @@ class FleetUtil:
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
               fleet_util = FleetUtil()
               program_path = "./program.pbtxt"
               is_text = True
               output_dir = "/tmp/"
               fleet_util.parse_program_proto(program_path, is_text, output_dir)
         """
-        program = utils.load_program(prog_path, is_text)
+        program = self.load_program(prog_path, is_text)
         utils.parse_program(program, output_dir)
-
-    def _is_optimizer_op(self, op):
-        return self.op_role_key in op.attr_names and int(
-            op.all_attrs()[self.op_role_key]
-        ) & int(OpRole.Optimize)
-
-    def split_program_by_device(self, program):
-        ops_list = []
-        type_list = []
-        pre = None
-        type_cpu = "cpu"
-        for op in program.global_block().ops:
-            if self._is_optimizer_op(op):
-                break
-            if op.has_attr("op_device"):
-                cur_attr = (
-                    op.attr("op_device")
-                    if op.attr("op_device") != ""
-                    else type_cpu
-                )
-                if pre is None or pre != cur_attr:
-                    ops_list.append([])
-                    type_list.append(cur_attr)
-                ops_list[-1].append(op)
-                pre = cur_attr
-        l = len(type_list)
-        i = 0
-        type_heter = None
-        while i < l:
-            while i < l and type_list[i] == type_cpu:
-                i += 1
-            if i == l:
-                break
-
-            type_heter = type_list[i]
-            i += 1
-            start = i
-            valid = True
-            while i < l and type_list[i] != type_heter:
-                if type_list[i] != type_cpu:
-                    valid = False
-                    break
-                i += 1
-
-            if i == l:
-                break
-            elif not valid:
-                continue
-
-            for j in range(start, i):
-                for op in ops_list[j]:
-                    op._set_attr("op_device", type_heter)
-                type_list[j] = type_heter
-                j += 1
-
-        pre = None
-        merged_ops_list = []
-        merged_type_list = []
-        for i in range(l):
-            if pre is None or pre != type_list[i]:
-                merged_ops_list.append([])
-                merged_type_list.append(type_list[i])
-            merged_ops_list[-1].extend(ops_list[i])
-            pre = type_list[i]
-
-        data_vars = set()
-        for k in program.global_block().vars:
-            var = program.global_block().var(k)
-            if not var.persistable:
-                data_vars.add(var.name)
-
-        l = len(merged_ops_list)
-        inputs_pre = set()
-        outputs_pre = set()
-        in_from_pre = [[] for i in range(l)]
-        for i in range(l):
-            inputs = set()
-            outputs = set()
-            for op in merged_ops_list[i]:
-                for input in op.input_names:
-                    for tmp in op.input(input):
-                        if tmp not in outputs:
-                            inputs.add(tmp)
-                for output in op.output_names:
-                    for tmp in op.output(output):
-                        outputs.add(tmp)
-            if i == 0:
-                in_from_pre[i] = []
-            elif i == 1:
-                in_from_pre[i] = (outputs_pre | data_vars) & inputs
-            else:
-                in_from_pre[i] = outputs_pre & inputs
-            inputs_pre = copy.deepcopy(inputs)
-            outputs_pre = copy.deepcopy(outputs)
-
-        l = len(in_from_pre)
-        start_list = []
-        end_list = []
-        send_list = [[] for i in range(l)]
-        sum = 0
-        program_list = []
-        for i in range(l):
-            start_list.append(sum)
-            end_list.append(sum + len(merged_ops_list[i]) - 1)
-            sum += len(merged_ops_list[i])
-            if i < l - 1:
-                send_list[i].extend(list(in_from_pre[i + 1]))
-            prog = program.clone()
-            if merged_type_list[i] != type_cpu:
-                prog = prog._prune_with_input(
-                    list(in_from_pre[i]), list(send_list[i])
-                )
-                program_list.append(prog)
-            else:
-                program_list.append(prog)
-        recv_list = [list(i) for i in in_from_pre]
-        found = False
-        heter_index = None
-        for i in range(len(merged_type_list)):
-            t = merged_type_list[i]
-            if t != type_cpu:
-                if found:
-                    print("only one region of program can be heter")
-                found = True
-                heter_index = i
-        if heter_index is None:
-            print("warning: non heter program")
-            return None
-        else:
-            return [
-                start_list[heter_index],
-                end_list[heter_index],
-                send_list[heter_index],
-                recv_list[heter_index],
-                program_list[heter_index],
-            ]
 
 
 class GPUPSUtil(FleetUtil):
@@ -1874,7 +1738,7 @@ class GPUPSUtil(FleetUtil):
     Examples:
         .. code-block:: python
 
-          from paddle.fluid.incubate.fleet.utils.fleet_util import GPUPSUtil
+          from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
           fleet_util = GPUPSUtil()
           fleet_util.rank0_print("my log")
     """
@@ -1900,7 +1764,7 @@ class GPUPSUtil(FleetUtil):
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import GPUPSUtil
+              from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
               fleet_util = GPUPSUtil()
               fleet_util.init(20190722, 88, 88, "./afs.conf")
         """
@@ -1919,7 +1783,7 @@ class GPUPSUtil(FleetUtil):
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import GPUPSUtil
+              from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
               from paddle.distributed.fleet.utils.fs import AFSClient
               hdfs_client = AFSClient()
               fleet_util = GPUPSUtil()
@@ -1943,7 +1807,7 @@ class GPUPSUtil(FleetUtil):
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import GPUPSUtil
+              from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
               from paddle.distributed.fleet.utils.fs import AFSClient
               hdfs_client = AFSClient()
               fleet_util = GPUPSUtil()
@@ -1985,7 +1849,7 @@ class GPUPSUtil(FleetUtil):
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import GPUPSUtil
+              from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
               from paddle.distributed.fleet.utils.fs import AFSClient
               hdfs_client = AFSClient()
               fleet_util = GPUPSUtil()
@@ -2028,7 +1892,7 @@ class GPUPSUtil(FleetUtil):
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import GPUPSUtil
+              from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
               from paddle.distributed.fleet.utils.fs import AFSClient
               hdfs_client = AFSClient()
               fleet_util = GPUPSUtil()
@@ -2076,7 +1940,7 @@ class GPUPSUtil(FleetUtil):
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import GPUPSUtil
+              from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
               from paddle.distributed.fleet.utils.fs import AFSClient
               hdfs_client = AFSClient()
               fleet_util = GPUPSUtil()
@@ -2175,7 +2039,7 @@ class GPUPSUtil(FleetUtil):
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import GPUPSUtil
+              from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
               from paddle.distributed.fleet.utils.fs import AFSClient
               hdfs_client = AFSClient()
               fleet_util = GPUPSUtil()
@@ -2288,7 +2152,7 @@ class GPUPSUtil(FleetUtil):
         Examples:
             .. code-block:: python
 
-              from paddle.fluid.incubate.fleet.utils.fleet_util import GPUPSUtil
+              from paddle.incubate.distributed.fleet.fleet_util import GPUPSUtil
               from paddle.distributed.fleet.utils.fs import AFSClient
               hdfs_client = AFSClient()
               fleet_util = GPUPSUtil()

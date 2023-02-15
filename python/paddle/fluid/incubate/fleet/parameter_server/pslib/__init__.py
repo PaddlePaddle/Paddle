@@ -18,11 +18,11 @@ from .optimizer_factory import *
 from google.protobuf import text_format
 from paddle.framework import core
 
-from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
-from paddle.fluid.incubate.fleet.base.mode import Mode
-from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
-from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
-from paddle.fluid.incubate.fleet.base.role_maker import HeterRoleMaker
+from paddle.incubate.distributed.fleet.base import Fleet
+from paddle.incubate.distributed.fleet.base import Mode
+from paddle.incubate.distributed.fleet.base import DistributedOptimizer
+from paddle.incubate.distributed.fleet.role_maker import MPISymetricRoleMaker
+from paddle.incubate.distributed.fleet.role_maker import HeterRoleMaker
 
 
 class PSLib(Fleet):

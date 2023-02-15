@@ -35,9 +35,9 @@ from paddle.fluid.transpiler.distribute_transpiler import (
     DistributeTranspilerConfig,
 )
 
-from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
-from paddle.fluid.incubate.fleet.base.mode import Mode
-from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
+from paddle.incubate.distributed.fleet.base import Fleet
+from paddle.incubate.distributed.fleet.base import Mode
+from paddle.incubate.distributed.fleet.role_maker import MPISymetricRoleMaker
 
 from paddle.fluid.incubate.fleet.parameter_server import version
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
@@ -60,7 +60,7 @@ from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distribu
 from paddle.fluid.transpiler.details.checkport import wait_server_ready
 
 from paddle.fluid.incubate.fleet.parameter_server.mode import PSMode
-from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
+from paddle.incubate.distributed.fleet.base import DistributedOptimizer
 
 from paddle.fluid.incubate.fleet.parameter_server.ir import (
     trainer_pass as worker,
