@@ -55,15 +55,13 @@ def test_static_graph_H0(func, x0, H0, dtype='float32'):
     return exe.run(main, feed={'x': x0, 'h': H0}, fetch_list=[Y])
 
 
-def test_static_graph_H1(func, x0, H0, dtype='float32'):
+def test_static_graph_H1(func, x1, H1, dtype='float32'):
     paddle.enable_static()
     main = paddle.static.Program()
     startup = paddle.static.Program()
     with paddle.static.program_guard(main, startup):
-        X = paddle.static.data(name='x', shape=[x0.shape[0]], dtype=dtype)
-        H = paddle.static.data(
-            name='h', shape=[H0.shape[0], H0.shape[1]], dtype=dtype
-        )
+        X = paddle.static.data(name='x', shape=[x1.shape[0]], dtype=dtype)
+        H = paddle.static.data(name='h', shape=[H1.shape[0]], dtype=dtype)
         Y = minimize_lbfgs(
             func,
             X,
@@ -74,7 +72,7 @@ def test_static_graph_H1(func, x0, H0, dtype='float32'):
 
     exe = paddle.static.Executor()
     exe.run(startup)
-    return exe.run(main, feed={'x': x0, 'h': H0}, fetch_list=[Y])
+    return exe.run(main, feed={'x': x1, 'h': H1}, fetch_list=[Y])
 
 
 def test_dynamic_graph(
@@ -191,8 +189,8 @@ class TestLbfgs(unittest.TestCase):
             x = lambda x: paddle.dot(x, x)
             return x
 
-        x3 = np.array([[2.4]]).astype('float32')
-        H3 = np.array([[2.4]]).astype('float32')
+        x3 = np.array([2.4]).astype('float32')
+        H3 = np.array([2.4]).astype('float32')
         results = test_static_graph_H1(func, x3, H3, dtype='float32')
         np.testing.assert_allclose([0.0, 0.0], results[2], rtol=1e-05)
         self.assertTrue(results[0][0])
