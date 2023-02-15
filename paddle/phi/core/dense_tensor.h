@@ -165,13 +165,10 @@ class DenseTensor : public TensorBase,
 
   void* data();
 
-  bool can_not_use{false};
-
   std::shared_ptr<bool> canNotUse;
 
   std::vector<std::shared_ptr<bool>> can_not_uses;
 
-  std::vector<DenseTensor*> share_buffer_with;
   /// \brief Get whether the storage_properties is inited.
   /// \return The init status of storage_properties.
   bool storage_properties_initialized() const;
@@ -270,7 +267,7 @@ class DenseTensor : public TensorBase,
     uint32_t CurrentVersion() const { return inplace_version_; }
     void SetInplaceVersionToZero() { inplace_version_ = 0; }
 
-   public:
+   private:
     uint32_t inplace_version_{0};
   };
 
