@@ -692,7 +692,7 @@ class TheOnePSRuntime(RuntimeBase):
     def _get_distributed_strategy(self):
         strategy = None
 
-        from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
+        from paddle.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
             StrategyFactory,
         )
 
@@ -731,7 +731,7 @@ class TheOnePSRuntime(RuntimeBase):
         return compiled_config
 
     def _init_worker(self):
-        from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
+        from paddle.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
             SyncStrategy,
         )
 
