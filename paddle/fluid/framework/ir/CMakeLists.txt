@@ -32,7 +32,7 @@ cc_library(
 cc_library(
   cost_model
   SRCS cost_model.cc
-  DEPS executor graph profiler proto_desc device_tracer)
+  DEPS executor graph profiler proto_desc phi_device_tracer)
 
 set(GRAPH_PATTERN_DETECTOR_DEPS graph graph_helper graph_traits)
 if(WITH_TESTING)
@@ -140,11 +140,13 @@ if(WITH_TENSORRT)
   pass_library(delete_remove_padding_recover_padding_pass inference)
   pass_library(layernorm_shift_partition_fuse_pass inference)
   pass_library(reverse_roll_fuse_pass inference)
+  pass_library(elementwiseadd_transpose_pass inference)
   pass_library(preln_layernorm_x_fuse_pass inference)
   pass_library(trt_support_nhwc_pass inference)
   pass_library(elementwise_groupnorm_act_pass inference)
   pass_library(preln_elementwise_groupnorm_act_pass inference)
   pass_library(groupnorm_act_pass inference)
+  pass_library(trans_layernorm_fuse_pass inference)
   pass_library(trt_embedding_eltwise_layernorm_fuse_pass inference)
   pass_library(preln_embedding_eltwise_layernorm_fuse_pass inference)
 endif()
@@ -177,6 +179,7 @@ if(WITH_MKLDNN)
   pass_library(matmul_activation_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(layer_norm_onednn_optimization_pass inference DIR mkldnn)
   pass_library(operator_scale_onednn_fuse_pass inference DIR mkldnn)
+  pass_library(quant_transpose2_dequant_onednn_fuse_pass inference DIR mkldnn)
   pass_library(squeeze2_transpose2_onednn_fuse_pass inference DIR mkldnn)
   pass_library(operator_unsqueeze2_onednn_fuse_pass inference DIR mkldnn)
   pass_library(operator_reshape2_onednn_fuse_pass inference DIR mkldnn)
@@ -206,6 +209,14 @@ if(WITH_IPU)
   pass_library(delete_scale_op_pass base DIR ipu)
   pass_library(avg_shard_pass base DIR ipu)
   pass_library(inference_dtype_transfer_pass base DIR ipu)
+endif()
+
+if(WITH_XPU)
+  cc_library(
+    quant_utils
+    SRCS xpu/quant_utils.cc
+    DEPS pass)
+  pass_library(fc_xpu_fuse_pass inference DIR xpu DEPS quant_utils)
 endif()
 
 cc_library(

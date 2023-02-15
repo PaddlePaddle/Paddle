@@ -18,6 +18,8 @@
 #    ops.yaml or legacy_ops.yaml.
 
 
+import paddle
+
 from .primitives import *  # noqa: F403
 from .primreg import REGISTER_COMPOSITE, lookup_composite
 
@@ -80,8 +82,12 @@ def composite_batchnorm(
             reshape(batch_var, stats_shape) + epsilon
         )
 
-        run_mean = momentum * run_mean + (1 - momentum) * batch_mean
-        run_var = momentum * run_var + (1 - momentum) * batch_var
+        run_mean = momentum * run_mean + (1 - momentum) * reshape(
+            batch_mean, run_mean.shape
+        )
+        run_var = momentum * run_var + (1 - momentum) * reshape(
+            batch_var, run_var.shape
+        )
     else:
         x_hat = (x - reshape(run_mean, stats_shape)) / sqrt(
             reshape(run_var, stats_shape) + epsilon
@@ -89,11 +95,37 @@ def composite_batchnorm(
     y = reshape(scale, stats_shape) * x_hat + reshape(bias, stats_shape)
 
     # add op assign to detach tensor in void unsafe change outside the rule.
-    batch_mean_ = assign(batch_mean)
-    batch_var_ = assign(batch_var)
-    run_mean_ = assign(run_mean)
-    run_var_ = assign(run_var)
+
+    batch_mean_ = paddle.assign(batch_mean)
+    batch_var_ = paddle.assign(batch_var)
+    run_mean_ = paddle.assign(run_mean)
+    run_var_ = paddle.assign(run_var)
+
     if trainable_statistics or not is_test:
         return run_mean_, None, batch_mean_, batch_var_, run_var_, y
     else:
         return run_mean_, batch_mean_, batch_var_, run_var_, y
+
+
+@REGISTER_COMPOSITE('gelu')
+def gelu_composite(x, approximate):
+    """define composite rule of op gelu"""
+    M_SQRT1_2 = (
+        0.70710678118654752440  # /* 1/sqrt(2) */ copy from gelu-kernel.cc
+    )
+    M_2_SQRTPI = 1.12837916709551257390  # /* 2/sqrt(pi) */
+    one = ones(x.shape, x.dtype)
+    half = full(x.shape, 0.5, x.dtype)
+    if approximate:
+        # gelu(x) = 0.5 * x * (1 + tanh(sqrt(2 / \pi) * (x + 0.044715 * x^{3})))
+        kAlpha = full(x.shape, M_2_SQRTPI * M_SQRT1_2, x.dtype)
+        GELU_CONSTANT = full(x.shape, 0.044715, x.dtype)
+        tanh_out = tanh(kAlpha * (x + GELU_CONSTANT * x * x * x))
+        out = x * half * (one + tanh_out)
+        return out
+
+    else:
+        # gelu(x) = 0.5 * x *  (1 + erf(x / sqrt(2)))
+        cdf = half * (one + erf(x * full(x.shape, M_SQRT1_2, x.dtype)))
+        out = x * cdf
+        return out
