@@ -4,11 +4,8 @@ add_subdirectory(fleet_executor)
 if(WITH_PYTHON)
   py_proto_compile(pslib_py_proto SRCS ps.proto)
   py_proto_compile(ps_py_proto SRCS the_one_ps.proto)
-  add_custom_target(
-    ps_py_proto_init ALL
-    COMMAND ${CMAKE_COMMAND} -E make_directory
-            ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto)
-  add_dependencies(ps_py_proto ps_py_proto_init)
+  file(MAKE_DIRECTORY
+       ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto)
   set(PSLIB_PROTO_DSTPATH
       "${PADDLE_SOURCE_DIR}/python/paddle/fluid/incubate/fleet/parameter_server/pslib/"
   )
