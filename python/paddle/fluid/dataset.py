@@ -1253,7 +1253,7 @@ class QueueDataset(DatasetBase):
               import paddle.fluid as fluid
               from paddle.incubate.fleet.parameter_server.pslib import fleet
               dataset = fluid.DatasetFactory().create_dataset("QueueDataset")
-              dataset.global_shuffle(fleet)
+              #dataset.global_shuffle(fleet)
 
         Raises:
             NotImplementedError: QueueDataset does not support global shuffle
