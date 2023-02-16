@@ -61,13 +61,11 @@ class QuantOpKernel : public framework::OpKernel<T> {
     static constexpr int32_t mask = 0;
 
     if (with_scale) {
-      //      attrs.set_output_scales(mask, {quantization_scale});
       attrs.set_scales_mask(DNNL_ARG_DST, mask);
     }
 
     if (with_shift) {
-      attrs.set_zero_points(
-          DNNL_ARG_DST, mask, {static_cast<int32_t>(quantization_shift)});
+      attrs.set_zero_points_mask(DNNL_ARG_DST, mask);
     }
 
     auto x_type = phi::funcs::ToOneDNNDataType(x->dtype());
@@ -96,16 +94,28 @@ class QuantOpKernel : public framework::OpKernel<T> {
 
     auto& astream = phi::OneDNNContext::tls().get_stream();
 
-    std::vector<float> scales(1, quantization_scale);
     auto scales_md = dnnl::memory::desc(
         {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
-    auto scales_mem = dnnl::memory(scales_md, dev_ctx.GetEngine());
+    auto scales_mem =
+        dnnl::memory(scales_md,
+                     dev_ctx.GetEngine(),
+                     phi::funcs::to_void_cast<float>(&quantization_scale));
+    auto zero_points_md = dnnl::memory::desc(
+        {1}, dnnl::memory::data_type::s32, dnnl::memory::format_tag::x);
+    auto zero_points_mem =
+        dnnl::memory(zero_points_md,
+                     dev_ctx.GetEngine(),
+                     phi::funcs::to_void_cast<float>(&quantization_scale));
 
     std::unordered_map<int, dnnl::memory> reorder_args;
     reorder_args.insert({DNNL_ARG_SRC, *reorder_src_memory_p});
     reorder_args.insert({DNNL_ARG_DST, *reorder_dst_memory_p});
     if (with_scale) {
       reorder_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, scales_mem});
+    }
+    if (with_shift) {
+      reorder_args.insert(
+          {DNNL_ARG_ATTR_ZERO_POINTS | DNNL_ARG_DST, zero_points_mem});
     }
 
     reorder_p->execute(astream, reorder_args);
