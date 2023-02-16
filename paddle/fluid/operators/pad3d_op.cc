@@ -37,9 +37,7 @@ class Pad3dOp : public framework::OperatorWithKernel {
     // only constant mode and non-blocked layouts are supported for oneDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type) &&
         ctx.Attr<std::string>("mode") == "constant" &&
-        ctx.Input<phi::DenseTensor>("X")
-                ->mem_desc()
-                .data.format_desc.blocking.inner_nblks == 0) {
+        ctx.Input<phi::DenseTensor>("X")->mem_desc().get_inner_nblks() == 0) {
       return phi::KernelKey(phi::Backend::ONEDNN,
                             phi::DataLayout::ONEDNN,
                             phi::TransToPhiDataType(input_data_type));
