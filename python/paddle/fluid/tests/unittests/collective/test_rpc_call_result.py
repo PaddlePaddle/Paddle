@@ -15,68 +15,101 @@
 import paddle
 import paddle.fluid as fluid
 import numpy as np
-import os
 import subprocess
+import unittest
+import os
 
-paddle.enable_static()
 
-MAX_SIZE_QUERY = 6
-MAX_SIZE_RESPONSE = 1000
+def rpc_test(use_ids, out_type, port):
+    paddle.enable_static()
 
-USE_IDS = True
-RES_TYPE = 'float'
+    MAX_SIZE_QUERY = 18
+    RES_TYPE = out_type
 
-server_cmd = "ls"
-process = subprocess.Popen(server_cmd.split())
-process.wait(2)
+    ip = 'localhost'
+    # port = 12092
 
-with open("vocab.txt", "w") as voc:
-    voc.write("ABC 0\n")
-    voc.write("EFG 1\n")
-    voc.write("HIG 2\n")
-    voc.write("[gEnd]\n")
+    server_cmd = f"python py_server_test.py --ip {ip} --port {port}"
+    ouput = open(f"server.{port}.log", "w")
+    process = subprocess.Popen(server_cmd.split(), stdout=ouput, stderr=ouput)
+    import time
 
-# network
-in_query = fluid.data(name='X', shape=[-1, MAX_SIZE_QUERY], dtype='int32')
+    time.sleep(2)
 
-req_ids = paddle.static.nn.rpc_call(
-    in_query,
-    "http://localhost:8019/run/predict",
-    "vocab.txt",
-    True,
-)
+    with open("vocab.txt", "w") as voc:
+        voc.write("ABC 0\n")
+        voc.write("EFG 1\n")
+        voc.write("HIG 2\n")
+        voc.write("[<S>] 3\n")
+        voc.write("[<N>] 4\n")
+        voc.write("[<t>] 5\n")
+        voc.write("[<T>] 6\n")
+        voc.write("##good 7\n")
+        voc.write("bad@@ 8\n")
+        voc.write("@@badok 9\n")
+        voc.write("你好 10\n")
+        voc.write("haha 11\n")
+        voc.write("##haha@@ 12\n")
+        voc.write("[PAD] 13\n")
+        voc.write("[gEnd] 14\n")
 
-out_data, out_succeed = paddle.static.nn.rpc_result(req_ids, RES_TYPE)
-paddle.static.Print(in_query)
-paddle.static.Print(req_ids)
-paddle.static.Print(out_data.astype("float32"))
+    # network
+    in_query = fluid.data(name='X', shape=[-1, MAX_SIZE_QUERY], dtype='int32')
 
-# data
-# 货物很好
-# 货物很差
-
-query_tensor = np.array(
-    [
-        [0, 1, 2, 3, 4, 0],
-        [0, 1, 2, 3, 4, 0],
-    ]
-).astype("int32")
-
-# run
-exe = fluid.Executor(fluid.CUDAPlace(0))
-exe.run(fluid.default_startup_program())
-import time
-
-t1 = time.time()
-for _ in range(1):
-    succeed, data, = exe.run(
-        fluid.default_main_program(),
-        feed={
-            'X': query_tensor,
-        },
-        fetch_list=[out_succeed, out_data],
+    req_ids = paddle.static.nn.rpc_call(
+        in_query,
+        f"http://{ip}:{port}/run/predict",
+        "vocab.txt",
+        use_ids,
     )
-t2 = time.time()
-print("speed: ", (t2 - t1) / 1, "s/step")
-if process.poll() is None:
-    process.kill()
+
+    out_data, out_succeed = paddle.static.nn.rpc_result(req_ids, RES_TYPE)
+    paddle.static.Print(in_query)
+    paddle.static.Print(req_ids)
+    paddle.static.Print(out_data.astype("float32"))
+
+    # data
+    # 货物很好
+    # 货物很差
+
+    query_tensor = np.array(
+        [
+            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0, 1, 2],
+            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 0, 1, 2, 14],
+        ]
+    ).astype("int32")
+
+    # run
+    exe = fluid.Executor(fluid.CUDAPlace(0))
+    exe.run(fluid.default_startup_program())
+    import time
+
+    t1 = time.time()
+    for _ in range(1):
+        succeed, data, = exe.run(
+            fluid.default_main_program(),
+            feed={
+                'X': query_tensor,
+            },
+            fetch_list=[out_succeed, out_data],
+        )
+    t2 = time.time()
+    print("speed: ", (t2 - t1) / 1, "s/step")
+    if process.poll() is None:
+        process.kill()
+    if out_type == "str":
+        print(data[0].tobytes().decode("utf-8", "ignore"))
+    else:
+        print(data[0])
+
+
+class RPCCallTest(unittest.TestCase):
+    def test_cases(self):
+        port = int(os.environ.get("PADDLE_DIST_UT_PORT"))
+        for uid in [True, False]:
+            for otype in ['str', 'float']:
+                rpc_test(uid, otype, port)
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -151,6 +151,10 @@ class RpcResultOpKernel : public framework::OpKernel<T> {
         auto vec = get_str_response(request_id_tensor_vec[i]);
         uint8_vec.emplace_back(vec);
         max_size = std::max(max_size, static_cast<int64_t>(vec.size()));
+        PADDLE_ENFORCE_LE(
+            max_size,
+            100 * 1024 * 1024,
+            platform::errors::Unavailable("to many string data, exceed 100MB"));
       }
     }
 
@@ -159,7 +163,7 @@ class RpcResultOpKernel : public framework::OpKernel<T> {
     if (res_type == "str") {
       ctx.device_context().Alloc<uint8_t>(out);
       for (size_t i = 0; i < uint8_vec.size(); i++) {
-        wwphi::DenseTensor out_ = out->Slice(i, i + 1);
+        phi::DenseTensor out_ = out->Slice(i, i + 1);
         for (int k = uint8_vec[i].size(); k < max_size; k++) {
           uint8_vec[i].emplace_back(static_cast<uint8_t>(0));
         }
