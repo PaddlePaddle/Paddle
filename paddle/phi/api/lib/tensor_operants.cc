@@ -20,8 +20,20 @@ namespace paddle {
 
 namespace operants {
 
+Tensor PhiTensorOperants::add(const Tensor& x, const Tensor& y) {
+  return paddle::experimental::add(x, y);
+}
+
+Tensor PhiTensorOperants::subtract(const Tensor& x, const Tensor& y) {
+  return paddle::experimental::subtract(x, y);
+}
+
 Tensor PhiTensorOperants::multiply(const Tensor& x, const Tensor& y) {
   return paddle::experimental::multiply(x, y);
+}
+
+Tensor PhiTensorOperants::divide(const Tensor& x, const Tensor& y) {
+  return paddle::experimental::divide(x, y);
 }
 
 }  // namespace operants

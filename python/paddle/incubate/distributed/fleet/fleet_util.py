@@ -1656,7 +1656,7 @@ class FleetUtil:
         return utils.program_type_trans(prog_dir, prog_fn, is_text)
 
     def load_program(self, model_filename, is_text):
-        return utils.load_program_binary(model_filename, is_text)
+        return utils.load_program(model_filename, is_text)
 
     def draw_from_program_file(
         self, model_filename, is_text, output_dir, output_filename

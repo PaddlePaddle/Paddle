@@ -82,6 +82,8 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({phi::DataType::FLOAT16,
                      phi::DataType::FLOAT32,
                      phi::DataType::INT32})},
+      {"c_broadcast",
+       XPUKernelSet({phi::DataType::FLOAT16, phi::DataType::FLOAT32})},
       {"c_concat",
        XPUKernelSet({phi::DataType::FLOAT16, phi::DataType::FLOAT32})},
       {"c_embedding", XPUKernelSet({phi::DataType::FLOAT32})},
