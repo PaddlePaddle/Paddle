@@ -102,7 +102,7 @@ void FusedTransposeKernel(const Context& dev_ctx,
   } else {
     out_dtype = x.dtype();
   }
-  auto out_type = phi::funcs::ToOneDNNDataType(out_dtype);
+  auto out_type = funcs::ToOneDNNDataType(out_dtype);
 
   funcs::ReorderOneDNNHandler reorder_handler(
       x_vec_dims, x.dtype(), x_type, out_dtype, out_type, dev_ctx.GetEngine());
