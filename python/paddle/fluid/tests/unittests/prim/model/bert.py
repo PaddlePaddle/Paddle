@@ -55,6 +55,9 @@ def is_tensor(x):
     return isinstance(x, np.ndarray)
 
 
+VOCAB_SIZE = 30522
+
+
 class BertConfig:
     def __init__(self):
         self.attention_probs_dropout_prob = 0.1
@@ -73,7 +76,7 @@ class BertConfig:
         self.paddlenlp_version = None
         self.pool_act = 'tanh'
         self.type_vocab_size = 2
-        self.vocab_size = 30522
+        self.vocab_size = VOCAB_SIZE
         self.use_return_dict = False
         self.output_hidden_states = False
         self.output_attentions = False
@@ -593,7 +596,7 @@ class Bert(nn.Layer):
 
 
 class BertPretrainingCriterion(paddle.nn.Layer):
-    def __init__(self, vocab_size):
+    def __init__(self, vocab_size=VOCAB_SIZE):
         super(BertPretrainingCriterion, self).__init__()
         # CrossEntropyLoss is expensive since the inner reshape (copy)
         self.loss_fn = paddle.nn.loss.CrossEntropyLoss(ignore_index=-1)
