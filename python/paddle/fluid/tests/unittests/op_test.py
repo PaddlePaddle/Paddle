@@ -1413,7 +1413,7 @@ class OpTest(unittest.TestCase):
             prim_checker = PrimForwardChecker(self, place)
             prim_checker.check()
             setattr(self.__class__, 'check_comp', True)
-            if self.only_prim:
+            if prim_checker.is_only_check_prim():
                 return
         # disable legacy dygraph check when check_eager is True
         if check_eager:
@@ -2062,7 +2062,7 @@ class OpTest(unittest.TestCase):
             )
             prim_grad_checker.check()
             setattr(self.__class__, 'check_comp', True)
-            if self.only_prim:
+            if prim_grad_checker.is_only_check_prim():
                 return
         # disable legacy dygraph check when check_eager is True
         if check_eager:
