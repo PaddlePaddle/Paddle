@@ -38,7 +38,7 @@ def generate_data(dtype="float32"):
 def apply_to_static(net, use_cinn):
     build_strategy = paddle.static.BuildStrategy()
     build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(net, build_strategy=False)
+    return paddle.jit.to_static(net, build_strategy=build_strategy)
 
 
 class PrimeNet(paddle.nn.Layer):
@@ -59,6 +59,7 @@ class TestPrimForward(unittest.TestCase):
     core.set_prim_backward(False)
     """
 
+    # cinn sqrt don't support fp64
     def setUp(self):
         self.x = None
         self.w = None

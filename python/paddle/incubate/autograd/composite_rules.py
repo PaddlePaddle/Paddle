@@ -116,11 +116,11 @@ def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
 
     if scale is not None:
         scale = reshape(scale, x.shape[begin_norm_axis:])
-        out = out * broadcast_to(scale, out.shape)
+        out = out * scale
     if bias is not None:
         bias = reshape(bias, x.shape[begin_norm_axis:])
-        out = out + broadcast_to(bias, out.shape)
+        out = out + bias
 
-    mean_ = flatten(mean_)
-    variance = flatten(variance)
+    mean_ = reshape(mean_, [-1])
+    variance = reshape(variance, [-1])
     return out, mean_, variance

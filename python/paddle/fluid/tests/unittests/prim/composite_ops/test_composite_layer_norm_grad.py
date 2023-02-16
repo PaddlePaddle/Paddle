@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import unittest
+from functools import reduce
+from operator import mul
 
 import numpy as np
 from utils import SUB_TOLERANCE
@@ -28,6 +30,92 @@ def generate_data(shape1, shape2, shape3, dtype="float32"):
     np_data2 = np.random.random(shape2).astype(dtype)
     np_data3 = np.random.random(shape3).astype(dtype)
     return np_data1, np_data2, np_data3
+
+
+def _reference_layer_norm_naive(
+    x, scale, beta, epsilon=1e-5, begin_norm_axis=1
+):
+    x_shape = x.shape
+    N = reduce(mul, x_shape[0:begin_norm_axis], 1)
+    D = reduce(mul, x_shape[begin_norm_axis : len(x_shape)], 1)
+    x.shape = [N, D]
+
+    mean = np.mean(x, axis=1)
+    difference = x - mean.reshape([N, 1])
+    var_tmp1 = np.power(difference, 2.0)
+    variance = np.mean(var_tmp1, axis=1)
+    var = variance + epsilon
+    # var = np.var(x, axis=1) + epsilon
+    output = np.divide(
+        (x - mean.reshape([N, 1])), (np.sqrt(var)).reshape([N, 1])
+    )
+    if scale is not None:
+        output = scale.reshape([1, D]) * output
+    if beta is not None:
+        output = output + beta.reshape([1, D])
+
+    x.shape, output.shape = x_shape, x_shape
+    return output, mean, var
+
+
+def _reference_layer_norm_grad(
+    x, grad_y, scale, bias, mean, var, begin_norm_axis=1
+):
+    x_shape = x.shape
+    N = reduce(mul, x_shape[0:begin_norm_axis], 1)
+    D = reduce(mul, x_shape[begin_norm_axis : len(x_shape)], 1)
+
+    if scale is not None:
+        scale_shape = scale.shape
+        scale.shape = [1, D]
+    x.shape, grad_y.shape = [N, D], [N, D]
+    var.shape, mean.shape = [N, 1], [N, 1]
+
+    # d_bias
+    if bias is not None:
+        d_bias = np.sum(grad_y, axis=0).reshape([1, D])
+    else:
+        d_bias = None
+    # d_scale
+    if scale is not None:
+        d_scale = np.sum(
+            ((x - mean) * np.sqrt(1 / var)) * grad_y, axis=0
+        ).reshape([1, D])
+    else:
+        d_scale = None
+    # dx
+    if scale is not None:
+        dx_end = scale * np.sqrt(1.0 / var) * grad_y
+        d_mean_0 = np.sum(-np.sqrt(1.0 / var) * grad_y * scale, axis=1).reshape(
+            [N, 1]
+        )  # the second part equals to zero.
+        d_mean = 1.0 / D * d_mean_0
+        d_std = np.sum(
+            -(1.0 / var) * (x - mean) * grad_y * scale, axis=1
+        ).reshape([N, 1]) * (
+            1.0 / D * np.sqrt(1.0 / var).reshape([N, 1]) * (x - mean)
+        )
+    else:
+        dx_end = 1.0 * np.sqrt(1.0 / var) * grad_y
+        d_mean_0 = np.sum(-np.sqrt(1.0 / var) * grad_y * 1.0, axis=1).reshape(
+            [N, 1]
+        )  # the second part equals to zero.
+        d_mean = 1.0 / D * d_mean_0
+        d_std = np.sum(
+            -(1.0 / var) * (x - mean) * grad_y * 1.0, axis=1
+        ).reshape([N, 1]) * (
+            1.0 / D * np.sqrt(1.0 / var).reshape([N, 1]) * (x - mean)
+        )
+
+    grad_x = dx_end + d_mean + d_std
+
+    grad_x.shape, x.shape, grad_y.shape = x_shape, x_shape, x_shape
+    var.shape, mean.shape = [N], [N]
+
+    if scale is not None:
+        scale.shape = scale_shape
+
+    return grad_x, d_scale, d_bias
 
 
 class Attr:
@@ -323,6 +411,180 @@ class TestCompositelayer_normPrimBackward(unittest.TestCase):
         )
 
     def test_prim_backward(self):
+        for j in self.dtypes:
+            for t in range(0, len(self.shape1s)):
+                attrs.set_dtype(j)
+                attrs.set_shape(
+                    self.n_shape[t],
+                    self.shape1s[t],
+                    self.shape2s[t],
+                    self.shape3s[t],
+                )
+                self.compare_backward()
+
+
+# if dtype = FP64 the origin layer_norm_grad kernel is wrong,
+# so we compared with numpy implement
+class TestCompositeFP64layer_norm(unittest.TestCase):
+    def setUp(self):
+        self.dtypes = ["float64"]
+        self.n_shape = [
+            [4],
+            [64, 128],
+        ]
+        self.shape1s = [
+            [3, 4],
+            [64, 64, 128],
+        ]
+        self.shape2s = [
+            [4],
+            [64 * 128],
+        ]
+        self.shape3s = [
+            [4],
+            [64 * 128],
+        ]
+
+    def cal_composite_backward(self, inputs, norm_shape, weight, bias, y_grad):
+        paddle.enable_static()
+        core._set_prim_forward_enabled(True)
+        startup_program = paddle.static.Program()
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            x = paddle.static.data(
+                'x', shape=inputs.shape, dtype=str(inputs.dtype)
+            )
+            x.stop_gradient = False
+            w = paddle.static.data(
+                'w', shape=weight.shape, dtype=str(weight.dtype)
+            )
+            b = paddle.static.data('b', shape=bias.shape, dtype=str(bias.dtype))
+            y = fn(x, norm_shape, w, b)
+            y_g = paddle.static.data(
+                'y_g', shape=y_grad.shape, dtype=str(y_grad.dtype)
+            )
+            blocks = main_program.blocks
+
+            fwd_ops = [op.type for op in blocks[0].ops]
+            # Ensure that layer_norm in original block
+            self.assertTrue('layer_norm' in fwd_ops)
+
+            paddle.incubate.autograd.to_prim(blocks)
+
+            fwd_ops_new = [op.type for op in blocks[0].ops]
+            # Ensure that layer_norm is splitted into small ops
+            self.assertTrue('layer_norm' not in fwd_ops_new)
+
+            z = paddle.static.gradients([y], x, y_g)
+            fwd_ops_grad = [op.type for op in blocks[0].ops]
+            # Ensure that layer_norm_grad not in grad block
+
+            self.assertTrue('layer_norm_grad' not in fwd_ops_grad)
+
+        exe = paddle.static.Executor()
+        exe.run(startup_program)
+        res = exe.run(
+            main_program,
+            feed={
+                'x': inputs,
+                'w': weight,
+                'b': bias,
+                'y_g': y_grad,
+            },
+            fetch_list=[y, z[0]],
+        )
+        paddle.disable_static()
+        core._set_prim_forward_enabled(False)
+        return res[0], res[1]
+
+    def cal_composite_backward_prim(
+        self, inputs, norm_shape, weight, bias, y_grad
+    ):
+        paddle.enable_static()
+        core._set_prim_all_enabled(True)
+        core._add_skip_comp_ops("sqrt")
+        startup_program = paddle.static.Program()
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            x = paddle.static.data(
+                'x', shape=inputs.shape, dtype=str(inputs.dtype)
+            )
+            x.stop_gradient = False
+            w = paddle.static.data(
+                'w', shape=weight.shape, dtype=str(weight.dtype)
+            )
+            b = paddle.static.data('b', shape=bias.shape, dtype=str(bias.dtype))
+            y = fn(x, norm_shape, w, b)
+            y_g = paddle.static.data(
+                'y_g', shape=y_grad.shape, dtype=str(y_grad.dtype)
+            )
+
+            blocks = main_program.blocks
+            paddle.incubate.autograd.to_prim(blocks)
+            z = paddle.static.gradients([y], x)
+
+        exe = paddle.static.Executor()
+        exe.run(startup_program)
+        res = exe.run(
+            main_program,
+            feed={'x': inputs, 'w': weight, 'b': bias, 'y_g': y_grad},
+            fetch_list=[y, z[0]],
+        )
+        paddle.disable_static()
+        core._set_prim_all_enabled(False)
+        return res[0], res[1]
+
+    def compare_backward(self):
+        x, w, b = generate_data(
+            attrs.shape1, attrs.shape2, attrs.shape3, attrs.dtype
+        )
+        y_grad = np.ones_like(x)
+        n_shape = attrs.n_shape
+
+        composite1, composite2 = self.cal_composite_backward(
+            x, n_shape, w, b, y_grad
+        )
+        composite_p1, composite_p2 = self.cal_composite_backward_prim(
+            x, n_shape, w, b, y_grad
+        )
+
+        numpy1, mean, variance = _reference_layer_norm_naive(
+            x,
+            w,
+            b,
+        )
+        numpy2, _, _ = _reference_layer_norm_grad(
+            x,
+            y_grad,
+            w,
+            b,
+            mean,
+            variance,
+        )
+
+        # forward_prim
+        np.testing.assert_allclose(
+            composite1,
+            numpy1,
+            rtol=1e-11,
+            atol=1e-11,
+        )
+        # forward_prim + backward
+        np.testing.assert_allclose(
+            composite2,
+            numpy2,
+            rtol=1e-11,
+            atol=1e-11,
+        )
+        # forward_prim + backward_prim
+        np.testing.assert_allclose(
+            composite_p2,
+            numpy2,
+            rtol=1e-11,
+            atol=1e-11,
+        )
+
+    def test_backward(self):
         for j in self.dtypes:
             for t in range(0, len(self.shape1s)):
                 attrs.set_dtype(j)
