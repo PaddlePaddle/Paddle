@@ -298,6 +298,39 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   // record the origin output data type
   std::vector<int> origin_outputs_dtype;
   std::map<std::string, int> map_origin_outputs_dtype;
+
+  // Whether to mark Output
+  auto mark_output = Get<bool>("mark_output");
+  auto output_tensor_names =
+      Get<std::vector<std::string>>("output_tensor_names");
+  VLOG(1) << "mark Output: " << mark_output;
+
+  if (mark_output) {
+    for (auto node : subgraph) {
+      if (node->NodeType() == Node::Type::kOperation) {
+        // if(node->Op()->Type() == "reshape2") continue;
+        if (node->Op()->Outputs().count("XShape")) continue;
+        for (auto *x : node->outputs) {
+          if (std::count(params.begin(), params.end(), x->Name()) > 0) continue;
+          if (output_tensor_names.empty() ||
+              std::count(output_tensor_names.begin(),
+                         output_tensor_names.end(),
+                         x->Name())) {
+            std::string output_name_withid =
+                x->Name() + std::to_string(x->id());
+            output_names.insert(x->Name());
+            output_names_with_id.insert(output_name_withid);
+            origin_name_output_rank[x->Name()] = x->Var()->GetShape().size();
+            trt_outputs.insert(x);
+            map_origin_outputs_dtype[x->Name()] =
+                static_cast<int>(x->Var()->GetDataType());
+          }
+        }
+      }
+    }
+  }
+  // Because the above code may exclude the output of the engine,
+  // the following code is executed by default
   for (auto *x : node->outputs) {
     output_names.insert(x->Name());
     output_names_with_id.insert(x->Name() + std::to_string(x->id()));
@@ -306,7 +339,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
     map_origin_outputs_dtype[x->Name()] =
         static_cast<int>(x->Var()->GetDataType());
   }
-
   OutputProcess(
       graph, trt_outputs, phi::Backend::GPU, model_precision, mixed_black_list);
 
@@ -437,7 +469,14 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   op_desc->SetAttr("shape_range_info_path", shape_range_info_path);
   op_desc->SetAttr("use_inspector", Get<bool>("use_inspector"));
   op_desc->SetAttr("model_precision", Get<int>("model_precision"));
-
+  // if(markOutput){
+  //   op_desc->SetAttr("all_output_names",
+  //   std::vector<std::string>(all_output_names.begin(),
+  //   all_output_names.end()));
+  // }else{
+  //   op_desc->SetAttr("all_output_names",
+  //   std::vector<std::string>(output_names.begin(), output_names.end()));
+  // }
   // we record all inputs' shapes in attr to check if they are consistent
   // with the real inputs' shapes retrieved from scope when trt runs.
   for (auto *x : node->inputs) {
