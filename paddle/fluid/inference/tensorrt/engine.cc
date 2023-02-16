@@ -161,7 +161,6 @@ void TensorRTEngine::FreezeNetwork() {
   if (enable_fp16) {
     bool support_fp16 = infer_builder_->platformHasFastFp16();
     infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kFP16);
-    with_fp16_ = true;
     if (!support_fp16) {
       LOG(INFO) << "You specify FP16 mode, but the hardware do not support "
                    "FP16 speed up, use FP32 instead.";
@@ -174,10 +173,8 @@ void TensorRTEngine::FreezeNetwork() {
   if (enable_int8) {
     if (!use_dla_) {
       infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kFP16);
-      with_fp16_ = true;
     }
     infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kINT8);
-    with_int8_ = true;
 
     if (calibrator_) {
       infer_builder_config_->setInt8Calibrator(calibrator_);
