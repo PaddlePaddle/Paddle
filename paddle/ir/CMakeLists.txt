@@ -12,6 +12,4 @@ cc_library(
   SRCS ir_context.cc
   DEPS storage_uniquer)
 
-cc_test_old(type_support_test SRCS type_support_test.cc DEPS gtest)
-
-cc_test_old(ir_context_test SRCS ir_context_test.cc DEPS ir_context gtest)
+cc_test_old(type_test SRCS type_test.cc DEPS ir_context gtest)

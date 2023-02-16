@@ -13,12 +13,53 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+#include <unordered_map>
 
 #include "paddle/ir/builtin_type.h"
 #include "paddle/ir/ir_context.h"
-#include "paddle/ir/type_support.h"
+#include "paddle/ir/type_base.h"
 
-TEST(ir_context, type) {
+TEST(type_test, type_id) {
+  class TypeA {};
+  class TypeB {};
+
+  // (1) Test construct TypeId by TypeId::Get()
+  ir::TypeId a_id = ir::TypeId::get<TypeA>();
+  ir::TypeId a_other_id = ir::TypeId::get<TypeA>();
+  ir::TypeId b_id = ir::TypeId::get<TypeB>();
+  EXPECT_EQ(a_id, a_other_id);
+  EXPECT_NE(a_id, b_id);
+
+  // (2) Test TypeId hash
+  std::unordered_map<ir::TypeId, ir::TypeId *> type_id_register;
+  type_id_register.emplace(a_id, &a_id);
+  type_id_register.emplace(b_id, &b_id);
+  for (auto kv : type_id_register) {
+    EXPECT_EQ(kv.first, *kv.second);
+  }
+}
+
+TEST(type_test, abstract_type) {
+  class TypeA {};
+
+  ir::TypeId a_id = ir::TypeId::get<TypeA>();
+  ir::AbstractType abstract_type_a = ir::AbstractType::get(a_id);
+
+  EXPECT_EQ(abstract_type_a.type_id(), a_id);
+}
+
+TEST(type_test, type_storage) {
+  class TypeA {};
+
+  ir::TypeId a_id = ir::TypeId::get<TypeA>();
+  ir::AbstractType abstract_type_a = ir::AbstractType::get(a_id);
+
+  ir::TypeStorage storage_a(&abstract_type_a);
+
+  EXPECT_EQ(storage_a.abstract_type().type_id(), abstract_type_a.type_id());
+}
+
+TEST(type_test, type) {
   // Test creation of built-in singleton type.
   ir::IrContext *ctx = ir::IrContext::Instance();
   ir::Type fp32_1 = ir::Float32Type::get(ctx);

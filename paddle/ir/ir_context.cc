@@ -16,7 +16,7 @@
 
 #include "paddle/ir/builtin_type.h"
 #include "paddle/ir/ir_context.h"
-#include "paddle/ir/type_support.h"
+#include "paddle/ir/type_base.h"
 
 namespace ir {
 // The implementation class of the IrContext class

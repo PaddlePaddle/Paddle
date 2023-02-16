@@ -16,6 +16,7 @@
 
 #include "paddle/ir/ir_context.h"
 #include "paddle/ir/storage_uniquer.h"
+#include "paddle/ir/type_id.h"
 
 namespace ir {
 ///
@@ -207,5 +208,25 @@ struct TypeUniquer {
         });
   }
 };
+
+///
+/// \brief This macro definition is used to add some necessary functions to the
+/// custom Type class.
+///
+#define REGISTER_TYPE_UTILS(concrete_type, storage_type)                   \
+  using Type::Type;                                                        \
+  using StorageType = storage_type;                                        \
+  StorageType *storage() const {                                           \
+    return static_cast<StorageType *>(this->storage_);                     \
+  }                                                                        \
+  static ir::TypeId type_id() { return ir::TypeId::get<concrete_type>(); } \
+  template <typename T>                                                    \
+  static bool classof(T val) {                                             \
+    return val.type_id() == type_id();                                     \
+  }                                                                        \
+  template <typename... Args>                                              \
+  static concrete_type create(IrContext *ctx, Args... args) {              \
+    return ir::TypeUniquer::template get<concrete_type>(ctx, args...);     \
+  }
 
 }  // namespace ir
