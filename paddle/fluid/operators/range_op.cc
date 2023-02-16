@@ -33,10 +33,10 @@ class RangeOp : public framework::OperatorWithKernel {
       const std::string &var_name,
       const phi::DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
-    if (platform::is_xpu_place(tensor.place())) {
-      return phi::KernelKey(
-          tensor.place(), tensor.layout(), expected_kernel_type.dtype());
-    }
+    // if (platform::is_xpu_place(tensor.place())) {
+    //   return phi::KernelKey(
+    //       tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+    // }
     return phi::KernelKey(phi::Backend::ALL_BACKEND,
                           expected_kernel_type.layout(),
                           expected_kernel_type.dtype());
