@@ -128,9 +128,9 @@ class ToTensorTransformer(BaseTransformer):
 
 class NameloadJstTransformer(BaseTransformer):
     """
-    change name and attribute load to __jst.ld(name) pattern.
+    change name and attribute load to __jst.Ld(name) pattern.
     for example:
-        a.dtype -->  __jst.ld(__jst.ld(a).dtype)
+        a.dtype -->  __jst.Ld(__jst.Ld(a).dtype)
 
     In paddle science and deepxde, we have to support changing tensor into variable
     in arbitrary occasion such as global tensor.
@@ -153,7 +153,7 @@ class NameloadJstTransformer(BaseTransformer):
     def _surround_with_ld(self, node):
         node = (
             gast.parse(
-                "_jst.ld({})".format(utils.ast_to_source_code(node).strip())
+                "_jst.Ld({})".format(utils.ast_to_source_code(node).strip())
             )
             .body[0]
             .value
