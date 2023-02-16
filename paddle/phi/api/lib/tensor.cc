@@ -415,11 +415,14 @@ bool Tensor::can_not_use() {
   }
 }
 
-void Tensor::set_can_not_use() {
+void Tensor::set_can_not_use(std::string op_name) {
   if (is_dense_tensor()) {
     auto dense_tensor_ = static_cast<phi::DenseTensor *>(impl_.get());
-    if (dense_tensor_->can_not_uses.size() > 0)
+    if (dense_tensor_->can_not_uses.size() > 0) {
       dense_tensor_->canNotUse = std::make_shared<bool>(true);
+      LOG(WARNING) << "Stride Test Log(strict):" << op_name
+                   << " share buffer tensor will be overwrited";
+    }
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "set_can_not_use is only supported on DenseTensor now."));

@@ -156,10 +156,11 @@ class EagerUtils {
 
   static void CheckInplace(const paddle::experimental::Tensor& target,
                            const AutogradMeta* autograd_meta,
-                           bool require_any_grad) {
+                           bool require_any_grad,
+                           std::string op_name = "op_name") {
     paddle::experimental::Tensor& xx =
         const_cast<paddle::experimental::Tensor&>(target);
-    xx.set_can_not_use();
+    xx.set_can_not_use(op_name);
     if (require_any_grad && autograd_meta) {
       PADDLE_ENFORCE_EQ(!autograd_meta->StopGradient() &&
                             egr::egr_utils_api::IsLeafTensor(target),

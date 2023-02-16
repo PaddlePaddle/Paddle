@@ -411,7 +411,7 @@ extern std::unordered_map<std::string, std::vector<std::string>> core_ops_return
 """
 
 CHECK_INPLACE_TEMPLATE = """
-  egr::EagerUtils::CheckInplace({}, {}, require_any_grad);
+  egr::EagerUtils::CheckInplace({}, {}, require_any_grad, "{}");
 """
 
 BUMP_INPLACE_VERSION_TEMPLATE = """
@@ -1499,7 +1499,9 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     and forward_api_name not in inplace_check_blacklist
                 ):
                     check_inplace_str += CHECK_INPLACE_TEMPLATE.format(
-                        inplace_name, GetAutoGradMetaName(inplace_name)
+                        inplace_name,
+                        GetAutoGradMetaName(inplace_name),
+                        forward_api_name,
                     )
                 bump_inplace_version_str += (
                     BUMP_INPLACE_VERSION_TEMPLATE.format(
