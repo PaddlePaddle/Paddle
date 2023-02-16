@@ -1411,6 +1411,7 @@ class OpTest(unittest.TestCase):
         check_eager=False,
         check_comp=False,
     ):
+        core._set_prim_all_enabled(False)
         if check_comp:
             prim_checker = PrimForwardChecker(self, place)
             prim_checker.check()
@@ -1879,7 +1880,6 @@ class OpTest(unittest.TestCase):
         check_comp=False,
     ):
 
-        core._set_prim_all_enabled(False)
         # disable legacy dygraph check when check_eager is True
         if check_eager:
             check_dygraph = False
@@ -2022,7 +2022,6 @@ class OpTest(unittest.TestCase):
         check_eager=False,
         check_comp=False,
     ):
-        core._set_prim_all_enabled(False)
         # disable legacy dygraph check when check_eager is True
         if check_eager:
             check_dygraph = False
@@ -2061,6 +2060,7 @@ class OpTest(unittest.TestCase):
         check_eager=False,
         check_comp=False,
     ):
+        core._set_prim_all_enabled(False)
         if check_comp:
             prim_grad_checker = PrimGradChecker(
                 self, place, inputs_to_check, output_names
