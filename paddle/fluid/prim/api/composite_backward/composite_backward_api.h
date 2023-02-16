@@ -213,7 +213,7 @@ void divide_grad(const Tensor& x,
 template <typename T>
 void sqrt_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
-    auto div_x = full<T>(phi::vectorize(out.dims()), 0.5);
+    auto div_x = full<T>(phi::vectorize(out.dims()), 0.5, out.dtype());
     auto x_grad_tmp = out_grad * div_x / out;
     set_output<T>(x_grad_tmp, x_grad);
   }
