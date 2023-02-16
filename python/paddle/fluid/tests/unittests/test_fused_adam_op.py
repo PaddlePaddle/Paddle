@@ -167,7 +167,8 @@ class TestFusedAdamOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        if paddle.is_compiled_with_cuda():
+            self.check_output()
 
 
 if __name__ == "__main__":
