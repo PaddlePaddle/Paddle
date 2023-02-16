@@ -356,15 +356,13 @@ class TensorRTEngine {
   int GetRuntimeBatch();
 
   bool WithFp16() {
-    bool enable_fp16 = (precision_ == AnalysisConfig::Precision::kHalf);
     bool support_fp16 = infer_builder_->platformHasFastFp16();
-    return enable_fp16 && support_fp16;
+    return with_fp16_ && support_fp16;
   }
 
   bool WithInt8() {
-    bool enable_int8 = (precision_ == AnalysisConfig::Precision::kInt8);
     bool support_int8 = infer_builder_->platformHasFastInt8();
-    return enable_int8 && support_int8;
+    return with_int8_ && support_int8;
   }
 
   int GetDeviceId() { return device_id_; }
@@ -671,6 +669,8 @@ class TensorRTEngine {
   ShapeMapType max_shape_tensor_;
   ShapeMapType optim_shape_tensor_;
   bool disable_trt_plugin_fp16_{false};
+  bool with_fp16_{false};
+  bool with_int8_{false};
   phi::DataType model_precision_{phi::DataType::FLOAT32};
   bool use_varseqlen_{false};
   bool use_dla_{false};
