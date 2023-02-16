@@ -99,17 +99,18 @@ class ConditionalBlockOp : public ConditionalOp {
         LOG_FIRST_N(INFO, 1)
             << "[ControlFlow][ConditionalBlock] New Executor is Running.";
         if (!core_ || !platform::is_same_place(core_->GetPlace(), dev_place)) {
-          std::set<std::string> skip_gc_vars(skip_vars.begin(),
-                                             skip_vars.end());
           VLOG(10) << "[interpreterCore cache]" << core_.get();
           VLOG_IF(10, core_)
               << platform::is_same_place(core_->GetPlace(), dev_place);
-          core_.reset(new InterpreterCore(dev_place,
-                                          *block,
-                                          skip_gc_vars,
-                                          &cur_scope,
-                                          /* used_for_jit */ false,
-                                          /* used_for_control_flow_op */ true));
+
+          framework::interpreter::ExecutionConfig execution_config;
+          execution_config.create_local_scope = false;
+          execution_config.used_for_control_flow_op = true;
+          execution_config.skip_gc_vars =
+              std::set<std::string>(skip_vars.begin(), skip_vars.end());
+
+          core_.reset(new InterpreterCore(
+              dev_place, *block, &cur_scope, execution_config));
           VLOG(10) << "[interpreterCore cache]"
                    << "new created:" << core_;
         } else {
@@ -214,14 +215,15 @@ class ConditionalBlockGradOp : public ConditionalOp {
           VLOG(10) << "[interpreterCore cache]" << core_.get();
           VLOG_IF(10, core_)
               << platform::is_same_place(core_->GetPlace(), dev_place);
-          std::set<std::string> skip_gc_vars(inside_grads.begin(),
-                                             inside_grads.end());
-          core_.reset(new InterpreterCore(dev_place,
-                                          *block,
-                                          skip_gc_vars,
-                                          &cur_scope,
-                                          /* used_for_jit */ false,
-                                          /* used_for_control_flow_op */ true));
+
+          framework::interpreter::ExecutionConfig execution_config;
+          execution_config.create_local_scope = false;
+          execution_config.used_for_control_flow_op = true;
+          execution_config.skip_gc_vars =
+              std::set<std::string>(inside_grads.begin(), inside_grads.end());
+
+          core_.reset(new InterpreterCore(
+              dev_place, *block, &cur_scope, execution_config));
           VLOG(10) << "[interpreterCore cache]"
                    << "new created:" << core_;
         } else {
