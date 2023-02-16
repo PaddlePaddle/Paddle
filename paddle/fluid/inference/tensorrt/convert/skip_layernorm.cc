@@ -46,6 +46,9 @@ class SkipLayerNormOpConverter : public OpConverter {
     inputs.push_back(input1);
     inputs.push_back(input2);
 
+engine_->SetTensorDynamicRange(input1, 0.01);
+engine_->SetTensorDynamicRange(input2, 0.01);
+
     bool enable_int8 = false;
     if (op_desc.HasAttr("enable_int8")) {
       enable_int8 = PADDLE_GET_CONST(bool, op_desc.GetAttr("enable_int8"));
@@ -158,6 +161,7 @@ class SkipLayerNormOpConverter : public OpConverter {
     }
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "skip_layernorm", {output_name}, test_mode);
+    engine_->SetTensorDynamicRange(layer->getOutput(0), 0.01);
   }
 };
 

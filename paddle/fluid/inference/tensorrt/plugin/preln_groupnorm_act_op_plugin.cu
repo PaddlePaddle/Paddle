@@ -50,7 +50,7 @@ bool PrelnGroupnormActPluginDynamic::supportsFormatCombination(
                                         nb_inputs + nb_outputs));
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
-    if (with_fp16_) {
+    if (with_fp16_ || 1) {
       return ((in.type == nvinfer1::DataType::kHALF) &&
               (in.format == nvinfer1::PluginFormat::kHWC8));
     } else {

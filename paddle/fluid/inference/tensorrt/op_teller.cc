@@ -42,6 +42,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     teller_set.insert("group_norm");
     teller_set.insert("multiclass_nms3");
     teller_set.insert("multiclass_nms");
+    int8_teller_set.insert("group_norm");
     int8_teller_set.insert("multiclass_nms3");
     int8_teller_set.insert("multiclass_nms");
 #endif
@@ -357,6 +358,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "range") {
+      return false;
       if (!with_dynamic_shape) {
         return false;
       }
@@ -700,6 +702,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "arg_max" || op_type == "arg_min") {
+      return false;
       if (!desc.HasAttr("axis", /*with_attr_var=*/false)) {
         VLOG(3) << "Skip to convert into TRT while found Attribute('axis') is "
                    "Variable type in arg_max.";
@@ -2512,6 +2515,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "expand_v2") {
+      return false;
       if (!with_dynamic_shape) {
         return false;
       }

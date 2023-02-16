@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 import os
 from typing import Set
 
@@ -55,6 +56,8 @@ def tensor_share_external_data(self, data):
     '''
     if isinstance(data, core.LoDTensor):
         self.share_external_data_bind(data)
+    elif isinstance(data, paddle.Tensor):
+         self.share_external_data_paddle_tensor_bind(data)
     else:
         raise TypeError(
             "In share_external_data, we only support LoDTensor data type."

@@ -62,6 +62,7 @@ class SiluOpConverter : public OpConverter {
 
     auto* sigmoid = TRT_ENGINE_ADD_LAYER(
         engine_, Activation, *input, nvinfer1::ActivationType::kSIGMOID);
+    engine_->SetTensorDynamicRange(sigmoid->getOutput(0), 0.01);
     layer = TRT_ENGINE_ADD_LAYER(engine_,
                                  ElementWise,
                                  *input,

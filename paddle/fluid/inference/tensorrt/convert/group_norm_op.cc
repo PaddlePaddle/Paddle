@@ -68,8 +68,6 @@ class GroupNormOpConverter : public OpConverter {
     auto bias_weights = GetWeight(bias_name, &bias_dims);
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
     bool with_int8 = engine_->WithInt8();
-    // when int8 is on, allow fall back to fp16
-    if (with_int8) with_fp16 = true;
     if (engine_->with_dynamic_shape()) {
       int gn_num = groups;
       std::vector<int64_t> mean_shape({gn_num});
@@ -92,6 +90,11 @@ class GroupNormOpConverter : public OpConverter {
       auto output_name = op_desc.Output("Y")[0];
       RreplenishLayerAndOutput(
           groupnorm_layer, "group_norm", {output_name}, test_mode);
+
+      engine_->SetTensorDynamicRange(groupnorm_layer->getOutput(0), 0.01);
+      engine_->SetTensorDynamicRange(input_itensor, 0.01);
+
+
     } else {
       int gn_num = input_itensor->getDimensions().d[0] * groups;
       std::vector<int64_t> mean_shape({gn_num});

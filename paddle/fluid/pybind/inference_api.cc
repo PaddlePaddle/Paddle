@@ -38,6 +38,9 @@
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
 #include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/api/include/tensor.h"
+#include "paddle/fluid/pybind/eager.h"
+#include "paddle/fluid/pybind/eager_utils.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/core/cuda_stream.h"
@@ -262,6 +265,26 @@ void PaddleInferShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
         ToPaddleInferPlace(input_tensor.place().GetType()));
   }
 }
+
+
+void PaddleTensorShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
+                                    paddle::experimental::Tensor paddle_tensor) {
+   std::vector<int> shape;
+   for (int i = 0; i < paddle_tensor.dims().size(); ++i) {
+     shape.push_back(paddle_tensor.dims()[i]);
+   }
+   if (paddle_tensor.dtype() == paddle::experimental::DataType::FLOAT32) {
+     tensor.ShareExternalData(
+         static_cast<float *>(paddle_tensor.data<float>()),
+         shape,
+         ToPaddleInferPlace(paddle_tensor.place().GetType()));
+   } else if (paddle_tensor.dtype() == paddle::experimental::DataType::FLOAT16) {
+     tensor.ShareExternalData(
+         static_cast<paddle::platform::float16 *>(paddle_tensor.data<paddle::platform::float16>()),
+         shape,
+         ToPaddleInferPlace(paddle_tensor.place().GetType()));
+   }
+ }
 
 /// \brief Experimental interface.
 /// Create the Strings tensor from data.
@@ -1054,6 +1077,11 @@ void BindPaddleInferTensor(py::module *m) {
       .def("copy_from_cpu_bind", &PaddleInferTensorCreate<bool>)
       .def("copy_from_cpu_bind", &PaddleInferStringTensorCreate)
       .def("share_external_data_bind", &PaddleInferShareExternalData)
+      .def("share_external_data_paddle_tensor_bind",
+            [](paddle_infer::Tensor &self, const py::handle &input) {
+              PyObject *obj = input.ptr();
+              PaddleTensorShareExternalData(self, std::move(CastPyArg2Tensor(obj, 1)));
+             })
       .def("copy_to_cpu", &PaddleInferTensorToNumpy)
       .def("shape", &paddle_infer::Tensor::shape)
       .def("set_lod", &paddle_infer::Tensor::SetLoD)

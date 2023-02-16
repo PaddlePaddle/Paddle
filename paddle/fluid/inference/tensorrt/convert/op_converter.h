@@ -192,7 +192,7 @@ class OpConverter {
 
     size_t output_num = op_desc.OutputNames().size();
     // only one out settensordynamicRange
-    if (op_desc.HasAttr("out_threshold")) {
+    if (op_desc.HasAttr("out_threshold") && 0) {
       float out_scale =
           PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
       std::string output_name = "";
