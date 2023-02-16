@@ -28,8 +28,8 @@ class Float32Type : public ir::Type {
 
   using StorageType = ir::TypeStorage;  // 必须指定StorageType
 
-  StorageType *impl() const {
-    return static_cast<StorageType *>(this->impl_);
+  StorageType *storage() const {
+    return static_cast<StorageType *>(this->storage_);
   }  // 必须提供
 
   static TypeId type_id() { return TypeId::get<Float32Type>(); }  // 必须提供
@@ -84,8 +84,8 @@ class IntegerType : public ir::Type {
 
   using StorageType = ir::IntegerTypeStorage;  // 必须指定StorageType
 
-  StorageType *impl() const {
-    return static_cast<StorageType *>(this->impl_);
+  StorageType *storage() const {
+    return static_cast<StorageType *>(this->storage_);
   }  // 必须提供
 
   static TypeId type_id() { return TypeId::get<IntegerType>(); }  // 必须提供

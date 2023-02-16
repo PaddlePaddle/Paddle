@@ -29,8 +29,8 @@ class Type {
 
   constexpr Type() = default;
 
-  Type(const StorageType *impl)  // NOLINT
-      : impl_(const_cast<StorageType *>(impl)) {}
+  Type(const StorageType *storage)  // NOLINT
+      : storage_(const_cast<StorageType *>(storage)) {}
 
   Type(const Type &other) = default;
 
@@ -39,18 +39,18 @@ class Type {
   ///
   /// \brief Comparison operations.
   ///
-  bool operator==(Type other) const { return impl_ == other.impl_; }
-  bool operator!=(Type other) const { return impl_ != other.impl_; }
+  bool operator==(Type other) const { return storage_ == other.storage_; }
+  bool operator!=(Type other) const { return storage_ != other.storage_; }
 
-  explicit operator bool() const { return impl_; }
+  explicit operator bool() const { return storage_; }
 
-  bool operator!() const { return impl_ == nullptr; }
+  bool operator!() const { return storage_ == nullptr; }
 
-  TypeId type_id() { return impl_->abstract_type().type_id(); }
+  TypeId type_id() { return storage_->abstract_type().type_id(); }
 
-  const AbstractType &abstract_type() { return impl_->abstract_type(); }
+  const AbstractType &abstract_type() { return storage_->abstract_type(); }
 
-  StorageType *impl() const { return impl_; }
+  StorageType *storage() const { return storage_; }
 
   ///
   /// \brief Enable hashing Type.
@@ -58,7 +58,7 @@ class Type {
   friend struct std::hash<Type>;
 
  protected:
-  StorageType *impl_{nullptr};
+  StorageType *storage_{nullptr};
 };
 
 }  // namespace ir
@@ -70,7 +70,7 @@ namespace std {
 template <>
 struct hash<ir::Type> {
   std::size_t operator()(const ir::Type &obj) const {
-    return std::hash<ir::Type::StorageType *>()(obj.impl_);
+    return std::hash<ir::Type::StorageType *>()(obj.storage_);
   }
 };
 }  // namespace std
