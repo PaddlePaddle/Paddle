@@ -283,6 +283,14 @@ template <typename T>
 
         return api_declaration
 
+    def gene_eager_tensor_operants_declaration(self):
+        declaration_with_template = self.gene_prim_api_declaration()
+        # without VLOG
+        tensor_operants_declaration = (
+            "  " + declaration_with_template.split("\n")[2] + "\n\n"
+        )
+        return tensor_operants_declaration
+
     def get_ad_func_input_args(self, inplace_flag=False):
         input_args = []
         for name in self.inputs['names']:
@@ -338,5 +346,22 @@ template <>
         api_code = api_code + '{'
         api_code += f"""{self.gene_ad_func_call()}"""
         api_code += '}' + '\n'
+
+        return api_code
+
+    def gene_eager_tensor_operants_implementation(self):
+        api_code = ""
+        indent = "  "
+        api_func_name = self.get_api__func_name()
+        # func decalaration
+        if api_func_name[-1] != '_':
+            api_code = f"""{self.get_return_type()} EagerTensorOperants::{api_func_name}({self.get_declare_args_nodefault()})"""
+        else:
+            api_code = f"""{self.get_return_type(inplace_flag=True)} EagerTensorOperants::{api_func_name}({self.get_declare_args_nodefault(inplace_flag=True)})"""
+
+        # without VLOG
+        function_call = self.gene_ad_func_call().split("\n")[2]
+        # func code
+        api_code += f""" {{\n{indent}{function_call}\n}}\n\n"""
 
         return api_code
