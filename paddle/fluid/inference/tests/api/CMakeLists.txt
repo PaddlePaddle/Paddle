@@ -937,6 +937,14 @@ if(WITH_GPU AND TENSORRT_FOUND)
     ARGS
     --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
   inference_analysis_test(
+    trt_static_path_test
+    SRCS
+    trt_static_path_test.cc
+    EXTRA_DEPS
+    paddle_inference_shared
+    ARGS
+    --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
+  inference_analysis_test(
     trt_split_converter_test
     SRCS
     trt_split_converter_test.cc
@@ -1265,7 +1273,6 @@ cc_test(
 if(WITH_GPU AND TENSORRT_FOUND)
   set_tests_properties(trt_resnext_test PROPERTIES TIMEOUT 300)
   set_tests_properties(trt_quant_int8_yolov3_r50_test PROPERTIES TIMEOUT 400)
-  set_tests_properties(trt_mobilenet_test PROPERTIES TIMEOUT 300)
   set_tests_properties(trt_resnet50_test PROPERTIES TIMEOUT 300)
   set_tests_properties(trt_cascade_rcnn_test PROPERTIES TIMEOUT 300)
   set_tests_properties(test_trt_dynamic_shape_ernie_ser_deser PROPERTIES TIMEOUT
@@ -1306,6 +1313,7 @@ if(WITH_GPU)
 endif()
 if(WITH_GPU AND TENSORRT_FOUND)
   set_tests_properties(trt_mobilenet_test PROPERTIES TIMEOUT 120)
+  set_tests_properties(trt_static_path_test PROPERTIES TIMEOUT 120)
   if(WITH_MKLDNN)
     set_tests_properties(test_analyzer_bfloat16_resnet50 PROPERTIES TIMEOUT 120)
   endif()
