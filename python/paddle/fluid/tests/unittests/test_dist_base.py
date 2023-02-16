@@ -666,7 +666,7 @@ class TestParallelDyGraphRunnerBase:
                 or args.update_method == "hccl"
                 or args.update_method == "cncl"
             ):
-                strategy = dygraph.parallel.ParallelStrategy()
+                strategy = paddle.distributed.parallel.ParallelStrategy()
                 strategy.nranks = nranks
                 strategy.local_rank = args.trainer_id
                 strategy.trainer_endpoints = args.endpoints.split(",")
@@ -677,11 +677,11 @@ class TestParallelDyGraphRunnerBase:
                     "begin to prepare context in dygraph with nccl2",
                 )
                 if not args.find_unused_parameters:
-                    model = dygraph.parallel.DataParallel(
+                    model = paddle.DataParallel(
                         model, strategy, find_unused_parameters=False
                     )
                 else:
-                    model = dygraph.parallel.DataParallel(
+                    model = paddle.DataParallel(
                         model, strategy, find_unused_parameters=True
                     )
                 print_to_err(type(self).__name__, "model built in dygraph")
@@ -689,11 +689,11 @@ class TestParallelDyGraphRunnerBase:
             elif args.update_method == "gloo":
                 paddle.distributed.init_parallel_env()
                 if not args.find_unused_parameters:
-                    model = dygraph.parallel.DataParallel(
+                    model = paddle.DataParallel(
                         model, find_unused_parameters=False
                     )
                 else:
-                    model = dygraph.parallel.DataParallel(
+                    model = paddle.DataParallel(
                         model, find_unused_parameters=True
                     )
 

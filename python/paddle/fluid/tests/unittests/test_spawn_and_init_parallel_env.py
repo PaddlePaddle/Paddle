@@ -24,7 +24,7 @@ from paddle.distributed.spawn import (
     _options_valid_check,
 )
 from paddle.fluid import core
-from paddle.fluid.dygraph import parallel_helper
+from paddle.distributed import parallel_helper
 
 # NOTE(chenweihang): Coverage CI is currently not able to count python3
 # unittest, so the unittests here covers some cases that will only be

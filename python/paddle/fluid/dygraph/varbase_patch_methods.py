@@ -34,7 +34,6 @@ from ..framework import (
 )
 from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_varbase
-from .parallel import scale_loss
 from paddle.fluid.data_feeder import convert_dtype, _PADDLE_DTYPE_2_NUMPY_DTYPE
 import paddle.utils.deprecated as deprecated
 import paddle.profiler as profiler
@@ -230,6 +229,7 @@ def monkey_patch_varbase():
 
     @framework.dygraph_only
     def backward(self, grad_tensor=None, retain_graph=False):
+        from paddle.distributed.parallel import scale_loss
         """
         Run backward of current Graph which starts from current Tensor.
 

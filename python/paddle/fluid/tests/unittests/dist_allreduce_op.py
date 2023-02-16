@@ -18,6 +18,7 @@ from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
 import paddle.fluid as fluid
+import paddle.distributed as dist
 
 paddle.enable_static()
 
@@ -113,8 +114,10 @@ class TestDistMnist2x2(TestDistRunnerBase):
             data_parallel_param_grads = []
             for p, g in params_grads:
                 # NOTE: scale will be done on loss scale in multi_devices_graph_pass using nranks.
-                grad_reduce = fluid.layers.collective._allreduce(g)
-                data_parallel_param_grads.append([p, grad_reduce])
+                # grad_reduce = fluid.layers.collective._allreduce(g)
+                # data_parallel_param_grads.append([p, grad_reduce])
+                dist.all_reduce(g)
+                data_parallel_param_grads.append([p, g])
             opt.apply_gradients(data_parallel_param_grads)
 
         return (

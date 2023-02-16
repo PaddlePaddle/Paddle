@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
-from ..layers import collective
-from ..framework import Parameter
+import paddle
+from paddle.framework import Parameter
 
 __parallel_ctx__clz__ = None
 
@@ -55,4 +55,4 @@ def _broadcast_parameters(parameters):
             continue
 
         if isinstance(param, Parameter) and param.trainable:
-            collective._broadcast(param, 0, sync_mode=True)
+            paddle.distributed.broadcast(param, 0, sync_op=True)

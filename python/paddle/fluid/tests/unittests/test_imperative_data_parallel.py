@@ -41,7 +41,7 @@ class TestDataParallelStateDict(unittest.TestCase):
         with fluid.dygraph.guard():
             init_parallel_env()
             mlp = MLP()
-            parallel_mlp = dygraph.parallel.DataParallel(mlp)
+            parallel_mlp = paddle.distributed.parallel.DataParallel(mlp)
 
             single_state = mlp.state_dict()
             parallel_state = parallel_mlp.state_dict()

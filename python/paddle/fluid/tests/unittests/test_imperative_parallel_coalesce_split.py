@@ -22,7 +22,7 @@ import paddle.fluid as fluid
 import paddle.nn.functional as F
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.parallel import (
+from paddle.distributed.parallel import (
     DataParallel,
     _coalesce_tensors,
     _reshape_inplace,

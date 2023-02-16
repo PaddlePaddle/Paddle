@@ -35,7 +35,7 @@ from paddle.fluid.framework import Variable
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.framework import _get_paddle_place, _non_static_mode
 from paddle.fluid.io import is_belong_to_optimizer
-from paddle.fluid.layers import collective
+# from paddle.fluid.layers import collective
 from paddle.fluid.layers.utils import flatten
 from paddle.io import DataLoader, Dataset, DistributedBatchSampler
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
@@ -93,9 +93,12 @@ def extract_args(func):
 
 
 def _all_gather(x, nranks, ring_id=0, use_calc_stream=True):
-    return collective._c_allgather(
-        x, nranks, ring_id=ring_id, use_calc_stream=use_calc_stream
-    )
+    # return collective._c_allgather(
+    #     x, nranks, ring_id=ring_id, use_calc_stream=use_calc_stream
+    # )
+    output = []
+    dist.all_gather(output, x)
+    return output
 
 
 def wait_server_ready(endpoints):
@@ -195,7 +198,7 @@ def prepare_distributed_context(place=None):
         )
 
     place = _get_paddle_place(place)
-    strategy = fluid.dygraph.parallel.ParallelStrategy()
+    strategy = paddle.distributed.parallel.ParallelStrategy()
     strategy.nranks = paddle.distributed.ParallelEnv().nranks
     strategy.local_rank = paddle.distributed.ParallelEnv().local_rank
     strategy.trainer_endpoints = (
@@ -631,9 +634,16 @@ class StaticGraphAdapter:
                 losses = self.model._loss(*(outputs + labels))
 
             if self._nranks > 1 and mode != 'train':
+                # all_outputs = []
+                # dist.all_gather(all_outputs, outputs)
+                # outputs = paddle.concat(all_outputs, axis=1)
                 outputs = [_all_gather(o, self._nranks) for o in outputs]
                 if mode != 'test':
                     labels = [_all_gather(l, self._nranks) for l in labels]
+                    # all_labels = []
+                    # dist.all_gather(all_labels, labels)
+                    # labels = paddle.concat(all_labels, axis=1)
+
 
             if mode != 'test':
                 for metric in self.model._metrics:
@@ -753,7 +763,7 @@ class DynamicGraphAdapter:
 
         if self._nranks > 1:
             dist.init_parallel_env()
-            stradegy = fluid.dygraph.parallel.ParallelStrategy()
+            stradegy = paddle.distributed.parallel.ParallelStrategy()
             stradegy.nranks = paddle.distributed.ParallelEnv().nranks
             stradegy.local_rank = paddle.distributed.ParallelEnv().local_rank
             stradegy.trainer_endpoints = (
@@ -762,7 +772,7 @@ class DynamicGraphAdapter:
             stradegy.current_endpoint = (
                 paddle.distributed.ParallelEnv().current_endpoint
             )
-            self.ddp_model = fluid.dygraph.parallel.DataParallel(
+            self.ddp_model = paddle.DataParallel(
                 self.model.network, stradegy
             )
 
