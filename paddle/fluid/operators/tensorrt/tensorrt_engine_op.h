@@ -544,6 +544,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
               "index=%d >= total inputs and outputs=%d",
               bind_index,
               num_bindings));
+      auto type = framework::TransToProtoVarType(t.dtype());
       if (!engine->with_dynamic_shape()) {
         // check if the input shapes are consistent with model.
         if (HasAttr(x + "_shape")) {
@@ -586,12 +587,27 @@ class TensorRTEngineOp : public framework::OperatorBase {
         if (engine->engine()->isShapeBinding(bind_index) &&
             engine->engine()->bindingIsInput(bind_index)) {
           std::vector<int> shape_v(t.numel());
-          paddle::memory::Copy(platform::CPUPlace(),
-                               shape_v.data(),
-                               platform::CUDAPlace(),
-                               t.data<int32_t>(),
-                               t.numel() * sizeof(int),
-                               nullptr);
+          if (type == framework::proto::VarType::INT32) {
+            paddle::memory::Copy(platform::CPUPlace(),
+                                 shape_v.data(),
+                                 t.place(),
+                                 t.data<int32_t>(),
+                                 t.numel() * sizeof(int),
+                                 nullptr);
+          } else if (type == framework::proto::VarType::INT64) {
+            auto int32_tensor = scope.FindVar(x + "_cast_to_INT32")
+                                    ->GetMutable<phi::DenseTensor>();
+            *int32_tensor = phi::Cast<int64_t>(
+                reinterpret_cast<const phi::GPUContext &>(dev_ctx),
+                t,
+                phi::DataType::INT32);
+            paddle::memory::Copy(platform::CPUPlace(),
+                                 shape_v.data(),
+                                 int32_tensor->place(),
+                                 int32_tensor->data<int32_t>(),
+                                 int32_tensor->numel() * sizeof(int),
+                                 nullptr);
+          }
           trt_context->setInputShapeBinding(bind_index, shape_v.data());
         }
 #endif
@@ -608,7 +624,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
                             "The TRT Engine OP's input type should equal "
                             "to the input data type"));
 
-      auto type = framework::TransToProtoVarType(t.dtype());
       if (type == framework::proto::VarType::FP32) {
         buffers[bind_index] = static_cast<void *>(t.data<float>());
       } else if (type == framework::proto::VarType::INT64) {
