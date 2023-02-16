@@ -120,7 +120,6 @@ if(${_result})
   message(FATAL_ERROR "Prim tensor operants generate failed, exiting.")
 endif()
 
-message("copy prim tensor operants to xxx_prim_api")
 execute_process(
   COMMAND ${CMAKE_COMMAND} -E copy_if_different
           ${tmp_eager_tensor_operants_h_path} ${eager_tensor_operants_h_path})
