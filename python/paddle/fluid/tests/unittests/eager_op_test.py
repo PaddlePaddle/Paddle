@@ -1399,6 +1399,8 @@ class OpTest(unittest.TestCase):
         check_comp=False,
         inplace_atol=None,
     ):
+        core._set_prim_all_enabled(False)
+
         def find_imperative_actual(target_name, dygraph_outs, place):
             for name in dygraph_outs:
                 if name == target_name:
@@ -1820,7 +1822,6 @@ class OpTest(unittest.TestCase):
         inplace_atol=None,
     ):
 
-        core._set_prim_all_enabled(False)
         self.__class__.op_type = self.op_type
         if self.is_mkldnn_op():
             self.__class__.use_mkldnn = True
@@ -1954,7 +1955,6 @@ class OpTest(unittest.TestCase):
         check_dygraph=True,
         check_comp=False,
     ):
-        core._set_prim_all_enabled(False)
         self._check_grad_helper()
         places = self._get_places()
         for place in places:
@@ -1987,6 +1987,7 @@ class OpTest(unittest.TestCase):
         check_comp=False,
         numeric_place=None,
     ):
+        core._set_prim_all_enabled(False)
         if check_comp:
             prim_grad_checker = PrimGradChecker(
                 self, place, inputs_to_check, output_names
