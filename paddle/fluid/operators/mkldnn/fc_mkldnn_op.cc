@@ -381,13 +381,14 @@ class FCMKLDNNHandler
       if (phi::funcs::is_int8<T_w>()) {
         dnnl::primitive_attr attrs;
         int mask = CreateMask(0, scale_data.size() > 1);
-        attrs.set_output_scales(mask, scale_data);
+        attrs.set_scales_mask(DNNL_ARG_DST, mask);
 
         memory_p = this->AcquireMemoryWithReorderAndAttrs(
             user_md,
             this->fwd_pd_->weights_desc(),
             to_void_cast<float>(weights_data),
-            attrs);
+            attrs,
+            scale_data);
       } else {
         memory_p =
             this->AcquireMemoryWithReorder(user_md,
@@ -628,7 +629,9 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
       std::vector<float> output_shift_scale;
       std::tie(output_shift_scale, std::ignore, std::ignore) =
           GetOutputScales(ctx);
-      auto output_scale_md = dnnl::memory::desc({output_shift_scale.len()},
+      const int64_t scales_size =
+          static_cast<int64_t>(output_shift_scale.size());
+      auto output_scale_md = dnnl::memory::desc({scales_size},
                                                 dnnl::memory::data_type::f32,
                                                 dnnl::memory::format_tag::x);
       auto output_scale_mem = dnnl::memory(output_scale_md, onednn_engine);
