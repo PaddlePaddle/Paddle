@@ -1757,7 +1757,7 @@
   backward : triangular_solve_grad
 
 - op : tril
-  args : (Tensor x,  int diagonal)
+  args : (Tensor x, int diagonal)
   output : Tensor(out)
   infer_meta :
     func : TrilInferMeta
@@ -1789,7 +1789,7 @@
   backward : trilinear_interp_grad
 
 - op : triu
-  args : (Tensor x,  int diagonal)
+  args : (Tensor x, int diagonal)
   output : Tensor(out)
   infer_meta :
     func : TriuInferMeta

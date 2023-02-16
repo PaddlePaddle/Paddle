@@ -146,6 +146,8 @@ phi::Backend ConvertBackend(paddle_infer::PlaceType backend) {
       return phi::Backend::CPU;
     case paddle_infer::PlaceType::kIPU:
       return phi::Backend::IPU;
+    case paddle_infer::PlaceType::kCUSTOM:
+      return phi::Backend::CUSTOM;
     default:
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
           "Paddle Inference not support backend, we now only support GPU, XPU, "
@@ -2514,6 +2516,7 @@ USE_TRT_CONVERTER(trans_layernorm)
 USE_TRT_CONVERTER(skip_merge_layernorm)
 USE_TRT_CONVERTER(generic_plugin_creater)
 USE_TRT_CONVERTER(custom_plugin_creater)
+USE_TRT_CONVERTER(fuse_eleadd_transpose)
 USE_TRT_CONVERTER(tanh_shrink)
 USE_TRT_CONVERTER(logsigmoid)
 USE_TRT_CONVERTER(lookup_table)
@@ -2524,6 +2527,9 @@ USE_TRT_CONVERTER(preln_groupnorm_act)
 #if IS_TRT_VERSION_GE(8522)
 USE_TRT_CONVERTER(flash_multihead_matmul)
 USE_TRT_CONVERTER(cross_multihead_matmul)
+#endif
+#if IS_TRT_VERSION_GE(8200)
+USE_TRT_CONVERTER(set_value)
 #endif
 #if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
 USE_TRT_CONVERTER(sparse_fc)

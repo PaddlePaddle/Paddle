@@ -32,7 +32,7 @@ cc_library(
 cc_library(
   cost_model
   SRCS cost_model.cc
-  DEPS executor graph profiler proto_desc device_tracer)
+  DEPS executor graph profiler proto_desc phi_device_tracer)
 
 set(GRAPH_PATTERN_DETECTOR_DEPS graph graph_helper graph_traits)
 if(WITH_TESTING)
@@ -140,6 +140,7 @@ if(WITH_TENSORRT)
   pass_library(delete_remove_padding_recover_padding_pass inference)
   pass_library(layernorm_shift_partition_fuse_pass inference)
   pass_library(reverse_roll_fuse_pass inference)
+  pass_library(elementwiseadd_transpose_pass inference)
   pass_library(preln_layernorm_x_fuse_pass inference)
   pass_library(trt_support_nhwc_pass inference)
   pass_library(elementwise_groupnorm_act_pass inference)
@@ -208,6 +209,21 @@ if(WITH_IPU)
   pass_library(delete_scale_op_pass base DIR ipu)
   pass_library(avg_shard_pass base DIR ipu)
   pass_library(inference_dtype_transfer_pass base DIR ipu)
+endif()
+
+if(WITH_XPU)
+  cc_library(
+    xpu_quant_utils
+    SRCS xpu/quant_utils.cc
+    DEPS pass)
+  cc_library(
+    xpu_pass_utils
+    SRCS xpu/pass_utils.cc
+    DEPS pass)
+  set(XPU_PASS_DEPS xpu_quant_utils xpu_pass_utils)
+  pass_library(fc_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(multi_encoder_xpu_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
 endif()
 
 cc_library(
@@ -389,10 +405,6 @@ if(WITH_MKLDNN)
     test_depthwise_conv_mkldnn_pass
     SRCS mkldnn/depthwise_conv_mkldnn_pass_tester.cc
     DEPS depthwise_conv_mkldnn_pass)
-  cc_test(
-    test_conv_activation_mkldnn_fuse_pass
-    SRCS mkldnn/conv_activation_mkldnn_fuse_pass_tester.cc
-    DEPS conv_activation_mkldnn_fuse_pass)
   cc_test_old(
     test_int8_scale_calculation_mkldnn_pass SRCS
     mkldnn/int8_scale_calculation_mkldnn_pass_tester.cc DEPS

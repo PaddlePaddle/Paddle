@@ -949,7 +949,7 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
             data = paddle.static.data(
                 name=slot, shape=[-1, 1], dtype="int64", lod_level=1
             )
-            var = fluid.layers.cast(x=data, dtype='float32')
+            var = paddle.cast(x=data, dtype='float32')
             pool = paddle.static.nn.sequence_lod.sequence_pool(
                 input=var, pool_type='AVERAGE'
             )
@@ -957,7 +957,7 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
             slots_vars.append(data)
             poolings.append(pool)
 
-        concated = fluid.layers.concat(poolings, axis=1)
+        concated = paddle.concat(poolings, axis=1)
         fc = paddle.static.nn.fc(x=concated, activation='tanh', size=32)
         return slots_vars, fc
 
@@ -1113,7 +1113,7 @@ class TestDataset2(unittest.TestCase):
         train_program = fluid.Program()
         startup_program = fluid.Program()
         scope = fluid.Scope()
-        from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import (
+        from paddle.incubate.fleet.parameter_server.distribute_transpiler import (
             fleet,
         )
 

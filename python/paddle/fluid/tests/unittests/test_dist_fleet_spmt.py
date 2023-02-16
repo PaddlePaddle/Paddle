@@ -35,7 +35,7 @@ class TestSPMT(unittest.TestCase):
     def net(self):
         def get_acc(cos_q_nt, cos_q_pt, batch_size):
             cond = paddle.less_than(cos_q_nt, cos_q_pt)
-            cond = fluid.layers.cast(cond, dtype='float64')
+            cond = paddle.cast(cond, dtype='float64')
             cond_3 = paddle.sum(cond)
             acc = paddle.divide(
                 cond_3,
@@ -243,7 +243,9 @@ class TestSPMT(unittest.TestCase):
         print("===main_program====")
         print(main_program)
         print("===main_program====")
-        from paddle.fluid.transpiler.collective import SingleProcessMultiThread
+        from paddle.distributed.transpiler.collective import (
+            SingleProcessMultiThread,
+        )
 
         t = SingleProcessMultiThread()
         env = self.get_dist_env()

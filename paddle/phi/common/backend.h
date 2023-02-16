@@ -59,6 +59,9 @@ enum class Backend : uint8_t {
   // paddle kernel primitives backend
   KPS,
 
+  // custom device reference
+  CUSTOM,
+
   // end of backend types
   NUM_BACKENDS,
 
@@ -207,7 +210,7 @@ inline std::string BackendToString(const Backend& backend) {
       return "KPS";
     case Backend::IPU:
       return "IPU";
-    default:
+    default: {
       size_t device_type_id_ = static_cast<size_t>(backend) -
                                static_cast<size_t>(Backend::NUM_BACKENDS);
       std::string device_type =
@@ -219,6 +222,7 @@ inline std::string BackendToString(const Backend& backend) {
         PD_THROW(
             "Invalid enum backend type `", static_cast<int>(backend), "`.");
       }
+    }
   }
 }
 

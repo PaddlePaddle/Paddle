@@ -84,7 +84,7 @@ class TestSyncBatchNormOpTraining(TestSyncBatchNormRunnerBase):
                     use_cudnn=use_cudnn,
                 )
                 if self.bn_dtype == np.float16:
-                    conv = fluid.layers.cast(conv, 'float16')
+                    conv = paddle.cast(conv, 'float16')
                 bn = paddle.static.nn.batch_norm(
                     conv,
                     param_attr=fluid.ParamAttr(name='bn_scale'),
@@ -95,7 +95,7 @@ class TestSyncBatchNormOpTraining(TestSyncBatchNormRunnerBase):
                     is_test=only_forward,
                 )
                 if self.bn_dtype == np.float16:
-                    bn = fluid.layers.cast(bn, 'float32')
+                    bn = paddle.cast(bn, 'float32')
                 sigmoid = paddle.nn.functional.sigmoid(bn)
                 out = paddle.sum(sigmoid)
                 # if not sync_bn:
