@@ -318,6 +318,12 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"gelu", XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"generate_proposals_v2", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"generate_sequence_xpu",
+       XPUKernelSet({
+           phi::DataType::FLOAT32,
+           phi::DataType::INT32,
+           phi::DataType::INT64,
+       })},
       {"grad_add",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"greater_equal",

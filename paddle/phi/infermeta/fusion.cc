@@ -42,6 +42,14 @@ void FcXPUInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
+void GenerateSequenceXPUInferMeta(const MetaTensor& x,
+                                  DataType dtype,
+                                  MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(dtype);
+  out->set_layout(x.layout());
+}
+
 void MultiEncoderXPUInferMeta(
     const MetaTensor& x,
     const std::vector<const MetaTensor*>& fc_weight,
