@@ -4677,10 +4677,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
                 outputs={"Out": out},
             )
         else:
-            out = paddle.tensor.math._subtract_with_axis(
-                input_back, input_front, axis=axis
-            )
-
+            out = paddle.tensor.math.subtract(input_back, input_front)
         return out
 
 

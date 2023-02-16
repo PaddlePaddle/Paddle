@@ -24,17 +24,17 @@ namespace cub = hipcub;
 
 #include <iostream>
 
-#include "paddle/fluid/operators/fused/quant_dequant_kernel.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
+namespace funcs {
 
 template <typename T>
-using CudnnDataType = platform::CudnnDataType<T>;
+using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
 template <typename T>
 using LayerNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
@@ -330,6 +330,38 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fast_ln_fwd_kernel(
   }
 }
 #endif
+
+template <typename T>
+inline HOSTDEVICE T roundWithTiesToEven(T x) {
+  T xLower = floor(x);
+  T xUpper = ceil(x);
+  // x is in interval [xl,xu]. Choose closest of two bounds, breaking ties to
+  // even.
+  T dLower = x - xLower;
+  T dUpper = xUpper - x;
+  return static_cast<T>(
+      (dLower == dUpper ? fmod(xLower, 2.0F) == 0.0F : dLower < dUpper)
+          ? xLower
+          : xUpper);
+}
+
+template <typename T>
+__forceinline__ __device__ int8_t quant_helper(const T input,
+                                               const float scale,
+                                               const int round_type,
+                                               const float max_bound,
+                                               const float min_bound) {
+  float quant_value = max_bound * scale * static_cast<float>(input);
+
+  if (round_type == 0) {
+    quant_value = static_cast<float>(roundWithTiesToEven(quant_value));
+  } else {
+    quant_value = static_cast<float>(round(quant_value));
+  }
+  quant_value = quant_value > max_bound ? max_bound : quant_value;
+  quant_value = quant_value < min_bound ? min_bound : quant_value;
+  return static_cast<int8_t>(quant_value);
+}
 
 template <typename T, typename U, bool ScaleBiasWithSameTypeX>
 using LayerNormScaleBiasT =
@@ -947,17 +979,17 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx,
     // get temp space for dscale and dbias.
     phi::DenseTensor dscale_temp;
     dscale_temp.Resize({gridx, cols});
-    dscale_temp.mutable_data<U>(dev_ctx.GetPlace());
+    dev_ctx.template Alloc<U>(&dscale_temp);
     U *dscale_temp_ptr = dscale_temp.data<U>();
 
     phi::DenseTensor dbias_temp;
     dbias_temp.Resize({gridx, cols});
-    dbias_temp.mutable_data<U>(dev_ctx.GetPlace());
+    dev_ctx.template Alloc<U>(&dbias_temp);
     U *dbias_temp_ptr = dbias_temp.data<U>();
 
     if (mask_ptr != nullptr) {
       if (d_dropout_src_ptr == nullptr) {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "To compute fused_dropout_residual_ln grad, d_dropout_src_ptr "
             "can't be null"));
       }
@@ -1069,8 +1101,8 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx,
     // #blocks: 32，#threads_per_block: 512
     // Note: it is not supported for double type.
     if (sizeof(U) > 4) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Only support float and fp16 type"));
+      PADDLE_THROW(
+          phi::errors::InvalidArgument("Only support float and fp16 type"));
     } else {
       int gridx_2 = 0;
 
@@ -1103,7 +1135,7 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx,
 #undef LAUNCH_LN_BWD_BETA_GAMMMA_KERNEL
     }
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "Fast layer_norm kernel is only used when feature_size is 1024"));
   }
 }
@@ -1891,11 +1923,11 @@ static void LayerNormBackward(
         constexpr int part_size = BDIMY2 * VPT;
         const dim3 blocks2((feature_size + BDIMX2 - 1) / BDIMX2, part_size, 1);
 
-        auto part_grad_gamma_ptr = memory::Alloc(
+        auto part_grad_gamma_ptr = paddle::memory::Alloc(
             dev_ctx.GetPlace(),
             part_size * feature_size * sizeof(U),
             phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-        auto part_grad_beta_ptr = memory::Alloc(
+        auto part_grad_beta_ptr = paddle::memory::Alloc(
             dev_ctx.GetPlace(),
             part_size * feature_size * sizeof(U),
             phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
@@ -1959,5 +1991,5 @@ static void LayerNormBackward(
   }
 }
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi

@@ -1326,6 +1326,7 @@ def get_setup_parameters():
         'paddle.incubate.fleet.parameter_server.distribute_transpiler',
         'paddle.quantization',
         'paddle.quantization.quanters',
+        'paddle.quantization.observers',
         'paddle.sparse',
         'paddle.sparse.nn',
         'paddle.sparse.nn.layer',

@@ -21,8 +21,20 @@ namespace paddle {
 
 namespace prim {
 
+Tensor EagerTensorOperants::add(const Tensor& x, const Tensor& y) {
+  return ::add_ad_func(x, y);
+}
+
+Tensor EagerTensorOperants::subtract(const Tensor& x, const Tensor& y) {
+  return ::subtract_ad_func(x, y);
+}
+
 Tensor EagerTensorOperants::multiply(const Tensor& x, const Tensor& y) {
   return ::multiply_ad_func(x, y);
+}
+
+Tensor EagerTensorOperants::divide(const Tensor& x, const Tensor& y) {
+  return ::divide_ad_func(x, y);
 }
 
 }  // namespace prim
