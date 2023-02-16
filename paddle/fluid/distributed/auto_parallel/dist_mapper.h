@@ -15,9 +15,9 @@ limitations under the License. */
 
 #include <utility>
 
-#include "paddle/phi/distributed/auto_parallel/auto_parallel.pb.h"
-#include "paddle/phi/distributed/auto_parallel/device_mesh.h"
-#include "paddle/phi/distributed/auto_parallel/process_mesh.h"
+#include "paddle/fluid/distributed/auto_parallel/auto_parallel.pb.h"
+#include "paddle/fluid/distributed/auto_parallel/device_mesh.h"
+#include "paddle/fluid/distributed/auto_parallel/process_mesh.h"
 
 namespace paddle {
 namespace distributed {

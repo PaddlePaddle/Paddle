@@ -16,11 +16,11 @@ limitations under the License. */
 #include <iostream>
 #include <iterator>
 
+#include "paddle/fluid/distributed/auto_parallel/dist_attr.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
-#include "paddle/phi/distributed/auto_parallel/dist_attr.h"
 
 namespace paddle {
 namespace distributed {
@@ -258,7 +258,7 @@ std::string TensorDistAttr::serialize_to_string() {
   proto.SerializeToString(&data);
   PADDLE_ENFORCE_EQ(to_proto().SerializeToString(&data),
                     true,
-                    phi::errors::InvalidArgument(
+                    platform::errors::InvalidArgument(
                         "Failed to serialize tensor dist attr to string."));
   return data;
 }
@@ -267,7 +267,7 @@ void TensorDistAttr::parse_from_string(const std::string& data) {
   TensorDistAttrProto proto;
   PADDLE_ENFORCE_EQ(proto.ParseFromString(data),
                     true,
-                    phi::errors::InvalidArgument(
+                    platform::errors::InvalidArgument(
                         "Failed to parse tensor dist attr from string."));
   from_proto(proto);
 }
@@ -663,7 +663,7 @@ std::string OperatorDistAttr::serialize_to_string() {
   proto.SerializeToString(&data);
   PADDLE_ENFORCE_EQ(to_proto().SerializeToString(&data),
                     true,
-                    phi::errors::InvalidArgument(
+                    platform::errors::InvalidArgument(
                         "Failed to serialize op dist attr to string."));
   return data;
 }
@@ -672,7 +672,7 @@ void OperatorDistAttr::parse_from_string(const std::string& data) {
   OperatorDistAttrProto proto;
   PADDLE_ENFORCE_EQ(proto.ParseFromString(data),
                     true,
-                    phi::errors::InvalidArgument(
+                    platform::errors::InvalidArgument(
                         "Failed to parse op dist attr from string."));
   from_proto(proto);
 }

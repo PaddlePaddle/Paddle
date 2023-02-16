@@ -15,13 +15,13 @@
 #include <pybind11/operators.h>
 #include <pybind11/stl.h>
 
+#include "paddle/fluid/distributed/auto_parallel/device_mesh.h"
+#include "paddle/fluid/distributed/auto_parallel/dist_attr.h"
+#include "paddle/fluid/distributed/auto_parallel/dist_mapper.h"
+#include "paddle/fluid/distributed/auto_parallel/process_mesh.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/pybind/auto_parallel_py.h"
-#include "paddle/phi/distributed/auto_parallel/device_mesh.h"
-#include "paddle/phi/distributed/auto_parallel/dist_attr.h"
-#include "paddle/phi/distributed/auto_parallel/dist_mapper.h"
-#include "paddle/phi/distributed/auto_parallel/process_mesh.h"
 #include "paddle/utils/optional.h"
 
 namespace py = pybind11;

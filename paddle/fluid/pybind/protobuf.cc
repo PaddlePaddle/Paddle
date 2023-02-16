@@ -18,6 +18,7 @@ limitations under the License. */
 #include <string>
 #include <tuple>
 
+#include "paddle/fluid/distributed/auto_parallel/dist_attr.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_desc.h"
@@ -26,7 +27,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/jit/property.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
-#include "paddle/phi/distributed/auto_parallel/dist_attr.h"
 
 namespace py = pybind11;
 
