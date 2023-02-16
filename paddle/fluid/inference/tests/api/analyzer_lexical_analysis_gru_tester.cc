@@ -258,7 +258,7 @@ TEST(Analyzer_lexical_test, Analyzer_lexical_analysis) {
   acc_ref = Lexical_Test(input_slots_all, &outputs, &native_cfg, false);
   if (FLAGS_use_analysis) {
     AnalysisConfig analysis_cfg;
-    SetAnalysisConfig(&analysis_cfg, 1);
+    SetAnalysisConfig(&analysis_cfg, FLAGS_cpu_num_threads);
     if (FLAGS_enable_bf16) {
       analysis_cfg.EnableMkldnnBfloat16();
     } else if (FLAGS_enable_int8) {
