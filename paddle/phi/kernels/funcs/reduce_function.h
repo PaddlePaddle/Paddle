@@ -900,7 +900,8 @@ static void LaunchReduceKernel(const Tx* x_data,
     dim3 block;
     dim3 grid;
     int reduce_num_stage1 = config.grid.y;
-    int block_dim_x_stage1 = min(128, details::GetLastPow2(reduce_num_stage1));
+    int block_dim_x_stage1 =
+        std::min(128, details::GetLastPow2(reduce_num_stage1));
     int block_dim_y_stage1 = details::CeilingDiv(128, block_dim_x_stage1);
 
     block = dim3(block_dim_x_stage1, block_dim_y_stage1, 1);
@@ -912,7 +913,7 @@ static void LaunchReduceKernel(const Tx* x_data,
 
     kps::DimConfig dimStage1 =
         kps::DimConfig(grid.x, grid.y, grid.z, block.x, reduce_num_stage1, 0);
-    dimStage1.SetRem(config.left_num % block.x, 0, 0);
+    dimStage1.SetRem(reduce_num_stage1 % block.x, 0, 0);
 
     auto reduce_index_calculator_stage1 = OneDimIndexCal(1);
 
@@ -924,7 +925,15 @@ static void LaunchReduceKernel(const Tx* x_data,
                         kps::IdentityFunctor<Ty, MPType>,
                         OneDimIndexCal>;
 
-    TwoStageReduceKernel1<<<grid, block, 0, stream>>>(
+#ifdef PADDLE_WITH_XPU_KP
+    int grid_size = 8;
+    int block_size = 64;
+#else
+    auto grid_size = grid;
+    auto block_size = block;
+#endif
+
+    TwoStageReduceKernel1<<<grid_size, block_size, 0, stream>>>(
         config.output_data,
         y_data,
         reducer,
