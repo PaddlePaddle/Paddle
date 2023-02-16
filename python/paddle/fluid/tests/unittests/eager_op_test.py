@@ -320,6 +320,7 @@ class OpTest(unittest.TestCase):
         cls.dtype = None
         cls.outputs = {}
         cls.input_shape_is_large = True
+        cls.check_comp = False
 
         np.random.seed(123)
         random.seed(124)
