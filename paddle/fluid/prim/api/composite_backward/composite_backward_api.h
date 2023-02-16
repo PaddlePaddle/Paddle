@@ -301,5 +301,21 @@ void exp_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
   }
 }
 
+template <typename T>
+void cumsum_grad(const Tensor& x,
+                 const Tensor& out_grad,
+                 const Scalar& axis,
+                 bool flatten,
+                 bool exclusive,
+                 bool reverse,
+                 Tensor* x_grad) {
+  if (x_grad) {
+    auto out_grad_tmp = reshape<T>(out_grad, x.shape());
+    auto grad = cumsum<T>(out_grad_tmp, axis, flatten, exclusive, !reverse);
+    grad = reshape<T>(grad, x.shape());
+    set_output<T>(grad, x_grad);
+  }
+}
+
 }  // namespace prim
 }  // namespace paddle

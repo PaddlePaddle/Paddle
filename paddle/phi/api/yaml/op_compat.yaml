@@ -334,6 +334,19 @@
   outputs :
     out : Out
 
+- op : cumsum
+  backward: cumsum_grad
+  inputs :
+    x : X
+  attrs :
+    axis : axis
+  outputs :
+    out : Out
+  Scalar:
+    axis:
+      data_type : int
+      tensor_name: AxisTensor
+
 - op : data_norm
   backward : data_norm_grad
   extra :
