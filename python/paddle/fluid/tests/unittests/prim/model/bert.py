@@ -14,9 +14,7 @@
 
 import functools
 import warnings
-from collections import OrderedDict
-from dataclasses import dataclass, fields
-from typing import Any, Optional, Tuple
+from typing import Optional, Tuple
 
 import numpy as np
 
@@ -81,149 +79,6 @@ class BertConfig:
         self.output_hidden_states = False
         self.output_attentions = False
         self.use_cache = False
-
-
-class ModelOutput(OrderedDict):
-    def __post_init__(self):
-        class_fields = fields(self)
-
-        # note(guosheng): Convert list to tuple automatically, and better to
-        # check if it is frozen.
-        # assert not getattr(self, dataclasses._PARAMS).frozen
-        for f in class_fields:
-            value = getattr(self, f.name)
-            if isinstance(value, list):
-                setattr(self, f.name, tuple(value))
-
-        # Safety and consistency checks
-        if not len(class_fields):
-            raise ValueError(f"{self.__class__.__name__} has no fields.")
-        if not all(field.default is None for field in class_fields[1:]):
-            raise ValueError(
-                f"{self.__class__.__name__} should not have more than one required field."
-            )
-
-        first_field = getattr(self, class_fields[0].name)
-        other_fields_are_none = all(
-            getattr(self, field.name) is None for field in class_fields[1:]
-        )
-
-        if other_fields_are_none and not is_tensor(first_field):
-            if isinstance(first_field, dict):
-                iterator = first_field.items()
-                first_field_iterator = True
-            else:
-                try:
-                    iterator = iter(first_field)
-                    first_field_iterator = True
-                except TypeError:
-                    first_field_iterator = False
-
-            # if we provided an iterator as first field and the iterator is a (key, value) iterator
-            # set the associated fields
-            if first_field_iterator:
-                for element in iterator:
-                    if (
-                        not isinstance(element, (list, tuple))
-                        or not len(element) == 2
-                        or not isinstance(element[0], str)
-                    ):
-                        break
-                    setattr(self, element[0], element[1])
-                    if element[1] is not None:
-                        self[element[0]] = element[1]
-            elif first_field is not None:
-                self[class_fields[0].name] = first_field
-        else:
-            for field in class_fields:
-                v = getattr(self, field.name)
-                if v is not None:
-                    self[field.name] = v
-
-    def __delitem__(self, *args, **kwargs):
-        raise Exception(
-            f"You cannot use ``__delitem__`` on a {self.__class__.__name__} instance."
-        )
-
-    def setdefault(self, *args, **kwargs):
-        raise Exception(
-            f"You cannot use ``setdefault`` on a {self.__class__.__name__} instance."
-        )
-
-    def pop(self, *args, **kwargs):
-        raise Exception(
-            f"You cannot use ``pop`` on a {self.__class__.__name__} instance."
-        )
-
-    def update(self, *args, **kwargs):
-        raise Exception(
-            f"You cannot use ``update`` on a {self.__class__.__name__} instance."
-        )
-
-    def __getitem__(self, k):
-        if isinstance(k, str):
-            inner_dict = {k: v for (k, v) in self.items()}
-            return inner_dict[k]
-        else:
-            return self.to_tuple()[k]
-
-    def __setattr__(self, name, value):
-        if name in self.keys() and value is not None:
-            # Don't call self.__setitem__ to avoid recursion errors
-            super().__setitem__(name, value)
-        super().__setattr__(name, value)
-
-    def __setitem__(self, key, value):
-        # Will raise a KeyException if needed
-        super().__setitem__(key, value)
-        # Don't call self.__setattr__ to avoid recursion errors
-        super().__setattr__(key, value)
-
-    def to_tuple(self) -> Tuple[Any]:
-        """
-        Convert self to a tuple containing all the attributes/keys that are not `None`.
-        """
-        # try to fix: https://github.com/PaddlePaddle/PaddleNLP/issues/3355
-        # when trying to get the keys of `OrderedDict`, `keys` method return empty values.
-        # TODO(wj-Mcat): this bug should be fixed in Paddle framework
-        tuples = ()
-        for field in fields(self):
-            if getattr(self, field.name, None) is None:
-                continue
-            tuples = tuples + (getattr(self, field.name),)
-
-        return tuples
-
-
-@dataclass
-class BaseModelOutputWithPoolingAndCrossAttentions(ModelOutput):
-
-    last_hidden_state: paddle.Tensor = None
-    pooler_output: paddle.Tensor = None
-    past_key_values: Optional[Tuple[Tuple[paddle.Tensor]]] = None
-    hidden_states: Optional[Tuple[paddle.Tensor]] = None
-    attentions: Optional[Tuple[paddle.Tensor]] = None
-    cross_attentions: Optional[Tuple[paddle.Tensor]] = None
-
-
-@dataclass
-class BertForPreTrainingOutput(ModelOutput):
-
-    loss: Optional[paddle.Tensor] = None
-    prediction_logits: paddle.Tensor = None
-    seq_relationship_logits: paddle.Tensor = None
-    hidden_states: Optional[Tuple[paddle.Tensor]] = None
-    attentions: Optional[Tuple[paddle.Tensor]] = None
-
-
-@dataclass
-class BaseModelOutputWithPastAndCrossAttentions(ModelOutput):
-
-    last_hidden_state: paddle.Tensor = None
-    past_key_values: Optional[Tuple[Tuple[paddle.Tensor]]] = None
-    hidden_states: Optional[Tuple[paddle.Tensor]] = None
-    attentions: Optional[Tuple[paddle.Tensor]] = None
-    cross_attentions: Optional[Tuple[paddle.Tensor]] = None
 
 
 class BertLMPredictionHead(nn.Layer):
@@ -479,18 +334,11 @@ class BertModel(nn.Layer):
                     all_hidden_states.append(hidden_states)
             pooled_output = self.pooler(hidden_states)
 
-            if return_dict:
-                return BaseModelOutputWithPoolingAndCrossAttentions(
-                    last_hidden_state=hidden_states,
-                    pooler_output=pooled_output,
-                    hidden_states=all_hidden_states,
-                )
-            else:
-                return (
-                    (hidden_states, pooled_output, all_hidden_states)
-                    if output_hidden_states
-                    else (hidden_states, pooled_output)
-                )
+            return (
+                (hidden_states, pooled_output, all_hidden_states)
+                if output_hidden_states
+                else (hidden_states, pooled_output)
+            )
         else:
             self.encoder._use_cache = use_cache  # To be consistent with HF
             encoder_outputs = self.encoder(
@@ -508,17 +356,7 @@ class BertModel(nn.Layer):
             else:
                 sequence_output = encoder_outputs[0]
                 pooled_output = self.pooler(sequence_output)
-                if not return_dict:
-                    return (sequence_output, pooled_output) + encoder_outputs[
-                        1:
-                    ]
-                return BaseModelOutputWithPoolingAndCrossAttentions(
-                    last_hidden_state=sequence_output,
-                    pooler_output=pooled_output,
-                    past_key_values=encoder_outputs.past_key_values,
-                    hidden_states=encoder_outputs.hidden_states,
-                    attentions=encoder_outputs.attentions,
-                )
+                return (sequence_output, pooled_output) + encoder_outputs[1:]
 
 
 class Bert(nn.Layer):
@@ -576,22 +414,10 @@ class Bert(nn.Layer):
                     next_sentence_label.reshape((-1,)),
                 )
                 total_loss = masked_lm_loss + next_sentence_loss
-            if not return_dict:
-                output = (prediction_scores, seq_relationship_score) + outputs[
-                    2:
-                ]
-                return (
-                    ((total_loss,) + output)
-                    if total_loss is not None
-                    else output
-                )
 
-            return BertForPreTrainingOutput(
-                loss=total_loss,
-                prediction_logits=prediction_scores,
-                seq_relationship_logits=seq_relationship_score,
-                hidden_states=outputs.hidden_states,
-                attentions=outputs.attentions,
+            output = (prediction_scores, seq_relationship_score) + outputs[2:]
+            return (
+                ((total_loss,) + output) if total_loss is not None else output
             )
 
 
@@ -846,28 +672,20 @@ def _transformer_encoder_fwd(
         if output_hidden_states:
             all_hidden_states[-1] = output
 
-    if not return_dict:
-        outputs = tuple(
-            tuple(v) if isinstance(v, list) else v
-            for v in [
-                output,
-                new_caches,
-                all_hidden_states,
-                all_attentions,
-            ]
-            if v is not None
-        )
-        if len(outputs) == 1:
-            return output
-        else:
-            return outputs
-
-    return BaseModelOutputWithPastAndCrossAttentions(
-        last_hidden_state=output,
-        past_key_values=new_caches,
-        hidden_states=all_hidden_states,
-        attentions=all_attentions,
+    outputs = tuple(
+        tuple(v) if isinstance(v, list) else v
+        for v in [
+            output,
+            new_caches,
+            all_hidden_states,
+            all_attentions,
+        ]
+        if v is not None
     )
+    if len(outputs) == 1:
+        return output
+    else:
+        return outputs
 
 
 def _transformer_decoder_fwd(
@@ -937,26 +755,17 @@ def _transformer_decoder_fwd(
         if output_hidden_states:
             all_hidden_states[-1] = tgt
 
-    if not return_dict:
-        if isinstance(outputs, type(tgt)):
-            return tgt
+    if isinstance(outputs, type(tgt)):
+        return tgt
 
-        temp_list = [
-            tgt,
-            new_caches if cache else None,
-            all_hidden_states,
-            all_self_attns,
-            all_cross_attns,
-        ]
-        return tuple(v for v in temp_list if v is not None)
-
-    return BaseModelOutputWithPastAndCrossAttentions(
-        last_hidden_state=tgt,
-        past_key_values=new_caches,
-        hidden_states=all_hidden_states,
-        attentions=all_self_attns,
-        cross_attentions=all_cross_attns,
-    )
+    temp_list = [
+        tgt,
+        new_caches if cache else None,
+        all_hidden_states,
+        all_self_attns,
+        all_cross_attns,
+    ]
+    return tuple(v for v in temp_list if v is not None)
 
 
 # patches of paddle.nn.Transformer to get all hidden_states and attentions
