@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
@@ -61,7 +62,7 @@ class SplitOp : public framework::OperatorWithKernel {
     if (ctx->IsRuntime() && ctx->HasInput("AxisTensor")) {
       Variable *var =
           PADDLE_GET_CONST(Variable *, ctx->GetInputVarPtrs("AxisTensor")[0]);
-      axis_final = std::move(experimental::MakePhiScalarFromVar(*var));
+      axis_final = std::move(framework::MakePhiScalarFromVar(*var));
     } else if (!ctx->IsRuntime() && ctx->HasInput("AxisTensor")) {
       axis_final = std::move(phi::Scalar(-1));
       axis_final.SetFromTensor(true);
