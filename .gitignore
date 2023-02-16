@@ -9,6 +9,7 @@ paddle/fluid/operators/ops_extra_info.cc
 paddle/phi/api/backward/backward_api.h
 paddle/phi/api/backward/sparse_bw_api.h
 paddle/phi/api/include/api.h
+paddle/phi/api/include/operants_base.h
 paddle/phi/api/include/sparse_api.h
 paddle/phi/api/include/strings_api.h
 paddle/phi/api/include/tensor_operants.h
