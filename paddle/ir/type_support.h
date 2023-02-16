@@ -142,9 +142,9 @@ struct TypeUniquer {
   ///
   template <typename T, typename... Args>
   static std::
-      enable_if_t<!std::is_same<typename T::ImplType, TypeStorage>::value, T>
+      enable_if_t<!std::is_same<typename T::StorageType, TypeStorage>::value, T>
       GetWithTypeId(IrContext *ctx, TypeId type_id, Args &&...args) {
-    return ctx->storage_uniquer().get<typename T::ImplType>(
+    return ctx->storage_uniquer().get<typename T::StorageType>(
         [&, type_id](TypeStorage *storage) {
           storage->initialize(AbstractType::lookup(type_id, ctx));
         },
@@ -162,9 +162,9 @@ struct TypeUniquer {
   ///
   template <typename T>
   static std::
-      enable_if_t<std::is_same<typename T::ImplType, TypeStorage>::value, T>
+      enable_if_t<std::is_same<typename T::StorageType, TypeStorage>::value, T>
       GetWithTypeId(IrContext *ctx, TypeId type_id) {
-    return ctx->storage_uniquer().get<typename T::ImplType>(type_id);
+    return ctx->storage_uniquer().get<typename T::StorageType>(type_id);
   }
 
   ///
@@ -185,10 +185,10 @@ struct TypeUniquer {
   ///
   template <typename T>
   static std::enable_if_t<
-      !std::is_same<typename T::ImplType, TypeStorage>::value>
+      !std::is_same<typename T::StorageType, TypeStorage>::value>
   RegisterType(IrContext *ctx, TypeId type_id) {
-    ctx->storage_uniquer().RegisterParametricStorageType<typename T::ImplType>(
-        type_id);
+    ctx->storage_uniquer()
+        .RegisterParametricStorageType<typename T::StorageType>(type_id);
   }
 
   ///
@@ -199,7 +199,7 @@ struct TypeUniquer {
   ///
   template <typename T>
   static std::enable_if_t<
-      std::is_same<typename T::ImplType, TypeStorage>::value>
+      std::is_same<typename T::StorageType, TypeStorage>::value>
   RegisterType(IrContext *ctx, TypeId type_id) {
     ctx->storage_uniquer().RegisterSingletonStorageType<TypeStorage>(
         type_id, [&ctx, type_id](TypeStorage *storage) {

@@ -26,10 +26,10 @@ class Float32Type : public ir::Type {
   // 可以通过宏定义自动生成的（Float32Type, TypeStorage）
   using Type::Type;  // 必须提供
 
-  using ImplType = ir::TypeStorage;  // 必须指定ImplType
+  using StorageType = ir::TypeStorage;  // 必须指定StorageType
 
-  ImplType *impl() const {
-    return static_cast<ImplType *>(this->impl_);
+  StorageType *impl() const {
+    return static_cast<StorageType *>(this->impl_);
   }  // 必须提供
 
   static TypeId type_id() { return TypeId::get<Float32Type>(); }  // 必须提供
@@ -82,10 +82,10 @@ class IntegerType : public ir::Type {
   // 可以通过宏定义自动生成的（IntegerType, TypeStorage）
   using Type::Type;  // 必须提供
 
-  using ImplType = ir::IntegerTypeStorage;  // 必须指定ImplType
+  using StorageType = ir::IntegerTypeStorage;  // 必须指定StorageType
 
-  ImplType *impl() const {
-    return static_cast<ImplType *>(this->impl_);
+  StorageType *impl() const {
+    return static_cast<StorageType *>(this->impl_);
   }  // 必须提供
 
   static TypeId type_id() { return TypeId::get<IntegerType>(); }  // 必须提供

@@ -25,11 +25,12 @@ namespace ir {
 ///
 class Type {
  public:
-  using ImplType = TypeStorage;
+  using StorageType = TypeStorage;
 
   constexpr Type() = default;
 
-  Type(const ImplType *impl) : impl_(const_cast<ImplType *>(impl)) {}  // NOLINT
+  Type(const StorageType *impl)  // NOLINT
+      : impl_(const_cast<StorageType *>(impl)) {}
 
   Type(const Type &other) = default;
 
@@ -49,7 +50,7 @@ class Type {
 
   const AbstractType &abstract_type() { return impl_->abstract_type(); }
 
-  ImplType *impl() const { return impl_; }
+  StorageType *impl() const { return impl_; }
 
   ///
   /// \brief Enable hashing Type.
@@ -57,7 +58,7 @@ class Type {
   friend struct std::hash<Type>;
 
  protected:
-  ImplType *impl_{nullptr};
+  StorageType *impl_{nullptr};
 };
 
 }  // namespace ir
@@ -69,7 +70,7 @@ namespace std {
 template <>
 struct hash<ir::Type> {
   std::size_t operator()(const ir::Type &obj) const {
-    return std::hash<ir::Type::ImplType *>()(obj.impl_);
+    return std::hash<ir::Type::StorageType *>()(obj.impl_);
   }
 };
 }  // namespace std
