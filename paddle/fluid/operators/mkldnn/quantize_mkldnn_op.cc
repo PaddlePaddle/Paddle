@@ -105,7 +105,7 @@ class QuantOpKernel : public framework::OpKernel<T> {
     auto zero_points_mem =
         dnnl::memory(zero_points_md,
                      dev_ctx.GetEngine(),
-                     phi::funcs::to_void_cast<float>(&quantization_scale));
+                     phi::funcs::to_void_cast<float>(&quantization_shift));
 
     std::unordered_map<int, dnnl::memory> reorder_args;
     reorder_args.insert({DNNL_ARG_SRC, *reorder_src_memory_p});
