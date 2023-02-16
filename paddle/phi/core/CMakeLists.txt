@@ -68,7 +68,7 @@ cc_library(
   SRCS dense_tensor.cc dense_tensor_impl.cc
   DEPS convert_utils tensor_meta tensor_base ddim)
 
-target_link_libraries(dense_tensor malloc)
+target_link_libraries(dense_tensor)
 
 cc_library(
   sparse_coo_tensor
@@ -134,20 +134,20 @@ if(WITH_GPU)
   nv_library(
     phi_tensor_utils
     SRCS tensor_utils.cc
-    DEPS phi_backends dense_tensor selected_rows malloc memcpy device_context)
+    DEPS phi_backends dense_tensor selected_rows memcpy device_context)
 elseif(WITH_ROCM)
   hip_library(
     phi_tensor_utils
     SRCS tensor_utils.cc
-    DEPS phi_backends dense_tensor selected_rows malloc memcpy device_context)
+    DEPS phi_backends dense_tensor selected_rows memcpy device_context)
 elseif(WITH_XPU_KP)
   xpu_library(
     phi_tensor_utils
     SRCS tensor_utils.cc
-    DEPS phi_backends dense_tensor selected_rows malloc memcpy device_context)
+    DEPS phi_backends dense_tensor selected_rows memcpy device_context)
 else()
   cc_library(
     phi_tensor_utils
     SRCS tensor_utils.cc
-    DEPS dense_tensor selected_rows malloc memcpy device_context phi_backends)
+    DEPS dense_tensor selected_rows memcpy device_context phi_backends)
 endif()
