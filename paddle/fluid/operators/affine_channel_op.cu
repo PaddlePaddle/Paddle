@@ -58,7 +58,12 @@ class AffineChannelCUDAKernel : public framework::OpKernel<T> {
 
     auto* y = ctx.Output<phi::DenseTensor>("Out");
     y->mutable_data<T>(ctx.GetPlace());
-
+    if (x->IsSharedWith(*y) && x->can_not_uses.size() > 0) {
+      phi::DenseTensor* xx = const_cast<phi::DenseTensor*>(x);
+      for (int i = 0; i < xx->can_not_uses.size(); ++i) {
+        xx->can_not_uses[i] = std::make_shared<bool>(true);
+      }
+    }
     const phi::DataLayout layout =
         phi::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
     auto& dev_ctx = ctx.template device_context<DeviceContext>();

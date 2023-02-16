@@ -38,6 +38,14 @@ void FillKernel(const Context& dev_ctx,
 
   phi::funcs::SetConstant<Context, T> functor;
   functor(dev_ctx, out, fill_var);
+  if (x.can_not_uses.size() > 0) {
+    DenseTensor& xx = const_cast<DenseTensor&>(x);
+    for (size_t i = 0; i < xx.can_not_uses.size(); ++i) {
+      xx.can_not_uses[i] = std::make_shared<bool>(true);
+      LOG(WARNING) << "Stride Test Log"
+                   << " Fill op use share buffer";
+    }
+  }
 }
 
 }  // namespace phi
