@@ -1667,6 +1667,7 @@ class OpTest(unittest.TestCase):
             prim_checker.check()
             setattr(self.__class__, 'check_comp', True)
             if prim_checker.is_only_check_prim():
+                self.__class__.exist_check_grad = True
                 return
         # set some flags by the combination of arguments.
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
@@ -1991,6 +1992,7 @@ class OpTest(unittest.TestCase):
             prim_grad_checker.check()
             setattr(self.__class__, 'check_comp', True)
             if prim_grad_checker.is_only_check_prim():
+                self.__class__.exist_check_grad = True
                 return
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
