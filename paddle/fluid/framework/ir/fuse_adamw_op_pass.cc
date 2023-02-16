@@ -148,7 +148,7 @@ void InsertOp(Node *first_lr,
       fuse_adamw_op_desc.SetAttr("beta2", beta2);
       fuse_adamw_op_desc.SetAttr("op_role", op_role);
       fuse_adamw_op_desc.SetAttr("epsilon", epsilon);
-      fuse_adamw_op_desc.SetAttr("chunk_size", 32 * 2048);
+      fuse_adamw_op_desc.SetAttr("chunk_size", 16 * 2048);
       fuse_adamw_op_desc.SetAttr("weight_decay", weight_decay);
       fuse_adamw_op_desc.SetAttr("use_adamw", use_adamw);
       fuse_adamw_op_desc.SetAttr("multi_precision",
