@@ -450,20 +450,6 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
     }
   }
 
-  void SetOutMemDescWithLogicalLayoutFusesSupport(
-      const framework::ExecutionContext& ctx,
-      phi::DenseTensor* out,
-      const dnnl::memory::desc& out_md) const {
-    if (ctx.HasAttr("fused_reshape2_shape")) {
-      auto fused_reshape2_shape =
-          ctx.Attr<std::vector<int>>("fused_reshape2_shape");
-      phi::funcs::SetOutMemDescWithReshape2FuseSupport(
-          fused_reshape2_shape, out, out_md);
-    } else {
-      out->set_mem_desc(out_md);
-    }
-  }
-
   template <typename T_out, typename T_w>
   void RunKernel(const framework::ExecutionContext& ctx) const {
     const auto& dev_ctx = ctx.template device_context<OneDNNContext>();
@@ -572,10 +558,17 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
       dev_ctx.SetBlob(cache_key, ip_cache);
     }
 
-    SetOutMemDescWithLogicalLayoutFusesSupport(
-        ctx,
-        out,
-        dst_memory_p->get_desc().reshape(phi::vectorize(out->dims())));
+    const dnnl::memory::desc& out_md =
+        dst_memory_p->get_desc().reshape(phi::vectorize(out->dims()));
+
+    if (ctx.HasAttr("fused_reshape2_shape")) {
+      auto fused_reshape2_shape =
+          ctx.Attr<std::vector<int>>("fused_reshape2_shape");
+      phi::funcs::SetOutMemDescWithReshape2FuseSupport(
+          fused_reshape2_shape, out, out_md);
+    } else {
+      out->set_mem_desc(out_md);
+    }
   }
 
   void RecomputeOutputDims(const ExecutionContext& ctx,

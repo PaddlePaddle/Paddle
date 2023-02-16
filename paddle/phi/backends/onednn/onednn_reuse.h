@@ -1678,7 +1678,7 @@ static void SetOutMemDescWithUnsqueeze2FuseSupport(
   out->Resize(make_ddim(unsqueezed_op_tz));
 }
 
-void SetOutMemDescWithReshape2FuseSupport(
+static void SetOutMemDescWithReshape2FuseSupport(
     const std::vector<int> fused_reshape2_shape_,
     phi::DenseTensor* out,
     const dnnl::memory::desc& out_md) {

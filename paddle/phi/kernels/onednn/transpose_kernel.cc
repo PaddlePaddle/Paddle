@@ -87,12 +87,7 @@ void TransposeKernel(const Context& dev_ctx,
 
   // a trick is used here to fake transpose of out_md, so later it will be
   // "untransposed", leaving output data in plain format tag
-  std::vector<int64_t> fake_strides(axis.size());
-  int total_stride = 1;
-  for (int i = static_cast<int>(x_vec_dims.size()) - 1; i >= 0; --i) {
-    fake_strides[axis[i]] = total_stride;
-    total_stride *= x_vec_dims[axis[i]];
-  }
+  auto fake_strides = funcs::FakeTransposeStrides(x_vec_dims, axis);
   auto dst_md = dnnl::memory::desc(x_vec_dims, out_type, fake_strides);
   auto reorder_dst_memory_p =
       reorder_handler.AcquireDstMemory(out, dst_md, dev_ctx.GetPlace());

@@ -27,4 +27,16 @@ extra {
     name: "fused_reshape2_shape"
     type: INTS        
   }
+  attrs{
+    name: "scale"
+    type: FLOAT        
+  }
+  attrs{
+    name: "shift"
+    type: FLOAT        
+  }
+  attrs{
+    name: "output_data_type"
+    type: STRING        
+  }
 }

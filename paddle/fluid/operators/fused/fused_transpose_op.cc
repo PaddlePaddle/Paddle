@@ -35,6 +35,16 @@ class FusedTransposeOpMaker : public Transpose2OpMaker {
                               "Shape from reshape2 operator obtained from "
                               "operator_reshape2_onednn_fuse_pass")
         .SetDefault({});
+    AddAttr<float>("scale",
+                   "Obtained from quant_transpose2_dequant_onednn_fuse_pass")
+        .SetDefault(1.0f);
+    AddAttr<float>("shift",
+                   "Obtained from quant_transpose2_dequant_onednn_fuse_pass")
+        .SetDefault(0.0f);
+    AddAttr<std::string>(
+        "output_data_type",
+        "Obtained from quant_transpose2_dequant_onednn_fuse_pass")
+        .SetDefault("");
   }
 };
 

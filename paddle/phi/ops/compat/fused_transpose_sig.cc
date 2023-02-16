@@ -23,7 +23,10 @@ KernelSignature FusedTransposeOpArgumentMapping(
                          {"axis",
                           "fused_squeeze2_axes",
                           "fused_unsqueeze2_axes",
-                          "fused_reshape2_shape"},
+                          "fused_reshape2_shape",
+                          "scale",
+                          "shift",
+                          "output_data_type"},
                          {"Out"});
 }
 
