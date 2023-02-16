@@ -124,14 +124,26 @@ class ProgramInfo:
     A helper class to recoder Program information
     """
 
-    def __init__(self, mode='infer'):
+    def __init__(self):
         self.op_size = {
             'fp32': -1,
             'amp': -1,
             'fp16': -1,
         }
-        assert mode in ['train', 'infer']
-        self.mode = mode
+        self.programs = {}
+        self.mode = "infer"
+
+    def __call__(self, key, prog_creator):
+        """
+        Recoder infer program and op size.
+        """
+        assert key in ['fp32', 'amp', 'fp16']
+        if key not in self.programs:
+            infer_prog = prog_creator(is_infer_mode=True)
+            self.programs[key] = infer_prog
+            self.op_size[key] = infer_prog.block(0).op_size()
+
+        return self.programs[key], self.op_size[key]
 
 
 class PartialProgramLayer:
@@ -277,8 +289,9 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _create_forward_backward_train_program(self):
         whole_program = self._train_program
-        forward_end_op_index = self._infer_info.op_size['fp32']
+        _, forward_end_op_index = self._infer_info('fp32', self._create_program)
         assert forward_end_op_index >= 0
+
         return self._get_forward_backward_program_form(
             whole_program, forward_end_op_index
         )
@@ -286,8 +299,11 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _create_forward_backward_train_amp_program(self):
         whole_program = self._train_amp_program
-        forward_end_op_index = self._infer_info.op_size['amp']
+        _, forward_end_op_index = self._infer_info(
+            'amp', self._create_amp_program
+        )
         assert forward_end_op_index >= 0
+
         return self._get_forward_backward_program_form(
             whole_program, forward_end_op_index
         )
@@ -295,8 +311,11 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _create_forward_backward_train_pure_fp16_program(self):
         whole_program = self._train_pure_fp16_program
-        forward_end_op_index = self._infer_info.op_size['fp16']
+        _, forward_end_op_index = self._infer_info(
+            'fp16', self._create_pure_fp16_program
+        )
         assert forward_end_op_index >= 0
+
         return self._get_forward_backward_program_form(
             whole_program, forward_end_op_index
         )
@@ -307,11 +326,8 @@ class PartialProgramLayer:
 
     @LazyInitialized
     def _infer_program(self):
-        program = self._create_program(is_infer_mode=True)
-        self._infer_info.op_size['fp32'] = program.desc.block(0).op_size()
-        return self._build_infer_program(
-            program, self._infer_info.op_size['fp32']
-        )
+        program, op_size = self._infer_info('fp32', self._create_program)
+        return self._build_infer_program(program, op_size)
 
     @LazyInitialized
     def _train_amp_program(self):
@@ -319,11 +335,8 @@ class PartialProgramLayer:
 
     @LazyInitialized
     def _infer_amp_program(self):
-        program = self._create_amp_program(is_infer_mode=True)
-        self._infer_info.op_size['amp'] = program.desc.block(0).op_size()
-        return self._build_infer_program(
-            program, self._infer_info.op_size['amp']
-        )
+        program, op_size = self._infer_info('amp', self._create_amp_program)
+        return self._build_infer_program(program, op_size)
 
     @LazyInitialized
     def _train_pure_fp16_program(self):
@@ -331,11 +344,10 @@ class PartialProgramLayer:
 
     @LazyInitialized
     def _infer_pure_fp16_program(self):
-        program = self._create_pure_fp16_program(is_infer_mode=True)
-        self._infer_info.op_size['fp16'] = program.desc.block(0).op_size()
-        return self._build_infer_program(
-            program, self._infer_info.op_size['fp16']
+        program, op_size = self._infer_info(
+            'fp16', self._create_pure_fp16_program
         )
+        return self._build_infer_program(program, op_size)
 
     @LazyInitialized
     def _train_forward_backward_program(self):
