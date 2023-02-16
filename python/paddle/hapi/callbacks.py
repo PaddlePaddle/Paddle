@@ -20,7 +20,6 @@ import warnings
 import numpy as np
 
 import paddle
-from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.utils import try_import
 
 from .progressbar import ProgressBar
@@ -350,7 +349,7 @@ class ProgBarLogger(Callback):
         self.log_freq = log_freq
 
     def _is_print(self):
-        return self.verbose and ParallelEnv().local_rank == 0
+        return self.verbose and paddle.distributed.ParallelEnv().local_rank == 0
 
     def on_train_begin(self, logs=None):
         self.epochs = self.params['epochs']
@@ -598,7 +597,11 @@ class ModelCheckpoint(Callback):
         self.epoch = epoch
 
     def _is_save(self):
-        return self.model and self.save_dir and ParallelEnv().local_rank == 0
+        return (
+            self.model
+            and self.save_dir
+            and paddle.distributed.ParallelEnv().local_rank == 0
+        )
 
     def on_epoch_end(self, epoch, logs=None):
         if self._is_save() and self.epoch % self.save_freq == 0:
@@ -922,7 +925,7 @@ class VisualDL(Callback):
         self.epoch = 0
 
     def _is_write(self):
-        return ParallelEnv().local_rank == 0
+        return paddle.distributed.ParallelEnv().local_rank == 0
 
     def on_train_begin(self, logs=None):
         self.epochs = self.params['epochs']
@@ -1074,7 +1077,7 @@ class WandbCallback(Callback):
         _ = self.run
 
     def _is_write(self):
-        return ParallelEnv().local_rank == 0
+        return paddle.distributed.ParallelEnv().local_rank == 0
 
     @property
     def run(self):
@@ -1333,7 +1336,10 @@ class ReduceLROnPlateau(Callback):
                     new_lr = old_lr * self.factor
                     new_lr = max(new_lr, self.min_lr)
                     self.model._optimizer._learning_rate = new_lr
-                    if self.verbose > 0 and ParallelEnv().local_rank == 0:
+                    if (
+                        self.verbose > 0
+                        and paddle.distributed.ParallelEnv().local_rank == 0
+                    ):
                         print(
                             '\nEpoch %d: ReduceLROnPlateau reducing learning '
                             'rate to %s.' % (self.epoch + 1, new_lr)

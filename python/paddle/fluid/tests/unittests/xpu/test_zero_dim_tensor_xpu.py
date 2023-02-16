@@ -328,7 +328,7 @@ class TestSundryAPI(unittest.TestCase):
         paddle.disable_static()
         self.x = paddle.rand([])
 
-    def _test_argmin(self):
+    def test_argmin(self):
         x = paddle.rand([])
         out1 = paddle.argmin(x, 0)
         out2 = paddle.argmin(x, -1)
@@ -342,7 +342,7 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out3.shape, [])
         np.testing.assert_allclose(out3, 0.0)
 
-    def _test_argmax(self):
+    def test_argmax(self):
         x = paddle.rand([])
         out1 = paddle.argmax(x, 0)
         out2 = paddle.argmax(x, -1)

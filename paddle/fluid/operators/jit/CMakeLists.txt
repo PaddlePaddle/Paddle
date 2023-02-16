@@ -53,7 +53,7 @@ if(NOT WIN32)
       benchmark.cc
       DEPS
       jit_kernel_helper
-      device_tracer
+      phi_device_tracer
       tensor)
   endif()
 endif()

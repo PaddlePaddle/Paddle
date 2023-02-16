@@ -19,7 +19,6 @@ import numpy as np
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.dygraph.parallel import ParallelEnv
 
 
 class TestProcessGroupFp32(unittest.TestCase):
@@ -34,8 +33,8 @@ class TestProcessGroupFp32(unittest.TestCase):
         self.shape = (2, 10, 5)
 
     def test_create_process_group_gloo(self):
-        nranks = ParallelEnv().nranks
-        rank = ParallelEnv().local_rank
+        nranks = paddle.distributed.ParallelEnv().nranks
+        rank = paddle.distributed.ParallelEnv().local_rank
         is_master = True if rank == 0 else False
         store = paddle.fluid.core.TCPStore(
             "127.0.0.1", 6272, is_master, nranks, 30
