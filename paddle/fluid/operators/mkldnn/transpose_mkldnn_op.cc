@@ -56,14 +56,14 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     auto dst_md =
         dnnl::memory::desc(x_vec_dims,
-                           x->mem_desc().data_type(),
+                           x->mem_desc().get_data_type(),
                            phi::funcs::GetPlainOneDNNFormat(x_vec_dims.size()));
     // a trick is used here to fake transpose of out_md, so later it will be
     // "untransposed", leaving output data in plain format tag
     auto dst_strides = FakeTranposeStrides(dst_md, transpose_axis);
 
-    dst_md =
-        dnnl::memory::desc(x_vec_dims, x->mem_desc().data_type(), dst_strides);
+    dst_md = dnnl::memory::desc(
+        x_vec_dims, x->mem_desc().get_data_type(), dst_strides);
     auto dst_data =
         out->mutable_data(ctx.GetPlace(), x->type(), dst_md.get_size());
 
@@ -97,7 +97,7 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       const dnnl::memory::desc& dst_md,
       const std::vector<int>& transpose_axis) const {
     std::vector<int64_t> fake_strides(transpose_axis.size());
-    auto dims = dst_md.dims();
+    auto dims = dst_md.get_dims();
     int total_stride = 1;
     int ndims = static_cast<int>(dims.size());
 
