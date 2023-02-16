@@ -78,23 +78,29 @@ void TestTensorMutableData(const phi::Place& place) {
   phi::DenseTensor src_tensor;
   float* p1 = nullptr;
   float* p2 = nullptr;
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.Get(place);
   // initialization
-  p1 = src_tensor.mutable_data<float>(phi::make_ddim({1, 2, 3}), place);
+  src_tensor.Resize(phi::make_ddim({1, 2, 3}));
+  p1 = dev_ctx.template Alloc<float>(&src_tensor);
   auto p1_holder = src_tensor.Holder();
   EXPECT_NE(p1, nullptr);
   // set src_tensor a new dim with large size
   // momery is supposed to be re-allocated
-  p2 = src_tensor.mutable_data<float>(phi::make_ddim({3, 1024}), place);
+  src_tensor.Resize(phi::make_ddim({3, 1024}));
+  p2 = dev_ctx.template Alloc<float>(&src_tensor);
   auto p2_holder = src_tensor.Holder();
   EXPECT_NE(p2, nullptr);
   EXPECT_NE(p1_holder.get(), p2_holder.get());
   // set src_tensor a new dim with same size
   // momery block is supposed to be unchanged
-  p1 = src_tensor.mutable_data<float>(phi::make_ddim({2, 2, 3}), place);
+  src_tensor.Resize(phi::make_ddim({2, 2, 3}));
+  p1 = dev_ctx.template Alloc<float>(&src_tensor);
   EXPECT_EQ(p1, p2);
   // set src_tensor a new dim with smaller size
   // momery block is supposed to be unchanged
-  p2 = src_tensor.mutable_data<float>(phi::make_ddim({2, 2}), place);
+  src_tensor.Resize(phi::make_ddim({2, 2}));
+  p2 = dev_ctx.template Alloc<float>(&src_tensor);
   EXPECT_EQ(p1, p2);
 }
 
@@ -102,7 +108,11 @@ void TestTensorShareDataWith(const phi::Place& place) {
   std::cout << "TestTensorShareDataWith on " << place << std::endl;
   phi::DenseTensor src_tensor;
   phi::DenseTensor dst_tensor;
-  src_tensor.mutable_data<int>(phi::make_ddim({2, 3, 4}), place);
+
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.Get(place);
+  src_tensor.Resize(phi::make_ddim({2, 3, 4}));
+  dev_ctx.template Alloc<int>(&src_tensor);
   dst_tensor.ShareDataWith(src_tensor);
   ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
 }
@@ -116,14 +126,15 @@ void TestTensorUtils(const phi::Place& place) {
   phi::DenseTensor gpu_tensor;
   phi::DenseTensor dst_tensor;
 
-  int* src_ptr =
-      src_tensor.mutable_data<int>(phi::make_ddim({3, 3}), phi::CPUPlace());
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.Get(phi::CPUPlace());
+  src_tensor.Resize(phi::make_ddim({3, 3}));
+  int* src_ptr = dev_ctx.template Alloc<int>(&src_tensor);
 
   int arr[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
   memcpy(src_ptr, arr, 9 * sizeof(int));
 
   // CPU Tensor to GPU Tensor
-  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* gpu_ctx = pool.Get(place);
   phi::Copy(*gpu_ctx, src_tensor, place, false, &gpu_tensor);
 #if 0
