@@ -100,6 +100,9 @@ template <typename VarType>
 NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
                                    const NameVarMap<VarType>& ins);
 template <typename VarType>
+NameVarMap<VarType> AutoCheckNotUseInputs(const std::string& op_type,
+                                          const NameVarMap<VarType>& ins);
+template <typename VarType>
 NameVarMap<VarType> CastPureFp16Inputs(const std::string& op_type,
                                        const NameVarMap<VarType>& ins);
 template <typename VarType>

@@ -34,6 +34,9 @@ class TensorBase {
   /// \return The number of elements contained in tensor.
   virtual int64_t numel() const = 0;
 
+  std::vector<std::shared_ptr<bool>> can_not_uses;
+  std::shared_ptr<bool> canNotUse;
+
   /// \brief Returns the dims of the tensor.
   /// \return The dims of the tensor.
   virtual const DDim& dims() const = 0;

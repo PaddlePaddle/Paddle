@@ -255,6 +255,8 @@ void Tracer::TraceOpImpl(const std::string& type,
                               : attr_checker->GetDefaultAttrMap();
 
   std::unique_ptr<NameVarMap<VarType>> ins_amp = nullptr;
+  AutoCheckNotUseInputs<VarType>(type, ins);
+  AutoCheckNotUseInputs<VarType>(type, outs);
   if (amp_level_ == AmpLevel::O1) {
     if (amp_dtype_ == phi::DataType::FLOAT16) {
       VLOG(5) << "Float16 Auto Mixed Precision O1 run operator: " << type;

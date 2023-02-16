@@ -561,6 +561,10 @@ class PADDLE_API Tensor final {
    */
   uint32_t current_inplace_version();
 
+  bool can_not_use();
+
+  void set_can_not_use(std::string op_name = "op_name");
+
   /**
    * @brief Reset inplace version
    */

@@ -267,7 +267,7 @@ class DenseTensor : public TensorBase,
     uint32_t inplace_version_{0};
   };
 
- protected:
+ public:
   std::shared_ptr<InplaceVersion> inplace_version_counter_{
       std::make_shared<InplaceVersion>()};
 

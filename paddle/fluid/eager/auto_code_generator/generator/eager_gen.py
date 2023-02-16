@@ -82,7 +82,7 @@ def ParseArguments():
 # Code Gen Templates #
 ######################
 SET_PLAIN_TENSOR_WRAPPER_TEMPLATE = """  void SetTensorWrapper{}(const paddle::experimental::Tensor& {}) {{
-    {} = egr::TensorWrapper({}, {});
+    {} = egr::TensorWrapper({}, {}, "{}");
   }}
 """
 
@@ -195,6 +195,8 @@ FORWARD_FUNCTION_TEMPLATE = """
   VLOG(3) << \"Running AD API: \" << \"{}\";
   // Dygraph Record Event
 {}
+  // Check Inputs whether Can Not Use
+{}
   // AMP Logic
 {}
   // Layout autotune
@@ -250,6 +252,8 @@ FORWARD_ONLY_FUNCTION_TEMPLATE = """
   FLAGS_tensor_operants_mode = "eager";
   VLOG(3) << \"Running AD API: \" << \"{}\";
   // Dygraph Record Event
+{}
+  // CHECK Inputs Whether Can Not Use
 {}
   // AMP Logic
 {}
@@ -407,13 +411,24 @@ extern std::unordered_map<std::string, std::vector<std::string>> core_ops_return
 """
 
 CHECK_INPLACE_TEMPLATE = """
-  egr::EagerUtils::CheckInplace({}, {}, require_any_grad);
+  egr::EagerUtils::CheckInplace({}, {}, require_any_grad, "{}");
 """
 
 BUMP_INPLACE_VERSION_TEMPLATE = """
   // Bump Inplace Version
   {}.bump_inplace_version();
   VLOG(3) << \"Tensor(\" << {}.name() << \") uses Inplace Strategy.\";
+"""
+
+CHECK_CAN_NOT_USE_TEMPLATE = """
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> check_tensors_vector = {};
+"""
+
+CHECK_CAN_NOT_USE_OTHER = """
+   for(size_t i = 0; i < check_tensors_vector.size(); ++i)
+        if (check_tensors_vector[i][0].can_not_use())
+              LOG(WARNING) << "Stride Test Log: "
+                       <<"{}" << " Find a Tensor Which Can Not Use.";
 """
 
 AMP_LOGIC_TEMPLATE = """  if (egr::Controller::Instance().GetAMPLevel() != paddle::imperative::AmpLevel::O0) {{
@@ -1484,7 +1499,9 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     and forward_api_name not in inplace_check_blacklist
                 ):
                     check_inplace_str += CHECK_INPLACE_TEMPLATE.format(
-                        inplace_name, GetAutoGradMetaName(inplace_name)
+                        inplace_name,
+                        GetAutoGradMetaName(inplace_name),
+                        forward_api_name,
                     )
                 bump_inplace_version_str += (
                     BUMP_INPLACE_VERSION_TEMPLATE.format(
@@ -1586,6 +1603,12 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         amp_call_str = (
             f"return {forward_ad_function_name}({amp_inputs_call_args_str});"
         )
+        can_not_use_check_str = CHECK_CAN_NOT_USE_TEMPLATE.format(
+            amp_tensors_vector_list_str,
+        )
+        can_not_use_check_str += CHECK_CAN_NOT_USE_OTHER.format(
+            str(forward_api_name)
+        )
         if is_inplaced or (forward_api_name == "cast"):
             amp_logic_str = "\n VLOG(5) << \" No AMP for {} because it is a inplace or cast api. \"; ".format(
                 forward_ad_function_name
@@ -1643,6 +1666,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     inputs_args_definition_str,
                     forward_api_name,
                     dygraph_event_str,
+                    can_not_use_check_str,
                     amp_logic_str,
                     layout_logic_str,
                     forward_api_name,
@@ -1663,6 +1687,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 inputs_args_definition_str,
                 forward_api_name,
                 dygraph_event_str,
+                can_not_use_check_str,
                 amp_logic_str,
                 layout_logic_str,
                 inputs_autograd_meta_str,
@@ -1892,7 +1917,12 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             if IsPlainTensorType(ttype):
                 set_tensor_wrapper_methods_str += (
                     SET_PLAIN_TENSOR_WRAPPER_TEMPLATE.format(
-                        tname, tname, tensor_wrapper_name, tname, no_need_buffer
+                        tname,
+                        tname,
+                        tensor_wrapper_name,
+                        tname,
+                        no_need_buffer,
+                        forward_op_name,
                     )
                 )
 
@@ -2026,6 +2056,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
             is_optional = name in self.optional_inputs
             tensor_wrapper_recover_str = f"{indent}auto {transformed_tensor_name} = egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name});"
+
             if backward_inplace_map and name in backward_inplace_map.keys():
                 if has_higher_order_node:
                     if (
@@ -2055,6 +2086,16 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                 inplace_grad_input_str = transformed_tensor_name
             if is_optional:
                 if backward_input_type == "std::vector<Tensor>":
+                    if transformed_tensor_name != "size_tensor":
+                        tensor_wrapper_recover_str += """
+                        for(size_t i = 0; i < {}.size(); ++i)
+                            if({}.can_not_use())
+                            LOG(WARNING) <<\"Stride Test Log:" << \"{}\"<< \" Find Input Which Can Not Use.\";
+                        """.format(
+                            transformed_tensor_name,
+                            transformed_tensor_name,
+                            backward_api_name,
+                        )
                     tensor_wrapper_recover_str += (
                         "\n"
                         + CREATE_RECOVER_OPTIONAL_VECTOR_TENSOR_TEMPLATE.format(
@@ -2065,6 +2106,12 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                         )
                     )
                 else:
+                    tensor_wrapper_recover_str += """
+                        if({}.can_not_use())
+                            LOG(WARNING) <<\"Stride Test Log:" << \"{}\"<< \" Find Input Which Can Not Use.\";
+                        """.format(
+                        transformed_tensor_name, backward_api_name
+                    )
                     tensor_wrapper_recover_str += (
                         "\n"
                         + CREATE_RECOVER_OPTIONAL_TENSOR_TEMPLATE.format(
