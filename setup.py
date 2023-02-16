@@ -1285,7 +1285,6 @@ def get_setup_parameters():
         'paddle.fluid.contrib.extend_optimizer',
         'paddle.fluid.contrib.layers',
         'paddle.fluid.transpiler',
-        'paddle.fluid.transpiler.details',
         'paddle.fluid.incubate',
         'paddle.fluid.incubate.fleet',
         'paddle.fluid.incubate.checkpoint',
