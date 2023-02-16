@@ -23,7 +23,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 
-SEED = 2020
+SEED = 2022
 BATCH_SIZE = 1
 
 

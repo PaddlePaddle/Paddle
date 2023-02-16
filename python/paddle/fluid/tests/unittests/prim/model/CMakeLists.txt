@@ -18,11 +18,3 @@ if(WITH_CINN)
     PROPERTIES LABELS "RUN_TYPE=CINN" ENVIRONMENT
                FLAGS_deny_cinn_ops="dropout;layer_norm;slice")
 endif()
-
-if(WITH_TESTING)
-  add_custom_target(
-    download_bert_training_data ALL
-    COMMAND wget -nc -q --no-check-certificate
-            https://paddle-ci.gz.bcebos.com/prim_cinn/bert_training_data.npz
-    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
-endif()

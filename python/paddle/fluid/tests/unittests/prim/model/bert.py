@@ -784,16 +784,14 @@ class PretrainingDataset(Dataset):
     def __init__(self, input_file, max_pred_length):
         self.input_file = input_file
         self.max_pred_length = max_pred_length
-        keys = [
-            "input_ids",
-            "input_mask",
-            "segment_ids",
-            "masked_lm_positions",
-            "masked_lm_ids",
-            "next_sentence_labels",
+        self.inputs = [
+            np.random.randint(0, 30484, (88, 128)).astype('int32'),
+            np.random.randint(0, 2, (88, 128)).astype('int8'),
+            np.random.randint(0, 2, (88, 128)).astype('int8'),
+            np.random.randint(0, 127, (88, 20)).astype('int32'),
+            np.random.randint(0, 29393, (88, 20)).astype('int32'),
+            np.random.randint(0, 1, (88,)).astype('int8'),
         ]
-        self.inputs = np.load(input_file)
-        self.inputs = [self.inputs[key] for key in keys]
 
     def __len__(self):
         "Denotes the total number of samples"
