@@ -78,14 +78,12 @@ const CinnCompiledObject &CinnCompiler::Compile(
   CinnCacheKeyByStructure cur_key_by_struct;
 
   if (!cache_by_address_.count(cur_key_by_address)) {
-    VLOG(4) << "Not found CinnCompiledObject in cache_by_address_."
-               // generate the structure cache key
-               cur_key_by_struct.SetKey(
-                   graph, input_tensors, target.arch_str());
+    VLOG(4) << "Not found CinnCompiledObject in cache_by_address_.";
+    // generate the structure cache key
+    cur_key_by_struct.SetKey(graph, input_tensors, target.arch_str());
     if (!cache_by_struct_.count(cur_key_by_struct)) {
-      VLOG(4)
-          << "Not found CinnCompiledObject in cache_by_struct_." std::int64_t
-                 compiled_num = real_compiled_num_.fetch_add(1);
+      VLOG(4) << "Not found CinnCompiledObject in cache_by_struct_.";
+      std::int64_t compiled_num = real_compiled_num_.fetch_add(1);
       auto compiled_res =
           CompileGraph(graph, input_tensors, target, compiled_num, stream);
       std::unique_lock<std::mutex> guard(lock_);

@@ -134,7 +134,7 @@ TEST(CinnCacheKeyTest, TestAsUnorderedKeyByAddress) {
   CinnCacheKeyByAddress cache_key1(
       empty_graph, feed_shapes, feed_dtypes, "x86");
   EXPECT_EQ(cache_key0, cache_key1);
-  
+
   CinnCacheKeyByAddress cache_key7(empty_graph, feed_shapes, new_dtypes, "x86");
   EXPECT_NE(cache_key1, cache_key7);
 
