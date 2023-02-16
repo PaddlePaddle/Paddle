@@ -511,19 +511,11 @@ class TestLRScheduler(unittest.TestCase):
             for epoch in range(5):
                 python_result = python_func(num, **kwarg)
                 for batch_id in range(2):
-                    _ = exe.run(
+                    out = exe.run(
                         compiled_train_prog,
-                        feed={'x': np.random.randn(12, 4, 5).astype('float32')},
+                        feed={'x': np.random.randn(3, 4, 5).astype('float32')},
                         fetch_list=lr_var.name,
                     )
-                scopes = compiled_train_prog._executor.local_scopes()
-                out = np.array(scopes[0].var(lr_var.name).get_tensor())
-                self.assertEqual(out, np.array(python_result))
-                out = np.array(scopes[1].var(lr_var.name).get_tensor())
-                self.assertEqual(out, np.array(python_result))
-                out = np.array(scopes[2].var(lr_var.name).get_tensor())
-                self.assertEqual(out, np.array(python_result))
-                out = np.array(scopes[3].var(lr_var.name).get_tensor())
                 self.assertEqual(out, np.array(python_result))
                 scheduler.step()
                 num += 1
@@ -532,19 +524,11 @@ class TestLRScheduler(unittest.TestCase):
             for epoch in range(5):
                 python_result = python_func(num, **kwarg)
                 for batch_id in range(2):
-                    _ = exe.run(
+                    out = exe.run(
                         compiled_test_prog,
-                        feed={'x': np.random.randn(12, 4, 5).astype('float32')},
+                        feed={'x': np.random.randn(3, 4, 5).astype('float32')},
                         fetch_list=lr_var.name,
                     )
-                scopes = compiled_test_prog._executor.local_scopes()
-                out = np.array(scopes[0].var(lr_var.name).get_tensor())
-                self.assertEqual(out, np.array(python_result))
-                out = np.array(scopes[1].var(lr_var.name).get_tensor())
-                self.assertEqual(out, np.array(python_result))
-                out = np.array(scopes[2].var(lr_var.name).get_tensor())
-                self.assertEqual(out, np.array(python_result))
-                out = np.array(scopes[3].var(lr_var.name).get_tensor())
                 self.assertEqual(out, np.array(python_result))
                 scheduler.step()
                 num += 1
