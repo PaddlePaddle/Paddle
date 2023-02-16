@@ -121,10 +121,13 @@ void CondInterceptor::Run(const InterceptorMessage& msg) {
       msg.message_type() == DATA_WITH_VARS) {
     if (msg.src_id() == loop_id_) {
       --num_of_scopes_;
+      VLOG(3) << "Receving loop again message from " << msg.src_id()
+              << " waiting other " << num_of_scopes_ << " scopes ready";
       ready_scope_id_.emplace_back(msg.scope_idx());
       if (num_of_scopes_ == 0) {
         std::sort(ready_scope_id_.begin(), ready_scope_id_.end());
         for (auto scope_id : ready_scope_id_) {
+          VLOG(3) << "Start a new loop in scope " << scope_id;
           cur_scope_id_ = scope_id;
           Compute();
         }
