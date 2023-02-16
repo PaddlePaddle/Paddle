@@ -124,7 +124,7 @@ template <typename T>
 struct SequenceSoftmaxFunctor<phi::GPUContext, T> {
   void operator()(const phi::GPUContext &context,
                   const LoDTensor &x,
-                  const framework::Vector<size_t> &ref_lod, /*referenced lod*/
+                  const phi::Vector<size_t> &ref_lod, /*referenced lod*/
                   LoDTensor *out) {
     int height = ref_lod.size() - 1;
 
@@ -135,7 +135,7 @@ struct SequenceSoftmaxFunctor<phi::GPUContext, T> {
 
     dim3 block_size(thread_x);
     dim3 grid_size(max_blocks);
-    paddle::framework::MixVector<size_t> mixv_ref_lod(&ref_lod);
+    phi::MixVector<size_t> mixv_ref_lod(&ref_lod);
     sequence_softmax_kernel<T, kThreadsPerBlock>
         <<<grid_size, block_size, 0, context.stream()>>>(
             x.data<T>(),
@@ -150,7 +150,7 @@ struct SequenceSoftmaxGradFunctor<phi::GPUContext, T> {
   void operator()(const phi::GPUContext &context,
                   const LoDTensor &dout,
                   const LoDTensor &out,
-                  const framework::Vector<size_t> &ref_lod, /*referenced lod*/
+                  const phi::Vector<size_t> &ref_lod, /*referenced lod*/
                   LoDTensor *dx) {
     size_t height = ref_lod.size() - 1;
 
@@ -162,7 +162,7 @@ struct SequenceSoftmaxGradFunctor<phi::GPUContext, T> {
     dim3 block_size(thread_x);
     dim3 grid_size(max_blocks);
 
-    paddle::framework::MixVector<size_t> mixv_ref_lod(&ref_lod);
+    phi::MixVector<size_t> mixv_ref_lod(&ref_lod);
     sequence_softmax_grad_kernel<T, kThreadsPerBlock>
         <<<grid_size, block_size, 0, context.stream()>>>(
             dout.data<T>(),

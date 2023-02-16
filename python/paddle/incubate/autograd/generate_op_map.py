@@ -84,7 +84,7 @@ def generate_code(
                 else:
                     op_name = key
                     map_dct[op_name] = {"phi_name": op_name}
-                for element in ["inputs", "attrs"]:
+                for element in ["inputs", "outputs", "attrs"]:
                     if element in item.keys():
                         map_dct[op_name][element] = item[element]
                 for element in ["scalar", "int_array"]:

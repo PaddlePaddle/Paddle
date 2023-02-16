@@ -571,7 +571,7 @@ class TestSundryAPI(unittest.TestCase):
         paddle.disable_static()
         self.x = paddle.rand([])
 
-    def _test_argmin(self):
+    def test_argmin(self):
         x = paddle.rand([])
         out1 = paddle.argmin(x, 0)
         out2 = paddle.argmin(x, -1)
@@ -585,7 +585,7 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out3.shape, [])
         np.testing.assert_allclose(out3, 0.0)
 
-    def _test_argmax(self):
+    def test_argmax(self):
         x = paddle.rand([])
         out1 = paddle.argmax(x, 0)
         out2 = paddle.argmax(x, -1)
@@ -621,6 +621,45 @@ class TestSundryAPI(unittest.TestCase):
 
         self.assertEqual(x.grad.shape, [])
         np.testing.assert_allclose(x.grad, 3.0)
+
+    def test_std(self):
+        x = paddle.rand([])
+        x.stop_gradient = False
+        out1 = paddle.std(x)
+        out2 = paddle.std(x, [])
+        out1.backward()
+        out2.backward()
+
+        # checkout shape of out
+        self.assertEqual(out1.shape, [])
+        self.assertEqual(out2.shape, [])
+
+        # checkout value of out
+        self.assertEqual(out1, 0)
+        self.assertEqual(out2, 0)
+
+        # checkout backward
+        self.assertEqual(x.grad.shape, [])
+
+    def test_var(self):
+        x = paddle.rand([])
+        x.stop_gradient = False
+        out1 = paddle.var(x)
+        out2 = paddle.var(x, [])
+        out1.backward()
+        out2.backward()
+
+        # checkout shape of out
+        self.assertEqual(out1.shape, [])
+        self.assertEqual(out2.shape, [])
+
+        # checkout value of out
+        self.assertEqual(out1, 0)
+        self.assertEqual(out2, 0)
+
+        # checkout backward
+        self.assertEqual(x.grad.shape, [])
+        np.testing.assert_allclose(x.grad, 0)
 
     def test_quantile(self):
         # 1) x is 0D
@@ -1641,7 +1680,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.exe = paddle.static.Executor()
 
     @prog_scope()
-    def _test_argmin(self):
+    def test_argmin(self):
         x = paddle.rand([])
         out1 = paddle.argmin(x, 0)
         out2 = paddle.argmin(x, -1)
@@ -1664,7 +1703,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         np.testing.assert_allclose(res[2], 0.0)
 
     @prog_scope()
-    def _test_argmax(self):
+    def test_argmax(self):
         x = paddle.rand([])
         out1 = paddle.argmax(x, 0)
         out2 = paddle.argmax(x, -1)
@@ -1707,6 +1746,48 @@ class TestSundryAPIStatic(unittest.TestCase):
 
         self.assertEqual(res[2].shape, ())
         np.testing.assert_allclose(res[2], 1.0)
+
+    @prog_scope()
+    def test_std(self):
+        x = paddle.rand([])
+        out1 = paddle.std(x)
+        out2 = paddle.std(x, [])
+        paddle.static.append_backward(out1)
+        paddle.static.append_backward(out2)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog,
+            fetch_list=[
+                x,
+                out1,
+                out2,
+            ],
+        )
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[2].shape, ())
+
+    @prog_scope()
+    def test_var(self):
+        x = paddle.rand([])
+        out1 = paddle.var(x)
+        out2 = paddle.var(x, [])
+        paddle.static.append_backward(out1)
+        paddle.static.append_backward(out2)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog,
+            fetch_list=[
+                x,
+                out1,
+                out2,
+            ],
+        )
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[2].shape, ())
 
     @prog_scope()
     def test_quantile(self):

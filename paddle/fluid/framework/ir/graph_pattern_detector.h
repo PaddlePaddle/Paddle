@@ -552,6 +552,29 @@ struct OperatorActivation : public PatternBase {
   PATTERN_DECL_NODE(activation_out);
 };
 
+struct QuantTranspose2 : public PatternBase {
+  QuantTranspose2(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "quant_transpose2") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(quant_in);
+  PATTERN_DECL_NODE(quant_op);
+  PATTERN_DECL_NODE(quant_out);
+  PATTERN_DECL_NODE(transpose2_op);
+};
+
+struct Transpose2Dequant : public PatternBase {
+  Transpose2Dequant(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "transpose2_dequant") {}
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(transpose2_op);
+  PATTERN_DECL_NODE(dequant_in);
+  PATTERN_DECL_NODE(dequant_op);
+  PATTERN_DECL_NODE(dequant_out);
+};
+
 struct Squeeze2Transpose2 : public PatternBase {
   Squeeze2Transpose2(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "squeeze2_transpose2") {}
@@ -1740,11 +1763,10 @@ struct DeleteDropoutOpPattern : public PatternBase {
 
   void operator()();
 
-  PATTERN_DECL_NODE(any_op_out);
+  PATTERN_DECL_NODE(dropout_op_x);
   PATTERN_DECL_NODE(dropout_op);
   PATTERN_DECL_NODE(dropout_op_out);
-  PATTERN_DECL_NODE(dropout_op_outmask);
-  PATTERN_DECL_NODE(any_op2);
+  PATTERN_DECL_NODE(dropout_op_mask);
 };
 
 struct DeleteQuantDequantOpPattern : public PatternBase {

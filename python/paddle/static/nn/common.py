@@ -3720,7 +3720,7 @@ def embedding(
             It must be float32 or float64. Default: float32.
 
     Returns:
-        Variable: Embedding Tensor or LoDTensor mapped by input. The data type is the same as :attr:`dtype` .
+        Tensor: Embedding Tensor or LoDTensor mapped by input. The data type is the same as :attr:`dtype` .
 
     Static Examples:
         .. code-block:: python

@@ -331,6 +331,18 @@ TEST(inference_api_native, image_classification_gpu) {
 // }
 #endif
 
+#ifdef PADDLE_WITH_MKLDNN
+TEST(inference_api_native, image_classification_cpu_onednn) {
+  FLAGS_use_mkldnn = true;
+  MainImageClassification(paddle::PaddlePlace::kCPU);
+}
+
+TEST(inference_api_native, word2vec_cpu_onednn) {
+  FLAGS_use_mkldnn = true;
+  MainWord2Vec(paddle::PaddlePlace::kCPU);
+}
+#endif
+
 TEST(PassBuilder, Delete) {
   AnalysisConfig config;
   config.DisableGpu();

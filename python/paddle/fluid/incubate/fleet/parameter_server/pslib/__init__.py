@@ -16,8 +16,7 @@ import os
 import sys
 from .optimizer_factory import *
 from google.protobuf import text_format
-import paddle.fluid as fluid
-from paddle.fluid.framework import Program
+from paddle.framework import core
 
 from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
 from paddle.fluid.incubate.fleet.base.mode import Mode
@@ -44,10 +43,10 @@ class PSLib(Fleet):
         if role_maker is None:
             role_maker = MPISymetricRoleMaker()
         super().init(role_maker)
-        self._fleet_ptr = fluid.core.Fleet()
+        self._fleet_ptr = core.Fleet()
         self._heter_ptr = None
         if isinstance(role_maker, HeterRoleMaker):
-            self._heter_ptr = fluid.core.Heter()
+            self._heter_ptr = core.Heter()
 
     def _set_client_communication_config(
         self, request_timeout_ms, connect_timeout_ms, max_retry
@@ -1231,7 +1230,7 @@ class DownpourOptimizer(DistributedOptimizer):
         fleet._main_programs = programs
         fleet._scopes = scopes
         if opt_info["use_ps_gpu"]:
-            from paddle.fluid.transpiler.collective import MultiThread
+            from paddle.distributed.transpiler.collective import MultiThread
 
             # check start program
             if program_mode not in [
