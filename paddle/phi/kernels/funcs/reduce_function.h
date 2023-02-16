@@ -917,14 +917,6 @@ static void LaunchReduceKernel(const Tx* x_data,
 
     auto reduce_index_calculator_stage1 = OneDimIndexCal(1);
 
-    auto TwoStageReduceKernel1 =
-        ReduceAnyKernel<Ty,
-                        Ty,
-                        MPType,
-                        ReduceOp,
-                        kps::IdentityFunctor<Ty, MPType>,
-                        OneDimIndexCal>;
-
 #ifdef PADDLE_WITH_XPU_KP
     int grid_size = 8;
     int block_size = 64;
@@ -933,7 +925,12 @@ static void LaunchReduceKernel(const Tx* x_data,
     auto block_size = block;
 #endif
 
-    TwoStageReduceKernel1<<<grid_size, block_size, 0, stream>>>(
+    ReduceAnyKernel<Ty,
+                    Ty,
+                    MPType,
+                    ReduceOp,
+                    kps::IdentityFunctor<Ty, MPType>,
+                    OneDimIndexCal><<<grid_size, block_size, 0, stream>>>(
         config.output_data,
         y_data,
         reducer,
