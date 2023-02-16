@@ -141,7 +141,7 @@ class ProgramInfo:
         if key not in self.programs:
             infer_prog = prog_creator(is_infer_mode=True)
             self.programs[key] = infer_prog
-            self.op_size[key] = infer_prog.block(0).op_size()
+            self.op_size[key] = infer_prog.desc.block(0).op_size()
 
         return self.programs[key], self.op_size[key]
 
