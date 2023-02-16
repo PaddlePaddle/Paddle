@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <iomanip>
 #include <queue>
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 
@@ -44,6 +45,9 @@ class CondInterceptor final : public Interceptor {
   std::set<int64_t> normal_in_id_;
   std::set<int64_t> normal_out_id_;
   int64_t stop_loop_id_;
+  int64_t loop_id_;
+  int64_t num_of_scopes_{0};
+  std::vector<int64_t> ready_scope_id_;
 };
 
 }  // namespace distributed
