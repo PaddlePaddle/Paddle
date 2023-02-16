@@ -383,9 +383,9 @@ cc_library(
 
 cc_library(
   phi_tensor_operants
-  SRCS tensor_operants.cc
+  SRCS ${phi_tensor_operants_source_file}
   DEPS phi_function_api)
 cc_library(
   operants_manager
-  SRCS operants_manager.cc
+  SRCS ${operants_manager_source_file}
   DEPS phi_enforce)
