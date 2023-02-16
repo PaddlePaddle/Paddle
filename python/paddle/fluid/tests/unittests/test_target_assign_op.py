@@ -16,7 +16,7 @@ import random
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 
 def gen_match_and_neg_indices(num_prior, gt_lod, neg_lod):
@@ -135,7 +135,8 @@ class TestTargetAssginFloatType(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        # NODE(yjjiang11): This op will be deprecated.
+        self.check_output(check_dygraph=False)
 
 
 class TestTargetAssginIntType(OpTest):
@@ -182,7 +183,7 @@ class TestTargetAssginIntType(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 if __name__ == '__main__':
