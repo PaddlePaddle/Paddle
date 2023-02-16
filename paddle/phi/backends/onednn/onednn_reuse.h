@@ -806,6 +806,64 @@ class SoftmaxOneDNNHandler
   }
 };
 
+template <typename T>
+class SoftmaxV2OneDNNHandler
+    : public OneDNNHandlerNoCachingT<T,
+                                     dnnl::softmax_v2_forward,
+                                     dnnl::softmax_v2_backward> {
+ public:
+  SoftmaxV2OneDNNHandler(const dnnl::engine onednn_engine,
+                         Place cpu_place,
+                         int axis,
+                         const DenseTensor* x,
+                         DenseTensor* out,
+                         float output_scale)
+      : OneDNNHandlerNoCachingT<T,
+                                dnnl::softmax_v2_forward,
+                                dnnl::softmax_v2_backward>(onednn_engine,
+                                                           cpu_place) {
+    PADDLE_ENFORCE_EQ(
+        x->dims(),
+        out->dims(),
+        errors::InvalidArgument(
+            "The shape of input and output tensor must be identical."));
+
+    dnnl::primitive_attr attrs = {};
+    attrs.set_output_scales(0, {output_scale});
+
+    const int canonical_axis = funcs::CanonicalAxis(axis, x->dims().size());
+    this->AcquireForwardPrimitiveDescriptor(attrs,
+                                            dnnl::prop_kind::forward_scoring,
+                                            dnnl::algorithm::softmax_accurate,
+                                            x->mem_desc(),
+                                            x->mem_desc(),
+                                            canonical_axis);
+  }
+
+  SoftmaxV2OneDNNHandler(const dnnl::engine onednn_engine,
+                         Place cpu_place,
+                         int axis,
+                         const DenseTensor* out,
+                         const DenseTensor* out_grad)
+      : OneDNNHandlerNoCachingT<T,
+                                dnnl::softmax_v2_forward,
+                                dnnl::softmax_v2_backward>(onednn_engine,
+                                                           cpu_place) {
+    const int canonical_axis =
+        funcs::CanonicalAxis(axis, out_grad->dims().size());
+    this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_scoring,
+                                            dnnl::algorithm::softmax_accurate,
+                                            out->mem_desc(),
+                                            out->mem_desc(),
+                                            canonical_axis);
+    this->AcquireBackwardPrimitiveDescriptor(dnnl::algorithm::softmax_accurate,
+                                             out_grad->mem_desc(),
+                                             out_grad->mem_desc(),
+                                             out->mem_desc(),
+                                             canonical_axis);
+  }
+};
+
 class ReorderOneDNNHandler {
  public:
   ReorderOneDNNHandler(std::vector<int64_t>& dims,  // NOLINT

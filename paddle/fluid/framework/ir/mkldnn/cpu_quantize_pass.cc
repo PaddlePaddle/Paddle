@@ -96,7 +96,6 @@ void CPUQuantizePass::QuantizeInput(Graph* g,
                         op->Op()->Type()));
   unsigned max = is_input_unsigned ? U8_MAX : S8_MAX;
   float scale = scale_to_one * max;
-
   // Create quantize output variable
   VarDesc quantize_out_desc(patterns::PDNodeName("quantize", "out"));
   auto* quantize_out_node = g->CreateVarNode(&quantize_out_desc);
@@ -731,6 +730,7 @@ void CPUQuantizePass::QuantizeSoftmax(Graph* graph) const {
     }
 
     bool is_input_unsigned{false};
+
     auto input_scale = GetScaleValueForNode(softmax_input, &is_input_unsigned);
     QuantizeInput(
         g, softmax_op, softmax_input, "X", input_scale, is_input_unsigned);

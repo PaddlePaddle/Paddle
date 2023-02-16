@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,24 +19,23 @@
 
 namespace phi {
 
-template <typename T, typename Context>
-void SoftmaxKernel(const Context& dev_ctx,
-                   const DenseTensor& x,
-                   int axis,
-                   DenseTensor* out) {
-  funcs::SoftmaxOneDNNHandler<T> handler(
-      dev_ctx.GetEngine(), dev_ctx.GetPlace(), axis, &x, out);
+template <template <typename> class H, typename T, typename Context>
+void SoftmaxExecute(bool is_inplace,
+                    H<T>* handler,
+                    const DenseTensor& x,
+                    DenseTensor* out,
+                    const Context& dev_ctx) {
+  auto src_memory_p = handler->AcquireSrcMemory(&x);
 
-  auto src_memory_p = handler.AcquireSrcMemory(&x);
   std::shared_ptr<dnnl::memory> dst_memory_p = nullptr;
-  if (x.IsSharedBufferWith(*out)) {
+  if (is_inplace) {
     dst_memory_p = src_memory_p;
     dev_ctx.template Alloc<T>(out);
   } else {
-    dst_memory_p = handler.AcquireDstMemory(out);
+    dst_memory_p = handler->AcquireDstMemory(out);
   }
-  auto softmax_p = handler.AcquireForwardPrimitive();
 
+  auto softmax_p = handler->AcquireForwardPrimitive();
   auto& astream = OneDNNContext::tls().get_stream();
   softmax_p->execute(
       astream, {{DNNL_ARG_SRC, *src_memory_p}, {DNNL_ARG_DST, *dst_memory_p}});
@@ -51,8 +50,29 @@ void SoftmaxKernel(const Context& dev_ctx,
       val = std::max(val, static_cast<T>(exp(-64)));
     });
   }
-
   out->set_mem_desc(dst_memory_p->get_desc());
+}
+
+template <typename T, typename Context>
+void SoftmaxKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   int axis,
+                   DenseTensor* out) {
+  bool is_inplace = x.IsSharedBufferWith(*out);
+
+  if (phi::funcs::is_int8<T>()) {
+    PADDLE_ENFORCE(!is_inplace,
+                   phi::errors::Unimplemented(
+                       "Inplace not implemeneted for int8 onednn softmax."));
+    const float output_scale = x.dtype() == DataType::INT8 ? 126.99f : 255.0f;
+    funcs::SoftmaxV2OneDNNHandler<T> handler(
+        dev_ctx.GetEngine(), dev_ctx.GetPlace(), axis, &x, out, output_scale);
+    SoftmaxExecute(is_inplace, &handler, x, out, dev_ctx);
+  } else {
+    funcs::SoftmaxOneDNNHandler<T> handler(
+        dev_ctx.GetEngine(), dev_ctx.GetPlace(), axis, &x, out);
+    SoftmaxExecute(is_inplace, &handler, x, out, dev_ctx);
+  }
 }
 
 }  // namespace phi
