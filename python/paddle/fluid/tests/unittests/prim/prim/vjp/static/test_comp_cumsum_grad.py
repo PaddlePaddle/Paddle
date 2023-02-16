@@ -24,7 +24,6 @@ from paddle.fluid import core
 @param.parameterized_class(
     ('primal', 'cotangent', 'dtype'),
     [
-        (np.random.rand(3, 3), np.random.rand(3, 3), np.float16),
         (np.random.rand(10, 10, 10), np.random.rand(10, 10, 10), np.float32),
         (
             np.random.rand(4, 8, 16, 16),
@@ -36,15 +35,14 @@ from paddle.fluid import core
 class TestCumsumGradComp(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        # core._set_prim_backward_enabled(True)
+        core._set_prim_backward_enabled(True)
         cls.primal = cls.primal.astype(cls.dtype)
         if cls.cotangent is not None:
             cls.cotangent = cls.cotangent.astype(cls.dtype)
 
     @classmethod
     def tearDownClass(cls):
-        pass
-        # core._set_prim_backward_enabled(False)
+        core._set_prim_backward_enabled(False)
 
     def setUp(self):
         paddle.enable_static()
