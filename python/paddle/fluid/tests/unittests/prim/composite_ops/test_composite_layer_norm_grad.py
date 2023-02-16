@@ -318,6 +318,7 @@ class TestCompositelayer_normPrimBackward(unittest.TestCase):
         paddle.enable_static()
         core._set_prim_all_enabled(True)
         core._add_skip_comp_ops("sqrt")
+        # TODO(Ruting) delete this after modify sqrt
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
@@ -354,6 +355,7 @@ class TestCompositelayer_normPrimBackward(unittest.TestCase):
         paddle.enable_static()
         core._set_prim_all_enabled(True)
         core._add_skip_comp_ops("sqrt")
+        # TODO(Ruting) delete this after modify sqrt
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
@@ -423,8 +425,6 @@ class TestCompositelayer_normPrimBackward(unittest.TestCase):
                 self.compare_backward()
 
 
-# if dtype = FP64 the origin layer_norm_grad kernel is wrong,
-# so we compared with numpy implement
 class TestCompositeFP64layer_norm(unittest.TestCase):
     def setUp(self):
         self.dtypes = ["float64"]
@@ -503,6 +503,7 @@ class TestCompositeFP64layer_norm(unittest.TestCase):
         paddle.enable_static()
         core._set_prim_all_enabled(True)
         core._add_skip_comp_ops("sqrt")
+        # TODO(Ruting) delete this after modify sqrt
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):

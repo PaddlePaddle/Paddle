@@ -73,6 +73,7 @@ class TestPrimForward(unittest.TestCase):
         )
         core._set_prim_forward_enabled(use_prim)
         core._add_skip_comp_ops("sqrt")
+        # TODO(Ruting) delete this after modify sqrt
         if use_prim:
             net = apply_to_static(net, use_prim)
 
@@ -130,6 +131,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         )
         core._set_prim_all_enabled(use_prim)
         core._add_skip_comp_ops("sqrt")
+        # TODO(Ruting) delete this after modify sqrt
         if use_prim:
             net = apply_to_static(net, use_prim)
 
