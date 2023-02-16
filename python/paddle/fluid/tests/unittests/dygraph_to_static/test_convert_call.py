@@ -309,8 +309,8 @@ class TestDynamicToStaticCode2(TestDynamicToStaticCode):
             def func_convert_then_not_to_static(x):
                 __return_value_0 = None
                 y = _jst.Call(func_not_to_static)(x)
-                __return_value_0 = y
-                return __return_value_0
+                __return_value_0 = _jst.ld(y)
+                return _jst.ld(__return_value_0)
 
         self.answer_func = StaticCode.func_convert_then_not_to_static
 
