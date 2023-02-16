@@ -17,11 +17,10 @@
 #include <string>
 
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/backends/custom/fake_cpu_device.h"
 #include "paddle/phi/backends/device_manager.h"
-#include "paddle/phi/core/tensor_utils.h"
 
 void RegisterDevice() {
   CustomRuntimeParams runtime_params;
@@ -40,11 +39,11 @@ void InitDevice() {
   RegisterDevice();
   EXPECT_GT(static_cast<int>(phi::DeviceManager::GetAllDeviceTypes().size()),
             0);
-  auto place = phi::CustomPlace(DEVICE_TYPE, 0);
+  auto place = paddle::platform::CustomPlace(DEVICE_TYPE, 0);
   auto device = phi::DeviceManager::GetDeviceWithPlace(place);
   EXPECT_NE(device, nullptr);
 
-  std::vector<phi::Place> places;
+  std::vector<paddle::platform::Place> places;
   auto device_types = phi::DeviceManager::GetAllDeviceTypes();
   for (auto dev_type : device_types) {
     auto devices = phi::DeviceManager::GetDeviceList(dev_type);
@@ -58,9 +57,9 @@ void InitDevice() {
   paddle::platform::DeviceContextPool::Init(places);
 }
 
-void TestDeviceInterface(const phi::Place& place) {
+void TestDeviceInterface(const paddle::platform::Place& place) {
   std::cout << "TestDeviceInterface on " << place << std::endl;
-  if (place.GetType() == phi::AllocationType::CUSTOM) {
+  if (paddle::platform::is_custom_place(place)) {
     auto device = phi::DeviceManager::GetDeviceWithPlace(place);
     auto dev_type = paddle::platform::PlaceHelper::GetDeviceType(place);
     auto p1 =
@@ -73,77 +72,65 @@ void TestDeviceInterface(const phi::Place& place) {
   }
 }
 
-void TestTensorMutableData(const phi::Place& place) {
+void TestTensorMutableData(const paddle::platform::Place& place) {
   std::cout << "TestTensorInitialization on " << place << std::endl;
   phi::DenseTensor src_tensor;
   float* p1 = nullptr;
   float* p2 = nullptr;
-  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(place);
   // initialization
-  src_tensor.Resize(phi::make_ddim({1, 2, 3}));
-  p1 = dev_ctx.template Alloc<float>(&src_tensor);
+  p1 = src_tensor.mutable_data<float>(phi::make_ddim({1, 2, 3}), place);
   auto p1_holder = src_tensor.Holder();
   EXPECT_NE(p1, nullptr);
   // set src_tensor a new dim with large size
   // momery is supposed to be re-allocated
-  src_tensor.Resize(phi::make_ddim({3, 1024}));
-  p2 = dev_ctx.template Alloc<float>(&src_tensor);
+  p2 = src_tensor.mutable_data<float>(phi::make_ddim({3, 1024}), place);
   auto p2_holder = src_tensor.Holder();
   EXPECT_NE(p2, nullptr);
   EXPECT_NE(p1_holder.get(), p2_holder.get());
   // set src_tensor a new dim with same size
   // momery block is supposed to be unchanged
-  src_tensor.Resize(phi::make_ddim({2, 2, 3}));
-  p1 = dev_ctx.template Alloc<float>(&src_tensor);
+  p1 = src_tensor.mutable_data<float>(phi::make_ddim({2, 2, 3}), place);
   EXPECT_EQ(p1, p2);
   // set src_tensor a new dim with smaller size
   // momery block is supposed to be unchanged
-  src_tensor.Resize(phi::make_ddim({2, 2}));
-  p2 = dev_ctx.template Alloc<float>(&src_tensor);
+  p2 = src_tensor.mutable_data<float>(phi::make_ddim({2, 2}), place);
   EXPECT_EQ(p1, p2);
 }
 
-void TestTensorShareDataWith(const phi::Place& place) {
+void TestTensorShareDataWith(const paddle::platform::Place& place) {
   std::cout << "TestTensorShareDataWith on " << place << std::endl;
   phi::DenseTensor src_tensor;
   phi::DenseTensor dst_tensor;
-
-  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(place);
-  src_tensor.Resize(phi::make_ddim({2, 3, 4}));
-  dev_ctx.template Alloc<int>(&src_tensor);
+  src_tensor.mutable_data<int>(phi::make_ddim({2, 3, 4}), place);
   dst_tensor.ShareDataWith(src_tensor);
   ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
 }
 
-void TestTensorUtils(const phi::Place& place) {
+void TestTensorUtils(const paddle::platform::Place& place) {
   std::cout << "TestTensorUtils on " << place << std::endl;
-  if (place.GetType() == phi::AllocationType::CUSTOM) {
+  if (paddle::platform::is_custom_place(place) == false) {
     return;
   }
   phi::DenseTensor src_tensor;
   phi::DenseTensor gpu_tensor;
   phi::DenseTensor dst_tensor;
 
-  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(phi::CPUPlace());
-  src_tensor.Resize(phi::make_ddim({3, 3}));
-  int* src_ptr = dev_ctx.template Alloc<int>(&src_tensor);
+  int* src_ptr = src_tensor.mutable_data<int>(phi::make_ddim({3, 3}),
+                                              paddle::platform::CPUPlace());
 
   int arr[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
   memcpy(src_ptr, arr, 9 * sizeof(int));
 
   // CPU Tensor to GPU Tensor
-  auto* gpu_ctx = pool.Get(place);
-  phi::Copy(*gpu_ctx, src_tensor, place, false, &gpu_tensor);
+  paddle::platform::CustomDeviceContext gpu_ctx(place);
+  paddle::framework::TensorCopy(src_tensor, place, gpu_ctx, &gpu_tensor);
 #if 0
   // GPU Tensor to CPU Tensor
   auto cpu_place = new paddle::platform::CPUPlace();
-  phi::Copy(*gpu_ctx, gpu_tensor, *cpu_place, false, &dst_tensor);
+  paddle::framework::TensorCopy(gpu_tensor, *cpu_place, gpu_ctx, &dst_tensor);
 
   // Sync before Compare Tensors
-  gpu_ctx->Wait();
+  gpu_ctx.Wait();
   const int* dst_ptr = dst_tensor.data<int>();
   EXPECT_NE(src_ptr, dst_ptr);
   for (size_t i = 0; i < 9; ++i) {
@@ -151,8 +138,8 @@ void TestTensorUtils(const phi::Place& place) {
   }
 
   // Copy the same tensor
-  phi::Copy(*gpu_ctx, gpu_tensor, place, false, &gpu_tensor);
-  gpu_ctx->Wait();
+  paddle::framework::TensorCopy(gpu_tensor, place, gpu_ctx, &gpu_tensor);
+  gpu_ctx.Wait();
   const int* dst_ptr_tmp = dst_tensor.data<int>();
   EXPECT_NE(src_ptr, dst_ptr_tmp);
   for (size_t i = 0; i < 9; ++i) {
@@ -162,13 +149,13 @@ void TestTensorUtils(const phi::Place& place) {
   phi::DenseTensor slice_tensor = src_tensor.Slice(1, 2);
 
   // CPU Slice Tensor to GPU Tensor
-  phi::Copy(*gpu_ctx, slice_tensor, place, false, &gpu_tensor);
+  paddle::framework::TensorCopy(slice_tensor, place, gpu_ctx, &gpu_tensor);
 
   // GPU Tensor to CPU Tensor
-  phi::Copy(*gpu_ctx, gpu_tensor, *cpu_place, false, &dst_tensor);
+  paddle::framework::TensorCopy(gpu_tensor, *cpu_place, gpu_ctx, &dst_tensor);
 
   // Sync before Compare Slice Tensors
-  gpu_ctx->Wait();
+  gpu_ctx.Wait();
   const int* slice_ptr = slice_tensor.data<int>();
   dst_ptr = dst_tensor.data<int>();
   EXPECT_NE(dst_ptr, slice_ptr);
@@ -180,9 +167,9 @@ void TestTensorUtils(const phi::Place& place) {
 #endif
 }
 
-void TestCustomCCL(const phi::Place& place) {
+void TestCustomCCL(const paddle::platform::Place& place) {
   std::cout << "TestCustomCCL on " << place << std::endl;
-  if (place.GetType() == phi::AllocationType::CUSTOM) {
+  if (paddle::platform::is_custom_place(place) == false) {
     return;
   }
   std::string dev_type = place.GetDeviceType();
