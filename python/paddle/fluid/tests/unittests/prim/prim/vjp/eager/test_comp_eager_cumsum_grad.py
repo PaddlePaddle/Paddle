@@ -34,8 +34,12 @@ limit = {
     ('primal', 'cotangent', 'dtype'),
     [
         (np.random.rand(3, 3), np.random.rand(3, 3), np.float16),
-        (np.random.rand(3, 3), np.random.rand(3, 3), np.float32),
-        (np.random.rand(3, 3), np.random.rand(3, 3), np.float64),
+        (np.random.rand(10, 10, 10), np.random.rand(10, 10, 10), np.float32),
+        (
+            np.random.rand(4, 8, 16, 16),
+            np.random.rand(4, 8, 16, 16),
+            np.float64,
+        ),
     ],
 )
 class TestCumsumGradComp(unittest.TestCase):
@@ -61,8 +65,8 @@ class TestCumsumGradComp(unittest.TestCase):
             v = paddle.to_tensor(
                 cotangent, dtype=cotangent.dtype, stop_gradient=False
             )
-            y = paddle.cumsum(x)
-            return paddle.grad(y, x, create_graph=True, retain_graph=True)[0]
+            y = paddle.cumsum(x, axis=-1)
+            return paddle.grad(y, x, v, create_graph=True, retain_graph=True)[0]
 
         def desired(primal, cotangent):
             paddle.disable_static()
@@ -74,8 +78,8 @@ class TestCumsumGradComp(unittest.TestCase):
             v = paddle.to_tensor(
                 cotangent, dtype=cotangent.dtype, stop_gradient=False
             )
-            y = paddle.cumsum(x)
-            return paddle.grad(y, x, create_graph=True, retain_graph=True)[0]
+            y = paddle.cumsum(x, axis=-1)
+            return paddle.grad(y, x, v, create_graph=True, retain_graph=True)[0]
 
         np.testing.assert_allclose(
             actual=actual(self.primal, self.cotangent),

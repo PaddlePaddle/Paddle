@@ -24,7 +24,13 @@ from paddle.fluid import core
 @param.parameterized_class(
     ('primal', 'cotangent', 'dtype'),
     [
-        (np.random.rand(10, 10), np.random.rand(10, 10), np.float32),
+        (np.random.rand(3, 3), np.random.rand(3, 3), np.float16),
+        (np.random.rand(10, 10, 10), np.random.rand(10, 10, 10), np.float32),
+        (
+            np.random.rand(4, 8, 16, 16),
+            np.random.rand(4, 8, 16, 16),
+            np.float64,
+        ),
     ],
 )
 class TestCumsumGradComp(unittest.TestCase):
@@ -53,11 +59,11 @@ class TestCumsumGradComp(unittest.TestCase):
             with paddle.static.program_guard(mp, sp):
                 x = paddle.static.data('primal', primal.shape, primal.dtype)
                 x.stop_gradient = False
-                y = paddle.cumsum(x)
-                x_cotangent = paddle.static.gradients(y, x)
-                blocks = mp.blocks
-                fwd_ops_grad = [op.type for op in blocks[0].ops]
-                print(fwd_ops_grad)
+                v = paddle.to_tensor(
+                    cotangent, dtype=cotangent.dtype, stop_gradient=False
+                )
+                y = paddle.cumsum(x, -1)
+                x_cotangent = paddle.static.gradients(y, x, v)
             exe = paddle.static.Executor()
             exe.run(sp)
             return exe.run(
@@ -72,12 +78,11 @@ class TestCumsumGradComp(unittest.TestCase):
             with paddle.static.program_guard(mp, sp):
                 x = paddle.static.data('primal', primal.shape, primal.dtype)
                 x.stop_gradient = False
-
-                y = paddle.cumsum(x)
-                x_cotangent = paddle.static.gradients(y, x)
-                blocks = mp.blocks
-                fwd_ops_grad = [op.type for op in blocks[0].ops]
-                print(fwd_ops_grad)
+                v = paddle.to_tensor(
+                    cotangent, dtype=cotangent.dtype, stop_gradient=False
+                )
+                y = paddle.cumsum(x, -1)
+                x_cotangent = paddle.static.gradients(y, x, v)
             exe = paddle.static.Executor()
             exe.run(sp)
             return exe.run(
