@@ -157,9 +157,7 @@ class TestUnaryAPI(unittest.TestCase):
                 else:
                     places = [paddle.CPUPlace()] * 4
                     expect_shape = (4,)
-                compile_prog = paddle.static.CompiledProgram(
-                    main_prog
-                ).with_data_parallel(loss.name, places=places)
+                compile_prog = paddle.static.CompiledProgram(main_prog)
 
                 # return_merged=False #
                 res = exe.run(
@@ -3268,9 +3266,7 @@ class TestUnaryElementwiseAPIWithComplexInput(unittest.TestCase):
                 else:
                     places = [paddle.CPUPlace()] * 4
                     expect_shape = (4,)
-                compile_prog = paddle.static.CompiledProgram(
-                    main_prog
-                ).with_data_parallel(loss.name, places=places)
+                compile_prog = paddle.static.CompiledProgram(main_prog)
 
                 # return_merged=False #
                 res = exe.run(
@@ -3352,9 +3348,7 @@ class TestAsReal(unittest.TestCase):
                 else:
                     places = [paddle.CPUPlace()] * 4
                     expect_shapes = (4,), (8,), (4,), (8,)
-                compile_prog = paddle.static.CompiledProgram(
-                    main_prog
-                ).with_data_parallel(loss.name, places=places)
+                compile_prog = paddle.static.CompiledProgram(main_prog)
 
                 # return_merged=False #
                 res = exe.run(

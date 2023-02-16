@@ -18,7 +18,6 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
 
 
@@ -508,11 +507,7 @@ class TestLRScheduler(unittest.TestCase):
             num += 1
 
         if isinstance(place, paddle.CPUPlace):
-            compiled_train_prog = paddle.static.CompiledProgram(
-                main_prog
-            ).with_data_parallel(
-                loss_name=loss.name, places=fluid.cpu_places(4)
-            )
+            compiled_train_prog = main_prog
             for epoch in range(5):
                 python_result = python_func(num, **kwarg)
                 for batch_id in range(2):
@@ -533,13 +528,7 @@ class TestLRScheduler(unittest.TestCase):
                 scheduler.step()
                 num += 1
 
-            compiled_test_prog = paddle.static.CompiledProgram(
-                test_prog
-            ).with_data_parallel(
-                loss_name=loss.name,
-                share_vars_from=compiled_train_prog,
-                places=fluid.cpu_places(4),
-            )
+            compiled_test_prog = test_prog
             for epoch in range(5):
                 python_result = python_func(num, **kwarg)
                 for batch_id in range(2):
