@@ -1258,41 +1258,42 @@ class OpTest(unittest.TestCase):
         Returns:
             res (tuple(outs, fetch_list, feed_map, program, op_desc)): The results of given grad_op_desc.
         """
-        (
-            fwd_outs,
-            fwd_fetch_list,
-            fwd_feed_map,
-            fwd_program,
-            fwd_op_desc,
-        ) = fwd_res
-        grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(
-            fwd_op_desc, set(), []
-        )
-        grad_program = self._construct_grad_program_from_forward(
-            fwd_program, grad_op_desc, op_grad_to_var
-        )
-        grad_feed_map = self._construct_grad_feed_map_from_forward(
-            place, fwd_res, grad_op_desc, op_grad_to_var
-        )
-        grad_fetch_list = grad_op_desc.output_arg_names()
-        exe = Executor(place)
-        program = grad_program
-        if enable_inplace is not None:
-            build_strategy = fluid.BuildStrategy()
-            build_strategy.enable_inplace = enable_inplace
-            compiled_program = fluid.CompiledProgram(
-                grad_program
-            ).with_data_parallel(
-                loss_name="", build_strategy=build_strategy, places=place
+        with paddle.fluid.framework._dygraph_guard(None):
+            (
+                fwd_outs,
+                fwd_fetch_list,
+                fwd_feed_map,
+                fwd_program,
+                fwd_op_desc,
+            ) = fwd_res
+            grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(
+                fwd_op_desc, set(), []
             )
-            program = compiled_program
+            grad_program = self._construct_grad_program_from_forward(
+                fwd_program, grad_op_desc, op_grad_to_var
+            )
+            grad_feed_map = self._construct_grad_feed_map_from_forward(
+                place, fwd_res, grad_op_desc, op_grad_to_var
+            )
+            grad_fetch_list = grad_op_desc.output_arg_names()
+            exe = Executor(place)
+            program = grad_program
+            if enable_inplace is not None:
+                build_strategy = fluid.BuildStrategy()
+                build_strategy.enable_inplace = enable_inplace
+                compiled_program = fluid.CompiledProgram(
+                    grad_program
+                ).with_data_parallel(
+                    loss_name="", build_strategy=build_strategy, places=place
+                )
+                program = compiled_program
 
-        outs = exe.run(
-            program,
-            feed=grad_feed_map,
-            fetch_list=grad_fetch_list,
-            return_numpy=False,
-        )
+            outs = exe.run(
+                program,
+                feed=grad_feed_map,
+                fetch_list=grad_fetch_list,
+                return_numpy=False,
+            )
         return outs, grad_fetch_list, grad_feed_map, grad_program, grad_op_desc
 
     def _check_grad_inplace(
