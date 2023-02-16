@@ -48,30 +48,6 @@ void SetInMemDescWithSqueeze2FuseSupport(
   in->Resize(make_ddim(squeezed_op_tz));
 }
 
-void SetOutMemDescWithReshape2FuseSupport(
-    const std::vector<int> fused_reshape2_shape_,
-    phi::DenseTensor* out,
-    const dnnl::memory::desc& out_md) {
-  std::vector<int64_t> fused_reshape2_shape(fused_reshape2_shape_.begin(),
-                                            fused_reshape2_shape_.end());
-
-  const int out_shape_numel = out->numel();
-  const int new_shape_numel = std::accumulate(fused_reshape2_shape.begin(),
-                                              fused_reshape2_shape.end(),
-                                              1,
-                                              std::multiplies<int64_t>());
-
-  for (size_t i = 0; i < fused_reshape2_shape.size(); ++i) {
-    if (fused_reshape2_shape[i] == -1) {
-      fused_reshape2_shape[i] = -out_shape_numel / new_shape_numel;
-      break;
-    }
-  }
-
-  out->set_mem_desc(out_md.reshape(fused_reshape2_shape));
-  out->Resize(phi::make_ddim(fused_reshape2_shape));
-}
-
 template <typename T, typename Context>
 void FusedTransposeKernel(const Context& dev_ctx,
                           const DenseTensor& x,
@@ -135,7 +111,8 @@ void FusedTransposeKernel(const Context& dev_ctx,
     funcs::SetOutMemDescWithUnsqueeze2FuseSupport(
         fused_unsqueeze2_axes, out, out_md);
   } else if (!fused_reshape2_shape.empty()) {
-    SetOutMemDescWithReshape2FuseSupport(fused_reshape2_shape, out, out_md);
+    funcs::SetOutMemDescWithReshape2FuseSupport(
+        fused_reshape2_shape, out, out_md);
   } else if (!fused_squeeze2_axes.empty()) {
     out->set_mem_desc(out_md);
     out->Resize(make_ddim(out_md.dims()));
