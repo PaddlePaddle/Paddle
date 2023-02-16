@@ -578,7 +578,7 @@ class TestSundryAPI(unittest.TestCase):
         out.backward()
         self.assertEqual(x.shape, [])
         self.assertEqual(x.item(), 1.0)
-        self.assertEqual(x.grad.shape, [1])
+        self.assertEqual(x.grad.shape, [])
         self.assertEqual(x.grad.item(0), 1.0)
         self.assertEqual(out.shape, [1])
         self.assertEqual(out.item(0), 1.0)
@@ -651,7 +651,7 @@ class TestSundryAPI(unittest.TestCase):
         out.backward()
         self.assertEqual(x.shape, [])
         self.assertEqual(x.item(), 1.0)
-        self.assertEqual(x.grad.shape, [1])
+        self.assertEqual(x.grad.shape, [])
         self.assertEqual(x.grad.item(0), 1.0)
         self.assertEqual(out.shape, [1])
         self.assertEqual(out.item(0), 1.0)
@@ -1808,7 +1808,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0], 1.0)
         self.assertEqual(res[1].shape, (1,))
         self.assertEqual(res[1], 1.0)
-        self.assertEqual(res[2].shape, (1,))
+        self.assertEqual(res[2].shape, ())
         self.assertEqual(res[2], 1.0)
         self.assertEqual(res[3].shape, (1,))
         self.assertEqual(res[3], 1.0)
@@ -1909,7 +1909,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0], 1.0)
         self.assertEqual(res[1].shape, (1,))
         self.assertEqual(res[1], 1.0)
-        self.assertEqual(res[2].shape, (1,))
+        self.assertEqual(res[2].shape, ())
         self.assertEqual(res[2], 1.0)
         self.assertEqual(res[3].shape, (1,))
         self.assertEqual(res[3], 1.0)
@@ -1922,6 +1922,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         res = self.exe.run(
             prog, fetch_list=[x1, out1, x1.grad_name, out1.grad_name]
         )
+        
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[0], 1.0)
         self.assertEqual(res[1].shape, ())
