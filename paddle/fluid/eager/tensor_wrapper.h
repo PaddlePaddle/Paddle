@@ -206,7 +206,6 @@ class TensorWrapper {
       LOG_IF(WARNING, tensor_version != wrapper_version_snapshot)
           << "Stride Test Log: " << op_name
           << " inplace operation got mismatch version";
-      /*
       /*PADDLE_ENFORCE_EQ(
           tensor_version,
           wrapper_version_snapshot,
