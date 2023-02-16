@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/ir/type/type.h"
+#include "paddle/ir/type.h"
 
 namespace ir {
 ///
@@ -26,6 +26,35 @@ class Float32Type
  public:
   using Base::Base;
   static Float32Type get(ir::IrContext *context);
+};
+
+class Float32TypeBeta : public ir::Type {
+ public:
+  // 可以通过宏定义自动生成的（Float32TypeBeta, TypeStorage）
+  using Type::Type;  // 必须提供
+
+  using ImplType = ir::TypeStorage;  // 必须指定ImplType
+
+  ImplType *impl() const {
+    return static_cast<ImplType *>(this->impl_);
+  }  // 必须提供
+
+  static TypeId type_id() {
+    return TypeId::get<Float32TypeBeta>();
+  }  // 必须提供
+
+  template <typename T>  // 必须提供
+  static bool classof(T val) {
+    return val.type_id() == type_id();
+  }
+
+  template <typename... Args>  // 必须提供
+  static Float32TypeBeta create(IrContext *ctx, Args... args) {
+    return ir::TypeUniquer::template get<Float32TypeBeta>(ctx, args...);
+  }
+
+  // 手动提供的接口
+  static Float32TypeBeta get(ir::IrContext *context);
 };
 
 struct IntegerTypeStorage;

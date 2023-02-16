@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "paddle/ir/type/storage_uniquer.h"
-#include "paddle/ir/type/type_id.h"
+#include "paddle/ir/storage_uniquer.h"
+#include "paddle/ir/type_id.h"
 
 namespace ir {
 ///

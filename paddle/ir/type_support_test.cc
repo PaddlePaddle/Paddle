@@ -15,8 +15,8 @@
 #include <gtest/gtest.h>
 #include <unordered_map>
 
-#include "paddle/ir/type/type_id.h"
-#include "paddle/ir/type/type_support.h"
+#include "paddle/ir/type_id.h"
+#include "paddle/ir/type_support.h"
 
 TEST(type_support, type_id) {
   class TypeA {};

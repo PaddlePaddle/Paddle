@@ -16,7 +16,7 @@
 
 #include "paddle/ir/builtin_type.h"
 #include "paddle/ir/ir_context.h"
-#include "paddle/ir/type/type_support.h"
+#include "paddle/ir/type_support.h"
 
 namespace ir {
 // The implementation class of the IrContext class
@@ -35,6 +35,8 @@ class IrContextImpl {
   // Some built-in type.
   Float32Type fp32_type;
   IntegerType int1Ty;
+
+  Float32TypeBeta fp32_type_beta;
 };
 
 IrContext *IrContext::ir_context_ = nullptr;
@@ -57,6 +59,14 @@ IrContext::IrContext() : impl_(new IrContextImpl()) {
                                      int_abstract_type);
   TypeUniquer::RegisterType<IntegerType>(this);
   impl_->int1Ty = TypeUniquer::get<IntegerType>(this, 1, 0);
+
+  VLOG(4) << "==> Register Float32TypeBeta.";
+  AbstractType *fp32_abstract_type_beta = new AbstractType(
+      std::move(AbstractType::get(TypeId::get<Float32TypeBeta>())));
+  registed_abstracted_type().emplace(TypeId::get<Float32TypeBeta>(),
+                                     fp32_abstract_type_beta);
+  TypeUniquer::RegisterType<Float32TypeBeta>(this);
+  impl_->fp32_type_beta = TypeUniquer::get<Float32TypeBeta>(this);
 }
 
 StorageUniquer &IrContext::storage_uniquer() {
@@ -81,6 +91,10 @@ const AbstractType &AbstractType::lookup(TypeId type_id, IrContext *ctx) {
 }
 
 Float32Type Float32Type::get(IrContext *ctx) { return ctx->impl().fp32_type; }
+
+Float32TypeBeta Float32TypeBeta::get(IrContext *ctx) {
+  return ctx->impl().fp32_type_beta;
+}
 
 static IntegerType GetCachedIntegerType(unsigned width,
                                         unsigned signedness,

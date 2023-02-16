@@ -15,7 +15,7 @@
 #include <memory>
 #include <unordered_map>
 
-#include "paddle/ir/type/storage_uniquer.h"
+#include "paddle/ir/storage_uniquer.h"
 
 namespace ir {
 // This is a structure for creating, caching, and looking up Storage of

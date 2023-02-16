@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/ir/type/type_support.h"
+#include "paddle/ir/type_support.h"
 
 namespace ir {
 ///

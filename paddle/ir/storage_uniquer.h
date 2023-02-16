@@ -18,7 +18,7 @@
 #include <type_traits>
 #include <unordered_map>
 
-#include "paddle/ir/type/type_id.h"
+#include "paddle/ir/type_id.h"
 
 namespace ir {
 ///
