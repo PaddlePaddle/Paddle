@@ -303,7 +303,9 @@ void exp_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
 
 template <typename T>
 void topk_grad(const Tensor& x, const Tensor& indices, const Tensor& out_grad, const Scalar& k, const int& axis, const bool& largest, const bool& sorted, Tensor* x_grad){
-
+  if (x_grad) {
+    set_output<T>(x_grad_tmp, x_grad);
+  }
 }
 }  // namespace prim
 }  // namespace paddle
