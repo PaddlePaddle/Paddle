@@ -37,7 +37,7 @@ ExternalProject_Add(
   BUILD_COMMAND
     mkdir -p
     ${CMAKE_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass/build/generated/gemm
-    ${PYTHON_EXECUTABLE} -B
+    && ${PYTHON_EXECUTABLE} -B
     ${CMAKE_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass/gather_gemm_scatter_generator.py
     "${THIRD_PARTY_PATH}/cutlass/src/extern_cutlass/tools/library/scripts/"
   INSTALL_COMMAND ""
