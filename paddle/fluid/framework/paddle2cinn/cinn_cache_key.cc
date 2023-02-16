@@ -45,10 +45,11 @@ CinnCacheKey::CinnCacheKey(
 
 CinnCacheKey::CinnCacheKey(const ir::Graph& graph,
                            const std::map<std::string, DDim>& input_shapes,
+                           const std::map<std::string, DataType>& input_dtypes,
                            const std::string& arch_str,
                            GraphHashStrategy graph_hash)
     : graph_hash_(graph_hash) {
-  this->SetKey(graph, input_shapes, arch_str);
+  this->SetKey(graph, input_shapes, input_dtypes, arch_str);
 }
 
 void CinnCacheKey::SetKey(
@@ -58,15 +59,24 @@ void CinnCacheKey::SetKey(
   graph_hash_val_ = graph_hash_(graph);
   for (const auto& name_tensor : input_tensors) {
     input_shapes_[name_tensor.first] = name_tensor.second->dims();
+    input_dtypes_[name_tensor.first] = name_tensor.second->dtype();
   }
   arch_str_ = arch_str;
 }
 
 void CinnCacheKey::SetKey(const ir::Graph& graph,
                           const std::map<std::string, DDim>& input_shapes,
+                          const std::map<std::string, DataType>& input_dtypes,
                           const std::string& arch_str) {
+  PADDLE_ENFORCE_EQ(
+      input_shapes.size(),
+      input_dtypes.size(),
+      platform::errors::PreconditionNotMet(
+          "Required input_shapes has same length with input_dtypes."));
+
   graph_hash_val_ = graph_hash_(graph);
   input_shapes_ = input_shapes;
+  input_dtypes_ = input_dtype;
   arch_str_ = arch_str;
 }
 
@@ -85,10 +95,16 @@ size_t CinnCacheKey::Hash::operator()(const CinnCacheKey& key) const {
   for (const auto& name_shape : key.input_shapes_) {
     has_str << name_shape.first;
     has_str << std::hash<phi::DDim>()(name_shape.second);
+    PADDLE_ENFORCE_NE(key.input_dtypes_.find(name_shape.first),
+                      key.input_dtypes_.end(),
+                      platform::errors::PreconditionNotMet(
+                          "%s is not in key.input_dtypes_.", name_shape.first));
+    has_str << key.input_dtypes_[name_shape.first];
   }
 
   has_str << key.graph_hash_val_;
   has_str << key.arch_str_;
+  VLOG(4) << "CinnCacheKey : " << has_str.str();
   return std::hash<std::string>()(has_str.str());
 }
 

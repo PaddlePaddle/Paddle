@@ -19,6 +19,7 @@
 
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/ddim.h"
 
 namespace paddle {
@@ -56,6 +57,7 @@ class CinnCacheKey {
       const std::string& arch_str);
   void SetKey(const ir::Graph& graph,
               const std::map<std::string, DDim>& input_shapes,
+              const std::map<std::string, DataType>& input_dtypes,
               const std::string& arch_str);
 
   bool operator==(const CinnCacheKey& other) const;
@@ -69,6 +71,7 @@ class CinnCacheKey {
   GraphHashStrategy graph_hash_;
   size_t graph_hash_val_;
   std::map<std::string, DDim> input_shapes_;
+  std::map<std::string, DataType> input_dtypes_;
   std::string arch_str_;
 };
 
@@ -84,8 +87,10 @@ class CinnCacheKey {
                                                                               \
     NAME(const ir::Graph& graph,                                              \
          const std::map<std::string, DDim>& input_shapes,                     \
+         const std::map<std::string, DataType>& input_dtypes,                 \
          const std::string& arch_str)                                         \
-        : CinnCacheKey(graph, input_shapes, arch_str, HashGraph) {}           \
+        : CinnCacheKey(                                                       \
+              graph, input_shapes, input_dtypes, arch_str, HashGraph) {}      \
                                                                               \
    private:                                                                   \
     static size_t HashGraph(const ir::Graph& graph);                          \
