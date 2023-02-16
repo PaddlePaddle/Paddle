@@ -26,46 +26,36 @@ namespace phi {
 #if CUDA_VERSION >= 11060
 enum MatmulImplType { kImplWithCublas = 1, kImplWithCublasLt = 2 };
 
-template <typename T, class Enable = void>
-struct MatmulCalculationClassifier {
-  void operator()(cudaDataType_t* mat_type,
-                  cudaDataType_t* scale_type,
-                  cublasComputeType_t* compute_type) {}
+template <typename T>
+struct GetCublasMatType {
+  static cudaDataType_t Get() { return CUDA_R_32F; }
+};
+
+template <>
+struct GetCublasMatType<phi::dtype::float16> {
+  static cudaDataType_t Get() { return CUDA_R_16F; }
+};
+
+template <>
+struct GetCublasMatType<phi::dtype::bfloat16> {
+  static cudaDataType_t Get() { return CUDA_R_16BF; }
+};
+
+template <>
+struct GetCublasMatType<double> {
+  static cudaDataType_t Get() { return CUDA_R_64F; }
 };
 
 template <typename T>
-struct MatmulCalculationClassifier<
-    T,
-    std::enable_if_t<std::is_same<T, phi::dtype::float16>::value>> {
-  void operator()(cudaDataType_t* mat_type,
-                  cudaDataType_t* scale_type,
-                  cublasComputeType_t* compute_type) {
-    *mat_type = CUDA_R_16F;
-  }
+struct AlphaBetaTraits {
+ public:
+  using Type = float;
 };
 
-template <typename T>
-struct MatmulCalculationClassifier<
-    T,
-    std::enable_if_t<std::is_same<T, phi::dtype::bfloat16>::value>> {
-  void operator()(cudaDataType_t* mat_type,
-                  cudaDataType_t* scale_type,
-                  cublasComputeType_t* compute_type) {
-    *mat_type = CUDA_R_16BF;
-  }
-};
-
-template <typename T>
-struct MatmulCalculationClassifier<
-    T,
-    std::enable_if_t<std::is_same<T, double>::value>> {
-  void operator()(cudaDataType_t* mat_type,
-                  cudaDataType_t* scale_type,
-                  cublasComputeType_t* compute_type) {
-    *mat_type = CUDA_R_64F;
-    *scale_type = CUDA_R_64F;
-    *compute_type = CUBLAS_COMPUTE_64F;
-  }
+template <>
+struct AlphaBetaTraits<double> {
+ public:
+  using Type = double;
 };
 
 struct MatmulDescCreator {
@@ -82,8 +72,7 @@ struct MatmulDescCreator {
                      const int K,
                      const cublasOperation_t& trans_x,
                      const cublasOperation_t& trans_y,
-                     bool is_batch = false,
-                     int batch_size = 1,
+                     const int batch_size = 1,
                      int64_t stride_x = 0,
                      int64_t stride_y = 0,
                      int64_t stride_out = 0) {
@@ -115,7 +104,7 @@ struct MatmulDescCreator {
         dynload::cublasLtMatrixLayoutCreate(out_desc, mat_type, N, M, N));
 
     // Config batch size and stride.
-    if (is_batch) {
+    if (batch_size > 1) {
       PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutSetAttribute(
           *x_desc,
           CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT,
@@ -225,27 +214,26 @@ struct MatmulWithCublasLt<phi::GPUContext, T> {
                   const bool trans_x,
                   const bool trans_y,
                   phi::autotune::MatmulCacheKey* matmul_key = nullptr) {
-    // init data structure
+    using MT = typename AlphaBetaTraits<T>::Type;
+
+    // Init data structure
     cublasLtMatmulDesc_t op_desc = NULL;
     cublasLtMatrixLayout_t x_desc = NULL, y_desc = NULL, out_desc = NULL;
     cublasOperation_t transx = trans_x ? CUBLAS_OP_T : CUBLAS_OP_N;
     cublasOperation_t transy = trans_y ? CUBLAS_OP_T : CUBLAS_OP_N;
 
-    cudaDataType_t mat_type = CUDA_R_32F;
+    cudaDataType_t mat_type = GetCublasMatType<T>::Get();
     cudaDataType_t scale_type = CUDA_R_32F;
     cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
-
-    double alpha64 = 1.0, beta64 = 0.0;
-    float alpha32 = 1.0f, beta32 = 0.0f;
-    void *alpha = nullptr, *beta = nullptr;
     if (std::is_same<T, double>::value) {
-      alpha = &alpha64;
-      alpha = &beta64;
-    } else {
-      alpha = &alpha32;
-      beta = &beta32;
+      scale_type = CUDA_R_64F;
+      compute_type = CUBLAS_COMPUTE_64F;
     }
-    MatmulCalculationClassifier<T>()(&mat_type, &scale_type, &compute_type);
+
+    MT alpha_data = static_cast<MT>(0);
+    MT beta_data = static_cast<MT>(0);
+    void* alpha = &alpha_data;
+    void* beta = &beta_data;
     MatmulDescCreator::Create(&op_desc,
                               &x_desc,
                               &y_desc,
@@ -287,28 +275,23 @@ struct MatmulWithCublasLt<phi::GPUContext, T> {
       int64_t stride_y,
       int64_t stride_out,
       phi::autotune::MatmulCacheKey* matmul_key = nullptr) {
+    using MT = typename AlphaBetaTraits<T>::Type;
+
     cublasLtMatmulDesc_t op_desc = NULL;
     cublasLtMatrixLayout_t x_desc = NULL, y_desc = NULL, out_desc = NULL;
     cublasOperation_t transx = trans_x ? CUBLAS_OP_T : CUBLAS_OP_N;
     cublasOperation_t transy = trans_y ? CUBLAS_OP_T : CUBLAS_OP_N;
 
-    cudaDataType_t mat_type = CUDA_R_32F;
+    cudaDataType_t mat_type = GetCublasMatType<T>::Get();
     cudaDataType_t scale_type = CUDA_R_32F;
     cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
-
-    void *alpha = nullptr, *beta = nullptr;
-    double alpha64 = static_cast<double>(1.0);
-    double beta64 = static_cast<double>(0.0);
-    float alpha32 = 1.0f, beta32 = 0.0f;
     if (std::is_same<T, double>::value) {
-      alpha = &alpha64;
-      alpha = &beta64;
-    } else {
-      alpha = &alpha32;
-      beta = &beta32;
+      scale_type = CUDA_R_64F;
+      compute_type = CUBLAS_COMPUTE_64F;
     }
 
-    MatmulCalculationClassifier<T>()(&mat_type, &scale_type, &compute_type);
+    MT alpha_data = static_cast<MT>(0);
+    MT beta_data = static_cast<MT>(0);
     MatmulDescCreator::Create(&op_desc,
                               &x_desc,
                               &y_desc,
@@ -321,7 +304,6 @@ struct MatmulWithCublasLt<phi::GPUContext, T> {
                               K,
                               transx,
                               transy,
-                              true,
                               batch_size,
                               stride_x,
                               stride_y,
@@ -334,8 +316,8 @@ struct MatmulWithCublasLt<phi::GPUContext, T> {
             x_data,
             y_data,
             out_data,
-            alpha,
-            beta,
+            static_cast<void*>(&alpha_data),
+            static_cast<void*>(&beta_data),
             matmul_key);
     MatmulDescCreator::Release(&op_desc, &x_desc, &y_desc, &out_desc);
   }
@@ -388,7 +370,7 @@ struct MatmulWithCublasLt<phi::GPUContext, T> {
     if (matmul_key != nullptr) {
       auto& cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
       size_t sub_key = matmul_key->GetSubKey(
-          static_cast<int64_t>(phi::MatmulImplType::kImplWithCublasLt));
+          static_cast<int64_t>(MatmulImplType::kImplWithCublasLt));
       if (cache.FindSubKey(sub_key)) {
         best_algo =
             reinterpret_cast<cublasLtMatmulAlgo_t*>(cache.GetSubKey(sub_key));

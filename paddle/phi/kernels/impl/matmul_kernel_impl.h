@@ -499,7 +499,7 @@ void MatMulFunctionImplWithCublasLt(
   const int y_ndim = y_dims.size();
   const T* x_data = X.data<T>();
   const T* y_data = Y.data<T>();
-  using blaslt = phi::MatmulWithCublasLt<Context, T>;
+  using blaslt = phi::MatmulWithCublasLt<phi::GPUContext, T>;
 
   if (x_ndim == 1 && y_ndim == 1) {
     const int M = X.numel();
@@ -888,45 +888,7 @@ void MatMulFunctionImplWithCublasLt(
 #endif
 
 template <typename Context, typename T>
-void MatMulFunction(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
-                    const std::vector<std::int64_t>& x_dims,
-                    const std::vector<std::int64_t>& y_dims,
-                    DenseTensor* out,
-                    bool trans_x,
-                    bool trans_y,
-                    bool flag = false) {
-#if CUDA_VERSION >= 11060
-  auto* tuner = phi::autotune::MakeMatmulTuner<T>(
-      MatMulFunctionImplWithCuBlas<Context, T>);
-  tuner->AddCallBack(MatMulFunctionImplWithCublasLt<Context, T>);
-  phi::autotune::MatmulCacheKey matmul_cache(
-      x_dims,
-      y_dims,
-      trans_x,
-      trans_y,
-      paddle::experimental::CppTypeToDataType<T>::Type());
-  tuner->RunMatmul(dev_ctx,
-                   matmul_cache.QueryKey(),
-                   dev_ctx,
-                   x,
-                   y,
-                   x_dims,
-                   y_dims,
-                   out,
-                   trans_x,
-                   trans_y,
-                   flag,
-                   &matmul_cache);
-#else
-  MatMulFunctionImplWithCuBlas<Context, T>(
-      dev_ctx, x, y, x_dims, y_dims, out, trans_x, trans_y, flag);
-#endif
-}
-
-template <typename Context, typename T>
-struct MatMulFunctionDispatchWithContext {
+struct MatMulDispatchByContext {
   void operator()(const Context& ctx,
                   const DenseTensor& x,
                   const DenseTensor& y,
@@ -942,7 +904,7 @@ struct MatMulFunctionDispatchWithContext {
 };
 
 template <typename T>
-struct MatMulFunctionDispatchWithContext<phi::GPUContext, T> {
+struct MatMulDispatchByContext<phi::GPUContext, T> {
   void operator()(const phi::GPUContext& ctx,
                   const DenseTensor& x,
                   const DenseTensor& y,
@@ -952,8 +914,32 @@ struct MatMulFunctionDispatchWithContext<phi::GPUContext, T> {
                   bool trans_x,
                   bool trans_y,
                   bool flag = false) {
-    MatMulFunction<phi::GPUContext, T>(
+#if CUDA_VERSION >= 11060
+    auto* tuner = phi::autotune::MakeMatmulTuner<T>(
+        MatMulFunctionImplWithCuBlas<phi::GPUContext, T>);
+    tuner->AddCallBack(MatMulFunctionImplWithCublasLt<phi::GPUContext, T>);
+    phi::autotune::MatmulCacheKey matmul_cache(
+        x_dims,
+        y_dims,
+        trans_x,
+        trans_y,
+        paddle::experimental::CppTypeToDataType<T>::Type());
+    tuner->Run(ctx,
+               matmul_cache.GetKey(),
+               ctx,
+               x,
+               y,
+               x_dims,
+               y_dims,
+               out,
+               trans_x,
+               trans_y,
+               flag,
+               &matmul_cache);
+#else
+    MatMulFunctionImplWithCuBlas<phi::GPUContext, T>(
         ctx, x, y, x_dims, y_dims, out, trans_x, trans_y, flag);
+#endif
   }
 };
 
@@ -976,8 +962,7 @@ void MatmulKernel(const Context& ctx,
                                    " but reviced dims size is 0. "));
   const std::vector<std::int64_t> x_dims = vectorize(x.dims());
   const std::vector<std::int64_t> y_dims = vectorize(y.dims());
-
-  MatMulFunctionDispatchWithContext<Context, T>()(
+  MatMulDispatchByContext<Context, T>()(
       ctx, x, y, x_dims, y_dims, out, trans_x, trans_y);
 }
 

@@ -54,7 +54,7 @@ namespace phi {
 namespace autotune {
 
 template <typename... Args>
-size_t GetKey(Args&&... args) {
+size_t GenKey(Args&&... args) {
   size_t seed = 0;
   HashCombine(&seed, std::forward<Args>(args)...);
   return seed;
@@ -72,30 +72,21 @@ struct MatmulCacheKey {
                  const bool trans_x,
                  const bool trans_y,
                  phi::DataType dtype)
-      : x_dims_(x_dims),
-        y_dims_(y_dims),
-        trans_x_(trans_x),
-        trans_y_(trans_y),
-        dtype_(dtype) {
-    key_ = GetKey(x_dims_,
-                  y_dims_,
-                  static_cast<int64_t>(trans_x_),
-                  static_cast<int64_t>(trans_y_),
-                  static_cast<int64_t>(dtype_));
+      : x_dims_(x_dims), y_dims_(y_dims), dtype_(dtype) {
+    key = GenKey(x_dims_,
+                 y_dims_,
+                 static_cast<int64_t>(trans_x),
+                 static_cast<int64_t>(trans_y),
+                 static_cast<int64_t>(dtype_));
   }
-
-  const size_t QueryKey() const { return key_; }
-  const size_t GetSize() { return x_dims_.size(); }
-  const size_t GetSubKey(int64_t idx) { return GetKey(key_, idx); }
+  const size_t GetKey() const { return key; }
+  const size_t GetSubKey(int64_t idx) { return GenKey(key, idx); }
 
  private:
-  int size_;
-  size_t key_;
+  size_t key;
+  size_t sub_key;
   std::vector<int64_t> x_dims_;
   std::vector<int64_t> y_dims_;
-  bool trans_x_;
-  bool trans_y_;
-  int best_algo_;
   phi::DataType dtype_;
 };
 
@@ -118,7 +109,7 @@ struct ConvCacheKey {
         groups(arg_groups),
         data_layout(arg_data_layout) {}
   size_t hash_value() const {
-    return GetKey(x_dims,
+    return GenKey(x_dims,
                   w_dims,
                   strides,
                   paddings,
