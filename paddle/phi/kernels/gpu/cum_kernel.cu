@@ -31,6 +31,7 @@ namespace cub = hipcub;
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/fluid/memory/memory.h"
 
 namespace phi {
 
@@ -227,7 +228,8 @@ ThrustCumsumKernel(const Context& dev_ctx,
 #ifdef __HIPCC__
   const auto& policy = thrust::hip::par.on(dev_ctx.stream());
 #else
-  const auto& policy = thrust::cuda::par.on(dev_ctx.stream());
+    paddle::memory::ThrustAllocator<cudaStream_t> allocator(dev_ctx.GetPlace(), dev_ctx.stream());
+    const auto &policy = thrust::cuda::par(allocator).on(dev_ctx.stream());
 #endif
   if (reverse) {
     thrust::reverse_iterator<thrust::device_ptr<const T>> reversed_in(

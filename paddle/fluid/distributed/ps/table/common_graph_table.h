@@ -746,6 +746,7 @@ class GraphTable : public Table {
 
   void build_graph_total_keys();
   void build_graph_type_keys();
+  bool is_key_for_self_rank(const uint64_t &id);
 
   std::vector<uint64_t> graph_total_keys_;
   std::vector<std::vector<uint64_t>> graph_type_keys_;
@@ -794,6 +795,8 @@ class GraphTable : public Table {
   std::string feature_separator_ = std::string(" ");
   std::vector<int> slot_feature_num_map_;
   bool is_parse_node_fail_ = false;
+  int node_num_ = 1;
+  int node_id_ = 0;
 };
 
 /*

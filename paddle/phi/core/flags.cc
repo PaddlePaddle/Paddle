@@ -1085,6 +1085,9 @@ PADDLE_DEFINE_EXPORTED_bool(enable_sparse_inner_gather,
 PADDLE_DEFINE_EXPORTED_bool(gpugraph_debug_gpu_memory,
                             false,
                             "enable debug gpu memory, default false");
+PADDLE_DEFINE_EXPORTED_bool(graph_embedding_split_infer_mode,
+                            false,
+                            "graph embedding split infer mode not need nccl barrier");
 /**
  * ProcessGroupNCCL related FLAG
  * Name: nccl_blocking_wait

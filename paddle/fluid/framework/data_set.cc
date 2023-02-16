@@ -24,7 +24,7 @@
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/timer.h"
-
+#include "paddle/fluid/framework/threadpool.h"
 #ifdef PADDLE_WITH_PSCORE
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
@@ -447,7 +447,19 @@ void MultiSlotDataset::PrepareTrain() {
 #endif
   return;
 }
-
+inline std::vector<std::shared_ptr<paddle::framework::ThreadPool>>&
+GetReadThreadPool(int thread_num) {
+  static std::vector<std::shared_ptr<paddle::framework::ThreadPool>>
+      thread_pools;
+  if (!thread_pools.empty()) {
+    return thread_pools;
+  }
+  thread_pools.resize(thread_num);
+  for (int i = 0; i < thread_num; ++i) {
+    thread_pools[i].reset(new paddle::framework::ThreadPool(1));
+  }
+  return thread_pools;
+}
 // load data into memory, Dataset hold this memory,
 // which will later be fed into readers' channel
 template <typename T>
@@ -455,10 +467,11 @@ void DatasetImpl<T>::LoadIntoMemory() {
   VLOG(3) << "DatasetImpl<T>::LoadIntoMemory() begin";
   platform::Timer timeline;
   timeline.Start();
-  std::vector<std::thread> load_threads;
   if (gpu_graph_mode_) {
     VLOG(1) << "in gpu_graph_mode";
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+#ifdef PADDLE_WITH_HETERPS
+    std::vector<std::future<void>> wait_futures;
+    auto pool = GetReadThreadPool(thread_num_);
     for (size_t i = 0; i < readers_.size(); i++) {
       readers_[i]->SetGpuGraphMode(gpu_graph_mode_);
     }
@@ -473,24 +486,41 @@ void DatasetImpl<T>::LoadIntoMemory() {
     }
 
     for (int64_t i = 0; i < thread_num_; ++i) {
-      load_threads.push_back(std::thread(
-          &paddle::framework::DataFeed::DoWalkandSage, readers_[i].get()));
+      wait_futures.emplace_back(
+                pool[i]->Run([this, i]() { readers_[i]->DoWalkandSage(); }));
     }
-    for (std::thread& t : load_threads) {
-      t.join();
+    for (auto& th : wait_futures) {
+      th.get();
     }
+    wait_futures.clear();
+
     uint64_t node_num = 0;
+    std::vector<uint64_t> offsets;
+    offsets.resize(thread_num_);
+
     for (int i = 0; i < thread_num_; i++) {
-      auto host_vec = readers_[i]->GetHostVec();
-      node_num += host_vec->size();
+      auto &host_vec = (*readers_[i]->GetHostVec());
+      offsets[i] = node_num;
+      node_num += host_vec.size();
     }
-    gpu_graph_total_keys_.reserve(node_num);
+    gpu_graph_total_keys_.resize(node_num);
     for (int i = 0; i < thread_num_; i++) {
-      auto host_vec = readers_[i]->GetHostVec();
-      for (size_t j = 0; j < host_vec->size(); j++) {
-        gpu_graph_total_keys_.push_back((*host_vec)[j]);
-      }
+      uint64_t off = offsets[i];
+      wait_futures.emplace_back(
+                      pool[i]->Run([this, i, off]() {
+        auto& host_vec = (*readers_[i]->GetHostVec());
+        for (size_t j = 0; j < host_vec.size(); j++) {
+          gpu_graph_total_keys_[off + j] = host_vec[j];
+        }
+        if (FLAGS_gpugraph_storage_mode != GpuGraphStorageMode::WHOLE_HBM) {
+          readers_[i]->clear_gpu_mem();
+        }
+      }));
     }
+    for (auto& th : wait_futures) {
+      th.get();
+    }
+    wait_futures.clear();
 
     if (GetEpochFinish() == true) {
       VLOG(0) << "epoch finish, set stat and clear sample stat!";
@@ -499,16 +529,12 @@ void DatasetImpl<T>::LoadIntoMemory() {
         readers_[i]->ClearSampleState();
       }
     }
-    if (FLAGS_gpugraph_storage_mode != GpuGraphStorageMode::WHOLE_HBM) {
-      for (size_t i = 0; i < readers_.size(); i++) {
-        readers_[i]->clear_gpu_mem();
-      }
-    }
 
-    VLOG(2) << "end add edge into gpu_graph_total_keys_ size["
-            << gpu_graph_total_keys_.size() << "]";
+    VLOG(1) << "end add edge into gpu_graph_total_keys_ size["
+            << node_num << "]";
 #endif
   } else {
+    std::vector<std::thread> load_threads;
     for (int64_t i = 0; i < thread_num_; ++i) {
       load_threads.push_back(std::thread(
           &paddle::framework::DataFeed::LoadIntoMemory, readers_[i].get()));

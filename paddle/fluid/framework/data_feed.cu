@@ -804,7 +804,7 @@ int GraphDataGenerator::GenerateBatch() {
       total_instance = (infer_node_start_ + batch_size_ <= infer_node_end_)
                            ? batch_size_
                            : infer_node_end_ - infer_node_start_;
-      VLOG(1) << "in graph_data generator:batch_size = " << batch_size_
+      VLOG(2) << "in graph_data generator:batch_size = " << batch_size_
               << " instance = " << total_instance;
       total_instance *= 2;
       if (total_instance == 0) {
@@ -2057,6 +2057,7 @@ void GraphDataGenerator::DoWalkandSage() {
 }
 
 void GraphDataGenerator::clear_gpu_mem() {
+  platform::CUDADeviceGuard guard(gpuid_);
   d_len_per_row_.reset();
   d_sample_keys_.reset();
   d_prefix_sum_.reset();
@@ -2358,8 +2359,9 @@ int GraphDataGenerator::FillWalkBuf() {
   buf_state_.Reset(total_row_);
   int *d_random_row = reinterpret_cast<int *>(d_random_row_->ptr());
 
+  paddle::memory::ThrustAllocator<cudaStream_t> allocator(place_, sample_stream_);
   thrust::random::default_random_engine engine(shuffle_seed_);
-  const auto &exec_policy = thrust::cuda::par.on(sample_stream_);
+  const auto &exec_policy = thrust::cuda::par(allocator).on(sample_stream_);
   thrust::counting_iterator<int> cnt_iter(0);
   thrust::shuffle_copy(exec_policy,
                        cnt_iter,
@@ -2391,7 +2393,7 @@ int GraphDataGenerator::FillWalkBuf() {
     uint64_t h_uniq_node_num = CopyUniqueNodes();
     VLOG(1) << "sample_times:" << sample_times << ", d_walk_size:" << buf_size_
             << ", d_walk_offset:" << i << ", total_rows:" << total_row_
-            << ", total_samples:" << total_samples;
+            << ", total_samples:" << total_samples << ", h_uniq_node_num: " << h_uniq_node_num;
   } else {
     VLOG(1) << "sample_times:" << sample_times << ", d_walk_size:" << buf_size_
             << ", d_walk_offset:" << i << ", total_rows:" << total_row_
@@ -2593,8 +2595,9 @@ int GraphDataGenerator::FillWalkBufMultiPath() {
   buf_state_.Reset(total_row_);
   int *d_random_row = reinterpret_cast<int *>(d_random_row_->ptr());
 
+  paddle::memory::ThrustAllocator<cudaStream_t> allocator(place_, sample_stream_);
   thrust::random::default_random_engine engine(shuffle_seed_);
-  const auto &exec_policy = thrust::cuda::par.on(sample_stream_);
+  const auto &exec_policy = thrust::cuda::par(allocator).on(sample_stream_);
   thrust::counting_iterator<int> cnt_iter(0);
   thrust::shuffle_copy(exec_policy,
                        cnt_iter,
@@ -2650,22 +2653,22 @@ void GraphDataGenerator::AllocResource(
   debug_gpu_memory_info(gpuid_, "AllocResource start");
 
   platform::CUDADeviceGuard guard(gpuid_);
+  sample_stream_ = gpu_graph_ptr->get_local_stream(gpuid_);
+  train_stream_ = dynamic_cast<phi::GPUContext *>(
+					platform::DeviceContextPool::Instance().Get(place_))
+					->stream();
   if (FLAGS_gpugraph_storage_mode != GpuGraphStorageMode::WHOLE_HBM) {
     if (gpu_graph_training_) {
       table_ = new HashTable<uint64_t, uint64_t>(
-          train_table_cap_ / FLAGS_gpugraph_hbm_table_load_factor);
+          train_table_cap_ / FLAGS_gpugraph_hbm_table_load_factor, sample_stream_);
     } else {
       table_ = new HashTable<uint64_t, uint64_t>(
-          infer_table_cap_ / FLAGS_gpugraph_hbm_table_load_factor);
+          infer_table_cap_ / FLAGS_gpugraph_hbm_table_load_factor, sample_stream_);
     }
   }
   VLOG(1) << "AllocResource gpuid " << gpuid_
           << " feed_vec.size: " << feed_vec.size()
           << " table cap: " << train_table_cap_;
-  sample_stream_ = gpu_graph_ptr->get_local_stream(gpuid_);
-  train_stream_ = dynamic_cast<phi::GPUContext *>(
-                      platform::DeviceContextPool::Instance().Get(place_))
-                      ->stream();
   // feed_vec_ = feed_vec;
   if (!sage_mode_) {
     slot_num_ = (feed_vec.size() - 3) / 2;
@@ -2785,8 +2788,10 @@ void GraphDataGenerator::AllocResource(
   ins_buf_pair_len_ = 0;
   if (!sage_mode_) {
     d_ins_buf_ =
-        memory::AllocShared(place_, (batch_size_ * 2 * 2) * sizeof(uint64_t));
-    d_pair_num_ = memory::AllocShared(place_, sizeof(int));
+        memory::AllocShared(place_, (batch_size_ * 2 * 2) * sizeof(uint64_t),
+            phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
+    d_pair_num_ = memory::AllocShared(place_, sizeof(int),
+            phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
   } else {
     d_ins_buf_ = memory::AllocShared(
         place_,
@@ -2799,9 +2804,11 @@ void GraphDataGenerator::AllocResource(
   }
 
   d_slot_tensor_ptr_ =
-      memory::AllocShared(place_, slot_num_ * sizeof(uint64_t *));
+      memory::AllocShared(place_, slot_num_ * sizeof(uint64_t *), 
+              phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
   d_slot_lod_tensor_ptr_ =
-      memory::AllocShared(place_, slot_num_ * sizeof(uint64_t *));
+      memory::AllocShared(place_, slot_num_ * sizeof(uint64_t *),
+              phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
 
   if (sage_mode_) {
     reindex_table_size_ = batch_size_ * 2;

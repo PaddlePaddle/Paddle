@@ -31,7 +31,9 @@ limitations under the License. */
 #endif
 
 DECLARE_bool(enable_exit_when_partial_worker);
-
+PADDLE_DEFINE_EXPORTED_bool(gpugraph_force_device_batch_num_equal,
+                            false,
+                            "enable force_device_batch_num_equal, default false");
 namespace paddle {
 namespace framework {
 
@@ -148,11 +150,13 @@ bool HogwildWorker::CheckBatchNum(int flag) {
   } else if (flag < 0) {
     flag = 0;
   }
-  g_barrier.wait();
+//  g_barrier.wait();
   float *stat_ptr = sync_stat_.data<float>();
   auto comm =
       platform::NCCLCommContext::Instance().Get(0, place_.GetDeviceId());
-  auto stream = static_cast<phi::GPUContext *>(dev_ctx_)->stream();
+//  auto stream = static_cast<phi::GPUContext *>(dev_ctx_)->stream();
+//  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
+  auto stream = comm->stream();
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(&stat_ptr[flag],
                                                               &stat_ptr[2],
                                                               1,
@@ -166,7 +170,7 @@ bool HogwildWorker::CheckBatchNum(int flag) {
                                              cudaMemcpyDeviceToHost,
                                              stream));
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
-  g_barrier.wait();
+//  g_barrier.wait();
 #endif
   return (ret > 0.0);
 }
@@ -214,7 +218,7 @@ void HogwildWorker::TrainFilesWithProfiler() {
   while (1) {
     cur_batch = device_reader_->Next();
 #if defined(PADDLE_WITH_GPU_GRAPH)
-    if (is_multi_node) {
+    if (train_mode && (FLAGS_gpugraph_force_device_batch_num_equal || is_multi_node)) {
       if (!CheckBatchNum(cur_batch)) {
         break;
       }
@@ -349,7 +353,7 @@ void HogwildWorker::TrainFiles() {
   while (1) {
     cur_batch = device_reader_->Next();
 #if defined(PADDLE_WITH_GPU_GRAPH)
-    if (is_multi_node) {
+    if (train_mode && (FLAGS_gpugraph_force_device_batch_num_equal || is_multi_node)) {
       if (!CheckBatchNum(cur_batch)) {
         break;
       }

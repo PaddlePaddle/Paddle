@@ -377,7 +377,7 @@ void DeviceWorker::DumpField(const Scope& scope,
     auto end1 = std::chrono::steady_clock::now();
     auto tt =
         std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1);
-    VLOG(1) << "writing a batch takes " << tt.count() << " us";
+    VLOG(2) << "writing a batch takes " << tt.count() << " us";
 
     size_t acutal_thread_num =
         std::min(static_cast<size_t>(batch_size), tensor_iterator_thread_num);

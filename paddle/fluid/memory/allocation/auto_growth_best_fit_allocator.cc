@@ -37,6 +37,11 @@ PADDLE_DEFINE_EXPORTED_READONLY_bool(
     "chunk would be freed when out of memory occurs. This flag "
     "only works when FLAGS_allocator_strategy=auto_growth.");
 
+PADDLE_DEFINE_EXPORTED_READONLY_bool(
+    print_allocator_trace_info,
+    false,
+    "print trace memory info");
+
 namespace paddle {
 namespace memory {
 namespace allocation {
@@ -186,8 +191,9 @@ uint64_t AutoGrowthBestFitAllocator::FreeIdleChunks() {
       ++chunk_it;
     }
   }
-
-  Trace();
+  if (FLAGS_print_allocator_trace_info) {
+    Trace();
+  }
   return bytes;
 }
 

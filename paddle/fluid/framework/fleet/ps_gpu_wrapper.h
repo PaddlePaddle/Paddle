@@ -217,7 +217,7 @@ class PSGPUWrapper {
   void SparseTableToHbm();
   void HbmToSparseTable();
   void start_build_thread();
-  void pre_build_thread();
+  void AddSparseKeys();
   void build_pull_thread();
   void build_task();
   void DumpToMem();
@@ -247,12 +247,9 @@ class PSGPUWrapper {
     for (size_t i = 0; i < hbm_pools_.size(); i++) {
       delete hbm_pools_[i];
     }
-    data_ready_channel_->Close();
     buildcpu_ready_channel_->Close();
     buildpull_ready_channel_->Close();
     running_ = false;
-    VLOG(3) << "begin stop pre_build_threads_";
-    pre_build_threads_.join();
     VLOG(3) << "begin stop buildpull_threads_";
     buildpull_threads_.join();
     s_instance_ = nullptr;
@@ -335,8 +332,6 @@ class PSGPUWrapper {
       }
 #endif
       heter_devices_ = dev_ids;
-      data_ready_channel_->Open();
-      data_ready_channel_->SetCapacity(3);
       buildcpu_ready_channel_->Open();
       buildcpu_ready_channel_->SetCapacity(3);
       buildpull_ready_channel_->Open();
@@ -891,8 +886,16 @@ class PSGPUWrapper {
 
   // for node rank
   int PartitionKeyForRank(const uint64_t& key) {
-    return ((key / device_num_) % node_size_);
+    return static_cast<int>((key / device_num_) % node_size_);
   }
+  // is key for self rank
+  bool IsKeyForSelfRank(const uint64_t& key) {
+    return (static_cast<int>((key / device_num_) % node_size_) == rank_id_);
+  }
+  // rank id
+  int GetRankId(void) { return rank_id_; }
+  // rank size
+  int GetRankNum(void) { return node_size_; }
 
  private:
   static std::shared_ptr<PSGPUWrapper> s_instance_;
@@ -929,8 +932,8 @@ class PSGPUWrapper {
   double time_4 = 0.0;
 
   int multi_node_{0};
-  int rank_id_;
-  int node_size_;
+  int rank_id_ = 0;
+  int node_size_ = 1;
   int device_num_ = 8;
   uint64_t table_id_;
   int gpu_graph_mode_ = 0;
@@ -974,10 +977,6 @@ class PSGPUWrapper {
                                               // hbm pools of totol dims number
 #endif
 
-  std::shared_ptr<paddle::framework::ChannelObject<
-      std::pair<std::shared_ptr<HeterContext>, Dataset*>>>
-      data_ready_channel_ = paddle::framework::MakeChannel<
-          std::pair<std::shared_ptr<HeterContext>, Dataset*>>();
   std::shared_ptr<
       paddle::framework::ChannelObject<std::shared_ptr<HeterContext>>>
       buildcpu_ready_channel_ =
@@ -989,7 +988,6 @@ class PSGPUWrapper {
   std::vector<std::shared_ptr<paddle::framework::ChannelObject<task_info>>>
       cpu_reday_channels_;
   std::shared_ptr<HeterContext> current_task_ = nullptr;
-  std::thread pre_build_threads_;
   std::thread buildpull_threads_;
   bool running_ = false;
   std::vector<std::shared_ptr<::ThreadPool>> pull_thread_pool_;

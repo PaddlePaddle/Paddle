@@ -121,7 +121,7 @@ class ShuffleBatchCUDAKernel : public framework::OpKernel<T> {
 
     auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
 #ifdef PADDLE_WITH_CUDA
-    CacheAllocator allocator(ctx.GetPlace());
+    paddle::memory::ThrustAllocator<cudaStream_t> allocator(ctx.GetPlace(), dev_ctx.stream());
     const auto &exec_policy = thrust::cuda::par(allocator).on(dev_ctx.stream());
 #else
     const auto &exec_policy = thrust::hip::par.on(dev_ctx.stream());

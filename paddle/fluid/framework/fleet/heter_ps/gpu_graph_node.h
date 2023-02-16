@@ -349,14 +349,21 @@ struct NeighborSampleResultV2 {
 struct NodeQueryResult {
   uint64_t *val;
   int actual_sample_size;
+  cudaStream_t stream = 0;
+  void set_stream(cudaStream_t stream_t) { stream = stream_t; }
   uint64_t get_val() { return (uint64_t)val; }
   int get_len() { return actual_sample_size; }
   std::shared_ptr<memory::Allocation> val_mem;
   void initialize(int query_size, int dev_id) {
     platform::CUDADeviceGuard guard(dev_id);
     platform::CUDAPlace place = platform::CUDAPlace(dev_id);
-    val_mem = memory::AllocShared(place, query_size * sizeof(uint64_t));
-    val = reinterpret_cast<uint64_t *>(val_mem->ptr());
+    if (stream != 0) {
+      val_mem = memory::AllocShared(place, query_size * sizeof(uint64_t),
+            phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+    } else {
+      val_mem = memory::AllocShared(place, query_size * sizeof(uint64_t));
+    }
+    val = (uint64_t *)val_mem->ptr();
     actual_sample_size = 0;
   }
   void display() {

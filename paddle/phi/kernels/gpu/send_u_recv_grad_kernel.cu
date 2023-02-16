@@ -50,7 +50,7 @@ void GraphSendRecvGradOpCUDAKernelLaunchHelper(
 #ifdef PADDLE_WITH_HIP
   hipMemset(p_output, 0, memset_bytes);
 #else
-  cudaMemset(p_output, 0, memset_bytes);
+  cudaMemsetAsync(p_output, 0, memset_bytes, ctx.stream());
 #endif
 
   if (index_size == 0) return;

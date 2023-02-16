@@ -167,10 +167,11 @@ void CalculateXGrad(const Context& ctx,
                   x_grad_out.numel() * sizeof(T),
                   hipMemcpyDeviceToDevice);
 #else
-        cudaMemcpy(x_grad,
+        cudaMemcpyAsync(x_grad,
                    x_grad_out.data<T>(),
                    x_grad_out.numel() * sizeof(T),
-                   cudaMemcpyDeviceToDevice);
+                   cudaMemcpyDeviceToDevice,
+				   ctx.stream());
 #endif
       }
     } else if (message_op == "MUL") {
@@ -244,10 +245,11 @@ void CalculateXGrad(const Context& ctx,
                   x_grad_out.numel() * sizeof(T),
                   hipMemcpyDeviceToDevice);
 #else
-        cudaMemcpy(x_grad,
+        cudaMemcpyAsync(x_grad,
                    x_grad_out.data<T>(),
                    x_grad_out.numel() * sizeof(T),
-                   cudaMemcpyDeviceToDevice);
+                   cudaMemcpyDeviceToDevice,
+				   ctx.stream());
 #endif
       }
     }
@@ -290,10 +292,11 @@ void CalculateXGrad(const Context& ctx,
                   x_grad_out.numel() * sizeof(T),
                   hipMemcpyDeviceToDevice);
 #else
-        cudaMemcpy(x_grad,
+        cudaMemcpyAsync(x_grad,
                    x_grad_out.data<T>(),
                    x_grad_out.numel() * sizeof(T),
-                   cudaMemcpyDeviceToDevice);
+                   cudaMemcpyDeviceToDevice,
+				   ctx.stream());
 #endif
       }
     } else if (message_op == "MUL") {
@@ -359,10 +362,11 @@ void CalculateXGrad(const Context& ctx,
                   x_grad_out.numel() * sizeof(T),
                   hipMemcpyDeviceToDevice);
 #else
-        cudaMemcpy(x_grad,
+        cudaMemcpyAsync(x_grad,
                    x_grad_out.data<T>(),
                    x_grad_out.numel() * sizeof(T),
-                   cudaMemcpyDeviceToDevice);
+                   cudaMemcpyDeviceToDevice,
+				   ctx.stream());
 #endif
       }
     }
@@ -494,8 +498,8 @@ void GraphSendUERecvGradOpCUDAKernelLaunchHelper(
   hipMemset(x_grad_data, 0, memset_bytes_x);
   hipMemset(e_grad_data, 0, memset_bytes_e);
 #else
-  cudaMemset(x_grad_data, 0, memset_bytes_x);
-  cudaMemset(e_grad_data, 0, memset_bytes_e);
+  cudaMemsetAsync(x_grad_data, 0, memset_bytes_x, ctx.stream());
+  cudaMemsetAsync(e_grad_data, 0, memset_bytes_e, ctx.stream());
 #endif
 
   if (index_size == 0) return;

@@ -63,7 +63,6 @@ PADDLE_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log_mb,
 
 constexpr static float fraction_reserve_gpu_memory = 0.05f;
 
-USE_GPU_MEM_STAT;
 namespace paddle {
 namespace platform {
 
@@ -216,7 +215,7 @@ class RecordedGpuMallocHelper {
   gpuError_t Malloc(void **ptr,
                     size_t size,
                     bool malloc_managed_memory = false) {
-    LockGuardPtr<std::mutex> lock(mtx_);
+//    LockGuardPtr<std::mutex> lock(mtx_);
     if (UNLIKELY(NeedRecord() && cur_size_.load() + size > limit_size_)) {
       return gpuErrorOutOfMemory;
     }
@@ -241,7 +240,6 @@ class RecordedGpuMallocHelper {
 #endif
     if (result == gpuSuccess) {
       cur_size_.fetch_add(size);
-      STAT_INT_ADD("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
       DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, size);
       platform::RecordMemEvent(ptr,
                                GPUPlace(dev_id_),
@@ -283,7 +281,6 @@ class RecordedGpuMallocHelper {
 #endif
       PADDLE_ENFORCE_GPU_SUCCESS(err);
       cur_size_.fetch_sub(size);
-      STAT_INT_SUB("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
       DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, -size);
       platform::RecordMemEvent(ptr,
                                GPUPlace(dev_id_),

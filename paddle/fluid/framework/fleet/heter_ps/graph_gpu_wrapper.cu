@@ -157,7 +157,8 @@ void GraphGpuWrapper::init_type_keys() {
       auto place = platform::CUDAPlace(gpuid);
       platform::CUDADeviceGuard guard(gpuid);
       d_graph_all_type_total_keys_[f_idx][j] =
-          memory::AllocShared(place, tmp_keys[j].size() * sizeof(uint64_t));
+          memory::AllocShared(place, tmp_keys[j].size() * sizeof(uint64_t), 
+              phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
       cudaMemcpyAsync(d_graph_all_type_total_keys_[f_idx][j]->ptr(),
                       tmp_keys[j].data(),
                       sizeof(uint64_t) * tmp_keys[j].size(),
@@ -243,7 +244,9 @@ void GraphGpuWrapper::init_metapath(std::string cur_metapath,
     auto place = platform::CUDAPlace(gpuid);
     platform::CUDADeviceGuard guard(gpuid);
     d_graph_train_total_keys_[j] =
-        memory::AllocShared(place, tmp_keys[j].size() * sizeof(uint64_t));
+        memory::AllocShared(place, 
+            tmp_keys[j].size() * sizeof(uint64_t),
+            phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
     cudaMemcpyAsync(d_graph_train_total_keys_[j]->ptr(),
                     tmp_keys[j].data(),
                     sizeof(uint64_t) * tmp_keys[j].size(),
