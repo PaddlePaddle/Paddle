@@ -48,8 +48,15 @@ from ..framework import (
     Parameter,
     grad_var_name,
 )
-from .details import UnionFind, VarStruct, VarsDistributed
-from .details import delete_ops, find_op_by_output_arg
+from paddle.distributed.transpiler.details import (
+    UnionFind,
+    VarStruct,
+    VarsDistributed,
+)
+from paddle.distributed.transpiler.details import (
+    delete_ops,
+    find_op_by_output_arg,
+)
 
 LOOKUP_TABLE_TYPE = ["lookup_table", "lookup_table_v2"]
 LOOKUP_TABLE_GRAD_TYPE = ["lookup_table_grad", "lookup_table_v2_grad"]

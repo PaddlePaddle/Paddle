@@ -23,7 +23,7 @@ import paddle
 from paddle.framework import core
 import paddle.framework as framework
 
-from paddle.fluid.transpiler.details.program_utils import delete_ops
+from paddle.distributed.transpiler.details.program_utils import delete_ops
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
     _get_optimize_ops,
 )
