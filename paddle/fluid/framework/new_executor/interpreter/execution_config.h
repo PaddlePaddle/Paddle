@@ -24,18 +24,20 @@ namespace framework {
 namespace interpreter {
 
 struct ExecutionConfig {
-  bool used_for_jit{false};
+  bool create_local_scope{true};
+
   bool used_for_cinn{false};
   bool used_for_control_flow_op{false};
+  bool used_for_jit{false};
 
-  bool create_local_scope{true};
-  size_t host_num_threads;
-  size_t deivce_num_threads;
+  size_t device_num_threads{0};
+  size_t host_num_threads{0};
 
-  std::set<std::string> skip_gc_vars;
+  std::set<std::string> force_root_scope_vars;
   std::set<std::string> jit_input_vars;
+  std::set<std::string> skip_gc_vars;
 
-  ExecutionConfig(const phi::Place& place, size_t op_num);
+  void AnalyzeThreadPoolConfig(const phi::Place& place, size_t op_num);
   void Log(int log_level);
 };
 

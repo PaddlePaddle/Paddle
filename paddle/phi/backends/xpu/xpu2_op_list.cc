@@ -421,6 +421,7 @@ XPUOpMap& get_kl2_ops() {
                      phi::DataType::FLOAT16,
                      phi::DataType::INT32,
                      phi::DataType::INT64})},
+      {"multi_encoder_xpu", XPUKernelSet({phi::DataType::FLOAT32})},
       {"nearest_interp_v2", XPUKernelSet({phi::DataType::FLOAT32})},
       {"nearest_interp_v2_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"not_equal",
@@ -710,6 +711,12 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({phi::DataType::INT32,
                      phi::DataType::INT64,
                      phi::DataType::FLOAT32})},
+      {"sin", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"cos", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"linspace",
+       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::INT32})},
+      {"randint", XPUKernelSet({phi::DataType::INT32, phi::DataType::INT64})},
+      {"group_norm", XPUKernelSet({phi::DataType::FLOAT32})},
 
       // AddMore
       {"sequence_conv", XPUKernelSet({phi::DataType::FLOAT32})},
