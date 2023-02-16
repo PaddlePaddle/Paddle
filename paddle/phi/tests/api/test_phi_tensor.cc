@@ -20,6 +20,12 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/selected_rows.h"
 
+PD_DECLARE_KERNEL(empty, CPU, ALL_LAYOUT);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_DECLARE_KERNEL(empty, GPU, ALL_LAYOUT);
+#endif
+
 namespace paddle {
 namespace tests {
 
