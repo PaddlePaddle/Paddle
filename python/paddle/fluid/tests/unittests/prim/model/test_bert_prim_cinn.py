@@ -107,7 +107,7 @@ def train(to_static, enable_prim, enable_cinn):
                 time.time() - start_time,
             )
         )
-        if step >= 10:
+        if step >= 9:
             break
     return losses
 
@@ -118,9 +118,9 @@ class TestResnet(unittest.TestCase):
         cls.dy2st = train(to_static=True, enable_prim=False, enable_cinn=False)
 
     def test_prim(self):
-        dy2st_prim = train(to_static=True, enable_prim=False, enable_cinn=False)
+        dy2st_prim = train(to_static=True, enable_prim=True, enable_cinn=False)
         # NOTE: Now dy2st is equal to dy2st_prim. With the splitting of kernels, the threshold here may need to be adjusted
-        # np.testing.assert_allclose(self.dy2st, dy2st_prim, rtol=1e-6)
+        np.testing.assert_allclose(self.dy2st, dy2st_prim, rtol=1e-1)
 
     @unittest.skipIf(
         not paddle.is_compiled_with_cinn(), "padle is not compiled with CINN"
