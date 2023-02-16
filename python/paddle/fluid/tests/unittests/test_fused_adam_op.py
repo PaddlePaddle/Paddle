@@ -82,6 +82,9 @@ def fused_adam_step(inputs, attributes, num):
 
 class TestFusedAdamOp(OpTest):
     def setUp(self):
+
+        paddle.enable_static()
+
         '''Test FusedAdam Op with supplied attributes'''
         self.__class__.op_type = "fused_adam"
 
@@ -167,6 +170,7 @@ class TestFusedAdamOp(OpTest):
         }
 
     def test_check_output(self):
+        paddle.enable_static()
         if paddle.is_compiled_with_cuda():
             self.check_output()
 
