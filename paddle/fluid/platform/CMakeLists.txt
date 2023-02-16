@@ -1,36 +1,3 @@
-proto_library(profiler_proto SRCS profiler.proto DEPS framework_proto
-              simple_threadpool)
-if(WITH_PYTHON)
-  py_proto_compile(profiler_py_proto SRCS profiler.proto)
-  add_custom_target(profiler_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E
-                                                       touch __init__.py)
-  add_dependencies(profiler_py_proto profiler_py_proto_init)
-
-  if(NOT WIN32)
-    add_custom_command(
-      TARGET profiler_py_proto
-      POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E make_directory
-              ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/profiler
-      COMMAND cp *.py ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/profiler
-      COMMENT
-        "Copy generated python proto into directory paddle/fluid/proto/profiler."
-      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-  else()
-    string(REPLACE "/" "\\" proto_dstpath
-                   "${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/profiler/")
-    add_custom_command(
-      TARGET profiler_py_proto
-      POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E make_directory
-              ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/profiler
-      COMMAND copy /Y *.py ${proto_dstpath}
-      COMMENT
-        "Copy generated python proto into directory paddle/fluid/proto/profiler."
-      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-  endif()
-endif()
-
 cc_library(
   denormal
   SRCS denormal.cc
@@ -60,14 +27,10 @@ cc_test(
   cpu_info_test
   SRCS cpu_info_test.cc
   DEPS phi_backends)
-cc_library(
-  os_info
-  SRCS os_info.cc
-  DEPS enforce)
 cc_test(
   os_info_test
   SRCS os_info_test.cc
-  DEPS os_info)
+  DEPS phi_os_info)
 
 if(WITH_GPU)
   nv_library(
@@ -121,7 +84,7 @@ if(WITH_IPU)
   set(IPU_CTX_DEPS ipu_info)
 else()
   set(IPU_CTX_DEPS)
-endif(WITH_IPU)
+endif()
 
 if(WITH_ASCEND_CL)
   set(NPU_CTX_DEPS npu_stream npu_info)
@@ -343,46 +306,45 @@ cc_test(
 
 add_subdirectory(profiler)
 
-cc_library(
-  device_tracer
-  SRCS device_tracer.cc
-  DEPS profiler_proto framework_proto ${GPU_CTX_DEPS})
 if(WITH_GPU)
   nv_library(
     profiler
     SRCS profiler.cc profiler.cu
-    DEPS os_info
-         device_tracer
+    DEPS phi_os_info
+         phi_device_tracer
          gpu_info
          enforce
          dynload_cuda
          new_profiler
          stats
          op_proto_maker
-         shape_inference)
+         shape_inference
+         phi_profiler)
 elseif(WITH_ROCM)
   hip_library(
     profiler
     SRCS profiler.cc profiler.cu
-    DEPS os_info
-         device_tracer
+    DEPS phi_os_info
+         phi_device_tracer
          gpu_info
          enforce
          new_profiler
          stats
          op_proto_maker
-         shape_inference)
+         shape_inference
+         phi_profiler)
 else()
   cc_library(
     profiler
     SRCS profiler.cc
-    DEPS os_info
-         device_tracer
+    DEPS phi_os_info
+         phi_device_tracer
          enforce
          new_profiler
          stats
          op_proto_maker
-         shape_inference)
+         shape_inference
+         phi_profiler)
 endif()
 
 cc_test(

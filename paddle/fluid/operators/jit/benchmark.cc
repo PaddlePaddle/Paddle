@@ -19,9 +19,9 @@
 #include "glog/logging.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/jit/kernels.h"
-#include "paddle/fluid/platform/device_tracer.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/api/profiler/device_tracer.h"
 
 DEFINE_int32(burning, 10, "Burning times.");
 DEFINE_int32(repeat, 3000, "Repeat times.");
@@ -97,11 +97,11 @@ struct BenchFunc {
     for (int i = 0; i < FLAGS_burning; ++i) {
       tgt(args...);
     }
-    auto start = paddle::platform::PosixInNsec() * 1e-3;
+    auto start = phi::PosixInNsec() * 1e-3;
     for (int i = 0; i < FLAGS_repeat; ++i) {
       tgt(args...);
     }
-    auto end = paddle::platform::PosixInNsec() * 1e-3;
+    auto end = phi::PosixInNsec() * 1e-3;
     return static_cast<double>(end - start) / FLAGS_repeat;
   }
 };

@@ -16,6 +16,10 @@ typedef SSIZE_T ssize_t;
 #endif
 
 #include <Python.h>
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
 
 #include <string>
 #include <vector>
@@ -29,6 +33,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/op_meta_info_helper.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memcpy.h"
@@ -43,7 +48,6 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -57,8 +61,8 @@ typedef SSIZE_T ssize_t;
 #endif
 
 #include "gflags/gflags.h"
+#include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/include/tensor_operants.h"
-#include "paddle/phi/core/operants_manager.h"
 
 DECLARE_string(tensor_operants_mode);
 
@@ -499,10 +503,10 @@ static PyObject* eager_api_init_eager_and_static_tensor_operants(
     PyObject* self, PyObject* args, PyObject* kwargs) {
   EAGER_TRY
 
-  paddle::operants::OperantsManager::Instance().eager_operants.reset(
-      new paddle::operants::EagerTensorOperants());
-  paddle::operants::OperantsManager::Instance().static_operants.reset(
-      new paddle::operants::StaticTensorOperants());
+  paddle::OperantsManager::Instance().eager_operants.reset(
+      new paddle::prim::EagerTensorOperants());
+  paddle::OperantsManager::Instance().static_operants.reset(
+      new paddle::prim::StaticTensorOperants());
   VLOG(4) << "Initialize eager and static tensor operants successfully";
 
   RETURN_PY_NONE
@@ -514,9 +518,8 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
                                          PyObject* kwargs) {
   EAGER_TRY
   FLAGS_tensor_operants_mode = "phi";
-  if (paddle::operants::OperantsManager::Instance().phi_operants.get() ==
-      nullptr) {
-    paddle::operants::OperantsManager::Instance().phi_operants.reset(
+  if (paddle::OperantsManager::Instance().phi_operants.get() == nullptr) {
+    paddle::OperantsManager::Instance().phi_operants.reset(
         new paddle::operants::PhiTensorOperants());
     VLOG(4) << "Initialize phi tensor operants successfully";
   }

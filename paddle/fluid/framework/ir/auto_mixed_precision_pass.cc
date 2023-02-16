@@ -22,6 +22,9 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/backends/device_manager.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -44,16 +47,19 @@ bool PhiKernelSupportPrecision(
   return phi::KernelFactory::Instance().HasKernel(op_type, kernel_key);
 }
 
-bool GpuKernelSupportPrecision(
+bool KernelSupportPrecision(
     const std::string& op_type,
+    phi::Backend backend,
     phi::DataType precision,
     phi::DataLayout layout = phi::DataLayout::ALL_LAYOUT) {
   auto phi_op_type = phi::TransToPhiKernelName(op_type);
-  bool support = PhiKernelSupportPrecision(
-      phi_op_type, phi::Backend::GPU, precision, layout);
-  support |= PhiKernelSupportPrecision(
-      phi_op_type, phi::Backend::GPUDNN, precision, layout);
 
+  bool support =
+      PhiKernelSupportPrecision(phi_op_type, backend, precision, layout);
+  if (backend == phi::Backend::GPU) {
+    support |= PhiKernelSupportPrecision(
+        phi_op_type, phi::Backend::GPUDNN, precision, layout);
+  }
   if (!support) {
     const auto& all_kernels = framework::OperatorWithKernel::AllOpKernels();
     auto it = all_kernels.find(op_type);
@@ -146,11 +152,15 @@ bool OpSupportPrecision(const std::string& op_type,
                         const std::unordered_set<std::string>& black_list) {
   bool support = false;
   if (black_list.count(op_type) == 0) {
-    if (backend == phi::Backend::GPU) {
-      support = GpuKernelSupportPrecision(op_type, precision);
+    // Actual custom backend will be added after the NUM_BACKENDS.
+    // We use this feature to determine whether backend is custom device.
+    if (backend == phi::Backend::GPU ||
+        static_cast<size_t>(backend) >
+            static_cast<size_t>(phi::Backend::NUM_BACKENDS)) {
+      support = KernelSupportPrecision(op_type, backend, precision);
     } else {
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-          "Now, only support backend of GPU."));
+          "Now, only support backend of GPU and Custom Device ."));
     }
   }
   return support;
@@ -183,11 +193,28 @@ void AutoMixedPrecisionPass::SetDefaultBlacklist() const {
 
 void AutoMixedPrecisionPass::Init(Graph* graph) const {
   bool enable_gpu_mixed = Get<bool>("enable_gpu_mixed");
+  bool enable_custom_device_mixed = false;
+  if (Has("enable_custom_device_mixed")) {
+    enable_custom_device_mixed = Get<bool>("enable_custom_device_mixed");
+  }
   if (enable_gpu_mixed) {
     backend_ = phi::Backend::GPU;
+  } else if (enable_custom_device_mixed) {
+// transform Backend::CUSTOM to actual backend.
+// Here, we only consider one custom backend.
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    auto device_type = phi::DeviceManager::GetAllCustomDeviceTypes()[0];
+    backend_ = static_cast<phi::Backend>(
+        static_cast<size_t>(phi::Backend::NUM_BACKENDS) +
+        phi::CustomRegisteredDeviceMap::Instance()
+            .GetOrRegisterGlobalDeviceTypeId(device_type));
+#else
+    PADDLE_THROW(paddle::platform::errors::Unavailable(
+        "Paddle is not compiled with CustomDevice. "
+        "Cannot enable custom_device_mixed."));
+#endif
   }
-
-  skip_pass_ = !enable_gpu_mixed;
+  skip_pass_ = !enable_gpu_mixed && !enable_custom_device_mixed;
 
   low_precision_ = static_cast<phi::DataType>(Get<int>("mixed_precision_mode"));
 
@@ -466,8 +493,8 @@ void AutoMixedPrecisionPass::UpdateOpPrecision() const {
         // when op_1 only support cpu kernel. if op_2's intput var is op_1's
         // output var, then op_2 should not run at low precision.
         if (GetOpOriginalType(op_type) != "feed" &&
-            !GpuKernelSupportPrecision(GetOpOriginalType(op_type),
-                                       phi::DataType::FLOAT32)) {
+            !KernelSupportPrecision(
+                GetOpOriginalType(op_type), backend_, phi::DataType::FLOAT32)) {
           for (auto* out_var_node : op_node->outputs) {
             CHECK_EQ(out_var_node->IsVar(), true);
             if (out_var_node->Var()->Persistable()) continue;

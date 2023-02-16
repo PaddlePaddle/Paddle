@@ -14,8 +14,10 @@ limitations under the License. */
 
 #include "paddle/phi/common/int_array.h"
 
-#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 namespace paddle {
 namespace experimental {
@@ -28,7 +30,9 @@ IntArrayBase<phi::DenseTensor>::IntArrayBase(
     AssignDataFromTensor(tensor);
   } else {
     phi::DenseTensor tensor_tmp;
-    paddle::framework::TensorCopySync(tensor, CPUPlace(), &tensor_tmp);
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+    auto dev_ctx = pool.Get(tensor.place());
+    phi::Copy(*dev_ctx, tensor, CPUPlace(), true, &tensor_tmp);
     AssignDataFromTensor(tensor_tmp);
   }
 }
@@ -45,8 +49,9 @@ IntArrayBase<phi::DenseTensor>::IntArrayBase(
           array_.push_back(*tensor_list[i].template data<int32_t>());
         } else {
           phi::DenseTensor tensor_tmp;
-          paddle::framework::TensorCopySync(
-              tensor_list[i], CPUPlace(), &tensor_tmp);
+          phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+          auto dev_ctx = pool.Get(tensor_list[i].place());
+          phi::Copy(*dev_ctx, tensor_list[i], CPUPlace(), true, &tensor_tmp);
           array_.push_back(*tensor_tmp.template data<int32_t>());
         }
         break;
@@ -55,8 +60,9 @@ IntArrayBase<phi::DenseTensor>::IntArrayBase(
           array_.push_back(*tensor_list[i].template data<int64_t>());
         } else {
           phi::DenseTensor tensor_tmp;
-          paddle::framework::TensorCopySync(
-              tensor_list[i], CPUPlace(), &tensor_tmp);
+          phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+          auto dev_ctx = pool.Get(tensor_list[i].place());
+          phi::Copy(*dev_ctx, tensor_list[i], CPUPlace(), true, &tensor_tmp);
           array_.push_back(*tensor_tmp.template data<int64_t>());
         }
         break;
