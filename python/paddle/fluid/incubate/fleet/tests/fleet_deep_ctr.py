@@ -18,7 +18,7 @@ import time
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+import paddle.incubate.distributed.fleet.role_maker as role_maker
 from paddle.incubate.fleet.parameter_server.distribute_transpiler import (
     fleet,
 )

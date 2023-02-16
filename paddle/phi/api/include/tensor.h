@@ -633,7 +633,13 @@ class PADDLE_API Tensor final {
   std::string name_{""};
 };
 
+PADDLE_API Tensor operator+(const Tensor& x, const Tensor& y);
+
+PADDLE_API Tensor operator-(const Tensor& x, const Tensor& y);
+
 PADDLE_API Tensor operator*(const Tensor& x, const Tensor& y);
+
+PADDLE_API Tensor operator/(const Tensor& x, const Tensor& y);
 
 }  // namespace experimental
 }  // namespace paddle
