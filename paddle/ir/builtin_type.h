@@ -15,25 +15,9 @@
 #pragma once
 
 #include "paddle/ir/type.h"
+#include "paddle/ir/type_utils.h"
 
 namespace ir {
-
-#define REGISTER_TYPE_UTILS(concrete_type, storage_type)                   \
-  using Type::Type;                                                        \
-  using StorageType = storage_type;                                        \
-  StorageType *storage() const {                                           \
-    return static_cast<StorageType *>(this->storage_);                     \
-  }                                                                        \
-  static ir::TypeId type_id() { return ir::TypeId::get<concrete_type>(); } \
-  template <typename T>                                                    \
-  static bool classof(T val) {                                             \
-    return val.type_id() == type_id();                                     \
-  }                                                                        \
-  template <typename... Args>                                              \
-  static concrete_type create(IrContext *ctx, Args... args) {              \
-    return ir::TypeUniquer::template get<concrete_type>(ctx, args...);     \
-  }
-
 ///
 /// \brief Interfaces for user-created built-in types. For example:
 /// Type fp32 = Float32Type::get(ctx);
