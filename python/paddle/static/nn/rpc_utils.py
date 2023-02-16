@@ -33,9 +33,7 @@ class IDGen:
 id_gen = IDGen()
 
 
-def rpc_call(
-    src_ids=None, url="", voc_path="", cvt2str=True, op_device="gpu:all"
-):
+def rpc_call(src_ids=None, url="", voc_path="", cvt2str=True):
     request_id = (
         fluid.default_main_program()
         .block(0)
@@ -47,35 +45,26 @@ def rpc_call(
             stop_gradient=True,
         )
     )
-    url_id = paddle.assign(0).astype("int32")
     src_ids = src_ids.astype("int32")
 
     fluid.default_main_program().block(0).append_op(
         type="rpc_call",
         inputs={
             'X': [src_ids],
-            'url_id': [url_id],
         },
         outputs={"Out": [request_id]},
         attrs={
-            "url_list": [url],
+            "url": url,
             "vocab_path": voc_path,
             "use_ids": not cvt2str,
+            "timeout": 3000,
+            "retry": 100,
         },
-    )
-    fluid.default_main_program().block(0).ops[-1]._set_attr(
-        "op_device", op_device
-    )
-    fluid.default_main_program().block(0).ops[-2]._set_attr(
-        "op_device", op_device
-    )
-    fluid.default_main_program().block(0).ops[-3]._set_attr(
-        "op_device", op_device
     )
     return request_id
 
 
-def rpc_result(request_ids, result_dtype, out_len):
+def rpc_result(request_ids, result_dtype):
     if result_dtype == "float":
         res = (
             fluid.default_main_program()
@@ -83,7 +72,7 @@ def rpc_result(request_ids, result_dtype, out_len):
             .create_var(
                 name=id_gen("rpc_res"),
                 dtype="float32",
-                shape=[request_ids.shape[0], out_len],
+                shape=[request_ids.shape[0]],
                 persistable=False,
                 stop_gradient=True,
             )
@@ -95,7 +84,7 @@ def rpc_result(request_ids, result_dtype, out_len):
             .create_var(
                 name=id_gen("rpc_res"),
                 dtype="uint8",
-                shape=[request_ids.shape[0], out_len],
+                shape=[request_ids.shape[0]],
                 persistable=False,
                 stop_gradient=True,
             )
@@ -103,7 +92,6 @@ def rpc_result(request_ids, result_dtype, out_len):
     else:
         raise ValueError("result dtype must be one of str ot float")
 
-    print("res: ", res)
     success = (
         fluid.default_main_program()
         .block(0)
@@ -119,6 +107,6 @@ def rpc_result(request_ids, result_dtype, out_len):
         type="rpc_result",
         inputs={"X": [request_ids]},
         outputs={"Out": [res], "succeed": [success]},
-        attrs={"res_type": result_dtype, "out_len": out_len},
+        attrs={"res_type": result_dtype},
     )
     return res, success

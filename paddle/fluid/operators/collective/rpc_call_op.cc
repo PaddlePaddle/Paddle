@@ -38,11 +38,12 @@ class RpcCallOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddInput("X", "(Tensor) Src words' ids.");
-    AddInput("url_id", "(Tensor) Service URL's id.");
     AddOutput("Out", "(Tensor) Request id.");
-    AddAttr<std::vector<std::string>>("url_list", "URL list.").SetDefault({});
+    AddAttr<std::string>("url", "URL.").SetDefault({});
     AddAttr<std::string>("vocab_path", "Vocab's absolute path.").SetDefault("");
     AddAttr<bool>("use_ids", "If true, use ids directly.").SetDefault(true);
+    AddAttr<int>("timeout", "rpc connection timeout ms").SetDefault(3000);
+    AddAttr<int>("retry", "rpc connection retry time").SetDefault(100);
     AddComment(R"DOC(
 Rpc Call Operator
 

@@ -113,12 +113,20 @@ static inline void HandleServiceResponse(
 static int send_sequence(const framework::ExecutionContext& ctx,
                          const std::string& service,
                          const phi::DenseTensor& src_ids_tensor,
-                         const std::string& url) {
+                         const std::string& url,
+                         const int& timeout = 3000,
+                         const int& retry = 100) {
   std::vector<int> src_ids_vec;
   framework::TensorToVector(src_ids_tensor, ctx.device_context(), &src_ids_vec);
   const std::string payload = BuildPayload(service, src_ids_vec);
-  int request_id = platform::RpcCommContext::RpcSend(
-      url, payload, &HandleServiceRequest, &HandleServiceResponse);
+  int request_id =
+      platform::RpcCommContext::RpcSend(url,
+                                        payload,
+                                        &HandleServiceRequest,
+                                        &HandleServiceResponse,
+                                        brpc::HttpMethod::HTTP_METHOD_POST,
+                                        timeout,
+                                        retry);
   VLOG(3) << "Request id " << request_id << " url: " << url;
   VLOG(3) << "Request id " << request_id << " payload: " << payload;
   return request_id;
@@ -129,14 +137,8 @@ class RpcCallOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     // url, assume num of urls is limited
-    auto url_id_tensor = ctx.Input<phi::DenseTensor>("url_id");
-    std::vector<int> url_id_vec;
-    framework::TensorToVector(
-        *url_id_tensor, ctx.device_context(), &url_id_vec);
-    auto url_id = url_id_vec[0];
 
-    auto url_list = ctx.Attr<std::vector<std::string>>("url_list");
-    const std::string url = url_list[url_id];
+    const std::string url = ctx.Attr<std::string>("url");
 
     // payload
     auto src_ids_tensor = ctx.Input<phi::DenseTensor>("X");
@@ -163,9 +165,12 @@ class RpcCallOpKernel : public framework::OpKernel<T> {
       service = "str";
     }
 
+    int timeout = ctx.Attr<int>("timeout");
+    int retry = ctx.Attr<int>("retry");
+
     for (auto i = 0; i < x_dims[0]; i++) {
-      request_ids[i] =
-          send_sequence(ctx, service, src_ids_tensor->Slice(i, i + 1), url);
+      request_ids[i] = send_sequence(
+          ctx, service, src_ids_tensor->Slice(i, i + 1), url, timeout, retry);
     }
 
     auto* out = ctx.Output<phi::DenseTensor>("Out");

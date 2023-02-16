@@ -16,6 +16,7 @@ import paddle
 import paddle.fluid as fluid
 import numpy as np
 import os
+import subprocess
 
 paddle.enable_static()
 
@@ -25,16 +26,27 @@ MAX_SIZE_RESPONSE = 1000
 USE_IDS = True
 RES_TYPE = 'float'
 
+server_cmd = "ls"
+process = subprocess.Popen(server_cmd.split())
+process.wait(2)
+
+with open("vocab.txt", "w") as voc:
+    voc.write("ABC 0\n")
+    voc.write("EFG 1\n")
+    voc.write("HIG 2\n")
+    voc.write("[gEnd]\n")
+
 # network
 in_query = fluid.data(name='X', shape=[-1, MAX_SIZE_QUERY], dtype='int32')
 
 req_ids = paddle.static.nn.rpc_call(
     in_query,
-    os.environ.get("url_list"),
-    "/code_lp/ernie-bot/post-train/ernie_3.0_100b_no_distill/config/ernie3.0_vocab_multi_prompt_v9.txt",
+    "http://localhost:8019/run/predict",
+    "vocab.txt",
     True,
 )
-out_data, out_succeed = paddle.static.nn.rpc_result(req_ids, RES_TYPE, 1)
+
+out_data, out_succeed = paddle.static.nn.rpc_result(req_ids, RES_TYPE)
 paddle.static.Print(in_query)
 paddle.static.Print(req_ids)
 paddle.static.Print(out_data.astype("float32"))
@@ -45,8 +57,8 @@ paddle.static.Print(out_data.astype("float32"))
 
 query_tensor = np.array(
     [
-        [29989, 29981, 2264, 1708, 1672, 1598],
-        [29989, 29981, 2264, 1708, 1672, 2212],
+        [0, 1, 2, 3, 4, 0],
+        [0, 1, 2, 3, 4, 0],
     ]
 ).astype("int32")
 
@@ -66,12 +78,5 @@ for _ in range(1):
     )
 t2 = time.time()
 print("speed: ", (t2 - t1) / 1, "s/step")
-
-if succeed:
-    if RES_TYPE == 'str':
-        for d in data:
-            print('output:', d.tobytes().decode('utf-8'))
-    else:
-        print('output:', data)
-else:
-    print('request failed')
+if process.poll() is None:
+    process.kill()

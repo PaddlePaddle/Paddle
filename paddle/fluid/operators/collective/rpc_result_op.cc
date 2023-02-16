@@ -41,7 +41,6 @@ class RpcResultOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("succeed", "Request status, true means succeed.");
     AddAttr<std::string>("res_type", "Result type returns.")
         .SetDefault("float");
-    AddAttr<int>("out_len", "out len.");
     AddComment(R"DOC(
 Rpc Result Operator
 

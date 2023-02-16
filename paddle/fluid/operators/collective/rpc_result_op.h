@@ -59,25 +59,23 @@ static inline std::vector<uint8_t> ParseStrResponse(
   return std::vector<uint8_t>(res.begin(), res.end());
 }
 
-static inline void ParseResponse(phi::DenseTensor* out,
-                                 const std::string& res_type,
-                                 const platform::DeviceContext& dev_ctx,
-                                 const std::string& resp) {
-  if (res_type == "float") {
-    auto res = ParseFloatResponse(resp, PARSE_RESULT_FLOAT);
-    framework::TensorFromVector(res, dev_ctx, out);
-  } else if (res_type == "str") {
-    auto res = ParseStrResponse(resp);
-    framework::TensorFromVector(res, dev_ctx, out);
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument("Unknown result type."));
-  }
-}
+// template <typename T>
+// static std::vector<T> ParseResponse(const std::string& res_type,
+//                                  const std::string& resp) {
+//   if (res_type == "float") {
+//     auto res = ParseFloatResponse(resp, PARSE_RESULT_FLOAT);
+//     return res;
+//     // framework::TensorFromVector(res, dev_ctx, out);
+//   } else if (res_type == "str") {
+//     auto res = ParseStrResponse(resp);
+//     return res;
+//     // framework::TensorFromVector(res, dev_ctx, out);
+//   } else {
+//     PADDLE_THROW(platform::errors::InvalidArgument("Unknown result type."));
+//   }
+// }
 
-static bool get_response(const framework::ExecutionContext& ctx,
-                         const int& request_id,
-                         const phi::DenseTensor& out,
-                         const std::string& res_type) {
+static std::vector<uint8_t> get_str_response(const int& request_id) {
   // wait for call op's event notification
   auto& rpc_store = platform::RpcRequestStore::Instance();
   auto event = rpc_store.GetEvent(request_id);
@@ -86,16 +84,35 @@ static bool get_response(const framework::ExecutionContext& ctx,
   if (ok) {
     const std::string& resp = rpc_store.GetResponse(request_id);
     VLOG(3) << "Request id " << request_id << " raw response: " << resp;
-    VLOG(3) << "Request id " << request_id << " result type: " << res_type;
+    VLOG(3) << "Request id " << request_id;
 
-    auto out_ = const_cast<phi::DenseTensor&>(out);
-
-    ParseResponse(&out_, res_type, ctx.device_context(), resp);
+    // auto out_ = const_cast<phi::DenseTensor&>(out);
+    auto out_vector = ParseStrResponse(resp);
+    return out_vector;
   } else {
     PADDLE_THROW(platform::errors::Unavailable(
         "Request %s failed with error code %s.", request_id, err_code));
   }
-  return true;
+}
+
+static std::vector<float> get_float_response(const int& request_id) {
+  // wait for call op's event notification
+  auto& rpc_store = platform::RpcRequestStore::Instance();
+  auto event = rpc_store.GetEvent(request_id);
+  int err_code = rpc_store.GetErrorCode(request_id);
+  bool ok = event->wait() == 0 && err_code == 0;
+  if (ok) {
+    const std::string& resp = rpc_store.GetResponse(request_id);
+    VLOG(3) << "Request id " << request_id << " raw response: " << resp;
+    VLOG(3) << "Request id " << request_id;
+
+    // auto out_ = const_cast<phi::DenseTensor&>(out);
+    auto out_vector = ParseFloatResponse(resp, PARSE_RESULT_FLOAT);
+    return out_vector;
+  } else {
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Request %s failed with error code %s.", request_id, err_code));
+  }
 }
 
 template <typename T>
@@ -109,9 +126,7 @@ class RpcResultOpKernel : public framework::OpKernel<T> {
 
     auto* out = ctx.Output<phi::DenseTensor>("Out");
     const std::string res_type = ctx.Attr<std::string>("res_type");
-    int out_len = ctx.Attr<int>("out_len");
-    out->Resize({static_cast<int64_t>(request_id_tensor->dims()[0]),
-                 static_cast<int64_t>(out_len)});
+
     VLOG(3) << "out dims: " << out->dims().to_str()
             << "numel: " << out->numel();
     if (res_type == "str") {
@@ -123,9 +138,39 @@ class RpcResultOpKernel : public framework::OpKernel<T> {
           "Unknown result type. error type: %s", res_type.c_str()));
     }
     VLOG(3) << "out dims: " << out->dims().to_str();
+    std::vector<std::vector<uint8_t>> uint8_vec;
+    std::vector<std::vector<float>> float_vec;
+    int64_t max_size = -1;
+
     for (auto i = 0; i < request_id_tensor->dims()[0]; i++) {
-      get_response(
-          ctx, request_id_tensor_vec[i], out->Slice(i, i + 1), res_type);
+      if (res_type == "float") {
+        auto vec = get_float_response(request_id_tensor_vec[i]);
+        max_size = std::max(max_size, static_cast<int64_t>(vec.size()));
+        float_vec.emplace_back(vec);
+      } else if (res_type == "str") {
+        auto vec = get_str_response(request_id_tensor_vec[i]);
+        uint8_vec.emplace_back(vec);
+        max_size = std::max(max_size, static_cast<int64_t>(vec.size()));
+      }
+    }
+
+    out->Resize({request_id_tensor->dims()[0], max_size});
+
+    if (res_type == "str") {
+      ctx.device_context().Alloc<uint8_t>(out);
+      for (size_t i = 0; i < uint8_vec.size(); i++) {
+        wwphi::DenseTensor out_ = out->Slice(i, i + 1);
+        for (int k = uint8_vec[i].size(); k < max_size; k++) {
+          uint8_vec[i].emplace_back(static_cast<uint8_t>(0));
+        }
+        framework::TensorFromVector(uint8_vec[i], ctx.device_context(), &out_);
+      }
+    } else if (res_type == "float") {
+      ctx.device_context().Alloc<float>(out);
+      for (size_t i = 0; i < float_vec.size(); i++) {
+        phi::DenseTensor out_ = out->Slice(i, i + 1);
+        framework::TensorFromVector(float_vec[i], ctx.device_context(), &out_);
+      }
     }
 
     auto* succeed = ctx.Output<phi::DenseTensor>("succeed");
