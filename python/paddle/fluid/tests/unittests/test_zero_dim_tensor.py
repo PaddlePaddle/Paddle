@@ -1922,7 +1922,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         res = self.exe.run(
             prog, fetch_list=[x1, out1, x1.grad_name, out1.grad_name]
         )
-        
+
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[0], 1.0)
         self.assertEqual(res[1].shape, ())
