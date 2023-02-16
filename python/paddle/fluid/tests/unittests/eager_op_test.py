@@ -1817,6 +1817,7 @@ class OpTest(unittest.TestCase):
         inplace_atol=None,
     ):
 
+        core._set_prim_all_enabled(False)
         self.__class__.op_type = self.op_type
         if self.is_mkldnn_op():
             self.__class__.use_mkldnn = True
@@ -1950,7 +1951,7 @@ class OpTest(unittest.TestCase):
         check_dygraph=True,
         check_comp=False,
     ):
-
+        core._set_prim_all_enabled(False)
         self._check_grad_helper()
         places = self._get_places()
         for place in places:
