@@ -209,14 +209,16 @@ class MultiHeadAttention(Layer):
     def ernie_sparse_mask(self, seq_len, glb, wnd):
         import numpy as np
 
-        mask = np.zeros([seq_len, seq_len])
+        pad_len = (seq_len + wnd - 1) // wnd * wnd
+        mask = np.zeros([pad_len, pad_len])
         mask[:glb, :glb] = 1
-        pos = np.repeat(list(range((seq_len - glb) // wnd)), wnd)
+        pos = np.repeat(list(range((pad_len - glb) // wnd)), wnd)
         local_visible_part = pos[None, :] == pos[:, None]
         local_visible_part |= np.roll(local_visible_part, wnd, axis=1)
         local_visible_part |= np.roll(local_visible_part, -wnd, axis=1)
         mask[glb:, glb:][local_visible_part] = 1
-
+        if pad_len > seq_len:
+            mask = mask[:seq_len, :seq_len]
         return mask
 
     def _prepare_qkv(self, query, key, value, cache=None):
@@ -436,7 +438,7 @@ class MultiHeadAttention(Layer):
         else:
             q, k, v, cache = self._prepare_qkv(query, key, value, cache)
 
-        if self.sparse is False:
+        if self.sparse is False or q.shape[2] <= 128:
             # scale dot product attention
             product = paddle.matmul(
                 x=q * (self.head_dim**-0.5), y=k, transpose_y=True
@@ -458,14 +460,17 @@ class MultiHeadAttention(Layer):
         else:
             # call sparse self-attention
             # TODO: support attn_mask and dropout
-            if self.sparse_mask is None:
+            if (
+                self.sparse_mask is None
+                or self.sparse_mask.shape[0] != q.shape[0] * q.shape[1]
+                or self.sparse_mask.shape[1] != q.shape[2]
+            ):
                 glb = 128
                 wnd = 64
                 seq_len = q.shape[-2]
-                batch_size = q.shape[0]
                 mask = self.ernie_sparse_mask(seq_len, glb, wnd)
                 mask = np.repeat(
-                    mask[None, :, :], [batch_size * self.num_heads], axis=0
+                    mask[None, :, :], [q.shape[0] * self.num_heads], axis=0
                 )
                 self.sparse_mask = (
                     paddle.to_tensor(mask).astype('float32').to_sparse_csr()
