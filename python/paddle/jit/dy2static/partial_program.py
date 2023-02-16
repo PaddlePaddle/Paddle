@@ -184,7 +184,7 @@ class PartialProgramLayer:
         self._cuda_graph_pool_id = 0
         # Set default mode to train
         self.training = True
-        self._infer_info = ProgramInfo(mode='infer')
+        self._infer_info = ProgramInfo()
 
         custom_white_list, custom_black_list = None, None
         tracer = framework._dygraph_tracer()
