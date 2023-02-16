@@ -238,7 +238,9 @@ add_custom_command(
 
 # generate tensor and tensor operants file
 add_custom_command(
-  OUTPUT ${phi_tensor_operants_header_file} ${phi_tensor_operants_source_file}
+  OUTPUT ${operants_base_file} ${phi_tensor_operants_header_file}
+         ${phi_tensor_operants_source_file} ${operants_manager_header_path}
+         ${operants_manager_source_path}
   COMMAND ${PYTHON_EXECUTABLE} -m pip install pyyaml
   COMMAND
     ${PYTHON_EXECUTABLE} ${tensor_gen_file} --api_yaml_path ${api_yaml_file}
