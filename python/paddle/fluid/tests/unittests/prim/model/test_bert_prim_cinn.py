@@ -80,25 +80,6 @@ def train(to_static, enable_prim, enable_cinn):
             masked_lm_scale,
         ) = batch
 
-        # [[32, 128], [32, 128], [32, 1, 1, 128], [600], [600, 1], [32, 1], [1]]
-        # [VarType.INT64, VarType.INT64, VarType.FP32, VarType.INT32, VarType.INT64, VarType.INT64, VarType.FP32]
-
-        # input_ids = paddle.randint(0, 10000, [32, 128], 'int64')
-        # input_ids[:, 0] = 101
-        # input_ids[:, -1] = 102
-        # segment_ids = paddle.randint(0, 2, [32, 128], 'int64')
-        # input_mask = paddle.randint(0, 2000, [32, 1, 1, 128]).astype('float32')
-        # masked_lm_positions = paddle.randint(0, 2000, [600]).astype('int32')
-        # # masked_lm_labels = paddle.randn([600, 1]).astype('int64')
-        # masked_lm_labels = paddle.full([600, 1], 1, dtype='int64')
-        # # masked_lm_labels = paddle.randint(0, 10000, [600, 1], 'int64')
-        # # next_sentence_labels = paddle.randn([32, 1]).astype('int64')
-        # next_sentence_labels = paddle.full([32, 1], 0, dtype='int64')
-        # # masked_lm_scale = paddle.randn([1]).astype('float32')
-        # masked_lm_scale = paddle.full([1], 1, dtype='float32')
-        # if i == 0:
-        #     input_ids[0, -1] = 0
-
         prediction_scores, seq_relationship_score = bert(
             input_ids=input_ids,
             token_type_ids=segment_ids,
@@ -117,7 +98,6 @@ def train(to_static, enable_prim, enable_cinn):
         loss.backward()
         optimizer.minimize(loss)
         bert.clear_gradients()
-
         losses.append(loss)
 
         print(
@@ -127,7 +107,6 @@ def train(to_static, enable_prim, enable_cinn):
                 time.time() - start_time,
             )
         )
-
         if step >= 10:
             break
     return losses
