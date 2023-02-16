@@ -17,34 +17,31 @@
 #include "paddle/ir/type.h"
 
 namespace ir {
+
+#define REGISTER_TYPE_UTILS(concrete_type, storage_type)                   \
+  using Type::Type;                                                        \
+  using StorageType = storage_type;                                        \
+  StorageType *storage() const {                                           \
+    return static_cast<StorageType *>(this->storage_);                     \
+  }                                                                        \
+  static ir::TypeId type_id() { return ir::TypeId::get<concrete_type>(); } \
+  template <typename T>                                                    \
+  static bool classof(T val) {                                             \
+    return val.type_id() == type_id();                                     \
+  }                                                                        \
+  template <typename... Args>                                              \
+  static concrete_type create(IrContext *ctx, Args... args) {              \
+    return ir::TypeUniquer::template get<concrete_type>(ctx, args...);     \
+  }
+
 ///
 /// \brief Interfaces for user-created built-in types. For example:
 /// Type fp32 = Float32Type::get(ctx);
 ///
 class Float32Type : public ir::Type {
  public:
-  // 可以通过宏定义自动生成的（Float32Type, TypeStorage）
-  using Type::Type;  // 必须提供
+  REGISTER_TYPE_UTILS(Float32Type, ir::TypeStorage);
 
-  using StorageType = ir::TypeStorage;  // 必须指定StorageType
-
-  StorageType *storage() const {
-    return static_cast<StorageType *>(this->storage_);
-  }  // 必须提供
-
-  static TypeId type_id() { return TypeId::get<Float32Type>(); }  // 必须提供
-
-  template <typename T>  // 必须提供
-  static bool classof(T val) {
-    return val.type_id() == type_id();
-  }
-
-  template <typename... Args>  // 必须提供
-  static Float32Type create(IrContext *ctx, Args... args) {
-    return ir::TypeUniquer::template get<Float32Type>(ctx, args...);
-  }
-
-  // 手动提供的接口
   static Float32Type get(ir::IrContext *context);
 };
 
@@ -79,30 +76,7 @@ struct IntegerTypeStorage : public TypeStorage {
 
 class IntegerType : public ir::Type {
  public:
-  // 可以通过宏定义自动生成的（IntegerType, TypeStorage）
-  using Type::Type;  // 必须提供
-
-  using StorageType = ir::IntegerTypeStorage;  // 必须指定StorageType
-
-  StorageType *storage() const {
-    return static_cast<StorageType *>(this->storage_);
-  }  // 必须提供
-
-  static TypeId type_id() { return TypeId::get<IntegerType>(); }  // 必须提供
-
-  template <typename T>  // 必须提供
-  static bool classof(T val) {
-    return val.type_id() == type_id();
-  }
-
-  template <typename... Args>  // 必须提供
-  static IntegerType create(IrContext *ctx, Args... args) {
-    return ir::TypeUniquer::template get<IntegerType>(ctx, args...);
-  }
-
-  /// Integer representation maximal bitwidth.
-  /// Note: This is aligned with the maximum width of llvm::IntegerType.
-  static constexpr unsigned kMaxWidth = (1 << 24) - 1;
+  REGISTER_TYPE_UTILS(IntegerType, ir::IntegerTypeStorage);
 
   static IntegerType get(ir::IrContext *context,
                          unsigned width,
