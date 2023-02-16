@@ -19,10 +19,10 @@ import time
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import (
+from paddle.incubate.fleet.parameter_server.distribute_transpiler import (
     fleet,
 )
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
+from paddle.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
     StrategyFactory,
 )
 
@@ -144,7 +144,7 @@ def model():
         input=lr_embbding, pool_type="sum"
     )
 
-    merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
+    merge_layer = paddle.concat([dnn_out, lr_pool], axis=1)
 
     predict = paddle.static.nn.fc(x=merge_layer, size=2, activation='softmax')
     acc = paddle.static.accuracy(input=predict, label=label)

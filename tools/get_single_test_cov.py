@@ -83,9 +83,14 @@ def analysisFNDAFile(rootPath, test):
     if os.path.isfile(related_ut_map_file) and os.path.isfile(
         notrelated_ut_map_file
     ):
-        print("make related.txt and not_related.txt succesfully")
+        print(
+            "make %s and %s succesfully"
+            % (related_ut_map_file, related_ut_map_file)
+        )
     else:
-        print("make related.txt and not_related.txt failed")
+        print(
+            "make %s and %s failed" % (related_ut_map_file, related_ut_map_file)
+        )
         return
 
     fn_filename = '%s/build/ut_map/%s/fnda.tmp' % (rootPath, test)
@@ -203,7 +208,7 @@ def getCovinfo(rootPath, test):
     )
     if (
         os.path.exists(coverage_utils_info_path)
-        and os.path.getsize(coverage_utils_info_path) != 0
+        and os.path.getsize(coverage_utils_info_path) > 4
     ):
         os.system(
             'cd %s && lcov -a paddle/fluid/coverage_fluid.info -a paddle/phi/coverage_phi.info -a paddle/utils/coverage_utils.info -o coverage.info --rc lcov_branch_coverage=0 > /dev/null 2>&1'
@@ -217,10 +222,13 @@ def getCovinfo(rootPath, test):
     coverage_info_path = ut_map_path + '/coverage.info'
     file_size = os.path.getsize(coverage_info_path)
     if file_size == 0:
-        print("coverage.info is empty,collect coverage rate failed")
+        print(
+            "coverage.info of %s is empty,collect coverage rate failed"
+            % ut_map_path
+        )
         return
     else:
-        print("get coverage.info succesfully")
+        print("get coverage.info of %s succesfully" % ut_map_path)
     os.system(
         "cd %s && lcov --extract coverage.info '/paddle/paddle/phi/*' '/paddle/paddle/utils/*' '/paddle/paddle/fluid/*' '/paddle/build/*' -o coverage.info.tmp --rc lcov_branch_coverage=0 > /dev/null 2>&1"
         % ut_map_path
