@@ -433,7 +433,7 @@ def main():
     parser.add_argument(
         '--api_prim_yaml_path',
         help='Primitive API list yaml file.',
-        default='paddle/fluid/prim/api/auto_code_generated/api.yaml',
+        default='paddle/fluid/prim/api/api.yaml',
     )
 
     options = parser.parse_args()
