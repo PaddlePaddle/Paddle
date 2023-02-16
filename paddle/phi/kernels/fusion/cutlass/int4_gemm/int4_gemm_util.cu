@@ -172,6 +172,29 @@ template void ConvertDataToInt4<int32_t, phi::GPUContext>(
     const size_t source_size,
     const bool transpose);
 
+template <typename T>
+void ConvertDataToInt4(const T *source,
+                       cutlass::int4b_t *output,
+                       const size_t source_size) {
+  constexpr int block_ = 256;
+  dim3 grid((source_size + block_ - 1) / block_);
+  dim3 block(block_);
+  DynamicConvert<cutlass::int4b_t, T>
+      <<<grid, block>>>(source, output, source_size);
+  return;
+}
+
+template <typename Source, typename Target>
+void ConvertData(const Source *source,
+                 Target *output,
+                 const size_t source_size) {
+  constexpr int block = 256;
+  dim3 grid((source_size + block_ - 1) / block_);
+  dim3 block(block_);
+  DynamicConvert<Target, Source><<<grid, block>>>(source, output, source_size);
+  return;
+}
+
 }  // namespace cutlass_gemm_internal
 }  // namespace fusion
 }  // namespace phi

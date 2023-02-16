@@ -29,7 +29,7 @@ template <typename TShape,
           typename IShape,
           typename Arch,
           int NumStages>
-cutlass::Status Int4GemmImpl(GemmAllParams params) {
+cutlass::Status Int4GemmBiasImpl(GemmAllParams params) {
   using ElementAccumulator = int32_t;
   using ElementComputeEpilogue = int32_t;
   using ElementOutput = int32_t;
@@ -113,290 +113,290 @@ cutlass::Status Int4GemmImpl(GemmAllParams params) {
 
 // config 0
 template <typename arch, int NumStages>
-cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<128, 256, 128>,
-                             cutlass::gemm::GemmShape<64, 64, 128>,
-                             cutlass::gemm::GemmShape<8, 8, 32>,
-                             arch,
-                             NumStages>(GemmAllParams);
+cutlass::Status Int4GemmBiasImpl<cutlass::gemm::GemmShape<128, 256, 128>,
+                                 cutlass::gemm::GemmShape<64, 64, 128>,
+                                 cutlass::gemm::GemmShape<8, 8, 32>,
+                                 arch,
+                                 NumStages>(GemmAllParams);
 // config 1
 template <typename arch, int NumStages>
-cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<256, 128, 128>,
-                             cutlass::gemm::GemmShape<64, 64, 128>,
-                             cutlass::gemm::GemmShape<8, 8, 32>,
-                             arch,
-                             NumStages>(GemmAllParams);
+cutlass::Status Int4GemmBiasImpl<cutlass::gemm::GemmShape<256, 128, 128>,
+                                 cutlass::gemm::GemmShape<64, 64, 128>,
+                                 cutlass::gemm::GemmShape<8, 8, 32>,
+                                 arch,
+                                 NumStages>(GemmAllParams);
 // config 2
 template <typename arch, int NumStages>
-cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<128, 128, 128>,
-                             cutlass::gemm::GemmShape<64, 64, 128>,
-                             cutlass::gemm::GemmShape<8, 8, 32>,
-                             arch,
-                             NumStages>(GemmAllParams);
+cutlass::Status Int4GemmBiasImpl<cutlass::gemm::GemmShape<128, 128, 128>,
+                                 cutlass::gemm::GemmShape<64, 64, 128>,
+                                 cutlass::gemm::GemmShape<8, 8, 32>,
+                                 arch,
+                                 NumStages>(GemmAllParams);
 // config 3
 template <typename arch, int NumStages>
-cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<64, 128, 128>,
-                             cutlass::gemm::GemmShape<32, 64, 128>,
-                             cutlass::gemm::GemmShape<8, 8, 32>,
-                             arch,
-                             NumStages>(GemmAllParams);
+cutlass::Status Int4GemmBiasImpl<cutlass::gemm::GemmShape<64, 128, 128>,
+                                 cutlass::gemm::GemmShape<32, 64, 128>,
+                                 cutlass::gemm::GemmShape<8, 8, 32>,
+                                 arch,
+                                 NumStages>(GemmAllParams);
 // config 4
 template <typename arch, int NumStages>
-cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<128, 64, 128>,
-                             cutlass::gemm::GemmShape<64, 32, 128>,
-                             cutlass::gemm::GemmShape<8, 8, 32>,
-                             arch,
-                             NumStages>(GemmAllParams);
+cutlass::Status Int4GemmBiasImpl<cutlass::gemm::GemmShape<128, 64, 128>,
+                                 cutlass::gemm::GemmShape<64, 32, 128>,
+                                 cutlass::gemm::GemmShape<8, 8, 32>,
+                                 arch,
+                                 NumStages>(GemmAllParams);
 // config 5
 template <typename arch, int NumStages>
-cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<64, 64, 128>,
-                             cutlass::gemm::GemmShape<32, 32, 128>,
-                             cutlass::gemm::GemmShape<8, 8, 32>,
-                             arch,
-                             NumStages>(GemmAllParams);
+cutlass::Status Int4GemmBiasImpl<cutlass::gemm::GemmShape<64, 64, 128>,
+                                 cutlass::gemm::GemmShape<32, 32, 128>,
+                                 cutlass::gemm::GemmShape<8, 8, 32>,
+                                 arch,
+                                 NumStages>(GemmAllParams);
 // config 6
 template <typename arch, int NumStages>
-cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<256, 64, 128>,
-                             cutlass::gemm::GemmShape<64, 64, 128>,
-                             cutlass::gemm::GemmShape<8, 8, 32>,
-                             arch,
-                             NumStages>(GemmAllParams);
+cutlass::Status Int4GemmBiasImpl<cutlass::gemm::GemmShape<256, 64, 128>,
+                                 cutlass::gemm::GemmShape<64, 64, 128>,
+                                 cutlass::gemm::GemmShape<8, 8, 32>,
+                                 arch,
+                                 NumStages>(GemmAllParams);
 // config 7
 template <typename arch, int NumStages>
-cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<64, 256, 128>,
-                             cutlass::gemm::GemmShape<64, 64, 128>,
-                             cutlass::gemm::GemmShape<8, 8, 32>,
-                             arch,
-                             NumStages>(GemmAllParams);
+cutlass::Status Int4GemmBiasImpl<cutlass::gemm::GemmShape<64, 256, 128>,
+                                 cutlass::gemm::GemmShape<64, 64, 128>,
+                                 cutlass::gemm::GemmShape<8, 8, 32>,
+                                 arch,
+                                 NumStages>(GemmAllParams);
 // config 8
 template <typename arch, int NumStages>
-cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<256, 128, 128>,
-                             cutlass::gemm::GemmShape<64, 64, 128>,
-                             cutlass::gemm::GemmShape<16, 8, 64>,
-                             arch,
-                             NumStages>(GemmAllParams);
+cutlass::Status Int4GemmBiasImpl<cutlass::gemm::GemmShape<256, 128, 128>,
+                                 cutlass::gemm::GemmShape<64, 64, 128>,
+                                 cutlass::gemm::GemmShape<16, 8, 64>,
+                                 arch,
+                                 NumStages>(GemmAllParams);
 // config 9
 template <typename arch, int NumStages>
-cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<128, 256, 128>,
-                             cutlass::gemm::GemmShape<64, 64, 128>,
-                             cutlass::gemm::GemmShape<16, 8, 64>,
-                             arch,
-                             NumStages>(GemmAllParams);
+cutlass::Status Int4GemmBiasImpl<cutlass::gemm::GemmShape<128, 256, 128>,
+                                 cutlass::gemm::GemmShape<64, 64, 128>,
+                                 cutlass::gemm::GemmShape<16, 8, 64>,
+                                 arch,
+                                 NumStages>(GemmAllParams);
 // config 10
 template <typename arch, int NumStages>
-cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<256, 64, 128>,
-                             cutlass::gemm::GemmShape<64, 64, 128>,
-                             cutlass::gemm::GemmShape<16, 8, 64>,
-                             arch,
-                             NumStages>(GemmAllParams);
+cutlass::Status Int4GemmBiasImpl<cutlass::gemm::GemmShape<256, 64, 128>,
+                                 cutlass::gemm::GemmShape<64, 64, 128>,
+                                 cutlass::gemm::GemmShape<16, 8, 64>,
+                                 arch,
+                                 NumStages>(GemmAllParams);
 // config 11
 template <typename arch, int NumStages>
-cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<64, 256, 128>,
-                             cutlass::gemm::GemmShape<64, 64, 128>,
-                             cutlass::gemm::GemmShape<16, 8, 64>,
-                             arch,
-                             NumStages>(GemmAllParams);
+cutlass::Status Int4GemmBiasImpl<cutlass::gemm::GemmShape<64, 256, 128>,
+                                 cutlass::gemm::GemmShape<64, 64, 128>,
+                                 cutlass::gemm::GemmShape<16, 8, 64>,
+                                 arch,
+                                 NumStages>(GemmAllParams);
 // config 12
 template <typename arch, int NumStages>
-cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<128, 128, 128>,
-                             cutlass::gemm::GemmShape<64, 64, 128>,
-                             cutlass::gemm::GemmShape<16, 8, 64>,
-                             arch,
-                             NumStages>(GemmAllParams);
+cutlass::Status Int4GemmBiasImpl<cutlass::gemm::GemmShape<128, 128, 128>,
+                                 cutlass::gemm::GemmShape<64, 64, 128>,
+                                 cutlass::gemm::GemmShape<16, 8, 64>,
+                                 arch,
+                                 NumStages>(GemmAllParams);
 // config 13
 template <typename arch, int NumStages>
-cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<128, 64, 128>,
-                             cutlass::gemm::GemmShape<64, 32, 128>,
-                             cutlass::gemm::GemmShape<16, 8, 64>,
-                             arch,
-                             NumStages>(GemmAllParams);
+cutlass::Status Int4GemmBiasImpl<cutlass::gemm::GemmShape<128, 64, 128>,
+                                 cutlass::gemm::GemmShape<64, 32, 128>,
+                                 cutlass::gemm::GemmShape<16, 8, 64>,
+                                 arch,
+                                 NumStages>(GemmAllParams);
 // config 14
 template <typename arch, int NumStages>
-cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<64, 128, 128>,
-                             cutlass::gemm::GemmShape<32, 64, 128>,
-                             cutlass::gemm::GemmShape<16, 8, 64>,
-                             arch,
-                             NumStages>(GemmAllParams);
+cutlass::Status Int4GemmBiasImpl<cutlass::gemm::GemmShape<64, 128, 128>,
+                                 cutlass::gemm::GemmShape<32, 64, 128>,
+                                 cutlass::gemm::GemmShape<16, 8, 64>,
+                                 arch,
+                                 NumStages>(GemmAllParams);
 // config 15
 template <typename arch, int NumStages>
-cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<64, 64, 128>,
-                             cutlass::gemm::GemmShape<32, 32, 128>,
-                             cutlass::gemm::GemmShape<16, 8, 64>,
-                             arch,
-                             NumStages>(GemmAllParams);
+cutlass::Status Int4GemmBiasImpl<cutlass::gemm::GemmShape<64, 64, 128>,
+                                 cutlass::gemm::GemmShape<32, 32, 128>,
+                                 cutlass::gemm::GemmShape<16, 8, 64>,
+                                 arch,
+                                 NumStages>(GemmAllParams);
 // config 16
 template <typename arch, int NumStages>
-cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<128, 128, 256>,
-                             cutlass::gemm::GemmShape<64, 64, 256>,
-                             cutlass::gemm::GemmShape<16, 8, 64>,
-                             arch,
-                             NumStages>(GemmAllParams);
+cutlass::Status Int4GemmBiasImpl<cutlass::gemm::GemmShape<128, 128, 256>,
+                                 cutlass::gemm::GemmShape<64, 64, 256>,
+                                 cutlass::gemm::GemmShape<16, 8, 64>,
+                                 arch,
+                                 NumStages>(GemmAllParams);
 // config 17
 template <typename arch, int NumStages>
-cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<128, 64, 256>,
-                             cutlass::gemm::GemmShape<64, 32, 256>,
-                             cutlass::gemm::GemmShape<16, 8, 64>,
-                             arch,
-                             NumStages>(GemmAllParams);
+cutlass::Status Int4GemmBiasImpl<cutlass::gemm::GemmShape<128, 64, 256>,
+                                 cutlass::gemm::GemmShape<64, 32, 256>,
+                                 cutlass::gemm::GemmShape<16, 8, 64>,
+                                 arch,
+                                 NumStages>(GemmAllParams);
 // config 18
 template <typename arch, int NumStages>
-cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<64, 128, 256>,
-                             cutlass::gemm::GemmShape<32, 64, 256>,
-                             cutlass::gemm::GemmShape<16, 8, 64>,
-                             arch,
-                             NumStages>(GemmAllParams);
+cutlass::Status Int4GemmBiasImpl<cutlass::gemm::GemmShape<64, 128, 256>,
+                                 cutlass::gemm::GemmShape<32, 64, 256>,
+                                 cutlass::gemm::GemmShape<16, 8, 64>,
+                                 arch,
+                                 NumStages>(GemmAllParams);
 // config 19
 template <typename arch, int NumStages>
-cutlass::Status Int4GemmImpl<cutlass::gemm::GemmShape<64, 64, 256>,
-                             cutlass::gemm::GemmShape<32, 32, 256>,
-                             cutlass::gemm::GemmShape<16, 8, 64>,
-                             arch,
-                             NumStages>(GemmAllParams);
+cutlass::Status Int4GemmBiasImpl<cutlass::gemm::GemmShape<64, 64, 256>,
+                                 cutlass::gemm::GemmShape<32, 32, 256>,
+                                 cutlass::gemm::GemmShape<16, 8, 64>,
+                                 arch,
+                                 NumStages>(GemmAllParams);
 
 std::vector<std::function<cutlass::Status(GemmAllParams)>>
-    int4_gemm_sm75_all_func = {
-        Int4GemmImpl<cutlass::gemm::GemmShape<128, 256, 128>,
-                     cutlass::gemm::GemmShape<64, 64, 128>,
-                     cutlass::gemm::GemmShape<8, 8, 32>,
-                     cutlass::arch::Sm75,
-                     2>,
-        Int4GemmImpl<cutlass::gemm::GemmShape<256, 128, 128>,
-                     cutlass::gemm::GemmShape<64, 64, 128>,
-                     cutlass::gemm::GemmShape<8, 8, 32>,
-                     cutlass::arch::Sm75,
-                     2>,
-        Int4GemmImpl<cutlass::gemm::GemmShape<128, 128, 128>,
-                     cutlass::gemm::GemmShape<64, 64, 128>,
-                     cutlass::gemm::GemmShape<8, 8, 32>,
-                     cutlass::arch::Sm75,
-                     2>,
-        Int4GemmImpl<cutlass::gemm::GemmShape<64, 128, 128>,
-                     cutlass::gemm::GemmShape<32, 64, 128>,
-                     cutlass::gemm::GemmShape<8, 8, 32>,
-                     cutlass::arch::Sm75,
-                     2>,
-        Int4GemmImpl<cutlass::gemm::GemmShape<128, 64, 128>,
-                     cutlass::gemm::GemmShape<64, 32, 128>,
-                     cutlass::gemm::GemmShape<8, 8, 32>,
-                     cutlass::arch::Sm75,
-                     2>,
-        Int4GemmImpl<cutlass::gemm::GemmShape<64, 64, 128>,
-                     cutlass::gemm::GemmShape<32, 32, 128>,
-                     cutlass::gemm::GemmShape<8, 8, 32>,
-                     cutlass::arch::Sm75,
-                     2>,
-        Int4GemmImpl<cutlass::gemm::GemmShape<256, 64, 128>,
-                     cutlass::gemm::GemmShape<64, 64, 128>,
-                     cutlass::gemm::GemmShape<8, 8, 32>,
-                     cutlass::arch::Sm75,
-                     2>,
-        Int4GemmImpl<cutlass::gemm::GemmShape<64, 256, 128>,
-                     cutlass::gemm::GemmShape<64, 64, 128>,
-                     cutlass::gemm::GemmShape<8, 8, 32>,
-                     cutlass::arch::Sm75,
-                     2>,
+    int4_gemm_bias_sm75_all_func = {
+        Int4GemmBiasImpl<cutlass::gemm::GemmShape<128, 256, 128>,
+                         cutlass::gemm::GemmShape<64, 64, 128>,
+                         cutlass::gemm::GemmShape<8, 8, 32>,
+                         cutlass::arch::Sm75,
+                         2>,
+        Int4GemmBiasImpl<cutlass::gemm::GemmShape<256, 128, 128>,
+                         cutlass::gemm::GemmShape<64, 64, 128>,
+                         cutlass::gemm::GemmShape<8, 8, 32>,
+                         cutlass::arch::Sm75,
+                         2>,
+        Int4GemmBiasImpl<cutlass::gemm::GemmShape<128, 128, 128>,
+                         cutlass::gemm::GemmShape<64, 64, 128>,
+                         cutlass::gemm::GemmShape<8, 8, 32>,
+                         cutlass::arch::Sm75,
+                         2>,
+        Int4GemmBiasImpl<cutlass::gemm::GemmShape<64, 128, 128>,
+                         cutlass::gemm::GemmShape<32, 64, 128>,
+                         cutlass::gemm::GemmShape<8, 8, 32>,
+                         cutlass::arch::Sm75,
+                         2>,
+        Int4GemmBiasImpl<cutlass::gemm::GemmShape<128, 64, 128>,
+                         cutlass::gemm::GemmShape<64, 32, 128>,
+                         cutlass::gemm::GemmShape<8, 8, 32>,
+                         cutlass::arch::Sm75,
+                         2>,
+        Int4GemmBiasImpl<cutlass::gemm::GemmShape<64, 64, 128>,
+                         cutlass::gemm::GemmShape<32, 32, 128>,
+                         cutlass::gemm::GemmShape<8, 8, 32>,
+                         cutlass::arch::Sm75,
+                         2>,
+        Int4GemmBiasImpl<cutlass::gemm::GemmShape<256, 64, 128>,
+                         cutlass::gemm::GemmShape<64, 64, 128>,
+                         cutlass::gemm::GemmShape<8, 8, 32>,
+                         cutlass::arch::Sm75,
+                         2>,
+        Int4GemmBiasImpl<cutlass::gemm::GemmShape<64, 256, 128>,
+                         cutlass::gemm::GemmShape<64, 64, 128>,
+                         cutlass::gemm::GemmShape<8, 8, 32>,
+                         cutlass::arch::Sm75,
+                         2>,
 };
 
 std::vector<std::function<cutlass::Status(GemmAllParams)>>
-    int4_gemm_sm80_all_func = {
-        Int4GemmImpl<cutlass::gemm::GemmShape<128, 256, 128>,
-                     cutlass::gemm::GemmShape<64, 64, 128>,
-                     cutlass::gemm::GemmShape<8, 8, 32>,
-                     cutlass::arch::Sm80,
-                     2>,
-        Int4GemmImpl<cutlass::gemm::GemmShape<256, 128, 128>,
-                     cutlass::gemm::GemmShape<64, 64, 128>,
-                     cutlass::gemm::GemmShape<8, 8, 32>,
-                     cutlass::arch::Sm80,
-                     2>,
-        Int4GemmImpl<cutlass::gemm::GemmShape<128, 128, 128>,
-                     cutlass::gemm::GemmShape<64, 64, 128>,
-                     cutlass::gemm::GemmShape<8, 8, 32>,
-                     cutlass::arch::Sm80,
-                     2>,
-        Int4GemmImpl<cutlass::gemm::GemmShape<64, 128, 128>,
-                     cutlass::gemm::GemmShape<32, 64, 128>,
-                     cutlass::gemm::GemmShape<8, 8, 32>,
-                     cutlass::arch::Sm80,
-                     2>,
-        Int4GemmImpl<cutlass::gemm::GemmShape<128, 64, 128>,
-                     cutlass::gemm::GemmShape<64, 32, 128>,
-                     cutlass::gemm::GemmShape<8, 8, 32>,
-                     cutlass::arch::Sm80,
-                     2>,
-        Int4GemmImpl<cutlass::gemm::GemmShape<64, 64, 128>,
-                     cutlass::gemm::GemmShape<32, 32, 128>,
-                     cutlass::gemm::GemmShape<8, 8, 32>,
-                     cutlass::arch::Sm80,
-                     2>,
-        Int4GemmImpl<cutlass::gemm::GemmShape<256, 64, 128>,
-                     cutlass::gemm::GemmShape<64, 64, 128>,
-                     cutlass::gemm::GemmShape<8, 8, 32>,
-                     cutlass::arch::Sm80,
-                     2>,
-        Int4GemmImpl<cutlass::gemm::GemmShape<64, 256, 128>,
-                     cutlass::gemm::GemmShape<64, 64, 128>,
-                     cutlass::gemm::GemmShape<8, 8, 32>,
-                     cutlass::arch::Sm80,
-                     2>,
-        Int4GemmImpl<cutlass::gemm::GemmShape<256, 128, 128>,
-                     cutlass::gemm::GemmShape<64, 64, 128>,
-                     cutlass::gemm::GemmShape<16, 8, 64>,
-                     cutlass::arch::Sm80,
-                     3>,
-        Int4GemmImpl<cutlass::gemm::GemmShape<128, 256, 128>,
-                     cutlass::gemm::GemmShape<64, 64, 128>,
-                     cutlass::gemm::GemmShape<16, 8, 64>,
-                     cutlass::arch::Sm80,
-                     3>,
-        Int4GemmImpl<cutlass::gemm::GemmShape<256, 64, 128>,
-                     cutlass::gemm::GemmShape<64, 64, 128>,
-                     cutlass::gemm::GemmShape<16, 8, 64>,
-                     cutlass::arch::Sm80,
-                     4>,
-        Int4GemmImpl<cutlass::gemm::GemmShape<64, 256, 128>,
-                     cutlass::gemm::GemmShape<64, 64, 128>,
-                     cutlass::gemm::GemmShape<16, 8, 64>,
-                     cutlass::arch::Sm80,
-                     4>,
-        Int4GemmImpl<cutlass::gemm::GemmShape<128, 128, 128>,
-                     cutlass::gemm::GemmShape<64, 64, 128>,
-                     cutlass::gemm::GemmShape<16, 8, 64>,
-                     cutlass::arch::Sm80,
-                     5>,
-        Int4GemmImpl<cutlass::gemm::GemmShape<128, 64, 128>,
-                     cutlass::gemm::GemmShape<64, 32, 128>,
-                     cutlass::gemm::GemmShape<16, 8, 64>,
-                     cutlass::arch::Sm80,
-                     6>,
-        Int4GemmImpl<cutlass::gemm::GemmShape<64, 128, 128>,
-                     cutlass::gemm::GemmShape<32, 64, 128>,
-                     cutlass::gemm::GemmShape<16, 8, 64>,
-                     cutlass::arch::Sm80,
-                     6>,
-        Int4GemmImpl<cutlass::gemm::GemmShape<64, 64, 128>,
-                     cutlass::gemm::GemmShape<32, 32, 128>,
-                     cutlass::gemm::GemmShape<16, 8, 64>,
-                     cutlass::arch::Sm80,
-                     10>,
-        Int4GemmImpl<cutlass::gemm::GemmShape<128, 128, 256>,
-                     cutlass::gemm::GemmShape<64, 64, 256>,
-                     cutlass::gemm::GemmShape<16, 8, 64>,
-                     cutlass::arch::Sm80,
-                     3>,
-        Int4GemmImpl<cutlass::gemm::GemmShape<128, 64, 256>,
-                     cutlass::gemm::GemmShape<64, 32, 256>,
-                     cutlass::gemm::GemmShape<16, 8, 64>,
-                     cutlass::arch::Sm80,
-                     3>,
-        Int4GemmImpl<cutlass::gemm::GemmShape<64, 64, 256>,
-                     cutlass::gemm::GemmShape<32, 32, 256>,
-                     cutlass::gemm::GemmShape<16, 8, 64>,
-                     cutlass::arch::Sm80,
-                     5>,
+    int4_gemm_bias_sm80_all_func = {
+        Int4GemmBiasImpl<cutlass::gemm::GemmShape<128, 256, 128>,
+                         cutlass::gemm::GemmShape<64, 64, 128>,
+                         cutlass::gemm::GemmShape<8, 8, 32>,
+                         cutlass::arch::Sm80,
+                         2>,
+        Int4GemmBiasImpl<cutlass::gemm::GemmShape<256, 128, 128>,
+                         cutlass::gemm::GemmShape<64, 64, 128>,
+                         cutlass::gemm::GemmShape<8, 8, 32>,
+                         cutlass::arch::Sm80,
+                         2>,
+        Int4GemmBiasImpl<cutlass::gemm::GemmShape<128, 128, 128>,
+                         cutlass::gemm::GemmShape<64, 64, 128>,
+                         cutlass::gemm::GemmShape<8, 8, 32>,
+                         cutlass::arch::Sm80,
+                         2>,
+        Int4GemmBiasImpl<cutlass::gemm::GemmShape<64, 128, 128>,
+                         cutlass::gemm::GemmShape<32, 64, 128>,
+                         cutlass::gemm::GemmShape<8, 8, 32>,
+                         cutlass::arch::Sm80,
+                         2>,
+        Int4GemmBiasImpl<cutlass::gemm::GemmShape<128, 64, 128>,
+                         cutlass::gemm::GemmShape<64, 32, 128>,
+                         cutlass::gemm::GemmShape<8, 8, 32>,
+                         cutlass::arch::Sm80,
+                         2>,
+        Int4GemmBiasImpl<cutlass::gemm::GemmShape<64, 64, 128>,
+                         cutlass::gemm::GemmShape<32, 32, 128>,
+                         cutlass::gemm::GemmShape<8, 8, 32>,
+                         cutlass::arch::Sm80,
+                         2>,
+        Int4GemmBiasImpl<cutlass::gemm::GemmShape<256, 64, 128>,
+                         cutlass::gemm::GemmShape<64, 64, 128>,
+                         cutlass::gemm::GemmShape<8, 8, 32>,
+                         cutlass::arch::Sm80,
+                         2>,
+        Int4GemmBiasImpl<cutlass::gemm::GemmShape<64, 256, 128>,
+                         cutlass::gemm::GemmShape<64, 64, 128>,
+                         cutlass::gemm::GemmShape<8, 8, 32>,
+                         cutlass::arch::Sm80,
+                         2>,
+        Int4GemmBiasImpl<cutlass::gemm::GemmShape<256, 128, 128>,
+                         cutlass::gemm::GemmShape<64, 64, 128>,
+                         cutlass::gemm::GemmShape<16, 8, 64>,
+                         cutlass::arch::Sm80,
+                         3>,
+        Int4GemmBiasImpl<cutlass::gemm::GemmShape<128, 256, 128>,
+                         cutlass::gemm::GemmShape<64, 64, 128>,
+                         cutlass::gemm::GemmShape<16, 8, 64>,
+                         cutlass::arch::Sm80,
+                         3>,
+        Int4GemmBiasImpl<cutlass::gemm::GemmShape<256, 64, 128>,
+                         cutlass::gemm::GemmShape<64, 64, 128>,
+                         cutlass::gemm::GemmShape<16, 8, 64>,
+                         cutlass::arch::Sm80,
+                         4>,
+        Int4GemmBiasImpl<cutlass::gemm::GemmShape<64, 256, 128>,
+                         cutlass::gemm::GemmShape<64, 64, 128>,
+                         cutlass::gemm::GemmShape<16, 8, 64>,
+                         cutlass::arch::Sm80,
+                         4>,
+        Int4GemmBiasImpl<cutlass::gemm::GemmShape<128, 128, 128>,
+                         cutlass::gemm::GemmShape<64, 64, 128>,
+                         cutlass::gemm::GemmShape<16, 8, 64>,
+                         cutlass::arch::Sm80,
+                         5>,
+        Int4GemmBiasImpl<cutlass::gemm::GemmShape<128, 64, 128>,
+                         cutlass::gemm::GemmShape<64, 32, 128>,
+                         cutlass::gemm::GemmShape<16, 8, 64>,
+                         cutlass::arch::Sm80,
+                         6>,
+        Int4GemmBiasImpl<cutlass::gemm::GemmShape<64, 128, 128>,
+                         cutlass::gemm::GemmShape<32, 64, 128>,
+                         cutlass::gemm::GemmShape<16, 8, 64>,
+                         cutlass::arch::Sm80,
+                         6>,
+        Int4GemmBiasImpl<cutlass::gemm::GemmShape<64, 64, 128>,
+                         cutlass::gemm::GemmShape<32, 32, 128>,
+                         cutlass::gemm::GemmShape<16, 8, 64>,
+                         cutlass::arch::Sm80,
+                         10>,
+        Int4GemmBiasImpl<cutlass::gemm::GemmShape<128, 128, 256>,
+                         cutlass::gemm::GemmShape<64, 64, 256>,
+                         cutlass::gemm::GemmShape<16, 8, 64>,
+                         cutlass::arch::Sm80,
+                         3>,
+        Int4GemmBiasImpl<cutlass::gemm::GemmShape<128, 64, 256>,
+                         cutlass::gemm::GemmShape<64, 32, 256>,
+                         cutlass::gemm::GemmShape<16, 8, 64>,
+                         cutlass::arch::Sm80,
+                         3>,
+        Int4GemmBiasImpl<cutlass::gemm::GemmShape<64, 64, 256>,
+                         cutlass::gemm::GemmShape<32, 32, 256>,
+                         cutlass::gemm::GemmShape<16, 8, 64>,
+                         cutlass::arch::Sm80,
+                         5>,
 };
 
-std::map<std::vector<int>, int> map_problem_int4_gemm;
-std::mutex int4_gemm_mutex;
+std::map<std::vector<int>, int> map_problem_int4_gemm_bias;
+std::mutex int4_gemm_bias_mutex;
 
 void Int4GemmBias(GemmAllParams params, int sm) {
   int batch = params.batch;
@@ -405,17 +405,17 @@ void Int4GemmBias(GemmAllParams params, int sm) {
   int k = params.k;
   std::vector<int> problem_size = {batch, m, n, k};
   std::vector<std::function<cutlass::Status(GemmAllParams)>> *gemm_funcs =
-      &int4_gemm_sm75_all_func;  // default use sm75 arch
+      &int4_gemm_bias_sm75_all_func;  // default use sm75 arch
   if (sm == 80) {
-    gemm_funcs = &int4_gemm_sm80_all_func;
+    gemm_funcs = &int4_gemm_bias_sm80_all_func;
   }
-  if (map_problem_int4_gemm.count(problem_size)) {
-    gemm_funcs->at(map_problem_int4_gemm.at(problem_size))(params);
+  if (map_problem_int4_gemm_bias.count(problem_size)) {
+    gemm_funcs->at(map_problem_int4_gemm_bias.at(problem_size))(params);
     return;
   }
   int best_config_index = ProfileToGetBestConfig(*gemm_funcs, params);
-  std::lock_guard<std::mutex> guard(int4_gemm_mutex);
-  map_problem_int4_gemm[problem_size] = best_config_index;
+  std::lock_guard<std::mutex> guard(int4_gemm_bias_mutex);
+  map_problem_int4_gemm_bias[problem_size] = best_config_index;
   gemm_funcs->at(best_config_index)(params);
 }
 }  // namespace cutlass_gemm_internal

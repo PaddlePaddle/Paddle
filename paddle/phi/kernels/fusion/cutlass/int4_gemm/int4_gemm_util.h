@@ -64,6 +64,16 @@ void ConvertDataToInt4(const Context &ctx,
                        cutlass::int4b_t *output,
                        const size_t source_size,
                        const bool transpose);
+
+template <typename T>
+void ConvertDataToInt4(const T *source,
+                       cutlass::int4b_t *output,
+                       const size_t source_size);
+
+template <typename Source, typename Target>
+void ConvertData(const Source *source,
+                 Target *output,
+                 const size_t source_size);
 }  // namespace cutlass_gemm_internal
 }  // namespace fusion
 }  // namespace phi
