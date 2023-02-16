@@ -1,18 +1,20 @@
+set(COMMON_API_TEST_DEPS phi_tensor phi_api phi_api_utils)
+
 if(WITH_GPU)
   nv_test(
     test_phi_tensor
     SRCS test_phi_tensor.cc
-    DEPS phi_tensor glog selected_rows)
+    DEPS glog selected_rows ${COMMON_API_TEST_DEPS})
 elseif(WITH_ROCM)
   hip_test(
     test_phi_tensor
     SRCS test_phi_tensor.cc
-    DEPS phi_tensor glog selected_rows)
+    DEPS glog selected_rows ${COMMON_API_TEST_DEPS})
 else()
   cc_test(
     test_phi_tensor
     SRCS test_phi_tensor.cc
-    DEPS phi_tensor glog selected_rows)
+    DEPS glog selected_rows ${COMMON_API_TEST_DEPS})
 endif()
 
 cc_test(
@@ -20,7 +22,6 @@ cc_test(
   SRCS test_phi_exception.cc
   DEPS gtest)
 
-set(COMMON_API_TEST_DEPS phi_tensor phi_api phi_api_utils)
 cc_test(
   test_to_api
   SRCS test_to_api.cc

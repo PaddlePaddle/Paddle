@@ -1031,6 +1031,18 @@
   kernel :
     func : logical_xor
 
+- op : logspace
+  args : (Tensor start, Tensor stop, Tensor num, Tensor base, DataType dtype, Place place={})
+  output : Tensor(out)
+  infer_meta:
+    func : LogspaceInferMeta
+    param : [start, stop, num, base, dtype]
+  kernel :
+    func : logspace
+    param : [start, stop, num, base, dtype]
+    data_type : dtype
+    backend : place
+
 - op : logsumexp
   args : (Tensor x, int64_t[] axis,  bool keepdim,  bool reduce_all)
   output : Tensor(out)
@@ -1757,7 +1769,7 @@
   backward : triangular_solve_grad
 
 - op : tril
-  args : (Tensor x,  int diagonal)
+  args : (Tensor x, int diagonal)
   output : Tensor(out)
   infer_meta :
     func : TrilInferMeta
@@ -1789,7 +1801,7 @@
   backward : trilinear_interp_grad
 
 - op : triu
-  args : (Tensor x,  int diagonal)
+  args : (Tensor x, int diagonal)
   output : Tensor(out)
   infer_meta :
     func : TriuInferMeta

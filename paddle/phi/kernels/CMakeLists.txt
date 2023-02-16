@@ -47,7 +47,7 @@ set(COMMON_KERNEL_DEPS
     concat_and_split_functor
     selected_rows_functor)
 # remove this dep after removing fluid deps on tensor creation
-set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} phi_api_utils)
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} phi_api_utils lod_utils)
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} infermeta infermeta_utils
                        sparse_infermeta)
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} switch_autotune)

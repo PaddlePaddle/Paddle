@@ -341,6 +341,7 @@ void LogspaceInferMeta(const MetaTensor& start,
                        const MetaTensor& stop,
                        const MetaTensor& number,
                        const MetaTensor& base,
+                       DataType dtype,
                        MetaTensor* out);
 
 void MergedAdamInferMeta(

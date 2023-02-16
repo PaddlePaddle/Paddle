@@ -14,9 +14,9 @@
 
 #include "paddle/phi/kernels/layer_norm_grad_kernel.h"
 
-#include "paddle/fluid/operators/layer_norm_kernel.cu.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
 #include "paddle/phi/kernels/funcs/layer_norm_util.h"
 
 namespace phi {
@@ -34,7 +34,7 @@ void LayerNormGradKernel(const Context &dev_ctx,
                          DenseTensor *x_grad,
                          DenseTensor *scale_grad,
                          DenseTensor *bias_grad) {
-  using U = paddle::operators::LayerNormParamType<T>;
+  using U = phi::funcs::LayerNormParamType<T>;
   // d_x, d_scale, d_bias may be nullptr
   auto *d_x = x_grad;
   auto *d_scale = scale_grad;
@@ -84,7 +84,7 @@ void LayerNormGradKernel(const Context &dev_ctx,
                            : dev_ctx.template Alloc<ScaleBiasT>(d_bias));   \
     auto *d_x_data =                                                        \
         (d_x == nullptr ? nullptr : dev_ctx.template Alloc<T>(d_x));        \
-    paddle::operators::LayerNormBackward<T, U, IsScaleBiasSameDTypeWithX>(  \
+    phi::funcs::LayerNormBackward<T, U, IsScaleBiasSameDTypeWithX>(         \
         x_data,                                                             \
         d_y_data,                                                           \
         scale_data,                                                         \

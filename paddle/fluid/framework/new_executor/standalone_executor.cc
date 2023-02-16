@@ -71,11 +71,7 @@ std::shared_ptr<InterpreterCore> StandaloneExecutor::GetInterpreterCore(
     if (add_fetch_op) {
       core = CreateInterpreterCore(place_, prog, scope, fetch_names);
     } else {
-      core = std::make_shared<InterpreterCore>(
-          place_,
-          prog.Block(0),
-          /*skip_gc_vars=*/std::set<std::string>(),
-          scope);
+      core = std::make_shared<InterpreterCore>(place_, prog.Block(0), scope);
     }
     interpretercores_.emplace(oss.str(), core);
     return core;

@@ -3036,26 +3036,19 @@ PDNode *patterns::TransposeFlattenConcat::operator()(
 }
 
 void patterns::DeleteDropoutOpPattern::operator()() {
-  auto any_op_out = pattern->NewNode(any_op_out_repr())
-                        ->assert_is_op_input("dropout", "X")
-                        ->AsInput();
-
-  auto dropout_op =
-      pattern->NewNode(dropout_op_repr())->assert_is_op("dropout");
-
+  auto dropout_op_x = pattern->NewNode(dropout_op_x_repr())
+                          ->assert_is_op_input("dropout", "X")
+                          ->AsInput();
+  auto dropout_op = pattern->NewNode(dropout_op_repr())
+                        ->assert_is_op("dropout")
+                        ->assert_op_attr("dropout_implementation",
+                                         std::string("upscale_in_train"));
   auto dropout_op_out = pattern->NewNode(dropout_op_out_repr())
-                            ->assert_is_op_output("dropout", "Out")
-                            ->AsIntermediate();
-
-  auto dropout_op_outmask = pattern->NewNode(dropout_op_outmask_repr())
-                                ->assert_is_op_output("dropout", "Mask")
-                                ->AsOutput();
-  auto any_op2 = pattern->NewNode(any_op2_repr())->assert_is_op()->AsOutput();
-
-  dropout_op->LinksFrom({any_op_out});
-  dropout_op_out->LinksFrom({dropout_op});
-  dropout_op_outmask->LinksFrom({dropout_op});
-  any_op2->LinksFrom({dropout_op_out});
+                            ->assert_is_op_output("dropout", "Out");
+  auto dropout_op_mask = pattern->NewNode(dropout_op_mask_repr())
+                             ->assert_is_op_output("dropout", "Mask");
+  dropout_op->LinksFrom({dropout_op_x})
+      .LinksTo({dropout_op_out, dropout_op_mask});
 }
 
 void patterns::DeleteQuantOpFuse::operator()(PDNode *input_act_node,
