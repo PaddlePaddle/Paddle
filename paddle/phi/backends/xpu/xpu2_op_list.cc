@@ -421,6 +421,7 @@ XPUOpMap& get_kl2_ops() {
                      phi::DataType::FLOAT16,
                      phi::DataType::INT32,
                      phi::DataType::INT64})},
+      {"multi_encoder_xpu", XPUKernelSet({phi::DataType::FLOAT32})},
       {"nearest_interp_v2", XPUKernelSet({phi::DataType::FLOAT32})},
       {"nearest_interp_v2_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"not_equal",
