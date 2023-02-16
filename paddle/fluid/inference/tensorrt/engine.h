@@ -358,6 +358,7 @@ class TensorRTEngine {
   bool WithFp16() {
     bool enable_fp16 = (precision_ == AnalysisConfig::Precision::kHalf);
     bool support_fp16 = infer_builder_->platformHasFastFp16();
+    // below is consistent with setFlag in engine.cc
     bool fall_back_fp16 = WithInt8() && !use_dla_;
     return (enable_fp16 || fall_back_fp16) && support_fp16;
   }
