@@ -97,6 +97,20 @@ set(wrapped_infermeta_header_file
 set(wrapped_infermeta_source_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/infermeta/generated.cc)
 
+# tensor and tensor operants file
+set(tensor_gen_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/tensor_gen.py)
+set(api_prim_yaml_file ${CMAKE_SOURCE_DIR}/paddle/fluid/prim/api/api.yaml)
+set(operants_base_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/operants_base.h)
+set(phi_tensor_operants_header_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/tensor_operants.h)
+set(phi_tensor_operants_source_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/tensor_operants.cc)
+set(operants_base_file_tmp ${operants_base_file}.tmp)
+set(phi_tensor_operants_header_file_tmp ${phi_tensor_operants_header_file}.tmp)
+set(phi_tensor_operants_source_file_tmp ${phi_tensor_operants_source_file}.tmp)
+
 if(NOT PYTHONINTERP_FOUND)
   find_package(PythonInterp REQUIRED)
 endif()
@@ -214,6 +228,28 @@ add_custom_command(
     ${wrapped_infermeta_source_file}
   DEPENDS ${api_yaml_file} ${legacy_api_yaml_file} ${wrapped_infermeta_gen_file}
           ${api_gen_base}
+  VERBATIM)
+
+# generate tensor and tensor operants file
+add_custom_command(
+  OUTPUT ${phi_tensor_operants_header_file} ${phi_tensor_operants_source_file}
+  COMMAND ${PYTHON_EXECUTABLE} -m pip install pyyaml
+  COMMAND
+    ${PYTHON_EXECUTABLE} ${tensor_gen_file} --api_yaml_path ${api_yaml_file}
+    ${legacy_api_yaml_file} --operants_base_path ${operants_base_file_tmp}
+    --phi_tensor_operants_header_path ${phi_tensor_operants_header_file_tmp}
+    --phi_tensor_operants_source_path ${phi_tensor_operants_source_file_tmp}
+    --api_prim_yaml_path ${api_prim_yaml_file}
+  COMMAND
+    ${CMAKE_COMMAND} -E copy_if_different ${phi_tensor_operants_header_file_tmp}
+    ${phi_tensor_operants_header_file}
+  COMMAND
+    ${CMAKE_COMMAND} -E copy_if_different ${phi_tensor_operants_source_file_tmp}
+    ${phi_tensor_operants_source_file}
+  COMMENT
+    "copy_if_different ${phi_tensor_operants_header_file} ${phi_tensor_operants_source_file}"
+  DEPENDS ${api_yaml_file} ${legacy_api_yaml_file} ${tensor_gen_file}
+          ${api_gen_base} ${api_gen_file}
   VERBATIM)
 
 cc_library(
