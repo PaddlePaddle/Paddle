@@ -2714,7 +2714,7 @@ def cross_entropy(
             #     denominator: cal the sum of weight where the sample's class_index!=ignore_index
             is_ignore = label == ignore_index
             mask = ~is_ignore
-            if paddle.count_nonzero(is_ignore) > 0:  # ignore label
+            if not paddle.all(mask):  # has ignore label
                 out_sum = _C_ops.sum(out, [], None, False)
                 # for each label[i],set 1 or 0, according to ignore_index
                 # mask[i]=0, if label[i]==ignore_index
