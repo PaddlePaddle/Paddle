@@ -145,7 +145,7 @@ class DatasetLoaderTestBase(unittest.TestCase):
         dataloader = fluid.io.DataLoader.from_dataset(
             dataset=dataset, places=places, drop_last=self.drop_last
         )
-        prog = fluid.CompiledProgram(main_prog).with_data_parallel()
+        prog = fluid.CompiledProgram(main_prog)
         exe = fluid.Executor(place)
 
         exe.run(startup_prog)
