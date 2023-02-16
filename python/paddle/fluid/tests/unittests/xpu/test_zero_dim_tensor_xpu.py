@@ -335,11 +335,11 @@ class TestSundryAPI(unittest.TestCase):
         out.backward()
         self.assertEqual(x.shape, [])
         self.assertEqual(x.item(), 1.0)
-        self.assertEqual(x.grad.shape, [1])
+        self.assertEqual(x.grad.shape, [])
         self.assertEqual(x.grad.item(0), 1.0)
         self.assertEqual(out.shape, [1])
         self.assertEqual(out.item(0), 1.0)
-        # self.assertEqual(out.grad, None)
+        self.assertEqual(out.grad, None)
 
         x1 = paddle.full([], 1, 'float32')
         x1.stop_gradient = False
