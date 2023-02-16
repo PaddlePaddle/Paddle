@@ -440,7 +440,7 @@ class set_grad_enabled(_DecoratorContextManager):
 
     def __init__(self, mode):
         self.prev = is_grad_enabled()
-        set_grad_enabled(mode)
+        _set_grad_enabled(mode)
         self.mode = mode
 
     def __enter__(self):
@@ -501,10 +501,10 @@ class no_grad_(_DecoratorContextManager):
 
     def __enter__(self):
         self.prev = is_grad_enabled()
-        set_grad_enabled(False)
+        _set_grad_enabled(False)
 
     def __exit__(self, *args):
-        set_grad_enabled(self.prev)
+        _set_grad_enabled(self.prev)
 
 
 class enable_grad(_DecoratorContextManager):
@@ -549,10 +549,10 @@ class enable_grad(_DecoratorContextManager):
 
     def __enter__(self):
         self.prev = is_grad_enabled()
-        set_grad_enabled(True)
+        _set_grad_enabled(True)
 
     def __exit__(self, *args):
-        set_grad_enabled(self.prev)
+        _set_grad_enabled(self.prev)
 
 
 @signature_safe_contextmanager
