@@ -1,4 +1,4 @@
-# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -80,7 +80,6 @@ class PhiTensorOperants : public TensorOperantsBase {
 
  public:
   PhiTensorOperants() = default;
-
 """
 
 
@@ -105,7 +104,6 @@ operants_source_start = """
 namespace paddle {
 
 namespace operants {
-
 """
 
 
@@ -177,7 +175,6 @@ class OperantsManager {
 
  public:
   static OperantsManager& Instance();
-
 """
 
 
@@ -209,7 +206,6 @@ OperantsManager& OperantsManager::Instance() {
   static OperantsManager g_op_manager;
   return g_op_manager;
 }
-
 """
 
 
@@ -258,7 +254,6 @@ class OperantsAPI(ForwardAPI):
 {self.get_return_type()} PhiTensorOperants::{func_name}({self.get_define_args()}) {{
 {indent}return paddle::experimental::{func_name}({func_args_code});
 }}
-
 """
         else:
             return f"""
@@ -311,7 +306,6 @@ class OperantsAPI(ForwardAPI):
         if func_name[-1] != '_':
             return f"""
 {self.get_return_type()} OperantsManager::{func_name}({self.get_define_args()}) {{{self.gene_operants_manager_code()}}}
-
 """
         else:
             return f"""
