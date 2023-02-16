@@ -53,8 +53,7 @@ class LayerNormOneDNNHandler
 
   std::tuple<std::shared_ptr<dnnl::memory>, std::shared_ptr<dnnl::memory>>
   AcquireScaleShiftMemory(const phi::DenseTensor* scale,
-                          const phi::DenseTensor* shift,
-                          const framework::ExecutionContext& ctx) {
+                          const phi::DenseTensor* shift) {
     auto scale_memory = this->AcquireMemoryFromPrimitive(
         this->fwd_pd_->weights_desc(),
         phi::funcs::to_void_cast<phi::DenseTensor>(scale));
@@ -143,7 +142,7 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     }
 
     if (with_scaleshift) {
-      auto scaleshift_mems = handler.AcquireScaleShiftMemory(scale, bias, ctx);
+      auto scaleshift_mems = handler.AcquireScaleShiftMemory(scale, bias);
       args.insert({DNNL_ARG_SCALE, *(std::get<0>(scaleshift_mems))});
       args.insert({DNNL_ARG_SHIFT, *(std::get<1>(scaleshift_mems))});
     }
