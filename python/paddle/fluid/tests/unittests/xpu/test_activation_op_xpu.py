@@ -1222,5 +1222,104 @@ def ref_mish(x, threshold=20):
     return out
 
 
+class XPUTestSinOP(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'sin'
+        self.use_dynamic_create_class = False
+
+    class XPUTestSinBase(TestActivationOPBase):
+        def set_case(self):
+            self.op_type = "sin"
+            self.dtype = self.in_type
+
+            self.init_config()
+            out = np.sin(self.x)
+
+            self.inputs = {'X': self.x}
+            self.outputs = {'Out': out}
+            self.attrs = {'use_xpu': True}
+
+        def init_config(self):
+            self.x = np.random.uniform(-np.pi, np.pi, [11, 17]).astype(
+                self.dtype
+            )
+
+    class XPUTestSin_ZeroDim(XPUTestSinBase):
+        def init_config(self):
+            self.x = np.random.uniform(-np.pi, np.pi, []).astype(self.dtype)
+
+    class XPUTestSin2(XPUTestSinBase):
+        def init_config(self):
+            self.x = np.random.uniform(-np.pi, np.pi, [1024, 8]).astype(
+                self.dtype
+            )
+
+    class XPUTestSin3(XPUTestSinBase):
+        def init_config(self):
+            self.x = np.random.uniform(-np.pi, np.pi, [4, 512, 15, 15]).astype(
+                self.dtype
+            )
+
+    class XPUTestSin4(XPUTestSinBase):
+        def init_config(self):
+            self.x = np.random.uniform(-np.pi, np.pi, [4, 256, 22, 22]).astype(
+                self.dtype
+            )
+
+
+support_types = get_xpu_op_support_types('sin')
+for stype in support_types:
+    create_test_class(globals(), XPUTestSinOP, stype)
+
+
+class XPUTestCosOP(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'cos'
+        self.use_dynamic_create_class = False
+
+    class XPUTestCosBase(TestActivationOPBase):
+        def set_case(self):
+            self.op_type = "cos"
+            self.dtype = self.in_type
+
+            self.init_config()
+            out = np.cos(self.x)
+
+            self.inputs = {'X': self.x}
+            self.outputs = {'Out': out}
+            self.attrs = {'use_xpu': True}
+
+        def init_config(self):
+            self.x = np.random.uniform(-np.pi, np.pi, [11, 17]).astype(
+                self.dtype
+            )
+
+    class XPUTestCos_ZeroDim(XPUTestCosBase):
+        def init_config(self):
+            self.x = np.random.uniform(-np.pi, np.pi, []).astype(self.dtype)
+
+    class XPUTestCos2(XPUTestCosBase):
+        def init_config(self):
+            self.x = np.random.uniform(-np.pi, np.pi, [1024, 8]).astype(
+                self.dtype
+            )
+
+    class XPUTestCos3(XPUTestCosBase):
+        def init_config(self):
+            self.x = np.random.uniform(-np.pi, np.pi, [4, 512, 15, 15]).astype(
+                self.dtype
+            )
+
+    class XPUTestCos4(XPUTestCosBase):
+        def init_config(self):
+            self.x = np.random.uniform(-np.pi, np.pi, [4, 256, 22, 22]).astype(
+                self.dtype
+            )
+
+
+support_types = get_xpu_op_support_types('cos')
+for stype in support_types:
+    create_test_class(globals(), XPUTestCosOP, stype)
+
 if __name__ == "__main__":
     unittest.main()

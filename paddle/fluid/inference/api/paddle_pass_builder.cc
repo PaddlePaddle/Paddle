@@ -141,6 +141,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "elementwise_groupnorm_act_pass",        //
       "preln_elementwise_groupnorm_act_pass",  //
       "groupnorm_act_pass",                    //
+      "elementwiseadd_transpose_pass",         //
 #endif
       "tensorrt_subgraph_pass",  //
       "conv_bn_fuse_pass",       //
@@ -511,6 +512,19 @@ void CpuPassStrategy::EraseFcMkldnnPasses() {
       passes_.erase(std::begin(passes_) + idx);
     }
   }
+}
+
+XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
+  passes_.assign({
+      "delete_dropout_op_pass",
+      "multi_encoder_xpu_fuse_pass",
+      // "embedding_with_eltwise_add_xpu_fuse_pass",
+      "fc_xpu_fuse_pass",
+      // "multi_encoder_slice_link_xpu_fuse_pass",
+      // "generate_sequence_xpu_fuse_pass",
+      // "link_previous_out_max_xpu_pass",
+  });
+  use_xpu_ = true;
 }
 
 IpuPassStrategy::IpuPassStrategy() : PassStrategy({}) {

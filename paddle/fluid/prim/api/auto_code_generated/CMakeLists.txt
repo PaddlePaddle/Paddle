@@ -4,36 +4,73 @@ set(api_yaml_path
 set(legacy_api_yaml_path
     "${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/legacy_ops.parsed.yaml"
 )
+set(api_compat_yaml_path
+    "${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml")
+set(api_prim_yaml_path "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/api/api.yaml")
+set(api_version_yaml_path
+    "${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/op_version.yaml")
 set(tmp_eager_prim_api_cc_path
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/api/generated_prim/tmp_eager_prim_api.cc"
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/api/generated_prim/eager_prim_api.cc.tmp"
+)
+set(tmp_static_prim_api_cc_path
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/api/generated_prim/static_prim_api.cc.tmp"
 )
 set(tmp_prim_api_h_path
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/api/generated_prim/tmp_prim_generated_api.h"
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/api/generated_prim/prim_generated_api.h.tmp"
 )
 set(eager_prim_api_cc_path
     "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/api/generated_prim/eager_prim_api.cc"
 )
+set(static_prim_api_cc_path
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/api/generated_prim/static_prim_api.cc"
+)
 set(prim_api_h_path
     "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/api/generated_prim/prim_generated_api.h"
 )
-set(prim_api_gen_file
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/prim/api/auto_code_generated/prim_gen.py)
+set(static_prim_api_template_path
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/api/auto_code_generated/template/static_prim_api.cc.tpl"
+)
+set(eager_prim_api_gen_file
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/prim/api/auto_code_generated/eager_gen.py)
+set(static_prim_api_gen_file
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/prim/api/auto_code_generated/static_gen.py
+)
 
-message("prim api Code gen")
+message("Eager prim api code generator")
 execute_process(
   WORKING_DIRECTORY
     ${CMAKE_SOURCE_DIR}/paddle/fluid/prim/api/auto_code_generated
   COMMAND
-    ${PYTHON_EXECUTABLE} ${prim_api_gen_file} --api_yaml_path
+    ${PYTHON_EXECUTABLE} ${eager_prim_api_gen_file} --api_yaml_path
     ${legacy_api_yaml_path} ${api_yaml_path} --prim_api_header_path
     ${tmp_prim_api_h_path} --eager_prim_api_source_path
-    ${tmp_eager_prim_api_cc_path}
+    ${tmp_eager_prim_api_cc_path} --api_prim_yaml_path ${api_prim_yaml_path}
   RESULT_VARIABLE _result)
 if(${_result})
-  message(FATAL_ERROR "prim api genrate failed, exiting.")
+  message(FATAL_ERROR "Eager prim api generate failed, exiting.")
 endif()
 execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
                         ${tmp_prim_api_h_path} ${prim_api_h_path})
 execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
                         ${tmp_eager_prim_api_cc_path} ${eager_prim_api_cc_path})
+message("copy tmp_xxx_prim_api to xxx_prim_api")
+
+message("Static prim api code generator")
+execute_process(
+  WORKING_DIRECTORY
+    ${CMAKE_SOURCE_DIR}/paddle/fluid/prim/api/auto_code_generated
+  COMMAND
+    ${PYTHON_EXECUTABLE} ${static_prim_api_gen_file} --api_phi_yaml_path
+    ${api_yaml_path} --api_phi_legacy_yaml_path ${legacy_api_yaml_path}
+    --api_compat_yaml_path ${api_compat_yaml_path} --api_version_yaml_path
+    ${api_version_yaml_path} --api_prim_yaml_path ${api_prim_yaml_path}
+    --template_path ${static_prim_api_template_path} --output_path
+    ${tmp_static_prim_api_cc_path}
+  RESULT_VARIABLE _result)
+if(${_result})
+  message(FATAL_ERROR "Static prim api generate failed, exiting.")
+endif()
+execute_process(
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_static_prim_api_cc_path}
+          ${static_prim_api_cc_path})
 message("copy tmp_xxx_prim_api to xxx_prim_api")

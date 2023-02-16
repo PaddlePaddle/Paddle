@@ -114,7 +114,7 @@ class TestCastOpError(unittest.TestCase):
             x1 = fluid.create_lod_tensor(
                 np.array([[-1]]), [[1]], fluid.CPUPlace()
             )
-            self.assertRaises(TypeError, fluid.layers.cast, x1, 'int32')
+            self.assertRaises(TypeError, paddle.cast, x1, 'int32')
 
 
 class TestCastOpEager(unittest.TestCase):

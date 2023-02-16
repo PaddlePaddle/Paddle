@@ -1,3 +1,4 @@
+add_subdirectory(profiler)
 add_subdirectory(lib)
 cc_library(
   phi_api

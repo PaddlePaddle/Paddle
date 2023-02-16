@@ -16,6 +16,7 @@
 #include "gtest/gtest.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/selected_rows.h"
 
 namespace paddle {
 namespace tests {
@@ -208,6 +209,30 @@ void TestInitilized() {
   }
 }
 
+void TestDataInterface() {
+  // Test DenseTensor
+  experimental::Tensor test_tensor(paddle::PlaceType::kCPU, {1, 1});
+  CHECK(test_tensor.is_initialized() == true);
+  void* tensor_ptr = test_tensor.data();
+  CHECK(tensor_ptr != nullptr);
+  const void* const_tensor_ptr = test_tensor.data();
+  CHECK(const_tensor_ptr != nullptr);
+  // Test SelectedRows
+  std::vector<int64_t> rows = {0};
+  std::shared_ptr<phi::SelectedRows> selected_rows =
+      std::make_shared<phi::SelectedRows>(rows, 1);
+  selected_rows->mutable_value()->Resize(phi::make_ddim({1, 1}));
+  selected_rows->mutable_value()->mutable_data<float>(phi::CPUPlace())[0] =
+      static_cast<float>(10.0f);
+  paddle::experimental::Tensor sr_tensor =
+      paddle::experimental::Tensor(selected_rows);
+  CHECK(sr_tensor.is_initialized() == true);
+  tensor_ptr = sr_tensor.data();
+  CHECK(tensor_ptr != nullptr);
+  const_tensor_ptr = sr_tensor.data();
+  CHECK(const_tensor_ptr != nullptr);
+}
+
 void TestJudgeTensorType() {
   experimental::Tensor test_tensor(paddle::PlaceType::kCPU, {1, 1});
   CHECK(test_tensor.is_dense_tensor() == true);
@@ -228,6 +253,8 @@ TEST(PhiTensor, All) {
   GroupTestCast();
   VLOG(2) << "TestInitilized";
   TestInitilized();
+  VLOG(2) << "TestDataInterface";
+  TestDataInterface();
   VLOG(2) << "TestJudgeTensorType";
   TestJudgeTensorType();
 }
