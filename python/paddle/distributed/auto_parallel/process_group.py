@@ -143,15 +143,25 @@ class ProcessGroup:
                 core.NCCLParallelContext(strategy, place).init_with_ring_id(
                     ring_id
                 )
+            elif core.is_compiled_with_xpu():
+                place = core.XPUPlace(genv.device_id)
+                core.BKCLParallelContext(strategy, place).init_with_ring_id(
+                    ring_id
+                )
             else:
                 assert False, "No CUDA device found"
 
             # TODO(shenliang03): This is a temporary solution to solve the problem of
             # hang caused by cross-creation of new_group
             paddle.disable_static()
-            paddle.set_device(
-                'gpu:%d' % paddle.distributed.ParallelEnv().dev_id
-            )
+            if core.is_compiled_with_cuda():
+                paddle.set_device(
+                    'gpu:%d' % paddle.distributed.ParallelEnv().dev_id
+                )
+            elif core.is_compiled_with_xpu():
+                paddle.set_device(
+                    'xpu:%d' % paddle.distributed.ParallelEnv().dev_id
+                )
             tmp = (
                 paddle.to_tensor([1], dtype="int32")
                 if in_dygraph_mode()

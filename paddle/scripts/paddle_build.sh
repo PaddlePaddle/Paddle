@@ -1867,6 +1867,7 @@ function precise_card_test_single {
         find paddle/phi -name '*.gcno'|xargs -I {} cp --parents {} ut_map/$case
         find paddle/utils -name '*.gcno'|xargs -I {} cp --parents {} ut_map/$case
         find paddle/fluid -name '*.gcno'|xargs -I {} cp --parents {} ut_map/$case
+        wait;
         python ${PADDLE_ROOT}/tools/get_single_test_cov.py ${PADDLE_ROOT} $case &
 
         # python

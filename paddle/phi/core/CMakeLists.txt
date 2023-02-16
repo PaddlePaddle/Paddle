@@ -21,6 +21,11 @@ cc_library(
   SRCS enforce.cc
   DEPS ${phi_enforce_deps})
 
+cc_library(
+  phi_os_info
+  SRCS os_info.cc
+  DEPS phi_enforce)
+
 if(WITH_XPU)
   cc_library(
     kernel_factory
@@ -113,11 +118,6 @@ cc_library(
   custom_kernel
   SRCS custom_kernel.cc
   DEPS kernel_factory)
-
-cc_library(
-  operants_manager
-  SRCS operants_manager.cc
-  DEPS phi_enforce)
 
 cc_library(
   mixed_vector

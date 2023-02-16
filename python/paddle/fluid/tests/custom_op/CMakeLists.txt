@@ -27,8 +27,8 @@ endif()
 
 py_test(test_custom_raw_op_kernel_op SRCS test_custom_raw_op_kernel_op.py)
 set_tests_properties(test_custom_raw_op_kernel_op PROPERTIES TIMEOUT 180)
-py_test(test_custom_power_jit SRCS test_custom_power_jit.py)
-set_tests_properties(test_custom_power_jit PROPERTIES TIMEOUT 180)
+py_test(test_custom_tensor_operator SRCS test_custom_tensor_operator.py)
+set_tests_properties(test_custom_tensor_operator PROPERTIES TIMEOUT 180)
 
 # CPU custom op tests: only compile .cc file
 py_test(test_dispatch_jit SRCS test_dispatch_jit.py)
