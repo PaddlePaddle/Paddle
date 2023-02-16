@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import sys
 
-sys.path.append(os.getcwd() + "/cutlass")
+sys.path.append(sys.argv[1])
 from gather_gemm_scatter_manifest import GatherGemmScatterManifest
 from gather_gemm_scatter_operation import GatherGemmScatterOperation
 from generator import (

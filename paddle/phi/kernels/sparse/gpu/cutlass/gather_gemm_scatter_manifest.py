@@ -18,7 +18,7 @@ import shutil
 from gather_gemm_scatter_operation import (
     EmitGatherGemmScatterConfigurationLibrary,
 )
-from library import OperationKind
+from library import OperationKind, OperationKindNames
 from manifest import EmitOperationKindLibrary, GeneratorTarget, Manifest
 
 
@@ -33,6 +33,26 @@ class GatherGemmScatterEmitOperationKindLibrary(EmitOperationKindLibrary):
         self.configuration_prototype_template = ""
         self.configuration_template = ""
         self.epilogue_template = "#endif"
+
+    def __enter__(self):
+        self.operation_path = os.path.join(
+            self.generated_path, OperationKindNames[self.kind]
+        )
+        os.mkdir(self.operation_path)
+
+        self.top_level_path = os.path.join(
+            self.operation_path,
+            "all_%s_operations.h" % OperationKindNames[self.kind],
+        )
+
+        self.top_level_file = open(self.top_level_path, "w")
+        self.top_level_file.write(self.header_template)
+
+        self.source_files = [
+            self.top_level_path,
+        ]
+
+        return self
 
     def emit(self, configuration_name, operations):
         with self.emitters[self.kind](
