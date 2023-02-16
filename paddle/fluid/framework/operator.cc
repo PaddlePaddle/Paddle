@@ -2745,8 +2745,6 @@ void OperatorWithKernel::ParseMultiInputDataType(
       const phi::DenseTensor* t = nullptr;
       if (var->IsType<phi::DenseTensor>()) {
         t = &var->Get<phi::DenseTensor>();
-      } else if (var->IsType<phi::DenseTensor>()) {
-        t = &var->Get<phi::DenseTensor>();
       } else if (var->IsType<phi::SelectedRows>()) {
         t = &(var->Get<phi::SelectedRows>().value());
       } else if (var->IsType<phi::SparseCooTensor>()) {
@@ -2865,8 +2863,6 @@ phi::DenseTensor* OperatorWithKernel::GetTensorFormInputSafely(
   // 2. get tensor and check
   phi::DenseTensor* t = nullptr;
   if (var->IsType<phi::DenseTensor>()) {
-    t = var->GetMutable<phi::DenseTensor>();
-  } else if (var->IsType<phi::DenseTensor>()) {
     t = var->GetMutable<phi::DenseTensor>();
   } else if (var->IsType<phi::SelectedRows>()) {
     t = var->GetMutable<phi::SelectedRows>()->mutable_value();
@@ -3227,8 +3223,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
         } else {  // scalar is in the input
           need_prepare_phi_data_ = true;
           auto& ins_vector = ctx.inputs.at(attr_names[i]);
-          phi_kernel_context->EmplaceBackAttr(std::move(
-              experimental::MakePhiScalarFromVar(*ins_vector.front())));
+          phi_kernel_context->EmplaceBackAttr(
+              std::move(framework::MakePhiScalarFromVar(*ins_vector.front())));
         }
         break;
       case phi::AttributeType::INT_ARRAY:
@@ -3261,10 +3257,10 @@ void OperatorWithKernel::BuildPhiKernelContext(
           auto& ins_vector = ctx.inputs.at(attr_names[i]);
           if (ins_vector.size() == 1) {  // ShapeTensor
             phi_kernel_context->EmplaceBackAttr(std::move(
-                experimental::MakePhiIntArrayFromVar(*ins_vector.front())));
+                framework::MakePhiIntArrayFromVar(*ins_vector.front())));
           } else {  // ShapeTensorList
-            phi_kernel_context->EmplaceBackAttr(std::move(
-                experimental::MakePhiIntArrayFromVarList(ins_vector)));
+            phi_kernel_context->EmplaceBackAttr(
+                std::move(framework::MakePhiIntArrayFromVarList(ins_vector)));
           }
         }
         break;

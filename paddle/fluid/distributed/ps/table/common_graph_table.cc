@@ -1917,7 +1917,7 @@ int32_t GraphTable::random_sample_nodes(GraphTableType table_type,
   int total_size = 0;
   auto &shards = table_type == GraphTableType::EDGE_TABLE ? edge_shards[idx]
                                                           : feature_shards[idx];
-  for (int i = 0; i < (int)shards.size(); i++) {
+  for (int i = 0; i < static_cast<int>(shards.size()); i++) {
     total_size += shards[i]->get_size();
   }
   if (sample_size > total_size) sample_size = total_size;
@@ -2429,7 +2429,7 @@ int GraphTable::get_all_feature_ids(
 
 int GraphTable::get_node_embedding_ids(
     int slice_num, std::vector<std::vector<uint64_t>> *output) {
-  if (is_load_reverse_edge and !FLAGS_graph_get_neighbor_id) {
+  if (is_load_reverse_edge && !FLAGS_graph_get_neighbor_id) {
     return get_all_id(GraphTableType::EDGE_TABLE, slice_num, output);
   } else {
     get_all_id(GraphTableType::EDGE_TABLE, slice_num, output);

@@ -75,6 +75,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 #if IS_TRT_VERSION_GE(8200)
     teller_set.insert("round");
     int8_teller_set.insert("round");
+    teller_set.insert("set_value");
 #endif
   }
 
@@ -849,12 +850,14 @@ struct SimpleOpTypeSetTeller : public Teller {
           PADDLE_GET_CONST(std::string, desc.GetAttr("interp_method"));
       if (interp_method != "nearest") return false;
 
+#if IS_TRT_VERSION_GE(8200)
       auto resize_inputs = desc.Inputs();
       if (with_dynamic_shape &&
           resize_inputs.find("SizeTensor") != resize_inputs.end() &&
           desc.Input("SizeTensor").size() == 2) {
         return true;
       }
+#endif
 
       auto scale = PADDLE_GET_CONST(std::vector<float>, desc.GetAttr("scale"));
       auto out_h = PADDLE_GET_CONST(int, desc.GetAttr("out_h"));
@@ -2367,6 +2370,27 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "set_value") {
+#if !IS_TRT_VERSION_GE(8200)
+      return false;
+#endif
+      if (!(desc.HasAttr("axes") && desc.HasAttr("starts") &&
+            desc.HasAttr("steps"))) {
+        VLOG(3) << "the " << op_type
+                << " does not have attr (axes or "
+                   "starts or steps)";
+        return false;
+      }
+      auto* block = desc.Block();
+      auto input_name = desc.Input("Input")[0];
+      auto* input_desc = block->FindVar(input_name);
+      const auto input_shape = input_desc->GetShape();
+      auto update_name = desc.Input("ValueTensor")[0];
+      auto* update_desc = block->FindVar(update_name);
+      const auto update_shape = update_desc->GetShape();
+      if (update_shape.size() != input_shape.size()) return false;
+    }
+
     if (op_type == "top_k_v2" || op_type == "top_k") {
       auto* block = desc.Block();
       auto x_var_name = desc.Input("X")[0];
@@ -2487,7 +2511,20 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
     }
-
+    if (op_type == "trans_layernorm") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "The trans_layernorm op does not support "
+                   "static shape yet";
+        return false;
+      }
+    }
+    if (op_type == "fuse_eleadd_transpose") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "The fuse_eleadd_transpose op does not support "
+                   "static shape yet";
+        return false;
+      }
+    }
     if (op_type == "lookup_table") {
       if (!with_dynamic_shape) {
         VLOG(3) << "the lookup_table does not support "
@@ -2657,10 +2694,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       "logsigmoid",
       "preln_layernorm_shift_partition",
       "lookup_table",
+      "trans_layernorm",
       "merge_layernorm",
       "skip_merge_layernorm",
       "lookup_table_v2",
       "expand_v2",
+      "fuse_eleadd_transpose",
       "skip_groupnorm_act",
       "preln_groupnorm_act"};
 
@@ -2806,11 +2845,13 @@ struct SimpleOpTypeSetTeller : public Teller {
       "take_along_axis",
       "logsigmoid",
       "preln_layernorm_shift_partition",
+      "trans_layernorm",
       "merge_layernorm",
       "skip_merge_layernorm",
       "lookup_table",
       "lookup_table_v2",
       "expand_v2",
+      "fuse_eleadd_transpose",
       "skip_groupnorm_act",
       "preln_groupnorm_act"};
 };

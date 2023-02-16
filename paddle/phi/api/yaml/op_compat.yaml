@@ -145,6 +145,13 @@
     variance : Variance
     scale : Scale
     bias : Bias
+  outputs :
+    out : Y
+    mean_out: MeanOut
+    variance_out: VarianceOut
+    saved_mean: SavedMean
+    saved_variance: SavedVariance
+    reserve_space: ReserveSpace
   extra :
     attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
 
@@ -231,6 +238,16 @@
 
 - op : concat
   backward : concat_grad
+  inputs:
+    x: X
+  outputs:
+    out: Out
+  attrs:
+    axis: axis
+  scalar :
+    axis :
+      data_type : int
+      tensor_name : AxisTensor
   extra :
     attrs : [bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32"]
 
@@ -395,6 +412,10 @@
 
 - op : divide (elementwise_div)
   backward : divide_grad (elementwise_div)
+  inputs :
+    {x: X, y : Y}
+  outputs :
+    out: Out
   extra :
     attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
@@ -407,6 +428,17 @@
 
 - op : dropout
   backward : dropout_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+    mask : Mask
+  attrs :
+    p : dropout_prob
+    is_test : is_test
+    mode : dropout_implementation
+    seed : seed
+    fix_seed : fix_seed
   extra :
     attrs : [bool fix_seed = false, int seed = 0]
 
@@ -486,6 +518,17 @@
 
 - op : expand (expand_v2)
   backward : expand_grad (expand_v2_grad)
+  inputs :
+    x : X
+  attrs :
+   shape : shape
+  outputs :
+    out : Out
+  int_array:
+    shape :
+      data_type : int
+      tensor_name : Shape
+      tensors_name : expand_shapes_tensor
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
@@ -783,6 +826,14 @@
 
 - op : layer_norm
   backward : layer_norm_grad
+  inputs :
+    x : X
+    scale : Scale
+    bias : Bias
+  outputs :
+    out : Y
+    mean : Mean
+    variance : Variance
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
@@ -898,6 +949,12 @@
 
 - op : matmul (matmul_v2)
   backward : matmul_grad (matmul_v2_grad)
+  inputs :
+    {x : X, y : Y}
+  attrs :
+    {transpose_x : trans_x, transpose_y : trans_y}
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, 'int[] fused_reshape_Out = {}', 'int[] fused_transpose_Out = {}',
              str mkldnn_data_type = "float32", 'int[] fused_reshape_X = {}', 'int[] fused_reshape_Y = {}',
@@ -914,6 +971,20 @@
     x : X
   outputs :
     out : Out
+
+- op : max (reduce_max)
+  backward : max_grad (reduce_max_grad)
+  inputs:
+    x : X
+  attrs:
+    { axis : dim,  keepdim : keep_dim}
+  outputs:
+    out : Out
+  int_array:
+    axis :
+      data_type : int
+  extra :
+    attrs : [bool use_mkldnn = false]
 
 - op : maximum (elementwise_max)
   backward : maximum_grad (elementwise_max_grad)
@@ -932,6 +1003,17 @@
     x : X
   outputs :
     out : Out
+
+- op : mean (reduce_mean)
+  backward : reduce_mean_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs :
+    {axis : dim, keepdim : keep_dim}
+  extra :
+    attrs : [bool use_mkldnn = false]
 
 - op : meshgrid
   backward : meshgrid_grad
@@ -981,6 +1063,10 @@
 
 - op : multiply (elementwise_mul)
   backward : multiply_grad (elementwise_mul_grad)
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
@@ -1079,6 +1165,20 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
+- op : prod (reduce_prod)
+  backward : prod_grad (reduce_prod_grad)
+  inputs:
+    x : X
+  attrs:
+    { dims : dim,  keep_dim : keep_dim}
+  outputs:
+    out : Out
+  int_array:
+    axis :
+      data_type : int
+  extra :
+    attrs : [bool use_mkldnn = false]
+
 - op : put_along_axis
   backward : put_along_axis_grad
   inputs :
@@ -1133,28 +1233,8 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
-- op : reduce_max
-  backward : reduce_max_grad
-  extra :
-    attrs : [bool use_mkldnn = false]
-
-- op : reduce_mean
-  backward : reduce_mean_grad
-  extra :
-    attrs : [bool use_mkldnn = false]
-
 - op : reduce_min
   backward : reduce_min_grad
-  extra :
-    attrs : [bool use_mkldnn = false]
-
-- op : reduce_prod
-  backward : reduce_prod_grad
-  extra :
-    attrs : [bool use_mkldnn = false]
-
-- op : reduce_sum
-  backward : reduce_sum_grad
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -1186,6 +1266,20 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : reshape (reshape2)
+  backward : reshape_grad (reshape2_grad)
+  inputs:
+    x : X
+  outputs:
+    out : Out
+  int_array:
+    shape :
+      data_type : int
+      tensor_name : Shape
+      tensors_name : ShapeTensor
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool use_quantizer = false]
+
 - op : roll
   backward : roll_grad
   inputs :
@@ -1216,6 +1310,10 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : scale
+  inputs :
+    x : X
+  outputs :
+    out: Out
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -1437,9 +1535,27 @@
 
 - op : subtract (elementwise_sub)
   backward : subtract_grad (elementwise_sub_grad)
+  inputs :
+    {x : X, y: Y}
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+
+- op : sum (reduce_sum)
+  backward : (sum_grad) reduce_sum_grad
+  inputs:
+    {x : X}
+  attrs:
+    { axis : dim,  keepdim : keep_dim, dtype : out_dtype}
+  outputs:
+    out : Out
+  int_array:
+      axis :
+        data_type : int
+  extra :
+    attrs : [bool use_mkldnn = false]
 
 - op : svd
   backward : svd_grad

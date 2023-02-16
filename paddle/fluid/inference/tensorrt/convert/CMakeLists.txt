@@ -92,10 +92,12 @@ list(
   take_along_axis_op.cc
   logsigmoid_op.cc
   preln_layernorm_shift_partition_op.cc
+  trans_layernorm_op.cc
   merge_layernorm_op.cc
   skip_merge_layernorm_op.cc
   generic_and_custom_plugin_creater.cc
   fused_lookup_tables_op.cc
+  elementwiseadd_transpose_op.cc
   skip_groupnorm_act_op.cc
   preln_groupnorm_act_op.cc
   expand_v2_op.cc)
@@ -107,6 +109,11 @@ endif()
 
 if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
   list(APPEND CONVERT_FILES sparse_fc_op.cc sparse_multihead_matmul_op.cc)
+endif()
+
+if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8 AND ${TENSORRT_MINOR_VERSION}
+                                                 GREATER_EQUAL 2)
+  list(APPEND CONVERT_FILES set_value_op.cc)
 endif()
 
 nv_library(
