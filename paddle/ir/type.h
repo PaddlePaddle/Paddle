@@ -25,10 +25,6 @@ namespace ir {
 ///
 class Type {
  public:
-  template <typename ConcreteType, typename BaseType, typename StorageType>
-  using TypeBase =
-      ir::StorageUserBase<ConcreteType, BaseType, StorageType, ir::TypeUniquer>;
-
   using ImplType = TypeStorage;
 
   constexpr Type() = default;

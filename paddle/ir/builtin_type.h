@@ -21,16 +21,9 @@ namespace ir {
 /// \brief Interfaces for user-created built-in types. For example:
 /// Type fp32 = Float32Type::get(ctx);
 ///
-class Float32Type
-    : public ir::Type::TypeBase<Float32Type, ir::Type, ir::TypeStorage> {
+class Float32Type : public ir::Type {
  public:
-  using Base::Base;
-  static Float32Type get(ir::IrContext *context);
-};
-
-class Float32TypeBeta : public ir::Type {
- public:
-  // 可以通过宏定义自动生成的（Float32TypeBeta, TypeStorage）
+  // 可以通过宏定义自动生成的（Float32Type, TypeStorage）
   using Type::Type;  // 必须提供
 
   using ImplType = ir::TypeStorage;  // 必须指定ImplType
@@ -39,9 +32,7 @@ class Float32TypeBeta : public ir::Type {
     return static_cast<ImplType *>(this->impl_);
   }  // 必须提供
 
-  static TypeId type_id() {
-    return TypeId::get<Float32TypeBeta>();
-  }  // 必须提供
+  static TypeId type_id() { return TypeId::get<Float32Type>(); }  // 必须提供
 
   template <typename T>  // 必须提供
   static bool classof(T val) {
@@ -49,27 +40,12 @@ class Float32TypeBeta : public ir::Type {
   }
 
   template <typename... Args>  // 必须提供
-  static Float32TypeBeta create(IrContext *ctx, Args... args) {
-    return ir::TypeUniquer::template get<Float32TypeBeta>(ctx, args...);
+  static Float32Type create(IrContext *ctx, Args... args) {
+    return ir::TypeUniquer::template get<Float32Type>(ctx, args...);
   }
 
   // 手动提供的接口
-  static Float32TypeBeta get(ir::IrContext *context);
-};
-
-struct IntegerTypeStorage;
-class IntegerType
-    : public ir::Type::TypeBase<IntegerType, ir::Type, ir::IntegerTypeStorage> {
- public:
-  using Base::Base;
-
-  /// Integer representation maximal bitwidth.
-  /// Note: This is aligned with the maximum width of llvm::IntegerType.
-  static constexpr unsigned kMaxWidth = (1 << 24) - 1;
-
-  static IntegerType get(ir::IrContext *context,
-                         unsigned width,
-                         unsigned signedness = 0);
+  static Float32Type get(ir::IrContext *context);
 };
 
 struct IntegerTypeStorage : public TypeStorage {
@@ -99,6 +75,38 @@ struct IntegerTypeStorage : public TypeStorage {
   static std::size_t hash_combine(std::size_t lhs, std::size_t rhs) {
     return lhs ^= rhs + 0x9e3779b9 + (lhs << 6) + (lhs >> 2);
   }
+};
+
+class IntegerType : public ir::Type {
+ public:
+  // 可以通过宏定义自动生成的（IntegerType, TypeStorage）
+  using Type::Type;  // 必须提供
+
+  using ImplType = ir::IntegerTypeStorage;  // 必须指定ImplType
+
+  ImplType *impl() const {
+    return static_cast<ImplType *>(this->impl_);
+  }  // 必须提供
+
+  static TypeId type_id() { return TypeId::get<IntegerType>(); }  // 必须提供
+
+  template <typename T>  // 必须提供
+  static bool classof(T val) {
+    return val.type_id() == type_id();
+  }
+
+  template <typename... Args>  // 必须提供
+  static IntegerType create(IrContext *ctx, Args... args) {
+    return ir::TypeUniquer::template get<IntegerType>(ctx, args...);
+  }
+
+  /// Integer representation maximal bitwidth.
+  /// Note: This is aligned with the maximum width of llvm::IntegerType.
+  static constexpr unsigned kMaxWidth = (1 << 24) - 1;
+
+  static IntegerType get(ir::IrContext *context,
+                         unsigned width,
+                         unsigned signedness = 0);
 };
 
 }  // namespace ir

@@ -16,7 +16,6 @@
 
 #include "paddle/ir/ir_context.h"
 #include "paddle/ir/storage_uniquer.h"
-#include "paddle/ir/type_base.h"
 
 namespace ir {
 ///
