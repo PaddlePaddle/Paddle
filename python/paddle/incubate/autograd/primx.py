@@ -606,7 +606,6 @@ def _lower_composite(block, blacklist=[]):
             if lookup_fn(op.type) is not None and op.type not in blacklist:
                 change = True
                 op_name = op.type
-
                 prim_config["composite_ops_record"].add(op_name)
                 input_args = prepare_python_api_arguments(op)
                 bind(input_args, to_bind, value_table)
@@ -623,7 +622,6 @@ def _lower_composite(block, blacklist=[]):
                     orig_outs,
                     new_outs,
                 ):
-
                     if orig_out is None:
                         # to keep same as phi op defination, orig_out may receive None
                         continue
