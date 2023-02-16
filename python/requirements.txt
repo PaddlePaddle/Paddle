@@ -1,6 +1,6 @@
 requests>=2.20.0
 numpy>=1.13
-protobuf>=3.1.0 ; platform_system != "Windows"
+protobuf>=3.20.0 ; platform_system != "Windows"
 protobuf>=3.1.0, <=3.20.2 ; platform_system == "Windows"
 Pillow
 decorator
