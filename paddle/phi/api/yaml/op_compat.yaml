@@ -342,7 +342,7 @@
     axis : axis
   outputs :
     out : Out
-  Scalar:
+  scalar:
     axis:
       data_type : int
       tensor_name: AxisTensor
