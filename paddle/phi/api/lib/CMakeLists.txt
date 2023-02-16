@@ -107,9 +107,15 @@ set(phi_tensor_operants_header_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/tensor_operants.h)
 set(phi_tensor_operants_source_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/tensor_operants.cc)
+set(operants_manager_header_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/operants_manager.h)
+set(operants_manager_source_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/operants_manager.cc)
 set(operants_base_file_tmp ${operants_base_file}.tmp)
 set(phi_tensor_operants_header_file_tmp ${phi_tensor_operants_header_file}.tmp)
 set(phi_tensor_operants_source_file_tmp ${phi_tensor_operants_source_file}.tmp)
+set(operants_manager_header_file_tmp ${operants_manager_header_file}.tmp)
+set(operants_manager_source_file_tmp ${operants_manager_source_file}.tmp)
 
 if(NOT PYTHONINTERP_FOUND)
   find_package(PythonInterp REQUIRED)
@@ -239,13 +245,21 @@ add_custom_command(
     ${legacy_api_yaml_file} --operants_base_path ${operants_base_file_tmp}
     --phi_tensor_operants_header_path ${phi_tensor_operants_header_file_tmp}
     --phi_tensor_operants_source_path ${phi_tensor_operants_source_file_tmp}
+    --operants_manager_header_path ${operants_manager_header_file_tmp}
+    --operants_manager_source_path ${operants_manager_source_file_tmp}
     --api_prim_yaml_path ${api_prim_yaml_file}
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${operants_base_file_tmp}
+          ${operants_base_file}
   COMMAND
     ${CMAKE_COMMAND} -E copy_if_different ${phi_tensor_operants_header_file_tmp}
     ${phi_tensor_operants_header_file}
   COMMAND
     ${CMAKE_COMMAND} -E copy_if_different ${phi_tensor_operants_source_file_tmp}
     ${phi_tensor_operants_source_file}
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+          ${operants_manager_header_path_tmp} ${operants_manager_header_path}
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+          ${operants_manager_source_path_tmp} ${operants_manager_source_path}
   COMMENT
     "copy_if_different ${phi_tensor_operants_header_file} ${phi_tensor_operants_source_file}"
   DEPENDS ${api_yaml_file} ${legacy_api_yaml_file} ${tensor_gen_file}
