@@ -693,8 +693,7 @@ static void Interpolate1DCUDAFwd(
     }
     if (out_size) {
       DenseTensor sizes;
-      paddle::framework::TensorCopySync(
-          *out_size, paddle::platform::CPUPlace(), &sizes);
+      phi::Copy(dev_ctx, *out_size, phi::CPUPlace(), true, &sizes);
       auto size_data = sizes.data<int>();
       out_w = size_data[0];
     }
@@ -714,7 +713,7 @@ static void Interpolate1DCUDAFwd(
   auto output_data = dev_ctx.template Alloc<T>(output);
 
   if (in_w == out_w) {
-    paddle::framework::TensorCopy(input, dev_ctx.GetPlace(), output);
+    phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
     return;
   }
 
@@ -834,8 +833,8 @@ static void Interpolate2DCUDAFwd(
     }
     if (out_size) {
       DenseTensor sizes;
-      paddle::framework::TensorCopySync(
-          *out_size, paddle::platform::CPUPlace(), &sizes);
+      phi::Copy(dev_ctx, *out_size, phi::CPUPlace(), true, &sizes);
+
       auto size_data = sizes.data<int>();
       out_h = size_data[0];
       out_w = size_data[1];
@@ -862,7 +861,7 @@ static void Interpolate2DCUDAFwd(
   auto output_data = dev_ctx.template Alloc<T>(output);
 
   if (in_h == out_h && in_w == out_w) {
-    paddle::framework::TensorCopy(input, dev_ctx.GetPlace(), output);
+    phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
     return;
   }
 
@@ -1110,8 +1109,7 @@ static void Interpolate3DCUDAFwd(
     }
     if (out_size) {
       DenseTensor sizes;
-      paddle::framework::TensorCopySync(
-          *out_size, paddle::platform::CPUPlace(), &sizes);
+      phi::Copy(dev_ctx, *out_size, phi::CPUPlace(), true, &sizes);
       auto size_data = sizes.data<int>();
       out_d = size_data[0];
       out_h = size_data[1];
@@ -1144,7 +1142,7 @@ static void Interpolate3DCUDAFwd(
   auto output_data = dev_ctx.template Alloc<T>(output);
 
   if (in_d == out_d && in_h == out_h && in_w == out_w) {
-    paddle::framework::TensorCopy(input, dev_ctx.GetPlace(), output);
+    phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
     return;
   }
 

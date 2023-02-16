@@ -14,9 +14,9 @@
 
 #pragma once
 
+#include "paddle/phi/api/include/operants_base.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/macros.h"
-#include "paddle/phi/core/operants_base.h"
 
 namespace paddle {
 

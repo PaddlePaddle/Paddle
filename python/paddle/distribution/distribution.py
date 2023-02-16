@@ -200,7 +200,7 @@ class Distribution:
         for arg in numpy_args:
             arg_broadcasted, _ = np.broadcast_arrays(arg, tmp)
             arg_variable = paddle.tensor.create_tensor(dtype=dtype)
-            tensor.assign(arg_broadcasted, arg_variable)
+            paddle.assign(arg_broadcasted, arg_variable)
             variable_args.append(arg_variable)
 
         return tuple(variable_args)
@@ -235,7 +235,7 @@ class Distribution:
             warnings.warn(
                 "dtype of input 'value' needs to be the same as parameters of distribution class. dtype of 'value' will be converted."
             )
-            return tensor.cast(value, dtype=param.dtype)
+            return paddle.cast(value, dtype=param.dtype)
         return value
 
     def _probs_to_logits(self, probs, is_binary=False):

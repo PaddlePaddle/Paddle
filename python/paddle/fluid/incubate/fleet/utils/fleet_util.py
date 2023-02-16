@@ -63,7 +63,7 @@ class FleetUtil:
 
             fleet = fleet_pslib
         elif mode == "transpiler":
-            from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import (
+            from paddle.incubate.fleet.parameter_server.distribute_transpiler import (
                 fleet as fleet_transpiler,
             )
 
