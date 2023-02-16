@@ -32,6 +32,10 @@ void ReshapeInferKernel(const Context& dev_ctx,
                         DenseTensor* out) {
   MetaTensor meta_out(out);
   InferMetaFromVecValue(x, shape.GetData(), &meta_out);
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  out->inplace_version_counter_ = xx.inplace_version_counter_;
+  xx.can_not_uses.push_back(out->canNotUse);
+  out->can_not_uses.push_back(xx.canNotUse);
   if (x.initialized() && x.Holder() == out->Holder()) {
     dev_ctx.Alloc(out, x.dtype());
     return;

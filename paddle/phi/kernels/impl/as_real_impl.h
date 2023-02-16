@@ -39,6 +39,11 @@ void AsRealKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   out->Resize(out_dims_original);  // restored the shape.
   out->set_type(paddle::experimental::CppTypeToDataType<
                 typename T::value_type>::Type());  // restored the dtype.
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  out->inplace_version_counter_ = xx.inplace_version_counter_;
+
+  xx.can_not_uses.push_back(out->canNotUse);
+  out->can_not_uses.push_back(xx.canNotUse);
 }
 
 }  // namespace phi
