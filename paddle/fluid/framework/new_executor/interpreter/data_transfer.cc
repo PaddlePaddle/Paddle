@@ -485,7 +485,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                               argument_names.size(),
                               arguments->size()));
         for (size_t i = 0; i < arguments->size(); ++i) {
-          const std::string& var_name = argument_names[i];
+          const std::string var_name = argument_names[i];
           Variable* var = arguments->at(i);
 
           const phi::DenseTensor* tensor_in;
