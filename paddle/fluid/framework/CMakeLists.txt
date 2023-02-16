@@ -435,24 +435,28 @@ if(WITH_XPU)
     phi_utils
     SRCS phi_utils.cc
     DEPS lod_tensor
+         dense_tensor
          selected_rows_utils
          place
          phi
          var_type_traits
-         phi_api_utils
          op_info
-         xpu_op_list)
+         xpu_op_list
+         convert_utils
+         phi_api_utils)
 else()
   cc_library(
     phi_utils
     SRCS phi_utils.cc
     DEPS lod_tensor
+         dense_tensor
          selected_rows_utils
          place
          phi
          var_type_traits
-         phi_api_utils
-         op_info)
+         op_info
+         convert_utils
+         phi_api_utils)
 endif()
 
 if(WITH_XPU)
@@ -1158,7 +1162,7 @@ cc_library(
        place
        var_type_traits
        phi
-       phi_api_utils
+       phi_utils
        op_info
        shape_inference
        sparse_coo_tensor)

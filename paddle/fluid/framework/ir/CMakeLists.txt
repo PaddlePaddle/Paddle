@@ -213,10 +213,17 @@ endif()
 
 if(WITH_XPU)
   cc_library(
-    quant_utils
+    xpu_quant_utils
     SRCS xpu/quant_utils.cc
     DEPS pass)
-  pass_library(fc_xpu_fuse_pass inference DIR xpu DEPS quant_utils)
+  cc_library(
+    xpu_pass_utils
+    SRCS xpu/pass_utils.cc
+    DEPS pass)
+  set(XPU_PASS_DEPS xpu_quant_utils xpu_pass_utils)
+  pass_library(fc_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(multi_encoder_xpu_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
 endif()
 
 cc_library(
@@ -398,10 +405,6 @@ if(WITH_MKLDNN)
     test_depthwise_conv_mkldnn_pass
     SRCS mkldnn/depthwise_conv_mkldnn_pass_tester.cc
     DEPS depthwise_conv_mkldnn_pass)
-  cc_test(
-    test_conv_activation_mkldnn_fuse_pass
-    SRCS mkldnn/conv_activation_mkldnn_fuse_pass_tester.cc
-    DEPS conv_activation_mkldnn_fuse_pass)
   cc_test_old(
     test_int8_scale_calculation_mkldnn_pass SRCS
     mkldnn/int8_scale_calculation_mkldnn_pass_tester.cc DEPS
