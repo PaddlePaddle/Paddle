@@ -781,17 +781,17 @@ paddle.nn.TransformerDecoder.__init__ = layer_init_wrapper(_decoder_init)
 
 
 class PretrainingDataset(Dataset):
-    def __init__(self, input_file, max_pred_length):
-        self.input_file = input_file
+    inputs = [
+        np.random.randint(0, 30484, (88, 128)).astype('int32'),
+        np.random.randint(0, 2, (88, 128)).astype('int8'),
+        np.random.randint(0, 2, (88, 128)).astype('int8'),
+        np.random.randint(0, 127, (88, 20)).astype('int32'),
+        np.random.randint(0, 29393, (88, 20)).astype('int32'),
+        np.random.randint(0, 1, (88,)).astype('int8'),
+    ]
+
+    def __init__(self, max_pred_length):
         self.max_pred_length = max_pred_length
-        self.inputs = [
-            np.random.randint(0, 30484, (88, 128)).astype('int32'),
-            np.random.randint(0, 2, (88, 128)).astype('int8'),
-            np.random.randint(0, 2, (88, 128)).astype('int8'),
-            np.random.randint(0, 127, (88, 20)).astype('int32'),
-            np.random.randint(0, 29393, (88, 20)).astype('int32'),
-            np.random.randint(0, 1, (88,)).astype('int8'),
-        ]
 
     def __len__(self):
         "Denotes the total number of samples"
@@ -850,11 +850,9 @@ class PretrainingDataset(Dataset):
 
 
 def create_pretraining_dataset(
-    input_file, max_pred_length, shared_list, batch_size, worker_init
+    max_pred_length, shared_list, batch_size, worker_init
 ):
-    train_data = PretrainingDataset(
-        input_file=input_file, max_pred_length=max_pred_length
-    )
+    train_data = PretrainingDataset(max_pred_length=max_pred_length)
     # files have been sharded, no need to dispatch again
     train_batch_sampler = paddle.io.BatchSampler(
         train_data, batch_size=batch_size, shuffle=True
@@ -898,7 +896,7 @@ def create_pretraining_dataset(
         worker_init_fn=worker_init,
         return_list=True,
     )
-    return train_data_loader, input_file
+    return train_data_loader
 
 
 if __name__ == '__main__':
