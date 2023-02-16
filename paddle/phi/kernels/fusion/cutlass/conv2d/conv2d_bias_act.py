@@ -154,10 +154,11 @@ void ${cba_name}(ConvAllParams params) {
 
 # We should wrapper all op_name_with_sm_version into a function
 # like : wrapper conv2d_bias_silu_sm75,  conv2d_bias_silu_sm80,  conv2d_bias_silu_sm86 into conv2d_bias_silu for phi kernel
+# this function is invoked by phi kernel
 
 cba_for_phi = """
 void ${op_name}(ConvAllParams params) {
-    ${body}
+    ${dispatch_body}
 }
 """
 
@@ -207,10 +208,14 @@ epilogue_functors = [
     CbaAct.LinearCombinationRelu,
     CbaAct.LinearCombinationSilu,
 ]
-
+# now we only support these algorithms
+iterator_algorithms = [
+    IteratorAlgorithm.Optimized,
+    IteratorAlgorithm.Analytic,
+]
 
 # iterate over iterator_algorithms and tiles
-# cba_name is like conv2d_bias_silu_sm75, it's added at the end of kernel_signature
+# cba_name is like conv2d_bias_silu_sm75, it's added at the end of kernel_signature to make kernel function name unique
 def generate_conv_kernels(
     conv_kind,
     iterator_algorithms,
@@ -254,12 +259,7 @@ def generate_conv_kernels(
             all_kernel_code += SubstituteTemplate(cba_kernel, kernel_dict)
     return (all_kernel_code, all_kernel_names)
 
-
 def generate_sm75_1688():
-    iterator_algorithms = [
-        IteratorAlgorithm.Optimized,
-        IteratorAlgorithm.Analytic,
-    ]
     conv_kind = ConvKind.Fprop
     stride_kind = StrideSupport.Strided
     # alpha data type
@@ -295,7 +295,7 @@ def generate_sm75_1688():
         op_dict = {}
         op_dict["cba_name"] = UnderScoreName[epilogue_functor].lower() + "_sm75"
         op_dict["enum_op_name"] = UnderScoreName[epilogue_functor].upper()
-        # for a op, we record all its kernels into a std::vector
+        # for a op, we record all its kernels into a std::vector in C++ code
         all_kernel_names = ""
         for alignment in alignments:
             A = TensorDescription(DataType.f16, layout, alignment)
@@ -355,31 +355,32 @@ def generate_sm75_1688():
         sm75_code += SubstituteTemplate(cba_function, op_dict)
     return sm75_code
 
-
+# wrap different sm versions into a function
+# now only support sm75
 def generate_cba_for_phi():
     sm_versions = [
         "75",
     ]
     generated_code = ""
-    body_template = '''
+    dispatch_template = '''
     if (params.sm_version == ${sm_code})
     {
         ${op_name_with_sm}(params);
     }
     '''
     for epilogue_functor in epilogue_functors:
-        body = ""
+        dispatch_body = ""
         for sm_version in sm_versions:
-            tmp_dicts = {}
-            tmp_dicts["sm_code"] = sm_version
-            tmp_dicts["op_name_with_sm"] = (
+            sm_dicts = {}
+            sm_dicts["sm_code"] = sm_version
+            sm_dicts["op_name_with_sm"] = (
                 UnderScoreName[epilogue_functor].lower() + "_sm" + sm_version
             )
-            body += SubstituteTemplate(body_template, tmp_dicts)
-        outer_dicts = {}
-        outer_dicts["body"] = body
-        outer_dicts["op_name"] = CamelName[epilogue_functor]
-        generated_code += SubstituteTemplate(cba_for_phi, outer_dicts)
+            dispatch_body += SubstituteTemplate(dispatch_template, sm_dicts)
+        op_dicts = {}
+        op_dicts["dispatch_body"] = dispatch_body
+        op_dicts["op_name"] = CamelName[epilogue_functor]
+        generated_code += SubstituteTemplate(cba_for_phi, op_dicts)
     return generated_code
 
 
