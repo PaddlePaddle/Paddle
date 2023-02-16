@@ -41,33 +41,18 @@ class LayerNormOneDNNHandler
         fwd_prop_kind, x->mem_desc(), epsilon, flags);
   }
 
-  std::shared_ptr<dnnl::memory> AcquireScaleShiftMemory(
-      const phi::DenseTensor* scale,
-      const phi::DenseTensor* shift,
-      const framework::ExecutionContext& ctx) {
-    // OneDNN requires a single piece of memory for scale and shift data. During
-    // inference both pieces of memory are merged inside
-    // layer_norm_onednn_optimization_pass, but during training we have to
-    // manually copy them into new memory buffer
-    auto* scaleshift = ctx.Input<phi::DenseTensor>("ScaleShift");
-    if (scaleshift) {
-      return this->AcquireMemoryFromPrimitive(
-          this->fwd_pd_->weights_desc(),
-          phi::funcs::to_void_cast(scaleshift->data<float>()));
-    } else {
-      const unsigned int C = phi::vectorize(scale->dims())[0];
+  std::tuple<std::shared_ptr<dnnl::memory>, std::shared_ptr<dnnl::memory>>
+  AcquireScaleShiftMemory(const phi::DenseTensor* scale,
+                          const phi::DenseTensor* shift,
+                          const framework::ExecutionContext& ctx) {
+    auto scale_memory = this->AcquireMemoryFromPrimitive(
+        this->fwd_pd_->weights_desc(),
+        phi::funcs::to_void_cast<phi::DenseTensor>(scale));
+    auto shift_memory = this->AcquireMemoryFromPrimitive(
+        this->fwd_pd_->weights_desc(),
+        phi::funcs::to_void_cast<phi::DenseTensor>(shift));
 
-      auto scaleshift_memory =
-          this->AcquireMemoryFromPrimitive(this->fwd_pd_->weights_desc());
-
-      auto mem_data_handle =
-          reinterpret_cast<float*>(scaleshift_memory->get_data_handle());
-      std::copy(
-          scale->data<float>(), scale->data<float>() + C, mem_data_handle);
-      std::copy(
-          shift->data<float>(), shift->data<float>() + C, mem_data_handle + C);
-      return scaleshift_memory;
-    }
+    return std::make_tuple(scale_memory, shift_memory);
   }
 
   std::shared_ptr<dnnl::memory> AcquireMeanMemory(phi::DenseTensor* mean) {
@@ -114,7 +99,8 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     dnnl::normalization_flags flags{};
 
     if (with_scaleshift) {
-      flags |= dnnl::normalization_flags::use_scale_shift;
+      flags |= dnnl::normalization_flags::use_scale |
+               dnnl::normalization_flags::use_shift;
     }
 
     LayerNormOneDNNHandler<T> handler(
@@ -141,9 +127,9 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     }
 
     if (with_scaleshift) {
-      std::shared_ptr<dnnl::memory> scaleshift_memory =
-          handler.AcquireScaleShiftMemory(scale, bias, ctx);
-      args.insert({DNNL_ARG_SCALE_SHIFT, *scaleshift_memory});
+      auto scaleshift_mems = handler.AcquireScaleShiftMemory(scale, bias, ctx);
+      args.insert({DNNL_ARG_SCALE, *(std::get<0>(scaleshift_mems))});
+      args.insert({DNNL_ARG_SHIFT, *(std::get<1>(scaleshift_mems))});
     }
 
     layer_norm_p->execute(astream, args);
