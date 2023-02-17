@@ -1,4 +1,4 @@
-# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,8 +24,8 @@ from test_collective_base_xpu import (
 )
 
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid import core
+from paddle.framework import core
+from paddle.static import Executor, Program, data, program_guard
 
 paddle.enable_static()
 
@@ -40,13 +40,13 @@ class TestCollectiveSoftmaxWithCE(TestCollectiveRunnerBase):
         self.local_elements = int(self.num_class / self.nranks)
 
     def get_model(self, main_prog, startup_program, rank):
-        with fluid.program_guard(main_prog, startup_program):
-            logits = fluid.data(
+        with program_guard(main_prog, startup_program):
+            logits = data(
                 name="Logits",
                 shape=[self.batch_size, self.local_elements],
                 dtype='float32',
             )
-            label = fluid.data(
+            label = data(
                 name="Label", shape=[self.batch_size, 1], dtype='int32'
             )
             softmax = main_prog.current_block().create_var(
@@ -102,8 +102,8 @@ class TestCollectiveSoftmaxWithCE(TestCollectiveRunnerBase):
             return loss, softmax
 
     def run_trainer(self, args):
-        train_prog = fluid.Program()
-        startup_prog = fluid.Program()
+        train_prog = Program()
+        startup_prog = Program()
         endpoints = args["endpoints"].split(",")
         rank = args["trainerid"]
         current_endpoint = args["currentendpoint"]
@@ -113,8 +113,8 @@ class TestCollectiveSoftmaxWithCE(TestCollectiveRunnerBase):
         np_data_type = DataTypeCast(args["data_type"])
         loss, softmax = self.get_model(train_prog, startup_prog, rank)
         device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
-        place = fluid.XPUPlace(device_id)
-        exe = fluid.Executor(place)
+        place = paddle.XPUPlace(device_id)
+        exe = Executor(place)
         exe.run(startup_prog)
 
         # NOTE use uid here to assure that two xpus share the same label
