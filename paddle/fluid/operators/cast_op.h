@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/phi_utils.h"
-#include "paddle/fluid/platform/transform.h"
+#include "paddle/phi/common/transform.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 
 namespace paddle {
@@ -44,7 +44,7 @@ struct CastOpFunctor {
     auto numel = in_->numel();
     auto* in_end = in_begin + numel;
     auto* out_begin = out_->mutable_data<OutT>(ctx_.GetPlace());
-    platform::Transform<DeviceContext> trans;
+    phi::Transform<DeviceContext> trans;
     trans(
         ctx_, in_begin, in_end, out_begin, CastOpTransformFunctor<InT, OutT>());
   }
