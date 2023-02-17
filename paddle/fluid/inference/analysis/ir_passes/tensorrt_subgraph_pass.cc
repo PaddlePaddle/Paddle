@@ -308,7 +308,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   if (mark_output) {
     for (auto node : subgraph) {
       if (node->NodeType() == Node::Type::kOperation) {
-        // if(node->Op()->Type() == "reshape2") continue;
         if (node->Op()->Outputs().count("XShape")) continue;
         for (auto *x : node->outputs) {
           if (std::count(params.begin(), params.end(), x->Name()) > 0) continue;
