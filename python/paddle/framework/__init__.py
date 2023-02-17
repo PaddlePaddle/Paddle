@@ -32,17 +32,18 @@ from ..fluid.core import CustomPlace  # noqa: F401
 from ..fluid.core import VarBase  # noqa: F401
 
 from ..fluid import core  # noqa: F401
+from ..fluid.dygraph import base, layers, to_variable
 from ..fluid.dygraph.base import no_grad_ as no_grad  # noqa: F401
 from ..fluid.dygraph.base import grad  # noqa: F401
 from .io import save  # noqa: F401
 from .io import load  # noqa: F401
-from ..fluid.dygraph.parallel import DataParallel  # noqa: F401
 
 from ..fluid import monkey_patch_variable
 from ..fluid.dygraph import monkey_patch_math_varbase
 from ..fluid.framework import disable_signal_handler  # noqa: F401
 from ..fluid.framework import get_flags  # noqa: F401
 from ..fluid.framework import set_flags  # noqa: F401
+from ..fluid.framework import Parameter, ParamBase
 from ..fluid.dygraph.base import enable_dygraph as disable_static  # noqa: F401
 from ..fluid.dygraph.base import disable_dygraph as enable_static  # noqa: F401
 from ..fluid.framework import _non_static_mode as in_dynamic_mode  # noqa: F401
@@ -71,11 +72,6 @@ from ..fluid.framework import switch_main_program
 from ..fluid.framework import _set_expected_place  # noqa: F401
 from ..fluid.framework import Block, Program  # noqa: F401
 from ..fluid.framework import IrGraph  # noqa: F401
-from ..fluid.dygraph import parallel_helper  # noqa: F401
-from ..fluid.dygraph.parallel import (
-    _split_tensors,
-    build_groups,
-    sync_params_buffers,
-)
+
 
 __all__ = []
