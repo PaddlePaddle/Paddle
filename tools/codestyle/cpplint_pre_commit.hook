@@ -21,7 +21,8 @@ else
 fi
 # The trick to remove deleted files: https://stackoverflow.com/a/2413151
 for file in $files; do
-    if [[ $file =~ ^(patches/.*) ]]; then
+    echo $file
+    if [[ $file =~ ^(patches/.*) || $file =~ ^(paddle/fluid/operators/collective/thirdparty/json.h) ]]; then
         continue;
     else
         cpplint --filter=-readability/fn_size,-build/include_what_you_use,-build/c++11,-whitespace/parens $file;

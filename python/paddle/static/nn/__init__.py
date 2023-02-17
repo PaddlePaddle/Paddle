@@ -59,7 +59,9 @@ from ...fluid.layers.sequence_lod import sequence_scatter  # noqa: F401
 from ...fluid.layers.sequence_lod import sequence_enumerate  # noqa: F401
 from ...fluid.layers.sequence_lod import sequence_reverse  # noqa: F401
 
-__all__ = [  #noqa
+from .rpc_utils import rpc_call, rpc_result
+
+__all__ = [  # noqa
     'fc',
     'batch_norm',
     'embedding',
@@ -101,4 +103,6 @@ __all__ = [  #noqa
     'sequence_enumerate',
     'sequence_reverse',
     'StaticRNN',
+    'rpc_call',
+    'rpc_result',
 ]
