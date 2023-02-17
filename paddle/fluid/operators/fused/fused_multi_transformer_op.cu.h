@@ -24,9 +24,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/fused/attention_layer_norm.h"
 #include "paddle/fluid/operators/fused/attn_gemm.h"
+#include "paddle/fluid/operators/fused/cublaslt.h"
 #include "paddle/fluid/operators/fused/fmha_ref.h"
 #include "paddle/fluid/operators/fused/fused_dropout_helper.h"
-#include "paddle/fluid/operators/fused/fused_gemm_epilogue_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/dynload/cublasLt.h"
 #include "paddle/phi/api/include/tensor.h"
@@ -1615,36 +1615,36 @@ class CublasFusedMLP {
  public:
   // (m, n, k) = bsz_seq, hidden_feature, in_feature
   explicit CublasFusedMLP(const phi::GPUContext &dev_ctx) : dev_ctx_(dev_ctx) {
-    cudaDataType_t mat_type = CUDA_R_32F;
-    cudaDataType_t scale_type = CUDA_R_32F;
-    cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
+    // cudaDataType_t mat_type = CUDA_R_32F;
+    // cudaDataType_t scale_type = CUDA_R_32F;
+    // cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
     if (std::is_same<T, paddle::platform::float16>::value) {
-      mat_type = CUDA_R_16F;
+      mat_type_ = CUDA_R_16F;
       if (FLAGS_gemm_use_half_precision_compute_type) {
         // This option default value is true, it tends to result NaN, but get
         // better inference speed. you can turn off by using `export
         // FLAGS_gemm_use_half_precision_compute_type=0`.
-        compute_type = CUBLAS_COMPUTE_16F;
-        scale_type = CUDA_R_16F;
+        compute_type_ = CUBLAS_COMPUTE_16F;
+        scale_type_ = CUDA_R_16F;
       }
     }
     if (std::is_same<T, platform::bfloat16>::value) {
-      mat_type = CUDA_R_16BF;
+      mat_type_ = CUDA_R_16BF;
     }
     if (std::is_same<T, double>::value) {
-      mat_type = CUDA_R_64F;
-      scale_type = CUDA_R_64F;
-      compute_type = CUBLAS_COMPUTE_64F;
+      mat_type_ = CUDA_R_64F;
+      scale_type_ = CUDA_R_64F;
+      compute_type_ = CUBLAS_COMPUTE_64F;
     }
 
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescCreate(
-        &operation_desc_, compute_type, scale_type));
+        &operation_desc_, compute_type_, scale_type_));
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
-        &x_desc_, mat_type, 1, 1, 1));
+        &x_desc_, mat_type_, 1, 1, 1));
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
-        &w_desc_, mat_type, 1, 1, 1));
+        &w_desc_, mat_type_, 1, 1, 1));
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
-        &out_desc_, mat_type, 1, 1, 1));
+        &out_desc_, mat_type_, 1, 1, 1));
   }
   ~CublasFusedMLP() {
     PADDLE_ENFORCE_GPU_SUCCESS(
@@ -1664,6 +1664,9 @@ class CublasFusedMLP {
     int64_t M = trans_x ? x_shape[1] : x_shape[0];
     int64_t K = trans_w ? w_shape[1] : w_shape[0];
     int64_t N = trans_w ? w_shape[0] : w_shape[1];
+    M_ = M;
+    K_ = K;
+    N_ = N;
 
     cublasOperation_t cublas_transA = trans_x ? CUBLAS_OP_T : CUBLAS_OP_N;
     cublasOperation_t cublas_transB = trans_w ? CUBLAS_OP_T : CUBLAS_OP_N;
@@ -1748,19 +1751,44 @@ class CublasFusedMLP {
     const auto *x_data = x->data<T>();
     const auto *w_data = weight->data<T>();
 
-    auto algo = GemmEpilogueAlgoCache::Instance().GetGemmAlgo(lt_handle,
-                                                              operation_desc_,
-                                                              w_desc_,
-                                                              x_desc_,
-                                                              out_desc_,
-                                                              alpha,
-                                                              beta,
-                                                              w_data,
-                                                              x_data,
-                                                              out_data,
-                                                              stream,
-                                                              workspace->ptr(),
-                                                              workspace_size);
+    // TODO List
+    // auto algo = CublasLtAlgoCache::Instance().CublasLtAlgoSelect(lt_handle,
+    //                                                             operation_desc_,
+    //                                                             w_desc_,
+    //                                                             x_desc_,
+    //                                                             out_desc_,
+    //                                                             alpha,
+    //                                                             beta,
+    //                                                             w_data,
+    //                                                             x_data,
+    //                                                             out_data,
+    //                                                             stream,
+    //                                                             workspace->ptr(),
+    //                                                             workspace_size);
+
+    cublasLtMatmulAlgo_t *algo =
+        CublasLtAlgoCache::Instance().CublasLtAlgoSelect(lt_handle,
+                                                         ,
+                                                         M_,
+                                                         N_,
+                                                         K_,
+                                                         w_data,
+                                                         x_data,
+                                                         out_data,
+                                                         &alpha,
+                                                         &beta,
+                                                         operator_desc_,
+                                                         w_desc_,
+                                                         x_desc_,
+                                                         out_desc_,
+                                                         compute_type_,
+                                                         scale_type_,
+                                                         mat_type_,
+                                                         mat_type_,
+                                                         mat_type_,
+                                                         workspace->ptr(),
+                                                         workspace_size,
+                                                         stream);
 
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cublasLtMatmul(lt_handle,
@@ -1862,6 +1890,12 @@ class CublasFusedMLP {
   cublasLtMatrixLayout_t x_desc_ = NULL;
   cublasLtMatrixLayout_t w_desc_ = NULL;
   cublasLtMatrixLayout_t out_desc_ = NULL;
+  int64_t M_ = 0;
+  int64_t N_ = 0;
+  int64_t K_ = 0;
+  cudaDataType_t mat_type_ = CUDA_R_32F;
+  cudaDataType_t scale_type_ = CUDA_R_32F;
+  cublasComputeType_t compute_type_ = CUBLAS_COMPUTE_32F;
 };
 
 #endif  // PADDLE_FLUID_OPERATORS_FUSED_FUSED_MULTI_TRANSFORMER_OP_CU_H_
