@@ -217,25 +217,25 @@ class DatasetLoaderTestBase(unittest.TestCase):
                 self.check_batch_number(place=p, randomize_batch_num=True)
 
 
-# class QueueDatasetTestWithoutDropLast(DatasetLoaderTestBase):
-#     def setUp(self):
-#         self.dataset_name = "QueueDataset"
-#         self.drop_last = True
-#         self.temp_dir = tempfile.TemporaryDirectory()
+class QueueDatasetTestWithoutDropLast(DatasetLoaderTestBase):
+    def setUp(self):
+        self.dataset_name = "QueueDataset"
+        self.drop_last = True
+        self.temp_dir = tempfile.TemporaryDirectory()
 
 
-# class InMemoryDatasetTestWithoutDropLast(DatasetLoaderTestBase):
-#     def setUp(self):
-#         self.dataset_name = "InMemoryDataset"
-#         self.drop_last = False
-#         self.temp_dir = tempfile.TemporaryDirectory()
+class InMemoryDatasetTestWithoutDropLast(DatasetLoaderTestBase):
+    def setUp(self):
+        self.dataset_name = "InMemoryDataset"
+        self.drop_last = False
+        self.temp_dir = tempfile.TemporaryDirectory()
 
 
-# class InMemoryDatasetTestWithDropLast(DatasetLoaderTestBase):
-#     def setUp(self):
-#         self.dataset_name = "InMemoryDataset"
-#         self.drop_last = True
-#         self.temp_dir = tempfile.TemporaryDirectory()
+class InMemoryDatasetTestWithDropLast(DatasetLoaderTestBase):
+    def setUp(self):
+        self.dataset_name = "InMemoryDataset"
+        self.drop_last = True
+        self.temp_dir = tempfile.TemporaryDirectory()
 
 
 if __name__ == '__main__':
