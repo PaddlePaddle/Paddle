@@ -182,13 +182,13 @@ for API_FILE in ${API_FILES[*]}; do
           echo_line="test_checkout_api_compatible.py will be executed for changed checkout_api_compatible.py.\n"
           run_tools_test test_checkout_api_compatible.py
       elif [ "${API_FILE}" == "python/paddle/distributed/fleet/__init__.py" ]; then
-	      echo_line="You must have (fuyinno4 (Recommend), raindrops2sea) approval for ${API_FILE} changes"
+	      echo_line="You must have (fuyinno4 (Recommend), raindrops2sea) approval for ${API_FILE} changes.\n"
 	      check_approval 1 35824027 38231817
       elif [ "${API_FILE}" == "python/paddle/distributed/__init__.py" ]; then
-	      echo_line="You must have (fuyinno4 (Recommend), raindrops2sea) approval for ${API_FILE} changes"
+	      echo_line="You must have (fuyinno4 (Recommend), raindrops2sea) approval for ${API_FILE} changes.\n"
 	      check_approval 1 35824027 38231817
       elif [ "${API_FILE}" == "python/paddle/distributed/fleet/launch.py" ]; then
-	      echo_line="You must have (fuyinno4 (Recommend), raindrops2sea) approval for ${API_FILE} changes"
+	      echo_line="You must have (fuyinno4 (Recommend), raindrops2sea) approval for ${API_FILE} changes.\n"
 	      check_approval 1 35824027 38231817
       elif [ "${API_FILE}" == "paddle/scripts/paddle_build.bat" ] || [ "${API_FILE}" == "tools/windows/run_unittests.sh" ]; then
 	      echo_line="You must have one RD (zhouwei25 (Recommend), wanghuancoder, luotao1) approval for ${API_FILE} changes, which manages the Paddle CI task on Windows.\n"
