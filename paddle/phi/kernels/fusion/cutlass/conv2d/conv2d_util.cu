@@ -272,12 +272,13 @@ int ProfileToGetBestConfig(
     }
     // debug code
     std::cout << OpType2String(op_type) << ": tactic " << i << " has max diff "
-              << conv2d_diff_gpu(params, op_type) << "  " << elapsed_time  << std::endl 
+              << conv2d_diff_gpu(params, op_type) << "  " << elapsed_time
+              << std::endl
               << " compared with baseline.\n";
   }
-  
+
   std::cout << min_time_index << "  " << min_time << std::endl;
-  
+
   if (min_time_index < 0) {
     PADDLE_THROW(
         phi::errors::NotFound("Can't find any cutlass config for this %s op.",
