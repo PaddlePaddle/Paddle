@@ -8,7 +8,7 @@ ch.setFormatter(formatter)
 logger.addHandler(ch)
 
 import paddle
-from paddle.distributed.fleet.meta_optimizer.common import OP_ROLE_KEY
+from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY
 
 _supported_optimizer_type = [
     "adam", "adamax", "adamw", "decayed_adagrad", "momentum", "dgc_momentum",
@@ -30,13 +30,13 @@ def tensor_parallel_sync_filter_fn(param, pos_emb = True, layer_norm = True, bia
     NOTE  adopting the param name pattern for different transformer blocks.
     """
     p_name = param.name
-    if pos_emb and p_name.startsiwth("pos_embedding"):
+    if pos_emb and p_name.startswith("pos_embedding"):
         return True
 
-    elif layer_norm and p_name.endsiwth("_layer_norm_bias"): 
+    elif layer_norm and p_name.endswith("_layer_norm_bias"): 
         return True
 
-    elif layer_norm and p_name.endsiwth("_layer_norm_scale"): 
+    elif layer_norm and p_name.endswith("_layer_norm_scale"): 
         return True
 
     elif bias and ".b_" in p_name and (param.is_distributed is False) : 
@@ -85,6 +85,7 @@ def copy_parameters(block_, params):
 def insert_sync_op(
     block, 
     idx, 
+    tp_degree,
     sync_mode,
     sync_ring_id, 
     src_rank, 
@@ -98,7 +99,7 @@ def insert_sync_op(
             inputs={'X': varname},
             outputs={'Out': varname},
             attrs={
-                'ring_id': sync_ring_id，,
+                'ring_id': sync_ring_id,
                 'root': src_rank,
                 'use_calc_stream':True,
                 OP_ROLE_KEY: op_role
@@ -111,7 +112,7 @@ def insert_sync_op(
             inputs={'X': varname},
             outputs={'Out': varname},
             attrs={
-                'scale': 1.0 / 8, # NOTE we assume the tensor parallel degree = 8
+                'scale': 1.0 / tp_degree, 
                 OP_ROLE_KEY: op_role
             })
         block._insert_op_without_sync(
@@ -120,7 +121,7 @@ def insert_sync_op(
             inputs={'X': varname},
             outputs={'Out': varname},
             attrs={
-                'ring_id': sync_ring_id，,
+                'ring_id': sync_ring_id,
                 'use_calc_stream':True,
                 OP_ROLE_KEY: op_role
             })       
@@ -130,7 +131,8 @@ def insert_sync_op(
 
 def insert_synchronization(
     block, 
-    params_to_sync, 
+    params_to_sync,
+    tp_degree, 
     sync_ring_id,
     sync_param, 
     sync_grad, 
@@ -154,34 +156,35 @@ def insert_synchronization(
 
                 # Param sync after opt 
                 if sync_param:
-                    assert "ParamOut" in op.output_names() and op.output("ParamOut")[0] == param_name
-                    insert_sync_op(block, idx + 1, sync_mode, sync_ring_id, src_rank, param_name, op_role)
+                    assert "ParamOut" in op.output_names and op.output("ParamOut")[0] == param_name
+                    insert_sync_op(block, idx + 1, tp_degree, sync_mode, sync_ring_id, src_rank, param_name, op_role)
 
-                    if "MasterParamOut" in op.output_names() and len(op.output("MasterParamOut")) == 1: 
+                    if "MasterParamOut" in op.output_names and len(op.output("MasterParamOut")) == 1: 
                         sync_var = op.output("MasterParamOut")[0]
-                        insert_sync_op(block, idx + 1, sync_mode, sync_ring_id, src_rank, sync_var, op_role)
+                        insert_sync_op(block, idx + 1, tp_degree, sync_mode, sync_ring_id, src_rank, sync_var, op_role)
 
                 # Moment sync after opt      
                 if sync_moment:
-                    if "Moment1Out" in op.output_names() and len(op.output("Moment1Out")) == 1: 
+                    if "Moment1Out" in op.output_names and len(op.output("Moment1Out")) == 1: 
                         sync_var = op.output("Moment1Out")[0]
-                        insert_sync_op(block, idx + 1, sync_mode, sync_ring_id, src_rank, sync_var, op_role)
+                        insert_sync_op(block, idx + 1, tp_degree, sync_mode, sync_ring_id, src_rank, sync_var, op_role)
 
-                    if "Moment2Out" in op.output_names() and len(op.output("Moment2Out")) == 1: 
+                    if "Moment2Out" in op.output_names and len(op.output("Moment2Out")) == 1: 
                         sync_var = op.output("Moment2Out")[0]
-                        insert_sync_op(block, idx + 1, sync_mode, sync_ring_id, src_rank, sync_var, op_role)
+                        insert_sync_op(block, idx + 1, tp_degree, sync_mode, sync_ring_id, src_rank, sync_var, op_role)
 
                 # Grad sync before opt     
                 if sync_grad:
-                    assert "Grad" in op.input_names() and len(op.input("Grad")) == 1: 
+                    assert "Grad" in op.input_names and len(op.input("Grad")) == 1
                     sync_var = op.input("Grad")[0]
-                    insert_sync_op(block, idx, sync_mode, sync_ring_id, src_rank, sync_var, op_role)
+                    insert_sync_op(block, idx, tp_degree, sync_mode, sync_ring_id, src_rank, sync_var, op_role)
 
     assert len(unsync_param_names) == 0, "The following param is unsync by some error: {}".format(unsync_param_names) 
 
 def add_extra_synchronization(
         program, 
         params_filter_fn = tensor_parallel_sync_filter_fn, 
+        tp_degree = 8,
         sync_mode = "broadcast", 
         sync_param = True,
         sync_grad = False,
@@ -211,7 +214,12 @@ def add_extra_synchronization(
     """
 
     logger.info("Constructing Extra Parameter Synchronization.")
-    logger.info("Synchronization mode: {}".format(sync_mode))
+    logger.info("Tensor Parallel Degree: {}, Synchronization mode: {}".format(tp_degree, sync_mode))
+
+    # adopt for pipeline opt
+    if program._pipeline_opt is not None:
+        assert program._pipeline_opt['section_program']  is not None, "Pipeline is enable but section_program is None"
+        program = program._pipeline_opt['section_program']
 
     # step1: collect the param that need to be sync
     params_to_sync = []
@@ -232,7 +240,6 @@ def add_extra_synchronization(
     # step3: insert synchronization
     # TODO support gradient merge with different update block
     block = program.global_block()
-    insert_synchronization(block, params_to_sync, sync_ring_id, sync_param, sync_grad, sync_moment, sync_mode, src_rank)\
+    insert_synchronization(block, params_to_sync, tp_degree, sync_ring_id, sync_param, sync_grad, sync_moment, sync_mode, src_rank)
 
-    return program
     
