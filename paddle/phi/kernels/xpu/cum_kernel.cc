@@ -77,7 +77,7 @@ void CumsumKernel(const Context& dev_ctx,
                                   reinterpret_cast<const XPUType*>(x.data<T>()),
                                   cast_input_fp32,
                                   x.numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cumsum");
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
     // cumsum in fp32
     r = xpu::cumsum<float>(dev_ctx.x_context(),
                            cast_input_fp32,
@@ -92,7 +92,7 @@ void CumsumKernel(const Context& dev_ctx,
                                   temp_result_fp32,
                                   reinterpret_cast<XPUType*>(out->data<T>()),
                                   x.numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cumsum");
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
   } else {
     // template<typename T> DLL_EXPORT int cumsum(Context* ctx, const T* x, T*
     // y, const std::vector<int>& xshape, bool reverse, bool exclusive, int
