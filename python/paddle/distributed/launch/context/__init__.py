@@ -42,7 +42,7 @@ class Context:
     def print(self):
         self.logger.info("-----------  Configuration  ----------------------")
         for arg, value in sorted(vars(self.args).items()):
-            self.logger.info("%s: %s" % (arg, value))
+            self.logger.info(f"{arg}: {value}")
         self.logger.info("--------------------------------------------------")
 
     def is_legacy_mode(self):
@@ -54,7 +54,7 @@ class Context:
 
         if len(self.unknown_args) > 0:
             self.logger.warning(
-                "Compatible mode enable with args {}".format(self.unknown_args)
+                f"Compatible mode enable with args {self.unknown_args}"
             )
             return True
 

@@ -106,9 +106,7 @@ class AutoPallelPassTestBase(DistPassTestBase):
                     fetch_values = exe.run(main_prog, fetch_list=outputs)
                     if paddle.distributed.get_rank() == 0:
                         output_dict = OrderedDict(zip(outputs, fetch_values))
-                        print(
-                            'batch {}, outputs {}'.format(batch_id, output_dict)
-                        )
+                        print(f'batch {batch_id}, outputs {output_dict}')
                     all_fetch_values.append(fetch_values)
                     batch_id += 1
                 except paddle.fluid.core.EOFException:

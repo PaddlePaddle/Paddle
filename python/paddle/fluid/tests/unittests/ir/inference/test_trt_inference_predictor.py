@@ -55,7 +55,7 @@ def getdtype(dtype="float32"):
 
 class BackendPaddle:
     def __init__(self):
-        super(BackendPaddle, self).__init__()
+        super().__init__()
         self.h2d_time = []
         self.compute_time = []
         self.d2h_time = []
@@ -341,7 +341,7 @@ class ConvBNLayer(paddle.nn.Layer):
 
 class Test(nn.Layer):
     def __init__(self):
-        super(Test, self).__init__()
+        super().__init__()
         self.conv = ConvBNLayer(
             num_channels=3, num_filters=64, filter_size=3, stride=2, act='relu'
         )

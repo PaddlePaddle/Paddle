@@ -45,7 +45,7 @@ from ..auto_parallel.utils import is_backward_op, is_forward_op, is_loss_op
 world_process_group = get_world_process_group()
 
 
-class BF16State(object):
+class BF16State:
     def __init__(self, block):
         self._block: Block = block
         self._op_bf16_dict = {}
@@ -527,7 +527,7 @@ def _update_backward_cast_ops(params_grads, dist_context):
 
             op_idx = find_op_index(main_block.desc, op.desc)
             if op_idx == -1:
-                raise ValueError("The op {0} is not in program".format(op))
+                raise ValueError(f"The op {op} is not in program")
             main_block._remove_op(op_idx, sync=False)
 
     main_block._sync_with_cpp()

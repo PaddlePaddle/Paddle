@@ -265,7 +265,7 @@ def test_return_nested(x):
 
 class TestReturnBase(unittest.TestCase):
     def setUp(self):
-        self.input = np.ones((1)).astype('int32')
+        self.input = np.ones(1).astype('int32')
         self.place = (
             fluid.CUDAPlace(0)
             if fluid.is_compiled_with_cuda()

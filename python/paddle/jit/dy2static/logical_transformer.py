@@ -59,7 +59,7 @@ class LogicalTransformer(BaseTransformer):
         self.generic_visit(node)
         if isinstance(node.op, gast.Not):
             arg = ast_to_source_code(node.operand)
-            new_node_str = "_jst.Not({})".format(arg)
+            new_node_str = f"_jst.Not({arg})"
             # NOTE: gast.parse returns Module(body=[expr(value=...)])
             new_node = gast.parse(new_node_str).body[0].value
             return new_node

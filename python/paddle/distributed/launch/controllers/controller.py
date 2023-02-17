@@ -57,7 +57,7 @@ class ControllerBase:
 
         assert len(self.pod.containers) > 0, "No container in the pod"
 
-        self.ctx.logger.info("Run {}".format(self.pod))
+        self.ctx.logger.info(f"Run {self.pod}")
         self.ctx.logger.debug(self.pod.containers[0])
 
         self.ctx.status.run()
@@ -77,7 +77,7 @@ class ControllerBase:
         '''
         # TODO(kuizhiqing) unify ctx.status and master status
 
-        self.ctx.logger.info("Watching {}".format(self.pod))
+        self.ctx.logger.info(f"Watching {self.pod}")
 
         while not self.ctx.status.is_done():
             status = self.pod.watch(timeout=2)
@@ -95,7 +95,7 @@ class ControllerBase:
                 while self.pod.logs():
                     pass
 
-                self.ctx.logger.info("Pod {}".format(status))
+                self.ctx.logger.info(f"Pod {status}")
                 return True
 
             # self failure
@@ -106,8 +106,8 @@ class ControllerBase:
                 self.master.restart_peer()
 
                 fc = self.pod.failed_container()
-                self.ctx.logger.info("Pod {}".format(status))
-                self.ctx.logger.error("Container failed !!!\n{}".format(fc[0]))
+                self.ctx.logger.info(f"Pod {status}")
+                self.ctx.logger.error(f"Container failed !!!\n{fc[0]}")
                 self.ctx.logger.info(
                     "------------------------- ERROR LOG DETAIL -------------------------"
                 )
@@ -140,7 +140,7 @@ class ControllerBase:
         self.pod.join()
         self.master.stop()
 
-        self.ctx.logger.info("Exit code {}".format(self.pod.exit_code))
+        self.ctx.logger.info(f"Exit code {self.pod.exit_code}")
         sys.exit(self.pod.exit_code)
 
     def signal_handler(self, sigint, frame):
@@ -149,12 +149,12 @@ class ControllerBase:
             self.pod.stop(timeout=10)
             sys.exit(sigint)
 
-        self.ctx.logger.info("Terminating with signal {}".format(sigint))
+        self.ctx.logger.info(f"Terminating with signal {sigint}")
 
         self.sigint = sigint
         self.ctx.status.done()
         self.stop(sigint=sigint)
-        self.ctx.logger.info("Exit with signal {}".format(sigint))
+        self.ctx.logger.info(f"Exit with signal {sigint}")
         sys.exit(sigint)
 
 
@@ -244,11 +244,11 @@ class Controller(ControllerBase):
 
         f = os.path.join(
             self.ctx.args.log_dir,
-            '{}.{}.log'.format(self.job.id, self.pod.name),
+            f'{self.job.id}.{self.pod.name}.log',
         )
         try:
             os.makedirs(os.path.dirname(f), exist_ok=True)
             with open(f, 'a+') as fd:
                 fd.write(str(info))
         except Exception as e:
-            self.ctx.logger.error("save log failed because {}".format(e))
+            self.ctx.logger.error(f"save log failed because {e}")

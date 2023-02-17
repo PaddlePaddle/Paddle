@@ -99,7 +99,7 @@ class TestStrideSliceOp(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(set(['Input']), 'Out', check_eager=True)
+        self.check_grad({'Input'}, 'Out', check_eager=True)
 
     def initTestCase(self):
         self.input = np.random.rand(100)
@@ -323,7 +323,7 @@ class TestStridedSliceOp_starts_ListTensor(OpTest):
         starts_tensor = []
         for index, ele in enumerate(self.starts):
             starts_tensor.append(
-                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                ("x" + str(index), np.ones(1).astype('int32') * ele)
             )
 
         self.inputs = {'Input': self.input, 'StartsTensorList': starts_tensor}
@@ -364,7 +364,7 @@ class TestStridedSliceOp_ends_ListTensor(OpTest):
         ends_tensor = []
         for index, ele in enumerate(self.ends):
             ends_tensor.append(
-                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                ("x" + str(index), np.ones(1).astype('int32') * ele)
             )
 
         self.inputs = {'Input': self.input, 'EndsTensorList': ends_tensor}
@@ -473,7 +473,7 @@ class TestStridedSliceOp_listTensor_Tensor(OpTest):
         ends_tensor = []
         for index, ele in enumerate(self.ends):
             ends_tensor.append(
-                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                ("x" + str(index), np.ones(1).astype('int32') * ele)
             )
         self.op_type = "strided_slice"
 
@@ -715,14 +715,14 @@ class TestStridedSliceTensorArray(unittest.TestCase):
 
             self.assertTrue(
                 self.grad_equal(g, g2[i]),
-                msg="gradient_1:\n{} \ngradient_2:\n{}".format(g, g2),
+                msg=f"gradient_1:\n{g} \ngradient_2:\n{g2}",
             )
 
     def is_grads_equal_zeros(self, grads):
         for g in grads:
             self.assertTrue(
                 self.grad_equal(np.zeros_like(g), g),
-                msg="The gradient should be zeros, but received \n{}".format(g),
+                msg=f"The gradient should be zeros, but received \n{g}",
             )
 
     def create_case(self, net):

@@ -300,7 +300,7 @@ class While:
         check_variable_and_dtype(cond, 'cond', ['bool'], 'static.nn.While')
         if reduce(lambda a, b: a * b, cond.shape, 1) != 1:
             raise TypeError(
-                "condition expected shape as [1], but given shape as {0}.".format(
+                "condition expected shape as [1], but given shape as {}.".format(
                     list(cond.shape)
                 )
             )
@@ -839,7 +839,7 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
             if not callable(fn):
                 raise TypeError(
                     _error_message(
-                        "The type of function for key {}".format(key),
+                        f"The type of function for key {key}",
                         "branch_fns",
                         "switch_case",
                         "callable",

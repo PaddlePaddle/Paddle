@@ -27,7 +27,7 @@ paddle.enable_static()
 
 class SimpleNet(nn.Layer):
     def __init__(self):
-        super(SimpleNet, self).__init__()
+        super().__init__()
         self.conv1 = nn.Conv2D(
             in_channels=4,
             out_channels=4,

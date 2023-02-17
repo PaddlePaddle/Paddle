@@ -160,7 +160,7 @@ def create_test_cudnn_class(parent):
                 np.float32 if core.is_compiled_with_rocm() else np.float64
             )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CUDNN")
+    cls_name = "{}_{}".format(parent.__name__, "CUDNN")
     TestCUDNNCase.__name__ = cls_name
     globals()[cls_name] = TestCUDNNCase
 
@@ -184,17 +184,17 @@ def create_test_cudnn_fp16_class(parent, grad_check=True):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and grad_check:
                 self.check_grad_with_place(
-                    place, ['Input'], 'Output', no_grad_set=set(['Filter'])
+                    place, ['Input'], 'Output', no_grad_set={'Filter'}
                 )
 
         def test_check_grad_no_input(self):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and grad_check:
                 self.check_grad_with_place(
-                    place, ['Filter'], 'Output', no_grad_set=set(['Input'])
+                    place, ['Filter'], 'Output', no_grad_set={'Input'}
                 )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CUDNNFp16")
+    cls_name = "{}_{}".format(parent.__name__, "CUDNNFp16")
     TestConv2DCUDNNFp16.__name__ = cls_name
     globals()[cls_name] = TestConv2DCUDNNFp16
 
@@ -232,7 +232,7 @@ def create_test_cudnn_bf16_class(parent):
                 place,
                 ['Input'],
                 'Output',
-                no_grad_set=set(['Filter']),
+                no_grad_set={'Filter'},
                 user_defined_grads=[numeric_grads],
             )
 
@@ -243,11 +243,11 @@ def create_test_cudnn_bf16_class(parent):
                 place,
                 ['Filter'],
                 'Output',
-                no_grad_set=set(['Input']),
+                no_grad_set={'Input'},
                 user_defined_grads=[numeric_grads],
             )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CUDNNBF16")
+    cls_name = "{}_{}".format(parent.__name__, "CUDNNBF16")
     TestConv2DCUDNNBF16.__name__ = cls_name
     globals()[cls_name] = TestConv2DCUDNNBF16
 
@@ -261,7 +261,7 @@ def create_test_channel_last_class(parent):
             N, C, H, W = self.input_size
             self.input_size = [N, H, W, C]
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ChannelLast")
+    cls_name = "{}_{}".format(parent.__name__, "ChannelLast")
     TestChannelLastCase.__name__ = cls_name
     globals()[cls_name] = TestChannelLastCase
 
@@ -284,7 +284,7 @@ def create_test_cudnn_channel_last_class(parent):
             N, C, H, W = self.input_size
             self.input_size = [N, H, W, C]
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CudnnChannelLast")
+    cls_name = "{}_{}".format(parent.__name__, "CudnnChannelLast")
     TestCudnnChannelLastCase.__name__ = cls_name
     globals()[cls_name] = TestCudnnChannelLastCase
 
@@ -308,14 +308,14 @@ def create_test_cudnn_channel_last_fp16_class(parent, grad_check=True):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and grad_check:
                 self.check_grad_with_place(
-                    place, ['Input'], 'Output', no_grad_set=set(['Filter'])
+                    place, ['Input'], 'Output', no_grad_set={'Filter'}
                 )
 
         def test_check_grad_no_input(self):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and grad_check:
                 self.check_grad_with_place(
-                    place, ['Filter'], 'Output', no_grad_set=set(['Input'])
+                    place, ['Filter'], 'Output', no_grad_set={'Input'}
                 )
 
         def init_data_format(self):
@@ -325,7 +325,7 @@ def create_test_cudnn_channel_last_fp16_class(parent, grad_check=True):
             N, C, H, W = self.input_size
             self.input_size = [N, H, W, C]
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CudnnChannelLastFp16")
+    cls_name = "{}_{}".format(parent.__name__, "CudnnChannelLastFp16")
     TestCudnnChannelLastFp16.__name__ = cls_name
     globals()[cls_name] = TestCudnnChannelLastFp16
 
@@ -336,7 +336,7 @@ def create_test_padding_SAME_class(parent):
             self.pad = [0, 0]
             self.padding_algorithm = "SAME"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "PaddingSAMEOp")
+    cls_name = "{}_{}".format(parent.__name__, "PaddingSAMEOp")
     TestPaddingSMAECase.__name__ = cls_name
     globals()[cls_name] = TestPaddingSMAECase
 
@@ -347,7 +347,7 @@ def create_test_padding_VALID_class(parent):
             self.pad = [1, 1]
             self.padding_algorithm = "VALID"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "PaddingVALIDOp")
+    cls_name = "{}_{}".format(parent.__name__, "PaddingVALIDOp")
     TestPaddingVALIDCase.__name__ = cls_name
     globals()[cls_name] = TestPaddingVALIDCase
 
@@ -367,7 +367,7 @@ def create_test_cudnn_padding_SAME_class(parent):
             self.pad = [1, 1]
             self.padding_algorithm = "SAME"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CudnnPaddingSAMEOp")
+    cls_name = "{}_{}".format(parent.__name__, "CudnnPaddingSAMEOp")
     TestCUDNNPaddingSMAECase.__name__ = cls_name
     globals()[cls_name] = TestCUDNNPaddingSMAECase
 
@@ -387,7 +387,7 @@ def create_test_cudnn_padding_VALID_class(parent):
             self.pad = [1, 1]
             self.padding_algorithm = "VALID"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "CudnnPaddingVALIDOp")
+    cls_name = "{}_{}".format(parent.__name__, "CudnnPaddingVALIDOp")
     TestCUDNNPaddingVALIDCase.__name__ = cls_name
     globals()[cls_name] = TestCUDNNPaddingVALIDCase
 
@@ -507,7 +507,7 @@ class TestConv2DOp(OpTest):
             ['Input'],
             'Output',
             max_relative_error=0.02,
-            no_grad_set=set(['Filter']),
+            no_grad_set={'Filter'},
             check_dygraph=(not self.use_mkldnn),
         )
 
@@ -522,7 +522,7 @@ class TestConv2DOp(OpTest):
             place,
             ['Filter'],
             'Output',
-            no_grad_set=set(['Input']),
+            no_grad_set={'Input'},
             check_dygraph=(not self.use_mkldnn),
         )
 
@@ -827,7 +827,7 @@ class TestConv2DOp_v2(OpTest):
             ['Input'],
             'Output',
             max_relative_error=0.02,
-            no_grad_set=set(['Filter']),
+            no_grad_set={'Filter'},
             check_dygraph=(not self.use_mkldnn),
         )
 
@@ -840,7 +840,7 @@ class TestConv2DOp_v2(OpTest):
             place,
             ['Filter'],
             'Output',
-            no_grad_set=set(['Input']),
+            no_grad_set={'Input'},
             check_dygraph=(not self.use_mkldnn),
         )
 

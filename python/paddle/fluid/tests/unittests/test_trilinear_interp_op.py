@@ -528,7 +528,7 @@ class TestTrilinearInterpOp_attr_tensor(OpTest):
             size_tensor = []
             for index, ele in enumerate(self.out_size):
                 size_tensor.append(
-                    ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                    ("x" + str(index), np.ones(1).astype('int32') * ele)
                 )
             self.inputs['SizeTensor'] = size_tensor
 

@@ -174,7 +174,7 @@ class TestPSMinimize(unittest.TestCase):
         """
         gen sparse config
         """
-        sparse_config = dict()
+        sparse_config = {}
         # sparse_config['sparse_table_class'] = "DownpourSparseSSDTable"
         sparse_config['sparse_table_class'] = "DownpourSparseTable"
         sparse_config['sparse_compress_in_save'] = True
@@ -248,7 +248,7 @@ class TestPSMinimize(unittest.TestCase):
         strategy.a_sync_configs = configs
         strategy.a_sync = True
 
-        sparse_config = dict()
+        sparse_config = {}
         sparse_config['embedding'] = self.gen_sparse_config()
         strategy.fleet_desc_configs = sparse_config
 

@@ -109,9 +109,9 @@ def create_test_int8_class(parent):
             self.x1_shape = [2, 3, 5, 6]
             self.x2_shape = [2, 3, 5, 7]
 
-    cls_name_1 = "{0}_axis_{1}".format(parent.__name__, "1")
-    cls_name_2 = "{0}_axis_{1}".format(parent.__name__, "2")
-    cls_name_3 = "{0}_axis_{1}".format(parent.__name__, "3")
+    cls_name_1 = "{}_axis_{}".format(parent.__name__, "1")
+    cls_name_2 = "{}_axis_{}".format(parent.__name__, "2")
+    cls_name_3 = "{}_axis_{}".format(parent.__name__, "3")
     TestAxis1Case.__name__ = cls_name_1
     TestAxis2Case.__name__ = cls_name_2
     TestAxis3Case.__name__ = cls_name_3

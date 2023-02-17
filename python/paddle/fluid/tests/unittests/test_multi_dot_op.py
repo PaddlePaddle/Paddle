@@ -104,7 +104,7 @@ class TestMultiDotOp4Mat(TestMultiDotOp):
 
 class TestMultiDotOpFirst1D(TestMultiDotOp):
     def get_inputs_and_outputs(self):
-        self.A = np.random.random((4)).astype(self.dtype)
+        self.A = np.random.random(4).astype(self.dtype)
         self.B = np.random.random((4, 3)).astype(self.dtype)
         self.inputs = {'X': [('x0', self.A), ('x1', self.B)]}
         self.outputs = {'Out': multi_dot([self.A, self.B])}
@@ -112,7 +112,7 @@ class TestMultiDotOpFirst1D(TestMultiDotOp):
 
 class TestMultiDotOp3MatFirst1D(TestMultiDotOp3Mat):
     def get_inputs_and_outputs(self):
-        self.A = np.random.random((4)).astype(self.dtype)
+        self.A = np.random.random(4).astype(self.dtype)
         self.B = np.random.random((4, 3)).astype(self.dtype)
         self.C = np.random.random((3, 3)).astype(self.dtype)
         self.inputs = {'X': [('x0', self.A), ('x1', self.B), ('x2', self.C)]}
@@ -121,7 +121,7 @@ class TestMultiDotOp3MatFirst1D(TestMultiDotOp3Mat):
 
 class TestMultiDotOp4MatFirst1D(TestMultiDotOp4Mat):
     def get_inputs_and_outputs(self):
-        self.A = np.random.random((4)).astype(self.dtype)
+        self.A = np.random.random(4).astype(self.dtype)
         self.B = np.random.random((4, 3)).astype(self.dtype)
         self.C = np.random.random((3, 4)).astype(self.dtype)
         self.D = np.random.random((4, 5)).astype(self.dtype)
@@ -139,7 +139,7 @@ class TestMultiDotOp4MatFirst1D(TestMultiDotOp4Mat):
 class TestMultiDotOpLast1D(TestMultiDotOp):
     def get_inputs_and_outputs(self):
         self.A = np.random.random((3, 6)).astype(self.dtype)
-        self.B = np.random.random((6)).astype(self.dtype)
+        self.B = np.random.random(6).astype(self.dtype)
         self.inputs = {'X': [('x0', self.A), ('x1', self.B)]}
         self.outputs = {'Out': multi_dot([self.A, self.B])}
 
@@ -148,7 +148,7 @@ class TestMultiDotOp3MatLast1D(TestMultiDotOp3Mat):
     def get_inputs_and_outputs(self):
         self.A = np.random.random((2, 4)).astype(self.dtype)
         self.B = np.random.random((4, 3)).astype(self.dtype)
-        self.C = np.random.random((3)).astype(self.dtype)
+        self.C = np.random.random(3).astype(self.dtype)
         self.inputs = {'X': [('x0', self.A), ('x1', self.B), ('x2', self.C)]}
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C])}
 
@@ -163,7 +163,7 @@ class TestMultiDotOp4MatLast1D(TestMultiDotOp4Mat):
         self.A = np.random.random((2, 3)).astype(self.dtype)
         self.B = np.random.random((3, 2)).astype(self.dtype)
         self.C = np.random.random((2, 3)).astype(self.dtype)
-        self.D = np.random.random((3)).astype(self.dtype)
+        self.D = np.random.random(3).astype(self.dtype)
         self.inputs = {
             'X': [
                 ('x0', self.A),
@@ -178,7 +178,7 @@ class TestMultiDotOp4MatLast1D(TestMultiDotOp4Mat):
 class TestMultiDotOpFirstAndLast1D(TestMultiDotOp):
     def get_inputs_and_outputs(self):
         self.A = np.random.random((4,)).astype(self.dtype)
-        self.B = np.random.random((4)).astype(self.dtype)
+        self.B = np.random.random(4).astype(self.dtype)
         self.inputs = {'X': [('x0', self.A), ('x1', self.B)]}
         self.outputs = {'Out': multi_dot([self.A, self.B])}
 
@@ -187,7 +187,7 @@ class TestMultiDotOp3MatFirstAndLast1D(TestMultiDotOp3Mat):
     def get_inputs_and_outputs(self):
         self.A = np.random.random((6,)).astype(self.dtype)
         self.B = np.random.random((6, 4)).astype(self.dtype)
-        self.C = np.random.random((4)).astype(self.dtype)
+        self.C = np.random.random(4).astype(self.dtype)
         self.inputs = {'X': [('x0', self.A), ('x1', self.B), ('x2', self.C)]}
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C])}
 
@@ -197,7 +197,7 @@ class TestMultiDotOp4MatFirstAndLast1D(TestMultiDotOp4Mat):
         self.A = np.random.random((3,)).astype(self.dtype)
         self.B = np.random.random((3, 4)).astype(self.dtype)
         self.C = np.random.random((4, 2)).astype(self.dtype)
-        self.D = np.random.random((2)).astype(self.dtype)
+        self.D = np.random.random(2).astype(self.dtype)
         self.inputs = {
             'X': [
                 ('x0', self.A),

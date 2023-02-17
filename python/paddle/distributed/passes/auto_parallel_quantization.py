@@ -76,7 +76,7 @@ class QuantizationPass(PassBase):
         )
 
         # 0. record the relation among blocks
-        parent_idx_dict = dict()
+        parent_idx_dict = {}
         for block in main_program.blocks:
             parent_idx_dict[block.idx] = block.parent_idx
 

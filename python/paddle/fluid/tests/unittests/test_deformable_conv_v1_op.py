@@ -203,7 +203,7 @@ class TestModulatedDeformableConvOp(OpTest):
             ['Input', 'Offset'],
             'Output',
             max_relative_error=0.1,
-            no_grad_set=set(['Filter']),
+            no_grad_set={'Filter'},
             check_eager=True,
         )
 

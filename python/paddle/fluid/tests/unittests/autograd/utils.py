@@ -60,9 +60,9 @@ def _compute_numerical_jacobian(func, xs, delta, np_dtype):
     ys = list(as_tensors(func(*xs)))
     fin_size = len(xs)
     fout_size = len(ys)
-    jacobian = list([] for _ in range(fout_size))
+    jacobian = [[] for _ in range(fout_size)]
     for i in range(fout_size):
-        jac_i = list([] for _ in range(fin_size))
+        jac_i = [[] for _ in range(fin_size)]
         for j in range(fin_size):
             jac_i[j] = np.zeros(
                 (_product(ys[i].shape), _product(xs[j].shape)), dtype=np_dtype
@@ -94,9 +94,9 @@ def _compute_numerical_hessian(func, xs, delta, np_dtype):
     xs = list(as_tensors(xs))
     ys = list(as_tensors(func(*xs)))
     fin_size = len(xs)
-    hessian = list([] for _ in range(fin_size))
+    hessian = [[] for _ in range(fin_size)]
     for i in range(fin_size):
-        hessian_i = list([] for _ in range(fin_size))
+        hessian_i = [[] for _ in range(fin_size)]
         for j in range(fin_size):
             hessian_i[j] = np.zeros(
                 (_product(xs[i].shape), _product(xs[j].shape)), dtype=np_dtype

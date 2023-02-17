@@ -23,12 +23,12 @@ __all__ = []
 
 
 def create_undefined_var(name):
-    func_code = "{} = _jst.UndefinedVar('{}')".format(name, name)
+    func_code = f"{name} = _jst.UndefinedVar('{name}')"
     return gast.parse(func_code).body[0]
 
 
 def create_fill_constant_node(name, value=0):
-    func_code = "{} = paddle.full(shape=[1], ".format(name)
+    func_code = f"{name} = paddle.full(shape=[1], "
     if isinstance(value, bool):
         func_code += "dtype='bool', fill_value={}, name='{}')".format(
             value, name
@@ -82,5 +82,5 @@ def create_bool_node(name, value):
     Create a assign stmt for name = value .
     '''
     assert isinstance(value, bool)
-    node = "{} = {}".format(name, value)
+    node = f"{name} = {value}"
     return gast.parse(node).body[0]

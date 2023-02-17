@@ -35,7 +35,7 @@ class TestStack2DOneDNNOp(OpTest):
     def getInputNames(self):
         input_names = []
         for i in range(self.num_inputs):
-            input_names.append('x{}'.format(i))
+            input_names.append(f'x{i}')
         return input_names
 
     def setUp(self):

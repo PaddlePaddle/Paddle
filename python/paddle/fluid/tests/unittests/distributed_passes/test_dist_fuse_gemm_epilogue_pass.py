@@ -37,7 +37,7 @@ def verify_op_count(op_types, op_name, target_count):
 
 class MultiFCLayer(nn.Layer):
     def __init__(self, hidden, Activation):
-        super(MultiFCLayer, self).__init__()
+        super().__init__()
         self.linear1 = paddle.nn.Linear(hidden, 4 * hidden)
         self.linear2 = paddle.nn.Linear(4 * hidden, hidden)
         self.linear3 = paddle.nn.Linear(hidden, hidden)

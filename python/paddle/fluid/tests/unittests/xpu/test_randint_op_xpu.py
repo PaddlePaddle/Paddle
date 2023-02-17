@@ -35,7 +35,7 @@ def output_hist(out):
     hist, _ = np.histogram(out, range=(-10, 10))
     hist = hist.astype("float32")
     hist /= float(out.size)
-    prob = 0.1 * np.ones((10))
+    prob = 0.1 * np.ones(10)
     return hist, prob
 
 

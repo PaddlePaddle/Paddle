@@ -50,7 +50,7 @@ class SimpleRNNCell(LayerMixin):
         else:
             self.nonlinearity = lambda x: np.maximum(x, 0.0)
 
-        self.parameters = dict()
+        self.parameters = {}
         std = 1.0 / math.sqrt(hidden_size)
         self.weight_ih = np.random.uniform(
             -std, std, (hidden_size, input_size)
@@ -96,7 +96,7 @@ class GRUCell(LayerMixin):
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.bias = bias
-        self.parameters = dict()
+        self.parameters = {}
         std = 1.0 / math.sqrt(hidden_size)
         self.weight_ih = np.random.uniform(
             -std, std, (3 * hidden_size, input_size)
@@ -148,7 +148,7 @@ class LSTMCell(LayerMixin):
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.bias = bias
-        self.parameters = dict()
+        self.parameters = {}
         std = 1.0 / math.sqrt(hidden_size)
         self.weight_ih = np.random.uniform(
             -std, std, (4 * hidden_size, input_size)

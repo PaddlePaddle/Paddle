@@ -29,7 +29,7 @@ file = '{}\\custom_tensor_operator\\custom_tensor_operator.pyd'.format(
     get_build_directory()
 )
 if os.name == 'nt' and os.path.isfile(file):
-    cmd = 'del {}'.format(file)
+    cmd = f'del {file}'
     run_cmd(cmd, True)
 
 

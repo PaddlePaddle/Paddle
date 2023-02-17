@@ -71,7 +71,7 @@ class TestImperativeNamedParameters(unittest.TestCase):
             model = paddle.nn.Sequential(fc1, fc2, custom)
 
             named_parameters = list(model.named_parameters())
-            expected_named_parameters = list()
+            expected_named_parameters = []
             for prefix, layer in model.named_sublayers():
                 for name, param in layer.named_parameters(
                     include_sublayers=False

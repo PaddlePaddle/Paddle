@@ -212,7 +212,7 @@ class TestOptimizer(unittest.TestCase):
                         with fluid.program_guard(main_program, init_program):
                             # reset optimizer._accumulators to avoid duplicate name in loop.
                             self.optimizer._accumulators = defaultdict(
-                                lambda: dict()
+                                lambda: {}
                             )
                             test_net = self.NetClass(
                                 self.optimizer, param_lr, y_no_grad

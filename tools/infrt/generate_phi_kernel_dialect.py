@@ -160,7 +160,7 @@ def generate_results_info(output_info):
         output_args_ += " DenseTensor<\"{}\",\"{}\",\"{}\">:$out{},".format(
             target_.strip(), precision_.strip(), layout_.strip(), str(index)
         )
-    return "{});".format(output_args_[:-1])
+    return f"{output_args_[:-1]});"
 
 
 def generate_supported_kernel_list(load_dict):
@@ -211,7 +211,7 @@ def scan_kernel_info(load_dict):
 def generate_cpu_kernel_dialect(op_name, kernel_alias_, kernel_info):
 
     alias, class_name = generate_kernel_name(op_name, kernel_alias_)
-    summary = 'let summary = "{name}";'.format(name=alias)
+    summary = f'let summary = "{alias}";'
     dialect_name = alias.split(".")
     dialect_name = (
         dialect_name[0] + "." + dialect_name[2] + "." + dialect_name[3]
@@ -241,7 +241,7 @@ def generate_cpu_kernel_dialect(op_name, kernel_alias_, kernel_info):
 def generate_gpu_kernel_dialect(op_name, kernel_alias_, kernel_info):
 
     alias, class_name = generate_kernel_name(op_name, kernel_alias_)
-    summary = 'let summary = "{name}";'.format(name=alias)
+    summary = f'let summary = "{alias}";'
     dialect_name = alias.split(".")
     dialect_name = (
         dialect_name[0] + "." + dialect_name[2] + "." + dialect_name[3]

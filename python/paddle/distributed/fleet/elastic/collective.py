@@ -49,7 +49,7 @@ class CollectiveLauncher(LauncherInterface):
         )
 
         for idx, proc in enumerate(self.procs):
-            logger.info("launch proc_id:{} idx:{}".format(proc.proc.pid, idx))
+            logger.info(f"launch proc_id:{proc.proc.pid} idx:{idx}")
 
     def stop(self):
         logger.info("collective lauchner stop ...")

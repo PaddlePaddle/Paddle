@@ -78,7 +78,7 @@ def shard_tensor(x, process_mesh=None, shard_spec=None):
         ), "Specify the process mesh argument or use ProcessMesh context manager first."
     assert isinstance(
         shard_spec, list
-    ), "Argument shard_spec {} is not an instance of list".format(shard_spec)
+    ), f"Argument shard_spec {shard_spec} is not an instance of list"
     dist_tensor = DistributedTensor(x)
     serial_tensor = dist_tensor.serial_tensor
     dist_tensor.dist_attr.process_mesh = process_mesh

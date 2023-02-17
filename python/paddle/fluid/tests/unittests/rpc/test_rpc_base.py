@@ -25,7 +25,7 @@ import paddle.distributed as dist
 
 
 def worker_name(rank):
-    return "worker{}".format(rank)
+    return f"worker{rank}"
 
 
 def run_rpc_sync(
@@ -143,7 +143,7 @@ class RpcTestBase(unittest.TestCase):
     def run_rpc(self, sync, world_size, fn, fn_args=None, fn_kwargs=None):
         self.processes = []
         queues = []
-        master_endpoint = "127.0.0.1:{}".format(self._find_free_port())
+        master_endpoint = f"127.0.0.1:{self._find_free_port()}"
         for rank in range(world_size):
             q = Queue()
             queues.append(q)
@@ -229,7 +229,7 @@ class RpcLaunchTestBase(unittest.TestCase):
         os.remove("rpc_launch_data2.npy")
 
     def launch_rpc(self, nnodes, nproc_per_node, model_file):
-        master_endpoint = "127.0.0.1:{}".format(self._find_free_port())
+        master_endpoint = f"127.0.0.1:{self._find_free_port()}"
         log_dir = "log"
         tr_cmd = "python -m paddle.distributed.launch --master {} --rank {} --nnodes {} --nproc_per_node {} --run_mode rpc {} --log_dir {}"
         cmds = [

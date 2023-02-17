@@ -48,7 +48,7 @@ UNK_IDX = 2
 
 def __read_to_dict(tar_file, dict_size):
     def __to_dict(fd, size):
-        out_dict = dict()
+        out_dict = {}
         for line_count, line in enumerate(fd):
             if line_count < size:
                 out_dict[line.strip().decode()] = line_count

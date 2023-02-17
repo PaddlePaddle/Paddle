@@ -1011,7 +1011,7 @@ class XPUTestSoftReluOP(XPUOpTestWrapper):
             t = np.copy(x)
             t[t < -threshold] = -threshold
             t[t > threshold] = threshold
-            out = np.log((np.exp(t) + 1))
+            out = np.log(np.exp(t) + 1)
 
             self.inputs = {'X': x}
             self.outputs = {'Out': out}

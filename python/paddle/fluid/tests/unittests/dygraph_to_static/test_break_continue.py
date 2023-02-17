@@ -204,7 +204,7 @@ def test_optim_break_in_while(x):
 
 class TestContinueInFor(unittest.TestCase):
     def setUp(self):
-        self.input = np.zeros((1)).astype('int64')
+        self.input = np.zeros(1).astype('int64')
         self.place = (
             fluid.CUDAPlace(0)
             if fluid.is_compiled_with_cuda()

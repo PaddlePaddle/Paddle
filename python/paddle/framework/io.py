@@ -88,7 +88,7 @@ def _load_state_dict_from_save_inference_model(model_path, config):
         )
 
         # 3. construct state_dict
-        load_param_dict = dict()
+        load_param_dict = {}
         for var_name in persistable_var_dict:
             load_param_dict[var_name] = persistable_var_dict[var_name].numpy()
 
@@ -98,7 +98,7 @@ def _load_state_dict_from_save_inference_model(model_path, config):
         if os.path.exists(var_info_path):
             with open(var_info_path, 'rb') as f:
                 extra_var_info = pickle.load(f)
-            structured_para_dict = dict()
+            structured_para_dict = {}
             for var_name in load_param_dict:
                 structured_name = extra_var_info[var_name].get(
                     'structured_name', None
@@ -142,7 +142,7 @@ def _load_state_dict_from_save_params(model_path):
             load_var_list.append(new_var)
 
     # 3. construct state_dict
-    load_param_dict = dict()
+    load_param_dict = {}
     for var in load_var_list:
         load_param_dict[var.name] = var.numpy()
 
@@ -171,9 +171,9 @@ def _build_load_path_and_config(path, config):
     directory_format_exist = os.path.isdir(path)
     if prefix_format_exist and directory_format_exist:
         raise ValueError(
-            "The %s.pdmodel and %s directory exist at the same time, "
+            "The {}.pdmodel and {} directory exist at the same time, "
             "don't know which one to load, please make sure that the specified target "
-            "of ``path`` is unique." % (path, path)
+            "of ``path`` is unique.".format(path, path)
         )
     elif not prefix_format_exist and not directory_format_exist:
         error_msg = "The ``path`` (%s) to load model not exists."
@@ -270,7 +270,7 @@ def _pickle_save(obj, f, protocol):
 
     if protocol < 2 or protocol > 4:
         raise ValueError(
-            "Expected 1<'protocol'<5, but received protocol={}".format(protocol)
+            f"Expected 1<'protocol'<5, but received protocol={protocol}"
         )
 
     def reduce_varbase(self):
@@ -289,7 +289,7 @@ def _pickle_save(obj, f, protocol):
             "paddle do not support saving `paddle.nn.Layer` object."
         )
 
-    dispatch_table_layer = dict()
+    dispatch_table_layer = {}
 
     def create_layer_dispatch_table(layer):
         dispatch_table_layer[layer.__class__] = reduce_Layer
@@ -839,7 +839,7 @@ def _legacy_save(obj, path, protocol=2):
 
     if protocol < 2 or protocol > 4:
         raise ValueError(
-            "Expected 1<'protocol'<5, but received protocol={}".format(protocol)
+            f"Expected 1<'protocol'<5, but received protocol={protocol}"
         )
 
     if _is_file_path(path):

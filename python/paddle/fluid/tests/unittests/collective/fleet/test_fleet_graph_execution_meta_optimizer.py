@@ -36,7 +36,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
         port_b = self._dist_ut_port_1
         node_a = {
             "PADDLE_TRAINER_ID": "0",
-            "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:{}".format(port_a),
+            "PADDLE_CURRENT_ENDPOINT": f"127.0.0.1:{port_a}",
             "PADDLE_TRAINERS_NUM": "2",
             "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:{},127.0.0.1:{}".format(
                 port_a, port_b
@@ -47,7 +47,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
 
         node_b = {
             "PADDLE_TRAINER_ID": "1",
-            "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:{}".format(port_b),
+            "PADDLE_CURRENT_ENDPOINT": f"127.0.0.1:{port_b}",
             "PADDLE_TRAINERS_NUM": "2",
             "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:{},127.0.0.1:{}".format(
                 port_a, port_b
@@ -100,7 +100,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
 
         node_a = {
             "PADDLE_TRAINER_ID": "0",
-            "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:{}".format(port_a),
+            "PADDLE_CURRENT_ENDPOINT": f"127.0.0.1:{port_a}",
             "PADDLE_TRAINERS_NUM": "2",
             "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:{},127.0.0.1:{}".format(
                 port_a, port_b
@@ -111,7 +111,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
 
         node_b = {
             "PADDLE_TRAINER_ID": "1",
-            "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:{}".format(port_b),
+            "PADDLE_CURRENT_ENDPOINT": f"127.0.0.1:{port_b}",
             "PADDLE_TRAINERS_NUM": "2",
             "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:{},127.0.0.1:{}".format(
                 port_a, port_b
@@ -163,7 +163,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
 
             for i in range(10):
                 cost_val = exe.run(feed=gen_data(), fetch_list=[avg_cost.name])
-                print("cost of step[{}] = {}".format(i, cost_val))
+                print(f"cost of step[{i}] = {cost_val}")
 
         proc_a = launch_func(node_func, node_a)
         proc_a.start()
@@ -176,7 +176,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
         port_b = self._dist_ut_port_1 + 4
         node_a = {
             "PADDLE_TRAINER_ID": "0",
-            "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:{}".format(port_a),
+            "PADDLE_CURRENT_ENDPOINT": f"127.0.0.1:{port_a}",
             "PADDLE_TRAINERS_NUM": "2",
             "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:{},127.0.0.1:{}".format(
                 port_a, port_b
@@ -187,7 +187,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
 
         node_b = {
             "PADDLE_TRAINER_ID": "1",
-            "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:{}".format(port_b),
+            "PADDLE_CURRENT_ENDPOINT": f"127.0.0.1:{port_b}",
             "PADDLE_TRAINERS_NUM": "2",
             "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:{},127.0.0.1:{}".format(
                 port_a, port_b
@@ -239,7 +239,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
         port_b = self._dist_ut_port_1 + 6
         node_a = {
             "PADDLE_TRAINER_ID": "0",
-            "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:{}".format(port_a),
+            "PADDLE_CURRENT_ENDPOINT": f"127.0.0.1:{port_a}",
             "PADDLE_TRAINERS_NUM": "2",
             "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:{},127.0.0.1:{}".format(
                 port_a, port_b
@@ -250,7 +250,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
 
         node_b = {
             "PADDLE_TRAINER_ID": "1",
-            "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:{}".format(port_b),
+            "PADDLE_CURRENT_ENDPOINT": f"127.0.0.1:{port_b}",
             "PADDLE_TRAINERS_NUM": "2",
             "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:{},127.0.0.1:{}".format(
                 port_a, port_b
@@ -302,7 +302,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
 
             for i in range(10):
                 cost_val = exe.run(feed=gen_data(), fetch_list=[avg_cost.name])
-                print("cost of step[{}] = {}".format(i, cost_val))
+                print(f"cost of step[{i}] = {cost_val}")
 
         proc_a = launch_func(node_func, node_a)
         proc_a.start()

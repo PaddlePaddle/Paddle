@@ -140,7 +140,7 @@ def _generate_unique_var_name(prefix):
 
 
 def _append_loaded_suffix_to_var(program_desc):
-    suffix_varname_dict = dict()
+    suffix_varname_dict = {}
     persistable_vars = _get_persistable_vars(program_desc)
     for var_desc in persistable_vars:
         old_name = var_desc.name()
@@ -163,7 +163,7 @@ def _generate_unique_var_name_sync_with_main_program(prefix):
 
 
 def _get_loaded_var_new_old(program_desc, all_new_old_dict_all):
-    new_old_dict = dict()
+    new_old_dict = {}
     persistable_vars = _get_persistable_vars(program_desc)
     for var_desc in persistable_vars:
         name_new = var_desc.name()
@@ -192,8 +192,8 @@ def _rename_var_program_desc(program_desc, include=None, exclude=None):
         dict_rename_var_new_old is a dict mapping from new name to old name
         dict_rename_var_old_new is a dict mapping from old name to new name
     """
-    dict_rename_var_old_new = dict()
-    dict_rename_var_new_old = dict()
+    dict_rename_var_old_new = {}
+    dict_rename_var_new_old = {}
     old_names = []
     # Store all old names
     for b_idx in range(program_desc.num_blocks()):
@@ -520,9 +520,7 @@ class _ProgramHolder:
         with framework.program_guard(program):
             for i, out in enumerate(self._output_descs):
                 var = program.global_block().var(out.name())
-                var = paddle.scale(
-                    var, 1.0, name="translated_layer/scale_{}".format(i)
-                )
+                var = paddle.scale(var, 1.0, name=f"translated_layer/scale_{i}")
                 scale_output_vars.append(var)
         # 2. update output names & descs
         for i, var in enumerate(scale_output_vars):
@@ -721,7 +719,7 @@ def _load_persistable_vars(
         extra_var_info = pickle.load(f)
 
     # 2. construct var dict
-    load_var_dict = dict()
+    load_var_dict = {}
     load_var_list = []
     inv_suffix_varname_dict = {
         value: key for key, value in program_holder._suffix_varname_dict.items()
@@ -788,7 +786,7 @@ def _load_persistable_vars(
 
 # NOTE(chenweihang): to adapt paddle.load to get state_dict
 def _remove_varname_suffix(var_dict, program_holder):
-    no_suffix_var_dict = dict()
+    no_suffix_var_dict = {}
     for var_name in var_dict:
         no_suffix_name = program_holder._suffix_varname_dict[var_name]
         no_suffix_var_dict[no_suffix_name] = var_dict[var_name]
@@ -797,7 +795,7 @@ def _remove_varname_suffix(var_dict, program_holder):
 
 def _construct_program_holders(model_path, model_filename=None):
     # make sure the path has been checked
-    program_holder_dict = dict()
+    program_holder_dict = {}
 
     if model_filename is not None:
         # [compatible] if assign model_filename, only can load one program as Layer.forward
@@ -876,7 +874,7 @@ def _construct_params_and_buffers(
             )
     elif params_filename is not None and not os.path.exists(params_path):
         # When saving XX, there is only '*.pdmodel'
-        return dict()
+        return {}
     else:
         var_dict = _load_persistable_vars_by_program(
             model_path, programs['forward'], params_filename
@@ -1054,7 +1052,7 @@ def _run_dygraph(instance, input, program_holder):
         tmp_scope_vec,
         _valid_vars(double_grad_vars),
         None,
-        *attrs
+        *attrs,
     )
 
     # NOTE: [ why need set param's gradient type here ]
@@ -1217,7 +1215,7 @@ def _get_output_from_program(
     """
     Get output name of 'program' according to program_holder
     """
-    outs = list()
+    outs = []
     for var in program_holder.output_descs:
         for idx in range(program.num_blocks):
             vars = program.block(idx).vars
@@ -1453,7 +1451,7 @@ class TranslatedLayer(layers.Layer):
         # in the form of `self.**.**``, but the ParamBase or BarBase
         # name contains `.` originally, such as `linear_0.w_0`, so here
         # need to generate new var name for each var
-        self._persistable_var_name_dict = dict()
+        self._persistable_var_name_dict = {}
         # the TranslatedLayer object holded var names count started from 0
         with unique_name.guard():
             for name, var in persistable_vars.items():

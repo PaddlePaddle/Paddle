@@ -61,7 +61,7 @@ class TestInferNoNeedBufferSlots(unittest.TestCase):
                     core.infer_no_need_buffer_slots(
                         op.type, inputs, outputs, attrs
                     ),
-                    set([]),
+                    set(),
                 )
             elif idx == 1:
                 # fill constant op
@@ -69,7 +69,7 @@ class TestInferNoNeedBufferSlots(unittest.TestCase):
                     core.infer_no_need_buffer_slots(
                         op.type, inputs, outputs, attrs
                     ),
-                    set([]),
+                    set(),
                 )
             else:
                 # elementwise_add_grad op
@@ -77,7 +77,7 @@ class TestInferNoNeedBufferSlots(unittest.TestCase):
                     core.infer_no_need_buffer_slots(
                         op.type, inputs, outputs, attrs
                     ),
-                    set(['Y', 'X']),
+                    {'Y', 'X'},
                 )
 
 

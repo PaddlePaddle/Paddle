@@ -60,7 +60,7 @@ class TestTopkOp(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(set(['X']), 'Out', check_eager=True)
+        self.check_grad({'X'}, 'Out', check_eager=True)
 
 
 class TestTopkOp1(TestTopkOp):

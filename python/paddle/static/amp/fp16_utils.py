@@ -599,7 +599,7 @@ def cast_parameters_to_fp16(place, program, scope=None, to_fp16_var_names=None):
     var_scope = scope if scope else global_scope()
     for param in all_parameters:
         if param.name in fp16_var_names:
-            _logger.debug("---- cast {} to fp16 dtype ----".format(param.name))
+            _logger.debug(f"---- cast {param.name} to fp16 dtype ----")
             param_t = var_scope.find_var(param.name).get_tensor()
             data = np.array(param_t)
             param_t.set(np.float16(data), place)
@@ -780,6 +780,6 @@ def update_role_var_grad(main_prog, params_grads):
             block.ops.append(new_op)
             op_idx = find_op_index(block.desc, op.desc)
             if op_idx == -1:
-                raise ValueError("The op {0} is not in program".format(op))
+                raise ValueError(f"The op {op} is not in program")
             block._remove_op(op_idx, sync=False)
     block._sync_with_cpp()

@@ -28,7 +28,7 @@ exclude = [
     "./python/paddle/fluid/tests/unittests/mlu/**",
 ]
 select = ["UP", "C40"]
-ignore = ["UP015"]
+ignore = ["UP015", "UP030"]
 target-version = "py37"
 
 [tool.ruff.per-file-ignores]

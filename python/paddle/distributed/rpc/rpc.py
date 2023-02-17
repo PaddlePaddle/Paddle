@@ -67,7 +67,7 @@ def _gen_endpoint():
     node = Node()
     ip = node.get_host_ip()
     free_port = node.get_free_port()
-    return "{}:{}".format(ip, free_port)
+    return f"{ip}:{free_port}"
 
 
 def init_rpc(name, rank=None, world_size=None, master_endpoint=None):
@@ -103,7 +103,7 @@ def init_rpc(name, rank=None, world_size=None, master_endpoint=None):
     worker_endpoint = os.getenv("PADDLE_WORKER_ENDPOINT", None)
     if worker_endpoint is None:
         worker_endpoint = _gen_endpoint()
-    logger.info("Trainer {}: worker endpoint: {}".format(rank, worker_endpoint))
+    logger.info(f"Trainer {rank}: worker endpoint: {worker_endpoint}")
     master_endpoint = (
         master_endpoint
         if master_endpoint is not None
@@ -135,7 +135,7 @@ def init_rpc(name, rank=None, world_size=None, master_endpoint=None):
     # ensure that all the workers are started
     _barrier_never_timeout(rank, world_size)
     core.rpc_start_client()
-    logger.info("Trainer {}: Init RPC done!".format(rank))
+    logger.info(f"Trainer {rank}: Init RPC done!")
 
 
 def rpc_sync(to, fn, args=None, kwargs=None, timeout=_DEFAULT_RPC_TIMEOUT):
@@ -293,7 +293,7 @@ def shutdown():
     _barrier_never_timeout(rank, world_size)
     core.rpc_stop_worker()
     _del_barrier_store()
-    logger.info("Trainer {}: rpc shutdown!".format(rank))
+    logger.info(f"Trainer {rank}: rpc shutdown!")
 
 
 def get_worker_info(name):

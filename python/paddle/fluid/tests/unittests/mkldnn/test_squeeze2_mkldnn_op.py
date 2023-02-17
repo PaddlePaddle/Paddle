@@ -150,7 +150,7 @@ def create_squeeze_bf16_test_classes(parent):
                 user_defined_grad_outputs=[self.dout],
             )
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Squeeze2_BF16")
+    cls_name = "{}_{}".format(parent.__name__, "Squeeze2_BF16")
     TestSqueeze2BF16OneDNNOp.__name__ = cls_name
     globals()[cls_name] = TestSqueeze2BF16OneDNNOp
 
@@ -165,7 +165,7 @@ def create_squeeze_bf16_test_classes(parent):
         def test_check_output(self):
             self.check_output_with_place(core.CPUPlace())
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Squeeze_BF16")
+    cls_name = "{}_{}".format(parent.__name__, "Squeeze_BF16")
     TestSqueezeBF16OneDNNOp.__name__ = cls_name
     globals()[cls_name] = TestSqueezeBF16OneDNNOp
 

@@ -158,7 +158,7 @@ class DistPassTestBase(unittest.TestCase):
                 fetch_values = exe.run(main_prog, feed=feed, fetch_list=outputs)
                 if paddle.distributed.get_rank() == 0:
                     output_dict = OrderedDict(zip(outputs, fetch_values))
-                    print('batch {}, outputs {}'.format(batch_id, output_dict))
+                    print(f'batch {batch_id}, outputs {output_dict}')
                 all_fetch_values.append(fetch_values)
         with open(dump_file, "wb") as f:
             pickle.dump(all_fetch_values, f)
@@ -186,9 +186,9 @@ class DistPassTestBase(unittest.TestCase):
 
         pid = os.getpid()
         if apply_pass:
-            output_dir = "test_with_pass_{}".format(pid)
+            output_dir = f"test_with_pass_{pid}"
         else:
-            output_dir = "test_without_pass_{}".format(pid)
+            output_dir = f"test_without_pass_{pid}"
         remove_path_if_exists(output_dir)
         os.makedirs(output_dir, mode=0o777)
 
@@ -252,7 +252,7 @@ class DistPassTestBase(unittest.TestCase):
 
             results = []
             for i in range(num_gpus):
-                dump_file = '{0}/{1}.bin'.format(output_dir, i)
+                dump_file = f'{output_dir}/{i}.bin'
                 self.assertTrue(
                     os.path.exists(dump_file),
                     "Pass test failed with apply_pass = {}, please view log in {}".format(

@@ -37,7 +37,7 @@ class TestMVOp(OpTest):
 
     def init_config(self):
         self.x = np.random.random((2, 100)).astype("float64")
-        self.vec = np.random.random((100)).astype("float64")
+        self.vec = np.random.random(100).astype("float64")
 
 
 class TestMVAPI(unittest.TestCase):
@@ -46,7 +46,7 @@ class TestMVAPI(unittest.TestCase):
 
         self.x_data = np.random.random((5, 100)).astype("float64")
         self.x = paddle.to_tensor(self.x_data)
-        self.vec_data = np.random.random((100)).astype("float64")
+        self.vec_data = np.random.random(100).astype("float64")
         self.vec = paddle.to_tensor(self.vec_data)
         z = paddle.mv(self.x, self.vec)
         np_z = z.numpy()

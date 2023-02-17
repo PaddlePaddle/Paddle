@@ -28,7 +28,7 @@ def parse_case_name(log_file_name):
     case_id, case_info = log_file_name.split("-")
     direction = case_info.split(".")[0].split("_")[-1]
 
-    return "%s (%s)" % (case_id, direction)
+    return f"{case_id} ({direction})"
 
 
 def parse_log_file(log_file):
@@ -137,13 +137,13 @@ def update_api_info_file(fail_case_list, api_info_file):
     fail_case_dict = dict(map(parse_case_id_f, fail_case_list))
 
     # list of api infos for performance check failures
-    api_info_list = list()
+    api_info_list = []
     with open(api_info_file) as f:
         for line in f:
             line_list = line.split(',')
             case = line_list[0].split(':')[0]
             if case in fail_case_dict:
-                line_list[0] = "%s:%s" % (case, fail_case_dict[case])
+                line_list[0] = f"{case}:{fail_case_dict[case]}"
                 api_info_list.append(','.join(line_list))
 
     # update api info file
@@ -199,7 +199,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    check_results = dict(accuracy=list(), speed=list())
+    check_results = {"accuracy": [], "speed": []}
 
     develop_result_dict = load_benchmark_result_from_logs_dir(
         args.develop_logs_dir

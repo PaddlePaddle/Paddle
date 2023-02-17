@@ -169,7 +169,7 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
                 OP_ROLE_KEY: OpRole.Optimize,
             },
         )
-        allreduce_op._set_attr('op_namescope', str('/') + SyncMode.AmpFlagSync)
+        allreduce_op._set_attr('op_namescope', '/' + SyncMode.AmpFlagSync)
         cast_op2 = main_block.append_op(
             type='cast',
             inputs={'X': inf_var_int32},

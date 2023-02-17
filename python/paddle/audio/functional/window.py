@@ -19,7 +19,7 @@ from paddle import Tensor
 
 class WindowFunctionRegister:
     def __init__(self):
-        self._functions_dict = dict()
+        self._functions_dict = {}
 
     def register(self, func=None):
         def add_subfunction(func):

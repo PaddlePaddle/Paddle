@@ -88,7 +88,7 @@ class AutoCheckpointTestDist(AutoCheckPointACLBase):
         for i in acp.train_epoch_range(3, 0):
             o = acp._get_train_epoch_range()
             name = o.name
-            logger.info("_run_save_0 name:{} epoch_no:{}".format(o.name, i))
+            logger.info(f"_run_save_0 name:{o.name} epoch_no:{i}")
 
             for data in data_loader():
                 fetch = exe.run(

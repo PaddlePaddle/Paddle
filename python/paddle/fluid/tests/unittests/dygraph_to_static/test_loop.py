@@ -238,12 +238,12 @@ class TestNameVisitor(unittest.TestCase):
             for_loop_dufunc_with_listcomp,
         ]
         self.loop_var_names = [
-            set(["i", "x"]),
-            set(["i", "ret", "max_len"]),
-            set(["i", "x"]),
-            set(["j", "array", "res", "x"]),
+            {"i", "x"},
+            {"i", "ret", "max_len"},
+            {"i", "x"},
+            {"j", "array", "res", "x"},
         ]
-        self.create_var_names = [set(), set(["ret"]), set(), set(["res", "x"])]
+        self.create_var_names = [set(), {"ret"}, set(), {"res", "x"}]
 
         self.nested_for_loop_func = nested_for_loop_dyfunc
 
@@ -269,11 +269,11 @@ class TestNameVisitor(unittest.TestCase):
         name_visitor = NameVisitor(gast_root)
 
         self.loop_var_names = [
-            set(["j", "two"]),
-            set(["i", "three", "b"]),
-            set(["i"]),
+            {"j", "two"},
+            {"i", "three", "b"},
+            {"i"},
         ]
-        self.create_var_names = [set(), set(["b"]), set()]
+        self.create_var_names = [set(), {"b"}, set()]
 
         i = 0
         for node in gast.walk(gast_root):

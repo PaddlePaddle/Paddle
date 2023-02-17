@@ -31,7 +31,7 @@ class Watcher:
         self.gpus = self.ctx.args.devices or self.ctx.node.device.labels
         if len(self.gpus) > 0:
             fn = os.path.join(
-                self.ctx.args.log_dir, "{}.gpu.log".format(self.ctx.args.job_id)
+                self.ctx.args.log_dir, f"{self.ctx.args.job_id}.gpu.log"
             )
             os.makedirs(os.path.dirname(fn), exist_ok=True)
             self.gpu_fd = open(fn, 'w')

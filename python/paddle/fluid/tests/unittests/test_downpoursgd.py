@@ -64,7 +64,7 @@ class TestListenAndServOp(unittest.TestCase):
             avg_cost = paddle.mean(cost)
 
             ps_param = pslib.PSParameter()
-            with open("{}/fleet_desc.prototxt".format(cache_path)) as f:
+            with open(f"{cache_path}/fleet_desc.prototxt") as f:
                 text_format.Merge(f.read(), ps_param)
             fleet_desc = ps_param
             exe = fluid.Executor(fluid.CPUPlace())
@@ -128,7 +128,7 @@ class TestListenAndServOp(unittest.TestCase):
             avg_cost = paddle.mean(cost)
 
             ps_param = pslib.PSParameter()
-            with open("{}/fleet_desc.prototxt".format(cache_path)) as f:
+            with open(f"{cache_path}/fleet_desc.prototxt") as f:
                 text_format.Merge(f.read(), ps_param)
             fleet_desc = ps_param
             exe = fluid.Executor(fluid.CPUPlace())
@@ -190,7 +190,7 @@ class TestListenAndServOp(unittest.TestCase):
             avg_cost = paddle.mean(cost)
 
             ps_param = pslib.PSParameter()
-            with open("{}/fleet_desc.prototxt".format(cache_path)) as f:
+            with open(f"{cache_path}/fleet_desc.prototxt") as f:
                 text_format.Merge(f.read(), ps_param)
             fleet_desc = ps_param
             exe = fluid.Executor(fluid.CPUPlace())

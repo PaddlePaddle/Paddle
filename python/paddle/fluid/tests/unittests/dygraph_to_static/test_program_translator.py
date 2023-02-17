@@ -335,7 +335,7 @@ obj = Obj()
 
 class Net2:
     def __init__(self):
-        super(Net2, self).__init__()
+        super().__init__()
         self.layer1 = paddle.nn.Linear(10, 10)
 
     def forward(self, data):

@@ -264,9 +264,7 @@ def is_api_in_module(node, module_prefix):
         from paddle import to_tensor  # noqa: F401
         from paddle.fluid.dygraph import to_variable  # noqa: F401
 
-        return eval(
-            "_is_api_in_module_helper({}, '{}')".format(func_str, module_prefix)
-        )
+        return eval(f"_is_api_in_module_helper({func_str}, '{module_prefix}')")
     except Exception:
         return False
 
@@ -397,7 +395,7 @@ def update_args_of_func(node, dygraph_node, method_name):
     import paddle.fluid as fluid  # noqa: F401
 
     if method_name == "__init__" or eval(
-        "issubclass({}, fluid.dygraph.Layer)".format(class_src)
+        f"issubclass({class_src}, fluid.dygraph.Layer)"
     ):
         full_args = eval(f"inspect.getfullargspec({class_src}.{method_name})")
         full_args_name = [
@@ -442,7 +440,7 @@ def create_api_shape_node(tensor_shape_node):
 
 def get_constant_variable_node(name, value, shape=[1], dtype='int64'):
     return gast.parse(
-        '%s = paddle.full(%s, "%s", %s)' % (name, str(shape), str(value), dtype)
+        f'{name} = paddle.full({str(shape)}, "{str(value)}", {dtype})'
     )
 
 
@@ -529,7 +527,7 @@ def get_temp_dir():
     """
     Return @to_static temp directory.
     """
-    dir_name = "paddle/to_static_tmp/{pid}".format(pid=os.getpid())
+    dir_name = f"paddle/to_static_tmp/{os.getpid()}"
     temp_dir = os.path.join(os.path.expanduser('~/.cache'), dir_name)
     is_windows = sys.platform.startswith('win')
     if is_windows:
@@ -1447,7 +1445,7 @@ class GetterSetterHelper:
             names = []
         vars = self.getter()
         if vars is None:
-            return tuple()
+            return ()
         for n in names:
             assert (
                 n in self.name2id

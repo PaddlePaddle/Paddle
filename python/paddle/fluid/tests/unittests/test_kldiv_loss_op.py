@@ -58,9 +58,7 @@ class TestKLDivLossOp(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Loss', no_grad_set=set(["Target"]), check_eager=True
-        )
+        self.check_grad(['X'], 'Loss', no_grad_set={"Target"}, check_eager=True)
 
     def initTestCase(self):
         self.x_shape = (4, 5, 5)

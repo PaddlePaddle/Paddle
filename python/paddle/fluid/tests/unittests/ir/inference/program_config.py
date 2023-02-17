@@ -93,7 +93,7 @@ class OpConfig:
         self.outputs_var_type = outputs_var_type
         self.attrs = attrs
         if self.attrs is None:
-            self.attrs = dict()
+            self.attrs = {}
         self.attrs.update(kwargs)
 
     def __repr__(self):

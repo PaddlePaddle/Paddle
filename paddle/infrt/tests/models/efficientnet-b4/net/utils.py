@@ -421,4 +421,4 @@ def load_pretrained_weights(
         state_dict.pop('_fc.bias')
         model.set_state_dict(state_dict)
 
-    print('Loaded pretrained weights for {}'.format(model_name))
+    print(f'Loaded pretrained weights for {model_name}')

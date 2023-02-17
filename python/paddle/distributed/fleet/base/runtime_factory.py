@@ -17,7 +17,7 @@ from ..runtime.collective_runtime import CollectiveRuntime
 __all__ = []
 
 
-class RuntimeFactory(object):
+class RuntimeFactory:
     def __init__(self):
         pass
 

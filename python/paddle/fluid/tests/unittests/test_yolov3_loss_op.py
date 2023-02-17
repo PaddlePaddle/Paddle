@@ -81,7 +81,7 @@ def YOLOv3Loss(x, gtbox, gtlabel, gtscore, attrs):
     bias_x_y = -0.5 * (scale_x_y - 1.0)
     input_size = downsample_ratio * h
     x = x.reshape((n, mask_num, 5 + class_num, h, w)).transpose((0, 1, 3, 4, 2))
-    loss = np.zeros((n)).astype('float64')
+    loss = np.zeros(n).astype('float64')
 
     smooth_weight = min(1.0 / class_num, 1.0 / 40)
     label_pos = 1.0 - smooth_weight if use_label_smooth else 1.0

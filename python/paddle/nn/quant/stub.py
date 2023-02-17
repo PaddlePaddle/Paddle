@@ -51,7 +51,7 @@ class Stub(Layer):
     """
 
     def __init__(self, observer=None):
-        super(Stub, self).__init__()
+        super().__init__()
         self._observer = observer
 
     def forward(self, input):
@@ -71,7 +71,7 @@ class QuanterStub(Layer):
     """
 
     def __init__(self, layer: Stub, q_config):
-        super(QuanterStub, self).__init__()
+        super().__init__()
         self._observer = None
         if layer._observer is not None:
             self._observer = layer._observer._instance(layer)

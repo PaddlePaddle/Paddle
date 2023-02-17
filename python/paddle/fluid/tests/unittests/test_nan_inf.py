@@ -47,7 +47,7 @@ class TestNanInf(unittest.TestCase):
         print(err)
 
         # in python3, type(out+err) is 'bytes', need use encode
-        assert (out + err).find('There are NAN or INF'.encode()) != -1
+        assert (out + err).find(b'There are NAN or INF') != -1
 
     def test_nan_inf_in_static_mode(self):
         self._python_interp += " check_nan_inf_base.py"
@@ -63,11 +63,9 @@ class TestNanInfEnv(TestNanInf):
         super().setUp()
         # windows python have some bug with env, so need use str to pass ci
         # otherwise, "TypeError: environment can only contain strings"
-        self.env[str("PADDLE_INF_NAN_SKIP_OP")] = str("mul")
-        self.env[str("PADDLE_INF_NAN_SKIP_ROLE")] = str("loss")
-        self.env[str("PADDLE_INF_NAN_SKIP_VAR")] = str(
-            "elementwise_add:fc_0.tmp_1"
-        )
+        self.env["PADDLE_INF_NAN_SKIP_OP"] = "mul"
+        self.env["PADDLE_INF_NAN_SKIP_ROLE"] = "loss"
+        self.env["PADDLE_INF_NAN_SKIP_VAR"] = "elementwise_add:fc_0.tmp_1"
 
 
 class TestNanInfCheckResult(unittest.TestCase):
@@ -84,7 +82,7 @@ class TestNanInfCheckResult(unittest.TestCase):
         out = np.log(x)
         num_nan = np.sum(np.isnan(out))
         num_inf = np.sum(np.isinf(out))
-        print("[reference] num_nan={}, num_inf={}".format(num_nan, num_inf))
+        print(f"[reference] num_nan={num_nan}, num_inf={num_inf}")
         return num_nan, num_inf
 
     def get_num_nan_inf(self, x_np, use_cuda=True, add_assert=False):
@@ -114,7 +112,7 @@ class TestNanInfCheckResult(unittest.TestCase):
                     num_nan = int(err_str.split("=")[1])
                 elif "num_inf" in err_str:
                     num_inf = int(err_str.split("=")[1])
-            print("[paddle] num_nan={}, num_inf={}".format(num_nan, num_inf))
+            print(f"[paddle] num_nan={num_nan}, num_inf={num_inf}")
         return num_nan, num_inf
 
     def test_num_nan_inf(self):

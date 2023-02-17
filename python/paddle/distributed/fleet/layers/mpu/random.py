@@ -48,10 +48,10 @@ class RNGStatesTracker:
 
     def add(self, name, seed):
         if seed in self.seeds_:
-            raise ValueError('seed {} already exists'.format(seed))
+            raise ValueError(f'seed {seed} already exists')
         self.seeds_.add(seed)
         if name in self.states_:
-            raise ValueError('state {} already exists'.format(name))
+            raise ValueError(f'state {name} already exists')
         orig_rng_state = paddle.get_cuda_rng_state()
         paddle.seed(seed)
         self.states_[name] = paddle.get_cuda_rng_state()
@@ -69,7 +69,7 @@ class RNGStatesTracker:
     @contextlib.contextmanager
     def rng_state(self, name=MODEL_PARALLEL_RNG):
         if name not in self.states_:
-            raise ValueError('state {} does not exist'.format(name))
+            raise ValueError(f'state {name} does not exist')
         orig_cuda_rng_state = paddle.get_cuda_rng_state()
         paddle.set_cuda_rng_state(self.states_[name])
         try:

@@ -121,8 +121,8 @@ class TestInt8ScaleCalculationMkldnnPass(PassAutoScanTest):
         )
 
         bias_shape = [f_shape[0]]
-        inputs = dict()
-        weights = dict()
+        inputs = {}
+        weights = {}
         use_mkldnn = True
 
         has_bias = draw(st.booleans())

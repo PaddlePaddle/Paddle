@@ -84,7 +84,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
 
             for i in range(5):
                 cost_val = exe.run(feed=gen_data(), fetch_list=[avg_cost.name])
-                print("cost of step[{}] = {}".format(i, cost_val))
+                print(f"cost of step[{i}] = {cost_val}")
 
         # rank 1
         proc_b = launch_func(node_func, node_b)

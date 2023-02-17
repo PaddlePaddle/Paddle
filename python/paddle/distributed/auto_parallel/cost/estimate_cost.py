@@ -103,7 +103,7 @@ class CostEstimator:
     def _check_mode(self, mode):
         if mode not in ["modeling", "profiling"]:
             raise ValueError(
-                "Just support modeling and profiling, but got {}".format(mode)
+                f"Just support modeling and profiling, but got {mode}"
             )
 
     def _is_special_var_name(self, var_name):

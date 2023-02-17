@@ -64,7 +64,7 @@ def create_attr_dict(yaml_config):
 
 
 def merge_configs(cfg, sec, args_dict):
-    assert sec in CONFIG_SECS, "invalid config section {}".format(sec)
+    assert sec in CONFIG_SECS, f"invalid config section {sec}"
     sec_dict = getattr(cfg, sec.upper())
     for k, v in args_dict.items():
         if v is None:
@@ -78,11 +78,9 @@ def merge_configs(cfg, sec, args_dict):
 
 
 def print_configs(cfg, mode):
-    logger.info(
-        "---------------- {:>5} Arguments ----------------".format(mode)
-    )
+    logger.info(f"---------------- {mode:>5} Arguments ----------------")
     for sec, sec_items in cfg.items():
-        logger.info("{}:".format(sec))
+        logger.info(f"{sec}:")
         for k, v in sec_items.items():
-            logger.info("    {}:{}".format(k, v))
+            logger.info(f"    {k}:{v}")
     logger.info("-------------------------------------------------")

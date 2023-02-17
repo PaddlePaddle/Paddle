@@ -24,9 +24,9 @@ from paddle.utils.cpp_extension.extension_utils import run_cmd
 
 # Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
-file = '{}\\dispatch_op\\dispatch_op.pyd'.format(get_build_directory())
+file = f'{get_build_directory()}\\dispatch_op\\dispatch_op.pyd'
 if os.name == 'nt' and os.path.isfile(file):
-    cmd = 'del {}'.format(file)
+    cmd = f'del {file}'
     run_cmd(cmd, True)
 
 dispatch_op = load(
@@ -52,7 +52,7 @@ class TestJitDispatch(unittest.TestCase):
         np.testing.assert_array_equal(
             np_x,
             np_out,
-            err_msg='custom op x: {},\n custom op out: {}'.format(np_x, np_out),
+            err_msg=f'custom op x: {np_x},\n custom op out: {np_out}',
         )
 
     def test_dispatch_integer(self):

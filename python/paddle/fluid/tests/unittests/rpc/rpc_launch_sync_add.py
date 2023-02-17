@@ -33,7 +33,7 @@ def rpc_add(to, args):
 
 
 def worker_name(rank):
-    return "worker{}".format(rank)
+    return f"worker{rank}"
 
 
 def main():

@@ -411,7 +411,7 @@ def fused_bias_dropout_residual_layer_norm(
             'fused_bias_dropout_residual_layer_norm',
         )
         # set inputs
-        inputs = dict()
+        inputs = {}
         inputs['X'] = [x]
         inputs['Residual'] = [residual]
         if bias is not None:
@@ -755,7 +755,7 @@ def fused_multi_head_attention(
         )
 
         # set inputs
-        inputs = dict()
+        inputs = {}
         inputs['X'] = [x]
         if pre_ln_scale:
             inputs['LnScale'] = [pre_ln_scale]
@@ -1102,7 +1102,7 @@ def fused_multi_transformer(
         )
 
         # set inputs
-        inputs = dict()
+        inputs = {}
         inputs['X'] = [x]
         inputs['LnScale'] = ln_scales
         inputs['LnBias'] = ln_biases
@@ -1146,7 +1146,7 @@ def fused_multi_transformer(
             'ring_id': ring_id,
         }
 
-        outputs = dict()
+        outputs = {}
         final_out = helper.create_variable_for_type_inference(dtype=dtype)
         outputs['Out'] = final_out
         if cache_kvs:

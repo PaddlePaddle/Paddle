@@ -191,7 +191,7 @@ class TestSubsetDataset(unittest.TestCase):
                 label, (fluid.core.VarBase, fluid.core.eager.Tensor)
             )
 
-        elements_list = list()
+        elements_list = []
         for _, (input, label) in enumerate(dataloader()):
             assert_basic(input, label)
             elements_list.append(label)
@@ -200,7 +200,7 @@ class TestSubsetDataset(unittest.TestCase):
             assert_basic(input, label)
             elements_list.remove(label)
 
-        odd_list = list()
+        odd_list = []
         for _, (input, label) in enumerate(dataloader_odd()):
             assert_basic(input, label)
             odd_list.append(label)

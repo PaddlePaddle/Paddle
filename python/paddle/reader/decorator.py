@@ -76,8 +76,7 @@ def cache(reader):
     all_data = tuple(reader())
 
     def __impl__():
-        for item in all_data:
-            yield item
+        yield from all_data
 
     return __impl__
 
@@ -118,8 +117,7 @@ def map_readers(func, *readers):
         rs = []
         for r in readers:
             rs.append(r())
-        for e in map(func, *rs):
-            yield e
+        yield from map(func, *rs)
 
     return reader
 
@@ -228,8 +226,7 @@ def chain(*readers):
         for r in readers:
             rs.append(r())
 
-        for e in itertools.chain(*rs):
-            yield e
+        yield from itertools.chain(*rs)
 
     return reader
 

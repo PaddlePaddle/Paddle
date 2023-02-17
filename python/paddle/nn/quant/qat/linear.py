@@ -26,7 +26,7 @@ class QuantedLinear(ConvertibleQuantedLayer):
     """
 
     def __init__(self, layer: Layer, q_config):
-        super(QuantedLinear, self).__init__()
+        super().__init__()
         # For Linear
         self.weight = getattr(layer, 'weight')
         self.bias = getattr(layer, 'bias')

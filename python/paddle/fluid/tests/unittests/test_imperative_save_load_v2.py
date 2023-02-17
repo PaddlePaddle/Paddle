@@ -282,8 +282,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
             adam = Adam(
                 learning_rate=scheduler, parameters=ptb_model.parameters()
             )
-            dy_param_updated = dict()
-            dy_param_init = dict()
+            dy_param_updated = {}
+            dy_param_init = {}
             dy_loss = None
             last_hidden = None
             last_cell = None
@@ -385,8 +385,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
             adam = Adam(
                 learning_rate=scheduler, parameters=ptb_model.parameters()
             )
-            dy_param_updated = dict()
-            dy_param_init = dict()
+            dy_param_updated = {}
+            dy_param_init = {}
             dy_loss = None
             last_hidden = None
             last_cell = None
@@ -507,8 +507,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
             adam = Adam(
                 learning_rate=scheduler, parameters=ptb_model.parameters()
             )
-            dy_param_updated = dict()
-            dy_param_init = dict()
+            dy_param_updated = {}
+            dy_param_init = {}
             dy_loss = None
             last_hidden = None
             last_cell = None
@@ -625,8 +625,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
             adam = Adam(
                 learning_rate=scheduler, parameters=ptb_model.parameters()
             )
-            dy_param_updated = dict()
-            dy_param_init = dict()
+            dy_param_updated = {}
+            dy_param_init = {}
             dy_loss = None
             last_hidden = None
             last_cell = None
@@ -741,8 +741,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 beta2=0.6,
                 parameters=ptb_model.parameters(),
             )
-            dy_param_updated = dict()
-            dy_param_init = dict()
+            dy_param_updated = {}
+            dy_param_init = {}
             dy_loss = None
             last_hidden = None
             last_cell = None
@@ -838,8 +838,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 beta2=0.6,
                 parameters=ptb_model.parameters(),
             )
-            dy_param_updated = dict()
-            dy_param_init = dict()
+            dy_param_updated = {}
+            dy_param_init = {}
             dy_loss = None
             last_hidden = None
             last_cell = None
@@ -943,8 +943,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 beta2=0.6,
                 parameters=ptb_model.parameters(),
             )
-            dy_param_updated = dict()
-            dy_param_init = dict()
+            dy_param_updated = {}
+            dy_param_init = {}
             dy_loss = None
             last_hidden = None
             last_cell = None

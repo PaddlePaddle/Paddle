@@ -56,7 +56,7 @@ def get_var_with_recursion(var_name, block, program):
         # parent_block = program.blocks[block.parent_idx]
         # if var_name in parent_block.vars:
         #     var = parent_block.vars[var_name]
-    assert var is not None, "{} is not found".format(var.name)
+    assert var is not None, f"{var.name} is not found"
 
     return var
 
@@ -508,7 +508,7 @@ class Inserter:
         # use slice
         else:
             inputs = {'Input': tensor}
-            infer_flags = list(1 for i in range(len(axes)))
+            infer_flags = [1 for i in range(len(axes))]
             attrs = {
                 "axes": axes,
                 "starts": starts,
@@ -2945,7 +2945,7 @@ class Resharder:
                         to_slice_tensor_shape = op_desc.shape
                     slice_desc = {}
                     slice_desc["op"] = "slice"
-                    infer_flags = list(1 for i in range(len(op_desc.axes)))
+                    infer_flags = [1 for i in range(len(op_desc.axes))]
                     slice_desc["attrs"] = {
                         "axes": op_desc.axes,
                         "starts": op_desc.starts,

@@ -120,7 +120,7 @@ class TestSliceWithoutControlFlow(unittest.TestCase):
         paddle.disable_static()
 
     def init_input(self):
-        self.input = np.random.random((3)).astype('int32')
+        self.input = np.random.random(3).astype('int32')
 
     def init_dygraph_func(self):
         self.dygraph_func = test_slice_without_control_flow

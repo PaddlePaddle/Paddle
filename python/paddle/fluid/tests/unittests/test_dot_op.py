@@ -100,7 +100,7 @@ class DotOpEmptyInput(unittest.TestCase):
         np_out = np.dot(data, data)
         pd_out = paddle.dot(x, y)
 
-        self.assertEquals(np_out, pd_out)
+        self.assertEqual(np_out, pd_out)
 
     def test_2d_input(self):
         data = np.array([], dtype=np.float32)

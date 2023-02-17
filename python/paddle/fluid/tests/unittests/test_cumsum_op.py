@@ -188,7 +188,7 @@ class TestSumOp5(OpTest):
 class TestSumOp7(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
-        self.inputs = {'X': np.random.random((100)).astype("float64")}
+        self.inputs = {'X': np.random.random(100).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].cumsum(axis=0)}
 
     def test_check_output(self):

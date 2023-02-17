@@ -120,7 +120,7 @@ class TranslatorLogger:
         if isinstance(level, (int, type(None))):
             rv = level
         else:
-            raise TypeError("Level is not an integer: {}".format(level))
+            raise TypeError(f"Level is not an integer: {level}")
         return rv
 
     def has_code_level(self, level):
@@ -151,7 +151,7 @@ class TranslatorLogger:
 
     def log(self, level, msg, *args, **kwargs):
         if self.has_verbosity(level):
-            msg_with_level = '(Level {}) {}'.format(level, msg)
+            msg_with_level = f'(Level {level}) {msg}'
             self.logger.info(msg_with_level, *args, **kwargs)
             if self.need_to_echo_log_to_stdout:
                 self._output_to_stdout('INFO: ' + msg_with_level, *args)

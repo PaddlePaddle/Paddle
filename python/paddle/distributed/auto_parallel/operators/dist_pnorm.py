@@ -172,7 +172,7 @@ class DistributedPNormImpl0(DistributedOperatorImpl):
             )
             assert len(kwargs[input_name]) == len(
                 src_op.desc.input(input_name)
-            ), "number of tensor for input [{}] is not match".format(input_name)
+            ), f"number of tensor for input [{input_name}] is not match"
         for output_name in src_op.desc.output_names():
             assert output_name in kwargs, "input [{}] is not given".format(
                 output_name
@@ -286,7 +286,7 @@ class DistributedPNormImpl0(DistributedOperatorImpl):
             )
             assert len(kwargs[input_name]) == len(
                 backward_op.desc.input(input_name)
-            ), "number of tensor for input [{}] is not match".format(input_name)
+            ), f"number of tensor for input [{input_name}] is not match"
         for output_name in backward_op.desc.output_names():
             assert output_name in kwargs, "input [{}] is not given".format(
                 output_name
@@ -364,7 +364,7 @@ class DistributedPNormImpl0(DistributedOperatorImpl):
             slice_ends.append(item[1])
             slices_axes.append(idx)
 
-        infer_flags = list(1 for i in range(len(slices_axes)))
+        infer_flags = [1 for i in range(len(slices_axes))]
         attrs = {
             "axes": slices_axes,
             "starts": slice_starts,

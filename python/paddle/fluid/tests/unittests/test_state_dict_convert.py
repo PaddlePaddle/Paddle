@@ -87,7 +87,7 @@ class TestStateDictConvert(unittest.TestCase):
 class TestStateDictReturn(unittest.TestCase):
     def test_missing_keys_and_unexpected_keys(self):
         model1 = MyModel2()
-        tmp_dict = dict()
+        tmp_dict = {}
         tmp_dict["unexpected_keys"] = paddle.to_tensor(1)
         missing_keys, unexpected_keys = model1.set_state_dict(tmp_dict)
         self.assertEqual(len(missing_keys), 2)

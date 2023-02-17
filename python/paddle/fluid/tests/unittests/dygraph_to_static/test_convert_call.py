@@ -218,7 +218,7 @@ class TestStaticMethod(TestRecursiveCall2):
 
 class NotToStaticHelper(paddle.nn.Layer):
     def __init__(self):
-        super(NotToStaticHelper, self).__init__()
+        super().__init__()
 
     def sum(self, x):
         if x.shape[0] > 1:

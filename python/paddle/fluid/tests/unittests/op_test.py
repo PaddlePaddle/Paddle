@@ -597,7 +597,7 @@ class OpTest(unittest.TestCase):
             type=self.op_type,
             inputs=inputs,
             outputs=outputs,
-            attrs=copy(self.attrs) if hasattr(self, "attrs") else dict(),
+            attrs=copy(self.attrs) if hasattr(self, "attrs") else {},
         )
         # infer variable type and infer shape in compile-time
         op.desc.infer_var_type(block.desc)
@@ -743,7 +743,7 @@ class OpTest(unittest.TestCase):
             if (name not in np_list) and var_proto.dispensable:
                 continue
             if name not in np_list:
-                assert var_proto.intermediate, "{} not found".format(name)
+                assert var_proto.intermediate, f"{name} not found"
                 v = block.create_var(
                     dtype='float32', type=core.VarDesc.VarType.LOD_TENSOR
                 )
@@ -754,7 +754,7 @@ class OpTest(unittest.TestCase):
             if var_proto.duplicable:
                 assert isinstance(
                     np_list[name], list
-                ), "Duplicable {} should be set as list".format(name)
+                ), f"Duplicable {name} should be set as list"
                 var_list = []
                 slot_name = name
                 for (name, np_value) in np_list[name]:
@@ -894,7 +894,7 @@ class OpTest(unittest.TestCase):
                 for name in attrs_sig
             ]
             results = []
-            api_ignore_param_list = set(['name', 'dtype', 'out', 'output'])
+            api_ignore_param_list = {'name', 'dtype', 'out', 'output'}
             idx_of_op_proto_arguments = 0
             for idx, arg_name in enumerate(api_params):
                 if arg_name in api_ignore_param_list:
@@ -1546,7 +1546,7 @@ class OpTest(unittest.TestCase):
                         return dygraph_outs[name][i]
             self.assertTrue(
                 False,
-                "Found failed {} {}".format(dygraph_outs.keys(), target_name),
+                f"Found failed {dygraph_outs.keys()} {target_name}",
             )
 
         def find_actual(target_name, fetch_list):
@@ -1556,7 +1556,7 @@ class OpTest(unittest.TestCase):
                 if var_name == target_name
             ]
             self.assertTrue(
-                len(found) == 1, "Found {} {}".format(len(found), target_name)
+                len(found) == 1, f"Found {len(found)} {target_name}"
             )
             return found[0]
 
@@ -1922,7 +1922,7 @@ class OpTest(unittest.TestCase):
             else:
                 self.assertTrue(
                     len(found) == 1,
-                    "Found {} {}".format(len(found), target_name),
+                    f"Found {len(found)} {target_name}",
                 )
                 return found[0]
 
@@ -2175,9 +2175,9 @@ class OpTest(unittest.TestCase):
             check_dygraph = False
 
         self.scope = core.Scope()
-        op_inputs = self.inputs if hasattr(self, "inputs") else dict()
-        op_outputs = self.outputs if hasattr(self, "outputs") else dict()
-        op_attrs = self.attrs if hasattr(self, "attrs") else dict()
+        op_inputs = self.inputs if hasattr(self, "inputs") else {}
+        op_outputs = self.outputs if hasattr(self, "outputs") else {}
+        op_attrs = self.attrs if hasattr(self, "attrs") else {}
 
         self._check_grad_helper()
         if self.is_bfloat16_op() and self.is_mkldnn_op():

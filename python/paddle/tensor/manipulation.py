@@ -324,7 +324,7 @@ def slice(input, axes, starts, ends):
                 )
             )
 
-        infer_flags = list(1 for i in range(len(axes)))
+        infer_flags = [1 for i in range(len(axes))]
 
         tmp_tensor_type = core.eager.Tensor
 
@@ -338,7 +338,7 @@ def slice(input, axes, starts, ends):
         elif isinstance(starts, tmp_tensor_type):
             tensor_t = starts.numpy()
             starts = [ele for ele in tensor_t]
-            infer_flags = list(-1 for i in range(len(axes)))
+            infer_flags = [-1 for i in range(len(axes))]
 
         if isinstance(ends, (list, tuple)):
             ends = [
@@ -350,7 +350,7 @@ def slice(input, axes, starts, ends):
         elif isinstance(ends, tmp_tensor_type):
             tensor_t = ends.numpy()
             ends = [ele for ele in tensor_t]
-            infer_flags = list(-1 for i in range(len(axes)))
+            infer_flags = [-1 for i in range(len(axes))]
 
         return _C_ops.slice(input, axes, starts, ends, infer_flags, [])
     else:
@@ -367,13 +367,13 @@ def slice(input, axes, starts, ends):
 
         inputs = {'Input': input}
         attrs = {'axes': axes}
-        infer_flags = list(1 for i in range(len(axes)))
+        infer_flags = [1 for i in range(len(axes))]
 
         # starts
         if isinstance(starts, Variable):
             starts.stop_gradient = True
             inputs['StartsTensor'] = starts
-            infer_flags = list(-1 for i in range(len(axes)))
+            infer_flags = [-1 for i in range(len(axes))]
         elif isinstance(starts, (list, tuple)):
             attrs['starts'] = []
             if utils._contain_var(starts):
@@ -393,7 +393,7 @@ def slice(input, axes, starts, ends):
         if isinstance(ends, Variable):
             ends.stop_gradient = True
             inputs['EndsTensor'] = ends
-            infer_flags = list(-1 for i in range(len(axes)))
+            infer_flags = [-1 for i in range(len(axes))]
         elif isinstance(ends, (list, tuple)):
             attrs['ends'] = []
             if utils._contain_var(ends):
@@ -494,8 +494,10 @@ def transpose(x, perm, name=None):
             raise ValueError(
                 "Input(perm) is the permutation of dimensions of Input(x), "
                 "its length should be equal to dimensions of Input(x), "
-                "but received dimension of Input(x) is %s, "
-                "the length of Input(perm) is %s." % (len(x.shape), len(perm))
+                "but received dimension of Input(x) is {}, "
+                "the length of Input(perm) is {}.".format(
+                    len(x.shape), len(perm)
+                )
             )
         for idx, dim in enumerate(perm):
             if dim >= len(x.shape):
@@ -964,7 +966,7 @@ def _fill_diagonal_tensor_impl(x, y, offset=0, dim1=0, dim2=1, inplace=False):
     predshape.append(diaglen)
     assert tuple(predshape) == tuple(
         y.shape
-    ), "the y shape should be {}".format(predshape)
+    ), f"the y shape should be {predshape}"
     if len(y.shape) == 1:
         y = y.reshape([1, -1])
 
@@ -1447,13 +1449,9 @@ def rot90(x, k=1, axes=[0, 1], name=None):
         )
 
     if not (axes[0] < input_total_dims and axes[0] >= -input_total_dims):
-        raise ValueError(
-            "Rotation axis0 out of range, axis0 = {}".format(axes[0])
-        )
+        raise ValueError(f"Rotation axis0 out of range, axis0 = {axes[0]}")
     if not (axes[1] < input_total_dims and axes[1] >= -input_total_dims):
-        raise ValueError(
-            "Rotation axis1 out of range, axis1 = {}".format(axes[1])
-        )
+        raise ValueError(f"Rotation axis1 out of range, axis1 = {axes[1]}")
 
     k %= 4
     if k == 0:
@@ -3856,7 +3854,7 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
 
         inputs = {'Input': x}
         attrs = {'axes': axes}
-        infer_flags = list(1 for i in range(len(axes)))
+        infer_flags = [1 for i in range(len(axes))]
         # starts
         if isinstance(starts, Variable):
             starts.stop_gradient = True

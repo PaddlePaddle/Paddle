@@ -338,7 +338,7 @@ def layer_norm(
             x, 'input', ['float16', 'float32', 'float64'], 'LayerNorm'
         )
 
-        inputs = dict()
+        inputs = {}
         inputs['X'] = [x]
         if weight:
             inputs['Scale'] = [weight]

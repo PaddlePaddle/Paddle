@@ -98,7 +98,7 @@ class TestCUDAGraphInDygraphMode(unittest.TestCase):
         for i, z in enumerate(zs):
             np.testing.assert_array_equal(z.numpy(), xs_np[i])
 
-        output_dir = 'cuda_graph_dot_{}'.format(os.getpid())
+        output_dir = f'cuda_graph_dot_{os.getpid()}'
         try:
             graph.print_to_dot_files(pathlib.Path(output_dir))
             graph.reset()

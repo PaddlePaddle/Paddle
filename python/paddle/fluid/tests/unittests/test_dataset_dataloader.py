@@ -127,9 +127,7 @@ class DatasetLoaderTestBase(unittest.TestCase):
             random_delta_batch_size = np.zeros(shape=[file_num])
 
         for i in range(file_num):
-            filename = os.path.join(
-                self.temp_dir.name, 'dataset_test_{}.txt'.format(i)
-            )
+            filename = os.path.join(self.temp_dir.name, f'dataset_test_{i}.txt')
             filelist.append(filename)
             write_reader_data_to_file(
                 filename,

@@ -107,7 +107,7 @@ class TestIndexAddAPI(unittest.TestCase):
         self.check_backward = True
         self.generate_input_data()
 
-        self.index_shape = tuple([self.index_size])
+        self.index_shape = (self.index_size,)
 
         self.rtol = 1e-5
         self.atol = 1e-2

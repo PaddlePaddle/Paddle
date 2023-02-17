@@ -81,7 +81,7 @@ class XPUTestTopKV2Op(XPUOpTestWrapper):
         def test_check_grad(self):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
-                self.check_grad(set(['X']), 'Out')
+                self.check_grad({'X'}, 'Out')
 
     class TestTopkOp1(TestTopkOp):
         def init_args(self):

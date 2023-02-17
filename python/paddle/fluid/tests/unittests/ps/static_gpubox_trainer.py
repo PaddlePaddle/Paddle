@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 
 import logging
 import os
@@ -55,7 +54,7 @@ def get_dataset(inputs, config):
     return dataset
 
 
-class Main(object):
+class Main:
     def __init__(self):
         self.metrics = {}
         self.input_data = None
@@ -164,7 +163,7 @@ class Main(object):
 
             fleet.barrier_worker()
             self.reader.release_memory()
-            logger.info("finish {} epoch training....".format(epoch))
+            logger.info(f"finish {epoch} epoch training....")
         self.PSGPU.finalize()
 
     def init_reader(self):
@@ -184,14 +183,11 @@ class Main(object):
 
         begin_pass_time = time.time()
         self.PSGPU.begin_pass()
-        print(
-            "begin_pass cost:{} seconds".format(time.time() - begin_pass_time)
-        )
+        print(f"begin_pass cost:{time.time() - begin_pass_time} seconds")
 
-        logger.info("Epoch: {}, Running Dataset Begin.".format(epoch))
+        logger.info(f"Epoch: {epoch}, Running Dataset Begin.")
         fetch_info = [
-            "Epoch {} Var {}".format(epoch, var_name)
-            for var_name in self.metrics
+            f"Epoch {epoch} Var {var_name}" for var_name in self.metrics
         ]
         fetch_vars = [var for _, var in self.metrics.items()]
         print_step = int(self.config.get("runner.print_interval"))

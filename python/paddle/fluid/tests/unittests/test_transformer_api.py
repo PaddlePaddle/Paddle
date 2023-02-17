@@ -29,8 +29,8 @@ from paddle.nn.layer.transformer import (
 
 
 def generate_basic_params(mode="attn", self_attention=True):
-    batch_size, query_length = [np.random.randint(2, 10) for _ in range(2)]
-    d_head, num_heads = [np.random.randint(3, 10) for _ in range(2)]
+    batch_size, query_length = (np.random.randint(2, 10) for _ in range(2))
+    d_head, num_heads = (np.random.randint(3, 10) for _ in range(2))
     attn_dropout = 0.0
     embed_dim = d_head * num_heads
     if mode == "attn":
@@ -38,7 +38,7 @@ def generate_basic_params(mode="attn", self_attention=True):
             kdim, vdim = embed_dim, embed_dim
             key_length, value_length = query_length, query_length
         else:
-            kdim, vdim = [np.random.randint(5, 20) for _ in range(2)]
+            kdim, vdim = (np.random.randint(5, 20) for _ in range(2))
             key_length = np.random.randint(2, 10)
             value_length = key_length
         return (

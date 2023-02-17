@@ -180,7 +180,7 @@ class DistributedInfer:
                             if input_indexes[i] == 1:
                                 move_ops.append((global_block.ops[i], i))
                         for i, op in enumerate(move_ops):
-                            queue = list()
+                            queue = []
                             visited = set()
                             queue.append(op[1])
                             visited.add(op[0])

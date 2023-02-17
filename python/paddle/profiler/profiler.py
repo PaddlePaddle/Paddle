@@ -594,7 +594,7 @@ class Profiler:
             self.profiler.prepare()
             self.profiler.start()
         self.record_event = RecordEvent(
-            name="ProfileStep#{}".format(self.step_num),
+            name=f"ProfileStep#{self.step_num}",
             event_type=TracerEventType.ProfileStep,
         )
         self.record_event.begin()
@@ -684,7 +684,7 @@ class Profiler:
         self.current_state = self.scheduler(self.step_num)
         self._trigger_action()
         self.record_event = RecordEvent(
-            name="ProfileStep#{}".format(self.step_num),
+            name=f"ProfileStep#{self.step_num}",
             event_type=TracerEventType.ProfileStep,
         )
         self.record_event.begin()
@@ -907,7 +907,7 @@ def get_profiler(config_path):
         with open(config_path, 'r') as filehandle:
             config_dict = json.load(filehandle)
     except Exception as e:
-        print('Load config file for profiler error: {}'.format(e))
+        print(f'Load config file for profiler error: {e}')
         print('Use default parameters instead.')
         return Profiler()
     translated_config_dict = {}

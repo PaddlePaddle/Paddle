@@ -81,7 +81,7 @@ class TestDistBase(unittest.TestCase):
 
     def _run_cluster(self, model_file, envs):
         run_cluster_process = f"{self._python_interp} -u -m paddle.distributed.launch --log_dir {self.temp_dir.name} {model_file}"
-        filted_envs = dict()
+        filted_envs = {}
         for k in envs.keys():
             if "PADDLE_" == k[:7] and k not in [
                 "PADDLE_NNODES",

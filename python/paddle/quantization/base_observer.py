@@ -25,7 +25,7 @@ class BaseObserver(BaseQuanter, metaclass=abc.ABCMeta):
     """
 
     def __init__(self):
-        super(BaseObserver, self).__init__()
+        super().__init__()
 
     @abc.abstractmethod
     def cal_thresholds(self):

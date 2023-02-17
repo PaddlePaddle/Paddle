@@ -240,9 +240,9 @@ class XPUOpTest(OpTest):
         check_dygraph=True,
     ):
         self.scope = core.Scope()
-        op_inputs = self.inputs if hasattr(self, "inputs") else dict()
-        op_outputs = self.outputs if hasattr(self, "outputs") else dict()
-        op_attrs = self.attrs if hasattr(self, "attrs") else dict()
+        op_inputs = self.inputs if hasattr(self, "inputs") else {}
+        op_outputs = self.outputs if hasattr(self, "outputs") else {}
+        op_attrs = self.attrs if hasattr(self, "attrs") else {}
 
         self._check_grad_helper()
         if (

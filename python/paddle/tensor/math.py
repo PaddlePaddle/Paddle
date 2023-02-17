@@ -488,8 +488,8 @@ def _elementwise_op(helper):
 
     out = helper.kwargs.get('out', None)
 
-    assert x is not None, 'x cannot be None in {}'.format(original_op_type)
-    assert y is not None, 'y cannot be None in {}'.format(original_op_type)
+    assert x is not None, f'x cannot be None in {original_op_type}'
+    assert y is not None, f'y cannot be None in {original_op_type}'
     check_variable_and_dtype(
         x,
         'x',
@@ -3191,7 +3191,7 @@ def cumsum(x, axis=None, dtype=None, name=None):
     else:
         check_type(x, 'x', (Variable), 'cumsum')
         locals_var = locals().copy()
-        kwargs = dict()
+        kwargs = {}
         for name, val in locals_var.items():
             if val is not None:
                 kwargs[name] = val
@@ -4572,7 +4572,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
         axis = 0
     dtype = x.dtype
     axes = [axis]
-    infer_flags = list(1 for i in range(len(axes)))
+    infer_flags = [1 for i in range(len(axes))]
     if in_dygraph_mode():
         has_pend = False
         input_list = []

@@ -135,7 +135,7 @@ def transform_and_save_int8_model(
         if len(ops_to_quantize) > 0:
             ops_to_quantize_set = set(ops_to_quantize.split(','))
 
-        op_ids_to_skip_set = set([-1])
+        op_ids_to_skip_set = {-1}
         print(op_ids_to_skip)
         if len(op_ids_to_skip) > 0:
             op_ids_to_skip_set = set(map(int, op_ids_to_skip.split(',')))

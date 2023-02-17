@@ -335,7 +335,7 @@ class MoELayer(nn.Layer):
         self.recompute_ctx = recompute_ctx
 
         if gate is None:
-            gate = dict()
+            gate = {}
 
         assert isinstance(
             gate, (dict, BaseGate)

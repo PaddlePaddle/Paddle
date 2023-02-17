@@ -1474,6 +1474,6 @@ def sequence_reverse(x, name=None):
         type="sequence_reverse",
         inputs={"X": x},
         outputs={"Y": out},
-        attrs=dict(),
+        attrs={},
     )
     return out

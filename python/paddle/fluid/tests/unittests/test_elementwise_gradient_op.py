@@ -106,7 +106,7 @@ class TestElementWiseAddOp(unittest.TestCase):
     def test_check_forward_backward_with_scale_and_bias(self):
         np.random.seed(123)
         self.x = np.random.random((4, 32, 220, 220)).astype(np.float32)
-        self.y = np.random.random((32)).astype(np.float32)
+        self.y = np.random.random(32).astype(np.float32)
         self.out = self.x + self.y.reshape(1, 32, 1, 1)
         self.axis = 1
         self.check_forward_backward()

@@ -64,7 +64,7 @@ class AscendIRParser:
         world_endpoints = fleet.worker_endpoints()
         assert (
             endpoint in world_endpoints
-        ), "endpoint (%s) not in worker_endpoints (%s) " % (
+        ), "endpoint ({}) not in worker_endpoints ({}) ".format(
             endpoint,
             fleet.world_device_ids(),
         )

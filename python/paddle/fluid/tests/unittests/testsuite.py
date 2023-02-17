@@ -19,7 +19,7 @@ from paddle.fluid.op import Operator
 
 
 def create_op(scope, op_type, inputs, outputs, attrs, cache_list=None):
-    kwargs = dict()
+    kwargs = {}
 
     op_maker = core.op_proto_and_checker_maker
     op_role_attr_name = op_maker.kOpRoleAttrName()
@@ -103,7 +103,7 @@ def append_input_output(block, op_proto, np_list, is_input, dtype):
         shape = None
         lod_level = None
         if name not in np_list:
-            assert var_proto.intermediate, "{} not found".format(name)
+            assert var_proto.intermediate, f"{name} not found"
         else:
             # inferece the dtype from numpy value.
             np_value = np_list[name]
@@ -130,11 +130,11 @@ def append_input_output(block, op_proto, np_list, is_input, dtype):
         if is_input:
             assert (var_name in np_list) or (
                 var_proto.dispensable
-            ), "Missing {} as input".format(var_name)
+            ), f"Missing {var_name} as input"
         if var_proto.duplicable:
             assert isinstance(
                 np_list[var_name], list
-            ), "Duplicable {} should be set as list".format(var_name)
+            ), f"Duplicable {var_name} should be set as list"
             var_list = []
             for (name, np_value) in np_list[var_name]:
                 var_list.append(

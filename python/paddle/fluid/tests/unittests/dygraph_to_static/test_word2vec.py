@@ -49,7 +49,7 @@ corpus = data_preprocess(corpus)
 
 
 def build_dict(corpus, min_freq=3):
-    word_freq_dict = dict()
+    word_freq_dict = {}
     for line in corpus:
         for word in line:
             if word not in word_freq_dict:
@@ -60,9 +60,9 @@ def build_dict(corpus, min_freq=3):
         word_freq_dict.items(), key=lambda x: x[1], reverse=True
     )
 
-    word2id_dict = dict()
-    word2id_freq = dict()
-    id2word_dict = dict()
+    word2id_dict = {}
+    word2id_freq = {}
+    id2word_dict = {}
 
     word2id_freq[0] = 1.0
     word2id_dict['[oov]'] = 0

@@ -70,7 +70,7 @@ class TestUniformRandomOpBF16AttrTensorList(TestUniformRandomOpBF16):
         shape_tensor = []
         for index, ele in enumerate(self.new_shape):
             shape_tensor.append(
-                ("x" + str(index), np.ones((1)).astype("int64") * ele)
+                ("x" + str(index), np.ones(1).astype("int64") * ele)
             )
         self.inputs = {'ShapeTensorList': shape_tensor}
         self.init_attrs()

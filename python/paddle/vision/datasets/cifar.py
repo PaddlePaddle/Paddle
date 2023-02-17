@@ -114,7 +114,7 @@ class Cifar10(Dataset):
         assert mode.lower() in [
             'train',
             'test',
-        ], "mode.lower() should be 'train' or 'test', but got {}".format(mode)
+        ], f"mode.lower() should be 'train' or 'test', but got {mode}"
         self.mode = mode.lower()
 
         if backend is None:

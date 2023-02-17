@@ -24,7 +24,7 @@ import warnings
 from collections import OrderedDict
 import inspect
 import threading
-from typing import Any, List
+from typing import Any
 
 import paddle
 from paddle.fluid import core, dygraph
@@ -190,7 +190,7 @@ def copy_decorator_attrs(original_func, decorated_obj):
     return decorated_obj
 
 
-def ignore_module(modules: List[Any]):
+def ignore_module(modules: list[Any]):
     """
     Adds modules that ignore transcription.
     Builtin modules that have been ignored are collections, pdb, copy, inspect, re, numpy, logging, six
@@ -599,9 +599,9 @@ def _build_load_path_and_config(path, config):
     directory_format_exist = os.path.isdir(path)
     if prefix_format_exist and directory_format_exist:
         raise ValueError(
-            "The %s.pdmodel and %s directory exist at the same time, "
+            "The {}.pdmodel and {} directory exist at the same time, "
             "don't know which one to load, please make sure that the specified target "
-            "of ``path`` is unique." % (path, path)
+            "of ``path`` is unique.".format(path, path)
         )
     elif not prefix_format_exist and not directory_format_exist:
         raise ValueError(
@@ -990,7 +990,7 @@ def save(layer, path, input_spec=None, **configs):
         configs._program_only = True
 
     scope = core.Scope()
-    extra_var_info = dict()
+    extra_var_info = {}
     if isinstance(layer, Layer):
         functions = dir(inner_layer)
         if inner_layer._forward_pre_hooks or inner_layer._forward_post_hooks:
@@ -1096,8 +1096,8 @@ def save(layer, path, input_spec=None, **configs):
             # structured name, the buffer variable (non-persistable)
             # saved to inference program may not need by dygraph Layer,
             # we only record the state_dict variable's structured name
-            state_names_dict = dict()
-            state_var_dict = dict()
+            state_names_dict = {}
+            state_var_dict = {}
             for structured_name, var in dygraph_state_dict.items():
                 state_names_dict[var.name] = structured_name
                 state_var_dict[var.name] = var
@@ -1123,7 +1123,7 @@ def save(layer, path, input_spec=None, **configs):
                     param_or_buffer_tensor._share_data_with(src_tensor)
                 # record var info
                 if param_or_buffer.name not in extra_var_info:
-                    extra_info_dict = dict()
+                    extra_info_dict = {}
                     if param_or_buffer.name in state_names_dict:
                         extra_info_dict['structured_name'] = state_names_dict[
                             param_or_buffer.name
@@ -1830,7 +1830,7 @@ class TracedLayer:
             target_vars = []
             for name in target_var_names:
                 target_var = self._program.global_block().vars.get(name, None)
-                assert target_var is not None, "{} cannot be found".format(name)
+                assert target_var is not None, f"{name} cannot be found"
                 target_vars.append(target_var)
 
             model_filename = file_prefix + INFER_MODEL_SUFFIX

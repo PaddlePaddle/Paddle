@@ -48,7 +48,7 @@ from codegen_utils import (
 # But because there is no check in old dygraph mode, in order to
 # keeping the code compatible, here we also skip inplace check in new dygraph temporarily,
 # and this will be fixed in the futrue.
-inplace_check_blacklist = set(["assign_out_"])
+inplace_check_blacklist = {"assign_out_"}
 
 # Black Ops list that's NO NEED to apply code generation
 black_ops_list = [

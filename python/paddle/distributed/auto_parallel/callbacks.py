@@ -233,12 +233,12 @@ class ModelCheckpointAuto(ModelCheckpoint):
 
     def on_epoch_end(self, epoch, logs=None):
         if self._is_save() and (self.epoch + 1) % self.save_freq == 0:
-            path = '{}/epoch{}'.format(self.save_dir, epoch)
-            print('save checkpoint at {}'.format(os.path.abspath(path)))
+            path = f'{self.save_dir}/epoch{epoch}'
+            print(f'save checkpoint at {os.path.abspath(path)}')
             self.model.save(path)
 
     def on_train_end(self, logs=None):
         if self._is_save():
-            path = '{}/final'.format(self.save_dir)
-            print('save checkpoint at {}'.format(os.path.abspath(path)))
+            path = f'{self.save_dir}/final'
+            print(f'save checkpoint at {os.path.abspath(path)}')
             self.model.save(path)

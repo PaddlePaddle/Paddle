@@ -130,8 +130,8 @@ class Timeline:
     def __init__(self, profile_dict):
         self._profile_dict = profile_dict
         self._pid = 0
-        self._devices = dict()
-        self._mem_devices = dict()
+        self._devices = {}
+        self._mem_devices = {}
         self._chrome_trace = _ChromeTraceFormatter()
 
     def _allocate_pid(self):
@@ -265,7 +265,7 @@ class Timeline:
             mem_list = []
             end_profiler = 0
             for mevent in profile_pb.mem_events:
-                crt_info = dict()
+                crt_info = {}
                 crt_info['time'] = mevent.start_ns
                 crt_info['size'] = mevent.bytes
                 if mevent.place in place_to_str:
@@ -278,7 +278,7 @@ class Timeline:
                 crt_info['thread_id'] = mevent.thread_id
                 crt_info['device_id'] = mevent.device_id
                 mem_list.append(crt_info)
-                crt_info = dict()
+                crt_info = {}
                 crt_info['place'] = place
                 crt_info['pid'] = pid
                 crt_info['thread_id'] = mevent.thread_id
@@ -324,7 +324,7 @@ if args.timeline_path:
     timeline_path = args.timeline_path
 
 profile_paths = profile_path.split(',')
-profile_dict = dict()
+profile_dict = {}
 if len(profile_paths) == 1:
     with open(profile_path, 'rb') as f:
         profile_s = f.read()

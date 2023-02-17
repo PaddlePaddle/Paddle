@@ -510,7 +510,7 @@ class SingleProcessMultiThread(GradAllReduce):
     def _transpile_startup_program(self):
         nodes_num = 0
         if len(self.endpoints) > 1:
-            nodes_num = len(set([x.split(':')[0] for x in self.endpoints]))
+            nodes_num = len({x.split(':')[0] for x in self.endpoints})
         # diffent ip num is multi node
         if nodes_num > 1:
             self.nranks = nodes_num
@@ -953,7 +953,7 @@ class MultiThread(GradAllReduce):
                     # insert coalesce tensor
                     tmp_var = block.create_var(
                         name=unique_name.generate(
-                            'FusedOutput_{}'.format(segment[0].name)
+                            f'FusedOutput_{segment[0].name}'
                         ),
                         dtype=segment[0].dtype,
                         persistable=False,

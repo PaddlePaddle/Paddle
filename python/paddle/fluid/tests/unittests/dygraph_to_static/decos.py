@@ -32,7 +32,7 @@ def deco2(x=0):
     def inner_deco(func):
         @wraps(func)
         def inner(*args, **kwargs):
-            print('in decos.deco2, added {}'.format(x))
+            print(f'in decos.deco2, added {x}')
             _t = paddle.to_tensor(x)
             _tt = func(*args, **kwargs)
             return paddle.add(_t, _tt)

@@ -456,7 +456,7 @@ class EncoderLayer(Layer):
 
         super().__init__()
         self._preprocess_cmd = preprocess_cmd
-        self._encoder_sublayers = list()
+        self._encoder_sublayers = []
         self._prepostprocess_dropout = prepostprocess_dropout
         self._n_layer = n_layer
         self._preprocess_layer = PrePostProcessLayer(
@@ -733,7 +733,7 @@ class DecoderLayer(Layer):
         self._pre_process_layer = PrePostProcessLayer(
             d_model, preprocess_cmd, 3
         )
-        self._decoder_sub_layers = list()
+        self._decoder_sub_layers = []
         self._n_layer = n_layer
         self._preprocess_cmd = preprocess_cmd
         self._prepostprocess_dropout = prepostprocess_dropout

@@ -38,7 +38,7 @@ def create_test_mkldnn_use_ceil_class(parent):
         def init_data_type(self):
             self.dtype = np.float32
 
-    cls_name = "{0}_{1}".format(parent.__name__, "MKLDNNCeilModeCast")
+    cls_name = "{}_{}".format(parent.__name__, "MKLDNNCeilModeCast")
     TestMKLDNNPool2DUseCeilCase.__name__ = cls_name
     globals()[cls_name] = TestMKLDNNPool2DUseCeilCase
 
@@ -56,7 +56,7 @@ def create_test_mkldnn_class(parent):
         def init_data_type(self):
             self.dtype = np.float32
 
-    cls_name = "{0}_{1}".format(parent.__name__, "MKLDNNOp")
+    cls_name = "{}_{}".format(parent.__name__, "MKLDNNOp")
     TestMKLDNNCase.__name__ = cls_name
     globals()[cls_name] = TestMKLDNNCase
 

@@ -60,7 +60,7 @@ def download_files():
         "test_dist_transformer",
         "newstest2013.tok.bpe.32000.en-de.cut",
     )
-    os.system("head -n10 %s > %s" % (orig_path, head_path))
+    os.system(f"head -n10 {orig_path} > {head_path}")
 
 
 class TestDistTransformer2x2Sync(TestDistBase):

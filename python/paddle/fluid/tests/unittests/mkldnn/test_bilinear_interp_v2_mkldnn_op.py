@@ -222,7 +222,7 @@ def create_test_class(parent):
         def init_data_type(self):
             self.dtype = np.uint16
 
-    TestBf16Case.__name__ = "{0}_{1}".format(parent.__name__, "BF16")
+    TestBf16Case.__name__ = "{}_{}".format(parent.__name__, "BF16")
     globals()[TestBf16Case.__name__] = TestBf16Case
 
 

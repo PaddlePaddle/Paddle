@@ -34,7 +34,7 @@ class TestComplexVariable(unittest.TestCase):
             x = dg.to_variable(a, "x")
             y = dg.to_variable(b)
             out = paddle.add(x, y)
-            self.assertIsNotNone("{}".format(out))
+            self.assertIsNotNone(f"{out}")
 
         np.testing.assert_allclose(out.numpy(), a + b, rtol=1e-05)
         self.assertEqual(out.dtype, convert_np_dtype_to_dtype_(self._dtype))

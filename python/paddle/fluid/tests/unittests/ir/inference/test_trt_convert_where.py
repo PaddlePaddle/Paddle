@@ -35,7 +35,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
 
         def generate_input1(dims, batch):
             if dims == 1:
-                return np.zeros((batch)).astype(np.float32)
+                return np.zeros(batch).astype(np.float32)
             elif dims == 2:
                 return np.ones((batch, 4)).astype(np.float32)
             elif dims == 3:
@@ -45,7 +45,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
 
         def generate_input2(dims, batch):
             if dims == 1:
-                return np.zeros((batch)).astype(np.float32)
+                return np.zeros(batch).astype(np.float32)
             elif dims == 2:
                 return np.ones((batch, 4)).astype(np.float32)
             elif dims == 3:
@@ -55,7 +55,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
 
         def generate_input3(dims, batch):
             if dims == 1:
-                return np.zeros((batch)).astype(np.float32)
+                return np.zeros(batch).astype(np.float32)
             elif dims == 2:
                 return np.ones((batch, 4)).astype(np.float32)
             elif dims == 3:

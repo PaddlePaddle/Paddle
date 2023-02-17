@@ -251,7 +251,7 @@ def is_required_match(requirestr, cbtitle='not-specified'):
         None - skipped  # trick
     """
     global SAMPLE_CODE_TEST_CAPACITY, RUN_ON_DEVICE  # readonly
-    requires = set(['cpu'])
+    requires = {'cpu'}
     if requirestr:
         for r in requirestr.split(','):
             rr = r.strip().lower()
@@ -381,7 +381,7 @@ Please use '.. code-block:: python' to format the sample code."""
                 SAMPLECODE_TEMPDIR,
                 '{}_example{}'.format(
                     name,
-                    '.py' if len(codeblocks) == 1 else '_{}.py'.format(y + 1),
+                    '.py' if len(codeblocks) == 1 else f'_{y + 1}.py',
                 ),
             )
             with open(tfname, 'w') as tempf:
@@ -780,7 +780,7 @@ if __name__ == '__main__':
             )
             if args.debug:
                 for k, v in timeovered_test.items():
-                    logger.info('{} - {}s'.format(k, v))
+                    logger.info(f'{k} - {v}s')
         if len(SUMMARY_INFO['success']):
             logger.info(
                 "%d sample codes ran success", len(SUMMARY_INFO['success'])

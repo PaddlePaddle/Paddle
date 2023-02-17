@@ -324,7 +324,7 @@ class Accuracy(Metric):
     def _init_name(self, name):
         name = name or 'acc'
         if self.maxk != 1:
-            self._name = ['{}_top{}'.format(name, k) for k in self.topk]
+            self._name = [f'{name}_top{k}' for k in self.topk]
         else:
             self._name = [name]
 

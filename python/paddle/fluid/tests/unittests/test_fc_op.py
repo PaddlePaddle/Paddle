@@ -51,7 +51,7 @@ class MatrixGenerate:
         if bias_dims == 2:
             self.bias = np.random.random((1, oc)).astype("float32")
         else:
-            self.bias = np.random.random((oc)).astype("float32")
+            self.bias = np.random.random(oc).astype("float32")
 
 
 class TestFCOp(OpTest):

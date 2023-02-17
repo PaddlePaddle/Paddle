@@ -29,7 +29,7 @@ def output_hist(out):
     hist, _ = np.histogram(out, range=(-10, 10))
     hist = hist.astype("float32")
     hist /= float(out.size)
-    prob = 0.1 * np.ones((10))
+    prob = 0.1 * np.ones(10)
     return hist, prob
 
 
@@ -74,7 +74,7 @@ class TestRandintOp_attr_tensorlist(OpTest):
         shape_tensor = []
         for index, ele in enumerate(self.new_shape):
             shape_tensor.append(
-                ("x" + str(index), np.ones((1)).astype("int64") * ele)
+                ("x" + str(index), np.ones(1).astype("int64") * ele)
             )
         self.inputs = {'ShapeTensorList': shape_tensor}
         self.init_attrs()
@@ -160,7 +160,7 @@ class TestRandintImperative(unittest.TestCase):
         x3 = paddle.tensor.random.randint(n)
         for i in [x1, x2, x3]:
             for j in i.numpy().tolist():
-                self.assertTrue((j >= 0 and j < n))
+                self.assertTrue(j >= 0 and j < n)
         paddle.enable_static()
 
 

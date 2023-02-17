@@ -193,9 +193,9 @@ class TestChannelShuffleAPI(unittest.TestCase):
                 result_functional.numpy(), npresult, rtol=1e-05
             )
 
-            channel_shuffle_str = 'groups={}'.format(groups)
+            channel_shuffle_str = f'groups={groups}'
             if data_format != 'NCHW':
-                channel_shuffle_str += ', data_format={}'.format(data_format)
+                channel_shuffle_str += f', data_format={data_format}'
             self.assertEqual(channel_shuffle.extra_repr(), channel_shuffle_str)
 
     def test_dygraph1(self):

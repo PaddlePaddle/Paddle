@@ -594,9 +594,9 @@ class TestLACModel(unittest.TestCase):
                             input=crf_decode, label=targets, seq_length=length
                         )
                         outputs = [avg_cost, precision, recall, f1_score]
-                        avg_cost, precision, recall, f1_score = [
+                        avg_cost, precision, recall, f1_score = (
                             np.mean(x.numpy()) for x in outputs
-                        ]
+                        )
 
                         print(
                             "[train] step = %d, loss = %f, P: %f, R: %f, F1: %f, elapsed time %f"

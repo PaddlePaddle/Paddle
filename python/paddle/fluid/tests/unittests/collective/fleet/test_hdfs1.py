@@ -34,18 +34,16 @@ class FSTest1(FSTestBase):
         fs.mkdirs(dst)
         fs.mkdirs(dst + "/" + src)
         output = ""
-        cmd = "{} -mv {} {}".format(fs._base_cmd, src, dst)
+        cmd = f"{fs._base_cmd} -mv {src} {dst}"
         try:
             fs.mv(src, dst, test_exists=False)
-            self.assertFalse(
-                1, "can't execute cmd:{} output:{}".format(cmd, output)
-            )
+            self.assertFalse(1, f"can't execute cmd:{cmd} output:{output}")
         except FSTimeOut as e:
-            print("execute mv {} to {} timeout".format(src, dst))
+            print(f"execute mv {src} to {dst} timeout")
 
         ret, output = fluid.core.shell_execute_cmd(cmd, 6 * 1000, 2 * 1000)
         self.assertNotEqual(ret, 0)
-        print("second mv ret:{} output:{}".format(ret, output))
+        print(f"second mv ret:{ret} output:{output}")
 
     def test_is_dir(self):
         fs = HDFSClient(

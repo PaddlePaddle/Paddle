@@ -36,7 +36,7 @@ class QAT(Quantization):
     """
 
     def __init__(self, config: QuantConfig):
-        super(QAT, self).__init__(config)
+        super().__init__(config)
 
     def quantize(self, model: Layer, inplace=False):
         r"""

@@ -114,7 +114,7 @@ def __initialize_meta_info__():
         with zipfile.ZipFile(file=fn) as package:
             for info in package.infolist():
                 assert isinstance(info, zipfile.ZipInfo)
-                MOVIE_INFO = dict()
+                MOVIE_INFO = {}
                 title_word_set = set()
                 categories_set = set()
                 with package.open('ml-1m/movies.dat') as movie_file:
@@ -132,17 +132,17 @@ def __initialize_meta_info__():
                             title_word_set.add(w.lower())
 
                 global MOVIE_TITLE_DICT
-                MOVIE_TITLE_DICT = dict()
+                MOVIE_TITLE_DICT = {}
                 for i, w in enumerate(title_word_set):
                     MOVIE_TITLE_DICT[w] = i
 
                 global CATEGORIES_DICT
-                CATEGORIES_DICT = dict()
+                CATEGORIES_DICT = {}
                 for i, c in enumerate(categories_set):
                     CATEGORIES_DICT[c] = i
 
                 global USER_INFO
-                USER_INFO = dict()
+                USER_INFO = {}
                 with package.open('ml-1m/users.dat') as user_file:
                     for line in user_file:
                         line = line.decode(encoding='latin')

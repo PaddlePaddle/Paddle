@@ -154,7 +154,7 @@ def train(
                         return
                     else:
                         print(
-                            'PassID {0:1}, BatchID {1:04}, Test Loss {2:2.2}, Acc {3:2.2}'.format(
+                            'PassID {:1}, BatchID {:04}, Test Loss {:2.2}, Acc {:2.2}'.format(
                                 pass_id,
                                 batch_id + 1,
                                 float(avg_loss_val),
@@ -274,7 +274,7 @@ def inject_test_method(use_cuda, parallel, nn_type, combine):
             with fluid.program_guard(prog, startup_prog):
                 main(use_cuda, parallel, nn_type, combine)
 
-    fn = 'test_{0}_{1}_{2}_{3}'.format(
+    fn = 'test_{}_{}_{}_{}'.format(
         nn_type,
         'cuda' if use_cuda else 'cpu',
         'parallel' if parallel else 'normal',

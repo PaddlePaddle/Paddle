@@ -454,7 +454,7 @@ class ClipGradByGloblNormPass(PassBase):
                     )
                     # TODO better regular the usage of op namescope
                     allreduce_op._set_attr(
-                        'op_namescope', str('/') + SyncMode.GlobalNormSync
+                        'op_namescope', '/' + SyncMode.GlobalNormSync
                     )
                     self.clip_helper._init_dist_attr(allreduce_op)
 

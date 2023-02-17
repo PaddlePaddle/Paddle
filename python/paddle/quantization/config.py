@@ -32,7 +32,7 @@ DEFAULT_QAT_LAYER_MAPPINGS: Dict[Layer, Layer] = {
 DEFAULT_LEAVES = [nn.ReLU, nn.AvgPool2D]
 
 
-class SingleLayerConfig(object):
+class SingleLayerConfig:
     r"""
     Configure how to quantize the activations and weights of a single layer.
 
@@ -57,7 +57,7 @@ class SingleLayerConfig(object):
         return f"activation: {self._activation}\nweight: {self._weight}"
 
 
-class QuantConfig(object):
+class QuantConfig:
     r"""
     Configure how to quantize a model or a part of the model. It will map each layer to
     an instance of SingleLayerConfig by the settings. It provides diverse methods to set
