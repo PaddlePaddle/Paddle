@@ -25,6 +25,7 @@ enum MessageType {
   RESET = 5;           // reset the status
   START = 6;
   DATA_WITH_VARS = 7;
+  START_LOOP = 8;
 }
 
 enum ValueType {

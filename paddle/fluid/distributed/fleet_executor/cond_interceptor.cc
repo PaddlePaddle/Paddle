@@ -93,6 +93,13 @@ void CondInterceptor::SendDataReady(int64_t down_id) {
   Send(down_id, ready_msg);
 }
 
+void CondInterceptor::SendStartLoop(int64_t down_id) {
+  InterceptorMessage ready_msg;
+  ready_msg.set_message_type(START_LOOP);
+  ready_msg.set_scope_idx(cur_scope_id_);
+  Send(down_id, ready_msg);
+}
+
 void CondInterceptor::ReplyDataIsUseless(int64_t up_id) {
   InterceptorMessage ready_msg;
   ready_msg.set_message_type(DATA_IS_USELESS);
@@ -107,7 +114,7 @@ void CondInterceptor::Compute() {
   if (cond) {
     VLOG(3) << "Loop again in scope " << cur_scope_id_;
     for (auto& down_id : normal_out_id_) {
-      SendDataReady(down_id);
+      SendStartLoop(down_id);
     }
     ++num_of_scopes_;
   } else {

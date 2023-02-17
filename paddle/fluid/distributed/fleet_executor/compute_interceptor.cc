@@ -179,6 +179,16 @@ bool ComputeInterceptor::IsInputReady() {
       flag = flag && (ready_size_map.at(i) != 0);
     }
     if (flag) {
+      for (auto iter : scope_id_to_finish_flag_) {
+        if (iter.first == i) {
+          break;
+        } else if (!iter.second) {
+          VLOG(3) << "The previous scope is not ready, waiting for the "
+                     "previous scope "
+                  << iter.first;
+          return false;
+        }
+      }
       cur_scope_id_ = i;
       return true;
     } else {
@@ -329,6 +339,15 @@ void ComputeInterceptor::Run() {
 
     RunOps();
 
+    if (!scope_id_to_finish_flag_.empty()) {
+      PADDLE_ENFORCE_NE(
+          scope_id_to_finish_flag_.find(cur_scope_id_),
+          scope_id_to_finish_flag_.end(),
+          platform::errors::NotFound(
+              "Can not find scope %ld in scope_id_to_finish", cur_scope_id_));
+      scope_id_to_finish_flag_.erase(cur_scope_id_);
+    }
+
     // send to downstream and increase buff used
     SendDataReadyToDownStream();
     // reply to upstream and decrease ready data
@@ -380,6 +399,13 @@ void ComputeInterceptor::Compute(const InterceptorMessage& msg) {
             << msg.scope_idx() << " ";
     DecodeMsgVars(msg);
     IncreaseReady(msg.src_id(), msg.scope_idx());
+    Run();
+  } else if (msg.message_type() == START_LOOP) {
+    VLOG(3) << "Compute interceptor " << interceptor_id_
+            << " receive start_loop " << msg.src_id() << " " << msg.scope_idx()
+            << " ";
+    IncreaseReady(msg.src_id(), msg.scope_idx());
+    scope_id_to_finish_flag_.emplace(msg.scope_idx(), false);
     Run();
   }
 }

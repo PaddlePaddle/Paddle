@@ -38,6 +38,7 @@ class CondInterceptor final : public Interceptor {
   void Compute();
   bool GetCondResult();
   void SendDataReady(int64_t down_id);
+  void SendStartLoop(int64_t down_id);
   void ReplyDataIsUseless(int64_t up_id);
 
   int64_t cur_scope_id_;
