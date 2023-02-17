@@ -26,17 +26,25 @@ import paddle.fluid.core as core
 SEED = 2023
 BATCH_SIZE = 2
 
+if core.is_compiled_with_cuda():
+    paddle.set_flags({'FLAGS_cudnn_deterministic': True})
+
 
 def train(to_static, enable_prim, enable_cinn):
     if core.is_compiled_with_cuda():
         paddle.set_device('gpu')
     else:
         paddle.set_device('cpu')
+    fluid.core._set_prim_all_enabled(
+        enable_prim and platform.system() == 'Linux'
+    )
+
     np.random.seed(SEED)
     paddle.seed(SEED)
     paddle.framework.random._manual_program_seed(SEED)
-    fluid.core._set_prim_all_enabled(
-        enable_prim and platform.system() == 'Linux'
+
+    train_data_loader = create_pretraining_dataset(
+        20, {}, batch_size=BATCH_SIZE, worker_init=None
     )
 
     bert = Bert()
@@ -58,13 +66,6 @@ def train(to_static, enable_prim, enable_cinn):
         )
 
     optimizer = fluid.optimizer.Adam(parameter_list=bert.parameters())
-
-    train_data_loader = create_pretraining_dataset(
-        20,
-        {},
-        batch_size=BATCH_SIZE,
-        worker_init=None,
-    )
 
     losses = []
     for step, batch in enumerate(train_data_loader):
@@ -118,8 +119,9 @@ class TestResnet(unittest.TestCase):
 
     def test_prim(self):
         dy2st_prim = train(to_static=True, enable_prim=True, enable_cinn=False)
-        # NOTE: Now dy2st is equal to dy2st_prim. With the splitting of kernels, the threshold here may need to be adjusted
-        # np.testing.assert_allclose(self.dy2st, dy2st_prim, rtol=1e-6)
+
+    #     # NOTE: Now dy2st is equal to dy2st_prim. With the splitting of kernels, the threshold here may need to be adjusted
+    #     # np.testing.assert_allclose(self.dy2st, dy2st_prim, rtol=1e-6)
 
     @unittest.skipIf(
         not paddle.is_compiled_with_cinn(), "padle is not compiled with CINN"
@@ -139,11 +141,11 @@ class TestResnet(unittest.TestCase):
             to_static=True, enable_prim=True, enable_cinn=True
         )
 
-    #     # TODO(0x45f): The following is only temporary thresholds, and the final thresholds need to be discussed
-    #     # np.testing.assert_allclose(
-    #     #     self.dy2st[0:2], dy2st_prim_cinn[0:2], rtol=1e-2
-    #     # )
-    #     # np.testing.assert_allclose(self.dy2st, dy2st_prim_cinn, rtol=1e-1)
+    # #     # TODO(0x45f): The following is only temporary thresholds, and the final thresholds need to be discussed
+    # #     # np.testing.assert_allclose(
+    # #     #     self.dy2st[0:2], dy2st_prim_cinn[0:2], rtol=1e-2
+    # #     # )
+    # #     # np.testing.assert_allclose(self.dy2st, dy2st_prim_cinn, rtol=1e-1)
 
 
 if __name__ == '__main__':

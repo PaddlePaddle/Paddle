@@ -32,6 +32,9 @@ except ImportError:
     FusedTransformerEncoderLayer = None
 
 
+VOCAB_SIZE = 30522
+
+
 class Stack(object):
     def __init__(self, axis=0, dtype=None):
         self._axis = axis
@@ -53,23 +56,24 @@ def is_tensor(x):
     return isinstance(x, np.ndarray)
 
 
-VOCAB_SIZE = 30522
-
-
 class BertConfig:
     def __init__(self):
         self.attention_probs_dropout_prob = 0.1
         self.fuse = False
         self.hidden_act = 'gelu'
         self.hidden_dropout_prob = 0.1
-        self.hidden_size = 768
+        # Decrease config to speed up unittest
+        # self.hidden_size = 768
+        self.hidden_size = 60
         self.initializer_range = 0.02
         self.intermediate_size = 3072
         self.layer_norm_eps = 1e-12
         self.max_position_embeddings = 512
         self.model_type = 'bert'
-        self.num_attention_heads = 12
-        self.num_hidden_layers = 12
+        # self.num_attention_heads = 12
+        self.num_attention_heads = 6
+        # self.num_hidden_layers = 12
+        self.num_hidden_layers = 6
         self.pad_token_id = 0
         self.paddlenlp_version = None
         self.pool_act = 'tanh'
@@ -781,17 +785,16 @@ paddle.nn.TransformerDecoder.__init__ = layer_init_wrapper(_decoder_init)
 
 
 class PretrainingDataset(Dataset):
-    inputs = [
-        np.random.randint(0, 30484, (88, 128)).astype('int32'),
-        np.random.randint(0, 2, (88, 128)).astype('int8'),
-        np.random.randint(0, 2, (88, 128)).astype('int8'),
-        np.random.randint(0, 127, (88, 20)).astype('int32'),
-        np.random.randint(0, 29393, (88, 20)).astype('int32'),
-        np.random.randint(0, 1, (88,)).astype('int8'),
-    ]
-
     def __init__(self, max_pred_length):
         self.max_pred_length = max_pred_length
+        self.inputs = [
+            np.random.randint(0, 30484, (88, 128)).astype('int32'),
+            np.random.randint(0, 2, (88, 128)).astype('int8'),
+            np.random.randint(0, 2, (88, 128)).astype('int8'),
+            np.random.randint(0, 127, (88, 20)).astype('int32'),
+            np.random.randint(0, 29393, (88, 20)).astype('int32'),
+            np.random.randint(0, 1, (88,)).astype('int8'),
+        ]
 
     def __len__(self):
         "Denotes the total number of samples"
