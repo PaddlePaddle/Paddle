@@ -87,7 +87,7 @@ class NormOpGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetAttrMap(this->Attrs());
     op->SetInput("X", this->Input("X"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
-    op->SetInput("Out", this->Output("Out"));
+    op->SetInput("Norm", this->Output("Norm"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
   }
 };
