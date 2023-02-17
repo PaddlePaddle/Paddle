@@ -77,4 +77,8 @@ TEST(type_test, type) {
   ir::Type int1_1 = ir::IntegerType::get(ctx, 1, 0);
   ir::Type int1_2 = ir::IntegerType::get(ctx, 1, 0);
   EXPECT_EQ(int1_1 == int1_2, 1);
+
+  ir::Type int8_1 = ir::IntegerType::get(ctx, 8, 0);
+  ir::Type int8_2 = ir::IntegerType::get(ctx, 8, 0);
+  EXPECT_EQ(int8_1 == int8_2, 1);
 }

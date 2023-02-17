@@ -24,7 +24,8 @@ namespace ir {
 ///
 /// \brief The implementation of the class StorageManager.
 ///
-struct StorageManagerImpl;
+// struct StorageManagerImpl;
+struct ParametricStorageManager;
 
 ///
 /// \brief A utility class for getting or creating Storage class instances.
@@ -145,9 +146,12 @@ class StorageManager {
     return typename ImplTy::ParamKey(args...);
   }
 
-  /// \brief StorageManagerImpl is the implementation class of the
-  /// StorageManager.
-  std::unique_ptr<StorageManagerImpl> impl_;
+  // This map is a mapping between type id and parameteric type storage.
+  std::unordered_map<TypeId, std::unique_ptr<ParametricStorageManager>>
+      parametric_instance_;
+
+  // This map is a mapping between type id and parameterless type storage.
+  std::unordered_map<TypeId, StorageBase *> parameterless_instances_;
 };
 
 }  // namespace ir

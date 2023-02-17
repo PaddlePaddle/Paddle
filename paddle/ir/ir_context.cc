@@ -98,6 +98,7 @@ IntegerType IntegerType::get(ir::IrContext *context,
                              unsigned signedness) {
   if (auto cached = GetCachedIntegerType(width, signedness, context))
     return cached;
+  VLOG(4) << "no cache, create a new";
   return IntegerType::create(context, width, signedness);
 }
 
