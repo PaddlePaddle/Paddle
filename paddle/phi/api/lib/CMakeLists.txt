@@ -239,8 +239,8 @@ add_custom_command(
 # generate tensor and tensor operants file
 add_custom_command(
   OUTPUT ${operants_base_file} ${phi_tensor_operants_header_file}
-         ${phi_tensor_operants_source_file} ${operants_manager_header_path}
-         ${operants_manager_source_path}
+         ${phi_tensor_operants_source_file} ${operants_manager_header_file}
+         ${operants_manager_source_file}
   COMMAND ${PYTHON_EXECUTABLE} -m pip install pyyaml
   COMMAND
     ${PYTHON_EXECUTABLE} ${tensor_gen_file} --api_yaml_path ${api_yaml_file}
@@ -259,9 +259,9 @@ add_custom_command(
     ${CMAKE_COMMAND} -E copy_if_different ${phi_tensor_operants_source_file_tmp}
     ${phi_tensor_operants_source_file}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different
-          ${operants_manager_header_path_tmp} ${operants_manager_header_path}
+          ${operants_manager_header_file_tmp} ${operants_manager_header_file}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different
-          ${operants_manager_source_path_tmp} ${operants_manager_source_path}
+          ${operants_manager_source_file_tmp} ${operants_manager_source_file}
   COMMENT
     "copy_if_different ${phi_tensor_operants_header_file} ${phi_tensor_operants_source_file}"
   DEPENDS ${api_yaml_file} ${legacy_api_yaml_file} ${tensor_gen_file}
