@@ -51,7 +51,7 @@ class ParameterServerRuntime(RuntimeBase):
     def _get_distributed_strategy(self):
         strategy = None
 
-        from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
+        from paddle.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
             StrategyFactory,
         )
 
@@ -239,13 +239,13 @@ class ParameterServerRuntime(RuntimeBase):
             kwargs["sparse_attrs"] = get_sparse_attrs()
             return kwargs
 
-        from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
-            GeoStrategy,
-            SyncStrategy,
-        )
         from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
             _get_lr_ops,
             _has_global_step,
+        )
+        from paddle.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
+            GeoStrategy,
+            SyncStrategy,
         )
 
         trainer_config = self.async_strategy.get_trainer_runtime_config()

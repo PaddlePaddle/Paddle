@@ -6,8 +6,6 @@ exclude =
     # https://github.com/PaddlePaddle/Paddle/pull/46290#discussion_r976392010
     ./python/paddle/fluid/[!t]**,
     ./python/paddle/fluid/tra**,
-    # Exclude auto-generated files
-    *_pb2.py,
     # Exclude third-party libraries
     ./python/paddle/utils/gast/**,
     # Exclude files that will be removed in the future, see more at
@@ -15,18 +13,16 @@ exclude =
     ./python/paddle/fluid/tests/unittests/npu/**,
     ./python/paddle/fluid/tests/unittests/mlu/**
 ignore =
-    # E, see https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
-    E203,
-    E402,
-    E501,
-    E721,E722,E731,E741,
-
-    # F, see https://flake8.pycqa.org/en/latest/user/error-codes.html
-    F405,
-    F841,
-
-    # W, see https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
-    W503
+    E203, # Whitespace before ‘,’, ‘;’, or ‘:’, it is not compatible with black
+    E402, # Module level import not at top of file
+    E501, # Line too long (82 > 79 characters)
+    E721, # Do not compare types, use `isinstance()`
+    E722, # Do not use bare except, specify exception instead
+    E731, # Do not assign a lambda expression, use a def
+    E741, # Do not use variables named ‘l’, ‘O’, or ‘I’
+    F405, # `name` may be undefined, or defined from star imports: `module`
+    F841, # Local variable name is assigned to but never used
+    W503  # Line break before binary operator, it is not compatible with black
 per-file-ignores =
     # These files need tabs for testing.
     python/paddle/fluid/tests/unittests/dygraph_to_static/test_error.py:E101,W191

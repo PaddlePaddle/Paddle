@@ -42,7 +42,7 @@ __all__ = []
 
 translator_logger = TranslatorLogger()
 
-CONVERSION_OPTIONS = "An attribute for a function that indicates conversion flags of the function in dynamic-to-static."
+CONVERSION_OPTIONS = "__jst_not_to_static"
 
 
 class ConversionOptions:
@@ -57,6 +57,19 @@ class ConversionOptions:
 
     def __init__(self, not_convert=False):
         self.not_convert = not_convert
+
+    def attach(self, func):
+        if inspect.ismethod(func):
+            func = func.__func__
+
+        if inspect.isfunction(func):
+            setattr(func, CONVERSION_OPTIONS, self)
+        else:
+            translator_logger.warn(
+                "Only support @not_to_static to type(function) or type(method), but recevied {}".format(
+                    type(func)
+                )
+            )
 
 
 def is_builtin(func, name=None):

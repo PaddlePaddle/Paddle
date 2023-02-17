@@ -4,17 +4,20 @@ if(WITH_GPU)
   nv_library(
     phi_tensor_raw
     SRCS tensor.cc
-    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool)
+    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool
+         operants_manager)
 elseif(WITH_ROCM)
   hip_library(
     phi_tensor_raw
     SRCS tensor.cc
-    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool)
+    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool
+         operants_manager)
 else()
   cc_library(
     phi_tensor_raw
     SRCS tensor.cc
-    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool)
+    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool
+         operants_manager)
 endif()
 
 set(api_gen_base ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/api_base.py)
@@ -242,13 +245,23 @@ cc_library(
 cc_library(
   api_custom_impl
   SRCS api_custom_impl.cc
-  DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils backward_infermeta
-       phi_data_transform)
+  DEPS phi_tensor_raw
+       phi
+       kernel_dispatch
+       api_gen_utils
+       backward_infermeta
+       phi_data_transform
+       phi_profiler)
 cc_library(
   phi_function_api
   SRCS ${api_source_file}
-  DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils phi_data_transform
-       api_custom_impl)
+  DEPS phi_tensor_raw
+       phi
+       kernel_dispatch
+       api_gen_utils
+       phi_data_transform
+       api_custom_impl
+       phi_profiler)
 cc_library(
   phi_bw_function_api
   SRCS ${bw_api_source_file}
@@ -261,16 +274,22 @@ cc_library(
        phi_data_transform
        phi_function_api
        api_custom_impl
-       global_utils)
+       global_utils
+       phi_profiler)
 cc_library(
   sparse_api
   SRCS ${sparse_api_source_file}
-  DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils)
+  DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils phi_profiler)
 cc_library(
   sparse_bw_api
   SRCS ${sparse_bw_api_source_file}
-  DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils sparse_api
-       sparse_backward_infermeta)
+  DEPS phi_tensor_raw
+       phi
+       kernel_dispatch
+       api_gen_utils
+       sparse_api
+       sparse_backward_infermeta
+       phi_profiler)
 cc_library(
   phi_dygraph_api
   SRCS ${dygraph_api_source_file}
@@ -280,11 +299,12 @@ cc_library(
        api_gen_utils
        phi_data_transform
        phi_function_api
-       sparse_api)
+       sparse_api
+       phi_profiler)
 cc_library(
   strings_api
   SRCS ${strings_api_source_file}
-  DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils)
+  DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils phi_profiler)
 cc_library(
   phi_tensor
   SRCS tensor_method.cc
@@ -308,3 +328,12 @@ cc_library(
   api_int_array
   SRCS int_array.cc
   DEPS tensor_copy)
+
+cc_library(
+  phi_tensor_operants
+  SRCS tensor_operants.cc
+  DEPS phi_function_api)
+cc_library(
+  operants_manager
+  SRCS operants_manager.cc
+  DEPS phi_enforce)

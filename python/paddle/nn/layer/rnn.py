@@ -323,7 +323,7 @@ def _rnn_static_graph(
 
         with paddle.fluid.framework.device_guard("cpu"):
             new_cond = paddle.tensor.less_than(start_i, end)
-            paddle.fluid.layers.assign(new_cond, cond)
+            paddle.assign(new_cond, cond)
 
     out, _ = tensor_array_to_tensor(out_array, axis=0, use_stack=True)
 
