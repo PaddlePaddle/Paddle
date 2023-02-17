@@ -18,8 +18,6 @@ import numpy as np
 
 import paddle
 import paddle.nn as nn
-import paddle.nn.functional as F
-import paddle.static as static
 from paddle.distributed.passes import PassManager, new_pass
 
 
@@ -54,86 +52,63 @@ class TestFuseAdamWPass(unittest.TestCase):
         self.output_size = 20
         self.n = 2
 
-    def get_loss_data(self, use_apply_passes):
+    def get_loss_data(self, place, use_amp=False, use_apply_passes=False):
         paddle.enable_static()
-        np.random.seed(10)
         paddle.seed(10)
-        paddle.set_device("gpu")
-        main_prog = paddle.static.Program()
-        startup_prog = paddle.static.Program()
-        with paddle.static.scope_guard(paddle.static.Scope()):
-            with paddle.static.program_guard(main_prog, startup_prog):
-                model = MLPLayer(
-                    self.input_size, self.hidden_size, self.output_size, self.n
+        np.random.seed(10)
+        if place == 'cpu':
+            use_amp = False
+        exe = paddle.static.Executor(place=place)
+        train_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        optimizer = paddle.optimizer.AdamW(multi_precision=use_amp)
+        if use_amp:
+            optimizer = paddle.static.amp.decorate(
+                optimizer,
+                init_loss_scaling=128.0,
+                use_dynamic_loss_scaling=True,
+                use_pure_fp16=True,
+                use_fp16_guard=False,
+            )
+        with paddle.static.program_guard(train_program, startup_program):
+            if use_amp:
+                data = paddle.static.data(
+                    shape=[10, 30], name='X', dtype='float16'
                 )
-                inp = static.data(
-                    name='x', shape=[10, self.input_size], dtype='float32'
+            else:
+                data = paddle.static.data(
+                    shape=[10, 30], name='X', dtype='float32'
                 )
-                y = static.data(
-                    name='y', shape=[10, self.output_size], dtype='float32'
-                )
-                inp_data = np.random.random([10, self.input_size]).astype(
-                    "float32"
-                )
-                y_data = np.random.random([10, self.output_size]).astype(
-                    "float32"
-                )
-                beta1 = 0.9
-                beta2 = 0.999
-                input_paramters = model.parameters()
+            model = MLPLayer(30, 50, 20, 2)
+            out = model(data)
+            loss = paddle.mean(out)
+            optimizer.minimize(loss)
 
-                out = model(inp)
-                cost = F.square_error_cost(input=out, label=y)
-                loss = paddle.mean(cost)
+        apply_passes(train_program, startup_program)
 
-                decay_params = [
-                    p.name
-                    for p in input_paramters
-                    if not any(nd in p.name for nd in ["b_"])
-                ]
-
-                apply_decay_param_fun = lambda x: x in decay_params
-
-                # AdamW
-                opt = paddle.optimizer.AdamW(
-                    learning_rate=0.001,
-                    apply_decay_param_fun=apply_decay_param_fun,
-                )
-                opt.minimize(loss)
-
-                if use_apply_passes:
-                    apply_passes(
-                        static.default_main_program(),
-                        static.default_startup_program(),
-                    )
-
-                places = paddle.static.cuda_places()
-                exe = static.Executor(paddle.CUDAPlace(0))
-                exe.run(static.default_startup_program())
-
-                compiled_program = static.CompiledProgram(
-                    static.default_main_program()
-                )
-
-                # train
-                for num_batch in range(5):
-                    loss_data = exe.run(
-                        compiled_program,
-                        feed={'x': inp_data, 'y': y_data},
-                        fetch_list=[loss],
-                    )
-
+        exe.run(startup_program)
+        if use_amp:
+            optimizer.amp_init(place=place, scope=paddle.static.global_scope())
+            x = np.random.random(size=(10, 30)).astype('float16')
+        else:
+            x = np.random.random(size=(10, 30)).astype('float32')
+        for _ in range(5):
+            loss_data = exe.run(
+                train_program, feed={"X": x}, fetch_list=[loss.name]
+            )
         return loss_data
 
     def test_fuse_adamw_pass(self):
-        loss_without_passes = self.get_loss_data(False)
-        loss_with_passes = self.get_loss_data(True)
-        np.testing.assert_allclose(
-            np.array(loss_without_passes),
-            np.array(loss_with_passes),
-            rtol=1e-6,
-            atol=1e-6,
-        )
+        place = paddle.CUDAPlace(0)
+        for use_amp in [True, False]:
+            loss_without_passes = self.get_loss_data(place, use_amp, False)
+            loss_with_passes = self.get_loss_data(place, use_amp, True)
+            np.testing.assert_allclose(
+                np.array(loss_without_passes),
+                np.array(loss_with_passes),
+                rtol=1e-6,
+                atol=1e-6,
+            )
 
 
 if __name__ == "__main__":
