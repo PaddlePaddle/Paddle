@@ -812,6 +812,14 @@
   outputs :
     out : Out
 
+- op : kron
+  backward : kron_grad
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
+  compromote : true
+
 - op : kthvalue
   inputs :
     x : X
