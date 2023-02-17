@@ -28,7 +28,7 @@ from paddle.fluid import Program, core, program_guard
 class TestExpandV2OpRank1(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
-        self.comp_op_type = "prim"
+        self.prim_op_type = "prim"
         self.init_data()
         self.python_api = paddle.expand
         self.inputs = {'X': np.random.random(self.ori_shape).astype("float64")}
@@ -81,7 +81,7 @@ class TestExpandV2OpRank4(TestExpandV2OpRank1):
 class TestExpandV2OpRank1_tensor_attr(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
-        self.comp_op_type = "prim"
+        self.prim_op_type = "prim"
         self.python_api = paddle.expand
         self.init_data()
         expand_shapes_tensor = []
@@ -123,7 +123,7 @@ class TestExpandV2OpRank2_Corner_tensor_attr(TestExpandV2OpRank1_tensor_attr):
 class TestExpandV2OpRank1_tensor(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
-        self.comp_op_type = "prim"
+        self.prim_op_type = "prim"
         self.python_api = paddle.expand
         self.init_data()
 
@@ -151,7 +151,7 @@ class TestExpandV2OpRank1_tensor(OpTest):
 class TestExpandV2OpInteger(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
-        self.comp_op_type = "prim"
+        self.prim_op_type = "prim"
         self.python_api = paddle.expand
         self.inputs = {
             'X': np.random.randint(10, size=(2, 4, 5)).astype("int32")
@@ -168,7 +168,7 @@ class TestExpandV2OpInteger(OpTest):
 class TestExpandV2OpBoolean(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
-        self.comp_op_type = "prim"
+        self.prim_op_type = "prim"
         self.python_api = paddle.expand
         self.inputs = {'X': np.random.randint(2, size=(2, 4, 5)).astype("bool")}
         self.attrs = {'shape': [2, 4, 5]}
@@ -183,7 +183,7 @@ class TestExpandV2OpBoolean(OpTest):
 class TestExpandV2OpInt64_t(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
-        self.comp_op_type = "prim"
+        self.prim_op_type = "prim"
         self.python_api = paddle.expand
         self.inputs = {
             'X': np.random.randint(10, size=(2, 4, 5)).astype("int64")
