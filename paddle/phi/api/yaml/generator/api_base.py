@@ -1195,7 +1195,8 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         for kernel_out in outputs_args:
             fallback_kernel_output_trans += f"""
 {code_indent}    TransDataBackend({kernel_out}, kernel_backend, {kernel_out});"""
-        return f"""
+        return (
+            f"""
 {code_indent}  VLOG(6) << "{self.api} API kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
 {code_indent}  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
 {code_indent}      "{kernel_name}", {{kernel_backend, kernel_layout, kernel_data_type}});
@@ -1226,9 +1227,25 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}    delete kernel_record_event;
 {code_indent}  }}
 {code_indent}  if (kernel_result.has_fallback_cpu) {{
-{fallback_kernel_output_trans}
+{fallback_kernel_output_trans}"""
+            + (
+                f"""
+{code_indent}
+{code_indent}    phi::DenseTensor * mean_subs = static_cast<phi::DenseTensor*>(mean.impl().get());
+{code_indent}    mean_subs->ShareBufferWith(*kernel_out_1);
+{code_indent}
+{code_indent}    phi::DenseTensor * variance_subs = static_cast<phi::DenseTensor*>(variance.impl().get());
+{code_indent}    variance_subs->ShareBufferWith(*kernel_out_2);
+{code_indent}
+{code_indent}
+{code_indent}"""
+                if self.api == "batch_norm"
+                else ""
+            )
+            + f"""
 {code_indent}  }}
 {code_indent}  {self.gene_return_code()}"""
+        )
 
     def get_condition_code(self, kernel_name):
         assert self.kernel['dispatch'][
