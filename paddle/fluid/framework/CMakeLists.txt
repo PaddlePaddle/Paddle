@@ -1103,7 +1103,7 @@ cc_test(
 cc_library(
   selected_rows_utils
   SRCS selected_rows_utils.cc
-  DEPS selected_rows serialization device_context)
+  DEPS selected_rows device_context)
 cc_test(
   selected_rows_utils_test
   SRCS selected_rows_utils_test.cc
