@@ -46,6 +46,7 @@ class CinnCacheKey {
       GraphHashStrategy graph_hash);
   CinnCacheKey(const ir::Graph& graph,
                const std::map<std::string, DDim>& input_shapes,
+               const std::map<std::string, DataType>& input_dtypes,
                const std::string& arch_str,
                GraphHashStrategy graph_hash);
 
