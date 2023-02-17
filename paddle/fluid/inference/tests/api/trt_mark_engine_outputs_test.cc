@@ -31,7 +31,7 @@ TEST(resnet50, compare) {
       "relu_9.tmp_0", "batch_norm_0.tmp_2", "batch_norm_7.tmp_2"};
   AnalysisConfig config;
   config.EnableTensorRtEngine(1 << 30, 1, 5, precision, false, false);
-  config.MarkEngineOutput(true, markOutput);
+  config.MarkEngineOutputs(true, markOutput);
   auto predictor = CreatePaddlePredictor(config);
   compare(model_dir, /* use_tensorrt */ true);
 }
