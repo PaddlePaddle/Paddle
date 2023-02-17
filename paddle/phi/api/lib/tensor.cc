@@ -430,8 +430,7 @@ bool Tensor::can_not_use() {
         static_cast<phi::DenseTensor *>(impl_.get())->canNotUse != nullptr;
     return can_not_use_;
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "can_not_use is only supported on DenseTensor now."));
+    return false;
   }
 }
 
@@ -443,9 +442,6 @@ void Tensor::set_can_not_use(std::string op_name) {
       LOG(WARNING) << "Stride Test Log(strict):" << op_name
                    << " share buffer tensor will be overwrited";
     }
-  } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "set_can_not_use is only supported on DenseTensor now."));
   }
 }
 
