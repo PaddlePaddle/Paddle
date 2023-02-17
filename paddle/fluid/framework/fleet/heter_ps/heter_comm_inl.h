@@ -24,7 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #ifdef PADDLE_WITH_XPU_KP
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
-#if defined(PADDLE_WITH_XPU_BKCL)
+#ifdef PADDLE_WITH_XPU_BKCL
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #endif
@@ -2459,11 +2459,6 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::push_sparse(
   int *d_left_ptr = reinterpret_cast<int *>(d_left->ptr());
   int *d_right_ptr = reinterpret_cast<int *>(d_right->ptr());
 
-#if defined(PADDLE_WITH_CUDA)
-  cudaMemsetAsync(d_left_ptr, -1, total_device * sizeof(int), stream);
-  cudaMemsetAsync(d_right_ptr, -1, total_device * sizeof(int), stream);
-
-#elif defined(PADDLE_WITH_XPU_KP)
   // get XPUDeviceContext according to xpu place
   auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
   auto xpu_context =

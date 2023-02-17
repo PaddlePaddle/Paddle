@@ -775,12 +775,10 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
           << time_stage.ElapsedSec();
 #endif
 
-
-  int device_num = heter_devices_.size();
+#ifdef PADDLE_WITH_XPU_KP
   auto& local_keys = gpu_task->feature_keys_;
   auto& local_ptr = gpu_task->value_ptr_;
-  auto& device_keys = gpu_task->device_keys_;
-  auto& device_vals = gpu_task->device_values_;
+#endif
 
   auto& local_dim_keys = gpu_task->feature_dim_keys_;
   auto& local_dim_ptr = gpu_task->value_dim_ptr_;
@@ -811,12 +809,12 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
 
   timeline.Start();
 #ifdef PADDLE_WITH_XPU_KP
-  auto ptl_func = [this, &local_keys, &local_ptr, &fleet_ptr](int i) {
+  auto ptl_func = [this, &local_keys, &local_ptr](int i) {
     size_t key_size = local_keys[i].size();
     int32_t status = -1;
     int32_t cnt = 0;
     while (true) {
-      auto tt = fleet_ptr->pslib_ptr_->_worker_ptr->pull_sparse_ptr(
+      auto tt = fleet_ptr_->pslib_ptr_->_worker_ptr->pull_sparse_ptr(
           i, reinterpret_cast<char**>(local_ptr[i].data()), this->table_id_,
           local_keys[i].data(), key_size);
       bool flag = true;
@@ -863,8 +861,8 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
 
 #ifdef PADDLE_WITH_CUDA
   auto ptl_dynamic_mf_func =
-      [this, &local_dim_keys, &local_dim_ptr, &fleet_ptr, &gpu_task](int i,
-                                                                     int j) {
+      [this, &local_dim_keys, &local_dim_ptr, &gpu_task](
+            int i, int j) {
         size_t key_size = local_dim_keys[i][j].size();
         int32_t status = -1;
         int32_t cnt = 0;
@@ -1726,7 +1724,7 @@ void PSGPUWrapper::HandlePreloadDoneData(bool is_shuffle) {
   std::shared_ptr<HeterContext> gpu_task = gpu_task_pool_.Get();
   gpu_task->Reset();
   gpu_task->dataset_ = dataset_;
-  data_ready_channel_->Put(gpu_task);
+  data_ready_channel_->Put(std::make_pair(gpu_task, dataset_));
   VLOG(3) << "End HandlePreloadDoneData(), dataset[" << dataset_ << "]";
   timer.Pause();
   VLOG(0) << "HandlePreloadDoneData, cost time: " << timer.ElapsedSec()
@@ -2106,7 +2104,6 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
                               const std::vector<const uint64_t*>& keys,
                               const std::vector<float*>& values,
                               const std::vector<int64_t>& slot_lengths,
-                              const std::vector<int>& slot_dim,
                               const int hidden_size) {
   VLOG(0) << "Warning:: recommand use pull_gpups_sparse op instead. This "
              "PullSparse is not used.";

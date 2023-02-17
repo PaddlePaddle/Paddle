@@ -334,6 +334,7 @@ class CommonFeatureValueAccessor {
         gpu_val[x] = 0;
       }
     }
+  }
 #endif
 
 #ifdef PADDLE_WITH_PSLIB
@@ -498,6 +499,7 @@ class CommonFeatureValueAccessor {
             gpu_val[common_feature_value.EmbedxG2SumIndex() + x];
       }
     }
+  }
 #endif
 
   // dy_mf_fill_dvals_kernel 阶段 gpukernel

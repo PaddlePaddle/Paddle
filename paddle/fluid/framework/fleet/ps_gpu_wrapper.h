@@ -181,15 +181,6 @@ class PSGPUWrapper {
     sign2fid_thread_pool_.init(24);
 #endif
   }
-    hbm_thread_pool_.resize(thread_keys_shard_num_);
-    for (size_t i = 0; i < hbm_thread_pool_.size(); i++) {
-      hbm_thread_pool_[i].reset(new ::ThreadPool(1));
-    }
-#endif
-#ifdef PADDLE_WITH_XPU_KP
-    sign2fid_thread_pool_.init(24);
-#endif
-  }
 
 #if defined(PADDLE_WITH_XPU_KP) && defined(PADDLE_WITH_XPU_CACHE_BFID)
   void build_batch_fidseq(std::vector<std::deque<Record> *> & all_chan_recs,

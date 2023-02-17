@@ -194,9 +194,9 @@ void FusionSeqPoolCVMConcatGradOp::InferShape(
   ctx->ShareAllLoD("X", /*->*/ framework::GradVarName("X"));
 }
 
-framework::OpKernelType FusionSeqPoolCVMConcatGradOp::GetExpectedKernelType(
+phi::KernelKey FusionSeqPoolCVMConcatGradOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  return framework::OpKernelType(
+  return phi::KernelKey(
       OperatorWithKernel::IndicateVarDataType(ctx, framework::GradVarName("Out")), ctx.GetPlace());
 }
 
@@ -238,5 +238,5 @@ REGISTER_OP_CPU_KERNEL(fusion_seqpool_cvm_concat,
 
 REGISTER_OP_CPU_KERNEL(
     fusion_seqpool_cvm_concat_grad,
-    ops::FusionSeqPoolCVMConcatGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::FusionSeqPoolCVMConcatGradKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::FusionSeqPoolCVMConcatGradKernel<phi::CPUContext, float>,
+    ops::FusionSeqPoolCVMConcatGradKernel<phi::CPUContext, double>);

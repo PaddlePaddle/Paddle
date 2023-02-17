@@ -20,14 +20,18 @@
 
 namespace paddle {
 namespace operators {
+
+using Tensor = phi::DenseTensor;
+using LoDTensor = phi::DenseTensor;
+
 template <typename DeviceContext, typename T>
 class FusionSeqPoolCVMConcatGradXPUKernel : public framework::OpKernel<T> {
 public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* dOut =
-          ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+          ctx.Input<LoDTensor>(framework::GradVarName("Out"));
     const Tensor* cvm = ctx.Input<Tensor>("CVM");
-    auto dxs = ctx.MultiOutput<framework::LoDTensor>(framework::GradVarName("X"));
+    auto dxs = ctx.MultiOutput<LoDTensor>(framework::GradVarName("X"));
     auto use_cvm = ctx.Attr<bool>("use_cvm");//TODO:
     int n = dxs.size();
     auto xpu_context =

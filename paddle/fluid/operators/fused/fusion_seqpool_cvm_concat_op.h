@@ -21,6 +21,9 @@
 namespace paddle {
 namespace operators {
 
+using Tensor = phi::DenseTensor;
+using LoDTensor = phi::DenseTensor;
+
 class FusionSeqPoolCVMConcatOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -58,7 +61,7 @@ class FusionSeqPoolCVMConcatGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override;
 };
 
@@ -67,12 +70,12 @@ class FusionSeqPoolCVMConcatGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     const auto* dOut =
-        context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+        context.Input<LoDTensor>(framework::GradVarName("Out"));
 
     const Tensor* cvm = context.Input<Tensor>("CVM");
     // const T* cvm_data = cvm->data<T>();
 
-    auto dxs = context.MultiOutput<framework::LoDTensor>(framework::GradVarName("X"));
+    auto dxs = context.MultiOutput<LoDTensor>(framework::GradVarName("X"));
 
     auto use_cvm = context.Attr<bool>("use_cvm");
     std::string pooltype = context.Attr<std::string>("pooltype");
