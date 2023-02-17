@@ -1672,6 +1672,18 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
                         ops_to_remove.append(op_idx)
                         continue
 
+        # sum may create invalid variable, here to deal with it.
+        if op_desc.type() == 'sum':
+            new_inputs = []
+            for grad_var_name in op_desc.input_arg_names():
+                if block.desc.has_var_recursive(grad_var_name.encode()):
+                    # meet invalid sum variables, remove the invalid operand.
+                    new_inputs.append(grad_var_name)
+            assert (
+                len(new_inputs) > 0
+            ), "After remove invalid variables, sum op have no inputs."
+            op_desc.set_input("X", new_inputs)
+
         new_vars = set()
         # create new gradient variables
         for grad_var_name in op_desc.output_arg_names():
