@@ -312,6 +312,36 @@ class ForwardAPI(BaseAPI):
 
         return kernel_output, output_names, output_create
 
+    def post_blacklist_remapping(
+        self, out_dtype_list, code_indent='', inplace_flag=False
+    ):
+        remap_code = ''
+
+        if len(out_dtype_list) == 1:
+            if (
+                not inplace_flag
+                and self.view_map is not None
+                and self.outputs['names'][0] in self.view_map
+            ):
+                remap_code += f"""
+{code_indent}    phi::DenseTensor * {self.view_map[self.outputs['names'][0]]}_remap = static_cast<phi::DenseTensor*>({self.view_map[self.outputs['names'][0]]}.impl().get());
+{code_indent}    {self.view_map[self.outputs['names'][0]]}_remap->ShareBufferWith(*kernel_out);
+{code_indent}    {self.view_map[self.outputs['names'][0]]}_remap->ShareInplaceVersionCounterWith(*kernel_out);
+"""
+        elif len(out_dtype_list) > 1:
+            for i in range(len(out_dtype_list)):
+                if (
+                    not inplace_flag
+                    and self.view_map is not None
+                    and self.outputs['names'][i] in self.view_map
+                ):
+                    remap_code += f"""
+{code_indent}    phi::DenseTensor * {self.view_map[self.outputs['names'][i]]}_remap = static_cast<phi::DenseTensor*>({self.view_map[self.outputs['names'][i]]}.impl().get());
+{code_indent}    {self.view_map[self.outputs['names'][i]]}_remap->ShareBufferWith(*kernel_out_{i});
+{code_indent}    {self.view_map[self.outputs['names'][i]]}_remap->ShareInplaceVersionCounterWith(*kernel_out_{i});
+"""
+        return remap_code
+
 
 def header_include():
     return """
