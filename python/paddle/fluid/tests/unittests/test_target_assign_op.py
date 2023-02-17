@@ -16,7 +16,8 @@ import random
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+import paddle
 
 
 def gen_match_and_neg_indices(num_prior, gt_lod, neg_lod):
@@ -95,6 +96,7 @@ def target_assign(
 class TestTargetAssginFloatType(OpTest):
     def setUp(self):
         self.op_type = "target_assign"
+        self.python_api = paddle._legacy_C_ops.target_assign
         num_prior = 120
         num_class = 21
         gt_lod = [5, 6, 12]

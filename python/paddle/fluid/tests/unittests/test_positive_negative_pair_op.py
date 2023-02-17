@@ -16,8 +16,8 @@ import itertools
 import unittest
 
 import numpy as np
-from op_test import OpTest
-
+from eager_op_test import OpTest
+import paddle
 
 def py_pnpair_op(score, label, query, column=-1, weight=None):
     # group by query id
@@ -56,6 +56,7 @@ def py_pnpair_op(score, label, query, column=-1, weight=None):
 class TestPositiveNegativePairOp(OpTest):
     def setUp(self):
         self.op_type = 'positive_negative_pair'
+        self.python_api = paddle._legacy_C_ops.positive_negative_pair
         batch_size = 20
         max_query_id = 5
         score = np.random.normal(size=(batch_size, 1)).astype('float32')
@@ -81,6 +82,8 @@ class TestPositiveNegativePairOp(OpTest):
 class TestPositiveNegativePairOpAccumulateWeight(OpTest):
     def setUp(self):
         self.op_type = 'positive_negative_pair'
+        self.python_api = paddle._legacy_C_ops.positive_negative_pair
+
         batch_size = 20
         max_query_id = 5
         max_random_num = 2 << 15

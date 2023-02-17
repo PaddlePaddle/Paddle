@@ -17,7 +17,7 @@ import unittest
 from typing import Optional
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -214,10 +214,17 @@ class TestLogcumsumexp(unittest.TestCase):
                 out = exe.run(feed={'X': data_np}, fetch_list=[y.name])
 
 
+def logcumsumexp_wrapper(
+    x, axis=-1, flatten=False, reverse=False, exclusive=False
+):
+    return paddle._C_ops.logcumsumexp(x, axis, flatten, reverse, exclusive)
+
+
 class BaseTestCases:
     class BaseOpTest(OpTest):
         def setUp(self):
             self.op_type = "logcumsumexp"
+            self.python_api = logcumsumexp_wrapper
             input, attrs = self.input_and_attrs()
             self.inputs = {'X': input}
             self.attrs = attrs
@@ -232,6 +239,7 @@ class BaseTestCases:
             self.check_grad(
                 ['X'],
                 'Out',
+                in_place=True,
                 user_defined_grads=[
                     np_logcumsumexp_grad(
                         self.inputs['X'],

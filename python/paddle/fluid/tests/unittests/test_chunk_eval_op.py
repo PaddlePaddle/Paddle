@@ -237,6 +237,7 @@ class TestChunkEvalOp(OpTest):
 
     def setUp(self):
         self.op_type = 'chunk_eval'
+        self.python_api = paddle._legacy_C_ops.chunk_eval
         self.set_confs()
         self.set_data()
         self.python_api = chunk_eval_wrapper(

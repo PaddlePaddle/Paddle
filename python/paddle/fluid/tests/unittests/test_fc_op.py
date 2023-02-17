@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -62,6 +62,7 @@ class TestFCOp(OpTest):
 
     def setUp(self):
         self.op_type = "fc"
+        self.pyton_api = paddle._legacy_C_ops.fc
         self.config()
 
         if self.with_bias:

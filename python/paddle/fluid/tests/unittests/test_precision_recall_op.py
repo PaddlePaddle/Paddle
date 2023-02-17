@@ -15,8 +15,9 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
+import paddle
 
 def calc_precision(tp_count, fp_count):
     if tp_count > 0.0 or fp_count > 0.0:
@@ -88,6 +89,7 @@ def compute_metrics(states, cls_num):
 class TestPrecisionRecallOp_0(OpTest):
     def setUp(self):
         self.op_type = "precision_recall"
+        self.python_api = paddle._legacy_C_ops.precision_recall
         ins_num = 64
         cls_num = 10
         max_probs = np.random.uniform(0, 1.0, (ins_num, 1)).astype('float32')
@@ -121,6 +123,8 @@ class TestPrecisionRecallOp_0(OpTest):
 class TestPrecisionRecallOp_1(OpTest):
     def setUp(self):
         self.op_type = "precision_recall"
+        self.python_api = paddle._legacy_C_ops.precision_recall
+
         ins_num = 64
         cls_num = 10
         max_probs = np.random.uniform(0, 1.0, (ins_num, 1)).astype('float32')
@@ -161,6 +165,8 @@ class TestPrecisionRecallOp_1(OpTest):
 class TestPrecisionRecallOp_2(OpTest):
     def setUp(self):
         self.op_type = "precision_recall"
+        self.python_api = paddle._legacy_C_ops.precision_recall
+
         ins_num = 64
         cls_num = 10
         max_probs = np.random.uniform(0, 1.0, (ins_num, 1)).astype('float32')

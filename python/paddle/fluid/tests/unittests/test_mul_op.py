@@ -20,12 +20,15 @@ import numpy as np
 import paddle.fluid.core as core
 
 sys.path.append("..")
-from op_test import OpTest
+from eager_op_test import OpTest
+
+from paddle import _legacy_C_ops
 
 
 class TestMulOp(OpTest):
     def setUp(self):
         self.op_type = "mul"
+        self.python_api = _legacy_C_ops.mul
         self.dtype = np.float64
         self.init_dtype_type()
         self.inputs = {
@@ -57,6 +60,7 @@ class TestMulOp(OpTest):
 class TestMulOp2(OpTest):
     def setUp(self):
         self.op_type = "mul"
+        self.python_api = _legacy_C_ops.mul
         self.dtype = np.float64
         self.init_dtype_type()
         self.inputs = {
