@@ -200,7 +200,7 @@ void BoxCoderKernel(const Context &dev_ctx,
   int grid = (row * col + block - 1) / block;
 
   int bytes = var_size * sizeof(float);
-  auto dev_var = phi::MemoryUtils::Instance().Alloc(
+  auto dev_var = phi::memory::Alloc(
       dev_ctx.GetPlace(),
       bytes,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));

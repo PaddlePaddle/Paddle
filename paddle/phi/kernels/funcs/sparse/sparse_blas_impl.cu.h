@@ -337,7 +337,7 @@ void SparseBlas<phi::GPUContext>::SPMM(bool transa,
                                           &buffer_size);
   });
 
-  phi::Allocator::AllocationPtr tmp_buffer = phi::MemoryUtils::Instance().Alloc(
+  phi::Allocator::AllocationPtr tmp_buffer = phi::memory::Alloc(
       dev_ctx_.GetPlace(),
       buffer_size,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx_.stream())));
@@ -389,7 +389,7 @@ void SparseBlas<phi::GPUContext>::SPMV(bool transa,
                                           &buffer_size);
   });
 
-  phi::Allocator::AllocationPtr tmp_buffer = phi::MemoryUtils::Instance().Alloc(
+  phi::Allocator::AllocationPtr tmp_buffer = phi::memory::Alloc(
       dev_ctx_.GetPlace(),
       buffer_size,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx_.stream())));
@@ -443,7 +443,7 @@ void SparseBlas<phi::GPUContext>::SDDMM(bool transa,
                                            &buffer_size);
   });
 
-  phi::Allocator::AllocationPtr tmp_buffer = phi::MemoryUtils::Instance().Alloc(
+  phi::Allocator::AllocationPtr tmp_buffer = phi::memory::Alloc(
       dev_ctx_.GetPlace(),
       buffer_size,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx_.stream())));

@@ -125,7 +125,7 @@ void RandpermRawKernel(
                                           end_bit < 32 ? end_bit : 32,
                                           dev_ctx.stream());
 
-  auto d_temp_storage = phi::MemoryUtils::Instance().Alloc(
+  auto d_temp_storage = phi::memory::Alloc(
       dev_ctx.GetPlace(),
       temp_storage_bytes,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));

@@ -99,7 +99,7 @@ struct PointerToPointer {
     for (auto i = 0; i < in_num; ++i) {
       pre_alloced_host_ptr[i] = ins[i].data<T>();
     }
-    *dev_ins_ptr = phi::MemoryUtils::Instance().Alloc(
+    *dev_ins_ptr = phi::memory::Alloc(
         ctx.GetPlace(),
         in_num * sizeof(T*),
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
@@ -149,7 +149,7 @@ struct PointerToPointerAndCol {
                          IndexT* inputs_col,
                          phi::Allocator::AllocationPtr* dev_ins_ptr,
                          phi::Allocator::AllocationPtr* dev_col_ptr) {
-    *dev_col_ptr = phi::MemoryUtils::Instance().Alloc(
+    *dev_col_ptr = phi::memory::Alloc(
         ctx.GetPlace(),
         inputs_col_num * sizeof(IndexT),
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
@@ -570,10 +570,10 @@ void ConcatFunctorWithIndexType(const phi::GPUContext& ctx,
   IndexT* inputs_col = inputs_col_vec.data();
 #ifdef PADDLE_WITH_HIP
   // TODO(chentianyu03): try to find a method to remove the Alloc function
-  phi::Allocator::AllocationPtr data_alloc = phi::MemoryUtils::Instance().Alloc(
+  phi::Allocator::AllocationPtr data_alloc = phi::memory::Alloc(
       paddle::platform::CUDAPinnedPlace(), in_num * sizeof(T*));
   inputs_data = reinterpret_cast<const T**>(data_alloc->ptr());
-  phi::Allocator::AllocationPtr col_alloc = phi::MemoryUtils::Instance().Alloc(
+  phi::Allocator::AllocationPtr col_alloc = phi::memory::Alloc(
       paddle::platform::CUDAPinnedPlace(), inputs_col_num * sizeof(IndexT));
   inputs_col = reinterpret_cast<IndexT*>(col_alloc->ptr());
 #endif
@@ -609,8 +609,8 @@ void ConcatFunctorWithIndexType(const phi::GPUContext& ctx,
   ctx.AddStreamCallback([data_alloc_released, col_alloc_released] {
     VLOG(4) << "Delete cuda pinned at " << data_alloc_released;
     VLOG(4) << "Delete cuda pinned at " << col_alloc_released;
-    phi::MemoryUtils::Instance().AllocationDeleter(data_alloc_released);
-    phi::MemoryUtils::Instance().AllocationDeleter(col_alloc_released);
+    phi::memory::AllocationDeleter(data_alloc_released);
+    phi::memory::AllocationDeleter(col_alloc_released);
   });
 #endif
 }
@@ -786,12 +786,12 @@ void SplitFunctorDispatchWithIndexType(
 #ifdef PADDLE_WITH_HIP
   phi::Allocator::AllocationPtr data_alloc, cols_alloc;
   // TODO(chentianyu03): try to find a method to remove the Alloc function
-  data_alloc = phi::MemoryUtils::Instance().Alloc(
-      paddle::platform::CUDAPinnedPlace(), out_num * sizeof(T*));
+  data_alloc = phi::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
+                                  out_num * sizeof(T*));
   outs_data = reinterpret_cast<T**>(data_alloc->ptr());
   // TODO(chentianyu03): try to find a method to remove the Alloc function
-  cols_alloc = phi::MemoryUtils::Instance().Alloc(
-      paddle::platform::CUDAPinnedPlace(), (out_cols_num) * sizeof(IndexT));
+  cols_alloc = phi::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
+                                  (out_cols_num) * sizeof(IndexT));
   outs_cols = reinterpret_cast<IndexT*>(cols_alloc->ptr());
 #endif
 
@@ -838,8 +838,8 @@ void SplitFunctorDispatchWithIndexType(
   auto* data_alloc_released = data_alloc.release();
   auto* cols_alloc_released = cols_alloc.release();
   ctx.AddStreamCallback([data_alloc_released, cols_alloc_released] {
-    phi::MemoryUtils::Instance().AllocationDeleter(data_alloc_released);
-    phi::MemoryUtils::Instance().AllocationDeleter(cols_alloc_released);
+    phi::memory::AllocationDeleter(data_alloc_released);
+    phi::memory::AllocationDeleter(cols_alloc_released);
   });
 #endif
 }

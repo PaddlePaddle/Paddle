@@ -75,7 +75,7 @@ void NMSKernel(const Context& dev_ctx,
   const auto blocks_per_line = CeilDivide(num_boxes, threadsPerBlock);
   dim3 block(threadsPerBlock);
   dim3 grid(blocks_per_line, blocks_per_line);
-  auto mask_data = phi::MemoryUtils::Instance().Alloc(
+  auto mask_data = phi::memory::Alloc(
       dev_ctx.GetPlace(),
       num_boxes * blocks_per_line * sizeof(uint64_t),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));

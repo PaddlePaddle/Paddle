@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -94,11 +94,21 @@ class MemoryUtils {
                                  size_t size,
                                  const phi::Stream& stream) {
     CheckMemoryMethod();
+    PADDLE_ENFORCE_NE(memory_method_->alloc_with_stream,
+                      nullptr,
+                      phi::errors::Unavailable(
+                          "alloc_with_stream method in memory_method_ is not "
+                          "initiazed yet. You need init it first."));
     return memory_method_->alloc_with_stream(place, size, stream);
   }
 
   Allocator::AllocationPtr Alloc(const phi::Place& place, size_t size) {
     CheckMemoryMethod();
+    PADDLE_ENFORCE_NE(
+        memory_method_->alloc,
+        nullptr,
+        phi::errors::Unavailable("alloc method in memory_method_ is not "
+                                 "initiazed yet. You need init it first."));
     return memory_method_->alloc(place, size);
   }
 
@@ -106,23 +116,43 @@ class MemoryUtils {
                                           size_t size,
                                           const phi::Stream& stream) {
     CheckMemoryMethod();
+    PADDLE_ENFORCE_NE(memory_method_->alloc_shared_with_stream,
+                      nullptr,
+                      phi::errors::Unavailable(
+                          "alloc_shared_with_stream method in memory_method_ "
+                          "is not initiazed yet. You need init it first."));
     return memory_method_->alloc_shared_with_stream(place, size, stream);
   }
 
   std::shared_ptr<Allocation> AllocShared(const phi::Place& place,
                                           size_t size) {
     CheckMemoryMethod();
+    PADDLE_ENFORCE_NE(
+        memory_method_->alloc_shared,
+        nullptr,
+        phi::errors::Unavailable("alloc_shared method in memory_method_ is not "
+                                 "initiazed yet. You need init it first."));
     return memory_method_->alloc_shared(place, size);
   }
 
   bool InSameStream(const std::shared_ptr<Allocation>& allocation,
                     const phi::Stream& stream) {
     CheckMemoryMethod();
+    PADDLE_ENFORCE_NE(
+        memory_method_->in_same_stream,
+        nullptr,
+        phi::errors::Unavailable("in_same_stream method in memory_method_ is "
+                                 "not initiazed yet. You need init it first."));
     return memory_method_->in_same_stream(allocation, stream);
   }
 
   void AllocationDeleter(Allocation* allocation) {
     CheckMemoryMethod();
+    PADDLE_ENFORCE_NE(memory_method_->allocation_deleter,
+                      nullptr,
+                      phi::errors::Unavailable(
+                          "allocation_deleter method in memory_method_ is not "
+                          "initiazed yet. You need init it first."));
     return memory_method_->allocation_deleter(allocation);
   }
 
@@ -132,36 +162,6 @@ class MemoryUtils {
         nullptr,
         phi::errors::Unavailable("memory_method_ in MemoryUtils is not "
                                  "initiazed yet. You need init it first."));
-    PADDLE_ENFORCE_NE(
-        memory_method_->alloc,
-        nullptr,
-        phi::errors::Unavailable("alloc method in memory_method_ is not "
-                                 "initiazed yet. You need init it first."));
-    PADDLE_ENFORCE_NE(memory_method_->alloc_with_stream,
-                      nullptr,
-                      phi::errors::Unavailable(
-                          "alloc_with_stream method in memory_method_ is not "
-                          "initiazed yet. You need init it first."));
-    PADDLE_ENFORCE_NE(memory_method_->alloc_shared_with_stream,
-                      nullptr,
-                      phi::errors::Unavailable(
-                          "alloc_shared_with_stream method in memory_method_ "
-                          "is not initiazed yet. You need init it first."));
-    PADDLE_ENFORCE_NE(
-        memory_method_->alloc_shared,
-        nullptr,
-        phi::errors::Unavailable("alloc_shared method in memory_method_ is not "
-                                 "initiazed yet. You need init it first."));
-    PADDLE_ENFORCE_NE(
-        memory_method_->in_same_stream,
-        nullptr,
-        phi::errors::Unavailable("in_same_stream method in memory_method_ is "
-                                 "not initiazed yet. You need init it first."));
-    PADDLE_ENFORCE_NE(memory_method_->allocation_deleter,
-                      nullptr,
-                      phi::errors::Unavailable(
-                          "allocation_deleter method in memory_method_ is not "
-                          "initiazed yet. You need init it first."));
   }
 
  private:
@@ -171,5 +171,46 @@ class MemoryUtils {
 
   DISABLE_COPY_AND_ASSIGN(MemoryUtils);
 };
+
+/*
+  NOTE(YuanRisheng) Why should we add the following code?
+  We need this because MemoryUtils::instance() is a singleton object and we
+  don't recommend using singleton object in kernels. So, we wrap it using a
+  function and if we delete this singleton object in future, it will be easy to
+  change code.
+*/
+
+namespace memory {
+
+Allocator::AllocationPtr Alloc(const phi::GPUPlace& place,
+                               size_t size,
+                               const phi::Stream& stream) {
+  return MemoryUtils::Instance().Alloc(place, size, stream);
+}
+
+Allocator::AllocationPtr Alloc(const phi::Place& place, size_t size) {
+  return MemoryUtils::Instance().Alloc(place, size);
+}
+
+std::shared_ptr<Allocation> AllocShared(const phi::Place& place,
+                                        size_t size,
+                                        const phi::Stream& stream) {
+  return MemoryUtils::Instance().AllocShared(place, size, stream);
+}
+
+std::shared_ptr<Allocation> AllocShared(const phi::Place& place, size_t size) {
+  return MemoryUtils::Instance().AllocShared(place, size);
+}
+
+bool InSameStream(const std::shared_ptr<Allocation>& allocation,
+                  const phi::Stream& stream) {
+  return MemoryUtils::Instance().InSameStream(allocation, stream);
+}
+
+void AllocationDeleter(Allocation* allocation) {
+  MemoryUtils::Instance().AllocationDeleter(allocation);
+}
+
+}  // namespace memory
 
 }  // namespace phi

@@ -78,7 +78,7 @@ void GesvdjBatched<float>(const phi::GPUContext& dev_ctx,
                                                  ldt,
                                                  &lwork,
                                                  gesvdj_params));
-  auto workspace = phi::MemoryUtils::Instance().Alloc(
+  auto workspace = phi::memory::Alloc(
       dev_ctx.GetPlace(),
       lwork * sizeof(float),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
@@ -159,7 +159,7 @@ void GesvdjBatched<double>(const phi::GPUContext& dev_ctx,
                                                  ldt,
                                                  &lwork,
                                                  gesvdj_params));
-  auto workspace = phi::MemoryUtils::Instance().Alloc(
+  auto workspace = phi::memory::Alloc(
       dev_ctx.GetPlace(),
       lwork * sizeof(double),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));

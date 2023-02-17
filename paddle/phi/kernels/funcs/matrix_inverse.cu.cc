@@ -35,7 +35,7 @@ void MatrixInverseFunctor<Context, T>::operator()(const Context& dev_ctx,
   if (n >= 32) {
     // Copy all elements of input matrix A to a temporary memory space to
     // avoid being overriden by getrf.
-    tmp_gpu_mat_data = phi::MemoryUtils::Instance().Alloc(
+    tmp_gpu_mat_data = phi::memory::Alloc(
         dev_ctx.GetPlace(),
         a.numel() * sizeof(T),
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
@@ -58,11 +58,10 @@ void MatrixInverseFunctor<Context, T>::operator()(const Context& dev_ctx,
   // and allocate device memory for info and pivots.
   int num_ints = n < 32 ? batch_size : batch_size * (n + 1);
   size_t total_bytes = cpu_ptrs.size() * sizeof(T*) + num_ints * sizeof(int);
-  phi::Allocator::AllocationPtr tmp_gpu_ptrs_data =
-      phi::MemoryUtils::Instance().Alloc(
-          dev_ctx.GetPlace(),
-          total_bytes,
-          phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  phi::Allocator::AllocationPtr tmp_gpu_ptrs_data = phi::memory::Alloc(
+      dev_ctx.GetPlace(),
+      total_bytes,
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   paddle::memory::Copy(dev_ctx.GetPlace(),
                        tmp_gpu_ptrs_data->ptr(),
                        phi::CPUPlace(),

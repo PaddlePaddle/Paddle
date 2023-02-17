@@ -228,7 +228,7 @@ void RoiAlignKernel(const Context& dev_ctx,
     }
   }
   int bytes = roi_batch_id_list.numel() * sizeof(int);
-  auto roi_ptr = phi::MemoryUtils::Instance().Alloc(
+  auto roi_ptr = phi::memory::Alloc(
       dev_ctx.GetPlace(),
       bytes,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));

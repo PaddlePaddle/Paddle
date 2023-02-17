@@ -198,7 +198,7 @@ void AddNKernel(const Context &dev_ctx,
       }
     }
     if (!sr_in_out_data.empty()) {
-      auto tmp_sr_in_out_array = phi::MemoryUtils::Instance().Alloc(
+      auto tmp_sr_in_out_array = phi::memory::Alloc(
           dev_ctx.GetPlace(), sr_in_out_data.size() * sizeof(T *));
 
       paddle::memory::Copy(dev_ctx.GetPlace(),
@@ -219,8 +219,8 @@ void AddNKernel(const Context &dev_ctx,
   }
   // if indata not null, merge into one kernel call.
   if (!in_data.empty()) {
-    auto tmp_in_array = phi::MemoryUtils::Instance().Alloc(
-        dev_ctx.GetPlace(), in_data.size() * sizeof(T *));
+    auto tmp_in_array =
+        phi::memory::Alloc(dev_ctx.GetPlace(), in_data.size() * sizeof(T *));
 
     paddle::memory::Copy(dev_ctx.GetPlace(),
                          tmp_in_array->ptr(),

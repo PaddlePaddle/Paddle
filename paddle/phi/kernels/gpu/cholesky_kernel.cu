@@ -82,7 +82,7 @@ struct MatrixBandPartFunctor {
     int workspace_size = 0;                                              \
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDn##C##potrf_bufferSize( \
         handle, uplo, n, A, lda, &workspace_size));                      \
-    auto workspace = phi::MemoryUtils::Instance().Alloc(                 \
+    auto workspace = phi::memory::Alloc(                                 \
         dev_ctx.GetPlace(),                                              \
         workspace_size,                                                  \
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream()))); \
@@ -150,7 +150,7 @@ void CholeskyKernel(const Context& dev_ctx,
     for_range(matrix_band_part_functor);
   }
 
-  auto info = phi::MemoryUtils::Instance().Alloc(
+  auto info = phi::memory::Alloc(
       dev_ctx.GetPlace(),
       sizeof(int) * batch_count,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));

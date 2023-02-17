@@ -48,18 +48,17 @@ void AverageAccumulatesKernel(const Context& dev_ctx,
   // int64_t num_accumulates = 0;
   // int64_t old_num_accumulates = 0;
 
-  auto num_updates_cpu =
-      phi::MemoryUtils::Instance().Alloc(phi::CPUPlace(), sizeof(int64_t));
+  auto num_updates_cpu = phi::memory::Alloc(phi::CPUPlace(), sizeof(int64_t));
   int64_t* num_updates_cpu_ptr =
       reinterpret_cast<int64_t*>(num_updates_cpu->ptr());
 
   auto num_accumulates_cpu =
-      phi::MemoryUtils::Instance().Alloc(phi::CPUPlace(), sizeof(int64_t));
+      phi::memory::Alloc(phi::CPUPlace(), sizeof(int64_t));
   int64_t* num_accumulates_cpu_ptr =
       reinterpret_cast<int64_t*>(num_accumulates_cpu->ptr());
 
   auto old_num_accumulates_cpu =
-      phi::MemoryUtils::Instance().Alloc(phi::CPUPlace(), sizeof(int64_t));
+      phi::memory::Alloc(phi::CPUPlace(), sizeof(int64_t));
   int64_t* old_num_accumulates_cpu_ptr =
       reinterpret_cast<int64_t*>(old_num_accumulates_cpu->ptr());
 

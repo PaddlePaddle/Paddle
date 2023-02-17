@@ -61,8 +61,7 @@ static void CubInclusiveScan(InputIterator x_iter,
                                        static_cast<int>(n),
                                        dev_ctx.stream()));
     if (i == 0 && temp_storage_bytes > 0) {
-      allocation = phi::MemoryUtils::Instance().Alloc(dev_ctx.GetPlace(),
-                                                      temp_storage_bytes);
+      allocation = phi::memory::Alloc(dev_ctx.GetPlace(), temp_storage_bytes);
       temp_storage = allocation->ptr();
     }
   }
