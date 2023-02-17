@@ -59,7 +59,7 @@ void ExpandGradKernel(const Context& ctx,
   std::cout << "XYY Debug in expand_grad_kernel_impl.h, the x_dims is :"
             << x_dims << std::endl;
   if (x_dims.size() == 0) {
-    context.template Alloc<T>(in_grad);
+    ctx.template Alloc<T>(in_grad);
     phi::Copy(ctx, out_grad, ctx.GetPlace(), false, in_grad);
     return;
   }
