@@ -26,7 +26,7 @@ TEST(TensorRT, mark_engine_outputs) {
   std::string model_dir = FLAGS_infer_model + "/resnet50";
   AnalysisConfig config;
   config.EnableUseGpu(100, 0);
-  config.SetModel(model_dir + "/model", model_dir + "/params");
+  config.SetModel(model_dir);
   config.EnableTensorRtEngine(
       1 << 30, 1, 5, AnalysisConfig::Precision::kFloat32, false, false);
 
@@ -60,11 +60,6 @@ TEST(TensorRT, mark_engine_outputs) {
   input_t1->copy_from_cpu(im_shape);
 
   ASSERT_TRUE(predictor->ZeroCopyRun());
-}
-
-int main(int argc, char *argv[]) {
-  testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
 }
 
 }  // namespace inference
