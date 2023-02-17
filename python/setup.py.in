@@ -406,7 +406,6 @@ packages=['paddle',
           'paddle.fluid.incubate.fleet',
           'paddle.fluid.incubate.fleet.parameter_server',
           'paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler',
-          'paddle.fluid.incubate.fleet.parameter_server.pslib',
           'paddle.fluid.incubate.fleet.parameter_server.ir',
           'paddle.amp',
           'paddle.cost_model',
@@ -436,6 +435,7 @@ packages=['paddle',
           'paddle.incubate.distributed.models.moe',
           'paddle.incubate.distributed.models.moe.gate',
           'paddle.incubate.fleet.parameter_server.distribute_transpiler',
+          'paddle.incubate.fleet.parameter_server.pslib',
           'paddle.quantization',
           'paddle.quantization.quanters',
           'paddle.quantization.observers',
@@ -592,7 +592,7 @@ if '${WITH_CINN}' == 'ON':
 if '${WITH_PSLIB}' == 'ON':
     shutil.copy('${PSLIB_LIB}', libs_path)
     if os.path.exists('${PSLIB_VERSION_PY}'):
-        shutil.copy('${PSLIB_VERSION_PY}', '${PADDLE_BINARY_DIR}/python/paddle/fluid/incubate/fleet/parameter_server/pslib/')
+        shutil.copy('${PSLIB_VERSION_PY}', '${PADDLE_BINARY_DIR}/python/paddle/incubate/fleet/parameter_server/pslib/')
     package_data['paddle.libs'] += ['libps' + ext_name]
 
 if '${WITH_MKLDNN}' == 'ON':

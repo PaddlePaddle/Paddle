@@ -54,7 +54,7 @@ class FleetUtil:
     def __init__(self, mode="pslib"):
         global fleet
         if mode == "pslib":
-            from paddle.fluid.incubate.fleet.parameter_server.pslib import (
+            from paddle.incubate.fleet.parameter_server.pslib import (
                 fleet as fleet_pslib,
             )
 

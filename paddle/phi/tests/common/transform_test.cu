@@ -14,10 +14,11 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
+#include "paddle/phi/common/transform.h"
+
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/platform/transform.h"
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/hostdevice.h"
 
 template <typename T>
@@ -44,7 +45,7 @@ using paddle::platform::CUDAPlace;
 using phi::CPUContext;
 using phi::GPUContext;
 
-using paddle::platform::Transform;
+using phi::Transform;
 
 TEST(Transform, CPUUnary) {
   CPUContext ctx;
@@ -58,19 +59,17 @@ TEST(Transform, CPUUnary) {
 
 TEST(Transform, GPUUnary) {
   CUDAPlace gpu0(0);
-  phi::GPUContext ctx(gpu0);
-  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                       .GetAllocator(gpu0, ctx.stream())
-                       .get());
-  ctx.PartialInitWithAllocator();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+  auto* ctx = reinterpret_cast<phi::GPUContext*>(pool.Get(phi::GPUPlace()));
+
   float cpu_buf[4] = {0.1, 0.2, 0.3, 0.4};
   auto gpu_allocation = Alloc(gpu0, sizeof(float) * 4);
   float* gpu_buf = static_cast<float*>(gpu_allocation->ptr());
-  Copy(gpu0, gpu_buf, CPUPlace(), cpu_buf, sizeof(cpu_buf), ctx.stream());
+  Copy(gpu0, gpu_buf, CPUPlace(), cpu_buf, sizeof(cpu_buf), ctx->stream());
   Transform<phi::GPUContext> trans;
-  trans(ctx, gpu_buf, gpu_buf + 4, gpu_buf, Scale<float>(10));
-  ctx.Wait();
-  Copy(CPUPlace(), cpu_buf, gpu0, gpu_buf, sizeof(cpu_buf), ctx.stream());
+  trans(*ctx, gpu_buf, gpu_buf + 4, gpu_buf, Scale<float>(10));
+  ctx->Wait();
+  Copy(CPUPlace(), cpu_buf, gpu0, gpu_buf, sizeof(cpu_buf), ctx->stream());
   for (int i = 0; i < 4; ++i) {
     ASSERT_NEAR(cpu_buf[i], static_cast<float>(i + 1), 1e-5);
   }
@@ -89,18 +88,16 @@ TEST(Transform, CPUBinary) {
 TEST(Transform, GPUBinary) {
   int buf[4] = {1, 2, 3, 4};
   CUDAPlace gpu0(0);
-  phi::GPUContext ctx(gpu0);
-  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                       .GetAllocator(gpu0, ctx.stream())
-                       .get());
-  ctx.PartialInitWithAllocator();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+  auto* ctx = reinterpret_cast<phi::GPUContext*>(pool.Get(phi::GPUPlace()));
+
   auto gpu_allocation = Alloc(gpu0, sizeof(buf));
   int* gpu_buf = static_cast<int*>(gpu_allocation->ptr());
-  Copy(gpu0, gpu_buf, CPUPlace(), buf, sizeof(buf), ctx.stream());
+  Copy(gpu0, gpu_buf, CPUPlace(), buf, sizeof(buf), ctx->stream());
   Transform<phi::GPUContext> trans;
-  trans(ctx, gpu_buf, gpu_buf + 4, gpu_buf, gpu_buf, Multiply<int>());
-  ctx.Wait();
-  Copy(CPUPlace(), buf, gpu0, gpu_buf, sizeof(buf), ctx.stream());
+  trans(*ctx, gpu_buf, gpu_buf + 4, gpu_buf, gpu_buf, Multiply<int>());
+  ctx->Wait();
+  Copy(CPUPlace(), buf, gpu0, gpu_buf, sizeof(buf), ctx->stream());
   for (int i = 0; i < 4; ++i) {
     ASSERT_EQ((i + 1) * (i + 1), buf[i]);
   }

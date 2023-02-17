@@ -2264,8 +2264,6 @@ class Executor:
         assert len(fetch_list) == len(fetch_info)
         compiled = isinstance(program, compiler.CompiledProgram)
         if is_heter:
-            from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
-
             ret = self.split_program_by_device(program)
         if not compiled:
             # TODO: Need a better way to distinguish and specify different execution mode
