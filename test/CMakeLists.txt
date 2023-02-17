@@ -6,7 +6,6 @@ set(PYTHON_TESTS_DIR
     CACHE INTERNAL "python tests directory")
 
 add_subdirectory(cpp)
-add_subdirectory(old_test)
 
 get_property(test_srcs GLOBAL PROPERTY TEST_SRCS)
 get_property(test_names GLOBAL PROPERTY TEST_NAMES)

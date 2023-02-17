@@ -20,8 +20,8 @@ limitations under the License. */
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/tests/api/scale_api.h"
-#include "paddle/phi/tests/core/timer.h"
+#include "test/cpp/phi/api/scale_api.h"
+#include "test/cpp/phi/core/timer.h"
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 
