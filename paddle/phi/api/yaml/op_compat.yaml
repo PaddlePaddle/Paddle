@@ -139,6 +139,19 @@
 
 - op : batch_norm
   backward : batch_norm_grad
+  inputs:
+    x : X
+    mean : Mean
+    variance : Variance
+    scale : Scale
+    bias : Bias
+  outputs :
+    out : Y
+    mean_out: MeanOut
+    variance_out: VarianceOut
+    saved_mean: SavedMean
+    saved_variance: SavedVariance
+    reserve_space: ReserveSpace
   extra :
     attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
 
@@ -163,6 +176,14 @@
     {x : X, y : Y}
   outputs :
     out : Out
+
+- op : broadcast_tensors
+  backward : broadcast_tensors_grad
+  inputs :
+    input : X
+  outputs :
+    out : Out
+  drop_empty_grad : [input_grad]
 
 - op : ceil
   backward : ceil_grad
@@ -217,6 +238,16 @@
 
 - op : concat
   backward : concat_grad
+  inputs:
+    x: X
+  outputs:
+    out: Out
+  attrs:
+    axis: axis
+  scalar :
+    axis :
+      data_type : int
+      tensor_name : AxisTensor
   extra :
     attrs : [bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32"]
 
@@ -234,11 +265,8 @@
 - op : conv2d
   backward : conv2d_grad
   extra :
-    attrs : [bool is_test = false, bool use_cudnn = true, bool fuse_relu_before_depthwise_conv = false, bool use_mkldnn = false,
-             bool use_quantizer = false, str mkldnn_data_type = "float32", bool fuse_relu = false,
-             str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f, bool use_addto = false,
-             bool fuse_residual_connection = false, float Scale_in = 1.0f, float Scale_out = 1.0f,
-             float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool force_fp32_output = false,
+    attrs : [bool is_test = false, bool use_cudnn = true, bool use_mkldnn = false, bool use_addto = false,
+             str mkldnn_data_type = "float32", bool force_fp32_output = false,
              int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
 
 - op : conv2d_fusion
@@ -384,6 +412,10 @@
 
 - op : divide (elementwise_div)
   backward : divide_grad (elementwise_div)
+  inputs :
+    {x: X, y : Y}
+  outputs :
+    out: Out
   extra :
     attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
@@ -396,6 +428,17 @@
 
 - op : dropout
   backward : dropout_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+    mask : Mask
+  attrs :
+    p : dropout_prob
+    is_test : is_test
+    mode : dropout_implementation
+    seed : seed
+    fix_seed : fix_seed
   extra :
     attrs : [bool fix_seed = false, int seed = 0]
 
@@ -475,6 +518,17 @@
 
 - op : expand (expand_v2)
   backward : expand_grad (expand_v2_grad)
+  inputs :
+    x : X
+  attrs :
+   shape : shape
+  outputs :
+    out : Out
+  int_array:
+    shape :
+      data_type : int
+      tensor_name : Shape
+      tensors_name : expand_shapes_tensor
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
@@ -593,6 +647,11 @@
 - op : full (fill_constant)
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : fused_conv2d
+  extra :
+    attrs : [bool use_cudnn = false, float fuse_alpha = 0.0f, float fuse_beta = 0.0f, float Scale_in = 1.0f,
+             float Scale_out = 1.0f, float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}']
 
 - op : gather
   backward : gather_grad
@@ -767,6 +826,14 @@
 
 - op : layer_norm
   backward : layer_norm_grad
+  inputs :
+    x : X
+    scale : Scale
+    bias : Bias
+  outputs :
+    out : Y
+    mean : Mean
+    variance : Variance
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
@@ -882,6 +949,12 @@
 
 - op : matmul (matmul_v2)
   backward : matmul_grad (matmul_v2_grad)
+  inputs :
+    {x : X, y : Y}
+  attrs :
+    {transpose_x : trans_x, transpose_y : trans_y}
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, 'int[] fused_reshape_Out = {}', 'int[] fused_transpose_Out = {}',
              str mkldnn_data_type = "float32", 'int[] fused_reshape_X = {}', 'int[] fused_reshape_Y = {}',
@@ -898,6 +971,20 @@
     x : X
   outputs :
     out : Out
+
+- op : max (reduce_max)
+  backward : max_grad (reduce_max_grad)
+  inputs:
+    x : X
+  attrs:
+    { axis : dim,  keepdim : keep_dim}
+  outputs:
+    out : Out
+  int_array:
+    axis :
+      data_type : int
+  extra :
+    attrs : [bool use_mkldnn = false]
 
 - op : maximum (elementwise_max)
   backward : maximum_grad (elementwise_max_grad)
@@ -916,6 +1003,17 @@
     x : X
   outputs :
     out : Out
+
+- op : mean (reduce_mean)
+  backward : reduce_mean_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs :
+    {axis : dim, keepdim : keep_dim}
+  extra :
+    attrs : [bool use_mkldnn = false]
 
 - op : meshgrid
   backward : meshgrid_grad
@@ -965,6 +1063,10 @@
 
 - op : multiply (elementwise_mul)
   backward : multiply_grad (elementwise_mul_grad)
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
@@ -1045,10 +1147,37 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : pow
+  backward : pow_grad, pow_double_grad, pow_triple_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs :
+    y : factor
+  scalar :
+    y :
+      data_type : float
+      tensor_name : FactorTensor
+
 - op : prelu
   backward : prelu_grad
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
+
+- op : prod (reduce_prod)
+  backward : prod_grad (reduce_prod_grad)
+  inputs:
+    x : X
+  attrs:
+    { dims : dim,  keep_dim : keep_dim}
+  outputs:
+    out : Out
+  int_array:
+    axis :
+      data_type : int
+  extra :
+    attrs : [bool use_mkldnn = false]
 
 - op : put_along_axis
   backward : put_along_axis_grad
@@ -1104,28 +1233,8 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
-- op : reduce_max
-  backward : reduce_max_grad
-  extra :
-    attrs : [bool use_mkldnn = false]
-
-- op : reduce_mean
-  backward : reduce_mean_grad
-  extra :
-    attrs : [bool use_mkldnn = false]
-
 - op : reduce_min
   backward : reduce_min_grad
-  extra :
-    attrs : [bool use_mkldnn = false]
-
-- op : reduce_prod
-  backward : reduce_prod_grad
-  extra :
-    attrs : [bool use_mkldnn = false]
-
-- op : reduce_sum
-  backward : reduce_sum_grad
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -1156,6 +1265,20 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : reshape (reshape2)
+  backward : reshape_grad (reshape2_grad)
+  inputs:
+    x : X
+  outputs:
+    out : Out
+  int_array:
+    shape :
+      data_type : int
+      tensor_name : Shape
+      tensors_name : ShapeTensor
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool use_quantizer = false]
 
 - op : roll
   backward : roll_grad
@@ -1189,9 +1312,9 @@
 - op : scale
   backward : scale_grad
   inputs :
-    {x : X}
+    x : X
   outputs :
-    {out : Out}
+    out : Out
   scalar :
     scale :
       data_type : float
@@ -1424,9 +1547,27 @@
 
 - op : subtract (elementwise_sub)
   backward : subtract_grad (elementwise_sub_grad)
+  inputs :
+    {x : X, y: Y}
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+
+- op : sum (reduce_sum)
+  backward : (sum_grad) reduce_sum_grad
+  inputs:
+    {x : X}
+  attrs:
+    { axis : dim,  keepdim : keep_dim, dtype : out_dtype}
+  outputs:
+    out : Out
+  int_array:
+      axis :
+        data_type : int
+  extra :
+    attrs : [bool use_mkldnn = false]
 
 - op : svd
   backward : svd_grad

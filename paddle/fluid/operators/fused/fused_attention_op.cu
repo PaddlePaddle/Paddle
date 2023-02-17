@@ -217,13 +217,15 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
 
     int num_head;
     int dim_head;
+    int nranks = 1;
     // get num_head and dim_head in two different ways
     if (!transpose_qkv_wb) {
       num_head = qkv_w_dims[1];
       dim_head = qkv_w_dims[2];
     } else {
+      nranks = (qkv_w_dims[0] * 3) / qkv_w_dims[1];
       num_head = num_heads;
-      dim_head = dim_embed / num_head;
+      dim_head = dim_embed / (num_head * nranks);
     }
 
     int bsz_seq = batch_size * max_seq_len;
@@ -579,12 +581,14 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
     int dim_embed = input_x_dims[2];
     int num_head;
     int dim_head;
+    int nranks = 1;
     if (!transpose_qkv_wb) {
       num_head = qkv_w_dims[1];
       dim_head = qkv_w_dims[2];
     } else {
+      nranks = (qkv_w_dims[0] * 3) / qkv_w_dims[1];
       num_head = num_heads;
-      dim_head = dim_embed / num_head;
+      dim_head = dim_embed / (num_head * nranks);
     }
 
     int bsz_seq = batch_size * max_seq_len;

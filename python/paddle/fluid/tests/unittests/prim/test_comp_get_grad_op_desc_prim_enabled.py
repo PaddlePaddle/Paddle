@@ -75,7 +75,6 @@ class TestGetGradOpDescPrimEnabled(unittest.TestCase):
                 self.fwd, self.no_grad_var, self.grad_sub_block
             )[0]
         )
-        print(actual)
         self.assertEquals(actual, self.desired_ops)
         core._set_prim_backward_enabled(False)
 

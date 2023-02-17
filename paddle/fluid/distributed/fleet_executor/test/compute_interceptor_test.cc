@@ -21,6 +21,9 @@ limitations under the License. */
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 namespace paddle {
 namespace distributed {

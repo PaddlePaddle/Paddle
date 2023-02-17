@@ -77,12 +77,12 @@ class ConvBNPool(fluid.dygraph.Layer):
         filter_size = 3
         conv_std_0 = (2.0 / (filter_size**2 * channels[0])) ** 0.5
         conv_param_0 = fluid.ParamAttr(
-            initializer=fluid.initializer.Normal(0.0, conv_std_0)
+            initializer=paddle.nn.initializer.Normal(0.0, conv_std_0)
         )
 
         conv_std_1 = (2.0 / (filter_size**2 * channels[1])) ** 0.5
         conv_param_1 = fluid.ParamAttr(
-            initializer=fluid.initializer.Normal(0.0, conv_std_1)
+            initializer=paddle.nn.initializer.Normal(0.0, conv_std_1)
         )
 
         self.conv_0_layer = paddle.nn.Conv2D(
@@ -189,7 +189,7 @@ class DynamicGRU(fluid.dygraph.Layer):
                 res = [hidden_] + res
             else:
                 res.append(hidden_)
-        res = fluid.layers.concat(res, axis=1)
+        res = paddle.concat(res, axis=1)
         return res
 
 
@@ -200,10 +200,11 @@ class EncoderNet(fluid.dygraph.Layer):
         super().__init__()
         self.rnn_hidden_size = rnn_hidden_size
         para_attr = fluid.ParamAttr(
-            initializer=fluid.initializer.Normal(0.0, 0.02)
+            initializer=paddle.nn.initializer.Normal(0.0, 0.02)
         )
         bias_attr = fluid.ParamAttr(
-            initializer=fluid.initializer.Normal(0.0, 0.02), learning_rate=2.0
+            initializer=paddle.nn.initializer.Normal(0.0, 0.02),
+            learning_rate=2.0,
         )
         if fluid.framework._non_static_mode():
             h_0 = np.zeros(
@@ -269,9 +270,7 @@ class EncoderNet(fluid.dygraph.Layer):
 
         gru_backward = self.gru_backward_layer(fc_2)
 
-        encoded_vector = fluid.layers.concat(
-            input=[gru_forward, gru_backward], axis=2
-        )
+        encoded_vector = paddle.concat([gru_forward, gru_backward], axis=2)
 
         encoded_proj = self.encoded_proj_fc(encoded_vector)
 
@@ -355,7 +354,7 @@ class GRUDecoderWithAttention(fluid.dygraph.Layer):
             out = paddle.nn.functional.softmax(out)
             res.append(out)
 
-        res1 = fluid.layers.concat(res, axis=1)
+        res1 = paddle.concat(res, axis=1)
 
         return res1
 

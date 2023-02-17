@@ -31,33 +31,33 @@ class TestFusedBnAddActAPI(unittest.TestCase):
     def setUp(self):
         self.conv_param_attr1 = fluid.ParamAttr(
             name='conv2d_1.weight',
-            initializer=fluid.initializer.Xavier(uniform=False),
+            initializer=paddle.nn.initializer.XavierNormal(),
             learning_rate=0.001,
         )
         self.conv_param_attr2 = fluid.ParamAttr(
             name='conv2d_2.weight',
-            initializer=fluid.initializer.Xavier(uniform=False),
+            initializer=paddle.nn.initializer.XavierNormal(),
             learning_rate=0.001,
         )
         self.bn_param_attr1 = fluid.ParamAttr(
             name='batch_norm_w_1',
-            initializer=fluid.initializer.Constant(value=1.0),
+            initializer=paddle.nn.initializer.Constant(value=1.0),
         )
         self.bn_bias_attr1 = fluid.ParamAttr(
             name='batch_norm_b_1',
-            initializer=fluid.initializer.Constant(value=0.0),
+            initializer=paddle.nn.initializer.Constant(value=0.0),
         )
         self.bn_param_attr2 = fluid.ParamAttr(
             name='batch_norm_w_2',
-            initializer=fluid.initializer.Constant(value=1.0),
+            initializer=paddle.nn.initializer.Constant(value=1.0),
         )
         self.bn_bias_attr2 = fluid.ParamAttr(
             name='batch_norm_b_2',
-            initializer=fluid.initializer.Constant(value=0.0),
+            initializer=paddle.nn.initializer.Constant(value=0.0),
         )
         self.fc_param_attr = fluid.ParamAttr(
             name='fc.weight',
-            initializer=fluid.initializer.Xavier(uniform=False),
+            initializer=paddle.nn.initializer.XavierNormal(),
         )
 
     def build_fused_program(

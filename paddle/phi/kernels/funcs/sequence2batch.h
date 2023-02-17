@@ -38,7 +38,7 @@ class CopyMatrixRowsFunctor {
   // The indexed rows are based on the input index.
   void operator()(const DeviceContext& context,
                   const phi::DenseTensor& src,
-                  paddle::framework::Vector<size_t> index_lod,
+                  phi::Vector<size_t> index_lod,
                   phi::DenseTensor* dst,
                   bool is_src_index);
 };

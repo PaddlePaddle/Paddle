@@ -563,6 +563,28 @@ class TestPool3DError_API(unittest.TestCase):
 
         self.assertRaises(ValueError, run_size_out_of_range)
 
+        def run_zero_stride():
+            with fluid.dygraph.guard():
+                array = np.array([1], dtype=np.float32)
+                x = paddle.to_tensor(
+                    np.reshape(array, [1, 1, 1, 1, 1]), dtype='float32'
+                )
+                out = max_pool3d(
+                    x, 1, stride=0, padding=1, return_mask=True, ceil_mode=True
+                )
+
+        self.assertRaises(ValueError, run_zero_stride)
+
+        def run_zero_tuple_stride():
+            with fluid.dygraph.guard():
+                array = np.array([1], dtype=np.float32)
+                x = paddle.to_tensor(
+                    np.reshape(array, [1, 1, 1, 1, 1]), dtype='float32'
+                )
+                out = max_pool3d(x, 1, stride=(0, 0, 0), ceil_mode=False)
+
+        self.assertRaises(ValueError, run_zero_tuple_stride)
+
 
 if __name__ == '__main__':
     unittest.main()

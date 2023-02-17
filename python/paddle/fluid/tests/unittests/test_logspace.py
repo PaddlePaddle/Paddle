@@ -24,6 +24,9 @@ class TestLogspaceOpCommonCase(OpTest):
     def setUp(self):
         self.op_type = "logspace"
         self.python_api = paddle.logspace
+        self.init_data()
+
+    def init_data(self):
         dtype = 'float32'
         self.inputs = {
             'Start': np.array([0]).astype(dtype),
@@ -32,17 +35,14 @@ class TestLogspaceOpCommonCase(OpTest):
             'Base': np.array([2]).astype(dtype),
         }
         self.attrs = {'dtype': int(paddle.float32)}
-
         self.outputs = {'Out': np.power(2, np.arange(0, 11)).astype(dtype)}
 
     def test_check_output(self):
         self.check_output()
 
 
-class TestLogspaceOpReverseCase(OpTest):
-    def setUp(self):
-        self.op_type = "logspace"
-        self.python_api = paddle.logspace
+class TestLogspaceOpReverseCase(TestLogspaceOpCommonCase):
+    def init_data(self):
         dtype = 'float32'
         self.inputs = {
             'Start': np.array([10]).astype(dtype),
@@ -51,17 +51,11 @@ class TestLogspaceOpReverseCase(OpTest):
             'Base': np.array([2]).astype(dtype),
         }
         self.attrs = {'dtype': int(paddle.float32)}
-
         self.outputs = {'Out': np.power(2, np.arange(10, -1, -1)).astype(dtype)}
 
-    def test_check_output(self):
-        self.check_output()
 
-
-class TestLogspaceOpNumOneCase(OpTest):
-    def setUp(self):
-        self.op_type = "logspace"
-        self.python_api = paddle.logspace
+class TestLogspaceOpNumOneCase(TestLogspaceOpCommonCase):
+    def init_data(self):
         dtype = 'float32'
         self.inputs = {
             'Start': np.array([10]).astype(dtype),
@@ -70,17 +64,11 @@ class TestLogspaceOpNumOneCase(OpTest):
             'Base': np.array([2]).astype(dtype),
         }
         self.attrs = {'dtype': int(paddle.float32)}
-
         self.outputs = {'Out': np.power(2, np.array(10)).astype(dtype)}
 
-    def test_check_output(self):
-        self.check_output()
 
-
-class TestLogspaceOpMinusBaseCase(OpTest):
-    def setUp(self):
-        self.op_type = "logspace"
-        self.python_api = paddle.logspace
+class TestLogspaceOpMinusBaseCase(TestLogspaceOpCommonCase):
+    def init_data(self):
         dtype = 'float32'
         self.inputs = {
             'Start': np.array([0]).astype(dtype),
@@ -89,17 +77,11 @@ class TestLogspaceOpMinusBaseCase(OpTest):
             'Base': np.array([-2]).astype(dtype),
         }
         self.attrs = {'dtype': int(paddle.float32)}
-
         self.outputs = {'Out': np.power(-2, np.arange(0, 11)).astype(dtype)}
 
-    def test_check_output(self):
-        self.check_output()
 
-
-class TestLogspaceOpZeroBaseCase(OpTest):
-    def setUp(self):
-        self.op_type = "logspace"
-        self.python_api = paddle.logspace
+class TestLogspaceOpZeroBaseCase(TestLogspaceOpCommonCase):
+    def init_data(self):
         dtype = 'float32'
         self.inputs = {
             'Start': np.array([0]).astype(dtype),
@@ -108,11 +90,7 @@ class TestLogspaceOpZeroBaseCase(OpTest):
             'Base': np.array([0]).astype(dtype),
         }
         self.attrs = {'dtype': int(paddle.float32)}
-
         self.outputs = {'Out': np.power(0, np.arange(0, 11)).astype(dtype)}
-
-    def test_check_output(self):
-        self.check_output()
 
 
 class TestLogspaceAPI(unittest.TestCase):
