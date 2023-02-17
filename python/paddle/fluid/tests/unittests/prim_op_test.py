@@ -16,6 +16,7 @@ from collections import defaultdict
 
 import config
 import numpy as np
+from op_test import convert_uint16_to_float
 
 import paddle
 import paddle.fluid.core as core
@@ -407,7 +408,10 @@ class PrimForwardChecker:
             args, len(inputs_sig)
         )
         ret = flatten(_as_list(self.python_api(*args)))
-        return map_structure(lambda x: x.numpy(), ret)
+        ret = map_structure(lambda x: x.numpy(), ret)
+        if OpTestUtils.is_bfloat16_type(self.dtype):
+            ret = map_structure(lambda x: convert_uint16_to_float(x), ret)
+        return ret
 
     def get_eager_input_attr_and_inputdict(self):
         attrs_outputs = {}
@@ -521,7 +525,7 @@ class PrimForwardChecker:
         pass
 
     def check_static_comp(self):
-        '''forward comp only for comp op'''
+        # forward comp only for comp op
         if self.comp_op_type == "prim":
             return
         paddle.enable_static()
@@ -549,6 +553,8 @@ class PrimForwardChecker:
         exe = paddle.static.Executor(self.place)
         exe.run(startup_program)
         ret = exe.run(main_program, feed=feed, fetch_list=ret)
+        if OpTestUtils.is_bfloat16_type(self.dtype):
+            ret = map_structure(lambda x: convert_uint16_to_float(x), ret)
         # check static forward
         if len(ret) != len(self.eager_desire):
             msg = (
@@ -611,6 +617,8 @@ class PrimForwardChecker:
         jit_api = apply_to_static(self.python_api, False)
         ret = flatten(_as_list(jit_api(*args)))
         ret = map_structure(lambda x: x.numpy(), ret)
+        if OpTestUtils.is_bfloat16_type(self.dtype):
+            ret = map_structure(lambda x: convert_uint16_to_float(x), ret)
         # check jit comp forward
         if len(ret) != len(self.eager_desire):
             msg = (
@@ -687,6 +695,8 @@ class PrimForwardChecker:
         )
         ret = flatten(_as_list(jit_api(*args)))
         ret = map_structure(lambda x: x.numpy(), ret)
+        if OpTestUtils.is_bfloat16_type(self.dtype):
+            ret = map_structure(lambda x: convert_uint16_to_float(x), ret)
         # check jit comp forward
         if len(ret) != len(self.eager_desire):
             msg = (
@@ -791,7 +801,10 @@ class PrimGradChecker(PrimForwardChecker):
         else:
             xs.append(inputs_dict[self.inputs_to_check])
         ret = paddle.grad(ys, xs, allow_unused=True)
-        return map_structure(lambda x: x.numpy(), ret)
+        ret = map_structure(lambda x: x.numpy(), ret)
+        if OpTestUtils.is_bfloat16_type(self.dtype):
+            ret = map_structure(lambda x: convert_uint16_to_float(x), ret)
+        return ret
 
     def check_eager_comp(self):
         if self.comp_op_type == "comp":
@@ -887,6 +900,10 @@ class PrimGradChecker(PrimForwardChecker):
         exe = paddle.static.Executor(self.place)
         exe.run(startup_program)
         actual_ret = exe.run(main_program, feed=feed, fetch_list=ret)
+        if OpTestUtils.is_bfloat16_type(self.dtype):
+            actual_ret = map_structure(
+                lambda x: convert_uint16_to_float(x), actual_ret
+            )
         # check static grad out
         if len(actual_ret) != len(self.eager_desire):
             msg = (
@@ -975,6 +992,8 @@ class PrimGradChecker(PrimForwardChecker):
             xs.append(inputs_dict[self.inputs_to_check])
         ret = paddle.grad(ys, xs, allow_unused=True)
         ret = map_structure(lambda x: x.numpy(), ret)
+        if OpTestUtils.is_bfloat16_type(self.dtype):
+            ret = map_structure(lambda x: convert_uint16_to_float(x), ret)
         # check jit comp grad out
         if len(ret) != len(self.eager_desire):
             msg = (
@@ -1076,6 +1095,8 @@ class PrimGradChecker(PrimForwardChecker):
             xs.append(inputs_dict[self.inputs_to_check])
         ret = paddle.grad(ys, xs, allow_unused=True)
         ret = map_structure(lambda x: x.numpy(), ret)
+        if OpTestUtils.is_bfloat16_type(self.dtype):
+            ret = map_structure(lambda x: convert_uint16_to_float(x), ret)
         # check jit comp grad out
         if len(ret) != len(self.eager_desire):
             msg = (

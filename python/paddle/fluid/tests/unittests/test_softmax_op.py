@@ -87,7 +87,7 @@ class TestSoftmaxOp(OpTest):
             )
         else:
             self.check_output(
-                check_dygraph=(not self.use_mkldnn), check_comp=True
+                check_dygraph=(not self.use_mkldnn), check_prim=True
             )
 
     def test_check_grad(self):
@@ -108,7 +108,7 @@ class TestSoftmaxOp(OpTest):
                 "Out",
                 max_relative_error=0.01,
                 check_dygraph=(not self.use_mkldnn),
-                check_comp=True,
+                check_prim=True,
             )
 
 
@@ -149,7 +149,7 @@ class TestSoftmaxOp_ZeroDim1(TestSoftmaxOp):
             )
         else:
             self.check_output(
-                check_dygraph=(not self.use_mkldnn), check_comp=True
+                check_dygraph=(not self.use_mkldnn), check_prim=True
             )
 
 
@@ -187,7 +187,7 @@ class TestSoftmaxOp_ZeroDim2(TestSoftmaxOp):
             )
         else:
             self.check_output(
-                check_dygraph=(not self.use_mkldnn), check_comp=True
+                check_dygraph=(not self.use_mkldnn), check_prim=True
             )
 
 
