@@ -20,21 +20,11 @@ import unittest
 import os
 
 
-def rpc_test(use_ids, out_type, port):
+def rpc_test(use_ids, out_type, url):
     paddle.enable_static()
 
     MAX_SIZE_QUERY = 18
     RES_TYPE = out_type
-
-    ip = 'localhost'
-    # port = 12092
-
-    server_cmd = f"python py_server_test.py --ip {ip} --port {port}"
-    ouput = open(f"server.{port}.log", "w")
-    process = subprocess.Popen(server_cmd.split(), stdout=ouput, stderr=ouput)
-    import time
-
-    time.sleep(2)
 
     with open("vocab.txt", "w") as voc:
         voc.write("ABC 0\n")
@@ -58,7 +48,7 @@ def rpc_test(use_ids, out_type, port):
 
     req_ids = paddle.static.nn.rpc_call(
         in_query,
-        f"http://{ip}:{port}/run/predict",
+        url,
         "vocab.txt",
         use_ids,
     )
@@ -67,10 +57,6 @@ def rpc_test(use_ids, out_type, port):
     paddle.static.Print(in_query)
     paddle.static.Print(req_ids)
     paddle.static.Print(out_data.astype("float32"))
-
-    # data
-    # 货物很好
-    # 货物很差
 
     query_tensor = np.array(
         [
@@ -82,9 +68,7 @@ def rpc_test(use_ids, out_type, port):
     # run
     exe = fluid.Executor(fluid.CUDAPlace(0))
     exe.run(fluid.default_startup_program())
-    import time
 
-    t1 = time.time()
     for _ in range(1):
         succeed, data, = exe.run(
             fluid.default_main_program(),
@@ -93,10 +77,6 @@ def rpc_test(use_ids, out_type, port):
             },
             fetch_list=[out_succeed, out_data],
         )
-    t2 = time.time()
-    print("speed: ", (t2 - t1) / 1, "s/step")
-    if process.poll() is None:
-        process.kill()
     if out_type == "str":
         print(data[0].tobytes().decode("utf-8", "ignore"))
     else:
@@ -105,10 +85,22 @@ def rpc_test(use_ids, out_type, port):
 
 class RPCCallTest(unittest.TestCase):
     def test_cases(self):
+        ip = 'localhost'
         port = int(os.environ.get("PADDLE_DIST_UT_PORT"))
+
+        server_cmd = f"python py_server_test.py --ip {ip} --port {port}"
+        with open(f"server.{port}.log", "w") as output:
+            process = subprocess.Popen(
+                server_cmd.split(), stdout=output, stderr=output
+            )
+
         for uid in [True, False]:
             for otype in ['str', 'float']:
-                rpc_test(uid, otype, port)
+                try:
+                    rpc_test(uid, otype, f"http://{ip}:{port}/run/predict")
+                except:
+                    process.kill()
+                    raise RuntimeError("rpc test error")
 
 
 if __name__ == "__main__":
