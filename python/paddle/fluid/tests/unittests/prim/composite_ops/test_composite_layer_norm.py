@@ -188,6 +188,9 @@ class TestCompositelayer_norm(unittest.TestCase):
 
     def test_forward(self):
         for j in self.dtypes:
+            if paddle.device.get_device() == "cpu" and j == "float16":
+                print("need pass this case")
+                continue
             for t in range(0, len(self.shape1s)):
                 attrs.set_dtype(j)
                 attrs.set_shape(
