@@ -2086,16 +2086,6 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                 inplace_grad_input_str = transformed_tensor_name
             if is_optional:
                 if backward_input_type == "std::vector<Tensor>":
-                    if transformed_tensor_name != "size_tensor":
-                        tensor_wrapper_recover_str += """
-                        for(size_t i = 0; i < {}.size(); ++i)
-                            if({}.can_not_use())
-                            LOG(WARNING) <<\"Stride Test Log:" << \"{}\"<< \" Find Input Which Can Not Use.\";
-                        """.format(
-                            transformed_tensor_name,
-                            transformed_tensor_name,
-                            backward_api_name,
-                        )
                     tensor_wrapper_recover_str += (
                         "\n"
                         + CREATE_RECOVER_OPTIONAL_VECTOR_TENSOR_TEMPLATE.format(
@@ -2106,12 +2096,6 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                         )
                     )
                 else:
-                    tensor_wrapper_recover_str += """
-                        if({}.can_not_use())
-                            LOG(WARNING) <<\"Stride Test Log:" << \"{}\"<< \" Find Input Which Can Not Use.\";
-                        """.format(
-                        transformed_tensor_name, backward_api_name
-                    )
                     tensor_wrapper_recover_str += (
                         "\n"
                         + CREATE_RECOVER_OPTIONAL_TENSOR_TEMPLATE.format(
