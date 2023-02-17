@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import struct
 from collections import defaultdict
 
 import config
 import numpy as np
-from op_test import convert_uint16_to_float
 
 import paddle
 import paddle.fluid.core as core
@@ -41,6 +41,17 @@ def _as_list(x):
     if x is None:
         return []
     return list(x) if isinstance(x, list or tuple) else [x]
+
+
+def convert_uint16_to_float(in_list):
+    in_list = np.asarray(in_list)
+    out = np.vectorize(
+        lambda x: struct.unpack(
+            '<f', struct.pack('<I', np.uint32(x) << np.uint32(16))
+        )[0],
+        otypes=[np.float32],
+    )(in_list.flat)
+    return np.reshape(out, in_list.shape)
 
 
 class OpTestUtils:
