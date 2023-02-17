@@ -63,21 +63,23 @@ class CompareOp : public framework::OperatorWithKernel {
  protected:
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    phi::KernelKey kt = OperatorWithKernel::GetExpectedKernelType(ctx);
+    // phi::KernelKey kt = OperatorWithKernel::GetExpectedKernelType(ctx);
     // CompareOp kernel's device type is decided by input tensor place
-    bool force_cpu = ctx.Attr<bool>("force_cpu");
-    if (force_cpu) {
-      kt.set_backend(phi::Backend::CPU);
-    } else {
-      if (ctx.Input<phi::DenseTensor>("X")->place().GetType() !=
-          phi::AllocationType::GPUPINNED) {
-        kt.set_backend(
-            phi::TransToPhiBackend(ctx.Input<phi::DenseTensor>("X")->place()));
-      } else {
-        kt.set_backend(phi::TransToPhiBackend(ctx.GetPlace()));
-      }
-    }
-    return kt;
+    // bool force_cpu = ctx.Attr<bool>("force_cpu");
+    // if (force_cpu) {
+    //   kt.set_backend(phi::Backend::CPU);
+    // } else {
+    //   if (ctx.Input<phi::DenseTensor>("X")->place().GetType() !=
+    //       phi::AllocationType::GPUPINNED) {
+    //     kt.set_backend(
+    //         phi::TransToPhiBackend(ctx.Input<phi::DenseTensor>("X")->place()));
+    //   } else {
+    //     kt.set_backend(phi::TransToPhiBackend(ctx.GetPlace()));
+    //   }
+    // }
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return phi::KernelKey(data_type, ctx.GetPlace());
+    // return kt;
   }
 };
 
