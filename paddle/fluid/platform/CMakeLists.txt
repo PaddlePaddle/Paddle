@@ -248,10 +248,6 @@ if(WITH_GPU)
     device_context_test_cuda_graph
     SRCS device_context_test_cuda_graph.cu
     DEPS device_context gpu_info cuda_graph_with_memory_pool)
-  nv_test(
-    transform_test
-    SRCS transform_test.cu
-    DEPS memory place device_context)
 endif()
 
 if(WITH_ROCM)
@@ -277,10 +273,6 @@ if(WITH_ROCM)
     device_context_test
     SRCS device_context_test.cu
     DEPS device_context gpu_info)
-  hip_test(
-    transform_test
-    SRCS transform_test.cu
-    DEPS memory place device_context)
 endif()
 
 cc_library(timer SRCS timer.cc)

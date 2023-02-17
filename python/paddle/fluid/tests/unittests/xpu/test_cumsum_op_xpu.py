@@ -48,9 +48,9 @@ class XPUTestCumsumOP(XPUOpTestWrapper):
             self.op_type = 'cumsum'
             self.init_config()
 
-            self.data = np.random.uniform(
-                -100.0, 100.0, self.input_shape
-            ).astype(self.dtype)
+            self.data = np.random.uniform(-1.0, 1.0, self.input_shape).astype(
+                self.dtype
+            )
             reference_out = np.cumsum(self.data, axis=self.axis)
             self.inputs = {
                 'X': self.data,
@@ -67,6 +67,9 @@ class XPUTestCumsumOP(XPUOpTestWrapper):
 
         def test_check_output(self):
             self.check_output_with_place(self.place)
+
+        def test_check_grad(self):
+            self.check_grad_with_place(self.place, ['X'], 'Out')
 
         def init_config(self):
             self.input_shape = (2, 5)

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,20 +17,17 @@ limitations under the License. */
 #include <algorithm>
 #include <type_traits>
 
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/hostdevice.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include <thrust/execution_policy.h>
 #include <thrust/transform.h>
-
-#include "paddle/fluid/platform/details/cuda_transform_iterator_cast.h"
+#include "thrust/device_ptr.h"
 #endif
 
-namespace paddle {
-namespace platform {
+namespace phi {
 
 // Transform applys a unary or a binary functor on each element in a
 // range defined by a pair of iterators.
@@ -40,16 +37,16 @@ namespace platform {
 //
 // NOTE: We need to define InputIter and OutputIter defined as
 //       different types, because the InputIter points op's inputs and
-//       OutputIter pints to op's outputs.
+//       OutputIter points to op's outputs.
 //
 // NOTE: We don't assume that InputIter to be const InputType* and
 //       OutputIter to be OutputType*, because we might use a iterator
 //       class, paddle::fluid::operators::RowwiseTRansformIterator.
-template <typename DeviceContext>
+template <typename Context>
 struct Transform {
   // The unary version.
   template <typename InputIter, typename OutputIter, typename UnaryOperation>
-  void operator()(const DeviceContext& context,
+  void operator()(const Context& context,
                   InputIter first,
                   InputIter last,
                   OutputIter result,
@@ -60,7 +57,7 @@ struct Transform {
             typename InputIter2,
             typename OutputIter,
             typename BinaryOperation>
-  void operator()(const DeviceContext& context,
+  void operator()(const Context& context,
                   InputIter1 first1,
                   InputIter1 last1,
                   InputIter2 first2,
@@ -97,6 +94,46 @@ struct Transform<phi::CPUContext> {
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 
+// PointerToThrustDevicePtr has two speicalizations, one casts a (CUDA
+// device) pointer into thrust::device_ptr, the other keeps rest types
+// un-casted.
+template <typename T, bool is_ptr>
+struct PointerToThrustDevicePtr;
+
+template <typename T>
+struct PointerToThrustDevicePtr<T, true> {
+  using ELEM = typename std::remove_pointer<T>::type;
+  using RTYPE = thrust::device_ptr<ELEM>;
+
+  inline thrust::device_ptr<ELEM> operator()(ELEM* ele) const {
+    return thrust::device_pointer_cast(ele);
+  }
+};
+
+template <typename T>
+struct PointerToThrustDevicePtr<T, false> {
+  using RTYPE = T;
+  inline RTYPE operator()(RTYPE it) const { return it; }
+};
+
+// CastToCUDATransformIterator casts a pointer to thrust::device_ptr
+// so it could be used as the iterator of thrust::transform.  It
+// doesn't cast other types.
+//
+// We need CastToCUDATransformIterator because it is often that we
+// want to use device memory pointers as transform iterators, e.g., to
+// transform a block of float32 to float16.  In this case, we want
+// CastToCUDATransformIterator to cast float16/32 pointers to
+// thrust::device_ptr, otherwise they cannot work as the iterator
+// required by thrust::transform.  At the same time, we don't want to
+// cast thrust::device_ptr to thrust::device_ptr repeatedly.
+template <typename T>
+auto CastToCUDATransformIterator(T t) ->
+    typename PointerToThrustDevicePtr<T, std::is_pointer<T>::value>::RTYPE {
+  PointerToThrustDevicePtr<T, std::is_pointer<T>::value> cast;
+  return cast(t);
+}
+
 template <>
 struct Transform<phi::GPUContext> {
   template <typename InputIter, typename OutputIter, typename UnaryOperation>
@@ -106,21 +143,21 @@ struct Transform<phi::GPUContext> {
                   OutputIter result,
                   UnaryOperation op) {
     auto place = context.GetPlace();
-    PADDLE_ENFORCE_EQ(is_gpu_place(place),
+    PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::GPU,
                       true,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "The CUDA Transform must be used in GPU place."));
 #ifdef __HIPCC__
     thrust::transform(thrust::hip::par.on(context.stream()),
-                      details::CastToCUDATransformIterator(first),
-                      details::CastToCUDATransformIterator(last),
-                      details::CastToCUDATransformIterator(result),
+                      CastToCUDATransformIterator(first),
+                      CastToCUDATransformIterator(last),
+                      CastToCUDATransformIterator(result),
                       op);
 #else
     thrust::transform(thrust::cuda::par.on(context.stream()),
-                      details::CastToCUDATransformIterator(first),
-                      details::CastToCUDATransformIterator(last),
-                      details::CastToCUDATransformIterator(result),
+                      CastToCUDATransformIterator(first),
+                      CastToCUDATransformIterator(last),
+                      CastToCUDATransformIterator(result),
                       op);
 #endif
   }
@@ -136,28 +173,27 @@ struct Transform<phi::GPUContext> {
                   OutputIter result,
                   BinaryOperation op) {
     auto place = context.GetPlace();
-    PADDLE_ENFORCE_EQ(is_gpu_place(place),
+    PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::GPU,
                       true,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "The CUDA Transform must be used in GPU place."));
 #ifdef __HIPCC__
     thrust::transform(thrust::hip::par.on(context.stream()),
-                      details::CastToCUDATransformIterator(first1),
-                      details::CastToCUDATransformIterator(last1),
-                      details::CastToCUDATransformIterator(first2),
-                      details::CastToCUDATransformIterator(result),
+                      CastToCUDATransformIterator(first1),
+                      CastToCUDATransformIterator(last1),
+                      CastToCUDATransformIterator(first2),
+                      CastToCUDATransformIterator(result),
                       op);
 #else
     thrust::transform(thrust::cuda::par.on(context.stream()),
-                      details::CastToCUDATransformIterator(first1),
-                      details::CastToCUDATransformIterator(last1),
-                      details::CastToCUDATransformIterator(first2),
-                      details::CastToCUDATransformIterator(result),
+                      CastToCUDATransformIterator(first1),
+                      CastToCUDATransformIterator(last1),
+                      CastToCUDATransformIterator(first2),
+                      CastToCUDATransformIterator(result),
                       op);
 #endif
   }
 };
 #endif
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace phi
