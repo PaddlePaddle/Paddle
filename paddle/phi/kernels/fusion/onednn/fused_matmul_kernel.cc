@@ -236,16 +236,16 @@ class FusedMatmulOneDNNHandler
   }
 };
 
-static DDim RowMatrixDimsFromVector(const DDim &x_dim) {
+DDim RowMatrixDimsFromVector(const DDim &x_dim) {
   return x_dim.size() > 1 ? x_dim : make_ddim({1, x_dim[0]});
 }
 
-static DDim ColumnMatrixDimsFromVector(const DDim &y_dim) {
+DDim ColumnMatrixDimsFromVector(const DDim &y_dim) {
   return y_dim.size() > 1 ? y_dim : make_ddim({y_dim[0], 1});
 }
 
-static std::vector<int64_t> TransposeAxis(const std::vector<int64_t> &x,
-                                          const std::vector<int> &axis) {
+std::vector<int64_t> TransposeAxis(const std::vector<int64_t> &x,
+                                   const std::vector<int> &axis) {
   size_t in_rank = x.size();
   size_t axis_size = axis.size();
 
@@ -277,11 +277,11 @@ static std::vector<int64_t> TransposeAxis(const std::vector<int64_t> &x,
   return new_x;
 }
 
-static std::vector<int64_t> GetInputStrides(const std::string input_name,
-                                            const DDim &input_dims,
-                                            std::vector<int> shape,
-                                            std::vector<int> axis,
-                                            const bool transpose_input) {
+std::vector<int64_t> GetInputStrides(const std::string input_name,
+                                     const DDim &input_dims,
+                                     std::vector<int> shape,
+                                     std::vector<int> axis,
+                                     const bool transpose_input) {
   auto new_dims = input_dims;
   if (!shape.empty() && !axis.empty()) {
     new_dims = input_dims.reshape(shape).transpose(axis);

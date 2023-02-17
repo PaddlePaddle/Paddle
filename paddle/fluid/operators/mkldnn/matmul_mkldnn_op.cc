@@ -25,6 +25,14 @@ using phi::OneDNNContext;
 using phi::vectorize;
 using phi::funcs::OneDNNGetDataType;
 
+phi::DDim RowMatrixDimsFromVector(const phi::DDim &x_dim) {
+  return x_dim.size() > 1 ? x_dim : phi::make_ddim({1, x_dim[0]});
+}
+
+phi::DDim ColumnMatrixDimsFromVector(const phi::DDim &y_dim) {
+  return y_dim.size() > 1 ? y_dim : phi::make_ddim({y_dim[0], 1});
+}
+
 // Reshape a rank-3 tensor from P x M x N to (P * M) x N.
 // Identity op if the tensor is not of rank 3.
 phi::DenseTensor FoldOuterDims(const phi::DenseTensor &input) {
@@ -264,8 +272,8 @@ void ReshapeXYOutToMatrixSequence(phi::DenseTensor *x,
                                   phi::DenseTensor *out,
                                   bool trans_x,
                                   bool trans_y) {
-  auto x_dim = phi::funcs::RowMatrixDimsFromVector(x->dims());
-  auto y_dim = phi::funcs::ColumnMatrixDimsFromVector(y->dims());
+  auto x_dim = RowMatrixDimsFromVector(x->dims());
+  auto y_dim = ColumnMatrixDimsFromVector(y->dims());
   auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(x_dim, 0, trans_x);
   auto mat_dim_y = phi::funcs::CreateMatrixDescriptor(y_dim, 0, trans_y);
   if (mat_dim_x.batch_size_ == 0 && mat_dim_y.batch_size_ == 0) {
