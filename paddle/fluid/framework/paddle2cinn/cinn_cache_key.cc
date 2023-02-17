@@ -76,7 +76,7 @@ void CinnCacheKey::SetKey(const ir::Graph& graph,
 
   graph_hash_val_ = graph_hash_(graph);
   input_shapes_ = input_shapes;
-  input_dtypes_ = input_dtype;
+  input_dtypes_ = input_dtypes;
   arch_str_ = arch_str;
 }
 
@@ -99,7 +99,7 @@ size_t CinnCacheKey::Hash::operator()(const CinnCacheKey& key) const {
                       key.input_dtypes_.end(),
                       platform::errors::PreconditionNotMet(
                           "%s is not in key.input_dtypes_.", name_shape.first));
-    has_str << key.input_dtypes_[name_shape.first];
+    has_str << phi::DataTypeToString(key.input_dtypes_[name_shape.first]);
   }
 
   has_str << key.graph_hash_val_;
