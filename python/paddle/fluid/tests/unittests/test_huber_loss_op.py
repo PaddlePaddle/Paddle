@@ -29,15 +29,16 @@ def huber_loss_forward(val, delta):
 
 
 def huber_loss_wraper(x, y, delta):
-    residual, out = paddle._C_ops.huber_loss(x, y, delta)
-    return residual, out
+    a, b = paddle._C_ops.huber_loss(x, y, delta)
+    return a, b
 
 
 class TestHuberLossOp(OpTest):
     def setUp(self):
         self.op_type = 'huber_loss'
-        self.python_api = huber_loss_wraper
         self.python_out_sig = ["Out"]
+        self.python_api = huber_loss_wraper
+
         self.delta = 1.0
         self.init_input()
         shape = self.set_shape()
