@@ -1,5 +1,4 @@
 # Use ccache if found ccache program
-
 if(NOT WIN32)
   find_program(CCACHE_PATH ccache)
   if(CCACHE_PATH)
