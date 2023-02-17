@@ -139,12 +139,14 @@ class TestExpCompFp16(TestExpCompFp32):
         self.only_prim = True
 
     def test_check_output(self):
-        self.check_output_with_place(place=core.CUDAPlace(0))
+        if core.is_compiled_with_cuda():
+            self.check_output_with_place(place=core.CUDAPlace(0))
 
     def test_check_grad(self):
-        self.check_grad_with_place(
-            core.CUDAPlace(0), ['X'], 'Out', check_comp=True
-        )
+        if core.is_compiled_with_cuda():
+            self.check_grad_with_place(
+                core.CUDAPlace(0), ['X'], 'Out', check_comp=True
+            )
 
     def skip_cinn(self):
         self.enable_cinn = False
