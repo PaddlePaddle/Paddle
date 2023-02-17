@@ -143,7 +143,11 @@ class MatMulV1OneDNNHandler
     auto y_md = memory::desc(y_dims, OneDNNGetDataType<YT>(), y_strides);
     auto out_md = memory::desc(out_ddims, OneDNNGetDataType<OT>(), out_strides);
 
-    this->AcquireForwardPrimitiveDescriptor(x_md, y_md, out_md);
+    dnnl::primitive_attr attrs;
+    float scale = ctx.Attr<float>("alpha");
+    if (scale != 1.0f) attrs.set_output_scales(0, {scale});
+
+    this->AcquireForwardPrimitiveDescriptor(attrs, x_md, y_md, out_md);
   }
 
   std::shared_ptr<memory> AcquireWeightsMemory(const phi::DenseTensor *input) {
