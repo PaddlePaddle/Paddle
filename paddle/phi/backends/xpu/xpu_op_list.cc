@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/xpu_info.h"
 
 #ifdef PADDLE_WITH_XPU_KP
-#include "paddle/fluid/platform/device/xpu/xpu_op_kpfirst_list.h"
+#include "paddle/phi/backends/xpu/xpu_op_kpfirst_list.h"
 #endif
 
 namespace phi {

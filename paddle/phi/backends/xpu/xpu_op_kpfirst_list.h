@@ -14,8 +14,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
-
-#include "paddle/fluid/framework/op_kernel_type.h"
+#include "paddle/phi/common/data_type.h"
 
 namespace paddle {
 namespace platform {
