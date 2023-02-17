@@ -226,14 +226,12 @@ class KernelCfg:
         self.selected_kernel_list = selected_kernel_list
 
 
-###################################################################################################
-
 if __name__ == "__main__":
 
     args = KernelCfg(
         architectures='70',
         build_dir=sys.argv[2],
-        cuda_version='11.7.64',
+        cuda_version=sys.argv[3],
         curr_build_dir=sys.argv[2],
         disable_full_archs_compilation=False,
         filter_by_cc='True',

@@ -126,7 +126,6 @@ struct ${operation_name} {
             )
 
             gemm_template = self.gemm_template_interleaved
-        #
 
         # Support built-in epilogue functors or user-defined functions
         if isinstance(operation.epilogue_functor, enum.Enum):
@@ -153,7 +152,6 @@ struct ${operation_name} {
             )
         else:
             epilogue_functor = self.epilogue_functor.emit_declaration()
-        #
 
         values = {
             'operation_name': operation.procedural_name(),
