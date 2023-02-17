@@ -22,36 +22,36 @@
 
 namespace ir {
 ///
-/// \brief The implementation of the class StorageUniquer.
+/// \brief The implementation of the class StorageManager.
 ///
-struct StorageUniquerImpl;
+struct StorageManagerImpl;
 
 ///
 /// \brief A utility class for getting or creating Storage class instances.
-/// Storage class must be a derived class of StorageUniquer::BaseStorage.
+/// Storage class must be a derived class of StorageManager::StorageBase.
 /// There are two types of Storage class:
-/// One is a singleton type, which can directly obtain an instance through the
-/// get method; The other is a parameteric type, which needs to comply with the
-/// following conditions: (1) Need to define a type alias called ParamKey, it
-/// serves as the unique identifier for the Storage class; (2) Need to provide a
-/// hash method on the ParamKey for storage and access; (3) Need to provide
-/// method 'bool operator==(const ParamKey &) const', used to compare Storage
-/// instance and ParamKey instance.
+/// One is a parameterless type, which can directly obtain an instance through
+/// the get method; The other is a parameteric type, which needs to comply with
+/// the following conditions: (1) Need to define a type alias called ParamKey,
+/// it serves as the unique identifier for the Storage class; (2) Need to
+/// provide a hash method on the ParamKey for storage and access; (3) Need to
+/// provide method 'bool operator==(const ParamKey &) const', used to compare
+/// Storage instance and ParamKey instance.
 ///
-class StorageUniquer {
+class StorageManager {
  public:
   ///
   /// \brief This class is the base class of all storage classes,
   /// and any type of storage needs to inherit from this class.
   ///
-  class BaseStorage {
+  class StorageBase {
    protected:
-    BaseStorage() = default;
+    StorageBase() = default;
   };
 
-  StorageUniquer();
+  StorageManager();
 
-  ~StorageUniquer();
+  ~StorageManager();
 
   ///
   /// \brief Get a unique storage instance of parametric Type.
@@ -67,7 +67,7 @@ class StorageUniquer {
                Args &&...args) {
     auto derived_param_key = GetParamKey<Storage>(std::forward<Args>(args)...);
     std::size_t hash_value = Storage::HashValue(derived_param_key);
-    auto is_equal_func = [&derived_param_key](const BaseStorage *existing) {
+    auto is_equal_func = [&derived_param_key](const StorageBase *existing) {
       return static_cast<const Storage &>(*existing) == derived_param_key;
     };
     auto ctor_func = [&]() {
@@ -80,14 +80,14 @@ class StorageUniquer {
   }
 
   ///
-  /// \brief Get a unique storage instance of singleton Type.
+  /// \brief Get a unique storage instance of parameterless Type.
   ///
   /// \param type_id The type id of the AbstractType.
   /// \return A uniqued instance of Storage.
   ///
   template <typename Storage>
   Storage *get(TypeId type_id) {
-    return static_cast<Storage *>(GetSingletonStorageTypeImpl(type_id));
+    return static_cast<Storage *>(GetParameterlessStorageTypeImpl(type_id));
   }
 
   ///
@@ -101,53 +101,53 @@ class StorageUniquer {
       return RegisterParametricStorageTypeImpl(type_id, nullptr);
     } else {
       return RegisterParametricStorageTypeImpl(
-          type_id, [](BaseStorage *storage) {
+          type_id, [](StorageBase *storage) {
             static_cast<Storage *>(storage)->~Storage();
           });
     }
   }
 
   ///
-  /// \brief Register a new singleton storage class.
+  /// \brief Register a new parameterless storage class.
   ///
   /// \param type_id The type id of the AbstractType.
   /// \param init_func Used to initialize a newly inserted storage instance.
   ///
   template <typename Storage>
-  void RegisterSingletonStorageType(TypeId type_id,
-                                    std::function<void(Storage *)> init_func) {
-    VLOG(4) << "==> StorageUniquer::RegisterSingletonStorageType()";
+  void RegisterParameterlessStorageType(
+      TypeId type_id, std::function<void(Storage *)> init_func) {
+    VLOG(4) << "==> StorageManager::RegisterParameterlessStorageType()";
     auto ctor_func = [&]() {
       auto *storage = new Storage();
       if (init_func) init_func(storage);
       return storage;
     };
-    RegisterSingletonStorageTypeImpl(type_id, ctor_func);
+    RegisterParameterlessStorageTypeImpl(type_id, ctor_func);
   }
 
  private:
-  BaseStorage *GetParametricStorageTypeImpl(
+  StorageBase *GetParametricStorageTypeImpl(
       TypeId type_id,
       std::size_t hash_value,
-      std::function<bool(const BaseStorage *)> is_equal_func,
-      std::function<BaseStorage *()> ctor_func);
+      std::function<bool(const StorageBase *)> is_equal_func,
+      std::function<StorageBase *()> ctor_func);
 
-  BaseStorage *GetSingletonStorageTypeImpl(TypeId type_id);
+  StorageBase *GetParameterlessStorageTypeImpl(TypeId type_id);
 
   void RegisterParametricStorageTypeImpl(
-      TypeId type_id, std::function<void(BaseStorage *)> del_func);
+      TypeId type_id, std::function<void(StorageBase *)> del_func);
 
-  void RegisterSingletonStorageTypeImpl(
-      TypeId type_id, std::function<BaseStorage *()> ctor_func);
+  void RegisterParameterlessStorageTypeImpl(
+      TypeId type_id, std::function<StorageBase *()> ctor_func);
 
   template <typename ImplTy, typename... Args>
   static typename ImplTy::ParamKey GetParamKey(Args &&...args) {
     return typename ImplTy::ParamKey(args...);
   }
 
-  /// \brief StorageUniquerImpl is the implementation class of the
-  /// StorageUniquer.
-  std::unique_ptr<StorageUniquerImpl> impl_;
+  /// \brief StorageManagerImpl is the implementation class of the
+  /// StorageManager.
+  std::unique_ptr<StorageManagerImpl> impl_;
 };
 
 }  // namespace ir

@@ -15,18 +15,18 @@
 #include <memory>
 #include <unordered_map>
 
-#include "paddle/ir/storage_uniquer.h"
+#include "paddle/ir/storage_manager.h"
 
 namespace ir {
 // This is a structure for creating, caching, and looking up Storage of
 // parameteric types.
-struct ParametricStorageUniquer {
-  using BaseStorage = StorageUniquer::BaseStorage;
+struct ParametricStorageManager {
+  using StorageBase = StorageManager::StorageBase;
 
-  explicit ParametricStorageUniquer(std::function<void(BaseStorage *)> del_func)
+  explicit ParametricStorageManager(std::function<void(StorageBase *)> del_func)
       : del_func_(del_func) {}
 
-  ~ParametricStorageUniquer() {
+  ~ParametricStorageManager() {
     for (const auto &instance : parametric_instances_) {
       del_func_(instance.second);
     }
@@ -34,11 +34,11 @@ struct ParametricStorageUniquer {
 
   // Get the storage of parametric type, if not in the cache, create and
   // insert the cache.
-  BaseStorage *GetOrCreateParametricStorage(
+  StorageBase *GetOrCreateParametricStorage(
       std::size_t hash_value,
-      std::function<bool(const BaseStorage *)> is_equal_func,
-      std::function<BaseStorage *()> ctor_func) {
-    BaseStorage *storage = nullptr;
+      std::function<bool(const StorageBase *)> is_equal_func,
+      std::function<StorageBase *()> ctor_func) {
+    StorageBase *storage = nullptr;
     if (parametric_instances_.count(hash_value) == 0) {
       storage = ctor_func();
       parametric_instances_.emplace(hash_value, storage);
@@ -59,78 +59,79 @@ struct ParametricStorageUniquer {
  private:
   // In order to prevent hash conflicts, the unordered_multimap data structure
   // is used for storage.
-  std::unordered_multimap<size_t, BaseStorage *> parametric_instances_;
+  std::unordered_multimap<size_t, StorageBase *> parametric_instances_;
 
-  std::function<void(BaseStorage *)> del_func_;
+  std::function<void(StorageBase *)> del_func_;
 };
 
-/// The implementation class of the StorageUniquer.
-struct StorageUniquerImpl {
-  using BaseStorage = StorageUniquer::BaseStorage;
+/// The implementation class of the StorageManager.
+struct StorageManagerImpl {
+  using StorageBase = StorageManager::StorageBase;
 
   // Get the storage of parametric type, if not in the cache, create and
   // insert the cache.
-  BaseStorage *GetOrCreateParametricStorage(
+  StorageBase *GetOrCreateParametricStorage(
       TypeId type_id,
       std::size_t hash_value,
-      std::function<bool(const BaseStorage *)> is_equal_func,
-      std::function<BaseStorage *()> ctor_func) {
+      std::function<bool(const StorageBase *)> is_equal_func,
+      std::function<StorageBase *()> ctor_func) {
     if (parametric_uniquers_.find(type_id) == parametric_uniquers_.end())
       throw("The input data pointer is null.");
-    ParametricStorageUniquer &parametric_storage =
+    ParametricStorageManager &parametric_storage =
         *parametric_uniquers_[type_id];
     return parametric_storage.GetOrCreateParametricStorage(
         hash_value, is_equal_func, ctor_func);
   }
 
-  // Get the storage of singleton type.
-  BaseStorage *GetSingletonStorage(TypeId type_id) {
-    VLOG(4) << "==> StorageUniquerImpl::GetSingletonStorage().";
-    if (singleton_instances_.find(type_id) == singleton_instances_.end())
+  // Get the storage of parameterless type.
+  StorageBase *GetParameterlessStorage(TypeId type_id) {
+    VLOG(4) << "==> StorageManagerImpl::GetParameterlessStorage().";
+    if (parameterless_instances_.find(type_id) ==
+        parameterless_instances_.end())
       throw("TypeId not found in IrContext.");
-    BaseStorage *singleton_instance = singleton_instances_[type_id];
-    return singleton_instance;
+    StorageBase *parameterless_instance = parameterless_instances_[type_id];
+    return parameterless_instance;
   }
 
   // This map is a mapping between type id and parameteric type storage.
-  std::unordered_map<TypeId, std::unique_ptr<ParametricStorageUniquer>>
+  std::unordered_map<TypeId, std::unique_ptr<ParametricStorageManager>>
       parametric_uniquers_;
 
-  // This map is a mapping between type id and singleton type storage.
-  std::unordered_map<TypeId, BaseStorage *> singleton_instances_;
+  // This map is a mapping between type id and parameterless type storage.
+  std::unordered_map<TypeId, StorageBase *> parameterless_instances_;
 };
 
-StorageUniquer::StorageUniquer() : impl_(new StorageUniquerImpl()) {}
+StorageManager::StorageManager() : impl_(new StorageManagerImpl()) {}
 
-StorageUniquer::~StorageUniquer() = default;
+StorageManager::~StorageManager() = default;
 
-StorageUniquer::BaseStorage *StorageUniquer::GetParametricStorageTypeImpl(
+StorageManager::StorageBase *StorageManager::GetParametricStorageTypeImpl(
     TypeId type_id,
     std::size_t hash_value,
-    std::function<bool(const BaseStorage *)> is_equal_func,
-    std::function<BaseStorage *()> ctor_func) {
+    std::function<bool(const StorageBase *)> is_equal_func,
+    std::function<StorageBase *()> ctor_func) {
   return impl_->GetOrCreateParametricStorage(
       type_id, hash_value, is_equal_func, ctor_func);
 }
 
-StorageUniquer::BaseStorage *StorageUniquer::GetSingletonStorageTypeImpl(
+StorageManager::StorageBase *StorageManager::GetParameterlessStorageTypeImpl(
     TypeId type_id) {
-  return impl_->GetSingletonStorage(type_id);
+  return impl_->GetParameterlessStorage(type_id);
 }
 
-void StorageUniquer::RegisterParametricStorageTypeImpl(
-    TypeId type_id, std::function<void(BaseStorage *)> del_func) {
+void StorageManager::RegisterParametricStorageTypeImpl(
+    TypeId type_id, std::function<void(StorageBase *)> del_func) {
   impl_->parametric_uniquers_.emplace(
-      type_id, std::make_unique<ParametricStorageUniquer>(del_func));
+      type_id, std::make_unique<ParametricStorageManager>(del_func));
 }
 
-void StorageUniquer::RegisterSingletonStorageTypeImpl(
-    TypeId type_id, std::function<BaseStorage *()> ctor_func) {
-  VLOG(4) << "==> StorageUniquer::RegisterSingletonStorageTypeImpl()";
-  if (impl_->singleton_instances_.find(type_id) !=
-      impl_->singleton_instances_.end())
+void StorageManager::RegisterParameterlessStorageTypeImpl(
+    TypeId type_id, std::function<StorageBase *()> ctor_func) {
+  VLOG(4) << "==> StorageManager::RegisterParameterlessStorageTypeImpl()";
+  if (impl_->parameterless_instances_.find(type_id) !=
+      impl_->parameterless_instances_.end())
     throw("storage class already registered");
-  impl_->singleton_instances_.emplace(type_id, ctor_func());
+  impl_->parameterless_instances_.emplace(type_id, ctor_func());
 }
 
 }  // namespace ir

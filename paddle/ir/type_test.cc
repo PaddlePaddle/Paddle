@@ -60,7 +60,7 @@ TEST(type_test, type_storage) {
 }
 
 TEST(type_test, type) {
-  // Test creation of built-in singleton type.
+  // Test creation of built-in parameterless type.
   ir::IrContext *ctx = ir::IrContext::Instance();
   ir::Type fp32_1 = ir::Float32Type::get(ctx);
 

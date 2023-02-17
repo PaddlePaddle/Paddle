@@ -30,7 +30,7 @@ class IrContextImpl {
   std::unordered_map<TypeId, AbstractType *> registed_abstract_types_;
 
   // TypeStorage uniquer and cache instances.
-  StorageUniquer registed_storage_uniquer_;
+  StorageManager registed_storage_manager_;
 
   // Some built-in type.
   Float32Type fp32_type;
@@ -40,27 +40,25 @@ class IrContextImpl {
 IrContext *IrContext::ir_context_ = nullptr;
 
 IrContext::IrContext() : impl_(new IrContextImpl()) {
-  VLOG(4) << "==> Constructor for IrContext.";
-
   VLOG(4) << "==> Register Float32Type.";
   AbstractType *fp32_abstract_type = new AbstractType(
       std::move(AbstractType::get(TypeId::get<Float32Type>())));
   registed_abstracted_type().emplace(TypeId::get<Float32Type>(),
                                      fp32_abstract_type);
-  TypeUniquer::RegisterType<Float32Type>(this);
-  impl_->fp32_type = TypeUniquer::get<Float32Type>(this);
+  TypeManager::RegisterType<Float32Type>(this);
+  impl_->fp32_type = TypeManager::get<Float32Type>(this);
 
   VLOG(4) << "==> Register IntegerType.";
   AbstractType *int_abstract_type = new AbstractType(
       std::move(AbstractType::get(TypeId::get<IntegerType>())));
   registed_abstracted_type().emplace(TypeId::get<IntegerType>(),
                                      int_abstract_type);
-  TypeUniquer::RegisterType<IntegerType>(this);
-  impl_->int1Ty = TypeUniquer::get<IntegerType>(this, 1, 0);
+  TypeManager::RegisterType<IntegerType>(this);
+  impl_->int1Ty = TypeManager::get<IntegerType>(this, 1, 0);
 }
 
-StorageUniquer &IrContext::storage_uniquer() {
-  return impl().registed_storage_uniquer_;
+StorageManager &IrContext::storage_manager() {
+  return impl().registed_storage_manager_;
 }
 
 std::unordered_map<TypeId, AbstractType *>

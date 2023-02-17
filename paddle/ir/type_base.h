@@ -15,15 +15,15 @@
 #pragma once
 
 #include "paddle/ir/ir_context.h"
-#include "paddle/ir/storage_uniquer.h"
+#include "paddle/ir/storage_manager.h"
 #include "paddle/ir/type_id.h"
 
 namespace ir {
 ///
 /// \brief Abstract the properties and behaviors common to all Type classes into
 /// an AbstractType class. There are two types in Type system:
-/// on-parameter/singleton type and parameter-type. The common attributes of all
-/// types is TypeId (and possibly others). Therefore, construct a class with
+/// on-parameter/parameterless type and parameter-type. The common attributes of
+/// all types is TypeId (and possibly others). Therefore, construct a class with
 /// TypeId as its member.
 ///
 class AbstractType {
@@ -64,7 +64,7 @@ class AbstractType {
   TypeId type_id_;
 };
 
-struct TypeUniquer;
+struct TypeManager;
 
 ///
 /// \brief TypeStorage is used to store all information of a Type. A Type object
@@ -74,9 +74,9 @@ struct TypeUniquer;
 /// included. So that, non-parameter type can be constructed by TypeStorage
 /// directly but parameter type should be constructed by Derived TypeStorage.
 ///
-class TypeStorage : public StorageUniquer::BaseStorage {
-  friend StorageUniquer;
-  friend TypeUniquer;
+class TypeStorage : public StorageManager::StorageBase {
+  friend StorageManager;
+  friend TypeManager;
 
  public:
   ///
@@ -112,14 +112,15 @@ class TypeStorage : public StorageUniquer::BaseStorage {
 };
 
 ///
-/// \brief TypeUniquer is a utility class that provides interfaces for get or
+/// \brief TypeManager is a utility class that provides interfaces for get or
 /// unique Type instances in IrContext.
 ///
-struct TypeUniquer {
+struct TypeManager {
   ///
   /// \brief Get a unique instance of Type T from IrContext. Note: For a
   /// parameteric_type, if not found in IrContext, it will try to create a new
-  /// instance and register it to IrContext; for a singleton_type, only search.
+  /// instance and register it to IrContext; for a parameterless type, only
+  /// search.
   ///
   /// \param ctx The IrContext instance.
   /// \param args Parameters of the wrapped function.
@@ -145,7 +146,7 @@ struct TypeUniquer {
   static std::
       enable_if_t<!std::is_same<typename T::StorageType, TypeStorage>::value, T>
       GetWithTypeId(IrContext *ctx, TypeId type_id, Args &&...args) {
-    return ctx->storage_uniquer().get<typename T::StorageType>(
+    return ctx->storage_manager().get<typename T::StorageType>(
         [&, type_id](TypeStorage *storage) {
           storage->initialize(AbstractType::lookup(type_id, ctx));
         },
@@ -154,7 +155,7 @@ struct TypeUniquer {
   }
 
   ///
-  /// \brief Get a unique instance of singleton Type T from IrContext, only
+  /// \brief Get a unique instance of parameterless Type T from IrContext, only
   /// search.
   ///
   /// \param ctx The IrContext instance.
@@ -165,7 +166,7 @@ struct TypeUniquer {
   static std::
       enable_if_t<std::is_same<typename T::StorageType, TypeStorage>::value, T>
       GetWithTypeId(IrContext *ctx, TypeId type_id) {
-    return ctx->storage_uniquer().get<typename T::StorageType>(type_id);
+    return ctx->storage_manager().get<typename T::StorageType>(type_id);
   }
 
   ///
@@ -188,12 +189,12 @@ struct TypeUniquer {
   static std::enable_if_t<
       !std::is_same<typename T::StorageType, TypeStorage>::value>
   RegisterType(IrContext *ctx, TypeId type_id) {
-    ctx->storage_uniquer()
+    ctx->storage_manager()
         .RegisterParametricStorageType<typename T::StorageType>(type_id);
   }
 
   ///
-  /// \brief Register a unique instance of singleton Type T to IrContext.
+  /// \brief Register a unique instance of parameterless Type T to IrContext.
   ///
   /// \param ctx The IrContext instance.
   /// \param type_id The type id of the Type T.
@@ -202,7 +203,7 @@ struct TypeUniquer {
   static std::enable_if_t<
       std::is_same<typename T::StorageType, TypeStorage>::value>
   RegisterType(IrContext *ctx, TypeId type_id) {
-    ctx->storage_uniquer().RegisterSingletonStorageType<TypeStorage>(
+    ctx->storage_manager().RegisterParameterlessStorageType<TypeStorage>(
         type_id, [&ctx, type_id](TypeStorage *storage) {
           storage->initialize(AbstractType::lookup(type_id, ctx));
         });
@@ -226,7 +227,7 @@ struct TypeUniquer {
   }                                                                        \
   template <typename... Args>                                              \
   static concrete_type create(IrContext *ctx, Args... args) {              \
-    return ir::TypeUniquer::template get<concrete_type>(ctx, args...);     \
+    return ir::TypeManager::template get<concrete_type>(ctx, args...);     \
   }
 
 }  // namespace ir
