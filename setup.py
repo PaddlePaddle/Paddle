@@ -1269,6 +1269,8 @@ def get_setup_parameters():
         'paddle.distributed.passes',
         'paddle.distributed.models',
         'paddle.distributed.models.moe',
+        'paddle.distributed.transpiler',
+        'paddle.distributed.transpiler.details',
         'paddle.framework',
         'paddle.jit',
         'paddle.jit.dy2static',
