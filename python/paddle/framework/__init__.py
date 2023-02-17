@@ -72,6 +72,6 @@ from ..fluid.framework import switch_main_program
 from ..fluid.framework import _set_expected_place  # noqa: F401
 from ..fluid.framework import Block, Program  # noqa: F401
 from ..fluid.framework import IrGraph  # noqa: F401
-
+from ..fluid.framework import deprecate_stat_dict
 
 __all__ = []

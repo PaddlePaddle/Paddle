@@ -14,15 +14,15 @@
 
 import paddle
 from paddle import framework
-
-# (TODO: GhostScreaming) It will be removed later.
-from paddle.fluid import core
-from paddle.framework import (
+from paddle.distributed.parallel import (
     _split_tensors,
     build_groups,
     in_dygraph_mode,
     sync_params_buffers,
 )
+
+# (TODO: GhostScreaming) It will be removed later.
+from paddle.fluid import core
 
 from .log_util import logger
 
