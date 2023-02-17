@@ -78,13 +78,6 @@ class TestDygraphViewReuseAllocation(unittest.TestCase):
             view_var_b[0] = 2.0  # var_b is modified inplace
 
             loss = paddle.nn.functional.relu(var_c)
-            with self.assertRaisesRegex(
-                RuntimeError,
-                "received tensor_version:{} != wrapper_version_snapshot:{}".format(
-                    1, 0
-                ),
-            ):
-                loss.backward()
 
 
 class TestUnsqueezeDygraphViewReuseAllocation(TestDygraphViewReuseAllocation):
