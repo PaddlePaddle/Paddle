@@ -375,7 +375,7 @@ class TestSundryAPI(unittest.TestCase):
         out1.backward()
         self.assertEqual(x1.shape, [])
         self.assertEqual(x1.item(), 1.0)
-        self.assertEqual(x1.grad.shape, [1])
+        self.assertEqual(x1.grad.shape, [])
         self.assertEqual(x1.grad.item(0), 1.0)
         self.assertEqual(out1.shape, [1])
         self.assertEqual(out1.item(0), 1.0)
