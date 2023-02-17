@@ -95,8 +95,8 @@ size_t CinnCacheKey::Hash::operator()(const CinnCacheKey& key) const {
   for (const auto& name_shape : key.input_shapes_) {
     has_str << name_shape.first;
     has_str << std::hash<phi::DDim>()(name_shape.second);
-    PADDLE_ENFORCE_EQ(key.input_dtypes_.contains(name_shape.first),
-                      true,
+    PADDLE_ENFORCE_NE(key.input_dtypes_.find(name_shape.first),
+                      key.input_dtypes_.end(),
                       platform::errors::PreconditionNotMet(
                           "%s is not in key.input_dtypes_.", name_shape.first));
     has_str << phi::DataTypeToString(key.input_dtypes_.at(name_shape.first));
