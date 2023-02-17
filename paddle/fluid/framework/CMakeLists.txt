@@ -589,16 +589,10 @@ if(WITH_PYTHON)
        ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto)
   file(TOUCH
        ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py)
-  add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E
-                                                        touch __init__.py)
+  file(TOUCH __init__.py)
   add_dependencies(
-    framework_py_proto
-    framework_py_proto_init
-    trainer_py_proto
-    distributed_strategy_py_proto
-    pass_desc_py_proto
-    ps_py_proto
-    pslib_py_proto)
+    framework_py_proto trainer_py_proto distributed_strategy_py_proto
+    pass_desc_py_proto ps_py_proto pslib_py_proto)
   if(NOT WIN32)
     add_custom_command(
       TARGET framework_py_proto

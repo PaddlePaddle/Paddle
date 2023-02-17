@@ -2126,7 +2126,7 @@ class Executor:
         assert len(fetch_list) == len(fetch_info)
         compiled = isinstance(program, compiler.CompiledProgram)
         if is_heter:
-            from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+            from paddle.incubate.fleet.parameter_server.pslib import fleet
             from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
 
             fu = FleetUtil()
