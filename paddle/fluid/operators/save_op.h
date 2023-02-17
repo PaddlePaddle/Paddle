@@ -72,18 +72,18 @@ void SaveSelectedRowsKernel(const Context& dev_ctx,
                             bool overwrite,
                             bool save_as_fp16) {
   PADDLE_ENFORCE_EQ(
-      FileExists(filename) && !overwrite,
+      FileExists(file_path) && !overwrite,
       false,
       phi::errors::PreconditionNotMet(
           "%s exists!, cannot save to it when overwrite is set to false.",
-          filename,
+          file_path,
           overwrite));
   PADDLE_ENFORCE_EQ(save_as_fp16,
                     false,
                     phi::errors::Unimplemented(
                         "SelectedRows is not supported to save as float16."));
 
-  MkDirRecursively(DirName(filename).c_str());
+  MkDirRecursively(DirName(file_path).c_str());
 
   // FIXME(yuyang18): We save variable to local file now, but we should change
   // it to save an output stream.
