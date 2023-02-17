@@ -81,6 +81,12 @@ class TestCumsumGradComp(unittest.TestCase):
             y = paddle.cumsum(x, axis=-1)
             return paddle.grad(y, x, v, create_graph=True, retain_graph=True)[0]
 
+        if (
+            paddle.device.get_device() == "cpu"
+            and self.primal.dtype == np.float16
+        ):
+            print("pass cpu+float16 case")
+
         np.testing.assert_allclose(
             actual=actual(self.primal, self.cotangent),
             desired=desired(self.primal, self.cotangent),

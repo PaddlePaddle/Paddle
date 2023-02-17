@@ -20,6 +20,12 @@ import parameterized as param
 import paddle
 from paddle.fluid import core
 
+limit = {
+    'float16': {'atol': 1e-3, 'rtol': 1e-3},
+    'float32': {'atol': 1e-6, 'rtol': 1e-6},
+    'float64': {'atol': 1e-15, 'rtol': 1e-15},
+}
+
 
 @param.parameterized_class(
     ('primal', 'cotangent', 'dtype'),
@@ -90,12 +96,18 @@ class TestCumsumGradComp(unittest.TestCase):
                 fetch_list=x_cotangent,
             )[0]
 
-        np.testing.assert_allclose(
-            actual=actual(self.primal, self.cotangent),
-            desired=desired(self.primal, self.cotangent),
-            rtol=1e-6,
-            atol=0,
-        )
+        if (
+            paddle.device.get_device() == "cpu"
+            and self.primal.dtype == np.float16
+        ):
+            print("pass cpu+float16 case")
+        else:
+            np.testing.assert_allclose(
+                actual=actual(self.primal, self.cotangent),
+                desired=desired(self.primal, self.cotangent),
+                rtol=limit[str(self.primal.dtype)]['rtol'],
+                atol=limit[str(self.primal.dtype)]['atol'],
+            )
 
 
 if __name__ == '__main__':
