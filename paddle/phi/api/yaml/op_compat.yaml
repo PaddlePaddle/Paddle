@@ -1187,6 +1187,7 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : scale
+  backward : scale_grad
   inputs :
     {x : X}
   outputs :
