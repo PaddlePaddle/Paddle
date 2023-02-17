@@ -489,6 +489,80 @@ class TestGetSetKeepLayerNormScaleBiasFP32Flag(unittest.TestCase):
         self.assertTrue(_keep_layer_norm_scale_bias_to_fp32())
 
 
+class TestFastMathLayerNormOp(unittest.TestCase):
+    def impl_layer_norm(
+        dtype, x_np, scale_np, bias_np, begin_norm_axis, has_scale, has_bias
+    ):
+        if not paddle.is_compiled_with_cuda():
+            return
+
+        paddle.disable_static()
+        epsilon = 0.00001
+
+        x = paddle.to_tensor(x_np)
+        if dtype == "bfloat16":
+            x = x.cast(paddle.fluid.core.VarDesc.VarType.BF16)
+        bias = paddle.to_tensor(bias_np) if has_scale else None
+        scale = paddle.to_tensor(scale_np) if has_bias else None
+        x.stop_gradient = True
+        bias.stop_gradient = True
+        scale.stop_gradient = True
+
+        y = F.layer_norm(x, x.shape[begin_norm_axis:], scale, bias)
+        paddle.enable_static()
+        return y.cast('float32').numpy()
+
+    def test_fast_math(
+        self, dtype, x_shape, begin_norm_axis, has_scale, has_bias
+    ):
+        def use_fast_math(enabled):
+            paddle.set_flags({'FLAGS_use_fast_math': enabled})
+
+        def __assert_close(self, fast_array, dev_array, msg, atol=1e-5):
+            self.assertTrue(np.allclose(fast_array, dev_array, atol=atol), msg)
+
+        x_np = np.random.random(x_shape).astype('float32')
+        bias_np = np.random.random(x_shape[begin_norm_axis:]).astype('float32')
+        scale_np = np.random.random(x_shape[begin_norm_axis:]).astype('float32')
+
+        use_fast_math(False)
+        y_fast = self.impl_layer_norm(
+            dtype, x_np, scale_np, bias_np, begin_norm_axis, has_scale, has_bias
+        )
+        use_fast_math(True)
+        y_dev = self.impl_layer_norm(
+            dtype, x_np, scale_np, bias_np, begin_norm_axis, has_scale, has_bias
+        )
+        self.__assert_close(y_fast, y_dev, 'y')
+
+    def test_check_with_dtype(self, dtype):
+        self.test_fast_math(
+            dtype,
+            shape=[2, 3, 4, 5],
+            begin_norm_axis=2,
+            has_scale=False,
+            has_bias=True,
+        )
+        self.test_fast_math(
+            dtype,
+            shape=[8, 65],
+            begin_norm_axis=1,
+            has_scale=False,
+            has_bias=False,
+        )
+        self.test_fast_math(
+            dtype,
+            shape=[8, 64],
+            begin_norm_axis=1,
+            has_scale=False,
+            has_bias=False,
+        )
+
+    def test_main(self):
+        self.test_check_with_dtype('float32')
+        self.test_check_with_dtype('bfloat16')
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

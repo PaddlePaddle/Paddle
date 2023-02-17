@@ -36,7 +36,8 @@ static void SaveInfoInTheFirstOp(
   for (auto* op_node :
        ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp() || op_node->Op()->Type() == "feed" ||
-        op_node->Op()->Type() == "fetch")
+        op_node->Op()->Type() == "fetch" ||
+        op_node->Op()->Type() == "fill_constant")
       continue;
 
     op_node->Op()->SetAttr(flag, true);
@@ -57,7 +58,8 @@ static void SaveInfoInTheFirstOp(ir::Graph* graph,
   for (auto* op_node :
        ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp() || op_node->Op()->Type() == "feed" ||
-        op_node->Op()->Type() == "fetch")
+        op_node->Op()->Type() == "fetch" ||
+        op_node->Op()->Type() == "fill_constant")
       continue;
 
     op_node->Op()->SetAttr(flag, true);

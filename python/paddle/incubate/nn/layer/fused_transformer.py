@@ -1382,6 +1382,7 @@ class FusedMultiTransformer(Layer):
         pre_caches=None,
         rotary_embs=None,
         rotary_emb_dims=0,
+        seq_lens=None,
         time_step=None,
     ):
         r"""
@@ -1406,6 +1407,7 @@ class FusedMultiTransformer(Layer):
             rotary_embs (Tensor optional): The RoPE embs for the rotary computation. The shape is `[2, bsz, 1, seq\_len, head\_dim]`. Default None.
             rotary_emb_dims (int, optional): The rotary_emb_dims of rotary computation, and it is 0 when rotary_embs is None,
                 1 when rotary_embs is not None and pos_extra_ids is None, 2 when rotary_embs and pos_extra_ids are both not None. Default 0.
+            seq_lens (Tensor optional): The sequence lengths of this batch. The shape is `[bsz]`. Default None.
             time_step (Tensor, optional): The time step tensor for the generation
                 model. Which used in decode stage, to represent the time step,
                 that is, the real seq_len of CacheKV. The shape is `[1]`, must be
@@ -1441,6 +1443,7 @@ class FusedMultiTransformer(Layer):
             pre_caches=pre_caches,
             rotary_embs=rotary_embs,
             time_step=time_step,
+            seq_lens=seq_lens,
             attn_mask=attn_mask,
             dropout_rate=self.dropout_rate,
             rotary_emb_dims=rotary_emb_dims,

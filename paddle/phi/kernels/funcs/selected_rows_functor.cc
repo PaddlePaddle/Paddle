@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
-#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/phi/core/mixed_vector.h"
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/phi/backends/onednn/axpy_handler.h"
@@ -200,7 +200,7 @@ struct SelectedRowsAddTo<phi::CPUContext, T> {
     auto* in2_value = input2->mutable_value();
 
     // concat rows
-    paddle::framework::MixVector<int64_t> mixv_in2_rows(&in2_rows);
+    phi::MixVector<int64_t> mixv_in2_rows(&in2_rows);
     mixv_in2_rows.Extend(in1_rows.begin(), in1_rows.end());
 
     auto in1_place = input1.place();
@@ -254,7 +254,7 @@ struct SelectedRowsSumTo<phi::CPUContext, T> {
     std::vector<int64_t> in2_rows;
     in2_rows.reserve(in2_rows.size() + size);
     for (auto iter = input1.begin(); iter != input1.end(); ++iter) {
-      const paddle::framework::Vector<int64_t>& in_rows = (*iter)->rows();
+      const phi::Vector<int64_t>& in_rows = (*iter)->rows();
       in2_rows.insert(in2_rows.end(), in_rows.begin(), in_rows.end());
     }
     input2->set_rows(in2_rows);
@@ -646,7 +646,7 @@ struct MergeAdd<phi::XPUContext, T> {
                   const phi::SelectedRows& input,
                   phi::SelectedRows* output,
                   const bool sorted_result = false) {
-    paddle::framework::Vector<int64_t> input_rows(input.rows());
+    phi::Vector<int64_t> input_rows(input.rows());
     if (input_rows.size() == 0) {
       return;
     }

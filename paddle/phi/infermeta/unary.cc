@@ -161,6 +161,7 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
   const auto& x_dims = x.dims();
 
   auto x_rank = x.dims().size();
+  auto zero_dim_tensor = x_rank == 0;
   if (x_rank > 0) {
     PADDLE_ENFORCE_GE(int_axis,
                       -x_rank,
@@ -178,11 +179,11 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
             x_rank));
   } else {
     // 0-dim tensor
-    PADDLE_ENFORCE_EQ((int_axis == 0 || int_axis == -1) && flatten,
+    PADDLE_ENFORCE_EQ(int_axis == 0 || int_axis == -1,
                       true,
                       phi::errors::InvalidArgument(
                           "'axis'(%d) must be 0 or -1 if input tensor is "
-                          "0-dim. and flatten should be true.",
+                          "0-dim.",
                           int_axis));
   }
 
@@ -191,7 +192,7 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
   if (config.is_runtime) {
     if (dtype == phi::TransToProtoVarType(DataType::INT32)) {
       int64_t all_element_num = 0;
-      if (flatten) {
+      if (flatten || zero_dim_tensor) {
         all_element_num = phi::product(x_dims);
       } else {
         all_element_num = x_dims[int_axis];
@@ -3654,6 +3655,10 @@ void SplitWithNumInferMeta(const MetaTensor& x,
     auto input_axis_dim = x.dims().at(axis_value);
     // step1: get formated sections
     std::vector<int64_t> sections_vec;
+    PADDLE_ENFORCE_NE(
+        num,
+        0,
+        phi::errors::InvalidArgument("Attr(num_or_sections) should not be 0."));
     PADDLE_ENFORCE_EQ(input_axis_dim % num,
                       0,
                       phi::errors::InvalidArgument(
@@ -4581,6 +4586,14 @@ void UniqueConsecutiveInferMeta(const MetaTensor& x,
                         "unique_consecutive should have output tensor out."));
 
   auto in_dims = x.dims();
+  if (x.dims().size() == 0) {
+    PADDLE_ENFORCE_EQ(axis.empty(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The Input(X) with 0-D Tensor, axis must be None"
+                          "But now the axis is %d.",
+                          axis[0]));
+  }
   if (return_inverse) {
     PADDLE_ENFORCE_NE(
         index,

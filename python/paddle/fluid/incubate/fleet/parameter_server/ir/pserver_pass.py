@@ -14,8 +14,7 @@
 
 import collections
 
-from paddle.fluid import core
-from paddle.fluid.framework import Block
+from paddle.framework import core, Block
 
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
     _get_optimize_ops,
