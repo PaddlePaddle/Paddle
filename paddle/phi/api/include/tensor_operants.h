@@ -14,9 +14,9 @@
 
 #pragma once
 
+#include "paddle/phi/api/include/operants_base.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/macros.h"
-#include "paddle/phi/core/operants_base.h"
 
 namespace paddle {
 
@@ -26,7 +26,13 @@ class PhiTensorOperants : public TensorOperantsBase {
  public:
   PhiTensorOperants() = default;
 
+  Tensor add(const Tensor& x, const Tensor& y) override;
+
+  Tensor subtract(const Tensor& x, const Tensor& y) override;
+
   Tensor multiply(const Tensor& x, const Tensor& y) override;
+
+  Tensor divide(const Tensor& x, const Tensor& y) override;
 
  private:
   DISABLE_COPY_AND_ASSIGN(PhiTensorOperants);

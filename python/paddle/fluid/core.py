@@ -401,7 +401,7 @@ set_paddle_lib_path()
 # else:
 # # # _set_prim_all_enabled > FLAGS_prim_all == check_and_set_prim_all_enabled == _set_prim_backward_enabled == _set_prim_backward_enabled > FLAGS_prim_forward == FLAGS_prim_backward
 def __sync_stat_with_flag(flag):
-    if flag is "FLAGS_prim_forward":
+    if flag == "FLAGS_prim_forward":
         flag_value = os.getenv("FLAGS_prim_forward")
         assert flag_value is not None
         flag_value = flag_value.lower()
@@ -412,7 +412,7 @@ def __sync_stat_with_flag(flag):
         else:
             raise TypeError(f"flag {flag} should be true or false.")
         print("forward prim enabled: ", bool(_is_fwd_prim_enabled()))
-    elif flag is "FLAGS_prim_backward":
+    elif flag == "FLAGS_prim_backward":
         flag_value = os.getenv("FLAGS_prim_backward")
         assert flag_value is not None
         flag_value = flag_value.lower()
@@ -423,7 +423,7 @@ def __sync_stat_with_flag(flag):
         else:
             raise TypeError(f"flag {flag} should be true or false.")
         print("backward prim enabled: ", bool(_is_bwd_prim_enabled()))
-    elif flag is "FLAGS_prim_all":
+    elif flag == "FLAGS_prim_all":
         flag_value = os.getenv("FLAGS_prim_all")
         assert flag_value is not None
         flag_value = flag_value.lower()
@@ -449,14 +449,14 @@ def _test_use_sync(value):
 
 
 # ops in forward_blacklisk will not be replaced by composite ops.
-prim_config = {"forward_blacklist": []}
+prim_config = {"forward_blacklist": set(), "composite_ops_record": set()}
 
 
 def _set_prim_forward_blacklist(ops=None):
     if ops is None:
         prim_config["forward_blacklist"] = []
     elif isinstance(ops, str):
-        prim_config["forward_blacklist"].append(ops)
+        prim_config["forward_blacklist"].add(ops)
     elif isinstance(ops, (list, tuple)):
         for item in ops:
             if not isinstance(item, str):
@@ -464,7 +464,7 @@ def _set_prim_forward_blacklist(ops=None):
                     "ops set in forward_blacklist must belong to [str, str of tuple or list]"
                 )
             else:
-                prim_config["forward_blacklist"].append(item)
+                prim_config["forward_blacklist"].add(item)
     else:
         raise TypeError(
             "ops set in forward_blacklist must belong to [str, str of tuple or list]"
