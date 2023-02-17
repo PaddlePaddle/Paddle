@@ -88,7 +88,7 @@ def custom_relu_static_pe(func, device, dtype, np_x, use_func=True):
             # in static graph mode, x data has been covered by out
             compiled_prog = static.CompiledProgram(
                 static.default_main_program()
-            )
+            ).with_data_parallel(loss_name=out.name, places=places)
             out_v = exe.run(
                 compiled_prog, feed={'X': np_x}, fetch_list=[out.name]
             )
