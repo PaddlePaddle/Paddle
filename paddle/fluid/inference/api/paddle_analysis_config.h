@@ -1191,26 +1191,7 @@ struct PD_INFER_DECL AnalysisConfig {
   std::unordered_set<std::string> bfloat16_enabled_op_types_;
   bool use_mkldnn_int8_{false};
   std::unordered_set<int> quantize_excluded_op_ids_{};
-  std::unordered_set<std::string> quantize_enabled_op_types_{
-      "concat",
-      "conv2d",
-      "depthwise_conv2d",
-      "fused_conv2d",
-      "elementwise_add",
-      "elementwise_mul",
-      "fc",
-      "matmul",
-      "nearest_interp",
-      "nearest_interp_v2",
-      "pool2d",
-      "prior_box",
-      "reshape2",
-      "transpose2",
-      "fusion_gru",
-      "fusion_lstm",
-      "multi_gru",
-      "slice",
-      "split"};
+  std::unordered_set<std::string> quantize_enabled_op_types_{};
 
   bool disable_mkldnn_fc_passes_{false};
 
