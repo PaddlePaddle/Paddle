@@ -26,8 +26,7 @@ enum class LibraryType {
   kPlain = 0,
   kMKLDNN = 1,
   kCUDNN = 2,
-  kCUTLASS = 3,
-  kKP = 4,
+  kKP = 3,
 };
 
 inline std::string LibraryTypeToString(const LibraryType& library_type) {
@@ -38,8 +37,6 @@ inline std::string LibraryTypeToString(const LibraryType& library_type) {
       return "MKLDNN";
     case LibraryType::kCUDNN:
       return "CUDNN";
-    case LibraryType::kCUTLASS:
-      return "CUTLASS";
     case LibraryType::kKP:
       return "KP";
     default:
@@ -59,8 +56,6 @@ inline LibraryType StringToLibraryType(const char* ctype) {
     return LibraryType::kPlain;
   } else if (s == std::string("MKLDNN")) {
     return LibraryType::kMKLDNN;
-  } else if (s == std::string("CUTLASS")) {
-    return LibraryType::kCUTLASS;
   } else if (s == std::string("CUDNN")) {
     return LibraryType::kCUDNN;
     // To be compatible with register macro.

@@ -1689,7 +1689,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   std::string phi_kernel_name;
   if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(type_)) {
     if (kernel_signature_ == nullptr || phi_kernel_ == nullptr) {
-      std::cout << "type_.c_str():" <<  type_.c_str() << std::endl;
       if (phi::KernelFactory::Instance().HasStructuredKernel(type_)) {
         kernel_signature_.reset(new phi::KernelSignature(type_.c_str()));
       } else {
@@ -1702,9 +1701,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       kernel_type_.reset(
           new OpKernelType(std::move(InnerGetExpectedKernelType(exe_ctx))));
       dev_ctx = pool.Get(kernel_type_->place_);
-      std::cout << "kernel_signature_->name:" << kernel_signature_->name << std::endl;
-      std::cout << "kernel_type_->place_: " << kernel_type_->place_.DebugString() << std::endl;
-
 // NOTE(Liu-xiandong): The register kernel used KP have library_type[KP],
 // But the default library_type is Plain, so we need to modify the
 // library_type here, otherwise it can't work.
@@ -1746,7 +1742,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       }
 #endif
       phi_kernel_key = TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
-
       phi_kernel_.reset(
           new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
               phi_kernel_name, phi_kernel_key)));
@@ -1781,10 +1776,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       if (this->CanCUDNNBeUsed(exe_ctx, kernel_type_->data_type_)) {
         kernel_type_->library_type_ = framework::LibraryType::kCUDNN;
       }
-      if (HasAttr("library") && Attr<std::string>("library") == "CUTLASS") {
-        kernel_type_->library_type_ = framework::LibraryType::kCUTLASS;
-      }
-
 #endif
 
 // NOTE(Liu-xiandong):In my ctest, this branch do not be executed,
@@ -1828,7 +1819,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       }
 #endif
       phi_kernel_key = TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
-      //std::cout << "phi_kernel_key: " << phi_kernel_key << " " << kernel_signature_->name << std::endl;
     }
 
 // NOTE(Liu-xiandong): Determine whether the selected kernel is valid
@@ -2069,9 +2059,6 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (this->CanCUDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
     expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
-  }
-  if (HasAttr("library") && Attr<std::string>("library") == "CUTLASS") {
-     expected_kernel_key.library_type_ = framework::LibraryType::kCUTLASS;
   }
 #endif
 
@@ -2758,8 +2745,6 @@ void OperatorWithKernel::ParseMultiInputDataType(
       const phi::DenseTensor* t = nullptr;
       if (var->IsType<phi::DenseTensor>()) {
         t = &var->Get<phi::DenseTensor>();
-      } else if (var->IsType<phi::DenseTensor>()) {
-        t = &var->Get<phi::DenseTensor>();
       } else if (var->IsType<phi::SelectedRows>()) {
         t = &(var->Get<phi::SelectedRows>().value());
       } else if (var->IsType<phi::SparseCooTensor>()) {
@@ -2878,8 +2863,6 @@ phi::DenseTensor* OperatorWithKernel::GetTensorFormInputSafely(
   // 2. get tensor and check
   phi::DenseTensor* t = nullptr;
   if (var->IsType<phi::DenseTensor>()) {
-    t = var->GetMutable<phi::DenseTensor>();
-  } else if (var->IsType<phi::DenseTensor>()) {
     t = var->GetMutable<phi::DenseTensor>();
   } else if (var->IsType<phi::SelectedRows>()) {
     t = var->GetMutable<phi::SelectedRows>()->mutable_value();
@@ -3240,8 +3223,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
         } else {  // scalar is in the input
           need_prepare_phi_data_ = true;
           auto& ins_vector = ctx.inputs.at(attr_names[i]);
-          phi_kernel_context->EmplaceBackAttr(std::move(
-              experimental::MakePhiScalarFromVar(*ins_vector.front())));
+          phi_kernel_context->EmplaceBackAttr(
+              std::move(framework::MakePhiScalarFromVar(*ins_vector.front())));
         }
         break;
       case phi::AttributeType::INT_ARRAY:
@@ -3274,10 +3257,10 @@ void OperatorWithKernel::BuildPhiKernelContext(
           auto& ins_vector = ctx.inputs.at(attr_names[i]);
           if (ins_vector.size() == 1) {  // ShapeTensor
             phi_kernel_context->EmplaceBackAttr(std::move(
-                experimental::MakePhiIntArrayFromVar(*ins_vector.front())));
+                framework::MakePhiIntArrayFromVar(*ins_vector.front())));
           } else {  // ShapeTensorList
-            phi_kernel_context->EmplaceBackAttr(std::move(
-                experimental::MakePhiIntArrayFromVarList(ins_vector)));
+            phi_kernel_context->EmplaceBackAttr(
+                std::move(framework::MakePhiIntArrayFromVarList(ins_vector)));
           }
         }
         break;

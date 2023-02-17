@@ -275,7 +275,6 @@ using GPUDNNContext = GPUContext;
 // KPS Kernel. Note: XPU and GPU cannot be compiled at the same time!
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 using KPSContext = GPUContext;
-using CUTLASSContext = GPUContext;
 #endif
 
 }  // namespace phi

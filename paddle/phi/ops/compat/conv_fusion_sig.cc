@@ -30,7 +30,6 @@ KernelSignature ConvFusionOpArgumentMapping(const ArgumentMappingContext& ctx) {
                              "exhaustive_search",
                              "split_channels",
                              "workspace_size_MB",
-                             "fuse_alpha",
                          },
                          {"Output", "Outputs"});
 }

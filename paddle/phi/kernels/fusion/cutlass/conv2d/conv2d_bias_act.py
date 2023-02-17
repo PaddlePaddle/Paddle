@@ -14,11 +14,16 @@
 
 import sys
 
-# the cutlass python script path
-sys.path.append(str(sys.argv[1]))
+sys.path.append("../")
+import enum
 
-from conv2d_operation import *
-from library import *
+from conv2d_common import (
+    common_conv_function,
+    common_dispatch_temp,
+    common_tail,
+    common_wrapper_for_phi,
+)
+from util import SubstituteTemplate, TileDesc
 
 # this is a file's header part
 
@@ -39,11 +44,39 @@ namespace cutlass_internal {
 # This is a cutlass kernel, will be many these like kernels
 
 cba_kernel = '''
-cutlass::Status ${kernel_function_name}(ConvAllParams params) {
-  ${kenel_tmplate_instantiate}
-  using ImplicitGemm =
-      cutlass::conv::device::ImplicitGemmConvolution<${kernel_sig}_base>;
+cutlass::Status ${kernel_func_name}(ConvAllParams params) {
 
+  using kernel_base =
+  typename cutlass::conv::kernel::DefaultConv2d${conv_kind_name}<
+    ${element_a},
+    ${layout_a},
+    ${element_b},
+    ${layout_b},
+    ${element_c},
+    ${layout_c},
+    ${element_accum},
+    ${opcode_class},
+    ${arch},
+    cutlass::gemm::GemmShape<${Tshape}>,
+    cutlass::gemm::GemmShape<${Wshape}>,
+    cutlass::gemm::GemmShape<${Ishape}>,
+    ${epi_func}<
+      ${element_c},
+      ${epilogue_vector_length},
+      ${element_accum},
+      ${element_epilogue}
+    >,
+    ${swizzling_functor}, // cutlass::gemm::threadblock::GemmSplitKIdentityThreadblockSwizzle<>,
+    ${stages},
+    ${math_operator},
+    ${iterator_algorithm},
+    ${stride_support},
+    ${align_a},
+    ${align_b}
+  >::Kernel;
+
+  using ImplicitGemm =
+      cutlass::conv::device::ImplicitGemmConvolution<kernel_base>;
   const half *input = params.input;
   const half *weight = params.weight;
   const half *bias = params.bias;
@@ -106,281 +139,148 @@ cutlass::Status ${kernel_function_name}(ConvAllParams params) {
 '''
 
 
-# conv2d_bias_act_function
-# a function name is like such as conv2d_bias_silu_sm75
-# it has many kernels, we should pick up a performence-best
-# ${cba_name} is like conv2d_bias_silu_sm75
-# ${enum_op_name} is like CONV2D_BIAS_SILU
-
-cba_function = """
-std::vector<std::function<cutlass::Status(ConvAllParams)>>
-    ${cba_name}_all_func =  {${all_kernel_function_name}};
-
-std::map<std::vector<int>, int> map_problem_${cba_name};
-std::mutex ${cba_name}_mutex;
-
-void ${cba_name}(ConvAllParams params) {
-  int batch = params.batch;
-  int ic = params.ic;
-  int ih = params.ih;
-  int iw = params.iw;
-  int kh = params.kh;
-  int kw = params.kw;
-  int oc = params.oc;
-  int pad_h0 = params.pad_h0;
-  int pad_w0 = params.pad_w0;
-  int stride_h = params.stride_h;
-  int stride_w = params.stride_w;
-
-  std::vector<int> problem_size = {
-      batch, ic, ih, iw, kh, kw, oc, pad_h0, pad_w0, stride_h, stride_w};
-
-  if (map_problem_${cba_name}.count(problem_size)) {
-    ${cba_name}_all_func[map_problem_${cba_name}.at(problem_size)](
-        params);
-    return;
-  }
-
-  int best_config_index = ProfileToGetBestConfig(
-      ${cba_name}_all_func, params, ${enum_op_name});
-
-  std::lock_guard<std::mutex> guard(${cba_name}_mutex);
-
-  map_problem_${cba_name}[problem_size] = best_config_index;
-  ${cba_name}_all_func[best_config_index](params);
-}
-"""
-
-
-# We should wrapper all op_name_with_sm_version into a function
-# like : wrapper conv2d_bias_silu_sm75,  conv2d_bias_silu_sm80,  conv2d_bias_silu_sm86 into conv2d_bias_silu for phi kernel
-# this function is invoked by phi kernel
-
-cba_for_phi = """
-void ${op_name}(ConvAllParams params) {
-    ${dispatch_body}
-}
-"""
-
-
-# this is a file's ending part
-
-cba_tail = '''
-}  // namespace cutlass_internal
-}  // namespace fusion
-}  // namespace phi
-'''
-
-
 class CbaAct(enum.Enum):
-    LinearCombination = enum_auto()
-    LinearCombinationRelu = enum_auto()
-    LinearCombinationSilu = enum_auto()
+    Identity = 1
+    Relu = 2
+    Silu = 3
 
 
-# EpilogueFunctorTag is from library.py
-
-EpilogueFunctorTag[
-    CbaAct.LinearCombination
-] = 'cutlass::epilogue::thread::LinearCombination'
-EpilogueFunctorTag[
-    CbaAct.LinearCombinationSilu
-] = 'cutlass::epilogue::thread::LinearCombinationSilu'
-EpilogueFunctorTag[
-    CbaAct.LinearCombinationRelu
-] = 'cutlass::epilogue::thread::LinearCombinationRelu'
+ActCutlassTag = {
+    CbaAct.Identity: 'cutlass::epilogue::thread::LinearCombination',
+    CbaAct.Silu: 'cutlass::epilogue::thread::LinearCombinationSilu',
+    CbaAct.Relu: 'cutlass::epilogue::thread::LinearCombinationRelu',
+}
 
 UnderScoreName = {
-    CbaAct.LinearCombination: "conv2d_bias",
-    CbaAct.LinearCombinationSilu: "conv2d_bias_silu",
-    CbaAct.LinearCombinationRelu: "conv2d_bias_relu",
+    CbaAct.Identity: "conv2d_bias",
+    CbaAct.Silu: "conv2d_bias_silu",
+    CbaAct.Relu: "conv2d_bias_relu",
 }
 
 CamelName = {
-    CbaAct.LinearCombination: "Conv2dBias",
-    CbaAct.LinearCombinationSilu: "Conv2dBiasSilu",
-    CbaAct.LinearCombinationRelu: "Conv2dBiasRelu",
+    CbaAct.Identity: "Conv2dBias",
+    CbaAct.Silu: "Conv2dBiasSilu",
+    CbaAct.Relu: "Conv2dBiasRelu",
 }
 
 # some global variables used, now we only support these activations
-epilogue_functors = [
-    CbaAct.LinearCombination,
-    CbaAct.LinearCombinationRelu,
-    CbaAct.LinearCombinationSilu,
-]
-# now we only support these algorithms
-iterator_algorithms = [
-    IteratorAlgorithm.Optimized,
-    IteratorAlgorithm.Analytic,
+epi_funcs = [
+    CbaAct.Identity,
+    CbaAct.Relu,
+    CbaAct.Silu,
 ]
 
-# iterate over iterator_algorithms and tiles
-# cba_name is like conv2d_bias_silu_sm75, it's added at the end of kernel_signature to make kernel function name unique
-def generate_conv_kernels(
-    conv_kind,
-    iterator_algorithms,
-    tiles,
-    A,
-    B,
-    C,
-    element_epilogue,
-    stride_kind,
-    epilogue_functor,
-    swizzling_functor,
-    cba_name,
-):
-    all_kernel_code = ""
-    all_kernel_names = ""
-    for iterator_algorithm in iterator_algorithms:
-        for tile in tiles:
-            conv2d_operation = Conv2dOperation(
-                conv_kind,
-                iterator_algorithm,
-                tile.minimum_compute_capability,
-                tile,
-                A,
-                B,
-                C,
-                element_epilogue,
-                stride_kind,
-                epilogue_functor,
-                swizzling_functor,
-            )
-            kernel_dict = {}
-            kernel_dict["kernel_sig"] = conv2d_operation.configuration_name()
-            kernel_dict["kernel_function_name"] = (
-                kernel_dict["kernel_sig"] + cba_name
-            )
-            kernel_dict[
-                "kenel_tmplate_instantiate"
-            ] = EmitConv2dInstance().emit(conv2d_operation)
-            all_kernel_names += kernel_dict["kernel_function_name"] + ", \n"
-            # Generate kernel code
-            all_kernel_code += SubstituteTemplate(cba_kernel, kernel_dict)
-    return (all_kernel_code, all_kernel_names)
 
 def generate_sm75_1688():
-    conv_kind = ConvKind.Fprop
-    stride_kind = StrideSupport.Strided
-    # alpha data type
-    element_epilogue = DataType.f32
-    min_cc = 75
-    max_cc = 1024
-    swizzling_functor = SwizzlingFunctor.Identity4
-    layout = LayoutType.TensorNHWC
+    kernel_dict = {
+        "conv_kind_name": "Fprop",
+        "element_a": "cutlass::half_t",
+        "layout_a": "cutlass::layout::TensorNHWC",
+        "element_b": "cutlass::half_t",
+        "layout_b": "cutlass::layout::TensorNHWC",
+        "element_c": "cutlass::half_t",
+        "layout_c": "cutlass::layout::TensorNHWC",
+        "opcode_class": "cutlass::arch::OpClassTensorOp",
+        "arch": "cutlass::arch::Sm75",
+        "stages": "2",
+        "swizzling_functor": "cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<4>",
+        # alpha is always float!
+        "element_epilogue": "float",
+        "math_operator": "cutlass::arch::OpMultiplyAdd",
+    }
+
+    kernel_dict["stride_support"] = "cutlass::conv::StrideSupport::kStrided"
+
+    # iterate over this loop
+    element_accums = ["cutlass::half_t", "float"]
+    iterator_algorithms = [
+        "cutlass::conv::IteratorAlgorithm::kOptimized",
+        "cutlass::conv::IteratorAlgorithm::kAnalytic",
+    ]
 
     math_instructions = [
-        MathInstruction(
-            [16, 8, 8],
-            DataType.f16,
-            DataType.f16,
-            DataType.f32,
-            OpcodeClass.TensorOp,
-            MathOperation.multiply_add,
+        (
+            "16,8,8",
+            "cutlass::half_t",
+            "cutlass::half_t",
+            "cutlass::half_t",
         ),
-        MathInstruction(
-            [16, 8, 8],
-            DataType.f16,
-            DataType.f16,
-            DataType.f16,
-            OpcodeClass.TensorOp,
-            MathOperation.multiply_add,
+        (
+            "16,8,8",
+            "cutlass::half_t",
+            "cutlass::half_t",
+            "float",
         ),
     ]
 
     alignments = [8]
 
+    kernel_dict["align_a"] = "8"
+    kernel_dict["align_b"] = "8"
+    kernel_dict["epilogue_vector_length"] = "8"
+
     sm75_code = ""
-    for epilogue_functor in epilogue_functors:
+    for epi_func in epi_funcs:
         op_dict = {}
-        op_dict["cba_name"] = UnderScoreName[epilogue_functor].lower() + "_sm75"
-        op_dict["enum_op_name"] = UnderScoreName[epilogue_functor].upper()
+        op_dict["func_name"] = UnderScoreName[epi_func].lower() + "_sm75"
+        op_dict["enum_op_name"] = UnderScoreName[epi_func].upper()
         # for a op, we record all its kernels into a std::vector in C++ code
         all_kernel_names = ""
-        for alignment in alignments:
-            A = TensorDescription(DataType.f16, layout, alignment)
-            B = TensorDescription(DataType.f16, layout, alignment)
-            C = TensorDescription(DataType.f16, layout, alignment)
-            for math_inst in math_instructions:
-                tiles = [
-                    TileDescription(
-                        [64, 64, 64], 2, [2, 2, 1], math_inst, min_cc, max_cc
-                    ),
-                    TileDescription(
-                        [64, 32, 64], 2, [2, 1, 1], math_inst, min_cc, max_cc
-                    ),
-                    TileDescription(
-                        [128, 32, 64], 2, [4, 1, 1], math_inst, min_cc, max_cc
-                    ),
-                    TileDescription(
-                        [128, 64, 64], 2, [4, 2, 1], math_inst, min_cc, max_cc
-                    ),
-                    TileDescription(
-                        [64, 64, 32], 2, [2, 2, 1], math_inst, min_cc, max_cc
-                    ),
-                    TileDescription(
-                        [64, 128, 32], 2, [2, 2, 1], math_inst, min_cc, max_cc
-                    ),
-                    TileDescription(
-                        [64, 128, 64], 2, [1, 2, 2], math_inst, min_cc, max_cc
-                    ),
-                    TileDescription(
-                        [64, 256, 32], 2, [1, 4, 1], math_inst, min_cc, max_cc
-                    ),
-                    TileDescription(
-                        [128, 64, 32], 2, [2, 2, 1], math_inst, min_cc, max_cc
-                    ),
-                ]
+        kernel_dict["epi_func"] = ActCutlassTag[epi_func]
+        suffix = 0
+        for iterator_algorithm in iterator_algorithms:
+            for alignment in alignments:
+                for math_inst in math_instructions:
+                    tiles = [
+                        TileDesc("64, 64, 64", 2, "32, 32, 64", math_inst),
+                        TileDesc("64, 32, 64", 2, "32, 32, 64", math_inst),
+                        TileDesc("128, 32, 64", 2, "32, 32, 64", math_inst),
+                        TileDesc("128, 64, 64", 2, "32, 32, 64", math_inst),
+                        TileDesc("64, 64, 32", 2, "32, 32, 32", math_inst),
+                        TileDesc("64, 128, 32", 2, "32, 64, 32", math_inst),
+                        TileDesc("64, 128, 64", 2, "64, 64, 32", math_inst),
+                        TileDesc("64, 256, 32", 2, "64, 64, 32", math_inst),
+                        TileDesc("128, 64, 32", 2, "64, 32, 32", math_inst),
+                    ]
+                    for tile in tiles:
+                        kernel_dict["iterator_algorithm"] = iterator_algorithm
+                        kernel_dict["Tshape"] = tile.Tshape
+                        kernel_dict["Wshape"] = tile.Wshape
+                        kernel_dict["Ishape"] = tile.math_inst[0]
+                        kernel_dict["element_accum"] = tile.math_inst[3]
+                        kernel_dict["kernel_func_name"] = op_dict[
+                            "func_name"
+                        ] + str(suffix)
+                        suffix += 1
 
-                # Generate kernel code
-                # iterate over tils and iterator_algorithms
-                return_tuple = generate_conv_kernels(
-                    conv_kind,
-                    iterator_algorithms,
-                    tiles,
-                    A,
-                    B,
-                    C,
-                    element_epilogue,
-                    stride_kind,
-                    epilogue_functor,
-                    swizzling_functor,
-                    op_dict["cba_name"],
-                )
-                sm75_code += return_tuple[0]
-                all_kernel_names += return_tuple[1]
+                        sm75_code += SubstituteTemplate(cba_kernel, kernel_dict)
+                        all_kernel_names += (
+                            kernel_dict["kernel_func_name"] + ", \n"
+                        )
 
         # Generate op code
-        op_dict["all_kernel_function_name"] = all_kernel_names
-        sm75_code += SubstituteTemplate(cba_function, op_dict)
+        op_dict["all_kernel_func_name"] = all_kernel_names
+        sm75_code += SubstituteTemplate(common_conv_function, op_dict)
     return sm75_code
 
+
 # wrap different sm versions into a function
-# now only support sm75
 def generate_cba_for_phi():
-    sm_versions = [
-        "75",
-    ]
+    sm_versions = ["75"]
     generated_code = ""
-    dispatch_template = '''
-    if (params.sm_version == ${sm_code})
-    {
-        ${op_name_with_sm}(params);
-    }
-    '''
-    for epilogue_functor in epilogue_functors:
+    for epi_func in epi_funcs:
         dispatch_body = ""
         for sm_version in sm_versions:
             sm_dicts = {}
             sm_dicts["sm_code"] = sm_version
             sm_dicts["op_name_with_sm"] = (
-                UnderScoreName[epilogue_functor].lower() + "_sm" + sm_version
+                UnderScoreName[epi_func].lower() + "_sm" + sm_version
             )
-            dispatch_body += SubstituteTemplate(dispatch_template, sm_dicts)
+            dispatch_body += SubstituteTemplate(common_dispatch_temp, sm_dicts)
         op_dicts = {}
         op_dicts["dispatch_body"] = dispatch_body
-        op_dicts["op_name"] = CamelName[epilogue_functor]
-        generated_code += SubstituteTemplate(cba_for_phi, op_dicts)
+        op_dicts["op_name"] = CamelName[epi_func]
+        generated_code += SubstituteTemplate(common_wrapper_for_phi, op_dicts)
     return generated_code
 
 
@@ -388,5 +288,5 @@ if __name__ == "__main__":
     all_code = cba_header
     all_code += generate_sm75_1688()
     all_code += generate_cba_for_phi()
-    all_code += cba_tail
+    all_code += common_tail
     print(all_code)

@@ -258,6 +258,9 @@ int ProfileToGetBestConfig(
     for (int ii = 0; ii < REPEAT; ii++) {
       status = func(params);
     }
+    if (status != cutlass::Status::kSuccess) {
+      printf("失败了\n");
+    }
 
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(end));
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventSynchronize(end));
@@ -269,10 +272,12 @@ int ProfileToGetBestConfig(
     }
     // debug code
     std::cout << OpType2String(op_type) << ": tactic " << i << " has max diff "
-              << conv2d_diff_gpu(params, op_type)
+              << conv2d_diff_gpu(params, op_type) << "  " << elapsed_time  << std::endl 
               << " compared with baseline.\n";
   }
-
+  
+  std::cout << min_time_index << "  " << min_time << std::endl;
+  
   if (min_time_index < 0) {
     PADDLE_THROW(
         phi::errors::NotFound("Can't find any cutlass config for this %s op.",

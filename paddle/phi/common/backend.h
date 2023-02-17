@@ -49,7 +49,6 @@ enum class Backend : uint8_t {
   GPU,
   // the third library backend
   GPUDNN,  // cuDNN and hipDNN
-  CUTLASS,
 
   // various acceleration devices' backends
   XPU,  // XPU currently does not exist at the same time as CUDA
@@ -59,6 +58,9 @@ enum class Backend : uint8_t {
 
   // paddle kernel primitives backend
   KPS,
+
+  // custom device reference
+  CUSTOM,
 
   // end of backend types
   NUM_BACKENDS,
@@ -126,9 +128,6 @@ inline std::ostream& operator<<(std::ostream& os, Backend backend) {
     case Backend::GPUDNN:
       os << "GPUDNN";
       break;
-    case Backend::CUTLASS:
-      os << "CUTLASS";
-      break;
     case Backend::KPS:
       os << "KPS";
       break;
@@ -165,8 +164,6 @@ inline Backend StringToBackend(const char* backend_cstr) {
     return Backend::XPU;
   } else if (s == std::string("NPU")) {
     return Backend::NPU;
-  } else if (s == std::string("CUTLASS")) {
-    return Backend::CUTLASS;
   } else if (s == std::string("MLU")) {
     return Backend::MLU;
   } else if (s == std::string("OneDNN")) {
@@ -199,8 +196,6 @@ inline std::string BackendToString(const Backend& backend) {
       return "CPU";
     case Backend::GPU:
       return "GPU";
-    case Backend::CUTLASS:
-      return "CUTLASS";
     case Backend::XPU:
       return "XPU";
     case Backend::NPU:
@@ -215,7 +210,7 @@ inline std::string BackendToString(const Backend& backend) {
       return "KPS";
     case Backend::IPU:
       return "IPU";
-    default:
+    default: {
       size_t device_type_id_ = static_cast<size_t>(backend) -
                                static_cast<size_t>(Backend::NUM_BACKENDS);
       std::string device_type =
@@ -227,6 +222,7 @@ inline std::string BackendToString(const Backend& backend) {
         PD_THROW(
             "Invalid enum backend type `", static_cast<int>(backend), "`.");
       }
+    }
   }
 }
 

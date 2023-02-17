@@ -20,6 +20,9 @@
 #include "paddle/phi/backends/xpu/xpu_op_list.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #endif
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+#include "paddle/phi/backends/custom/custom_device_op_list.h"
+#endif
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/utils/string/string_helper.h"
 
@@ -80,31 +83,10 @@ bool KernelFactory::HasStructuredKernel(const std::string& op_type) const {
 const Kernel& KernelFactory::SelectKernel(const std::string& kernel_name,
                                           const KernelKey& kernel_key) const {
   auto iter = kernels_.find(kernel_name);
-  // ite
   if (iter == kernels_.end()) {
     return empty_kernel;
   }
-
-  // std::cout << "log______开始_____" << std::endl;
-  // std::cout << "kernel_key : " <<kernel_key << std::endl;
-  // for (auto k : iter->second) {
-
-  //   if (k.first == kernel_key)
-  //   {
-  //       std::cout << "找到啦！" << std::endl;
-  //       std::cout << k.first << std::endl;
-  //       std::cout << k.second << std::endl;
-  //       std::cout << k.second.IsValid()<< std::endl;
-  //   }
-  // }
-  
-  // std::cout << "log______结束_____" << std::endl;
-
   auto kernel_iter = iter->second.find(kernel_key);
-  
-  // std::cout << kernel_iter->first << std::endl;
-  // std::cout << kernel_iter->second << std::endl;
-
   if (kernel_iter == iter->second.end() &&
       kernel_key.layout() != phi::DataLayout::ALL_LAYOUT) {
     phi::KernelKey any_layout_kernel_key(
@@ -212,6 +194,11 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
   if ((FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end()) ||
       !phi::backends::xpu::is_xpu_support_op(TransToFluidOpName(kernel_name),
                                              kernel_key.dtype())
+#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+  if (FLAGS_enable_api_kernel_fallback &&
+      (kernel_iter == iter->second.end() ||
+       phi::backends::custom_device::is_in_custom_black_list(
+           TransToFluidOpName(kernel_name)))
 #else
   if ((FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end())
 #endif
