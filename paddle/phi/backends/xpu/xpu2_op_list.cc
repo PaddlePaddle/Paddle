@@ -524,6 +524,7 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({phi::DataType::INT64,
                      phi::DataType::INT32,
                      phi::DataType::FLOAT32})},
+      {"scatter_nd_add", XPUKernelSet({phi::DataType::FLOAT32})},
       {"sampling_id",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT64})},
       {"set_value",
