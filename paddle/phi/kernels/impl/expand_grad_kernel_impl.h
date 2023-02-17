@@ -54,6 +54,16 @@ void ExpandGradKernel(const Context& ctx,
                       DenseTensor* in_grad) {
   auto expand_shape = shape.GetData();
   auto x_dims = x.dims();
+
+  // For 0-D Tensor
+  std::cout << "XYY Debug in expand_grad_kernel_impl.h, the x_dims is :"
+            << x_dims << std::endl;
+  if (x_dims == 0) {
+    context.template Alloc<T>(in_grad);
+    phi::Copy(ctx, out_grad, ctx.GetPlace(), false, in_grad);
+    return;
+  }
+
   auto vec_in_dims = phi::vectorize<int>(x_dims);
   auto diff = expand_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
