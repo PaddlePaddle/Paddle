@@ -67,7 +67,6 @@ from . import metrics
 from . import transpiler
 from . import incubate
 from .input import embedding, one_hot
-from . import distribute_lookup_table
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
 
@@ -240,6 +239,7 @@ def __bootstrap__():
         core.init_glog(sys.argv[0])
     # don't init_p2p when in unittest to save time.
     core.init_devices()
+    core.eager._init_eager_and_static_tensor_operants()
     core.init_default_kernel_signatures()
 
 

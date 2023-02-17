@@ -104,6 +104,7 @@ class TestConv2DBF16Op(TestConv2DOp):
         }
 
         if self.fuse_residual:
+            self.op_type = "fused_conv2d"
             self.inputs['ResidualData'] = OpTest.np_dtype_to_fluid_dtype(
                 convert_float_to_uint16(self.input_residual)
             )

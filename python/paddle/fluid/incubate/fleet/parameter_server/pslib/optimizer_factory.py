@@ -14,13 +14,15 @@
 """Optimizer Factory."""
 
 __all__ = ["DistributedAdam", "FLEET_GLOBAL_DICT"]
-import paddle.fluid as fluid
-from paddle.fluid import core
-from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
-from paddle.fluid.distribute_lookup_table import (
+import paddle
+from paddle.framework import core
+from paddle.distributed.distribute_lookup_table import (
+    find_distributed_lookup_table,
+)
+from paddle.distributed.distribute_lookup_table import (
     find_distributed_lookup_table_inputs,
 )
-from paddle.fluid.distribute_lookup_table import (
+from paddle.distributed.distribute_lookup_table import (
     find_distributed_lookup_table_outputs,
 )
 from google.protobuf import text_format
@@ -504,7 +506,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
             prog_id = str(id(loss.block.program))
             # param_grads of program
             params_grads = sorted(
-                fluid.backward.append_backward(loss, parameters, no_grad_set),
+                paddle.static.append_backward(loss, parameters, no_grad_set),
                 key=lambda x: x[0].name,
             )
 

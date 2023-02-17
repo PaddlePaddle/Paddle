@@ -544,6 +544,20 @@ class TestFunctionalConv3DErrorCase12(TestFunctionalConv3DErrorCase11):
         self.data_format = "NCDHW"
 
 
+class TestFunctionalConv3DErrorCase13(TestFunctionalConv3DErrorCase11):
+    def setUp(self):
+        self.input = np.random.randn(0, 0, 0, 0, 0)
+        self.filter = np.random.randn(1, 0, 0, 0, 0)
+        self.num_filters = 1
+        self.filter_size = 1
+        self.bias = None
+        self.padding = 0
+        self.stride = 1
+        self.dilation = 1
+        self.groups = 1
+        self.data_format = "NCDHW"
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

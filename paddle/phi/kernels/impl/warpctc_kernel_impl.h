@@ -19,6 +19,7 @@
 #include "paddle/fluid/operators/math/sequence_padding.h"
 #include "paddle/phi/backends/dynload/warpctc.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/lod_utils.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -236,8 +237,8 @@ void WarpctcKernel(const Context& dev_ctx,
                    DenseTensor* loss,
                    DenseTensor* warpctcgrad) {
   size_t num_sequences, sequence_width, max_sequence_length;
-  paddle::framework::Vector<size_t> logits_lod;
-  paddle::framework::Vector<size_t> label_lod;
+  phi::Vector<size_t> logits_lod;
+  phi::Vector<size_t> label_lod;
   if (logits_length.is_initialized() && labels_length.is_initialized()) {
     num_sequences = logits.dims()[1];
     sequence_width = logits.dims()[2];
@@ -293,7 +294,7 @@ void WarpctcKernel(const Context& dev_ctx,
         phi::errors::InvalidArgument("Input(Label) Tensor of WarpCTC "
                                      "does not contain LoD information."));
 
-    logits_lod = paddle::framework::ToAbsOffset(logits.lod())[0];
+    logits_lod = phi::ToAbsOffset(logits.lod())[0];
     auto logits_dims = logits.dims();
 
     PADDLE_ENFORCE_GT(logits_dims[0],
@@ -313,7 +314,7 @@ void WarpctcKernel(const Context& dev_ctx,
             static_cast<int64_t>(logits_lod.back()),
             logits_dims[0]));
 
-    label_lod = paddle::framework::ToAbsOffset(label.lod())[0];
+    label_lod = phi::ToAbsOffset(label.lod())[0];
     auto label_dims = label.dims();
     PADDLE_ENFORCE_EQ(label_dims[1],
                       1,
@@ -397,7 +398,7 @@ void WarpctcKernel(const Context& dev_ctx,
              paddle::operators::math::TotalSequenceLength(label_lod)),
          1});
     dev_ctx.template HostAlloc<int>(&warpctc_label);
-    std::vector<paddle::framework::Vector<size_t>> lod;
+    std::vector<phi::Vector<size_t>> lod;
     lod.push_back(label_lod);
     warpctc_label.set_lod(lod);
 

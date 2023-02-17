@@ -66,7 +66,7 @@ def insert_pile_to_h_file(rootPath):
             % (func, line)
         )
         os.system(
-            'echo \'    printf("precise test map fileeee: %%s\\\\n", __FILE__);\n}\' >> %s'
+            'echo \'    fprintf(stderr,"precise test map fileeee: %%s\\\\n", __FILE__);\n}\' >> %s'
             % line
         )
         os.system('echo "\n#endif" >> %s' % line)

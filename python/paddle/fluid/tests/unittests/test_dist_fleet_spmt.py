@@ -35,7 +35,7 @@ class TestSPMT(unittest.TestCase):
     def net(self):
         def get_acc(cos_q_nt, cos_q_pt, batch_size):
             cond = paddle.less_than(cos_q_nt, cos_q_pt)
-            cond = fluid.layers.cast(cond, dtype='float64')
+            cond = paddle.cast(cond, dtype='float64')
             cond_3 = paddle.sum(cond)
             acc = paddle.divide(
                 cond_3,
@@ -82,7 +82,9 @@ class TestSPMT(unittest.TestCase):
         )
         q_emb = paddle.reshape(q_emb, [-1, emb_dim])
         # vsum
-        q_sum = fluid.layers.sequence_pool(input=q_emb, pool_type='sum')
+        q_sum = paddle.static.nn.sequence_lod.sequence_pool(
+            input=q_emb, pool_type='sum'
+        )
         q_ss = paddle.nn.functional.softsign(q_sum)
         # fc layer after conv
         q_fc = paddle.static.nn.fc(
@@ -112,7 +114,9 @@ class TestSPMT(unittest.TestCase):
         )
         pt_emb = paddle.reshape(pt_emb, [-1, emb_dim])
         # vsum
-        pt_sum = fluid.layers.sequence_pool(input=pt_emb, pool_type='sum')
+        pt_sum = paddle.static.nn.sequence_lod.sequence_pool(
+            input=pt_emb, pool_type='sum'
+        )
         pt_ss = paddle.nn.functional.softsign(pt_sum)
         # fc layer
         pt_fc = paddle.static.nn.fc(
@@ -141,7 +145,9 @@ class TestSPMT(unittest.TestCase):
         )
         nt_emb = paddle.reshape(nt_emb, [-1, emb_dim])
         # vsum
-        nt_sum = fluid.layers.sequence_pool(input=nt_emb, pool_type='sum')
+        nt_sum = paddle.static.nn.sequence_lod.sequence_pool(
+            input=nt_emb, pool_type='sum'
+        )
         nt_ss = paddle.nn.functional.softsign(nt_sum)
         # fc layer
         nt_fc = paddle.static.nn.fc(
@@ -237,7 +243,9 @@ class TestSPMT(unittest.TestCase):
         print("===main_program====")
         print(main_program)
         print("===main_program====")
-        from paddle.fluid.transpiler.collective import SingleProcessMultiThread
+        from paddle.distributed.transpiler.collective import (
+            SingleProcessMultiThread,
+        )
 
         t = SingleProcessMultiThread()
         env = self.get_dist_env()
