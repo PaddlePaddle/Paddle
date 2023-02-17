@@ -14,7 +14,7 @@ namespace cutlass_internal {
   {                                                                                              \
     cutlass::Status error = status;                                                              \
     if (error != cutlass::Status::kSuccess) {                                                    \
-      PADDLE_THROW(phi::errors::Unimplemented("Got cutlass error: %s at: %d", cutlassGetStatusString(error), __LINE__)); \
+      PADDLE_THROW(phi::errors::Fatal("Got cutlass error: %s at: %d", cutlassGetStatusString(error), __LINE__)); \
       exit(EXIT_FAILURE);                                                                        \
     }                                                                                            \
   }

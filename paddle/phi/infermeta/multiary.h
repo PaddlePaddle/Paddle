@@ -545,6 +545,9 @@ void FusedGEGLUInferMeta(const MetaTensor& x,
                          const MetaTensor& weight,
                          const MetaTensor& bias,
                          const std::string& act_type,
-                         MetaTensor* out);
+                         const bool requires_grad, 
+                         MetaTensor* out, 
+                         MetaTensor* matmul_result0, 
+                         MetaTensor* matmul_result1);
 
 }  // namespace phi

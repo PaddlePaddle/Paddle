@@ -50,15 +50,19 @@ def cutlass_fused_geglu(x, weight, bias, act_type):
             out = cutlass_fused_multi_head_attention(query, key, value, mask, scale)
             print(out.shape) # [batch, seq_len, num_head, head_size]
     """
+    # requires_grad = not x.stop_gradient
+    requires_grad = True
     if in_dygraph_mode():
-        return _C_ops.cutlass_fused_geglu(x, weight, bias, act_type)
+        return _C_ops.cutlass_fused_geglu(x, weight, bias, act_type, requires_grad)[0]
 
     helper = LayerHelper('cutlass_fused_geglu', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    matmul0_result = helper.create_variable_for_type_inference(dtype=x.dtype)
+    matmul1_result = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='cutlass_fused_geglu',
         inputs={'X': x, 'Weight': weight, 'Bias': bias},
-        attrs={"Act_type": act_type},
-        outputs={'Out': out},
+        attrs={"Act_type": act_type, "Requires_grad": requires_grad},
+        outputs={'Out': out, 'matmul0_result': matmul0_result, 'matmul1_result': matmul1_result},
     )
     return out

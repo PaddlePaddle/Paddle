@@ -252,8 +252,8 @@
   backward : cross_grad
 
 - op : cutlass_fused_geglu
-  args : (Tensor x, Tensor weight, Tensor bias, str act_type)
-  output : Tensor
+  args : (Tensor x, Tensor weight, Tensor bias, str act_type, bool requires_grad)
+  output : Tensor(out), Tensor(matmul0_result), Tensor(matmul1_result)
   infer_meta :
     func : FusedGEGLUInferMeta
   kernel :

@@ -24,6 +24,9 @@ void FusedGeGLUForwardKernel(const Context& ctx,
                              const DenseTensor& weight,
                              const DenseTensor& bias,
                              const std::string& act_type,
-                             DenseTensor* output);
+                             const bool requires_grad, 
+                             DenseTensor* output, 
+                             DenseTensor* matmul_result0, 
+                             DenseTensor* matmul_result1);
 
 }  // namespace phi

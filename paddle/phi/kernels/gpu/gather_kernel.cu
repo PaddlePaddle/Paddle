@@ -30,6 +30,7 @@ void GatherKernel(const Context& dev_ctx,
   const auto& index_type = index.dtype();
   auto axis_v = axis.to<int>();
   if (axis_v != 0) {
+    printf("=====1 \n"); 
     if (index_type == phi::DataType::INT32) {
       phi::funcs::GatherV2CUDAFunction<T, int32_t>(
           &x, &index, axis_v, out, dev_ctx);

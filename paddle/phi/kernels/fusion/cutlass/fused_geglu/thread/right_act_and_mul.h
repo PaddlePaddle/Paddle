@@ -54,7 +54,96 @@ namespace thread {
 ///
 /// D = alpha * accumulator + beta * source + uniform
 ///
+// template <
+//   typename ElementOutput_,                             ///< Data type used to load and store tensors
+//   int Count,                                           ///< Number of elements computed per operation.
+//                                                        ///< Usually it is 128/sizeof_bits<ElementOutput_>,
+//                                                        ///< but we use 64 or 32 sometimes when there are not enough data to store
+//   typename ElementAccumulator_ = ElementOutput_,       ///< Accumulator data type
+//   typename ElementCompute_ = ElementOutput_,           ///< Data type used to compute linear combination
+//   FloatRoundStyle Round = FloatRoundStyle::round_to_nearest
+// >
+// class LeftSiLUAndMul {
+// public:
+
+//   using ElementOutput = ElementOutput_;
+//   using ElementAccumulator = ElementAccumulator_;
+//   using ElementCompute = ElementCompute_;
+
+//   static int const kCount = Count;
+//   using FragmentOutput = Array<ElementOutput, kCount>;
+//   using FragmentAccumulator = Array<ElementAccumulator, kCount>;
+//   using ComputeFragment = Array<ElementCompute, kCount>;
+
+//   static FloatRoundStyle const kRound = Round;
+
+//   struct Params{};
+
+// private:
+
+//   //
+//   // Data members
+//   //
+
+//   ElementCompute alpha_;
+//   ElementCompute beta_;
+
+// public:
+
+//   /// Constructs the function object, possibly loading from pointers in host memory
+//   CUTLASS_HOST_DEVICE
+//   LeftSiLUAndMul(Params const &/*params*/) {}
+
+//   /// Returns true if source is needed
+//   CUTLASS_HOST_DEVICE
+//   bool is_source_needed() const {
+//     return true;
+//   }
+
+//   /// Functionally required for serial reduction in the epilogue
+//   CUTLASS_HOST_DEVICE
+//   void set_k_partition(int k_partition, int k_partition_count) {
+//     assert(false);
+//   }
+
+//   /// Computes linear scaling: D = alpha * accumulator + beta * source
+//   CUTLASS_HOST_DEVICE
+//   FragmentOutput operator()(
+//     FragmentAccumulator const &lhs, 
+//     FragmentAccumulator const &rhs) const {
+
+//     // Convert source to interal compute numeric type
+//     NumericArrayConverter<ElementCompute, ElementAccumulator, kCount, Round> accumulator_to_compute;
+
+//     // Convert to destination numeric type
+//     NumericArrayConverter<ElementOutput, ElementCompute, kCount, Round> compute_to_output;
+
+//     ComputeFragment converted_lhs = accumulator_to_compute(lhs);
+//     ComputeFragment converted_rhs = accumulator_to_compute(rhs);
+
+//     cutlass::epilogue::thread::SiLu<ComputeFragment> silu;
+//     cutlass::multiplies<ComputeFragment> mul;
+//     auto silu_lhs = silu(converted_lhs);
+//     return compute_to_output(mul(silu_lhs, converted_rhs));
+//   }
+
+//   CUTLASS_HOST_DEVICE
+//   ElementOutput operator()(
+//       ElementAccumulator const& lhs,
+//       ElementAccumulator const& rhs
+//   ) const {
+//       ElementCompute convert_lhs(lhs); 
+//       ElementCompute convert_rhs(rhs); 
+//       cutlass::epilogue::thread::SiLu<ElementCompute> silu;
+//       cutlass::multiplies<ElementCompute> mul;
+//       auto silu_lhs = silu(convert_lhs);
+//       return ElementOutput(mul(silu_lhs, convert_rhs));
+//   }
+// };
+
+
 template <
+  template<typename> class Act, // Activation
   typename ElementOutput_,                             ///< Data type used to load and store tensors
   int Count,                                           ///< Number of elements computed per operation.
                                                        ///< Usually it is 128/sizeof_bits<ElementOutput_>,
@@ -63,7 +152,7 @@ template <
   typename ElementCompute_ = ElementOutput_,           ///< Data type used to compute linear combination
   FloatRoundStyle Round = FloatRoundStyle::round_to_nearest
 >
-class LeftSiLUAndMul {
+class RightActAndMul {
 public:
 
   using ElementOutput = ElementOutput_;
@@ -92,7 +181,7 @@ public:
 
   /// Constructs the function object, possibly loading from pointers in host memory
   CUTLASS_HOST_DEVICE
-  LeftSiLUAndMul(Params const &/*params*/) {}
+  RightActAndMul(Params const &/*params*/) {}
 
   /// Returns true if source is needed
   CUTLASS_HOST_DEVICE
@@ -121,10 +210,14 @@ public:
     ComputeFragment converted_lhs = accumulator_to_compute(lhs);
     ComputeFragment converted_rhs = accumulator_to_compute(rhs);
 
-    cutlass::epilogue::thread::SiLu<ComputeFragment> silu;
+    // cutlass::epilogue::thread::SiLu<ComputeFragment> silu;
+    // cutlass::multiplies<ComputeFragment> mul;
+    // auto silu_lhs = silu(converted_lhs);
+
+    Act<ComputeFragment> act;
     cutlass::multiplies<ComputeFragment> mul;
-    auto silu_lhs = silu(converted_lhs);
-    return compute_to_output(mul(silu_lhs, converted_rhs));
+    auto act_rhs = act(converted_rhs);
+    return compute_to_output(mul(converted_lhs, act_rhs));
   }
 
   CUTLASS_HOST_DEVICE
@@ -134,10 +227,12 @@ public:
   ) const {
       ElementCompute convert_lhs(lhs); 
       ElementCompute convert_rhs(rhs); 
-      cutlass::epilogue::thread::SiLu<ElementCompute> silu;
+      // cutlass::epilogue::thread::SiLu<ElementCompute> silu;
+      Act<ElementCompute> act; 
       cutlass::multiplies<ElementCompute> mul;
-      auto silu_lhs = silu(convert_lhs);
-      return ElementOutput(mul(silu_lhs, convert_rhs));
+      // auto silu_lhs = silu(convert_lhs);
+      auto act_rhs = act(convert_rhs);
+      return ElementOutput(mul(convert_lhs, act_rhs));
   }
 };
 
