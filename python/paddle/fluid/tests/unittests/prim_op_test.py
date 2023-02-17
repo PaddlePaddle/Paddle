@@ -221,17 +221,17 @@ class PrimForwardChecker:
 
     def init_checker(self):
         assert hasattr(
-            self.op_test, 'comp_op_type'
-        ), "if you want to test comp op, please set comp_op_type in setUp function."
-        assert self.op_test.comp_op_type in [
+            self.op_test, 'prim_op_type'
+        ), "if you want to test comp op, please set prim_op_type in setUp function."
+        assert self.op_test.prim_op_type in [
             "comp",
             "prim",
-        ], "comp_op_type must be comp or prim in setUp function."
+        ], "prim_op_type must be comp or prim in setUp function."
         assert hasattr(
             self.op_test, 'dtype'
         ), "Please set dtype in setUp function."
         self.op_type = self.op_test.op_type
-        self.comp_op_type = self.op_test.comp_op_type
+        self.prim_op_type = self.op_test.prim_op_type
         self.python_api = self.op_test.python_api
         self.dtype = np.dtype(self.op_test.dtype)
         self.inputs = self.op_test.inputs
@@ -526,7 +526,7 @@ class PrimForwardChecker:
 
     def check_static_comp(self):
         # forward comp only for comp op
-        if self.comp_op_type == "prim":
+        if self.prim_op_type == "prim":
             return
         paddle.enable_static()
         core._set_prim_forward_enabled(self.enable_fw_comp)
@@ -592,7 +592,7 @@ class PrimForwardChecker:
         core._set_prim_forward_enabled(False)
 
     def check_jit_comp(self):
-        if self.comp_op_type == "prim":
+        if self.prim_op_type == "prim":
             return
         paddle.disable_static()
         if type(self.place) == paddle.fluid.libpaddle.CPUPlace:
@@ -653,7 +653,7 @@ class PrimForwardChecker:
         jit_api.program_cache.clear()
 
     def check_jit_comp_with_cinn(self):
-        if self.comp_op_type == "prim":
+        if self.prim_op_type == "prim":
             return
         # cinn doesn't suppoort cpu place
         if (
@@ -807,7 +807,7 @@ class PrimGradChecker(PrimForwardChecker):
         return ret
 
     def check_eager_comp(self):
-        if self.comp_op_type == "comp":
+        if self.prim_op_type == "comp":
             return
         paddle.disable_static()
         if type(self.place) is paddle.fluid.libpaddle.CPUPlace:
@@ -854,7 +854,7 @@ class PrimGradChecker(PrimForwardChecker):
 
     def check_static_comp(self):
         paddle.enable_static()
-        if self.comp_op_type == "prim":
+        if self.prim_op_type == "prim":
             core._set_prim_backward_enabled(self.enable_rev_comp)
         else:
             core._set_prim_forward_enabled(self.enable_fw_comp)
@@ -946,7 +946,7 @@ class PrimGradChecker(PrimForwardChecker):
             paddle.device.set_device("cpu")
         if type(self.place) is paddle.fluid.libpaddle.CUDAPlace:
             paddle.device.set_device("gpu:0")
-        if self.comp_op_type == "prim":
+        if self.prim_op_type == "prim":
             core._set_prim_backward_enabled(self.enable_rev_comp)
         else:
             core._set_prim_forward_enabled(self.enable_fw_comp)
@@ -1043,7 +1043,7 @@ class PrimGradChecker(PrimForwardChecker):
             paddle.device.set_device("cpu")
         if type(self.place) is paddle.fluid.libpaddle.CUDAPlace:
             paddle.device.set_device("gpu:0")
-        if self.comp_op_type == "prim":
+        if self.prim_op_type == "prim":
             core._set_prim_backward_enabled(self.enable_rev_comp)
         else:
             core._set_prim_forward_enabled(self.enable_fw_comp)

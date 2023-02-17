@@ -93,7 +93,7 @@ class TestActivation_ZeroDim(TestActivation):
 class TestExpCompFp32(OpTest):
     def setUp(self):
         self.op_type = "exp"
-        self.comp_op_type = "prim"
+        self.prim_op_type = "prim"
         self.init_dtype()
         self.init_shape()
         self.python_api = paddle.exp
@@ -111,7 +111,7 @@ class TestExpCompFp32(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_comp=True)
+        self.check_grad(['X'], 'Out', check_prim=True)
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -145,7 +145,7 @@ class TestExpCompFp16(TestExpCompFp32):
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
             self.check_grad_with_place(
-                core.CUDAPlace(0), ['X'], 'Out', check_comp=True
+                core.CUDAPlace(0), ['X'], 'Out', check_prim=True
             )
 
     def skip_cinn(self):
@@ -1134,7 +1134,7 @@ class TestSoftshrinkAPI(unittest.TestCase):
 class TestSqrt(TestActivation, TestParameter):
     def setUp(self):
         self.op_type = "sqrt"
-        self.comp_op_type = "prim"
+        self.prim_op_type = "prim"
         self.python_api = paddle.sqrt
         self.init_dtype()
         self.init_shape()
@@ -1159,7 +1159,7 @@ class TestSqrt(TestActivation, TestParameter):
 class TestSqrtCompFp32(TestActivation):
     def setUp(self):
         self.op_type = "sqrt"
-        self.comp_op_type = "prim"
+        self.prim_op_type = "prim"
         self.python_api = paddle.sqrt
         self.init_dtype()
         self.init_shape()
@@ -1174,7 +1174,7 @@ class TestSqrtCompFp32(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_eager=True, check_comp=True)
+        self.check_grad(['X'], 'Out', check_eager=True, check_prim=True)
 
     def test_check_output(self):
         self.check_output(check_eager=True)
@@ -1198,7 +1198,7 @@ class TestSqrtComp_ZeroDim(TestSqrt):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_comp=True)
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 @unittest.skipIf(
@@ -1207,7 +1207,7 @@ class TestSqrtComp_ZeroDim(TestSqrt):
 class TestSqrtBF16(OpTest):
     def setUp(self):
         self.op_type = "sqrt"
-        self.comp_op_type = "prim"
+        self.prim_op_type = "prim"
         self.python_api = paddle.sqrt
         self.init_dtype()
         self.init_shape()
@@ -1237,7 +1237,7 @@ class TestSqrtBF16(OpTest):
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X'], 'Out', check_eager=True, check_comp=True
+            place, ['X'], 'Out', check_eager=True, check_prim=True
         )
 
 
