@@ -100,6 +100,11 @@ std::vector<int64_t> Tensor::shape() const {
   return phi::vectorize<int64_t>(dims);
 }
 
+std::vector<int64_t> Tensor::stride() const {
+  auto strides = impl_->stride();
+  return phi::vectorize<int64_t>(strides);
+}
+
 void Tensor::reshape(const std::vector<int64_t> &shape) {
   LOG_FIRST_N(WARNING, 1)
       << "The function of resetting the shape of the uninitialized "

@@ -218,6 +218,7 @@ void DenseTensor::set_meta(const DenseTensorMeta& meta) {
   meta_.lod = meta.lod;
   meta_.offset = meta.offset;
   meta_.use_gpudnn = meta.use_gpudnn;
+  meta_.strides = meta.strides;
 }
 
 /* @jim19930609: This interface will be further modified until we finalized the

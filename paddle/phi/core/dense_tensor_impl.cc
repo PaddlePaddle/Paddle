@@ -159,6 +159,9 @@ inline T* DenseTensor::mutable_data(const DDim& dims,
                                     const Place& place,
                                     size_t requested_size) {
   static_assert(std::is_pod<T>::value, "T must be POD");
+  if (meta_.dims != dims) {
+    meta_.setStride(dims);
+  }
   meta_.dims = dims;
   return mutable_data<T>(place, requested_size);
 }
@@ -256,6 +259,7 @@ size_t DenseTensor::NumElements(size_t level) const {
 
 DenseTensor& DenseTensor::Resize(const DDim& dims) {
   meta_.dims = dims;
+  meta_.setStride(dims);
   return *this;
 }
 
@@ -363,6 +367,7 @@ DenseTensor& DenseTensor::ShareDataWith(const DenseTensor& src) {
   meta_.layout = src.meta_.layout;
   meta_.offset = src.meta_.offset;
   meta_.use_gpudnn = src.meta_.use_gpudnn;
+  meta_.strides = src.meta_.strides;
   storage_properties_ =
       std::move(CopyStorageProperties(src.storage_properties_));
 #ifdef PADDLE_WITH_MKLDNN

@@ -179,6 +179,12 @@ class PADDLE_API Tensor final {
   std::vector<int64_t> shape() const;
 
   /**
+   * @brief Return the strides (dimensions) of Tensor.
+   *
+   * @return std::vector<int64_t>
+   */
+  std::vector<int64_t> stride() const;
+  /**
    * @brief Reset the shape of the tensor.
    * @note: This method means Reset the shape of the tensor,
    * and must be called before calling mutable_data() or
