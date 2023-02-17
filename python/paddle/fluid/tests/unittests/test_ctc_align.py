@@ -70,7 +70,6 @@ def CTCAlign(input, lod, blank, merge_repeated, padding=0, input_length=None):
 class TestCTCAlignOp(OpTest):
     def config(self):
         self.op_type = "ctc_align"
-        self.python_api = paddle._legacy_C_ops.ctc_align
         self.input_lod = [[11, 7]]
         self.blank = 0
         self.merge_repeated = False

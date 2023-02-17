@@ -157,7 +157,6 @@ class TestSeqProject(OpTest):
         self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        # now new dynamic version
         if self.padding_trainable:
             self.check_grad(
                 set(self.inputs_val),

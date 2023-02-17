@@ -93,35 +93,9 @@ def dropout_nd(
 paddle.enable_static()
 
 
-def dropout_nd_wrapper(
-    dropout_prob=0.0, fix_seed=True, is_test=False, axis=[1]
-):
-    def inner_func(x):
-        out, mask = _legacy_C_ops.dropout_nd(
-            x,
-            'dropout_prob',
-            dropout_prob,
-            'is_test',
-            is_test,
-            'fix_seed',
-            fix_seed,
-            'seed',
-            0,
-            'dropout_implementation',
-            "upscale_in_train",
-            'axis',
-            axis,
-        )
-        return out
-
-    return inner_func
-
-
 class TestDropoutNdOp(OpTest):
     def setUp(self):
         self.op_type = "dropout_nd"
-        self.python_api = dropout_nd_wrapper()
-        self.python_out_sig = ['Out']
         self.inputs = {'X': np.random.random((4, 32, 16)).astype("float64")}
         self.attrs = {
             'dropout_prob': 0.0,
