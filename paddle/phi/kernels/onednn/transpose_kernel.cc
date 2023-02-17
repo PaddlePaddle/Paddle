@@ -18,6 +18,40 @@
 
 namespace phi {
 
+void SetOutMemDescWithLogicalLayoutFusesSupport(
+    const OneDNNContext& dev_ctx,
+    phi::DenseTensor* out,
+    const dnnl::memory::desc& out_md) {
+  const auto fused_unsqueeze2_axes =
+      dev_ctx.HasDnnAttr("fused_unsqueeze2_axes")
+          ? PADDLE_GET_CONST(std::vector<int>,
+                             dev_ctx.GetDnnAttr("fused_unsqueeze2_axes"))
+          : std::vector<int>();
+  const auto fused_reshape2_shape =
+      dev_ctx.HasDnnAttr("fused_reshape2_shape")
+          ? PADDLE_GET_CONST(std::vector<int>,
+                             dev_ctx.GetDnnAttr("fused_reshape2_shape"))
+          : std::vector<int>();
+  const auto fused_squeeze2_axes =
+      dev_ctx.HasDnnAttr("fused_squeeze2_axes")
+          ? PADDLE_GET_CONST(std::vector<int>,
+                             dev_ctx.GetDnnAttr("fused_squeeze2_axes"))
+          : std::vector<int>();
+
+  if (!fused_unsqueeze2_axes.empty()) {
+    funcs::SetOutMemDescWithUnsqueeze2FuseSupport(
+        fused_unsqueeze2_axes, out, out_md);
+  } else if (!fused_reshape2_shape.empty()) {
+    funcs::SetOutMemDescWithReshape2FuseSupport(
+        fused_reshape2_shape, out, out_md);
+  } else if (!fused_squeeze2_axes.empty()) {
+    out->set_mem_desc(out_md);
+    out->Resize(make_ddim(out_md.dims()));
+  } else {
+    out->set_mem_desc(out_md);
+  }
+}
+
 void SetInMemDescWithSqueeze2FuseSupport(
     const std::vector<int> fused_squeeze2_axes,
     DenseTensor* in,
@@ -161,7 +195,7 @@ void TransposeKernel(const Context& dev_ctx,
     permute_axis[axis[i]] = i;
   }
 
-  funcs::SetOutMemDescWithLogicalLayoutFusesSupport(
+  SetOutMemDescWithLogicalLayoutFusesSupport(
       dev_ctx,
       out,
       reorder_dst_memory_p->get_desc().permute_axes(permute_axis));
