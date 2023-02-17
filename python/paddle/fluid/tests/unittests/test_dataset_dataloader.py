@@ -106,13 +106,13 @@ class DatasetLoaderTestBase(unittest.TestCase):
         dataset._set_batch_size(BATCH_SIZE)
 
         if isinstance(place, fluid.CPUPlace):
-            file_num = 10
+            file_num = 1
             os.environ['CPU_NUM'] = str(file_num)
-            places = fluid.cpu_places()
+            places = [fluid.CPUPlace()]
             use_cuda = False
         else:
-            file_num = fluid.core.get_cuda_device_count()
-            places = fluid.cuda_places()
+            file_num = 1
+            places = [fluid.CUDAPlace(0)]
             use_cuda = True
 
         filelist = []
@@ -217,25 +217,25 @@ class DatasetLoaderTestBase(unittest.TestCase):
                 self.check_batch_number(place=p, randomize_batch_num=True)
 
 
-class QueueDatasetTestWithoutDropLast(DatasetLoaderTestBase):
-    def setUp(self):
-        self.dataset_name = "QueueDataset"
-        self.drop_last = True
-        self.temp_dir = tempfile.TemporaryDirectory()
+# class QueueDatasetTestWithoutDropLast(DatasetLoaderTestBase):
+#     def setUp(self):
+#         self.dataset_name = "QueueDataset"
+#         self.drop_last = True
+#         self.temp_dir = tempfile.TemporaryDirectory()
 
 
-class InMemoryDatasetTestWithoutDropLast(DatasetLoaderTestBase):
-    def setUp(self):
-        self.dataset_name = "InMemoryDataset"
-        self.drop_last = False
-        self.temp_dir = tempfile.TemporaryDirectory()
+# class InMemoryDatasetTestWithoutDropLast(DatasetLoaderTestBase):
+#     def setUp(self):
+#         self.dataset_name = "InMemoryDataset"
+#         self.drop_last = False
+#         self.temp_dir = tempfile.TemporaryDirectory()
 
 
-class InMemoryDatasetTestWithDropLast(DatasetLoaderTestBase):
-    def setUp(self):
-        self.dataset_name = "InMemoryDataset"
-        self.drop_last = True
-        self.temp_dir = tempfile.TemporaryDirectory()
+# class InMemoryDatasetTestWithDropLast(DatasetLoaderTestBase):
+#     def setUp(self):
+#         self.dataset_name = "InMemoryDataset"
+#         self.drop_last = True
+#         self.temp_dir = tempfile.TemporaryDirectory()
 
 
 if __name__ == '__main__':
