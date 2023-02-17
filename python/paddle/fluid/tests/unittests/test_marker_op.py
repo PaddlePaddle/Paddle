@@ -30,7 +30,7 @@ class TestMarkerOp(OpTest):
         self.outputs = {}
 
     def test_check_output(self):
-        # This op is only for static dygraph
+        # NODE(yjjiang11): This op will be deprecated.
         self.check_output(check_dygraph=False)
 
 

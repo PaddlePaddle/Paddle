@@ -779,7 +779,10 @@ def is_tensor(x):
             print(check)  #False
 
     """
-    return isinstance(x, (Tensor, paddle.fluid.core.eager.Tensor))
+    if in_dygraph_mode():
+        return isinstance(x, (Tensor, paddle.fluid.core.eager.Tensor))
+    else:
+        return isinstance(x, Variable)
 
 
 def _bitwise_op(op_name, x, y, out=None, name=None, binary_op=True):

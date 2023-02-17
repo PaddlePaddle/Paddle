@@ -135,10 +135,12 @@ class TestDropoutNdOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        # NODE(yjjiang11): This op will be deprecated.
+        self.check_output(check_dygraph=False)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out')
+        # NODE(yjjiang11): This op will be deprecated.
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 class TestDropoutNdAPI(unittest.TestCase):

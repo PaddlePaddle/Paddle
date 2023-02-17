@@ -17,8 +17,6 @@ import unittest
 import numpy as np
 from eager_op_test import OpTest
 
-from paddle import _legacy_C_ops
-
 
 class TestMineHardExamplesOp(OpTest):
     def set_data(self):
@@ -43,14 +41,14 @@ class TestMineHardExamplesOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        # NODE(yjjiang11): This op will be deprecated.
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         return
 
     def setUp(self):
         self.op_type = "mine_hard_examples"
-        self.python_api = _legacy_C_ops.mine_hard_examples
         self.set_data()
 
     def init_test_data(self):

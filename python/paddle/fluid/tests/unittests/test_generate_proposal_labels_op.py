@@ -17,8 +17,6 @@ import unittest
 import numpy as np
 from eager_op_test import OpTest
 
-import paddle
-
 
 def generate_proposal_labels_in_python(
     rpn_rois,
@@ -297,40 +295,6 @@ def _expand_bbox_targets(bbox_targets_input, class_nums, is_cls_agnostic):
     return bbox_targets, bbox_inside_weights
 
 
-def generate_prop_label_wrapper(
-    batch_size_per_im=100,
-    fg_fraction=0.25,
-    fg_thresh=0.5,
-    bg_thresh_hi=0.5,
-    bg_thresh_lo=0.0,
-    bbox_reg_weights=[0.1, 0.1, 0.2, 0.2],
-    class_nums=2,
-    use_random=False,
-    is_cls_agnostic=False,
-    is_cascade_rcnn=False,
-):
-    def inner_func(rpnrois, gtclasses, iscrowd, gtboxes, iminfo):
-        return paddle._legacy_C_ops.generate_proposal_labels(
-            rpnrois,
-            gtclasses,
-            iscrowd,
-            gtboxes,
-            iminfo,
-            batch_size_per_im,
-            fg_fraction,
-            fg_thresh,
-            bg_thresh_hi,
-            bg_thresh_lo,
-            bbox_reg_weights,
-            class_nums,
-            use_random,
-            is_cls_agnostic,
-            is_cascade_rcnn,
-        )
-
-    return inner_func
-
-
 class TestGenerateProposalLabelsOp(OpTest):
     def set_data(self):
         # self.use_random = False
@@ -375,23 +339,12 @@ class TestGenerateProposalLabelsOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        # NODE(yjjiang11): This op will be deprecated.
+        self.check_output(check_dygraph=False)
 
     def setUp(self):
         self.op_type = 'generate_proposal_labels'
         self.set_data()
-        self.python_api = generate_prop_label_wrapper(
-            batch_size_per_im=self.attrs['batch_size_per_im'],
-            fg_fraction=self.attrs['fg_fraction'],
-            fg_thresh=self.attrs['fg_thresh'],
-            bg_thresh_hi=self.attrs['bg_thresh_hi'],
-            bg_thresh_lo=self.attrs['bg_thresh_lo'],
-            bbox_reg_weights=self.attrs['bbox_reg_weights'],
-            class_nums=self.attrs['class_nums'],
-            use_random=self.attrs['use_random'],
-            is_cls_agnostic=self.attrs['is_cls_agnostic'],
-            is_cascade_rcnn=self.attrs['is_cascade_rcnn'],
-        )
 
     def init_test_cascade(
         self,

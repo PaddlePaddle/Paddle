@@ -17,8 +17,6 @@ import unittest
 import numpy as np
 from eager_op_test import OpTest
 
-import paddle
-
 
 def box_decoder_and_assign(deltas, weights, boxes, box_score, box_clip):
     boxes = boxes.astype(deltas.dtype, copy=False)
@@ -62,21 +60,13 @@ def box_decoder_and_assign(deltas, weights, boxes, box_score, box_clip):
     return pred_boxes, output_assign_box
 
 
-def box_decoder_wrapper(
-    PriorBox, PriorBoxVar, TargetBox, BoxScore, box_clip=4.135
-):
-    return paddle._legacy_C_ops.box_decoder_and_assign(
-        PriorBox, PriorBoxVar, TargetBox, BoxScore, "box_clip", box_clip
-    )
-
-
 class TestBoxDecoderAndAssignOpWithLoD(OpTest):
     def test_check_output(self):
-        self.check_output()
+        # NODE(yjjiang11): This op will be deprecated.
+        self.check_output(check_dygraph=False)
 
     def setUp(self):
         self.op_type = "box_decoder_and_assign"
-        self.python_api = box_decoder_wrapper
         lod = [[4, 8, 8]]
         num_classes = 10
         prior_box = np.random.random((20, 4)).astype('float32')

@@ -268,12 +268,14 @@ class TestDataNormOp(OpTest):
         """
         test check forward, check output
         """
+        # NODE(yjjiang11): This op will be deprecated.
         self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         """
         test check backward, check grad
         """
+        # NODE(yjjiang11): This op will be deprecated.
         self.check_grad(['X'], 'Y', no_grad_set=set([]), check_dygraph=False)
 
 
@@ -330,12 +332,14 @@ class TestDataNormOpWithEnableScaleAndShift(OpTest):
         """
         test check forward, check output
         """
+        # NODE(yjjiang11): This op will be deprecated.
         self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         """
         test check backward, check grad
         """
+        # NODE(yjjiang11): This op will be deprecated.
         self.check_grad(['X'], 'Y', no_grad_set=set([]), check_dygraph=False)
 
 
@@ -387,12 +391,14 @@ class TestDataNormOpWithoutEnableScaleAndShift(OpTest):
         """
         test check forward, check output
         """
+        # NODE(yjjiang11): This op will be deprecated.
         self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         """
         test check backward, check grad
         """
+        # NODE(yjjiang11): This op will be deprecated.
         self.check_grad(['X'], 'Y', no_grad_set=set([]), check_dygraph=False)
 
 
@@ -449,12 +455,14 @@ class TestDataNormOpWithEnableScaleAndShift_1(OpTest):
         """
         test check forward, check output
         """
+        # NODE(yjjiang11): This op will be deprecated.
         self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         """
         test check backward, check grad
         """
+        # NODE(yjjiang11): This op will be deprecated.
         self.check_grad(['X'], 'Y', no_grad_set=set([]), check_dygraph=False)
 
 
@@ -505,12 +513,14 @@ class TestDataNormOpWithSlotDim(OpTest):
         """
         test check forward, check output
         """
+        # NODE(yjjiang11): This op will be deprecated.
         self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         """
         test check backward, check grad
         """
+        # NODE(yjjiang11): This op will be deprecated.
         self.check_grad(['X'], 'Y', no_grad_set=set([]), check_dygraph=False)
 
 

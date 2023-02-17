@@ -96,7 +96,8 @@ class TestCTCAlignOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        # NODE(yjjiang11): This op will be deprecated.
+        self.check_output(check_dygraph=False)
 
 
 class TestCTCAlignOpCase1(TestCTCAlignOp):
@@ -162,7 +163,8 @@ class TestCTCAlignPaddingOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        # NODE(yjjiang11): This op will be deprecated.
+        self.check_output(check_dygraph=False)
 
 
 class TestCTCAlignOpCase3(TestCTCAlignPaddingOp):

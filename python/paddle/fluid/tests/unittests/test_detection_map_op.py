@@ -19,8 +19,6 @@ import unittest
 import numpy as np
 from eager_op_test import OpTest
 
-import paddle
-
 
 class TestDetectionMAPOp(OpTest):
     def set_data(self):
@@ -266,12 +264,11 @@ class TestDetectionMAPOp(OpTest):
 
     def setUp(self):
         self.op_type = "detection_map"
-        self.python_api = paddle._legacy_C_ops.detection_map
-        self.python_out_sig = ['Out']
         self.set_data()
 
     def test_check_output(self):
-        self.check_output()
+        # NODE(yjjiang11): This op will be deprecated.
+        self.check_output(check_dygraph=False)
 
 
 class TestDetectionMAPOpSkipDiff(TestDetectionMAPOp):

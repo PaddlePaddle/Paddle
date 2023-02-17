@@ -153,7 +153,7 @@ class TestSeqProject(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        # now new dynamic version
+        # NODE(yjjiang11): This op will be deprecated.
         self.check_output(check_dygraph=False)
 
     def test_check_grad(self):

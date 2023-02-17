@@ -17,7 +17,6 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest
-import paddle
 
 
 def gen_match_and_neg_indices(num_prior, gt_lod, neg_lod):
@@ -96,7 +95,6 @@ def target_assign(
 class TestTargetAssginFloatType(OpTest):
     def setUp(self):
         self.op_type = "target_assign"
-        self.python_api = paddle._legacy_C_ops.target_assign
         num_prior = 120
         num_class = 21
         gt_lod = [5, 6, 12]
@@ -137,7 +135,8 @@ class TestTargetAssginFloatType(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        # NODE(yjjiang11): This op will be deprecated.
+        self.check_output(check_dygraph=False)
 
 
 class TestTargetAssginIntType(OpTest):
@@ -184,7 +183,7 @@ class TestTargetAssginIntType(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 if __name__ == '__main__':

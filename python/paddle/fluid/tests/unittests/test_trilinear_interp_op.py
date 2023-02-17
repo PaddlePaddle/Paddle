@@ -17,50 +17,7 @@ import unittest
 import numpy as np
 from eager_op_test import OpTest
 
-import paddle
 import paddle.fluid.core as core
-
-
-def trilinear_interp_test(
-    x,
-    OutSize=None,
-    SizeTensor=None,
-    Scale=None,
-    data_layout='NCHW',
-    out_d=-1,
-    out_h=-1,
-    out_w=-1,
-    scale=[],
-    interp_method='trilinear',
-    align_corners=True,
-    align_mode=0,
-):
-    if isinstance(scale, float) or isinstance(scale, int):
-        scale_list = []
-        for _ in range(len(x.shape) - 2):
-            scale_list.append(scale)
-        scale = list(map(float, scale_list))
-    elif isinstance(scale, list) or isinstance(scale, tuple):
-        scale = list(map(float, scale))
-    if SizeTensor is not None:
-        if not isinstance(SizeTensor, list) and not isinstance(
-            SizeTensor, tuple
-        ):
-            SizeTensor = [SizeTensor]
-    return paddle._C_ops.trilinear_interp(
-        x,
-        OutSize,
-        SizeTensor,
-        Scale,
-        data_layout,
-        out_d,
-        out_h,
-        out_w,
-        scale,
-        interp_method,
-        align_corners,
-        align_mode,
-    )
 
 
 def trilinear_interp_np(
@@ -186,10 +143,7 @@ class TestTrilinearInterpOp(OpTest):
         self.data_layout = 'NCDHW'
         self.init_test_case()
         self.op_type = "trilinear_interp"
-        self.python_api = trilinear_interp_test
         # NOTE(dev): some AsDispensible input is not used under imperative mode.
-        # Skip check_dygraph while found them in Inputs.
-        self.check_dygraph = True
         input_np = np.random.random(self.input_shape).astype("float32")
 
         if self.data_layout == "NCDHW":
@@ -224,10 +178,8 @@ class TestTrilinearInterpOp(OpTest):
         self.inputs = {'X': input_np}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
-           
         if self.actual_shape is not None:
             self.inputs['OutSize'] = self.actual_shape
-           
         # c++ end treat NCDHW the same way as NCHW
         if self.data_layout == 'NCDHW':
             data_layout = 'NCHW'
@@ -246,12 +198,11 @@ class TestTrilinearInterpOp(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output()
+        # NODE(yjjiang11): This op will be deprecated.
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Out', in_place=True, 
-        )
+        self.check_grad(['X'], 'Out', in_place=True, check_dygraph=False)
 
     def init_test_case(self):
         self.interp_method = 'trilinear'
@@ -397,7 +348,6 @@ class TestTrilinearInterpOpUint8(OpTest):
         self.actual_shape = None
         self.init_test_case()
         self.op_type = "trilinear_interp"
-        self.check_dygraph = True
         input_np = np.random.randint(
             low=0, high=256, size=self.input_shape
         ).astype("uint8")
@@ -424,7 +374,6 @@ class TestTrilinearInterpOpUint8(OpTest):
         self.inputs = {'X': input_np}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
-           
 
         self.attrs = {
             'out_d': self.out_d,
@@ -439,7 +388,7 @@ class TestTrilinearInterpOpUint8(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(
-            place=core.CPUPlace(), atol=1, 
+            place=core.CPUPlace(), atol=1, check_dygraph=False
         )
 
     def init_test_case(self):
@@ -550,7 +499,6 @@ class TestTrilinearInterpOp_attr_tensor(OpTest):
         self.actual_shape = None
         self.init_test_case()
         self.op_type = "trilinear_interp"
-        self.check_dygraph = True
         self.shape_by_1Dtensor = False
         self.scale_by_1Dtensor = False
         self.attrs = {
@@ -576,7 +524,6 @@ class TestTrilinearInterpOp_attr_tensor(OpTest):
 
         if self.shape_by_1Dtensor:
             self.inputs['OutSize'] = self.out_size
-           
         elif self.out_size is not None:
             size_tensor = []
             for index, ele in enumerate(self.out_size):
@@ -584,7 +531,6 @@ class TestTrilinearInterpOp_attr_tensor(OpTest):
                     ("x" + str(index), np.ones((1)).astype('int32') * ele)
                 )
             self.inputs['SizeTensor'] = size_tensor
-           
 
         self.attrs['out_d'] = self.out_d
         self.attrs['out_h'] = self.out_h
@@ -602,12 +548,10 @@ class TestTrilinearInterpOp_attr_tensor(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Out', in_place=True, 
-        )
+        self.check_grad(['X'], 'Out', in_place=True, check_dygraph=False)
 
     def init_test_case(self):
         self.interp_method = 'trilinear'

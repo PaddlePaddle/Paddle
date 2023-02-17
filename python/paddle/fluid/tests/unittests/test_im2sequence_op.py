@@ -207,7 +207,7 @@ class TestBlockExpandOp(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        # only for static dygraph
+        # NODE(yjjiang11): This op will be deprecated.
         self.check_output(check_dygraph=False)
 
     def test_check_grad_normal(self):
@@ -288,6 +288,7 @@ class TestBlockExpandOpCase5(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
+        # NODE(yjjiang11): This op will be deprecated.
         self.check_output(check_dygraph=False)
 
 
