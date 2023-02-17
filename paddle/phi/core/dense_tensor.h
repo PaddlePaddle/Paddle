@@ -88,7 +88,7 @@ class DenseTensor : public TensorBase,
 
   /// \brief Returns the dims of the tensor.
   /// \return The dims of the tensor.
-  const DDim& stride() const noexcept override { return meta_.strides; }
+  const DDim& stride() { return meta_.strides; }
 
   /// \brief Returns the lod of the tensor.
   /// \return The lod of the tensor.

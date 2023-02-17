@@ -82,7 +82,7 @@ class SparseCooTensor : public TensorBase,
   bool coalesced() const { return coalesced_; }
 
   // TODO(yjjiang11): not implement
-  const DDim& stride() const noexcept override { return meta_.strides; }
+  // const DDim& stride() const noexcept override { return meta_.strides; }
 
   /// \brief Set the coalesced
   /// \param coalesced whether the indices has coalesced
