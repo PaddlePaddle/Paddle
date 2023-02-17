@@ -172,6 +172,8 @@ class Dataset {
   virtual void SetPassId(uint32_t pass_id) = 0;
   virtual uint32_t GetPassID() = 0;
 
+  virtual void DumpWalkPath(std::string dump_path, size_t dump_rate) = 0;
+
  protected:
   virtual int ReceiveFromClient(int msg_type,
                                 int client_id,
@@ -265,6 +267,7 @@ class DatasetImpl : public Dataset {
   virtual void SetFleetSendSleepSeconds(int seconds);
   virtual std::vector<std::string> GetSlots();
   virtual bool GetEpochFinish();
+  virtual void DumpWalkPath(std::string dump_path, size_t dump_rate);
 
   std::vector<paddle::framework::Channel<T>>& GetMultiOutputChannel() {
     return multi_output_channel_;
