@@ -17,7 +17,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
-#include "paddle/fluid/platform/device/xpu/xpu_op_kpfirst_list.h"
+#include "paddle/phi/backends/xpu/xpu_op_kpfirst_list.h"
 #include "paddle/phi/backends/xpu/xpu_op_list.h"
 
 namespace paddle {
