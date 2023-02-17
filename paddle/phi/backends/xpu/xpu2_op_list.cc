@@ -374,7 +374,7 @@ XPUOpMap& get_kl2_ops() {
                      phi::DataType::INT8,
                      phi::DataType::INT32,
                      phi::DataType::INT64})},
-      {"log", XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT32})},
+      {"log", XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"log_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"log_softmax", XPUKernelSet({phi::DataType::FLOAT32})},
       {"log_softmax_grad", XPUKernelSet({phi::DataType::FLOAT32})},
