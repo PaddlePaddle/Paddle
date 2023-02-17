@@ -159,17 +159,17 @@ class MatMulV1OneDNNHandler
 };
 
 template <typename XT, typename YT, typename OT>
-class MatMulV1OneDNNHandler
+class MatMulOneDNNHandler
     : public phi::funcs::OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
  public:
-  MatMulV1OneDNNHandler(const dnnl::engine engine,
-                        phi::Place cpu_place,
-                        phi::DenseTensor *x,
-                        bool trans_x,
-                        phi::DenseTensor *y,
-                        bool trans_y,
-                        phi::DenseTensor *out,
-                        float scale)
+  MatMulOneDNNHandler(const dnnl::engine engine,
+                      phi::Place cpu_place,
+                      phi::DenseTensor *x,
+                      bool trans_x,
+                      phi::DenseTensor *y,
+                      bool trans_y,
+                      phi::DenseTensor *out,
+                      float scale)
       : phi::funcs::OneDNNHandlerNoCachingT<XT, dnnl::matmul>(engine,
                                                               cpu_place) {
     auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(x->dims(), 0, trans_x);
@@ -578,14 +578,14 @@ class MatMulV1GradOneDNNKernel : public paddle::framework::OpKernel<T> {
       y_combined = *y;
     }
 
-    MatMulV1OneDNNHandler<T, T, T> handler(engine,
-                                           ctx.GetPlace(),
-                                           &x_combined,
-                                           trans_x,
-                                           &y_combined,
-                                           trans_y,
-                                           out,
-                                           ctx.Attr<float>("alpha"));
+    MatMulOneDNNHandler<T, T, T> handler(engine,
+                                         ctx.GetPlace(),
+                                         &x_combined,
+                                         trans_x,
+                                         &y_combined,
+                                         trans_y,
+                                         out,
+                                         ctx.Attr<float>("alpha"));
 
     const auto src_memory_p = handler.AcquireSrcMemory(&x_combined);
     const auto weights_memory_p = handler.AcquireWeightsMemory(&y_combined);
