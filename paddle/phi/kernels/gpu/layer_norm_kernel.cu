@@ -26,7 +26,7 @@ namespace phi {
 
 #ifdef PADDLE_WITH_CUDA
 template <typename U>
-__device__ void WelfordOnline(U val, U *mean, U *square, U *count) {
+__device__ inline void WelfordOnline(U val, U *mean, U *square, U *count) {
   *count += 1;
   U delta1 = val - *mean;
   *mean += delta1 / (*count);
@@ -35,7 +35,7 @@ __device__ void WelfordOnline(U val, U *mean, U *square, U *count) {
 }
 
 template <typename U>
-__device__ void WelfordOnline(
+__device__ inline void WelfordOnline(
     U b_mean, U b_square, U b_cnt, U *mean, U *square, U *count) {
   if (b_cnt == 0) {
     return;
@@ -50,7 +50,7 @@ __device__ void WelfordOnline(
 }
 
 template <typename U>
-__device__ void WelfordWarpAllReduce(U *mean, U *square, U *count) {
+__device__ inline void WelfordWarpAllReduce(U *mean, U *square, U *count) {
   constexpr int kWarpSize = 32;
 #pragma unroll
   for (int mask = 1; mask < kWarpSize; mask *= 2) {
@@ -67,21 +67,24 @@ __device__ void WelfordWarpAllReduce(U *mean, U *square, U *count) {
 
 template <int VecSize>
 struct ThreadAssigner {
-  __device__ __forceinline__ int operator()(const int32_t cols,
-                                            const int32_t cols_per_thread) {
+  __device__ __forceinline__ int operator()(const int cols,
+                                            const int cols_per_thread,
+                                            int32_t *last_tid_idx) {
     return cols_per_thread;
   }
 };
 
 template <>
 struct ThreadAssigner<1> {
-  __device__ __forceinline__ int operator()(const int32_t cols,
-                                            const int32_t cols_per_thread) {
+  __device__ inline int operator()(const int cols,
+                                   const int cols_per_thread,
+                                   int *last_tid_idx) {
     int cols_this_thread = cols_per_thread;
-    int last_y = (cols / cols_per_thread);
-    if (threadIdx.x == last_y) {
-      cols_this_thread = cols - cols_per_thread * last_y;
-    } else if (threadIdx.x > last_y) {
+    int last_tid = (cols / cols_per_thread);
+    *last_tid_idx = last_tid;
+    if (threadIdx.x == last_tid) {
+      cols_this_thread = cols - cols_per_thread * last_tid;
+    } else if (threadIdx.x > last_tid) {
       cols_this_thread = 0;
     }
     return cols_this_thread;
@@ -90,16 +93,17 @@ struct ThreadAssigner<1> {
 
 template <typename T, typename U, int VecSize>
 struct LayerNormDataReader {
-  __device__ __forceinline__ void operator()(const T *__restrict__ row_src,
-                                             U *buffer,
-                                             const int read_times,
-                                             const int cols_this_thread) {
+  __device__ inline void operator()(const T *__restrict__ row_src,
+                                    U *buffer,
+                                    const int last_tid_idx,
+                                    const int read_times,
+                                    const int cols_this_thread) {
     using VecT = phi::AlignedVector<T, VecSize>;
     const VecT *__restrict__ v_src =
         reinterpret_cast<const VecT *__restrict__>(row_src);
-#pragma unroll
+
     for (int i = 0; i < read_times; ++i) {
-      VecT temp_src = v_src[threadIdx.x * read_times + i];
+      VecT temp_src = v_src[threadIdx.x + i * blockDim.x];
 #pragma unroll
       for (int j = 0; j < VecSize; ++j) {
         buffer[i * VecSize + j] = static_cast<U>(temp_src[j]);
@@ -110,37 +114,45 @@ struct LayerNormDataReader {
 
 template <typename T, typename U>
 struct LayerNormDataReader<T, U, 1> {
-  __device__ __forceinline__ void operator()(const T *__restrict__ row_src,
-                                             U *buffer,
-                                             const int read_times,
-                                             const int cols_this_thread) {
-#pragma unroll
-    for (int i = 0; i < cols_this_thread; ++i) {
-      buffer[i] = static_cast<U>(row_src[threadIdx.x * read_times + i]);
+  __device__ inline void operator()(const T *__restrict__ row_src,
+                                    U *buffer,
+                                    const int last_tid_idx,
+                                    const int read_times,
+                                    const int cols_this_thread) {
+    // read_time is just cols_per_thread while VecSize is 1.
+    if (threadIdx.x < last_tid_idx) {
+      for (int i = 0; i < cols_this_thread; ++i) {
+        buffer[i] = static_cast<U>(row_src[threadIdx.x + last_tid_idx * i]);
+      }
+    } else {
+      for (int i = 0; i < cols_this_thread; ++i) {
+        buffer[i] = static_cast<U>(row_src[i + read_times * last_tid_idx]);
+      }
     }
   }
 };
 
 template <typename T, typename U, bool IsSameType, int VecSize>
 struct LayerNormDataWritter {
-  __device__ __forceinline__ void operator()(
+  __device__ inline void operator()(
       T *__restrict__ row_dst,
-      U *__restrict__ buffer,
+      const U *__restrict__ buffer,
       const ops::LayerNormScaleBiasT<T, U, IsSameType> *__restrict__ scale,
       const ops::LayerNormScaleBiasT<T, U, IsSameType> *__restrict__ bias,
       const U row_mean,
       const U row_inv_var,
       const int write_times,
       const int cols_this_thread,
+      const int last_tid_idx,
       const bool valid_scale,
       const bool valid_bias) {
     using VecT = phi::AlignedVector<T, VecSize>;
+    using ScaleT = ops::LayerNormScaleBiasT<T, U, IsSameType>;
+    using VecScaleT = phi::AlignedVector<ScaleT, VecSize>;
     VecT *v_dst = reinterpret_cast<VecT *>(row_dst);
 
     // cols_this_thread is just cols_per_thread
-    int thread_init_idx = threadIdx.x * cols_this_thread;
     if ((!valid_scale) && (!valid_bias)) {
-#pragma unroll
       for (int i = 0; i < write_times; ++i) {
         VecT temp_dst;
 #pragma unroll
@@ -148,48 +160,55 @@ struct LayerNormDataWritter {
           temp_dst[j] = static_cast<T>((buffer[i * VecSize + j] - row_mean) *
                                        row_inv_var);
         }
-        v_dst[threadIdx.x * write_times + i] = temp_dst;
-      }
-    } else if (valid_scale && valid_bias) {
-#pragma unroll
-      for (int i = 0; i < write_times; ++i) {
-        VecT temp_dst;
-#pragma unroll
-        for (int j = 0; j < VecSize; ++j) {
-          int idx = thread_init_idx + i * VecSize + j;
-          temp_dst[j] = static_cast<T>(
-              static_cast<U>(scale[idx]) *
-                  (buffer[i * VecSize + j] - row_mean) * row_inv_var +
-              static_cast<U>(bias[idx]));
-        }
-        v_dst[threadIdx.x * write_times + i] = temp_dst;
+        v_dst[threadIdx.x + blockDim.x * i] = temp_dst;
       }
     } else {
-      if (valid_scale) {
-#pragma unroll
+      const VecScaleT *__restrict__ v_scale =
+          reinterpret_cast<const VecScaleT *__restrict__>(scale);
+      const VecScaleT *__restrict__ v_bias =
+          reinterpret_cast<const VecScaleT *__restrict__>(bias);
+      if (valid_scale && valid_bias) {
         for (int i = 0; i < write_times; ++i) {
+          int idx = threadIdx.x + blockDim.x * i;
           VecT temp_dst;
+          VecScaleT temp_v_scale = v_scale[idx];
+          VecScaleT temp_v_bias = v_bias[idx];
 #pragma unroll
           for (int j = 0; j < VecSize; ++j) {
-            int idx = thread_init_idx + i * VecSize + j;
-            temp_dst[j] = static_cast<T>(static_cast<U>(scale[idx]) *
-                                         (buffer[i * VecSize + j] - row_mean) *
-                                         row_inv_var);
+            temp_dst[j] = static_cast<T>(
+                static_cast<U>(temp_v_scale[j]) *
+                    (buffer[i * VecSize + j] - row_mean) * row_inv_var +
+                static_cast<U>(temp_v_bias[j]));
           }
-          v_dst[threadIdx.x * write_times + i] = temp_dst;
+          v_dst[idx] = temp_dst;
         }
       } else {
+        if (valid_scale) {
+          for (int i = 0; i < write_times; ++i) {
+            int idx = threadIdx.x + blockDim.x * i;
+            VecT temp_dst;
+            VecScaleT temp_v_scale = v_scale[idx];
 #pragma unroll
-        for (int i = 0; i < write_times; ++i) {
-          VecT temp_dst;
-#pragma unroll
-          for (int j = 0; j < VecSize; ++j) {
-            int idx = thread_init_idx + i * VecSize + j;
-            temp_dst[j] = static_cast<T>((buffer[i * VecSize + j] - row_mean) *
-                                             row_inv_var +
-                                         static_cast<U>(bias[idx]));
+            for (int j = 0; j < VecSize; ++j) {
+              temp_dst[j] = static_cast<T>(
+                  static_cast<U>(temp_v_scale[j]) *
+                  (buffer[i * VecSize + j] - row_mean) * row_inv_var);
+            }
+            v_dst[idx] = temp_dst;
           }
-          v_dst[threadIdx.x * write_times + i] = temp_dst;
+        } else {
+          for (int i = 0; i < write_times; ++i) {
+            int idx = threadIdx.x + blockDim.x * i;
+            VecT temp_dst;
+            VecScaleT temp_v_bias = v_bias[idx];
+#pragma unroll
+            for (int j = 0; j < VecSize; ++j) {
+              temp_dst[j] = static_cast<T>(
+                  (buffer[i * VecSize + j] - row_mean) * row_inv_var +
+                  static_cast<U>(temp_v_bias[j]));
+            }
+            v_dst[idx] = temp_dst;
+          }
         }
       }
     }
@@ -207,37 +226,68 @@ struct LayerNormDataWritter<T, U, IsSameType, 1> {
       const U row_inv_var,
       const int write_times,
       const int cols_this_thread,
+      const int last_tid_idx,
       const bool valid_scale,
       const bool valid_bias) {
     // write_times is just col_per_thread.
     if ((!valid_scale) && (!valid_bias)) {
-#pragma unroll
-      for (int i = 0; i < cols_this_thread; ++i) {
-        row_dst[threadIdx.x * write_times + i] =
-            (buffer[i] - row_mean) * row_inv_var;
+      if (threadIdx.x < last_tid_idx) {
+        for (int i = 0; i < cols_this_thread; ++i) {
+          row_dst[threadIdx.x + last_tid_idx * i] =
+              (buffer[i] - row_mean) * row_inv_var;
+        }
+      } else {
+        for (int i = 0; i < cols_this_thread; ++i) {
+          row_dst[last_tid_idx * write_times + i] =
+              (buffer[i] - row_mean) * row_inv_var;
+        }
       }
     } else if (valid_scale && valid_bias) {
-#pragma unroll
-      for (int i = 0; i < cols_this_thread; ++i) {
-        int idx = threadIdx.x * write_times + i;
-        row_dst[idx] = static_cast<T>(static_cast<U>(scale[idx]) *
-                                          (buffer[i] - row_mean) * row_inv_var +
-                                      static_cast<U>(bias[idx]));
+      if (threadIdx.x < last_tid_idx) {
+        for (int i = 0; i < cols_this_thread; ++i) {
+          int idx = threadIdx.x + last_tid_idx * i;
+          row_dst[idx] =
+              static_cast<T>(static_cast<U>(scale[idx]) *
+                                 (buffer[i] - row_mean) * row_inv_var +
+                             static_cast<U>(bias[idx]));
+        }
+      } else {
+        for (int i = 0; i < cols_this_thread; ++i) {
+          int idx = last_tid_idx * write_times + i;
+          row_dst[idx] =
+              static_cast<T>(static_cast<U>(scale[idx]) *
+                                 (buffer[i] - row_mean) * row_inv_var +
+                             static_cast<U>(bias[idx]));
+        }
       }
     } else {
       if (valid_scale) {
-#pragma unroll
-        for (int i = 0; i < cols_this_thread; ++i) {
-          int idx = threadIdx.x * write_times + i;
-          row_dst[idx] = static_cast<T>(static_cast<U>(scale[idx]) *
-                                        (buffer[i] - row_mean) * row_inv_var);
+        if (threadIdx.x < last_tid_idx) {
+          for (int i = 0; i < cols_this_thread; ++i) {
+            int idx = threadIdx.x + last_tid_idx * i;
+            row_dst[idx] = static_cast<T>(static_cast<U>(scale[idx]) *
+                                          (buffer[i] - row_mean) * row_inv_var);
+          }
+        } else {
+          for (int i = 0; i < cols_this_thread; ++i) {
+            int idx = last_tid_idx * write_times + i;
+            row_dst[idx] = static_cast<T>(static_cast<U>(scale[idx]) *
+                                          (buffer[i] - row_mean) * row_inv_var);
+          }
         }
       } else {
-#pragma unroll
-        for (int i = 0; i < cols_this_thread; ++i) {
-          int idx = threadIdx.x * write_times + i;
-          row_dst[idx] = static_cast<T>((buffer[i] - row_mean) * row_inv_var +
-                                        static_cast<U>(bias[idx]));
+        if (threadIdx.x < last_tid_idx) {
+          for (int i = 0; i < cols_this_thread; ++i) {
+            int idx = threadIdx.x + last_tid_idx * i;
+            row_dst[idx] = static_cast<T>((buffer[i] - row_mean) * row_inv_var +
+                                          static_cast<U>(bias[idx]));
+          }
+        } else {
+          for (int i = 0; i < cols_this_thread; ++i) {
+            int idx = last_tid_idx * write_times + i;
+            row_dst[idx] = static_cast<T>((buffer[i] - row_mean) * row_inv_var +
+                                          static_cast<U>(bias[idx]));
+          }
         }
       }
     }
@@ -259,8 +309,10 @@ __global__ void LayerNormFwdWithWelford(
     const bool valid_scale,
     const bool valid_bias) {
   constexpr int kWarpSize = 32;
+  int last_tid_idx = 0;  // For condition once vecSize is 1.
   IndexT row_offset = blockIdx.x * blockDim.y + threadIdx.y;
-  int cols_this_thread = ThreadAssigner<VecSize>()(cols, cols_per_thread);
+  int cols_this_thread =
+      ThreadAssigner<VecSize>()(cols, cols_per_thread, &last_tid_idx);
   int read_times = cols_per_thread / VecSize;
 
   if (row_offset < rows) {
@@ -272,7 +324,7 @@ __global__ void LayerNormFwdWithWelford(
     const T *__restrict__ row_src = src_data + row_offset * cols;
     T *row_dst = dst_data + row_offset * cols;
     LayerNormDataReader<T, U, VecSize>()(
-        row_src, buffer, read_times, cols_this_thread);
+        row_src, buffer, last_tid_idx, read_times, cols_this_thread);
 
     for (int i = 0; i < cols_this_thread; i++) {
       WelfordOnline<U>(buffer[i], &tid_mean, &tid_square, &tid_cnt);
@@ -300,6 +352,7 @@ __global__ void LayerNormFwdWithWelford(
                                                       row_inv_var,
                                                       read_times,
                                                       cols_this_thread,
+                                                      last_tid_idx,
                                                       valid_scale,
                                                       valid_bias);
   }
@@ -327,9 +380,30 @@ void LaunchLayerNormKernel(const Context &dev_ctx,
   int vec_size = 1;
   int cols_per_thread = (cols + (WarpSize - 1)) / WarpSize;
   if (cols_per_thread > 1 && (cols % WarpSize == 0)) {
+    int data_vec_size = 0;
     uint64_t addr = (reinterpret_cast<uint64_t>(x_data) |
                      reinterpret_cast<uint64_t>(y_data));
-    int data_vec_size = phi::GetVectorizedSize<T>(reinterpret_cast<T *>(addr));
+    if (valid_bias || valid_scale) {
+      if (is_same_type) {
+        addr = valid_scale
+                   ? (addr | reinterpret_cast<uint64_t>(void_scale_data))
+                   : addr;
+        addr = valid_bias ? (addr | reinterpret_cast<uint64_t>(void_bias_data))
+                          : addr;
+        data_vec_size = phi::GetVectorizedSize<T>(reinterpret_cast<T *>(addr));
+      } else {
+        uint64_t bias_addr = reinterpret_cast<uint64_t>(void_bias_data);
+        uint64_t attr_addr = valid_scale
+                                 ? reinterpret_cast<uint64_t>(void_scale_data)
+                                 : bias_addr;
+        attr_addr = valid_bias
+                        ? (valid_scale ? (attr_addr | bias_addr) : attr_addr)
+                        : attr_addr;
+        data_vec_size = std::min(
+            phi::GetVectorizedSize<T>(reinterpret_cast<T *>(addr)),
+            phi::GetVectorizedSize<U>(reinterpret_cast<U *>(attr_addr)));
+      }
+    }
     for (int size = data_vec_size; size > 0; size /= 2) {
       if (cols_per_thread % size == 0) {
         vec_size = size;
