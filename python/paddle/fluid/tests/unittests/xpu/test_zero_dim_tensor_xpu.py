@@ -84,6 +84,8 @@ unary_api_list = [
     paddle.lgamma,
     paddle.poisson,
     paddle.bernoulli,
+    paddle.nn.functional.softmax,
+    paddle.nn.functional.log_softmax,
 ]
 
 inplace_api_list = [
@@ -1032,6 +1034,33 @@ class TestSundryAPI(unittest.TestCase):
         out2 = paddle.unsqueeze(x1, axis=x2)
         out2.backward()
         self.assertEqual(out2.shape, [1])
+
+    def test_prelu(self):
+        x1 = paddle.full([], 1.0, 'float32')
+        x1.stop_gradient = False
+        w1 = paddle.full([], 0.25, dtype='float32')
+        w1.stop_gradient = False
+        out1 = paddle.nn.functional.prelu(x1, w1)
+        out1.retain_grads()
+        out1.backward()
+        self.assertEqual(out1.shape, [])
+        self.assertEqual(out1.numpy(), 1.0)
+        self.assertEqual(out1.grad.shape, [])
+        self.assertEqual(x1.grad.shape, [])
+        self.assertEqual(x1.grad.numpy(), 1.0)
+
+        x2 = paddle.full([], -1.0, 'float32')
+        x2.stop_gradient = False
+        w2 = paddle.full([], 0.25, dtype='float32')
+        w2.stop_gradient = False
+        out2 = paddle.nn.functional.prelu(x2, w2)
+        out2.retain_grads()
+        out2.backward()
+        self.assertEqual(out2.shape, [])
+        self.assertEqual(out2.numpy(), -0.25)
+        self.assertEqual(out2.grad.shape, [])
+        self.assertEqual(x2.grad.shape, [])
+        self.assertEqual(x2.grad.numpy(), 0.25)
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.

@@ -60,7 +60,13 @@ class OperantsManager {
  public:
   static OperantsManager& Instance();
 
+  Tensor add(const Tensor& x, const Tensor& y);
+
+  Tensor subtract(const Tensor& x, const Tensor& y);
+
   Tensor multiply(const Tensor& x, const Tensor& y);
+
+  Tensor divide(const Tensor& x, const Tensor& y);
 
  public:
   std::unique_ptr<TensorOperantsBase> eager_operants{nullptr};

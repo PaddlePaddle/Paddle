@@ -108,8 +108,7 @@ add_custom_command(
   COMMAND
     ${PYTHON_EXECUTABLE} ${api_gen_file} --api_yaml_path ${api_yaml_file}
     ${legacy_api_yaml_file} --api_header_path ${api_header_file_tmp}
-    --api_header_path ${api_header_file_tmp} --api_source_path
-    ${api_source_file_tmp}
+    --api_source_path ${api_source_file_tmp}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_header_file_tmp}
           ${api_header_file}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_source_file_tmp}
@@ -245,13 +244,23 @@ cc_library(
 cc_library(
   api_custom_impl
   SRCS api_custom_impl.cc
-  DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils backward_infermeta
-       phi_data_transform)
+  DEPS phi_tensor_raw
+       phi
+       kernel_dispatch
+       api_gen_utils
+       backward_infermeta
+       phi_data_transform
+       phi_profiler)
 cc_library(
   phi_function_api
   SRCS ${api_source_file}
-  DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils phi_data_transform
-       api_custom_impl)
+  DEPS phi_tensor_raw
+       phi
+       kernel_dispatch
+       api_gen_utils
+       phi_data_transform
+       api_custom_impl
+       phi_profiler)
 cc_library(
   phi_bw_function_api
   SRCS ${bw_api_source_file}
@@ -264,16 +273,22 @@ cc_library(
        phi_data_transform
        phi_function_api
        api_custom_impl
-       global_utils)
+       global_utils
+       phi_profiler)
 cc_library(
   sparse_api
   SRCS ${sparse_api_source_file}
-  DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils)
+  DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils phi_profiler)
 cc_library(
   sparse_bw_api
   SRCS ${sparse_bw_api_source_file}
-  DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils sparse_api
-       sparse_backward_infermeta)
+  DEPS phi_tensor_raw
+       phi
+       kernel_dispatch
+       api_gen_utils
+       sparse_api
+       sparse_backward_infermeta
+       phi_profiler)
 cc_library(
   phi_dygraph_api
   SRCS ${dygraph_api_source_file}
@@ -283,11 +298,12 @@ cc_library(
        api_gen_utils
        phi_data_transform
        phi_function_api
-       sparse_api)
+       sparse_api
+       phi_profiler)
 cc_library(
   strings_api
   SRCS ${strings_api_source_file}
-  DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils)
+  DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils phi_profiler)
 cc_library(
   phi_tensor
   SRCS tensor_method.cc

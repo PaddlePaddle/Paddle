@@ -28,6 +28,72 @@ OperantsManager& OperantsManager::Instance() {
   return g_op_manager;
 }
 
+Tensor OperantsManager::add(const Tensor& x, const Tensor& y) {
+  if (FLAGS_tensor_operants_mode == "eager") {
+    PADDLE_ENFORCE_NE(
+        this->eager_operants.get(),
+        nullptr,
+        phi::errors::Unavailable("The eager_operants pointer of "
+                                 "OperantsManager is not initialized"));
+    VLOG(4) << "OperantsManager reaches eager mode";
+    return this->eager_operants->add(x, y);
+  } else if (FLAGS_tensor_operants_mode == "static") {
+    PADDLE_ENFORCE_NE(
+        this->static_operants.get(),
+        nullptr,
+        phi::errors::Unavailable("The static_operants pointer of "
+                                 "OperantsManager is not initialized"));
+    VLOG(4) << "OperantsManager reaches static mode";
+    return this->static_operants->add(x, y);
+  } else if (FLAGS_tensor_operants_mode == "phi") {
+    PADDLE_ENFORCE_NE(
+        this->phi_operants.get(),
+        nullptr,
+        phi::errors::Unavailable(
+            "The phi_operants pointer of OperantsManager is not initialized"));
+    VLOG(4) << "OperantsManager reaches phi mode";
+    return this->phi_operants->add(x, y);
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "FLAGS_tensor_operants_mode is not nitialized, please set "
+        "FLAGS_tensor_operants_mode first, which currently supports eager, "
+        "phi, and static mode"));
+  }
+}
+
+Tensor OperantsManager::subtract(const Tensor& x, const Tensor& y) {
+  if (FLAGS_tensor_operants_mode == "eager") {
+    PADDLE_ENFORCE_NE(
+        this->eager_operants.get(),
+        nullptr,
+        phi::errors::Unavailable("The eager_operants pointer of "
+                                 "OperantsManager is not initialized"));
+    VLOG(4) << "OperantsManager reaches eager mode";
+    return this->eager_operants->subtract(x, y);
+  } else if (FLAGS_tensor_operants_mode == "static") {
+    PADDLE_ENFORCE_NE(
+        this->static_operants.get(),
+        nullptr,
+        phi::errors::Unavailable("The static_operants pointer of "
+                                 "OperantsManager is not initialized"));
+    VLOG(4) << "OperantsManager reaches static mode";
+    return this->static_operants->subtract(x, y);
+  } else if (FLAGS_tensor_operants_mode == "phi") {
+    PADDLE_ENFORCE_NE(
+        this->phi_operants.get(),
+        nullptr,
+        phi::errors::Unavailable(
+            "The phi_operants pointer of OperantsManager is not initialized"));
+    VLOG(4) << "OperantsManager reaches phi mode";
+    return this->phi_operants->subtract(x, y);
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "FLAGS_tensor_operants_mode is not nitialized, please set "
+        "FLAGS_tensor_operants_mode first, which currently supports eager, "
+        "phi, and static mode"));
+  }
+}
+
 Tensor OperantsManager::multiply(const Tensor& x, const Tensor& y) {
   if (FLAGS_tensor_operants_mode == "eager") {
     PADDLE_ENFORCE_NE(
@@ -53,6 +119,39 @@ Tensor OperantsManager::multiply(const Tensor& x, const Tensor& y) {
             "The phi_operants pointer of OperantsManager is not initialized"));
     VLOG(4) << "OperantsManager reaches phi mode";
     return this->phi_operants->multiply(x, y);
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "FLAGS_tensor_operants_mode is not nitialized, please set "
+        "FLAGS_tensor_operants_mode first, which currently supports eager, "
+        "phi, and static mode"));
+  }
+}
+
+Tensor OperantsManager::divide(const Tensor& x, const Tensor& y) {
+  if (FLAGS_tensor_operants_mode == "eager") {
+    PADDLE_ENFORCE_NE(
+        this->eager_operants.get(),
+        nullptr,
+        phi::errors::Unavailable("The eager_operants pointer of "
+                                 "OperantsManager is not initialized"));
+    VLOG(4) << "OperantsManager reaches eager mode";
+    return this->eager_operants->divide(x, y);
+  } else if (FLAGS_tensor_operants_mode == "static") {
+    PADDLE_ENFORCE_NE(
+        this->static_operants.get(),
+        nullptr,
+        phi::errors::Unavailable("The static_operants pointer of "
+                                 "OperantsManager is not initialized"));
+    VLOG(4) << "OperantsManager reaches static mode";
+    return this->static_operants->divide(x, y);
+  } else if (FLAGS_tensor_operants_mode == "phi") {
+    PADDLE_ENFORCE_NE(
+        this->phi_operants.get(),
+        nullptr,
+        phi::errors::Unavailable(
+            "The phi_operants pointer of OperantsManager is not initialized"));
+    VLOG(4) << "OperantsManager reaches phi mode";
+    return this->phi_operants->divide(x, y);
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "FLAGS_tensor_operants_mode is not nitialized, please set "

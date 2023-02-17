@@ -201,6 +201,7 @@ function cmake_base() {
         -DWITH_TENSORRT=${WITH_TENSORRT:-ON}
         -DWITH_ROCM=${WITH_ROCM:-OFF}
         -DWITH_CINN=${WITH_CINN:-OFF}
+        -DCINN_GIT_TAG=${CINN_GIT_TAG:-develop}
         -DWITH_DISTRIBUTE=${distibuted_flag}
         -DWITH_MKL=${WITH_MKL:-ON}
         -DWITH_AVX=${WITH_AVX:-OFF}
@@ -257,6 +258,7 @@ EOF
         -DWITH_TENSORRT=${WITH_TENSORRT:-ON} \
         -DWITH_ROCM=${WITH_ROCM:-OFF} \
         -DWITH_CINN=${WITH_CINN:-OFF} \
+        -DCINN_GIT_TAG=${CINN_GIT_TAG:-develop} \
         -DWITH_DISTRIBUTE=${distibuted_flag} \
         -DWITH_MKL=${WITH_MKL:-ON} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
@@ -3628,6 +3630,7 @@ function run_setup(){
     export WITH_TENSORRT=${WITH_TENSORRT:-ON}
     export WITH_ROCM=${WITH_ROCM:-OFF}
     export WITH_CINN=${WITH_CINN:-OFF}
+    export CINN_GIT_TAG=${CINN_GIT_TAG:-develop}
     export WITH_DISTRIBUTE=${distibuted_flag}
     export WITH_MKL=${WITH_MKL:-ON}
     export WITH_AVX=${WITH_AVX:-OFF}
@@ -3858,6 +3861,7 @@ function run_setup_mac(){
     export WITH_TENSORRT=${WITH_TENSORRT:-ON}
     export WITH_ROCM=${WITH_ROCM:-OFF}
     export WITH_CINN=${WITH_CINN:-OFF}
+    export CINN_GIT_TAG=${CINN_GIT_TAG:-develop}
     export WITH_DISTRIBUTE=${distibuted_flag}
     export WITH_MKL=${WITH_MKL:-ON}
     export WITH_AVX=${WITH_AVX:-OFF}

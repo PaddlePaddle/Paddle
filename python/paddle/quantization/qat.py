@@ -17,9 +17,10 @@ import copy
 from paddle.nn import Layer
 
 from .config import QuantConfig
+from .quantize import Quantization
 
 
-class QAT(object):
+class QAT(Quantization):
     r"""
     Tools used to prepare model for quantization-aware training.
     Args:
@@ -35,7 +36,7 @@ class QAT(object):
     """
 
     def __init__(self, config: QuantConfig):
-        self._config = copy.deepcopy(config)
+        super(QAT, self).__init__(config)
 
     def quantize(self, model: Layer, inplace=False):
         r"""
@@ -63,38 +64,11 @@ class QAT(object):
             quant_model = qat.quantize(model)
             print(quant_model)
         """
+        assert (
+            model.training
+        ), "Quantization-Aware Training shoud work on training models. Please set training mode by model.train()."
         _model = model if inplace else copy.deepcopy(model)
         self._config._specify(_model)
         self._convert_to_quant_layers(_model, self._config)
         self._insert_activation_observers(_model, self._config)
         return _model
-
-    def _convert_to_quant_layers(self, model: Layer, config: QuantConfig):
-        replaced = {}
-        for name, child in model.named_children():
-            if config._is_quantifiable(child):
-                if type(child) not in config.qat_layer_mappings:
-                    self._convert_to_quant_layers(child, config)
-                else:
-                    replaced[name] = config._get_qat_layer(child)
-        for key, value in replaced.items():
-            model._sub_layers[key] = value
-
-    def _insert_activation_observers(self, model: Layer, config: QuantConfig):
-        replaced = {}
-        for name, child in model.named_children():
-            if config._need_observe(child):
-                replaced[name] = config._get_observe_wrapper(child)
-            else:
-                self._insert_activation_observers(child, config)
-        for key, value in replaced.items():
-            model._sub_layers[key] = value
-
-    def _details(self):
-        return self._config.details()
-
-    def __str__(self):
-        return self._details()
-
-    def __repr__(self):
-        return self.__str__()
