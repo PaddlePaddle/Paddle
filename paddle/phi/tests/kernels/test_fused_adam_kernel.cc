@@ -32,8 +32,8 @@
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
+#include "paddle/phi/kernels/fused_adam_kernel.h"
 #include "paddle/phi/kernels/gaussian_kernel.h"
-#include "paddle/phi/kernels/multi_tensor_adam_kernel.h"
 #include "paddle/phi/kernels/reduce_max_kernel.h"
 
 namespace phi {
@@ -179,9 +179,9 @@ struct AdamInfo {
         GenerateConstantTensorVectors<MT, Context>(*ctx, one_shapes, beta2);
   }
 
-  void Update(bool use_multi_tensor, const std::vector<DenseTensor> &grads) {
-    if (use_multi_tensor) {
-      UpdateWithMultiTensorAdam(grads);
+  void Update(bool use_fused, const std::vector<DenseTensor> &grads) {
+    if (use_fused) {
+      UpdateWithFusedAdam(grads);
     } else {
       for (size_t j = 0; j < params.size(); ++j) {
         if (use_adamw) {
@@ -226,7 +226,7 @@ struct AdamInfo {
   }
 
  private:
-  void UpdateWithMultiTensorAdam(const std::vector<DenseTensor> &grads) {
+  void UpdateWithFusedAdam(const std::vector<DenseTensor> &grads) {
     auto param_metas = ToMetaTensorVector(params);
     auto grad_metas = ToMetaTensorVector(grads);
     auto master_param_metas = ToMetaTensorVector(master_params);
@@ -235,34 +235,34 @@ struct AdamInfo {
     auto beta1_pow_metas = ToMetaTensorVector(beta1_pows);
     auto beta2_pow_metas = ToMetaTensorVector(beta2_pows);
 
-    MultiTensorAdamInferMeta(
-        ToConstMetaTensorPtrVector(param_metas),
-        ToConstMetaTensorPtrVector(grad_metas),
-        learning_rate,
-        ToConstMetaTensorPtrVector(moment1_metas),
-        ToConstMetaTensorPtrVector(moment2_metas),
-        ToConstMetaTensorPtrVector(beta1_pow_metas),
-        ToConstMetaTensorPtrVector(beta2_pow_metas),
-        multi_precision ? paddle::make_optional(
-                              ToConstMetaTensorPtrVector(master_param_metas))
-                        : paddle::none,
-        MetaTensor(),
-        beta1,
-        beta2,
-        epsilon,
-        chunk_size,
-        weight_decay,
-        use_adamw,
-        multi_precision,
-        false,
-        ToMutableMetaTensorPtrVector(param_metas),
-        ToMutableMetaTensorPtrVector(moment1_metas),
-        ToMutableMetaTensorPtrVector(moment2_metas),
-        ToMutableMetaTensorPtrVector(beta1_pow_metas),
-        ToMutableMetaTensorPtrVector(beta2_pow_metas),
-        ToMutableMetaTensorPtrVector(master_param_metas));
+    FusedAdamInferMeta(ToConstMetaTensorPtrVector(param_metas),
+                       ToConstMetaTensorPtrVector(grad_metas),
+                       learning_rate,
+                       ToConstMetaTensorPtrVector(moment1_metas),
+                       ToConstMetaTensorPtrVector(moment2_metas),
+                       ToConstMetaTensorPtrVector(beta1_pow_metas),
+                       ToConstMetaTensorPtrVector(beta2_pow_metas),
+                       multi_precision
+                           ? paddle::make_optional(
+                                 ToConstMetaTensorPtrVector(master_param_metas))
+                           : paddle::none,
+                       MetaTensor(),
+                       beta1,
+                       beta2,
+                       epsilon,
+                       chunk_size,
+                       weight_decay,
+                       use_adamw,
+                       multi_precision,
+                       false,
+                       ToMutableMetaTensorPtrVector(param_metas),
+                       ToMutableMetaTensorPtrVector(moment1_metas),
+                       ToMutableMetaTensorPtrVector(moment2_metas),
+                       ToMutableMetaTensorPtrVector(beta1_pow_metas),
+                       ToMutableMetaTensorPtrVector(beta2_pow_metas),
+                       ToMutableMetaTensorPtrVector(master_param_metas));
 
-    MultiTensorAdamKernel<T, Context>(
+    FusedAdamKernel<T, Context>(
         *ctx,
         ToConstTensorPtrVector(params),
         ToConstTensorPtrVector(grads),
@@ -395,15 +395,15 @@ auto MaxDiff(const Context &ctx,
 }
 
 template <typename T, typename PlaceType>
-void TestMultiTensorAdamBase(const std::vector<std::vector<int64_t>> &shapes,
-                             float atol,
-                             bool use_adamw,
-                             bool multi_precision = false,
-                             float beta1 = 0.9,
-                             float beta2 = 0.99,
-                             float weight_decay = 0.1,
-                             size_t steps = 5,
-                             uint64_t seed = 10) {
+void TestFusedAdamBase(const std::vector<std::vector<int64_t>> &shapes,
+                       float atol,
+                       bool use_adamw,
+                       bool multi_precision = false,
+                       float beta1 = 0.9,
+                       float beta2 = 0.99,
+                       float weight_decay = 0.1,
+                       size_t steps = 5,
+                       uint64_t seed = 10) {
   const auto &ctx =
       *paddle::platform::DeviceContextPool::Instance().GetByPlace(PlaceType());
   using Context = typename std::remove_const<
@@ -448,29 +448,28 @@ static auto GenerateRandomShapes(size_t n, uint64_t low, uint64_t high) {
   return shapes;
 }
 
-TEST(multi_tensor_adam, test_fp32_cpu) {
+TEST(fused_adam, test_fp32_cpu) {
   auto shapes = GenerateRandomShapes(30, 10, 20);
   float atol = 0.0f;
   for (auto use_adamw : {false, true}) {
-    TestMultiTensorAdamBase<float, CPUPlace>(shapes, atol, use_adamw);
+    TestFusedAdamBase<float, CPUPlace>(shapes, atol, use_adamw);
   }
 }
 
 #ifdef PADDLE_WITH_CUDA
-TEST(multi_tensor_adam, test_fp32_gpu) {
+TEST(fused_adam, test_fp32_gpu) {
   auto shapes = GenerateRandomShapes(40, 0, 2 << 18);
   float atol = 0.0f;
   for (auto use_adamw : {false, true}) {
-    TestMultiTensorAdamBase<float, GPUPlace>(shapes, atol, use_adamw);
+    TestFusedAdamBase<float, GPUPlace>(shapes, atol, use_adamw);
   }
 }
 
-TEST(multi_tensor_adam, test_fp16_gpu) {
+TEST(fused_adam, test_fp16_gpu) {
   auto shapes = GenerateRandomShapes(40, 0, 2 << 18);
   float atol = 5e-3f;
   for (auto use_adamw : {false, true}) {
-    TestMultiTensorAdamBase<dtype::float16, GPUPlace>(
-        shapes, atol, use_adamw, true);
+    TestFusedAdamBase<dtype::float16, GPUPlace>(shapes, atol, use_adamw, true);
   }
 }
 #endif
