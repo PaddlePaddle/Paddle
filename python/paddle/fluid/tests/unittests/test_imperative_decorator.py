@@ -264,7 +264,7 @@ class TestIsGradEnabledClass(unittest.TestCase):
         with paddle.set_grad_enabled(False):
             flag = paddle.is_grad_enabled()
             self.assertTrue(flag is False)
-       
+
         flag = paddle.is_grad_enabled()
         self.assertTrue(flag is True)
         paddle.enable_static()
