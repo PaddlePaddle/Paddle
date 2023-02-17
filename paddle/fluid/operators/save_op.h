@@ -31,7 +31,7 @@ namespace operators {
 
 template <typename T, typename Context>
 void SaveKernel(const Context& dev_ctx,
-                const DenseTensor& x,
+                const phi::DenseTensor& x,
                 const std::string& file_path,
                 bool save_as_fp16) {
   // FIXME(yuyang18): We save variable to local file now, but we should change
@@ -43,10 +43,10 @@ void SaveKernel(const Context& dev_ctx,
       phi::errors::Unavailable("Cannot open %s to save variables.", file_path));
 
   auto in_dtype = x.dtype();
-  auto out_dtype = save_as_fp16 ? DataType::FLOAT16 : in_dtype;
+  auto out_dtype = save_as_fp16 ? phi::DataType::FLOAT16 : in_dtype;
 
   if (in_dtype != out_dtype) {
-    auto out = Cast<T>(dev_ctx, x, out_dtype);
+    auto out = phi::Cast<T>(dev_ctx, x, out_dtype);
     framework::SerializeToStream(fout, out, dev_ctx);
   } else {
     framework::SerializeToStream(fout, x, dev_ctx);
@@ -56,7 +56,7 @@ void SaveKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void SaveSelectedRowsKernel(const Context& dev_ctx,
-                            const SelectedRows& x,
+                            const phi::SelectedRows& x,
                             const std::string& file_path) {
   // FIXME(yuyang18): We save variable to local file now, but we should change
   // it to save an output stream.
@@ -82,7 +82,7 @@ class SaveOpKernel : public framework::OpKernel<T> {
     auto iname = ctx.InputNames("X").data();
     PADDLE_ENFORCE_NOT_NULL(
         input_var,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The variable %s to be saved cannot be found.", iname));
 
     auto filename = ctx.Attr<std::string>("file_path");
@@ -94,7 +94,7 @@ class SaveOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         FileExists(filename) && !overwrite,
         false,
-        platform::errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "%s exists!, cannot save to it when overwrite is set to false.",
             filename,
             overwrite));
@@ -114,13 +114,13 @@ class SaveOpKernel : public framework::OpKernel<T> {
     auto& dev_ctx = *pool.Get(place);
 
     if (input_var->IsType<phi::DenseTensor>()) {
-      auto& tensor = var->Get<phi::DenseTensor>();
+      auto& tensor = input_var->Get<phi::DenseTensor>();
       SaveKernel<T>(dev_ctx, tensor, filename, save_as_fp16);
     } else if (input_var->IsType<phi::SelectedRows>()) {
-      auto& selectedRows = var->Get<phi::SelectedRows>();
+      auto& selectedRows = input_var->Get<phi::SelectedRows>();
       SaveSelectedRowsKernel<T>(dev_ctx, selectedRows, filename);
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Save operator only supports saving phi::DenseTensor and "
           "SelectedRows "
           "variable, %s has wrong type",
