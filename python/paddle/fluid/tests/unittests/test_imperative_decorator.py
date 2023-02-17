@@ -250,7 +250,6 @@ class TestSetGradEnabledClass(unittest.TestCase):
 
 
 class TestIsGradEnabledClass(unittest.TestCase):
-
     def test_main(self):
         paddle.disable_static()
 
