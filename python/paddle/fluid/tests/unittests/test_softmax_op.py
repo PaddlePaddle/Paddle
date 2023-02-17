@@ -52,7 +52,7 @@ class TestSoftmaxOp(OpTest):
 
     def setUp(self):
         self.op_type = "softmax"
-        self.comp_op_type = "comp"
+        self.prim_op_type = "comp"
         self.python_api = F.softmax
         self.use_cudnn = False
         self.use_mkldnn = False
@@ -120,7 +120,7 @@ class TestSoftmaxOpfp32(TestSoftmaxOp):
 class TestSoftmaxOp_ZeroDim1(TestSoftmaxOp):
     def setUp(self):
         self.op_type = "softmax"
-        self.comp_op_type = "comp"
+        self.prim_op_type = "comp"
         self.python_api = F.softmax
         self.use_cudnn = False
         self.use_mkldnn = False
