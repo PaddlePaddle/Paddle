@@ -67,6 +67,11 @@ repos:
     rev: 4.0.1
     hooks:
     -   id: flake8
+-   repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.0.247
+    hooks:
+    -   id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
 -   repo: https://github.com/PyCQA/autoflake
     rev: v1.7.7
     hooks:

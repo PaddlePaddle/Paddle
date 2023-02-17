@@ -17,3 +17,19 @@ extend_skip_glob = [
     "python/paddle/fluid/tests/unittests/npu/**",
     "python/paddle/fluid/tests/unittests/mlu/**",
 ]
+
+[tool.ruff]
+exclude = [
+    "./build",
+    "./python/paddle/fluid/[!t]**",
+    "./python/paddle/fluid/tra**",
+    "./python/paddle/utils/gast/**",
+    "./python/paddle/fluid/tests/unittests/npu/**",
+    "./python/paddle/fluid/tests/unittests/mlu/**",
+]
+select = ["UP", "C40"]
+ignore = ["UP015"]
+target-version = "py37"
+
+[tool.ruff.per-file-ignores]
+"setup.py" = ["UP036"]
