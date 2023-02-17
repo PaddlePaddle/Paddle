@@ -28,6 +28,13 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/framework/variable_helper.h"
 
+PADDLE_DEFINE_EXPORTED_bool(
+    fleet_executor_with_standalone,
+    false,
+    "Use standalone executor to run ops. Temporary FLAGS, will be removed "
+    "after all fleet executor cases are modified to run ops with standalone "
+    "executor.");
+
 namespace paddle {
 namespace distributed {
 
@@ -95,7 +102,7 @@ void Carrier::Init(
   thread_pool_.SetThreadNum(thread_num_);
   thread_pool_.Start();
 
-  CreateInterceptors();
+  CreateInterceptors(inference_root_scope_vars);
   is_init_ = true;
 }
 
@@ -279,7 +286,8 @@ static std::shared_ptr<framework::GarbageCollector> GetGC(
   return gc;
 }
 
-void Carrier::CreateInterceptors() {
+void Carrier::CreateInterceptors(
+    const std::vector<std::string>& inference_root_scope_vars) {
   if (interceptor_id_to_node_.empty()) return;
 
   auto gc = GetGC(place_);
@@ -343,7 +351,48 @@ void Carrier::CreateInterceptors() {
     interceptor->SetMiniBatchScope(minibatch_scope_);
     interceptor->SetMicroBatchScope(microbatch_scopes_);
     interceptor->SetRootScope(root_scope_);
-    interceptor->SetGC(gc);
+
+    if (FLAGS_fleet_executor_with_standalone &&
+        (task_node->type() == "Amplifier" || task_node->type() == "Compute")) {
+      std::vector<std::shared_ptr<InterpreterCore>> cores;
+      framework::interpreter::ExecutionConfig execution_config;
+      execution_config.create_local_scope = false;
+      execution_config.force_root_scope_vars = std::set<std::string>(
+          inference_root_scope_vars.begin(), inference_root_scope_vars.end());
+
+      const framework::ProgramDesc* program = task_node->program();
+      PADDLE_ENFORCE_NOT_NULL(
+          program,
+          phi::errors::InvalidArgument("TaskNode %d's program is not set.",
+                                       interceptor_id));
+      std::vector<framework::VarDesc*> all_vars = program->Block(0).AllVars();
+      for (framework::VarDesc* var : all_vars) {
+        execution_config.skip_gc_vars.insert(var->Name());
+      }
+
+      // ONLY unused vars can be GCed.
+      const std::unordered_map<const framework::OperatorBase*,
+                               std::vector<std::string>>& unused_vars =
+          task_node->unused_vars();
+      for (auto& item : unused_vars) {
+        for (const std::string& unused_var : item.second) {
+          execution_config.skip_gc_vars.erase(unused_var);
+        }
+      }
+
+      for (framework::Scope* scope : microbatch_scopes_) {
+        cores.push_back(std::make_shared<InterpreterCore>(
+            place_, task_node->program()->Block(0), scope, execution_config));
+      }
+
+      for (size_t i = 1; i < cores.size(); ++i) {
+        cores[i]->ShareWorkQueueFrom(cores[i - 1]);
+      }
+
+      interceptor->SetInterpreterCore(cores);
+    } else {
+      interceptor->SetGC(gc);
+    }
 
     SetInterceptor(interceptor_id, std::move(interceptor));
     VLOG(3) << "Create Interceptor with interceptor id: " << interceptor_id

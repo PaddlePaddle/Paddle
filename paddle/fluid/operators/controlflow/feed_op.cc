@@ -208,27 +208,6 @@ PD_REGISTER_GENERAL_KERNEL(
     paddle::operators::FeedStringsKernel<phi::CPUContext>,
     ALL_DTYPE) {}
 
-#if defined(PADDLE_WITH_MKLDNN)
-PD_REGISTER_GENERAL_KERNEL(
-    feed_dense_tensor,
-    OneDNN,
-    ALL_LAYOUT,
-    paddle::operators::FeedDenseTensorKernel<phi::OneDNNContext>,
-    ALL_DTYPE) {}
-PD_REGISTER_GENERAL_KERNEL(
-    feed_sparse_coo_tensor,
-    OneDNN,
-    ALL_LAYOUT,
-    paddle::operators::FeedSparseCooTensorKernel<phi::OneDNNContext>,
-    ALL_DTYPE) {}
-PD_REGISTER_GENERAL_KERNEL(
-    feed_strings,
-    OneDNN,
-    ALL_LAYOUT,
-    paddle::operators::FeedStringsKernel<phi::OneDNNContext>,
-    ALL_DTYPE) {}
-#endif
-
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_GENERAL_KERNEL(
     feed_dense_tensor,

@@ -30,8 +30,9 @@ inline __device__ bool AttemptInsert(
                                  static_cast<unsigned int>(-1),
                                  static_cast<unsigned int>(id));
     if (key == -1 || key == id) {
-      atomicMin(reinterpret_cast<unsigned int*>(&key_index[pos]),  // NOLINT
-                static_cast<unsigned int>(index));                 // NOLINT
+      atomicMin(
+          reinterpret_cast<unsigned long long int*>(&key_index[pos]),  // NOLINT
+          static_cast<unsigned long long int>(index));                 // NOLINT
       return true;
     } else {
       return false;
@@ -42,8 +43,9 @@ inline __device__ bool AttemptInsert(
         static_cast<unsigned long long int>(-1),                // NOLINT
         static_cast<unsigned long long int>(id));               // NOLINT
     if (key == -1 || key == id) {
-      atomicMin(reinterpret_cast<unsigned int*>(&key_index[pos]),  // NOLINT
-                static_cast<unsigned int>(index));                 // NOLINT
+      atomicMin(
+          reinterpret_cast<unsigned long long int*>(&key_index[pos]),  // NOLINT
+          static_cast<unsigned long long int>(index));                 // NOLINT
       return true;
     } else {
       return false;
