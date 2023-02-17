@@ -24,6 +24,7 @@ from paddle.fluid import core
 @param.parameterized_class(
     ('primal', 'cotangent', 'dtype'),
     [
+        (np.random.rand(10, 10, 10), np.random.rand(10, 10, 10), np.float16),
         (np.random.rand(10, 10, 10), np.random.rand(10, 10, 10), np.float32),
         (
             np.random.rand(4, 8, 16, 16),
@@ -57,8 +58,8 @@ class TestCumsumGradComp(unittest.TestCase):
             with paddle.static.program_guard(mp, sp):
                 x = paddle.static.data('primal', primal.shape, primal.dtype)
                 x.stop_gradient = False
-                v = paddle.to_tensor(
-                    cotangent, dtype=cotangent.dtype, stop_gradient=False
+                v = paddle.static.data(
+                    'cotangent', cotangent.shape, cotangent.dtype
                 )
                 y = paddle.cumsum(x, -1)
                 x_cotangent = paddle.static.gradients(y, x, v)
@@ -66,7 +67,7 @@ class TestCumsumGradComp(unittest.TestCase):
             exe.run(sp)
             return exe.run(
                 program=mp,
-                feed={'primal': primal},
+                feed={'primal': primal, 'cotangent': cotangent},
                 fetch_list=x_cotangent,
             )[0]
 
@@ -76,8 +77,8 @@ class TestCumsumGradComp(unittest.TestCase):
             with paddle.static.program_guard(mp, sp):
                 x = paddle.static.data('primal', primal.shape, primal.dtype)
                 x.stop_gradient = False
-                v = paddle.to_tensor(
-                    cotangent, dtype=cotangent.dtype, stop_gradient=False
+                v = paddle.static.data(
+                    'cotangent', cotangent.shape, cotangent.dtype
                 )
                 y = paddle.cumsum(x, -1)
                 x_cotangent = paddle.static.gradients(y, x, v)
@@ -85,7 +86,7 @@ class TestCumsumGradComp(unittest.TestCase):
             exe.run(sp)
             return exe.run(
                 program=mp,
-                feed={'primal': primal},
+                feed={'primal': primal, 'cotangent': cotangent},
                 fetch_list=x_cotangent,
             )[0]
 
