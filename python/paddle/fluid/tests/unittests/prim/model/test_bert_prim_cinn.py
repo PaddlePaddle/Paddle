@@ -112,7 +112,7 @@ def train(to_static, enable_prim, enable_cinn):
     return losses
 
 
-class TestResnet(unittest.TestCase):
+class TestBert(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.dy2st = train(to_static=True, enable_prim=False, enable_cinn=False)
