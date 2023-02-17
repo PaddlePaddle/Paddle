@@ -7,7 +7,7 @@ if(WITH_PYTHON)
   file(MAKE_DIRECTORY
        ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto)
   set(PSLIB_PROTO_DSTPATH
-      "${PADDLE_SOURCE_DIR}/python/paddle/fluid/incubate/fleet/parameter_server/pslib/"
+      "${PADDLE_SOURCE_DIR}/python/paddle/incubate/fleet/parameter_server/pslib/"
   )
   if(NOT WIN32)
     add_custom_command(
