@@ -29,6 +29,12 @@ core._set_prim_backward_enabled(True)
 # batched matrix * broadcasted vector out.shape = (2, 3)
 # batched matrix * broadcasted matrix out.shape = (2, 3, 5, 4)
 
+TOLERANCE = {
+    "float16": {"rtol": 1e-3, "atol": 1e-3},
+    "float32": {"rtol": 1e-6, "atol": 1e-6},
+    "float64": {"rtol": 1e-15, "atol": 1e-15},
+}
+
 
 @param.parameterized_class(
     ('primal0', 'primal1', 'trans_0', 'trans_1', 'dtype'),
@@ -103,6 +109,146 @@ core._set_prim_backward_enabled(True)
             False,
             np.float32,
         ),
+        (
+            np.random.rand(2),
+            np.random.rand(2),
+            False,
+            False,
+            np.float16,
+        ),
+        (
+            np.random.rand(2, 3),
+            np.random.rand(3),
+            False,
+            False,
+            np.float16,
+        ),
+        (
+            np.random.rand(2),
+            np.random.rand(2, 3),
+            False,
+            False,
+            np.float16,
+        ),
+        (
+            np.random.rand(2),
+            np.random.rand(3, 2),
+            False,
+            True,
+            np.float16,
+        ),
+        (
+            np.random.rand(2, 3, 4),
+            np.random.rand(2, 4, 5),
+            False,
+            False,
+            np.float16,
+        ),
+        (
+            np.random.rand(2, 4, 3),
+            np.random.rand(2, 4, 5),
+            True,
+            False,
+            np.float16,
+        ),
+        (
+            np.random.rand(2, 3, 4),
+            np.random.rand(2, 5, 4),
+            False,
+            True,
+            np.float16,
+        ),
+        (
+            np.random.rand(2, 4, 3),
+            np.random.rand(2, 5, 4),
+            True,
+            True,
+            np.float16,
+        ),
+        (
+            np.random.rand(2, 3, 4),
+            np.random.rand(4),
+            False,
+            False,
+            np.float16,
+        ),
+        (
+            np.random.rand(2, 1, 5, 2),
+            np.random.rand(1, 3, 2, 4),
+            False,
+            False,
+            np.float16,
+        ),
+        (
+            np.random.rand(2),
+            np.random.rand(2),
+            False,
+            False,
+            np.float64,
+        ),
+        (
+            np.random.rand(2, 3),
+            np.random.rand(3),
+            False,
+            False,
+            np.float64,
+        ),
+        (
+            np.random.rand(2),
+            np.random.rand(2, 3),
+            False,
+            False,
+            np.float64,
+        ),
+        (
+            np.random.rand(2),
+            np.random.rand(3, 2),
+            False,
+            True,
+            np.float64,
+        ),
+        (
+            np.random.rand(2, 3, 4),
+            np.random.rand(2, 4, 5),
+            False,
+            False,
+            np.float64,
+        ),
+        (
+            np.random.rand(2, 4, 3),
+            np.random.rand(2, 4, 5),
+            True,
+            False,
+            np.float64,
+        ),
+        (
+            np.random.rand(2, 3, 4),
+            np.random.rand(2, 5, 4),
+            False,
+            True,
+            np.float64,
+        ),
+        (
+            np.random.rand(2, 4, 3),
+            np.random.rand(2, 5, 4),
+            True,
+            True,
+            np.float64,
+        ),
+        (
+            np.random.rand(2, 3, 4),
+            np.random.rand(4),
+            False,
+            False,
+            np.float64,
+        ),
+        (
+            np.random.rand(2, 1, 5, 2),
+            np.random.rand(1, 3, 2, 4),
+            False,
+            False,
+            np.float64,
+        ),
     ],
 )
 class TestMatmulDoubleGradComp(unittest.TestCase):
@@ -120,13 +266,13 @@ class TestMatmulDoubleGradComp(unittest.TestCase):
         paddle.disable_static()
 
     def test_matmul_grad_comp(self):
-        def actual(primal0, primal1, trans_0, trans_1):
+        def actual(primal0, primal1, trans_0, trans_1, dtype_):
             core._set_prim_backward_enabled(True)
             paddle.disable_static()
-            x = paddle.to_tensor(primal0, dtype='float32', stop_gradient=False)
-            y = paddle.to_tensor(primal1, dtype='float32', stop_gradient=False)
+            x = paddle.to_tensor(primal0, dtype=dtype_, stop_gradient=False)
+            y = paddle.to_tensor(primal1, dtype=dtype_, stop_gradient=False)
             out = paddle.matmul(x, y, trans_0, trans_1)
-            dout = paddle.ones_like(out, dtype='float32')
+            dout = paddle.ones_like(out, dtype=dtype_)
             dout.stop_gradient = False
             res = paddle.grad(
                 [out], [x, y], dout, create_graph=True, retain_graph=True
@@ -140,13 +286,13 @@ class TestMatmulDoubleGradComp(unittest.TestCase):
                 res_double[2].numpy(),
             )
 
-        def desired(primal0, primal1, trans_0, trans_1):
+        def desired(primal0, primal1, trans_0, trans_1, dtype_):
             core._set_prim_backward_enabled(False)
             paddle.disable_static()
-            x = paddle.to_tensor(primal0, dtype='float32', stop_gradient=False)
-            y = paddle.to_tensor(primal1, dtype='float32', stop_gradient=False)
+            x = paddle.to_tensor(primal0, dtype=dtype_, stop_gradient=False)
+            y = paddle.to_tensor(primal1, dtype=dtype_, stop_gradient=False)
             out = paddle.matmul(x, y, trans_0, trans_1)
-            dout = paddle.ones_like(out, dtype='float32')
+            dout = paddle.ones_like(out, dtype=dtype_)
             dout.stop_gradient = False
             res = paddle.grad(
                 out, [x, y], dout, create_graph=True, retain_graph=True
@@ -160,33 +306,40 @@ class TestMatmulDoubleGradComp(unittest.TestCase):
                 res_double[2].numpy(),
             )
 
+        d_type = "float32"
+        if self.primal0.dtype == np.float16:
+            d_type = "float16"
+        elif self.primal0.dtype == np.float64:
+            d_type = "float64"
+
         dx, dy, ddout = actual(
-            self.primal0, self.primal1, self.trans_0, self.trans_1
+            self.primal0, self.primal1, self.trans_0, self.trans_1, d_type
         )
 
         dx_, dy_, ddout_ = desired(
-            self.primal0, self.primal1, self.trans_0, self.trans_1
+            self.primal0, self.primal1, self.trans_0, self.trans_1, d_type
         )
 
         np.testing.assert_allclose(
             actual=dx,
             desired=dx_,
-            rtol=1e-6,
-            atol=0,
+            rtol=TOLERANCE[d_type]['rtol'],
+            atol=TOLERANCE[d_type]['atol'],
         )
         np.testing.assert_allclose(
             actual=dy,
             desired=dy_,
-            rtol=1e-6,
-            atol=0,
+            rtol=TOLERANCE[d_type]['rtol'],
+            atol=TOLERANCE[d_type]['atol'],
         )
         np.testing.assert_allclose(
             actual=ddout,
             desired=ddout_,
-            rtol=1e-6,
-            atol=0,
+            rtol=TOLERANCE[d_type]['rtol'],
+            atol=TOLERANCE[d_type]['atol'],
         )
-        core._set_prim_backward_enabled(False)
+
+    core._set_prim_backward_enabled(False)
 
 
 if __name__ == '__main__':

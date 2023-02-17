@@ -149,6 +149,12 @@ void sum_grad(const Tensor& x,
         }
       } else {
         axis_ = axis.GetData();
+        for (int64_t i = 0; i < axis_size; i++) {
+          if (axis[i] < 0) {
+            axis_[i] = axis[i] + x_dim_size;
+            std::cout << "axis_[" << i << "] = " << axis[i];
+          }
+        }
       }
       auto out_grad_ = unsqueeze<T>(out_grad, axis_);
       x_grad_tmp = expand<T>(out_grad_, IntArray(x_dim));

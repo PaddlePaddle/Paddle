@@ -28,6 +28,12 @@ core._set_prim_backward_enabled(True)
 # batched matrix * broadcasted vector out.shape = (2, 3)
 # batched matrix * broadcasted matrix out.shape = (2, 3, 5, 4)
 
+TOLERANCE = {
+    "float16": {"rtol": 1e-3, "atol": 1e-3},
+    "float32": {"rtol": 1e-6, "atol": 1e-6},
+    "float64": {"rtol": 1e-15, "atol": 1e-15},
+}
+
 
 @param.parameterized_class(
     ('primal0', 'primal1', 'primal2', 'trans_0', 'trans_1', 'dtype'),
@@ -38,7 +44,6 @@ core._set_prim_backward_enabled(True)
         #     np.random.rand(1),
         #     False,
         #     False,
-        #     np.float32,
         # ),
         # (
         #     np.random.rand(2, 3),
@@ -46,7 +51,6 @@ core._set_prim_backward_enabled(True)
         #     np.random.rand(2),
         #     False,
         #     False,
-        #     np.float32,
         # ),
         # (
         #     np.random.rand(2),
@@ -54,7 +58,6 @@ core._set_prim_backward_enabled(True)
         #     np.random.rand(3),
         #     False,
         #     False,
-        #     np.float32,
         # ),
         # (
         #     np.random.rand(2),
@@ -62,48 +65,86 @@ core._set_prim_backward_enabled(True)
         #     np.random.rand(3),
         #     False,
         #     True,
-        #     np.float32,
         # ),
-        (
-            np.random.rand(2, 3, 4),
-            np.random.rand(2, 4, 5),
-            np.random.rand(2, 3, 5),
-            False,
-            False,
-            np.float32,
-        ),
-        (
-            np.random.rand(2, 4, 3),
-            np.random.rand(2, 4, 5),
-            np.random.rand(2, 3, 5),
-            True,
-            False,
-            np.float32,
-        ),
-        (
-            np.random.rand(2, 3, 4),
-            np.random.rand(2, 5, 4),
-            np.random.rand(2, 3, 5),
-            False,
-            True,
-            np.float32,
-        ),
-        (
-            np.random.rand(2, 4, 3),
-            np.random.rand(2, 5, 4),
-            np.random.rand(2, 3, 5),
-            True,
-            True,
-            np.float32,
-        ),
         # (
         #     np.random.rand(2, 3, 4),
         #     np.random.rand(4),
         #     np.random.rand(2, 3),
         #     False,
         #     False,
-        #     np.float32,
         # ),
+        (
+            np.random.rand(2, 3, 4),
+            np.random.rand(2, 4, 5),
+            np.random.rand(2, 3, 5),
+            False,
+            False,
+            np.float16,
+        ),
+        (
+            np.random.rand(2, 4, 3),
+            np.random.rand(2, 4, 5),
+            np.random.rand(2, 3, 5),
+            True,
+            False,
+            np.float16,
+        ),
+        (
+            np.random.rand(2, 3, 4),
+            np.random.rand(2, 5, 4),
+            np.random.rand(2, 3, 5),
+            False,
+            True,
+            np.float16,
+        ),
+        (
+            np.random.rand(2, 4, 3),
+            np.random.rand(2, 5, 4),
+            np.random.rand(2, 3, 5),
+            True,
+            True,
+            np.float16,
+        ),
+        (
+            np.random.rand(2, 1, 5, 2),
+            np.random.rand(1, 3, 2, 4),
+            np.random.rand(2, 3, 5, 4),
+            False,
+            False,
+            np.float16,
+        ),
+        (
+            np.random.rand(2, 3, 4),
+            np.random.rand(2, 4, 5),
+            np.random.rand(2, 3, 5),
+            False,
+            False,
+            np.float32,
+        ),
+        (
+            np.random.rand(2, 4, 3),
+            np.random.rand(2, 4, 5),
+            np.random.rand(2, 3, 5),
+            True,
+            False,
+            np.float32,
+        ),
+        (
+            np.random.rand(2, 3, 4),
+            np.random.rand(2, 5, 4),
+            np.random.rand(2, 3, 5),
+            False,
+            True,
+            np.float32,
+        ),
+        (
+            np.random.rand(2, 4, 3),
+            np.random.rand(2, 5, 4),
+            np.random.rand(2, 3, 5),
+            True,
+            True,
+            np.float32,
+        ),
         (
             np.random.rand(2, 1, 5, 2),
             np.random.rand(1, 3, 2, 4),
@@ -111,6 +152,46 @@ core._set_prim_backward_enabled(True)
             False,
             False,
             np.float32,
+        ),
+        (
+            np.random.rand(2, 3, 4),
+            np.random.rand(2, 4, 5),
+            np.random.rand(2, 3, 5),
+            False,
+            False,
+            np.float64,
+        ),
+        (
+            np.random.rand(2, 4, 3),
+            np.random.rand(2, 4, 5),
+            np.random.rand(2, 3, 5),
+            True,
+            False,
+            np.float64,
+        ),
+        (
+            np.random.rand(2, 3, 4),
+            np.random.rand(2, 5, 4),
+            np.random.rand(2, 3, 5),
+            False,
+            True,
+            np.float64,
+        ),
+        (
+            np.random.rand(2, 4, 3),
+            np.random.rand(2, 5, 4),
+            np.random.rand(2, 3, 5),
+            True,
+            True,
+            np.float64,
+        ),
+        (
+            np.random.rand(2, 1, 5, 2),
+            np.random.rand(1, 3, 2, 4),
+            np.random.rand(2, 3, 5, 4),
+            False,
+            False,
+            np.float64,
         ),
     ],
 )
@@ -205,30 +286,29 @@ class TestMatmulDoubleGradComp(unittest.TestCase):
             self.primal0, self.primal1, self.primal2, self.trans_0, self.trans_1
         )
 
-        # print("dx:", dx)
-        # print("dy:", dy)
-        # print("ddout:", ddout)
-        # print("dx_: ", dx_)
-        # print("dy_: ", dy_)
-        # print("ddout_: ", ddout_)
+        dtype = 'float32'
+        if dx.dtype == np.float16:
+            dtype = 'float16'
+        elif dx.dtype == np.float64:
+            dtype = 'float64'
 
         np.testing.assert_allclose(
             actual=dx,
             desired=dx_,
-            rtol=1e-6,
-            atol=0,
+            rtol=TOLERANCE[dtype]['rtol'],
+            atol=TOLERANCE[dtype]['atol'],
         )
         np.testing.assert_allclose(
             actual=dy,
             desired=dy_,
-            rtol=1e-6,
-            atol=0,
+            rtol=TOLERANCE[dtype]['rtol'],
+            atol=TOLERANCE[dtype]['atol'],
         )
         np.testing.assert_allclose(
             actual=ddout,
             desired=ddout_,
-            rtol=1e-6,
-            atol=0,
+            rtol=TOLERANCE[dtype]['rtol'],
+            atol=TOLERANCE[dtype]['atol'],
         )
 
 
