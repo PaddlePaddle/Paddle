@@ -59,22 +59,6 @@ static inline std::vector<uint8_t> ParseStrResponse(
   return std::vector<uint8_t>(res.begin(), res.end());
 }
 
-// template <typename T>
-// static std::vector<T> ParseResponse(const std::string& res_type,
-//                                  const std::string& resp) {
-//   if (res_type == "float") {
-//     auto res = ParseFloatResponse(resp, PARSE_RESULT_FLOAT);
-//     return res;
-//     // framework::TensorFromVector(res, dev_ctx, out);
-//   } else if (res_type == "str") {
-//     auto res = ParseStrResponse(resp);
-//     return res;
-//     // framework::TensorFromVector(res, dev_ctx, out);
-//   } else {
-//     PADDLE_THROW(platform::errors::InvalidArgument("Unknown result type."));
-//   }
-// }
-
 static std::vector<uint8_t> get_str_response(const int& request_id) {
   // wait for call op's event notification
   auto& rpc_store = platform::RpcRequestStore::Instance();
