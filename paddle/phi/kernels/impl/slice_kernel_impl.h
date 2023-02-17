@@ -108,10 +108,6 @@ void SliceCompute(const Context& ctx,
   }
 
   out->Resize(out_dims);
-  DenseTensor& xx = const_cast<DenseTensor&>(input);
-  out->inplace_version_counter_ = xx.inplace_version_counter_;
-  xx.can_not_uses.push_back(out->canNotUse);
-  out->can_not_uses.push_back(xx.canNotUse);
 }
 
 template <typename T, typename Context>
@@ -157,6 +153,10 @@ void SliceRawKernel(const Context& ctx,
       PADDLE_THROW(phi::errors::InvalidArgument(
           "The rank of input should be less than 7, but received %d.", rank));
   }
+  DenseTensor& xx = const_cast<DenseTensor&>(input);
+  out->inplace_version_counter_ = xx.inplace_version_counter_;
+  xx.can_not_uses.push_back(out->canNotUse);
+  out->can_not_uses.push_back(xx.canNotUse);
 }
 
 template <typename T, typename Context>
@@ -191,10 +191,7 @@ void SliceArrayKernel(const Context& dev_ctx,
     auto* out_tensor = &out->at(i);
     const auto& in_tensor = input.at(i + start);
     out_tensor->set_lod(in_tensor.lod());
-    DenseTensor& xx = const_cast<DenseTensor&>(input.at(i + start));
-    out_tensor->inplace_version_counter_ = xx.inplace_version_counter_;
-    xx.can_not_uses.push_back(out_tensor->canNotUse);
-    out_tensor->can_not_uses.push_back(xx.canNotUse);
+
     if (in_tensor.memory_size() > 0) {
       phi::Copy<Context>(
           dev_ctx, in_tensor, dev_ctx.GetPlace(), false, out_tensor);
@@ -214,10 +211,7 @@ void SliceArrayDenseKernel(const Context& dev_ctx,
   int64_t in_size = input.size();
   int64_t start = starts[0] < 0 ? (starts[0] + in_size) : starts[0];
   start = std::max(start, static_cast<int64_t>(0));
-  DenseTensor& xx = const_cast<DenseTensor&>(input.at(start));
-  out->inplace_version_counter_ = xx.inplace_version_counter_;
-  xx.can_not_uses.push_back(out->canNotUse);
-  out->can_not_uses.push_back(xx.canNotUse);
+
   phi::Copy<Context>(dev_ctx, input[start], dev_ctx.GetPlace(), false, out);
 }
 
