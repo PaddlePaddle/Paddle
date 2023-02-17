@@ -106,6 +106,12 @@ file(
   "fusion/gpu/*.cu")
 
 if(WITH_CUTLASS)
+
+  set(sh_cmd "sh")
+  set(sh_arg0 "generate_cutlass_code.sh")
+  execute_process(
+    COMMAND ${sh_cmd} ${sh_arg0}
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass")
   file(GLOB cutlass_cu "fusion/cutlass/conv2d/*.cu" "fusion/cutlass/*.cu")
   list(APPEND kernel_cu ${cutlass_cu})
 endif()
