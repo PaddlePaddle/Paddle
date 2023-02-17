@@ -90,7 +90,7 @@ class TestActivation_ZeroDim(TestActivation):
         self.shape = []
 
 
-class TestExpCompFp32(OpTest):
+class TestExpPrimFp32(OpTest):
     def setUp(self):
         self.op_type = "exp"
         self.prim_op_type = "prim"
@@ -126,12 +126,12 @@ class TestExpCompFp32(OpTest):
         pass
 
 
-class TestExpCompFp64(TestExpCompFp32):
+class TestExpPrimFp64(TestExpPrimFp32):
     def init_dtype(self):
         self.dtype = np.float64
 
 
-class TestExpCompFp16(TestExpCompFp32):
+class TestExpPrimFp16(TestExpPrimFp32):
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -152,7 +152,7 @@ class TestExpCompFp16(TestExpCompFp32):
         self.enable_cinn = False
 
 
-class TestExpComp_ZeroDim(TestExpCompFp32):
+class TestExpPrim_ZeroDim(TestExpPrimFp32):
     def init_shape(self):
         self.shape = []
 
@@ -1156,7 +1156,7 @@ class TestSqrt(TestActivation, TestParameter):
         self.check_output(check_eager=True)
 
 
-class TestSqrtCompFp32(TestActivation):
+class TestSqrtPrimFp32(TestActivation):
     def setUp(self):
         self.op_type = "sqrt"
         self.prim_op_type = "prim"
@@ -1188,7 +1188,7 @@ class TestSqrt_ZeroDim(TestSqrt):
         self.shape = []
 
 
-class TestSqrtComp_ZeroDim(TestSqrt):
+class TestSqrtPrim_ZeroDim(TestSqrt):
     def init_shape(self):
         self.shape = []
 
