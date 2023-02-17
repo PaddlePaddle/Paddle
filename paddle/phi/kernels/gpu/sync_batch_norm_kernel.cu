@@ -85,7 +85,7 @@ void SyncBatchNormKernel(const Context &ctx,
     // x, x^2, 1, here 1 is used to calc device num
     // device num also can be got from platform::DeviceContextPool
     const int bytes = (C * 2 + 1) * sizeof(BatchNormParamType<T>);
-    alloc_ptr = phi::memory::Alloc(
+    alloc_ptr = phi::memory_utils::Alloc(
         ctx.GetPlace(),
         bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));

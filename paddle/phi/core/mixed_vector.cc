@@ -59,7 +59,7 @@ void CopyCPUDataToCUDAHelper(std::vector<T> *cpu_,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   void *src = cpu_->data();
   *gpu_memory_size_ = cpu_->size() * sizeof(T);  // sizeof(T)
-  (*gpu_) = memory::Alloc(place, *gpu_memory_size_);
+  (*gpu_) = memory_utils::Alloc(place, *gpu_memory_size_);
   void *dst = (*gpu_)->ptr();
   auto *dev_ctx = static_cast<phi::GPUContext *>(
       phi::DeviceContextPool::Instance().Get(place));

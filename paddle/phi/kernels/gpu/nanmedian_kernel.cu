@@ -177,7 +177,7 @@ void ProcessMedianKernel(const Context& dev_ctx,
                                    nan_counts_ptr);
 
     auto nan_stat_mem_cpu =
-        phi::memory::Alloc(phi::CPUPlace(), sizeof(int64_t) * 2);
+        phi::memory_utils::Alloc(phi::CPUPlace(), sizeof(int64_t) * 2);
     int64_t* nan_stat_cpu_ptr =
         reinterpret_cast<int64_t*>(nan_stat_mem_cpu->ptr());
     paddle::memory::Copy(phi::CPUPlace(),

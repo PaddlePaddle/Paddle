@@ -26,7 +26,7 @@ class DefaultAllocator : public phi::Allocator {
   explicit DefaultAllocator(const phi::Place& place) : place_(place) {}
 
   AllocationPtr Allocate(size_t bytes_size) override {
-    return phi::memory::Alloc(place_, bytes_size);
+    return phi::memory_utils::Alloc(place_, bytes_size);
   }
 
  private:

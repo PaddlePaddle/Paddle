@@ -105,7 +105,8 @@ void GetClassInterval(const gpuStream_t& stream,
   size_t cub_temp_storage_bytes = 0;
   cub::DeviceScan::InclusiveSum<int*, int*>(
       nullptr, cub_temp_storage_bytes, nullptr, nullptr, nranks + 1, stream);
-  auto cub_temp_storage = phi::memory::Alloc(place, cub_temp_storage_bytes);
+  auto cub_temp_storage =
+      phi::memory_utils::Alloc(place, cub_temp_storage_bytes);
   cub::DeviceScan::InclusiveSum<int*, int*>(cub_temp_storage->ptr(),
                                             cub_temp_storage_bytes,
                                             num_classes_per_device_ptr,

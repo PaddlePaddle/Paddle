@@ -93,7 +93,7 @@ void TriangularSolveKernel(const Context& dev_ctx,
     }
 
     // Copy the addresses of A and tmp_b from host to device.
-    phi::Allocator::AllocationPtr tmp_gpu_ptrs_data = phi::memory::Alloc(
+    phi::Allocator::AllocationPtr tmp_gpu_ptrs_data = phi::memory_utils::Alloc(
         dev_ctx.GetPlace(),
         cpu_ptrs.size() * sizeof(T*),
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));

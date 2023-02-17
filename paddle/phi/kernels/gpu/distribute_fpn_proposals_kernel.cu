@@ -188,7 +188,7 @@ void DistributeFpnProposalsKernel(
                                             sizeof(int) * 8,
                                             dev_ctx.stream());
   // Allocate temporary storage
-  auto d_temp_storage = phi::memory::Alloc(place, temp_storage_bytes);
+  auto d_temp_storage = phi::memory_utils::Alloc(place, temp_storage_bytes);
 
   // Run sorting operation
   // sort target level to get corresponding index

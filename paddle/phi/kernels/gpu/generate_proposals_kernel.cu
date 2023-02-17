@@ -73,7 +73,7 @@ static void SortDescending(const phi::GPUContext &ctx,
                                                     ctx.stream());
   // Allocate temporary storage
   auto place = ctx.GetPlace();
-  auto d_temp_storage = phi::memory::Alloc(place, temp_storage_bytes);
+  auto d_temp_storage = phi::memory_utils::Alloc(place, temp_storage_bytes);
 
   // Run sorting operation
   cub::DeviceRadixSort::SortPairsDescending<T, int>(d_temp_storage->ptr(),
@@ -298,7 +298,7 @@ static void NMS(const phi::GPUContext &ctx,
 
   const T *boxes = proposals.data<T>();
   auto place = ctx.GetPlace();
-  auto mask_ptr = phi::memory::Alloc(
+  auto mask_ptr = phi::memory_utils::Alloc(
       place,
       boxes_num * col_blocks * sizeof(uint64_t),
       phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));

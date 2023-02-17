@@ -93,7 +93,7 @@ void GesvdjBatched<float>(const phi::GPUContext& dev_ctx,
                                             ldt,
                                             &lwork,
                                             gesvdj_params));
-  auto workspace = phi::memory::Alloc(
+  auto workspace = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       lwork * sizeof(float),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
@@ -172,7 +172,7 @@ void GesvdjBatched<double>(const phi::GPUContext& dev_ctx,
                                             ldt,
                                             &lwork,
                                             gesvdj_params));
-  auto workspace = phi::memory::Alloc(
+  auto workspace = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       lwork * sizeof(double),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
@@ -236,7 +236,7 @@ void SyevjBatched<float>(const phi::GPUContext& dev_ctx,
   PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnCreateSyevjInfo(&params));
   PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnSsyevj_bufferSize(
       handle, jobz, uplo, n, A, lda, W, &lwork, params));
-  auto workspace = phi::memory::Alloc(
+  auto workspace = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       lwork * sizeof(float),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
@@ -291,7 +291,7 @@ void SyevjBatched<double>(const phi::GPUContext& dev_ctx,
   PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnCreateSyevjInfo(&params));
   PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnDsyevj_bufferSize(
       handle, jobz, uplo, n, A, lda, W, &lwork, params));
-  auto workspace = phi::memory::Alloc(
+  auto workspace = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       lwork * sizeof(double),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
@@ -353,7 +353,7 @@ void MatrixRankTolKernel(const Context& dev_ctx,
   // Must Copy X once, because the gesvdj will destory the content when exit.
   DenseTensor x_tmp;
   phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, &x_tmp);
-  auto info = phi::memory::Alloc(
+  auto info = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       sizeof(int) * batches,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));

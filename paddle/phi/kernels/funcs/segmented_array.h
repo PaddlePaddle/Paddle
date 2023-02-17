@@ -108,7 +108,7 @@ struct ArraySetterBase {
                      void* src,
                      size_t num_bytes,
                      bool use_cuda_graph = false) {
-    allocation = phi::memory::Alloc(
+    allocation = phi::memory_utils::Alloc(
         ctx.GetPlace(),
         num_bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));

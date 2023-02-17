@@ -105,7 +105,7 @@ void lu_decomposed_kernel(const Context& dev_ctx,
   int lwork;
   cusolver_bufferSize(cusolverH, m, n, d_A, lda, &lwork);
 
-  auto work_buff = phi::memory::Alloc(
+  auto work_buff = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       lwork * sizeof(T),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));

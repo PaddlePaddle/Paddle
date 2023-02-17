@@ -481,7 +481,7 @@ void SyncBatchNormGradFunctor(
   const auto *saved_inv_var =
       saved_variance.template data<BatchNormParamType<T>>();
   const int bytes = (C * 2 + 1) * sizeof(BatchNormParamType<T>);
-  auto alloc_ptr = phi::memory::Alloc(
+  auto alloc_ptr = phi::memory_utils::Alloc(
       ctx.GetPlace(),
       bytes,
       phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));

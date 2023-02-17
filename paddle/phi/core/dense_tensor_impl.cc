@@ -111,7 +111,7 @@ void* DenseTensor::mutable_data(const Place& place,
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + meta_.offset) {
     holder_.reset();
-    holder_ = memory::AllocShared(place, size);
+    holder_ = memory_utils::AllocShared(place, size);
     meta_.offset = 0;
   }
   return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
@@ -140,9 +140,9 @@ void* DenseTensor::mutable_data(const Place& place,
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + meta_.offset ||
       !(place.GetType() == phi::AllocationType::GPU &&
-        memory::InSameStream(holder_, stream))) {
+        memory_utils::InSameStream(holder_, stream))) {
     holder_.reset();
-    holder_ = memory::AllocShared(place, size, stream);
+    holder_ = memory_utils::AllocShared(place, size, stream);
     meta_.offset = 0;
   }
   return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +

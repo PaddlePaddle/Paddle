@@ -185,7 +185,7 @@ void RoiPoolKernel(const Context& dev_ctx,
   }
 
   int bytes = box_batch_id_list.numel() * sizeof(int);
-  auto box_ptr = phi::memory::Alloc(
+  auto box_ptr = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       bytes,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));

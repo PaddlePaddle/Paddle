@@ -180,7 +180,7 @@ class MemoryUtils {
   change code.
 */
 
-namespace memory {
+namespace memory_utils {
 
 Allocator::AllocationPtr Alloc(const phi::GPUPlace& place,
                                size_t size,
@@ -211,6 +211,6 @@ void AllocationDeleter(Allocation* allocation) {
   MemoryUtils::Instance().AllocationDeleter(allocation);
 }
 
-}  // namespace memory
+}  // namespace memory_utils
 
 }  // namespace phi

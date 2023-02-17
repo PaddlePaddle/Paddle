@@ -115,10 +115,10 @@ cutlass::Status Conv2dBiasSiluImpl(ConvAllParams params) {
 
   auto ctx = params.ctx;
   auto stream = ctx->stream();
-  phi::Allocator::AllocationPtr tmp_gpu_ptrs_data =
-      phi::memory::Alloc(ctx->GetPlace(),
-                         bytes,
-                         phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+  phi::Allocator::AllocationPtr tmp_gpu_ptrs_data = phi::memory_utils::Alloc(
+      ctx->GetPlace(),
+      bytes,
+      phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
   void *workspace = tmp_gpu_ptrs_data->ptr();
 
   cutlass::Status status = implicit_gemm_op.can_implement(arguments);

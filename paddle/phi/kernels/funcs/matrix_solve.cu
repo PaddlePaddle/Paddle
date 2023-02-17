@@ -80,7 +80,7 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& context,
   }
 
   // Copy the addresses of A and tmp_b from host to device.
-  phi::Allocator::AllocationPtr tmp_gpu_ptrs_data = phi::memory::Alloc(
+  phi::Allocator::AllocationPtr tmp_gpu_ptrs_data = phi::memory_utils::Alloc(
       context.GetPlace(),
       cpu_ptrs.size() * sizeof(T*),
       phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
@@ -96,7 +96,7 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& context,
 
   // Allocate device memory for BatchedGETRF's info and pivots.
   int num_ints = n < 32 ? batch_size : batch_size * (n + 1);
-  phi::Allocator::AllocationPtr tmp_gpu_info_data = phi::memory::Alloc(
+  phi::Allocator::AllocationPtr tmp_gpu_info_data = phi::memory_utils::Alloc(
       context.GetPlace(),
       num_ints * sizeof(int),
       phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));

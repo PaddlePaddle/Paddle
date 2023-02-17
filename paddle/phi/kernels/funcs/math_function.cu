@@ -191,8 +191,8 @@ void TransposeNormal<DeviceContext, T>::operator()(
   const paddle::platform::CUDAPlace& cuda_place = context.GetPlace();
   paddle::platform::CPUPlace cpu_place = paddle::platform::CPUPlace();
   size_t size = 3 * rank * sizeof(int64_t);
-  auto cpu_buf_holder = phi::memory::Alloc(cpu_place, size);
-  auto cuda_buf_holder = phi::memory::Alloc(cuda_place, size);
+  auto cpu_buf_holder = phi::memory_utils::Alloc(cpu_place, size);
+  auto cuda_buf_holder = phi::memory_utils::Alloc(cuda_place, size);
   REINTERPRET(int64_t, cpu_buf, cpu_buf_holder->ptr());
   REINTERPRET(int64_t, cuda_buf, cuda_buf_holder->ptr());
   for (int i = 0; i < rank; ++i) {
@@ -234,8 +234,8 @@ struct TransposeNormal<phi::GPUContext, T> {
     const phi::GPUPlace& cuda_place = context.GetPlace();
     phi::CPUPlace cpu_place = paddle::platform::CPUPlace();
     size_t size = 3 * rank * sizeof(int64_t);
-    auto cpu_buf_holder = phi::memory::Alloc(cpu_place, size);
-    auto cuda_buf_holder = phi::memory::Alloc(cuda_place, size);
+    auto cpu_buf_holder = phi::memory_utils::Alloc(cpu_place, size);
+    auto cuda_buf_holder = phi::memory_utils::Alloc(cuda_place, size);
     REINTERPRET(int64_t, cpu_buf, cpu_buf_holder->ptr());
     REINTERPRET(int64_t, cuda_buf, cuda_buf_holder->ptr());
     for (int i = 0; i < rank; ++i) {
