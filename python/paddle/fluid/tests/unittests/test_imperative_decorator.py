@@ -253,6 +253,10 @@ class TestIsGradEnabledClass(unittest.TestCase):
     def test_main(self):
         paddle.disable_static()
 
+        self.tracer = framework._dygraph_tracer()
+        self.tracer._train_mode = True
+        self.tracer._has_grad = True
+
         # Dygraph gradient calculation mode is enabled by default.
         flag = paddle.is_grad_enabled()
         self.assertTrue(flag is True)
@@ -260,11 +264,10 @@ class TestIsGradEnabledClass(unittest.TestCase):
         with paddle.set_grad_enabled(False):
             flag = paddle.is_grad_enabled()
             self.assertTrue(flag is False)
-
-        paddle.enable_static()
+       
         flag = paddle.is_grad_enabled()
-        self.assertTrue(flag is False)
-
+        self.assertTrue(flag is True)
+        paddle.enable_static()
 
 if __name__ == '__main__':
     unittest.main()
