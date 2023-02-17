@@ -39,7 +39,7 @@ from paddle.fluid.framework import (
 from paddle.fluid.op import Operator
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
-from comp_op_test import OpTestUtils, PrimForwardChecker, PrimGradChecker
+from prim_op_test import OpTestUtils, PrimForwardChecker, PrimGradChecker
 from testsuite import append_input_output, append_loss_ops, create_op, set_input
 from white_list import (
     check_shape_white_list,
@@ -320,7 +320,7 @@ class OpTest(unittest.TestCase):
         cls.dtype = None
         cls.outputs = {}
         cls.input_shape_is_large = True
-        cls.check_comp = False
+        cls.check_prim = False
 
         np.random.seed(123)
         random.seed(124)
@@ -401,7 +401,7 @@ class OpTest(unittest.TestCase):
                 and not is_npu_op_test()
                 and not is_mlu_op_test()
                 and not is_custom_device_op_test()
-                and not cls.check_comp
+                and not cls.check_prim
             ):
                 raise AssertionError(
                     "This test of %s op needs check_grad with fp64 precision."
@@ -1396,7 +1396,7 @@ class OpTest(unittest.TestCase):
         no_check_set=None,
         equal_nan=False,
         check_dygraph=True,
-        check_comp=False,
+        check_prim=False,
         inplace_atol=None,
     ):
         core._set_prim_all_enabled(False)
@@ -1666,10 +1666,10 @@ class OpTest(unittest.TestCase):
                     return True
                 return super()._is_skip_name(name)
 
-        if check_comp:
+        if check_prim:
             prim_checker = PrimForwardChecker(self, place)
             prim_checker.check()
-            setattr(self.__class__, 'check_comp', True)
+            setattr(self.__class__, 'check_prim', True)
             if prim_checker.is_only_check_prim():
                 self.__class__.exist_check_grad = True
                 return
@@ -1818,7 +1818,7 @@ class OpTest(unittest.TestCase):
         no_check_set=None,
         equal_nan=False,
         check_dygraph=True,
-        check_comp=False,
+        check_prim=False,
         inplace_atol=None,
     ):
 
@@ -1837,7 +1837,7 @@ class OpTest(unittest.TestCase):
                 no_check_set,
                 equal_nan,
                 check_dygraph=check_dygraph,
-                check_comp=check_comp,
+                check_prim=check_prim,
                 inplace_atol=inplace_atol,
             )
             if check_dygraph:
@@ -1953,7 +1953,7 @@ class OpTest(unittest.TestCase):
         user_defined_grads=None,
         user_defined_grad_outputs=None,
         check_dygraph=True,
-        check_comp=False,
+        check_prim=False,
     ):
         self._check_grad_helper()
         places = self._get_places()
@@ -1969,7 +1969,7 @@ class OpTest(unittest.TestCase):
                 user_defined_grads,
                 user_defined_grad_outputs,
                 check_dygraph=check_dygraph,
-                check_comp=check_comp,
+                check_prim=check_prim,
             )
 
     def check_grad_with_place(
@@ -1984,16 +1984,16 @@ class OpTest(unittest.TestCase):
         user_defined_grads=None,
         user_defined_grad_outputs=None,
         check_dygraph=True,
-        check_comp=False,
+        check_prim=False,
         numeric_place=None,
     ):
         core._set_prim_all_enabled(False)
-        if check_comp:
+        if check_prim:
             prim_grad_checker = PrimGradChecker(
                 self, place, inputs_to_check, output_names
             )
             prim_grad_checker.check()
-            setattr(self.__class__, 'check_comp', True)
+            setattr(self.__class__, 'check_prim', True)
             if prim_grad_checker.is_only_check_prim():
                 self.__class__.exist_check_grad = True
                 return

@@ -39,7 +39,7 @@ class TestSumOp(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True, check_comp=True)
+        self.check_grad(['X'], 'Out', check_eager=True, check_prim=True)
 
 
 class TestSumOpFp32(OpTest):
@@ -72,7 +72,7 @@ class TestSumOpFp32(OpTest):
             'Out',
             user_defined_grads=self.gradient,
             check_eager=True,
-            check_comp=True,
+            check_prim=True,
         )
 
 
@@ -127,7 +127,7 @@ class TestSumOp_bf16(OpTest):
             'Out',
             user_defined_grads=self.gradient,
             check_eager=True,
-            check_comp=True,
+            check_prim=True,
         )
 
     def calc_gradient(self):
@@ -167,7 +167,7 @@ class TestSumOp_fp16_withInt(OpTest):
             'Out',
             user_defined_grads=self.gradient,
             check_eager=True,
-            check_comp=True,
+            check_prim=True,
         )
 
 
@@ -188,7 +188,7 @@ class TestSumOp5D(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True, check_comp=True)
+        self.check_grad(['X'], 'Out', check_eager=True, check_prim=True)
 
 
 class TestSumOp6D(OpTest):
@@ -208,7 +208,7 @@ class TestSumOp6D(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True, check_comp=True)
+        self.check_grad(['X'], 'Out', check_eager=True, check_prim=True)
 
 
 class TestSumOp8D(OpTest):
@@ -673,7 +673,7 @@ class Test1DReduce(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_comp=True)
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class Test2DReduce0(Test1DReduce):
@@ -892,7 +892,7 @@ class TestReduceSumWithDimOne(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_comp=True)
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestReduceSumWithNumelOne(OpTest):
@@ -914,7 +914,7 @@ class TestReduceSumWithNumelOne(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_comp=False)
+        self.check_grad(['X'], 'Out', check_prim=False)
 
 
 class TestReduceAll(OpTest):
@@ -932,7 +932,7 @@ class TestReduceAll(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_comp=True)
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestReduceAllFp32(OpTest):
@@ -950,7 +950,7 @@ class TestReduceAllFp32(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_comp=True)
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class Test1DReduceWithAxes1(OpTest):
@@ -964,10 +964,10 @@ class Test1DReduceWithAxes1(OpTest):
         self.enable_cinn = False
 
     def test_check_output(self):
-        self.check_output(check_comp=True)
+        self.check_output(check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_comp=True)
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestReduceWithDtype(OpTest):
@@ -987,10 +987,10 @@ class TestReduceWithDtype(OpTest):
         self.enable_cinn = False
 
     def test_check_output(self):
-        self.check_output(check_comp=True)
+        self.check_output(check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_comp=True)
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 def reduce_sum_wrapper(
@@ -1019,7 +1019,7 @@ class TestReduceWithDtype1(TestReduceWithDtype):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_comp=True)
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestReduceWithDtype2(TestReduceWithDtype):
@@ -1042,7 +1042,7 @@ class TestReduceWithDtype2(TestReduceWithDtype):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_comp=True)
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestReduceSumOpError(unittest.TestCase):
