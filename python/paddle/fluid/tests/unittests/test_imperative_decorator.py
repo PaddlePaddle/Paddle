@@ -269,5 +269,6 @@ class TestIsGradEnabledClass(unittest.TestCase):
         self.assertTrue(flag is True)
         paddle.enable_static()
 
+
 if __name__ == '__main__':
     unittest.main()
