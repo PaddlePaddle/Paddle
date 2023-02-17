@@ -33,7 +33,18 @@ template <typename T, typename Context>
 void SaveKernel(const Context& dev_ctx,
                 const phi::DenseTensor& x,
                 const std::string& file_path,
+                bool overwrite,
                 bool save_as_fp16) {
+  PADDLE_ENFORCE_EQ(
+      FileExists(file_path) && !overwrite,
+      false,
+      phi::errors::PreconditionNotMet(
+          "%s exists!, cannot save to it when overwrite is set to false.",
+          file_path,
+          overwrite));
+
+  MkDirRecursively(DirName(file_path).c_str());
+
   // FIXME(yuyang18): We save variable to local file now, but we should change
   // it to save an output stream.
   std::ofstream fout(file_path, std::ios::binary);
@@ -57,7 +68,23 @@ void SaveKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void SaveSelectedRowsKernel(const Context& dev_ctx,
                             const phi::SelectedRows& x,
-                            const std::string& file_path) {
+                            const std::string& file_path,
+                            bool overwrite,
+                            bool save_as_fp16) {
+  PADDLE_ENFORCE_EQ(
+      FileExists(file_path) && !overwrite,
+      false,
+      phi::errors::PreconditionNotMet(
+          "%s exists!, cannot save to it when overwrite is set to false.",
+          file_path,
+          overwrite));
+  PADDLE_ENFORCE_EQ(save_as_fp16,
+                    false,
+                    phi::errors::Unimplemented(
+                        "SelectedRows is not supported to save as float16."));
+
+  MkDirRecursively(DirName(file_path).c_str());
+
   // FIXME(yuyang18): We save variable to local file now, but we should change
   // it to save an output stream.
   std::ofstream fout(file_path, std::ios::binary);
@@ -90,24 +117,6 @@ class SaveOpKernel : public framework::OpKernel<T> {
     auto save_as_fp16 = ctx.Attr<bool>("save_as_fp16");
 
     VLOG(4) << "save output file_path: " << filename;
-
-    PADDLE_ENFORCE_EQ(
-        FileExists(filename) && !overwrite,
-        false,
-        phi::errors::PreconditionNotMet(
-            "%s exists!, cannot save to it when overwrite is set to false.",
-            filename,
-            overwrite));
-
-    if (input_var->IsType<phi::SelectedRows>()) {
-      PADDLE_ENFORCE_EQ(
-          save_as_fp16,
-          false,
-          phi::errors::Unimplemented(
-              "SelectedRows is not supported to save as float16."));
-    }
-
-    MkDirRecursively(DirName(filename).c_str());
 
     // get device context from pool
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
