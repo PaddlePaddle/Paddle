@@ -1039,6 +1039,7 @@ class TestSundryAPI(unittest.TestCase):
         x1 = paddle.full([], 1.0, 'float32')
         x1.stop_gradient = False
         w1 = paddle.full([], 0.25, dtype='float32')
+        w1.stop_gradient = False
         out1 = paddle.nn.functional.prelu(x1, w1)
         out1.retain_grads()
         out1.backward()
@@ -1051,6 +1052,7 @@ class TestSundryAPI(unittest.TestCase):
         x2 = paddle.full([], -1.0, 'float32')
         x2.stop_gradient = False
         w2 = paddle.full([], 0.25, dtype='float32')
+        w2.stop_gradient = False
         out2 = paddle.nn.functional.prelu(x2, w2)
         out2.retain_grads()
         out2.backward()
