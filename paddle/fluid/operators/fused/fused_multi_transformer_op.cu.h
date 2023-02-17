@@ -1886,7 +1886,6 @@ class CublasFusedMLP {
 
     cublasLtMatmulAlgo_t *algo =
         CublasLtAlgoCache::Instance().CublasLtAlgoSelect(lt_handle,
-                                                         ,
                                                          M_,
                                                          N_,
                                                          K_,
@@ -1895,7 +1894,7 @@ class CublasFusedMLP {
                                                          out_data,
                                                          &alpha,
                                                          &beta,
-                                                         operator_desc_,
+                                                         operation_desc_,
                                                          w_desc_,
                                                          x_desc_,
                                                          out_desc_,

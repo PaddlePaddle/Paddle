@@ -198,13 +198,13 @@ void DestroyBlasHandle(blasHandle_t handle) {
 }
 
 void InitBlasLtHandle(blasLtHandle_t* blaslt_handle) {
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10020
   phi::dynload::cublasLtCreate(blaslt_handle);
 #endif
 }
 
 void DestroyBlasLtHandle(blasLtHandle_t handle) {
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10020
   if (handle != nullptr) {
     phi::dynload::cublasLtDestroy(handle);
     handle = nullptr;
