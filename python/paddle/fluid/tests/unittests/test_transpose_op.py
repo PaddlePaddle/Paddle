@@ -180,8 +180,8 @@ class TestAutoTuneTransposeBF16Op(OpTest):
         fluid.core.set_autotune_range(0, 3)
         fluid.core.update_autotune_status()
         fluid.core.enable_autotune()
-        self.shape = (1, 8, 128, 4)
-        self.axis = (0, 3, 2, 1)
+        self.shape = (2, 4, 8)
+        self.axis = (0, 2, 1)
 
     def init_op_type(self):
         self.op_type = "transpose2"
