@@ -21,7 +21,7 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 
-TEST(TensorRT, mark_engine_outputs) {
+TEST(resnet50, mark_engine_outputs) {
   int batch_size = 1;
   std::string model_dir = FLAGS_infer_model + "/resnet50";
   AnalysisConfig config;
