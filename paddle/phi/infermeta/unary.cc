@@ -4883,6 +4883,19 @@ void ChannelShuffleInferMeta(const MetaTensor& x,
   out->set_dims(output_dims);
 }
 
+void RowReduceAbsMaxInferMeta(const MetaTensor& x,
+                              MetaTensor* out) {
+  std::vector<int64_t> out_dims_vec;
+  const std::vector<int64_t> x_dims_vec = phi::vectorize(x.dims());
+  out_dims_vec.assign(x_dims_vec.begin(), x_dims_vec.end() - 1);
+  auto out_dims = phi::make_ddim(out_dims_vec);
+  out->set_dims(out_dims);
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+}
+
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(flatten, phi::FlattenInferMeta);

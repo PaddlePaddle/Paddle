@@ -686,4 +686,7 @@ void UnStackInferMeta(const MetaTensor& x,
                       int num,
                       std::vector<MetaTensor*> outs);
 
+void RowReduceAbsMaxInferMeta(const MetaTensor& x, 
+                              MetaTensor* out);
+
 }  // namespace phi

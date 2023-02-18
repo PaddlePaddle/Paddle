@@ -1394,3 +1394,11 @@
   kernel :
     func : where
   backward : where_grad
+
+- op : row_reduce_absmax
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : RowReduceAbsMaxInferMeta
+  kernel :
+    func : row_reduce_absmax
