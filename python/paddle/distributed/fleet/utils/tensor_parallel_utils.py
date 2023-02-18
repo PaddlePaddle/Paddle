@@ -229,7 +229,7 @@ def add_extra_synchronization(
         if params_filter_fn(param):
             params_to_sync.append(param)
     logger.info("The following param are goning to be synchronization everytime the outputed Program is runned: ")
-    logger.info([p.name for p in all_params])
+    logger.info([p.name for p in params_to_sync])
 
 
     # step2: resolute synchronization communicator group (ring_id)
