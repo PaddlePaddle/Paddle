@@ -18,7 +18,9 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/lod_utils.h"
+#include "paddle/phi/core/mixed_vector.h"
 
 namespace phi {
 namespace funcs {
