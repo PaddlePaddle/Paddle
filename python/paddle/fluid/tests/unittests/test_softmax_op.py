@@ -75,7 +75,6 @@ class TestSoftmaxOp(OpTest):
         self.init_kernel_type()
         self.shape = self.get_shape()
         self.axis = self.get_axis()
-        self.check_dygraph = not self.use_mkldnn
         np.random.seed(0)
 
         self.x = self.get_input()
@@ -95,10 +94,10 @@ class TestSoftmaxOp(OpTest):
         if self.use_cudnn:
             place = core.CUDAPlace(0)
             self.check_output_with_place(
-                place, atol=1e-5, check_dygraph=self.check_dygraph
+                place, atol=1e-5, check_dygraph=(not self.use_mkldnn)
             )
         else:
-            self.check_output(check_dygraph=self.check_dygraph)
+            self.check_output(check_dygraph=(not self.use_mkldnn))
 
     def test_check_grad(self):
         if self.use_cudnn or self.dtype == np.float16:
@@ -109,14 +108,14 @@ class TestSoftmaxOp(OpTest):
                     ["X"],
                     "Out",
                     max_relative_error=0.01,
-                    check_dygraph=self.check_dygraph,
+                    check_dygraph=(not self.use_mkldnn),
                 )
         else:
             self.check_grad(
                 ["X"],
                 "Out",
                 max_relative_error=0.01,
-                check_dygraph=self.check_dygraph,
+                check_dygraph=(not self.use_mkldnn),
             )
 
 

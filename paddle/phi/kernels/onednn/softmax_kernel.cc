@@ -64,9 +64,10 @@ void SoftmaxKernel(const Context& dev_ctx,
     PADDLE_ENFORCE(!is_inplace,
                    phi::errors::Unimplemented(
                        "Inplace not implemeneted for int8 onednn softmax."));
-    const float output_scale = x.dtype() == DataType::INT8 ? 126.99f : 255.0f;
+
+    out->set_mem_desc(x.mem_desc());
     funcs::SoftmaxV2OneDNNHandler<T> handler(
-        dev_ctx.GetEngine(), dev_ctx.GetPlace(), axis, &x, out, output_scale);
+        dev_ctx.GetEngine(), dev_ctx.GetPlace(), axis, &x, out);
     SoftmaxExecute(is_inplace, &handler, x, out, dev_ctx);
   } else {
     funcs::SoftmaxOneDNNHandler<T> handler(

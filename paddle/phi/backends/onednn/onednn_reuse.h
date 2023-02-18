@@ -790,8 +790,7 @@ class SoftmaxV2OneDNNHandler
                          Place cpu_place,
                          int axis,
                          const DenseTensor* x,
-                         DenseTensor* out,
-                         float output_scale)
+                         DenseTensor* out)
       : OneDNNHandlerNoCachingT<T,
                                 dnnl::softmax_v2_forward,
                                 dnnl::softmax_v2_backward>(onednn_engine,
@@ -802,6 +801,9 @@ class SoftmaxV2OneDNNHandler
         errors::InvalidArgument(
             "The shape of input and output tensor must be identical."));
 
+    const float output_scale =
+        x->dtype() == DataType::INT8 ? 126.9999f : 255.0f;
+
     dnnl::primitive_attr attrs = {};
     attrs.set_output_scales(0, {output_scale});
 
@@ -810,7 +812,7 @@ class SoftmaxV2OneDNNHandler
                                             dnnl::prop_kind::forward_scoring,
                                             dnnl::algorithm::softmax_accurate,
                                             x->mem_desc(),
-                                            x->mem_desc(),
+                                            out->mem_desc(),
                                             canonical_axis);
   }
 
