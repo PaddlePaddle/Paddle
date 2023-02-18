@@ -1869,21 +1869,6 @@ class CublasFusedMLP {
     const auto *x_data = x->data<T>();
     const auto *w_data = weight->data<T>();
 
-    // TODO List
-    // auto algo = CublasLtAlgoCache::Instance().CublasLtAlgoSelect(lt_handle,
-    //                                                             operation_desc_,
-    //                                                             w_desc_,
-    //                                                             x_desc_,
-    //                                                             out_desc_,
-    //                                                             alpha,
-    //                                                             beta,
-    //                                                             w_data,
-    //                                                             x_data,
-    //                                                             out_data,
-    //                                                             stream,
-    //                                                             workspace->ptr(),
-    //                                                             workspace_size);
-
     cublasLtMatmulAlgo_t *algo =
         CublasLtAlgoCache::Instance().CublasLtAlgoSelect(lt_handle,
                                                          M_,

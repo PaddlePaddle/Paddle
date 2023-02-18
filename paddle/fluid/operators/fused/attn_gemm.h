@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/fluid/operators/fused/fused_multi_transformer_op.cu.h"
 
 namespace paddle {
 namespace operators {
@@ -51,6 +52,7 @@ class AttnMatMul {
                       const phi::DenseTensor* bias,
                       phi::DenseTensor* output,
                       phi::DenseTensor* bias_out) {
+#if __CUDA_VERSION < 11060
     // Note: for blas.GEMM API in Paddle, it treats all inputs as row-major.
     // here: (transa, transb): nt, input * weight.
     CBLAS_TRANSPOSE transA = transA_ ? CblasTrans : CblasNoTrans;
@@ -77,6 +79,17 @@ class AttnMatMul {
       phi::funcs::BroadcastKernel<phi::ElementwiseType::kBinary, T, T>(
           dev_ctx_, ins, &outs, -1, phi::funcs::AddFunctor<T>());
     }
+#else 
+    auto cublas_lt_gemm = CublasFusedMLP(dev_ctx_); 
+    const phi::DDim input_shape({bsz_seq_, input_size_});
+    const phi::DDim weight_shape({input_size_, output_size_});
+    cublas_lt_gemm.Setup(input_shape, weight_shape, transA_, transB_); 
+    if(compute_bias_){
+      cublas_lt_gemm.ComputeForward(input, weight, bias, nullptr, output, "none"); 
+    } else {
+      cublas_lt_gemm.ComputeForward(input, weight, nullptr, nullptr, output, "none"); 
+    }
+#endif // __CUDA_VERSION__ < 11060
   }
 
   void ComputeBackward(const phi::DenseTensor* input,
