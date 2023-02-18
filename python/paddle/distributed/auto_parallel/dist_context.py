@@ -644,7 +644,7 @@ class DistributedContext:
         serial_ordered_tensor_nodes = []
         serial_ordered_op_nodes = []
         all_nodes = []
-        visited = {} 
+        visited = {}
         for idx, graph in enumerate(self._serial_graph.all_sub_graphs()):
             for node in graph.all_nodes():
                 all_nodes.append(node)
@@ -687,9 +687,11 @@ class DistributedContext:
                 # ):
                 #     tensor_nodes.append(tensor_node)
                 #     new_serial_ordered_tensor_nodes.append(tensor_node)
-                if (tensor_node.is_var() 
-                    and tensor_node.var() is not None 
-                    and not visited[_node_id(tensor_node)]):
+                if (
+                    tensor_node.is_var()
+                    and tensor_node.var() is not None
+                    and not visited[_node_id(tensor_node)]
+                ):
                     tensor_nodes.append(tensor_node)
                     new_serial_ordered_tensor_nodes.append(tensor_node)
                     visited[_node_id(tensor_node)] = True
@@ -709,9 +711,11 @@ class DistributedContext:
                 # ):
                 #     tensor_nodes.append(tensor_node)
                 #     new_serial_ordered_tensor_nodes.append(tensor_node)
-                if (tensor_node.is_var() 
-                    and tensor_node.var() is not None 
-                    and not visited[_node_id(tensor_node)]):
+                if (
+                    tensor_node.is_var()
+                    and tensor_node.var() is not None
+                    and not visited[_node_id(tensor_node)]
+                ):
                     tensor_nodes.append(tensor_node)
                     new_serial_ordered_tensor_nodes.append(tensor_node)
                     visited[_node_id(tensor_node)] = True
@@ -743,11 +747,20 @@ class DistributedContext:
         self._tensor_nodes_with_same_name = defaultdict(dict)
         for idx, node in enumerate(self._serial_ordered_nodes):
             if node.is_var() and node.var() is not None:
-                graph_id = node.node.graph_id() 
+                graph_id = node.node.graph_id()
                 tensor_name = node.var().name()
-                if self._tensor_nodes_with_same_name[graph_id].get(tensor_name, None) is None:
-                    self._tensor_nodes_with_same_name[graph_id][tensor_name] = []
-                self._tensor_nodes_with_same_name[graph_id][tensor_name].append((idx, node))
+                if (
+                    self._tensor_nodes_with_same_name[graph_id].get(
+                        tensor_name, None
+                    )
+                    is None
+                ):
+                    self._tensor_nodes_with_same_name[graph_id][
+                        tensor_name
+                    ] = []
+                self._tensor_nodes_with_same_name[graph_id][tensor_name].append(
+                    (idx, node)
+                )
         # print("context-graph-dist-ordering-8: ", time.time() - start_time, flush=True)
 
         start_time = time.time()
@@ -782,16 +795,18 @@ class DistributedContext:
             if node.is_var() and node.var() is not None:
                 dist_tensor = None
                 tensor_id = node.node.original_desc_id()
-                cur_dist_tensor = self._dist_tensors_for_program.get(tensor_id, None)
+                cur_dist_tensor = self._dist_tensors_for_program.get(
+                    tensor_id, None
+                )
                 if cur_dist_tensor is not None:
                     cur_tensor_id = tensor_id
                 else:
                     cur_tensor_id = self._tensor_original_id_to_id[tensor_id]
-                    cur_dist_tensor  = self._dist_tensors_for_program.get(cur_tensor_id, None)
+                    cur_dist_tensor = self._dist_tensors_for_program.get(
+                        cur_tensor_id, None
+                    )
                 dist_tensor = cur_dist_tensor
-                self._node_id_to_tensor_id[
-                    _node_id(node)
-                ] = cur_tensor_id
+                self._node_id_to_tensor_id[_node_id(node)] = cur_tensor_id
                 assert (
                     dist_tensor is not None
                 ), "Tensor must have a distributed tensor after the initialization for program."
@@ -810,11 +825,11 @@ class DistributedContext:
                     cur_op_id = op_id
                 else:
                     cur_op_id = self._op_original_id_to_id[op_id]
-                    cur_dist_op  = self._dist_ops_for_program.get(cur_op_id, None)
+                    cur_dist_op = self._dist_ops_for_program.get(
+                        cur_op_id, None
+                    )
                 dist_op = cur_dist_op
-                self._node_id_to_op_id[
-                    _node_id(node)
-                ] = cur_op_id
+                self._node_id_to_op_id[_node_id(node)] = cur_op_id
                 assert (
                     dist_op is not None
                 ), "Operator must have a distributed operator after the initialization for program."
@@ -838,12 +853,16 @@ class DistributedContext:
             if node.is_var() and node.var() is not None:
                 dist_tensor = None
                 tensor_id = node.node.original_desc_id()
-                cur_dist_tensor = self._dist_tensors_for_program.get(tensor_id, None)
+                cur_dist_tensor = self._dist_tensors_for_program.get(
+                    tensor_id, None
+                )
                 if cur_dist_tensor is not None:
                     cur_tensor_id = tensor_id
                 else:
                     cur_tensor_id = self._tensor_original_id_to_id[tensor_id]
-                    cur_dist_tensor  = self._dist_tensors_for_program.get(cur_tensor_id, None)
+                    cur_dist_tensor = self._dist_tensors_for_program.get(
+                        cur_tensor_id, None
+                    )
                 dist_tensor = cur_dist_tensor
                 assert (
                     dist_tensor is not None
@@ -863,7 +882,9 @@ class DistributedContext:
                     cur_op_id = op_id
                 else:
                     cur_op_id = self._op_original_id_to_id[op_id]
-                    cur_dist_op  = self._dist_ops_for_program.get(cur_op_id, None)
+                    cur_dist_op = self._dist_ops_for_program.get(
+                        cur_op_id, None
+                    )
                 dist_op = cur_dist_op
                 assert (
                     dist_op is not None
@@ -1080,6 +1101,7 @@ class DistributedContext:
                 "_backup_serial_main_program_stack",
                 "_backup_serial_startup_program_stack",
                 "_pass_context",
+                "_tensor_nodes_with_same_name",
             ]:
                 setattr(result, k, v)
             else:

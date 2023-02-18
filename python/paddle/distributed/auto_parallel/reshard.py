@@ -590,7 +590,7 @@ class Inserter:
                 inputs={'X': [fill_constant_out]},
                 outputs={'Out': [fill_constant_out]},
                 attrs={
-                    'ring_id': 0,
+                    'ring_id': 1000,
                     'use_calc_stream': True,
                     'op_role': op_role,
                 },
@@ -2613,7 +2613,11 @@ class Resharder:
                     tensor.name
                 )
                 process_mesh = dist_op.dist_attr.process_mesh
-                dist_attr = [process_mesh, dims_mapping]
+                dist_attr = [
+                    process_mesh,
+                    dims_mapping,
+                    dist_op.serial_op.attr('op_role'),
+                ]
                 if dist_tensor is not None and self.need_reshard(
                     dist_tensor, dist_attr
                 ):

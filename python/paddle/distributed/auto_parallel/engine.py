@@ -160,7 +160,6 @@ class Engine:
                 " or `paddle.fluid.optimizer.Optimizer`."
             )
         self._optimizer = validate_opt(optimizer)
-        self._orig_optimizer = copy.deepcopy(self._optimizer)
 
         metrics = metrics or []
         for metric in to_list(metrics):
@@ -185,11 +184,17 @@ class Engine:
         self._strategy = strategy or Strategy()
 
         self._logger = get_logger(logging.INFO)
-        # if os.getenv("POD_NAME"):
-        #     self._logger.info(
-        #         "Distribute training by paddle.distributed.launch"
-        #     )
-        #     fleet.init(is_collective=True)
+        if os.getenv("POD_NAME"):
+            self._logger.info(
+                "Distribute training by paddle.distributed.launch"
+            )
+            fleet.init(is_collective=True)
+
+        # for compute cost
+        # TODO: remove _fwd_main_progs and _orig_optimizer
+        self._fwd_dist_contexts = {}
+        self._fwd_main_progs = {}
+        self._orig_optimizer = copy.deepcopy(self._optimizer)
 
         self._executor = None
         self._cur_rank = paddle.distributed.get_rank()
@@ -200,14 +205,6 @@ class Engine:
         self._orig_startup_prog = static.default_startup_program()
         self._orig_dist_context = get_default_distributed_context()
         self._dist_contexts = {}
-        self._fwd_main_progs = {}
-        self._fwd_dist_contexts = {}
-        self._serial_main_progs = {}
-        self._serial_startup_progs = {}
-        self._dist_main_progs = defaultdict(dict)  # dist main programs
-        self._dist_startup_progs = defaultdict(dict)  # dist startup programs
-        self._feed_vars = {}
-        self._fetch_vars = {}
         self._planners = {}
         self._has_prepared = {"train": False, "eval": False, "predict": False}
         self._has_prepared_reader = {
@@ -339,8 +336,8 @@ class Engine:
         return inputs, labels
 
     def _prepare_reader(self, feed_list=[]):
-        dist_main_prog = self._dist_main_progs[self._mode][self._cur_rank]
         dist_context = self._dist_contexts[self._mode]
+        dist_main_prog = dist_context.dist_main_programs[self._cur_rank]
         dist_main_block = dist_main_prog.global_block()
 
         # NOTE: this list may be changed if Paddle changes the existing rules.
@@ -456,14 +453,16 @@ class Engine:
                 fetch_names.append([])
             fetch_indices.append(group_indices)
 
+        dist_context = self._dist_contexts[mode]
+        fetch_vars = dist_context.serial_fetch_vars
         if mode != "predict":
-            _process_fetch_group("loss", self._fetch_vars[mode]["loss"])
+            _process_fetch_group("loss", fetch_vars["loss"])
         if mode != "predict":
-            metrics = self._fetch_vars[mode]["metrics"]
+            metrics = fetch_vars["metrics"]
             for i, var_list in enumerate(metrics):
                 _process_fetch_group("metrics_" + str(i), var_list)
         if mode == "predict":
-            _process_fetch_group("outputs", self._fetch_vars[mode]["outputs"])
+            _process_fetch_group("outputs", fetch_vars["outputs"])
         user_fetches_collection = [
             item[1] for item in get_collection(CollectionNames.FETCHES)
         ]
@@ -497,7 +496,8 @@ class Engine:
                 logs["loss"] = outs[idx][0]
             group_idx += 1
             # logging metrics
-            metric_vars = self._fetch_vars[mode]["metrics"]
+            dist_context = self._dist_contexts[mode]
+            metric_vars = dist_context.serial_fetch_vars["metrics"]
             if metric_vars:
                 for metric in self._metrics:
                     metrics_indices = fetch_indices[group_idx]
@@ -528,15 +528,18 @@ class Engine:
         logs["fetches"] = logs_fetch
         return logs
 
-    def _prepare_program(self, mode):
+    def _prepare_program(self, mode, init_parameters=True):
         # Do the build process
         self._build(mode)
         # Do the planning process
         self._plan(mode)
         # Do the parallel process
         self._parallel(mode)
-        # Init comm and startup program
-        self._initialize(mode)
+        # Init comm
+        self._init_comm()
+        if init_parameters:
+            # startup program
+            self._initialize(mode)
         self._has_prepared[mode] = True
 
     def _build(self, mode):
@@ -568,8 +571,8 @@ class Engine:
             paddle.enable_static()
         else:
             # build program in static mode
-            serial_main_prog = self._serial_main_progs.get(mode, None)
-            if serial_main_prog is not None:
+            dist_context = self._dist_contexts.get(mode, None)
+            if dist_context is not None:
                 return
 
             outputs = []
@@ -750,24 +753,7 @@ class Engine:
                 )
                 dist_context.set_op_dist_attr_for_program(op, ref_op_dist_attr)
 
-    def _initialize(self, mode):
-        # Get the current content from the distributed context
-        self._serial_main_progs[mode] = self._dist_contexts[
-            mode
-        ].serial_main_program
-        self._serial_startup_progs[mode] = self._dist_contexts[
-            mode
-        ].serial_startup_program
-        self._dist_main_progs[mode] = self._dist_contexts[
-            mode
-        ].dist_main_programs
-        self._dist_startup_progs[mode] = self._dist_contexts[
-            mode
-        ].dist_startup_programs
-        self._feed_vars[mode] = self._dist_contexts[mode].serial_feed_vars
-        self._fetch_vars[mode] = self._dist_contexts[mode].serial_fetch_vars
-        self._optimizer = self._dist_contexts[mode]._serial_optimizer
-
+    def _init_comm(self):
         if self._nranks > 1:
             # Traverse different rank programs and traverse each op of them,
             # instantiate communication by process_mapping.
@@ -779,50 +765,49 @@ class Engine:
                 for process_group in all_process_groups:
                     if self._cur_rank not in process_group.ranks:
                         continue
-                    print(
-                        "***process_group: id:",
-                        process_group.id,
-                        "rank:",
-                        process_group.ranks,
-                    )
                     process_group.instantiate()
 
-        # place = _get_device()
-        # if isinstance(place, fluid.CUDAPlace):
-        #     place = fluid.CUDAPlace(ParallelEnv().dev_id)
+    def _initialize(self, mode):
+        place = _get_device()
+        if isinstance(place, fluid.CUDAPlace):
+            place = fluid.CUDAPlace(ParallelEnv().dev_id)
 
-        # if self._strategy.seed:
-        #     paddle.seed(self._strategy.seed + self._dp_ranks[0])
-        #     np.random.seed(self._strategy.seed + self._dp_ranks[0])
-        #     random.seed(self._strategy.seed + self._dp_ranks[0])
+        if self._strategy.seed:
+            paddle.seed(self._strategy.seed + self._dp_ranks[0])
+            np.random.seed(self._strategy.seed + self._dp_ranks[0])
+            random.seed(self._strategy.seed + self._dp_ranks[0])
 
-        # if self._dygraph_mode:
-        #     dist_context = self._dist_contexts[mode]
-        #     dist_main_program = self._dist_main_progs[mode][self._cur_rank]
-        #     self.program_helper.init(dist_main_program, place, dist_context)
+        dist_context = self._dist_contexts[mode]
+        if self._dygraph_mode:
+            dist_main_program = dist_context.dist_main_programs[self._cur_rank]
+            self.program_helper.init(dist_main_program, place, dist_context)
 
-        # if self._executor is None:
-        #     self._executor = paddle.static.Executor(place)
-        #     uninitialized = []
-        #     dist_startup_prog = self._dist_startup_progs[mode][self._cur_rank]
-        #     for var in dist_startup_prog.list_vars():
-        #         scope_var = global_scope().find_var(var.name)
-        #         if scope_var and scope_var.get_tensor()._is_initialized():
-        #             continue
-        #         uninitialized.append(var)
-        #     if uninitialized:
-        #         prune_startup_prog = dist_startup_prog._prune(uninitialized)
-        #         self._executor.run(prune_startup_prog)
+        if self._executor is None:
+            self._executor = paddle.static.Executor(place)
+            uninitialized = []
+            dist_startup_prog = dist_context.dist_startup_programs[
+                self._cur_rank
+            ]
+            for var in dist_startup_prog.list_vars():
+                scope_var = global_scope().find_var(var.name)
+                if scope_var and scope_var.get_tensor()._is_initialized():
+                    continue
+                uninitialized.append(var)
+            if uninitialized:
+                prune_startup_prog = dist_startup_prog._prune(uninitialized)
+                self._executor.run(prune_startup_prog)
 
-        #     if hasattr(self, "_state_dict") and hasattr(self, "_dist_attr"):
-        #         self._set_state_dict(
-        #             mode, self._strict, self._state_dict, self._dist_attr
-        #         )
+            if hasattr(self, "_state_dict") and hasattr(self, "_dist_attr"):
+                self._set_state_dict(
+                    mode, self._strict, self._state_dict, self._dist_attr
+                )
 
-        # if self._strategy.reinit:
-        #     self._logger.info("NOTE: parameters will be re-initialized.")
-        #     dist_startup_prog = self._dist_startup_progs[mode][self._cur_rank]
-        #     self._executor.run(dist_startup_prog)
+        if self._strategy.reinit:
+            self._logger.info("NOTE: parameters will be re-initialized.")
+            dist_startup_prog = dist_context.dist_startup_programs[
+                self._cur_rank
+            ]
+            self._executor.run(dist_startup_prog)
 
     def fit(
         self,
@@ -958,7 +943,7 @@ class Engine:
                     )
                 except core.EOFException:
                     break
-                lr = get_lr(self._optimizer)
+                lr = get_lr(self.optimizer)
                 logs = self._prepare_logger(
                     outs,
                     epoch,
@@ -1294,6 +1279,7 @@ class Engine:
         main_program=None,
         startup_program=None,
         mode=None,
+        init_parameters=True,
     ):
         if mode is not None:
             self.to_mode(mode)
@@ -1336,7 +1322,7 @@ class Engine:
         self._inputs_spec, self._labels_spec = inputs_spec, labels_spec
         self._inputs, self._labels = inputs, labels
         if not self._has_prepared[self._mode]:
-            self._prepare_program(self._mode)
+            self._prepare_program(self._mode, init_parameters)
         else:
             self._switch_mode(self._mode)
 
@@ -1387,16 +1373,17 @@ class Engine:
             )
             batch_size //= self._k_steps
 
-        dist_main_prog = self._dist_main_progs[self._mode][self._cur_rank]
-        dist_startup_prog = self._dist_startup_progs[self._mode][self._cur_rank]
+        dist_context = self._dist_contexts[self._mode]
+        dist_main_prog = dist_context.dist_main_programs[self._cur_rank]
+        dist_startup_prog = dist_context.dist_startup_programs[self._cur_rank]
         dist_main_block = dist_main_prog.global_block()
 
         # NOTE: Get feed_list, then insert dataloader op with sharded var shape.
         # Cause predict_program does not contain labels var,
         # then we will add labels var from serial_program to dist_program,
         # that maintains the length of feed_list equal to the length of dataset's values.
-        inputs_var = self._feed_vars[self._mode]["inputs"]
-        labels_var = self._feed_vars[self._mode]["labels"]
+        inputs_var = dist_context.serial_feed_vars["inputs"]
+        labels_var = dist_context.serial_feed_vars["labels"]
         feed_list = []
         for var in inputs_var + labels_var:
             if var.name in dist_main_block.vars:
@@ -1455,16 +1442,17 @@ class Engine:
             )
             batch_size //= self._k_steps
 
-        dist_main_prog = self._dist_main_progs[self._mode][self._cur_rank]
-        dist_startup_prog = self._dist_startup_progs[self._mode][self._cur_rank]
+        dist_context = self._dist_contexts[self._mode]
+        dist_main_prog = dist_context.dist_main_programs[self._cur_rank]
+        dist_startup_prog = dist_context.dist_startup_programs[self._cur_rank]
         dist_main_block = dist_main_prog.global_block()
 
         # NOTE: Get feed_list, then insert dataloader op with sharded var shape.
         # Cause predict_program does not contain labels var,
         # then we will add labels var from serial_program to dist_program,
         # that maintains the length of feed_list equal to the length of dataset's values.
-        inputs_var = self._feed_vars[self._mode]["inputs"]
-        labels_var = self._feed_vars[self._mode]["labels"]
+        inputs_var = dist_context.serial_feed_vars["inputs"]
+        labels_var = dist_context.serial_feed_vars["labels"]
         feed_list = []
         for var in inputs_var + labels_var:
             if var.name in dist_main_block.vars:
@@ -1583,10 +1571,9 @@ class Engine:
 
     def _switch_mode(self, mode):
         assert (
-            mode in self._dist_main_progs
+            mode in self._dist_contexts
         ), "{} model is not ready, please call `prepare()` first.".format(mode)
         self.to_mode(mode)
-        self._optimizer = self._dist_contexts[mode]._serial_optimizer
 
     def to_mode(self, mode):
         assert mode in [
@@ -1597,8 +1584,8 @@ class Engine:
         self._mode = mode
 
     def _set_state_dict(self, mode, strict, state_dict, dist_attr):
-        program = self._dist_main_progs[mode][self._cur_rank]
         dist_context = self._dist_contexts[mode]
+        program = dist_context.dist_main_programs[self._cur_rank]
         cur_dist_attr = get_dist_attr(program, dist_context)
         converter = Converter(state_dict, dist_attr, cur_dist_attr)
         state_dict = converter.convert(strict=strict)
@@ -1650,10 +1637,10 @@ class Engine:
 
         """
         if training:
-            assert self._mode in self._serial_main_progs
-            serial_program = self._serial_main_progs[self._mode]
-            dist_main_prog = self._dist_main_progs[self._mode][self._cur_rank]
+            assert self._mode in self._dist_contexts
             dist_context = self._dist_contexts[self._mode]
+            serial_program = dist_context.serial_main_program
+            dist_main_prog = dist_context.dist_main_programs[self._cur_rank]
             self._saver.save(
                 path,
                 serial_program=serial_program,
@@ -1661,10 +1648,11 @@ class Engine:
                 dist_context=dist_context,
             )
         else:
-            assert "predict" in self._dist_main_progs
-            feed_vars = self._feed_vars["predict"]['inputs']
-            fetch_vars = self._fetch_vars["predict"]['outputs']
-            dist_main_prog = self._dist_main_progs["predict"][self._cur_rank]
+            assert "predict" in self._dist_contexts
+            dist_context = self._dist_contexts["predict"]
+            feed_vars = dist_context.serial_feed_vars['inputs']
+            fetch_vars = dist_context.serial_fetch_vars['outputs']
+            dist_main_prog = dist_context.dist_main_programs[self._cur_rank]
             self._saver.save_inference_model(
                 path,
                 feed_vars,
@@ -1790,11 +1778,13 @@ class Engine:
 
     @property
     def main_program(self):
-        return self._dist_main_progs[self._mode][self._cur_rank]
+        dist_context = self._dist_contexts[self._mode]
+        return dist_context.dist_main_programs[self._cur_rank]
 
     @property
     def startup_program(self):
-        return self._dist_startup_progs[self._mode][self._cur_rank]
+        dist_context = self._dist_contexts[self._mode]
+        return dist_context.dist_startup_programs[self._cur_rank]
 
     @property
     def dist_context(self):
@@ -1802,15 +1792,30 @@ class Engine:
 
     @property
     def serial_main_program(self):
-        return self._serial_main_progs[self._mode]
+        dist_context = self._dist_contexts[self._mode]
+        return dist_context.serial_main_program
 
     @property
     def serial_startup_program(self):
-        return self._serial_startup_progs[self._mode]
+        dist_context = self._dist_contexts[self._mode]
+        return dist_context.serial_startup_program
+
+    @property
+    def feed_vars(self):
+        dist_context = self._dist_contexts[self._mode]
+        return dist_context.serial_feed_vars
 
     @property
     def fetch_vars(self):
-        return self._fetch_vars[self._mode]
+        dist_context = self._dist_contexts[self._mode]
+        return dist_context.serial_fetch_vars
+
+    @property
+    def optimizer(self):
+        dist_context = self._dist_contexts[self._mode]
+        if dist_context._serial_optimizer:
+            return dist_context._serial_optimizer
+        return self._optimizer
 
     @property
     def inputs(self):
