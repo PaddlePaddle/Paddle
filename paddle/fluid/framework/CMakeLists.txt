@@ -1203,6 +1203,7 @@ cc_library(
        phi_tensor
        op_meta_info
        phi_api
+       tensor_api
        phi_tensor_operants
        operants_manager)
 
