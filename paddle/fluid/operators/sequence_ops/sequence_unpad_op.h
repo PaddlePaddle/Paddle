@@ -71,7 +71,13 @@ class SequenceUnpadOpKernel : public framework::OpKernel<T> {
 
     int64_t padded_length = x_t->dims()[1];
     phi::funcs::UnpaddingLoDTensorFunctor<DeviceContext, T>()(
-        dev_ctx, *x_t, out_t, padded_length, 0, false, math::kBatchLengthWidth);
+        dev_ctx,
+        *x_t,
+        out_t,
+        padded_length,
+        0,
+        false,
+        phi::funcs::kBatchLengthWidth);
   }
 };
 
@@ -101,7 +107,7 @@ class SequenceUnpadGradOpKernel : public framework::OpKernel<T> {
           padded_length,
           0,
           false,
-          math::kBatchLengthWidth);
+          phi::funcs::kBatchLengthWidth);
     }
   }
 };

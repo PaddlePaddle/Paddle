@@ -368,7 +368,7 @@ void WarpctcKernel(const Context& dev_ctx,
         -1,
         0,
         false /* norm_by_times */,
-        paddle::operators::math::kLengthBatchWidth);
+        phi::funcs::kLengthBatchWidth);
   }
 
   const T* warpctc_logits_data = warpctc_logits.data<T>();
@@ -407,7 +407,7 @@ void WarpctcKernel(const Context& dev_ctx,
           label.dims()[1] /*pad_seq_len*/,
           0 /*lod_level*/,
           false /*norm_by_times*/,
-          paddle::operators::math::kBatchLengthWidth);
+          phi::funcs::kBatchLengthWidth);
     } else {
       DenseTensor gpu_label;
       gpu_label.Resize(
@@ -422,7 +422,7 @@ void WarpctcKernel(const Context& dev_ctx,
           label.dims()[1] /*pad_seq_len*/,
           0 /*lod_level*/,
           false /*norm_by_times*/,
-          paddle::operators::math::kBatchLengthWidth);
+          phi::funcs::kBatchLengthWidth);
       phi::Copy(dev_ctx, gpu_label, phi::CPUPlace(), true, &warpctc_label);
     }
   } else {

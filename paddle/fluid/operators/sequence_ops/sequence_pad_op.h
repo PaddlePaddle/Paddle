@@ -53,7 +53,7 @@ class SequencePadOpKernel : public framework::OpKernel<T> {
         padded_length,
         0,
         false,
-        math::kBatchLengthWidth);
+        phi::funcs::kBatchLengthWidth);
 
     phi::DenseTensor seq_len;
     seq_len.Resize(len_t->dims());
@@ -87,7 +87,7 @@ class SequencePadGradOpKernel : public framework::OpKernel<T> {
           padded_length,
           0,
           false,
-          math::kBatchLengthWidth);
+          phi::funcs::kBatchLengthWidth);
     }
   }
 };

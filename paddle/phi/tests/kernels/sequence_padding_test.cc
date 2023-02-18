@@ -70,18 +70,12 @@ void TestSequencePadding(const DeviceContext &context,
       -1,
       0,
       false,
-      paddle::operators::math::kLengthBatchWidth);
+      phi::funcs::kLengthBatchWidth);
 
   seq_back.set_lod(lod);
   seq_back.mutable_data<T>(seq_dims, place);
   phi::funcs::UnpaddingLoDTensorFunctor<DeviceContext, T>()(
-      context,
-      padding,
-      &seq_back,
-      -1,
-      0,
-      false,
-      paddle::operators::math::kLengthBatchWidth);
+      context, padding, &seq_back, -1, 0, false, phi::funcs::kLengthBatchWidth);
 
   if (place.GetType() == phi::AllocationType::CPU) {
     cpu_seq_back = seq_back;
