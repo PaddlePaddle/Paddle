@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,12 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/math/sequence_padding.h"
+#include "paddle/phi/kernels/funcs/sequence_padding.h"
 
 #include <gtest/gtest.h>
 template <typename DeviceContext, typename T>
 void TestSequencePadding(const DeviceContext &context,
-                         const paddle::framework::LoD &lod,
+                         const phi::LoD &lod,
                          const size_t sequence_width) {
   phi::DenseTensor cpu_seq;
   phi::DenseTensor cpu_seq_back;
@@ -32,21 +32,21 @@ void TestSequencePadding(const DeviceContext &context,
                                   static_cast<int64_t>(sequence_width)});
 
   cpu_seq.set_lod(lod);
-  cpu_seq.mutable_data<T>(seq_dims, paddle::platform::CPUPlace());
+  cpu_seq.mutable_data<T>(seq_dims, phi::CPUPlace());
   for (int64_t i = 0; i < cpu_seq.numel(); ++i) {
     cpu_seq.data<T>()[i] = static_cast<T>(i);
   }
 
   auto place = context.GetPlace();
-  if (paddle::platform::is_cpu_place(place)) {
+  if (place.GetType() == phi::AllocationType::CPU) {
     seq = cpu_seq;
   } else {
-    paddle::framework::TensorCopySync(cpu_seq, place, &seq);
+    phi::Copy(context, cpu_seq, place, true, &seq);
     seq.set_lod(lod);
   }
 
   const size_t max_sequence_length =
-      paddle::operators::math::MaximumSequenceLength(lod[level]);
+      phi::funcs::MaximumSequenceLength(lod[level]);
   const size_t num_sequences = lod[level].size() - 1;
   auto padding_dims = phi::make_ddim({static_cast<int64_t>(max_sequence_length),
                                       static_cast<int64_t>(num_sequences),
@@ -54,16 +54,15 @@ void TestSequencePadding(const DeviceContext &context,
 
   padding.mutable_data<T>(padding_dims, place);
 
-  T *pad_value_data =
-      cpu_pad_value.mutable_data<T>({1}, paddle::platform::CPUPlace());
+  T *pad_value_data = cpu_pad_value.mutable_data<T>({1}, phi::CPUPlace());
   *pad_value_data = static_cast<T>(0);
-  if (paddle::platform::is_cpu_place(place)) {
+  if (place.GetType() == phi::AllocationType::CPU) {
     pad_value = cpu_pad_value;
   } else {
-    paddle::framework::TensorCopySync(cpu_pad_value, place, &pad_value);
+    phi::Copy(context, cpu_pad_value, place, true, &pad_value);
   }
 
-  paddle::operators::math::PaddingLoDTensorFunctor<DeviceContext, T>()(
+  phi::funcs::PaddingLoDTensorFunctor<DeviceContext, T>()(
       context,
       seq,
       &padding,
@@ -75,7 +74,7 @@ void TestSequencePadding(const DeviceContext &context,
 
   seq_back.set_lod(lod);
   seq_back.mutable_data<T>(seq_dims, place);
-  paddle::operators::math::UnpaddingLoDTensorFunctor<DeviceContext, T>()(
+  phi::funcs::UnpaddingLoDTensorFunctor<DeviceContext, T>()(
       context,
       padding,
       &seq_back,
@@ -84,11 +83,10 @@ void TestSequencePadding(const DeviceContext &context,
       false,
       paddle::operators::math::kLengthBatchWidth);
 
-  if (paddle::platform::is_cpu_place(place)) {
+  if (place.GetType() == phi::AllocationType::CPU) {
     cpu_seq_back = seq_back;
   } else {
-    paddle::framework::TensorCopySync(
-        seq_back, paddle::platform::CPUPlace(), &cpu_seq_back);
+    phi::Copy(context, seq_back, phi::CPUPlace(), true, &cpu_seq_back);
     cpu_seq_back.set_lod(lod);
   }
 
@@ -100,15 +98,15 @@ void TestSequencePadding(const DeviceContext &context,
 }
 
 TEST(Seq2BatchPadding, CPU) {
-  auto place = paddle::platform::CPUPlace();
+  auto place = phi::CPUPlace();
   auto *context = static_cast<phi::CPUContext *>(
       paddle::platform::DeviceContextPool::Instance().Get(place));
 
-  paddle::framework::LoD lod1;
+  phi::LoD : lod1;
   lod1.push_back(std::vector<size_t>{0, 10});
   TestSequencePadding<phi::CPUContext, float>(*context, lod1, 16);
 
-  paddle::framework::LoD lod2;
+  phi::LoD : lod2;
   lod2.push_back(std::vector<size_t>{0, 2, 7, 10});
   TestSequencePadding<phi::CPUContext, float>(*context, lod2, 128);
 }
@@ -119,11 +117,11 @@ TEST(SequencePadding, CUDA) {
   auto *context = static_cast<phi::GPUContext *>(
       paddle::platform::DeviceContextPool::Instance().Get(place));
 
-  paddle::framework::LoD lod1;
+  phi::LoD : lod1;
   lod1.push_back(std::vector<size_t>{0, 10});
   TestSequencePadding<phi::GPUContext, float>(*context, lod1, 16);
 
-  paddle::framework::LoD lod2;
+  phi::LoD : lod2;
   lod2.push_back(std::vector<size_t>{0, 2, 7, 10});
   TestSequencePadding<phi::GPUContext, float>(*context, lod2, 128);
 }
