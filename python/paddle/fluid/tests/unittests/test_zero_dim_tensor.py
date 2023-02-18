@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Note:
+# 0D Tensor indicates that the tensor's dimension is 0
+# 0D Tensor's shape is always [], numel is 1
+# which can be created by paddle.rand([])
+
 import unittest
 
 import numpy as np
