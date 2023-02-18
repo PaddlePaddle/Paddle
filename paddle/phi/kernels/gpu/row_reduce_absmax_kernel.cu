@@ -55,6 +55,35 @@ struct MaxFunc<half2>{
 };
 
 
+template<typename T>
+struct AbsFunc{
+  __device__ T operator()(T x){
+    return abs(x); 
+  }
+}; 
+
+template<>
+struct AbsFunc<half>{
+  __device__ half operator()(half x){
+    return __habs(x); 
+  }
+}; 
+
+template<>
+struct AbsFunc<half2>{
+  __device__ half2 operator()(half2 x){
+    return __habs2(x); 
+  }
+};
+
+template<typename T, int pack_size>
+struct GetPackType {
+  using type = typename std::aligned_storage<pack_size * sizeof(T), pack_size * sizeof(T)>::type;
+};
+
+template<typename T, int pack_size>
+using PackType = typename GetPackType<T, pack_size>::type;
+
 template<typename T, int VecSize>
 struct alignas(sizeof(T) * VecSize) Pack {
   __device__ Pack() {
@@ -65,45 +94,89 @@ struct alignas(sizeof(T) * VecSize) Pack {
   }
   union {
     T elem[VecSize];
+    PackType<T, VecSize> storage;
   };
 
   __device__ void pack_abs_max(Pack<T, VecSize> packA){
     #pragma unroll 
     for(int i = 0; i < VecSize; i++){
-      elem[i] = max(elem[i], abs(packA.elem[i])); 
+      elem[i] = MaxFunc<T>()(elem[i], AbsFunc<T>()(packA.elem[i])); 
+    }
+  }
+};
+
+template <>
+struct alignas(sizeof(half) * 1) Pack<half, 1> {
+  __device__ Pack() {
+    #pragma unroll
+    for(int i = 0; i < 1; i++){
+      elem[i] = 0.0f; 
+    }
+  }
+  union {
+    half elem[1];
+    PackType<half, 1> storage;
+  };
+
+  __device__ void pack_abs_max(Pack<half, 1> packA){
+    #pragma unroll 
+    for(int i = 0; i < 1; i++){
+      elem[i] = MaxFunc<half>()(elem[i], AbsFunc<half>()(packA.elem[i])); 
     }
   }
 };
 
 template <int VecSize>
-struct alignas(sizeof(half) * VecSize) Pack<half, VecSize> {
+struct alignas(sizeof(half2) * VecSize / 2) Pack<half, VecSize> {
   __device__ Pack() {
     #pragma unroll
-    for(int i = 0; i < VecSize; i++){
-      elem[i] = 0.0f; 
+    for(int i = 0; i < VecSize / 2; i++){
+      elem_pack2[i] = make_half2(0.0, 0.0); 
     }
   }
+
   union {
-    half elem[VecSize];
-    half2 elem[VecSize / 2]; 
+    half2 elem_pack2[VecSize / 2];
+    PackType<half, VecSize> storage;
   };
 
-  __device__ void pack_abs_max(Pack<half, VecSize> packA){
+  __device__ void pack_abs_max(const Pack<half, VecSize>& packA){
     #pragma unroll 
-    for(int i = 0; i < VecSize; i++){
-      elem[i] = MaxFunc<half>()(elem[i], __habs(packA.elem[i])); 
+    for(int i = 0; i < VecSize / 2; i++){
+      elem_pack2[i] = MaxFunc<half2>()(elem_pack2[i], AbsFunc<half2>()(packA.elem_pack2[i])); 
     }
   }
 };
 
 template<typename T, int VecSize>
-__device__ T PackReduceAbsMax(Pack<T, VecSize> pack){
+__device__ T PackReduceAbsMax(const Pack<T, VecSize>& pack){
     T res = 0.0; 
     #pragma unroll
     for(int i = 0; i < VecSize; i++){
       res = MaxFunc<T>()(res, pack.elem[i]); 
     }
     return res; 
+}
+
+template<>
+__device__ half PackReduceAbsMax(const Pack<half, 1>& pack){
+    half res = 0.0; 
+    #pragma unroll
+    for(int i = 0; i < 1; i++){
+      res = MaxFunc<half>()(res, pack.elem[i]); 
+    }
+    return res; 
+}
+
+template<typename T, int VecSize>
+__device__ typename std::enable_if<std::is_same<T, half>::value && VecSize % 2 == 0, half>::type 
+PackReduceAbsMax(const Pack<half, VecSize>& pack){
+    half2 res = make_half2(0.0, 0.0); 
+    #pragma unroll
+    for(int i = 0; i < VecSize / 2; i++){
+      res = MaxFunc<half2>()(res, pack.elem_pack2[i]); 
+    }
+    return MaxFunc<half>()(res.x, res.y); 
 }
 
 template <typename T>
@@ -134,31 +207,25 @@ template<typename T, int VecSize>
 __global__ void ReduceAbsMaxKernel(const T* x, T* out, int32_t rows, int32_t cols){
   Pack<T, VecSize> abs_max_pack{}; 
   Pack<T, VecSize> load_pack{};
-  using LoadType = Pack<T, VecSize>;
+  using LoadType = PackType<T, VecSize>;
+
   T local_max_val = 0.0; 
   for(int row_idx = blockIdx.x; row_idx < rows; row_idx += gridDim.x){
       for(int col_idx = threadIdx.x * VecSize; col_idx < cols; col_idx += blockDim.x * VecSize){
           int32_t linear_index = row_idx * cols + col_idx; 
           const LoadType* x_load = reinterpret_cast<const LoadType*>(x + linear_index);
-          load_pack = *x_load; 
-          // printf("linearidx is: %d, Load pack val is: %f, %f, %f, %f \n", linear_index, load_pack.elem[0], load_pack.elem[1], load_pack.elem[2], load_pack.elem[3]); 
+          load_pack.storage = *x_load; 
           abs_max_pack.pack_abs_max(load_pack); 
-          // printf("linearidx is: %d, absmax pack val is: %f, %f, %f, %f \n", linear_index, abs_max_pack.elem[0], abs_max_pack.elem[1], abs_max_pack.elem[2], abs_max_pack.elem[3]); 
       }
       local_max_val = PackReduceAbsMax<T, VecSize>(abs_max_pack); 
-      // printf("local max val is: %f \n", local_max_val); 
       T row_max_val = BlockReduceAbsMax<T>(local_max_val, 0xffffffff); 
-      // printf("row max val is: %f \n", local_max_val); 
       if(threadIdx.x == 0){
-        // printf("row max val is: %f \n", local_max_val); 
         out[row_idx] = row_max_val; 
       }
   }
 }
 
-// constexpr int32_t BlockSize = 128; 
-// constexpr int32_t BlockSize = 256; 
-constexpr int32_t BlockSize = 512; 
+constexpr int32_t BlockSize = 256; 
 
 template <typename T, int VecSize>
 bool TryLaunchKernel(const phi::GPUContext& dev_ctx,
@@ -171,7 +238,6 @@ bool TryLaunchKernel(const phi::GPUContext& dev_ctx,
      (reinterpret_cast<uintptr_t>(x_data) % sizeof(T) == 0) &&
      (reinterpret_cast<uintptr_t>(out_data) % sizeof(T) == 0)){
     ReduceAbsMaxKernel<T, VecSize><<<rows, BlockSize, 0, dev_ctx.stream()>>>(x_data, out_data, rows, cols);
-    printf("Here is vecsize %d \n", VecSize);  
     return true; 
   }
   return false; 
@@ -217,13 +283,6 @@ void RowReduceAbsMaxKernel(const Context& dev_ctx,
   DispatchVecSize<DataType>(dev_ctx, 
                             reinterpret_cast<const DataType*>(x_data), 
                             reinterpret_cast<DataType*>(out_data), rows, cols); 
-
-//   template <typename T>
-// void DispatchVecSize(const phi::GPUContext& ctx,
-//                      const T* x_data, 
-//                      T* out_data, 
-//                      const int64_t rows, 
-//                      const int64_t cols) 
 }
 
 }  // namespace phi
@@ -232,5 +291,5 @@ PD_REGISTER_KERNEL(row_reduce_absmax,
                    GPU,
                    ALL_LAYOUT,
                    phi::RowReduceAbsMaxKernel,
-                   phi::dtype::float16,
-                   float) {}
+                   float, 
+                   phi::dtype::float16) {}
