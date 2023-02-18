@@ -20,21 +20,33 @@ limitations under the License. */
 
 namespace paddle {
 namespace inference {
-
-TEST(resnet50, compare) {
-  std::string model_dir = FLAGS_infer_model + "/resnext50";
-  auto precision = AnalysisConfig::Precision::kFloat32;
-
+TEST(TensorRT, mark_engine_output) {
+  std::string model_dir = FLAGS_infer_model;
   // The name of the tensor that needs to be marked, the default is empty (all
   // marks)
-  std::vector<std::string> markOutput = {
-      "relu_9.tmp_0", "batch_norm_0.tmp_2", "batch_norm_7.tmp_2"};
+  std::vector<std::string> markOutput = {};
   AnalysisConfig config;
-  config.EnableTensorRtEngine(1 << 30, 1, 5, precision, false, false);
+  config.SetModel(model_dir);
+  config.EnableUseGpu(500, 0);
+  config.EnableTensorRtEngine(
+      1 << 30, 1, 5, AnalysisConfig::Precision::kFloat32, false, false);
   config.MarkEngineOutputs(true, markOutput);
   auto predictor = CreatePaddlePredictor(config);
-  compare(model_dir, /* use_tensorrt */ true);
-}
 
+  int batch_size = 1;
+  int channels = 3;
+  int height = 324;
+  int width = 324;
+  int input_num = batch_size * channels * height * width;
+  float *input = new float[input_num];
+  memset(input, 1.0, input_num * sizeof(float));
+
+  auto input_names = predictor->GetInputNames();
+  auto input_t = predictor->GetInputTensor(input_names[0]);
+  input_t->Reshape({batch_size, channels, height, width});
+  input_t->copy_from_cpu(input);
+
+  ASSERT_TRUE(predictor->ZeroCopyRun());
+}
 }  // namespace inference
 }  // namespace paddle
