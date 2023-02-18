@@ -251,6 +251,32 @@ __inline__ __device__ T WarpReduceMax(T val, unsigned lane_mask) {
   return val;
 }
 
+template <typename T>
+__inline__ __device__ T warpReduceAbsMax(T val, unsigned lane_mask) {
+  for (int mask = HALF_WARP; mask > 0; mask >>= 1)
+#if defined(PADDLE_WITH_CUDA) && (__CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000)
+    val = max(abs(val), abs(__shfl_xor_sync(lane_mask, val, mask, warpSize)));
+#else
+    val = max(abs(val), abs(__shfl_xor(val, mask, warpSize)));
+#endif
+  return val;
+}
+
+template <typename T>
+__inline__ __device__ T blockReduceAbsMax(T val, unsigned mask) {
+  static __shared__ T smem[WARP_SIZE];
+  int32_t lane_id = threadIdx.x & 0x1f;
+  int32_t warp_id = threadIdx.x >> 5;
+  val = warpReduceAbsMax(val, mask);
+  if (lane_id == 0) {
+    smem[warp_id] = val;
+  }
+  __syncthreads();
+  val = (threadIdx.x < blockDim.x / WARP_SIZE) ? smem[threadIdx.x] : -1.0f;
+  val = warpReduceAbsMax(val, mask);
+  return val;
+}
+
 template <typename T, int NUM>
 __inline__ __device__ T WarpReduceMaxV2(T *val) {
 #pragma unroll
