@@ -105,11 +105,11 @@ TEST(Seq2BatchPadding, CPU) {
   auto *context = static_cast<phi::CPUContext *>(
       paddle::platform::DeviceContextPool::Instance().Get(place));
 
-  phi::LoD : lod1;
+  phi::LoD lod1;
   lod1.push_back(std::vector<size_t>{0, 10});
   TestSequencePadding<phi::CPUContext, float>(*context, lod1, 16);
 
-  phi::LoD : lod2;
+  phi::LoD lod2;
   lod2.push_back(std::vector<size_t>{0, 2, 7, 10});
   TestSequencePadding<phi::CPUContext, float>(*context, lod2, 128);
 }
@@ -120,11 +120,11 @@ TEST(SequencePadding, CUDA) {
   auto *context = static_cast<phi::GPUContext *>(
       paddle::platform::DeviceContextPool::Instance().Get(place));
 
-  phi::LoD : lod1;
+  phi::LoD lod1;
   lod1.push_back(std::vector<size_t>{0, 10});
   TestSequencePadding<phi::GPUContext, float>(*context, lod1, 16);
 
-  phi::LoD : lod2;
+  phi::LoD lod2;
   lod2.push_back(std::vector<size_t>{0, 2, 7, 10});
   TestSequencePadding<phi::GPUContext, float>(*context, lod2, 128);
 }
