@@ -37,9 +37,9 @@ void TestSequencePadding(const DeviceContext &context,
   auto *dev_ctx = static_cast<phi::CPUContext *>(
       paddle::platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
   cpu_seq.Resize(seq_dims);
-  dev_ctx->template Alloc<T>(cpu_seq)
+  dev_ctx->template Alloc<T>(cpu_seq);
 
-      for (int64_t i = 0; i < cpu_seq.numel(); ++i) {
+  for (int64_t i = 0; i < cpu_seq.numel(); ++i) {
     cpu_seq.data<T>()[i] = static_cast<T>(i);
   }
 
@@ -59,13 +59,11 @@ void TestSequencePadding(const DeviceContext &context,
                                       static_cast<int64_t>(sequence_width)});
 
   padding.Resize(padding_dims);
-  context
-      .template Alloc<T>(padding)
+  context.template Alloc<T>(padding);
 
-          cpu_pad_value.Resize({1});
-  T *pad_value_data =
-      dev_ctx->template Alloc<T>(cpu_pad_value) *pad_value_data =
-          static_cast<T>(0);
+  cpu_pad_value.Resize({1});
+  T *pad_value_data = dev_ctx->template Alloc<T>(cpu_pad_value);
+  *pad_value_data = static_cast<T>(0);
   if (place.GetType() == phi::AllocationType::CPU) {
     pad_value = cpu_pad_value;
   } else {
@@ -84,15 +82,9 @@ void TestSequencePadding(const DeviceContext &context,
 
   seq_back.set_lod(lod);
   seq_back.Resize(seq_dims);
-  context.template Alloc<T>(seq_back)
-      phi::funcs::UnpaddingLoDTensorFunctor<DeviceContext, T>()(
-          context,
-          padding,
-          &seq_back,
-          -1,
-          0,
-          false,
-          phi::funcs::kLengthBatchWidth);
+  context.template Alloc<T>(seq_back);
+  phi::funcs::UnpaddingLoDTensorFunctor<DeviceContext, T>()(
+      context, padding, &seq_back, -1, 0, false, phi::funcs::kLengthBatchWidth);
 
   if (place.GetType() == phi::AllocationType::CPU) {
     cpu_seq_back = seq_back;
