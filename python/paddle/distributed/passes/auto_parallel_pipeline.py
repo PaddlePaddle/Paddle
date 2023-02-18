@@ -200,22 +200,11 @@ class PipelinePass(PassBase):
         pp_stages = len(self._dist_context.process_meshes)
         cur_pp_stage = self._get_pp_stage(cur_rank)
 
-        print("pp_stages:", pp_stages)
-        print("cur_rank:", cur_rank)
-        print("cur_pp_stage:", cur_pp_stage)
-        print("process_meshes:", self._dist_context.process_meshes)
-        for process_mesh in self._dist_context.process_meshes:
-            print("--> processes:", process_mesh.processes)
-
         start_prog = Program()
         cond_prog = Program()
         end_prog = Program()
         send_prog = Program()
         recv_prog = Program()
-
-        # print("=" * 20)
-        # print("src_prog:")
-        # print(self._program)
 
         cond_var_name = None
         send_vars_name = set()
@@ -384,29 +373,6 @@ class PipelinePass(PassBase):
         send_prog._sync_with_cpp()
         recv_prog._sync_with_cpp()
 
-        print("send_vars_name:", list(send_vars_name))
-        print("recv_vars_name:", list(set(recv_vars_name.values())))
-
-        # print("=" * 20)
-        # print("start_prog:")
-        # print(start_prog)
-
-        # print("=" * 20)
-        # print("cond_prog:")
-        # print(cond_prog)
-
-        # print("=" * 20)
-        # print("send_prog:")
-        # print(send_prog)
-
-        # print("=" * 20)
-        # print("recv_prog:")
-        # print(recv_prog)
-
-        # print("=" * 20)
-        # print("end_prog:")
-        # print(end_prog)
-
         assert cond_var_name is not None
 
         send_task_node_var_dtype = dict()
@@ -438,9 +404,6 @@ class PipelinePass(PassBase):
             assert len(send_task_node_var_dtype) == 0
             vars_to_dtype = recv_task_node_var_dtype
             vars_to_shape = recv_task_node_var_shape
-
-        print("vars_to_dtype:", vars_to_dtype)
-        print("vars_to_shape:", vars_to_shape)
 
         start_task_node = TaskNode(
             rank=cur_rank,
