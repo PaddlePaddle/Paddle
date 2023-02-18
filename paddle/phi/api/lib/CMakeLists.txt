@@ -97,6 +97,26 @@ set(wrapped_infermeta_header_file
 set(wrapped_infermeta_source_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/infermeta/generated.cc)
 
+# tensor and tensor operants file
+set(tensor_gen_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/tensor_gen.py)
+set(api_prim_yaml_file ${CMAKE_SOURCE_DIR}/paddle/fluid/prim/api/api.yaml)
+set(operants_base_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/operants_base.h)
+set(phi_tensor_operants_header_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/tensor_operants.h)
+set(phi_tensor_operants_source_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/tensor_operants.cc)
+set(operants_manager_header_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/operants_manager.h)
+set(operants_manager_source_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/operants_manager.cc)
+set(operants_base_file_tmp ${operants_base_file}.tmp)
+set(phi_tensor_operants_header_file_tmp ${phi_tensor_operants_header_file}.tmp)
+set(phi_tensor_operants_source_file_tmp ${phi_tensor_operants_source_file}.tmp)
+set(operants_manager_header_file_tmp ${operants_manager_header_file}.tmp)
+set(operants_manager_source_file_tmp ${operants_manager_source_file}.tmp)
+
 if(NOT PYTHONINTERP_FOUND)
   find_package(PythonInterp REQUIRED)
 endif()
@@ -108,8 +128,7 @@ add_custom_command(
   COMMAND
     ${PYTHON_EXECUTABLE} ${api_gen_file} --api_yaml_path ${api_yaml_file}
     ${legacy_api_yaml_file} --api_header_path ${api_header_file_tmp}
-    --api_header_path ${api_header_file_tmp} --api_source_path
-    ${api_source_file_tmp}
+    --api_source_path ${api_source_file_tmp}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_header_file_tmp}
           ${api_header_file}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_source_file_tmp}
@@ -214,6 +233,38 @@ add_custom_command(
     ${wrapped_infermeta_source_file}
   DEPENDS ${api_yaml_file} ${legacy_api_yaml_file} ${wrapped_infermeta_gen_file}
           ${api_gen_base}
+  VERBATIM)
+
+# generate tensor and tensor operants file
+add_custom_command(
+  OUTPUT ${operants_base_file} ${phi_tensor_operants_header_file}
+         ${phi_tensor_operants_source_file} ${operants_manager_header_file}
+         ${operants_manager_source_file}
+  COMMAND ${PYTHON_EXECUTABLE} -m pip install pyyaml
+  COMMAND
+    ${PYTHON_EXECUTABLE} ${tensor_gen_file} --api_yaml_path ${api_yaml_file}
+    ${legacy_api_yaml_file} --operants_base_path ${operants_base_file_tmp}
+    --phi_tensor_operants_header_path ${phi_tensor_operants_header_file_tmp}
+    --phi_tensor_operants_source_path ${phi_tensor_operants_source_file_tmp}
+    --operants_manager_header_path ${operants_manager_header_file_tmp}
+    --operants_manager_source_path ${operants_manager_source_file_tmp}
+    --api_prim_yaml_path ${api_prim_yaml_file}
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${operants_base_file_tmp}
+          ${operants_base_file}
+  COMMAND
+    ${CMAKE_COMMAND} -E copy_if_different ${phi_tensor_operants_header_file_tmp}
+    ${phi_tensor_operants_header_file}
+  COMMAND
+    ${CMAKE_COMMAND} -E copy_if_different ${phi_tensor_operants_source_file_tmp}
+    ${phi_tensor_operants_source_file}
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+          ${operants_manager_header_file_tmp} ${operants_manager_header_file}
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+          ${operants_manager_source_file_tmp} ${operants_manager_source_file}
+  COMMENT
+    "copy_if_different ${phi_tensor_operants_header_file} ${phi_tensor_operants_source_file}"
+  DEPENDS ${api_yaml_file} ${legacy_api_yaml_file} ${tensor_gen_file}
+          ${api_gen_base} ${api_gen_file}
   VERBATIM)
 
 cc_library(
@@ -331,9 +382,9 @@ cc_library(
 
 cc_library(
   phi_tensor_operants
-  SRCS tensor_operants.cc
+  SRCS ${phi_tensor_operants_source_file}
   DEPS phi_function_api)
 cc_library(
   operants_manager
-  SRCS operants_manager.cc
+  SRCS ${operants_manager_source_file}
   DEPS phi_enforce)

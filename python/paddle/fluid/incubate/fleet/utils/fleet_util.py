@@ -57,7 +57,7 @@ class FleetUtil:
         op_maker = core.op_proto_and_checker_maker
         self.op_role_key = op_maker.kOpRoleAttrName()
         if mode == "pslib":
-            from paddle.fluid.incubate.fleet.parameter_server.pslib import (
+            from paddle.incubate.fleet.parameter_server.pslib import (
                 fleet as fleet_pslib,
             )
 
