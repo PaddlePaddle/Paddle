@@ -11,10 +11,12 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include <gtest/gtest.h>
 
 #include "paddle/phi/kernels/funcs/sequence_padding.h"
 
-#include <gtest/gtest.h>
+#include "paddle/phi/core/tensor_utils.h"
+
 template <typename DeviceContext, typename T>
 void TestSequencePadding(const DeviceContext &context,
                          const phi::LoD &lod,
@@ -32,8 +34,12 @@ void TestSequencePadding(const DeviceContext &context,
                                   static_cast<int64_t>(sequence_width)});
 
   cpu_seq.set_lod(lod);
-  cpu_seq.mutable_data<T>(seq_dims, phi::CPUPlace());
-  for (int64_t i = 0; i < cpu_seq.numel(); ++i) {
+  auto *dev_ctx = static_cast<phi::CPUContext *>(
+      paddle::platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+  cpu_seq.Resize(seq_dims);
+  dev_ctx->template Alloc<T>(cpu_seq)
+
+      for (int64_t i = 0; i < cpu_seq.numel(); ++i) {
     cpu_seq.data<T>()[i] = static_cast<T>(i);
   }
 
@@ -52,10 +58,14 @@ void TestSequencePadding(const DeviceContext &context,
                                       static_cast<int64_t>(num_sequences),
                                       static_cast<int64_t>(sequence_width)});
 
-  padding.mutable_data<T>(padding_dims, place);
+  padding.Resize(padding_dims);
+  context
+      .template Alloc<T>(padding)
 
-  T *pad_value_data = cpu_pad_value.mutable_data<T>({1}, phi::CPUPlace());
-  *pad_value_data = static_cast<T>(0);
+          cpu_pad_value.Resize({1});
+  T *pad_value_data =
+      dev_ctx->template Alloc<T>(cpu_pad_value) *pad_value_data =
+          static_cast<T>(0);
   if (place.GetType() == phi::AllocationType::CPU) {
     pad_value = cpu_pad_value;
   } else {
@@ -73,9 +83,16 @@ void TestSequencePadding(const DeviceContext &context,
       phi::funcs::kLengthBatchWidth);
 
   seq_back.set_lod(lod);
-  seq_back.mutable_data<T>(seq_dims, place);
-  phi::funcs::UnpaddingLoDTensorFunctor<DeviceContext, T>()(
-      context, padding, &seq_back, -1, 0, false, phi::funcs::kLengthBatchWidth);
+  seq_back.Resize(seq_dims);
+  context.template Alloc<T>(seq_back)
+      phi::funcs::UnpaddingLoDTensorFunctor<DeviceContext, T>()(
+          context,
+          padding,
+          &seq_back,
+          -1,
+          0,
+          false,
+          phi::funcs::kLengthBatchWidth);
 
   if (place.GetType() == phi::AllocationType::CPU) {
     cpu_seq_back = seq_back;
