@@ -259,7 +259,7 @@ size_t DenseTensor::NumElements(size_t level) const {
 
 DenseTensor& DenseTensor::Resize(const DDim& dims) {
   meta_.dims = dims;
-  meta_.setStride(dims);
+  meta_.setStride(dims, meta_.layout);
   return *this;
 }
 

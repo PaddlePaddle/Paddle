@@ -184,6 +184,7 @@ class PADDLE_API Tensor final {
    * @return std::vector<int64_t>
    */
   std::vector<int64_t> stride() const;
+
   /**
    * @brief Reset the shape of the tensor.
    * @note: This method means Reset the shape of the tensor,

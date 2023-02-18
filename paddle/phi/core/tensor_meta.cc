@@ -84,7 +84,13 @@ bool DenseTensorMeta::valid() const noexcept {
   return valid;
 }
 
-void DenseTensorMeta::setStride(DDim newStrides) { strides = newStrides; }
+void DenseTensorMeta::setStride(const DDim& newStrides) {
+  strides = calc_strides(dims, DataLayout::NCHW);
+}
+
+void DenseTensorMeta::setStride(const DDim& dims, DataLayout layout) {
+  strides = calc_strides(dims, layout);
+}
 
 StringTensorMeta::StringTensorMeta(const DDim& dims) : dims(dims) {}
 

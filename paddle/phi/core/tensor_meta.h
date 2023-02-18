@@ -66,7 +66,10 @@ struct DenseTensorMeta {
   bool valid() const noexcept;
 
   /// \brief Set strides
-  void setStride(DDim newStrides);
+  void setStride(const DDim& newStrides);
+
+  /// \brief Set strides according dims and layout
+  void setStride(const DDim& dims, DataLayout layout);
 
   bool is_scalar{false};
   /// \brief Determine whether using gpudnn speed-up library in the new dygraph.

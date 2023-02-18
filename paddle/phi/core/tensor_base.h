@@ -38,10 +38,6 @@ class TensorBase {
   /// \return The dims of the tensor.
   virtual const DDim& dims() const = 0;
 
-  /// \brief Returns the dims of the tensor.
-  /// \return The dims of the tensor.
-  // virtual const DDim& stride() const = 0;
-
   /// \brief Returns the data type of the tensor.
   /// \return The data type of the tensor.
   virtual DataType dtype() const = 0;
