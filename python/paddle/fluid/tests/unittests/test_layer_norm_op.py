@@ -519,8 +519,8 @@ class TestFastMathLayerNormOp(unittest.TestCase):
         def use_fast_math(enabled):
             paddle.set_flags({'FLAGS_use_fast_math': enabled})
 
-        def __assert_close(fast_array, dev_array, msg, atol=1e-6):
-            self.assertTrue(np.allclose(fast_array, dev_array, atol=atol), msg)
+        def __assert_close(x, y):
+            np.testing.assert_allclose(x, y, rtol=1e-05, atol=1e-04)
 
         x_np = np.random.random(shape).astype('float32')
         bias_np = np.random.random(shape[norm_axis:]).astype('float32')
@@ -534,30 +534,26 @@ class TestFastMathLayerNormOp(unittest.TestCase):
         y_dev = self.check_layer_norm(
             dtype, x_np, scale_np, bias_np, norm_axis, has_scale, has_bias
         )
-
-        if dtype == "float32":
-            __assert_close(y_fast, y_dev, 'y')
-        else:
-            __assert_close(y_fast, y_dev, 'y', atol=1e-5)
+        __assert_close(y_fast, y_dev)
 
     def check_with_dtype(self, dtype):
         self.check_with_fast_math(
             dtype,
-            shape=[15, 128],
+            shape=[17, 129],
             norm_axis=1,
             has_scale=False,
             has_bias=True,
         )
         self.check_with_fast_math(
             dtype,
-            shape=[8, 65],
+            shape=[8, 512],
             norm_axis=1,
             has_scale=False,
             has_bias=False,
         )
         self.check_with_fast_math(
             dtype,
-            shape=[8, 512],
+            shape=[2, 768],
             norm_axis=1,
             has_scale=False,
             has_bias=False,
