@@ -33,9 +33,10 @@ public:
         PADDLE_ENFORCE_EQ(pthread_barrier_init(&_barrier, NULL, count), 0);
     }
     void wait() {
-        int err = pthread_barrier_wait(&_barrier);
-        PADDLE_ENFORCE((err = pthread_barrier_wait(&_barrier), err == 0 || err == PTHREAD_BARRIER_SERIAL_THREAD), 
-            platform::errors::External("err:%d", err));
+        pthread_barrier_wait(&_barrier);
+        // int err = pthread_barrier_wait(&_barrier);
+        // PADDLE_ENFORCE((err = pthread_barrier_wait(&_barrier), err == 0 || err == PTHREAD_BARRIER_SERIAL_THREAD), 
+        //     platform::errors::External("err:%d", err));
     }
 private:
     pthread_barrier_t _barrier;
