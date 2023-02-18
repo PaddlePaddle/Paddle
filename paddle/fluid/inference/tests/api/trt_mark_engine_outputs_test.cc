@@ -18,9 +18,8 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 
-TEST(resnet50, mark_engine_outputs) {
-  int batch_size = 1;
-  std::string model_dir = FLAGS_infer_model + "/resnet50";
+TEST(TensorRT, mark_engine_outputs) {
+  std::string model_dir = FLAGS_infer_model;
   AnalysisConfig config;
   config.EnableUseGpu(100, 0);
   config.SetModel(model_dir);
@@ -34,6 +33,7 @@ TEST(resnet50, mark_engine_outputs) {
 
   auto predictor = CreatePaddlePredictor(config);
 
+  int batch_size = 1;
   int channels = 3;
   int height = 224;
   int width = 224;
@@ -47,14 +47,9 @@ TEST(resnet50, mark_engine_outputs) {
   im_shape[2] = 224.0;
 
   auto input_names = predictor->GetInputNames();
-
   auto input_t = predictor->GetInputTensor(input_names[0]);
   input_t->Reshape({batch_size, channels, height, width});
   input_t->copy_from_cpu(input);
-
-  auto input_t1 = predictor->GetInputTensor(input_names[1]);
-  input_t1->Reshape({batch_size, 3});
-  input_t1->copy_from_cpu(im_shape);
 
   ASSERT_TRUE(predictor->ZeroCopyRun());
 }
