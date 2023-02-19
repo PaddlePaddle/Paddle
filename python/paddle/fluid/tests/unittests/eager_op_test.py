@@ -1991,7 +1991,12 @@ class OpTest(unittest.TestCase):
         core._set_prim_all_enabled(False)
         if check_prim:
             prim_grad_checker = PrimGradChecker(
-                self, place, inputs_to_check, output_names
+                self,
+                place,
+                inputs_to_check,
+                output_names,
+                no_grad_set,
+                user_defined_grad_outputs,
             )
             prim_grad_checker.check()
             setattr(self.__class__, 'check_prim', True)
