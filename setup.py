@@ -569,7 +569,7 @@ os.environ['CUDA_CACHE_MAXSIZE'] = '805306368'
 
 
 def write_parameter_server_version_py(
-    filename='paddle/fluid/incubate/fleet/parameter_server/version.py',
+    filename='paddle/incubate/fleet/parameter_server/version.py',
 ):
     cnt = '''
 
@@ -1291,8 +1291,6 @@ def get_setup_parameters():
         'paddle.fluid.incubate.fleet',
         'paddle.fluid.incubate.checkpoint',
         'paddle.fluid.incubate.fleet.base',
-        'paddle.fluid.incubate.fleet.parameter_server',
-        'paddle.fluid.incubate.fleet.parameter_server.ir',
         'paddle.fluid.incubate.fleet.collective',
         'paddle.fluid.incubate.fleet.utils',
         'paddle.amp',
@@ -1451,7 +1449,7 @@ def main():
         filename='{}/python/paddle/cuda_env.py'.format(paddle_binary_dir)
     )
     write_parameter_server_version_py(
-        filename='{}/python/paddle/fluid/incubate/fleet/parameter_server/version.py'.format(
+        filename='{}/python/paddle/incubate/fleet/parameter_server/version.py'.format(
             paddle_binary_dir
         )
     )
