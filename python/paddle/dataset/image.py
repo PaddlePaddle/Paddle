@@ -41,7 +41,7 @@ import numpy as np
 
 interpreter = sys.executable
 # Note(zhouwei): if use Python/C 'PyRun_SimpleString', 'sys.executable'
-# will be the C++ execubable on Windows
+# will be the C++ executable on Windows
 if sys.platform == 'win32' and 'python.exe' not in interpreter:
     interpreter = sys.exec_prefix + os.sep + 'python.exe'
 import_cv2_proc = subprocess.Popen(
@@ -332,7 +332,7 @@ def simple_transform(
 ):
     """
     Simply data argumentation for training. These operations include
-    resizing, croping and flipping.
+    resizing, cropping and flipping.
 
     Example usage:
 
