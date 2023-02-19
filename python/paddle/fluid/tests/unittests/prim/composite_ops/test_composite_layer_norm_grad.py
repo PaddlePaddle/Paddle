@@ -425,7 +425,6 @@ class TestCompositelayer_normPrimBackward(unittest.TestCase):
             if paddle.device.get_device() == "cpu":
                 print("need pass this case")
                 continue
-
             for t in range(0, len(self.shape1s)):
                 attrs.set_dtype(j)
                 attrs.set_shape(
@@ -437,7 +436,7 @@ class TestCompositelayer_normPrimBackward(unittest.TestCase):
                 self.compare_backward()
 
 
-class TestCompositeFP64layer_norm(unittest.TestCase):
+class TestCompositeNumpylayer_norm(unittest.TestCase):
     def setUp(self):
         self.dtypes = ["float32", "float64"]
         self.n_shape = [

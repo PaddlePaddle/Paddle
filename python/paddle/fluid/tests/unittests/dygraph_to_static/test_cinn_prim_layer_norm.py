@@ -99,21 +99,20 @@ class TestPrimForward(unittest.TestCase):
             if paddle.device.get_device() == "cpu":
                 print("need pass this case")
                 continue
-            else:
-                x_n, w_n, b_n = generate_data(dtype)
-                self.x = paddle.to_tensor(x_n)
-                self.w = paddle.to_tensor(w_n)
-                self.b = paddle.to_tensor(b_n)
-                self.x.stop_gradient = False
-                dy_res = self.train(use_prim=False)
-                cinn_res = self.train(use_prim=True)
+            x_n, w_n, b_n = generate_data(dtype)
+            self.x = paddle.to_tensor(x_n)
+            self.w = paddle.to_tensor(w_n)
+            self.b = paddle.to_tensor(b_n)
+            self.x.stop_gradient = False
+            dy_res = self.train(use_prim=False)
+            cinn_res = self.train(use_prim=True)
 
-                np.testing.assert_allclose(
-                    cinn_res,
-                    dy_res,
-                    rtol=TOLERANCE[dtype]['rtol'],
-                    atol=TOLERANCE[dtype]['atol'],
-                )
+            np.testing.assert_allclose(
+                cinn_res,
+                dy_res,
+                rtol=TOLERANCE[dtype]['rtol'],
+                atol=TOLERANCE[dtype]['atol'],
+            )
 
 
 class TestPrimForwardAndBackward(unittest.TestCase):
@@ -162,7 +161,6 @@ class TestPrimForwardAndBackward(unittest.TestCase):
                 if paddle.device.get_device() == "cpu":
                     print("need pass this case")
                     continue
-
                 x_n, w_n, b_n = generate_data(dtype)
                 self.x = paddle.to_tensor(x_n)
                 self.w = paddle.to_tensor(w_n)
