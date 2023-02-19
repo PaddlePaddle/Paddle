@@ -686,6 +686,7 @@ if(WITH_STRIP)
 endif()
 
 add_subdirectory(paddle)
+add_subdirectory(test)
 if(WITH_PYTHON)
   add_subdirectory(python)
 endif()
