@@ -50,6 +50,11 @@ void ExpandAs(const Context& context,
     }
   }
   if (target_shape.size() == 0) {
+    std::cout << "XYY Debug, debug the 「Tensor holds no memory」" << std::endl;
+    phi::DDim out_dims = phi::make_ddim(target_shape);
+    out->Resize(out_dims);
+    context.template Alloc<T>(out);
+
     int r = xpu::copy<XPUType>(context.x_context(),
                                reinterpret_cast<const XPUType*>(x.data<T>()),
                                reinterpret_cast<XPUType*>(out->data<T>()),
@@ -57,6 +62,7 @@ void ExpandAs(const Context& context,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
     return;
   }
+
   phi::DDim out_dims = phi::make_ddim(target_shape);
   out->Resize(out_dims);
   context.template Alloc<T>(out);
