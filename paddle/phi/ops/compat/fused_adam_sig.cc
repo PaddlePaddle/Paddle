@@ -18,22 +18,21 @@
 
 namespace phi {
 
-KernelSignature MultiTensorAdamOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+KernelSignature FusedAdamOpArgumentMapping(const ArgumentMappingContext& ctx) {
   paddle::small_vector<const char*> in_names = {"Params",
                                                 "Grads",
                                                 "LearningRate",
                                                 "Moments1",
                                                 "Moments2",
-                                                "Beta1Pow",
-                                                "Beta2Pow",
+                                                "Beta1Pows",
+                                                "Beta2Pows",
                                                 "MasterParams",
                                                 "SkipUpdate"};
   paddle::small_vector<const char*> out_names = {"ParamsOut",
                                                  "Moments1Out",
                                                  "Moments2Out",
-                                                 "Beta1PowOut",
-                                                 "Beta2PowOut",
+                                                 "Beta1PowsOut",
+                                                 "Beta2PowsOut",
                                                  "MasterParamsOut"};
   paddle::small_vector<const char*> attr_names = {"beta1",
                                                   "beta2",
@@ -44,7 +43,7 @@ KernelSignature MultiTensorAdamOpArgumentMapping(
                                                   "multi_precision",
                                                   "use_global_beta_pow"};
 
-  return KernelSignature("multi_tensor_adam",
+  return KernelSignature("fused_adam",
                          std::move(in_names),
                          std::move(attr_names),
                          std::move(out_names));
@@ -52,5 +51,4 @@ KernelSignature MultiTensorAdamOpArgumentMapping(
 
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(multi_tensor_adam,
-                           phi::MultiTensorAdamOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(fused_adam, phi::FusedAdamOpArgumentMapping);

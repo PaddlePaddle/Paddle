@@ -59,14 +59,14 @@ TEST(math_function, notrans_mul_trans_fp32) {
   float arr[6] = {0, 1, 2, 3, 4, 5};
   memcpy(input1_ptr, arr, 6 * sizeof(float));
 
-  paddle::framework::TensorCopySync(input1, gpu_place, &input1_gpu);
-  paddle::framework::TensorCopySync(input1, gpu_place, &input2_gpu);
+  phi::Copy(*context, input1, gpu_place, true, &input1_gpu);
+  phi::Copy(*context, input1, gpu_place, true, &input2_gpu);
 
   out_gpu.mutable_data<float>({2, 2}, gpu_place);
   GetBlas<float>(*context).MatMul(
       input1_gpu, false, input2_gpu, true, 1, &out_gpu, 0);
 
-  paddle::framework::TensorCopySync(out_gpu, cpu_place, &out);
+  phi::Copy(*context, out_gpu, cpu_place, true, &out);
 
   float* out_ptr = out.data<float>();
   context->Wait();
@@ -97,8 +97,8 @@ TEST(math_function, notrans_mul_trans_fp16) {
       input1.mutable_data<phi::dtype::float16>({2, 3}, cpu_place);
   fill_fp16_data(input1_ptr, input1.numel(), {0, 1, 2, 3, 4, 5});
 
-  paddle::framework::TensorCopySync(input1, gpu_place, &input1_gpu);
-  paddle::framework::TensorCopySync(input1, gpu_place, &input2_gpu);
+  phi::Copy(*context, input1, gpu_place, true, &input1_gpu);
+  phi::Copy(*context, input1, gpu_place, true, &input2_gpu);
 
   out_gpu.mutable_data<phi::dtype::float16>({2, 2}, gpu_place);
 
@@ -110,7 +110,7 @@ TEST(math_function, notrans_mul_trans_fp16) {
                                                 &out_gpu,
                                                 phi::dtype::float16(0));
 
-  paddle::framework::TensorCopySync(out_gpu, cpu_place, &out);
+  phi::Copy(*context, out_gpu, cpu_place, true, &out);
 
   phi::dtype::float16* out_ptr = out.data<phi::dtype::float16>();
   context->Wait();
@@ -136,15 +136,15 @@ TEST(math_function, trans_mul_notrans_fp32) {
   float arr[6] = {0, 1, 2, 3, 4, 5};
   memcpy(input1_ptr, arr, 6 * sizeof(float));
 
-  paddle::framework::TensorCopySync(input1, gpu_place, &input1_gpu);
-  paddle::framework::TensorCopySync(input1, gpu_place, &input2_gpu);
+  phi::Copy(*context, input1, gpu_place, true, &input1_gpu);
+  phi::Copy(*context, input1, gpu_place, true, &input2_gpu);
 
   out_gpu.mutable_data<float>({3, 3}, gpu_place);
 
   GetBlas<float>(*context).MatMul(
       input1_gpu, true, input2_gpu, false, 1, &out_gpu, 0);
 
-  paddle::framework::TensorCopySync(out_gpu, cpu_place, &out);
+  phi::Copy(*context, out_gpu, cpu_place, true, &out);
 
   float* out_ptr = out.data<float>();
   context->Wait();
@@ -180,8 +180,8 @@ TEST(math_function, trans_mul_notrans_fp16) {
       input1.mutable_data<phi::dtype::float16>({2, 3}, cpu_place);
   fill_fp16_data(input1_ptr, input1.numel(), {0, 1, 2, 3, 4, 5});
 
-  paddle::framework::TensorCopySync(input1, gpu_place, &input1_gpu);
-  paddle::framework::TensorCopySync(input1, gpu_place, &input2_gpu);
+  phi::Copy(*context, input1, gpu_place, true, &input1_gpu);
+  phi::Copy(*context, input1, gpu_place, true, &input2_gpu);
 
   out_gpu.mutable_data<phi::dtype::float16>({3, 3}, gpu_place);
 
@@ -193,7 +193,7 @@ TEST(math_function, trans_mul_notrans_fp16) {
                                                 &out_gpu,
                                                 phi::dtype::float16(0));
 
-  paddle::framework::TensorCopySync(out_gpu, cpu_place, &out);
+  phi::Copy(*context, out_gpu, cpu_place, true, &out);
 
   phi::dtype::float16* out_ptr = out.data<phi::dtype::float16>();
   context->Wait();
@@ -234,9 +234,9 @@ TEST(math_function, gemm_notrans_cublas_fp32) {
   float arr3[8] = {0, 1, 2, 3, 4, 5, 6, 7};
   memcpy(input3_ptr, arr3, 8 * sizeof(float));
 
-  paddle::framework::TensorCopySync(input1, gpu_place, &input1_gpu);
-  paddle::framework::TensorCopySync(input2, gpu_place, &input2_gpu);
-  paddle::framework::TensorCopySync(input3, gpu_place, &input3_gpu);
+  phi::Copy(*context, input1, gpu_place, true, &input1_gpu);
+  phi::Copy(*context, input2, gpu_place, true, &input2_gpu);
+  phi::Copy(*context, input3, gpu_place, true, &input3_gpu);
   float* a = input1_gpu.data<float>();
   float* b = input2_gpu.data<float>();
   float* c = input3_gpu.mutable_data<float>(gpu_place);
@@ -244,7 +244,7 @@ TEST(math_function, gemm_notrans_cublas_fp32) {
   GetBlas<float>(*context).GEMM(
       false, false, m, n, k, 1, a, 3, b + 1, 4, 1, c + 1, 4);
 
-  paddle::framework::TensorCopySync(input3_gpu, cpu_place, &input3);
+  phi::Copy(*context, input3_gpu, cpu_place, true, &input3);
 
   // numpy code:
   // a = np.arange(6).reshape(2, 3)
@@ -295,9 +295,9 @@ TEST(math_function, gemm_notrans_cublas_fp16) {
       input3.mutable_data<phi::dtype::float16>({2, 4}, cpu_place);
   fill_fp16_data(input3_ptr, input3.numel(), {0, 1, 2, 3, 4, 5, 6, 7});
 
-  paddle::framework::TensorCopySync(input1, gpu_place, &input1_gpu);
-  paddle::framework::TensorCopySync(input2, gpu_place, &input2_gpu);
-  paddle::framework::TensorCopySync(input3, gpu_place, &input3_gpu);
+  phi::Copy(*context, input1, gpu_place, true, &input1_gpu);
+  phi::Copy(*context, input2, gpu_place, true, &input2_gpu);
+  phi::Copy(*context, input3, gpu_place, true, &input3_gpu);
   phi::dtype::float16* a = input1_gpu.data<phi::dtype::float16>();
   phi::dtype::float16* b = input2_gpu.data<phi::dtype::float16>();
   phi::dtype::float16* c =
@@ -318,7 +318,7 @@ TEST(math_function, gemm_notrans_cublas_fp16) {
       c + 1,
       4);
 
-  paddle::framework::TensorCopySync(input3_gpu, cpu_place, &input3);
+  phi::Copy(*context, input3_gpu, cpu_place, true, &input3);
 
   // numpy code:
   // a = np.arange(6).reshape(2, 3)
@@ -363,9 +363,9 @@ TEST(math_function, gemm_trans_cublas_fp32) {
   float arr3[8] = {0, 1, 2, 3, 4, 5, 6, 7};
   memcpy(input3_ptr, arr3, 8 * sizeof(float));
 
-  paddle::framework::TensorCopySync(input1, gpu_place, &input1_gpu);
-  paddle::framework::TensorCopySync(input2, gpu_place, &input2_gpu);
-  paddle::framework::TensorCopySync(input3, gpu_place, &input3_gpu);
+  phi::Copy(*context, input1, gpu_place, true, &input1_gpu);
+  phi::Copy(*context, input2, gpu_place, true, &input2_gpu);
+  phi::Copy(*context, input3, gpu_place, true, &input3_gpu);
   float* a = input1_gpu.data<float>();
   float* b = input2_gpu.data<float>();
   float* c = input3_gpu.mutable_data<float>(gpu_place);
@@ -373,7 +373,7 @@ TEST(math_function, gemm_trans_cublas_fp32) {
   GetBlas<float>(*context).GEMM(
       false, true, m, n, k, 1, a, 3, b + 3, 3, 1, c + 1, 4);
 
-  paddle::framework::TensorCopySync(input3_gpu, cpu_place, &input3);
+  phi::Copy(*context, input3_gpu, cpu_place, true, &input3);
 
   context->Wait();
   EXPECT_EQ(input3_ptr[0], 0);
@@ -418,9 +418,9 @@ TEST(math_function, gemm_trans_cublas_fp16) {
       input3.mutable_data<phi::dtype::float16>({2, 4}, cpu_place);
   fill_fp16_data(input3_ptr, input3.numel(), {0, 1, 2, 3, 4, 5, 6, 7});
 
-  paddle::framework::TensorCopySync(input1, gpu_place, &input1_gpu);
-  paddle::framework::TensorCopySync(input2, gpu_place, &input2_gpu);
-  paddle::framework::TensorCopySync(input3, gpu_place, &input3_gpu);
+  phi::Copy(*context, input1, gpu_place, true, &input1_gpu);
+  phi::Copy(*context, input2, gpu_place, true, &input2_gpu);
+  phi::Copy(*context, input3, gpu_place, true, &input3_gpu);
   phi::dtype::float16* a = input1_gpu.data<phi::dtype::float16>();
   phi::dtype::float16* b = input2_gpu.data<phi::dtype::float16>();
   phi::dtype::float16* c =
@@ -441,7 +441,7 @@ TEST(math_function, gemm_trans_cublas_fp16) {
       c + 1,
       4);
 
-  paddle::framework::TensorCopySync(input3_gpu, cpu_place, &input3);
+  phi::Copy(*context, input3_gpu, cpu_place, true, &input3);
 
   context->Wait();
   EXPECT_EQ(static_cast<float>(input3_ptr[0]), 0);
@@ -483,8 +483,8 @@ void GemvTest(int m, int n, bool trans) {
     data_b[i] = static_cast<T>(i);
   }
 
-  paddle::framework::TensorCopySync(mat_a, gpu_place, &g_mat_a);
-  paddle::framework::TensorCopySync(vec_b, gpu_place, &g_vec_b);
+  phi::Copy(*context, mat_a, gpu_place, true, &g_mat_a);
+  phi::Copy(*context, vec_b, gpu_place, true, &g_vec_b);
 
   GetBlas<T>(*context).GEMV(trans,
                             static_cast<int>(m),
@@ -495,7 +495,7 @@ void GemvTest(int m, int n, bool trans) {
                             0.,
                             g_data_c);
 
-  paddle::framework::TensorCopySync(g_vec_c, cpu_place, &vec_c);
+  phi::Copy(*context, g_vec_c, cpu_place, true, &vec_c);
 
   if (!trans) {
     for (int i = 0; i < m; ++i) {

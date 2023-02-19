@@ -2046,11 +2046,9 @@ PDNode *patterns::Reshape2Matmul::operator()() {
   return matmul_out;
 }
 
-PDNode *patterns::MatmulWithInputOps::operator()(bool with_residual) {
-  auto prev_op_x = pattern->NewNode(prev_op_x_repr())->assert_is_op();
-  auto prev_op_y = pattern->NewNode(prev_op_y_repr())->assert_is_op();
-
-  auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
+PDNode *patterns::FusedMatmul::operator()(bool with_residual) {
+  auto matmul_op =
+      pattern->NewNode(matmul_op_repr())->assert_is_op("fused_matmul");
 
   if (!with_residual) {
     matmul_op->assert_more([&](Node *x) {
@@ -2061,26 +2059,24 @@ PDNode *patterns::MatmulWithInputOps::operator()(bool with_residual) {
 
   auto matmul_in_x = pattern->NewNode(matmul_in_x_repr())
                          ->AsInput()
-                         ->assert_is_op_input("matmul", "X");
+                         ->assert_is_op_input("fused_matmul", "X");
   auto matmul_in_y = pattern->NewNode(matmul_in_y_repr())
                          ->AsInput()
-                         ->assert_is_op_input("matmul", "Y");
+                         ->assert_is_op_input("fused_matmul", "Y");
   auto matmul_out = pattern->NewNode(matmul_out_repr())
                         ->AsOutput()
-                        ->assert_is_op_output("matmul", "Out")
-                        ->assert_is_only_output_of_op("matmul");
+                        ->assert_is_op_output("fused_matmul", "Out")
+                        ->assert_is_only_output_of_op("fused_matmul");
   std::vector<PDNode *> links_from{matmul_in_x, matmul_in_y};
 
   if (with_residual) {
     auto matmul_residual_data =
         pattern->NewNode(matmul_residual_data_repr())
             ->AsInput()
-            ->assert_is_op_input("matmul", "ResidualData");
+            ->assert_is_op_input("fused_matmul", "ResidualData");
     links_from.push_back(matmul_residual_data);
   }
 
-  prev_op_x->LinksTo({matmul_in_x});
-  prev_op_y->LinksTo({matmul_in_y});
   matmul_op->LinksFrom(links_from).LinksTo({matmul_out});
   return matmul_out;
 }
@@ -2835,6 +2831,9 @@ PDNode *patterns::QuantizePlacement::operator()(
     const std::unordered_set<std::string> &quantize_enabled_op_types) {
   auto *op =
       pattern->NewNode(op_repr())->assert_is_ops(quantize_enabled_op_types);
+  op->assert_more([&](Node *node) {
+    return node->Op()->GetAttrIfExists<bool>("use_mkldnn");
+  });
   return op;
 }
 
