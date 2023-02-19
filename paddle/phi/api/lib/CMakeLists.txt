@@ -5,19 +5,19 @@ if(WITH_GPU)
     phi_tensor_raw
     SRCS tensor.cc
     DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool
-         tensor_api)
+         operants_manager)
 elseif(WITH_ROCM)
   hip_library(
     phi_tensor_raw
     SRCS tensor.cc
     DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool
-         tensor_api)
+         operants_manager)
 else()
   cc_library(
     phi_tensor_raw
     SRCS tensor.cc
     DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool
-         tensor_api)
+         operants_manager)
 endif()
 
 set(api_gen_base ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/api_base.py)
@@ -127,8 +127,7 @@ add_custom_command(
   COMMAND
     ${PYTHON_EXECUTABLE} ${api_gen_file} --api_yaml_path ${api_yaml_file}
     ${legacy_api_yaml_file} --api_header_path ${api_header_file_tmp}
-    --api_header_path ${api_header_file_tmp} --api_source_path
-    ${api_source_file_tmp}
+    --api_source_path ${api_source_file_tmp}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_header_file_tmp}
           ${api_header_file}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_source_file_tmp}
@@ -387,7 +386,3 @@ cc_library(
   operants_manager
   SRCS ${operants_manager_source_file}
   DEPS phi_enforce)
-cc_library(
-  tensor_api
-  SRCS tensor_api.cc
-  DEPS operants_manager)
