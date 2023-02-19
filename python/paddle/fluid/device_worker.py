@@ -123,7 +123,7 @@ class Hogwild(DeviceWorker):
                 hogwild.stat_var_names.extend([i])
                 downpour.stat_var_names.extend([i])
 
-        from paddle.fluid.incubate.fleet.parameter_server import version
+        from paddle.incubate.fleet.parameter_server import version
 
         if (
             version.is_transpiler()
