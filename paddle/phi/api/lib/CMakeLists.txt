@@ -242,15 +242,10 @@ add_custom_command(
   VERBATIM)
 
 # generate tensor and tensor operants file
-add_custom_command(
-  OUTPUT ${operants_base_file}
-         ${tensor_header_file}
-         ${tensor_api_source_file}
-         ${phi_tensor_operants_header_file}
-         ${phi_tensor_operants_source_file}
-         ${operants_manager_header_file}
-         ${operants_manager_source_file}
-  COMMAND ${PYTHON_EXECUTABLE} -m pip install pyyaml
+message("create or copy auto-geneated tensor files")
+execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install pyyaml)
+execute_process(
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator
   COMMAND
     ${PYTHON_EXECUTABLE} ${tensor_gen_file} --api_yaml_path ${api_yaml_file}
     ${legacy_api_yaml_file} --tensor_header_path ${tensor_header_file_tmp}
@@ -262,28 +257,35 @@ add_custom_command(
     ${operants_manager_header_file_tmp} --operants_manager_source_path
     ${operants_manager_source_file_tmp} --api_prim_yaml_path
     ${api_prim_yaml_file}
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tensor_header_file_tmp}
-          ${tensor_header_file}
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${operants_base_file_tmp}
-          ${operants_base_file}
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tensor_api_source_file_tmp}
-          ${tensor_api_source_file}
-  COMMAND
-    ${CMAKE_COMMAND} -E copy_if_different ${phi_tensor_operants_header_file_tmp}
-    ${phi_tensor_operants_header_file}
-  COMMAND
-    ${CMAKE_COMMAND} -E copy_if_different ${phi_tensor_operants_source_file_tmp}
-    ${phi_tensor_operants_source_file}
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different
-          ${operants_manager_header_file_tmp} ${operants_manager_header_file}
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different
-          ${operants_manager_source_file_tmp} ${operants_manager_source_file}
-  COMMENT
-    "copy_if_different ${tensor_header_file} ${operants_base_file} ${tensor_api_source_file} ${phi_tensor_operants_header_file}
-    ${phi_tensor_operants_source_file} ${operants_manager_header_file} ${operants_manager_source_file}"
-  DEPENDS ${api_yaml_file} ${legacy_api_yaml_file} ${tensor_gen_file}
-          ${api_gen_base} ${api_gen_file} ${tensor_header_file_template}
-  VERBATIM)
+  RESULT_VARIABLE _result)
+if(${_result})
+  message(FATAL_ERROR "tensor codegen failed, exiting.")
+endif()
+
+set(generated_tensor_files
+    "${tensor_header_file}"
+    "${operants_base_file}"
+    "${tensor_api_source_file}"
+    "${phi_tensor_operants_header_file}"
+    "${phi_tensor_operants_source_file}"
+    "${operants_manager_header_file}"
+    "${operants_manager_source_file}")
+
+foreach(generated_tensor_file ${generated_tensor_files})
+  if(EXISTS "${generated_tensor_file}.tmp" AND EXISTS
+                                               "${generated_tensor_file}")
+    execute_process(
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different
+              "${generated_tensor_file}.tmp" "${generated_tensor_file}")
+    message(
+      "copy if different ${generated_tensor_file}.tmp ${generated_tensor_file}")
+  elseif(EXISTS "${generated_tensor_file}.tmp")
+    execute_process(
+      COMMAND ${CMAKE_COMMAND} -E copy "${generated_tensor_file}.tmp"
+              "${generated_tensor_file}")
+    message("copy ${generated_tensor_file}.tmp ${generated_tensor_file}")
+  endif()
+endforeach()
 
 cc_library(
   op_meta_info
