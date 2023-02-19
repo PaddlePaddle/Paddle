@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/sequence_padding.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 
 namespace phi {
 namespace funcs {
