@@ -436,8 +436,7 @@ class PrimForwardChecker:
                 for tup in item:
                     dtype = (
                         "bfloat16"
-                        if self.op_test.is_bfloat16_op()
-                        and OpTestUtils.is_bfloat16_type(tup[1].dtype)
+                        if OpTestUtils.is_bfloat16_type(tup[1].dtype)
                         else tup[1].dtype
                     )
                     x = paddle.to_tensor(
@@ -451,8 +450,7 @@ class PrimForwardChecker:
             else:
                 dtype = (
                     "bfloat16"
-                    if self.op_test.is_bfloat16_op()
-                    and OpTestUtils.is_bfloat16_type(item.dtype)
+                    if OpTestUtils.is_bfloat16_type(item.dtype)
                     else item.dtype
                 )
                 x = paddle.to_tensor(
@@ -472,8 +470,7 @@ class PrimForwardChecker:
                 for tup in item:
                     dtype = (
                         "bfloat16"
-                        if self.op_test.is_bfloat16_op()
-                        and OpTestUtils.is_bfloat16_type(tup[1].dtype)
+                        if OpTestUtils.is_bfloat16_type(tup[1].dtype)
                         else tup[1].dtype
                     )
                     x = paddle.to_tensor(
@@ -486,8 +483,7 @@ class PrimForwardChecker:
             else:
                 dtype = (
                     "bfloat16"
-                    if self.op_test.is_bfloat16_op()
-                    and OpTestUtils.is_bfloat16_type(item.dtype)
+                    if OpTestUtils.is_bfloat16_type(item.dtype)
                     else item.dtype
                 )
                 x = paddle.to_tensor(
@@ -745,10 +741,20 @@ class PrimForwardChecker:
 
 
 class PrimGradChecker(PrimForwardChecker):
-    def __init__(self, op_test, place, inputs_to_check, output_names):
+    def __init__(
+        self,
+        op_test,
+        place,
+        inputs_to_check,
+        output_names,
+        no_grad_set,
+        grad_outputs,
+    ):
         PrimForwardChecker.__init__(self, op_test, place)
         self.inputs_to_check = inputs_to_check
         self.output_names = output_names
+        self.no_grad_set = no_grad_set
+        self.grad_outputs = grad_outputs
 
     def init(self):
         self.checker_name = "PrimGradChecker"
@@ -778,6 +784,49 @@ class PrimGradChecker(PrimForwardChecker):
             else:
                 output_dict.update({output_name: api_outputs[i]})
         return output_dict
+
+    def gen_eager_grad_outputs(self):
+        if self.grad_outputs is None:
+            return None
+        eager_vs = []
+        for np_v in self.grad_outputs:
+            eager_vs.append(
+                paddle.to_tensor(
+                    data=np_v,
+                    place=self.place,
+                    dtype="bfloat16"
+                    if OpTestUtils.is_bfloat16_type(np_v.dtype)
+                    else np_v.dtype,
+                )
+            )
+        return eager_vs
+
+    def gen_static_grad_outputs_and_feed(self):
+        if self.grad_outputs is None:
+            return None, {}
+        static_vs = []
+        feed = {}
+        for i, np_v in enumerate(self.grad_outputs):
+            static_vs.append(
+                paddle.static.data(
+                    name='v_' + str(i),
+                    shape=np_v.shape,
+                    dtype="bfloat16"
+                    if OpTestUtils.is_bfloat16_type(np_v.dtype)
+                    else np_v.dtype,
+                )
+            )
+            feed.update({'v_' + str(i): np_v})
+        return static_vs, feed
+
+    def gen_no_grad_set(self, var_dict):
+        if self.no_grad_set is None:
+            return None
+        no_grad_set = set()
+        for name in self.no_grad_set:
+            if name in var_dict:
+                no_grad_set.add(var_dict[name])
+        return no_grad_set
 
     def get_eager_desire(self):
         paddle.disable_static()
@@ -811,7 +860,13 @@ class PrimGradChecker(PrimForwardChecker):
                 xs.append(inputs_dict[input_name])
         else:
             xs.append(inputs_dict[self.inputs_to_check])
-        ret = paddle.grad(ys, xs, allow_unused=True)
+        vs = self.gen_eager_grad_outputs()
+        no_grad_vars = self.gen_no_grad_set(
+            var_dict=inputs_dict.update(outputs_dict)
+        )
+        ret = paddle.grad(
+            ys, xs, vs, allow_unused=True, no_grad_vars=no_grad_vars
+        )
         ret = map_structure(lambda x: x.numpy(), ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
             ret = map_structure(lambda x: convert_uint16_to_float(x), ret)
@@ -907,7 +962,12 @@ class PrimGradChecker(PrimForwardChecker):
                     xs.append(inputs_dict[input_name])
             else:
                 xs.append(inputs_dict[self.inputs_to_check])
-            ret = paddle.static.gradients(ys, xs)
+            vs, vs_feed = self.gen_static_grad_outputs_and_feed()
+            feed.update(vs_feed)
+            no_grad_vars = self.gen_no_grad_set(
+                var_dict=inputs_dict.update(outputs_dict)
+            )
+            ret = paddle.static.gradients(ys, xs, vs, no_grad_set=no_grad_vars)
         exe = paddle.static.Executor(self.place)
         exe.run(startup_program)
         actual_ret = exe.run(main_program, feed=feed, fetch_list=ret)
@@ -1001,7 +1061,13 @@ class PrimGradChecker(PrimForwardChecker):
                 xs.append(inputs_dict[input_name])
         else:
             xs.append(inputs_dict[self.inputs_to_check])
-        ret = paddle.grad(ys, xs, allow_unused=True)
+        vs = self.gen_eager_grad_outputs()
+        no_grad_vars = self.gen_no_grad_set(
+            var_dict=inputs_dict.update(outputs_dict)
+        )
+        ret = paddle.grad(
+            ys, xs, vs, allow_unused=True, no_grad_vars=no_grad_vars
+        )
         ret = map_structure(lambda x: x.numpy(), ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
             ret = map_structure(lambda x: convert_uint16_to_float(x), ret)
@@ -1104,7 +1170,13 @@ class PrimGradChecker(PrimForwardChecker):
                 xs.append(inputs_dict[input_name])
         else:
             xs.append(inputs_dict[self.inputs_to_check])
-        ret = paddle.grad(ys, xs, allow_unused=True)
+        vs = self.gen_eager_grad_outputs()
+        no_grad_vars = self.gen_no_grad_set(
+            var_dict=inputs_dict.update(outputs_dict)
+        )
+        ret = paddle.grad(
+            ys, xs, vs, allow_unused=True, no_grad_vars=no_grad_vars
+        )
         ret = map_structure(lambda x: x.numpy(), ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
             ret = map_structure(lambda x: convert_uint16_to_float(x), ret)
