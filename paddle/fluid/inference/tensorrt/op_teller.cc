@@ -2515,7 +2515,6 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "expand_v2") {
-      return false;
       if (!with_dynamic_shape) {
         return false;
       }
