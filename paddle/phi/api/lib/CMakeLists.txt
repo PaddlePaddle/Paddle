@@ -101,8 +101,12 @@ set(wrapped_infermeta_source_file
 set(tensor_gen_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/tensor_gen.py)
 set(api_prim_yaml_file ${CMAKE_SOURCE_DIR}/paddle/fluid/prim/api/api.yaml)
+set(tensor_header_file_template
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/templates/tensor.h)
+set(tensor_header_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/tensor.h)
 set(operants_base_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/operants_base.h)
+set(tensor_api_source_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/tensor_api.cc)
 set(phi_tensor_operants_header_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/tensor_operants.h)
 set(phi_tensor_operants_source_file
@@ -111,7 +115,9 @@ set(operants_manager_header_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/operants_manager.h)
 set(operants_manager_source_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/operants_manager.cc)
+set(tensor_header_file_tmp ${tensor_header_file}.tmp)
 set(operants_base_file_tmp ${operants_base_file}.tmp)
+set(tensor_api_source_file_tmp ${tensor_api_source_file}.tmp)
 set(phi_tensor_operants_header_file_tmp ${phi_tensor_operants_header_file}.tmp)
 set(phi_tensor_operants_source_file_tmp ${phi_tensor_operants_source_file}.tmp)
 set(operants_manager_header_file_tmp ${operants_manager_header_file}.tmp)
@@ -237,20 +243,31 @@ add_custom_command(
 
 # generate tensor and tensor operants file
 add_custom_command(
-  OUTPUT ${operants_base_file} ${phi_tensor_operants_header_file}
-         ${phi_tensor_operants_source_file} ${operants_manager_header_file}
+  OUTPUT ${operants_base_file}
+         ${tensor_header_file}
+         ${tensor_api_source_file}
+         ${phi_tensor_operants_header_file}
+         ${phi_tensor_operants_source_file}
+         ${operants_manager_header_file}
          ${operants_manager_source_file}
   COMMAND ${PYTHON_EXECUTABLE} -m pip install pyyaml
   COMMAND
     ${PYTHON_EXECUTABLE} ${tensor_gen_file} --api_yaml_path ${api_yaml_file}
-    ${legacy_api_yaml_file} --operants_base_path ${operants_base_file_tmp}
-    --phi_tensor_operants_header_path ${phi_tensor_operants_header_file_tmp}
-    --phi_tensor_operants_source_path ${phi_tensor_operants_source_file_tmp}
-    --operants_manager_header_path ${operants_manager_header_file_tmp}
-    --operants_manager_source_path ${operants_manager_source_file_tmp}
-    --api_prim_yaml_path ${api_prim_yaml_file}
+    ${legacy_api_yaml_file} --tensor_header_path ${tensor_header_file_tmp}
+    --tensor_header_template_path ${tensor_header_file_template}
+    --operants_base_path ${operants_base_file_tmp} --tensor_api_source_path
+    ${tensor_api_source_file_tmp} --phi_tensor_operants_header_path
+    ${phi_tensor_operants_header_file_tmp} --phi_tensor_operants_source_path
+    ${phi_tensor_operants_source_file_tmp} --operants_manager_header_path
+    ${operants_manager_header_file_tmp} --operants_manager_source_path
+    ${operants_manager_source_file_tmp} --api_prim_yaml_path
+    ${api_prim_yaml_file}
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tensor_header_file_tmp}
+          ${tensor_header_file}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${operants_base_file_tmp}
           ${operants_base_file}
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tensor_api_source_file_tmp}
+          ${tensor_api_source_file}
   COMMAND
     ${CMAKE_COMMAND} -E copy_if_different ${phi_tensor_operants_header_file_tmp}
     ${phi_tensor_operants_header_file}
@@ -262,9 +279,10 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E copy_if_different
           ${operants_manager_source_file_tmp} ${operants_manager_source_file}
   COMMENT
-    "copy_if_different ${phi_tensor_operants_header_file} ${phi_tensor_operants_source_file}"
+    "copy_if_different ${tensor_header_file} ${operants_base_file} ${tensor_api_source_file} ${phi_tensor_operants_header_file}
+    ${phi_tensor_operants_source_file} ${operants_manager_header_file} ${operants_manager_source_file}"
   DEPENDS ${api_yaml_file} ${legacy_api_yaml_file} ${tensor_gen_file}
-          ${api_gen_base} ${api_gen_file}
+          ${api_gen_base} ${api_gen_file} ${tensor_header_file_template}
   VERBATIM)
 
 cc_library(
@@ -390,5 +408,5 @@ cc_library(
   DEPS phi_enforce)
 cc_library(
   tensor_api
-  SRCS tensor_api.cc
+  SRCS ${tensor_api_source_file}
   DEPS operants_manager)

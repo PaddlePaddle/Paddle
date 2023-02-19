@@ -645,6 +645,9 @@ class PADDLE_API Tensor final {
    * in the development of new dygraph. It may be removed in the future.
    */
   std::string name_{""};
+
+  // Example: Tensor add(const Tensor& other) const;
+  $ { tensor_api_declaration }
 };
 
 }  // namespace experimental

@@ -13,6 +13,7 @@ paddle/phi/api/include/operants_base.h
 paddle/phi/api/include/operants_manager.h
 paddle/phi/api/include/sparse_api.h
 paddle/phi/api/include/strings_api.h
+paddle/phi/api/include/tensor.h
 paddle/phi/api/include/tensor_operants.h
 paddle/phi/api/lib/api.cc
 paddle/phi/api/lib/dygraph_api.*
@@ -21,6 +22,7 @@ paddle/phi/api/lib/operants_manager.cc
 paddle/phi/api/lib/sparse_api.cc
 paddle/phi/api/lib/strings_api.cc
 paddle/phi/api/lib/sparse_bw_api.cc
+paddle/phi/api/lib/tensor_api.cc
 paddle/phi/api/lib/tensor_operants.cc
 paddle/phi/extension.h
 paddle/phi/include/*
