@@ -34,6 +34,7 @@ from paddle.fluid.framework import Operator, _non_static_mode
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.distributed import fleet
+from paddle.distributed.parallel import is_global_parallel_initialize
 
 from .callbacks import config_callbacks
 from .converter import Converter
@@ -184,7 +185,7 @@ class Engine:
         self._strategy = strategy or Strategy()
 
         self._logger = get_logger(logging.INFO)
-        if os.getenv("POD_NAME"):
+        if os.getenv("POD_NAME") and not is_global_parallel_initialize():
             self._logger.info(
                 "Distribute training by paddle.distributed.launch"
             )
