@@ -544,7 +544,7 @@ class enable_grad(_DecoratorContextManager):
         with paddle.no_grad():
             z = double(x)
 
-        assert(z.stop_gradent == False)
+        assert(z.stop_gradient == False)
     """
 
     def __enter__(self):
