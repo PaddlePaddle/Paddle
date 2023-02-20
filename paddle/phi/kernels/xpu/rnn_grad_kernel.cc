@@ -166,7 +166,7 @@ void RnnGradKernel(const Context& dev_ctx,
   std::vector<int> seq_len_tensor(batch_size, seq_len);
   if (has_seq_length) {
     seq_len_tensor =
-        operators::GetDataFromTensor<int>(sequence_length.get_ptr());
+        phi::funcs::GetDataFromDenseTensor<int>(sequence_length.get_ptr());
   }
 
   for (int i = num_layers - 1; i >= 0; --i) {

@@ -18,10 +18,10 @@ limitations under the License. */
 #include <vector>
 
 namespace phi {
-namespace operators {
+namespace funcs {
 
 template <typename T = int32_t>
-inline std::vector<T> GetDataFromTensor(const phi::DenseTensor* x) {
+inline std::vector<T> GetDataFromDenseTensor(const phi::DenseTensor* x) {
   std::vector<T> vec_new_data;
   if (framework::TransToProtoVarType(x->dtype()) ==
       framework::proto::VarType::INT32) {
@@ -52,5 +52,5 @@ inline std::vector<T> GetDataFromTensor(const phi::DenseTensor* x) {
   return vec_new_data;
 }
 
-}  // namespace operators
+}  // namespace funcs
 }  // namespace phi
