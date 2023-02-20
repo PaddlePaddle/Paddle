@@ -26,8 +26,8 @@ from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
     _get_optimize_ops,
     get_sparse_tablenames,
 )
-from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 from paddle.framework import core
+from paddle.incubate.fleet.parameter_server.mode import DistributedMode
 
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "gradient_clip"
