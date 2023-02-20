@@ -759,12 +759,23 @@ bool BuildOpFuncList(const platform::Place& place,
                 op_with_kernel->Type())) {
           auto phi_kernel_key = op_with_kernel->ChoosePhiKernel(exec_ctx);
           auto phi_kernel_name = op_with_kernel->PhiKernelSignature()->name;
-
-          if (op_with_kernel->PhiKernel()->IsValid()) {
+          bool is_in_custom_back_list = false;
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+          is_in_custom_back_list =
+              phi::backends::custom_device::is_in_custom_black_list(
+                  phi_kernel_name);
+#endif
+          if (op_with_kernel->PhiKernel()->IsValid() &&
+              !is_in_custom_back_list) {
             run_phi_kernel = true;
           } else {
-            if (!op_with_kernel->SupportsKernelType(expected_kernel_key,
-                                                    exec_ctx)) {
+            if ((!op_with_kernel->SupportsKernelType(expected_kernel_key,
+                                                     exec_ctx)) ||
+                is_in_custom_back_list) {
+              std::string info = is_in_custom_back_list ? "phi in black list "
+                                                        : "phi missing ";
+              VLOG(3) << info << phi_kernel_key
+                      << " kernel: " << phi_kernel_name;
               auto phi_cpu_kernel_key =
                   FallBackToCpu(phi_kernel_key, *op_with_kernel);
               op_with_kernel->ResetPhiKernel(
