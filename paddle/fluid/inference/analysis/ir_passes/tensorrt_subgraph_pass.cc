@@ -469,14 +469,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   op_desc->SetAttr("shape_range_info_path", shape_range_info_path);
   op_desc->SetAttr("use_inspector", Get<bool>("use_inspector"));
   op_desc->SetAttr("model_precision", Get<int>("model_precision"));
-  // if(markOutput){
-  //   op_desc->SetAttr("all_output_names",
-  //   std::vector<std::string>(all_output_names.begin(),
-  //   all_output_names.end()));
-  // }else{
-  //   op_desc->SetAttr("all_output_names",
-  //   std::vector<std::string>(output_names.begin(), output_names.end()));
-  // }
+
   // we record all inputs' shapes in attr to check if they are consistent
   // with the real inputs' shapes retrieved from scope when trt runs.
   for (auto *x : node->inputs) {
