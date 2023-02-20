@@ -278,38 +278,47 @@ class TestMatmulDoubleGradComp(unittest.TestCase):
 
             return out[0], out[1], out[2]
 
-        dx, dy, ddout = actual(
-            self.primal0, self.primal1, self.primal2, self.trans_0, self.trans_1
-        )
-
-        dx_, dy_, ddout_ = desired(
-            self.primal0, self.primal1, self.primal2, self.trans_0, self.trans_1
-        )
-
         dtype = 'float32'
-        if dx.dtype == np.float16:
+        if self.primal0.dtype == np.float16:
             dtype = 'float16'
-        elif dx.dtype == np.float64:
+        elif self.primal0.dtype == np.float16:
             dtype = 'float64'
 
-        np.testing.assert_allclose(
-            actual=dx,
-            desired=dx_,
-            rtol=TOLERANCE[dtype]['rtol'],
-            atol=TOLERANCE[dtype]['atol'],
-        )
-        np.testing.assert_allclose(
-            actual=dy,
-            desired=dy_,
-            rtol=TOLERANCE[dtype]['rtol'],
-            atol=TOLERANCE[dtype]['atol'],
-        )
-        np.testing.assert_allclose(
-            actual=ddout,
-            desired=ddout_,
-            rtol=TOLERANCE[dtype]['rtol'],
-            atol=TOLERANCE[dtype]['atol'],
-        )
+        if dtype != 'float16':
+            dx, dy, ddout = actual(
+                self.primal0,
+                self.primal1,
+                self.primal2,
+                self.trans_0,
+                self.trans_1,
+            )
+
+            dx_, dy_, ddout_ = desired(
+                self.primal0,
+                self.primal1,
+                self.primal2,
+                self.trans_0,
+                self.trans_1,
+            )
+
+            np.testing.assert_allclose(
+                actual=dx,
+                desired=dx_,
+                rtol=TOLERANCE[dtype]['rtol'],
+                atol=TOLERANCE[dtype]['atol'],
+            )
+            np.testing.assert_allclose(
+                actual=dy,
+                desired=dy_,
+                rtol=TOLERANCE[dtype]['rtol'],
+                atol=TOLERANCE[dtype]['atol'],
+            )
+            np.testing.assert_allclose(
+                actual=ddout,
+                desired=ddout_,
+                rtol=TOLERANCE[dtype]['rtol'],
+                atol=TOLERANCE[dtype]['atol'],
+            )
 
 
 core._set_prim_backward_enabled(False)

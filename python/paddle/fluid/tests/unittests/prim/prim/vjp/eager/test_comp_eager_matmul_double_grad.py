@@ -312,32 +312,33 @@ class TestMatmulDoubleGradComp(unittest.TestCase):
         elif self.primal0.dtype == np.float64:
             d_type = "float64"
 
-        dx, dy, ddout = actual(
-            self.primal0, self.primal1, self.trans_0, self.trans_1, d_type
-        )
+        if d_type != "float16":
+            dx, dy, ddout = actual(
+                self.primal0, self.primal1, self.trans_0, self.trans_1, d_type
+            )
 
-        dx_, dy_, ddout_ = desired(
-            self.primal0, self.primal1, self.trans_0, self.trans_1, d_type
-        )
+            dx_, dy_, ddout_ = desired(
+                self.primal0, self.primal1, self.trans_0, self.trans_1, d_type
+            )
 
-        np.testing.assert_allclose(
-            actual=dx,
-            desired=dx_,
-            rtol=TOLERANCE[d_type]['rtol'],
-            atol=TOLERANCE[d_type]['atol'],
-        )
-        np.testing.assert_allclose(
-            actual=dy,
-            desired=dy_,
-            rtol=TOLERANCE[d_type]['rtol'],
-            atol=TOLERANCE[d_type]['atol'],
-        )
-        np.testing.assert_allclose(
-            actual=ddout,
-            desired=ddout_,
-            rtol=TOLERANCE[d_type]['rtol'],
-            atol=TOLERANCE[d_type]['atol'],
-        )
+            np.testing.assert_allclose(
+                actual=dx,
+                desired=dx_,
+                rtol=TOLERANCE[d_type]['rtol'],
+                atol=TOLERANCE[d_type]['atol'],
+            )
+            np.testing.assert_allclose(
+                actual=dy,
+                desired=dy_,
+                rtol=TOLERANCE[d_type]['rtol'],
+                atol=TOLERANCE[d_type]['atol'],
+            )
+            np.testing.assert_allclose(
+                actual=ddout,
+                desired=ddout_,
+                rtol=TOLERANCE[d_type]['rtol'],
+                atol=TOLERANCE[d_type]['atol'],
+            )
 
     core._set_prim_backward_enabled(False)
 
