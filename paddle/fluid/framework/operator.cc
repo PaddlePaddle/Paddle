@@ -1878,14 +1878,14 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
           || (is_xpu_unsupport && !is_xpu_kp_support)
 #endif
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
-          ||
-          phi::backends::custom_device::is_in_custom_black_list(phi_kernel_name)
+          || (phi::backends::custom_device::is_in_custom_black_list(
+                 phi_kernel_name))
 #endif
       ) {
         fallback_to_cpu = true;
         if (phi::backends::custom_device::is_in_custom_black_list(
                 phi_kernel_name)) {
-          VLOG(3) << "phi in black list: " << phi_kernel_name;
+          VLOG(3) << "fluid in black list: " << phi_kernel_name;
         }
         auto phi_cpu_kernel_key = FallBackToCpu(phi_kernel_key, *this);
         phi_kernel_.reset(
