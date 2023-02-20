@@ -166,13 +166,7 @@ cc_test(
 cc_library(
   lod_tensor
   SRCS lod_tensor.cc
-  DEPS ddim
-       mixed_vector
-       place
-       tensor
-       framework_proto
-       version
-       serialization)
+  DEPS ddim mixed_vector place tensor framework_proto version)
 
 cc_test(
   lod_tensor_test
@@ -435,24 +429,28 @@ if(WITH_XPU)
     phi_utils
     SRCS phi_utils.cc
     DEPS lod_tensor
+         dense_tensor
          selected_rows_utils
          place
          phi
          var_type_traits
-         phi_api_utils
          op_info
-         xpu_op_list)
+         xpu_op_list
+         convert_utils
+         phi_api_utils)
 else()
   cc_library(
     phi_utils
     SRCS phi_utils.cc
     DEPS lod_tensor
+         dense_tensor
          selected_rows_utils
          place
          phi
          var_type_traits
-         phi_api_utils
-         op_info)
+         op_info
+         convert_utils
+         phi_api_utils)
 endif()
 
 if(WITH_XPU)
@@ -585,16 +583,10 @@ if(WITH_PYTHON)
        ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto)
   file(TOUCH
        ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py)
-  add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E
-                                                        touch __init__.py)
+  file(TOUCH __init__.py)
   add_dependencies(
-    framework_py_proto
-    framework_py_proto_init
-    trainer_py_proto
-    distributed_strategy_py_proto
-    pass_desc_py_proto
-    ps_py_proto
-    pslib_py_proto)
+    framework_py_proto trainer_py_proto distributed_strategy_py_proto
+    pass_desc_py_proto ps_py_proto pslib_py_proto)
   if(NOT WIN32)
     add_custom_command(
       TARGET framework_py_proto
@@ -1105,7 +1097,7 @@ cc_test(
 cc_library(
   selected_rows_utils
   SRCS selected_rows_utils.cc
-  DEPS selected_rows serialization device_context)
+  DEPS selected_rows device_context)
 cc_test(
   selected_rows_utils_test
   SRCS selected_rows_utils_test.cc
@@ -1158,7 +1150,7 @@ cc_library(
        place
        var_type_traits
        phi
-       phi_api_utils
+       phi_utils
        op_info
        shape_inference
        sparse_coo_tensor)
@@ -1199,6 +1191,7 @@ cc_library(
        phi_tensor
        op_meta_info
        phi_api
+       tensor_api
        phi_tensor_operants
        operants_manager)
 

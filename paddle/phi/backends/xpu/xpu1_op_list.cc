@@ -106,6 +106,12 @@ XPUOpMap& get_kl1_ops() {
       {"gaussian_random", XPUKernelSet({phi::DataType::FLOAT32})},
       {"gelu_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"gelu", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"generate_sequence_xpu",
+       XPUKernelSet({
+           phi::DataType::FLOAT32,
+           phi::DataType::INT32,
+           phi::DataType::INT64,
+       })},
       {"hard_switch_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"hard_switch", XPUKernelSet({phi::DataType::FLOAT32})},
       {"iou_similarity", XPUKernelSet({phi::DataType::FLOAT32})},

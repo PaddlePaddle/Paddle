@@ -524,6 +524,20 @@ class PADDLE_API Tensor final {
    */
   Tensor& operator=(Tensor&& x) &;
 
+  /**
+   * @brief Tensor operants
+   *
+   * @param other
+   * @return Tensor
+   */
+  Tensor operator+(const Tensor& other) const;
+
+  Tensor operator-(const Tensor& other) const;
+
+  Tensor operator*(const Tensor& other) const;
+
+  Tensor operator/(const Tensor& other) const;
+
   /* Part 8: Autograd methods */
 
   /**
@@ -632,8 +646,6 @@ class PADDLE_API Tensor final {
    */
   std::string name_{""};
 };
-
-PADDLE_API Tensor operator*(const Tensor& x, const Tensor& y);
 
 }  // namespace experimental
 }  // namespace paddle
