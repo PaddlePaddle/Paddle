@@ -3091,11 +3091,10 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
 
 def kron(x, y, name=None):
     r"""
-    Kron Operator.
-        This operator computes the Kronecker product of two tensors, a
+        Compute the Kronecker product of two tensors, a
         composite tensor made of blocks of the second tensor scaled by the
         first.
-        This operator assumes that the rank of the two tensors, $X$ and $Y$
+        Assume that the rank of the two tensors, $X$ and $Y$
         are the same, if necessary prepending the smallest with ones. If the
         shape of $X$ is [$r_0$, $r_1$, ..., $r_N$] and the shape of $Y$ is
         [$s_0$, $s_1$, ..., $s_N$], then the shape of the output tensor is
