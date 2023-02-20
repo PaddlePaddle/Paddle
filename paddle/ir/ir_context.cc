@@ -16,6 +16,7 @@
 
 #include "paddle/ir/builtin_type.h"
 #include "paddle/ir/ir_context.h"
+#include "paddle/ir/rw_lock.h"
 #include "paddle/ir/type_base.h"
 
 namespace ir {
@@ -25,6 +26,23 @@ class IrContextImpl {
   IrContextImpl() {}
 
   ~IrContextImpl() {}
+
+  void RegisterAbstractType(ir::TypeId type_id, AbstractType *abstract_type) {
+    ir::AutoWRLock lock(&registed_abstract_types_rw_lock_);
+    registed_abstract_types_.emplace(type_id, abstract_type);
+  }
+
+  AbstractType *lookup(ir::TypeId type_id) {
+    ir::AutoRDLock lock(&registed_abstract_types_rw_lock_);
+    auto iter = registed_abstract_types_.find(type_id);
+    if (iter == registed_abstract_types_.end()) {
+      return nullptr;
+    } else {
+      return iter->second;
+    }
+  }
+
+  ir::RWLock registed_abstract_types_rw_lock_;
 
   // Cached AbstractType instances.
   std::unordered_map<TypeId, AbstractType *> registed_abstract_types_;
@@ -43,16 +61,14 @@ IrContext::IrContext() : impl_(new IrContextImpl()) {
   VLOG(4) << "==> Register Float32Type.";
   AbstractType *fp32_abstract_type = new AbstractType(
       std::move(AbstractType::get(TypeId::get<Float32Type>())));
-  registed_abstracted_type().emplace(TypeId::get<Float32Type>(),
-                                     fp32_abstract_type);
+  impl_->RegisterAbstractType(TypeId::get<Float32Type>(), fp32_abstract_type);
   TypeManager::RegisterType<Float32Type>(this);
   impl_->fp32_type = TypeManager::get<Float32Type>(this);
 
   VLOG(4) << "==> Register IntegerType.";
   AbstractType *int_abstract_type = new AbstractType(
       std::move(AbstractType::get(TypeId::get<IntegerType>())));
-  registed_abstracted_type().emplace(TypeId::get<IntegerType>(),
-                                     int_abstract_type);
+  impl_->RegisterAbstractType(TypeId::get<IntegerType>(), int_abstract_type);
   TypeManager::RegisterType<IntegerType>(this);
   impl_->int1Ty = TypeManager::get<IntegerType>(this, 1, 0);
 }
@@ -70,11 +86,11 @@ const AbstractType &AbstractType::lookup(TypeId type_id, IrContext *ctx) {
   VLOG(4) << "==> Get registed abstract type (" << &type_id
           << ") from IrContext (" << ctx << ").";
   auto &impl = ctx->impl();
-  auto iter = impl.registed_abstract_types_.find(type_id);
-  if (iter == impl.registed_abstract_types_.end()) {
-    throw("Abstract type not found in IrContext.");
+  AbstractType *abstract_type = impl.lookup(type_id);
+  if (abstract_type) {
+    return *abstract_type;
   } else {
-    return *(iter->second);
+    throw("Abstract type not found in IrContext.");
   }
 }
 

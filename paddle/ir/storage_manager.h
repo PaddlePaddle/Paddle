@@ -18,6 +18,7 @@
 #include <type_traits>
 #include <unordered_map>
 
+#include "paddle/ir/rw_lock.h"
 #include "paddle/ir/type_id.h"
 
 namespace ir {
@@ -63,21 +64,23 @@ class StorageManager {
   /// \return A uniqued instance of Storage.
   ///
   template <typename Storage, typename... Args>
-  Storage *get(std::function<void(Storage *)> init_func,
-               TypeId type_id,
-               Args &&...args) {
-    auto derived_param_key = GetParamKey<Storage>(std::forward<Args>(args)...);
-    std::size_t hash_value = Storage::HashValue(derived_param_key);
-    auto is_equal_func = [&derived_param_key](const StorageBase *existing) {
-      return static_cast<const Storage &>(*existing) == derived_param_key;
+  Storage *GetParametricStorageType(std::function<void(Storage *)> init_func,
+                                    TypeId type_id,
+                                    Args &&...args) {
+    // auto param = GetParamKey<Storage>(std::forward<Args>(args)...);
+    typename Storage::ParamKey param =
+        typename Storage::ParamKey(std::forward<Args>(args)...);
+    std::size_t hash_value = Storage::HashValue(param);
+    auto equal_func = [&param](const StorageBase *existing) {
+      return static_cast<const Storage &>(*existing) == param;
     };
-    auto ctor_func = [&]() {
-      auto *storage = Storage::Construct(derived_param_key);
+    auto constructor = [&]() {
+      auto *storage = Storage::Construct(param);
       if (init_func) init_func(storage);
       return storage;
     };
     return static_cast<Storage *>(GetParametricStorageTypeImpl(
-        type_id, hash_value, is_equal_func, ctor_func));
+        type_id, hash_value, equal_func, constructor));
   }
 
   ///
@@ -87,7 +90,7 @@ class StorageManager {
   /// \return A uniqued instance of Storage.
   ///
   template <typename Storage>
-  Storage *get(TypeId type_id) {
+  Storage *GetParameterlessStorageType(TypeId type_id) {
     return static_cast<Storage *>(GetParameterlessStorageTypeImpl(type_id));
   }
 
@@ -118,20 +121,20 @@ class StorageManager {
   void RegisterParameterlessStorageType(
       TypeId type_id, std::function<void(Storage *)> init_func) {
     VLOG(4) << "==> StorageManager::RegisterParameterlessStorageType()";
-    auto ctor_func = [&]() {
+    auto constructor = [&]() {
       auto *storage = new Storage();
       if (init_func) init_func(storage);
       return storage;
     };
-    RegisterParameterlessStorageTypeImpl(type_id, ctor_func);
+    RegisterParameterlessStorageTypeImpl(type_id, constructor);
   }
 
  private:
   StorageBase *GetParametricStorageTypeImpl(
       TypeId type_id,
       std::size_t hash_value,
-      std::function<bool(const StorageBase *)> is_equal_func,
-      std::function<StorageBase *()> ctor_func);
+      std::function<bool(const StorageBase *)> equal_func,
+      std::function<StorageBase *()> constructor);
 
   StorageBase *GetParameterlessStorageTypeImpl(TypeId type_id);
 
@@ -139,19 +142,18 @@ class StorageManager {
       TypeId type_id, std::function<void(StorageBase *)> del_func);
 
   void RegisterParameterlessStorageTypeImpl(
-      TypeId type_id, std::function<StorageBase *()> ctor_func);
-
-  template <typename ImplTy, typename... Args>
-  static typename ImplTy::ParamKey GetParamKey(Args &&...args) {
-    return typename ImplTy::ParamKey(args...);
-  }
+      TypeId type_id, std::function<StorageBase *()> constructor);
 
   // This map is a mapping between type id and parameteric type storage.
   std::unordered_map<TypeId, std::unique_ptr<ParametricStorageManager>>
       parametric_instance_;
 
+  ir::RWLock parametric_instance_rw_lock_;
+
   // This map is a mapping between type id and parameterless type storage.
   std::unordered_map<TypeId, StorageBase *> parameterless_instances_;
+
+  ir::RWLock parameterless_instances_rw_lock_;
 };
 
 }  // namespace ir

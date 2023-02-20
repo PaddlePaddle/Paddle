@@ -128,8 +128,7 @@ struct TypeManager {
   ///
   template <typename T, typename... Args>
   static T get(IrContext *ctx, Args &&...args) {
-    return GetWithTypeId<T, Args...>(
-        ctx, T::type_id(), std::forward<Args>(args)...);
+    return get<T, Args...>(ctx, T::type_id(), std::forward<Args>(args)...);
   }
 
   ///
@@ -145,13 +144,14 @@ struct TypeManager {
   template <typename T, typename... Args>
   static std::
       enable_if_t<!std::is_same<typename T::StorageType, TypeStorage>::value, T>
-      GetWithTypeId(IrContext *ctx, TypeId type_id, Args &&...args) {
-    return ctx->storage_manager().get<typename T::StorageType>(
-        [&, type_id](TypeStorage *storage) {
-          storage->initialize(AbstractType::lookup(type_id, ctx));
-        },
-        type_id,
-        std::forward<Args>(args)...);
+      get(IrContext *ctx, TypeId type_id, Args &&...args) {
+    return ctx->storage_manager()
+        .GetParametricStorageType<typename T::StorageType>(
+            [&, type_id](TypeStorage *storage) {
+              storage->initialize(AbstractType::lookup(type_id, ctx));
+            },
+            type_id,
+            std::forward<Args>(args)...);
   }
 
   ///
@@ -165,8 +165,9 @@ struct TypeManager {
   template <typename T>
   static std::
       enable_if_t<std::is_same<typename T::StorageType, TypeStorage>::value, T>
-      GetWithTypeId(IrContext *ctx, TypeId type_id) {
-    return ctx->storage_manager().get<typename T::StorageType>(type_id);
+      get(IrContext *ctx, TypeId type_id) {
+    return ctx->storage_manager()
+        .GetParameterlessStorageType<typename T::StorageType>(type_id);
   }
 
   ///
