@@ -21,6 +21,7 @@ import numpy as np
 
 import paddle
 import paddle.static as static
+from paddle.utils.cpp_extension.extension_utils import run_cmd
 
 
 def custom_relu_static(
@@ -105,8 +106,7 @@ class TestCppExtensionSetupInstall(unittest.TestCase):
         cmd = 'cd {} && {} cpp_extension_setup.py install'.format(
             cur_dir, sys.executable
         )
-        # run_cmd(cmd)
-        os.system(cmd)
+        run_cmd(cmd)
 
         site_dir = site.getsitepackages()[0]
         custom_egg_path = [
@@ -121,8 +121,7 @@ class TestCppExtensionSetupInstall(unittest.TestCase):
         cmd = 'cd {} && {} mix_relu_and_extension_setup.py install'.format(
             cur_dir, sys.executable
         )
-        # run_cmd(cmd)
-        os.system(cmd)
+        run_cmd(cmd)
 
         site_dir = site.getsitepackages()[0]
         custom_egg_path = [
