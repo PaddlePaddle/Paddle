@@ -454,11 +454,13 @@ def leaky_relu(x, negative_slope=0.01, name=None):
 
 def prelu(x, weight, data_format="NCHW", name=None):
     """
-    prelu activation.
+    prelu activation. The calculation formula is follows:
 
     .. math::
 
         prelu(x) = max(0, x) + weight * min(0, x)
+
+    x and weight is input Tensor.
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
@@ -592,8 +594,8 @@ def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
 
     Parameters:
         x (Tensor): The input Tensor with data type float16, float32, float64.
-        lower (float, optional): The lower bound of uniform distribution. Default: 0.125.
-        upper (float, optional): The upper bound of uniform distribution. Default: 0.333.
+        lower (float, optional): The lower bound of uniform distribution. Default: 1.0/8.0.
+        upper (float, optional): The upper bound of uniform distribution. Default: 1.0/3.0.
         training (bool, optional): Current mode is in training or others.  Default is True.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
@@ -673,11 +675,13 @@ def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
 
 def relu(x, name=None):
     """
-    relu activation.
+    relu activation. The calculation formula is follows:
 
     .. math::
 
         out = max(x, 0)
+
+    x is input Tensor.
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
@@ -900,8 +904,8 @@ def selu(
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
-        scale (float, optional): The value of scale(must be greater than 1.0) for selu. Default is 1.0507009873554804934193349852946
-        alpha (float, optional): The value of alpha(must be no less than zero) for selu. Default is 1.6732632423543772848170429916717
+        scale (float, optional): The value of scale(must be greater than 1.0) for selu. Default is 1.0507009873554804934193349852946.
+        alpha (float, optional): The value of alpha(must be no less than zero) for selu. Default is 1.6732632423543772848170429916717.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
