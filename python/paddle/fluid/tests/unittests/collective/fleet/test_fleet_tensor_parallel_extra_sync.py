@@ -48,7 +48,32 @@ class TensorParallelNet(paddle.fluid.dygraph.Layer):
         output = self.layer_norm(out)
         return output
 
+def filter_fn(param, pos_emb = True, layer_norm = True, bias = True):
+    """
+    Layer fliter function for tensor parallelism transformer.
+    
+    In tensor parallelism of transformer like model, there is 4 kind of param 
+    that are supposed to be the same in all tensor parallel peers:
+        * position embedding 
+        * scale of layer norm
+        * bias of layer norm
+        * bias of row parallel linear
 
+    set corresponding input args to select specific layers.
+    NOTE  adopting the param name pattern for different transformer blocks.
+    """
+    p_name = param.name
+    if pos_emb and p_name.startswith("embedding"):
+        return True
+
+    elif layer_norm and p_name.startswith("layer_norm"): 
+        return True
+
+    elif bias and ".b_" in p_name and (param.is_distributed is False) : 
+        return True    
+
+    else:
+        return False
 
 class TestFleetMetaOptimizer(unittest.TestCase):
     def setUp(self):
@@ -80,10 +105,7 @@ class TestFleetMetaOptimizer(unittest.TestCase):
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(loss)
 
-        print(main_program)
-        print(startup_program)
-
-        # paddle.distributed.fleet.meta_optimizers.utils.tensor_parallel_utils.add_extra_synchronization(main_program)
+        paddle.distributed.fleet.utils.tensor_parallel_utils.add_extra_synchronization(main_program, params_filter_fn = filter_fn)
 
 if __name__ == "__main__":
     unittest.main()
