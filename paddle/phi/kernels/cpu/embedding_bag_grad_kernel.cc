@@ -85,7 +85,6 @@ struct EmbeddingBagGradCPUFunctor {
 
       for (EigenIndex index : index_vec[i].second) {
         const EigenIndex bag = index / sequence_length;
-        const EigenIndex seq = index % sequence_length;
         const ConstEigenVectorMap grads_slice(&d_grad[bag * output_dim],
                                               output_dim);
         params_grads_slice += grads_slice * d_weights[index];
