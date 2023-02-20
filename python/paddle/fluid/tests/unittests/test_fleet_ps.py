@@ -24,7 +24,7 @@ main_program = default_main_program()
 
 class TestFleetPS(unittest.TestCase):
     def test_version(self):
-        from paddle.fluid.incubate.fleet.parameter_server import version
+        from paddle.incubate.fleet.parameter_server import version
 
         transpiler = version.is_transpiler()
         self.assertEqual(transpiler, True)

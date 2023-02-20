@@ -27,7 +27,6 @@ from paddle.fluid.incubate.fleet.parameter_server.ir.ps_dispatcher import (
     RoundRobin,
     PSDispatcher,
 )
-from paddle.fluid.transpiler.details.program_utils import delete_ops
 
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "gradient_clip"

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import platform
 import unittest
 
 import numpy as np
@@ -143,17 +142,13 @@ class TestPrimForwardAndBackward(unittest.TestCase):
                 self.assertTrue("_grad" not in op)
 
     def test_cinn_prim(self):
-        plat = platform.system()
-        if plat == "Linux":
-            dy_res = self.train(use_prim=False)
-            cinn_res = self.train(use_prim=True)
+        dy_res = self.train(use_prim=False)
+        cinn_res = self.train(use_prim=True)
 
-            for i in range(len(dy_res)):
-                np.testing.assert_allclose(
-                    cinn_res[i], dy_res[i], rtol=1e-6, atol=1e-6
-                )
-        else:
-            pass
+        for i in range(len(dy_res)):
+            np.testing.assert_allclose(
+                cinn_res[i], dy_res[i], rtol=1e-6, atol=1e-6
+            )
 
 
 if __name__ == '__main__':
