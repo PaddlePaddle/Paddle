@@ -184,32 +184,20 @@ namespace memory_utils {
 
 Allocator::AllocationPtr Alloc(const phi::GPUPlace& place,
                                size_t size,
-                               const phi::Stream& stream) {
-  return MemoryUtils::Instance().Alloc(place, size, stream);
-}
+                               const phi::Stream& stream);
 
-Allocator::AllocationPtr Alloc(const phi::Place& place, size_t size) {
-  return MemoryUtils::Instance().Alloc(place, size);
-}
+Allocator::AllocationPtr Alloc(const phi::Place& place, size_t size);
 
 std::shared_ptr<Allocation> AllocShared(const phi::Place& place,
                                         size_t size,
-                                        const phi::Stream& stream) {
-  return MemoryUtils::Instance().AllocShared(place, size, stream);
-}
+                                        const phi::Stream& stream);
 
-std::shared_ptr<Allocation> AllocShared(const phi::Place& place, size_t size) {
-  return MemoryUtils::Instance().AllocShared(place, size);
-}
+std::shared_ptr<Allocation> AllocShared(const phi::Place& place, size_t size);
 
 bool InSameStream(const std::shared_ptr<Allocation>& allocation,
-                  const phi::Stream& stream) {
-  return MemoryUtils::Instance().InSameStream(allocation, stream);
-}
+                  const phi::Stream& stream);
 
-void AllocationDeleter(Allocation* allocation) {
-  MemoryUtils::Instance().AllocationDeleter(allocation);
-}
+void AllocationDeleter(Allocation* allocation);
 
 }  // namespace memory_utils
 

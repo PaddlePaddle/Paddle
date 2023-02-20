@@ -106,7 +106,7 @@ std::shared_ptr<phi::Allocation> FillHashTable(const Context& dev_ctx,
 #endif
 
   auto unique_items =
-      paddle::memory_utils::AllocShared(place, total_unique_items * sizeof(T));
+      phi::memory_utils::AllocShared(place, total_unique_items * sizeof(T));
   T* unique_items_data = reinterpret_cast<T*>(unique_items->ptr());
   *final_nodes_len = total_unique_items;
 
