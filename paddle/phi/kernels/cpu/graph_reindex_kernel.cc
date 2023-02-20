@@ -58,6 +58,22 @@ void GraphReindexKernel(const Context& dev_ctx,
     }
     src[i] = node_map[node];
   }
+  /*
+  check if x dim and count dim all equal 1
+  the count's data must less or equal to 10
+  */
+  const int cs = count.dims()[0];
+  if ((bs == 1) && (cs == 1)) {
+    PADDLE_ENFORCE_LE(
+        count_data[0],
+        10,
+        phi::errors::OutOfRange(
+            "When X's dimension and count's dimension all equal to 1,"
+            "The count's data should be smaller or equal to 10."
+            "But received count's data = %d",
+            count_data[0]));
+  }
+
   // Reindex Dst
   // Add support for multi-type edges reindex
   int num_edge_types = count.dims()[0] / bs;

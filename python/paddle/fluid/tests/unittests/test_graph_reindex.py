@@ -532,5 +532,21 @@ class TestGeometricGraphReindex(unittest.TestCase):
             np.testing.assert_allclose(out_nodes, out_nodes_2, rtol=1e-05)
 
 
+class TestGraphReindex2(unittest.TestCase):
+    def setUp(self):
+        self.x = np.arange(16).astype("int32")
+
+    def test_reindex_countValue(self):
+        paddle.disable_static()
+        res = []
+        x = paddle.to_tensor(self.x)
+        y = np.array(res).astype("int32")
+
+        def test_countValue_dynamic():
+            paddle.incubate.graph_reindex(x, x, x, y, y, False)
+
+        self.assertRaises(ValueError, test_countValue_dynamic)
+
+
 if __name__ == "__main__":
     unittest.main()
