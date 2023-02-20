@@ -90,6 +90,7 @@ class TrainerBase {
   std::string dump_converter_;
   std::vector<std::string> dump_param_;
   std::vector<std::string> dump_fields_;
+  std::string dump_fields_mode_;
   int dump_thread_num_;
   std::vector<std::thread> dump_thread_;
   std::shared_ptr<paddle::framework::ChannelObject<std::string>> queue_;

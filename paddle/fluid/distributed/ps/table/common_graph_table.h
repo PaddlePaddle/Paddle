@@ -496,7 +496,7 @@ class GraphSampler {
 #endif
 */
 
-enum GraphTableType { EDGE_TABLE, FEATURE_TABLE };
+enum GraphTableType { EDGE_TABLE, FEATURE_TABLE, NODE_TABLE };
 
 class GraphTable : public Table {
  public:
@@ -575,7 +575,8 @@ class GraphTable : public Table {
                               const std::vector<bool> &is_reverse_edge_map);
   int32_t parse_node_and_load(std::string ntype2files,
                               std::string graph_data_local_path,
-                              int part_num);
+                              int part_num,
+                              bool load_slot = true);
   std::string get_inverse_etype(std::string &etype);  // NOLINT
   int32_t parse_type_to_typepath(
       std::string &type2files,  // NOLINT
@@ -606,14 +607,17 @@ class GraphTable : public Table {
   int get_node_embedding_ids(int slice_num,
                              std::vector<std::vector<uint64_t>> *output);
   int32_t load_nodes(const std::string &path,
-                     std::string node_type = std::string());
+                     std::string node_type = std::string(),
+                     bool load_slot = true);
   std::pair<uint64_t, uint64_t> parse_edge_file(const std::string &path,
                                                 int idx,
                                                 bool reverse);
   std::pair<uint64_t, uint64_t> parse_node_file(const std::string &path,
                                                 const std::string &node_type,
-                                                int idx);
-  std::pair<uint64_t, uint64_t> parse_node_file(const std::string &path);
+                                                int idx,
+                                                bool load_slot = true);
+  std::pair<uint64_t, uint64_t> parse_node_file(const std::string &path,
+                                                bool load_slot = true);
   int32_t add_graph_node(int idx,
                          std::vector<uint64_t> &id_list,      // NOLINT
                          std::vector<bool> &is_weight_list);  // NOLINT
@@ -671,6 +675,7 @@ class GraphTable : public Table {
   void clear_graph(int idx);
   void clear_edge_shard();
   void clear_feature_shard();
+  void clear_node_shard();
   void feature_shrink_to_fit();
   void merge_feature_shard();
   void release_graph();
@@ -746,13 +751,14 @@ class GraphTable : public Table {
 
   void build_graph_total_keys();
   void build_graph_type_keys();
+  void build_node_iter_type_keys();
   bool is_key_for_self_rank(const uint64_t &id);
 
   std::vector<uint64_t> graph_total_keys_;
   std::vector<std::vector<uint64_t>> graph_type_keys_;
   std::unordered_map<int, int> type_to_index_;
 
-  std::vector<std::vector<GraphShard *>> edge_shards, feature_shards;
+  std::vector<std::vector<GraphShard *>> edge_shards, feature_shards, node_shards;
   size_t shard_start, shard_end, server_num, shard_num_per_server, shard_num;
   int task_pool_size_ = 64;
   int load_thread_num = 160;

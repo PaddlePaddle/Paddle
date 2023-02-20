@@ -91,6 +91,8 @@ class TrainerFactory:
                     and len(opt_info.get("dump_fields_path")) != 0
                 ):
                     trainer._set_dump_fields_path(opt_info["dump_fields_path"])
+                if opt_info.get("dump_fields_mode") is not None:
+                    trainer._set_dump_fields_mode(opt_info["dump_fields_mode"])
                 if (
                     opt_info.get("user_define_dump_filename") is not None
                     and len(opt_info.get("user_define_dump_filename")) != 0

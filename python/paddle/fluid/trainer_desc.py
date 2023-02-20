@@ -195,6 +195,9 @@ class TrainerDesc:
         for param in dump_param:
             self.proto_desc.dump_param.append(param)
 
+    def _set_dump_fields_mode(self, mode):
+        self.proto_desc.dump_fields_mode = mode
+
     def _set_worker_places(self, worker_places):
         for place in worker_places:
             self.proto_desc.worker_places.append(place)

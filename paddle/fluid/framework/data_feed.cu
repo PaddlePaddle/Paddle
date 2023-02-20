@@ -2084,7 +2084,7 @@ int GraphDataGenerator::FillInferBuf() {
   auto &infer_cursor = gpu_graph_ptr->infer_cursor_[thread_id_];
   total_row_ = 0;
   if (infer_cursor < h_device_keys_len_.size()) {
-    if (global_infer_node_type_start[infer_cursor] >=
+    while (global_infer_node_type_start[infer_cursor] >=
         h_device_keys_len_[infer_cursor]) {
       infer_cursor++;
       if (infer_cursor >= h_device_keys_len_.size()) {
@@ -2110,9 +2110,9 @@ int GraphDataGenerator::FillInferBuf() {
 
     size_t device_key_size = h_device_keys_len_[infer_cursor];
     total_row_ =
-        (global_infer_node_type_start[infer_cursor] + infer_table_cap_ <=
+        (global_infer_node_type_start[infer_cursor] + buf_size_ <=
          device_key_size)
-            ? infer_table_cap_
+            ? buf_size_
             : device_key_size - global_infer_node_type_start[infer_cursor];
 
     uint64_t *d_type_keys =
@@ -2693,13 +2693,13 @@ void GraphDataGenerator::AllocResource(
   // }
   if (gpu_graph_training_ && FLAGS_graph_metapath_split_opt) {
     d_train_metapath_keys_ =
-        gpu_graph_ptr->d_graph_train_total_keys_[thread_id];
+        gpu_graph_ptr->d_node_iter_graph_metapath_keys_[thread_id];
     h_train_metapath_keys_len_ =
-        gpu_graph_ptr->h_graph_train_keys_len_[thread_id];
+        gpu_graph_ptr->h_node_iter_graph_metapath_keys_len_[thread_id];
     VLOG(2) << "h train metapaths key len: " << h_train_metapath_keys_len_;
   } else {
-    auto &d_graph_all_type_keys = gpu_graph_ptr->d_graph_all_type_total_keys_;
-    auto &h_graph_all_type_keys_len = gpu_graph_ptr->h_graph_all_type_keys_len_;
+    auto &d_graph_all_type_keys = gpu_graph_ptr->d_node_iter_graph_all_type_keys_;
+    auto &h_graph_all_type_keys_len = gpu_graph_ptr->h_node_iter_graph_all_type_keys_len_;
 
     for (size_t i = 0; i < d_graph_all_type_keys.size(); i++) {
       d_device_keys_.push_back(d_graph_all_type_keys[i][thread_id]);
