@@ -82,13 +82,14 @@ bool IsSupportedHeterPlace(const phi::Place& place);
 void AddFetch(const std::vector<std::string>& fetch_names,
               framework::BlockDesc* block);
 
-bool BuildOpFuncList(const platform::Place& place,
+void BuildOpFuncList(const platform::Place& place,
                      const framework::BlockDesc& block,
                      const std::set<std::string>& skip_gc_vars,
                      std::vector<OpFuncNode>* vec_func_list,
                      VariableScope* scope,
                      const ExecutionConfig& execution_config,
-                     bool use_local_scope = true);
+                     bool use_local_scope = true,
+                     bool static_build = false);
 
 void BuildVariableScope(const framework::BlockDesc& block,
                         const ExecutionConfig& execution_config,

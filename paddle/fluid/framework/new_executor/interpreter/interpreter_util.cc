@@ -38,11 +38,6 @@ PADDLE_DEFINE_EXPORTED_bool(
     false,
     "Log memory stats after each op runs, just used for debug.");
 
-PADDLE_DEFINE_EXPORTED_bool(
-    new_executor_static_build,
-    false,
-    "Build the interpreterCore statically without running.");
-
 DECLARE_bool(use_mkldnn);
 DECLARE_bool(check_nan_inf);
 
@@ -160,33 +155,6 @@ bool IsMemcpyH2D(const Instruction& instr) {
 
 bool IsMemcpyOp(const Instruction& instr) {
   return IsMemcpyD2H(instr) || IsMemcpyH2D(instr);
-}
-
-bool IsBlockContainsOnlyPhiKernel(const framework::BlockDesc& block) {
-  bool res = true;
-  for (auto& op : block.AllOps()) {
-    auto op_type = op->Type();
-    if (op_type == "feed" || op_type == "fetch_v2") {
-      continue;
-    }
-    auto has_phi_kernel =
-        !phi::KernelFactory::Instance()
-             .SelectKernelMap(phi::TransToPhiKernelName(op_type))
-             .empty();
-
-    if (!has_phi_kernel) {
-      auto kernel_iter = OperatorWithKernel::AllOpKernels().find(op_type);
-      if (kernel_iter != OperatorWithKernel::AllOpKernels().end()) {
-        VLOG(4) << op_type << " has no phi kernel, but has fluid kernel.";
-        res = false;
-      } else {
-        VLOG(4) << op_type << " has no phi kernel, and no fluid kernel.";
-      }
-    } else {
-      VLOG(4) << op_type << " has phi kernel";
-    }
-  }
-  return res;
 }
 
 void AddFetch(const std::vector<std::string>& fetch_names,
@@ -319,6 +287,41 @@ void BuildVariableScope(const framework::BlockDesc& block,
               << ptr << " type is " << static_cast<int>(var_desc->GetType());
     }
     var_scope->AddVar(var_name, var_desc);
+  }
+}
+
+void CheckBlockCanBeStaticBuild(const framework::BlockDesc& block) {
+  // has_fluid_kernel = KernelCode & 1
+  // has_structed_kernel = (kernelCode >> 1) & 1
+  using KernelCode = int8_t;
+  std::vector<std::pair<std::string, KernelCode>> invalid_ops;
+  for (auto& op : block.AllOps()) {
+    auto op_type = op->Type();
+    if (op_type == "feed" || op_type == "fetch_v2") {
+      continue;
+    }
+
+    bool has_fluid_kernel = OperatorWithKernel::AllOpKernels().count(op_type);
+    bool has_structured_kernel =
+        phi::KernelFactory::Instance().HasStructuredKernel(op_type);
+
+    KernelCode kernel_code = (has_fluid_kernel << 1) + has_structured_kernel;
+    if (kernel_code != 0) {
+      invalid_ops.emplace_back(std::make_pair(op_type, kernel_code));
+    }
+  }
+
+  if (!invalid_ops.empty()) {
+    std::stringstream ss;
+    ss << "The following OPs are unable to static build:\n";
+    for (auto& item : invalid_ops) {
+      ss << item.first << " [has_fluid_kernel = " << (item.second & 1)
+         << ", has_structed_kerenl = " << (item.second >> 1 & 1) << "]\n";
+    }
+    VLOG(0) << ss.str();
+    PADDLE_THROW(
+        phi::errors::Unavailable("Unable to static build since Block contain "
+                                 "OPs with fluid kernel or structed kerenl"));
   }
 }
 
@@ -567,13 +570,14 @@ void FakeInitializeOutputs(phi::Kernel* phi_kernel,
   }
 }
 
-bool BuildOpFuncList(const platform::Place& place,
+void BuildOpFuncList(const platform::Place& place,
                      const framework::BlockDesc& block,
                      const std::set<std::string>& skip_gc_vars,
                      std::vector<OpFuncNode>* vec_func_list,
                      VariableScope* var_scope,
                      const ExecutionConfig& execution_config,
-                     bool use_local_scope) {
+                     bool use_local_scope,
+                     bool static_build) {
   Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
                                        : var_scope->GetMutableScope();
   std::vector<std::unique_ptr<OperatorBase>>
@@ -581,9 +585,11 @@ bool BuildOpFuncList(const platform::Place& place,
   // Step 1: create all ops for current block.
   CreateAllOps(block, &ops_unique);
 
-  auto skip_run =
-      FLAGS_new_executor_static_build && IsBlockContainsOnlyPhiKernel(block);
-  VLOG(4) << "Static build: " << skip_run;
+  if (static_build) {
+    CheckBlockCanBeStaticBuild(block);
+  }
+
+  VLOG(4) << "Static build: " << static_build;
 
   if (!execution_config.used_for_jit) {
     // If gc is enabled and block size > 1
@@ -812,7 +818,7 @@ bool BuildOpFuncList(const platform::Place& place,
                            &op_func_node,
                            vec_func_list,
                            use_local_scope,
-                           skip_run);
+                           static_build);
         VLOG(4) << "apply data transform done. ";
         // step 4. infershape, see OperatorWithKernel::RunImpl in operator.cc
         // for why.
@@ -833,7 +839,7 @@ bool BuildOpFuncList(const platform::Place& place,
           phi::KernelContext phi_kernel_context;
           op_with_kernel->BuildPhiKernelContext(
               runtime_context, dev_ctx, &phi_kernel_context);
-          if (!skip_run) {
+          if (!static_build) {
             (*op_func_node.phi_kernel_)(&phi_kernel_context);
           } else {
             FakeInitializeOutputs(op_func_node.phi_kernel_,
@@ -848,7 +854,7 @@ bool BuildOpFuncList(const platform::Place& place,
           (*op_func_node.phi_kernel_)(&execution_context);
         } else {
           // the place of exec_ctx maybe has changed.
-          if (!skip_run) {
+          if (!static_build) {
             op_func_node.kernel_func_(ExecutionContext(
                 *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context));
           } else {
@@ -939,7 +945,6 @@ bool BuildOpFuncList(const platform::Place& place,
 
     interpreter::LogDeviceMemoryStats(place);
   }
-  return skip_run;
 }
 
 void LogDeviceMemoryStats(const platform::Place& place) {
