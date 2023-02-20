@@ -2077,9 +2077,7 @@ class OpTest(unittest.TestCase):
             prim_grad_checker.check()
             # Support operators which not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
             setattr(self.__class__, 'check_prim', True)
-            setattr(self.__class__, 'check_prim', True)
-            self.__class__.op_type = self.op_type
-            self.__class__.exist_check_grad = True
+            self._check_grad_helper()
             if prim_grad_checker.is_only_check_prim():
                 self.only_prim = True
                 return

@@ -1669,7 +1669,7 @@ class OpTest(unittest.TestCase):
         if check_prim:
             prim_checker = PrimForwardChecker(self, place)
             prim_checker.check()
-            # Support operators which not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
+            # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
             setattr(self.__class__, 'check_prim', True)
             self.__class__.op_type = self.op_type
             if prim_checker.is_only_check_prim():
@@ -2002,10 +2002,9 @@ class OpTest(unittest.TestCase):
                 user_defined_grad_outputs,
             )
             prim_grad_checker.check()
-            # Support operators which not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
+            # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
             setattr(self.__class__, 'check_prim', True)
-            self.__class__.op_type = self.op_type
-            self.__class__.exist_check_grad = True
+            self._check_grad_helper()
             if prim_grad_checker.is_only_check_prim():
                 self.only_prim = True
                 return
