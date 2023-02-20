@@ -334,15 +334,52 @@ void exp_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
 }
 
 template <typename T>
-void topk_grad(const Tensor& x, const Tensor& indices, const Tensor& out_grad, const Scalar& k, const int& axis, const bool& largest, const bool& sorted, Tensor* x_grad){
+void topk_grad(const Tensor& x,
+               const Tensor& indices,
+               const Tensor& out_grad,
+               const Scalar& k,
+               const int& axis,
+               const bool& largest,
+               const bool& sorted,
+               Tensor* x_grad) {
   if (x_grad) {
-    int in_dims = indices.dims();
+    int in_dims = x.dims();
+    int out_dims = indices.dims();
+    auto zero_tensor = full<T>(phi::vectorize(x.dims()), 0.0, x.dtype());
+    auto x_grad_tmp = Tensor();
 
     axis = (axis < 0) ? (in_dims.size() + axis) : axis;
     if (axis + 1 == in_dims.size()) {
-
+      x_grad_tmp = scatter<T>(zero_tensor, indices, out_grad, false);
     } else {
-      
+      int axis_value = axis.to<int>();
+      std::vector<int> tmp_perm;
+
+      // can not assign grad to input_grad, must do the transpose
+      for (int i = 0; i < axis; i++) {
+        tmp_perm.emplace_back(i);
+      }
+      tmp_perm.emplace_back(out_dims.size() - 1);
+      for (int i = axis + 1; i < out_dims.size() - 1; i++) {
+        tmp_perm.emplace_back(i);
+      }
+      tmp_perm.emplace_back(axis);
+
+      std::vector<int> reverse_perm(tmp_perm);
+      // make origin ranks to transpose back
+      for (int i = 0; i < static_cast<int>(tmp_perm.size()); ++i) {
+        reverse_perm[tmp_perm[i]] = i;
+      }
+
+      // transpose out_grad and zero grad to target rank.
+      auto tmp_zero_x_grad = transpose<T>(zero_tensor, tmp_perm);
+      auto tmp_out_grad = transpose<T>(out_grad, tmp_perm);
+      auto tmp_indices = transpose<T>(indices, tmp_perm);
+      // scatter grad to grad_x
+      auto tmp_grad_x = scatter<T>(tmp_zero_x_grad, tmp_indices,
+                                   tmp_out_grad, false);
+      x_grad_tmp = transpose<T>(tmp_grad_x, reverse_perm);
+
     }
     set_output<T>(x_grad_tmp, x_grad);
   }
