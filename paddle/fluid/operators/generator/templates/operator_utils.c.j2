@@ -279,8 +279,8 @@ phi::KernelKey GetExpectedKernelType(
     data_type = framework::OperatorWithKernel::IndicateVarDataType(ctx, {{data_type_args[1] | to_opmaker_name}});
   }
   {% endif %}
-{% elif "compromote" in op and "forward" not in op%}
-  {% set inputs = op["inputs"] | map(attribute="fluid_name") | list %}
+{% elif "complex_promote" in op and "forward" not in op%}
+  {% set inputs = op["complex_promote"]%}
   auto data_type =
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "{{inputs[0]}}", "{{inputs[1]}}");
 {% endif %}
@@ -319,7 +319,7 @@ phi::KernelKey GetKernelTypeForVar(
        return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
     {% endif %}
       }
-{% else %}{# deal compromote #}
+{% else %}{# deal complex_promote #}
       if (framework::IsComplexType(expected_kernel_type.dtype())) {
       // only promote inputs’s types when contains complex input
         return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
@@ -339,9 +339,9 @@ class {{op["op_name"] | to_pascal_case}}Op : public framework::OperatorWithKerne
   using framework::OperatorWithKernel::OperatorWithKernel;
   {# ----------- get expected kernel type function -------------------------- #}
   {% set kernel = op["kernel"] %}
-  {% if kernel["data_type"] is not none or "compromote" in op or "data_transform" in op%}
+  {% if kernel["data_type"] is not none or "complex_promote" in op or "data_transform" in op%}
  protected:
-    {% if kernel["data_type"] is not none or "compromote" in op %}
+    {% if kernel["data_type"] is not none or "complex_promote" in op %}
       {% filter indent(2, True)%}
 {{get_expected_kernel(op)}}
       {% endfilter %}
@@ -351,7 +351,7 @@ class {{op["op_name"] | to_pascal_case}}Op : public framework::OperatorWithKerne
       {% filter indent(2, True) %}
 {{get_kernel_for_var(op)}}
       {% endfilter %}
-  {%- elif "compromote" in op and op["compromote"] is not none -%}
+  {%- elif "complex_promote" in op and op["complex_promote"] is not none -%}
       {% filter indent(2, True) %}
 {{get_kernel_for_var(op)}}
         {% endfilter %}

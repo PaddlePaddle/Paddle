@@ -818,7 +818,7 @@
     {x : X, y : Y}
   outputs :
     {out : Out}
-  compromote : true
+  complex_promote : [X, Y]
 
 - op : kthvalue
   inputs :
