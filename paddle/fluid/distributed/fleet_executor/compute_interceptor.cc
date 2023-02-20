@@ -187,7 +187,7 @@ void ComputeInterceptor::ReplyCompletedToUpStream() {
 }
 
 void ComputeInterceptor::RunOps() {
-  for (auto op : node_->ops()) {
+  if (!cores_.empty() || !node_->ops().empty()) {
     PADDLE_ENFORCE_LT(cur_scope_id_,
                       microbatch_scopes_.size(),
                       platform::errors::InvalidArgument(
@@ -195,12 +195,19 @@ void ComputeInterceptor::RunOps() {
                           "microbatch_scopes, but recevice scope index %ld",
                           microbatch_scopes_.size(),
                           cur_scope_id_));
-    op->Run(*microbatch_scopes_[cur_scope_id_], place_);
-    if (gc_) {
-      framework::DeleteUnusedTensors(*microbatch_scopes_[cur_scope_id_],
-                                     op,
-                                     node_->unused_vars(),
-                                     gc_.get());
+  }
+
+  if (!cores_.empty()) {
+    cores_[cur_scope_id_]->Run(/*feed_names=*/{}, /*need_fetch=*/false);
+  } else {
+    for (auto op : node_->ops()) {
+      op->Run(*microbatch_scopes_[cur_scope_id_], place_);
+      if (gc_) {
+        framework::DeleteUnusedTensors(*microbatch_scopes_[cur_scope_id_],
+                                       op,
+                                       node_->unused_vars(),
+                                       gc_.get());
+      }
     }
   }
 }
