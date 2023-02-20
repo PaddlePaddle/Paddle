@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_meta.h"
 
 namespace phi {
-
+/*
 DDim calc_contiguous_strides(const DDim& dims) {
   DDim strides(dims);
   strides[dims.size() - 1] = 1;
@@ -40,13 +40,13 @@ DDim calc_strides(const DDim& dims, DataLayout layout = DataLayout::NCHW) {
   } else {
     return calc_contiguous_strides(dims);
   }
-}
+}*/
 
 DenseTensorMeta::DenseTensorMeta() { use_gpudnn = true; }
 
 DenseTensorMeta::DenseTensorMeta(DataType dtype, const DDim& dims)
     : dims(dims), dtype(dtype) {
-  strides = calc_contiguous_strides(dims);
+  strides = calc_strides(dims);
   use_gpudnn = true;
 }
 
@@ -86,6 +86,22 @@ bool DenseTensorMeta::valid() const noexcept {
 
 void DenseTensorMeta::setStride(const DDim& newStrides) {
   strides = calc_strides(dims, DataLayout::NCHW);
+}
+
+DDim DenseTensorMeta::calc_strides(const DDim& dims, DataLayout layout) {
+  DDim new_strides(dims);
+  if (layout == DataLayout::NHWC) {
+    new_strides[1] = 1;
+    new_strides[3] = dims[1];
+    new_strides[2] = new_strides[3] * dims[3];
+    new_strides[0] = new_strides[2] * dims[2];
+  } else {
+    new_strides[dims.size() - 1] = 1;
+    for (int i = dims.size() - 2; i >= 0; --i) {
+      new_strides[i] = new_strides[i + 1] * dims[i + 1];
+    }
+  }
+  return new_strides;
 }
 
 void DenseTensorMeta::setStride(const DDim& dims, DataLayout layout) {

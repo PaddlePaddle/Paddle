@@ -56,11 +56,14 @@ class MetaTensor {
 
   virtual int64_t numel() const;
   virtual DDim dims() const;
+  virtual DDim stride() const;
+
   virtual DataType dtype() const;
   virtual DataLayout layout() const;
   virtual void set_dims(const DDim& dims);
   virtual void set_dtype(DataType dtype);
   virtual void set_layout(DataLayout layout);
+  virtual void set_strides(const DDim& strides) const;
 
   virtual void share_lod(const MetaTensor& meta_tensor);
   virtual void share_meta(const MetaTensor& meta_tensor);

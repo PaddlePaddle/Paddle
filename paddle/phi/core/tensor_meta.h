@@ -65,8 +65,15 @@ struct DenseTensorMeta {
   /// \return Whether the metadata is valid.
   bool valid() const noexcept;
 
+  DDim calc_strides(const DDim& dims, DataLayout layout = DataLayout::NCHW);
+
   /// \brief Set strides
   void setStride(const DDim& newStrides);
+  DenseTensorMeta withStrides(const DDim& newStrides) {
+    auto new_meta = *this;
+    new_meta.strides = newStrides;
+    return new_meta;
+  }
 
   /// \brief Set strides according dims and layout
   void setStride(const DDim& dims, DataLayout layout);
