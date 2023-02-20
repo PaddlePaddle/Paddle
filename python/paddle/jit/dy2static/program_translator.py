@@ -222,11 +222,10 @@ class CacheKey:
         if args and isinstance(args[0], layers.Layer):
             args = args[1:]
         # 2. convert tensor and numpy array into InputSpec
-        _args, _kwargs = function_spec.unified_args_and_kwargs(args, kwargs)
         (
             input_args_with_spec,
             input_kwargs_with_spec,
-        ) = function_spec.args_to_input_spec(_args, _kwargs)
+        ) = function_spec.args_to_input_spec(args, kwargs)
 
         # 3. check whether hit the cache or build a new program for the input arguments
         return CacheKey(
@@ -440,8 +439,6 @@ class StaticFunction:
             )
 
         # 2. trace ops from dygraph layers and cache the generated program.
-        args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
-
         try:
             concrete_program, partial_program_layer = self.get_concrete_program(
                 *args, **kwargs, is_train=self._is_train_mode()
@@ -459,7 +456,7 @@ class StaticFunction:
 
             # 4. return outputs.
             try:
-                return partial_program_layer(args)
+                return partial_program_layer(args, kwargs)
             except Exception as e:
                 if not hasattr(e, error.ERROR_DATA):
                     # runtime error
@@ -536,10 +533,6 @@ class StaticFunction:
         if "with_hook" in kwargs:
             kwargs.pop("with_hook")
         # 1. unify args/kwargs and replace Tensor with InputSpec
-        if len(args) != len(self._function_spec.args_name):
-            args, kwargs = self._function_spec.unified_args_and_kwargs(
-                args, kwargs
-            )
         (
             input_args_with_spec,
             input_kwargs_with_spec,
@@ -1036,7 +1029,7 @@ class ConcreteProgram:
         main_program = update_op_callstack_with_origin_info(main_program)
 
         return ConcreteProgram(
-            inputs=static_inputs,
+            inputs=(static_inputs, _kwargs),
             outputs=outputs,
             parameters=all_parameters_and_buffers,
             function=dygraph_function,
@@ -1178,7 +1171,9 @@ class ProgramCache:
                 raise
 
         concrete_program._to_prim()
-        return concrete_program, partial_program_from(concrete_program)
+        return concrete_program, partial_program_from(
+            concrete_program, ignore_first=cache_key.class_instance is not None
+        )
 
     def __getitem__(self, item):
         if not isinstance(item, CacheKey):

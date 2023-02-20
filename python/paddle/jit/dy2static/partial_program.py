@@ -21,7 +21,6 @@ from paddle import _legacy_C_ops
 from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
 from paddle.fluid import backward, core, framework, program_guard
 from paddle.fluid.compiler import BuildStrategy
-from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.framework import _apply_pass
 from paddle.fluid.layers.utils import _hash_with_id, flatten, pack_sequence_as
@@ -199,11 +198,11 @@ class PartialProgramLayer:
         # program_id -> list(scope)
         self._scope_cache = {}
 
-    def __call__(self, inputs):
+    def __call__(self, inputs, kwargs):
         """
         Execute static graph by Interpreter and Return dynamic Tensors.
         """
-        in_vars, out_vars = self._prepare(inputs)
+        in_vars, out_vars = self._prepare(inputs, kwargs)
         self._cast_fp16_if_pure_fp16(in_vars)
         attrs = self._prepare_attributes()
 
@@ -832,13 +831,14 @@ class PartialProgramLayer:
                 skip_vars.append(var_name)
         return skip_vars
 
-    def _prepare(self, inputs):
+    def _prepare(self, inputs, kwargs):
         """
         Prepare inputs, outputs, attrs.
         """
         assert isinstance(inputs, (tuple, list))
+        assert isinstance(kwargs, (dict))
         # Flatten inputs with nested structure into single list.
-        flatten_inputs = flatten(inputs)
+        flatten_inputs = flatten([inputs, kwargs])
         # Convert variable into VarBase and feed in training data.
         input_vars = []
         expected_place = framework._current_expected_place()
@@ -1095,14 +1095,14 @@ def _create_fake_var():
         ]
 
 
-def partial_program_from(concrete_program):
-    inputs = concrete_program.inputs
-    if inputs and isinstance(inputs[0], layers.Layer):
+def partial_program_from(concrete_program, ignore_first):
+    inputs, kwargs = concrete_program.inputs
+    if inputs and ignore_first:
         inputs = inputs[1:]
 
     return PartialProgramLayer(
         concrete_program.main_program,
-        inputs,
+        (inputs, kwargs),
         concrete_program.outputs,
         concrete_program.parameters,
         **concrete_program.kwargs

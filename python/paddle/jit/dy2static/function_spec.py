@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import collections
-import inspect
 
 import numpy as np
 
@@ -22,15 +21,9 @@ from paddle.fluid import core
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.layers.utils import flatten, pack_sequence_as
-from paddle.jit.translated_layer import TranslatedLayer
 
 from . import logging_utils
-from .utils import (
-    func_to_source_code,
-    parse_arg_and_kwargs,
-    parse_varargs_name,
-    type_name,
-)
+from .utils import func_to_source_code, type_name
 
 __all__ = []
 
@@ -49,67 +42,7 @@ class FunctionSpec:
             self._input_spec = self._verify_input_spec(input_spec)
             self._flat_input_spec = flatten(self._input_spec)
 
-        # parse full argument names list.
-        self._arg_names, self._default_kwargs = parse_arg_and_kwargs(function)
-        # parse *args
-        self.varargs_name = parse_varargs_name(function)
-        if self.varargs_name is not None and isinstance(
-            getattr(function, '__self__', None), TranslatedLayer
-        ):
-            self._arg_names += function.__self__._input_args_names
-
-    def unified_args_and_kwargs(self, args, kwargs):
-        """
-        Moves kwargs with default value into arguments list to keep `args` contain the same length
-        value as function definition.
-
-        For example:
-
-            Given function definition: `def foo(x, a=1, b=2)`,
-            when calling it by `foo(23)`, the args is `[23]`, kwargs is `{a=1, b=2}`.
-            In this function, it will return args with `[23, 1, 2]`, kwargs with `{}`
-
-        Args:
-            args(tuple): tuple of input arguments value of decorated function.
-            kwargs(dict): dict of input keyword arguments value of decorated function.
-
-        Return:
-            New arguments tuple containing default kwargs value.
-        """
-        if len(self._arg_names) < len(args):
-            error_msg = "The decorated function `{}` requires {} arguments: {}, but received {} with {}.".format(
-                self._dygraph_function.__name__,
-                len(self._arg_names),
-                self._arg_names,
-                len(args),
-                args,
-            )
-            if args and inspect.isclass(args[0]):
-                error_msg += "\n\tMaybe the function has more than one decorator, we don't support this for now."
-                raise NotImplementedError(error_msg)
-            else:
-                raise ValueError(error_msg)
-
-        args = list(args)
-
-        for i in range(len(args), len(self._arg_names)):
-            arg_name = self._arg_names[i]
-            if arg_name in kwargs:
-                args.append(kwargs[arg_name])
-                del kwargs[arg_name]
-            else:
-                if arg_name not in self._default_kwargs:
-                    raise ValueError(
-                        "`{}()` requires `{}` arguments, but not found in input `args`: {} and `kwargs`: {}.".format(
-                            self._dygraph_function.__name__,
-                            arg_name,
-                            args,
-                            kwargs,
-                        )
-                    )
-                args.append(self._default_kwargs[arg_name])
-
-        return tuple(args), kwargs
+        # self._arg_names, self._default_kwargs = parse_arg_and_kwargs(function)
 
     def _replace_value_with_input_spec(self, args):
         args_with_spec = []
@@ -145,15 +78,6 @@ class FunctionSpec:
         args_with_spec = []
         kwargs_with_spec = []
         if self._input_spec is not None:
-            # Note: Because the value type and length of `kwargs` is uncertain.
-            # So we don't support to deal this case while specificing `input_spec` currently.
-            if kwargs:
-                raise ValueError(
-                    "{} got unexpected keyword arguments: {}. Cannot trace the function when `input_spec` is specificed.".format(
-                        self._dygraph_function.__name__, kwargs
-                    )
-                )
-
             # Note: The length of `input_spec` can be greater than `args`,
             # because `args` may contains non-tensor value merged form `kwargs`
             # after `unified_args_and_kwargs`.
@@ -172,10 +96,9 @@ class FunctionSpec:
 
         # If without specificing name in input_spec, add default name
         # according to argument name from decorated function.
-        args_with_spec = replace_spec_empty_name(
-            self._arg_names, args_with_spec
-        )
-
+        # args_with_spec = replace_spec_empty_name(
+        # self._arg_names, args_with_spec
+        # )
         return args_with_spec, kwargs_with_spec
 
     @switch_to_static_graph
@@ -265,11 +188,7 @@ def get_parameters(layer_instance, include_sublayer=True):
             else:
                 params = layer_instance._parameters
         else:
-            raise TypeError(
-                "Type of `layer_instance` should be nn.Layer, but received {}".format(
-                    type_name(layer_instance)
-                )
-            )
+            pass
 
     return params
 
@@ -289,11 +208,7 @@ def get_buffers(layer_instance, include_sublayer=True):
             else:
                 buffers = layer_instance._buffers
         else:
-            raise TypeError(
-                "Type of `layer_instance` should be nn.Layer, but received {}".format(
-                    type_name(layer_instance)
-                )
-            )
+            pass
     return buffers
 
 

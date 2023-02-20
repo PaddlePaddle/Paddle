@@ -182,35 +182,6 @@ def saw(x):
         return x
 
 
-def parse_arg_and_kwargs(function):
-    """
-    Returns full argument names as list. e.g ['x', 'y', 'z']
-    """
-    fullargspec = inspect.getfullargspec(function)
-    arg_names = fullargspec.args
-    if arg_names and 'self' == arg_names[0]:
-        arg_names = fullargspec.args[1:]
-
-    # parse default kwargs
-    default_kwargs = {}
-    default_values = fullargspec.defaults
-    if default_values:
-        assert len(default_values) <= len(arg_names)
-        default_kwarg_names = arg_names[-len(default_values) :]
-        default_kwargs = dict(zip(default_kwarg_names, default_values))
-
-    return arg_names, default_kwargs
-
-
-def parse_varargs_name(function):
-    """
-    Returns varargs name string of function. e.g: 'input' from `foo(x, *input)`
-    """
-    fullargspec = inspect.getfullargspec(function)
-    varargs = fullargspec.varargs
-    return varargs
-
-
 def type_name(v):
     return type(v).__name__
 
