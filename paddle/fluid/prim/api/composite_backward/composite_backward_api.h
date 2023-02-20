@@ -348,22 +348,21 @@ void topk_grad(const Tensor& x,
     auto zero_tensor = full<T>(phi::vectorize(x.dims()), 0.0, x.dtype());
     auto x_grad_tmp = Tensor();
 
-    axis = (axis < 0) ? (in_dims.size() + axis) : axis;
-    if (axis + 1 == in_dims.size()) {
+    int tmp_axis = (axis < 0) ? (in_dims.size() + axis) : axis;
+    if (tmp_axis + 1 == in_dims.size()) {
       x_grad_tmp = scatter<T>(zero_tensor, indices, out_grad, false);
     } else {
-      int axis_value = axis.to<int>();
       std::vector<int> tmp_perm;
 
       // can not assign grad to input_grad, must do the transpose
-      for (int i = 0; i < axis; i++) {
+      for (int i = 0; i < tmp_axis; i++) {
         tmp_perm.emplace_back(i);
       }
       tmp_perm.emplace_back(out_dims.size() - 1);
-      for (int i = axis + 1; i < out_dims.size() - 1; i++) {
+      for (int i = tmp_axis + 1; i < out_dims.size() - 1; i++) {
         tmp_perm.emplace_back(i);
       }
-      tmp_perm.emplace_back(axis);
+      tmp_perm.emplace_back(tmp_axis);
 
       std::vector<int> reverse_perm(tmp_perm);
       // make origin ranks to transpose back
@@ -379,7 +378,6 @@ void topk_grad(const Tensor& x,
       auto tmp_grad_x = scatter<T>(tmp_zero_x_grad, tmp_indices,
                                    tmp_out_grad, false);
       x_grad_tmp = transpose<T>(tmp_grad_x, reverse_perm);
-
     }
     set_output<T>(x_grad_tmp, x_grad);
   }
