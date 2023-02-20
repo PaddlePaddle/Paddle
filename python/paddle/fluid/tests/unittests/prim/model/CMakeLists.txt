@@ -14,7 +14,6 @@ set_tests_properties(test_bert_prim_cinn PROPERTIES TIMEOUT 400)
 if(WITH_CINN)
   set_tests_properties(test_resnet_prim_cinn PROPERTIES LABELS "RUN_TYPE=CINN")
   set_tests_properties(
-    test_bert_prim_cinn
-    PROPERTIES LABELS "RUN_TYPE=CINN" ENVIRONMENT
-               FLAGS_deny_cinn_ops="dropout;layer_norm;slice")
+    test_bert_prim_cinn PROPERTIES LABELS "RUN_TYPE=CINN" ENVIRONMENT
+                                   "FLAGS_deny_cinn_ops=dropout")
 endif()
