@@ -149,3 +149,34 @@ def mean_composite(x, axis, keepdim):
         dtype=sum_x.dtype,
     )
     return divide(sum_x, norm)
+
+
+def maybe_wrap_dim(dim: int, dim_post_expr: int):
+    min = -dim_post_expr
+    max = dim_post_expr - 1
+    assert not (dim < min or dim > max)
+    if dim < 0:
+        dim += dim_post_expr
+    return dim
+
+
+@REGISTER_COMPOSITE('flatten_contiguous_range')
+def flatten_contiguous_range_composite(x, start_axis, stop_axis):
+    """define composite rule of op flatten, flatten_contiguous_range -> flatten"""
+    shape_in = x.shape
+    start_dim = maybe_wrap_dim(start_axis, len(shape_in))
+    end_dim = maybe_wrap_dim(stop_axis, len(shape_in))
+    assert start_dim <= end_dim
+    if len(shape_in) == 0 or start_dim == end_dim:
+        return x, to_tensor(shape_in, dtype=float32)
+    slice_numel = 1
+    for i in range(start_dim, end_dim + 1):
+        slice_numel *= shape_in[i]
+    # slice_numel = multiply_integers(shape_in[start_dim:end_dim - start_dim + 1])
+    shape_out: List[int] = []
+    for i in range(start_dim):
+        shape_out.append(shape_in[i])
+    shape_out.append(slice_numel)
+    for i in range(end_dim + 1, len(shape_in)):
+        shape_out.append(shape_in[i])
+    return reshape(x, shape=shape_out), to_tensor(shape_out, dtype='float32')
