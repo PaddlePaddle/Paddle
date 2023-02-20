@@ -343,6 +343,7 @@ class NegSpecNet(paddle.nn.Layer):
 
 class TestNegSpecWithPrim(unittest.TestCase):
     def setUp(self):
+        paddle.disable_static()
         core._set_prim_all_enabled(True)
 
     def tearDown(self):
