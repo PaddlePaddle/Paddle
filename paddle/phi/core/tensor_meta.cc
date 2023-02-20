@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_meta.h"
 
 namespace phi {
-/*
+
 DDim calc_contiguous_strides(const DDim& dims) {
   DDim strides(dims);
   strides[dims.size() - 1] = 1;
@@ -34,13 +34,13 @@ DDim calc_channels_last_strides(const DDim& dims) {
   return strides;
 }
 
-DDim calc_strides(const DDim& dims, DataLayout layout = DataLayout::NCHW) {
+DDim calc_strides_(const DDim& dims, DataLayout layout = DataLayout::NCHW) {
   if (layout == DataLayout::NHWC) {
     return calc_channels_last_strides(dims);
   } else {
     return calc_contiguous_strides(dims);
   }
-}*/
+}
 
 DenseTensorMeta::DenseTensorMeta() { use_gpudnn = true; }
 
@@ -81,6 +81,13 @@ bool DenseTensorMeta::valid() const noexcept {
   valid = valid && (dtype != DataType::UNDEFINED);
   valid = valid && (layout != DataLayout::UNDEFINED);
   valid = valid && (is_scalar || product(dims) >= 0);
+  return valid;
+}
+
+bool DenseTensorMeta::is_contiguous(DataLayout exp_layout) const noexcept {
+  bool valid{true};
+  DDim exp_strides = calc_strides_(dims, exp_layout);
+  valid = valid && (strides != exp_strides);
   return valid;
 }
 

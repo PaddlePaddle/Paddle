@@ -78,6 +78,8 @@ struct DenseTensorMeta {
   /// \brief Set strides according dims and layout
   void setStride(const DDim& dims, DataLayout layout);
 
+  bool is_contiguous(DataLayout layout = DataLayout::NCHW) const noexcept;
+
   bool is_scalar{false};
   /// \brief Determine whether using gpudnn speed-up library in the new dygraph.
   /// It maybe also support MKLDNN library in the near future.

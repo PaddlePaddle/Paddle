@@ -1950,6 +1950,22 @@ static PyObject* tensor_method__is_string_tensor_hold_allocation(
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_is_contiguous(TensorObject* self,
+                                      PyObject* args,
+                                      PyObject* kwargs) {
+  EAGER_TRY
+  if (self->tensor.is_dense_tensor()) {
+    // PyObject* layout_obj = PyTuple_GET_ITEM(args, 0);
+    // std::string layout = CastPyArg2AttrString(layout_obj, "NCHW");
+    auto dense_tensor =
+        std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
+    return ToPyObject(true);
+  } else {
+    return ToPyObject(true);
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyMethodDef variable_methods[] = {
     {"numpy",
      (PyCFunction)(void (*)(void))tensor_method_numpy,
@@ -2165,6 +2181,10 @@ PyMethodDef variable_methods[] = {
      NULL},
     {"_unset_fake_empty",
      (PyCFunction)(void (*)(void))tensor__unset_fake_empty,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"is_contiguous",
+     (PyCFunction)(void (*)(void))tensor_is_contiguous,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"data_ptr",

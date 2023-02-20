@@ -49,7 +49,7 @@ DDim MetaTensor::dims() const {
 DDim MetaTensor::stride() const {
   ValidCheck(*this);
   if (phi::DenseTensor::classof(tensor_)) {
-    DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_))
+    return DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_))
         ->strides;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented("Unsupported get strides for `%s`.",
@@ -70,10 +70,10 @@ DataLayout MetaTensor::layout() const {
 void MetaTensor::set_dims(const DDim& dims) {
   ValidCheck(*this);
   if (phi::DenseTensor::classof(tensor_)) {
-    DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_))->dims =
-        dims;
-    DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_))
-        ->calc_strides(dims);
+    auto dense_menta_ptr =
+        DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_));
+    dense_menta_ptr->dims = dims;
+    dense_menta_ptr->strides = dense_menta_ptr->calc_strides(dims);
   } else if (phi::StringTensor::classof(tensor_)) {
     StringTensorUtils::GetMutableMeta(static_cast<StringTensor*>(tensor_))
         ->dims = dims;
@@ -97,8 +97,10 @@ void MetaTensor::set_strides(const DDim& strides) {
     DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_))
         ->strides = strides;
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "Unsupported setting strides for `%s`.", tensor_->type_info().name()));
+    // no need set strides
+    // PADDLE_THROW(phi::errors::Unimplemented(
+    //     "Unsupported setting strides for `%s`.",
+    //     tensor_->type_info().name()));
   }
 }
 
