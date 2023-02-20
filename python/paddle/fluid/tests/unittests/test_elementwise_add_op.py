@@ -251,7 +251,7 @@ class TestElementwiseAddOp_broadcast_0(TestElementwiseAddOp):
         self.axis = 0
 
 
-class TestFP16ElementwiseAddOp_broadcast_0(TestFP16ElementwiseAddOp):
+class TestFP16ElementwiseAddOp_broadcast_0_test(TestFP16ElementwiseAddOp):
     def init_input_output(self):
         self.x = np.random.rand(100, 2, 3).astype(self.dtype)
         self.y = np.random.rand(100).astype(self.dtype)
