@@ -20,6 +20,7 @@ import paddle.distributed.fleet as fleet
 
 paddle.enable_static()
 
+
 class TensorParallelNet(paddle.fluid.dygraph.Layer):
     def __init__(self, hidden_size):
         super().__init__()
@@ -48,13 +49,14 @@ class TensorParallelNet(paddle.fluid.dygraph.Layer):
         output = self.layer_norm(out)
         return output
 
-def filter_fn(param, pos_emb = True, layer_norm = True, bias = True):
+
+def filter_fn(param, pos_emb=True, layer_norm=True, bias=True):
     """
     Layer fliter function for tensor parallelism transformer.
-    
-    In tensor parallelism of transformer like model, there is 4 kind of param 
+
+    In tensor parallelism of transformer like model, there is 4 kind of param
     that are supposed to be the same in all tensor parallel peers:
-        * position embedding 
+        * position embedding
         * scale of layer norm
         * bias of layer norm
         * bias of row parallel linear
@@ -66,14 +68,15 @@ def filter_fn(param, pos_emb = True, layer_norm = True, bias = True):
     if pos_emb and p_name.startswith("embedding"):
         return True
 
-    elif layer_norm and p_name.startswith("layer_norm"): 
+    elif layer_norm and p_name.startswith("layer_norm"):
         return True
 
-    elif bias and ".b_" in p_name and (param.is_distributed is False) : 
-        return True    
+    elif bias and ".b_" in p_name and (param.is_distributed is False):
+        return True
 
     else:
         return False
+
 
 class TestFleetMetaOptimizer(unittest.TestCase):
     def setUp(self):
@@ -84,33 +87,66 @@ class TestFleetMetaOptimizer(unittest.TestCase):
 
     def test_tensor_parallel_extra_sync(self):
         import paddle.distributed.fleet as fleet
-        import paddle.distributed.fleet.base.role_maker as role_maker
-
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.tensor_parallel = True
         strategy.tensor_parallel_configs = {"tensor_parallel_degree": 2}
         fleet.init(is_collective=True, strategy=strategy)
 
-        main_program, startup_program = paddle.static.Program(), paddle.static.Program()
+        main_program, startup_program = (
+            paddle.static.Program(),
+            paddle.static.Program(),
+        )
         with paddle.static.program_guard(main_program, startup_program):
             hidden_size = 512
-            input_x = paddle.static.data(name="x", shape=[-1, hidden_size], dtype='int64')
+            input_x = paddle.static.data(
+                name="x", shape=[-1, hidden_size], dtype='int64'
+            )
             model_a = TensorParallelNet(hidden_size)
             y = model_a(input_x)
             loss = paddle.mean(y)
 
-
         optimizer = paddle.fluid.optimizer.Adam(0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(loss)
-        ref_ops = ['lookup_table_v2', 'c_identity', 'matmul_v2', 'elementwise_add', 'matmul_v2', 'c_allreduce_sum', 'elementwise_add', 
-        'layer_norm', 'reduce_mean', 'fill_constant', 'reduce_mean_grad', 'layer_norm_grad', 'elementwise_add_grad', 'c_identity', 
-        'matmul_v2_grad', 'elementwise_add_grad', 'matmul_v2_grad', 'c_allreduce_sum', 'lookup_table_v2_grad', 'adam', 'adam', 'adam', 
-        'c_broadcast', 'adam', 'c_broadcast', 'adam', 'c_broadcast', 'adam', 'c_broadcast', 'adam']
-        paddle.distributed.fleet.utils.tensor_parallel_utils.add_extra_synchronization(main_program, params_filter_fn = filter_fn)
+        ref_ops = [
+            'lookup_table_v2',
+            'c_identity',
+            'matmul_v2',
+            'elementwise_add',
+            'matmul_v2',
+            'c_allreduce_sum',
+            'elementwise_add',
+            'layer_norm',
+            'reduce_mean',
+            'fill_constant',
+            'reduce_mean_grad',
+            'layer_norm_grad',
+            'elementwise_add_grad',
+            'c_identity',
+            'matmul_v2_grad',
+            'elementwise_add_grad',
+            'matmul_v2_grad',
+            'c_allreduce_sum',
+            'lookup_table_v2_grad',
+            'adam',
+            'adam',
+            'adam',
+            'c_broadcast',
+            'adam',
+            'c_broadcast',
+            'adam',
+            'c_broadcast',
+            'adam',
+            'c_broadcast',
+            'adam',
+        ]
+        paddle.distributed.fleet.utils.tensor_parallel_utils.add_extra_synchronization(
+            main_program, params_filter_fn=filter_fn
+        )
         ops = [op.type for op in main_program.global_block().ops]
         self.assertTrue(ops == ref_ops)
+
 
 if __name__ == "__main__":
     unittest.main()

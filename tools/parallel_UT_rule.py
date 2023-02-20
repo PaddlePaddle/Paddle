@@ -309,6 +309,7 @@ HIGH_PARALLEL_JOB_NEW = [
     'op_compatible_info_test',
     'complex_test',
     'test_fleet_static_mp_layers',
+    'test_fleet_tensor_parallel_extra_sync',
     'test_aligned_allocator',
     'test_analyzer_transformer_fuse',
     'test_sequence_topk_avg_pooling',
