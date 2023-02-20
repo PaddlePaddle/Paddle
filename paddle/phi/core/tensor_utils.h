@@ -110,6 +110,13 @@ void Copy(const Context& dev_ctx,
           bool blocking,
           SparseCsrTensor* dst);
 
+template <typename Context>
+void CopyWithStride(const Context& dev_ctx,
+                    const DenseTensor& src,
+                    Place dst_place,
+                    bool blocking,
+                    DenseTensor* dst);
+
 template <typename T>
 void TensorFromVector(const std::vector<T>& src,
                       const phi::DeviceContext& ctx,

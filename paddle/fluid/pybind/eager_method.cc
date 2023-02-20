@@ -1957,9 +1957,10 @@ static PyObject* tensor_is_contiguous(TensorObject* self,
   if (self->tensor.is_dense_tensor()) {
     // PyObject* layout_obj = PyTuple_GET_ITEM(args, 0);
     // std::string layout = CastPyArg2AttrString(layout_obj, "NCHW");
-    auto dense_tensor =
-        std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
-    return ToPyObject(true);
+    auto is_ctig =
+        std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl())
+            ->is_contiguous();
+    return ToPyObject(is_ctig);
   } else {
     return ToPyObject(true);
   }

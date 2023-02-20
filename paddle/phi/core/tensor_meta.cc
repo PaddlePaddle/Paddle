@@ -87,7 +87,7 @@ bool DenseTensorMeta::valid() const noexcept {
 bool DenseTensorMeta::is_contiguous(DataLayout exp_layout) const noexcept {
   bool valid{true};
   DDim exp_strides = calc_strides_(dims, exp_layout);
-  valid = valid && (strides != exp_strides);
+  valid = valid && (strides == exp_strides);
   return valid;
 }
 

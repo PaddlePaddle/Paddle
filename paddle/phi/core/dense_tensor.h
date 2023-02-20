@@ -121,6 +121,10 @@ class DenseTensor : public TensorBase,
   /// \return Whether the metadata is valid.
   bool valid() const noexcept override { return meta_.valid(); }
 
+  bool is_contiguous(DataLayout layout = DataLayout::NCHW) const noexcept {
+    return meta_.is_contiguous(layout);
+  }
+
   /// \brief Test whether the allocation is allocated.
   /// return Whether the allocation is allocated.
   bool initialized() const override { return holder_ && holder_->ptr(); }
