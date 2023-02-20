@@ -20,6 +20,7 @@ import paddle
 from ..cluster import LinkType
 from ..dist_tensor import DistributedTensor
 from ..process_group import get_process_group
+from ..reshard import get_var_with_recursion
 from ..utils import _get_comm_group, _get_idx_in_axis
 
 COMM_OP_TYPE = [
@@ -37,11 +38,14 @@ _g_op_cost_factory = {}
 def build_comp_desc_from_op(op):
     """Build the description of computation op."""
     # NOTE: The desc is for serial op.
-    from ..reshard import get_var_with_recursion
 
     desc = {}
-    # The desc of concat op is {"op": "concat", "inputs": {"X": [(paddle.float32, [20, 20]), (paddle.float32, [20, 20])]}, "outputs": {"Out": [(paddle.float32, [20, 40])], "attrs": {"axis": -1}}}
-    vars = op.block.vars
+    # The desc of concat op is {"op": "concat",
+    # "inputs": {"X": [(paddle.float32, [20, 20]),
+    #                  (paddle.float32, [20, 20])]},
+    # "outputs": {"Out": [(paddle.float32, [20, 40])], "attrs": {"axis": -1}}}
+
+    # vars = op.block.vars
     desc["op"] = op.type
     input_desc = OrderedDict()
     for input_name in op.input_names:
@@ -73,7 +77,6 @@ def build_comp_desc_from_op(op):
 
 def build_comp_desc_from_dist_op(dist_op, dist_context):
     """Build descriptions of computation op distributed on the processes."""
-    from ..reshard import get_var_with_recursion
 
     op_descs = {}
     op = dist_op.serial_op
@@ -85,7 +88,8 @@ def build_comp_desc_from_dist_op(dist_op, dist_context):
         desc = {}
         desc["op"] = op.type
         attr_desc = op.all_attrs()
-        # NOTE: The attrs of desc is replica of serial op, there may be a bug if shape need to be partitioned involved in attrs.
+        # NOTE: The attrs of desc is replica of serial op,
+        # there may be a bug if shape need to be partitioned involved in attrs.
         desc["attrs"] = attr_desc
         input_desc = OrderedDict()
         output_desc = OrderedDict()
@@ -101,7 +105,8 @@ def build_comp_desc_from_dist_op(dist_op, dist_context):
                 # Use op input_dims_mapping
                 dims_mapping = dist_attr.get_input_dims_mapping(var_name)
                 global_sizes = var.shape
-                # NOTE: When support uneven partition, the shard_sizes will be got from dist_attr.
+                # NOTE: When support uneven partition,
+                # the shard_sizes will be got from dist_attr.
                 shard_sizes = None
                 topology = process_mesh.shape
                 shape = DistributedTensor.get_local_sizes(
@@ -245,7 +250,6 @@ def build_comm_desc_from_dist_op(
     group_ranks=None,
 ):
     """Build descriptions of communication op distributed on the processes."""
-    from ..reshard import get_var_with_recursion
 
     specific_op_type = []
     dist_attr = dist_op.dist_attr
@@ -271,7 +275,9 @@ def build_comm_desc_from_dist_op(
                 has_found = False
                 # Find var_name in serial op input or output
                 for name in dist_op.serial_op.input_arg_names:
-                    # If a tensor is the input of multi ops, sum the grad of all ops, so the name will be varname@RENAME@block@0 and so on.
+                    # If a tensor is the input of multi ops, sum the grad
+                    # of all ops, so the name will be varname@RENAME@block@0
+                    # and so on.
                     if var_name in name:
                         var_name = name
                         has_found = True
@@ -323,7 +329,8 @@ def build_comm_desc_from_dist_op(
                 comm_group_ranks = group_ranks
             else:
                 raise ValueError(
-                    "The parallel_axis and group_ranks can not be None in the same."
+                    "The parallel_axis and group_ranks can not be None “"
+                    "”in the same."
                 )
 
             if attrs is not None:
@@ -380,13 +387,12 @@ def build_dp_costs(
 ):
     """DP cost contains a allreduce_sum op cost and a scale op cost"""
     # The costs will be appended in the given result.
-    from ..reshard import get_var_with_recursion
 
     dist_attr = dist_op.dist_attr
     process_mesh = dist_attr.process_mesh
     processes = process_mesh.process_ids
     assert len(var_names) == 1
-    vars = dist_op.serial_op.block.vars
+    # vars = dist_op.serial_op.block.vars
     var_name = var_names[0]
     has_found = False
     for name in dist_op.serial_op.input_arg_names:
@@ -478,7 +484,7 @@ class CommContext:
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            _has_instance = True
+            # _has_instance = True
         return cls._instance
 
     def __init__(self, cluster):
@@ -574,7 +580,8 @@ class CommContext:
             assert self.switch is not None
 
     def get_max_beta(self, ranks):
-        # NOTE: Get beta by ring, even in the case of tree such as tree broadcast
+        # NOTE: Get beta by ring, even in the case
+        # of tree such as tree broadcast
         ranks = self.cluster.convert_rank_to_device_id(ranks)
         key = ','.join(map(str, sorted(ranks)))
         max_beta = None
@@ -779,14 +786,13 @@ class CommOpCost(OpCost):
 
     @property
     def comm_count(self):
-        from ..reshard import get_var_with_recursion
-
         if self._comm_count is None:
             dtype = None
             shape = None
             if self.op is not None:
-                vars = self.op.block.vars
-                # NOTE: The tensor communicated input_name is "X" in default. Otherwise, this function should be overrided
+                # vars = self.op.block.vars
+                # NOTE: The tensor communicated input_name is "X" in default.
+                # Otherwise, this function should be overrided
                 var_name = self.op.input("X")[0]
                 var = get_var_with_recursion(
                     var_name, self.op.block, self.program
@@ -844,9 +850,8 @@ class CommOpCost(OpCost):
                 process_group = get_process_group(ring_id)
                 if process_group is None:
                     raise ValueError(
-                        "There not exists process group whose ring_id is {}.".format(
-                            ring_id
-                        )
+                        "There not exists process group whose "
+                        "ring_id is {}.".format(ring_id)
                     )
                 self._group_ranks = process_group.ranks
         return self._group_ranks
