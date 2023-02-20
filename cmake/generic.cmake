@@ -464,7 +464,7 @@ function(cc_test_build TARGET_NAME)
       paddle_gtest_main
       lod_tensor
       memory
-      dnnl
+      mkldnn
       gtest
       gflags
       glog) # HACK (replace with decent fix)
@@ -474,7 +474,7 @@ function(cc_test_build TARGET_NAME)
       paddle_gtest_main
       lod_tensor
       memory
-      dnnl
+      mkldnn
       gtest
       gflags
       glog) # HACK (replace with decent fix)
