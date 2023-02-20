@@ -83,6 +83,7 @@ API_FILES=("CMakeLists.txt"
            "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
            "paddle/fluid/prim/api/manual_prim/prim_manual_api.h"
            "python/paddle/incubate/autograd/composite_rules.py"
+	   "python/paddle/incubate/autograd/primitives.py"
            )
 
 approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
@@ -210,7 +211,7 @@ for API_FILE in ${API_FILES[*]}; do
             check_approval 1 JiabinYang cxxly xiaoguoguo626807
       elif [ "${API_FILE}" == "python/paddle/incubate/autograd/primitives.py" ] || [ "${API_FILE}" == "python/paddle/incubate/autograd/composite_rules.py" ]; then
             echo_line="You must have one RD (cyber-pioneer(chenzhuo), JiabinYang) approval for changing ${API_FILE} , which manages the composite rules.\n"
-            check_approval cyber-pioneer JiabinYang
+            check_approval 1 cyber-pioneer JiabinYang
 
       else
           echo_line="You must have one RD (XiaoguangHu01,chenwhql,zhiqiu,Xreki,luotao1,qili93) approval for ${API_FILE}, which manages the underlying code for fluid.\n"
