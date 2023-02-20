@@ -1847,7 +1847,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     is_in_custom_back_list =
         phi::backends::custom_device::is_in_custom_black_list(phi_kernel_name);
 #endif
-    VLOG(0) << "phi_kernel_->IsValid(): " << phi_kernel_->IsValid();
     if (phi_kernel_->IsValid() && !is_in_custom_back_list
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
         && !is_xpu_unsupport
@@ -1869,11 +1868,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         kernel_type_->library_type_ = LibraryType::kKP;
       }
 #endif
-
-      VLOG(0) << "phi::backends::custom_device::is_in_custom_black_list(phi_"
-                 "kernel_name): "
-              << phi::backends::custom_device::is_in_custom_black_list(
-                     phi_kernel_name);
       if (kernels_iter == all_op_kernels.end() ||
           kernels_iter->second.find(*kernel_type_.get()) ==
               kernels_iter->second.end()
