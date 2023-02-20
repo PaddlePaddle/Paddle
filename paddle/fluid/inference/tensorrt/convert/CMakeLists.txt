@@ -105,6 +105,10 @@ if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
   list(APPEND CONVERT_FILES sparse_fc_op.cc sparse_multihead_matmul_op.cc)
 endif()
 
+if(WITH_CUTLASS)
+  list(APPEND CONVERT_FILES matmul_int4_op.cc)
+endif()
+
 nv_library(
   tensorrt_converter
   SRCS ${CONVERT_FILES}

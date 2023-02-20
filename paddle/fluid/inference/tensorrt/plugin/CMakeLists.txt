@@ -50,6 +50,10 @@ if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
   list(APPEND TRT_FILES spmm_plugin.cu)
 endif()
 
+if(WITH_CUTLASS)
+  list(APPEND TRT_FILES matmul_op_int4_plugin.cu)
+endif()
+
 nv_library(
   tensorrt_plugin
   SRCS ${TRT_FILES}

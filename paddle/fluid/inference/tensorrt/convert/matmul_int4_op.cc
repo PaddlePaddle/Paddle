@@ -62,6 +62,7 @@ class MatMulInt4OpConverter : public OpConverter {
           ("matmul_int4_op_transpose_x: Shuffle (Output:" + output_name + ")")
               .c_str());
       plugin_inputs.push_back(transpose_layer->getOutput(0));
+      dims_x = plugin_inputs.back()->getDimensions();
     } else {
       plugin_inputs.push_back(input1);
     }
@@ -81,12 +82,23 @@ class MatMulInt4OpConverter : public OpConverter {
       plugin_inputs.push_back(transpose_layer->getOutput(0));
     } else {
       plugin_inputs.push_back(input2);
+      dims_y = plugin_inputs.back()->getDimensions();
+      std::swap(dims_y.d[dims_y.nbDims - 1], dims_y.d[dims_y.nbDims - 2]);
     }
+
+    // nvinfer1::Dims dims_x_ = plugin_inputs[0]->getDimensions();
+    // nvinfer1::Dims dims_y_ = plugin_inputs[1]->getDimensions();
+
+    std::vector<nvinfer1::PluginField> fields;
+    fields.emplace_back("dims_x", &dims_x, nvinfer1::PluginFieldType::kDIMS, 1);
+    fields.emplace_back("dims_y", &dims_y, nvinfer1::PluginFieldType::kDIMS, 1);
 
     nvinfer1::PluginFieldCollection* plugin_ptr =
         static_cast<nvinfer1::PluginFieldCollection*>(
-            malloc(sizeof(*plugin_ptr)));
-    plugin_ptr->nbFields = 0;
+            malloc(sizeof(*plugin_ptr) +
+                   fields.size() * sizeof(nvinfer1::PluginField)));
+    plugin_ptr->nbFields = fields.size();
+    plugin_ptr->fields = fields.data();
 
     auto creator =
         GetPluginRegistry()->getPluginCreator("MatmulInt4PluginCreator", "1");

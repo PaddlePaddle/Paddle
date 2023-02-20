@@ -188,7 +188,7 @@ template <typename Source, typename Target>
 void ConvertData(const Source *source,
                  Target *output,
                  const size_t source_size) {
-  constexpr int block = 256;
+  constexpr int block_ = 256;
   dim3 grid((source_size + block_ - 1) / block_);
   dim3 block(block_);
   DynamicConvert<Target, Source><<<grid, block>>>(source, output, source_size);
