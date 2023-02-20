@@ -1729,7 +1729,7 @@ class TheOnePSRuntime(RuntimeBase):
 
     def _save_persistables(self, *args, **kwargs):
         fleet.util.barrier()
-        if self.role_maker._is_first_worker():
+        if self.context['use_ps_gpu'] or self.role_maker._is_first_worker():
             self._save_distributed_persistables(*args, **kwargs)
         fleet.util.barrier()
 
@@ -1747,7 +1747,7 @@ class TheOnePSRuntime(RuntimeBase):
 
     def _load_persistables(self, path, mode):
         fleet.util.barrier()
-        if self.role_maker._is_first_worker():
+        if self.context['use_ps_gpu'] or self.role_maker._is_first_worker():
             self._worker.load_model(path, mode)
         fleet.util.barrier()
 
