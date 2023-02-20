@@ -112,7 +112,7 @@ void InsertOp(Node *first_lr,
     }
     if (inout_vectors[pattern_id][0].size() > 0 && replace_adamw) {
       OpDesc fuse_adamw_op_desc(block);
-      fuse_adamw_op_desc.SetType("multi_tensor_adam");
+      fuse_adamw_op_desc.SetType("fused_adam");
 
       size_t i = 0;
 
