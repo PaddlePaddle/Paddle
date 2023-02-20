@@ -47,13 +47,11 @@ class TestPassBuilder(unittest.TestCase):
             exe.run(startup)
             feed_dict = {'image': image, 'label': label}
 
-            train_cp = compiler.CompiledProgram(main).with_data_parallel(
-                loss_name=loss.name, build_strategy=build_strategy
+            train_cp = compiler.CompiledProgram(
+                main, build_strategy=build_strategy
             )
-            test_cp = compiler.CompiledProgram(test_program).with_data_parallel(
-                loss_name=loss.name,
-                build_strategy=build_strategy,
-                share_vars_from=train_cp,
+            test_cp = compiler.CompiledProgram(
+                test_program, build_strategy=build_strategy
             )
 
             for i in range(5):

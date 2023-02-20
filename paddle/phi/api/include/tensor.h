@@ -348,6 +348,24 @@ class PADDLE_API Tensor final {
   T* data();
 
   /**
+   * @brief Get the const memory pointer directly.
+   * It's usually used to get the output data pointer.
+   *
+   * @tparam T
+   * @return T*
+   */
+  const void* data() const;
+
+  /**
+   * @brief Get the memory pointer directly.
+   * It's usually used to get the mutable output data pointer.
+   *
+   * @tparam T
+   * @return T*
+   */
+  void* data();
+
+  /**
    * @brief Return a sub-tensor of the given tensor.
    * It is usually used to extract a sub-tensor (which supports
    * modifying the data of the original tensor) to perform further
@@ -505,6 +523,20 @@ class PADDLE_API Tensor final {
    * @return Tensor&
    */
   Tensor& operator=(Tensor&& x) &;
+
+  /**
+   * @brief Tensor operants
+   *
+   * @param other
+   * @return Tensor
+   */
+  Tensor operator+(const Tensor& other) const;
+
+  Tensor operator-(const Tensor& other) const;
+
+  Tensor operator*(const Tensor& other) const;
+
+  Tensor operator/(const Tensor& other) const;
 
   /* Part 8: Autograd methods */
 

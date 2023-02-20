@@ -75,6 +75,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 #if IS_TRT_VERSION_GE(8200)
     teller_set.insert("round");
     int8_teller_set.insert("round");
+    teller_set.insert("set_value");
 #endif
   }
 
@@ -2369,6 +2370,27 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "set_value") {
+#if !IS_TRT_VERSION_GE(8200)
+      return false;
+#endif
+      if (!(desc.HasAttr("axes") && desc.HasAttr("starts") &&
+            desc.HasAttr("steps"))) {
+        VLOG(3) << "the " << op_type
+                << " does not have attr (axes or "
+                   "starts or steps)";
+        return false;
+      }
+      auto* block = desc.Block();
+      auto input_name = desc.Input("Input")[0];
+      auto* input_desc = block->FindVar(input_name);
+      const auto input_shape = input_desc->GetShape();
+      auto update_name = desc.Input("ValueTensor")[0];
+      auto* update_desc = block->FindVar(update_name);
+      const auto update_shape = update_desc->GetShape();
+      if (update_shape.size() != input_shape.size()) return false;
+    }
+
     if (op_type == "top_k_v2" || op_type == "top_k") {
       auto* block = desc.Block();
       auto x_var_name = desc.Input("X")[0];
@@ -2492,6 +2514,13 @@ struct SimpleOpTypeSetTeller : public Teller {
     if (op_type == "trans_layernorm") {
       if (!with_dynamic_shape) {
         VLOG(3) << "The trans_layernorm op does not support "
+                   "static shape yet";
+        return false;
+      }
+    }
+    if (op_type == "fuse_eleadd_transpose") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "The fuse_eleadd_transpose op does not support "
                    "static shape yet";
         return false;
       }
@@ -2670,6 +2699,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "skip_merge_layernorm",
       "lookup_table_v2",
       "expand_v2",
+      "fuse_eleadd_transpose",
       "skip_groupnorm_act",
       "preln_groupnorm_act"};
 
@@ -2821,6 +2851,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "lookup_table",
       "lookup_table_v2",
       "expand_v2",
+      "fuse_eleadd_transpose",
       "skip_groupnorm_act",
       "preln_groupnorm_act"};
 };

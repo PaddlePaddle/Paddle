@@ -28,6 +28,7 @@ from paddle.utils import gast
 
 from . import error, logging_utils
 from .ast_transformer import DygraphToStaticAst
+from .convert_call_func import CONVERSION_OPTIONS
 from .function_spec import (
     FunctionSpec,
     _hash_spec_names,
@@ -153,6 +154,12 @@ def convert_to_static(function):
     """
     if getattr(function, ALREADY_D2S, None):
         return function
+
+    # Return directly if decorated with @not_to_static and DO NOT Cache it
+    options = getattr(function, CONVERSION_OPTIONS, None)
+    if options is not None and options.not_convert:
+        return function.__func__ if inspect.ismethod(function) else function
+
     with _CACHE_LOCK:
         static_func = _FUNCTION_CACHE.convert_with_cache(function)
         setattr(static_func, ALREADY_D2S, True)
@@ -1139,9 +1146,10 @@ class ProgramCache:
     def _build_once(self, cache_key):
         # TODO(Aurelius84): Need a gloabl FLAGS to enable/disable to_prim
         enable_prim = cache_key.kwargs['build_strategy'].build_cinn_pass
+        # TODO(CZ): later when use cinn, set_prim_all_enabled and check_and_set_prim_all_enabled will be set at else branch.
+
         # NOTE(xiongkun): Need a global FLAGS to enable/disable fallback
         enable_fallback = enable_prim
-        # TODO(CZ): later when use cinn, set_prim_all_enabled and check_and_set_prim_all_enabled will be set at else branch.
         core.check_and_set_prim_all_enabled()
         try:
             concrete_program = ConcreteProgram.from_func_spec(
