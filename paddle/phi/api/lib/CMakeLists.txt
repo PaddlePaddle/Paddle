@@ -101,9 +101,6 @@ set(wrapped_infermeta_source_file
 set(tensor_gen_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/tensor_gen.py)
 set(api_prim_yaml_file ${CMAKE_SOURCE_DIR}/paddle/fluid/prim/api/api.yaml)
-set(tensor_header_file_template
-    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/templates/tensor.h)
-set(tensor_header_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/tensor.h)
 set(operants_base_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/operants_base.h)
 set(tensor_api_source_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/tensor_api.cc)
@@ -115,7 +112,6 @@ set(operants_manager_header_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/operants_manager.h)
 set(operants_manager_source_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/operants_manager.cc)
-set(tensor_header_file_tmp ${tensor_header_file}.tmp)
 set(operants_base_file_tmp ${operants_base_file}.tmp)
 set(tensor_api_source_file_tmp ${tensor_api_source_file}.tmp)
 set(phi_tensor_operants_header_file_tmp ${phi_tensor_operants_header_file}.tmp)
@@ -248,28 +244,22 @@ execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator
   COMMAND
     ${PYTHON_EXECUTABLE} ${tensor_gen_file} --api_yaml_path ${api_yaml_file}
-    ${legacy_api_yaml_file} --tensor_header_path ${tensor_header_file_tmp}
-    --tensor_header_template_path ${tensor_header_file_template}
-    --operants_base_path ${operants_base_file_tmp} --tensor_api_source_path
-    ${tensor_api_source_file_tmp} --phi_tensor_operants_header_path
-    ${phi_tensor_operants_header_file_tmp} --phi_tensor_operants_source_path
-    ${phi_tensor_operants_source_file_tmp} --operants_manager_header_path
-    ${operants_manager_header_file_tmp} --operants_manager_source_path
-    ${operants_manager_source_file_tmp} --api_prim_yaml_path
-    ${api_prim_yaml_file}
+    ${legacy_api_yaml_file} --operants_base_path ${operants_base_file_tmp}
+    --tensor_api_source_path ${tensor_api_source_file_tmp}
+    --phi_tensor_operants_header_path ${phi_tensor_operants_header_file_tmp}
+    --phi_tensor_operants_source_path ${phi_tensor_operants_source_file_tmp}
+    --operants_manager_header_path ${operants_manager_header_file_tmp}
+    --operants_manager_source_path ${operants_manager_source_file_tmp}
+    --api_prim_yaml_path ${api_prim_yaml_file}
   RESULT_VARIABLE _result)
 if(${_result})
   message(FATAL_ERROR "tensor codegen failed, exiting.")
 endif()
 
 set(generated_tensor_files
-    "${tensor_header_file}"
-    "${operants_base_file}"
-    "${tensor_api_source_file}"
-    "${phi_tensor_operants_header_file}"
-    "${phi_tensor_operants_source_file}"
-    "${operants_manager_header_file}"
-    "${operants_manager_source_file}")
+    "${operants_base_file}" "${tensor_api_source_file}"
+    "${phi_tensor_operants_header_file}" "${phi_tensor_operants_source_file}"
+    "${operants_manager_header_file}" "${operants_manager_source_file}")
 
 foreach(generated_tensor_file ${generated_tensor_files})
   if(EXISTS "${generated_tensor_file}.tmp" AND EXISTS
@@ -408,3 +398,8 @@ cc_library(
   operants_manager
   SRCS ${operants_manager_source_file}
   DEPS phi_enforce)
+cc_library(
+  tensor_api
+  SRCS ${tensor_api_source_file}
+  SRCS tensor_api.cc
+  DEPS operants_manager)

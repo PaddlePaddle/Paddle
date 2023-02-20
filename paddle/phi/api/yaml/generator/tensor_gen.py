@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import argparse
-import string
 
 import yaml
 from api_gen import ForwardAPI
@@ -260,32 +259,6 @@ class OperantsAPI(ForwardAPI):
         if self.get_api_func_name() in prims:
             self.is_prim_api = True
 
-    def get_declare_args_without_first_tensor(self, inplace_flag=False):
-        # NOTE(HongyuJia): consider vector<Tensor> becomes first input argument.
-        declare_args = self.get_input_tensor_args(inplace_flag)
-        assert (
-            len(declare_args) > 1
-        ), "Can't use tensor api without Tensor inputs"
-
-        for name in self.attrs['names']:
-            default_value = ''
-            if self.attrs['attr_info'][name][1] is not None:
-                default_value = ' = ' + self.attrs['attr_info'][name][1]
-            declare_args.append(
-                self.attrs['attr_info'][name][0] + ' ' + name + default_value
-            )
-
-        return ", ".join(declare_args[1:])
-
-    def gene_tensor_declaration(self):
-        api_func_name = self.get_api_func_name()
-        if api_func_name[-1] != '_':
-            return f"""{indent}{self.get_return_type()} {api_func_name}({self.get_declare_args_without_first_tensor()}) const;
-"""
-        else:
-            return f"""{indent}{self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_declare_args_without_first_tensor(inplace_flag=True)}) const;
-"""
-
     def gene_operants_base(self):
         api_func_name = self.get_api_func_name()
         if api_func_name[-1] != '_':
@@ -415,8 +388,6 @@ class OperantsAPI(ForwardAPI):
 
 def generate_tensor_operants_api(
     api_yaml_path,
-    tensor_header_path,
-    tensor_header_template_path,
     operants_base_path,
     tensor_api_source_path,
     operants_header_path,
@@ -433,7 +404,6 @@ def generate_tensor_operants_api(
             if api_list:
                 apis.extend(api_list)
 
-    tensor_header_file = open(tensor_header_path, 'w')
     operants_base_file = open(operants_base_path, 'w')
     tensor_api_source_file = open(tensor_api_source_path, 'w')
     operants_header_file = open(operants_header_path, 'w')
@@ -459,13 +429,9 @@ def generate_tensor_operants_api(
         # white list temporarily
         api_prims = ('add', 'subtract', 'multiply', 'divide')
 
-    tensor_api_declaration_code = ""
     for api in apis:
         operants_api = OperantsAPI(api, api_prims)
         if operants_api.is_prim_api:
-            tensor_api_declaration_code += (
-                operants_api.gene_tensor_declaration()
-            )
             operants_base_file.write(operants_api.gene_operants_base())
             tensor_api_source_file.write(
                 operants_api.gene_tensor_api_implementation()
@@ -481,14 +447,6 @@ def generate_tensor_operants_api(
                 operants_api.gene_operants_manager_implementation()
             )
 
-    tensor_header_template = open(tensor_header_template_path)
-    tensor_header_template = string.Template(tensor_header_template.read())
-    tensor_header_file.write(
-        tensor_header_template.substitute(
-            tensor_api_declaration=tensor_api_declaration_code
-        )
-    )
-
     operants_base_file.write(operants_base_end)
     tensor_api_source_file.write(tensor_api_source_end)
     operants_header_file.write(operants_header_end)
@@ -496,7 +454,6 @@ def generate_tensor_operants_api(
     operants_manager_header_file.write(operants_manager_header_end)
     operants_manager_source_file.write(operants_manager_source_end)
 
-    tensor_header_file.close()
     operants_base_file.close()
     tensor_api_source_file.close()
     operants_header_file.close()
@@ -514,18 +471,6 @@ def main():
         help='path to api yaml file',
         nargs='+',
         default=['paddle/phi/api/yaml/ops.yaml'],
-    )
-
-    parser.add_argument(
-        '--tensor_header_path',
-        help='output of generated tensor header code file',
-        default='paddle/phi/api/include/tensor.h',
-    )
-
-    parser.add_argument(
-        '--tensor_header_template_path',
-        help='the template file of tensor header code file',
-        default='paddle/phi/api/yaml/generator/templates/tensor.h',
     )
 
     parser.add_argument(
