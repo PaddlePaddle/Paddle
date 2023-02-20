@@ -104,8 +104,13 @@ class TestFleetMetaOptimizer(unittest.TestCase):
         optimizer = paddle.fluid.optimizer.Adam(0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(loss)
-
+        ref_ops = ['lookup_table_v2', 'c_identity', 'matmul_v2', 'elementwise_add', 'matmul_v2', 'c_allreduce_sum', 'elementwise_add', 
+        'layer_norm', 'reduce_mean', 'fill_constant', 'reduce_mean_grad', 'layer_norm_grad', 'elementwise_add_grad', 'c_identity', 
+        'matmul_v2_grad', 'elementwise_add_grad', 'matmul_v2_grad', 'c_allreduce_sum', 'lookup_table_v2_grad', 'adam', 'adam', 'adam', 
+        'c_broadcast', 'adam', 'c_broadcast', 'adam', 'c_broadcast', 'adam', 'c_broadcast', 'adam']
         paddle.distributed.fleet.utils.tensor_parallel_utils.add_extra_synchronization(main_program, params_filter_fn = filter_fn)
+        ops = [op.type for op in main_program.global_block().ops]
+        self.assertTrue(ops == ref_ops)
 
 if __name__ == "__main__":
     unittest.main()
