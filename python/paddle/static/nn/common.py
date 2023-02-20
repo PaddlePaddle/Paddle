@@ -3696,7 +3696,7 @@ def embedding(
 
 
     Args:
-        input(Variable): A Tensor or LoDTensor with type int64, which contains the id information.
+        input(Tensor): A Tensor or LoDTensor with type int64, which contains the id information.
             The value of the input id should satisfy :math:`0<= id < size[0]` .
         size(tuple|list): The shape of lookup table parameter. It should have two elements which
             indicates the size of the dictionary of embeddings and the size of each embedding vector respectively.
