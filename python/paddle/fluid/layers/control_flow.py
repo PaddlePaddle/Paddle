@@ -48,6 +48,7 @@ from ..data_feeder import (
 from ..backward import _infer_var_data_type_shape_
 import paddle
 from paddle import _C_ops, _legacy_C_ops
+from functools import reduce
 
 __all__ = [
     'Switch',
@@ -95,6 +96,12 @@ def _select_input_infer_shape(first_shape, second_shape):
         if a != b: we set axis to -1
     for compatibility, non declarative mode, we just return second_shape.
     """
+    first_has_zeros = reduce(lambda x, y: x * y, first_shape, 1) == 0
+    second_has_zeros = reduce(lambda x, y: x * y, second_shape, 1) == 0
+    if second_has_zeros:
+        return first_shape
+    if first_has_zeros:
+        return second_shape
     if len(first_shape) != len(second_shape):
         warnings.warn(
             f"the input shapes of select_input should have the same rank, but get {first_shape}, {second_shape}"
