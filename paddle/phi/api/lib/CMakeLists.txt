@@ -5,19 +5,19 @@ if(WITH_GPU)
     phi_tensor_raw
     SRCS tensor.cc
     DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool
-         operants_manager)
+         tensor_api)
 elseif(WITH_ROCM)
   hip_library(
     phi_tensor_raw
     SRCS tensor.cc
     DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool
-         operants_manager)
+         tensor_api)
 else()
   cc_library(
     phi_tensor_raw
     SRCS tensor.cc
     DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool
-         operants_manager)
+         tensor_api)
 endif()
 
 set(api_gen_base ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/api_base.py)
@@ -100,7 +100,6 @@ set(wrapped_infermeta_source_file
 # tensor and tensor operants file
 set(tensor_gen_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/tensor_gen.py)
-set(api_prim_yaml_file ${CMAKE_SOURCE_DIR}/paddle/fluid/prim/api/api.yaml)
 set(operants_base_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/operants_base.h)
 set(phi_tensor_operants_header_file
@@ -248,7 +247,6 @@ add_custom_command(
     --phi_tensor_operants_source_path ${phi_tensor_operants_source_file_tmp}
     --operants_manager_header_path ${operants_manager_header_file_tmp}
     --operants_manager_source_path ${operants_manager_source_file_tmp}
-    --api_prim_yaml_path ${api_prim_yaml_file}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${operants_base_file_tmp}
           ${operants_base_file}
   COMMAND
@@ -388,3 +386,7 @@ cc_library(
   operants_manager
   SRCS ${operants_manager_source_file}
   DEPS phi_enforce)
+cc_library(
+  tensor_api
+  SRCS tensor_api.cc
+  DEPS operants_manager)

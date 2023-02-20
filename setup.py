@@ -145,7 +145,10 @@ def get_header_install_dir(header):
         install_dir = re.sub(
             env_dict.get("THIRD_PARTY_PATH") + '/', 'third_party', header
         )
-        patterns = ['install/mkldnn/include']
+        patterns = [
+            'install/mkldnn/include',
+            'pybind/src/extern_pybind/include',
+        ]
         for pattern in patterns:
             install_dir = re.sub(pattern, '', install_dir)
     return install_dir
@@ -1203,6 +1206,9 @@ def get_headers():
         headers += list(
             find_files('*.pb', env_dict.get("externalError_INCLUDE_DIR"))
         )
+
+    # pybind headers
+    headers += list(find_files('*.h', env_dict.get("PYBIND_INCLUDE_DIR"), True))
     return headers
 
 
@@ -1270,6 +1276,8 @@ def get_setup_parameters():
         'paddle.distributed.passes',
         'paddle.distributed.models',
         'paddle.distributed.models.moe',
+        'paddle.distributed.transpiler',
+        'paddle.distributed.transpiler.details',
         'paddle.framework',
         'paddle.jit',
         'paddle.jit.dy2static',
@@ -1286,7 +1294,6 @@ def get_setup_parameters():
         'paddle.fluid.contrib.extend_optimizer',
         'paddle.fluid.contrib.layers',
         'paddle.fluid.transpiler',
-        'paddle.fluid.transpiler.details',
         'paddle.fluid.incubate',
         'paddle.fluid.incubate.fleet',
         'paddle.fluid.incubate.checkpoint',

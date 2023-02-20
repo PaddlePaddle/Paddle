@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,20 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/extension.h"
 
-#include <string>
-
-#include "paddle/phi/core/dense_tensor.h"
-
-namespace phi {
-
-template <typename T, typename Context>
-void LoadKernel(const Context& dev_ctx,
-                const std::string& file_path,
-                int64_t seek,
-                const std::vector<int64_t>& shape,
-                bool load_as_fp16,
-                DenseTensor* out);
-
-}  // namespace phi
+paddle::Tensor custom_sub(paddle::Tensor x, paddle::Tensor y) {
+  return paddle::subtract(paddle::exp(x), paddle::exp(y));
+}
