@@ -141,19 +141,32 @@ class TestInferenceBaseAPI(unittest.TestCase):
 
     def test_share_external_data(self):
         program, params = get_sample_model()
-        config = self.get_config(program, params)
-        predictor = create_predictor(config)
-        in_names = predictor.get_input_names()
-        in_handle = predictor.get_input_handle(in_names[0])
-        in_data = paddle.Tensor(np.ones((1, 6, 32, 32)).astype(np.float32))
-        in_data2 = paddle.fluid.create_lod_tensor(
-            np.full((1, 6, 32, 32), 1.0, "float32"),
-            [[1]],
-            paddle.fluid.CUDAPlace(0),
-        )
-        for data in [in_data, in_data2]:
-            in_handle.share_external_data(data)
+
+        def test_lod_tensor():
+            config = Config()
+            config.set_model_buffer(program, len(program), params, len(params))
+            predictor = create_predictor(config)
+            in_names = predictor.get_input_names()
+            in_handle = predictor.get_input_handle(in_names[0])
+            in_data = paddle.fluid.create_lod_tensor(
+                np.full((1, 6, 32, 32), 1.0, "float32"),
+                [[1]],
+                paddle.fluid.CPUPlace(),
+            )
+            in_handle.share_external_data(in_data)
             predictor.run()
+
+        def test_paddle_tensor():
+            config = self.get_config(program, params)
+            predictor = create_predictor(config)
+            in_names = predictor.get_input_names()
+            in_handle = predictor.get_input_handle(in_names[0])
+            in_data = paddle.Tensor(np.ones((1, 6, 32, 32)).astype(np.float32))
+            in_handle.share_external_data(in_data)
+            predictor.run()
+
+        test_lod_tensor()
+        test_paddle_tensor()
 
 
 if __name__ == '__main__':
