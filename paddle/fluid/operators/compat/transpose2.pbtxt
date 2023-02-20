@@ -24,6 +24,10 @@ extra {
     type: BOOLEAN
   }
   attrs {
+    name: "use_quantizer"
+    type: BOOLEAN
+  }
+  attrs {
     name: "mkldnn_data_type"
     type: STRING
   }

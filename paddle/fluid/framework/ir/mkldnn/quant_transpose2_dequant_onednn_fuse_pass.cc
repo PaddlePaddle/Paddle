@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/quant_transpose2_dequant_onednn_fuse_pass.h"
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/string/pretty_log.h"
 
@@ -60,7 +61,7 @@ void FuseQuantTranspose2DequantOneDNNPass::FuseQuantizeTranspose2(
             ? PADDLE_GET_CONST(float, quant_op->Op()->GetAttr("Shift"))
             : 0;
 
-    transpose_op->Op()->SetType("fused_transpose");
+    ConvertToFusedOp(transpose_op->Op());
     transpose_op->Op()->SetAttr("scale", scale);
     transpose_op->Op()->SetAttr("shift", shift);
 

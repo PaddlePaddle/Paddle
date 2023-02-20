@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/platform/transform.h"
 #include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/common/transform.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
@@ -220,12 +220,12 @@ class TransformFunctor {
   }
 
   inline void Run() const {
-    paddle::platform::Transform<DeviceContext> trans;
+    phi::Transform<DeviceContext> trans;
     trans(ctx_, x_, x_ + nx_, y_, z_, func_);
   }
 
   inline void RunRowWise(int n, int pre) const {
-    paddle::platform::Transform<DeviceContext> trans;
+    phi::Transform<DeviceContext> trans;
     if (is_xsize_larger_) {
       trans(ctx_,
             x_,
@@ -244,7 +244,7 @@ class TransformFunctor {
   }
 
   inline void RunMidWise(int n, int pre, int post) const {
-    paddle::platform::Transform<DeviceContext> trans;
+    phi::Transform<DeviceContext> trans;
     if (is_xsize_larger_) {
       trans(ctx_,
             x_,

@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/operator_reshape2_onednn_fuse_pass.h"
 
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/utils/string/pretty_log.h"
@@ -115,7 +116,7 @@ void FuseOperatorReshape2OneDNNPass::FuseReshape2(Graph *graph,
     }
 
     if (op_type == "transpose2") {
-      operator_op->Op()->SetType("fused_transpose");
+      ConvertToFusedOp(operator_op->Op());
     }
 
     operator_op->Op()->SetAttr("fused_reshape2_shape", reshape2_shape);

@@ -113,8 +113,7 @@ class FusedMatmulOneDNNHandler
 
     // TODO(jczaja): Why not for int8??
     if (!funcs::is_int8<OT>() && is_output_fused) {
-      std::vector<int> transpose_axis = {0, 2, 1, 3};
-      out_strides = funcs::FakeTransposeStrides(out_ddims, transpose_axis);
+      out_strides = FakeTransposeStrides(out_ddims);
     }
 
     auto x_md = memory::desc(x_dims, funcs::OneDNNGetDataType<XT>(), x_strides);
@@ -197,6 +196,24 @@ class FusedMatmulOneDNNHandler
 
     matmul_attrs.set_post_ops(post_operations);
     return matmul_attrs;
+  }
+
+  std::vector<int64_t> FakeTransposeStrides(
+      const std::vector<int64_t> &matmul_out_dims) const {
+    // fuse matmul_v2 + transpose + reshape guarantees that output is 4D and
+    // transpose axis are: {0, 2, 1, 3}
+    std::vector<int64_t> transpose_axis = {0, 2, 1, 3};
+    std::vector<int64_t> fake_strides(transpose_axis.size());
+    int ndims = static_cast<int>(transpose_axis.size());
+
+    int total_stride = 1;
+
+    for (int i = ndims - 1; i >= 0; --i) {
+      fake_strides[transpose_axis[i]] = total_stride;
+      total_stride *= matmul_out_dims[transpose_axis[i]];
+    }
+
+    return fake_strides;
   }
 
   std::shared_ptr<memory> AcquireWeightsMemory(const DenseTensor *input) {

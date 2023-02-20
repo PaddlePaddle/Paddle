@@ -160,8 +160,16 @@ void QuantWeight(phi::DenseTensor* weight,
     weight->Resize(weight_trans.dims());
   }
   // Find max
-  auto* xpu_ctx = static_cast<phi::XPUContext*>(
-      platform::DeviceContextPool::Instance().Get(phi::XPUPlace()));
+  paddle::platform::DeviceContextPool& pool =
+      paddle::platform::DeviceContextPool::Instance();
+  const auto& dev_ctxs = pool.device_contexts();
+  auto place = phi::XPUPlace();  // xpu:0
+  for (auto it = dev_ctxs.begin(); it != dev_ctxs.end(); it++) {
+    if (it->first.GetType() == phi::AllocationType::XPU) {  // maybe xpu:1
+      place = it->first;
+    }
+  }
+  phi::XPUContext* xpu_ctx = static_cast<phi::XPUContext*>(pool.Get(place));
   int max_ptr_size = xpu_ctx->x_context()->max_ptr_size();
   int size = weight->numel();
   float max_val = FindMaxAbs(weight_data, size);

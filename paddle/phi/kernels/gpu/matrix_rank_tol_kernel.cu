@@ -351,7 +351,7 @@ void MatrixRankTolKernel(const Context& dev_ctx,
 
   // Must Copy X once, because the gesvdj will destory the content when exit.
   DenseTensor x_tmp;
-  paddle::framework::TensorCopy(x, dev_ctx.GetPlace(), &x_tmp);
+  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, &x_tmp);
   auto info = paddle::memory::Alloc(
       dev_ctx.GetPlace(),
       sizeof(int) * batches,

@@ -22,24 +22,6 @@
 
 namespace phi {
 
-void SetOutMemDescWithLogicalLayoutFusesSupport(
-    const OneDNNContext& dev_ctx,
-    phi::DenseTensor* out,
-    const dnnl::memory::desc& out_md) {
-  const auto fused_unsqueeze2_axes =
-      dev_ctx.HasDnnAttr("fused_unsqueeze2_axes")
-          ? PADDLE_GET_CONST(std::vector<int>,
-                             dev_ctx.GetDnnAttr("fused_unsqueeze2_axes"))
-          : std::vector<int>();
-
-  if (!fused_unsqueeze2_axes.empty()) {
-    funcs::SetOutMemDescWithUnsqueeze2FuseSupport(
-        fused_unsqueeze2_axes, out, out_md);
-  } else {
-    out->set_mem_desc(out_md);
-  }
-}
-
 template <typename T, dnnl::algorithm BINARY_OP>
 void ElementwiseKernel(const OneDNNContext& dev_ctx,
                        const DenseTensor& x,
@@ -132,13 +114,13 @@ void ElementwiseKernel(const OneDNNContext& dev_ctx,
   astream.wait();
 
   if (handler.use_broadcasting_hack == false) {
-    SetOutMemDescWithLogicalLayoutFusesSupport(
+    funcs::SetOutMemDescWithLogicalLayoutFusesSupport(
         dev_ctx, out, dst_memory->get_desc());
   } else {
     auto dims = dst_memory->get_desc().dims();
     dims.insert(dims.begin(), non_const_x->dims()[0]);
     dims[1] /= dims[0];
-    SetOutMemDescWithLogicalLayoutFusesSupport(
+    funcs::SetOutMemDescWithLogicalLayoutFusesSupport(
         dev_ctx, out, dst_memory->get_desc().reshape(dims));
   }
 }

@@ -51,6 +51,8 @@ void DoInsertTransposeOp(ir::Graph *graph,
       desc.SetAttr("axis", axis_attr);
       desc.SetAttr("use_mkldnn", false);
       desc.SetAttr("data_format", std::string{"AnyLayout"});
+      desc.SetAttr("use_quantizer", false);
+      desc.SetAttr("mkldnn_data_type", std::string{"float32"});
       desc.Flush();
     };
     CHECK_NOTNULL(block_desc);
