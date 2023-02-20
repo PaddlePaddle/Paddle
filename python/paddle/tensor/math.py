@@ -3089,7 +3089,6 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
         return out
 
 
-@templatedoc(op_type="kron")
 def kron(x, y, name=None):
     r"""
     Kron Operator.
