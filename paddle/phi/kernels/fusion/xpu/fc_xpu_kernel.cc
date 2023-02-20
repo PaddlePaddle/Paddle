@@ -21,6 +21,7 @@ namespace fusion {
 template <typename T, typename Context>
 void FcXPUKernel(const Context& ctx,
                  const DenseTensor& x,
+                 const paddle::optional<DenseTensor>& x_max,
                  const DenseTensor& w,
                  const DenseTensor& w_max,
                  const paddle::optional<DenseTensor>& bias,
@@ -30,33 +31,35 @@ void FcXPUKernel(const Context& ctx,
                  float beta,
                  int act_type,
                  float act_alpha,
-                 DenseTensor* out) {
+                 DenseTensor* out,
+                 DenseTensor* out_max) {
   auto in_mat_dims = flatten_to_2d(x.dims(), in_num_col_dims);
   int m = in_mat_dims[0];
   int k = in_mat_dims[1];
   int n = w.dims()[0];
+  const float* x_max_data =
+      x_max.get_ptr() == nullptr ? nullptr : x_max.get_ptr()->data<float>();
   const float* bias_data =
-      bias.get_ptr() == nullptr ? nullptr : bias.get_ptr()->data<T>();
+      bias.get_ptr() == nullptr ? nullptr : bias.get_ptr()->data<float>();
   xpu::Activation_t act(static_cast<xpu::Activation_t::act_enum>(act_type));
   if (act_type == 5) {
     act.leaky_alpha = act_alpha;
   } else if (act_type == 15) {
     act.hard_sigmoid_slope = act_alpha;
   }
-  ctx.template Alloc<T>(out);
   int r = xpu::fc_fusion<T, int16_t, T, int16_t>(  // TX, TW. TY, TGEMM
       ctx.x_context(),                             // ctx
       x.data<T>(),                                 // x
       w.data<int16_t>(),                           // w
-      out->data<T>(),                              // y
+      ctx.template Alloc<T>(out),                  // y
       m,                                           // m
       n,                                           // n
       k,                                           // k
       transpose_x,                                 // x_trans
       true,                                        // w_trans
-      nullptr,                                     // x_maxptr
+      x_max_data,                                  // x_maxptr
       w_max.data<float>(),                         // w_maxptr
-      nullptr,                                     // y_maxptr
+      ctx.template Alloc<float>(out_max),          // y_maxptr
       transpose_x ? m : k,                         // ldx
       k,                                           // ldw
       n,                                           // ldy
