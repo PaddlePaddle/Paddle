@@ -544,13 +544,13 @@ class PADDLE_API Tensor final {
 
   Tensor operator/(const Tensor& other) const;
 
-  Tensor operator+(const Tensor& x, const Scalar& y) const;
+  Tensor operator+(const Scalar& other) const;
 
-  Tensor operator-(const Tensor& x, const Scalar& y) const;
+  Tensor operator-(const Scalar& other) const;
 
-  Tensor operator*(const Tensor& x, const Scalar& y) const;
+  Tensor operator*(const Scalar& other) const;
 
-  Tensor operator/(const Tensor& x, const Scalar& y) const;
+  Tensor operator/(const Scalar& other) const;
 
   /* Part 8: Autograd methods */
 
@@ -666,6 +666,11 @@ class PADDLE_API Tensor final {
   Tensor divide(const Tensor& y) const;
   Tensor multiply(const Tensor& y) const;
   Tensor subtract(const Tensor& y) const;
+
+  Tensor add(const Scalar& y) const;
+  Tensor divide(const Scalar& y) const;
+  Tensor multiply(const Scalar& y) const;
+  Tensor subtract(const Scalar& y) const;
 };
 
 }  // namespace experimental

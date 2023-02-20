@@ -71,6 +71,8 @@ namespace paddle {
 
 namespace experimental {
 
+using Scalar = paddle::experimental::Scalar;
+
 Tensor Tensor::operator+(const Tensor &other) const {
   return add(other);
 }
@@ -86,6 +88,39 @@ Tensor Tensor::operator*(const Tensor &other) const {
 Tensor Tensor::operator/(const Tensor &other) const {
   return divide(other);
 }
+
+Tensor Tensor::operator+(const Scalar &other) const {
+  return add(other);
+}
+
+Tensor Tensor::operator-(const Scalar &other) const {
+  return subtract(other);
+}
+
+Tensor Tensor::operator*(const Scalar &other) const {
+  return multiply(other);
+}
+
+Tensor Tensor::operator/(const Scalar &other) const {
+  return divide(other);
+}
+
+Tensor Tensor::add(const Scalar& y) const {
+  return paddle::OperantsManager::Instance().add(static_cast<const Tensor &>(*this), y);
+}
+
+Tensor Tensor::divide(const Scalar& y) const {
+  return paddle::OperantsManager::Instance().divide(static_cast<const Tensor &>(*this), y);
+}
+
+Tensor Tensor::multiply(const Scalar& y) const {
+  return paddle::OperantsManager::Instance().multiply(static_cast<const Tensor &>(*this), y);
+}
+
+Tensor Tensor::subtract(const Scalar& y) const {
+  return paddle::OperantsManager::Instance().subtract(static_cast<const Tensor &>(*this), y);
+}
+
 """
 
 
@@ -158,13 +193,11 @@ Tensor PhiTensorOperants::add(const Tensor& x, const Scalar& y) {
 }
 
 Tensor PhiTensorOperants::subtract(const Tensor& x, const Scalar& y) {
-  return paddle::experimental::subtract(x,
-                                        paddle::experimental::full_like(x, y));
+  return paddle::experimental::subtract(x, paddle::experimental::full_like(x, y));
 }
 
 Tensor PhiTensorOperants::multiply(const Tensor& x, const Scalar& y) {
-  return paddle::experimental::multiply(x,
-                                        paddle::experimental::full_like(x, y));
+  return paddle::experimental::multiply(x, paddle::experimental::full_like(x, y));
 }
 
 Tensor PhiTensorOperants::divide(const Tensor& x, const Scalar& y) {
