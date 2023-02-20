@@ -342,8 +342,13 @@ class NegSpecNet(paddle.nn.Layer):
 
 
 class TestNegSpecWithPrim(unittest.TestCase):
-    def test_run(self):
+    def setUp(self):
         core._set_prim_all_enabled(True)
+
+    def tearDown(self):
+        core._set_prim_all_enabled(False)
+
+    def test_run(self):
         net = NegSpecNet()
         net = paddle.jit.to_static(
             net, input_spec=[paddle.static.InputSpec(shape=[-1, 10])]
