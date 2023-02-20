@@ -70,7 +70,7 @@ class TestFleetMetaOptimizer(unittest.TestCase):
         main_program, startup_program = paddle.static.Program(), paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
             hidden_size = 512
-            input_x = paddle.static.data(name="x", shape=[-1, hidden_size], dtype='float32')
+            input_x = paddle.static.data(name="x", shape=[-1, hidden_size], dtype='int64')
             model_a = TensorParallelNet(hidden_size)
             y = model_a(input_x)
             loss = paddle.mean(y)
