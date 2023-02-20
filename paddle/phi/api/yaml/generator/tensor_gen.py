@@ -322,7 +322,6 @@ def generate_tensor_operants_api(
     operants_source_path,
     operants_manager_header_path,
     operants_manager_source_path,
-    api_prim_path,
 ):
     apis = []
 
@@ -349,10 +348,8 @@ def generate_tensor_operants_api(
     operants_manager_source_file.write(operants_manager_source_include)
     operants_manager_source_file.write(operants_manager_source_start)
 
-    with open(api_prim_path, 'rt') as f:
-        api_prims = yaml.safe_load(f)
-        # white list temporarily
-        api_prims = ('add', 'subtract', 'multiply', 'divide')
+    # white list temporarily
+    api_prims = ('add', 'subtract', 'multiply', 'divide')
 
     for api in apis:
         operants_api = OperantsAPI(api, api_prims)
@@ -423,12 +420,6 @@ def main():
         default='paddle/phi/api/lib/operants_manager.cc',
     )
 
-    parser.add_argument(
-        '--api_prim_yaml_path',
-        help='Primitive API list yaml file.',
-        default='paddle/fluid/prim/api/api.yaml',
-    )
-
     options = parser.parse_args()
 
     api_yaml_path = options.api_yaml_path
@@ -437,7 +428,6 @@ def main():
     operants_source_path = options.phi_tensor_operants_source_path
     operants_manager_header_path = options.operants_manager_header_path
     operants_manager_source_path = options.operants_manager_source_path
-    api_prim_yaml_path = options.api_prim_yaml_path
 
     generate_tensor_operants_api(
         api_yaml_path,
@@ -446,7 +436,6 @@ def main():
         operants_source_path,
         operants_manager_header_path,
         operants_manager_source_path,
-        api_prim_yaml_path,
     )
 
 
