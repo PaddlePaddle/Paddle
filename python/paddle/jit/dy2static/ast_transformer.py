@@ -22,7 +22,7 @@ import os
 from . import logging_utils
 from .assert_transformer import AssertTransformer
 from .base_transformer import BaseTransformer
-from .basic_api_transformer import BasicApiTransformer
+from .basic_api_transformer import BasicApiTransformer, NameloadJstTransformer
 from .break_continue_transformer import (
     BreakContinueTransformer,
     BreakTransformOptimizer,
@@ -93,6 +93,7 @@ class DygraphToStaticAst(BaseTransformer):
 
         transformers = [
             EarlyReturnTransformer,
+            DecoratorTransformer,  # transform decorators to function call
             BasicApiTransformer,  # Basic Api
             TensorShapeTransformer,  # Tensor.shape -> paddle.shape(Tensor)
             BreakContinueTransformer,  # break/continue in loops
@@ -104,7 +105,7 @@ class DygraphToStaticAst(BaseTransformer):
             AssertTransformer,  # assert statement
             CallTransformer,  # transform call recursively
             CastTransformer,  # type casting statement
-            DecoratorTransformer,  # transform decorators to function call
+            NameloadJstTransformer,
             TypeHintTransformer,  # remove all typehint in gast.Name
         ]
 

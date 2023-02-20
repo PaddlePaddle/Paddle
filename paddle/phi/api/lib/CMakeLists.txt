@@ -100,7 +100,6 @@ set(wrapped_infermeta_source_file
 # tensor and tensor operants file
 set(tensor_gen_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/tensor_gen.py)
-set(api_prim_yaml_file ${CMAKE_SOURCE_DIR}/paddle/fluid/prim/api/api.yaml)
 set(operants_base_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/operants_base.h)
 set(tensor_api_source_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/tensor_api.cc)
@@ -250,7 +249,6 @@ execute_process(
     --phi_tensor_operants_source_path ${phi_tensor_operants_source_file_tmp}
     --operants_manager_header_path ${operants_manager_header_file_tmp}
     --operants_manager_source_path ${operants_manager_source_file_tmp}
-    --api_prim_yaml_path ${api_prim_yaml_file}
   RESULT_VARIABLE _result)
 if(${_result})
   message(FATAL_ERROR "tensor codegen failed, exiting.")
