@@ -286,7 +286,6 @@ def to_static(
         return static_layer
 
     build_strategy = build_strategy or BuildStrategy()
-
     if not isinstance(build_strategy, BuildStrategy):
         raise TypeError(
             "Required type(build_strategy) shall be `paddle.static.BuildStrategy`, but received {}".format(
