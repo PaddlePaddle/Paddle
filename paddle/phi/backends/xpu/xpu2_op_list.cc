@@ -202,6 +202,8 @@ XPUOpMap& get_kl2_ops() {
                      phi::DataType::FLOAT16,
                      phi::DataType::INT64,
                      phi::DataType::INT32})},
+      {"embedding_with_eltwise_add_xpu",
+       XPUKernelSet({phi::DataType::FLOAT32})},
       {"empty",
        XPUKernelSet({phi::DataType::INT64,
                      phi::DataType::INT32,
