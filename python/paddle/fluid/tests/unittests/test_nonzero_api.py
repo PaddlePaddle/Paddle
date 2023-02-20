@@ -30,7 +30,7 @@ class TestNonZeroAPI(unittest.TestCase):
             y = paddle.nonzero(x, as_tuple=True)
             self.assertEqual(type(y), tuple)
             self.assertEqual(len(y), 2)
-            z = fluid.layers.concat(list(y), axis=1)
+            z = paddle.concat(list(y), axis=1)
             exe = fluid.Executor(fluid.CPUPlace())
 
             (res,) = exe.run(
@@ -46,7 +46,7 @@ class TestNonZeroAPI(unittest.TestCase):
             y = paddle.nonzero(x, as_tuple=True)
             self.assertEqual(type(y), tuple)
             self.assertEqual(len(y), 1)
-            z = fluid.layers.concat(list(y), axis=1)
+            z = paddle.concat(list(y), axis=1)
             exe = fluid.Executor(fluid.CPUPlace())
             (res,) = exe.run(
                 feed={'x': data}, fetch_list=[z.name], return_numpy=False

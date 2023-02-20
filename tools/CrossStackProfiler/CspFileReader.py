@@ -20,7 +20,7 @@ import time
 from multiprocessing import Lock
 
 """ Some terms to clarify the code
-    in most case, one or more paremeters may be set as input args for a class or a function
+    in most case, one or more parameters may be set as input args for a class or a function
     in form of single variable or k-v dict
 
     1.  trainerId
@@ -192,7 +192,7 @@ class FileReader:
             if (
                 self._getId(self._fileList[-1]) - self._getId(self._fileList[0])
             ) != len(self._fileList) - 1:
-                raise Exception("The file id should be countious!")
+                raise Exception("The file id should be continuous!")
 
         # sort
         def _sortBySuffix(elem):
@@ -344,7 +344,7 @@ class FileReader:
         fileObject = open(fileName, 'w')
         fileObject.write(jsObj)
         fileObject.close()
-        self._logger.info("dump [%s] sucessfully!" % fileName)
+        self._logger.info("dump [%s] successfully!" % fileName)
 
 
 def getLogger():

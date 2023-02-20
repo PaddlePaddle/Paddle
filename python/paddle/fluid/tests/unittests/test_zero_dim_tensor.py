@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Note:
+# 0D Tensor indicates that the tensor's dimension is 0
+# 0D Tensor's shape is always [], numel is 1
+# which can be created by paddle.rand([])
+
 import unittest
 
 import numpy as np
@@ -288,6 +293,7 @@ binary_api_list = [
     paddle.fmax,
     paddle.fmin,
     paddle.complex,
+    paddle.kron,
 ]
 
 binary_int_api_list = [
@@ -2743,6 +2749,29 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[3].shape, ())
         self.assertEqual(res[4].shape, ())
         self.assertEqual(res[5].shape, ())
+
+    def test_static_nn_prelu(self):
+        x1 = paddle.full([], 1.0, 'float32')
+        x1.stop_gradient = False
+        out1 = paddle.static.nn.prelu(x1, 'all')
+        paddle.static.append_backward(out1.sum())
+
+        prog = paddle.static.default_main_program()
+        self.exe.run(paddle.static.default_startup_program())
+        res = self.exe.run(
+            prog,
+            fetch_list=[
+                out1,
+                x1.grad_name,
+                out1.grad_name,
+            ],
+        )
+
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[2].shape, ())
+        np.testing.assert_allclose(res[0], np.array(1))
+        np.testing.assert_allclose(res[1], np.array(1))
 
     @prog_scope()
     def test_while_loop(self):
