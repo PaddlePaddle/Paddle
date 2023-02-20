@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/rnn_grad_kernel.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
-#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/utils/get_data_from_tensor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/xpu/rnn_util.h"
 
@@ -166,7 +166,7 @@ void RnnGradKernel(const Context& dev_ctx,
   std::vector<int> seq_len_tensor(batch_size, seq_len);
   if (has_seq_length) {
     seq_len_tensor =
-        paddle::experimental::GetDataFromTensor<int>(sequence_length.get_ptr());
+        operators::GetDataFromTensor<int>(sequence_length.get_ptr());
   }
 
   for (int i = num_layers - 1; i >= 0; --i) {
