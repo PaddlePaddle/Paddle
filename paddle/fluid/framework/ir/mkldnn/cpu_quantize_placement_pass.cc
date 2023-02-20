@@ -43,6 +43,7 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
                                        "pool2d",
                                        "prior_box",
                                        "reshape2",
+                                       "fused_transpose",
                                        "transpose2",
                                        "fusion_gru",
                                        "fusion_lstm",

@@ -19,7 +19,6 @@
 namespace paddle {
 namespace operators {
 
-using phi::DataLayout;
 using phi::OneDNNContext;
 
 template <typename T>
@@ -28,7 +27,7 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()),
                       true,
-                      paddle::platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "Operator DNNL Transpose must use CPUPlace"));
     auto& dev_ctx = ctx.template device_context<OneDNNContext>();
     const auto& dnnl_engine = dev_ctx.GetEngine();
@@ -88,7 +87,7 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()),
                       true,
-                      paddle::platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "Operator DNNL TransposeGrad must use CPUPlace"));
 
     const auto* dout =
