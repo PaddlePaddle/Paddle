@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/impl/transpose_grad_kernel_impl.h"
 
-#include "paddle/phi/kernels/memorycpy_with_strides_kernel.h"
+#include "paddle/phi/kernels/memcpy_with_strides_kernel.h"
 
 namespace phi {
 
@@ -56,7 +56,7 @@ void memcpyWithStridesKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(contiguous,
+PD_REGISTER_KERNEL(copyWithStrides,
                    CPU,
                    ALL_LAYOUT,
                    phi::memcpyWithStridesKernel,
