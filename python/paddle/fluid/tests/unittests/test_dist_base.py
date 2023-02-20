@@ -397,6 +397,7 @@ class TestDistRunnerBase:
             )
 
     def run_trainer(self, args):
+        raise Exception("No with_data_parallel")
         self.lr = args.lr
         if args.nccl2_reduce_layer_local_run:
             (
