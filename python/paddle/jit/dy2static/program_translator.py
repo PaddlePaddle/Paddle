@@ -314,6 +314,17 @@ class StaticFunction:
             self._dygraph_function = function
             self._class_instance = None
 
+        if input_spec is not None and prim_or_cinn_is_enabled(
+            kwargs.get("build_strategy", None)
+        ):
+            for spec in input_spec:
+                if spec is not None and -1 in spec.shape:
+                    input_spec = None
+                    warnings.warn(
+                        'Now prim and cinn do not support -1 shape, but input_spec has -1 shape so we set it to None.'
+                    )
+                    break
+
         self._input_spec = input_spec
         self._function_spec = FunctionSpec(function, input_spec)
         self._program_cache = ProgramCache()
@@ -1162,13 +1173,11 @@ class ProgramCache:
         if prim_or_cinn_is_enabled(cache_key.kwargs['build_strategy']):
             for var in concrete_program.main_program.list_vars():
                 if -1 in var.shape:
-                    raise ValueError(
+                    warnings.warn(
                         "Now prim and cinn do not support -1 shape, but the shape of var {} is {}".format(
                             var.name, var.shape
                         )
                     )
-            global MAX_TRACED_PROGRAM_COUNT
-            MAX_TRACED_PROGRAM_COUNT = 100
 
         concrete_program._to_prim()
         return concrete_program, partial_program_from(concrete_program)
@@ -1193,7 +1202,6 @@ class ProgramCache:
                         current_tracing_count, MAX_TRACED_PROGRAM_COUNT
                     )
                 )
-                self._caches.pop(self._caches.keys()[0])
 
         return self._caches[item_id]
 

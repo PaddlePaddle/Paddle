@@ -74,7 +74,6 @@ from paddle.fluid.framework import (
 )
 from paddle.fluid.framework import dygraph_only, _non_static_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
-from .dy2static.utils import prim_or_cinn_is_enabled
 
 
 def create_program_from_desc(program_desc):
@@ -287,15 +286,6 @@ def to_static(
         return static_layer
 
     build_strategy = build_strategy or BuildStrategy()
-
-    if input_spec is not None and prim_or_cinn_is_enabled(build_strategy):
-        for spec in input_spec:
-            if spec is not None and -1 in spec.shape:
-                input_spec = None
-                warnings.warn(
-                    'Now prim and cinn do not support -1 shape, but input_spec has -1 shape so we set it to None.'
-                )
-                break
 
     if not isinstance(build_strategy, BuildStrategy):
         raise TypeError(
