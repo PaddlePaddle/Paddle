@@ -453,7 +453,7 @@ class set_grad_enabled(_DecoratorContextManager):
         return self.__class__(self.mode)
 
 
-class no_grad_(_DecoratorContextManager):
+class no_grad_:
     """
     :api_attr: imperative
 
@@ -498,6 +498,24 @@ class no_grad_(_DecoratorContextManager):
 
         test_layer()
     """
+    def __call__(self, func):
+        @decorator.decorator
+        def _decorate_function(func, *args, **kwargs):
+            with self.clone():
+                return func(*args, **kwargs)
+
+        @decorator.decorator
+        def _decorate_generator(func, *args, **kwargs):
+            gen = func(*args, **kwargs)
+            with self:
+                for x in gen:
+                    yield x
+
+        if inspect.isgeneratorfunction(func):
+            return _decorate_generator(func)
+        else:
+            return _decorate_function(func)
+
 
     def __enter__(self):
         self.prev = is_grad_enabled()
