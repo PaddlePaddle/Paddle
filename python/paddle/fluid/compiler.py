@@ -484,6 +484,10 @@ class CompiledProgram:
         self._persistable_vars = list(set(self._persistable_vars))
         self._persistable_vars.sort()
 
+        if core.is_cuda_graph_capturing():
+            raise RuntimeError(
+                "CUDA Graph is not allowed to capture when running the first batch."
+            )
         return core.ParallelExecutor(
             places,
             self._persistable_vars,
