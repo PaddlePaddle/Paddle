@@ -5054,3 +5054,61 @@ def frexp(x, name=None):
 
     mantissa = paddle.where((x < 0), mantissa * -1, mantissa)
     return mantissa, exponent
+
+
+def xlogy(x, other, name=None):
+    r"""
+    Compute x*log(other) so that the result is 0 if x = 0 or NaNs.
+
+    Equation:
+        .. math::
+
+            xlogy(x,other)=\left\{\begin{matrix}
+            & NaN & other = NaN, other <= 0 \\
+            & 0 & x = 0 \\
+            & x*\\log(other) & otherwise
+            \end{matrix}\right.
+
+    Args:
+        x (Tensor): Input tensor must be one of the following types: float32, float64.
+        other (Tensor): The tensor must be one of the following types: float32, float64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, results of xlogy, with the same data type as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([3.0])
+            other = paddle.to_tensor([3.0, 1.0, 3.0, 0.5])
+            out1 = paddle.xlogy(x, other)
+            print(out1.numpy())
+            # out1:
+            # [3.295837   0.         3.295837  -2.0794415]
+
+            x = paddle.to_tensor([2.0, 0.0, 2.0, 3.0])
+            other = paddle.to_tensor([3.0, 1.0, 3.0, 0.5])
+            out2 = paddle.xlogy(x, other)
+            print(out2.numpy())
+            # out2:
+            # [2.1972246 0.        2.1972246 4.158883]
+
+            x = paddle.to_tensor([[1.0, 2.0, 0.0, 2.0],
+                      [0.0, float('inf'), float('nan'), 3.0]])
+            other = paddle.to_tensor([[0.0, float('inf'), float('nan'), 1.0],
+                                    [1.0, 2.0, 0.0, 3.0]])
+            print(out3.numpy())
+            # out3:
+            # [[    -inf      inf      nan 0.      ]
+            #  [0.            inf      nan 3.295837]]
+    """
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'xlogy')
+    tmp_res = paddle.log(other)
+    mask = (x == 0) & (~paddle.isnan(tmp_res))
+    res = paddle.zeros(tmp_res.shape)
+    res[~mask] = (x * tmp_res)[~mask]
+    return res
