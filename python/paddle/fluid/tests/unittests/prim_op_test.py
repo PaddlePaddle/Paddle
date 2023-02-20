@@ -1153,6 +1153,7 @@ class PrimGradChecker(PrimForwardChecker):
         args = OpTestUtils.assumption_assert_and_transform(
             args, len(inputs_sig)
         )
+        # TODO：self.python_api外面套一个wrapper
         jit_api = apply_to_static(
             self.python_api, self.enable_cinn and core.is_compiled_with_cinn()
         )
