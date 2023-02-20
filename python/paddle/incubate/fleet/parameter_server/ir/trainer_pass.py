@@ -20,13 +20,13 @@ from functools import reduce
 
 import paddle
 import paddle.framework as framework
+from paddle.distributed.transpiler.details.program_utils import delete_ops
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
     _get_lr_ops,
     _get_optimize_ops,
     get_sparse_tablenames,
 )
 from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
-from paddle.fluid.transpiler.details.program_utils import delete_ops
 from paddle.framework import core
 
 OP_NAME_SCOPE = "op_namescope"
