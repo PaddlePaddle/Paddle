@@ -77,7 +77,7 @@ class TestFleetMetaOptimizer(unittest.TestCase):
 
         optimizer = paddle.fluid.optimizer.Adam(0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
-        optimizer.minimize(y)
+        optimizer.minimize(loss)
 
         print(main_program)
         print(startup_program)
