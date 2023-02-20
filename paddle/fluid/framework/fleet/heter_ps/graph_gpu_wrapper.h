@@ -82,6 +82,11 @@ class GraphGpuWrapper {
                           int part_num,
                           bool reverse,
                           const std::vector<bool>& is_reverse_edge_map);
+  int set_node_iter_from_file(std::string ntype2files,
+                              std::string nodes_file_path,
+                              int part_num,
+                              bool training);
+  int set_node_iter_from_graph(bool training);
   int32_t load_next_partition(int idx);
   int32_t get_partition_num(int idx);
   void load_node_weight(int type_id, int idx, std::string path);
@@ -163,11 +168,14 @@ class GraphGpuWrapper {
   void init_metapath(std::string cur_metapath,
                      int cur_metapath_index,
                      int cur_metapath_len);
+  void init_metapath_total_keys();
   void clear_metapath_state();
   void release_graph();
   void release_graph_edge();
   void release_graph_node();
-  void init_type_keys();
+  void init_type_keys(
+      std::vector<std::vector<std::shared_ptr<phi::Allocation>>>& keys,
+      std::vector<std::vector<uint64_t>>& lens);
   std::vector<uint64_t>& get_graph_total_keys();
   std::vector<std::vector<uint64_t>>& get_graph_type_keys();
   std::unordered_map<int, int>& get_graph_type_to_index();
@@ -188,6 +196,7 @@ class GraphGpuWrapper {
   std::shared_ptr<::ThreadPool> upload_task_pool;
   std::string feature_separator_ = std::string(" ");
   bool conf_initialized_ = false;
+  bool type_keys_initialized_ = false;
   std::vector<int> first_node_type_;
   std::vector<uint8_t> excluded_train_pair_;
   std::vector<std::vector<int>> meta_path_;
@@ -198,18 +207,22 @@ class GraphGpuWrapper {
   std::vector<std::unordered_map<int, size_t>> global_infer_node_type_start_;
   std::vector<size_t> infer_cursor_;
   std::vector<size_t> cursor_;
-  std::vector<std::shared_ptr<phi::Allocation>> d_graph_train_total_keys_;
-  std::vector<size_t> h_graph_train_keys_len_;
+
   std::vector<std::vector<std::shared_ptr<phi::Allocation>>>
       d_graph_all_type_total_keys_;
+  std::vector<std::vector<uint64_t>> h_graph_all_type_keys_len_;
+  std::vector<std::vector<std::shared_ptr<phi::Allocation>>>
+      d_node_iter_graph_all_type_keys_;
+  std::vector<std::vector<uint64_t>> h_node_iter_graph_all_type_keys_len_;
+  std::vector<std::shared_ptr<phi::Allocation>> d_node_iter_graph_metapath_keys_;
+  std::vector<size_t> h_node_iter_graph_metapath_keys_len_;
+
   std::map<uint64_t,  // edge_id
            uint64_t   // src_node_id << 32 | dst_node_id
            >
       edge_to_node_map_;
 
-  std::vector<std::vector<uint64_t>> h_graph_all_type_keys_len_;
   std::string slot_feature_separator_ = std::string(" ");
-
   std::string cur_metapath_;
   std::vector<int> cur_parse_metapath_;
   std::vector<int> cur_parse_reverse_metapath_;
