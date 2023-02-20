@@ -74,12 +74,23 @@ namespace paddle {
 
 namespace operants {
 
+using Scalar = paddle::experimental::Scalar;
+
 class PhiTensorOperants : public TensorOperantsBase {
  private:
   DISABLE_COPY_AND_ASSIGN(PhiTensorOperants);
 
  public:
   PhiTensorOperants() = default;
+
+  Tensor add(const Tensor& x, const Scalar& y);
+
+  Tensor subtract(const Tensor& x, const Scalar& y);
+
+  Tensor multiply(const Tensor& x, const Scalar& y);
+
+  Tensor divide(const Tensor& x, const Scalar& y);
+
 """
 
 
@@ -104,6 +115,24 @@ operants_source_start = """
 namespace paddle {
 
 namespace operants {
+
+Tensor PhiTensorOperants::add(const Tensor& x, const Scalar& y) {
+  return paddle::experimental::add(x, paddle::experimental::full_like(x, y));
+}
+
+Tensor PhiTensorOperants::subtract(const Tensor& x, const Scalar& y) {
+  return paddle::experimental::subtract(x,
+                                        paddle::experimental::full_like(x, y));
+}
+
+Tensor PhiTensorOperants::multiply(const Tensor& x, const Scalar& y) {
+  return paddle::experimental::multiply(x,
+                                        paddle::experimental::full_like(x, y));
+}
+
+Tensor PhiTensorOperants::divide(const Tensor& x, const Scalar& y) {
+  return paddle::experimental::divide(x, paddle::experimental::full_like(x, y));
+}
 """
 
 
@@ -129,6 +158,7 @@ namespace paddle {
 
 using Tensor = paddle::experimental::Tensor;
 using TensorOperantsBase = paddle::operants::TensorOperantsBase;
+using Scalar = paddle::experimental::Scalar;
 
 /**
  * [ Why need OperantsManager? ]
@@ -175,6 +205,15 @@ class OperantsManager {
 
  public:
   static OperantsManager& Instance();
+
+  Tensor add(const Tensor& x, const Scalar& y);
+
+  Tensor subtract(const Tensor& x, const Scalar& y);
+
+  Tensor multiply(const Tensor& x, const Scalar& y);
+
+  Tensor divide(const Tensor& x, const Scalar& y);
+
 """
 
 
@@ -302,17 +341,28 @@ class OperantsAPI(ForwardAPI):
 
     def gene_operants_manager_implementation(self):
         func_name = self.get_api_func_name()
+        final_code = ""
+        if func_name in ["add", "subtract", "multiply", "divide"]:
+            final_code += f"""
+{self.get_return_type()} OperantsManager::{func_name}(const Tensor& x, const Scalar& y) {{{self.gene_operants_manager_code()}}}
+"""
         # func decalaration
         if func_name[-1] != '_':
-            return f"""
+            return (
+                final_code
+                + f"""
 {self.get_return_type()} OperantsManager::{func_name}({self.get_define_args()}) {{{self.gene_operants_manager_code()}}}
 """
+            )
         else:
-            return f"""
+            return (
+                final_code
+                + f"""
 {self.get_return_type(inplace_flag=True)} OperantsManager::{func_name}({self.get_define_args(inplace_flag=True)}) {{
 {self.gene_operants_manager_code()}
 }}
 """
+            )
 
 
 def generate_tensor_operants_api(

@@ -47,6 +47,12 @@ namespace paddle {
 
 namespace experimental {
 
+class Tensor;
+
+template <typename T>
+class ScalarBase;
+using Scalar = paddle::experimental::ScalarBase<Tensor>;
+
 class AbstractAutogradMeta {
  public:
   // No AbstractAutogradMeta should be created
@@ -537,6 +543,14 @@ class PADDLE_API Tensor final {
   Tensor operator*(const Tensor& other) const;
 
   Tensor operator/(const Tensor& other) const;
+
+  Tensor operator+(const Tensor& x, const Scalar& y) const;
+
+  Tensor operator-(const Tensor& x, const Scalar& y) const;
+
+  Tensor operator*(const Tensor& x, const Scalar& y) const;
+
+  Tensor operator/(const Tensor& x, const Scalar& y) const;
 
   /* Part 8: Autograd methods */
 
