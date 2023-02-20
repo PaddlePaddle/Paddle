@@ -1842,12 +1842,12 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     bool is_xpu_kp_support = (use_xpu_kp_kernel_rt || use_xpu_kp_kernel_debug);
 #endif
 
-    bool is_in_custom_back_list = false;
+    bool in_custom_back_list = false;
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
-    is_in_custom_back_list =
+    in_custom_back_list =
         phi::backends::custom_device::is_in_custom_black_list(phi_kernel_name);
 #endif
-    if (phi_kernel_->IsValid() && !is_in_custom_back_list
+    if (phi_kernel_->IsValid() && !in_custom_back_list
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
         && !is_xpu_unsupport
 #endif
@@ -1878,13 +1878,11 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
           || (is_xpu_unsupport && !is_xpu_kp_support)
 #endif
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
-          || (phi::backends::custom_device::is_in_custom_black_list(
-                 phi_kernel_name))
+          || in_custom_back_list
 #endif
       ) {
         fallback_to_cpu = true;
-        if (phi::backends::custom_device::is_in_custom_black_list(
-                phi_kernel_name)) {
+        if (in_custom_back_list) {
           VLOG(3) << "fluid in black list: " << phi_kernel_name;
         }
         auto phi_cpu_kernel_key = FallBackToCpu(phi_kernel_key, *this);
