@@ -171,6 +171,30 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : bitwise_and
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
+
+- op : bitwise_not
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out}
+
+- op : bitwise_or
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
+
+- op : bitwise_xor
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
+
 - op : bmm
   inputs :
     {x : X, y : Y}
