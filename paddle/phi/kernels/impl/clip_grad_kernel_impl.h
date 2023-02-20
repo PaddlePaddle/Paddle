@@ -15,8 +15,8 @@
 #pragma once
 
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/transform.h"
 #include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/common/transform.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/clip_kernel.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
@@ -59,7 +59,7 @@ void ClipGradKernel(const Context& dev_ctx,
   auto* d_x_data = dev_ctx.template Alloc<T>(x_grad);
   const T* d_out_data = out_grad.data<T>();
   const T* x_data = x.data<T>();
-  paddle::platform::Transform<Context> trans;
+  phi::Transform<Context> trans;
   trans(dev_ctx,
         d_out_data,
         d_out_data + numel,

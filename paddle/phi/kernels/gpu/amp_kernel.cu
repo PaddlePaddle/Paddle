@@ -19,7 +19,6 @@
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/impl/amp_kernel_impl.h"
 
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/memory/memory.h"
 
 namespace phi {

@@ -7,8 +7,8 @@ set(XPU_PROJECT "extern_xpu")
 set(XPU_API_LIB_NAME "libxpuapi.so")
 set(XPU_RT_LIB_NAME "libxpurt.so")
 
-set(XPU_BASE_DATE "20230119")
-set(XPU_XCCL_BASE_VERSION "1.0.7")
+set(XPU_BASE_DATE "20230220")
+set(XPU_XCCL_BASE_VERSION "1.0.8")
 
 if(NOT DEFINED XPU_BASE_URL)
   set(XPU_BASE_URL_WITHOUT_DATE

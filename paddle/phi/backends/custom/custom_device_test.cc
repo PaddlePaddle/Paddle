@@ -16,7 +16,6 @@
 
 #include <string>
 
-#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/custom/fake_cpu_device.h"
