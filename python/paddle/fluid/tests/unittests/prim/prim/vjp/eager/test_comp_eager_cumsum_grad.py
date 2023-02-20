@@ -86,13 +86,13 @@ class TestCumsumGradComp(unittest.TestCase):
             and self.primal.dtype == np.float16
         ):
             print("pass cpu+float16 case")
-
-        np.testing.assert_allclose(
-            actual=actual(self.primal, self.cotangent),
-            desired=desired(self.primal, self.cotangent),
-            rtol=limit[str(self.primal.dtype)]['rtol'],
-            atol=limit[str(self.primal.dtype)]['atol'],
-        )
+        else:
+            np.testing.assert_allclose(
+                actual=actual(self.primal, self.cotangent),
+                desired=desired(self.primal, self.cotangent),
+                rtol=limit[str(self.primal.dtype)]['rtol'],
+                atol=limit[str(self.primal.dtype)]['atol'],
+            )
         core._set_prim_backward_enabled(False)
 
 
