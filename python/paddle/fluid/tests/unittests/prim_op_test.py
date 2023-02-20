@@ -54,6 +54,7 @@ def convert_uint16_to_float(in_list):
     return np.reshape(out, in_list.shape)
 
 
+# TODO(wanghao107): OpTestUtils will be moved to op_test.py
 class OpTestUtils:
     @classmethod
     def _get_kernel_signature(
@@ -207,6 +208,16 @@ def apply_to_static(net, use_cinn):
     build_strategy = paddle.static.BuildStrategy()
     build_strategy.build_cinn_pass = use_cinn
     return paddle.jit.to_static(net, build_strategy=build_strategy)
+
+
+class PrimNet(paddle.nn.Layer):
+    def __init__(self, python_api):
+        super(PrimNet, self).__init__()
+        self.python_api = python_api
+
+    def forward(self, args):
+        out = self.python_api(*args)
+        return out
 
 
 class PrimForwardChecker:
@@ -621,8 +632,9 @@ class PrimForwardChecker:
         args = OpTestUtils.assumption_assert_and_transform(
             args, len(inputs_sig)
         )
-        jit_api = apply_to_static(self.python_api, False)
-        ret = flatten(_as_list(jit_api(*args)))
+        net = PrimNet(self.python_api)
+        net = apply_to_static(net, False)
+        ret = flatten(_as_list(net(args)))
         ret = map_structure(lambda x: x.numpy(), ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
             ret = map_structure(lambda x: convert_uint16_to_float(x), ret)
@@ -657,7 +669,7 @@ class PrimForwardChecker:
                 )
                 raise RuntimeError(msg)
         core._set_prim_forward_enabled(False)
-        jit_api.program_cache.clear()
+        net.forward.program_cache.clear()
 
     def check_jit_comp_with_cinn(self):
         if self.prim_op_type == "prim":
@@ -697,10 +709,11 @@ class PrimForwardChecker:
         args = OpTestUtils.assumption_assert_and_transform(
             args, len(inputs_sig)
         )
-        jit_api = apply_to_static(
-            self.python_api, core.is_compiled_with_cinn() and self.enable_cinn
+        net = PrimNet(self.python_api)
+        net = apply_to_static(
+            net, core.is_compiled_with_cinn() and self.enable_cinn
         )
-        ret = flatten(_as_list(jit_api(*args)))
+        ret = flatten(_as_list(net(args)))
         ret = map_structure(lambda x: x.numpy(), ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
             ret = map_structure(lambda x: convert_uint16_to_float(x), ret)
@@ -737,7 +750,7 @@ class PrimForwardChecker:
                 )
                 raise RuntimeError(msg)
         core._set_prim_forward_enabled(False)
-        jit_api.program_cache.clear()
+        net.forward.program_cache.clear()
 
 
 class PrimGradChecker(PrimForwardChecker):
@@ -901,8 +914,8 @@ class PrimGradChecker(PrimForwardChecker):
             if not np.allclose(
                 actual_ret[i],
                 self.eager_desire[i],
-                rtol=self.fw_comp_rtol,
-                atol=self.fw_comp_atol,
+                rtol=atol,
+                atol=rtol,
             ):
                 msg = (
                     'Check eager comp grad out failed. Mismatch between eager comp '
@@ -1046,8 +1059,9 @@ class PrimGradChecker(PrimForwardChecker):
         args = OpTestUtils.assumption_assert_and_transform(
             args, len(inputs_sig)
         )
-        jit_api = apply_to_static(self.python_api, False)
-        out = _as_list(jit_api(*args))
+        net = PrimNet(self.python_api)
+        net = apply_to_static(net, False)
+        out = _as_list(net(args))
         outputs_dict = self.get_output_dict(self.outputs, out, outputs_sig)
         ys = []
         if isinstance(self.output_names, list):
@@ -1105,7 +1119,7 @@ class PrimGradChecker(PrimForwardChecker):
                 raise RuntimeError(msg)
         core._set_prim_forward_enabled(False)
         core._set_prim_backward_enabled(False)
-        jit_api.program_cache.clear()
+        net.forward.program_cache.clear()
 
     def check_jit_comp_with_cinn(self):
         # cinn doesen't support cpu place
@@ -1153,11 +1167,11 @@ class PrimGradChecker(PrimForwardChecker):
         args = OpTestUtils.assumption_assert_and_transform(
             args, len(inputs_sig)
         )
-        # TODO：self.python_api外面套一个wrapper
-        jit_api = apply_to_static(
-            self.python_api, self.enable_cinn and core.is_compiled_with_cinn()
+        net = PrimNet(self.python_api)
+        net = apply_to_static(
+            net, core.is_compiled_with_cinn() and self.enable_cinn
         )
-        out = _as_list(jit_api(*args))
+        out = _as_list(net(args))
         outputs_dict = self.get_output_dict(self.outputs, out, outputs_sig)
         ys = []
         if isinstance(self.output_names, list):
@@ -1217,4 +1231,4 @@ class PrimGradChecker(PrimForwardChecker):
                 raise RuntimeError(msg)
         core._set_prim_forward_enabled(False)
         core._set_prim_backward_enabled(False)
-        jit_api.program_cache.clear()
+        net.forward.program_cache.clear()
