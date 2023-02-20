@@ -19,40 +19,26 @@ namespace paddle {
 namespace inference {
 
 TEST(TensorRT, mark_engine_outputs) {
-  std::string model_dir = FLAGS_infer_model + "/resnext50";
+  std::string model_dir = FLAGS_infer_model + "/resnet50";
   AnalysisConfig config;
+  config.SetModel(model_dir);
   config.EnableUseGpu(100, 0);
-  config.SetModel(model_dir + "/" + FLAGS_prog_filename,
-                  model_dir + "/" + FLAGS_param_filename);
   config.EnableTensorRtEngine(
       1 << 30, 1, 5, AnalysisConfig::Precision::kFloat32, false, false);
-
   // The name of the tensor that needs to be marked, the default is empty (all
   // marks)
   std::vector<std::string> markOutput = {};
   config.MarkEngineOutputs(true, markOutput);
 
+  std::vector<std::vector<PaddleTensor>> inputs_all;
   auto predictor = CreatePaddlePredictor(config);
+  SetFakeImageInput(&inputs_all, model_dir, false, "__model__", "");
 
-  int batch_size = 1;
-  int channels = 3;
-  int height = 224;
-  int width = 224;
-  int input_num = batch_size * channels * height * width;
-  float *input = new float[input_num];
-  memset(input, 1.0, input_num * sizeof(float));
-
-  float *im_shape = new float[3];
-  im_shape[0] = 3.0;
-  im_shape[1] = 224.0;
-  im_shape[2] = 224.0;
-
-  auto input_names = predictor->GetInputNames();
-  auto input_t = predictor->GetInputTensor(input_names[0]);
-  input_t->Reshape({batch_size, channels, height, width});
-  input_t->copy_from_cpu(input);
-
-  ASSERT_TRUE(predictor->ZeroCopyRun());
+  std::vector<PaddleTensor> outputs;
+  for (auto &input : inputs_all) {
+    ASSERT_TRUE(predictor->Run(input, &outputs));
+    predictor->ClearIntermediateTensor();
+  }
 }
 
 }  // namespace inference

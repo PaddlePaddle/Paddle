@@ -305,7 +305,8 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
       Get<std::vector<std::string>>("output_tensor_names");
   VLOG(1) << "mark Output: " << mark_output;
 
-  if (mark_output) {
+  if (mark_output == 1) {
+    VLOG(1) << "begin to mark output ...";
     for (auto node : subgraph) {
       if (node->NodeType() == Node::Type::kOperation) {
         if (node->Op()->Outputs().count("XShape")) continue;
