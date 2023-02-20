@@ -59,6 +59,7 @@ from paddle.tensor import zeros  # noqa: F401
 from paddle.tensor.creation import assign  # noqa: F401
 from paddle.tensor.manipulation import cast  # noqa: F401
 
+"""
 math_op = [
     'add',
     'subtract',
@@ -116,3 +117,4 @@ others = [
     'reshape',
     'full',
 ]
+"""
