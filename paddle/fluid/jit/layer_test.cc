@@ -78,7 +78,7 @@ TEST(CpuLayerTest, Function) {
 
 TEST(CpuLayerTest, Construct) {
   auto place = phi::CPUPlace();
-  std::string path = "./multi_program_load/export";
+  std::string path = "../multi_program_load/export";
   paddle::platform::Timer timer;
   timer.Start();
   auto layer = jit::Load(path, place);
@@ -126,7 +126,7 @@ TEST(CpuLayerTest, Construct) {
 
 TEST(CpuLayerTest, Clone) {
   auto place = phi::CPUPlace();
-  std::string path = "./multi_program_load/export";
+  std::string path = "../multi_program_load/export";
 
   paddle::platform::Timer timer;
   timer.Start();
