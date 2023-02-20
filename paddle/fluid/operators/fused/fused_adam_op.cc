@@ -22,19 +22,34 @@ namespace operators {
 
 using Tensor = phi::DenseTensor;
 
-class MultiTensorAdamOp : public framework::OperatorWithKernel {
+class FusedAdamOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   phi::KernelKey GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
+      const framework::ExecutionContext &ctx) const override {
     auto param_dtype =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "Params");
     return phi::KernelKey(param_dtype, ctx.GetPlace());
   }
+
+  phi::KernelKey GetKernelTypeForVar(
+      const std::string &var_name,
+      const phi::DenseTensor &tensor,
+      const phi::KernelKey &expected_kernel_type) const override {
+    if (var_name == "Beta1Pows" || var_name == "Beta2Pows" ||
+        var_name == "SkipUpdate") {
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
+    } else {
+      return phi::KernelKey(
+          tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+    }
+  }
 };
 
-class MultiTensorAdamOpMaker : public framework::OpProtoAndCheckerMaker {
+class FusedAdamOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Params", "(Tensor) Input parameters").AsDuplicable();
@@ -144,13 +159,13 @@ $$
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(multi_tensor_adam,
-                            MultiTensorAdamInferShapeFunctor,
-                            PD_INFER_META(phi::MultiTensorAdamInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(fused_adam,
+                            FusedAdamInferShapeFunctor,
+                            PD_INFER_META(phi::FusedAdamInferMeta));
 REGISTER_OPERATOR(
-    multi_tensor_adam,
-    ops::MultiTensorAdamOp,
-    ops::MultiTensorAdamOpMaker,
+    fused_adam,
+    ops::FusedAdamOp,
+    ops::FusedAdamOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    MultiTensorAdamInferShapeFunctor);
+    FusedAdamInferShapeFunctor);

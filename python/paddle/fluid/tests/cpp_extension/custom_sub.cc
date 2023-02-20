@@ -12,28 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/extension.h"
 
-#include "paddle/phi/api/include/tensor.h"
-
-namespace paddle {
-
-namespace operants {
-
-using Tensor = paddle::experimental::Tensor;
-
-class TensorOperantsBase {
- public:
-  virtual ~TensorOperantsBase() = default;
-
-  virtual Tensor add(const Tensor& x, const Tensor& y) = 0;
-
-  virtual Tensor subtract(const Tensor& x, const Tensor& y) = 0;
-
-  virtual Tensor multiply(const Tensor& x, const Tensor& y) = 0;
-
-  virtual Tensor divide(const Tensor& x, const Tensor& y) = 0;
-};
-
-}  // namespace operants
-}  // namespace paddle
+paddle::Tensor custom_sub(paddle::Tensor x, paddle::Tensor y) {
+  return paddle::subtract(paddle::exp(x), paddle::exp(y));
+}

@@ -11,32 +11,18 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #pragma once
 
-#include "paddle/phi/api/include/operants_base.h"
-#include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/core/macros.h"
+#include "paddle/extension.h"
 
-namespace paddle {
-
-namespace operants {
-
-class PhiTensorOperants : public TensorOperantsBase {
- public:
-  PhiTensorOperants() = default;
-
-  Tensor add(const Tensor& x, const Tensor& y) override;
-
-  Tensor subtract(const Tensor& x, const Tensor& y) override;
-
-  Tensor multiply(const Tensor& x, const Tensor& y) override;
-
-  Tensor divide(const Tensor& x, const Tensor& y) override;
+struct Power {
+  Power(int A, int B) {
+    tensor_ = paddle::ones({A, B}, phi::DataType::FLOAT32, phi::CPUPlace());
+  }
+  explicit Power(paddle::Tensor x) { tensor_ = x; }
+  paddle::Tensor forward() { return paddle::experimental::pow(tensor_, 2); }
+  paddle::Tensor get() const { return tensor_; }
 
  private:
-  DISABLE_COPY_AND_ASSIGN(PhiTensorOperants);
+  paddle::Tensor tensor_;
 };
-
-}  // namespace operants
-}  // namespace paddle

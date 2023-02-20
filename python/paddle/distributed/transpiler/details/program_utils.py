@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid import core
-import paddle
-
 
 def delete_ops(block, ops):
     for op in ops:

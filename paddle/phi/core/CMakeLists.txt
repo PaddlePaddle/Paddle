@@ -109,10 +109,6 @@ cc_library(
   phi_device_context
   SRCS device_context.cc
   DEPS dense_tensor selected_rows)
-cc_library(
-  serialization
-  SRCS serialization.cc
-  DEPS version tensor phi_device_context)
 
 cc_library(
   custom_kernel

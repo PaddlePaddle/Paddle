@@ -166,13 +166,7 @@ cc_test(
 cc_library(
   lod_tensor
   SRCS lod_tensor.cc
-  DEPS ddim
-       mixed_vector
-       place
-       tensor
-       framework_proto
-       version
-       serialization)
+  DEPS ddim mixed_vector place tensor framework_proto version)
 
 cc_test(
   lod_tensor_test
@@ -1103,7 +1097,7 @@ cc_test(
 cc_library(
   selected_rows_utils
   SRCS selected_rows_utils.cc
-  DEPS selected_rows serialization device_context)
+  DEPS selected_rows device_context)
 cc_test(
   selected_rows_utils_test
   SRCS selected_rows_utils_test.cc
@@ -1197,6 +1191,7 @@ cc_library(
        phi_tensor
        op_meta_info
        phi_api
+       tensor_api
        phi_tensor_operants
        operants_manager)
 

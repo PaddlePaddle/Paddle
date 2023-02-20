@@ -40,7 +40,7 @@ class UnionFind:
     def find(self, x):
         # Find the root index of given element x,
         # execute the path compress while findind the root index
-        if not x in self._index:
+        if x not in self._index:
             return -1
         idx = self._index[x]
         while idx != self._parents[idx]:

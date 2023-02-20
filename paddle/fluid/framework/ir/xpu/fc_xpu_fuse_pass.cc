@@ -310,6 +310,8 @@ void FcXPUFusePass::ApplyImpl(ir::Graph* graph,
       delete_nodes = {mul, mul_out, act};
     } else if (add) {
       delete_nodes = {mul, mul_out, add};
+    } else {
+      delete_nodes = {mul};
     }
     GraphSafeRemoveNodes(graph, delete_nodes);
     found_subgraph_count++;

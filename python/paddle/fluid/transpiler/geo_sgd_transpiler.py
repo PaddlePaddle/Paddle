@@ -37,8 +37,11 @@ from ..framework import (
     Block,
     Parameter,
 )
-from .details import wait_server_ready, VarsDistributed
-from .details import delete_ops
+from paddle.distributed.transpiler.details import (
+    wait_server_ready,
+    VarsDistributed,
+)
+from paddle.distributed.transpiler.details import delete_ops
 from .distribute_transpiler import (
     DistributeTranspiler,
     DistributeTranspilerConfig,
