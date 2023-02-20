@@ -539,4 +539,9 @@ if(WITH_CUDNN_FRONTEND)
   list(APPEND third_party_deps extern_cudnn_frontend)
 endif()
 
+if(WITH_K2)
+  include(external/k2)
+  list(APPEND third_party_deps extern_k2)
+endif()
+
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})
