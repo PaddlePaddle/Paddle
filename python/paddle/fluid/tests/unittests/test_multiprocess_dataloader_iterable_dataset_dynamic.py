@@ -164,7 +164,7 @@ class TestDygraphDataLoaderWithBatchedDataset(TestDygraphDataLoader):
 
             step_list = []
             loss_list = []
-            start_t = (time.time(),)
+            start_t = time.time()
             for _ in range(EPOCH_NUM):
                 step = 0
                 for image, label in dataloader():
