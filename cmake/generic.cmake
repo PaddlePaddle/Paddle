@@ -464,18 +464,20 @@ function(cc_test_build TARGET_NAME)
       paddle_gtest_main
       lod_tensor
       memory
+      dnnl
       gtest
       gflags
-      glog)
+      glog) # HACK (replace with decent fix)
     add_dependencies(
       ${TARGET_NAME}
       ${cc_test_DEPS}
       paddle_gtest_main
       lod_tensor
       memory
+      dnnl
       gtest
       gflags
-      glog)
+      glog) # HACK (replace with decent fix)
     common_link(${TARGET_NAME})
     if(WITH_ROCM)
       target_link_libraries(${TARGET_NAME} ${ROCM_HIPRTC_LIB})
