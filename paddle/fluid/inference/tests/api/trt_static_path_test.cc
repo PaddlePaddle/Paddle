@@ -50,7 +50,7 @@ TEST(AnalysisPredictor, trt_static_engine) {
     predictor->ClearIntermediateTensor();
   }
   // delete predictor to save shape_range.pbtxt
-  delete predictor;
+  predictor = nullptr;
 
   // step 2: build and save TensorRT engine
   AnalysisConfig config2;
