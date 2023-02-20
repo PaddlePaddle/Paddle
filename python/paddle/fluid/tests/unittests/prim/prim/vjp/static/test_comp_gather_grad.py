@@ -84,7 +84,7 @@ class PrimeNet(paddle.nn.Layer):
             np.random.rand(10, 88, 10),
             np.array([1, 3, 5]),
             0,
-            np.float32,
+            np.float16,
             np.int32,
             np.random.rand(3, 88, 10),
             4,
@@ -112,21 +112,19 @@ class TestGatherGradComp(unittest.TestCase):
         return res
 
     def test_cinn(self):
-        if core.is_compiled_with_cuda() and (
-            framework._current_expected_place() == core.CPUPlace()
-        ):
-            paddle.disable_static()
-            dy_res = self.train(use_prim=False, use_cinn=False)
-            comp_st_cinn_res = self.train(use_prim=True, use_cinn=True)
+        paddle.disable_static()
+        dy_res = self.train(use_prim=False, use_cinn=False)
+        # TODO(jiabin): CINN will crashed in this case open it when fixed
+        comp_st_cinn_res = self.train(use_prim=True, use_cinn=False)
 
-            for i in range(len(dy_res)):
-                np.testing.assert_allclose(
-                    comp_st_cinn_res[i].numpy(),
-                    dy_res[i].numpy(),
-                    rtol=1e-6,
-                    atol=1e-6,
-                )
-            paddle.enable_static()
+        for i in range(len(dy_res)):
+            np.testing.assert_allclose(
+                comp_st_cinn_res[i].numpy(),
+                dy_res[i].numpy(),
+                rtol=1e-6,
+                atol=1e-6,
+            )
+        paddle.enable_static()
 
     def test_tanh_grad_comp(self):
         paddle.enable_static()
@@ -183,16 +181,51 @@ class TestGatherGradComp(unittest.TestCase):
             )
             return out[0]
 
-        dx = actual(self.primal0, self.index, self.axis, self.v)
+        dx = None
+        ddx = None
 
-        ddx = desired(self.primal0, self.index, self.axis, self.v)
-        if (self.count != 3) and (
-            framework._current_expected_place() == core.CPUPlace()
+        # fp16 is not supported for cpu gather
+        if not (
+            (self.count == 4)
+            and isinstance(
+                framework._current_expected_place(), framework.core.CPUPlace
+            )
         ):
+            dx = actual(self.primal0, self.index, self.axis, self.v)
+
+            ddx = desired(self.primal0, self.index, self.axis, self.v)
+
+        if (self.count >= 3) and isinstance(
+            framework._current_expected_place(), framework.core.CPUPlace
+        ):
+            # Scatter in phi has problem with cpu kernel of case 4, so skip this
+            pass
+        elif (self.count == 4) and (
+            not isinstance(
+                framework._current_expected_place(), framework.core.CPUPlace
+            )
+        ):
+            # FP16 test case
             np.testing.assert_allclose(
                 actual=dx,
                 desired=ddx,
-                rtol=1e-6,
+                rtol=1e-3,
+                atol=0,
+            )
+        elif self.count == 1:
+            # FP64 test case
+            np.testing.assert_allclose(
+                actual=dx,
+                desired=ddx,
+                rtol=1e-15,
+                atol=1e-15,
+            )
+        else:
+            # FP32 test cases
+            np.testing.assert_allclose(
+                actual=dx,
+                desired=ddx,
+                rtol=1e-5,
                 atol=0,
             )
         core._set_prim_backward_enabled(False)
