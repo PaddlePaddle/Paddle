@@ -410,6 +410,7 @@ class SlotRecordDataset : public DatasetImpl<SlotRecord> {
                                        bool discard_remaining_ins);
   virtual void PrepareTrain();
   virtual void DynamicAdjustReadersNum(int thread_num);
+  void DynamicAdjustBatchNum();
 
  protected:
   bool enable_heterps_ = true;

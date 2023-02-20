@@ -938,6 +938,14 @@ class GraphDataGenerator {
   uint64_t CopyUniqueNodes();
   int GetPathNum() { return total_row_; }
   void ResetPathNum() { total_row_ = 0; }
+  int GetGraphBatchsize() {return batch_size_;};
+  void SetNewBatchsize(int batch_num) {
+    if (!gpu_graph_training_ && !sage_mode_) {
+      batch_size_ = (total_row_ + batch_num - 1) / batch_num;
+    } else {
+      return;
+    }
+  }
   void ResetEpochFinish() { epoch_finish_ = false; }
   void ClearSampleState();
   void DumpWalkPath(std::string dump_path, size_t dump_rate);
@@ -1166,7 +1174,18 @@ class DataFeed {
   virtual const std::vector<std::string>& GetInsContentVec() const {
     return ins_content_vec_;
   }
-  virtual int GetCurBatchSize() { return batch_size_; }
+  virtual int GetCurBatchSize() {
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+    return gpu_graph_data_generator_.GetGraphBatchsize();
+#else
+    return batch_size_;
+#endif
+  }
+  virtual void SetNewBatchsize(int batch_num) {
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+    gpu_graph_data_generator_.SetNewBatchsize(batch_num);
+#endif
+  }
   virtual int GetGraphPathNum() {
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
     return gpu_graph_data_generator_.GetPathNum();

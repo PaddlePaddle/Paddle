@@ -1931,8 +1931,45 @@ void SlotRecordDataset::PrepareTrain() {
   return;
 }
 
+void SlotRecordDataset::DynamicAdjustBatchNum() {
+  VLOG(3) << "dynamic adjust batch num of graph in multi node";
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+  if (gpu_graph_mode_) {
+    int thread_max_batch_num = 0;
+    for (size_t i = 0; i < readers_.size(); i++) {
+      int batch_size = readers_[i]->GetCurBatchSize();
+      int64_t ins_num = readers_[i]->GetGraphPathNum();
+      int batch_num = (ins_num + batch_size - 1) / batch_size;
+      if (batch_num > thread_max_batch_num) {
+        thread_max_batch_num = batch_num;
+      }
+      VLOG(3) << "ins num:" << ins_num << ", batch size:"
+              << batch_size << ", batch_num:" << thread_max_batch_num;
+    }
+#ifdef PADDLE_WITH_GLOO
+    auto gloo_wrapper = paddle::framework::GlooWrapper::GetInstance();
+    if (gloo_wrapper->Size() > 1) {
+      if (!gloo_wrapper->IsInitialized()) {
+        VLOG(0) << "GLOO is not inited";
+        gloo_wrapper->Init();
+      }
+      std::vector<int> thread_batch_num_vec(1, thread_max_batch_num);
+      auto thread_max_batch_num_vec =
+                  gloo_wrapper->AllReduce(thread_batch_num_vec, "max");
+      thread_max_batch_num = thread_max_batch_num_vec[0];
+      VLOG(3) << "thread max batch num:" << thread_max_batch_num;
+      for (size_t i = 0; i < readers_.size(); i++) {
+        readers_[i]->SetNewBatchsize(thread_max_batch_num);
+      }
+    }
+#endif
+  }
+#endif
+}
+
 void SlotRecordDataset::DynamicAdjustReadersNum(int thread_num) {
   if (thread_num_ == thread_num) {
+    DynamicAdjustBatchNum();
     VLOG(3) << "DatasetImpl<T>::DynamicAdjustReadersNum thread_num_="
             << thread_num_ << ", thread_num_=thread_num, no need to adjust";
     return;
