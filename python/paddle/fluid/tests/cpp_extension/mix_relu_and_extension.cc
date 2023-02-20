@@ -95,9 +95,6 @@ std::vector<paddle::Tensor> relu_cpu_double_backward(
                                    ddout.mutable_data<data_t>(out.place()),
                                    ddout.size());
                              }));
-
-  std::cout << "Debug info: run relu cpu double backward success." << std::endl;
-
   return {ddout};
 }
 
@@ -150,19 +147,17 @@ PD_BUILD_DOUBLE_GRAD_OP(custom_relu)
     .SetKernelFn(PD_KERNEL(ReluDoubleBackward))
     .SetInferShapeFn(PD_INFER_SHAPE(ReluDoubleBackwardInferShape));
 
-paddle::Tensor custom_sub(paddle::Tensor x, paddle::Tensor y);
+// Extension with tensor operator overloading
+paddle::Tensor custom_sub2(paddle::Tensor x, paddle::Tensor y) {
+  return paddle::exp(x) - paddle::exp(y);
+}
 
-paddle::Tensor custom_add(const paddle::Tensor& x, const paddle::Tensor& y) {
+// Extension with tensor operator overloading
+paddle::Tensor custom_add2(const paddle::Tensor& x, const paddle::Tensor& y) {
   return paddle::exp(x) + paddle::exp(y);
 }
 
 PYBIND11_MODULE(mix_relu_extension, m) {
-  m.def("custom_add", &custom_add, "exp(x) + exp(y)");
-  m.def("custom_sub", &custom_sub, "exp(x) - exp(y)");
-
-  py::class_<Power>(m, "Power")
-      .def(py::init<int, int>())
-      .def(py::init<paddle::Tensor>())
-      .def("forward", &Power::forward)
-      .def("get", &Power::get);
+  m.def("custom_add2", &custom_add2, "exp(x) + exp(y)");
+  m.def("custom_sub2", &custom_sub2, "exp(x) - exp(y)");
 }

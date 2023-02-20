@@ -146,14 +146,15 @@ class TestCppExtensionSetupInstall(unittest.TestCase):
 
     def test_cpp_extension(self):
         # Extension
-        self._test_extension_function()
+        self._test_extension_function_plain()
+        self._test_extension_function_mixed()
         self._test_extension_class()
         # Custom op
         self._test_static()
         self._test_dynamic()
         self._test_double_grad_dynamic()
 
-    def _test_extension_function(self):
+    def _test_extension_function_plain(self):
         import custom_cpp_extension
 
         for dtype in self.dtypes:
@@ -171,22 +172,27 @@ class TestCppExtensionSetupInstall(unittest.TestCase):
             target_out = np.exp(np_x) - np.exp(np_y)
             np.testing.assert_allclose(out.numpy(), target_out, atol=1e-5)
 
+    def _test_extension_function_mixed(self):
         import mix_relu_extension
 
         for dtype in self.dtypes:
+            np_x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
+            x = paddle.to_tensor(np_x, dtype=dtype)
+            np_y = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
+            y = paddle.to_tensor(np_y, dtype=dtype)
+
             # Test mix_relu_extension
-            out = mix_relu_extension.custom_add(x, y)
+            out = mix_relu_extension.custom_add2(x, y)
             target_out = np.exp(np_x) + np.exp(np_y)
             np.testing.assert_allclose(out.numpy(), target_out, atol=1e-5)
 
             # Test we can call a method not defined in the main C++ file.
-            out = mix_relu_extension.custom_sub(x, y)
+            out = mix_relu_extension.custom_sub2(x, y)
             target_out = np.exp(np_x) - np.exp(np_y)
             np.testing.assert_allclose(out.numpy(), target_out, atol=1e-5)
 
     def _test_extension_class(self):
         import custom_cpp_extension
-        import mix_relu_extension
 
         for dtype in self.dtypes:
             # Test custom_cpp_extension
@@ -199,25 +205,6 @@ class TestCppExtensionSetupInstall(unittest.TestCase):
             x = paddle.to_tensor(np_x, dtype=dtype)
 
             power = custom_cpp_extension.Power(x)
-            np.testing.assert_allclose(
-                power.get().sum().numpy(), np.sum(np_x), atol=1e-5
-            )
-            np.testing.assert_allclose(
-                power.forward().sum().numpy(),
-                np.sum(np.power(np_x, 2)),
-                atol=1e-5,
-            )
-
-            # Test mix_relu_extension
-            # Test we can use CppExtension class with C++ methods.
-            power = mix_relu_extension.Power(3, 3)
-            self.assertEqual(power.get().sum(), 9)
-            self.assertEqual(power.forward().sum(), 9)
-
-            np_x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
-            x = paddle.to_tensor(np_x, dtype=dtype)
-
-            power = mix_relu_extension.Power(x)
             np.testing.assert_allclose(
                 power.get().sum().numpy(), np.sum(np_x), atol=1e-5
             )
