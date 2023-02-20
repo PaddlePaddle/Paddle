@@ -518,8 +518,6 @@ def main():
     options = parser.parse_args()
 
     api_yaml_path = options.api_yaml_path
-    tensor_header_path = options.tensor_header_path
-    tensor_header_template_path = options.tensor_header_template_path
     operants_base_path = options.operants_base_path
     tensor_api_source_path = options.tensor_api_source_path
     operants_header_path = options.phi_tensor_operants_header_path
@@ -530,8 +528,6 @@ def main():
 
     generate_tensor_operants_api(
         api_yaml_path,
-        tensor_header_path,
-        tensor_header_template_path,
         operants_base_path,
         tensor_api_source_path,
         operants_header_path,

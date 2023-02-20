@@ -401,5 +401,4 @@ cc_library(
 cc_library(
   tensor_api
   SRCS ${tensor_api_source_file}
-  SRCS tensor_api.cc
   DEPS operants_manager)
