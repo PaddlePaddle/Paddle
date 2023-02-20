@@ -29,7 +29,6 @@ cc_test_old(
   prim_utils
   operator
   elementwise_mul_op
-  generated_static_op
   activation_op
   phi_api
   phi_dygraph_api
