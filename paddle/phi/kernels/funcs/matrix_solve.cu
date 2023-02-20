@@ -57,7 +57,7 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& context,
   tmp_a.Resize(a.dims());
 
   context.template Alloc<T>(&tmp_a);
-  paddle::framework::TensorCopy(a, context.GetPlace(), &tmp_a);
+  phi::Copy(context, a, context.GetPlace(), false, &tmp_a);
 
   // copy input B to a temporary tensor tmp_b, and transpose tmp_b,
   // because cuBlas assumes column-major while Paddle uses row-majar.

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from paddle.fluid.framework import Variable
+from paddle.static import Variable
 
 
 class VarStruct:
@@ -117,8 +117,6 @@ class VarDistributed:
     def __str__(self):
         origin_var_str = (
             "{name} : fluid.{type}.shape{shape}.astype({dtype})".format(
-                i="{",
-                e="}",
                 name=self.origin.name,
                 type=self.origin.type,
                 shape=self.origin.shape,
@@ -129,8 +127,6 @@ class VarDistributed:
         slice_var_str = (
             "{name} : fluid.{type}.shape{shape}.astype({dtype})"
             ".slice({is_slice}).block({block_id}).offset({offset})".format(
-                i="{",
-                e="}",
                 name=self.slice.name,
                 type=self.slice.type,
                 shape=self.slice.shape,

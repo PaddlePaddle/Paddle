@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .program_utils import *
-from .ufind import *
-from .vars_distributed import *
+from .program_utils import (
+    delete_ops,
+    find_op_by_input_arg,
+    find_op_by_output_arg,
+)
+from .ufind import UnionFind
+from .vars_distributed import VarStruct, VarDistributed, VarsDistributed
