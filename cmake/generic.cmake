@@ -464,10 +464,9 @@ function(cc_test_build TARGET_NAME)
       paddle_gtest_main
       lod_tensor
       memory
-      mkldnn
       gtest
       gflags
-      glog) # HACK (replace with decent fix)
+      glog)
     add_dependencies(
       ${TARGET_NAME}
       ${cc_test_DEPS}

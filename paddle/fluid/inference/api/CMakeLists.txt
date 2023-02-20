@@ -172,7 +172,7 @@ if(WITH_TESTING AND WITH_MKLDNN)
     cc_test(
       test_mkldnn_quantizer
       SRCS mkldnn_quantizer_tester.cc
-      DEPS analysis_predictor benchmark ${inference_deps} ARGS
+      DEPS analysis_predictor benchmark ${inference_deps} dnnl ARGS
            --dirname=${WORD2VEC_MODEL_DIR})
   endif()
 endif()
