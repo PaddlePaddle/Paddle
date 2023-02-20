@@ -408,7 +408,3 @@ cc_library(
   operants_manager
   SRCS ${operants_manager_source_file}
   DEPS phi_enforce)
-cc_library(
-  tensor_api
-  SRCS ${tensor_api_source_file}
-  DEPS operants_manager)
