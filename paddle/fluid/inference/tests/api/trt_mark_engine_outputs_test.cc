@@ -19,10 +19,11 @@ namespace paddle {
 namespace inference {
 
 TEST(TensorRT, mark_engine_outputs) {
-  std::string model_dir = FLAGS_infer_model;
+  std::string model_dir = FLAGS_infer_model + "/resnext50";
   AnalysisConfig config;
   config.EnableUseGpu(100, 0);
-  config.SetModel(model_dir);
+  config.SetModel(model_dir + "/" + FLAGS_prog_filename,
+                  model_dir + "/" + FLAGS_param_filename);
   config.EnableTensorRtEngine(
       1 << 30, 1, 5, AnalysisConfig::Precision::kFloat32, false, false);
 
