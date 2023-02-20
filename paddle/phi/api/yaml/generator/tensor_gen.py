@@ -44,10 +44,19 @@ namespace paddle {
 namespace operants {
 
 using Tensor = paddle::experimental::Tensor;
+using Scalar = paddle::experimental::Scalar;
 
 class TensorOperantsBase {
  public:
   virtual ~TensorOperantsBase() = default;
+
+  virtual Tensor add(const Tensor& x, const Scalar& y) = 0;
+
+  virtual Tensor divide(const Tensor& x, const Scalar& y) = 0;
+
+  virtual Tensor multiply(const Tensor& x, const Scalar& y) = 0;
+
+  virtual Tensor subtract(const Tensor& x, const Scalar& y) = 0;
 """
 
 
