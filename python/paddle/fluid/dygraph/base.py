@@ -498,10 +498,11 @@ class no_grad_:
 
         test_layer()
     """
+
     def __call__(self, func):
         @decorator.decorator
         def _decorate_function(func, *args, **kwargs):
-            with self.clone():
+            with self:
                 return func(*args, **kwargs)
 
         @decorator.decorator
@@ -515,7 +516,6 @@ class no_grad_:
             return _decorate_generator(func)
         else:
             return _decorate_function(func)
-
 
     def __enter__(self):
         self.prev = is_grad_enabled()
