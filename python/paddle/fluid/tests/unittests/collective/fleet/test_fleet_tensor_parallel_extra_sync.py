@@ -42,7 +42,8 @@ class TensorParallelNet(paddle.fluid.dygraph.Layer):
         self.layer_norm = paddle.nn.LayerNorm(hidden_size)
 
     def forward(self, x):
-        out = self.col_linear(x)
+        out = self.layer_norm(x)
+        out = self.col_linear(out)
         out = self.row_linear(out)
         output = self.layer_norm(out)
         return output
