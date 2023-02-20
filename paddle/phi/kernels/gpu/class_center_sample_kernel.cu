@@ -29,7 +29,7 @@ namespace cub = hipcub;
 #include <iterator>
 #include <random>
 
-#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/tensor_utils.h"
 

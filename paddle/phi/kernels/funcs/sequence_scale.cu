@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/sequence_scale.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/core/mixed_vector.h"
 
 namespace phi {
 namespace funcs {
@@ -44,9 +45,9 @@ class ScaleLoDTensorFunctor<phi::GPUContext, T> {
     auto lod = seq->lod();
     const size_t num_seq = lod[level].size() - 1;
     const size_t seq_width = seq->numel() / seq->dims()[0];
-    auto abs_offset_lod = paddle::framework::ToAbsOffset(lod);
+    auto abs_offset_lod = phi::ToAbsOffset(lod);
     T* seq_data = context.template Alloc<T>(seq);
-    paddle::framework::MixVector<size_t> mix_vector(&(abs_offset_lod[level]));
+    phi::MixVector<size_t> mix_vector(&(abs_offset_lod[level]));
 
 #ifdef PADDLE_WITH_HIP
     hipLaunchKernelGGL(

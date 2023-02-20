@@ -21,6 +21,11 @@ cc_library(
   SRCS enforce.cc
   DEPS ${phi_enforce_deps})
 
+cc_library(
+  phi_os_info
+  SRCS os_info.cc
+  DEPS phi_enforce)
+
 if(WITH_XPU)
   cc_library(
     kernel_factory
@@ -104,15 +109,16 @@ cc_library(
   phi_device_context
   SRCS device_context.cc
   DEPS dense_tensor selected_rows)
-cc_library(
-  serialization
-  SRCS serialization.cc
-  DEPS version tensor phi_device_context)
 
 cc_library(
   custom_kernel
   SRCS custom_kernel.cc
   DEPS kernel_factory)
+
+cc_library(
+  mixed_vector
+  SRCS mixed_vector.cc
+  DEPS device_context place memory)
 
 # Will remove once we implemented MKLDNN_Tensor
 if(WITH_MKLDNN)

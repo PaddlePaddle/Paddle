@@ -329,6 +329,11 @@ def update_op_callstack_with_origin_info(program):
 
                 callstack = get_new_op_callstack(callstack)
 
-                op._set_attr(callstack_var_name, callstack)
+                try:
+                    # (@xiongkun) In 2-order derivative for paddle science, there may exists `pow_grad`
+                    # which has op_proto == nullptr and causes _set_attr failed. so we add a try...except.
+                    op._set_attr(callstack_var_name, callstack)
+                except:
+                    pass
 
     return program

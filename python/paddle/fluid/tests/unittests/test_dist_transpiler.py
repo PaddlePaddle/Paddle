@@ -733,9 +733,7 @@ class TestDistLookupTableBase(TranspilerTest):
         title_emb = emb_pool(title_ids, self.lookup_table_name, is_distributed)
         brand_emb = emb_pool(brand_ids, self.lookup_table_name, is_distributed)
         profile_emb = emb_pool(profile_ids, "profile_emb", False)
-        fc0 = fluid.layers.concat(
-            input=[title_emb, brand_emb, profile_emb], axis=1
-        )
+        fc0 = paddle.concat([title_emb, brand_emb, profile_emb], axis=1)
         predict = paddle.static.nn.fc(
             x=fc0,
             size=2,

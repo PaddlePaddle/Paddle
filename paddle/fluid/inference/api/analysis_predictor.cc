@@ -62,6 +62,7 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/kernels/funcs/data_type_transform.h"
 #include "paddle/utils/string/split.h"
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
@@ -145,6 +146,8 @@ phi::Backend ConvertBackend(paddle_infer::PlaceType backend) {
       return phi::Backend::CPU;
     case paddle_infer::PlaceType::kIPU:
       return phi::Backend::IPU;
+    case paddle_infer::PlaceType::kCUSTOM:
+      return phi::Backend::CUSTOM;
     default:
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
           "Paddle Inference not support backend, we now only support GPU, XPU, "
@@ -559,9 +562,7 @@ bool AnalysisPredictor::PrepareProgram(
       OptimizeInferenceProgram();
     }
   }
-
   executor_->CreateVariables(*inference_program_, 0, false, sub_scope_);
-
   return true;
 }
 
@@ -773,6 +774,30 @@ void AnalysisPredictor::InsertCommOp(
     gen_nccl_id_op->SetAttr("op_role",
                             static_cast<int>(framework::OpRole::kForward));
     gen_nccl_id_op->CheckAttrs();
+    framework::OpDesc *comm_init_op = block->AppendOp();
+    comm_init_op->SetType("c_comm_init");
+    comm_init_op->SetInput("X", {tmp_var_name});
+    comm_init_op->SetAttr("rank", rank);
+    comm_init_op->SetAttr("nranks", nranks);
+    comm_init_op->SetAttr("ring_id", ring_id);
+    comm_init_op->SetAttr("op_role",
+                          static_cast<int>(framework::OpRole::kForward));
+    comm_init_op->CheckAttrs();
+  } else if (config_.use_xpu()) {
+    framework::VarDesc *new_var = block->Var(tmp_var_name);
+    new_var->SetType(framework::proto::VarType::RAW);
+    new_var->SetPersistable(true);
+    framework::OpDesc *gen_bkcl_id_op = block->AppendOp();
+    gen_bkcl_id_op->SetType("c_gen_bkcl_id");
+    gen_bkcl_id_op->SetOutput("Out", {tmp_var_name});
+    gen_bkcl_id_op->SetAttr("rank", rank);
+    gen_bkcl_id_op->SetAttr("endpoint",
+                            config_.dist_config().current_endpoint());
+    gen_bkcl_id_op->SetAttr("other_endpoints", peer_endpoints);
+    gen_bkcl_id_op->SetAttr("ring_id", ring_id);
+    gen_bkcl_id_op->SetAttr("op_role",
+                            static_cast<int>(framework::OpRole::kForward));
+    gen_bkcl_id_op->CheckAttrs();
     framework::OpDesc *comm_init_op = block->AppendOp();
     comm_init_op->SetType("c_comm_init");
     comm_init_op->SetInput("X", {tmp_var_name});
@@ -1316,7 +1341,6 @@ void AnalysisPredictor::PrepareArgument() {
 // NOTE All the members in AnalysisConfig should be copied to Argument.
 void AnalysisPredictor::OptimizeInferenceProgram() {
   PrepareArgument();
-
 #ifdef PADDLE_WITH_TENSORRT
   if (config_.tensorrt_engine_enabled()) {
     inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
@@ -1325,9 +1349,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
             << inference::tensorrt::TensorRTEngine::predictor_id_per_thread;
   }
 #endif
-
   Analyzer().Run(argument_.get());
-
   PADDLE_ENFORCE_EQ(
       argument_->scope_valid(),
       true,
@@ -1890,16 +1912,16 @@ bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
 
 void AnalysisPredictor::CollectShapeRangeInfo() {
   // if use gpu, sync first.
+  paddle::platform::DeviceContextPool &pool =
+      paddle::platform::DeviceContextPool::Instance();
   if (config_.use_gpu()) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    paddle::platform::DeviceContextPool &pool =
-        paddle::platform::DeviceContextPool::Instance();
-    auto gpu_place = place_;
-    auto *dev_ctx = static_cast<const phi::GPUContext *>(pool.Get(gpu_place));
+    auto *dev_ctx = pool.Get(place_);
+    auto stream = static_cast<phi::GPUContext *>(dev_ctx)->stream();
 #ifdef PADDLE_WITH_HIP
-    hipStreamSynchronize(dev_ctx->stream());
+    hipStreamSynchronize(stream);
 #else
-    cudaStreamSynchronize(dev_ctx->stream());
+    cudaStreamSynchronize(stream);
 #endif
 #endif
   }
@@ -1911,6 +1933,7 @@ void AnalysisPredictor::CollectShapeRangeInfo() {
       continue;
     }
     auto tensor = var->Get<phi::DenseTensor>();
+    if (!tensor.initialized()) continue;
     framework::DDim dim = tensor.dims();
     std::vector<int32_t> shape(dim.size());
     for (size_t i = 0; i < shape.size(); ++i) shape[i] = dim[i];
@@ -1922,22 +1945,40 @@ void AnalysisPredictor::CollectShapeRangeInfo() {
     // This is a simple method to identify all shape tensors with some
     // mistakes, but it doesn't matter.
     auto is_shape_tensor = tensor.numel() <= 7 && tensor.numel() >= 1;
-    if (tensor.dtype() == paddle::experimental::DataType::INT32 &&
+    if ((tensor.dtype() == phi::DataType::INT32 ||
+         tensor.dtype() == phi::DataType::INT64) &&
         is_shape_tensor) {
       std::vector<int> int32_host(tensor.numel());
-      if (tensor.place() == platform::CPUPlace()) {
+
+      if (platform::is_cpu_place(tensor.place())) {
+        auto &int32_tensor = tensor;
+        if (tensor.dtype() == phi::DataType::INT64) {
+          auto *cpu_ctx = pool.Get(platform::CPUPlace());
+          int32_tensor = phi::funcs::TransDataType(
+              reinterpret_cast<const phi::CPUContext &>(*cpu_ctx),
+              tensor,
+              DataType::INT32);
+        }
         paddle::memory::Copy(platform::CPUPlace(),
                              int32_host.data(),
                              platform::CPUPlace(),
-                             tensor.data<int>(),
-                             tensor.numel() * sizeof(int));
-      } else if (tensor.place() == platform::CUDAPlace()) {
+                             int32_tensor.data<int>(),
+                             int32_tensor.numel() * sizeof(int));
+      } else if (platform::is_gpu_place(tensor.place())) {
 #if defined(PADDLE_WITH_CUDA)
+        auto *dev_ctx = pool.Get(tensor.place());
+        auto &int32_tensor = tensor;
+        if (tensor.dtype() == phi::DataType::INT64) {
+          int32_tensor = phi::funcs::TransDataType(
+              reinterpret_cast<const phi::GPUContext &>(*dev_ctx),
+              tensor,
+              DataType::INT32);
+        }
         paddle::memory::Copy(platform::CPUPlace(),
                              int32_host.data(),
-                             platform::CUDAPlace(),
-                             tensor.data<int>(),
-                             tensor.numel() * sizeof(int),
+                             int32_tensor.place(),
+                             int32_tensor.data<int>(),
+                             int32_tensor.numel() * sizeof(int),
                              nullptr);
 #endif
       }
@@ -2490,9 +2531,11 @@ USE_TRT_CONVERTER(layernorm_shift_partition)
 USE_TRT_CONVERTER(reverse_roll)
 USE_TRT_CONVERTER(preln_layernorm_shift_partition)
 USE_TRT_CONVERTER(merge_layernorm)
+USE_TRT_CONVERTER(trans_layernorm)
 USE_TRT_CONVERTER(skip_merge_layernorm)
 USE_TRT_CONVERTER(generic_plugin_creater)
 USE_TRT_CONVERTER(custom_plugin_creater)
+USE_TRT_CONVERTER(fuse_eleadd_transpose)
 USE_TRT_CONVERTER(tanh_shrink)
 USE_TRT_CONVERTER(logsigmoid)
 USE_TRT_CONVERTER(lookup_table)
@@ -2503,6 +2546,9 @@ USE_TRT_CONVERTER(preln_groupnorm_act)
 #if IS_TRT_VERSION_GE(8522)
 USE_TRT_CONVERTER(flash_multihead_matmul)
 USE_TRT_CONVERTER(cross_multihead_matmul)
+#endif
+#if IS_TRT_VERSION_GE(8200)
+USE_TRT_CONVERTER(set_value)
 #endif
 #if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
 USE_TRT_CONVERTER(sparse_fc)

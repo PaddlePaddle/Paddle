@@ -21,12 +21,12 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/mixed_vector.h"
 
 namespace paddle {
 namespace framework {
@@ -54,7 +54,7 @@ void MergeLoDTensor(phi::DenseTensor* target,
  *    0 2 4 7
  *    0 2 5 7 10 12 15 20
  */
-using LoD = std::vector<Vector<size_t>>;
+using LoD = std::vector<phi::Vector<size_t>>;
 
 std::string LoDToString(const LoD& lod);
 

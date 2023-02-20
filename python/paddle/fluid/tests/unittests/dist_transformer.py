@@ -1193,8 +1193,8 @@ def multi_head_attention(
     q, k, v = __compute_qkv(queries, keys, values, n_head, d_key, d_value)
 
     if cache is not None:  # use cache and concat time steps
-        k = cache["k"] = layers.concat([cache["k"], k], axis=1)
-        v = cache["v"] = layers.concat([cache["v"], v], axis=1)
+        k = cache["k"] = paddle.concat([cache["k"], k], axis=1)
+        v = cache["v"] = paddle.concat([cache["v"], v], axis=1)
 
     q = __split_heads(q, n_head)
     k = __split_heads(k, n_head)
@@ -1858,11 +1858,11 @@ def fast_decode(
             # update states
             layers.array_write(selected_ids, i=step_idx, array=ids)
             layers.array_write(selected_scores, i=step_idx, array=scores)
-            layers.assign(pre_src_attn_bias, trg_src_attn_bias)
-            layers.assign(pre_enc_output, enc_output)
+            paddle.assign(pre_src_attn_bias, trg_src_attn_bias)
+            paddle.assign(pre_enc_output, enc_output)
             for i in range(n_layer):
-                layers.assign(pre_caches[i]["k"], caches[i]["k"])
-                layers.assign(pre_caches[i]["v"], caches[i]["v"])
+                paddle.assign(pre_caches[i]["k"], caches[i]["k"])
+                paddle.assign(pre_caches[i]["v"], caches[i]["v"])
             length_cond = paddle.less_than(x=step_idx, y=max_len)
             finish_cond = paddle.logical_not(layers.is_empty(x=selected_ids))
             paddle.logical_and(x=length_cond, y=finish_cond, out=cond)

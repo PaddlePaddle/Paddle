@@ -75,6 +75,13 @@ void AddNKernel(const Context &dev_ctx,
                 const std::vector<const TensorBase *> &x,
                 DenseTensor *out) {
   const size_t in_num = x.size();
+  for (int i = 0; i < in_num; ++i) {
+    PADDLE_ENFORCE_EQ(
+        x[i]->initialized(),
+        true,
+        phi::errors::InvalidArgument(
+            "This argument is invalid, %d-th tensor is uninitialized.", i));
+  }
 
   constexpr size_t theory_sm_threads = 1024;
   auto stream = dev_ctx.stream();
