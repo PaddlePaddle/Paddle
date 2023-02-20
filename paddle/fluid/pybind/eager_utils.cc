@@ -211,24 +211,6 @@ std::string CastPyArg2AttrString(PyObject* obj, ssize_t arg_pos) {
   }
 }
 
-bool PyCheckTensor(PyObject* obj) {
-  return PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type));
-}
-
-paddle::experimental::Tensor CastPyArg2Tensor(PyObject* obj, ssize_t arg_pos) {
-  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type)) ||
-      PyObject_IsInstance(obj,
-                          reinterpret_cast<PyObject*>(p_string_tensor_type))) {
-    return reinterpret_cast<TensorObject*>(obj)->tensor;
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "argument (position %d) must be "
-        "Tensor, but got %s",
-        arg_pos + 1,
-        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
-  }
-}
-
 std::shared_ptr<imperative::VarBase> CastPyArg2VarBase(PyObject* obj,
                                                        ssize_t arg_pos) {
   return py::cast<std::shared_ptr<imperative::VarBase>>(obj);
@@ -660,30 +642,6 @@ PyObject* ToPyObject(const char* value) { return PyUnicode_FromString(value); }
 
 PyObject* ToPyObject(const std::string& value) {
   return PyUnicode_FromString(value.c_str());
-}
-
-PyObject* ToPyObject(const paddle::experimental::Tensor& value,
-                     bool return_py_none_if_not_initialize) {
-  if (return_py_none_if_not_initialize && !value.initialized()) {
-    RETURN_PY_NONE
-  }
-  PyObject* obj = nullptr;
-  if (value.initialized() && value.is_string_tensor()) {
-    // In order to return the core.eager.StringTensor, there is need
-    // to use p_string_tensor_type to create a python obj.
-    obj = p_string_tensor_type->tp_alloc(p_string_tensor_type, 0);
-  } else {
-    obj = p_tensor_type->tp_alloc(p_tensor_type, 0);
-  }
-  if (obj) {
-    auto v = reinterpret_cast<TensorObject*>(obj);
-    new (&(v->tensor)) paddle::experimental::Tensor();
-    v->tensor = value;
-  } else {
-    PADDLE_THROW(platform::errors::Fatal(
-        "tp_alloc return null, can not new a PyObject."));
-  }
-  return obj;
 }
 
 PyObject* ToPyObject(const paddle::experimental::Tensor& value,
