@@ -116,11 +116,3 @@ others = [
     'reshape',
     'full',
 ]
-
-__all__ = []
-__all__.extend(math_op)
-__all__.extend(trigonometric_op)
-__all__.extend(sub_prim)
-__all__.extend(others)
-
-__all__.sort()
