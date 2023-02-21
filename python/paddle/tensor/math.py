@@ -5064,7 +5064,7 @@ def xlogy(x, other, name=None):
         .. math::
 
             xlogy(x,other)=\left\{\begin{matrix}
-            & NaN & other = NaN, other <= 0 \\
+            & NaN & other = NaN \\
             & 0 & x = 0 \\
             & x*\\log(other) & otherwise
             \end{matrix}\right.
@@ -5108,6 +5108,7 @@ def xlogy(x, other, name=None):
     """
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'xlogy')
+    check_variable_and_dtype(other, 'other', ['float32', 'float64'], 'xlogy')
     mask = (x == 0) & ((other <= 0) | (other == float('inf')))
     other = paddle.where(mask, paddle.ones(other.shape, other.dtype), other)
     return x * paddle.log(other)
