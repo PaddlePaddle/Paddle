@@ -115,32 +115,26 @@ class TestTopkGradComp(unittest.TestCase):
                 fetch_list=res[0].name,
             )[0]
 
-        if (
-            paddle.device.get_device() == "cpu"
-            and self.primal.dtype == np.float16
-        ):
-            print("pass cpu+float16 case")
-        else:
-            np.testing.assert_allclose(
-                actual=actual(
-                    self.primal,
-                    self.k,
-                    self.axis,
-                    self.largest,
-                    self.sorted,
-                    self.v,
-                ),
-                desired=desired(
-                    self.primal,
-                    self.k,
-                    self.axis,
-                    self.largest,
-                    self.sorted,
-                    self.v,
-                ),
-                rtol=limit[str(self.primal.dtype)]['rtol'],
-                atol=limit[str(self.primal.dtype)]['atol'],
-            )
+        np.testing.assert_allclose(
+            actual=actual(
+                self.primal,
+                self.k,
+                self.axis,
+                self.largest,
+                self.sorted,
+                self.v,
+            ),
+            desired=desired(
+                self.primal,
+                self.k,
+                self.axis,
+                self.largest,
+                self.sorted,
+                self.v,
+            ),
+            rtol=limit[str(self.primal.dtype)]['rtol'],
+            atol=limit[str(self.primal.dtype)]['atol'],
+        )
 
 
 if __name__ == '__main__':

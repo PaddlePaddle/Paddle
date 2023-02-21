@@ -99,22 +99,16 @@ class TestTopkGradComp(unittest.TestCase):
             y = paddle.topk(x, k, axis, largest, sorted)
             return paddle.grad(y, x, create_graph=True, retain_graph=True)[0]
 
-        if (
-            paddle.device.get_device() == "cpu"
-            and self.primal.dtype == np.float16
-        ):
-            print("pass cpu+float16 case")
-        else:
-            np.testing.assert_allclose(
-                actual=actual(
-                    self.primal, self.k, self.axis, self.largest, self.sorted
-                ),
-                desired=desired(
-                    self.primal, self.k, self.axis, self.largest, self.sorted
-                ),
-                rtol=limit[str(self.primal.dtype)]['rtol'],
-                atol=limit[str(self.primal.dtype)]['atol'],
-            )
+        np.testing.assert_allclose(
+            actual=actual(
+                self.primal, self.k, self.axis, self.largest, self.sorted
+            ),
+            desired=desired(
+                self.primal, self.k, self.axis, self.largest, self.sorted
+            ),
+            rtol=limit[str(self.primal.dtype)]['rtol'],
+            atol=limit[str(self.primal.dtype)]['atol'],
+        )
         core._set_prim_backward_enabled(False)
 
 
