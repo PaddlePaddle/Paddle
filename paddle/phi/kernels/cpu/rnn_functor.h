@@ -17,7 +17,6 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/tensor_utils.h"
-#include "paddle/phi/core/utils/get_data_from_tensor.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
@@ -48,7 +47,7 @@ void CreateMaskMatrix(const CPUContext& dev_ctx,
                       const bool& is_reverse,
                       int* min_seq_len) {
   const auto& seq_len_vec =
-      phi::funcs::GetDataFromDenseTensor<int>(sequence_length);
+      phi::GetVectorFromTensor<int>(sequence_length);
   const int table_width = mask_matrix->dims()[0];
   DenseTensor temp =
       Empty<T>(dev_ctx, {mask_matrix->dims()[1], mask_matrix->dims()[0]});
