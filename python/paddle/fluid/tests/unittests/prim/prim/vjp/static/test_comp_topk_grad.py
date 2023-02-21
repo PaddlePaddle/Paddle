@@ -94,7 +94,7 @@ class TestTopkGradComp(unittest.TestCase):
             return exe.run(
                 program=mp,
                 feed={'primal': primal, 'v': v},
-                fetch_list=res[0].name,
+                fetch_list=[res[0].name],
             )[0]
 
         def desired(primal, k, axis, largest, sorted, v):
@@ -111,7 +111,7 @@ class TestTopkGradComp(unittest.TestCase):
             return exe.run(
                 program=mp,
                 feed={'primal': primal, 'v': v},
-                fetch_list=res[0].name,
+                fetch_list=[res[0].name],
             )[0]
 
         if (

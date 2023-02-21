@@ -98,7 +98,9 @@ class TestTopkGradComp(unittest.TestCase):
             )
             x.stop_gradient = False
             y = paddle.topk(x, k, axis, largest, sorted)
-            return paddle.grad(y, x, create_graph=True, retain_graph=True)[0]
+            return paddle.grad(y[0], [x], create_graph=True, retain_graph=True)[
+                0
+            ]
 
         if (
             paddle.device.get_device() == "cpu"
