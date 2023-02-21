@@ -359,73 +359,95 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
     auto* bn_bias_tensor =
         scope->FindVar(bn_bias->Name())->GetMutable<phi::DenseTensor>();
 
-    // Create eltwise_y (conv bias) variable
-    VarDesc eltwise_y_in_desc(
-        patterns::PDNodeName("fuse_conv_bn", conv_type() + "_eltwise_y_in"));
-    eltwise_y_in_desc.SetShape(phi::vectorize(bn_bias_tensor->dims()));
-    eltwise_y_in_desc.SetDataType(
-        framework::TransToProtoVarType(bn_bias_tensor->dtype()));
-    eltwise_y_in_desc.SetLoDLevel(bn_bias->Var()->GetLoDLevel());
-    eltwise_y_in_desc.SetPersistable(true);
-    auto* eltwise_y_in_node = g->CreateVarNode(&eltwise_y_in_desc);
-    auto* eltwise_y_in_tensor =
-        scope->Var(eltwise_y_in_node->Name())->GetMutable<phi::DenseTensor>();
-
-    // Initialize eltwise_y
-    eltwise_y_in_tensor->Resize(bn_bias_tensor->dims());
-    std::fill_n(eltwise_y_in_tensor->mutable_data<float>(platform::CPUPlace()),
-                eltwise_y_in_tensor->numel(),
-                0.0f);
-
-    // update weights and biases
     float epsilon =
         PADDLE_GET_CONST(float, batch_norm->Op()->GetAttr("epsilon"));
-    recompute_bias_and_weights(scope,
-                               conv_weight,
-                               *bn_scale,
-                               *bn_bias_tensor,
-                               *bn_mean,
-                               *bn_variance,
-                               eltwise_y_in_tensor,
-                               epsilon,
-                               conv_type());
 
-    if (tensor_type == paddle::experimental::DataType::FLOAT16) {
-      ConvertTensorType<float, float16>(conv_weight_tensor);
-      ConvertTensorType<float, float16>(eltwise_y_in_tensor);
+    bool is_mkldnn = fuse_option == FUSE_MKLDNN;
+    auto input_names = conv->Op()->InputNames();
+    bool has_bias = std::find(input_names.begin(), input_names.end(), "Bias") !=
+                        input_names.end() &&
+                    conv->Op()->Input("Bias").size() > 0;
+    bool mkldnn_with_bias = is_mkldnn && has_bias;
+
+    // Create eltwise_y (conv bias) variable
+    phi::DenseTensor* eltwise_y_in_tensor;
+    Node* eltwise_y_in_node;
+    if (!mkldnn_with_bias) {
+      VarDesc eltwise_y_in_desc(
+          patterns::PDNodeName("fuse_conv_bn", conv_type() + "_eltwise_y_in"));
+      eltwise_y_in_desc.SetShape(phi::vectorize(bn_bias_tensor->dims()));
+      eltwise_y_in_desc.SetDataType(
+          framework::TransToProtoVarType(bn_bias_tensor->dtype()));
+      eltwise_y_in_desc.SetLoDLevel(bn_bias->Var()->GetLoDLevel());
+      eltwise_y_in_desc.SetPersistable(true);
+      eltwise_y_in_node = g->CreateVarNode(&eltwise_y_in_desc);
+      eltwise_y_in_tensor =
+          scope->Var(eltwise_y_in_node->Name())->GetMutable<phi::DenseTensor>();
+
+      // Initialize eltwise_y
+      eltwise_y_in_tensor->Resize(bn_bias_tensor->dims());
+      std::fill_n(
+          eltwise_y_in_tensor->mutable_data<float>(platform::CPUPlace()),
+          eltwise_y_in_tensor->numel(),
+          0.0f);
+
+      // update weights and biases
+      recompute_bias_and_weights(scope,
+                                 conv_weight,
+                                 *bn_scale,
+                                 *bn_bias_tensor,
+                                 *bn_mean,
+                                 *bn_variance,
+                                 eltwise_y_in_tensor,
+                                 epsilon,
+                                 conv_type());
+
+      if (tensor_type == paddle::experimental::DataType::FLOAT16) {
+        ConvertTensorType<float, float16>(conv_weight_tensor);
+        ConvertTensorType<float, float16>(eltwise_y_in_tensor);
+      }
     }
 
     // with MKL-DNN fuse conv+bn into conv with bias
     // without MKL-DNN fuse conv+bn into conv+elementwise_add
-    if (fuse_option == FUSE_MKLDNN) {
+    if (is_mkldnn) {
       if (conv->Op()->Type() == "conv2d" ||
           conv->Op()->Type() == "depthwise_conv2d") {
         conv->Op()->SetType("fused_conv2d");
       }
-      auto input_names = conv->Op()->InputNames();
-      bool has_bias =
-          std::find(input_names.begin(), input_names.end(), "Bias") !=
-          input_names.end();
-      if (has_bias && conv->Op()->Input("Bias").size() > 0) {
+      if (mkldnn_with_bias) {
         // reuse existing conv bias node
         auto conv_bias_names = conv->Op()->Input("Bias");
         PADDLE_ENFORCE_EQ(
             conv_bias_names.size(),
             1UL,
-            platform::errors::InvalidArgument("Find input var Bais error."));
+            phi::errors::InvalidArgument("Find input var Bias error."));
         auto* conv_bias_var = scope->FindVar(conv_bias_names[0]);
         auto* conv_bias_tensor = conv_bias_var->GetMutable<phi::DenseTensor>();
-        PADDLE_ENFORCE_EQ(
-            conv_bias_tensor->dims(),
-            eltwise_y_in_tensor->dims(),
-            platform::errors::InvalidArgument(
-                "phi::DenseTensor convolution bias(%d) and elementwise y(%d) "
-                "must have same dims.",
-                conv_bias_tensor->dims().size(),
-                eltwise_y_in_tensor->dims().size()));
+        PADDLE_ENFORCE_EQ(conv_bias_tensor->dims(),
+                          bn_bias_tensor->dims(),
+                          phi::errors::InvalidArgument(
+                              "phi::DenseTensor convolution bias(%d) and batch "
+                              "normalization bias (%d) "
+                              "must have same dims.",
+                              conv_bias_tensor->dims().size(),
+                              bn_bias_tensor->dims().size()));
 
-        auto eigen_conv_bias = EigenVector<float>::From(*conv_bias_tensor);
-        eigen_conv_bias += EigenVector<float>::From(*eltwise_y_in_tensor);
+        recompute_bias_and_weights(scope,
+                                   conv_weight,
+                                   *bn_scale,
+                                   *bn_bias_tensor,
+                                   *bn_mean,
+                                   *bn_variance,
+                                   conv_bias_tensor,
+                                   epsilon,
+                                   conv_type());
+
+        if (tensor_type == paddle::experimental::DataType::FLOAT16) {
+          ConvertTensorType<float, float16>(conv_weight_tensor);
+          ConvertTensorType<float, float16>(conv_bias_tensor);
+        }
+
       } else {
         // add new conv_bias node
         conv->Op()->SetInput(
@@ -453,7 +475,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
       IR_NODE_LINK_TO(conv, bn_out);
       found_conv_bn_count++;
     } else {  // fuse_option == FUSE_NATIVE
-      // create an elementwise add node.
+              // create an elementwise add node.
       OpDesc desc;
       desc.SetInput("X", std::vector<std::string>({conv_out->Name()}));
       desc.SetInput("Y", std::vector<std::string>({eltwise_y_in_node->Name()}));

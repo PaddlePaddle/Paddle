@@ -21,7 +21,6 @@ limitations under the License. */
 #include "glog/logging.h"
 
 #include "paddle/phi/api/include/context_pool.h"
-#include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
@@ -432,10 +431,6 @@ void Tensor::reset_inplace_version(bool set_to_zero) {
       inplace_version_counter.SetInplaceVersionToZero();
     }
   }
-}
-
-PADDLE_API Tensor operator*(const Tensor &x, const Tensor &y) {
-  return paddle::OperantsManager::Instance().multiply(x, y);
 }
 
 }  // namespace experimental

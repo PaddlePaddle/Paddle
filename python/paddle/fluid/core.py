@@ -449,14 +449,14 @@ def _test_use_sync(value):
 
 
 # ops in forward_blacklisk will not be replaced by composite ops.
-prim_config = {"forward_blacklist": []}
+prim_config = {"forward_blacklist": set(), "composite_ops_record": set()}
 
 
 def _set_prim_forward_blacklist(ops=None):
     if ops is None:
         prim_config["forward_blacklist"] = []
     elif isinstance(ops, str):
-        prim_config["forward_blacklist"].append(ops)
+        prim_config["forward_blacklist"].add(ops)
     elif isinstance(ops, (list, tuple)):
         for item in ops:
             if not isinstance(item, str):
@@ -464,7 +464,7 @@ def _set_prim_forward_blacklist(ops=None):
                     "ops set in forward_blacklist must belong to [str, str of tuple or list]"
                 )
             else:
-                prim_config["forward_blacklist"].append(item)
+                prim_config["forward_blacklist"].add(item)
     else:
         raise TypeError(
             "ops set in forward_blacklist must belong to [str, str of tuple or list]"

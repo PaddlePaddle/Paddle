@@ -48,10 +48,10 @@ ConvertToMixedPrecisionPass::ConvertToMixedPrecisionPass(
         "support fp16 and bf16.",
         static_cast<int>(mixed_precision_)));
   }
-  if (backend_ != phi::Backend::GPU) {
+  if (backend_ != phi::Backend::GPU && backend_ != phi::Backend::CUSTOM) {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
         "mixed_precision currently not supported place %d, we now only "
-        "support gpu.",
+        "support gpu and custom device .",
         static_cast<int>(backend_)));
   }
 }
@@ -72,7 +72,13 @@ void ConvertToMixedPrecisionPass::Run() {
   pass.Set("mixed_precision_mode", new int{static_cast<int>(mixed_precision_)});
   pass.Set("mixed_black_list",
            new std::unordered_set<std::string>{black_list_});
-  pass.Set("enable_gpu_mixed", new bool{true});
+  if (backend_ == phi::Backend::GPU) {
+    pass.Set("enable_gpu_mixed", new bool{true});
+    pass.Set("enable_custom_device_mixed", new bool{false});
+  } else if (backend_ == phi::Backend::CUSTOM) {
+    pass.Set("enable_gpu_mixed", new bool{false});
+    pass.Set("enable_custom_device_mixed", new bool{true});
+  }
   pass.Set("keep_io_types", new bool{keep_io_types_});
 
   pass.Apply(main_graph_.get());
