@@ -493,6 +493,7 @@ void ComputePropagateScalesMkldnnPass::ApplyImpl(ir::Graph* graph) const {
 
   const std::unordered_set<std::string> scale_immutable_ops = {
       "transpose2",
+      "fused_transpose"
       "reshape2",
       "pool2d",
       "slice",
