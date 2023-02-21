@@ -24,6 +24,7 @@
 #include "paddle/phi/kernels/funcs/embedding_util.h"
 
 DECLARE_bool(cudnn_deterministic);
+DECLARE_bool(embedding_deterministic);
 
 namespace phi {
 
@@ -193,7 +194,7 @@ struct EmbeddingGradCUDAFunctor {
       dim3 threads2(WARP_SIZE, BLOCKDIMY);
       dim3 grids2(static_cast<int>((D + WARP_SIZE - 1) / WARP_SIZE));
 
-      if (FLAGS_cudnn_deterministic) {
+      if (FLAGS_cudnn_deterministic || FLAGS_embedding_deterministic) {
         EmbeddingGradDeterministic<T, IdT>
             <<<grids2,
                threads2,
