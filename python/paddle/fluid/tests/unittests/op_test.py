@@ -568,21 +568,37 @@ class OpTest(unittest.TestCase):
                     tensor = core.LoDTensor()
                     if isinstance(np_value, tuple):
                         tensor.set(np_value[0], place)
-                        tensor.set_recursive_sequence_lengths(
-                            np_value[1].astype(np.float32)
-                        )
+                        if np_value[1].dtype == np.float16:
+                            tensor.set_recursive_sequence_lengths(
+                                np_value[1].astype(np.float32)
+                            )
+                        else:
+                            tensor.set_recursive_sequence_lengths(np_value[1])
                     else:
-                        tensor.set(np_value.astype(np.float32), place)
+                        if np_value[1].dtype == np.float16:
+                            tensor.set(np_value.astype(np.float32), place)
+                        else:
+                            tensor.set(np_value, place)
                     feed_map[name] = tensor
             else:
                 tensor = core.LoDTensor()
                 if isinstance(self.inputs[var_name], tuple):
                     tensor.set(self.inputs[var_name][0], place)
-                    tensor.set_recursive_sequence_lengths(
-                        self.inputs[var_name][1].astype(np.float32)
-                    )
+                    if self.inputs[var_name][1] == np.float16:
+                        tensor.set_recursive_sequence_lengths(
+                            self.inputs[var_name][1].astype(np.float32)
+                        )
+                    else:
+                        tensor.set_recursive_sequence_lengths(
+                            self.inputs[var_name][1]
+                        )
                 else:
-                    tensor.set(self.inputs[var_name].astype(np.float32), place)
+                    if self.inputs[var_name] == np.float16:
+                        tensor.set(
+                            self.inputs[var_name].astype(np.float32), place
+                        )
+                    else:
+                        tensor.set(self.inputs[var_name], place)
                 feed_map[var_name] = tensor
 
         return feed_map
