@@ -16,7 +16,7 @@ import platform
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -178,12 +178,12 @@ class TestLinearInterpOp(OpTest):
 
     def test_check_output(self):
         if platform.system() == "Linux":
-            self.check_output(atol=1e-7)
+            self.check_output(atol=1e-7, check_eager=True)
         else:
-            self.check_output(atol=1e-5)
+            self.check_output(atol=1e-5, check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', in_place=True)
+        self.check_grad(['X'], 'Out', in_place=True, check_eager=True)
 
     def init_test_case(self):
         self.interp_method = 'linear'
@@ -340,7 +340,6 @@ class TestResizeLinearOpUint8(OpTest):
         self.actual_shape = None
         self.init_test_case()
         self.op_type = "linear_interp_v2"
-        self.python_api = linear_interp_test
         input_np = np.random.random(self.input_shape).astype("uint8")
 
         if self.scale > 0:
