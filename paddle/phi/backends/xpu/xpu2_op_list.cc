@@ -452,7 +452,7 @@ XPUOpMap& get_kl2_ops() {
       {"p_norm", XPUKernelSet({phi::DataType::FLOAT32})},
       {"p_norm_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"pad3d_grad", XPUKernelSet({phi::DataType::FLOAT32})},
-      {"pad3d", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"pad3d", XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"pixel_shuffle", XPUKernelSet({phi::DataType::FLOAT32})},
       {"pixel_shuffle_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"pool2d_grad",
