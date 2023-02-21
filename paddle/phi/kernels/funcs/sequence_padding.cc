@@ -191,9 +191,9 @@ class UnpaddingLoDTensorFunctor<phi::CPUContext, T> {
 
 #ifdef PADDLE_WITH_XPU
 template <typename T>
-class UnpaddingLoDTensorFunctor<paddle::platform::XPUDeviceContext, T> {
+class UnpaddingLoDTensorFunctor<phi::XPUContext, T> {
  public:
-  void operator()(const paddle::platform::XPUDeviceContext& context,
+  void operator()(const phi::XPUContext& context,
                   const phi::DenseTensor& pad_tensor,
                   phi::DenseTensor* seq_tensor,
                   int pad_seq_len = -1,
@@ -244,8 +244,7 @@ template class UnpaddingLoDTensorFunctor<phi::CPUContext, float>;
 template class UnpaddingLoDTensorFunctor<phi::CPUContext, double>;
 
 #ifdef PADDLE_WITH_XPU
-template class UnpaddingLoDTensorFunctor<paddle::platform::XPUDeviceContext,
-                                         float>;
+template class UnpaddingLoDTensorFunctor<phi::XPUContext, float>;
 #endif
 
 }  // namespace funcs
