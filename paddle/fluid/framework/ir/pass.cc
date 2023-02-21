@@ -38,18 +38,8 @@ namespace ir {
 
 static const char kParamScopeAttr[] = "__param_scope__";
 
-static const std::vector<std::string> support_subgraph_passes = {
-    "simplify_with_basic_ops_pass",
-    "fused_multi_transformer_encoder_pass",
-    "fused_multi_transformer_decoder_pass",
-    "fused_multi_transformer_encoder_fuse_qkv_pass",
-    "fused_multi_transformer_decoder_fuse_qkv_pass",
-    "multi_devices_fused_multi_transformer_encoder_fuse_qkv_pass",
-    "multi_devices_fused_multi_transformer_decoder_fuse_qkv_pass",
-    "fuse_multi_transformer_layer_pass",
-    "delete_quant_dequant_linear_op_pass",
-    "delete_weight_dequant_linear_op_pass",
-};
+static const std::vector<std::string> unsupport_subgraph_ir_passes = {
+    "graph_to_program_pass", "runtime_context_cache_pass"};
 
 Graph *Pass::Apply(Graph *graph) const {
   VLOG(10) << "start to apply pass " << Type() << " to graph";
@@ -85,36 +75,40 @@ Graph *Pass::Apply(Graph *graph) const {
     graph->Set<PassRecorder>(kPassRecorder, new PassRecorder);
   }
   graph->Get<PassRecorder>(kPassRecorder).insert(Type());
+  if (graph->Has("apply_the_pass_to_subgraph")) {
+    LOG(INFO) << "Type: " << Type();
+    auto ir_analysis_passes =
+        this->Get<std::vector<std::string>>("ir_analysis_passes");
+    if (graph->IsMainGraph()) {
+      for (size_t i = 1; i < graph->SubGraphsSize(); i++) {
+        // LOG(INFO) << "Apply pass " << Type() << " to subgraph " << i;
+        auto *sub_graph = graph->GetSubGraph(i);
+        if (!sub_graph->Has(framework::ir::kParamScopeAttr)) {
+          sub_graph->SetNotOwned<Scope>(
+              framework::ir::kParamScopeAttr,
+              &graph->Get<Scope>(framework::ir::kParamScopeAttr));
+        }
 
-  if (graph->IsMainGraph() && std::count(support_subgraph_passes.begin(),
-                                         support_subgraph_passes.end(),
-                                         Type())) {
-    for (size_t i = 1; i < graph->SubGraphsSize(); i++) {
-      auto *sub_graph = graph->GetSubGraph(i);
-      if (!sub_graph->Has(framework::ir::kParamScopeAttr)) {
-        sub_graph->SetNotOwned<Scope>(
-            framework::ir::kParamScopeAttr,
-            &graph->Get<Scope>(framework::ir::kParamScopeAttr));
+        ApplyImpl(sub_graph);
+        PADDLE_ENFORCE_EQ(
+            HasCircle(*sub_graph),
+            false,
+            platform::errors::InvalidArgument(
+                "Illegal pass %s. Generated graph shouldn't contain cycle.",
+                Type()));
+        PADDLE_ENFORCE_EQ(
+            VarDescIsConsistency(*sub_graph),
+            true,
+            platform::errors::InvalidArgument(
+                "The VarDescs of persistable variable are not consistency."));
+        if (!sub_graph->Has(kPassRecorder)) {
+          sub_graph->Set<PassRecorder>(kPassRecorder, new PassRecorder);
+        }
+        sub_graph->Get<PassRecorder>(kPassRecorder).insert(Type());
       }
-
-      ApplyImpl(sub_graph);
-      PADDLE_ENFORCE_EQ(
-          HasCircle(*sub_graph),
-          false,
-          platform::errors::InvalidArgument(
-              "Illegal pass %s. Generated graph shouldn't contain cycle.",
-              Type()));
-      PADDLE_ENFORCE_EQ(
-          VarDescIsConsistency(*sub_graph),
-          true,
-          platform::errors::InvalidArgument(
-              "The VarDescs of persistable variable are not consistency."));
-      if (!sub_graph->Has(kPassRecorder)) {
-        sub_graph->Set<PassRecorder>(kPassRecorder, new PassRecorder);
-      }
-      sub_graph->Get<PassRecorder>(kPassRecorder).insert(Type());
     }
   }
+
   applied_ = true;
 #ifdef PADDLE_WITH_MKLDNN
   // Clear mkl-dnn cache,
