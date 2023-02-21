@@ -48,6 +48,7 @@ from .utils import (
     func_to_source_code,
     input_specs_compatible,
     make_hashable,
+    prim_or_cinn_is_enabled,
     type_name,
     unwrap,
 )
@@ -319,6 +320,17 @@ class StaticFunction:
         else:
             self._dygraph_function = function
             self._class_instance = None
+
+        if input_spec is not None and prim_or_cinn_is_enabled(
+            kwargs.get("build_strategy", None)
+        ):
+            for spec in input_spec:
+                if spec is not None and -1 in spec.shape:
+                    input_spec = None
+                    warnings.warn(
+                        'Now prim and cinn do not support -1 shape, but input_spec has -1 shape so we set it to None.'
+                    )
+                    break
 
         self._input_spec = input_spec
         self._function_spec = FunctionSpec(function, input_spec)
@@ -1046,17 +1058,6 @@ class ConcreteProgram:
         )
 
 
-def _extract_indeed_params_buffers(class_instance):
-    """
-    To filter not initialzed buffers.
-    """
-    params = list(get_parameters(class_instance).values())
-    buffers = list(get_buffers(class_instance).values())
-    buffers = [buffer for buffer in buffers if len(buffer.shape) != 0]
-
-    return params + buffers
-
-
 class ParametersRecorder:
     def __init__(self):
         self.params_dict = {}
@@ -1145,9 +1146,10 @@ class ProgramCache:
     def _build_once(self, cache_key):
         # TODO(Aurelius84): Need a gloabl FLAGS to enable/disable to_prim
         enable_prim = cache_key.kwargs['build_strategy'].build_cinn_pass
+        # TODO(CZ): later when use cinn, set_prim_all_enabled and check_and_set_prim_all_enabled will be set at else branch.
+
         # NOTE(xiongkun): Need a global FLAGS to enable/disable fallback
         enable_fallback = enable_prim
-        # TODO(CZ): later when use cinn, set_prim_all_enabled and check_and_set_prim_all_enabled will be set at else branch.
         core.check_and_set_prim_all_enabled()
         try:
             concrete_program = ConcreteProgram.from_func_spec(
@@ -1175,6 +1177,15 @@ class ProgramCache:
                 return fallback_layer, fallback_layer
             else:
                 raise
+
+        if prim_or_cinn_is_enabled(cache_key.kwargs['build_strategy']):
+            for var in concrete_program.main_program.list_vars():
+                if -1 in var.shape:
+                    warnings.warn(
+                        "Now prim and cinn do not support -1 shape, but the shape of var {} is {}".format(
+                            var.name, var.shape
+                        )
+                    )
 
         concrete_program._to_prim()
         return concrete_program, partial_program_from(concrete_program)

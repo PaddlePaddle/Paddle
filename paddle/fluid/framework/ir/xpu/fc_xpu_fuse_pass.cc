@@ -77,14 +77,12 @@ FcXPUPattern::FcXPUPattern(PDPattern* pattern,
                     ->assert_is_op_input(mul_type_, "Y")
                     ->assert_is_persistable_var()
                     ->assert_more([](Node* node) {
-                      return true;
                       return node->Var()->GetShape().size() == 2;
                     });
   auto* mul =
       pattern->NewNode(mul_repr())
           ->assert_is_op(mul_type_)
           ->assert_more([](Node* node) {
-            return true;
             auto op_type = node->Op()->Type();
             if (op_type == "matmul") {
               return !PADDLE_GET_CONST(bool,
@@ -261,7 +259,7 @@ void FcXPUFusePass::ApplyImpl(ir::Graph* graph,
     if (mul_type == "mul") {
       fc_xpu_op_desc.SetAttr(
           "in_num_col_dims",
-          PADDLE_GET_CONST(int, mul->Op()->GetAttr("in_num_col_dims")));
+          PADDLE_GET_CONST(int, mul->Op()->GetAttr("x_num_col_dims")));
     }
     fc_xpu_op_desc.SetAttr("transpose_x", false);
     fc_xpu_op_desc.SetAttr("alpha", 1.f);
@@ -312,6 +310,8 @@ void FcXPUFusePass::ApplyImpl(ir::Graph* graph,
       delete_nodes = {mul, mul_out, act};
     } else if (add) {
       delete_nodes = {mul, mul_out, add};
+    } else {
+      delete_nodes = {mul};
     }
     GraphSafeRemoveNodes(graph, delete_nodes);
     found_subgraph_count++;
