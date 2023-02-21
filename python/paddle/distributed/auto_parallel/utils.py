@@ -1263,6 +1263,7 @@ def set_grad_var_shape(program, dist_context):
                 "relu_grad",
                 "exp_grad",
                 "sigmoid_grad",
+                "unsqueeze2_grad",
             ]
             forward_list = [
                 "reshape2",
@@ -1283,6 +1284,7 @@ def set_grad_var_shape(program, dist_context):
                 "relu",
                 "exp",
                 "sigmoid",
+                "unsqueeze2",
             ]
             if op.type in need_set_shape_list:
                 for forward_op in block.ops:
@@ -1299,12 +1301,15 @@ def set_grad_var_shape(program, dist_context):
                         )
                         break
 
-            forward_input_dist_attr = op_dist_attr.get_input_dist_attr(
-                forward_var_name
-            )
-            assert (
-                forward_input_dist_attr is not None
-            ), f"{forward_var_name, str(op)}"
+            try:
+                forward_input_dist_attr = op_dist_attr.get_input_dist_attr(
+                    forward_var_name
+                )
+            except:
+                print(
+                    "{}'s dist_attr not in {}".format(forward_var_name, str(op))
+                )
+
             forward_var = vars[forward_var_name]
             forward_var_dist_attr = (
                 dist_context.get_tensor_dist_attr_for_program(forward_var)
