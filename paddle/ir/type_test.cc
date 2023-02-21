@@ -61,7 +61,7 @@ TEST(type_test, type_storage) {
 
 TEST(type_test, built_in_type) {
   // Test creation of built-in parameterless type.
-  ir::IrContext *ctx = ir::IrContext::Instance();
+  ir::IrContext *ctx = &ir::IrContext::Instance();
   ir::Type fp32_1 = ir::Float32Type::get(ctx);
 
   // Test interfaces of class Type
@@ -130,7 +130,7 @@ IntegerType IntegerType::get(ir::IrContext *context,
 }
 
 TEST(type_test, parameteric_type) {
-  ir::IrContext *ctx = ir::IrContext::Instance();
+  ir::IrContext *ctx = &ir::IrContext::Instance();
   REGISTER_TYPE_2_IRCONTEXT(IntegerType, ctx);
   ir::Type int1_1 = IntegerType::get(ctx, 1, 0);
   ir::Type int1_2 = IntegerType::get(ctx, 1, 0);

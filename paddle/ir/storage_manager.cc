@@ -28,6 +28,7 @@ struct ParametricStorageManager {
       : destructor_(destructor) {}
 
   ~ParametricStorageManager() {
+    if (!destructor_) return;
     for (const auto &instance : parametric_instances_) {
       destructor_(instance.second);
     }

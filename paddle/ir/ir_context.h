@@ -33,19 +33,7 @@ class IrContext {
   ///
   /// \brief Initializes a new instance of IrContext.
   ///
-  /// \return Global parameterless for IrContext.
-  ///
-  static IrContext *Instance() {
-    VLOG(4) << "=> Instance called with context (ir_context_ == " << ir_context_
-            << ").";
-    if (ir_context_ == nullptr) {
-      ir_context_ = new IrContext();
-    }
-    VLOG(4) << "    |-> (ir_context_ == " << ir_context_ << ").";
-    return ir_context_;
-  }
-
-  ~IrContext();
+  static IrContext &Instance();
 
   ///
   /// \brief Get an instance of IrContextImpl, a private member of IrContext.
@@ -81,14 +69,12 @@ class IrContext {
   ///
   std::unordered_map<TypeId, AbstractType *> &registed_abstracted_type();
 
- private:
-  IrContext();
-
   IrContext(const IrContext &) = delete;
 
   void operator=(const IrContext &) = delete;
 
-  static IrContext *ir_context_;
+ private:
+  IrContext();
 
   const std::unique_ptr<IrContextImpl> impl_;
 };

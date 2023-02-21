@@ -25,7 +25,13 @@ class IrContextImpl {
  public:
   IrContextImpl() {}
 
-  ~IrContextImpl() {}
+  ~IrContextImpl() {
+    std::lock_guard<ir::SpinLock> guard(registed_abstract_types_lock_);
+    for (auto abstract_type_map : registed_abstract_types_) {
+      delete abstract_type_map.second;
+    }
+    registed_abstract_types_.clear();
+  }
 
   void RegisterAbstractType(ir::TypeId type_id, AbstractType *abstract_type) {
     std::lock_guard<ir::SpinLock> guard(registed_abstract_types_lock_);
@@ -55,7 +61,10 @@ class IrContextImpl {
   Int32Type int32_type;
 };
 
-IrContext *IrContext::ir_context_ = nullptr;
+IrContext &IrContext::Instance() {
+  static IrContext context;
+  return context;
+}
 
 IrContext::IrContext() : impl_(new IrContextImpl()) {
   REGISTER_TYPE_2_IRCONTEXT(Float32Type, this);
