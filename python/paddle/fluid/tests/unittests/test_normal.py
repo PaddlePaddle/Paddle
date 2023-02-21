@@ -66,12 +66,10 @@ class TestNormalAPI(unittest.TestCase):
             self.std, np.ndarray
         ):
             with paddle.static.program_guard(paddle.static.Program()):
-                mean = paddle.paddle.static.data(
+                mean = paddle.static.data(
                     'Mean', self.mean.shape, self.mean.dtype
                 )
-                std = paddle.paddle.static.data(
-                    'Std', self.std.shape, self.std.dtype
-                )
+                std = paddle.static.data('Std', self.std.shape, self.std.dtype)
                 out = paddle.normal(mean, std, self.shape)
 
                 exe = paddle.static.Executor(self.place)
@@ -87,7 +85,7 @@ class TestNormalAPI(unittest.TestCase):
             return ret_all
         elif isinstance(self.mean, np.ndarray):
             with paddle.static.program_guard(paddle.static.Program()):
-                mean = paddle.paddle.static.data(
+                mean = paddle.static.data(
                     'Mean', self.mean.shape, self.mean.dtype
                 )
                 out = paddle.normal(mean, self.std, self.shape)
@@ -99,9 +97,7 @@ class TestNormalAPI(unittest.TestCase):
             return ret_all
         elif isinstance(self.std, np.ndarray):
             with paddle.static.program_guard(paddle.static.Program()):
-                std = paddle.paddle.static.data(
-                    'Std', self.std.shape, self.std.dtype
-                )
+                std = paddle.static.data('Std', self.std.shape, self.std.dtype)
                 out = paddle.normal(self.mean, std, self.shape)
 
                 exe = paddle.static.Executor(self.place)
@@ -207,17 +203,17 @@ class TestNormalErrors(unittest.TestCase):
             std = [1, 2, 3]
             self.assertRaises(TypeError, paddle.normal, std=std)
 
-            mean = paddle.paddle.static.data('Mean', [100], 'int32')
+            mean = paddle.static.data('Mean', [100], 'int32')
             self.assertRaises(TypeError, paddle.normal, mean)
 
-            std = paddle.paddle.static.data('Std', [100], 'int32')
+            std = paddle.static.data('Std', [100], 'int32')
             self.assertRaises(TypeError, paddle.normal, mean=1.0, std=std)
 
             self.assertRaises(TypeError, paddle.normal, shape=1)
 
             self.assertRaises(TypeError, paddle.normal, shape=[1.0])
 
-            shape = paddle.paddle.static.data('Shape', [100], 'float32')
+            shape = paddle.static.data('Shape', [100], 'float32')
             self.assertRaises(TypeError, paddle.normal, shape=shape)
 
 

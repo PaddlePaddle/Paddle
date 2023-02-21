@@ -105,7 +105,7 @@ class TestFracError(unittest.TestCase):
     def test_static_error(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.paddle.static.data('X', [5, 5], 'bool')
+            x = paddle.static.data('X', [5, 5], 'bool')
             self.assertRaises(TypeError, paddle.frac, x)
 
     def test_dygraph_error(self):

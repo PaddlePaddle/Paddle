@@ -140,12 +140,12 @@ class TestHardsigmoidAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.hardsigmoid, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.paddle.static.data(
+            x_int32 = paddle.static.data(
                 name='x_int32', shape=[12, 10], dtype='int32'
             )
             self.assertRaises(TypeError, F.hardsigmoid, x_int32)
             # support the input dtype is float16
-            x_fp16 = paddle.paddle.static.data(
+            x_fp16 = paddle.static.data(
                 name='x_fp16', shape=[12, 10], dtype='float16'
             )
             F.hardsigmoid(x_fp16)

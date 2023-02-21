@@ -129,10 +129,10 @@ class TestGathertError(unittest.TestCase):
         ):
 
             shape = [8, 9, 6]
-            x = paddle.paddle.static.data(shape=shape, dtype='int8', name='x')
-            axis = paddle.paddle.static.data(shape=[1], dtype='float32', name='axis')
-            index = paddle.paddle.static.data(shape=shape, dtype='int32', name='index')
-            index_float = paddle.paddle.static.data(
+            x = paddle.static.data(shape=shape, dtype='int8', name='x')
+            axis = paddle.static.data(shape=[1], dtype='float32', name='axis')
+            index = paddle.static.data(shape=shape, dtype='int32', name='index')
+            index_float = paddle.static.data(
                 shape=shape, dtype='float32', name='index_float'
             )
 

@@ -202,19 +202,17 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
         def test_infer(self):
             paddle.enable_static()
             with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.paddle.static.data(
-                    'X', self.x_np.shape, self.x_np.dtype
-                )
-                scale = paddle.paddle.static.data(
+                x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
+                scale = paddle.static.data(
                     'Scale', self.scale_np.shape, self.scale_np.dtype
                 )
-                bias = paddle.paddle.static.data(
+                bias = paddle.static.data(
                     'Bias', self.bias_np.shape, self.bias_np.dtype
                 )
-                mean = paddle.paddle.static.data(
+                mean = paddle.static.data(
                     'Mean', self.mean_np.shape, self.mean_np.dtype
                 )
-                variance = paddle.paddle.static.data(
+                variance = paddle.static.data(
                     'Variance', self.variance_np.shape, self.variance_np.dtype
                 )
                 y = F.batch_norm(

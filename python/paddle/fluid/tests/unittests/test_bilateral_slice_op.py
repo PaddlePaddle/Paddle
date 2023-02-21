@@ -192,13 +192,13 @@ class TestBilateralSliceOp1(TestBilateralSliceOp):
 
 class TestBilateralSliceApi(unittest.TestCase):
     def test_api(self):
-        x = paddle.paddle.static.data(
+        x = paddle.static.data(
             name='x', shape=[None, 3, 25, 15], dtype='float32'
         )
-        guide = paddle.paddle.static.data(
+        guide = paddle.static.data(
             name='guide', shape=[None, 25, 15], dtype='float32'
         )
-        grid = paddle.paddle.static.data(
+        grid = paddle.static.data(
             name='grid', shape=[None, None, 8, 5, 3], dtype='float32'
         )
         paddle.fluid.contrib.layers.bilateral_slice(x, guide, grid, False)

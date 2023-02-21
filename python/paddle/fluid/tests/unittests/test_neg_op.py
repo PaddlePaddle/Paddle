@@ -36,7 +36,7 @@ class TestNegOp(unittest.TestCase):
         )
 
     def run_static(self, use_gpu=False):
-        input = paddle.paddle.static.data(
+        input = paddle.static.data(
             name='input', shape=[32, 8], dtype=self.dtype
         )
         result = paddle.neg(input)

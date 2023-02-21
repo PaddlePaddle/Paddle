@@ -121,7 +121,7 @@ class TestAdaptiveAvgPool2DAPI(unittest.TestCase):
         ):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.enable_static()
-            x = paddle.paddle.static.data(
+            x = paddle.static.data(
                 name="x", shape=[2, 3, 7, 7], dtype="float32"
             )
 
@@ -232,7 +232,7 @@ class TestAdaptiveAvgPool2DClassAPI(unittest.TestCase):
         ):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.enable_static()
-            x = paddle.paddle.static.data(
+            x = paddle.static.data(
                 name="x", shape=[2, 3, 7, 7], dtype="float32"
             )
 

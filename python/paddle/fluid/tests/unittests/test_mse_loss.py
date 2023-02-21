@@ -227,10 +227,10 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
                 else paddle.CPUPlace()
             )
             with paddle.static.program_guard(prog, startup_prog):
-                input = paddle.paddle.static.data(
+                input = paddle.static.data(
                     name='input', shape=dim, dtype='float32'
                 )
-                target = paddle.paddle.static.data(
+                target = paddle.static.data(
                     name='target', shape=dim, dtype='float32'
                 )
                 mse_loss = paddle.nn.functional.mse_loss(input, target, 'mean')
@@ -269,10 +269,10 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
                 else paddle.CPUPlace()
             )
             with paddle.static.program_guard(prog, startup_prog):
-                input = paddle.paddle.static.data(
+                input = paddle.static.data(
                     name='input', shape=dim, dtype='float32'
                 )
-                target = paddle.paddle.static.data(
+                target = paddle.static.data(
                     name='target', shape=dim, dtype='float32'
                 )
                 mse_loss = paddle.nn.functional.mse_loss(input, target, 'sum')
@@ -311,10 +311,10 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
                 else paddle.CPUPlace()
             )
             with paddle.static.program_guard(prog, startup_prog):
-                input = paddle.paddle.static.data(
+                input = paddle.static.data(
                     name='input', shape=dim, dtype='float32'
                 )
-                target = paddle.paddle.static.data(
+                target = paddle.static.data(
                     name='target', shape=dim, dtype='float32'
                 )
                 mse_loss = paddle.nn.functional.mse_loss(input, target, 'none')

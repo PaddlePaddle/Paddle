@@ -313,7 +313,7 @@ class TestConcatAPI(unittest.TestCase):
 
     def test_api(self):
         paddle.enable_static()
-        x_1 = paddle.paddle.static.data(
+        x_1 = paddle.static.data(
             shape=[None, 1, 4, 5], dtype='int32', name='x_1'
         )
         paddle.concat([x_1, x_1], 0)
@@ -368,8 +368,8 @@ class TestConcatAPI(unittest.TestCase):
             )
             self.assertRaises(TypeError, paddle.concat, [x2])
             # The input dtype of concat_op must be float16, float32, float64, int32, int64.
-            x4 = paddle.paddle.static.data(shape=[4], dtype='uint8', name='x4')
-            x5 = paddle.paddle.static.data(shape=[4], dtype='uint8', name='x5')
+            x4 = paddle.static.data(shape=[4], dtype='uint8', name='x4')
+            x5 = paddle.static.data(shape=[4], dtype='uint8', name='x5')
             self.assertRaises(TypeError, paddle.concat, [x4, x5])
 
             # The type of axis in concat_op should be int or Variable.
