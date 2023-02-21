@@ -127,7 +127,7 @@ void sum_grad(const Tensor& x,
   if (!x_grad) {
     return;
   }
-  std::vector<int> x_dim = phi::vectorize<int>(x.dims());
+  std::vector<int64_t> x_dim = phi::vectorize<int64_t>(x.dims());
   int64_t axis_size = axis.size();
   int64_t x_dim_size = x_dim.size();
   reduce_all = false;
@@ -170,7 +170,7 @@ void divide_grad(const Tensor& x,
   if (dy) {
     // dy = -(x/y^2) * dout
     auto tmp0 = pow<T>(y, 2.0);
-    auto tmp1 = divide<T>(x, tmp0);
+    auto tmp1 = x / tmp0;
     auto tmp2 = scale<T>(tmp1, -1.0, 0.0, true);
     auto dy_res = tmp2 * out_grad;
     if (x.dims() != y.dims()) {
@@ -191,8 +191,7 @@ void divide_grad(const Tensor& x,
   if (dx) {
     // dx = (1/y) * dout
     auto one_tensor = full<T>(phi::vectorize(y.dims()), 1.0, y.dtype());
-    auto tmp0 = divide<T>(one_tensor, y);
-    auto dx_res = tmp0 * out_grad;
+    auto dx_res = one_tensor / y * out_grad;
     if (y.dims() != x.dims()) {
       // Maybe need reduce here
       auto reduce_dim = get_reduce_dims(x.dims(), y.dims());
@@ -215,8 +214,7 @@ template <typename T>
 void sqrt_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
     auto div_x = full<T>(phi::vectorize(out.dims()), 0.5);
-    auto tmp = divide<T>(div_x, out);
-    auto x_grad_tmp = out_grad * tmp;
+    auto x_grad_tmp = out_grad * div_x / out;
     set_output<T>(x_grad_tmp, x_grad);
   }
 }

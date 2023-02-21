@@ -205,8 +205,9 @@ class MatmulAutoTuner
     return name##AutoTuner<T, ReturnType, Args...>::Instance(func);  \
   }
 
-#define DEFINE_AUTOTUNER(name) \
-  DEFINE_AUTOTUNER_COMMON_OBJ(name) DEFINE_AUTOTUNER_FN(name)
+#define DEFINE_AUTOTUNER(name)      \
+  DEFINE_AUTOTUNER_COMMON_OBJ(name) \
+  DEFINE_AUTOTUNER_FN(name)
 
 DEFINE_AUTOTUNER(Transpose)
 DEFINE_AUTOTUNER_FN(Matmul)

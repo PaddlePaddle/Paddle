@@ -524,6 +524,20 @@ class PADDLE_API Tensor final {
    */
   Tensor& operator=(Tensor&& x) &;
 
+  /**
+   * @brief Tensor operants
+   *
+   * @param other
+   * @return Tensor
+   */
+  Tensor operator+(const Tensor& other) const;
+
+  Tensor operator-(const Tensor& other) const;
+
+  Tensor operator*(const Tensor& other) const;
+
+  Tensor operator/(const Tensor& other) const;
+
   /* Part 8: Autograd methods */
 
   /**
@@ -631,9 +645,14 @@ class PADDLE_API Tensor final {
    * in the development of new dygraph. It may be removed in the future.
    */
   std::string name_{""};
-};
 
-PADDLE_API Tensor operator*(const Tensor& x, const Tensor& y);
+  // Tensor C++ APIs
+  // Example: Tensor add(const Tensor& other) const;
+  Tensor add(const Tensor& y) const;
+  Tensor divide(const Tensor& y) const;
+  Tensor multiply(const Tensor& y) const;
+  Tensor subtract(const Tensor& y) const;
+};
 
 }  // namespace experimental
 }  // namespace paddle

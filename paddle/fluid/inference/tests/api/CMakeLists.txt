@@ -1194,6 +1194,20 @@ if(WITH_DISTRIBUTE
     --infer_model=${OCR_INSTALL_DIR}/model)
 endif()
 
+if(WITH_DISTRIBUTE
+   AND WITH_PSCORE
+   AND WITH_XPU
+   AND WITH_XPU_BKCL)
+  inference_analysis_test(
+    test_analyzer_dist_model_xpu
+    SRCS
+    analyzer_dist_model_xpu_tester.cc
+    EXTRA_DEPS
+    paddle_inference_shared
+    ARGS
+    --infer_model=${OCR_INSTALL_DIR}/model)
+endif()
+
 inference_analysis_test(
   test_analyzer_paddletensor_tensor
   SRCS
