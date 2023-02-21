@@ -16,8 +16,7 @@ import os
 import warnings
 
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid import core
+from paddle.framework import core
 from paddle.static import (
     CompiledProgram,
     Executor,
@@ -73,7 +72,7 @@ class ParameterServerRuntime(RuntimeBase):
         return strategy
 
     def build_compiled_startegy(self):
-        from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
+        from paddle.incubate.fleet.parameter_server.ir.public import (
             CompileTimeStrategy,
         )
 
@@ -102,7 +101,7 @@ class ParameterServerRuntime(RuntimeBase):
         if main_program is None:
             main_program = self.origin_main_program
 
-        from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
+        from paddle.incubate.fleet.parameter_server.ir.public import (
             _get_varname_parts,
         )
 
@@ -111,7 +110,7 @@ class ParameterServerRuntime(RuntimeBase):
 
             origin_varname, _, _ = _get_varname_parts(each_var.name)
 
-            new_var = fluid.io._clone_var_in_block_(load_block, each_var)
+            new_var = paddle.static.io._clone_var_in_block(load_block, each_var)
             var_path = os.path.join(dirname, origin_varname)
             if not os.path.exists(var_path):
                 raise ValueError(
@@ -138,7 +137,7 @@ class ParameterServerRuntime(RuntimeBase):
 
     def _load_distributed_params(self, dirname, varnames):
         from paddle.distributed.communicator import LargeScaleKV
-        from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
+        from paddle.incubate.fleet.parameter_server.ir.public import (
             _get_varname_parts,
         )
 
@@ -154,7 +153,7 @@ class ParameterServerRuntime(RuntimeBase):
             if var.name in exclude_var_names:
                 return False
 
-            from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
+            from paddle.incubate.fleet.parameter_server.ir.public import (
                 _get_varname_parts,
             )
 
@@ -185,7 +184,7 @@ class ParameterServerRuntime(RuntimeBase):
             return kwargs
 
         def geo_strategy_envs():
-            from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
+            from paddle.incubate.fleet.parameter_server.ir.public import (
                 get_sparse_tablenames,
             )
 
@@ -239,13 +238,13 @@ class ParameterServerRuntime(RuntimeBase):
             kwargs["sparse_attrs"] = get_sparse_attrs()
             return kwargs
 
-        from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
-            _get_lr_ops,
-            _has_global_step,
-        )
         from paddle.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
             GeoStrategy,
             SyncStrategy,
+        )
+        from paddle.incubate.fleet.parameter_server.ir.public import (
+            _get_lr_ops,
+            _has_global_step,
         )
 
         trainer_config = self.async_strategy.get_trainer_runtime_config()
@@ -475,7 +474,7 @@ class ParameterServerRuntime(RuntimeBase):
         return reshaped_names, origin_names
 
     def _get_optimizer_op(self, param_name):
-        from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
+        from paddle.incubate.fleet.parameter_server.ir.public import (
             _get_optimize_ops,
         )
 

@@ -18,7 +18,6 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"

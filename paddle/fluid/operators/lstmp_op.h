@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/transform.h"
+#include "paddle/phi/common/transform.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/detail/activation_functions.h"
 #include "paddle/phi/kernels/funcs/lstm_compute.h"
@@ -29,7 +29,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using platform::Transform;
+using phi::Transform;
 
 template <typename T,
           int MajorType = Eigen::RowMajor,

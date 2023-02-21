@@ -127,7 +127,7 @@ void sum_grad(const Tensor& x,
   if (!x_grad) {
     return;
   }
-  std::vector<int> x_dim = phi::vectorize<int>(x.dims());
+  std::vector<int64_t> x_dim = phi::vectorize<int64_t>(x.dims());
   int64_t axis_size = axis.size();
   int64_t x_dim_size = x_dim.size();
   reduce_all = false;
