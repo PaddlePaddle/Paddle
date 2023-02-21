@@ -19,12 +19,12 @@ import threading
 import warnings
 import weakref
 
+import paddle
 from paddle.fluid import _non_static_mode, core, framework
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import param_guard, switch_to_static_graph
 from paddle.fluid.layers.utils import flatten
-from paddle.static import InputSpec
 from paddle.utils import gast
 
 from . import error, logging_utils
@@ -326,7 +326,10 @@ class StaticFunction:
             kwargs.get("build_strategy", None)
         ):
             for spec in flatten(input_spec):
-                if isinstance(spec, InputSpec) and -1 in spec.shape:
+                if (
+                    isinstance(spec, paddle.static.InputSpec)
+                    and -1 in spec.shape
+                ):
                     input_spec = None
                     warnings.warn(
                         'Now prim and cinn do not support -1 shape, but input_spec has -1 shape so we set it to None.'
