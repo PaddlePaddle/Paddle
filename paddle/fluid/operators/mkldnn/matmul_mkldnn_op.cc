@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/phi/backends/onednn/matmul_utils.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
@@ -364,78 +365,6 @@ void ReshapeXYOutToMatrixSequence(phi::DenseTensor *x,
   ReshapeTensorToMatrixSequence(y, mat_dim_y);
 }
 
-std::vector<int64_t> Transpose(const std::vector<int64_t> &x,
-                               const std::vector<int> &axis) {
-  size_t in_rank = x.size();
-  size_t axis_size = axis.size();
-
-  auto axis_set = std::set<int>(axis.begin(), axis.end());
-  PADDLE_ENFORCE_EQ(axis_set.size(),
-                    axis_size,
-                    paddle::platform::errors::InvalidArgument(
-                        "In an axis array, elements must be unique."));
-
-  PADDLE_ENFORCE_EQ(in_rank,
-                    axis_size,
-                    paddle::platform::errors::InvalidArgument(
-                        "The input dimension's size "
-                        "should be equal to the axis's size. "
-                        "But received dimension is %d, "
-                        "axis's size is %d",
-                        in_rank,
-                        axis_size));
-
-  PADDLE_ENFORCE_LT(*std::max_element(axis.begin(), axis.end()),
-                    axis_size,
-                    paddle::platform::errors::InvalidArgument(
-                        "Axis values must be ranging from 0 to (dims - 1)."));
-
-  std::vector<int64_t> new_x(x.size());
-  for (size_t i = 0; i < x.size(); i++) {
-    new_x[i] = x[axis[i]];
-  }
-  return new_x;
-}
-
-std::vector<int64_t> GetInputStrides(const ExecutionContext &ctx,
-                                     const std::string input_name) {
-  auto shape = ctx.Attr<std::vector<int>>("fused_reshape_" + input_name);
-  auto axis = ctx.Attr<std::vector<int>>("fused_transpose_" + input_name);
-  auto input_dims = ctx.Input<phi::DenseTensor>(input_name)->dims();
-  auto new_dims = input_dims;
-  if (!shape.empty() && !axis.empty()) {
-    new_dims = input_dims.reshape(shape).transpose(axis);
-  }
-
-  auto &MatrixDimsFromVector = input_name == "X"
-                                   ? phi::funcs::RowMatrixDimsFromVector
-                                   : phi::funcs::ColumnMatrixDimsFromVector;
-  phi::funcs::MatDescriptor mat_dim = phi::funcs::CreateMatrixDescriptor(
-      MatrixDimsFromVector(new_dims),
-      0,
-      ctx.HasAttr("trans_x")
-          ? ctx.Attr<bool>(std::string("trans_") +
-                           static_cast<char>(std::tolower(input_name[0])))
-          : ctx.Attr<bool>(std::string("transpose_") + input_name[0]));
-
-  std::vector<int64_t> strides;
-  if (!shape.empty()) {
-    auto shape2 = input_dims.reshape(shape);
-    strides.push_back(1);
-    for (auto i = shape2.size() - 1; i > 0; --i) {
-      strides.insert(strides.begin(),
-                     strides.front() * static_cast<int64_t>(shape2[i]));
-    }
-    strides = Transpose(strides, axis);
-    if (shape.size() == 2)
-      strides.insert(strides.begin(),
-                     static_cast<int64_t>(shape[0] * shape[1]));
-    mat_dim.stride_ = strides[0];
-    if (mat_dim.trans_) std::swap(*strides.rbegin(), *(++strides.rbegin()));
-  }
-  return strides;
-}
-
 bool IsOutputFused(const ExecutionContext &ctx) {
   auto &fused_reshape_Out = ctx.Attr<std::vector<int>>("fused_reshape_Out");
   auto &fused_transpose_Out = ctx.Attr<std::vector<int>>("fused_transpose_Out");
@@ -452,8 +381,19 @@ void ExecuteMatMulV1(const ExecutionContext &ctx,
                      const std::vector<int64_t> &y_dims,
                      bool trans_y,
                      phi::DenseTensor *out) {
-  std::vector<int64_t> x_strides_override = GetInputStrides(ctx, "X");
-  std::vector<int64_t> y_strides_override = GetInputStrides(ctx, "Y");
+  std::vector<int64_t> x_strides_override = phi::funcs::GetInputStrides(
+      "X",
+      x->dims(),
+      trans_x,
+      ctx.Attr<std::vector<int>>("fused_reshape_X"),
+      ctx.Attr<std::vector<int>>("fused_transpose_X"));
+  std::vector<int64_t> y_strides_override = phi::funcs::GetInputStrides(
+      "Y",
+      y->dims(),
+      trans_y,
+      ctx.Attr<std::vector<int>>("fused_reshape_Y"),
+      ctx.Attr<std::vector<int>>("fused_transpose_Y"));
+
   MatMulV1OneDNNHandler<T, T, T_out> handler(ctx,
                                              onednn_engine,
                                              ctx.GetPlace(),
@@ -513,7 +453,6 @@ class MatMulV1OneDNNKernel : public paddle::framework::OpKernel<T> {
     }
     constexpr bool is_int8 = phi::funcs::is_int8<T>();
     constexpr bool is_bfloat16 = phi::funcs::is_bfloat16<T>();
-
     const bool force_fp32_output = ctx.HasAttr("force_fp32_output")
                                        ? ctx.Attr<bool>("force_fp32_output")
                                        : false;

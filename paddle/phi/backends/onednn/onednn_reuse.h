@@ -21,6 +21,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/phi/backends/onednn/matmul_utils.h"
 #include "paddle/phi/backends/onednn/onednn_context.h"
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/common/data_type.h"
@@ -1670,90 +1671,6 @@ static void SetOutMemDescWithReshape2FuseSupport(
   out->Resize(phi::make_ddim(fused_reshape2_shape));
 }
 
-static DDim RowMatrixDimsFromVector(const DDim& x_dim) {
-  return x_dim.size() > 1 ? x_dim : make_ddim({1, x_dim[0]});
-}
-
-static DDim ColumnMatrixDimsFromVector(const DDim& y_dim) {
-  return y_dim.size() > 1 ? y_dim : make_ddim({y_dim[0], 1});
-}
-
-static std::vector<int64_t> TransposeAxis(const std::vector<int64_t>& x,
-                                          const std::vector<int>& axis) {
-  size_t in_rank = x.size();
-  size_t axis_size = axis.size();
-
-  auto axis_set = std::set<int>(axis.begin(), axis.end());
-  PADDLE_ENFORCE_EQ(axis_set.size(),
-                    axis_size,
-                    phi::errors::InvalidArgument(
-                        "In an axis array, elements must be unique."));
-
-  PADDLE_ENFORCE_EQ(
-      in_rank,
-      axis_size,
-      phi::errors::InvalidArgument("The input dimension's size "
-                                   "should be equal to the axis's size. "
-                                   "But received dimension is %d, "
-                                   "axis's size is %d",
-                                   in_rank,
-                                   axis_size));
-
-  PADDLE_ENFORCE_LT(*std::max_element(axis.begin(), axis.end()),
-                    axis_size,
-                    phi::errors::InvalidArgument(
-                        "Axis values must be ranging from 0 to (dims - 1)."));
-
-  std::vector<int64_t> new_x(x.size());
-  for (size_t i = 0; i < x.size(); i++) {
-    new_x[i] = x[axis[i]];
-  }
-  return new_x;
-}
-
-static std::vector<int64_t> GetInputStrides(const OneDNNContext& dev_ctx,
-                                            const DDim& input_dims,
-                                            const std::string input_name,
-                                            const bool transpose_input) {
-  auto new_dims = input_dims;
-  auto shape =
-      dev_ctx.HasDnnAttr("fused_reshape_" + input_name)
-          ? PADDLE_GET_CONST(std::vector<int>,
-                             dev_ctx.GetDnnAttr("fused_reshape_" + input_name))
-          : std::vector<int>();
-  auto axis = dev_ctx.HasDnnAttr("fused_transpose_" + input_name)
-                  ? PADDLE_GET_CONST(
-                        std::vector<int>,
-                        dev_ctx.GetDnnAttr("fused_transpose_" + input_name))
-                  : std::vector<int>();
-
-  if (!shape.empty() && !axis.empty()) {
-    new_dims = input_dims.reshape(shape).transpose(axis);
-  }
-
-  auto& MatrixDimsFromVector =
-      input_name == "X" ? RowMatrixDimsFromVector : ColumnMatrixDimsFromVector;
-  MatDescriptor mat_dim = CreateMatrixDescriptor(
-      MatrixDimsFromVector(new_dims), 0, transpose_input);
-
-  std::vector<int64_t> strides;
-  if (!shape.empty()) {
-    auto shape2 = input_dims.reshape(shape);
-    strides.push_back(1);
-    for (auto i = shape2.size() - 1; i > 0; --i) {
-      strides.insert(strides.begin(),
-                     strides.front() * static_cast<int64_t>(shape2[i]));
-    }
-    strides = TransposeAxis(strides, axis);
-    if (shape.size() == 2)
-      strides.insert(strides.begin(),
-                     static_cast<int64_t>(shape[0] * shape[1]));
-    mat_dim.stride_ = strides[0];
-    if (mat_dim.trans_) std::swap(*strides.rbegin(), *(++strides.rbegin()));
-  }
-  return strides;
-}
-
 static bool IsOutputFused(const OneDNNContext& dev_ctx) {
   const auto shape =
       dev_ctx.HasDnnAttr("fused_reshape_Out")
@@ -1849,6 +1766,7 @@ class MatmulOneDNNHandler : public OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
     auto x_md = memory::desc(x_dims, OneDNNGetDataType<XT>(), x_strides);
     auto y_md = memory::desc(y_dims, OneDNNGetDataType<YT>(), y_strides);
     auto out_md = memory::desc(out_ddims, OneDNNGetDataType<OT>(), out_strides);
+
     const auto matmul_attrs = CreateMatmulAttrs(dev_ctx);
 
     this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
@@ -1988,8 +1906,27 @@ void ExecuteMatmul(const OneDNNContext& dev_ctx,
                    bool trans_x,
                    bool trans_y,
                    DenseTensor* out) {
-  auto x_strides_override = GetInputStrides(dev_ctx, x.dims(), "X", trans_x);
-  auto y_strides_override = GetInputStrides(dev_ctx, y.dims(), "Y", trans_y);
+  auto shape_x = dev_ctx.HasDnnAttr("fused_reshape_X")
+                     ? PADDLE_GET_CONST(std::vector<int>,
+                                        dev_ctx.GetDnnAttr("fused_reshape_X"))
+                     : std::vector<int>();
+  auto axis_x = dev_ctx.HasDnnAttr("fused_transpose_X")
+                    ? PADDLE_GET_CONST(std::vector<int>,
+                                       dev_ctx.GetDnnAttr("fused_transpose_X"))
+                    : std::vector<int>();
+  auto shape_y = dev_ctx.HasDnnAttr("fused_reshape_Y")
+                     ? PADDLE_GET_CONST(std::vector<int>,
+                                        dev_ctx.GetDnnAttr("fused_reshape_Y"))
+                     : std::vector<int>();
+  auto axis_y = dev_ctx.HasDnnAttr("fused_transpose_Y")
+                    ? PADDLE_GET_CONST(std::vector<int>,
+                                       dev_ctx.GetDnnAttr("fused_transpose_Y"))
+                    : std::vector<int>();
+
+  auto x_strides_override =
+      GetInputStrides("X", x.dims(), trans_x, shape_x, shape_x);
+  auto y_strides_override =
+      GetInputStrides("Y", y.dims(), trans_y, shape_y, axis_y);
   MatmulOneDNNHandler<T, T, T_out> handler(dev_ctx,
                                            x_dims,
                                            y_dims,
