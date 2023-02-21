@@ -50,7 +50,6 @@ void ExpandAs(const Context& context,
     }
   }
   if (target_shape.size() == 0) {
-    std::cout << "XYY Debug, debug the 「Tensor holds no memory」" << std::endl;
     phi::DDim out_dims = phi::make_ddim(target_shape);
     out->Resize(out_dims);
     context.template Alloc<T>(out);

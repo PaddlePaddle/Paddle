@@ -95,6 +95,10 @@ void ExpandKernel(const Context& ctx,
           rank));
 
   if (shape_size == 0) {
+    phi::DDim out_dims = phi::make_ddim(final_expand_shape);
+    out->Resize(out_dims);
+    context.template Alloc<T>(out);
+
     int r = xpu::copy<XPUType>(ctx.x_context(),
                                reinterpret_cast<const XPUType*>(x.data<T>()),
                                reinterpret_cast<XPUType*>(out->data<T>()),
