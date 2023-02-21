@@ -18,7 +18,7 @@ from typing import Any, Dict, List
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest
+from trt_layer_auto_scan_test import SkipReasons, TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
 
@@ -224,15 +224,33 @@ class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
             attrs, False
         ), 1e-5
 
-        # for dynamic_shapw
+        # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), (1e-5, 1e-5)
+        generate_dynamic_shape(attrs)
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True
+        ), (1e-3, 1e-3)
+
+    def add_skip_trt_case(self):
+        def teller1(program_config, predictor_config):
+            if self.trt_param.precision == paddle_infer.PrecisionType.Half:
+                return True
+            return False
+
+        self.add_skip_case(
+            teller1,
+            SkipReasons.TRT_NOT_IMPLEMENTED,
+            "The output has diff between gpu and trt in fp16 mode.",
+        )
 
     def test(self):
         self.trt_param.workspace_size = 1 << 28
+        self.add_skip_trt_case()
         self.run_test()
 
 
