@@ -890,7 +890,7 @@ void MatMulFunctionImplWithCublasLt(
 #endif
 
 template <typename Context, typename T>
-struct MatMulDispatchByContext {
+struct MatMulDispatcher {
   void operator()(const Context& ctx,
                   const DenseTensor& x,
                   const DenseTensor& y,
@@ -906,7 +906,7 @@ struct MatMulDispatchByContext {
 };
 
 template <typename T>
-struct MatMulDispatchByContext<phi::GPUContext, T> {
+struct MatMulDispatcher<phi::GPUContext, T> {
   void operator()(const phi::GPUContext& ctx,
                   const DenseTensor& x,
                   const DenseTensor& y,
@@ -945,12 +945,26 @@ struct MatMulDispatchByContext<phi::GPUContext, T> {
   }
 };
 
+template <typename Context, typename T>
+void MatMulFunction(const Context& ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    const std::vector<std::int64_t>& x_dims,
+                    const std::vector<std::int64_t>& y_dims,
+                    DenseTensor* out,
+                    bool trans_x,
+                    bool trans_y,
+                    bool flag = false) {
+  MatMulDispatcher<Context, T>()(
+      ctx, x, y, x_dims, y_dims, out, trans_x, trans_y);
+}
+
 template <typename T, typename Context>
 void MatmulKernel(const Context& ctx,
                   const DenseTensor& x,
                   const DenseTensor& y,
-                  bool trans_x,
-                  bool trans_y,
+                  bool transpose_x,
+                  bool transpose_y,
                   DenseTensor* out) {
   PADDLE_ENFORCE_NE(
       phi::product(x.dims()),
@@ -964,8 +978,8 @@ void MatmulKernel(const Context& ctx,
                                    " but reviced dims size is 0. "));
   const std::vector<std::int64_t> x_dims = vectorize(x.dims());
   const std::vector<std::int64_t> y_dims = vectorize(y.dims());
-  MatMulDispatchByContext<Context, T>()(
-      ctx, x, y, x_dims, y_dims, out, trans_x, trans_y);
+  MatMulFunction<Context, T>(
+      ctx, x, y, x_dims, y_dims, out, transpose_x, transpose_y);
 }
 
 template <typename T, typename Context>

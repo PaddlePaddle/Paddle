@@ -335,91 +335,95 @@ void MatmulGradKernel(const Context& dev_ctx,
       if (transpose_y) {
         // X'Y': dA = Y'G', dB = G'X'
         if (dx)
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                y_conj,
-                                                out_grad,
-                                                y_dims,
-                                                dout_dims,
-                                                &dx_help,
-                                                true,
-                                                true);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     y_conj,
+                                     out_grad,
+                                     y_dims,
+                                     dout_dims,
+                                     &dx_help,
+                                     true,
+                                     true);
         if (dy)
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                out_grad,
-                                                x_conj,
-                                                dout_dims,
-                                                x_dims,
-                                                &dy_help,
-                                                true,
-                                                true);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     out_grad,
+                                     x_conj,
+                                     dout_dims,
+                                     x_dims,
+                                     &dy_help,
+                                     true,
+                                     true);
       } else {
         // X'Y: dX = YG', dY = XG
         if (dx)
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                y_conj,
-                                                out_grad,
-                                                y_dims,
-                                                dout_dims,
-                                                &dx_help,
-                                                false,
-                                                true);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     y_conj,
+                                     out_grad,
+                                     y_dims,
+                                     dout_dims,
+                                     &dx_help,
+                                     false,
+                                     true);
         if (dy)
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                x_conj,
-                                                out_grad,
-                                                x_dims,
-                                                dout_dims,
-                                                &dy_help,
-                                                false,
-                                                false);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     x_conj,
+                                     out_grad,
+                                     x_dims,
+                                     dout_dims,
+                                     &dy_help,
+                                     false,
+                                     false);
       }
     } else {
       if (transpose_y) {
         // XY': dX = GY, dY = G'X
         if (dx)
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                out_grad,
-                                                y_conj,
-                                                dout_dims,
-                                                y_dims,
-                                                &dx_help,
-                                                false,
-                                                false);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     out_grad,
+                                     y_conj,
+                                     dout_dims,
+                                     y_dims,
+                                     &dx_help,
+                                     false,
+                                     false);
         if (dy)
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                out_grad,
-                                                x_conj,
-                                                dout_dims,
-                                                x_dims,
-                                                &dy_help,
-                                                true,
-                                                false);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     out_grad,
+                                     x_conj,
+                                     dout_dims,
+                                     x_dims,
+                                     &dy_help,
+                                     true,
+                                     false);
       } else {
         // XY: dX = GY', dY = X'G
         if (dx)
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                out_grad,
-                                                y_conj,
-                                                dout_dims,
-                                                y_dims,
-                                                &dx_help,
-                                                false,
-                                                true);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     out_grad,
+                                     y_conj,
+                                     dout_dims,
+                                     y_dims,
+                                     &dx_help,
+                                     false,
+                                     true);
         if (dy)
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                x_conj,
-                                                out_grad,
-                                                x_dims,
-                                                dout_dims,
-                                                &dy_help,
-                                                true,
-                                                false);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     x_conj,
+                                     out_grad,
+                                     x_dims,
+                                     dout_dims,
+                                     &dy_help,
+                                     true,
+                                     false);
       }
     }
 
     // get help dims
+    const std::vector<std::int64_t> dx_help_dims = vectorize(dx_help.dims());
+    const std::vector<std::int64_t> dy_help_dims = vectorize(dy_help.dims());
+
     std::vector<std::int64_t> dx_broadcast_dims(ndim);
     std::vector<std::int64_t> dy_broadcast_dims(ndim);
+
     std::fill(
         dx_broadcast_dims.data(), dx_broadcast_dims.data() + ndim - x_ndim, 1);
     std::fill(
@@ -434,10 +438,10 @@ void MatmulGradKernel(const Context& dev_ctx,
     std::vector<int> dx_reduce_dims;
     std::vector<int> dy_reduce_dims;
     for (int idx = 0; idx <= ndim - 3; idx++) {
-      if (dx_help.dims()[idx] != 1 && dx_broadcast_dims[idx] == 1) {
+      if (dx_help_dims[idx] != 1 && dx_broadcast_dims[idx] == 1) {
         dx_reduce_dims.push_back(idx);
       }
-      if (dy_help.dims()[idx] != 1 && dy_broadcast_dims[idx] == 1) {
+      if (dy_help_dims[idx] != 1 && dy_broadcast_dims[idx] == 1) {
         dy_reduce_dims.push_back(idx);
       }
     }
@@ -695,89 +699,89 @@ void MatmulDoubleGradKernel(const Context& dev_ctx,
     if (transpose_x) {
       if (transpose_y) {
         if (dx && ddy) {
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                ddy.get(),
-                                                dout_conj,
-                                                y_dims,
-                                                dout_dims,
-                                                &dx_help,
-                                                true,
-                                                true);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     ddy.get(),
+                                     dout_conj,
+                                     y_dims,
+                                     dout_dims,
+                                     &dx_help,
+                                     true,
+                                     true);
         }
         if (dy && ddx) {
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                dout_conj,
-                                                ddx.get(),
-                                                dout_dims,
-                                                x_dims,
-                                                &dy_help,
-                                                true,
-                                                true);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     dout_conj,
+                                     ddx.get(),
+                                     dout_dims,
+                                     x_dims,
+                                     &dy_help,
+                                     true,
+                                     true);
         }
       } else {
         if (dx && ddy) {
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                ddy.get(),
-                                                dout_conj,
-                                                y_dims,
-                                                dout_dims,
-                                                &dx_help,
-                                                false,
-                                                true);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     ddy.get(),
+                                     dout_conj,
+                                     y_dims,
+                                     dout_dims,
+                                     &dx_help,
+                                     false,
+                                     true);
         }
         if (dy && ddx) {
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                ddx.get(),
-                                                dout_conj,
-                                                x_dims,
-                                                dout_dims,
-                                                &dy_help,
-                                                false,
-                                                false);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     ddx.get(),
+                                     dout_conj,
+                                     x_dims,
+                                     dout_dims,
+                                     &dy_help,
+                                     false,
+                                     false);
         }
       }
     } else {
       if (transpose_y) {
         if (dx && ddy) {
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                dout_conj,
-                                                ddy.get(),
-                                                dout_dims,
-                                                y_dims,
-                                                &dx_help,
-                                                false,
-                                                false);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     dout_conj,
+                                     ddy.get(),
+                                     dout_dims,
+                                     y_dims,
+                                     &dx_help,
+                                     false,
+                                     false);
         }
         if (dy && ddx) {
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                dout_conj,
-                                                ddx.get(),
-                                                dout_dims,
-                                                x_dims,
-                                                &dy_help,
-                                                true,
-                                                false);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     dout_conj,
+                                     ddx.get(),
+                                     dout_dims,
+                                     x_dims,
+                                     &dy_help,
+                                     true,
+                                     false);
         }
       } else {
         if (dx && ddy) {
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                dout_conj,
-                                                ddy.get(),
-                                                dout_dims,
-                                                y_dims,
-                                                &dx_help,
-                                                false,
-                                                true);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     dout_conj,
+                                     ddy.get(),
+                                     dout_dims,
+                                     y_dims,
+                                     &dx_help,
+                                     false,
+                                     true);
         }
         if (dy && ddx) {
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                ddx.get(),
-                                                dout_conj,
-                                                x_dims,
-                                                dout_dims,
-                                                &dy_help,
-                                                true,
-                                                false);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     ddx.get(),
+                                     dout_conj,
+                                     x_dims,
+                                     dout_dims,
+                                     &dy_help,
+                                     true,
+                                     false);
         }
       }
     }
@@ -837,26 +841,26 @@ void MatmulDoubleGradKernel(const Context& dev_ctx,
     if (ddout) {
       // Calculate the gradient of OutputGrad(Out)
       if (ddx) {
-        MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                              ddx.get(),
-                                              y_conj,
-                                              x_dims,
-                                              y_dims,
-                                              ddout,
-                                              transpose_x,
-                                              transpose_y);
+        MatMulFunction<Context, T>(dev_ctx,
+                                   ddx.get(),
+                                   y_conj,
+                                   x_dims,
+                                   y_dims,
+                                   ddout,
+                                   transpose_x,
+                                   transpose_y);
       }
 
       if (ddy) {
-        MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                              x_conj,
-                                              ddy.get(),
-                                              x_dims,
-                                              y_dims,
-                                              ddout,
-                                              transpose_x,
-                                              transpose_y,
-                                              true);
+        MatMulFunction<Context, T>(dev_ctx,
+                                   x_conj,
+                                   ddy.get(),
+                                   x_dims,
+                                   y_dims,
+                                   ddout,
+                                   transpose_x,
+                                   transpose_y,
+                                   true);
       }
     }
   }
@@ -1446,86 +1450,86 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
       if (transpose_y) {
         // dX = ddY' d_ddout’, dY = d_ddout’ ddX'
         if (out_d_x && ddy && d_ddout)
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                ddy_conj,
-                                                d_ddout.get(),
-                                                y_dims,
-                                                dout_dims,
-                                                &out_dx_help,
-                                                true,
-                                                true);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     ddy_conj,
+                                     d_ddout.get(),
+                                     y_dims,
+                                     dout_dims,
+                                     &out_dx_help,
+                                     true,
+                                     true);
         if (out_d_y && ddx && d_ddout)
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                d_ddout.get(),
-                                                ddx_conj,
-                                                dout_dims,
-                                                x_dims,
-                                                &out_dy_help,
-                                                true,
-                                                true);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     d_ddout.get(),
+                                     ddx_conj,
+                                     dout_dims,
+                                     x_dims,
+                                     &out_dy_help,
+                                     true,
+                                     true);
       } else {
         // dX = ddY d_ddout', dY = ddX d_ddout
         if (out_d_x && ddy && d_ddout)
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                ddy_conj,
-                                                d_ddout.get(),
-                                                y_dims,
-                                                dout_dims,
-                                                &out_dx_help,
-                                                false,
-                                                true);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     ddy_conj,
+                                     d_ddout.get(),
+                                     y_dims,
+                                     dout_dims,
+                                     &out_dx_help,
+                                     false,
+                                     true);
         if (out_d_y && ddx && d_ddout)
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                ddx_conj,
-                                                d_ddout.get(),
-                                                x_dims,
-                                                dout_dims,
-                                                &out_dy_help,
-                                                false,
-                                                false);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     ddx_conj,
+                                     d_ddout.get(),
+                                     x_dims,
+                                     dout_dims,
+                                     &out_dy_help,
+                                     false,
+                                     false);
       }
 
     } else {
       if (transpose_y) {
         // dX = d_ddout ddY, dY = d_ddout’ ddX
         if (out_d_x && ddy && d_ddout)
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                d_ddout.get(),
-                                                ddy_conj,
-                                                dout_dims,
-                                                y_dims,
-                                                &out_dx_help,
-                                                false,
-                                                false);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     d_ddout.get(),
+                                     ddy_conj,
+                                     dout_dims,
+                                     y_dims,
+                                     &out_dx_help,
+                                     false,
+                                     false);
         if (out_d_y && ddx && d_ddout)
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                d_ddout.get(),
-                                                ddx_conj,
-                                                dout_dims,
-                                                x_dims,
-                                                &out_dy_help,
-                                                true,
-                                                false);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     d_ddout.get(),
+                                     ddx_conj,
+                                     dout_dims,
+                                     x_dims,
+                                     &out_dy_help,
+                                     true,
+                                     false);
       } else {
         // dX = d_ddout ddY', dY = ddX' d_ddout
         if (out_d_x && ddy && d_ddout)
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                d_ddout.get(),
-                                                ddy_conj,
-                                                dout_dims,
-                                                y_dims,
-                                                &out_dx_help,
-                                                false,
-                                                true);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     d_ddout.get(),
+                                     ddy_conj,
+                                     dout_dims,
+                                     y_dims,
+                                     &out_dx_help,
+                                     false,
+                                     true);
         if (out_d_y && ddx && d_ddout)
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                ddx_conj,
-                                                d_ddout.get(),
-                                                x_dims,
-                                                dout_dims,
-                                                &out_dy_help,
-                                                true,
-                                                false);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     ddx_conj,
+                                     d_ddout.get(),
+                                     x_dims,
+                                     dout_dims,
+                                     &out_dy_help,
+                                     true,
+                                     false);
       }
     }
 
@@ -1588,25 +1592,25 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
     // compute d_dout
     if (out_d_dout) {
       if (d_dx && ddy) {
-        MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                              d_dx.get(),
-                                              ddy_conj,
-                                              x_dims,
-                                              y_dims,
-                                              out_d_dout,
-                                              transpose_x,
-                                              transpose_y);
+        MatMulFunction<Context, T>(dev_ctx,
+                                   d_dx.get(),
+                                   ddy_conj,
+                                   x_dims,
+                                   y_dims,
+                                   out_d_dout,
+                                   transpose_x,
+                                   transpose_y);
       }
       if (d_dy && ddx) {
-        MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                              ddx_conj,
-                                              d_dy.get(),
-                                              x_dims,
-                                              y_dims,
-                                              out_d_dout,
-                                              transpose_x,
-                                              transpose_y,
-                                              true);
+        MatMulFunction<Context, T>(dev_ctx,
+                                   ddx_conj,
+                                   d_dy.get(),
+                                   x_dims,
+                                   y_dims,
+                                   out_d_dout,
+                                   transpose_x,
+                                   transpose_y,
+                                   true);
       }
 
       if (!out_d_dout->initialized()) {
@@ -1620,104 +1624,104 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
       if (transpose_x && transpose_y) {
         // out_d_ddx1 = y' * d_ddout'
         if (d_ddout) {
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                y_conj,
-                                                d_ddout.get(),
-                                                y_dims,
-                                                dout_dims,
-                                                &out_d_ddx_help,
-                                                true,
-                                                true);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     y_conj,
+                                     d_ddout.get(),
+                                     y_dims,
+                                     dout_dims,
+                                     &out_d_ddx_help,
+                                     true,
+                                     true);
         }
 
         // out_d_ddx2 = D_DY' * DOut'
         if (d_dy) {
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                d_dy.get(),
-                                                dout_conj,
-                                                y_dims,
-                                                dout_dims,
-                                                &out_d_ddx_help,
-                                                true,
-                                                true,
-                                                true);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     d_dy.get(),
+                                     dout_conj,
+                                     y_dims,
+                                     dout_dims,
+                                     &out_d_ddx_help,
+                                     true,
+                                     true,
+                                     true);
         }
 
       } else if (transpose_x) {
         // out_d_ddx1 = y * d_ddout'
         if (d_ddout) {
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                y_conj,
-                                                d_ddout.get(),
-                                                y_dims,
-                                                dout_dims,
-                                                &out_d_ddx_help,
-                                                false,
-                                                true);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     y_conj,
+                                     d_ddout.get(),
+                                     y_dims,
+                                     dout_dims,
+                                     &out_d_ddx_help,
+                                     false,
+                                     true);
         }
 
         // out_d_ddx2 = D_DY * Dout'
         if (d_dy) {
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                d_dy.get(),
-                                                dout_conj,
-                                                y_dims,
-                                                dout_dims,
-                                                &out_d_ddx_help,
-                                                false,
-                                                true,
-                                                true);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     d_dy.get(),
+                                     dout_conj,
+                                     y_dims,
+                                     dout_dims,
+                                     &out_d_ddx_help,
+                                     false,
+                                     true,
+                                     true);
         }
 
       } else if (transpose_y) {
         // out_d_ddx1 = d_ddout * y
         if (d_ddout) {
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                d_ddout.get(),
-                                                y_conj,
-                                                dout_dims,
-                                                y_dims,
-                                                &out_d_ddx_help,
-                                                false,
-                                                false);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     d_ddout.get(),
+                                     y_conj,
+                                     dout_dims,
+                                     y_dims,
+                                     &out_d_ddx_help,
+                                     false,
+                                     false);
         }
 
         // out_d_ddx2 = Dout * D_DY
         if (d_dy) {
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                dout_conj,
-                                                d_dy.get(),
-                                                dout_dims,
-                                                y_dims,
-                                                &out_d_ddx_help,
-                                                false,
-                                                false,
-                                                true);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     dout_conj,
+                                     d_dy.get(),
+                                     dout_dims,
+                                     y_dims,
+                                     &out_d_ddx_help,
+                                     false,
+                                     false,
+                                     true);
         }
       } else {
         // out_d_ddx1 = d_ddout * y'
         if (d_ddout) {
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                d_ddout.get(),
-                                                y_conj,
-                                                dout_dims,
-                                                y_dims,
-                                                &out_d_ddx_help,
-                                                false,
-                                                true);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     d_ddout.get(),
+                                     y_conj,
+                                     dout_dims,
+                                     y_dims,
+                                     &out_d_ddx_help,
+                                     false,
+                                     true);
         }
 
         // out_d_ddx2 = Dout * D_DY'
         if (d_dy) {
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                dout_conj,
-                                                d_dy.get(),
-                                                dout_dims,
-                                                y_dims,
-                                                &out_d_ddx_help,
-                                                false,
-                                                true,
-                                                true);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     dout_conj,
+                                     d_dy.get(),
+                                     dout_dims,
+                                     y_dims,
+                                     &out_d_ddx_help,
+                                     false,
+                                     true,
+                                     true);
         }
       }
       if (out_d_ddx_help.initialized()) {
@@ -1740,105 +1744,105 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
       if (transpose_x && transpose_y) {
         // out_d_ddy1 = d_ddout' * x'
         if (d_ddout) {
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                d_ddout.get(),
-                                                x_conj,
-                                                dout_dims,
-                                                x_dims,
-                                                &out_d_ddy_help,
-                                                true,
-                                                true);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     d_ddout.get(),
+                                     x_conj,
+                                     dout_dims,
+                                     x_dims,
+                                     &out_d_ddy_help,
+                                     true,
+                                     true);
         }
 
         // out_d_ddy2 = dout' * d_dx'
         if (d_dx) {
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                dout_conj,
-                                                d_dx.get(),
-                                                dout_dims,
-                                                x_dims,
-                                                &out_d_ddy_help,
-                                                true,
-                                                true,
-                                                true);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     dout_conj,
+                                     d_dx.get(),
+                                     dout_dims,
+                                     x_dims,
+                                     &out_d_ddy_help,
+                                     true,
+                                     true,
+                                     true);
         }
 
       } else if (transpose_x) {
         // out_d_ddy1 = x * d_ddout
         if (d_ddout) {
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                x_conj,
-                                                d_ddout.get(),
-                                                x_dims,
-                                                dout_dims,
-                                                &out_d_ddy_help,
-                                                false,
-                                                false);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     x_conj,
+                                     d_ddout.get(),
+                                     x_dims,
+                                     dout_dims,
+                                     &out_d_ddy_help,
+                                     false,
+                                     false);
         }
 
         // out_d_ddy2 = d_dx * dout
         if (d_dx) {
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                d_dx.get(),
-                                                dout_conj,
-                                                x_dims,
-                                                dout_dims,
-                                                &out_d_ddy_help,
-                                                false,
-                                                false,
-                                                true);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     d_dx.get(),
+                                     dout_conj,
+                                     x_dims,
+                                     dout_dims,
+                                     &out_d_ddy_help,
+                                     false,
+                                     false,
+                                     true);
         }
 
       } else if (transpose_y) {
         // out_d_ddy1 = d_ddout' * x
         if (d_ddout) {
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                d_ddout.get(),
-                                                x_conj,
-                                                dout_dims,
-                                                x_dims,
-                                                &out_d_ddy_help,
-                                                true,
-                                                false);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     d_ddout.get(),
+                                     x_conj,
+                                     dout_dims,
+                                     x_dims,
+                                     &out_d_ddy_help,
+                                     true,
+                                     false);
         }
 
         // out_d_ddy2 = dout' * d_dx
         if (d_dx) {
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                dout_conj,
-                                                d_dx.get(),
-                                                dout_dims,
-                                                x_dims,
-                                                &out_d_ddy_help,
-                                                true,
-                                                false,
-                                                true);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     dout_conj,
+                                     d_dx.get(),
+                                     dout_dims,
+                                     x_dims,
+                                     &out_d_ddy_help,
+                                     true,
+                                     false,
+                                     true);
         }
 
       } else {
         // out_d_ddy1 = x' * d_ddout
         if (d_ddout) {
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                x_conj,
-                                                d_ddout.get(),
-                                                x_dims,
-                                                dout_dims,
-                                                &out_d_ddy_help,
-                                                true,
-                                                false);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     x_conj,
+                                     d_ddout.get(),
+                                     x_dims,
+                                     dout_dims,
+                                     &out_d_ddy_help,
+                                     true,
+                                     false);
         }
 
         // out_d_ddy2 = d_dx' * dout
         if (d_dx) {
-          MatMulDispatchByContext<Context, T>()(dev_ctx,
-                                                d_dx.get(),
-                                                dout_conj,
-                                                x_dims,
-                                                dout_dims,
-                                                &out_d_ddy_help,
-                                                true,
-                                                false,
-                                                true);
+          MatMulFunction<Context, T>(dev_ctx,
+                                     d_dx.get(),
+                                     dout_conj,
+                                     x_dims,
+                                     dout_dims,
+                                     &out_d_ddy_help,
+                                     true,
+                                     false,
+                                     true);
         }
       }
 
