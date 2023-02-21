@@ -5100,6 +5100,7 @@ def xlogy(x, other, name=None):
                       [0.0, float('inf'), float('nan'), 3.0]])
             other = paddle.to_tensor([[0.0, float('inf'), float('nan'), 1.0],
                                     [1.0, 2.0, 0.0, 3.0]])
+            out3 = paddle.xlogy(x, other)
             print(out3.numpy())
             # out3:
             # [[    -inf      inf      nan 0.      ]
