@@ -297,6 +297,26 @@ template PADDLE_API phi::dtype::complex<float>
 template PADDLE_API phi::dtype::complex<double>
     *Tensor::data<phi::dtype::complex<double>>();
 
+const void *Tensor::data() const {
+  if (is_dense_tensor()) {
+    return static_cast<phi::DenseTensor *>(impl_.get())->data();
+  } else if (is_selected_rows()) {
+    return static_cast<phi::SelectedRows *>(impl_.get())->value().data();
+  }
+  return nullptr;
+}
+
+void *Tensor::data() {
+  if (is_dense_tensor()) {
+    return static_cast<phi::DenseTensor *>(impl_.get())->data();
+  } else if (is_selected_rows()) {
+    return static_cast<phi::SelectedRows *>(impl_.get())
+        ->mutable_value()
+        ->data();
+  }
+  return nullptr;
+}
+
 // TODO(chenweihang): replace slice impl by API
 Tensor Tensor::slice(int64_t begin_idx, int64_t end_idx) const {
   if (is_dense_tensor()) {

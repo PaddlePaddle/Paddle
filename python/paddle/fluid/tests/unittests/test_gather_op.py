@@ -385,6 +385,29 @@ class TestGathertError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_index_type)
 
+    def test_error3(self):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+
+            shape = [8, 9, 6]
+            x = paddle.fluid.data(shape=shape, dtype='int32', name='x')
+            axis = paddle.fluid.data(shape=[1], dtype='int32', name='axis')
+            index = paddle.fluid.data(shape=shape, dtype='int32', name='index')
+            index_float = paddle.fluid.data(
+                shape=shape, dtype='float32', name='index_float'
+            )
+
+            def test_axis_minsize():
+                paddle.gather(x, index, axis=-1)
+
+            self.assertRaises(ValueError, test_axis_minsize)
+
+            def test_axis_maxsize():
+                paddle.gather(x, index, axis=512)
+
+            self.assertRaises(ValueError, test_axis_maxsize)
+
 
 class TestCheckOutType(unittest.TestCase):
     def test_out_type(self):

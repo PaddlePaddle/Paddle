@@ -348,6 +348,24 @@ class PADDLE_API Tensor final {
   T* data();
 
   /**
+   * @brief Get the const memory pointer directly.
+   * It's usually used to get the output data pointer.
+   *
+   * @tparam T
+   * @return T*
+   */
+  const void* data() const;
+
+  /**
+   * @brief Get the memory pointer directly.
+   * It's usually used to get the mutable output data pointer.
+   *
+   * @tparam T
+   * @return T*
+   */
+  void* data();
+
+  /**
    * @brief Return a sub-tensor of the given tensor.
    * It is usually used to extract a sub-tensor (which supports
    * modifying the data of the original tensor) to perform further
@@ -506,6 +524,20 @@ class PADDLE_API Tensor final {
    */
   Tensor& operator=(Tensor&& x) &;
 
+  /**
+   * @brief Tensor operants
+   *
+   * @param other
+   * @return Tensor
+   */
+  Tensor operator+(const Tensor& other) const;
+
+  Tensor operator-(const Tensor& other) const;
+
+  Tensor operator*(const Tensor& other) const;
+
+  Tensor operator/(const Tensor& other) const;
+
   /* Part 8: Autograd methods */
 
   /**
@@ -613,6 +645,13 @@ class PADDLE_API Tensor final {
    * in the development of new dygraph. It may be removed in the future.
    */
   std::string name_{""};
+
+  // Tensor C++ APIs
+  // Example: Tensor add(const Tensor& other) const;
+  Tensor add(const Tensor& y) const;
+  Tensor divide(const Tensor& y) const;
+  Tensor multiply(const Tensor& y) const;
+  Tensor subtract(const Tensor& y) const;
 };
 
 }  // namespace experimental

@@ -24,110 +24,117 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 
 namespace paddle {
 namespace operators {
+
+template <typename T, typename Context>
+void SaveKernel(const Context& dev_ctx,
+                const phi::DenseTensor& x,
+                const std::string& file_path,
+                bool overwrite,
+                bool save_as_fp16) {
+  PADDLE_ENFORCE_EQ(
+      FileExists(file_path) && !overwrite,
+      false,
+      phi::errors::PreconditionNotMet(
+          "%s exists!, cannot save to it when overwrite is set to false.",
+          file_path,
+          overwrite));
+
+  MkDirRecursively(DirName(file_path).c_str());
+
+  // FIXME(yuyang18): We save variable to local file now, but we should change
+  // it to save an output stream.
+  std::ofstream fout(file_path, std::ios::binary);
+  PADDLE_ENFORCE_EQ(
+      static_cast<bool>(fout),
+      true,
+      phi::errors::Unavailable("Cannot open %s to save variables.", file_path));
+
+  auto in_dtype = x.dtype();
+  auto out_dtype = save_as_fp16 ? phi::DataType::FLOAT16 : in_dtype;
+
+  if (in_dtype != out_dtype) {
+    auto out = phi::Cast<T>(dev_ctx, x, out_dtype);
+    framework::SerializeToStream(fout, out, dev_ctx);
+  } else {
+    framework::SerializeToStream(fout, x, dev_ctx);
+  }
+  fout.close();
+}
+
+template <typename T, typename Context>
+void SaveSelectedRowsKernel(const Context& dev_ctx,
+                            const phi::SelectedRows& x,
+                            const std::string& file_path,
+                            bool overwrite,
+                            bool save_as_fp16) {
+  PADDLE_ENFORCE_EQ(
+      FileExists(file_path) && !overwrite,
+      false,
+      phi::errors::PreconditionNotMet(
+          "%s exists!, cannot save to it when overwrite is set to false.",
+          file_path,
+          overwrite));
+  PADDLE_ENFORCE_EQ(save_as_fp16,
+                    false,
+                    phi::errors::Unimplemented(
+                        "SelectedRows is not supported to save as float16."));
+
+  MkDirRecursively(DirName(file_path).c_str());
+
+  // FIXME(yuyang18): We save variable to local file now, but we should change
+  // it to save an output stream.
+  std::ofstream fout(file_path, std::ios::binary);
+  PADDLE_ENFORCE_EQ(
+      static_cast<bool>(fout),
+      true,
+      phi::errors::Unavailable("Cannot open %s to save variables.", file_path));
+  framework::SerializeToStream(fout, x, dev_ctx);
+  fout.close();
+}
+
 // define LOOKUP_TABLE_PATH for checkpoint notify to save lookup table variables
 // to directory specified.
 constexpr char LOOKUP_TABLE_PATH[] = "kLookupTablePath";
 template <typename DeviceContext, typename T>
 class SaveOpKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
+  void Compute(const framework::ExecutionContext& ctx) const override {
     auto place = ctx.GetPlace();
 
-    auto *input_var = ctx.InputVar("X");
+    auto* input_var = ctx.InputVar("X");
     auto iname = ctx.InputNames("X").data();
     PADDLE_ENFORCE_NOT_NULL(
         input_var,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The variable %s to be saved cannot be found.", iname));
 
     auto filename = ctx.Attr<std::string>("file_path");
     auto overwrite = ctx.Attr<bool>("overwrite");
+    auto save_as_fp16 = ctx.Attr<bool>("save_as_fp16");
 
     VLOG(4) << "save output file_path: " << filename;
 
-    PADDLE_ENFORCE_EQ(
-        FileExists(filename) && !overwrite,
-        false,
-        platform::errors::PreconditionNotMet(
-            "%s exists!, cannot save to it when overwrite is set to false.",
-            filename,
-            overwrite));
-
-    MkDirRecursively(DirName(filename).c_str());
+    // get device context from pool
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto& dev_ctx = *pool.Get(place);
 
     if (input_var->IsType<phi::DenseTensor>()) {
-      SaveLodTensor(ctx, place, input_var, filename);
+      auto& tensor = input_var->Get<phi::DenseTensor>();
+      SaveKernel<T>(dev_ctx, tensor, filename, save_as_fp16);
     } else if (input_var->IsType<phi::SelectedRows>()) {
-      SaveSelectedRows(ctx, place, input_var, filename);
+      auto& selectedRows = input_var->Get<phi::SelectedRows>();
+      SaveSelectedRowsKernel<T>(dev_ctx, selectedRows, filename);
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Save operator only supports saving phi::DenseTensor and "
           "SelectedRows "
           "variable, %s has wrong type",
           iname));
     }
-  }
-
-  void SaveLodTensor(const framework::ExecutionContext &ctx,
-                     const platform::Place &place,
-                     const framework::Variable *var,
-                     const std::string &filename) const {
-    auto &tensor = var->Get<phi::DenseTensor>();
-
-    // get device context from pool
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(place);
-
-    // FIXME(yuyang18): We save variable to local file now, but we should change
-    // it to save an output stream.
-    std::ofstream fout(filename, std::ios::binary);
-    PADDLE_ENFORCE_EQ(static_cast<bool>(fout),
-                      true,
-                      platform::errors::Unavailable(
-                          "Cannot open %s to save variables.", filename));
-
-    auto save_as_fp16 = ctx.Attr<bool>("save_as_fp16");
-    auto in_dtype = tensor.dtype();
-    auto out_dtype = save_as_fp16 ? phi::DataType::FLOAT16 : in_dtype;
-
-    if (in_dtype != out_dtype) {
-      auto in_kernel_type =
-          phi::KernelKey(place, phi::DataLayout::ALL_LAYOUT, in_dtype);
-      auto out_kernel_type =
-          phi::KernelKey(place, phi::DataLayout::ALL_LAYOUT, out_dtype);
-      phi::DenseTensor out;
-      framework::TransDataType(in_kernel_type, out_kernel_type, tensor, &out);
-      // copy LoD info to the new tensor
-      out.set_lod(tensor.lod());
-      framework::SerializeToStream(fout, out, dev_ctx);
-    } else {
-      framework::SerializeToStream(fout, tensor, dev_ctx);
-    }
-    fout.close();
-  }
-
-  void SaveSelectedRows(const framework::ExecutionContext &ctx,
-                        const platform::Place &place,
-                        const framework::Variable *var,
-                        const std::string &filename) const {
-    auto &selectedRows = var->Get<phi::SelectedRows>();
-
-    // get device context from pool
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(place);
-
-    // FIXME(yuyang18): We save variable to local file now, but we should change
-    // it to save an output stream.
-    std::ofstream fout(filename, std::ios::binary);
-    PADDLE_ENFORCE_EQ(static_cast<bool>(fout),
-                      true,
-                      platform::errors::Unavailable(
-                          "Cannot open %s to save variables.", filename));
-    framework::SerializeToStream(fout, selectedRows, dev_ctx);
-    fout.close();
   }
 };
 

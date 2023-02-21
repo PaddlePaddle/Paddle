@@ -35,7 +35,7 @@ class TestFleet1(unittest.TestCase):
         """Test cases for pslib."""
         import paddle.fluid as fluid
         from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
-        from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+        from paddle.incubate.fleet.parameter_server.pslib import fleet
 
         os.environ["POD_IP"] = "127.0.0.1"
         os.environ["PADDLE_PORT"] = "36001"
@@ -66,7 +66,7 @@ class TestFleet1(unittest.TestCase):
             label = paddle.static.data(
                 name="click", shape=[-1, 1], dtype="int64", lod_level=1
             )
-            label_cast = fluid.layers.cast(label, dtype='float32')
+            label_cast = paddle.cast(label, dtype='float32')
             cost = paddle.nn.functional.log_loss(fc, label_cast)
 
         strategy = {}
