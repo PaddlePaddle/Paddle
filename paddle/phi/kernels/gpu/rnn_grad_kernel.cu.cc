@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/rnn_grad_kernel.h"
 
-#include "paddle/fluid/operators/utils.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
@@ -224,7 +224,7 @@ void RnnGradKernel(const Context &dev_ctx,
   std::vector<int> SequenceLength;
   if (has_seq_length) {
     SequenceLength =
-        paddle::operators::GetDataFromTensor<int>(sequence_length.get_ptr());
+        paddle::experimental::GetDataFromTensor<int>(sequence_length.get_ptr());
   }
 
   auto input_dims = x.dims();
