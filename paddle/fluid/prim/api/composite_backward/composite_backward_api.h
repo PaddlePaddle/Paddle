@@ -309,6 +309,7 @@ void cumsum_grad(const Tensor& x,
                  Tensor* x_grad) {
   if (x_grad) {
     auto grad = cumsum<T>(out_grad, axis, flatten, exclusive, !reverse);
+    grad = reshape<T>(grad, x.shape());
     set_output<T>(grad, x_grad);
   }
 }
