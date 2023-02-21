@@ -409,6 +409,39 @@ class ConditionalNet(BackwardNet):
         super().__init__()
 
 
+class TestBackwardUninitializedVariable(unittest.TestCase):
+    """this case is found in yolov5 while to_static.
+    gradient aggregation may cause sum a invalid variable.
+    """
+
+    def test(self):
+        paddle.enable_static()
+        main_prg, startup_prg = paddle.static.Program(), paddle.static.Program()
+        with paddle.static.program_guard(main_prg, startup_prg):
+            gt = paddle.static.data(name='gt', shape=[4], dtype='float32')
+            x = paddle.static.data(name='x', shape=[2], dtype='float32')
+            gt.stop_gradient = True
+            x.stop_gradient = False
+            gt = gt.reshape([4, 1]).reshape([4])
+            loss = (
+                paddle.nn.functional.binary_cross_entropy(x, gt[:2])
+                + (gt[2:4] * x).sum()
+            )
+            exe = paddle.static.Executor()
+            paddle.fluid.backward.gradients(loss, [])
+            exe.run(startup_prg)
+            # Optimizer
+            out = exe.run(
+                main_prg,
+                feed={
+                    'gt': np.array([1.0, 1.0, 0.0, 0.0], dtype='float32'),
+                    'x': np.array([0.5, 0.5], dtype='float32'),
+                },
+                fetch_list=[loss],
+            )
+            print(out)
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

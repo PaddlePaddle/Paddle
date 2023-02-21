@@ -12,6 +12,10 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager.h"
 
 #include <Python.h>
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
 
 #include <string>
 #include <vector>
@@ -32,18 +36,18 @@ limitations under the License. */
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/tensor_py.h"
-#include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/core/string_tensor.h"
 namespace paddle {
 namespace pybind {
 
 namespace py = ::pybind11;
 
-PyTypeObject* p_tensor_type;
-PyTypeObject* p_string_tensor_type;  // For StringTensor
+extern PyTypeObject* p_tensor_type;
+extern PyTypeObject* p_string_tensor_type;  // For StringTensor
 extern PyTypeObject* g_vartype_pytype;
 extern PyTypeObject* g_framework_tensor_pytype;
 

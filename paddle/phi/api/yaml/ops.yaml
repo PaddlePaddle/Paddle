@@ -633,7 +633,7 @@
     func : IsfiniteInferMeta
   kernel :
     func : isfinite {dense -> dense},
-           infinite_sr {selected_rows -> selected_rows}
+           isfinite_sr {selected_rows -> selected_rows}
 
 - op : isinf
   args : (Tensor x)

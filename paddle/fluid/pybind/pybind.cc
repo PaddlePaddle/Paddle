@@ -13,6 +13,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <Python.h>
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
 
 #include <algorithm>
 #include <cctype>
@@ -1840,6 +1844,7 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
+  m.def("init_memory_method", framework::InitMemoryMethod);
   m.def("load_op_meta_info_and_register_op", [](const std::string dso_name) {
     egr::Controller::Instance().MergeOpMetaInfoMap(
         framework::LoadOpMetaInfoAndRegisterOp(dso_name));

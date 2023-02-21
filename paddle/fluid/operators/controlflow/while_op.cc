@@ -202,16 +202,16 @@ class WhileOp : public framework::OperatorBase {
     if (FLAGS_control_flow_use_new_executor) {
       LOG_FIRST_N(INFO, 1) << "[ControlFlow][WhileOp] New Executor is Running.";
       if (!core_ || !platform::is_same_place(core_->GetPlace(), dev_place)) {
-        std::set<std::string> skip_gc_vars(skip_vars.begin(), skip_vars.end());
         framework::Scope placeholder;  // Don't care if it's valid, just for
                                        // initialize InterpreterCore
+        framework::interpreter::ExecutionConfig execution_config;
+        execution_config.create_local_scope = false;
+        execution_config.used_for_control_flow_op = true;
+        execution_config.skip_gc_vars =
+            std::set<std::string>(skip_vars.begin(), skip_vars.end());
+
         core_.reset(new framework::InterpreterCore(
-            dev_place,
-            *block,
-            skip_gc_vars,
-            &placeholder,
-            /* used_for_jit */ false,
-            /* used_for_control_flow_op */ true));
+            dev_place, *block, &placeholder, execution_config));
       }
     } else {
       if (!executor_ ||
@@ -398,13 +398,14 @@ class WhileGradOp : public framework::OperatorBase {
         std::set<std::string> skip_gc_vars(skip_vars.begin(), skip_vars.end());
         framework::Scope placeholder;  // Don't care if it's valid, just for
                                        // initialize InterpreterCore
+        framework::interpreter::ExecutionConfig execution_config;
+        execution_config.create_local_scope = false;
+        execution_config.used_for_control_flow_op = true;
+        execution_config.skip_gc_vars =
+            std::set<std::string>(skip_vars.begin(), skip_vars.end());
+
         core_.reset(new framework::InterpreterCore(
-            dev_place,
-            *block,
-            skip_gc_vars,
-            &placeholder,
-            /* used_for_jit */ false,
-            /* used_for_control_flow_op */ true));
+            dev_place, *block, &placeholder, execution_config));
       }
     } else {
       if (!executor_ ||
