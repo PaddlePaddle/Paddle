@@ -129,7 +129,6 @@ Tensor Tensor::multiply(const Scalar& y) const {
 Tensor Tensor::subtract(const Scalar& y) const {
   return paddle::OperantsManager::Instance().subtract(static_cast<const Tensor &>(*this), y);
 }
-
 """
 
 
