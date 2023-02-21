@@ -35,6 +35,7 @@ ExternalProject_Add(
   UPDATE_COMMAND ""
   CONFIGURE_COMMAND ""
   BUILD_COMMAND
+    rm -rf ${CMAKE_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass/build &&
     mkdir -p
     ${CMAKE_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass/build/generated/gemm
     && ${PYTHON_EXECUTABLE} -B

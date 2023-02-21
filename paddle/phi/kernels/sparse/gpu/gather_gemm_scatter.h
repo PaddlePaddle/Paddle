@@ -24,44 +24,13 @@
 #include "examples/common/helper.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/kernels/sparse/gpu/common.h"
+#include "paddle/phi/kernels/sparse/gpu/cutlass/build/generated/gemm/all_gemm_operations.h"
+#include "paddle/phi/kernels/sparse/gpu/cutlass_tuner.h"
+
 namespace phi {
 namespace sparse {
-typedef void (*fp16_gather_gemm_scatter)(const GPUContext& dev_ctx,
-                                         const cutlass::half_t* const a,
-                                         const cutlass::half_t* const b,
-                                         const cutlass::half_t* const c,
-                                         cutlass::half_t* const d,
-                                         const int m,
-                                         const int n,
-                                         const int k,
-                                         const int32_t* a_indices,
-                                         const int32_t* c_d_indices,
-                                         cutlass::half_t const alpha,
-                                         cutlass::half_t const beta);
-typedef void (*fp32_gather_gemm_scatter)(const GPUContext& dev_ctx,
-                                         const float* const a,
-                                         const float* const b,
-                                         const float* const c,
-                                         float* const d,
-                                         const int m,
-                                         const int n,
-                                         const int k,
-                                         const int32_t* a_indices,
-                                         const int32_t* c_d_indices,
-                                         float const alpha,
-                                         float const beta);
-typedef void (*fp64_gather_gemm_scatter)(const GPUContext& dev_ctx,
-                                         const double* const a,
-                                         const double* const b,
-                                         const double* const c,
-                                         double* const d,
-                                         const int m,
-                                         const int n,
-                                         const int k,
-                                         const int32_t* a_indices,
-                                         const int32_t* c_d_indices,
-                                         double const alpha,
-                                         double const beta);
+
 fp16_gather_gemm_scatter getBestFp16Kernel(const int M,
                                            const int K,
                                            const int N);
@@ -116,6 +85,7 @@ void launchKernel(const GPUContext& dev_ctx,
   CUTLASS_CHECK(status);
   gemm_op(dev_ctx.stream());
 }
+
 static void dispatchKernel(const GPUContext& dev_ctx,
                            const void* const a,
                            const void* const b,
@@ -131,19 +101,21 @@ static void dispatchKernel(const GPUContext& dev_ctx,
   if (!cutlass) return;
 
   if (type == phi::DataType::FLOAT16) {
+#if 0
     fp16_gather_gemm_scatter gather_gemm_scatter = getBestFp16Kernel(m, n, k);
-    gather_gemm_scatter(dev_ctx,
-                        static_cast<const cutlass::half_t*>(a),
-                        static_cast<const cutlass::half_t*>(b),
-                        static_cast<const cutlass::half_t*>(c),
-                        static_cast<cutlass::half_t*>(d),
-                        m,
-                        n,
-                        k,
-                        static_cast<const int32_t*>(a_indices),
-                        static_cast<const int32_t*>(c_d_indices),
-                        static_cast<cutlass::half_t>(1),
-                        static_cast<cutlass::half_t>(1));
+#endif
+    GatherGemmScatter(dev_ctx,
+                      static_cast<const cutlass::half_t*>(a),
+                      static_cast<const cutlass::half_t*>(b),
+                      static_cast<const cutlass::half_t*>(c),
+                      static_cast<cutlass::half_t*>(d),
+                      m,
+                      n,
+                      k,
+                      static_cast<const int32_t*>(a_indices),
+                      static_cast<const int32_t*>(c_d_indices),
+                      static_cast<cutlass::half_t>(1),
+                      static_cast<cutlass::half_t>(1));
   } else if (type == phi::DataType::FLOAT32) {
     fp32_gather_gemm_scatter gather_gemm_scatter =
         getBestFp32Kernel(m, n, k, dev_ctx.GetComputeCapability());
@@ -174,6 +146,42 @@ static void dispatchKernel(const GPUContext& dev_ctx,
                         static_cast<double>(1),
                         static_cast<double>(1));
   }
+}
+
+template <typename T>
+void GatherGemmScatter(const phi::GPUContext& ctx,
+                       const T* const a,
+                       const T* const b,
+                       const T* const c,
+                       T* const d,
+                       const int& m,
+                       const int& n,
+                       const int& k,
+                       const int32_t* a_indices,
+                       const int32_t* b_indices,
+                       const int32_t* c_d_indices,
+                       T alpha,
+                       T beta) {
+  auto* tuner = MakeCutlassTuner<T>(fp16_kernels[0]);
+  for (auto i = 1; i < fp16_kernels.size(); i++)
+    tuner->AddCallBack(fp16_kernels[i]);
+
+  size_t key = Conv3DKey(m, n, k);
+
+  tuner->CutlassRun(ctx,
+                    key,
+                    const_cast<const T*>(a),
+                    const_cast<const T*>(b),
+                    const_cast<const T*>(c),
+                    const_cast<T*>(d),
+                    const_cast<int&>(m),
+                    const_cast<int&>(n),
+                    const_cast<int&>(k),
+                    const_cast<const int32_t*>(a_indices),
+                    const_cast<const int32_t*>(b_indices),
+                    const_cast<const int32_t*>(c_d_indices),
+                    alpha,
+                    beta);
 }
 
 struct cutlass_tensorop_h1688gemm_128x64_32x2_nn_align8 {

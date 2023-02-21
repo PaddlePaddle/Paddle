@@ -18,7 +18,7 @@ import shutil
 from gather_gemm_scatter_operation import (
     EmitGatherGemmScatterConfigurationLibrary,
 )
-from library import OperationKind, OperationKindNames
+from library import OperationKind, OperationKindNames, SubstituteTemplate
 from manifest import EmitOperationKindLibrary, GeneratorTarget, Manifest
 
 
@@ -28,11 +28,23 @@ class GatherGemmScatterEmitOperationKindLibrary(EmitOperationKindLibrary):
         self.emitters = {
             OperationKind.Gemm: EmitGatherGemmScatterConfigurationLibrary
         }
-        self.header_template = "#pragma once\n#ifdef PADDLE_WITH_CUTLASS\n"
+        self.header_template = "#pragma once\n#ifdef PADDLE_WITH_CUTLASS\n#include \"paddle/phi/kernels/sparse/gpu/common.h\"\n"
         self.entry_template = ""
         self.configuration_prototype_template = ""
         self.configuration_template = ""
-        self.epilogue_template = "#endif"
+        self.namespace_template = """
+namespace phi {
+namespace sparse {
+"""
+        self.epilogue_template = """
+};
+}  // namespace sparse
+}  // namespace phi
+#endif
+"""
+        self.kernels_list = (
+            "static std::vector<fp16_gather_gemm_scatter> fp16_kernels = {\n"
+        )
 
     def __enter__(self):
         self.operation_path = os.path.join(
@@ -64,6 +76,13 @@ class GatherGemmScatterEmitOperationKindLibrary(EmitOperationKindLibrary):
             self.source_files.append(configuration_emitter.configuration_path)
 
         self.configurations.append(configuration_name)
+        self.kernels_list += (
+            """
+launchKernel<cutlass::half_t,"""
+            + configuration_name
+            + "::Gemm>,"
+        )
+
         self.top_level_file.write(
             '#include "'
             + self.operation_path
@@ -71,6 +90,27 @@ class GatherGemmScatterEmitOperationKindLibrary(EmitOperationKindLibrary):
             + configuration_name
             + '.h"\n'
         )
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        self.top_level_file.write(
+            SubstituteTemplate(
+                self.entry_template,
+                {'operation_name': OperationKindNames[self.kind]},
+            )
+        )
+
+        for configuration_name in self.configurations:
+            self.top_level_file.write(
+                SubstituteTemplate(
+                    self.configuration_template,
+                    {'configuration_name': configuration_name},
+                )
+            )
+
+        self.top_level_file.write(self.namespace_template)
+        self.top_level_file.write(self.kernels_list)
+        self.top_level_file.write(self.epilogue_template)
+        self.top_level_file.close()
 
 
 class GatherGemmScatterManifest(Manifest):

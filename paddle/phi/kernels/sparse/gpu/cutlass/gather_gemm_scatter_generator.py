@@ -126,7 +126,9 @@ def GenerateSM70_TensorOp_884(manifest, cuda_version):
     min_cc = 70
     max_cc = 75
 
-    alignment_constraints = [8, 4, 2, 1]
+    # According to https://github.com/NVIDIA/cutlass/issues/592,
+    # cutlass requires 128-bit alignment when performing gather-gemm-scatter fusion, for fp16, it's 8.
+    alignment_constraints = [8]
 
     for math_inst in math_instructions:
         tile_descriptions = [
