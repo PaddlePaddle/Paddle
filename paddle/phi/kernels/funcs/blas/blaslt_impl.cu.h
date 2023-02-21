@@ -77,12 +77,18 @@ struct MatmulDescriptor {
     // details about defaults; just need to set the transforms for A and B
     PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cublasLtMatmulDescCreate(&op_desc, compute_type, scale_type));
-    cublasOperation_t transx = trans_x ? CUBLAS_OP_T : CUBLAS_OP_N;
-    cublasOperation_t transy = trans_x ? CUBLAS_OP_T : CUBLAS_OP_N;
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmulDescSetAttribute(
-        op_desc, CUBLASLT_MATMUL_DESC_TRANSB, &transx, sizeof(transx)));
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmulDescSetAttribute(
-        op_desc, CUBLASLT_MATMUL_DESC_TRANSA, &transy, sizeof(transy)));
+    cublasOperation_t cublas_trans_x = trans_x ? CUBLAS_OP_T : CUBLAS_OP_N;
+    cublasOperation_t cublas_trans_y = trans_y ? CUBLAS_OP_T : CUBLAS_OP_N;
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        dynload::cublasLtMatmulDescSetAttribute(op_desc,
+                                                CUBLASLT_MATMUL_DESC_TRANSB,
+                                                &cublas_trans_x,
+                                                sizeof(cublas_trans_x)));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        dynload::cublasLtMatmulDescSetAttribute(op_desc,
+                                                CUBLASLT_MATMUL_DESC_TRANSA,
+                                                &cublas_trans_y,
+                                                sizeof(cublas_trans_y)));
 
     // Create matrix descriptors
     CreateMatrixLayout(&x_desc, mat_type, M, K, trans_x);
