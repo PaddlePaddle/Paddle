@@ -79,6 +79,30 @@ class TestXlogyAPI(unittest.TestCase):
         )
         paddle.enable_static()
 
+    def test_api_dygraph_grad(self, type=None):
+        self.setUp(type)
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x, stop_gradient=False)
+        other = paddle.to_tensor(self.other, stop_gradient=False)
+        res = paddle.xlogy(x, other)
+        res.sum().backward()
+        mask = (x == 0) & ((other <= 0) | (other == float('inf')))
+        tmp_other = paddle.where(
+            mask, paddle.ones(other.shape, other.dtype), other
+        )
+        ref_x_grad = paddle.log(tmp_other)
+        ref_other_grad = x / tmp_other
+        for grads in [(ref_x_grad, x.grad), (ref_other_grad, other.grad)]:
+            ref_nan_mask = paddle.isnan(grads[0])
+            res_nan_mask = paddle.isnan(grads[1])
+            np.testing.assert_allclose(ref_nan_mask, res_nan_mask)
+            np.testing.assert_allclose(
+                grads[1][~res_nan_mask].numpy(),
+                grads[0][~ref_nan_mask].numpy(),
+                rtol=1e-05,
+            )
+        paddle.enable_static()
+
     def test_api(self):
         self.api_case('nan_test')
         self.api_case()

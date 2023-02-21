@@ -5100,6 +5100,7 @@ def xlogy(x, other, name=None):
                       [0.0, float('inf'), float('nan'), 3.0]])
             other = paddle.to_tensor([[0.0, float('inf'), float('nan'), 1.0],
                                     [1.0, 2.0, 0.0, 3.0]])
+            out3 = paddle.xlogy(x, other)
             print(out3.numpy())
             # out3:
             # [[    -inf      inf      nan 0.      ]
@@ -5107,8 +5108,6 @@ def xlogy(x, other, name=None):
     """
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'xlogy')
-    tmp_res = paddle.log(other)
-    mask = (x == 0) & (~paddle.isnan(tmp_res))
-    res = paddle.zeros(tmp_res.shape)
-    res[~mask] = (x * tmp_res)[~mask]
-    return res
+    mask = (x == 0) & ((other <= 0) | (other == float('inf')))
+    other = paddle.where(mask, paddle.ones(other.shape, other.dtype), other)
+    return x * paddle.log(other)
