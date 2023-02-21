@@ -155,7 +155,7 @@ void SparseMaskHelperKernel(const Context& dev_ctx,
 }  // namespace sparse
 }  // namespace phi
 
-PD_REGISTER_KERNEL(sparse_mask,
+PD_REGISTER_KERNEL(mask,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::SparseMaskKernel,
@@ -169,7 +169,7 @@ PD_REGISTER_KERNEL(sparse_mask,
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
-PD_REGISTER_KERNEL(sparse_mask_helper,
+PD_REGISTER_KERNEL(mask_helper,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::SparseMaskHelperKernel,
