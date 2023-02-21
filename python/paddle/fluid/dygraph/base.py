@@ -36,9 +36,6 @@ import warnings
 __all__ = [
     'no_grad',
     'no_grad_',
-    'enable_grad',
-    'is_grad_enabled',
-    'set_grad_enabled',
     'grad',
     'guard',
     'enable_dygraph',
