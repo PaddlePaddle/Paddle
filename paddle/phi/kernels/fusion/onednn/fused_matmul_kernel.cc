@@ -113,7 +113,8 @@ class FusedMatmulOneDNNHandler
 
     // TODO(jczaja): Why not for int8??
     if (!funcs::is_int8<OT>() && is_output_fused) {
-      out_strides = FakeTransposeStrides(out_ddims);
+      std::vector<int> transpose_axis = {0, 2, 1, 3};
+      out_strides = phi::funcs::FakeTransposeStrides(out_ddims, transpose_axis);
     }
 
     auto x_md = memory::desc(x_dims, funcs::OneDNNGetDataType<XT>(), x_strides);
@@ -198,24 +199,6 @@ class FusedMatmulOneDNNHandler
     return matmul_attrs;
   }
 
-  std::vector<int64_t> FakeTransposeStrides(
-      const std::vector<int64_t> &matmul_out_dims) const {
-    // fuse matmul_v2 + transpose + reshape guarantees that output is 4D and
-    // transpose axis are: {0, 2, 1, 3}
-    std::vector<int64_t> transpose_axis = {0, 2, 1, 3};
-    std::vector<int64_t> fake_strides(transpose_axis.size());
-    int ndims = static_cast<int>(transpose_axis.size());
-
-    int total_stride = 1;
-
-    for (int i = ndims - 1; i >= 0; --i) {
-      fake_strides[transpose_axis[i]] = total_stride;
-      total_stride *= matmul_out_dims[transpose_axis[i]];
-    }
-
-    return fake_strides;
-  }
-
   std::shared_ptr<memory> AcquireWeightsMemory(const DenseTensor *input) {
     const YT *input_data = input->data<YT>();
     return this->AcquireMemoryFromPrimitive(
@@ -235,14 +218,6 @@ class FusedMatmulOneDNNHandler
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
   }
 };
-
-DDim RowMatrixDimsFromVector(const DDim &x_dim) {
-  return x_dim.size() > 1 ? x_dim : make_ddim({1, x_dim[0]});
-}
-
-DDim ColumnMatrixDimsFromVector(const DDim &y_dim) {
-  return y_dim.size() > 1 ? y_dim : make_ddim({y_dim[0], 1});
-}
 
 std::vector<int64_t> TransposeAxis(const std::vector<int64_t> &x,
                                    const std::vector<int> &axis) {
@@ -287,8 +262,9 @@ std::vector<int64_t> GetInputStrides(const std::string input_name,
     new_dims = input_dims.reshape(shape).transpose(axis);
   }
 
-  auto &MatrixDimsFromVector =
-      input_name == "X" ? RowMatrixDimsFromVector : ColumnMatrixDimsFromVector;
+  auto &MatrixDimsFromVector = input_name == "X"
+                                   ? funcs::RowMatrixDimsFromVector
+                                   : funcs::ColumnMatrixDimsFromVector;
   funcs::MatDescriptor mat_dim = funcs::CreateMatrixDescriptor(
       MatrixDimsFromVector(new_dims), 0, transpose_input);
 

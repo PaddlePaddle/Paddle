@@ -105,8 +105,8 @@ void TransposeKernel(const Context& dev_ctx,
                      const std::vector<int>& axis,
                      DenseTensor* out) {
   PADDLE_ENFORCE_EQ(
-      dev_ctx.GetPlace().GetType() == AllocationType::CPU,
-      true,
+      dev_ctx.GetPlace().GetType(),
+      AllocationType::CPU,
       errors::PreconditionNotMet("oneDNN Transpose kernel must use CPUPlace"));
 
   SetInMemDescWithLogicalLayoutFusesSupport(
@@ -169,14 +169,7 @@ void TransposeKernel(const Context& dev_ctx,
   auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
       x.mem_desc(), funcs::to_void_cast(x.data<T>()));
 
-  // a trick is used here to fake transpose of out_md, so later it will be
-  // "untransposed", leaving output data in plain format tag
-  std::vector<int64_t> fake_strides(axis.size());
-  int total_stride = 1;
-  for (int i = static_cast<int>(x_vec_dims.size()) - 1; i >= 0; --i) {
-    fake_strides[axis[i]] = total_stride;
-    total_stride *= x_vec_dims[axis[i]];
-  }
+  auto fake_strides = funcs::FakeTransposeStrides(x_vec_dims, axis);
   auto dst_md = dnnl::memory::desc(x_vec_dims, out_type, fake_strides);
   auto reorder_dst_memory_p =
       reorder_handler.AcquireDstMemory(out, dst_md, dev_ctx.GetPlace());
@@ -198,7 +191,8 @@ void TransposeKernel(const Context& dev_ctx,
   SetOutMemDescWithLogicalLayoutFusesSupport(
       dev_ctx,
       out,
-      reorder_dst_memory_p->get_desc().permute_axes(permute_axis));
+      reorder_dst_memory_p->get_desc().permute_axes(
+          funcs::TransposeToPermuteAxes(axis)));
 }
 }  // namespace phi
 
