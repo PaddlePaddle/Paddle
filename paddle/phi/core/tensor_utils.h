@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/core/tensor_meta.h"
+#include "paddle/phi/core/utils/data_type.h"
 
 namespace phi {
 
@@ -147,8 +148,7 @@ inline T GetValue(const Context& dev_ctx, const DenseTensor& x) {
 template <typename T = int32_t>
 inline std::vector<T> GetVectorFromTensor(const phi::DenseTensor* x) {
   std::vector<T> vec_new_data;
-  if (paddle::framework::TransToProtoVarType(x->dtype()) ==
-      paddle::framework::proto::VarType::INT32) {
+  if (phi::TransToProtoVarType(x->dtype()) == ProtoDataType::INT32) {
     auto* data = x->data<int>();
     phi::DenseTensor cpu_attr_tensor;
     if (!paddle::platform::is_cpu_place(x->place())) {
@@ -156,8 +156,7 @@ inline std::vector<T> GetVectorFromTensor(const phi::DenseTensor* x) {
       data = cpu_attr_tensor.data<int>();
     }
     vec_new_data = std::vector<T>(data, data + x->numel());
-  } else if (paddle::framework::TransToProtoVarType(x->dtype()) ==
-             paddle::framework::proto::VarType::INT64) {
+  } else if (phi::TransToProtoVarType(x->dtype()) == ProtoDataType::INT64) {
     auto* data = x->data<int64_t>();
     phi::DenseTensor cpu_attr_tensor;
     if (!paddle::platform::is_cpu_place(x->place())) {
@@ -169,7 +168,7 @@ inline std::vector<T> GetVectorFromTensor(const phi::DenseTensor* x) {
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "The dtype of Tensor must be int32 or int64, but received: %s",
-        paddle::framework::TransToProtoVarType(x->dtype())));
+        phi::TransToProtoVarType(x->dtype())));
   }
   return vec_new_data;
 }
