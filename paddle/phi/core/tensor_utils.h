@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include <paddle/fluid/framework/operator.h>
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/selected_rows.h"
@@ -142,6 +144,38 @@ inline T GetValue(const Context& dev_ctx, const DenseTensor& x) {
     value = x.data<T>()[0];
   }
   return value;
+}
+
+template <typename T = int32_t>
+inline std::vector<T> GetVectorFromTensor(const phi::DenseTensor* x) {
+  std::vector<T> vec_new_data;
+  if (paddle::framework::TransToProtoVarType(x->dtype()) ==
+      paddle::framework::proto::VarType::INT32) {
+    auto* data = x->data<int>();
+    phi::DenseTensor cpu_attr_tensor;
+    if (!paddle::platform::is_cpu_place(x->place())) {
+      paddle::framework::TensorCopySync(
+          *x, paddle::platform::CPUPlace(), &cpu_attr_tensor);
+      data = cpu_attr_tensor.data<int>();
+    }
+    vec_new_data = std::vector<T>(data, data + x->numel());
+  } else if (paddle::framework::TransToProtoVarType(x->dtype()) ==
+             paddle::framework::proto::VarType::INT64) {
+    auto* data = x->data<int64_t>();
+    phi::DenseTensor cpu_attr_tensor;
+    if (!paddle::platform::is_cpu_place(x->place())) {
+      paddle::framework::TensorCopySync(
+          *x, paddle::platform::CPUPlace(), &cpu_attr_tensor);
+      data = cpu_attr_tensor.data<int64_t>();
+    }
+    // NOTE: Converting int64 to int32 may cause data overflow.
+    vec_new_data = std::vector<T>(data, data + x->numel());
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The dtype of Tensor must be int32 or int64, but received: %s",
+        paddle::framework::TransToProtoVarType(x->dtype())));
+  }
+  return vec_new_data;
 }
 
 }  // namespace phi

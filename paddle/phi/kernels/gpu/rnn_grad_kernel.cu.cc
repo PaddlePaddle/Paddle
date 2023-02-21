@@ -16,7 +16,7 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/utils/get_data_from_tensor.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/gpu/rnn_functor.h"
@@ -223,8 +223,7 @@ void RnnGradKernel(const Context &dev_ctx,
 #endif
   std::vector<int> SequenceLength;
   if (has_seq_length) {
-    SequenceLength =
-        phi::funcs::GetDataFromDenseTensor<int>(sequence_length.get_ptr());
+    SequenceLength = phi::GetVectorFromTensor<int>(sequence_length.get_ptr());
   }
 
   auto input_dims = x.dims();
