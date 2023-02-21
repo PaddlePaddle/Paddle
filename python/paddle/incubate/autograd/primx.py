@@ -18,6 +18,7 @@ from collections import OrderedDict
 
 import paddle
 from paddle.fluid import framework as framework
+from paddle.fluid.core import prim_config
 from paddle.fluid.framework import Operator, default_main_program
 from paddle.incubate.autograd.utils import as_tensors
 
@@ -36,6 +37,7 @@ from .utils import (
     flatten_and_remove_none,
     get_input_var_list,
     get_output_var_list,
+    map_output_for_composite,
     prepare_python_api_arguments,
 )
 
@@ -596,19 +598,43 @@ def _lower_composite(block, blacklist=[]):
         # if output var of composite rule is None, this means this var is not needed
         none_vars_to_remove = set()
 
+        change = None
         # Step2: Process all ops in the target block
         for op_idx in range(len(block.ops)):
             op = block.ops[op_idx]
             ops_to_remove.append(op_idx)
             if lookup_fn(op.type) is not None and op.type not in blacklist:
+                change = True
+                op_name = op.type
+                prim_config["composite_ops_record"].add(op_name)
                 input_args = prepare_python_api_arguments(op)
                 bind(input_args, to_bind, value_table)
 
+                orig_outs = expand_nested_list(map_output_for_composite(op))
+                new_outs = expand_nested_list(
+                    as_tensors(lower_fn(op, *input_args))
+                )
+                assert len(orig_outs) == len(new_outs), (
+                    f'when replace origin op {op_name} with composite rule, num of origin outs should be equal to new outs, '
+                    f'but len(orig_outs) = {len(orig_outs)} and len(new_outs) = {len(new_outs)}'
+                )
                 for orig_out, new_out in zip(
-                    expand_nested_list(get_output_var_list(op)),
-                    expand_nested_list(as_tensors(lower_fn(op, *input_args))),
+                    orig_outs,
+                    new_outs,
                 ):
-                    if new_out is not None:
+                    if orig_out is None:
+                        # to keep same as phi op defination, orig_out may receive None
+                        continue
+                    elif new_out is not None:
+                        assert orig_out.dtype == new_out.dtype, (
+                            f'when replace origin op {op_name} with composite rule, origin out dtype should be equal to new out dtype, '
+                            f'but orig_out.dtype={orig_out.dtype} and new_out.dtype={new_out.dtype}'
+                        )
+                        if orig_out.shape and new_out.shape:
+                            assert orig_out.shape == new_out.shape, (
+                                f'when replace origin op {op_name} with composite rule, origin out shape should be equal to new out shape, '
+                                f'but orig_out.shape={orig_out.shape} and new_out.shape={new_out.shape}'
+                            )
                         assert not (orig_out is None) ^ (
                             new_out is None
                         ), "orig_out and new_out should match."
@@ -675,6 +701,10 @@ def _lower_composite(block, blacklist=[]):
             block.desc._remove_var(var_name.encode())
             del block.vars[var_name]
         block._sync_with_cpp()
+
+        # composite ops may contain other composite ops, thus, call _lower_composite again.
+        if change:
+            _lower_composite(block, blacklist)
         return
 
     elif isinstance(block, typing.Sequence):

@@ -61,12 +61,14 @@ from ..fluid.framework import (
     OpProtoHolder,
 )  # noqa: F401
 from ..fluid.framework import _dygraph_tracer  # noqa: F401
+from ..fluid.framework import generate_control_dev_var_name  # noqa: F401
 
 from ..fluid.layer_helper import LayerHelper  # noqa: F401
 from ..fluid.framework import in_dygraph_mode  # noqa: F401
 from ..fluid.framework import _global_flags  # noqa: F401
 from ..fluid.framework import _apply_pass  # noqa: F401
 from ..fluid.framework import switch_main_program
+from ..fluid.framework import switch_startup_program
 from ..fluid.framework import _set_expected_place  # noqa: F401
 from ..fluid.framework import Block, Program  # noqa: F401
 from ..fluid.framework import IrGraph  # noqa: F401

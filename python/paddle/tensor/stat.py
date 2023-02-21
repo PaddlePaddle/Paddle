@@ -148,7 +148,7 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'var')
 
     u = mean(x, axis, True, name)
-    out = paddle.sum((x - u) ** 2, axis, keepdim=keepdim, name=name)
+    out = paddle.sum(paddle.pow((x - u), 2), axis, keepdim=keepdim, name=name)
 
     dtype = x.dtype
     n = paddle.cast(paddle.numel(x), paddle.int64) / paddle.cast(
@@ -212,7 +212,6 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
     """
     if not in_dygraph_mode():
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'std')
-
     out = var(**locals())
     return paddle.sqrt(out)
 
