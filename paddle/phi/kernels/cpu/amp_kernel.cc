@@ -24,8 +24,6 @@
 #include "paddle/phi/kernels/isfinite_kernel.h"
 #include "paddle/phi/kernels/reduce_all_kernel.h"
 
-#include "paddle/fluid/framework/tensor_util.h"
-
 namespace phi {
 
 // Utils

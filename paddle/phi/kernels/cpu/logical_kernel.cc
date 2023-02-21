@@ -20,7 +20,7 @@
 #include "paddle/phi/kernels/funcs/logical_functor.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/transform.h"
+#include "paddle/phi/common/transform.h"
 
 namespace phi {
 
@@ -47,7 +47,7 @@ void LogicalNotKernel(const Context& dev_ctx,
   auto* out_ptr = dev_ctx.template Alloc<bool>(out);
   funcs::LogicalNotFunctor<T> unary_func;
 
-  paddle::platform::Transform<Context> trans;
+  phi::Transform<Context> trans;
   trans(dev_ctx, x.data<T>(), x.data<T>() + x.numel(), out_ptr, unary_func);
 }
 

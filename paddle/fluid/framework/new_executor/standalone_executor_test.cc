@@ -188,8 +188,11 @@ TEST(InterpreterCore, skip_gc_vars) {
                                    "elementwise_add_0.tmp_0",
                                    "tmp_0"};
 
-  std::shared_ptr<InterpreterCore> main_core =
-      CreateInterpreterCore(place, main_prog, &scope, {}, skip_gc_vars);
+  interpreter::ExecutionConfig execution_config;
+  execution_config.skip_gc_vars = skip_gc_vars;
+
+  std::shared_ptr<InterpreterCore> main_core = CreateInterpreterCore(
+      place, main_prog, &scope, /*fetch_names=*/{}, execution_config);
 
   auto check_gc_result =
       [](Scope& scope, std::set<std::string>& vars, bool is_skip_gc) {
