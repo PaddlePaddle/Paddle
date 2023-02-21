@@ -116,7 +116,7 @@ struct IntegerTypeStorage : public ir::TypeStorage {
 class IntegerType : public ir::Type {
  public:
   using Type::Type;
-  REGISTER_TYPE_UTILS(IntegerType, IntegerTypeStorage);
+  DECLARE_TYPE_UTILITY_FUNCTOR(IntegerType, IntegerTypeStorage);
 
   static IntegerType get(ir::IrContext *context,
                          unsigned width,

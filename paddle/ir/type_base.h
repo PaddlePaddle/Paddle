@@ -215,7 +215,7 @@ struct TypeManager {
 /// \brief This macro definition is used to add some necessary functions to the
 /// custom Type class.
 ///
-#define REGISTER_TYPE_UTILS(concrete_type, storage_type)                   \
+#define DECLARE_TYPE_UTILITY_FUNCTOR(concrete_type, storage_type)          \
   using StorageType = storage_type;                                        \
   StorageType *storage() const {                                           \
     return static_cast<StorageType *>(this->storage_);                     \

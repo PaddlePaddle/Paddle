@@ -18,14 +18,14 @@
 
 namespace ir {
 ///
-/// \brief Interfaces for user-created built-in types. For example:
-/// Type fp32 = Float32Type::get(ctx);
+/// \brief Definitions of built-in type classes. The built-in type object get
+/// method is as follows: Type fp32 = Float32Type::get(ctx);
 ///
 class Float32Type : public ir::Type {
  public:
   using Type::Type;
 
-  REGISTER_TYPE_UTILS(Float32Type, ir::TypeStorage);
+  DECLARE_TYPE_UTILITY_FUNCTOR(Float32Type, ir::TypeStorage);
 
   static Float32Type get(ir::IrContext *context);
 };
@@ -34,7 +34,7 @@ class Int32Type : public ir::Type {
  public:
   using Type::Type;
 
-  REGISTER_TYPE_UTILS(Int32Type, ir::TypeStorage);
+  DECLARE_TYPE_UTILITY_FUNCTOR(Int32Type, ir::TypeStorage);
 
   static Int32Type get(ir::IrContext *context);
 };
