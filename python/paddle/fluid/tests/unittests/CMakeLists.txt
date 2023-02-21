@@ -1230,3 +1230,6 @@ set_tests_properties(test_parallel_executor_drop_scope
 set_tests_properties(
   test_cuda_graph_static_mode
   PROPERTIES ENVIRONMENT "FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR=1")
+set_tests_properties(
+  test_cuda_graph_static_mode_error
+  PROPERTIES ENVIRONMENT "FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR=1")

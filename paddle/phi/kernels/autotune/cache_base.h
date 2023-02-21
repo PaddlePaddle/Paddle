@@ -54,7 +54,7 @@ namespace phi {
 namespace autotune {
 
 template <typename... Args>
-size_t GetKey(Args&&... args) {
+size_t GenKey(Args&&... args) {
   size_t seed = 0;
   HashCombine(&seed, std::forward<Args>(args)...);
   return seed;
@@ -79,7 +79,7 @@ struct ConvCacheKey {
         groups(arg_groups),
         data_layout(arg_data_layout) {}
   size_t hash_value() const {
-    return GetKey(x_dims,
+    return GenKey(x_dims,
                   w_dims,
                   strides,
                   paddings,
