@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/rnn_kernel.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
-#include "paddle/phi/core/utils/get_data_from_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/utils/get_data_from_tensor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/xpu/rnn_util.h"
 
