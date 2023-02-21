@@ -41,7 +41,7 @@ limit = {
             True,
             np.float16,
             np.int32,
-            np.random.rand(2, 2),
+            np.random.rand(3, 3),
         ),
         (
             np.random.rand(10, 10, 10),
@@ -51,7 +51,7 @@ limit = {
             False,
             np.float32,
             np.int32,
-            np.random.rand(3, 3, 10),
+            np.random.rand(5, 10, 10),
         ),
         (
             np.random.rand(4, 8, 16, 16),
@@ -61,7 +61,7 @@ limit = {
             True,
             np.float64,
             np.int64,
-            np.random.rand(3, 4, 12, 12),
+            np.random.rand(4, 3, 16, 16),
         ),
     ],
 )
