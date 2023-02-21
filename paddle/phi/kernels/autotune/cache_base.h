@@ -71,23 +71,18 @@ struct MatmulCacheKey {
                  const std::vector<int64_t>& y_dims,
                  const bool trans_x,
                  const bool trans_y,
-                 phi::DataType dtype)
-      : x_dims_(x_dims), y_dims_(y_dims), dtype_(dtype) {
-    key = GenKey(x_dims_,
-                 y_dims_,
+                 phi::DataType dtype) {
+    key = GenKey(x_dims,
+                 y_dims,
                  static_cast<int64_t>(trans_x),
                  static_cast<int64_t>(trans_y),
-                 static_cast<int64_t>(dtype_));
+                 static_cast<int64_t>(dtype));
   }
   const size_t GetKey() { return key; }
   const size_t GetSubKey(int64_t idx) { return GenKey(key, idx); }
 
  private:
   size_t key;
-  size_t sub_key;
-  std::vector<int64_t> x_dims_;
-  std::vector<int64_t> y_dims_;
-  phi::DataType dtype_;
 };
 
 struct ConvCacheKey {

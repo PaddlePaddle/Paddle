@@ -50,10 +50,6 @@ cublasComputeType_t GetCudaComputeType() {
   }
 }
 
-inline cublasOperation_t ConvertToCublasOperation(bool trans) {
-  return trans ? CUBLAS_OP_T : CUBLAS_OP_N;
-}
-
 struct MatmulDescriptor {
  public:
   cublasLtMatmulDesc_t op_desc{nullptr};
@@ -61,79 +57,73 @@ struct MatmulDescriptor {
   cublasLtMatrixLayout_t y_desc{nullptr};
   cublasLtMatrixLayout_t out_desc{nullptr};
 
-  void Create(cublasComputeType_t compute_type,
-              cudaDataType_t mat_type,
-              cudaDataType_t scale_type,
-              const int M,
+  template <typename T>
+  void Create(const int M,
               const int N,
               const int K,
-              const cublasOperation_t& trans_x,
-              const cublasOperation_t& trans_y,
+              const bool trans_x,
+              const bool trans_y,
               const int batch_size = 1,
               int64_t stride_x = 0,
               int64_t stride_y = 0,
               int64_t stride_out = 0) {
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+
+    cudaDataType_t mat_type = ConvertToCudaDataType<T>();
+    cudaDataType_t scale_type = ConvertToCudaDataType<MT>();
+    cublasComputeType_t compute_type = GetCudaComputeType<T>();
+
     // Create operation desciriptor; see cublasLtMatmulDescAttributes_t for
     // details about defaults; just need to set the transforms for A and B
     PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cublasLtMatmulDescCreate(&op_desc, compute_type, scale_type));
+    cublasOperation_t transx = trans_x ? CUBLAS_OP_T : CUBLAS_OP_N;
+    cublasOperation_t transy = trans_x ? CUBLAS_OP_T : CUBLAS_OP_N;
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmulDescSetAttribute(
-        op_desc, CUBLASLT_MATMUL_DESC_TRANSB, &trans_x, sizeof(trans_x)));
+        op_desc, CUBLASLT_MATMUL_DESC_TRANSB, &transx, sizeof(transx)));
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmulDescSetAttribute(
-        op_desc, CUBLASLT_MATMUL_DESC_TRANSA, &trans_y, sizeof(trans_y)));
+        op_desc, CUBLASLT_MATMUL_DESC_TRANSA, &transy, sizeof(transy)));
 
     // Create matrix descriptors
-    if (trans_x) {
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          dynload::cublasLtMatrixLayoutCreate(&x_desc, mat_type, M, K, M));
-    } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          dynload::cublasLtMatrixLayoutCreate(&x_desc, mat_type, K, M, K));
-    }
-    if (trans_y) {
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          dynload::cublasLtMatrixLayoutCreate(&y_desc, mat_type, K, N, K));
-    } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          dynload::cublasLtMatrixLayoutCreate(&y_desc, mat_type, N, K, N));
-    }
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        dynload::cublasLtMatrixLayoutCreate(&out_desc, mat_type, N, M, N));
+    CreateMatrixLayout(&x_desc, mat_type, M, K, trans_x);
+    CreateMatrixLayout(&y_desc, mat_type, K, N, trans_y);
+    CreateMatrixLayout(&out_desc, mat_type, M, N, false);
 
     // Config batch size and stride.
     if (batch_size > 1) {
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutSetAttribute(
-          x_desc,
-          CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT,
-          &batch_size,
-          sizeof(batch_size)));
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutSetAttribute(
-          y_desc,
-          CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT,
-          &batch_size,
-          sizeof(batch_size)));
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutSetAttribute(
-          out_desc,
-          CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT,
-          &batch_size,
-          sizeof(batch_size)));
-
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutSetAttribute(
-          x_desc,
-          CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET,
-          &stride_x,
-          sizeof(stride_x)));
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutSetAttribute(
-          y_desc,
-          CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET,
-          &stride_y,
-          sizeof(stride_y)));
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutSetAttribute(
-          out_desc,
-          CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET,
-          &stride_out,
-          sizeof(stride_out)));
+      SetBatchAndStride(x_desc, batch_size, stride_x);
+      SetBatchAndStride(y_desc, batch_size, stride_y);
+      SetBatchAndStride(out_desc, batch_size, stride_out);
     }
+  }
+
+  void CreateMatrixLayout(cublasLtMatrixLayout_t* desc,
+                          cudaDataType type,
+                          uint64_t rows,
+                          uint64_t cols,
+                          bool trans) {
+    if (trans) {
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          dynload::cublasLtMatrixLayoutCreate(desc, type, rows, cols, rows));
+    } else {
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          dynload::cublasLtMatrixLayoutCreate(desc, type, cols, rows, cols));
+    }
+  }
+
+  void SetBatchAndStride(cublasLtMatrixLayout_t desc,
+                         int batch_size,
+                         int64_t stride) {
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutSetAttribute(
+        desc,
+        CUBLASLT_MATRIX_LAYOUT_BATCH_COUNT,
+        &batch_size,
+        sizeof(batch_size)));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutSetAttribute(
+        desc,
+        CUBLASLT_MATRIX_LAYOUT_STRIDED_BATCH_OFFSET,
+        &stride,
+        sizeof(stride)));
   }
 
   void Release() {
@@ -164,15 +154,8 @@ struct MatmulWithCublasLt {
                   const bool trans_x,
                   const bool trans_y,
                   phi::autotune::MatmulCacheKey* matmul_key = nullptr) {
-    cublasOperation_t transx = ConvertToCublasOperation(trans_x);
-    cublasOperation_t transy = ConvertToCublasOperation(trans_y);
-
-    cudaDataType_t mat_type = ConvertToCudaDataType<T>();
-    cudaDataType_t scale_type = ConvertToCudaDataType<MT>();
-    cublasComputeType_t compute_type = GetCudaComputeType<T>();
-
     MatmulDescriptor desc;
-    desc.Create(compute_type, mat_type, scale_type, M, N, K, transx, transy);
+    desc.Create<T>(M, N, K, trans_x, trans_y);
     RunImpl(ctx, desc, x_data, y_data, out_data, matmul_key);
     desc.Release();
   }
@@ -192,26 +175,9 @@ struct MatmulWithCublasLt {
       int64_t stride_y,
       int64_t stride_out,
       phi::autotune::MatmulCacheKey* matmul_key = nullptr) {
-    cublasOperation_t transx = ConvertToCublasOperation(trans_x);
-    cublasOperation_t transy = ConvertToCublasOperation(trans_y);
-
-    cudaDataType_t mat_type = ConvertToCudaDataType<T>();
-    cudaDataType_t scale_type = ConvertToCudaDataType<MT>();
-    cublasComputeType_t compute_type = GetCudaComputeType<T>();
-
     MatmulDescriptor desc;
-    desc.Create(compute_type,
-                mat_type,
-                scale_type,
-                M,
-                N,
-                K,
-                transx,
-                transy,
-                batch_size,
-                stride_x,
-                stride_y,
-                stride_out);
+    desc.Create<T>(
+        M, N, K, trans_x, trans_y, batch_size, stride_x, stride_y, stride_out);
     RunImpl(ctx, desc, x_data, y_data, out_data, matmul_key);
     desc.Release();
   }
