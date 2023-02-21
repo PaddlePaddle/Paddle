@@ -3109,6 +3109,7 @@ def kron(x, y, name=None):
         $$
         k_{t} = i_{t} * s_{t} + j_{t}, t = 0, 1, ..., N
         $$
+
     Args:
         x (Tensor): the fist operand of kron op, data type: float16, float32, float64, int32 or int64.
         y (Tensor): the second operand of kron op, data type: float16, float32, float64, int32 or int64. Its data type should be the same with x.
