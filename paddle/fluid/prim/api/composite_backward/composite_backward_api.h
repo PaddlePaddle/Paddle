@@ -343,8 +343,8 @@ void topk_grad(const Tensor& x,
                const bool& sorted,
                Tensor* x_grad) {
   if (x_grad) {
-    int in_dims = x.dims();
-    int out_dims = indices.dims();
+    const auto& in_dims = x.dims();
+    const auto& out_dims = indices.dims();
     auto zero_tensor = full<T>(phi::vectorize(x.dims()), 0.0, x.dtype());
     auto x_grad_tmp = Tensor();
 
@@ -375,8 +375,8 @@ void topk_grad(const Tensor& x,
       auto tmp_out_grad = transpose<T>(out_grad, tmp_perm);
       auto tmp_indices = transpose<T>(indices, tmp_perm);
       // scatter grad to grad_x
-      auto tmp_grad_x = scatter<T>(tmp_zero_x_grad, tmp_indices,
-                                   tmp_out_grad, false);
+      auto tmp_grad_x =
+          scatter<T>(tmp_zero_x_grad, tmp_indices, tmp_out_grad, false);
       x_grad_tmp = transpose<T>(tmp_grad_x, reverse_perm);
     }
     set_output<T>(x_grad_tmp, x_grad);
