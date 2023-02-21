@@ -104,4 +104,31 @@ struct CommonMemEvent {
   uint64_t peak_reserved;
 };
 
+struct OperatorSupplementOriginEvent {
+ public:
+  OperatorSupplementOriginEvent(
+      std::function<void *(size_t)> arena_allocator,
+      uint64_t timestamp_ns,
+      const std::string &type_name,
+      const std::vector<std::pair<const char *, std::vector<DDim>>> &shapes,
+      const AttributeMap &attributes,
+      uint64_t op_id)
+      : timestamp_ns(timestamp_ns), attributes(attributes), op_id(op_id) {
+    auto buf = static_cast<char *>(arena_allocator(type_name.length() + 1));
+    strncpy(buf, type_name.c_str(), type_name.length() + 1);
+    op_type = buf;
+    for (auto it = shapes.begin(); it != shapes.end(); it++) {
+      input_shapes[std::string((*it).first)] = (*it).second;
+    }
+  }
+  uint64_t timestamp_ns;
+  const char *op_type = nullptr;  // not owned, designed for performance
+  // input shapes
+  std::map<std::string, std::vector<DDim>> input_shapes;
+  // op attributes
+  AttributeMap attributes;
+  // op id
+  uint64_t op_id;
+};
+
 }  // namespace phi
