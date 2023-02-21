@@ -834,7 +834,7 @@ def bitwise_and(x, y, out=None, name=None):
     Apply ``bitwise_and`` on Tensor ``X`` and ``Y`` .
 
     .. math::
-        Out = X \\& Y
+        Out = X \& Y
 
     .. note::
         ``paddle.bitwise_and`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
@@ -909,7 +909,7 @@ def bitwise_xor(x, y, out=None, name=None):
     Apply ``bitwise_xor`` on Tensor ``X`` and ``Y`` .
 
     .. math::
-        Out = X ^\\wedge Y
+        Out = X ^\wedge Y
 
     .. note::
         ``paddle.bitwise_xor`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
@@ -946,7 +946,7 @@ def bitwise_not(x, out=None, name=None):
     Apply ``bitwise_not`` on Tensor ``X``.
 
     .. math::
-        Out = \\sim X
+        Out = \sim X
 
     .. note::
         ``paddle.bitwise_not`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
