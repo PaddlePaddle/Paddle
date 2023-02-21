@@ -18,7 +18,7 @@
 #include <type_traits>
 #include <unordered_map>
 
-#include "paddle/ir/rw_lock.h"
+#include "paddle/ir/spin_lock.h"
 #include "paddle/ir/type_id.h"
 
 namespace ir {
@@ -148,12 +148,12 @@ class StorageManager {
   std::unordered_map<TypeId, std::unique_ptr<ParametricStorageManager>>
       parametric_instance_;
 
-  ir::RWLock parametric_instance_rw_lock_;
+  ir::SpinLock parametric_instance_lock_;
 
   // This map is a mapping between type id and parameterless type storage.
   std::unordered_map<TypeId, StorageBase *> parameterless_instances_;
 
-  ir::RWLock parameterless_instances_rw_lock_;
+  ir::SpinLock parameterless_instances_lock_;
 };
 
 }  // namespace ir

@@ -56,6 +56,14 @@ class IrContext {
   IrContextImpl &impl() { return *impl_; }
 
   ///
+  /// \brief Register an AbstractType to IrContext
+  ///
+  /// \param type_id The type id of the AbstractType.
+  /// \param abstract_type AbstractType* provided by user.
+  ///
+  void RegisterAbstractType(ir::TypeId type_id, AbstractType *abstract_type);
+
+  ///
   /// \brief Returns the storage uniquer used for constructing TypeStorage
   /// instances.
   ///

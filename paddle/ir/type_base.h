@@ -216,7 +216,6 @@ struct TypeManager {
 /// custom Type class.
 ///
 #define REGISTER_TYPE_UTILS(concrete_type, storage_type)                   \
-  using Type::Type;                                                        \
   using StorageType = storage_type;                                        \
   StorageType *storage() const {                                           \
     return static_cast<StorageType *>(this->storage_);                     \
@@ -227,8 +226,18 @@ struct TypeManager {
     return val.type_id() == type_id();                                     \
   }                                                                        \
   template <typename... Args>                                              \
-  static concrete_type create(IrContext *ctx, Args... args) {              \
+  static concrete_type create(ir::IrContext *ctx, Args... args) {          \
     return ir::TypeManager::template get<concrete_type>(ctx, args...);     \
   }
+
+///
+/// \brief This macro definition is used to register custom Type class.
+///
+#define REGISTER_TYPE_2_IRCONTEXT(concrete_type, ir_context)               \
+  ir::AbstractType *abstract_type_##concrete_type = new ir::AbstractType(  \
+      std::move(ir::AbstractType::get(ir::TypeId::get<concrete_type>()))); \
+  ir_context->RegisterAbstractType(ir::TypeId::get<concrete_type>(),       \
+                                   abstract_type_##concrete_type);         \
+  ir::TypeManager::RegisterType<concrete_type>(ir_context);
 
 }  // namespace ir

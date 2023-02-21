@@ -5,11 +5,12 @@ endif()
 set(NEWIR_SOURCE_DIR "${PADDLE_SOURCE_DIR}/paddle/ir")
 set(NEWIR_BINARY_DIR "${PADDLE_BINARY_DIR}/paddle/ir")
 
-cc_library(storage_manager SRCS storage_manager.cc)
+file(GLOB IR_SRCS "*.cc")
 
-cc_library(
-  ir_context
-  SRCS ir_context.cc
-  DEPS storage_manager)
+file(GLOB IR_TEST_SRCS "*_test.cc")
 
-cc_test_old(type_test SRCS type_test.cc DEPS ir_context gtest)
+list(REMOVE_ITEM IR_SRCS ${IR_TEST_SRCS})
+
+cc_library(new_ir SRCS ${IR_SRCS})
+
+cc_test_old(type_test SRCS type_test.cc DEPS new_ir gtest)

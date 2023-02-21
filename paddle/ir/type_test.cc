@@ -59,7 +59,7 @@ TEST(type_test, type_storage) {
   EXPECT_EQ(storage_a.abstract_type().type_id(), abstract_type_a.type_id());
 }
 
-TEST(type_test, type) {
+TEST(type_test, built_in_type) {
   // Test creation of built-in parameterless type.
   ir::IrContext *ctx = ir::IrContext::Instance();
   ir::Type fp32_1 = ir::Float32Type::get(ctx);
@@ -74,11 +74,68 @@ TEST(type_test, type) {
             1);
   EXPECT_EQ(ir::Float32Type::classof(fp32_1), 1);
 
-  ir::Type int1_1 = ir::IntegerType::get(ctx, 1, 0);
-  ir::Type int1_2 = ir::IntegerType::get(ctx, 1, 0);
+  ir::Type int32_1 = ir::Int32Type::get(ctx);
+  ir::Type int32_2 = ir::Int32Type::get(ctx);
+  EXPECT_EQ(int32_1 == int32_2, 1);
+  EXPECT_EQ(int32_1.type_id() == int32_2.type_id(), 1);
+  EXPECT_EQ(&int32_1.abstract_type() ==
+                &ir::AbstractType::lookup(int32_1.type_id(), ctx),
+            1);
+  EXPECT_EQ(ir::Int32Type::classof(int32_1), 1);
+}
+
+struct IntegerTypeStorage : public ir::TypeStorage {
+  IntegerTypeStorage(unsigned width, unsigned signedness)
+      : width_(width), signedness_(signedness) {}
+  using ParamKey = std::pair<unsigned, unsigned>;
+
+  static std::size_t HashValue(const ParamKey &key) {
+    return hash_combine(std::hash<unsigned>()(std::get<0>(key)),
+                        std::hash<unsigned>()(std::get<1>(key)));
+  }
+
+  bool operator==(const ParamKey &key) const {
+    return ParamKey(width_, signedness_) == key;
+  }
+
+  static IntegerTypeStorage *Construct(ParamKey key) {
+    return new IntegerTypeStorage(key.first, key.second);
+  }
+
+  ParamKey GetAsKey() const { return ParamKey(width_, signedness_); }
+
+  unsigned width_ : 30;
+  unsigned signedness_ : 2;
+
+ private:
+  static std::size_t hash_combine(std::size_t lhs, std::size_t rhs) {
+    return lhs ^= rhs + 0x9e3779b9 + (lhs << 6) + (lhs >> 2);
+  }
+};
+
+class IntegerType : public ir::Type {
+ public:
+  using Type::Type;
+  REGISTER_TYPE_UTILS(IntegerType, IntegerTypeStorage);
+
+  static IntegerType get(ir::IrContext *context,
+                         unsigned width,
+                         unsigned signedness = 0);
+};
+
+IntegerType IntegerType::get(ir::IrContext *context,
+                             unsigned width,
+                             unsigned signedness) {
+  return IntegerType::create(context, width, signedness);
+}
+
+TEST(type_test, parameteric_type) {
+  ir::IrContext *ctx = ir::IrContext::Instance();
+  REGISTER_TYPE_2_IRCONTEXT(IntegerType, ctx);
+  ir::Type int1_1 = IntegerType::get(ctx, 1, 0);
+  ir::Type int1_2 = IntegerType::get(ctx, 1, 0);
   EXPECT_EQ(int1_1 == int1_2, 1);
 
-  ir::Type int8_1 = ir::IntegerType::get(ctx, 8, 0);
-  ir::Type int8_2 = ir::IntegerType::get(ctx, 8, 0);
-  EXPECT_EQ(int8_1 == int8_2, 1);
+  ir::Type int8 = IntegerType::get(ctx, 8, 0);
+  EXPECT_EQ(int8 == int1_2, 0);
 }

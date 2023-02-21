@@ -23,47 +23,20 @@ namespace ir {
 ///
 class Float32Type : public ir::Type {
  public:
+  using Type::Type;
+
   REGISTER_TYPE_UTILS(Float32Type, ir::TypeStorage);
 
   static Float32Type get(ir::IrContext *context);
 };
 
-struct IntegerTypeStorage : public TypeStorage {
-  IntegerTypeStorage(unsigned width, unsigned signedness)
-      : width_(width), signedness_(signedness) {}
-  using ParamKey = std::pair<unsigned, unsigned>;
-
-  static std::size_t HashValue(const ParamKey &key) {
-    return hash_combine(std::hash<unsigned>()(std::get<0>(key)),
-                        std::hash<unsigned>()(std::get<1>(key)));
-  }
-
-  bool operator==(const ParamKey &key) const {
-    return ParamKey(width_, signedness_) == key;
-  }
-
-  static IntegerTypeStorage *Construct(ParamKey key) {
-    return new IntegerTypeStorage(key.first, key.second);
-  }
-
-  ParamKey GetAsKey() const { return ParamKey(width_, signedness_); }
-
-  unsigned width_ : 30;
-  unsigned signedness_ : 2;
-
- private:
-  static std::size_t hash_combine(std::size_t lhs, std::size_t rhs) {
-    return lhs ^= rhs + 0x9e3779b9 + (lhs << 6) + (lhs >> 2);
-  }
-};
-
-class IntegerType : public ir::Type {
+class Int32Type : public ir::Type {
  public:
-  REGISTER_TYPE_UTILS(IntegerType, ir::IntegerTypeStorage);
+  using Type::Type;
 
-  static IntegerType get(ir::IrContext *context,
-                         unsigned width,
-                         unsigned signedness = 0);
+  REGISTER_TYPE_UTILS(Int32Type, ir::TypeStorage);
+
+  static Int32Type get(ir::IrContext *context);
 };
 
 }  // namespace ir

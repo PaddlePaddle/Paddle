@@ -38,12 +38,7 @@ struct ParametricStorageManager {
   StorageBase *GetOrCreate(std::size_t hash_value,
                            std::function<bool(const StorageBase *)> equal_func,
                            std::function<StorageBase *()> constructor) {
-    StorageBase *storage = nullptr;
-    if (parametric_instances_.count(hash_value) == 0) {
-      VLOG(4) << "not cache, create a new parameteric storage";
-      storage = constructor();
-      parametric_instances_.emplace(hash_value, storage);
-    } else {
+    if (parametric_instances_.count(hash_value) != 0) {
       auto pr = parametric_instances_.equal_range(hash_value);
       while (pr.first != pr.second) {
         if (equal_func(pr.first->second)) {
@@ -52,10 +47,10 @@ struct ParametricStorageManager {
         }
         ++pr.first;
       }
-      VLOG(4) << "not cache, create a new parameteric storage";
-      storage = constructor();
-      parametric_instances_.emplace(hash_value, storage);
     }
+    VLOG(4) << "not cache, create a new parameteric storage";
+    StorageBase *storage = constructor();
+    parametric_instances_.emplace(hash_value, storage);
     return storage;
   }
 
@@ -76,19 +71,16 @@ StorageManager::StorageBase *StorageManager::GetParametricStorageTypeImpl(
     std::size_t hash_value,
     std::function<bool(const StorageBase *)> equal_func,
     std::function<StorageBase *()> constructor) {
-  {
-    ir::AutoRDLock lock(&parametric_instance_rw_lock_);
-    if (parametric_instance_.find(type_id) == parametric_instance_.end())
-      throw("The input data pointer is null.");
-  }
-  ir::AutoWRLock lock(&parametric_instance_rw_lock_);
+  std::lock_guard<ir::SpinLock> guard(parametric_instance_lock_);
+  if (parametric_instance_.find(type_id) == parametric_instance_.end())
+    throw("The input data pointer is null.");
   ParametricStorageManager &parametric_storage = *parametric_instance_[type_id];
   return parametric_storage.GetOrCreate(hash_value, equal_func, constructor);
 }
 
 StorageManager::StorageBase *StorageManager::GetParameterlessStorageTypeImpl(
     TypeId type_id) {
-  ir::AutoRDLock lock(&parameterless_instances_rw_lock_);
+  std::lock_guard<ir::SpinLock> guard(parameterless_instances_lock_);
   VLOG(4) << "==> StorageManagerImpl::GetParameterlessStorage().";
   if (parameterless_instances_.find(type_id) == parameterless_instances_.end())
     throw("TypeId not found in IrContext.");
@@ -98,21 +90,17 @@ StorageManager::StorageBase *StorageManager::GetParameterlessStorageTypeImpl(
 
 void StorageManager::RegisterParametricStorageTypeImpl(
     TypeId type_id, std::function<void(StorageBase *)> del_func) {
-  ir::AutoWRLock lock(&parametric_instance_rw_lock_);
+  std::lock_guard<ir::SpinLock> guard(parametric_instance_lock_);
   parametric_instance_.emplace(
       type_id, std::make_unique<ParametricStorageManager>(del_func));
 }
 
 void StorageManager::RegisterParameterlessStorageTypeImpl(
     TypeId type_id, std::function<StorageBase *()> constructor) {
-  {
-    ir::AutoRDLock lock(&parameterless_instances_rw_lock_);
-    VLOG(4) << "==> StorageManager::RegisterParameterlessStorageTypeImpl()";
-    if (parameterless_instances_.find(type_id) !=
-        parameterless_instances_.end())
-      throw("storage class already registered");
-  }
-  ir::AutoWRLock lock(&parameterless_instances_rw_lock_);
+  std::lock_guard<ir::SpinLock> guard(parameterless_instances_lock_);
+  VLOG(4) << "==> StorageManager::RegisterParameterlessStorageTypeImpl()";
+  if (parameterless_instances_.find(type_id) != parameterless_instances_.end())
+    throw("storage class already registered");
   parameterless_instances_.emplace(type_id, constructor());
 }
 
