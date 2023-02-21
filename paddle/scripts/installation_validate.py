@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle as pd
-import paddle.fluid as fluid
 
-fluid.install_check.run_check()
+pd.utils.run_check()
 print(pd.__version__)
