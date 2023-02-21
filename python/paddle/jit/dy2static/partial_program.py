@@ -1069,32 +1069,6 @@ class PartialProgramLayer:
         return vars if vars else None
 
 
-def _create_fake_var():
-    """
-    Create a fake_var (force on CPU) to handle empty input or output
-    """
-    if not framework.global_var._in_eager_mode_:
-        return [
-            core.VarBase(
-                core.VarDesc.VarType.FP32,
-                [],
-                "Fake_var",
-                core.VarDesc.VarType.RAW,
-                False,
-            )
-        ]
-    else:
-        return [
-            core.eager.Tensor(
-                core.VarDesc.VarType.FP32,
-                [],
-                "Fake_var",
-                core.VarDesc.VarType.RAW,
-                False,
-            )
-        ]
-
-
 def partial_program_from(concrete_program):
     inputs = concrete_program.inputs
     if inputs and isinstance(inputs[0], layers.Layer):
