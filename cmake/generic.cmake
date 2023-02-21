@@ -464,6 +464,7 @@ function(cc_test_build TARGET_NAME)
       paddle_gtest_main
       lod_tensor
       memory
+      dnnl
       gtest
       gflags
       glog)

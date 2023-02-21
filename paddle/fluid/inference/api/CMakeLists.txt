@@ -167,12 +167,12 @@ if(WITH_TESTING AND WITH_MKLDNN)
     cc_test(
       test_mkldnn_quantizer
       SRCS mkldnn_quantizer_tester.cc
-      DEPS paddle_inference_shared ARGS --dirname=${WORD2VEC_MODEL_DIR})
+      DEPS paddle_inference_shared dnnl ARGS --dirname=${WORD2VEC_MODEL_DIR})
   elseif(WIN32)
     cc_test(
       test_mkldnn_quantizer
       SRCS mkldnn_quantizer_tester.cc
-      DEPS analysis_predictor benchmark ${inference_deps} dnnl ARGS
+      DEPS analysis_predictor benchmark ${inference_deps} ARGS
            --dirname=${WORD2VEC_MODEL_DIR})
   endif()
 endif()
