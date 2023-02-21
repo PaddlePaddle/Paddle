@@ -30,6 +30,35 @@ namespace ir {
 class Graph;
 class Node;
 
+struct AdamWConfig {
+  Node *first_lr = nullptr;
+  Node *first_skip_update = nullptr;
+  paddle::framework::BlockDesc *block = nullptr;
+  int op_role = 0;
+  float beta1 = 0.9;
+  float beta2 = 0.99;
+  float epsilon = 1e-8;
+  float first_coeff = 0.0;
+  bool use_global_beta_pow = false;
+  bool replace_adamw = true;
+  bool use_skip_update = false;
+  bool with_decay = true;
+  bool multi_precision = true;
+
+  // Initialize the input and output names of adamw op and fused_adamw op
+  const std::vector<std::string> inputs_name = {
+      "Param", "Grad", "Moment1", "Moment2", "Beta1Pow", "Beta2Pow"};
+  const std::vector<std::string> outputs_name = {
+      "ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"};
+  const std::vector<std::string> replace_inputs_name = {
+      "Params", "Grads", "Moments1", "Moments2", "Beta1Pows", "Beta2Pows"};
+  const std::vector<std::string> repalce_outputs_name = {"ParamsOut",
+                                                         "Moments1Out",
+                                                         "Moments2Out",
+                                                         "Beta1PowsOut",
+                                                         "Beta2PowsOut"};
+};
+
 class FuseAdamWPass : public FusePassBase {
  public:
   virtual ~FuseAdamWPass() {}
@@ -37,7 +66,9 @@ class FuseAdamWPass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph *graph) const override;
 
-  ir::Graph *FuseAdamWFun(ir::Graph *graph) const;
+  ir::Graph *FuseAdamWFun(ir::Graph *graph,
+                          const bool with_decay,
+                          const bool multi_precision) const;
 };
 
 }  // namespace ir

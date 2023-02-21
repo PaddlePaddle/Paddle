@@ -23,7 +23,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-std::vector<std::string> GetNodeNames(const std::vector<Node *> node_vector) {
+std::vector<std::string> GetNodeNames(const std::vector<Node *> &node_vector) {
   std::vector<std::string> out_vector;
   for (auto i : node_vector) {
     out_vector.emplace_back(i->Name());
@@ -31,7 +31,7 @@ std::vector<std::string> GetNodeNames(const std::vector<Node *> node_vector) {
   return out_vector;
 }
 
-Node *GetInputNode(const Node *op, const std::string name) {
+Node *GetInputNode(const Node *op, const std::string &name) {
   Node *out = nullptr;
 
   for (auto &node : op->inputs) {
@@ -47,7 +47,7 @@ Node *GetInputNode(const Node *op, const std::string name) {
   return out;
 }
 
-Node *GetOutputNode(const Node *op, const std::string name) {
+Node *GetOutputNode(const Node *op, const std::string &name) {
   Node *out = nullptr;
 
   for (auto &node : op->outputs) {
@@ -63,129 +63,193 @@ Node *GetOutputNode(const Node *op, const std::string name) {
   return out;
 }
 
-void SaveInOutNodes(
-    std::vector<std::vector<std::vector<Node *>>> *inout_vectors,
-    const std::vector<std::string> inputs_name,
-    const std::vector<std::string> outputs_name,
-    const Node *op,
-    size_t pattern_id) {
+void SaveInOutNodes(std::vector<std::vector<Node *>> *inout_node_vectors,
+                    const AdamWConfig &config,
+                    const Node *op) {
   size_t i = 0;
 
-  for (auto &name : inputs_name) {
-    (*inout_vectors)[pattern_id][i].emplace_back(GetInputNode(op, name));
+  for (auto &name : config.inputs_name) {
+    (*inout_node_vectors)[i].emplace_back(GetInputNode(op, name));
     i++;
   }
-  for (auto &name : outputs_name) {
-    (*inout_vectors)[pattern_id][i].emplace_back(GetOutputNode(op, name));
+  for (auto &name : config.outputs_name) {
+    (*inout_node_vectors)[i].emplace_back(GetOutputNode(op, name));
     i++;
   }
-  if (pattern_id & 1) {
-    (*inout_vectors)[pattern_id][i++].emplace_back(
-        GetInputNode(op, "MasterParam"));
-    (*inout_vectors)[pattern_id][i].emplace_back(
-        GetOutputNode(op, "MasterParamOut"));
+  if (config.multi_precision) {
+    (*inout_node_vectors)[i++].emplace_back(GetInputNode(op, "MasterParam"));
+    (*inout_node_vectors)[i].emplace_back(GetOutputNode(op, "MasterParamOut"));
   }
 }
 
-void InsertOp(Node *first_lr,
-              Node *first_skip_update,
-              const std::vector<std::vector<std::vector<Node *>>> inout_vectors,
-              const std::vector<std::string> inputs_name,
-              const std::vector<std::string> outputs_name,
-              paddle::framework::BlockDesc *block,
-              float beta1,
-              float beta2,
-              float epsilon,
-              float coeff,
-              int op_role,
-              bool use_global_beta_pow,
-              bool replace_adamw,
-              bool use_skip_update,
-              ir::Graph *graph) {
-  for (size_t pattern_id = 0; pattern_id < 4; pattern_id++) {
-    float weight_decay = static_cast<float>(0.0);
-    bool use_adamw = false;
+void InsertOpToGraph(const std::vector<std::vector<Node *>> &inout_node_vectors,
+                     const AdamWConfig &config,
+                     ir::Graph *graph) {
+  float weight_decay = static_cast<float>(0.0);
+  bool use_adamw = false;
 
-    if (pattern_id & 2) {
-      weight_decay = coeff;
-      use_adamw = true;
+  if (config.with_decay) {
+    weight_decay = config.first_coeff;
+    use_adamw = true;
+  }
+  if (inout_node_vectors[0].size() > 0 && config.replace_adamw) {
+    OpDesc fuse_adamw_op_desc(config.block);
+    fuse_adamw_op_desc.SetType("fused_adam");
+
+    size_t i = 0;
+
+    for (auto &name : config.inputs_name) {
+      fuse_adamw_op_desc.SetInput(name, GetNodeNames(inout_node_vectors[i]));
+      i++;
     }
-    if (inout_vectors[pattern_id][0].size() > 0 && replace_adamw) {
-      OpDesc fuse_adamw_op_desc(block);
-      fuse_adamw_op_desc.SetType("fused_adam");
 
-      size_t i = 0;
+    fuse_adamw_op_desc.SetInput("LearningRate", {config.first_lr->Name()});
+    if (config.use_skip_update) {
+      fuse_adamw_op_desc.SetInput("SkipUpdate",
+                                  {config.first_skip_update->Name()});
+    } else {
+      fuse_adamw_op_desc.SetInput("SkipUpdate", {});
+    }
 
-      for (auto &name : inputs_name) {
-        fuse_adamw_op_desc.SetInput(name,
-                                    GetNodeNames(inout_vectors[pattern_id][i]));
-        i++;
+    for (auto &name : config.outputs_name) {
+      fuse_adamw_op_desc.SetOutput(name, GetNodeNames(inout_node_vectors[i]));
+      i++;
+    }
+
+    if (config.multi_precision) {
+      fuse_adamw_op_desc.SetInput("MasterParams",
+                                  GetNodeNames(inout_node_vectors[i++]));
+      fuse_adamw_op_desc.SetOutput("MasterParamsOut",
+                                   GetNodeNames(inout_node_vectors[i]));
+    } else {
+      fuse_adamw_op_desc.SetInput("MasterParams", {});
+    }
+
+    fuse_adamw_op_desc.SetAttr("beta1", config.beta1);
+    fuse_adamw_op_desc.SetAttr("beta2", config.beta2);
+    fuse_adamw_op_desc.SetAttr("op_role", config.op_role);
+    fuse_adamw_op_desc.SetAttr("epsilon", config.epsilon);
+    fuse_adamw_op_desc.SetAttr("chunk_size", 16 * 2048);
+    fuse_adamw_op_desc.SetAttr("weight_decay", weight_decay);
+    fuse_adamw_op_desc.SetAttr("use_adamw", use_adamw);
+    fuse_adamw_op_desc.SetAttr("multi_precision", config.multi_precision);
+    fuse_adamw_op_desc.SetAttr("use_global_beta_pow",
+                               config.use_global_beta_pow);
+
+    auto fuse_adamw_node = graph->CreateOpNode(&fuse_adamw_op_desc);
+
+    IR_NODE_LINK_TO(config.first_lr, fuse_adamw_node);
+    if (config.use_skip_update) {
+      IR_NODE_LINK_TO(config.first_skip_update, fuse_adamw_node);
+    }
+
+    for (size_t k = 0; k < inout_node_vectors[0].size(); k++) {
+      size_t j = 0;
+
+      for (; j < config.inputs_name.size(); j++) {
+        IR_NODE_LINK_TO(inout_node_vectors[j][k], fuse_adamw_node);
       }
-
-      fuse_adamw_op_desc.SetInput("LearningRate", {first_lr->Name()});
-      if (use_skip_update) {
-        fuse_adamw_op_desc.SetInput("SkipUpdate", {first_skip_update->Name()});
-      } else {
-        fuse_adamw_op_desc.SetInput("SkipUpdate", {});
+      for (; j < config.inputs_name.size() + config.outputs_name.size(); j++) {
+        IR_NODE_LINK_TO(fuse_adamw_node, inout_node_vectors[j][k]);
       }
-
-      for (auto &name : outputs_name) {
-        fuse_adamw_op_desc.SetOutput(
-            name, GetNodeNames(inout_vectors[pattern_id][i]));
-        i++;
-      }
-
-      if (pattern_id & 1) {
-        fuse_adamw_op_desc.SetInput(
-            "MasterParams", GetNodeNames(inout_vectors[pattern_id][i++]));
-        fuse_adamw_op_desc.SetOutput(
-            "MasterParamsOut", GetNodeNames(inout_vectors[pattern_id][i]));
-      } else {
-        fuse_adamw_op_desc.SetInput("MasterParams", {});
-      }
-
-      fuse_adamw_op_desc.SetAttr("beta1", beta1);
-      fuse_adamw_op_desc.SetAttr("beta2", beta2);
-      fuse_adamw_op_desc.SetAttr("op_role", op_role);
-      fuse_adamw_op_desc.SetAttr("epsilon", epsilon);
-      fuse_adamw_op_desc.SetAttr("chunk_size", 16 * 2048);
-      fuse_adamw_op_desc.SetAttr("weight_decay", weight_decay);
-      fuse_adamw_op_desc.SetAttr("use_adamw", use_adamw);
-      fuse_adamw_op_desc.SetAttr("multi_precision",
-                                 pattern_id & 1 ? true : false);
-      fuse_adamw_op_desc.SetAttr("use_global_beta_pow", use_global_beta_pow);
-
-      auto fuse_adamw_node = graph->CreateOpNode(&fuse_adamw_op_desc);
-
-      IR_NODE_LINK_TO(first_lr, fuse_adamw_node);
-      if (use_skip_update) {
-        IR_NODE_LINK_TO(first_skip_update, fuse_adamw_node);
-      }
-
-      for (size_t k = 0; k < inout_vectors[pattern_id][0].size(); k++) {
-        size_t j = 0;
-
-        for (; j < inputs_name.size(); j++) {
-          IR_NODE_LINK_TO(inout_vectors[pattern_id][j][k], fuse_adamw_node);
-        }
-        for (; j < inputs_name.size() + outputs_name.size(); j++) {
-          IR_NODE_LINK_TO(fuse_adamw_node, inout_vectors[pattern_id][j][k]);
-        }
-        if (pattern_id & 1) {
-          IR_NODE_LINK_TO(inout_vectors[pattern_id][j][k], fuse_adamw_node);
-          j++;
-          IR_NODE_LINK_TO(fuse_adamw_node, inout_vectors[pattern_id][j][k]);
-        }
+      if (config.multi_precision) {
+        IR_NODE_LINK_TO(inout_node_vectors[j][k], fuse_adamw_node);
+        j++;
+        IR_NODE_LINK_TO(fuse_adamw_node, inout_node_vectors[j][k]);
       }
     }
   }
+}
+
+bool InitAndCheckAttrs(const size_t &found_adamw_count,
+                       AdamWConfig *config,
+                       const Node *op,
+                       bool *is_continue) {
+  const Node *adamw_op = op;
+  Node *skip_update = nullptr;
+  Node *learning_rate = GetInputNode(adamw_op, "LearningRate");
+  auto adamw_op_desc = adamw_op->Op();
+
+  // Initialize variables
+  float coeff = 0.0, lr_ratio = 1.0;
+  bool lazy_mode = false;
+  int64_t min_row_size_to_use_multithread = 1000;
+
+  // Get skip_update and coeff, these wiil be used to cheak whether we can
+  // use fuse_adamw.
+  for (auto &node : adamw_op->inputs) {
+    auto in_name = adamw_op_desc->Input("SkipUpdate");
+    if (!in_name.empty()) {
+      if (node->Name() == in_name[0]) {
+        config->use_skip_update = true;
+        skip_update = node;
+        break;
+      }
+    }
+  }
+  coeff = PADDLE_GET_CONST(float, adamw_op_desc->GetAttr("coeff"));
+
+  // Get attrs and block
+  if (found_adamw_count == 0) {
+    // Get blokc
+    config->block = adamw_op_desc->Block();
+    // Get attrs
+    config->beta1 = PADDLE_GET_CONST(float, adamw_op_desc->GetAttr("beta1"));
+    config->beta2 = PADDLE_GET_CONST(float, adamw_op_desc->GetAttr("beta2"));
+    config->op_role = PADDLE_GET_CONST(int, adamw_op_desc->GetAttr("op_role"));
+    config->epsilon =
+        PADDLE_GET_CONST(float, adamw_op_desc->GetAttr("epsilon"));
+    config->use_global_beta_pow =
+        PADDLE_GET_CONST(bool, adamw_op_desc->GetAttr("use_global_beta_pow"));
+
+    lazy_mode = PADDLE_GET_CONST(bool, adamw_op_desc->GetAttr("lazy_mode"));
+    min_row_size_to_use_multithread = PADDLE_GET_CONST(
+        int64_t, adamw_op_desc->GetAttr("min_row_size_to_use_multithread"));
+    lr_ratio = PADDLE_GET_CONST(float, adamw_op_desc->GetAttr("lr_ratio"));
+
+    config->first_lr = learning_rate;
+    config->first_coeff = coeff;
+    if (config->use_skip_update) {
+      config->first_skip_update = skip_update;
+    }
+
+    // We do not support these patterns
+    if (lazy_mode != false || lr_ratio != 1.0 ||
+        min_row_size_to_use_multithread != 1000) {
+      return false;
+    }
+  }
+
+  // Check whether with_decay and multi_precision are matched。
+  if (config->with_decay !=
+          PADDLE_GET_CONST(bool, adamw_op_desc->GetAttr("with_decay")) ||
+      config->multi_precision !=
+          PADDLE_GET_CONST(bool, adamw_op_desc->GetAttr("multi_precision"))) {
+    *is_continue = true;
+    return true;
+  }
+
+  // We do not support these patterns
+  if ((learning_rate->Name() != config->first_lr->Name()) ||
+      (coeff != config->first_coeff) ||
+      (config->use_skip_update &&
+       skip_update->Name() != config->first_skip_update->Name())) {
+    return false;
+  }
+
+  return true;
 }
 
 void FuseAdamWPass::ApplyImpl(ir::Graph *graph) const {
-  graph = FuseAdamWFun(graph);
+  graph = FuseAdamWFun(graph, true, true);
+  graph = FuseAdamWFun(graph, true, false);
+  graph = FuseAdamWFun(graph, false, true);
+  graph = FuseAdamWFun(graph, false, false);
 }
 
-ir::Graph *FuseAdamWPass::FuseAdamWFun(ir::Graph *graph) const {
+ir::Graph *FuseAdamWPass::FuseAdamWFun(ir::Graph *graph,
+                                       const bool with_decay,
+                                       const bool multi_precision) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
 
@@ -196,140 +260,48 @@ ir::Graph *FuseAdamWPass::FuseAdamWFun(ir::Graph *graph) const {
 
   size_t found_adamw_count = 0;
 
-  // Initialize variables
-  Node *first_lr = nullptr, *first_skip_update = nullptr;
-  int op_role = 0;
-  float beta1 = 0.9, beta2 = 0.999, epsilon = 1.0e-8, first_coeff = 0.0,
-        coeff = 0.0, lr_ratio = 1.0;
-  bool lazy_mode = false, multi_precision = false, use_global_beta_pow = false,
-       with_decay = false, replace_adamw = true, use_skip_update = false;
-  int64_t min_row_size_to_use_multithread = 1000;
-  paddle::framework::BlockDesc *block = nullptr;
-  // There are 4 patterns.
-  // 0b1* or 0b0* represents whether to use with_decay,
-  // 0b*1 or 0b*0 represents whether to use multi_precision,
-  size_t pattern_id = 0;
+  AdamWConfig config;
 
-  // Initialize the input and output names of adamw op and fused_adamw op
-  const std::vector<std::string> inputs_name = {
-      "Param", "Grad", "Moment1", "Moment2", "Beta1Pow", "Beta2Pow"};
-  const std::vector<std::string> outputs_name = {
-      "ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"};
-  const std::vector<std::string> replace_inputs_name = {
-      "Params", "Grads", "Moments1", "Moments2", "Beta1Pows", "Beta2Pows"};
-  const std::vector<std::string> repalce_outputs_name = {"ParamsOut",
-                                                         "Moments1Out",
-                                                         "Moments2Out",
-                                                         "Beta1PowsOut",
-                                                         "Beta2PowsOut"};
+  config.with_decay = with_decay;
+  config.multi_precision = multi_precision;
 
   // Used to store Nodes of input and output for each pattern
-  std::vector<std::vector<std::vector<Node *>>> inout_vectors(
-      4, std::vector<std::vector<Node *>>(13));
+  std::vector<std::vector<Node *>> inout_node_vectors(13);
 
   std::unordered_set<const Node *> adamw_op_del_set;
 
   for (auto &node : graph->Nodes()) {
     if (node->Name() == "adamw") {
       const Node *adamw_op = node;
-      Node *skip_update = nullptr;
-      Node *learning_rate = GetInputNode(adamw_op, "LearningRate");
-      auto adamw_op_desc = adamw_op->Op();
+      bool is_continue = false;
 
-      // Get skip_update and coeff, these wiil be used to cheak whether we can
-      // use fuse_adamw.
-      for (auto &node : adamw_op->inputs) {
-        auto in_name = adamw_op_desc->Input("SkipUpdate");
-        if (!in_name.empty()) {
-          if (node->Name() == in_name[0]) {
-            use_skip_update = true;
-            skip_update = node;
-            break;
-          }
-        }
-      }
-      coeff = PADDLE_GET_CONST(float, adamw_op_desc->GetAttr("coeff"));
-
-      // Get with_decay and multi_precision
-      with_decay = PADDLE_GET_CONST(bool, adamw_op_desc->GetAttr("with_decay"));
-      multi_precision =
-          PADDLE_GET_CONST(bool, adamw_op_desc->GetAttr("multi_precision"));
-      // Set pattern_id
-      pattern_id = with_decay << 1;
-      pattern_id += multi_precision;
-
-      // Get attrs and block
-      if (found_adamw_count == 0) {
-        // Get blokc
-        block = adamw_op_desc->Block();
-        // Get attrs
-        beta1 = PADDLE_GET_CONST(float, adamw_op_desc->GetAttr("beta1"));
-        beta2 = PADDLE_GET_CONST(float, adamw_op_desc->GetAttr("beta2"));
-        op_role = PADDLE_GET_CONST(int, adamw_op_desc->GetAttr("op_role"));
-        epsilon = PADDLE_GET_CONST(float, adamw_op_desc->GetAttr("epsilon"));
-        lazy_mode = PADDLE_GET_CONST(bool, adamw_op_desc->GetAttr("lazy_mode"));
-        min_row_size_to_use_multithread = PADDLE_GET_CONST(
-            int64_t, adamw_op_desc->GetAttr("min_row_size_to_use_multithread"));
-        use_global_beta_pow = PADDLE_GET_CONST(
-            bool, adamw_op_desc->GetAttr("use_global_beta_pow"));
-        lr_ratio = PADDLE_GET_CONST(float, adamw_op_desc->GetAttr("lr_ratio"));
-
-        first_lr = learning_rate;
-        first_coeff = coeff;
-        if (use_skip_update) {
-          first_skip_update = skip_update;
-        }
-
-        // We do not support these patterns
-        if (lazy_mode != false || lr_ratio != 1.0 ||
-            min_row_size_to_use_multithread != 1000) {
-          replace_adamw = false;
-          return graph;
-        }
-      }
-
-      // We do not support these patterns
-      if ((learning_rate->Name() != first_lr->Name()) ||
-          (coeff != first_coeff) ||
-          (use_skip_update &&
-           skip_update->Name() != first_skip_update->Name())) {
-        replace_adamw = false;
+      // Initialize attrs and check attrs to determine whether we support this
+      // pattern.
+      if (!InitAndCheckAttrs(found_adamw_count, &config, node, &is_continue)) {
+        config.replace_adamw = false;
         return graph;
+      }
+
+      if (is_continue) {
+        continue;
       }
 
       adamw_op_del_set.insert(adamw_op);
 
       // Save input and output Nodes
-      SaveInOutNodes(
-          &inout_vectors, inputs_name, outputs_name, adamw_op, pattern_id);
+      SaveInOutNodes(&inout_node_vectors, config, adamw_op);
 
       found_adamw_count++;
     }
   }
 
   // Remove old op
-  if (replace_adamw &&
-      (inout_vectors[0][0].size() > 0 || inout_vectors[1][0].size() > 0 ||
-       inout_vectors[2][0].size() > 0 || inout_vectors[3][0].size() > 0)) {
+  if (config.replace_adamw && (inout_node_vectors[0].size() > 0)) {
     GraphSafeRemoveNodes(graph, adamw_op_del_set);
   }
 
-  // Insert new op
-  InsertOp(first_lr,
-           first_skip_update,
-           inout_vectors,
-           replace_inputs_name,
-           repalce_outputs_name,
-           block,
-           beta1,
-           beta2,
-           epsilon,
-           coeff,
-           op_role,
-           use_global_beta_pow,
-           replace_adamw,
-           use_skip_update,
-           graph);
+  // Insert new op to graph
+  InsertOpToGraph(inout_node_vectors, config, graph);
 
   VLOG(4) << "replace adamw with fuse_adamw";
 
