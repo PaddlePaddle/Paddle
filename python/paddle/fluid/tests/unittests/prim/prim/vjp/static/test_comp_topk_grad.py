@@ -87,8 +87,8 @@ class TestTopkGradComp(unittest.TestCase):
                 x = paddle.static.data('primal', primal.shape, primal.dtype)
                 x.stop_gradient = False
                 y = paddle.topk(x, k, axis, largest, sorted)
-                y_grad = paddle.static.data('v', y[0].shape, y[0].dtype)
-                res = paddle.static.gradients([y[0]], [x], [y_grad])
+                y_grad = paddle.static.data('v', y[1].shape, y[1].dtype)
+                res = paddle.static.gradients([y[1]], [x], [y_grad])
             exe = paddle.static.Executor()
             exe.run(sp)
             return exe.run(
@@ -104,8 +104,8 @@ class TestTopkGradComp(unittest.TestCase):
                 x = paddle.static.data('primal', primal.shape, primal.dtype)
                 x.stop_gradient = False
                 y = paddle.topk(x, k, axis, largest, sorted)
-                y_grad = paddle.static.data('v', y[0].shape, y[0].dtype)
-                res = paddle.static.gradients([y[0]], [x], [y_grad])
+                y_grad = paddle.static.data('v', y[1].shape, y[1].dtype)
+                res = paddle.static.gradients([y[1]], [x], [y_grad])
             exe = paddle.static.Executor()
             exe.run(sp)
             return exe.run(

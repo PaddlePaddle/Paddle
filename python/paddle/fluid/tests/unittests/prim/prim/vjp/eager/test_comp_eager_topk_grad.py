@@ -86,7 +86,7 @@ class TestTopkGradComp(unittest.TestCase):
             )
             x.stop_gradient = False
             y = paddle.topk(x, k, axis, largest, sorted)
-            return paddle.grad(y[0], [x], create_graph=True, retain_graph=True)[
+            return paddle.grad(y[1], [x], create_graph=True, retain_graph=True)[
                 0
             ]
 
@@ -98,7 +98,7 @@ class TestTopkGradComp(unittest.TestCase):
             )
             x.stop_gradient = False
             y = paddle.topk(x, k, axis, largest, sorted)
-            return paddle.grad(y[0], [x], create_graph=True, retain_graph=True)[
+            return paddle.grad(y[1], [x], create_graph=True, retain_graph=True)[
                 0
             ]
 
