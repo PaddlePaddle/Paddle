@@ -1051,7 +1051,7 @@ if(WITH_PSCORE)
       heter_pipeline_trainer_test
       SRCS heter_pipeline_trainer_test.cc
       DEPS conditional_block_op
-           scale_op
+           generated_op
            heter_listen_and_serv_op
            executor
            heter_server
@@ -1068,7 +1068,7 @@ if(WITH_PSCORE)
       heter_pipeline_trainer_test
       SRCS heter_pipeline_trainer_test.cc
       DEPS conditional_block_op
-           scale_op
+           generated_op
            heter_listen_and_serv_op
            executor
            heter_server
