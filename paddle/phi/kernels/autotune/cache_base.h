@@ -78,8 +78,8 @@ struct MatmulCacheKey {
                  static_cast<int64_t>(trans_y),
                  static_cast<int64_t>(dtype));
   }
-  const size_t GetKey() { return key; }
-  const size_t GetSubKey(int64_t idx) { return GenKey(key, idx); }
+  size_t GetKey() const { return key; }
+  size_t GetSubKey(int64_t idx) const { return GenKey(key, idx); }
 
  private:
   size_t key;

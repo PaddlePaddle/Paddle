@@ -14,18 +14,17 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
+
 #include <cuda_runtime_api.h>
 #include "cuda.h"  // NOLINT
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/gpu_timer.h"
-#endif
 
 namespace phi {
 namespace funcs {
 
-#if CUDA_VERSION >= 11060
 enum MatmulImplType { kImplWithCublas = 1, kImplWithCublasLt = 2 };
 
 template <typename T>
@@ -379,7 +378,8 @@ struct MatmulWithCublasLt {
         dynload::cublasLtMatmulPreferenceDestroy(preference));
   }
 };
-#endif  // CUDA_VERSION >= 11060
 
 }  // namespace funcs
 }  // namespace phi
+
+#endif

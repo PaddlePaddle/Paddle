@@ -91,7 +91,7 @@ static void IndexIncreaseFromDims(const int ndim,
 // Core implement with cublas
 // default use cublas when Matmul autotune is off
 template <typename Context, typename T>
-void MatMulFunctionImplWithCuBlas(
+void MatMulFunctionImplWithBlas(
     const Context& dev_ctx,
     const DenseTensor& X,
     const DenseTensor& Y,
@@ -481,7 +481,7 @@ void MatMulFunctionImplWithCuBlas(
   }
 }
 
-#if CUDA_VERSION >= 11060
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
 // Core implement with cublasLt
 // This is almost a copy from MatMulFunctionImplWithCublas
 // compare cublas with cublasLt kernels when Matmul autotune is on
@@ -900,11 +900,12 @@ struct MatMulDispatcher {
                   bool trans_x,
                   bool trans_y,
                   bool flag = false) {
-    MatMulFunctionImplWithCuBlas<Context, T>(
+    MatMulFunctionImplWithBlas<Context, T>(
         ctx, x, y, x_dims, y_dims, out, trans_x, trans_y, flag);
   }
 };
 
+#ifdef PADDLE_WITH_CUDA
 template <typename T>
 struct MatMulDispatcher<phi::GPUContext, T> {
   void operator()(const phi::GPUContext& ctx,
@@ -918,7 +919,7 @@ struct MatMulDispatcher<phi::GPUContext, T> {
                   bool flag = false) {
 #if CUDA_VERSION >= 11060
     auto* tuner = phi::autotune::MakeMatmulTuner<T>(
-        MatMulFunctionImplWithCuBlas<phi::GPUContext, T>);
+        MatMulFunctionImplWithBlas<phi::GPUContext, T>);
     tuner->AddCallBack(MatMulFunctionImplWithCublasLt<phi::GPUContext, T>);
     phi::autotune::MatmulCacheKey matmul_cache(
         x_dims,
@@ -939,11 +940,12 @@ struct MatMulDispatcher<phi::GPUContext, T> {
                flag,
                &matmul_cache);
 #else
-    MatMulFunctionImplWithCuBlas<phi::GPUContext, T>(
+    MatMulFunctionImplWithBlas<phi::GPUContext, T>(
         ctx, x, y, x_dims, y_dims, out, trans_x, trans_y, flag);
 #endif
   }
 };
+#endif  // PADDLE_WITH_CUDA
 
 template <typename Context, typename T>
 void MatMulFunction(const Context& ctx,
