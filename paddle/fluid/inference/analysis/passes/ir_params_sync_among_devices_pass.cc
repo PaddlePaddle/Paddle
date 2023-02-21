@@ -212,6 +212,43 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToCustomDevice(
 }
 #endif
 
+#ifdef PADDLE_WITH_XPU
+void IrParamsSyncAmongDevicesPass::CopyParamsToXpu(Argument *argument) {
+  if (!argument->use_xpu()) return;
+
+  PADDLE_ENFORCE_EQ(argument->xpu_device_id_valid(),
+                    true,
+                    platform::errors::PreconditionNotMet(
+                        "The xpu_device_id field should be valid"));
+
+  LOG(INFO) << "Sync params from CPU to XPU: "
+            << "xpu_device_id - " << argument->xpu_device_id();
+
+  platform::Place place = platform::XPUPlace(argument->xpu_device_id());
+  auto *scope = argument->scope_ptr();
+  std::vector<std::string> all_vars = scope->LocalVarNames();
+
+  for (auto &var_name : all_vars) {
+    auto *var = scope->FindLocalVar(var_name);
+    PADDLE_ENFORCE_NOT_NULL(
+        var,
+        platform::errors::PreconditionNotMet("The var should not be nullptr"));
+
+    if (var->IsType<phi::DenseTensor>()) {
+      auto *t = var->GetMutable<phi::DenseTensor>();
+
+      platform::CPUPlace cpu_place;
+      phi::DenseTensor temp_tensor;
+      temp_tensor.Resize(t->dims());
+
+      paddle::framework::TensorCopySync(*t, cpu_place, &temp_tensor);
+      t->clear();
+      paddle::framework::TensorCopySync(temp_tensor, place, t);
+    }
+  }
+}
+#endif
+
 void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
   PADDLE_ENFORCE_EQ(
       argument->scope_valid(),
@@ -230,6 +267,11 @@ void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (argument->use_custom_device_valid()) {
     CopyParamsToCustomDevice(argument);
+  }
+#endif
+#ifdef PADDLE_WITH_XPU
+  if (argument->use_xpu_valid()) {
+    CopyParamsToXpu(argument);
   }
 #endif
   paddle::memory::Release(platform::CPUPlace());

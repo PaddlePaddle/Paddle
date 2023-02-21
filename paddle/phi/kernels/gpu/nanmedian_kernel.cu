@@ -18,6 +18,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/impl/nanmedian_kernel_impl.h"
@@ -176,7 +177,7 @@ void ProcessMedianKernel(const Context& dev_ctx,
                                    nan_counts_ptr);
 
     auto nan_stat_mem_cpu =
-        paddle::memory::Alloc(phi::CPUPlace(), sizeof(int64_t) * 2);
+        phi::memory_utils::Alloc(phi::CPUPlace(), sizeof(int64_t) * 2);
     int64_t* nan_stat_cpu_ptr =
         reinterpret_cast<int64_t*>(nan_stat_mem_cpu->ptr());
     paddle::memory::Copy(phi::CPUPlace(),
