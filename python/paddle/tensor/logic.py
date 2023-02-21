@@ -830,31 +830,33 @@ def _bitwise_op(op_name, x, y, out=None, name=None, binary_op=True):
 
 def bitwise_and(x, y, out=None, name=None):
     r"""
-        Apply ``bitwise_and`` on Tensor ``X`` and ``Y`` .
 
-        .. math::
-            Out = X \\& Y
+    Apply ``bitwise_and`` on Tensor ``X`` and ``Y`` .
+
+    .. math::
+        Out = X \\& Y
 
     .. note::
         ``paddle.bitwise_and`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
 
-        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor.
-        Args:
-            x (Tensor): Input Tensor of ``bitwise_and`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
-            y (Tensor): Input Tensor of ``bitwise_and`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
-            out(Tensor): Result of ``bitwise_and`` . It is a N-D Tensor with the same data type of input Tensor.
+    .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor.
 
-        Returns:
-            Tensor: Result of ``bitwise_and`` . It is a N-D Tensor with the same data type of input Tensor.
+    Args:
+        x (Tensor): Input Tensor of ``bitwise_and`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        y (Tensor): Input Tensor of ``bitwise_and`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        out(Tensor): Result of ``bitwise_and`` . It is a N-D Tensor with the same data type of input Tensor.
 
-        Examples:
-            .. code-block:: python
+    Returns:
+        Tensor: Result of ``bitwise_and`` . It is a N-D Tensor with the same data type of input Tensor.
 
-                import paddle
-                x = paddle.to_tensor([-5, -1, 1])
-                y = paddle.to_tensor([4,  2, -3])
-                res = paddle.bitwise_and(x, y)
-                print(res)  # [0, 2, 1]
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            x = paddle.to_tensor([-5, -1, 1])
+            y = paddle.to_tensor([4,  2, -3])
+            res = paddle.bitwise_and(x, y)
+            print(res)  # [0, 2, 1]
     """
     if in_dygraph_mode() and out is None:
         return _C_ops.bitwise_and(x, y)
@@ -865,31 +867,33 @@ def bitwise_and(x, y, out=None, name=None):
 
 def bitwise_or(x, y, out=None, name=None):
     r"""
-        Apply ``bitwise_or`` on Tensor ``X`` and ``Y`` .
 
-        .. math::
-            Out = X | Y
+    Apply ``bitwise_or`` on Tensor ``X`` and ``Y`` .
+
+    .. math::
+        Out = X | Y
 
     .. note::
         ``paddle.bitwise_or`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
 
-        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor.
-        Args:
-            x (Tensor): Input Tensor of ``bitwise_or`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
-            y (Tensor): Input Tensor of ``bitwise_or`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
-            out(Tensor): Result of ``bitwise_or`` . It is a N-D Tensor with the same data type of input Tensor.
+    .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor.
 
-        Returns:
-            Tensor: Result of ``bitwise_or`` . It is a N-D Tensor with the same data type of input Tensor.
+    Args:
+        x (Tensor): Input Tensor of ``bitwise_or`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        y (Tensor): Input Tensor of ``bitwise_or`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        out(Tensor): Result of ``bitwise_or`` . It is a N-D Tensor with the same data type of input Tensor.
 
-        Examples:
-            .. code-block:: python
+    Returns:
+        Tensor: Result of ``bitwise_or`` . It is a N-D Tensor with the same data type of input Tensor.
 
-                import paddle
-                x = paddle.to_tensor([-5, -1, 1])
-                y = paddle.to_tensor([4,  2, -3])
-                res = paddle.bitwise_or(x, y)
-                print(res)  # [-1, -1, -3]
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            x = paddle.to_tensor([-5, -1, 1])
+            y = paddle.to_tensor([4,  2, -3])
+            res = paddle.bitwise_or(x, y)
+            print(res)  # [-1, -1, -3]
     """
     if in_dygraph_mode() and out is None:
         return _C_ops.bitwise_or(x, y)
@@ -899,35 +903,35 @@ def bitwise_or(x, y, out=None, name=None):
     )
 
 
-@templatedoc()
 def bitwise_xor(x, y, out=None, name=None):
     r"""
-        Apply ``bitwise_xor`` on Tensor ``X`` and ``Y`` .
 
-        .. math::
-            Out = X ^\\wedge Y
+    Apply ``bitwise_xor`` on Tensor ``X`` and ``Y`` .
+
+    .. math::
+        Out = X ^\\wedge Y
 
     .. note::
         ``paddle.bitwise_xor`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
 
-        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor.
-        Args:
-            x (Tensor): Input Tensor of ``bitwise_xor`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
-            y (Tensor): Input Tensor of ``bitwise_xor`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
-            out(Tensor): Result of ``bitwise_xor`` . It is a N-D Tensor with the same data type of input Tensor.
+    .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor.
 
-        Returns:
-            Tensor: Result of ``bitwise_xor`` . It is a N-D Tensor with the same data type of input Tensor.
+    Args:
+        x (Tensor): Input Tensor of ``bitwise_xor`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        y (Tensor): Input Tensor of ``bitwise_xor`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        out(Tensor): Result of ``bitwise_xor`` . It is a N-D Tensor with the same data type of input Tensor.
 
+    Returns:
+        Tensor: Result of ``bitwise_xor`` . It is a N-D Tensor with the same data type of input Tensor.
 
-        Examples:
-            .. code-block:: python
+    Examples:
+        .. code-block:: python
 
-                import paddle
-                x = paddle.to_tensor([-5, -1, 1])
-                y = paddle.to_tensor([4,  2, -3])
-                res = paddle.bitwise_xor(x, y)
-                print(res) # [-1, -3, -4]
+            import paddle
+            x = paddle.to_tensor([-5, -1, 1])
+            y = paddle.to_tensor([4,  2, -3])
+            res = paddle.bitwise_xor(x, y)
+            print(res) # [-1, -3, -4]
     """
     if in_dygraph_mode() and out is None:
         return _C_ops.bitwise_xor(x, y)
@@ -938,26 +942,31 @@ def bitwise_xor(x, y, out=None, name=None):
 
 def bitwise_not(x, out=None, name=None):
     r"""
-        Apply ``bitwise_xor`` on Tensor ``X``.
 
-        .. math::
-            Out = \\sim X
+    Apply ``bitwise_not`` on Tensor ``X``.
+
+    .. math::
+        Out = \\sim X
 
     .. note::
         ``paddle.bitwise_not`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
 
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor.
-        Args:
-            x (Tensor): Input Tensor of ``bitwise_not`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
-            out(Tensor): Result of ``bitwise_not`` . It is a N-D Tensor with the same data type of input Tensor.
 
-        Examples:
-            .. code-block:: python
+    Args:
+        x (Tensor): Input Tensor of ``bitwise_not`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        out(Tensor): Result of ``bitwise_not`` . It is a N-D Tensor with the same data type of input Tensor.
 
-                import paddle
-                x = paddle.to_tensor([-5, -1, 1])
-                res = paddle.bitwise_not(x)
-                print(res) # [4, 0, -2]
+    Returns:
+        Tensor: Result of ``bitwise_not`` . It is a N-D Tensor with the same data type of input Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            x = paddle.to_tensor([-5, -1, 1])
+            res = paddle.bitwise_not(x)
+            print(res) # [4, 0, -2]
     """
     if in_dygraph_mode() and out is None:
         return _C_ops.bitwise_not(x)
