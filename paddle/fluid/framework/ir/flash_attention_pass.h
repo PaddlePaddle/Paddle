@@ -31,9 +31,15 @@ struct FlashAttentionPattern : public PatternBase {
       : PatternBase(pattern, name_scope, "flash_attention_pattern") {}
 
   PDNode* operator()(PDNode* x,
-                     bool scale_before_matmul,
+                     int scale_pos,
+                     bool stack_qkv,
                      bool is_causal,
                      bool is_dropout);
+
+  // transpose stack_qkv if stack_qkv or transpse q only
+  PATTERN_DECL_NODE(transpose_op);
+  PATTERN_DECL_NODE(transpose_out);
+  PATTERN_DECL_NODE(transpose_xshape);
 
   PATTERN_DECL_NODE(q_transpose_op);
   PATTERN_DECL_NODE(q_transpose_out);
@@ -48,6 +54,8 @@ struct FlashAttentionPattern : public PatternBase {
   PATTERN_DECL_NODE(v_transpose_op);
   PATTERN_DECL_NODE(v_transpose_out);
   PATTERN_DECL_NODE(v_transpose_xshape);
+
+  PATTERN_DECL_NODE(qkv_split_op);
 
   PATTERN_DECL_NODE(scale_op);
   PATTERN_DECL_NODE(scale_out);
@@ -76,9 +84,45 @@ struct FlashAttentionGradPattern : public PatternBase {
       : PatternBase(pattern, name_scope, "flash_attention_pattern") {}
 
   PDNode* operator()(PDNode* x,
-                     bool scale_before_matmul,
+                     int scale_pos,
+                     bool stack_qkv,
                      bool is_causal,
                      bool is_dropout);
+
+  PATTERN_DECL_NODE(qkv_transpose_grad_op);
+  PATTERN_DECL_NODE(qkv_transpose_grad_out);
+  PATTERN_DECL_NODE(qkv_transpose_grad_xshape);
+
+  PATTERN_DECL_NODE(qkv_matmul_grad_op);
+  PATTERN_DECL_NODE(qkv_matmul_grad_x);
+  PATTERN_DECL_NODE(qkv_matmul_grad_w);
+  PATTERN_DECL_NODE(qkv_matmul_grad_x_grad);
+  PATTERN_DECL_NODE(qkv_matmul_grad_w_grad);
+
+  PATTERN_DECL_NODE(dropout_grad_op);
+  PATTERN_DECL_NODE(dropout_grad_out);
+  PATTERN_DECL_NODE(dropout_grad_mask);
+
+  PATTERN_DECL_NODE(qk_softmax_grad_op);
+  PATTERN_DECL_NODE(qk_softmax_grad_fwd_out);
+  PATTERN_DECL_NODE(qk_softmax_grad_out);
+
+  PATTERN_DECL_NODE(scale_grad_op);
+  PATTERN_DECL_NODE(scale_grad_out);
+
+  PATTERN_DECL_NODE(qk_matmul_grad_op);
+  PATTERN_DECL_NODE(qk_matmul_grad_x);
+  PATTERN_DECL_NODE(qk_matmul_grad_w);
+  PATTERN_DECL_NODE(qk_matmul_grad_x_grad);
+  PATTERN_DECL_NODE(qk_matmul_grad_w_grad);
+
+  // split grad
+  PATTERN_DECL_NODE(concat_op);
+  PATTERN_DECL_NODE(concat_out);
+
+  PATTERN_DECL_NODE(transpose_grad_op);
+  PATTERN_DECL_NODE(transpose_grad_out);
+  PATTERN_DECL_NODE(transpose_grad_xshape);
 };
 
 }  // namespace patterns
@@ -93,9 +137,9 @@ class FlashAttentionsPass : public FusePassBase {
   const std::string name_scope_{"flash_attention_pass"};
 
  private:
-  ir::Graph* FlashAttentionFwd(Graph* graph) const;
+  ir::Graph* FlashAttentionFwd(Graph* graph, int, bool, bool, bool) const;
 
-  ir::Graph* FlashAttentionBwd(Graph* graph) const;
+  ir::Graph* FlashAttentionBwd(Graph* graph, int, bool, bool, bool) const;
 };
 
 }  // namespace ir
