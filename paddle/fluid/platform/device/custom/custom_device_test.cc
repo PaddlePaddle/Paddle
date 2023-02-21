@@ -18,6 +18,7 @@
 
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/init.h"
 #include "paddle/phi/backends/custom/fake_cpu_device.h"
 #include "paddle/phi/backends/device_manager.h"
 
@@ -239,6 +240,7 @@ void TestCustomCCL(const paddle::platform::Place& place) {
 
 TEST(CustomDevice, Tensor) {
   InitDevice();
+  paddle::framework::InitMemoryMethod();
   auto dev_types = phi::DeviceManager::GetAllDeviceTypes();
   for (const auto& dev_type : dev_types) {
     std::cout << "Test on " << dev_type << std::endl;
