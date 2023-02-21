@@ -293,7 +293,7 @@ os.environ['CUDA_CACHE_MAXSIZE'] = '805306368'
 
 write_cuda_env_config_py(filename='@PADDLE_BINARY_DIR@/python/paddle/cuda_env.py')
 
-def write_distributed_training_mode_py(filename='paddle/fluid/incubate/fleet/parameter_server/version.py'):
+def write_distributed_training_mode_py(filename='paddle/incubate/fleet/parameter_server/version.py'):
     cnt = '''
 
 # THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
@@ -320,7 +320,7 @@ def is_transpiler():
             'mode': 'PSLIB' if '${WITH_PSLIB}' == 'ON' else 'TRANSPILER'
         })
 
-write_distributed_training_mode_py(filename='@PADDLE_BINARY_DIR@/python/paddle/fluid/incubate/fleet/parameter_server/version.py')
+write_distributed_training_mode_py(filename='@PADDLE_BINARY_DIR@/python/paddle/incubate/fleet/parameter_server/version.py')
 
 
 packages=['paddle',
@@ -383,6 +383,8 @@ packages=['paddle',
           'paddle.distributed.passes',
           'paddle.distributed.models',
           'paddle.distributed.models.moe',
+          'paddle.distributed.transpiler',
+          'paddle.distributed.transpiler.details',
           'paddle.framework',
           'paddle.jit',
           'paddle.jit.dy2static',
@@ -399,17 +401,14 @@ packages=['paddle',
           'paddle.fluid.contrib.extend_optimizer',
           'paddle.fluid.contrib.layers',
           'paddle.fluid.transpiler',
-          'paddle.fluid.transpiler.details',
           'paddle.fluid.incubate',
           'paddle.fluid.incubate.fleet',
           'paddle.fluid.incubate.checkpoint',
           'paddle.fluid.incubate.fleet.base',
-          'paddle.fluid.incubate.fleet.parameter_server',
-          'paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler',
-          'paddle.fluid.incubate.fleet.parameter_server.pslib',
-          'paddle.fluid.incubate.fleet.parameter_server.ir',
           'paddle.fluid.incubate.fleet.collective',
           'paddle.fluid.incubate.fleet.utils',
+          'paddle.fluid.incubate.fleet.parameter_server.ir',
+          'paddle.fluid.incubate.fleet.parameter_server',
           'paddle.amp',
           'paddle.cost_model',
           'paddle.hapi',
@@ -437,9 +436,13 @@ packages=['paddle',
           'paddle.incubate.distributed.models',
           'paddle.incubate.distributed.models.moe',
           'paddle.incubate.distributed.models.moe.gate',
+          'paddle.incubate.fleet.parameter_server',
           'paddle.incubate.fleet.parameter_server.distribute_transpiler',
+          'paddle.incubate.fleet.parameter_server.pslib',
+          'paddle.incubate.fleet.parameter_server.ir',
           'paddle.quantization',
           'paddle.quantization.quanters',
+          'paddle.quantization.observers',
           'paddle.sparse',
           'paddle.sparse.nn',
           'paddle.sparse.nn.layer',
@@ -593,7 +596,7 @@ if '${WITH_CINN}' == 'ON':
 if '${WITH_PSLIB}' == 'ON':
     shutil.copy('${PSLIB_LIB}', libs_path)
     if os.path.exists('${PSLIB_VERSION_PY}'):
-        shutil.copy('${PSLIB_VERSION_PY}', '${PADDLE_BINARY_DIR}/python/paddle/fluid/incubate/fleet/parameter_server/pslib/')
+        shutil.copy('${PSLIB_VERSION_PY}', '${PADDLE_BINARY_DIR}/python/paddle/incubate/fleet/parameter_server/pslib/')
     package_data['paddle.libs'] += ['libps' + ext_name]
 
 if '${WITH_MKLDNN}' == 'ON':
@@ -723,6 +726,8 @@ if '${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON':
     # externalErrorMsg.pb for External Error message
     headers += list(find_files('*.pb', '${externalError_INCLUDE_DIR}'))
 
+headers += list(find_files('*.h', '${PYBIND_INCLUDE_DIR}', True)) # pybind headers
+
 class InstallCommand(InstallCommandBase):
     def finalize_options(self):
         ret = InstallCommandBase.finalize_options(self)
@@ -769,7 +774,7 @@ class InstallHeaders(Command):
         else:
             # third_party
             install_dir = re.sub('${THIRD_PARTY_PATH}', 'third_party', header)
-            patterns = ['install/mkldnn/include']
+            patterns = ['install/mkldnn/include', 'pybind/src/extern_pybind/include']
             for pattern in patterns:
                 install_dir = re.sub(pattern, '', install_dir)
         install_dir = os.path.join(self.install_dir, os.path.dirname(install_dir))

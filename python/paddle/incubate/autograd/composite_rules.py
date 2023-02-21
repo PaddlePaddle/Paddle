@@ -17,6 +17,8 @@
 # 2. The name and args of target op must be corresponding with standard description of op in
 #    ops.yaml or legacy_ops.yaml.
 
+import functools
+import operator
 
 from .primitives import *  # noqa: F403
 from .primreg import REGISTER_COMPOSITE, lookup_composite
@@ -32,7 +34,7 @@ def softmax_composite(x, axis):
     """define composite rule of op softmax"""
     if not x.shape:
         # do not return 1, to ensure gradients
-        res = divide(x + 1e-5, x + 1e-5)
+        res = exp(x - x)
         return res
     max_temp = max(x, axis, keepdim=True)
     max_temp.stop_gradient = True
@@ -130,3 +132,20 @@ def gelu_composite(x, approximate):
         cdf = half * (one + erf(x * full(x.shape, M_SQRT1_2, x.dtype)))
         out = x * cdf
         return out
+
+
+@REGISTER_COMPOSITE('reduce_mean')
+def mean_composite(x, axis, keepdim):
+    """define composite rule of op mean"""
+    axes = axis or list(range(0, len(x.shape)))
+    axes = [axes] if isinstance(axes, int) else axes
+    sum_x = sum(x, axis=axes, keepdim=keepdim)
+    value_to_fill = functools.reduce(
+        operator.mul, [x.shape[axis] for axis in axes]
+    )
+    norm = fill_constant(
+        shape=sum_x.shape,
+        value=value_to_fill,
+        dtype=sum_x.dtype,
+    )
+    return divide(sum_x, norm)

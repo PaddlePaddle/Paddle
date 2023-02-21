@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/api/lib/utils/tensor_utils.h"
@@ -85,6 +86,16 @@ struct ConvertToPhiContext<platform::XPUDeviceContext> {
   using TYPE = phi::XPUContext;
 };
 #endif
+
+/* Make Phi Tensor from framework::Variable */
+
+phi::Scalar MakePhiScalarFromVar(const framework::Variable& variable);
+
+phi::IntArray MakePhiIntArrayFromVar(const framework::Variable& variable);
+
+// TODO(chentianyu03): Inplace with IntArray constructor
+phi::IntArray MakePhiIntArrayFromVarList(
+    const std::vector<framework::Variable*>& variable_list);
 
 }  // namespace framework
 }  // namespace paddle
