@@ -633,6 +633,109 @@ class OpTest(unittest.TestCase):
 
         return op
 
+    def _append_ref_input_output(
+        self, block, op_proto, np_list, is_input, dtype
+    ):
+        '''Insert VarDesc and generate Python variable instance'''
+        proto_list = op_proto.inputs if is_input else op_proto.outputs
+
+        def create_var(block, name, np_list, var_proto):
+            # dtype = None
+            dtype = np.float32
+            shape = None
+            lod_level = None
+            if name not in np_list:
+                assert var_proto.intermediate, "{} not found".format(name)
+            else:
+                # inferece the dtype from numpy value.
+                np_value = np_list[name]
+                if isinstance(np_value, tuple):
+                    # dtype = np_value[0].dtype
+                    # output shape, lod should be infered from input.
+                    if is_input:
+                        shape = list(np_value[0].shape)
+                        lod_level = len(np_value[1])
+                else:
+                    # dtype = np_value.dtype
+                    if is_input:
+                        shape = list(np_value.shape)
+                        lod_level = 0
+            return block.create_var(
+                dtype=dtype, shape=shape, lod_level=lod_level, name=name
+            )
+
+        var_dict = {}
+        for var_proto in proto_list:
+            var_name = str(var_proto.name)
+            if (var_name not in np_list) and var_proto.dispensable:
+                continue
+            if is_input:
+                assert (var_name in np_list) or (
+                    var_proto.dispensable
+                ), "Missing {} as input".format(var_name)
+            if var_proto.duplicable:
+                assert isinstance(
+                    np_list[var_name], list
+                ), "Duplicable {} should be set as list".format(var_name)
+                var_list = []
+                for (name, np_value) in np_list[var_name]:
+                    var_list.append(
+                        create_var(block, name, {name: np_value}, var_proto)
+                    )
+                var_dict[var_name] = var_list
+            else:
+                var_dict[var_name] = create_var(
+                    block, var_name, np_list, var_proto
+                )
+
+        return var_dict
+
+    def _append_ref_ops(self, block):
+        self.__class__.op_type = (
+            self.op_type
+        )  # for ci check, please not delete it for now
+        if self.is_mkldnn_op():
+            self.__class__.use_mkldnn = True
+
+        if self.is_xpu_op():
+            self.__class__.use_xpu = True
+
+        op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
+        "infer datatype from inputs and outputs for this test case"
+        if self.is_bfloat16_op():
+            self.dtype = np.uint16
+            self.__class__.dtype = self.dtype
+            self.output_dtype = np.uint16
+        else:
+            self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
+        inputs = self._append_ref_input_output(
+            block, op_proto, self.inputs, True, self.dtype
+        )
+        outputs = self._append_ref_input_output(
+            block, op_proto, self.outputs, False, self.dtype
+        )
+
+        if hasattr(self, "cache_name_list"):
+            for name in self.cache_name_list:
+                inputs[name] = block.create_var(
+                    name=name,
+                    persistable=True,
+                    type=core.VarDesc.VarType.RAW,
+                    stop_gradient=True,
+                )
+
+        op = block.append_op(
+            type=self.op_type,
+            inputs=inputs,
+            outputs=outputs,
+            attrs=copy(self.attrs) if hasattr(self, "attrs") else dict(),
+        )
+        # infer variable type and infer shape in compile-time
+        op.desc.infer_var_type(block.desc)
+        op.desc.infer_shape(block.desc)
+
+        return op
+
     def _get_io_vars(self, block, numpy_inputs):
         inputs = {}
         for name, value in numpy_inputs.items():
@@ -2092,7 +2195,6 @@ class OpTest(unittest.TestCase):
                 # expect, expect_np = self.find_expect_value(name)
                 if self.op_test.dtype == np.float16:
                     expect, expect_np = self.find_expect_value(name)
-                    print("checker_name:", self.checker_name)
                 else:
                     expect_np = (
                         expect[0] if isinstance(expect, tuple) else expect
@@ -2175,16 +2277,6 @@ class OpTest(unittest.TestCase):
                 judge whether convert current output and expect to uint16.
                 return True | False
                 """
-                if actual_np.dtype == np.float16:
-                    print(
-                        "actual_np:",
-                        actual_np.dtype,
-                        " expect_np:",
-                        expect_np.dtype,
-                        "checker_name:",
-                        self.checker_name,
-                    )
-
                 if actual_np.dtype == np.uint16 and expect_np.dtype in [
                     np.float32,
                     np.float64,
@@ -2216,8 +2308,6 @@ class OpTest(unittest.TestCase):
                 self.checker_name = "dygraph checker"
 
             def calculate_output(self):
-                if self.op_test.dtype == np.float16:
-                    print("self.checker_name:", self.checker_name)
                 self.outputs = self.op_test._calc_dygraph_output(
                     place, no_check_set=no_check_set
                 )
@@ -2247,15 +2337,6 @@ class OpTest(unittest.TestCase):
                     return imperative_expect, imperative_expect_t
 
             def convert_uint16_to_float_ifneed(self, actual_np, expect_np):
-                if actual_np.dtype == np.float16:
-                    print(
-                        "actual_np:",
-                        actual_np.dtype,
-                        " expect_np:",
-                        expect_np.dtype,
-                        "checker_name:",
-                        self.checker_name,
-                    )
                 if actual_np.dtype == np.uint16 and expect_np.dtype in [
                     np.float32,
                     np.float64,
@@ -2604,9 +2685,6 @@ class OpTest(unittest.TestCase):
             # Therefore, it asserts np.abs(a - b) / (np.abs(a)*1e4) < max_relative_error,
             # which is the same as np.abs(a - b) / np.abs(a) < max_relative_error*1e4.
 
-            if self.dtype == np.float16:
-                print("numeric_grads:", a.dtype, "analytic_grqds:", b.dtype)
-
             abs_a = np.abs(a)
             if abs_a.ndim > 0:
                 if (
@@ -2818,7 +2896,6 @@ class OpTest(unittest.TestCase):
                 no_grad_set,
                 user_defined_grad_outputs,
             )
-            print("there is after grads, num.dtype:", numeric_grads[0].dtype)
 
         analytic_grads = self._get_gradient(
             inputs_to_check,
@@ -3213,7 +3290,7 @@ class OpTest(unittest.TestCase):
         prog = Program()
         scope = core.Scope()
         block = prog.global_block()
-        self._append_ops(block)
+        self._append_ref_ops(block)
 
         inputs = self._get_inputs(block)
         outputs = self._get_outputs(block)
