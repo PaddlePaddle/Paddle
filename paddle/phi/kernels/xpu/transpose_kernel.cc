@@ -54,4 +54,7 @@ PD_REGISTER_KERNEL(transpose,
                    ALL_LAYOUT,
                    phi::TransposeKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   int64_t,
+                   int,
+                   bool) {}
