@@ -58,6 +58,7 @@ limit = {
             True,
             np.float64,
             np.int64,
+            np.random.rand(3, 4, 12, 12),
         ),
     ],
 )
@@ -66,8 +67,6 @@ class TestTopkGradComp(unittest.TestCase):
     def setUpClass(cls):
         core._set_prim_backward_enabled(True)
         cls.primal = cls.primal.astype(cls.x_dtype)
-        cls.k = cls.k.astype(cls.index_dtype)
-        cls.axis = cls.axis.astype(cls.index_dtype)
         cls.v = cls.v.astype(cls.x_dtype)
 
     @classmethod
