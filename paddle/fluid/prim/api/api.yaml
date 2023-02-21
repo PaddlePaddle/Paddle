@@ -24,3 +24,4 @@
 - scatter_nd_add
 - tile
 - subtract
+- pad
