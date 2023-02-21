@@ -35,11 +35,6 @@ static uint64_t GetRandomSeed() {
 }
 
 class Generator {
- private:
-  GeneratorState state_;
-  std::shared_ptr<std::mt19937_64> engine_;
-  mutable std::mutex mu_;
-
  public:
   struct GeneratorState {
     int64_t device = -1;
@@ -107,6 +102,11 @@ class Generator {
   std::pair<uint64_t, uint64_t> IncrementOffset(uint64_t increament_offset);
 
   uint64_t get_device_id() { return this->state_.device; }
+
+ private:
+  GeneratorState state_;
+  std::shared_ptr<std::mt19937_64> engine_;
+  mutable std::mutex mu_;
 };
 
 // The DefaultCPUGenerator is used in manual_seed()
