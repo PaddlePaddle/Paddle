@@ -294,7 +294,7 @@ void CheckBlockCanBeStaticBuild(const framework::BlockDesc& block) {
   // has_fluid_kernel = KernelCode & 1
   // has_structed_kernel = (kernelCode >> 1) & 1
   using KernelCode = int8_t;
-  std::vector<std::pair<std::string, KernelCode>> invalid_ops;
+  std::set<std::pair<std::string, KernelCode>> invalid_ops;
   for (auto& op : block.AllOps()) {
     auto op_type = op->Type();
     if (op_type == "feed" || op_type == "fetch_v2") {
@@ -307,7 +307,7 @@ void CheckBlockCanBeStaticBuild(const framework::BlockDesc& block) {
 
     KernelCode kernel_code = (has_fluid_kernel << 1) + has_structured_kernel;
     if (kernel_code != 0) {
-      invalid_ops.emplace_back(std::make_pair(op_type, kernel_code));
+      invalid_ops.insert(std::make_pair(op_type, kernel_code));
     }
   }
 
