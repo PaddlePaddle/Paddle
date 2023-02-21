@@ -19,7 +19,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -43,7 +42,7 @@ class UnsqueezeKernel : public framework::OpKernel<T> {
         axes = GetDataFromTensorList<int>(axes_tensor_list);
       } else if (context.HasInput("AxesTensor")) {
         auto *axes_tensor = context.Input<phi::DenseTensor>("AxesTensor");
-        axes = phi::GetDataFromTensor<int>(axes_tensor);
+        axes = GetDataFromTensor<int>(axes_tensor);
       }
       need_resize_out_dims = true;
     }
