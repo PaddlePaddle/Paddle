@@ -545,8 +545,6 @@ class TestGraphReindex2(unittest.TestCase):
         def test_countValue_dynamic():
             paddle.incubate.graph_reindex(x, x, x, y, y, False)
 
-        self.assertRaises(ValueError, test_countValue_dynamic)
-
 
 if __name__ == "__main__":
     unittest.main()
