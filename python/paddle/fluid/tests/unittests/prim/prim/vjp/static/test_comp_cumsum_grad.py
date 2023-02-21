@@ -20,11 +20,30 @@ import parameterized as param
 import paddle
 from paddle.fluid import core
 
+core._set_prim_backward_enabled(True)
+
 limit = {
     'float16': {'atol': 1e-3, 'rtol': 1e-3},
     'float32': {'atol': 1e-6, 'rtol': 1e-6},
     'float64': {'atol': 1e-15, 'rtol': 1e-15},
 }
+
+
+def apply_to_static(net, use_cinn):
+    build_strategy = paddle.static.BuildStrategy()
+    build_strategy.build_cinn_pass = use_cinn
+    return paddle.jit.to_static(net, build_strategy=build_strategy)
+
+
+class PrimeNet(paddle.nn.Layer):
+    def __init__(self):
+        super(PrimeNet, self).__init__()
+        self.fc = paddle.nn.Linear(4, 4)
+
+    def forward(self, x):
+        tmp = self.fc(x)
+        out = paddle.cumsum(tmp, axis=-1)
+        return out
 
 
 @param.parameterized_class(
@@ -56,6 +75,32 @@ class TestCumsumGradComp(unittest.TestCase):
 
     def tearDown(self):
         paddle.disable_static()
+
+    def train(self, use_prim, use_cinn):
+        paddle.seed(2022)
+        self.x = paddle.randn([2, 4])
+        self.x.stop_gradient = False
+        net = PrimeNet()
+        core._set_prim_backward_enabled(use_prim)
+        net = apply_to_static(net, use_cinn)
+        out = net(self.x)
+        res = paddle.autograd.grad(out, [self.x])
+
+        return res
+
+    def test_cinn(self):
+        paddle.disable_static()
+        dy_res = self.train(use_prim=False, use_cinn=False)
+        comp_st_cinn_res = self.train(use_prim=True, use_cinn=True)
+
+        for i in range(len(dy_res)):
+            np.testing.assert_allclose(
+                comp_st_cinn_res[i].numpy(),
+                dy_res[i].numpy(),
+                rtol=limit[str(self.primal.dtype)]['rtol'],
+                atol=limit[str(self.primal.dtype)]['atol'],
+            )
+        paddle.enable_static()
 
     def test_cumsum_grad_comp(self):
         def actual(primal, cotangent):
@@ -108,6 +153,7 @@ class TestCumsumGradComp(unittest.TestCase):
                 rtol=limit[str(self.primal.dtype)]['rtol'],
                 atol=limit[str(self.primal.dtype)]['atol'],
             )
+        core._set_prim_backward_enabled(False)
 
 
 if __name__ == '__main__':
