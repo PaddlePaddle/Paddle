@@ -128,7 +128,8 @@ struct TypeManager {
   ///
   template <typename T, typename... Args>
   static T get(IrContext *ctx, Args &&...args) {
-    return get<T, Args...>(ctx, T::type_id(), std::forward<Args>(args)...);
+    return get<T, Args...>(
+        ctx, ir::TypeId::get<T>(), std::forward<Args>(args)...);
   }
 
   ///
@@ -177,7 +178,8 @@ struct TypeManager {
   ///
   template <typename T>
   static void RegisterType(IrContext *ctx) {
-    RegisterType<T>(ctx, T::type_id());  // class Type需要提供type_id接口
+    RegisterType<T>(ctx,
+                    ir::TypeId::get<T>());  // class Type需要提供type_id接口
   }
 
   ///

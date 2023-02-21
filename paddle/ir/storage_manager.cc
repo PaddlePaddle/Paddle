@@ -23,15 +23,14 @@ namespace ir {
 struct ParametricStorageManager {
   using StorageBase = StorageManager::StorageBase;
 
-  explicit ParametricStorageManager(
-      std::function<void(StorageBase *)> destructor)
-      : destructor_(destructor) {}
+  ParametricStorageManager() {}
 
   ~ParametricStorageManager() {
-    if (!destructor_) return;
     for (const auto &instance : parametric_instances_) {
-      destructor_(instance.second);
+      VLOG(4) << "delete parametric_instances";
+      delete instance.second;
     }
+    parametric_instances_.clear();
   }
 
   // Get the storage of parametric type, if not in the cache, create and
@@ -59,8 +58,6 @@ struct ParametricStorageManager {
   // In order to prevent hash conflicts, the unordered_multimap data structure
   // is used for storage.
   std::unordered_multimap<size_t, StorageBase *> parametric_instances_;
-
-  std::function<void(StorageBase *)> destructor_;
 };
 
 StorageManager::StorageManager() {}
@@ -89,11 +86,10 @@ StorageManager::StorageBase *StorageManager::GetParameterlessStorageTypeImpl(
   return parameterless_instance;
 }
 
-void StorageManager::RegisterParametricStorageTypeImpl(
-    TypeId type_id, std::function<void(StorageBase *)> del_func) {
+void StorageManager::RegisterParametricStorageTypeImpl(TypeId type_id) {
   std::lock_guard<ir::SpinLock> guard(parametric_instance_lock_);
-  parametric_instance_.emplace(
-      type_id, std::make_unique<ParametricStorageManager>(del_func));
+  parametric_instance_.emplace(type_id,
+                               std::make_unique<ParametricStorageManager>());
 }
 
 void StorageManager::RegisterParameterlessStorageTypeImpl(

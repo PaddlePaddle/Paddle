@@ -101,14 +101,7 @@ class StorageManager {
   ///
   template <typename Storage>
   void RegisterParametricStorageType(TypeId type_id) {
-    if (std::is_trivially_destructible<Storage>::value) {
-      return RegisterParametricStorageTypeImpl(type_id, nullptr);
-    } else {
-      return RegisterParametricStorageTypeImpl(
-          type_id, [](StorageBase *storage) {
-            static_cast<Storage *>(storage)->~Storage();
-          });
-    }
+    return RegisterParametricStorageTypeImpl(type_id);
   }
 
   ///
@@ -138,8 +131,7 @@ class StorageManager {
 
   StorageBase *GetParameterlessStorageTypeImpl(TypeId type_id);
 
-  void RegisterParametricStorageTypeImpl(
-      TypeId type_id, std::function<void(StorageBase *)> del_func);
+  void RegisterParametricStorageTypeImpl(TypeId type_id);
 
   void RegisterParameterlessStorageTypeImpl(
       TypeId type_id, std::function<StorageBase *()> constructor);
