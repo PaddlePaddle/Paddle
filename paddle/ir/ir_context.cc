@@ -35,6 +35,9 @@ class IrContextImpl {
 
   void RegisterAbstractType(ir::TypeId type_id, AbstractType *abstract_type) {
     std::lock_guard<ir::SpinLock> guard(registed_abstract_types_lock_);
+    VLOG(4) << "IrContext register an abstract_type of: [TypeId_hash="
+            << std::hash<ir::TypeId>()(type_id)
+            << ", AbstractType_ptr=" << abstract_type << "].";
     registed_abstract_types_.emplace(type_id, abstract_type);
   }
 
@@ -42,8 +45,13 @@ class IrContextImpl {
     std::lock_guard<ir::SpinLock> guard(registed_abstract_types_lock_);
     auto iter = registed_abstract_types_.find(type_id);
     if (iter == registed_abstract_types_.end()) {
+      VLOG(4) << "IrContext not fonund cached abstract_type of: [TypeId_hash="
+              << std::hash<ir::TypeId>()(type_id) << "].";
       return nullptr;
     } else {
+      VLOG(4) << "IrContext fonund a cached abstract_type of: [TypeId_hash="
+              << std::hash<ir::TypeId>()(type_id)
+              << ", AbstractType_ptr=" << iter->second << "].";
       return iter->second;
     }
   }
@@ -67,11 +75,13 @@ IrContext &IrContext::Instance() {
 }
 
 IrContext::IrContext() : impl_(new IrContextImpl()) {
+  VLOG(4) << "IrContext register built-in type...";
   REGISTER_TYPE_2_IRCONTEXT(Float32Type, this);
   impl_->fp32_type = TypeManager::get<Float32Type>(this);
-
+  VLOG(4) << "Float32Type registration complete";
   REGISTER_TYPE_2_IRCONTEXT(Int32Type, this);
   impl_->int32_type = TypeManager::get<Int32Type>(this);
+  VLOG(4) << "Int32Type registration complete";
 }
 
 void IrContext::RegisterAbstractType(ir::TypeId type_id,
@@ -89,8 +99,9 @@ std::unordered_map<TypeId, AbstractType *>
 }
 
 const AbstractType &AbstractType::lookup(TypeId type_id, IrContext *ctx) {
-  VLOG(4) << "==> Get registed abstract type (" << &type_id
-          << ") from IrContext (" << ctx << ").";
+  VLOG(4) << "Lookup abstract type [TypeId_hash="
+          << std::hash<ir::TypeId>()(type_id) << "] from IrContext [ptr=" << ctx
+          << "].";
   auto &impl = ctx->impl();
   AbstractType *abstract_type = impl.lookup(type_id);
   if (abstract_type) {

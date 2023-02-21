@@ -67,7 +67,6 @@ class StorageManager {
   Storage *GetParametricStorageType(std::function<void(Storage *)> init_func,
                                     TypeId type_id,
                                     Args &&...args) {
-    // auto param = GetParamKey<Storage>(std::forward<Args>(args)...);
     typename Storage::ParamKey param =
         typename Storage::ParamKey(std::forward<Args>(args)...);
     std::size_t hash_value = Storage::HashValue(param);
@@ -113,7 +112,6 @@ class StorageManager {
   template <typename Storage>
   void RegisterParameterlessStorageType(
       TypeId type_id, std::function<void(Storage *)> init_func) {
-    VLOG(4) << "==> StorageManager::RegisterParameterlessStorageType()";
     auto constructor = [&]() {
       auto *storage = new Storage();
       if (init_func) init_func(storage);
