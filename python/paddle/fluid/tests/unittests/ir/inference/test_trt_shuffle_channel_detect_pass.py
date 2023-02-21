@@ -26,7 +26,7 @@ from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 class ShuffleChannelFuseTRTPassTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[-1, 6, 64, 64], dtype="float32"
             )
             reshape1 = paddle.reshape(x=data, shape=[-1, 2, 3, 64, 64])

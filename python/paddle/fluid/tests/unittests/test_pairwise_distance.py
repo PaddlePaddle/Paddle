@@ -58,8 +58,12 @@ def test_static(
     )
     paddle.enable_static()
     with paddle.static.program_guard(prog, startup_prog):
-        x = paddle.fluid.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
-        y = paddle.fluid.data(name='y', shape=y_np.shape, dtype=x_np.dtype)
+        x = paddle.paddle.static.data(
+            name='x', shape=x_np.shape, dtype=x_np.dtype
+        )
+        y = paddle.paddle.static.data(
+            name='y', shape=y_np.shape, dtype=x_np.dtype
+        )
 
         if functional:
             distance = call_pairwise_distance_functional(

@@ -27,7 +27,6 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-import paddle.fluid as fluid
 import paddle.nn.functional as F
 from paddle.fluid import Program, program_guard
 
@@ -341,14 +340,16 @@ class XPUTestWarpCTCOp(XPUOpTestWrapper):
             self.dtype = self.in_type
             self.place = paddle.XPUPlace(0)
             with program_guard(Program(), Program()):
-                logits = fluid.data(
+                logits = paddle.static.data(
                     name='logits', shape=[5, 16, 6], dtype=self.dtype
                 )
-                logits_length = fluid.data(
+                logits_length = paddle.static.data(
                     name='logits_length', shape=[None], dtype='int64'
                 )
-                label = fluid.data(name='label', shape=[16, 3], dtype='int32')
-                label_length = fluid.data(
+                label = paddle.static.data(
+                    name='label', shape=[16, 3], dtype='int32'
+                )
+                label_length = paddle.static.data(
                     name='labels_length', shape=[None], dtype='int64'
                 )
 

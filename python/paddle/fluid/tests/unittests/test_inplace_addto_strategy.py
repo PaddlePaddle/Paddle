@@ -57,7 +57,7 @@ def create_program(data_format="NCHW"):
     main = fluid.Program()
     startup = fluid.Program()
     with fluid.program_guard(main, startup):
-        x = fluid.data(name='img', shape=[-1, 3, 224, 224])
+        x = paddle.static.data(name='img', shape=[-1, 3, 224, 224])
         x.stop_gradient = False
         if data_format == "NHWC":
             x = paddle.transpose(x, [0, 2, 3, 1])

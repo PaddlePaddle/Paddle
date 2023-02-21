@@ -21,7 +21,6 @@ sys.path.append("../")
 from op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
 
 
@@ -185,7 +184,9 @@ class TestSequencePadOpError(unittest.TestCase):
         self.assertRaises(TypeError, test_dtype)
 
     def test_length_dtype(self):
-        x = fluid.data(name='x', shape=[10, 5], dtype='float32', lod_level=1)
+        x = paddle.static.data(
+            name='x', shape=[10, 5], dtype='float32', lod_level=1
+        )
 
         pad_value = paddle.assign(np.array([0.0], dtype=np.float32))
         out, length = paddle.static.nn.sequence_lod.sequence_pad(

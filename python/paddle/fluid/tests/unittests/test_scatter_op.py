@@ -224,9 +224,13 @@ class TestScatterAPI(unittest.TestCase):
 
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(name="input", shape=[3, 2], dtype="float64")
-            index = fluid.data(name="index", shape=[4], dtype="int64")
-            updates = fluid.data(name="updates", shape=[4, 2], dtype="float64")
+            input = paddle.static.data(
+                name="input", shape=[3, 2], dtype="float64"
+            )
+            index = paddle.static.data(name="index", shape=[4], dtype="int64")
+            updates = paddle.static.data(
+                name="updates", shape=[4, 2], dtype="float64"
+            )
             result = self.scatter(input, index, updates, False)
 
             input_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float64)

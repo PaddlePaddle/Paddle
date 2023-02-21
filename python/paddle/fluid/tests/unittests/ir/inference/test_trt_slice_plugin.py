@@ -41,7 +41,9 @@ class SlicePluginTRTTest(InferencePassTest):
         self.setUpSliceParams()
         self.setUpTensorRTParams()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data", shape=[3, 3, 3, 3], dtype="float32")
+            data = paddle.static.data(
+                name="data", shape=[3, 3, 3, 3], dtype="float32"
+            )
             axes = self.params_axes
             starts = self.params_starts
             ends = self.params_ends
@@ -110,7 +112,9 @@ class SlicePluginTRTTestInt32(SlicePluginTRTTest):
         self.setUpSliceParams()
         self.setUpTensorRTParams()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data", shape=[3, 3, 3, 3], dtype="int32")
+            data = paddle.static.data(
+                name="data", shape=[3, 3, 3, 3], dtype="int32"
+            )
             axes = self.params_axes
             starts = self.params_starts
             ends = self.params_ends
@@ -135,7 +139,9 @@ class StaticSlicePluginTRTTestInt32(SlicePluginTRTTest):
         self.setUpSliceParams()
         self.setUpTensorRTParams()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data", shape=[3, 3, 3, 3], dtype="int32")
+            data = paddle.static.data(
+                name="data", shape=[3, 3, 3, 3], dtype="int32"
+            )
             axes = self.params_axes
             starts = self.params_starts
             ends = self.params_ends

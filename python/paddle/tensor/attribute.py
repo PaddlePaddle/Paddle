@@ -92,7 +92,7 @@ def shape(input):
             import paddle
             paddle.enable_static()
 
-            inputs = fluid.data(name="x", shape=[3, 100, 100], dtype="float32")
+            inputs = paddle.static.data(name="x", shape=[3, 100, 100], dtype="float32")
             output = paddle.shape(inputs)
 
             exe = fluid.Executor(fluid.CPUPlace())

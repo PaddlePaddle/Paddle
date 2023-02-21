@@ -81,8 +81,8 @@ def create_paddle_case(op_type, callback):
         def test_api(self):
             paddle.enable_static()
             with program_guard(Program(), Program()):
-                x = fluid.data(name='x', shape=[4], dtype='int64')
-                y = fluid.data(name='y', shape=[4], dtype='int64')
+                x = paddle.static.data(name='x', shape=[4], dtype='int64')
+                y = paddle.static.data(name='y', shape=[4], dtype='int64')
                 op = eval("paddle.%s" % (self.op_type))
                 out = op(x, y)
                 exe = fluid.Executor(self.place)
@@ -96,8 +96,8 @@ def create_paddle_case(op_type, callback):
             if self.op_type == "equal":
                 paddle.enable_static()
                 with program_guard(Program(), Program()):
-                    x = fluid.data(name='x', shape=[4], dtype='int64')
-                    y = fluid.data(name='y', shape=[1], dtype='int64')
+                    x = paddle.static.data(name='x', shape=[4], dtype='int64')
+                    y = paddle.static.data(name='y', shape=[1], dtype='int64')
                     op = eval("paddle.%s" % (self.op_type))
                     out = op(x, y)
                     exe = fluid.Executor(self.place)

@@ -466,12 +466,12 @@ class TestBilinearInterp_attr_tensor_Case3(TestBilinearInterpOp_attr_tensor):
                  "core is not compiled with XPU")
 class TestBilinearInterpOpAPI(unittest.TestCase):
     def test_case(self):
-        x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+        x = paddle.static.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
 
-        dim = fluid.data(name="dim", shape=[1], dtype="int32")
-        shape_tensor = fluid.data(name="shape_tensor", shape=[2], dtype="int32")
-        actual_size = fluid.data(name="actual_size", shape=[2], dtype="int32")
-        scale_tensor = fluid.data(
+        dim = paddle.static.data(name="dim", shape=[1], dtype="int32")
+        shape_tensor = paddle.static.data(name="shape_tensor", shape=[2], dtype="int32")
+        actual_size = paddle.static.data(name="actual_size", shape=[2], dtype="int32")
+        scale_tensor = paddle.static.data(
             name="scale_tensor", shape=[1], dtype="float32")
 
         out1 = fluid.layers.resize_bilinear(x, out_shape=[12, 12])

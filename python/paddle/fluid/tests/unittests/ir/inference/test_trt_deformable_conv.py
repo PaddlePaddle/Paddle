@@ -30,13 +30,13 @@ class TRTDeformableConvTest(InferencePassTest):
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            input = fluid.data(
+            input = paddle.static.data(
                 name='input', shape=self.input_size, dtype=self.dtype
             )
-            offset = fluid.data(
+            offset = paddle.static.data(
                 name='offset', shape=self.offset_size, dtype=self.dtype
             )
-            mask = fluid.data(
+            mask = paddle.static.data(
                 name='mask', shape=self.mask_size, dtype=self.dtype
             )
 

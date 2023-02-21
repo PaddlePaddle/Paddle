@@ -88,12 +88,12 @@ class TestSimpleRNN(unittest.TestCase):
 
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
-                x_data = paddle.fluid.data(
+                x_data = paddle.paddle.static.data(
                     "input",
                     [-1, -1, 16],
                     dtype=paddle.framework.get_default_dtype(),
                 )
-                init_h = paddle.fluid.data(
+                init_h = paddle.paddle.static.data(
                     "init_h",
                     [2 * self.num_directions, -1, 32],
                     dtype=paddle.framework.get_default_dtype(),
@@ -123,7 +123,7 @@ class TestSimpleRNN(unittest.TestCase):
 
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
-                x_data = paddle.fluid.data(
+                x_data = paddle.paddle.static.data(
                     "input",
                     [-1, -1, 16],
                     dtype=paddle.framework.get_default_dtype(),
@@ -155,12 +155,14 @@ class TestSimpleRNN(unittest.TestCase):
 
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
-                x_data = paddle.fluid.data(
+                x_data = paddle.paddle.static.data(
                     "input",
                     [-1, -1, 16],
                     dtype=paddle.framework.get_default_dtype(),
                 )
-                seq_len = paddle.fluid.data("seq_len", [-1], dtype="int64")
+                seq_len = paddle.paddle.static.data(
+                    "seq_len", [-1], dtype="int64"
+                )
                 mask = paddle.static.nn.sequence_lod.sequence_mask(
                     seq_len, dtype=paddle.get_default_dtype()
                 )
@@ -245,12 +247,12 @@ class TestGRU(unittest.TestCase):
 
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
-                x_data = paddle.fluid.data(
+                x_data = paddle.paddle.static.data(
                     "input",
                     [-1, -1, 16],
                     dtype=paddle.framework.get_default_dtype(),
                 )
-                init_h = paddle.fluid.data(
+                init_h = paddle.paddle.static.data(
                     "init_h",
                     [2 * self.num_directions, -1, 32],
                     dtype=paddle.framework.get_default_dtype(),
@@ -280,7 +282,7 @@ class TestGRU(unittest.TestCase):
 
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
-                x_data = paddle.fluid.data(
+                x_data = paddle.paddle.static.data(
                     "input",
                     [-1, -1, 16],
                     dtype=paddle.framework.get_default_dtype(),
@@ -312,12 +314,14 @@ class TestGRU(unittest.TestCase):
 
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
-                x_data = paddle.fluid.data(
+                x_data = paddle.paddle.static.data(
                     "input",
                     [-1, -1, 16],
                     dtype=paddle.framework.get_default_dtype(),
                 )
-                seq_len = paddle.fluid.data("seq_len", [-1], dtype="int64")
+                seq_len = paddle.paddle.static.data(
+                    "seq_len", [-1], dtype="int64"
+                )
                 mask = paddle.static.nn.sequence_lod.sequence_mask(
                     seq_len, dtype=paddle.get_default_dtype()
                 )
@@ -401,17 +405,17 @@ class TestLSTM(unittest.TestCase):
 
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
-                x_data = paddle.fluid.data(
+                x_data = paddle.paddle.static.data(
                     "input",
                     [-1, -1, 16],
                     dtype=paddle.framework.get_default_dtype(),
                 )
-                init_h = paddle.fluid.data(
+                init_h = paddle.paddle.static.data(
                     "init_h",
                     [2 * self.num_directions, -1, 32],
                     dtype=paddle.framework.get_default_dtype(),
                 )
-                init_c = paddle.fluid.data(
+                init_c = paddle.paddle.static.data(
                     "init_c",
                     [2 * self.num_directions, -1, 32],
                     dtype=paddle.framework.get_default_dtype(),
@@ -442,7 +446,7 @@ class TestLSTM(unittest.TestCase):
 
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
-                x_data = paddle.fluid.data(
+                x_data = paddle.paddle.static.data(
                     "input",
                     [-1, -1, 16],
                     dtype=paddle.framework.get_default_dtype(),
@@ -475,12 +479,14 @@ class TestLSTM(unittest.TestCase):
 
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
-                x_data = paddle.fluid.data(
+                x_data = paddle.paddle.static.data(
                     "input",
                     [-1, -1, 16],
                     dtype=paddle.framework.get_default_dtype(),
                 )
-                seq_len = paddle.fluid.data("seq_len", [-1], dtype="int64")
+                seq_len = paddle.paddle.static.data(
+                    "seq_len", [-1], dtype="int64"
+                )
                 mask = paddle.static.nn.sequence_lod.sequence_mask(
                     seq_len, dtype=paddle.get_default_dtype()
                 )

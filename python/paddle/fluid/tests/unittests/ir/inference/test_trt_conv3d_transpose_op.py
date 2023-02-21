@@ -27,7 +27,7 @@ class TensorRTSubgraphPassConv3dTransposeTest(InferencePassTest):
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[-1, 4, 4, 32, 32], dtype="float32"
             )
             conv_out = paddle.static.nn.conv3d_transpose(
@@ -94,7 +94,7 @@ class DynamicShapeTensorRTSubgraphPassConv3dTransposeTest(InferencePassTest):
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[-1, 6, -1, -1, -1], dtype="float32"
             )
             conv_out = paddle.static.nn.conv3d_transpose(

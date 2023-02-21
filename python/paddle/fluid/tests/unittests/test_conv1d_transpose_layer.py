@@ -100,11 +100,13 @@ class Conv1DTransposeTestCase(unittest.TestCase):
                     if not self.channel_last
                     else (-1, -1, self.in_channels)
                 )
-                x_var = fluid.data("input", input_shape, dtype=self.dtype)
-                w_var = fluid.data(
+                x_var = paddle.static.data(
+                    "input", input_shape, dtype=self.dtype
+                )
+                w_var = paddle.static.data(
                     "weight", self.weight_shape, dtype=self.dtype
                 )
-                b_var = fluid.data(
+                b_var = paddle.static.data(
                     "bias", (self.out_channels,), dtype=self.dtype
                 )
                 y_var = F.conv1d_transpose(

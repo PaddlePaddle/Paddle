@@ -340,7 +340,7 @@ class TestMeanAPI(unittest.TestCase):
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', self.x_shape)
+            x = paddle.paddle.static.data('X', self.x_shape)
             out1 = paddle.mean(x)
             out2 = paddle.tensor.mean(x)
             out3 = paddle.tensor.stat.mean(x)
@@ -381,7 +381,7 @@ class TestMeanAPI(unittest.TestCase):
 
     def test_fluid_api(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            x = fluid.data("x", shape=[10, 10], dtype="float32")
+            x = paddle.static.data("x", shape=[10, 10], dtype="float32")
             out = paddle.mean(x=x, axis=1)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -405,7 +405,7 @@ class TestMeanAPI(unittest.TestCase):
         self.assertRaises(Exception, paddle.mean, x, 2)
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', [10, 12], 'int32')
+            x = paddle.paddle.static.data('X', [10, 12], 'int32')
             self.assertRaises(TypeError, paddle.mean, x)
 
 

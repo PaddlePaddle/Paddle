@@ -86,9 +86,11 @@ class TestPutAlongAxisAPI(unittest.TestCase):
 
         def run(place):
             with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.fluid.data('X', self.shape)
-                index = paddle.fluid.data('Index', self.index_shape, "int64")
-                value = paddle.fluid.data('Value', self.value_shape)
+                x = paddle.paddle.static.data('X', self.shape)
+                index = paddle.paddle.static.data(
+                    'Index', self.index_shape, "int64"
+                )
+                value = paddle.paddle.static.data('Value', self.value_shape)
                 out = paddle.put_along_axis(x, index, value, self.axis)
                 exe = paddle.static.Executor(self.place[0])
                 res = exe.run(

@@ -26,7 +26,7 @@ from paddle.fluid.core import AnalysisConfig
 class FCFusePassTRTTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[32, 128, 2, 2], dtype="float32"
             )
             fc_out1 = paddle.static.nn.fc(
@@ -56,7 +56,7 @@ class FCFusePassTRTTest(InferencePassTest):
 class FCFusePassTRTStaticDims4Cols1Test(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[32, 128, 32, 8], dtype="float32"
             )
             fc_out1 = paddle.static.nn.fc(
@@ -84,7 +84,7 @@ class FCFusePassTRTStaticDims4Cols1Test(InferencePassTest):
 class FCFusePassTRTStaticDims4Cols2Test(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[3, 24, 16, 16], dtype="float32"
             )
             fc_out1 = paddle.static.nn.fc(
@@ -112,7 +112,9 @@ class FCFusePassTRTStaticDims4Cols2Test(InferencePassTest):
 class FCFusePassTRTDynamicDims2Test(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data", shape=[32, 128], dtype="float32")
+            data = paddle.static.data(
+                name="data", shape=[32, 128], dtype="float32"
+            )
             fc_out1 = paddle.static.nn.fc(
                 x=data, size=64, num_flatten_dims=1, activation="relu"
             )
@@ -144,7 +146,9 @@ class FCFusePassTRTDynamicDims2Test(InferencePassTest):
 class FCFusePassTRTDynamicDims3Cols1Test(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data", shape=[32, 128, 32], dtype="float32")
+            data = paddle.static.data(
+                name="data", shape=[32, 128, 32], dtype="float32"
+            )
             fc_out1 = paddle.static.nn.fc(
                 x=data, size=64, num_flatten_dims=1, activation="relu"
             )
@@ -176,7 +180,9 @@ class FCFusePassTRTDynamicDims3Cols1Test(InferencePassTest):
 class FCFusePassTRTDynamicDims3Cols2Test(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data", shape=[32, 128, 32], dtype="float32")
+            data = paddle.static.data(
+                name="data", shape=[32, 128, 32], dtype="float32"
+            )
             fc_out1 = paddle.static.nn.fc(
                 x=data, size=64, num_flatten_dims=2, activation="relu"
             )
@@ -208,7 +214,7 @@ class FCFusePassTRTDynamicDims3Cols2Test(InferencePassTest):
 class FCFusePassTRTDynamicDims4Cols1Test(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[32, 12, 4, 6], dtype="float32"
             )
             fc_out1 = paddle.static.nn.fc(
@@ -244,7 +250,7 @@ class FCFusePassTRTDynamicDims4Cols1Test(InferencePassTest):
 class FCFusePassTRTDynamicDims4Cols2Test(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[32, 128, 32, 32], dtype="float32"
             )
             fc_out1 = paddle.static.nn.fc(
@@ -280,7 +286,7 @@ class FCFusePassTRTDynamicDims4Cols2Test(InferencePassTest):
 class FCFusePassTRTDynamicDims4Cols3Test(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[32, 128, 32, 32], dtype="float32"
             )
             fc_out1 = paddle.static.nn.fc(

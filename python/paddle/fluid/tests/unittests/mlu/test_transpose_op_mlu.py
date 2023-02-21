@@ -256,7 +256,7 @@ class TestTransposeApi(unittest.TestCase):
 class TestTAPI(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program()):
-            data = fluid.data(shape=[10], dtype="float32", name="data")
+            data = paddle.static.data(shape=[10], dtype="float32", name="data")
             data_t = paddle.t(data)
             place = fluid.MLUPlace(0)
             exe = fluid.Executor(place)
@@ -266,7 +266,7 @@ class TestTAPI(unittest.TestCase):
         self.assertEqual((result == expected_result).all(), True)
 
         with fluid.program_guard(fluid.Program()):
-            data = fluid.data(shape=[10, 5], dtype="float32", name="data")
+            data = paddle.static.data(shape=[10, 5], dtype="float32", name="data")
             data_t = paddle.t(data)
             place = fluid.MLUPlace(0)
             exe = fluid.Executor(place)
@@ -276,7 +276,7 @@ class TestTAPI(unittest.TestCase):
         self.assertEqual((result == expected_result).all(), True)
 
         with fluid.program_guard(fluid.Program()):
-            data = fluid.data(shape=[1, 5], dtype="float32", name="data")
+            data = paddle.static.data(shape=[1, 5], dtype="float32", name="data")
             data_t = paddle.t(data)
             place = fluid.MLUPlace(0)
             exe = fluid.Executor(place)
@@ -311,7 +311,7 @@ class TestTAPI(unittest.TestCase):
 
     def test_errors(self):
         with fluid.program_guard(fluid.Program()):
-            x = fluid.data(name='x', shape=[10, 5, 3], dtype='float32')
+            x = paddle.static.data(name='x', shape=[10, 5, 3], dtype='float32')
 
             def test_x_dimension_check():
                 paddle.t(x)

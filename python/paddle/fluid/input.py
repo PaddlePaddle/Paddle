@@ -102,7 +102,7 @@ def one_hot(input, depth, allow_out_of_range=False):
             paddle.enable_static()
 
             # Correspond to the first example above, where label.shape is 4 and one_hot_label.shape is [4, 4].
-            label = fluid.data(name="label", shape=[4], dtype="int64")
+            label = paddle.static.data(name="label", shape=[4], dtype="int64")
             one_hot_label = fluid.one_hot(input=label, depth=4)
     """
     check_variable_and_dtype(input, 'input', ['int32', 'int64'], 'one_hot_v2')

@@ -26,7 +26,9 @@ class API_Test_Nansum(unittest.TestCase):
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            input = fluid.data(name='input', dtype='float32', shape=[2, 4])
+            input = paddle.static.data(
+                name='input', dtype='float32', shape=[2, 4]
+            )
             out1 = paddle.nansum(input)
             out2 = paddle.nansum(input, axis=0)
             out3 = paddle.nansum(input, axis=-1)
@@ -77,14 +79,18 @@ class API_Test_Nansum(unittest.TestCase):
 
         # input dtype error
         def run1():
-            input = fluid.data(name='input', dtype='float16', shape=[2, 3])
+            input = paddle.static.data(
+                name='input', dtype='float16', shape=[2, 3]
+            )
             output = paddle.nansum(input)
 
         self.assertRaises(TypeError, run1)
 
         # axis type error
         def run2():
-            input = fluid.data(name='input', dtype='float16', shape=[2, 3])
+            input = paddle.static.data(
+                name='input', dtype='float16', shape=[2, 3]
+            )
             output = paddle.nansum(input, axis=1.2)
 
         self.assertRaises(TypeError, run2)

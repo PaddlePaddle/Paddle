@@ -27,7 +27,7 @@ from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 class TRTReduceSumTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[-1, 3, 10, 192], dtype="float32"
             )
             reduce_sum = paddle.sum(data, axis=[2, -1], keepdim=True)
@@ -60,7 +60,7 @@ class TRTReduceSumTest(InferencePassTest):
 class TRTReduceSumAllTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[-1, 3, 10, 192], dtype="float32"
             )
             reduce_sum = paddle.sum(data, keepdim=True)

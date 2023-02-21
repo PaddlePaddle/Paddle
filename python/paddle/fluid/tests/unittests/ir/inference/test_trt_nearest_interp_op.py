@@ -43,7 +43,7 @@ class TRTNearestInterpTest(InferencePassTest):
                     self.origin_shape[1],
                     self.channels,
                 ]
-            data = fluid.data(name='data', shape=shape, dtype='float32')
+            data = paddle.static.data(name='data', shape=shape, dtype='float32')
             resize_out = self.append_nearest_interp(data)
             out = nn.batch_norm(resize_out, is_test=True)
 

@@ -27,7 +27,7 @@ from paddle.fluid.core import AnalysisConfig
 class PadOpTRTTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[1, 3, 128, 128], dtype="float32"
             )
             pad_out = paddle.nn.functional.pad(

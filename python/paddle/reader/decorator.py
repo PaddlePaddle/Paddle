@@ -527,7 +527,7 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
     Example:
 
     .. code-block:: python
-
+        import paddle
         import paddle.fluid as fluid
         from paddle.fluid.io import multiprocess_reader
         import numpy as np
@@ -556,7 +556,7 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 place = fluid.CPUPlace()
                 # the 1st 2 is batch size
-                image = fluid.data(name='image', dtype='int64', shape=[2, 1, 2])
+                image = paddle.static.data(name='image', dtype='int64', shape=[2, 1, 2])
                 fluid.layers.Print(image)
                 # print detailed tensor info of image variable
 

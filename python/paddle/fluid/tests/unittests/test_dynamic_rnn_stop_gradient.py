@@ -32,7 +32,9 @@ def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
     x = paddle.assign(
         np.random.rand(batch_size, beam_size, 32).astype("float32")
     )
-    indices = fluid.data(shape=[None, beam_size], dtype="int64", name="indices")
+    indices = paddle.static.data(
+        shape=[None, beam_size], dtype="int64", name="indices"
+    )
     step_idx = layers.fill_constant(
         shape=[1], dtype="int64", value=0, force_cpu=True
     )

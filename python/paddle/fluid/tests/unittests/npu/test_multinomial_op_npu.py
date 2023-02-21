@@ -163,7 +163,7 @@ class TestMultinomialApi(unittest.TestCase):
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            x = fluid.data('x', shape=[4], dtype='float32')
+            x = paddle.static.data('x', shape=[4], dtype='float32')
             out = paddle.multinomial(x, num_samples=100000, replacement=True)
 
             place = fluid.NPUPlace(0)

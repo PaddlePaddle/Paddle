@@ -404,7 +404,7 @@ class TestNearestInterp_attr_tensor_Case3(TestNearestInterpOp_attr_tensor):
                  "core is not compiled with XPU")
 class TestNearestInterpException(unittest.TestCase):
     def test_exception(self):
-        input = fluid.data(name="input", shape=[1, 3, 6, 6], dtype="float32")
+        input = paddle.static.data(name="input", shape=[1, 3, 6, 6], dtype="float32")
 
         def attr_data_format():
             # for 4-D input, data_format can only be NCHW or NHWC

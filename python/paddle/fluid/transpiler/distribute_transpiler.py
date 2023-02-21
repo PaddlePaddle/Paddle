@@ -284,8 +284,8 @@ class DistributeTranspiler:
 
             paddle.enable_static()
 
-            x = fluid.data(name='x', shape=[1,13], dtype='float32')
-            y = fluid.data(name='y', shape=[1], dtype='float32')
+            x = paddle.static.data(name='x', shape=[1,13], dtype='float32')
+            y = paddle.static.data(name='y', shape=[1], dtype='float32')
             y_predict = paddle.static.nn.fc(x, size=1, activation=None)
 
             cost =paddle.nn.functional.square_error_cost(input=y_predict, label=y)

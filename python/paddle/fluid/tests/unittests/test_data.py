@@ -26,13 +26,13 @@ class TestApiDataError(unittest.TestCase):
 
             # 1. The type of 'name' in fluid.data must be str.
             def test_name_type():
-                fluid.data(name=1, shape=[2, 25], dtype="bool")
+                paddle.static.data(name=1, shape=[2, 25], dtype="bool")
 
             self.assertRaises(TypeError, test_name_type)
 
             # 2. The type of 'shape' in fluid.data must be list or tuple.
             def test_shape_type():
-                fluid.data(name='data1', shape=2, dtype="bool")
+                paddle.static.data(name='data1', shape=2, dtype="bool")
 
             self.assertRaises(TypeError, test_shape_type)
 

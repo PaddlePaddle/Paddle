@@ -195,7 +195,7 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
             startup = fluid.Program()
             with fluid.program_guard(train_prog, startup):
                 with fluid.unique_name.guard():
-                    data = fluid.data(name="data", shape=shape)
+                    data = paddle.static.data(name="data", shape=shape)
                     conv = paddle.static.nn.conv2d(data, 8, 3)
                     loss = paddle.mean(conv)
 

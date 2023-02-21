@@ -55,10 +55,10 @@ class TestTakeAPI(unittest.TestCase):
         startup_program = Program()
         train_program = Program()
         with program_guard(startup_program, train_program):
-            x = fluid.data(
+            x = paddle.static.data(
                 name='input', dtype=self.input_dtype, shape=self.input_shape
             )
-            index = fluid.data(
+            index = paddle.static.data(
                 name='index', dtype=self.index_dtype, shape=self.index_shape
             )
             out = paddle.take(x, index, mode=self.mode)
@@ -116,7 +116,7 @@ class TestTakeTypeError(TestTakeAPI):
         """Argument 'index' must be Tensor"""
         paddle.enable_static()
         with program_guard(Program()):
-            x = fluid.data(
+            x = paddle.static.data(
                 name='input', dtype=self.input_dtype, shape=self.input_shape
             )
             self.assertRaises(
@@ -132,10 +132,10 @@ class TestTakeTypeError(TestTakeAPI):
         """Data type of argument 'index' must be in [paddle.int32, paddle.int64]"""
         paddle.enable_static()
         with program_guard(Program()):
-            x = fluid.data(
+            x = paddle.static.data(
                 name='input', dtype='float64', shape=self.input_shape
             )
-            index = fluid.data(
+            index = paddle.static.data(
                 name='index', dtype='float32', shape=self.index_shape
             )
             self.assertRaises(TypeError, paddle.take, x, index, self.mode)
@@ -184,10 +184,10 @@ class TestTakeModeRaisePos(unittest.TestCase):
         an error is reported directly through `paddle.index_select`"""
         paddle.enable_static()
         with program_guard(Program()):
-            x = fluid.data(
+            x = paddle.static.data(
                 name='input', dtype=self.input_dtype, shape=self.input_shape
             )
-            index = fluid.data(
+            index = paddle.static.data(
                 name='index', dtype=self.index_dtype, shape=self.index_shape
             )
             self.assertRaises(ValueError, paddle.index_select, x, index)

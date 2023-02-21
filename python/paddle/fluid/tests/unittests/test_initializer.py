@@ -668,7 +668,7 @@ class TestSetGlobalInitializer(unittest.TestCase):
             paddle.nn.initializer.Uniform(low=-0.5, high=0.5)
         )
         with fluid.program_guard(main_prog, startup_prog):
-            x = fluid.data(name="x", shape=[1, 3, 32, 32])
+            x = paddle.static.data(name="x", shape=[1, 3, 32, 32])
             # default initilizer of param in layers.conv2d is NormalInitializer
             conv = paddle.static.nn.conv2d(x, 5, 3)
 
@@ -696,7 +696,7 @@ class TestSetGlobalInitializer(unittest.TestCase):
             bias_init=paddle.nn.initializer.Normal(0.0, 2.0),
         )
         with fluid.program_guard(main_prog, startup_prog):
-            x = fluid.data(name="x", shape=[1, 3, 32, 32])
+            x = paddle.static.data(name="x", shape=[1, 3, 32, 32])
             # default initilizer of bias in layers.conv2d is ConstantInitializer
             conv = paddle.static.nn.conv2d(x, 5, 3)
 

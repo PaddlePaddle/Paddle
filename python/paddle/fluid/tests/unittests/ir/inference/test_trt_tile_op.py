@@ -26,7 +26,7 @@ from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 class TRTTileTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[4, 3, 224, 256], dtype="float32"
             )
             tile_out = paddle.tile(x=data, repeat_times=[1, 1, 1, 1])
@@ -53,7 +53,9 @@ class TRTTileTest(InferencePassTest):
 class TRTTileExpandTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data", shape=[1, 1, 1, 1], dtype="float32")
+            data = paddle.static.data(
+                name="data", shape=[1, 1, 1, 1], dtype="float32"
+            )
             tile_out = paddle.tile(x=data, repeat_times=[1, 4, 1080, 1920])
             out = paddle.static.nn.batch_norm(tile_out, is_test=True)
 
@@ -78,7 +80,9 @@ class TRTTileExpandTest(InferencePassTest):
 class TRTTileExpandStaticTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data", shape=[1, 1, 1, 1], dtype="float32")
+            data = paddle.static.data(
+                name="data", shape=[1, 1, 1, 1], dtype="float32"
+            )
             tile_out = paddle.tile(x=data, repeat_times=[1, 4, 1080, 1920])
             out = paddle.static.nn.batch_norm(tile_out, is_test=True)
 
@@ -103,7 +107,9 @@ class TRTTileExpandStaticTest(InferencePassTest):
 class TRTTileExpandHalfTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data", shape=[1, 1, 1, 1], dtype="float32")
+            data = paddle.static.data(
+                name="data", shape=[1, 1, 1, 1], dtype="float32"
+            )
             tile_out = paddle.tile(x=data, repeat_times=[1, 4, 1080, 1920])
             out = paddle.static.nn.batch_norm(tile_out, is_test=True)
 

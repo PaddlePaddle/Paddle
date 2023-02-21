@@ -213,7 +213,7 @@ def get_program_parameter(program):
             import paddle.fluid as fluid
 
             paddle.enable_static()
-            data = fluid.data(name="img", shape=[64, 784])
+            data = paddle.static.data(name="img", shape=[64, 784], dtype='float32')
             w = paddle.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
             b = paddle.create_parameter(shape=[200], dtype='float32', name='fc_b')
             list_para  = fluid.io.get_program_parameter(  fluid.default_main_program() )
@@ -239,7 +239,7 @@ def get_program_persistable_vars(program):
             import paddle.fluid as fluid
 
             paddle.enable_static()
-            data = fluid.data(name="img", shape=[64, 784])
+            data = paddle.static.data(name="img", shape=[64, 784])
             w = paddle.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
             b = paddle.create_parameter(shape=[200], dtype='float32', name='fc_b')
             list_para  = fluid.io.get_program_persistable_vars(  fluid.default_main_program() )
@@ -508,8 +508,8 @@ def save_params(executor, dirname, main_program=None, filename=None):
 
             paddle.enable_static()
             params_path = "./my_paddle_model"
-            image = fluid.data(name='img', shape=[None, 28, 28], dtype='float32')
-            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+            image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
+            label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
             feeder = fluid.DataFeeder(feed_list=[image, label], place=fluid.CPUPlace())
             predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
 
@@ -746,8 +746,8 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
             paddle.enable_static()
             dir_path = "./my_paddle_model"
             file_name = "persistables"
-            image = fluid.data(name='img', shape=[None, 28, 28], dtype='float32')
-            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+            image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
+            label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
             feeder = fluid.DataFeeder(feed_list=[image, label], place=fluid.CPUPlace())
 
             predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
@@ -1381,8 +1381,8 @@ def save_inference_model(
             path = "./infer_model"
 
             # User defined network, here a softmax regession example
-            image = fluid.data(name='img', shape=[None, 28, 28], dtype='float32')
-            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+            image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
+            label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
             feeder = fluid.DataFeeder(feed_list=[image, label], place=fluid.CPUPlace())
             predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
 

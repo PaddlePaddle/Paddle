@@ -27,7 +27,9 @@ from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 class TRTScaleTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data", shape=[-1, 512], dtype="float32")
+            data = paddle.static.data(
+                name="data", shape=[-1, 512], dtype="float32"
+            )
             scale_out = self.append_scale(data)
             out = nn.batch_norm(scale_out, is_test=True)
 
@@ -57,7 +59,7 @@ class TRTScaleTest(InferencePassTest):
 class TRTScaleShape2Test(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[-1, 512, 512], dtype="float32"
             )
             scale_out = self.append_scale(data)

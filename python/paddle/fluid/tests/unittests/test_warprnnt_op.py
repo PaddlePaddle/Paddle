@@ -18,7 +18,6 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle import _C_ops
 from paddle.fluid import Program, program_guard
@@ -277,17 +276,21 @@ class TestWarpRNNTOpError(unittest.TestCase):
     def test_errors(self):
         print("test_errors")
         with program_guard(Program(), Program()):
-            logits = fluid.data(name='input', shape=[5, 16, 6], dtype='float32')
-            logits_length = fluid.data(
+            logits = paddle.static.data(
+                name='input', shape=[5, 16, 6], dtype='float32'
+            )
+            logits_length = paddle.static.data(
                 name='logit_lengths', shape=[None], dtype='int32'
             )
-            label = fluid.data(name='labels', shape=[16, 3], dtype='int32')
-            label_length = fluid.data(
+            label = paddle.static.data(
+                name='labels', shape=[16, 3], dtype='int32'
+            )
+            label_length = paddle.static.data(
                 name='label_lengths', shape=[None], dtype='int32'
             )
 
             def test_logits_Variable():
-                logits_data = fluid.data(
+                logits_data = paddle.static.data(
                     name='logits_data', shape=[5, 16, 6], dtype='int32'
                 )
                 paddle.nn.functional.rnnt_loss(
@@ -300,7 +303,7 @@ class TestWarpRNNTOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_logits_Variable)
 
             def test_label_Variable():
-                label_data = fluid.data(
+                label_data = paddle.static.data(
                     name='label_data', shape=[16, 3], dtype='int64'
                 )
                 paddle.nn.functional.rnnt_loss(
@@ -313,7 +316,7 @@ class TestWarpRNNTOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_label_Variable)
 
             def test_logits_len_Variable():
-                logits_length_data = fluid.data(
+                logits_length_data = paddle.static.data(
                     name='logits_length_data', shape=[None], dtype='int64'
                 )
                 paddle.nn.functional.rnnt_loss(
@@ -326,7 +329,7 @@ class TestWarpRNNTOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_logits_len_Variable)
 
             def test_label_len_Variable():
-                label_length_data = fluid.data(
+                label_length_data = paddle.static.data(
                     name='label_length_data', shape=[None], dtype='int64'
                 )
                 paddle.nn.functional.rnnt_loss(

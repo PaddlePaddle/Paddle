@@ -18,7 +18,6 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
 
 
@@ -88,7 +87,7 @@ class TestUniqueWithCountsRaiseError(unittest.TestCase):
         self.assertRaises(TypeError, test_type)
 
         def test_dtype():
-            data = fluid.data(shape=[10], dtype="float16", name="input")
+            data = paddle.static.data(shape=[10], dtype="float16", name="input")
             paddle.unique(data)
 
         self.assertRaises(TypeError, test_dtype)

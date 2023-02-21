@@ -25,7 +25,6 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-import paddle.fluid as fluid
 import paddle.tensor as tensor
 
 paddle.enable_static()
@@ -136,7 +135,7 @@ class XPUTestTrilTriuOp(XPUOpTestWrapper):
 class TestTrilTriuOpError(unittest.TestCase):
     def test_errors1(self):
         paddle.enable_static()
-        data = fluid.data(shape=(20, 22), dtype='float32', name="data1")
+        data = paddle.static.data(shape=(20, 22), dtype='float32', name="data1")
         op_type = np.random.choice(['triu', 'tril'])
         errmsg = {
             "diagonal: TypeError": "diagonal in {} must be a python Int".format(
@@ -151,7 +150,7 @@ class TestTrilTriuOpError(unittest.TestCase):
 
     def test_errors2(self):
         paddle.enable_static()
-        data = fluid.data(shape=(200,), dtype='float32', name="data2")
+        data = paddle.static.data(shape=(200,), dtype='float32', name="data2")
         op_type = np.random.choice(['triu', 'tril'])
         errmsg = {
             "input: ValueError": "x shape in {} must be at least 2-D".format(

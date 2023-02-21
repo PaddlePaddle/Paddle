@@ -29,10 +29,10 @@ from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 class TensorRTSubgraphPassElementwiseBroadcastTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data1 = fluid.data(
+            data1 = paddle.static.data(
                 name="data1", shape=[-1, 3, 64, 64], dtype="float32"
             )
-            data2 = fluid.data(
+            data2 = paddle.static.data(
                 name="data2", shape=[-1, 3, 64, 1], dtype="float32"
             )
             eltwise_out = self.append_eltwise(data1, data2)

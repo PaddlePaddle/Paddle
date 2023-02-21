@@ -265,8 +265,8 @@ class XPUTestElementwiseAddOp(XPUOpTestWrapper):
     class TestAddOp(unittest.TestCase):
         def test_name(self):
             with fluid.program_guard(fluid.Program()):
-                x = fluid.data(name="x", shape=[2, 3], dtype="float32")
-                y = fluid.data(name='y', shape=[2, 3], dtype='float32')
+                x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
+                y = paddle.static.data(name='y', shape=[2, 3], dtype='float32')
 
                 y_1 = paddle.add(x, y, name='add_res')
                 self.assertEqual(('add_res' in y_1.name), True)
@@ -280,8 +280,8 @@ class XPUTestElementwiseAddOp(XPUOpTestWrapper):
                         "y": np.array([1, 5, 2]).astype('float32'),
                     }
 
-                x = fluid.data(name="x", shape=[3], dtype='float32')
-                y = fluid.data(name="y", shape=[3], dtype='float32')
+                x = paddle.static.data(name="x", shape=[3], dtype='float32')
+                y = paddle.static.data(name="y", shape=[3], dtype='float32')
                 z = paddle.add(x, y)
 
                 place = fluid.XPUPlace(0)

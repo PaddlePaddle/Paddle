@@ -79,7 +79,9 @@ def get_sample_model():
     main_program = fluid.Program()
     startup_program = fluid.Program()
     with fluid.program_guard(main_program, startup_program):
-        data = fluid.data(name="data", shape=[-1, 6, 64, 64], dtype="float32")
+        data = paddle.static.data(
+            name="data", shape=[-1, 6, 64, 64], dtype="float32"
+        )
         conv_out = paddle.static.nn.conv2d(
             input=data,
             num_filters=3,

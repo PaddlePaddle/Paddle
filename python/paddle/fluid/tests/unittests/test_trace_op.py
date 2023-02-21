@@ -72,7 +72,9 @@ class TestTraceOpCase2(TestTraceOp):
 class TestTraceAPICase(unittest.TestCase):
     def test_case1(self):
         case = np.random.randn(2, 20, 2, 3).astype('float32')
-        data1 = fluid.data(name='data1', shape=[2, 20, 2, 3], dtype='float32')
+        data1 = paddle.static.data(
+            name='data1', shape=[2, 20, 2, 3], dtype='float32'
+        )
         out1 = tensor.trace(data1)
         out2 = tensor.trace(data1, offset=-5, axis1=1, axis2=-1)
 

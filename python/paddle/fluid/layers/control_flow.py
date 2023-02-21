@@ -337,7 +337,7 @@ class StaticRNN:
 
             vocab_size, hidden_size=10000, 200
             paddle.enable_static()
-            x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
+            x = paddle.static.data(name="x", shape=[None, 1, 1], dtype='int64')
             # create word sequence
             x_emb = layers.embedding(
                 input=x,
@@ -428,7 +428,7 @@ class StaticRNN:
 
                 vocab_size, hidden_size=10000, 200
                 paddle.enable_static()
-                x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
+                x = paddle.static.data(name="x", shape=[None, 1, 1], dtype='int64')
                 # create word sequence
                 x_emb = layers.embedding(
                         input=x,
@@ -457,7 +457,7 @@ class StaticRNN:
                 import paddle.fluid.layers as layers
                 vocab_size, hidden_size=10000, 200
                 paddle.enable_static()
-                x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
+                x = paddle.static.data(name="x", shape=[None, 1, 1], dtype='int64')
                 # create word sequence
                 x_emb = layers.embedding(
                         input=x,
@@ -560,7 +560,7 @@ class StaticRNN:
 
                 vocab_size, hidden_size=10000, 200
                 paddle.enable_static()
-                x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
+                x = paddle.static.data(name="x", shape=[None, 1, 1], dtype='int64')
                 # create word sequence
                 x_emb = layers.embedding(
                         input=x,
@@ -613,7 +613,7 @@ class StaticRNN:
 
                 vocab_size, hidden_size=10000, 200
                 paddle.enable_static()
-                x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
+                x = paddle.static.data(name="x", shape=[None, 1, 1], dtype='int64')
                 # create word sequence
                 x_emb = layers.embedding(
                         input=x,
@@ -675,7 +675,7 @@ class StaticRNN:
 
                 vocab_size, hidden_size=10000, 200
                 paddle.enable_static()
-                x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
+                x = paddle.static.data(name="x", shape=[None, 1, 1], dtype='int64')
                 # create word sequence
                 x_emb = layers.embedding(
                         input=x,
@@ -956,7 +956,7 @@ class While:
             i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
             loop_len = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
             one = fluid.layers.fill_constant(shape=[1], dtype='float32', value=1)
-            data = fluid.data(name='data', shape=[1], dtype='float32')
+            data = paddle.static.data(name='data', shape=[1], dtype='float32')
             sums = fluid.layers.fill_constant(shape=[1], dtype='float32', value=0)  # Define the variable to be obtained ouside of While, which name should be different from the variable inside the While to be obtained
 
             cond = paddle.less_than(x=i, y=loop_len)

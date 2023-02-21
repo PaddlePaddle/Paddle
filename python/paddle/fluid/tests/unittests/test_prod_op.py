@@ -71,7 +71,7 @@ class TestProdOp(unittest.TestCase):
         )
 
     def run_static(self, use_gpu=False):
-        input = paddle.fluid.data(
+        input = paddle.paddle.static.data(
             name='input', shape=[10, 10, 5], dtype='float32'
         )
         result0 = paddle.prod(input)
@@ -154,8 +154,10 @@ class TestProdOpError(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
-            x = paddle.fluid.data(name='x', shape=[2, 2, 4], dtype='float32')
-            bool_x = paddle.fluid.data(
+            x = paddle.paddle.static.data(
+                name='x', shape=[2, 2, 4], dtype='float32'
+            )
+            bool_x = paddle.paddle.static.data(
                 name='bool_x', shape=[2, 2, 4], dtype='bool'
             )
             # The argument x shoule be a Tensor

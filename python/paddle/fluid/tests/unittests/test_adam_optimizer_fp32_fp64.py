@@ -30,8 +30,8 @@ def main_test_func(place, dtype):
     startup = fluid.Program()
     with fluid.program_guard(main, startup):
         with fluid.scope_guard(fluid.Scope()):
-            x = fluid.data(name='x', shape=[None, 13], dtype=dtype)
-            y = fluid.data(name='y', shape=[None, 1], dtype=dtype)
+            x = paddle.static.data(name='x', shape=[None, 13], dtype=dtype)
+            y = paddle.static.data(name='y', shape=[None, 1], dtype=dtype)
             y_predict = paddle.static.nn.fc(x, size=1)
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y

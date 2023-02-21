@@ -628,13 +628,13 @@ class TestHSigmoidLossAPI(unittest.TestCase):
         train_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            x = fluid.data('x', [-1, self.feature_size])
-            labels = fluid.data('labels', [-1, 1], 'int64')
+            x = paddle.static.data('x', [-1, self.feature_size])
+            labels = paddle.static.data('labels', [-1, 1], 'int64')
             path_table = None
             path_code = None
             if self.is_custom:
-                path_table = fluid.data('path_table', [-1, -1], 'int64')
-                path_code = fluid.data('path_code', [-1, -1], 'int64')
+                path_table = paddle.static.data('path_table', [-1, -1], 'int64')
+                path_code = paddle.static.data('path_code', [-1, -1], 'int64')
             weight_attr = paddle.nn.initializer.Assign(self.weight_np)
             bias_attr = paddle.nn.initializer.Assign(self.bias_np)
             loss = paddle.nn.HSigmoidLoss(

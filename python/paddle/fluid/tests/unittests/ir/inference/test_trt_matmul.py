@@ -28,7 +28,9 @@ class TensorRTMatMulDims2Test(InferencePassTest):
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data", shape=[24, 24], dtype="float32")
+            data = paddle.static.data(
+                name="data", shape=[24, 24], dtype="float32"
+            )
             matmul_out = paddle.matmul(
                 x=data,
                 y=data,
@@ -65,7 +67,7 @@ class TensorRTMatMulTest(InferencePassTest):
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[-1, 6, 24, 24], dtype="float32"
             )
             matmul_out = paddle.matmul(
@@ -126,10 +128,12 @@ class TensorRTMatMulBroadcastTest(InferencePassTest):
         self.set_params()
         place = fluid.CPUPlace()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data_x = fluid.data(
+            data_x = paddle.static.data(
                 name="data_x", shape=[-1, 6, 24], dtype="float32"
             )
-            data_y = fluid.data(name="data_y", shape=[24, 16], dtype="float32")
+            data_y = paddle.static.data(
+                name="data_y", shape=[24, 16], dtype="float32"
+            )
             matmul_out = paddle.matmul(
                 x=data_x,
                 y=data_y,

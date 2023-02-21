@@ -58,8 +58,12 @@ class TestFeedData(unittest.TestCase):
         )
 
     def _simple_fc_net(self, in_size, label_size, class_num, hidden_sizes):
-        in_data = fluid.data(name="data", dtype='float32', shape=in_size)
-        label = fluid.data(name='label', dtype='int64', shape=label_size)
+        in_data = paddle.static.data(
+            name="data", dtype='float32', shape=in_size
+        )
+        label = paddle.static.data(
+            name='label', dtype='int64', shape=label_size
+        )
 
         hidden = in_data
         for hidden_size in hidden_sizes:

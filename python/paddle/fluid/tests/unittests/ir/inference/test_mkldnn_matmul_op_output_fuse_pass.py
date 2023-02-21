@@ -32,10 +32,10 @@ class TestMKLDNNMatmulFuseOp(InferencePassTest):
 
     def make_network(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            x = fluid.data(
+            x = paddle.static.data(
                 name='x', shape=[-1] + self.shape_x, dtype=self.d_type
             )
-            y = fluid.data(
+            y = paddle.static.data(
                 name='y', shape=[-1] + self.shape_y, dtype=self.d_type
             )
             out = paddle.matmul(x, y)
@@ -74,10 +74,10 @@ class TestMKLDNNMatmulOtherDimsFuseOp(TestMKLDNNMatmulFuseOp):
 class TestMKLDNNMatmulOpNotFusedWrongTransposeAxis(TestMKLDNNMatmulFuseOp):
     def make_network(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            x = fluid.data(
+            x = paddle.static.data(
                 name='x', shape=[-1] + self.shape_x, dtype=self.d_type
             )
-            y = fluid.data(
+            y = paddle.static.data(
                 name='y', shape=[-1] + self.shape_y, dtype=self.d_type
             )
             out = paddle.matmul(x, y)
@@ -97,10 +97,10 @@ class TestMKLDNNMatmulOpNotFusedBreakPattern(TestMKLDNNMatmulFuseOp):
 
     def make_network(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            x = fluid.data(
+            x = paddle.static.data(
                 name='x', shape=[-1] + self.shape_x, dtype=self.d_type
             )
-            y = fluid.data(
+            y = paddle.static.data(
                 name='y', shape=[-1] + self.shape_y, dtype=self.d_type
             )
             out = paddle.matmul(x, y)

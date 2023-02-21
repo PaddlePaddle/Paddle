@@ -31,7 +31,9 @@ class TestReduceScatterAPI(TestDistBase):
 
     def test_reducescatter_with_error(self):
         nranks = 2
-        tindata = fluid.data(name="tindata", shape=[5, 1000], dtype='float32')
+        tindata = paddle.static.data(
+            name="tindata", shape=[5, 1000], dtype='float32'
+        )
         try:
             toutdata = fluid.layers.collective._c_reducescatter(tindata, nranks)
         except ValueError:

@@ -26,7 +26,7 @@ class TestMKLDNNCpuBfloat16Pass(InferencePassTest):
     def setUp(self):
         self.init_data()
         with fluid.program_guard(self.main_program, self.startup_program):
-            x = fluid.data(
+            x = paddle.static.data(
                 name='x', shape=[-1] + self.shape_x, dtype=self.d_type
             )
 

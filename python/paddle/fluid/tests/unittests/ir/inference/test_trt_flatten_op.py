@@ -27,7 +27,7 @@ from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 class TRTFlattenTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[-1, 6, 64, 64], dtype="float32"
             )
             flatten_out = self.append_flatten(data)
@@ -56,7 +56,7 @@ class TRTFlattenTest(InferencePassTest):
 class TRTFlattenDynamicTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="data", shape=[-1, 6, 64, 64], dtype="float32"
             )
             flatten_out = self.append_flatten(data)

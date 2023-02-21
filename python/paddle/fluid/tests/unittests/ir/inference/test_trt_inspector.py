@@ -29,7 +29,9 @@ class TensorRTInspectorTest(InferencePassTest):
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data", shape=[1, 16, 16], dtype="float32")
+            data = paddle.static.data(
+                name="data", shape=[1, 16, 16], dtype="float32"
+            )
             matmul_out = paddle.matmul(
                 x=data,
                 y=data,

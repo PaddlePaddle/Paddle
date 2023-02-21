@@ -63,9 +63,11 @@ class TestMultiplexOp(OpTest):
 class TestMultiplexOpError(unittest.TestCase):
     def test_errors(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            x1 = fluid.data(name='x1', shape=[None, 2], dtype='int64')
-            x2 = fluid.data(name='x2', shape=[None, 2], dtype='int64')
-            index = fluid.data(name='index', shape=[None, 1], dtype='int32')
+            x1 = paddle.static.data(name='x1', shape=[None, 2], dtype='int64')
+            x2 = paddle.static.data(name='x2', shape=[None, 2], dtype='int64')
+            index = paddle.static.data(
+                name='index', shape=[None, 1], dtype='int32'
+            )
 
             def test_list():
                 # the inputs type must be list
@@ -79,14 +81,18 @@ class TestMultiplexOpError(unittest.TestCase):
             self.assertRaises(ValueError, test_len)
 
             def test_type():
-                y1 = fluid.data(name='y1', shape=[None, 2], dtype='int16')
-                y2 = fluid.data(name='y2', shape=[None, 2], dtype='int16')
+                y1 = paddle.static.data(
+                    name='y1', shape=[None, 2], dtype='int16'
+                )
+                y2 = paddle.static.data(
+                    name='y2', shape=[None, 2], dtype='int16'
+                )
                 paddle.multiplex(inputs=[y1, y2], index=index)
 
             self.assertRaises(TypeError, test_type)
 
             def test_type2():
-                index2 = fluid.data(
+                index2 = paddle.static.data(
                     name='index2', shape=[None, 1], dtype='int16'
                 )
                 paddle.multiplex(inputs=[x1, x2], index=index2)

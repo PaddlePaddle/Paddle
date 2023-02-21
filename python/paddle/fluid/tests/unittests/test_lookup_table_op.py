@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from op_test import OpTest, check_out_dtype, skip_check_grad_ci
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.nn.functional as F
@@ -168,21 +169,25 @@ class TestEmbedOpError(unittest.TestCase):
 
             def test_input_dtype():
                 # the input dtype must be int64
-                input = fluid.data(name='x', shape=[4, 1], dtype='float32')
+                input = paddle.static.data(
+                    name='x', shape=[4, 1], dtype='float32'
+                )
                 fluid.layers.embedding(input=input, size=(10, 64))
 
             self.assertRaises(TypeError, test_input_dtype)
 
             def test_param_dtype():
                 # dtype must be float32 or float64
-                input2 = fluid.data(name='x2', shape=[4, 1], dtype='int64')
+                input2 = paddle.static.data(
+                    name='x2', shape=[4, 1], dtype='int64'
+                )
                 fluid.layers.embedding(
                     input=input2, size=(10, 64), dtype='int64'
                 )
 
             self.assertRaises(TypeError, test_param_dtype)
 
-            input3 = fluid.data(name='x3', shape=[4, 1], dtype='int64')
+            input3 = paddle.static.data(name='x3', shape=[4, 1], dtype='int64')
             fluid.layers.embedding(input=input3, size=(10, 64), dtype='float16')
 
 

@@ -58,7 +58,7 @@ class TensorRTPool3dTest(InferencePassTest):
         )
 
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name='data',
                 shape=[-1, self.channel, self.depth, self.height, self.width],
                 dtype='float32',
@@ -190,7 +190,7 @@ class TensorRTAdaptiveAvgPool3DTest(InferencePassTest):
         )
 
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name='data',
                 shape=[-1, self.channel, self.depth, self.height, self.width],
                 dtype='float32',
@@ -290,7 +290,7 @@ class TensorRTAdaptiveMaxPool3DTest(InferencePassTest):
         )
 
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
+            data = paddle.static.data(
                 name='data',
                 shape=[-1, self.channel, self.depth, self.height, self.width],
                 dtype='float32',

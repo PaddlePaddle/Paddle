@@ -100,7 +100,9 @@ class TestInverseAPI(unittest.TestCase):
 
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(name="input", shape=[4, 4], dtype="float64")
+            input = paddle.static.data(
+                name="input", shape=[4, 4], dtype="float64"
+            )
             result = paddle.inverse(x=input)
             input_np = np.random.random([4, 4]).astype("float64")
             result_np = np.linalg.inv(input_np)
@@ -139,16 +141,20 @@ class TestInverseAPIError(unittest.TestCase):
 
         # The data type of input must be float32 or float64.
         for dtype in ["bool", "int32", "int64", "float16"]:
-            input = fluid.data(name='input_' + dtype, shape=[4, 4], dtype=dtype)
+            input = paddle.static.data(
+                name='input_' + dtype, shape=[4, 4], dtype=dtype
+            )
             self.assertRaises(TypeError, paddle.inverse, input)
 
         # When out is set, the data type must be the same as input.
-        input = fluid.data(name='input_1', shape=[4, 4], dtype="float32")
-        out = fluid.data(name='output', shape=[4, 4], dtype="float64")
+        input = paddle.static.data(
+            name='input_1', shape=[4, 4], dtype="float32"
+        )
+        out = paddle.static.data(name='output', shape=[4, 4], dtype="float64")
         self.assertRaises(TypeError, paddle.inverse, input, out)
 
         # The number of dimensions of input must be >= 2.
-        input = fluid.data(name='input_2', shape=[4], dtype="float32")
+        input = paddle.static.data(name='input_2', shape=[4], dtype="float32")
         self.assertRaises(ValueError, paddle.inverse, input)
 
 
@@ -160,7 +166,9 @@ class TestInverseSingularAPI(unittest.TestCase):
 
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(name="input", shape=[4, 4], dtype="float64")
+            input = paddle.static.data(
+                name="input", shape=[4, 4], dtype="float64"
+            )
             result = paddle.inverse(x=input)
 
             input_np = np.zeros([4, 4]).astype("float64")

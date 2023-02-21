@@ -337,7 +337,7 @@ class TestElementwiseDivOpFp16(ElementwiseDivOp):
 class TestElementwiseDivBroadcast(unittest.TestCase):
     def test_shape_with_batch_sizes(self):
         with fluid.program_guard(fluid.Program()):
-            x_var = fluid.data(
+            x_var = paddle.static.data(
                 name='x', dtype='float32', shape=[None, 3, None, None]
             )
             one = 2.0
@@ -351,8 +351,8 @@ class TestElementwiseDivBroadcast(unittest.TestCase):
 class TestDivideOp(unittest.TestCase):
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
-            x = fluid.data(name="x", shape=[2, 3], dtype="float32")
-            y = fluid.data(name='y', shape=[2, 3], dtype='float32')
+            x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
+            y = paddle.static.data(name='y', shape=[2, 3], dtype='float32')
 
             y_1 = paddle.divide(x, y, name='div_res')
             self.assertEqual(('div_res' in y_1.name), True)

@@ -76,7 +76,7 @@ class TestDeprecatedDocorator(unittest.TestCase):
         """
         paddle.enable_static()
         # Initialization
-        x = fluid.data(name='x', shape=[3, 2, 1], dtype='float32')
+        x = paddle.static.data(name='x', shape=[3, 2, 1], dtype='float32')
 
         # expected
         expected = LOWEST_WARNING_POSTION

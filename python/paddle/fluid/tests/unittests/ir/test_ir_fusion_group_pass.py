@@ -28,7 +28,7 @@ class FusionGroupPassTest(PassTest):
         with fluid.program_guard(self.main_program, self.startup_program):
             self.feed_vars = self._prepare_feed_vars([32, 128], dtype, 2)
             self.feed_vars.append(
-                fluid.data(name="data2", shape=[128, 128], dtype=dtype)
+                paddle.static.data(name="data2", shape=[128, 128], dtype=dtype)
             )
 
             # subgraph with only 1 op node
@@ -51,7 +51,9 @@ class FusionGroupPassTest(PassTest):
     def _prepare_feed_vars(self, shape, dtype, num_data):
         feed_vars = []
         for i in range(num_data):
-            var = fluid.data(name=("data" + str(i)), shape=shape, dtype=dtype)
+            var = paddle.static.data(
+                name=("data" + str(i)), shape=shape, dtype=dtype
+            )
             feed_vars.append(var)
         return feed_vars
 
@@ -107,7 +109,7 @@ class FusionGroupPassInplaceTest(FusionGroupPassTest):
         with fluid.program_guard(self.main_program, self.startup_program):
             self.feed_vars = self._prepare_feed_vars([32, 128], dtype, 3)
             self.feed_vars.append(
-                fluid.data(name="data3", shape=[128, 32], dtype=dtype)
+                paddle.static.data(name="data3", shape=[128, 32], dtype=dtype)
             )
 
             # subgraph with 3 op node
@@ -133,7 +135,7 @@ class FusionGroupPassTestCastAndFP16(FusionGroupPassTest):
         with fluid.program_guard(self.main_program, self.startup_program):
             self.feed_vars = self._prepare_feed_vars([32, 128], dtype, 2)
             self.feed_vars.append(
-                fluid.data(name="data2", shape=[128, 128], dtype=dtype)
+                paddle.static.data(name="data2", shape=[128, 128], dtype=dtype)
             )
 
             # subgraph with 2 op nodes
@@ -161,7 +163,7 @@ class FusionGroupPassSumTest(FusionGroupPassTest):
         with fluid.program_guard(self.main_program, self.startup_program):
             self.feed_vars = self._prepare_feed_vars([32, 128], dtype, 3)
             self.feed_vars.append(
-                fluid.data(name="data3", shape=[128, 128], dtype=dtype)
+                paddle.static.data(name="data3", shape=[128, 128], dtype=dtype)
             )
 
             # subgraph with 2 op nodes

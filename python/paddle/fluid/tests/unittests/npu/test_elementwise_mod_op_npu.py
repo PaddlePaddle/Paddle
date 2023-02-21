@@ -144,8 +144,8 @@ class TestRemainderOp(unittest.TestCase):
     def test_name(self):
         paddle.set_device('npu:0')
         with fluid.program_guard(fluid.Program()):
-            x = fluid.data(name="x", shape=[2, 3], dtype="int64")
-            y = fluid.data(name='y', shape=[2, 3], dtype='int64')
+            x = paddle.static.data(name="x", shape=[2, 3], dtype="int64")
+            y = paddle.static.data(name='y', shape=[2, 3], dtype='int64')
             y_1 = paddle.remainder(x, y, name='div_res')
             self.assertEqual(('div_res' in y_1.name), True)
 

@@ -276,7 +276,7 @@ class TestFlatten2OpError(unittest.TestCase):
                 / 100.0
             )
             x2 = x2.astype('float16')
-            x2_var = paddle.fluid.data(
+            x2_var = paddle.paddle.static.data(
                 name='x2', shape=[3, 2, 4, 5], dtype='float16'
             )
             paddle.flatten(x2_var)
