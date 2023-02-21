@@ -17,12 +17,20 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/visit_type.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/kernels/memcpy_with_strides_kernel.h"
+
+PADDLE_DEFINE_EXPORTED_bool(
+    use_stride_kernel,
+    false,
+    "Whether to use strdie kernel if op support stride.");
 
 namespace phi {
 
@@ -35,6 +43,29 @@ void Copy(const Context& dev_ctx,
   auto* src_ptr = src.data();
   const auto& src_place = src.place();
 
+  // copy with strides
+  if ((src_place.GetType() == AllocationType::CPU ||
+       src_place.GetType() == AllocationType::GPU) &&
+      src.layout() == dst->layout() && &src != dst &&
+      src_place.GetType() == dst_place.GetType() &&
+      src.dtype() == dst->dtype() &&
+      (!src.meta().is_contiguous(src.layout()) ||
+       dst->meta().is_contiguous(src.layout()))) {
+    switch (src.dtype()) {
+      case DataType::FLOAT32:
+        phi::memcpyWithStrides<float, Context>(dev_ctx, src, dst);
+      case DataType::FLOAT64:
+        phi::memcpyWithStrides<double, Context>(dev_ctx, src, dst);
+      case DataType::INT32:
+        phi::memcpyWithStrides<int32_t, Context>(dev_ctx, src, dst);
+      case DataType::INT64:
+        phi::memcpyWithStrides<int64_t, Context>(dev_ctx, src, dst);
+      default:
+        PADDLE_THROW(phi::errors::Unimplemented(
+            "Data type (%s) is not supported when casting data type.",
+            src.dtype()));
+    }
+  }
   if (&src == dst) {
     if (src_place.GetType() == dst_place.GetType()) {
       VLOG(6) << "Skip copy the same data(" << src_ptr << ") from " << src_place

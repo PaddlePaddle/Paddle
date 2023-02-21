@@ -31,7 +31,7 @@ template <typename T, typename Context>
 void memcpyWithStrides(const Context& dev_ctx,
                        const DenseTensor& input,
                        DenseTensor* output) {
-  memcpyWithStridesKernel<T, Context>(dev_ctx, input, output);
+  // memcpyWithStridesKernel<T, Context>(dev_ctx, input, output);
 }
 
 }  // namespace phi

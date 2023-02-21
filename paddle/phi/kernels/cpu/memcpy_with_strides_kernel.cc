@@ -54,19 +54,11 @@ void memcpyWithStridesKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(copyWithStrides,
+PD_REGISTER_KERNEL(memcpyWithStrides,
                    CPU,
                    ALL_LAYOUT,
                    phi::memcpyWithStridesKernel,
-                   bool,
-                   uint8_t,
-                   int8_t,
-                   int16_t,
                    int32_t,
                    int64_t,
                    float,
-                   double,
-                   ::phi::dtype::float16,
-                   ::phi::dtype::bfloat16,
-                   ::phi::dtype::complex<float>,
-                   ::phi::dtype::complex<double>) {}
+                   double) {}
