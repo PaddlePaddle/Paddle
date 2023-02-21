@@ -24,6 +24,7 @@ from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import param_guard, switch_to_static_graph
 from paddle.fluid.layers.utils import flatten
+from paddle.static import InputSpec
 from paddle.utils import gast
 
 from . import error, logging_utils
@@ -324,8 +325,8 @@ class StaticFunction:
         if input_spec is not None and prim_or_cinn_is_enabled(
             kwargs.get("build_strategy", None)
         ):
-            for spec in input_spec:
-                if spec is not None and -1 in spec.shape:
+            for spec in flatten(input_spec):
+                if isinstance(spec, InputSpec) and -1 in spec.shape:
                     input_spec = None
                     warnings.warn(
                         'Now prim and cinn do not support -1 shape, but input_spec has -1 shape so we set it to None.'
