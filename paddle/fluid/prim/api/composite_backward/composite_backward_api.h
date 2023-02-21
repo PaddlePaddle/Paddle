@@ -301,5 +301,24 @@ void exp_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
   }
 }
 
+template <typename T>
+void maximum_grad(const Tensor& x,
+                  const Tensor& y,
+                  const Tensor& out_grad,
+                  int axis,
+                  Tensor* x_grad,
+                  Tensor* y_grad) {
+  if (x_grad) {
+    auto tmp = greater_than<T>(x, y);
+    auto x_grad_tmp = out_grad * tmp;
+    set_output<T>(x_grad_tmp, x_grad);
+  }
+  if (y_grad) {
+    auto tmp = less_equal<T>(x, y);
+    auto y_grad_tmp = out_grad * tmp;
+    set_output<T>(y_grad_tmp, y_grad);
+  }
+}
+
 }  // namespace prim
 }  // namespace paddle

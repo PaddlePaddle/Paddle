@@ -23,3 +23,5 @@
 - scatter
 - scatter_nd_add
 - tile
+- greater_than
+- less_equal
