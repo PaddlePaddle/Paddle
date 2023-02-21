@@ -270,7 +270,6 @@ void EmbeddingWithEltwiseAddXPUFusePass::ApplyImpl(
       }
     }
     // Generate embedding_with_eltwise_add_xpu op
-    auto* scope = param_scope();
     framework::OpDesc embedding_with_eltwise_add_xpu_op_desc;
     embedding_with_eltwise_add_xpu_op_desc.SetType(
         "embedding_with_eltwise_add_xpu");
