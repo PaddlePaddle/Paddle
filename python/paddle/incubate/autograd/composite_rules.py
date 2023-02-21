@@ -164,19 +164,22 @@ def maybe_wrap_dim(dim: int, dim_post_expr: int):
 def flatten_contiguous_range_composite(x, start_axis, stop_axis):
     """define composite rule of op flatten, flatten_contiguous_range -> flatten"""
     shape_in = x.shape
+    shape_x_out: List[int] = [0]
+    shape_x_out.extend(shape_in)
+    xshape = full(shape=shape_x_out, fill_value=0, dtype=x.dtype)
     start_dim = maybe_wrap_dim(start_axis, len(shape_in))
     end_dim = maybe_wrap_dim(stop_axis, len(shape_in))
     assert start_dim <= end_dim
     if len(shape_in) == 0 or start_dim == end_dim:
-        return x, to_tensor(shape_in, dtype=float32)
+        return reshape(x, shape=shape_in), xshape
     slice_numel = 1
     for i in range(start_dim, end_dim + 1):
         slice_numel *= shape_in[i]
     # slice_numel = multiply_integers(shape_in[start_dim:end_dim - start_dim + 1])
-    shape_out: List[int] = []
+    shape_out = []
     for i in range(start_dim):
         shape_out.append(shape_in[i])
     shape_out.append(slice_numel)
     for i in range(end_dim + 1, len(shape_in)):
         shape_out.append(shape_in[i])
-    return reshape(x, shape=shape_out), to_tensor(shape_out, dtype='float32')
+    return reshape(x, shape=shape_out), xshape

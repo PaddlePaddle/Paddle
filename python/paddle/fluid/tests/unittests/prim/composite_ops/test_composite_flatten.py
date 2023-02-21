@@ -73,7 +73,6 @@ def expect_forward(inputs):
 
 class TestCompositeFlatten(unittest.TestCase):
     def setUp(self):
-        # self.dtypes = ["float16", "float32", "float64"]
         self.dtypes = ["float32", "float64"]
         self.shapes = [
             [16, 16, 64, 64, 10],
