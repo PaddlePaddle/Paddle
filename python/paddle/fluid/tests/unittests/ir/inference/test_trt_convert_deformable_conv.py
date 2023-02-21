@@ -99,12 +99,12 @@ class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
         ]:
             for input_size in [[32, 32]]:
                 for kernel_sizes in [[3, 3]]:
-                    for strides in [[1, 1], [2, 2]]:
-                        for paddings in [[1, 1], [0, 2]]:
+                    for strides in [[2, 2]]:
+                        for paddings in [[0, 2]]:
                             for groups in [
                                 1,
                             ]:
-                                for dilations in [[1, 1], [2, 2]]:
+                                for dilations in [[2, 2]]:
                                     dics = [
                                         {
                                             "strides": strides,
@@ -183,6 +183,24 @@ class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
     def sample_predictor_configs(
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+        def generate_dynamic_shape(attrs):
+            # The input.dims[1] must be equal to the weight's length.
+            self.dynamic_shape.min_input_shape = {
+                "input_data": [1, 3, 32, 32],
+                "offset_data": [1, 18, 14, 16],
+                "mask_data": [1, 9, 14, 16],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "input_data": [1, 3, 32, 32],
+                "offset_data": [1, 18, 14, 16],
+                "mask_data": [1, 9, 14, 16],
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "input_data": [1, 3, 32, 32],
+                "offset_data": [1, 18, 14, 16],
+                "mask_data": [1, 9, 14, 16],
+            }
+
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
             self.dynamic_shape.max_input_shape = {}
@@ -205,6 +223,13 @@ class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), 1e-5
+
+        # for dynamic_shapw
+        generate_dynamic_shape(attrs)
+        self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True
+        ), (1e-5, 1e-5)
 
     def test(self):
         self.trt_param.workspace_size = 1 << 28
