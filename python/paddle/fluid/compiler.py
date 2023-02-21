@@ -155,7 +155,7 @@ class CompiledProgram:
                                 fetch_list=[loss.name])
     """
 
-    def __init__(self, program_or_graph, build_strategy=None):
+    def __init__(self, program_or_graph, build_strategy=None, loss_name=None):
         if isinstance(program_or_graph, core.Graph):
             self._graph = program_or_graph
             # don't not create a new program here.
@@ -176,7 +176,7 @@ class CompiledProgram:
         self._compiled = False
         self._is_data_parallel = False
         self._is_inference = False
-        self._loss_name = None
+        self._loss_name = loss_name
         self._share_vars_from = None
         self._places = None
         self._build_strategy = build_strategy
@@ -411,12 +411,6 @@ class CompiledProgram:
                 "only contain one thread, so reset the number of threads to 1 here."
             )
             self._exec_strategy.num_threads = 1
-
-        if self._build_strategy.num_trainers > 1:
-            assert self._is_data_parallel, (
-                "If you use multi-trainer to train the model, you should use "
-                "the data parallel model, i.e. calling with_data_parallel function."
-            )
 
         # TODO(wuyi): trainer endpoings should be passed in through
         # build_strategy, not program.xxx.

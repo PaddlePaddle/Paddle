@@ -55,15 +55,11 @@ class ParameterServerGraphOptimizer(ParameterServerOptimizer):
         dist_strategy = self._get_distributed_strategy()
 
         build_strategy = dist_strategy.get_build_strategy()
-        exec_strategy = dist_strategy.get_execute_strategy()
 
-        self._compiled_program = paddle.static.CompiledProgram(main_program)
-
-        self._compiled_program.with_data_parallel(
+        self._compiled_program = paddle.static.CompiledProgram(
+            main_program,
             loss_name=loss.name,
             build_strategy=build_strategy,
-            exec_strategy=exec_strategy,
-            share_vars_from=None,
         )
 
         return self._compiled_program

@@ -242,13 +242,10 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
         )
         local_build_strategy.enable_backward_optimizer_op_deps = True
 
-        self._compiled_program = paddle.static.CompiledProgram(main_program)
-
-        self._compiled_program.with_data_parallel(
+        self._compiled_program = paddle.static.CompiledProgram(
+            main_program,
             loss_name=loss.name,
             build_strategy=local_build_strategy,
-            exec_strategy=exe_strategy,
-            share_vars_from=None,
         )
 
         return self._compiled_program
