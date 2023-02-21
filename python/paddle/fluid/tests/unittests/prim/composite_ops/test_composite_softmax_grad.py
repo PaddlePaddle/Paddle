@@ -143,7 +143,7 @@ class TestCompositeSoftmaxPrimBackward(unittest.TestCase):
     def setUp(self):
         core._set_prim_backward_enabled(True)
         self.dtypes = ["float32", "float64"]
-        self.shapes = [[2, 3, 4], [2, 3]]
+        self.shapes = [[], [2, 3, 4], [2, 3]]
         self.axes = [-1, 0, 1]
 
     def cal_composite_grad(self, inputs):
@@ -169,6 +169,9 @@ class TestCompositeSoftmaxPrimBackward(unittest.TestCase):
         return res
 
     def compare_backward(self):
+        if not attrs.shape and attrs.axis not in [-1, 0]:
+            # op softmax does not support both case
+            return
         np_data = generate_data(attrs.shape)
         tensor_data = paddle.to_tensor(np_data)
 

@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/yolo_box_kernel.h"
 
-#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"

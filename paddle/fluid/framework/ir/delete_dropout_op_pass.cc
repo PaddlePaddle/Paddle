@@ -25,71 +25,52 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-#define GET_IR_NODE(node__) GET_IR_NODE_FROM_SUBGRAPH(node__, node__, pattern);
-#define GET_NODES                  \
-  GET_IR_NODE(any_op_out);         \
-  GET_IR_NODE(dropout_op);         \
-  GET_IR_NODE(dropout_op_out);     \
-  GET_IR_NODE(dropout_op_outmask); \
-  GET_IR_NODE(any_op2);
+#define GET_IR_NODE(node_) GET_IR_NODE_FROM_SUBGRAPH(node_, node_, pattern)
 
 void DeleteDropoutOpPass::ApplyImpl(ir::Graph* graph) const {
   const std::string pattern_name = "delete_dropout_op_pattern";
   FusePassBase::Init(pattern_name, graph);
 
   GraphPatternDetector gpd;
-
   patterns::DeleteDropoutOpPattern pattern(gpd.mutable_pattern(), pattern_name);
   pattern();
 
+  int found_subgraph_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    GET_NODES;
-    IR_NODE_LINK_TO(any_op_out, any_op2);
-    std::string any_op_out_name = any_op_out->Var()->Name();
-    std::string dropout_op_out_name = dropout_op_out->Var()->Name();
+    GET_IR_NODE(dropout_op_x);
+    GET_IR_NODE(dropout_op);
+    GET_IR_NODE(dropout_op_out);
+    GET_IR_NODE(dropout_op_mask);
 
-    // any_op2
-    auto* any_op2_desc = any_op2->Op();
-    auto var_map = any_op2_desc->Inputs();
-    std::string arg_name = "";
-    for (auto& name_m : var_map) {
-      if (std::find(name_m.second.begin(),
-                    name_m.second.end(),
-                    dropout_op_out_name) != name_m.second.end()) {
-        arg_name = name_m.first;
-      }
-    }
-    if (arg_name.size() == 0) {
-      LOG(INFO) << "Delete dropout op pass: can not find the input "
-                << dropout_op_out_name;
-      return;
-    }
-
-    // modify the any_op2's inputs
-    for (auto& name_m : var_map) {
-      if (std::find(name_m.second.begin(),
-                    name_m.second.end(),
-                    dropout_op_out_name) != name_m.second.end()) {
-        std::vector<std::string> new_inputs;
-        for (auto& i_n : name_m.second) {
-          if (i_n != dropout_op_out_name) {
-            new_inputs.push_back(i_n);
-          }
+    // link dropout_op_out to pre_op
+    auto dropout_op_x_name = dropout_op_x->Var()->Name();
+    auto dropout_op_out_name = dropout_op_out->Var()->Name();
+    auto pre_ops = dropout_op_x->inputs;
+    if (pre_ops.empty()) return;
+    auto pre_op_desc = pre_ops[0]->Op();
+    auto pre_op_outs = pre_op_desc->Outputs();
+    for (auto& out_var : pre_op_outs) {
+      auto names = out_var.second;
+      for (size_t i = 0; i < names.size(); i++) {
+        if (names[i] == dropout_op_x_name) {
+          names[i] = dropout_op_out_name;
+          pre_op_desc->SetOutput(out_var.first, names);
+          break;
         }
-        new_inputs.push_back(any_op_out_name);
-        any_op2_desc->SetInput(name_m.first, new_inputs);
-        any_op2_desc->Flush();
       }
     }
-    any_op2_desc->Flush();
+    IR_NODE_LINK_TO(pre_ops[0], dropout_op_out);
 
-    // Delete the unneeded nodes.
-    GraphSafeRemoveNodes(graph,
-                         {dropout_op, dropout_op_out, dropout_op_outmask});
+    // delete useless node
+    std::unordered_set<const Node*> delete_nodes{
+        dropout_op_x, dropout_op, dropout_op_mask};
+    GraphSafeRemoveNodes(graph, delete_nodes);
+    found_subgraph_count++;
   };
 
   gpd(graph, handler);
+  AddStatis(found_subgraph_count);
 }
 
 DeleteDropoutOpXPass::DeleteDropoutOpXPass() {
@@ -279,6 +260,10 @@ void DeleteDropoutOpXPass::ReplaceOutputVar(Node* op,
 
 REGISTER_PASS(delete_dropout_op_pass,
               paddle::framework::ir::DeleteDropoutOpPass);
+REGISTER_PASS_CAPABILITY(delete_dropout_op_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination().EQ(
+            "dropout", 0));
 
 REGISTER_PASS(delete_dropout_op_x_pass,
               paddle::framework::ir::DeleteDropoutOpXPass);

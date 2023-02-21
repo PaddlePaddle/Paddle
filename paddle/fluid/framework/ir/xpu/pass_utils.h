@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <string>
 
 namespace paddle {
 namespace framework {
@@ -41,6 +42,8 @@ namespace ir {
   if (a != nullptr && b != nullptr) { \
     IR_NODE_LINK_TO(a, b)             \
   }
+
+int ConvertActivationType(std::string act_type);
 
 }  // namespace ir
 }  // namespace framework
