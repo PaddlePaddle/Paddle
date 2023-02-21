@@ -13,7 +13,6 @@ limitations under the License. */
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/contiguous_kernel.h"
 
 namespace phi {
 static inline void magic32(int64_t d, int64_t* magic, int64_t* shift) {
@@ -66,14 +65,13 @@ void memcpyWithStridesKernel(const Context& dev_ctx,
                              DenseTensor* out) {
   const T* src = input.data<T>();
   T* dst = out->data<T>();
-  const int64_t* dims = input.dims().Get();
-  const int64_t* srcStrides = input.stride().Get();
-  const int64_t* dstStrides = out->stride().Get();
+  auto input_meta = input.meta();
+  auto output_meta = out->meta();
 
   int64_t size = input.numel();
   int64_t ndims = input.dims().size();
-  const int64_t* dims = in.dims();
-  const int64_t* srcStrides = input.stride().Get();
+  const int64_t* dims = input.dims().Get();
+  const int64_t* srcStrides = input_meta.strides.Get();
   const int64_t* dstStrides = out->stride().Get();
   if (size == 0) return;
   std::vector<int64_t> hostBuffer(ndims * 5);

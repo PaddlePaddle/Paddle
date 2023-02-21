@@ -15,8 +15,6 @@ limitations under the License. */
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/impl/transpose_grad_kernel_impl.h"
-
 #include "paddle/phi/kernels/memcpy_with_strides_kernel.h"
 
 namespace phi {
@@ -46,12 +44,12 @@ void memcpyWithStridesKernel(const Context& dev_ctx,
                              DenseTensor* out) {
   const T* src = input.data<T>();
   T* dst = out->data<T>();
-  int ndims = input.dims().size();
-  const int64_t* dims = input.dims().Get();
-  const int64_t* srcStrides = input.stride().Get();
-  const int64_t* dstStrides = out->stride().Get();
+  auto input_meta = input.meta();
+  int ndims = input_meta.dims.size();
+  const int64_t* dims = input_meta.dims.Get();
+  const int64_t* srcStrides = input_meta.strides.Get();
+  const int64_t* dstStrides = out->meta().strides.Get();
 
-  auto numel = input.numel();
   hostCopyWithStrides<T>(ndims, dims, src, srcStrides, dst, dstStrides);
 }
 }  // namespace phi
