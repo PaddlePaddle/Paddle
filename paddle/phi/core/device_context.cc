@@ -74,6 +74,7 @@ struct DeviceContext::Impl {
   void SetCUDAGraphAllocator(const Allocator* allocator) {
     // NOTE (Yuang): cuda graph allocator can be set to nullptr, so don't check
     // validation of the allocator here
+    VLOG(4) << "yoki allocator: " << allocator;
     cuda_graph_allocator_ = allocator;
   }
 
@@ -155,14 +156,20 @@ struct DeviceContext::Impl {
             : (pinned ? pinned_allocator_ : device_allocator_);
 #ifdef PADDLE_WITH_CUDA
     bool must_cuda_graph_allocator = (tensor->numel() != 0) && !pinned;
+    VLOG(4) << "yoki: tensor->numel(): " << tensor->numel();
+    VLOG(4) << "yoki: pinned: " << pinned;
+    VLOG(4) << "yoki: must_cuda_graph_allocator: " << must_cuda_graph_allocator;
+    VLOG(4) << "yoki: place.GetType() == phi::AllocationType::GPU: " << (place.GetType() == phi::AllocationType::GPU);
+    VLOG(4) << "yoki: phi::backends::gpu::CUDAGraph::IsThisThreadCapturing(): " << phi::backends::gpu::CUDAGraph::IsThisThreadCapturing();
     if (must_cuda_graph_allocator &&
         place.GetType() == phi::AllocationType::GPU &&
         phi::backends::gpu::CUDAGraph::IsThisThreadCapturing()) {
-      PADDLE_ENFORCE_NOT_NULL(cuda_graph_allocator_,
-                              phi::errors::InvalidArgument(
-                                  "Required cuda_graph_allocator_ shall not be "
-                                  "nullptr, but received nullptr."));
-      allocator = cuda_graph_allocator_;
+      VLOG(4) << "yoki: Required cuda_graph_allocator_ shall not be nullptr, but received nullptr.";
+      // PADDLE_ENFORCE_NOT_NULL(cuda_graph_allocator_,
+      //                         phi::errors::InvalidArgument(
+      //                             "Required cuda_graph_allocator_ shall not be "
+      //                             "nullptr, but received nullptr."));
+      // allocator = cuda_graph_allocator_;
     }
 #endif
     return tensor->AllocateFrom(

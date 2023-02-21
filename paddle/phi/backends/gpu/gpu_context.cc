@@ -203,6 +203,7 @@ void DnnWorkspaceHandle::ReallocWorkspace(size_t required_workspace_bytes) {
 
 struct GPUContext::Impl {
   void Init() {
+    VLOG(4) << "yoki: GPUContext Impl Init";
     owned_ = true;
     backends::gpu::GPUDeviceGuard guard(place_.device);
     phi::InitGpuProperties(place_,
@@ -219,6 +220,7 @@ struct GPUContext::Impl {
   }
 
   void PartialInitWithoutAllocator(int stream_priority) {
+    VLOG(4) << "yoki: GPUContext Impl PartialInitWithoutAllocator";
     owned_ = true;
     stream_owned_ = true;
     backends::gpu::GPUDeviceGuard guard(place_.device);
@@ -302,7 +304,9 @@ struct GPUContext::Impl {
   }
 
   void SetStream(gpuStream_t stream) {
+    VLOG(4) << "yoki: GPUContext Impl SetStream";
     if (stream_ == nullptr) {
+      VLOG(4) << "yoki: GPUContext Impl SetStream new CUDA Stream";
       auto s = Stream(reinterpret_cast<StreamId>(stream));
       stream_ = new CUDAStream(place_, s);
       stream_owned_ = true;
@@ -820,7 +824,9 @@ GPUContext& GPUContext::operator=(GPUContext&&) = default;
 
 GPUContext::GPUContext(const GPUPlace& place, bool init, int stream_priority)
     : DeviceContext(), impl_(std::make_unique<Impl>(place)) {
+  VLOG(4) << "yoki GPUContext";
   if (init) {
+    VLOG(4) << "yoki GPUContext init";
     impl_->PartialInitWithoutAllocator(stream_priority);
   }
 }
@@ -919,6 +925,7 @@ ncclComm_t GPUContext::nccl_comm() const { return impl_->GetNcclComm(); }
 void GPUContext::set_nccl_comm(ncclComm_t comm) { impl_->SetNcclComm(comm); }
 
 void GPUContext::Init() {
+  VLOG(4) << "yoki GPUContext Init";
   impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());
   impl_->Init();
 }

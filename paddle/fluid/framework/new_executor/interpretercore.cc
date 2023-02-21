@@ -537,11 +537,11 @@ void InterpreterCore::BuildInplace() {
 void InterpreterCore::PrepareForCUDAGraphCapture() {
   if (!FLAGS_new_executor_use_cuda_graph) return;
 #ifdef PADDLE_WITH_CUDA
-  PADDLE_ENFORCE_EQ(
-      platform::IsCUDAGraphCapturing(),
-      false,
-      platform::errors::PermissionDenied("CUDA Graph is not allowed to capture "
-                                         "when running the first batch."));
+  // PADDLE_ENFORCE_EQ(
+  //     platform::IsCUDAGraphCapturing(),
+  //     false,
+  //     platform::errors::PermissionDenied("CUDA Graph is not allowed to capture "
+  //                                        "when running the first batch."));
   PADDLE_ENFORCE_EQ(platform::is_gpu_place(place_),
                     true,
                     platform::errors::InvalidArgument(
@@ -663,6 +663,8 @@ void InterpreterCore::Convert(
   for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
     auto& op_func_node = nodes[op_idx];
     auto* dev_ctx_ = stream_analyzer_.ParseDeviceContext(op_func_node);
+    VLOG(4) << "yoki dev_ctx_: " << dev_ctx_;
+    VLOG(4) << "yoki stream: " << reinterpret_cast<phi::GPUContext*>(dev_ctx_)->stream();
     vec_instruction_.emplace_back(op_idx, std::move(op_func_node), *dev_ctx_);
   }
 

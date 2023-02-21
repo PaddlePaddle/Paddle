@@ -54,9 +54,11 @@ void BeginCUDAGraphCapture(phi::GPUPlace place,
   pool_id = CUDAGraph::SetMemoryPoolID(pool_id);
   memory::allocation::AllocatorFacade::Instance().PrepareMemoryPoolForCUDAGraph(
       pool_id);
+  VLOG(4) << "yoki: SetCUDAGraphAllocator";
   dev_ctx->SetCUDAGraphAllocator(memory::allocation::AllocatorFacade::Instance()
                                      .GetAllocator(place)
                                      .get());
+  VLOG(4) << "yoki: SetCUDAGraphAllocator end";
   if (old_value) {
     FLAGS_use_stream_safe_cuda_allocator = true;
   }
