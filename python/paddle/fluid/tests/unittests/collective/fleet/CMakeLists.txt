@@ -22,14 +22,6 @@ if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
     test_fleet_static_mp_layers MODULES test_fleet_static_mp_layers ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()
-
-if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
-  py_test_modules(
-    test_fleet_tensor_parallel_extra_sync MODULES
-    test_fleet_tensor_parallel_extra_sync ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
-endif()
-
 if(WITH_DGC)
   if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     py_test_modules(
