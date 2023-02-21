@@ -733,8 +733,8 @@ void AnalysisConfig::EnableTensorRtEngine(
 #endif
 }
 
-void AnalysisConfig::MarkEngineOutputs(
-    bool mark_output, std::vector<std::string> output_tensor_names) {
+void AnalysisConfig::MarkTrtEngineOutputs(
+    bool mark_output, const std::vector<std::string> &output_tensor_names) {
   trt_mark_output_ = mark_output;
   trt_output_tensor_names_ = output_tensor_names;
 }

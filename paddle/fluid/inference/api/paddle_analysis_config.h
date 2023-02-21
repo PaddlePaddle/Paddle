@@ -580,8 +580,9 @@ struct PD_INFER_DECL AnalysisConfig {
                             bool use_static = false,
                             bool use_calib_mode = true);
 
-  void MarkEngineOutputs(bool mark_output = false,
-                         std::vector<std::string> output_tensor_names = {});
+  void MarkTrtEngineOutputs(
+      bool mark_output = false,
+      const std::vector<std::string>& output_tensor_names = {});
   ///
   /// \brief A boolean state telling whether the TensorRT engine is used.
   ///

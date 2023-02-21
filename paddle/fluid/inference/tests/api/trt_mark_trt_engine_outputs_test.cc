@@ -18,7 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 
-TEST(TensorRT, mark_engine_outputs) {
+TEST(TensorRT, mark_trt_engine_outputs) {
   std::string model_dir = FLAGS_infer_model + "/resnet50";
   AnalysisConfig config;
   config.SetModel(model_dir);
@@ -28,7 +28,7 @@ TEST(TensorRT, mark_engine_outputs) {
   // The name of the tensor that needs to be marked, the default is empty (all
   // marks)
   std::vector<std::string> markOutput = {};
-  config.MarkEngineOutputs(true, markOutput);
+  config.MarkTrtEngineOutputs(true, markOutput);
 
   std::vector<std::vector<PaddleTensor>> inputs_all;
   auto predictor = CreatePaddlePredictor(config);
