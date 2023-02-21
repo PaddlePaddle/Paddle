@@ -120,6 +120,7 @@ class TestReshapeOpWithInputShape(OpTest):
         self.op_type = "reshape2"
         self.python_api = paddle.tensor.reshape
         self.python_out_sig = ['Out']
+
         self.inputs = {
             "X": np.random.random(self.ori_shape).astype("float32"),
             "Shape": np.array(self.actual_shape, dtype="int32"),
@@ -249,6 +250,8 @@ class TestReshapeInt8Op(OpTest):
         self.use_mkldnn = True
         self._cpu_only = True
         self.op_type = "reshape2"
+        self.python_api = paddle.tensor.reshape
+        self.python_out_sig = ['Out']
         input = np.random.randint(0, 127, self.ori_shape).astype(self.dtype)
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(input)}
         self.attrs = {
@@ -269,12 +272,10 @@ class TestReshapeInt8Op(OpTest):
         self.infered_shape = (10, 2, 3, -1)
 
     def test_check_output(self):
-        # no check_dygraph if mkldnn == True
         self.check_output_with_place(
             fluid.core.CPUPlace(),
             atol=1e-5,
             no_check_set=['XShape'],
-            check_dygraph=False,
         )
 
     def test_check_grad(self):
