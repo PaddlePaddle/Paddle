@@ -501,7 +501,7 @@ void MatMulFunctionImplWithCublasLt(
   const int y_ndim = y_dims.size();
   const T* x_data = X.data<T>();
   const T* y_data = Y.data<T>();
-  using blaslt = phi::MatmulWithCublasLt<phi::GPUContext, T>;
+  using blaslt = phi::funcs::MatmulWithCublasLt<T>;
 
   if (x_ndim == 1 && y_ndim == 1) {
     const int M = X.numel();

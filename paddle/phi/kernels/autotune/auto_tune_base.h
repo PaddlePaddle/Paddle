@@ -177,7 +177,7 @@ class MatmulAutoTuner
   }
 };
 
-// To define the auto_tuner inital object.
+// Define the auto_tuner inital object.
 #define DEFINE_AUTOTUNER_COMMON_OBJ(name)                                \
   template <typename T, typename ReturnType, typename... Args>           \
   class name##AutoTuner                                                  \
@@ -197,7 +197,7 @@ class MatmulAutoTuner
     }                                                                    \
   };
 
-// To define the auto_tuner inital function.
+// Define the auto_tuner inital function.
 #define DEFINE_AUTOTUNER_FN(name)                                    \
   template <typename T, typename ReturnType, typename... Args>       \
   static name##AutoTuner<T, ReturnType, Args...>* Make##name##Tuner( \
