@@ -215,7 +215,7 @@ if(WITH_XPU)
   cc_library(
     xpu_quant_utils
     SRCS xpu/quant_utils.cc
-    DEPS pass)
+    DEPS pass phi)
   cc_library(
     xpu_pass_utils
     SRCS xpu/pass_utils.cc

@@ -1314,6 +1314,11 @@ void AnalysisPredictor::PrepareArgument() {
           if (deleted_passes.count(pass)) continue;
           pass_builder->AppendPass(pass);
         }
+      } else if (config_.use_xpu()) {
+        for (const auto &pass : kXpuLowerPrecisionPasses) {
+          if (deleted_passes.count(pass)) continue;
+          pass_builder->AppendPass(pass);
+        }
       }
     }
   }

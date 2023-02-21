@@ -16,33 +16,81 @@
 #include <vector>
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/assign_kernel.h"
+#include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-template <typename T>
-void Transpose2D(const phi::DenseTensor& in, phi::DenseTensor* out) {
-  auto in_dims = in.dims();
+void Transpose2D(phi::DenseTensor* tensor) {
+  auto in_dims = tensor->dims();
   PADDLE_ENFORCE_EQ(
       in_dims.size(),
       2,
       platform::errors::InvalidArgument(
           "In dims rank should be 2, but received in dims size is [%d].",
           in_dims.size()));
-  out->Resize({in_dims[1], in_dims[0]});
-  out->set_type(in.type());
+  phi::DenseTensor trans_tensor;
+  trans_tensor.Resize({in_dims[1], in_dims[0]});
+  trans_tensor.set_type(tensor->type());
   auto* dev_ctx = static_cast<phi::CPUContext*>(
       platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
-  dev_ctx->Alloc<T>(out);
   std::vector<int> axis{1, 0};
-  phi::funcs::Transpose<phi::CPUContext, T, 2> trans2d;
-  trans2d(*dev_ctx, in, out, axis);
+  switch (tensor->dtype()) {
+    case phi::DataType::FLOAT16:
+      phi::TransposeKernel<float16>(*dev_ctx, *tensor, axis, &trans_tensor);
+      break;
+    case phi::DataType::FLOAT32:
+      phi::TransposeKernel<float>(*dev_ctx, *tensor, axis, &trans_tensor);
+      break;
+    default:
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Only support fp16 and fp32, but received dtype is %s.",
+          phi::DataTypeToString(tensor->dtype())));
+      break;
+  }
+  tensor->Resize(trans_tensor.dims());
+  phi::AssignKernel(*dev_ctx, trans_tensor, tensor);
 }
 
-template void Transpose2D<float>(const phi::DenseTensor& in,
-                                 phi::DenseTensor* out);
+void CastToFp32(phi::DenseTensor* tensor) {
+  auto* dev_ctx = static_cast<phi::CPUContext*>(
+      platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+  phi::DenseTensor fp32_tensor;
+  fp32_tensor.Resize(tensor->dims());
+  fp32_tensor.set_type(phi::DataType::FLOAT32);
+  fp32_tensor.set_layout(tensor->layout());
+  switch (tensor->dtype()) {
+    case phi::DataType::FLOAT16:
+      phi::CastKernel<float16>(
+          *dev_ctx, *tensor, phi::DataType::FLOAT32, &fp32_tensor);
+      break;
+    case phi::DataType::FLOAT32:
+      return;
+    default:
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Only support fp16 and fp32, but received dtype is %s.",
+          phi::DataTypeToString(tensor->dtype())));
+      break;
+  }
+  tensor->set_type(phi::DataType::FLOAT32);
+  phi::AssignKernel(*dev_ctx, fp32_tensor, tensor);
+}
+
+// static void CastFp16ToFp32(phi::DenseTensor* tensor) {
+//   auto* dev_ctx = static_cast<phi::CPUContext*>(
+//       platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+//   phi::DenseTensor fp32_tensor;
+//   fp32_tensor.Resize(tensor->dims());
+//   fp32_tensor.set_type(phi::DataType::FLOAT32);
+//   fp32_tensor.set_layout(tensor->layout());
+//   phi::CastKernel<float16>(
+//       *dev_ctx, *tensor, phi::DataType::FLOAT32, &fp32_tensor);
+//   tensor->set_type(phi::DataType::FLOAT32);
+//   phi::AssignKernel(*dev_ctx, fp32_tensor, tensor);
+// }
 
 static float FindMaxAbs(const float* data, int len) {
   float max_f = 0.0f;
@@ -151,13 +199,18 @@ template <typename T>
 void QuantWeight(phi::DenseTensor* weight,
                  phi::DenseTensor* weight_max,
                  bool transpose) {
+  // Convert fp16 to fp32
+  if (weight->dtype() == phi::DataType::FLOAT16) {
+    CastToFp32(weight);
+  }
+  PADDLE_ENFORCE_EQ(weight->dtype(),
+                    phi::DataType::FLOAT32,
+                    platform::errors::InvalidArgument(
+                        "Only support fp32 weight, but received is %s.",
+                        phi::DataTypeToString(weight->dtype())));
   // Transpose
-  auto* weight_data = weight->data<float>();
-  phi::DenseTensor weight_trans;
   if (transpose) {
-    Transpose2D<float>(*weight, &weight_trans);
-    weight_data = weight_trans.data<float>();
-    weight->Resize(weight_trans.dims());
+    Transpose2D(weight);
   }
   // Find max
   paddle::platform::DeviceContextPool& pool =
@@ -172,6 +225,7 @@ void QuantWeight(phi::DenseTensor* weight,
   phi::XPUContext* xpu_ctx = static_cast<phi::XPUContext*>(pool.Get(place));
   int max_ptr_size = xpu_ctx->x_context()->max_ptr_size();
   int size = weight->numel();
+  auto* weight_data = weight->data<float>();
   float max_val = FindMaxAbs(weight_data, size);
   std::vector<float> max_vec(max_ptr_size, max_val);
   weight_max->set_type(paddle::experimental::CppTypeToDataType<float>::Type());

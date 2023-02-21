@@ -19,8 +19,9 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-template <typename T>
-void Transpose2D(const phi::DenseTensor& in, phi::DenseTensor* out);
+void Transpose2D(phi::DenseTensor* tensor);
+
+void CastToFp32(phi::DenseTensor* tensor);
 
 // 1. Quant weight from fp32 to int16/int31
 // 2. Weight data is in-place update.
