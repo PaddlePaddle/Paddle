@@ -50,9 +50,6 @@ void ExpandAsGradKernel(const Context& context,
                         DenseTensor* in_grad) {
   auto x_dims = x.dims();
 
-  // For 0-D tensor
-  std::cout << "XYY Debug in expand_as_grad_kernel_impl.h, the x_dims is :"
-            << x_dims << ", it .size() is : " << x_dims.size() << std::endl;
   if (x_dims.size() == 0) {
     context.template Alloc<T>(in_grad);
     phi::Copy(context, out_grad, context.GetPlace(), false, in_grad);
