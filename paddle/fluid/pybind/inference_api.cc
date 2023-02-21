@@ -37,6 +37,9 @@
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
+#include "paddle/fluid/pybind/eager.h"
+#include "paddle/fluid/pybind/eager_utils.h"
+#include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -259,6 +262,55 @@ void PaddleInferShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
         static_cast<paddle::platform::float16 *>(input_tensor.data()),
         shape,
         ToPaddleInferPlace(input_tensor.place().GetType()));
+  } else if (input_tensor.dtype() == phi::DataType::INT32) {
+    tensor.ShareExternalData(
+        static_cast<int32_t *>(input_tensor.data()),
+        shape,
+        ToPaddleInferPlace(input_tensor.place().GetType()));
+  } else if (input_tensor.dtype() == phi::DataType::INT64) {
+    tensor.ShareExternalData(
+        static_cast<int64_t *>(input_tensor.data()),
+        shape,
+        ToPaddleInferPlace(input_tensor.place().GetType()));
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Unsupported data type. Now share_external_data only supports INT32, "
+        "INT64, FLOAT32 and FLOAT16."));
+  }
+}
+
+void PaddleTensorShareExternalData(
+    paddle_infer::Tensor &tensor,  // NOLINT
+    paddle::experimental::Tensor &&paddle_tensor) {
+  std::vector<int> shape;
+  for (int i = 0; i < paddle_tensor.dims().size(); ++i) {
+    shape.push_back(paddle_tensor.dims()[i]);
+  }
+  if (paddle_tensor.dtype() == paddle::experimental::DataType::FLOAT32) {
+    tensor.ShareExternalData(
+        static_cast<float *>(paddle_tensor.data<float>()),
+        shape,
+        ToPaddleInferPlace(paddle_tensor.place().GetType()));
+  } else if (paddle_tensor.dtype() == paddle::experimental::DataType::FLOAT16) {
+    tensor.ShareExternalData(
+        static_cast<paddle::platform::float16 *>(
+            paddle_tensor.data<paddle::platform::float16>()),
+        shape,
+        ToPaddleInferPlace(paddle_tensor.place().GetType()));
+  } else if (paddle_tensor.dtype() == paddle::experimental::DataType::INT32) {
+    tensor.ShareExternalData(
+        static_cast<int32_t *>(paddle_tensor.data<int32_t>()),
+        shape,
+        ToPaddleInferPlace(paddle_tensor.place().GetType()));
+  } else if (paddle_tensor.dtype() == paddle::experimental::DataType::INT64) {
+    tensor.ShareExternalData(
+        static_cast<int64_t *>(paddle_tensor.data<int64_t>()),
+        shape,
+        ToPaddleInferPlace(paddle_tensor.place().GetType()));
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Unsupported data type. Now share_external_data only supports INT32, "
+        "INT64, FLOAT32 and FLOAT16."));
   }
 }
 
@@ -1043,16 +1095,22 @@ void BindPaddleInferTensor(py::module *m) {
       .def("reshape",
            py::overload_cast<const std::size_t &>(
                &paddle_infer::Tensor::ReshapeStrings))
-      .def("copy_from_cpu_bind", &PaddleInferTensorCreate<int8_t>)
-      .def("copy_from_cpu_bind", &PaddleInferTensorCreate<uint8_t>)
-      .def("copy_from_cpu_bind", &PaddleInferTensorCreate<int32_t>)
-      .def("copy_from_cpu_bind", &PaddleInferTensorCreate<int64_t>)
-      .def("copy_from_cpu_bind", &PaddleInferTensorCreate<float>)
-      .def("copy_from_cpu_bind",
+      .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<int8_t>)
+      .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<uint8_t>)
+      .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<int32_t>)
+      .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<int64_t>)
+      .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<float>)
+      .def("_copy_from_cpu_bind",
            &PaddleInferTensorCreate<paddle_infer::float16>)
-      .def("copy_from_cpu_bind", &PaddleInferTensorCreate<bool>)
-      .def("copy_from_cpu_bind", &PaddleInferStringTensorCreate)
-      .def("share_external_data_bind", &PaddleInferShareExternalData)
+      .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<bool>)
+      .def("_copy_from_cpu_bind", &PaddleInferStringTensorCreate)
+      .def("_share_external_data_bind", &PaddleInferShareExternalData)
+      .def("_share_external_data_paddle_tensor_bind",
+           [](paddle_infer::Tensor &self, const py::handle &input) {
+             PyObject *obj = input.ptr();
+             PaddleTensorShareExternalData(self,
+                                           std::move(CastPyArg2Tensor(obj, 0)));
+           })
       .def("copy_to_cpu", &PaddleInferTensorToNumpy)
       .def("shape", &paddle_infer::Tensor::shape)
       .def("set_lod", &paddle_infer::Tensor::SetLoD)
