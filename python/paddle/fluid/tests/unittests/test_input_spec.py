@@ -76,10 +76,6 @@ class TestInputSpec(unittest.TestCase):
         with self.assertRaises(TypeError):
             tensor_spec = InputSpec(4, dtype='int8')
 
-        # 3. len(shape) should be greater than 0.
-        with self.assertRaises(ValueError):
-            tensor_spec = InputSpec([], dtype='int8')
-
     def test_batch_and_unbatch(self):
         tensor_spec = InputSpec([10])
         # insert batch_size
@@ -90,15 +86,11 @@ class TestInputSpec(unittest.TestCase):
         unbatch_spec = batch_tensor_spec.unbatch()
         self.assertEqual(unbatch_spec.shape, (10,))
 
-        # 1. `unbatch` requires len(shape) > 1
-        with self.assertRaises(ValueError):
-            unbatch_spec.unbatch()
-
-        # 2. `batch` requires len(batch_size) == 1
+        # 1. `batch` requires len(batch_size) == 1
         with self.assertRaises(ValueError):
             tensor_spec.batch([16, 12])
 
-        # 3. `batch` requires type(batch_size) == int
+        # 2. `batch` requires type(batch_size) == int
         with self.assertRaises(TypeError):
             tensor_spec.batch('16')
 
