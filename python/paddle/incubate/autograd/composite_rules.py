@@ -24,6 +24,7 @@ from paddle.fluid import core
 
 from .primitives import *  # noqa: F403
 from .primreg import REGISTER_COMPOSITE, lookup_composite
+from paddle.fluid import core
 
 
 def _composite(op, *args):
@@ -269,3 +270,14 @@ def silu_composite(x):
     sum_temp = 1 + exp(-x)
     res = x / sum_temp
     return res
+
+
+@REGISTER_COMPOSITE('fill_any_like')
+def fill_any_like(x, fill_value, dtype=None, name=None):
+    """define composite rule of op full_like"""
+    """op name: full_like  op type name: fill_any_like """
+    if dtype is None:
+        dtype = x.dtype
+    dtype = int_to_dtype[dtype]
+    val = full(x.shape, fill_value, dtype, name)
+    return val
