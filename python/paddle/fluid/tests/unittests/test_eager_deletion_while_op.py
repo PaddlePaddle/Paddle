@@ -16,14 +16,12 @@ import os
 
 os.environ['CPU_NUM'] = '2'
 
-import multiprocessing
 import unittest
 
 import numpy
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.compiler as compiler
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
 from paddle.fluid.executor import Executor
@@ -41,30 +39,19 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
             places.append(core.CUDAPlace(0))
 
         for p in places:
-            for with_data_parallel in [False, True]:
-                with fluid.program_guard(fluid.Program(), fluid.Program()):
-                    with fluid.scope_guard(fluid.Scope()):
-                        self.run_main(p, with_data_parallel)
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                with fluid.scope_guard(fluid.Scope()):
+                    self.run_main(p)
 
-    def run_main(self, place, with_data_parallel):
+    def run_main(self, place):
         self.place = place
-        self.with_data_parallel = with_data_parallel
 
         if not core.is_compiled_with_cuda() and isinstance(
             self.place, core.CUDAPlace
         ):
             return
 
-        if isinstance(self.place, core.CUDAPlace):
-            device_cnt = (
-                core.get_cuda_device_count() if self.with_data_parallel else 1
-            )
-        else:
-            device_cnt = (
-                int(os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
-                if self.with_data_parallel
-                else 1
-            )
+        device_cnt = 1
 
         d0 = paddle.static.data("d0", shape=[-1, 10], dtype='float32')
         d1 = paddle.static.data("d1", shape=[-1, 10], dtype='float32')
@@ -139,19 +126,12 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
         exe.run(fluid.default_startup_program())
 
         prog = fluid.default_main_program()
-        if self.with_data_parallel:
-            prog = compiler.CompiledProgram(
-                fluid.default_main_program()
-            ).with_data_parallel(loss_name=loss.name)
 
         for _ in range(5):
             d = []
             for i in range(3):
                 tmp = numpy.random.random(size=[10]).astype('float32')
-                if not self.with_data_parallel:
-                    d.append(tmp)
-                else:
-                    d.append(numpy.array([tmp] * device_cnt))
+                d.append(numpy.array([tmp] * device_cnt))
 
             outs = exe.run(
                 program=prog,
