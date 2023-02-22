@@ -101,11 +101,11 @@ size_t CinnCacheKey::Hash::operator()(const CinnCacheKey& key) const {
                       key.input_dtypes_.end(),
                       platform::errors::PreconditionNotMet(
                           "%s is not in key.input_dtypes_.", name_shape.first));
-    has_str << key.input_dtypes_.at(name_shape.first) << ",";
+    has_str << key.input_dtypes_.at(name_shape.first) << ";";
   }
 
   has_str << key.arch_str_ << ",";
-  has_str << key.graph_hash_val_ << ";";
+  has_str << key.graph_hash_val_;
   VLOG(1) << "CinnCacheKey : " << has_str.str();
   return std::hash<std::string>()(has_str.str());
 }
@@ -127,16 +127,30 @@ size_t CinnCacheKeyByStructure::HashGraph(const ir::Graph& graph) {
     }
   }
 
+  static std::unordered_set<std::string> ignore_attr = {"op_callstack",
+                                                        "op_device",
+                                                        "op_namescope",
+                                                        "op_role",
+                                                        "op_role_var",
+                                                        "with_quant_attr"};
+
   std::ostringstream hash_str;
   for (ir::Node* op : node_set) {
     hash_str << op->Name() << ":";
     hash_str << "input_num=" << op->inputs.size() << ",";
     hash_str << "output_num=" << op->outputs.size() << ",";
 
-    const auto& attrs_map = op->Op()->GetAttrMap();
+    const auto& attrs_unordered_map = op->Op()->GetAttrMap();
+    std::map<std::string, Attribute> attrs_map(attrs_unordered_map.begin(),
+                                               attrs_unordered_map.end());
     for (const auto& attr : attrs_map) {
-      hash_str << attr.first << "=" << PaddleAttributeToString(attr.second)
-               << ",";
+      if (ignore_attr.count(attr.first)) {
+        continue;
+      }
+      const auto& attr_str = PaddleAttributeToString(attr.second);
+      if (!attr_str.empty()) {
+        hash_str << attr.first << "=" << attr_str << ",";
+      }
     }
     hash_str << ";";
   }

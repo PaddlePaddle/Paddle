@@ -81,15 +81,17 @@ namespace paddle::framework::paddle2cinn {
 
 std::string PaddleAttributeToString(const framework::Attribute& attr) {
   std::ostringstream ss;
-#define EXPAND_ATTRIBUTE_MACRO(TYPE_)                                       \
-  if (attr.type() == typeid(TYPE_)) {                                       \
-    ss << std::boolalpha << PADDLE_GET_CONST(TYPE_, attr);                  \
-    return ss.str();                                                        \
-  }                                                                         \
-  if (attr.type() == typeid(std::vector<TYPE_>)) {                          \
-    const auto& vals = PADDLE_GET_CONST(std::vector<TYPE_>, attr);          \
-    ss << std::boolalpha << "[" << string::join_strings(vals, ", ") << "]"; \
-    return ss.str();                                                        \
+#define EXPAND_ATTRIBUTE_MACRO(TYPE_)                              \
+  if (attr.type() == typeid(TYPE_)) {                              \
+    ss << PADDLE_GET_CONST(TYPE_, attr);                           \
+    return ss.str();                                               \
+  }                                                                \
+  if (attr.type() == typeid(std::vector<TYPE_>)) {                 \
+    const auto& vals = PADDLE_GET_CONST(std::vector<TYPE_>, attr); \
+    if (!vals.empty()) {                                           \
+      ss << "[" << string::join_strings(vals, ", ") << "]";        \
+    }                                                              \
+    return ss.str();                                               \
   }
 
   if (attr.type() == typeid(bool)) {
@@ -100,11 +102,13 @@ std::string PaddleAttributeToString(const framework::Attribute& attr) {
     // join_strings<bool> will compile failed:
     // cannot bind non-const lvalue reference of type ‘bool&’
     const auto& vals = PADDLE_GET_CONST(std::vector<bool>, attr);
-    ss << "[";
-    for (bool val : vals) {
-      ss << std::boolalpha << val;
+    if (!vals.empty()) {
+      ss << "[";
+      for (bool val : vals) {
+        ss << std::boolalpha << val << ", ";
+      }
+      ss << "]";
     }
-    ss << "]";
     return ss.str();
   }
   EXPAND_ATTRIBUTE_MACRO(std::string)
@@ -113,7 +117,7 @@ std::string PaddleAttributeToString(const framework::Attribute& attr) {
   EXPAND_ATTRIBUTE_MACRO(int64_t)
   EXPAND_ATTRIBUTE_MACRO(double)
 
-  ss << "unkown data type: " << attr.type().name();
+  ss << "Unkown_Dtype:" << attr.type().name();
 #undef EXPAND_ATTRIBUTE_MACRO
   return ss.str();
 }
