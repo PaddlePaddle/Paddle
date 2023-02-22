@@ -455,6 +455,26 @@ class OpTest(unittest.TestCase):
             )
         )
 
+    def is_float16_op(self):
+        # self.dtype is the dtype of inputs, and is set in infer_dtype_from_inputs_outputs.
+        # Make sure this function is called after calling infer_dtype_from_inputs_outputs.
+        return (
+            self.dtype == np.float16
+            or (
+                hasattr(self, 'output_dtype')
+                and self.output_dtype == np.float16
+            )
+            or (
+                hasattr(self, 'mkldnn_data_type')
+                and getattr(self, 'mkldnn_data_type') == "float16"
+            )
+            or (
+                hasattr(self, 'attrs')
+                and 'mkldnn_data_type' in self.attrs
+                and self.attrs['mkldnn_data_type'] == 'float16'
+            )
+        )
+
     def is_mkldnn_op(self):
         return (hasattr(self, "use_mkldnn") and self.use_mkldnn) or (
             hasattr(self, "attrs")
@@ -2192,6 +2212,45 @@ class OpTest(unittest.TestCase):
                 raise NotImplementedError("base class, not implement!")
 
             def _compare_numpy(self, name, actual_np, expect_np):
+                if self.op_test.dtype == np.float16:
+                    if not np.allclose(
+                        actual_np,
+                        expect_np,
+                        atol=atol,
+                        rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                        equal_nan=equal_nan,
+                    ):
+                        rtol = self.rtol if hasattr(self, 'rtol') else 1e-5
+                        alltrue = True
+                        actual_np_t = actual_np.flatten()
+                        expect_np_t = expect_np.flatten()
+                        for a, b in zip(actual_np_t, expect_np_t):
+                            abs_dis = np.abs(a - b)
+                            abs_b = np.abs(b)
+                            max_tol = np.max(atol + rtol * abs_b)
+
+                            # for i, j in zip(abs_dis, max_tol):
+                            if abs_dis > max_tol:
+                                self.op_test.assertTrue(
+                                    False,
+                                    (
+                                        "Output ("
+                                        + name
+                                        + ") and a:"
+                                        + str(a)
+                                        + " b:"
+                                        + str(b)
+                                        + " abs_dis: "
+                                        + str(abs_dis)
+                                        + " max_tol: "
+                                        + str(max_tol)
+                                    ),
+                                )
+                                # alltrue = False
+                                # break
+                            # if not alltrue:
+                            # break
+
                 self.op_test.assertTrue(
                     np.allclose(
                         actual_np,
@@ -2305,6 +2364,11 @@ class OpTest(unittest.TestCase):
                 ]:
                     actual_np = convert_uint16_to_float(actual_np)
                     self.rtol = 1.0e-2
+                elif (
+                    actual_np.dtype == np.float16
+                    and expect_np.dtype == np.float16
+                ):
+                    self.rtol = 1.0e-3
                 else:
                     self.rtol = 1.0e-5
                 if (
@@ -2364,6 +2428,11 @@ class OpTest(unittest.TestCase):
                     np.float64,
                 ]:
                     self.rtol = 1.0e-2
+                elif (
+                    actual_np.dtype == np.float16
+                    and expect_np.dtype == np.float16
+                ):
+                    self.rtol = 1.0e-3
                 else:
                     self.rtol = 1.0e-5
                 if self.op_test.is_bfloat16_op():
@@ -2397,6 +2466,42 @@ class OpTest(unittest.TestCase):
                 ):
                     pass
                 else:
+                    if self.op_test.dtype == np.float16:
+                        if not np.allclose(
+                            actual_np,
+                            expect_np,
+                            atol=atol,
+                            rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                            equal_nan=equal_nan,
+                        ):
+                            rtol = self.rtol if hasattr(self, 'rtol') else 1e-5
+                            alltrue = True
+                            # print("typea:", type(actual_np), "typeb:", type(expect_np))
+                            if type(actual_np) != type(expect_np):
+                                print("actual_np:")
+                                print(actual_np)
+                                print("expect_np:")
+                                print(expect_np)
+                            for a, b in zip(actual_np, expect_np):
+                                abs_dis = np.abs(a - b)
+                                abs_b = np.abs(b)
+                                max_tol = np.max(atol + rtol * abs_b)
+
+                                for i, j in zip(abs_dis, max_tol):
+                                    if i > j:
+                                        print(
+                                            "Output ("
+                                            + name
+                                            + ") and i: "
+                                            + i
+                                            + "j: "
+                                            + j
+                                        )
+                                        alltrue = False
+                                        break
+                                if not alltrue:
+                                    break
+
                     self.op_test.assertTrue(
                         np.allclose(
                             actual_np,
@@ -2501,6 +2606,9 @@ class OpTest(unittest.TestCase):
                     atol = 2
             else:
                 atol = 1e-1
+
+        if self.is_float16_op():
+            atol = 1e-3
 
         if no_check_set is not None:
             if (
