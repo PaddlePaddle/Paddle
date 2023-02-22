@@ -767,7 +767,6 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("use_calib_mode") = true)
       .def("mark_trt_engine_outputs",
            &AnalysisConfig::MarkTrtEngineOutputs,
-           py::arg("mark_output") = false,
            py::arg("output_tensor_names") = std::vector<std::string>({}))
       .def("enable_tensorrt_memory_optim",
            &AnalysisConfig::EnableTensorRTMemoryOptim,

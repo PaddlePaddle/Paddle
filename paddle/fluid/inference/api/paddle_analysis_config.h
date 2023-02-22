@@ -580,15 +580,28 @@ struct PD_INFER_DECL AnalysisConfig {
                             bool use_static = false,
                             bool use_calib_mode = true);
 
-  void MarkTrtEngineOutputs(
-      bool mark_output = false,
-      const std::vector<std::string>& output_tensor_names = {});
   ///
   /// \brief A boolean state telling whether the TensorRT engine is used.
   ///
   /// \return bool Whether the TensorRT engine is used.
   ///
   bool tensorrt_engine_enabled() const { return use_tensorrt_; }
+
+  ///
+  /// \brief Whether to get the intermediate output of TensorRT Engine.
+  ///
+  /// \param output_tensor_names The name of the Tensor that needs to be marked
+  ///
+  void MarkTrtEngineOutputs(
+      const std::vector<std::string>& output_tensor_names = {});
+
+  ///
+  /// \brief A boolean state telling Whether the output of TensorRT engine is
+  /// labled.
+  ///
+  /// \return bool Whether the output of TensorRT engine is labled.
+  ///
+  bool mark_trt_engine_outputs_enable() const { return trt_mark_output_; }
   ///
   /// \brief Turn on the TensorRT memory optimization.
   ///

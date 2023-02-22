@@ -1133,8 +1133,6 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetTensorRtWorkspaceSize(config_.tensorrt_workspace_size_);
     argument_->SetTensorRtMaxBatchSize(config_.tensorrt_max_batchsize_);
     argument_->SetTensorRtMinSubgraphSize(config_.tensorrt_min_subgraph_size_);
-    argument_->SetTRTMarkOutput(config_.trt_mark_output_);
-    argument_->SetTRTOutputTensorNames(config_.trt_output_tensor_names_);
     argument_->SetTensorRtDisabledOPs(config_.trt_disabled_ops_);
     argument_->SetTensorRtUseDLA(config_.trt_use_dla_);
     argument_->SetTensorRtDLACore(config_.trt_dla_core_);
@@ -1146,6 +1144,10 @@ void AnalysisPredictor::PrepareArgument() {
         config_.trt_allow_build_at_runtime());
     argument_->SetTensorRtUseInspector(config_.trt_use_inspector_);
     argument_->SetTrtEngineMemorySharing(config_.trt_engine_memory_sharing());
+    if (config_.mark_trt_engine_outputs_enable()) {
+      argument_->SetTRTMarkOutput(config_.trt_mark_output_);
+      argument_->SetTRTOutputTensorNames(config_.trt_output_tensor_names_);
+    }
   }
 
   if (config_.dlnne_enabled()) {

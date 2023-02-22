@@ -28,7 +28,7 @@ TEST(TensorRT, mark_trt_engine_outputs) {
   // The name of the tensor that needs to be marked, the default is empty (all
   // marks)
   std::vector<std::string> markOutput = {};
-  config.MarkTrtEngineOutputs(true, markOutput);
+  config.MarkTrtEngineOutputs(markOutput);
 
   std::vector<std::vector<PaddleTensor>> inputs_all;
   auto predictor = CreatePaddlePredictor(config);
