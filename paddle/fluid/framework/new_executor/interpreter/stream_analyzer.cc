@@ -195,6 +195,27 @@ DeviceContext* StreamAnalyzer::ParseDeviceContext(
   return op_func_node.dev_ctx_;
 }
 
+// DeviceContext* StreamAnalyzer::CreateCUDAGraphDeviceContext() const {
+//   if (platform::is_gpu_place(place_)) {
+//     ContextManager& ctx_manager = ContextManager::Instance();
+//     VLOG(6) << "Create DeviceContext for CUDA Graph";
+//     return ctx_manager
+//         .Get("cuda_graph_stream",
+//               place_,
+//               0)
+//         .get()
+//         .get();
+//   }
+// }
+
+void StreamAnalyzer::InsertDeviceContext(DeviceContext* dev_ctx) {
+  dev_ctxs_.insert(dev_ctx);
+}
+
+std::set<DeviceContext*> StreamAnalyzer::GetAllDeviceContexts() const {
+  return dev_ctxs_;
+}
+
 bool StreamAnalyzer::HasDataDependency(const Instruction& cur_instr,
                                        const Instruction& next_instr) const {
   auto no_need_buffer_ins =

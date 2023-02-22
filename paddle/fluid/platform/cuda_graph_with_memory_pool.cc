@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/phi/backends/all_context.h"
+// #include "paddle/fluid/platform/device_context.cc"
 
 DECLARE_bool(use_stream_safe_cuda_allocator);
 DECLARE_bool(new_executor_use_cuda_graph);
@@ -26,9 +27,17 @@ namespace platform {
 #ifdef PADDLE_WITH_CUDA
 void BeginCUDAGraphCapture(phi::GPUPlace place,
                            cudaStreamCaptureMode mode,
-                           int64_t pool_id) {
-  auto* mutable_dev_ctx = phi::DeviceContextPool::Instance().Get(place);
-  auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);
+                           int64_t pool_id,
+                           bool use_multi_stream) {
+  phi::GPUContext* dev_ctx;
+  if (use_multi_stream) {
+    dev_ctx = reinterpret_cast<phi::GPUContext*>(
+        CreateDeviceContext<phi::GPUContext>(place, true).get());
+  } else {
+    auto* mutable_dev_ctx = phi::DeviceContextPool::Instance().Get(place);
+    dev_ctx = reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);
+  }
+  CUDAGraph::SetCapturingDeviceContext(dev_ctx);
   dev_ctx->cudnn_workspace_handle().ResetWorkspace();
 
   // After PR(#43206), cudnn related initializations will change to lazy mode.
@@ -67,9 +76,10 @@ void BeginCUDAGraphCapture(phi::GPUPlace place,
 }
 
 std::unique_ptr<CUDAGraph> EndCUDAGraphCapture() {
-  auto place = CUDAGraph::CapturingPlace();
-  auto* mutable_dev_ctx = phi::DeviceContextPool::Instance().Get(place);
-  auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);
+  auto* dev_ctx = CUDAGraph::CapturingDeviceContext();
+  // auto place = CUDAGraph::CapturingPlace();
+  // auto* mutable_dev_ctx = phi::DeviceContextPool::Instance().Get(place);
+  // auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);
   dev_ctx->cudnn_workspace_handle().ResetWorkspace();
   dev_ctx->SetCUDAGraphAllocator(nullptr);
   return CUDAGraph::EndCapture();
