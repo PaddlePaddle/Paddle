@@ -163,7 +163,7 @@ void RnnGradKernel(const Context& dev_ctx,
   int state_offset = pre_state[0]->dims()[1] * pre_state[0]->dims()[2];
 
   bool has_seq_length = sequence_length.is_initialized();
-  std::vector<int64_t> seq_len_tensor(batch_size, seq_len);
+  std::vector<int> seq_len_tensor(batch_size, seq_len);
   if (has_seq_length) {
     phi::TensorToVector(*sequence_length, dev_ctx, &seq_len_tensor);
   }
