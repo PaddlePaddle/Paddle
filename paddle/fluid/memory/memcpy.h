@@ -56,5 +56,26 @@ void Copy(DstPlace, void* dst, SrcPlace, const void* src, size_t num);
 template <typename DstPlace, typename SrcPlace>
 void Copy(
     DstPlace, void* dst, SrcPlace, const void* src, size_t num, void* stream);
+
+template <typename T, typename Place>
+void CopywithStrides(Place,
+                     int64_t ndims,
+                     const int64_t* dims,
+                     T* dst,
+                     const int64_t* dstStrides,
+                     T* src,
+                     const int64_t* srcStrides,
+                     size_t num,
+                     void* stream);
+
+template <typename T, typename Place>
+void CopywithStrides(Place,
+                     int64_t ndims,
+                     const int64_t* dims,
+                     T* dst,
+                     const int64_t* dstStrides,
+                     T* src,
+                     const int64_t* srcStrides,
+                     size_t num);
 }  // namespace memory
 }  // namespace paddle

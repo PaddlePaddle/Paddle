@@ -1537,5 +1537,70 @@ void Copy<phi::Place, phi::CPUPlace>(phi::Place dst_place,
 }
 #endif
 
+template <typename T>
+void hostCopyWithStrides(int64_t ndims,
+                         const int64_t* dims,
+                         T* src,
+                         const int64_t* srcStrides,
+                         T* dst,
+                         const int64_t* dstStrides) {
+  if (ndims > 0) {
+    for (int64_t k = 0; k < *dims; ++k) {
+      hostCopyWithStrides(
+          ndims - 1, dims + 1, src, srcStrides + 1, dst, dstStrides + 1);
+      src += *srcStrides;
+      dst += *dstStrides;
+    }
+  } else {
+    *dst = *src;
+  }
+}
+template <>
+void CopywithStrides<float, phi::CPUPlace>(phi::CPUPlace place,
+                                           int64_t ndims,
+                                           const int64_t* dims,
+                                           float* dst,
+                                           const int64_t* dstStrides,
+                                           float* src,
+                                           const int64_t* srcStrides,
+                                           size_t num) {
+  hostCopyWithStrides<float>(ndims, dims, src, srcStrides, dst, srcStrides);
+}
+
+template <>
+void CopywithStrides<double, phi::CPUPlace>(phi::CPUPlace place,
+                                            int64_t ndims,
+                                            const int64_t* dims,
+                                            double* dst,
+                                            const int64_t* dstStrides,
+                                            double* src,
+                                            const int64_t* srcStrides,
+                                            size_t num) {
+  hostCopyWithStrides<double>(ndims, dims, src, srcStrides, dst, srcStrides);
+}
+
+template <>
+void CopywithStrides<int32_t, phi::CPUPlace>(phi::CPUPlace place,
+                                             int64_t ndims,
+                                             const int64_t* dims,
+                                             int32_t* dst,
+                                             const int64_t* dstStrides,
+                                             int32_t* src,
+                                             const int64_t* srcStrides,
+                                             size_t num) {
+  hostCopyWithStrides<int32_t>(ndims, dims, src, srcStrides, dst, srcStrides);
+}
+
+template <>
+void CopywithStrides<int64_t, phi::CPUPlace>(phi::CPUPlace place,
+                                             int64_t ndims,
+                                             const int64_t* dims,
+                                             int64_t* dst,
+                                             const int64_t* dstStrides,
+                                             int64_t* src,
+                                             const int64_t* srcStrides,
+                                             size_t num) {
+  hostCopyWithStrides<int64_t>(ndims, dims, src, srcStrides, dst, srcStrides);
+}
 }  // namespace memory
 }  // namespace paddle

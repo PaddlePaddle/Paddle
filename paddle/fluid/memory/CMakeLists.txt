@@ -13,7 +13,7 @@ cc_library(
 cc_library(
   memcpy
   SRCS memcpy.cc
-  DEPS place device_context)
+  DEPS place device_context memcpy_with_strides)
 cc_library(
   stats
   SRCS stats.cc
@@ -30,6 +30,10 @@ cc_test(
   DEPS stats)
 
 if(WITH_GPU)
+  nv_library(
+    memcpy_with_strides
+    SRCS memcpy_with_strides.cu
+    DEPS device_context malloc)
   nv_test(
     malloc_test
     SRCS malloc_test.cu

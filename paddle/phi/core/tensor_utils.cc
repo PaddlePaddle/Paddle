@@ -25,7 +25,6 @@ limitations under the License. */
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/phi/kernels/memcpy_with_strides_kernel.h"
 
 PADDLE_DEFINE_EXPORTED_bool(
     use_stride_kernel,
@@ -42,29 +41,66 @@ void Copy(const Context& dev_ctx,
           DenseTensor* dst) {
   auto* src_ptr = src.data();
   const auto& src_place = src.place();
-
+  LOG(WARNING) << "copy......";
   // copy with strides
   if ((src_place.GetType() == AllocationType::CPU ||
        src_place.GetType() == AllocationType::GPU) &&
       src.layout() == dst->layout() && &src != dst &&
       src_place.GetType() == dst_place.GetType() &&
       src.dtype() == dst->dtype() &&
-      (!src.meta().is_contiguous(src.layout()) ||
+      (src.meta().is_contiguous(src.layout()) ||
        dst->meta().is_contiguous(src.layout()))) {
-    switch (src.dtype()) {
-      case DataType::FLOAT32:
-        phi::memcpyWithStrides<float, Context>(dev_ctx, src, dst);
-      case DataType::FLOAT64:
-        phi::memcpyWithStrides<double, Context>(dev_ctx, src, dst);
-      case DataType::INT32:
-        phi::memcpyWithStrides<int32_t, Context>(dev_ctx, src, dst);
-      case DataType::INT64:
-        phi::memcpyWithStrides<int64_t, Context>(dev_ctx, src, dst);
-      default:
-        PADDLE_THROW(phi::errors::Unimplemented(
-            "Data type (%s) is not supported when casting data type.",
-            src.dtype()));
+    int64_t num = src.numel();
+    int64_t ndims = src.dims().size();
+    const int64_t* dims = src.dims().Get();
+    const int64_t* srcStrides = src.meta().strides.Get();
+    const int64_t* dstStrides = dst->stride().Get();
+    if (num == 0) return;
+    float* src_ptr = const_cast<float*>(src.data<float>());
+    float* dst_ptr = dst->data<float>();
+#if defined(PADDLE_WITH_CUDA)
+    if (dst_place.GetType() == AllocationType::GPU) {  // NOLINT
+      LOG(WARNING) << "Using copy with strides cuda";
+      auto stream =
+          blocking ? nullptr
+                   : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+      paddle::memory::CopywithStrides<float, phi::GPUPlace>(src_place,
+                                                            ndims,
+                                                            dims,
+                                                            dst_ptr,
+                                                            dstStrides,
+                                                            src_ptr,
+                                                            srcStrides,
+                                                            num,
+                                                            stream);
     }
+#endif
+    if (dst_place.GetType() == AllocationType::CPU) {  // NOLINT
+      LOG(WARNING) << "Using copy with strides host";
+      paddle::memory::CopywithStrides<float, phi::CPUPlace>(src_place,
+                                                            ndims,
+                                                            dims,
+                                                            dst_ptr,
+                                                            dstStrides,
+                                                            src_ptr,
+                                                            srcStrides,
+                                                            num);
+    }
+
+    /* switch (src.dtype()) {
+       case DataType::FLOAT32:
+         phi::memcpyWithStrides<float, Context>(dev_ctx, src, dst);
+       case DataType::FLOAT64:
+         phi::memcpyWithStrides<double, Context>(dev_ctx, src, dst);
+       case DataType::INT32:
+         phi::memcpyWithStrides<int32_t, Context>(dev_ctx, src, dst);
+       case DataType::INT64:
+         phi::memcpyWithStrides<int64_t, Context>(dev_ctx, src, dst);
+       default:
+         PADDLE_THROW(phi::errors::Unimplemented(
+             "Data type (%s) is not supported when casting data type.",
+             src.dtype()));*/
+    //}
   }
   if (&src == dst) {
     if (src_place.GetType() == dst_place.GetType()) {
