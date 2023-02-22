@@ -137,11 +137,6 @@ using DeviceContext = phi::DeviceContext;
 template <typename Place>
 struct DefaultDeviceContextType;
 
-template <>
-struct DefaultDeviceContextType<platform::CPUPlace> {
-  using TYPE = phi::CPUContext;
-};
-
 // Graphcore IPU
 #ifdef PADDLE_WITH_IPU
 class IPUDeviceContext
@@ -282,12 +277,6 @@ struct DefaultDeviceContextType<platform::NPUPinnedPlace> {
 
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-template <>
-struct DefaultDeviceContextType<platform::CUDAPlace> {
-  using TYPE = phi::GPUContext;
-};
-
 // Currently, CUDAPinnedDeviceContext is only used to data copying.
 class CUDAPinnedDeviceContext
     : public DeviceContext,
@@ -342,54 +331,12 @@ struct DefaultDeviceContextType<platform::CustomPlace> {
 };
 #endif
 
-void EmplaceDeviceContexts(
+void EmplaceCustomContext(
     std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
         place_to_device_context,
-    const std::vector<platform::Place>& places,
+    const platform::Place& place,
     bool disable_setting_default_stream_for_allocator,
     int stream_priority);
-
-/*! \brief device context pool singleton */
-class DeviceContextPool {
- public:
-  static DeviceContextPool& Instance();
-
-  /*! \brief  Create should only called by Init function */
-  static DeviceContextPool& Init(const std::vector<platform::Place>& places);
-
-  static bool IsInitialized();
-
-  static void SetPool(DeviceContextPool* dev_pool);
-
-  /*! \brief  Return handle of single device context. */
-  platform::DeviceContext* Get(const platform::Place& place);
-
-  template <typename Place>
-  const typename DefaultDeviceContextType<Place>::TYPE* GetByPlace(
-      const Place& place) {
-    return reinterpret_cast<
-        const typename DefaultDeviceContextType<Place>::TYPE*>(Get(place));
-  }
-
-  size_t size() const;
-
-  const std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>&
-  device_contexts() const;
-
-  static void SetDeviceContexts(
-      const std::map<Place,
-                     std::shared_future<std::unique_ptr<DeviceContext>>>*);
-
- private:
-  explicit DeviceContextPool(const std::vector<platform::Place>& places);
-
-  std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>
-      device_contexts_;
-  static thread_local const std::
-      map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
-          external_device_contexts_;  // not owned
-  DISABLE_COPY_AND_ASSIGN(DeviceContextPool);
-};
 
 }  // namespace platform
 }  // namespace paddle
