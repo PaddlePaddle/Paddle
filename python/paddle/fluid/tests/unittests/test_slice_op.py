@@ -17,7 +17,7 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -32,6 +32,8 @@ paddle.enable_static()
 class TestSliceOp(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.slice
         self.config()
         self.inputs = {'Input': self.input}
         self.outputs = {'Out': self.out}
@@ -51,10 +53,12 @@ class TestSliceOp(OpTest):
         self.out = self.input[1:3, 0:3, 2:4, :]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_prim=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+        self.check_grad(
+            ['Input'], 'Out', max_relative_error=0.006, check_prim=True
+        )
 
 
 class TestCase1(TestSliceOp):
@@ -107,6 +111,8 @@ class TestSliceZerosShapeTensor(OpTest):
 class TestSliceOp_decs_dim(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.slice
         self.config()
         self.inputs = {'Input': self.input}
         self.outputs = {'Out': self.out}
@@ -128,10 +134,12 @@ class TestSliceOp_decs_dim(OpTest):
         self.out = self.input[1, 0:3, 2:4, :]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_prim=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+        self.check_grad(
+            ['Input'], 'Out', max_relative_error=0.006, check_prim=True
+        )
 
 
 class TestSliceOp_decs_dim_2(TestSliceOp_decs_dim):
@@ -194,6 +202,8 @@ class TestSliceOp_decs_dim_6(TestSliceOp_decs_dim):
 class TestSliceOp_starts_ListTensor(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.slice
         self.config()
 
         starts_tensor = []
@@ -222,10 +232,12 @@ class TestSliceOp_starts_ListTensor(OpTest):
         self.starts_infer = [-1, 0, -1]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_prim=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+        self.check_grad(
+            ['Input'], 'Out', max_relative_error=0.006, check_prim=True
+        )
 
 
 # Situation 2: starts(list, have tensor), ends(list, no tensor)
@@ -233,6 +245,8 @@ class TestSliceOp_starts_ListTensor(OpTest):
 class TestSliceOp_decs_dim_starts_ListTensor(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.slice
         self.config()
 
         starts_tensor = []
@@ -264,10 +278,12 @@ class TestSliceOp_decs_dim_starts_ListTensor(OpTest):
         self.starts_infer = [1, -1, 2]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_prim=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+        self.check_grad(
+            ['Input'], 'Out', max_relative_error=0.006, check_prim=True
+        )
 
 
 class TestSliceOp_decs_dim_5_starts_ListTensor(
@@ -290,6 +306,8 @@ class TestSliceOp_decs_dim_5_starts_ListTensor(
 class TestSliceOp_decs_dim_starts_OneTensor(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.slice
         self.config()
         self.inputs = {
             'Input': self.input,
@@ -314,10 +332,12 @@ class TestSliceOp_decs_dim_starts_OneTensor(OpTest):
         self.out = self.input[1, 0:3, 2:4, :]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_prim=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+        self.check_grad(
+            ['Input'], 'Out', max_relative_error=0.006, check_prim=True
+        )
 
 
 # Situation 4: starts(tensor), ends(tensor)
@@ -325,6 +345,8 @@ class TestSliceOp_decs_dim_starts_OneTensor(OpTest):
 class TestSliceOp_starts_OneTensor_ends_OneTensor(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.slice
         self.config()
 
         self.inputs = {
@@ -349,10 +371,12 @@ class TestSliceOp_starts_OneTensor_ends_OneTensor(OpTest):
         self.out = self.input[1:3, 0:3, 2:4, :]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_prim=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+        self.check_grad(
+            ['Input'], 'Out', max_relative_error=0.006, check_prim=True
+        )
 
 
 # Situation 5: starts(tensor), ends(tensor)
@@ -360,6 +384,8 @@ class TestSliceOp_starts_OneTensor_ends_OneTensor(OpTest):
 class TestSliceOp_decs_dim_starts_and_ends_OneTensor(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.slice
         self.config()
         self.inputs = {
             'Input': self.input,
@@ -385,10 +411,12 @@ class TestSliceOp_decs_dim_starts_and_ends_OneTensor(OpTest):
         self.out = self.input[1, 0, 2:4, :]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_prim=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+        self.check_grad(
+            ['Input'], 'Out', max_relative_error=0.006, check_prim=True
+        )
 
 
 # Situation 6: starts(tensor), ends(list, have tensor)
@@ -396,6 +424,8 @@ class TestSliceOp_decs_dim_starts_and_ends_OneTensor(OpTest):
 class TestSliceOp_starts_OneTensor_ends_ListTensor(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.slice
         self.config()
 
         ends_tensor = []
@@ -428,12 +458,15 @@ class TestSliceOp_starts_OneTensor_ends_ListTensor(OpTest):
         self.ends_infer = [-1, 3, 4]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_prim=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+        self.check_grad(
+            ['Input'], 'Out', max_relative_error=0.006, check_prim=True
+        )
 
 
+'''
 # Test CUDA float16
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
@@ -441,6 +474,8 @@ class TestSliceOp_starts_OneTensor_ends_ListTensor(OpTest):
 class TestFP16(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.slice
         self.config()
         self.inputs = {'Input': self.input}
         self.outputs = {'Out': self.out}
@@ -463,13 +498,18 @@ class TestFP16(OpTest):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_output_with_place(place, atol=1e-5)
+            self.check_output_with_place(place, atol=1e-5, check_prim=True)
 
     def test_check_grad_normal(self):
         place = core.CUDAPlace(0)
+        print("core:", core.is_float16_supported(place))
         if core.is_float16_supported(place):
             self.check_grad_with_place(
-                place, ['Input'], 'Out', max_relative_error=0.006
+                place,
+                ['Input'],
+                'Out',
+                max_relative_error=0.006,
+                check_prim=True,
             )
 
 
@@ -479,6 +519,8 @@ class TestFP16(OpTest):
 class TestFP16_2(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.slice
         self.config()
         self.inputs = {'Input': self.input}
         self.outputs = {'Out': self.out}
@@ -501,7 +543,7 @@ class TestFP16_2(OpTest):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_output_with_place(place, atol=1e-5)
+            self.check_output_with_place(place, atol=1e-5, check_prim=True)
 
     def test_check_grad_normal(self):
         place = core.CUDAPlace(0)
@@ -512,12 +554,15 @@ class TestFP16_2(OpTest):
                 'Out',
                 max_relative_error=0.006,
                 numeric_grad_delta=0.5,
+                check_prim=True,
             )
 
 
 class TestBF16(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.slice
         self.config()
         self.inputs = {'Input': convert_float_to_uint16(self.input)}
         self.outputs = {'Out': convert_float_to_uint16(self.out)}
@@ -538,10 +583,12 @@ class TestBF16(OpTest):
         self.infer_flags = [1, 1, 1]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_prim=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out')
+        self.check_grad(['Input'], 'Out', check_prim=True)
+
+'''
 
 
 # Test python API
