@@ -287,7 +287,7 @@ void EmbeddingWithEltwiseAddXPUFusePass::ApplyImpl(
         "padding_idx", static_cast<int64_t>(padding_idx));
     auto* embedding_with_eltwise_add_xpu_op =
         graph->CreateOpNode(&embedding_with_eltwise_add_xpu_op_desc);
-    for (int i = 0; i < x_nodes.size(); i++) {
+    for (size_t i = 0; i < x_nodes.size(); i++) {
       SAFE_IR_NODE_LINK_TO(x_nodes[i], embedding_with_eltwise_add_xpu_op);
       SAFE_IR_NODE_LINK_TO(table_nodes[i], embedding_with_eltwise_add_xpu_op);
     }

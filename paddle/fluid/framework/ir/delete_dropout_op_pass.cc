@@ -43,28 +43,29 @@ void DeleteDropoutOpPass::ApplyImpl(ir::Graph* graph) const {
     GET_IR_NODE(dropout_op_out);
     GET_IR_NODE(dropout_op_mask);
 
-    // link dropout_op_out to pre_op
+    // link dropout_op_x to next_op
     auto dropout_op_x_name = dropout_op_x->Var()->Name();
     auto dropout_op_out_name = dropout_op_out->Var()->Name();
-    auto pre_ops = dropout_op_x->inputs;
-    if (pre_ops.empty()) return;
-    auto pre_op_desc = pre_ops[0]->Op();
-    auto pre_op_outs = pre_op_desc->Outputs();
-    for (auto& out_var : pre_op_outs) {
-      auto names = out_var.second;
-      for (size_t i = 0; i < names.size(); i++) {
-        if (names[i] == dropout_op_x_name) {
-          names[i] = dropout_op_out_name;
-          pre_op_desc->SetOutput(out_var.first, names);
-          break;
+    auto next_op_nodes = dropout_op_out->outputs;
+    for (auto next_op_node : next_op_nodes) {
+      auto next_op_desc = next_op_node->Op();
+      auto next_op_inputs = next_op_desc->Inputs();
+      for (auto& input_var : next_op_inputs) {
+        auto names = input_var.second;
+        for (size_t i = 0; i < names.size(); i++) {
+          if (names[i] == dropout_op_out_name) {
+            names[i] = dropout_op_x_name;
+            next_op_desc->SetInput(input_var.first, names);
+            break;
+          }
         }
       }
+      IR_NODE_LINK_TO(dropout_op_x, next_op_node);
     }
-    IR_NODE_LINK_TO(pre_ops[0], dropout_op_out);
 
     // delete useless node
     std::unordered_set<const Node*> delete_nodes{
-        dropout_op_x, dropout_op, dropout_op_mask};
+        dropout_op, dropout_op_mask, dropout_op_out};
     GraphSafeRemoveNodes(graph, delete_nodes);
     found_subgraph_count++;
   };

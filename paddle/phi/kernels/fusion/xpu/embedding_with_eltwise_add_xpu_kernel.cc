@@ -52,8 +52,8 @@ void EmbeddingWithEltwiseAddXpuKernel(
   std::vector<std::vector<int>> int_idx(emb_layer_num,
                                         std::vector<int>(idx_len, 0));
   std::vector<xpu::VectorParam<int>> arg_ids;
-  for (size_t i = 0; i < emb_layer_num; i++) {
-    for (size_t j = 0; j < idx_len; j++) {
+  for (int i = 0; i < emb_layer_num; i++) {
+    for (int j = 0; j < idx_len; j++) {
       int_idx[i][j] = static_cast<int>(ids[i]->data<int64_t>()[j]);
     }
     arg_ids.push_back(
