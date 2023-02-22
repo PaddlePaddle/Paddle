@@ -28,10 +28,10 @@ namespace phi {
 namespace sparse {
 
 template <typename T, typename IntT>
-void SparseMaskCPUKernel(const CPUContext& dev_ctx,
-                         const DenseTensor& x,
-                         const SparseCooTensor& mask,
-                         SparseCooTensor* out) {
+void MaskCooCPUKernel(const CPUContext& dev_ctx,
+                      const DenseTensor& x,
+                      const SparseCooTensor& mask,
+                      SparseCooTensor* out) {
   const DDim& dims = x.dims();
   PADDLE_ENFORCE_EQ(
       x.dims(),
@@ -75,21 +75,21 @@ void SparseMaskCPUKernel(const CPUContext& dev_ctx,
  * x and mask must have the same shape.
  **/
 template <typename T, typename Context>
-void SparseMaskKernel(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      const SparseCooTensor& mask,
-                      SparseCooTensor* out) {
+void MaskCooKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const SparseCooTensor& mask,
+                   SparseCooTensor* out) {
   PD_VISIT_BASE_INTEGRAL_TYPES(
-      mask.indices().dtype(), "SparseMaskCPUKernel", ([&] {
-        SparseMaskCPUKernel<T, data_t>(dev_ctx, x, mask, out);
+      mask.indices().dtype(), "MaskCooCPUKernel", ([&] {
+        MaskCooCPUKernel<T, data_t>(dev_ctx, x, mask, out);
       }));
 }
 
 template <typename T, typename IntT>
-void SparseMaskHelperCPUKernel(const CPUContext& dev_ctx,
-                               const SparseCooTensor& x,
-                               const DenseTensor& mask_indices,
-                               DenseTensor* out) {
+void MaskHelperCooCPUKernel(const CPUContext& dev_ctx,
+                            const SparseCooTensor& x,
+                            const DenseTensor& mask_indices,
+                            DenseTensor* out) {
   PADDLE_ENFORCE_EQ(
       mask_indices.dims().size(),
       2,
@@ -142,23 +142,23 @@ void SparseMaskHelperCPUKernel(const CPUContext& dev_ctx,
  * @brief filter values from x.values() using mask_indices
  */
 template <typename T, typename Context>
-void SparseMaskHelperKernel(const Context& dev_ctx,
-                            const SparseCooTensor& x,
-                            const DenseTensor& mask_indices,
-                            DenseTensor* out) {
+void MaskHelperCooKernel(const Context& dev_ctx,
+                         const SparseCooTensor& x,
+                         const DenseTensor& mask_indices,
+                         DenseTensor* out) {
   PD_VISIT_BASE_INTEGRAL_TYPES(
-      x.indices().dtype(), "SparseMaskHelperCPUKernel", ([&] {
-        SparseMaskHelperCPUKernel<T, data_t>(dev_ctx, x, mask_indices, out);
+      x.indices().dtype(), "MaskHelperCooCPUKernel", ([&] {
+        MaskHelperCooCPUKernel<T, data_t>(dev_ctx, x, mask_indices, out);
       }));
 }
 
 }  // namespace sparse
 }  // namespace phi
 
-PD_REGISTER_KERNEL(sparse_mask,
+PD_REGISTER_KERNEL(mask_coo,
                    CPU,
                    ALL_LAYOUT,
-                   phi::sparse::SparseMaskKernel,
+                   phi::sparse::MaskCooKernel,
                    float,
                    double,
                    uint8_t,
@@ -169,10 +169,10 @@ PD_REGISTER_KERNEL(sparse_mask,
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
-PD_REGISTER_KERNEL(sparse_mask_helper,
+PD_REGISTER_KERNEL(mask_helper_coo,
                    CPU,
                    ALL_LAYOUT,
-                   phi::sparse::SparseMaskHelperKernel,
+                   phi::sparse::MaskHelperCooKernel,
                    float,
                    double,
                    uint8_t,

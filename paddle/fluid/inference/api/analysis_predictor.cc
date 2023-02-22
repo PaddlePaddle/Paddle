@@ -524,6 +524,7 @@ bool AnalysisPredictor::PrepareScope(
     status_is_cloned_ = true;
   } else {
     paddle::framework::InitDevices();
+    paddle::framework::InitMemoryMethod();
     paddle::framework::InitDefaultKernelSignatureMap();
     // TODO(wilber): we need to release memory occupied by weights.
     scope_.reset(new paddle::framework::Scope());
@@ -1279,6 +1280,18 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetCustomDeviceType(config_.custom_device_type());
     argument_->SetCustomDeviceId(config_.custom_device_id());
   }
+#endif
+
+#ifdef PADDLE_WITH_XPU
+  argument_->SetUseXpu(config_.use_xpu_);
+  argument_->SetXpuL3WorkspaceSize(config_.xpu_l3_workspace_size_);
+  argument_->SetXpuLocked(config_.xpu_locked_);
+  argument_->SetXpuAutotune(config_.xpu_autotune_);
+  argument_->SetXpuAutotuneFile(config_.xpu_autotune_file_);
+  argument_->SetXpuPrecision(config_.xpu_precision_);
+  argument_->SetXpuAdaptiveSeqlen(config_.xpu_adaptive_seqlen_);
+  argument_->SetXpuDeviceId(config_.xpu_device_id_);
+  argument_->SetXpuEnableMultiStream(config_.xpu_enable_multi_stream_);
 #endif
 
   auto *pass_builder = config_.pass_builder();

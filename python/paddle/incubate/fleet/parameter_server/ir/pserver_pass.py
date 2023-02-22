@@ -14,7 +14,8 @@
 
 import collections
 
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
+from paddle.framework import core
+from paddle.incubate.fleet.parameter_server.ir.public import (
     _get_lr_ops,
     _get_optimize_ops,
     _get_varname_parts,
@@ -23,7 +24,6 @@ from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
     get_sparse_tablenames,
     is_distributed_sparse_op,
 )
-from paddle.framework import core
 
 LEARNING_RATE_DECAY_COUNTER = "@LR_DECAY_COUNTER@"
 OP_ROLE_VAR_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
