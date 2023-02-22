@@ -228,7 +228,7 @@ struct TypeManager {
     return val.type_id() == type_id();                                     \
   }                                                                        \
   template <typename... Args>                                              \
-  static concrete_type create(ir::IrContext *ctx, Args... args) {          \
+  static concrete_type get(ir::IrContext *ctx, Args... args) {             \
     return ir::TypeManager::template get<concrete_type>(ctx, args...);     \
   }
 
