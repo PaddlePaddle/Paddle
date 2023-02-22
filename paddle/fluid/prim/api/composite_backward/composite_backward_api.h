@@ -348,7 +348,7 @@ void topk_grad(const Tensor& x,
     if (tmp_axis + 1 == in_dims.size()) {
       // the scatter_nd_add does not support 1-D indices
       if (out_dims.size() == 1) {
-        one_dim = phi::make_ddim(1);
+        one_dim = phi::make_ddim({1});
         phi::DDim reduce_dim = get_reduce_dims(out_dims, one_dim);
         std::vector<int64_t> new_dim = phi::vectorize<int64_t>(reduce_dim);
         auto indices_reshape = reshape<T>(indices, IntArray(new_dim));
