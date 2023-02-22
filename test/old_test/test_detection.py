@@ -16,7 +16,7 @@ import contextlib
 import unittest
 
 import numpy as np
-from unittests.test_imperative_base import new_program_scope
+from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid

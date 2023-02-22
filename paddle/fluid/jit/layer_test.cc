@@ -163,7 +163,7 @@ TEST(CpuLayerTest, Clone) {
 TEST(GpuLayerTest, Construct) {
   auto place = phi::GPUPlace();
 
-  std::string path = "./multi_program_load/export";
+  std::string path = "../multi_program_load/export";
   auto layer = jit::Load(path, place);
   auto inputs = PrepareInputs(place);
 
@@ -191,7 +191,7 @@ TEST(GpuLayerTest, Construct) {
 TEST(GpuLayerTest, Clone) {
   auto place = phi::GPUPlace();
 
-  std::string path = "./multi_program_load/export";
+  std::string path = "../multi_program_load/export";
   auto layer = jit::Load(path, place);
   auto inputs = PrepareInputs(place);
 
