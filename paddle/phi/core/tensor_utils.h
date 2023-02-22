@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/selected_rows.h"
@@ -152,7 +153,7 @@ inline std::vector<T> GetVectorFromTensor(const phi::DenseTensor* x) {
     auto* data = x->data<int>();
     phi::DenseTensor cpu_attr_tensor;
     if (!paddle::platform::is_cpu_place(x->place())) {
-      auto& pool = phi::DeviceContextPool::Instance();
+      auto& pool = paddle::platform::DeviceContextPool::Instance();
       phi::DeviceContext* dev_ctx;
       dev_ctx = pool.Get(CPUPlace());
       phi::Copy(*dev_ctx, *x, CPUPlace(), true, &cpu_attr_tensor);
@@ -163,7 +164,7 @@ inline std::vector<T> GetVectorFromTensor(const phi::DenseTensor* x) {
     auto* data = x->data<int64_t>();
     phi::DenseTensor cpu_attr_tensor;
     if (!paddle::platform::is_cpu_place(x->place())) {
-      auto& pool = phi::DeviceContextPool::Instance();
+      auto& pool = paddle::platform::DeviceContextPool::Instance();
       phi::DeviceContext* dev_ctx;
       dev_ctx = pool.Get(CPUPlace());
       phi::Copy(*dev_ctx, *x, CPUPlace(), true, &cpu_attr_tensor);
