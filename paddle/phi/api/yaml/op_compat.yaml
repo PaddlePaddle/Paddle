@@ -489,6 +489,12 @@
              int trainer_id = 0, int slot = 0, 'int64_t[] height_sections = {}', 'str[] epmap = {}',
              'str[] table_names = {}']
 
+- op : equal
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
 - op : equal_all
   inputs :
     {x : X, y : Y}
@@ -685,6 +691,18 @@
     attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
+- op : greater_equal
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
+- op : greater_than
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
 - op : grid_sample(grid_sampler)
   backward : grid_sample_grad (grid_sampler_grad)
   inputs :
@@ -852,6 +870,18 @@
   backward : lerp_grad
   inputs :
     {x : X, y : Y, weight : Weight}
+  outputs :
+    out : Out
+
+- op : less_equal
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
+- op : less_than
+  inputs :
+    {x : X, y : Y}
   outputs :
     out : Out
 
@@ -1094,6 +1124,12 @@
     {input : X, label : Label, weight : Weight}
   outputs :
     {out : Out, total_weight : Total_weight}
+
+- op : not_equal
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
 
 - op : numel(size)
   inputs :
