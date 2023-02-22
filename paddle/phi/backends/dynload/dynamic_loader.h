@@ -47,6 +47,9 @@ void* GetCUFFTDsoHandle();
 void* GetMKLRTDsoHandle();
 void* GetROCFFTDsoHandle();
 void* GetCusparseLtDsoHandle();
+void* GetK2ContextDsoHandle();
+void* GetK2FsaDsoHandle();
+void* GetK2LogDsoHandle();
 
 void SetPaddleLibPath(const std::string&);
 

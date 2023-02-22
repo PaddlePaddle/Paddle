@@ -607,5 +607,47 @@ void* GetCusparseLtDsoHandle() {
 #endif
 }
 
+void* GetK2ContextDsoHandle() {
+  std::string k2_dir = "";
+  if (!s_py_site_pkg_path.path.empty()) {
+    k2_dir = s_py_site_pkg_path.path;
+  }
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(k2_dir, "libk2context.dylib");
+#elif defined(_WIN32)
+  return GetDsoHandleFromSearchPath(k2_dir, "k2context.dll");
+#else
+  return GetDsoHandleFromSearchPath(k2_dir, "libk2context.so");
+#endif
+}
+
+void* GetK2FsaDsoHandle() {
+  std::string k2_dir = "";
+  if (!s_py_site_pkg_path.path.empty()) {
+    k2_dir = s_py_site_pkg_path.path;
+  }
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(k2_dir, "libk2fsa.dylib");
+#elif defined(_WIN32)
+  return GetDsoHandleFromSearchPath(k2_dir, "k2fsa.dll");
+#else
+  return GetDsoHandleFromSearchPath(k2_dir, "libk2fsa.so");
+#endif
+}
+
+void* GetK2LogDsoHandle() {
+  std::string k2_dir = "";
+  if (!s_py_site_pkg_path.path.empty()) {
+    k2_dir = s_py_site_pkg_path.path;
+  }
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(k2_dir, "libk2_log.dylib");
+#elif defined(_WIN32)
+  return GetDsoHandleFromSearchPath(k2_dir, "k2_log.dll");
+#else
+  return GetDsoHandleFromSearchPath(k2_dir, "libk2_log.so");
+#endif
+}
+
 }  // namespace dynload
 }  // namespace phi

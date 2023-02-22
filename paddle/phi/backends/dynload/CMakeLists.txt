@@ -84,6 +84,10 @@ else()
     phi_dynload_warprnnt
     SRCS warprnnt.cc
     DEPS phi_dynamic_loader warprnnt)
+  cc_library(
+    phi_dynload_k2
+    SRCS k2.cc
+    DEPS phi_dynamic_loader k2)
 endif()
 if(WITH_MKLML)
   cc_library(
