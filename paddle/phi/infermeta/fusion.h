@@ -28,6 +28,7 @@ void EmbeddingWithEltwiseAddXPUInferMeta(
     MetaTensor* out);
 
 void FcXPUInferMeta(const MetaTensor& x,
+                    const MetaTensor& x_max,
                     const MetaTensor& w,
                     const MetaTensor& w_max,
                     const MetaTensor& bias,
@@ -37,7 +38,8 @@ void FcXPUInferMeta(const MetaTensor& x,
                     float beta,
                     int act_type,
                     float act_alpha,
-                    MetaTensor* out);
+                    MetaTensor* out,
+                    MetaTensor* out_max);
 
 void GenerateSequenceXPUInferMeta(const MetaTensor& x,
                                   DataType dtype,
