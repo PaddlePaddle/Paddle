@@ -59,11 +59,9 @@ def is_tensor(x):
 class BertConfig:
     def __init__(self):
         self.attention_probs_dropout_prob = 0.1
-        # self.attention_probs_dropout_prob = 0.0
         self.fuse = False
         self.hidden_act = 'gelu'
         self.hidden_dropout_prob = 0.1
-        # self.hidden_dropout_prob = 0.0
         # Decrease config to speed up unittest
         # self.hidden_size = 768
         self.hidden_size = 60
@@ -790,15 +788,6 @@ class PretrainingDataset(Dataset):
     def __init__(self, input_file, max_pred_length):
         self.input_file = input_file
         self.max_pred_length = max_pred_length
-        # self.inputs = [
-        #     np.random.randint(0, 30484, (88, 128)).astype('int32'),
-        #     np.random.randint(0, 2, (88, 128)).astype('int8'),
-        #     np.random.randint(0, 2, (88, 128)).astype('int8'),
-        #     np.random.randint(0, 127, (88, 20)).astype('int32'),
-        #     np.random.randint(0, 29393, (88, 20)).astype('int32'),
-        #     np.random.randint(0, 1, (88,)).astype('int8'),
-        # ]
-
         keys = [
             "input_ids",
             "input_mask",

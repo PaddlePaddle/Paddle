@@ -48,7 +48,7 @@ def train(to_static, enable_prim, enable_cinn):
 
     np.random.seed(SEED)
     paddle.seed(SEED)
-    paddle.framework.random._manual_program_seed(SEED)
+    # paddle.framework.random._manual_program_seed(SEED)
 
     train_data_loader = create_pretraining_dataset(
         os.path.join(DATA_HOME, MODULE_NAME, SAVE_NAME),
@@ -131,19 +131,15 @@ class TestBert(unittest.TestCase):
 
     def test_prim(self):
         dy2st_prim = train(to_static=True, enable_prim=True, enable_cinn=False)
-
-    #     # NOTE: Now dy2st is equal to dy2st_prim. With the splitting of kernels, the threshold here may need to be adjusted
-    #     # np.testing.assert_allclose(self.dy2st, dy2st_prim, rtol=1e-6)
+        np.testing.assert_allclose(self.dy2st, dy2st_prim, rtol=1e-6)
 
     @unittest.skipIf(
         not paddle.is_compiled_with_cinn(), "padle is not compiled with CINN"
     )
     def test_cinn(self):
         dy2st_cinn = train(to_static=True, enable_prim=False, enable_cinn=True)
-
-    #     # TODO(0x45f): The following is only temporary thresholds, and the final thresholds needs to be discussed
-    #     # np.testing.assert_allclose(self.dy2st[0:2], dy2st_cinn[0:2], rtol=1e-3)
-    #     # np.testing.assert_allclose(self.dy2st, dy2st_cinn, rtol=1e-1)
+        # np.testing.assert_allclose(self.dy2st[0:2], dy2st_cinn[0:2], rtol=1e-3)
+        np.testing.assert_allclose(self.dy2st, dy2st_cinn, rtol=1e-6)
 
     @unittest.skipIf(
         not paddle.is_compiled_with_cinn(), "padle is not compiled with CINN"
@@ -152,12 +148,10 @@ class TestBert(unittest.TestCase):
         dy2st_prim_cinn = train(
             to_static=True, enable_prim=True, enable_cinn=True
         )
-
-    #     # TODO(0x45f): The following is only temporary thresholds, and the final thresholds need to be discussed
-    #     # np.testing.assert_allclose(
-    #     #     self.dy2st[0:2], dy2st_prim_cinn[0:2], rtol=1e-2
-    #     # )
-    #     # np.testing.assert_allclose(self.dy2st, dy2st_prim_cinn, rtol=1e-1)
+        # np.testing.assert_allclose(
+        #     self.dy2st[0:2], dy2st_prim_cinn[0:2], rtol=1e-2
+        # )
+        np.testing.assert_allclose(self.dy2st, dy2st_prim_cinn, rtol=1e-6)
 
 
 if __name__ == '__main__':
