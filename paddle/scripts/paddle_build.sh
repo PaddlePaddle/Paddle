@@ -221,7 +221,7 @@ function cmake_base() {
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
         -DPY_VERSION=${PY_VERSION:-3.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
-        -DWITH_PSCORE=${distibuted_flag}
+        -DWITH_PSCORE=${WITH_PSCORE:-OFF}
         -DWITH_PSLIB=${WITH_PSLIB:-OFF}
         -DWITH_GLOO=${gloo_flag}
         -DWITH_LITE=${WITH_LITE:-OFF}
@@ -277,7 +277,7 @@ EOF
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} \
         -DPY_VERSION=${PY_VERSION:-3.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
-        -DWITH_PSCORE=${distibuted_flag} \
+        -DWITH_PSCORE=${WITH_PSCORE:-OFF} \
         -DWITH_PSLIB=${WITH_PSLIB:-OFF} \
         -DWITH_GLOO=${gloo_flag} \
         -DLITE_GIT_TAG=release/v2.10 \
@@ -3647,7 +3647,7 @@ function run_setup(){
     export INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
     export PY_VERSION=${PY_VERSION:-3.7}
     export CMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
-    export WITH_PSCORE=${distibuted_flag}
+    export WITH_PSCORE=${WITH_PSCORE:-OFF}
     export WITH_PSLIB=${WITH_PSLIB:-OFF}
     export WITH_GLOO=${gloo_flag}
     export LITE_GIT_TAG=release/v2.10
@@ -3877,7 +3877,7 @@ function run_setup_mac(){
     export INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
     export PY_VERSION=${PY_VERSION:-3.7}
     export CMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
-    export WITH_PSCORE=${distibuted_flag}
+    export WITH_PSCORE=${WITH_PSCORE:-OFF}
     export WITH_PSLIB=${WITH_PSLIB:-OFF}
     export WITH_GLOO=${gloo_flag}
     export LITE_GIT_TAG=release/v2.10

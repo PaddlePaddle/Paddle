@@ -54,8 +54,9 @@ ExternalProject_Add(
   ${EXTERNAL_PROJECT_LOG_ARGS}
   PREFIX ${PSLIB_PREFIX_DIR}
   DOWNLOAD_DIR ${PSLIB_DOWNLOAD_DIR}
-  DOWNLOAD_COMMAND wget --no-check-certificate ${PSLIB_URL} -c -q -O
-                   ${PSLIB_NAME}.tar.gz && tar zxvf ${PSLIB_NAME}.tar.gz
+  DOWNLOAD_COMMAND
+    cp /home/pangengzheng/ci/baidu/paddlepaddle/pslib/${PSLIB_NAME}.tar.gz ./ &&
+    tar zxvf ${PSLIB_NAME}.tar.gz
   DOWNLOAD_NO_PROGRESS 1
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${PSLIB_INSTALL_ROOT}
@@ -67,3 +68,4 @@ ExternalProject_Add(
 add_library(pslib SHARED IMPORTED GLOBAL)
 set_property(TARGET pslib PROPERTY IMPORTED_LOCATION ${PSLIB_LIB})
 add_dependencies(pslib ${PSLIB_PROJECT})
+target_link_libraries(pslib INTERFACE ${PSLIB_LIB_DIR}/libjvm.so)
