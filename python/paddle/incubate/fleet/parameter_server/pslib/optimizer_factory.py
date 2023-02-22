@@ -28,7 +28,7 @@ from . import ps_pb2 as pslib
 from .node import DownpourServer, DownpourWorker
 
 OpRole = core.op_proto_and_checker_maker.OpRole
-# this dict is for store info about pull/push sparse ops.
+# this dict is for storing info about pull/push sparse ops.
 FLEET_GLOBAL_DICT = {
     # global settings
     "enable": False,

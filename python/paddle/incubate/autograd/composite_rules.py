@@ -34,7 +34,7 @@ def softmax_composite(x, axis):
     """define composite rule of op softmax"""
     if not x.shape:
         # do not return 1, to ensure gradients
-        res = divide(x + 1e-5, x + 1e-5)
+        res = exp(x - x)
         return res
     max_temp = max(x, axis, keepdim=True)
     max_temp.stop_gradient = True
@@ -108,6 +108,35 @@ def composite_batchnorm(
     reserve_space = None
 
     return y, run_mean_, run_var_, batch_mean_, batch_var_, reserve_space
+
+
+@REGISTER_COMPOSITE('layer_norm')
+def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
+    """
+    define composite rule of op layer_norm
+    out = (x - mean(x)) / sqrt(var + epsilon))
+    var = mean((x-mean(x))^2)
+    """
+
+    axis = tuple(range(begin_norm_axis, len(x.shape)))
+    mean_ = mean(x, axis=axis, keepdim=True)
+    difference = x - mean_
+    var_tmp1 = difference * difference
+    variance = mean(var_tmp1, axis=axis, keepdim=True)
+    var_tmp3 = variance + epsilon
+    sqrt_var = sqrt(var_tmp3)
+    out = difference / sqrt_var
+
+    if scale is not None:
+        scale = reshape(scale, x.shape[begin_norm_axis:])
+        out = out * scale
+    if bias is not None:
+        bias = reshape(bias, x.shape[begin_norm_axis:])
+        out = out + bias
+
+    mean_ = reshape(mean_, [-1])
+    variance = reshape(variance, [-1])
+    return out, mean_, variance
 
 
 @REGISTER_COMPOSITE('gelu')

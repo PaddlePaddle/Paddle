@@ -22,6 +22,7 @@ limitations under the License. */
 namespace phi {
 
 void FcXPUInferMeta(const MetaTensor& x,
+                    const MetaTensor& x_max,
                     const MetaTensor& w,
                     const MetaTensor& w_max,
                     const MetaTensor& bias,
@@ -31,7 +32,8 @@ void FcXPUInferMeta(const MetaTensor& x,
                     float beta,
                     int act_type,
                     float act_alpha,
-                    MetaTensor* out) {
+                    MetaTensor* out,
+                    MetaTensor* out_max) {
   std::vector<int> out_shape(in_num_col_dims + 1);
   for (int i = 0; i < in_num_col_dims; i++) {
     out_shape[i] = x.dims()[i];
@@ -39,6 +41,17 @@ void FcXPUInferMeta(const MetaTensor& x,
   out_shape[in_num_col_dims] = w.dims()[0];
   out->set_dims(DDim(out_shape.data(), out_shape.size()));
   out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+  out_max->set_dims(w_max.dims());
+  out_max->set_dtype(x.dtype());
+  out_max->set_layout(x.layout());
+}
+
+void GenerateSequenceXPUInferMeta(const MetaTensor& x,
+                                  DataType dtype,
+                                  MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(dtype);
   out->set_layout(x.layout());
 }
 

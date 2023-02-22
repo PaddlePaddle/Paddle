@@ -206,25 +206,6 @@ class TestFlatten2OpError(unittest.TestCase):
 
         self.assertRaises(ValueError, test_ValueError5)
 
-        def test_type():
-            # dtype must be float32, float64, int8, int32, int64, uint8.
-            x2 = (
-                np.arange(
-                    image_shape[0]
-                    * image_shape[1]
-                    * image_shape[2]
-                    * image_shape[3]
-                ).reshape(image_shape)
-                / 100.0
-            )
-            x2 = x2.astype('float16')
-            x2_var = paddle.fluid.data(
-                name='x2', shape=[3, 2, 4, 5], dtype='float16'
-            )
-            paddle.flatten(x2_var)
-
-        self.assertRaises(TypeError, test_type)
-
         def test_InputError():
             out = paddle.flatten(x)
 

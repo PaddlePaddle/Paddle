@@ -184,7 +184,9 @@ def _get_args_values(op, phi_name):
                 and arg_name in op_content["attrs"].keys()
             ):
                 arg_name = op_content["attrs"][arg_name]
+
             # Note: in some cases, attrs may be optional , thus assign None. Such case must be recorded.
+
             if arg_name not in op.attr_names:
                 attrs.append(None)
             else:

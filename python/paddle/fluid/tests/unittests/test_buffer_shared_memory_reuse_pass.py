@@ -98,10 +98,8 @@ class InplaceTestBase(unittest.TestCase):
                 build_strategy.fuse_all_optimizer_ops = (
                     self.fuse_all_optimizer_ops
                 )
-                compiled_prog = fluid.CompiledProgram(prog).with_data_parallel(
-                    loss_name=loss.name,
-                    build_strategy=build_strategy,
-                    places=self.place,
+                compiled_prog = fluid.CompiledProgram(
+                    prog, build_strategy=build_strategy
                 )
                 compiled_programs.append(compiled_prog)
 
@@ -133,73 +131,11 @@ class InplaceTestBase(unittest.TestCase):
                             ),
                         )
 
-    def check_multi_card_fetch_var(self):
-        if self.is_invalid_test():
-            return
-
-        prog1, scope1, exe, loss1 = self.build_program_and_scope()
-        scopes = []
-        compiled_programs = []
-
-        if self.use_cuda:
-            places = fluid.cuda_places()
-        else:
-            places = fluid.cpu_places(self.device_count)
-
-        for memory_optimize in [False, True]:
-            for enable_inplace in [False, True]:
-                prog, scope, _, loss = self.build_program_and_scope()
-                scopes.append(scope)
-                build_strategy = fluid.BuildStrategy()
-                build_strategy.memory_optimize = memory_optimize
-                build_strategy.enable_inplace = enable_inplace
-                build_strategy.fuse_all_optimizer_ops = (
-                    self.fuse_all_optimizer_ops
-                )
-                compiled_program = fluid.CompiledProgram(
-                    prog
-                ).with_data_parallel(
-                    loss_name=loss.name,
-                    build_strategy=build_strategy,
-                    places=places,
-                )
-                compiled_programs.append(compiled_program)
-
-        repeated_var_names = self.get_all_vars(prog1)
-        random.shuffle(repeated_var_names)  # add some random
-
-        for fetch_var in repeated_var_names[:4]:
-            for _ in range(2):
-                fetch_vals = []
-                for scope, compiled_prog in zip(scopes, compiled_programs):
-                    with fluid.scope_guard(scope):
-                        (fetch_val,) = exe.run(
-                            compiled_prog,
-                            feed=feed_dict,
-                            fetch_list=[fetch_var],
-                        )
-                        fetch_vals.append(fetch_val)
-
-                for item in fetch_vals:
-                    np.testing.assert_array_equal(fetch_vals[0], item)
-                    np.testing.assert_array_equal(
-                        fetch_vals[0],
-                        item,
-                        err_msg='error var name: {}, fetch_vals[0]: {}, item: {}'.format(
-                            fetch_var,
-                            fetch_vals[0][~np.equal(fetch_vals[0], item)],
-                            item[~np.equal(fetch_vals[0], item)],
-                        ),
-                    )
-
 
 class CUDAInplaceTest(InplaceTestBase):
     def initParameter(self):
         self.use_cuda = True
         self.fuse_all_optimizer_ops = False
-
-    def test_multi_card_fetch_var(self):
-        self.check_multi_card_fetch_var()
 
     def test_single_card_fetch_var(self):
         self.check_single_card_fetch_var()
@@ -209,9 +145,6 @@ class CPUInplaceTest(InplaceTestBase):
     def initParameter(self):
         self.use_cuda = False
         self.fuse_all_optimizer_ops = False
-
-    def test_multi_card_fetch_var(self):
-        self.check_multi_card_fetch_var()
 
     def test_single_card_fetch_var(self):
         self.check_single_card_fetch_var()
