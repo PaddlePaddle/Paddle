@@ -48,6 +48,7 @@ typedef struct {
   int ow;
   const phi::GPUContext *ctx;
   float alpha;  // for leaky_relu use
+  int sm_version = 75;
 } ConvAllParams;
 
 // Below functions are provided by cutlass, they are called by phi.

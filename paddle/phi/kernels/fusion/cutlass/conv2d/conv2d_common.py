@@ -17,7 +17,7 @@
 # ${func_name} is like conv2d_bias_silu_sm75
 # ${enum_op_name} is like CONV2D_BIAS_SILU
 
-common_conv_function = """
+CommonConvFunction = """
 std::vector<std::function<cutlass::Status(ConvAllParams)>>
     ${func_name}_all_func =  {${all_kernel_func_name}};
 
@@ -61,14 +61,14 @@ void ${func_name}(ConvAllParams params) {
 # like : wrapper conv2d_bias_silu_sm75,  conv2d_bias_silu_sm80,  conv2d_bias_silu_sm86 into conv2d_bias_silu for phi kernel
 # this function is invoked by phi kernel
 
-common_wrapper_for_phi = """
+CommonWrapperForPhi = """
 void ${op_name}(ConvAllParams params) {
     ${dispatch_body}
 }
 """
 
 
-common_dispatch_temp = '''
+CommonDispatchTemp = '''
     if (params.sm_version == ${sm_code})
     {
         ${op_name_with_sm}(params);
@@ -78,7 +78,7 @@ common_dispatch_temp = '''
 
 # this is a file's ending part
 
-common_tail = '''
+CommonTail = '''
 }  // namespace cutlass_internal
 }  // namespace fusion
 }  // namespace phi

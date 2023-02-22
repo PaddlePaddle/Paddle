@@ -18,10 +18,10 @@ sys.path.append("../")
 import enum
 
 from conv2d_common import (
-    common_conv_function,
-    common_dispatch_temp,
-    common_tail,
-    common_wrapper_for_phi,
+    CommonConvFunction,
+    CommonDispatchTemp,
+    CommonTail,
+    CommonWrapperForPhi,
 )
 from util import SubstituteTemplate, TileDesc
 
@@ -164,7 +164,7 @@ CamelName = {
 }
 
 # some global variables used, now we only support these activations
-epi_funcs = [
+SupportEpiFuncs = [
     CbaAct.Identity,
     CbaAct.Relu,
     CbaAct.Silu,
@@ -220,7 +220,7 @@ def generate_sm75_1688():
     kernel_dict["epilogue_vector_length"] = "8"
 
     sm75_code = ""
-    for epi_func in epi_funcs:
+    for epi_func in SupportEpiFuncs:
         op_dict = {}
         op_dict["func_name"] = UnderScoreName[epi_func].lower() + "_sm75"
         op_dict["enum_op_name"] = UnderScoreName[epi_func].upper()
@@ -260,7 +260,7 @@ def generate_sm75_1688():
 
         # Generate op code
         op_dict["all_kernel_func_name"] = all_kernel_names
-        sm75_code += SubstituteTemplate(common_conv_function, op_dict)
+        sm75_code += SubstituteTemplate(CommonConvFunction, op_dict)
     return sm75_code
 
 
@@ -268,7 +268,7 @@ def generate_sm75_1688():
 def generate_cba_for_phi():
     sm_versions = ["75"]
     generated_code = ""
-    for epi_func in epi_funcs:
+    for epi_func in SupportEpiFuncs:
         dispatch_body = ""
         for sm_version in sm_versions:
             sm_dicts = {}
@@ -276,11 +276,11 @@ def generate_cba_for_phi():
             sm_dicts["op_name_with_sm"] = (
                 UnderScoreName[epi_func].lower() + "_sm" + sm_version
             )
-            dispatch_body += SubstituteTemplate(common_dispatch_temp, sm_dicts)
+            dispatch_body += SubstituteTemplate(CommonDispatchTemp, sm_dicts)
         op_dicts = {}
         op_dicts["dispatch_body"] = dispatch_body
         op_dicts["op_name"] = CamelName[epi_func]
-        generated_code += SubstituteTemplate(common_wrapper_for_phi, op_dicts)
+        generated_code += SubstituteTemplate(CommonWrapperForPhi, op_dicts)
     return generated_code
 
 
@@ -288,5 +288,5 @@ if __name__ == "__main__":
     all_code = cba_header
     all_code += generate_sm75_1688()
     all_code += generate_cba_for_phi()
-    all_code += common_tail
+    all_code += CommonTail
     print(all_code)

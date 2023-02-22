@@ -18,10 +18,10 @@ sys.path.append("../")
 import enum
 
 from conv2d_common import (
-    common_conv_function,
-    common_dispatch_temp,
-    common_tail,
-    common_wrapper_for_phi,
+    CommonConvFunction,
+    CommonDispatchTemp,
+    CommonTail,
+    CommonWrapperForPhi,
 )
 from util import SubstituteTemplate, TileDesc
 
@@ -162,19 +162,19 @@ ActCutlassTag = {
 }
 
 # some global variables used, now we only support these residual blocks
-epi_res_blocks = [
+EpiResBlocks = [
     (CbrAct.Silu, "cutlass::plus", CbrAct.Identity),
     (CbrAct.Identity, "cutlass::plus", CbrAct.Relu),
 ]
 
 UnderScoreName = {
-    epi_res_blocks[0]: "conv2d_bias_silu_add",
-    epi_res_blocks[1]: "conv2d_bias_add_relu",
+    EpiResBlocks[0]: "conv2d_bias_silu_add",
+    EpiResBlocks[1]: "conv2d_bias_add_relu",
 }
 
 CamelName = {
-    epi_res_blocks[0]: "Conv2dBiasSiluAdd",
-    epi_res_blocks[1]: "Conv2dBiasAddRelu",
+    EpiResBlocks[0]: "Conv2dBiasSiluAdd",
+    EpiResBlocks[1]: "Conv2dBiasAddRelu",
 }
 
 
@@ -228,7 +228,7 @@ def generate_sm75_1688():
     kernel_dict["epilogue_vector_length"] = "8"
 
     sm75_code = ""
-    for epi_res_block in epi_res_blocks:
+    for epi_res_block in EpiResBlocks:
         op_dict = {}
         op_dict["func_name"] = UnderScoreName[epi_res_block].lower() + "_sm75"
         op_dict["enum_op_name"] = UnderScoreName[epi_res_block].upper()
@@ -270,7 +270,7 @@ def generate_sm75_1688():
 
         # Generate op code
         op_dict["all_kernel_func_name"] = all_kernel_names
-        sm75_code += SubstituteTemplate(common_conv_function, op_dict)
+        sm75_code += SubstituteTemplate(CommonConvFunction, op_dict)
     return sm75_code
 
 
@@ -278,7 +278,7 @@ def generate_sm75_1688():
 def generate_cbr_for_phi():
     sm_versions = ["75"]
     generated_code = ""
-    for epi_res_block in epi_res_blocks:
+    for epi_res_block in EpiResBlocks:
         dispatch_body = ""
         for sm_version in sm_versions:
             sm_dicts = {}
@@ -286,11 +286,11 @@ def generate_cbr_for_phi():
             sm_dicts["op_name_with_sm"] = (
                 UnderScoreName[epi_res_block].lower() + "_sm" + sm_version
             )
-            dispatch_body += SubstituteTemplate(common_dispatch_temp, sm_dicts)
+            dispatch_body += SubstituteTemplate(CommonDispatchTemp, sm_dicts)
         op_dicts = {}
         op_dicts["dispatch_body"] = dispatch_body
         op_dicts["op_name"] = CamelName[epi_res_block]
-        generated_code += SubstituteTemplate(common_wrapper_for_phi, op_dicts)
+        generated_code += SubstituteTemplate(CommonWrapperForPhi, op_dicts)
     return generated_code
 
 
@@ -298,5 +298,5 @@ if __name__ == "__main__":
     all_code = cbr_header
     all_code += generate_sm75_1688()
     all_code += generate_cbr_for_phi()
-    all_code += common_tail
+    all_code += CommonTail
     print(all_code)
