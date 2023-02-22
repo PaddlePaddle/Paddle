@@ -30,47 +30,50 @@ namespace ir {
 void DeleteDropoutOpPass::ApplyImpl(ir::Graph* graph) const {
   const std::string pattern_name = "delete_dropout_op_pattern";
   FusePassBase::Init(pattern_name, graph);
-
-  GraphPatternDetector gpd;
-  patterns::DeleteDropoutOpPattern pattern(gpd.mutable_pattern(), pattern_name);
-  pattern();
-
   int found_subgraph_count = 0;
-  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
-                     Graph* g) {
-    GET_IR_NODE(dropout_op_x);
-    GET_IR_NODE(dropout_op);
-    GET_IR_NODE(dropout_op_out);
-    GET_IR_NODE(dropout_op_mask);
 
-    // link dropout_op_x to next_op
-    auto dropout_op_x_name = dropout_op_x->Var()->Name();
-    auto dropout_op_out_name = dropout_op_out->Var()->Name();
-    auto next_op_nodes = dropout_op_out->outputs;
-    for (auto next_op_node : next_op_nodes) {
-      auto next_op_desc = next_op_node->Op();
-      auto next_op_inputs = next_op_desc->Inputs();
-      for (auto& input_var : next_op_inputs) {
-        auto names = input_var.second;
-        for (size_t i = 0; i < names.size(); i++) {
-          if (names[i] == dropout_op_out_name) {
-            names[i] = dropout_op_x_name;
-            next_op_desc->SetInput(input_var.first, names);
-            break;
+  for (auto with_mask : {true, false}) {
+    GraphPatternDetector gpd;
+    patterns::DeleteDropoutOpPattern pattern(gpd.mutable_pattern(),
+                                             pattern_name);
+    pattern(with_mask);
+
+    auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                       Graph* g) {
+      GET_IR_NODE(dropout_op_x);
+      GET_IR_NODE(dropout_op);
+      GET_IR_NODE(dropout_op_out);
+
+      // link dropout_op_x to next_op
+      auto dropout_op_x_name = dropout_op_x->Var()->Name();
+      auto dropout_op_out_name = dropout_op_out->Var()->Name();
+      auto next_op_nodes = dropout_op_out->outputs;
+      for (auto next_op_node : next_op_nodes) {
+        auto next_op_desc = next_op_node->Op();
+        auto next_op_inputs = next_op_desc->Inputs();
+        for (auto& input_var : next_op_inputs) {
+          auto names = input_var.second;
+          for (size_t i = 0; i < names.size(); i++) {
+            if (names[i] == dropout_op_out_name) {
+              names[i] = dropout_op_x_name;
+              next_op_desc->SetInput(input_var.first, names);
+              break;
+            }
           }
         }
+        IR_NODE_LINK_TO(dropout_op_x, next_op_node);
       }
-      IR_NODE_LINK_TO(dropout_op_x, next_op_node);
-    }
-
-    // delete useless node
-    std::unordered_set<const Node*> delete_nodes{
-        dropout_op, dropout_op_mask, dropout_op_out};
-    GraphSafeRemoveNodes(graph, delete_nodes);
-    found_subgraph_count++;
-  };
-
-  gpd(graph, handler);
+      // delete useless node
+      std::unordered_set<const Node*> delete_nodes{dropout_op, dropout_op_out};
+      if (with_mask) {
+        GET_IR_NODE(dropout_op_mask);
+        delete_nodes.insert(dropout_op_mask);
+      }
+      GraphSafeRemoveNodes(graph, delete_nodes);
+      found_subgraph_count++;
+    };
+    gpd(graph, handler);
+  }
   AddStatis(found_subgraph_count);
 }
 
