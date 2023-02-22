@@ -48,8 +48,6 @@ from ..framework import (
     Parameter,
     grad_var_name,
 )
-from .details import UnionFind, VarStruct, VarsDistributed
-from .details import delete_ops, find_op_by_output_arg
 
 LOOKUP_TABLE_TYPE = ["lookup_table", "lookup_table_v2"]
 LOOKUP_TABLE_GRAD_TYPE = ["lookup_table_grad", "lookup_table_v2_grad"]
@@ -619,6 +617,10 @@ class DistributeTranspiler:
         from paddle.distributed.distribute_lookup_table import (
             find_distributed_lookup_table,
         )
+        from paddle.distributed.transpiler.details import (
+            VarsDistributed,
+            find_op_by_output_arg,
+        )
 
         err_msg = """
 
@@ -1044,6 +1046,8 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
 
     def _fake_init_sparsetable(self, sparse_table_names):
         # delete table init op
+        from paddle.distributed.transpiler.details import delete_ops
+
         for table_name in sparse_table_names:
             table_var = self.startup_program.global_block().vars[table_name]
             table_param_init_op = []
@@ -1065,6 +1069,8 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             delete_ops(self.startup_program.global_block(), table_param_init_op)
 
     def _delete_trainer_optimizer(self, is_startup):
+        from paddle.distributed.transpiler.details import delete_ops
+
         optimize_vars = []
         optimize_op_role_vars = []
         optimize_need_delete_vars = []
@@ -1132,6 +1138,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         from paddle.distributed.fleet.base.private_helper_function import (
             wait_server_ready,
         )
+        from paddle.distributed.transpiler.details import delete_ops
 
         self._delete_trainer_optimizer(is_startup=True)
         sparse_table_names = self._get_sparse_table_names()
@@ -1720,6 +1727,8 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
 
     def _get_distributed_optimizer_vars(self):
         def _get_distributed_optimizer_var(endpoint):
+            from paddle.distributed.transpiler.details import VarStruct
+
             opt_op_on_pserver = []
             for _, op in enumerate(self.optimize_ops):
                 if self._is_optimizer_op(op) and self._is_opt_op_on_pserver(
@@ -1927,6 +1936,8 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
     def _replace_lookup_table_op_with_prefetch(
         self, program, pserver_endpoints
     ):
+        from paddle.distributed.transpiler.details import delete_ops
+
         # 1. replace lookup_table_op with split_ids_op -> prefetch_op -> sum_op
         self.all_in_ids_vars = []
         self.all_prefetch_input_vars = []
@@ -2760,6 +2771,8 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
 
     def _create_ufind(self, optimize_ops):
         # Create a unit find data struct by optimize ops
+        from paddle.distributed.transpiler.details import UnionFind
+
         ufind = UnionFind(optimize_ops)
         for i in range(len(optimize_ops)):
             for j in range(i, len(optimize_ops)):
@@ -2884,6 +2897,8 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         return lr_ops
 
     def _get_lr_ops_deprecated(self):
+        from paddle.distributed.transpiler.details import UnionFind
+
         lr_ops = []
         # find learning rate variables by optimize op
         lr_vars = set()

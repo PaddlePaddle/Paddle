@@ -32,7 +32,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/dynload/port.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/serialization.h"
 
 namespace paddle {
 namespace operators {
@@ -111,9 +110,9 @@ void SaveCombineTensorKernel(const Context& dev_ctx,
       framework::TransDataType(in_kernel_type, out_kernel_type, tensor, &out);
       // copy LoD info to the new tensor
       out.set_lod(tensor.lod());
-      phi::SerializeToStream(ss, out, dev_ctx);
+      framework::SerializeToStream(ss, out, dev_ctx);
     } else {
-      phi::SerializeToStream(ss, tensor, dev_ctx);
+      framework::SerializeToStream(ss, tensor, dev_ctx);
     }
   }
 
