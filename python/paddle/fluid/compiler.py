@@ -324,6 +324,11 @@ class CompiledProgram:
         if self._places is not None:
             if not isinstance(self._places, (list, tuple)):
                 self._places = [self._places]
+        if self._places is not None and len(self._places) > 1:
+            raise NotImplementedError(
+                "If you need to train with multi-gpus, please use `fleet` instead of `with_data_parallel`."
+                "This will be removed soon in develop version."
+            )
 
         return self
 
@@ -484,6 +489,10 @@ class CompiledProgram:
         self._persistable_vars = list(set(self._persistable_vars))
         self._persistable_vars.sort()
 
+        if core.is_cuda_graph_capturing():
+            raise RuntimeError(
+                "CUDA Graph is not allowed to capture when running the first batch."
+            )
         return core.ParallelExecutor(
             places,
             self._persistable_vars,

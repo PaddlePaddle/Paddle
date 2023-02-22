@@ -30,6 +30,8 @@ namespace cub = hipcub;
 
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/gpu/graph_reindex_funcs.h"
 
@@ -70,7 +72,8 @@ std::shared_ptr<phi::Allocation> FillHashTable(const Context& dev_ctx,
       input, num_input, len_hashtable, keys, key_index);
 
   // Get item index count.
-  auto item_count = paddle::memory::Alloc(place, (num_input + 1) * sizeof(int));
+  auto item_count =
+      phi::memory_utils::Alloc(place, (num_input + 1) * sizeof(int));
   int* item_count_ptr = reinterpret_cast<int*>(item_count->ptr());
 #ifdef PADDLE_WITH_HIP
   hipMemset(item_count_ptr, 0, sizeof(int) * (num_input + 1));
@@ -83,7 +86,7 @@ std::shared_ptr<phi::Allocation> FillHashTable(const Context& dev_ctx,
   size_t temp_storage_bytes = 0;
   cub::DeviceScan::ExclusiveSum(
       NULL, temp_storage_bytes, item_count_ptr, item_count_ptr, num_input + 1);
-  auto d_temp_storage = paddle::memory::Alloc(place, temp_storage_bytes);
+  auto d_temp_storage = phi::memory_utils::Alloc(place, temp_storage_bytes);
   cub::DeviceScan::ExclusiveSum(d_temp_storage->ptr(),
                                 temp_storage_bytes,
                                 item_count_ptr,
@@ -103,7 +106,7 @@ std::shared_ptr<phi::Allocation> FillHashTable(const Context& dev_ctx,
 #endif
 
   auto unique_items =
-      paddle::memory::AllocShared(place, total_unique_items * sizeof(T));
+      phi::memory_utils::AllocShared(place, total_unique_items * sizeof(T));
   T* unique_items_data = reinterpret_cast<T*>(unique_items->ptr());
   *final_nodes_len = total_unique_items;
 
@@ -217,11 +220,12 @@ void Reindex(const Context& dev_ctx,
   int64_t log_num = 1 << static_cast<size_t>(1 + std::log2(num >> 1));
   int64_t table_size = log_num << 1;
 
-  auto keys = paddle::memory::Alloc(dev_ctx.GetPlace(), table_size * sizeof(T));
+  auto keys =
+      phi::memory_utils::Alloc(dev_ctx.GetPlace(), table_size * sizeof(T));
   auto values =
-      paddle::memory::Alloc(dev_ctx.GetPlace(), table_size * sizeof(int));
+      phi::memory_utils::Alloc(dev_ctx.GetPlace(), table_size * sizeof(int));
   auto key_index =
-      paddle::memory::Alloc(dev_ctx.GetPlace(), table_size * sizeof(int));
+      phi::memory_utils::Alloc(dev_ctx.GetPlace(), table_size * sizeof(int));
   T* keys_ptr = reinterpret_cast<T*>(keys->ptr());
   int* values_ptr = reinterpret_cast<int*>(values->ptr());
   int* key_index_ptr = reinterpret_cast<int*>(key_index->ptr());

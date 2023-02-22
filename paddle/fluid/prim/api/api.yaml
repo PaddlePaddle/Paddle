@@ -23,5 +23,6 @@
 - scatter
 - scatter_nd_add
 - tile
+- transpose
 - subtract
 - cumsum
