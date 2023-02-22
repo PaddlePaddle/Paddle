@@ -276,15 +276,16 @@ GetUnusedVars(const BlockDesc& block,
 }
 
 void BuildVariableScope(const framework::BlockDesc& block,
-                        VariableScope* var_scope,
-                        bool use_local_scope) {
+                        const ExecutionConfig& execution_config,
+                        VariableScope* var_scope) {
   VLOG(3) << "Creating Variables";
   auto inner_scope = var_scope->GetMutableScope();
 
   // NOTE(zhiqiu): if create_local_scope_ is true, the persistable is
   // created in var_scope.scope_ , and other scope is created in local scope.
-  Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
-                                       : var_scope->GetMutableScope();
+  Scope* local_scope = execution_config.create_local_scope
+                           ? var_scope->GetMutableLocalScope()
+                           : var_scope->GetMutableScope();
 
   for (auto& var_desc : block.AllVars()) {
     auto var_name = var_desc->Name();
@@ -295,7 +296,8 @@ void BuildVariableScope(const framework::BlockDesc& block,
       continue;
     }
 
-    if (var_desc->Persistable()) {
+    if (var_desc->Persistable() ||
+        execution_config.force_root_scope_vars.count(var_name)) {
       // In principle, we should put all trainable parameters in global scope,
       // which means the root of the scope tree. Some cases like quantization
       // will look up these parameters in global scope.
@@ -305,7 +307,6 @@ void BuildVariableScope(const framework::BlockDesc& block,
       }
       auto* ptr = const_cast<Scope*>(ancestor_scope)->Var(var_name);
 
-      VLOG(3) << "Initialize Variable " << var_name;
       // NOTE(zhiqiu): if var exists in scope and the type is right,
       // InitializeVariable will not create a new variable.
       InitializeVariable(ptr, var_desc->GetType());
@@ -315,8 +316,7 @@ void BuildVariableScope(const framework::BlockDesc& block,
       auto* ptr = local_scope->Var(var_name);
       InitializeVariable(ptr, var_desc->GetType());
       VLOG(3) << "Create Variable " << var_name << " locally, which pointer is "
-              << ptr << "Variable Type "
-              << static_cast<int>(var_desc->GetType());
+              << ptr << " type is " << static_cast<int>(var_desc->GetType());
     }
     var_scope->AddVar(var_name, var_desc);
   }
@@ -759,12 +759,22 @@ bool BuildOpFuncList(const platform::Place& place,
                 op_with_kernel->Type())) {
           auto phi_kernel_key = op_with_kernel->ChoosePhiKernel(exec_ctx);
           auto phi_kernel_name = op_with_kernel->PhiKernelSignature()->name;
-
-          if (op_with_kernel->PhiKernel()->IsValid()) {
+          bool in_custom_back_list = false;
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+          in_custom_back_list =
+              phi::backends::custom_device::is_in_custom_black_list(
+                  phi_kernel_name);
+#endif
+          if (op_with_kernel->PhiKernel()->IsValid() && !in_custom_back_list) {
             run_phi_kernel = true;
           } else {
-            if (!op_with_kernel->SupportsKernelType(expected_kernel_key,
-                                                    exec_ctx)) {
+            if ((!op_with_kernel->SupportsKernelType(expected_kernel_key,
+                                                     exec_ctx)) ||
+                in_custom_back_list) {
+              std::string info = in_custom_back_list ? "fluid in black list "
+                                                     : "fluid missing ";
+              VLOG(3) << info << phi_kernel_key
+                      << " kernel: " << phi_kernel_name;
               auto phi_cpu_kernel_key =
                   FallBackToCpu(phi_kernel_key, *op_with_kernel);
               op_with_kernel->ResetPhiKernel(

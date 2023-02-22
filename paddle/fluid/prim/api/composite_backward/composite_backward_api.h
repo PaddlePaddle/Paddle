@@ -25,6 +25,40 @@ using IntArray =
 //  This function should have as same signature as phi, which defined in
 //  paddle/phi/api/backward/backward_api.h
 template <typename T>
+void gather_grad(const Tensor& x,
+                 const Tensor& index,
+                 const Tensor& out_grad,
+                 const Scalar& axis,
+                 bool overwrite,
+                 Tensor* grad_x) {
+  auto zero_tensor = full<T>(phi::vectorize(x.dims()), 0.0, x.dtype());
+  std::vector<int> tmp_perm;
+
+  // change axis to rank 0
+  int axis_value = axis.to<int>();
+  tmp_perm.push_back(axis_value);
+  // make other ranks
+  for (int i = 0; i < x.dims().size(); ++i) {
+    if (i != axis_value) {
+      tmp_perm.push_back(i);
+    }
+  }
+  std::vector<int> reverse_perm(tmp_perm);
+  // make origin ranks
+  for (int i = 0; i < static_cast<int>(tmp_perm.size()); ++i) {
+    reverse_perm[tmp_perm[i]] = i;
+  }
+
+  // transpose out_grad and zero grad to target rank.
+  auto tmp_zero_x_grad = transpose<T>(zero_tensor, tmp_perm);
+  auto tmp_out_grad = transpose<T>(out_grad, tmp_perm);
+  // scatter grad to grad_x
+  auto tmp_grad_x = scatter<T>(tmp_zero_x_grad, index, tmp_out_grad, false);
+  auto tmp_grad_x_tranposed = transpose<T>(tmp_grad_x, reverse_perm);
+  set_output<T>(tmp_grad_x_tranposed, grad_x);
+}
+
+template <typename T>
 void tanh_grad(const Tensor& out, const Tensor& grad_out, Tensor* grad_x) {
   if (!grad_x) return;
   auto tmp = pow<T>(out, 2.0);
@@ -127,7 +161,7 @@ void sum_grad(const Tensor& x,
   if (!x_grad) {
     return;
   }
-  std::vector<int> x_dim = phi::vectorize<int>(x.dims());
+  std::vector<int64_t> x_dim = phi::vectorize<int64_t>(x.dims());
   int64_t axis_size = axis.size();
   int64_t x_dim_size = x_dim.size();
   reduce_all = false;
@@ -170,7 +204,7 @@ void divide_grad(const Tensor& x,
   if (dy) {
     // dy = -(x/y^2) * dout
     auto tmp0 = pow<T>(y, 2.0);
-    auto tmp1 = divide<T>(x, tmp0);
+    auto tmp1 = x / tmp0;
     auto tmp2 = scale<T>(tmp1, -1.0, 0.0, true);
     auto dy_res = tmp2 * out_grad;
     if (x.dims() != y.dims()) {
@@ -191,8 +225,7 @@ void divide_grad(const Tensor& x,
   if (dx) {
     // dx = (1/y) * dout
     auto one_tensor = full<T>(phi::vectorize(y.dims()), 1.0, y.dtype());
-    auto tmp0 = divide<T>(one_tensor, y);
-    auto dx_res = tmp0 * out_grad;
+    auto dx_res = one_tensor / y * out_grad;
     if (y.dims() != x.dims()) {
       // Maybe need reduce here
       auto reduce_dim = get_reduce_dims(x.dims(), y.dims());
@@ -215,8 +248,7 @@ template <typename T>
 void sqrt_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
     auto div_x = full<T>(phi::vectorize(out.dims()), 0.5);
-    auto tmp = divide<T>(div_x, out);
-    auto x_grad_tmp = out_grad * tmp;
+    auto x_grad_tmp = out_grad * div_x / out;
     set_output<T>(x_grad_tmp, x_grad);
   }
 }

@@ -10,11 +10,6 @@ file(
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 string(REPLACE ".py" "" TEST_OPS_GRAD "${TEST_OPS_GRAD}")
 
-if(WIN32 OR APPLE)
-  # TODO: Fix these unittests failed on Windows and MAC.
-  list(REMOVE_ITEM TEST_OPS ${TEST_OPS_GRAD})
-endif()
-
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS ${GC_ENVS})
 endforeach()

@@ -418,18 +418,18 @@ class FusedDropoutLayerNormHelper
                      LayerNormParamType<T>* d_scale,
                      LayerNormParamType<T>* d_bias) {
     using U = LayerNormParamType<T>;
-    LayerNormBackward<T, U>(src,
-                            dout,
-                            gamma,
-                            mean,
-                            variance,
-                            d_src,
-                            d_scale,
-                            d_bias,
-                            epsilon_,
-                            this->rows_,
-                            this->cols_,
-                            ctx);
+    phi::funcs::LayerNormBackward<T, U>(src,
+                                        dout,
+                                        gamma,
+                                        mean,
+                                        variance,
+                                        d_src,
+                                        d_scale,
+                                        d_bias,
+                                        epsilon_,
+                                        this->rows_,
+                                        this->cols_,
+                                        ctx);
   }
 
   // out = layernorm(residual + dropout(src + bias))
@@ -457,7 +457,7 @@ class FusedDropoutLayerNormHelper
     if (this->cols_ % vec_size != 0) {
       vec_size = 1;
     }
-    int threads = GetDesiredBlockDim(this->cols_ / vec_size);
+    int threads = phi::funcs::GetDesiredBlockDim(this->cols_ / vec_size);
     int increment = ((this->cols_ - 1) / (threads * vec_size) + 1) * vec_size;
     increment = this->dropout_param_.UpdateSeedAndIncrement(ctx, increment);
     LaunchLayernormResidualDropoutBias<T,
@@ -537,18 +537,18 @@ class FusedDropoutLayerNormHelper
           d_residual,
           d_dropout_src);
     } else {
-      LayerNormBackward<T, U, is_same_type>(layernorm_src,
-                                            d_out,
-                                            gamma,
-                                            mean,
-                                            variance,
-                                            d_layernorm_src,
-                                            d_scale,
-                                            d_layernorm_bias,
-                                            epsilon_,
-                                            this->rows_,
-                                            this->cols_,
-                                            ctx);
+      phi::funcs::LayerNormBackward<T, U, is_same_type>(layernorm_src,
+                                                        d_out,
+                                                        gamma,
+                                                        mean,
+                                                        variance,
+                                                        d_layernorm_src,
+                                                        d_scale,
+                                                        d_layernorm_bias,
+                                                        epsilon_,
+                                                        this->rows_,
+                                                        this->cols_,
+                                                        ctx);
       this->ResidualDropoutBiasGrad(
           ctx, d_layernorm_src, mask, d_dropout_src, d_residual, d_bias);
     }

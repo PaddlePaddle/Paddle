@@ -1144,12 +1144,6 @@
     func : rrelu_grad
     data_type : x
 
-- backward_op : scale_grad
-  forward : scale (Tensor x, Scalar scale, float bias, bool bias_after_scale) -> Tensor(out)
-  args : (Tensor out_grad, Scalar scale=1.0, bool bias_after_scale=true)
-  output : Tensor(x_grad)
-  invoke : scale(out_grad, scale, 0.0, bias_after_scale)
-
 - backward_op : segment_pool_grad
   forward : segment_pool (Tensor x, Tensor segment_ids, str pooltype) -> Tensor(out), Tensor(summed_ids)
   args : (Tensor x, Tensor segment_ids, Tensor out, Tensor summed_ids, Tensor out_grad, str pooltype)
@@ -1172,12 +1166,6 @@
   kernel :
     func : sigmoid_cross_entropy_with_logits_grad
   inplace : (out_grad -> x_grad)
-
-- backward_op : sign_grad
-  forward : sign (Tensor x) -> Tensor(out)
-  args : (Tensor out_grad)
-  output : Tensor(x_grad)
-  invoke : scale(out_grad, 0.0, 0.0, true)
 
 - backward_op : slice_double_grad
   forward : slice_grad (Tensor input, Tensor grad_out, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis) -> Tensor(grad_input)
