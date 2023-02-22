@@ -25,24 +25,33 @@ class TestFillAnyLikeOp(OpTest):
     def setUp(self):
         self.op_type = "fill_any_like"
         self.python_api = paddle.full_like
+        self.prim_op_type = "comp"
+        self.python_api = paddle.full_like 
         self.dtype = np.int32
         self.value = 0.0
         self.init()
         self.inputs = {'X': np.random.random((219, 232)).astype(self.dtype)}
         self.attrs = {'value': self.value}
         self.outputs = {'Out': self.value * np.ones_like(self.inputs["X"])}
+        self.skip_cinn()
 
     def init(self):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_prim=True)
+
+    def skip_cinn(self):
+        pass
 
 
 class TestFillAnyLikeOpFloat32(TestFillAnyLikeOp):
     def init(self):
         self.dtype = np.float32
         self.value = 0.0
+
+    def skip_cinn(self):
+        self.enable_cinn = False
 
 
 @unittest.skipIf(
@@ -52,6 +61,8 @@ class TestFillAnyLikeOpBfloat16(OpTest):
     def setUp(self):
         self.op_type = "fill_any_like"
         self.python_api = paddle.full_like
+        self.prim_op_type = "comp"
+        self.python_api = paddle.full_like 
         self.dtype = np.uint16
         self.value = 0.0
         self.inputs = {'X': np.random.random((219, 232)).astype(np.float32)}
@@ -61,31 +72,46 @@ class TestFillAnyLikeOpBfloat16(OpTest):
                 self.value * np.ones_like(self.inputs["X"])
             )
         }
+        self.skip_cinn()
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_prim=True)
+
+    def skip_cinn(self):
+        pass
 
 
 class TestFillAnyLikeOpValue1(TestFillAnyLikeOp):
     def init(self):
         self.value = 1.0
 
+    def skip_cinn(self):
+        self.enable_cinn = False
+
 
 class TestFillAnyLikeOpValue2(TestFillAnyLikeOp):
     def init(self):
         self.value = 1e-10
+
+    def skip_cinn(self):
+        self.enable_cinn = False
 
 
 class TestFillAnyLikeOpValue3(TestFillAnyLikeOp):
     def init(self):
         self.value = 1e-100
 
+    def skip_cinn(self):
+        self.enable_cinn = False
+
 
 class TestFillAnyLikeOpType(TestFillAnyLikeOp):
     def setUp(self):
         self.op_type = "fill_any_like"
         self.python_api = paddle.full_like
+        self.prim_op_type = "comp"
+        self.python_api = paddle.full_like 
         self.dtype = np.int32
         self.value = 0.0
         self.init()
@@ -99,10 +125,17 @@ class TestFillAnyLikeOpType(TestFillAnyLikeOp):
             * np.ones_like(self.inputs["X"]).astype(np.float32)
         }
 
+        self.skip_cinn()
+
+    def skip_cinn(self):
+        self.enable_cinn = False
 
 class TestFillAnyLikeOpFloat16(TestFillAnyLikeOp):
     def init(self):
         self.dtype = np.float16
+
+    def skip_cinn(self):
+        self.enable_cinn = False
 
 
 if __name__ == "__main__":

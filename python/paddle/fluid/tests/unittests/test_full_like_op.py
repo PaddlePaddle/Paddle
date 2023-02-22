@@ -100,8 +100,11 @@ class TestFullLikeOp1(OpTest):
     # test basic
     def setUp(self):
         self.op_type = "fill_any_like"
+        self.prim_op_type = "comp"
+        self.enable_check_eager_comp = False
         self.python_api = paddle.full_like
         self.init_data()
+        self.skip_cinn()
 
         x = np.zeros(self.shape)
         out = np.full_like(x, self.fill_value, self.dtype)
@@ -119,7 +122,10 @@ class TestFullLikeOp1(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=True, check_prim=True)
+
+    def skip_cinn(self):
+        pass
 
 
 class TestFullLikeOp2(TestFullLikeOp1):
@@ -128,12 +134,18 @@ class TestFullLikeOp2(TestFullLikeOp1):
         self.shape = [1024, 1024]
         self.dtype = np.float64
 
+    def skip_cinn(self):
+        self.enable_cinn = False
+
 
 class TestFullLikeOp3(TestFullLikeOp1):
     def init_data(self):
         self.fill_value = 8888
         self.shape = [5000, 5000]
         self.dtype = np.int64
+
+    def skip_cinn(self):
+        self.enable_cinn = False
 
 
 @unittest.skipIf(
