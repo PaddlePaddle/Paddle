@@ -1326,10 +1326,15 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : scale
+  backward : scale_grad
   inputs :
     x : X
   outputs :
-    out: Out
+    out : Out
+  scalar :
+    scale :
+      data_type : float
+      tensor_name : ScaleTensor
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -1424,6 +1429,13 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : sign
+  backward : sign_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : silu
   backward : silu_grad
