@@ -124,6 +124,12 @@ class ProcessGroupCustom : public ProcessGroupWithoutStream {
       bool sync_op,
       bool use_calc_stream) override;
 
+  std::shared_ptr<ProcessGroup::Task> Broadcast(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const BroadcastOptions& opts,
+      bool sync_op) override;
+
  protected:
   virtual std::shared_ptr<ProcessGroupCustom::CustomTask> CreateTask(
       std::vector<Place> places,
