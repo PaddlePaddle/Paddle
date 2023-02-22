@@ -1,16 +1,16 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -438,7 +438,7 @@ void ExecuteMatMulV1(const ExecutionContext &ctx,
 }
 
 template <typename T>
-class MatMulV1OneDNNKernel : public paddle::framework::OpKernel<T> {
+class MatMulMKLDNNKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const ExecutionContext &ctx) const override {
     if (ctx.HasAttr("head_number")) {
@@ -562,7 +562,7 @@ class MatMulV1OneDNNKernel : public paddle::framework::OpKernel<T> {
 };
 
 template <typename T>
-class MatMulV1GradOneDNNKernel : public paddle::framework::OpKernel<T> {
+class MatMulGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const ExecutionContext &ctx) const override {
     if (ctx.HasAttr("head_number")) {
@@ -740,13 +740,13 @@ class MatMulV1GradOneDNNKernel : public paddle::framework::OpKernel<T> {
 REGISTER_OP_KERNEL(matmul,
                    MKLDNN,
                    ::phi::CPUPlace,
-                   MatMulV1OneDNNKernel<float>,
-                   MatMulV1OneDNNKernel<phi::dtype::bfloat16>,
-                   MatMulV1OneDNNKernel<int8_t>,
-                   MatMulV1OneDNNKernel<uint8_t>);
+                   MatMulMKLDNNKernel<float>,
+                   MatMulMKLDNNKernel<paddle::platform::bfloat16>,
+                   MatMulMKLDNNKernel<int8_t>,
+                   MatMulMKLDNNKernel<uint8_t>);
 
 REGISTER_OP_KERNEL(matmul_grad,
                    MKLDNN,
                    ::phi::CPUPlace,
-                   MatMulV1GradOneDNNKernel<float>,
-                   MatMulV1GradOneDNNKernel<phi::dtype::bfloat16>);
+                   MatMulGradMKLDNNKernel<float>,
+                   MatMulGradMKLDNNKernel<paddle::platform::bfloat16>);

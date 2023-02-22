@@ -35,11 +35,11 @@ struct InnerProductCache {
   dnnl::memory dst_mem;
 };
 template <typename T_in, typename T_w, typename T_out>
-class FCOneDNNHandler
+class FCMKLDNNHandler
     : public phi::funcs::OneDNNHandlerNoCachingT<T_in,
                                                  dnnl::inner_product_forward> {
  public:
-  FCOneDNNHandler(const ExecutionContext& ctx,
+  FCMKLDNNHandler(const ExecutionContext& ctx,
                   const OneDNNContext& dev_ctx,
                   const phi::DenseTensor* x,
                   const phi::DenseTensor* weights,
@@ -47,7 +47,7 @@ class FCOneDNNHandler
                   phi::DenseTensor* out,
                   const int in_num_col_dims,
                   dnnl::engine onednn_engine,
-                  phi::Place cpu_place)
+                  platform::Place cpu_place)
       : phi::funcs::OneDNNHandlerNoCachingT<T_in, dnnl::inner_product_forward>(
             onednn_engine, cpu_place),
         dev_ctx_(dev_ctx) {
@@ -380,7 +380,7 @@ class FCOneDNNHandler
   }
 
 template <typename T_in>
-class FCOneDNNKernel : public framework::OpKernel<T_in> {
+class FCMKLDNNKernel : public framework::OpKernel<T_in> {
  public:
   void Compute(const ExecutionContext& ctx) const override {
     bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
@@ -478,7 +478,7 @@ class FCOneDNNKernel : public framework::OpKernel<T_in> {
     } else {
       auto in_col_dims = ctx.Attr<int>("in_num_col_dims");
 
-      FCOneDNNHandler<T_in, T_w, T_out> handler(ctx,
+      FCMKLDNNHandler<T_in, T_w, T_out> handler(ctx,
                                                 dev_ctx,
                                                 x,
                                                 weights,
@@ -569,7 +569,7 @@ namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(fc,
                    MKLDNN,
                    ::phi::CPUPlace,
-                   ops::FCOneDNNKernel<float>,
-                   ops::FCOneDNNKernel<phi::dtype::bfloat16>,
-                   ops::FCOneDNNKernel<uint8_t>,
-                   ops::FCOneDNNKernel<int8_t>);
+                   ops::FCMKLDNNKernel<float>,
+                   ops::FCMKLDNNKernel<paddle::platform::bfloat16>,
+                   ops::FCMKLDNNKernel<uint8_t>,
+                   ops::FCMKLDNNKernel<int8_t>);
