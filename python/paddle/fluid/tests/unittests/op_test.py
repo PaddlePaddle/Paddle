@@ -597,7 +597,10 @@ class OpTest(unittest.TestCase):
                 tensor = core.LoDTensor()
                 if isinstance(self.inputs[var_name], tuple):
                     tensor.set(self.inputs[var_name][0], place)
-                    if self.is_calc_ref:
+                    if (
+                        self.is_calc_ref
+                        and self.inputs[var_name][1].dtype == np.float16
+                    ):
                         tensor.set_recursive_sequence_lengths(
                             self.inputs[var_name][1].astype(np.float32)
                         )
@@ -606,7 +609,10 @@ class OpTest(unittest.TestCase):
                             self.inputs[var_name][1]
                         )
                 else:
-                    if self.is_calc_ref:
+                    if (
+                        self.is_calc_ref
+                        and self.inputs[var_name].dtype == np.float16
+                    ):
                         tensor.set(
                             self.inputs[var_name].astype(np.float32), place
                         )
@@ -775,7 +781,7 @@ class OpTest(unittest.TestCase):
                 lod_temp = np_value[1]
 
             if is_input:
-                if is_calc_ref:
+                if is_calc_ref and np_value_temp == np.float16:
                     v = self._create_var_from_numpy(
                         np_value_temp.astype(np.float32)
                     )
@@ -1861,10 +1867,7 @@ class OpTest(unittest.TestCase):
                 ]:
                     actual_np = convert_uint16_to_float(actual_np)
                     self.rtol = 1.0e-2
-                elif (
-                    actual_np.dtype == np.float16
-                    and expect_np.dtype == np.float16
-                ):
+                elif actual_np.dtype == np.float16:
                     self.rtol = 1.0e-3
                 else:
                     self.rtol = 1.0e-5
@@ -1965,42 +1968,6 @@ class OpTest(unittest.TestCase):
                 ):
                     pass
                 else:
-                    if self.op_test.dtype == np.float16:
-                        if not np.allclose(
-                            actual_np,
-                            expect_np,
-                            atol=atol,
-                            rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
-                            equal_nan=equal_nan,
-                        ):
-                            rtol = self.rtol if hasattr(self, 'rtol') else 1e-5
-                            alltrue = True
-                            # print("typea:", type(actual_np), "typeb:", type(expect_np))
-                            if type(actual_np) != type(expect_np):
-                                print("actual_np:")
-                                print(actual_np)
-                                print("expect_np:")
-                                print(expect_np)
-                            for a, b in zip(actual_np, expect_np):
-                                abs_dis = np.abs(a - b)
-                                abs_b = np.abs(b)
-                                max_tol = np.max(atol + rtol * abs_b)
-
-                                for i, j in zip(abs_dis, max_tol):
-                                    if i > j:
-                                        print(
-                                            "Output ("
-                                            + name
-                                            + ") and i: "
-                                            + i
-                                            + "j: "
-                                            + j
-                                        )
-                                        alltrue = False
-                                        break
-                                if not alltrue:
-                                    break
-
                     self.op_test.assertTrue(
                         np.allclose(
                             actual_np,
