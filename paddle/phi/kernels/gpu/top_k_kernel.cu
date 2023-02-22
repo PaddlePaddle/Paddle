@@ -61,9 +61,12 @@ void TopkKernel(const Context& dev_ctx,
   const auto* input = &x;
   // get the input dims
   const auto& in_dims = input->dims();
+
   // 0d input tensor
   if (in_dims.size() == 0) {
     phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    int64_t* indices_data = dev_ctx.template Alloc<int64_t>(indices);
+    indices_data = 0;
     return;
   }
   // calcluate the real axis
