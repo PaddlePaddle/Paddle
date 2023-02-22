@@ -89,8 +89,7 @@ static void IndexIncreaseFromDims(const int ndim,
   }
 }
 
-// Core implement with cublas
-// default use cublas when Matmul autotune is off
+// The general implementation with blas.
 template <typename Context, typename T>
 void MatMulFunctionImplWithBlas(
     const Context& dev_ctx,
@@ -109,6 +108,7 @@ void MatMulFunctionImplWithBlas(
   // Get data ptr
   const T* x_data = X.data<T>();
   const T* y_data = Y.data<T>();
+
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
 
   if (x_ndim == 1 && y_ndim == 1) {
@@ -123,12 +123,9 @@ void MatMulFunctionImplWithBlas(
             "received Y has [%d] elements",
             M,
             N));
-    // To count MatMul's case from 0 rather than 1 can be consisant with
-    // op-benchmark's config.
-    // MatMul's case 0  =>  vector * vector
+    VLOG(3) << "MatMul's case 1";
     Out->Resize({1});
     dev_ctx.template Alloc<T>(Out);
-    VLOG(3) << "MatMul's case 1";
     blas.GEMM(CblasNoTrans,
               CblasTrans,
               1,
@@ -483,8 +480,7 @@ void MatMulFunctionImplWithBlas(
 }
 
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
-// Core implement with cublasLt
-// This is almost a copy from MatMulFunctionImplWithCublas
+// This is almost a copy from MatMulFunctionImplWithBlas,
 // compare cublas with cublasLt kernels when Matmul autotune is on
 template <typename Context, typename T>
 void MatMulFunctionImplWithCublasLt(
@@ -959,7 +955,7 @@ void MatMulFunction(const Context& ctx,
                     bool trans_y,
                     bool flag = false) {
   MatMulDispatcher<Context, T>()(
-      ctx, x, y, x_dims, y_dims, out, trans_x, trans_y);
+      ctx, x, y, x_dims, y_dims, out, trans_x, trans_y, flag);
 }
 
 template <typename T, typename Context>
