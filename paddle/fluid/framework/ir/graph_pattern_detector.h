@@ -2144,12 +2144,11 @@ struct AddSupportInt8 : public PatternBase {
 };
 
 // The following patterns are used to fuse feedforward in forward
-// 1. layer_norm -> linear1 -> activation -> dropout1 -> linear2 -> dropout2 ->
-// residual_add
-// 2. layer_norm -> linear1 -> activation -> dropout1 -> linear2 -> dropout2
-// 3. linear1 -> activation -> dropout1 -> linear2 -> dropout2 -> residual_add
-// -> layer_norm
-// 4. linear1 -> activation -> dropout1 -> linear2 -> dropout2 -> layer_norm
+// 1. layer_norm -> linear1 -> activation -> dropout1 -> linear2 -> dropout2
+// -> residual_add (pre_layer_norm)
+// 2. linear1 -> activation -> dropout1 -> linear2 -> dropout2 -> residual_add
+// -> layer_norm (pOST_layer_norm)
+// other cases: may delete residual_add, dropout1, dropout2 operators
 struct FusedFeedForwardFwd : public PatternBase {
   FusedFeedForwardFwd(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "fused_feedforward_fwd") {}
@@ -2157,7 +2156,9 @@ struct FusedFeedForwardFwd : public PatternBase {
   PDNode* operator()(PDNode* x,
                      std::unordered_set<std::string> act_types,
                      bool pre_layer_norm,
-                     bool add_residual);
+                     bool add_residual,
+                     bool use_dropout_1,
+                     bool use_dropout_2);
 
 #ifndef FEEDFORWARD_LINEAR_DROPOUT_NODE
 #define FEEDFORWARD_LINEAR_DROPOUT_NODE(suffix__) \
@@ -2195,12 +2196,10 @@ struct FusedFeedForwardFwd : public PatternBase {
 // The following patterns are used to fuse feedforward in backward
 // 1. residual_add_grad -> dropout2_grad -> linear2_grad -> dropout1_grad ->
 // activation_grad -> linear1_grad -> layer_norm_grad
-// 2. dropout2_grad -> linear2_grad -> dropout1_grad -> activation_grad ->
-// linear1_grad -> layer_norm_grad
-// 3. layer_norm_grad -> residual_add_grad -> dropout2_grad -> linear2_grad ->
+// 2. layer_norm_grad -> residual_add_grad -> dropout2_grad -> linear2_grad ->
 // dropout1_grad -> activation_grad -> linear1_grad
-// 4. layer_norm_grad -> dropout2_grad -> linear2_grad -> dropout1_grad ->
-// activation_grad -> linear1_grad
+// other cases: may delete residual_add_grad, dropout1_grad, dropout2_grad
+// operators
 struct FusedFeedForwardBwd : public PatternBase {
   FusedFeedForwardBwd(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "fused_feedforward_bwd") {}
@@ -2208,7 +2207,9 @@ struct FusedFeedForwardBwd : public PatternBase {
   PDNode* operator()(PDNode* x,
                      std::unordered_set<std::string> act_grad_types,
                      bool pre_layer_norm,
-                     bool add_residual);
+                     bool add_residual,
+                     bool use_dropout_1,
+                     bool use_dropout_2);
 #ifndef FEEDFORWARD_LINEAR_DROPOUT_GRAD_NODE
 #define FEEDFORWARD_LINEAR_DROPOUT_GRAD_NODE(suffix__) \
   PATTERN_DECL_NODE(matmul_op_grad_##suffix__);        \

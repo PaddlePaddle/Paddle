@@ -54,17 +54,38 @@ class FusedFeedForwardPass : public FusePassBase {
   virtual ~FusedFeedForwardPass() {}
 
  protected:
+  // Used for pattern created variable node transfer
+  // between corresponding forward operator and backward operator.
+  struct DropoutNode {
+    Node *dropout_out_node_1;
+    Node *dropout_mask_node_1;
+    Node *dropout_out_node_2;
+    Node *dropout_mask_node_2;
+    DropoutNode()
+        : dropout_out_node_1(nullptr),
+          dropout_mask_node_1(nullptr),
+          dropout_out_node_2(nullptr),
+          dropout_mask_node_2(nullptr) {}
+  };
+  typedef std::unordered_map<Node *, DropoutNode> Cache;
+
   const std::string scope_name{"fused_feedforward"};
 
   void ApplyImpl(ir::Graph *graph) const override;
 
   ir::Graph *FusedFeedForwardFwd(ir::Graph *graph,
                                  bool pre_layer_norm,
-                                 bool add_residual) const;
+                                 bool add_residual,
+                                 bool use_dropout_1,
+                                 bool use_dropout_2,
+                                 Cache *dropout_nodes_map) const;
 
   ir::Graph *FusedFeedForwardBwd(ir::Graph *graph,
                                  bool pre_layer_norm,
-                                 bool add_residual) const;
+                                 bool add_residual,
+                                 bool use_dropout_1,
+                                 bool use_dropout_2,
+                                 Cache *dropout_nodes_map) const;
 };
 
 }  // namespace ir
