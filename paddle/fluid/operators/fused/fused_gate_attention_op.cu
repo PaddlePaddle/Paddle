@@ -209,7 +209,7 @@ void ComputeGatingLinearForward(const framework::ExecutionContext &ctx,
                                 const GateAttentionConfig<T> &config,
                                 const phi::DenseTensor *query,
                                 const phi::DenseTensor *fmha_out,
-                                phi::DenseTensor *gate_out) {
+                                phi::DenseTensor *gate_bias_out) {
   auto *gate_weight = ctx.Input<phi::DenseTensor>("GateWeight");
   auto *gate_bias = ctx.Input<phi::DenseTensor>("GateBias");
 
@@ -223,11 +223,11 @@ void ComputeGatingLinearForward(const framework::ExecutionContext &ctx,
   auto gate_attn_compute =
       AttnMatMul<T>(ctx.cuda_device_context(), false, false, m, n, k, true);
   gate_attn_compute.ComputeForward(
-      gate_weight, query, gate_bias, gate_out, gate_out);
+      gate_weight, query, gate_bias, gate_bias_out, gate_bias_out, true);
 
   // gate_out = sigmoid(gate_out) * fmha_out
-  std::vector<const phi::DenseTensor *> ins = {gate_out, fmha_out};
-  std::vector<phi::DenseTensor *> outs = {gate_out};
+  std::vector<const phi::DenseTensor *> ins = {gate_bias_out, fmha_out};
+  std::vector<phi::DenseTensor *> outs = {gate_bias_out};
   phi::funcs::ElementwiseKernel<T>(
       ctx.cuda_device_context(), ins, &outs, SigmoidMultiplyFunctor<T>());
 }
@@ -254,7 +254,7 @@ void ComputeGatingLinearBackward(const framework::ExecutionContext &ctx,
   auto gate_attn_compute =
       AttnMatMul<T>(ctx.cuda_device_context(), false, false, m, n, k, true);
   gate_attn_compute.ComputeForward(
-      gate_weight, query, gate_bias, &gate_bias_out, &gate_bias_out);
+      gate_weight, query, gate_bias, &gate_bias_out, &gate_bias_out, true);
 
   // Gradient of sigmoid(gate_bias_out) * fmha_out
   // Compute inplace and save gate_bias_out_grad to gate_bias_out.
@@ -296,7 +296,7 @@ void ComputeOutputLinearForward(const framework::ExecutionContext &ctx,
   auto out_linear_compute =
       AttnMatMul<T>(ctx.cuda_device_context(), false, false, m, n, k, true);
   out_linear_compute.ComputeForward(
-      out_linear_weight, fmha_or_gate_out, out_linear_bias, out, out);
+      out_linear_weight, fmha_or_gate_out, out_linear_bias, out, out, true);
 }
 
 template <typename T>

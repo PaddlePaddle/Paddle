@@ -15,21 +15,22 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef PADDLE_WITH_CUDA
-
-#include <cuda_runtime_api.h>
-#include "cuda.h"  // NOLINT
-
-#if CUDA_VERSION >= 11060
+// #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
 
 #include <algorithm>
 #include <mutex>
 #include <unordered_map>
 
+#include <cuda_runtime_api.h>
+#include "cuda.h"  // NOLINT
+
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/dynload/cublasLt.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/utils/optional.h"
 
 DECLARE_int64(cublaslt_exhaustive_search_times);
@@ -324,8 +325,200 @@ class GemmEpilogueAlgoCache {
   }
 };
 
+static cublasLtEpilogue_t GetEpilogueType(const std::string &activation,
+                                          bool enable_auxiliary) {
+  if (activation == "relu") {
+    return enable_auxiliary ? CUBLASLT_EPILOGUE_RELU_AUX_BIAS
+                            : CUBLASLT_EPILOGUE_RELU_BIAS;
+  } else if (activation == "gelu") {
+    return enable_auxiliary ? CUBLASLT_EPILOGUE_GELU_AUX_BIAS
+                            : CUBLASLT_EPILOGUE_GELU_BIAS;
+  } else if (activation == "none") {
+    return CUBLASLT_EPILOGUE_BIAS;
+  } else {
+    PADDLE_ENFORCE_EQ(
+        true,
+        false,
+        platform::errors::InvalidArgument(
+            "The activation attribute of fused_gemm_epilogue op should be"
+            " one of {\"none\", \"relu\", \"gelu\"}. But received %s."
+            "But received activation=%s.",
+            activation));
+  }
+}
+
+template <typename T>
+void ComputeFusedGemmEpilogueForward(const phi::GPUContext &dev_ctx,
+                                     const phi::DenseTensor *x,
+                                     const phi::DenseTensor *y,
+                                     const phi::DenseTensor *bias,
+                                     bool trans_x,
+                                     bool trans_y,
+                                     const std::string &activation,
+                                     phi::DenseTensor *out,
+                                     phi::DenseTensor *reserve_space) {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  bool enable_auxiliary = reserve_space == nullptr ? false : true;
+
+  auto *out_data = out->data<T>();
+
+  auto x_mat_dims =
+      phi::flatten_to_2d(x->dims(), trans_x ? 1 : x->dims().size() - 1);
+  // (M * K) * (K * N)
+  int64_t M = trans_x ? x_mat_dims[1] : x_mat_dims[0];
+  int64_t K = trans_y ? y->dims()[1] : y->dims()[0];
+  int64_t N = trans_y ? y->dims()[0] : y->dims()[1];
+
+  cudaDataType_t mat_type = CUDA_R_32F;
+  cudaDataType_t scale_type = CUDA_R_32F;
+  cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
+  if (std::is_same<T, paddle::platform::float16>::value) {
+    mat_type = CUDA_R_16F;
+  }
+  if (std::is_same<T, platform::bfloat16>::value) {
+    mat_type = CUDA_R_16BF;
+  }
+  if (std::is_same<T, double>::value) {
+    mat_type = CUDA_R_64F;
+    scale_type = CUDA_R_64F;
+    compute_type = CUBLAS_COMPUTE_64F;
+  }
+
+  cublasLtMatmulDesc_t operation_desc = NULL;
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescCreate(
+      &operation_desc, compute_type, scale_type));
+  cublasOperation_t transx = trans_x ? CUBLAS_OP_T : CUBLAS_OP_N;
+  cublasOperation_t transy = trans_y ? CUBLAS_OP_T : CUBLAS_OP_N;
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescSetAttribute(
+      operation_desc, CUBLASLT_MATMUL_DESC_TRANSB, &transx, sizeof(transx)));
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescSetAttribute(
+      operation_desc, CUBLASLT_MATMUL_DESC_TRANSA, &transy, sizeof(transy)));
+
+  cublasLtEpilogue_t epiloque_func =
+      GetEpilogueType(activation, enable_auxiliary);
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescSetAttribute(
+      operation_desc,
+      CUBLASLT_MATMUL_DESC_EPILOGUE,
+      &epiloque_func,
+      sizeof(epiloque_func)));
+  const T *bias_data = bias->data<T>();
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescSetAttribute(
+      operation_desc,
+      CUBLASLT_MATMUL_DESC_BIAS_POINTER,
+      &bias_data,
+      sizeof(bias_data)));
+
+  if (enable_auxiliary && activation != "none") {
+    // Note (Ming Huang): The initialization of ReseveSpace is happened in the
+    // dev_ctx.Alloc. Therefore, we set real date type up here.
+    if (activation == "relu") {
+      paddle::experimental::DataType rs_type =
+          paddle::experimental::DataType::BOOL;
+      size_t reserve_space_size =
+          phi::product(reserve_space->dims()) * SizeOf(rs_type);
+      dev_ctx.Alloc(reserve_space, rs_type, reserve_space_size);
+    } else {
+      size_t reserve_space_size =
+          phi::product(reserve_space->dims()) * sizeof(T);
+      dev_ctx.Alloc<T>(reserve_space, reserve_space_size);
+    }
+
+    void *aux_data = reserve_space->data();
+
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatmulDescSetAttribute(
+            operation_desc,
+            CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_POINTER,
+            &aux_data,
+            sizeof(aux_data)));
+    int64_t aux_ld = N;
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatmulDescSetAttribute(
+            operation_desc,
+            CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_LD,
+            &aux_ld,
+            sizeof(aux_ld)));
+  }
+
+  cublasLtMatrixLayout_t x_desc = NULL, y_desc = NULL, out_desc = NULL;
+  if (trans_x) {
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
+        &x_desc, mat_type, M, K, M));
+  } else {
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
+        &x_desc, mat_type, K, M, K));
+  }
+  if (trans_y) {
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
+        &y_desc, mat_type, K, N, K));
+  } else {
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
+        &y_desc, mat_type, N, K, N));
+  }
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
+      &out_desc, mat_type, N, M, N));
+
+  cublasLtHandle_t lt_handle = dev_ctx.cublaslt_handle();
+  // NOTE(zengjinle): I do not know whether the 4MB workspace size is
+  // "enough". I just followed the settings from the NVIDIA MLPerf BERT code.
+  size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
+  cudaStream_t stream = dev_ctx.stream();
+  memory::allocation::AllocationPtr workspace = memory::Alloc(
+      dev_ctx.GetPlace(),
+      workspace_size,
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+
+  MT alpha_value = static_cast<MT>(1);
+  MT beta_value = static_cast<MT>(0);
+
+  void *alpha = &alpha_value;
+  void *beta = &beta_value;
+
+  const auto *y_data = y->data<T>();
+  const auto *x_data = x->data<T>();
+
+  auto algo = GemmEpilogueAlgoCache::Instance().GetGemmAlgo(lt_handle,
+                                                            operation_desc,
+                                                            y_desc,
+                                                            x_desc,
+                                                            out_desc,
+                                                            alpha,
+                                                            beta,
+                                                            y_data,
+                                                            x_data,
+                                                            out_data,
+                                                            stream,
+                                                            workspace->ptr(),
+                                                            workspace_size);
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmul(lt_handle,
+                                                               operation_desc,
+                                                               alpha,
+                                                               y_data,
+                                                               y_desc,
+                                                               x_data,
+                                                               x_desc,
+                                                               beta,
+                                                               out_data,
+                                                               out_desc,
+                                                               out_data,
+                                                               out_desc,
+                                                               algo,
+                                                               workspace->ptr(),
+                                                               workspace_size,
+                                                               stream));
+
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      platform::dynload::cublasLtMatmulDescDestroy(operation_desc));
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      platform::dynload::cublasLtMatrixLayoutDestroy(y_desc));
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      platform::dynload::cublasLtMatrixLayoutDestroy(x_desc));
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      platform::dynload::cublasLtMatrixLayoutDestroy(out_desc));
+}
+
 }  // namespace operators
 }  // namespace paddle
 
-#endif
-#endif
+// #endif

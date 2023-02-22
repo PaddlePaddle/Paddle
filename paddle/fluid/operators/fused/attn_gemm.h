@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/operators/fused/fused_gemm_epilogue_op.h"
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/platform/float16.h"
@@ -44,13 +45,27 @@ class AttnMatMul {
         input_size_(input_size),
         compute_bias_(compute_bias) {}
 
-  ~AttnMatMul() {}
-
   void ComputeForward(const phi::DenseTensor* weight,
                       const phi::DenseTensor* input,
                       const phi::DenseTensor* bias,
                       phi::DenseTensor* output,
-                      phi::DenseTensor* bias_out) {
+                      phi::DenseTensor* bias_out,
+                      bool fused = false) {
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
+    if (compute_bias_ && fused) {
+      ComputeFusedGemmEpilogueForward<T>(dev_ctx_,
+                                         input,
+                                         weight,
+                                         bias,
+                                         transA_,
+                                         transB_,
+                                         "none",
+                                         bias_out,
+                                         nullptr);
+      return;
+    }
+#endif
+
     // Note: for blas.GEMM API in Paddle, it treats all inputs as row-major.
     // here: (transa, transb): nt, input * weight.
     CBLAS_TRANSPOSE transA = transA_ ? CblasTrans : CblasNoTrans;
