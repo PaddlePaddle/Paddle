@@ -334,6 +334,7 @@ class OpTest(unittest.TestCase):
         cls.dtype = None
         cls.outputs = {}
         cls.input_shape_is_large = True
+        cls.is_calc_ref = False
 
         np.random.seed(123)
         random.seed(124)
@@ -496,10 +497,10 @@ class OpTest(unittest.TestCase):
         )
 
     def enable_cal_ref_output(self):
-        self.is_cal_ref = self.is_fp16_compared_with_fp32()
+        self.is_calc_ref = self.is_fp16_compared_with_fp32()
 
     def disable_cal_ref_output(self):
-        self.is_cal_ref = False
+        self.is_calc_ref = False
 
     # set the self.output_dtype .
     def infer_dtype_from_inputs_outputs(self, inputs, outputs):
@@ -574,20 +575,29 @@ class OpTest(unittest.TestCase):
                     tensor = core.LoDTensor()
                     if isinstance(np_value, tuple):
                         tensor.set(np_value[0], place)
-                        if self.is_cal_ref:
-                            if isinstance(np_value[1], list):
-                                tensor.set_recursive_sequence_lengths(
-                                    np.array(np_value[1]).astype(np.float32)
-                                )
+                        if self.is_calc_ref:
+                            dtype = np.array(np_value[1]).dtype
+                            if dtype == np.float16:
+                                if isinstance(np_value[1], list):
+                                    tensor.set_recursive_sequence_lengths(
+                                        np.array(np_value[1]).astype(np.float32)
+                                    )
+                                else:
+                                    tensor.set_recursive_sequence_lengths(
+                                        np_value[1].astype(np.float32)
+                                    )
                             else:
                                 tensor.set_recursive_sequence_lengths(
-                                    np_value[1].astype(np.float32)
+                                    np_value[1]
                                 )
                         else:
                             tensor.set_recursive_sequence_lengths(np_value[1])
                     else:
-                        if self.is_cal_ref:
-                            tensor.set(np_value.astype(np.float32), place)
+                        if self.is_calc_ref:
+                            if np_value.dtype == np.float16:
+                                tensor.set(np_value.astype(np.float32), place)
+                            else:
+                                tensor.set(np_value, place)
                         else:
                             tensor.set(np_value, place)
                     feed_map[name] = tensor
@@ -595,7 +605,7 @@ class OpTest(unittest.TestCase):
                 tensor = core.LoDTensor()
                 if isinstance(self.inputs[var_name], tuple):
                     tensor.set(self.inputs[var_name][0], place)
-                    if self.is_cal_ref:
+                    if self.is_calc_ref:
                         tensor.set_recursive_sequence_lengths(
                             self.inputs[var_name][1].astype(np.float32)
                         )
@@ -604,7 +614,7 @@ class OpTest(unittest.TestCase):
                             self.inputs[var_name][1]
                         )
                 else:
-                    if self.is_cal_ref:
+                    if self.is_calc_ref:
                         tensor.set(
                             self.inputs[var_name].astype(np.float32), place
                         )
@@ -633,10 +643,10 @@ class OpTest(unittest.TestCase):
         else:
             self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
         inputs = append_input_output(
-            block, op_proto, self.inputs, True, self.dtype, self.is_cal_ref
+            block, op_proto, self.inputs, True, self.dtype, self.is_calc_ref
         )
         outputs = append_input_output(
-            block, op_proto, self.outputs, False, self.dtype, self.is_cal_ref
+            block, op_proto, self.outputs, False, self.dtype, self.is_calc_ref
         )
 
         if hasattr(self, "cache_name_list"):
@@ -762,7 +772,7 @@ class OpTest(unittest.TestCase):
             name,
             is_input,
             if_return_inputs_grad_dict,
-            is_cal_ref=False,
+            is_calc_ref=False,
         ):
             np_value_temp = np_value
             has_lod = False
@@ -773,7 +783,7 @@ class OpTest(unittest.TestCase):
                 lod_temp = np_value[1]
 
             if is_input:
-                if is_cal_ref:
+                if is_calc_ref:
                     v = self._create_var_from_numpy(
                         np_value_temp.astype(np.float32)
                     )
@@ -790,7 +800,7 @@ class OpTest(unittest.TestCase):
                         lod_temp
                     )
             else:
-                if is_cal_ref:
+                if is_calc_ref:
                     v = block.create_var(
                         name=name,
                         dtype=np.float32,
@@ -838,7 +848,7 @@ class OpTest(unittest.TestCase):
                         name,
                         is_input,
                         if_return_inputs_grad_dict,
-                        self.is_cal_ref,
+                        self.is_calc_ref,
                     )
                     var_list.append(v)
                     if if_return_inputs_grad_dict:
@@ -858,7 +868,7 @@ class OpTest(unittest.TestCase):
                     name_temp,
                     is_input,
                     if_return_inputs_grad_dict,
-                    self.is_cal_ref,
+                    self.is_calc_ref,
                 )
                 var_dict[name].append(v)
                 if if_return_inputs_grad_dict:
