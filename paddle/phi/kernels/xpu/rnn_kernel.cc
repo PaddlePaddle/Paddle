@@ -114,7 +114,7 @@ void RnnKernel(const Context& dev_ctx,
       i_f_g_o_ptr + num_layers * block_size * 4;  // 4 for i_f_g_o offset
   auto hidden_data_ptr = c_ptr + num_layers * block_size * 1;  // 1 for c offset
 
-  std::vector<int> seq_len_tensor(batch_size, seq_len);
+  std::vector<int64_t> seq_len_tensor(batch_size, seq_len);
 
   bool has_seq_length = sequence_length.is_initialized();
 

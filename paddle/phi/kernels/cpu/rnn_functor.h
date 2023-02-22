@@ -46,7 +46,7 @@ void CreateMaskMatrix(const CPUContext& dev_ctx,
                       DenseTensor* mask_matrix,
                       const bool& is_reverse,
                       int* min_seq_len) {
-  std::vector<int> seq_len_vec;
+  std::vector<int64_t> seq_len_vec;
   phi::TensorToVector(*sequence_length, dev_ctx, &seq_len_vec);
   const int table_width = mask_matrix->dims()[0];
   DenseTensor temp =
