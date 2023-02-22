@@ -427,6 +427,9 @@ REGISTER_OP_VERSION({{name}})
       {% if "delete_attr" in action %}
         .DeleteAttr("{{action["delete_attr"]}}", "{{action["comment"]}}"){{")" if loop.last}}
       {% endif %}
+      {% if "modify_attr" in action %}
+        .ModifyAttr("{{action["modify_attr"]}}", "{{action["comment"]}}", {{action["default"]}}){{")" if loop.last}}
+      {% endif %}
       {% if "fix_bug" in action %}
         .BugfixWithBehaviorChanged("{{action["comment"]}}"){{")" if loop.last}}
       {% endif %}
