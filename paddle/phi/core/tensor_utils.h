@@ -144,38 +144,4 @@ inline T GetValue(const Context& dev_ctx, const DenseTensor& x) {
   return value;
 }
 
-template <typename T = int32_t>
-inline std::vector<T> GetVectorFromTensor(const phi::DenseTensor* x) {
-  std::vector<T> vec_new_data;
-  if (phi::TransToProtoVarType(x->dtype()) == ProtoDataType::INT32) {
-    auto* data = x->data<int>();
-    phi::DenseTensor cpu_attr_tensor;
-    if (!paddle::platform::is_cpu_place(x->place())) {
-      auto& pool = paddle::platform::DeviceContextPool::Instance();
-      phi::DeviceContext* dev_ctx;
-      dev_ctx = pool.Get(CPUPlace());
-      phi::Copy(*dev_ctx, *x, CPUPlace(), true, &cpu_attr_tensor);
-      data = cpu_attr_tensor.data<int>();
-    }
-    vec_new_data = std::vector<T>(data, data + x->numel());
-  } else if (phi::TransToProtoVarType(x->dtype()) == ProtoDataType::INT64) {
-    auto* data = x->data<int64_t>();
-    phi::DenseTensor cpu_attr_tensor;
-    if (!paddle::platform::is_cpu_place(x->place())) {
-      auto& pool = paddle::platform::DeviceContextPool::Instance();
-      phi::DeviceContext* dev_ctx;
-      dev_ctx = pool.Get(CPUPlace());
-      phi::Copy(*dev_ctx, *x, CPUPlace(), true, &cpu_attr_tensor);
-      data = cpu_attr_tensor.data<int64_t>();
-    }
-    // NOTE: Converting int64 to int32 may cause data overflow.
-    vec_new_data = std::vector<T>(data, data + x->numel());
-  } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "The dtype of Tensor must be int32 or int64, but received: %s",
-        phi::TransToProtoVarType(x->dtype())));
-  }
-  return vec_new_data;
-}
-
 }  // namespace phi
