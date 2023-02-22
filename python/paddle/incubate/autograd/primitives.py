@@ -59,6 +59,7 @@ from paddle.tensor import zeros  # noqa: F401
 from paddle.tensor.creation import assign  # noqa: F401
 from paddle.tensor.manipulation import cast  # noqa: F401
 
+"""
 math_op = [
     'add',
     'subtract',
@@ -116,11 +117,4 @@ others = [
     'reshape',
     'full',
 ]
-
-__all__ = []
-__all__.extend(math_op)
-__all__.extend(trigonometric_op)
-__all__.extend(sub_prim)
-__all__.extend(others)
-
-__all__.sort()
+"""
