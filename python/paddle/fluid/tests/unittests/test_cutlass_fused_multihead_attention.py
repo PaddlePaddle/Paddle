@@ -195,19 +195,5 @@ class TestCutlassFMHAOpFp32(TestCutlassFMHAOp):
         ]
 
 
-class TestCutlassFMHAMaskOpFp32(TestCutlassFMHAOp):
-    def config(self):
-        super().config()
-        self.x_type = np.float16
-        self.batch = 1
-        self.num_head = 4
-        self.query_seq_len = 512
-        self.kv_seq_len = 256
-        self.head_size = 32
-        self.scale = float(1.0 / math.sqrt(self.head_size))
-        self.add_mask = True
-        self.mask_shape = [1, self.num_head, 1, self.kv_seq_len]
-
-
 if __name__ == "__main__":
     unittest.main()

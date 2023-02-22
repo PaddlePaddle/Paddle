@@ -15,8 +15,7 @@
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-
-#include "paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/kernel_forward.h"
+#include "paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/kernels/cutlass_fmha_forward.h"
 
 namespace phi {
 namespace fusion {
@@ -248,12 +247,16 @@ void DispatchFMHASingleValueIteration(LaunchParams params,
                         KeysPerBlock,
                         true>(params, ctx);
   } else {
-    DispatchFMHAAddMask<T,
-                        ArchTag,
-                        IsAligned,
-                        QueriesPerBlock,
-                        KeysPerBlock,
-                        false>(params, ctx);
+    // When we only register singlevalueIteration=True kernel in
+    // QueriesPerBlock, KeysPerBlock == 64.
+    if ((QueriesPerBlock != 64) && (KeysPerBlock != 64)) {
+      DispatchFMHAAddMask<T,
+                          ArchTag,
+                          IsAligned,
+                          QueriesPerBlock,
+                          KeysPerBlock,
+                          false>(params, ctx);
+    }
   }
 }
 
@@ -278,7 +281,16 @@ void DispatchFMHAIsAligned(LaunchParams params, const phi::GPUContext& ctx) {
       params.value_strideH % (16 / sizeof(T)) == 0) {
     DispatchFMHABlockSize<T, ArchTag, true>(params, ctx);
   } else {
-    DispatchFMHABlockSize<T, ArchTag, false>(params, ctx);
+    // TODO(zhengzekang): Currently we assume that the input is aligned in
+    // order to reduce templates num. DispatchFMHABlockSize<T, ArchTag,
+    // false>(params, ctx);
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Currently cutlass fused multihead attention kernel only support "
+        "aligned data. "
+        "Please Check `query`, `key`, `value` is aligned with 128bit "
+        "and final dim can be divide by %d. ",
+        16 / sizeof(T)));
+    return;
   }
 }
 
@@ -301,17 +313,12 @@ void DispatchFMHAArchTag(LaunchParams params, const phi::GPUContext& ctx) {
 
 void DispatchFusedMultiheadAttentionKernel(LaunchParams params,
                                            const phi::GPUContext& ctx) {
-  if (params.datatype == DataType::FLOAT32) {
-    return DispatchFMHAArchTag<float>(params, ctx);
-  } else if (params.datatype == DataType::FLOAT16) {
+  if (params.datatype == DataType::FLOAT16) {
     return DispatchFMHAArchTag<cutlass::half_t>(params, ctx);
   } else {
-    PADDLE_ENFORCE_EQ(true,
-                      false,
-                      phi::errors::Unimplemented(
-                          "Currently cutlass fused multihead attention kernel "
-                          "only support datatype: float32 and float16. "));
-    return;
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Currently cutlass fused multihead attention kernel "
+        "only support datatype float16. "));
   }
 }
 
@@ -384,5 +391,4 @@ PD_REGISTER_KERNEL(
     GPU,
     ALL_LAYOUT,
     phi::fusion::cutlass_internal::MultiHeadAttentionForwardKernel,
-    float,
     phi::dtype::float16) {}

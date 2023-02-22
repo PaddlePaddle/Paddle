@@ -106,9 +106,9 @@ file(
   "fusion/gpu/*.cu")
 
 if(WITH_CUTLASS)
-  file(GLOB cutlass_cu "fusion/cutlass/conv2d/*.cu" "fusion/cutlass/*.cu"
-       "fusion/cutlass/fused_multi_head_attention/kernels/*.cu"
-       "fusion/cutlass/fused_multi_head_attention/*.cu")
+  file(GLOB cutlass_cu "fusion/cutlass/conv2d/*.cu"
+       "fusion/cutlass/fused_multi_head_attention/kernels/impl/*.cu"
+       "fusion/cutlass/*.cu")
   list(APPEND kernel_cu ${cutlass_cu})
 endif()
 
