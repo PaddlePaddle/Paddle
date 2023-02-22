@@ -182,6 +182,9 @@ def mean_composite(x, axis, keepdim):
 
 def maybe_wrap_dim(dim: int, dim_post_expr: int):
     """get real dim form idx and len of dims"""
+    if dim_post_expr == 0:
+        assert dim == 0 or dim == -1
+        return 0
     min = -dim_post_expr
     max = dim_post_expr - 1
     assert not (dim < min or dim > max)
