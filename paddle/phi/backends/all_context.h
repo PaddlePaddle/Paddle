@@ -57,13 +57,20 @@ void EmplaceDeviceContexts(
     bool disable_setting_default_stream_for_allocator,
     int stream_priority);
 
+using EmplaceExternalContextFunc = void (*)(
+    std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*,
+    const std::vector<platform::Place>&,
+    bool,
+    int);
+
 /*! \brief device context pool singleton */
 class DeviceContextPool {
  public:
   static DeviceContextPool& Instance();
 
   /*! \brief  Create should only called by Init function */
-  static DeviceContextPool& Init(const std::vector<phi::Place>& places);
+  static DeviceContextPool& Init(const std::vector<phi::Place>& places,
+                                 EmplaceExternalContextFunc func = nullptr);
 
   static bool IsInitialized();
 

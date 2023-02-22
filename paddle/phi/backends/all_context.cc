@@ -22,6 +22,7 @@ limitations under the License. */
 namespace phi {
 
 static DeviceContextPool* pool = nullptr;
+static EmplaceExternalContextFunc emplace_external_context_func = nullptr;
 
 DeviceContextPool& DeviceContextPool::Instance() {
   PADDLE_ENFORCE_NOT_NULL(pool,
@@ -32,7 +33,8 @@ DeviceContextPool& DeviceContextPool::Instance() {
 
 /*! \brief  Create should only called by Init function */
 DeviceContextPool& DeviceContextPool::Init(
-    const std::vector<phi::Place>& places) {
+    const std::vector<phi::Place>& places, EmplaceExternalContextFunc func) {
+  emplace_external_context_func = func;
   if (pool == nullptr) {
     pool = new DeviceContextPool(places);
   }
@@ -269,6 +271,13 @@ void EmplaceDeviceContexts(
                    p,
                    disable_setting_default_stream_for_allocator,
                    stream_priority);
+    if (emplace_external_context_func != nullptr) {
+      (*emplace_external_context_func)(
+          place_to_device_context,
+          p,
+          disable_setting_default_stream_for_allocator,
+          stream_priority);
+    }
   }
 }
 
