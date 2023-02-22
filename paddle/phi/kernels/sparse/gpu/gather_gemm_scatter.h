@@ -41,49 +41,41 @@ fp32_gather_gemm_scatter getBestFp32Kernel(const int M,
 fp64_gather_gemm_scatter getBestFp64Kernel(const int M,
                                            const int K,
                                            const int N);
-template <typename T, typename Gemm>
-void launchKernel(const GPUContext& dev_ctx,
-                  const T* const a,
-                  const T* const b,
-                  const T* const c,
-                  T* const d,
-                  const int m,
-                  const int n,
-                  const int k,
-                  const int32_t* a_indices,
-                  const int32_t* c_d_indices,
-                  T const alpha,
-                  T const beta) {
-  cutlass::gemm::GemmCoord problem_size_real({m, n, k});
-  int split_k_slices = 1;
-  typename Gemm::Arguments arguments{
-      cutlass::gemm::GemmUniversalMode::kGemm,
-      problem_size_real,
-      split_k_slices,
-      {alpha, beta},
-      a,
-      b,
-      c,
-      d,
-      cutlass::layout::RowMajor().capacity(problem_size_real.mk()),
-      cutlass::layout::RowMajor().capacity(problem_size_real.kn()),
-      cutlass::layout::RowMajor().capacity(problem_size_real.mn()),
-      cutlass::layout::RowMajor().capacity(problem_size_real.mn()),
-      problem_size_real.k(),
-      problem_size_real.n(),
-      problem_size_real.n(),
-      problem_size_real.n(),
-      a_indices,
-      nullptr,
-      c_d_indices};
-  size_t workspace_size = Gemm::get_workspace_size(arguments);
-  cutlass::device_memory::allocation<uint8_t> workspace(workspace_size);
-  Gemm gemm_op;
-  cutlass::Status status = gemm_op.can_implement(arguments);
-  CUTLASS_CHECK(status);
-  status = gemm_op.initialize(arguments, workspace.get());
-  CUTLASS_CHECK(status);
-  gemm_op(dev_ctx.stream());
+
+template <typename T>
+void GatherGemmScatter(const phi::GPUContext& ctx,
+                       const T* const a,
+                       const T* const b,
+                       const T* const c,
+                       T* const d,
+                       const int& m,
+                       const int& n,
+                       const int& k,
+                       const int32_t* a_indices,
+                       const int32_t* b_indices,
+                       const int32_t* c_d_indices,
+                       T alpha,
+                       T beta) {
+  auto* tuner = MakeCutlassTuner<T>(fp16_kernels[0]);
+  for (auto i = 1; i < fp16_kernels.size(); i++)
+    tuner->AddCallBack(fp16_kernels[i]);
+
+  size_t key = autotune::GetKey(m, n, k);
+
+  tuner->CutlassRun(ctx,
+                    key,
+                    a,
+                    b,
+                    c,
+                    d,
+                    m,
+                    n,
+                    k,
+                    a_indices,
+                    b_indices,
+                    c_d_indices,
+                    alpha,
+                    beta);
 }
 
 static void dispatchKernel(const GPUContext& dev_ctx,
@@ -105,17 +97,18 @@ static void dispatchKernel(const GPUContext& dev_ctx,
     fp16_gather_gemm_scatter gather_gemm_scatter = getBestFp16Kernel(m, n, k);
 #endif
     GatherGemmScatter(dev_ctx,
-                      static_cast<const cutlass::half_t*>(a),
-                      static_cast<const cutlass::half_t*>(b),
-                      static_cast<const cutlass::half_t*>(c),
-                      static_cast<cutlass::half_t*>(d),
+                      static_cast<const phi::dtype::float16*>(a),
+                      static_cast<const phi::dtype::float16*>(b),
+                      static_cast<const phi::dtype::float16*>(c),
+                      static_cast<phi::dtype::float16*>(d),
                       m,
                       n,
                       k,
                       static_cast<const int32_t*>(a_indices),
+                      nullptr,
                       static_cast<const int32_t*>(c_d_indices),
-                      static_cast<cutlass::half_t>(1),
-                      static_cast<cutlass::half_t>(1));
+                      static_cast<phi::dtype::float16>(1),
+                      static_cast<phi::dtype::float16>(1));
   } else if (type == phi::DataType::FLOAT32) {
     fp32_gather_gemm_scatter gather_gemm_scatter =
         getBestFp32Kernel(m, n, k, dev_ctx.GetComputeCapability());
@@ -146,42 +139,6 @@ static void dispatchKernel(const GPUContext& dev_ctx,
                         static_cast<double>(1),
                         static_cast<double>(1));
   }
-}
-
-template <typename T>
-void GatherGemmScatter(const phi::GPUContext& ctx,
-                       const T* const a,
-                       const T* const b,
-                       const T* const c,
-                       T* const d,
-                       const int& m,
-                       const int& n,
-                       const int& k,
-                       const int32_t* a_indices,
-                       const int32_t* b_indices,
-                       const int32_t* c_d_indices,
-                       T alpha,
-                       T beta) {
-  auto* tuner = MakeCutlassTuner<T>(fp16_kernels[0]);
-  for (auto i = 1; i < fp16_kernels.size(); i++)
-    tuner->AddCallBack(fp16_kernels[i]);
-
-  size_t key = Conv3DKey(m, n, k);
-
-  tuner->CutlassRun(ctx,
-                    key,
-                    const_cast<const T*>(a),
-                    const_cast<const T*>(b),
-                    const_cast<const T*>(c),
-                    const_cast<T*>(d),
-                    const_cast<int&>(m),
-                    const_cast<int&>(n),
-                    const_cast<int&>(k),
-                    const_cast<const int32_t*>(a_indices),
-                    const_cast<const int32_t*>(b_indices),
-                    const_cast<const int32_t*>(c_d_indices),
-                    alpha,
-                    beta);
 }
 
 struct cutlass_tensorop_h1688gemm_128x64_32x2_nn_align8 {

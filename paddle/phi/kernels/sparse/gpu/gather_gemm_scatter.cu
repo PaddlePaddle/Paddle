@@ -20,54 +20,54 @@ fp16_gather_gemm_scatter getBestFp16Kernel(const int M,
                                            const int N,
                                            const int K) {
   if (K == 4 && N == 16) {
-    return launchKernel<cutlass::half_t,
+    return launchKernel<phi::dtype::float16,
                         cutlass_tensorop_h1688gemm_64x64_32x2_nn_align4::Gemm>;
   }
   if (K == 16 && N == 16) {
-    return launchKernel<cutlass::half_t,
+    return launchKernel<phi::dtype::float16,
                         cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8::Gemm>;
   }
   if (K == 16 && N == 32) {
-    return launchKernel<cutlass::half_t,
+    return launchKernel<phi::dtype::float16,
                         cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8::Gemm>;
   }
   if (K == 32 && N == 32) {
-    return launchKernel<cutlass::half_t,
+    return launchKernel<phi::dtype::float16,
                         cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8::Gemm>;
   }
   if (K == 32 && N == 64) {
-    return launchKernel<cutlass::half_t,
+    return launchKernel<phi::dtype::float16,
                         cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8::Gemm>;
   }
   if (K == 64 && N == 64) {
     if (M > 100000)
       launchKernel<
-          cutlass::half_t,
+          phi::dtype::float16,
           cutlass_tensorop_f16_s1688gemm_f16_64x128_32x2_nn_align8::Gemm>;
     if (M > 20000)
       launchKernel<
-          cutlass::half_t,
+          phi::dtype::float16,
           cutlass_tensorop_f16_s1688gemm_f16_64x64_32x2_nn_align8::Gemm>;
     if (M > 15000)
       return launchKernel<
-          cutlass::half_t,
+          phi::dtype::float16,
           cutlass_tensorop_h1688gemm_128x64_32x2_nn_align8::Gemm>;
-    return launchKernel<cutlass::half_t,
+    return launchKernel<phi::dtype::float16,
                         cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8::Gemm>;
   }
   if (K == 128) {
     if (M >= 5000)
       return launchKernel<
-          cutlass::half_t,
+          phi::dtype::float16,
           cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8::Gemm>;
-    return launchKernel<cutlass::half_t,
+    return launchKernel<phi::dtype::float16,
                         cutlass_tensorop_h16816gemm_64x64_64x5_nn_align8::Gemm>;
   }
   if (N == 128) {
-    return launchKernel<cutlass::half_t,
+    return launchKernel<phi::dtype::float16,
                         cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8::Gemm>;
   }
-  return launchKernel<cutlass::half_t,
+  return launchKernel<phi::dtype::float16,
                       cutlass_tensorop_h1688gemm_64x64_32x2_nn_align4::Gemm>;
 }
 fp32_gather_gemm_scatter getBestFp32Kernel(const int M,

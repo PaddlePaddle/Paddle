@@ -91,6 +91,56 @@ class AutoTuneBase {
     }
   }
 
+  template <typename Context>
+  void CutlassRun(const Context& ctx,
+                  const size_t key,
+                  const T* const a,
+                  const T* const b,
+                  const T* const c,
+                  T* const d,
+                  const int& m,
+                  const int& n,
+                  const int& k,
+                  const int32_t* a_indices,
+                  const int32_t* b_indices,
+                  const int32_t* c_d_indices,
+                  T alpha,
+                  T beta) {
+    PADDLE_ENFORCE_GT(
+        kernels_.size(),
+        0,
+        phi::errors::InvalidArgument(
+            "kernel num must be greater than 0, now is %d", kernels_.size()));
+    is_init_ = true;
+    auto& cache =
+        autotune::AutoTuneCache::Instance().Get(AlgorithmType::kCutlass);
+    if (cache.Find(key)) {
+      auto best_idx = cache.Get(key);
+      kernels_[best_idx].Run(
+          ctx, a, b, c, d, m, n, k, a_indices, c_d_indices, alpha, beta);
+
+    } else {
+      // Set alpha to 0 and beta to 1 to avoid changing the value of d when
+      // picking the best kernel
+      auto best_idx = PickBestKernel(ctx,
+                                     ctx,
+                                     a,
+                                     b,
+                                     c,
+                                     d,
+                                     m,
+                                     n,
+                                     k,
+                                     a_indices,
+                                     c_d_indices,
+                                     static_cast<phi::dtype::float16>(0),
+                                     static_cast<phi::dtype::float16>(1));
+      cache.Set(key, best_idx);
+      kernels_[best_idx].Run(
+          ctx, a, b, c, d, m, n, k, a_indices, c_d_indices, alpha, beta);
+    }
+  }
+
  private:
   bool is_init_{false};
   std::vector<KernelType> kernels_;

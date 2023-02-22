@@ -44,13 +44,14 @@ enum class AlgorithmType {
   kConvBackwardData = 2,
   kConvBackwardFilter = 3,
   kTranspose = 4,
+  kCutlass = 5,
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
-  kConvForwardV8 = 5,
-  kConvBackwardDataV8 = 6,
-  kConvBackwardFilterV8 = 7,
-  kAlgorithmCount = 8
+  kConvForwardV8 = 6,
+  kConvBackwardDataV8 = 7,
+  kConvBackwardFilterV8 = 8,
+  kAlgorithmCount = 9
 #else
-  kAlgorithmCount = 5
+  kAlgorithmCount = 6
 #endif
 };
 

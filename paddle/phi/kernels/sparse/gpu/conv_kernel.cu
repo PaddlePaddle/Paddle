@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/sparse/scatter.cu.h"
 #include "paddle/phi/kernels/sparse/gpu/conv.cu.h"
 #ifdef PADDLE_WITH_CUTLASS
-#include "paddle/phi/kernels/sparse/gpu/cutlass_tuner.h"
+#include "paddle/phi/kernels/sparse/gpu/gather_gemm_scatter.h"
 #endif
 
 #include "glog/logging.h"

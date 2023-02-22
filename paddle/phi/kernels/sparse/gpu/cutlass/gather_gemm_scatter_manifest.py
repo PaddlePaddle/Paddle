@@ -78,7 +78,7 @@ namespace sparse {
         self.configurations.append(configuration_name)
         self.kernels_list += (
             """
-launchKernel<cutlass::half_t,"""
+launchKernel<phi::dtype::float16,"""
             + configuration_name
             + "::Gemm>,"
         )

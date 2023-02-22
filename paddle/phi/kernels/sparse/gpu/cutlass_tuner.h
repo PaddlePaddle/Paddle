@@ -28,74 +28,12 @@
 #include "paddle/phi/kernels/autotune/cache_base.h"
 namespace phi {
 namespace sparse {
-enum class AlgorithmType { kCutlass = 1 };
 
 template <typename T, typename ReturnType, typename... Args>
 class CutlassAutoTuner
     : public autotune::
           AutoTuneBase<T, autotune::KernelCallback<T, ReturnType, Args...>> {
  public:
-  template <typename Context>
-  void CutlassRun(const Context& ctx,
-                  const size_t key,
-                  const T* const a,
-                  const T* const b,
-                  const T* const c,
-                  T* const d,
-                  const int& m,
-                  const int& n,
-                  const int& k,
-                  const int32_t* a_indices,
-                  const int32_t* b_indices,
-                  const int32_t* c_d_indices,
-                  T alpha,
-                  T beta) {
-    PADDLE_ENFORCE_GT(
-        kernels_.size(),
-        0,
-        phi::errors::InvalidArgument(
-            "kernel num must be greater than 0, now is %d", kernels_.size()));
-    is_init_ = true;
-    auto& cache =
-        autotune::AutoTuneCache::Instance().Get(CutlassAlgorithmType::kCutlass);
-    if (cache.Find(key)) {
-      auto best_idx = cache.Get(key);
-      kernels_[best_idx].Run(ctx,
-                             a,
-                             b,
-                             c,
-                             d,
-                             m,
-                             n,
-                             k,
-                             a_indices,
-                             b_indices,
-                             c_d_indices,
-                             alpha,
-                             beta);
-
-    } else {
-      // Set alpha to 0 and beta to 1 to avoid changing the value of d when
-      // picking the best kernel
-      auto best_idx = PickBestKernel(
-          ctx, a, b, c, d, m, n, k, a_indices, b_indices, c_d_indices, 0, 1);
-      cache.Set(key, best_idx);
-      kernels_[best_idx].Run(ctx,
-                             a,
-                             b,
-                             c,
-                             d,
-                             m,
-                             n,
-                             k,
-                             a_indices,
-                             b_indices,
-                             c_d_indices,
-                             alpha,
-                             beta);
-    }
-  }
-
   static autotune::
       AutoTuneBase<T, autotune::KernelCallback<T, ReturnType, Args...>>*
       Instance(ReturnType (*func)(Args...)) {
@@ -117,46 +55,6 @@ static autotune::AutoTuneBase<T,
                               autotune::KernelCallback<T, ReturnType, Args...>>*
 MakeCutlassTuner(ReturnType (*func)(Args...)) {
   return CutlassAutoTuner<T, ReturnType, Args...>::Instance(func);
-}
-
-size_t Conv3DKey(const int m, const int n, const int k) {
-  return autotune::GetKey(m, n, k);
-}
-
-template <typename T>
-void GatherGemmScatter(const phi::GPUContext& ctx,
-                       const T* const a,
-                       const T* const b,
-                       const T* const c,
-                       T* const d,
-                       const int& m,
-                       const int& n,
-                       const int& k,
-                       const int32_t* a_indices,
-                       const int32_t* b_indices,
-                       const int32_t* c_d_indices,
-                       T alpha,
-                       T beta) {
-  auto* tuner = MakeCutlassTuner<T>(fp16_kernels[0]);
-  for (auto i = 1; i < fp16_kernels.size(); i++)
-    tuner->AddCallBack(fp16_kernels[i]);
-
-  size_t key = Conv3DKey(m, n, k);
-
-  tuner->CutlassRun(ctx,
-                    key,
-                    const_cast<const T*>(a),
-                    const_cast<const T*>(b),
-                    const_cast<const T*>(c),
-                    const_cast<T*>(d),
-                    const_cast<int&>(m),
-                    const_cast<int&>(n),
-                    const_cast<int&>(k),
-                    const_cast<const int32_t*>(a_indices),
-                    const_cast<const int32_t*>(b_indices),
-                    const_cast<const int32_t*>(c_d_indices),
-                    alpha,
-                    beta);
 }
 
 }  // namespace sparse
