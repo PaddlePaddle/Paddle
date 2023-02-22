@@ -570,9 +570,6 @@ class TestFP16_2(OpTest):
             )
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-)
 class TestBF16(OpTest):
     def setUp(self):
         self.op_type = "slice"
