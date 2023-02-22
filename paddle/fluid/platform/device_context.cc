@@ -173,8 +173,8 @@ DevCtx* ConstructDevCtx(const platform::Place& p,
 template <typename DevCtx>
 std::unique_ptr<DeviceContext> CreateDeviceContext(
     const platform::Place& p,
-    bool disable_setting_default_stream_for_allocator = false,
-    int stream_priority = 0) {
+    bool disable_setting_default_stream_for_allocator,
+    int stream_priority) {
   VLOG(4) << "yoki: CreateDeviceContext";
   using PtrType = std::unique_ptr<DeviceContext>;
 

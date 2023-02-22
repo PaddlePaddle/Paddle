@@ -24,6 +24,7 @@
 #include "cuda.h"          // NOLINT
 #include "cuda_runtime.h"  // NOLINT
 
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
@@ -143,6 +144,14 @@ class CUDAGraph {
 
   static phi::GPUPlace CapturingPlace() { return capturing_graph_->place_; }
 
+  static void SetCapturingDeviceContext(phi::GPUContext *dev_ctx) {
+    capturing_graph_->dev_ctx_ = dev_ctx;
+  }
+
+  static phi::GPUContext *CapturingDeviceContext() {
+    return capturing_graph_->dev_ctx_;
+  }
+
   // This API can be used to debug which GPU operation is not
   // supported during capturing CUDA Graph.
   static bool IsValidCapturing();
@@ -184,6 +193,7 @@ class CUDAGraph {
   cudaStreamCaptureMode capture_mode_;
 #endif
   cudaStream_t stream_{nullptr};
+  phi::GPUContext *dev_ctx_;
   phi::GPUPlace place_;
   CUDAGraphID id_;
   int64_t pool_id_{kInvalidPoolID};

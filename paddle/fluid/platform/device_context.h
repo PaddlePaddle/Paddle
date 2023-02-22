@@ -342,6 +342,12 @@ struct DefaultDeviceContextType<platform::CustomPlace> {
 };
 #endif
 
+template <typename DevCtx>
+std::unique_ptr<DeviceContext> CreateDeviceContext(
+    const platform::Place& p,
+    bool disable_setting_default_stream_for_allocator = false,
+    int stream_priority = 0);
+
 void EmplaceDeviceContexts(
     std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
         place_to_device_context,
