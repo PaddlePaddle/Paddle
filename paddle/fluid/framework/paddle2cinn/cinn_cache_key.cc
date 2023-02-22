@@ -23,6 +23,7 @@
 
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/paddle2cinn/transform_type.h"
 #include "paddle/phi/core/ddim.h"
 
 namespace paddle {
@@ -86,25 +87,26 @@ bool CinnCacheKey::operator!=(const CinnCacheKey& other) const {
 
 bool CinnCacheKey::operator==(const CinnCacheKey& other) const {
   return graph_hash_val_ == other.graph_hash_val_ &&
-         input_shapes_ == other.input_shapes_ && arch_str_ == other.arch_str_;
+         input_shapes_ == other.input_shapes_ &&
+         input_dtypes_ == other.input_dtypes_ && arch_str_ == other.arch_str_;
 }
 
 size_t CinnCacheKey::Hash::operator()(const CinnCacheKey& key) const {
   std::ostringstream has_str;
 
   for (const auto& name_shape : key.input_shapes_) {
-    has_str << name_shape.first;
-    has_str << std::hash<phi::DDim>()(name_shape.second);
+    has_str << name_shape.first << ",";
+    has_str << "[" << name_shape.second << "],";
     PADDLE_ENFORCE_NE(key.input_dtypes_.find(name_shape.first),
                       key.input_dtypes_.end(),
                       platform::errors::PreconditionNotMet(
                           "%s is not in key.input_dtypes_.", name_shape.first));
-    has_str << phi::DataTypeToString(key.input_dtypes_.at(name_shape.first));
+    has_str << key.input_dtypes_.at(name_shape.first) << ",";
   }
 
-  has_str << key.graph_hash_val_;
-  has_str << key.arch_str_;
-  VLOG(4) << "CinnCacheKey : " << has_str.str();
+  has_str << key.arch_str_ << ",";
+  has_str << key.graph_hash_val_ << ";";
+  VLOG(1) << "CinnCacheKey : " << has_str.str();
   return std::hash<std::string>()(has_str.str());
 }
 
@@ -117,24 +119,31 @@ size_t CinnCacheKeyByStructure::HashGraph(const ir::Graph& graph) {
 
   // graph.Nodes() return unordered_set, here using set to avoid the same graph
   // may return different result
-  std::set<ir::Node*, bool (*)(ir::Node*, ir::Node*)> node_set(compare),
-      output_set(compare);
-  node_set.insert(graph.Nodes().begin(), graph.Nodes().end());
-
-  std::string hash_str;
-  for (ir::Node* n : node_set) {
-    hash_str.append(n->Name());
-
-    output_set.clear();
-    output_set.insert(n->outputs.begin(), n->outputs.end());
-    for (auto* out : output_set) {
-      hash_str.append(out->Name());
+  std::set<ir::Node*, bool (*)(ir::Node*, ir::Node*)> node_set(compare);
+  for (ir::Node* node : graph.Nodes()) {
+    if (node->IsOp()) {
+      // only need cache graph with same op
+      node_set.insert(node);
     }
   }
 
-  VLOG(1) << "The hash graph:\n" << hash_str;
+  std::ostringstream hash_str;
+  for (ir::Node* op : node_set) {
+    hash_str << op->Name() << ":";
+    hash_str << "input_num=" << op->inputs.size() << ",";
+    hash_str << "output_num=" << op->outputs.size() << ",";
 
-  size_t hash_val = std::hash<std::string>()(hash_str);
+    const auto& attrs_map = op->Op()->GetAttrMap();
+    for (const auto& attr : attrs_map) {
+      hash_str << attr.first << "=" << PaddleAttributeToString(attr.second)
+               << ",";
+    }
+    hash_str << ";";
+  }
+
+  VLOG(1) << "The hash graph:\n" << hash_str.str();
+
+  size_t hash_val = std::hash<std::string>()(hash_str.str());
   VLOG(4) << "The graph's hash value by graph structure is: " << hash_val;
   return hash_val;
 }
