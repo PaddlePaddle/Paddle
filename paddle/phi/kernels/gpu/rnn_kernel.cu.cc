@@ -203,7 +203,7 @@ void RnnKernel(const Context &dev_ctx,
       false,
       phi::errors::InvalidArgument("ROCm do not support SequenceLength yet."));
 #endif
-  std::vector<int64_t> SequenceLength;
+  std::vector<int> SequenceLength;
   if (has_seq_length) {
     phi::TensorToVector(*sequence_length, dev_ctx, &SequenceLength);
   }
