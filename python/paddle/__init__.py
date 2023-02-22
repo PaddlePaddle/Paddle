@@ -536,7 +536,6 @@ __all__ = [  # noqa
     'no_grad',
     'set_grad_enabled',
     'is_grad_enabled',
-    'enable_grad',
     'mod',
     'abs',
     'tril',
