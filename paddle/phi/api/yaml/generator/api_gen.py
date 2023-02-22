@@ -312,7 +312,7 @@ class ForwardAPI(BaseAPI):
 
         return kernel_output, output_names, output_create
 
-    def post_blacklist_remapping(
+    def reset_view_after_fallback(
         self, out_dtype_list, code_indent='', inplace_flag=False
     ):
         remap_code = ''
@@ -326,7 +326,7 @@ class ForwardAPI(BaseAPI):
                 remap_code += f"""
 {code_indent}    phi::DenseTensor * {self.view_map[self.outputs['names'][0]]}_remap = static_cast<phi::DenseTensor*>({self.view_map[self.outputs['names'][0]]}.impl().get());
 {code_indent}    {self.view_map[self.outputs['names'][0]]}_remap->ShareBufferWith(*kernel_out);
-{code_indent}    {self.view_map[self.outputs['names'][0]]}_remap->ShareInplaceVersionCounterWith(*kernel_out);
+{code_indent}    kernel_out->ShareInplaceVersionCounterWith(*{self.view_map[self.outputs['names'][0]]}_remap);
 """
         elif len(out_dtype_list) > 1:
             for i in range(len(out_dtype_list)):
@@ -338,7 +338,7 @@ class ForwardAPI(BaseAPI):
                     remap_code += f"""
 {code_indent}    phi::DenseTensor * {self.view_map[self.outputs['names'][i]]}_remap = static_cast<phi::DenseTensor*>({self.view_map[self.outputs['names'][i]]}.impl().get());
 {code_indent}    {self.view_map[self.outputs['names'][i]]}_remap->ShareBufferWith(*kernel_out_{i});
-{code_indent}    {self.view_map[self.outputs['names'][i]]}_remap->ShareInplaceVersionCounterWith(*kernel_out_{i});
+{code_indent}    kernel_out_{i}->ShareInplaceVersionCounterWith(*{self.view_map[self.outputs['names'][i]]}_remap);
 """
         return remap_code
 
