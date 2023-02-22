@@ -69,9 +69,9 @@ class IrContextImpl {
   Int32Type int32_type;
 };
 
-IrContext &IrContext::Instance() {
+IrContext *IrContext::Instance() {
   static IrContext context;
-  return context;
+  return &context;
 }
 
 IrContext::IrContext() : impl_(new IrContextImpl()) {

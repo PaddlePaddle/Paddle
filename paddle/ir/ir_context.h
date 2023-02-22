@@ -33,7 +33,7 @@ class IrContext {
   ///
   /// \brief Initializes a new instance of IrContext.
   ///
-  static IrContext &Instance();
+  static IrContext *Instance();
 
   ///
   /// \brief Get an instance of IrContextImpl, a private member of IrContext.
