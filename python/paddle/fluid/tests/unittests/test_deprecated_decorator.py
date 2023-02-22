@@ -19,7 +19,6 @@ import warnings
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 import paddle.utils.deprecated as deprecated
 from paddle import _legacy_C_ops
 
@@ -82,7 +81,7 @@ class TestDeprecatedDocorator(unittest.TestCase):
         expected = LOWEST_WARNING_POSTION
 
         # captured
-        captured = get_warning_index(fluid.data)
+        captured = get_warning_index(paddle.static.data)
         paddle.disable_static()
 
         # testting

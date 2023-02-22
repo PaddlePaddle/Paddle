@@ -29,8 +29,8 @@ np.random.seed(123)
 
 class TestFeedData(unittest.TestCase):
     '''
-    Test paddle.fluid.data feeds with different shape and types.
-    Note: paddle.fluid.data is not paddle.static.data.
+    Test paddle.static.data feeds with different shape and types.
+    Note: paddle.static.data is not paddle.static.data.
     '''
 
     def setUp(self):
