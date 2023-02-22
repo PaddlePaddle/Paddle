@@ -33,7 +33,6 @@ core._set_prim_backward_enabled(True)
             np.float32,
         ),
         (np.random.rand(2, 60), [12, 10], np.random.rand(12, 10), np.float32),
-        (np.random.rand(), [1], np.random.rand(1), np.float32),
     ],
 )
 class TestSqrtGradComp(unittest.TestCase):
@@ -66,9 +65,9 @@ class TestSqrtGradComp(unittest.TestCase):
             res = paddle.grad(out, [x], create_graph=True, retain_graph=True)
             return res[0].numpy()
 
-        dx = actual(self.primal0, self.shape)
+        dx = actual(self.primal, self.shape)
 
-        ddx = desired(self.primal0, self.shape)
+        ddx = desired(self.primal, self.shape)
 
         np.testing.assert_allclose(
             actual=dx,

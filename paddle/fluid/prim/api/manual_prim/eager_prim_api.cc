@@ -33,5 +33,9 @@ Tensor full<Tensor>(const IntArray& shape,
   VLOG(4) << "Eager Prim API full_ad_func call";
   return ::full_ad_func(shape, value, dtype, place);
 }
+template <>
+Tensor cast<Tensor>(const Tensor& x, DataType dtype) {
+  return ::cast_ad_func(x, dtype);
+}
 }  // namespace prim
 }  // namespace paddle

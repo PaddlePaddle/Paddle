@@ -630,8 +630,10 @@ def _lower_composite(block, blacklist=[]):
                     outputs[op.output_names[i]] = op.output(op.output_names[i])
 
                 attrs = {}
-                for name in sorted(op.attr_names):
-                    attrs[name] = op.attr(name)
+                # for name in sorted(op.attr_names):
+                #     attrs[name] = op.attr(name)
+                for name in sorted(op.attrs.keys()):
+                    attrs[name] = op.attrs(name)
                 from paddle.fluid.dygraph.base import param_guard
 
                 new_op_desc = block.desc.append_op()

@@ -25,6 +25,12 @@ using IntArray =
 //  This function should have as same signature as phi, which defined in
 //  paddle/phi/api/backward/backward_api.h
 template <typename T>
+void cast_grad(const Tensor& out_grad, DataType dtype, Tensor* x_grad) {
+  auto res = cast<T>(out_grad, dtype);
+  set_output<T>(res, x_grad);
+}
+
+template <typename T>
 void tanh_grad(const Tensor& out, const Tensor& grad_out, Tensor* grad_x) {
   if (!grad_x) return;
   auto tmp = pow<T>(out, 2.0);
@@ -34,10 +40,8 @@ void tanh_grad(const Tensor& out, const Tensor& grad_out, Tensor* grad_x) {
 }
 
 template <typename T>
-void reshape_grad(const Tensor& xshape,
-                  const Tensor& grad_out,
-                  Tensor* grad_x) {
-  auto grad_x_tmp = reshape<T>(grad_out, IntArray(xshape));
+void reshape_grad(const Tensor& x, const Tensor& grad_out, Tensor* grad_x) {
+  auto grad_x_tmp = reshape<T>(grad_out, phi::vectorize(x.dims()));
   set_output<T>(grad_x_tmp, grad_x);
 }
 

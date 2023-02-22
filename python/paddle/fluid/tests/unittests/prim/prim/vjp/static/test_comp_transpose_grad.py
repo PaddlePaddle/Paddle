@@ -14,14 +14,11 @@
 
 import unittest
 
-from paddle.fluid import core
-
-core._set_prim_backward_enabled(True)
-
 import numpy as np
 import parameterized as param
 
 import paddle
+from paddle.fluid import core, framework
 
 
 def apply_to_static(net, use_cinn):
@@ -102,8 +99,14 @@ class TestTransposeGradComp(unittest.TestCase):
 
     def _test_cinn(self):
         paddle.disable_static()
+        use_cinn = True
+        if isinstance(
+            framework._current_expected_place(), framework.core.CPUPlace
+        ):
+            # TODO(jiabin): CINN will crashed in this case open it when fixed
+            use_cinn = False
         dy_res = self.train(use_prim=False, use_cinn=False)
-        comp_st_cinn_res = self.train(use_prim=True, use_cinn=False)
+        comp_st_cinn_res = self.train(use_prim=True, use_cinn=use_cinn)
 
         for i in range(len(dy_res)):
             np.testing.assert_allclose(

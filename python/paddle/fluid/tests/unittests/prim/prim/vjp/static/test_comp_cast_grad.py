@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import unittest
 
 import numpy as np
@@ -34,27 +35,44 @@ class PrimeNet(paddle.nn.Layer):
 
     def forward(self, x):
         tmp = self.fc(x)
-        out = paddle.reshape(tmp, [2, 1, 4])
+        out = paddle.cast(tmp, paddle.float64)
         return out
 
 
 @param.parameterized_class(
-    ('primal', 'shape', 'cotangent', 'dtype'),
+    ('primal', 'cotangent', 'src_dtype', 'dst_type'),
     [
         (
-            np.random.rand(10, 1, 10),
-            [10, 10],
+            np.random.rand(10, 10),
             np.random.rand(10, 10),
             np.float32,
+            np.float64,
         ),
-        (np.random.rand(2, 60), [12, 10], np.random.rand(12, 10), np.float32),
+        (
+            np.random.rand(10, 10),
+            np.random.rand(10, 10),
+            np.float64,
+            np.float32,
+        ),
+        (
+            np.random.rand(10, 10),
+            np.random.rand(10, 10),
+            np.float32,
+            np.float32,
+        ),
     ],
 )
-class TestSqrtGradComp(unittest.TestCase):
+class TestCastGradComp(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.primal = cls.primal.astype(cls.dtype)
-        cls.cotangent = cls.cotangent.astype(cls.dtype)
+        cls.primal = cls.primal.astype(cls.src_dtype)
+        cls.cotangent = cls.cotangent.astype(cls.src_dtype)
+
+    def setUp(self):
+        paddle.enable_static()
+
+    def tearDown(self):
+        paddle.disable_static()
 
     def train(self, use_prim, use_cinn):
         paddle.seed(2022)
@@ -84,14 +102,15 @@ class TestSqrtGradComp(unittest.TestCase):
             np.testing.assert_allclose(
                 comp_st_cinn_res[i].numpy(),
                 dy_res[i].numpy(),
-                rtol=1e-7,
-                atol=1e-7,
+                rtol=1e-15,
+                atol=1e-15,
             )
         paddle.enable_static()
 
-    def test_reshape_grad_comp(self):
-        def actual(primal, shape, cotangent):
-            core._set_prim_backward_enabled(True)
+    def test_cast_grad_comp(self):
+        core._set_prim_backward_enabled(True)
+
+        def actual(primal, cotangent):
             mp, sp = paddle.static.Program(), paddle.static.Program()
             with paddle.static.program_guard(mp, sp):
                 x = paddle.static.data('primal', primal.shape, primal.dtype)
@@ -99,38 +118,26 @@ class TestSqrtGradComp(unittest.TestCase):
                 v = paddle.static.data(
                     'cotangent', cotangent.shape, cotangent.dtype
                 )
-                y = paddle.reshape(x, shape)
+                y = paddle.cast(x, self.dst_type)
                 x_cotangent = paddle.static.gradients(y, x, v)
             exe = paddle.static.Executor()
             exe.run(sp)
             return exe.run(
                 program=mp,
                 feed={'primal': primal, 'cotangent': cotangent},
-                fetch_list=[x_cotangent[0].name],
+                fetch_list=mp.blocks[0].ops[-1].output('Out')[0],
             )[0]
 
-        def desired(primal, shape, cotangent):
-            core._set_prim_backward_enabled(False)
-            mp, sp = paddle.static.Program(), paddle.static.Program()
-            with paddle.static.program_guard(mp, sp):
-                x = paddle.static.data('primal', primal.shape, primal.dtype)
-                x.stop_gradient = False
-                v = paddle.static.data(
-                    'cotangent', cotangent.shape, cotangent.dtype
-                )
-                y = paddle.reshape(x, shape)
-                x_cotangent = paddle.static.gradients(y, x, v)
-            exe = paddle.static.Executor()
-            exe.run(sp)
-            return exe.run(
-                program=mp,
-                feed={'primal': primal, 'cotangent': cotangent},
-                fetch_list=[x_cotangent[0].name],
-            )[0]
+        def desired(primal, cotangent):
+            return (cotangent * np.ones_like(primal)).astype(primal.dtype)
 
+        actual = actual(self.primal, self.cotangent)
+        desired = desired(self.primal, self.cotangent)
+
+        self.assertEqual(actual.dtype, desired.dtype)
         np.testing.assert_allclose(
-            actual=actual(self.primal, self.shape, self.cotangent),
-            desired=desired(self.primal, self.shape, self.cotangent),
+            actual=actual,
+            desired=desired,
             rtol=1e-6,
             atol=0,
         )
