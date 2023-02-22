@@ -1618,6 +1618,57 @@ void OperatorWithKernel::CheckWhetherPreparePhiData(
   }
 }
 
+// When do we need to reset runtime context?
+// 1. When enable cache runtime context, if the program runs for the first time,
+//   runtime_ctx_.get() == nullptr, we need to create a new runtime context.
+// 2. When enable cache runtime context, if the program is not running for the
+// first time,
+//   but the input shape or tensor layout of the operator has changed, we cannot
+//   use the runtime context stored in the cache at this time, and need to
+//   create a new one.
+bool OperatorWithKernel::NeedResetRuntimeContext(const Scope& scope) const {
+  if (runtime_ctx_.get() == nullptr) return true;
+  const auto& name_map = Inputs();
+  for (auto& var_name_item : name_map) {
+    auto& name_vec = var_name_item.second;
+    std::vector<Variable*>& cache_input_vars =
+        runtime_ctx_->inputs[var_name_item.first];
+    PADDLE_ENFORCE_EQ(
+        name_vec.size(),
+        cache_input_vars.size(),
+        platform::errors::InvalidArgument(
+            "The size of input variable names (%d) must be equal to "
+            "the size of cache input variable ptrs (%d).",
+            name_vec.size(),
+            cache_input_vars.size()));
+    for (size_t i = 0; i < name_vec.size(); i++) {
+      auto var_name = name_vec[i];
+      auto* cache_input_var = cache_input_vars[i];
+      if (!VarIsTensor(*cache_input_var)) continue;
+      auto* cache_input_tensor =
+          GetMutableLoDTensorOrSelectedRowsValueFromVar(cache_input_var);
+      auto cache_input_tensor_dims = cache_input_tensor->dims();
+      auto* current_input_var = scope.FindVar(var_name);
+      PADDLE_ENFORCE_NOT_NULL(
+          current_input_var,
+          platform::errors::NotFound(
+              "The variable %s is not found when "
+              "enable_cache_runtime_context_cache in origin scope.",
+              var_name));
+      auto* current_input_tensor =
+          GetMutableLoDTensorOrSelectedRowsValueFromVar(current_input_var);
+      auto current_input_tensor_dims = current_input_tensor->dims();
+      if (cache_input_tensor_dims != current_input_tensor_dims ||
+          NeedTransformLayout(current_input_tensor->layout(),
+                              cache_input_tensor->layout())) {
+        need_prepare_data_ = true;
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
   // To reduce the elapsed time of HasAttr, we use bool variable to record the
@@ -1627,12 +1678,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   if (!all_kernels_must_compute_runtime_shape_ &&
       HasAttr(kAllKernelsMustComputeRuntimeShape))
     all_kernels_must_compute_runtime_shape_ = true;
-  const Scope* cur_scope = &scope;
   CheckWhetherPreparePhiData(Inputs(), Outputs(), scope);
   if (!enable_cache_runtime_context_) {
     RuntimeContext ctx(Inputs(), Outputs(), scope);
     RunImpl(scope, place, &ctx);
-    pre_scope_ = cur_scope;
   } else if (run_phi_kernel_ && impl_ != nullptr && !need_prepare_data_ &&
              !need_prepare_phi_data_) {
     if (!all_kernels_must_compute_runtime_shape_ && impl_->NeedInferShape()) {
@@ -1640,12 +1689,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     }
     (*phi_kernel_)(impl_->getKernelContext());
   } else {
-    if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
+    if (NeedResetRuntimeContext(scope)) {
       std::lock_guard<std::mutex> lock(cache_update_mutex_);
-      if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
-        runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
-        pre_scope_ = cur_scope;
-      }
+      runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
     }
     RunImpl(scope, place, runtime_ctx_.get());
   }
@@ -1689,15 +1735,18 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   std::string phi_kernel_name;
   if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(type_)) {
     if (kernel_signature_ == nullptr || phi_kernel_ == nullptr) {
-      kernel_signature_.reset(new phi::KernelSignature(
-          std::move(GetExpectedPhiKernelArgs(exe_ctx))));
-      VLOG(6) << *kernel_signature_.get();
+      if (phi::KernelFactory::Instance().HasStructuredKernel(type_)) {
+        kernel_signature_.reset(new phi::KernelSignature(type_.c_str()));
+      } else {
+        kernel_signature_.reset(new phi::KernelSignature(
+            std::move(GetExpectedPhiKernelArgs(exe_ctx))));
+      }
 
+      VLOG(6) << *kernel_signature_.get();
+      phi_kernel_name = kernel_signature_->name;
       kernel_type_.reset(
           new OpKernelType(std::move(InnerGetExpectedKernelType(exe_ctx))));
       dev_ctx = pool.Get(kernel_type_->place_);
-
-      phi_kernel_name = kernel_signature_->name;
 // NOTE(Liu-xiandong): The register kernel used KP have library_type[KP],
 // But the default library_type is Plain, so we need to modify the
 // library_type here, otherwise it can't work.
@@ -1753,7 +1802,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       }
     } else {
       phi_kernel_name = kernel_signature_->name;
-
 // NOTE(jiahongyu): The registered MKLDNN kernel have library_type =
 // LibraryType::kMKLDNN and data_layout_ = DataLayout::ONEDNN. But the default
 // values are kPlain, so we need to modify the library_type and data_layout_
@@ -1840,7 +1888,12 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     bool is_xpu_kp_support = (use_xpu_kp_kernel_rt || use_xpu_kp_kernel_debug);
 #endif
 
-    if (phi_kernel_->IsValid()
+    bool in_custom_back_list = false;
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+    in_custom_back_list =
+        phi::backends::custom_device::is_in_custom_black_list(phi_kernel_name);
+#endif
+    if (phi_kernel_->IsValid() && !in_custom_back_list
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
         && !is_xpu_unsupport
 #endif
@@ -1861,7 +1914,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         kernel_type_->library_type_ = LibraryType::kKP;
       }
 #endif
-
       if (kernels_iter == all_op_kernels.end() ||
           kernels_iter->second.find(*kernel_type_.get()) ==
               kernels_iter->second.end()
@@ -1871,8 +1923,14 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 #if defined(PADDLE_WITH_XPU_KP)
           || (is_xpu_unsupport && !is_xpu_kp_support)
 #endif
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+          || in_custom_back_list
+#endif
       ) {
         fallback_to_cpu = true;
+        if (in_custom_back_list) {
+          VLOG(3) << "fluid in black list: " << phi_kernel_name;
+        }
         auto phi_cpu_kernel_key = FallBackToCpu(phi_kernel_key, *this);
         phi_kernel_.reset(
             new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
@@ -1939,7 +1997,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                        platform::TracerEventType::OperatorInner,
                                        1,
                                        platform::EventRole::kInnerOp);
-    if (run_phi_kernel_) {
+    if (run_phi_kernel_ && phi_kernel_->GetKernelRegisteredType() ==
+                               phi::KernelRegisteredType::FUNCTION) {
       phi::KernelContext phi_kernel_context;
       if (enable_cache_runtime_context_ && !need_prepare_phi_data_ &&
           !need_prepare_data_) {
@@ -1977,6 +2036,11 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         BuildPhiKernelContext(*runtime_ctx, dev_ctx, &phi_kernel_context);
         (*phi_kernel_)(&phi_kernel_context);
       }
+    } else if (run_phi_kernel_ && phi_kernel_->GetKernelRegisteredType() ==
+                                      phi::KernelRegisteredType::STRUCTURE) {
+      ExecutionContext execution_context(
+          *this, exec_scope, *dev_ctx, *runtime_ctx);
+      (*phi_kernel_)(&execution_context);
     } else {
       (*kernel_func_)(
           ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx));
@@ -2022,8 +2086,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // To solve issue #15032, have a discussion with @Luotao for cpu inference,
   // do not cache transfer scope, hence in this case delete transfer scope
   // after run to avoid memory leak
-  if (transfer_scope && !run_by_executor_ && !enable_cache_transfer_scope_) {
-    scope.DeleteScope(transfer_scope);
+  if (cache_transfer_scope_ && !run_by_executor_ &&
+      !enable_cache_transfer_scope_) {
+    scope.DeleteScope(cache_transfer_scope_);
   }
 }
 
@@ -2147,14 +2212,18 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 
 phi::KernelKey OperatorWithKernel::ChoosePhiKernel(
     const ExecutionContext& ctx) const {
-  kernel_signature_.reset(
-      new phi::KernelSignature(std::move(GetExpectedPhiKernelArgs(ctx))));
+  std::string phi_kernel_name;
+  if (phi::KernelFactory::Instance().HasStructuredKernel(type_)) {
+    kernel_signature_.reset(new phi::KernelSignature(type_.c_str()));
+  } else {
+    kernel_signature_.reset(
+        new phi::KernelSignature(std::move(GetExpectedPhiKernelArgs(ctx))));
+  }
   VLOG(6) << *kernel_signature_.get();
-
+  phi_kernel_name = kernel_signature_->name;
   kernel_type_.reset(
       new OpKernelType(std::move(InnerGetExpectedKernelType(ctx))));
 
-  auto phi_kernel_name = kernel_signature_->name;
   auto phi_kernel_key = TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
   phi_kernel_.reset(new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
       phi_kernel_name, phi_kernel_key)));
@@ -2554,32 +2623,24 @@ Scope* OperatorWithKernel::PrepareData(
               kernel_type_for_var.backend() == phi::Backend::GPUDNN ||
               new_expected_kernel_key->backend() == phi::Backend::GPU ||
               new_expected_kernel_key->backend() == phi::Backend::GPUDNN) {
-            new_scope = TryCreateTransferScope(
+            cache_transfer_scope_ = TryCreateTransferScope(
                 kernel_type_for_var, *new_expected_kernel_key, &scope);
             enable_cache_transfer_scope_ = true;
+            new_scope = cache_transfer_scope_;
           }
         } else if (kernel_type_for_var.backend() == phi::Backend::GPU ||
                    kernel_type_for_var.backend() == phi::Backend::GPUDNN ||
                    expected_kernel_key.backend() == phi::Backend::GPU ||
                    expected_kernel_key.backend() == phi::Backend::GPUDNN) {
-          new_scope = TryCreateTransferScope(
+          cache_transfer_scope_ = TryCreateTransferScope(
               kernel_type_for_var, expected_kernel_key, &scope);
           enable_cache_transfer_scope_ = true;
+          new_scope = cache_transfer_scope_;
         }
       }
 
       if (!new_scope) {
         new_scope = &scope.NewScope();
-      }
-      // For inference, if a gpu model has an op which could only run on CPU,
-      // each result of different input will be the same with the first one.
-      // The reason is that if a gpu tensor is the input of a cpu kernel,
-      // we will create a new cpu tensor in new scope.
-      // However, if enable_cache_runtime_context_, we get the cpu tensor each
-      // time, not the gpu tensor. Thus, we set pre_scope_ = nullptr
-      // to trigger `new RuntimeContext()` in RunImpl().
-      if (enable_cache_runtime_context_) {
-        pre_scope_ = nullptr;
       }
 
       // Create new var with the same name in transfer scopes
@@ -2616,7 +2677,8 @@ Scope* OperatorWithKernel::PrepareData(
     }
   };
 
-  if (run_phi_kernel_) {
+  if (run_phi_kernel_ && phi_kernel_->GetKernelRegisteredType() ==
+                             phi::KernelRegisteredType::FUNCTION) {
     const auto& input_names = kernel_signature_->input_names;
     const auto& input_defs = phi_kernel_->args_def().input_defs();
     PADDLE_ENFORCE_EQ(input_names.size(),
@@ -2665,18 +2727,13 @@ Scope* OperatorWithKernel::PrepareData(
     }
   }
 
-  // If pre_scope = &scope, it means that scope is cached and the op is not in
-  // while block. If new_scope = nullptr, it means that for each input of this
-  // Op, there is no need to do PrepareData. So PrepareData could be skipped at
-  // the rest iterations to save the elapsed time.
   // We do not support skipping PrepareData in while block, because the Op's
   // input may be changed by subsequent Ops, which may cause an error.
-
   // For inference, ops that behind conditional branch aren't supported well,
   // so disable prepare optimization conservatively.
   bool force_prepare_data = HasAttr("inference_force_prepare_data") &&
                             Attr<bool>("inference_force_prepare_data");
-  if (pre_scope_ == &scope && new_scope == nullptr && !force_prepare_data) {
+  if (enable_cache_runtime_context_ && !force_prepare_data) {
     need_prepare_data_ = false;
   }
 
@@ -2731,8 +2788,6 @@ void OperatorWithKernel::ParseMultiInputDataType(
     if (var != nullptr) {
       const phi::DenseTensor* t = nullptr;
       if (var->IsType<phi::DenseTensor>()) {
-        t = &var->Get<phi::DenseTensor>();
-      } else if (var->IsType<phi::DenseTensor>()) {
         t = &var->Get<phi::DenseTensor>();
       } else if (var->IsType<phi::SelectedRows>()) {
         t = &(var->Get<phi::SelectedRows>().value());
@@ -2852,8 +2907,6 @@ phi::DenseTensor* OperatorWithKernel::GetTensorFormInputSafely(
   // 2. get tensor and check
   phi::DenseTensor* t = nullptr;
   if (var->IsType<phi::DenseTensor>()) {
-    t = var->GetMutable<phi::DenseTensor>();
-  } else if (var->IsType<phi::DenseTensor>()) {
     t = var->GetMutable<phi::DenseTensor>();
   } else if (var->IsType<phi::SelectedRows>()) {
     t = var->GetMutable<phi::SelectedRows>()->mutable_value();
@@ -3214,8 +3267,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
         } else {  // scalar is in the input
           need_prepare_phi_data_ = true;
           auto& ins_vector = ctx.inputs.at(attr_names[i]);
-          phi_kernel_context->EmplaceBackAttr(std::move(
-              experimental::MakePhiScalarFromVar(*ins_vector.front())));
+          phi_kernel_context->EmplaceBackAttr(
+              std::move(framework::MakePhiScalarFromVar(*ins_vector.front())));
         }
         break;
       case phi::AttributeType::INT_ARRAY:
@@ -3248,10 +3301,10 @@ void OperatorWithKernel::BuildPhiKernelContext(
           auto& ins_vector = ctx.inputs.at(attr_names[i]);
           if (ins_vector.size() == 1) {  // ShapeTensor
             phi_kernel_context->EmplaceBackAttr(std::move(
-                experimental::MakePhiIntArrayFromVar(*ins_vector.front())));
+                framework::MakePhiIntArrayFromVar(*ins_vector.front())));
           } else {  // ShapeTensorList
-            phi_kernel_context->EmplaceBackAttr(std::move(
-                experimental::MakePhiIntArrayFromVarList(ins_vector)));
+            phi_kernel_context->EmplaceBackAttr(
+                std::move(framework::MakePhiIntArrayFromVarList(ins_vector)));
           }
         }
         break;
@@ -3449,7 +3502,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
   // we try to add these Attrs to the RuntimeAttrs, but these OpDesc will lose
   // the RuntimeAttrs information in the process of converting the Graph to
   // the Program, so additional record configuration will be introduced,
-  // which increases the The cost of development and understanding, so we
+  // which increases the cost of development and understanding, so we
   // still use Attrs to get and the attributes set by these passes from Attrs
   // for the time being. In the future, it is necessary to clarify the
   // positioning of RuntimeAttrs and expand related functions.

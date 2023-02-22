@@ -47,13 +47,13 @@ def _test_read_write(x):
     mean_a1 = paddle.mean(a1)
     mean_a2 = paddle.mean(a2)
 
-    a_sum = layers.sums(input=[mean_a0, mean_a1, mean_a2])
+    a_sum = paddle.add_n([mean_a0, mean_a1, mean_a2])
 
     mean_x0 = paddle.mean(x[0])
     mean_x1 = paddle.mean(x[1])
     mean_x2 = paddle.mean(x[2])
 
-    x_sum = layers.sums(input=[mean_x0, mean_x1, mean_x2])
+    x_sum = paddle.add_n([mean_x0, mean_x1, mean_x2])
 
     return a_sum, x_sum
 
@@ -81,7 +81,7 @@ class TestArrayReadWrite(unittest.TestCase):
         )
         self.assertEqual(outs[0], outs[1])
 
-        total_sum = layers.sums(input=[a_sum, x_sum])
+        total_sum = paddle.add_n([a_sum, x_sum])
         total_sum_scaled = paddle.scale(x=total_sum, scale=1 / 6.0)
 
         append_backward(total_sum_scaled)
@@ -116,9 +116,7 @@ class TestArrayReadWrite(unittest.TestCase):
             a_sum_dygraph, x_sum_dygraph = _test_read_write(x_dygraph)
             self.assertEqual(a_sum_dygraph, x_sum_dygraph)
 
-            total_sum_dygraph = layers.sums(
-                input=[a_sum_dygraph, x_sum_dygraph]
-            )
+            total_sum_dygraph = paddle.add_n([a_sum_dygraph, x_sum_dygraph])
             total_sum_scaled_dygraph = paddle.scale(
                 x=total_sum_dygraph, scale=1 / 6.0
             )

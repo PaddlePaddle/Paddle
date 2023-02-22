@@ -786,9 +786,9 @@ def hfftn(x, s=None, axes=None, norm="backward", name=None):
 
     This function calculates the n-D discrete Fourier transform of Hermite symmetric
     complex input on any axis in M-D array by fast Fourier transform (FFT).
-    In other words, ``ihfftn(hfftn(x, s)) == x is within the numerical accuracy range.
+    In other words, ``ihfftn(hfftn(x, s)) == x`` is within the numerical accuracy range.
     (``s`` here are ``x.shape`` and ``s[-1] = x.shape[- 1] * 2 - 1``. This is necessary
-    for the same reason that ``irfft` requires ``x.shape``.)
+    for the same reason that ``irfft`` requires ``x.shape``.)
 
     Args:
         x (Tensor): The input data. It's a Tensor type.
@@ -1326,6 +1326,8 @@ def rfftfreq(n, d=1.0, dtype=None, name=None):
             #           [0.        , 0.66666669, 1.33333337])
 
     """
+    if d * n == 0:
+        raise ValueError("d or n should not be 0.")
 
     dtype = paddle.framework.get_default_dtype()
     val = 1.0 / (n * d)

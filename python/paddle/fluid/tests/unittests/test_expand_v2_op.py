@@ -17,7 +17,7 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -28,13 +28,14 @@ from paddle.fluid import Program, core, program_guard
 class TestExpandV2OpRank1(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
+        self.prim_op_type = "prim"
         self.init_data()
         self.python_api = paddle.expand
-
         self.inputs = {'X': np.random.random(self.ori_shape).astype("float64")}
         self.attrs = {'shape': self.shape}
         output = np.tile(self.inputs['X'], self.expand_times)
         self.outputs = {'Out': output}
+        self.enable_cinn = False
 
     def init_data(self):
         self.ori_shape = [100]
@@ -42,10 +43,10 @@ class TestExpandV2OpRank1(OpTest):
         self.expand_times = [1]
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestExpandV2OpRank2_DimExpanding(TestExpandV2OpRank1):
@@ -80,6 +81,8 @@ class TestExpandV2OpRank4(TestExpandV2OpRank1):
 class TestExpandV2OpRank1_tensor_attr(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.expand
         self.init_data()
         expand_shapes_tensor = []
         for index, ele in enumerate(self.expand_shape):
@@ -102,10 +105,10 @@ class TestExpandV2OpRank1_tensor_attr(OpTest):
         self.infer_expand_shape = [-1]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestExpandV2OpRank2_Corner_tensor_attr(TestExpandV2OpRank1_tensor_attr):
@@ -120,6 +123,8 @@ class TestExpandV2OpRank2_Corner_tensor_attr(TestExpandV2OpRank1_tensor_attr):
 class TestExpandV2OpRank1_tensor(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.expand
         self.init_data()
 
         self.inputs = {
@@ -146,6 +151,8 @@ class TestExpandV2OpRank1_tensor(OpTest):
 class TestExpandV2OpInteger(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.expand
         self.inputs = {
             'X': np.random.randint(10, size=(2, 4, 5)).astype("int32")
         }
@@ -157,10 +164,12 @@ class TestExpandV2OpInteger(OpTest):
         self.check_output()
 
 
-# Situation 5: input x is Bool
+#  Situation 5: input x is Bool
 class TestExpandV2OpBoolean(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.expand
         self.inputs = {'X': np.random.randint(2, size=(2, 4, 5)).astype("bool")}
         self.attrs = {'shape': [2, 4, 5]}
         output = np.tile(self.inputs['X'], (1, 1, 1))
@@ -170,10 +179,12 @@ class TestExpandV2OpBoolean(OpTest):
         self.check_output()
 
 
-# Situation 56: input x is Integer
+#  Situation 56: input x is Integer
 class TestExpandV2OpInt64_t(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.expand
         self.inputs = {
             'X': np.random.randint(10, size=(2, 4, 5)).astype("int64")
         }

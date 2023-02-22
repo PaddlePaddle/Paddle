@@ -312,15 +312,15 @@ static void UniqueDim(const Context& context,
       out_trans.dims().size(), context, out_trans, out, permute);
 
   if (return_inverse) {
-    paddle::framework::TensorFromVector(inverse_vec, context, index);
+    phi::TensorFromVector(inverse_vec, context, index);
   }
 
   if (return_counts) {
-    paddle::framework::TensorFromVector(counts_vec, context, count);
+    phi::TensorFromVector(counts_vec, context, count);
   }
 
   if (return_index) {
-    paddle::framework::TensorFromVector(indices_vec, context, indices);
+    phi::TensorFromVector(indices_vec, context, indices);
   }
 }
 

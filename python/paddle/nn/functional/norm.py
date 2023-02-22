@@ -77,6 +77,7 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
             #        [[0.        , 0.24253564, 0.37139067],
             #         [1.        , 0.97014254, 0.92847669]])
     """
+
     if in_dygraph_mode():
         eps = fluid.dygraph.base.to_variable([epsilon], dtype=x.dtype)
         out = _C_ops.p_norm(x, float(p), axis, epsilon, True, False)
