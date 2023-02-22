@@ -205,7 +205,6 @@ def flatten_contiguous_range_composite(x, start_axis, stop_axis):
     slice_numel = 1
     for i in range(start_dim, end_dim + 1):
         slice_numel *= shape_in[i]
-    # slice_numel = multiply_integers(shape_in[start_dim:end_dim - start_dim + 1])
     shape_out = []
     for i in range(start_dim):
         shape_out.append(shape_in[i])
