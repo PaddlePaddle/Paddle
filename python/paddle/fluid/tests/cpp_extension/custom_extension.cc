@@ -24,9 +24,18 @@ paddle::Tensor custom_add(const paddle::Tensor& x, const paddle::Tensor& y) {
   return paddle::add(paddle::exp(x), paddle::exp(y));
 }
 
+paddle::Tensor nullable_tensor(bool return_none = false) {
+  paddle::Tensor t;
+  if (!return_none) {
+    t = paddle::ones({2, 2});
+  }
+  return t;
+}
+
 PYBIND11_MODULE(custom_cpp_extension, m) {
   m.def("custom_add", &custom_add, "exp(x) + exp(y)");
   m.def("custom_sub", &custom_sub, "exp(x) - exp(y)");
+  m.def("nullable_tensor", &nullable_tensor, "returned Tensor might be None");
 
   py::class_<Power>(m, "Power")
       .def(py::init<int, int>())

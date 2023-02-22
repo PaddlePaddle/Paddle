@@ -100,3 +100,8 @@ cc_test(
   strided_memcpy_test
   SRCS strided_memcpy_test.cc
   DEPS device_context memory)
+
+cc_test(
+  sequence_padding_test
+  SRCS sequence_padding_test.cc
+  DEPS sequence_padding)
