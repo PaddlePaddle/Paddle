@@ -27,7 +27,7 @@ if os.name == 'nt' or sys.platform.startswith('darwin'):
     exit()
 
 # Compile and load cpp extension Just-In-Time.
-sources = ["custom_add.cc", "custom_sub.cc"]
+sources = ["custom_extension.cc", "custom_sub.cc"]
 paddle_includes = []
 for site_packages_path in getsitepackages():
     paddle_includes.append(
