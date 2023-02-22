@@ -262,6 +262,10 @@ class XPUTestElementwiseAddOp(XPUOpTestWrapper):
         def init_axis(self):
             self.axis = 2
 
+    class TestElementwiseAddOp_dtype_int64(TestElementwiseAddOp):
+        def init_dtype(self):
+            self.dtype = self.in_type
+
     class TestAddOp(unittest.TestCase):
         def test_name(self):
             with fluid.program_guard(fluid.Program()):

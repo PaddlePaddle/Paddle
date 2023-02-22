@@ -309,6 +309,14 @@ class TestElementwiseAddOp_xsize_lessthan_ysize_add(TestElementwiseAddOp):
 @unittest.skipIf(
     not paddle.is_compiled_with_xpu(), "core is not compiled with XPU"
 )
+class TestElementwiseAddOp_dtype_int64(TestElementwiseAddOp):
+    def init_dtype(self):
+        self.dtype = np.int64
+
+
+@unittest.skipIf(
+    not paddle.is_compiled_with_xpu(), "core is not compiled with XPU"
+)
 class TestAddOp(unittest.TestCase):
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
