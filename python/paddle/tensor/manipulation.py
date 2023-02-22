@@ -1582,7 +1582,16 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['float32', 'float64', 'int8', 'int16', 'int32', 'int64', 'uint8'],
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int8',
+                'int16',
+                'int32',
+                'int64',
+                'uint8',
+            ],
             'flatten',
         )
         helper = LayerHelper('flatten', **locals())
@@ -3285,7 +3294,7 @@ def broadcast_to(x, shape, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['bool', 'float32', 'float64', 'int32', 'int64'],
+            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
             'broadcast_to',
         )
         check_type(shape, 'shape', (list, tuple, Variable), 'broadcast_to')
@@ -3485,21 +3494,19 @@ def reshape(x, shape, name=None):
             # the value is [10.]
 
     """
-    actual_shape = None
-
     if in_dygraph_mode():
-        tmp_tensor_type = core.eager.Tensor
         if isinstance(shape, (list, tuple)):
-            shape = [
-                item.numpy().item(0)
-                if isinstance(item, tmp_tensor_type)
-                else item
-                for item in shape
-            ]
-            if shape == x.shape:
+            new_shape = []
+            for ele in shape:
+                if isinstance(ele, core.eager.Tensor):
+                    new_shape.append(ele.item())
+                else:
+                    new_shape.append(ele)
+
+            if new_shape == x.shape:
                 out = x
             else:
-                out = _C_ops.reshape(x, shape)
+                out = _C_ops.reshape(x, new_shape)
         elif isinstance(shape, core.eager.Tensor):
             shape.stop_gradient = True
             out = _C_ops.reshape(x, shape)
@@ -3527,11 +3534,6 @@ def reshape(x, shape, name=None):
             'reshape',
         )
         check_type(shape, 'shape', (list, tuple, Variable), 'reshape')
-        check_type(
-            actual_shape, 'actual_shape', (Variable, type(None)), 'reshape'
-        )
-
-        helper = LayerHelper("reshape2", **locals())
 
         def get_attr_shape(list_shape):
             unk_dim_idx = -1
@@ -3579,10 +3581,8 @@ def reshape(x, shape, name=None):
             attrs["shape"] = get_attr_shape(shape)
             if utils._contain_var(shape):
                 inputs['ShapeTensor'] = utils._convert_to_tensor_list(shape)
-            elif isinstance(actual_shape, Variable):
-                actual_shape.stop_gradient = True
-                inputs["Shape"] = actual_shape
 
+        helper = LayerHelper("reshape2", **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         x_shape = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(

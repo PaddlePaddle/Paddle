@@ -23,6 +23,7 @@ namespace phi {
 // NOTE: The InferMeta Functions in this file are arranged in alphabetic order.
 
 void FcXPUInferMeta(const MetaTensor& x,
+                    const MetaTensor& x_max,
                     const MetaTensor& w,
                     const MetaTensor& w_max,
                     const MetaTensor& bias,
@@ -32,7 +33,12 @@ void FcXPUInferMeta(const MetaTensor& x,
                     float beta,
                     int act_type,
                     float act_alpha,
-                    MetaTensor* out);
+                    MetaTensor* out,
+                    MetaTensor* out_max);
+
+void GenerateSequenceXPUInferMeta(const MetaTensor& x,
+                                  DataType dtype,
+                                  MetaTensor* out);
 
 void MultiEncoderXPUInferMeta(
     const MetaTensor& x,
