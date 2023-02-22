@@ -209,6 +209,13 @@ TOLERANCE = {
         ),
         (
             np.random.rand(2, 3, 4),
+            np.random.rand(2, 5, 4),
+            False,
+            True,
+            np.float64,
+        ),
+        (
+            np.random.rand(2, 3, 4),
             np.random.rand(2, 4, 5),
             False,
             False,
@@ -219,13 +226,6 @@ TOLERANCE = {
             np.random.rand(2, 4, 5),
             True,
             False,
-            np.float64,
-        ),
-        (
-            np.random.rand(2, 3, 4),
-            np.random.rand(2, 5, 4),
-            False,
-            True,
             np.float64,
         ),
         (
@@ -312,7 +312,10 @@ class TestMatmulDoubleGradComp(unittest.TestCase):
         elif self.primal0.dtype == np.float64:
             d_type = "float64"
 
-        if d_type != "float16":
+        if paddle.device.get_device() == "cpu" and d_type == "float16":
+            # matmul fp16 cpu not supposed
+            pass
+        else:
             dx, dy, ddout = actual(
                 self.primal0, self.primal1, self.trans_0, self.trans_1, d_type
             )
@@ -336,6 +339,157 @@ class TestMatmulDoubleGradComp(unittest.TestCase):
             np.testing.assert_allclose(
                 actual=ddout,
                 desired=ddout_,
+                rtol=TOLERANCE[d_type]['rtol'],
+                atol=TOLERANCE[d_type]['atol'],
+            )
+
+
+@param.parameterized_class(
+    ('primal0', 'primal1', 'trans_0', 'trans_1', 'dtype'),
+    [
+        (
+            np.random.rand(2, 3, 4),
+            np.random.rand(4),
+            False,
+            False,
+            np.float16,
+        ),
+        (
+            np.random.rand(2, 3, 4),
+            np.random.rand(4),
+            False,
+            False,
+            np.float32,
+        ),
+        (
+            np.random.rand(2, 3, 4),
+            np.random.rand(4),
+            False,
+            False,
+            np.float64,
+        ),
+    ],
+)
+class TestMatmulTribleGradComp(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.primal0 = cls.primal0.astype(cls.dtype)
+        cls.primal1 = cls.primal1.astype(cls.dtype)
+        cls.trans_0 = cls.trans_0
+        cls.trans_1 = cls.trans_1
+
+    def setUp(self):
+        paddle.enable_static()
+
+    def tearDown(self):
+        paddle.disable_static()
+
+    def test_matmul_grad_comp(self):
+        def actual(primal0, primal1, trans_0, trans_1, dtype_):
+            core._set_prim_backward_enabled(True)
+            paddle.disable_static()
+            x = paddle.to_tensor(primal0, dtype=dtype_, stop_gradient=False)
+            y = paddle.to_tensor(primal1, dtype=dtype_, stop_gradient=False)
+            out = paddle.matmul(x, y, trans_0, trans_1)
+            dout = paddle.ones_like(out, dtype=dtype_)
+            dout.stop_gradient = False
+            res = paddle.grad(
+                [out], [x, y], dout, create_graph=True, retain_graph=True
+            )
+            res_double = paddle.grad(
+                res, [x, y, dout], create_graph=True, retain_graph=True
+            )
+            d_x = paddle.ones_like(res_double[0], dtype=dtype_)
+            d_y = paddle.ones_like(res_double[1], dtype=dtype_)
+            d_dout = paddle.ones_like(res_double[2], dtype=dtype_)
+            d_x.stop_gradient = False
+            d_y.stop_gradient = False
+            d_dout.stop_gradient = False
+            res_triple = paddle.grad(
+                res_double,
+                [x, y],
+                [d_x, d_y, d_dout],
+                create_graph=False,
+                retain_graph=False,
+            )
+            return (
+                res_double[0].numpy(),
+                res_double[1].numpy(),
+                res_double[2].numpy(),
+                res_triple[0].numpy(),
+                res_triple[1].numpy(),
+            )
+
+        def desired(primal0, primal1, trans_0, trans_1, dtype_):
+            core._set_prim_backward_enabled(False)
+            paddle.disable_static()
+            x = paddle.to_tensor(primal0, dtype=dtype_, stop_gradient=False)
+            y = paddle.to_tensor(primal1, dtype=dtype_, stop_gradient=False)
+            out = paddle.matmul(x, y, trans_0, trans_1)
+            dout = paddle.ones_like(out, dtype=dtype_)
+            dout.stop_gradient = False
+            res = paddle.grad(
+                out, [x, y], dout, create_graph=True, retain_graph=True
+            )
+            res_double = paddle.grad(
+                res, [x, y, dout], create_graph=True, retain_graph=True
+            )
+            res_triple = paddle.grad(
+                res_double, [x, y], create_graph=False, retain_graph=True
+            )
+            return (
+                res_double[0].numpy(),
+                res_double[1].numpy(),
+                res_double[2].numpy(),
+                res_triple[0].numpy(),
+                res_triple[1].numpy(),
+            )
+
+        d_type = "float32"
+        if self.primal0.dtype == np.float16:
+            d_type = "float16"
+        elif self.primal0.dtype == np.float64:
+            d_type = "float64"
+
+        if paddle.device.get_device() == "cpu" and d_type == "float16":
+            # matmul fp16 cpu not supposed
+            pass
+        else:
+            dx, dy, ddout, dx2, dy2 = actual(
+                self.primal0, self.primal1, self.trans_0, self.trans_1, d_type
+            )
+
+            dx_, dy_, ddout_, dx2_, dy2_ = desired(
+                self.primal0, self.primal1, self.trans_0, self.trans_1, d_type
+            )
+
+            np.testing.assert_allclose(
+                actual=dx,
+                desired=dx_,
+                rtol=TOLERANCE[d_type]['rtol'],
+                atol=TOLERANCE[d_type]['atol'],
+            )
+            np.testing.assert_allclose(
+                actual=dy,
+                desired=dy_,
+                rtol=TOLERANCE[d_type]['rtol'],
+                atol=TOLERANCE[d_type]['atol'],
+            )
+            np.testing.assert_allclose(
+                actual=ddout,
+                desired=ddout_,
+                rtol=TOLERANCE[d_type]['rtol'],
+                atol=TOLERANCE[d_type]['atol'],
+            )
+            np.testing.assert_allclose(
+                actual=dx2,
+                desired=dx2_,
+                rtol=TOLERANCE[d_type]['rtol'],
+                atol=TOLERANCE[d_type]['atol'],
+            )
+            np.testing.assert_allclose(
+                actual=dy2,
+                desired=dy2_,
                 rtol=TOLERANCE[d_type]['rtol'],
                 atol=TOLERANCE[d_type]['atol'],
             )

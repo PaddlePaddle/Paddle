@@ -28,7 +28,7 @@ using IntArray =
 template <typename T>
 void tanh_grad(const Tensor& out, const Tensor& grad_out, Tensor* grad_x) {
   if (!grad_x) return;
-  auto tmp = pow<T>(out, 2.0);
+  auto tmp = out * out;
   tmp = scale<T>(tmp, -1.0, 1.0, true);
   auto grad_x_tmp = grad_out * tmp;
   set_output<T>(grad_x_tmp, grad_x);
@@ -152,7 +152,6 @@ void sum_grad(const Tensor& x,
         for (int64_t i = 0; i < axis_size; i++) {
           if (axis[i] < 0) {
             axis_[i] = axis[i] + x_dim_size;
-            std::cout << "axis_[" << i << "] = " << axis[i];
           }
         }
       }
@@ -175,7 +174,7 @@ void divide_grad(const Tensor& x,
                  Tensor* dx,
                  Tensor* dy) {
   if (dy) {
-    // dy = -(x/y^2) * grad_out
+    // dy = -(x/y^2) * dout
     auto tmp0 = pow<T>(y, 2.0);
     auto tmp1 = x / tmp0;
     auto tmp2 = scale<T>(tmp1, -1.0, 0.0, true);
@@ -196,7 +195,7 @@ void divide_grad(const Tensor& x,
     }
   }  // indicate we will compute dy
   if (dx) {
-    // dx = (1/y) * grad_out
+    // dx = (1/y) * dout
     auto one_tensor = full<T>(phi::vectorize(y.dims()), 1.0, y.dtype());
     auto dx_res = one_tensor / y * out_grad;
     if (y.dims() != x.dims()) {

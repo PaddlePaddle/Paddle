@@ -35,6 +35,7 @@ TOLERANCE = {
 }
 
 
+# TODO(ruting) test cases when fix static backward
 @param.parameterized_class(
     ('primal0', 'primal1', 'primal2', 'trans_0', 'trans_1', 'dtype'),
     [
@@ -284,7 +285,10 @@ class TestMatmulDoubleGradComp(unittest.TestCase):
         elif self.primal0.dtype == np.float16:
             dtype = 'float64'
 
-        if dtype != 'float16':
+        if paddle.device.get_device() == "cpu" and dtype == "float16":
+            # matmul fp16 cpu not supposed
+            pass
+        else:
             dx, dy, ddout = actual(
                 self.primal0,
                 self.primal1,
