@@ -575,29 +575,21 @@ class OpTest(unittest.TestCase):
                     tensor = core.LoDTensor()
                     if isinstance(np_value, tuple):
                         tensor.set(np_value[0], place)
-                        if self.is_calc_ref:
-                            dtype = np.array(np_value[1]).dtype
-                            if dtype == np.float16:
-                                if isinstance(np_value[1], list):
-                                    tensor.set_recursive_sequence_lengths(
-                                        np.array(np_value[1]).astype(np.float32)
-                                    )
-                                else:
-                                    tensor.set_recursive_sequence_lengths(
-                                        np_value[1].astype(np.float32)
-                                    )
+                        dtype = np.array(np_value[1]).dtype
+                        if self.is_calc_ref and dtype == np.float16:
+                            if isinstance(np_value[1], list):
+                                tensor.set_recursive_sequence_lengths(
+                                    np.array(np_value[1]).astype(np.float32)
+                                )
                             else:
                                 tensor.set_recursive_sequence_lengths(
-                                    np_value[1]
+                                    np_value[1].astype(np.float32)
                                 )
                         else:
                             tensor.set_recursive_sequence_lengths(np_value[1])
                     else:
-                        if self.is_calc_ref:
-                            if np_value.dtype == np.float16:
-                                tensor.set(np_value.astype(np.float32), place)
-                            else:
-                                tensor.set(np_value, place)
+                        if self.is_calc_ref and np_value.dtype == np.float16:
+                            tensor.set(np_value.astype(np.float32), place)
                         else:
                             tensor.set(np_value, place)
                     feed_map[name] = tensor
