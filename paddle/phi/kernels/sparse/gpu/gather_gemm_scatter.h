@@ -60,7 +60,7 @@ void GatherGemmScatter(const phi::GPUContext& ctx,
   for (auto i = 1; i < fp16_kernels.size(); i++)
     tuner->AddCallBack(fp16_kernels[i]);
 
-  size_t key = autotune::GetKey(m, n, k);
+  size_t key = autotune::GenKey(m, n, k);
 
   tuner->CutlassRun(ctx,
                     key,
