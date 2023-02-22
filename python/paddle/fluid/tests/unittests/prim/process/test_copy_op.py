@@ -23,18 +23,16 @@ paddle.framework.random._manual_program_seed(2023)
 
 
 def fn(x):
-    tt1 = paddle.nn.Dropout(p=0.5)
-    tt2 = paddle.nn.Dropout(p=0.6)
-    y = tt1(x)
-    z = tt2(y)
+    dropout1 = paddle.nn.Dropout(p=0.5)
+    dropout2 = paddle.nn.Dropout(p=0.6)
+    y = dropout1(x)
+    z = dropout2(y)
     return z
 
 
-def expect_forward(inputs):
-    return fn(inputs)
+class TestCompositeCopyOp(unittest.TestCase):
+    """This case is set to test copying op process even if some attrs of origin op has been blocked during constructing program."""
 
-
-class TestCompositeSoftmax(unittest.TestCase):
     def cal_composite(self, inputs):
         paddle.enable_static()
         core._set_prim_forward_enabled(True)
@@ -69,9 +67,8 @@ class TestCompositeSoftmax(unittest.TestCase):
         np_data = np.random.random([16, 64, 128, 128]).astype("float32")
         tensor_data = paddle.to_tensor(np_data)
 
-        expect = expect_forward(tensor_data).numpy()
+        expect = fn(tensor_data).numpy()
         actual = self.cal_composite(np_data)[0]
-        # breakpoint()
 
         assert expect.dtype == actual.dtype
         np.testing.assert_allclose(
