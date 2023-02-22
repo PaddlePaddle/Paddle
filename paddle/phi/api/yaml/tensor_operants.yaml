@@ -1,3 +1,4 @@
+# Attach operants to Tensor, this file should be consistent with the declaration in `tensor.h`
 - unsqueeze
 - pow
 - exp
