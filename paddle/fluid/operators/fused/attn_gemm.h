@@ -14,7 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
 #include "paddle/fluid/operators/fused/fused_gemm_epilogue_op.h"
+#endif
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/platform/float16.h"
@@ -29,8 +31,6 @@ namespace operators {
 template <typename T>
 class AttnMatMul {
  public:
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-
   // (m, n, k) = bsz_seq, output_size, input_size
   AttnMatMul(const phi::GPUContext& dev_ctx,
              bool transA,
@@ -72,8 +72,8 @@ class AttnMatMul {
     // here: (transa, transb): nt, input * weight.
     CBLAS_TRANSPOSE transA = transA_ ? CblasTrans : CblasNoTrans;
     CBLAS_TRANSPOSE transB = transB_ ? CblasTrans : CblasNoTrans;
-    MT alpha = static_cast<MT>(1.0);
-    MT beta = static_cast<MT>(0.0);
+    T alpha = static_cast<T>(1.0);
+    T beta = static_cast<T>(0.0);
 
     // (m, n, k) = bsz_seq, output_size, input_size, (input, weight, out)
     auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx_);
@@ -122,9 +122,9 @@ class AttnMatMul {
     }
 #endif
 
-    MT alpha = static_cast<MT>(1.0);
-    MT beta_dA = use_addto ? static_cast<MT>(1.0) : static_cast<MT>(0.0);
-    MT beta_dB = static_cast<MT>(0.0);
+    T alpha = static_cast<T>(1.0);
+    T beta_dA = use_addto ? static_cast<T>(1.0) : static_cast<T>(0.0);
+    T beta_dB = static_cast<T>(0.0);
 
     auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx_);
     if (!transA_) {
