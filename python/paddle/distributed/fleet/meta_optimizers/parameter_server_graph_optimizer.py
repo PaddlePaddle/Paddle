@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
+
 import paddle
 
 from .parameter_server_optimizer import ParameterServerOptimizer
@@ -55,11 +56,15 @@ class ParameterServerGraphOptimizer(ParameterServerOptimizer):
         dist_strategy = self._get_distributed_strategy()
 
         build_strategy = dist_strategy.get_build_strategy()
+        exec_strategy = dist_strategy.get_execute_strategy()
 
-        self._compiled_program = paddle.static.CompiledProgram(
-            main_program,
+        self._compiled_program = paddle.static.CompiledProgram(main_program)
+
+        self._compiled_program.with_data_parallel(
             loss_name=loss.name,
             build_strategy=build_strategy,
+            exec_strategy=exec_strategy,
+            share_vars_from=None,
         )
 
         return self._compiled_program
@@ -67,6 +72,7 @@ class ParameterServerGraphOptimizer(ParameterServerOptimizer):
     def minimize(
         self, loss, startup_program=None, parameter_list=None, no_grad_set=None
     ):
+        raise Exception("[lyk] test")
         program = loss.block.program
         compiled_program = self._try_to_compile(program, loss)
         program._graph = compiled_program
