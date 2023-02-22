@@ -567,15 +567,21 @@ class OpTest(unittest.TestCase):
                 for name, np_value in self.inputs[var_name]:
                     tensor = core.LoDTensor()
                     if isinstance(np_value, tuple):
+                        dtype = np.array(np_value[1]).dtype
                         tensor.set(np_value[0], place)
-                        if np_value[1].dtype == np.float16:
-                            tensor.set_recursive_sequence_lengths(
-                                np_value[1].astype(np.float32)
-                            )
+                        if dtype == np.float16:
+                            if isinstance(np_value[1], list):
+                                tensor.set_recursive_sequence_lengths(
+                                    np.array(np_value[1]).astype(np.float32)
+                                )
+                            else:
+                                tensor.set_recursive_sequence_lengths(
+                                    np_value[1].astype(np.float32)
+                                )
                         else:
                             tensor.set_recursive_sequence_lengths(np_value[1])
                     else:
-                        if np_value[1].dtype == np.float16:
+                        if np_value.dtype == np.float16:
                             tensor.set(np_value.astype(np.float32), place)
                         else:
                             tensor.set(np_value, place)
@@ -584,7 +590,7 @@ class OpTest(unittest.TestCase):
                 tensor = core.LoDTensor()
                 if isinstance(self.inputs[var_name], tuple):
                     tensor.set(self.inputs[var_name][0], place)
-                    if self.inputs[var_name][1] == np.float16:
+                    if self.inputs[var_name][1].dtype == np.float16:
                         tensor.set_recursive_sequence_lengths(
                             self.inputs[var_name][1].astype(np.float32)
                         )
@@ -593,7 +599,7 @@ class OpTest(unittest.TestCase):
                             self.inputs[var_name][1]
                         )
                 else:
-                    if self.inputs[var_name] == np.float16:
+                    if self.inputs[var_name].dtype == np.float16:
                         tensor.set(
                             self.inputs[var_name].astype(np.float32), place
                         )
