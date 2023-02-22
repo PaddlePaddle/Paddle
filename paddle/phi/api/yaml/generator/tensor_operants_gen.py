@@ -83,8 +83,6 @@ namespace paddle {
 
 namespace experimental {
 
-using Scalar = paddle::experimental::Scalar;
-
 Tensor Tensor::operator+(const Tensor &other) const {
   return add(other);
 }
@@ -246,7 +244,6 @@ using Tensor = paddle::experimental::Tensor;
 using Scalar = paddle::experimental::Scalar;
 using IntArray = paddle::experimental::IntArray;
 using TensorOperantsBase = paddle::operants::TensorOperantsBase;
-using Scalar = paddle::experimental::Scalar;
 
 /**
  * [ Why need OperantsManager? ]
