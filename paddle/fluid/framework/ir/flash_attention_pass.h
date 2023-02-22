@@ -117,8 +117,8 @@ struct FlashAttentionGradPattern : public PatternBase {
   PATTERN_DECL_NODE(qk_matmul_grad_w_grad);
 
   // split grad
-  PATTERN_DECL_NODE(concat_op);
-  PATTERN_DECL_NODE(concat_out);
+  PATTERN_DECL_NODE(qkv_concat_op);
+  PATTERN_DECL_NODE(qkv_concat_out);
 
   PATTERN_DECL_NODE(transpose_grad_op);
   PATTERN_DECL_NODE(transpose_grad_out);

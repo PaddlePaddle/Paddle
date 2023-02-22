@@ -21,7 +21,7 @@ namespace ir {
 namespace patterns {
 
 /*
- * case 1 : stack_qkv
+ * # pattern case 1 : stack_qkv
  *                  q       [scale]
  * | tp  --> split ---> mat -------> softmax --> drop --> mat --> tp |
  *              \      /                               /
@@ -30,6 +30,12 @@ namespace patterns {
  *                 \/_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _/
  *
  * | split --> flash_attn |
+ *
+ * # scale pos
+ * 0 no scale
+ * 1 scale q
+ * 2 scale k
+ * 3 scale mat
  */
 
 PDNode* FlashAttentionPattern::operator()(
@@ -137,11 +143,19 @@ PDNode* FlashAttentionPattern::operator()(
   auto* qkv_transpose_out = pattern->NewNode(qkv_transpose_out_repr())
                                 ->assert_is_op_output("transpose2");
 
-  if (scale_pos == 1) {
+  if (scale_pos == 0) {  // no scale
+    qk_matmul->LinksFrom({q_transpose_out, k_transpose_out})
+        .LinksTo({qk_matmul_out});
+    qk_softmax->LinksFrom({qk_matmul_out}).LinksTo({qk_softmax_out});
+  } else if (scale_pos == 1) {  // scale q
+    scale->LinksFrom({q_transpose_out}).LinksTo({scale_out});
+    qk_matmul->LinksFrom({scale_out, k_transpose_out}).LinksTo({qk_matmul_out});
+    qk_softmax->LinksFrom({qk_matmul_out}).LinksTo({qk_softmax_out});
+  } else if (scale_pos == 2) {  // scale k
     scale->LinksFrom({k_transpose_out}).LinksTo({scale_out});
     qk_matmul->LinksFrom({q_transpose_out, scale_out}).LinksTo({qk_matmul_out});
     qk_softmax->LinksFrom({qk_matmul_out}).LinksTo({qk_softmax_out});
-  } else if (scale_pos == 2) {
+  } else if (scale_pos == 3) {  // scale mat
     qk_matmul->LinksFrom({q_transpose_out, k_transpose_out})
         .LinksTo({qk_matmul_out});
     scale->LinksFrom({qk_matmul_out}).LinksTo({scale_out});
@@ -275,9 +289,10 @@ PDNode* FlashAttentionGradPattern::operator()(
   auto* scale_grad_out = pattern->NewNode(scale_grad_out_repr())
                              ->assert_is_op_output("scale", "Out");
 
-  auto* concat = pattern->NewNode(concat_op_repr())->assert_is_op("concat");
-  auto* concat_out =
-      pattern->NewNode(concat_out_repr())->assert_is_op_output("concat", "Out");
+  auto* qkv_concat =
+      pattern->NewNode(qkv_concat_op_repr())->assert_is_op("concat");
+  auto* qkv_concat_out = pattern->NewNode(qkv_concat_out_repr())
+                             ->assert_is_op_output("concat", "Out");
   if (scale_pos == 1) {
     qk_softmax_grad_out->assert_is_op_input("matmul_v2_grad", "X");
     qk_matmul_grad
@@ -291,10 +306,10 @@ PDNode* FlashAttentionGradPattern::operator()(
     scale_grad_out->assert_is_op_input("concat");
     qkv_matmul_grad_w_grad->assert_is_op_input("concat");
 
-    concat
+    qkv_concat
         ->LinksFrom(
             {qk_matmul_grad_x_grad, scale_grad_out, qkv_matmul_grad_w_grad})
-        .LinksTo({concat_out});
+        .LinksTo({qkv_concat_out});
   } else if (scale_pos == 2) {
     qk_softmax_grad_out->assert_is_op_input("scale", "X");
     scale_grad->LinksFrom({qk_softmax_grad_out}).LinksTo({scale_grad_out});
@@ -307,11 +322,11 @@ PDNode* FlashAttentionGradPattern::operator()(
     qk_matmul_grad_w_grad->assert_is_op_input("concat");
     qkv_matmul_grad_w_grad->assert_is_op_input("concat");
 
-    concat
+    qkv_concat
         ->LinksFrom({qk_matmul_grad_x_grad,
                      qk_matmul_grad_w_grad,
                      qkv_matmul_grad_w_grad})
-        .LinksTo({concat_out});
+        .LinksTo({qkv_concat_out});
   }
 
   auto* transpose_grad = pattern->NewNode(transpose_grad_op_repr())
@@ -322,9 +337,9 @@ PDNode* FlashAttentionGradPattern::operator()(
   auto* transpose_grad_xshape =
       pattern->NewNode(transpose_grad_xshape_repr())
           ->assert_is_op_output("transpose2_grad", "XShape");
-  concat_out->assert_is_op_input("transpose2_grad", "Out@GRAD");
+  qkv_concat_out->assert_is_op_input("transpose2_grad", "Out@GRAD");
 
-  transpose_grad->LinksFrom({concat_out, transpose_grad_xshape})
+  transpose_grad->LinksFrom({qkv_concat_out, transpose_grad_xshape})
       .LinksTo({transpose_grad_out});
   return transpose_grad_out;
 }
@@ -421,9 +436,15 @@ ir::Graph* FlashAttentionsPass::FlashAttentionFwd(Graph* graph,
       IR_NODE_LINK_TO(split_op, k_transpose_out);
       IR_NODE_LINK_TO(split_op, v_transpose_out);
 
+      auto q_size = q_transpose_out->Var()->GetShape();
+
       VarDesc softmax_lse(patterns::PDNodeName(name_scope_, "softmax_lse"));
+      softmax_lse.SetShape({q_size[0], q_size[2], q_size[1]});
+      softmax_lse.SetDataType(proto::VarType::FP32);
       auto* softmax_lse_var = g->CreateVarNode(&softmax_lse);
       VarDesc seed_offset(patterns::PDNodeName(name_scope_, "seed_offset"));
+      seed_offset.SetShape({2});
+      seed_offset.SetDataType(proto::VarType::INT64);
       auto* seed_offset_var = g->CreateVarNode(&seed_offset);
 
       OpDesc flashattn_op_desc(transpose_op->Op()->Block());
@@ -503,19 +524,160 @@ ir::Graph* FlashAttentionsPass::FlashAttentionBwd(Graph* graph,
   auto* x = gpd.mutable_pattern()
                 ->NewNode(patterns::PDNodeName(name_scope_, "x"))
                 ->AsInput()
-                ->assert_is_op_input("transpose2", "X@GRAD");
+                ->assert_is_op_input("transpose2_grad", "Out@GRAD");
   patterns::FlashAttentionGradPattern fagp(gpd.mutable_pattern(),
                                            "flash_attention_grad_pattern");
 
-  fagp(x, 1, true, false, true);
+  fagp(x, scale_pos, stack_qkv, is_causal, is_dropout);
+  VLOG(0) << "FlashAttention pass bwd" << scale_pos << stack_qkv << is_causal
+          << is_dropout;
 
   int found_flash_attention = 0;
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    VLOG(3) << "handle FlashAttention pass";
+    VLOG(0) << "FlashAttention handle pass bwd" << scale_pos << stack_qkv
+            << is_causal << is_dropout;
 
-    GraphSafeRemoveNodes(g, {});
+    // only available for fp16 and bf16
+    if (subgraph.at(x)->Var()->GetDataType() != proto::VarType::FP16 &&
+        subgraph.at(x)->Var()->GetDataType() != proto::VarType::BF16) {
+      return;
+    }
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        qkv_transpose_grad_op, qkv_transpose_grad_op, fagp);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        qkv_transpose_grad_out, qkv_transpose_grad_out, fagp);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        qkv_transpose_grad_xshape, qkv_transpose_grad_xshape, fagp);
+
+    GET_IR_NODE_FROM_SUBGRAPH(qkv_matmul_grad_op, qkv_matmul_grad_op, fagp);
+    GET_IR_NODE_FROM_SUBGRAPH(qkv_matmul_grad_x, qkv_matmul_grad_x, fagp);
+    GET_IR_NODE_FROM_SUBGRAPH(qkv_matmul_grad_w, qkv_matmul_grad_w, fagp);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        qkv_matmul_grad_x_grad, qkv_matmul_grad_x_grad, fagp);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        qkv_matmul_grad_w_grad, qkv_matmul_grad_w_grad, fagp);
+
+    GET_IR_NODE_FROM_SUBGRAPH(dropout_grad_op, dropout_grad_op, fagp);
+    GET_IR_NODE_FROM_SUBGRAPH(dropout_grad_out, dropout_grad_out, fagp);
+    GET_IR_NODE_FROM_SUBGRAPH(dropout_grad_mask, dropout_grad_mask, fagp);
+
+    GET_IR_NODE_FROM_SUBGRAPH(qk_softmax_grad_op, qk_softmax_grad_op, fagp);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        qk_softmax_grad_fwd_out, qk_softmax_grad_fwd_out, fagp);
+    GET_IR_NODE_FROM_SUBGRAPH(qk_softmax_grad_out, qk_softmax_grad_out, fagp);
+
+    GET_IR_NODE_FROM_SUBGRAPH(scale_grad_op, scale_grad_op, fagp);
+    GET_IR_NODE_FROM_SUBGRAPH(scale_grad_out, scale_grad_out, fagp);
+
+    GET_IR_NODE_FROM_SUBGRAPH(qk_matmul_grad_op, qk_matmul_grad_op, fagp);
+    GET_IR_NODE_FROM_SUBGRAPH(qk_matmul_grad_x, qk_matmul_grad_x, fagp);
+    GET_IR_NODE_FROM_SUBGRAPH(qk_matmul_grad_w, qk_matmul_grad_w, fagp);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        qk_matmul_grad_x_grad, qk_matmul_grad_x_grad, fagp);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        qk_matmul_grad_w_grad, qk_matmul_grad_w_grad, fagp);
+
+    GET_IR_NODE_FROM_SUBGRAPH(qkv_concat_op, qkv_concat_op, fagp);
+    GET_IR_NODE_FROM_SUBGRAPH(qkv_concat_out, qkv_concat_out, fagp);
+
+    GET_IR_NODE_FROM_SUBGRAPH(transpose_grad_op, transpose_grad_op, fagp);
+    GET_IR_NODE_FROM_SUBGRAPH(transpose_grad_out, transpose_grad_out, fagp);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        transpose_grad_xshape, transpose_grad_xshape, fagp);
+
+    if (stack_qkv) {
+      /*
+    OpDesc flashattn_op_grad_desc(qkv_transpose_grad_op->Op()->Block());
+    flashattn_op_grad_desc.SetType("flash_attn_grad");
+    flashattn_op_grad_desc.SetInput("q", {q_transpose_out->Name()});
+    flashattn_op_grad_desc.SetInput("k", {k_transpose_out->Name()});
+    flashattn_op_grad_desc.SetInput("v", {v_transpose_out->Name()});
+    flashattn_op_grad_desc.SetInput("out", {v_transpose_out->Name()});
+    flashattn_op_grad_desc.SetInput("softmax_lse", {v_transpose_out->Name()});
+    flashattn_op_grad_desc.SetInput("seed_offset", {v_transpose_out->Name()});
+    flashattn_op_grad_desc.SetInput("out_grad", {v_transpose_out->Name()});
+    flashattn_op_grad_desc.SetOutput("out", {qkv_transpose_out->Name()});
+    if (is_dropout) {
+      flashattn_op_grad_desc.SetOutput("softmax", {dropout_out->Name()});
+      auto dropout_prob = dropout_op->Op()->GetAttr("dropout_prob");
+      flashattn_op_grad_desc.SetAttr("dropout", dropout_prob);
+    } else {
+      flashattn_op_grad_desc.SetOutput("softmax", {qk_softmax_out->Name()});
+      flashattn_op_grad_desc.SetAttr("dropout", 0.0f);
+    }
+    flashattn_op_grad_desc.SetOutput("softmax_lse", {softmax_lse_var->Name()});
+    flashattn_op_grad_desc.SetOutput("seed_offset", {seed_offset_var->Name()});
+    flashattn_op_grad_desc.SetAttr("causal", is_causal);
+    flashattn_op_grad_desc.SetAttr("return_softmax", true);
+    auto flashattn_op_grad = g->CreateOpNode(&flashattn_op_grad_desc);
+
+    IR_NODE_LINK_TO(q_transpose_out, flashattn_op_grad);
+    IR_NODE_LINK_TO(k_transpose_out, flashattn_op_grad);
+    IR_NODE_LINK_TO(v_transpose_out, flashattn_op_grad);
+    IR_NODE_LINK_TO(flashattn_op_grad, qkv_transpose_out);
+    if (is_dropout) {
+      IR_NODE_LINK_TO(flashattn_op_grad, dropout_out);
+    } else {
+      IR_NODE_LINK_TO(flashattn_op_grad, qk_softmax_out);
+    }
+    IR_NODE_LINK_TO(flashattn_op_grad, softmax_lse_var);
+    IR_NODE_LINK_TO(flashattn_op_grad, seed_offset_var);
+
+
+    OpDesc concat_op_desc;
+    concat_op_desc.SetType("concat");
+    concat_op_desc.SetInput("X", {subgraph.at(x)->Name()});
+    concat_op_desc.SetOutput("Out",
+                            {q_transpose_out->Name(),
+                             k_transpose_out->Name(),
+                             v_transpose_out->Name()});
+    concat_op_desc.SetAttr("axis", 3);
+    concat_op_desc.SetAttr("num", 3);
+    auto concat_op = g->CreateOpNode(&concat_op_desc);
+
+    IR_NODE_LINK_TO(subgraph.at(x), concat_op);
+    IR_NODE_LINK_TO(concat_op, q_transpose_out);
+    IR_NODE_LINK_TO(concat_op, k_transpose_out);
+    IR_NODE_LINK_TO(concat_op, v_transpose_out);
+
+    VarDesc softmax_lse(patterns::PDNodeName(name_scope_, "softmax_lse"));
+    auto* softmax_lse_var = g->CreateVarNode(&softmax_lse);
+    VarDesc seed_offset(patterns::PDNodeName(name_scope_, "seed_offset"));
+    auto* seed_offset_var = g->CreateVarNode(&seed_offset);
+    */
+
+    } else {
+    }
+
+    GraphSafeRemoveNodes(g, {qkv_transpose_grad_op,
+                             qkv_transpose_grad_out,
+                             qkv_transpose_grad_xshape,
+                             qkv_matmul_grad_op,
+                             qkv_matmul_grad_x,
+                             qkv_matmul_grad_w,
+                             qkv_matmul_grad_x_grad,
+                             qkv_matmul_grad_w_grad,
+                             dropout_grad_op,
+                             dropout_grad_out,
+                             dropout_grad_mask,
+                             qk_softmax_grad_op,
+                             qk_softmax_grad_fwd_out,
+                             qk_softmax_grad_out,
+                             scale_grad_op,
+                             scale_grad_out,
+                             qk_matmul_grad_op,
+                             qk_matmul_grad_x,
+                             qk_matmul_grad_w,
+                             qk_matmul_grad_x_grad,
+                             qk_matmul_grad_w_grad,
+                             qkv_concat_op,
+                             qkv_concat_out,
+                             transpose_grad_op,
+                             transpose_grad_out,
+                             transpose_grad_xshape});
 
     found_flash_attention++;
   };
