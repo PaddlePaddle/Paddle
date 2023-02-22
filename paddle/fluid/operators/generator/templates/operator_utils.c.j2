@@ -12,7 +12,7 @@ class {{op_name | to_pascal_case}}OpMaker : public framework::OpProtoAndCheckerM
 {{add_output(loop.index0, output, op_name)}};
     {% endfor %}
     {% for attr in op["attrs"] %}
-      {% if attr["fluid_name"] in op["kernel"]["param"] %}
+      {% if attr["fluid_name"] %}
 {{add_attr(loop.index0, attr, op_name)}};
       {% endif %}
     {% endfor %}
@@ -260,6 +260,7 @@ paddle::small_vector<const char*> outputs {
 {% set kernel = op["kernel"] %}
 phi::KernelKey GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const override {
+    phi::KernelKey kt;
 {%if kernel["data_type"] is not none %}{# data type ---------------------------------#}
   {% if kernel["data_type"]["candidates"] | length == 1 %}
     {% set data_type_arg = kernel["data_type"]["candidates"][0] %}
@@ -279,14 +280,22 @@ phi::KernelKey GetExpectedKernelType(
     data_type = framework::OperatorWithKernel::IndicateVarDataType(ctx, {{data_type_args[1] | to_opmaker_name}});
   }
   {% endif %}
-  return phi::KernelKey(data_type, ctx.GetPlace());
-{% elif kernel["backend"] is not none %}
-phi::KernelKey kt = OperatorWithKernel::GetExpectedKernelType(ctx);
-    // BitwiseOp kernel's device type is decided by input tensor place
+   kt = phi::KernelKey(data_type, ctx.GetPlace());
+{% endif -%}
+
+{%- if kernel["backend"] is not none %}
+    {% if kernel["data_type"] is none %}
+    kt = OperatorWithKernel::GetExpectedKernelType(ctx);
+    {% endif %}
     kt.set_backend(
         phi::TransToPhiBackend(ctx.Input<phi::DenseTensor>("{{kernel["backend"]["candidates"][0]}}")->place()));
-    return kt;
 {% endif %}
+{% if (kernel["backend"] is not none or kernel["data_type"] is not none) and ("force_cpu" in op["attr_dict"]) %}
+    if (ctx.Attr<bool>("force_cpu")) {
+      kt.set_backend(phi::Backend::CPU);
+    }
+{% endif %}
+  return kt;
 }
 {% endmacro %}
 
@@ -526,6 +535,31 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
       forward_input_orig_names,
       forward_output_orig_names,
       true)}});
+  {% endfor %}
+
+  {% for attr in invoke_op["attrs"] %}
+    {% set attr_name = attr["fluid_name"] %}
+    {% set fw_attrs = forward_op["attrs"] %}
+    {% if attr_name in forward_attr_names %}
+      {# invoke_op's attrs and fw_attr's attrs must be the same#}
+      {% set fw_attr = fw_attrs[loop.index0] %}
+      {% if fw_attr["typename"] == "IntArray" %}
+        {% if 'tensor_name' in attr or 'manual_flag' not in attr %}
+    if (this->HasInput("{{fw_attr | to_int_array_tensor_name}}")) {
+      grad_op->SetInput("{{fw_attr | to_int_array_tensor_name}}", this->Input("{{fw_attr | to_int_array_tensor_name}}"));
+    }
+        {% endif %}
+        {% if 'tensors_name' in fw_attr or 'manual_flag' not in fw_attr %}
+    if (this->HasInput("{{fw_attr | to_int_array_tensors_name}}")) {
+      grad_op->SetInput("{{fw_attr | to_int_array_tensors_name}}", this->Input("{{fw_attr | to_int_array_tensors_name}}"));
+    }
+        {% endif %}
+      {% elif fw_attr["typename"] == "Scalar" %}
+    if (this->HasInput("{{fw_attr | to_scalar_tensor_name}}")) {
+      grad_op->SetInput("{{fw_attr | to_scalar_tensor_name}}", this->Input("{{fw_attr | to_scalar_tensor_name}}"));
+    }
+      {% endif %}
+    {% endif %}
   {% endfor %}
 
   {% for attr in invoke_op["attrs"] %}
