@@ -27,6 +27,7 @@ class ParameterServerGraphOptimizer(ParameterServerOptimizer):
         self.meta_optimizers_white_list = []
 
     def _can_apply(self):
+        return False
         if self.role_maker._is_collective:
             return False
 
