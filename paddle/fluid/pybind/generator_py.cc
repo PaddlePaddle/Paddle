@@ -21,6 +21,7 @@ limitations under the License. */
 #endif
 
 #include <memory>
+#include <sstream>
 #include <string>
 #include <vector>
 
