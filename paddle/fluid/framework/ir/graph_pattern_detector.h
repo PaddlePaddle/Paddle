@@ -1759,7 +1759,7 @@ struct DeleteDropoutOpPattern : public PatternBase {
   DeleteDropoutOpPattern(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "delete_dropout_op_pattern") {}
 
-  void operator()(bool with_mask);
+  void operator()();
 
   PATTERN_DECL_NODE(dropout_op_x);
   PATTERN_DECL_NODE(dropout_op);
