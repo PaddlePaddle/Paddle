@@ -21,9 +21,6 @@ import paddle
 
 
 def einsum_wrapper(a, b):
-    assert isinstance(a, paddle.Tensor) or isinstance(
-        a[0], paddle.Tensor
-    ), type(a)
     if not isinstance(a, list):
         a = [a]
     return paddle._C_ops.einsum(a, b)

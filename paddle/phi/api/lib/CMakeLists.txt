@@ -5,19 +5,19 @@ if(WITH_GPU)
     phi_tensor_raw
     SRCS tensor.cc
     DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool
-         operants_manager)
+         tensor_api)
 elseif(WITH_ROCM)
   hip_library(
     phi_tensor_raw
     SRCS tensor.cc
     DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool
-         operants_manager)
+         tensor_api)
 else()
   cc_library(
     phi_tensor_raw
     SRCS tensor.cc
     DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool
-         operants_manager)
+         tensor_api)
 endif()
 
 set(api_gen_base ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/api_base.py)
@@ -97,6 +97,27 @@ set(wrapped_infermeta_header_file
 set(wrapped_infermeta_source_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/infermeta/generated.cc)
 
+# tensor and tensor operants file
+set(tensor_gen_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/tensor_gen.py)
+set(operants_base_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/operants_base.h)
+set(tensor_api_source_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/tensor_api.cc)
+set(phi_tensor_operants_header_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/tensor_operants.h)
+set(phi_tensor_operants_source_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/tensor_operants.cc)
+set(operants_manager_header_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/operants_manager.h)
+set(operants_manager_source_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/operants_manager.cc)
+set(operants_base_file_tmp ${operants_base_file}.tmp)
+set(tensor_api_source_file_tmp ${tensor_api_source_file}.tmp)
+set(phi_tensor_operants_header_file_tmp ${phi_tensor_operants_header_file}.tmp)
+set(phi_tensor_operants_source_file_tmp ${phi_tensor_operants_source_file}.tmp)
+set(operants_manager_header_file_tmp ${operants_manager_header_file}.tmp)
+set(operants_manager_source_file_tmp ${operants_manager_source_file}.tmp)
+
 if(NOT PYTHONINTERP_FOUND)
   find_package(PythonInterp REQUIRED)
 endif()
@@ -108,8 +129,7 @@ add_custom_command(
   COMMAND
     ${PYTHON_EXECUTABLE} ${api_gen_file} --api_yaml_path ${api_yaml_file}
     ${legacy_api_yaml_file} --api_header_path ${api_header_file_tmp}
-    --api_header_path ${api_header_file_tmp} --api_source_path
-    ${api_source_file_tmp}
+    --api_source_path ${api_source_file_tmp}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_header_file_tmp}
           ${api_header_file}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_source_file_tmp}
@@ -215,6 +235,45 @@ add_custom_command(
   DEPENDS ${api_yaml_file} ${legacy_api_yaml_file} ${wrapped_infermeta_gen_file}
           ${api_gen_base}
   VERBATIM)
+
+# generate tensor and tensor operants file
+message("create or copy auto-geneated tensor files")
+execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install pyyaml)
+execute_process(
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator
+  COMMAND
+    ${PYTHON_EXECUTABLE} ${tensor_gen_file} --api_yaml_path ${api_yaml_file}
+    ${legacy_api_yaml_file} --operants_base_path ${operants_base_file_tmp}
+    --tensor_api_source_path ${tensor_api_source_file_tmp}
+    --phi_tensor_operants_header_path ${phi_tensor_operants_header_file_tmp}
+    --phi_tensor_operants_source_path ${phi_tensor_operants_source_file_tmp}
+    --operants_manager_header_path ${operants_manager_header_file_tmp}
+    --operants_manager_source_path ${operants_manager_source_file_tmp}
+  RESULT_VARIABLE _result)
+if(${_result})
+  message(FATAL_ERROR "tensor codegen failed, exiting.")
+endif()
+
+set(generated_tensor_files
+    "${operants_base_file}" "${tensor_api_source_file}"
+    "${phi_tensor_operants_header_file}" "${phi_tensor_operants_source_file}"
+    "${operants_manager_header_file}" "${operants_manager_source_file}")
+
+foreach(generated_tensor_file ${generated_tensor_files})
+  if(EXISTS "${generated_tensor_file}.tmp" AND EXISTS
+                                               "${generated_tensor_file}")
+    execute_process(
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different
+              "${generated_tensor_file}.tmp" "${generated_tensor_file}")
+    message(
+      "copy if different ${generated_tensor_file}.tmp ${generated_tensor_file}")
+  elseif(EXISTS "${generated_tensor_file}.tmp")
+    execute_process(
+      COMMAND ${CMAKE_COMMAND} -E copy "${generated_tensor_file}.tmp"
+              "${generated_tensor_file}")
+    message("copy ${generated_tensor_file}.tmp ${generated_tensor_file}")
+  endif()
+endforeach()
 
 cc_library(
   op_meta_info
@@ -331,9 +390,13 @@ cc_library(
 
 cc_library(
   phi_tensor_operants
-  SRCS tensor_operants.cc
+  SRCS ${phi_tensor_operants_source_file}
   DEPS phi_function_api)
 cc_library(
   operants_manager
-  SRCS operants_manager.cc
+  SRCS ${operants_manager_source_file}
   DEPS phi_enforce)
+cc_library(
+  tensor_api
+  SRCS ${tensor_api_source_file}
+  DEPS operants_manager)

@@ -35,6 +35,9 @@ set(eager_prim_api_gen_file
 set(static_prim_api_gen_file
     ${PADDLE_SOURCE_DIR}/paddle/fluid/prim/api/auto_code_generated/static_gen.py
 )
+set(prim_tensor_operants_gen_file
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/prim/api/auto_code_generated/tensor_operants_gen.py
+)
 
 message("Eager prim api code generator")
 execute_process(
@@ -74,3 +77,60 @@ execute_process(
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_static_prim_api_cc_path}
           ${static_prim_api_cc_path})
 message("copy tmp_xxx_prim_api to xxx_prim_api")
+
+set(tmp_eager_tensor_operants_cc_path
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/utils/eager/eager_tensor_operants.cc.tmp"
+)
+set(tmp_eager_tensor_operants_h_path
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/utils/eager/eager_tensor_operants.h.tmp"
+)
+set(tmp_static_tensor_operants_cc_path
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/utils/static/static_tensor_operants.cc.tmp"
+)
+set(tmp_static_tensor_operants_h_path
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/utils/static/static_tensor_operants.h.tmp"
+)
+set(eager_tensor_operants_cc_path
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/utils/eager/eager_tensor_operants.cc"
+)
+set(eager_tensor_operants_h_path
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/utils/eager/eager_tensor_operants.h"
+)
+set(static_tensor_operants_cc_path
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/utils/static/static_tensor_operants.cc"
+)
+set(static_tensor_operants_h_path
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/utils/static/static_tensor_operants.h"
+)
+
+message("Prim tensor operants code generator")
+execute_process(
+  WORKING_DIRECTORY
+    ${CMAKE_SOURCE_DIR}/paddle/fluid/prim/api/auto_code_generated
+  COMMAND
+    ${PYTHON_EXECUTABLE} ${prim_tensor_operants_gen_file} --api_yaml_path
+    ${legacy_api_yaml_path} ${api_yaml_path} --eager_tensor_operants_header_path
+    ${tmp_eager_tensor_operants_h_path} --eager_tensor_operants_source_path
+    ${tmp_eager_tensor_operants_cc_path} --static_tensor_operants_header_path
+    ${tmp_static_tensor_operants_h_path} --static_tensor_operants_source_path
+    ${tmp_static_tensor_operants_cc_path} --api_prim_yaml_path
+    ${api_prim_yaml_path}
+  RESULT_VARIABLE _result)
+if(${_result})
+  message(FATAL_ERROR "Prim tensor operants generate failed, exiting.")
+endif()
+
+execute_process(
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+          ${tmp_eager_tensor_operants_h_path} ${eager_tensor_operants_h_path})
+execute_process(
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+          ${tmp_eager_tensor_operants_cc_path} ${eager_tensor_operants_cc_path})
+execute_process(
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+          ${tmp_static_tensor_operants_h_path} ${static_tensor_operants_h_path})
+execute_process(
+  COMMAND
+    ${CMAKE_COMMAND} -E copy_if_different ${tmp_static_tensor_operants_cc_path}
+    ${static_tensor_operants_cc_path})
+message("copy prim xxx_tensor_operants.tmp to xxx_tensor_operants")

@@ -65,6 +65,7 @@ class TestLambOp1(OpTest):
 
         learning_rate = 0.001
         self.set_attrs()
+
         self.python_api = lamb_wrapper(
             epsilon=self.attrs['epsilon'],
             beta1=self.attrs['beta1'],

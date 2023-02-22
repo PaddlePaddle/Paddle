@@ -103,6 +103,8 @@ class TestUnbindOp(OpTest):
         self.outputs = {
             'Out': [('out%d' % i, self.out[i]) for i in range(len(self.out))]
         }
+        self.python_api = paddle.unbind
+        self.python_out_sig = ['out%d' % i for i in range(len(self.out))]
 
     def get_dtype(self):
         return "float64"
@@ -124,7 +126,6 @@ class TestUnbindOp1(TestUnbindOp):
         self.num = 2
         self.python_out_sig = ['out0', 'out1']
 
-
     def test_check_grad(self):
         self.check_grad(['X'], ['out0', 'out1'])
 
@@ -138,7 +139,6 @@ class TestUnbindOp2(TestUnbindOp):
         self.axis = 2
         self.num = 2
         self.python_out_sig = ['out0', 'out1']
-
 
     def test_check_grad(self):
         self.check_grad(['X'], ['out0', 'out1'])
@@ -200,6 +200,7 @@ class TestUnbindBF16Op(OpTest):
                 for i in range(len(self.out))
             ]
         }
+        self.python_out_sig = ['out%d' % i for i in range(len(self.out))]
 
     def get_dtype(self):
         return np.uint16

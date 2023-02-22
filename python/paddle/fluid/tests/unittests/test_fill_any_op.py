@@ -20,10 +20,16 @@ from eager_op_test import OpTest
 import paddle
 
 
+def fill_any_wrapper(x, value_float=0, value_int=0):
+    return paddle._legacy_C_ops.fill_any(
+        x, "value_float", value_float, "value_int", value_int
+    )
+
+
 class TestFillAnyOp(OpTest):
     def setUp(self):
         self.op_type = "fill_any"
-        self.python_api = paddle._legacy_C_ops.fill_any
+        self.python_api = fill_any_wrapper
         self.dtype = 'float64'
         self.value = 0.0
         self.init()

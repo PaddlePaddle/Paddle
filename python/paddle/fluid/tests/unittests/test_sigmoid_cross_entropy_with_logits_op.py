@@ -24,9 +24,11 @@ from paddle.fluid import Program, program_guard
 
 
 def loss_wrapper(logit, label, normalize=False, ignore_index=-100):
-    out =  paddle._C_ops.sigmoid_cross_entropy_with_logits(
-            logit, label, normalize, ignore_index)
+    out = paddle._C_ops.sigmoid_cross_entropy_with_logits(
+        logit, label, normalize, ignore_index
+    )
     return out
+
 
 class TestSigmoidCrossEntropyWithLogitsOp1(OpTest):
     """Test sigmoid_cross_entropy_with_logit_op with binary label"""
@@ -59,7 +61,7 @@ class TestSigmoidCrossEntropyWithLogitsOp1(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', )
+        self.check_grad(['X'], 'Out')
 
 
 class TestSigmoidCrossEntropyWithLogitsOp2(OpTest):
@@ -98,7 +100,7 @@ class TestSigmoidCrossEntropyWithLogitsOp2(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', )
+        self.check_grad(['X'], 'Out')
 
 
 class TestSigmoidCrossEntropyWithLogitsOp3(OpTest):
@@ -132,7 +134,7 @@ class TestSigmoidCrossEntropyWithLogitsOp3(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', )
+        self.check_grad(['X'], 'Out')
 
 
 class TestSigmoidCrossEntropyWithNorm(OpTest):
@@ -168,7 +170,7 @@ class TestSigmoidCrossEntropyWithNorm(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', )
+        self.check_grad(['X'], 'Out')
 
 
 class TestSigmoidCrossEntropyWithLogitsOp5(OpTest):
@@ -271,7 +273,7 @@ class TestSigmoidCrossEntropyWithNorm2(OpTest):
             self.check_output()
 
         def test_check_grad(self):
-            self.check_grad(['X'], 'Out', )
+            self.check_grad(['X'], 'Out')
 
     class TestSigmoidCrossEntropyWithLogitsOpError(unittest.TestCase):
         def test_errors(self):

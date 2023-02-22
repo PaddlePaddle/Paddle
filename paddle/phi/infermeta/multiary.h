@@ -533,7 +533,7 @@ void YoloLossInferMeta(const MetaTensor& x,
                        MetaTensor* objectness_mask,
                        MetaTensor* gt_match_mask);
 
-void MultiTensorAdamInferMeta(
+void FusedAdamInferMeta(
     const std::vector<const MetaTensor*>& params,
     const std::vector<const MetaTensor*>& grads,
     const MetaTensor& learning_rate,

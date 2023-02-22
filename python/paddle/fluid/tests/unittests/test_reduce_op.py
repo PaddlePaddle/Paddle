@@ -24,7 +24,6 @@ from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 
-
 def sum_wrapper(x, dim=None, out_dtype=None, keep_dim=False, in_dtype=None):
     return paddle.sum(x, axis=dim, dtype=out_dtype, keepdim=keep_dim)
 
@@ -81,9 +80,7 @@ class TestSumOp_fp16(OpTest):
         return (grad,)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Out', user_defined_grads=self.gradient
-        )
+        self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
 
 
 @unittest.skipIf(
@@ -111,10 +108,7 @@ class TestSumOp_bf16(OpTest):
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place,
-            ['X'],
-            'Out',
-            user_defined_grads=self.gradient
+            place, ['X'], 'Out', user_defined_grads=self.gradient
         )
 
     def calc_gradient(self):
@@ -147,9 +141,7 @@ class TestSumOp_fp16_withInt(OpTest):
         return (grad,)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Out', user_defined_grads=self.gradient
-        )
+        self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
 
 
 class TestSumOp5D(OpTest):
@@ -799,8 +791,6 @@ class TestReduceMinOpMultiAxises(OpTest):
         self.check_output()
 
 
-
-
 class TestKeepDimReduceSumMultiAxises(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
@@ -818,7 +808,6 @@ class TestKeepDimReduceSumMultiAxises(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
-
 
 
 class TestReduceSumWithDimOne(OpTest):
@@ -893,6 +882,7 @@ def sum_all_wrapper(x, reduce_all=True, in_dtype=None, out_dtype=None):
     out = paddle.sum(x, None, None, False)
     return out
 
+
 class TestReduceWithDtype(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
@@ -914,10 +904,9 @@ class TestReduceWithDtype(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-
-
 def reduce_with_dtype1(x, dim=None, in_dtype=None, out_dtype=None):
     return paddle.sum(x, axis=dim)
+
 
 class TestReduceWithDtype1(TestReduceWithDtype):
     def setUp(self):
@@ -934,9 +923,11 @@ class TestReduceWithDtype1(TestReduceWithDtype):
         )
 
 
-
-def reduce_with_dtyp2(x, dim=None, keep_dim=False, in_dtype=None, out_dtype=None):
+def reduce_with_dtyp2(
+    x, dim=None, keep_dim=False, in_dtype=None, out_dtype=None
+):
     return paddle.sum(x, axis=1, dtype=None, keepdim=True)
+
 
 class TestReduceWithDtype2(TestReduceWithDtype):
     def setUp(self):
