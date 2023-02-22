@@ -14,14 +14,12 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/core/tensor_meta.h"
-#include "paddle/phi/core/utils/data_type.h"
 
 namespace phi {
 
