@@ -224,6 +224,8 @@ if(WITH_XPU)
   pass_library(fc_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(multi_encoder_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
+  pass_library(multi_encoder_xpu_slice_fuse_pass inference DIR xpu)
+  pass_library(generate_sequence_xpu_fuse_pass inference DIR xpu)
 endif()
 
 cc_library(

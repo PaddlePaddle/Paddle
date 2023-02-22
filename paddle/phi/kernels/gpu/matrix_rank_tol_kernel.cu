@@ -22,6 +22,7 @@
 
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/abs_kernel.h"
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
@@ -92,7 +93,7 @@ void GesvdjBatched<float>(const phi::GPUContext& dev_ctx,
                                             ldt,
                                             &lwork,
                                             gesvdj_params));
-  auto workspace = paddle::memory::Alloc(
+  auto workspace = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       lwork * sizeof(float),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
@@ -171,7 +172,7 @@ void GesvdjBatched<double>(const phi::GPUContext& dev_ctx,
                                             ldt,
                                             &lwork,
                                             gesvdj_params));
-  auto workspace = paddle::memory::Alloc(
+  auto workspace = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       lwork * sizeof(double),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
@@ -235,7 +236,7 @@ void SyevjBatched<float>(const phi::GPUContext& dev_ctx,
   PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnCreateSyevjInfo(&params));
   PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnSsyevj_bufferSize(
       handle, jobz, uplo, n, A, lda, W, &lwork, params));
-  auto workspace = paddle::memory::Alloc(
+  auto workspace = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       lwork * sizeof(float),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
@@ -290,7 +291,7 @@ void SyevjBatched<double>(const phi::GPUContext& dev_ctx,
   PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnCreateSyevjInfo(&params));
   PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnDsyevj_bufferSize(
       handle, jobz, uplo, n, A, lda, W, &lwork, params));
-  auto workspace = paddle::memory::Alloc(
+  auto workspace = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       lwork * sizeof(double),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
@@ -351,8 +352,8 @@ void MatrixRankTolKernel(const Context& dev_ctx,
 
   // Must Copy X once, because the gesvdj will destory the content when exit.
   DenseTensor x_tmp;
-  paddle::framework::TensorCopy(x, dev_ctx.GetPlace(), &x_tmp);
-  auto info = paddle::memory::Alloc(
+  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, &x_tmp);
+  auto info = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       sizeof(int) * batches,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
