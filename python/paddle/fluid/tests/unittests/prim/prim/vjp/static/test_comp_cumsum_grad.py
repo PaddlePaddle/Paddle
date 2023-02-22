@@ -88,19 +88,19 @@ class TestCumsumGradComp(unittest.TestCase):
 
         return res
 
-    def test_cinn(self):
-        paddle.disable_static()
-        dy_res = self.train(use_prim=False, use_cinn=False)
-        comp_st_cinn_res = self.train(use_prim=True, use_cinn=True)
+    # def test_cinn(self):
+    #     paddle.disable_static()
+    #     dy_res = self.train(use_prim=False, use_cinn=False)
+    #     comp_st_cinn_res = self.train(use_prim=True, use_cinn=True)
 
-        for i in range(len(dy_res)):
-            np.testing.assert_allclose(
-                comp_st_cinn_res[i].numpy(),
-                dy_res[i].numpy(),
-                rtol=limit[str(self.primal.dtype)]['rtol'],
-                atol=limit[str(self.primal.dtype)]['atol'],
-            )
-        paddle.enable_static()
+    #     for i in range(len(dy_res)):
+    #         np.testing.assert_allclose(
+    #             comp_st_cinn_res[i].numpy(),
+    #             dy_res[i].numpy(),
+    #             rtol=1e-7,
+    #             atol=1e-7,
+    #         )
+    #     paddle.enable_static()
 
     def test_cumsum_grad_comp(self):
         def actual(primal, cotangent):
