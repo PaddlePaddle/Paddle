@@ -445,6 +445,271 @@ struct iinfo {
     }
   }
 };
+class finfo{
+public:
+    finfo(const framework::proto::VarType::Type& type_):type(type_){
+        
+    }
+    int Bits();
+    float Eps();
+    float Min();
+    float Max();
+    float Tiny();
+    float Resolution();
+private:
+    const framework::proto::VarType::Type& type;
+};
+int finfo::Bits(){
+	switch (type)
+    {
+    case framework::proto::VarType::INT16:
+        return 16;
+        break;
+    case framework::proto::VarType::INT32:
+        return 32;
+        break;
+    case framework::proto::VarType::INT64:
+        return 64;
+        break;
+    case framework::proto::VarType::INT8:
+        return 8;
+        break;
+    case framework::proto::VarType::UINT8:
+        return 8;
+        break;
+    case framework::proto::VarType::FP16:
+        return 16;
+        break;
+    case framework::proto::VarType::FP32:
+        return 32;
+    case framework::proto::VarType::FP64:
+        return 64;
+    case framework::proto::VarType::COMPLEX64:
+        return 32;
+    case framework::proto::VarType::COMPLEX128:
+        return 64;
+    default:
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "the argument of paddle.finfo can only be paddle.int8, "
+            "paddle.int16, paddle.int32, paddle.int64, or paddle.uint8"
+        ));
+        break;
+    }
+};
+
+float finfo::Eps(){
+    switch (type)
+    {
+    case framework::proto::VarType::INT16:
+        return std::numeric_limits<int16_t>::epsilon();
+        break;
+    case framework::proto::VarType::INT32:
+        return std::numeric_limits<int32_t>::epsilon();
+        break;
+    case framework::proto::VarType::INT64:
+        return std::numeric_limits<int64_t>::epsilon();
+        break;
+    case framework::proto::VarType::INT8:
+        return std::numeric_limits<int8_t>::epsilon();
+        break;
+    case framework::proto::VarType::UINT8:
+        return std::numeric_limits<uint8_t>::epsilon();
+        break;
+    case framework::proto::VarType::FP16:
+        return std::numeric_limits<float>::epsilon();
+        break;
+    case framework::proto::VarType::FP32:
+        return std::numeric_limits<double>::epsilon();
+        break;
+    case framework::proto::VarType::FP64:
+        return std::numeric_limits<long double>::epsilon();
+        break;
+    case framework::proto::VarType::COMPLEX64:
+        return 64;
+        break;
+    case framework::proto::VarType::COMPLEX128:
+        return 64;
+        break;
+    default:
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "the argument of paddle.finfo can only be paddle.int8, "
+            "paddle.int16, paddle.int32, paddle.int64, or paddle.uint8"
+        ));
+        break;
+    }
+
+}
+
+float finfo::Min(){
+    switch (type)
+    {
+    case framework::proto::VarType::INT16:
+        return std::numeric_limits<int16_t>::lowest();
+        break;
+    case framework::proto::VarType::INT32:
+        return std::numeric_limits<int32_t>::lowest();
+        break;
+    case framework::proto::VarType::INT64:
+        return std::numeric_limits<int64_t>::lowest();
+        break;
+    case framework::proto::VarType::INT8:
+        return std::numeric_limits<int8_t>::lowest();
+        break;
+    case framework::proto::VarType::UINT8:
+        return std::numeric_limits<uint8_t>::lowest();
+        break;
+    case framework::proto::VarType::FP16:
+        return std::numeric_limits<float>::lowest();
+        break;
+    case framework::proto::VarType::FP32:
+        return std::numeric_limits<double>::lowest();
+        break;
+    case framework::proto::VarType::FP64:
+        return std::numeric_limits<long double>::lowest();
+        break;
+    case framework::proto::VarType::COMPLEX64:
+        return 64;
+        break;
+    case framework::proto::VarType::COMPLEX128:
+        return 64;
+        break;
+    default:
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "the argument of paddle.finfo can only be paddle.int8, "
+            "paddle.int16, paddle.int32, paddle.int64, or paddle.uint8"
+        ));
+        break;
+    }
+}
+
+float finfo::Max(){
+    switch (type)
+    {
+    case framework::proto::VarType::INT16:
+        return std::numeric_limits<int16_t>::max();
+        break;
+    case framework::proto::VarType::INT32:
+        return std::numeric_limits<int32_t>::max();
+        break;
+    case framework::proto::VarType::INT64:
+        return std::numeric_limits<int64_t>::max();
+        break;
+    case framework::proto::VarType::INT8:
+        return std::numeric_limits<int8_t>::max();
+        break;
+    case framework::proto::VarType::UINT8:
+        return std::numeric_limits<uint8_t>::max();
+        break;
+    case framework::proto::VarType::FP16:
+        return std::numeric_limits<float>::max();
+        break;
+    case framework::proto::VarType::FP32:
+        return std::numeric_limits<double>::max();
+        break;
+    case framework::proto::VarType::FP64:
+        return std::numeric_limits<long double>::max();
+        break;
+    case framework::proto::VarType::COMPLEX64:
+        return 64;
+        break;
+    case framework::proto::VarType::COMPLEX128:
+        return 64;
+        break;
+    default:
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "the argument of paddle.finfo can only be paddle.int8, "
+            "paddle.int16, paddle.int32, paddle.int64, or paddle.uint8"
+        ));
+        break;
+    }
+}
+
+float finfo::Tiny(){
+    switch (type)
+    {
+    case framework::proto::VarType::INT16:
+        return std::numeric_limits<int16_t>::min();
+        break;
+    case framework::proto::VarType::INT32:
+        return std::numeric_limits<int32_t>::min();
+        break;
+    case framework::proto::VarType::INT64:
+        return std::numeric_limits<int64_t>::min();
+        break;
+    case framework::proto::VarType::INT8:
+        return std::numeric_limits<int8_t>::min();
+        break;
+    case framework::proto::VarType::UINT8:
+        return std::numeric_limits<uint8_t>::min();
+        break;
+    case framework::proto::VarType::FP16:
+        return std::numeric_limits<float>::min();
+        break;
+    case framework::proto::VarType::FP32:
+        return std::numeric_limits<double>::min();
+        break;
+    case framework::proto::VarType::FP64:
+        return std::numeric_limits<long double>::min();
+        break;
+    case framework::proto::VarType::COMPLEX64:
+        return 64;
+        break;
+    case framework::proto::VarType::COMPLEX128:
+        return 64;
+        break;
+    default:
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "the argument of paddle.finfo can only be paddle.int8, "
+            "paddle.int16, paddle.int32, paddle.int64, or paddle.uint8"
+        ));
+        break;
+    }
+}
+
+float finfo::Resolution(){
+    switch (type)
+    {
+    case framework::proto::VarType::INT16:
+        return std::pow(10, -std::numeric_limits<int16_t>::digits10); 
+        break;
+    case framework::proto::VarType::INT32:
+        return std::pow(10, -std::numeric_limits<int32_t>::digits10); 
+        break;
+    case framework::proto::VarType::INT64:
+        return std::pow(10, -std::numeric_limits<int64_t>::digits10); 
+        break;
+    case framework::proto::VarType::INT8:
+        return std::pow(10, -std::numeric_limits<int8_t>::digits10); 
+        break;
+    case framework::proto::VarType::UINT8:
+        return std::pow(10, -std::numeric_limits<uint8_t>::digits10); 
+        break;
+    case framework::proto::VarType::FP16:
+        return std::pow(10, -std::numeric_limits<float>::digits10); 
+        break;
+    case framework::proto::VarType::FP32:
+        return std::pow(10, -std::numeric_limits<double>::digits10); 
+        break;
+    case framework::proto::VarType::FP64:
+        return std::pow(10, -std::numeric_limits<long double>::digits10); 
+        break;
+    case framework::proto::VarType::COMPLEX64:
+        return std::pow(10, -std::numeric_limits<int16_t>::digits10); 
+        return 64;
+        break;
+    case framework::proto::VarType::COMPLEX128:
+        return std::pow(10, -std::numeric_limits<int16_t>::digits10); 
+        return 64;
+        break;
+    default:
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "the argument of paddle.finfo can only be paddle.int8, "
+            "paddle.int16, paddle.int32, paddle.int64, or paddle.uint8"
+        ));
+        break;
+    }
+   
+}
 
 static PyObject *GetPythonAttribute(PyObject *obj, const char *attr_name) {
   // NOTE(zjl): PyObject_GetAttrString would return nullptr when attr_name
@@ -666,6 +931,15 @@ PYBIND11_MODULE(libpaddle, m) {
         oss << ", dtype=" << a.dtype << ")";
         return oss.str();
       });
+  py::class_<finfo>(m, "finfo")
+      .def(py::init<const framework::proto::VarType::Type &>())
+      .def("min", &finfo::Min)
+      .def("max", &finfo::Max)
+      .def("bits", &finfo::Bits)
+      .def("tiny", &finfo::Tiny)
+      .def("eps", &finfo::Eps)
+      .def("resolution", &finfo::Resolution)
+      ;
 
   m.def("__set_bwd_prim_enabled",
         &paddle::prim::PrimCommonUtils::SetBwdPrimEnabled);
