@@ -378,17 +378,16 @@ void Tensor::CopyToCpuImpl(T *data,
   auto *t_data = tensor->data<T>();
   auto t_place = tensor->place();
 
-  phi::DenseTensor out;
-  auto mem_allocation =
-      std::make_shared<paddle::memory::allocation::Allocation>(
-          static_cast<void *>(data),
-          ele_num * sizeof(T),
-          paddle::platform::CPUPlace());
-  out.ResetHolder(mem_allocation);
-
   if (paddle::platform::is_cpu_place(t_place)) {
 #ifdef PADDLE_WITH_MKLDNN
-    if (tensor->layout() == phi::DataLayout::ONEDNN)
+    if (tensor->layout() == phi::DataLayout::ONEDNN) {
+      phi::DenseTensor out;
+      auto mem_allocation =
+          std::make_shared<paddle::memory::allocation::Allocation>(
+              static_cast<void *>(data),
+              ele_num * sizeof(T),
+              paddle::platform::CPUPlace());
+      out.ResetHolder(mem_allocation);
       phi::funcs::TransDataLayoutFromOneDNN(
           tensor->layout(),
           phi::OneDNNContext::tls().get_cur_paddle_data_layout(),
@@ -396,8 +395,9 @@ void Tensor::CopyToCpuImpl(T *data,
           &out,
           paddle::platform::CPUPlace(),
           true);
-    else
+    } else {
       std::memcpy(static_cast<void *>(data), t_data, ele_num * sizeof(T));
+    }
 #else
     std::memcpy(static_cast<void *>(data), t_data, ele_num * sizeof(T));
 #endif
@@ -871,17 +871,16 @@ void InternalUtils::CopyToCpuWithIoStream(paddle_infer::Tensor *t,
   auto *t_data = tensor->data<T>();
   auto t_place = tensor->place();
 
-  phi::DenseTensor out;
-  auto mem_allocation =
-      std::make_shared<paddle::memory::allocation::Allocation>(
-          static_cast<void *>(data),
-          ele_num * sizeof(T),
-          paddle::platform::CPUPlace());
-  out.ResetHolder(mem_allocation);
-
   if (paddle::platform::is_cpu_place(t_place)) {
 #ifdef PADDLE_WITH_MKLDNN
-    if (tensor->layout() == phi::DataLayout::ONEDNN)
+    if (tensor->layout() == phi::DataLayout::ONEDNN) {
+      phi::DenseTensor out;
+      auto mem_allocation =
+          std::make_shared<paddle::memory::allocation::Allocation>(
+              static_cast<void *>(data),
+              ele_num * sizeof(T),
+              paddle::platform::CPUPlace());
+      out.ResetHolder(mem_allocation);
       phi::funcs::TransDataLayoutFromOneDNN(
           tensor->layout(),
           phi::OneDNNContext::tls().get_cur_paddle_data_layout(),
@@ -889,8 +888,9 @@ void InternalUtils::CopyToCpuWithIoStream(paddle_infer::Tensor *t,
           &out,
           paddle::platform::CPUPlace(),
           true);
-    else
+    } else {
       std::memcpy(static_cast<void *>(data), t_data, ele_num * sizeof(T));
+    }
 #else
     std::memcpy(static_cast<void *>(data), t_data, ele_num * sizeof(T));
 #endif
