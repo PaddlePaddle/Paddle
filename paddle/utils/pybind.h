@@ -69,7 +69,8 @@ struct type_caster<paddle::experimental::Tensor> {
   static handle cast(const paddle::experimental::Tensor& src,
                      return_value_policy /* policy */,
                      handle /* parent */) {
-    return handle(paddle::pybind::ToPyObject(src));
+    return handle(paddle::pybind::ToPyObject(
+        src, true /* return_py_none_if_not_initialize */));
   }
 };
 }  // namespace detail

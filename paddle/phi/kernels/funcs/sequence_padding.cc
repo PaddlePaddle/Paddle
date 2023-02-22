@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,18 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/math/sequence_padding.h"
-#include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/phi/kernels/funcs/sequence_padding.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 
-namespace phi {
-class DenseTensor;
-}  // namespace phi
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
+#endif
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace phi {
+namespace funcs {
 
 template <typename T>
 void CopyValidData(phi::DenseTensor* dst_tensor,
@@ -46,7 +44,7 @@ void CopyValidData(phi::DenseTensor* dst_tensor,
     PADDLE_ENFORCE_GE(
         pad_seq_len,
         valid_seq_len,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The padded sequence length can not "
             "be less than its original length. Expected %ld >= %ld, but got "
             "%ld < %ld. Please check input value.",
@@ -107,7 +105,7 @@ class PaddingLoDTensorFunctor<phi::CPUContext, T> {
                   bool norm_by_times = false,
                   const PadLayout layout = kBatchLengthWidth) {
     auto seq_lod = seq_tensor.lod();
-    const auto seq_offsets = framework::ToAbsOffset(seq_lod)[lod_level];
+    const auto seq_offsets = phi::ToAbsOffset(seq_lod)[lod_level];
     const auto& seq_tensor_dims = seq_tensor.dims();
     const auto& pad_tensor_dims = pad_tensor->dims();
     if (pad_seq_len == -1) {
@@ -125,7 +123,7 @@ class PaddingLoDTensorFunctor<phi::CPUContext, T> {
     PADDLE_ENFORCE_EQ(
         pad_value.numel() == 1 || pad_value.numel() == step_width,
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The numel of 'pad_value' can only be 1 or be equal to the "
             "'step_width', but got %ld != 1 and %ld. Please check the input "
             "value.",
@@ -165,7 +163,7 @@ class UnpaddingLoDTensorFunctor<phi::CPUContext, T> {
                   int lod_level = 0,
                   bool norm_by_times = false,
                   const PadLayout layout = kBatchLengthWidth) {
-    auto seq_offsets = framework::ToAbsOffset(seq_tensor->lod())[lod_level];
+    auto seq_offsets = phi::ToAbsOffset(seq_tensor->lod())[lod_level];
     const auto& seq_tensor_dims = seq_tensor->dims();
     const auto& pad_tensor_dims = pad_tensor.dims();
     if (pad_seq_len == -1) {
@@ -193,16 +191,16 @@ class UnpaddingLoDTensorFunctor<phi::CPUContext, T> {
 
 #ifdef PADDLE_WITH_XPU
 template <typename T>
-class UnpaddingLoDTensorFunctor<platform::XPUDeviceContext, T> {
+class UnpaddingLoDTensorFunctor<phi::XPUContext, T> {
  public:
-  void operator()(const platform::XPUDeviceContext& context,
+  void operator()(const phi::XPUContext& context,
                   const phi::DenseTensor& pad_tensor,
                   phi::DenseTensor* seq_tensor,
                   int pad_seq_len = -1,
                   int lod_level = 0,
                   bool norm_by_times = false,
                   const PadLayout layout = kBatchLengthWidth) {
-    auto seq_offsets = framework::ToAbsOffset(seq_tensor->lod())[lod_level];
+    auto seq_offsets = phi::ToAbsOffset(seq_tensor->lod())[lod_level];
     const auto& seq_tensor_dims = seq_tensor->dims();
     const auto& pad_tensor_dims = pad_tensor.dims();
     if (pad_seq_len == -1) {
@@ -246,9 +244,8 @@ template class UnpaddingLoDTensorFunctor<phi::CPUContext, float>;
 template class UnpaddingLoDTensorFunctor<phi::CPUContext, double>;
 
 #ifdef PADDLE_WITH_XPU
-template class UnpaddingLoDTensorFunctor<platform::XPUDeviceContext, float>;
+template class UnpaddingLoDTensorFunctor<phi::XPUContext, float>;
 #endif
 
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi
