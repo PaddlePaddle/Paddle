@@ -20,6 +20,7 @@
 #endif  // PADDLE_WITH_CUDA
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
@@ -405,7 +406,7 @@ struct MatrixEighFunctor<GPUContext, T> {
                 &workspace_size);
     }
     size_t total_bytes = sizeof(T) * workspace_size + sizeof(int) * batch_size;
-    auto work = paddle::memory::Alloc(
+    auto work = phi::memory_utils::Alloc(
         dev_ctx.GetPlace(),
         total_bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
