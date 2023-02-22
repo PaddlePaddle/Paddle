@@ -26,7 +26,8 @@ paddle/phi/api/lib/tensor_operants.cc
 paddle/phi/extension.h
 paddle/phi/include/*
 paddle/phi/infermeta/generated.*
-
+paddle/fluid/prim/api/generated_prim/*.cc
+paddle/fluid/prim/api/generated_prim/*.h
 *.DS_Store
 *.vs
 build/
