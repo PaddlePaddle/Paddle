@@ -265,6 +265,7 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
     def minimize(
         self, loss, startup_program=None, parameter_list=None, no_grad_set=None
     ):
+        raise Exception("[lyk]test graph execution")
         if startup_program is None:
             startup_program = paddle.static.default_startup_program()
         compiled_program = self._try_to_compile(
