@@ -29,6 +29,8 @@ namespace operators {
 template <typename T>
 class AttnMatMul {
  public:
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+
   // (m, n, k) = bsz_seq, output_size, input_size
   AttnMatMul(const phi::GPUContext& dev_ctx,
              bool transA,
@@ -70,8 +72,8 @@ class AttnMatMul {
     // here: (transa, transb): nt, input * weight.
     CBLAS_TRANSPOSE transA = transA_ ? CblasTrans : CblasNoTrans;
     CBLAS_TRANSPOSE transB = transB_ ? CblasTrans : CblasNoTrans;
-    T alpha = static_cast<T>(1.0);
-    T beta = static_cast<T>(0.0);
+    MT alpha = static_cast<MT>(1.0);
+    MT beta = static_cast<MT>(0.0);
 
     // (m, n, k) = bsz_seq, output_size, input_size, (input, weight, out)
     auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx_);
@@ -100,10 +102,29 @@ class AttnMatMul {
                        phi::DenseTensor* d_input,
                        phi::DenseTensor* d_weight,
                        phi::DenseTensor* d_bias,
-                       bool use_addto = false) {
-    T alpha = static_cast<T>(1.0);
-    T beta_dA = use_addto ? static_cast<T>(1.0) : static_cast<T>(0.0);
-    T beta_dB = static_cast<T>(0.0);
+                       bool use_addto = false,
+                       bool fused = false) {
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
+    if (compute_bias_ && fused) {
+      ComputeFusedGemmEpilogueBackward<T>(dev_ctx_,
+                                          d_output,
+                                          input,
+                                          weight,
+                                          nullptr,
+                                          transA_,
+                                          transB_,
+                                          "none",
+                                          d_input,
+                                          d_weight,
+                                          d_bias,
+                                          use_addto);
+      return;
+    }
+#endif
+
+    MT alpha = static_cast<MT>(1.0);
+    MT beta_dA = use_addto ? static_cast<MT>(1.0) : static_cast<MT>(0.0);
+    MT beta_dB = static_cast<MT>(0.0);
 
     auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx_);
     if (!transA_) {

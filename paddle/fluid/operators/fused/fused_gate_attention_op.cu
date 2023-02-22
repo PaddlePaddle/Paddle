@@ -277,7 +277,9 @@ void ComputeGatingLinearBackward(const framework::ExecutionContext &ctx,
                                     &gate_bias_out,
                                     query_grad,
                                     gate_weight_grad,
-                                    gate_bias_grad);
+                                    gate_bias_grad,
+                                    false,
+                                    true);
 }
 
 template <typename T>
@@ -330,7 +332,9 @@ void ComputeOutputLinearBackward(const framework::ExecutionContext &ctx,
                                      out_grad,
                                      input_grad,
                                      out_linear_weight_grad,
-                                     out_linear_bias_grad);
+                                     out_linear_bias_grad,
+                                     false,
+                                     true);
 }
 
 template <typename T>
