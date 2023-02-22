@@ -1242,6 +1242,9 @@ class ProgramCache:
     def concrete_programs(self):
         return [cp for key, (cp, _) in self._caches.items()]
 
+    def clear(self):
+        self._caches = collections.OrderedDict()
+
 
 class ProgramTranslator:
     """
