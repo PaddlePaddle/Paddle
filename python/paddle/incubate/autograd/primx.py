@@ -656,6 +656,8 @@ def _lower_composite(block, blacklist=[]):
                     outputs[op.output_names[i]] = op.output(op.output_names[i])
 
                 attrs = {}
+                # When copying op, all attrs defined in api should be kept.But op.attr_names is not complete here.
+                # Thus, all attrs should be got from init attrs of origin op.
                 runtime_attrs = op._get_runtime_attrs()
                 for name in runtime_attrs.keys():
                     attrs[name] = runtime_attrs[name]

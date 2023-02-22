@@ -3095,7 +3095,7 @@ class Operator:
         return op_type not in self.OP_WITHOUT_KERNEL_SET
 
     def _get_runtime_attrs(self):
-        # record all attrs needed by creating op
+        """Record all attrs needed by creating op. This api is only for to_prim process."""
         return self.legacy_attrs
 
     def to_string(self, throw_on_error):
