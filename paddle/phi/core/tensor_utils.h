@@ -153,6 +153,7 @@ inline std::vector<T> GetVectorFromTensor(const phi::DenseTensor* x) {
     auto* data = x->data<int>();
     phi::DenseTensor cpu_attr_tensor;
     if (!paddle::platform::is_cpu_place(x->place())) {
+      auto& pool = phi::DeviceContextPool::Instance();
       phi::DeviceContext* dev_ctx;
       if (CPUPlace().GetType() != AllocationType::CPU) {
         dev_ctx = pool.Get(CPUPlace());
@@ -167,6 +168,7 @@ inline std::vector<T> GetVectorFromTensor(const phi::DenseTensor* x) {
     auto* data = x->data<int64_t>();
     phi::DenseTensor cpu_attr_tensor;
     if (!paddle::platform::is_cpu_place(x->place())) {
+      auto& pool = phi::DeviceContextPool::Instance();
       phi::DeviceContext* dev_ctx;
       if (CPUPlace().GetType() != AllocationType::CPU) {
         dev_ctx = pool.Get(CPUPlace());
