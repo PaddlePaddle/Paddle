@@ -156,28 +156,10 @@ class TestUnaryAPI(unittest.TestCase):
                     self.assertEqual(item.shape, ())
 
                 # 2) Test CompiledProgram Program
-                if paddle.device.is_compiled_with_cuda():
-                    places = [paddle.CUDAPlace(0)]
-                    expect_shape = ()
-                else:
-                    places = [paddle.CPUPlace()] * 4
-                    expect_shape = (4,)
-                compile_prog = paddle.static.CompiledProgram(
-                    main_prog
-                ).with_data_parallel(loss.name, places=places)
+                expect_shape = ()
+                compile_prog = paddle.static.CompiledProgram(main_prog)
 
-                # return_merged=False #
-                res = exe.run(
-                    compile_prog, fetch_list=fetch_list, return_merged=False
-                )
-                for item1 in res:
-                    for item2 in item1:
-                        self.assertEqual(item2.shape, ())
-
-                # return_merged=True #
-                res = exe.run(
-                    compile_prog, fetch_list=fetch_list, return_merged=True
-                )
+                res = exe.run(compile_prog, fetch_list=fetch_list)
                 for item in res:
                     self.assertEqual(item.shape, expect_shape)
 
@@ -3296,28 +3278,10 @@ class TestUnaryElementwiseAPIWithComplexInput(unittest.TestCase):
                     self.assertEqual(item.shape, ())
 
                 # 2) Test CompiledProgram Program
-                if paddle.device.is_compiled_with_cuda():
-                    places = [paddle.CUDAPlace(0)]
-                    expect_shape = ()
-                else:
-                    places = [paddle.CPUPlace()] * 4
-                    expect_shape = (4,)
-                compile_prog = paddle.static.CompiledProgram(
-                    main_prog
-                ).with_data_parallel(loss.name, places=places)
+                expect_shape = ()
+                compile_prog = paddle.static.CompiledProgram(main_prog)
 
-                # return_merged=False #
-                res = exe.run(
-                    compile_prog, fetch_list=fetch_list, return_merged=False
-                )
-                for item1 in res:
-                    for item2 in item1:
-                        self.assertEqual(item2.shape, ())
-
-                # return_merged=True #
-                res = exe.run(
-                    compile_prog, fetch_list=fetch_list, return_merged=True
-                )
+                res = exe.run(compile_prog, fetch_list=fetch_list)
                 for item in res:
                     self.assertEqual(item.shape, expect_shape)
 
@@ -3380,28 +3344,11 @@ class TestAsReal(unittest.TestCase):
                 self.assertEqual(res[3].shape, (2,))
 
                 # 2) Test CompiledProgram Program
-                if paddle.device.is_compiled_with_cuda():
-                    places = [paddle.CUDAPlace(0)]
-                    expect_shapes = (), (2,), (), (2,)
-                else:
-                    places = [paddle.CPUPlace()] * 4
-                    expect_shapes = (4,), (8,), (4,), (8,)
-                compile_prog = paddle.static.CompiledProgram(
-                    main_prog
-                ).with_data_parallel(loss.name, places=places)
+                expect_shapes = (), (2,), (), (2,)
+                compile_prog = paddle.static.CompiledProgram(main_prog)
 
-                # return_merged=False #
-                res = exe.run(
-                    compile_prog, fetch_list=fetch_list, return_merged=False
-                )
-                for out_i, expect in zip(res, [(), (2,), (), (2,)]):
-                    for replica in out_i:
-                        self.assertEqual(replica.shape, expect)
-
-                # return_merged=True #
-                res = exe.run(
-                    compile_prog, fetch_list=fetch_list, return_merged=True
-                )
+                res = exe.run(compile_prog, fetch_list=fetch_list)
+                print(res)
                 for actual, expect in zip(res, expect_shapes):
                     self.assertEqual(actual.shape, expect)
 

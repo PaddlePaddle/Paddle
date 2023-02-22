@@ -380,21 +380,21 @@ class PADDLE_API Tensor final {
   Tensor slice(int64_t begin_idx, int64_t end_idx) const;
 
   /**
-   * @brief Return the implemention of current Tensor.
+   * @brief Return the implementation of current Tensor.
    *
    * @return std::shared_ptr<phi::TensorBase>
    */
   const std::shared_ptr<phi::TensorBase>& impl() const;
 
   /**
-   * @brief Set the implemention of current Tensor.
+   * @brief Set the implementation of current Tensor.
    *
    * @param impl
    */
   void set_impl(const std::shared_ptr<phi::TensorBase>& impl);
 
   /**
-   * @brief Set the implemention of current Tensor.
+   * @brief Set the implementation of current Tensor.
    *
    * @param impl
    */
@@ -645,6 +645,13 @@ class PADDLE_API Tensor final {
    * in the development of new dygraph. It may be removed in the future.
    */
   std::string name_{""};
+
+  // Tensor C++ APIs
+  // Example: Tensor add(const Tensor& other) const;
+  Tensor add(const Tensor& y) const;
+  Tensor divide(const Tensor& y) const;
+  Tensor multiply(const Tensor& y) const;
+  Tensor subtract(const Tensor& y) const;
 };
 
 }  // namespace experimental

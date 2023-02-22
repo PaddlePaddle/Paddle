@@ -129,8 +129,17 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         if not use_prim:
             return
         fwd_ops = [op.type for op in net.forward.main_program.block(0).ops]
+        all_ops = [
+            op.type
+            for op in net.forward.program_cache.last()[-1][-1]
+            .train_program.block(0)
+            .ops
+        ]
         # Ensure that softmax is splitted into small ops
         self.assertTrue('softmax' not in fwd_ops)
+        for op in all_ops:
+            if op != "matmul_v2_grad":
+                self.assertTrue("_grad" not in op)
 
     def test_cinn_prim(self):
         dy_res = self.train(use_prim=False)
