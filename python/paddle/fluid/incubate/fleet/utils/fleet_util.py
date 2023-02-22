@@ -57,13 +57,13 @@ class FleetUtil:
         op_maker = core.op_proto_and_checker_maker
         self.op_role_key = op_maker.kOpRoleAttrName()
         if mode == "pslib":
-            from paddle.fluid.incubate.fleet.parameter_server.pslib import (
+            from paddle.incubate.fleet.parameter_server.pslib import (
                 fleet as fleet_pslib,
             )
 
             fleet = fleet_pslib
         elif mode == "transpiler":
-            from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import (
+            from paddle.incubate.fleet.parameter_server.distribute_transpiler import (
                 fleet as fleet_transpiler,
             )
 
