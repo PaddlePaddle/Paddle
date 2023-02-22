@@ -26,6 +26,7 @@ white_ops_list = [
     "sum",
     "exp",
     "scatter",
+    "scatter_nd_add",
     "transpose",
 ]
 

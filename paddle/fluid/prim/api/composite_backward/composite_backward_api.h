@@ -350,7 +350,20 @@ void topk_grad(const Tensor& x,
 
     int tmp_axis = (axis < 0) ? (in_dims.size() + axis) : axis;
     if (tmp_axis + 1 == in_dims.size()) {
-      x_grad_tmp = scatter<T>(zero_tensor, indices, out_grad, false);
+      // the scatter_nd_add does not support 1-D indices
+      if (out_dims.size() == 1) {
+        int num = out_dims[0];
+        auto new_dim = make_ddim(std::initializer_list<int64_t>{num, 1});
+        auto indices_reshape =
+            full<T>(phi::vectorize(new_dim), 0, indices.dtype());
+        for (int i = 0; i < num; i++) {
+          indices_reshape[i][0] = indices[i];
+        }
+        x_grad_tmp =
+         scatter_nd_add<T>(zero_tensor, indices_reshape, out_grad, false);
+      } else {
+        x_grad_tmp = scatter_nd_add<T>(zero_tensor, indices, out_grad, false);
+      }
     } else {
       std::vector<int> tmp_perm;
 
@@ -376,7 +389,7 @@ void topk_grad(const Tensor& x,
       auto tmp_indices = transpose<T>(indices, tmp_perm);
       // scatter grad to grad_x
       auto tmp_grad_x =
-          scatter<T>(tmp_zero_x_grad, tmp_indices, tmp_out_grad, false);
+          scatter_nd_add<T>(tmp_zero_x_grad, tmp_indices, tmp_out_grad, false);
       x_grad_tmp = transpose<T>(tmp_grad_x, reverse_perm);
     }
     set_output<T>(x_grad_tmp, x_grad);
