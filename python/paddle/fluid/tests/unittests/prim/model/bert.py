@@ -59,9 +59,11 @@ def is_tensor(x):
 class BertConfig:
     def __init__(self):
         self.attention_probs_dropout_prob = 0.1
+        # self.attention_probs_dropout_prob = 0.0
         self.fuse = False
         self.hidden_act = 'gelu'
         self.hidden_dropout_prob = 0.1
+        # self.hidden_dropout_prob = 0.0
         # Decrease config to speed up unittest
         # self.hidden_size = 768
         self.hidden_size = 60
@@ -785,16 +787,28 @@ paddle.nn.TransformerDecoder.__init__ = layer_init_wrapper(_decoder_init)
 
 
 class PretrainingDataset(Dataset):
-    def __init__(self, max_pred_length):
+    def __init__(self, input_file, max_pred_length):
+        self.input_file = input_file
         self.max_pred_length = max_pred_length
-        self.inputs = [
-            np.random.randint(0, 30484, (88, 128)).astype('int32'),
-            np.random.randint(0, 2, (88, 128)).astype('int8'),
-            np.random.randint(0, 2, (88, 128)).astype('int8'),
-            np.random.randint(0, 127, (88, 20)).astype('int32'),
-            np.random.randint(0, 29393, (88, 20)).astype('int32'),
-            np.random.randint(0, 1, (88,)).astype('int8'),
+        # self.inputs = [
+        #     np.random.randint(0, 30484, (88, 128)).astype('int32'),
+        #     np.random.randint(0, 2, (88, 128)).astype('int8'),
+        #     np.random.randint(0, 2, (88, 128)).astype('int8'),
+        #     np.random.randint(0, 127, (88, 20)).astype('int32'),
+        #     np.random.randint(0, 29393, (88, 20)).astype('int32'),
+        #     np.random.randint(0, 1, (88,)).astype('int8'),
+        # ]
+
+        keys = [
+            "input_ids",
+            "input_mask",
+            "segment_ids",
+            "masked_lm_positions",
+            "masked_lm_ids",
+            "next_sentence_labels",
         ]
+        self.inputs = np.load(input_file)
+        self.inputs = [self.inputs[key] for key in keys]
 
     def __len__(self):
         "Denotes the total number of samples"
@@ -830,10 +844,8 @@ class PretrainingDataset(Dataset):
         padded_mask_indices = (masked_lm_positions == 0).nonzero()[0]
         if len(padded_mask_indices) != 0:
             index = padded_mask_indices[0].item()
-            mask_token_num = index
         else:
             index = self.max_pred_length
-            mask_token_num = self.max_pred_length
         # masked_lm_labels = np.full(input_ids.shape, -1, dtype=np.int64)
         # masked_lm_labels[masked_lm_positions[:index]] = masked_lm_ids[:index]
         masked_lm_labels = masked_lm_ids[:index]
@@ -841,7 +853,6 @@ class PretrainingDataset(Dataset):
         # softmax_with_cross_entropy enforce last dim size equal 1
         masked_lm_labels = np.expand_dims(masked_lm_labels, axis=-1)
         next_sentence_labels = np.expand_dims(next_sentence_labels, axis=-1)
-
         return [
             input_ids,
             segment_ids,
@@ -853,9 +864,11 @@ class PretrainingDataset(Dataset):
 
 
 def create_pretraining_dataset(
-    max_pred_length, shared_list, batch_size, worker_init
+    input_file, max_pred_length, shared_list, batch_size, worker_init
 ):
-    train_data = PretrainingDataset(max_pred_length=max_pred_length)
+    train_data = PretrainingDataset(
+        input_file=input_file, max_pred_length=max_pred_length
+    )
     # files have been sharded, no need to dispatch again
     train_batch_sampler = paddle.io.BatchSampler(
         train_data, batch_size=batch_size, shuffle=True
@@ -871,8 +884,8 @@ def create_pretraining_dataset(
         # masked_lm_labels, next_sentence_labels, mask_token_num
         for i in (0, 1, 2, 5):
             out[i] = stack_fn([x[i] for x in data])
-        batch_size, seq_length = out[0].shape
-        size = num_mask = sum(len(x[3]) for x in data)
+        _, seq_length = out[0].shape
+        size = sum(len(x[3]) for x in data)
         # Padding for divisibility by 8 for fp16 or int8 usage
         if size % 8 != 0:
             size += 8 - (size % 8)

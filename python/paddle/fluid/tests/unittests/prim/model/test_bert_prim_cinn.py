@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import platform
 import time
 import unittest
@@ -22,9 +23,15 @@ from bert import Bert, BertPretrainingCriterion, create_pretraining_dataset
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from paddle.dataset.common import DATA_HOME, download
 
 SEED = 2023
 BATCH_SIZE = 2
+
+URL = 'https://paddle-ci.gz.bcebos.com/prim_cinn/bert_training_data.npz'
+MODULE_NAME = 'test_bert_prim_cinn'
+MD5SUM = '71e730ee8d7aa77a215b7e898aa089af'
+SAVE_NAME = 'bert_training_data.npz'
 
 if core.is_compiled_with_cuda():
     paddle.set_flags({'FLAGS_cudnn_deterministic': True})
@@ -44,7 +51,11 @@ def train(to_static, enable_prim, enable_cinn):
     paddle.framework.random._manual_program_seed(SEED)
 
     train_data_loader = create_pretraining_dataset(
-        20, {}, batch_size=BATCH_SIZE, worker_init=None
+        os.path.join(DATA_HOME, MODULE_NAME, SAVE_NAME),
+        20,
+        {},
+        batch_size=BATCH_SIZE,
+        worker_init=None,
     )
 
     bert = Bert()
@@ -115,6 +126,7 @@ def train(to_static, enable_prim, enable_cinn):
 class TestBert(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        download(URL, MODULE_NAME, MD5SUM, SAVE_NAME)
         cls.dy2st = train(to_static=True, enable_prim=False, enable_cinn=False)
 
     def test_prim(self):
@@ -141,11 +153,11 @@ class TestBert(unittest.TestCase):
             to_static=True, enable_prim=True, enable_cinn=True
         )
 
-    # #     # TODO(0x45f): The following is only temporary thresholds, and the final thresholds need to be discussed
-    # #     # np.testing.assert_allclose(
-    # #     #     self.dy2st[0:2], dy2st_prim_cinn[0:2], rtol=1e-2
-    # #     # )
-    # #     # np.testing.assert_allclose(self.dy2st, dy2st_prim_cinn, rtol=1e-1)
+    #     # TODO(0x45f): The following is only temporary thresholds, and the final thresholds need to be discussed
+    #     # np.testing.assert_allclose(
+    #     #     self.dy2st[0:2], dy2st_prim_cinn[0:2], rtol=1e-2
+    #     # )
+    #     # np.testing.assert_allclose(self.dy2st, dy2st_prim_cinn, rtol=1e-1)
 
 
 if __name__ == '__main__':
