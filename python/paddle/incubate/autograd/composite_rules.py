@@ -195,7 +195,12 @@ def maybe_wrap_dim(dim: int, dim_post_expr: int):
 
 @REGISTER_COMPOSITE('flatten_contiguous_range')
 def flatten_contiguous_range_composite(x, start_axis, stop_axis):
-    """define composite rule of op flatten, flatten_contiguous_range -> flatten"""
+    """
+    define composite rule of op flatten, flatten_contiguous_range -> flatten.
+    xshape is the dim with 0 added to the front of x, keep the shape information of x to calculate the grad.
+    shape_out is the parameter of reshape, get from start_axis and stop_axis.
+    out = reshape(x, shape=shape_out), xshape
+    """
     shape_in = x.shape
     shape_x_out: List[int] = [0]
     shape_x_out.extend(shape_in)
