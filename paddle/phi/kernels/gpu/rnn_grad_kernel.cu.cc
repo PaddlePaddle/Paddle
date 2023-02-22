@@ -221,12 +221,7 @@ void RnnGradKernel(const Context &dev_ctx,
       false,
       phi::errors::InvalidArgument("ROCm do not support SequenceLength yet."));
 #endif
-  if (phi::TransToProtoVarType(sequence_length->dtype()) ==
-      ProtoDataType::INT64) {
-    std::vector<int64_t> SequenceLength;
-  } else {
-    std::vector<int> SequenceLength;
-  }
+  std::vector<auto> SequenceLength;
   if (has_seq_length) {
     phi::TensorToVector(*sequence_length, dev_ctx, &SequenceLength);
   }
