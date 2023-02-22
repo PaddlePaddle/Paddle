@@ -159,9 +159,9 @@ Fused subgraph:
            \    |   /        |
             \   |  /         |
              fc_xpu-----------
-                |
-                |
-             act_out
+              |  \
+              |   \
+         act_out  out_max
 */
 class FcXPUFusePass : public FusePassBase {
  protected:
@@ -185,6 +185,7 @@ void FcXPUFusePass::ApplyImpl(ir::Graph* graph) const {
       for (auto act_type : {
                "relu",
                "gelu",
+               "tanh",
                "",
            }) {
         ApplyImpl(graph, mul_type, with_bias, act_type);
@@ -244,6 +245,18 @@ void FcXPUFusePass::ApplyImpl(ir::Graph* graph,
       QuantWeight<int16_t>(mul_w_tensor, mul_w_max_tensor, !transpose_w);
     }
 
+    std::string fc_out_name;
+    if (act_out) {
+      fc_out_name = act_out->Name();
+    } else if (add_out) {
+      fc_out_name = add_out->Name();
+    } else {
+      fc_out_name = mul_out->Name();
+    }
+    std::string fc_out_max_name = fc_out_name + "_max";
+    VarDesc fc_out_max_desc(fc_out_max_name);
+    Node* fc_out_max = graph->CreateVarNode(&fc_out_max_desc);
+
     // Generate fc_xpu op
     framework::OpDesc fc_xpu_op_desc(block);
     fc_xpu_op_desc.SetType("fc_xpu");
@@ -282,25 +295,21 @@ void FcXPUFusePass::ApplyImpl(ir::Graph* graph,
             "act_alpha", PADDLE_GET_CONST(float, act->Op()->GetAttr("slope")));
       }
     }
-    if (act_out) {
-      fc_xpu_op_desc.SetOutput("out", {act_out->Name()});
-    } else if (add_out) {
-      fc_xpu_op_desc.SetOutput("out", {add_out->Name()});
-    } else {
-      fc_xpu_op_desc.SetOutput("out", {mul_out->Name()});
-    }
+    fc_xpu_op_desc.SetOutput("out", {fc_out_name});
+    fc_xpu_op_desc.SetOutput("out_max", {fc_out_max_name});
     auto* fc_xpu = graph->CreateOpNode(&fc_xpu_op_desc);
-    SAFE_IR_NODE_LINK_TO(mul_x, fc_xpu);
-    SAFE_IR_NODE_LINK_TO(mul_w, fc_xpu);
-    SAFE_IR_NODE_LINK_TO(mul_w_max, fc_xpu);
+    IR_NODE_LINK_TO(mul_x, fc_xpu);
+    IR_NODE_LINK_TO(mul_w, fc_xpu);
+    IR_NODE_LINK_TO(mul_w_max, fc_xpu);
     SAFE_IR_NODE_LINK_TO(bias, fc_xpu);
     if (act_out) {
-      SAFE_IR_NODE_LINK_TO(fc_xpu, act_out);
+      IR_NODE_LINK_TO(fc_xpu, act_out);
     } else if (add_out) {
-      SAFE_IR_NODE_LINK_TO(fc_xpu, add_out);
+      IR_NODE_LINK_TO(fc_xpu, add_out);
     } else {
-      SAFE_IR_NODE_LINK_TO(fc_xpu, mul_out);
+      IR_NODE_LINK_TO(fc_xpu, mul_out);
     }
+    IR_NODE_LINK_TO(fc_xpu, fc_out_max);
 
     // delete useless node
     std::unordered_set<const Node*> delete_nodes;
