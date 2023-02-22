@@ -17,7 +17,7 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
@@ -34,6 +34,7 @@ class TestSliceOp(OpTest):
         self.op_type = "slice"
         self.prim_op_type = "prim"
         self.python_api = paddle.slice
+        self.enable_cinn = False
         self.config()
         self.inputs = {'Input': self.input}
         self.outputs = {'Out': self.out}
@@ -84,6 +85,9 @@ class TestCase2(TestSliceOp):
 class TestSliceZerosShapeTensor(OpTest):
     def setUp(self):
         self.op_type = "slice"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.slice
+        self.enable_cinn = False
         self.config()
         self.inputs = {'Input': self.input}
         self.outputs = {'Out': self.out}
@@ -113,6 +117,7 @@ class TestSliceOp_decs_dim(OpTest):
         self.op_type = "slice"
         self.prim_op_type = "prim"
         self.python_api = paddle.slice
+        self.enable_cinn = False
         self.config()
         self.inputs = {'Input': self.input}
         self.outputs = {'Out': self.out}
@@ -204,6 +209,7 @@ class TestSliceOp_starts_ListTensor(OpTest):
         self.op_type = "slice"
         self.prim_op_type = "prim"
         self.python_api = paddle.slice
+        self.enable_cinn = False
         self.config()
 
         starts_tensor = []
@@ -247,6 +253,7 @@ class TestSliceOp_decs_dim_starts_ListTensor(OpTest):
         self.op_type = "slice"
         self.prim_op_type = "prim"
         self.python_api = paddle.slice
+        self.enable_cinn = False
         self.config()
 
         starts_tensor = []
@@ -308,6 +315,7 @@ class TestSliceOp_decs_dim_starts_OneTensor(OpTest):
         self.op_type = "slice"
         self.prim_op_type = "prim"
         self.python_api = paddle.slice
+        self.enable_cinn = False
         self.config()
         self.inputs = {
             'Input': self.input,
@@ -347,6 +355,7 @@ class TestSliceOp_starts_OneTensor_ends_OneTensor(OpTest):
         self.op_type = "slice"
         self.prim_op_type = "prim"
         self.python_api = paddle.slice
+        self.enable_cinn = False
         self.config()
 
         self.inputs = {
@@ -386,6 +395,7 @@ class TestSliceOp_decs_dim_starts_and_ends_OneTensor(OpTest):
         self.op_type = "slice"
         self.prim_op_type = "prim"
         self.python_api = paddle.slice
+        self.enable_cinn = False
         self.config()
         self.inputs = {
             'Input': self.input,
@@ -426,6 +436,7 @@ class TestSliceOp_starts_OneTensor_ends_ListTensor(OpTest):
         self.op_type = "slice"
         self.prim_op_type = "prim"
         self.python_api = paddle.slice
+        self.enable_cinn = False
         self.config()
 
         ends_tensor = []
@@ -466,7 +477,6 @@ class TestSliceOp_starts_OneTensor_ends_ListTensor(OpTest):
         )
 
 
-'''
 # Test CUDA float16
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
@@ -476,6 +486,7 @@ class TestFP16(OpTest):
         self.op_type = "slice"
         self.prim_op_type = "prim"
         self.python_api = paddle.slice
+        self.enable_cinn = False
         self.config()
         self.inputs = {'Input': self.input}
         self.outputs = {'Out': self.out}
@@ -521,6 +532,7 @@ class TestFP16_2(OpTest):
         self.op_type = "slice"
         self.prim_op_type = "prim"
         self.python_api = paddle.slice
+        self.enable_cinn = False
         self.config()
         self.inputs = {'Input': self.input}
         self.outputs = {'Out': self.out}
@@ -558,11 +570,15 @@ class TestFP16_2(OpTest):
             )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestBF16(OpTest):
     def setUp(self):
         self.op_type = "slice"
         self.prim_op_type = "prim"
         self.python_api = paddle.slice
+        self.enable_cinn = False
         self.config()
         self.inputs = {'Input': convert_float_to_uint16(self.input)}
         self.outputs = {'Out': convert_float_to_uint16(self.out)}
@@ -583,12 +599,10 @@ class TestBF16(OpTest):
         self.infer_flags = [1, 1, 1]
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', check_prim=True)
-
-'''
+        self.check_grad(['Input'], 'Out')
 
 
 # Test python API
