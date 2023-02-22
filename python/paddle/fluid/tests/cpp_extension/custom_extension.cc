@@ -34,7 +34,7 @@ paddle::Tensor nullable_tensor(bool return_none = false) {
 
 paddle::optional<paddle::Tensor> optional_tensor(bool return_option = false) {
   paddle::optional<paddle::Tensor> t;
-  if (return_option) {
+  if (!return_option) {
     t = paddle::ones({2, 2});
   }
   return t;
