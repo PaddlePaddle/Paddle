@@ -221,9 +221,9 @@ void RnnGradKernel(const Context &dev_ctx,
       false,
       phi::errors::InvalidArgument("ROCm do not support SequenceLength yet."));
 #endif
-  std::vector<auto> SequenceLength;
+  std::vector<int> SequenceLength;
   if (has_seq_length) {
-    phi::TensorToVector(*sequence_length, dev_ctx, &SequenceLength);
+    phi::TensorToVector(*sequence_length, &SequenceLength);
   }
 
   auto input_dims = x.dims();
