@@ -798,7 +798,7 @@ class OpTest(unittest.TestCase):
                         lod_temp
                     )
             else:
-                if is_calc_ref:
+                if is_calc_ref and np_value_temp == np.float16:
                     v = block.create_var(
                         name=name,
                         dtype=np.float32,
