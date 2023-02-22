@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/amp_kernel.h"
 
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/impl/amp_kernel_impl.h"
@@ -159,10 +160,10 @@ class LazyZeros<phi::GPUContext, T> {
     const auto& cpu_place = phi::CPUPlace();
     // alloc each tensor's start index and copy to device
     auto h_in_starts_mem =
-        paddle::memory::Alloc(cpu_place, (xs_size + 1) * sizeof(int64_t));
+        phi::memory_utils::Alloc(cpu_place, (xs_size + 1) * sizeof(int64_t));
     int64_t* h_starts = reinterpret_cast<int64_t*>(h_in_starts_mem->ptr());
 
-    auto d_in_starts_mem = paddle::memory::Alloc(
+    auto d_in_starts_mem = phi::memory_utils::Alloc(
         dev_ctx.GetPlace(),
         (xs_size + 1) * sizeof(int64_t),
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
@@ -184,10 +185,10 @@ class LazyZeros<phi::GPUContext, T> {
 
     // copy each tensor of "outs" data address array to device
     auto h_out_addrs_mem =
-        paddle::memory::Alloc(cpu_place, xs_size * sizeof(T*));
+        phi::memory_utils::Alloc(cpu_place, xs_size * sizeof(T*));
     T** h_out_addrs = reinterpret_cast<T**>(h_out_addrs_mem->ptr());
 
-    auto d_out_addrs_mem = paddle::memory::Alloc(
+    auto d_out_addrs_mem = phi::memory_utils::Alloc(
         dev_ctx.GetPlace(),
         xs_size * sizeof(T*),
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
@@ -288,10 +289,10 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
   const auto& cpu_place = phi::CPUPlace();
   // calculate each tensor's start index and copy to device
   auto h_starts_tensor =
-      paddle::memory::Alloc(cpu_place, (xs_size + 1) * sizeof(int64_t));
+      phi::memory_utils::Alloc(cpu_place, (xs_size + 1) * sizeof(int64_t));
   int64_t* h_starts = reinterpret_cast<int64_t*>(h_starts_tensor->ptr());
 
-  auto d_starts_tensor = paddle::memory::Alloc(
+  auto d_starts_tensor = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       (xs_size + 1) * sizeof(int64_t),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
@@ -313,11 +314,11 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
                        dev_ctx.stream());
 
   // copy each tensor's data address to device
-  auto h_mem = paddle::memory::Alloc(cpu_place, 2 * xs_size * sizeof(T*));
+  auto h_mem = phi::memory_utils::Alloc(cpu_place, 2 * xs_size * sizeof(T*));
   const T** h_xs = reinterpret_cast<const T**>(h_mem->ptr());
   T** h_outs = reinterpret_cast<T**>(h_mem->ptr()) + xs_size;
 
-  auto d_mem = paddle::memory::Alloc(
+  auto d_mem = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       2 * xs_size * sizeof(T*),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
