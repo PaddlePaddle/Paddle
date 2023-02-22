@@ -492,6 +492,8 @@ class CollectiveOptimizer(DistributedOptimizer):
 
         self._compiled_program = compiler.CompiledProgram(main_program)
 
+        raise Exception("[lyk]test:incubate")
+
         self._compiled_program.with_data_parallel(
             loss_name=self._loss.name,
             build_strategy=self._strategy,
