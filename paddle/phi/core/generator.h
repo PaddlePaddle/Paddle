@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <glog/logging.h>
 #include <stdint.h>
 
 #include <atomic>
@@ -43,40 +42,11 @@ class Generator {
     std::mt19937_64 cpu_engine;
   };
 
-  Generator() {
-    auto seed = GetRandomSeed();
-    std::seed_seq seq({seed});
-    auto engine = std::make_shared<std::mt19937_64>(seq);
-    this->state_.cpu_engine = *engine;
-    this->state_.device = -1;
-    this->state_.current_seed = seed;
-    this->state_.thread_offset = 0;
-    this->engine_ = engine;
-    VLOG(4) << "initial seed: " << this->state_.current_seed
-            << ", cpu engine: " << &this->state_.cpu_engine;
-  }
-  explicit Generator(uint64_t seed) {
-    std::seed_seq seq({seed});
-    auto engine = std::make_shared<std::mt19937_64>(seq);
-    this->state_.cpu_engine = *engine;
-    this->state_.device = -1;
-    this->state_.current_seed = seed;
-    this->state_.thread_offset = 0;
-    this->engine_ = engine;
-    VLOG(4) << "initial seed: " << this->state_.current_seed
-            << ", cpu engine: " << &this->state_.cpu_engine;
-  }
-  Generator(uint64_t seed, uint64_t device_id) {
-    std::seed_seq seq({seed});
-    auto engine = std::make_shared<std::mt19937_64>(seq);
-    this->state_.cpu_engine = *engine;
-    this->state_.device = device_id;
-    this->state_.current_seed = seed;
-    this->state_.thread_offset = 0;
-    this->engine_ = engine;
-    VLOG(4) << "initial seed: " << this->state_.current_seed
-            << ", cpu engine: " << &this->state_.cpu_engine;
-  }
+  Generator();
+
+  explicit Generator(uint64_t seed);
+
+  Generator(uint64_t seed, uint64_t device_id);
 
   Generator(const Generator& other) = delete;
 

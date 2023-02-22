@@ -159,6 +159,43 @@ std::shared_ptr<std::mt19937_64> GetCPURandomEngine(uint64_t seed) {
   }
 }
 
+Generator::Generator() {
+  auto seed = GetRandomSeed();
+  std::seed_seq seq({seed});
+  auto engine = std::make_shared<std::mt19937_64>(seq);
+  this->state_.cpu_engine = *engine;
+  this->state_.device = -1;
+  this->state_.current_seed = seed;
+  this->state_.thread_offset = 0;
+  this->engine_ = engine;
+  VLOG(4) << "initial seed: " << this->state_.current_seed
+          << ", cpu engine: " << &this->state_.cpu_engine;
+}
+
+Generator::Generator(uint64_t seed) {
+  std::seed_seq seq({seed});
+  auto engine = std::make_shared<std::mt19937_64>(seq);
+  this->state_.cpu_engine = *engine;
+  this->state_.device = -1;
+  this->state_.current_seed = seed;
+  this->state_.thread_offset = 0;
+  this->engine_ = engine;
+  VLOG(4) << "initial seed: " << this->state_.current_seed
+          << ", cpu engine: " << &this->state_.cpu_engine;
+}
+
+Generator::Generator(uint64_t seed, uint64_t device_id) {
+  std::seed_seq seq({seed});
+  auto engine = std::make_shared<std::mt19937_64>(seq);
+  this->state_.cpu_engine = *engine;
+  this->state_.device = device_id;
+  this->state_.current_seed = seed;
+  this->state_.thread_offset = 0;
+  this->engine_ = engine;
+  VLOG(4) << "initial seed: " << this->state_.current_seed
+          << ", cpu engine: " << &this->state_.cpu_engine;
+}
+
 phi::Generator::GeneratorState Generator::GetState() {
   std::lock_guard<std::mutex> lock(this->mu_);
   state_.cpu_engine = *engine_;
