@@ -543,6 +543,7 @@
   kernel :
     data_type: x
     func : gather_grad
+  composite : gather_grad(x, index, out_grad, axis, overwrite)
   no_need_buffer : x
 
 - backward_op : group_norm_grad
