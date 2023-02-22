@@ -376,7 +376,7 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
           true,
           platform::errors::InvalidArgument(
               "key is expected to be nullptr or the same as "
-              "query, but recieved key=%p, query=%p.",
+              "query, but received key=%p, query=%p.",
               key,
               query));
 

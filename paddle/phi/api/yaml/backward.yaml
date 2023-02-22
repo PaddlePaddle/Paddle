@@ -1103,6 +1103,12 @@
   backward : rsqrt_double_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : scale_grad
+  forward : scale (Tensor x, Scalar scale, float bias, bool bias_after_scale) -> Tensor(out)
+  args : (Tensor out_grad, Scalar scale=1.0)
+  output : Tensor(x_grad)
+  invoke : scale(out_grad, scale, 0.0f, true)
+
 - backward_op : scatter_grad
   forward : scatter (Tensor x, Tensor index, Tensor updates, bool overwrite=true) -> Tensor(out)
   args : (Tensor index, Tensor updates, Tensor out_grad, bool overwrite)
@@ -1206,6 +1212,12 @@
     func : sigmoid_triple_grad
   optional : grad_grad_out_grad
   inplace : (grad_grad_x -> fwd_grad_out_grad)
+
+- backward_op : sign_grad
+  forward : sign (Tensor x) -> Tensor(out)
+  args : (Tensor out_grad)
+  output : Tensor(x_grad)
+  invoke : scale(out_grad, 0.0f, 0.0f, true)
 
 - backward_op : silu_grad
   forward : silu (Tensor x) -> Tensor(out)

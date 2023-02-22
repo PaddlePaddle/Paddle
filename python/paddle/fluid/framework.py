@@ -7739,7 +7739,7 @@ def _get_paddle_place(place):
         if not core.is_compiled_with_cuda():
             raise ValueError(
                 "The device should not be {}, since PaddlePaddle is "
-                "not compiled with CUDA".format(avaliable_gpu_place)
+                "not compiled with CUDA".format(avaliable_gpu_place.group())
             )
         if place == "gpu_pinned":
             return core.CUDAPinnedPlace()
@@ -7757,7 +7757,7 @@ def _get_paddle_place(place):
         if not core.is_compiled_with_xpu():
             raise ValueError(
                 "The device should not be {}, since PaddlePaddle is "
-                "not compiled with XPU".format(avaliable_xpu_place)
+                "not compiled with XPU".format(avaliable_xpu_place.group())
             )
         place_info_list = place.split(':', 1)
         device_id = place_info_list[1]
@@ -7770,7 +7770,7 @@ def _get_paddle_place(place):
         if not core.is_compiled_with_npu():
             raise ValueError(
                 "The device should not be {}, since PaddlePaddle is "
-                "not compiled with NPU".format(avaliable_npu_place)
+                "not compiled with NPU".format(avaliable_npu_place.group())
             )
         place_info_list = place.split(':', 1)
         device_id = place_info_list[1]
@@ -7783,7 +7783,7 @@ def _get_paddle_place(place):
         if not core.is_compiled_with_ipu():
             raise ValueError(
                 "The device should not be {}, since PaddlePaddle is "
-                "not compiled with IPU".format(avaliable_ipu_place)
+                "not compiled with IPU".format(avaliable_ipu_place.group())
             )
         place_info_list = place.split(':', 1)
         device_id = place_info_list[1]
@@ -7796,7 +7796,7 @@ def _get_paddle_place(place):
         if not core.is_compiled_with_mlu():
             raise ValueError(
                 "The device should not be {}, since PaddlePaddle is "
-                "not compiled with MLU".format(avaliable_mlu_place)
+                "not compiled with MLU".format(avaliable_mlu_place.group())
             )
         place_info_list = place.split(':', 1)
         device_id = place_info_list[1]

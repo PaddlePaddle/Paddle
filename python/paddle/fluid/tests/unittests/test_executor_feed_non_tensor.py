@@ -119,9 +119,7 @@ class TestExecutor(unittest.TestCase):
                 cpu = fluid.CPUPlace()
                 exe = fluid.Executor(cpu)
                 exe.run(startup_program)
-                compiled_prog = fluid.CompiledProgram(
-                    main_program
-                ).with_data_parallel(loss_name=cost.name)
+                compiled_prog = fluid.CompiledProgram(main_program)
                 train_data = numpy.array([[1.0], [2.0], [3.0], [4.0]]).astype(
                     'float32'
                 )

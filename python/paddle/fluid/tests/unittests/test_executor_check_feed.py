@@ -64,9 +64,7 @@ class TestExecutor(unittest.TestCase):
                 exe = fluid.Executor(cpu)
                 lr, cost = self.net()
                 exe.run(startup_program)
-                compiled_prog = fluid.CompiledProgram(
-                    main_program
-                ).with_data_parallel(loss_name=cost.name)
+                compiled_prog = fluid.CompiledProgram(main_program)
                 train_data = [[1.0], [2.0], [3.0], [4.0]]
                 y_true = [[2.0], [4.0], [6.0], [8.0]]
                 a = 0

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,12 +14,11 @@ limitations under the License. */
 
 #include <algorithm>
 
-#include "paddle/fluid/operators/math/sequence_padding.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/kernels/funcs/sequence_padding.h"
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace phi {
+namespace funcs {
 
 template <typename T, CopyType Type>
 __global__ void SequencePaddingKernel(T* dst,
@@ -69,7 +68,7 @@ class PaddingLoDTensorFunctor<phi::GPUContext, T> {
                   bool norm_by_times = false,
                   const PadLayout layout = kBatchLengthWidth) {
     auto seq_lod = seq_tensor.lod();
-    auto seq_offsets = framework::ToAbsOffset(seq_lod)[lod_level];
+    auto seq_offsets = phi::ToAbsOffset(seq_lod)[lod_level];
     const auto& seq_tensor_dims = seq_tensor.dims();
     const auto& pad_tensor_dims = pad_tensor->dims();
     int max_seq_len = MaximumSequenceLength(seq_offsets);
@@ -79,7 +78,7 @@ class PaddingLoDTensorFunctor<phi::GPUContext, T> {
     PADDLE_ENFORCE_GE(
         pad_seq_len,
         max_seq_len,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The pad_seq_len must be equal to or greater than the "
             "original max sequence length. Expected %ld >= %ld, but got %ld < "
             "%ld. Please check the input value.",
@@ -99,7 +98,7 @@ class PaddingLoDTensorFunctor<phi::GPUContext, T> {
     PADDLE_ENFORCE_EQ(
         pad_value.numel() == 1 || pad_value.numel() == step_width,
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The numel of 'pad_value' can only be 1 or be equal to "
             "the 'step_width', but got %ld != 1 and %ld. Please check the "
             "input value.",
@@ -149,7 +148,7 @@ class UnpaddingLoDTensorFunctor<phi::GPUContext, T> {
                   int lod_level = 0,
                   bool norm_by_times = false,
                   const PadLayout layout = kBatchLengthWidth) {
-    auto seq_offsets = framework::ToAbsOffset(seq_tensor->lod())[lod_level];
+    auto seq_offsets = phi::ToAbsOffset(seq_tensor->lod())[lod_level];
     const auto& seq_tensor_dims = seq_tensor->dims();
     const auto& pad_tensor_dims = pad_tensor.dims();
     int max_seq_len = MaximumSequenceLength(seq_offsets);
@@ -216,6 +215,5 @@ template class UnpaddingLoDTensorFunctor<phi::GPUContext, int64_t>;
 template class UnpaddingLoDTensorFunctor<phi::GPUContext, float>;
 template class UnpaddingLoDTensorFunctor<phi::GPUContext, double>;
 
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi

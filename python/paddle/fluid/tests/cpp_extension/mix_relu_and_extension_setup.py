@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 
-class PSMode:
-    """
-    There are various mode for fleet, each of them is designed for different model.
-    """
+from utils import paddle_includes
 
-    TRANSPILER = 1
-    PSLIB = 2
+from paddle.utils.cpp_extension import CppExtension, setup
 
-
-class DistributedMode:
-    SYNC = 0
-    ASYNC = 1
-    HALF_ASYNC = 2
-    GEO = 3
+setup(
+    name='mix_relu_extension',
+    ext_modules=CppExtension(
+        sources=["mix_relu_and_extension.cc", "custom_sub.cc"],
+        include_dirs=paddle_includes
+        + [os.path.dirname(os.path.abspath(__file__))],
+        extra_compile_args={'cc': ['-w', '-g']},
+        verbose=True,
+    ),
+)
