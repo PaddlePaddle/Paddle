@@ -555,6 +555,7 @@
     func : GatherNdGradInferMeta
   kernel :
     func : gather_nd_grad
+  composite : gather_nd_grad(x, index, out_grad)
   no_need_buffer : x
 
 - backward_op : gelu_grad
