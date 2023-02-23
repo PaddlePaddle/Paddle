@@ -28,25 +28,16 @@ void MeshgridKernel(const Context& ctx,
 
   std::vector<const XPUType*> x_list;
   std::vector<XPUType*> y_list;
-  x_list.resize(inputs.size());
-  y_list.resize(inputs.size());
-  std::transform(
-      inputs.cbegin(), inputs.cend(), x_list.begin(), [](const DenseTensor* x) {
-        return reinterpret_cast<XPUType*>(x->data<T>());
-      });
-  std::transform(
-      outputs.begin(), outputs.end(), y_list.begin(), [&](DenseTensor* x) {
-        ctx.template Alloc<T>(x);
-        return reinterpret_cast<XPUType*>(x->data<T>());
-      });
-
   std::vector<std::vector<int64_t>> xshape_list;
-  xshape_list.resize(inputs.size());
-  std::transform(
-      inputs.cbegin(),
-      inputs.cend(),
-      xshape_list.begin(),
-      [](const DenseTensor* x) { return phi::vectorize<int64_t>(x->dims()); });
+
+  for (const auto& x : inputs) {
+    x_list.push_back(reinterpret_cast<const XPUType*>(x->data<T>()));
+    xshape_list.emplace_back(phi::vectorize<int64_t>(x->dims()));
+  }
+  for (auto& x : outputs) {
+    ctx.template Alloc<T>(x);
+    y_list.push_back(reinterpret_cast<XPUType*>(x->data<T>()));
+  }
   int r = xpu::meshgrid<XPUType>(ctx.x_context(), x_list, y_list, xshape_list);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "meshgrid");
 }
