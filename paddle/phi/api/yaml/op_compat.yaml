@@ -594,6 +594,14 @@
   outputs :
     out : Out
 
+- op : flatten (flatten_contiguous_range)
+  inputs :
+    x : X
+  outputs :
+    {out : Out, xshape : XShape}
+  attrs :
+    {start_axis : start_axis, stop_axis : stop_axis}
+
 - op : flip
   inputs :
     x : X
@@ -647,6 +655,14 @@
 - op : full (fill_constant)
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : full_like (fill_any_like)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs :
+    {value: value, dtype: dtype}
 
 - op : fused_conv2d
   extra :
@@ -1310,10 +1326,15 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : scale
+  backward : scale_grad
   inputs :
     x : X
   outputs :
-    out: Out
+    out : Out
+  scalar :
+    scale :
+      data_type : float
+      tensor_name : ScaleTensor
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -1408,6 +1429,13 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : sign
+  backward : sign_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : silu
   backward : silu_grad
@@ -1647,7 +1675,10 @@
 
 - op : transpose (transpose2)
   backward : transpose_grad (transpose2_grad)
+  attrs:
+    perm : axis
   extra :
+    outputs : [XShape]
     attrs : [bool use_mkldnn = false, str data_format = "AnyLayout", bool use_quantizer = false,
               str mkldnn_data_type = "float32"]
 

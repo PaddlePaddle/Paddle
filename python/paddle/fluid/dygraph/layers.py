@@ -67,7 +67,7 @@ def _scope_dist2single(dist_scope):
         "column_parallel_linear": "linear",
         "vocab_parallel_embedding": "embedding",
         # "parallel_cross_entropy": "cross_entropy", while mp_layer has parallel_cross_entropy,
-        # but there is no parameters so the mapping of parallel_cross_entropy is not neccessary.
+        # but there is no parameters so the mapping of parallel_cross_entropy is not necessary.
     }
     return mapping.get(dist_scope, dist_scope)
 

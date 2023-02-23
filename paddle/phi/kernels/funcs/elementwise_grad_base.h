@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/elementwise_utils.h"
@@ -1533,7 +1534,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
   // One part buffer for x_strides_array, rest for y_strides_array and
   // out_dims_array.
   size_t tmp_total_bytes = bytes * 3;
-  auto tmp_buffer = paddle::memory::Alloc(
+  auto tmp_buffer = phi::memory_utils::Alloc(
       ctx.GetPlace(),
       tmp_total_bytes,
       phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
@@ -1564,7 +1565,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
   int y_block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, y_threads);
   if (dx) {
     size_t dx_total_bytes = bytes * 2;
-    auto dx_tmp_buffer = paddle::memory::Alloc(
+    auto dx_tmp_buffer = phi::memory_utils::Alloc(
         ctx.GetPlace(),
         dx_total_bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
@@ -1603,7 +1604,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
   if (dy) {
     // One part buffer for y_strides_order_gpu, the other for y_dims_order_gpu
     size_t dy_total_bytes = bytes * 2;
-    auto dy_tmp_buffer = paddle::memory::Alloc(
+    auto dy_tmp_buffer = phi::memory_utils::Alloc(
         ctx.GetPlace(),
         dy_total_bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
