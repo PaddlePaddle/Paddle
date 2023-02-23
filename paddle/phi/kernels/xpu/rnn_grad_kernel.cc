@@ -165,7 +165,8 @@ void RnnGradKernel(const Context& dev_ctx,
   bool has_seq_length = sequence_length.is_initialized();
   std::vector<int> seq_len_tensor(batch_size, seq_len);
   if (has_seq_length) {
-    phi::TensorToVector(*sequence_length, dev_ctx, &seq_len_tensor);
+    seq_len_tensor =
+        phi::GetDataFromTensor<int>(sequence_length.get_ptr());
   }
 
   for (int i = num_layers - 1; i >= 0; --i) {
