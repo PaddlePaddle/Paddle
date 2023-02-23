@@ -19,8 +19,8 @@ import enum
 
 from conv2d_common import (
     CommonConvFunction,
-    CommonConvKernelPart1,
-    CommonConvKernelPart2,
+    CommonCutlassConvKernelPart1,
+    CommonCutlassConvKernelPart2,
     CommonTail,
     GenerateFunctionForPhi,
 )
@@ -49,7 +49,7 @@ dict_for_part1 = {
 }
 
 cbr_kernel = (
-    SubstituteTemplate(CommonConvKernelPart1, dict_for_part1)
+    SubstituteTemplate(CommonCutlassConvKernelPart1, dict_for_part1)
     + '''
   const half *residual = params.residual;
   typename ImplicitGemm::Arguments arguments{
@@ -65,7 +65,7 @@ cbr_kernel = (
       0,
       oc};
 '''
-    + CommonConvKernelPart2
+    + CommonCutlassConvKernelPart2
 )
 
 
@@ -165,7 +165,8 @@ def generate_sm75_1688():
                         TileDesc("128, 64, 64", 2, "32, 32, 64", math_inst),
                         TileDesc("64, 64, 32", 2, "32, 32, 32", math_inst),
                         TileDesc("64, 128, 32", 2, "32, 64, 32", math_inst),
-                        TileDesc("64, 128, 64", 2, "64, 64, 32", math_inst),
+                        # diff is too large, so comment is
+                        # TileDesc("64, 128, 64", 2, "64, 64, 32", math_inst),
                         TileDesc("64, 256, 32", 2, "64, 64, 32", math_inst),
                         TileDesc("128, 64, 32", 2, "64, 32, 32", math_inst),
                         TileDesc("128, 128, 32", 2, "64, 64, 32", math_inst),
@@ -192,7 +193,7 @@ def generate_sm75_1688():
                             kernel_dict["kernel_func_name"] + ", \n"
                         )
 
-        # Generate op code
+        # Generate op code with sm_version
         op_dict["all_kernel_func_name"] = all_kernel_names
         sm75_code += SubstituteTemplate(CommonConvFunction, op_dict)
     return sm75_code
