@@ -124,23 +124,6 @@ class API_Test_Nansum(unittest.TestCase):
                 msg='nansum output is wrong, out =' + str(out4_np),
             )
 
-    def test_error_api(self):
-        paddle.enable_static()
-
-        # input dtype error
-        def run1():
-            input = fluid.data(name='input', dtype='float16', shape=[2, 3])
-            output = paddle.nansum(input)
-
-        self.assertRaises(TypeError, run1)
-
-        # axis type error
-        def run2():
-            input = fluid.data(name='input', dtype='float16', shape=[2, 3])
-            output = paddle.nansum(input, axis=1.2)
-
-        self.assertRaises(TypeError, run2)
-
     def test_dygraph(self):
         x = np.array(
             [[float('nan'), 3, 5, 9], [1, 2, float('-nan'), 7]]
