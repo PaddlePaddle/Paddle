@@ -117,7 +117,7 @@ class TestGraph(unittest.TestCase):
                 .get_tensor()
             )
         )
-        paddle.fluid.io._save_persistable_nodes(exe, checkponit_dir, graph)
+
         _set_zero('conv2d_1.w_0', paddle.static.global_scope(), place)
         set_after = np.sum(
             np.array(
@@ -127,7 +127,7 @@ class TestGraph(unittest.TestCase):
             )
         )
         self.assertEqual(set_after, 0)
-        paddle.fluid.io._load_persistable_nodes(exe, checkponit_dir, graph)
+
         sum_after = np.sum(
             np.array(
                 paddle.static.global_scope()

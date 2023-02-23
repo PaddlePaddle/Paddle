@@ -16,7 +16,6 @@ import os
 import warnings
 
 import paddle
-import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.static import (
     CompiledProgram,
@@ -111,7 +110,9 @@ class ParameterServerRuntime(RuntimeBase):
 
             origin_varname, _, _ = _get_varname_parts(each_var.name)
 
-            new_var = fluid.io._clone_var_in_block_(load_block, each_var)
+            new_var = paddle.framework.io_utils._clone_var_in_block_(
+                load_block, each_var
+            )
             var_path = os.path.join(dirname, origin_varname)
             if not os.path.exists(var_path):
                 raise ValueError(

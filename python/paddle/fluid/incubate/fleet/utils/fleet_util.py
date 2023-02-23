@@ -1090,11 +1090,13 @@ class FleetUtil:
             vars = [program.global_block().var(i) for i in var_names]
             with fluid.scope_guard(scope):
                 if save_combine:
-                    fluid.io.save_vars(
+                    static.io.save_vars(
                         executor, "./", program, vars=vars, filename=model_name
                     )
                 else:
-                    fluid.io.save_vars(executor, model_name, program, vars=vars)
+                    static.io.save_vars(
+                        executor, model_name, program, vars=vars
+                    )
 
             configs = {
                 "fs.default.name": hadoop_fs_name,
