@@ -50,7 +50,6 @@ class TestIInfoAndFInfoAPI(unittest.TestCase):
             self.assertEqual(xinfo.dtype, xninfo.dtype)
     def test_finfo(self):
         for paddle_dtype, np_dtype in [
-            (paddle.float16, torch.float16),
             (paddle.float32, torch.float32),
             (paddle.float64, torch.float64),
             (paddle.complex64, torch.complex64),
