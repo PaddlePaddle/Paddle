@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cutlass_lib=$1
 cd conv2d
 python conv2d_bias_act.py > conv2d_bias_act.cu
 python conv2d_bias_residual.py > conv2d_bias_residual.cu
