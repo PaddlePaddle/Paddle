@@ -51,12 +51,6 @@ class TestCastGradComp(unittest.TestCase):
         cls.primal = cls.primal.astype(cls.src_dtype)
         cls.cotangent = cls.cotangent.astype(cls.src_dtype)
 
-    def setUp(self):
-        paddle.enable_static()
-
-    def tearDown(self):
-        paddle.disable_static()
-
     def test_cast_grad_comp(self):
         core._set_prim_backward_enabled(True)
 

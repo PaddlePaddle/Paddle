@@ -59,12 +59,6 @@ class TestTanhGradComp(unittest.TestCase):
         cls.primal0 = cls.primal0.astype(cls.dtype)
         cls.primal1 = cls.primal1.astype(cls.dtype)
 
-    def setUp(self):
-        paddle.enable_static()
-
-    def tearDown(self):
-        paddle.disable_static()
-
     def test_add_grad_comp(self):
         def actual(primal0, primal1):
             core._set_prim_backward_enabled(True)

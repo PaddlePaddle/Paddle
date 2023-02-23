@@ -40,12 +40,6 @@ class TestSqrtGradComp(unittest.TestCase):
     def setUpClass(cls):
         cls.primal = cls.primal.astype(cls.dtype)
 
-    def setUp(self):
-        paddle.enable_static()
-
-    def tearDown(self):
-        paddle.disable_static()
-
     def test_reshape_grad_comp(self):
         def actual(primal0, shape):
             core._set_prim_backward_enabled(True)
