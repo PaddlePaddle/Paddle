@@ -105,7 +105,6 @@ def composite_batchnorm(
         )
     y = reshape(scale, stats_shape) * x_hat + reshape(bias, stats_shape)
     if is_amp:
-        print("Running batch_norm in amp")
         y = cast(y, "float16")
 
     # add op assign to detach tensor in void unsafe change outside the rule.
