@@ -1,7 +1,7 @@
 cc_library(
   process_group
   SRCS process_group.cc
-  DEPS dense_tensor)
+  DEPS dense_tensor xxhash)
 
 cc_library(
   eager_reducer

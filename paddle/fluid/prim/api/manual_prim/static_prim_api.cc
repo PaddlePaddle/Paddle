@@ -67,23 +67,51 @@ Tensor full<DescTensor>(const IntArray& shape,
   framework::OpDesc* op = block->AppendOp();
   op->SetType("fill_constant");
   op->SetAttr("shape", shape.GetData());
-  PADDLE_ENFORCE_EQ(
-      ((dtype == DataType::FLOAT32) || (dtype == DataType::FLOAT64) ||
-       (dtype == DataType::FLOAT16)),
-      true,
-      phi::errors::InvalidArgument(
-          "We only support float32/float16 for full, but we got data type: %s",
+  switch (dtype) {
+    case phi::DataType::FLOAT16:
+      op->SetAttr("str_value", std::to_string(value.to<float>()));
+      break;
+    case phi::DataType::FLOAT32:
+      op->SetAttr("value", value.to<float>());
+      break;
+    case phi::DataType::FLOAT64:
+      op->SetAttr("str_value", std::to_string(value.to<double>()));
+      break;
+    case phi::DataType::BOOL:
+      op->SetAttr("str_value", std::to_string(value.to<bool>()));
+      break;
+    case phi::DataType::INT8:
+      op->SetAttr("str_value", std::to_string(value.to<int8_t>()));
+      break;
+    case phi::DataType::UINT8:
+      op->SetAttr("str_value", std::to_string(value.to<uint8_t>()));
+      break;
+    case phi::DataType::INT16:
+      op->SetAttr("str_value", std::to_string(value.to<int16_t>()));
+      break;
+    case phi::DataType::UINT16:
+      op->SetAttr("str_value", std::to_string(value.to<uint16_t>()));
+      break;
+    case phi::DataType::INT32:
+      op->SetAttr("str_value", std::to_string(value.to<int32_t>()));
+      break;
+    case phi::DataType::UINT32:
+      op->SetAttr("str_value", std::to_string(value.to<uint32_t>()));
+      break;
+    case phi::DataType::INT64:
+      op->SetAttr("str_value", std::to_string(value.to<int64_t>()));
+      break;
+    case phi::DataType::UINT64:
+      op->SetAttr("str_value", std::to_string(value.to<uint64_t>()));
+      break;
+    default:
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "We support "
+          "bool/float16/float32/float64/int8/int16/int32/int64/uint8/uint16/"
+          "uint32/uint64 for full, but we got data type: %s",
           phi::DataTypeToString(dtype)));
-  if (dtype == phi::DataType::FLOAT32) {
-    op->SetAttr("value", value.to<float>());
-  } else if (dtype == phi::DataType::FLOAT64) {
-    op->SetAttr("str_value", std::to_string(value.to<double>()));
-  } else if (dtype == phi::DataType::FLOAT16) {
-    op->SetAttr("str_value", std::to_string(value.to<float>()));
-  } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "We only support float64/float32/float16 for full"));
   }
+
   op->SetAttr("dtype", paddle::framework::TransToProtoVarType(dtype));
   op->SetOutput(
       "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});

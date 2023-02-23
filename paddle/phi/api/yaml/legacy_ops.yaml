@@ -921,15 +921,6 @@
     data_type : x
   backward : kldiv_loss_grad
 
-- op : kron
-  args : (Tensor x, Tensor y)
-  output : Tensor
-  infer_meta :
-    func : KronInferMeta
-  kernel :
-    func : kron
-  backward : kron_grad
-
 - op : lamb_
   args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment1, Tensor moment2, Tensor beta1_pow, Tensor beta2_pow, Tensor master_param, Tensor skip_update, float weight_decay, float beta1, float beta2, float epsilon, bool multi_precision)
   output : Tensor(param_out), Tensor(moment1_out), Tensor(moment2_out), Tensor(beta1_pow_out), Tensor(beta2_pow_out), Tensor(master_param_outs)

@@ -66,7 +66,6 @@ from . import average
 from . import metrics
 from . import transpiler
 from . import incubate
-from .input import embedding, one_hot
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
 
@@ -129,8 +128,6 @@ __all__ = (
     + [
         'io',
         'initializer',
-        'embedding',
-        'one_hot',
         'layers',
         'contrib',
         'data',

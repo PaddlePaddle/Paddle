@@ -15,19 +15,23 @@
 import abc
 
 import paddle.fluid as fluid
+from paddle.distributed.fleet.base.role_maker import RoleMakerBase
 from paddle.fluid.executor import Executor
 from paddle.fluid.optimizer import SGD
 from paddle.optimizer import SGD as SGD_v2
+from paddle.static.amp.decorator import OptimizerWithMixedPrecision
 
-from paddle.fluid.incubate.fleet.base.mode import Mode
-from paddle.distributed.fleet.base.role_maker import RoleMakerBase
-from paddle.static.amp.decorator import (
-    OptimizerWithMixedPrecision,
-)
-from . import mode
+__all__ = ['Mode', 'Fleet', 'DistributedOptimizer']
 
-__all__ = ['Fleet', 'DistributedOptimizer']
-__all__ += mode.__all__
+
+class Mode:
+    """
+    There are various mode for fleet, each of them is designed for different model.
+    """
+
+    TRANSPILER = 1
+    PSLIB = 2
+    COLLECTIVE = 3
 
 
 class Fleet(metaclass=abc.ABCMeta):
@@ -200,7 +204,7 @@ class Fleet(metaclass=abc.ABCMeta):
         self._executor = Executor(fluid.CPUPlace())
 
         if role_maker and not isinstance(role_maker, RoleMakerBase):
-            from paddle.fluid.incubate.fleet.base.role_maker import (
+            from paddle.incubate.distributed.fleet.role_maker import (
                 RoleMakerBase as RoleMakerBaseIncubate,
             )
 

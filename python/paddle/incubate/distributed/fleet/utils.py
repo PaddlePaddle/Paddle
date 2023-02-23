@@ -12,19 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import sys
 import logging
+import os
 import subprocess
-import numpy as np
-import paddle
 from collections import OrderedDict
-import paddle.fluid as fluid
-from paddle.fluid import core
-from paddle.fluid.log_helper import get_logger
 
+import numpy as np
 from google.protobuf import text_format
-from paddle.fluid import debugger
+
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid import core, debugger
 from paddle.fluid.framework import Program
 from paddle.fluid.proto import framework_pb2
 

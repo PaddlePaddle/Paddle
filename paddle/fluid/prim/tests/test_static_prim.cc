@@ -35,6 +35,7 @@ PD_DECLARE_KERNEL(tanh, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(tanh_grad, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(pow, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(scale, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(multiply, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(concat, CPU, ALL_LAYOUT);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -43,6 +44,7 @@ PD_DECLARE_KERNEL(tanh, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(tanh_grad, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(pow, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(scale, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add, KPS, ALL_LAYOUT);
 PD_DECLARE_KERNEL(multiply, KPS, ALL_LAYOUT);
 PD_DECLARE_KERNEL(concat, GPU, ALL_LAYOUT);
 #endif
@@ -192,7 +194,7 @@ TEST(StaticPrim, TanhBackwardComposite) {
                                        target_block,
                                        grad_sub_block));
   ASSERT_EQ(target_block->AllOps().size(), static_cast<std::size_t>(1));
-  ASSERT_EQ(grad_ops.size(), static_cast<std::size_t>(3));
+  ASSERT_EQ(grad_ops.size(), static_cast<std::size_t>(6));
   ASSERT_EQ(target_block->AllOps()[0]->Type(), "tanh");
   ASSERT_EQ(target_block->AllOps()[0]->Inputs().at("X").size(),
             static_cast<std::size_t>(1));
@@ -210,14 +212,9 @@ TEST(StaticPrim, TanhBackwardComposite) {
   ASSERT_EQ(grad_ops[0]->Outputs().at("Out").size(),
             static_cast<std::size_t>(1));
 
-  ASSERT_EQ(grad_ops[1]->Type(), "scale");
-  ASSERT_EQ(grad_ops[1]->Inputs().at("X").size(), static_cast<std::size_t>(1));
-  ASSERT_EQ(grad_ops[1]->Inputs().at("X")[0],
-            grad_ops[0]->Outputs().at("Out")[0]);
-  ASSERT_EQ(PADDLE_GET_CONST(float, grad_ops[1]->GetAttr("scale")),
-            static_cast<float>(-1.0));
-  ASSERT_EQ(PADDLE_GET_CONST(float, grad_ops[1]->GetAttr("bias")),
-            static_cast<float>(1.0));
+  ASSERT_EQ(grad_ops[1]->Type(), "fill_constant");
+  ASSERT_EQ(PADDLE_GET_CONST(int, grad_ops[1]->GetAttr("dtype")),
+            static_cast<int>(5));  // ProtoDataType::FP32
   ASSERT_EQ(grad_ops[1]->Outputs().at("Out").size(),
             static_cast<std::size_t>(1));
 
@@ -226,8 +223,30 @@ TEST(StaticPrim, TanhBackwardComposite) {
   ASSERT_EQ(grad_ops[2]->Inputs().at("Y").size(), static_cast<std::size_t>(1));
   ASSERT_EQ(grad_ops[2]->Inputs().at("Y")[0],
             grad_ops[1]->Outputs().at("Out")[0]);
-  ASSERT_EQ(grad_ops[2]->Inputs().at("X")[0], "b@GRAD");
   ASSERT_EQ(grad_ops[2]->Outputs().at("Out").size(),
+            static_cast<std::size_t>(1));
+
+  ASSERT_EQ(grad_ops[3]->Type(), "fill_constant");
+  ASSERT_EQ(PADDLE_GET_CONST(int, grad_ops[3]->GetAttr("dtype")),
+            static_cast<int>(5));  // ProtoDataType::FP32
+  ASSERT_EQ(grad_ops[3]->Outputs().at("Out").size(),
+            static_cast<std::size_t>(1));
+
+  ASSERT_EQ(grad_ops[4]->Type(), "elementwise_add");
+  ASSERT_EQ(grad_ops[4]->Inputs().at("X").size(), static_cast<std::size_t>(1));
+  ASSERT_EQ(grad_ops[4]->Inputs().at("Y").size(), static_cast<std::size_t>(1));
+  ASSERT_EQ(grad_ops[4]->Inputs().at("Y")[0],
+            grad_ops[3]->Outputs().at("Out")[0]);
+  ASSERT_EQ(grad_ops[4]->Outputs().at("Out").size(),
+            static_cast<std::size_t>(1));
+
+  ASSERT_EQ(grad_ops[5]->Type(), "elementwise_mul");
+  ASSERT_EQ(grad_ops[5]->Inputs().at("X").size(), static_cast<std::size_t>(1));
+  ASSERT_EQ(grad_ops[5]->Inputs().at("Y").size(), static_cast<std::size_t>(1));
+  ASSERT_EQ(grad_ops[5]->Inputs().at("Y")[0],
+            grad_ops[4]->Outputs().at("Out")[0]);
+  ASSERT_EQ(grad_ops[5]->Inputs().at("X")[0], "b@GRAD");
+  ASSERT_EQ(grad_ops[5]->Outputs().at("Out").size(),
             static_cast<std::size_t>(1));
 }
 
@@ -368,8 +387,10 @@ TEST(StaticPrim, TestFlags) {
 
 }  // namespace prim
 }  // namespace paddle
+USE_OP_ITSELF(fill_constant);
 USE_OP_ITSELF(tanh);
 USE_OP_ITSELF(tanh_grad);
 USE_OP_ITSELF(pow);
 USE_OP_ITSELF(elementwise_mul);
+USE_OP_ITSELF(elementwise_add);
 USE_OP_ITSELF(scale);
