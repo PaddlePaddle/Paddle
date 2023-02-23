@@ -89,6 +89,7 @@ class QuantConfig(object):
         self._type2config = {}
         self._model = None
         self._qat_layer_mapping = copy.deepcopy(DEFAULT_QAT_LAYER_MAPPINGS)
+        self._customized_qat_layer_mapping = dict()
 
         self._customized_leaves = []
 
@@ -259,6 +260,8 @@ class QuantConfig(object):
             source, paddle.nn.Layer
         ), "The target layer should be a subclass of paddle.nn.qat.Layer"
         self._qat_layer_mapping[source] = target
+        self._customized_qat_layer_mapping[source] = target
+        print(f"self._qat_layer_mapping: {self._qat_layer_mapping}")
 
     def add_customized_leaf(self, layer_type: type):
         r"""
@@ -296,7 +299,12 @@ class QuantConfig(object):
 
     def _get_qat_layer(self, layer: Layer):
         q_config = self._get_config_by_layer(layer)
-        return self.qat_layer_mappings[type(layer)](layer, q_config)
+
+        target_type = self._customized_qat_layer_mapping.get(
+            type(layer), self.qat_layer_mappings.get(type(layer))
+        )
+        print(f"get qat layer of {type(layer)}: {target_type}")
+        return target_type(layer, q_config)
 
     def _has_observer_config(self, layer: Layer):
         r"""
