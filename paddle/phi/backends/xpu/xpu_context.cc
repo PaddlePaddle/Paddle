@@ -100,7 +100,6 @@ struct XPUContext::Impl {
         << "Please NOTE: xpu device: " << static_cast<int>(place_.device);
     context_ = xpu::create_context();
     xpu_version_ = backends::xpu::get_xpu_version(place_.device);
-    SetL3Cache();
   }
 
   void SetXContext(xpu::Context* context) { context_ = context; }

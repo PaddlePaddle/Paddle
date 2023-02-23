@@ -315,6 +315,17 @@ bool AnalysisPredictor::Init(
     }
   }
 #endif
+
+#ifdef PADDLE_WITH_XPU
+  if (place_.GetType() == phi::AllocationType::XPU) {
+    paddle::platform::DeviceContextPool &pool =
+        paddle::platform::DeviceContextPool::Instance();
+    phi::backends::xpu::XPUDeviceGuard guard(place_.GetDeviceId());
+    reinterpret_cast<phi::XPUContext *>(pool.Get(place_))
+        ->SetL3Cache(config_.xpu_l3_workspace_size_);
+  }
+#endif
+
   inference::DisplayMemoryInfo(place_, "Init predictor");
   return true;
 }
