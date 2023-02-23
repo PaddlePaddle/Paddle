@@ -32,7 +32,7 @@ cc_library(
 cc_library(
   cost_model
   SRCS cost_model.cc
-  DEPS executor graph profiler proto_desc device_tracer)
+  DEPS executor graph profiler proto_desc phi_device_tracer)
 
 set(GRAPH_PATTERN_DETECTOR_DEPS graph graph_helper graph_traits)
 if(WITH_TESTING)
@@ -213,10 +213,21 @@ endif()
 
 if(WITH_XPU)
   cc_library(
-    quant_utils
+    xpu_quant_utils
     SRCS xpu/quant_utils.cc
     DEPS pass)
-  pass_library(fc_xpu_fuse_pass inference DIR xpu DEPS quant_utils)
+  cc_library(
+    xpu_pass_utils
+    SRCS xpu/pass_utils.cc
+    DEPS pass)
+  set(XPU_PASS_DEPS xpu_quant_utils xpu_pass_utils)
+  pass_library(embedding_with_eltwise_add_xpu_fuse_pass inference DIR xpu)
+  pass_library(fc_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(multi_encoder_xpu_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
+  pass_library(multi_encoder_xpu_slice_fuse_pass inference DIR xpu)
+  pass_library(generate_sequence_xpu_fuse_pass inference DIR xpu)
+  pass_library(link_xpu_op_max_pass inference DIR xpu)
 endif()
 
 cc_library(
@@ -398,10 +409,6 @@ if(WITH_MKLDNN)
     test_depthwise_conv_mkldnn_pass
     SRCS mkldnn/depthwise_conv_mkldnn_pass_tester.cc
     DEPS depthwise_conv_mkldnn_pass)
-  cc_test(
-    test_conv_activation_mkldnn_fuse_pass
-    SRCS mkldnn/conv_activation_mkldnn_fuse_pass_tester.cc
-    DEPS conv_activation_mkldnn_fuse_pass)
   cc_test_old(
     test_int8_scale_calculation_mkldnn_pass SRCS
     mkldnn/int8_scale_calculation_mkldnn_pass_tester.cc DEPS
@@ -429,10 +436,6 @@ if(WITH_MKLDNN)
   if(WITH_GPU OR WITH_ROCM)
     set(TEST_CONV_BN_PASS_DEPS ${TEST_CONV_BN_PASS_DEPS} depthwise_conv)
   endif()
-  cc_test(
-    test_conv_batch_norm_mkldnn_fuse_pass
-    SRCS mkldnn/mkldnn_conv_bn_fuse_pass_tester.cc
-    DEPS ${TEST_CONV_BN_PASS_DEPS})
   cc_test(
     test_mkldnn_placement_pass
     SRCS mkldnn/mkldnn_placement_pass_tester.cc

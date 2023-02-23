@@ -16,7 +16,7 @@ cc_library(
 cc_library(
   staticgraph_executor_statistics
   SRCS executor_statistics.cc
-  DEPS enforce glog os_info)
+  DEPS enforce glog phi_os_info)
 
 # skip win32 since wget is not installed by default on windows machine.
 if(WITH_GPU

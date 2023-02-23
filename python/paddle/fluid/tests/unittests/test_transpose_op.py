@@ -157,6 +157,44 @@ class TestAutoTuneTransposeOp(OpTest):
         self.check_grad(['X'], 'Out')
 
 
+class TestAutoTuneTransposeBF16Op(OpTest):
+    def setUp(self):
+        self.init_op_type()
+        self.initTestCase()
+        self.dtype = np.uint16
+        self.python_api = paddle.transpose
+        x = np.random.random(self.shape).astype("float32")
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.attrs = {
+            'axis': list(self.axis),
+            'use_mkldnn': self.use_mkldnn,
+        }
+        self.outputs = {
+            'XShape': convert_float_to_uint16(
+                np.random.random(self.shape).astype("float32")
+            ),
+            'Out': self.inputs['X'].transpose(self.axis),
+        }
+
+    def initTestCase(self):
+        fluid.core.set_autotune_range(0, 3)
+        fluid.core.update_autotune_status()
+        fluid.core.enable_autotune()
+        self.shape = (2, 8, 10)
+        self.axis = (0, 2, 1)
+
+    def init_op_type(self):
+        self.op_type = "transpose2"
+        self.use_mkldnn = False
+
+    def test_check_output(self):
+        self.check_output(no_check_set=['XShape'])
+        fluid.core.disable_autotune()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
 class TestTransposeBF16Op(OpTest):
     def setUp(self):
         self.init_op_type()
