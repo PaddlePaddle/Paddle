@@ -926,11 +926,11 @@ inline std::vector<T> GetDataFromTensor(const DenseTensor* x) {
       data = cpu_attr_tensor.data<int>();
     }
     vec_new_data = std::vector<T>(data, data + x->numel());
-  } else if (framework::TransToProtoVarType(x->dtype()) ==
-             framework::proto::VarType::INT64) {
+  } else if (paddle::framework::TransToProtoVarType(x->dtype()) ==
+             paddle::framework::proto::VarType::INT64) {
     auto* data = x->data<int64_t>();
     DenseTensor cpu_attr_tensor;
-    if (!platform::is_cpu_place(x->place())) {
+    if (!paddle::platform::is_cpu_place(x->place())) {
       paddle::framework::TensorCopySync(
           *x, paddle::platform::CPUPlace(), &cpu_attr_tensor);
       data = cpu_attr_tensor.data<int64_t>();
