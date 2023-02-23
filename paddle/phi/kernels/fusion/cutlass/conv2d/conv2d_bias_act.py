@@ -19,6 +19,8 @@ import enum
 
 from conv2d_common import (
     CommonConvFunction,
+    CommonConvKernelPart1,
+    CommonConvKernelPart2,
     CommonDispatchTemp,
     CommonTail,
     CommonWrapperForPhi,
@@ -43,7 +45,8 @@ namespace cutlass_internal {
 
 # This is a cutlass kernel, will be many these like kernels
 
-cba_kernel = '''
+cba_kernel = (
+    '''
 cutlass::Status ${kernel_func_name}(ConvAllParams params) {
 
   using kernel_base =
@@ -74,40 +77,9 @@ cutlass::Status ${kernel_func_name}(ConvAllParams params) {
     ${align_a},
     ${align_b}
   >::Kernel;
-
-  using ImplicitGemm =
-      cutlass::conv::device::ImplicitGemmConvolution<kernel_base>;
-  const half *input = params.input;
-  const half *weight = params.weight;
-  const half *bias = params.bias;
-  half *output = params.output;
-  int batch = params.batch;
-  int ic = params.ic;
-  int ih = params.ih;
-  int iw = params.iw;
-  int kh = params.kh;
-  int kw = params.kw;
-  int oc = params.oc;
-  int pad_h0 = params.pad_h0;
-  int pad_w0 = params.pad_w0;
-  int stride_h = params.stride_h;
-  int stride_w = params.stride_w;
-
-  int oh = params.oh;
-  int ow = params.ow;
-  int dilation_h = params.dilation_h;
-  int dilation_w = params.dilation_w;
-
-  cutlass::conv::Mode mode = cutlass::conv::Mode::kCrossCorrelation;
-  cutlass::conv::Conv2dProblemSize problem_size({batch, ih, iw, ic},
-                                                {oc, kh, kw, ic},
-                                                {pad_h0, 0, pad_w0, 0},
-                                                {stride_h, stride_w},
-                                                {dilation_h, dilation_w},
-                                                {batch, oh, ow, oc},
-                                                mode,
-                                                1);
-
+'''
+    + CommonConvKernelPart1
+    + '''
   typename ImplicitGemm::Arguments arguments{
       problem_size,
       {(cutlass::half_t *)(input), {ic, ic * iw, ic * iw * ih}},
@@ -115,28 +87,9 @@ cutlass::Status ${kernel_func_name}(ConvAllParams params) {
       {(cutlass::half_t *)(bias), {0, 0, 0}},
       {(cutlass::half_t *)(output), {oc, oc * ow, oc * ow * oh}},
       {1.f, 1.f}};
-
-  ImplicitGemm implicit_gemm_op;
-  size_t bytes = implicit_gemm_op.get_workspace_size(arguments);
-
-  auto ctx = params.ctx;
-  auto stream = ctx->stream();
-  phi::Allocator::AllocationPtr tmp_gpu_ptrs_data =
-       phi::memory_utils::Alloc(
-          ctx->GetPlace(),
-          bytes,
-          phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
-  void *workspace = tmp_gpu_ptrs_data->ptr();
-
-  cutlass::Status status = implicit_gemm_op.can_implement(arguments);
-  CUTLASS_CHECK(status);
-  status = implicit_gemm_op.initialize(arguments, workspace);
-  CUTLASS_CHECK(status);
-  status = implicit_gemm_op(stream);
-  CUTLASS_CHECK(status);
-  return status;
-}
 '''
+    + CommonConvKernelPart2
+)
 
 
 class CbaAct(enum.Enum):
