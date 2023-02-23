@@ -28,9 +28,12 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dygraph
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+import paddle.incubate.distributed.fleet.role_maker as role_maker
 from paddle.fluid import compiler
-from paddle.fluid.incubate.fleet.collective import DistributedStrategy, fleet
+from paddle.incubate.distributed.fleet.collective import (
+    DistributedStrategy,
+    fleet,
+)
 
 RUN_STEP = 5
 DEFAULT_BATCH_SIZE = 2

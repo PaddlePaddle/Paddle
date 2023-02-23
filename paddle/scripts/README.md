@@ -35,7 +35,7 @@ A principle here is that source code lies on the development computer (host) so 
 
 ### Build Environments
 
-The lastest pre-built build environment images are:
+The latest pre-built build environment images are:
 
 | Image | Tag |
 | ----- | --- |

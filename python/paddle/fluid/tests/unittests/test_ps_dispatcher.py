@@ -14,7 +14,7 @@
 
 import unittest
 
-from paddle.fluid.incubate.fleet.parameter_server.ir.ps_dispatcher import (
+from paddle.incubate.fleet.parameter_server.ir.ps_dispatcher import (
     HashName,
     PSDispatcher,
     RoundRobin,

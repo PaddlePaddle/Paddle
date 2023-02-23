@@ -77,8 +77,8 @@ if(WITH_GPU)
     SRCS test_auto_tune.cu
     DEPS gtest)
   cc_test(
-    test_multi_tensor_adam_kernel
-    SRCS test_multi_tensor_adam_kernel.cc
+    test_fused_adam_kernel
+    SRCS test_fused_adam_kernel.cc
     DEPS gtest phi phi_api_utils)
 elseif(WITH_ROCM)
   hip_test(
@@ -100,3 +100,8 @@ cc_test(
   strided_memcpy_test
   SRCS strided_memcpy_test.cc
   DEPS device_context memory)
+
+cc_test(
+  sequence_padding_test
+  SRCS sequence_padding_test.cc
+  DEPS sequence_padding)

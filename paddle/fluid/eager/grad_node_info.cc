@@ -326,6 +326,68 @@ void GradNodeBase::SetGradOutMeta(
   }
 }
 
+void GradNodeBase::SetGradOutMeta(
+    const std::vector<const paddle::experimental::Tensor*>& fwd_in,
+    size_t slot_rank) {
+  size_t slot_size = fwd_in.size();
+  PADDLE_ENFORCE_LE(
+      slot_rank,
+      (bwd_out_meta_.size() - 1),
+      paddle::platform::errors::InvalidArgument(
+          "Slot Rank should less equal than bwd_out_meta_ size, "
+          "since bwd_out_meta_ is designed to hold as same num as "
+          "backward outputs."));
+  auto& metas = bwd_out_meta_.at(slot_rank);
+  // Init stop gradient vector before use to avoid push back
+  if (metas.size() < slot_size) {
+    metas.resize(slot_size);
+  }
+  for (size_t i = 0; i < slot_size; i++) {
+    const auto& fwd_in_tensor = (*fwd_in[i]);
+    auto& meta = metas[i];
+    auto* fwd_in_meta = egr::EagerUtils::nullable_autograd_meta(fwd_in_tensor);
+    // Set Stop_gradient
+    if (fwd_in_meta) {
+      meta.SetStopGradient(fwd_in_meta->StopGradient());
+    }
+    // Set Adj Edges
+    if (fwd_in_meta && !fwd_in_meta->StopGradient()) {
+      auto node = fwd_in_meta->GetMutableGradNode();
+      if (!node || !node.get()) {
+        fwd_in_meta->SetGradNode(
+            std::make_shared<egr::GradNodeAccumulation>(fwd_in_meta));
+      }
+      VLOG(3) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
+              << this->name() << " (addr: " << this << ") "
+              << " to " << fwd_in_meta->GetMutableGradNode()->name()
+              << " (addr: " << fwd_in_meta->GetMutableGradNode().get() << ")";
+
+      meta.SetEdge(fwd_in_meta->GetMutableGradNode(),
+                   fwd_in_meta->OutRankInfo());
+    }
+    // Record TensorMeta
+    if (fwd_in_tensor.impl() && fwd_in_tensor.impl().get()) {
+      if (phi::DenseTensor::classof(fwd_in_tensor.impl().get())) {
+        // Only Copy Meta
+        phi::DenseTensor* dense_tensor =
+            static_cast<phi::DenseTensor*>(fwd_in_tensor.impl().get());
+        PADDLE_ENFORCE_NE(dense_tensor->dtype(),
+                          phi::DataType::UNDEFINED,
+                          paddle::platform::errors::Fatal(
+                              "Attempting to copy DenseTensorMeta "
+                              "with phi::DataType::UNDEFINED,"
+                              "which is illegal."));
+        meta.SetTensorMeta(dense_tensor->meta());
+        meta.SetPlace(fwd_in_tensor.place());
+      }
+    } else {
+      VLOG(7)
+          << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
+             "non-DenseTensor argument.";
+    }
+  }
+}
+
 void GradNodeBase::SetDefaultGradInOutMeta() {
   PADDLE_ENFORCE((bwd_out_meta_.size() == 1) && (bwd_in_meta_.size() == 1),
                  paddle::platform::errors::PreconditionNotMet(
