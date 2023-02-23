@@ -99,5 +99,10 @@ void PNormGradKernel(const Context& dev_ctx,
   }
 }
 }  // namespace phi
-PD_REGISTER_KERNEL(
-    p_norm_grad, CPU, ALL_LAYOUT, phi::PNormGradKernel, phi::dtype::float16, float, double) {}
+PD_REGISTER_KERNEL(p_norm_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::PNormGradKernel,
+                   phi::dtype::float16,
+                   float,
+                   double) {}
