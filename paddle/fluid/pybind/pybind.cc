@@ -863,6 +863,53 @@ PYBIND11_MODULE(libpaddle, m) {
                lib[string]: the libarary, could be 'phi', 'fluid' and 'all'.
            )DOC");
 
+  m.def(
+      "_get_registered_phi_kernels",
+      [](const std::string &kernel_regiertered_type) {
+        std::unordered_map<std::string, std::vector<std::string>>
+            all_kernels_info;
+        auto phi_kernels = phi::KernelFactory::Instance().kernels();
+        for (auto &kernel_pair : phi_kernels) {
+          auto kernel_name = kernel_pair.first;
+          std::vector<std::string> kernel_types;
+          for (auto &info_pair : kernel_pair.second) {
+            if (kernel_regiertered_type == "all" ||
+                (kernel_regiertered_type == "function" &&
+                 info_pair.second.GetKernelRegisteredType() ==
+                     phi::KernelRegisteredType::FUNCTION) ||
+                (kernel_regiertered_type == "structure" &&
+                 info_pair.second.GetKernelRegisteredType() ==
+                     phi::KernelRegisteredType::STRUCTURE)) {
+              framework::OpKernelType kernel_type =
+                  framework::TransPhiKernelKeyToOpKernelType(info_pair.first);
+              auto kernel_type_str = framework::KernelTypeToString(kernel_type);
+              if (all_kernels_info.count(kernel_name)) {
+                if (std::find(all_kernels_info[kernel_name].begin(),
+                              all_kernels_info[kernel_name].end(),
+                              kernel_type_str) ==
+                    all_kernels_info[kernel_name].end()) {
+                  all_kernels_info[kernel_name].emplace_back(kernel_type_str);
+                }
+              } else {
+                kernel_types.emplace_back(kernel_type_str);
+              }
+            }
+          }
+          if (!kernel_types.empty()) {
+            all_kernels_info.emplace(kernel_name, kernel_types);
+          }
+        }
+
+        return all_kernels_info;
+      },
+      py::arg("kernel_regiertered_type") = "function",
+      R"DOC(
+           Return the registered kernels in phi.
+
+           Args:
+               kernel_regiertered_type[string]: the libarary, could be 'function', 'structure', and 'all'.
+           )DOC");
+
   // NOTE(Aganlengzi): KernelFactory static instance is initialized BEFORE
   // plugins are loaded for custom kernels, but de-initialized AFTER they are
   // unloaded. We need manually clear symbols(may contain plugins' symbols)
