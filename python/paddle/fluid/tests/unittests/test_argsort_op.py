@@ -498,6 +498,16 @@ class TestArgsortWithInputNaN(unittest.TestCase):
         self.assertEqual((out.numpy() == np.array([1, 2, 3, 0])).all(), True)
         paddle.enable_static()
 
-
+class TestArgSortOpFp16(unittest.TestCase):
+    def test_fp16(self):
+        paddle.enable_static()
+        x_np = np.random.random((10, 16)).astype('float16')
+        x = paddle.static.data(shape=[10, 16], name='x', dtype='float16')
+        out = paddle.argsort(x)
+        exe = paddle.static.Executor()
+        exe.run(paddle.static.default_startup_program())
+        out = exe.run(feed={'x': x_np}, fetch_list=[out])
+        paddle.disable_static()
+        
 if __name__ == "__main__":
     unittest.main()
