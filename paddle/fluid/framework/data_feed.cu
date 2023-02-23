@@ -2127,8 +2127,9 @@ int GraphDataGenerator::FillInferBuf() {
     global_infer_node_type_start[infer_cursor] += total_row_;
     infer_node_end_ = global_infer_node_type_start[infer_cursor];
     cursor_ = infer_cursor;
+    return 1;
   }
-  return 1;
+  return 0;
 }
 
 void GraphDataGenerator::ClearSampleState() {
