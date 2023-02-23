@@ -117,17 +117,7 @@ class IntegerType : public ir::Type {
  public:
   using Type::Type;
   DECLARE_TYPE_UTILITY_FUNCTOR(IntegerType, IntegerTypeStorage);
-
-  // static IntegerType get(ir::IrContext *context,
-  //                        unsigned width,
-  //                        unsigned signedness = 0);
 };
-
-// IntegerType IntegerType::get(ir::IrContext *context,
-//                              unsigned width,
-//                              unsigned signedness) {
-//   return IntegerType::get(context, width, signedness);
-// }
 
 TEST(type_test, parameteric_type) {
   ir::IrContext *ctx = ir::IrContext::Instance();
