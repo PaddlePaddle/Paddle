@@ -145,6 +145,6 @@ inline T GetValue(const Context& dev_ctx, const DenseTensor& x) {
 }
 
 template <typename T>
-inline std::vector<T> GetDataFromTensor(const DenseTensor* x);
+std::vector<T> GetDataFromTensor(const DenseTensor* x);
 
 }  // namespace phi
