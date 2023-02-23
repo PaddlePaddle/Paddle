@@ -23,9 +23,15 @@ if((NOT DEFINED PSLIB_VER) OR (NOT DEFINED PSLIB_URL))
   set(PSLIB_NAME
       "pslib"
       CACHE STRING "" FORCE)
-  set(PSLIB_URL
-      "https://pslib.bj.bcebos.com/pslib.tar.gz"
-      CACHE STRING "" FORCE)
+  if(NOT WITH_HETERPS)
+    set(PSLIB_URL
+        "https://pslib.bj.bcebos.com/pslib.tar.gz"
+        CACHE STRING "" FORCE)
+  else()
+    set(PSLIB_URL
+        "https://pslib.bj.bcebos.com/pslib_3631b2/pslib.tar.gz"
+        CACHE STRING "" FORCE)
+  endif()
 endif()
 message(STATUS "PSLIB_NAME: ${PSLIB_NAME}, PSLIB_URL: ${PSLIB_URL}")
 set(PSLIB_PREFIX_DIR "${THIRD_PARTY_PATH}/pslib")
@@ -54,9 +60,8 @@ ExternalProject_Add(
   ${EXTERNAL_PROJECT_LOG_ARGS}
   PREFIX ${PSLIB_PREFIX_DIR}
   DOWNLOAD_DIR ${PSLIB_DOWNLOAD_DIR}
-  DOWNLOAD_COMMAND
-    cp /home/pangengzheng/ci/baidu/paddlepaddle/pslib/${PSLIB_NAME}.tar.gz ./ &&
-    tar zxvf ${PSLIB_NAME}.tar.gz
+  DOWNLOAD_COMMAND wget --no-check-certificate ${PSLIB_URL} -c -q -O
+                   ${PSLIB_NAME}.tar.gz && tar zxvf ${PSLIB_NAME}.tar.gz
   DOWNLOAD_NO_PROGRESS 1
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${PSLIB_INSTALL_ROOT}

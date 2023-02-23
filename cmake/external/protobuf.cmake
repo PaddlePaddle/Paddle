@@ -262,8 +262,6 @@ function(build_protobuf TARGET_NAME BUILD_FOR_HOST)
       endif()
     endif()
   endif()
-  message(
-    "PROTOBUF_REPOSITORY:${PROTOBUF_REPOSITORY}, PROTOBUF_TAG:${PROTOBUF_TAG}")
   if(WITH_ARM_BRPC)
     set(ARM_PROTOBUF_URL
         "https://paddlerec.bj.bcebos.com/online_infer/arm_brpc_ubuntu18/arm_protobuf.tar.gz"
