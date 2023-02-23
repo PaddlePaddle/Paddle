@@ -178,3 +178,32 @@ def mean_composite(x, axis, keepdim):
         dtype=sum_x.dtype,
     )
     return divide(sum_x, norm)
+
+
+@REGISTER_COMPOSITE('expand_v2')
+def expand_v2_composite(x, shape):
+    """
+    define composite rule of op expnad_v2, expand_v2->expand
+    repeat_times = shape / x.shape
+    out = tile(x, repeat_times = repeat_times)
+    """
+    shape_in = x.shape
+    assert len(shape) >= len(shape_in)
+    dim_out = len(shape)
+    dim_in = len(shape_in)
+    if dim_out == 0:
+        return x
+    repeat_times = []
+    for i in range(dim_out):
+        offset = dim_out - i
+        dim = dim_in - offset
+        size_in = shape_in[dim] if dim >= 0 else 1
+        size_out = shape[i]
+        if size_out == -1:
+            assert dim >= 0
+            repeat = 1
+        else:
+            assert size_out % size_in == 0
+            repeat = int(size_out / size_in)
+        repeat_times.append(repeat)
+    return tile(x, repeat_times=repeat_times)
