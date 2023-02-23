@@ -275,6 +275,7 @@ binary_api_list = [
     paddle.fmax,
     paddle.fmin,
     paddle.complex,
+    paddle.kron,
 ]
 
 binary_int_api_list = [
@@ -1995,20 +1996,36 @@ class TestSundryAPIStatic(unittest.TestCase):
         x = paddle.full([], 1, 'float32')
         out, indices = paddle.topk(x, k=1, axis=0)
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[x, out])
+        res = self.exe.run(
+            prog, fetch_list=[x, out, indices, x.grad_name, out.grad_name]
+        )
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[0], 1.0)
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[1], 1.0)
+        self.assertEqual(res[2].shape, ())
+        self.assertEqual(res[2], 0.0)
+        self.assertEqual(res[3].shape, ())
+        self.assertEqual(res[3], 1.0)
+        self.assertEqual(res[4].shape, ())
+        self.assertEqual(res[4], 1.0)
 
         x1 = paddle.full([], 1, 'float32')
         out1, indices1 = paddle.topk(x1, k=1, axis=-1)
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[x1, out1])
+        res = self.exe.run(
+            prog, fetch_list=[x1, out1, indices1, x1.grad, out1.grad]
+        )
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[0], 1.0)
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[1], 1.0)
+        self.assertEqual(res[2].shape, ())
+        self.assertEqual(res[2], 0.0)
+        self.assertEqual(res[3].shape, ())
+        self.assertEqual(res[3], 1.0)
+        self.assertEqual(res[4].shape, ())
+        self.assertEqual(res[4], 1.0)
 
         with self.assertRaises(ValueError):
             tmp = paddle.topk(x1, k=1, axis=2)

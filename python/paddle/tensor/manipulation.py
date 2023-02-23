@@ -3192,7 +3192,7 @@ def expand_as(x, y, name=None):
 
     Expand the input tensor ``x`` to the same shape as the input tensor ``y``.
 
-    Both the number of dimensions of ``x`` and ``y`` must be less than or equal to 6, and the number of dimensions of ``y`` must be greather than or equal to that of ``x``. The dimension to expand must have a value of 1.
+    Both the number of dimensions of ``x`` and ``y`` must be less than or equal to 6, and the number of dimensions of ``y`` must be greather than or equal to that of ``x``. The dimension to expand must have a value of 0.
 
     Args:
         x (Tensor): The input tensor, its data type is bool, float32, float64, int32 or int64.
@@ -3252,13 +3252,13 @@ def broadcast_to(x, shape, name=None):
 
     Broadcast the input tensor to a given shape.
 
-    Both the number of dimensions of ``x`` and the number of elements in ``shape`` should be less than or equal to 6. The dimension to broadcast to must have a value 1.
+    Both the number of dimensions of ``x`` and the number of elements in ``shape`` should be less than or equal to 6. The dimension to broadcast to must have a value 0.
 
 
     Args:
         x (Tensor): The input tensor, its data type is bool, float32, float64, int32 or int64.
         shape (list|tuple|Tensor): The result shape after broadcasting. The data type is int32. If shape is a list or tuple, all its elements
-            should be integers or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32.
+            should be integers or 0-D or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32.
             The value -1 in shape means keeping the corresponding dimension unchanged.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
     Returns:
@@ -3278,18 +3278,18 @@ def broadcast_to(x, shape, name=None):
         return _C_ops.expand(x, shape)
     else:
         if isinstance(shape, Variable):
-            assert len(shape.shape) <= 1, 'shape must be an 0-D or 1-D Tensor.'
+            assert len(shape.shape) == 1, 'shape must be an 1-D Tensor.'
         else:
             type_tuple = (int, np.int32, np.int64)
             for elem in shape:
                 if isinstance(elem, Variable):
                     assert (
-                        len(elem.shape) <= 1
-                    ), 'Elements in shape must be 0-D or 1-D Tensors or integers.'
+                        len(elem.shape) == 1
+                    ), 'Elements in shape must be 1-D Tensors or integers.'
                 else:
                     assert isinstance(
                         elem, type_tuple
-                    ), 'Elements in shape must be 0-D or 1-D Tensors or integers.'
+                    ), 'Elements in shape must be 1-D Tensors or integers.'
 
         check_variable_and_dtype(
             x,
@@ -3346,12 +3346,12 @@ def expand(x, shape, name=None):
 
     Expand the input tensor to a given shape.
 
-    Both the number of dimensions of ``x`` and the number of elements in ``shape`` should be less than or equal to 6. And the number of dimensions of ``x`` should be less than the number of elements in ``shape``. The dimension to expand must have a value 1.
+    Both the number of dimensions of ``x`` and the number of elements in ``shape`` should be less than or equal to 6. And the number of dimensions of ``x`` should be less than the number of elements in ``shape``. The dimension to expand must have a value 0.
 
     Args:
         x (Tensor): The input Tensor, its data type is bool, float32, float64, int32 or int64.
         shape (list|tuple|Tensor): The result shape after expanding. The data type is int32. If shape is a list or tuple, all its elements
-            should be integers or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32.
+            should be integers or 0-D or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32.
             The value -1 in shape means keeping the corresponding dimension unchanged.
         name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` .
 
@@ -3372,18 +3372,18 @@ def expand(x, shape, name=None):
         return _C_ops.expand(x, shape)
     else:
         if isinstance(shape, Variable):
-            assert len(shape.shape) <= 1, 'shape must be an 0-D or 1-D Tensor.'
+            assert len(shape.shape) == 1, 'shape must be an 1-D Tensor.'
         else:
             for elem in shape:
                 if isinstance(elem, Variable):
                     assert (
-                        len(elem.shape) <= 1
-                    ), 'Elements in shape must be 0-D or 1-D Tensors or integers.'
+                        len(elem.shape) == 1
+                    ), 'Elements in shape must be 1-D Tensors or integers.'
                 else:
                     type_tuple = (int, np.int32, np.int64)
                     assert isinstance(
                         elem, type_tuple
-                    ), 'Elements in shape must be 0-D or 1-D Tensors or integers.'
+                    ), 'Elements in shape must be 1-D Tensors or integers.'
 
         check_variable_and_dtype(
             x,
