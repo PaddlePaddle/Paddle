@@ -37,7 +37,7 @@ class TestCloudRoleMaker(unittest.TestCase):
         from paddle.incubate.distributed.fleet.role_maker import (
             GeneralRoleMaker,
         )
-        from paddle.incubate.fleet.parameter_server.pslib import fleet
+        from paddle.incubate.distributed.fleet.parameter_server.pslib import fleet
 
         os.environ["POD_IP"] = "127.0.0.1"
         os.environ["PADDLE_PORT"] = "36001"

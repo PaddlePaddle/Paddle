@@ -29,7 +29,7 @@ from paddle.fluid.transpiler.distribute_transpiler import (
     DistributeTranspilerConfig,
     ServerRuntimeConfig,
 )
-from paddle.incubate.fleet.parameter_server.mode import DistributedMode
+from paddle.incubate.distributed.fleet.parameter_server.mode import DistributedMode
 
 
 class TrainerRuntimeConfig:

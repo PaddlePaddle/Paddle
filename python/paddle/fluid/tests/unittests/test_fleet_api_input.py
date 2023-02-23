@@ -29,8 +29,8 @@ from paddle.incubate.distributed.fleet.role_maker import (
     UserDefinedRoleMaker,
 )
 
-# from paddle.incubate.fleet.parameter_server import TranspilerOptimizer
-from paddle.incubate.fleet.parameter_server.distribute_transpiler import fleet
+# from paddle.incubate.distributed.fleet.parameter_server import TranspilerOptimizer
+from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler import fleet
 
 
 class DistributeTranspilerConfigTest(unittest.TestCase):

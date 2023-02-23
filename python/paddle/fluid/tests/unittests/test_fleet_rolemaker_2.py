@@ -39,7 +39,7 @@ class TestCloudRoleMaker2(unittest.TestCase):
             GeneralRoleMaker,
             RoleMakerBase,
         )
-        from paddle.incubate.fleet.parameter_server.distribute_transpiler import (
+        from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler import (
             fleet,
         )
 
