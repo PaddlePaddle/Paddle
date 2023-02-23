@@ -104,8 +104,13 @@ std::string PaddleAttributeToString(const framework::Attribute& attr) {
     const auto& vals = PADDLE_GET_CONST(std::vector<bool>, attr);
     if (!vals.empty()) {
       ss << "[";
+      bool first_value = true;
       for (bool val : vals) {
-        ss << std::boolalpha << val << ", ";
+        if (!first_value) {
+          ss << ", ";
+        }
+        first_value = false;
+        ss << std::boolalpha << val;
       }
       ss << "]";
     }
