@@ -1603,45 +1603,6 @@ class OpTest(unittest.TestCase):
                 raise NotImplementedError("base class, not implement!")
 
             def _compare_numpy(self, name, actual_np, expect_np):
-                if self.op_test.dtype == np.float16:
-                    if not np.allclose(
-                        actual_np,
-                        expect_np,
-                        atol=atol,
-                        rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
-                        equal_nan=equal_nan,
-                    ):
-                        rtol = self.rtol if hasattr(self, 'rtol') else 1e-5
-                        alltrue = True
-                        actual_np_t = actual_np.flatten()
-                        expect_np_t = expect_np.flatten()
-                        for a, b in zip(actual_np_t, expect_np_t):
-                            abs_dis = np.abs(a - b)
-                            abs_b = np.abs(b)
-                            max_tol = np.max(atol + rtol * abs_b)
-
-                            # for i, j in zip(abs_dis, max_tol):
-                            if abs_dis > max_tol:
-                                self.op_test.assertTrue(
-                                    False,
-                                    (
-                                        "Output ("
-                                        + name
-                                        + ") and a:"
-                                        + str(a)
-                                        + " b:"
-                                        + str(b)
-                                        + " abs_dis: "
-                                        + str(abs_dis)
-                                        + " max_tol: "
-                                        + str(max_tol)
-                                    ),
-                                )
-                                # alltrue = False
-                                # break
-                            # if not alltrue:
-                            # break
-
                 self.op_test.assertTrue(
                     np.allclose(
                         actual_np,
@@ -1664,7 +1625,6 @@ class OpTest(unittest.TestCase):
 
             def compare_single_output_with_expect(self, name, expect):
                 actual, actual_np = self.find_actual_value(name)
-                # expect, expect_np = self.find_expect_value(name)
                 if self.op_test.dtype == np.float16:
                     expect, expect_np = self.find_expect_value(name)
                 else:
