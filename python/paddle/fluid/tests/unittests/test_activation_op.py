@@ -256,6 +256,9 @@ class TestSigmoidBF16_ZeroDim(TestSigmoidBF16):
 class TestSilu(TestActivation):
     def setUp(self):
         self.op_type = "silu"
+        self.prim_op_type = "comp"
+        self.enable_cinn = False
+        self.python_api = paddle.nn.functional.silu
         self.init_dtype()
         self.init_shape()
 
@@ -272,7 +275,7 @@ class TestSilu(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestSilu_ZeroDim(TestSilu):
