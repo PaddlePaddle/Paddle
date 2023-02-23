@@ -317,6 +317,10 @@ copy(
   DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/core/)
 copy(
   inference_lib_dist
+  SRCS ${PADDLE_SOURCE_DIR}/paddle/phi/core/hostdevice.h
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/core/)
+copy(
+  inference_lib_dist
   SRCS ${PADDLE_SOURCE_DIR}/paddle/utils/any.h
   DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/utils/)
 copy(
