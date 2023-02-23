@@ -299,7 +299,9 @@ class ParameterServerOptimizer(MetaOptimizerBase):
 
         free = get_sys_free_mem()
 
-        from paddle.incubate.distributed.fleet.parameter_server.ir import vars_metatools
+        from paddle.incubate.distributed.fleet.parameter_server.ir import (
+            vars_metatools,
+        )
 
         processed_var_names = set(["@EMPTY@"])
         param_memory_size = 0
@@ -369,7 +371,9 @@ class ParameterServerOptimizer(MetaOptimizerBase):
 
         _origin_main_program = loss.block.program
         _origin_startup_program = startup_program
-        from paddle.incubate.distributed.fleet.parameter_server.ir import public as public
+        from paddle.incubate.distributed.fleet.parameter_server.ir import (
+            public as public,
+        )
 
         compiled_config = public.CompileTimeStrategy(
             _origin_main_program,

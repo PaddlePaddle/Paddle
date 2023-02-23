@@ -22,7 +22,9 @@ from paddle.fluid.transpiler.distribute_transpiler import (
     DistributeTranspilerConfig,
     ServerRuntimeConfig,
 )
-from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler import fleet
+from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler import (
+    fleet,
+)
 from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
     StrategyFactory,
 )
