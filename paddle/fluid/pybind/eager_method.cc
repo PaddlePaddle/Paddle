@@ -1057,9 +1057,10 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-static PyObject* tensor_method__check_index_is_all_tensor(TensorObject* self,
-                                                          PyObject* args,
-                                                          PyObject* kwargs) {
+// NOTE(LiuYang): Add None type support
+static PyObject* tensor_method__advanced_index(TensorObject* self,
+                                               PyObject* args,
+                                               PyObject* kwargs) {
   EAGER_TRY
   if (PyTuple_GET_SIZE(args) == 0) return nullptr;
   PyObject* _index = PyTuple_GET_ITEM(args, 0);
@@ -1099,6 +1100,7 @@ static PyObject* tensor_method__check_index_is_all_tensor(TensorObject* self,
   std::vector<paddle::experimental::Tensor> indices_tensor;
 
   bool isAdvanceIndex = true;
+  bool isBoolIndex = false;
 
   // 增加Tensor数据类型检查，这样吧，统一cast成int64数据类型的Tensor往下传递，用Tensor.cast方法
   const int size = PyTuple_GET_SIZE(index_ptr);
@@ -1123,6 +1125,7 @@ static PyObject* tensor_method__check_index_is_all_tensor(TensorObject* self,
         }
         indices_tensor =
             split_with_num_ad_func(non_zero_ix, non_zero_ix.shape().back(), 1);
+        isBoolIndex = true;
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "When assign a value to a paddle.Tensor, "
@@ -1168,6 +1171,7 @@ static PyObject* tensor_method__check_index_is_all_tensor(TensorObject* self,
         // swap 是否性能更好
         indices_tensor =
             split_with_num_ad_func(non_zero_ix, non_zero_ix.shape().back(), 1);
+        isBoolIndex = true;
       } else {
         indices_tensor.emplace_back(
             PyListToTensor(paddle::experimental::DataType::INT64,
@@ -1195,6 +1199,7 @@ static PyObject* tensor_method__check_index_is_all_tensor(TensorObject* self,
         // swap 是否性能更好
         indices_tensor =
             split_with_num_ad_func(non_zero_ix, non_zero_ix.shape().back(), 1);
+        isBoolIndex = true;
       } else if (py::isinstance<py::array_t<int>>(slice_item) ||
                  py::isinstance<py::array_t<int64_t>>(slice_item)) {
         indices_tensor.emplace_back(
@@ -1211,13 +1216,37 @@ static PyObject* tensor_method__check_index_is_all_tensor(TensorObject* self,
       PADDLE_THROW(platform::errors::InvalidArgument(
           "When index contains a built-in data, its dtype must be int or "
           "int64"));
+    } else if (py::isinstance<py::none>(slice_item)) {
+      continue;
     } else {
       isAdvanceIndex = false;
       return ToPyObject(isAdvanceIndex);
     }
   }
 
-  index_put__ad_func(self->tensor, indices_tensor, value_tensor);
+  if (indices_tensor.size() !=
+      static_cast<std::size_t>(self->tensor.dims().size())) {
+    return ToPyObject(false);
+  }
+
+  if (isBoolIndex) {
+    index_put__ad_func(self->tensor, indices_tensor, value_tensor);
+    return ToPyObject(isAdvanceIndex);
+  }
+
+  std::vector<paddle::experimental::Tensor> indices_tensor_bd(
+      BroadCastAllTensor(indices_tensor));
+
+  if ((value_tensor.dims() != indices_tensor_bd[0].dims()) &&
+      (value_tensor.numel() != 1)) {
+    return ToPyObject(false);
+  }
+  // Note(LiuYang): Here type of value_tensor may be complex and it can't be
+  // broadcast becase Paddle doesn't support expand tensor which's type is
+  // complex so we trans this task to tensor_method__setitem_eager_tensor
+  // temporarily.
+
+  index_put__ad_func(self->tensor, indices_tensor_bd, value_tensor);
   return ToPyObject(isAdvanceIndex);
 
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -2198,8 +2227,8 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor__getitem_from_offset,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
-    {"__check_index_is_all_tensor__",
-     (PyCFunction)(void (*)(void))tensor_method__check_index_is_all_tensor,
+    {"__advanced_index__",
+     (PyCFunction)(void (*)(void))tensor_method__advanced_index,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"__setitem_eager_tensor__",

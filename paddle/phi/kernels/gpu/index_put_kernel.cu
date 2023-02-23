@@ -46,8 +46,6 @@ __global__ void index_put_cuda_kernel(const int64_t N,
     offset += stride[i] * cur_ix;
   }
 
-  // *(x + offset) = *(vals + (idx & isSingleValTensor));
-  // Note(LiuYang):Here temp test just for add backward,
   *(out + offset) = *(vals + (idx & isSingleValTensor));
 }
 
@@ -57,11 +55,14 @@ void LaunchIndexPutCudaKernel(const Context& dev_ctx,
                               const std::vector<const DenseTensor*>& indices_v,
                               const DenseTensor& value,
                               DenseTensor* out) {
-  // auto* x_data = const_cast<T*>(x.data<T>());
   auto* x_data = x.data<T>();
   auto* val_data = value.data<T>();
+  bool isInitialized = out->initialized();
   T* out_data = dev_ctx.template Alloc<T>(out);
-  // T* out_data = out->data<T>();
+
+  if (!isInitialized) {
+    phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+  }
 
   auto x_dims = x.dims();
   const int64_t numel = indices_v[0]->numel();
@@ -81,7 +82,7 @@ void LaunchIndexPutCudaKernel(const Context& dev_ctx,
 
   int64_t isSingleValTensor = (value.numel() == 1) ? 0 : INT64_MAX;
 
-  // NOTE(LiuYang)：Here I can't make it const int64_t**
+  // NOTE(LiuYang): Here I can't make it const int64_t**
   auto pd_indices = GetDevicePointerArray<int64_t, Context>(dev_ctx, indices_v);
   index_put_cuda_kernel<T, Rank>
       <<<config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
@@ -95,6 +96,8 @@ void LaunchIndexPutCudaKernel(const Context& dev_ctx,
           out_data);
 }
 
+// Note(LiuYang): Here I don't take it in consideration that whether we support
+// value_tensor can be broadcast to X[indice] when calls like X[indice] = value
 template <typename T, typename Context>
 void IndexPutKernel(const Context& dev_ctx,
                     const DenseTensor& x,
@@ -109,65 +112,31 @@ void IndexPutKernel(const Context& dev_ctx,
                         "of the dimension of source tensor x.",
                         indices_v.size(),
                         total_dims));
-  std::vector<const DenseTensor*> indices_v_offset(indices_v.size());
-
-  auto pre_dim = indices_v[0]->dims();
-  auto tmp_dim = phi::make_ddim({0});
-  auto indice_dtype = indices_v[0]->dtype();
-  bool need_broadcast = false;
-  for (size_t i = 1; i < indices_v.size(); ++i) {
-    tmp_dim = indices_v[i]->dims();
-    if (pre_dim != tmp_dim) {
-      pre_dim = BroadcastTwoDims(pre_dim, tmp_dim, -1);
-      need_broadcast = true;
-    }
-  }
-
-  std::vector<DenseTensor> indices_v_tmp(
-      indices_v.size(), DenseTensor(indice_dtype).Resize(pre_dim));
-
-  if (need_broadcast) {
-    for (size_t i = 0; i < indices_v.size(); ++i) {
-      if (pre_dim == indices_v[i]->dims()) {
-        indices_v_offset[i] = indices_v[i];
-        continue;
-      }
-
-      ExpandKernel<int64_t, Context>(dev_ctx,
-                                     *indices_v[i],
-                                     IntArray(phi::vectorize<int64_t>(pre_dim)),
-                                     &indices_v_tmp[i]);
-
-      indices_v_offset[i] = &indices_v_tmp[i];
-    }
-  } else {
-    indices_v_offset = std::move(indices_v);
-  }
 
   switch (total_dims) {
     case 1:
       LaunchIndexPutCudaKernel<T, Context, 1>(
-          dev_ctx, x, indices_v_offset, value, out);
+          dev_ctx, x, indices_v, value, out);
       break;
     case 2:
       LaunchIndexPutCudaKernel<T, Context, 2>(
-          dev_ctx, x, indices_v_offset, value, out);
+          dev_ctx, x, indices_v, value, out);
       break;
     case 3:
       LaunchIndexPutCudaKernel<T, Context, 3>(
-          dev_ctx, x, indices_v_offset, value, out);
+          dev_ctx, x, indices_v, value, out);
       break;
     case 4:
       LaunchIndexPutCudaKernel<T, Context, 4>(
-          dev_ctx, x, indices_v_offset, value, out);
+          dev_ctx, x, indices_v, value, out);
       break;
     case 5:
       LaunchIndexPutCudaKernel<T, Context, 5>(
-          dev_ctx, x, indices_v_offset, value, out);
+          dev_ctx, x, indices_v, value, out);
       break;
     case 6:
       LaunchIndexPutCudaKernel<T, Context, 6>(
-          dev_ctx, x, indices_v_offset, value, out);
+          dev_ctx, x, indices_v, value, out);
       break;
     default:
       PADDLE_THROW(phi::errors::InvalidArgument(

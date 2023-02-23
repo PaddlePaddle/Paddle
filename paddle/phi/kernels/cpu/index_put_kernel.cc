@@ -35,6 +35,7 @@ void index_put_kernel(const int64_t N,
   for (int64_t idx = 0; idx < N; ++idx) {
     int64_t cur_ix = 0;
     int64_t offset = 0;
+    // #pragma unroll Rank
     for (size_t i = 0; i < Rank; ++i) {
       cur_ix = (int64_t(*(indices[i] + idx)));
       if (cur_ix < 0) {
@@ -43,7 +44,6 @@ void index_put_kernel(const int64_t N,
       offset += stride[i] * cur_ix;
     }
 
-    // *(x + offset) = *(vals + (idx & isSingleValTensor));
     *(out + offset) = *(vals + (idx & isSingleValTensor));
   }
 }
@@ -106,65 +106,25 @@ void IndexPutKernel(const Context& dev_ctx,
                         "of the dimension of source tensor x.",
                         indices_v.size(),
                         total_dims));
-  std::vector<const DenseTensor*> indices_v_offset(indices_v.size());
-
-  auto pre_dim = indices_v[0]->dims();
-  auto tmp_dim = phi::make_ddim({0});
-  auto indice_dtype = indices_v[0]->dtype();
-  bool need_broadcast = false;
-  for (size_t i = 1; i < indices_v.size(); ++i) {
-    tmp_dim = indices_v[i]->dims();
-    if (pre_dim != tmp_dim) {
-      pre_dim = BroadcastTwoDims(pre_dim, tmp_dim, -1);
-      need_broadcast = true;
-    }
-  }
-
-  std::vector<DenseTensor> indices_v_tmp(
-      indices_v.size(), DenseTensor(indice_dtype).Resize(pre_dim));
-
-  if (need_broadcast) {
-    for (size_t i = 0; i < indices_v.size(); ++i) {
-      if (pre_dim == indices_v[i]->dims()) {
-        indices_v_offset[i] = indices_v[i];
-        continue;
-      }
-
-      ExpandKernel<int64_t, Context>(dev_ctx,
-                                     *indices_v[i],
-                                     IntArray(phi::vectorize<int64_t>(pre_dim)),
-                                     &indices_v_tmp[i]);
-
-      indices_v_offset[i] = &indices_v_tmp[i];
-    }
-  } else {
-    indices_v_offset = std::move(indices_v);
-  }
 
   switch (total_dims) {
     case 1:
-      LaunchIndexPutKernel<T, Context, 1>(
-          dev_ctx, x, indices_v_offset, value, out);
+      LaunchIndexPutKernel<T, Context, 1>(dev_ctx, x, indices_v, value, out);
       break;
     case 2:
-      LaunchIndexPutKernel<T, Context, 2>(
-          dev_ctx, x, indices_v_offset, value, out);
+      LaunchIndexPutKernel<T, Context, 2>(dev_ctx, x, indices_v, value, out);
       break;
     case 3:
-      LaunchIndexPutKernel<T, Context, 3>(
-          dev_ctx, x, indices_v_offset, value, out);
+      LaunchIndexPutKernel<T, Context, 3>(dev_ctx, x, indices_v, value, out);
       break;
     case 4:
-      LaunchIndexPutKernel<T, Context, 4>(
-          dev_ctx, x, indices_v_offset, value, out);
+      LaunchIndexPutKernel<T, Context, 4>(dev_ctx, x, indices_v, value, out);
       break;
     case 5:
-      LaunchIndexPutKernel<T, Context, 5>(
-          dev_ctx, x, indices_v_offset, value, out);
+      LaunchIndexPutKernel<T, Context, 5>(dev_ctx, x, indices_v, value, out);
       break;
     case 6:
-      LaunchIndexPutKernel<T, Context, 6>(
-          dev_ctx, x, indices_v_offset, value, out);
+      LaunchIndexPutKernel<T, Context, 6>(dev_ctx, x, indices_v, value, out);
       break;
     default:
       PADDLE_THROW(phi::errors::InvalidArgument(

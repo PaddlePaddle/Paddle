@@ -577,6 +577,7 @@
   kernel :
     func : index_put
   inplace : (x -> out)
+  backward : index_put_grad
 
 - op : index_sample
   args : (Tensor x, Tensor index)

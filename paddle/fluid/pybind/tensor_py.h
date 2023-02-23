@@ -37,10 +37,12 @@ limitations under the License. */
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/pybind/eager.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/pstring.h"
 #include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/kernels/strings/unicode.h"
@@ -1267,6 +1269,44 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
   }
   PADDLE_THROW(platform::errors::Unimplemented("Place is not supported"));
   return py::array();
+}
+
+// static paddle::experimental::IntArray BroadCastDims()
+
+static std::vector<paddle::experimental::Tensor> BroadCastAllTensor(
+    const std::vector<paddle::experimental::Tensor> &tensors) {
+  if (tensors.empty()) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Not support empty vector of tensor!"));
+  }
+  std::vector<paddle::experimental::Tensor> rt_tensors;
+
+  auto pre_dim = tensors[0].dims();
+  auto tmp_dim = phi::make_ddim({0});
+  bool need_broadcast = false;
+  for (size_t i = 1; i < tensors.size(); ++i) {
+    tmp_dim = tensors[i].dims();
+    if (pre_dim != tmp_dim) {
+      pre_dim =
+          paddle::operators::details::BroadcastTwoDims(pre_dim, tmp_dim, -1);
+      need_broadcast = true;
+    }
+  }
+
+  if (need_broadcast) {
+    for (size_t i = 0; i < tensors.size(); ++i) {
+      if (pre_dim == tensors[i].dims()) {
+        rt_tensors.emplace_back(tensors[i]);
+        continue;
+      }
+      rt_tensors.emplace_back(expand_ad_func(
+          tensors[i],
+          paddle::experimental::IntArray(phi::vectorize<int64_t>(pre_dim))));
+    }
+  } else {
+    rt_tensors = std::move(tensors);
+  }
+  return rt_tensors;
 }
 
 }  // namespace pybind
