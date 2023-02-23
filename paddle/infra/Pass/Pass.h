@@ -28,12 +28,21 @@ namespace detail {
 class AdaptorPass;
 }  // namespace detail
 
+struct PassInfo {
+  PassInfo(const std::string& name, int opt_level)
+      : name(name), opt_level(opt_level) {}
+  std::string name;
+  int opt_level;
+};
+
 /// We can access pass only from PassManager.
 class Pass {
  public:
   virtual ~Pass() = default;
 
  protected:
+  explicit Pass(const std::string& name, int opt_level)
+      : info_(name, opt_level) {}
   virtual void Run(mlir::Operation* op) = 0;
 
   virtual inline bool CanScheduleOn(mlir::Operation*) const { return true; }
@@ -41,6 +50,9 @@ class Pass {
   virtual mlir::LogicalResult Initialize(mlir::MLIRContext* context) {
     return mlir::success();
   }
+
+ private:
+  PassInfo info_;
 
   friend class PassManager;
   friend class detail::AdaptorPass;

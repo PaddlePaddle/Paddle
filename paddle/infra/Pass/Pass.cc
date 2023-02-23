@@ -25,13 +25,15 @@ namespace infra {
 
 namespace detail {
 
-void AdaptorPass::Run(mlir::Operation* op, bool verify) { RunImpl(op, verify); }
+void AdaptorPass::Run(mlir::Operation* op, int opt_level, bool verify) {
+  RunImpl(op, opt_level, verify);
+}
 
-void AdaptorPass::RunImpl(mlir::Operation* op, bool verify) {
+void AdaptorPass::RunImpl(mlir::Operation* op, int opt_level, bool verify) {
   for (mlir::Region& region : op->getRegions()) {
     for (mlir::Block& block : region.getBlocks()) {
       for (mlir::Operation& inner_op : block.getOperations()) {
-        (void)RunPipeline(*mgr, &inner_op, verify);
+        (void)RunPipeline(*mgr, &inner_op, opt_level, verify);
       }
     }
   }
@@ -39,10 +41,12 @@ void AdaptorPass::RunImpl(mlir::Operation* op, bool verify) {
 
 mlir::LogicalResult AdaptorPass::RunPipeline(PassManager& pm,
                                              mlir::Operation* op,
+                                             int opt_level,
                                              bool verify) {
   for (Pass& pass : pm.GetPasses()) {
     if (pass.CanScheduleOn(op)) {
-      if (mlir::failed(RunAPass(&pass, op, verify))) return mlir::failure();
+      if (mlir::failed(RunAPass(&pass, op, opt_level, verify)))
+        return mlir::failure();
     }
   }
 
@@ -51,9 +55,12 @@ mlir::LogicalResult AdaptorPass::RunPipeline(PassManager& pm,
 
 mlir::LogicalResult AdaptorPass::RunAPass(Pass* pass,
                                           mlir::Operation* op,
+                                          int opt_level,
                                           bool verify) {
+  if (opt_level < pass->info_.opt_level) return mlir::success();
+
   if (auto* adaptor = dynamic_cast<AdaptorPass*>(pass)) {
-    adaptor->Run(op, verify);
+    adaptor->Run(op, opt_level, verify);
   } else {
     pass->Run(op);
   }
@@ -89,7 +96,7 @@ mlir::LogicalResult PassManager::FinalizePassList() {
 }
 
 mlir::LogicalResult PassManager::runPasses(mlir::Operation* op) {
-  return detail::AdaptorPass::RunPipeline(*this, op, verify_);
+  return detail::AdaptorPass::RunPipeline(*this, op, opt_level_, verify_);
 }
 
 mlir::LogicalResult PassManager::Initialize(mlir::MLIRContext* context) {

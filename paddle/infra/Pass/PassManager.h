@@ -46,7 +46,8 @@ class PassManager {
  public:
   ~PassManager() = default;
 
-  explicit PassManager(mlir::MLIRContext* context) : context_(context) {}
+  explicit PassManager(mlir::MLIRContext* context, int opt_level = 2)
+      : context_(context), opt_level_(opt_level) {}
 
   using pass_iterator = llvm::pointee_iterator<
       llvm::MutableArrayRef<std::unique_ptr<Pass>>::iterator>;
@@ -94,6 +95,8 @@ class PassManager {
 
  private:
   mlir::MLIRContext* context_;
+
+  int opt_level_;
 
   std::vector<std::unique_ptr<Pass>> passes_;
 

@@ -28,23 +28,25 @@ namespace detail {
 //==------------------------------------------------------------------==//
 class AdaptorPass : public Pass {
  public:
-  explicit AdaptorPass(PassManager* pm) : mgr(pm) {}
+  explicit AdaptorPass(PassManager* pm) : Pass("AdaptorPass", 0), mgr(pm) {}
 
   void Run(mlir::Operation*) override {}
 
-  void Run(mlir::Operation*, bool verify);
+  void Run(mlir::Operation*, int opt_level, bool verify);
 
   // bool CanScheduleOn(mlir::RegisteredOperationName op_name) const override;
 
  private:
-  void RunImpl(mlir::Operation* op, bool verifyPasses);
+  void RunImpl(mlir::Operation* op, int opt_level, bool verifyPasses);
 
   static mlir::LogicalResult RunAPass(Pass* pass,
                                       mlir::Operation* op,
+                                      int opt_level,
                                       bool verify);
 
   static mlir::LogicalResult RunPipeline(PassManager& pm,  // NOLINT
                                          mlir::Operation* op,
+                                         int opt_level,
                                          bool verify);
 
   PassManager* mgr;

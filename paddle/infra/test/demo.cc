@@ -14,6 +14,7 @@
 
 #include "Pass/Pass.h"
 #include "Pass/PassManager.h"
+#include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "test/helper.h"
@@ -24,8 +25,13 @@ static llvm::cl::opt<std::string> inputFilename(
     llvm::cl::init("-"),
     llvm::cl::value_desc("filename"));
 
+static llvm::cl::opt<int> opt_level("opt",
+                                    llvm::cl::init(2),
+                                    llvm::cl::desc("opt_level"));
+
 class TestPass : public infra::Pass {
  public:
+  TestPass() : infra::Pass("TestPass", 1) {}
   void Run(mlir::Operation* op) override {
     llvm::outs() << "In TestPass: " << op->getName() << "\n";
 
@@ -55,7 +61,7 @@ int main(int argc, char** argv) {
   llvm::outs() << "src mod\n";
   module->dump();
 
-  infra::PassManager pm(&context);
+  infra::PassManager pm(&context, opt_level);
   auto pass = std::make_unique<TestPass>();
   pm.addPass(std::move(pass));
 
