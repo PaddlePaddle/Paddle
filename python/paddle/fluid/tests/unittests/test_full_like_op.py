@@ -101,7 +101,6 @@ class TestFullLikeOp1(OpTest):
     def setUp(self):
         self.op_type = "fill_any_like"
         self.prim_op_type = "comp"
-        self.enable_check_eager_comp = False
         self.python_api = paddle.full_like
         self.init_data()
         self.skip_cinn()

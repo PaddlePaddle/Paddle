@@ -20,11 +20,11 @@
 import functools
 import operator
 
+import paddle.framework.dtype as dtypes
 from paddle.fluid import core
 
 from .primitives import *  # noqa: F403
 from .primreg import REGISTER_COMPOSITE, lookup_composite
-from paddle.fluid import core
 
 
 def _composite(op, *args):
@@ -217,6 +217,8 @@ def flatten_contiguous_range_composite(x, start_axis, stop_axis):
         shape_out.append(shape_in[i])
     return reshape(x, shape=shape_out), None
 
+=======
+>>>>>>> some modification as reviewers suggested
 
 @REGISTER_COMPOSITE('dropout')
 def dropout_composite(x, seed_tensor, p, is_test, mode, seed, fix_seed):
@@ -274,10 +276,10 @@ def silu_composite(x):
 
 @REGISTER_COMPOSITE('fill_any_like')
 def fill_any_like(x, fill_value, dtype=None, name=None):
-    """define composite rule of op full_like"""
-    """op name: full_like  op type name: fill_any_like """
+    """define composite rule of op full_like."""
+    """op name: full_like  op type name: fill_any_like."""
     if dtype is None:
         dtype = x.dtype
-    dtype = int_to_dtype[dtype]
+    dtype = dtypes.dtype(dtype)
     val = full(x.shape, fill_value, dtype, name)
     return val

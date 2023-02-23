@@ -62,7 +62,7 @@ class TestFillAnyLikeOpBfloat16(OpTest):
         self.op_type = "fill_any_like"
         self.python_api = paddle.full_like
         self.prim_op_type = "comp"
-        self.python_api = paddle.full_like 
+        self.python_api = paddle.full_like
         self.dtype = np.uint16
         self.value = 0.0
         self.inputs = {'X': np.random.random((219, 232)).astype(np.float32)}
@@ -111,7 +111,7 @@ class TestFillAnyLikeOpType(TestFillAnyLikeOp):
         self.op_type = "fill_any_like"
         self.python_api = paddle.full_like
         self.prim_op_type = "comp"
-        self.python_api = paddle.full_like 
+        self.python_api = paddle.full_like
         self.dtype = np.int32
         self.value = 0.0
         self.init()
@@ -129,6 +129,7 @@ class TestFillAnyLikeOpType(TestFillAnyLikeOp):
 
     def skip_cinn(self):
         self.enable_cinn = False
+
 
 class TestFillAnyLikeOpFloat16(TestFillAnyLikeOp):
     def init(self):
