@@ -1,13 +1,14 @@
+- add
+- subtract
+- multiply
+- divide
 - unsqueeze
 - pow
 - exp
 - scale
-- multiply
 - matmul
 - expand
-- divide
 - sum
-- add
 - abs
 - assign
 - concat
@@ -23,4 +24,4 @@
 - scatter
 - scatter_nd_add
 - tile
-- subtract
+- transpose
