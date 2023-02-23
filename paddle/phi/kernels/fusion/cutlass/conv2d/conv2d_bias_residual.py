@@ -21,9 +21,8 @@ from conv2d_common import (
     CommonConvFunction,
     CommonConvKernelPart1,
     CommonConvKernelPart2,
-    CommonDispatchTemp,
     CommonTail,
-    CommonWrapperForPhi,
+    GenerateFunctionForPhi,
 )
 from util import SubstituteTemplate, TileDesc
 
@@ -44,44 +43,13 @@ namespace cutlass_internal {
 
 # This is a cutlass kernel, will be many these like kernels
 
-cba_kernel = (
-    '''
-cutlass::Status ${kernel_func_name}(ConvAllParams params) {
+dict_for_part1 = {
+    "conv_kind_name": "FpropWithBroadcast",
+    "epi_part": "cutlass::epilogue::thread::LinearCombinationResidualBlock< ${element_c}, ${element_accum}, ${element_epilogue}, ${element_residul}, ${epilogue_vector_length}, ${act1}, ${binary}, ${act2}>",
+}
 
-  using kernel_base =
-  typename cutlass::conv::kernel::DefaultConv2dFpropWithBroadcast<
-    ${element_a},
-    ${layout_a},
-    ${element_b},
-    ${layout_b},
-    ${element_c},
-    ${layout_c},
-    ${element_accum},
-    ${opcode_class},
-    ${arch},
-    cutlass::gemm::GemmShape<${Tshape}>,
-    cutlass::gemm::GemmShape<${Wshape}>,
-    cutlass::gemm::GemmShape<${Ishape}>,
-    cutlass::epilogue::thread::LinearCombinationResidualBlock<
-      ${element_c},
-      ${element_accum},
-      ${element_epilogue},
-      ${element_residul},
-      ${epilogue_vector_length},
-      ${act1},
-      ${binary},
-      ${act2}
-    >,
-    ${swizzling_functor}, // cutlass::gemm::threadblock::GemmSplitKIdentityThreadblockSwizzle<>,
-    ${stages},
-    ${math_operator},
-    ${iterator_algorithm},
-    ${stride_support},
-    ${align_a},
-    ${align_b}
-  >::Kernel;
-'''
-    + CommonConvKernelPart1
+cbr_kernel = (
+    SubstituteTemplate(CommonConvKernelPart1, dict_for_part1)
     + '''
   const half *residual = params.residual;
   typename ImplicitGemm::Arguments arguments{
@@ -155,7 +123,7 @@ def generate_sm75_1688():
     element_accums = ["cutlass::half_t", "float"]
     iterator_algorithms = [
         "cutlass::conv::IteratorAlgorithm::kOptimized",
-        "cutlass::conv::IteratorAlgorithm::kAnalytic",
+        # "cutlass::conv::IteratorAlgorithm::kAnalytic",
     ]
 
     math_instructions = [
@@ -215,7 +183,7 @@ def generate_sm75_1688():
                         kernel_dict["act2"] = ActCutlassTag[epi_res_block[2]]
                         suffix += 1
 
-                        sm75_code += SubstituteTemplate(cba_kernel, kernel_dict)
+                        sm75_code += SubstituteTemplate(cbr_kernel, kernel_dict)
                         all_kernel_names += (
                             kernel_dict["kernel_func_name"] + ", \n"
                         )
@@ -226,29 +194,12 @@ def generate_sm75_1688():
     return sm75_code
 
 
-# wrap different sm versions into a function
-def generate_cbr_for_phi():
-    sm_versions = ["75"]
-    generated_code = ""
-    for epi_res_block in EpiResBlocks:
-        dispatch_body = ""
-        for sm_version in sm_versions:
-            sm_dicts = {}
-            sm_dicts["sm_code"] = sm_version
-            sm_dicts["op_name_with_sm"] = (
-                UnderScoreName[epi_res_block].lower() + "_sm" + sm_version
-            )
-            dispatch_body += SubstituteTemplate(CommonDispatchTemp, sm_dicts)
-        op_dicts = {}
-        op_dicts["dispatch_body"] = dispatch_body
-        op_dicts["op_name"] = CamelName[epi_res_block]
-        generated_code += SubstituteTemplate(CommonWrapperForPhi, op_dicts)
-    return generated_code
-
-
 if __name__ == "__main__":
+    sm_versions = ["75"]
     all_code = cbr_header
     all_code += generate_sm75_1688()
-    all_code += generate_cbr_for_phi()
+    all_code += GenerateFunctionForPhi(
+        sm_versions, EpiResBlocks, UnderScoreName, CamelName
+    )
     all_code += CommonTail
     print(all_code)

@@ -12,8 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+
+sys.path.append("../")
+from util import SubstituteTemplate
 
 CommonConvKernelPart1 = """
+cutlass::Status ${kernel_func_name}(ConvAllParams params) {
+  using kernel_base =
+  typename cutlass::conv::kernel::DefaultConv2d${conv_kind_name}<
+    ${element_a},
+    ${layout_a},
+    ${element_b},
+    ${layout_b},
+    ${element_c},
+    ${layout_c},
+    ${element_accum},
+    ${opcode_class},
+    ${arch},
+    cutlass::gemm::GemmShape<${Tshape}>,
+    cutlass::gemm::GemmShape<${Wshape}>,
+    cutlass::gemm::GemmShape<${Ishape}>,
+    ${epi_part},
+    ${swizzling_functor},
+    ${stages},
+    ${math_operator},
+    ${iterator_algorithm},
+    ${stride_support},
+    ${align_a},
+    ${align_b}
+  >::Kernel;
+
   using ImplicitGemm =
       cutlass::conv::device::ImplicitGemmConvolution<kernel_base>;
   const half *input = params.input;
@@ -143,3 +172,24 @@ CommonTail = '''
 }  // namespace fusion
 }  // namespace phi
 '''
+
+
+# wrap different sm versions into a function
+def GenerateFunctionForPhi(
+    sm_versions, support_epi_funcs, underscore_names, camel_names
+):
+    generated_code = ""
+    for epi_func in support_epi_funcs:
+        dispatch_body = ""
+        for sm_version in sm_versions:
+            sm_dicts = {}
+            sm_dicts["sm_code"] = sm_version
+            sm_dicts["op_name_with_sm"] = (
+                underscore_names[epi_func].lower() + "_sm" + sm_version
+            )
+            dispatch_body += SubstituteTemplate(CommonDispatchTemp, sm_dicts)
+        op_dicts = {}
+        op_dicts["dispatch_body"] = dispatch_body
+        op_dicts["op_name"] = camel_names[epi_func]
+        generated_code += SubstituteTemplate(CommonWrapperForPhi, op_dicts)
+    return generated_code

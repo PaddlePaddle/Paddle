@@ -21,9 +21,8 @@ from conv2d_common import (
     CommonConvFunction,
     CommonConvKernelPart1,
     CommonConvKernelPart2,
-    CommonDispatchTemp,
     CommonTail,
-    CommonWrapperForPhi,
+    GenerateFunctionForPhi,
 )
 from util import SubstituteTemplate, TileDesc
 
@@ -34,6 +33,7 @@ cba_header = '''
 
 #include <mutex>
 #include "cutlass/conv/kernel/default_conv2d_fprop.h"
+#include "cutlass/epilogue/thread/linear_combination_leaky_relu.h"
 #include "cutlass/epilogue/thread/linear_combination_silu.h"
 #include "cutlass/epilogue/thread/linear_combination_bias_relu.h"
 #include "paddle/phi/kernels/fusion/cutlass/conv2d/conv2d_util.h"
@@ -45,40 +45,13 @@ namespace cutlass_internal {
 
 # This is a cutlass kernel, will be many these like kernels
 
-cba_kernel = (
-    '''
-cutlass::Status ${kernel_func_name}(ConvAllParams params) {
+dict_for_part1 = {
+    "conv_kind_name": "Fprop",
+    "epi_part": "${epi_func}< ${element_c}, ${epilogue_vector_length}, ${element_accum}, ${element_epilogue}>",
+}
 
-  using kernel_base =
-  typename cutlass::conv::kernel::DefaultConv2d${conv_kind_name}<
-    ${element_a},
-    ${layout_a},
-    ${element_b},
-    ${layout_b},
-    ${element_c},
-    ${layout_c},
-    ${element_accum},
-    ${opcode_class},
-    ${arch},
-    cutlass::gemm::GemmShape<${Tshape}>,
-    cutlass::gemm::GemmShape<${Wshape}>,
-    cutlass::gemm::GemmShape<${Ishape}>,
-    ${epi_func}<
-      ${element_c},
-      ${epilogue_vector_length},
-      ${element_accum},
-      ${element_epilogue}
-    >,
-    ${swizzling_functor}, // cutlass::gemm::threadblock::GemmSplitKIdentityThreadblockSwizzle<>,
-    ${stages},
-    ${math_operator},
-    ${iterator_algorithm},
-    ${stride_support},
-    ${align_a},
-    ${align_b}
-  >::Kernel;
-'''
-    + CommonConvKernelPart1
+cba_kernel_no_alpha = (
+    SubstituteTemplate(CommonConvKernelPart1, dict_for_part1)
     + '''
   typename ImplicitGemm::Arguments arguments{
       problem_size,
@@ -91,42 +64,63 @@ cutlass::Status ${kernel_func_name}(ConvAllParams params) {
     + CommonConvKernelPart2
 )
 
+# this is used for leaky_relu, this activation need a fuse_alpha parameter
+
+cba_kernel_alpha = (
+    SubstituteTemplate(CommonConvKernelPart1, dict_for_part1)
+    + '''
+  float alpha = params.alpha;
+  typename ImplicitGemm::Arguments arguments{
+      problem_size,
+      {(cutlass::half_t *)(input), {ic, ic * iw, ic * iw * ih}},
+      {(cutlass::half_t *)(weight), {ic, ic * kw, ic * kw * kh}},
+      {(cutlass::half_t *)(bias), {0, 0, 0}},
+      {(cutlass::half_t *)(output), {oc, oc * ow, oc * ow * oh}},
+      {1.f, 1.f, alpha}};
+'''
+    + CommonConvKernelPart2
+)
+
 
 class CbaAct(enum.Enum):
     Identity = 1
     Relu = 2
     Silu = 3
+    LeakyRelu = 4
 
-
-ActCutlassTag = {
-    CbaAct.Identity: 'cutlass::epilogue::thread::LinearCombination',
-    CbaAct.Silu: 'cutlass::epilogue::thread::LinearCombinationSilu',
-    CbaAct.Relu: 'cutlass::epilogue::thread::LinearCombinationRelu',
-}
-
-UnderScoreName = {
-    CbaAct.Identity: "conv2d_bias",
-    CbaAct.Silu: "conv2d_bias_silu",
-    CbaAct.Relu: "conv2d_bias_relu",
-}
-
-CamelName = {
-    CbaAct.Identity: "Conv2dBias",
-    CbaAct.Silu: "Conv2dBiasSilu",
-    CbaAct.Relu: "Conv2dBiasRelu",
-}
 
 # some global variables used, now we only support these activations
 SupportEpiFuncs = [
     CbaAct.Identity,
     CbaAct.Relu,
     CbaAct.Silu,
+    CbaAct.LeakyRelu,
 ]
+
+ActCutlassTag = {
+    SupportEpiFuncs[0]: 'cutlass::epilogue::thread::LinearCombination',
+    SupportEpiFuncs[1]: 'cutlass::epilogue::thread::LinearCombinationRelu',
+    SupportEpiFuncs[2]: 'cutlass::epilogue::thread::LinearCombinationSilu',
+    SupportEpiFuncs[3]: 'cutlass::epilogue::thread::LinearCombinationLeakyRelu',
+}
+
+UnderScoreName = {
+    SupportEpiFuncs[0]: "conv2d_bias",
+    SupportEpiFuncs[1]: "conv2d_bias_relu",
+    SupportEpiFuncs[2]: "conv2d_bias_silu",
+    SupportEpiFuncs[3]: "conv2d_bias_leaky_relu",
+}
+
+CamelName = {
+    SupportEpiFuncs[0]: "Conv2dBias",
+    SupportEpiFuncs[1]: "Conv2dBiasRelu",
+    SupportEpiFuncs[2]: "Conv2dBiasSilu",
+    SupportEpiFuncs[3]: "Conv2dBiasLeakyRelu",
+}
 
 
 def generate_sm75_1688():
     kernel_dict = {
-        "conv_kind_name": "Fprop",
         "element_a": "cutlass::half_t",
         "layout_a": "cutlass::layout::TensorNHWC",
         "element_b": "cutlass::half_t",
@@ -148,7 +142,7 @@ def generate_sm75_1688():
     element_accums = ["cutlass::half_t", "float"]
     iterator_algorithms = [
         "cutlass::conv::IteratorAlgorithm::kOptimized",
-        "cutlass::conv::IteratorAlgorithm::kAnalytic",
+        # "cutlass::conv::IteratorAlgorithm::kAnalytic",
     ]
 
     math_instructions = [
@@ -170,6 +164,7 @@ def generate_sm75_1688():
 
     kernel_dict["align_a"] = "8"
     kernel_dict["align_b"] = "8"
+    # this should divided by oc
     kernel_dict["epilogue_vector_length"] = "8"
 
     sm75_code = ""
@@ -205,7 +200,9 @@ def generate_sm75_1688():
                             "func_name"
                         ] + str(suffix)
                         suffix += 1
-
+                        cba_kernel = cba_kernel_no_alpha
+                        if epi_func in [CbaAct.LeakyRelu]:
+                            cba_kernel = cba_kernel_alpha
                         sm75_code += SubstituteTemplate(cba_kernel, kernel_dict)
                         all_kernel_names += (
                             kernel_dict["kernel_func_name"] + ", \n"
@@ -217,29 +214,12 @@ def generate_sm75_1688():
     return sm75_code
 
 
-# wrap different sm versions into a function
-def generate_cba_for_phi():
-    sm_versions = ["75"]
-    generated_code = ""
-    for epi_func in SupportEpiFuncs:
-        dispatch_body = ""
-        for sm_version in sm_versions:
-            sm_dicts = {}
-            sm_dicts["sm_code"] = sm_version
-            sm_dicts["op_name_with_sm"] = (
-                UnderScoreName[epi_func].lower() + "_sm" + sm_version
-            )
-            dispatch_body += SubstituteTemplate(CommonDispatchTemp, sm_dicts)
-        op_dicts = {}
-        op_dicts["dispatch_body"] = dispatch_body
-        op_dicts["op_name"] = CamelName[epi_func]
-        generated_code += SubstituteTemplate(CommonWrapperForPhi, op_dicts)
-    return generated_code
-
-
 if __name__ == "__main__":
+    sm_versions = ["75"]
     all_code = cba_header
     all_code += generate_sm75_1688()
-    all_code += generate_cba_for_phi()
+    all_code += GenerateFunctionForPhi(
+        sm_versions, SupportEpiFuncs, UnderScoreName, CamelName
+    )
     all_code += CommonTail
     print(all_code)
