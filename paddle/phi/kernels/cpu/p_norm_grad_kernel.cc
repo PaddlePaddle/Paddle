@@ -93,8 +93,9 @@ void PNormGradKernel(const Context& dev_ctx,
                         xr.sign() * norm_dy.broadcast(bcast);
   } else {
     dx.device(*place) =
-        (xr.abs()).pow(porder - 1.0f) /
-        ((norm.broadcast(bcast)).pow(porder - 1.0f) + xr.constant(eps));
+        (xr.abs()).pow(static_cast<T>(porder - 1.0f)) /
+        ((norm.broadcast(bcast)).pow(static_cast<T>(porder - 1.0f)) + 
+        xr.constant(eps));
     dx.device(*place) = dx * norm_dy.broadcast(bcast) * xr.sign();
   }
 }
