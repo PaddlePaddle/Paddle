@@ -2773,6 +2773,9 @@ class OpProtoHolder:
 
         return custom_op_names
 
+    def has_op_proto(self, type):
+        return type in self.op_proto_map
+
     @staticmethod
     def generated_op_attr_names():
         return {

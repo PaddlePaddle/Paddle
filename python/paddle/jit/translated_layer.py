@@ -566,7 +566,7 @@ class _ProgramHolder:
                 # There are some situations that users will add backward op in Forward
                 # function of Layer. And because backward op doesn't have proto. So, we
                 # should skip it when we meet it.
-                if op.type.endswith("_grad"):
+                if not OpProtoHolder.instance().has_op_proto(op.type):
                     continue
                 proto = OpProtoHolder.instance().get_op_proto(op.type)
                 has_create_intermediate_out = False
