@@ -87,6 +87,7 @@ math_op = [
     'logcumsumexp',
     'logit',
     'max',
+    'maximum',
     'min',
 ]
 
@@ -121,6 +122,5 @@ others = [
     'full',
     'uniform',
     'greater_equal',
-    'maximum',
 ]
 """
