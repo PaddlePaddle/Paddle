@@ -25,4 +25,5 @@ PD_REGISTER_KERNEL(pad_grad,
                    float,
                    double,
                    phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::dtype::complex<double>,
+                   phi::dtype::bfloat16) {}
