@@ -70,7 +70,7 @@ class TestCastGradComp(unittest.TestCase):
         from paddle.fluid.data_feeder import _PADDLE_DTYPE_2_NUMPY_DTYPE
 
         self.assertEqual(
-            _PADDLE_DTYPE_2_NUMPY_DTYPE(actual[0].dtype), desired[0].dtype
+            _PADDLE_DTYPE_2_NUMPY_DTYPE[actual[0].dtype], desired[0].dtype
         )
         np.testing.assert_allclose(
             actual=actual[0],
