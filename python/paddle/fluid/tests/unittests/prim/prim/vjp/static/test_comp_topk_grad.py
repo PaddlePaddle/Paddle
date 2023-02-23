@@ -27,17 +27,42 @@ limit = {
 }
 
 
+def apply_to_static(net, use_cinn):
+    build_strategy = paddle.static.BuildStrategy()
+    build_strategy.build_cinn_pass = use_cinn
+    return paddle.jit.to_static(net, build_strategy=build_strategy)
+
+
+class PrimeNet(paddle.nn.Layer):
+    def __init__(self):
+        super(PrimeNet, self).__init__()
+        self.fc = paddle.nn.Linear(4, 4)
+
+    def forward(self, x, k, axis, largest, sorted):
+        tmp = self.fc(x)
+        out = paddle.topk(tmp, k, axis, largest, sorted)
+        return out
+
+
 @param.parameterized_class(
-    ('primal', 'k', 'axis', 'largest', 'sorted', 'x_dtype', 'index_dtype', 'v'),
+    ('primal', 'k', 'axis', 'largest', 'sorted', 'x_dtype', 'v'),
     [
+        (
+            np.random.rand(5),
+            3,
+            0,
+            False,
+            False,
+            np.float32,
+            np.random.rand(3),
+        ),
         (
             np.random.rand(3, 3),
             3,
             0,
             True,
             True,
-            np.float16,
-            np.int32,
+            np.float32,
             np.random.rand(3, 3),
         ),
         (
@@ -47,7 +72,6 @@ limit = {
             True,
             False,
             np.float32,
-            np.int32,
             np.random.rand(5, 10, 10),
         ),
         (
@@ -57,7 +81,6 @@ limit = {
             False,
             True,
             np.float64,
-            np.int64,
             np.random.rand(4, 3, 16, 16),
         ),
     ],
@@ -78,6 +101,35 @@ class TestTopkGradComp(unittest.TestCase):
 
     def tearDown(self):
         paddle.disable_static()
+
+    def train(self, use_prim, use_cinn):
+        paddle.seed(2022)
+        self.x = paddle.randn([2, 4])
+        self.k = 3
+        self.axis = 1
+        self.largest = True
+        self.sorted = True
+        self.x.stop_gradient = False
+        net = PrimeNet()
+        core._set_prim_backward_enabled(use_prim)
+        net = apply_to_static(net, use_cinn)
+        out = net(self.x, self.k, self.axis, self.largest, self.sorted)
+        res = paddle.autograd.grad(out, [self.x])
+        return res
+
+    def test_cinn(self):
+        paddle.disable_static()
+        dy_res = self.train(use_prim=False, use_cinn=False)
+        comp_st_cinn_res = self.train(use_prim=True, use_cinn=True)
+
+        for i in range(len(dy_res)):
+            np.testing.assert_allclose(
+                comp_st_cinn_res[i].numpy(),
+                dy_res[i].numpy(),
+                rtol=1e-6,
+                atol=1e-6,
+            )
+        paddle.enable_static()
 
     def test_topk_grad_comp(self):
         def actual(primal, k, axis, largest, sorted, v):

@@ -339,52 +339,9 @@ void topk_grad(const Tensor& x,
                const bool& sorted,
                Tensor* x_grad) {
   if (x_grad) {
-    // const auto& in_dims = x.dims();
-    // const auto& out_dims = indices.dims();
     auto zero_tensor = full<T>(phi::vectorize(x.dims()), 0.0, x.dtype());
     auto x_grad_tmp = put_along_axis<T>(zero_tensor, indices, out_grad, axis);
 
-    // int tmp_axis = (axis < 0) ? (in_dims.size() + axis) : axis;
-    // if (tmp_axis + 1 == in_dims.size()) {
-    //   // the scatter_nd_add does not support 1-D indices
-    //   if (out_dims.size() == 1) {
-    //     one_dim = phi::make_ddim({1});
-    //     phi::DDim reduce_dim = get_reduce_dims(out_dims, one_dim);
-    //     std::vector<int64_t> new_dim = phi::vectorize<int64_t>(reduce_dim);
-    //     auto indices_reshape = reshape<T>(indices, IntArray(new_dim));
-    //     x_grad_tmp =
-    //      scatter_nd_add<T>(zero_tensor, indices_reshape, out_grad, false);
-    //   } else {
-    //     x_grad_tmp = scatter_nd_add<T>(zero_tensor, indices, out_grad, false);
-    //   }
-    // } else {
-    //   std::vector<int> tmp_perm;
-
-    //   // can not assign grad to input_grad, must do the transpose
-    //   for (int i = 0; i < tmp_axis; i++) {
-    //     tmp_perm.emplace_back(i);
-    //   }
-    //   tmp_perm.emplace_back(out_dims.size() - 1);
-    //   for (int i = tmp_axis + 1; i < out_dims.size() - 1; i++) {
-    //     tmp_perm.emplace_back(i);
-    //   }
-    //   tmp_perm.emplace_back(tmp_axis);
-
-    //   std::vector<int> reverse_perm(tmp_perm);
-    //   // make origin ranks to transpose back
-    //   for (int i = 0; i < static_cast<int>(tmp_perm.size()); ++i) {
-    //     reverse_perm[tmp_perm[i]] = i;
-    //   }
-
-    //   // transpose out_grad and zero grad to target rank.
-    //   auto tmp_zero_x_grad = transpose<T>(zero_tensor, tmp_perm);
-    //   auto tmp_out_grad = transpose<T>(out_grad, tmp_perm);
-    //   auto tmp_indices = transpose<T>(indices, tmp_perm);
-    //   // scatter grad to grad_x
-    //   auto tmp_grad_x =
-    //       scatter_nd_add<T>(tmp_zero_x_grad, tmp_indices, tmp_out_grad, false);
-    //   x_grad_tmp = transpose<T>(tmp_grad_x, reverse_perm);
-    // }
     set_output<T>(x_grad_tmp, x_grad);
   }
 }

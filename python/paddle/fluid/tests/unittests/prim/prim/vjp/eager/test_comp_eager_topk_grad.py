@@ -51,24 +51,24 @@ limit = {
             np.float32,
             np.random.rand(3, 3),
         ),
-        # (
-        #     np.random.rand(10, 10, 10),
-        #     5,
-        #     0,
-        #     True,
-        #     False,
-        #     np.float32,
-        #     np.random.rand(5, 10, 10),
-        # ),
-        # (
-        #     np.random.rand(4, 8, 16, 16),
-        #     3,
-        #     1,
-        #     False,
-        #     True,
-        #     np.float64,
-        #     np.random.rand(4, 3, 16, 16),
-        # ),
+        (
+            np.random.rand(10, 10, 10),
+            5,
+            0,
+            True,
+            False,
+            np.float32,
+            np.random.rand(5, 10, 10),
+        ),
+        (
+            np.random.rand(4, 8, 16, 16),
+            3,
+            1,
+            False,
+            True,
+            np.float64,
+            np.random.rand(4, 3, 16, 16),
+        ),
     ],
 )
 class TestTopkGradComp(unittest.TestCase):
@@ -92,7 +92,6 @@ class TestTopkGradComp(unittest.TestCase):
             )
             x.stop_gradient = False
             y_v, _ = paddle.topk(x, k, axis, largest, sorted)
-            print(y_v)
             return paddle.grad(
                 [y_v], [x], create_graph=False, retain_graph=False
             )[0]
@@ -105,27 +104,27 @@ class TestTopkGradComp(unittest.TestCase):
             )
             x.stop_gradient = False
             y_v, _ = paddle.topk(x, k, axis, largest, sorted)
-            # print(y_indice)
             return paddle.grad(
                 [y_v], [x], create_graph=True, retain_graph=True
             )[0]
 
-        actual(self.primal, self.k, self.axis, self.largest, self.sorted)
-
-        # if paddle.device.get_device() == "cpu":
-        #     print("pass cpu+float16 case")
-        # else:
-        #     np.testing.assert_allclose(
-        #         actual=actual(
-        #             self.primal, self.k, self.axis, self.largest, self.sorted
-        #         ),
-        #         desired=desired(
-        #             self.primal, self.k, self.axis, self.largest, self.sorted
-        #         ),
-        #         rtol=limit[str(self.primal.dtype)]['rtol'],
-        #         atol=limit[str(self.primal.dtype)]['atol'],
-        #     )
-        # core._set_prim_backward_enabled(False)
+        if (
+            paddle.device.get_device() == "cpu"
+            and self.primal.dtype == np.float16
+        ):
+            print("pass cpu+float16 case")
+        else:
+            np.testing.assert_allclose(
+                actual=actual(
+                    self.primal, self.k, self.axis, self.largest, self.sorted
+                ),
+                desired=desired(
+                    self.primal, self.k, self.axis, self.largest, self.sorted
+                ),
+                rtol=limit[str(self.primal.dtype)]['rtol'],
+                atol=limit[str(self.primal.dtype)]['atol'],
+            )
+        core._set_prim_backward_enabled(False)
 
 
 if __name__ == '__main__':
