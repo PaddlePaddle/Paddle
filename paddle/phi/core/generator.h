@@ -14,11 +14,24 @@ limitations under the License. */
 
 #pragma once
 
-#include <cstdint>
+#include <stdint.h>
+
+#include <atomic>
+#include <deque>
+#include <iostream>  // temp for debug
 #include <memory>
+#include <mutex>  // NOLINT
 #include <random>
+#include <typeinfo>
+#include <utility>
 
 namespace phi {
+
+static uint64_t GetRandomSeed() {
+  std::random_device rd;
+  // double has 53 bit significant, so limit uint64 to 53 bits
+  return ((((uint64_t)rd()) << 32) + rd()) & 0x1FFFFFFFFFFFFF;
+}
 
 class Generator {
  public:
@@ -29,27 +42,56 @@ class Generator {
     std::mt19937_64 cpu_engine;
   };
 
-  virtual ~Generator() = default;
+  Generator();
+
+  explicit Generator(uint64_t seed);
+
+  Generator(uint64_t seed, uint64_t device_id);
+
+  Generator(const Generator& other) = delete;
+
+  ~Generator() = default;
 
   // get random state
-  virtual GeneratorState GetState() = 0;
+  GeneratorState GetState();
   // set random state
-  virtual void SetState(const GeneratorState&) = 0;
+  void SetState(const GeneratorState&);
   // get current seed
-  virtual uint64_t GetCurrentSeed() = 0;
+  uint64_t GetCurrentSeed();
   // random a seed and get
-  virtual uint64_t Seed() = 0;
+  uint64_t Seed();
   // set seed
-  virtual void SetCurrentSeed(uint64_t seed) = 0;
+  void SetCurrentSeed(uint64_t seed);
   // get cpu engine
-  virtual std::shared_ptr<std::mt19937_64> GetCPUEngine() = 0;
+  std::shared_ptr<std::mt19937_64> GetCPUEngine();
   // set cpu engine
-  virtual void SetCPUEngine(std::shared_ptr<std::mt19937_64>) = 0;
-  virtual uint64_t Random64() = 0;
-  virtual std::pair<uint64_t, uint64_t> IncrementOffset(
-      uint64_t increament_offset) = 0;
+  void SetCPUEngine(std::shared_ptr<std::mt19937_64>);
 
-  virtual uint64_t get_device_id() = 0;
+  uint64_t Random64();
+
+  std::pair<uint64_t, uint64_t> IncrementOffset(uint64_t increament_offset);
+
+  uint64_t get_device_id() { return this->state_.device; }
+
+ private:
+  GeneratorState state_;
+  std::shared_ptr<std::mt19937_64> engine_;
+  mutable std::mutex mu_;
 };
+
+// The DefaultCPUGenerator is used in manual_seed()
+const std::shared_ptr<Generator>& DefaultCPUGenerator();
+
+const std::shared_ptr<Generator>& DefaultCUDAGenerator(int64_t device_id = -1);
+
+const std::shared_ptr<Generator>& DefaultXPUGenerator(int64_t device_id = -1);
+
+std::shared_ptr<std::mt19937_64> GetCPURandomEngine(uint64_t);
+
+const std::shared_ptr<Generator>& SetRandomSeedGenerator(
+    const std::string& name, uint64_t seed);
+
+const std::shared_ptr<Generator>& GetRandomSeedGenerator(
+    const std::string& name);
 
 }  // namespace phi
