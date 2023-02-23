@@ -14,12 +14,14 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/core/tensor_meta.h"
+#include "paddle/phi/core/utils/data_type.h"
 
 namespace phi {
 
@@ -125,9 +127,6 @@ template <typename T>
 void TensorToVector(const phi::DenseTensor& src,
                     const phi::DeviceContext& ctx,
                     std::vector<T>* dst);
-
-template <typename T>
-void TensorToVector(const phi::DenseTensor& src, std::vector<T>* dst);
 
 phi::DenseTensor ReshapeToMatrix(const phi::DenseTensor& src, int num_col_dims);
 
