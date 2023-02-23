@@ -1994,7 +1994,9 @@ class TestSundryAPIStatic(unittest.TestCase):
     @prog_scope()
     def test_top_k(self):
         x = paddle.full([], 1, 'float32')
+        x.stop_gradient = False
         out, indices = paddle.topk(x, k=1, axis=0)
+        paddle.static.append_backward(out.sum())
         prog = paddle.static.default_main_program()
         res = self.exe.run(
             prog, fetch_list=[x, out, indices, x.grad_name, out.grad_name]
@@ -2011,7 +2013,9 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[4], 1.0)
 
         x1 = paddle.full([], 1, 'float32')
+        x1.stop_gradient = False
         out1, indices1 = paddle.topk(x1, k=1, axis=-1)
+        paddle.static.append_backward(out1.sum())
         prog = paddle.static.default_main_program()
         res = self.exe.run(
             prog, fetch_list=[x1, out1, indices1, x1.grad, out1.grad]
