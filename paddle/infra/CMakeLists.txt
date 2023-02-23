@@ -24,6 +24,9 @@ include(TableGen)
 include(AddLLVM)
 include(AddMLIR)
 include(HandleLLVMOptions)
+
+get_property(mlir_libs GLOBAL PROPERTY MLIR_ALL_LIBS)
+
 include_directories(${LLVM_INCLUDE_DIRS})
 include_directories(${MLIR_INCLUDE_DIRS})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
@@ -33,4 +36,9 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}/)
 link_directories(${LLVM_BUILD_LIBRARY_DIR})
 add_definitions(${LLVM_DEFINITIONS})
 
-add_subdirectory(IR)
+# add_subdirectory(IR)
+
+add_library(pass_infra Pass/Pass.cc IR/PatternMatch.cc)
+
+add_executable(demo test/demo.cc)
+target_link_libraries(demo ${mlir_libs} pass_infra)
