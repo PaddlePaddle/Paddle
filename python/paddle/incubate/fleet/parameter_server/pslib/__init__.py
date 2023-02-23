@@ -18,11 +18,11 @@ from .optimizer_factory import *  # noqa: F403
 from google.protobuf import text_format
 from paddle.framework import core
 
-from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
-from paddle.fluid.incubate.fleet.base.mode import Mode
-from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
-from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
-from paddle.fluid.incubate.fleet.base.role_maker import HeterRoleMaker
+from paddle.incubate.distributed.fleet.base import Fleet
+from paddle.incubate.distributed.fleet.base import Mode
+from paddle.incubate.distributed.fleet.base import DistributedOptimizer
+from paddle.incubate.distributed.fleet.role_maker import MPISymetricRoleMaker
+from paddle.incubate.distributed.fleet.role_maker import HeterRoleMaker
 
 
 class PSLib(Fleet):
@@ -1230,7 +1230,7 @@ class DownpourOptimizer(DistributedOptimizer):
         fleet._main_programs = programs
         fleet._scopes = scopes
         if opt_info["use_ps_gpu"]:
-            from paddle.fluid.transpiler.collective import MultiThread
+            from paddle.distributed.transpiler.collective import MultiThread
 
             # check start program
             if program_mode not in [

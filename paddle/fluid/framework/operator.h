@@ -781,18 +781,19 @@ class OperatorWithKernel : public OperatorBase {
   // used for IndicateOrPromoteVarDataTypes
   phi::DenseTensor* GetTensorFormInputSafely(const ExecutionContext& ctx,
                                              const std::string& name) const;
+  bool NeedResetRuntimeContext(const Scope& scope) const;
 
  protected:
   mutable std::unique_ptr<OpKernelType> kernel_type_;
   mutable std::unique_ptr<OpKernelFunc> kernel_func_;
   mutable std::unique_ptr<RuntimeContext> runtime_ctx_;
-  mutable const Scope* pre_scope_ = nullptr;
   mutable bool need_prepare_data_ = true;
   mutable bool need_prepare_phi_data_ = false;
   mutable bool enable_cache_runtime_context_ = false;
   mutable bool all_kernels_must_compute_runtime_shape_ = false;
   mutable std::mutex cache_update_mutex_;
   mutable bool enable_cache_transfer_scope_ = false;
+  mutable Scope* cache_transfer_scope_ = nullptr;
   // NOTE(jiahongyu): Whether fallback to plain kernel after calling
   // GetExpectedKernelType, use this bool flag to solve mkldnn and cudnn hard
   // code

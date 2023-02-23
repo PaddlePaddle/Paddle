@@ -732,7 +732,7 @@ static PyObject* tensor_method_detach(TensorObject* self,
                                       PyObject* kwargs) {
   EAGER_TRY
   PADDLE_ENFORCE_EQ(
-      self->tensor.initialized(),
+      self->tensor.defined(),
       true,
       platform::errors::InvalidArgument("Tensor %s has not been initialized!",
                                         self->tensor.name()));

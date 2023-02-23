@@ -221,9 +221,13 @@ if(WITH_XPU)
     SRCS xpu/pass_utils.cc
     DEPS pass)
   set(XPU_PASS_DEPS xpu_quant_utils xpu_pass_utils)
+  pass_library(embedding_with_eltwise_add_xpu_fuse_pass inference DIR xpu)
   pass_library(fc_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(multi_encoder_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
+  pass_library(multi_encoder_xpu_slice_fuse_pass inference DIR xpu)
+  pass_library(generate_sequence_xpu_fuse_pass inference DIR xpu)
+  pass_library(link_xpu_op_max_pass inference DIR xpu)
 endif()
 
 cc_library(
@@ -432,10 +436,6 @@ if(WITH_MKLDNN)
   if(WITH_GPU OR WITH_ROCM)
     set(TEST_CONV_BN_PASS_DEPS ${TEST_CONV_BN_PASS_DEPS} depthwise_conv)
   endif()
-  cc_test(
-    test_conv_batch_norm_mkldnn_fuse_pass
-    SRCS mkldnn/mkldnn_conv_bn_fuse_pass_tester.cc
-    DEPS ${TEST_CONV_BN_PASS_DEPS})
   cc_test(
     test_mkldnn_placement_pass
     SRCS mkldnn/mkldnn_placement_pass_tester.cc
