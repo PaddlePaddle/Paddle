@@ -15,7 +15,6 @@
 import unittest
 
 import numpy as np
-import torch
 
 import paddle
 
@@ -51,20 +50,21 @@ class TestIInfoAndFInfoAPI(unittest.TestCase):
 
     def test_finfo(self):
         for paddle_dtype, np_dtype in [
-            (paddle.float32, torch.float32),
-            (paddle.float64, torch.float64),
-            (paddle.complex64, torch.complex64),
-            (paddle.complex128, torch.complex128),
+            # (paddle.float16, np.float16),
+            (paddle.float32, np.float32),
+            (paddle.float64, np.float64),
+            (paddle.complex64, np.complex64),
+            (paddle.complex128, np.complex128),
         ]:
             xfinfo = paddle.finfo(paddle_dtype)
-            xtfinfo = torch.finfo(np_dtype)
-            self.assertEqual(xfinfo.bits, xtfinfo.bits)
-            self.assertEqual(xfinfo.max, xtfinfo.max)
-            self.assertEqual(xfinfo.min, xtfinfo.min)
-            self.assertEqual(xfinfo.eps, xtfinfo.eps)
-            self.assertEqual(xfinfo.tiny, xtfinfo.tiny)
-            self.assertEqual(xfinfo.resolution, xtfinfo.resolution)
-            self.assertEqual(xfinfo.dtype, xtfinfo.dtype)
+            xnfinfo = np.finfo(np_dtype)
+            self.assertEqual(xfinfo.bits, xnfinfo.bits)
+            self.assertEqual(np_dtype(xfinfo.max), xnfinfo.max)
+            self.assertEqual(np_dtype(xfinfo.min), xnfinfo.min)
+            self.assertEqual(np_dtype(xfinfo.eps), xnfinfo.eps)
+            self.assertEqual(np_dtype(xfinfo.tiny), xnfinfo.tiny)
+            self.assertEqual(np_dtype(xfinfo.resolution), xnfinfo.resolution)
+            self.assertEqual(xfinfo.dtype, xnfinfo.dtype)
 
 
 if __name__ == '__main__':
