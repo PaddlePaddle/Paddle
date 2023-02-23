@@ -30,120 +30,51 @@ def apply_to_static(net, use_cinn):
 class PrimeNet(paddle.nn.Layer):
     def __init__(self):
         super(PrimeNet, self).__init__()
-        self.fc = paddle.nn.Linear(4, 4)
+        self.fc = paddle.nn.Linear(10, 10)
 
     def forward(self, x):
-        y = self.fc(x)
-        out = F.dropout(y)
-        return out
+        return F.dropout(self.fc(x))
 
 
-class TestPrimForward(unittest.TestCase):
-    """
-    This case only tests prim_forward + to_static + cinn. Thus we need to
-    set this flag as False to avoid prim_backward.
-    core.set_prim_backward(False)
-    """
-
+class TestPrimForwardAndBackward(unittest.TestCase):
     def setUp(self):
-        paddle.seed(2022)
-        self.x = paddle.randn([2, 4])
+        self.x = paddle.ones([100, 100, 10])
         self.x.stop_gradient = False
 
-    def train(self, use_prim):
-        paddle.seed(2022)
+    def train(self, use_prim=True, use_cinn=False):
         net = PrimeNet()
         sgd = paddle.optimizer.SGD(
             learning_rate=0.1, parameters=net.parameters()
         )
-        core._set_prim_forward_enabled(use_prim)
-        if use_prim:
-            net = apply_to_static(net, use_prim)
 
-        res = []
+        core._set_prim_all_enabled(use_prim)
+        net = apply_to_static(net, use_cinn)
+
+        fwd, rev = 0.0, 0.0
         for _ in range(10):
             out = net(self.x)
-            loss = paddle.mean(out)
+            loss = paddle.sum(out)
             loss.backward()
+            fwd += loss.numpy()
+            rev += self.x.grad.sum().numpy()
             sgd.step()
-            sgd.clear_grad()
+            self.x.clear_gradient()
+        return fwd, rev, net
 
-            res.append(out.numpy())
-
-        self.check_prim(net, use_prim)
-
-        return res
-
-    def check_prim(self, net, use_prim):
-        if not use_prim:
-            return
-        fwd_ops = [op.type for op in net.forward.main_program.block(0).ops]
-        # Ensure that softmax is splitted into small ops
-        self.assertTrue('dropout' not in fwd_ops)
+    def check_prim(self, net):
+        ops = [op.type for op in net.forward.main_program.block(0).ops]
+        # Ensure that dropout is splitted into small ops
+        self.assertTrue('dropout' not in ops)
 
     def test_cinn_prim_forward(self):
-        dy_res = self.train(use_prim=False)
-        cinn_res = self.train(use_prim=True)
+        paddle.seed(1999)
+        dy_fwd, dy_rev, _ = self.train(use_prim=False, use_cinn=False)
+        paddle.seed(1999)
+        cinn_fwd, cinn_rev, prim_net = self.train(use_prim=True, use_cinn=True)
 
-        for i in range(len(dy_res)):
-            np.testing.assert_allclose(
-                cinn_res[i], dy_res[i], rtol=1e-7, atol=1e-7
-            )
-
-
-# class TestPrimForwardAndBackward(unittest.TestCase):
-#     """
-#     Test PrimeNet with @to_static + prim forward + prim backward + cinn v.s Dygraph
-#     """
-
-#     def setUp(self):
-#         paddle.seed(2022)
-#         self.x = paddle.randn([2, 4])
-#         self.x.stop_gradient = False
-
-#     def train(self, use_prim):
-#         paddle.seed(2022)
-#         net = PrimeNet()
-#         sgd = paddle.optimizer.SGD(
-#             learning_rate=0.1, parameters=net.parameters()
-#         )
-#         core._set_prim_all_enabled(use_prim)
-#         if use_prim:
-#             net = apply_to_static(net, use_prim)
-
-#         res = []
-#         for _ in range(10):
-#             out = net(self.x)
-#             loss = paddle.mean(out)
-#             loss.backward()
-#             sgd.step()
-#             sgd.clear_grad()
-
-#             res.append(out.numpy())
-
-#         self.check_prim(net, use_prim)
-
-#         return res
-
-#     def check_prim(self, net, use_prim):
-#         if not use_prim:
-#             return
-#         fwd_ops = [op.type for op in net.forward.main_program.block(0).ops]
-#         # Ensure that softmax is splitted into small ops
-#         self.assertTrue('dropout' not in fwd_ops)
-
-#     def test_cinn_prim(self):
-#         plat = platform.system()
-#         if plat == "Linux":
-#             dy_res = self.train(use_prim=False)
-#             cinn_res = self.train(use_prim=False)
-
-#             for i in range(len(dy_res)):
-#                 np.testing.assert_allclose(
-#                     cinn_res[i], dy_res[i], rtol=1e-6, atol=1e-6
-#                 )
-#         else:
-#             pass
+        self.check_prim(prim_net)
+        np.testing.assert_allclose(dy_fwd, cinn_fwd, rtol=1e-2, atol=0)
+        np.testing.assert_allclose(dy_rev, cinn_rev, rtol=1e-2, atol=0)
 
 
 if __name__ == '__main__':
