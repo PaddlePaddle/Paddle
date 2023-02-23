@@ -47,7 +47,8 @@ list(
   device_manager.cc)
 
 if(WITH_CUSTOM_DEVICE)
-  list(APPEND BACKENDS_SRCS custom/custom_context.cc custom/custom_device.cc)
+  list(APPEND BACKENDS_SRCS custom/custom_context.cc custom/custom_device.cc
+       custom/custom_device_op_list.cc)
 endif()
 
 add_library(phi_backends "${BACKENDS_SRCS}")
@@ -60,10 +61,6 @@ set(phi_modules ${phi_modules} phi_backends)
 set_property(GLOBAL PROPERTY PHI_MODULES "${phi_modules}")
 
 if(WITH_CUSTOM_DEVICE)
-  cc_test(
-    custom_device_test
-    SRCS custom/custom_device_test.cc
-    DEPS phi_tensor_utils phi_backends phi_device_context gradient_accumulator)
   cc_test(
     capi_test
     SRCS custom/capi_test.cc

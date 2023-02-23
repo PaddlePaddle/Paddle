@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/transform.h"
+#include "paddle/phi/common/transform.h"
 
 namespace phi {
 
@@ -48,7 +48,7 @@ void BitwiseNotKernel(const Context& dev_ctx,
   T* out_data = dev_ctx.template Alloc<T>(out);
   size_t numel = x.numel();
   funcs::BitwiseNotFunctor<T> func;
-  paddle::platform::Transform<Context> trans;
+  phi::Transform<Context> trans;
   trans(dev_ctx, x_data, x_data + numel, out_data, func);
 }
 

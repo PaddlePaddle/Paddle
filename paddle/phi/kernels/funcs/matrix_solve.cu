@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/matrix_solve.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -57,7 +58,7 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& context,
   tmp_a.Resize(a.dims());
 
   context.template Alloc<T>(&tmp_a);
-  paddle::framework::TensorCopy(a, context.GetPlace(), &tmp_a);
+  phi::Copy(context, a, context.GetPlace(), false, &tmp_a);
 
   // copy input B to a temporary tensor tmp_b, and transpose tmp_b,
   // because cuBlas assumes column-major while Paddle uses row-majar.
@@ -79,11 +80,10 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& context,
   }
 
   // Copy the addresses of A and tmp_b from host to device.
-  paddle::memory::allocation::AllocationPtr tmp_gpu_ptrs_data =
-      paddle::memory::Alloc(
-          context.GetPlace(),
-          cpu_ptrs.size() * sizeof(T*),
-          phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
+  phi::Allocator::AllocationPtr tmp_gpu_ptrs_data = phi::memory_utils::Alloc(
+      context.GetPlace(),
+      cpu_ptrs.size() * sizeof(T*),
+      phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
   paddle::memory::Copy(context.GetPlace(),
                        tmp_gpu_ptrs_data->ptr(),
                        phi::CPUPlace(),
@@ -96,11 +96,10 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& context,
 
   // Allocate device memory for BatchedGETRF's info and pivots.
   int num_ints = n < 32 ? batch_size : batch_size * (n + 1);
-  paddle::memory::allocation::AllocationPtr tmp_gpu_info_data =
-      paddle::memory::Alloc(
-          context.GetPlace(),
-          num_ints * sizeof(int),
-          phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
+  phi::Allocator::AllocationPtr tmp_gpu_info_data = phi::memory_utils::Alloc(
+      context.GetPlace(),
+      num_ints * sizeof(int),
+      phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
   int* gpu_info_ptr = reinterpret_cast<int*>(tmp_gpu_info_data->ptr());
 
   auto blas = phi::funcs::GetBlas<Context, T>(context);

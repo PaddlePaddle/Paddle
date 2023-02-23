@@ -135,7 +135,7 @@ void MatmulKernel(const Context &dev_ctx,
     funcs::ExecuteMatmul<T, float>(
         dev_ctx, x, y, x_bd_dims, y_bd_dims, transpose_x, transpose_y, out);
   } else if (is_bfloat16) {
-    funcs::ExecuteMatmul<T, paddle::platform::bfloat16>(
+    funcs::ExecuteMatmul<T, phi::dtype::bfloat16>(
         dev_ctx, x, y, x_bd_dims, y_bd_dims, transpose_x, transpose_y, out);
   } else {
     funcs::ExecuteMatmul<T, int8_t>(
@@ -219,11 +219,6 @@ class MulPrimitiveFactory {
 
     auto &astream = OneDNNContext::tls().get_stream();
     {
-      paddle::platform::RecordEvent record_reorder(
-          "int_reorder",
-          paddle::platform::TracerEventType::UserDefined,
-          2,
-          paddle::platform::EventRole::kUniqueOp);
       reorder.execute(astream, src_mem, dst_mem);
       astream.wait();
     }
@@ -406,11 +401,6 @@ class MulPrimitiveFactory {
 
     auto &astream = OneDNNContext::tls().get_stream();
     {
-      paddle::platform::RecordEvent record_reorder(
-          "int_reorder",
-          paddle::platform::TracerEventType::UserDefined,
-          2,
-          paddle::platform::EventRole::kUniqueOp);
       reorder.execute(astream, src_mem, dst_mem);
       astream.wait();
     }

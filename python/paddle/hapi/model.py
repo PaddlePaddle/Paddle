@@ -184,6 +184,34 @@ def init_communicator(
                 'rank_ids': nranks,
             },
         )
+    elif core.is_compiled_with_xpu():
+        bkcl_id_var = block.create_var(
+            name=fluid.unique_name.generate('bkcl_id'),
+            persistable=True,
+            type=fluid.core.VarDesc.VarType.RAW,
+        )
+
+        block.append_op(
+            type='c_gen_bkcl_id',
+            inputs={},
+            outputs={'Out': bkcl_id_var},
+            attrs={
+                'rank': rank,
+                'endpoint': current_endpoint,
+                'other_endpoints': other_endpoints,
+            },
+        )
+
+        block.append_op(
+            type='c_comm_init',
+            inputs={'X': bkcl_id_var},
+            outputs={},
+            attrs={
+                'nranks': nranks,
+                'rank': rank,
+                'ring_id': 0,
+            },
+        )
 
 
 def prepare_distributed_context(place=None):

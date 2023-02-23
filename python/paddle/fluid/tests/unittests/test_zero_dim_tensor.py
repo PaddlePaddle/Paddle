@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Note:
+# 0D Tensor indicates that the tensor's dimension is 0
+# 0D Tensor's shape is always [], numel is 1
+# which can be created by paddle.rand([])
+
 import unittest
 
 import numpy as np
@@ -151,28 +156,10 @@ class TestUnaryAPI(unittest.TestCase):
                     self.assertEqual(item.shape, ())
 
                 # 2) Test CompiledProgram Program
-                if paddle.device.is_compiled_with_cuda():
-                    places = [paddle.CUDAPlace(0)]
-                    expect_shape = ()
-                else:
-                    places = [paddle.CPUPlace()] * 4
-                    expect_shape = (4,)
-                compile_prog = paddle.static.CompiledProgram(
-                    main_prog
-                ).with_data_parallel(loss.name, places=places)
+                expect_shape = ()
+                compile_prog = paddle.static.CompiledProgram(main_prog)
 
-                # return_merged=False #
-                res = exe.run(
-                    compile_prog, fetch_list=fetch_list, return_merged=False
-                )
-                for item1 in res:
-                    for item2 in item1:
-                        self.assertEqual(item2.shape, ())
-
-                # return_merged=True #
-                res = exe.run(
-                    compile_prog, fetch_list=fetch_list, return_merged=True
-                )
+                res = exe.run(compile_prog, fetch_list=fetch_list)
                 for item in res:
                     self.assertEqual(item.shape, expect_shape)
 
@@ -288,6 +275,7 @@ binary_api_list = [
     paddle.fmax,
     paddle.fmin,
     paddle.complex,
+    paddle.kron,
 ]
 
 binary_int_api_list = [
@@ -1628,24 +1616,29 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x.grad.shape, [])
 
     def test_prelu(self):
-        x = paddle.full([], 1.0, 'float32')
-        x.stop_gradient = False
-
-        w1 = paddle.to_tensor([0.25], dtype='float32')
-        out1 = paddle.nn.functional.prelu(x, w1)
+        x1 = paddle.full([], 1.0, 'float32')
+        x1.stop_gradient = False
+        w1 = paddle.full([], 0.25, dtype='float32')
+        out1 = paddle.nn.functional.prelu(x1, w1)
         out1.retain_grads()
         out1.backward()
         self.assertEqual(out1.shape, [])
+        self.assertEqual(out1.numpy(), 1.0)
         self.assertEqual(out1.grad.shape, [])
-        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(x1.grad.shape, [])
+        self.assertEqual(x1.grad.numpy(), 1.0)
 
+        x2 = paddle.full([], -1.0, 'float32')
+        x2.stop_gradient = False
         w2 = paddle.full([], 0.25, dtype='float32')
-        out2 = paddle.nn.functional.prelu(x, w2)
+        out2 = paddle.nn.functional.prelu(x2, w2)
         out2.retain_grads()
         out2.backward()
         self.assertEqual(out2.shape, [])
+        self.assertEqual(out2.numpy(), -0.25)
         self.assertEqual(out2.grad.shape, [])
-        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(x2.grad.shape, [])
+        self.assertEqual(x2.grad.numpy(), 0.25)
 
     def test_while_loop(self):
         def cond(i, x):
@@ -2739,6 +2732,29 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[4].shape, ())
         self.assertEqual(res[5].shape, ())
 
+    def test_static_nn_prelu(self):
+        x1 = paddle.full([], 1.0, 'float32')
+        x1.stop_gradient = False
+        out1 = paddle.static.nn.prelu(x1, 'all')
+        paddle.static.append_backward(out1.sum())
+
+        prog = paddle.static.default_main_program()
+        self.exe.run(paddle.static.default_startup_program())
+        res = self.exe.run(
+            prog,
+            fetch_list=[
+                out1,
+                x1.grad_name,
+                out1.grad_name,
+            ],
+        )
+
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[2].shape, ())
+        np.testing.assert_allclose(res[0], np.array(1))
+        np.testing.assert_allclose(res[1], np.array(1))
+
     @prog_scope()
     def test_while_loop(self):
         def cond(i, x):
@@ -3262,28 +3278,10 @@ class TestUnaryElementwiseAPIWithComplexInput(unittest.TestCase):
                     self.assertEqual(item.shape, ())
 
                 # 2) Test CompiledProgram Program
-                if paddle.device.is_compiled_with_cuda():
-                    places = [paddle.CUDAPlace(0)]
-                    expect_shape = ()
-                else:
-                    places = [paddle.CPUPlace()] * 4
-                    expect_shape = (4,)
-                compile_prog = paddle.static.CompiledProgram(
-                    main_prog
-                ).with_data_parallel(loss.name, places=places)
+                expect_shape = ()
+                compile_prog = paddle.static.CompiledProgram(main_prog)
 
-                # return_merged=False #
-                res = exe.run(
-                    compile_prog, fetch_list=fetch_list, return_merged=False
-                )
-                for item1 in res:
-                    for item2 in item1:
-                        self.assertEqual(item2.shape, ())
-
-                # return_merged=True #
-                res = exe.run(
-                    compile_prog, fetch_list=fetch_list, return_merged=True
-                )
+                res = exe.run(compile_prog, fetch_list=fetch_list)
                 for item in res:
                     self.assertEqual(item.shape, expect_shape)
 
@@ -3346,28 +3344,11 @@ class TestAsReal(unittest.TestCase):
                 self.assertEqual(res[3].shape, (2,))
 
                 # 2) Test CompiledProgram Program
-                if paddle.device.is_compiled_with_cuda():
-                    places = [paddle.CUDAPlace(0)]
-                    expect_shapes = (), (2,), (), (2,)
-                else:
-                    places = [paddle.CPUPlace()] * 4
-                    expect_shapes = (4,), (8,), (4,), (8,)
-                compile_prog = paddle.static.CompiledProgram(
-                    main_prog
-                ).with_data_parallel(loss.name, places=places)
+                expect_shapes = (), (2,), (), (2,)
+                compile_prog = paddle.static.CompiledProgram(main_prog)
 
-                # return_merged=False #
-                res = exe.run(
-                    compile_prog, fetch_list=fetch_list, return_merged=False
-                )
-                for out_i, expect in zip(res, [(), (2,), (), (2,)]):
-                    for replica in out_i:
-                        self.assertEqual(replica.shape, expect)
-
-                # return_merged=True #
-                res = exe.run(
-                    compile_prog, fetch_list=fetch_list, return_merged=True
-                )
+                res = exe.run(compile_prog, fetch_list=fetch_list)
+                print(res)
                 for actual, expect in zip(res, expect_shapes):
                     self.assertEqual(actual.shape, expect)
 

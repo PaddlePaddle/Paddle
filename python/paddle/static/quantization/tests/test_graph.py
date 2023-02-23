@@ -76,11 +76,11 @@ class TestGraph(unittest.TestCase):
         build_strategy.memory_optimize = False
         build_strategy.enable_inplace = False
         origin_binary = paddle.static.CompiledProgram(
-            graph.graph
-        ).with_data_parallel(loss_name=loss.name, build_strategy=build_strategy)
+            graph.graph, build_strategy=build_strategy
+        )
         backup_binary = paddle.static.CompiledProgram(
-            backup_graph.graph
-        ).with_data_parallel(loss_name=loss.name, build_strategy=build_strategy)
+            backup_graph.graph, build_strategy=build_strategy
+        )
         place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
         exe = paddle.static.Executor(place)
         exe.run(startup)
