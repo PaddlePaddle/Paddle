@@ -27,12 +27,40 @@ class RangeOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     nvinfer1::ILayer* layer = nullptr;
     nvinfer1::ITensor* quotient_tensor;
+    nvinfer1::ITensor* end;
+    bool is_shape_tensor = true;
 
     // Declare inputs
     auto* start = engine_->GetITensor(op_desc.Input("Start")[0]);
-    auto* end = engine_->GetITensor(op_desc.Input("End")[0]);
     auto* step = engine_->GetITensor(op_desc.Input("Step")[0]);
     auto output_name = op_desc.Output("Out")[0];
+    auto end_name = op_desc.Input("End")[0];
+
+    auto min_shape = engine_->min_shape_tensor();
+    auto max_shape = engine_->max_shape_tensor();
+    auto optim_shape = engine_->optim_shape_tensor();
+
+    if (start->getType() != nvinfer1::DataType::kFLOAT) {
+      // Check whether the specific value of Input End has been collected in the
+      // file "shape_range.pbtxt". If so, convert Input End to a ConstantTensor.
+      while (min_shape.count(end_name) == 0 && is_shape_tensor) {
+        if (!end_name.empty()) {
+          end_name.pop_back();
+        } else {
+          is_shape_tensor = false;
+        }
+      }
+      // Check that the collected min, max, opt values are equal.
+      if (is_shape_tensor && min_shape[end_name][0] == max_shape[end_name][0] &&
+          min_shape[end_name][0] == optim_shape[end_name][0]) {
+        end = Add1DConstantLayer(min_shape[end_name][0],
+                                 output_name + "_end_tensor_");
+      } else {
+        end = engine_->GetITensor(op_desc.Input("End")[0]);
+      }
+    } else {
+      end = engine_->GetITensor(op_desc.Input("End")[0]);
+    }
 
     auto zero_tensor = Add1DConstantLayer(0, output_name + "_zero_tensor_");
     auto fquotient_tensor = FloorDiv(Sub(start, end), step);
