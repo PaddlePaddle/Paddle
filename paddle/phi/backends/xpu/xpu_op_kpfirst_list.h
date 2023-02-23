@@ -16,8 +16,9 @@ limitations under the License. */
 #include <unordered_set>
 #include "paddle/phi/common/data_type.h"
 
-namespace paddle {
-namespace platform {
+namespace phi {
+namespace backends {
+namespace xpu {
 
 using XPUKernelSet = std::unordered_set<phi::DataType>;
 using XPUOpMap = std::unordered_map<std::string, XPUKernelSet>;
@@ -78,16 +79,6 @@ XPUOpMap& get_kp_ops() {
       {"greater_equal", XPUKernelSet({phi::DataType::INT32})},
       {"equal", XPUKernelSet({phi::DataType::INT32})},
       {"not_equal", XPUKernelSet({phi::DataType::INT32})},
-      // reduce op
-      // {"reduce_mean", XPUKernelSet({phi::DataType::FLOAT32})},
-      // {"reduce_max", XPUKernelSet({phi::DataType::FLOAT32})},
-      // {"reduce_min", XPUKernelSet({phi::DataType::FLOAT32})},
-      // {"reduce_sum", XPUKernelSet({phi::DataType::FLOAT32})},
-      // {"reduce_prod", XPUKernelSet({phi::DataType::FLOAT32})},
-      // {"reduce_all", XPUKernelSet({phi::DataType::BOOL})},
-      // {"reduce_any", XPUKernelSet({phi::DataType::BOOL})},
-      // {"reduce_amax", XPUKernelSet({phi::DataType::FLOAT32})},
-      // {"reduce_amin", XPUKernelSet({phi::DataType::FLOAT32})},
       {"pull_box_sparse", XPUKernelSet({phi::DataType::FLOAT32})},
       {"push_box_sparse", XPUKernelSet({phi::DataType::FLOAT32})},
       {"c_sync_calc_stream", XPUKernelSet({phi::DataType::FLOAT32})},
@@ -98,6 +89,7 @@ XPUOpMap& get_kp_ops() {
   return s_xpu_kp_kernels;
 }
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace xpu
+}  // namespace backends
+}  // namespace phi
 #endif

@@ -190,26 +190,29 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
           KernelSelectionErrorMessage(kernel_name, kernel_key)));
 
 #if defined(PADDLE_WITH_XPU_KP)
-  VLOG(6) << "fluid_op_name: " << TransToFluidOpName(kernel_name);
-  auto kernel_key_flage = kernel_key;
-  auto kernel_iter_flage = kernel_iter;
-
+  bool fluid_op_name = TransToFluidOpName(kernel_name);
+  bool has_kp_kernel = false VLOG(6) << "fluid_op_name: " << fluid_op_name;
   bool is_xpu_kp_supported = phi::backends::xpu::is_xpu_kp_support_op(
-      TransToFluidOpName(kernel_name), kernel_key.dtype());
+      fluid_op_name, kernel_key.dtype());
+  // Check in xpu_kp
   if (is_xpu_kp_supported && FLAGS_run_kp_kernel) {
-    auto kernel_key_tmp =
+    auto kernel_key_kp =
         KernelKey(Backend::KPS, kernel_key.layout(), kernel_key.dtype());
     auto kernel_iter_kp = iter->second.find(kernel_key_tmp);
-    bool is_kp_kernel = (kernel_iter_kp != iter->second.end());
-    kernel_key = is_kp_kernel ? kernel_key_tmp : kernel_key_flage;
-    kernel_iter = is_kp_kernel ? kernel_iter_kp : kernel_iter;
+    has_kp_kernel = (kernel_iter_kp != iter->second.end());
+    if (has_kp_kernel) {
+      kernel_key = kernel_key_kp;
+      kernel_iter = kernel_iter_kp;
+    }
   }
-  VLOG(6) << "Current KernelKey is " << kernel_key;
-  if ((kernel_key == kernel_key_flage) &&
-      ((FLAGS_enable_api_kernel_fallback &&
-        kernel_iter_flage == iter->second.end()) ||
-       !phi::backends::xpu::is_xpu_support_op(TransToFluidOpName(kernel_name),
-                                              kernel_key.dtype()))
+  // check iter
+  bool flag_and_iter =
+      FLAGS_enable_api_kernel_fallback && (kernel_iter == iter->second.end());
+  // check in xpu
+  bool xpu_unsupport = !phi::backends::xpu::is_xpu_support_op(
+                           fluid_op_name, kernel_key.dtype()) VLOG(6)
+                       << "Current KernelKey is " << kernel_key;
+  if (flag_and_iter || (xpu_unsupport && !has_kp_kernel)
 #elif defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
   VLOG(6) << "fluid_op_name: " << TransToFluidOpName(kernel_name);
   if ((FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end()) ||
