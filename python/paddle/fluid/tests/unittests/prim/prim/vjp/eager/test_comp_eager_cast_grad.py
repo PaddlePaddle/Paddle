@@ -67,8 +67,11 @@ class TestCastGradComp(unittest.TestCase):
 
         actual = actual(self.primal, self.cotangent)
         desired = desired(self.primal, self.cotangent)
+        from paddle.fluid.data_feeder import _PADDLE_DTYPE_2_NUMPY_DTYPE
 
-        self.assertEqual(actual[0].dtype, desired[0].dtype)
+        self.assertEqual(
+            _PADDLE_DTYPE_2_NUMPY_DTYPE(actual[0].dtype), desired[0].dtype
+        )
         np.testing.assert_allclose(
             actual=actual[0],
             desired=desired[0],
