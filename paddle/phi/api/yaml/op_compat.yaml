@@ -828,6 +828,14 @@
   outputs :
     out : Out
 
+- op : kron
+  backward : kron_grad
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
+  complex_promote : [X, Y]
+
 - op : kthvalue
   inputs :
     x : X

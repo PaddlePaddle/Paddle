@@ -1,3 +1,4 @@
+# Attach operants to Tensor, this file should be consistent with the declaration in `tensor.h`
 - unsqueeze
 - pow
 - exp
@@ -17,7 +18,6 @@
 - max
 - maximum
 - minimum
-- prod
 - roll
 - scatter
 - scatter_nd_add

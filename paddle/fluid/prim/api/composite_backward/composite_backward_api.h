@@ -61,9 +61,7 @@ void gather_grad(const Tensor& x,
 template <typename T>
 void tanh_grad(const Tensor& out, const Tensor& grad_out, Tensor* grad_x) {
   if (!grad_x) return;
-  auto tmp = out.pow(2.0);
-  tmp = scale<T>(tmp, -1.0, 1.0, true);
-  auto grad_x_tmp = grad_out * tmp;
+  auto grad_x_tmp = grad_out * (out.pow(2.0) * -1.0 + 1.0);
   set_output<T>(grad_x_tmp, grad_x);
 }
 
@@ -203,10 +201,7 @@ void divide_grad(const Tensor& x,
                  Tensor* dy) {
   if (dy) {
     // dy = -(x/y^2) * dout
-    auto tmp0 = y.pow(2.0);
-    auto tmp1 = x / tmp0;
-    auto tmp2 = scale<T>(tmp1, -1.0, 0.0, true);
-    auto dy_res = tmp2 * out_grad;
+    auto dy_res = x / y.pow(2.0) * -1.0 * out_grad;
     if (x.dims() != y.dims()) {
       // Maybe need reduce here
       phi::DDim reduce_dim = get_reduce_dims(y.dims(), x.dims());
@@ -247,8 +242,7 @@ void divide_grad(const Tensor& x,
 template <typename T>
 void sqrt_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
-    auto div_x = full<T>(phi::vectorize(out.dims()), 0.5);
-    auto x_grad_tmp = out_grad * div_x / out;
+    auto x_grad_tmp = out_grad / 2.0 / out;
     set_output<T>(x_grad_tmp, x_grad);
   }
 }

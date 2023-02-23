@@ -2453,8 +2453,8 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("load_profiler_result", &paddle::platform::LoadProfilerResult);
   m.def("enable_memory_recorder", &paddle::platform::EnableMemoryRecorder);
   m.def("disable_memory_recorder", &paddle::platform::DisableMemoryRecorder);
-  m.def("enable_op_info_recorder", &paddle::platform::EnableOpInfoRecorder);
-  m.def("disable_op_info_recorder", &paddle::platform::DisableOpInfoRecorder);
+  m.def("enable_op_info_recorder", &phi::EnableOpInfoRecorder);
+  m.def("disable_op_info_recorder", &phi::DisableOpInfoRecorder);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("set_cublas_switch", platform::SetAllowTF32Cublas);
