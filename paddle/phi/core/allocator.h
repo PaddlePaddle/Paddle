@@ -18,6 +18,7 @@ limitations under the License. */
 #include <functional>
 #include <memory>
 
+#include "paddle/phi/api/include/dll_decl.h"
 #include "paddle/phi/common/place.h"
 
 namespace phi {
@@ -105,5 +106,7 @@ class Allocator {
 
   virtual bool IsAllocThreadSafe() const { return false; }
 };
+
+PADDLE_API Allocator* GetAllocator(const Place& place);
 
 }  // namespace phi

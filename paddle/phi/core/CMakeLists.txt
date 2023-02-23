@@ -49,7 +49,7 @@ cc_library(
 cc_library(
   tensor_base
   SRCS tensor_base.cc allocator.cc
-  DEPS phi_enforce)
+  DEPS phi_enforce context_pool phi_device_context)
 cc_library(
   tensor_meta
   SRCS tensor_meta.cc
