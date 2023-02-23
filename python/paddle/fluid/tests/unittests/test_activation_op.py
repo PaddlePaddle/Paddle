@@ -1540,6 +1540,7 @@ class TestRound_ZeroDim(TestRound):
 class TestRelu(TestActivation):
     def setUp(self):
         self.op_type = "relu"
+        self.python_api = paddle.nn.functional.relu
         self.prim_op_type = "comp"
         self.init_dtype()
         self.init_shape()
