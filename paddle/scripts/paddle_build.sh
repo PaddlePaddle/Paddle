@@ -185,7 +185,7 @@ function cmake_base() {
     gloo_flag=${distibuted_flag}
     pscore_flag=${distibuted_flag}
     pslib_flag=${WITH_PSLIB:-OFF}
-    if [ "${pslib_flag}" == "ON"];then
+    if [ "${pslib_flag}" == "ON" ];then
       pscore_flag=${WITH_PSCORE:-OFF}
     fi
 
@@ -3624,7 +3624,7 @@ function run_setup(){
     gloo_flag=${distibuted_flag}
     pscore_flag=${distibuted_flag}
     pslib_flag=${WITH_PSLIB:-OFF}
-    if [ "${pslib_flag}" == "ON"];then
+    if [ "${pslib_flag}" == "ON" ];then
       pscore_flag=${WITH_PSCORE:-OFF}
     fi
 
@@ -3872,7 +3872,7 @@ function run_setup_mac(){
     gloo_flag=${distibuted_flag}
     pscore_flag=${distibuted_flag}
     pslib_flag=${WITH_PSLIB:-OFF}
-    if [ "${pslib_flag}" == "ON"];then
+    if [ "${pslib_flag}" == "ON" ];then
       pscore_flag=${WITH_PSCORE:-OFF}
     fi
 
