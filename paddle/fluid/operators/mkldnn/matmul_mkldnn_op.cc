@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/phi/backends/onednn/onednn_reuse.h"
+#include "paddle/phi/backends/onednn/matmul_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 using dnnl::memory;
@@ -274,39 +274,6 @@ void ReshapeXYOutToMatrixSequence(phi::DenseTensor *x,
   ReshapeTensorToMatrixSequence(y, mat_dim_y);
 }
 
-std::vector<int64_t> Transpose(const std::vector<int64_t> &x,
-                               const std::vector<int> &axis) {
-  size_t in_rank = x.size();
-  size_t axis_size = axis.size();
-
-  auto axis_set = std::set<int>(axis.begin(), axis.end());
-  PADDLE_ENFORCE_EQ(axis_set.size(),
-                    axis_size,
-                    phi::errors::InvalidArgument(
-                        "In an axis array, elements must be unique."));
-
-  PADDLE_ENFORCE_EQ(
-      in_rank,
-      axis_size,
-      phi::errors::InvalidArgument("The input dimension's size "
-                                   "should be equal to the axis's size. "
-                                   "But received dimension is %d, "
-                                   "axis's size is %d",
-                                   in_rank,
-                                   axis_size));
-
-  PADDLE_ENFORCE_LT(*std::max_element(axis.begin(), axis.end()),
-                    axis_size,
-                    phi::errors::InvalidArgument(
-                        "Axis values must be ranging from 0 to (dims - 1)."));
-
-  std::vector<int64_t> new_x(x.size());
-  for (size_t i = 0; i < x.size(); i++) {
-    new_x[i] = x[axis[i]];
-  }
-  return new_x;
-}
-
 template <typename T, typename T_out>
 void ExecuteMatMulV1(const ExecutionContext &ctx,
                      const dnnl::engine onednn_engine,
@@ -340,7 +307,7 @@ void ExecuteMatMulV1(const ExecutionContext &ctx,
 }
 
 template <typename T>
-class MatMulV1OneDNNKernel : public paddle::framework::OpKernel<T> {
+class MatMulMKLDNNKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const ExecutionContext &ctx) const override {
     if (ctx.HasAttr("head_number")) {
@@ -463,7 +430,7 @@ class MatMulV1OneDNNKernel : public paddle::framework::OpKernel<T> {
 };
 
 template <typename T>
-class MatMulV1GradOneDNNKernel : public paddle::framework::OpKernel<T> {
+class MatMulGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const ExecutionContext &ctx) const override {
     if (ctx.HasAttr("head_number")) {
@@ -591,13 +558,13 @@ class MatMulV1GradOneDNNKernel : public paddle::framework::OpKernel<T> {
 REGISTER_OP_KERNEL(matmul,
                    MKLDNN,
                    ::phi::CPUPlace,
-                   MatMulV1OneDNNKernel<float>,
-                   MatMulV1OneDNNKernel<phi::dtype::bfloat16>,
-                   MatMulV1OneDNNKernel<int8_t>,
-                   MatMulV1OneDNNKernel<uint8_t>);
+                   MatMulMKLDNNKernel<float>,
+                   MatMulMKLDNNKernel<paddle::platform::bfloat16>,
+                   MatMulMKLDNNKernel<int8_t>,
+                   MatMulMKLDNNKernel<uint8_t>);
 
 REGISTER_OP_KERNEL(matmul_grad,
                    MKLDNN,
                    ::phi::CPUPlace,
-                   MatMulV1GradOneDNNKernel<float>,
-                   MatMulV1GradOneDNNKernel<phi::dtype::bfloat16>);
+                   MatMulGradMKLDNNKernel<float>,
+                   MatMulGradMKLDNNKernel<paddle::platform::bfloat16>);

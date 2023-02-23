@@ -50,6 +50,31 @@ constexpr bool is_bfloat16() {
   return std::is_same<T, dtype::bfloat16>::value;
 }
 
+// oneDNN's permute axis understand axes order in
+// different way than PaddlePaddle's transpose
+static std::vector<int> TransposeToPermuteAxes(const std::vector<int>& axis) {
+  std::vector<int> permute_axis(axis.size());
+  for (size_t i = 0; i < axis.size(); ++i) {
+    permute_axis[axis[i]] = i;
+  }
+  return permute_axis;
+}
+
+static std::vector<int64_t> FakeTransposeStrides(
+    const std::vector<int64_t>& out_dims, const std::vector<int>& axis) {
+  std::vector<int64_t> fake_strides(axis.size());
+  int ndims = static_cast<int>(axis.size());
+
+  int total_stride = 1;
+
+  for (int i = ndims - 1; i >= 0; --i) {
+    fake_strides[axis[i]] = total_stride;
+    total_stride *= out_dims[axis[i]];
+  }
+
+  return fake_strides;
+}
+
 static std::unordered_map<std::string, dnnl::algorithm> OneDNNActivationMap() {
   return {{"abs", dnnl::algorithm::eltwise_abs},
           {"clip", dnnl::algorithm::eltwise_clip},
@@ -1643,265 +1668,6 @@ static void SetOutMemDescWithReshape2FuseSupport(
 
   out->set_mem_desc(out_md.reshape(fused_reshape2_shape));
   out->Resize(phi::make_ddim(fused_reshape2_shape));
-}
-
-static void SetOutMemDescWithLogicalLayoutFusesSupport(
-    const OneDNNContext& dev_ctx,
-    phi::DenseTensor* out,
-    const dnnl::memory::desc& out_md) {
-  const auto fused_unsqueeze2_axes =
-      dev_ctx.HasDnnAttr("fused_unsqueeze2_axes")
-          ? PADDLE_GET_CONST(std::vector<int>,
-                             dev_ctx.GetDnnAttr("fused_unsqueeze2_axes"))
-          : std::vector<int>();
-  const auto fused_reshape2_shape =
-      dev_ctx.HasDnnAttr("fused_reshape2_shape")
-          ? PADDLE_GET_CONST(std::vector<int>,
-                             dev_ctx.GetDnnAttr("fused_reshape2_shape"))
-          : std::vector<int>();
-  const auto fused_squeeze2_axes =
-      dev_ctx.HasDnnAttr("fused_squeeze2_axes")
-          ? PADDLE_GET_CONST(std::vector<int>,
-                             dev_ctx.GetDnnAttr("fused_squeeze2_axes"))
-          : std::vector<int>();
-
-  if (!fused_unsqueeze2_axes.empty()) {
-    SetOutMemDescWithUnsqueeze2FuseSupport(fused_unsqueeze2_axes, out, out_md);
-  } else if (!fused_reshape2_shape.empty()) {
-    SetOutMemDescWithReshape2FuseSupport(fused_reshape2_shape, out, out_md);
-  } else if (!fused_squeeze2_axes.empty()) {
-    out->set_mem_desc(out_md);
-    out->Resize(make_ddim(out_md.dims()));
-  } else {
-    out->set_mem_desc(out_md);
-  }
-}
-
-static DDim RowMatrixDimsFromVector(const DDim& x_dim) {
-  return x_dim.size() > 1 ? x_dim : make_ddim({1, x_dim[0]});
-}
-
-static DDim ColumnMatrixDimsFromVector(const DDim& y_dim) {
-  return y_dim.size() > 1 ? y_dim : make_ddim({y_dim[0], 1});
-}
-
-static std::vector<int64_t> TransposeAxis(const std::vector<int64_t>& x,
-                                          const std::vector<int>& axis) {
-  size_t in_rank = x.size();
-  size_t axis_size = axis.size();
-
-  auto axis_set = std::set<int>(axis.begin(), axis.end());
-  PADDLE_ENFORCE_EQ(axis_set.size(),
-                    axis_size,
-                    phi::errors::InvalidArgument(
-                        "In an axis array, elements must be unique."));
-
-  PADDLE_ENFORCE_EQ(
-      in_rank,
-      axis_size,
-      phi::errors::InvalidArgument("The input dimension's size "
-                                   "should be equal to the axis's size. "
-                                   "But received dimension is %d, "
-                                   "axis's size is %d",
-                                   in_rank,
-                                   axis_size));
-
-  PADDLE_ENFORCE_LT(*std::max_element(axis.begin(), axis.end()),
-                    axis_size,
-                    phi::errors::InvalidArgument(
-                        "Axis values must be ranging from 0 to (dims - 1)."));
-
-  std::vector<int64_t> new_x(x.size());
-  for (size_t i = 0; i < x.size(); i++) {
-    new_x[i] = x[axis[i]];
-  }
-  return new_x;
-}
-
-template <typename XT, typename YT, typename OT>
-class MatmulOneDNNHandler : public OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
- public:
-  MatmulOneDNNHandler(const OneDNNContext& dev_ctx,
-                      const std::vector<int64_t>& x_org_dims,
-                      const std::vector<int64_t>& y_org_dims,
-                      bool trans_x,
-                      bool trans_y)
-      : OneDNNHandlerNoCachingT<XT, dnnl::matmul>(dev_ctx.GetEngine(),
-                                                  dev_ctx.GetPlace()) {
-    // M X K * K X N
-    std::vector<int64_t> x_dims(x_org_dims);
-    std::vector<int64_t> y_dims(y_org_dims);
-
-    const int MB_idx = x_dims.size() - 3;
-    const int H_idx = x_dims.size() - 2;
-    const int W_idx = x_dims.size() - 1;
-
-    if (trans_x) std::swap(x_dims[H_idx], x_dims[W_idx]);
-    if (trans_y) std::swap(y_dims[H_idx], y_dims[W_idx]);
-
-    const memory::dim M = x_dims[H_idx];
-    const memory::dim K = x_dims[W_idx];
-    const memory::dim N = y_dims[W_idx];
-
-    std::vector<int64_t> x_strides(x_dims.size() - 3, 1);
-    std::vector<int64_t> y_strides(x_dims.size() - 3, 1);
-    std::vector<int64_t> out_strides(x_dims.size() - 3, 1);
-    std::vector<int64_t> out_ddims(x_dims.size() - 3, 1);
-
-    x_strides.reserve(x_dims.size());
-    y_strides.reserve(x_dims.size());
-    out_strides.reserve(x_dims.size());
-
-    if (trans_x) {
-      x_strides.insert(x_strides.end(), {M * K, 1, M});
-    } else {
-      x_strides.insert(x_strides.end(), {M * K, K, 1});
-    }
-
-    if (trans_y) {
-      y_strides.insert(y_strides.end(), {N * K, 1, K});
-    } else {
-      y_strides.insert(y_strides.end(), {N * K, N, 1});
-    }
-
-    out_strides.insert(out_strides.end(), {M * N, N, 1});
-    out_ddims.insert(out_ddims.end(),
-                     {std::max(x_dims[MB_idx], y_dims[MB_idx]), M, N});
-
-    for (int i = x_dims.size() - 4; i >= 0; --i) {
-      out_ddims[i] = std::max(x_dims[i], y_dims[i]);
-      x_strides[i] = x_dims[i + 1] * x_strides[i + 1];
-      y_strides[i] = y_dims[i + 1] * y_strides[i + 1];
-      out_strides[i] = out_ddims[i + 1] * out_strides[i + 1];
-    }
-
-    auto x_md = memory::desc(x_dims, OneDNNGetDataType<XT>(), x_strides);
-    auto y_md = memory::desc(y_dims, OneDNNGetDataType<YT>(), y_strides);
-    auto out_md = memory::desc(out_ddims, OneDNNGetDataType<OT>(), out_strides);
-
-    const auto matmul_attrs = CreateMatmulAttrs(dev_ctx);
-
-    this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
-  }
-
-  float ComputeOutputScale(const OneDNNContext& dev_ctx) {
-    float alpha = dev_ctx.HasDnnAttr("alpha")
-                      ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("alpha"))
-                      : 1.0f;
-
-    if (dev_ctx.HasDnnAttr("Scale_x") && dev_ctx.HasDnnAttr("Scale_y") &&
-        dev_ctx.HasDnnAttr("Scale_out")) {
-      float scale_x = PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("Scale_x"));
-      float scale_y = PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("Scale_y"));
-      bool force_fp32_out =
-          dev_ctx.HasDnnAttr("force_fp32_output")
-              ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("force_fp32_output"))
-              : false;
-      float scale_out =
-          force_fp32_out
-              ? 1.f
-              : PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("Scale_out"));
-      alpha *= scale_out / (scale_x * scale_y);
-    }
-    return alpha;
-  }
-
-  dnnl::primitive_attr CreateMatmulAttrs(const OneDNNContext& dev_ctx) {
-    dnnl::primitive_attr matmul_attrs;
-    dnnl::post_ops post_operations;
-
-    float scale_out = ComputeOutputScale(dev_ctx);
-    if (scale_out != 1.0f) {
-      matmul_attrs.set_output_scales(0, {scale_out});
-    }
-
-    matmul_attrs.set_post_ops(post_operations);
-    return matmul_attrs;
-  }
-
-  std::shared_ptr<memory> AcquireWeightsMemory(const DenseTensor* input) {
-    const YT* input_data = input->data<YT>();
-    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->weights_desc(),
-                                            to_void_cast<YT>(input_data));
-  }
-
-  std::shared_ptr<dnnl::memory> AcquireDstMemory(const OneDNNContext& dev_ctx,
-                                                 DenseTensor* output) {
-    // We cannot use base AcquireDstMemory as it makes an allocation request
-    // base on DST memory primitive size. This is fine in general, but in MatMul
-    // we have primitive that covers only one batch of Data and then shift
-    // pointer for every new batch. Hence DenseTensor size is bigger that
-    // dst memory primitive size. So would we request less memory that is there
-    // and it triggers an assertion.  So as there is no 'any' format here we can
-    // leave default size of DenseTensor as computed in ComputeInferShape
-    OT* ptr = dev_ctx.template Alloc<OT>(output);
-    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
-  }
-};
-
-template <typename T>
-static void ExecuteMul(const OneDNNContext& dev_ctx,
-                       const DenseTensor& x,
-                       const DenseTensor& y,
-                       const std::vector<int64_t>& x_dims,
-                       const std::vector<int64_t>& y_dims,
-                       bool trans_x,
-                       bool trans_y,
-                       DenseTensor* out) {
-  MatmulOneDNNHandler<T, T, T> handler(
-      dev_ctx, x_dims, y_dims, trans_x, trans_y);
-
-  const auto src_memory_p = handler.AcquireSrcMemory(&x);
-  const auto weights_memory_p = handler.AcquireWeightsMemory(&y);
-  const auto dst_memory_p = handler.AcquireDstMemory(dev_ctx, out);
-
-  auto matmul_p = handler.AcquireForwardPrimitive();
-
-  std::unordered_map<int, dnnl::memory> matmul_args = {
-      {DNNL_ARG_SRC, *src_memory_p},
-      {DNNL_ARG_WEIGHTS, *weights_memory_p},
-      {DNNL_ARG_DST, *dst_memory_p}};
-
-  auto& astream = OneDNNContext::tls().get_stream();
-  matmul_p->execute(astream, matmul_args);
-  astream.wait();
-
-  // This kernel is flattening dims so then we need to unflattened version
-  // that should be set in out reshape require plain layout, but
-  // MatmulV2MKLDNNHanlder enforces one so it should work
-  out->set_mem_desc(
-      dst_memory_p->get_desc().reshape(vectorize<int64_t>(out->dims())));
-}
-
-template <typename T, typename T_out>
-void ExecuteMatmul(const OneDNNContext& dev_ctx,
-                   const DenseTensor& x,
-                   const DenseTensor& y,
-                   const std::vector<int64_t>& x_dims,
-                   const std::vector<int64_t>& y_dims,
-                   bool trans_x,
-                   bool trans_y,
-                   DenseTensor* out) {
-  MatmulOneDNNHandler<T, T, T_out> handler(
-      dev_ctx, x_dims, y_dims, trans_x, trans_y);
-
-  const auto src_memory_p = handler.AcquireSrcMemory(&x);
-  const auto weights_memory_p = handler.AcquireWeightsMemory(&y);
-  const auto dst_memory_p = handler.AcquireDstMemory(dev_ctx, out);
-
-  auto matmul_p = handler.AcquireForwardPrimitive();
-
-  std::unordered_map<int, memory> matmul_args = {
-      {DNNL_ARG_SRC, *src_memory_p},
-      {DNNL_ARG_WEIGHTS, *weights_memory_p},
-      {DNNL_ARG_DST, *dst_memory_p}};
-
-  auto& astream = OneDNNContext::tls().get_stream();
-  matmul_p->execute(astream, matmul_args);
-  astream.wait();
-
-  out->set_mem_desc(
-      dst_memory_p->get_desc().reshape(vectorize<int64_t>(out->dims())));
 }
 
 }  // namespace funcs
