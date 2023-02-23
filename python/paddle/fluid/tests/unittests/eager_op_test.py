@@ -920,7 +920,7 @@ class OpTest(unittest.TestCase):
         enable_inplace=None,
         for_inplace_test=None,
     ):
-        with paddle.fluid.framework._dygraph_guard(None):
+        with paddle.static.program_guard(paddle.static.Program()):
             program = Program()
             block = program.global_block()
             op = self._append_ops(block)
@@ -1249,7 +1249,7 @@ class OpTest(unittest.TestCase):
         Returns:
             res (tuple(outs, fetch_list, feed_map, program, op_desc)): The results of given grad_op_desc.
         """
-        with paddle.fluid.framework._dygraph_guard(None):
+        with paddle.static.program_guard(paddle.static.Program()):
             (
                 fwd_outs,
                 fwd_fetch_list,
@@ -2360,7 +2360,7 @@ class OpTest(unittest.TestCase):
         user_defined_grad_outputs=None,
         parallel=False,
     ):
-        with paddle.fluid.framework._dygraph_guard(None):
+        with paddle.static.program_guard(paddle.static.Program()):
             prog = Program()
             scope = core.Scope()
             block = prog.global_block()
