@@ -111,7 +111,7 @@ class QuantOpKernel : public framework::OpKernel<T> {
     reorder_args.insert({DNNL_ARG_SRC, *reorder_src_memory_p});
     reorder_args.insert({DNNL_ARG_DST, *reorder_dst_memory_p});
     if (with_scale) {
-      reorder_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC, scales_mem});
+      reorder_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, scales_mem});
     }
     if (with_shift) {
       reorder_args.insert(
