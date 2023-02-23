@@ -302,6 +302,17 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllReduce(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllReduce(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    const AllreduceOptions& opts,
+    bool sync_op  // for compatibility, no use now
+) {
+  std::vector<phi::DenseTensor> in_wrapper{in_tensor};
+  std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
+  return AllReduce(in_wrapper, out_wrapper, opts);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllReduce(
     std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
     std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
     const AllreduceOptions& opts) {

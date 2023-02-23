@@ -112,6 +112,12 @@ class ProcessGroupCustom : public ProcessGroupWithoutStream {
       bool sync_op,
       bool use_calc_stream) override;
 
+  std::shared_ptr<ProcessGroup::Task> AllReduce(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const AllreduceOptions& opts,
+      bool sync_op) override;
+
   std::shared_ptr<ProcessGroup::Task> Broadcast(
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors,
