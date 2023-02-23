@@ -67,13 +67,8 @@ class AutoTuneBase {
            const AlgorithmType& algo,
            const size_t key,
            Args&&... args) {
-    PADDLE_ENFORCE_GT(
-        kernels_.size(),
-        0,
-        phi::errors::InvalidArgument(
-            "kernel num must be greater than 0, now is %d", kernels_.size()));
     is_init_ = true;
-
+    CheckKernelSize();
     auto& cache = AutoTuneCache::Instance().Get(algo);
     if (cache.Find(key)) {
       auto best_idx = cache.Get(key);
@@ -91,19 +86,22 @@ class AutoTuneBase {
     }
   }
 
- private:
+ protected:
   bool is_init_{false};
   std::vector<KernelType> kernels_;
   mutable std::mutex mutex_;
 
-  template <typename Context, typename... Args>
-  size_t PickBestKernel(const Context& ctx, Args&&... args) {
-    std::lock_guard<std::mutex> lock(mutex_);
+  void CheckKernelSize() {
     PADDLE_ENFORCE_GT(
         kernels_.size(),
         0,
         phi::errors::InvalidArgument(
             "kernel num must be greater than 0, now is %d", kernels_.size()));
+  }
+
+  template <typename Context, typename... Args>
+  size_t PickBestKernel(const Context& ctx, Args&&... args) {
+    std::lock_guard<std::mutex> lock(mutex_);
     size_t best_idx = 0;
     float min_time = std::numeric_limits<float>::max();
 
@@ -143,36 +141,42 @@ class AutoTuneBase {
   }
 };
 
-template <typename T, typename ReturnType, typename... Args>
-static AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>> MakeAutoTuner(
-    ReturnType (*func)(Args...)) {
-  auto obj = MakeCallback<T>(func);
-  return AutoTuneBase<T, decltype(obj)>(obj);
-}
+// To init the auto_tuner object.
+#define DEFINE_AUTOTUNER_COMMON_OBJ(name)                                \
+  template <typename T, typename ReturnType, typename... Args>           \
+  class name##AutoTuner                                                  \
+      : public AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>> { \
+   public:                                                               \
+    static name##AutoTuner<T, ReturnType, Args...>* Instance(            \
+        ReturnType (*func)(Args...)) {                                   \
+      static std::once_flag name##_init_flag;                            \
+      static std::unique_ptr<name##AutoTuner<T, ReturnType, Args...>>    \
+          instance;                                                      \
+      std::call_once(name##_init_flag, [&] {                             \
+        auto obj = MakeCallback<T>(func);                                \
+        instance.reset(new name##AutoTuner<T, ReturnType, Args...>);     \
+        instance->AddCallBack(func);                                     \
+      });                                                                \
+      return instance.get();                                             \
+    }                                                                    \
+  };
 
-template <typename T, typename ReturnType, typename... Args>
-class TransposeAutoTuner
-    : public AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>> {
- public:
-  static AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>>* Instance(
-      ReturnType (*func)(Args...)) {
-    static std::once_flag transpose_init_flag_;
-    static std::unique_ptr<
-        AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>>>
-        instance_;
-    std::call_once(transpose_init_flag_, [&] {
-      auto obj = MakeCallback<T>(func);
-      instance_.reset(new AutoTuneBase<T, decltype(obj)>(obj));
-    });
-    return instance_.get();
+// To init auto_tuner inital function.
+#define DEFINE_AUTOTUNER_FN(name)                                    \
+  template <typename T, typename ReturnType, typename... Args>       \
+  static name##AutoTuner<T, ReturnType, Args...>* Make##name##Tuner( \
+      ReturnType (*func)(Args...)) {                                 \
+    return name##AutoTuner<T, ReturnType, Args...>::Instance(func);  \
   }
-};
 
-template <typename T, typename ReturnType, typename... Args>
-static AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>>*
-MakeTransposeTuner(ReturnType (*func)(Args...)) {
-  return TransposeAutoTuner<T, ReturnType, Args...>::Instance(func);
-}
+#define DEFINE_AUTOTUNER(name) \
+  DEFINE_AUTOTUNER_COMMON_OBJ(name) DEFINE_AUTOTUNER_FN(name)
+
+DEFINE_AUTOTUNER(Transpose)
+
+#undef DEFINE_AUTOTUNER_COMMON_OBJECT
+#undef DEFINE_AUTOTUNER_FN
+#undef DEFINE_AUTOTUNER
 
 }  // namespace autotune
 }  // namespace phi

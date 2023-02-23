@@ -890,7 +890,6 @@ set_tests_properties(
   test_dataloader_keep_order
   test_dataloader_unkeep_order
   test_parallel_ssa_graph_inference_feed_partial_data
-  test_fetch_unmerged
   test_buffer_shared_memory_reuse_pass
   PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(
@@ -968,7 +967,6 @@ set_tests_properties(test_inplace_softmax_with_cross_entropy PROPERTIES TIMEOUT
                                                                         120)
 set_tests_properties(test_cross_entropy2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cross_entropy_loss PROPERTIES TIMEOUT 180)
-set_tests_properties(test_fetch_unmerged PROPERTIES TIMEOUT 120)
 set_tests_properties(test_gru_unit_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_activation_nn_grad PROPERTIES TIMEOUT 200)
 set_tests_properties(test_empty_op PROPERTIES TIMEOUT 120)
@@ -1204,6 +1202,14 @@ if($ENV{USE_STANDALONE_EXECUTOR})
                        PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
 endif()
 
+set(TEST_CINN_OPS test_softmax_op test_expand_v2_op test_reduce_op)
+
+foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
+  if(WITH_CINN)
+    set_tests_properties(${TEST_CINN_OPS} PROPERTIES LABELS "RUN_TYPE=CINN")
+  endif()
+endforeach()
+
 if(WITH_CINN AND WITH_TESTING)
   set_tests_properties(
     test_resnet50_with_cinn
@@ -1229,4 +1235,7 @@ set_tests_properties(test_parallel_executor_drop_scope
 
 set_tests_properties(
   test_cuda_graph_static_mode
+  PROPERTIES ENVIRONMENT "FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR=1")
+set_tests_properties(
+  test_cuda_graph_static_mode_error
   PROPERTIES ENVIRONMENT "FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR=1")

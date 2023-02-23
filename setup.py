@@ -145,7 +145,10 @@ def get_header_install_dir(header):
         install_dir = re.sub(
             env_dict.get("THIRD_PARTY_PATH") + '/', 'third_party', header
         )
-        patterns = ['install/mkldnn/include']
+        patterns = [
+            'install/mkldnn/include',
+            'pybind/src/extern_pybind/include',
+        ]
         for pattern in patterns:
             install_dir = re.sub(pattern, '', install_dir)
     return install_dir
@@ -569,13 +572,13 @@ os.environ['CUDA_CACHE_MAXSIZE'] = '805306368'
 
 
 def write_parameter_server_version_py(
-    filename='paddle/fluid/incubate/fleet/parameter_server/version.py',
+    filename='paddle/incubate/fleet/parameter_server/version.py',
 ):
     cnt = '''
 
 # THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
 
-from paddle.fluid.incubate.fleet.base.mode import Mode
+from paddle.incubate.distributed.fleet.base import Mode
 
 BUILD_MODE=Mode.%(mode)s
 
@@ -1203,6 +1206,9 @@ def get_headers():
         headers += list(
             find_files('*.pb', env_dict.get("externalError_INCLUDE_DIR"))
         )
+
+    # pybind headers
+    headers += list(find_files('*.h', env_dict.get("PYBIND_INCLUDE_DIR"), True))
     return headers
 
 
@@ -1270,6 +1276,8 @@ def get_setup_parameters():
         'paddle.distributed.passes',
         'paddle.distributed.models',
         'paddle.distributed.models.moe',
+        'paddle.distributed.transpiler',
+        'paddle.distributed.transpiler.details',
         'paddle.framework',
         'paddle.jit',
         'paddle.jit.dy2static',
@@ -1286,16 +1294,10 @@ def get_setup_parameters():
         'paddle.fluid.contrib.extend_optimizer',
         'paddle.fluid.contrib.layers',
         'paddle.fluid.transpiler',
-        'paddle.fluid.transpiler.details',
         'paddle.fluid.incubate',
-        'paddle.fluid.incubate.fleet',
+        'paddle.incubate.distributed.fleet',
         'paddle.fluid.incubate.checkpoint',
-        'paddle.fluid.incubate.fleet.base',
         'paddle.fluid.incubate.fleet.parameter_server',
-        'paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler',
-        'paddle.fluid.incubate.fleet.parameter_server.ir',
-        'paddle.fluid.incubate.fleet.collective',
-        'paddle.fluid.incubate.fleet.utils',
         'paddle.amp',
         'paddle.cost_model',
         'paddle.hapi',
@@ -1323,7 +1325,9 @@ def get_setup_parameters():
         'paddle.incubate.distributed.models',
         'paddle.incubate.distributed.models.moe',
         'paddle.incubate.distributed.models.moe.gate',
+        'paddle.incubate.fleet.parameter_server',
         'paddle.incubate.fleet.parameter_server.distribute_transpiler',
+        'paddle.incubate.fleet.parameter_server.ir',
         'paddle.incubate.fleet.parameter_server.pslib',
         'paddle.quantization',
         'paddle.quantization.quanters',
@@ -1450,7 +1454,7 @@ def main():
         filename='{}/python/paddle/cuda_env.py'.format(paddle_binary_dir)
     )
     write_parameter_server_version_py(
-        filename='{}/python/paddle/fluid/incubate/fleet/parameter_server/version.py'.format(
+        filename='{}/python/paddle/incubate/fleet/parameter_server/version.py'.format(
             paddle_binary_dir
         )
     )
