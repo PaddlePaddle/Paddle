@@ -103,15 +103,14 @@ void ElementwisePowRawKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void ElementwiseHeavisideRawKernel(const Context& dev_ctx,
-                                   const DenseTensor& x,
-                                   const DenseTensor& y,
-                                   int axis,
-                                   DenseTensor* out) {
+void HeavisideKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     DenseTensor* out) {
   // allocate memory for out
   dev_ctx.template Alloc<T>(out);
   funcs::ElementwiseCompute<funcs::ElementwiseHeavisideFunctor<T>, T>(
-      dev_ctx, x, y, axis, funcs::ElementwiseHeavisideFunctor<T>(), out);
+      dev_ctx, x, y, -1, funcs::ElementwiseHeavisideFunctor<T>(), out);
 }
 
 }  // namespace phi
@@ -170,14 +169,6 @@ PD_REGISTER_KERNEL(elementwise_pow_raw,
                    CPU,
                    ALL_LAYOUT,
                    phi::ElementwisePowRawKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t) {}
-PD_REGISTER_KERNEL(elementwise_heaviside_raw,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::ElementwiseHeavisideRawKernel,
                    float,
                    double,
                    int,

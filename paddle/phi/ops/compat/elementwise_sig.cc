@@ -102,12 +102,7 @@ KernelSignature ElementwiseFloorDivOpArgumentMapping(
 
 KernelSignature ElementwiseHeavisideOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  int axis = paddle::any_cast<int>(ctx.Attr("axis"));
-  if (axis == -1) {
-    return KernelSignature("elementwise_heaviside", {"X", "Y"}, {}, {"Out"});
-  }
-  return KernelSignature(
-      "elementwise_heaviside_raw", {"X", "Y"}, {"axis"}, {"Out"});
+  return KernelSignature("heaviside", {"X", "Y"}, {}, {"Out"});
 }
 
 KernelSignature ElementwisePowOpArgumentMapping(
@@ -226,10 +221,8 @@ KernelSignature ElementwiseMinGradOpArgumentMapping(
 
 KernelSignature ElementwiseHeavisideGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("elementwise_heaviside_grad",
-                         {"X", "Y", "Out@GRAD"},
-                         {"axis"},
-                         {"X@GRAD", "Y@GRAD"});
+  return KernelSignature(
+      "heaviside_grad", {"X", "Y", "Out@GRAD"}, {}, {"X@GRAD", "Y@GRAD"});
 }
 
 KernelSignature ElementwisePowGradOpArgumentMapping(
