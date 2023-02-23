@@ -121,24 +121,24 @@ class MatMulV1OneDNNHandler
     y_strides.reserve(x_dims.size());
     out_strides.reserve(x_dims.size());
 
-    if (!x_strides_override.empty()) {
-      x_strides = x_strides_override;
-    } else {
-      if (!trans_x) {
-        x_strides.insert(x_strides.end(), {M * K, K, 1});
-      } else {
+    if (x_strides_override.empty()) {
+      if (trans_x) {
         x_strides.insert(x_strides.end(), {M * K, 1, M});
+      } else {
+        x_strides.insert(x_strides.end(), {M * K, K, 1});
       }
+    } else {
+      x_strides = x_strides_override;
     }
 
-    if (!y_strides_override.empty()) {
-      y_strides = y_strides_override;
-    } else {
-      if (!trans_y) {
-        y_strides.insert(y_strides.end(), {N * K, N, 1});
-      } else {
+    if (y_strides_override.empty()) {
+      if (trans_y) {
         y_strides.insert(y_strides.end(), {N * K, 1, K});
+      } else {
+        y_strides.insert(y_strides.end(), {N * K, N, 1});
       }
+    } else {
+      y_strides = y_strides_override;
     }
 
     out_strides.insert(out_strides.end(), {M * N, N, 1});
