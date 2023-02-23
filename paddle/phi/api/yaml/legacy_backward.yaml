@@ -543,6 +543,7 @@
   kernel :
     data_type: x
     func : gather_grad
+  composite : gather_grad(x, index, out_grad, axis, overwrite)
   no_need_buffer : x
 
 - backward_op : group_norm_grad
@@ -634,17 +635,6 @@
   kernel :
     func : kldiv_loss_grad
   no_need_buffer : x
-
-- backward_op : kron_grad
-  forward : kron (Tensor x, Tensor y) -> Tensor(out)
-  args : (Tensor x, Tensor y, Tensor out_grad)
-  output : Tensor(x_grad), Tensor(y_grad)
-  infer_meta :
-    func : GeneralBinaryGradInferMeta
-    param : [x, y]
-  kernel :
-    func : kron_grad
-    data_type : out_grad
 
 - backward_op : layer_norm_grad
   forward : layer_norm (Tensor x, Tensor scale, Tensor bias, float epsilon, int begin_norm_axis) -> Tensor(out), Tensor(mean), Tensor(variance)

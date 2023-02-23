@@ -108,7 +108,7 @@ class LRScheduler:
 
     def __call__(self):
         """
-        Return lastest computed learning rate on current epoch.
+        Return latest computed learning rate on current epoch.
         """
         return self.last_lr
 

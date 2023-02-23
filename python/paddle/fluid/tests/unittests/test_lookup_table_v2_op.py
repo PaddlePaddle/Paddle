@@ -203,7 +203,7 @@ class TestLookupTableIsSparse(unittest.TestCase):
         with fluid.program_guard(main_program, fluid.Program()):
             x = paddle.static.data(name='x', shape=[-1, 5], dtype='int64')
             y_ = paddle.static.data(name='y_', shape=[-1, 5], dtype='float32')
-            emb = fluid.input.embedding(
+            emb = paddle.static.nn.embedding(
                 input=x,
                 size=[10, 16],
                 param_attr=fluid.ParamAttr(
@@ -246,7 +246,7 @@ class TestLookupTableIsSparse(unittest.TestCase):
 class TestLookupTableApi(unittest.TestCase):
     def test_api(self):
         x = paddle.static.data(name='x', shape=[-1, 20], dtype='int64')
-        emb = fluid.embedding(input=x, size=[128, 64])
+        emb = paddle.static.nn.embedding(input=x, size=[128, 64])
 
         place = fluid.CPUPlace()
         x_data = np.random.randint(0, 127, [2, 20]).astype("int64")
@@ -269,25 +269,29 @@ class TestEmbedOpError(unittest.TestCase):
 
             def test_Variable():
                 # the input type must be Variable
-                fluid.embedding(input=input_data, size=(10, 64))
+                paddle.static.nn.embedding(input=input_data, size=(10, 64))
 
             self.assertRaises(TypeError, test_Variable)
 
             def test_input_dtype():
                 # the input dtype must be int64
                 input = fluid.data(name='x1', shape=[4, 6], dtype='float32')
-                fluid.embedding(input=input, size=(10, 64))
+                paddle.static.nn.embedding(input=input, size=(10, 64))
 
             self.assertRaises(TypeError, test_input_dtype)
 
             def test_param_dtype():
                 # dtype must be float32 or float64
                 input2 = fluid.data(name='x2', shape=[4, 6], dtype='int64')
-                fluid.embedding(input=input2, size=(10, 64), dtype='int64')
+                paddle.static.nn.embedding(
+                    input=input2, size=(10, 64), dtype='int64'
+                )
 
             self.assertRaises(TypeError, test_param_dtype)
             input3 = fluid.data(name='x3', shape=[4, 6], dtype='int64')
-            fluid.embedding(input=input3, size=(10, 64), dtype='float16')
+            paddle.static.nn.embedding(
+                input=input3, size=(10, 64), dtype='float16'
+            )
 
 
 if __name__ == "__main__":

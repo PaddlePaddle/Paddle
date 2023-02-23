@@ -234,13 +234,13 @@ class SimpleNet(BackwardNet):
         )
         # shared layer, the grad of 'w2v' will be summed and renamed.
         # To test  _addup_repetitive_outputs_
-        x_emb = fluid.embedding(
+        x_emb = paddle.static.nn.embedding(
             x, size=[100, 64], param_attr=fluid.ParamAttr(name='w2v')
         )
-        x2_emb = fluid.embedding(
+        x2_emb = paddle.static.nn.embedding(
             x2, size=[100, 64], param_attr=fluid.ParamAttr(name='w2v')
         )
-        x3_emb = fluid.embedding(
+        x3_emb = paddle.static.nn.embedding(
             x3, size=[100, 64], param_attr=fluid.ParamAttr(name='w2v')
         )
         # merge layers
@@ -331,7 +331,7 @@ class TestAppendBackwardWithError(unittest.TestCase):
     def build_net(self):
         x = fluid.data(name='x', shape=[None, 13], dtype='int64')
         y = fluid.data(name='y', shape=[None, 1], dtype='float32')
-        x_emb = fluid.embedding(x, size=[100, 256])
+        x_emb = paddle.static.nn.embedding(x, size=[100, 256])
         y_predict = paddle.static.nn.fc(x=x_emb, size=1, name='my_fc')
         loss = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_loss = paddle.mean(loss)
