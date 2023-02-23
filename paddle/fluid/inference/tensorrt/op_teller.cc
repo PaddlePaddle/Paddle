@@ -2232,18 +2232,19 @@ struct SimpleOpTypeSetTeller : public Teller {
     if (op_type == "tile") {
       // Paddle-TRT does not support the input tensors.
       auto tile_inputs = desc.Inputs();
-      if (tile_inputs.find("repeat_times_tensor") != tile_inputs.end()) {
-        if (desc.Input("repeat_times_tensor").size() >= 1) {
-          return false;
+      if (!with_dynamic_shape) {
+        if (tile_inputs.find("repeat_times_tensor") != tile_inputs.end()) {
+          if (desc.Input("repeat_times_tensor").size() >= 1) {
+            return false;
+          }
         }
-      }
-      if (tile_inputs.find("RepeatTimes") != tile_inputs.end()) {
-        if (desc.Input("RepeatTimes").size() >= 1) {
-          return false;
+        if (tile_inputs.find("RepeatTimes") != tile_inputs.end()) {
+          if (desc.Input("RepeatTimes").size() >= 1) {
+            return false;
+          }
         }
+        if (!desc.HasAttr("repeat_times")) return false;
       }
-      if (with_dynamic_shape) return false;
-      if (!with_dynamic_shape && !desc.HasAttr("repeat_times")) return false;
     }
 #endif
 
