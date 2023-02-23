@@ -782,7 +782,7 @@ class OpTest(unittest.TestCase):
                 lod_temp = np_value[1]
 
             if is_input:
-                if is_calc_ref and np_value_temp == np.float16:
+                if is_calc_ref and np_value_temp.dtype == np.float16:
                     v = self._create_var_from_numpy(
                         np_value_temp.astype(np.float32)
                     )
@@ -799,7 +799,7 @@ class OpTest(unittest.TestCase):
                         lod_temp
                     )
             else:
-                if is_calc_ref and np_value_temp == np.float16:
+                if is_calc_ref and np_value_temp.dtype == np.float16:
                     v = block.create_var(
                         name=name,
                         dtype=np.float32,
@@ -1625,7 +1625,7 @@ class OpTest(unittest.TestCase):
 
             def compare_single_output_with_expect(self, name, expect):
                 actual, actual_np = self.find_actual_value(name)
-                if self.op_test.dtype == np.float16:
+                if self.op_test.is_fp16_compared_with_fp32():
                     expect, expect_np = self.find_expect_value(name)
                 else:
                     expect_np = (
