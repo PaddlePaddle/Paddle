@@ -25,6 +25,7 @@ namespace phi {
 
 enum class CalMode_c { ksum, kmean };
 
+// kernelfunc, calculate the grad of the variable 'weight'
 template <typename T, typename IdT>
 __global__ void EmbeddingBagWeightsGrad(const int output_dim,
                                         const IdT *input,
@@ -53,6 +54,9 @@ __global__ void EmbeddingBagWeightsGrad(const int output_dim,
         static_cast<T>(partialDotProduct);
   }
 }
+// asist in obtain the map between the indices and the rows of params
+// can refer 'index_vec' in embedding_bag_grad_kernel.cc(in line 83)
+// 
 template <typename IdT>
 __global__ void PrepTempArraysKernel(const IdT *indices,
                                      IdT *sortedIndices,
@@ -78,6 +82,10 @@ __global__ void EmbeddingBagParamsGrad(const int output_dim,
   const int bag_idx = blockIdx.y;
   const int feature_idx = threadIdx.x + bag_idx * blockDim.x;
   const int params_idx = __ldg(sortedIndices + sample_idx);
+  // refer embeddingbag in tensorflow/addons, spin up a warp for each element
+  // of the indices array, having each warp check the previous element, 
+  // if the same, return without operations. If not, the warp iterates forward
+  // and accumulates gradient. The operation is to avoid repeated reads and writes
   if (sample_idx > 0) {
     const int prev_idx = __ldg(sortedIndices + sample_idx - 1);
     if (prev_idx == params_idx) {
@@ -183,6 +191,11 @@ struct EmbeddingBagGradCUDAFunctor {
     const int total_blocks = Eigen::divup(indices_size, kThreadsPerBlock);
 
     dim3 grids_2(total_blocks, 1, 1);
+
+    // the target of these operations is to avoid parallel writes to the same element of 
+    // the grads. So 'PrepTempArraysKernel' is designed to pre-sorting a copy of the indices(sourtedIndices),
+    // and co-sorting a counter(sortedIndicesCounter).
+    
 
     PrepTempArraysKernel<IdT>
         <<<grids_2, kThreadsPerBlock, 0, dev_ctx_.stream()>>>(
