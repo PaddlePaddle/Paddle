@@ -58,4 +58,7 @@ PD_REGISTER_KERNEL(transpose_grad,
                    ALL_LAYOUT,
                    phi::TransposeGradKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   int64_t,
+                   int,
+                   bool) {}
