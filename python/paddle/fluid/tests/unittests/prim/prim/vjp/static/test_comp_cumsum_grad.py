@@ -76,7 +76,8 @@ class TestCumsumGradComp(unittest.TestCase):
     def tearDown(self):
         paddle.disable_static()
 
-    # TODO(GGBond8488):After the CINN cumsum operator is enhanced, the CINN test needs to be supplemented
+    # TODO(GGBond8488):After the CINN cumsum operator is enhanced,
+    # the CINN test needs to be supplemented
 
     def test_cumsum_grad_comp(self):
         def actual(primal, cotangent):
