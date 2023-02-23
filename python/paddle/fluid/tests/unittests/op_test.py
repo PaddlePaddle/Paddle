@@ -1779,10 +1779,7 @@ class OpTest(unittest.TestCase):
                     np.float64,
                 ]:
                     self.rtol = 1.0e-2
-                elif (
-                    actual_np.dtype == np.float16
-                    and expect_np.dtype == np.float16
-                ):
+                elif actual_np.dtype == np.float16:
                     self.rtol = 1.0e-3
                 else:
                     self.rtol = 1.0e-5
