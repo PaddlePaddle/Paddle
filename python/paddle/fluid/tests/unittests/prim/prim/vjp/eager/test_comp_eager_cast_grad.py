@@ -68,10 +68,10 @@ class TestCastGradComp(unittest.TestCase):
         actual = actual(self.primal, self.cotangent)
         desired = desired(self.primal, self.cotangent)
 
-        self.assertEqual(actual.dtype, desired.dtype)
+        self.assertEqual(actual[0].dtype, desired[0].dtype)
         np.testing.assert_allclose(
-            actual=actual,
-            desired=desired,
+            actual=actual[0],
+            desired=desired[0],
             rtol=1e-6,
             atol=0,
         )
