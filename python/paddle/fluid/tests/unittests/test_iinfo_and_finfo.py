@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
+import torch
 
 import paddle
 
-import torch
 
 class TestIInfoAndFInfoAPI(unittest.TestCase):
     def test_invalid_input(self):
@@ -48,6 +48,7 @@ class TestIInfoAndFInfoAPI(unittest.TestCase):
             self.assertEqual(xinfo.max, xninfo.max)
             self.assertEqual(xinfo.min, xninfo.min)
             self.assertEqual(xinfo.dtype, xninfo.dtype)
+
     def test_finfo(self):
         for paddle_dtype, np_dtype in [
             (paddle.float32, torch.float32),
@@ -64,6 +65,7 @@ class TestIInfoAndFInfoAPI(unittest.TestCase):
             self.assertEqual(xfinfo.tiny, xtfinfo.tiny)
             self.assertEqual(xfinfo.resolution, xtfinfo.resolution)
             self.assertEqual(xfinfo.dtype, xtfinfo.dtype)
+
 
 if __name__ == '__main__':
     unittest.main()

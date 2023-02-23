@@ -13,8 +13,8 @@
 # limitations under the License.
 
 from ..fluid.core import VarDesc
-from ..fluid.core import iinfo as core_iinfo
 from ..fluid.core import finfo as core_finfo
+from ..fluid.core import iinfo as core_iinfo
 
 dtype = VarDesc.VarType
 dtype.__qualname__ = "dtype"
@@ -71,5 +71,35 @@ def iinfo(dtype):
     """
     return core_iinfo(dtype)
 
+
 def finfo(dtype):
+    """
+
+    paddle.finfo is a function that returns an object that represents the numerical properties of
+    an float paddle.dtype.
+    This is similar to `numpy.finfo <https://numpy.org/doc/stable/reference/generated/numpy.finfo.html#numpy-finfo>`_.
+
+    Args:
+        dtype(paddle.dtype):  One of paddle.float16, paddle.float32, paddle.float64, paddle.complex32, and paddle.complex64.
+
+    Returns:
+        An finfo object, which has the following 7 attributes:
+
+            - min: float, The smallest representable float number.
+            - max: float, The largest representable float number.
+            - bits: int, The number of bits occupied by the type.
+            - eps: The difference between 1.0 and the next smallest representable float larger than 1.0.
+            - tiny: Return the value for tiny, alias of smallest_normal.
+            - resolution: floating point number of the appropriate type
+            - dtype: str, The string name of the argument dtype.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            finfo_float32 = paddle.finfo(paddle.float32)
+            print(finfo_float32)
+
+    """
     return core_finfo(dtype)
