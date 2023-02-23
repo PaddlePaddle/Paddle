@@ -2018,7 +2018,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         paddle.static.append_backward(out1.sum())
         prog = paddle.static.default_main_program()
         res = self.exe.run(
-            prog, fetch_list=[x1, out1, indices1, x1.grad, out1.grad]
+            prog, fetch_list=[x1, out1, indices1, x1.grad_name, out1.grad_name]
         )
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[0], 1.0)
