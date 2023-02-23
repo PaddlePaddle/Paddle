@@ -190,6 +190,7 @@ class TestSigmoid(TestActivation):
         self.op_type = "sigmoid"
         self.prim_op_type = "comp"
         self.enable_cinn = False
+        self.python_api = paddle.nn.functional.sigmoid
         self.init_dtype()
         self.init_shape()
 
@@ -222,6 +223,7 @@ class TestSigmoidBF16(OpTest):
         self.op_type = "sigmoid"
         self.prim_op_type = "comp"
         self.enable_cinn = False
+        self.python_api = paddle.nn.functional.sigmoid
         self.init_dtype()
         self.init_shape()
 
