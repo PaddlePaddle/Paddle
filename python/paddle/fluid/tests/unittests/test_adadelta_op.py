@@ -15,15 +15,36 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
 
 
+def adadelta_wrapper(
+    Param, Grad, AvgSquaredGrad, AvgSquaredUpdate, rho=0.95, epsilon=1e-6
+):
+    _, _, _ = paddle._legacy_C_ops.adadelta(
+        Param,
+        Grad,
+        AvgSquaredGrad,
+        AvgSquaredUpdate,
+        Param,
+        AvgSquaredGrad,
+        AvgSquaredUpdate,
+        "rho",
+        rho,
+        "epsilon",
+        epsilon,
+    )
+    return Param, AvgSquaredGrad, AvgSquaredUpdate
+
+
 class TestAdadeltaOp1(OpTest):
     def setUp(self):
         self.op_type = "adadelta"
+        self.python_api = adadelta_wrapper
+        self.python_out_sig = ['Out']
         param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         # The squared gradient is positive
@@ -76,6 +97,7 @@ class TestAdadeltaOp2(OpTest):
 
     def setUp(self):
         self.op_type = "adadelta"
+        self.python_api = adadelta_wrapper
         param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         # The squared gradient is positive
