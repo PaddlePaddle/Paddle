@@ -800,12 +800,16 @@ if(WITH_MKLDNN)
     false
     true)
   # run qat gru test
-  set(GRU_QAT_PATH
-      "${INFERENCE_DEMO_INSTALL_DIR}/quant/GRU_quant2/GRU_quant_acc")
+
+  set(QAT_GRU_MODEL_ARCHIVE "GRU_quant_acc.tar.gz")
+  set(QAT_GRU_MODEL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/quant/GRU_quant2")
+  download_quant_data(${QAT_GRU_MODEL_DIR} ${QAT_GRU_MODEL_ARCHIVE}
+                      cf207f8076dcfb8b74d8b6bdddf9090c)
+
   inference_analysis_api_lexical_int8_test_run(
     test_analyzer_lexical_gru_qat_int8
     ${LEXICAL_TEST_APP}
-    ${GRU_QAT_PATH}
+    "${QAT_GRU_MODEL_DIR}/GRU_quant_acc"
     ${GRU_DATA_PATH}
     false
     true
@@ -1406,7 +1410,8 @@ if(WITH_IPU)
     SRCS
     ipu_multi_model_profile.cc
     ARGS
-    --model_name="Resnet50"
+    --model_name="Resnet50
+      "
     --infer_model=${RESNET50_MODEL_DIR}
     --warmup=true
     --repeat=10)
