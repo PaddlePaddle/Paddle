@@ -1504,7 +1504,7 @@ class PoolingOneDNNHandler
                        ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("is_test"))
                        : false;
 
-    memory::dims dilation = {1, 1};  // dilation (no PP support)
+    memory::dims dilation = {0, 0};  // dilation (no PP support)
 
     this->AcquireForwardPrimitiveDescriptor(
         is_test ? dnnl::prop_kind::forward_inference
@@ -1592,7 +1592,7 @@ class PoolingOneDNNHandler
       ComputeAdaptivePoolParameters(
           diff_src_tz, &copied_kernel_size, &copied_strides);
     }
-    memory::dims dilation = {1, 1};  // dilation (no PP support)
+    memory::dims dilation = {0, 0};  // dilation (no PP support)
 
     this->AcquireForwardPrimitiveDescriptor(
         dnnl::prop_kind::forward_training,
