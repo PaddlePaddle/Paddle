@@ -271,6 +271,8 @@ TEST(Analyzer_lexical_test, Analyzer_lexical_analysis) {
       analysis_cfg.mkldnn_quantizer_config()->SetWarmupData(warmup_data);
       analysis_cfg.mkldnn_quantizer_config()->SetWarmupBatchSize(
           FLAGS_batch_size);
+    } else if (FLAGS_enable_quant_int8) {
+      analysis_cfg.EnableMkldnnInt8();
     } else {
       // if fp32 => disable mkldnn fc passes
       // when passes are enabled dnnl error occurs for iterations==0

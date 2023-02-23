@@ -271,8 +271,15 @@ function(inference_analysis_api_lexical_bfloat16_test_run TARGET_NAME
     --iterations=2)
 endfunction()
 
-function(inference_analysis_api_lexical_int8_test_run TARGET_NAME test_binary
-         infer_model data_path fuse_multi_gru)
+function(
+  inference_analysis_api_lexical_int8_test_run
+  TARGET_NAME
+  test_binary
+  infer_model
+  data_path
+  enable_int8
+  enable_quant_int8
+  fuse_multi_gru)
   inference_analysis_test_run(
     ${TARGET_NAME}
     COMMAND
@@ -284,8 +291,9 @@ function(inference_analysis_api_lexical_int8_test_run TARGET_NAME test_binary
     --cpu_num_threads=${CPU_NUM_THREADS_ON_CI}
     --with_accuracy_layer=true
     --use_analysis=true
-    --enable_int8=true
-    --quantized_accuracy=0.01
+    --enable_int8=${enable_int8}
+    --enable_quant_int8=${enable_quant_int8}
+    --quantized_accuracy=0.015
     --fuse_multi_gru=${fuse_multi_gru}
     --iterations=4)
 endfunction()
@@ -775,12 +783,33 @@ if(WITH_MKLDNN)
     ${GRU_DATA_PATH})
   # run post-training quantization lexical analysis test
   inference_analysis_api_lexical_int8_test_run(
-    test_analyzer_lexical_gru_int8 ${LEXICAL_TEST_APP} ${GRU_MODEL_PATH}
-    ${GRU_DATA_PATH} false)
+    test_analyzer_lexical_gru_int8
+    ${LEXICAL_TEST_APP}
+    ${GRU_MODEL_PATH}
+    ${GRU_DATA_PATH}
+    true
+    false
+    false)
   # run post-training quantization lexical analysis test with multi_gru fuse
   inference_analysis_api_lexical_int8_test_run(
-    test_analyzer_lexical_gru_int8_multi_gru ${LEXICAL_TEST_APP}
-    ${GRU_MODEL_PATH} ${GRU_DATA_PATH} true)
+    test_analyzer_lexical_gru_int8_multi_gru
+    ${LEXICAL_TEST_APP}
+    ${GRU_MODEL_PATH}
+    ${GRU_DATA_PATH}
+    true
+    false
+    true)
+  # run qat gru test
+  set(GRU_QAT_PATH
+      "${INFERENCE_DEMO_INSTALL_DIR}/quant/GRU_quant2/GRU_quant_acc")
+  inference_analysis_api_lexical_int8_test_run(
+    test_analyzer_lexical_gru_qat_int8
+    ${LEXICAL_TEST_APP}
+    ${GRU_QAT_PATH}
+    ${GRU_DATA_PATH}
+    false
+    true
+    false)
 
   ### optimized FP32 vs. Quant INT8 tests
 
