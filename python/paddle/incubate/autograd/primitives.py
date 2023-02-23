@@ -41,6 +41,7 @@ from paddle.tensor import logcumsumexp  # noqa: F401
 from paddle.tensor import logit  # noqa: F401
 from paddle.tensor import logsumexp  # noqa: F401
 from paddle.tensor import max  # noqa: F401
+from paddle.tensor import maximum  # noqa: F401
 from paddle.tensor import mean  # noqa: F401
 from paddle.tensor import min  # noqa: F401
 from paddle.tensor import multiply  # noqa: F401
@@ -59,8 +60,8 @@ from paddle.tensor import tanh  # noqa: F401
 from paddle.tensor import uniform  # noqa: F401
 from paddle.tensor import zeros  # noqa: F401
 from paddle.tensor.creation import assign  # noqa: F401
+from paddle.tensor.creation import zeros_like  # noqa: F401
 from paddle.tensor.manipulation import cast  # noqa: F401
-from paddle.tensor import maximum # noqa: F401
 
 """
 math_op = [
@@ -122,5 +123,6 @@ others = [
     'full',
     'uniform',
     'greater_equal',
+    'zeros_like',
 ]
 """

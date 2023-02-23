@@ -1569,9 +1569,9 @@ class TestRelu(TestActivation):
 
     def test_check_output(self):
         self.check_output(check_prim=True)
-    
+
     def skip_cinn(self):
-        pass
+        self.enable_cinn = False
 
 
 class TestRelu_ZeroDim(TestRelu):
