@@ -275,7 +275,6 @@ class Optimizer:
 
         self._param_dict = self._create_multi_tensor_dict()
         self._auxiliary_vars = {}
-        self._already_create_accumulater = set()
 
     def _set_auxiliary_var(self, key, val):
         self._auxiliary_vars[key] = val
