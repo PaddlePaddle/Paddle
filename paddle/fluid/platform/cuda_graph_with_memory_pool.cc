@@ -30,14 +30,14 @@ void BeginCUDAGraphCapture(phi::GPUPlace place,
                            int64_t pool_id,
                            bool use_multi_stream) {
   phi::GPUContext* dev_ctx;
-  if (use_multi_stream) {
-    dev_ctx = reinterpret_cast<phi::GPUContext*>(
-        CreateDeviceContext<phi::GPUContext>(place, true).get());
-  } else {
+  std::unique_ptr<phi::DeviceContext> dev_ctx_unique_ptr;
+  // if (use_multi_stream) {
+  dev_ctx_unique_ptr = CreateDeviceContext<phi::GPUContext>(place, true);
+  dev_ctx = reinterpret_cast<phi::GPUContext*>(dev_ctx_unique_ptr.get());
+  /*} else {
     auto* mutable_dev_ctx = phi::DeviceContextPool::Instance().Get(place);
     dev_ctx = reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);
-  }
-  CUDAGraph::SetCapturingDeviceContext(dev_ctx);
+  }*/
   dev_ctx->cudnn_workspace_handle().ResetWorkspace();
 
   // After PR(#43206), cudnn related initializations will change to lazy mode.
@@ -52,6 +52,7 @@ void BeginCUDAGraphCapture(phi::GPUPlace place,
 
   auto stream = dev_ctx->stream();
   CUDAGraph::BeginCapture(place, stream, mode);
+  CUDAGraph::SetCapturingDeviceContext(std::move(dev_ctx_unique_ptr));
 
   // When using cuda graph in new executor, fast GC must be used.
   // FLAGS_use_stream_safe_cuda_allocator should be true.
