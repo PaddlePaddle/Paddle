@@ -282,7 +282,7 @@ void MergedMomentumInnerCompute(
           multi_precision ? master_params_opt.get()[idx]->data<MT>() : nullptr;
       MT *master_out_data =
           multi_precision ? master_params_out[idx]->data<MT>() : nullptr;
-      if (paddle::platform::is_cpu_place(ctx.GetPlace())) {
+      if (ctx.GetPlace().GetType() == phi::AllocationType::CPU) {
         phi::CPUDenseMomentumFunctor<MT> functor;
         functor(params[idx],
                 grads[idx],

@@ -215,7 +215,7 @@ void set_constant_with_place<paddle::platform::CUDAPinnedPlace>(
 }
 
 struct TensorSetConstantWithPlace
-    : public std::unary_function<paddle::platform::Place, void> {
+    : public std::unary_function<phi::Place, void> {
   TensorSetConstantWithPlace(const phi::DeviceContext& context,
                              phi::DenseTensor* tensor,
                              float value)

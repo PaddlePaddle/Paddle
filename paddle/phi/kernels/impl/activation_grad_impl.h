@@ -65,7 +65,7 @@ void ActivationGradImpl(const Context& dev_ctx,
   auto* place = dev_ctx.eigen_device();
   // use 32bit index to speed up computation
   bool use_32bit_index = out.size() < Eigen::NumTraits<int>::highest();
-  bool is_gpu_place = paddle::platform::is_gpu_place(dev_ctx.GetPlace());
+  bool is_gpu_place = dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU;
   if (use_32bit_index && is_gpu_place) {
     functor(*place,
             To32BitIndex(x),

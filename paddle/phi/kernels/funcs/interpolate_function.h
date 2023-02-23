@@ -122,20 +122,20 @@ inline std::vector<T> get_new_data_from_tensor(
   DenseTensor cpu_starts_tensor;
   auto& pool = phi::DeviceContextPool::Instance();
   phi::DeviceContext* dev_ctx = pool.Get(new_data_tensor->place());
-  if (paddle::platform::is_gpu_place(new_data_tensor->place())) {
+  if (new_data_tensor->place().GetType() == phi::AllocationType::GPU) {
     phi::Copy(
         *dev_ctx, *new_data_tensor, phi::CPUPlace(), true, &cpu_starts_tensor);
     new_data = cpu_starts_tensor.data<T>();
   }
 #ifdef PADDLE_WITH_ASCEND_CL
-  if (paddle::platform::is_npu_place(new_data_tensor->place())) {
+  if (new_data_tensor->place().GetType() == phi::AllocationType::NPU) {
     phi::Copy(
         *dev_ctx, *new_data_tensor, phi::CPUPlace(), true, &cpu_starts_tensor);
     new_data = cpu_starts_tensor.data<T>();
   }
 #endif
 #ifdef PADDLE_WITH_XPU
-  if (paddle::platform::is_xpu_place(new_data_tensor->place())) {
+  if (new_data_tensor->place().GetType() == phi::AllocationType::XPU) {
     phi::Copy(
         *dev_ctx, *new_data_tensor, phi::CPUPlace(), true, &cpu_starts_tensor);
     new_data = cpu_starts_tensor.data<T>();

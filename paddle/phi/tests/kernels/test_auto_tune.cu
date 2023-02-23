@@ -80,8 +80,7 @@ TEST(AutoTune, sum) {
   size_t size = sizeof(float) * N;
 
   const auto alloc_cpu =
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace());
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace());
   auto in1 = std::make_shared<phi::DenseTensor>(
       alloc_cpu.get(),
       phi::DenseTensorMeta(

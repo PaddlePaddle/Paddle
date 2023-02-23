@@ -70,7 +70,7 @@ void AdagradDenseKernel(const Context& ctx,
 
   moment_out.device(place) = moment + grad * grad;
   Eigen::DSizes<int, 1> m_dsize(moment_out_tensor->numel());
-  if (paddle::platform::is_cpu_place(ctx.GetPlace())) {
+  if (ctx.GetPlace().GetType() == phi::AllocationType::CPU) {
     auto* lr = learning_rate.data<T>();
     param_out.device(place) =
         param - lr[0] * grad / (moment_out.sqrt() + epsilon);

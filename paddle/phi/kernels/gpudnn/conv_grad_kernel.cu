@@ -161,7 +161,7 @@ void ConvCudnnGradKernelImplV7(
                     padding_common,
                     strides,
                     dilations,
-                    paddle::platform::AllowTF32Cudnn(),
+                    phi::AllowTF32Cudnn(),
                     c_groups);
 
 #ifdef PADDLE_WITH_HIP
@@ -188,7 +188,7 @@ void ConvCudnnGradKernelImplV7(
                     padding_common,
                     strides,
                     dilations,
-                    paddle::platform::AllowTF32Cudnn(),
+                    phi::AllowTF32Cudnn(),
                     c_groups);
 #ifdef PADDLE_WITH_HIP
     using search2 = SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t>;
@@ -356,7 +356,7 @@ void ConvCudnnGradKernelImplV8(
   PADDLE_ENFORCE_EQ(
       groups,
       1,
-      paddle::platform::errors::Unimplemented(
+      phi::errors::Unimplemented(
           "Group concolution using CUDNNv8 API is unsupported for now"));
 
   cudnnHandle_t handle = const_cast<cudnnHandle_t>(ctx.cudnn_handle());
@@ -1082,7 +1082,7 @@ void ConvCudnnGradGradKernel(
                       padding_common,
                       strides,
                       dilations,
-                      paddle::platform::AllowTF32Cudnn(),
+                      phi::AllowTF32Cudnn(),
                       c_group);
 
 #ifdef PADDLE_WITH_HIP
@@ -1106,7 +1106,7 @@ void ConvCudnnGradGradKernel(
                       padding_common,
                       strides,
                       dilations,
-                      paddle::platform::AllowTF32Cudnn(),
+                      phi::AllowTF32Cudnn(),
                       c_group);
 
 #ifdef PADDLE_WITH_HIP
@@ -1133,7 +1133,7 @@ void ConvCudnnGradGradKernel(
                     padding_common,
                     strides,
                     dilations,
-                    paddle::platform::AllowTF32Cudnn(),
+                    phi::AllowTF32Cudnn(),
                     c_group);
 
 #ifdef PADDLE_WITH_HIP
@@ -1160,7 +1160,7 @@ void ConvCudnnGradGradKernel(
                     padding_common,
                     strides,
                     dilations,
-                    paddle::platform::AllowTF32Cudnn(),
+                    phi::AllowTF32Cudnn(),
                     c_group);
 
 #ifdef PADDLE_WITH_HIP

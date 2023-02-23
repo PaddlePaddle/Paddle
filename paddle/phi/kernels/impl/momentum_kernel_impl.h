@@ -443,7 +443,7 @@ void MomentumDenseImpl(const Context& ctx,
       multi_precision ? master_param->data<MT>() : nullptr;
   MT* master_out_data =
       multi_precision ? ctx.template Alloc<MT>(master_param_out) : nullptr;
-  if (paddle::platform::is_cpu_place(ctx.GetPlace())) {
+  if (ctx.GetPlace().GetType() == phi::AllocationType::CPU) {
     CPUDenseMomentumFunctor<MT> functor;
     functor(&param,
             &grad,

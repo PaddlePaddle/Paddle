@@ -36,6 +36,17 @@ limitations under the License. */
 
 namespace phi {
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+void SetAllowTF32Cublas(bool active);
+/*Get the global variable allow_tf32_cublas value*/
+bool AllowTF32Cublas();
+extern bool allow_tf32_cudnn;
+/*Set the value of the global variable allow_tf32_cudnn*/
+void SetAllowTF32Cudnn(bool active);
+/*Get the global variable allow_tf32_cudnn value*/
+bool AllowTF32Cudnn();
+#endif  // PADDLE_WITH_CUDA
+
 template <typename Place>
 struct DefaultDeviceContextType;
 
@@ -70,18 +81,19 @@ struct DefaultDeviceContextType<phi::CustomPlace> {
 };
 #endif
 
+using EmplaceExternalContextFunc = void (*)(
+    std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*,
+    const phi::Place&,
+    bool,
+    int);
+
 void EmplaceDeviceContexts(
     std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
         place_to_device_context,
-    const std::vector<platform::Place>& places,
+    const std::vector<phi::Place>& places,
     bool disable_setting_default_stream_for_allocator,
-    int stream_priority);
-
-using EmplaceExternalContextFunc = void (*)(
-    std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*,
-    const std::vector<platform::Place>&,
-    bool,
-    int);
+    int stream_priority,
+    EmplaceExternalContextFunc emplace_external_context_func = nullptr);
 
 /*! \brief device context pool singleton */
 class DeviceContextPool {

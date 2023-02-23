@@ -37,18 +37,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/mlu/device_context_allocator.h"
 #endif
 
+#include "paddle/phi/backends/context_pool_impl.h"
+
 namespace paddle {
 namespace platform {
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-bool allow_tf32_cublas = true;
-void SetAllowTF32Cublas(bool active) { allow_tf32_cublas = active; }
-bool AllowTF32Cublas() { return allow_tf32_cublas; }
-
-bool allow_tf32_cudnn = true;
-void SetAllowTF32Cudnn(bool active) { allow_tf32_cudnn = active; }
-bool AllowTF32Cudnn() { return allow_tf32_cudnn; }
-#endif  // PADDLE_WITH_CUDA
 
 DeviceType Place2DeviceType(const platform::Place& place) {
   if (platform::is_cpu_place(place)) {
@@ -79,7 +71,7 @@ void EmplaceExternalContext(
     int stream_priority) {
   if (platform::is_cuda_pinned_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    EmplaceDeviceContext<CUDAPinnedDeviceContext>(
+    phi::EmplaceDeviceContext<CUDAPinnedDeviceContext>(
         place_to_device_context,
         place,
         disable_setting_default_stream_for_allocator,
@@ -91,7 +83,7 @@ void EmplaceExternalContext(
 #endif
   } else if (platform::is_mlu_place(place)) {
 #ifdef PADDLE_WITH_MLU
-    EmplaceDeviceContext<MLUDeviceContext>(
+    phi::EmplaceDeviceContext<MLUDeviceContext>(
         place_to_device_context,
         place,
         disable_setting_default_stream_for_allocator,
@@ -103,7 +95,7 @@ void EmplaceExternalContext(
 #endif
   } else if (platform::is_ipu_place(place)) {
 #ifdef PADDLE_WITH_IPU
-    EmplaceDeviceContext<IPUDeviceContext>(
+    phi::EmplaceDeviceContext<IPUDeviceContext>(
         place_to_device_context,
         place,
         disable_setting_default_stream_for_allocator,
@@ -115,7 +107,7 @@ void EmplaceExternalContext(
 #endif
   } else if (platform::is_npu_place(place)) {
 #ifdef PADDLE_WITH_ASCEND_CL
-    EmplaceDeviceContext<NPUDeviceContext>(
+    phi::EmplaceDeviceContext<NPUDeviceContext>(
         place_to_device_context,
         place,
         disable_setting_default_stream_for_allocator,
@@ -127,7 +119,7 @@ void EmplaceExternalContext(
 #endif
   } else if (platform::is_npu_pinned_place(place)) {
 #ifdef PADDLE_WITH_ASCEND_CL
-    EmplaceDeviceContext<NPUPinnedDeviceContext>(
+    phi::EmplaceDeviceContext<NPUPinnedDeviceContext>(
         place_to_device_context,
         place,
         disable_setting_default_stream_for_allocator,

@@ -178,7 +178,7 @@ void RmspropDenseKernel(const Context &ctx,
           "MeanSquare and MeanSquareOut must be the same Tensor"));
   size_t limit = static_cast<size_t>(ms_tensor.numel());
   auto &grad_tensor = grad;
-  if (paddle::platform::is_cpu_place(ctx.GetPlace())) {
+  if (ctx.GetPlace().GetType() == phi::AllocationType::CPU) {
     auto &place = *ctx.eigen_device();
     auto lr_value = lr_tensor.data<T>()[0];
 

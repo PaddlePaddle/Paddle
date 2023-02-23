@@ -219,7 +219,7 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
                     padding_common,
                     strides,
                     dilations_,
-                    paddle::platform::AllowTF32Cudnn(),
+                    phi::AllowTF32Cudnn(),
                     c_groups);
 #ifdef PADDLE_WITH_HIP
     using search1 = SearchAlgorithm<miopenConvFwdAlgorithm_t>;
@@ -244,7 +244,7 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
                     padding_common,
                     strides,
                     dilations_,
-                    paddle::platform::AllowTF32Cudnn(),
+                    phi::AllowTF32Cudnn(),
                     c_groups);
 #ifdef PADDLE_WITH_HIP
     using search2 = SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t>;
@@ -691,7 +691,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
                     padding_common,
                     strides,
                     dilations_,
-                    paddle::platform::AllowTF32Cudnn(),
+                    phi::AllowTF32Cudnn(),
                     c_group);
 #ifdef PADDLE_WITH_HIP
     using search1 = SearchAlgorithm<miopenConvBwdDataAlgorithm_t>;
@@ -713,7 +713,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
                     padding_common,
                     strides,
                     dilations_,
-                    paddle::platform::AllowTF32Cudnn(),
+                    phi::AllowTF32Cudnn(),
                     c_group);
 #ifdef PADDLE_WITH_HIP
     using search2 = SearchAlgorithm<miopenConvBwdDataAlgorithm_t>;
@@ -738,7 +738,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
                     padding_common,
                     strides,
                     dilations_,
-                    paddle::platform::AllowTF32Cudnn(),
+                    phi::AllowTF32Cudnn(),
                     c_group);
 #ifdef PADDLE_WITH_HIP
     using search3 = SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t>;
@@ -764,7 +764,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
                     padding_common,
                     strides,
                     dilations_,
-                    paddle::platform::AllowTF32Cudnn(),
+                    phi::AllowTF32Cudnn(),
                     c_group);
 #ifdef PADDLE_WITH_HIP
     using search4 = SearchAlgorithm<miopenConvFwdAlgorithm_t>;

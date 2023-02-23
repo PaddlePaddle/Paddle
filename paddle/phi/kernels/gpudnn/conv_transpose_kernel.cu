@@ -216,7 +216,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
                  padding_common,
                  strides,
                  dilations_,
-                 paddle::platform::AllowTF32Cudnn(),
+                 phi::AllowTF32Cudnn(),
                  c_groups);
 
 #ifdef PADDLE_WITH_HIP

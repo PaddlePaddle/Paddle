@@ -313,12 +313,8 @@ class CudnnConvDescManager {
       int groups,
       cudnnDataType_t dtype) {
     auto* desc = new phi::backends::gpu::ConvolutionDescriptor();
-    desc->set(dtype,
-              paddings,
-              strides,
-              dilations,
-              paddle::platform::AllowTF32Cudnn(),
-              groups);
+    desc->set(
+        dtype, paddings, strides, dilations, phi::AllowTF32Cudnn(), groups);
     return desc;
   }
 

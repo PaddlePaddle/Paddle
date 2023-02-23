@@ -100,18 +100,6 @@ struct GpuDevice;
 namespace paddle {
 namespace platform {
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-/*Set the value of the global variable allow_tf32_cublas*/
-void SetAllowTF32Cublas(bool active);
-/*Get the global variable allow_tf32_cublas value*/
-bool AllowTF32Cublas();
-extern bool allow_tf32_cudnn;
-/*Set the value of the global variable allow_tf32_cudnn*/
-void SetAllowTF32Cudnn(bool active);
-/*Get the global variable allow_tf32_cudnn value*/
-bool AllowTF32Cudnn();
-#endif  // PADDLE_WITH_CUDA
-
 enum DeviceType {
   CPU = 0,
   CUDA = 1,
@@ -155,17 +143,10 @@ class IPUDeviceContext
  private:
   IPUPlace place_;
 };
-template <>
-struct phi::DefaultDeviceContextType<platform::IPUPlace> {
-  using TYPE = IPUDeviceContext;
-};
 #endif
 
 #ifdef PADDLE_WITH_MLU
 class MLUDeviceContext;
-
-template <>
-struct phi::DefaultDeviceContextType<platform::MLUPlace>;
 #endif
 
 #ifdef PADDLE_WITH_XPU
@@ -240,11 +221,6 @@ class NPUDeviceContext
   DISABLE_COPY_AND_ASSIGN(NPUDeviceContext);
 };
 
-template <>
-struct phi::DefaultDeviceContextType<platform::NPUPlace> {
-  using TYPE = NPUDeviceContext;
-};
-
 // Currently, NPUPinnedDeviceContext is only used to data copying.
 class NPUPinnedDeviceContext
     : public DeviceContext,
@@ -264,13 +240,9 @@ class NPUPinnedDeviceContext
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
 };
 
-template <>
-struct phi::DefaultDeviceContextType<platform::NPUPinnedPlace> {
-  using TYPE = NPUPinnedDeviceContext;
-};
-
 #endif
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 // Currently, CUDAPinnedDeviceContext is only used to data copying.
 class CUDAPinnedDeviceContext
     : public DeviceContext,
@@ -288,11 +260,6 @@ class CUDAPinnedDeviceContext
  private:
   CUDAPinnedPlace place_;
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
-};
-
-template <>
-struct phi::DefaultDeviceContextType<platform::CUDAPinnedPlace> {
-  using TYPE = CUDAPinnedDeviceContext;
 };
 #endif
 
@@ -329,3 +296,38 @@ using DeviceContextPool = phi::DeviceContextPool;
 
 }  // namespace platform
 }  // namespace paddle
+
+namespace phi {
+
+#ifdef PADDLE_WITH_IPU
+template <>
+struct DefaultDeviceContextType<phi::IPUPlace> {
+  using TYPE = paddle::platform::IPUDeviceContext;
+};
+#endif
+
+#ifdef PADDLE_WITH_MLU
+template <>
+struct DefaultDeviceContextType<phi::MLUPlace>;
+#endif
+
+#ifdef PADDLE_WITH_ASCEND_CL
+template <>
+struct DefaultDeviceContextType<phi::NPUPlace> {
+  using TYPE = paddle::platform::NPUDeviceContext;
+};
+
+template <>
+struct DefaultDeviceContextType<phi::NPUPinnedPlace> {
+  using TYPE = paddle::platform::NPUPinnedDeviceContext;
+};
+#endif
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+template <>
+struct DefaultDeviceContextType<phi::GPUPinnedPlace> {
+  using TYPE = paddle::platform::CUDAPinnedDeviceContext;
+};
+#endif
+
+}  //  namespace phi
