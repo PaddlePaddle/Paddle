@@ -28,7 +28,6 @@
 #include "paddle/fluid//platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/naive_executor.h"
@@ -62,6 +61,7 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/generator.h"
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
 #include "paddle/utils/string/split.h"
 
@@ -441,8 +441,8 @@ void AnalysisPredictor::InitDeviceContexts() {
                   .GetZeroAllocator(platform::CPUPlace())
                   .get());
           gpu_context->SetGenerator(
-              framework::DefaultCUDAGenerator(place_.GetDeviceId()).get());
-          gpu_context->SetHostGenerator(framework::DefaultCPUGenerator().get());
+              phi::DefaultCUDAGenerator(place_.GetDeviceId()).get());
+          gpu_context->SetHostGenerator(phi::DefaultCPUGenerator().get());
 
           gpu_context->SetStream(gpu_resource->GetStream());
           gpu_context->SetBlasHandle(gpu_resource->GetBlasHandleCreator());
@@ -524,6 +524,7 @@ bool AnalysisPredictor::PrepareScope(
     status_is_cloned_ = true;
   } else {
     paddle::framework::InitDevices();
+    paddle::framework::InitMemoryMethod();
     paddle::framework::InitDefaultKernelSignatureMap();
     // TODO(wilber): we need to release memory occupied by weights.
     scope_.reset(new paddle::framework::Scope());
@@ -1279,6 +1280,18 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetCustomDeviceType(config_.custom_device_type());
     argument_->SetCustomDeviceId(config_.custom_device_id());
   }
+#endif
+
+#ifdef PADDLE_WITH_XPU
+  argument_->SetUseXpu(config_.use_xpu_);
+  argument_->SetXpuL3WorkspaceSize(config_.xpu_l3_workspace_size_);
+  argument_->SetXpuLocked(config_.xpu_locked_);
+  argument_->SetXpuAutotune(config_.xpu_autotune_);
+  argument_->SetXpuAutotuneFile(config_.xpu_autotune_file_);
+  argument_->SetXpuPrecision(config_.xpu_precision_);
+  argument_->SetXpuAdaptiveSeqlen(config_.xpu_adaptive_seqlen_);
+  argument_->SetXpuDeviceId(config_.xpu_device_id_);
+  argument_->SetXpuEnableMultiStream(config_.xpu_enable_multi_stream_);
 #endif
 
   auto *pass_builder = config_.pass_builder();
