@@ -16,13 +16,13 @@
 
 #include <vector>
 
-#include "paddle/fluid/operators/math/sequence_padding.h"
 #include "paddle/phi/backends/dynload/warpctc.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/sequence_padding.h"
 #include "paddle/phi/kernels/funcs/sequence_scale.h"
 #include "paddle/utils/optional.h"
 
@@ -333,8 +333,7 @@ void WarpctcKernel(const Context& dev_ctx,
                           num_sequences));
 
     sequence_width = logits.numel() / logits_dims[0];
-    max_sequence_length =
-        paddle::operators::math::MaximumSequenceLength(logits_lod);
+    max_sequence_length = phi::funcs::MaximumSequenceLength(logits_lod);
   }
 
   auto loss_dims = phi::make_ddim({static_cast<int64_t>(num_sequences), 1});
@@ -361,7 +360,7 @@ void WarpctcKernel(const Context& dev_ctx,
       phi::Copy(dev_ctx, cpu_pad_value, dev_ctx.GetPlace(), true, &pad_value);
     }
 
-    paddle::operators::math::PaddingLoDTensorFunctor<Context, T>()(
+    phi::funcs::PaddingLoDTensorFunctor<Context, T>()(
         dev_ctx,
         logits,
         &warpctc_logits,
@@ -369,7 +368,7 @@ void WarpctcKernel(const Context& dev_ctx,
         -1,
         0,
         false /* norm_by_times */,
-        paddle::operators::math::kLengthBatchWidth);
+        phi::funcs::kLengthBatchWidth);
   }
 
   const T* warpctc_logits_data = warpctc_logits.data<T>();
@@ -394,39 +393,36 @@ void WarpctcKernel(const Context& dev_ctx,
   DenseTensor warpctc_label;
   if (logits_length.is_initialized()) {
     warpctc_label.Resize(
-        {static_cast<int64_t>(
-             paddle::operators::math::TotalSequenceLength(label_lod)),
-         1});
+        {static_cast<int64_t>(phi::funcs::TotalSequenceLength(label_lod)), 1});
     dev_ctx.template HostAlloc<int>(&warpctc_label);
     std::vector<phi::Vector<size_t>> lod;
     lod.push_back(label_lod);
     warpctc_label.set_lod(lod);
 
     if (dev_ctx.GetPlace() == phi::CPUPlace()) {
-      paddle::operators::math::UnpaddingLoDTensorFunctor<Context, int>()(
+      phi::funcs::UnpaddingLoDTensorFunctor<Context, int>()(
           dev_ctx,
           label,
           &warpctc_label,
           label.dims()[1] /*pad_seq_len*/,
           0 /*lod_level*/,
           false /*norm_by_times*/,
-          paddle::operators::math::kBatchLengthWidth);
+          phi::funcs::kBatchLengthWidth);
     } else {
       DenseTensor gpu_label;
       gpu_label.Resize(
-          {static_cast<int64_t>(
-               paddle::operators::math::TotalSequenceLength(label_lod)),
+          {static_cast<int64_t>(phi::funcs::TotalSequenceLength(label_lod)),
            1});
       dev_ctx.template Alloc<int>(&gpu_label);
       gpu_label.set_lod(lod);
-      paddle::operators::math::UnpaddingLoDTensorFunctor<Context, int>()(
+      phi::funcs::UnpaddingLoDTensorFunctor<Context, int>()(
           dev_ctx,
           label,
           &gpu_label,
           label.dims()[1] /*pad_seq_len*/,
           0 /*lod_level*/,
           false /*norm_by_times*/,
-          paddle::operators::math::kBatchLengthWidth);
+          phi::funcs::kBatchLengthWidth);
       phi::Copy(dev_ctx, gpu_label, phi::CPUPlace(), true, &warpctc_label);
     }
   } else {

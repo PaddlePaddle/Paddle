@@ -1,12 +1,21 @@
 - op : fc_xpu
-  args : (Tensor x, Tensor w, Tensor w_max, Tensor bias, int in_num_col_dims, bool transpose_x, float alpha, float beta, int act_type, float act_alpha)
-  output : Tensor
+  args : (Tensor x, Tensor x_max, Tensor w, Tensor w_max, Tensor bias, int in_num_col_dims, bool transpose_x, float alpha, float beta, int act_type, float act_alpha)
+  output : Tensor(out), Tensor(out_max)
   infer_meta :
     func : FcXPUInferMeta
   kernel :
     func : fc_xpu
     data_type : x
-  optional : bias
+  optional : bias, x_max
+
+- op : generate_sequence_xpu
+  args : (Tensor x, DataType dtype)
+  output : Tensor
+  infer_meta :
+    func : GenerateSequenceXPUInferMeta
+  kernel :
+    func : generate_sequence_xpu
+    data_type : dtype
 
 - op : multi_encoder_xpu
   args : (Tensor x, Tensor[] fc_weight, Tensor[] fc_weight_max, Tensor[] fc_bias, Tensor[] ln_scale, Tensor[] ln_bias, Tensor mask, int layer_num, bool norm_before, int hidden_dim, int head_num, int size_per_head, int ffn_hidden_dim_scale, int act_type, int relative_type, int slice_idx)
