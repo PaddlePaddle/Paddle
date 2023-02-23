@@ -15,6 +15,10 @@ limitations under the License. */
 #pragma once
 
 #include <Python.h>
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
 
 #include <algorithm>
 #include <memory>
@@ -28,9 +32,9 @@ limitations under the License. */
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
-#include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/phi/kernels/funcs/strided_memcpy.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
@@ -724,14 +728,13 @@ void _concatCompute(const std::vector<phi::DenseTensor> &ins,
     for (auto &in : ins) {
       auto in_stride = phi::stride_numel(in.dims());
       auto out_stride = phi::stride_numel(out->dims());
-      paddle::operators::StridedNumelCopyWithAxis<T>(
-          ctx,
-          axis,
-          out->data<T>() + output_offset,
-          out_stride,
-          in.data<T>(),
-          in_stride,
-          in_stride[axis]);
+      phi::funcs::StridedNumelCopyWithAxis<T>(ctx,
+                                              axis,
+                                              out->data<T>() + output_offset,
+                                              out_stride,
+                                              in.data<T>(),
+                                              in_stride,
+                                              in_stride[axis]);
       output_offset += in_stride[axis];
     }
   } else {

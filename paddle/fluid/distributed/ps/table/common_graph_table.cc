@@ -26,11 +26,11 @@
 #include "paddle/fluid/distributed/ps/table/graph/graph_node.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/platform/timer.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/phi/core/generator.h"
 
 DECLARE_bool(graph_load_in_parallel);
 DECLARE_bool(graph_get_neighbor_id);
@@ -1917,7 +1917,7 @@ int32_t GraphTable::random_sample_nodes(GraphTableType table_type,
   int total_size = 0;
   auto &shards = table_type == GraphTableType::EDGE_TABLE ? edge_shards[idx]
                                                           : feature_shards[idx];
-  for (int i = 0; i < (int)shards.size(); i++) {
+  for (int i = 0; i < static_cast<int>(shards.size()); i++) {
     total_size += shards[i]->get_size();
   }
   if (sample_size > total_size) sample_size = total_size;
@@ -2429,7 +2429,7 @@ int GraphTable::get_all_feature_ids(
 
 int GraphTable::get_node_embedding_ids(
     int slice_num, std::vector<std::vector<uint64_t>> *output) {
-  if (is_load_reverse_edge and !FLAGS_graph_get_neighbor_id) {
+  if (is_load_reverse_edge && !FLAGS_graph_get_neighbor_id) {
     return get_all_id(GraphTableType::EDGE_TABLE, slice_num, output);
   } else {
     get_all_id(GraphTableType::EDGE_TABLE, slice_num, output);
@@ -2574,7 +2574,7 @@ int32_t GraphTable::Initialize(const GraphParameter &graph) {
   _shards_task_pool.resize(task_pool_size_);
   for (size_t i = 0; i < _shards_task_pool.size(); ++i) {
     _shards_task_pool[i].reset(new ::ThreadPool(1));
-    _shards_task_rng_pool.push_back(paddle::framework::GetCPURandomEngine(0));
+    _shards_task_rng_pool.push_back(phi::GetCPURandomEngine(0));
   }
   load_node_edge_task_pool.reset(new ::ThreadPool(load_thread_num));
 

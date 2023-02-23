@@ -22,8 +22,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/transfer_layout_kernel.h"
 
-#include "paddle/fluid/framework/tensor_util.h"
-
 namespace paddle {
 namespace experimental {
 
@@ -169,8 +167,8 @@ inline phi::DenseTensor TransDataPlace(const phi::DenseTensor& tensor,
   VLOG(3) << "DeviceTransform in, src_place " << tensor.place()
           << " dst_place: " << dst_place;
 
+  auto& pool = phi::DeviceContextPool::Instance();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  auto& pool = paddle::platform::DeviceContextPool::Instance();
   // NOTE(yy): TransDataPlace should wait for computation of input.
   if (!platform::is_cuda_pinned_place(tensor.place())) {
     pool.Get(tensor.place())->Wait();
@@ -188,7 +186,13 @@ inline phi::DenseTensor TransDataPlace(const phi::DenseTensor& tensor,
   // But the embarrassment is that this solution this solution makes training
   // slower.
   phi::DenseTensor out;
-  paddle::framework::TensorCopySync(tensor, dst_place, &out);
+  phi::DeviceContext* dev_ctx;
+  if (dst_place.GetType() != AllocationType::CPU) {
+    dev_ctx = pool.Get(dst_place);
+  } else {
+    dev_ctx = pool.Get(tensor.place());
+  }
+  phi::Copy(*dev_ctx, tensor, dst_place, true, &out);
   return out;
 }
 

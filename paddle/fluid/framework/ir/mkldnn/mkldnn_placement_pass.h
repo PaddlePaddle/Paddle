@@ -27,6 +27,9 @@ namespace ir {
  * Specifies which operators should use MKLDNN.
  */
 class MKLDNNPlacementPass : public PlacementPassBase {
+ protected:
+  bool IsSupport(const Node* op) const override;
+
  private:
   const std::string GetPlacementName() const override { return "MKLDNN"; }
 
