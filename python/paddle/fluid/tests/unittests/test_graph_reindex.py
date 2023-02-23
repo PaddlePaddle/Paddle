@@ -541,9 +541,7 @@ class TestGraphReindex2(unittest.TestCase):
         res = []
         x = paddle.to_tensor(self.x)
         y = np.array(res).astype("int32")
-
-        def test_countValue_dynamic():
-            paddle.incubate.graph_reindex(x, x, x, y, y, False)
+        paddle.incubate.graph_reindex(x, x, x, y, y, False)
 
 
 if __name__ == "__main__":

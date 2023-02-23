@@ -73,7 +73,24 @@ void GraphReindexKernel(const Context& dev_ctx,
             "But received count's data = %d",
             count_data[0]));
   }
-
+  /*
+  check hashtable_value and hashtable_index type must be Tensor
+  */
+  auto xtype = x[i]->type_info().name();
+  auto htv = hashtable_value[i]->type_info().name();
+  if (htv != xtype) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Expected type of hashtable_value must be Tensor, "
+        " But got unsupport type: %s.",
+        hashtable_value[i]->type_info().name()));
+  }
+  auto hti = hashtable_index[i]->type_info().name();
+  if (hti != xtype) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Expected type of hashtable_index must be Tensor, "
+        " But got unsupport type: %s.",
+        hashtable_index[i]->type_info().name()));
+  }
   // Reindex Dst
   // Add support for multi-type edges reindex
   int num_edge_types = count.dims()[0] / bs;
