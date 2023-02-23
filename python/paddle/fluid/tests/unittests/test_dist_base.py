@@ -397,7 +397,6 @@ class TestDistRunnerBase:
             )
 
     def run_trainer(self, args):
-        raise Exception("No with_data_parallel")
         self.lr = args.lr
         if args.nccl2_reduce_layer_local_run:
             (
@@ -542,10 +541,8 @@ class TestDistRunnerBase:
             build_stra.trainer_id = 0
 
         print_to_err(type(self).__name__, "begin to compile with data parallel")
-        binary = compiler.CompiledProgram(trainer_prog).with_data_parallel(
-            loss_name=avg_cost.name,
-            build_strategy=build_stra,
-            exec_strategy=exec_strategy,
+        binary = compiler.CompiledProgram(
+            trainer_prog, build_strategy=build_stra
         )
         print_to_err(type(self).__name__, "program compiled with data parallel")
 
