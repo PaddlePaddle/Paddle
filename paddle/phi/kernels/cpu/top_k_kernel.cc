@@ -143,8 +143,7 @@ void TopkKernel(const Context& dev_ctx,
   // 0d input x
   if (in_dims.size() == 0) {
     phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
-    int64_t* indices_data = dev_ctx.template Alloc<int64_t>(indices);
-    indices_data[0] = 0;
+    phi::funcs::set_constant(dev_ctx, indices, 0);
     return;
   }
   // axis < 0, cacluate the real axis

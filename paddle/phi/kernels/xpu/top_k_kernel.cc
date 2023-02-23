@@ -55,6 +55,9 @@ void TopkKernel(const Context& dev_ctx,
                                reinterpret_cast<XPUType*>(out->data<T>()),
                                x.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
+
+    phi::funcs::set_constant(dev_ctx, indices, 0);
+
     return;
   }
   if (axis < 0) axis += in_dims.size();
