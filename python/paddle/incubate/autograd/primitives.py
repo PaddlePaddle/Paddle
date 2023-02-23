@@ -60,6 +60,7 @@ from paddle.tensor import uniform  # noqa: F401
 from paddle.tensor import zeros  # noqa: F401
 from paddle.tensor.creation import assign  # noqa: F401
 from paddle.tensor.manipulation import cast  # noqa: F401
+from paddle.tensor import maximum # noqa: F401
 
 """
 math_op = [
@@ -120,5 +121,6 @@ others = [
     'full',
     'uniform',
     'greater_equal',
+    'maximum',
 ]
 """

@@ -19,7 +19,6 @@
 
 import functools
 import operator
-from op_task.Paddle.python.paddle.tensor.math import maximum
 
 from paddle.fluid import core
 
