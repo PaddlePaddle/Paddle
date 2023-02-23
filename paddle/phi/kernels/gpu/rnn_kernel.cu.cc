@@ -205,7 +205,8 @@ void RnnKernel(const Context &dev_ctx,
 #endif
   std::vector<int> SequenceLength;
   if (has_seq_length) {
-    phi::TensorToVector(*sequence_length, &SequenceLength);
+    SequenceLength =
+        phi::GetDataFromTensor<int>(sequence_length.get_ptr());
   }
 
   auto handle = dev_ctx.cudnn_handle();
