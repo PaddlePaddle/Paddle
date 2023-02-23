@@ -111,7 +111,7 @@ class ScalarBase {
     CopyScalar(other, this);
   }
 
-  // NOTE(xiongkun): some op need to judge the dtype of the Scalar, we expose a
+  // NOTE(xiongkun): some op need to judge the dtype of the Scalar, we expose an
   // interface.
   bool FromTensor() const { return is_from_tensor_; }
 

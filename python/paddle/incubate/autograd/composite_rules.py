@@ -20,6 +20,8 @@
 import functools
 import operator
 
+from paddle.fluid import core
+
 from .primitives import *  # noqa: F403
 from .primreg import REGISTER_COMPOSITE, lookup_composite
 
@@ -34,7 +36,7 @@ def softmax_composite(x, axis):
     """define composite rule of op softmax"""
     if not x.shape:
         # do not return 1, to ensure gradients
-        res = divide(x + 1e-5, x + 1e-5)
+        res = exp(x - x)
         return res
     max_temp = max(x, axis, keepdim=True)
     max_temp.stop_gradient = True
@@ -110,6 +112,35 @@ def composite_batchnorm(
     return y, run_mean_, run_var_, batch_mean_, batch_var_, reserve_space
 
 
+@REGISTER_COMPOSITE('layer_norm')
+def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
+    """
+    define composite rule of op layer_norm
+    out = (x - mean(x)) / sqrt(var + epsilon))
+    var = mean((x-mean(x))^2)
+    """
+
+    axis = tuple(range(begin_norm_axis, len(x.shape)))
+    mean_ = mean(x, axis=axis, keepdim=True)
+    difference = x - mean_
+    var_tmp1 = difference * difference
+    variance = mean(var_tmp1, axis=axis, keepdim=True)
+    var_tmp3 = variance + epsilon
+    sqrt_var = sqrt(var_tmp3)
+    out = difference / sqrt_var
+
+    if scale is not None:
+        scale = reshape(scale, x.shape[begin_norm_axis:])
+        out = out * scale
+    if bias is not None:
+        bias = reshape(bias, x.shape[begin_norm_axis:])
+        out = out + bias
+
+    mean_ = reshape(mean_, [-1])
+    variance = reshape(variance, [-1])
+    return out, mean_, variance
+
+
 @REGISTER_COMPOSITE('gelu')
 def gelu_composite(x, approximate):
     """define composite rule of op gelu"""
@@ -149,3 +180,46 @@ def mean_composite(x, axis, keepdim):
         dtype=sum_x.dtype,
     )
     return divide(sum_x, norm)
+
+
+@REGISTER_COMPOSITE('dropout')
+def dropout_composite(x, seed_tensor, p, is_test, mode, seed, fix_seed):
+    """define composite rule of op dropout.
+    upscale_in_train:
+        train: out = input * mask / ( 1.0 - p )
+        inference: out = input
+    downscale_in_infer
+        train: out = input * mask
+        inference: out = input * (1.0 - p)
+    """
+    fix_seed = True if fix_seed is None else fix_seed
+    seed = seed if fix_seed else 0
+    upscale_in_train = mode == "upscale_in_train"
+    mask = bernoulli(shape=x.shape, dtype=x.dtype, p=p, seed=seed)
+
+    if upscale_in_train:
+        if not is_test:
+            # Process p=1.0 for avoid devide zero error (x*mask/(1.0-p))
+            if p == 1.0:
+                return 0.0 * x, zeros(x.shape, core.VarDesc.VarType.UINT8)
+            else:
+                return x * mask / (1.0 - p), cast(
+                    mask, core.VarDesc.VarType.UINT8
+                )
+        else:
+            return assign(x), cast(mask, core.VarDesc.VarType.UINT8)
+    else:
+        if not is_test:
+            return x * mask, cast(mask, core.VarDesc.VarType.UINT8)
+        else:
+            return x * (1.0 - p), cast(mask, core.VarDesc.VarType.UINT8)
+
+
+def bernoulli(shape, dtype, p, seed=0):
+    return cast(
+        greater_equal(
+            uniform(shape, dtype, min=0.0, max=1.0, seed=seed),
+            fill_constant(shape, dtype, p),
+        ),
+        dtype,
+    )
