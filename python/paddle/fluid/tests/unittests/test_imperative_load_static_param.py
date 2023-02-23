@@ -62,8 +62,8 @@ class TestDygraphLoadStatic(unittest.TestCase):
         emb_in = paddle.static.data(
             name='emb_in', shape=[None, 10], dtype='int64'
         )
-        emb_out_1 = fluid.embedding(emb_in, [1000, 100])
-        emb_out_2 = fluid.embedding(emb_in, [2000, 200])
+        emb_out_1 = paddle.static.nn.embedding(emb_in, [1000, 100])
+        emb_out_2 = paddle.static.nn.embedding(emb_in, [2000, 200])
 
         layernorm = paddle.static.data(
             name="ln", shape=[None, 10], dtype='float32'

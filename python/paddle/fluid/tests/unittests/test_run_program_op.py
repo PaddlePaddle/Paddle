@@ -463,7 +463,7 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
         x = paddle.static.data(
             name=self.input_names['X'][0], shape=[-1, 5], dtype='int64'
         )
-        emb = fluid.input.embedding(
+        emb = paddle.static.nn.embedding(
             input=x,
             size=[10, 16],
             param_attr=fluid.ParamAttr(

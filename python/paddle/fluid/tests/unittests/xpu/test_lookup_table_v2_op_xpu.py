@@ -168,7 +168,7 @@ class TestLookupTableWithTensorIdsWIsSelectedRows(
 class TestLookupTableApi(unittest.TestCase):
     def test_api(self):
         x = paddle.static.data(name='x', shape=[-1, 20], dtype='int64')
-        emb = fluid.embedding(input=x, size=[128, 64])
+        emb = paddle.static.nn.embedding(input=x, size=[128, 64])
 
         place = paddle.XPUPlace(0)
         x_data = np.random.randint(0, 127, [2, 20]).astype("int64")
@@ -191,7 +191,7 @@ class TestEmbedOpError(unittest.TestCase):
 
             def test_Variable():
                 # the input type must be Variable
-                fluid.embedding(input=input_data, size=(10, 64))
+                paddle.static.nn.embedding(input=input_data, size=(10, 64))
 
             self.assertRaises(TypeError, test_Variable)
 
@@ -200,19 +200,17 @@ class TestEmbedOpError(unittest.TestCase):
                 input = paddle.static.data(
                     name='x1', shape=[4, 6], dtype='float32'
                 )
-                fluid.embedding(input=input, size=(10, 64))
+                paddle.static.nn.embedding(input=input, size=(10, 64))
 
             self.assertRaises(TypeError, test_input_dtype)
 
             def test_param_dtype():
                 # dtype must be float32 or float64
-                input2 = paddle.static.data(
-                    name='x2', shape=[4, 6], dtype='int64'
-                )
+                input2 = fluid.data(name='x2', shape=[4, 6], dtype='int64')
                 fluid.embedding(input=input2, size=(10, 64), dtype='int64')
 
             self.assertRaises(TypeError, test_param_dtype)
-            input3 = paddle.static.data(name='x3', shape=[4, 6], dtype='int64')
+            input3 = fluid.data(name='x3', shape=[4, 6], dtype='int64')
             fluid.embedding(input=input3, size=(10, 64), dtype='float16')
 
 
