@@ -24,7 +24,7 @@ if((NOT DEFINED PSLIB_VER) OR (NOT DEFINED PSLIB_URL))
       "pslib"
       CACHE STRING "" FORCE)
   set(PSLIB_URL
-      "https://pslib.bj.bcebos.com/pslib.tar.gz"
+      "https://pslib.bj.bcebos.com/pslib_4935936/pslib.tar.gz"
       CACHE STRING "" FORCE)
 endif()
 message(STATUS "PSLIB_NAME: ${PSLIB_NAME}, PSLIB_URL: ${PSLIB_URL}")
