@@ -1204,7 +1204,8 @@ endif()
 
 set(TEST_CINN_OPS test_softmax_op test_expand_v2_op test_reduce_op
                   test_slice_op test_activation_op
-                  test_full_like_op test_fill_any_like_op)
+                  test_full_like_op test_fill_any_like_op
+        )
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)
