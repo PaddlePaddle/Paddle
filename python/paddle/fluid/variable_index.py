@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from operator import index
+
 import sys
 import numpy as np
 from . import unique_name
 from . import core
 import paddle
-from paddle import _C_ops
-import time
+
 
 MAX_INTEGER = 2**31 - 1
 

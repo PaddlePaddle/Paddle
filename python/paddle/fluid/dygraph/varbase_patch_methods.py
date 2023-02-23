@@ -822,7 +822,6 @@ def monkey_patch_varbase():
         if framework.global_var._in_eager_mode_ and self.__advanced_index__(
             item, value
         ):
-            # _C_ops.index_put(self, list(item), value)
             return
 
         def contain_tensor_or_list(item):
@@ -861,9 +860,7 @@ def monkey_patch_varbase():
         if contain_tensor_or_list(item) and not is_combine_index(item):
             # To reuse code with static graph,
             # Call _setitem_impl_ when item contains tensor or list.
-            # return _setitem_impl_(self, item, value)
-            _setitem_impl_(self, item, value)
-            return
+            return _setitem_impl_(self, item, value)
 
         else:
             if framework.global_var._in_eager_mode_:
