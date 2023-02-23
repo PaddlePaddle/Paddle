@@ -19,7 +19,6 @@ limitations under the License. */
 #include <set>
 
 #include "glog/logging.h"
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/place.h"
@@ -27,6 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/expect.h"
+#include "paddle/phi/core/generator.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
@@ -193,22 +193,20 @@ std::unique_ptr<DeviceContext> CreateDeviceContext(
         instance.GetAllocator(paddle::platform::CUDAPinnedPlace()).get());
 
     cuda_ctx->PartialInitWithAllocator();
-    dev_ctx->SetGenerator(
-        framework::DefaultCUDAGenerator(p.GetDeviceId()).get());
+    dev_ctx->SetGenerator(phi::DefaultCUDAGenerator(p.GetDeviceId()).get());
 #endif
   } else if (is_xpu_place(p)) {
 #if defined(PADDLE_WITH_XPU)
     dev_ctx->SetAllocator(
         memory::allocation::AllocatorFacade::Instance().GetAllocator(p).get());
-    dev_ctx->SetGenerator(
-        framework::DefaultXPUGenerator(p.GetDeviceId()).get());
+    dev_ctx->SetGenerator(phi::DefaultXPUGenerator(p.GetDeviceId()).get());
 #endif
   } else {
     dev_ctx->SetAllocator(
         memory::allocation::AllocatorFacade::Instance().GetAllocator(p).get());
-    dev_ctx->SetGenerator(framework::DefaultCPUGenerator().get());
+    dev_ctx->SetGenerator(phi::DefaultCPUGenerator().get());
   }
-  dev_ctx->SetHostGenerator(framework::DefaultCPUGenerator().get());
+  dev_ctx->SetHostGenerator(phi::DefaultCPUGenerator().get());
   dev_ctx->SetHostAllocator(memory::allocation::AllocatorFacade::Instance()
                                 .GetAllocator(platform::CPUPlace())
                                 .get());

@@ -279,30 +279,52 @@ phi::KernelKey GetExpectedKernelType(
     data_type = framework::OperatorWithKernel::IndicateVarDataType(ctx, {{data_type_args[1] | to_opmaker_name}});
   }
   {% endif %}
+{% elif "complex_promote" in op and "forward" not in op%}
+  {% set inputs = op["complex_promote"]%}
+  auto data_type =
+        OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "{{inputs[0]}}", "{{inputs[1]}}");
 {% endif %}
   return phi::KernelKey(data_type, ctx.GetPlace());
 }
-{% endmacro %}
+{% endmacro -%}
 
-{% macro get_kernel_for_var(op) %} {# only for data_transform #}
-{% set skip_args = op["data_transform"]["skip_transform"] %}
-{% set var_name = "var_name" %}
-{% set skip_args_len = skip_args | length %}
+{% macro get_kernel_for_var(op) %}
+{% set skip_args = none %}
+{% if op["data_transform"] is not none%}
+  {% if "skip_transform" in op["data_transform"] %}
+    {% set skip_args = op["data_transform"]["skip_transform"] %}
+  {% elif "support_trans_dtype" in op["data_transform"] %}
+    {% set skip_args = op["data_transform"]["support_trans_dtype"] %}
+  {% endif %}
+{% endif %}
+{% set var_name = "var_name" -%}
+
 phi::KernelKey GetKernelTypeForVar(
     const std::string& {{var_name}},
     const phi::DenseTensor& tensor,
     const phi::KernelKey& expected_kernel_type) const override {
-    
+{%if skip_args is not none%}{# deal data_transform #}
+  {% set skip_args_len = skip_args | length %}
       if (
         {%- for skip_arg in skip_args -%}
           var_name == "{{ skip_arg }}"
           {%- if skip_args_len != 1 and loop.index != skip_args_len %} || {% endif -%}
         {%- endfor -%}
       ){
+    {% if "skip_transform" in op["data_transform"] %}
         return phi::KernelKey(phi::Backend::ALL_BACKEND,
                             expected_kernel_type.layout(),
                             expected_kernel_type.dtype());
+    {% elif "support_trans_dtype" in op["data_transform"] %}
+       return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
+    {% endif %}
       }
+{% else %}{# deal complex_promote #}
+      if (framework::IsComplexType(expected_kernel_type.dtype())) {
+      // only promote inputs’s types when contains complex input
+        return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
+      }
+{% endif %}
       else{
           return phi::KernelKey(
             tensor.place(), tensor.layout(), expected_kernel_type.dtype());
@@ -317,20 +339,23 @@ class {{op["op_name"] | to_pascal_case}}Op : public framework::OperatorWithKerne
   using framework::OperatorWithKernel::OperatorWithKernel;
   {# ----------- get expected kernel type function -------------------------- #}
   {% set kernel = op["kernel"] %}
-  {% if kernel["data_type"] is not none %}
+  {% if kernel["data_type"] is not none or "complex_promote" in op or "data_transform" in op%}
  protected:
-    {% filter indent(2, True)%}
+    {% if kernel["data_type"] is not none or "complex_promote" in op %}
+      {% filter indent(2, True)%}
 {{get_expected_kernel(op)}}
-    {% endfilter %}
-    {%- if "data_transform" in op and op["data_transform"] is not none -%}
-      {%- if "skip_transform" in op["data_transform"] -%}
-        {% filter indent(2, True) %}
+      {% endfilter %}
+    {% endif %}
+  {% endif %}
+  {%- if "data_transform" in op and op["data_transform"] is not none -%}
+      {% filter indent(2, True) %}
+{{get_kernel_for_var(op)}}
+      {% endfilter %}
+  {%- elif "complex_promote" in op and op["complex_promote"] is not none -%}
+      {% filter indent(2, True) %}
 {{get_kernel_for_var(op)}}
         {% endfilter %}
       {%- endif %}
-    {%- endif -%}
-{# TODO(lizhiyu): add the 'support_trans_dtype' #}
-  {% endif %}
 };
 
 DECLARE_INFER_SHAPE_FUNCTOR({{op["op_name"]}}, {{op["op_name"] | to_pascal_case}}InferShapeFunctor,

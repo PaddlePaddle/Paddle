@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,19 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/generator.h"
+#include "paddle/phi/core/generator.h"
 
 #include <glog/logging.h>
 
 #include <memory>
 #include <utility>
 
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/device/xpu/xpu_info.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/backends/xpu/xpu_info.h"
+#include "paddle/phi/core/enforce.h"
 
-namespace paddle {
-namespace framework {
+namespace phi {
 
 const std::shared_ptr<Generator>& DefaultXPUGenerator(int64_t device_id) {
 #if defined(PADDLE_WITH_XPU)
@@ -35,13 +34,13 @@ const std::shared_ptr<Generator>& DefaultXPUGenerator(int64_t device_id) {
   static std::vector<std::shared_ptr<Generator>> default_xpu_generators;
 
   std::call_once(num_devices_init_flag, []() {
-    num_xpu_devices = paddle::platform::GetXPUDeviceCount();
+    num_xpu_devices = phi::backends::xpu::GetXPUDeviceCount();
     xpu_device_flags.resize(num_xpu_devices);
     default_xpu_generators.resize(num_xpu_devices);
   });
   if (device_id < 0) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "xpu device id shoule be greater than 0"));
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("xpu device id shoule be greater than 0"));
   }
 
   std::call_once(xpu_device_flags[device_id], [device_id]() {
@@ -52,7 +51,7 @@ const std::shared_ptr<Generator>& DefaultXPUGenerator(int64_t device_id) {
   });
   return default_xpu_generators[device_id];
 #else
-  PADDLE_THROW(platform::errors::PermissionDenied(
+  PADDLE_THROW(phi::errors::PermissionDenied(
       "getDefaultXPUGenerator only support in XPU place"));
 #endif
 }
@@ -66,12 +65,12 @@ const std::shared_ptr<Generator>& DefaultCUDAGenerator(int64_t device_id) {
   static std::vector<std::shared_ptr<Generator>> default_cuda_generators;
 
   std::call_once(num_devices_init_flag, []() {
-    num_cuda_devices = paddle::platform::GetGPUDeviceCount();
+    num_cuda_devices = phi::backends::gpu::GetGPUDeviceCount();
     cuda_device_flags.resize(num_cuda_devices);
     default_cuda_generators.resize(num_cuda_devices);
   });
   if (device_id < 0) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "cuda device id shoule be greater than 0"));
   }
 
@@ -83,7 +82,7 @@ const std::shared_ptr<Generator>& DefaultCUDAGenerator(int64_t device_id) {
   });
   return default_cuda_generators[device_id];
 #else
-  PADDLE_THROW(platform::errors::PermissionDenied(
+  PADDLE_THROW(phi::errors::PermissionDenied(
       "getDefaultCUDAGenerator only support in CUDA place"));
 #endif
 }
@@ -107,7 +106,7 @@ const std::shared_ptr<Generator>& SetRandomSeedGenerator(
   auto iter = rng_map.find(name);
   PADDLE_ENFORCE_EQ(iter == rng_map.end(),
                     true,
-                    platform::errors::AlreadyExists(
+                    phi::errors::AlreadyExists(
                         "%s RandomSeedGenerator is already exist", name));
 
   auto generator = std::make_shared<Generator>(seed);
@@ -115,7 +114,7 @@ const std::shared_ptr<Generator>& SetRandomSeedGenerator(
   PADDLE_ENFORCE_EQ(
       emplace_success,
       true,
-      platform::errors::PermissionDenied(
+      phi::errors::PermissionDenied(
           "SetRandomSeedGenerator cannot emplace %s RandomSeedGenerator",
           name));
   return rng_map[name];
@@ -125,12 +124,12 @@ const std::shared_ptr<Generator>& GetRandomSeedGenerator(
     const std::string& name) {
   auto& rng_map = GetRandomSeedGeneratorMap();
   auto iter = rng_map.find(name);
-  PADDLE_ENFORCE_EQ(iter != rng_map.end(),
-                    true,
-                    platform::errors::NotFound(
-                        "%s RandomSeedGenerator is not found, please "
-                        "use `set_random_seed_generator` to set rng first",
-                        name));
+  PADDLE_ENFORCE_EQ(
+      iter != rng_map.end(),
+      true,
+      phi::errors::NotFound("%s RandomSeedGenerator is not found, please "
+                            "use `set_random_seed_generator` to set rng first",
+                            name));
   return iter->second;
 }
 
@@ -158,6 +157,43 @@ std::shared_ptr<std::mt19937_64> GetCPURandomEngine(uint64_t seed) {
     }
     return engine;
   }
+}
+
+Generator::Generator() {
+  auto seed = GetRandomSeed();
+  std::seed_seq seq({seed});
+  auto engine = std::make_shared<std::mt19937_64>(seq);
+  this->state_.cpu_engine = *engine;
+  this->state_.device = -1;
+  this->state_.current_seed = seed;
+  this->state_.thread_offset = 0;
+  this->engine_ = engine;
+  VLOG(4) << "initial seed: " << this->state_.current_seed
+          << ", cpu engine: " << &this->state_.cpu_engine;
+}
+
+Generator::Generator(uint64_t seed) {
+  std::seed_seq seq({seed});
+  auto engine = std::make_shared<std::mt19937_64>(seq);
+  this->state_.cpu_engine = *engine;
+  this->state_.device = -1;
+  this->state_.current_seed = seed;
+  this->state_.thread_offset = 0;
+  this->engine_ = engine;
+  VLOG(4) << "initial seed: " << this->state_.current_seed
+          << ", cpu engine: " << &this->state_.cpu_engine;
+}
+
+Generator::Generator(uint64_t seed, uint64_t device_id) {
+  std::seed_seq seq({seed});
+  auto engine = std::make_shared<std::mt19937_64>(seq);
+  this->state_.cpu_engine = *engine;
+  this->state_.device = device_id;
+  this->state_.current_seed = seed;
+  this->state_.thread_offset = 0;
+  this->engine_ = engine;
+  VLOG(4) << "initial seed: " << this->state_.current_seed
+          << ", cpu engine: " << &this->state_.cpu_engine;
 }
 
 phi::Generator::GeneratorState Generator::GetState() {
@@ -231,10 +267,9 @@ std::pair<uint64_t, uint64_t> Generator::IncrementOffset(
   this->state_.thread_offset += increament_offset;
   return std::make_pair(this->state_.current_seed, cur_offset);
 #else
-  PADDLE_THROW(platform::errors::PermissionDenied(
+  PADDLE_THROW(phi::errors::PermissionDenied(
       "Increment Offset only support in CUDA place"));
 #endif
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace phi
