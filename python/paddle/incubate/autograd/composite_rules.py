@@ -227,8 +227,10 @@ def bernoulli(shape, dtype, p, seed=0):
 
 @REGISTER_COMPOSITE('silu')
 def silu_composite(x):
-    """define composite rule of op silu"""
-    # res = x / (1 + exp(-x))
+    """
+    define composite rule of op silu
+    res = x / (1 + exp(-x))
+    """
     sum_temp = 1 + exp(-x)
     res = x / sum_temp
     return res
