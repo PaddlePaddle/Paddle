@@ -538,10 +538,17 @@ class TestGraphReindex2(unittest.TestCase):
 
     def test_reindex_countValue(self):
         paddle.disable_static()
-        res = []
-        x = paddle.to_tensor(self.x)
-        y = np.array(res).astype("int32")
-        paddle.incubate.graph_reindex(x, x, x, y, y, False)
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+
+            def test_one():
+                x = paddle.to_tensor(self.x)
+                array = np.array([], dtype=np.float32)
+                y = paddle.to_tensor(np.reshape(array, [0]), dtype='int32')
+                layer = paddle.incubate.graph_reindex(x, x, x, y, y, False)
+
+            self.assertRaises(ValueError, test_one)
 
 
 if __name__ == "__main__":
