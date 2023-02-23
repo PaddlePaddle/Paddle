@@ -168,6 +168,10 @@ def generate_sm75_1688():
                         TileDesc("64, 128, 64", 2, "64, 64, 32", math_inst),
                         TileDesc("64, 256, 32", 2, "64, 64, 32", math_inst),
                         TileDesc("128, 64, 32", 2, "64, 32, 32", math_inst),
+                        TileDesc("128, 128, 32", 2, "64, 64, 32", math_inst),
+                        TileDesc("128, 256, 32", 2, "64, 64, 32", math_inst),
+                        TileDesc("256, 64, 32", 2, "64, 64, 32", math_inst),
+                        TileDesc("256, 128, 32", 2, "64, 64, 32", math_inst),
                     ]
                     for tile in tiles:
                         kernel_dict["iterator_algorithm"] = iterator_algorithm
