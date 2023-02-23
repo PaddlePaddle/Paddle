@@ -1540,8 +1540,10 @@ class TestRound_ZeroDim(TestRound):
 class TestRelu(TestActivation):
     def setUp(self):
         self.op_type = "relu"
+        self.prim_op_type = "comp"
         self.init_dtype()
         self.init_shape()
+        self.skip_cinn()
 
         np.random.seed(1024)
         if self.dtype == np.uint16:
@@ -1562,12 +1564,21 @@ class TestRelu(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
+
+    def test_check_output(self):
+        self.check_output(check_prim=True)
+    
+    def skip_cinn(self):
+        pass
 
 
 class TestRelu_ZeroDim(TestRelu):
     def init_shape(self):
         self.shape = []
+
+    def skip_cinn(self):
+        self.enable_cinn = False
 
 
 class TestReluAPI(unittest.TestCase):

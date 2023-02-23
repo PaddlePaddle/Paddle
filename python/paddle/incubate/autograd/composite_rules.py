@@ -19,6 +19,7 @@
 
 import functools
 import operator
+from op_task.Paddle.python.paddle.tensor.math import maximum
 
 from paddle.fluid import core
 
@@ -223,3 +224,10 @@ def bernoulli(shape, dtype, p, seed=0):
         ),
         dtype,
     )
+
+
+@REGISTER_COMPOSITE('relu')
+def relu_composite(x):
+    """define composite rule of op relu"""
+    # # /* relu(x) = max(x, 0) */ copy from relu-kernel.cc
+    return maximum(0, x)
