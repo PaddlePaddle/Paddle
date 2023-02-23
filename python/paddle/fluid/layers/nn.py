@@ -210,7 +210,7 @@ def embedding(
           data = fluid.data(name='x', shape=[None, 1], dtype='int64')
 
           # example 1
-          emb_1 = fluid.embedding(input=data, size=[128, 64])
+          emb_1 = paddle.static.nn.embedding(input=data, size=[128, 64])
 
           # example 2: load custom or pre-trained word vectors
           weight_data = np.random.random(size=(128, 100))  # word vectors with numpy format

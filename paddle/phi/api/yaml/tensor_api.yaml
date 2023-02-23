@@ -1,17 +1,15 @@
-- add
-- subtract
-- multiply
-- divide
 - unsqueeze
 - pow
 - exp
 - scale
+- multiply
 - matmul
 - expand
+- divide
 - sum
+- add
 - abs
 - assign
-- concat
 - elementwise_pow
 - floor
 - gather_nd
@@ -24,4 +22,4 @@
 - scatter
 - scatter_nd_add
 - tile
-- transpose
+- subtract
