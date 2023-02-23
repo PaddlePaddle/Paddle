@@ -28,6 +28,8 @@ void TopkKernel(const Context& dev_ctx,
                 bool sorted,
                 DenseTensor* out,
                 DenseTensor* indices) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
   const auto& in_dims = x.dims();
   const T* in_data = x.data<T>();
   int64_t* indices_data = dev_ctx.template Alloc<int64_t>(indices);
@@ -59,13 +61,13 @@ void TopkKernel(const Context& dev_ctx,
     const size_t row =
         phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
     const size_t col = in_dims[in_dims.size() - 1];
-    int r = xpu::sorted_topk<T>(dev_ctx.x_context(),
-                                in_data,
-                                output_data,
-                                indices_int_data,
-                                row,
-                                col,
-                                k);
+    int r = xpu::sorted_topk<XPUType>(dev_ctx.x_context(),
+                                      reinterpret_cast<const XPUType*>(in_data),
+                                      reinterpret_cast<XPUType*>(output_data),
+                                      indices_int_data,
+                                      row,
+                                      col,
+                                      k);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "sorted_topk");
 
     r = xpu::cast<int32_t, int64_t>(dev_ctx.x_context(),
@@ -97,11 +99,14 @@ void TopkKernel(const Context& dev_ctx,
     }
 
     xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-    T* trans_in_data = RAII_GUARD.alloc_l3_or_gm<T>(x.numel());
+    XPUType* trans_in_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(x.numel());
 
     // Transpose and save interval output to trans_in
-    int r = xpu::transpose<T>(
-        dev_ctx.x_context(), in_data, trans_in_data, x_shape_host, trans_axes);
+    int r = xpu::transpose<XPUType>(dev_ctx.x_context(),
+                                    reinterpret_cast<const XPUType*>(in_data),
+                                    trans_in_data,
+                                    x_shape_host,
+                                    trans_axes);
     PADDLE_ENFORCE_EQ(r,
                       xpu::Error_t::SUCCESS,
                       errors::External("XPU API 1st Transpose kernel"
@@ -109,7 +114,7 @@ void TopkKernel(const Context& dev_ctx,
                                        r,
                                        XPUAPIErrorMsg[r]));
 
-    T* trans_out_data = RAII_GUARD.alloc_l3_or_gm<T>(out->numel());
+    XPUType* trans_out_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(out->numel());
     int64_t* trans_idx_data = RAII_GUARD.alloc_l3_or_gm<int64_t>(out->numel());
     int32_t* trans_idx_int32_data =
         RAII_GUARD.alloc_l3_or_gm<int32_t>(out->numel());
@@ -118,13 +123,14 @@ void TopkKernel(const Context& dev_ctx,
     const size_t col = trans_dims[trans_dims.size() - 1];
 
     // Do top k on transposed input
-    r = xpu::sorted_topk<T>(dev_ctx.x_context(),
-                            trans_in_data,
-                            trans_out_data,
-                            trans_idx_int32_data,
-                            row,
-                            col,
-                            k);
+    r = xpu::sorted_topk<XPUType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(trans_in_data),
+        reinterpret_cast<XPUType*>(trans_out_data),
+        trans_idx_int32_data,
+        row,
+        col,
+        k);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "sorted_topk");
 
     r = xpu::cast<int32_t, int64_t>(dev_ctx.x_context(),
@@ -146,11 +152,12 @@ void TopkKernel(const Context& dev_ctx,
     for (size_t i = 0; i < trans_back_axes.size(); ++i) {
       trans_out_shape_host[i] = trans_out_dims[i];
     }
-    r = xpu::transpose<T>(dev_ctx.x_context(),
-                          trans_out_data,
-                          output_data,
-                          trans_out_shape_host,
-                          trans_back_axes);
+    r = xpu::transpose<XPUType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(trans_out_data),
+        reinterpret_cast<XPUType*>(output_data),
+        trans_out_shape_host,
+        trans_back_axes);
     PADDLE_ENFORCE_EQ(r,
                       xpu::Error_t::SUCCESS,
                       errors::External("XPU API 2nd Transpose kernel"
@@ -173,4 +180,5 @@ void TopkKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(topk, XPU, ALL_LAYOUT, phi::TopkKernel, float) {}
+PD_REGISTER_KERNEL(
+    topk, XPU, ALL_LAYOUT, phi::TopkKernel, float, phi::dtype::float16) {}
