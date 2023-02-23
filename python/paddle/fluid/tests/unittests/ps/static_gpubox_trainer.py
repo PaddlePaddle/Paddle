@@ -21,9 +21,6 @@ import time
 
 import paddle
 import paddle.distributed.fleet as fleet
-from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
-
-fleet_util = FleetUtil()
 
 __dir__ = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.abspath(os.path.join(__dir__, '..')))
