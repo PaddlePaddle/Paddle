@@ -18,9 +18,6 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
-
 template <typename T>
 void LabelSmoothMuls(const platform::Place& place,
                      const aclrtStream& stream,
@@ -58,8 +55,8 @@ template <typename T>
 class LabelSmoothNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* out_t = ctx.Output<LoDTensor>("Out");
-    auto* in_t = ctx.Input<LoDTensor>("X");
+    auto* out_t = ctx.Output<phi::DenseTensor>("Out");
+    auto* in_t = ctx.Input<phi::DenseTensor>("X");
     auto* dist_t = ctx.Input<phi::DenseTensor>("PriorDist");
     auto epsilon = ctx.Attr<float>("epsilon");
 
@@ -71,15 +68,15 @@ class LabelSmoothNPUKernel : public framework::OpKernel<T> {
             .stream();
 
     if (dist_t) {
-      Tensor tmp;
-      Tensor dist;
-      Tensor tmp2;
+      phi::DenseTensor tmp;
+      phi::DenseTensor dist;
+      phi::DenseTensor tmp2;
       LabelSmoothMuls<T>(place, stream, in_t, (1 - epsilon), &tmp);
       LabelSmoothMuls<T>(place, stream, dist_t, epsilon, &tmp2);
       tmp2.Resize({1, label_dim});
       LabelSmoothAddBroadCast<T>(place, stream, &tmp, &tmp2, out_t);
     } else {
-      Tensor tmp;
+      phi::DenseTensor tmp;
       LabelSmoothMuls<T>(place, stream, in_t, (1 - epsilon), &tmp);
       LabelSmoothAdds<T>(place, stream, &tmp, (epsilon / label_dim), out_t);
     }

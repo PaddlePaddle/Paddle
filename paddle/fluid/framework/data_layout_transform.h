@@ -14,22 +14,16 @@
 
 #pragma once
 
-#include <map>
-#include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/framework/op_kernel_type.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/framework/variable.h"
-
-namespace paddle {
-namespace framework {
-class OpKernelType;
-}  // namespace framework
-}  // namespace paddle
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kernel_factory.h"
+#include "paddle/phi/kernels/funcs/data_layout_transform.h"
 
 #ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/phi/backends/onednn/onednn_helper.h"
 #endif
 
 namespace paddle {
@@ -51,58 +45,17 @@ struct CastDataLayout {
   void apply();
 };
 
-#ifdef PADDLE_WITH_MKLDNN
-using OneDNNDataType = dnnl::memory::data_type;
-
-inline OneDNNMemoryFormat ToOneDNNFormat(const DataLayout& layout) {
-  switch (layout) {
-    case DataLayout::kNHWC:
-      return OneDNNMemoryFormat::nhwc;
-    case DataLayout::kNCHW:
-      return OneDNNMemoryFormat::nchw;
-    case DataLayout::kNCDHW:
-      return OneDNNMemoryFormat::ncdhw;
-    case DataLayout::kNDHWC:
-      return OneDNNMemoryFormat::ndhwc;
-    default:
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Fail to convert layout %s to oneDNN format.",
-          phi::DataLayoutToString(layout)));
-  }
-}
-
-inline OneDNNDataType ToMKLDNNDataType(proto::VarType::Type type) {
-  static std::unordered_map<int, OneDNNDataType> dict{
-      {DataTypeTrait<float>::DataType(), OneDNNDataType::f32},
-      {DataTypeTrait<int8_t>::DataType(), OneDNNDataType::s8},
-      {DataTypeTrait<uint8_t>::DataType(), OneDNNDataType::u8},
-      {DataTypeTrait<int32_t>::DataType(), OneDNNDataType::s32},
-      {DataTypeTrait<platform::bfloat16>::DataType(), OneDNNDataType::bf16}};
-  auto iter = dict.find(static_cast<int>(type));
-  if (iter != dict.end()) return iter->second;
-  return OneDNNDataType::undef;
-}
-
-void innerTransDataLayoutFromMKLDNN(DataLayout in_layout,
-                                    DataLayout out_layout,
-                                    const phi::DenseTensor& in,
-                                    phi::DenseTensor* out,
-                                    platform::Place place,
-                                    bool always_copy = false);
-
-void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
-                               const OpKernelType& expected_kernel_type,
-                               const phi::DenseTensor& in,
-                               phi::DenseTensor* out);
-
-void* GetDataFromTensor(const phi::DenseTensor& tensor, OneDNNDataType type);
-
-#endif
-
 std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to);
 
-void TransDataLayout(const OpKernelType& kernel_type_for_var,
-                     const OpKernelType& expected_kernel_type,
+void TransDataLayout(const phi::KernelKey& kernel_type_for_var,
+                     const phi::KernelKey& expected_kernel_type,
+                     const phi::DenseTensor& in,
+                     phi::DenseTensor* out,
+                     const phi::Place& place);
+
+void TransDataLayout(phi::DataLayout from_layout,
+                     phi::DataLayout to_layout,
+                     phi::Place place,
                      const phi::DenseTensor& in,
                      phi::DenseTensor* out);
 

@@ -14,18 +14,16 @@
 
 #include "paddle/phi/kernels/hsigmoid_loss_kernel.h"
 
-#include "paddle/fluid/operators/math/matrix_bit_code.h"
-#include "paddle/fluid/platform/transform.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/transform.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/math_function_impl.h"
+#include "paddle/phi/kernels/funcs/matrix_bit_code.h"
 #include "paddle/phi/kernels/impl/clip_kernel_impl.h"
 
 namespace phi {
-
-namespace math = paddle::operators::math;
 
 template <typename T, typename Context>
 void HSigmoidLossKernel(const Context& ctx,
@@ -48,8 +46,9 @@ void HSigmoidLossKernel(const Context& ctx,
   if (path.get_ptr()) {
     is_custom = true;
   }
-  int64_t code_length = path.get_ptr() ? path.get_ptr()->dims()[1]
-                                       : math::FindLastSet(num_classes_st - 1);
+  int64_t code_length = path.get_ptr()
+                            ? path.get_ptr()->dims()[1]
+                            : phi::funcs::FindLastSet(num_classes_st - 1);
   int64_t batch_size = x.dims()[0];
   DenseTensor sum;
   pre_out->Resize(phi::make_ddim({batch_size, code_length}));
@@ -63,12 +62,12 @@ void HSigmoidLossKernel(const Context& ctx,
   auto& place = *ctx.eigen_device();
   funcs::RowwiseSum<Context, T> row_sum;
 
-  std::unique_ptr<math::MatrixBitCodeFunctor<T>> bit_code;
+  std::unique_ptr<phi::funcs::MatrixBitCodeFunctor<T>> bit_code;
   if (!is_custom) {
-    bit_code.reset(new math::MatrixBitCodeFunctor<T>(
+    bit_code.reset(new phi::funcs::MatrixBitCodeFunctor<T>(
         num_classes_st, label.template data<int64_t>()));
   } else {
-    bit_code.reset(new math::MatrixBitCodeFunctor<T>(
+    bit_code.reset(new phi::funcs::MatrixBitCodeFunctor<T>(
         *(path.get_ptr()), *(code.get_ptr()), label.template data<int64_t>()));
   }
 
@@ -83,7 +82,7 @@ void HSigmoidLossKernel(const Context& ctx,
   }
   bit_code->Mul(pre_out, w, x);
   // clip to [-40, 40]
-  paddle::platform::Transform<Context> trans;
+  phi::Transform<Context> trans;
   trans(ctx,
         pre_out_data,
         pre_out_data + pre_out->numel(),

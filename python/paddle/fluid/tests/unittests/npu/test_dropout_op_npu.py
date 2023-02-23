@@ -242,10 +242,10 @@ class TestDropoutAPI(unittest.TestCase):
             res6 = paddle.nn.functional.dropout(
                 x=input, p=1.0, training=True, mode='upscale_in_train'
             )
-            res7 = paddle.fluid.layers.dropout(
+            res7 = paddle.nn.functional.dropout(
                 x=input,
-                dropout_prob=0.0,
-                dropout_implementation='upscale_in_train',
+                p=0.0,
+                mode='upscale_in_train',
             )
             res8 = paddle.nn.functional.dropout(
                 x=input,

@@ -40,8 +40,8 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-#include "paddle/fluid/platform/device/custom/enforce_custom.h"
 #include "paddle/phi/backends/callback_manager.h"
+#include "paddle/phi/backends/custom/enforce_custom.h"
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/backends/event.h"

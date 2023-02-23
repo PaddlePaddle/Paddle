@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import _non_static_mode
 from paddle import _legacy_C_ops
+from paddle.fluid.framework import _non_static_mode
+from paddle.fluid.layer_helper import LayerHelper
 
 
 def softmax_mask_fuse(x, mask, name=None):
@@ -28,7 +28,7 @@ def softmax_mask_fuse(x, mask, name=None):
     .. math::
         out = softmax(x + mask)
 
-    **Note**:
+    Note:
         This API only supports GPU.
 
     Args:

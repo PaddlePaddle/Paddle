@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/send_u_recv_kernel.h"
 
 #include <thrust/device_vector.h>
+#include <thrust/execution_policy.h>
 #include <thrust/fill.h>
 
 #include <algorithm>

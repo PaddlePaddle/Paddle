@@ -658,7 +658,9 @@ void MultiplexGradInferMeta(const MetaTensor& ids,
       errors::InvalidArgument("Output(X@Grad) should not be null."));
   auto dout_dim = out_grad.dims();
   for (auto in_grad : ins_grad) {
-    in_grad->set_dims(dout_dim);
+    if (in_grad != nullptr) {
+      in_grad->set_dims(dout_dim);
+    }
   }
 }
 

@@ -29,7 +29,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using DataLayout = phi::DataLayout;
 using ExecutionContext = framework::ExecutionContext;
 using DeviceContextPool = platform::DeviceContextPool;
@@ -377,18 +376,18 @@ class MLUOpTensorDesc {
                   const mluOpDataType_t tensor_dtype,
                   int position);
 
-  MLUOpTensorDesc(const Tensor& tensor,
+  MLUOpTensorDesc(const phi::DenseTensor& tensor,
                   const mluOpTensorLayout_t layout,
                   const mluOpDataType_t tensor_dtype);
 
-  explicit MLUOpTensorDesc(const Tensor& tensor);
+  explicit MLUOpTensorDesc(const phi::DenseTensor& tensor);
 
-  MLUOpTensorDesc(const Tensor& tensor,
+  MLUOpTensorDesc(const phi::DenseTensor& tensor,
                   mluOpTensorLayout_t layout,
                   const mluOpDataType_t tensor_dtype,
                   int position);
 
-  MLUOpTensorDesc(const Tensor& tensor,
+  MLUOpTensorDesc(const phi::DenseTensor& tensor,
                   mluOpTensorLayout_t layout,
                   const mluOpDataType_t tensor_dtype,
                   int position,
@@ -458,11 +457,11 @@ class MLUCnnlRandomGeneratorDesc {
  public:
   MLUCnnlRandomGeneratorDesc(const ExecutionContext& ctx, const int seed);
   const cnnlRandGenerator_t get() const;
-  Tensor& get_state();
+  phi::DenseTensor& get_state();
   ~MLUCnnlRandomGeneratorDesc();
 
  private:
-  Tensor mlu_state;
+  phi::DenseTensor mlu_state;
   cnnlRandGenerator_t mlu_generator = nullptr;
 };
 

@@ -37,12 +37,6 @@ void RmspropDenseKernel(const Context& dev_ctx,
                         DenseTensor* moment_out,
                         DenseTensor* mean_square_out,
                         DenseTensor* mean_grad_out) {
-  // check input
-  PADDLE_ENFORCE_EQ(centered,
-                    false,
-                    errors::Unimplemented(
-                        "centered=True is not supported in the xpu kernel of "
-                        "rmsprop. use XPU_BLACK_LIST to disable this op."));
   // copy learning_rate to cpu
   PADDLE_ENFORCE_EQ(
       learning_rate.dims().size(),
@@ -62,23 +56,56 @@ void RmspropDenseKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(moment_out);
   dev_ctx.template Alloc<T>(mean_square_out);
 
-  // int rmsprop(Context* ctx, const T* g, const T* p, const float* ms, const
-  // float* mom, T* p_out, float* ms_out, float* mom_out, float epsilon, float
-  // rho, float momentum, float lr, int n);
-  int r = xpu::rmsprop(dev_ctx.x_context(),
-                       grad.data<T>(),
-                       param.data<T>(),
-                       mean_square.data<T>(),
-                       moment.data<T>(),
-                       param_out->data<T>(),
-                       mean_square_out->data<T>(),
-                       moment_out->data<T>(),
-                       epsilon,
-                       decay,
-                       momentum,
-                       learning_rate_cpu,
-                       param.numel());
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "rmsprop");
+  if (centered) {
+    dev_ctx.template Alloc<T>(mean_grad_out);
+    auto mg_tensor = mean_grad.get_ptr();
+    if (mg_tensor) {
+      PADDLE_ENFORCE_EQ(
+          mg_tensor->Holder(),
+          mean_grad_out->Holder(),
+          phi::errors::InvalidArgument(
+              "MeanGrad and MeanGradOut must be the same Tensor"));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          mg_tensor,
+          mean_grad_out,
+          phi::errors::InvalidArgument(
+              "MeanGrad and MeanGradOut must be the same Tensor"));
+    }
+    int r = xpu::rmsprop(dev_ctx.x_context(),
+                         grad.data<T>(),
+                         param.data<T>(),
+                         mean_square.data<T>(),
+                         moment.data<T>(),
+                         param_out->data<T>(),
+                         mean_square_out->data<T>(),
+                         moment_out->data<T>(),
+                         epsilon,
+                         decay,
+                         momentum,
+                         learning_rate_cpu,
+                         param.numel(),
+                         centered,
+                         mg_tensor->data<T>(),
+                         mean_grad_out->data<T>());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "centered rmsprop");
+
+  } else {
+    int r = xpu::rmsprop(dev_ctx.x_context(),
+                         grad.data<T>(),
+                         param.data<T>(),
+                         mean_square.data<T>(),
+                         moment.data<T>(),
+                         param_out->data<T>(),
+                         mean_square_out->data<T>(),
+                         moment_out->data<T>(),
+                         epsilon,
+                         decay,
+                         momentum,
+                         learning_rate_cpu,
+                         param.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "uncentered rmsprop");
+  }
 }
 }  // namespace phi
 

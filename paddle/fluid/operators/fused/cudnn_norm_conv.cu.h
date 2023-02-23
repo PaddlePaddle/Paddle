@@ -19,7 +19,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = phi::DenseTensor;
 namespace dynload = platform::dynload;
 
 template <typename T>
@@ -163,11 +162,11 @@ struct NormConvolutionArgs {
   std::vector<int> paddings;
   std::vector<int> dilations;
 
-  platform::TensorDescriptor in_desc;
-  platform::FilterDescriptor filter_desc;
-  platform::TensorDescriptor out_desc;
-  platform::TensorDescriptor out_stats_desc;
-  platform::ConvolutionDescriptor conv_desc;
+  phi::backends::gpu::TensorDescriptor in_desc;
+  phi::backends::gpu::FilterDescriptor filter_desc;
+  phi::backends::gpu::TensorDescriptor out_desc;
+  phi::backends::gpu::TensorDescriptor out_stats_desc;
+  phi::backends::gpu::ConvolutionDescriptor conv_desc;
 
   bool is_support;
 };
@@ -195,11 +194,11 @@ class CudnnNormConvolution {
   ~CudnnNormConvolution() {}
 
   void Forward(const phi::GPUContext &ctx,
-               const Tensor &input,
-               const Tensor &filter,
-               Tensor *output,
-               Tensor *sum,
-               Tensor *sum_of_squares) {
+               const phi::DenseTensor &input,
+               const phi::DenseTensor &filter,
+               phi::DenseTensor *output,
+               phi::DenseTensor *sum,
+               phi::DenseTensor *sum_of_squares) {
     auto cudnn_handle = ctx.cudnn_handle();
 
     CudnnFusionOp *fwd_op = GetForwardOp(ctx);
@@ -314,11 +313,11 @@ class CudnnNormConvolutionGrad {
   ~CudnnNormConvolutionGrad() {}
 
   void Backward(const phi::GPUContext &ctx,
-                const Tensor &input,
-                const Tensor &filter,
-                const Tensor &output_grad,
-                Tensor *input_grad,
-                Tensor *filter_grad,
+                const phi::DenseTensor &input,
+                const phi::DenseTensor &filter,
+                const phi::DenseTensor &output_grad,
+                phi::DenseTensor *input_grad,
+                phi::DenseTensor *filter_grad,
                 bool use_addto = false) {
     T *input_ptr = const_cast<T *>(input.data<T>());
     T *filter_ptr = const_cast<T *>(filter.data<T>());

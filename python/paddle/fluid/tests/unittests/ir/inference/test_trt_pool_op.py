@@ -20,8 +20,10 @@ import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.static.nn as nn
 from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
@@ -62,17 +64,25 @@ class TensorRTPoolTest(InferencePassTest):
                 shape=[-1, self.channel, self.height, self.width],
                 dtype='float32',
             )
-            pool_out = fluid.layers.pool2d(
-                input=data,
-                pool_size=self.pool_size,
-                pool_type=self.pool_type,
-                pool_stride=self.pool_stride,
-                pool_padding=self.pool_padding,
-                global_pooling=self.global_pooling,
-                ceil_mode=self.ceil_mode,
-                exclusive=self.exclusive,
-            )
-            out = fluid.layers.batch_norm(pool_out, is_test=True)
+            if self.pool_type == 'max':
+                pool_out = paddle.nn.functional.max_pool2d(
+                    x=data,
+                    kernel_size=self.pool_size,
+                    stride=self.pool_stride,
+                    padding=self.pool_padding,
+                    ceil_mode=self.ceil_mode,
+                )
+            else:
+                pool_out = paddle.nn.functional.avg_pool2d(
+                    x=data,
+                    kernel_size=self.pool_size,
+                    stride=self.pool_stride,
+                    padding=self.pool_padding,
+                    ceil_mode=self.ceil_mode,
+                    exclusive=self.exclusive,
+                )
+            out = nn.batch_norm(pool_out, is_test=True)
+
             self.fetch_list = [out]
 
     def check_output(self):

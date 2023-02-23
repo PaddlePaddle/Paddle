@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -31,6 +33,10 @@ def create_kernel_case(op_type, numpy_op_type):
         def setUp(self):
             np.random.seed(123)
             self.initTestCase()
+            if op_type == 'arg_min':
+                self.python_api = paddle.tensor.argmin
+            else:
+                self.python_api = paddle.tensor.argmax
             self.dims = (4, 5, 6)
             self.dtype = "float64"
             self.x = 1000 * np.random.random(self.dims).astype(self.dtype)
@@ -70,6 +76,10 @@ def create_kernel_case(op_type, numpy_op_type):
     class ArgMinMaxKernelCase4(ArgMinMaxKernelBaseCase):
         def setUp(self):
             self.initTestCase()
+            if op_type == 'arg_min':
+                self.python_api = paddle.tensor.argmin
+            else:
+                self.python_api = paddle.tensor.argmax
             self.dims = (4, 5, 6)
             self.dtype = "float64"
             self.x = 1000 * np.random.random(self.dims).astype(self.dtype)
@@ -83,6 +93,10 @@ def create_kernel_case(op_type, numpy_op_type):
     class ArgMinMaxKernelCase5(ArgMinMaxKernelBaseCase):
         def setUp(self):
             self.initTestCase()
+            if op_type == 'arg_min':
+                self.python_api = paddle.tensor.argmin
+            else:
+                self.python_api = paddle.tensor.argmax
             self.dims = 4
             self.dtype = "float64"
             self.x = 1000 * np.random.random(self.dims).astype(self.dtype)
@@ -96,6 +110,10 @@ def create_kernel_case(op_type, numpy_op_type):
     class ArgMinMaxKernelCase6(ArgMinMaxKernelBaseCase):
         def setUp(self):
             self.initTestCase()
+            if op_type == 'arg_min':
+                self.python_api = paddle.tensor.argmin
+            else:
+                self.python_api = paddle.tensor.argmax
             self.dims = 4
             self.dtype = "float64"
             self.x = 1000 * np.random.random(self.dims).astype(self.dtype)

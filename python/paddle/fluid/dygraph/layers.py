@@ -46,7 +46,6 @@ from paddle.fluid import framework
 from ..param_attr import ParamAttr
 from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.framework import (
-    _non_static_mode,
     convert_np_dtype_to_dtype_,
     in_dygraph_mode,
 )
@@ -68,7 +67,7 @@ def _scope_dist2single(dist_scope):
         "column_parallel_linear": "linear",
         "vocab_parallel_embedding": "embedding",
         # "parallel_cross_entropy": "cross_entropy", while mp_layer has parallel_cross_entropy,
-        # but there is no parameters so the mapping of parallel_cross_entropy is not neccessary.
+        # but there is no parameters so the mapping of parallel_cross_entropy is not necessary.
     }
     return mapping.get(dist_scope, dist_scope)
 
@@ -153,7 +152,7 @@ class Layer:
         self._helper = LayerObjectHelper(self._full_name)
         self._built = False
         self._dtype = dtype
-        self._init_in_dynamic_mode = framework._non_static_mode()
+        self._init_in_dynamic_mode = in_dygraph_mode()
 
         self._parameters = collections.OrderedDict()
         # Buffers the variable (not parameter) created in layer
@@ -211,7 +210,7 @@ class Layer:
         # global setting in dygraph
         # NOTE(chenweihang): nn.Layer also can be used in static mode,
         # but _dygraph_tracer() can not be called in static mode
-        if _non_static_mode():
+        if in_dygraph_mode():
             framework._dygraph_tracer().train_mode()
         # Layer-level setting
         self.training = True
@@ -252,7 +251,7 @@ class Layer:
         # global setting in dygraph
         # NOTE(chenweihang): nn.Layer also can be used in static mode,
         # but _dygraph_tracer() can not be called in static mode
-        if _non_static_mode():
+        if in_dygraph_mode():
             framework._dygraph_tracer().eval_mode()
         # Layer-level setting
         self.training = False
@@ -1600,7 +1599,8 @@ class Layer:
             use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter or buffer name as key.
                                                   Default: True
         Returns:
-            None
+            missing_keys(list):A list of str containing the missing keys
+            unexpected_keys(list):A list of str containing the unexpected keys
 
         Examples:
             .. code-block:: python
@@ -1615,15 +1615,20 @@ class Layer:
                 emb.set_state_dict(para_state_dict)
 
         '''
+        missing_keys = []
+        match_keys = set()
+        unexpected_keys = []
 
         def _check_match(key, param):
             state = state_dict.get(key, None)
             if state is None:
+                missing_keys.append(key)
                 raise ValueError(
                     "{} is not found in the provided dict.".format(key)
                 )
             if isinstance(state, dict) or isinstance(state, list):
                 if len(state) != len(param):
+                    missing_keys.append(key)
                     raise ValueError(
                         "{} receieves the length of {}, "
                         "but the expected shape is {}".format(
@@ -1631,6 +1636,7 @@ class Layer:
                         )
                     )
                 else:
+                    match_keys.add(key)
                     return param, state
             else:
                 state_shape = (
@@ -1640,11 +1646,13 @@ class Layer:
                 )
 
                 if list(state_shape) != list(param.shape):
+                    missing_keys.append(key)
                     raise ValueError(
                         "{} receives a shape {}, but the expected shape is {}.".format(
                             key, list(state_shape), list(param.shape)
                         )
                     )
+                match_keys.add(key)
                 return param, state
 
         matched_param_state = []
@@ -1655,8 +1663,10 @@ class Layer:
                 matched_param_state.append(match_res)
             except ValueError as err:
                 warnings.warn(("Skip loading for {}. ".format(key) + str(err)))
-
-        if _non_static_mode():
+        for key in state_dict.keys():
+            if key not in match_keys:
+                unexpected_keys.append(key)
+        if in_dygraph_mode():
             for param, state in matched_param_state:
                 param.set_value(state)
         else:
@@ -1692,6 +1702,8 @@ class Layer:
                 raise ValueError(
                     "This error might happens in dy2static, while calling 'set_state_dict' dynamicly in 'forward', which is not supported. If you only need call 'set_state_dict' once, move it to '__init__'."
                 )
+
+        return missing_keys, unexpected_keys
 
     def to(self, device=None, dtype=None, blocking=None):
         '''

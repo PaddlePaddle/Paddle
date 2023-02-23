@@ -22,8 +22,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename DeviceContext, typename T>
 class ScatterNPUKernel : public framework::OpKernel<T> {
  public:
@@ -49,16 +47,16 @@ class ScatterNPUKernel : public framework::OpKernel<T> {
 
     const auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
-    auto op_func_update = [](const std::vector<Tensor>& inputs,
-                             const std::vector<Tensor>& outputs,
+    auto op_func_update = [](const std::vector<phi::DenseTensor>& inputs,
+                             const std::vector<phi::DenseTensor>& outputs,
                              const NPUAttributeMap& attrs,
                              const platform::NPUDeviceContext& dev_ctx) {
       const auto& runner =
           NpuOpRunner("TensorScatterUpdate", inputs, outputs, attrs);
       runner.Run(dev_ctx.stream());
     };
-    auto op_func_add = [](const std::vector<Tensor>& inputs,
-                          const std::vector<Tensor>& outputs,
+    auto op_func_add = [](const std::vector<phi::DenseTensor>& inputs,
+                          const std::vector<phi::DenseTensor>& outputs,
                           const NPUAttributeMap& attrs,
                           const platform::NPUDeviceContext& dev_ctx) {
       const auto& runner =

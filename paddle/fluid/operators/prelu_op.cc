@@ -21,8 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 class PReluOp : public framework::OperatorWithKernel {
  public:
   PReluOp(const std::string &type,
@@ -32,11 +30,11 @@ class PReluOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -95,11 +93,11 @@ class PReluGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 

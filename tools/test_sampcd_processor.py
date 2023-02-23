@@ -14,21 +14,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import os
-import shutil
 import re
+import shutil
+import unittest
+
 import sampcd_processor
-from sampcd_processor import find_all
-from sampcd_processor import get_api_md5
-from sampcd_processor import get_incrementapi
-from sampcd_processor import sampcd_extract_to_file
-from sampcd_processor import extract_code_blocks_from_docstr
-from sampcd_processor import execute_samplecode
-from sampcd_processor import find_last_future_line_end
-from sampcd_processor import insert_codes_into_codeblock
-from sampcd_processor import get_test_capacity
-from sampcd_processor import is_required_match
+from sampcd_processor import (
+    execute_samplecode,
+    extract_code_blocks_from_docstr,
+    find_all,
+    find_last_future_line_end,
+    get_api_md5,
+    get_incrementapi,
+    get_test_capacity,
+    insert_codes_into_codeblock,
+    is_required_match,
+    sampcd_extract_to_file,
+)
 
 
 class Test_find_all(unittest.TestCase):

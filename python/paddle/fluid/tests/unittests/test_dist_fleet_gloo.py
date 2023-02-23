@@ -14,12 +14,12 @@
 
 import os
 import shutil
-import tempfile
-import unittest
 import subprocess
+import tempfile
 import time
+import unittest
 
-# import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+# import paddle.incubate.distributed.fleet.role_maker as role_maker
 from test_dist_fleet_base import TestFleetBase
 
 # from dist_simnet_bow import train_network

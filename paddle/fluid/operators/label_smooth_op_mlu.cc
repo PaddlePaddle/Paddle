@@ -18,16 +18,13 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
-
 template <typename T>
 class LabelSmoothMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in_t = ctx.Input<LoDTensor>("X");
+    auto* in_t = ctx.Input<phi::DenseTensor>("X");
     auto* dist_t = ctx.Input<phi::DenseTensor>("PriorDist");
-    auto* out_t = ctx.Output<LoDTensor>("Out");
+    auto* out_t = ctx.Output<phi::DenseTensor>("Out");
     auto epsilon = ctx.Attr<float>("epsilon");
     auto epsilon_gt = 1.0f - epsilon;
 

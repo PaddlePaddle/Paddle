@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+
 from paddle.distributed.auto_parallel.graph import Graph
 
 

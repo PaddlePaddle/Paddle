@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...base.topology import ParallelMode
-import paddle.autograd as imperative_base
 import paddle
+import paddle.autograd as imperative_base
 from paddle import _legacy_C_ops
+
+from ...base.topology import ParallelMode
 
 __all__ = []
 
@@ -40,11 +41,16 @@ class HybridParallelGradScaler:
 
         optimize_ops, params_grads = (None, None)
 
-        if self._found_inf:
-            self._cache_founf_inf = True
-        else:
+        if hasattr(optimizer, "_set_auxiliary_var"):
+            optimizer._set_auxiliary_var('found_inf', self._found_inf)
             optimize_ops, params_grads = optimizer.minimize(*args, **kwargs)
-            self._cache_founf_inf = False
+            self._cache_founf_inf = optimizer._get_auxiliary_var('found_inf')
+        else:
+            if self._found_inf:
+                self._cache_founf_inf = True
+            else:
+                optimize_ops, params_grads = optimizer.minimize(*args, **kwargs)
+                self._cache_founf_inf = False
 
         if self._use_dynamic_loss_scaling:
             self._update()

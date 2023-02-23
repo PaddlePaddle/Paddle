@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import re
 import collections
+import re
 
 PREFIX_TENSOR_NAME = 'input_'
 PREFIX_META_TENSOR_NAME = 'meta_'
@@ -166,6 +166,7 @@ class BaseAPI:
             'float[]': 'const std::vector<float>&',
             'double': 'double',
             'bool': 'bool',
+            'bool[]': 'const std::vector<bool>&',
             'str': 'const std::string&',
             'str[]': 'const std::vector<std::string>&',
             'Place': 'const Place&',
@@ -485,6 +486,17 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                 )
 
         if kernel['data_type'] is not None:
+
+            def process_data_type_args(args_item):
+                args_item = args_item.strip()
+                complex_match_result = re.match(
+                    r"complex\((?P<param_name>\w+)\)", args_item
+                )
+                if complex_match_result:
+                    return f"phi::dtype::ToComplex(ParseDataType({complex_match_result.group('param_name')}))"
+                else:
+                    return f"ParseDataType({args_item})"
+
             if '>' in kernel['data_type']:
                 vars_list = kernel['data_type'].split('>')
                 assert (
@@ -510,7 +522,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                 kernel_select_code = (
                     kernel_select_code
                     + f"""
-  kernel_data_type = ParseDataType({vars_list[0].strip()});
+  kernel_data_type = {process_data_type_args(vars_list[0])};
 """
                 )
 
@@ -1188,13 +1200,16 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
 {code_indent}      "{kernel_name}", {{kernel_backend, kernel_layout, kernel_data_type}});
 {code_indent}  const auto& kernel = kernel_result.kernel;
+{code_indent}  if (FLAGS_low_precision_op_list) {{
+{code_indent}    phi::KernelFactory::Instance().AddToLowPrecisionKernelList("{self.api}", kernel_data_type);
+{code_indent}  }}
 {code_indent}  VLOG(6) << "{kernel_name} kernel: " << kernel;
 {code_indent}  auto* dev_ctx = GetDeviceContextByBackend(kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
 {input_tensors}
 {output_create}
-{code_indent}  paddle::platform::RecordEvent *infer_shape_record_event = nullptr;
-{code_indent}  if(paddle::platform::RecordEvent::IsEnabled()){{
-{code_indent}    infer_shape_record_event = new paddle::platform::RecordEvent(\"{self.api} infer_meta\", paddle::platform::TracerEventType::OperatorInner, 1);
+{code_indent}  phi::RecordEvent *infer_shape_record_event = nullptr;
+{code_indent}  if(phi::RecordEvent::IsEnabled()){{
+{code_indent}    infer_shape_record_event = new phi::RecordEvent(\"{self.api} infer_meta\", phi::TracerEventType::OperatorInner, 1);
 {code_indent}  }}
 {self.gene_infer_meta(kernel_output_names, code_indent)}
 {code_indent}  if(infer_shape_record_event != nullptr){{
@@ -1202,9 +1217,9 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  }}
 {code_indent}  using kernel_signature = {kernel_signature};
 {code_indent}  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-{code_indent}  paddle::platform::RecordEvent* kernel_record_event = nullptr;
-{code_indent}  if(paddle::platform::RecordEvent::IsEnabled()){{
-{code_indent}    kernel_record_event = new paddle::platform::RecordEvent(\"{self.api} compute\", paddle::platform::TracerEventType::OperatorInner, 1);
+{code_indent}  phi::RecordEvent* kernel_record_event = nullptr;
+{code_indent}  if(phi::RecordEvent::IsEnabled()){{
+{code_indent}    kernel_record_event = new phi::RecordEvent(\"{self.api} compute\", phi::TracerEventType::OperatorInner, 1);
 {code_indent}  }}
 {code_indent}    (*kernel_fn)({kernel_args}, {", ".join(outputs_args)});
 {code_indent}  if(kernel_record_event != nullptr){{

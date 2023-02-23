@@ -17,7 +17,9 @@ ENV HOME /root
 # Add bash enhancements
 COPY paddle/scripts/docker/root/ /root/
 
-RUN apt-get update && \
+RUN chmod 777 /tmp
+
+RUN apt-get update --allow-unauthenticated && \
   apt-get install -y software-properties-common && add-apt-repository ppa:deadsnakes/ppa && \
   apt-get update && \
   apt-get install -y curl wget vim git unzip unrar tar xz-utils libssl-dev bzip2 gzip \ 
@@ -48,7 +50,7 @@ ENV PATH=/home/cmake-3.16.0-Linux-x86_64/bin:$PATH
 
 
 RUN apt-get update && \
-  apt-get install -y python3.7 python3.7-dev && \
+  apt-get install -y python3.7 python3.7-dev python3.7-distutils && \
   mv /usr/bin/python /usr/bin/python.bak && ln -s /usr/bin/python3.7 /usr/bin/python && \
   mv /usr/bin/python3 /usr/bin/python3.bak && ln -s /usr/bin/python3.7 /usr/bin/python3
 

@@ -20,7 +20,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = phi::DenseTensor;
 
 template <typename T>
 void NpuBroadcast(const platform::NPUDeviceContext& dev_ctx,
@@ -32,12 +31,12 @@ void NpuBroadcast(const platform::NPUDeviceContext& dev_ctx,
 
   // 1. expand the axis with dim 1
   auto src_dims = src->dims();
-  Tensor tmp_src;
+  phi::DenseTensor tmp_src;
   tmp_src.ShareDataWith(*src);
   tmp_src.Resize(src_dims);
   for (int i = 0; i < src_dims.size(); ++i) {
     if (src_dims[i] == 1 && dst_dims[i + axis] > 1) {
-      Tensor tmp_tensor;
+      phi::DenseTensor tmp_tensor;
       auto tmp_tensor_dims = tmp_src.dims();
       tmp_tensor_dims[i] = dst_dims[i + axis];
       tmp_tensor.mutable_data<T>(tmp_tensor_dims, dev_ctx.GetPlace());
@@ -56,7 +55,7 @@ void NpuBroadcast(const platform::NPUDeviceContext& dev_ctx,
   // 2.expand the ahead axis
   auto prev = phi::product(phi::slice_ddim(dst_dims, 0, axis));
   if (prev > 1) {
-    Tensor tmp_tensor;
+    phi::DenseTensor tmp_tensor;
     auto tmp_tensor_dims = phi::slice_ddim(dst_dims, 0, axis + src_dims.size());
     tmp_tensor.mutable_data<T>(tmp_tensor_dims, dev_ctx.GetPlace());
     const auto& runner =
@@ -79,7 +78,7 @@ void NpuBroadcast(const platform::NPUDeviceContext& dev_ctx,
     src_dims_vec.push_back(1);
     tmp_src.Resize(phi::make_ddim(src_dims_vec));
 
-    Tensor tmp_tensor;
+    phi::DenseTensor tmp_tensor;
     tmp_tensor.mutable_data<T>(dst_dims, dev_ctx.GetPlace());
     const auto& runner =
         NpuOpRunner("TileWithAxis",

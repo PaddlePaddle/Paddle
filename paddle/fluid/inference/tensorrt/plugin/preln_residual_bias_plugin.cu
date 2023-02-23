@@ -24,50 +24,25 @@
 #include "paddle/fluid/inference/tensorrt/plugin/preln_residual_bias_plugin.h"
 #include "paddle/fluid/operators/fused/fused_dropout_common.h"
 #include "paddle/fluid/operators/fused/fused_layernorm_residual_dropout_bias.h"
-#include "paddle/fluid/operators/layer_norm_kernel.cu.h"
 #include "paddle/fluid/operators/math/bert_encoder_functor.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
+#include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
+
+inline int getSMVersion() {
+  const int device = phi::backends::gpu::GetCurrentDeviceId();
+  const phi::gpuDeviceProp prop =
+      phi::backends::gpu::GetDeviceProperties(device);
+  return prop.major * 10 + prop.minor;
+}
+
 #ifdef TRT_PLUGIN_FP16_AVALIABLE
 #define FINAL_MASK 0xffffffff
-template <typename T, int NUM>
-__inline__ __device__ T warpReduceSumV2(T *val) {
-#pragma unroll
-  for (int i = 0; i < NUM; i++) {
-#pragma unroll
-    for (int mask = 16; mask > 0; mask >>= 1)
-      val[i] += __shfl_xor_sync(FINAL_MASK, val[i], mask, 32);
-  }
-  return (T)(0.0f);
-}
-
-template <typename T, int NUM>
-__inline__ __device__ T blockReduceSumV2(T *val) {
-  static __shared__ T shared[NUM][33];
-  int lane = threadIdx.x & 0x1f;
-  int wid = threadIdx.x >> 5;
-
-  warpReduceSumV2<T, NUM>(val);
-
-  if (lane == 0) {
-#pragma unroll
-    for (int i = 0; i < NUM; i++) {
-      shared[i][wid] = val[i];
-    }
-  }
-  __syncthreads();
-
-  bool is_mask = threadIdx.x < (blockDim.x / 32.f);
-#pragma unroll
-  for (int i = 0; i < NUM; i++) {
-    val[i] = is_mask ? shared[i][lane] : (T)(0.0f);
-  }
-  warpReduceSumV2<T, NUM>(val);
-  return (T)0.0f;
-}
 
 template <int UNROLL_FACTOR>
 __global__ void generalAddBiasResidualLayerNormOpt2(
@@ -119,7 +94,7 @@ __global__ void generalAddBiasResidualLayerNormOpt2(
   float sums[2];
   sums[0] = x_sum;
   sums[1] = x2_sum;
-  blockReduceSumV2<float, 2>(sums);
+  phi::funcs::BlockReduceSumV2<float, 2>(sums);
 
   if (threadIdx.x == 0) {
     s_mean = sums[0] / n / 2;
@@ -459,35 +434,65 @@ int PrelnResidualBiasPluginDynamic::enqueue(
     float *mean = nullptr;
     float *var = nullptr;
     const int VecSize = 8;
-#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
-    // if hidden is even, use half2 kernel generalAddBiasResidualLayerNormOpt2
-    if (hidden % 2 == 0) {
-      int half_n = hidden / 2;
-      int half_n_32 = (half_n + 31) / 32 * 32;
-      dim3 block(std::min(half_n_32, 512));
-      int rolls_per_thread = half_n / block.x;
-      int unroll_factor = 8;
-      while (unroll_factor > rolls_per_thread && unroll_factor > 1) {
-        unroll_factor /= 2;
-      }
-      switch (unroll_factor) {
-        case 1:
-          HALF2_ADD_BIAS_RESIDUAL_LAYERNORM_OPT2(1);
-          break;
-        case 2:
-          HALF2_ADD_BIAS_RESIDUAL_LAYERNORM_OPT2(2);
-          break;
-        case 4:
-          HALF2_ADD_BIAS_RESIDUAL_LAYERNORM_OPT2(4);
-          break;
-        case 8:
-          HALF2_ADD_BIAS_RESIDUAL_LAYERNORM_OPT2(8);
-          break;
-        default:
-          PADDLE_THROW(platform::errors::Fatal(
-              "Invalid UNROLL_FACTOR in preln_residual_bias trt plugin."));
+
+    int sm = getSMVersion();
+    // sm >= 60 to support _ldg
+    if (sm >= 60) {
+      // if hidden is even, use half2 kernel generalAddBiasResidualLayerNormOpt2
+      if (hidden % 2 == 0) {
+        int half_n = hidden / 2;
+        int half_n_32 = (half_n + 31) / 32 * 32;
+        dim3 block(std::min(half_n_32, 512));
+        int rolls_per_thread = half_n / block.x;
+        int unroll_factor = 8;
+        while (unroll_factor > rolls_per_thread && unroll_factor > 1) {
+          unroll_factor /= 2;
+        }
+        switch (unroll_factor) {
+          case 1:
+            HALF2_ADD_BIAS_RESIDUAL_LAYERNORM_OPT2(1);
+            break;
+          case 2:
+            HALF2_ADD_BIAS_RESIDUAL_LAYERNORM_OPT2(2);
+            break;
+          case 4:
+            HALF2_ADD_BIAS_RESIDUAL_LAYERNORM_OPT2(4);
+            break;
+          case 8:
+            HALF2_ADD_BIAS_RESIDUAL_LAYERNORM_OPT2(8);
+            break;
+          default:
+            PADDLE_THROW(platform::errors::Fatal(
+                "Invalid UNROLL_FACTOR in preln_residual_bias trt plugin."));
+        }
+      } else {
+        paddle::operators::FusedLayernormResidualDropoutBiasFunctor<half,
+                                                                    uint8_t,
+                                                                    VecSize,
+                                                                    float,
+                                                                    false>()(
+            rows,
+            cols,
+            seed,
+            dropout_prob,
+            is_upscale_in_train,
+            is_test,
+            increment,
+            epsilon,
+            src,
+            residual,
+            bias,
+            scale,
+            layernorm_bias,
+            mask_data,
+            dst,
+            layernorm_dst,
+            mean,
+            var,
+            stream);
       }
     } else {
+      // if sm < 60, use FusedLayernormResidualDropoutBiasFunctor only
       paddle::operators::FusedLayernormResidualDropoutBiasFunctor<half,
                                                                   uint8_t,
                                                                   VecSize,
@@ -513,32 +518,6 @@ int PrelnResidualBiasPluginDynamic::enqueue(
           var,
           stream);
     }
-#else
-    paddle::operators::FusedLayernormResidualDropoutBiasFunctor<half,
-                                                                uint8_t,
-                                                                VecSize,
-                                                                float,
-                                                                false>()(
-        rows,
-        cols,
-        seed,
-        dropout_prob,
-        is_upscale_in_train,
-        is_test,
-        increment,
-        epsilon,
-        src,
-        residual,
-        bias,
-        scale,
-        layernorm_bias,
-        mask_data,
-        dst,
-        layernorm_dst,
-        mean,
-        var,
-        stream);
-#endif
 #else
     PADDLE_THROW(platform::errors::Fatal(
         "The Ernie(Bert) tensorRT plugin should be "

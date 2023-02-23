@@ -13,22 +13,22 @@
 # limitations under the License.
 
 import logging
-import numpy as np
-from types import MethodType
 from collections import OrderedDict
+from types import MethodType
+
+import numpy as np
 
 import paddle
 import paddle.distributed as dist
-from paddle import nn
+from paddle import framework, nn
 from paddle.autograd import PyLayer
-import paddle.fluid.core as core
-import paddle.fluid.framework as framework
-from paddle.fluid.framework import EagerParamBase
-from paddle.fluid.clip import ClipGradByGlobalNorm
 from paddle.distributed import collective
+from paddle.fluid.framework import EagerParamBase
+from paddle.framework import core
+from paddle.nn import ClipGradByGlobalNorm
 
 from .group_sharded_storage import GradStorage
-from .group_sharded_utils import Type, GroupShardedClipGrad, device_guard
+from .group_sharded_utils import GroupShardedClipGrad, Type, device_guard
 
 
 def _all_gather(tensor, buffer_size, group):
@@ -45,10 +45,9 @@ def _all_gather(tensor, buffer_size, group):
 
 
 # CUDA alignment 256 bytes
-alignment = {
-    "gpu": 256,
-}
+alignment = {"gpu": 256, "cpu": 4096, "xpu": 256}
 align = {
+    Type.bf16.value: 2,
     Type.fp16.value: 2,
     Type.fp32.value: 4,
 }
@@ -84,6 +83,8 @@ class GroupShardedStage3(nn.Layer):
         pertrain_sync_models=True,
         offload=False,
         sync_comm=False,
+        dp_group=None,
+        exclude_layer=None,
     ):
         super().__init__()
 
@@ -94,6 +95,14 @@ class GroupShardedStage3(nn.Layer):
         self.__sync_buffers = sync_buffers
         self._offload = offload
         self._sync_comm = sync_comm
+
+        # stage3 support some layer set by users to be unslice
+        # _exclude_layer=[layer_name or id(layer)]
+        self._exclude_layer = [] if exclude_layer is None else exclude_layer
+        assert isinstance(
+            self._exclude_layer, (list, tuple)
+        ), "the exclude_layers must be a list with layers' name or layers' id"
+
         # segmentation size
         assert segment_size >= 0, "segment_size must be GE than 0."
         self._segment_size = segment_size
@@ -119,6 +128,7 @@ class GroupShardedStage3(nn.Layer):
             if group is None
             else group
         )
+        self._dp_group = dp_group
         self._world_size_scaling = 1.0 / self._group.nranks
         assert (
             self._group.nranks > 1
@@ -200,6 +210,13 @@ class GroupShardedStage3(nn.Layer):
             dist.broadcast(
                 p, src=self._global_root_rank, group=self._group, sync_op=True
             )
+            if self._dp_group is not None and self._dp_group.nranks > 1:
+                dist.broadcast(
+                    p,
+                    src=self._dp_group.ranks[0],
+                    group=self._dp_group,
+                    sync_op=True,
+                )
 
     def _clear_gradients(self):
         assert len(self._trainable_params.keys()) > 0
@@ -233,6 +250,11 @@ class GroupShardedStage3(nn.Layer):
                     and param2dtype[param.name] == Type.fp16.value
                 ):
                     tmp_var = paddle.cast(tmp_var, Type.fp16.value)
+                elif (
+                    tmp_var.dtype == Type.fp32.value
+                    and param2dtype[param.name] == Type.bf16.value
+                ):
+                    tmp_var = paddle.cast(tmp_var, Type.bf16.value)
                 tmp_var._share_buffer_to(param)
                 del tmp_var
             for grad_storage in self._grad_storages.values():
@@ -294,11 +316,14 @@ class GroupShardedStage3(nn.Layer):
 
     def _handle_unslice_params(self):
         buffer_size = dict()
+        buffer_size[Type.bf16.value] = 0
         buffer_size[Type.fp32.value] = 0
         buffer_size[Type.fp16.value] = 0
         for param in self._unslice_params:
             # Updata optimizer master weights
-            if param.dtype == Type.fp16.value and not self._offload:
+            if (
+                param.dtype == Type.fp16.value or param.dtype == Type.bf16.value
+            ) and not self._offload:
                 master_tensor = paddle.cast(param, Type.fp32.value)
                 master_tensor.name = param.name
                 self._optim._master_weights[param.name] = master_tensor
@@ -340,17 +365,29 @@ class GroupShardedStage3(nn.Layer):
         Parameter segmentation and memory integration.
         """
 
+        if id(layer) in self._trainable_params.keys():
+            return
+
+        # the layer in self._exclude_layer will be unsliced.
+        if (
+            id(layer) in self._exclude_layer
+            or layer.__class__.__name__ in self._exclude_layer
+        ):
+            for p in current_layer_params:
+                if p.trainable:
+                    self._unslice_params.add(_UnsliceParam(p))
+            return
+
         def _add_manage_info(trainable_param):
             return _PartitionParam(trainable_param)
 
         current_params = list()
         for p in current_layer_params:
-            if p.trainable and p._numel() > self._segment_size:
+            if p._numel() > self._segment_size:
                 current_params.append(_add_manage_info(p))
             elif p.trainable:
                 self._unslice_params.add(_UnsliceParam(p))
 
-        assert id(layer) not in self._trainable_params.keys()
         self._trainable_params[id(layer)] = current_params
 
         for param in self._trainable_params[id(layer)]:
@@ -389,10 +426,14 @@ class GroupShardedStage3(nn.Layer):
         assert isinstance(buffer_size, int)
         value = (
             np.zeros(buffer_size, dtype=np.float16)
-            if Type.fp16.value == param.dtype
+            if (
+                Type.fp16.value == param.dtype or Type.bf16.value == param.dtype
+            )
             else np.zeros(buffer_size, dtype=np.float32)
         )
         buffer = core.eager.Tensor(value=value, place=core.CPUPlace())
+        if Type.bf16.value == param.dtype:
+            buffer = buffer.cast(Type.bf16.value)
 
         param_shape = param.shape
         origin_state = param.stop_gradient
@@ -418,10 +459,11 @@ class GroupShardedStage3(nn.Layer):
                 place=core.CPUPlace(),
                 name="slice@" + param.name,
             )
-            with device_guard():
-                param.master_weight = paddle.cast(
-                    param.fw_storage, Type.fp32.value
-                )
+            if param.trainable:
+                with device_guard():
+                    param.master_weight = paddle.cast(
+                        param.fw_storage, Type.fp32.value
+                    )
         else:
             param.fw_storage = core.eager.Tensor(
                 value=buffer._slice(start, end), name="slice@" + param.name
@@ -429,7 +471,13 @@ class GroupShardedStage3(nn.Layer):
         param.status = "part"
 
         # Updata optimizer master weights
-        if param.dtype == Type.fp16.value and not self._offload:
+        if (
+            param.trainable
+            and (
+                param.dtype == Type.fp16.value or param.dtype == Type.bf16.value
+            )
+            and not self._offload
+        ):
             master_tensor = paddle.cast(param.fw_storage, Type.fp32.value)
             master_tensor.name = param.name
             self._optim._master_weights[param.fw_storage.name] = master_tensor
@@ -448,7 +496,12 @@ class GroupShardedStage3(nn.Layer):
         """
         current_layer_params = _current_layer_params(layer)
         if current_layer_params:
-            self._register_forward_all_hooks(layer, self._task_flow)
+            # the layer in self._exclude_layer will be added hooks.
+            if not (
+                id(layer) in self._exclude_layer
+                or layer.__class__.__name__ in self._exclude_layer
+            ):
+                self._register_forward_all_hooks(layer, self._task_flow)
 
         for _, sub_layer in layer.named_children():
             self._register_forward_hooks(sub_layer)
@@ -497,6 +550,13 @@ class GroupShardedStage3(nn.Layer):
             dist.broadcast(
                 buffer, self._global_root_rank, self._group, sync_op=True
             )
+            if self._dp_group is not None and self._dp_group.nranks > 1:
+                dist.broadcast(
+                    buffer,
+                    self._dp_group.ranks[0],
+                    self._dp_group,
+                    sync_op=True,
+                )
 
     def __getattr__(self, name):
         """Forward missing attributes to wrapped layer."""
@@ -523,12 +583,7 @@ class GroupShardedStage3(nn.Layer):
             assert hasattr(
                 param, "fw_storage"
             ), "Find {} don't have fw_storage attribute".format(param.name)
-            # Gradient average
-            if self._offload:
-                with device_guard():
-                    param.bw_storage.scale_(scale=self._world_size_scaling)
-            else:
-                param.bw_storage.scale_(scale=self._world_size_scaling)
+
             param.fw_storage = _VarBaseWrapper(param)
             assert param.fw_storage.grad is None
             param.fw_storage._copy_gradient_from(param.bw_storage)
@@ -538,6 +593,12 @@ class GroupShardedStage3(nn.Layer):
         for grad_storage in self._grad_storages.values():
             grad_storage.buffer.scale_(scale=self._world_size_scaling)
             dist.all_reduce(tensor=grad_storage.buffer, group=self._group)
+            if self._dp_group is not None and self._dp_group.nranks > 1:
+                grad_storage.buffer.scale_(scale=(1.0 / self._dp_group.nranks))
+                dist.all_reduce(
+                    tensor=grad_storage.buffer, group=self._dp_group
+                )
+
         if self._offload:
             for param in list(self._unslice_params):
                 param._clear_data()
@@ -598,10 +659,17 @@ class GroupShardedStage3(nn.Layer):
     def _get_allreduce_fn(self, param):
         @paddle.autograd.no_grad()
         def allreduce_(*_):
+            assert (
+                param.trainable
+            ), "the param must be trainable for grad allreduced"
             if param.name in self._task_flow.full_grad.keys():
                 full_grad = self._task_flow.full_grad[param.name]
                 # Only support sync allreduce current rank's layer now
+                full_grad.scale_(scale=self._world_size_scaling)
                 dist.all_reduce(tensor=full_grad, group=self._group)
+                if self._dp_group is not None and self._dp_group.nranks > 1:
+                    full_grad.scale_(scale=1.0 / self._dp_group.nranks)
+                    dist.all_reduce(tensor=full_grad, group=self._dp_group)
 
                 start, end = self._param2buffer[param.name][self._rank]
                 if param.bw_storage is None:
@@ -961,6 +1029,8 @@ def _allgather_buffer(
 @paddle.autograd.no_grad()
 def _create_params_grad(trainable_params, param2buffer_size, task_flow):
     for param in trainable_params:
+        if not param.trainable:
+            continue
         if param.name in task_flow.full_grad.keys():
             continue
         assert isinstance(param2buffer_size[param.name], int)
@@ -1031,6 +1101,11 @@ def _cpu2device(param):
         and param2dtype[param.name] == Type.fp16.value
     ):
         tmp_p = paddle.cast(tmp_p, Type.fp16.value)
+    elif (
+        tmp_p.dtype == Type.fp32.value
+        and param2dtype[param.name] == Type.bf16.value
+    ):
+        tmp_p = paddle.cast(tmp_p, Type.bf16.value)
     return tmp_p
 
 

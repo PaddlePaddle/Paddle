@@ -12,20 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.distributed as dist
-import paddle.distributed.fleet as fleet
-import re
-import paddle
-from paddle.distributed.fleet.utils.log_util import logger
+import copy
 import os
 import pickle
+import re
+
+import numpy as np
+
+import paddle
+import paddle.distributed as dist
+import paddle.distributed.fleet as fleet
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import (
     GroupShardedStage3,
 )
+from paddle.distributed.fleet.utils.log_util import logger
 from paddle.fluid.framework import dygraph_only
-import copy
-
-import numpy as np
 
 __all__ = ["save_for_auto_inference"]
 

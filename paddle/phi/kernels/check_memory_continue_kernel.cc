@@ -20,7 +20,7 @@
 
 #include "paddle/phi/core/kernel_registry.h"
 
-#include "paddle/fluid/platform/device_memory_aligment.h"
+#include "paddle/phi/backends/device_memory_aligment.h"
 
 namespace phi {
 
@@ -44,8 +44,7 @@ void CheckMemoryContinueKernel(const Context &dev_ctx,
             input.at(i)->dtype()));
     const void *cur_address = input.at(i - 1)->data();
     int64_t len = input.at(i - 1)->numel();
-    auto offset =
-        paddle::platform::Alignment(len * size_of_dtype, dev_ctx.GetPlace());
+    auto offset = phi::Alignment(len * size_of_dtype, dev_ctx.GetPlace());
     void *infer_next_address = reinterpret_cast<void *>(
         reinterpret_cast<uintptr_t>(cur_address) + offset);
     const void *next_address = input.at(i)->data();
@@ -71,8 +70,8 @@ void CheckMemoryContinueKernel(const Context &dev_ctx,
             infer_next_address,
             next_address));
   }
-  numel += paddle::platform::Alignment(
-      (*input.rbegin())->numel() * size_of_dtype, dev_ctx.GetPlace());
+  numel += phi::Alignment((*input.rbegin())->numel() * size_of_dtype,
+                          dev_ctx.GetPlace());
   // reset holder, do inplace
   output->ShareBufferWith(*input.at(0));
   output->Resize({numel / size_of_dtype});

@@ -48,15 +48,9 @@ class IRPassManager final {
 
   std::unique_ptr<Graph> Apply(std::unique_ptr<Graph> graph);
 
-  framework::proto::ProgramDesc AcquireProgram(std::unique_ptr<Graph> *graph,
-                                               ProgramDesc *program) const;
-
-  framework::ir::Graph &graph() const { return *graph_; }
-
  private:
   void CreatePasses(Argument *argument, const std::vector<std::string> &passes);
 
-  std::unique_ptr<Graph> graph_;
   std::vector<std::unique_ptr<Pass>> passes_;
   bool disable_logs_{false};
 };

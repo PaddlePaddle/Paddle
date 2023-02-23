@@ -47,7 +47,7 @@ set(COMMON_KERNEL_DEPS
     concat_and_split_functor
     selected_rows_functor)
 # remove this dep after removing fluid deps on tensor creation
-set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} phi_api_utils)
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} phi_api_utils lod_utils)
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} infermeta infermeta_utils
                        sparse_infermeta)
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} switch_autotune)
@@ -65,23 +65,23 @@ set(COMMON_KERNEL_DEPS
     deformable_conv_functor
     matrix_reduce
     segment_pooling
-    gather_scatter_kernel
     pooling
     maxouting
     matrix_inverse
     matrix_solve
     phi_dynload_warpctc
+    phi_dynload_warprnnt
     sequence_padding
     sequence_scale
     fft
     phi_data_layout_transform
     gpc
     utf8proc
-    device_memory_aligment)
+    gather_scatter_functor)
 
-set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup)
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group)
 if(WITH_NCCL OR WITH_RCCL)
-  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup_nccl)
+  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group_nccl)
 endif()
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup_comm_utils)
 if(WITH_CUDNN_FRONTEND)
@@ -105,6 +105,11 @@ file(
   "strings/gpu/*.cu"
   "fusion/gpu/*.cu")
 
+if(WITH_CUTLASS)
+  file(GLOB cutlass_cu "fusion/cutlass/conv2d/*.cu" "fusion/cutlass/*.cu")
+  list(APPEND kernel_cu ${cutlass_cu})
+endif()
+
 if(WITH_MKLDNN)
   file(
     GLOB
@@ -119,6 +124,7 @@ if(WITH_MKLDNN)
     "strings/cpu/*.cc"
     "onednn/*.cc"
     "fusion/*.cc"
+    "fusion/onednn/*.cc"
     "fusion/cpu/*.cc")
 else()
   file(

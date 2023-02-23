@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid import core
-from paddle.fluid import framework
-from paddle.fluid.backward import gradients_with_optimizer  # noqa: F401
 import paddle
+from paddle.fluid import core, framework
+from paddle.fluid.backward import gradients_with_optimizer  # noqa: F401
 
 __all__ = []
 
@@ -108,7 +107,7 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
                     each_tensor, (paddle.Tensor, core.eager.Tensor)
                 ), "The argument 'grad_tensors' of paddle.autograd.backward is invalid, it can be 'None', 'paddle.Tensor' or 'list[None/paddle.Tensor]'."
     else:
-        if framework._in_eager_mode_:
+        if framework.global_var._in_eager_mode_:
             grad_tensors = []
         else:
             grad_tensors = [None] * len(tensors)
@@ -120,7 +119,7 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
 
     assert isinstance(retain_graph, bool), "retain_graph must be True or False"
 
-    if framework._in_eager_mode_:
+    if framework.global_var._in_eager_mode_:
         core.eager.run_backward(tensors, grad_tensors, retain_graph)
     else:
         core.dygraph_run_backward(

@@ -16,6 +16,10 @@ typedef SSIZE_T ssize_t;
 #endif
 
 #include <Python.h>
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
 
 #include <string>
 #include <unordered_map>
@@ -51,12 +55,6 @@ typedef SSIZE_T ssize_t;
 
 namespace paddle {
 namespace pybind {
-
-extern PyTypeObject* p_tensor_type;
-
-bool PyCheckTensor(PyObject* obj) {
-  return PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type));
-}
 
 static bool PyCheckInteger(PyObject* obj) {
 #if PY_VERSION_HEX < 0x03000000

@@ -14,11 +14,12 @@
 
 import os
 import shlex
-import sys
 import shutil
-import unittest
-import paddle
+import sys
 import tempfile
+import unittest
+
+import paddle
 
 
 def get_test_file():

@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
 import unittest
+
+import paddle
 
 
 class MyLayer(paddle.nn.Layer):
@@ -62,5 +62,4 @@ class TestBackward(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

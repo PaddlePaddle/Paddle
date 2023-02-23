@@ -137,12 +137,12 @@ class TestStackAPIWithLoDTensorArray(unittest.TestCase):
     def set_program(self):
         self.program = fluid.Program()
         with fluid.program_guard(self.program):
-            input = fluid.layers.assign(self.x)
-            tensor_array = fluid.layers.create_array(dtype='float32')
+            input = paddle.assign(self.x)
+            tensor_array = paddle.tensor.create_array(dtype='float32')
             zero = fluid.layers.fill_constant(shape=[1], value=0, dtype="int64")
 
             for i in range(self.iter_num):
-                fluid.layers.array_write(input, zero + i, tensor_array)
+                paddle.tensor.array_write(input, zero + i, tensor_array)
 
             self.out_var = paddle.stack(tensor_array, axis=self.axis)
 
@@ -175,12 +175,12 @@ class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
     def set_program(self):
         self.program = fluid.Program()
         with fluid.program_guard(self.program):
-            input = fluid.layers.assign(self.x)
-            tensor_array = fluid.layers.create_array(dtype='float32')
+            input = paddle.assign(self.x)
+            tensor_array = paddle.tensor.create_array(dtype='float32')
             zero = fluid.layers.fill_constant(shape=[1], value=0, dtype="int64")
 
             for i in range(self.iter_num):
-                fluid.layers.array_write(input, zero + i, tensor_array)
+                paddle.tensor.array_write(input, zero + i, tensor_array)
 
             self.out_var = paddle.stack(tensor_array, axis=self.axis)
 
@@ -196,9 +196,9 @@ class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
 class API_test(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data1 = fluid.layers.data('data1', shape=[1, 2], dtype='float32')
-            data2 = fluid.layers.data('data2', shape=[1, 2], dtype='float32')
-            data3 = fluid.layers.data('data3', shape=[1, 2], dtype='float32')
+            data1 = paddle.static.data('data1', shape=[-1, 1, 2], dtype='float32')
+            data2 = paddle.static.data('data2', shape=[-1, 1, 2], dtype='float32')
+            data3 = paddle.static.data('data3', shape=[-1, 1, 2], dtype='float32')
             result_stack = paddle.stack([data1, data2, data3], axis=0)
             place = paddle.NPUPlace(0)
             exe = fluid.Executor(place)

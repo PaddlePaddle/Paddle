@@ -15,24 +15,13 @@ limitations under the License. */
 #include <string>
 #include <unordered_set>
 
-#include "paddle/fluid/platform/device/xpu/xpu1_op_list.h"
-#include "paddle/fluid/platform/device/xpu/xpu2_op_list.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/fluid/platform/device/xpu/xpu_op_kpfirst_list.h"
+#include "paddle/phi/backends/xpu/xpu_op_list.h"
 
 namespace paddle {
 namespace platform {
-
-bool is_xpu_support_op(const std::string& op_name, const pOpKernelType& type) {
-  auto v = get_xpu_version(type.place_.device);
-  auto& ops = (v == phi::backends::xpu::XPUVersion::XPU1) ? get_kl1_ops()
-                                                          : get_kl2_ops();
-  if (ops.find(op_name) != ops.end() &&
-      ops[op_name].find(type) != ops[op_name].end()) {
-    return true;
-  }
-  return false;
-}
 
 // ops_string contains op_list(e.g., 'mul,mul_grad'), parse the op string and
 // insert op to op set
@@ -50,18 +39,6 @@ static void tokenize(const std::string& ops,
 }
 
 #ifdef PADDLE_WITH_XPU_KP
-bool is_xpu_kp_support_op(const std::string& op_name,
-                          const pOpKernelType& type) {
-  auto v = get_xpu_version(type.place_.device);
-  auto& ops = (v == phi::backends::xpu::XPUVersion::XPU1) ? get_kl1_ops()
-                                                          : get_kp_ops();
-  if (ops.find(op_name) != ops.end() &&
-      ops[op_name].find(type) != ops[op_name].end()) {
-    return true;
-  }
-  return false;
-}
-
 bool is_in_xpu_kpwhite_list(const std::string& op_name) {
   static bool inited = false;
   static std::unordered_set<std::string> xpu_kpwhite_list;
@@ -88,49 +65,37 @@ bool is_in_xpu_kpwhite_list(const std::string& op_name) {
 }
 #endif
 
-#ifdef PADDLE_WITH_XPU_KP
-std::vector<vartype::Type> get_xpu_kp_op_support_type(
-    const std::string& op_name, phi::backends::xpu::XPUVersion version) {
-  std::vector<vartype::Type> res;
-  auto& ops = version == phi::backends::xpu::XPUVersion::XPU1 ? get_kl1_ops()
-                                                              : get_kp_ops();
-  if (ops.find(op_name) != ops.end()) {
-    XPUKernelSet& type_set = ops[op_name];
-    for (auto& item : type_set) {
-      res.push_back(item.data_type_);
-    }
-  }
-  return res;
-}
-#endif
-
 std::vector<vartype::Type> get_xpu_op_support_type(
     const std::string& op_name, phi::backends::xpu::XPUVersion version) {
+  auto& ops = version == phi::backends::xpu::XPUVersion::XPU1
+                  ? phi::backends::xpu::get_kl1_ops()
+                  : phi::backends::xpu::get_kl2_ops();
   std::vector<vartype::Type> res;
-  auto& ops = version == phi::backends::xpu::XPUVersion::XPU1 ? get_kl1_ops()
-                                                              : get_kl2_ops();
   if (ops.find(op_name) != ops.end()) {
-    XPUKernelSet& type_set = ops[op_name];
-    for (auto& item : type_set) {
-      res.push_back(item.data_type_);
+    auto& dtypes = ops[op_name];
+    for (auto& type : dtypes) {
+      res.push_back(static_cast<vartype::Type>(phi::TransToProtoVarType(type)));
     }
   }
   return res;
 }
 
 XPUOpListMap get_xpu_op_list(phi::backends::xpu::XPUVersion version) {
+  auto& ops = version == phi::backends::xpu::XPUVersion::XPU1
+                  ? phi::backends::xpu::get_kl1_ops()
+                  : phi::backends::xpu::get_kl2_ops();
   XPUOpListMap res;
-  auto& ops = version == phi::backends::xpu::XPUVersion::XPU1 ? get_kl1_ops()
-                                                              : get_kl2_ops();
   for (auto& op : ops) {
-    std::vector<vartype::Type> op_vartypes;
+    std::vector<vartype::Type> op_types;
     for (auto& item : op.second) {
-      op_vartypes.push_back(item.data_type_);
+      op_types.push_back(
+          static_cast<vartype::Type>(phi::TransToProtoVarType(item)));
     }
-    res[op.first] = std::move(op_vartypes);
+    res[op.first] = std::move(op_types);
   }
   return res;
 }
+
 }  // namespace platform
 }  // namespace paddle
 #endif

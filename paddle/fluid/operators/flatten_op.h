@@ -49,6 +49,10 @@ class FlattenKernel : public framework::OpKernel<T> {
 
   static std::vector<int32_t> GetOutputShape(const int axis,
                                              const framework::DDim &in_dims) {
+    if (in_dims.size() == 0) {
+      return {1};
+    }
+
     int64_t outer = 1, inner = 1;
     for (int i = 0; i < in_dims.size(); ++i) {
       if (i < axis) {

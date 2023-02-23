@@ -51,7 +51,7 @@ struct LogsumexpFunctor {
 
     auto x_mt = (*x).template cast<MT>();
     auto y_dim = y->dimensions();
-    auto x_max = x_mt.maximum(dim);
+    auto x_max = x_mt.maximum(dim).eval();
     y->device(place) =
         (x_max +
          (x_mt - x_max.reshape(t_dim).broadcast(r_dim)).exp().sum(dim).log())

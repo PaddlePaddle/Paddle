@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import os
-import paddle
-import unittest
-import numpy as np
 import tempfile
+import unittest
+
+import numpy as np
+
+import paddle
 
 
 class BufferLayers(paddle.nn.Layer):

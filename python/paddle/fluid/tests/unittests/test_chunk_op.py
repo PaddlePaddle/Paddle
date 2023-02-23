@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import numpy as np
-from paddle.fluid import Program, program_guard
-from paddle import fluid
+
 import paddle
+from paddle import fluid
+from paddle.fluid import Program, program_guard
 
 
 class TestChunkOpError(unittest.TestCase):
@@ -50,6 +51,14 @@ class TestChunkOpError(unittest.TestCase):
                 paddle.chunk(input=x5, chunks=2, axis=3.2)
 
             self.assertRaises(TypeError, test_axis_type_tensor)
+
+        with paddle.fluid.dygraph.guard():
+
+            def test_0_chunks_tensor():
+                x = paddle.uniform([1, 1, 1], dtype='float32')
+                paddle.chunk(x, chunks=0)
+
+            self.assertRaises(ValueError, test_0_chunks_tensor)
 
 
 class API_TestChunk(unittest.TestCase):

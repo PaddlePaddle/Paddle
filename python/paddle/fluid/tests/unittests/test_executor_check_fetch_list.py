@@ -15,8 +15,8 @@
 import unittest
 
 import numpy as np
+
 import paddle
-import unittest
 
 
 class TestCheckFetchList(unittest.TestCase):

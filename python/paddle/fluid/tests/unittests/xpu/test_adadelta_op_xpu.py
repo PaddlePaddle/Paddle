@@ -12,20 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
 
 sys.path.append("..")
 
-import paddle
-import paddle.fluid as fluid
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
+import paddle.fluid as fluid
 
 paddle.enable_static()
 
@@ -166,10 +168,16 @@ class XPUTestAdadelta(XPUOpTestWrapper):
             place = fluid.XPUPlace(0)
             main = fluid.Program()
             with fluid.program_guard(main):
-                x = fluid.layers.data(name='x', shape=[13], dtype=self.dtype)
-                y = fluid.layers.data(name='y', shape=[1], dtype=self.dtype)
-                y_predict = fluid.layers.fc(input=x, size=1, act=None)
-                cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+                x = paddle.static.data(
+                    name='x', shape=[-1, 13], dtype=self.dtype
+                )
+                y = paddle.static.data(
+                    name='y', shape=[-1, 1], dtype=self.dtype
+                )
+                y_predict = paddle.static.nn.fc(x, size=1, activation=None)
+                cost = paddle.nn.functional.square_error_cost(
+                    input=y_predict, label=y
+                )
                 avg_cost = paddle.mean(cost)
 
                 rms_optimizer = paddle.optimizer.Adadelta(learning_rate=0.1)

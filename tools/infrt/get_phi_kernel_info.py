@@ -16,8 +16,9 @@
 
 import argparse
 import json
-import yaml
 from typing import Dict, List
+
+import yaml
 
 skipped_phi_api_list_file = "/tools/infrt/skipped_phi_api.json"
 api_yaml_file = "/paddle/phi/api/yaml/api.yaml"

@@ -16,12 +16,13 @@
 
 import os
 import tarfile
-import numpy as np
 from collections import defaultdict
 
+import numpy as np
+
 import paddle
-from paddle.io import Dataset
 from paddle.dataset.common import _check_exists_and_download
+from paddle.io import Dataset
 
 __all__ = []
 

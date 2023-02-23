@@ -19,7 +19,6 @@
 
 namespace paddle {
 namespace operators {
-using Tensor = phi::DenseTensor;
 
 static int get_seed(const framework::ExecutionContext& context) {
   int user_seed = context.Attr<int>("seed");

@@ -14,7 +14,8 @@
 
 import unittest
 
-from paddle.distributed.auto_parallel.cluster_v2 import Device, DeviceMesh, Link
+from paddle.distributed.auto_parallel.cluster_v2 import DeviceMesh
+from paddle.framework import core
 
 
 class TestDeviceMesh(unittest.TestCase):
@@ -38,12 +39,12 @@ class TestDeviceMesh(unittest.TestCase):
         self.assertEqual(device_mesh.contains(0), True)
         self.assertEqual(device_mesh.contains(6), False)
 
-        dev0 = Device(global_id=0, local_id=0, machine_id=0, type="GPU")
-        dev1 = Device(global_id=1, local_id=1, machine_id=0, type="GPU")
-        dev2 = Device(global_id=2, local_id=2, machine_id=0, type="GPU")
-        dev3 = Device(global_id=3, local_id=0, machine_id=1, type="GPU")
-        dev4 = Device(global_id=4, local_id=1, machine_id=1, type="GPU")
-        dev5 = Device(global_id=5, local_id=2, machine_id=1, type="GPU")
+        dev0 = core.Device(global_id=0, local_id=0, machine_id=0, type="GPU")
+        dev1 = core.Device(global_id=1, local_id=1, machine_id=0, type="GPU")
+        dev2 = core.Device(global_id=2, local_id=2, machine_id=0, type="GPU")
+        dev3 = core.Device(global_id=3, local_id=0, machine_id=1, type="GPU")
+        dev4 = core.Device(global_id=4, local_id=1, machine_id=1, type="GPU")
+        dev5 = core.Device(global_id=5, local_id=2, machine_id=1, type="GPU")
         device_mesh.add_device(dev0)
         device_mesh.add_device(dev1)
         device_mesh.add_device(dev2)
@@ -57,10 +58,10 @@ class TestDeviceMesh(unittest.TestCase):
         self.assertEqual(device_mesh.device(4), dev4)
         self.assertEqual(device_mesh.device(5), dev5)
 
-        link0 = Link(source_id=0, target_id=1, type="NVL")
-        link1 = Link(source_id=1, target_id=0, type="NVL")
-        link2 = Link(source_id=3, target_id=4, type="NVL")
-        link3 = Link(source_id=4, target_id=5, type="NVL")
+        link0 = core.Link(source_id=0, target_id=1, type="NVL")
+        link1 = core.Link(source_id=1, target_id=0, type="NVL")
+        link2 = core.Link(source_id=3, target_id=4, type="NVL")
+        link3 = core.Link(source_id=4, target_id=5, type="NVL")
         device_mesh.add_link(link0)
         device_mesh.add_link(link1)
         device_mesh.add_link(link2)
@@ -90,7 +91,7 @@ class TestDeviceMesh(unittest.TestCase):
         self.assertEqual(str(device_mesh), str(device_mesh))
 
     def test_device(self):
-        device = Device(global_id=0, local_id=1, machine_id=2, type="GPU")
+        device = core.Device(global_id=0, local_id=1, machine_id=2, type="GPU")
         device.capability.sflops = 100
         device.capability.dflops = 200
         device.capability.memory = 32
@@ -107,7 +108,7 @@ class TestDeviceMesh(unittest.TestCase):
         self.assertEqual(str(device), str(device))
 
     def test_link(self):
-        link = Link(source_id=0, target_id=1, type="NVL")
+        link = core.Link(source_id=0, target_id=1, type="NVL")
         link.capability.bandwidth = 100
         link.capability.latency = 1
         self.assertEqual(link.source_id, 0)

@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-from paddle import _C_ops
-from paddle import ones_like
-from paddle.fluid import core, Program, program_guard
+from paddle import _C_ops, ones_like
+from paddle.fluid import Program, core, program_guard
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 
@@ -61,28 +62,6 @@ class TestOnesLikeAPI(unittest.TestCase):
         ):
             self.assertEqual(outs[i].dtype, dtype)
             self.assertEqual((outs[i] == np.ones(shape, dtype)).all(), True)
-
-
-class TestOnesLikeImpeartive(unittest.TestCase):
-    def test_out(self):
-        shape = [3, 4]
-        place = (
-            fluid.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
-        )
-        paddle.disable_static(place)
-        x = paddle.to_tensor(np.ones(shape))
-        for dtype in [np.bool_, np.float32, np.float64, np.int32, np.int64]:
-            out = ones_like(x, dtype)
-            self.assertEqual((out.numpy() == np.ones(shape, dtype)).all(), True)
-
-        out = paddle.tensor.ones_like(x)
-        self.assertEqual((out.numpy() == np.ones(shape, dtype)).all(), True)
-
-        out = paddle.tensor.creation.ones_like(x)
-        self.assertEqual((out.numpy() == np.ones(shape, dtype)).all(), True)
-        paddle.enable_static()
 
 
 class TestOnesAPI(unittest.TestCase):

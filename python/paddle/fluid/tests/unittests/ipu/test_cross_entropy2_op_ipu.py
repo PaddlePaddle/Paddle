@@ -63,8 +63,12 @@ class TestBase(IPUOpTest):
             label = paddle.static.data(
                 name=self.feed_list[1], shape=self.feed_shape[1], dtype='int64'
             )
-        out = paddle.fluid.layers.cross_entropy(
-            input=x, label=label, **self.attrs
+        out = paddle.nn.functional.cross_entropy(
+            input=x,
+            label=label,
+            reduction='none',
+            use_softmax=False,
+            **self.attrs
         )
         self.fetch_list = [out.name]
 

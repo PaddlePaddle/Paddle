@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import collections
-from itertools import product
 from functools import reduce
+from itertools import product
+
+import paddle
+
 from ..utils.log_util import logger
 
 __all__ = ['CommunicateTopology', 'HybridCommunicateGroup']

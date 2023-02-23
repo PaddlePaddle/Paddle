@@ -13,18 +13,20 @@
 # limitations under the License.
 """Test cases for Downpour."""
 
+import os
+import sys
+import unittest
+
+from google.protobuf import text_format
+
 import paddle
 import paddle.fluid as fluid
-import os
-import unittest
-import sys
-from paddle.fluid.incubate.fleet.parameter_server.pslib.node import (
-    DownpourWorker,
-    DownpourServer,
-)
-from google.protobuf import text_format
-import paddle.fluid.incubate.fleet.parameter_server.pslib.ps_pb2 as pslib
+import paddle.incubate.fleet.parameter_server.pslib.ps_pb2 as pslib
 from paddle.fluid.trainer_factory import TrainerFactory
+from paddle.incubate.fleet.parameter_server.pslib.node import (
+    DownpourServer,
+    DownpourWorker,
+)
 
 cache_path = os.path.expanduser('~/.cache/paddle/dataset')
 
@@ -50,13 +52,15 @@ class TestListenAndServOp(unittest.TestCase):
                     cache_path
                 )
                 os.system(cmd)
-            x = fluid.layers.data(name='x', shape=[1], dtype='int64')
+            x = paddle.static.data(name='x', shape=[-1, 1], dtype='int64')
             x_emb = fluid.layers.embedding(
                 input=x, size=[1, 2], is_distributed=True
             )
-            y_predict = fluid.layers.fc(input=x_emb, size=1, act=None)
-            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+            y_predict = paddle.static.nn.fc(x=x_emb, size=1)
+            y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
             ps_param = pslib.PSParameter()
@@ -112,13 +116,15 @@ class TestListenAndServOp(unittest.TestCase):
                     cache_path
                 )
                 os.system(cmd)
-            x = fluid.layers.data(name='x', shape=[1], dtype='int64')
+            x = paddle.static.data(name='x', shape=[-1, 1], dtype='int64')
             x_emb = fluid.layers.embedding(
                 input=x, size=[1, 2], is_distributed=True
             )
-            y_predict = fluid.layers.fc(input=x_emb, size=1, act=None)
-            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+            y_predict = paddle.static.nn.fc(x=x_emb, size=1)
+            y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
             ps_param = pslib.PSParameter()
@@ -172,13 +178,15 @@ class TestListenAndServOp(unittest.TestCase):
                     cache_path
                 )
                 os.system(cmd)
-            x = fluid.layers.data(name='x', shape=[1], dtype='int64')
+            x = paddle.static.data(name='x', shape=[-1, 1], dtype='int64')
             x_emb = fluid.layers.embedding(
                 input=x, size=[1, 2], is_distributed=True
             )
-            y_predict = fluid.layers.fc(input=x_emb, size=1, act=None)
-            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+            y_predict = paddle.static.nn.fc(x=x_emb, size=1)
+            y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
             ps_param = pslib.PSParameter()
@@ -210,6 +218,7 @@ class TestListenAndServOp(unittest.TestCase):
             opt_info["scale_datanorm"] = -1
             opt_info["dump_slot"] = False
             opt_info["stat_var_names"] = []
+            opt_info["user_define_dump_filename"] = "./dump_filename/dump.txt"
             worker = DownpourWorker(None)
             worker.get_desc().CopyFrom(ps_param.trainer_param[0])
             opt_info["program_id_to_worker"] = {program_id: worker}

@@ -28,12 +28,12 @@ class ReverseOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -48,15 +48,15 @@ class ReverseOpVarTypeInference : public framework::VarTypeInference {
 class ReverseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "The LoDTensor to be flipped.");
-    AddOutput("Out", "The LoDTensor after flipping.");
+    AddInput("X", "The phi::DenseTensor to be flipped.");
+    AddOutput("Out", "The phi::DenseTensor after flipping.");
     AddAttr<std::vector<int>>(
         "axis", "The axises that along which order of elements is reversed.")
         .SupportTensor();
     AddComment(R"DOC(
       Reverse Operator.
 
-      Reverse the order of elements in the input LoDTensor along given axises.
+      Reverse the order of elements in the input phi::DenseTensor along given axises.
 
       Case 1:
         Given

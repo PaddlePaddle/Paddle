@@ -75,7 +75,7 @@ void RepeatInterleaveKernel(const Context& ctx,
   index.Resize(phi::make_ddim({index_size}));
   if (place == cpu_place) {
     DenseTensor x_copy = x;
-    paddle::framework::TensorFromVector<int>(index_vec, &index);
+    phi::TensorFromVector<int>(index_vec, ctx, &index);
 
     auto output_dim = phi::vectorize(x.dims());
     output_dim[dim] = index_size;
@@ -85,7 +85,7 @@ void RepeatInterleaveKernel(const Context& ctx,
   } else {
     auto stride_dim = phi::stride(input_dim);
     int64_t stride = stride_dim[dim];
-    paddle::framework::TensorFromVector<int>(index_vec, ctx, &index);
+    phi::TensorFromVector<int>(index_vec, ctx, &index);
     auto stream = ctx.stream();
     auto output_dim = phi::vectorize(x.dims());
     output_dim[dim] = index_size;

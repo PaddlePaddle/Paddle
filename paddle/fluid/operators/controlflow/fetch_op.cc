@@ -33,13 +33,12 @@ static void DataCopy(const phi::DenseTensor &src_item,
       phi::DenseTensor out;
       // Convert to desired Paddle layout, apart from grads of filter
       // as params are not a subject to paddle's data_format
-      VLOG(4) << "innerTransDataLayoutFromMKLDNN";
-      framework::innerTransDataLayoutFromMKLDNN(
+      VLOG(4) << "TransDataLayoutFromOneDNN";
+      phi::funcs::TransDataLayoutFromOneDNN(
           src_item.layout(),
           fetch_var_name == framework::GradVarName("Filter")
               ? phi::DataLayout::kNCHW
-              : paddle::platform::MKLDNNDeviceContext::tls()
-                    .get_cur_paddle_data_layout(),
+              : phi::OneDNNContext::tls().get_cur_paddle_data_layout(),
           src_item,
           &out,
           platform::CPUPlace());
@@ -143,12 +142,14 @@ class FetchOpInfoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(LoDTensor) The resulted LoDTensor which is expected to return "
+             "(phi::DenseTensor) The resulted phi::DenseTensor which is "
+             "expected to return "
              "to users.");
     AddOutput(
         "Out",
-        "(vector<LoDTensor>|unordered_map<string, int32_t>) A fetching list"
-        " of LoDTensor|unordered_map<string, int32_t> which may have "
+        "(vector<phi::DenseTensor>|unordered_map<string, int32_t>) A fetching "
+        "list"
+        " of phi::DenseTensor|unordered_map<string, int32_t> which may have "
         "different dimension, shape and data type.");
     AddAttr<int>("col", "(int) The column index of fetching object.");
     AddComment(R"DOC(

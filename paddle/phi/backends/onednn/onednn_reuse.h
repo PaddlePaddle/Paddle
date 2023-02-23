@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,12 +15,12 @@ limitations under the License. */
 
 #include <algorithm>
 #include <memory>
+#include <set>
 #include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/backends/onednn/onednn_context.h"
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/common/data_type.h"
@@ -50,101 +50,64 @@ constexpr bool is_bfloat16() {
   return std::is_same<T, dtype::bfloat16>::value;
 }
 
+static std::unordered_map<std::string, dnnl::algorithm> OneDNNActivationMap() {
+  return {{"abs", dnnl::algorithm::eltwise_abs},
+          {"clip", dnnl::algorithm::eltwise_clip},
+          {"gelu", dnnl::algorithm::eltwise_gelu_erf},
+          {"gelu_erf", dnnl::algorithm::eltwise_gelu_erf},
+          {"gelu_tanh", dnnl::algorithm::eltwise_gelu_tanh},
+          {"hard_sigmoid", dnnl::algorithm::eltwise_hardsigmoid},
+          {"hard_swish", dnnl::algorithm::eltwise_hardswish},
+          {"leaky_relu", dnnl::algorithm::eltwise_relu},
+          {"mish", dnnl::algorithm::eltwise_mish},
+          {"relu", dnnl::algorithm::eltwise_relu},
+          {"relu6", dnnl::algorithm::eltwise_bounded_relu},
+          {"sigmoid", dnnl::algorithm::eltwise_logistic},
+          {"sqrt", dnnl::algorithm::eltwise_sqrt},
+          {"swish", dnnl::algorithm::eltwise_swish},
+          {"tanh", dnnl::algorithm::eltwise_tanh}};
+}
+
 static void AppendActivation(const OneDNNContext& dev_ctx,
                              dnnl::post_ops& post_ops,  // NOLINT
-                             float activation_scale = 1.0f) {
-  const auto invalid_attribute =
-      dev_ctx.HasDnnAttr("fuse_activation")
-          ? PADDLE_GET_CONST(std::string, dev_ctx.GetDnnAttr("fuse_activation"))
-                .empty()
-          : true;
-  if (invalid_attribute) return;
+                             float activation_scale = 1.0f,
+                             std::string fuse_activation = "",
+                             float fuse_alpha = 0.0f,
+                             float fuse_beta = 0.0f) {
+  if (fuse_activation == "") {
+    const auto invalid_attribute =
+        dev_ctx.HasDnnAttr("fuse_activation")
+            ? PADDLE_GET_CONST(std::string,
+                               dev_ctx.GetDnnAttr("fuse_activation"))
+                  .empty()
+            : true;
+    if (invalid_attribute) return;
 
-  const auto fuse_activation =
-      dev_ctx.HasDnnAttr("fuse_activation")
-          ? PADDLE_GET_CONST(std::string, dev_ctx.GetDnnAttr("fuse_activation"))
-          : "";
-  const auto fuse_alpha =
-      dev_ctx.HasDnnAttr("fuse_alpha")
-          ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fuse_alpha"))
-          : 0.0f;
-  const auto fuse_beta =
-      dev_ctx.HasDnnAttr("fuse_beta")
-          ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fuse_beta"))
-          : 0.0f;
-
-  if (fuse_activation == "hard_sigmoid") {
-    post_ops.append_eltwise(activation_scale,
-                            dnnl::algorithm::eltwise_linear,
-                            fuse_alpha,
-                            fuse_beta);
-    post_ops.append_eltwise(
-        activation_scale, dnnl::algorithm::eltwise_clip, 0.0f, 1.0f);
-  } else {
-    const std::unordered_map<std::string, dnnl::algorithm> activation_map = {
-        {"abs", dnnl::algorithm::eltwise_abs},
-        {"clip", dnnl::algorithm::eltwise_clip},
-        {"gelu", dnnl::algorithm::eltwise_gelu_erf},
-        {"gelu_erf", dnnl::algorithm::eltwise_gelu_erf},
-        {"gelu_tanh", dnnl::algorithm::eltwise_gelu_tanh},
-        {"hard_swish", dnnl::algorithm::eltwise_hardswish},
-        {"leaky_relu", dnnl::algorithm::eltwise_relu},
-        {"mish", dnnl::algorithm::eltwise_mish},
-        {"relu", dnnl::algorithm::eltwise_relu},
-        {"relu6", dnnl::algorithm::eltwise_bounded_relu},
-        {"sigmoid", dnnl::algorithm::eltwise_logistic},
-        {"sqrt", dnnl::algorithm::eltwise_sqrt},
-        {"swish", dnnl::algorithm::eltwise_swish},
-        {"tanh", dnnl::algorithm::eltwise_tanh}};
-
-    const auto& activation_type = activation_map.find(fuse_activation);
-
-    PADDLE_ENFORCE_NE(
-        activation_type,
-        activation_map.end(),
-        errors::InvalidArgument(
-            "Activation '%s' not found in oneDNN algorithms mapper",
-            fuse_activation));
-
-    post_ops.append_eltwise(
-        activation_scale, activation_type->second, fuse_alpha, fuse_beta);
+    fuse_activation =
+        dev_ctx.HasDnnAttr("fuse_activation")
+            ? PADDLE_GET_CONST(std::string,
+                               dev_ctx.GetDnnAttr("fuse_activation"))
+            : "";
+    fuse_alpha = dev_ctx.HasDnnAttr("fuse_alpha")
+                     ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fuse_alpha"))
+                     : 0.0f;
+    fuse_beta = dev_ctx.HasDnnAttr("fuse_beta")
+                    ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fuse_beta"))
+                    : 0.0f;
   }
-}
 
-static std::unordered_map<std::string, std::string> GetAttributeMap(
-    std::string act_type) {
-  std::unordered_map<std::string, std::string> attr_map;
-  if (act_type == "swish") {
-    attr_map.emplace("beta", "fuse_alpha");
-  } else if (act_type == "relu6") {
-    attr_map.emplace("threshold", "fuse_alpha");
-  } else if (act_type == "hard_sigmoid") {
-    attr_map.emplace("slope", "fuse_alpha");
-    attr_map.emplace("offset", "fuse_beta");
-  } else if (act_type == "clip") {
-    attr_map.emplace("min", "fuse_alpha");
-    attr_map.emplace("max", "fuse_beta");
-  } else {
-    attr_map.emplace("alpha", "fuse_alpha");
-    attr_map.emplace("beta", "fuse_beta");
-  }
-  return attr_map;
-}
+  const auto activation_map = OneDNNActivationMap();
 
-static std::vector<std::string> GetSupportedActivations() {
-  return std::vector<std::string>{"abs",
-                                  "clip",
-                                  "gelu",
-                                  "hard_sigmoid",
-                                  "hard_swish",
-                                  "leaky_relu",
-                                  "mish",
-                                  "relu",
-                                  "relu6",
-                                  "sigmoid",
-                                  "sqrt",
-                                  "swish",
-                                  "tanh"};
+  const auto& activation_type = activation_map.find(fuse_activation);
+
+  PADDLE_ENFORCE_NE(activation_type,
+                    activation_map.end(),
+                    errors::InvalidArgument(
+                        "Activation '%s' not found in oneDNN algorithms mapper",
+                        fuse_activation));
+
+  post_ops.append_eltwise(
+      activation_scale, activation_type->second, fuse_alpha, fuse_beta);
 }
 
 template <typename T,
@@ -423,11 +386,6 @@ class OneDNNHandlerT {
 
     auto& astream = OneDNNContext::tls().get_stream();
 
-    paddle::platform::RecordEvent record_reorder(
-        "int_reorder",
-        paddle::platform::TracerEventType::UserDefined,
-        1,
-        paddle::platform::EventRole::kUniqueOp);
     reorder_p->execute(
         astream,
         {{DNNL_ARG_FROM, *user_memory_p}, {DNNL_ARG_TO, *target_memory_p}});
@@ -476,11 +434,6 @@ class OneDNNHandlerT {
         dev_ctx_.SetBlob(key_reorder_p, reorder_p);
 
         auto& astream = OneDNNContext::tls().get_stream();
-        paddle::platform::RecordEvent record_reorder(
-            "int_reorder",
-            paddle::platform::TracerEventType::UserDefined,
-            1,
-            paddle::platform::EventRole::kUniqueOp);
         reorder_p->execute(
             astream,
             {{DNNL_ARG_FROM, *user_memory_p}, {DNNL_ARG_TO, *target_memory_p}});
@@ -502,11 +455,6 @@ class OneDNNHandlerT {
       auto reorder_p = std::static_pointer_cast<dnnl::reorder>(
           dev_ctx_.GetBlob(key_reorder_p));
       if (reorder_p != nullptr) {
-        paddle::platform::RecordEvent record_reorder(
-            "int_reorder",
-            paddle::platform::TracerEventType::UserDefined,
-            1,
-            paddle::platform::EventRole::kUniqueOp);
         reorder_p->execute(
             astream,
             {{DNNL_ARG_FROM, *user_memory_p}, {DNNL_ARG_TO, *target_memory_p}});
@@ -690,11 +638,6 @@ class OneDNNHandlerNoCachingT {
 
     auto& astream = OneDNNContext::tls().get_stream();
 
-    paddle::platform::RecordEvent record_reorder(
-        "int_reorder",
-        paddle::platform::TracerEventType::UserDefined,
-        1,
-        paddle::platform::EventRole::kUniqueOp);
     reorder_p->execute(
         astream,
         {{DNNL_ARG_FROM, *user_memory_p}, {DNNL_ARG_TO, *target_memory_p}});
@@ -721,11 +664,6 @@ class OneDNNHandlerNoCachingT {
           std::make_shared<dnnl::reorder>(*user_memory_p, *target_memory_p);
 
       auto& astream = OneDNNContext::tls().get_stream();
-      paddle::platform::RecordEvent record_reorder(
-          "int_reorder",
-          paddle::platform::TracerEventType::UserDefined,
-          1,
-          paddle::platform::EventRole::kUniqueOp);
       reorder_p->execute(
           astream,
           {{DNNL_ARG_FROM, *user_memory_p}, {DNNL_ARG_TO, *target_memory_p}});
@@ -1660,6 +1598,85 @@ class PoolingOneDNNHandler
   }
 };
 
+static void SetOutMemDescWithUnsqueeze2FuseSupport(
+    const std::vector<int> fused_unsqueeze2_axes,
+    phi::DenseTensor* out,
+    const dnnl::memory::desc& out_md) {
+  const std::vector<int64_t>& op_tz = out_md.dims();
+  std::vector<int64_t> unsqueezed_op_tz(
+      op_tz.size() + fused_unsqueeze2_axes.size(), 0);
+
+  for (const auto& axis : fused_unsqueeze2_axes) {
+    int positive_axis = axis < 0 ? unsqueezed_op_tz.size() + axis : axis;
+    unsqueezed_op_tz[positive_axis] = 1;
+  }
+
+  int j = 0;
+  for (size_t i = 0; i < unsqueezed_op_tz.size(); ++i) {
+    if (unsqueezed_op_tz[i] == 0) {
+      unsqueezed_op_tz[i] = op_tz[j++];
+    }
+  }
+  out->set_mem_desc(out_md.reshape(unsqueezed_op_tz));
+  out->Resize(make_ddim(unsqueezed_op_tz));
+}
+
+static void SetOutMemDescWithReshape2FuseSupport(
+    const std::vector<int> fused_reshape2_shape_,
+    phi::DenseTensor* out,
+    const dnnl::memory::desc& out_md) {
+  std::vector<int64_t> fused_reshape2_shape(fused_reshape2_shape_.begin(),
+                                            fused_reshape2_shape_.end());
+
+  const int out_shape_numel = out->numel();
+  const int new_shape_numel = std::accumulate(fused_reshape2_shape.begin(),
+                                              fused_reshape2_shape.end(),
+                                              1,
+                                              std::multiplies<int64_t>());
+
+  for (size_t i = 0; i < fused_reshape2_shape.size(); ++i) {
+    if (fused_reshape2_shape[i] == -1) {
+      fused_reshape2_shape[i] = -out_shape_numel / new_shape_numel;
+      break;
+    }
+  }
+
+  out->set_mem_desc(out_md.reshape(fused_reshape2_shape));
+  out->Resize(phi::make_ddim(fused_reshape2_shape));
+}
+
+static void SetOutMemDescWithLogicalLayoutFusesSupport(
+    const OneDNNContext& dev_ctx,
+    phi::DenseTensor* out,
+    const dnnl::memory::desc& out_md) {
+  const auto fused_unsqueeze2_axes =
+      dev_ctx.HasDnnAttr("fused_unsqueeze2_axes")
+          ? PADDLE_GET_CONST(std::vector<int>,
+                             dev_ctx.GetDnnAttr("fused_unsqueeze2_axes"))
+          : std::vector<int>();
+  const auto fused_reshape2_shape =
+      dev_ctx.HasDnnAttr("fused_reshape2_shape")
+          ? PADDLE_GET_CONST(std::vector<int>,
+                             dev_ctx.GetDnnAttr("fused_reshape2_shape"))
+          : std::vector<int>();
+  const auto fused_squeeze2_axes =
+      dev_ctx.HasDnnAttr("fused_squeeze2_axes")
+          ? PADDLE_GET_CONST(std::vector<int>,
+                             dev_ctx.GetDnnAttr("fused_squeeze2_axes"))
+          : std::vector<int>();
+
+  if (!fused_unsqueeze2_axes.empty()) {
+    SetOutMemDescWithUnsqueeze2FuseSupport(fused_unsqueeze2_axes, out, out_md);
+  } else if (!fused_reshape2_shape.empty()) {
+    SetOutMemDescWithReshape2FuseSupport(fused_reshape2_shape, out, out_md);
+  } else if (!fused_squeeze2_axes.empty()) {
+    out->set_mem_desc(out_md);
+    out->Resize(make_ddim(out_md.dims()));
+  } else {
+    out->set_mem_desc(out_md);
+  }
+}
+
 static DDim RowMatrixDimsFromVector(const DDim& x_dim) {
   return x_dim.size() > 1 ? x_dim : make_ddim({1, x_dim[0]});
 }
@@ -1676,22 +1693,22 @@ static std::vector<int64_t> TransposeAxis(const std::vector<int64_t>& x,
   auto axis_set = std::set<int>(axis.begin(), axis.end());
   PADDLE_ENFORCE_EQ(axis_set.size(),
                     axis_size,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "In an axis array, elements must be unique."));
 
-  PADDLE_ENFORCE_EQ(in_rank,
-                    axis_size,
-                    paddle::platform::errors::InvalidArgument(
-                        "The input dimension's size "
-                        "should be equal to the axis's size. "
-                        "But received dimension is %d, "
-                        "axis's size is %d",
-                        in_rank,
-                        axis_size));
+  PADDLE_ENFORCE_EQ(
+      in_rank,
+      axis_size,
+      phi::errors::InvalidArgument("The input dimension's size "
+                                   "should be equal to the axis's size. "
+                                   "But received dimension is %d, "
+                                   "axis's size is %d",
+                                   in_rank,
+                                   axis_size));
 
   PADDLE_ENFORCE_LT(*std::max_element(axis.begin(), axis.end()),
                     axis_size,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Axis values must be ranging from 0 to (dims - 1)."));
 
   std::vector<int64_t> new_x(x.size());
@@ -1874,9 +1891,11 @@ class MatmulOneDNNHandler : public OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
     if (scale_out != 1.0f) {
       matmul_attrs.set_output_scales(0, {scale_out});
     }
+    const auto* residual_data = dev_ctx.HasDnnInput("ResidualData")
+                                    ? dev_ctx.GetDnnInput("ResidualData")
+                                    : nullptr;
 
-    if (dev_ctx.HasDnnInput("ResidualData")) {
-      auto* residual_data = dev_ctx.GetDnnInput("ResidualData");
+    if (residual_data) {
       auto residual_data_tz = vectorize(residual_data->dims());
       auto residual_data_md = memory::desc(residual_data_tz,
                                            OneDNNGetDataType<OT>(),
@@ -1893,9 +1912,11 @@ class MatmulOneDNNHandler : public OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
 
     AppendActivation(dev_ctx, post_operations);
 
-    if (dev_ctx.HasDnnAttr("fused_output_scale")) {
-      float scale_alpha =
-          PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fused_output_scale"));
+    const float scale_alpha =
+        dev_ctx.HasDnnAttr("fused_output_scale")
+            ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fused_output_scale"))
+            : 1.0f;
+    if (scale_alpha != 1.0f) {
       post_operations.append_eltwise(
           1.0, dnnl::algorithm::eltwise_linear, scale_alpha, 0.0f);
     }
@@ -2014,8 +2035,11 @@ void ExecuteMatmul(const OneDNNContext& dev_ctx,
       {DNNL_ARG_WEIGHTS, *weights_memory_p},
       {DNNL_ARG_DST, *dst_memory_p}};
 
-  if (dev_ctx.HasDnnInput("ResidualData")) {
-    auto* residual_data = dev_ctx.GetDnnInput("ResidualData");
+  const auto* residual_data = dev_ctx.HasDnnInput("ResidualData")
+                                  ? dev_ctx.GetDnnInput("ResidualData")
+                                  : nullptr;
+
+  if (residual_data) {
     const auto residual_data_memory_p = handler.AcquireSrcMemory(residual_data);
     matmul_args.insert({DNNL_ARG_ATTR_MULTIPLE_POST_OP(0) | DNNL_ARG_SRC_1,
                         *residual_data_memory_p});

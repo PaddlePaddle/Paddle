@@ -23,8 +23,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using LoDTensor = phi::DenseTensor;
-
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -84,7 +82,7 @@ class RowConvOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "the input(X) is a LodTensor or tensor, LodTensor(X) supports "
              "variable time-length input sequences. The underlying tensor "
-             "in this LoDTensor is a matrix with shape (T x N), where T "
+             "in this phi::DenseTensor is a matrix with shape (T x N), where T "
              "is the total time steps in this mini-batch and N is the input "
              "data dimension. the shape of Tensor input(X) has shape "
              "(B x T x N), B is batch size;");
@@ -142,9 +140,9 @@ template <typename T>
 class RowConvKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *x = context.Input<LoDTensor>("X");
+    auto *x = context.Input<phi::DenseTensor>("X");
     auto *filter = context.Input<phi::DenseTensor>("Filter");
-    auto *out = context.Output<LoDTensor>("Out");
+    auto *out = context.Output<phi::DenseTensor>("Out");
 
     out->mutable_data<T>(context.GetPlace());
 
@@ -155,7 +153,7 @@ class RowConvKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
     } else {
       batch_size = x->lod()[0].size() - 1;
     }
-    framework::Vector<size_t> batch_indices(batch_size + 1);
+    phi::Vector<size_t> batch_indices(batch_size + 1);
     int input_dim = 0;
     int timesteps = 0;
     if (is_tensor) {
@@ -217,10 +215,11 @@ template <typename T>
 class RowConvGradKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *x = context.Input<LoDTensor>("X");
+    auto *x = context.Input<phi::DenseTensor>("X");
     auto *filter = context.Input<phi::DenseTensor>("Filter");
-    auto *d_out = context.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto *dx = context.Output<LoDTensor>(framework::GradVarName("X"));
+    auto *d_out =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto *dx = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto *d_filter =
         context.Output<phi::DenseTensor>(framework::GradVarName("Filter"));
 
@@ -232,7 +231,7 @@ class RowConvGradKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
     } else {
       batch_size = x->lod()[0].size() - 1;
     }
-    framework::Vector<size_t> batch_indices(batch_size + 1);
+    phi::Vector<size_t> batch_indices(batch_size + 1);
     int timesteps = 0;
     int input_dim = 0;
     if (is_tensor) {

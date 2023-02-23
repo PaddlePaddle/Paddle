@@ -24,11 +24,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/elementwise/elementwise_functor.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/transform.h"
 #include "paddle/phi/api/lib/utils/tensor_utils.h"
+#include "paddle/phi/common/transform.h"
 #include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/cpu/elementwise_grad.h"
 
@@ -61,11 +62,11 @@ namespace operators {
 /*
  *  Pack input and output tensors into respective vectors with
  *  consideration of varible X`s class type.
- *  Input variable X is supported to be whether LoDTensor or
+ *  Input variable X is supported to be whether phi::DenseTensor or
  *  SelectedRows class type in this package function, once X
  *  was SelectedRows type, a valid pointer x_for_selectedrows
  *  is excepted to be passed in from op kernel for acquisition
- *  of the valid address of LoDTensor created ahead in the function.
+ *  of the valid address of phi::DenseTensor created ahead in the function.
  */
 template <typename OutT>
 int PackTensorsIntoVector(const framework::ExecutionContext &ctx,
@@ -112,7 +113,7 @@ int PackTensorsIntoVector(const framework::ExecutionContext &ctx,
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "X's type[%s] is not supported by elementwise_op. X's type should be "
-        "LoDTensor or SelectedRows.",
+        "phi::DenseTensor or SelectedRows.",
         framework::ToTypeName(x_var->Type())));
   }
   z->mutable_data<OutT>(ctx.GetPlace());

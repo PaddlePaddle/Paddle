@@ -21,7 +21,6 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using DDim = framework::DDim;
 template <typename T,
           size_t D,

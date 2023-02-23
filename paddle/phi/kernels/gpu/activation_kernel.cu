@@ -215,21 +215,24 @@ PD_REGISTER_KERNEL(exp,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(expm1,
                    GPU,
                    ALL_LAYOUT,
                    phi::Expm1Kernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(logit,
                    GPU,
                    ALL_LAYOUT,
                    phi::LogitKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(square,
                    GPU,
                    ALL_LAYOUT,

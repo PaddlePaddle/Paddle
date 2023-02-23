@@ -22,15 +22,12 @@
 namespace paddle {
 namespace operators {
 
-using LoDTensor = phi::DenseTensor;
-using Tensor = phi::DenseTensor;
-
 template <typename DeviceContext, typename T>
 class OneHotXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    const auto* in = context.Input<LoDTensor>("X");
-    auto* out = context.Output<LoDTensor>("Out");
+    const auto* in = context.Input<phi::DenseTensor>("X");
+    auto* out = context.Output<phi::DenseTensor>("Out");
 
     // get depth from attr
     int depth = context.Attr<int>("depth");

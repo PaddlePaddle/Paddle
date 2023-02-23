@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
 import paddle
-from paddle.vision.ops import roi_align, RoIAlign
+from paddle.vision.ops import RoIAlign, roi_align
 
 
 class TestRoIAlign(unittest.TestCase):

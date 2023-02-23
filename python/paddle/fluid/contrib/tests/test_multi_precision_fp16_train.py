@@ -18,7 +18,7 @@ import contextlib
 import unittest
 import numpy as np
 from paddle.io import Dataset
-from paddle.fluid.contrib.mixed_precision.fp16_utils import cast_model_to_fp16
+from paddle.static.amp.fp16_utils import cast_model_to_fp16
 
 paddle.enable_static()
 
@@ -50,7 +50,7 @@ def resnet_cifar10(input, depth=32):
     def conv_bn_layer(
         input, ch_out, filter_size, stride, padding, act='relu', bias_attr=False
     ):
-        tmp = fluid.layers.conv2d(
+        tmp = paddle.static.nn.conv2d(
             input=input,
             filter_size=filter_size,
             num_filters=ch_out,
@@ -59,7 +59,7 @@ def resnet_cifar10(input, depth=32):
             act=None,
             bias_attr=bias_attr,
         )
-        return fluid.layers.batch_norm(input=tmp, act=act)
+        return paddle.static.nn.batch_norm(input=tmp, act=act)
 
     def shortcut(input, ch_in, ch_out, stride):
         if ch_in != ch_out:
@@ -71,7 +71,7 @@ def resnet_cifar10(input, depth=32):
         tmp = conv_bn_layer(input, ch_out, 3, stride, 1)
         tmp = conv_bn_layer(tmp, ch_out, 3, 1, 1, act=None, bias_attr=True)
         short = shortcut(input, ch_in, ch_out, stride)
-        return fluid.layers.elementwise_add(x=tmp, y=short, act='relu')
+        return paddle.nn.functional.relu(paddle.add(x=tmp, y=short))
 
     def layer_warp(block_func, input, ch_in, ch_out, count, stride):
         tmp = block_func(input, ch_in, ch_out, stride)
@@ -88,9 +88,7 @@ def resnet_cifar10(input, depth=32):
         res1 = layer_warp(basicblock, conv1, 16, 16, n, 1)
         res2 = layer_warp(basicblock, res1, 16, 32, n, 2)
         res3 = layer_warp(basicblock, res2, 32, 64, n, 2)
-    pool = fluid.layers.pool2d(
-        input=res3, pool_size=8, pool_type='avg', pool_stride=1
-    )
+    pool = paddle.nn.functional.avg_pool2d(x=res3, kernel_size=8, stride=1)
     return pool
 
 
@@ -104,13 +102,13 @@ def train(use_pure_fp16=True, use_nesterov=False, optimizer=""):
     train_program.random_seed = 123
     startup_prog.random_seed = 456
     with fluid.program_guard(train_program, startup_prog):
-        images = fluid.layers.data(
-            name='pixel', shape=data_shape, dtype='float32'
+        images = paddle.static.data(
+            name='pixel', shape=[-1] + data_shape, dtype='float32'
         )
-        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+        label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
         net = resnet_cifar10(images)
-        logits = fluid.layers.fc(input=net, size=classdim, act="softmax")
-        cost = fluid.layers.softmax_with_cross_entropy(
+        logits = paddle.static.nn.fc(x=net, size=classdim, activation="softmax")
+        cost = paddle.nn.functional.softmax_with_cross_entropy(
             logits, label, return_softmax=False
         )
         sum_cost = paddle.sum(cost)
@@ -277,11 +275,11 @@ class TestAmpWithNonIterableDataLoader(unittest.TestCase):
         start_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, start_prog):
             with paddle.fluid.unique_name.guard():
-                image = fluid.layers.data(
-                    name='image', shape=[3, 224, 224], dtype='float32'
+                image = paddle.static.data(
+                    name='image', shape=[-1, 3, 224, 224], dtype='float32'
                 )
-                label = fluid.layers.data(
-                    name='label', shape=[1], dtype='int64'
+                label = paddle.static.data(
+                    name='label', shape=[-1, 1], dtype='int64'
                 )
                 py_reader = fluid.io.DataLoader.from_generator(
                     feed_list=[image, label],
@@ -297,12 +295,14 @@ class TestAmpWithNonIterableDataLoader(unittest.TestCase):
                 )
                 with fluid.layers.control_flow.Switch() as switch:
                     with switch.case(label != zero_var):
-                        fluid.layers.assign(input=zero_var, output=label)
+                        paddle.assign(zero_var, output=label)
                     with switch.default():
-                        fluid.layers.assign(input=one_var, output=label)
+                        paddle.assign(one_var, output=label)
 
                 net = resnet_cifar10(image)
-                logits = fluid.layers.fc(input=net, size=10, act="softmax")
+                logits = paddle.static.nn.fc(
+                    x=net, size=10, activation="softmax"
+                )
 
         block = main_prog.global_block()
         for op in block.ops:

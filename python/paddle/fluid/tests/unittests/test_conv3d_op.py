@@ -13,12 +13,12 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 
-import paddle.fluid.core as core
+import numpy as np
 from op_test import OpTest
-import paddle.fluid as fluid
+
 import paddle
+import paddle.fluid.core as core
 
 
 def conv3d_forward_naive(
@@ -864,17 +864,15 @@ create_test_cudnn_channel_last_class(TestWith1x1_AsyPadding)
 class TestConv3DAPI(unittest.TestCase):
     def test_api(self):
 
-        input_NDHWC = fluid.layers.data(
+        input_NDHWC = paddle.static.data(
             name="input_NDHWC",
             shape=[2, 5, 5, 5, 3],
-            append_batch_size=False,
             dtype="float32",
         )
 
-        input_NCDHW = fluid.layers.data(
+        input_NCDHW = paddle.static.data(
             name="input_NCDHW",
             shape=[2, 3, 5, 5, 3],
-            append_batch_size=False,
             dtype="float32",
         )
 
@@ -947,10 +945,9 @@ class TestConv3DAPI(unittest.TestCase):
 
 class TestConv3DAPI_Error(unittest.TestCase):
     def test_api(self):
-        input = fluid.layers.data(
+        input = paddle.static.data(
             name="input",
             shape=[2, 5, 5, 5, 4],
-            append_batch_size=False,
             dtype="float32",
         )
 
@@ -1033,10 +1030,9 @@ class TestConv3DAPI_Error(unittest.TestCase):
         self.assertRaises(ValueError, run_5)
 
         # ValueError: channel dimmention
-        x = fluid.layers.data(
+        x = paddle.static.data(
             name="x",
             shape=[2, 5, 5, 5, -1],
-            append_batch_size=False,
             dtype="float32",
         )
 

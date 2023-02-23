@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
+import paddle
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 paddle.enable_static()

@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from op_test import OpTest
+
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
-from op_test import OpTest
 
 
 def ftrl_step(param, grad, rows, sq_accum, lin_accum, lr, l1, l2, lr_power):

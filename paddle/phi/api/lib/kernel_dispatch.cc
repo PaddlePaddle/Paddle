@@ -22,6 +22,9 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/string_tensor_utils.h"
 #include "paddle/phi/core/tensor_utils.h"
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/backends/device_manager.h"
+#endif
 
 namespace paddle {
 namespace experimental {
@@ -54,10 +57,15 @@ bool HasAllocation(const phi::TensorBase& t) {
 
 BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
   if (HasAllocation(t) && t.place().GetType() != AllocationType::UNDEFINED) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    if (t.place().GetType() == AllocationType::CUSTOM) {
+      phi::DeviceManager::SetDevice(t.place());
+    }
+#endif
     phi::Backend backend_key = phi::TransToPhiBackend(t.place());
     BackendSet backend_set(backend_key);
     if (backend_key == Backend::GPU && phi::DenseTensor::classof(&t) &&
-        static_cast<const phi::DenseTensor&>(t).meta().use_cudnn) {
+        static_cast<const phi::DenseTensor&>(t).meta().use_gpudnn) {
       backend_set = backend_set | BackendSet(Backend::GPUDNN);
     }
     return backend_set;
@@ -126,7 +134,7 @@ Backend ParseBackend(const Tensor& tensor) {
   Backend backend_key = phi::TransToPhiBackend(tensor.place());
   if (backend_key == Backend::GPU &&
       phi::DenseTensor::classof(tensor.impl().get()) &&
-      static_cast<phi::DenseTensor*>(tensor.impl().get())->meta().use_cudnn) {
+      static_cast<phi::DenseTensor*>(tensor.impl().get())->meta().use_gpudnn) {
     return Backend::GPUDNN;
   }
   return backend_key;

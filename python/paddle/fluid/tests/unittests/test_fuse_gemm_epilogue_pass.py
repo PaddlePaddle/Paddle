@@ -14,9 +14,11 @@
 # limitations under the License.
 """Test cases for role makers."""
 
-import paddle
 import unittest
+
 import numpy as np
+
+import paddle
 import paddle.fluid.core as core
 
 
@@ -144,11 +146,8 @@ class TestFuseGemmEpilogueFWDBase(unittest.TestCase):
     def _test_output(self):
         build_strategy = paddle.static.BuildStrategy()
         build_strategy.fuse_gemm_epilogue = True
-        program = paddle.static.CompiledProgram(self.main_prog)
-        program = program.with_data_parallel(
-            loss_name=self.loss.name,
-            build_strategy=build_strategy,
-            places=paddle.static.cuda_places(),
+        program = paddle.static.CompiledProgram(
+            self.main_prog, build_strategy=build_strategy
         )
 
         result = self.exe.run(
@@ -330,11 +329,8 @@ class TestFuseGemmEpilogueBWDBase(unittest.TestCase):
     def _test_output(self):
         build_strategy = paddle.static.BuildStrategy()
         build_strategy.fuse_gemm_epilogue = True
-        program = paddle.static.CompiledProgram(self.main_prog)
-        program = program.with_data_parallel(
-            loss_name=self.loss.name,
-            build_strategy=build_strategy,
-            places=paddle.static.cuda_places(),
+        program = paddle.static.CompiledProgram(
+            self.main_prog, build_strategy=build_strategy
         )
 
         outs_res = self.exe.run(program, feed=self.feed, fetch_list=self.fetch)

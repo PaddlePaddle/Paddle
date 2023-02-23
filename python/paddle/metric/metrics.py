@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import abc
+
 import numpy as np
 
-from ..fluid.data_feeder import check_variable_and_dtype
-from ..fluid.layer_helper import LayerHelper
-from ..fluid.framework import _non_static_mode, _varbase_creator
 import paddle
 from paddle import _legacy_C_ops
+
+from ..fluid.data_feeder import check_variable_and_dtype
+from ..fluid.framework import _non_static_mode, _varbase_creator
+from ..fluid.layer_helper import LayerHelper
 
 __all__ = []
 
@@ -267,7 +269,7 @@ class Accuracy(Metric):
         if (len(label.shape) == 1) or (
             len(label.shape) == 2 and label.shape[-1] == 1
         ):
-            # In static mode, the real label data shape may be different
+            # In static graph mode, the real label data shape may be different
             # from shape defined by paddle.static.InputSpec in model
             # building, reshape to the right shape.
             label = paddle.reshape(label, (-1, 1))

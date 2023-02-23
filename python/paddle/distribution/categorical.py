@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import numpy as np
+
 import paddle
 from paddle.distribution import distribution
 from paddle.fluid.data_feeder import check_type, convert_dtype
@@ -111,7 +112,7 @@ class Categorical(distribution.Distribution):
                 self.dtype = logits.dtype
             self.logits = self._to_tensor(logits)[0]
             if self.dtype != convert_dtype(self.logits.dtype):
-                self.logits = tensor.cast(self.logits, dtype=self.dtype)
+                self.logits = paddle.cast(self.logits, dtype=self.dtype)
         dist_sum = paddle.sum(self.logits, axis=-1, keepdim=True)
         self._prob = self.logits / dist_sum
 

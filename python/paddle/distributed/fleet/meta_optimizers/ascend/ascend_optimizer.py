@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.optimizer import Optimizer
-import paddle.framework.core as core
-from . import ascend_parser
-from paddle.distributed import fleet
-import hccl.manage.api as hccl
 from collections import namedtuple
+
+import hccl.manage.api as hccl
+
+import paddle.framework.core as core
+from paddle.distributed import fleet
+from paddle.optimizer import Optimizer
+
+from . import ascend_parser
 
 HcomGroupConfig = namedtuple('HcomGroupConfig', ['name', 'nranks', 'rank_ids'])
 
@@ -233,6 +236,10 @@ class AscendOptimizer(Optimizer):
                 ret_list.append(var)
         return ret_list
 
+    def _set_auxiliary_var(self, key, val):
+        super()._set_auxiliary_var(key, val)
+        self.inner_opt._set_auxiliary_var(key, val)
+
     def minimize(
         self,
         loss,
@@ -254,7 +261,7 @@ class AscendOptimizer(Optimizer):
         from paddle.distributed import fleet
 
         if auto_dp and fleet.world_size() > 1:
-            from paddle.fluid.transpiler import ascend_transpiler
+            from paddle.distributed.transpiler import ascend_transpiler
 
             t = ascend_transpiler.AscendTranspiler(
                 startup_program, loss.block.program

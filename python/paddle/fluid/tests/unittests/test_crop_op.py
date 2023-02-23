@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
 
@@ -147,8 +149,13 @@ class TestCropNoneShape(unittest.TestCase):
         self.assertEqual(crop.shape, (3, 6, 6))
 
 
-if __name__ == '__main__':
-    import paddle
+class TestCropError(unittest.TestCase):
+    def test_neg_offset_error(self):
+        with self.assertRaises(ValueError):
+            x = fluid.data(name='input2', shape=[1], dtype="float32")
+            out = paddle.crop(x, offsets=[-1])
 
+
+if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

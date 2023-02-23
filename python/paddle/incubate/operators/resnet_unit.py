@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import numpy as np
+
 import paddle.fluid as fluid
-from paddle.nn import initializer as I
-from paddle.nn import Layer
-from paddle.fluid.layers import utils
 from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.layers import utils
 from paddle.fluid.param_attr import ParamAttr
+from paddle.nn import Layer
+from paddle.nn import initializer as I
 
 
 def resnet_unit(

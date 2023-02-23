@@ -60,7 +60,7 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
         weight_data_tmp.data(), weight_data, weight_t->numel() * sizeof(float));
 
     // (hidden_in, 3, hidden_out)
-    auto weight_dims = weight_t->dims();
+    auto& weight_dims = weight_t->dims();
 
     int hidden_in = weight_dims[0];   // channels_in
     int three = weight_dims[1];       // channels_out

@@ -12,19 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import sys
+import unittest
+
 import numpy as np
 
 sys.path.append("..")
 from op_test_xpu import XPUOpTest
-import paddle.fluid as fluid
-import paddle
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
+import paddle.fluid as fluid
 
 paddle.enable_static()
 np.random.seed(10)
@@ -195,18 +197,16 @@ class TestExpandV2API(unittest.TestCase):
     def test_static(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             input = np.random.random([12, 14]).astype("float32")
-            x = fluid.layers.data(
+            x = paddle.static.data(
                 name='x',
                 shape=[12, 14],
-                append_batch_size=False,
                 dtype="float32",
             )
 
             positive_2 = fluid.layers.fill_constant([1], "int32", 12)
-            expand_shape = fluid.layers.data(
+            expand_shape = paddle.static.data(
                 name="expand_shape",
                 shape=[2],
-                append_batch_size=False,
                 dtype="int32",
             )
 

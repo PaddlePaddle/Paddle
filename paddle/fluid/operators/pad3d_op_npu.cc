@@ -19,8 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 static inline std::vector<int> GetPaddings(
     const framework::ExecutionContext& context) {
   std::vector<int> paddings(6);

@@ -15,11 +15,7 @@
 # Notice that the following codes are modified from KerasTuner to implement our own tuner.
 # Please refer to https://github.com/keras-team/keras-tuner/blob/master/keras_tuner/engine/hyperparameters.py.
 
-from .tunable_variable import Boolean
-from .tunable_variable import Fixed
-from .tunable_variable import Choice
-from .tunable_variable import IntRange
-from .tunable_variable import FloatRange
+from .tunable_variable import Boolean, Choice, Fixed, FloatRange, IntRange
 
 
 class TunableSpace:

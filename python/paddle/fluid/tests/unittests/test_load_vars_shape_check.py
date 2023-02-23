@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import os
 import shutil
+import unittest
+
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.executor import Executor
 
@@ -28,8 +30,10 @@ class TestLoadVarsShapeCheck(unittest.TestCase):
         startup_program_1 = fluid.Program()
 
         with fluid.program_guard(program_1, startup_program_1):
-            input = fluid.layers.data(name="x", shape=[-1, 10], dtype='float32')
-            out = fluid.layers.fc(input, 20)
+            input = paddle.static.data(
+                name="x", shape=[-1, 10], dtype='float32'
+            )
+            out = paddle.static.nn.fc(input, 20)
         place = fluid.CPUPlace()
         exe = Executor(place)
         exe.run(startup_program_1)

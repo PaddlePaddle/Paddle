@@ -118,8 +118,8 @@ static void CallPythonFunc(py::object *callable,
       out->ShareDataWith(*py_out_tensor);
     } catch (py::cast_error &) {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "py::cast to LoDTensor error. The %d-th output expection is "
-          "LoDTensor",
+          "py::cast to phi::DenseTensor error. The %d-th output expection is "
+          "phi::DenseTensor",
           i));
     }
   }

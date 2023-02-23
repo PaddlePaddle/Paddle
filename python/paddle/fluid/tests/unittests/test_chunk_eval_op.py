@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
-import numpy as np
+from eager_op_test import OpTest
 
 
 class Segment:
@@ -222,7 +222,8 @@ class TestChunkEvalOp(OpTest):
         self.set_data()
 
     def test_check_output(self):
-        self.check_output()
+        # NODE(yjjiang11): This op will be deprecated.
+        self.check_output(check_dygraph=False)
 
 
 class TestChunkEvalOpWithExclude(TestChunkEvalOp):

@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
 import os
 import sys
-import argparse
+
+from paddle.distributed.launch.job.container import Container
 
 from .collective import CollectiveController, ControleMode
-from paddle.distributed.launch.job.container import Container
 
 
 class IPUController(CollectiveController):

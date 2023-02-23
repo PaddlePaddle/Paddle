@@ -16,17 +16,16 @@ import time
 import unittest
 
 import numpy as np
+from test_resnet import SEED, ResNet, optimizer_setting
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import ProgramTranslator
-from test_resnet import ResNet, optimizer_setting, SEED
+from paddle.fluid import core
 
 # NOTE: Reduce batch_size from 8 to 2 to avoid unittest timeout.
 batch_size = 2
 epoch_num = 1
 
-program_translator = ProgramTranslator()
 
 if fluid.is_compiled_with_cuda():
     fluid.set_flags({'FLAGS_cudnn_deterministic': True})
@@ -34,7 +33,7 @@ if fluid.is_compiled_with_cuda():
 
 def train(to_static, build_strategy=None):
     """
-    Tests model decorated by `dygraph_to_static_output` in static mode. For users, the model is defined in dygraph mode and trained in static mode.
+    Tests model decorated by `dygraph_to_static_output` in static graph mode. For users, the model is defined in dygraph mode and trained in static graph mode.
     """
     np.random.seed(SEED)
     paddle.seed(SEED)
@@ -75,10 +74,12 @@ def train(to_static, build_strategy=None):
                 level='O2',
             ):
                 pred = resnet(img)
-                loss = fluid.layers.cross_entropy(input=pred, label=label)
+                loss = paddle.nn.functional.cross_entropy(
+                    input=pred, label=label, reduction='none', use_softmax=False
+                )
             avg_loss = paddle.mean(x=pred)
-            acc_top1 = fluid.layers.accuracy(input=pred, label=label, k=1)
-            acc_top5 = fluid.layers.accuracy(input=pred, label=label, k=5)
+            acc_top1 = paddle.static.accuracy(input=pred, label=label, k=1)
+            acc_top5 = paddle.static.accuracy(input=pred, label=label, k=5)
 
             scaled = scaler.scale(avg_loss)
             scaled.backward()
@@ -112,7 +113,7 @@ def train(to_static, build_strategy=None):
 
 class TestResnet(unittest.TestCase):
     def train(self, to_static):
-        program_translator.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
         build_strategy = paddle.static.BuildStrategy()
         # Why set `build_strategy.enable_inplace = False` here?
         # Because we find that this PASS strategy of PE makes dy2st training loss unstable.
@@ -134,7 +135,23 @@ class TestResnet(unittest.TestCase):
                 ),
             )
 
+    def test_resnet_composite(self):
+        if fluid.is_compiled_with_cuda():
+            core._set_prim_backward_enabled(True)
+            static_loss = self.train(to_static=True)
+            core._set_prim_backward_enabled(False)
+            dygraph_loss = self.train(to_static=False)
+            # NOTE: In pure fp16 training, loss is not stable, so we enlarge atol here.
+            np.testing.assert_allclose(
+                static_loss,
+                dygraph_loss,
+                rtol=1e-05,
+                atol=0.001,
+                err_msg='static_loss: {} \n dygraph_loss: {}'.format(
+                    static_loss, dygraph_loss
+                ),
+            )
+
 
 if __name__ == '__main__':
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

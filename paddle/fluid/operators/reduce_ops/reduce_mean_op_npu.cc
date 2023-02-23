@@ -81,7 +81,7 @@ class NPUReduceMeanGradOpKernel : public framework::OpKernel<T> {
       reduce_numel *= input_dims[d];
     }
 
-    Tensor tensor_value(input_grad->dtype());
+    phi::DenseTensor tensor_value(input_grad->dtype());
     tensor_value.mutable_data<T>({1}, ctx.GetPlace());
     FillNpuTensorWithConstant<T>(
         &tensor_value, static_cast<T>(1.0f / static_cast<T>(reduce_numel)));
@@ -96,8 +96,8 @@ class NPUReduceMeanGradOpKernel : public framework::OpKernel<T> {
         .AddOutput(*input_grad)
         .Run(stream);
 
-    Tensor transformed_input_grad, transformed_out_grad;
-    Tensor tmp_output_grad;
+    phi::DenseTensor transformed_input_grad, transformed_out_grad;
+    phi::DenseTensor tmp_output_grad;
     auto tmp_output_dims = input_dims;
     for (auto d : reduce_dims) {
       tmp_output_dims[d] = 1;

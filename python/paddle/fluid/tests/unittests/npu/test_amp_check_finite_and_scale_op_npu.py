@@ -21,7 +21,7 @@ from op_test import OpTest, skip_check_grad_ci
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
-from paddle.fluid.contrib.mixed_precision.amp_nn import check_finite_and_unscale
+from paddle.static.amp.amp_nn import check_finite_and_unscale
 
 paddle.enable_static()
 
@@ -45,7 +45,7 @@ class TestCheckFiniteAndUnscale(unittest.TestCase):
                 inputs={"FloatStatus": float_status},
                 outputs={"FloatStatusOut": float_status},
             )
-            c = paddle.fluid.layers.elementwise_div(a, b)
+            c = paddle.divide(a, b)
             out, found_inf = check_finite_and_unscale(
                 [c], scale, float_status=float_status
             )
@@ -115,7 +115,7 @@ class TestCheckFiniteAndUnscaleClearFloatStatus(unittest.TestCase):
                 inputs={"FloatStatus": float_status},
                 outputs={"FloatStatusOut": float_status},
             )
-            c = paddle.fluid.layers.elementwise_div(a, b)
+            c = paddle.divide(a, b)
             out, found_inf = check_finite_and_unscale(
                 [c], scale, float_status=float_status
             )
@@ -127,7 +127,7 @@ class TestCheckFiniteAndUnscaleClearFloatStatus(unittest.TestCase):
                 inputs={"FloatStatus": float_status},
                 outputs={"FloatStatusOut": float_status},
             )
-            d = paddle.fluid.layers.elementwise_add(a, b)
+            d = paddle.add(a, b)
             out, found_inf = check_finite_and_unscale(
                 [d], scale, float_status=float_status
             )

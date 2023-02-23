@@ -20,7 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using Variable = framework::Variable;
 using LoDTensorArray = framework::LoDTensorArray;
 using DDim = framework::DDim;
@@ -100,7 +99,7 @@ class StridedSliceMLUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(is_tensor_array,
                       false,
                       platform::errors::InvalidArgument(
-                          "Tensor array as input is not supported."));
+                          "phi::DenseTensor array as input is not supported."));
     int rank = ctx.Input<phi::DenseTensor>("Input")->dims().size();
     switch (rank) {
       case 1:
@@ -156,7 +155,7 @@ class StridedSliceMLUKernel : public framework::OpKernel<T> {
     auto infer_flags = ctx.Attr<std::vector<int>>("infer_flags");
     auto decrease_axis = ctx.Attr<std::vector<int>>("decrease_axis");
 
-    // vector<Tensor<int32>>
+    // vector<phi::DenseTensor<int32>>
     auto list_new_starts_tensor =
         ctx.MultiInput<phi::DenseTensor>("StartsTensorList");
     auto list_new_ends_tensor =
@@ -164,7 +163,7 @@ class StridedSliceMLUKernel : public framework::OpKernel<T> {
     auto list_new_strides_tensor =
         ctx.MultiInput<phi::DenseTensor>("StridesTensorList");
 
-    // Tensor<int32>
+    // phi::DenseTensor<int32>
     if (list_new_starts_tensor.size() > 0) {
       starts = GetDataFromTensorList<int64_t>(list_new_starts_tensor);
     } else if (ctx.HasInput("StartsTensor")) {
@@ -268,7 +267,7 @@ class StridedSliceGradMLUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(is_tensor_array,
                       false,
                       platform::errors::InvalidArgument(
-                          "Tensor array as input is not supported."));
+                          "phi::DenseTensor array as input is not supported."));
     int rank = ctx.Input<phi::DenseTensor>("Input")->dims().size();
 
     switch (rank) {

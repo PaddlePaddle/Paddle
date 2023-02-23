@@ -194,7 +194,6 @@ class EmbLayerNormVarSeqlenPluginBase : public nvinfer1::IPluginV2DynamicExt {
   cuda_unique_ptr<float> mGammaDev;
   cuda_unique_ptr<float> mBetaDev;
   std::vector<void*> mIdsEmbPtrs;
-  // std::vector<void*> mIdsEmbDev;
   size_t mLd;  // leading dim = hidden size
   std::vector<int32_t> mIdsVocabSize;
   WeightsWithOwnership mBeta;

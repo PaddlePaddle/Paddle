@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import paddle
-import unittest
-from paddle import nn
 import os
 import tempfile
+import unittest
+
+import numpy as np
+
+import paddle
+from paddle import nn
 
 
 class LSTMLayer(nn.Layer):
@@ -50,7 +52,7 @@ class TestLstm(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def run_lstm(self, to_static):
-        paddle.jit.ProgramTranslator().enable(to_static)
+        paddle.jit.enable_to_static(to_static)
 
         paddle.disable_static()
         paddle.static.default_main_program().random_seed = 1001
@@ -68,7 +70,7 @@ class TestLstm(unittest.TestCase):
         np.testing.assert_allclose(dygraph_out, static_out, rtol=1e-05)
 
     def test_save_in_eval(self, with_training=True):
-        paddle.jit.ProgramTranslator().enable(True)
+        paddle.jit.enable_to_static(True)
         net = Net(12, 2)
         x = paddle.randn((2, 10, 12))
         if with_training:
@@ -139,7 +141,7 @@ class TestSaveInEvalMode(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_save_in_eval(self):
-        paddle.jit.ProgramTranslator().enable(True)
+        paddle.jit.enable_to_static(True)
         net = LinearNet()
         x = paddle.randn((2, 10))
         x.stop_gradient = False

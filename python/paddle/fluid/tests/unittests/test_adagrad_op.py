@@ -12,13 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
 import unittest
+
 import numpy as np
+from eager_op_test import OpTest
+
+import paddle
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
-from op_test import OpTest
-import math
-import paddle
+
+
+def adamgrad_wrapper(param, grad, moment, learning_rate, epsilon):
+    paddle._C_ops.adagrad_(param, grad, moment, learning_rate, epsilon)
 
 
 class TestAdagradOp1(OpTest):
@@ -26,6 +32,8 @@ class TestAdagradOp1(OpTest):
 
     def setUp(self):
         self.op_type = "adagrad"
+        self.python_api = adamgrad_wrapper
+        self.python_out_sig = ['out']
         param = np.random.random((123, 321)).astype("float32")
         grad = np.random.random((123, 321)).astype("float32")
         moment = np.zeros((123, 321)).astype("float32")
@@ -55,6 +63,8 @@ class TestAdagradOp2(OpTest):
 
     def setUp(self):
         self.op_type = "adagrad"
+        self.python_api = adamgrad_wrapper
+        self.python_out_sig = ['out']
 
         param = np.random.random((123, 321)).astype("float32")
         grad = np.random.random((123, 321)).astype("float32")

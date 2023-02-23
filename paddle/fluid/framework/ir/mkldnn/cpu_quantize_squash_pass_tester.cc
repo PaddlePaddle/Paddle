@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_squash_pass.h"
 #include "paddle/fluid/framework/naive_executor.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace framework {
@@ -722,7 +722,7 @@ void InitTensorHolder(Scope* scope,
 }
 
 void PrepareGraph(std::unique_ptr<ir::Graph>* graph, const ProgramDesc& prog) {
-  auto place = paddle::platform::CPUPlace();
+  auto place = phi::CPUPlace();
   NaiveExecutor exe{place};
   Scope scope;
   exe.CreateVariables(prog, 0, true, &scope);

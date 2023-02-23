@@ -22,17 +22,33 @@ namespace ir {
 
 class Graph;
 
+void ReplaceWithFusedOp(Node* op) {
+  const std::string matmul_type = op->Op()->Type();
+  if (matmul_type == "matmul" || matmul_type == "matmul_v2") {
+    op->Op()->SetType("fused_matmul");
+    if (matmul_type == "matmul") {
+      op->Op()->SetAttr("trans_x", op->Op()->GetAttr("transpose_X"));
+      op->Op()->SetAttr("trans_y", op->Op()->GetAttr("transpose_Y"));
+      op->Op()->SetAttr("matmul_alpha", op->Op()->GetAttr("alpha"));
+    }
+  }
+}
+
 void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Marks operators which are to be quantized.";
   std::unordered_set<std::string> supported_op_types =
       std::unordered_set<std::string>({"concat",
                                        "conv2d",
                                        "depthwise_conv2d",
+                                       "fused_conv2d",
+                                       "fused_conv3d",
+                                       "fused_matmul",
                                        "elementwise_add",
                                        "elementwise_mul",
                                        "elementwise_sub",
                                        "fc",
                                        "matmul",
+                                       "matmul_v2",
                                        "nearest_interp",
                                        "nearest_interp_v2",
                                        "pool2d",
@@ -71,7 +87,6 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     GET_IR_NODE_FROM_SUBGRAPH(op, op, quantize_placement_pattern);
-
     if (std::find(excluded_ids_list.begin(),
                   excluded_ids_list.end(),
                   op->id()) != excluded_ids_list.end()) {
@@ -82,6 +97,7 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
       return;
     }
 
+    ReplaceWithFusedOp(op);
     op->Op()->SetAttr("mkldnn_data_type", std::string("int8"));
   };
   gpd(graph, handler);

@@ -13,15 +13,18 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
-import paddle.fluid as fluid
+from eager_op_test import OpTest
+
 import paddle
+import paddle.fluid as fluid
 
 
 class TestNumelOp(OpTest):
     def setUp(self):
         self.op_type = "size"
+        self.python_api = paddle.numel
         self.init()
         x = np.random.random((self.shape)).astype("float64")
         self.inputs = {

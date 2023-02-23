@@ -13,13 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import google.protobuf
+import google.protobuf.text_format
+
 import paddle
-from paddle.distributed.fleet.utils.log_util import logger
 from paddle.distributed.fleet.proto import distributed_strategy_pb2
+from paddle.distributed.fleet.utils.log_util import logger
 from paddle.fluid.framework import _global_flags
 from paddle.fluid.wrapped_decorator import wrap_decorator
-import google.protobuf.text_format
-import google.protobuf
+
+protobuf_version = google.protobuf.__version__
+if protobuf_version >= "4.21.0":
+    import google._upb._message as _message
+else:
+    import google.protobuf.pyext._message as _message
 
 __all__ = []
 
@@ -103,7 +110,6 @@ class DistributedJobInfo:
         self.job_info.strategy = dist_strategy
 
 
-ReduceStrategyFluid = paddle.static.BuildStrategy.ReduceStrategy
 ReduceStrategyFleet = int
 
 
@@ -260,7 +266,7 @@ class DistributedStrategy:
         for f in fields:
             value = getattr(self.strategy.build_strategy, f.name)
             if f.name == 'reduce_strategy':
-                value = ReduceStrategyFluid(value)
+                value = paddle.static.BuildStrategy.ReduceStrategy(value)
             setattr(build_strategy, f.name, value)
         return build_strategy
 
@@ -607,8 +613,12 @@ class DistributedStrategy:
             'embedx_sparse_beta2_decay_rate',
             'feature_learning_rate',
             'nodeid_slot',
+            'sparse_load_filter_slots',
         ]
-        support_sparse_table_class = ['DownpourSparseTable']
+        support_sparse_table_class = [
+            'DownpourSparseTable',
+            'DownpourSparseSSDTable',
+        ]
         support_sparse_accessor_class = [
             'DownpourSparseValueAccessor',
             'DownpourCtrAccessor',
@@ -728,10 +738,13 @@ class DistributedStrategy:
             )
             if table_class not in support_sparse_table_class:
                 raise ValueError(
-                    "support sparse_table_class: ['DownpourSparseTable'], but actual %s"
+                    "support sparse_table_class: ['DownpourSparseTable, DownpourSparseSSDTable'], but actual %s"
                     % (table_class)
                 )
-            table_data.table_class = 'MemorySparseTable'
+            if table_class == "DownpourSparseSSDTable":
+                table_data.table_class = 'SSDSparseTable'
+            else:
+                table_data.table_class = 'MemorySparseTable'
             table_data.shard_num = config.get('sparse_shard_num', 1000)
             table_data.enable_sparse_table_cache = config.get(
                 'sparse_enable_cache', True
@@ -799,6 +812,10 @@ class DistributedStrategy:
             )
             table_data.accessor.ctr_accessor_param.ssd_unseenday_threshold = (
                 config.get('sparse_ssd_unseenday_threshold', 1)
+            )
+            load_filter_slots = config.get('sparse_load_filter_slots', [])
+            table_data.accessor.ctr_accessor_param.load_filter_slots.extend(
+                load_filter_slots
             )
             converter = config.get('sparse_converter', "")
             deconverter = config.get('sparse_deconverter', "")
@@ -2486,7 +2503,7 @@ class DistributedStrategy:
                             for ff in config_fields:
                                 if isinstance(
                                     getattr(my_configs, ff.name),
-                                    google.protobuf.pyext._message.RepeatedScalarContainer,
+                                    _message.RepeatedScalarContainer,
                                 ):
                                     values = getattr(my_configs, ff.name)
                                     for i, v in enumerate(values):

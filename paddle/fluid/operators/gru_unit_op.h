@@ -23,8 +23,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 enum GRUActivationType { identity = 0, sigmoid = 1, tanh = 2, relu = 3 };
 
 template <typename DeviceContext, typename T>
@@ -192,8 +190,8 @@ class GRUUnitGradKernel : public framework::OpKernel<T> {
         context.Output<phi::DenseTensor>(framework::GradVarName("Weight"));
     auto* bias_grad =
         context.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
-    Tensor gate_grad;
-    Tensor reset_hidden_prev_grad;
+    phi::DenseTensor gate_grad;
+    phi::DenseTensor reset_hidden_prev_grad;
 
     const T* hidden_prev_data = hidden_prev->data<T>();
     const T* weight_data = weight->data<T>();

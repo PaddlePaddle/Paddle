@@ -24,10 +24,8 @@ void NPUIdentityKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const int format,
                        DenseTensor* out) {
-  VLOG(4) << "npu_identity op is only for NPU, CPU or GPU kernel just empty "
-             "tensor with shape: "
-          << out->dims() << ", please avoid using this kernel!";
-  *out = phi::EmptyLike<T, Context>(dev_ctx, *out);
+  VLOG(4) << "npu_identity op is only for NPU, please avoid using this kernel!";
+  out->ShareDataWith(x);
 }
 
 }  // namespace phi

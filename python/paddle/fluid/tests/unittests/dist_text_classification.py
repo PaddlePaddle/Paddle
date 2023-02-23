@@ -59,7 +59,7 @@ def conv_net(
         size=[dict_dim, emb_dim],
         is_sparse=False,
         param_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.01)
+            initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
 
@@ -70,24 +70,24 @@ def conv_net(
         act="tanh",
         pool_type="max",
         param_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.01)
+            initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
 
-    fc_0 = fluid.layers.fc(
-        input=[conv_3],
+    fc_0 = paddle.static.nn.fc(
+        x=[conv_3],
         size=fc0_dim,
-        param_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.01)
+        weight_attr=fluid.ParamAttr(
+            initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
 
-    prediction = fluid.layers.fc(
-        input=[fc_0],
+    prediction = paddle.static.nn.fc(
+        x=[fc_0],
         size=class_dim,
-        act="softmax",
-        param_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.01)
+        activation="softmax",
+        weight_attr=fluid.ParamAttr(
+            initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
 
@@ -95,8 +95,8 @@ def conv_net(
 
 
 def inference_network(dict_dim):
-    data = fluid.layers.data(
-        name="words", shape=[1], dtype="int64", lod_level=1
+    data = paddle.static.data(
+        name="words", shape=[-1, 1], dtype="int64", lod_level=1
     )
     out = conv_net(data, dict_dim)
     return out
@@ -125,16 +125,18 @@ class TestDistTextClassification2x2(TestDistRunnerBase):
         word_dict, dict_dim = get_worddict(vocab)
 
         # Input data
-        data = fluid.layers.data(
-            name="words", shape=[1], dtype="int64", lod_level=1
+        data = paddle.static.data(
+            name="words", shape=[-1, 1], dtype="int64", lod_level=1
         )
-        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+        label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
 
         # Train program
         predict = conv_net(data, dict_dim)
-        cost = fluid.layers.cross_entropy(input=predict, label=label)
+        cost = paddle.nn.functional.cross_entropy(
+            input=predict, label=label, reduction='none', use_softmax=False
+        )
         avg_cost = paddle.mean(x=cost)
-        acc = fluid.layers.accuracy(input=predict, label=label)
+        acc = paddle.static.accuracy(input=predict, label=label)
         inference_program = fluid.default_main_program().clone()
 
         # Optimization

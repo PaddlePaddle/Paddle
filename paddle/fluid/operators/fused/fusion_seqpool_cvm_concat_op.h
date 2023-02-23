@@ -18,9 +18,6 @@
 namespace paddle {
 namespace operators {
 
-using LoDTensor = phi::DenseTensor;
-using Tensor = phi::DenseTensor;
-
 class FusionSeqPoolCVMConcatOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -28,7 +25,7 @@ class FusionSeqPoolCVMConcatOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override;
 };
 

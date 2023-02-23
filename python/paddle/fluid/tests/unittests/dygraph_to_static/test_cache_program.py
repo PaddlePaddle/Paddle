@@ -13,16 +13,15 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 from collections import Counter
+
+import numpy as np
+from test_fetch_feed import Linear, Pool2D
+
 import paddle
 import paddle.fluid as fluid
-
-from paddle.fluid.dygraph.jit import declarative
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
-from paddle.fluid.dygraph.dygraph_to_static import convert_to_static
-
-from test_fetch_feed import Pool2D, Linear
+from paddle.jit.api import to_static
+from paddle.jit.dy2static import convert_to_static
 
 
 class TestCacheProgram(unittest.TestCase):
@@ -91,8 +90,7 @@ class TestCacheProgramWithOptimizer(unittest.TestCase):
         return self.train(to_static=False)
 
     def train(self, to_static=False):
-        prog_trans = ProgramTranslator()
-        prog_trans.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
 
         with fluid.dygraph.guard(fluid.CPUPlace()):
             dygraph_net = self.dygraph_class()
@@ -138,7 +136,7 @@ class TestConvertWithCache(unittest.TestCase):
         self.assertTrue(id(static_func), id(cached_func))
 
 
-@declarative
+@to_static
 def sum_even_until_limit(max_len, limit):
     ret_sum = fluid.dygraph.to_variable(np.zeros((1)).astype('int32'))
     for i in range(max_len):
@@ -166,7 +164,7 @@ class TestToOutputWithCache(unittest.TestCase):
             ret = sum_even_until_limit(80, 10)
             self.assertEqual(ret.numpy(), 30)
 
-            ret = declarative(sum_under_while)(100)
+            ret = to_static(sum_under_while)(100)
             self.assertEqual(ret.numpy(), 5050)
 
 

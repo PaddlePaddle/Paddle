@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.dataset.mnist
 import unittest
+
+import paddle.dataset.mnist
 
 __all__ = []
 

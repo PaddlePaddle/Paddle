@@ -120,19 +120,11 @@ class SqueezeOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-
-    // #ifdef PADDLE_WITH_MKLDNN
-    //    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-    //      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-    //                                     phi::DataLayout::ONEDNN,
-    //                                     framework::LibraryType::kMKLDNN);
-    //    }
-    // #endif
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -147,19 +139,11 @@ class SqueezeGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
-
-    // #ifdef PADDLE_WITH_MKLDNN
-    //    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-    //      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-    //                                     phi::DataLayout::ONEDNN,
-    //                                     framework::LibraryType::kMKLDNN);
-    //    }
-    // #endif
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -211,25 +195,6 @@ class SqueezeOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-class Squeeze2Op : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
-    auto input_data_type =
-        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-
-    // #ifdef PADDLE_WITH_MKLDNN
-    //    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-    //      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-    //                                     phi::DataLayout::ONEDNN,
-    //                                     framework::LibraryType::kMKLDNN);
-    //    }
-    // #endif
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
-  }
-};
-
 template <typename T>
 class SqueezeGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
@@ -241,40 +206,6 @@ class SqueezeGradOpMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     grad_op->SetAttrMap(this->Attrs());
-  }
-};
-
-class Squeeze2GradOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *context) const override {
-    OP_INOUT_CHECK(
-        context->HasInput("XShape"), "Input", "XShape", "Squeeze2Grad");
-    OP_INOUT_CHECK(context->HasInput(framework::GradVarName("Out")),
-                   "Input",
-                   framework::GradVarName("Out"),
-                   "Squeeze2Grad");
-    auto xshape_dims = context->GetInputDim("XShape");
-    auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
-    context->SetOutputDim(framework::GradVarName("X"), x_dims);
-    context->ShareLoD("XShape", framework::GradVarName("X"));
-  }
-
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
-    auto input_data_type = framework::OperatorWithKernel::IndicateVarDataType(
-        ctx, framework::GradVarName("Out"));
-
-    // #ifdef PADDLE_WITH_MKLDNN
-    //    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-    //      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-    //                                     phi::DataLayout::ONEDNN,
-    //                                     framework::LibraryType::kMKLDNN);
-    //    }
-    // #endif
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -291,82 +222,6 @@ class SqueezeDoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-// FIXME(zcd): squeeze2 adds an intermediate output(XShape) based on squeeze,
-// the XShape is used to carry the shape and lod of X which will be used in
-// squeeze_grad, in this way, the framework can reuse the memory of X
-// immediately the squeeze2_op is finished.
-// Considering compatibility issues, we could not fix squeeze2_op
-class Squeeze2OpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X", "(Tensor). The input tensor of squeeze operator.");
-    AddOutput("Out", "(Tensor). The output tensor of squeeze operator.");
-    AddOutput("XShape",
-              "XShape is just used to store the shape and lod of X, which will "
-              "be used in SqueezeGradOp.")
-        .AsIntermediate()
-        .AsExtra();
-    AddAttr<std::vector<int>>("axes",
-                              "(std::vector<int>). List of integers,"
-                              " indicating the dimensions to squeeze.")
-        .SetDefault({})
-        .SupportTensor();
-    AddComment(R"DOC(
-        Squeeze2 Operator.
-
-        Remove single-dimensional entries from the shape of a tensor.
-        Takes a parameter axes with a list of axes to squeeze.
-        If axes is not provided, all the single dimensions will be removed from the shape.
-        If an axis is selected with shape entry not equal to one, an error is raised.
-
-        Examples:
-        Case 1:
-          Given
-            X.shape = (1, 3, 1, 5)
-          and
-            axes = [0]
-          we get:
-            Out.shape = (3, 1, 5)
-
-        Case 2:
-          Given
-            X.shape = (1, 3, 1, 5)
-          and
-            axes = []
-          we get:
-            Out.shape = (3, 5)
-    )DOC");
-  }
-};
-
-template <typename T>
-class Squeeze2GradOpMaker : public framework::SingleGradOpMaker<T> {
- public:
-  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
-  void Apply(GradOpPtr<T> grad_op) const override {
-    grad_op->SetType("squeeze2_grad");
-    grad_op->SetInput("XShape", this->Output("XShape"));
-    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
-    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-    grad_op->SetAttrMap(this->Attrs());
-  }
-};
-
-template <typename T>
-class Squeeze2DoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
- public:
-  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
-  void Apply(GradOpPtr<T> grad_op) const override {
-    grad_op->SetType("squeeze2");
-    grad_op->SetInput("X", this->OutputGrad(framework::GradVarName("X")));
-    grad_op->SetOutput("Out", this->InputGrad(framework::GradVarName("Out")));
-    grad_op->SetOutput("XShape", this->Input("XShape"));
-    grad_op->SetAttrMap(this->Attrs());
-  }
-};
-
 DECLARE_INPLACE_OP_INFERER(SqueezeInplaceInferer, {"X", "Out"});
 DECLARE_INPLACE_OP_INFERER(SqueezeGradInplaceInferer,
                            {framework::GradVarName("Out"),
@@ -376,10 +231,6 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(SqueezeGradNoNeedBufferVarsInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-
-DECLARE_INFER_SHAPE_FUNCTOR(squeeze2,
-                            SqueezeInferShapeFunctor,
-                            PD_INFER_META(phi::SqueezeWithXShapeInferMeta));
 
 REGISTER_OPERATOR(squeeze,
                   ops::SqueezeOp,
@@ -391,19 +242,6 @@ REGISTER_OPERATOR(squeeze_grad,
                   ops::SqueezeDoubleGradOpMaker<paddle::framework::OpDesc>,
                   ops::SqueezeDoubleGradOpMaker<paddle::imperative::OpBase>,
                   ops::SqueezeGradNoNeedBufferVarsInferer);
-
-REGISTER_OPERATOR(squeeze2,
-                  ops::Squeeze2Op,
-                  ops::Squeeze2OpMaker,
-                  ops::Squeeze2GradOpMaker<paddle::framework::OpDesc>,
-                  ops::Squeeze2GradOpMaker<paddle::imperative::OpBase>,
-                  ops::SqueezeInplaceInferer,
-                  SqueezeInferShapeFunctor);
-REGISTER_OPERATOR(squeeze2_grad,
-                  ops::Squeeze2GradOp,
-                  ops::Squeeze2DoubleGradOpMaker<paddle::framework::OpDesc>,
-                  ops::Squeeze2DoubleGradOpMaker<paddle::imperative::OpBase>,
-                  ops::SqueezeGradInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(
     squeeze,

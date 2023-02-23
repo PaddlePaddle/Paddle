@@ -17,17 +17,17 @@ import sys
 sys.path.append("..")
 
 import unittest
-import paddle
+
 import numpy as np
-import paddle.fluid as fluid
-
 from op_test_xpu import XPUOpTest
-
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
+import paddle.fluid as fluid
 
 
 def adamw_step(inputs, attributes):
@@ -196,16 +196,16 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
             with fluid.program_guard(train_prog, startup):
                 with fluid.unique_name.guard():
                     data = fluid.data(name="data", shape=shape)
-                    conv = fluid.layers.conv2d(data, 8, 3)
+                    conv = paddle.static.nn.conv2d(data, 8, 3)
                     loss = paddle.mean(conv)
 
-                    beta1 = fluid.layers.create_global_var(
+                    beta1 = paddle.static.create_global_var(
                         shape=[1],
                         value=0.85,
                         dtype=self.in_type_str,
                         persistable=True,
                     )
-                    beta2 = fluid.layers.create_global_var(
+                    beta2 = paddle.static.create_global_var(
                         shape=[1],
                         value=0.95,
                         dtype=self.in_type_str,

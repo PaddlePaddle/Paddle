@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid as fluid
-import paddle
-import paddle.fluid.core as core
+
 import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 
 
@@ -81,23 +83,20 @@ class TestNpairLossOp(unittest.TestCase):
             l2_reg=reg_lambda,
         )
 
-        anc = fluid.layers.data(
+        anc = paddle.static.data(
             dtype='float32',
             name='anc',
             shape=embeddings_anchor.shape,
-            append_batch_size=False,
         )
-        pos = fluid.layers.data(
+        pos = paddle.static.data(
             dtype='float32',
             name='pos',
             shape=embeddings_positive.shape,
-            append_batch_size=False,
         )
-        lab = fluid.layers.data(
+        lab = paddle.static.data(
             dtype='float32',
             name='lab',
             shape=row_labels.shape,
-            append_batch_size=False,
         )
 
         npair_loss_op = paddle.nn.functional.npair_loss(

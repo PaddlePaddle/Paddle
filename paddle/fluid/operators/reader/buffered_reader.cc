@@ -417,8 +417,13 @@ void BufferedReader::ReadAsync(size_t i) {
         // TODO(zhanghuan) for now hardware not support xpu_memcpy_async, maybe
         // KL3
         if ((platform::is_xpu_place(cpu_place))) {
-          memory::Copy(place_, xpu_ptr, cpu_place, cpu_ptr, size);
           platform::XPUStreamSync(stream_.get());
+          char *tmp = new char[size];
+          PADDLE_ENFORCE_XPU_SUCCESS(xpu_memcpy(
+              tmp, cpu_ptr, size, XPUMemcpyKind::XPU_DEVICE_TO_HOST));
+          PADDLE_ENFORCE_XPU_SUCCESS(xpu_memcpy(
+              xpu_ptr, tmp, size, XPUMemcpyKind::XPU_HOST_TO_DEVICE));
+          delete[] tmp;
         } else {
           memory::Copy(place_, xpu_ptr, cpu_place, cpu_ptr, size);
         }

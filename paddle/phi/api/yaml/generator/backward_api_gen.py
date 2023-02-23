@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import yaml
 import argparse
 import re
 
+import yaml
 from api_base import BaseAPI
 
 
@@ -280,15 +280,17 @@ def source_include(header_file_path):
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
+#include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/unary.h"
 
-#include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
 
 DECLARE_bool(conv2d_disable_cudnn);
+DECLARE_int32(low_precision_op_list);
 """
 
 
@@ -351,7 +353,7 @@ def main():
         '--backward_yaml_path',
         help='path to backward yaml file',
         nargs='+',
-        default='paddle/phi/api/yaml/backward.yaml',
+        default=['paddle/phi/api/yaml/backward.yaml'],
     )
     parser.add_argument(
         '--backward_header_path',

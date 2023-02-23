@@ -13,14 +13,15 @@
 # limitations under the License.
 
 import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-import numpy as np
 import paddle.fluid.core as core
-
-from paddle.fluid.framework import Program, grad_var_name
-from paddle.fluid.executor import Executor
 from paddle.fluid.backward import append_backward
+from paddle.fluid.executor import Executor
+from paddle.fluid.framework import Program, grad_var_name
 
 np.random.seed(123)
 
@@ -83,18 +84,25 @@ class TestArgsortOpCPU(unittest.TestCase):
         )
 
         with fluid.program_guard(self.main_program, self.startup_program):
-            x = fluid.layers.data(
-                name="x", shape=self.input_shape, dtype=self.dtype
+            x = paddle.static.data(
+                name="x", shape=[-1] + list(self.input_shape), dtype=self.dtype
             )
             x.stop_gradient = False
-            label = fluid.layers.data(
-                name="label", shape=self.input_shape, dtype=self.dtype
+            x.desc.set_need_check_feed(False)
+            label = paddle.static.data(
+                name="label",
+                shape=[-1] + list(self.input_shape),
+                dtype=self.dtype,
             )
-            self.sorted_x, self.index = fluid.layers.argsort(
-                input=x, axis=self.axis, descending=self.descending
+            label.desc.set_need_check_feed(False)
+            self.index = paddle.argsort(
+                x=x, axis=self.axis, descending=self.descending
+            )
+            self.sorted_x = paddle.sort(
+                x=x, axis=self.axis, descending=self.descending
             )
             self.sorted_x.stop_gradient = False
-            loss = fluid.layers.elementwise_mul(self.sorted_x, label)
+            loss = paddle.multiply(self.sorted_x, label)
             self.loss = paddle.sum(loss)
 
     def forward(self):
@@ -349,13 +357,13 @@ class TestArgsortErrorOnCPU(unittest.TestCase):
         def test_fluid_var_type():
             with fluid.program_guard(fluid.Program()):
                 x = [1]
-                output = fluid.layers.argsort(input=x)
+                output = paddle.argsort(x=x)
             self.assertRaises(TypeError, test_fluid_var_type)
 
         def test_paddle_var_type():
             with fluid.program_guard(fluid.Program()):
                 x = [1]
-                output = paddle.argsort(input=x)
+                output = paddle.argsort(x=x)
             self.assertRaises(TypeError, test_paddle_var_type)
 
 

@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-from paddle.tensor import random
-import numpy as np
-import unittest
 from paddle import _legacy_C_ops
-from paddle.fluid.framework import _test_eager_guard
+from paddle.tensor import random
 
 if fluid.is_compiled_with_cuda():
     fluid.core.globals()['FLAGS_cudnn_deterministic'] = True
@@ -120,7 +121,7 @@ class InstanceNorm(fluid.dygraph.Layer):
             )
             return out
         else:
-            return fluid.layers.instance_norm(
+            return paddle.static.nn.instance_norm(
                 input,
                 epsilon=self.epsilon,
                 param_attr=fluid.ParamAttr(self.scale.name),
@@ -183,10 +184,10 @@ class Deconv2DLayer(fluid.dygraph.Layer):
     ):
         super().__init__()
 
-        self._deconv = fluid.dygraph.Conv2DTranspose(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
+        self._deconv = paddle.nn.Conv2DTranspose(
+            num_channels,
+            num_filters,
+            filter_size,
             stride=stride,
             padding=padding,
             bias_attr=None if use_bias else False,
@@ -313,7 +314,7 @@ class Generator(fluid.dygraph.Layer):
         label_trg_e = paddle.reshape(label_trg, [-1, label_trg.shape[1], 1, 1])
         label_trg_e = paddle.expand(label_trg_e, [-1, -1, shape[2], shape[3]])
 
-        input1 = fluid.layers.concat([input, label_trg_e], 1)
+        input1 = paddle.concat([input, label_trg_e], 1)
 
         conv0 = self._conv0(input1)
         res_block = self._res_block(conv0)
@@ -379,7 +380,9 @@ def loss_cls(cls, label, cfg):
     cls_shape = cls.shape
     cls = paddle.reshape(cls, [-1, cls_shape[1] * cls_shape[2] * cls_shape[3]])
     return (
-        paddle.sum(fluid.layers.sigmoid_cross_entropy_with_logits(cls, label))
+        paddle.sum(
+            paddle.nn.functional.binary_cross_entropy_with_logits(cls, label)
+        )
         / cfg.batch_size
     )
 
@@ -405,9 +408,9 @@ def gradient_penalty(f, real, fake, no_grad_set, cfg):
             input=a, shape=shape, min=0.1, max=1.0, seed=cfg.seed
         )
 
-        inner = fluid.layers.elementwise_mul(
+        inner = paddle.tensor.math._multiply_with_axis(
             b, 1.0 - alpha, axis=0
-        ) + fluid.layers.elementwise_mul(a, alpha, axis=0)
+        ) + paddle.tensor.math._multiply_with_axis(a, alpha, axis=0)
         return inner
 
     x = _interpolate(real, fake)
@@ -441,9 +444,7 @@ def get_generator_loss(
 ):
     fake_img = generator(image_real, label_trg)
     rec_img = generator(fake_img, label_org)
-    g_loss_rec = fluid.layers.reduce_mean(
-        paddle.abs(paddle.subtract(image_real, rec_img))
-    )
+    g_loss_rec = paddle.mean(paddle.abs(paddle.subtract(image_real, rec_img)))
 
     pred_fake, cls_fake = discriminator(fake_img)
 
@@ -659,62 +660,13 @@ class TestStarGANWithGradientPenalty(unittest.TestCase):
                 fluid_dygraph_loss.append(loss)
 
         eager_dygraph_loss = []
-        with _test_eager_guard():
-            with fluid.dygraph.guard(cfg.place):
-                eager_dygraph_model = DyGraphTrainModel(cfg)
-                for batch_id, (image_real, label_org, label_trg) in enumerate(
-                    dataset()
-                ):
-                    loss = eager_dygraph_model.run(
-                        image_real, label_org, label_trg
-                    )
-                    eager_dygraph_loss.append(loss)
-
-        for (g_loss_f, d_loss_f), (g_loss_e, d_loss_e) in zip(
-            fluid_dygraph_loss, eager_dygraph_loss
-        ):
-            self.assertEqual(g_loss_f, g_loss_e)
-            self.assertEqual(d_loss_f, d_loss_e)
-
-    def test_all_cases(self):
-        self.func_main()
-
-
-class TestStarGANWithGradientPenaltyLegacy(unittest.TestCase):
-    def func_main(self):
-        self.place_test(fluid.CPUPlace())
-
-        if fluid.is_compiled_with_cuda():
-            self.place_test(fluid.CUDAPlace(0))
-
-    def place_test(self, place):
-        cfg = Config(place)
-
-        dataset = create_mnist_dataset(cfg)
-        dataset = paddle.reader.cache(dataset)
-
-        static_graph_model = StaticGraphTrainModel(cfg)
-        static_loss = []
-        for batch_id, (image_real, label_org, label_trg) in enumerate(
-            dataset()
-        ):
-            loss = static_graph_model.run(image_real, label_org, label_trg)
-            static_loss.append(loss)
-
-        dygraph_loss = []
         with fluid.dygraph.guard(cfg.place):
-            dygraph_model = DyGraphTrainModel(cfg)
+            eager_dygraph_model = DyGraphTrainModel(cfg)
             for batch_id, (image_real, label_org, label_trg) in enumerate(
                 dataset()
             ):
-                loss = dygraph_model.run(image_real, label_org, label_trg)
-                dygraph_loss.append(loss)
-
-        for (g_loss_s, d_loss_s), (g_loss_d, d_loss_d) in zip(
-            static_loss, dygraph_loss
-        ):
-            self.assertEqual(g_loss_s, g_loss_d)
-            self.assertEqual(d_loss_s, d_loss_d)
+                loss = eager_dygraph_model.run(image_real, label_org, label_trg)
+                eager_dygraph_loss.append(loss)
 
     def test_all_cases(self):
         self.func_main()

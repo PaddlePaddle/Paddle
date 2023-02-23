@@ -183,6 +183,7 @@ class XPUDeviceContext : public phi::XPUContext {
   virtual ~XPUDeviceContext();
   Eigen::DefaultDevice* eigen_device() const { return nullptr; }
   xpuStream stream() const { return XPUContext::x_context()->xpu_stream; }
+  void CreateStream() { XPUContext::CreateStream(); }
 };
 
 template <>
@@ -312,11 +313,6 @@ struct DefaultDeviceContextType<platform::CUDAPinnedPlace> {
 };
 #endif
 
-#ifdef PADDLE_WITH_MKLDNN
-using MKLDNNDeviceContextThreadLocals = phi::OneDNNContextThreadLocals;
-using MKLDNNDeviceContext = phi::OneDNNContext;
-#endif
-
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 class CustomDeviceContext : public phi::CustomContext {
  public:
@@ -350,7 +346,8 @@ void EmplaceDeviceContexts(
     std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
         place_to_device_context,
     const std::vector<platform::Place>& places,
-    bool disable_setting_default_stream_for_allocator);
+    bool disable_setting_default_stream_for_allocator,
+    int stream_priority);
 
 /*! \brief device context pool singleton */
 class DeviceContextPool {

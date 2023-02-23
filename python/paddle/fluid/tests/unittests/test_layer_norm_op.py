@@ -13,19 +13,18 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-import paddle
-
-from operator import mul
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-import paddle.nn.functional as F
 from functools import reduce
+from operator import mul
+
+import numpy as np
 from op_test import _set_use_system_allocator
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.nn.functional as F
 from paddle.fluid import Program, program_guard
-from paddle.fluid.contrib.mixed_precision.fp16_utils import (
-    _keep_layer_norm_scale_bias_to_fp32,
-)
+from paddle.static.amp.fp16_utils import _keep_layer_norm_scale_bias_to_fp32
 
 paddle.enable_static()
 
@@ -334,13 +333,8 @@ class TestLayerNormOp(unittest.TestCase):
 
 class TestLayerNormAPI(unittest.TestCase):
     def test_case(self):
-        x = fluid.layers.data(
-            name='x',
-            shape=[64, 32, 256],
-            dtype='float32',
-            append_batch_size=False,
-        )
-        x = fluid.layers.layer_norm(
+        x = paddle.static.data(name='x', shape=[64, 32, 256], dtype='float32')
+        x = paddle.static.nn.layer_norm(
             x,
             scale=True,
             shift=True,
@@ -349,7 +343,7 @@ class TestLayerNormAPI(unittest.TestCase):
             param_attr=None,
             bias_attr=None,
         )
-        x = fluid.layers.layer_norm(
+        x = paddle.static.nn.layer_norm(
             x,
             scale=False,
             shift=False,
@@ -358,7 +352,7 @@ class TestLayerNormAPI(unittest.TestCase):
             param_attr=None,
             bias_attr=None,
         )
-        x = fluid.layers.layer_norm(
+        x = paddle.static.nn.layer_norm(
             x,
             scale=False,
             shift=False,
@@ -374,14 +368,16 @@ class TestDygraphLayerNormAPIError(unittest.TestCase):
         with program_guard(Program(), Program()):
             paddle.enable_static()
 
-            layer_norm = fluid.LayerNorm([32, 32])
+            layer_norm = paddle.nn.LayerNorm([32, 32])
             # the input of LayerNorm must be Variable.
             x1 = np.random.random((3, 32, 32)).astype('float32')
             self.assertRaises(TypeError, layer_norm, x1)
 
             # the input dtype of LayerNorm must be float32 or float64
             # float16 only can be set on GPU place
-            x2 = fluid.layers.data(name='x2', shape=[3, 32, 32], dtype="int32")
+            x2 = paddle.static.data(
+                name='x2', shape=[-1, 3, 32, 32], dtype="int32"
+            )
             self.assertRaises(TypeError, layer_norm, x2)
 
 

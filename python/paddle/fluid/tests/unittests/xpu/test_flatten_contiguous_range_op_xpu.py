@@ -15,18 +15,20 @@
 import sys
 
 sys.path.append("..")
-import numpy as np
-import unittest
 import sys
+import unittest
+
+import numpy as np
 
 sys.path.append("..")
 from op_test_xpu import XPUOpTest
-import paddle
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
 
 paddle.enable_static()
 
@@ -261,25 +263,6 @@ class TestFlatten2OpError(unittest.TestCase):
             paddle.flatten(x_var, start_axis=2, stop_axis=10)
 
         self.assertRaises(ValueError, test_ValueError3)
-
-        def test_type():
-            # dtype must be float32, float64, int8, int32, int64
-            x2 = (
-                np.arange(
-                    image_shape[0]
-                    * image_shape[1]
-                    * image_shape[2]
-                    * image_shape[3]
-                ).reshape(image_shape)
-                / 100.0
-            )
-            x2 = x2.astype('float16')
-            x2_var = paddle.fluid.data(
-                name='x2', shape=[3, 2, 4, 5], dtype='float16'
-            )
-            paddle.flatten(x2_var)
-
-        self.assertRaises(TypeError, test_type)
 
         def test_InputError():
             out = paddle.flatten(x)

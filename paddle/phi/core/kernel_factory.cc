@@ -20,16 +20,21 @@
 #include "paddle/phi/backends/xpu/xpu_op_list.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #endif
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+#include "paddle/phi/backends/custom/custom_device_op_list.h"
+#endif
 #include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/utils/string/string_helper.h"
 
+DECLARE_int32(low_precision_op_list);
 DECLARE_bool(enable_api_kernel_fallback);
 
 namespace phi {
 
 const static Kernel empty_kernel;  // NOLINT
 
-std::string kernel_selection_error_message(const std::string& kernel_name,
-                                           const KernelKey& target_key);
+std::string KernelSelectionErrorMessage(const std::string& kernel_name,
+                                        const KernelKey& target_key);
 
 uint32_t KernelKey::Hash::operator()(const KernelKey& key) const {
   uint32_t hash_value = 0;
@@ -56,6 +61,21 @@ bool KernelFactory::HasCompatiblePhiKernel(const std::string& op_type) const {
     } else if (kernels_.find(op_type) != kernels_.end()) {
       return true;
     }
+  }
+  return false;
+}
+
+bool KernelFactory::HasStructuredKernel(const std::string& op_type) const {
+  auto phi_kernel_name = phi::OpUtilsMap::Instance().GetBaseKernelName(op_type);
+  auto kernel_iter = kernels_.find(phi_kernel_name);
+  if (deprecated_op_names.find(op_type) == deprecated_op_names.end() &&
+      kernel_iter != kernels_.end()) {
+    return std::any_of(kernel_iter->second.begin(),
+                       kernel_iter->second.end(),
+                       [](phi::KernelKeyMap::const_reference kernel_pair) {
+                         return kernel_pair.second.GetKernelRegisteredType() ==
+                                KernelRegisteredType::STRUCTURE;
+                       });
   }
   return false;
 }
@@ -105,24 +125,52 @@ bool KernelFactory::HasKernel(const std::string& kernel_name,
   return true;
 }
 
+void KernelFactory::AddToLowPrecisionKernelList(
+    const std::string& name,
+    const paddle::experimental::DataType& kernel_key_type) {
+  if (FLAGS_low_precision_op_list >= 1) {
+    auto op_name = phi::TransToFluidOpName(name);
+    if (op_name.find("_grad") != std::string::npos) {
+      return;  // only record forward api
+    }
+
+    if (low_precision_kernels_.find(op_name) == low_precision_kernels_.end()) {
+      auto count = OpCount();
+      low_precision_kernels_[op_name] = count;
+    }
+    if (kernel_key_type == paddle::experimental::DataType::FLOAT16) {
+      low_precision_kernels_[op_name].fp16_called_ += 1;
+    } else if (kernel_key_type == paddle::experimental::DataType::BFLOAT16) {
+      low_precision_kernels_[op_name].bf16_called_ += 1;
+    } else if (kernel_key_type == paddle::experimental::DataType::FLOAT32) {
+      low_precision_kernels_[op_name].fp32_called_ += 1;
+    } else {
+      low_precision_kernels_[op_name].other_called_ += 1;
+    }
+  }
+}
+
+std::map<const std::string, OpCount>
+KernelFactory::GetLowPrecisionKernelList() {
+  return low_precision_kernels_;
+}
+
 KernelResult KernelFactory::SelectKernelOrThrowError(
     const std::string& kernel_name, const KernelKey& const_kernel_key) const {
   auto iter = kernels_.find(kernel_name);
+
   PADDLE_ENFORCE_NE(
       iter,
       kernels_.end(),
       phi::errors::NotFound("The kernel `%s` is not registered.", kernel_name));
 
-  KernelKey kernel_key = const_kernel_key;
+  KernelKey kernel_key = KernelKey(const_kernel_key.backend(),
+                                   phi::DataLayout::ALL_LAYOUT,
+                                   const_kernel_key.dtype());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (kernel_key.backend() == Backend::GPUDNN) {
     auto kernel_iter = iter->second.find(
-        {Backend::GPUDNN, kernel_key.layout(), kernel_key.dtype()});
-    if (kernel_iter == iter->second.end() &&
-        kernel_key.layout() != phi::DataLayout::ALL_LAYOUT) {
-      kernel_iter = iter->second.find(
-          {Backend::GPUDNN, DataLayout::ALL_LAYOUT, kernel_key.dtype()});
-    }
+        {Backend::GPUDNN, phi::DataLayout::ALL_LAYOUT, kernel_key.dtype()});
     if (kernel_iter != iter->second.end()) {
       return {kernel_iter->second, false};
     }
@@ -131,13 +179,6 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
   }
 #endif
   auto kernel_iter = iter->second.find(kernel_key);
-  // TODO(chenweihang): polish refind impl here
-  if (kernel_iter == iter->second.end() &&
-      kernel_key.layout() != phi::DataLayout::ALL_LAYOUT) {
-    phi::KernelKey any_layout_kernel_key(
-        kernel_key.backend(), phi::DataLayout::ALL_LAYOUT, kernel_key.dtype());
-    kernel_iter = iter->second.find(any_layout_kernel_key);
-  }
 
   PADDLE_ENFORCE_NE(
       kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU,
@@ -146,12 +187,18 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
           "The kernel with key %s of kernel `%s` is not registered. %s",
           kernel_key,
           kernel_name,
-          kernel_selection_error_message(kernel_name, kernel_key)));
+          KernelSelectionErrorMessage(kernel_name, kernel_key)));
 
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
   VLOG(6) << "fluid_op_name: " << TransToFluidOpName(kernel_name);
   if ((FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end()) ||
-      phi::backends::xpu::is_in_xpu_black_list(TransToFluidOpName(kernel_name))
+      !phi::backends::xpu::is_xpu_support_op(TransToFluidOpName(kernel_name),
+                                             kernel_key.dtype())
+#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+  if (FLAGS_enable_api_kernel_fallback &&
+      (kernel_iter == iter->second.end() ||
+       phi::backends::custom_device::is_in_custom_black_list(
+           TransToFluidOpName(kernel_name)))
 #else
   if ((FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end())
 #endif
@@ -160,12 +207,6 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
     phi::KernelKey cpu_kernel_key(
         phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
     kernel_iter = iter->second.find(cpu_kernel_key);
-    if (kernel_iter == iter->second.end() &&
-        kernel_key.layout() != phi::DataLayout::ALL_LAYOUT) {
-      phi::KernelKey any_layout_kernel_key(
-          phi::Backend::CPU, phi::DataLayout::ALL_LAYOUT, kernel_key.dtype());
-      kernel_iter = iter->second.find(any_layout_kernel_key);
-    }
 
     PADDLE_ENFORCE_NE(
         kernel_iter,
@@ -175,7 +216,7 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
             "fail to fallback to CPU one. %s",
             kernel_key,
             kernel_name,
-            kernel_selection_error_message(kernel_name, kernel_key)));
+            KernelSelectionErrorMessage(kernel_name, kernel_key)));
 
     VLOG(3) << "missing " << kernel_key.backend() << " kernel: " << kernel_name
             << ", expected_kernel_key:" << kernel_key
@@ -194,7 +235,7 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
           " to CPU one, please set the flag true before run again.",
           kernel_key,
           kernel_name,
-          kernel_selection_error_message(kernel_name, kernel_key)));
+          KernelSelectionErrorMessage(kernel_name, kernel_key)));
 
   return {kernel_iter->second, false};
 }
@@ -367,8 +408,8 @@ std::ostream& operator<<(std::ostream& os, KernelFactory& kernel_factory) {
 //   (GPU, Undefined(AnyLayout), [float32, float64, ...]);
 //   ...
 // }
-std::string kernel_selection_error_message(const std::string& kernel_name,
-                                           const KernelKey& target_key) {
+std::string KernelSelectionErrorMessage(const std::string& kernel_name,
+                                        const KernelKey& target_key) {
   PADDLE_ENFORCE_NE(
       KernelFactory::Instance().kernels().find(kernel_name),
       KernelFactory::Instance().kernels().end(),
@@ -401,12 +442,7 @@ std::string kernel_selection_error_message(const std::string& kernel_name,
   // 1. If target_key not supports target backend, output "Selected wrong
   // Backend ..."
   if (!support_backend) {
-    std::string error_message = "";
-    for (auto iter = backend_set.begin(); iter != backend_set.end(); ++iter) {
-      error_message += *iter;
-      error_message += ", ";
-    }
-    error_message = error_message.substr(0, error_message.length() - 2);
+    std::string error_message = paddle::string::join_strings(backend_set, ", ");
     return "Selected wrong Backend `" +
            paddle::experimental::BackendToString(target_key.backend()) +
            "`. Paddle support following Backends: " + error_message + ".";
@@ -414,12 +450,7 @@ std::string kernel_selection_error_message(const std::string& kernel_name,
   // 2. If target_key not supports target datatype, output "Selected wrong
   // DataType ..."
   if (!support_dtype) {
-    std::string error_message = "";
-    for (auto iter = dtype_set.begin(); iter != dtype_set.end(); ++iter) {
-      error_message += *iter;
-      error_message += ", ";
-    }
-    error_message = error_message.substr(0, error_message.length() - 2);
+    std::string error_message = paddle::string::join_strings(dtype_set, ", ");
     return "Selected wrong DataType `" +
            paddle::experimental::DataTypeToString(target_key.dtype()) +
            "`. Paddle support following DataTypes: " + error_message + ".";
@@ -430,14 +461,9 @@ std::string kernel_selection_error_message(const std::string& kernel_name,
                         kernel_name + "`: { ";
   for (auto iter = all_kernel_key.begin(); iter != all_kernel_key.end();
        ++iter) {
-    message += "(" + iter->first + ", [";
     std::vector<std::string>& dtype_vec = iter->second;
-    for (std::size_t i = 0; i < dtype_vec.size(); ++i) {
-      message += dtype_vec[i];
-      if (i + 1 != dtype_vec.size()) {
-        message += ", ";
-      }
-    }
+    message += "(" + iter->first + ", [";
+    message += paddle::string::join_strings(dtype_vec, ", ");
     message += "]); ";
   }
   message += "}.";

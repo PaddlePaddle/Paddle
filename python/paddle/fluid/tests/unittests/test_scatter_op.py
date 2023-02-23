@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import os
+import unittest
+
+import numpy as np
+from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
-from op_test import OpTest
 import paddle.fluid.core as core
 from paddle.fluid.dygraph.base import switch_to_static_graph
 
@@ -372,6 +374,32 @@ class TestScatterOpFp16(OpTest):
 class TestScatterInplaceAPI(TestScatterAPI):
     def executed_api(self):
         self.scatter = paddle.scatter_
+
+
+@unittest.skipIf(core.is_compiled_with_cuda(), "CUDA will not throw exception")
+class TestScatterError(unittest.TestCase):
+    def test_scatter_index(self):
+        paddle.disable_static()
+        x = paddle.to_tensor([[1, 1], [2, 2], [3, 3]], dtype='float32')
+
+        def test_neg_index():
+            index = paddle.to_tensor([2, 1, -1, 1], dtype='int64')
+            updates = paddle.to_tensor(
+                [[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32'
+            )
+            out = paddle.scatter(x, index, updates)
+
+        self.assertRaises(IndexError, test_neg_index)
+
+        def test_too_big_index():
+            index = paddle.to_tensor([2, 1, 5, 1], dtype='int64')
+            updates = paddle.to_tensor(
+                [[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32'
+            )
+            out = paddle.scatter(x, index, updates)
+
+        self.assertRaises(IndexError, test_too_big_index)
+        paddle.enable_static()
 
 
 if __name__ == "__main__":

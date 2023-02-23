@@ -121,7 +121,7 @@ class TestGroupOperators(unittest.TestCase):
 
         dist_context = DistributedContext()
         tuner = RuleBasedTuner(dist_context)
-        layers = tuner.group_operators(train_program.global_block().ops)
+        layers = tuner.cluster_operators(train_program.global_block().ops)
         op_types = []
         for layer in layers:
             tmp = []

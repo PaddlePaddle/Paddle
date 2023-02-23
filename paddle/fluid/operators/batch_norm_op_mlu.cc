@@ -78,8 +78,8 @@ class MLUBatchNormOpKernel : public framework::OpKernel<T> {
     saved_mean->mutable_data<MPDType>(place);
     saved_variance->mutable_data<MPDType>(place);
 
-    Tensor transformed_x;
-    Tensor transformed_y;
+    phi::DenseTensor transformed_x;
+    phi::DenseTensor transformed_y;
     const int transformed_dim_size = 4;
     const int transformed_shape[transformed_dim_size] = {N, sample_size, 1, C};
     MLUCnnlTensorDesc transformed_desc(transformed_dim_size,
@@ -116,7 +116,7 @@ class MLUBatchNormOpKernel : public framework::OpKernel<T> {
 
     if (ctx.HasInput("MomentumTensor")) {
       const auto *mom_tensor = ctx.Input<phi::DenseTensor>("MomentumTensor");
-      Tensor mom_cpu;
+      phi::DenseTensor mom_cpu;
       framework::TensorCopySync(*mom_tensor, platform::CPUPlace(), &mom_cpu);
       momentum = mom_cpu.data<float>()[0];
     }
@@ -226,9 +226,9 @@ class MLUBatchNormGradOpKernel : public framework::OpKernel<T> {
                                           : x_dims[x_dims.size() - 1]);
     const int sample_size = x->numel() / N / C;
 
-    Tensor transformed_d_y;
-    Tensor transformed_x;
-    Tensor transformed_d_x;
+    phi::DenseTensor transformed_d_y;
+    phi::DenseTensor transformed_x;
+    phi::DenseTensor transformed_d_x;
     const int transformed_dim_size = 4;
     const int transformed_shape[transformed_dim_size] = {N, sample_size, 1, C};
 

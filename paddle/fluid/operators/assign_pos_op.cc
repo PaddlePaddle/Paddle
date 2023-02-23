@@ -31,7 +31,7 @@ class AssignPosOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto cum_count_dtype =
         OperatorWithKernel::IndicateVarDataType(ctx, "cum_count");
@@ -46,7 +46,7 @@ class AssignPosOp : public framework::OperatorWithKernel {
                       platform::errors::InvalidArgument(
                           "The dtype of the cum_count_dtype, eff_num_len and "
                           "X should be same as int64"));
-    return framework::OpKernelType(cum_count_dtype, ctx.device_context());
+    return phi::KernelKey(cum_count_dtype, ctx.device_context().GetPlace());
   }
 };
 

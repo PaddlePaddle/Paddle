@@ -22,7 +22,6 @@ import paddle.static as static
 import paddle.utils as utils
 from paddle.distributed import fleet
 from paddle.distributed.fleet import auto
-from paddle.fluid import layers
 
 paddle.enable_static()
 _global_parallel_strategy = None
@@ -93,7 +92,9 @@ def mlp_pretrain_forward(train_program, start_program):
 
         predict = mlp(input)
 
-        cost = layers.cross_entropy(input=predict, label=label)
+        cost = paddle.nn.functional.cross_entropy(
+            input=predict, label=label, reduction='none', use_softmax=False
+        )
         avg_cost = paddle.mean(x=cost)
 
     return avg_cost, train_program, start_program

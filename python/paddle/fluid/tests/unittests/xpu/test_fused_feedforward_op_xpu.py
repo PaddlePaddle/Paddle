@@ -11,25 +11,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import numpy as np
 import sys
+
+import numpy as np
 
 sys.path.append("..")
 
-import paddle
-from paddle.nn.layer import transformer
-import paddle.nn.functional as F
-import paddle.incubate.nn.functional as incubate_f
-from paddle.nn.layer.norm import LayerNorm
-from paddle.nn.layer.common import Linear, Dropout
 import unittest
-from op_test_xpu import XPUOpTest
-from paddle.fluid.framework import default_main_program
 
-from xpu.get_test_cover_info import (
-    create_test_class,
-    XPUOpTestWrapper,
-)
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import XPUOpTestWrapper, create_test_class
+
+import paddle
+import paddle.incubate.nn.functional as incubate_f
+import paddle.nn.functional as F
+from paddle.fluid.framework import default_main_program
+from paddle.nn.layer import transformer
+from paddle.nn.layer.common import Dropout, Linear
+from paddle.nn.layer.norm import LayerNorm
 
 
 class XPUTestFusedFFNOp(XPUOpTestWrapper):

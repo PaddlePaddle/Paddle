@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
+
+import numpy as np
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.nn.functional as F
-import numpy as np
-from paddle.fluid.framework import _test_eager_guard
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -272,12 +273,8 @@ class TestPool1D_API(unittest.TestCase):
             self.check_avg_dygraph_padding_same(place)
             self.check_max_dygraph_return_index_results(place)
 
-    def test_dygraph_api(self):
-        with _test_eager_guard():
-            self.test_pool1d()
 
-
-class TestPool2DError_API(unittest.TestCase):
+class TestPool1DError_API(unittest.TestCase):
     def test_error_api(self):
         def run1():
             with fluid.dygraph.guard():
@@ -420,9 +417,27 @@ class TestPool2DError_API(unittest.TestCase):
 
         self.assertRaises(ValueError, run_stride_out_of_range)
 
-    def test_dygraph_api(self):
-        with _test_eager_guard():
-            self.test_error_api()
+        def run_zero_stride():
+            with fluid.dygraph.guard():
+                array = np.array([1], dtype=np.float32)
+                x = paddle.to_tensor(
+                    np.reshape(array, [1, 1, 1]), dtype='float32'
+                )
+                out = F.max_pool1d(
+                    x, 1, stride=0, padding=1, return_mask=True, ceil_mode=True
+                )
+
+        self.assertRaises(ValueError, run_zero_stride)
+
+        def run_zero_tuple_stride():
+            with fluid.dygraph.guard():
+                array = np.array([1], dtype=np.float32)
+                x = paddle.to_tensor(
+                    np.reshape(array, [1, 1, 1]), dtype='float32'
+                )
+                out = F.max_pool1d(x, 1, stride=(0))
+
+        self.assertRaises(ValueError, run_zero_tuple_stride)
 
 
 if __name__ == '__main__':

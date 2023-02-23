@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid as fluid
-import paddle.static as static
-import paddle
 
 import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+import paddle.nn.functional as F
+import paddle.static as static
 
 
 class BackwardNet:
@@ -242,28 +244,28 @@ class SimpleNet(BackwardNet):
             x3, size=[100, 64], param_attr=fluid.ParamAttr(name='w2v')
         )
         # merge layers
-        x_merge = fluid.layers.elementwise_add(x_emb, x2_emb, name='x_add_x2')
-        x2_merge = fluid.layers.elementwise_add(
-            x2_emb, x3_emb, name='x2_add_x3'
-        )
+        x_merge = paddle.add(x_emb, x2_emb, name='x_add_x2')
+        x2_merge = paddle.add(x2_emb, x3_emb, name='x2_add_x3')
         # shared fc_w
-        predict = fluid.layers.fc(
-            input=x_merge,
+        predict = paddle.static.nn.fc(
+            x=x_merge,
             size=1,
-            act='softmax',
-            param_attr=fluid.ParamAttr(name='fc_w'),
+            activation='softmax',
+            weight_attr=fluid.ParamAttr(name='fc_w'),
             name='fc_predict',
         )
         # useless layer for calculating loss
-        fc_no_use = fluid.layers.fc(
-            input=x2_merge,
+        fc_no_use = paddle.static.nn.fc(
+            x=x2_merge,
             size=1,
-            act='sigmoid',
-            param_attr=fluid.ParamAttr(name='fc_w'),
+            activation='sigmoid',
+            weight_attr=fluid.ParamAttr(name='fc_w'),
             name='fc_no_use',
         )
         # loss
-        cost = fluid.layers.square_error_cost(input=predict, label=label)
+        cost = paddle.nn.functional.square_error_cost(
+            input=predict, label=label
+        )
         loss = paddle.mean(cost, name='mean_loss')
 
         return loss
@@ -283,8 +285,8 @@ class TestGradientsError(unittest.TestCase):
     def test_error(self):
         x = fluid.data(name='x', shape=[None, 2, 8, 8], dtype='float32')
         x.stop_gradient = False
-        conv = fluid.layers.conv2d(x, 4, 1, bias_attr=False)
-        y = fluid.layers.relu(conv)
+        conv = paddle.static.nn.conv2d(x, 4, 1, bias_attr=False)
+        y = F.relu(conv)
 
         with self.assertRaises(TypeError):
             x_grad = fluid.gradients(y.name, x)
@@ -330,8 +332,8 @@ class TestAppendBackwardWithError(unittest.TestCase):
         x = fluid.data(name='x', shape=[None, 13], dtype='int64')
         y = fluid.data(name='y', shape=[None, 1], dtype='float32')
         x_emb = fluid.embedding(x, size=[100, 256])
-        y_predict = fluid.layers.fc(input=x_emb, size=1, name='my_fc')
-        loss = fluid.layers.square_error_cost(input=y_predict, label=y)
+        y_predict = paddle.static.nn.fc(x=x_emb, size=1, name='my_fc')
+        loss = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_loss = paddle.mean(loss)
         param_names = [
             param.name
@@ -405,6 +407,39 @@ class TestGradientsWithOptimizer(unittest.TestCase):
 class ConditionalNet(BackwardNet):
     def __init__(self):
         super().__init__()
+
+
+class TestBackwardUninitializedVariable(unittest.TestCase):
+    """this case is found in yolov5 while to_static.
+    gradient aggregation may cause sum a invalid variable.
+    """
+
+    def test(self):
+        paddle.enable_static()
+        main_prg, startup_prg = paddle.static.Program(), paddle.static.Program()
+        with paddle.static.program_guard(main_prg, startup_prg):
+            gt = paddle.static.data(name='gt', shape=[4], dtype='float32')
+            x = paddle.static.data(name='x', shape=[2], dtype='float32')
+            gt.stop_gradient = True
+            x.stop_gradient = False
+            gt = gt.reshape([4, 1]).reshape([4])
+            loss = (
+                paddle.nn.functional.binary_cross_entropy(x, gt[:2])
+                + (gt[2:4] * x).sum()
+            )
+            exe = paddle.static.Executor()
+            paddle.fluid.backward.gradients(loss, [])
+            exe.run(startup_prg)
+            # Optimizer
+            out = exe.run(
+                main_prg,
+                feed={
+                    'gt': np.array([1.0, 1.0, 0.0, 0.0], dtype='float32'),
+                    'x': np.array([0.5, 0.5], dtype='float32'),
+                },
+                fetch_list=[loss],
+            )
+            print(out)
 
 
 if __name__ == '__main__':

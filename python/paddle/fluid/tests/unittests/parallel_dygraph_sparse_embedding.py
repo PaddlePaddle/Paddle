@@ -18,7 +18,7 @@ from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.nn import Embedding
+from paddle.nn import Embedding
 
 
 class SimpleNet(fluid.Layer):
@@ -37,11 +37,11 @@ class SimpleNet(fluid.Layer):
         self.init_scale = init_scale
         self.num_steps = num_steps
         self.embedding = Embedding(
-            size=[self.vocab_size, self.hidden_size],
-            dtype=dtype,
-            is_sparse=is_sparse,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.UniformInitializer(
+            self.vocab_size,
+            self.hidden_size,
+            sparse=is_sparse,
+            weight_attr=fluid.ParamAttr(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-init_scale, high=init_scale
                 )
             ),
@@ -50,7 +50,7 @@ class SimpleNet(fluid.Layer):
             attr=fluid.ParamAttr(),
             shape=[self.hidden_size, self.vocab_size],
             dtype=dtype,
-            default_initializer=fluid.initializer.UniformInitializer(
+            default_initializer=paddle.nn.initializer.Uniform(
                 low=-self.init_scale, high=self.init_scale
             ),
         )
@@ -58,21 +58,21 @@ class SimpleNet(fluid.Layer):
             attr=fluid.ParamAttr(),
             shape=[self.vocab_size],
             dtype=dtype,
-            default_initializer=fluid.initializer.UniformInitializer(
+            default_initializer=paddle.nn.initializer.Uniform(
                 low=-self.init_scale, high=self.init_scale
             ),
         )
 
     def forward(self, input, label):
         x_emb = self.embedding(input)
-        fc = fluid.layers.matmul(x_emb, self.softmax_weight)
-        fc = fluid.layers.elementwise_add(fc, self.softmax_bias)
+        fc = paddle.matmul(x_emb, self.softmax_weight)
+        fc = paddle.add(fc, self.softmax_bias)
         projection = paddle.reshape(fc, shape=[-1, self.vocab_size])
-        loss = fluid.layers.softmax_with_cross_entropy(
+        loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=projection, label=label, soft_label=False
         )
         loss = paddle.reshape(loss, shape=[-1, self.num_steps])
-        loss = fluid.layers.reduce_mean(loss, dim=[0])
+        loss = paddle.mean(loss, axis=[0])
         loss = paddle.sum(loss)
 
         return loss

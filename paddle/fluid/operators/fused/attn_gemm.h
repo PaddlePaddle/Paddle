@@ -24,7 +24,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 // support gemm-nt and gemm-nn, which is used in fused_attention_op.
 template <typename T>
 class AttnMatMul {

@@ -37,10 +37,18 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/api/all.h"
-#include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/utils/any.h"
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/backends/device_manager.h"
+#endif
+
+#include "gflags/gflags.h"
+#include "paddle/phi/api/include/operants_manager.h"
+#include "paddle/phi/api/include/tensor_operants.h"
+
+DECLARE_string(tensor_operants_mode);
 
 namespace paddle {
 namespace framework {
@@ -267,6 +275,14 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
 
   try {
     VLOG(3) << "Custom Operator: Run ComputeFunc.";
+
+    FLAGS_tensor_operants_mode = "phi";
+    if (paddle::OperantsManager::Instance().phi_operants.get() == nullptr) {
+      paddle::OperantsManager::Instance().phi_operants.reset(
+          new paddle::operants::PhiTensorOperants());
+      VLOG(4) << "Initialize phi tensor operants successfully";
+    }
+
     func(&kernel_ctx);
 
     // sync output tensor data into original output
@@ -284,7 +300,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
       auto* true_out = true_out_ptrs.at(i);
       auto calc_out =
           std::dynamic_pointer_cast<phi::DenseTensor>(calc_outs->at(i).impl());
-      // assgin meta info
+      // assign meta info
       auto* true_out_meta = phi::DenseTensorUtils::GetMutableMeta(true_out);
       true_out_meta->dims = calc_out->dims();
       true_out_meta->dtype = calc_out->dtype();
@@ -419,9 +435,9 @@ class CustomOperator : public OperatorWithKernel {
    * The RAW type is used here as the data type, indicating that
    * it can only be determined at runtime.
    */
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(proto::VarType::RAW, ctx.GetPlace());
+    return phi::KernelKey(ctx.GetPlace());
   }
 
   /**
@@ -429,13 +445,13 @@ class CustomOperator : public OperatorWithKernel {
    * Because the kernel data type is RAW, we should skip the cast for
    * data type difference when PrepareData.
    */
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
-      const OpKernelType& expected_kernel_type) const override {
-    return OpKernelType(expected_kernel_type.data_type_,
-                        expected_kernel_type.place_,
-                        tensor.layout());
+      const phi::KernelKey& expected_kernel_type) const override {
+    return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                          tensor.layout(),
+                          expected_kernel_type.dtype());
   }
 };
 
@@ -707,6 +723,23 @@ static void RegisterOperatorKernel(const std::string& name,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   RegisterOperatorKernelWithPlace(
       name, op_kernel_func, proto::VarType::RAW, platform::CUDAPlace());
+#endif
+#if defined(PADDLE_WITH_XPU)
+  RegisterOperatorKernelWithPlace(
+      name, op_kernel_func, proto::VarType::RAW, platform::XPUPlace());
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+  for (const auto& dev_type : device_types) {
+    for (size_t dev_id = 0;
+         dev_id < phi::DeviceManager::GetDeviceCount(dev_type);
+         dev_id++) {
+      RegisterOperatorKernelWithPlace(name,
+                                      op_kernel_func,
+                                      proto::VarType::RAW,
+                                      platform::CustomPlace(dev_type, dev_id));
+    }
+  }
 #endif
 }
 

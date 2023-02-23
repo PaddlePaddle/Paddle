@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/partial_recv_op.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
@@ -81,8 +81,8 @@ class PartialRecvOpCUDAKernel : public framework::OpKernel<T> {
       gpuStream_t stream = nullptr;
       auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
       if (ctx.Attr<bool>("use_calc_stream")) {
-        auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-        stream = static_cast<phi::GPUContext *>(dev_ctx)->stream();
+        // should ExecutionContext for calc stream.
+        stream = ctx.cuda_device_context().stream();
       } else {
         stream = comm->stream();
       }

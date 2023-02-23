@@ -14,8 +14,10 @@
 
 import os
 import unittest
-import paddle
+
 from test_dist_base import TestDistBase
+
+import paddle
 
 
 def download_files():

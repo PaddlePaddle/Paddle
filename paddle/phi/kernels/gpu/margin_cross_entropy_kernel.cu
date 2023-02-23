@@ -27,12 +27,13 @@ namespace cub = hipcub;
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 // trace op include
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -57,14 +58,13 @@ void GetClassInterval(const gpuStream_t& stream,
   std::vector<int> shard_dim_vec(nranks + 1, 0);
   shard_dim_vec[rank + 1] = D;
   if (nranks <= 1) {
-    paddle::framework::TensorFromVector(shard_dim_vec, dev_ctx, class_interval);
+    phi::TensorFromVector(shard_dim_vec, dev_ctx, class_interval);
     return;
   }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   DenseTensor num_classes_per_device;
-  paddle::framework::TensorFromVector(
-      shard_dim_vec, dev_ctx, &num_classes_per_device);
+  phi::TensorFromVector(shard_dim_vec, dev_ctx, &num_classes_per_device);
   int* num_classes_per_device_ptr = num_classes_per_device.data<int>();
 
   auto map = paddle::distributed::ProcessGroupMapFromGid::getInstance();
@@ -105,7 +105,8 @@ void GetClassInterval(const gpuStream_t& stream,
   size_t cub_temp_storage_bytes = 0;
   cub::DeviceScan::InclusiveSum<int*, int*>(
       nullptr, cub_temp_storage_bytes, nullptr, nullptr, nranks + 1, stream);
-  auto cub_temp_storage = paddle::memory::Alloc(place, cub_temp_storage_bytes);
+  auto cub_temp_storage =
+      phi::memory_utils::Alloc(place, cub_temp_storage_bytes);
   cub::DeviceScan::InclusiveSum<int*, int*>(cub_temp_storage->ptr(),
                                             cub_temp_storage_bytes,
                                             num_classes_per_device_ptr,

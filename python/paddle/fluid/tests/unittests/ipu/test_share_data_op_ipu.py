@@ -48,7 +48,7 @@ class TestBase(IPUOpTest):
         self.main_prog.global_block().append_op(
             type="share_data", inputs={"X": x}, outputs={'Out': y}
         )
-        out = paddle.fluid.layers.elementwise_add(y, y)
+        out = paddle.add(y, y)
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
@@ -82,7 +82,7 @@ class TestCase1(TestBase):
         self.main_prog.global_block().append_op(
             type="share_data", inputs={"X": x}, outputs={'Out': y}
         )
-        out = paddle.fluid.layers.elementwise_add(x, y)
+        out = paddle.add(x, y)
         self.fetch_list = [out.name]
 
 

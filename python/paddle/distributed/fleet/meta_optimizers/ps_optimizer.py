@@ -11,13 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-import paddle.distributed.passes
-from .meta_optimizer_base import MetaOptimizerBase
-from paddle.framework import core
-import subprocess
-import re
 import os
 import platform
+import re
+import subprocess
+
+import paddle.distributed.passes
+from paddle.distributed.passes import PassContext
+from paddle.distributed.ps.utils.ps_factory import PsProgramBuilderFactory
 from paddle.distributed.ps.utils.public import (
     TrainerRuntimeConfig,
     build_var_distributed,
@@ -26,8 +27,9 @@ from paddle.distributed.ps.utils.public import (
     get_var_mem_size,
     logger,
 )
-from paddle.distributed.passes import PassContext
-from paddle.distributed.ps.utils.ps_factory import PsProgramBuilderFactory
+from paddle.framework import core
+
+from .meta_optimizer_base import MetaOptimizerBase
 
 
 class ParameterServerOptimizer(MetaOptimizerBase):

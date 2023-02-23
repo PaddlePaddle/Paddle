@@ -31,6 +31,49 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     int seq_len = input_x_dims[1];
     int dim_embed = input_x_dims[2];
     int bsz_seq = bsz * seq_len;
+    const std::string act_method = ctx.Attr<std::string>("act_method");
+    bool remove_padding = false;
+    auto *sequence_lengths = ctx.Input<phi::DenseTensor>("SeqLengths");
+    if (sequence_lengths) {
+      remove_padding = true;
+    }
+    phi::DenseTensor d_token_tensor;
+    phi::DenseTensor padding_offset_tensor;
+    phi::DenseTensor x_remove_padding;
+    bool encoder_remove_padding = (remove_padding && !time_step);
+    int token_num = 0;
+
+    // remove padding in encoder
+    if (encoder_remove_padding) {
+      // just for encoder
+      d_token_tensor.Resize({{1}});
+      auto *d_token_num = dev_ctx.Alloc<int>(
+          &d_token_tensor, d_token_tensor.numel() * sizeof(int));
+      // alloc the max size of padding_offset_tensor
+      padding_offset_tensor.Resize({{bsz_seq}});
+      dev_ctx.Alloc<int>(&padding_offset_tensor,
+                         padding_offset_tensor.numel() * sizeof(int));
+      InvokeGetPaddingOffset(dev_ctx,
+                             &token_num,
+                             d_token_num,
+                             padding_offset_tensor.data<int>(),
+                             sequence_lengths->data<int>(),
+                             bsz,
+                             seq_len);
+      padding_offset_tensor.Resize({{token_num}});
+      x_remove_padding.Resize({{token_num, dim_embed}});
+      dev_ctx.Alloc<T>(&x_remove_padding, x_remove_padding.numel() * sizeof(T));
+      InvokeRemovePadding(dev_ctx,
+                          x_remove_padding.data<T>(),
+                          input_x->data<T>(),
+                          padding_offset_tensor.data<int>(),
+                          token_num,
+                          dim_embed);
+    } else {
+      token_num = bsz_seq;
+    }
+    auto *padding_offset_data =
+        encoder_remove_padding ? padding_offset_tensor.data<int>() : nullptr;
 
     // 1. layer norm
     const auto pre_layer_norm = ctx.Attr<bool>("pre_layer_norm");
@@ -38,12 +81,12 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     auto ln_scales = ctx.MultiInput<phi::DenseTensor>("LnScale");
     auto ln_biases = ctx.MultiInput<phi::DenseTensor>("LnBias");
 
-    auto ln_compute = AttnLayerNorm<T>(dev_ctx, epsilon, bsz_seq, dim_embed);
-    Tensor ln_mean, ln_var;
-    ln_mean.Resize({{bsz_seq}});
+    auto ln_compute = AttnLayerNorm<T>(dev_ctx, epsilon, token_num, dim_embed);
+    phi::DenseTensor ln_mean, ln_var;
+    ln_mean.Resize({{token_num}});
     auto *ln_mean_data =
         dev_ctx.Alloc<U>(&ln_mean, ln_mean.numel() * sizeof(U));
-    ln_var.Resize({{bsz_seq}});
+    ln_var.Resize({{token_num}});
     auto *ln_var_data = dev_ctx.Alloc<U>(&ln_var, ln_var.numel() * sizeof(U));
 
     // 2. qkv
@@ -61,21 +104,24 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 
     bool compute_bias = qkv_biases.size() > 0 && time_step == nullptr;
     // (transA, transB, compute_bias) = (false, trans_qkvw, false)
-
     // Since we fused QKVBias into QKVBiasAddTransposeSplit kernel, here we set
     // compute_bias as false.
     auto qkv_compute = AttnMatMul<T>(dev_ctx,
                                      false,
                                      trans_qkvw,
-                                     bsz_seq,
+                                     token_num,
                                      output_size,
                                      input_size,
                                      /*compute_bias=*/false);
 
-    Tensor qkv_out;
-    qkv_out.Resize({{bsz, seq_len, 3, num_head, dim_head}});
+    phi::DenseTensor qkv_out;
+    qkv_out.Resize({{token_num, 3, num_head, dim_head}});
     auto *qkv_out_data =
         dev_ctx.Alloc<T>(&qkv_out, qkv_out.numel() * sizeof(T));
+
+    // 2.1 rotary
+    auto *rotary_tensor = ctx.Input<phi::DenseTensor>("RotaryPosEmb");
+    const int rotary_emb_dims = ctx.Attr<int>("rotary_emb_dims");
 
     // 3. fmha
     AttnDropoutParam attn_param(
@@ -116,7 +162,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
       out_seq_len += cache_offset;
     }
 
-    Tensor q_transpose_out, kv_transpose_out, qk_out;
+    phi::DenseTensor q_transpose_out, kv_transpose_out, qk_out;
     q_transpose_out.Resize({{bsz, num_head, seq_len, dim_head}});
     auto *q_transpose_out_data =
         dev_ctx.Alloc<T>(&q_transpose_out, q_transpose_out.numel() * sizeof(T));
@@ -128,7 +174,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     qk_out.Resize({{bsz, num_head, seq_len, out_seq_len}});
     auto *qk_out_data = dev_ctx.Alloc<T>(&qk_out, qk_out.numel() * sizeof(T));
 
-    Tensor src_mask_out;
+    phi::DenseTensor src_mask_out;
     if (cache_offset > 0) {
       src_mask_out.Resize({{bsz, num_head, seq_len, out_seq_len}});
       auto *src_mask_out_data =
@@ -136,7 +182,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     }
 
     // [2, bs, num_head, cache_seq_len + seq_len, head_dim]
-    Tensor pre_cache_kv_out;
+    phi::DenseTensor pre_cache_kv_out;
     if (cache_offset > 0) {
       pre_cache_kv_out.Resize(
           {{2, bsz, num_head, seq_len + cache_offset, dim_head}});
@@ -144,9 +190,9 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
           &pre_cache_kv_out, pre_cache_kv_out.numel() * sizeof(T));
     }
 
-    Tensor softmax_out;
-    Tensor attn_dropout_mask_out, attn_dropout_out;
-    Tensor qktv_out, fmha_out;
+    phi::DenseTensor softmax_out;
+    phi::DenseTensor attn_dropout_mask_out, attn_dropout_out;
+    phi::DenseTensor qktv_out, fmha_out;
     softmax_out.Resize({{bsz, num_head, seq_len, out_seq_len}});
     auto *softmax_out_data =
         dev_ctx.Alloc<T>(&softmax_out, softmax_out.numel() * sizeof(T));
@@ -171,86 +217,102 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     int ring_id = ctx.Attr<int>("ring_id");
     // (transA, transB, compute_bias) = (false, false, false)
     auto out_linear_compute = AttnMatMul<T>(
-        dev_ctx, false, false, bsz_seq, dim_embed, hidden_size, false);
+        dev_ctx, false, false, token_num, dim_embed, hidden_size, false);
 
     // 5. ln(residual + bias)
     DropoutParam dropout_param2(true, 0, true, true, 0.0, nullptr, 0);
     FusedDropoutLayerNormHelper<T, uint8_t> fused_dropout_layernorm_helper(
-        dev_ctx, bsz_seq, dim_embed, dropout_param2, epsilon);
+        dev_ctx, token_num, dim_embed, dropout_param2, epsilon);
     auto ffn_ln_scales = ctx.MultiInput<phi::DenseTensor>("FFNLnScale");
     auto ffn_ln_biases = ctx.MultiInput<phi::DenseTensor>("FFNLnBias");
-    Tensor bias_dropout_residual_out, dropout_mask_out;
+    phi::DenseTensor bias_dropout_residual_out, dropout_mask_out;
     T *bias_dropout_residual_out_data = nullptr;
     if (pre_layer_norm) {
-      bias_dropout_residual_out.Resize({{bsz, seq_len, dim_embed}});
+      bias_dropout_residual_out.Resize({{token_num, dim_embed}});
       bias_dropout_residual_out_data =
           dev_ctx.Alloc<T>(&bias_dropout_residual_out,
                            bias_dropout_residual_out.numel() * sizeof(T));
     }
-    dropout_mask_out.Resize({{bsz, seq_len, dim_embed}});
+    dropout_mask_out.Resize({{token_num, dim_embed}});
     auto *dropout_mask_out_data = dev_ctx.Alloc<uint8_t>(
         &dropout_mask_out, dropout_mask_out.numel() * sizeof(uint8_t));
 
-    // 6. ffn1 matmul + bias_add + gelu.
+    // 6. ffn1 matmul + act + bias
     auto ffn1_weights = ctx.MultiInput<phi::DenseTensor>("FFN1Weight");
     auto ffn1_biases = ctx.MultiInput<phi::DenseTensor>("FFN1Bias");
     auto ffn1_weight_dim = ffn1_weights[0]->dims();
 
     int dim_ffn = ffn1_weight_dim[1];
 
-    Tensor ffn1_out;
-    ffn1_out.Resize({{bsz_seq, dim_ffn}});
+    auto ffn1_cublas_linear = CublasFusedMLP<T>(dev_ctx);
+    const phi::DDim ffn1_input_shape({token_num, dim_embed});
+    ffn1_cublas_linear.Setup(ffn1_input_shape, ffn1_weight_dim, false, false);
+
+    phi::DenseTensor ffn1_out;
+    ffn1_out.Resize({{token_num, dim_ffn}});
     auto *ffn1_out_data =
         dev_ctx.Alloc<T>(&ffn1_out, ffn1_out.numel() * sizeof(T));
 
-    auto ffn1_linear_bias_gelu = CublasFusedMLP<T>(dev_ctx);
-    const phi::DDim ffn1_input_shape({bsz_seq, dim_ffn});
-    ffn1_linear_bias_gelu.Setup(
-        ffn1_input_shape, ffn1_weight_dim, false, false);
-
-    // 8. ffn2 matmul + bias_add + residual.
+    // 7. ffn2 matmul + bias + residual.
     auto ffn2_weights = ctx.MultiInput<phi::DenseTensor>("FFN2Weight");
     auto ffn2_biases = ctx.MultiInput<phi::DenseTensor>("FFN2Bias");
 
-    auto ffn2_linear_bias_residual = CublasFusedMLP<T>(dev_ctx);
-    ffn2_linear_bias_residual.Setup(
-        ffn1_out.dims(), ffn2_weights[0]->dims(), false, false);
+    auto ffn2_linear_compute = AttnMatMul<T>(
+        dev_ctx, false, false, token_num, dim_embed, dim_ffn, false);
 
-    // 9. ffn2 residual bias
+    // 8. ffn2 Layernorm residual bias
     DropoutParam ffn2_dropout_param(true, 0, true, true, 0.0, nullptr, 0);
     FusedDropoutLayerNormHelper<T, uint8_t> ffn2_fused_dropout_helper(
-        dev_ctx, bsz_seq, dim_embed, ffn2_dropout_param, epsilon);
+        dev_ctx, token_num, dim_embed, ffn2_dropout_param, epsilon);
 
     // calc
     auto *out = ctx.Output<phi::DenseTensor>("Out");
     auto *from_data = dev_ctx.Alloc<T>(out, out->numel() * sizeof(T));
-    Tensor *from_tensor = out;
-    Tensor tmp_out;
-    tmp_out.Resize({{bsz, seq_len, dim_embed}});
+    phi::DenseTensor *from_tensor = out;
+    phi::DenseTensor tmp_out, tmp_out_rm_padding;
+    tmp_out.Resize({{token_num, dim_embed}});
+    if (encoder_remove_padding) {
+      tmp_out_rm_padding.Resize({{token_num, dim_embed}});
+      auto *tmp_out_rm_padding_data = dev_ctx.Alloc<T>(
+          &tmp_out_rm_padding, tmp_out_rm_padding.numel() * sizeof(T));
+    }
     auto *tmp_out_data =
         dev_ctx.Alloc<T>(&tmp_out, tmp_out.numel() * sizeof(T));
 
-    auto *x_data = input_x->data<T>();
-    Tensor *buf0 = nullptr;
-    Tensor *buf1 = nullptr;
+    const T *x_data;
+    if (encoder_remove_padding) {
+      x_data = x_remove_padding.data<T>();
+    } else {
+      x_data = input_x->data<T>();
+    }
+    phi::DenseTensor *buf0 = nullptr;
+    phi::DenseTensor *buf1 = nullptr;
 
     // step0:  x   --> buf1
     // step1: buf1 --> buf0
     // step2: buf0 --> buf1
     int layers = qkv_weights.size();
-    if (pre_layer_norm) {
-      if (layers & 1) {
-        // odd, set buf1 as out
+    if (encoder_remove_padding) {
+      // In the case of variable lengths, the padding needs to be rebuilt
+      // eventually. So buf0 and buf1 do not need to be changed according to the
+      // pre_layer_norm and the number of layers.
+      buf0 = &tmp_out;
+      buf1 = &tmp_out_rm_padding;
+    } else {
+      if (pre_layer_norm) {
+        if (layers & 1) {
+          // odd, set buf1 as out
+          buf0 = &tmp_out;
+          buf1 = out;
+        } else {
+          // even, set buf0 as out
+          buf0 = out;
+          buf1 = &tmp_out;
+        }
+      } else {
         buf0 = &tmp_out;
         buf1 = out;
-      } else {
-        // even, set buf0 as out
-        buf0 = out;
-        buf1 = &tmp_out;
       }
-    } else {
-      buf0 = &tmp_out;
-      buf1 = out;
     }
 
     for (int i = 0; i < layers; ++i) {
@@ -271,12 +333,15 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 #endif
 
       // step2. qkv
-      const Tensor *qkv_bias = qkv_biases.size() > 0 ? qkv_biases[i] : nullptr;
+      const phi::DenseTensor *qkv_bias =
+          qkv_biases.size() > 0 ? qkv_biases[i] : nullptr;
       // NOTE: in decoder stage, bias is fused in fmha
-      const Tensor *bias = time_step ? nullptr : qkv_bias;
+      const phi::DenseTensor *bias = time_step ? nullptr : qkv_bias;
       if (!pre_layer_norm && i == 0) {
+        const phi::DenseTensor *tmp_input_x =
+            (encoder_remove_padding) ? &x_remove_padding : input_x;
         qkv_compute.ComputeForward(
-            qkv_weights[i], input_x, bias, &qkv_out, &qkv_out);
+            qkv_weights[i], tmp_input_x, bias, &qkv_out, &qkv_out);
       } else {
         qkv_compute.ComputeForward(
             qkv_weights[i], buf1, bias, &qkv_out, &qkv_out);
@@ -286,8 +351,9 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 #endif
 
       // step3. fmha
-      const Tensor *cache_kv = cache_kvs.size() > 0 ? cache_kvs[i] : nullptr;
-      Tensor *cache_kv_out = cache_kv ? cache_kv_outs[i] : nullptr;
+      const phi::DenseTensor *cache_kv =
+          cache_kvs.size() > 0 ? cache_kvs[i] : nullptr;
+      phi::DenseTensor *cache_kv_out = cache_kv ? cache_kv_outs[i] : nullptr;
 
       if (time_step) {  // generation decoder stage
         // [2, batch_size, num_head, max_seq_len, head_size]
@@ -296,6 +362,8 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                 qkv_out,
                 *qkv_bias,
                 *src_mask,
+                sequence_lengths,
+                rotary_tensor,
                 cache_kv_out,
                 &fmha_out,
                 bsz,
@@ -303,26 +371,52 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                 num_head,
                 dim_head,
                 time_step->data<int>()[0],
+                rotary_emb_dims,
                 1. / sqrt(dim_head));
       } else if (cache_kv_out) {  // generation context stage
-        const Tensor *pre_cache_kv_tensor =
+        const phi::DenseTensor *pre_cache_kv_tensor =
             pre_caches.size() > 0 ? pre_caches[i] : nullptr;
-        Tensor *pre_cache_kv_out_tmp =
+        phi::DenseTensor *pre_cache_kv_out_tmp =
             cache_offset > 0 ? &pre_cache_kv_out : nullptr;
-        Tensor *src_mask_tmp = cache_offset > 0 ? &src_mask_out : nullptr;
+        phi::DenseTensor *src_mask_tmp =
+            cache_offset > 0 ? &src_mask_out : nullptr;
         qkv_bias_add_transpose_split<T>(dev_ctx,
                                         q_transpose_out_data,
                                         kv_transpose_out_data,
                                         qkv_out_data,
                                         qkv_bias->data<T>(),
+                                        padding_offset_data,
+                                        token_num,
                                         bsz,
                                         num_head,
                                         seq_len,
                                         dim_head,
                                         compute_bias);
-        fmha_compute.ComputeForwardWithoutTranspose(qkv_out,
-                                                    pre_cache_kv_tensor,
+        // q_transpose_out_data [bs, head_num, seq_len, dim_head]
+        // kv_transpose_out_data [2， bs, head_num, seq_len, dim_head]
+        if (rotary_emb_dims != 0) {
+          auto *rotary_emb_data = rotary_tensor->data<T>();
+          const int *sequence_lengths_data =
+              encoder_remove_padding ? sequence_lengths->data<int>() : nullptr;
+          rotary_qk(dev_ctx,
+                    q_transpose_out_data,
+                    kv_transpose_out_data,
+                    q_transpose_out_data,
+                    kv_transpose_out_data,
+                    rotary_emb_data,
+                    sequence_lengths_data,
+                    rotary_emb_dims,
+                    bsz,
+                    num_head,
+                    seq_len,
+                    dim_head);
+        }
+
+        phi::DenseTensor *tmp_padding_offset_tensor =
+            encoder_remove_padding ? &padding_offset_tensor : nullptr;
+        fmha_compute.ComputeForwardWithoutTranspose(pre_cache_kv_tensor,
                                                     src_mask,
+                                                    tmp_padding_offset_tensor,
                                                     &q_transpose_out,
                                                     &kv_transpose_out,
                                                     pre_cache_kv_out_tmp,
@@ -332,8 +426,8 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                                     &attn_dropout_mask_out,
                                                     &attn_dropout_out,
                                                     &qktv_out,
-                                                    &fmha_out);
-
+                                                    &fmha_out,
+                                                    token_num);
         const T *k_ptr = nullptr;
         const T *v_ptr = nullptr;
 
@@ -377,14 +471,39 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                         kv_transpose_out_data,
                                         qkv_out_data,
                                         qkv_bias->data<T>(),
+                                        padding_offset_data,
+                                        token_num,
                                         bsz,
                                         num_head,
                                         seq_len,
                                         dim_head,
                                         compute_bias);
-        fmha_compute.ComputeForwardWithoutTranspose(qkv_out,
-                                                    cache_kv,
+
+        // q_transpose_out_data [bs, head_num, seq_len, dim_head]
+        // kv_transpose_out_data [2， bs, head_num, seq_len, dim_head]
+        if (rotary_emb_dims != 0) {
+          auto *rotary_emb_data = rotary_tensor->data<T>();
+          const int *sequence_lengths_data =
+              encoder_remove_padding ? sequence_lengths->data<int>() : nullptr;
+          rotary_qk(dev_ctx,
+                    q_transpose_out_data,
+                    kv_transpose_out_data,
+                    q_transpose_out_data,
+                    kv_transpose_out_data,
+                    rotary_emb_data,
+                    sequence_lengths_data,
+                    rotary_emb_dims,
+                    bsz,
+                    num_head,
+                    seq_len,
+                    dim_head);
+        }
+
+        phi::DenseTensor *tmp_padding_offset_tensor =
+            encoder_remove_padding ? &padding_offset_tensor : nullptr;
+        fmha_compute.ComputeForwardWithoutTranspose(cache_kv,
                                                     src_mask,
+                                                    tmp_padding_offset_tensor,
                                                     &q_transpose_out,
                                                     &kv_transpose_out,
                                                     cache_kv_out,
@@ -394,7 +513,8 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                                     &attn_dropout_mask_out,
                                                     &attn_dropout_out,
                                                     &qktv_out,
-                                                    &fmha_out);
+                                                    &fmha_out,
+                                                    token_num);
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step3";
@@ -450,74 +570,111 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
             ln_mean_data,
             ln_var_data);
       }
-
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step5";
 #endif
-      // step6. ffn1 matmul + bias_add + gelu.
 
-      ffn1_linear_bias_gelu.ComputeForward(
-          buf1, ffn1_weights[i], ffn1_biases[i], nullptr, &ffn1_out, "gelu");
+      // step6. ffn matmul1
+      ffn1_cublas_linear.ComputeForward(buf1,
+                                        ffn1_weights[i],
+                                        ffn1_biases[i],
+                                        nullptr,
+                                        &ffn1_out,
+                                        act_method);
 
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step6";
 #endif
 
-      // step7. ffn2 matmul + bias_add + residual.
+      // step7. ffn2 matmul
       if (pre_layer_norm) {
-        ffn2_linear_bias_residual.ComputeForward(&ffn1_out,
-                                                 ffn2_weights[i],
-                                                 ffn2_biases[i],
-                                                 &bias_dropout_residual_out,
-                                                 buf1,
-                                                 "none");
-
+        ffn2_linear_compute.ComputeForward(
+            ffn2_weights[i], &ffn1_out, nullptr, buf1, nullptr);
       } else {
-        ffn2_linear_bias_residual.ComputeForward(
-            &ffn1_out, ffn2_weights[i], ffn2_biases[i], buf1, buf0, "none");
-      }
-
-      if (pre_layer_norm) {
-        AllReduce<T>(*buf1, ring_id, buf1->numel(), dev_ctx);
-      } else {
-        AllReduce<T>(*buf0, ring_id, buf0->numel(), dev_ctx);
+        ffn2_linear_compute.ComputeForward(
+            ffn2_weights[i], &ffn1_out, nullptr, buf0, nullptr);
       }
 
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step7";
 #endif
 
-      // step8. layer norm or do nothing(because bias_add + residual has been
-      // fused into cublasFusedMLP. )
       if (pre_layer_norm) {
+        AllReduce<T>(*buf1, ring_id, buf1->numel(), dev_ctx);
+      } else {
+        AllReduce<T>(*buf0, ring_id, buf0->numel(), dev_ctx);
+      }
+#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
+      VLOG(0) << "step7.1";
+#endif
+
+      // step8. layer norm + bias_add + residual
+      if (pre_layer_norm) {
+        // TODO(wangxi): remove dropout mask in inference
         if (i < layers - 1) {
           auto *ln_scale_data = ln_scales[i + 1]->data<U>();
           auto *ln_bias_data = ln_biases[i + 1]->data<U>();
-          ffn2_fused_dropout_helper.LayerNorm(dev_ctx,
-                                              buf1->data<T>(),
-                                              ln_scale_data,
-                                              ln_bias_data,
-                                              buf0->data<T>(),
-                                              ln_mean_data,
-                                              ln_var_data);
+          ffn2_fused_dropout_helper.LayernormResidualDropoutBias(
+              dev_ctx,
+              buf1->data<T>(),
+              bias_dropout_residual_out_data,
+              ffn2_biases[i]->data<T>(),
+              ln_scale_data,
+              ln_bias_data,
+              buf1->data<T>(),
+              dropout_mask_out_data,
+              buf0->data<T>(),
+              ln_mean_data,
+              ln_var_data);
+        } else {
+          ffn2_fused_dropout_helper.ResidualDropoutBias(
+              dev_ctx,
+              buf1->data<T>(),
+              bias_dropout_residual_out_data,
+              ffn2_biases[i]->data<T>(),
+              buf1->data<T>(),
+              dropout_mask_out_data);
         }
       } else {
         auto *ln_scale_data = ffn_ln_scales[i]->data<U>();
         auto *ln_bias_data = ffn_ln_biases[i]->data<U>();
-        ffn2_fused_dropout_helper.LayerNorm(dev_ctx,
-                                            buf0->data<T>(),
-                                            ln_scale_data,
-                                            ln_bias_data,
-                                            buf1->data<T>(),
-                                            ln_mean_data,
-                                            ln_var_data);
+        ffn2_fused_dropout_helper.LayernormResidualDropoutBias(
+            dev_ctx,
+            buf0->data<T>(),
+            buf1->data<T>(),
+            ffn2_biases[i]->data<T>(),
+            ln_scale_data,
+            ln_bias_data,
+            buf0->data<T>(),
+            dropout_mask_out_data,
+            buf1->data<T>(),
+            ln_mean_data,
+            ln_var_data);
       }
+
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step8";
 #endif
       if (pre_layer_norm) {
         x_data = buf1->data<T>();
         std::swap(buf0, buf1);
+      }
+    }
+    if (encoder_remove_padding) {
+      if (pre_layer_norm) {
+        InvokeRebuildPadding(dev_ctx,
+                             from_data,
+                             buf0->data<T>(),
+                             padding_offset_data,
+                             token_num,
+                             dim_embed);
+      } else {
+        InvokeRebuildPadding(dev_ctx,
+                             from_data,
+                             buf1->data<T>(),
+                             padding_offset_data,
+                             token_num,
+                             dim_embed);
       }
     }
   }
@@ -540,6 +697,49 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     int seq_len = input_x_dims[1];
     int dim_embed = input_x_dims[2];
     int bsz_seq = bsz * seq_len;
+    const std::string act_method = ctx.Attr<std::string>("act_method");
+    bool remove_padding = false;
+    auto *sequence_lengths = ctx.Input<phi::DenseTensor>("SeqLengths");
+    if (sequence_lengths) {
+      remove_padding = true;
+    }
+    phi::DenseTensor d_token_tensor;
+    phi::DenseTensor padding_offset_tensor;
+    phi::DenseTensor x_remove_padding;
+    bool encoder_remove_padding = (remove_padding && !time_step);
+    int token_num = 0;
+
+    // remove padding in encoder
+    if (encoder_remove_padding) {
+      // just for encoder
+      d_token_tensor.Resize({{1}});
+      auto *d_token_num = dev_ctx.Alloc<int>(
+          &d_token_tensor, d_token_tensor.numel() * sizeof(int));
+      // alloc the max size of padding_offset_tensor
+      padding_offset_tensor.Resize({{bsz_seq}});
+      dev_ctx.Alloc<int>(&padding_offset_tensor,
+                         padding_offset_tensor.numel() * sizeof(int));
+      InvokeGetPaddingOffset(dev_ctx,
+                             &token_num,
+                             d_token_num,
+                             padding_offset_tensor.data<int>(),
+                             sequence_lengths->data<int>(),
+                             bsz,
+                             seq_len);
+      padding_offset_tensor.Resize({{token_num}});
+      x_remove_padding.Resize({{token_num, dim_embed}});
+      dev_ctx.Alloc<T>(&x_remove_padding, x_remove_padding.numel() * sizeof(T));
+      InvokeRemovePadding(dev_ctx,
+                          x_remove_padding.data<T>(),
+                          input_x->data<T>(),
+                          padding_offset_tensor.data<int>(),
+                          token_num,
+                          dim_embed);
+    } else {
+      token_num = bsz_seq;
+    }
+    auto *padding_offset_data =
+        encoder_remove_padding ? padding_offset_tensor.data<int>() : nullptr;
 
     // 1. layer norm
     const auto pre_layer_norm = ctx.Attr<bool>("pre_layer_norm");
@@ -547,12 +747,12 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     auto ln_scales = ctx.MultiInput<phi::DenseTensor>("LnScale");
     auto ln_biases = ctx.MultiInput<phi::DenseTensor>("LnBias");
 
-    auto ln_compute = AttnLayerNorm<T>(dev_ctx, epsilon, bsz_seq, dim_embed);
-    Tensor ln_mean, ln_var;
-    ln_mean.Resize({{bsz_seq}});
+    auto ln_compute = AttnLayerNorm<T>(dev_ctx, epsilon, token_num, dim_embed);
+    phi::DenseTensor ln_mean, ln_var;
+    ln_mean.Resize({{token_num}});
     auto *ln_mean_data =
         dev_ctx.Alloc<U>(&ln_mean, ln_mean.numel() * sizeof(U));
-    ln_var.Resize({{bsz_seq}});
+    ln_var.Resize({{token_num}});
     auto *ln_var_data = dev_ctx.Alloc<U>(&ln_var, ln_var.numel() * sizeof(U));
 
     // 2. qkv
@@ -570,20 +770,24 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 
     bool compute_bias = qkv_biases.size() > 0 && time_step == nullptr;
     // (transA, transB, compute_bias) = (false, trans_qkvw, false)
-    // Since we fused QKVBias into QKVBiasAddTransposeSplit kernel, here we set
-    // compute_bias as false.
+    // Since we fused QKVBias into QKVBiasAddTransposeSplit kernel, here we
+    // set compute_bias as false.
     auto qkv_compute = AttnMatMul<T>(dev_ctx,
                                      false,
                                      trans_qkvw,
-                                     bsz_seq,
+                                     token_num,
                                      output_size,
                                      input_size,
                                      /*compute_bias=*/false);
 
-    Tensor qkv_out;
-    qkv_out.Resize({{bsz, seq_len, 3, num_head, dim_head}});
+    phi::DenseTensor qkv_out;
+    qkv_out.Resize({{token_num, 3, num_head, dim_head}});
     auto *qkv_out_data =
         dev_ctx.Alloc<T>(&qkv_out, qkv_out.numel() * sizeof(T));
+
+    // 2.1 rotary
+    auto *rotary_tensor = ctx.Input<phi::DenseTensor>("RotaryPosEmb");
+    const int rotary_emb_dims = ctx.Attr<int>("rotary_emb_dims");
 
     // 3. fmha
     AttnDropoutParam attn_param(
@@ -624,7 +828,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
       out_seq_len += cache_offset;
     }
 
-    Tensor q_transpose_out, kv_transpose_out, qk_out;
+    phi::DenseTensor q_transpose_out, kv_transpose_out, qk_out;
     q_transpose_out.Resize({{bsz, num_head, seq_len, dim_head}});
     auto *q_transpose_out_data =
         dev_ctx.Alloc<T>(&q_transpose_out, q_transpose_out.numel() * sizeof(T));
@@ -636,7 +840,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     qk_out.Resize({{bsz, num_head, seq_len, out_seq_len}});
     auto *qk_out_data = dev_ctx.Alloc<T>(&qk_out, qk_out.numel() * sizeof(T));
 
-    Tensor src_mask_out;
+    phi::DenseTensor src_mask_out;
     if (cache_offset > 0) {
       src_mask_out.Resize({{bsz, num_head, seq_len, out_seq_len}});
       auto *src_mask_out_data =
@@ -644,7 +848,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     }
 
     // [2, bs, num_head, cache_seq_len + seq_len, head_dim]
-    Tensor pre_cache_kv_out;
+    phi::DenseTensor pre_cache_kv_out;
     if (cache_offset > 0) {
       pre_cache_kv_out.Resize(
           {{2, bsz, num_head, seq_len + cache_offset, dim_head}});
@@ -652,9 +856,9 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
           &pre_cache_kv_out, pre_cache_kv_out.numel() * sizeof(T));
     }
 
-    Tensor softmax_out;
-    Tensor attn_dropout_mask_out, attn_dropout_out;
-    Tensor qktv_out, fmha_out;
+    phi::DenseTensor softmax_out;
+    phi::DenseTensor attn_dropout_mask_out, attn_dropout_out;
+    phi::DenseTensor qktv_out, fmha_out;
     softmax_out.Resize({{bsz, num_head, seq_len, out_seq_len}});
     auto *softmax_out_data =
         dev_ctx.Alloc<T>(&softmax_out, softmax_out.numel() * sizeof(T));
@@ -679,23 +883,23 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     int ring_id = ctx.Attr<int>("ring_id");
     // (transA, transB, compute_bias) = (false, false, false)
     auto out_linear_compute = AttnMatMul<T>(
-        dev_ctx, false, false, bsz_seq, dim_embed, hidden_size, false);
+        dev_ctx, false, false, token_num, dim_embed, hidden_size, false);
 
     // 5. ln(residual + bias)
     DropoutParam dropout_param2(true, 0, true, true, 0.0, nullptr, 0);
     FusedDropoutLayerNormHelper<T, uint8_t> fused_dropout_layernorm_helper(
-        dev_ctx, bsz_seq, dim_embed, dropout_param2, epsilon);
+        dev_ctx, token_num, dim_embed, dropout_param2, epsilon);
     auto ffn_ln_scales = ctx.MultiInput<phi::DenseTensor>("FFNLnScale");
     auto ffn_ln_biases = ctx.MultiInput<phi::DenseTensor>("FFNLnBias");
-    Tensor bias_dropout_residual_out, dropout_mask_out;
+    phi::DenseTensor bias_dropout_residual_out, dropout_mask_out;
     T *bias_dropout_residual_out_data = nullptr;
     if (pre_layer_norm) {
-      bias_dropout_residual_out.Resize({{bsz, seq_len, dim_embed}});
+      bias_dropout_residual_out.Resize({{token_num, dim_embed}});
       bias_dropout_residual_out_data =
           dev_ctx.Alloc<T>(&bias_dropout_residual_out,
                            bias_dropout_residual_out.numel() * sizeof(T));
     }
-    dropout_mask_out.Resize({{bsz, seq_len, dim_embed}});
+    dropout_mask_out.Resize({{token_num, dim_embed}});
     auto *dropout_mask_out_data = dev_ctx.Alloc<uint8_t>(
         &dropout_mask_out, dropout_mask_out.numel() * sizeof(uint8_t));
 
@@ -706,21 +910,21 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 
     int dim_ffn = ffn1_weight_dim[1];
     auto ffn1_linear_compute = AttnMatMul<T>(
-        dev_ctx, false, false, bsz_seq, dim_ffn, dim_embed, false);
-    Tensor ffn1_out;
-    ffn1_out.Resize({{bsz_seq, dim_ffn}});
+        dev_ctx, false, false, token_num, dim_ffn, dim_embed, false);
+    phi::DenseTensor ffn1_out;
+    ffn1_out.Resize({{token_num, dim_ffn}});
     auto *ffn1_out_data =
         dev_ctx.Alloc<T>(&ffn1_out, ffn1_out.numel() * sizeof(T));
 
     // 7. ffn act + bias
     DropoutParam ffn1_dropout_param(true, 0, true, true, 0.0, nullptr, 0);
     FusedDropoutHelper<T, uint8_t> fused_act_dropout_helper(
-        dev_ctx, bsz_seq, dim_ffn, ffn1_dropout_param);
-    Tensor ffn1_dropout_out, ffn1_dropout_mask;
-    ffn1_dropout_out.Resize({{bsz_seq, dim_ffn}});
+        dev_ctx, token_num, dim_ffn, ffn1_dropout_param);
+    phi::DenseTensor ffn1_dropout_out, ffn1_dropout_mask;
+    ffn1_dropout_out.Resize({{token_num, dim_ffn}});
     auto *ffn1_dropout_out_data = dev_ctx.Alloc<T>(
         &ffn1_dropout_out, ffn1_dropout_out.numel() * sizeof(T));
-    ffn1_dropout_mask.Resize({{bsz_seq, dim_ffn}});
+    ffn1_dropout_mask.Resize({{token_num, dim_ffn}});
     auto *ffn1_dropout_mask_data = dev_ctx.Alloc<uint8_t>(
         &ffn1_dropout_mask, ffn1_dropout_mask.numel() * sizeof(uint8_t));
 
@@ -728,43 +932,61 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     auto ffn2_weights = ctx.MultiInput<phi::DenseTensor>("FFN2Weight");
     auto ffn2_biases = ctx.MultiInput<phi::DenseTensor>("FFN2Bias");
     auto ffn2_linear_compute = AttnMatMul<T>(
-        dev_ctx, false, false, bsz_seq, dim_embed, dim_ffn, false);
+        dev_ctx, false, false, token_num, dim_embed, dim_ffn, false);
 
     // 9. ffn2 residual bias
     DropoutParam ffn2_dropout_param(true, 0, true, true, 0.0, nullptr, 0);
     FusedDropoutLayerNormHelper<T, uint8_t> ffn2_fused_dropout_helper(
-        dev_ctx, bsz_seq, dim_embed, ffn2_dropout_param, epsilon);
+        dev_ctx, token_num, dim_embed, ffn2_dropout_param, epsilon);
 
     // calc
     auto *out = ctx.Output<phi::DenseTensor>("Out");
     auto *from_data = dev_ctx.Alloc<T>(out, out->numel() * sizeof(T));
-    Tensor *from_tensor = out;
-    Tensor tmp_out;
-    tmp_out.Resize({{bsz, seq_len, dim_embed}});
+    phi::DenseTensor *from_tensor = out;
+    phi::DenseTensor tmp_out, tmp_out_rm_padding;
+    tmp_out.Resize({{token_num, dim_embed}});
+    if (encoder_remove_padding) {
+      tmp_out_rm_padding.Resize({{token_num, dim_embed}});
+      auto *tmp_out_rm_padding_data = dev_ctx.Alloc<T>(
+          &tmp_out_rm_padding, tmp_out_rm_padding.numel() * sizeof(T));
+    }
     auto *tmp_out_data =
         dev_ctx.Alloc<T>(&tmp_out, tmp_out.numel() * sizeof(T));
 
-    auto *x_data = input_x->data<T>();
-    Tensor *buf0 = nullptr;
-    Tensor *buf1 = nullptr;
+    const T *x_data;
+    if (encoder_remove_padding) {
+      x_data = x_remove_padding.data<T>();
+    } else {
+      x_data = input_x->data<T>();
+    }
+    phi::DenseTensor *buf0 = nullptr;
+    phi::DenseTensor *buf1 = nullptr;
 
     // step0:  x   --> buf1
     // step1: buf1 --> buf0
     // step2: buf0 --> buf1
     int layers = qkv_weights.size();
-    if (pre_layer_norm) {
-      if (layers & 1) {
-        // odd, set buf1 as out
+    if (encoder_remove_padding) {
+      // In the case of variable lengths, the padding needs to be rebuilt
+      // eventually. So buf0 and buf1 do not need to be changed according to the
+      // pre_layer_norm and the number of layers.
+      buf0 = &tmp_out;
+      buf1 = &tmp_out_rm_padding;
+    } else {
+      if (pre_layer_norm) {
+        if (layers & 1) {
+          // odd, set buf1 as out
+          buf0 = &tmp_out;
+          buf1 = out;
+        } else {
+          // even, set buf0 as out
+          buf0 = out;
+          buf1 = &tmp_out;
+        }
+      } else {
         buf0 = &tmp_out;
         buf1 = out;
-      } else {
-        // even, set buf0 as out
-        buf0 = out;
-        buf1 = &tmp_out;
       }
-    } else {
-      buf0 = &tmp_out;
-      buf1 = out;
     }
 
     for (int i = 0; i < layers; ++i) {
@@ -785,12 +1007,15 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 #endif
 
       // step2. qkv
-      const Tensor *qkv_bias = qkv_biases.size() > 0 ? qkv_biases[i] : nullptr;
+      const phi::DenseTensor *qkv_bias =
+          qkv_biases.size() > 0 ? qkv_biases[i] : nullptr;
       // NOTE: in decoder stage, bias is fused in fmha
-      const Tensor *bias = time_step ? nullptr : qkv_bias;
+      const phi::DenseTensor *bias = time_step ? nullptr : qkv_bias;
       if (!pre_layer_norm && i == 0) {
+        const phi::DenseTensor *tmp_input_x =
+            (encoder_remove_padding) ? &x_remove_padding : input_x;
         qkv_compute.ComputeForward(
-            qkv_weights[i], input_x, bias, &qkv_out, &qkv_out);
+            qkv_weights[i], tmp_input_x, bias, &qkv_out, &qkv_out);
       } else {
         qkv_compute.ComputeForward(
             qkv_weights[i], buf1, bias, &qkv_out, &qkv_out);
@@ -800,8 +1025,9 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 #endif
 
       // step3. fmha
-      const Tensor *cache_kv = cache_kvs.size() > 0 ? cache_kvs[i] : nullptr;
-      Tensor *cache_kv_out = cache_kv ? cache_kv_outs[i] : nullptr;
+      const phi::DenseTensor *cache_kv =
+          cache_kvs.size() > 0 ? cache_kvs[i] : nullptr;
+      phi::DenseTensor *cache_kv_out = cache_kv ? cache_kv_outs[i] : nullptr;
 
       if (time_step) {  // generation decoder stage
         // [2, batch_size, num_head, max_seq_len, head_size]
@@ -810,6 +1036,8 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                 qkv_out,
                 *qkv_bias,
                 *src_mask,
+                sequence_lengths,
+                rotary_tensor,
                 cache_kv_out,
                 &fmha_out,
                 bsz,
@@ -817,26 +1045,53 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                 num_head,
                 dim_head,
                 time_step->data<int>()[0],
+                rotary_emb_dims,
                 1. / sqrt(dim_head));
       } else if (cache_kv_out) {  // generation context stage
-        const Tensor *pre_cache_kv_tensor =
+        const phi::DenseTensor *pre_cache_kv_tensor =
             pre_caches.size() > 0 ? pre_caches[i] : nullptr;
-        Tensor *pre_cache_kv_out_tmp =
+        phi::DenseTensor *pre_cache_kv_out_tmp =
             cache_offset > 0 ? &pre_cache_kv_out : nullptr;
-        Tensor *src_mask_tmp = cache_offset > 0 ? &src_mask_out : nullptr;
+        phi::DenseTensor *src_mask_tmp =
+            cache_offset > 0 ? &src_mask_out : nullptr;
         qkv_bias_add_transpose_split<T>(dev_ctx,
                                         q_transpose_out_data,
                                         kv_transpose_out_data,
                                         qkv_out_data,
                                         qkv_bias->data<T>(),
+                                        padding_offset_data,
+                                        token_num,
                                         bsz,
                                         num_head,
                                         seq_len,
                                         dim_head,
                                         compute_bias);
-        fmha_compute.ComputeForwardWithoutTranspose(qkv_out,
-                                                    pre_cache_kv_tensor,
+
+        // q_transpose_out_data [bs, head_num, seq_len, dim_head]
+        // kv_transpose_out_data [2， bs, head_num, seq_len, dim_head]
+        if (rotary_emb_dims != 0) {
+          auto *rotary_emb_data = rotary_tensor->data<T>();
+          const int *sequence_lengths_data =
+              encoder_remove_padding ? sequence_lengths->data<int>() : nullptr;
+          rotary_qk(dev_ctx,
+                    q_transpose_out_data,
+                    kv_transpose_out_data,
+                    q_transpose_out_data,
+                    kv_transpose_out_data,
+                    rotary_emb_data,
+                    sequence_lengths_data,
+                    rotary_emb_dims,
+                    bsz,
+                    num_head,
+                    seq_len,
+                    dim_head);
+        }
+
+        phi::DenseTensor *tmp_padding_offset_tensor =
+            encoder_remove_padding ? &padding_offset_tensor : nullptr;
+        fmha_compute.ComputeForwardWithoutTranspose(pre_cache_kv_tensor,
                                                     src_mask,
+                                                    tmp_padding_offset_tensor,
                                                     &q_transpose_out,
                                                     &kv_transpose_out,
                                                     pre_cache_kv_out_tmp,
@@ -846,7 +1101,8 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                                     &attn_dropout_mask_out,
                                                     &attn_dropout_out,
                                                     &qktv_out,
-                                                    &fmha_out);
+                                                    &fmha_out,
+                                                    token_num);
         const T *k_ptr = nullptr;
         const T *v_ptr = nullptr;
 
@@ -890,14 +1146,39 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                         kv_transpose_out_data,
                                         qkv_out_data,
                                         qkv_bias->data<T>(),
+                                        padding_offset_data,
+                                        token_num,
                                         bsz,
                                         num_head,
                                         seq_len,
                                         dim_head,
                                         compute_bias);
-        fmha_compute.ComputeForwardWithoutTranspose(qkv_out,
-                                                    cache_kv,
+
+        // q_transpose_out_data [bs, head_num, seq_len, dim_head]
+        // kv_transpose_out_data [2， bs, head_num, seq_len, dim_head]
+        if (rotary_emb_dims != 0) {
+          auto *rotary_emb_data = rotary_tensor->data<T>();
+          const int *sequence_lengths_data =
+              encoder_remove_padding ? sequence_lengths->data<int>() : nullptr;
+          rotary_qk(dev_ctx,
+                    q_transpose_out_data,
+                    kv_transpose_out_data,
+                    q_transpose_out_data,
+                    kv_transpose_out_data,
+                    rotary_emb_data,
+                    sequence_lengths_data,
+                    rotary_emb_dims,
+                    bsz,
+                    num_head,
+                    seq_len,
+                    dim_head);
+        }
+
+        phi::DenseTensor *tmp_padding_offset_tensor =
+            encoder_remove_padding ? &padding_offset_tensor : nullptr;
+        fmha_compute.ComputeForwardWithoutTranspose(cache_kv,
                                                     src_mask,
+                                                    tmp_padding_offset_tensor,
                                                     &q_transpose_out,
                                                     &kv_transpose_out,
                                                     cache_kv_out,
@@ -907,7 +1188,8 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                                     &attn_dropout_mask_out,
                                                     &attn_dropout_out,
                                                     &qktv_out,
-                                                    &fmha_out);
+                                                    &fmha_out,
+                                                    token_num);
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step3";
@@ -979,7 +1261,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
       fused_act_dropout_helper.DropoutActBias(dev_ctx,
                                               ffn1_out_data,
                                               ffn1_biases[i]->data<T>(),
-                                              "gelu",
+                                              act_method,
                                               ffn1_dropout_out_data,
                                               ffn1_dropout_mask_data);
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
@@ -1056,6 +1338,23 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
       if (pre_layer_norm) {
         x_data = buf1->data<T>();
         std::swap(buf0, buf1);
+      }
+    }
+    if (encoder_remove_padding) {
+      if (pre_layer_norm) {
+        InvokeRebuildPadding(dev_ctx,
+                             from_data,
+                             buf0->data<T>(),
+                             padding_offset_data,
+                             token_num,
+                             dim_embed);
+      } else {
+        InvokeRebuildPadding(dev_ctx,
+                             from_data,
+                             buf1->data<T>(),
+                             padding_offset_data,
+                             token_num,
+                             dim_embed);
       }
     }
   }

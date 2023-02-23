@@ -12,18 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import requests
-import hashlib
-import os
 import errno
+import glob
+import hashlib
+import importlib
+import os
+import pickle
 import shutil
 import sys
-import importlib
-import paddle.dataset
-import pickle
 import tempfile
-import glob
+
+import requests
+
 import paddle
+import paddle.dataset
 
 __all__ = []
 

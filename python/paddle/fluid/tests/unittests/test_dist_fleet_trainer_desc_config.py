@@ -39,9 +39,9 @@ class TestDistStrategyTrainerDescConfig(unittest.TestCase):
 
         fleet.init(role_maker.PaddleCloudRoleMaker())
 
-        x = paddle.fluid.layers.data(name='x', shape=[1], dtype='float32')
-        y = paddle.fluid.layers.data(name='y', shape=[1], dtype='float32')
-        cost = paddle.fluid.layers.square_error_cost(input=x, label=y)
+        x = paddle.static.data(name='x', shape=[-1, 1], dtype='float32')
+        y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
+        cost = paddle.nn.functional.square_error_cost(input=x, label=y)
         avg_cost = paddle.mean(cost)
 
         strategy = paddle.distributed.fleet.DistributedStrategy()

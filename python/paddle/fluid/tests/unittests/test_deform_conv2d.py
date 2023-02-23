@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+from unittest import TestCase
+
+import numpy as np
+
 import paddle
 import paddle.nn.initializer as I
-import numpy as np
-import unittest
-from paddle.fluid.framework import _test_eager_guard
-from unittest import TestCase
 
 
 class TestDeformConv2D(TestCase):
@@ -230,10 +231,6 @@ class TestDeformConv2D(TestCase):
         if paddle.is_compiled_with_cuda():
             self.place = paddle.CUDAPlace(0)
             self._test_identity()
-
-    def test_identity_with_eager_guard(self):
-        with _test_eager_guard():
-            self.test_identity()
 
 
 class TestDeformConv2DFunctional(TestCase):
@@ -542,10 +539,6 @@ class TestDeformConv2DFunctional(TestCase):
             self.place = paddle.CUDAPlace(0)
             self._test_identity()
 
-    def test_identity_with_eager_guard(self):
-        with _test_eager_guard():
-            self.test_identity()
-
 
 # testcases for DeformConv2D
 class TestDeformConv2DWithPadding(TestDeformConv2D):
@@ -731,6 +724,24 @@ class TestDeformConv2DFunctionalWithGroups(TestDeformConv2DFunctional):
         self.deformable_groups = 1
         self.groups = 5
         self.no_bias = False
+
+
+class TestDeformConv2DError(unittest.TestCase):
+    def test_input_error(self):
+        def test_input_rank_error():
+            paddle.enable_static()
+            x = paddle.static.data(name='error_x_1', shape=[0], dtype='float32')
+            offset = paddle.static.data(
+                name='error_offset_1', shape=[0], dtype='float32'
+            )
+            mask = paddle.static.data(
+                name='error_mask_1', shape=[0, 0, 0], dtype='float32'
+            )
+            out = paddle.static.nn.deform_conv2d(
+                x, offset, mask, 0, 0, deformable_groups=0
+            )
+
+        self.assertRaises(ValueError, test_input_rank_error)
 
 
 if __name__ == "__main__":

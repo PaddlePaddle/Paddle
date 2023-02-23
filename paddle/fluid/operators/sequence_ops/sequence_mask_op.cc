@@ -39,21 +39,22 @@ class SequenceMaskOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
+      const phi::KernelKey& expected_kernel_type) const override {
     if (var_name == "depth_tensor") {
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
-    return framework::OpKernelType(
-        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+    return phi::KernelKey(
+        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
   }
 };
 
@@ -82,7 +83,7 @@ class SequenceMaskOpMaker : public framework::OpProtoAndCheckerMaker {
 SequenceMask Operator
 
 This operator outputs a Mask according to Input(X) and Attr(maxlen).
-Supposing Input(X) is a Tensor with shape [d_1, d_2, ..., d_n], the
+Supposing Input(X) is a phi::DenseTensor with shape [d_1, d_2, ..., d_n], the
 Output(Y) is a mask with shape [d_1, d_2, ..., d_n, maxlen], where:
 
 Y(i_1, i_2, ..., i_n, j) = (j < X(i_1, i_2, ..., i_n))

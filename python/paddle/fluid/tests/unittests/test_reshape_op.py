@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 
+import numpy as np
 from op_test import OpTest, convert_float_to_uint16
+
 import paddle
 import paddle.fluid as fluid
 from paddle.static import Program, program_guard
@@ -48,20 +49,20 @@ class TestReshapeOp(OpTest):
 class TestReshapeOp_ZeroDim1(OpTest):
     def init_data(self):
         self.ori_shape = ()
-        self.new_shape = 1
-        self.infered_shape = 1
+        self.new_shape = (1,)
+        self.infered_shape = (1,)
 
 
 class TestReshapeOp_ZeroDim2(OpTest):
     def init_data(self):
         self.ori_shape = ()
-        self.new_shape = -1
-        self.infered_shape = 1
+        self.new_shape = (-1,)
+        self.infered_shape = (1,)
 
 
 class TestReshapeOp_ZeroDim3(OpTest):
     def init_data(self):
-        self.ori_shape = 1
+        self.ori_shape = (1,)
         self.new_shape = ()
         self.infered_shape = ()
 
@@ -504,17 +505,18 @@ class TestReshapeZeroTensor(unittest.TestCase):
 class TestReshapeAPI_ZeroDim(unittest.TestCase):
     def test_dygraph(self):
         paddle.disable_static()
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         x = paddle.rand([])
         x.stop_gradient = False
 
         out = paddle.reshape(x, [1])
+        out.retain_grads()
         out.backward()
         self.assertEqual(x.grad.shape, [])
         self.assertEqual(out.shape, [1])
         self.assertEqual(out.grad.shape, [1])
 
         out = paddle.reshape(x, [-1, 1])
+        out.retain_grads()
         out.backward()
         self.assertEqual(x.grad.shape, [])
         self.assertEqual(out.shape, [1, 1])
@@ -523,6 +525,7 @@ class TestReshapeAPI_ZeroDim(unittest.TestCase):
         x = paddle.rand([1])
         x.stop_gradient = False
         out = paddle.reshape(x, [])
+        out.retain_grads()
         out.backward()
         self.assertEqual(x.grad.shape, [1])
         self.assertEqual(out.shape, [])

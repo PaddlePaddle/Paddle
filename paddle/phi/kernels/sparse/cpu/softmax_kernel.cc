@@ -14,14 +14,12 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/softmax_kernel.h"
 
-#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/cpu_vec.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
-
-namespace plt = paddle::platform;
 
 namespace phi {
 namespace sparse {
@@ -70,14 +68,14 @@ void SoftmaxCsrKernel(const Context& dev_ctx,
                                        x_crows_data[crow_idx]);
 
             row_max_val = *std::max_element(x_data, x_data + row_nnz);
-            phi::funcs::vec_add_bias<T, plt::avx>(
+            phi::funcs::vec_add_bias<T, backends::cpu::avx>(
                 row_nnz, static_cast<T>(-1) * row_max_val, x_data, out_data);
 
             phi::funcs::vec_exp<T>(row_nnz, out_data, out_data);
 
             T sum = 0;
-            phi::funcs::vec_sum<T, plt::avx>(row_nnz, out_data, &sum);
-            phi::funcs::vec_scal<T, plt::avx>(
+            phi::funcs::vec_sum<T, backends::cpu::avx>(row_nnz, out_data, &sum);
+            phi::funcs::vec_scal<T, backends::cpu::avx>(
                 row_nnz, static_cast<T>(1) / sum, out_data, out_data);
 
             x_data = x_data + row_nnz;

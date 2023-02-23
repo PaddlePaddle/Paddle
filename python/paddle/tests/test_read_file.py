@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import os
-import cv2
-import unittest
 import tempfile
+import unittest
+
+import cv2
 import numpy as np
 
 import paddle
-from paddle.vision.ops import read_file, decode_jpeg
+from paddle.vision.ops import decode_jpeg, read_file
 
 
 class TestReadFile(unittest.TestCase):

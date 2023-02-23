@@ -15,7 +15,7 @@
 #include "paddle/phi/core/device_context.h"
 
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/device/gpu/cuda/cuda_graph.h"
+#include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
 #endif
 
 #include "paddle/phi/core/dense_tensor.h"
@@ -134,7 +134,8 @@ struct DeviceContext::Impl {
               const Place& place,
               DataType dtype = DataType::UNDEFINED,
               size_t requested_size = 0,
-              bool pinned = false) const {
+              bool pinned = false,
+              bool fake_alloc = false) const {
     PADDLE_ENFORCE_NOT_NULL(
         tensor,
         phi::errors::InvalidArgument(
@@ -148,13 +149,15 @@ struct DeviceContext::Impl {
     if (tensor->initialized() && tensor->place() != place) {
       ClearHolder(tensor);
     }
-    auto* allocator = tensor->numel() == 0
-                          ? zero_allocator_
-                          : (pinned ? pinned_allocator_ : device_allocator_);
+    auto* allocator =
+        (tensor->numel() == 0 || fake_alloc) && requested_size == 0
+            ? zero_allocator_
+            : (pinned ? pinned_allocator_ : device_allocator_);
 #ifdef PADDLE_WITH_CUDA
     bool must_cuda_graph_allocator = (tensor->numel() != 0) && !pinned;
-    if (must_cuda_graph_allocator && paddle::platform::is_gpu_place(place) &&
-        paddle::platform::CUDAGraph::IsThisThreadCapturing()) {
+    if (must_cuda_graph_allocator &&
+        place.GetType() == phi::AllocationType::GPU &&
+        phi::backends::gpu::CUDAGraph::IsThisThreadCapturing()) {
       PADDLE_ENFORCE_NOT_NULL(cuda_graph_allocator_,
                               phi::errors::InvalidArgument(
                                   "Required cuda_graph_allocator_ shall not be "
@@ -163,7 +166,7 @@ struct DeviceContext::Impl {
     }
 #endif
     return tensor->AllocateFrom(
-        const_cast<Allocator*>(allocator), dtype, requested_size);
+        const_cast<Allocator*>(allocator), dtype, requested_size, fake_alloc);
   }
 
   template <typename T>
@@ -177,7 +180,8 @@ struct DeviceContext::Impl {
 
   void* HostAlloc(TensorBase* tensor,
                   DataType dtype = DataType::UNDEFINED,
-                  size_t requested_size = 0) const {
+                  size_t requested_size = 0,
+                  bool fake_alloc = false) const {
     PADDLE_ENFORCE_NOT_NULL(
         tensor,
         phi::errors::InvalidArgument(
@@ -189,9 +193,11 @@ struct DeviceContext::Impl {
       ClearHolder(tensor);
     }
     auto* allocator =
-        tensor->numel() == 0 ? host_zero_allocator_ : host_allocator_;
+        (tensor->numel() == 0 || fake_alloc) && requested_size == 0
+            ? host_zero_allocator_
+            : host_allocator_;
     return tensor->AllocateFrom(
-        const_cast<Allocator*>(allocator), dtype, requested_size);
+        const_cast<Allocator*>(allocator), dtype, requested_size, fake_alloc);
   }
 
   template <typename T>
@@ -341,12 +347,18 @@ const Allocator& DeviceContext::GetPinnedAllocator() const {
 void* DeviceContext::Alloc(TensorBase* tensor,
                            DataType dtype,
                            size_t requested_size,
-                           bool pinned) const {
+                           bool pinned,
+                           bool fake_alloc) const {
   if (pinned) {
-    return impl_->Alloc(
-        tensor, GetPinnedPlace(GetPlace()), dtype, requested_size, pinned);
+    return impl_->Alloc(tensor,
+                        GetPinnedPlace(GetPlace()),
+                        dtype,
+                        requested_size,
+                        pinned,
+                        fake_alloc);
   }
-  return impl_->Alloc(tensor, GetPlace(), dtype, requested_size, pinned);
+  return impl_->Alloc(
+      tensor, GetPlace(), dtype, requested_size, pinned, fake_alloc);
 }
 
 template <typename T>
@@ -362,8 +374,9 @@ T* DeviceContext::Alloc(TensorBase* tensor,
 
 void* DeviceContext::HostAlloc(TensorBase* tensor,
                                DataType dtype,
-                               size_t requested_size) const {
-  return impl_->HostAlloc(tensor, dtype, requested_size);
+                               size_t requested_size,
+                               bool fake_alloc) const {
+  return impl_->HostAlloc(tensor, dtype, requested_size, fake_alloc);
 }
 
 template <typename T>

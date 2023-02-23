@@ -16,11 +16,11 @@ limitations under the License. */
 
 namespace phi {
 
-DenseTensorMeta::DenseTensorMeta() { use_cudnn = true; }
+DenseTensorMeta::DenseTensorMeta() { use_gpudnn = true; }
 
 DenseTensorMeta::DenseTensorMeta(DataType dtype, const DDim& dims)
     : dims(dims), dtype(dtype) {
-  use_cudnn = true;
+  use_gpudnn = true;
 }
 
 DenseTensorMeta::DenseTensorMeta(DataType dtype,
@@ -28,7 +28,7 @@ DenseTensorMeta::DenseTensorMeta(DataType dtype,
                                  DataLayout layout,
                                  size_t offset)
     : dims(dims), dtype(dtype), layout(layout), offset(offset) {
-  use_cudnn = true;
+  use_gpudnn = true;
 }
 
 DenseTensorMeta::DenseTensorMeta(DataType dtype,
@@ -37,7 +37,7 @@ DenseTensorMeta::DenseTensorMeta(DataType dtype,
                                  const LoD& lod,
                                  size_t offset)
     : dims(dims), dtype(dtype), layout(layout), lod(lod), offset(offset) {
-  use_cudnn = true;
+  use_gpudnn = true;
 }
 
 bool DenseTensorMeta::valid() const noexcept {

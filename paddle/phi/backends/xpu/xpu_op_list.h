@@ -12,12 +12,23 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include "paddle/phi/common/data_type.h"
 
 namespace phi {
 namespace backends {
 namespace xpu {
 
-bool is_in_xpu_black_list(const std::string& op_name);
+using XPUKernelSet = std::unordered_set<phi::DataType>;
+using XPUOpMap = std::unordered_map<std::string, XPUKernelSet>;
+
+XPUOpMap& get_kl1_ops();
+XPUOpMap& get_kl2_ops();
+
+bool is_in_xpu_black_list(const std::string& fluid_op_name);
+bool is_xpu_support_op(const std::string& fluid_op_name,
+                       const phi::DataType type);
 
 }  // namespace xpu
 }  // namespace backends

@@ -76,14 +76,12 @@ struct OneHotOpFunctor {
   }
 };
 
-using LoDTensor = phi::DenseTensor;
-using Tensor = phi::DenseTensor;
 template <typename DeviceContext, typename T>
 class OneHotKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in = context.Input<LoDTensor>("X");
-    auto* out = context.Output<LoDTensor>("Out");
+    auto* in = context.Input<phi::DenseTensor>("X");
+    auto* out = context.Output<phi::DenseTensor>("Out");
     int depth = context.Attr<int>("depth");
     bool allow_out_of_range = context.Attr<bool>("allow_out_of_range");
     if (context.HasInput("depth_tensor")) {

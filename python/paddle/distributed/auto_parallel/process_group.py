@@ -15,13 +15,11 @@
 from collections import OrderedDict
 
 import paddle
-import paddle.fluid.core as core
-
-from ..collective import _get_global_env
-from ..collective import _new_ring_id
-from ...fluid.framework import _non_static_mode
-from ...fluid.layers.tensor import fill_constant
 from paddle import _legacy_C_ops
+from paddle.framework import core, in_dygraph_mode
+
+from ...fluid.layers.tensor import fill_constant
+from ..collective import _get_global_env, _new_ring_id
 
 
 def get_all_process_groups():
@@ -49,14 +47,16 @@ def clear_all_process_groups():
     _g_process_group_map[0] = ProcessGroup(0, [])
 
 
-def new_process_group(ranks, group_id=None):
+def new_process_group(ranks, group_id=None, force_new_group=False):
+
     global _g_process_group_map
-    # A key constructed from ranks is used for avoiding duplication
-    new_key = ''.join(map(str, sorted(ranks)))
-    for pg_id, pg in _g_process_group_map.items():
-        cur_key = ''.join(map(str, sorted(pg.ranks)))
-        if pg_id != 0 and new_key == cur_key:
-            return pg
+    if not force_new_group:
+        # A key constructed from ranks is used for avoiding duplication
+        new_key = ''.join(map(str, sorted(ranks)))
+        for pg_id, pg in _g_process_group_map.items():
+            cur_key = ''.join(map(str, sorted(pg.ranks)))
+            if pg_id != 0 and new_key == cur_key:
+                return pg
     # If not matching the existing one, construt a new process group
     num_groups = len(_g_process_group_map)
     # Note: our process group may interfere with the original implementation
@@ -138,10 +138,14 @@ class ProcessGroup:
             ]
             strategy.current_endpoint = genv.current_endpoint
             strategy.nrings = 1
-
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(genv.device_id)
                 core.NCCLParallelContext(strategy, place).init_with_ring_id(
+                    ring_id
+                )
+            elif core.is_compiled_with_xpu():
+                place = core.XPUPlace(genv.device_id)
+                core.BKCLParallelContext(strategy, place).init_with_ring_id(
                     ring_id
                 )
             else:
@@ -150,12 +154,17 @@ class ProcessGroup:
             # TODO(shenliang03): This is a temporary solution to solve the problem of
             # hang caused by cross-creation of new_group
             paddle.disable_static()
-            paddle.set_device(
-                'gpu:%d' % paddle.distributed.ParallelEnv().dev_id
-            )
+            if core.is_compiled_with_cuda():
+                paddle.set_device(
+                    'gpu:%d' % paddle.distributed.ParallelEnv().dev_id
+                )
+            elif core.is_compiled_with_xpu():
+                paddle.set_device(
+                    'xpu:%d' % paddle.distributed.ParallelEnv().dev_id
+                )
             tmp = (
                 paddle.to_tensor([1], dtype="int32")
-                if _non_static_mode()
+                if in_dygraph_mode()
                 else fill_constant([0], dtype="int32", value="1")
             )
             # use legacy ops

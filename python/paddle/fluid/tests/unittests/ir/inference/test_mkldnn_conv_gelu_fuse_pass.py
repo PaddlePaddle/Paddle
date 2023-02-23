@@ -96,7 +96,7 @@ class TestConvGeluMkldnnFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_mkldnn=True)
-        yield config, ["conv2d"], (1e-5, 1e-5)
+        yield config, ["fused_conv2d"], (1e-5, 1e-5)
 
     def test(self):
         self.run_and_statis(

@@ -31,17 +31,13 @@
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/device_manager.h"
 
-// The difference between "sequential_run" and "serial_run":
-// "sequential_run" dispatches OPs one by one according to the sequence in the
-// Program, while "serial_run" ensures that all Ops are scheduled in a singal
-// thread. In standalone executor, "sequential_run" is also "serial_run", while
-// "serial_run" is not necessarily "sequential_run".
-PADDLE_DEFINE_EXPORTED_bool(new_executor_sequential_run,
-                            false,
-                            "Enable sequential execution for standalone "
-                            "executor, only applied to GPU OPs.");
+PADDLE_DEFINE_EXPORTED_bool(
+    new_executor_serial_run,
+    false,
+    "Enable serial execution for standalone executor, used for debug.");
 PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace,
                             false,
                             "Use inplace in new executor");
@@ -50,11 +46,15 @@ PADDLE_DEFINE_EXPORTED_bool(new_executor_use_local_scope,
                             "Use local_scope in new executor(especially used "
                             "in UT), can turn off for better performance");
 PADDLE_DEFINE_EXPORTED_bool(control_flow_use_new_executor,
-                            false,
+                            true,
                             "Use new executor in control flow op");
 
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(benchmark);
+DECLARE_bool(new_executor_use_cuda_graph);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+DECLARE_bool(sync_nccl_allreduce);
+#endif
 
 constexpr const char* kExceptionCaught = "ExceptionCaught";
 constexpr const char* kTaskCompletion = "TaskCompletion";
@@ -106,30 +106,24 @@ inline void SetDeviceId(const platform::Place& place) {
   }
 }
 
-// TODO(Ruibiao): Pass skip_gc_vars, used_for_jit, and other config messages by
-// constructing an interpreter::ExecutionConfig
 InterpreterCore::InterpreterCore(const platform::Place& place,
                                  const BlockDesc& block,
-                                 const std::set<std::string>& skip_gc_vars,
                                  framework::Scope* scope,
-                                 bool used_for_jit,
-                                 bool used_for_control_flow_op)
+                                 const ExecutionConfig& execution_config)
     : place_(place),
       block_(block),
-      execution_config_(place, block.OpSize()),
       stream_analyzer_(place),
+      execution_config_(execution_config),
       var_scope_(scope) {
   VLOG(4) << "InterpreterCore(): " << this << " on " << place_;
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
 
-  execution_config_.used_for_jit = used_for_jit;
-  execution_config_.used_for_control_flow_op = used_for_control_flow_op;
-  execution_config_.create_local_scope = !used_for_jit &&
-                                         FLAGS_new_executor_use_local_scope &&
-                                         !used_for_control_flow_op;
-  execution_config_.skip_gc_vars = skip_gc_vars;
+  if (!FLAGS_new_executor_use_local_scope) {
+    execution_config_.create_local_scope = false;
+  }
+  execution_config_.AnalyzeThreadPoolConfig(place, block.OpSize());
   execution_config_.Log(/*log_level=*/8);
 
   if (execution_config_.create_local_scope) {
@@ -137,6 +131,19 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
     local_scope_ = local_scope;
   }
   var_scope_.SetLocalScope(local_scope_);
+
+  instruction_scheduling_priority_less = [this](size_t lhs, size_t rhs) {
+    SchedulingPriority lhs_scheduling_priority =
+        vec_instruction_[lhs].GetSchedulingPriority();
+    SchedulingPriority rhs_scheduling_priority =
+        vec_instruction_[rhs].GetSchedulingPriority();
+    if (lhs_scheduling_priority == rhs_scheduling_priority) {
+      return lhs < rhs;
+    }
+    return lhs_scheduling_priority > rhs_scheduling_priority;
+  };
+
+  PrepareForCUDAGraphCapture();
 }
 
 InterpreterCore::~InterpreterCore() {
@@ -156,6 +163,7 @@ interpreter::CostInfo InterpreterCore::DryRun(
     const std::vector<std::string>& feed_names,
     const std::vector<phi::DenseTensor>& feed_tensors) {
   SetDeviceId(place_);
+  CheckCUDAGraphBeforeRun(feed_names);
 
   Prepare(feed_names, feed_tensors, true);
   interpreter::CostInfo cost_info;
@@ -183,10 +191,41 @@ interpreter::CostInfo InterpreterCore::DryRun(
   return cost_info;
 }
 
+void InterpreterCore::RunImpl() {
+  // lazy initialization of gc, do not create gc is the program only run once
+  if (!gc_) {
+    gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
+  }
+
+  if ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
+      (sync_op_num_ == 0)) {
+    VLOG(4) << "Tracing Instruction List";
+    TraceInstructionList(vec_instruction_);
+  } else {
+    VLOG(4) << "Non-tracing";
+    // For the program that only run once, it is no need to
+    // create work_queue, so the async_work_queue_ is created
+    // until the second step run.
+    async_work_queue_ = GetWorkQueue();
+    ExecuteInstructionList(vec_instruction_);
+  }
+#ifdef PADDLE_WITH_ASCEND_CL
+  if (platform::is_npu_place(place_)) {
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+  }
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (platform::is_custom_place(place_)) {
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+  }
+#endif
+}
+
 paddle::framework::FetchList InterpreterCore::Run(
     const std::vector<std::string>& feed_names,
     const std::vector<phi::DenseTensor>& feed_tensors) {
   SetDeviceId(place_);
+  CheckCUDAGraphBeforeRun(feed_names);
 
 #ifdef PADDLE_WITH_MKLDNN
   platform::AttachPointerHashToMKLDNNKey(this, place_);
@@ -196,28 +235,9 @@ paddle::framework::FetchList InterpreterCore::Run(
   Prepare(feed_names, feed_tensors, is_build);
 
   if (is_build) {
-    // For the program that only run once, it is no need to
-    // create work_queue, so the async_work_queue_ is created
-    // until the second step run.
-    async_work_queue_ = GetWorkQueue();
-
-    // lazy initialization of gc, do not create gc is the program only run once
-    if (!gc_) {
-      gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
-    }
-
-    ExecuteInstructionList(vec_instruction_);
-#ifdef PADDLE_WITH_ASCEND_CL
-    if (platform::is_npu_place(place_)) {
-      platform::DeviceContextPool::Instance().Get(place_)->Wait();
-    }
-#endif
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-    if (platform::is_custom_place(place_)) {
-      platform::DeviceContextPool::Instance().Get(place_)->Wait();
-    }
-#endif
+    RunImpl();
   }
+
   if (HasLocalScope()) {
     ClearLoDTensorArrayInLocalScope();
   }
@@ -225,7 +245,16 @@ paddle::framework::FetchList InterpreterCore::Run(
   // return Fetch Tensors
   auto* fetch_var = local_scope_->FindVar(interpreter::kFetchVarName);
   if (fetch_var) {
-    return std::move(*fetch_var->GetMutable<framework::FetchList>());
+    auto fetch_list = std::move(*fetch_var->GetMutable<framework::FetchList>());
+#ifdef PADDLE_WITH_CUDA
+    if (platform::IsCUDAGraphCapturing()) {
+      PADDLE_ENFORCE_EQ(fetch_list.empty(),
+                        true,
+                        platform::errors::InvalidArgument(
+                            "Cannot fetch data when using CUDA Graph."));
+    }
+#endif
+    return fetch_list;
   } else {
     return {};
   }
@@ -234,6 +263,7 @@ paddle::framework::FetchList InterpreterCore::Run(
 paddle::framework::FetchList InterpreterCore::Run(
     const std::vector<std::string>& feed_names, bool need_fetch) {
   SetDeviceId(place_);
+  CheckCUDAGraphBeforeRun(feed_names);
 
 #ifdef PADDLE_WITH_MKLDNN
   platform::AttachPointerHashToMKLDNNKey(this, place_);
@@ -242,10 +272,10 @@ paddle::framework::FetchList InterpreterCore::Run(
   if (!is_build_) {
     LOG_FIRST_N(INFO, 1) << "New Executor is Running.";
     paddle::framework::interpreter::BuildVariableScope(
-        block_, &var_scope_, HasLocalScope());
+        block_, execution_config_, &var_scope_);
 
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
-    paddle::framework::interpreter::BuildOpFuncList(
+    auto skip_run = paddle::framework::interpreter::BuildOpFuncList(
         place_,
         block_,
         execution_config_.skip_gc_vars,
@@ -257,28 +287,13 @@ paddle::framework::FetchList InterpreterCore::Run(
     // convert vec func_list to graph
     Convert(&op_func_nodes);
     is_build_ = true;
+    UpdateSyncOpNum();
+    if (skip_run) {
+      VLOG(4) << "RUN impl";
+      RunImpl();
+    }
   } else {
-    // For the program that only run once, it is no need to
-    // create work_queue, so the async_work_queue_ is created
-    // until the second step run.
-    async_work_queue_ = GetWorkQueue();
-
-    // lazy initialization of gc, do not create gc is the program only run once
-    if (!gc_) {
-      gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
-    }
-
-    ExecuteInstructionList(vec_instruction_);
-#ifdef PADDLE_WITH_ASCEND_CL
-    if (platform::is_npu_place(place_)) {
-      platform::DeviceContextPool::Instance().Get(place_)->Wait();
-    }
-#endif
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-    if (platform::is_custom_place(place_)) {
-      platform::DeviceContextPool::Instance().Get(place_)->Wait();
-    }
-#endif
+    RunImpl();
   }
 
   if (HasLocalScope()) {
@@ -290,7 +305,16 @@ paddle::framework::FetchList InterpreterCore::Run(
       HasLocalScope() ? local_scope_ : var_scope_.GetMutableScope();
   auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
   if (fetch_var && need_fetch) {
-    return std::move(*fetch_var->GetMutable<framework::FetchList>());
+    auto fetch_list = std::move(*fetch_var->GetMutable<framework::FetchList>());
+#ifdef PADDLE_WITH_CUDA
+    if (platform::IsCUDAGraphCapturing()) {
+      PADDLE_ENFORCE_EQ(fetch_list.empty(),
+                        true,
+                        platform::errors::InvalidArgument(
+                            "Cannot fetch data when using CUDA Graph."));
+    }
+#endif
+    return fetch_list;
   } else {
     return {};
   }
@@ -378,8 +402,8 @@ std::shared_ptr<interpreter::AsyncWorkQueue> InterpreterCore::GetWorkQueue() {
   if (async_work_queue_ == nullptr) {
     async_work_queue_ = std::make_shared<interpreter::AsyncWorkQueue>(
         execution_config_.host_num_threads,
-        execution_config_.deivce_num_threads,
-        &main_thread_blocker_);
+        execution_config_.device_num_threads,
+        nullptr);
   }
   return async_work_queue_;
 }
@@ -410,8 +434,9 @@ void InterpreterCore::BuildAndCacheInstructionCtx(Instruction* instr_node) {
   }
 
   // set runtime_ctx and infershape_ctx_
-  if (instr_node->OpBase()->Type() == "cinn_launch") {  // OP use scope in
-                                                        // kernel
+  if (instr_node->OpBase()->Type() == "cinn_launch" ||
+      instr_node->OpBase()->Type() == "cinn_instruction_run") {  // OP use scope
+                                                                 // in kernel
     Scope* local_scope = HasLocalScope() ? var_scope_.GetMutableLocalScope()
                                          : var_scope_.GetMutableScope();
     instr_node->ResetContextWithScope(ins_map, outs_map, *local_scope);
@@ -503,38 +528,107 @@ void InterpreterCore::BuildInplace() {
   }
 }
 
+void InterpreterCore::PrepareForCUDAGraphCapture() {
+  if (!FLAGS_new_executor_use_cuda_graph) return;
+#ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE_EQ(platform::is_gpu_place(place_),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "CUDA Graph is only supported on NVIDIA GPU device."));
+  // If set true, will call `cudaStreamSynchronize(nccl_stream)`after allreduce.
+  // which may cause error in cuda graph. This behavior is consistent with PE.
+  PADDLE_ENFORCE_EQ(FLAGS_sync_nccl_allreduce,
+                    false,
+                    platform::errors::InvalidArgument(
+                        "FLAGS_sync_nccl_allreduce must be False to support "
+                        "CUDA Graph capturing."));
+
+  // All output vars of coalesce_tensor op should be persistable.
+  // If fused output var of coalesce_tensor is gc, it will cause accuracy
+  // problem. The specific reasons need to be analyzed.
+  for (auto& op_desc : block_.AllOps()) {
+    if (op_desc->Type() == kCoalesceTensor) {
+      for (auto& out_var_name : op_desc->OutputArgumentNames()) {
+        // The fused var needs to be set to persistable, not just added to
+        // skip_gc_vars.
+        // In the case where the feed fetch var is changed, StandaloneExecutor
+        // will be newly constructed. If the fused var is not persistable,
+        // these vars will be recreated and initialized, resulting in
+        // precision problems.
+        auto* out_var = op_desc->Block()->FindVarRecursive(out_var_name);
+        if (out_var) {
+          out_var->SetPersistable(true);
+          VLOG(4) << "Mark Var(" << out_var_name << ") as Persistable.";
+        }
+      }
+    }
+  }
+#else
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "CUDA Graph is only supported on NVIDIA GPU device."));
+#endif
+}
+
+void InterpreterCore::CheckCUDAGraphBeforeRun(
+    const std::vector<std::string>& feed_names) {
+#ifdef PADDLE_WITH_CUDA
+  if (platform::IsCUDAGraphCapturing()) {
+    PADDLE_ENFORCE_EQ(
+        feed_names.empty(),
+        true,
+        platform::errors::InvalidArgument(
+            "Feeding data is not permitted when capturing CUDA Graph."));
+    PADDLE_ENFORCE_EQ(
+        FLAGS_new_executor_use_cuda_graph,
+        true,
+        platform::errors::InvalidArgument(
+            "You must turn on FLAGS_new_executor_use_cuda_graph to True "
+            "to enable CUDA Graph capturing."));
+    PADDLE_ENFORCE_EQ(
+        place_,
+        platform::CUDAGraphCapturingPlace(),
+        platform::errors::InvalidArgument("The place to capture CUDAGraph is "
+                                          "not the same as the place to run."));
+  }
+#endif
+}
+
 void InterpreterCore::BuildOperatorDependences() {
   // analysis the dependences between ops, add next_instr_list to each instr,
   // and set the dependecy_count_
   size_t instr_num = vec_instruction_.size();
   dependecy_count_.resize(instr_num);
-  auto downstream_map = dependency_builder_.Build(
-      vec_instruction_,
-      /*is_sequential_run=*/FLAGS_new_executor_sequential_run);
+  auto downstream_map = dependency_builder_.Build(vec_instruction_);
 
   for (size_t instr_id = 0; instr_id < instr_num; ++instr_id) {
     Instruction& cur_instr = vec_instruction_[instr_id];
     const std::set<size_t>& next_instr_ids = downstream_map[instr_id];
 
-    if (cur_instr.KernelType() == OpFuncType::kGpuAsync) {
+    if (FLAGS_new_executor_serial_run) {
       for (size_t next_instr_id : next_instr_ids) {
-        if (vec_instruction_[next_instr_id].KernelType() ==
-            OpFuncType::kGpuAsync) {
-          cur_instr.AddNextInstrInSameThread(next_instr_id);
-        } else {
-          cur_instr.AddNextInstrInDifferentThread(next_instr_id);
-        }
+        cur_instr.AddNextInstrInSameThread(next_instr_id);
       }
     } else {
-      bool has_instr_in_same_thread = false;
-      for (size_t next_instr_id : next_instr_ids) {
-        if (!has_instr_in_same_thread &&
-            vec_instruction_[next_instr_id].KernelType() !=
-                OpFuncType::kGpuAsync) {
-          cur_instr.AddNextInstrInSameThread(next_instr_id);
-          has_instr_in_same_thread = true;
-        } else {
-          cur_instr.AddNextInstrInDifferentThread(next_instr_id);
+      if (cur_instr.KernelType() == OpFuncType::kGpuAsync) {
+        for (size_t next_instr_id : next_instr_ids) {
+          if (vec_instruction_[next_instr_id].KernelType() ==
+              OpFuncType::kGpuAsync) {
+            cur_instr.AddNextInstrInSameThread(next_instr_id);
+          } else {
+            cur_instr.AddNextInstrInDifferentThread(next_instr_id);
+          }
+        }
+      } else {
+        bool has_instr_in_same_thread = false;
+        for (size_t next_instr_id : next_instr_ids) {
+          if (!has_instr_in_same_thread &&
+              vec_instruction_[next_instr_id].KernelType() !=
+                  OpFuncType::kGpuAsync) {
+            cur_instr.AddNextInstrInSameThread(next_instr_id);
+            has_instr_in_same_thread = true;
+          } else {
+            cur_instr.AddNextInstrInDifferentThread(next_instr_id);
+          }
         }
       }
     }
@@ -567,17 +661,18 @@ void InterpreterCore::Convert(
   for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
     auto& op_func_node = nodes[op_idx];
     auto* dev_ctx_ = stream_analyzer_.ParseDeviceContext(op_func_node);
-    Priority priority =
-        interpreter::IsCommunicationOp(op_func_node.operator_base_->Type())
-            ? Priority::kLowest
-            : Priority::kNormal;
-    vec_instruction_.emplace_back(
-        op_idx, std::move(op_func_node), *dev_ctx_, priority);
+    vec_instruction_.emplace_back(op_idx, std::move(op_func_node), *dev_ctx_);
   }
 
   BuildOperatorDependences();
 
-  stream_analyzer_.ConstructEvents(dependency_builder_, &vec_instruction_);
+  // NOTE(Ruibiao): For cross-step stream synchronization, an event may be
+  // recorded in the first step and waited in the second step. So, in the first
+  // step, the WaitEvent may be called without RecordEvent. Considering that
+  // before the first call to RecordEvent, an Event represents an empty set of
+  // work and WaitEvent always return succeed immediately, we omit the
+  // prelude-record for the first step here.
+  stream_analyzer_.ConstructEvents(&vec_instruction_);
 
   // add event for the input var of jit program, since there are async copied
   // from gpu_pinned place to gpu place on compute stream.
@@ -627,9 +722,20 @@ void InterpreterCore::Convert(
         if (var_desc && ins.count(item.first) &&
             !info.IsInArgBufferNeeded(var_desc->Name())) {
           continue;
-        } else if (!block_.HasVar(var_scope_.GetNameById(id))) {
-          VLOG(10) << "[gc_check_inputs] skip gc: "
-                   << var_scope_.GetNameById(id);
+        }
+        // skip when this var is not in block and not a data_transferred var,
+        // which means this var is managed by other block
+        const auto& var_name = var_scope_.GetNameById(id);
+        bool not_owned = !block_.HasVar(var_name);
+        const auto& transferred_vars = var_scope_.DataTransferAddedVars();
+        bool not_transferred =
+            std::all_of(transferred_vars.begin(),
+                        transferred_vars.end(),
+                        [&](const std::pair<std::string, int>& elem) {
+                          return elem.first != var_name;
+                        });
+        if (not_owned && not_transferred) {
+          VLOG(10) << "[gc_check_inputs] skip gc: " << var_name;
           continue;
         }
         gc_check_vars.insert(id);
@@ -719,6 +825,8 @@ void InterpreterCore::Convert(
     refs_.emplace_back(std::make_shared<interpreter::VarRefInfo>(
         vec_meta_info[i].var_ref_count_, var_scope_.VarRef(i)));
   }
+
+  AnalyseExecuteOrderForTrace();
 }
 
 void InterpreterCore::BuildSkipShareLoDInfo() {
@@ -741,14 +849,12 @@ void InterpreterCore::BuildSkipShareLoDInfo() {
   }
 }
 
-void InterpreterCore::RunInstruction(const Instruction& instr_node) {
+void InterpreterCore::RunOperator(const Instruction& instr_node) {
   auto* op = instr_node.OpBase();
   auto place = instr_node.DeviceContext().GetPlace();
   Scope* local_scope = HasLocalScope() ? var_scope_.GetMutableLocalScope()
                                        : var_scope_.GetMutableScope();
-  VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope_);
-
-  SetDeviceId(place);
+  VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
 
 #ifdef PADDLE_WITH_ASCEND_CL
   if (platform::is_npu_place(place)) {
@@ -860,8 +966,49 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
     VLOG(4) << "Check nan/inf";
     framework::details::CheckOpHasNanOrInf(
         *op,
-        *local_scope_,
+        *local_scope,
         place);  // TODO(xiongkun03) change it to inner scope.
+  }
+}
+
+void InterpreterCore::RunInstruction(const Instruction& instr_node) {
+  VLOG(5) << __func__ << " OP id:" << instr_node.Id()
+          << " name:" << instr_node.OpBase()->Type() << " type:"
+          << (instr_node.KernelType() == OpFuncType::kCpuSync
+                  ? "kCpuSync"
+                  : (instr_node.KernelType() == OpFuncType::kGpuSync
+                         ? "kGpuSync"
+                         : "kGpuAsync"))
+          << " runs on " << platform::GetCurrentThreadName();
+
+  auto* op = instr_node.OpBase();
+  platform::RecordEvent instruction_event(
+      op->Type(), platform::TracerEventType::Operator, 1);
+
+  SetDeviceId(instr_node.DeviceContext().GetPlace());
+
+  try {
+    instr_node.WaitEvent(place_);
+
+    if (!instr_node.IsArtificial()) {
+      RunOperator(instr_node);
+      CheckGC(instr_node);
+      interpreter::LogDeviceMemoryStats(place_);
+    }
+
+    instr_node.RecordEvent(place_);
+  } catch (platform::EnforceNotMet& ex) {
+    framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
+    exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));
+  } catch (platform::EOFException&) {
+    exception_holder_.Catch(std::current_exception());
+  } catch (std::exception& ex) {
+    LOG(WARNING) << op->Type() << " raises an exception "
+                 << platform::demangle(typeid(ex).name()) << ", " << ex.what();
+    exception_holder_.Catch(std::current_exception());
+  } catch (...) {
+    LOG(WARNING) << op->Type() << " raises an unknown exception";
+    exception_holder_.Catch(std::current_exception());
   }
 }
 
@@ -879,20 +1026,13 @@ void InterpreterCore::ExecuteInstructionList(
   for (size_t i = 0; i < dependecy_count_.size(); ++i) {
     if (dependecy_count_[i] == 0) {
       // NOTE(zhiqiu): hot fix for jit input var
-      if (vec_instr.at(i).OpBase()->Type() == interpreter::kMemcpyD2H) {
-        platform::DeviceContextPool& pool =
-            platform::DeviceContextPool::Instance();
-        auto* default_dev_ctx = pool.Get(place_);
-        for (auto& event : vec_instr.at(i).EventsToWait()) {
-          platform::RecordEvent record(
-              "RecordStreamEvent", platform::TracerEventType::UserDefined, 10);
-          VLOG(3) << "Record event on default stream in jit_input_var at op: "
-                  << vec_instr.at(i).OpBase()->Type();
-          event.event_->Record(default_dev_ctx);
-        }
+      RecordMemcpyD2H(vec_instr.at(i));
+      if (FLAGS_new_executor_serial_run) {
+        RunInstructionAsync(i);
+      } else {
+        async_work_queue_->AddTask(vec_instr.at(i).KernelType(),
+                                   [this, i] { RunInstructionAsync(i); });
       }
-      async_work_queue_->AddTask(vec_instr.at(i).KernelType(),
-                                 [this, i] { RunInstructionAsync(i); });
     }
   }
 
@@ -918,8 +1058,8 @@ void InterpreterCore::ExecuteInstructionList(
   }
 }
 
-void InterpreterCore::RunNextInstructions(
-    const Instruction& instr, std::deque<size_t>* reserved_next_ops) {
+void InterpreterCore::RunNextInstructions(const Instruction& instr,
+                                          SchedulingQueue* reserved_next_ops) {
   platform::RecordEvent record(
       "RunNextInstructions", platform::TracerEventType::UserDefined, 10);
 
@@ -939,59 +1079,24 @@ void InterpreterCore::RunNextInstructions(
 
   for (size_t next_instr_id : instr.NextInstrsInSameThread()) {
     if (IsReady(next_instr_id)) {
-      if (vec_instruction_[next_instr_id].GetPriority() == Priority::kLowest) {
-        reserved_next_ops->push_back(next_instr_id);
-      } else {
-        reserved_next_ops->push_front(next_instr_id);
-      }
+      reserved_next_ops->push(next_instr_id);
     }
   }
 }
 
 void InterpreterCore::RunInstructionAsync(size_t instr_id) {
-  std::deque<size_t> ready_ops;
-  ready_ops.push_back(instr_id);
+  // NOTE(Ruibiao): Due to the uncertain order in multi-threading asynchronous
+  // scheduling, the priority order involved cross-thread scheduling is not
+  // guaranteed. Only Ops scheduled by the same AddTask call have the guarantee
+  // of priority order.
+  SchedulingQueue ready_ops(instruction_scheduling_priority_less);
+  ready_ops.push(instr_id);
   while (!ready_ops.empty()) {
-    instr_id = ready_ops.front();
-    ready_ops.pop_front();
+    instr_id = ready_ops.top();
+    ready_ops.pop();
     auto& instr_node = vec_instruction_.at(instr_id);
-    VLOG(5) << __func__ << " OP id:" << instr_node.Id()
-            << " name:" << instr_node.OpBase()->Type() << " type:"
-            << (instr_node.KernelType() == OpFuncType::kCpuSync
-                    ? "kCpuSync"
-                    : (instr_node.KernelType() == OpFuncType::kGpuSync
-                           ? "kGpuSync"
-                           : "kGpuAsync"))
-            << " runs on " << platform::GetCurrentThreadName();
 
-    auto* op = instr_node.OpBase();
-    platform::RecordEvent instruction_event(
-        op->Type(), platform::TracerEventType::Operator, 1);
-
-    try {
-      instr_node.WaitEvent(place_);
-
-      if (!instr_node.IsArtificial()) {
-        RunInstruction(instr_node);
-        CheckGC(instr_node);
-        interpreter::LogDeviceMemoryStats(place_);
-      }
-
-      instr_node.RecordEvent(place_);
-    } catch (platform::EnforceNotMet& ex) {
-      framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
-      exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));
-    } catch (platform::EOFException&) {
-      exception_holder_.Catch(std::current_exception());
-    } catch (std::exception& ex) {
-      LOG(WARNING) << op->Type() << " raises an exception "
-                   << platform::demangle(typeid(ex).name()) << ", "
-                   << ex.what();
-      exception_holder_.Catch(std::current_exception());
-    } catch (...) {
-      LOG(WARNING) << op->Type() << " raises an unknown exception";
-      exception_holder_.Catch(std::current_exception());
-    }
+    RunInstruction(instr_node);
 
     if (UNLIKELY(exception_holder_.IsCaught())) {
       VLOG(4) << "Exception caught";
@@ -1162,10 +1267,10 @@ void InterpreterCore::Prepare(const std::vector<std::string>& feed_names,
 
   if (!is_build_) {
     paddle::framework::interpreter::BuildVariableScope(
-        block_, &var_scope_, HasLocalScope());
+        block_, execution_config_, &var_scope_);
     FeedInput();
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
-    paddle::framework::interpreter::BuildOpFuncList(
+    auto skip_run = paddle::framework::interpreter::BuildOpFuncList(
         place_,
         block_,
         execution_config_.skip_gc_vars,
@@ -1176,7 +1281,12 @@ void InterpreterCore::Prepare(const std::vector<std::string>& feed_names,
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
     Convert(&op_func_nodes);
+    UpdateSyncOpNum();
     is_build_ = true;
+    if (skip_run) {
+      VLOG(4) << "RUN impl";
+      RunImpl();
+    }
   }
   // NOTE: Because feed_tensor will be GC after
   // paddle::framework::BuildOpFuncList, so we should
@@ -1195,12 +1305,147 @@ void InterpreterCore::SetFeedVarsInplaceSkip(
 
 bool InterpreterCore::HasLocalScope() const { return local_scope_ != nullptr; }
 
+// Note(zhangbo):
+// (1) What is "Trace"?
+// The OP execute scheduling rule adopted by Interpretercore by default is a
+// multi-threaded scheduling mode(see ExecuteInstructionList). By maintaining a
+// high-performance thread pool, the OP's execute scheduling is distributed to
+// the sub threads maintained by the thread pool, but the main thread does not
+// have any tasks. In Trace mode, the executor will execute directly in the main
+// thread according to the pre provided OP sequence(trace_execute_order_),
+// instead of being distributed to the thread pool.
+// (2) When we use "Trace"?
+// In dygraph to static, This scheduling causes that the execution of the
+// forward and backward OPs and the execution of the dygraph optimizer cannot be
+// executed in the same thread. Executing thread switch may cause cpu cache
+// miss. When a model is all KQueueAsync type OPs, all OPs will be distributed
+// to the DeviceThread for execution, and the multithreading scheduling will not
+// have any benefits. Therefore, in the dynamic to static, when the number of
+// KQueueAsync Ops is 0, we choose Trace mode.
+void InterpreterCore::TraceInstructionList(
+    const std::vector<Instruction>& vec_instr) {
+  unfinished_op_number_ = vec_instr.size();
+  if (unfinished_op_number_ == 0) {
+    VLOG(4) << "No op to run, return";
+    return;
+  }
+
+  exception_holder_.Clear();
+
+  for (size_t i = 0; i < dependecy_count_.size(); ++i) {
+    if (dependecy_count_[i] == 0) {
+      // NOTE(zhiqiu): hot fix for jit input var
+      RecordMemcpyD2H(vec_instr.at(i));
+    }
+  }
+
+  for (size_t idx = 0; idx < trace_execute_order_.size(); idx++) {
+    auto instr_id = trace_execute_order_[idx];
+    auto& instr_node = vec_instruction_.at(instr_id);
+
+    RunInstruction(instr_node);
+
+    if (UNLIKELY(exception_holder_.IsCaught())) {
+      VLOG(4) << "Exception caught";
+      break;
+    }
+  }
+
+  if (UNLIKELY(exception_holder_.IsCaught())) {
+    VLOG(1) << "Exception caught " << exception_holder_.Type();
+    PADDLE_ENFORCE_EQ(
+        main_thread_blocker_.Clear(),
+        0,
+        platform::errors::PreconditionNotMet(
+            "main_thread_blocker_.Clear() return -1, clear failed"));
+    VLOG(4) << "clear ok";
+    exception_holder_.ReThrow();
+  }
+}
+
+void InterpreterCore::RecordMemcpyD2H(const Instruction& instr_node) {
+  // NOTE(zhiqiu): hot fix for jit input var
+  if (instr_node.OpBase()->Type() == interpreter::kMemcpyD2H) {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto* default_dev_ctx = pool.Get(place_);
+    for (auto& event : instr_node.EventsToWait()) {
+      platform::RecordEvent record(
+          "RecordStreamEvent", platform::TracerEventType::UserDefined, 10);
+      VLOG(3) << "Record event on default stream in jit_input_var at op: "
+              << instr_node.OpBase()->Type();
+      event.event_->Record(default_dev_ctx);
+    }
+  }
+}
+
+void InterpreterCore::UpdateSyncOpNum() {
+  int64_t sync_op_num = 0;
+  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
+    if (vec_instruction_[i].KernelType() == OpFuncType::kCpuSync ||
+        vec_instruction_[i].KernelType() == OpFuncType::kGpuSync) {
+      sync_op_num = sync_op_num + 1;
+    }
+  }
+  sync_op_num_ = sync_op_num;
+  VLOG(4) << "Update sync op num, sync op num is: " << sync_op_num_;
+}
+
+// Note(zhangbo):
+// When there is a KQueueSync type OP in the model, breadth traversal is better
+// than depth traversal. For example: OP(O) ->(direct_run)-> OP(A)
+// ->(sync_run)-> OP(B) OP(O) ->(direct_run)-> OP(C) ->(direct_run)-> OP(D) If B
+// is run before C, B may always block to wait for A to finish executing, but in
+// fact, C can be executed first during this time.
+void InterpreterCore::AnalyseExecuteOrderForTrace() {
+  VLOG(4) << "Analyze the execution order of Trace scheduling mode.";
+  interpreter::ResetAtomicGuard guard(&deps_, &refs_);
+
+  auto op_downstream_map = dependency_builder_.OpDownstreamMap();
+
+  auto IsReady = [this](size_t next_id) {
+    VLOG(4) << "op_id: " << next_id
+            << ", remain deps: " << deps_[next_id]->DynamicDep();
+    return deps_[next_id]->CheckAndDecrease();
+  };
+
+  std::vector<size_t> trace_order;
+  SchedulingQueue ready_ops(instruction_scheduling_priority_less);
+
+  for (size_t instr_id = 0; instr_id < dependecy_count_.size(); ++instr_id) {
+    if (dependecy_count_[instr_id] == 0) {
+      ready_ops.push(instr_id);
+    }
+  }
+
+  while (!ready_ops.empty()) {
+    size_t now_id = ready_ops.top();
+    ready_ops.pop();
+    trace_order.push_back(now_id);
+
+    auto next_op_set = op_downstream_map[now_id];
+
+    for (size_t next_op_id : next_op_set) {
+      if (IsReady(next_op_id)) {
+        ready_ops.push(next_op_id);
+      }
+    }
+  }
+
+  PADDLE_ENFORCE_EQ(
+      trace_order.size(),
+      dependecy_count_.size(),
+      platform::errors::PreconditionNotMet(
+          "trace_order size should be equal to dependecy_count_."));
+
+  trace_execute_order_ = trace_order;
+}
+
 std::shared_ptr<InterpreterCore> CreateInterpreterCore(
     const platform::Place& place,
     const ProgramDesc& prog,
     Scope* scope,
     const std::vector<std::string>& fetch_names,
-    const std::set<std::string>& skip_gc_vars) {
+    const interpreter::ExecutionConfig& execution_config) {
   std::shared_ptr<InterpreterCore> core = nullptr;
   // NOTE(Aurelius84): `AddFetch` will modify BlockDesc, so we should copy
   // a new program.
@@ -1208,7 +1453,8 @@ std::shared_ptr<InterpreterCore> CreateInterpreterCore(
   auto* block = new_prog->MutableBlock(0);
   interpreter::AddFetch(fetch_names, block);
 
-  core = std::make_shared<InterpreterCore>(place, *block, skip_gc_vars, scope);
+  core =
+      std::make_shared<InterpreterCore>(place, *block, scope, execution_config);
   core->SetCopyProgram(new_prog);
   return core;
 }

@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
-import paddle.fluid as fluid
+
 import paddle
+import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
 from paddle.nn.functional import interpolate
 
 
@@ -361,12 +362,7 @@ class TestBicubicInterpDataLayout(TestBicubicInterpOp):
 
 
 class TestBicubicInterpOpAPI(unittest.TestCase):
-    def test_imperative_case(self):
-        with _test_eager_guard():
-            self.func_case()
-        self.func_case()
-
-    def func_case(self):
+    def test_case(self):
         np.random.seed(200)
         x_data = np.random.random((2, 3, 6, 6)).astype("float32")
         dim_data = np.array([12]).astype("int32")
@@ -614,6 +610,20 @@ class TestBicubicOpError(unittest.TestCase):
                 x, size={2, 2}, mode='bicubic', align_corners=False
             )
 
+        def test_size_length():
+            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+            out = interpolate(x, size=[2], mode='bicubic', align_corners=False)
+
+        def test_size_tensor_ndim():
+            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+            size = paddle.to_tensor(np.array([[2, 2]]))
+            out = interpolate(x, size=size, mode='bicubic', align_corners=False)
+
+        def test_size_tensor_length():
+            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+            size = paddle.to_tensor(np.array([2]))
+            out = interpolate(x, size=size, mode='bicubic', align_corners=False)
+
         def test_input_shape_1():
             x = fluid.data(name="x", shape=[2, 1, 0, 0], dtype="float32")
             out = interpolate(
@@ -637,6 +647,9 @@ class TestBicubicOpError(unittest.TestCase):
         self.assertRaises(ValueError, test_size_and_scale)
         self.assertRaises(ValueError, test_size_and_scale2)
         self.assertRaises(TypeError, test_size_type)
+        self.assertRaises(ValueError, test_size_length)
+        self.assertRaises(ValueError, test_size_tensor_ndim)
+        self.assertRaises(ValueError, test_size_tensor_length)
         self.assertRaises(ValueError, test_input_shape_1)
 
     def test_errors(self):

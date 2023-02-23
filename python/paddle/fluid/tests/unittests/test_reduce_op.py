@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+
 import paddle
-import paddle.fluid.core as core
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
@@ -26,36 +28,25 @@ class TestSumOp(OpTest):
     def setUp(self):
         self.python_api = paddle.sum
         self.op_type = "reduce_sum"
+        self.prim_op_type = "prim"
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
         self.attrs = {'dim': [0]}
+        # reduce doesn't support float64 in cinn
+        self.enable_cinn = False
 
     def test_check_output(self):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_eager=True, check_prim=True)
 
 
-class TestSumOp_ZeroDim(OpTest):
+class TestSumOpFp32(OpTest):
     def setUp(self):
         self.python_api = paddle.sum
         self.op_type = "reduce_sum"
-        self.inputs = {'X': np.random.random([]).astype("float64")}
-        self.outputs = {'Out': self.inputs['X'].sum(axis=None)}
-        self.attrs = {'dim': [], 'reduce_all': True}
-
-    def test_check_output(self):
-        self.check_output(check_eager=True)
-
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
-
-
-class TestSumOp_fp16(OpTest):
-    def setUp(self):
-        self.python_api = paddle.sum
-        self.op_type = "reduce_sum"
+        self.prim_op_type = "prim"
         self.inputs = {
             'X': np.random.uniform(0, 0.1, (5, 6, 10)).astype("float16")
         }
@@ -64,6 +55,8 @@ class TestSumOp_fp16(OpTest):
             'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
         }
         self.gradient = self.calc_gradient()
+        # error occurred in cinn
+        self.enable_cinn = False
 
     def test_check_output(self):
         self.check_output(check_eager=True)
@@ -75,8 +68,31 @@ class TestSumOp_fp16(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'], 'Out', user_defined_grads=self.gradient, check_eager=True
+            ['X'],
+            'Out',
+            user_defined_grads=self.gradient,
+            check_eager=True,
+            check_prim=True,
         )
+
+
+class TestSumOp_ZeroDim(OpTest):
+    def setUp(self):
+        self.python_api = paddle.sum
+        self.op_type = "reduce_sum"
+        self.prim_op_type = "prim"
+        self.inputs = {'X': np.random.random([]).astype("float64")}
+        self.outputs = {'Out': self.inputs['X'].sum(axis=None)}
+        self.attrs = {'dim': [], 'reduce_all': True}
+        # reduce doesn't support float64 in cinn.
+        # 0-D tensor doesn't support in cinn
+        self.enable_cinn = False
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 @unittest.skipIf(
@@ -87,6 +103,7 @@ class TestSumOp_bf16(OpTest):
         np.random.seed(100)
         self.python_api = paddle.sum
         self.op_type = "reduce_sum"
+        self.prim_op_type = "prim"
         self.dtype = np.uint16
         self.x = np.random.uniform(0, 0.1, (2, 5, 10)).astype(np.float32)
         self.attrs = {'dim': [0, 1, 2]}
@@ -96,6 +113,7 @@ class TestSumOp_bf16(OpTest):
         self.inputs = {'X': convert_float_to_uint16(self.x)}
         self.outputs = {'Out': convert_float_to_uint16(self.out)}
         self.gradient = self.calc_gradient()
+        self.enable_cinn = False
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
@@ -109,6 +127,7 @@ class TestSumOp_bf16(OpTest):
             'Out',
             user_defined_grads=self.gradient,
             check_eager=True,
+            check_prim=True,
         )
 
     def calc_gradient(self):
@@ -121,6 +140,7 @@ class TestSumOp_fp16_withInt(OpTest):
     def setUp(self):
         self.python_api = paddle.sum
         self.op_type = "reduce_sum"
+        self.prim_op_type = "prim"
         self.inputs = {
             # ref to https://en.wikipedia.org/wiki/Half-precision_floating-point_format
             # Precision limitations on integer values between 0 and 2048 can be exactly represented
@@ -131,6 +151,7 @@ class TestSumOp_fp16_withInt(OpTest):
             'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
         }
         self.gradient = self.calc_gradient()
+        self.enable_cinn = False
 
     def test_check_output(self):
         self.check_output(check_eager=True)
@@ -142,7 +163,11 @@ class TestSumOp_fp16_withInt(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'], 'Out', user_defined_grads=self.gradient, check_eager=True
+            ['X'],
+            'Out',
+            user_defined_grads=self.gradient,
+            check_eager=True,
+            check_prim=True,
         )
 
 
@@ -150,34 +175,40 @@ class TestSumOp5D(OpTest):
     def setUp(self):
         self.python_api = paddle.sum
         self.op_type = "reduce_sum"
+        self.prim_op_type = "prim"
         self.inputs = {
             'X': np.random.random((1, 2, 5, 6, 10)).astype("float64")
         }
         self.attrs = {'dim': [0]}
         self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
+        # error occurred in cinn
+        self.enable_cinn = False
 
     def test_check_output(self):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_eager=True, check_prim=True)
 
 
 class TestSumOp6D(OpTest):
     def setUp(self):
         self.python_api = paddle.sum
         self.op_type = "reduce_sum"
+        self.prim_op_type = "prim"
         self.inputs = {
             'X': np.random.random((1, 1, 2, 5, 6, 10)).astype("float64")
         }
         self.attrs = {'dim': [0]}
         self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
+        # error occurred in cinn
+        self.enable_cinn = False
 
     def test_check_output(self):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_eager=True, check_prim=True)
 
 
 class TestSumOp8D(OpTest):
@@ -191,7 +222,7 @@ class TestSumOp8D(OpTest):
         self.outputs = {'Out': self.inputs['X'].sum(axis=(0, 3))}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_eager=True)
@@ -503,12 +534,12 @@ class TestAllOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
             # The input type of reduce_all_op must be Variable.
             input1 = 12
-            self.assertRaises(TypeError, fluid.layers.reduce_all, input1)
+            self.assertRaises(TypeError, paddle.all, input1)
             # The input dtype of reduce_all_op must be bool.
-            input2 = fluid.layers.data(
-                name='input2', shape=[12, 10], dtype="int32"
+            input2 = paddle.static.data(
+                name='input2', shape=[-1, 12, 10], dtype="int32"
             )
-            self.assertRaises(TypeError, fluid.layers.reduce_all, input2)
+            self.assertRaises(TypeError, paddle.all, input2)
 
 
 class TestAnyOp(OpTest):
@@ -620,83 +651,111 @@ class TestAnyOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
             # The input type of reduce_any_op must be Variable.
             input1 = 12
-            self.assertRaises(TypeError, fluid.layers.reduce_any, input1)
+            self.assertRaises(TypeError, paddle.any, input1)
             # The input dtype of reduce_any_op must be bool.
-            input2 = fluid.layers.data(
-                name='input2', shape=[12, 10], dtype="int32"
+            input2 = paddle.static.data(
+                name='input2', shape=[-1, 12, 10], dtype="int32"
             )
-            self.assertRaises(TypeError, fluid.layers.reduce_any, input2)
+            self.assertRaises(TypeError, paddle.any, input2)
 
 
 class Test1DReduce(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
+        self.python_api = paddle.sum
+        self.prim_op_type = "prim"
         self.inputs = {'X': np.random.random(120).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
+        # reduce doesn't support float64 in cinn.
+        self.enable_cinn = False
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class Test2DReduce0(Test1DReduce):
     def setUp(self):
         self.op_type = "reduce_sum"
+        self.python_api = paddle.sum
+        self.prim_op_type = "prim"
         self.attrs = {'dim': [0]}
         self.inputs = {'X': np.random.random((20, 10)).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
+        # reduce doesn't support float64 in cinn.
+        self.enable_cinn = False
 
 
 class Test2DReduce1(Test1DReduce):
     def setUp(self):
         self.op_type = "reduce_sum"
+        self.python_api = paddle.sum
+        self.prim_op_type = "prim"
         self.attrs = {'dim': [1]}
         self.inputs = {'X': np.random.random((20, 10)).astype("float64")}
         self.outputs = {
             'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
         }
+        # reduce doesn't support float64 in cinn.
+        self.enable_cinn = False
 
 
 class Test3DReduce0(Test1DReduce):
     def setUp(self):
         self.op_type = "reduce_sum"
+        self.python_api = paddle.sum
+        self.prim_op_type = "prim"
         self.attrs = {'dim': [1]}
         self.inputs = {'X': np.random.random((5, 6, 7)).astype("float64")}
         self.outputs = {
             'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
         }
+        # reduce doesn't support float64 in cinn.
+        self.enable_cinn = False
 
 
 class Test3DReduce1(Test1DReduce):
     def setUp(self):
         self.op_type = "reduce_sum"
+        self.python_api = paddle.sum
+        self.prim_op_type = "prim"
         self.attrs = {'dim': [2]}
         self.inputs = {'X': np.random.random((5, 6, 7)).astype("float64")}
         self.outputs = {
             'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
         }
+        # reduce doesn't support float64 in cinn.
+        self.enable_cinn = False
 
 
 class Test3DReduce2(Test1DReduce):
     def setUp(self):
         self.op_type = "reduce_sum"
+        self.python_api = paddle.sum
+        self.prim_op_type = "prim"
         self.attrs = {'dim': [-2]}
         self.inputs = {'X': np.random.random((5, 6, 7)).astype("float64")}
         self.outputs = {
             'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
         }
+        # reduce doesn't support float64 in cinn.
+        self.enable_cinn = False
 
 
 class Test3DReduce3(Test1DReduce):
     def setUp(self):
         self.op_type = "reduce_sum"
+        self.python_api = paddle.sum
+        self.prim_op_type = "prim"
         self.attrs = {'dim': [1, 2]}
         self.inputs = {'X': np.random.random((5, 6, 7)).astype("float64")}
         self.outputs = {
             'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
         }
+        # reduce doesn't support float64 in cinn.
+        self.enable_cinn = False
 
 
 class Test8DReduce0(Test1DReduce):
@@ -710,10 +769,18 @@ class Test8DReduce0(Test1DReduce):
             'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
         }
 
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
 
 class TestKeepDimReduce(Test1DReduce):
     def setUp(self):
         self.op_type = "reduce_sum"
+        self.python_api = paddle.sum
+        self.prim_op_type = "prim"
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
         self.attrs = {'dim': [1], 'keep_dim': True}
         self.outputs = {
@@ -721,6 +788,8 @@ class TestKeepDimReduce(Test1DReduce):
                 axis=tuple(self.attrs['dim']), keepdims=self.attrs['keep_dim']
             )
         }
+        # reduce doesn't support float64 in cinn.
+        self.enable_cinn = False
 
 
 class TestKeepDim8DReduce(Test1DReduce):
@@ -735,6 +804,12 @@ class TestKeepDim8DReduce(Test1DReduce):
                 axis=tuple(self.attrs['dim']), keepdims=self.attrs['keep_dim']
             )
         }
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
 
 
 @skip_check_grad_ci(
@@ -780,6 +855,8 @@ class TestReduceMinOpMultiAxises(OpTest):
 class TestKeepDimReduceSumMultiAxises(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
+        self.python_api = paddle.sum
+        self.prim_op_type = "prim"
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
         self.attrs = {'dim': [-2, -1], 'keep_dim': True}
         self.outputs = {
@@ -792,12 +869,15 @@ class TestKeepDimReduceSumMultiAxises(OpTest):
         self.check_output()
 
     def test_check_grad(self):
+        # rev_comp error
         self.check_grad(['X'], 'Out')
 
 
 class TestReduceSumWithDimOne(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
+        self.python_api = paddle.sum
+        self.prim_op_type = "prim"
         self.inputs = {'X': np.random.random((100, 1, 1)).astype("float64")}
         self.attrs = {'dim': [1, 2], 'keep_dim': True}
         self.outputs = {
@@ -805,17 +885,21 @@ class TestReduceSumWithDimOne(OpTest):
                 axis=tuple(self.attrs['dim']), keepdims=True
             )
         }
+        # reduce doesn't support float64 in cinn
+        self.enable_cinn = False
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestReduceSumWithNumelOne(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
+        self.python_api = paddle.sum
+        self.prim_op_type = "prim"
         self.inputs = {'X': np.random.random((100, 1)).astype("float64")}
         self.attrs = {'dim': [1], 'keep_dim': False}
         self.outputs = {
@@ -823,45 +907,74 @@ class TestReduceSumWithNumelOne(OpTest):
                 axis=tuple(self.attrs['dim']), keepdims=False
             )
         }
+        # reduce doesn't support float64 in cinn
+        self.enable_cinn = False
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=False)
 
 
 class TestReduceAll(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
+        self.python_api = paddle.sum
+        self.prim_op_type = "prim"
         self.inputs = {'X': np.random.random((100, 1, 1)).astype("float64")}
         self.attrs = {'reduce_all': True, 'keep_dim': False}
         self.outputs = {'Out': self.inputs['X'].sum()}
+        # reduce doesn't support float64 in cinn
+        self.enable_cinn = False
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
+
+
+class TestReduceAllFp32(OpTest):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.python_api = paddle.sum
+        self.prim_op_type = "prim"
+        self.inputs = {'X': np.random.random((100, 1, 1)).astype("float32")}
+        self.attrs = {'reduce_all': True, 'keep_dim': False}
+        self.outputs = {'Out': self.inputs['X'].sum()}
+        # reduce doesn't support float64 in cinn
+        self.enable_cinn = False
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class Test1DReduceWithAxes1(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
+        self.python_api = paddle.sum
+        self.prim_op_type = "prim"
         self.inputs = {'X': np.random.random(100).astype("float64")}
         self.attrs = {'dim': [0], 'keep_dim': False}
         self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
+        self.enable_cinn = False
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestReduceWithDtype(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
+        self.python_api = paddle.sum
+        self.prim_op_type = "prim"
         self.inputs = {'X': np.random.random((6, 2, 10)).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].sum().astype('float64')}
         self.attrs = {'reduce_all': True}
@@ -871,17 +984,26 @@ class TestReduceWithDtype(OpTest):
                 'out_dtype': int(convert_np_dtype_to_dtype_(np.float64)),
             }
         )
+        self.enable_cinn = False
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
+
+
+def reduce_sum_wrapper(
+    x, axis=None, dtype_rename=None, keepdim=False, name=None
+):
+    return paddle.sum(x, axis, "float64", keepdim, name)
 
 
 class TestReduceWithDtype1(TestReduceWithDtype):
     def setUp(self):
         self.op_type = "reduce_sum"
+        self.python_api = reduce_sum_wrapper
+        self.prim_op_type = "prim"
         self.inputs = {'X': np.random.random((6, 2, 10)).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].sum(axis=1)}
         self.attrs = {'dim': [1]}
@@ -891,11 +1013,20 @@ class TestReduceWithDtype1(TestReduceWithDtype):
                 'out_dtype': int(convert_np_dtype_to_dtype_(np.float64)),
             }
         )
+        self.enable_cinn = False
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestReduceWithDtype2(TestReduceWithDtype):
     def setUp(self):
         self.op_type = "reduce_sum"
+        self.prim_op_type = "prim"
+        self.python_api = reduce_sum_wrapper
         self.inputs = {'X': np.random.random((6, 2, 10)).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].sum(axis=1, keepdims=True)}
         self.attrs = {'dim': [1], 'keep_dim': True}
@@ -905,6 +1036,13 @@ class TestReduceWithDtype2(TestReduceWithDtype):
                 'out_dtype': int(convert_np_dtype_to_dtype_(np.float64)),
             }
         )
+        self.enable_cinn = False
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestReduceSumOpError(unittest.TestCase):
@@ -916,7 +1054,7 @@ class TestReduceSumOpError(unittest.TestCase):
             )
             self.assertRaises(TypeError, paddle.sum, x1)
             # The input dtype of reduce_sum_op  must be float32 or float64 or int32 or int64.
-            x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint8")
+            x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="uint8")
             self.assertRaises(TypeError, paddle.sum, x2)
 
 
@@ -1028,8 +1166,8 @@ class TestAllAPI(unittest.TestCase):
         for place in self.places:
             with fluid.dygraph.guard(place):
                 np_x = np.random.randint(0, 2, (12, 10)).astype(np.bool_)
-                x = fluid.layers.assign(np_x)
-                x = fluid.layers.cast(x, 'bool')
+                x = paddle.assign(np_x)
+                x = paddle.cast(x, 'bool')
 
                 out1 = paddle.all(x)
                 np_out1 = out1.numpy()
@@ -1085,8 +1223,8 @@ class TestAnyAPI(unittest.TestCase):
         for place in self.places:
             with fluid.dygraph.guard(place):
                 np_x = np.random.randint(0, 2, (12, 10)).astype(np.bool_)
-                x = fluid.layers.assign(np_x)
-                x = fluid.layers.cast(x, 'bool')
+                x = paddle.assign(np_x)
+                x = paddle.cast(x, 'bool')
 
                 out1 = paddle.any(x)
                 np_out1 = out1.numpy()
@@ -1112,7 +1250,5 @@ class TestAnyAPI(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    import paddle
-
     paddle.enable_static()
     unittest.main()

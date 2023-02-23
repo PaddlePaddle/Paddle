@@ -31,7 +31,7 @@ class SoftmaxOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     // choose cudnn kernel if the runtime supported.
     std::string data_format = ctx.Attr<std::string>("data_format");
@@ -48,7 +48,8 @@ class SoftmaxOp : public framework::OperatorWithKernel {
           platform::errors::InvalidArgument(
               "float16 can only be used on GPU/NPU/XPU/MLU and custom place"));
     }
-    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_);
+    return phi::KernelKey(
+        ctx.GetPlace(), layout_, phi::TransToPhiDataType(input_data_type));
   }
 };
 
@@ -116,7 +117,7 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     // choose cudnn kernel if the runtime supported.
     std::string data_format = ctx.Attr<std::string>("data_format");
@@ -132,7 +133,8 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "float16 can only be used on GPU/NPU/XPU/MLU and custom place"));
     }
-    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_);
+    return phi::KernelKey(
+        ctx.GetPlace(), layout_, phi::TransToPhiDataType(input_data_type));
   }
 };
 

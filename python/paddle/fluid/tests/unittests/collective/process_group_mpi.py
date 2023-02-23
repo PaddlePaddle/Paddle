@@ -20,7 +20,6 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-import paddle.fluid.core as core
 from paddle.distributed.collective import (
     Group,
     _default_group_name,
@@ -29,7 +28,7 @@ from paddle.distributed.collective import (
     _set_group_map_by_name,
 )
 from paddle.fluid import core
-from paddle.fluid.framework import _set_expected_place, _test_eager_guard
+from paddle.fluid.framework import _set_expected_place
 
 ctypes.CDLL("libmpi.so", mode=ctypes.RTLD_GLOBAL)
 
@@ -445,51 +444,49 @@ class TestProcessGroup(unittest.TestCase):
         self.shape = (2, 10, 5)
 
     def test_create_process_group_mpi(self):
-        with _test_eager_guard():
-            group = init_process_group()
-            pg = group.process_group
+        group = init_process_group()
+        pg = group.process_group
+        # test allreduce sum
+        test_allreduce_sum(pg, self.shape, self.dtype)
 
-            # test allreduce sum
-            test_allreduce_sum(pg, self.shape, self.dtype)
+        # test allreduce max
+        test_allreduce_max(pg, self.shape, self.dtype)
 
-            # test allreduce max
-            test_allreduce_max(pg, self.shape, self.dtype)
+        # test allreduce min
+        test_allreduce_min(pg, self.shape, self.dtype)
 
-            # test allreduce min
-            test_allreduce_min(pg, self.shape, self.dtype)
+        # test allreduce prod
+        test_allreduce_prod(pg, self.shape, self.dtype)
 
-            # test allreduce prod
-            test_allreduce_prod(pg, self.shape, self.dtype)
+        # test broadcast
+        test_broadcast(pg, self.shape, self.dtype)
 
-            # test broadcast
-            test_broadcast(pg, self.shape, self.dtype)
+        # test barrier
+        test_barrair(pg)
 
-            # test barrier
-            test_barrair(pg)
+        # test allgather
+        test_allgather(pg, self.shape, self.dtype)
 
-            # test allgather
-            test_allgather(pg, self.shape, self.dtype)
+        # test alltoall
+        test_all2all(pg, self.shape, self.dtype)
 
-            # test alltoall
-            test_all2all(pg, self.shape, self.dtype)
+        # test Reduce
+        test_reduce_sum(pg, self.shape, self.dtype)
 
-            # test Reduce
-            test_reduce_sum(pg, self.shape, self.dtype)
+        # test reduce max
+        test_reduce_max(pg, self.shape, self.dtype)
 
-            # test reduce max
-            test_reduce_max(pg, self.shape, self.dtype)
+        # test reduce min
+        test_reduce_min(pg, self.shape, self.dtype)
 
-            # test reduce min
-            test_reduce_min(pg, self.shape, self.dtype)
+        # test reduce product
+        test_reduce_prod(pg, self.shape, self.dtype)
 
-            # test reduce product
-            test_reduce_prod(pg, self.shape, self.dtype)
+        # test Scatter
+        test_scatter(pg, self.shape, self.dtype)
 
-            # test Scatter
-            test_scatter(pg, self.shape, self.dtype)
-
-            # test send recv.
-            test_send_recv(pg, group, self.shape, self.dtype)
+        # test send recv.
+        test_send_recv(pg, group, self.shape, self.dtype)
 
 
 if __name__ == "__main__":

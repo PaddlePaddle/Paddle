@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-from numpy.lib.stride_tricks import as_strided
-import paddle
 import unittest
 
+import numpy as np
+from numpy.lib.stride_tricks import as_strided
 from op_test import OpTest
+
+import paddle
 
 
 def frame_from_librosa(x, frame_length, hop_length, axis=-1):

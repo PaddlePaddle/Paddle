@@ -25,6 +25,7 @@
 #include "paddle/fluid/memory/allocation/stat_allocator.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/macros.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <shared_mutex>
@@ -39,7 +40,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/device/gpu/cuda/cuda_graph.h"
+#include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
 #endif
 
 #if CUDA_VERSION >= 10020
@@ -157,7 +158,7 @@ class CUDAGraphAllocator
 
 static bool IsCUDAGraphCapturing() {
 #ifdef PADDLE_WITH_CUDA
-  return UNLIKELY(platform::CUDAGraph::IsThisThreadCapturing());
+  return UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing());
 #else
   return false;
 #endif
@@ -493,8 +494,8 @@ class AllocatorFacadePrivate {
   const AllocatorMap& GetAllocatorMap() { return allocators_; }
 
   void InitNaiveBestFitCPUAllocator() {
-    allocators_[platform::CPUPlace()] =
-        std::make_shared<NaiveBestFitAllocator>(platform::CPUPlace());
+    // It is more efficient to use CPUAllocator directly.
+    allocators_[platform::CPUPlace()] = std::make_shared<CPUAllocator>();
   }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -1007,7 +1008,7 @@ AllocatorFacade& AllocatorFacade::Instance() {
 AllocatorFacadePrivate* AllocatorFacade::GetPrivate() const {
 #ifdef PADDLE_WITH_CUDA
   if (UNLIKELY(IsCUDAGraphCapturing())) {
-    auto id = platform::CUDAGraph::CapturingPoolID();
+    auto id = phi::backends::gpu::CUDAGraph::CapturingPoolID();
     auto iter = cuda_graph_map_.find(id);
     PADDLE_ENFORCE_NE(
         iter,
@@ -1197,6 +1198,10 @@ void AllocatorFacade::RemoveMemoryPoolOfCUDAGraph(int64_t id) {
 }
 #endif
 #endif
+
+UNUSED static std::shared_ptr<NaiveBestFitAllocator> unused_obj =
+    std::make_shared<NaiveBestFitAllocator>(platform::CPUPlace());
+
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle

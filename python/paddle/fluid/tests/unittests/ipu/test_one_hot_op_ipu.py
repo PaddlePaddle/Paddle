@@ -46,7 +46,7 @@ class TestBase(IPUOpTest):
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='int32'
         )
-        out = paddle.fluid.layers.one_hot(x, **self.attrs)
+        out = paddle.nn.functional.one_hot(x, **self.attrs)
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):

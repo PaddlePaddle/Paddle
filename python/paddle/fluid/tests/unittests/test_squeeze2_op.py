@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
-import os
 from op_test import OpTest
-import paddle
-from paddle.fluid.framework import program_guard, Program
-
 from test_attribute_var import UnittestBase
+
+import paddle
+from paddle.fluid.framework import Program, program_guard
 
 paddle.enable_static()
 
@@ -97,7 +97,7 @@ class TestSqueeze2AxesTensor(UnittestBase):
             # axes is a Variable
             axes = paddle.assign([0, 2])
             out = paddle.squeeze(feat, axes)
-            out2 = paddle.fluid.layers.squeeze(feat, axes)
+            out2 = paddle.squeeze(feat, axes)
 
             sgd = paddle.optimizer.SGD()
             sgd.minimize(paddle.mean(out))
@@ -136,7 +136,7 @@ class TestSqueeze2AxesTensorList(UnittestBase):
                 paddle.full([1], 2, dtype='int32'),
             ]
             out = paddle.squeeze(feat, axes)
-            out2 = paddle.fluid.layers.squeeze(feat, axes)
+            out2 = paddle.squeeze(feat, axes)
 
             sgd = paddle.optimizer.SGD()
             sgd.minimize(paddle.mean(out))
@@ -153,6 +153,38 @@ class TestSqueeze2AxesTensorList(UnittestBase):
             # Test for Inference Predictor
             infer_out = self.infer_prog()
             self.assertEqual(infer_out.shape, (2, 3, 10))
+
+
+# test api
+class TestSqueezeAPI(unittest.TestCase):
+    def setUp(self):
+        self.executed_api()
+
+    def executed_api(self):
+        self.squeeze = paddle.squeeze
+
+    def test_api(self):
+        paddle.disable_static()
+        input_data = np.random.random([3, 2, 1]).astype("float32")
+        x = paddle.to_tensor(input_data)
+        out = self.squeeze(x, axis=2)
+        out.backward()
+
+        self.assertEqual(out.shape, [3, 2])
+
+        paddle.enable_static()
+
+    def test_error(self):
+        def test_axes_type():
+            x2 = paddle.static.data(name="x2", shape=[2, 1, 25], dtype="int32")
+            self.squeeze(x2, axis=2.1)
+
+        self.assertRaises(TypeError, test_axes_type)
+
+
+class TestSqueezeInplaceAPI(TestSqueezeAPI):
+    def executed_api(self):
+        self.squeeze = paddle.squeeze_
 
 
 if __name__ == "__main__":

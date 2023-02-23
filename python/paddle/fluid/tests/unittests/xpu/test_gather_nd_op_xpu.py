@@ -12,19 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
 
 sys.path.append("..")
 
-import paddle
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
 
 paddle.enable_static()
 
@@ -49,12 +51,19 @@ class XPUTestGatherNd(XPUOpTestWrapper):
         def test_check_output(self):
             self.check_output_with_place(self.place)
 
+        def test_check_grad(self):
+            self.check_grad(['X'], 'Out', check_eager=False)
+
         def init_data(self):
             self.xnp = np.random.random((5, 20)).astype(self.in_type)
             self.inp = np.array([[], []]).astype("int32")
             self.output = np.vstack(
                 (self.xnp[np.newaxis, :], self.xnp[np.newaxis, :])
             )
+
+        def infer_dtype_from_inputs_outputs(self, inputs, outputs):
+            self.__class__.dtype = self.dtype
+            self.output_dtype = self.dtype
 
     class XPUTestGatherNdOpWithEmptyIndex1(XPUTestGatherNdBase):
         def init_data(self):

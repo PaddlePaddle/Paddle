@@ -46,6 +46,12 @@
 
 - op : addmm
   backward : addmm_grad
+  inputs :
+    {input : Input, x : X, y : Y}
+  outputs :
+    out : Out
+  attrs :
+    {alpha : Alpha, beta : Beta}
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -53,6 +59,19 @@
   backward : affine_grid_grad
   extra :
     attrs : [bool use_cudnn = true]
+
+- op : allclose
+  inputs :
+    {x : Input, y : Other}
+  outputs :
+    out : Out
+  scalar :
+    rtol :
+      data_type : std::string
+      tensor_name : Rtol
+    atol :
+      data_type : std::string
+      tensor_name : Atol
 
 - op : angle
   backward : angle_grad
@@ -120,6 +139,19 @@
 
 - op : batch_norm
   backward : batch_norm_grad
+  inputs:
+    x : X
+    mean : Mean
+    variance : Variance
+    scale : Scale
+    bias : Bias
+  outputs :
+    out : Y
+    mean_out: MeanOut
+    variance_out: VarianceOut
+    saved_mean: SavedMean
+    saved_variance: SavedVariance
+    reserve_space: ReserveSpace
   extra :
     attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
 
@@ -144,6 +176,14 @@
     {x : X, y : Y}
   outputs :
     out : Out
+
+- op : broadcast_tensors
+  backward : broadcast_tensors_grad
+  inputs :
+    input : X
+  outputs :
+    out : Out
+  drop_empty_grad : [input_grad]
 
 - op : ceil
   backward : ceil_grad
@@ -174,12 +214,40 @@
     out : Out
 
 - op : clip
-  backward : clip_grad
+  backward : clip_grad, clip_double_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  scalar :
+    min :
+      data_type : float
+      tensor_name : Min
+    max :
+      data_type :  float
+      tensor_name : Max
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
+- op : complex
+  backward : complex_grad
+  inputs :
+    {real : X, imag : Y}
+  outputs :
+    out : Out
+
 - op : concat
   backward : concat_grad
+  inputs:
+    x: X
+  outputs:
+    out: Out
+  attrs:
+    axis: axis
+  scalar :
+    axis :
+      data_type : int
+      tensor_name : AxisTensor
   extra :
     attrs : [bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32"]
 
@@ -197,12 +265,9 @@
 - op : conv2d
   backward : conv2d_grad
   extra :
-    attrs : [bool is_test = false, bool use_cudnn = true, bool fuse_relu_before_depthwise_conv = false, bool use_mkldnn = false,
-             bool use_quantizer = false, str mkldnn_data_type = "float32", bool fuse_relu = false,
-             str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f, bool use_addto = false,
-             bool fuse_residual_connection = false, float Scale_in = 1.0f, float Scale_out = 1.0f,
-             float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool force_fp32_output = false,
-             int workspace_size_MB = platform::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
+    attrs : [bool is_test = false, bool use_cudnn = true, bool use_mkldnn = false, bool use_addto = false,
+             str mkldnn_data_type = "float32", bool force_fp32_output = false,
+             int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
 
 - op : conv2d_fusion
   extra :
@@ -211,7 +276,7 @@
              str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f, bool use_addto = false,
              bool fuse_residual_connection = false, float Scale_in = 1.0f, float Scale_out = 1.0f,
              float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool force_fp32_output = false,
-             int workspace_size_MB = platform::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
+             int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
 
 - op : conv2d_transpose
   backward : conv2d_transpose_grad
@@ -219,7 +284,7 @@
     attrs : [bool is_test = false, bool use_cudnn = true, bool use_mkldnn = false, bool force_fp32_output = false,
              str mkldnn_data_type = "float32", bool fuse_relu = false,
              str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f,
-             int workspace_size_MB = platform::GetDefaultConvWorkspaceSizeLimitMB()]
+             int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB()]
 
 - op : conv3d
   backward : conv3d_grad
@@ -227,12 +292,12 @@
     attrs : [bool is_test = false, bool use_cudnn = true, bool use_mkldnn = false, str mkldnn_data_type = "float32", bool fuse_relu = false,
              str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f,
              bool use_addto = false, bool fuse_residual_connection = false, bool force_fp32_output = false,
-             int workspace_size_MB = platform::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
+             int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
 
 - op : conv3d_transpose
   backward : conv3d_transpose_grad
   extra :
-    attrs : [bool use_cudnn = true, bool use_mkldnn = false, int workspace_size_MB = platform::GetDefaultConvWorkspaceSizeLimitMB()]
+    attrs : [bool use_cudnn = true, bool use_mkldnn = false, int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB()]
 
 - op : cos
   backward : cos_grad, cos_double_grad, cos_triple_grad
@@ -251,6 +316,22 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : crop (crop_tensor)
+  backward : crop_grad (crop_tensor_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  int_array:
+    shape :
+      data_type : int
+      tensor_name : Shape
+      tensors_name : ShapeTensor
+    offsets :
+      data_type : int
+      tensor_name : Offsets
+      tensors_name : OffsetsTensor
 
 - op : cross
   inputs :
@@ -273,7 +354,7 @@
              str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f, bool use_addto = false,
              bool fuse_residual_connection = false, float Scale_in = 1.0f, float Scale_out = 1.0f,
              float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool force_fp32_output = false,
-             int workspace_size_MB = platform::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
+             int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
 
 - op : depthwise_conv2d_transpose
   backward : depthwise_conv2d_transpose_grad
@@ -281,7 +362,7 @@
     attrs : [bool is_test = false, bool use_cudnn = false, bool use_mkldnn = false, bool force_fp32_output = false,
              str mkldnn_data_type = "float32", bool fuse_relu = false,
              str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f,
-             int workspace_size_MB = platform::GetDefaultConvWorkspaceSizeLimitMB()]
+             int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB()]
 
 - op : dequantize_linear
   extra :
@@ -331,6 +412,10 @@
 
 - op : divide (elementwise_div)
   backward : divide_grad (elementwise_div)
+  inputs :
+    {x: X, y : Y}
+  outputs :
+    out: Out
   extra :
     attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
@@ -343,6 +428,17 @@
 
 - op : dropout
   backward : dropout_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+    mask : Mask
+  attrs :
+    p : dropout_prob
+    is_test : is_test
+    mode : dropout_implementation
+    seed : seed
+    fix_seed : fix_seed
   extra :
     attrs : [bool fix_seed = false, int seed = 0]
 
@@ -422,6 +518,17 @@
 
 - op : expand (expand_v2)
   backward : expand_grad (expand_v2_grad)
+  inputs :
+    x : X
+  attrs :
+   shape : shape
+  outputs :
+    out : Out
+  int_array:
+    shape :
+      data_type : int
+      tensor_name : Shape
+      tensors_name : expand_shapes_tensor
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
@@ -474,11 +581,26 @@
   inputs: {x: X}
   outputs: {out: Out}
 
+- op : fill_diagonal
+  backward : fill_diagonal_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : fill_diagonal_tensor
   inputs :
     {x : X, y : Y}
   outputs :
     out : Out
+
+- op : flatten (flatten_contiguous_range)
+  inputs :
+    x : X
+  outputs :
+    {out : Out, xshape : XShape}
+  attrs :
+    {start_axis : start_axis, stop_axis : stop_axis}
 
 - op : flip
   inputs :
@@ -518,6 +640,13 @@
   outputs :
     out : Y
 
+- op : frame
+  backward : frame_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : frobenius_norm
   backward : frobenius_norm_grad
   extra :
@@ -527,10 +656,30 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : full_like (fill_any_like)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs :
+    {value: value, dtype: dtype}
+
+- op : fused_conv2d
+  extra :
+    attrs : [bool use_cudnn = false, float fuse_alpha = 0.0f, float fuse_beta = 0.0f, float Scale_in = 1.0f,
+             float Scale_out = 1.0f, float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}']
+
 - op : gather
   backward : gather_grad
   extra :
     attrs : [bool overwrite = true]
+
+- op : gather_nd
+  backward : gather_nd_grad
+  inputs :
+    {x : X, index : Index}
+  outputs :
+    out : Out
 
 - op : gather_tree
   inputs :
@@ -591,6 +740,13 @@
   outputs :
     out : Out
 
+- op : hardtanh (brelu)
+  backward : hardtanh_grad (brelu_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : heaviside (elementwise_heaviside)
   backward : heaviside_grad (elementwise_heaviside_grad)
   extra :
@@ -600,6 +756,13 @@
 - op : histogram
   inputs :
     input : X
+  outputs :
+    out : Out
+
+- op : imag
+  backward : imag_grad
+  inputs :
+    x : X
   outputs :
     out : Out
 
@@ -628,8 +791,65 @@
   outputs :
     out : Output
 
+- op : is_empty
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : isclose
+  inputs :
+    {x : Input, y : Other}
+  outputs :
+    out : Out
+  scalar :
+    rtol :
+      data_type : std::string
+      tensor_name : Rtol
+    atol :
+      data_type : std::string
+      tensor_name : Atol
+
+- op : isfinite (isfinite_v2)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : isinf (isinf_v2)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : isnan (isnan_v2)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : kthvalue
+  inputs :
+    x : X
+  outputs :
+    {out : Out, indices : Indices}
+
+- op : label_smooth
+  inputs :
+    {label : X, prior_dist : PriorDist}
+  outputs :
+    out : Out
+
 - op : layer_norm
   backward : layer_norm_grad
+  inputs :
+    x : X
+    scale : Scale
+    bias : Bias
+  outputs :
+    out : Y
+    mean : Mean
+    variance : Variance
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
@@ -643,6 +863,13 @@
     negative_slope : alpha
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : lerp
+  backward : lerp_grad
+  inputs :
+    {x : X, y : Y, weight : Weight}
+  outputs :
+    out : Out
 
 - op : lgamma
   inputs :
@@ -691,6 +918,13 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : log_loss
+  backward : log_loss_grad
+  inputs :
+    {input : Predicted, label : Labels}
+  outputs :
+    out : Loss
+
 - op : log_softmax
   backward : log_softmax_grad
   extra :
@@ -703,13 +937,11 @@
     out : Out
 
 - op : logsigmoid
+  backward : logsigmoid_grad
   inputs :
     x : X
   outputs :
     out : Out
-
-- op : logsigmoid
-  backward : logsigmoid_grad
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
@@ -718,8 +950,27 @@
   extra :
     attrs : [bool use_mkldnn = false, bool is_test = false]
 
+- op : lu_unpack
+  backward : lu_unpack_grad
+  inputs :
+    {x : X, y : Pivots}
+  outputs :
+    {pmat : Pmat, l : L, u : U}
+
+- op : masked_select
+  inputs :
+    {x : X, mask : Mask}
+  outputs :
+    out : Y
+
 - op : matmul (matmul_v2)
   backward : matmul_grad (matmul_v2_grad)
+  inputs :
+    {x : X, y : Y}
+  attrs :
+    {transpose_x : trans_x, transpose_y : trans_y}
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, 'int[] fused_reshape_Out = {}', 'int[] fused_transpose_Out = {}',
              str mkldnn_data_type = "float32", 'int[] fused_reshape_X = {}', 'int[] fused_reshape_Y = {}',
@@ -730,6 +981,26 @@
   extra :
     attrs : [bool use_mkldnn = false, float scale_x = 1.0f, 'float[] scale_y = {1.0f}',
              float scale_out = 1.0f, bool force_fp32_output = false]
+
+- op : matrix_power
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : max (reduce_max)
+  backward : max_grad (reduce_max_grad)
+  inputs:
+    x : X
+  attrs:
+    { axis : dim,  keepdim : keep_dim}
+  outputs:
+    out : Out
+  int_array:
+    axis :
+      data_type : int
+  extra :
+    attrs : [bool use_mkldnn = false]
 
 - op : maximum (elementwise_max)
   backward : maximum_grad (elementwise_max_grad)
@@ -743,13 +1014,75 @@
     attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
+- op : maxout
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : mean (reduce_mean)
+  backward : reduce_mean_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs :
+    {axis : dim, keepdim : keep_dim}
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : meshgrid
+  backward : meshgrid_grad
+  inputs :
+    inputs : X
+  outputs :
+    out : Out
+  drop_empty_grad : [inputs_grad]
+
 - op : mish
   backward : mish_grad
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : mode
+  backward : mode_grad
+  inputs :
+    x : X
+  outputs :
+    {out : Out, indices : Indices}
+
+- op : multi_dot
+  backward : multi_dot_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  drop_empty_grad : [x_grad]
+
+- op : multinomial
+  inputs :
+    {x : X}
+  outputs :
+    out : Out
+  scalar :
+    num_samples :
+      data_type : int
+      support_tensor : true
+
+- op : multiplex
+  backward : multiplex_grad
+  inputs :
+    {inputs : X, index : Ids}
+  outputs :
+    out : Out
+  drop_empty_grad : [inputs_grad]
+
 - op : multiply (elementwise_mul)
   backward : multiply_grad (elementwise_mul_grad)
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
@@ -771,6 +1104,26 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : nll_loss
+  backward : nll_loss_grad
+  inputs :
+    {input : X, label : Label, weight : Weight}
+  outputs :
+    {out : Out, total_weight : Total_weight}
+
+- op : numel(size)
+  inputs :
+    x : Input
+  outputs :
+    size : Out
+
+- op : overlap_add
+  backward : overlap_add_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : pad2d
   backward : pad2d_grad
   extra :
@@ -785,6 +1138,13 @@
   backward : partial_sum_grad
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : pixel_shuffle
+  backward : pixel_shuffle_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : poisson
   inputs :
@@ -803,14 +1163,64 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : pow
+  backward : pow_grad, pow_double_grad, pow_triple_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs :
+    y : factor
+  scalar :
+    y :
+      data_type : float
+      tensor_name : FactorTensor
+
 - op : prelu
   backward : prelu_grad
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
+- op : prod (reduce_prod)
+  backward : prod_grad (reduce_prod_grad)
+  inputs:
+    x : X
+  attrs:
+    { dims : dim,  keep_dim : keep_dim}
+  outputs:
+    out : Out
+  int_array:
+    axis :
+      data_type : int
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : put_along_axis
+  backward : put_along_axis_grad
+  inputs :
+    {arr : Input, indices : Index, values : Value}
+  outputs :
+    out : Result
+  attrs :
+    {axis : Axis, reduce : Reduce}
+
+- op : qr
+  backward : qr_grad
+  inputs :
+    x : X
+  outputs :
+    {q : Q, r : R}
+
 - op : quantize_linear
   extra :
     attrs : [float moving_rate = 0.9]
+
+- op : real
+  backward : real_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : reciprocal
   backward : reciprocal_grad
@@ -839,28 +1249,8 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
-- op : reduce_max
-  backward : reduce_max_grad
-  extra :
-    attrs : [bool use_mkldnn = false]
-
-- op : reduce_mean
-  backward : reduce_mean_grad
-  extra :
-    attrs : [bool use_mkldnn = false]
-
 - op : reduce_min
   backward : reduce_min_grad
-  extra :
-    attrs : [bool use_mkldnn = false]
-
-- op : reduce_prod
-  backward : reduce_prod_grad
-  extra :
-    attrs : [bool use_mkldnn = false]
-
-- op : reduce_sum
-  backward : reduce_sum_grad
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -885,8 +1275,37 @@
 
 - op : renorm
   backward : renorm_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : reshape (reshape2)
+  backward : reshape_grad (reshape2_grad)
+  inputs:
+    x : X
+  outputs:
+    out : Out
+  int_array:
+    shape :
+      data_type : int
+      tensor_name : Shape
+      tensors_name : ShapeTensor
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool use_quantizer = false]
+
+- op : roll
+  backward : roll_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  int_array :
+    shifts :
+      data_type : int64_t
+      tensor_name : ShiftsTensor
 
 - op : round
   backward : round_grad
@@ -907,12 +1326,70 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : scale
+  backward : scale_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  scalar :
+    scale :
+      data_type : float
+      tensor_name : ScaleTensor
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : scatter
+  backward : scatter_grad
+  inputs :
+    {x : X, index : Ids, updates : Updates}
+  outputs :
+    out : Out
+
+- op : scatter_nd_add
+  backward : scatter_nd_add_grad
+  inputs :
+    {x : X, index : Index, updates : Updates}
+  outputs :
+    out : Out
+
+- op : searchsorted
+  inputs :
+    {sorted_sequence : SortedSequence, values : Values}
+  outputs :
+    out : Out
 
 - op : seed
   extra :
     attrs : [bool deterministic = false, str rng_name = "", bool force_cpu = false]
+
+- op : selu
+  backward : selu_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : send_u_recv(graph_send_recv)
+  backward : send_u_recv_grad(graph_send_recv_grad)
+  inputs :
+    {x : X, src_index : Src_index, dst_index : Dst_index}
+  outputs :
+    {out : Out, dst_count : Dst_count}
+  int_array :
+    out_size:
+      data_type : int64_t
+      tensor_name : Out_size
+
+- op : send_ue_recv(graph_send_ue_recv)
+  backward : send_ue_recv_grad(graph_send_ue_recv_grad)
+  inputs :
+    {x : X, y : Y, src_index : Src_index, dst_index : Dst_index}
+  outputs :
+    {out : Out, dst_count : Dst_count}
+  int_array :
+    out_size:
+      data_type : int64_t
+      tensor_name : Out_size
 
 - op : send_uv (graph_send_uv)
   backward : send_uv_grad (graph_send_uv_grad)
@@ -925,6 +1402,19 @@
 - op : shape
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+
+- op : shard_index
+  inputs :
+    input : X
+  outputs :
+    out : Out
+
+- op : share_buffer
+  inputs :
+    x : X
+  outputs :
+    out : Out
+    xout : XOut
 
 - op : shuffle_channel
   backward : shuffle_channel_grad
@@ -939,6 +1429,13 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : sign
+  backward : sign_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : silu
   backward : silu_grad
@@ -972,8 +1469,17 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
+- op : slogdet(slogdeterminant)
+  backward : slogdet_grad(slogdeterminant_grad)
+  inputs :
+    x : Input
+  outputs :
+    out : Out
+
 - op : softmax
   backward : softmax_grad
+  inputs :
+    x : X
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
@@ -1030,25 +1536,61 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : squeeze (squeeze2)
-  backward : squeeze_grad (squeeze2_grad)
+  backward : squeeze_grad (squeeze2_grad), squeeze_double_grad(squeeze2_double_grad)
+  inputs :
+    x : X
+  attrs :
+   axis : axes
+  outputs :
+    {out : Out, xshape : XShape}
+  int_array:
+    axis :
+      data_type : int
+      support_tensor : true
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+    outputs : [xshape]
 
 - op : stack
   backward : stack_grad
+  inputs :
+    x : X
+  outputs :
+    out : Y
   extra :
     attrs : [bool use_mkldnn = false]
-
-- op : stack
-  backward : stack_grad
-  extra :
-    attrs : [bool use_mkldnn = false]
+  drop_empty_grad : [x_grad]
 
 - op : subtract (elementwise_sub)
   backward : subtract_grad (elementwise_sub_grad)
+  inputs :
+    {x : X, y: Y}
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+
+- op : sum (reduce_sum)
+  backward : (sum_grad) reduce_sum_grad
+  inputs:
+    {x : X}
+  attrs:
+    { axis : dim,  keepdim : keep_dim, dtype : out_dtype}
+  outputs:
+    out : Out
+  int_array:
+      axis :
+        data_type : int
+  extra :
+    attrs : [bool use_mkldnn = false]
+
+- op : svd
+  backward : svd_grad
+  inputs :
+    x : X
+  outputs :
+    {u : U, s : S, vh : VH}
 
 - op : swish
   backward : swish_grad
@@ -1059,6 +1601,15 @@
   backward : sync_batch_norm_grad
   extra :
     attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
+
+- op : take_along_axis
+  backward : take_along_axis_grad
+  inputs :
+    {arr : Input, indices : Index}
+  outputs :
+    out : Result
+  attrs :
+    axis : Axis
 
 - op : tan
   backward : tan_grad
@@ -1093,6 +1644,29 @@
   outputs :
     out : Out
 
+- op : tile
+  backward : tile_grad, tile_double_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  int_array:
+    repeat_times :
+      data_type : int
+      tensor_name : RepeatTimes
+      tensors_name : repeat_times_tensor
+
+- op : topk (top_k_v2)
+  backward : topk_grad (top_k_v2_grad)
+  inputs :
+    x : X
+  outputs :
+    {out : Out, indices : Indices}
+  scalar :
+    k :
+      data_type : int
+      tensor_name : K
+
 - op : trace
   inputs :
     x : Input
@@ -1101,7 +1675,10 @@
 
 - op : transpose (transpose2)
   backward : transpose_grad (transpose2_grad)
+  attrs:
+    perm : axis
   extra :
+    outputs : [XShape]
     attrs : [bool use_mkldnn = false, str data_format = "AnyLayout", bool use_quantizer = false,
               str mkldnn_data_type = "float32"]
 
@@ -1116,11 +1693,59 @@
   outputs :
     out : Out
 
+- op : unbind
+  inputs :
+    input : X
+  outputs :
+    out : Out
+
 - op : unfold
   inputs :
     x : X
   outputs :
     out : Y
+
+- op : unique_consecutive
+  inputs :
+    x : X
+  outputs :
+    {out : Out, index : Index, counts : Counts}
+
+- op : unsqueeze (unsqueeze2)
+  backward : unsqueeze_grad (unsqueeze2_grad), unsqueeze_double_grad(unsqueeze2_double_grad)
+  inputs :
+    x : X
+  attrs :
+   axis : axes
+  outputs :
+    {out : Out, xshape : XShape}
+  int_array:
+    axis :
+      data_type : int
+      tensor_name : AxesTensor
+      tensors_name : AxesTensorList
+  extra :
+    outputs : [xshape]
+
+- op : unstack
+  backward : unstack_grad
+  inputs :
+    x : X
+  outputs :
+    out : Y
+
+- op : viterbi_decode
+  inputs :
+    {potentials : Input, transition_params : Transition, lengths : Length}
+  outputs :
+    {scores : Scores, path : Path}
+
+- op : where
+  backward : where_grad
+  inputs :
+    {condition : Condition, x : X, y : Y}
+  outputs :
+    out : Out
 
 - op : while
   backward : while_grad

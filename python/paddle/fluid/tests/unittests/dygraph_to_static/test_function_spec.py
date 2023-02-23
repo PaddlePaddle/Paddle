@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from paddle.static import InputSpec
-from paddle.fluid.dygraph.dygraph_to_static.function_spec import FunctionSpec
+import unittest
 
 from test_declarative import foo_func
 
-import unittest
+import paddle
+from paddle.jit.dy2static.function_spec import FunctionSpec
+from paddle.static import InputSpec
 
 paddle.enable_static()
 

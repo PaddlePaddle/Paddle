@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import hashlib
 import os
-import sys
 import os.path as osp
 import shutil
-import requests
 import subprocess
-import hashlib
+import sys
 import tarfile
-import zipfile
 import time
+import zipfile
+
+import requests
 
 try:
     from tqdm import tqdm
@@ -135,7 +136,7 @@ def get_path_from_url(
         str: a local path to save downloaded models & weights & datasets.
     """
 
-    from paddle.fluid.dygraph.parallel import ParallelEnv
+    from paddle.distributed import ParallelEnv
 
     assert is_url(url), "downloading from {} not a url".format(url)
     # parse path after download to decompress under root_dir

@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
 import paddle
 
 paddle.enable_static()
-import paddle.fluid.core as core
 from op_test import OpTest
+
+import paddle.fluid.core as core
 
 
 def conv3dtranspose_forward_naive(input_, filter_, attrs):
@@ -551,6 +553,19 @@ class TestCUDNNWithGroups_NHWC(TestWithGroups):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv3d_transpose"
+
+
+class TestConv3dTranspose(unittest.TestCase):
+    def error_weight_input(self):
+        array = np.array([1], dtype=np.float32)
+        x = paddle.to_tensor(
+            np.reshape(array, [1, 1, 1, 1, 1]), dtype='float32'
+        )
+        weight = paddle.to_tensor(np.reshape(array, [1]), dtype='float32')
+        paddle.nn.functional.conv3d_transpose(x, weight, bias=0)
+
+    def test_type_error(self):
+        self.assertRaises(ValueError, self.error_weight_input)
 
 
 if __name__ == '__main__':

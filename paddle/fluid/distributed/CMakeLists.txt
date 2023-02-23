@@ -1,19 +1,24 @@
 add_subdirectory(auto_parallel)
 add_subdirectory(collective)
-add_subdirectory(store)
+add_subdirectory(fleet_executor)
 if(WITH_PYTHON)
+  py_proto_compile(pslib_py_proto SRCS ps.proto)
   py_proto_compile(ps_py_proto SRCS the_one_ps.proto)
-  add_custom_target(
-    ps_py_proto_init ALL
-    COMMAND ${CMAKE_COMMAND} -E make_directory
-            ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto)
-  add_dependencies(ps_py_proto ps_py_proto_init)
+  file(MAKE_DIRECTORY
+       ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto)
+  set(PSLIB_PROTO_DSTPATH
+      "${PADDLE_SOURCE_DIR}/python/paddle/incubate/fleet/parameter_server/pslib/"
+  )
   if(NOT WIN32)
     add_custom_command(
       TARGET ps_py_proto
       POST_BUILD
       COMMAND mv the_one_ps_pb2.py
               ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/)
+    add_custom_command(
+      TARGET pslib_py_proto
+      POST_BUILD
+      COMMAND mv ps_pb2.py "${PSLIB_PROTO_DSTPATH}")
   else()
     string(
       REPLACE "/" "\\" fleet_proto_dstpath
@@ -25,7 +30,15 @@ if(WITH_PYTHON)
       COMMENT
         "Copy generated python the_one_ps_pb2 into directory ${fleet_proto_dstpath}."
     )
+    string(REPLACE "/" "\\" PSLIB_PROTO_DSTPATH "${PSLIB_PROTO_DSTPATH}")
+    add_custom_command(
+      TARGET pslib_py_proto
+      POST_BUILD
+      COMMAND copy /Y ps_pb2.py ${PSLIB_PROTO_DSTPATH})
   endif()
+  message(
+    STATUS
+      "Copy generated python ps_pb2.py into directory ${PSLIB_PROTO_DSTPATH}")
 endif()
 
 if(WITH_RPC)
@@ -33,7 +46,6 @@ if(WITH_RPC)
 endif()
 
 if(NOT WITH_PSCORE)
-  add_subdirectory(fleet_executor)
   return()
 endif()
 
@@ -50,4 +62,3 @@ add_subdirectory(common)
 add_subdirectory(ps)
 add_subdirectory(test)
 add_subdirectory(index_dataset)
-add_subdirectory(fleet_executor)

@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
 
 sys.path.append("..")
 from op_test import OpTest, skip_check_grad_ci
+
 import paddle
+import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle.fluid.op import Operator
-import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+from paddle.fluid.op import Operator
 
 paddle.enable_static()
 
@@ -166,7 +167,7 @@ class TestLookupTableWithTensorIdsWIsSelectedRows(
 
 class TestLookupTableApi(unittest.TestCase):
     def test_api(self):
-        x = fluid.layers.data(name='x', shape=[20], dtype='int64')
+        x = paddle.static.data(name='x', shape=[-1, 20], dtype='int64')
         emb = fluid.embedding(input=x, size=[128, 64])
 
         place = paddle.XPUPlace(0)

@@ -945,7 +945,7 @@ static void Interpolate1DCUDAFwd(const framework::ExecutionContext& ctx,
     }
     auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
     if (out_size != nullptr) {
-      Tensor sizes;
+      phi::DenseTensor sizes;
       framework::TensorCopySync(*out_size, platform::CPUPlace(), &sizes);
       auto size_data = sizes.data<int>();
       out_w = size_data[0];
@@ -1040,7 +1040,7 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
     }
     auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
     if (out_size != nullptr) {
-      Tensor sizes;
+      phi::DenseTensor sizes;
       framework::TensorCopySync(*out_size, platform::CPUPlace(), &sizes);
       auto size_data = sizes.data<int>();
       out_h = size_data[0];
@@ -1195,7 +1195,7 @@ static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx,
     }
     auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
     if (out_size != nullptr) {
-      Tensor sizes;
+      phi::DenseTensor sizes;
       framework::TensorCopySync(*out_size, platform::CPUPlace(), &sizes);
       auto size_data = sizes.data<int>();
       out_d = size_data[0];
@@ -1288,7 +1288,7 @@ static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx,
 template <typename T>
 static void Interpolate1DCUDABwd(const framework::ExecutionContext& ctx,
                                  phi::DenseTensor* input_grad,
-                                 const Tensor output_grad) {
+                                 const phi::DenseTensor output_grad) {
   auto* input = ctx.Input<phi::DenseTensor>("X");
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
   const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
@@ -1314,7 +1314,7 @@ static void Interpolate1DCUDABwd(const framework::ExecutionContext& ctx,
 
   auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
   if (out_size != nullptr) {
-    Tensor sizes;
+    phi::DenseTensor sizes;
     framework::TensorCopySync(*out_size, platform::CPUPlace(), &sizes);
     auto size_data = sizes.data<int>();
     out_w = size_data[0];
@@ -1379,7 +1379,7 @@ static void Interpolate1DCUDABwd(const framework::ExecutionContext& ctx,
 template <typename T>
 static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
                                  phi::DenseTensor* input_grad,
-                                 const Tensor output_grad) {
+                                 const phi::DenseTensor output_grad) {
   auto* input = ctx.Input<phi::DenseTensor>("X");
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
   const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
@@ -1407,7 +1407,7 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
 
   auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
   if (out_size != nullptr) {
-    Tensor sizes;
+    phi::DenseTensor sizes;
     framework::TensorCopySync(*out_size, platform::CPUPlace(), &sizes);
     auto size_data = sizes.data<int>();
     out_h = size_data[0];
@@ -1555,7 +1555,7 @@ static void Interpolate3DCUDABwd(const framework::ExecutionContext& ctx,
 
   auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
   if (out_size != nullptr) {
-    Tensor sizes;
+    phi::DenseTensor sizes;
     framework::TensorCopySync(*out_size, platform::CPUPlace(), &sizes);
     auto size_data = sizes.data<int>();
     out_d = size_data[0];

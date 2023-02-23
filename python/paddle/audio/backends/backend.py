@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-import paddle
-
 from pathlib import Path
 from typing import Optional, Tuple, Union
+
+import paddle
 
 
 class AudioInfo:
@@ -89,7 +89,7 @@ def load(
     Return:
         Tuple[paddle.Tensor, int]: (audio_content, sample rate)
 
-    Exampels:
+    Examples:
         .. code-block:: python
 
             import os

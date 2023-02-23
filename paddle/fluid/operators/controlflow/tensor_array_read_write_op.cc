@@ -67,7 +67,8 @@ class WriteToArrayOp : public ArrayOp {
 class WriteToArrayOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(LoDTensor) the tensor will be written to tensor array");
+    AddInput("X",
+             "(phi::DenseTensor) the tensor will be written to tensor array");
     AddInput(
         "I",
         "(Tensor) the subscript index in tensor array. The number of element "
@@ -76,9 +77,9 @@ class WriteToArrayOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 WriteToArray Operator.
 
-This operator writes a LoDTensor to a LoDTensor array.
+This operator writes a phi::DenseTensor to a phi::DenseTensor array.
 
-Assume $T$ is LoDTensor, $i$ is the subscript of the array, and $A$ is the array. The
+Assume $T$ is phi::DenseTensor, $i$ is the subscript of the array, and $A$ is the array. The
 equation is
 
 $$A[i] = T$$
@@ -196,13 +197,13 @@ class ReadFromArrayProtoMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) the writed tensor when used as the grad op of "
              "write_to_array. We use this to fill zero gradient.")
         .AsDispensable();
-    AddOutput("Out", "(LoDTensor) the tensor will be read from.");
+    AddOutput("Out", "(phi::DenseTensor) the tensor will be read from.");
     AddComment(R"DOC(
 ReadFromArray Operator.
 
-Read a LoDTensor from a LoDTensor Array.
+Read a phi::DenseTensor from a phi::DenseTensor Array.
 
-Assume $T$ is LoDTensor, $i$ is the subscript of the array, and $A$ is the array. The
+Assume $T$ is phi::DenseTensor, $i$ is the subscript of the array, and $A$ is the array. The
 equation is
 
 $$T = A[i]$$

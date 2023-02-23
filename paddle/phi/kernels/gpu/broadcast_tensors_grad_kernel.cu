@@ -16,7 +16,6 @@
 
 #include <vector>
 
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
@@ -28,8 +27,10 @@ namespace phi {
 
 template <typename T, typename Context>
 void BroadcastTensorsGradKernel(const Context& ctx,
+                                const std::vector<const DenseTensor*>& inputs,
                                 const std::vector<const DenseTensor*>& dout,
                                 std::vector<DenseTensor*> dx) {
+  (void)inputs;
   // Find reduce dimensions
   const auto& in_tensors = dout;
   auto& out_tensors = dx;
@@ -84,8 +85,7 @@ void BroadcastTensorsGradKernel(const Context& ctx,
     ctx.template Alloc<T>(output_tensor);
     if (just_copy) {
       // Turns out to be a No-Op, simply copy tensors
-      paddle::framework::TensorCopy(
-          *input_tensor, ctx.GetPlace(), ctx, output_tensor);
+      phi::Copy(ctx, *input_tensor, ctx.GetPlace(), false, output_tensor);
     } else {
       // reduce_sum implementation on CUDA
       funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(

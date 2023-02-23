@@ -19,14 +19,14 @@
 #     Copyright 2021, Jiaao He. All rights reserved.
 #   Licensed under the Apache License, Version 2.0 (the "License").
 
-from paddle.distributed.models.moe.utils import (
-    _number_count,
-    _limit_by_capacity,
-    _prune_gate_by_capacity,
-    _assign_pos,
-)
 import paddle
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.distributed.models.moe.utils import (
+    _assign_pos,
+    _limit_by_capacity,
+    _number_count,
+    _prune_gate_by_capacity,
+)
+from paddle.framework import in_dygraph_mode
 
 
 def _alltoall(in_tensor_list, group=None, use_calc_stream=True):

@@ -12,17 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import time
+import copy
 import os
 import signal
-import copy
-import sys
-import subprocess
-from contextlib import closing
 import socket
+import subprocess
+import sys
+import time
+from contextlib import closing
 from distutils.util import strtobool
 
 from paddle.distributed.fleet.launch_utils import get_backend_by_compile_flag
+
 from ..utils.log_utils import get_logger
 
 logger = get_logger("INFO", "root")
@@ -65,7 +66,7 @@ def get_cluster_from_args(args, selected_gpus):
 
 def get_gpus(selected_gpus):
     if selected_gpus is None:
-        from paddle.fluid import core
+        from paddle.framework import core
 
         gpus_num = core.get_cuda_device_count()
         gpus = [str(x) for x in range(0, gpus_num)]

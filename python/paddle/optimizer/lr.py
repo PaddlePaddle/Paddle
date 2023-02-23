@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import math
-import numpy
 import warnings
-from paddle import Tensor
+
+import numpy
+
 import paddle.fluid.core as core
-from ..fluid.framework import _in_legacy_dygraph
+from paddle import Tensor
 
 __all__ = [  # noqa
     'LRScheduler',
@@ -107,7 +108,7 @@ class LRScheduler:
 
     def __call__(self):
         """
-        Return lastest computed learning rate on current epoch.
+        Return latest computed learning rate on current epoch.
         """
         return self.last_lr
 
@@ -295,6 +296,9 @@ class NoamDecay(LRScheduler):
         last_epoch=-1,
         verbose=False,
     ):
+        if d_model <= 0:
+            raise ValueError("d_model should be grater than 0")
+
         self.d_model = d_model
         self.warmup_steps = warmup_steps
         super().__init__(learning_rate, last_epoch, verbose)
@@ -329,7 +333,7 @@ class PiecewiseDecay(LRScheduler):
     Args:
         boundaries(list|tuple): A list/tuple of steps numbers. The type of element in the list is python int.
         values(list|tuple): A list/tuple of learning rate values that will be picked during different epoch boundaries.
-            The type of element in the list is python float.
+            The type of element in the list is python float. The ``values`` have one more element than ``boundaries``.
         last_epoch (int, optional):  The index of last epoch. Can be set to restart training. Default: -1, means initial learning rate.
         verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
@@ -387,6 +391,14 @@ class PiecewiseDecay(LRScheduler):
     """
 
     def __init__(self, boundaries, values, last_epoch=-1, verbose=False):
+        if len(boundaries) == 0:
+            raise ValueError('The boundaries cannot be empty.')
+
+        if len(values) <= len(boundaries):
+            raise ValueError(
+                f'The values have one more element than boundaries, but received len(values) [{len(values)}] < len(boundaries) + 1 [{len(boundaries) + 1}].'
+            )
+
         self.boundaries = boundaries
         self.values = values
         super().__init__(last_epoch=last_epoch, verbose=verbose)
@@ -1392,15 +1404,8 @@ class ReduceOnPlateau(LRScheduler):
         else:
             self.last_epoch = epoch
 
-        if not _in_legacy_dygraph():
-            tmp = core.eager.Tensor
-        else:
-            # need to declarate explicitly
-            from paddle.framework import VarBase as Tensor
-
-            tmp = Tensor
         # loss must be float, numpy.ndarray or 1-D Tensor with shape [1]
-        if isinstance(metrics, (tmp, numpy.ndarray)):
+        if isinstance(metrics, (core.eager.Tensor, numpy.ndarray)):
             assert len(metrics.shape) == 1 and metrics.shape[0] == 1, (
                 "the metrics.shape "
                 "should be (1L,), but the current metrics.shape is {}. Maybe that "
@@ -1412,7 +1417,7 @@ class ReduceOnPlateau(LRScheduler):
             metrics, (int, float, numpy.float32, numpy.float64)
         ):
             raise TypeError(
-                "metrics must be 'int', 'float', 'np.float', 'numpy.ndarray' or 'paddle.Tensor', but receive {}".format(
+                "metrics must be 'int', 'float', 'np.float64', 'numpy.ndarray' or 'paddle.Tensor', but receive {}".format(
                     type(metrics)
                 )
             )

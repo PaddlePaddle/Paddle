@@ -280,7 +280,7 @@ void RnnKernel(const Context &dev_ctx,
                      is_bidirec,
                      is_test);
   rnn.Create<T>(handle,
-                dev_ctx.GetPlace(),
+                dev_ctx,
                 SequenceLength,
                 &workspace_size,
                 &reserve_size,

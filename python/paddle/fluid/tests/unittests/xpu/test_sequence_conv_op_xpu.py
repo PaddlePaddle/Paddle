@@ -12,16 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
-import paddle
 import random
 import sys
+import unittest
+
+import numpy as np
+
+import paddle
 
 sys.path.append("../")
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types
-from xpu.get_test_cover_info import XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
 
 paddle.enable_static()
 np.set_printoptions(threshold=np.inf)
@@ -428,11 +433,10 @@ class TestSeqConvApi(unittest.TestCase):
     def test_api(self):
         import paddle.fluid as fluid
 
-        x = fluid.layers.data('x', shape=[32], lod_level=1)
-        y = fluid.layers.sequence_conv(
+        x = paddle.static.data('x', shape=[-1, 32], lod_level=1)
+        y = paddle.static.nn.sequence_lod.sequence_conv(
             input=x, num_filters=2, filter_size=3, padding_start=None
         )
-
         place = fluid.CPUPlace()
         x_tensor = fluid.create_lod_tensor(
             np.random.rand(10, 32).astype("float32"), [[2, 3, 1, 4]], place

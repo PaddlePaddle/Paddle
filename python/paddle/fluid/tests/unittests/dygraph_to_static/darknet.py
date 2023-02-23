@@ -16,8 +16,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
-
-from paddle.fluid.dygraph.nn import BatchNorm
+from paddle.nn import BatchNorm
 
 
 class ConvBNLayer(fluid.dygraph.Layer):
@@ -42,7 +41,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
             padding=padding,
             groups=groups,
             weight_attr=ParamAttr(
-                initializer=fluid.initializer.Normal(0.0, 0.02)
+                initializer=paddle.nn.initializer.Normal(0.0, 0.02)
             ),
             bias_attr=False,
         )
@@ -50,11 +49,11 @@ class ConvBNLayer(fluid.dygraph.Layer):
             num_channels=ch_out,
             is_test=is_test,
             param_attr=ParamAttr(
-                initializer=fluid.initializer.Normal(0.0, 0.02),
+                initializer=paddle.nn.initializer.Normal(0.0, 0.02),
                 regularizer=L2Decay(0.0),
             ),
             bias_attr=ParamAttr(
-                initializer=fluid.initializer.Constant(0.0),
+                initializer=paddle.nn.initializer.Constant(0.0),
                 regularizer=L2Decay(0.0),
             ),
         )
@@ -115,7 +114,7 @@ class BasicBlock(fluid.dygraph.Layer):
     def forward(self, inputs):
         conv1 = self.conv1(inputs)
         conv2 = self.conv2(conv1)
-        out = fluid.layers.elementwise_add(x=inputs, y=conv2, act=None)
+        out = paddle.add(x=inputs, y=conv2)
         return out
 
 

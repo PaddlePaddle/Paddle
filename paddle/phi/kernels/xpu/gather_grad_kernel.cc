@@ -44,10 +44,10 @@ void GatherGradKernel(const Context& dev_ctx,
             index_dims[1]));
   } else {
     PADDLE_ENFORCE_EQ(
-        index_dims.size(),
-        1,
+        index_dims.size() == 1 || index_dims.size() == 0,
+        true,
         phi::errors::InvalidArgument(
-            "The index should be 1D, when it is not 2D, but we get %d",
+            "The index should be 0D or 1D, when it is not 2D, but we get %d",
             index_dims.size()));
   }
   std::vector<int> xshape(x_grad->dims().size());
@@ -66,7 +66,7 @@ void GatherGradKernel(const Context& dev_ctx,
         index.data<int>(),
         reinterpret_cast<XPUType*>(x_grad->data<T>()),
         xshape,
-        index.dims()[0],
+        index.dims().size() == 0 ? 1 : index.dims()[0],
         axis_v,
         overwrite);
   } else {
@@ -84,7 +84,7 @@ void GatherGradKernel(const Context& dev_ctx,
         index_int_ptr_l3,
         reinterpret_cast<XPUType*>(x_grad->data<T>()),
         xshape,
-        index.dims()[0],
+        index.dims().size() == 0 ? 1 : index.dims()[0],
         axis_v,
         overwrite);
   }

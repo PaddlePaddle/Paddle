@@ -15,10 +15,10 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/framework/generator.h"
-#include "paddle/fluid/operators/dropout_impl_util.h"
 #include "paddle/fluid/operators/fused/fused_dropout_act_bias.h"
 #include "paddle/fluid/operators/fused/fused_layernorm_residual_dropout_bias.h"
 #include "paddle/fluid/operators/fused/fused_residual_dropout_bias.h"
+#include "paddle/phi/kernels/funcs/dropout_impl_util.h"
 #include "paddle/phi/kernels/funcs/functors.h"
 #include "paddle/phi/kernels/layer_norm_kernel.h"
 
@@ -106,7 +106,7 @@ struct DropoutParam {
 
   int UpdateSeedAndIncrement(const phi::GPUContext& ctx, const int offset) {
     uint64_t tmp_increment;
-    GetSeedDataAndIncrement(
+    phi::funcs::GetSeedDataAndIncrement(
         ctx, tensor_seed, fix_seed, seed_val, offset, &seed, &tmp_increment);
     increment = static_cast<int>(tmp_increment);
     return increment;
@@ -154,7 +154,6 @@ class FusedDropoutHelper {
                            MaskType* mask,
                            const float quant_last_in_scale = 1.0,
                            const float* dequant_out_scale_data = nullptr,
-                           const int quant_out_scale_offset = 0,
                            const float quant_next_in_scale = 1.0) {
     auto increment = GetIncrement(ctx);
     LaunchResidualDropoutBias<T, MaskType, InType, OutType>(
@@ -173,7 +172,6 @@ class FusedDropoutHelper {
         ctx,
         quant_last_in_scale,
         dequant_out_scale_data,
-        quant_out_scale_offset,
         quant_next_in_scale);
   }
 
@@ -212,7 +210,6 @@ class FusedDropoutHelper {
                       MaskType* mask,
                       const float quant_last_in_scale = 1.0,
                       const float* dequant_out_scale_data = nullptr,
-                      const int quant_out_scale_offset = 0,
                       const float quant_next_in_scale = 1.0,
                       const int quant_round_type = 1,
                       const float quant_max_bound = 127.0,
@@ -237,7 +234,6 @@ class FusedDropoutHelper {
             ctx,
             quant_last_in_scale,
             dequant_out_scale_data,
-            quant_out_scale_offset,
             quant_next_in_scale,
             quant_round_type,
             quant_max_bound,
@@ -260,7 +256,6 @@ class FusedDropoutHelper {
             ctx,
             quant_last_in_scale,
             dequant_out_scale_data,
-            quant_out_scale_offset,
             quant_next_in_scale,
             quant_round_type,
             quant_max_bound,
@@ -287,7 +282,6 @@ class FusedDropoutHelper {
                                     ctx,
                                     quant_last_in_scale,
                                     dequant_out_scale_data,
-                                    quant_out_scale_offset,
                                     quant_next_in_scale,
                                     quant_round_type,
                                     quant_max_bound,
@@ -349,12 +343,12 @@ class FusedDropoutHelper {
 };
 
 template <typename T>
-struct PDDataTypeTraits {
+struct DataTypeTraits {
   using DataType = T;
 };
 
 template <>
-struct PDDataTypeTraits<phi::dtype::float16> {
+struct DataTypeTraits<phi::dtype::float16> {
   // Since LayerNormDirectCUDAFunctor register half type, we need to convert
   // phi::float16 to half.
   using DataType = half;
@@ -396,8 +390,8 @@ class FusedDropoutLayerNormHelper
                  OutType* out,
                  LayerNormParamType<T>* mean,
                  LayerNormParamType<T>* variance) {
-    using InDataType = typename PDDataTypeTraits<InType>::DataType;
-    using OutDataType = typename PDDataTypeTraits<OutType>::DataType;
+    using InDataType = typename DataTypeTraits<InType>::DataType;
+    using OutDataType = typename DataTypeTraits<OutType>::DataType;
 
     phi::LayerNormDirectCUDAFunctor<InDataType, LayerNormParamType<T>>
         layer_norm;
@@ -424,18 +418,18 @@ class FusedDropoutLayerNormHelper
                      LayerNormParamType<T>* d_scale,
                      LayerNormParamType<T>* d_bias) {
     using U = LayerNormParamType<T>;
-    LayerNormBackward<T, U>(src,
-                            dout,
-                            gamma,
-                            mean,
-                            variance,
-                            d_src,
-                            d_scale,
-                            d_bias,
-                            epsilon_,
-                            this->rows_,
-                            this->cols_,
-                            ctx);
+    phi::funcs::LayerNormBackward<T, U>(src,
+                                        dout,
+                                        gamma,
+                                        mean,
+                                        variance,
+                                        d_src,
+                                        d_scale,
+                                        d_bias,
+                                        epsilon_,
+                                        this->rows_,
+                                        this->cols_,
+                                        ctx);
   }
 
   // out = layernorm(residual + dropout(src + bias))
@@ -454,7 +448,6 @@ class FusedDropoutLayerNormHelper
       LayerNormParamType<T>* variance,
       const float quant_last_in_scale = 1.0,
       const float* dequant_out_scale_data = nullptr,
-      const int quant_out_scale_offset = 0,
       const float quant_next_in_scale = 1.0,
       const int quant_round_type = 1,
       const float quant_max_bound = 127.0,
@@ -464,7 +457,7 @@ class FusedDropoutLayerNormHelper
     if (this->cols_ % vec_size != 0) {
       vec_size = 1;
     }
-    int threads = GetDesiredBlockDim(this->cols_ / vec_size);
+    int threads = phi::funcs::GetDesiredBlockDim(this->cols_ / vec_size);
     int increment = ((this->cols_ - 1) / (threads * vec_size) + 1) * vec_size;
     increment = this->dropout_param_.UpdateSeedAndIncrement(ctx, increment);
     LaunchLayernormResidualDropoutBias<T,
@@ -494,7 +487,6 @@ class FusedDropoutLayerNormHelper
         ctx,
         quant_last_in_scale,
         dequant_out_scale_data,
-        quant_out_scale_offset,
         quant_next_in_scale,
         quant_round_type,
         quant_max_bound,
@@ -545,18 +537,18 @@ class FusedDropoutLayerNormHelper
           d_residual,
           d_dropout_src);
     } else {
-      LayerNormBackward<T, U, is_same_type>(layernorm_src,
-                                            d_out,
-                                            gamma,
-                                            mean,
-                                            variance,
-                                            d_layernorm_src,
-                                            d_scale,
-                                            d_layernorm_bias,
-                                            epsilon_,
-                                            this->rows_,
-                                            this->cols_,
-                                            ctx);
+      phi::funcs::LayerNormBackward<T, U, is_same_type>(layernorm_src,
+                                                        d_out,
+                                                        gamma,
+                                                        mean,
+                                                        variance,
+                                                        d_layernorm_src,
+                                                        d_scale,
+                                                        d_layernorm_bias,
+                                                        epsilon_,
+                                                        this->rows_,
+                                                        this->cols_,
+                                                        ctx);
       this->ResidualDropoutBiasGrad(
           ctx, d_layernorm_src, mask, d_dropout_src, d_residual, d_bias);
     }

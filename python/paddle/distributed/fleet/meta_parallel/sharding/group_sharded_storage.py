@@ -25,8 +25,9 @@
 import numpy as np
 
 import paddle
-from paddle.fluid import core
-from .group_sharded_utils import Type, device_guard, cvt_to_device
+from paddle.framework import core
+
+from .group_sharded_utils import Type, cvt_to_device, device_guard
 
 
 class InternalStorage:

@@ -13,17 +13,17 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid.clip import ClipGradByGlobalNorm
+from paddle import framework
+from paddle.autograd import no_grad
+from paddle.framework import core
+from paddle.nn import ClipGradByGlobalNorm, clip
+
+from ...base.topology import ParallelMode
 from ...utils.hybrid_parallel_util import (
     fused_allreduce_gradients,
     sharding_reduce_gradients,
 )
-from ...base.topology import ParallelMode
-from paddle.autograd import no_grad
-from paddle import framework
 from ...utils.log_util import logger
-from paddle.framework import core
-from paddle.fluid import layers
 
 __all__ = []
 
@@ -61,8 +61,8 @@ class HybridParallelClipGrad:
                 continue
             merge_grad = g
             if g.type == core.VarDesc.VarType.SELECTED_ROWS:
-                merge_grad = layers.merge_selected_rows(g)
-                merge_grad = layers.get_tensor_from_selected_rows(merge_grad)
+                merge_grad = clip.merge_selected_rows(g)
+                merge_grad = clip.get_tensor_from_selected_rows(merge_grad)
             square = paddle.square(merge_grad)
             sum_square = paddle.sum(square)
 

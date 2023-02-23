@@ -11,19 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import numpy as np
+
+import paddle
+from paddle.fluid import core
+from paddle.fluid.core import VarDesc
+from paddle.fluid.dygraph import no_grad
+from paddle.fluid.framework import _non_static_mode, convert_np_dtype_to_dtype_
 from paddle.incubate.nn import functional as incubate_f
 from paddle.nn import Layer
-import paddle
+from paddle.nn.initializer import Constant
 from paddle.nn.layer.transformer import (
     _convert_attention_mask,
     _convert_param_attr_to_list,
 )
-from paddle.nn.initializer import Constant
-from paddle.fluid.dygraph import no_grad
-from paddle.fluid.framework import convert_np_dtype_to_dtype_, _non_static_mode
-from paddle.fluid.core import VarDesc
-from paddle.fluid import core
-import numpy as np
 
 
 # for distributed tensor model parallel
@@ -120,7 +121,7 @@ class FusedBiasDropoutResidualLayerNorm(Layer):
         super().__init__()
         assert embed_dim > 0, (
             "Expected embed_dim to be greater than 0, "
-            "but recieved {}".format(embed_dim)
+            "but received {}".format(embed_dim)
         )
         self._dtype = self._helper.get_default_dtype()
         self._bias_attr = bias_attr
@@ -246,6 +247,12 @@ class FusedMultiHeadAttention(Layer):
             division by zero. Default: 1e-05.
         nranks (int, optional): Distributed tensor model parallel nranks. Default is 1, means not using tensor parallel.
         ring_id (int, optional): For distributed tensor model parallel. Default is -1, means not using tensor parallel.
+        transpose_qkv_wb (bool, optional): Support input qkv matmul weight shape as
+            [hidden_size, 3 * hidden_size] and qkv matmul bias shape as [3 * hidden_size].
+            Will transpose the weight to [3, num_head, head_dim, hidden_size] and transpose bias to
+            [3, num_head, hidden_size] in the fused_attention_op. Only support for GPU for now.
+            The default value is False, which is not do transpose to qkv_w and qkv_b.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Examples:
 
@@ -282,6 +289,7 @@ class FusedMultiHeadAttention(Layer):
         epsilon=1e-5,
         nranks=1,
         ring_id=-1,
+        transpose_qkv_wb=False,
         name=None,
     ):
         super().__init__()
@@ -314,22 +322,31 @@ class FusedMultiHeadAttention(Layer):
 
         # tensor model parallel
         assert num_heads % nranks == 0
-        num_heads = num_heads // nranks
+        self.num_heads = num_heads // nranks
+
+        self.transpose_qkv_wb = transpose_qkv_wb
+        if self.transpose_qkv_wb:
+            # For tensor model parallel, use num_head * head_dim to compute the real shape.
+            qkv_wight_shape = [embed_dim, 3 * self.num_heads * self.head_dim]
+            qkv_bias_shape = [3 * self.num_heads * self.head_dim]
+        else:
+            qkv_wight_shape = [3, self.num_heads, self.head_dim, embed_dim]
+            qkv_bias_shape = [3, self.num_heads, self.head_dim]
 
         self.qkv_weight = self.create_parameter(
-            shape=[3, num_heads, self.head_dim, embed_dim],
+            shape=qkv_wight_shape,
             attr=qkv_weight_attr,
             dtype=self._dtype,
             is_bias=False,
         )
         self.qkv_bias = self.create_parameter(
-            shape=[3, num_heads, self.head_dim],
+            shape=qkv_bias_shape,
             attr=qkv_bias_attr,
             dtype=self._dtype,
             is_bias=True,
         )
         self.linear_weight = self.create_parameter(
-            shape=[num_heads * self.head_dim, embed_dim],
+            shape=[self.num_heads * self.head_dim, embed_dim],
             attr=linear_weight_attr,
             dtype=self._dtype,
             is_bias=False,
@@ -435,6 +452,8 @@ class FusedMultiHeadAttention(Layer):
             ln_epsilon=self._epsilon,
             training=self.training,
             ring_id=self._ring_id,
+            num_heads=self.num_heads,
+            transpose_qkv_wb=self.transpose_qkv_wb,
             name=self.name,
         )
         return out
@@ -532,8 +551,8 @@ class FusedFeedForward(Layer):
             fused_feedforward_layer = FusedFeedForward(8, 8)
             x = paddle.rand((1, 8, 8))
             out = fused_feedforward_layer(x)
-            print(out.numpy().shape)
-            # (1, 8, 8)
+            print(out.shape)
+            # [1, 8, 8]
     """
 
     def __init__(
@@ -1356,7 +1375,15 @@ class FusedMultiTransformer(Layer):
         self.name = name
 
     def forward(
-        self, src, attn_mask=None, caches=None, pre_caches=None, time_step=None
+        self,
+        src,
+        attn_mask=None,
+        caches=None,
+        pre_caches=None,
+        rotary_embs=None,
+        rotary_emb_dims=0,
+        seq_lens=None,
+        time_step=None,
     ):
         r"""
         Applies multi transformer layers on the input.
@@ -1377,6 +1404,10 @@ class FusedMultiTransformer(Layer):
                 `[2, batch_size, num_head, max_seq_len, head_dim]`. Default None.
             pre_caches (list(Tensor)|tuple(Tensor), optional): The prefix caches
                 for the generation model. The shape is `[2, bsz, num\_head, cache\_len, head\_dim]`. Default None.
+            rotary_embs (Tensor optional): The RoPE embs for the rotary computation. The shape is `[2, bsz, 1, seq\_len, head\_dim]`. Default None.
+            rotary_emb_dims (int, optional): The rotary_emb_dims of rotary computation, and it is 0 when rotary_embs is None,
+                1 when rotary_embs is not None and pos_extra_ids is None, 2 when rotary_embs and pos_extra_ids are both not None. Default 0.
+            seq_lens (Tensor optional): The sequence lengths of this batch. The shape is `[bsz]`. Default None.
             time_step (Tensor, optional): The time step tensor for the generation
                 model. Which used in decode stage, to represent the time step,
                 that is, the real seq_len of CacheKV. The shape is `[1]`, must be
@@ -1410,9 +1441,12 @@ class FusedMultiTransformer(Layer):
             epsilon=self._epsilon,
             cache_kvs=caches,
             pre_caches=pre_caches,
+            rotary_embs=rotary_embs,
             time_step=time_step,
+            seq_lens=seq_lens,
             attn_mask=attn_mask,
             dropout_rate=self.dropout_rate,
+            rotary_emb_dims=rotary_emb_dims,
             activation=self.activation,
             training=self.training,
             mode='upscale_in_train',

@@ -1,4 +1,4 @@
-#   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,18 +16,18 @@ import sys
 
 sys.path.append("..")
 import unittest
-import numpy as np
-import paddle.fluid as fluid
-from op_test_xpu import XPUOpTest
-import paddle
-from paddle.fluid import Program, program_guard
 
+import numpy as np
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid import Program, core, program_guard
 
 
 class XPUTestClipOp(XPUOpTestWrapper):
@@ -51,7 +51,7 @@ class XPUTestClipOp(XPUOpTestWrapper):
 
         def set_xpu(self):
             self.__class__.use_xpu = True
-            self.__class__.no_need_check_grad = True
+            self.__class__.no_need_check_grad = False
             self.__class__.op_type = self.dtype
 
         def init_data(self):
@@ -90,6 +90,16 @@ class XPUTestClipOp(XPUOpTestWrapper):
             paddle.enable_static()
             self.check_output_with_place(self.place)
             paddle.disable_static()
+
+        def test_check_grad(self):
+            if hasattr(self, "no_need_check_grad") and self.no_need_check_grad:
+                return
+            if core.is_compiled_with_xpu():
+                paddle.enable_static()
+                self.check_grad_with_place(
+                    self.place, ['X'], 'Out', check_eager=True
+                )
+                paddle.disable_static()
 
     class TestClipOp1(TestClipOp):
         def init_data(self):
@@ -131,15 +141,9 @@ class TestClipOpError(unittest.TestCase):
             input_data = np.random.random((2, 4)).astype("float32")
 
             def test_Variable():
-                fluid.layers.clip(x=input_data, min=-1.0, max=1.0)
+                paddle.clip(x=input_data, min=-1.0, max=1.0)
 
             self.assertRaises(TypeError, test_Variable)
-
-            def test_dtype():
-                x2 = fluid.layers.data(name='x2', shape=[1], dtype='int32')
-                fluid.layers.clip(x=x2, min=-1.0, max=1.0)
-
-            self.assertRaises(TypeError, test_dtype)
         paddle.disable_static()
 
 

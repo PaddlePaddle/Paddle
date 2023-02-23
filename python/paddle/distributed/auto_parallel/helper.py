@@ -15,18 +15,13 @@
 import logging
 from collections import defaultdict
 
+from paddle.jit import not_to_static, to_static
+from paddle.jit.dy2static.program_translator import StaticFunction
 from paddle.nn import Layer
-from paddle.jit import to_static, not_to_static
-from paddle.fluid.framework import Parameter
-from paddle.fluid.framework import program_guard
-from paddle.fluid.executor import global_scope
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
-    StaticFunction,
-)
+from paddle.static import Parameter, global_scope, program_guard
 
-from .utils import to_list
-from .utils import get_logger
 from .converter import Converter
+from .utils import get_logger, to_list
 
 
 class ProxyLayer(Layer):
@@ -328,8 +323,8 @@ class ProgramHelper:
             var_dist_attr = dist_context.get_tensor_dist_attr_for_program(var)
             dist_attr = {
                 "dims_mapping": var_dist_attr.dims_mapping,
-                "process_shape": var_dist_attr.process_mesh.topology,
-                "process_group": var_dist_attr.process_mesh.processes,
+                "process_shape": var_dist_attr.process_mesh.shape,
+                "process_group": var_dist_attr.process_mesh.process_ids,
             }
             # slice param_value with dist_attr
             # share sliced_param_value with param_tensor in global_scope

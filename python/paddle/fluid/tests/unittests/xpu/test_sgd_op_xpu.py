@@ -12,22 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
 
 sys.path.append("..")
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
-
-from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import (
-    create_test_class,
-    get_xpu_op_support_types,
-    XPUOpTestWrapper,
-)
 
 
 class XPUTestSgdOp(XPUOpTestWrapper):
@@ -72,9 +73,9 @@ class TestSGDOpWithLargeInput(unittest.TestCase):
             shape=[1, 150], value=0.5, dtype='float32'
         )
         emb = fluid.embedding(input=data, size=(10000, 150), dtype='float32')
-        out = fluid.layers.l2_normalize(x=emb, axis=-1)
+        out = paddle.nn.functional.normalize(x=emb, axis=-1)
 
-        cost = fluid.layers.square_error_cost(input=out, label=label)
+        cost = paddle.nn.functional.square_error_cost(input=out, label=label)
         avg_cost = paddle.mean(cost)
         sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
         sgd_optimizer.minimize(avg_cost)

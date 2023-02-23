@@ -12,19 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
+
 import numpy as np
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard
-from paddle.nn.functional import avg_pool3d, max_pool3d
-from paddle.fluid.framework import _test_eager_guard
 from test_pool3d_op import (
     avg_pool3D_forward_naive,
     max_pool3D_forward_naive,
     pool3D_forward_naive,
 )
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.nn.functional import avg_pool3d, max_pool3d
 
 
 class TestPool3D_API(unittest.TestCase):
@@ -366,10 +366,6 @@ class TestPool3D_API(unittest.TestCase):
             self.check_max_dygraph_ndhwc_results(place)
             self.check_max_dygraph_ceilmode_results(place)
 
-    def test_dygraph_api(self):
-        with _test_eager_guard():
-            self.test_pool3d()
-
 
 class TestPool3DError_API(unittest.TestCase):
     def test_error_api(self):
@@ -567,9 +563,27 @@ class TestPool3DError_API(unittest.TestCase):
 
         self.assertRaises(ValueError, run_size_out_of_range)
 
-    def test_dygraph_api(self):
-        with _test_eager_guard():
-            self.test_error_api()
+        def run_zero_stride():
+            with fluid.dygraph.guard():
+                array = np.array([1], dtype=np.float32)
+                x = paddle.to_tensor(
+                    np.reshape(array, [1, 1, 1, 1, 1]), dtype='float32'
+                )
+                out = max_pool3d(
+                    x, 1, stride=0, padding=1, return_mask=True, ceil_mode=True
+                )
+
+        self.assertRaises(ValueError, run_zero_stride)
+
+        def run_zero_tuple_stride():
+            with fluid.dygraph.guard():
+                array = np.array([1], dtype=np.float32)
+                x = paddle.to_tensor(
+                    np.reshape(array, [1, 1, 1, 1, 1]), dtype='float32'
+                )
+                out = max_pool3d(x, 1, stride=(0, 0, 0), ceil_mode=False)
+
+        self.assertRaises(ValueError, run_zero_tuple_stride)
 
 
 if __name__ == '__main__':

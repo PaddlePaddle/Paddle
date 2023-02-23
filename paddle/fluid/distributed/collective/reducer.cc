@@ -17,9 +17,15 @@
 #include "paddle/phi/backends/device_manager.h"
 
 DECLARE_bool(use_stream_safe_cuda_allocator);
+DECLARE_string(allocator_strategy);
 
 namespace paddle {
 namespace distributed {
+
+static bool IsStreamSafeAllocator() {
+  return FLAGS_allocator_strategy == "auto_growth" &&
+         FLAGS_use_stream_safe_cuda_allocator;
+}
 
 static Backend TransToBackend(platform::Place place) {
   static const std::map<phi::AllocationType, Backend> type_backend = {
@@ -399,14 +405,14 @@ void EagerGroup::ConcatTensors(const platform::Place &place) {
   }
 }
 
-void EagerGroup::SplitTensorsDev(const platform::DeviceContext &context) {
+void EagerGroup::SplitTensors(const platform::DeviceContext &context) {
   auto place = context.GetPlace();
   if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     auto &gpu_context = static_cast<const phi::GPUContext &>(context);
     SplitTensorsWithType(
         gpu_context, &dense_contents_, &dense_tensors_, dtype_);
-    if (FLAGS_use_stream_safe_cuda_allocator) {
+    if (IsStreamSafeAllocator()) {
       auto dense_tensor =
           std::dynamic_pointer_cast<phi::DenseTensor>(dense_contents_.impl());
       VLOG(3) << "Free dense_contents_ " << dense_contents_.numel();
@@ -1011,12 +1017,11 @@ void EagerReducer::FinalizeBackward() {
   for (auto &group : groups_) {
     if (!group.is_sparse_) {
       group.task->Synchronize();
-    }
-  }
-
-  for (auto &group : groups_) {
-    if (!group.is_sparse_) {
-      group.dense_contents_.reset();
+      if (!IsStreamSafeAllocator()) {
+        auto *default_ctx =
+            platform::DeviceContextPool::Instance().Get(inner_place_);
+        group.SplitTensors(*default_ctx);
+      }
     }
   }
 
@@ -1054,9 +1059,15 @@ void EagerReducer::FusedAllReduceSchedule(EagerGroup *group,
   group->task = process_group_->AllReduce(in_out, in_out, opts);
 
   auto *context = process_group_->GetDeviceContext(inner_place_);
-  group->SplitTensorsDev(*context);
-  group->task->UpdateWaitChain(*context);
-  // split in FinalizeBackward()
+
+  if (IsStreamSafeAllocator()) {
+    // NOTE(shenliang03): The best_fit allocator strategy is multi-stream
+    // insecure. In the Split operator, additional memory will be applied for
+    // calculation, and if it is asynchronous, an illegal memory access may be
+    // encountered.
+    group->SplitTensors(*context);
+    group->task->UpdateWaitChain(*context);
+  }
 }
 
 void EagerReducer::AllReduceSparse(EagerGroup *group,
@@ -1102,7 +1113,7 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
   const auto &rank_ = process_group_->GetRank();
   const auto &size_ = process_group_->GetSize();
 
-  framework::Vector<int64_t> rows_num_vector(size_);
+  phi::Vector<int64_t> rows_num_vector(size_);
   rows_num_vector[rank_] = static_cast<int64_t>(src_rows.size());
 
   Tensor rows_num_tensor = paddle::experimental::empty(
@@ -1172,7 +1183,7 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
     }
     process_group_->AllGather(in, out)->Synchronize();
 
-    framework::Vector<int64_t> dst_rows_vector(rows_num, 0);
+    phi::Vector<int64_t> dst_rows_vector(rows_num, 0);
     auto *dst_rows_dense_tensor =
         std::dynamic_pointer_cast<phi::DenseTensor>(dst_rows_tensor.impl())
             .get();
@@ -1251,7 +1262,7 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
 
     Tensor dst_rows_tensor =
         paddle::experimental::concat(rows_tensors, phi::Scalar(0));
-    framework::Vector<int64_t> dst_rows_vector(rows_num, 0);
+    phi::Vector<int64_t> dst_rows_vector(rows_num, 0);
     auto *dst_rows_dense_tensor =
         std::dynamic_pointer_cast<phi::DenseTensor>(dst_rows_tensor.impl())
             .get();

@@ -16,15 +16,13 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/cross_entropy.h"
+#include "paddle/phi/kernels/funcs/softmax.h"
 
 namespace paddle {
 namespace operators {
-
-using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
@@ -61,7 +59,7 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
     backprop->mutable_data<T>(ctx.GetPlace());
     softmax->mutable_data<T>(ctx.GetPlace());
 
-    Tensor logits_2d, labels_1d, loss_1d, backprop_2d, softmax_2d;
+    phi::DenseTensor logits_2d, labels_1d, loss_1d, backprop_2d, softmax_2d;
     logits_2d.ShareDataWith(*logits).Resize({n, d});
     labels_1d.ShareDataWith(*labels).Resize({n});
     loss_1d.ShareDataWith(*loss).Resize({n});
@@ -110,7 +108,7 @@ class SoftmaxWithCrossEntropyGradNPUKernel : public framework::OpKernel<T> {
     const int n = phi::funcs::SizeToAxis(axis, logits_grad->dims());
     const int d = phi::funcs::SizeFromAxis(axis, logits_grad->dims());
 
-    Tensor logits_grad_2d, loss_grad_1d, backprop_2d;
+    phi::DenseTensor logits_grad_2d, loss_grad_1d, backprop_2d;
 
     logits_grad_2d.ShareDataWith(*logits_grad).Resize({n, d});
     loss_grad_1d.ShareDataWith(*loss_grad).Resize({n});

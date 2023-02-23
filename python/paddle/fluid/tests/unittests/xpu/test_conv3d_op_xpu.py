@@ -16,15 +16,12 @@ import sys
 
 sys.path.append("..")
 import unittest
-import numpy as np
 
+import numpy as np
 from op_test_xpu import XPUOpTest
-import paddle.fluid as fluid
+from xpu.get_test_cover_info import XPUOpTestWrapper, create_test_class
+
 import paddle
-from xpu.get_test_cover_info import (
-    create_test_class,
-    XPUOpTestWrapper,
-)
 
 
 def conv3d_forward_naive(
@@ -260,6 +257,38 @@ class XPUTestConv3DOp(XPUOpTestWrapper):
             place = paddle.XPUPlace(0)
             self.check_output_with_place(place)
 
+        def test_check_grad(self):
+            place = paddle.XPUPlace(0)
+            # TODO(wangzhongpu): support mkldnn op in dygraph mode
+            self.check_grad_with_place(
+                place,
+                {'Input', 'Filter'},
+                'Output',
+                max_relative_error=0.03,
+            )
+
+        def test_check_grad_no_filter(self):
+            place = paddle.XPUPlace(0)
+            # TODO(wangzhongpu): support mkldnn op in dygraph mode
+            self.check_grad_with_place(
+                place,
+                ['Input'],
+                'Output',
+                max_relative_error=0.03,
+                no_grad_set=set(['Filter']),
+            )
+
+        def test_check_grad_no_input(self):
+            place = paddle.XPUPlace(0)
+            # TODO(wangzhongpu): support mkldnn op in dygraph mode
+            self.check_grad_with_place(
+                place,
+                ['Filter'],
+                'Output',
+                max_relative_error=0.03,
+                no_grad_set=set(['Input']),
+            )
+
         def init_test_case(self):
             self.pad = [0, 0, 0]
             self.stride = [1, 1, 1]
@@ -403,6 +432,32 @@ class XPUTestConv3DOp_v2(XPUOpTestWrapper):
             place = paddle.XPUPlace(0)
             self.check_output_with_place(place)
 
+        def test_check_grad(self):
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(
+                place, {'Input', 'Filter'}, 'Output', max_relative_error=0.03
+            )
+
+        def test_check_grad_no_filter(self):
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(
+                place,
+                ['Input'],
+                'Output',
+                max_relative_error=0.03,
+                no_grad_set=set(['Filter']),
+            )
+
+        def test_check_grad_no_input(self):
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(
+                place,
+                ['Filter'],
+                'Output',
+                max_relative_error=0.03,
+                no_grad_set=set(['Input']),
+            )
+
         def init_test_case(self):
             self.stride = [1, 1, 1]
             self.input_size = [2, 3, 4, 4, 4]  # NCDHW
@@ -511,17 +566,15 @@ class XPUTestConv3DOp_v2(XPUOpTestWrapper):
 class TestConv3DAPI(unittest.TestCase):
     def test_api(self):
 
-        input_NDHWC = fluid.layers.data(
+        input_NDHWC = paddle.static.data(
             name="input_NDHWC",
             shape=[2, 5, 5, 5, 3],
-            append_batch_size=False,
             dtype="float32",
         )
 
-        input_NCDHW = fluid.layers.data(
+        input_NCDHW = paddle.static.data(
             name="input_NCDHW",
             shape=[2, 3, 5, 5, 3],
-            append_batch_size=False,
             dtype="float32",
         )
 
@@ -594,10 +647,9 @@ class TestConv3DAPI(unittest.TestCase):
 
 class TestConv3DAPI_Error(unittest.TestCase):
     def test_api(self):
-        input = fluid.layers.data(
+        input = paddle.static.data(
             name="input",
             shape=[2, 5, 5, 5, 4],
-            append_batch_size=False,
             dtype="float32",
         )
 
@@ -680,10 +732,9 @@ class TestConv3DAPI_Error(unittest.TestCase):
         self.assertRaises(ValueError, run_5)
 
         # ValueError: channel dimmention
-        x = fluid.layers.data(
+        x = paddle.static.data(
             name="x",
             shape=[2, 5, 5, 5, -1],
-            append_batch_size=False,
             dtype="float32",
         )
 

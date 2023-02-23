@@ -29,7 +29,9 @@ import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.nn.functional as F
 
-const_para_attr = fluid.ParamAttr(initializer=fluid.initializer.Constant(0.001))
+const_para_attr = fluid.ParamAttr(
+    initializer=paddle.nn.initializer.Constant(0.001)
+)
 const_bias_attr = const_para_attr
 
 # Fix seed for test
@@ -1107,25 +1109,25 @@ def multi_head_attention(
         """
         Add linear projection to queries, keys, and values.
         """
-        q = layers.fc(
-            input=queries,
+        q = paddle.static.nn.fc(
+            x=queries,
             size=d_key * n_head,
             num_flatten_dims=2,
-            param_attr=const_para_attr,
+            weight_attr=const_para_attr,
             bias_attr=const_bias_attr,
         )
-        k = layers.fc(
-            input=keys,
+        k = paddle.static.nn.fc(
+            x=keys,
             size=d_key * n_head,
             num_flatten_dims=2,
-            param_attr=const_para_attr,
+            weight_attr=const_para_attr,
             bias_attr=const_bias_attr,
         )
-        v = layers.fc(
-            input=values,
+        v = paddle.static.nn.fc(
+            x=values,
             size=d_value * n_head,
             num_flatten_dims=2,
-            param_attr=const_para_attr,
+            weight_attr=const_para_attr,
             bias_attr=const_bias_attr,
         )
         return q, k, v
@@ -1177,7 +1179,7 @@ def multi_head_attention(
         product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
         if attn_bias:
             product += attn_bias
-        weights = layers.softmax(product)
+        weights = paddle.nn.functional.softmax(product)
         if dropout_rate:
             weights = layers.dropout(
                 weights,
@@ -1191,8 +1193,8 @@ def multi_head_attention(
     q, k, v = __compute_qkv(queries, keys, values, n_head, d_key, d_value)
 
     if cache is not None:  # use cache and concat time steps
-        k = cache["k"] = layers.concat([cache["k"], k], axis=1)
-        v = cache["v"] = layers.concat([cache["v"], v], axis=1)
+        k = cache["k"] = paddle.concat([cache["k"], k], axis=1)
+        v = cache["v"] = paddle.concat([cache["v"], v], axis=1)
 
     q = __split_heads(q, n_head)
     k = __split_heads(k, n_head)
@@ -1205,11 +1207,11 @@ def multi_head_attention(
     out = __combine_heads(ctx_multiheads)
 
     # Project back to the model size.
-    proj_out = layers.fc(
-        input=out,
+    proj_out = paddle.static.nn.fc(
+        x=out,
         size=d_model,
         num_flatten_dims=2,
-        param_attr=const_para_attr,
+        weight_attr=const_para_attr,
         bias_attr=const_bias_attr,
     )
     return proj_out
@@ -1221,19 +1223,19 @@ def positionwise_feed_forward(x, d_inner_hid, d_hid):
     This module consists of two linear transformations with a ReLU activation
     in between, which is applied to each position separately and identically.
     """
-    hidden = layers.fc(
-        input=x,
+    hidden = paddle.static.nn.fc(
+        x=x,
         size=d_inner_hid,
         num_flatten_dims=2,
-        act="relu",
-        param_attr=const_para_attr,
+        activation="relu",
+        weight_attr=const_para_attr,
         bias_attr=const_bias_attr,
     )
-    out = layers.fc(
-        input=hidden,
+    out = paddle.static.nn.fc(
+        x=hidden,
         size=d_hid,
         num_flatten_dims=2,
-        param_attr=const_para_attr,
+        weight_attr=const_para_attr,
         bias_attr=const_bias_attr,
     )
     return out
@@ -1253,8 +1255,8 @@ def pre_post_process_layer(prev_out, out, process_cmd, dropout_rate=0.0):
             out = layers.layer_norm(
                 out,
                 begin_norm_axis=len(out.shape) - 1,
-                param_attr=fluid.initializer.Constant(1.0),
-                bias_attr=fluid.initializer.Constant(0.0),
+                param_attr=paddle.nn.initializer.Constant(1.0),
+                bias_attr=paddle.nn.initializer.Constant(0.0),
             )
         elif cmd == "d":  # add dropout
             if dropout_rate:
@@ -1292,7 +1294,7 @@ def prepare_encoder(
             size=[src_vocab_size, src_emb_dim],
             param_attr=fluid.ParamAttr(
                 name=word_emb_param_name,
-                initializer=fluid.initializer.ConstantInitializer(0.001),
+                initializer=paddle.nn.initializer.Constant(0.001),
             ),
         )
     else:
@@ -1301,7 +1303,9 @@ def prepare_encoder(
             size=[src_vocab_size, src_emb_dim],
             param_attr=fluid.ParamAttr(
                 name=word_emb_param_name,
-                initializer=fluid.initializer.Normal(0.0, src_emb_dim**-0.5),
+                initializer=paddle.nn.initializer.Normal(
+                    0.0, src_emb_dim**-0.5
+                ),
             ),
         )
 
@@ -1312,7 +1316,7 @@ def prepare_encoder(
         param_attr=fluid.ParamAttr(
             name=pos_enc_param_name,
             trainable=False,
-            initializer=fluid.initializer.ConstantInitializer(0.001),
+            initializer=paddle.nn.initializer.Constant(0.001),
         ),
     )
     src_pos_enc.stop_gradient = True
@@ -1512,14 +1516,13 @@ def make_all_inputs(input_fields):
     """
     inputs = []
     for input_field in input_fields:
-        input_var = layers.data(
+        input_var = paddle.static.data(
             name=input_field,
             shape=input_descs[input_field][0],
             dtype=input_descs[input_field][1],
             lod_level=input_descs[input_field][2]
             if len(input_descs[input_field]) == 3
             else 0,
-            append_batch_size=False,
         )
         inputs.append(input_var)
     return inputs
@@ -1585,7 +1588,7 @@ def transformer(
             epsilon=label_smooth_eps,
         )
 
-    cost = layers.softmax_with_cross_entropy(
+    cost = paddle.nn.functional.softmax_with_cross_entropy(
         logits=paddle.reshape(predict, shape=[-1, trg_vocab_size]),
         label=label,
         soft_label=True if label_smooth_eps else False,
@@ -1707,15 +1710,15 @@ def wrap_decoder(
             transpose_y=True,
         )
     else:
-        predict = layers.fc(
-            input=dec_output,
+        predict = paddle.static.nn.fc(
+            x=dec_output,
             size=trg_vocab_size,
             num_flatten_dims=2,
-            param_attr=const_para_attr,
+            weight_attr=const_para_attr,
             bias_attr=const_bias_attr,
         )
     if dec_inputs is None:
-        predict = layers.softmax(predict)
+        predict = paddle.nn.functional.softmax(predict)
     return predict
 
 
@@ -1762,7 +1765,7 @@ def fast_decode(
         step_idx = layers.fill_constant(
             shape=[1], dtype=start_tokens.dtype, value=0
         )
-        cond = layers.less_than(x=step_idx, y=max_len)
+        cond = paddle.less_than(x=step_idx, y=max_len)
         while_op = layers.While(cond)
         # array states will be stored for each step.
         ids = layers.array_write(
@@ -1832,12 +1835,11 @@ def fast_decode(
                 caches=pre_caches,
             )
             logits = paddle.reshape(logits, (-1, trg_vocab_size))
-
-            topk_scores, topk_indices = layers.topk(
-                input=layers.softmax(logits), k=beam_size
+            topk_scores, topk_indices = paddle.topk(
+                x=paddle.nn.functional.softmax(logits), k=beam_size
             )
             accu_scores = layers.elementwise_add(
-                x=layers.log(topk_scores),
+                x=paddle.log(topk_scores),
                 y=paddle.reshape(pre_scores, shape=[-1]),
                 axis=0,
             )
@@ -1856,12 +1858,12 @@ def fast_decode(
             # update states
             layers.array_write(selected_ids, i=step_idx, array=ids)
             layers.array_write(selected_scores, i=step_idx, array=scores)
-            layers.assign(pre_src_attn_bias, trg_src_attn_bias)
-            layers.assign(pre_enc_output, enc_output)
+            paddle.assign(pre_src_attn_bias, trg_src_attn_bias)
+            paddle.assign(pre_enc_output, enc_output)
             for i in range(n_layer):
-                layers.assign(pre_caches[i]["k"], caches[i]["k"])
-                layers.assign(pre_caches[i]["v"], caches[i]["v"])
-            length_cond = layers.less_than(x=step_idx, y=max_len)
+                paddle.assign(pre_caches[i]["k"], caches[i]["k"])
+                paddle.assign(pre_caches[i]["v"], caches[i]["v"])
+            length_cond = paddle.less_than(x=step_idx, y=max_len)
             finish_cond = paddle.logical_not(layers.is_empty(x=selected_ids))
             paddle.logical_and(x=length_cond, y=finish_cond, out=cond)
 

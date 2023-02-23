@@ -12,18 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import time
-import socket
-import os
 import copy
-import signal
+import os
 import random
-import threading
-import traceback
+import signal
+import socket
 import subprocess
-from paddle.distributed.fleet import cloud_utils
-from paddle.distributed.fleet import launch_utils
+import threading
+import time
+import traceback
 
+from paddle.distributed.fleet import cloud_utils, launch_utils
 from paddle.distributed.utils.log_utils import get_logger
 
 logger = get_logger("INFO", "ELASTIC")

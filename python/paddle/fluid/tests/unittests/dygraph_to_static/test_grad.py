@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import paddle
-import unittest
 import os
 import tempfile
+import unittest
+
+import numpy as np
+
+import paddle
 
 
 class GradLayer(paddle.nn.Layer):
@@ -72,10 +74,9 @@ class TestGrad(unittest.TestCase):
         self.x.stop_gradient = False
 
     def _run(self, func, to_static):
-        prog_trans = paddle.jit.ProgramTranslator()
-        prog_trans.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
         ret = func(self.x).numpy()
-        prog_trans.enable(True)
+        paddle.jit.enable_to_static(True)
         return ret
 
     def test_forward(self):

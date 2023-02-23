@@ -13,10 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle.fluid.core as core
 from op_test import OpTest, randomize_probability
+
+import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 
 
@@ -417,20 +420,24 @@ class TestCrossEntropyOpError(unittest.TestCase):
                 lab1 = fluid.create_lod_tensor(
                     np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
                 )
-                fluid.layers.cross_entropy(x1, lab1)
+                paddle.nn.functional.cross_entropy(
+                    x1, lab1, reduction='none', use_softmax=False
+                )
 
             self.assertRaises(TypeError, test_Variable)
 
             def test_dtype():
                 # the input dtype of cross_entropy must be float16 or float32 or float64
                 # float16 only can be set on GPU place
-                x2 = fluid.layers.data(
-                    name='x2', shape=[3, 4, 5, 6], dtype="int32"
+                x2 = paddle.static.data(
+                    name='x2', shape=[-1, 3, 4, 5, 6], dtype="int32"
                 )
-                lab2 = fluid.layers.data(
-                    name='lab2', shape=[3, 4, 5, 6], dtype="int32"
+                lab2 = paddle.static.data(
+                    name='lab2', shape=[-1, 3, 4, 5, 6], dtype="int32"
                 )
-                fluid.layers.cross_entropy(x2, lab2)
+                paddle.nn.functional.cross_entropy(
+                    x2, lab2, reduction='none', use_softmax=False
+                )
 
             self.assertRaises(TypeError, test_dtype)
 

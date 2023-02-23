@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
+
 import paddle
 import paddle.fluid as fluid
-from paddle.framework import core
 from paddle.fluid.dygraph.base import switch_to_static_graph
+from paddle.framework import core
 
 
 def gather_numpy(x, index, axis):
@@ -223,8 +225,10 @@ class TestGatherOp4(TestGatherOp1):
 class API_TestGather(unittest.TestCase):
     def test_out1(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data1 = fluid.layers.data('data1', shape=[-1, 2], dtype='float64')
-            index = fluid.layers.data('index', shape=[-1, 1], dtype='int32')
+            data1 = paddle.static.data('data1', shape=[-1, 2], dtype='float64')
+            data1.desc.set_need_check_feed(False)
+            index = paddle.static.data('index', shape=[-1, 1], dtype='int32')
+            index.desc.set_need_check_feed(False)
             out = paddle.gather(data1, index)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -380,6 +384,29 @@ class TestGathertError(unittest.TestCase):
                 paddle.gather(x, index_float)
 
             self.assertRaises(TypeError, test_index_type)
+
+    def test_error3(self):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+
+            shape = [8, 9, 6]
+            x = paddle.fluid.data(shape=shape, dtype='int32', name='x')
+            axis = paddle.fluid.data(shape=[1], dtype='int32', name='axis')
+            index = paddle.fluid.data(shape=shape, dtype='int32', name='index')
+            index_float = paddle.fluid.data(
+                shape=shape, dtype='float32', name='index_float'
+            )
+
+            def test_axis_minsize():
+                paddle.gather(x, index, axis=-1)
+
+            self.assertRaises(ValueError, test_axis_minsize)
+
+            def test_axis_maxsize():
+                paddle.gather(x, index, axis=512)
+
+            self.assertRaises(ValueError, test_axis_maxsize)
 
 
 class TestCheckOutType(unittest.TestCase):

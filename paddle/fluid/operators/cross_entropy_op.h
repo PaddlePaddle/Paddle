@@ -16,14 +16,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/cross_entropy.h"
 #include "paddle/phi/kernels/funcs/math.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
-
-using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class CrossEntropyOpKernel : public framework::OpKernel<T> {
@@ -36,8 +35,8 @@ class CrossEntropyOpKernel : public framework::OpKernel<T> {
 
     int rank = x->dims().size();
     auto label_dims = labels->dims();
-    Tensor x_2d = framework::ReshapeToMatrix(*x, rank - 1);
-    Tensor labels_2d, y_2d;
+    phi::DenseTensor x_2d = phi::ReshapeToMatrix(*x, rank - 1);
+    phi::DenseTensor labels_2d, y_2d;
     if (label_dims.size() < rank) {
       labels_2d.ShareDataWith(*labels);
       labels_2d.Resize({phi::product(label_dims), 1});
@@ -46,8 +45,8 @@ class CrossEntropyOpKernel : public framework::OpKernel<T> {
       y_2d.Resize({phi::product(y->dims()), 1});
 
     } else {
-      labels_2d = framework::ReshapeToMatrix(*labels, rank - 1);
-      y_2d = framework::ReshapeToMatrix(*y, rank - 1);
+      labels_2d = phi::ReshapeToMatrix(*labels, rank - 1);
+      y_2d = phi::ReshapeToMatrix(*y, rank - 1);
     }
 
     int axis_dim = x->dims()[rank - 1];

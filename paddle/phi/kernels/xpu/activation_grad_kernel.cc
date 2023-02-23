@@ -189,8 +189,10 @@ struct XPULogGradFunctor : public funcs::BaseActivationFunctor<T> {
     if (dOut != nullptr) dout_data = dOut->data<T>();
 
     T* dx_data = dev_ctx.template Alloc<T>(dX);
+    xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+    float* tmp = RAII_GUARD.alloc_l3_or_gm<T>(x->numel());
     int r = xpu::constant<T>(
-        dev_ctx.x_context(), dx_data, x->numel(), static_cast<T>(1.0));
+        dev_ctx.x_context(), tmp, x->numel(), static_cast<T>(1.0));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
 
     auto x_dims = vectorize<int>(x->dims());
@@ -199,18 +201,16 @@ struct XPULogGradFunctor : public funcs::BaseActivationFunctor<T> {
     if (x_dims.size() == 0) {
       x_dims = std::vector<int>({1});
     }
-
     // dx.device(d) = dout * (static_cast<T>(1) / x);
     r = xpu::broadcast_div(dev_ctx.x_context(),
-                           reinterpret_cast<const float*>(dx_data),
+                           reinterpret_cast<const float*>(tmp),
                            reinterpret_cast<const float*>(x_data),
-                           reinterpret_cast<float*>(dx_data),
+                           reinterpret_cast<float*>(tmp),
                            x_dims,
                            x_dims);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_div");
-
     r = xpu::broadcast_mul(dev_ctx.x_context(),
-                           reinterpret_cast<const float*>(dx_data),
+                           reinterpret_cast<const float*>(tmp),
                            reinterpret_cast<const float*>(dout_data),
                            reinterpret_cast<float*>(dx_data),
                            x_dims,
@@ -364,6 +364,26 @@ struct XPURelu6GradFunctor : public funcs::BaseActivationFunctor<T> {
     int r = xpu_activation_backward<Context, T, XPUType>(
         dev_ctx, x, out, dout, dx, xpu::relu6_grad<XPUType>);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "relu6_grad");
+  }
+};
+
+template <typename T>
+struct XPUSiluGradFunctor : public funcs::BaseActivationFunctor<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  template <typename Context>
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor* x,
+                  const DenseTensor* out,
+                  const DenseTensor* dout,
+                  DenseTensor* dx) const {
+    dev_ctx.template Alloc<T>(dx);
+    const XPUType* x_data = reinterpret_cast<const XPUType*>(x->data<T>());
+    const XPUType* y_grad = reinterpret_cast<const XPUType*>(dout->data<T>());
+    XPUType* x_grad = reinterpret_cast<XPUType*>(dx->data<T>());
+
+    int r = xpu::swish_grad(
+        dev_ctx.x_context(), x_data, y_grad, x_grad, dx->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "swish_grad");
   }
 };
 
@@ -552,6 +572,7 @@ DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Sqrt, XPUSqrtGradFunctor);
 DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Tanh, XPUTanhGradFunctor);
 DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Relu, XPUReluGradFunctor);
 
+DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPX(Silu, XPUSiluGradFunctor);
 DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPX(Log, XPULogGradFunctor);
 DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPX(Square, XPUSquareGradFunctor);
 
@@ -603,6 +624,12 @@ PD_REGISTER_KERNEL(relu_grad,
                    phi::ReluGradKernel,
                    float,
                    phi::dtype::float16) {}
+PD_REGISTER_KERNEL(silu_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::SiluGradKernel,
+                   float,
+                   phi::dtype::float16) {}
 
 #define PD_REGISTER_ACTIVATION_GRAD_KERNEL(name, func) \
   PD_REGISTER_KERNEL(name, XPU, ALL_LAYOUT, phi::func, float) {}
@@ -613,6 +640,14 @@ PD_REGISTER_KERNEL(tanh_grad,
                    phi::TanhGradKernel,
                    float,
                    phi::dtype::float16) {}
+
+PD_REGISTER_KERNEL(square_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::SquareGradKernel,
+                   float,
+                   phi::dtype::float16) {}
+
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(exp_grad, ExpGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(log_grad, LogGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(leaky_relu_grad, LeakyReluGradKernel)
@@ -625,5 +660,4 @@ PD_REGISTER_ACTIVATION_GRAD_KERNEL(sqrt_grad, SqrtGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(mish_grad, MishGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(swish_grad, SwishGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(softplus_grad, SoftplusGradKernel)
-PD_REGISTER_ACTIVATION_GRAD_KERNEL(square_grad, SquareGradKernel)
 PD_REGISTER_KERNEL(pow_grad, XPU, ALL_LAYOUT, phi::PowGradKernel, float) {}

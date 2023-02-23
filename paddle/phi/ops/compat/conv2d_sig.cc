@@ -53,9 +53,24 @@ KernelSignature Conv2dDoubleGradOpArgumentMapping(
                          {"DInput", "DFilter", "DDOutput"});
 }
 
+KernelSignature Conv2dFusionArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("conv2d_fusion_cutlass",
+                         {"Input", "Filter", "Bias", "ResidualData"},
+                         {"strides",
+                          "paddings",
+                          "padding_algorithm",
+                          "groups",
+                          "dilations",
+                          "data_format",
+                          "activation",
+                          "fuse_alpha"},
+                         {"Output"});
+}
 }  // namespace phi
 
 PD_REGISTER_ARG_MAPPING_FN(conv2d, phi::Conv2dOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(conv2d_fusion_cutlass,
+                           phi::Conv2dFusionArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(conv2d_grad, phi::Conv2dGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(conv2d_grad_grad,
                            phi::Conv2dDoubleGradOpArgumentMapping);

@@ -77,10 +77,6 @@ class TestDistBase(unittest.TestCase):
             required_envs["GLOG_logtostderr"] = "1"
             required_envs["GLOO_LOG_LEVEL"] = "TRACE"
 
-        if eager_mode:
-            required_envs["FLAGS_enable_eager_mode"] = "%d" % 1
-        else:
-            required_envs["FLAGS_enable_eager_mode"] = "%d" % 0
         self._run_cluster(model_file, required_envs)
 
     def _run_cluster(self, model_file, envs):

@@ -12,19 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import os
-import tempfile
-import cv2
 import shutil
+import tempfile
+import unittest
+
+import cv2
 import numpy as np
 from PIL import Image
 
 import paddle
+import paddle.vision.transforms.functional as F
 from paddle.vision import image_load, set_image_backend
 from paddle.vision.datasets import DatasetFolder
 from paddle.vision.transforms import transforms
-import paddle.vision.transforms.functional as F
 
 
 class TestTransformsCV2(unittest.TestCase):
@@ -651,7 +652,7 @@ class TestTransformsTensor(TestTransformsCV2):
             transform = transforms.RandomResizedCrop(64)
             transform(1)
 
-    test_color_jitter = None
+    test_color_jitter = None  # noqa: F811
 
 
 class TestFunctional(unittest.TestCase):

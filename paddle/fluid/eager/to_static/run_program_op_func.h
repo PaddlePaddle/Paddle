@@ -80,16 +80,10 @@ inline void run_program_ad_func(
       trace_backward, &p_autograd_x, &p_autograd_params);
 
   if (require_any_grad) {
-    std::vector<std::string> out_names;
-    for (auto& t : deref_out) {
-      out_names.emplace_back(t.name());
-    }
-
     egr::EagerUtils::PassStopGradient(false, &p_autograd_outs);
     // Create GradOpNode (1 means [out_grad], 2 means [x_grad, paramx_grad])
     auto grad_node = std::make_shared<GradNodeRunProgram>(1, 2);
 
-    grad_node->SetFwdOutNames(out_names);
     // Set Attributes
     grad_node->SetAttrMap(attrs);
     // Set TensorWrappers
@@ -99,28 +93,31 @@ inline void run_program_ad_func(
     grad_node->SetStepScope(step_scope);
 
     // Set Grad out rank as same as fwd input and set stop gradient to bwd
-    grad_node->SetGradOutMeta(x, /*slot id*/ 0);
+    // NOTE(@xiongkun): Not every tensor in x(list of tensor) is required
+    // gradient. for example: x[1] is not used for output, the x[1] is ignored.
+
+    auto* forward_global_block = PADDLE_GET_CONST(
+        paddle::framework::BlockDesc*, attrs.at("forward_global_block"));
+    auto* backward_global_block = PADDLE_GET_CONST(
+        paddle::framework::BlockDesc*, attrs.at("backward_global_block"));
+    std::vector<const paddle::experimental::Tensor*> x_require_grad;
+    for (size_t i = 0; i < x.size(); ++i) {
+      auto& name = x[i].name();
+      if (forward_global_block->HasVar(name) ||
+          backward_global_block->HasVar(name)) {
+        x_require_grad.push_back(&x[i]);
+      }
+    }
+
+    grad_node->SetGradOutMeta(x_require_grad, /*slot id*/ 0);
     grad_node->SetGradOutMeta(params, /*slot id*/ 1);
 
-    bool use_interpretorcore =
-        PADDLE_GET_CONST(bool, attrs.at("use_interpretorcore"));
     VLOG(2) << "clear_no_grad_edges.";
-    if (use_interpretorcore) {
-      auto* forward_global_block = PADDLE_GET_CONST(
-          paddle::framework::BlockDesc*, attrs.at("forward_global_block"));
-      auto* backward_global_block = PADDLE_GET_CONST(
-          paddle::framework::BlockDesc*, attrs.at("backward_global_block"));
-      clear_no_grad_edges_with_partial_block(params,
-                                             forward_global_block,
-                                             backward_global_block,
-                                             grad_node.get(),
-                                             /*slot id*/ 1);
-
-    } else {
-      auto* global_block = PADDLE_GET_CONST(paddle::framework::BlockDesc*,
-                                            attrs.at("global_block"));
-      clear_no_grad_edges(params, global_block, grad_node.get(), /*slot id*/ 1);
-    }
+    clear_no_grad_edges_with_partial_block(params,
+                                           forward_global_block,
+                                           backward_global_block,
+                                           grad_node.get(),
+                                           /*slot id*/ 1);
 
     grad_node->SetGradInMeta(deref_out, 0);
 
@@ -128,6 +125,5 @@ inline void run_program_ad_func(
 
     // Set History for output set current Grad Node for
     egr::EagerUtils::SetHistory(&p_autograd_outs, grad_node);
-    egr::EagerUtils::CheckAndRetainGrad(deref_out);
   }
 }

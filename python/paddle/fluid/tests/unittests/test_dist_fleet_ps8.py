@@ -15,11 +15,12 @@
 import os
 
 os.environ["WITH_DISTRIBUTE"] = "ON"
+import unittest
+
+import paddle
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.fluid as fluid
-import unittest
-import paddle
 
 paddle.enable_static()
 

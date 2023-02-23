@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from functools import reduce
-
 import collections
+import logging
 import os
 import warnings
-import logging
-import paddle.fluid as fluid
-from paddle.fluid import core
-import paddle.fluid.framework as framework
+from functools import reduce
+
+from paddle.distributed.io import is_persistable
+from paddle.fluid.framework import generate_control_dev_var_name
+from paddle.framework import core
 
 # logging.basicConfig(
 #    format='%(levelname)s - %(asctime)s - %(pathname)s: %(lineno)s - %(message)s', level=logging.INFO)
@@ -896,7 +896,7 @@ def find_heter_ops(program, default_device="cpu"):
     if len(heter_ops) == 0:
         warnings.warn(
             "No heterogeneous OP was found in your program , "
-            " please using fluid.device_guard() to run OPs on different device."
+            " please using static.device_guard() to run OPs on different device."
         )
 
     total_heter_ops = 0
@@ -1253,7 +1253,7 @@ def screen_persistables(program, var_list):
         else:
             var = program.global_block().vars[var_name]
 
-        if fluid.io.is_persistable(var):
+        if is_persistable(var):
             need_remove.append(var_name)
 
     for var_name in need_remove:
@@ -1676,9 +1676,7 @@ def add_send_op(program, block, _vars):
         table_dict[table_id]['var_list'].append(persistable_var)
 
     for table_id in table_dict:
-        dummy_output = block.create_var(
-            name=framework.generate_control_dev_var_name()
-        )
+        dummy_output = block.create_var(name=generate_control_dev_var_name())
         send_input_vars = [
             block.vars[union_var]
             for union_var in table_dict[table_id]['var_list']

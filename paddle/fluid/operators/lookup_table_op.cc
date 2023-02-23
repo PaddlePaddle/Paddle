@@ -67,10 +67,10 @@ class LookupTableOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "W");
-    return framework::OpKernelType(data_type, ctx.device_context());
+    return phi::KernelKey(data_type, ctx.device_context().GetPlace());
   }
 };
 
@@ -191,11 +191,11 @@ class LookupTableOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
-    return framework::OpKernelType(data_type, ctx.device_context());
+    return phi::KernelKey(data_type, ctx.device_context().GetPlace());
   }
 };
 
@@ -212,7 +212,7 @@ class LookupTableOpGradVarTypeInference : public framework::VarTypeInference {
                          framework::proto::VarType::SELECTED_ROWS);
     } else {
       VLOG(3) << "lookup_table_grad op " << framework::GradVarName("W")
-              << " is set to LoDTensor";
+              << " is set to phi::DenseTensor";
       ctx->SetOutputType(out_var_name, framework::proto::VarType::LOD_TENSOR);
     }
     ctx->SetOutputDataType(out_var_name, ctx->GetInputDataType("W"));

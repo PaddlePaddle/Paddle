@@ -18,18 +18,16 @@ import time
 import unittest
 
 import numpy as np
-import paddle.fluid as fluid
-from paddle.fluid.clip import GradientClipByGlobalNorm
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
+from seq2seq_dygraph_model import AttentionModel, BaseModel
+from seq2seq_utils import Seq2SeqModelHyperParams, get_data_iter
 
-from seq2seq_dygraph_model import BaseModel, AttentionModel
-from seq2seq_utils import Seq2SeqModelHyperParams
-from seq2seq_utils import get_data_iter
+import paddle
+import paddle.fluid as fluid
+from paddle.nn import ClipGradByGlobalNorm
 
 place = (
     fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
 )
-program_translator = ProgramTranslator()
 STEP_NUM = 10
 PRINT_STEP = 2
 
@@ -72,7 +70,7 @@ def train(args, attn_model=False):
                 dropout=args.dropout,
             )
 
-        gloabl_norm_clip = GradientClipByGlobalNorm(args.max_grad_norm)
+        gloabl_norm_clip = ClipGradByGlobalNorm(args.max_grad_norm)
         optimizer = fluid.optimizer.SGD(
             args.learning_rate,
             parameter_list=model.parameters(),
@@ -129,7 +127,7 @@ def train(args, attn_model=False):
 
         if not os.path.exists(model_dir):
             os.makedirs(model_dir)
-        fluid.save_dygraph(model.state_dict(), model_dir)
+        paddle.save(model.state_dict(), model_dir + '.pdparams')
         return loss.numpy()
 
 
@@ -164,7 +162,7 @@ def infer(args, attn_model=False):
         model_path = (
             args.attn_model_path if attn_model else args.base_model_path
         )
-        state_dict, _ = fluid.dygraph.load_dygraph(model_path)
+        state_dict = paddle.load(model_path + '.pdparams')
         model.set_dict(state_dict)
         model.eval()
         train_data_iter = get_data_iter(args.batch_size, mode='infer')
@@ -197,14 +195,14 @@ class TestSeq2seq(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def run_dygraph(self, mode="train", attn_model=False):
-        program_translator.enable(False)
+        paddle.jit.enable_to_static(False)
         if mode == "train":
             return train(self.args, attn_model)
         else:
             return infer(self.args, attn_model)
 
     def run_static(self, mode="train", attn_model=False):
-        program_translator.enable(True)
+        paddle.jit.enable_to_static(True)
         if mode == "train":
             return train(self.args, attn_model)
         else:
@@ -243,6 +241,4 @@ class TestSeq2seq(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    # switch into new eager mode
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

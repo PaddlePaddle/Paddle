@@ -50,7 +50,8 @@ class MLUUniformRandomKernel : public framework::OpKernel<T> {
       if (!new_shape.empty()) tensor->Resize(phi::make_ddim(new_shape));
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Expected type of Output(out) in uniform_random_op must be Tensor, "
+          "Expected type of Output(out) in uniform_random_op must be "
+          "phi::DenseTensor, "
           "SelectedRows. But got "
           "unsupport type: %s.",
           framework::ToTypeName(out_var->Type())));
@@ -59,7 +60,7 @@ class MLUUniformRandomKernel : public framework::OpKernel<T> {
     tensor->mutable_data<T>(ctx.GetPlace());
     int64_t size = tensor->numel();
 
-    Tensor cpu_tensor(tensor->dtype());
+    phi::DenseTensor cpu_tensor(tensor->dtype());
     cpu_tensor.Resize(tensor->dims());
     T *data_cpu = cpu_tensor.mutable_data<T>(platform::CPUPlace());
 

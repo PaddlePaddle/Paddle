@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import os
 import tempfile
-import numpy as np
-import paddle
-import paddle.utils as utils
-import paddle.fluid as fluid
-import paddle.fluid.profiler as profiler
-import paddle.fluid.layers as layers
-import paddle.fluid.core as core
-import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
+import unittest
 
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+import paddle.fluid.profiler as profiler
+import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
+import paddle.utils as utils
 from paddle.utils.flops import flops
 
 
@@ -36,30 +37,40 @@ class TestProfiler(unittest.TestCase):
         startup_program = fluid.Program()
         main_program = fluid.Program()
         with fluid.program_guard(main_program, startup_program):
-            image = fluid.layers.data(name='x', shape=[784], dtype='float32')
-            hidden1 = fluid.layers.fc(input=image, size=64, act='relu')
+            image = paddle.static.data(
+                name='x', shape=[-1, 784], dtype='float32'
+            )
+            hidden1 = paddle.static.nn.fc(x=image, size=64, activation='relu')
             i = layers.zeros(shape=[1], dtype='int64')
             counter = fluid.layers.zeros(
                 shape=[1], dtype='int64', force_cpu=True
             )
             until = layers.fill_constant([1], dtype='int64', value=10)
-            data_arr = layers.array_write(hidden1, i)
-            cond = fluid.layers.less_than(x=counter, y=until)
-            while_op = fluid.layers.While(cond=cond)
+            data_arr = paddle.tensor.array_write(hidden1, i)
+            cond = paddle.less_than(x=counter, y=until)
+            while_op = paddle.static.nn.control_flow.While(cond=cond)
             with while_op.block():
-                hidden_n = fluid.layers.fc(input=hidden1, size=64, act='relu')
-                layers.array_write(hidden_n, i, data_arr)
-                fluid.layers.increment(x=counter, value=1, in_place=True)
-                layers.less_than(x=counter, y=until, cond=cond)
+                hidden_n = paddle.static.nn.fc(
+                    x=hidden1, size=64, activation='relu'
+                )
+                paddle.tensor.array_write(hidden_n, i, data_arr)
+                paddle.increment(x=counter, value=1)
+                paddle.assign(paddle.less_than(x=counter, y=until), cond)
 
-            hidden_n = layers.array_read(data_arr, i)
-            hidden2 = fluid.layers.fc(input=hidden_n, size=64, act='relu')
-            predict = fluid.layers.fc(input=hidden2, size=10, act='softmax')
-            label = fluid.layers.data(name='y', shape=[1], dtype='int64')
-            cost = fluid.layers.cross_entropy(input=predict, label=label)
+            hidden_n = paddle.tensor.array_read(data_arr, i)
+            hidden2 = paddle.static.nn.fc(
+                x=hidden_n, size=64, activation='relu'
+            )
+            predict = paddle.static.nn.fc(
+                x=hidden2, size=10, activation='softmax'
+            )
+            label = paddle.static.data(name='y', shape=[-1, 1], dtype='int64')
+            cost = paddle.nn.functional.cross_entropy(
+                input=predict, label=label, reduction='none', use_softmax=False
+            )
             avg_cost = paddle.mean(cost)
-            batch_size = fluid.layers.create_tensor(dtype='int64')
-            batch_acc = fluid.layers.accuracy(
+            batch_size = paddle.tensor.create_tensor(dtype='int64')
+            batch_acc = paddle.static.accuracy(
                 input=predict, label=label, total=batch_size
             )
 
@@ -69,13 +80,7 @@ class TestProfiler(unittest.TestCase):
         if compile_program:
             # TODO(luotao): profiler tool may have bug with multi-thread parallel executor.
             # https://github.com/PaddlePaddle/Paddle/pull/25200#issuecomment-650483092
-            exec_strategy = fluid.ExecutionStrategy()
-            exec_strategy.num_threads = 1
-            train_program = fluid.compiler.CompiledProgram(
-                main_program
-            ).with_data_parallel(
-                loss_name=avg_cost.name, exec_strategy=exec_strategy
-            )
+            train_program = fluid.compiler.CompiledProgram(main_program)
         else:
             train_program = main_program
         return train_program, startup_program, avg_cost, batch_size, batch_acc
@@ -291,10 +296,87 @@ class TestFLOPSAPI(unittest.TestCase):
             == 3 * 12 * 12 * 12 * 2 * 8
         )
         self.assertTrue(
-            flops('relu', {'X': [[12, 12, 12]]}, {}) == 12 * 12 * 12
+            flops('softmax', {'X': [[12, 12, 12]]}, {}) == 3 * 12 * 12 * 12
         )
         self.assertTrue(
-            flops('softmax', {'X': [[12, 12, 12]]}, {}) == 3 * 12 * 12 * 12
+            flops('c_embedding', {'Ids': [[12, 12]], 'W': [[12, 12, 3]]}, {})
+            == 0
+        )
+        self.assertTrue(
+            flops(
+                'elu',
+                {
+                    'X': [[12, 12]],
+                },
+                {},
+            )
+            == 144
+        )
+        self.assertTrue(
+            flops(
+                'leaky_relu',
+                {
+                    'X': [[12, 12]],
+                },
+                {},
+            )
+            == 144
+        )
+        self.assertTrue(
+            flops(
+                'prelu',
+                {
+                    'X': [[12, 12]],
+                },
+                {},
+            )
+            == 144
+        )
+        self.assertTrue(
+            flops(
+                'relu6',
+                {
+                    'X': [[12, 12]],
+                },
+                {},
+            )
+            == 144
+        )
+        self.assertTrue(
+            flops(
+                'silu',
+                {
+                    'X': [[12, 12]],
+                },
+                {},
+            )
+            == 144
+        )
+        self.assertTrue(
+            flops(
+                'pool',
+                {'X': [[12, 12]]},
+                {},
+            )
+            == 12 * 12
+        )
+        self.assertTrue(
+            flops(
+                'conv2d',
+                {
+                    'Bias': [],
+                    'Filter': [[3, 3, 2, 2]],
+                    'Input': [[8, 3, 4, 4]],
+                    'ResidualData': [],
+                },
+                {
+                    'dilations': [1, 1],
+                    'groups': 1,
+                    'paddings': [1, 1],
+                    'strides': [1, 1],
+                },
+            )
+            == 14400
         )
 
 

@@ -309,6 +309,19 @@ __global__ void broadcast(const T *src,
   }
 }
 
+template <typename T>
+__global__ void broadcast_batch_head_number(const T *src,
+                                            T *dst,
+                                            const int batch_size,
+                                            const int seq_len,
+                                            const int head_num) {
+  int batch_id = blockIdx.x % seq_len;
+  int dst_offset = blockIdx.x * seq_len;
+  if (threadIdx.x < seq_len) {
+    dst[threadIdx.x + dst_offset] = src[threadIdx.x + batch_id * seq_len];
+  }
+}
+
 int QkvToContextPluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc *input_desc,
     const nvinfer1::PluginTensorDesc *output_desc,
@@ -349,6 +362,22 @@ int QkvToContextPluginDynamic::enqueue(
       broadcast<<<grid, block, 0, stream>>>(
           static_cast<const float *>(inputs[1]),
           temp_qk_bias,
+          seq_len,
+          head_number_);
+      qk_bias = temp_qk_bias;
+    }
+    // fit to [batch, head_num, length, length] + [1, 1, length, length]
+    if (ProductDim(input_desc[1].dims) == (seq_len * seq_len)) {
+      temp_qk_bias_tensor.Resize({batch, head_number_, seq_len, seq_len});
+      auto *temp_qk_bias =
+          reinterpret_cast<float *>(temp_qk_bias_tensor.mutable_data<float>(
+              platform::CUDAPlace(device_id)));
+      int grid = batch * head_number_ * seq_len;
+      int block = round_up(seq_len);
+      broadcast_batch_head_number<<<grid, block, 0, stream>>>(
+          static_cast<const float *>(inputs[1]),
+          temp_qk_bias,
+          batch,
           seq_len,
           head_number_);
       qk_bias = temp_qk_bias;
@@ -420,6 +449,22 @@ int QkvToContextPluginDynamic::enqueue(
       broadcast<<<grid, block, 0, stream>>>(
           static_cast<const half *>(inputs[1]),
           temp_qk_bias,
+          seq_len,
+          head_number_);
+      qk_bias = temp_qk_bias;
+    }
+    // fit to [batch, head_num, length, length] + [1, 1, length, length]
+    if (ProductDim(input_desc[1].dims) == (seq_len * seq_len)) {
+      temp_qk_bias_tensor.Resize({batch, head_number_, seq_len, seq_len});
+      auto *temp_qk_bias =
+          reinterpret_cast<half *>(temp_qk_bias_tensor.mutable_data<int16_t>(
+              platform::CUDAPlace(device_id)));
+      int grid = batch * head_number_ * seq_len;
+      int block = round_up(seq_len);
+      broadcast_batch_head_number<<<grid, block, 0, stream>>>(
+          static_cast<const half *>(inputs[1]),
+          temp_qk_bias,
+          batch,
           seq_len,
           head_number_);
       qk_bias = temp_qk_bias;

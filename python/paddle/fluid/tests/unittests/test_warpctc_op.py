@@ -14,14 +14,15 @@
 
 import sys
 import unittest
+
 import numpy as np
 from op_test import OpTest
 from test_softmax_op import stable_softmax
-from paddle.fluid.framework import _test_eager_guard
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+
 import paddle
+import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle.fluid import Program, program_guard
 
 paddle.enable_static()
 
@@ -716,8 +717,6 @@ class TestCTCLossAPICase(unittest.TestCase):
                 loss_pd_sum, loss_np_sum, rtol=1e-05, atol=1
             )
 
-        with _test_eager_guard():
-            test_functinal_api()
         test_functinal_api()
 
 

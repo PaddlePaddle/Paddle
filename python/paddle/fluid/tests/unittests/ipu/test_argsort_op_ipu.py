@@ -50,7 +50,7 @@ class TestBase(IPUOpTest):
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
-        out, _ = paddle.fluid.layers.argsort(x, **self.attrs)
+        out, _ = paddle.argsort(x, **self.attrs)
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):

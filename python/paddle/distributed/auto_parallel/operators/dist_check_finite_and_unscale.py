@@ -12,18 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from .common import DistributedOperatorImplContainer
-from .common import DistributedOperatorImpl
-from .common import register_distributed_operator_impl_container
-from .common import register_distributed_operator_impl
-from paddle.fluid import core
-from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
-from ..utils import set_var_dist_attr
-from ..utils import set_dist_op_desc_original_id
-from ..process_group import new_process_group
-from ..dist_attribute import OperatorDistributedAttribute
 from paddle.distributed.auto_parallel.process_group import (
     get_world_process_group,
+)
+from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
+from paddle.framework import core
+
+from ..dist_attribute import OperatorDistAttr
+from ..process_group import new_process_group
+from ..utils import set_dist_op_desc_original_id, set_var_dist_attr
+from .common import (
+    DistributedOperatorImpl,
+    DistributedOperatorImplContainer,
+    SyncMode,
+    register_distributed_operator_impl,
+    register_distributed_operator_impl_container,
 )
 
 world_process_group = get_world_process_group()
@@ -87,7 +90,7 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
             str(backward_op)
         )
 
-        assert rank_id in dist_attr.process_mesh.processes
+        assert rank_id in dist_attr.process_mesh.process_ids
 
         assert 'X' in kwargs, "input [{}] is not given".format('X')
         assert 'Scale' in kwargs, "input [{}] is not given".format('Scale')
@@ -118,16 +121,18 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
                 rank_id
                 in ctx.get_tensor_dist_attr_for_program(
                     main_block._var_recursive(varname)
-                ).process_mesh.processes
+                ).process_mesh.process_ids
             ):
                 filter_vars.append(varname)
 
         # replicate op in dist program
-        dist_op_desc = main_block.append_op(type='nop').desc
+        dist_op = main_block.append_op(type='nop')
+        dist_op_desc = dist_op.desc
         dist_op_desc.copy_from(backward_op.desc)
         set_dist_op_desc_original_id(dist_op_desc, backward_op.desc, ctx)
         dist_op_desc.set_input('X', filter_vars)
         dist_op_desc.set_output('Out', filter_vars)
+        # TODO: should we add a new dist attr for the new op here?
 
         # sync result
         group = new_process_group(world_process_group.ranks)
@@ -164,6 +169,7 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
                 OP_ROLE_KEY: OpRole.Optimize,
             },
         )
+        allreduce_op._set_attr('op_namescope', str('/') + SyncMode.AmpFlagSync)
         cast_op2 = main_block.append_op(
             type='cast',
             inputs={'X': inf_var_int32},
@@ -176,7 +182,7 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
         )
 
         for op in [cast_op1, allreduce_op, cast_op2]:
-            new_op_dist_attr = OperatorDistributedAttribute()
+            new_op_dist_attr = OperatorDistAttr()
             for varname in op.input_arg_names:
                 var_dist_attr = ctx.get_tensor_dist_attr_for_program(
                     main_block._var_recursive(varname)

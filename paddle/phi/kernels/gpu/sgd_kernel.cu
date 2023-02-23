@@ -14,12 +14,12 @@
 
 #include "paddle/phi/kernels/sgd_kernel.h"
 
-#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_helper.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/mixed_vector.h"
 
 namespace phi {
 
@@ -82,9 +82,8 @@ void SGDDenseKernel(const Context& dev_ctx,
   const MPDType* master_in_data =
       multi_precision ? master_param->data<MPDType>() : nullptr;
   MPDType* master_out_data =
-      multi_precision
-          ? master_param_out->mutable_data<MPDType>(dev_ctx.GetPlace())
-          : nullptr;
+      multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_out)
+                      : nullptr;
 
   int block = 512;
   int grid = (param.numel() + block - 1) / block;
@@ -94,7 +93,7 @@ void SGDDenseKernel(const Context& dev_ctx,
       grad.data<T>(),
       learning_rate.data<T>(),
       param.numel(),
-      param_out->mutable_data<T>(dev_ctx.GetPlace()),
+      dev_ctx.template Alloc<T>(param_out),
       master_in_data,
       master_out_data);
 }
@@ -119,9 +118,8 @@ void SGDDenseParamSparseGradKernel(
   const MPDType* master_in_data =
       multi_precision ? master_param->data<MPDType>() : nullptr;
   MPDType* master_out_data =
-      multi_precision
-          ? master_param_out->mutable_data<MPDType>(dev_ctx.GetPlace())
-          : nullptr;
+      multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_out)
+                      : nullptr;
 
   PADDLE_ENFORCE_EQ(
       &param,
@@ -158,7 +156,7 @@ void SGDDenseParamSparseGradKernel(
   int thread_x = kThreadsPerBlock;
   int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
   int max_blocks = std::max(max_threads / kThreadsPerBlock, 1);
-  paddle::framework::MixVector<int64_t> mixv_in_rows(&in_rows);
+  phi::MixVector<int64_t> mixv_in_rows(&in_rows);
   SparseSGDFunctorKernel<<<max_blocks, thread_x, 0, dev_ctx.stream()>>>(
       in_data,
       mixv_in_rows.CUDAData(dev_ctx.GetPlace()),

@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
+import os
 import unittest
+
+import numpy as np
+
 import paddle
 from paddle.fluid import core
-
-import os
 
 os.environ['FLAGS_new_einsum'] = "0"
 

@@ -51,6 +51,10 @@ class GeneralGrad {
       for (size_t i = 0; i < num_inputs; i++) {
         AutogradMeta* auto_grad_meta =
             EagerUtils::unsafe_autograd_meta(inputs[i]);
+        PADDLE_ENFORCE_NOT_NULL(
+            auto_grad_meta,
+            paddle::platform::errors::Fatal(
+                "We got %s:[%d] 's autograd meta is NULL.", msg, i));
         auto* target_node = auto_grad_meta->GetMutableGradNode().get();
 
         if (orig_to_copied_node_map_.count(target_node)) {
@@ -82,10 +86,13 @@ class GeneralGrad {
   // input_target_nodes
   void PurifyPotentialStartUpNodes() {
     VLOG(6) << "Running in PurifyPotentialStartUpNodes";
-    if (input_target_nodes_inputmeta_map_.empty()) return;
+    if (input_target_nodes_inputmeta_map_.empty()) {
+      VLOG(6) << "No input target nodes found, skip.";
+      return;
+    }
     std::unordered_set<GradNodeBase*> potential_startup_nodes_to_be_erased;
-    for (auto startup_op : potential_startup_nodes_) {
-      auto iter = input_target_nodes_inputmeta_map_.find(startup_op);
+    for (auto startup_node : potential_startup_nodes_) {
+      auto iter = input_target_nodes_inputmeta_map_.find(startup_node);
       if (iter != input_target_nodes_inputmeta_map_.end()) {
         potential_startup_nodes_to_be_erased.emplace(iter->first);
       }
@@ -157,11 +164,11 @@ class GeneralGrad {
           potential_startup_nodes_.erase(node);
         }
       }
-    }
+    }  // TODO(jiabin): May we need some check here.
   }
 
   // Get Graph Info Betweent input target GradNode and outputs，
-  // record depending_nodes_, potential_startup_nodes_
+  // record depending_nodes_
   void GetGraphInfoBetweenTargets(const std::deque<GradNodeBase*>& init_queue) {
     VLOG(6) << "Runing In GetGraphInfoBetweenTargets";
 
@@ -227,7 +234,7 @@ class GeneralGrad {
               std::make_shared<paddle::experimental::Tensor>(target_result);
         }
       }
-    }
+    }  // TODO(jiabin): Some check here.
   }
 
   void SetResultForEnddingNodes(
@@ -319,21 +326,22 @@ class GeneralGrad {
   void SetNodeToAccumulationNode(GradNodeBase* node) {
     if (dynamic_cast<egr::GradNodeAccumulation*>(node)) return;
     if (!(depending_nodes_)[node].empty()) {
+      // Find precedding_nodes of current node.
       auto precedding_nodes = (depending_nodes_)[node];
       for (auto pre_nodes : precedding_nodes) {
         paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
             pre_nodes_edges = pre_nodes->MutableOutputMeta();
         for (size_t i = 0; i < pre_nodes_edges.size(); i++) {
           for (size_t j = 0; j < pre_nodes_edges[i].size(); j++) {
-            auto edge_ = pre_nodes_edges[i][j].GetEdge();
+            const auto& edge_ = pre_nodes_edges[i][j].GetEdge();
             if (edge_.GetGradNode() == node) {
-              auto autograd_meta = egr::AutogradMeta(edge_);
               Edge& pre_node_edge = pre_nodes_edges[i][j].GetMutableEdge();
 
               if (copied_node_to_endding_node_map_.count(node)) {
                 pre_node_edge.SetGradNode(
                     copied_node_to_endding_node_map_[node]);
               } else {
+                auto autograd_meta = egr::AutogradMeta(edge_);
                 std::shared_ptr<GradNodeBase> shared_grad_node_accumulation =
                     std::make_shared<egr::GradNodeAccumulation>(&autograd_meta);
                 pre_node_edge.SetGradNode(shared_grad_node_accumulation);
@@ -361,7 +369,7 @@ class GeneralGrad {
                 grad_node->SetGradientHookFuntions(
                     node->GetGradientHookFuntions());
               }
-            }
+            }  // or this node has no need to change
           }
         }
       }
@@ -381,11 +389,9 @@ class GeneralGrad {
       }
       visited.insert(node);
 
-      if (IsInputTargetNodes(node)) {
-        if (IsEnddingNodes(node)) {
-          SetNodeToAccumulationNode(node);
-          continue;
-        }
+      if (IsInputTargetNodes(node) && IsEnddingNodes(node)) {
+        SetNodeToAccumulationNode(node);
+        continue;
       }
 
       paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
@@ -411,7 +417,17 @@ class GeneralGrad {
             continue;
           }
 
-          // TODO(weilong): support prune logic deeper
+          if (meta.size() != 1 && IsNeededNodes(node) &&
+              !IsNeededNodes(next_node.get()) && !IsEnddingNodes(node)) {
+            VLOG(3) << "Get stop edge from grad_node: " << node->name() << " : "
+                    << node << " to:" << next_node->name() << ", "
+                    << next_node.get() << " with output rank info: " << i
+                    << ", " << j;
+            // No need to compute grad from needed Nodes to no need Nodes
+            meta[i][j].SetStopGradient(true);
+            edge.Clear();
+            continue;
+          }
 
           // Update BFS queue
           queue_.push_back(next_node.get());
@@ -502,7 +518,8 @@ class GeneralGrad {
     // Save node and update mapping
     orig_to_copied_node_map_[orig_node.get()] = copied_node;
     copied_grad_nodes_.push_back(copied_node);
-
+    VLOG(3) << "Copied Node: " << orig_node->name() << " ptr: " << orig_node
+            << " to ptr: " << copied_node;
     return copied_node.get();
   }
 

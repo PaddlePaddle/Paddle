@@ -39,8 +39,6 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
 using phi::PADDLE_CUDA_NUM_THREADS;
 
 static inline int GET_BLOCKS(const int N) {
@@ -185,7 +183,7 @@ class DeformablePSROIPoolCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("Input");
-    const LoDTensor* rois = ctx.Input<LoDTensor>("ROIs");
+    const phi::DenseTensor* rois = ctx.Input<phi::DenseTensor>("ROIs");
     const phi::DenseTensor* trans = ctx.Input<phi::DenseTensor>("Trans");
     phi::DenseTensor* out = ctx.Output<phi::DenseTensor>("Output");
     out->mutable_data<T>(ctx.GetPlace());
@@ -486,7 +484,7 @@ class DeformablePSROIPoolGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("Input");
-    const LoDTensor* rois = ctx.Input<LoDTensor>("ROIs");
+    const phi::DenseTensor* rois = ctx.Input<phi::DenseTensor>("ROIs");
     const phi::DenseTensor* trans = ctx.Input<phi::DenseTensor>("Trans");
     const phi::DenseTensor* top_count = ctx.Input<phi::DenseTensor>("TopCount");
     const phi::DenseTensor* output_grad =

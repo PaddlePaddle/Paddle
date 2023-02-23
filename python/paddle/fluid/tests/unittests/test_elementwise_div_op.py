@@ -13,12 +13,20 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+
 import paddle
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.framework import _test_eager_guard
+
+
+def broadcast_wrapper(shape=[1, 10, 12, 1]):
+    def div_wrapper(x, y, axis=-1):
+        return paddle.divide(x, y.reshape(shape))
+
+    return div_wrapper
 
 
 class ElementwiseDivOp(OpTest):
@@ -192,6 +200,7 @@ class TestElementwiseDivOpBroadcast0(ElementwiseDivOp):
         self.x_shape = [100, 3, 4]
         self.y_shape = [100]
         self.attrs = {'axis': 0}
+        self.python_api = broadcast_wrapper(shape=[100, 1, 1])
 
     def compute_output(self, x, y):
         return x / y.reshape(100, 1, 1)
@@ -208,6 +217,7 @@ class TestElementwiseDivOpBroadcast1(ElementwiseDivOp):
         self.x_shape = [2, 100, 4]
         self.y_shape = [100]
         self.attrs = {'axis': 1}
+        self.python_api = broadcast_wrapper(shape=[1, 100, 1])
 
     def compute_output(self, x, y):
         return x / y.reshape(1, 100, 1)
@@ -223,6 +233,7 @@ class TestElementwiseDivOpBroadcast2(ElementwiseDivOp):
     def init_shape(self):
         self.x_shape = [2, 3, 100]
         self.y_shape = [100]
+        self.python_api = broadcast_wrapper(shape=[1, 1, 100])
 
     def compute_output(self, x, y):
         return x / y.reshape(1, 1, 100)
@@ -239,6 +250,7 @@ class TestElementwiseDivOpBroadcast3(ElementwiseDivOp):
         self.x_shape = [2, 10, 12, 5]
         self.y_shape = [10, 12]
         self.attrs = {'axis': 1}
+        self.python_api = broadcast_wrapper(shape=[1, 10, 12, 1])
 
     def compute_output(self, x, y):
         return x / y.reshape(1, 10, 12, 1)
@@ -392,7 +404,7 @@ class TestComplexElementwiseDivOp(OpTest):
         self.grad_y = -self.grad_out * np.conj(self.x / self.y / self.y)
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output()
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -438,7 +450,7 @@ class TestRealComplexElementwiseDivOp(TestComplexElementwiseDivOp):
 
 
 class TestElementwiseDivop(unittest.TestCase):
-    def func_dygraph_div(self):
+    def test_dygraph_div(self):
         paddle.disable_static()
 
         np_a = np.random.random((2, 3, 4)).astype(np.float32)
@@ -459,10 +471,6 @@ class TestElementwiseDivop(unittest.TestCase):
         np.testing.assert_allclose(actual_out, expect_out)
 
         paddle.enable_static()
-
-    def test_dygraph_div(self):
-        with _test_eager_guard():
-            self.func_dygraph_div()
 
 
 if __name__ == '__main__':

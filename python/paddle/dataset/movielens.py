@@ -22,12 +22,14 @@ set and test set into paddle reader creators.
 
 """
 
-import numpy as np
+import functools
+import re
 import zipfile
+
+import numpy as np
+
 import paddle.dataset.common
 import paddle.utils.deprecated as deprecated
-import re
-import functools
 
 __all__ = []
 

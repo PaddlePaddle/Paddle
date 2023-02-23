@@ -171,9 +171,9 @@ class InplaceABNGradKernel : public framework::OpKernel<T> {
           scale_grad,
           bias_grad);
     } else {
-      paddle::optional<Tensor> space_opt;
-      paddle::optional<Tensor> mean_opt;
-      paddle::optional<Tensor> variance_opt;
+      paddle::optional<phi::DenseTensor> space_opt;
+      paddle::optional<phi::DenseTensor> mean_opt;
+      paddle::optional<phi::DenseTensor> variance_opt;
 
       if (reserve_space != nullptr) {
         space_opt = *reserve_space;

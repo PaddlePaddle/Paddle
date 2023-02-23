@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import numpy as np
-from paddle import fluid, nn
+
+import paddle
 import paddle.fluid.dygraph as dg
 import paddle.nn.functional as F
-import paddle.fluid.initializer as I
-import paddle
-from paddle.fluid.framework import _test_eager_guard
-import unittest
+from paddle import fluid, nn
 
 
 class Conv3DTestCase(unittest.TestCase):
@@ -96,11 +96,11 @@ class Conv3DTestCase(unittest.TestCase):
                     else (-1, self.num_channels, -1, -1, -1)
                 )
                 x_var = fluid.data("input", input_shape, dtype=self.dtype)
-                weight_attr = I.NumpyArrayInitializer(self.weight)
+                weight_attr = paddle.nn.initializer.Assign(self.weight)
                 if self.bias is None:
                     bias_attr = False
                 else:
-                    bias_attr = I.NumpyArrayInitializer(self.bias)
+                    bias_attr = paddle.nn.initializer.Assign(self.bias)
                 y_var = paddle.static.nn.conv3d(
                     x_var,
                     self.num_filters,
@@ -182,12 +182,8 @@ class Conv3DTestCase(unittest.TestCase):
         result2 = self.functional(place)
         with dg.guard(place):
             result3, g1 = self.paddle_nn_layer()
-            with _test_eager_guard():
-                res_eager, g2 = self.paddle_nn_layer()
         np.testing.assert_array_almost_equal(result1, result2)
         np.testing.assert_array_almost_equal(result2, result3)
-        np.testing.assert_allclose(result3, res_eager, rtol=1e-05)
-        np.testing.assert_allclose(g1, g2, rtol=1e-05)
 
     def runTest(self):
         place = fluid.CPUPlace()

@@ -80,7 +80,6 @@ class TestProcessMesh(unittest.TestCase):
             [[0, 1, 2], [3, 4, 5]], dim_names=["x", "y"]
         )
         merged_process_mesh = merge_process_mesh([process_mesh1, None])
-        print(merged_process_mesh)
         self.assertEqual(merged_process_mesh, ProcessMesh([0, 1, 2, 3, 4, 5]))
         merged_process_mesh = merge_process_mesh([None, process_mesh1])
         self.assertEqual(merged_process_mesh, ProcessMesh([0, 1, 2, 3, 4, 5]))

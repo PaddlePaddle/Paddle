@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import os
-import unittest
-import numpy as np
-import paddle
-from test_nms_op import nms
 import tempfile
+import unittest
+
+import numpy as np
+from test_nms_op import nms
+
+import paddle
 
 
 def _find(condition):

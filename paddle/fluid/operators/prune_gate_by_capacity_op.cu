@@ -30,7 +30,6 @@ DECLARE_bool(avoid_op_randomness);
 
 namespace paddle {
 namespace operators {
-using LoDTensor = phi::DenseTensor;
 
 static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaxinumNumBlocks = 4096;
@@ -111,10 +110,11 @@ template <typename DeviceContext, typename T>
 class PruneGateByCapacityCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* gate_idx = context.Input<LoDTensor>("GateIdx");
-    auto* expert_count = context.Input<LoDTensor>("ExpertCount");
-    // auto* expert_count_out = context.Output<LoDTensor>("ExpertCountOut");
-    auto* new_gate_idx = context.Output<LoDTensor>("NewGateIdx");
+    auto* gate_idx = context.Input<phi::DenseTensor>("GateIdx");
+    auto* expert_count = context.Input<phi::DenseTensor>("ExpertCount");
+    // auto* expert_count_out =
+    // context.Output<phi::DenseTensor>("ExpertCountOut");
+    auto* new_gate_idx = context.Output<phi::DenseTensor>("NewGateIdx");
     auto* new_gate_idx_data = new_gate_idx->mutable_data<T>(context.GetPlace());
 
     phi::DenseTensor expert_count_out;

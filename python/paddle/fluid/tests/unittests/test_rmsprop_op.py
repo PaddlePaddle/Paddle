@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
+
+import paddle
+import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
-import paddle.fluid as fluid
-import paddle
 
 
 def create_selected_rows_and_tensor(
@@ -276,10 +277,12 @@ class TestRMSPropV2(unittest.TestCase):
         place = fluid.CPUPlace()
         main = fluid.Program()
         with fluid.program_guard(main):
-            x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-            y_predict = fluid.layers.fc(input=x, size=1, act=None)
-            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+            x = paddle.static.data(name='x', shape=[-1, 13], dtype='float32')
+            y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
+            y_predict = paddle.static.nn.fc(x, size=1)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
             rms_optimizer = paddle.optimizer.RMSProp(learning_rate=0.1)

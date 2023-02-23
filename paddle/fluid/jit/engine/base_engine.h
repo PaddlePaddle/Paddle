@@ -29,6 +29,8 @@ class BaseEngine {
 
   virtual std::vector<Tensor> operator()(const std::vector<Tensor> &inputs) = 0;
 
+  virtual std::unique_ptr<BaseEngine> Clone(void *stream = nullptr) = 0;
+
   virtual ~BaseEngine() {}
 };
 

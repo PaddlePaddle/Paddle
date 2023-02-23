@@ -35,7 +35,7 @@ class TestMul(IPUOpTest):
             return True
 
     def set_test_op(self):
-        self.op = paddle.fluid.layers.elementwise_mul
+        self.op = paddle.tensor.math._multiply_with_axis
 
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed_fp32.values()]
@@ -126,17 +126,17 @@ class TestMul(IPUOpTest):
 
 class TestAdd(TestMul):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.elementwise_add
+        self.op = paddle.add
 
 
 class TestSub(TestMul):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.elementwise_sub
+        self.op = paddle.subtract
 
 
 class TestDiv(TestMul):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.elementwise_div
+        self.op = paddle.divide
 
 
 class TestMin(TestMul):

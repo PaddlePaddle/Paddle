@@ -13,43 +13,35 @@
 # limitations under the License.
 
 import paddle
-from paddle.framework import core
-from paddle.fluid import unique_name
-from .pass_base import PassBase, register_pass
-from paddle.distributed.fleet.meta_optimizers.common import OpRole
-from paddle.fluid.data_feeder import check_variable_and_dtype, check_type
-from paddle.distributed.auto_parallel.utils import (
-    get_loss_op,
-    set_var_dist_attr,
-)
-from paddle.distributed.auto_parallel.utils import (
-    naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
-)
+from paddle.distributed.auto_parallel.dist_attribute import OperatorDistAttr
 from paddle.distributed.auto_parallel.process_group import (
     get_world_process_group,
 )
-from paddle.fluid.contrib.mixed_precision.fp16_utils import (
-    AutoMixedPrecisionLists,
+from paddle.distributed.auto_parallel.utils import (
+    get_loss_op,
+    naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
+    set_var_dist_attr,
 )
-from paddle.fluid.contrib.mixed_precision.fp16_utils import (
+from paddle.distributed.fleet.meta_optimizers.common import OpRole
+from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
+from paddle.framework import core
+from paddle.static.amp.fp16_utils import (
+    AutoMixedPrecisionLists,
+    _dtype_to_str,
+    _is_in_black_varnames,
     _keep_fp32_input,
     _keep_fp32_output,
-    find_op_index,
-)
-from paddle.fluid.contrib.mixed_precision.fp16_utils import (
+    _rename_arg,
     _valid_types,
+    find_op_index,
     find_true_post_op,
     find_true_prev_op,
 )
-from paddle.fluid.contrib.mixed_precision.fp16_utils import (
-    _is_in_black_varnames,
-    _dtype_to_str,
-    _rename_arg,
-)
-from paddle.distributed.auto_parallel.dist_attribute import (
-    OperatorDistributedAttribute,
-)
-from ..auto_parallel.utils import is_forward_op, is_backward_op, is_loss_op
+from paddle.utils import unique_name
+
+from ..auto_parallel.process_mesh import ProcessMesh
+from ..auto_parallel.utils import is_backward_op, is_forward_op, is_loss_op
+from .pass_base import PassBase, register_pass
 
 world_process_group = get_world_process_group()
 
@@ -91,7 +83,7 @@ class AMPState:
 
     def _mark_black_white_ops(self, amp_lists):
         """
-        this function is modified from paddle.fluid.contrib.mixed_precision
+        this function is modified from paddle.static.amp
         """
         self._block._sync_with_cpp()
         ops = self._block.ops
@@ -187,7 +179,7 @@ class AMPState:
     ):
         """
         only for forward cast
-        modified from paddle.fluid.contrib.mixed_precision
+        modified from paddle.static.amp
         """
         num_cast_ops = 0
         var_name_dict = {}
@@ -233,6 +225,9 @@ class AMPState:
                             dist_context, out_var, ref_mapping, ref_mesh
                         )
 
+                        op_namescope = "/"
+                        if op.has_attr('op_namescope'):
+                            op_namescope = op.attr('op_namescope')
                         cast_op = self._block._insert_op_without_sync(
                             idx,
                             type="cast",
@@ -243,6 +238,9 @@ class AMPState:
                                 "out_dtype": out_var.dtype,
                             },
                         )
+                        cast_op._set_attr(
+                            'op_namescope', op_namescope
+                        )  # for recompute
                         naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
                             cast_op, ref_mesh, ref_mapping, dist_context
                         )
@@ -525,7 +523,7 @@ def _update_backward_cast_ops(params_grads, dist_context):
             # add new op in the python and cpp at the same time
             new_op_desc = main_block.desc.append_op()
             new_op_desc.copy_from(op.desc)
-            new_op = paddle.fluid.framework.Operator(
+            new_op = paddle.static.Operator(
                 block=main_block,
                 desc=new_op_desc,
                 type=None,
@@ -597,8 +595,10 @@ def _check_and_update_gradient(params_grads, loss_scaling, dist_context):
         attrs=attrs,
     )
 
-    new_op_dist_attr = OperatorDistributedAttribute()
-    new_op_dist_attr.process_mesh = world_process_group.ranks
+    # Constructing dist attr from op_desc can
+    # give all inputs and outputs default dist attrs
+    new_op_dist_attr = OperatorDistAttr(new_op.desc)
+    new_op_dist_attr.process_mesh = ProcessMesh(world_process_group.ranks)
     new_op_dist_attr.impl_idx = 0
     if len(world_process_group.ranks) > 1:
         new_op_dist_attr.impl_type = "check_finite_and_unscale"
@@ -801,6 +801,9 @@ class AMPPass(PassBase):
 
             pre_grad_name = first_backward_op.output_arg_names[0]
             first_backward_op._rename_output(pre_grad_name, cast_loss_grad.name)
+            naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                first_backward_op, ref_mesh, [-1], self.dist_context
+            )
             cast_grad_op = main_block._insert_op(
                 loss_op_idx + 3,
                 type='cast',
@@ -872,6 +875,10 @@ class AMPPass(PassBase):
             first_backward_op._rename_output(
                 pre_grad_name, self._scaled_loss_grad.name
             )
+            naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                first_backward_op, ref_mesh, [-1], self.dist_context
+            )
+            self._scaled_loss_grad.op = first_backward_op
             # FIXME(JZ-LIANG) a trick to insert backward op
             main_block._sync_with_cpp()
             elementwise_mul_grad_op_desc = main_block.desc._insert_op(
@@ -891,7 +898,7 @@ class AMPPass(PassBase):
                 OP_ROLE_KEY, core.op_proto_and_checker_maker.OpRole.Backward
             )
             elementwise_mul_grad_op_desc._set_attr('axis', -1)
-            elementwise_mul_grad_op = paddle.fluid.framework.Operator(
+            elementwise_mul_grad_op = paddle.static.Operator(
                 main_block, elementwise_mul_grad_op_desc
             )
             main_block.ops.insert(loss_op_idx + 3, elementwise_mul_grad_op)
@@ -963,8 +970,10 @@ class AMPPass(PassBase):
             attrs=attrs,
         )
 
-        new_op_dist_attr = OperatorDistributedAttribute()
-        new_op_dist_attr.process_mesh = world_process_group.ranks
+        # Constructing dist attr from op_desc can
+        # give all inputs and outputs default dist attrs
+        new_op_dist_attr = OperatorDistAttr(new_op.desc)
+        new_op_dist_attr.process_mesh = ProcessMesh(world_process_group.ranks)
         new_op_dist_attr.impl_idx = 0
         if len(world_process_group.ranks) > 1:
             new_op_dist_attr.impl_type = "update_loss_scaling"

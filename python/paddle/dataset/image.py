@@ -30,17 +30,18 @@ the image layout as follows.
   be keep consistent between the training and inference period.
 """
 
-import numpy as np
+import os
 
 # FIXME(minqiyang): this is an ugly fix for the numpy bug reported here
 # https://github.com/numpy/numpy/issues/12497
 import subprocess
 import sys
-import os
+
+import numpy as np
 
 interpreter = sys.executable
 # Note(zhouwei): if use Python/C 'PyRun_SimpleString', 'sys.executable'
-# will be the C++ execubable on Windows
+# will be the C++ executable on Windows
 if sys.platform == 'win32' and 'python.exe' not in interpreter:
     interpreter = sys.exec_prefix + os.sep + 'python.exe'
 import_cv2_proc = subprocess.Popen(
@@ -59,8 +60,8 @@ else:
         cv2 = None
 
 import os
-import tarfile
 import pickle
+import tarfile
 
 __all__ = []
 
@@ -331,7 +332,7 @@ def simple_transform(
 ):
     """
     Simply data argumentation for training. These operations include
-    resizing, croping and flipping.
+    resizing, cropping and flipping.
 
     Example usage:
 

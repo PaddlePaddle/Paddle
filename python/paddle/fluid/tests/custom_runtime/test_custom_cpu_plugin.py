@@ -50,17 +50,13 @@ class TestCustomCPUPlugin(unittest.TestCase):
         del os.environ['CUSTOM_DEVICE_ROOT']
 
     def test_custom_device(self):
-        import paddle
-
-        with paddle.fluid.framework._test_eager_guard():
-            self._test_custom_device_dataloader()
-            self._test_custom_device_mnist()
-            self._test_eager_backward_api()
-            self._test_eager_copy_to()
-            self._test_fallback_kernel()
-            self._test_scalar()
         self._test_custom_device_dataloader()
         self._test_custom_device_mnist()
+        self._test_eager_backward_api()
+        self._test_eager_copy_to()
+        self._test_fallback_kernel()
+        self._test_scalar()
+        self._test_custom_device_py_api()
 
     def _test_custom_device_dataloader(self):
         import paddle
@@ -207,6 +203,123 @@ class TestCustomCPUPlugin(unittest.TestCase):
         )
         k_t = paddle.to_tensor([3], dtype="int32")
         value_1, indices_1 = paddle.topk(data_1, k=k_t)
+
+    def _test_custom_device_gradient_accumulation(self):
+        import paddle
+
+        class MNIST(paddle.nn.Layer):
+            def __init__(self):
+                super().__init__()
+                self.shape = 1 * 28 * 28
+                self.size = 10
+                self.output_weight = self.create_parameter(
+                    [self.shape, self.size]
+                )
+                self.accuracy = paddle.metric.Accuracy()
+
+            def forward(self, inputs, label=None):
+                x = paddle.reshape(inputs, shape=[-1, self.shape])
+                x = paddle.matmul(x, self.output_weight)
+                x = paddle.nn.functional.softmax(x)
+                if label is not None:
+                    self.accuracy.reset()
+                    correct = self.accuracy.compute(x, label)
+                    self.accuracy.update(correct)
+                    acc = self.accuracy.accumulate()
+                    return x, acc
+                else:
+                    return x
+
+        paddle.set_device('custom_cpu')
+        dataset = paddle.vision.datasets.MNIST(
+            mode='train',
+            transform=paddle.vision.transforms.Compose(
+                [paddle.vision.transforms.ToTensor()]
+            ),
+        )
+        loader = paddle.io.DataLoader(
+            dataset, batch_size=64, num_workers=1, shuffle=True
+        )
+
+        mnist = MNIST()
+        sgd = paddle.optimizer.SGD(
+            learning_rate=0.01, parameters=mnist.parameters()
+        )
+
+        data = next(loader())
+        img = data[0]
+        label = data[1]
+        label_int32 = paddle.cast(label, 'int32')
+
+        pred, acc = mnist(img, label_int32)
+        avg_loss = paddle.nn.functional.cross_entropy(pred, label_int32)
+        avg_loss.backward(retain_graph=True)
+        avg_loss = paddle.nn.functional.cross_entropy(pred, label_int32)
+        avg_loss.backward()
+        sgd.step()
+
+    def _test_custom_device_mix_precision(self):
+        import tempfile
+
+        import paddle
+        from paddle.inference import (
+            PlaceType,
+            PrecisionType,
+            convert_to_mixed_precision,
+        )
+        from paddle.jit import to_static
+        from paddle.static import InputSpec
+        from paddle.vision.models import resnet50
+
+        self.temp_dir = tempfile.TemporaryDirectory()
+        model = resnet50(True)
+        net = to_static(
+            model, input_spec=[InputSpec(shape=[None, 3, 224, 224], name='x')]
+        )
+        paddle.jit.save(
+            net, os.path.join(self.temp_dir.name, 'resnet50/inference')
+        )
+        convert_to_mixed_precision(
+            os.path.join(self.temp_dir.name, 'resnet50/inference.pdmodel'),
+            os.path.join(self.temp_dir.name, 'resnet50/inference.pdiparams'),
+            os.path.join(
+                self.temp_dir.name, 'mixed_precision/inference.pdmodel'
+            ),
+            os.path.join(
+                self.temp_dir.name, 'mixed_precision/inference.pdiparams'
+            ),
+            backend=PlaceType.CUSTOM,
+            mixed_precision=PrecisionType.Half,
+        )
+        self.temp_dir.cleanup()
+
+    def _test_custom_device_py_api(self):
+        import paddle
+
+        p = paddle.set_device('custom_cpu')
+        paddle.device.synchronize('custom_cpu')
+
+        s1 = paddle.device.Stream()
+        s2 = paddle.device.Stream(p)
+
+        s1 = paddle.device.current_stream()
+        s2 = paddle.device.current_stream(p)
+
+        e1 = paddle.device.Event()
+        e2 = paddle.device.Event(p)
+
+        s = paddle.device.Stream()
+        e = paddle.device.Event()
+        s.query()
+        s.synchronize()
+        s.wait_event(e)
+        s.record_event(e)
+        s.wait_stream(s)
+        paddle.device.set_stream(s)
+
+        e.query()
+        e.synchronize()
+        e.record(s)
 
 
 if __name__ == '__main__':

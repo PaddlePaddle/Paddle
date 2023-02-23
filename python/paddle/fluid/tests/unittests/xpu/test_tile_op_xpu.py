@@ -12,19 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
 
 sys.path.append("..")
 from op_test_xpu import XPUOpTest
-import paddle
-import paddle.fluid as fluid
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
+import paddle.fluid as fluid
 
 paddle.enable_static()
 np.random.seed(10)
@@ -56,6 +58,9 @@ class XPUTestTileOpRank1(XPUOpTestWrapper):
 
         def test_check_output(self):
             self.check_output_with_place(self.place)
+
+        def test_check_grad(self):
+            self.check_grad_with_place(self.place, ['X'], 'Out')
 
     # with dimension expanding
     class TestTileOpRank2Expanding(TestTileOpRank1):
@@ -124,6 +129,9 @@ class XPUTestTileOpRank1_tensor_attr(XPUOpTestWrapper):
         def test_check_output(self):
             self.check_output_with_place(self.place)
 
+        def test_check_grad(self):
+            self.check_grad_with_place(self.place, ['X'], 'Out')
+
     class TestTileOpRank2_Corner_tensor_attr(TestTileOpRank1_tensor_attr):
         def init_data(self):
             self.ori_shape = [12, 14]
@@ -165,6 +173,9 @@ class XPUTestTileOpRank1_tensor(XPUOpTestWrapper):
 
         def test_check_output(self):
             self.check_output_with_place(self.place)
+
+        def test_check_grad(self):
+            self.check_grad_with_place(self.place, ['X'], 'Out')
 
     class TestTileOpRank2_tensor(TestTileOpRank1_tensor):
         def init_data(self):

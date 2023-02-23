@@ -13,13 +13,13 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 
+import numpy as np
 import op_test
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-import paddle.fluid.layers as layers
 
 paddle.enable_static()
 
@@ -59,7 +59,7 @@ class TestAssignValueOp3(TestAssignValueOp):
 class TestAssignValueOp4(TestAssignValueOp):
     def init_data(self):
         self.value = np.random.choice(a=[False, True], size=(2, 5)).astype(
-            np.bool
+            np.bool_
         )
         self.attrs["bool_values"] = [int(v) for v in self.value.flat]
 
@@ -82,8 +82,8 @@ class TestAssignApi(unittest.TestCase):
     def test_assign(self):
         main_program = fluid.Program()
         with fluid.program_guard(main_program):
-            x = layers.create_tensor(dtype=self.dtype)
-            layers.assign(input=self.value, output=x)
+            x = paddle.tensor.create_tensor(dtype=self.dtype)
+            paddle.assign(self.value, output=x)
 
         exe = fluid.Executor(self.place)
         [fetched_x] = exe.run(main_program, feed={}, fetch_list=[x])
@@ -105,7 +105,7 @@ class TestAssignApi4(TestAssignApi):
     def setUp(self):
         self.init_dtype()
         self.value = np.random.choice(a=[False, True], size=(2, 5)).astype(
-            np.bool
+            np.bool_
         )
         self.place = (
             fluid.CUDAPlace(0)

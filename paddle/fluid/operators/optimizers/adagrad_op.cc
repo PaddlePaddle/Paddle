@@ -25,15 +25,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 class AdagradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Param"), ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Param"),
+                          ctx.GetPlace());
   }
 };
 

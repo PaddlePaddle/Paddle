@@ -29,16 +29,18 @@ BATCH_SIZE = 64
 
 
 def loss_net(hidden, label):
-    prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
-    loss = fluid.layers.cross_entropy(input=prediction, label=label)
+    prediction = paddle.static.nn.fc(x=hidden, size=10, activation='softmax')
+    loss = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
     avg_loss = paddle.mean(loss)
-    acc = fluid.layers.accuracy(input=prediction, label=label)
+    acc = paddle.static.accuracy(input=prediction, label=label)
     return prediction, avg_loss, acc
 
 
 def mlp(img, label):
-    hidden = fluid.layers.fc(input=img, size=200, act='tanh')
-    hidden = fluid.layers.fc(input=hidden, size=200, act='tanh')
+    hidden = paddle.static.nn.fc(x=img, size=200, activation='tanh')
+    hidden = paddle.static.nn.fc(x=hidden, size=200, activation='tanh')
     return loss_net(hidden, label)
 
 
@@ -51,7 +53,7 @@ def conv_net(img, label):
         pool_stride=2,
         act="relu",
     )
-    conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
+    conv_pool_1 = paddle.static.nn.batch_norm(conv_pool_1)
     conv_pool_2 = fluid.nets.simple_img_conv_pool(
         input=conv_pool_1,
         filter_size=5,
@@ -75,8 +77,8 @@ def train(
 ):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
-    img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    img = paddle.static.data(name='img', shape=[-1, 1, 28, 28], dtype='float32')
+    label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
 
     if nn_type == 'mlp':
         net_conf = mlp

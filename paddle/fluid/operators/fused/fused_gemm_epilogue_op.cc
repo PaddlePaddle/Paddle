@@ -20,7 +20,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = phi::DenseTensor;
 
 class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
  public:
@@ -139,19 +138,16 @@ class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
     }
 
     ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
-    // Note (Ming Huang): Reserve space of relu is a bit-mask,
-    // which cannot pass nan_and_inf checking if shape is set.
-    if (activation == "gelu" && ctx->HasOutput("ReserveSpace")) {
+
+    if (ctx->HasOutput("ReserveSpace")) {
       ctx->SetOutputDim("ReserveSpace", phi::make_ddim(out_dims));
     }
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const {
-    framework::LibraryType library = framework::LibraryType::kPlain;
-    phi::DataLayout layout = phi::DataLayout::kAnyLayout;
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -320,12 +316,10 @@ class FusedGemmEpilogueGradOp : public framework::OperatorWithKernel {
     }
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const {
-    framework::LibraryType library = framework::LibraryType::kPlain;
-    phi::DataLayout layout = phi::DataLayout::kAnyLayout;
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DOut");
-    return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 

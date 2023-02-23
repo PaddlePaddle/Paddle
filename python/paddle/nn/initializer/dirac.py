@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...fluid.initializer import Initializer
-from ...fluid.data_feeder import check_variable_and_dtype
-from ...fluid.core import VarDesc
-from ...fluid import framework
-from ...fluid.framework import _current_expected_place
-from paddle import in_dynamic_mode
+from paddle import _C_ops, in_dynamic_mode
 from paddle.utils import unique_name
-from paddle import _C_ops
+
 from ... import fluid
+from ...fluid import framework
+from ...fluid.core import VarDesc
+from ...fluid.data_feeder import check_variable_and_dtype
+from ...fluid.framework import _current_expected_place
+from .initializer import Initializer
 
 __all__ = []
 

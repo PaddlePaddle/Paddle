@@ -20,8 +20,6 @@ limitations under the Licnse. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 void training_or_inference(const framework::ExecutionContext &ctx,
                            const aclrtStream &stream,
@@ -34,18 +32,18 @@ void training_or_inference(const framework::ExecutionContext &ctx,
                            const int &W,
                            const float epsilon,
                            const float &momentum,
-                           const Tensor *common_mean,
-                           const Tensor *common_var,
-                           const Tensor *x,
-                           const Tensor *scale,
-                           const Tensor *bias,
-                           const Tensor *mean,
-                           const Tensor *variance,
-                           Tensor *mean_out,
-                           Tensor *variance_out,
-                           Tensor *saved_mean,
-                           Tensor *saved_variance,
-                           Tensor *y) {
+                           const phi::DenseTensor *common_mean,
+                           const phi::DenseTensor *common_var,
+                           const phi::DenseTensor *x,
+                           const phi::DenseTensor *scale,
+                           const phi::DenseTensor *bias,
+                           const phi::DenseTensor *mean,
+                           const phi::DenseTensor *variance,
+                           phi::DenseTensor *mean_out,
+                           phi::DenseTensor *variance_out,
+                           phi::DenseTensor *saved_mean,
+                           phi::DenseTensor *saved_variance,
+                           phi::DenseTensor *y) {
   std::vector<int> axes;
   if (layout == phi::DataLayout::kNCHW) {
     axes = {0, 2, 3};
@@ -59,7 +57,7 @@ void training_or_inference(const framework::ExecutionContext &ctx,
   else if (layout == phi::DataLayout::kNHWC)
     multiples = {N, H, W, 1};
 
-  Tensor common_mean_tile_1;
+  phi::DenseTensor common_mean_tile_1;
   {
     common_mean_tile_1.Resize({C});
     common_mean_tile_1.mutable_data<float>(place);
@@ -70,7 +68,7 @@ void training_or_inference(const framework::ExecutionContext &ctx,
       common_mean_tile_1.Resize({1, 1, 1, C});
   }
 
-  Tensor common_mean_tile;
+  phi::DenseTensor common_mean_tile;
   {
     framework::NPUAttributeMap attr_input = {{"multiples", multiples}};
     common_mean_tile.Resize(x->dims());
@@ -80,7 +78,7 @@ void training_or_inference(const framework::ExecutionContext &ctx,
     runner.Run(stream);
   }
 
-  Tensor common_var_tile_1;
+  phi::DenseTensor common_var_tile_1;
   {
     common_var_tile_1.Resize({C});
     common_var_tile_1.mutable_data<float>(place);
@@ -91,7 +89,7 @@ void training_or_inference(const framework::ExecutionContext &ctx,
       common_var_tile_1.Resize({1, 1, 1, C});
   }
 
-  Tensor common_var_tile;
+  phi::DenseTensor common_var_tile;
   {
     framework::NPUAttributeMap attr_input = {{"multiples", multiples}};
     common_var_tile.Resize(x->dims());
@@ -101,7 +99,7 @@ void training_or_inference(const framework::ExecutionContext &ctx,
     runner.Run(stream);
   }
 
-  Tensor common_var_tile_add_epsilon;
+  phi::DenseTensor common_var_tile_add_epsilon;
   {
     framework::NPUAttributeMap attr_input = {{"value", epsilon}};
     common_var_tile_add_epsilon.Resize(x->dims());
@@ -111,7 +109,7 @@ void training_or_inference(const framework::ExecutionContext &ctx,
     runner.Run(stream);
   }
 
-  Tensor common_var_tile_add_epsilon_sqrt;
+  phi::DenseTensor common_var_tile_add_epsilon_sqrt;
   {
     common_var_tile_add_epsilon_sqrt.Resize(x->dims());
     common_var_tile_add_epsilon_sqrt.mutable_data<float>(place);
@@ -122,7 +120,7 @@ void training_or_inference(const framework::ExecutionContext &ctx,
     runner.Run(stream);
   }
 
-  Tensor x_sub_common_mean;
+  phi::DenseTensor x_sub_common_mean;
   {
     x_sub_common_mean.Resize(x->dims());
     x_sub_common_mean.mutable_data<float>(place);
@@ -131,7 +129,7 @@ void training_or_inference(const framework::ExecutionContext &ctx,
     runner.Run(stream);
   }
 
-  Tensor normalized;
+  phi::DenseTensor normalized;
   {
     normalized.Resize(x->dims());
     normalized.mutable_data<float>(place);
@@ -143,7 +141,7 @@ void training_or_inference(const framework::ExecutionContext &ctx,
     runner.Run(stream);
   }
 
-  Tensor scale_tile_1;
+  phi::DenseTensor scale_tile_1;
   {
     scale_tile_1.Resize({C});
     scale_tile_1.mutable_data<float>(place);
@@ -154,7 +152,7 @@ void training_or_inference(const framework::ExecutionContext &ctx,
       scale_tile_1.Resize({1, 1, 1, C});
   }
 
-  Tensor scale_tile;
+  phi::DenseTensor scale_tile;
   {
     framework::NPUAttributeMap attr_input = {{"multiples", multiples}};
     scale_tile.Resize(x->dims());
@@ -164,7 +162,7 @@ void training_or_inference(const framework::ExecutionContext &ctx,
     runner.Run(stream);
   }
 
-  Tensor normalized_mul_scale;
+  phi::DenseTensor normalized_mul_scale;
   {
     normalized_mul_scale.Resize(x->dims());
     normalized_mul_scale.mutable_data<float>(place);
@@ -173,7 +171,7 @@ void training_or_inference(const framework::ExecutionContext &ctx,
     runner.Run(stream);
   }
 
-  Tensor bias_tile_1;
+  phi::DenseTensor bias_tile_1;
   {
     bias_tile_1.Resize({C});
     bias_tile_1.mutable_data<float>(place);
@@ -184,7 +182,7 @@ void training_or_inference(const framework::ExecutionContext &ctx,
       bias_tile_1.Resize({1, 1, 1, C});
   }
 
-  Tensor bias_tile;
+  phi::DenseTensor bias_tile;
   {
     framework::NPUAttributeMap attr_input = {{"multiples", multiples}};
     bias_tile.Resize(x->dims());
@@ -203,7 +201,7 @@ void training_or_inference(const framework::ExecutionContext &ctx,
   }
 
   if (!test_mode) {
-    Tensor ones;
+    phi::DenseTensor ones;
     {
       ones.Resize({C});
       ones.mutable_data<float>(place);
@@ -212,7 +210,7 @@ void training_or_inference(const framework::ExecutionContext &ctx,
 
     // cacl mean_out
     {
-      Tensor common_mean_mul_1_sub_momentum;
+      phi::DenseTensor common_mean_mul_1_sub_momentum;
       {
         framework::NPUAttributeMap attr_input = {{"value", 1 - momentum}};
         common_mean_mul_1_sub_momentum.Resize({C});
@@ -224,7 +222,7 @@ void training_or_inference(const framework::ExecutionContext &ctx,
         runner.Run(stream);
       }
 
-      Tensor mean_mul_momentum;
+      phi::DenseTensor mean_mul_momentum;
       {
         framework::NPUAttributeMap attr_input = {{"value", momentum}};
         mean_mul_momentum.Resize({C});
@@ -246,7 +244,7 @@ void training_or_inference(const framework::ExecutionContext &ctx,
 
     // cacl variance_out
     {
-      Tensor momentum_mul_var;
+      phi::DenseTensor momentum_mul_var;
       {
         framework::NPUAttributeMap attr_input = {{"value", momentum}};
         momentum_mul_var.Resize({C});
@@ -256,7 +254,7 @@ void training_or_inference(const framework::ExecutionContext &ctx,
         runner.Run(stream);
       }
 
-      Tensor var_ref_mul_1_sub_momentum;
+      phi::DenseTensor var_ref_mul_1_sub_momentum;
       {
         framework::NPUAttributeMap attr_input = {{"value", 1 - momentum}};
         var_ref_mul_1_sub_momentum.Resize({C});
@@ -278,7 +276,7 @@ void training_or_inference(const framework::ExecutionContext &ctx,
 
     // cacl saved_variance
     {
-      Tensor var_ref_add_epsilon;
+      phi::DenseTensor var_ref_add_epsilon;
       {
         framework::NPUAttributeMap attr_input = {{"value", epsilon}};
         var_ref_add_epsilon.Resize({C});
@@ -288,7 +286,7 @@ void training_or_inference(const framework::ExecutionContext &ctx,
         runner.Run(stream);
       }
 
-      Tensor var_ref_add_epsilon_sqrt;
+      phi::DenseTensor var_ref_add_epsilon_sqrt;
       {
         var_ref_add_epsilon_sqrt.Resize({C});
         var_ref_add_epsilon_sqrt.mutable_data<float>(place);
@@ -346,7 +344,7 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
                           x_dims.size()));
 
     int N, C, H, W, D;
-    ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
+    phi::funcs::ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
 
     int x_numel = x->numel();
     auto place = ctx.GetPlace();
@@ -399,18 +397,18 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
     } else {  // training
       if (ctx.HasInput("MomentumTensor")) {
         const auto *mom_tensor = ctx.Input<phi::DenseTensor>("MomentumTensor");
-        Tensor mom_cpu;
+        phi::DenseTensor mom_cpu;
         paddle::framework::TensorCopySync(
             *mom_tensor, platform::CPUPlace(), &mom_cpu);
         momentum = mom_cpu.data<float>()[0];
       }
 
       // cacl saved_mean and var_ref
-      Tensor var_ref;
+      phi::DenseTensor var_ref;
       var_ref.Resize({C});
       var_ref.mutable_data<float>(place);
       {
-        Tensor x_sum;
+        phi::DenseTensor x_sum;
         {
           framework::NPUAttributeMap attr_input = {{"keep_dims", false},
                                                    {"axes", axes}};
@@ -421,7 +419,7 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
           runner.Run(stream);
         }
 
-        Tensor x_square;
+        phi::DenseTensor x_square;
         {
           x_square.Resize(x->dims());
           x_square.mutable_data<float>(place);
@@ -429,7 +427,7 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
           runner.Run(stream);
         }
 
-        Tensor x_square_sum;
+        phi::DenseTensor x_square_sum;
         {
           framework::NPUAttributeMap attr_input = {{"keep_dims", false},
                                                    {"axes", axes}};
@@ -447,7 +445,7 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
           HcclDataType dtype = platform::ToHCCLDataType(
               framework::TransToProtoVarType(mean_out->dtype()));
 
-          Tensor device_count_tensor;
+          phi::DenseTensor device_count_tensor;
           {
             device_count_tensor.Resize({1});
             device_count_tensor.mutable_data<float>(place);
@@ -517,7 +515,7 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
 
         // cacl var_ref
         {
-          Tensor saved_mean_square;
+          phi::DenseTensor saved_mean_square;
           {
             saved_mean_square.Resize({C});
             saved_mean_square.mutable_data<float>(place);
@@ -526,7 +524,7 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
             runner.Run(stream);
           }
 
-          Tensor var_ref_tmp;
+          phi::DenseTensor var_ref_tmp;
           var_ref_tmp.Resize({C});
           var_ref_tmp.mutable_data<float>(place);
           {
@@ -589,7 +587,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
     auto *d_bias = ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
     const auto *saved_mean = ctx.Input<phi::DenseTensor>("SavedMean");
 
-    const Tensor *x;
+    const phi::DenseTensor *x;
     if (ctx.HasInput("Y")) {
       PADDLE_ENFORCE_EQ(true,
                         false,
@@ -600,7 +598,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
     }
 
     int N, C, H, W, D;
-    ExtractNCWHD(x->dims(), layout, &N, &C, &H, &W, &D);
+    phi::funcs::ExtractNCWHD(x->dims(), layout, &N, &C, &H, &W, &D);
 
     int x_numel = x->numel();
     auto place = ctx.GetPlace();
@@ -627,7 +625,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
 
     float device_counts = 0.0;
     if (comm) {
-      Tensor device_count_tensor;
+      phi::DenseTensor device_count_tensor;
       {
         device_count_tensor.Resize({1});
         device_count_tensor.mutable_data<float>(place);
@@ -660,13 +658,13 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
     }
 
     // cacl var_ref
-    Tensor var_ref;
+    phi::DenseTensor var_ref;
     var_ref.Resize({C});
     var_ref.mutable_data<float>(place);
     {
       // cacl var_ref
       {
-        Tensor x_square;
+        phi::DenseTensor x_square;
         {
           x_square.Resize(x->dims());
           x_square.mutable_data<float>(place);
@@ -674,7 +672,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
           runner.Run(stream);
         }
 
-        Tensor x_square_sum;
+        phi::DenseTensor x_square_sum;
         {
           framework::NPUAttributeMap attr_input = {{"keep_dims", false},
                                                    {"axes", axes}};
@@ -685,7 +683,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
           runner.Run(stream);
         }
 
-        Tensor x_square_sum_mean;
+        phi::DenseTensor x_square_sum_mean;
         {
           framework::NPUAttributeMap attr_input = {
               {"value", 1.0f * C / x_numel}};
@@ -696,7 +694,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
           runner.Run(stream);
         }
 
-        Tensor mean_square;
+        phi::DenseTensor mean_square;
         {
           mean_square.Resize({C});
           mean_square.mutable_data<float>(place);
@@ -714,7 +712,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       }
     }
 
-    Tensor saved_mean_tile_1;
+    phi::DenseTensor saved_mean_tile_1;
     {
       saved_mean_tile_1.Resize({C});
       saved_mean_tile_1.mutable_data<float>(place);
@@ -725,7 +723,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
         saved_mean_tile_1.Resize({1, 1, 1, C});
     }
 
-    Tensor saved_mean_tile;
+    phi::DenseTensor saved_mean_tile;
     {
       framework::NPUAttributeMap attr_input = {{"multiples", multiples}};
       saved_mean_tile.Resize(x->dims());
@@ -735,7 +733,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       runner.Run(stream);
     }
 
-    Tensor x_sub_saved_mean;
+    phi::DenseTensor x_sub_saved_mean;
     {
       x_sub_saved_mean.Resize(x->dims());
       x_sub_saved_mean.mutable_data<float>(place);
@@ -744,7 +742,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       runner.Run(stream);
     }
 
-    Tensor var_ref_tile_1;
+    phi::DenseTensor var_ref_tile_1;
     {
       var_ref_tile_1.Resize({C});
       var_ref_tile_1.mutable_data<float>(place);
@@ -755,7 +753,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
         var_ref_tile_1.Resize({1, 1, 1, C});
     }
 
-    Tensor var_ref_tile;
+    phi::DenseTensor var_ref_tile;
     {
       framework::NPUAttributeMap attr_input = {{"multiples", multiples}};
       var_ref_tile.Resize(x->dims());
@@ -765,7 +763,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       runner.Run(stream);
     }
 
-    Tensor var_ref_tile_add_epsilon;
+    phi::DenseTensor var_ref_tile_add_epsilon;
     {
       framework::NPUAttributeMap attr_input = {{"value", epsilon}};
       var_ref_tile_add_epsilon.Resize(x->dims());
@@ -775,7 +773,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       runner.Run(stream);
     }
 
-    Tensor var_ref_tile_add_epsilon_sqrt;
+    phi::DenseTensor var_ref_tile_add_epsilon_sqrt;
     {
       var_ref_tile_add_epsilon_sqrt.Resize(x->dims());
       var_ref_tile_add_epsilon_sqrt.mutable_data<float>(place);
@@ -786,7 +784,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       runner.Run(stream);
     }
 
-    Tensor dy_mul_x_sub_mean_for_scale;
+    phi::DenseTensor dy_mul_x_sub_mean_for_scale;
     {
       if (framework::TransToProtoVarType(d_y->dtype()) ==
           framework::proto::VarType::FP16) {
@@ -804,7 +802,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       }
     }
 
-    Tensor dy_mul_x_sub_mean;
+    phi::DenseTensor dy_mul_x_sub_mean;
     {
       if (framework::TransToProtoVarType(d_y->dtype()) ==
           framework::proto::VarType::FP16) {
@@ -849,7 +847,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
 
     // cacl d_x
     if (d_x) {
-      Tensor dy_mean;
+      phi::DenseTensor dy_mean;
       {
         if (framework::TransToProtoVarType(d_y->dtype()) ==
             framework::proto::VarType::FP16) {
@@ -896,7 +894,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
         }
       }
 
-      Tensor dy_mean_tile_1;
+      phi::DenseTensor dy_mean_tile_1;
       {
         dy_mean_tile_1.Resize({C});
         dy_mean_tile_1.mutable_data<float>(place);
@@ -907,7 +905,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
           dy_mean_tile_1.Resize({1, 1, 1, C});
       }
 
-      Tensor dy_mean_tile;
+      phi::DenseTensor dy_mean_tile;
       {
         framework::NPUAttributeMap attr_input = {{"multiples", multiples}};
         dy_mean_tile.Resize(x->dims());
@@ -917,7 +915,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
         runner.Run(stream);
       }
 
-      Tensor dy_sub_dy_mean;
+      phi::DenseTensor dy_sub_dy_mean;
       {
         if (framework::TransToProtoVarType(d_y->dtype()) ==
             framework::proto::VarType::FP16) {
@@ -935,7 +933,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
         }
       }
 
-      Tensor dy_mul_x_sub_mean_mean;
+      phi::DenseTensor dy_mul_x_sub_mean_mean;
       {
         framework::NPUAttributeMap attr_input = {{"keep_dims", false},
                                                  {"axes", axes}};
@@ -948,7 +946,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
         runner.Run(stream);
       }
 
-      Tensor dy_mul_x_sub_mean_mean_tile_1;
+      phi::DenseTensor dy_mul_x_sub_mean_mean_tile_1;
       {
         dy_mul_x_sub_mean_mean_tile_1.Resize({C});
         dy_mul_x_sub_mean_mean_tile_1.mutable_data<float>(place);
@@ -960,7 +958,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
           dy_mul_x_sub_mean_mean_tile_1.Resize({1, 1, 1, C});
       }
 
-      Tensor dy_mul_x_sub_mean_mean_tile;
+      phi::DenseTensor dy_mul_x_sub_mean_mean_tile;
       {
         framework::NPUAttributeMap attr_input = {{"multiples", multiples}};
         dy_mul_x_sub_mean_mean_tile.Resize(x->dims());
@@ -974,7 +972,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
 
       // (x - mean) * np.mean(dy * (x - mean), axis=axis)
       // x_sub_saved_mean * dy_mul_x_sub_mean_mean_tile
-      Tensor tmp1;
+      phi::DenseTensor tmp1;
       {
         tmp1.Resize(x->dims());
         tmp1.mutable_data<float>(place);
@@ -986,7 +984,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       // (x - mean) * np.mean(dy * (x - mean), axis=axis) / (var + epsilon)
       // tmp1 / (var + epsilon)
       // tmp1 / var_ref_tile_add_epsilon
-      Tensor tmp2;
+      phi::DenseTensor tmp2;
       {
         tmp2.Resize(x->dims());
         tmp2.mutable_data<float>(place);
@@ -998,7 +996,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       // dy - np.mean(dy, axis) - (x - mean) * np.mean(dy * (x - mean), axis) /
       // (var + epsilon)
       // dy_sub_dy_mean - tmp2
-      Tensor tmp3;
+      phi::DenseTensor tmp3;
       {
         tmp3.Resize(x->dims());
         tmp3.mutable_data<float>(place);
@@ -1007,7 +1005,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
         runner.Run(stream);
       }
 
-      Tensor scale_tile_1;
+      phi::DenseTensor scale_tile_1;
       {
         scale_tile_1.Resize({C});
         scale_tile_1.mutable_data<float>(place);
@@ -1018,7 +1016,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
           scale_tile_1.Resize({1, 1, 1, C});
       }
 
-      Tensor scale_tile;
+      phi::DenseTensor scale_tile;
       {
         framework::NPUAttributeMap attr_input = {{"multiples", multiples}};
         scale_tile.Resize(x->dims());
@@ -1031,7 +1029,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       // scale * (dy - np.mean(dy, axis) - (x - mean) * np.mean(dy * (x - mean),
       // axis) / (var + epsilon))
       // scale * tmp3
-      Tensor dx_1;
+      phi::DenseTensor dx_1;
       {
         dx_1.Resize(x->dims());
         dx_1.mutable_data<float>(place);
@@ -1052,7 +1050,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
 
     // cacl d_scale
     if (d_scale) {
-      Tensor d_scale_2;
+      phi::DenseTensor d_scale_2;
       {
         d_scale_2.Resize(x->dims());
         d_scale_2.mutable_data<float>(place);

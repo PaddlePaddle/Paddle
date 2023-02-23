@@ -416,6 +416,9 @@ download_result(${ERNIE_INSTALL_DIR} "Ernie_result.txt.tar.gz"
 if(WITH_GPU)
   inference_analysis_api_test(test_analyzer_ernie ${ERNIE_INSTALL_DIR}
                               analyzer_ernie_tester.cc)
+  inference_analysis_api_test(gpu_ernie_half_test ${ERNIE_INSTALL_DIR}
+                              gpu_ernie_half_test.cc)
+  set_tests_properties(gpu_ernie_half_test PROPERTIES TIMEOUT 60)
 endif()
 inference_analysis_api_int8_test(test_analyzer_ernie_int8 ${ERNIE_INSTALL_DIR}
                                  analyzer_ernie_int8_tester.cc)
@@ -1185,6 +1188,20 @@ if(WITH_DISTRIBUTE
     test_analyzer_dist_model
     SRCS
     analyzer_dist_model_tester.cc
+    EXTRA_DEPS
+    paddle_inference_shared
+    ARGS
+    --infer_model=${OCR_INSTALL_DIR}/model)
+endif()
+
+if(WITH_DISTRIBUTE
+   AND WITH_PSCORE
+   AND WITH_XPU
+   AND WITH_XPU_BKCL)
+  inference_analysis_test(
+    test_analyzer_dist_model_xpu
+    SRCS
+    analyzer_dist_model_xpu_tester.cc
     EXTRA_DEPS
     paddle_inference_shared
     ARGS
