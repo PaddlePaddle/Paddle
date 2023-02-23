@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/p_norm_grad_kernel.h"
-
+#include "paddle/phi/commom/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/reduce_grad_functions.h"
@@ -108,6 +108,7 @@ PD_REGISTER_KERNEL(p_norm_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::PNormGradKernel,
+                   phi::dtype::float16,
                    float,
                    double,
                    phi::dtype::float16,

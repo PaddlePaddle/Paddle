@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/p_norm_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/commom/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -95,4 +96,4 @@ void PNormKernel(const Context& dev_ctx,
   }
 }
 }  // namespace phi
-PD_REGISTER_KERNEL(p_norm, CPU, ALL_LAYOUT, phi::PNormKernel, float, double) {}
+PD_REGISTER_KERNEL(p_norm, CPU, ALL_LAYOUT, phi::PNormKernel, phi::dtype::float16, float, double) {}
