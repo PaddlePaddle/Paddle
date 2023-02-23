@@ -337,9 +337,7 @@ def get_value_for_bool_tensor(var, item):
         return gather_nd(var, bool_2_idx)
 
     def idx_empty(var):
-        var_shape = list(var.shape)
-        var_shape[0] = 0
-        return paddle.empty(var_shape, dtype=var.dtype)
+        return paddle.empty([0], dtype=var.dtype)
 
     from paddle.static.nn import cond
 
@@ -849,7 +847,7 @@ def set_value_for_bool_tensor(var, item, value):
             "than {}, but received {}.".format(len(var.shape), len(item.shape))
         )
     for i, dim_len in enumerate(item.shape):
-        if dim_len != var.shape[i]:
+        if dim_len != -1 and var.shape[i] != -1 and dim_len != var.shape[i]:
             raise IndexError(
                 "The dimension of bool index doesn't match indexed array along "
                 "dimension {}, the target dimension is {}, but received {}.".format(
