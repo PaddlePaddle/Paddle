@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
+
 # TODO: define loss functions of neural network
 import paddle
 import paddle.fluid as fluid
@@ -3884,3 +3886,136 @@ def soft_margin_loss(input, label, reduction='mean', name=None):
         return paddle.mean(out, name=name)
     else:
         return out
+
+
+def gaussian_nll_loss(
+    input, target, var, full=False, eps=1e-6, reduction='mean', name=None
+):
+    r"""Gaussian negative log likelihood loss.
+
+    The targets are treated as samples from Gaussian distributions with
+    expectations and variances predicted by the neural network. For a
+    ``target`` tensor modelled as having Gaussian distribution with a tensor
+    of expectations ``input`` and a tensor of positive variances ``var`` the loss is:
+
+    .. math::
+        \text{loss} = \frac{1}{2}\left(\log\left(\text{max}\left(\text{var},
+        \ \text{eps}\right)\right) + \frac{\left(\text{input} - \text{target}\right)^2}
+        {\text{max}\left(\text{var}, \ \text{eps}\right)}\right) + \text{const.}
+
+    where :attr:`eps` is used for stability. By default, the constant term of
+    the loss function is omitted unless :attr:`full` is ``True``. If ``var`` is not the same
+    size as ``input`` (due to a homoscedastic assumption), it must either have a final dimension
+    of 1 or have one fewer dimension (with all other sizes being the same) for correct broadcasting.
+
+    Args:
+        input(Tensor): input tensor, expectation of the Gaussian distribution, available dtype is float32, float64.
+        target(Tensor): target tensor, sample from the Gaussian distribution, available dtype is float32, float64.
+        var(Tensor): tensor of positive variance(s), one for each of the expectations
+            in the input (heteroscedastic), or a single one (homoscedastic), available dtype is float32, float64.
+        full (bool, optional): include the constant term in the loss
+            calculation. Default: ``False``.
+        eps (float, optional): value used to clamp ``var`` (see note below), for
+            stability. Default: 1e-6.
+        reduction (str, optional): specifies the reduction to apply to the
+            output:``'none'`` | ``'mean'`` | ``'sum'``. ``'none'``: no reduction
+            will be applied, ``'mean'``: the output is the average of all batch
+            member losses, ``'sum'``: the output is the sum of all batch member
+            losses. Default: ``'mean'``.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - Input: :math:`(N, *)` or :math:`(*)` where :math:`*` means any number of additional
+          dimensions
+        - Target: :math:`(N, *)` or :math:`(*)`, same shape as the input, or same shape as the input
+          but with one dimension equal to 1 (to allow for broadcasting)
+        - Var: :math:`(N, *)` or :math:`(*)`, same shape as the input, or same shape as the input but
+          with one dimension equal to 1, or same shape as the input but with one fewer
+          dimension (to allow for broadcasting)
+        - Output: scalar if :attr:`reduction` is ``'mean'`` (default) or
+          ``'sum'``. If :attr:`reduction` is ``'none'``, then :math:`(N, *)`, same
+          shape as the input
+
+    Examples::
+        .. code-block:: python
+            import paddle
+            import paddle.nn.functional as F
+
+            input = paddle.randn([5, 2], dtype=paddle.float32)
+            target = paddle.randn([5, 2], dtype=paddle.float32)
+            var = paddle.ones([5, 2], dtype=paddle.float32)
+
+            loss = F.multi_label_soft_margin_loss(input, target, var, reduction='none')
+            print(loss)
+
+            loss = F.multi_label_soft_margin_loss(input, target, var, reduction='mean')
+            print(loss)
+
+
+    Note:
+        The clamping of ``var`` is ignored with respect to autograd, and so the
+        gradients are unaffected by it.
+    """
+
+    # Check var shape
+    # If var.shape == input.shape, the case is heteroscedastic and no further checks are needed.
+    # Otherwise:
+    if var.shape != input.shape:
+        # If var is one dimension short of input, but the shape match otherwise, then this is a homoscedastic case.
+        # e.g. input.shape = (10, 2, 3), var.shape = (10, 2)
+        # -> unsqueeze var so that var.shape = (10, 2, 1)
+        # this is done so that broadcasting can happen in the loss calculation
+        if input.shape[:-1] == var.shape:
+            var = paddle.unsqueeze(var, -1)
+        # This checks if the shape match up to the final dimension, and the final dimension of var is of shape 1.
+        # This is also a homoscedastic case.
+        # e.g. input.shape = (10, 2, 3), var.shape = (10, 2, 1)
+        elif (
+            input.shape[:-1] == var.shape[:-1] and var.shape[-1] == 1
+        ):  # Heteroscedastic case
+            pass
+        # If none of the above pass, then the shape of var is incorrect.
+        else:
+            raise ValueError("var is of incorrect shape")
+
+    # Check validity of reduction mode
+    if reduction != 'none' and reduction != 'mean' and reduction != 'sum':
+        raise ValueError(reduction + " is not valid")
+
+    # Entries of var must be non-negative
+    # print(paddle.any(var < 0))
+    # if paddle.any(var < 0):
+    #     raise ValueError("var has negative entry/entries")
+
+    if not in_dygraph_mode():
+        check_variable_and_dtype(
+            input, 'Input', ['float32', 'float64'], 'gaussian_nll_loss'
+        )
+        check_variable_and_dtype(
+            target,
+            'Target',
+            ['float32', 'float64'],
+            'gaussian_nll_loss',
+        )
+        check_variable_and_dtype(
+            var,
+            'Var',
+            ['float32', 'float64'],
+            'gaussian_nll_loss',
+        )
+
+    # Clamp for stability
+    var = var.clone()
+    with paddle.no_grad():
+        var = paddle.clip(var, min=eps)
+    # Calculate the loss
+    loss = 0.5 * (paddle.log(var) + paddle.square(input - target) / var)
+    if full:
+        loss += 0.5 * math.log(2 * math.pi)
+
+    if reduction == 'mean':
+        return loss.mean()
+    elif reduction == 'sum':
+        return loss.sum()
+    else:
+        return loss
