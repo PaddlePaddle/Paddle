@@ -340,6 +340,7 @@ from .framework import CustomPlace  # noqa: F401
 
 from .autograd import grad  # noqa: F401
 from .autograd import no_grad  # noqa: F401
+from .autograd import enable_grad  # noqa:F401
 from .autograd import set_grad_enabled  # noqa: F401
 from .autograd import is_grad_enabled  # noqa: F401
 from .framework import save  # noqa: F401

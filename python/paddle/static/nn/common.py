@@ -1816,11 +1816,11 @@ def conv3d_transpose(
         W^\prime_{out} &= (W_{in} − 1) * strides[2] + dilations[2] * (W_f − 1) + 1
 
     If `output_size` is None, :math:`D_{out} = D^\prime_{out}, :math:`H_{out} = \
-    H^\prime_{out}, W_{out} = W^\prime_{out}`; else, the specified `output_size_depth` (the depth of the ouput feature layer) :math:`D_{out}`
+    H^\prime_{out}, W_{out} = W^\prime_{out}`; else, the specified `output_size_depth` (the depth of the output feature layer) :math:`D_{out}`
     must between :math:`D^\prime_{out}` and :math:`D^\prime_{out} + strides[0]`(not including :math:`D^\prime_{out} + strides[0]`),
-    the specified `output_size_height` (the height of the ouput feature layer) :math:`H_{out}` must between :math:`H^\prime_{out}`
+    the specified `output_size_height` (the height of the output feature layer) :math:`H_{out}` must between :math:`H^\prime_{out}`
     and :math:`H^\prime_{out} + strides[1]`(not including :math:`H^\prime_{out} + strides[1]`),
-    and the the specified `output_size_width` (the width of the ouput feature layer) :math:`W_{out}` must
+    and the specified `output_size_width` (the width of the output feature layer) :math:`W_{out}` must
     between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[2]`(not including :math:`W^\prime_{out} + strides[2]`).
 
     Since transposed convolution can be treated as the inverse of convolution,

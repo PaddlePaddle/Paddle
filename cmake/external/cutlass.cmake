@@ -34,7 +34,14 @@ ExternalProject_Add(
   PREFIX ${CUTLASS_PREFIX_DIR}
   UPDATE_COMMAND ""
   CONFIGURE_COMMAND ""
-  BUILD_COMMAND ""
+  BUILD_COMMAND
+    mkdir -p
+    ${CMAKE_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass/build/generated/gemm
+    && ${PYTHON_EXECUTABLE} -B
+    ${CMAKE_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass/gather_gemm_scatter_generator.py
+    "${THIRD_PARTY_PATH}/cutlass/src/extern_cutlass/tools/library/scripts/"
+    "${CMAKE_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass/build"
+    "${CMAKE_CUDA_COMPILER_VERSION}"
   INSTALL_COMMAND ""
   TEST_COMMAND "")
 
