@@ -197,7 +197,7 @@ class TestLoDTensorArrayStack(unittest.TestCase):
             self.array = array = paddle.tensor.create_array(dtype='float32')
             idx = fluid.layers.fill_constant(shape=[1], dtype="int64", value=0)
             for i, x in enumerate(self.inputs):
-                x = fluid.layers.assign(x)
+                x = paddle.assign(x)
                 paddle.tensor.array_write(x, idx + i, array)
             output, output_index = tensor_array_to_tensor(
                 input=array, **self.attrs
@@ -234,9 +234,9 @@ class TestLoDTensorArrayStack(unittest.TestCase):
 
 class TestTensorArrayToTensorAPI(unittest.TestCase):
     def _test_case(self, inp1, inp2):
-        x0 = fluid.layers.assign(inp1)
+        x0 = paddle.assign(inp1)
         x0.stop_gradient = False
-        x1 = fluid.layers.assign(inp2)
+        x1 = paddle.assign(inp2)
         x1.stop_gradient = False
         i = fluid.layers.fill_constant(shape=[1], dtype="int64", value=0)
         array = paddle.tensor.create_array(dtype='float32')
@@ -278,7 +278,7 @@ class TestTensorArrayToTensorAPI(unittest.TestCase):
             ten = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
             array = paddle.tensor.create_array(dtype='float32')
             inp0 = np.random.rand(2, 3, 4).astype("float32")
-            x0 = fluid.layers.assign(inp0)
+            x0 = paddle.assign(inp0)
             paddle.tensor.array_write(x0, zero, array)
 
             def cond(i, end, array):

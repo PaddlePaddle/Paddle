@@ -30,10 +30,10 @@ namespace cub = hipcub;
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #endif
-#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/common/layout.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/funcs/norm_utils.cu.h"
 #include "paddle/phi/kernels/funcs/norm_utils.h"
 
@@ -481,7 +481,7 @@ void SyncBatchNormGradFunctor(
   const auto *saved_inv_var =
       saved_variance.template data<BatchNormParamType<T>>();
   const int bytes = (C * 2 + 1) * sizeof(BatchNormParamType<T>);
-  auto alloc_ptr = paddle::memory::Alloc(
+  auto alloc_ptr = phi::memory_utils::Alloc(
       ctx.GetPlace(),
       bytes,
       phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));

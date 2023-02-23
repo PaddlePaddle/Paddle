@@ -16,19 +16,33 @@
 #include <vector>
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
 template <typename T>
-static void Transpose(const T* in, T* out, int h, int w) {
-  for (int h1 = 0; h1 < w; ++h1) {
-    for (int w1 = 0; w1 < h; ++w1) {
-      out[h1 * h + w1] = in[w1 * w + h1];
-    }
-  }
+void Transpose2D(const phi::DenseTensor& in, phi::DenseTensor* out) {
+  auto in_dims = in.dims();
+  PADDLE_ENFORCE_EQ(
+      in_dims.size(),
+      2,
+      platform::errors::InvalidArgument(
+          "In dims rank should be 2, but received in dims size is [%d].",
+          in_dims.size()));
+  out->Resize({in_dims[1], in_dims[0]});
+  out->set_type(in.type());
+  auto* dev_ctx = static_cast<phi::CPUContext*>(
+      platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+  dev_ctx->Alloc<T>(out);
+  std::vector<int> axis{1, 0};
+  phi::funcs::Transpose<phi::CPUContext, T, 2> trans2d;
+  trans2d(*dev_ctx, in, out, axis);
 }
+
+template void Transpose2D<float>(const phi::DenseTensor& in,
+                                 phi::DenseTensor* out);
 
 static float FindMaxAbs(const float* data, int len) {
   float max_f = 0.0f;
@@ -136,25 +150,28 @@ void QuantFP32ToIntX<int16_t>(const float* src_ptr,
 template <typename T>
 void QuantWeight(phi::DenseTensor* weight,
                  phi::DenseTensor* weight_max,
-                 bool transpose,
-                 int max_ptr_size) {
+                 bool transpose) {
   // Transpose
   auto* weight_data = weight->data<float>();
-  auto dims = weight->dims();
-  auto size = weight->numel();
-  std::vector<float> transpose_data(weight_data, weight_data + size);
+  phi::DenseTensor weight_trans;
   if (transpose) {
-    PADDLE_ENFORCE_EQ(
-        dims.size(),
-        2,
-        platform::errors::InvalidArgument(
-            "Only support 2D weight, but received weight rank is [%d].",
-            dims.size()));
-    Transpose(weight_data, transpose_data.data(), dims[0], dims[1]);
-    weight->Resize({dims[1], dims[0]});
+    Transpose2D<float>(*weight, &weight_trans);
+    weight_data = weight_trans.data<float>();
+    weight->Resize(weight_trans.dims());
   }
-  weight_data = transpose_data.data();
   // Find max
+  paddle::platform::DeviceContextPool& pool =
+      paddle::platform::DeviceContextPool::Instance();
+  const auto& dev_ctxs = pool.device_contexts();
+  auto place = phi::XPUPlace();  // xpu:0
+  for (auto it = dev_ctxs.begin(); it != dev_ctxs.end(); it++) {
+    if (it->first.GetType() == phi::AllocationType::XPU) {  // maybe xpu:1
+      place = it->first;
+    }
+  }
+  phi::XPUContext* xpu_ctx = static_cast<phi::XPUContext*>(pool.Get(place));
+  int max_ptr_size = xpu_ctx->x_context()->max_ptr_size();
+  int size = weight->numel();
   float max_val = FindMaxAbs(weight_data, size);
   std::vector<float> max_vec(max_ptr_size, max_val);
   weight_max->set_type(paddle::experimental::CppTypeToDataType<float>::Type());
@@ -173,8 +190,7 @@ void QuantWeight(phi::DenseTensor* weight,
 
 template void QuantWeight<int16_t>(phi::DenseTensor* weight,
                                    phi::DenseTensor* weight_max,
-                                   bool transpose,
-                                   int max_ptr_size);
+                                   bool transpose);
 
 }  // namespace ir
 }  // namespace framework

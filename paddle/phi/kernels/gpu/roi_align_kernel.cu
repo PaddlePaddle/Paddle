@@ -17,6 +17,7 @@
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -227,7 +228,7 @@ void RoiAlignKernel(const Context& dev_ctx,
     }
   }
   int bytes = roi_batch_id_list.numel() * sizeof(int);
-  auto roi_ptr = paddle::memory::Alloc(
+  auto roi_ptr = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       bytes,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));

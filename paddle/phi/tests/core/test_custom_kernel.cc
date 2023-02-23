@@ -20,7 +20,6 @@ limitations under the License. */
 #include <gtest/gtest.h>
 
 #ifdef _LINUX
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/common/int_array.h"

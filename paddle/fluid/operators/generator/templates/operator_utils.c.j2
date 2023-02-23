@@ -523,6 +523,31 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
   {% endfor %}
 
   {% for attr in invoke_op["attrs"] %}
+    {% set attr_name = attr["fluid_name"] %}
+    {% set fw_attrs = forward_op["attrs"] %}
+    {% if attr_name in forward_attr_names %}
+      {# invoke_op's attrs and fw_attr's attrs must be the same#}
+      {% set fw_attr = fw_attrs[loop.index0] %}
+      {% if fw_attr["typename"] == "IntArray" %}
+        {% if 'tensor_name' in attr or 'manual_flag' not in attr %}
+    if (this->HasInput("{{fw_attr | to_int_array_tensor_name}}")) {
+      grad_op->SetInput("{{fw_attr | to_int_array_tensor_name}}", this->Input("{{fw_attr | to_int_array_tensor_name}}"));
+    }
+        {% endif %}
+        {% if 'tensors_name' in fw_attr or 'manual_flag' not in fw_attr %}
+    if (this->HasInput("{{fw_attr | to_int_array_tensors_name}}")) {
+      grad_op->SetInput("{{fw_attr | to_int_array_tensors_name}}", this->Input("{{fw_attr | to_int_array_tensors_name}}"));
+    }
+        {% endif %}
+      {% elif fw_attr["typename"] == "Scalar" %}
+    if (this->HasInput("{{fw_attr | to_scalar_tensor_name}}")) {
+      grad_op->SetInput("{{fw_attr | to_scalar_tensor_name}}", this->Input("{{fw_attr | to_scalar_tensor_name}}"));
+    }
+      {% endif %}
+    {% endif %}
+  {% endfor %}
+
+  {% for attr in invoke_op["attrs"] %}
     grad_op->SetAttr("{{attr["fluid_name"]}}", {{attr["value"]}});
   {% endfor %}
   }
