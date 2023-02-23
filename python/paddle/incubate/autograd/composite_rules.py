@@ -204,7 +204,7 @@ def flatten_contiguous_range_composite(x, start_axis, stop_axis):
     out = reshape(x, shape=shape_out), xshape
     """
     shape_in = x.shape
-    shape_x_out: List[int] = [0]
+    shape_x_out = [0]
     shape_x_out.extend(shape_in)
     xshape = full(shape=shape_x_out, fill_value=0, dtype=x.dtype)
     start_dim = maybe_wrap_dim(start_axis, len(shape_in))
