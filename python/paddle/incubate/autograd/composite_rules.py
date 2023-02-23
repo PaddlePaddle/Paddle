@@ -228,5 +228,5 @@ def bernoulli(shape, dtype, p, seed=0):
 @REGISTER_COMPOSITE('relu')
 def relu_composite(x):
     """define composite rule of op relu"""
-    # /* relu(x) = max(x, 0) */ copy from relu-kernel.cc
+    # relu(x) = max(x, 0)
     return maximum(0, x)
