@@ -74,6 +74,7 @@ class TestCase1(TestSliceOp):
 
 class TestCase2(TestSliceOp):
     def config(self):
+        self.enable_cinn = False
         self.input = np.random.random([3, 4, 5, 6]).astype("float64")
         self.starts = [-3, 0, 2]
         self.ends = [3, 100, -1]
@@ -87,7 +88,6 @@ class TestSliceZerosShapeTensor(OpTest):
         self.op_type = "slice"
         self.prim_op_type = "prim"
         self.python_api = paddle.slice
-        self.enable_cinn = False
         self.config()
         self.inputs = {'Input': self.input}
         self.outputs = {'Out': self.out}
@@ -114,10 +114,10 @@ class TestSliceZerosShapeTensor(OpTest):
 # 1.2 with attr(decrease)
 class TestSliceOp_decs_dim(OpTest):
     def setUp(self):
+        self.enable_cinn = False
         self.op_type = "slice"
         self.prim_op_type = "prim"
         self.python_api = paddle.slice
-        self.enable_cinn = False
         self.config()
         self.inputs = {'Input': self.input}
         self.outputs = {'Out': self.out}
@@ -149,6 +149,7 @@ class TestSliceOp_decs_dim(OpTest):
 
 class TestSliceOp_decs_dim_2(TestSliceOp_decs_dim):
     def config(self):
+        self.enable_cinn = False
         self.input = np.random.random([3, 4, 5, 6]).astype("float64")
         self.starts = [1, 0, 2]
         self.ends = [2, 1, 4]
@@ -160,6 +161,7 @@ class TestSliceOp_decs_dim_2(TestSliceOp_decs_dim):
 
 class TestSliceOp_decs_dim_3(TestSliceOp_decs_dim):
     def config(self):
+        self.enable_cinn = False
         self.input = np.random.random([3, 4, 5, 6]).astype("float64")
         self.starts = [-1, 0, 2]
         self.ends = [1000000, 1, 4]
@@ -171,6 +173,7 @@ class TestSliceOp_decs_dim_3(TestSliceOp_decs_dim):
 
 class TestSliceOp_decs_dim_4(TestSliceOp_decs_dim):
     def config(self):
+        self.enable_cinn = True
         self.input = np.random.random([3, 4, 5, 7]).astype("float64")
         self.starts = [0, 1, 2, 3]
         self.ends = [1, 2, 3, 4]
@@ -182,6 +185,7 @@ class TestSliceOp_decs_dim_4(TestSliceOp_decs_dim):
 
 class TestSliceOp_decs_dim_5(TestSliceOp_decs_dim):
     def config(self):
+        self.enable_cinn = False
         self.input = np.random.random([3, 4, 5, 6]).astype("float64")
         self.starts = [-1]
         self.ends = [1000000]
@@ -191,8 +195,10 @@ class TestSliceOp_decs_dim_5(TestSliceOp_decs_dim):
         self.out = self.input[:, :, :, -1]
 
 
+# test_6 with test_2 with test_3
 class TestSliceOp_decs_dim_6(TestSliceOp_decs_dim):
     def config(self):
+        self.enable_cinn = False
         self.input = np.random.random([3, 4, 5, 6]).astype("float64")
         self.starts = [0, 1, 2, 3]
         self.ends = [1, 2, 3, 4]
@@ -209,7 +215,7 @@ class TestSliceOp_starts_ListTensor(OpTest):
         self.op_type = "slice"
         self.prim_op_type = "prim"
         self.python_api = paddle.slice
-        self.enable_cinn = False
+        # self.enable_cinn = False
         self.config()
 
         starts_tensor = []
@@ -253,7 +259,6 @@ class TestSliceOp_decs_dim_starts_ListTensor(OpTest):
         self.op_type = "slice"
         self.prim_op_type = "prim"
         self.python_api = paddle.slice
-        self.enable_cinn = False
         self.config()
 
         starts_tensor = []
@@ -315,7 +320,6 @@ class TestSliceOp_decs_dim_starts_OneTensor(OpTest):
         self.op_type = "slice"
         self.prim_op_type = "prim"
         self.python_api = paddle.slice
-        self.enable_cinn = False
         self.config()
         self.inputs = {
             'Input': self.input,
@@ -355,7 +359,6 @@ class TestSliceOp_starts_OneTensor_ends_OneTensor(OpTest):
         self.op_type = "slice"
         self.prim_op_type = "prim"
         self.python_api = paddle.slice
-        self.enable_cinn = False
         self.config()
 
         self.inputs = {
@@ -395,7 +398,6 @@ class TestSliceOp_decs_dim_starts_and_ends_OneTensor(OpTest):
         self.op_type = "slice"
         self.prim_op_type = "prim"
         self.python_api = paddle.slice
-        self.enable_cinn = False
         self.config()
         self.inputs = {
             'Input': self.input,
@@ -436,7 +438,6 @@ class TestSliceOp_starts_OneTensor_ends_ListTensor(OpTest):
         self.op_type = "slice"
         self.prim_op_type = "prim"
         self.python_api = paddle.slice
-        self.enable_cinn = False
         self.config()
 
         ends_tensor = []
@@ -483,10 +484,10 @@ class TestSliceOp_starts_OneTensor_ends_ListTensor(OpTest):
 )
 class TestFP16(OpTest):
     def setUp(self):
+        self.enable_cinn = False
         self.op_type = "slice"
         self.prim_op_type = "prim"
         self.python_api = paddle.slice
-        self.enable_cinn = False
         self.config()
         self.inputs = {'Input': self.input}
         self.outputs = {'Out': self.out}
@@ -532,7 +533,6 @@ class TestFP16_2(OpTest):
         self.op_type = "slice"
         self.prim_op_type = "prim"
         self.python_api = paddle.slice
-        self.enable_cinn = False
         self.config()
         self.inputs = {'Input': self.input}
         self.outputs = {'Out': self.out}
@@ -575,7 +575,6 @@ class TestBF16(OpTest):
         self.op_type = "slice"
         self.prim_op_type = "prim"
         self.python_api = paddle.slice
-        self.enable_cinn = False
         self.config()
         self.inputs = {'Input': convert_float_to_uint16(self.input)}
         self.outputs = {'Out': convert_float_to_uint16(self.out)}
