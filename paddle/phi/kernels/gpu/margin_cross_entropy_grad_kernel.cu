@@ -89,8 +89,7 @@ void GetClassInterval(const gpuStream_t& stream,
         paddle::platform::NCCLCommContext::Instance().Get(rid, place);
     // use global calculate stream
     const auto calcu_stream =
-        static_cast<GPUContext*>(
-            paddle::platform::DeviceContextPool::Instance().Get(place))
+        static_cast<GPUContext*>(phi::DeviceContextPool::Instance().Get(place))
             ->stream();
 
     PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::ncclAllReduce(

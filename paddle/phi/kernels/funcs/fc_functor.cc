@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/fc_functor.h"
 
 #include "paddle/fluid/operators/jit/kernels.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace phi {
@@ -83,11 +83,11 @@ void FCFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
   }
   auto compute = relu ? paddle::operators::jit::KernelFuncs<
                             paddle::operators::jit::VAddReluTuple<T>,
-                            paddle::platform::CPUPlace>::Cache()
+                            phi::CPUPlace>::Cache()
                             .At(N)
                       : paddle::operators::jit::KernelFuncs<
                             paddle::operators::jit::VAddTuple<T>,
-                            paddle::platform::CPUPlace>::Cache()
+                            phi::CPUPlace>::Cache()
                             .At(N);
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for

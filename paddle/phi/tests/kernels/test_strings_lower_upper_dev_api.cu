@@ -114,8 +114,7 @@ TEST(DEV_API, strings_cast_convert_utf8) {
   auto gpu0 = GPUPlace();
   auto cpu = CPUPlace();
 
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   GPUContext* dev_ctx = reinterpret_cast<GPUContext*>(pool.Get(gpu0));
   CPUContext* cpu_ctx = reinterpret_cast<CPUContext*>(pool.Get(cpu));
 

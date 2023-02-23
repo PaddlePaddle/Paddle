@@ -48,8 +48,7 @@ TEST(string_tensor, ctor) {
   };
   auto cpu = CPUPlace();
 
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   CPUContext* cpu_ctx = reinterpret_cast<CPUContext*>(pool.Get(cpu));
 
   StringTensor tensor_0(alloc, meta);

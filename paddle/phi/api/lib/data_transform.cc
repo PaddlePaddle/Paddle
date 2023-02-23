@@ -65,7 +65,7 @@ inline bool NeedTransformLayout(const DataLayout& input,
 
 inline phi::DenseTensor TransDataLayout(const phi::DenseTensor& tensor,
                                         DataLayout layout) {
-  auto& pool = paddle::platform::DeviceContextPool::Instance();
+  auto& pool = phi::DeviceContextPool::Instance();
   VLOG(3) << "DataLayoutTransform src_layout: " << tensor.layout()
           << " dst_layout: " << layout;
   if (platform::is_cpu_place(tensor.place())) {
@@ -139,7 +139,7 @@ phi::DenseTensor CastDataType(const phi::GPUContext& dev_ctx,
 
 inline phi::DenseTensor TransDataType(const phi::DenseTensor& tensor,
                                       DataType dtype) {
-  auto& pool = paddle::platform::DeviceContextPool::Instance();
+  auto& pool = phi::DeviceContextPool::Instance();
 
   VLOG(3) << "DataTypeTransform src_dtype: " << tensor.dtype()
           << " dst_dtype: " << dtype;

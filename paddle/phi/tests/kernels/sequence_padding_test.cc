@@ -35,7 +35,7 @@ void TestSequencePadding(const DeviceContext &context,
 
   cpu_seq.set_lod(lod);
   auto *dev_ctx = static_cast<phi::CPUContext *>(
-      paddle::platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+      phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
   cpu_seq.Resize(seq_dims);
   dev_ctx->template Alloc<T>(&cpu_seq);
 
@@ -103,7 +103,7 @@ void TestSequencePadding(const DeviceContext &context,
 TEST(Seq2BatchPadding, CPU) {
   auto place = phi::CPUPlace();
   auto *context = static_cast<phi::CPUContext *>(
-      paddle::platform::DeviceContextPool::Instance().Get(place));
+      phi::DeviceContextPool::Instance().Get(place));
 
   phi::LoD lod1;
   lod1.push_back(std::vector<size_t>{0, 10});
@@ -118,7 +118,7 @@ TEST(Seq2BatchPadding, CPU) {
 TEST(SequencePadding, CUDA) {
   auto place = paddle::platform::CUDAPlace(0);
   auto *context = static_cast<phi::GPUContext *>(
-      paddle::platform::DeviceContextPool::Instance().Get(place));
+      phi::DeviceContextPool::Instance().Get(place));
 
   phi::LoD lod1;
   lod1.push_back(std::vector<size_t>{0, 10});

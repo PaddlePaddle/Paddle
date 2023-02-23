@@ -17,6 +17,7 @@ limitations under the License. */
 #include <future>  // NOLINT
 #include <map>
 #include <memory>
+#include <mutex>  // NOLINT
 
 // Note: Some scenarios need to include all types of Context declarations.
 // In order to avoid including the header files of each backend in turn,
@@ -45,8 +46,27 @@ struct DefaultDeviceContextType<phi::CPUPlace> {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <>
-struct DefaultDeviceContextType<platform::CUDAPlace> {
+struct DefaultDeviceContextType<phi::GPUPlace> {
   using TYPE = phi::GPUContext;
+};
+#endif
+
+#ifdef PADDLE_WITH_XPU
+template <>
+struct phi::DefaultDeviceContextType<phi::XPUPlace> {
+  using TYPE = phi::XPUContext;
+};
+#endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+template <>
+struct DefaultDeviceContextType<phi::CustomPlace> {
+  using TYPE = phi::CustomContext;
+};
+#else
+template <>
+struct DefaultDeviceContextType<phi::CustomPlace> {
+  using TYPE = DeviceContext;
 };
 #endif
 
@@ -103,6 +123,8 @@ class DeviceContextPool {
   static thread_local const std::
       map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
           external_device_contexts_;  // not owned
+  static EmplaceExternalContextFunc emplace_external_context_func_;
+
   DISABLE_COPY_AND_ASSIGN(DeviceContextPool);
 };
 

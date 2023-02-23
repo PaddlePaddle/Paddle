@@ -92,8 +92,7 @@ TEST(DEV_API, strings_cast_convert_utf8) {
   // 1. create tensor
   const DDim dims({1, 1});
   StringTensorMeta meta(dims);
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
 
   const auto string_allocator =

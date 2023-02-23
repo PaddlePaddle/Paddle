@@ -19,8 +19,6 @@ limitations under the License. */
 #include <set>
 
 #include "glog/logging.h"
-#include "paddle/fluid/framework/generator.h"
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"

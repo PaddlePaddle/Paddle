@@ -18,7 +18,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/utils/data_type.h"
@@ -61,19 +61,19 @@ struct SetConstant<XPUContext, T> {
 };
 
 template <typename T>
-struct SetConstant<paddle::platform::XPUDeviceContext, T> {
-  void operator()(const paddle::platform::XPUDeviceContext& context,
+struct SetConstant<phi::XPUContext, T> {
+  void operator()(const phi::XPUContext& context,
                   phi::DenseTensor* tensor,
                   T num);
 };
 #endif
 
 template <typename Place>
-void set_constant_with_place(const paddle::platform::DeviceContext& context,
+void set_constant_with_place(const phi::DeviceContext& context,
                              phi::DenseTensor* tensor,
                              float value);
 
-void set_constant(const paddle::platform::DeviceContext& context,
+void set_constant(const phi::DeviceContext& context,
                   phi::DenseTensor* tensor,
                   float value);
 
@@ -109,9 +109,7 @@ struct RowwiseMean {
 #ifdef PADDLE_WITH_XPU
 template <typename U>
 struct TensorSetConstantXPU {
-  TensorSetConstantXPU(phi::DenseTensor* tensor,
-                       U value,
-                       paddle::platform::Place place)
+  TensorSetConstantXPU(phi::DenseTensor* tensor, U value, phi::Place place)
       : tensor_(tensor), value_(value), place_(place) {}
   template <typename T>
   void apply() const {
@@ -127,7 +125,7 @@ struct TensorSetConstantXPU {
   }
   phi::DenseTensor* tensor_;
   U value_;
-  paddle::platform::Place place_;
+  phi::Place place_;
 };
 #endif
 

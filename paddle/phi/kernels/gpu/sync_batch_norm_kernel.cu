@@ -83,7 +83,7 @@ void SyncBatchNormKernel(const Context &ctx,
     var_data = variance.template data<BatchNormParamType<T>>();
   } else {
     // x, x^2, 1, here 1 is used to calc device num
-    // device num also can be got from platform::DeviceContextPool
+    // device num also can be got from phi::DeviceContextPool
     const int bytes = (C * 2 + 1) * sizeof(BatchNormParamType<T>);
     alloc_ptr = phi::memory_utils::Alloc(
         ctx.GetPlace(),

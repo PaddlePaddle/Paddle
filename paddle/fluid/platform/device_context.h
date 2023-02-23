@@ -95,6 +95,8 @@ struct GpuDevice;
 #include "paddle/fluid/platform/device/npu/npu_info.h"
 #endif
 
+#include "paddle/phi/backends/all_context.h"
+
 namespace paddle {
 namespace platform {
 
@@ -134,9 +136,6 @@ constexpr DeviceType kCUSTOM_DEVICE = DeviceType::CUSTOM_DEVICE;
 
 using DeviceContext = phi::DeviceContext;
 
-template <typename Place>
-struct DefaultDeviceContextType;
-
 // Graphcore IPU
 #ifdef PADDLE_WITH_IPU
 class IPUDeviceContext
@@ -157,7 +156,7 @@ class IPUDeviceContext
   IPUPlace place_;
 };
 template <>
-struct DefaultDeviceContextType<platform::IPUPlace> {
+struct phi::DefaultDeviceContextType<platform::IPUPlace> {
   using TYPE = IPUDeviceContext;
 };
 #endif
@@ -166,7 +165,7 @@ struct DefaultDeviceContextType<platform::IPUPlace> {
 class MLUDeviceContext;
 
 template <>
-struct DefaultDeviceContextType<platform::MLUPlace>;
+struct phi::DefaultDeviceContextType<platform::MLUPlace>;
 #endif
 
 #ifdef PADDLE_WITH_XPU
@@ -179,11 +178,6 @@ class XPUDeviceContext : public phi::XPUContext {
   Eigen::DefaultDevice* eigen_device() const { return nullptr; }
   xpuStream stream() const { return XPUContext::x_context()->xpu_stream; }
   void CreateStream() { XPUContext::CreateStream(); }
-};
-
-template <>
-struct DefaultDeviceContextType<platform::XPUPlace> {
-  using TYPE = XPUDeviceContext;
 };
 #endif
 
@@ -247,7 +241,7 @@ class NPUDeviceContext
 };
 
 template <>
-struct DefaultDeviceContextType<platform::NPUPlace> {
+struct phi::DefaultDeviceContextType<platform::NPUPlace> {
   using TYPE = NPUDeviceContext;
 };
 
@@ -271,7 +265,7 @@ class NPUPinnedDeviceContext
 };
 
 template <>
-struct DefaultDeviceContextType<platform::NPUPinnedPlace> {
+struct phi::DefaultDeviceContextType<platform::NPUPinnedPlace> {
   using TYPE = NPUPinnedDeviceContext;
 };
 
@@ -297,7 +291,7 @@ class CUDAPinnedDeviceContext
 };
 
 template <>
-struct DefaultDeviceContextType<platform::CUDAPinnedPlace> {
+struct phi::DefaultDeviceContextType<platform::CUDAPinnedPlace> {
   using TYPE = CUDAPinnedDeviceContext;
 };
 #endif
@@ -320,23 +314,18 @@ class CustomDeviceContext : public phi::CustomContext {
  private:
   std::shared_ptr<phi::stream::Stream> stream_;
 };
-template <>
-struct DefaultDeviceContextType<platform::CustomPlace> {
-  using TYPE = CustomDeviceContext;
-};
-#else
-template <>
-struct DefaultDeviceContextType<platform::CustomPlace> {
-  using TYPE = DeviceContext;
-};
 #endif
 
-void EmplaceCustomContext(
+void EmplaceExternalContext(
     std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
         place_to_device_context,
     const platform::Place& place,
     bool disable_setting_default_stream_for_allocator,
     int stream_priority);
+
+using phi::EmplaceDeviceContexts;
+
+using DeviceContextPool = phi::DeviceContextPool;
 
 }  // namespace platform
 }  // namespace paddle

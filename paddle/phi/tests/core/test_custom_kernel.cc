@@ -20,8 +20,8 @@ limitations under the License. */
 #include <gtest/gtest.h>
 
 #ifdef _LINUX
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/kernel_context.h"
@@ -196,21 +196,19 @@ TEST(CustomKernel, custom_kernel_dot) {
   const auto& kernel = kernel_result.kernel;
 
   // 5.prepare parameters for kernel
-  const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
-      paddle::platform::CPUPlace());
+  const auto alloc =
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace());
   auto dense_x = std::make_shared<phi::DenseTensor>(
       alloc.get(),
       phi::DenseTensorMeta(
           phi::DataType::UINT8, phi::make_ddim({2, 3}), phi::DataLayout::NCHW));
-  auto* dense_x_data =
-      dense_x->mutable_data<uint8_t>(paddle::platform::CPUPlace());
+  auto* dense_x_data = dense_x->mutable_data<uint8_t>(phi::CPUPlace());
 
   auto dense_y = std::make_shared<phi::DenseTensor>(
       alloc.get(),
       phi::DenseTensorMeta(
           phi::DataType::UINT8, phi::make_ddim({2, 3}), phi::DataLayout::NCHW));
-  auto* dense_y_data =
-      dense_y->mutable_data<uint8_t>(paddle::platform::CPUPlace());
+  auto* dense_y_data = dense_y->mutable_data<uint8_t>(phi::CPUPlace());
 
   // dot x,y and result
   uint8_t sum[2] = {0, 0};
@@ -223,8 +221,8 @@ TEST(CustomKernel, custom_kernel_dot) {
   }
 
   // 6.prepare kernel_context
-  auto& pool = paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
+  auto& pool = phi::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.Get(phi::CPUPlace());
   auto kernel_context = phi::KernelContext(dev_ctx);
   kernel_context.EmplaceBackInput(dense_x.get());  // idx:0, index:[0,1)
   kernel_context.EmplaceBackInput(dense_y.get());  // idx:1, index:[1,2)
