@@ -24,26 +24,35 @@ from paddle.fluid.op import Operator
 paddle.enable_static()
 
 
-def lamb_wrapper(epsilon=1e-8, beta1=0.9, beta2=0.999, weight_decay=0.01):
-    def inner_func(param, grad, lr, moment1, moment2, beta1Pow, beta2Pow):
-        return paddle._C_ops.lamb_(
-            param,
-            grad,
-            lr,
-            moment1,
-            moment2,
-            beta1Pow,
-            beta2Pow,
-            None,
-            None,
-            weight_decay,
-            beta1,
-            beta2,
-            epsilon,
-            False,
-        )
-
-    return inner_func
+def lamb_wrapper(
+    param,
+    grad,
+    lr,
+    moment1,
+    moment2,
+    beta1Pow,
+    beta2Pow,
+    epsilon=1e-8,
+    beta1=0.9,
+    beta2=0.999,
+    weight_decay=0.01,
+):
+    return paddle._C_ops.lamb_(
+        param,
+        grad,
+        lr,
+        moment1,
+        moment2,
+        beta1Pow,
+        beta2Pow,
+        None,
+        None,
+        weight_decay,
+        beta1,
+        beta2,
+        epsilon,
+        False,
+    )
 
 
 class TestLambOp1(OpTest):
@@ -66,12 +75,7 @@ class TestLambOp1(OpTest):
         learning_rate = 0.001
         self.set_attrs()
 
-        self.python_api = lamb_wrapper(
-            epsilon=self.attrs['epsilon'],
-            beta1=self.attrs['beta1'],
-            beta2=self.attrs['beta2'],
-            weight_decay=self.attrs['weight_decay'],
-        )
+        self.python_api = lamb_wrapper
         self.python_out_sig = ['Out']
 
         beta1_pow = self.attrs['beta1']
