@@ -210,6 +210,8 @@ void ComputeGatingLinearForward(const framework::ExecutionContext &ctx,
                                 const phi::DenseTensor *query,
                                 const phi::DenseTensor *fmha_out,
                                 phi::DenseTensor *gate_bias_out) {
+  bool fused = false;
+
   auto *gate_weight = ctx.Input<phi::DenseTensor>("GateWeight");
   auto *gate_bias = ctx.Input<phi::DenseTensor>("GateBias");
 
@@ -223,7 +225,7 @@ void ComputeGatingLinearForward(const framework::ExecutionContext &ctx,
   auto gate_attn_compute =
       AttnMatMul<T>(ctx.cuda_device_context(), false, false, m, n, k, true);
   gate_attn_compute.ComputeForward(
-      gate_weight, query, gate_bias, gate_bias_out, gate_bias_out, true);
+      gate_weight, query, gate_bias, gate_bias_out, gate_bias_out, fused);
 
   // gate_out = sigmoid(gate_out) * fmha_out
   std::vector<const phi::DenseTensor *> ins = {gate_bias_out, fmha_out};
@@ -240,6 +242,8 @@ void ComputeGatingLinearBackward(const framework::ExecutionContext &ctx,
                                  const phi::DenseTensor *gate_out_grad,
                                  phi::DenseTensor *query_grad,
                                  phi::DenseTensor *fmha_out_grad) {
+  bool fused = false;
+
   const auto *gate_weight = ctx.Input<phi::DenseTensor>("GateWeight");
   const auto *gate_bias = ctx.Input<phi::DenseTensor>("GateBias");
   auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
@@ -254,7 +258,7 @@ void ComputeGatingLinearBackward(const framework::ExecutionContext &ctx,
   auto gate_attn_compute =
       AttnMatMul<T>(ctx.cuda_device_context(), false, false, m, n, k, true);
   gate_attn_compute.ComputeForward(
-      gate_weight, query, gate_bias, &gate_bias_out, &gate_bias_out, true);
+      gate_weight, query, gate_bias, &gate_bias_out, &gate_bias_out, fused);
 
   // Gradient of sigmoid(gate_bias_out) * fmha_out
   // Compute inplace and save gate_bias_out_grad to gate_bias_out.
@@ -279,7 +283,7 @@ void ComputeGatingLinearBackward(const framework::ExecutionContext &ctx,
                                     gate_weight_grad,
                                     gate_bias_grad,
                                     false,
-                                    true);
+                                    fused);
 }
 
 template <typename T>
@@ -287,6 +291,8 @@ void ComputeOutputLinearForward(const framework::ExecutionContext &ctx,
                                 const GateAttentionConfig<T> &config,
                                 const phi::DenseTensor *fmha_or_gate_out,
                                 phi::DenseTensor *out) {
+  bool fused = false;
+
   const auto *out_linear_weight =
       ctx.Input<phi::DenseTensor>("OutLinearWeight");
   const auto *out_linear_bias = ctx.Input<phi::DenseTensor>("OutLinearBias");
@@ -298,7 +304,7 @@ void ComputeOutputLinearForward(const framework::ExecutionContext &ctx,
   auto out_linear_compute =
       AttnMatMul<T>(ctx.cuda_device_context(), false, false, m, n, k, true);
   out_linear_compute.ComputeForward(
-      out_linear_weight, fmha_or_gate_out, out_linear_bias, out, out, true);
+      out_linear_weight, fmha_or_gate_out, out_linear_bias, out, out, false);
 }
 
 template <typename T>
@@ -306,6 +312,8 @@ void ComputeOutputLinearBackward(const framework::ExecutionContext &ctx,
                                  const GateAttentionGradConfig<T> &config,
                                  const phi::DenseTensor *input,
                                  phi::DenseTensor *input_grad) {
+  bool fused = false;
+
   auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
   const auto *out_grad =
       ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
@@ -334,7 +342,7 @@ void ComputeOutputLinearBackward(const framework::ExecutionContext &ctx,
                                      out_linear_weight_grad,
                                      out_linear_bias_grad,
                                      false,
-                                     true);
+                                     fused);
 }
 
 template <typename T>
