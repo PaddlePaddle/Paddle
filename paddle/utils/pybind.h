@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/utils/optional.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 
@@ -73,5 +74,12 @@ struct type_caster<paddle::experimental::Tensor> {
         src, true /* return_py_none_if_not_initialize */));
   }
 };
+
+// Pybind11 bindings for optional types.
+// http://pybind11.readthedocs.io/en/stable/advanced/cast/stl.html#c-17-library-containers
+template <typename T>
+struct type_caster<paddle::optional<T>> : optional_caster<paddle::optional<T>> {
+};
+
 }  // namespace detail
 }  // namespace pybind11

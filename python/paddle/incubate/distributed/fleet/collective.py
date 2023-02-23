@@ -12,42 +12,24 @@
 # See the License for the specific language governing permissions and
 
 import logging
+import os
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.io as io
 import paddle.fluid.transpiler.distribute_transpiler as dist_transpiler
-from paddle.fluid.executor import Executor
-from paddle.fluid.parallel_executor import ParallelExecutor
 from paddle.fluid.compiler import CompiledProgram
+from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program
-
-from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
-from paddle.fluid.incubate.fleet.base.fleet_base import Mode
-from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
-
-from paddle.fluid import compiler
 from paddle.fluid.incubate.checkpoint.checkpoint_saver import (
-    PaddleModel,
     CheckpointSaver,
+    PaddleModel,
 )
-
-import paddle
-
-import os
-import sys
-import json
-import re
-import shutil
-
-
-class LambConfig:
-    def __init__(self):
-        pass
-
-
-class DistFCConfig:
-    def __init__(self):
-        pass
+from paddle.incubate.distributed.fleet.base import (
+    DistributedOptimizer,
+    Fleet,
+    Mode,
+)
 
 
 class Collective(Fleet):
@@ -490,7 +472,7 @@ class CollectiveOptimizer(DistributedOptimizer):
         self._strategy.trainers_endpoints = fleet.worker_endpoints()
         self._strategy.enable_backward_optimizer_op_deps = True
 
-        self._compiled_program = compiler.CompiledProgram(main_program)
+        self._compiled_program = CompiledProgram(main_program)
 
         self._compiled_program.with_data_parallel(
             loss_name=self._loss.name,
