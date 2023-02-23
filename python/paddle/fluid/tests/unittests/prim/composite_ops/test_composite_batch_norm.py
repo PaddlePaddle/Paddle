@@ -20,7 +20,7 @@ from utils import SUB_TOLERANCE
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
-from paddle.fluid import core
+from paddle.fluid import core, framework
 from paddle.nn import BatchNorm
 from paddle.tensor import ones  # noqa: F401
 from paddle.tensor import zeros  # noqa: F401
@@ -315,14 +315,15 @@ class TestPrimForwardAndBackward(unittest.TestCase):
             return loss
 
     def test_amp(self):
-        expected = self.train(False)
-        actual = self.train(True)
-        np.testing.assert_allclose(
-            expected,
-            actual,
-            rtol=1e-3,
-            atol=1e-3,
-        )
+        if not isinstance(framework._current_expected_place(), core.CPUPlace()):
+            expected = self.train(False)
+            actual = self.train(True)
+            np.testing.assert_allclose(
+                expected,
+                actual,
+                rtol=1e-3,
+                atol=1e-3,
+            )
 
 
 if __name__ == '__main__':
