@@ -36,19 +36,8 @@ void SliceCompute(const Context& ctx,
   // Step 1: Get the accurate attribute value of starts and ends
   std::vector<int64_t> starts = starts_t;
   std::vector<int64_t> ends = ends_t;
-  PADDLE_ENFORCE_EQ(
-      starts.size(),
-      axes.size(),
-      phi::errors::InvalidArgument(
-          "The size of starts must be equal to the size of axes."));
-  PADDLE_ENFORCE_EQ(ends.size(),
-                    axes.size(),
-                    phi::errors::InvalidArgument(
-                        "The size of ends must be equal to the size of axes."));
-
   // Step 2: Compute output
   auto in = &input;
-
   auto in_dims = in->dims();
   auto out_dims = out->dims();
   auto slice_dims = out_dims;
