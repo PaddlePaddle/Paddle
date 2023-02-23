@@ -14,6 +14,12 @@
 
 #pragma once
 
+#ifdef PADDLE_WITH_CUDA
+#include <cuda_runtime.h>  // NOLINT
+
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
+
 namespace phi {
 namespace backends {
 namespace gpu {
@@ -69,6 +75,20 @@ namespace gpu {
   for (index_type i = __index__; __index__ < (num);                  \
        __index__ += __stride__, i = __index__)
 
+template <typename T>
+cudaDataType_t ToCudaDataType() {
+  if (std::is_same<T, float>::value) {
+    return CUDA_R_32F;
+  } else if (std::is_same<T, double>::value) {
+    return CUDA_R_64F;
+  } else if (std::is_same<T, phi::dtype::float16>::value) {
+    return CUDA_R_16F;
+  } else if (std::is_same<T, phi::dtype::bfloat16>::value) {
+    return CUDA_R_16BF;
+  }
+}
+
 }  // namespace gpu
 }  // namespace backends
 }  // namespace phi
+#endif

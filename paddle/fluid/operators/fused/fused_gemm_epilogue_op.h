@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/gpu/cuda/cuda_helper.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/utils/optional.h"
@@ -350,6 +351,9 @@ void ComputeFusedGemmEpilogueForward(const phi::GPUContext& dev_ctx,
                                      const phi::DenseTensor* x,
                                      const phi::DenseTensor* y,
                                      const phi::DenseTensor* bias,
+                                     int64_t M,
+                                     int64_t N,
+                                     int64_t K,
                                      bool trans_x,
                                      bool trans_y,
                                      const std::string& activation,
@@ -357,29 +361,19 @@ void ComputeFusedGemmEpilogueForward(const phi::GPUContext& dev_ctx,
                                      phi::DenseTensor* reserve_space) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
-  bool enable_auxiliary = reserve_space == nullptr ? false : true;
+  VLOG(6) << "x.shape={" << x->dims() << "}, y.shape={" << y->dims()
+          << "}, out.shape={" << out->dims() << "}, M=" << M << ", N=" << N
+          << ", K=" << K << ", trans_x=" << trans_x << ", trans_y=" << trans_y
+          << ", activation=" << activation
+          << ", reserve_space=" << reserve_space;
 
+  bool enable_auxiliary = reserve_space == nullptr ? false : true;
   auto* out_data = out->data<T>();
 
-  auto x_mat_dims =
-      phi::flatten_to_2d(x->dims(), trans_x ? 1 : x->dims().size() - 1);
-  // (M * K) * (K * N)
-  int64_t M = trans_x ? x_mat_dims[1] : x_mat_dims[0];
-  int64_t K = trans_y ? y->dims()[1] : y->dims()[0];
-  int64_t N = trans_y ? y->dims()[0] : y->dims()[1];
-
-  cudaDataType_t mat_type = CUDA_R_32F;
-  cudaDataType_t scale_type = CUDA_R_32F;
+  cudaDataType_t mat_type = phi::backends::gpu::ToCudaDataType<T>();
+  cudaDataType_t scale_type = phi::backends::gpu::ToCudaDataType<MT>();
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
-  if (std::is_same<T, paddle::platform::float16>::value) {
-    mat_type = CUDA_R_16F;
-  }
-  if (std::is_same<T, platform::bfloat16>::value) {
-    mat_type = CUDA_R_16BF;
-  }
   if (std::is_same<T, double>::value) {
-    mat_type = CUDA_R_64F;
-    scale_type = CUDA_R_64F;
     compute_type = CUBLAS_COMPUTE_64F;
   }
 
@@ -597,6 +591,9 @@ void ComputeFusedGemmEpilogueBackwardImpl(const phi::GPUContext& dev_ctx,
                                           const phi::DenseTensor* x,
                                           const phi::DenseTensor* y,
                                           const phi::DenseTensor* reserve_space,
+                                          int64_t M,
+                                          int64_t N,
+                                          int64_t K,
                                           const std::string activation_grad,
                                           phi::DenseTensor* dx,
                                           phi::DenseTensor* dy,
@@ -605,28 +602,10 @@ void ComputeFusedGemmEpilogueBackwardImpl(const phi::GPUContext& dev_ctx,
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   using Trait = FusedGEMMGradTrait<TransX, TransY>;
 
-  auto x_mat_dims =
-      phi::flatten_to_2d(x->dims(), TransX ? 1 : x->dims().size() - 1);
-
-  // (M * K) * (K * N)
-  int64_t M = TransX ? x_mat_dims[1] : x_mat_dims[0];
-  int64_t K = TransY ? y->dims()[1] : y->dims()[0];
-  int64_t N = TransY ? y->dims()[0] : y->dims()[1];
-
-  VLOG(10) << "M = " << M << " , K = " << K << " , N = " << N;
-
-  cudaDataType_t mat_type = CUDA_R_32F;
-  cudaDataType_t scale_type = CUDA_R_32F;
+  cudaDataType_t mat_type = phi::backends::gpu::ToCudaDataType<T>();
+  cudaDataType_t scale_type = phi::backends::gpu::ToCudaDataType<MT>();
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
-  if (std::is_same<T, paddle::platform::float16>::value) {
-    mat_type = CUDA_R_16F;
-  }
-  if (std::is_same<T, platform::bfloat16>::value) {
-    mat_type = CUDA_R_16BF;
-  }
   if (std::is_same<T, double>::value) {
-    mat_type = CUDA_R_64F;
-    scale_type = CUDA_R_64F;
     compute_type = CUBLAS_COMPUTE_64F;
   }
 
@@ -922,6 +901,9 @@ void ComputeFusedGemmEpilogueBackward(const phi::GPUContext& dev_ctx,
                                       const phi::DenseTensor* x,
                                       const phi::DenseTensor* y,
                                       const phi::DenseTensor* reserve_space,
+                                      int64_t M,
+                                      int64_t N,
+                                      int64_t K,
                                       bool trans_x,
                                       bool trans_y,
                                       const std::string& activation_grad,
@@ -929,6 +911,10 @@ void ComputeFusedGemmEpilogueBackward(const phi::GPUContext& dev_ctx,
                                       phi::DenseTensor* dy,
                                       phi::DenseTensor* dbias,
                                       bool use_addto = false) {
+  VLOG(10) << "M=" << M << ", K=" << K << ", N=" << N << ", trans_x=" << trans_x
+           << ", trans_y=" << trans_y
+           << ", activation_grad=" << activation_grad;
+
   if (trans_x) {
     if (trans_y) {
       ComputeFusedGemmEpilogueBackwardImpl<T, true, true>(dev_ctx,
@@ -936,6 +922,9 @@ void ComputeFusedGemmEpilogueBackward(const phi::GPUContext& dev_ctx,
                                                           x,
                                                           y,
                                                           reserve_space,
+                                                          M,
+                                                          N,
+                                                          K,
                                                           activation_grad,
                                                           dx,
                                                           dy,
@@ -947,6 +936,9 @@ void ComputeFusedGemmEpilogueBackward(const phi::GPUContext& dev_ctx,
                                                            x,
                                                            y,
                                                            reserve_space,
+                                                           M,
+                                                           N,
+                                                           K,
                                                            activation_grad,
                                                            dx,
                                                            dy,
@@ -960,6 +952,9 @@ void ComputeFusedGemmEpilogueBackward(const phi::GPUContext& dev_ctx,
                                                            x,
                                                            y,
                                                            reserve_space,
+                                                           M,
+                                                           N,
+                                                           K,
                                                            activation_grad,
                                                            dx,
                                                            dy,
@@ -971,6 +966,9 @@ void ComputeFusedGemmEpilogueBackward(const phi::GPUContext& dev_ctx,
                                                             x,
                                                             y,
                                                             reserve_space,
+                                                            M,
+                                                            N,
+                                                            K,
                                                             activation_grad,
                                                             dx,
                                                             dy,

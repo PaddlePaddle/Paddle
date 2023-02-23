@@ -42,12 +42,27 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
     bool trans_y = ctx.Attr<bool>("trans_y");
 
     std::string activation = ctx.Attr<std::string>("activation");
-    VLOG(10) << "trans_x = " << trans_x << " , trans_y = " << trans_y
-             << " , activation = " << activation;
-
     dev_ctx.Alloc<T>(out, out->numel() * sizeof(T));
-    ComputeFusedGemmEpilogueForward<T>(
-        dev_ctx, x, y, bias, trans_x, trans_y, activation, out, reserve_space);
+
+    // (M * K) * (K * N)
+    auto x_mat_dims =
+        phi::flatten_to_2d(x->dims(), trans_x ? 1 : x->dims().size() - 1);
+    int64_t M = trans_x ? x_mat_dims[1] : x_mat_dims[0];
+    int64_t K = trans_y ? y->dims()[1] : y->dims()[0];
+    int64_t N = trans_y ? y->dims()[0] : y->dims()[1];
+
+    ComputeFusedGemmEpilogueForward<T>(dev_ctx,
+                                       x,
+                                       y,
+                                       bias,
+                                       M,
+                                       N,
+                                       K,
+                                       trans_x,
+                                       trans_y,
+                                       activation,
+                                       out,
+                                       reserve_space);
   }
 };
 
@@ -72,13 +87,21 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
     bool trans_x = ctx.Attr<bool>("trans_x");
     bool trans_y = ctx.Attr<bool>("trans_y");
 
-    VLOG(10) << "trans_x = " << trans_x << " , trans_y = " << trans_y
-             << " , activation_grad = " << activation_grad;
+    // (M * K) * (K * N)
+    auto x_mat_dims =
+        phi::flatten_to_2d(x->dims(), trans_x ? 1 : x->dims().size() - 1);
+    int64_t M = trans_x ? x_mat_dims[1] : x_mat_dims[0];
+    int64_t K = trans_y ? y->dims()[1] : y->dims()[0];
+    int64_t N = trans_y ? y->dims()[0] : y->dims()[1];
+
     ComputeFusedGemmEpilogueBackward<T>(dev_ctx,
                                         dout,
                                         x,
                                         y,
                                         reserve_space,
+                                        M,
+                                        N,
+                                        K,
                                         trans_x,
                                         trans_y,
                                         activation_grad,

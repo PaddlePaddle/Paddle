@@ -53,12 +53,28 @@ class AttnMatMul {
                       phi::DenseTensor* output,
                       phi::DenseTensor* bias_out,
                       bool fused = false) {
+    VLOG(6) << "input.shape={" << input->dims() << "}, weight.shape={"
+            << weight->dims() << "}, output.shape={" << output->dims()
+            << "}, batch_size=" << bsz_seq_ << ", output_size=" << output_size_
+            << ", input_size=" << input_size_ << ", transA=" << transA_
+            << ", transB=" << transB_ << ", compute_bias=" << compute_bias_
+            << ", fused=" << fused;
+
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
     if (compute_bias_ && fused) {
+      PADDLE_ENFORCE_EQ(
+          !output || output == bias_out,
+          true,
+          phi::errors::InvalidArgument(
+              "The output (= input * weight) is expected to be nullptr or the "
+              "same as bias_out when fused is true."));
       ComputeFusedGemmEpilogueForward<T>(dev_ctx_,
                                          input,
                                          weight,
                                          bias,
+                                         bsz_seq_,      // M
+                                         output_size_,  // N
+                                         input_size_,   // K
                                          transA_,
                                          transB_,
                                          "none",
@@ -111,6 +127,9 @@ class AttnMatMul {
                                           input,
                                           weight,
                                           nullptr,
+                                          bsz_seq_,      // M
+                                          output_size_,  // N
+                                          input_size_,   // K
                                           transA_,
                                           transB_,
                                           "none",
