@@ -227,8 +227,10 @@ def bernoulli(shape, dtype, p, seed=0):
 
 @REGISTER_COMPOSITE('sigmoid')
 def sigmoid_composite(x):
-    """define composite rule of op sigmoid"""
-    # res = 1 / (1 + exp(-x))
+    """
+    define composite rule of op sigmoid
+    res = 1 / (1 + exp(-x))
+    """
     sum_temp = 1 + exp(-x)
     res = 1 / sum_temp
     return res
