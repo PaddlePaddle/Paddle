@@ -26,23 +26,27 @@ import paddle
 class TestXPUTransposeOp(XPUOpTest):
     def setUp(self):
         self.init_op_type()
+        self.init_type()
         self.initTestCase()
         self.use_xpu = True
         self.use_mkldnn = False
-        self.inputs = {'X': np.random.random(self.shape).astype("float32")}
+        self.inputs = {'X': np.random.random(self.shape).astype(self.dtype)}
         self.attrs = {
             'axis': list(self.axis),
             'use_mkldnn': False,
             'use_xpu': True,
         }
         self.outputs = {
-            'XShape': np.random.random(self.shape).astype("float32"),
+            'XShape': np.random.random(self.shape).astype(self.dtype),
             'Out': self.inputs['X'].transpose(self.axis),
         }
 
     def init_op_type(self):
         self.op_type = "transpose2"
         self.use_mkldnn = False
+
+    def init_type(self):
+        self.dtype = "float32"
 
     def test_check_output(self):
         if paddle.is_compiled_with_xpu():
@@ -59,6 +63,11 @@ class TestXPUTransposeOp(XPUOpTest):
     def initTestCase(self):
         self.shape = (3, 40)
         self.axis = (1, 0)
+
+
+class TestCase_INT64(TestXPUTransposeOp):
+    def init_type(self):
+        self.dtype = "int64"
 
 
 class TestCase_ZeroDim(TestXPUTransposeOp):
