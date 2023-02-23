@@ -704,7 +704,6 @@ struct AttentionKernel {
                                 warp_id(),
                                 p.num_keys - iter_key_start,
                                 iteratorC_tile_offset,
-                                // (p.mask_ptr != nullptr) ? 1.0f : p.scale);
                                 kAddMask ? 1.0f : p.scale);
                           }));
                     }));
