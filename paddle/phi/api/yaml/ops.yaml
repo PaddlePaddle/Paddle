@@ -653,6 +653,15 @@
     func : isnan {dense -> dense},
            isnan_sr {selected_rows -> selected_rows}
 
+- op : kron
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : KronInferMeta
+  kernel :
+    func : kron
+  backward : kron_grad
+
 - op : kthvalue
   args : (Tensor x, int k = 1, int axis = -1, bool keepdim = false)
   output : Tensor(out), Tensor(indices)
