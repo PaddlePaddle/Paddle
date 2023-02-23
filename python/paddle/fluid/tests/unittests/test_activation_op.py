@@ -188,6 +188,8 @@ class TestParameter:
 class TestSigmoid(TestActivation):
     def setUp(self):
         self.op_type = "sigmoid"
+        self.prim_op_type = "comp"
+        self.enable_cinn = False
         self.init_dtype()
         self.init_shape()
 
@@ -218,6 +220,8 @@ class TestSigmoid_ZeroDim(TestSigmoid):
 class TestSigmoidBF16(OpTest):
     def setUp(self):
         self.op_type = "sigmoid"
+        self.prim_op_type = "comp"
+        self.enable_cinn = False
         self.init_dtype()
         self.init_shape()
 
