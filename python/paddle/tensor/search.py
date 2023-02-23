@@ -185,7 +185,15 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['float32', 'float64', 'int16', 'int32', 'int64', 'uint8'],
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int16',
+                'int32',
+                'int64',
+                'uint8',
+            ],
             'paddle.argmax',
         )
         check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmin')

@@ -366,5 +366,17 @@ class TestArgMinMaxOpError(unittest.TestCase):
             self.assertRaises(ValueError, test_argmin_dtype_type)
 
 
+class TestArgMaxOpFp16(unittest.TestCase):
+    def test_fp16(self):
+        paddle.enable_static()
+        x_np = np.random.random((10, 16)).astype('float16')
+        x = paddle.static.data(shape=[10, 16], name='x', dtype='float16')
+        out = paddle.argmax(x)
+        exe = paddle.static.Executor()
+        exe.run(paddle.static.default_startup_program())
+        out = exe.run(feed={'x': x_np}, fetch_list=[out])
+        paddle.disable_static()
+
+
 if __name__ == '__main__':
     unittest.main()
