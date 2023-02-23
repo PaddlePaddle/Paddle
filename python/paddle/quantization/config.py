@@ -93,6 +93,15 @@ class QuantConfig(object):
 
         self._customized_leaves = []
 
+        self._constraints = []
+
+    @property
+    def constraints(self):
+        return self._constraints
+
+    def add_constraints(self, constraint):
+        self._constraints.append(constraint)
+
     def add_layer_config(
         self,
         layer: Union[Layer, list],
@@ -261,7 +270,6 @@ class QuantConfig(object):
         ), "The target layer should be a subclass of paddle.nn.qat.Layer"
         self._qat_layer_mapping[source] = target
         self._customized_qat_layer_mapping[source] = target
-        print(f"self._qat_layer_mapping: {self._qat_layer_mapping}")
 
     def add_customized_leaf(self, layer_type: type):
         r"""
@@ -303,7 +311,6 @@ class QuantConfig(object):
         target_type = self._customized_qat_layer_mapping.get(
             type(layer), self.qat_layer_mappings.get(type(layer))
         )
-        print(f"get qat layer of {type(layer)}: {target_type}")
         return target_type(layer, q_config)
 
     def _has_observer_config(self, layer: Layer):
