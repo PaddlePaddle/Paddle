@@ -1391,7 +1391,7 @@ def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
             out6 = paddle.nansum(y, axis=[0, 1]) # [9, 18]
     """
     check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int32', 'int64'], 'nansum'
+        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'nansum'
     )
     check_type(axis, 'axis', (int, list, tuple, type(None)), 'nansum')
 
