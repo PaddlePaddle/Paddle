@@ -37,7 +37,7 @@ export FLAGS_selected_gpus="0,1"
 # set your model yaml
 #SC="gpubox_ps_trainer.py"
 SC="static_gpubox_trainer.py"
-
+export GLOG_vmodule=*executor*=10,*reduce*=10,*nccl*=10,*grpc*=10,interpre*=10,*pass*=10
 # run pserver
 export TRAINING_ROLE=PSERVER
 for((i=0;i<$PADDLE_PSERVER_NUMS;i++))
@@ -56,6 +56,8 @@ do
     export PADDLE_TRAINER_ID=$i
     python3.7 -u $SC &> ./log/worker.$i.log
 done
+
+unset GLOG_vmodule
 
 if [ $? -eq 0 ];then
 echo "Training log stored in ./log/"

@@ -155,7 +155,7 @@ class CompiledProgram:
                                 fetch_list=[loss.name])
     """
 
-    def __init__(self, program_or_graph, build_strategy=None, loss_name=None):
+    def __init__(self, program_or_graph, build_strategy=None):
         if isinstance(program_or_graph, core.Graph):
             self._graph = program_or_graph
             # don't not create a new program here.
@@ -176,7 +176,7 @@ class CompiledProgram:
         self._compiled = False
         self._is_data_parallel = False
         self._is_inference = False
-        self._loss_name = loss_name
+        self._loss_name = None
         self._share_vars_from = None
         self._places = None
         self._build_strategy = build_strategy

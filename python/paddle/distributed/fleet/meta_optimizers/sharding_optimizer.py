@@ -73,9 +73,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             # "ModelParallelOptimizer",
             # "PipelineOptimizer",
         ]
-        self.meta_optimizers_black_list = [
-            "GraphExecutionOptimizer",
-        ]
+        self.meta_optimizers_black_list = []
         self._main_program = None
         self._startup_program = None
         self._segments = []

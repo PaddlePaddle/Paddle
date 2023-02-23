@@ -35,9 +35,7 @@ class PipelineOptimizer(MetaOptimizerBase):
             "RecomputeOptimizer",
             "AMPOptimizer",
         ]
-        self.meta_optimizers_black_list = [
-            "GraphExecutionOptimizer",
-        ]
+        self.meta_optimizers_black_list = []
         self.global_ring_id = 1
         self.dp_ring_id = 2
         self.start_pipeline_ring_id = 20  # Just a magic number

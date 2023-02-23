@@ -40,9 +40,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
             "DGCOptimizer",
             "LocalSGDOptimizer",
         ]
-        self.meta_optimizers_black_list = [
-            "GraphExecutionOptimizer",
-        ]
+        self.meta_optimizers_black_list = []
         self.global_ring_id = 0
 
     def _set_basic_info(
