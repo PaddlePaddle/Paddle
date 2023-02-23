@@ -14,7 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/selected_rows.h"
@@ -153,7 +155,9 @@ inline std::vector<T> GetVectorFromTensor(const phi::DenseTensor* x) {
     auto* data = x->data<int>();
     phi::DenseTensor cpu_attr_tensor;
     if (!paddle::platform::is_cpu_place(x->place())) {
-      paddle::framework::TensorCopySync(*x, CPUPlace(), &cpu_attr_tensor);
+      phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+      auto dev_ctx = pool.Get(x->place());
+      phi::Copy(*dev_ctx, *x, CPUPlace(), true, &cpu_attr_tensor);
       data = cpu_attr_tensor.data<int>();
     }
     vec_new_data = std::vector<T>(data, data + x->numel());
@@ -161,7 +165,9 @@ inline std::vector<T> GetVectorFromTensor(const phi::DenseTensor* x) {
     auto* data = x->data<int64_t>();
     phi::DenseTensor cpu_attr_tensor;
     if (!paddle::platform::is_cpu_place(x->place())) {
-      paddle::framework::TensorCopySync(*x, CPUPlace(), &cpu_attr_tensor);
+      phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+      auto dev_ctx = pool.Get(x->place());
+      phi::Copy(*dev_ctx, *x, CPUPlace(), true, &cpu_attr_tensor);
       data = cpu_attr_tensor.data<int64_t>();
     }
     // NOTE: Converting int64 to int32 may cause data overflow.
