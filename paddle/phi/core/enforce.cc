@@ -20,7 +20,8 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/utils/blank.h"
-#include "paddle/utils/variant.h"
+
+DECLARE_int32(call_stack_level);
 
 namespace egr {
 class EagerVariable;
@@ -87,6 +88,8 @@ using NameTensorMap = NameVarMap<egr::EagerVariable>;
 
 namespace phi {
 namespace enforce {
+
+int GetCallStackLevel() { return FLAGS_call_stack_level; }
 
 template <typename T>
 static std::string ReplaceComplexTypeStr(std::string str,

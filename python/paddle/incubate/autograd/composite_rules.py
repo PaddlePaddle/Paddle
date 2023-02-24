@@ -61,6 +61,13 @@ def composite_batchnorm(
     trainable_statistics,
 ):
     """define composite rule of op batch_norm"""
+    is_amp = False
+    from paddle.fluid.data_feeder import convert_dtype
+
+    if convert_dtype(x.dtype) == "float16":
+        print("Running batch_norm in amp")
+        is_amp = True
+        x = cast(x, "float32")
 
     feature_axis = (
         1 if data_layout in ('NC', 'NCL', 'NCHW', 'NCHWD') else len(x.shape) - 1
@@ -99,6 +106,8 @@ def composite_batchnorm(
             reshape(run_var, stats_shape) + epsilon
         )
     y = reshape(scale, stats_shape) * x_hat + reshape(bias, stats_shape)
+    if is_amp:
+        y = cast(y, "float16")
 
     # add op assign to detach tensor in void unsafe change outside the rule.
     batch_mean_ = assign(reshape(batch_mean, run_mean.shape))
@@ -188,25 +197,8 @@ def stack_composite(x, axis):
     x_shape = x[0].shape
     if axis < 0:
         axis += len(x_shape) + 1
-    out_shape = x_shape[:axis] + (len(x),) + x_shape[axis:]
-
-    pre = 1
-    post = 1
-    for s in x_shape[:axis]:
-        pre *= s
-    for s in x_shape[axis:]:
-        post *= s
-
-    x_offset = 0
-    y_data = []
-    x_data = [reshape(in_x, [pre * post]) for in_x in x]
-    for i in range(0, pre):
-        for j in range(0, len(x)):
-            y_data.append(x_data[j][x_offset : x_offset + post])
-        x_offset += post
-
-    out = concat(y_data)
-    out = reshape(out, out_shape)
+    out_shape = x_shape[:axis] + (1,) + x_shape[axis:]
+    out = concat([reshape(item, out_shape) for item in x], axis)
     return out
 
 
