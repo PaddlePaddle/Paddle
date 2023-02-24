@@ -52,6 +52,22 @@ using IntArray = paddle::experimental::IntArray;
 class TensorOperantsBase {
  public:
   virtual ~TensorOperantsBase() = default;
+
+  virtual Tensor add(const Tensor& x, const Scalar& y) = 0;
+
+  virtual Tensor divide(const Tensor& x, const Scalar& y) = 0;
+
+  virtual Tensor multiply(const Tensor& x, const Scalar& y) = 0;
+
+  virtual Tensor subtract(const Tensor& x, const Scalar& y) = 0;
+
+  virtual Tensor add(const Scalar& x, const Tensor& y) = 0;
+
+  virtual Tensor divide(const Scalar& x, const Tensor& y) = 0;
+
+  virtual Tensor multiply(const Scalar& x, const Tensor& y) = 0;
+
+  virtual Tensor subtract(const Scalar& x, const Tensor& y) = 0;
 """
 
 
@@ -90,6 +106,58 @@ Tensor Tensor::operator*(const Tensor &other) const {
 Tensor Tensor::operator/(const Tensor &other) const {
   return divide(other);
 }
+
+Tensor Tensor::operator+(const Scalar &other) const {
+  return add(other);
+}
+
+Tensor Tensor::operator-(const Scalar &other) const {
+  return subtract(other);
+}
+
+Tensor Tensor::operator*(const Scalar &other) const {
+  return multiply(other);
+}
+
+Tensor Tensor::operator/(const Scalar &other) const {
+  return divide(other);
+}
+
+Tensor Tensor::add(const Scalar& y) const {
+  return paddle::OperantsManager::Instance().add(static_cast<const Tensor &>(*this), y);
+}
+
+Tensor Tensor::divide(const Scalar& y) const {
+  return paddle::OperantsManager::Instance().divide(static_cast<const Tensor &>(*this), y);
+}
+
+Tensor Tensor::multiply(const Scalar& y) const {
+  return paddle::OperantsManager::Instance().multiply(static_cast<const Tensor &>(*this), y);
+}
+
+Tensor Tensor::subtract(const Scalar& y) const {
+  return paddle::OperantsManager::Instance().subtract(static_cast<const Tensor &>(*this), y);
+}
+
+Tensor Tensor::operator-() const {
+  return scale(-1.0, 0.0, true);
+}
+
+PADDLE_API Tensor operator+(const Scalar& x, const Tensor& y) {
+  return paddle::OperantsManager::Instance().add(x, y);
+}
+
+PADDLE_API Tensor operator-(const Scalar& x, const Tensor& y) {
+  return paddle::OperantsManager::Instance().subtract(x, y);
+}
+
+PADDLE_API Tensor operator*(const Scalar& x, const Tensor& y) {
+  return paddle::OperantsManager::Instance().multiply(x, y);
+}
+
+PADDLE_API Tensor operator/(const Scalar& x, const Tensor& y) {
+  return paddle::OperantsManager::Instance().divide(x, y);
+}
 """
 
 
@@ -126,6 +194,23 @@ class PhiTensorOperants : public TensorOperantsBase {
 
  public:
   PhiTensorOperants() = default;
+
+  Tensor add(const Tensor& x, const Scalar& y);
+
+  Tensor subtract(const Tensor& x, const Scalar& y);
+
+  Tensor multiply(const Tensor& x, const Scalar& y);
+
+  Tensor divide(const Tensor& x, const Scalar& y);
+
+  Tensor add(const Scalar& x, const Tensor& y);
+
+  Tensor subtract(const Scalar& x, const Tensor& y);
+
+  Tensor multiply(const Scalar& x, const Tensor& y);
+
+  Tensor divide(const Scalar& x, const Tensor& y);
+
 """
 
 
@@ -150,6 +235,38 @@ operants_source_start = """
 namespace paddle {
 
 namespace operants {
+
+Tensor PhiTensorOperants::add(const Tensor& x, const Scalar& y) {
+  return paddle::experimental::add(x, paddle::experimental::full_like(x, y));
+}
+
+Tensor PhiTensorOperants::subtract(const Tensor& x, const Scalar& y) {
+  return paddle::experimental::subtract(x, paddle::experimental::full_like(x, y));
+}
+
+Tensor PhiTensorOperants::multiply(const Tensor& x, const Scalar& y) {
+  return paddle::experimental::multiply(x, paddle::experimental::full_like(x, y));
+}
+
+Tensor PhiTensorOperants::divide(const Tensor& x, const Scalar& y) {
+  return paddle::experimental::divide(x, paddle::experimental::full_like(x, y));
+}
+
+Tensor PhiTensorOperants::add(const Scalar& x, const Tensor& y) {
+  return paddle::experimental::add(paddle::experimental::full_like(y, x), y);
+}
+
+Tensor PhiTensorOperants::subtract(const Scalar& x, const Tensor& y) {
+  return paddle::experimental::subtract(paddle::experimental::full_like(y, x), y);
+}
+
+Tensor PhiTensorOperants::multiply(const Scalar& x, const Tensor& y) {
+  return paddle::experimental::multiply(paddle::experimental::full_like(y, x), y);
+}
+
+Tensor PhiTensorOperants::divide(const Scalar& x, const Tensor& y) {
+  return paddle::experimental::divide(paddle::experimental::full_like(y, x), y);
+}
 """
 
 
@@ -225,6 +342,23 @@ class OperantsManager {
 
  public:
   static OperantsManager& Instance();
+
+  Tensor add(const Tensor& x, const Scalar& y);
+
+  Tensor subtract(const Tensor& x, const Scalar& y);
+
+  Tensor multiply(const Tensor& x, const Scalar& y);
+
+  Tensor divide(const Tensor& x, const Scalar& y);
+
+  Tensor add(const Scalar& x, const Tensor& y);
+
+  Tensor subtract(const Scalar& x, const Tensor& y);
+
+  Tensor multiply(const Scalar& x, const Tensor& y);
+
+  Tensor divide(const Scalar& x, const Tensor& y);
+
 """
 
 
@@ -282,6 +416,28 @@ class OperantsAPI(ForwardAPI):
             return f"""
 {indent}virtual {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_declare_args(inplace_flag=True)}) = 0;
 """
+
+    def get_declare_args_without_first_tensor(self, inplace_flag=False):
+        func_name = self.get_api_func_name()
+        declare_args = self.get_input_tensor_args(inplace_flag)
+        assert len(declare_args) >= 1, (
+            "Error! Api %s has no Tensor inputs" % func_name
+        )
+        first_input_type = " ".join(declare_args[0].split(" ")[:-1])
+        # NOTE(HongyuJia): Do not consider "const paddle::optional<Tensor>&"
+        assert first_input_type == "const Tensor&", (
+            "Error! The first argument of Tensor Api %s must be Tensor, but received %s"
+            % (func_name, first_input_type)
+        )
+        for name in self.attrs['names']:
+            default_value = ''
+            if self.attrs['attr_info'][name][1] is not None:
+                default_value = ' = ' + self.attrs['attr_info'][name][1]
+            declare_args.append(
+                self.attrs['attr_info'][name][0] + ' ' + name + default_value
+            )
+        # remove first Tensor argument
+        return ", ".join(declare_args[1:])
 
     def get_define_args_without_first_tensor(self, inplace_flag=False):
         func_name = self.get_api_func_name()
@@ -395,17 +551,30 @@ class OperantsAPI(ForwardAPI):
 
     def gene_operants_manager_implementation(self):
         func_name = self.get_api_func_name()
+        final_code = ""
+        if func_name in ["add", "subtract", "multiply", "divide"]:
+            final_code += f"""
+{self.get_return_type()} OperantsManager::{func_name}(const Tensor& x, const Scalar& y) {{{self.gene_operants_manager_code()}}}
+
+{self.get_return_type()} OperantsManager::{func_name}(const Scalar& x, const Tensor& y) {{{self.gene_operants_manager_code()}}}
+"""
         # func decalaration
         if func_name[-1] != '_':
-            return f"""
+            return (
+                final_code
+                + f"""
 {self.get_return_type()} OperantsManager::{func_name}({self.get_define_args()}) {{{self.gene_operants_manager_code()}}}
 """
+            )
         else:
-            return f"""
+            return (
+                final_code
+                + f"""
 {self.get_return_type(inplace_flag=True)} OperantsManager::{func_name}({self.get_define_args(inplace_flag=True)}) {{
 {self.gene_operants_manager_code()}
 }}
 """
+            )
 
 
 def generate_tensor_operants_api(
@@ -532,7 +701,7 @@ def main():
     parser.add_argument(
         '--tensor_api_yaml_path',
         help='path to tensor_api yaml file',
-        default='paddle/phi/api/yaml/tensor_api.yaml',
+        default='paddle/phi/api/yaml/tensor_operants.yaml',
     )
 
     options = parser.parse_args()
