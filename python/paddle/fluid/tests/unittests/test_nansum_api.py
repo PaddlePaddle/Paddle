@@ -74,20 +74,20 @@ class API_Test_Nansum(unittest.TestCase):
 
     # test nansum api with float16
     def test_static_graph_fp16(self):
-        def run1():
-            paddle.enable_static()
-            startup_program = fluid.Program()
-            train_program = fluid.Program()
-            with fluid.program_guard(train_program, startup_program):
-                input = fluid.data(name='input', dtype='float16', shape=[2, 4])
-                out1 = paddle.nansum(input)
-                out2 = paddle.nansum(input, axis=0)
-                out3 = paddle.nansum(input, axis=-1)
-                out4 = paddle.nansum(input, axis=1, keepdim=True)
-                place = fluid.CPUPlace()
-                if fluid.core.is_compiled_with_cuda():
-                    place = fluid.CUDAPlace(0)
-                exe = fluid.Executor(place)
+        paddle.enable_static()
+        startup_program = paddle.static.Program()
+        train_program = paddle.static.Program()
+        with paddle.static.program_guard(train_program, startup_program):
+            input = paddle.static.data(
+                name='input', dtype='float16', shape=[2, 4]
+            )
+            out1 = paddle.nansum(input)
+            out2 = paddle.nansum(input, axis=0)
+            out3 = paddle.nansum(input, axis=-1)
+            out4 = paddle.nansum(input, axis=1, keepdim=True)
+            if fluid.core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
                 exe.run(startup_program)
 
                 x = np.array(
@@ -124,8 +124,6 @@ class API_Test_Nansum(unittest.TestCase):
                     (out4_np == out4_ref).all(),
                     msg='nansum output is wrong, out =' + str(out4_np),
                 )
-
-        self.assertRaises(NotImplementedError, run1)
 
     def test_dygraph(self):
         x = np.array(
