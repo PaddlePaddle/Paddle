@@ -24,55 +24,6 @@ import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 
 
-class BaseTestCase1(OpTest):
-    def initTestCase(self):
-        self.op_type = 'arg_min'
-        self.python_api = paddle.tensor.argmin
-        self.dims = (3, 4, 5)
-        self.dtype = 'float16'
-        self.axis = 0
-
-    def setUp(self):
-        self.initTestCase()
-        self.x = (1000 * np.random.random(self.dims)).astype(self.dtype)
-        self.inputs = {'X': self.x}
-        self.attrs = {'axis': self.axis}
-        if self.op_type == "arg_min":
-            self.outputs = {'Out': np.argmin(self.x, axis=self.axis)}
-        else:
-            self.outputs = {'Out': np.argmax(self.x, axis=self.axis)}
-
-    def test_check_output(self):
-        self.check_output()
-
-
-class TestCase1_0(BaseTestCase1):
-    def initTestCase(self):
-        self.op_type = 'arg_max'
-        self.python_api = paddle.tensor.argmax
-        self.dims = (3, 4, 5)
-        self.dtype = 'float32'
-        self.axis = 0
-
-
-class TestCase1_1(BaseTestCase1):
-    def initTestCase(self):
-        self.op_type = 'arg_min'
-        self.python_api = paddle.tensor.argmin
-        self.dims = (3, 4)
-        self.dtype = 'float64'
-        self.axis = 1
-
-
-class TestCase1_2(BaseTestCase1):
-    def initTestCase(self):
-        self.op_type = 'arg_max'
-        self.python_api = paddle.tensor.argmax
-        self.dims = (3, 4)
-        self.dtype = 'int64'
-        self.axis = 0
-
-
 class BaseTestCase(OpTest):
     def initTestCase(self):
         self.op_type = 'arg_min'
