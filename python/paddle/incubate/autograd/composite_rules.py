@@ -178,3 +178,31 @@ def mean_composite(x, axis, keepdim):
         dtype=sum_x.dtype,
     )
     return divide(sum_x, norm)
+
+
+@REGISTER_COMPOSITE('stack')
+def stack_composite(x, axis):
+    """define composite rule of op stack"""
+    x_shape = x[0].shape
+    if axis < 0:
+        axis += len(x_shape) + 1
+    out_shape = x_shape[:axis] + (len(x),) + x_shape[axis:]
+
+    pre = 1
+    post = 1
+    for s in x_shape[:axis]:
+        pre *= s
+    for s in x_shape[axis:]:
+        post *= s
+
+    x_offset = 0
+    y_data = []
+    x_data = [reshape(in_x, [pre * post]) for in_x in x]
+    for i in range(0, pre):
+        for j in range(0, len(x)):
+            y_data.append(x_data[j][x_offset : x_offset + post])
+        x_offset += post
+
+    out = concat(y_data)
+    out = reshape(out, out_shape)
+    return out
