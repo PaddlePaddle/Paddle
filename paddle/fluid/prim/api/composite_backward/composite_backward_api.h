@@ -635,7 +635,9 @@ void matmul_double_grad(const Tensor& x,
   }
   if (grad_out_grad) {
     set_output<T>(ddout, grad_out_grad);
-    
+  }
+}
+
 template <typename T>
 void slice_grad(const Tensor& input,
                 const Tensor& out_grad,

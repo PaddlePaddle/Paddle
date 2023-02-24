@@ -204,14 +204,13 @@ TEST(StaticPrim, TanhBackwardComposite) {
   ASSERT_EQ(target_block->AllOps()[0]->Outputs().at("Out")[0], "b");
   ASSERT_EQ(target_block->AllOps()[0]->Outputs().at("Out")[0], "b");
 
-  ASSERT_EQ(grad_ops[1]->Type(), "elementwise_mul");
-  ASSERT_EQ(grad_ops[1]->Inputs().at("X").size(), static_cast<std::size_t>(1));
-  ASSERT_EQ(grad_ops[1]->Inputs().at("Y").size(), static_cast<std::size_t>(1));
-  ASSERT_EQ(grad_ops[1]->Inputs().at("Y")[0],
-            grad_ops[1]->Outputs().at("Out")[0]);
-  ASSERT_EQ(grad_ops[1]->Inputs().at("X")[0], "b");
-  ASSERT_EQ(grad_ops[1]->Inputs().at("Y")[0], "b");
-  ASSERT_EQ(grad_ops[1]->Outputs().at("Out").size(),
+  ASSERT_EQ(grad_ops[0]->Type(), "elementwise_mul");
+  ASSERT_EQ(grad_ops[0]->Inputs().at("X").size(), static_cast<std::size_t>(1));
+  ASSERT_EQ(grad_ops[0]->Inputs().at("Y").size(), static_cast<std::size_t>(1));
+  ASSERT_EQ(grad_ops[0]->Inputs().at("Y")[0],
+            grad_ops[0]->Outputs().at("Out")[0]);
+  ASSERT_EQ(grad_ops[0]->Inputs().at("X")[0], "b");
+  ASSERT_EQ(grad_ops[0]->Outputs().at("Out").size(),
             static_cast<std::size_t>(1));
 
   ASSERT_EQ(grad_ops[1]->Type(), "fill_constant");
