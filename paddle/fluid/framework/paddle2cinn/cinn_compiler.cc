@@ -39,6 +39,7 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/paddle2cinn/build_cinn_pass.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_graph_symbolization.h"
+#include "paddle/fluid/framework/paddle2cinn/transform_desc.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/analysis/dot.h"
@@ -78,9 +79,11 @@ const CinnCompiledObject &CinnCompiler::Compile(
   CinnCacheKeyByStructure cur_key_by_struct;
 
   if (!cache_by_address_.count(cur_key_by_address)) {
+    VLOG(4) << "Not found CinnCompiledObject in cache_by_address_.";
     // generate the structure cache key
     cur_key_by_struct.SetKey(graph, input_tensors, target.arch_str());
     if (!cache_by_struct_.count(cur_key_by_struct)) {
+      VLOG(4) << "Not found CinnCompiledObject in cache_by_struct_.";
       std::int64_t compiled_num = real_compiled_num_.fetch_add(1);
       auto compiled_res =
           CompileGraph(graph, input_tensors, target, compiled_num, stream);
@@ -180,7 +183,8 @@ std::string CinnCompiler::VizGraph(const Graph &graph) const {
             shape.begin(), shape.end(), shape_str.begin(), [](const auto &val) {
               return std::to_string(val);
             });
-        label += "\n" + string::join_strings(shape_str, ',');
+        label += "\n[" + string::join_strings(shape_str, ',') + "]";
+        label += "\n" + VarDataTypeToString(n->Var()->GetDataType());
       }
       dot.AddNode(
           node_id,
