@@ -952,13 +952,13 @@ void dropout_grad(const Tensor& mask,
                   Tensor* x_grad) {
   if (!x_grad) return;
   if (is_test) {
-    if (mode == "unscale_in_train") {
+    if (mode == "upscale_in_train") {
       by_pass<T>(out_grad, x_grad);
     } else {
       set_output<T>(out_grad * (1.0 - p.to<float>()), x_grad);
     }
   } else {
-    if (mode == "unscale_in_train") {
+    if (mode == "upscale_in_train") {
       if (p.to<float>() == 1.0f) {
         set_output<T>(out_grad * 0.0, x_grad);
       } else {

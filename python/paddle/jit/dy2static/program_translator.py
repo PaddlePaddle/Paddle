@@ -19,6 +19,7 @@ import threading
 import warnings
 import weakref
 
+from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
 from paddle.fluid import _non_static_mode, core, framework
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph import layers
@@ -1183,15 +1184,13 @@ class ProgramCache:
 
         class PrimHooker(PartialProgramLayerHook):
             def __init__(self):
-                custom_vjps = set()
+                self.custom_vjps = set()
                 if core._is_fwd_prim_enabled() and core._is_bwd_prim_enabled():
-                    custom_vjps = {
+                    self.custom_vjps = {
                         op.type
                         for op in concrete_program.main_program.block(0).ops
                         if core.has_comp_grad_op_maker(op.type)
                     }
-                self.custom_vjps = custom_vjps
-                self.custom_vjps = {"softmax"}
 
             def before_append_backward(
                 self, partial_program_layer, forward_program
@@ -1219,7 +1218,8 @@ class ProgramCache:
                 return infer_program
 
         partial_program = partial_program_from(concrete_program)
-        partial_program.set_hooker(PrimHooker())
+        if not _in_amp_guard() and not _in_pure_fp16_guard():
+            partial_program.set_hooker(PrimHooker())
         return concrete_program, partial_program
 
 

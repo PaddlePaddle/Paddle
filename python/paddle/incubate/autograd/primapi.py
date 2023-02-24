@@ -239,6 +239,11 @@ def to_prim(blocks, exclude=frozenset()):
         raise TypeError(
             f"Expect block or sequence of blocks, but got {type(blocks)}."
         )
+    if not isinstance(exclude, (set, frozenset)):
+        raise TypeError(
+            f'Expected type of exclude is set|frozenset, but got {type(exclude)}.'
+        )
+
     with framework.program_guard(main_program):
         logging.debug("Lowering composite forward ops begin...")
         primx._lower_composite(
