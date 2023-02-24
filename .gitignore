@@ -93,3 +93,5 @@ paddle/fluid/pybind/eager_op_function_impl.h
 paddle/fluid/pybind/op_function_impl.h
 paddle/fluid/pybind/*final_state_op_function_impl.h
 paddle/fluid/prim/api/generated/prim_api/*
+paddle/fluid/framework/__init__.py
+python/paddle/incubate/fleet/parameter_server/pslib/ps_pb2.py

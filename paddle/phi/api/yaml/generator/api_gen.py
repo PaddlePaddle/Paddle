@@ -312,6 +312,36 @@ class ForwardAPI(BaseAPI):
 
         return kernel_output, output_names, output_create
 
+    def reset_view_after_fallback(
+        self, out_dtype_list, code_indent='', inplace_flag=False
+    ):
+        remap_code = ''
+
+        if len(out_dtype_list) == 1:
+            if (
+                not inplace_flag
+                and self.view_map is not None
+                and self.outputs['names'][0] in self.view_map
+            ):
+                remap_code += f"""
+{code_indent}    phi::DenseTensor * {self.view_map[self.outputs['names'][0]]}_remap = static_cast<phi::DenseTensor*>({self.view_map[self.outputs['names'][0]]}.impl().get());
+{code_indent}    {self.view_map[self.outputs['names'][0]]}_remap->ShareBufferWith(*kernel_out);
+{code_indent}    kernel_out->ShareInplaceVersionCounterWith(*{self.view_map[self.outputs['names'][0]]}_remap);
+"""
+        elif len(out_dtype_list) > 1:
+            for i in range(len(out_dtype_list)):
+                if (
+                    not inplace_flag
+                    and self.view_map is not None
+                    and self.outputs['names'][i] in self.view_map
+                ):
+                    remap_code += f"""
+{code_indent}    phi::DenseTensor * {self.view_map[self.outputs['names'][i]]}_remap = static_cast<phi::DenseTensor*>({self.view_map[self.outputs['names'][i]]}.impl().get());
+{code_indent}    {self.view_map[self.outputs['names'][i]]}_remap->ShareBufferWith(*kernel_out_{i});
+{code_indent}    kernel_out_{i}->ShareInplaceVersionCounterWith(*{self.view_map[self.outputs['names'][i]]}_remap);
+"""
+        return remap_code
+
 
 def header_include():
     return """
@@ -344,7 +374,7 @@ def source_include(header_file_path):
 #include "paddle/phi/infermeta/ternary.h"
 
 #include "paddle/phi/api/profiler/event_tracing.h"
-#include "paddle/fluid/platform/profiler/supplement_tracing.h"
+#include "paddle/phi/api/profiler/supplement_tracing.h"
 
 DECLARE_bool(conv2d_disable_cudnn);
 DECLARE_int32(low_precision_op_list);
