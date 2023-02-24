@@ -46,6 +46,9 @@ paddle::experimental::Tensor CastPyArg2Tensor(PyObject* obj, ssize_t arg_pos);
 PyObject* ToPyObject(const paddle::experimental::Tensor& value,
                      bool return_py_none_if_not_initialize = false);
 
+// Internal use only, switch tensor_operants_mode to phi
+void SwitchTensorOperantsMode();
+
 }  // namespace pybind
 }  // namespace paddle
 
@@ -59,6 +62,7 @@ struct type_caster<paddle::experimental::Tensor> {
                        _("paddle::experimental::Tensor"));
 
   bool load(handle src, bool) {
+    paddle::pybind::SwitchTensorOperantsMode();
     PyObject* obj = src.ptr();
     if (paddle::pybind::PyCheckTensor(obj)) {
       value = paddle::pybind::CastPyArg2Tensor(obj, 0);

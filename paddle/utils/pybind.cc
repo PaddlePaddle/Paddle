@@ -13,8 +13,11 @@
 // limitations under the License.
 
 #include "paddle/utils/pybind.h"
+
+#include "gflags/gflags.h"
 #include "paddle/phi/core/enforce.h"
 
+DECLARE_string(tensor_operants_mode);
 namespace paddle {
 namespace pybind {
 
@@ -65,6 +68,8 @@ PyObject* ToPyObject(const paddle::experimental::Tensor& value,
   }
   return obj;
 }
+
+void SwitchTensorOperantsMode() { FLAGS_tensor_operants_mode = "phi"; }
 
 }  // namespace pybind
 }  // namespace paddle

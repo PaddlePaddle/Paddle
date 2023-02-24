@@ -499,15 +499,18 @@ static PyObject* eager_api_jit_function_call(PyObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-static PyObject* eager_api_init_eager_and_static_tensor_operants(
-    PyObject* self, PyObject* args, PyObject* kwargs) {
+static PyObject* eager_api_init_tensor_operants(PyObject* self,
+                                                PyObject* args,
+                                                PyObject* kwargs) {
   EAGER_TRY
 
   paddle::OperantsManager::Instance().eager_operants.reset(
       new paddle::prim::EagerTensorOperants());
   paddle::OperantsManager::Instance().static_operants.reset(
       new paddle::prim::StaticTensorOperants());
-  VLOG(4) << "Initialize eager and static tensor operants successfully";
+  paddle::OperantsManager::Instance().phi_operants.reset(
+      new paddle::operants::PhiTensorOperants());
+  VLOG(4) << "Initialize tensor operants successfully";
 
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -1123,9 +1126,8 @@ PyMethodDef variable_functions[] = {
      (PyCFunction)(void (*)(void))eager_api_run_custom_op,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
-    {"_init_eager_and_static_tensor_operants",
-     (PyCFunction)(void (*)(
-         void))eager_api_init_eager_and_static_tensor_operants,
+    {"_init_tensor_operants",
+     (PyCFunction)(void (*)(void))eager_api_init_tensor_operants,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"tensor_copy",
