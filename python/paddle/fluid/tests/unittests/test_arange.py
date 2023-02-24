@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-from functools import partial
 
 import numpy as np
 from eager_op_test import OpTest
@@ -23,7 +22,7 @@ from paddle.fluid import core
 from paddle.static import Program, program_guard
 
 
-def arange_wrapper(start, end, step, dtype=None):
+def arange_wrapper(start, end, step, dtype="float32"):
     return paddle.arange(start, end, step, dtype)
 
 
@@ -45,7 +44,7 @@ class TestArangeOp(OpTest):
 
     def init_config(self):
         self.dtype = np.float32
-        self.python_api = partial(arange_wrapper, dtype=self.dtype)
+        self.python_api = arange_wrapper
         self.case = (0, 1, 0.2)
 
     def test_check_output(self):
@@ -55,35 +54,35 @@ class TestArangeOp(OpTest):
 class TestFloatArangeOp(TestArangeOp):
     def init_config(self):
         self.dtype = np.float32
-        self.python_api = partial(arange_wrapper, dtype=self.dtype)
+        self.python_api = paddle.arange
         self.case = (0, 5, 1)
 
 
 class TestInt32ArangeOp(TestArangeOp):
     def init_config(self):
         self.dtype = np.int32
-        self.python_api = partial(arange_wrapper, dtype=self.dtype)
+        self.python_api = paddle.arange
         self.case = (0, 5, 2)
 
 
 class TestFloat64ArangeOp(TestArangeOp):
     def init_config(self):
         self.dtype = np.float64
-        self.python_api = partial(arange_wrapper, dtype=self.dtype)
+        self.python_api = paddle.arange
         self.case = (10, 1, -2)
 
 
 class TestInt64ArangeOp(TestArangeOp):
     def init_config(self):
         self.dtype = np.int64
-        self.python_api = partial(arange_wrapper, dtype=self.dtype)
+        self.python_api = paddle.arange
         self.case = (-1, -10, -2)
 
 
 class TestZeroSizeArangeOp(TestArangeOp):
     def init_config(self):
         self.dtype = np.int32
-        self.python_api = partial(arange_wrapper, dtype=self.dtype)
+        self.python_api = paddle.arange
         self.case = (0, 0, 1)
 
 
