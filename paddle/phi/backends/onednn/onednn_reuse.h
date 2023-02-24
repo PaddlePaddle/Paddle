@@ -1670,5 +1670,37 @@ static void SetOutMemDescWithReshape2FuseSupport(
   out->Resize(phi::make_ddim(fused_reshape2_shape));
 }
 
+static void SetOutMemDescWithLogicalLayoutFusesSupport(
+    const OneDNNContext& dev_ctx,
+    phi::DenseTensor* out,
+    const dnnl::memory::desc& out_md) {
+  const auto fused_unsqueeze2_axes =
+      dev_ctx.HasDnnAttr("fused_unsqueeze2_axes")
+          ? PADDLE_GET_CONST(std::vector<int>,
+                             dev_ctx.GetDnnAttr("fused_unsqueeze2_axes"))
+          : std::vector<int>();
+  const auto fused_reshape2_shape =
+      dev_ctx.HasDnnAttr("fused_reshape2_shape")
+          ? PADDLE_GET_CONST(std::vector<int>,
+                             dev_ctx.GetDnnAttr("fused_reshape2_shape"))
+          : std::vector<int>();
+  const auto fused_squeeze2_axes =
+      dev_ctx.HasDnnAttr("fused_squeeze2_axes")
+          ? PADDLE_GET_CONST(std::vector<int>,
+                             dev_ctx.GetDnnAttr("fused_squeeze2_axes"))
+          : std::vector<int>();
+
+  if (!fused_unsqueeze2_axes.empty()) {
+    SetOutMemDescWithUnsqueeze2FuseSupport(fused_unsqueeze2_axes, out, out_md);
+  } else if (!fused_reshape2_shape.empty()) {
+    SetOutMemDescWithReshape2FuseSupport(fused_reshape2_shape, out, out_md);
+  } else if (!fused_squeeze2_axes.empty()) {
+    out->set_mem_desc(out_md);
+    out->Resize(make_ddim(out_md.dims()));
+  } else {
+    out->set_mem_desc(out_md);
+  }
+}
+
 }  // namespace funcs
 }  // namespace phi

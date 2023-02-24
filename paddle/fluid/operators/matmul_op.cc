@@ -15,7 +15,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/matmul_v2_op.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
@@ -30,6 +29,28 @@ inline static std::string DumpMatrixShape(
   buffer << "[" << desc.batch_size_ << ", " << desc.height_ << ", "
          << desc.width_ << "]";
   return buffer.str();
+}
+
+/**
+ * Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
+ * original x_dim is returned.
+ */
+static framework::DDim RowMatrixFromVector(const framework::DDim &x_dim) {
+  if (x_dim.size() > 1) {
+    return x_dim;
+  }
+  return phi::make_ddim({1, x_dim[0]});
+}
+
+/**
+ * Get column matrix shape from a vector shape. If the ran of y_dim > 1, the
+ * original y_dim is returned.
+ */
+static framework::DDim ColumnMatrixFromVector(const framework::DDim &y_dim) {
+  if (y_dim.size() > 1) {
+    return y_dim;
+  }
+  return phi::make_ddim({y_dim[0], 1});
 }
 
 template <typename DeviceContext, typename T>
@@ -90,6 +111,17 @@ class MatMulKernel : public framework::OpKernel<T> {
   }
 };
 
+// Reshape a rank-3 tensor from P x M x N to (P * M) x N.
+// Identity op if the tensor is not of rank 3.
+static phi::DenseTensor FoldInitDims(const phi::DenseTensor &input) {
+  auto output = input;
+  auto in_dims = input.dims();
+  if (in_dims.size() == 3) {
+    output.Resize({in_dims[0] * in_dims[1], in_dims[2]});
+  }
+  return output;
+}
+
 // Reshape a rank-3 tensor from P x M x N to M x (P * N).
 // (Warning: This requires transposing data and writes into new memory.)
 // Identity op if the tensor is not of rank 3.
@@ -109,6 +141,62 @@ static phi::DenseTensor FoldHeadAndLastDims(const DeviceContext &context,
   output.Resize({in_dims[1], in_dims[0] * in_dims[2]});
 
   return output;
+}
+
+/**
+ * Reshape a tensor to 3-D or 2-D tensor by matrix descriptor.
+ *
+ * The shape would be [BatchSize, H, W] or [H, W].
+ * If transposed, `H,W` will be swapped.
+ */
+static void ReshapeTensorIntoMatrixSequence(
+    phi::DenseTensor *x, const phi::funcs::MatDescriptor &descriptor) {
+  int64_t h, w;
+  h = descriptor.height_;
+  w = descriptor.width_;
+  if (descriptor.trans_) {
+    std::swap(w, h);
+  }
+  if (descriptor.batch_size_) {
+    x->Resize({descriptor.batch_size_, h, w});
+  } else {
+    x->Resize({h, w});
+  }
+}
+
+/**
+ * Reshape the x,y,out tensor to 3-D or 2-D tensor by matrix descriptor
+ * Out = matmul(x, y)
+ *
+ * This method will first calculate X,Y matrix sequence, and then calculate
+ * the out shape.
+ *
+ * Assume X = [BatchSize, H1, W1], Y = [BatchSize, H2, W2]
+ * The out = [BatchSize, H1, W2]
+ *
+ * If there is no batch size in `X` and `Y`, the out will be [H1, W2]
+ * If any of `X` and `Y` has batch size BatchSize, the out will have the
+ * BatchSize.
+ */
+static void ReshapeXYOutIntoMatrixSequence(phi::DenseTensor *x,
+                                           phi::DenseTensor *y,
+                                           phi::DenseTensor *out,
+                                           bool trans_x,
+                                           bool trans_y) {
+  auto x_dim = RowMatrixFromVector(x->dims());
+  auto y_dim = ColumnMatrixFromVector(y->dims());
+  auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(x_dim, 0, trans_x);
+  auto mat_dim_y = phi::funcs::CreateMatrixDescriptor(y_dim, 0, trans_y);
+  if (mat_dim_x.batch_size_ == 0 && mat_dim_y.batch_size_ == 0) {
+    out->Resize({mat_dim_x.height_, mat_dim_y.width_});
+  } else {
+    out->Resize({std::max(mat_dim_x.batch_size_, mat_dim_y.batch_size_),
+                 mat_dim_x.height_,
+                 mat_dim_y.width_});
+  }
+
+  ReshapeTensorIntoMatrixSequence(x, mat_dim_x);
+  ReshapeTensorIntoMatrixSequence(y, mat_dim_y);
 }
 
 // Using dimensional constraints on matrix multiplication, it is
@@ -568,7 +656,9 @@ class MatMulOp : public framework::OperatorWithKernel {
       dim_out = {1};
     }
 
-    context->SetOutputDim("Out", phi::make_ddim(dim_out));
+    phi::DDim ddim_out = phi::make_ddim(dim_out);
+
+    context->SetOutputDim("Out", ddim_out);
     context->ShareLoD("X", "Out");
   }
 

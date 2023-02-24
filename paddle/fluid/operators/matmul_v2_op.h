@@ -75,7 +75,7 @@ static phi::DenseTensor FoldInitDims(const phi::DenseTensor& input) {
  * Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
  * original x_dim is returned.
  */
-static phi::DDim RowMatrixFromVector(const phi::DDim& x_dim) {
+static framework::DDim RowMatrixFromVector(const framework::DDim& x_dim) {
   if (x_dim.size() > 1) {
     return x_dim;
   }
@@ -86,7 +86,7 @@ static phi::DDim RowMatrixFromVector(const phi::DDim& x_dim) {
  * Get column matrix shape from a vector shape. If the ran of y_dim > 1, the
  * original y_dim is returned.
  */
-static phi::DDim ColumnMatrixFromVector(const phi::DDim& y_dim) {
+static framework::DDim ColumnMatrixFromVector(const framework::DDim& y_dim) {
   if (y_dim.size() > 1) {
     return y_dim;
   }
