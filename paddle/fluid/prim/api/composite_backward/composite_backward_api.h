@@ -323,5 +323,66 @@ void exp_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
   }
 }
 
+template <typename T>
+void slice_grad(const Tensor& input,
+                const Tensor& out_grad,
+                const std::vector<int64_t>& axes,
+                const IntArray& starts,
+                const IntArray& ends,
+                const std::vector<int64_t>& infer_flags,
+                const std::vector<int64_t>& decrease_axis,
+                Tensor* input_grad) {
+  if (input_grad) {
+    size_t rank = input.dims().size();
+    auto out_dims = out_grad.dims();
+    auto in_dims = input.dims();
+
+    auto decrease_size = decrease_axis.size();
+    if (decrease_size > 0) {
+      if (decrease_size == static_cast<size_t>(in_dims.size())) {
+        // all dims decrease
+        out_dims = phi::make_ddim(std::vector<int>(decrease_size, 1));
+      } else {
+        std::vector<int> origin_out_shape(out_dims.size() + decrease_size, -1);
+        for (size_t i = 0; i < decrease_size; ++i) {
+          origin_out_shape[decrease_axis[i]] = 1;
+        }
+
+        int index = 0;
+        for (size_t i = 0; i < origin_out_shape.size(); ++i) {
+          if (origin_out_shape[i] == -1) {
+            origin_out_shape[i] = out_dims[index];
+            ++index;
+          }
+        }
+        out_dims = phi::make_ddim(origin_out_shape);
+      }
+    }
+
+    std::vector<int> offsets(rank, 0);
+    std::vector<int> extents(rank, 0);
+    for (size_t i = 0; i < rank; ++i) {
+      offsets[i] = 0;
+      extents[i] = out_dims[i];
+    }
+
+    for (size_t i = 0; i < axes.size(); ++i) {
+      int axis = axes[i];
+      int64_t start = starts[i] < 0 ? (starts[i] + in_dims[axis]) : starts[i];
+      start = std::max(start, static_cast<int64_t>(0));
+      offsets[axis] = start;
+    }
+
+    std::vector<int> paddings;
+    for (size_t i = 0; i < rank; ++i) {
+      paddings.push_back(offsets[i]);
+      paddings.push_back((in_dims[i] - out_dims[i]) - offsets[i]);
+    }
+
+    auto out_tmp = pad<T>(out_grad, paddings, 0.0);
+    set_output<T>(out_tmp, input_grad);
+  }
+}
+
 }  // namespace prim
 }  // namespace paddle
