@@ -217,12 +217,16 @@ def grad(outputs, inputs, grad_outputs=None):
 
 
 @framework.static_only
-def to_prim(blocks):
-    """Search nonbasic ops which have be registered composite rules and replace them with primitive ops."""
+def to_prim(blocks, exclude=frozenset()):
+    """Search nonbasic ops which have be registered composite rules and replace them with primitive ops.
+
+    Args:
+        exclude(frozenset): The Operators that will be exclude in lowering.
+    """
     if not core._is_fwd_prim_enabled():
         return
     if isinstance(blocks, paddle.fluid.framework.Block):
-        logging.info("Atomize composite op to primitive ops begin.")
+        logging.debug("Atomize composite op to primitive ops begin.")
         main_program = blocks.program
     elif isinstance(blocks, typing.Sequence):
         for item in blocks:
@@ -236,8 +240,9 @@ def to_prim(blocks):
             f"Expect block or sequence of blocks, but got {type(blocks)}."
         )
     with framework.program_guard(main_program):
-        print("Lowering composite forward ops begin...")
-        primx._lower_composite(blocks, prim_config["forward_blacklist"])
+        logging.debug("Lowering composite forward ops begin...")
+        primx._lower_composite(
+            blocks, prim_config["forward_blacklist"] | exclude
+        )
         replace_ops = prim_config["composite_ops_record"]
-        print(f"Lowering composite forward ops finish: {replace_ops}")
-    return
+        logging.debug(f"Lowering composite forward ops finish: {replace_ops}")
