@@ -17,9 +17,9 @@ import logging
 import numpy as np
 
 import paddle
+import paddle.distributed as dist
 import paddle.nn as nn
 import paddle.optimizer as opt
-import paddle.distributed as dist
 
 __all__ = []
 
@@ -46,6 +46,7 @@ class LinearNet(nn.Layer):
     """
     simple fc network for parallel training check
     """
+
     def __init__(self):
         super(LinearNet, self).__init__()
         self._linear1 = nn.Linear(10, 10)
@@ -203,8 +204,7 @@ def train_for_run_parallel():
     dp_layer = paddle.DataParallel(layer)
 
     loss_fn = nn.MSELoss()
-    adam = opt.Adam(
-        learning_rate=0.001, parameters=dp_layer.parameters())
+    adam = opt.Adam(learning_rate=0.001, parameters=dp_layer.parameters())
 
     inputs = paddle.randn([10, 10], 'float32')
     outputs = dp_layer(inputs)
@@ -307,30 +307,3 @@ def run_check():
                 device_str
             )
         )
-
-if __name__ == "__main__":
-    use_cuda = False
-    use_xpu = False
-    use_npu = False
-
-    if paddle.is_compiled_with_cuda():
-        use_cuda = _is_cuda_available()
-    elif paddle.is_compiled_with_xpu():
-        use_xpu = _is_xpu_available()
-    elif paddle.is_compiled_with_npu():
-        use_npu = _is_npu_available()
-
-    if use_cuda:
-        device_str = "GPU"
-        device_list = paddle.static.cuda_places()
-    elif use_xpu:
-        device_str = "XPU"
-        device_list = paddle.static.xpu_places()
-    elif use_npu:
-        device_str = "NPU"
-        device_list = paddle.static.npu_places()
-    else:
-        device_str = "CPU"
-        device_list = paddle.static.cpu_places(device_count=2)
-    device_count = len(device_list)
-    _run_parallel(device_list)
