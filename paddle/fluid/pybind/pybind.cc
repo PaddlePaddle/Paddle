@@ -871,32 +871,37 @@ PYBIND11_MODULE(libpaddle, m) {
         auto phi_kernels = phi::KernelFactory::Instance().kernels();
         for (auto &kernel_pair : phi_kernels) {
           auto kernel_name = kernel_pair.first;
-          std::vector<std::string> kernel_types;
+          std::vector<std::string> kernel_keys;
           for (auto &info_pair : kernel_pair.second) {
-            if (kernel_registered_type == "all" ||
-                (kernel_registered_type == "function" &&
-                 info_pair.second.GetKernelRegisteredType() ==
-                     phi::KernelRegisteredType::FUNCTION) ||
-                (kernel_registered_type == "structure" &&
-                 info_pair.second.GetKernelRegisteredType() ==
-                     phi::KernelRegisteredType::STRUCTURE)) {
+            bool get_function_kernel =
+                kernel_registered_type == "function" &&
+                info_pair.second.GetKernelRegisteredType() ==
+                    phi::KernelRegisteredType::FUNCTION;
+            bool get_structure_kernel =
+                kernel_registered_type == "structure" &&
+                info_pair.second.GetKernelRegisteredType() ==
+                    phi::KernelRegisteredType::STRUCTURE;
+            if (kernel_registered_type == "all" || get_function_kernel ||
+                get_structure_kernel) {
               std::ostringstream stream;
               stream << info_pair.first;
               std::string kernel_key_str = stream.str();
               if (all_kernels_info.count(kernel_name)) {
-                if (std::find(all_kernels_info[kernel_name].begin(),
+                bool kernel_exist =
+                    std::find(all_kernels_info[kernel_name].begin(),
                               all_kernels_info[kernel_name].end(),
-                              kernel_key_str) ==
-                    all_kernels_info[kernel_name].end()) {
+                              kernel_key_str) !=
+                    all_kernels_info[kernel_name].end();
+                if (!kernel_exist) {
                   all_kernels_info[kernel_name].emplace_back(kernel_key_str);
                 }
               } else {
-                kernel_types.emplace_back(kernel_key_str);
+                kernel_keys.emplace_back(kernel_key_str);
               }
             }
           }
-          if (!kernel_types.empty()) {
-            all_kernels_info.emplace(kernel_name, kernel_types);
+          if (!kernel_keys.empty()) {
+            all_kernels_info.emplace(kernel_name, kernel_keys);
           }
         }
 
