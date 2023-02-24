@@ -43,11 +43,6 @@ void BatchNormGradRawKernel(const Context& dev_ctx,
   funcs::BatchNormOneDNNHandler<T> handler(
       dev_ctx.GetEngine(), dev_ctx.GetPlace(), epsilon, &x, &scale, &y_grad);
 
-  const unsigned int C = vectorize(scale.dims())[0];
-  const size_t scaleshift_size = 2 * C;
-  std::vector<T> diff_scaleshift_data;
-  diff_scaleshift_data.reserve(scaleshift_size);
-
   T* diff_scale_data = dev_ctx.template Alloc<T>(scale_grad);
   T* diff_shift_data = dev_ctx.template Alloc<T>(bias_grad);
 
@@ -75,12 +70,6 @@ void BatchNormGradRawKernel(const Context& dev_ctx,
        {DNNL_ARG_DIFF_SCALE, *(std::get<0>(diff_scaleshift_mems))},
        {DNNL_ARG_DIFF_SHIFT, *(std::get<1>(diff_scaleshift_mems))}});
   astream.wait();
-
-  // copy back diff scale/shift to output tensors (diff scale/shift)
-  diff_scaleshift_data.resize(scaleshift_size);
-  auto it = std::begin(diff_scaleshift_data);
-  std::copy(it, std::next(it, C), diff_scale_data);
-  std::copy(std::next(it, C), std::end(diff_scaleshift_data), diff_shift_data);
 
   // set memory descriptor of out tensor
   x_grad->set_mem_desc(diff_src_memory->get_desc());
