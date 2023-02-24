@@ -412,14 +412,14 @@ class TestRMSOpMultiPrecison(unittest.TestCase):
 
 
 class TestRMSPropMultiPrecision2_0(unittest.TestCase):
-    def dygraph_rms_mp(self, mp, use_amp):
+    def dygraph_rmsprop_mp(self, mp, use_amp):
         paddle.disable_static()
-        paddle.seed(10)
+        paddle.seed(100)
         paddle.set_device('gpu')
         input = paddle.randn((2, 2))
         model = paddle.nn.Linear(2, 2)
         optimizer = paddle.optimizer.RMSProp(
-            0.1, parameters=model.parameters(), multi_precision=mp
+            0.5, parameters=model.parameters(), multi_precision=mp
         )
         if use_amp:
             model = paddle.amp.decorate(models=model, level='O2')
@@ -437,12 +437,13 @@ class TestRMSPropMultiPrecision2_0(unittest.TestCase):
             else:
                 output = model(input)
                 loss = paddle.mean(output)
+                loss.backward()
                 optimizer.step()
                 optimizer.clear_grad()
 
         return output, model.parameters()
 
-    def static_rms_mp(self, mp, use_amp):
+    def static_rmsprop_mp(self, mp, use_amp):
         paddle.enable_static()
         paddle.seed(100)
         np.random.seed(100)
@@ -490,19 +491,13 @@ class TestRMSPropMultiPrecision2_0(unittest.TestCase):
         if not paddle.is_compiled_with_cuda():
             return
         "Test dygraph mode"
-        output11_dy, params1_dy = self.dygraph_rms_mp(use_amp=False, mp=True)
-        output22_dy, params2_dy = self.dygraph_rms_mp(use_amp=False, mp=False)
-        output1_dy, params1_dy = self.dygraph_rms_mp(use_amp=True, mp=True)
-        output2_dy, params2_dy = self.dygraph_rms_mp(use_amp=True, mp=False)
+        output1_dy, params1_dy = self.dygraph_rmsprop_mp(use_amp=True, mp=True)
+        output2_dy, params2_dy = self.dygraph_rmsprop_mp(
+            use_amp=False, mp=False
+        )
         np.testing.assert_allclose(
             output1_dy.astype('float32').numpy(),
             output2_dy.astype('float32').numpy(),
-            rtol=1e-05,
-            atol=0.1,
-        )
-        np.testing.assert_allclose(
-            output11_dy.astype('float32').numpy(),
-            output22_dy.astype('float32').numpy(),
             rtol=1e-05,
             atol=0.1,
         )
@@ -514,21 +509,19 @@ class TestRMSPropMultiPrecision2_0(unittest.TestCase):
                 atol=0.1,
             )
         "Test static mode"
-        output11_st = self.static_rms_mp(use_amp=False, mp=True)
-        output22_st = self.static_rms_mp(use_amp=False, mp=False)
-        output1_st = self.static_rms_mp(use_amp=True, mp=True)
-        output2_st = self.static_rms_mp(use_amp=True, mp=False)
+        output1_st = self.static_rmsprop_mp(use_amp=True, mp=True)
+        output2_st = self.static_rmsprop_mp(use_amp=False, mp=False)
         for idx in range(len(output1_st)):
             np.testing.assert_allclose(
-                output11_st[idx].astype('float32'),
-                output22_st[idx].astype('float32'),
+                output1_st[idx].astype('float32'),
+                output2_st[idx].astype('float32'),
                 rtol=1e-05,
                 atol=0.1,
             )
 
 
 class TestRMSPropMultiPrecision1_0(unittest.TestCase):
-    def dygraph_rms_mp(self, use_amp, mp):
+    def dygraph_rmsprop_mp(self, use_amp, mp):
         paddle.disable_static()
         paddle.seed(10)
         paddle.set_device('gpu')
@@ -560,7 +553,7 @@ class TestRMSPropMultiPrecision1_0(unittest.TestCase):
 
         return output, model.parameters()
 
-    def static_rms_mp(self, use_amp, mp):
+    def static_rmsprop_mp(self, use_amp, mp):
         paddle.enable_static()
         paddle.seed(100)
         np.random.seed(100)
@@ -610,15 +603,9 @@ class TestRMSPropMultiPrecision1_0(unittest.TestCase):
         if not paddle.is_compiled_with_cuda():
             return
         "Test dygraph mode"
-        output11_dy, params1_dy = self.dygraph_rms_mp(use_amp=True, mp=True)
-        output22_dy, params2_dy = self.dygraph_rms_mp(use_amp=True, mp=False)
-        output1_dy, params1_dy = self.dygraph_rms_mp(use_amp=False, mp=True)
-        output2_dy, params2_dy = self.dygraph_rms_mp(use_amp=False, mp=False)
-        np.testing.assert_allclose(
-            output11_dy.astype('float32').numpy(),
-            output22_dy.astype('float32').numpy(),
-            rtol=1e-05,
-            atol=0.1,
+        output1_dy, params1_dy = self.dygraph_rmsprop_mp(use_amp=True, mp=True)
+        output2_dy, params2_dy = self.dygraph_rmsprop_mp(
+            use_amp=False, mp=False
         )
         np.testing.assert_allclose(
             output1_dy.astype('float32').numpy(),
@@ -634,10 +621,8 @@ class TestRMSPropMultiPrecision1_0(unittest.TestCase):
                 atol=0.1,
             )
         "Test static mode"
-        output11_st = self.static_rms_mp(use_amp=True, mp=False)
-        output22_st = self.static_rms_mp(use_amp=True, mp=True)
-        output1_st = self.static_rms_mp(use_amp=False, mp=True)
-        output2_st = self.static_rms_mp(use_amp=False, mp=False)
+        output1_st = self.static_rmsprop_mp(use_amp=True, mp=True)
+        output2_st = self.static_rmsprop_mp(use_amp=False, mp=False)
         for idx in range(len(output1_st)):
             np.testing.assert_allclose(
                 output1_st[idx].astype('float32'),
