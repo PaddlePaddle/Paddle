@@ -98,7 +98,7 @@ class RNNMLUKernel : public framework::OpKernel<T> {
     std::vector<int> seq_len_vec(batch_size, seq_len);
     if (has_seq_length) {  // set seq_len if no padding, otherwise seq_len for
                            // each element.
-      seq_len_vec = phi::GetVectorFromTensor(sequence_length);
+      seq_len_vec = operators::GetDataFromTensor(sequence_length);
     }
     cnnlDirectionMode_t direction =
         is_bidirec ? CNNL_RNN_BIDIRECTIONAL : CNNL_RNN_UNIDIRECTIONAL;
@@ -481,7 +481,7 @@ class RNNMLUGradKernel : public framework::OpKernel<T> {
 
     std::vector<int> seq_len_vec(batch_size, seq_len);
     if (has_seq_length) {
-      seq_len_vec = phi::GetVectorFromTensor(sequence_length);
+      seq_len_vec = operators::GetDataFromTensor(sequence_length);
     }
     cnnlDirectionMode_t direction =
         is_bidirec ? CNNL_RNN_BIDIRECTIONAL : CNNL_RNN_UNIDIRECTIONAL;

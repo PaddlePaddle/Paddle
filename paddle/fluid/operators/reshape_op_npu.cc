@@ -47,15 +47,14 @@ class Reshape2NPUKernel : public framework::OpKernel<T> {
                 "shape is [%d]",
                 shape_tensor->dims().size()));
 
-        target_shape_vector.push_back(
-            phi::GetVectorFromTensor<int>(shape_tensor)[0]);
+        target_shape_vector.push_back(GetDataFromTensor<int>(shape_tensor)[0]);
       }
     } else {
       auto* shape_tensor = ctx.HasInput("Shape")
                                ? ctx.Input<phi::DenseTensor>("Shape")
                                : nullptr;
       if (shape_tensor) {
-        target_shape_vector = phi::GetVectorFromTensor<int>(shape_tensor);
+        target_shape_vector = GetDataFromTensor<int>(shape_tensor);
       } else {
         target_shape_vector = ctx.Attr<std::vector<int>>("shape");
         PADDLE_ENFORCE_GT(

@@ -97,7 +97,7 @@ class InterpolateV2MLUKernel : public framework::OpKernel<T> {
       auto scale = ctx.Attr<std::vector<float>>("scale");
       if (scale_tensor != nullptr) {
         std::vector<float> scale_data;
-        scale_data = phi::GetVectorFromTensor<float>(scale_tensor);
+        scale_data = GetDataFromTensor<float>(scale_tensor);
 
         if (scale_data.size() > 1 && scale_data.size() <= 2) {
           scale_h = scale_data[0];
@@ -148,7 +148,7 @@ class InterpolateV2MLUKernel : public framework::OpKernel<T> {
       auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
       if (out_size != nullptr) {
         std::vector<int32_t> out_size_data;
-        out_size_data = phi::GetVectorFromTensor<int>(out_size);
+        out_size_data = GetDataFromTensor<int>(out_size);
         if (out_size_data.size() <= 2) {
           out_h = out_size_data[0];
           out_w = out_size_data[1];
@@ -399,7 +399,7 @@ class InterpolateV2GradMLUKernel : public framework::OpKernel<T> {
       auto scale = ctx.Attr<std::vector<float>>("scale");
       if (scale_tensor != nullptr) {
         std::vector<float> scale_data;
-        scale_data = phi::GetVectorFromTensor<float>(scale_tensor);
+        scale_data = GetDataFromTensor<float>(scale_tensor);
         if (scale_data.size() > 1) {
           scale_h = scale_data[0];
           scale_w = scale_data[1];
@@ -431,7 +431,7 @@ class InterpolateV2GradMLUKernel : public framework::OpKernel<T> {
       auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
       if (out_size != nullptr) {
         std::vector<int32_t> out_size_data;
-        out_size_data = phi::GetVectorFromTensor<int>(out_size);
+        out_size_data = GetDataFromTensor<int>(out_size);
         out_h = out_size_data[0];
         out_w = out_size_data[1];
       }
