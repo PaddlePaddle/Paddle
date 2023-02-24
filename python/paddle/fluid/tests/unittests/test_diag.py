@@ -18,6 +18,7 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
+import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 
 
@@ -42,9 +43,17 @@ class TestDiagOpCase1(TestDiagOp):
         self.case = np.array([3], dtype='int32')
 
 
-class TestDiagOpCaseFp16(TestDiagOp):
-    def init_config(self):
-        self.case = np.array([3], dtype='float16')
+class TestDiagOpFp16(unittest.TestCase):
+    def test_fp16(self):
+        x_np = np.array([3], dtype='float16')
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(shape=[1, 0], name='x', dtype='float16')
+            out = paddle.diag(x)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                exe.run(paddle.static.default_startup_program())
+                out = exe.run(feed={'x': x_np}, fetch_list=[out])
 
 
 class TestDiagError(unittest.TestCase):
