@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/allclose_kernel.h"
-
 #include "glog/logging.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -29,16 +29,18 @@ __global__ void AllcloseCUDAKernel(const T* in_data,
                                    bool equal_nan,
                                    int num,
                                    bool* out_data) {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
   bool val;
   for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
-    const T a = in_data[i], b = other_data[i];
+    const MPType a = static_cast<MPType>(in_data[i]),
+                 b = static_cast<MPType>(other_data[i]);
     if (isnan(a) || isnan(b)) {
       val = equal_nan && isnan(a) == isnan(b);
     } else {
-      T left = (a > b ? a - b : b - a);
-      T right = atol + (b > 0 ? rtol * b : (-rtol) * b);
-      T diff = (left > right ? left - right : right - left);
+      MPType left = (a > b ? a - b : b - a);
+      MPType right = atol + (b > 0 ? rtol * b : (-rtol) * b);
+      MPType diff = (left > right ? left - right : right - left);
       val = a == b || left <= right || diff <= 1e-15;
     }
     if (!val) *out_data = false;
