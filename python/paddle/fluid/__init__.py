@@ -156,8 +156,6 @@ __all__ = (
         'profiler',
         'unique_name',
         'Scope',
-        'save',
-        'load',
         '_cuda_synchronize',
     ]
 )
