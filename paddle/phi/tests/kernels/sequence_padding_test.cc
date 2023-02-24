@@ -116,7 +116,7 @@ TEST(Seq2BatchPadding, CPU) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(SequencePadding, CUDA) {
-  auto place = paddle::platform::CUDAPlace(0);
+  auto place = phi::GPUPlace(0);
   auto *context = static_cast<phi::GPUContext *>(
       phi::DeviceContextPool::Instance().Get(place));
 

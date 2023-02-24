@@ -43,8 +43,7 @@ TEST(API, strings_empty) {
       alloc.get(),
       phi::DenseTensorMeta(
           phi::DataType::INT64, phi::make_ddim({2}), phi::DataLayout::NCHW));
-  auto* shape_data =
-      dense_shape->mutable_data<int64_t>(paddle::platform::CPUPlace());
+  auto* shape_data = dense_shape->mutable_data<int64_t>(phi::CPUPlace());
   shape_data[0] = 2;
   shape_data[1] = 3;
 

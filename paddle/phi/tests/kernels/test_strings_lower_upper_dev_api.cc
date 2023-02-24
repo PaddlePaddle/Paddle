@@ -38,12 +38,11 @@ TEST(DEV_API, strings_cast_convert) {
   const DDim dims({1, 2});
   StringTensorMeta meta(dims);
   const auto string_allocator =
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace());
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace());
   const auto alloc = string_allocator.get();
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
 
-  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
+  auto* dev_ctx = pool.Get(phi::CPUPlace());
 
   StringTensor dense_x(alloc, meta);
 
@@ -93,11 +92,10 @@ TEST(DEV_API, strings_cast_convert_utf8) {
   const DDim dims({1, 1});
   StringTensorMeta meta(dims);
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
+  auto* dev_ctx = pool.Get(phi::CPUPlace());
 
   const auto string_allocator =
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace());
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace());
   const auto alloc = string_allocator.get();
   StringTensor dense_x(alloc, meta);
 

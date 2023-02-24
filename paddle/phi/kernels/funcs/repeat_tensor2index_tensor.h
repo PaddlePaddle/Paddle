@@ -23,8 +23,7 @@ void RepeatsTensor2IndexTensor(const Context& ctx,
                                DenseTensor* index) {
   DenseTensor repeats_cpu_copy;
   if (repeats.place().GetType() != phi::AllocationType::CPU) {
-    phi::Copy(
-        ctx, repeats, paddle::platform::CPUPlace(), true, &repeats_cpu_copy);
+    phi::Copy(ctx, repeats, phi::CPUPlace(), true, &repeats_cpu_copy);
   }
   const RepeatsT* repeats_data =
       repeats.place().GetType() == phi::AllocationType::CPU

@@ -32,15 +32,14 @@ TEST(string_tensor, ctor) {
   const DDim dims({1, 2});
   StringTensorMeta meta(dims);
   const auto string_allocator =
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace());
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace());
   const auto alloc = string_allocator.get();
   auto check_string_tensor = [](const StringTensor& t,
                                 const StringTensorMeta& m) -> bool {
     bool r{true};
     r = r && (t.numel() == product(m.dims));
     r = r && (t.dims() == m.dims);
-    r = r && (t.place() == paddle::platform::CPUPlace());
+    r = r && (t.place() == phi::CPUPlace());
     r = r && t.initialized();
     r = r && t.IsSharedWith(t);
     r = r && (t.meta() == m);

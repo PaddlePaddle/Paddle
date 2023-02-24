@@ -39,7 +39,7 @@ TEST(DEV_API, memcpy_d2h) {
                          phi::DenseTensorMeta(phi::DataType::FLOAT32,
                                               phi::make_ddim({3, 2, 2, 3}),
                                               phi::DataLayout::NCHW));
-  auto* x_cpu_data = x_cpu.mutable_data<float>(paddle::platform::CPUPlace());
+  auto* x_cpu_data = x_cpu.mutable_data<float>(phi::CPUPlace());
 
   for (int i = 0; i < x_cpu.numel(); i++) {
     x_cpu_data[i] = i;

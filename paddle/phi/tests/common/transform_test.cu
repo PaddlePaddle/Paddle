@@ -40,10 +40,10 @@ class Multiply {
 using paddle::memory::Alloc;
 using paddle::memory::Copy;
 
-using paddle::platform::CPUPlace;
-using paddle::platform::CUDAPlace;
 using phi::CPUContext;
+using phi::CPUPlace;
 using phi::GPUContext;
+using phi::GPUPlace;
 
 using phi::Transform;
 
@@ -58,7 +58,7 @@ TEST(Transform, CPUUnary) {
 }
 
 TEST(Transform, GPUUnary) {
-  CUDAPlace gpu0(0);
+  GPUPlace gpu0(0);
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* ctx = reinterpret_cast<phi::GPUContext*>(pool.Get(phi::GPUPlace()));
 
@@ -87,7 +87,7 @@ TEST(Transform, CPUBinary) {
 
 TEST(Transform, GPUBinary) {
   int buf[4] = {1, 2, 3, 4};
-  CUDAPlace gpu0(0);
+  GPUPlace gpu0(0);
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* ctx = reinterpret_cast<phi::GPUContext*>(pool.Get(phi::GPUPlace()));
 

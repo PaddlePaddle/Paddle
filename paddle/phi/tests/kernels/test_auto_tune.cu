@@ -98,10 +98,9 @@ TEST(AutoTune, sum) {
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   const auto alloc_cuda =
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CUDAPlace());
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::GPUPlace());
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-  auto place = paddle::platform::CUDAPlace();
+  auto place = phi::GPUPlace();
   auto* dev_ctx = static_cast<const phi::GPUContext*>(pool.GetByPlace(place));
   auto stream = dev_ctx->stream();
 

@@ -33,7 +33,7 @@ TEST(math_function, gemm_notrans_cblas) {
   int m = 2;
   int n = 3;
   int k = 3;
-  auto* cpu_place = new paddle::platform::CPUPlace();
+  auto* cpu_place = new phi::CPUPlace();
   float* input1_ptr = input1.mutable_data<float>({2, 3}, *cpu_place);
   float arr1[6] = {0, 1, 2, 3, 4, 5};
   memcpy(input1_ptr, arr1, 6 * sizeof(float));
@@ -75,7 +75,7 @@ void MklSmmCompare(int m, int n, int k) {
   phi::DenseTensor mat_b;
   phi::DenseTensor mat_c_smm;
   phi::DenseTensor mat_c_mkl;
-  auto* cpu_place = new paddle::platform::CPUPlace();
+  auto* cpu_place = new phi::CPUPlace();
 
   T* A = mat_a.mutable_data<T>({m, k}, *cpu_place);
   T* B = mat_b.mutable_data<T>({k, n}, *cpu_place);
@@ -154,7 +154,7 @@ TEST(math_function, gemm_trans_cblas) {
   int m = 2;
   int n = 3;
   int k = 3;
-  auto* cpu_place = new paddle::platform::CPUPlace();
+  auto* cpu_place = new phi::CPUPlace();
   float* input1_ptr = input1.mutable_data<float>({2, 3}, *cpu_place);
   float arr1[6] = {0, 1, 2, 3, 4, 5};
   memcpy(input1_ptr, arr1, 6 * sizeof(float));
@@ -194,7 +194,7 @@ TEST(math_function, gemm_trans_cblas) {
 
 TEST(math_function, zero) {
   phi::DenseTensor tensor;
-  auto* cpu_place = new paddle::platform::CPUPlace();
+  auto* cpu_place = new phi::CPUPlace();
   float* t = tensor.mutable_data<float>({2, 2}, *cpu_place);
   phi::CPUContext context(*cpu_place);
   phi::funcs::SetConstant<phi::CPUContext, float> functor;
@@ -217,7 +217,7 @@ void GemvTest(int m, int n, bool trans) {
   phi::DenseTensor mat_a;
   phi::DenseTensor vec_b;
   phi::DenseTensor vec_c;
-  auto* cpu_place = new paddle::platform::CPUPlace();
+  auto* cpu_place = new phi::CPUPlace();
   int b_num = trans ? m : n;
   int c_num = trans ? n : m;
 
@@ -271,7 +271,7 @@ TEST(math_function, gemv) {
 TEST(math_funciton, set_constant) {
   phi::DenseTensor t;
   t.Resize({10, 10});
-  t.mutable_data<int>(paddle::platform::CPUPlace());
+  t.mutable_data<int>(phi::CPUPlace());
   auto* ctx = new phi::CPUContext();
   phi::funcs::set_constant(*ctx, &t, 10);
   for (int64_t i = 0; i < t.numel(); ++i) {
@@ -291,7 +291,7 @@ void GemmWarpTest(int m, int n, int k, T alpha, T beta) {
   phi::DenseTensor mat_b;
   phi::DenseTensor mat_c_ref;
   phi::DenseTensor mat_c_mkl;
-  auto* cpu_place = new paddle::platform::CPUPlace();
+  auto* cpu_place = new phi::CPUPlace();
 
   T* A = mat_a.mutable_data<T>({m, k}, *cpu_place);
   T* B = mat_b.mutable_data<T>({k, n}, *cpu_place);

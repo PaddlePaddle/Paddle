@@ -52,11 +52,9 @@ void TestCase(const phi::GPUContext& dev_ctx,
               Func compute) {
   phi::DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
   const auto alloc_cpu =
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace());
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace());
   const auto alloc_gpu =
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CUDAPlace());
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::GPUPlace());
 
   auto in1 = std::make_shared<phi::DenseTensor>(
       alloc_cpu.get(),
@@ -99,7 +97,7 @@ void TestCase(const phi::GPUContext& dev_ctx,
 
 TEST(Broadcast, add) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  auto place = paddle::platform::CUDAPlace();
+  auto place = phi::GPUPlace();
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = static_cast<const phi::GPUContext*>(pool.GetByPlace(place));
   size_t times = 10;
