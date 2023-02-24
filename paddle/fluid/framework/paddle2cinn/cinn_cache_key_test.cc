@@ -39,7 +39,9 @@ TEST(CinnCacheKeyTest, TestAsUnorderedKeyByStructure) {
   x->SetType(proto::VarType::LOD_TENSOR);
   ir::Graph graph(program);
 
+  DataType fp32 = DataType::FLOAT32;
   phi::DenseTensor tensor;
+  tensor.set_type(fp32);
   tensor.Resize({1, 2, 3});
   const phi::DenseTensor *tensor_pointer = &tensor;
   std::map<std::string, const phi::DenseTensor *> feed_tensors = {
@@ -47,21 +49,25 @@ TEST(CinnCacheKeyTest, TestAsUnorderedKeyByStructure) {
 
   DDim ddim = phi::make_ddim({1, 2, 3});
   std::map<std::string, DDim> feed_shapes = {{"X", ddim}};
+  std::map<std::string, DataType> feed_dtypes = {{"X", fp32}};
 
   CinnCacheKeyByStructure cache_key0(empty_graph, feed_tensors, "x86");
-  CinnCacheKeyByStructure cache_key1(empty_graph, feed_shapes, "x86");
+  CinnCacheKeyByStructure cache_key1(
+      empty_graph, feed_shapes, feed_dtypes, "x86");
   EXPECT_EQ(cache_key0, cache_key1);
 
-  CinnCacheKeyByStructure cache_key2(graph, feed_shapes, "x86");
-  CinnCacheKeyByStructure cache_key3(graph, feed_shapes, "nvgpu");
+  CinnCacheKeyByStructure cache_key2(graph, feed_shapes, feed_dtypes, "x86");
+  CinnCacheKeyByStructure cache_key3(graph, feed_shapes, feed_dtypes, "nvgpu");
   CinnCacheKeyByStructure cache_key4(graph, feed_tensors, "nvgpu");
   EXPECT_NE(cache_key2, cache_key3);
   EXPECT_EQ(cache_key3, cache_key4);
 
   CinnCacheKeyByStructure cache_key5(
       empty_graph, std::map<std::string, const phi::DenseTensor *>(), "unk");
-  CinnCacheKeyByStructure cache_key6(
-      empty_graph, std::map<std::string, DDim>(), "unk");
+  CinnCacheKeyByStructure cache_key6(empty_graph,
+                                     std::map<std::string, DDim>(),
+                                     std::map<std::string, DataType>(),
+                                     "unk");
   EXPECT_EQ(cache_key5, cache_key6);
 
   EXPECT_NE(cache_key1, cache_key3);
@@ -112,6 +118,7 @@ TEST(CinnCacheKeyTest, TestAsUnorderedKeyByAddress) {
   x->SetType(proto::VarType::LOD_TENSOR);
   ir::Graph graph(program);
 
+  DataType fp32 = DataType::FLOAT32;
   phi::DenseTensor tensor;
   tensor.Resize({1, 2, 3});
   const phi::DenseTensor *tensor_pointer = &tensor;
@@ -120,21 +127,29 @@ TEST(CinnCacheKeyTest, TestAsUnorderedKeyByAddress) {
 
   DDim ddim = phi::make_ddim({1, 2, 3});
   std::map<std::string, DDim> feed_shapes = {{"X", ddim}};
+  std::map<std::string, DataType> feed_dtypes = {{"X", fp32}};
+  std::map<std::string, DataType> new_dtypes = {{"X", DataType::FLOAT64}};
 
   CinnCacheKeyByAddress cache_key0(empty_graph, feed_tensors, "x86");
-  CinnCacheKeyByAddress cache_key1(empty_graph, feed_shapes, "x86");
+  CinnCacheKeyByAddress cache_key1(
+      empty_graph, feed_shapes, feed_dtypes, "x86");
   EXPECT_EQ(cache_key0, cache_key1);
 
-  CinnCacheKeyByAddress cache_key2(graph, feed_shapes, "x86");
-  CinnCacheKeyByAddress cache_key3(graph, feed_shapes, "nvgpu");
+  CinnCacheKeyByAddress cache_key7(empty_graph, feed_shapes, new_dtypes, "x86");
+  EXPECT_NE(cache_key1, cache_key7);
+
+  CinnCacheKeyByAddress cache_key2(graph, feed_shapes, feed_dtypes, "x86");
+  CinnCacheKeyByAddress cache_key3(graph, feed_shapes, feed_dtypes, "nvgpu");
   CinnCacheKeyByAddress cache_key4(graph, feed_tensors, "nvgpu");
   EXPECT_NE(cache_key2, cache_key3);
   EXPECT_EQ(cache_key3, cache_key4);
 
   CinnCacheKeyByAddress cache_key5(
       empty_graph, std::map<std::string, const phi::DenseTensor *>(), "unk");
-  CinnCacheKeyByAddress cache_key6(
-      empty_graph, std::map<std::string, DDim>(), "unk");
+  CinnCacheKeyByAddress cache_key6(empty_graph,
+                                   std::map<std::string, DDim>(),
+                                   std::map<std::string, DataType>(),
+                                   "unk");
   EXPECT_EQ(cache_key5, cache_key6);
 
   EXPECT_NE(cache_key1, cache_key3);
@@ -186,7 +201,9 @@ TEST(CinnCacheKeyTest, TestSameGraph) {
   x2->SetType(proto::VarType::LOD_TENSOR);
   ir::Graph graph2(program2);
 
+  DataType fp32 = DataType::FLOAT32;
   phi::DenseTensor tensor;
+  tensor.set_type(fp32);
   tensor.Resize({1, 2, 3});
   const phi::DenseTensor *tensor_pointer = &tensor;
   std::map<std::string, const phi::DenseTensor *> feed_tensors = {
