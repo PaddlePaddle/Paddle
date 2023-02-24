@@ -52,6 +52,14 @@ using IntArray = paddle::experimental::IntArray;
 class TensorOperantsBase {
  public:
   virtual ~TensorOperantsBase() = default;
+
+  virtual Tensor add(const Tensor& x, const Scalar& y) = 0;
+
+  virtual Tensor divide(const Tensor& x, const Scalar& y) = 0;
+
+  virtual Tensor multiply(const Tensor& x, const Scalar& y) = 0;
+
+  virtual Tensor subtract(const Tensor& x, const Scalar& y) = 0;
 """
 
 
@@ -90,6 +98,38 @@ Tensor Tensor::operator*(const Tensor &other) const {
 Tensor Tensor::operator/(const Tensor &other) const {
   return divide(other);
 }
+
+Tensor Tensor::operator+(const Scalar &other) const {
+  return add(other);
+}
+
+Tensor Tensor::operator-(const Scalar &other) const {
+  return subtract(other);
+}
+
+Tensor Tensor::operator*(const Scalar &other) const {
+  return multiply(other);
+}
+
+Tensor Tensor::operator/(const Scalar &other) const {
+  return divide(other);
+}
+
+Tensor Tensor::add(const Scalar& y) const {
+  return paddle::OperantsManager::Instance().add(static_cast<const Tensor &>(*this), y);
+}
+
+Tensor Tensor::divide(const Scalar& y) const {
+  return paddle::OperantsManager::Instance().divide(static_cast<const Tensor &>(*this), y);
+}
+
+Tensor Tensor::multiply(const Scalar& y) const {
+  return paddle::OperantsManager::Instance().multiply(static_cast<const Tensor &>(*this), y);
+}
+
+Tensor Tensor::subtract(const Scalar& y) const {
+  return paddle::OperantsManager::Instance().subtract(static_cast<const Tensor &>(*this), y);
+}
 """
 
 
@@ -126,6 +166,15 @@ class PhiTensorOperants : public TensorOperantsBase {
 
  public:
   PhiTensorOperants() = default;
+
+  Tensor add(const Tensor& x, const Scalar& y);
+
+  Tensor subtract(const Tensor& x, const Scalar& y);
+
+  Tensor multiply(const Tensor& x, const Scalar& y);
+
+  Tensor divide(const Tensor& x, const Scalar& y);
+
 """
 
 
@@ -150,6 +199,22 @@ operants_source_start = """
 namespace paddle {
 
 namespace operants {
+
+Tensor PhiTensorOperants::add(const Tensor& x, const Scalar& y) {
+  return paddle::experimental::add(x, paddle::experimental::full_like(x, y));
+}
+
+Tensor PhiTensorOperants::subtract(const Tensor& x, const Scalar& y) {
+  return paddle::experimental::subtract(x, paddle::experimental::full_like(x, y));
+}
+
+Tensor PhiTensorOperants::multiply(const Tensor& x, const Scalar& y) {
+  return paddle::experimental::multiply(x, paddle::experimental::full_like(x, y));
+}
+
+Tensor PhiTensorOperants::divide(const Tensor& x, const Scalar& y) {
+  return paddle::experimental::divide(x, paddle::experimental::full_like(x, y));
+}
 """
 
 
@@ -225,6 +290,15 @@ class OperantsManager {
 
  public:
   static OperantsManager& Instance();
+
+  Tensor add(const Tensor& x, const Scalar& y);
+
+  Tensor subtract(const Tensor& x, const Scalar& y);
+
+  Tensor multiply(const Tensor& x, const Scalar& y);
+
+  Tensor divide(const Tensor& x, const Scalar& y);
+
 """
 
 
@@ -395,17 +469,28 @@ class OperantsAPI(ForwardAPI):
 
     def gene_operants_manager_implementation(self):
         func_name = self.get_api_func_name()
+        final_code = ""
+        if func_name in ["add", "subtract", "multiply", "divide"]:
+            final_code += f"""
+{self.get_return_type()} OperantsManager::{func_name}(const Tensor& x, const Scalar& y) {{{self.gene_operants_manager_code()}}}
+"""
         # func decalaration
         if func_name[-1] != '_':
-            return f"""
+            return (
+                final_code
+                + f"""
 {self.get_return_type()} OperantsManager::{func_name}({self.get_define_args()}) {{{self.gene_operants_manager_code()}}}
 """
+            )
         else:
-            return f"""
+            return (
+                final_code
+                + f"""
 {self.get_return_type(inplace_flag=True)} OperantsManager::{func_name}({self.get_define_args(inplace_flag=True)}) {{
 {self.gene_operants_manager_code()}
 }}
 """
+            )
 
 
 def generate_tensor_operants_api(
@@ -532,7 +617,7 @@ def main():
     parser.add_argument(
         '--tensor_api_yaml_path',
         help='path to tensor_api yaml file',
-        default='paddle/phi/api/yaml/tensor_api.yaml',
+        default='paddle/phi/api/yaml/tensor_operants.yaml',
     )
 
     options = parser.parse_args()

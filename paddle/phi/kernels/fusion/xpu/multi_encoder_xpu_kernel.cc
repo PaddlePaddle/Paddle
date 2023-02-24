@@ -86,7 +86,7 @@ void MultiEncoderXPUKernel(const Context& ctx,
     ln_scale_data.push_back(ln_scale[i]->data<float>());
     ln_bias_data.push_back(ln_bias[i]->data<float>());
   }
-  auto* mask_data =
+  const float* mask_data =
       mask.get_ptr() == nullptr ? nullptr : mask.get_ptr()->data<float>();
   xpu::Activation_t qkv_act(static_cast<xpu::Activation_t::act_enum>(act_type));
 

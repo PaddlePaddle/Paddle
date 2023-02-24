@@ -228,6 +228,16 @@ class TestJITLoad(unittest.TestCase):
             self.dtypes.append('float16')
 
     def test_all(self):
+        self.add = self.custom_module.custom_add
+        self.subtract = self.custom_module.custom_subtract
+        self.multiply = self.custom_module.custom_multiply
+        self.divide = self.custom_module.custom_divide
+        self._test_static()
+        self._test_dynamic()
+        self.add = self.custom_module.custom_scalar_add
+        self.subtract = self.custom_module.custom_scalar_subtract
+        self.multiply = self.custom_module.custom_scalar_multiply
+        self.divide = self.custom_module.custom_scalar_divide
         self._test_static()
         self._test_dynamic()
 
@@ -238,35 +248,31 @@ class TestJITLoad(unittest.TestCase):
                     continue
                 x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
 
-                out = test_custom_add_static(
-                    self.custom_module.custom_add, device, dtype, x
-                )
+                out = test_custom_add_static(self.add, device, dtype, x)
                 pd_out = test_custom_add_static(
-                    self.custom_module.custom_add, device, dtype, x, False
+                    self.add, device, dtype, x, False
                 )
                 np.testing.assert_allclose(out, pd_out, rtol=1e-5, atol=1e-8)
 
                 out = test_custom_subtract_static(
-                    self.custom_module.custom_subtract, device, dtype, x
+                    self.subtract, device, dtype, x
                 )
                 pd_out = test_custom_subtract_static(
-                    self.custom_module.custom_subtract, device, dtype, x, False
+                    self.subtract, device, dtype, x, False
                 )
                 np.testing.assert_allclose(out, pd_out, rtol=1e-5, atol=1e-8)
 
                 out = test_custom_multiply_static(
-                    self.custom_module.custom_multiply, device, dtype, x
+                    self.multiply, device, dtype, x
                 )
                 pd_out = test_custom_multiply_static(
-                    self.custom_module.custom_multiply, device, dtype, x, False
+                    self.multiply, device, dtype, x, False
                 )
                 np.testing.assert_allclose(out, pd_out, rtol=1e-5, atol=1e-8)
 
-                out = test_custom_divide_static(
-                    self.custom_module.custom_divide, device, dtype, x
-                )
+                out = test_custom_divide_static(self.divide, device, dtype, x)
                 pd_out = test_custom_divide_static(
-                    self.custom_module.custom_divide, device, dtype, x, False
+                    self.divide, device, dtype, x, False
                 )
                 np.testing.assert_allclose(out, pd_out, rtol=1e-5, atol=1e-8)
 
@@ -278,10 +284,10 @@ class TestJITLoad(unittest.TestCase):
                 x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
 
                 out, x_grad = test_custom_add_dynamic(
-                    self.custom_module.custom_add, device, dtype, x
+                    self.add, device, dtype, x
                 )
                 pd_out, pd_x_grad = test_custom_add_dynamic(
-                    self.custom_module.custom_add, device, dtype, x, False
+                    self.add, device, dtype, x, False
                 )
                 np.testing.assert_allclose(out, pd_out, rtol=1e-5, atol=1e-8)
                 np.testing.assert_allclose(
@@ -289,10 +295,10 @@ class TestJITLoad(unittest.TestCase):
                 )
 
                 out, x_grad = test_custom_subtract_dynamic(
-                    self.custom_module.custom_subtract, device, dtype, x
+                    self.subtract, device, dtype, x
                 )
                 pd_out, pd_x_grad = test_custom_subtract_dynamic(
-                    self.custom_module.custom_subtract, device, dtype, x, False
+                    self.subtract, device, dtype, x, False
                 )
                 np.testing.assert_allclose(out, pd_out, rtol=1e-5, atol=1e-8)
                 np.testing.assert_allclose(
@@ -300,10 +306,10 @@ class TestJITLoad(unittest.TestCase):
                 )
 
                 out, x_grad = test_custom_multiply_dynamic(
-                    self.custom_module.custom_multiply, device, dtype, x
+                    self.multiply, device, dtype, x
                 )
                 pd_out, pd_x_grad = test_custom_multiply_dynamic(
-                    self.custom_module.custom_multiply, device, dtype, x, False
+                    self.multiply, device, dtype, x, False
                 )
                 np.testing.assert_allclose(out, pd_out, rtol=1e-5, atol=1e-8)
                 np.testing.assert_allclose(
@@ -311,10 +317,10 @@ class TestJITLoad(unittest.TestCase):
                 )
 
                 out, x_grad = test_custom_divide_dynamic(
-                    self.custom_module.custom_divide, device, dtype, x
+                    self.divide, device, dtype, x
                 )
                 pd_out, pd_x_grad = test_custom_divide_dynamic(
-                    self.custom_module.custom_divide, device, dtype, x, False
+                    self.divide, device, dtype, x, False
                 )
                 np.testing.assert_allclose(out, pd_out, rtol=1e-5, atol=1e-8)
 

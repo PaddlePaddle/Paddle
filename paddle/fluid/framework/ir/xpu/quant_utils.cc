@@ -79,19 +79,6 @@ void CastToFp32(phi::DenseTensor* tensor) {
   phi::AssignKernel(*dev_ctx, fp32_tensor, tensor);
 }
 
-// static void CastFp16ToFp32(phi::DenseTensor* tensor) {
-//   auto* dev_ctx = static_cast<phi::CPUContext*>(
-//       platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
-//   phi::DenseTensor fp32_tensor;
-//   fp32_tensor.Resize(tensor->dims());
-//   fp32_tensor.set_type(phi::DataType::FLOAT32);
-//   fp32_tensor.set_layout(tensor->layout());
-//   phi::CastKernel<float16>(
-//       *dev_ctx, *tensor, phi::DataType::FLOAT32, &fp32_tensor);
-//   tensor->set_type(phi::DataType::FLOAT32);
-//   phi::AssignKernel(*dev_ctx, fp32_tensor, tensor);
-// }
-
 static float FindMaxAbs(const float* data, int len) {
   float max_f = 0.0f;
   for (int i = 0; i < len; ++i) {
@@ -200,9 +187,7 @@ void QuantWeight(phi::DenseTensor* weight,
                  phi::DenseTensor* weight_max,
                  bool transpose) {
   // Convert fp16 to fp32
-  if (weight->dtype() == phi::DataType::FLOAT16) {
-    CastToFp32(weight);
-  }
+  CastToFp32(weight);
   PADDLE_ENFORCE_EQ(weight->dtype(),
                     phi::DataType::FLOAT32,
                     platform::errors::InvalidArgument(
