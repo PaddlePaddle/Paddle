@@ -44,7 +44,7 @@ ccl::CCLComm GetCCLComm(const Place& place, int global_gid) {
     return nullptr;
   }
 #endif
-  if (paddle::platform::is_gpu_place(place)) {
+  if (place.GetType() == phi::AllocationType::GPU) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     return static_cast<paddle::distributed::ProcessGroupNCCL*>(pg)->NCCLComm(
         place);

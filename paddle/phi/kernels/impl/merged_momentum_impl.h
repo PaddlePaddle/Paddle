@@ -295,7 +295,7 @@ void MergedMomentumInnerCompute(
                 params_out[idx],
                 velocitys_out[idx]);
         VLOG(10) << "Launch MergedMomentum cpu kernel.";
-      } else if (paddle::platform::is_gpu_place(ctx.GetPlace())) {
+      } else if (ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
         phi::funcs::ForRange<Context> for_range(
             static_cast<const Context &>(ctx), params[idx]->numel());
 #define PADDLE_LAUNCH_DENSE_MTMOMENTUM_KERNEL(__nesterov, __reg_type) \

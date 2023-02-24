@@ -57,7 +57,7 @@ void LambKernel(const Context& dev_ctx,
   }
   bool cpu_skip_update = false;
   if (skip_update && skip_update->IsInitialized()) {
-    if (paddle::platform::is_cpu_place(skip_update->place())) {
+    if (skip_update->place().GetType() == phi::AllocationType::CPU) {
       cpu_skip_update = *(skip_update->data<bool>());
     } else {
       const bool* skip_update_flag = skip_update->data<bool>();

@@ -57,7 +57,7 @@ inline bool NeedTransformLayout(const DataLayout& input,
   bool ret = transform_flag.need_trans_layout() &&
              (input != DataLayout::ALL_LAYOUT &&
               target != DataLayout::ALL_LAYOUT && input != target);
-  if (platform::is_gpu_place(place)) {
+  if (place.GetType() == phi::AllocationType::GPU) {
     return false;
   }
   return ret;
@@ -68,7 +68,7 @@ inline phi::DenseTensor TransDataLayout(const phi::DenseTensor& tensor,
   auto& pool = phi::DeviceContextPool::Instance();
   VLOG(3) << "DataLayoutTransform src_layout: " << tensor.layout()
           << " dst_layout: " << layout;
-  if (platform::is_cpu_place(tensor.place())) {
+  if (tensor.place().GetType() == phi::AllocationType::CPU) {
     auto* dev_ctx = static_cast<phi::CPUContext*>(pool.Get(tensor.place()));
     return phi::TransferLayout(*dev_ctx, tensor, layout);
   } else {
@@ -147,11 +147,11 @@ inline phi::DenseTensor TransDataType(const phi::DenseTensor& tensor,
   DefaultAllocator alloc(tensor.place());
   phi::DenseTensor out(&alloc, {dtype, tensor.dims(), tensor.layout()});
 
-  if (platform::is_cpu_place(tensor.place())) {
+  if (tensor.place().GetType() == phi::AllocationType::CPU) {
     auto* dev_ctx = static_cast<phi::CPUContext*>(pool.Get(tensor.place()));
     return CastDataType(*dev_ctx, tensor, dtype);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  } else if (platform::is_gpu_place(tensor.place())) {
+  } else if (tensor.place().GetType() == phi::AllocationType::GPU) {
     auto* dev_ctx = static_cast<phi::GPUContext*>(pool.Get(tensor.place()));
     return CastDataType(*dev_ctx, tensor, dtype);
 #endif

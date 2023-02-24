@@ -151,7 +151,7 @@ void ComputeRowImpl(const Context& dev_ctx,
                                      ? skip_update->data<bool>()
                                      : nullptr;
   if (skip_update_flag &&
-      paddle::platform::is_cpu_place(skip_update->place()) &&
+      skip_update->place().GetType() == phi::AllocationType::CPU &&
       (*skip_update_flag)) {
     return;
   }
