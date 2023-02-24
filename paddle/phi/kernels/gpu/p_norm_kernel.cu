@@ -142,5 +142,4 @@ PD_REGISTER_KERNEL(p_norm,
                    phi::dtype::float16,
                    float,
                    double,
-                   phi::dtype::float16,
                    phi::dtype::bfloat16) {}
