@@ -828,6 +828,14 @@
   outputs :
     out : Out
 
+- op : kron
+  backward : kron_grad
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
+  complex_promote : [X, Y]
+
 - op : kthvalue
   inputs :
     x : X
@@ -1675,7 +1683,10 @@
 
 - op : transpose (transpose2)
   backward : transpose_grad (transpose2_grad)
+  attrs:
+    perm : axis
   extra :
+    outputs : [XShape]
     attrs : [bool use_mkldnn = false, str data_format = "AnyLayout", bool use_quantizer = false,
               str mkldnn_data_type = "float32"]
 

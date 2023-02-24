@@ -583,7 +583,7 @@ if(WITH_PYTHON)
        ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto)
   file(TOUCH
        ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py)
-  file(TOUCH __init__.py)
+  file(TOUCH ${CMAKE_CURRENT_BINARY_DIR}/__init__.py)
   add_dependencies(
     framework_py_proto trainer_py_proto distributed_strategy_py_proto
     pass_desc_py_proto ps_py_proto pslib_py_proto)
@@ -1135,11 +1135,6 @@ cc_test_old(
   proto_desc
   string_helper
   glog)
-
-cc_library(
-  generator
-  SRCS generator.cc
-  DEPS enforce place)
 
 cc_library(
   infershape_utils

@@ -19,7 +19,6 @@ import time
 import unittest
 
 import numpy as np
-from save_quant_model import transform_and_save_int8_model
 
 import paddle
 from paddle.framework import core
@@ -107,7 +106,7 @@ class TestLstmModelPTQ(unittest.TestCase):
         mkldnn_cache_capacity,
         warmup_data=None,
         use_analysis=False,
-        enable_ptq=False,
+        mode="fp32",
     ):
         config = core.AnalysisConfig(model_path)
         config.set_cpu_math_library_num_threads(num_threads)
@@ -118,12 +117,15 @@ class TestLstmModelPTQ(unittest.TestCase):
             config.enable_mkldnn()
             config.disable_mkldnn_fc_passes()  # fc passes caused dnnl error
             config.set_mkldnn_cache_capacity(mkldnn_cache_capacity)
-            if enable_ptq:
+            if mode == "ptq":
                 # This pass to work properly, must be added before fc_fuse_pass
                 config.pass_builder().insert_pass(5, "fc_lstm_fuse_pass")
                 config.enable_quantizer()
                 config.quantizer_config().set_quant_data(warmup_data)
                 config.quantizer_config().set_quant_batch_size(1)
+            elif mode == "qat":
+                config.enable_mkldnn_int8()
+
         return config
 
     def run_program(
@@ -134,7 +136,7 @@ class TestLstmModelPTQ(unittest.TestCase):
         mkldnn_cache_capacity,
         warmup_iter,
         use_analysis=False,
-        enable_ptq=False,
+        mode="fp32",
     ):
         place = paddle.CPUPlace()
         warmup_data, inputs = self.get_warmup_tensor(data_path, place)
@@ -145,7 +147,7 @@ class TestLstmModelPTQ(unittest.TestCase):
             mkldnn_cache_capacity,
             warmup_data,
             use_analysis,
-            enable_ptq,
+            mode,
         )
 
         predictor = core.create_paddle_predictor(config)
@@ -228,7 +230,7 @@ class TestLstmModelPTQ(unittest.TestCase):
             mkldnn_cache_capacity,
             warmup_iter,
             False,
-            False,
+            mode="fp32",
         )
 
         (int8_hx_acc, int8_ctc_acc, int8_fps) = self.run_program(
@@ -238,23 +240,17 @@ class TestLstmModelPTQ(unittest.TestCase):
             mkldnn_cache_capacity,
             warmup_iter,
             True,
-            True,
-        )
-
-        quant_model_save_path = quant_model + "_int8"
-        # transform model to quant2
-        transform_and_save_int8_model(
-            quant_model, quant_model_save_path, "fusion_lstm,concat"
+            mode="ptq",
         )
 
         (quant_hx_acc, quant_ctc_acc, quant_fps) = self.run_program(
-            quant_model_save_path,
+            quant_model + "_int8",
             infer_data,
             num_threads,
             mkldnn_cache_capacity,
             warmup_iter,
             True,
-            False,
+            mode="qat",
         )
 
         print(
@@ -270,7 +266,7 @@ class TestLstmModelPTQ(unittest.TestCase):
         )
 
         print(
-            "QUANT2_INT8: fps {0}, hx_acc {1}, ctc_acc {2}".format(
+            "QAT: fps {0}, hx_acc {1}, ctc_acc {2}".format(
                 quant_fps, quant_hx_acc, quant_ctc_acc
             )
         )
