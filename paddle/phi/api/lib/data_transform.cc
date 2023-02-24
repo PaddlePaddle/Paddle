@@ -170,7 +170,7 @@ inline phi::DenseTensor TransDataPlace(const phi::DenseTensor& tensor,
   auto& pool = phi::DeviceContextPool::Instance();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // NOTE(yy): TransDataPlace should wait for computation of input.
-  if (!platform::is_cuda_pinned_place(tensor.place())) {
+  if (tensor.place().GetType() != phi::AllocationType::GPUPINNED) {
     pool.Get(tensor.place())->Wait();
     pool.Get(dst_place)->Wait();
   }
