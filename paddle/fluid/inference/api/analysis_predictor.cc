@@ -28,7 +28,6 @@
 #include "paddle/fluid//platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/naive_executor.h"
@@ -62,6 +61,7 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/generator.h"
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
 #include "paddle/utils/string/split.h"
 
@@ -441,8 +441,8 @@ void AnalysisPredictor::InitDeviceContexts() {
                   .GetZeroAllocator(platform::CPUPlace())
                   .get());
           gpu_context->SetGenerator(
-              framework::DefaultCUDAGenerator(place_.GetDeviceId()).get());
-          gpu_context->SetHostGenerator(framework::DefaultCPUGenerator().get());
+              phi::DefaultCUDAGenerator(place_.GetDeviceId()).get());
+          gpu_context->SetHostGenerator(phi::DefaultCPUGenerator().get());
 
           gpu_context->SetStream(gpu_resource->GetStream());
           gpu_context->SetBlasHandle(gpu_resource->GetBlasHandleCreator());

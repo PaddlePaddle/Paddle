@@ -18,6 +18,9 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 
 namespace paddle {
@@ -409,6 +412,34 @@ class SliceOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+class SliceCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    paddle::experimental::Tensor input = this->GetSingleForwardInput("Input");
+    paddle::experimental::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::experimental::Tensor input_grad = this->GetSingleInputGrad("Input");
+
+    auto dx_ptr = this->GetOutputPtr(&input_grad);
+    std::string dx_name = this->GetOutputName(input_grad);
+    auto axes = this->Attr<std::vector<int64_t>>("axes");
+    auto starts = this->Attr<std::vector<int64_t>>("starts");
+    auto ends = this->Attr<std::vector<int64_t>>("ends");
+    auto infer_flags = this->Attr<std::vector<int64_t>>("infer_flags");
+    auto decrease_axis = this->Attr<std::vector<int64_t>>("decrease_axis");
+    VLOG(6) << "Runing slice_grad composite func";
+    prim::slice_grad<prim::DescTensor>(input,
+                                       out_grad,
+                                       axes,
+                                       paddle::experimental::IntArray(starts),
+                                       paddle::experimental::IntArray(ends),
+                                       infer_flags,
+                                       decrease_axis,
+                                       dx_ptr);
+    this->RecoverOutputName(input_grad, dx_name);
+  }
+};
 template <typename T>
 class SliceDoubleOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
