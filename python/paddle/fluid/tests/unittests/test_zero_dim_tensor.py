@@ -774,7 +774,18 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out.shape, [0])
         np.testing.assert_array_equal(out.numpy(), np.array([]))
 
-    def test_pow_factor(self):
+    def test_equal_scalar(self):
+        x = paddle.rand([])
+        out = paddle.equal(x, 2.0)
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out, False)
+
+        x1 = paddle.full([], 2.0)
+        out1 = paddle.equal(x1, 2.0)
+        self.assertEqual(out1.shape, [])
+        self.assertEqual(out1, True)
+
+    def test_pow_scalar(self):
         x = paddle.rand([])
         x.stop_gradient = False
         out = paddle.pow(x, 2.0)
@@ -1837,7 +1848,17 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[3].shape, ())
 
     @prog_scope()
-    def test_pow_factor(self):
+    def test_equal_scalar(self):
+        x = paddle.rand([])
+        out = paddle.equal(x, 2.0)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[0], False)
+
+    @prog_scope()
+    def test_pow_scalar(self):
         x = paddle.rand([])
         x.stop_gradient = False
         out = paddle.pow(x, 2.0)
