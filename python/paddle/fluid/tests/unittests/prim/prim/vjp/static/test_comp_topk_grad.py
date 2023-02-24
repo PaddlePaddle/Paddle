@@ -121,7 +121,6 @@ class TestTopkGradComp(unittest.TestCase):
         paddle.disable_static()
         dy_res = self.train(use_prim=False, use_cinn=False)
         comp_st_cinn_res = self.train(use_prim=True, use_cinn=True)
-
         for i in range(len(dy_res)):
             np.testing.assert_allclose(
                 comp_st_cinn_res[i].numpy(),
@@ -138,9 +137,9 @@ class TestTopkGradComp(unittest.TestCase):
             with paddle.static.program_guard(mp, sp):
                 x = paddle.static.data('primal', primal.shape, primal.dtype)
                 x.stop_gradient = False
-                y = paddle.topk(x, k, axis, largest, sorted)
-                y_grad = paddle.static.data('v', y[1].shape, y[1].dtype)
-                res = paddle.static.gradients([y[1]], [x], [y_grad])
+                y_v, _ = paddle.topk(x, k, axis, largest, sorted)
+                y_grad = paddle.static.data('v', y_v.shape, y_v.dtype)
+                res = paddle.static.gradients([y_v], [x], [y_grad])
             exe = paddle.static.Executor()
             exe.run(sp)
             return exe.run(
@@ -155,9 +154,9 @@ class TestTopkGradComp(unittest.TestCase):
             with paddle.static.program_guard(mp, sp):
                 x = paddle.static.data('primal', primal.shape, primal.dtype)
                 x.stop_gradient = False
-                y = paddle.topk(x, k, axis, largest, sorted)
-                y_grad = paddle.static.data('v', y[1].shape, y[1].dtype)
-                res = paddle.static.gradients([y[1]], [x], [y_grad])
+                y_v, _ = paddle.topk(x, k, axis, largest, sorted)
+                y_grad = paddle.static.data('v', y_v.shape, y_v.dtype)
+                res = paddle.static.gradients([y_v], [x], [y_grad])
             exe = paddle.static.Executor()
             exe.run(sp)
             return exe.run(
