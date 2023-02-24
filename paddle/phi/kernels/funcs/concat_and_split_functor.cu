@@ -105,12 +105,12 @@ struct PointerToPointer {
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
     auto* restored = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
         pre_alloced_host_ptr, in_num);
-    paddle::memory::Copy(ctx.GetPlace(),
-                         (*dev_ins_ptr)->ptr(),
-                         phi::CPUPlace(),
-                         restored,
-                         in_num * sizeof(T*),
-                         ctx.stream());
+    memory_utils::Copy(ctx.GetPlace(),
+                       (*dev_ins_ptr)->ptr(),
+                       phi::CPUPlace(),
+                       restored,
+                       in_num * sizeof(T*),
+                       ctx.stream());
     ins_addr = reinterpret_cast<void**>((*dev_ins_ptr)->ptr());
   }
 };
@@ -155,12 +155,12 @@ struct PointerToPointerAndCol {
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
     auto* restored = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
         inputs_col, inputs_col_num);
-    paddle::memory::Copy(ctx.GetPlace(),
-                         (*dev_col_ptr)->ptr(),
-                         phi::CPUPlace(),
-                         restored,
-                         inputs_col_num * sizeof(IndexT),
-                         ctx.stream());
+    memory_utils::Copy(ctx.GetPlace(),
+                       (*dev_col_ptr)->ptr(),
+                       phi::CPUPlace(),
+                       restored,
+                       inputs_col_num * sizeof(IndexT),
+                       ctx.stream());
     col_length = static_cast<IndexT*>((*dev_col_ptr)->ptr());
     ins_ptr_wrapper =
         PointerToPointer<T>(ctx, ins, pre_alloced_host_ptr, dev_ins_ptr);
