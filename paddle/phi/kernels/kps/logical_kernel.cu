@@ -80,7 +80,7 @@ PD_REGISTER_KERNEL(logical_xor, KPS, ALL_LAYOUT, phi::LogicalXorKernel, int) {}
                      int64_t,                                \
                      int,                                    \
                      int8_t,                                 \
-                     int16_t                                 \
+                     int16_t,                                \
                      phi::dtype::float16) {}
 
 REGISTER_LOGICAL_CUDA_KERNEL(logical_and, And)
