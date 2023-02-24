@@ -3,7 +3,7 @@ add_subdirectory(gpu)
 
 set(BACKENDS_SRCS all_context.cc cpu/cpu_context.cc cpu/cpu_info.cc)
 set(BACKENDS_DEPS enforce place flags eigen3 phi_device_context)
-set(BACKENDS_DEPS generator)
+set(BACKENDS_DEPS allocator generator)
 if(WITH_XBYAK)
   list(APPEND BACKENDS_DEPS xbyak)
 endif()

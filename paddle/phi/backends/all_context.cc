@@ -136,7 +136,7 @@ inline void EmplacePhiContext(
 #endif
   } else if (place.GetType() == phi::AllocationType::XPU) {
 #ifdef PADDLE_WITH_XPU
-    EmplaceDeviceContext<XPUDeviceContext>(
+    EmplaceDeviceContext<phi::XPUContext>(
         place_to_device_context,
         place,
         disable_setting_default_stream_for_allocator,
@@ -148,7 +148,7 @@ inline void EmplacePhiContext(
 #endif
   } else if (place.GetType() == phi::AllocationType::CUSTOM) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    EmplaceDeviceContext<CustomContext>(
+    EmplaceDeviceContext<phi::CustomContext>(
         place_to_device_context,
         place,
         disable_setting_default_stream_for_allocator,
