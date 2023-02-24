@@ -2841,7 +2841,7 @@ def clip(x, min=None, max=None, name=None):
                 )
 
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64', 'int32', 'int64'], 'clip'
+            x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'clip'
         )
 
         inputs = {'X': x}
