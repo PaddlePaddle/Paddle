@@ -43,10 +43,17 @@ else:
         python_version = platform.python_version()
         os.environ["PY_VERSION"] = python_version
     else:
-        if os.getenv("PY_VERSION") != platform.python_version()[:3]:
+        if os.getenv("PY_VERSION") != str(sys.version_info.major) + '.' + str(
+            sys.version_info.minor
+        ):
             raise RuntimeError(
                 "You set PY_VERSION=%s, but your current python environment is %s, you should keep them consistent!"
-                % (os.getenv("PY_VERSION"), platform.python_version()[:3])
+                % (
+                    os.getenv("PY_VERSION"),
+                    str(sys.version_info.major)
+                    + '.'
+                    + str(sys.version_info.minor),
+                )
             )
 
 # check cmake
