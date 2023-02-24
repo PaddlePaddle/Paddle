@@ -71,7 +71,7 @@ bool is_xpu_kp_support_op(const std::string& fluid_op_name,
   auto v = get_xpu_version(0);
   auto& ops = (v == phi::backends::xpu::XPUVersion::XPU1)
                   ? phi::backends::xpu::get_kl1_ops()
-                  : paddle::platform::get_kp_ops();
+                  : phi::backends::xpu::get_kp_ops();
 
   if (ops.find(fluid_op_name) != ops.end() &&
       ops[fluid_op_name].find(type) != ops[fluid_op_name].end()) {

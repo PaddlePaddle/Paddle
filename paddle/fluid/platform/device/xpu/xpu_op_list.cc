@@ -68,7 +68,7 @@ bool is_in_xpu_kpwhite_list(const std::string& op_name) {
 XPUOpListMap get_xpu_kp_op_list(phi::backends::xpu::XPUVersion version) {
   auto& ops = version == phi::backends::xpu::XPUVersion::XPU1
                   ? phi::backends::xpu::get_kl1_ops()
-                  : get_kp_ops();
+                  : phi::backends::xpu::get_kp_ops();
   XPUOpListMap res;
   for (auto& op : ops) {
     std::vector<vartype::Type> op_types;
@@ -85,7 +85,7 @@ std::vector<vartype::Type> get_xpu_kp_op_support_type(
     const std::string& op_name, phi::backends::xpu::XPUVersion version) {
   auto& ops = version == phi::backends::xpu::XPUVersion::XPU1
                   ? phi::backends::xpu::get_kl1_ops()
-                  : get_kp_ops();
+                  : phi::backends::xpu::get_kp_ops();
   std::vector<vartype::Type> res;
   if (ops.find(op_name) != ops.end()) {
     auto& dtypes = ops[op_name];
