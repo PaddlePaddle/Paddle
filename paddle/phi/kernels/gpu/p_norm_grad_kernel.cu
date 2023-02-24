@@ -111,5 +111,4 @@ PD_REGISTER_KERNEL(p_norm_grad,
                    phi::dtype::float16,
                    float,
                    double,
-                   phi::dtype::float16,
                    phi::dtype::bfloat16) {}
