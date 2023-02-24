@@ -15,6 +15,7 @@
 #include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/elementwise.h"
@@ -50,6 +51,7 @@ PD_REGISTER_KERNEL(add_raw,
                    int16_t,
                    int,
                    int64_t,
+                   phi::dtype::float16,
                    complex64,
                    complex128) {}
 
