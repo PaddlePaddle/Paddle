@@ -1045,13 +1045,13 @@ class TestToPrim(unittest.TestCase):
         core._set_prim_forward_enabled(False)
         paddle.disable_static()
 
-    @param.parameterized((('dropout',),))
+    @param.parameterized.expand((({'dropout'},),))
     def test_exclude(self, exclude):
         program = paddle.static.Program()
         with paddle.static.program_guard(program):
             x = paddle.rand((1,))
             y = paddle.nn.functional.dropout(x)
-        primapi.to_prim(program, exclude)
+        primapi.to_prim(program.blocks, exclude)
         ops = tuple(op.type for op in program.block(0).ops)
         self.assertTrue(all(tuple(op in ops for op in exclude)))
 

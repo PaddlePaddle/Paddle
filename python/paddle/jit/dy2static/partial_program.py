@@ -197,7 +197,7 @@ class PartialProgramLayer:
         # Set default mode to train
         self.training = True
         self._infer_info = ProgramInfo()
-        self._backward_start_index_map = {}
+        self._forward_end_index_map = {}
 
         custom_white_list, custom_black_list = None, None
         tracer = framework._dygraph_tracer()
@@ -316,7 +316,10 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _create_forward_backward_train_program(self):
         whole_program = self._train_program
-        _, forward_end_op_index = self._infer_info('fp32', self._create_program)
+        # _, forward_end_op_index = self._infer_info('fp32', self._create_program)
+        forward_end_op_index = self._forward_end_index_map[
+            _hash_with_id(whole_program, self)
+        ]
         assert forward_end_op_index >= 0
 
         return self._get_forward_backward_program_form(
@@ -642,15 +645,16 @@ class PartialProgramLayer:
         if targets:
             # TODO(CZ): later when use cinn, set_prim_all_enabled and check_and_set_prim_all_enabled will be set at else branch.
             core.check_and_set_prim_all_enabled()
+            start_idx = len(program.block(0).ops) + len(self._outputs.tolist())
             backward.gradients(targets=targets, inputs=[])
-            start_idx = (
-                len(main_program.block(0).ops) + len(self._outputs.tolist()) + 1
-            )
+
             if self._hooker:
                 program, start_idx = self._hooker.after_append_backward(
                     self, program, start_idx
                 )
-                # self._backward_start_index_map[self._hash_with_id(program, self)]
+            self._forward_end_index_map[
+                _hash_with_id(program, self)
+            ] = start_idx - len(self._outputs.tolist())
             # TODO: prim make this complicate
             self.prepare_gradient_aggregation(start_idx, main_program, program)
 
@@ -732,10 +736,6 @@ class PartialProgramLayer:
             'program_id',
             self.program_id,
         ]
-
-        print(self.forward_program)
-        print(self.backward_program)
-        print(self.program_id)
 
         if self.training:
             # NOTE: In the case of higher-order gradient, the names of the parameter grads may be like
@@ -1155,5 +1155,5 @@ def add_build_strategy_for(
         if hasattr(compiled_program._program, 'lr_sheduler'):
             builded_program.lr_sheduler = compiled_program._program.lr_sheduler
     else:
-        builded_program = program
+        builded_program = paddle.static.Program()
     return builded_program

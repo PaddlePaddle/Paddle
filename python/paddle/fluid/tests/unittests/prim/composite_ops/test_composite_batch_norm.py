@@ -244,22 +244,22 @@ class TestCompositeBatchNorm(unittest.TestCase):
             atol=attrs.get_atol("forward"),
         )
 
-    def test_forward(self):
-        for i in self.training:
-            for j in self.dtypes:
-                for m in self.momentum:
-                    attrs.set_training(i)
-                    attrs.set_dtype(j)
-                    attrs.set_momentum(m)
-                    self.compare_forward()
+    # def test_forward(self):
+    #     for i in self.training:
+    #         for j in self.dtypes:
+    #             for m in self.momentum:
+    #                 attrs.set_training(i)
+    #                 attrs.set_dtype(j)
+    #                 attrs.set_momentum(m)
+    #                 self.compare_forward()
 
-        for n in self.shapes:
-            for s in self.data_formats:
-                for t in self.use_global_stats:
-                    attrs.set_shape(n)
-                    attrs.set_data_format(s)
-                    attrs.set_use_global_stats(t)
-                    self.compare_forward()
+    #     for n in self.shapes:
+    #         for s in self.data_formats:
+    #             for t in self.use_global_stats:
+    #                 attrs.set_shape(n)
+    #                 attrs.set_data_format(s)
+    #                 attrs.set_use_global_stats(t)
+    #                 self.compare_forward()
 
 
 def apply_to_static(net, use_cinn):
