@@ -16,11 +16,13 @@
 
 #include "paddle/fluid/distributed/collective/common.h"
 #include "paddle/fluid/distributed/collective/custom_ccl_tools.h"
+#include "paddle/fluid/distributed/collective/utils.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/distributed/check/static_check.h"
 
 DECLARE_bool(xccl_blocking_wait);
 
@@ -236,8 +238,19 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
     int64_t numel,
     bool sync_op,  // for compatibility, no use now
     bool use_calc_stream) {
-  std::vector<phi::DenseTensor> in_wrapper{in_tensor};
+  // numel > 0 indicates the tensor need to be sliced
+  const phi::DenseTensor& in_tensor_maybe_partial =
+      numel > 0
+          ? paddle::distributed::GetPartialTensor(in_tensor, offset, numel)
+          : in_tensor;
+  phi::distributed::CommStaticCheck::GatherLikeShape(*out_tensor,
+                                                     in_tensor_maybe_partial,
+                                                     /*dst_rank*/ rank_,
+                                                     /*cur_rank*/ rank_,
+                                                     size_);
+  std::vector<phi::DenseTensor> in_wrapper{in_tensor_maybe_partial};
   std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
+
   return Collective(
       in_wrapper,
       out_wrapper,
@@ -247,9 +260,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
           const phi::stream::Stream& stream) {
         return phi::DeviceManager::CCLAllGather(
             device_type_,
-            XcclGetPointerByOffset(input.data(), offset, input.dtype()),
+            input.data(),
             output.data(),
-            numel,
+            input.numel(),
             phi::ccl::ToCCLDataType(input.dtype()),
             comm,
             stream);
