@@ -46,15 +46,14 @@ class TestDiagOpCaseFp16(TestDiagOp):
     def init_config(self):
         self.case = np.array([3], dtype='float16')
 
+
 class TestDiagError(unittest.TestCase):
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
 
             def test_diag_type():
-                x = [1, 2, 3]
-                output = paddle.diag(x=x)
-
+                return paddle.diag(x=[1, 2, 3])
 
             self.assertRaises(TypeError, test_diag_type)
 

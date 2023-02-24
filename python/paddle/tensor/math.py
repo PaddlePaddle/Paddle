@@ -156,7 +156,9 @@ def log(x, name=None):
     if in_dygraph_mode():
         return _C_ops.log(x)
     else:
-        check_variable_and_dtype(x, 'x', ['float16','float32', 'float64'], "log")
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], "log"
+        )
         inputs = {'X': [x]}
         helper = LayerHelper('log', **locals())
         dtype = helper.input_dtype(input_param_name='x')
