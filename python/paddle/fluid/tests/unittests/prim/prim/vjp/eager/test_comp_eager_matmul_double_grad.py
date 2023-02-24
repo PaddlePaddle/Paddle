@@ -368,6 +368,48 @@ class TestMatmulDoubleGradComp(unittest.TestCase):
             False,
             np.float64,
         ),
+        (
+            np.random.rand(2, 2, 3),
+            np.random.rand(2, 3, 2),
+            False,
+            False,
+            np.float16,
+        ),
+        (
+            np.random.rand(2, 2, 3),
+            np.random.rand(2, 3, 2),
+            False,
+            False,
+            np.float32,
+        ),
+        (
+            np.random.rand(2, 2, 3),
+            np.random.rand(2, 3, 2),
+            False,
+            False,
+            np.float64,
+        ),
+        (
+            np.random.rand(2, 4, 3),
+            np.random.rand(2, 5, 4),
+            True,
+            True,
+            np.float64,
+        ),
+        (
+            np.random.rand(2, 2, 3),
+            np.random.rand(1, 3, 2),
+            False,
+            False,
+            np.float64,
+        ),
+        (
+            np.random.rand(2, 1, 5, 2),
+            np.random.rand(1, 3, 2, 4),
+            False,
+            False,
+            np.float32,
+        ),
     ],
 )
 class TestMatmulTribleGradComp(unittest.TestCase):
@@ -393,22 +435,24 @@ class TestMatmulTribleGradComp(unittest.TestCase):
             out = paddle.matmul(x, y, trans_0, trans_1)
             dout = paddle.ones_like(out, dtype=dtype_)
             dout.stop_gradient = False
+            ddx = paddle.ones_like(x, dtype=dtype_)
+            ddx.stop_gradient = False
+            ddy = paddle.ones_like(y, dtype=dtype_)
+            ddy.stop_gradient = False
             res = paddle.grad(
                 [out], [x, y], dout, create_graph=True, retain_graph=True
             )
             res_double = paddle.grad(
-                res, [x, y, dout], create_graph=True, retain_graph=True
+                res,
+                [x, y, dout],
+                [ddx, ddy],
+                create_graph=True,
+                retain_graph=True,
             )
-            d_x = paddle.ones_like(res_double[0], dtype=dtype_)
-            d_y = paddle.ones_like(res_double[1], dtype=dtype_)
-            d_dout = paddle.ones_like(res_double[2], dtype=dtype_)
-            d_x.stop_gradient = False
-            d_y.stop_gradient = False
-            d_dout.stop_gradient = False
+
             res_triple = paddle.grad(
                 res_double,
-                [x, y],
-                [d_x, d_y, d_dout],
+                [x, y, dout, ddx, ddy],
                 create_graph=False,
                 retain_graph=False,
             )
@@ -428,14 +472,25 @@ class TestMatmulTribleGradComp(unittest.TestCase):
             out = paddle.matmul(x, y, trans_0, trans_1)
             dout = paddle.ones_like(out, dtype=dtype_)
             dout.stop_gradient = False
+            ddx = paddle.ones_like(x, dtype=dtype_)
+            ddx.stop_gradient = False
+            ddy = paddle.ones_like(y, dtype=dtype_)
+            ddy.stop_gradient = False
             res = paddle.grad(
-                out, [x, y], dout, create_graph=True, retain_graph=True
+                [out], [x, y], [dout], create_graph=True, retain_graph=True
             )
             res_double = paddle.grad(
-                res, [x, y, dout], create_graph=True, retain_graph=True
+                res,
+                [x, y, dout],
+                [ddx, ddy],
+                create_graph=True,
+                retain_graph=True,
             )
             res_triple = paddle.grad(
-                res_double, [x, y], create_graph=False, retain_graph=True
+                res_double,
+                [x, y, dout, ddx, ddy],
+                create_graph=False,
+                retain_graph=True,
             )
             return (
                 res_double[0].numpy(),
