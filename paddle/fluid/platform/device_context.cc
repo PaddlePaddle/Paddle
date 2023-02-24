@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/expect.h"
+#include "paddle/phi/core/generator.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"

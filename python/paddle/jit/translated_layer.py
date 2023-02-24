@@ -563,6 +563,11 @@ class _ProgramHolder:
                         op.desc.set_output("ReserveSpace", [reserve_space.name])
                     continue
 
+                # There are some situations that users will add backward op in Forward
+                # function of Layer. And because backward op doesn't have proto. So, we
+                # should skip it when we meet it.
+                if not OpProtoHolder.instance().has_op_proto(op.type):
+                    continue
                 proto = OpProtoHolder.instance().get_op_proto(op.type)
                 has_create_intermediate_out = False
                 for output_proto in proto.outputs:
