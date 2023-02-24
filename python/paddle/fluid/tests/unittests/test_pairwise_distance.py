@@ -110,6 +110,9 @@ class TestPairwiseDistance(unittest.TestCase):
                 for dtype in dtypes:
                     for p in p_list:
                         for keepdim in keeps:
+                            # Currently, the CPU does not support float16
+                            if dtype == "float16" and isinstance(place, paddle.CPUPlace):
+                                continue
                             x_np = np.random.random(shape).astype(dtype)
                             y_np = np.random.random(shape).astype(dtype)
 
