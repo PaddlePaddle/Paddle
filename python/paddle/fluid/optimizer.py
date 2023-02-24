@@ -19,6 +19,7 @@ from collections import defaultdict
 
 import paddle
 
+
 from paddle.fluid.framework import (
     Program,
     Variable,
