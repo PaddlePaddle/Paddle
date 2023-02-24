@@ -478,13 +478,15 @@ void GraphGpuWrapper::load_edge_file(
     std::string graph_data_local_path,
     int part_num,
     bool reverse,
-    const std::vector<bool> &is_reverse_edge_map) {
+    const std::vector<bool> &is_reverse_edge_map,
+    bool use_weight) {
   reinterpret_cast<GpuPsGraphTable *>(graph_table)
       ->cpu_graph_table_->parse_edge_and_load(etype2files,
                                               graph_data_local_path,
                                               part_num,
                                               reverse,
-                                              is_reverse_edge_map);
+                                              is_reverse_edge_map,
+                                              use_weight);
 }
 
 int GraphGpuWrapper::load_node_file(std::string name, std::string filepath) {

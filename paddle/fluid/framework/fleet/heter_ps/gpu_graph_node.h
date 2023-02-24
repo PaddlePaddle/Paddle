@@ -34,37 +34,49 @@ struct GpuPsNodeInfo {
 
 struct GpuPsCommGraph {
   uint64_t *node_list;
-  // when FLAGS_gpugraph_load_node_list_into_hbm is ture locate on both side
+  // when FLAGS_gpugraph_load_node_list_into_hbm is true locate on both side
   // else only locate on host side
   int64_t node_size;              //  the size of node_list
   GpuPsNodeInfo *node_info_list;  // only locate on host side
   uint64_t *neighbor_list;        // locate on both side
   int64_t neighbor_size;          // the size of neighbor_list
+  float *weight_list;             // locate on both side, which length is the same as neighbor_list
+  bool is_weighted;
   GpuPsCommGraph()
       : node_list(nullptr),
         node_size(0),
         node_info_list(nullptr),
         neighbor_list(nullptr),
-        neighbor_size(0) {}
+        neighbor_size(0),
+        weight_list(nullptr),
+        is_weighted(false) {}
   GpuPsCommGraph(uint64_t *node_list_,
                  int64_t node_size_,
                  GpuPsNodeInfo *node_info_list_,
                  uint64_t *neighbor_list_,
-                 int64_t neighbor_size_)
+                 int64_t neighbor_size_,
+                 float *weight_list_,
+                 bool is_weighted_)
       : node_list(node_list_),
         node_size(node_size_),
         node_info_list(node_info_list_),
         neighbor_list(neighbor_list_),
-        neighbor_size(neighbor_size_) {}
-  void init_on_cpu(int64_t neighbor_size_, int64_t node_size_) {
+        neighbor_size(neighbor_size_),
+        weight_list(weight_list_),
+        is_weighted(is_weighted_) {}
+  void init_on_cpu(int64_t neighbor_size_, int64_t node_size_, bool is_weighted_) {
     if (node_size_ > 0) {
       this->node_size = node_size_;
       this->node_list = new uint64_t[node_size_];
       this->node_info_list = new paddle::framework::GpuPsNodeInfo[node_size_];
     }
     if (neighbor_size_) {
+      this->is_weighted = is_weighted_;
       this->neighbor_size = neighbor_size_;
       this->neighbor_list = new uint64_t[neighbor_size_];
+      if (is_weighted_) {
+        this->weight_list = new float[neighbor_size_];
+      }
     }
   }
   void release_on_cpu() {
@@ -76,6 +88,7 @@ struct GpuPsCommGraph {
     DEL_PTR_ARRAY(node_list);
     DEL_PTR_ARRAY(neighbor_list);
     DEL_PTR_ARRAY(node_info_list);
+    DEL_PTR_ARRAY(weight_list);
     node_size = 0;
     neighbor_size = 0;
   }
@@ -84,6 +97,9 @@ struct GpuPsCommGraph {
     VLOG(0) << "node_size = " << node_size;
     for (int64_t i = 0; i < neighbor_size; i++) {
       VLOG(0) << "neighbor " << i << " " << neighbor_list[i];
+      if (weight_list != nullptr) {
+        VLOG(0) << "neighbor weight " << i << " " << weight_list[i];
+      }
     }
     for (int64_t i = 0; i < node_size; i++) {
       auto id = node_list[i];

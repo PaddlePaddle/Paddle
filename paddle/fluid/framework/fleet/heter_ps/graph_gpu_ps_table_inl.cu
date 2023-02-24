@@ -900,8 +900,9 @@ void GpuPsGraphTable::build_graph_on_single_gpu(const GpuPsCommGraph& g,
     PADDLE_ENFORCE_EQ(cudaStatus,
                       cudaSuccess,
                       platform::errors::InvalidArgument(
-                          "ailed to allocate memory for graph on gpu "));
-    VLOG(0) << "sucessfully allocate " << g.neighbor_size * sizeof(uint64_t)
+                          "failed to allocate memory for graph on gpu %d",
+                          resource_->dev_id(gpu_id)));
+    VLOG(0) << "successfully allocate " << g.neighbor_size * sizeof(uint64_t)
             << " bytes of memory for graph-edges on gpu "
             << resource_->dev_id(gpu_id);
     CUDA_CHECK(cudaMemcpyAsync(gpu_graph_list_[offset].neighbor_list,
@@ -910,9 +911,29 @@ void GpuPsGraphTable::build_graph_on_single_gpu(const GpuPsCommGraph& g,
                                cudaMemcpyHostToDevice,
                                stream));
     gpu_graph_list_[offset].neighbor_size = g.neighbor_size;
+
+    if (g.is_weighted) {
+      cudaError_t cudaStatus = cudaMalloc(&gpu_graph_list_[offset].weight_list,
+                                          g.neighbor_size * sizeof(float));
+      PADDLE_ENFORCE_EQ(cudaStatus,
+                        cudaSuccess,
+                        platform::errors::InvalidArgument(
+                            "failed to allocate memory for graph edge weight on gpu %d",
+                            resource_->dev_id(gpu_id)));
+      VLOG(0) << "successfully allocate " << g.neighbor_size * sizeof(float)
+              << " bytes of memory for graph-edges-weight on gpu "
+              << resource_->dev_id(gpu_id);
+      CUDA_CHECK(cudaMemcpyAsync(gpu_graph_list_[offset].weight_list,
+                                 g.weight_list,
+                                 g.neighbor_size * sizeof(float),
+                                 cudaMemcpyHostToDevice,
+                                 stream));
+    }
+
   } else {
     gpu_graph_list_[offset].neighbor_list = NULL;
     gpu_graph_list_[offset].neighbor_size = 0;
+    gpu_graph_list_[offset].weight_list = NULL;
   }
   cudaStreamSynchronize(stream);
   VLOG(0) << " gpu node_neighbor info card: " << gpu_id << " ,node_size is "

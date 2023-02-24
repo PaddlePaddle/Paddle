@@ -572,7 +572,8 @@ class GraphTable : public Table {
                               std::string graph_data_local_path,
                               int part_num,
                               bool reverse,
-                              const std::vector<bool> &is_reverse_edge_map);
+                              const std::vector<bool> &is_reverse_edge_map,
+                              bool use_weight);
   int32_t parse_node_and_load(std::string ntype2files,
                               std::string graph_data_local_path,
                               int part_num,
@@ -585,7 +586,8 @@ class GraphTable : public Table {
       std::unordered_map<std::string, std::string> &res_type2path);  // NOLINT
   int32_t load_edges(const std::string &path,
                      bool reverse,
-                     const std::string &edge_type);
+                     const std::string &edge_type,
+                     bool use_weight = false);
   int get_all_id(GraphTableType table_type,
                  int slice_num,
                  std::vector<std::vector<uint64_t>> *output);
@@ -803,6 +805,7 @@ class GraphTable : public Table {
   bool is_parse_node_fail_ = false;
   int node_num_ = 1;
   int node_id_ = 0;
+  bool is_weighted_ = false;
 };
 
 /*

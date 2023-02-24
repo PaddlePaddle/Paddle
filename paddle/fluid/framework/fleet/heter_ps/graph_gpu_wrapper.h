@@ -70,7 +70,8 @@ class GraphGpuWrapper {
                       std::string graph_data_local_path,
                       int part_num,
                       bool reverse,
-                      const std::vector<bool>& is_reverse_edge_map);
+                      const std::vector<bool>& is_reverse_edge_map,
+                      bool use_weight);
 
   int load_node_file(std::string name, std::string filepath);
   int load_node_file(std::string ntype2files,
