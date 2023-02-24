@@ -22,7 +22,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     using U = LayerNormParamType<T>;
     auto &dev_ctx = ctx.cuda_device_context();
-
     auto *time_step = ctx.Input<phi::DenseTensor>("TimeStep");
     // 0. input
     auto *input_x = ctx.Input<phi::DenseTensor>("X");
@@ -573,7 +572,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step5";
 #endif
-
       // step6. ffn matmul1
       ffn1_cublas_linear.ComputeForward(buf1,
                                         ffn1_weights[i],
