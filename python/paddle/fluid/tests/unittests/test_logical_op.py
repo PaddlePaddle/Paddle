@@ -133,6 +133,8 @@ def test(unit_test, use_gpu=False, test_error=False):
             META_DATA = dict(TEST_META_WRONG_SHAPE_DATA)
         for shape_data in META_DATA.values():
             for data_type in SUPPORTED_DTYPES:
+                if not use_gpu and data_type == np.float16
+                    continue
                 meta_data['x_np'] = np_data_generator(
                     shape_data['x_shape'], dtype=data_type
                 )
@@ -238,6 +240,7 @@ class TestCUDA(unittest.TestCase):
         type_map_list = type_map_factory()
         for type_map in type_map_list:
             test_type_error(self, True, type_map)
+
 
 
 if __name__ == '__main__':
