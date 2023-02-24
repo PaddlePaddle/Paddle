@@ -191,19 +191,6 @@ def mean_composite(x, axis, keepdim):
     return divide(sum_x, norm)
 
 
-def maybe_wrap_dim(dim: int, dim_post_expr: int):
-    """get real dim form idx and len of dims"""
-    if dim_post_expr == 0:
-        assert dim == 0 or dim == -1
-        return 0
-    min = -dim_post_expr
-    max = dim_post_expr - 1
-    assert not (dim < min or dim > max)
-    if dim < 0:
-        dim += dim_post_expr
-    return dim
-
-
 @REGISTER_COMPOSITE('flatten_contiguous_range')
 def flatten_contiguous_range_composite(x, start_axis, stop_axis):
     """
@@ -216,8 +203,8 @@ def flatten_contiguous_range_composite(x, start_axis, stop_axis):
     shape_x_out = [0]
     shape_x_out.extend(shape_in)
     xshape = full(shape=shape_x_out, fill_value=0, dtype=x.dtype)
-    start_dim = maybe_wrap_dim(start_axis, len(shape_in))
-    end_dim = maybe_wrap_dim(stop_axis, len(shape_in))
+    start_dim = start_axis if len(shape_in) != 0 else 0
+    end_dim = stop_axis if len(shape_in) != 0 else 0
     assert start_dim <= end_dim
     if len(shape_in) == 0 or start_dim == end_dim:
         return reshape(x, shape=shape_in), xshape
