@@ -758,9 +758,11 @@ void GraphGpuWrapper::build_gpu_graph_fea(GpuPsCommGraphFea &sub_graph_fea,
 }
 
 NeighborSampleResult GraphGpuWrapper::graph_neighbor_sample_v3(
-    NeighborSampleQuery q, bool cpu_switch, bool compress = true) {
+    NeighborSampleQuery q, bool cpu_switch, bool compress,
+    bool weighted, bool return_weight) {
   return reinterpret_cast<GpuPsGraphTable *>(graph_table)
-      ->graph_neighbor_sample_v3(q, cpu_switch, compress);
+      ->graph_neighbor_sample_v3(q, cpu_switch, compress,
+                                 weighted);
 }
 
 NeighborSampleResultV2 GraphGpuWrapper::graph_neighbor_sample_all_edge_type(
@@ -769,10 +771,13 @@ NeighborSampleResultV2 GraphGpuWrapper::graph_neighbor_sample_all_edge_type(
     uint64_t *key,
     int sample_size,
     int len,
-    std::vector<std::shared_ptr<phi::Allocation>> edge_type_graphs) {
+    std::vector<std::shared_ptr<phi::Allocation>> edge_type_graphs,
+    bool weighted,
+    bool return_weight) {
   return reinterpret_cast<GpuPsGraphTable *>(graph_table)
       ->graph_neighbor_sample_all_edge_type(
-          gpu_id, edge_type_len, key, sample_size, len, edge_type_graphs);
+          gpu_id, edge_type_len, key, sample_size, len, edge_type_graphs,
+          weighted);
 }
 
 std::vector<std::shared_ptr<phi::Allocation>>
