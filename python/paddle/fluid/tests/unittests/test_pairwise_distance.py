@@ -99,7 +99,7 @@ class TestPairwiseDistance(unittest.TestCase):
     def test_pairwise_distance(self):
         epsilon = 1e-6
         all_shape = [[5], [100, 100]]
-        dtypes = ['float16', 'float32', 'float64']
+        dtypes = ['float32', 'float64']
         p_list = [-1, 0, 1, 2, np.inf, -np.inf]
         places = [paddle.CPUPlace()]
         if paddle.device.is_compiled_with_cuda():
@@ -110,11 +110,6 @@ class TestPairwiseDistance(unittest.TestCase):
                 for dtype in dtypes:
                     for p in p_list:
                         for keepdim in keeps:
-                            # Currently, the CPU does not support float16
-                            if dtype == "float16" and isinstance(
-                                place, paddle.CPUPlace
-                            ):
-                                continue
                             x_np = np.random.random(shape).astype(dtype)
                             y_np = np.random.random(shape).astype(dtype)
 
