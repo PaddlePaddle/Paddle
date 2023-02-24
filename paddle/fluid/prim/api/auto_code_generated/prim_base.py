@@ -27,7 +27,6 @@ white_ops_list = [
     "exp",
     "scatter",
     "transpose",
-    "put_along_axis",
 ]
 
 inplace_out_type_map = {

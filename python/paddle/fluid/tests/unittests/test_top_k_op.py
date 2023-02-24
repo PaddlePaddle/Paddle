@@ -25,6 +25,8 @@ class TestTopkOp(OpTest):
         self.variable_k = False
         self.set_args()
         self.op_type = "top_k"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.topk
         self.dtype = np.float64
         self.init_dtype()
 
@@ -54,10 +56,10 @@ class TestTopkOp(OpTest):
         self.top_k = 1
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(set(['X']), 'Out')
+        self.check_grad(set(['X']), 'Out', check_prim=True)
 
 
 if __name__ == "__main__":
