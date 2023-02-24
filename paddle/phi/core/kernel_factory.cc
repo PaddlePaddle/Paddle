@@ -20,6 +20,9 @@
 #include "paddle/phi/backends/xpu/xpu_op_list.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #endif
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+#include "paddle/phi/backends/custom/custom_device_op_list.h"
+#endif
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/utils/string/string_helper.h"
 
@@ -58,6 +61,21 @@ bool KernelFactory::HasCompatiblePhiKernel(const std::string& op_type) const {
     } else if (kernels_.find(op_type) != kernels_.end()) {
       return true;
     }
+  }
+  return false;
+}
+
+bool KernelFactory::HasStructuredKernel(const std::string& op_type) const {
+  auto phi_kernel_name = phi::OpUtilsMap::Instance().GetBaseKernelName(op_type);
+  auto kernel_iter = kernels_.find(phi_kernel_name);
+  if (deprecated_op_names.find(op_type) == deprecated_op_names.end() &&
+      kernel_iter != kernels_.end()) {
+    return std::any_of(kernel_iter->second.begin(),
+                       kernel_iter->second.end(),
+                       [](phi::KernelKeyMap::const_reference kernel_pair) {
+                         return kernel_pair.second.GetKernelRegisteredType() ==
+                                KernelRegisteredType::STRUCTURE;
+                       });
   }
   return false;
 }
@@ -176,6 +194,11 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
   if ((FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end()) ||
       !phi::backends::xpu::is_xpu_support_op(TransToFluidOpName(kernel_name),
                                              kernel_key.dtype())
+#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+  if (FLAGS_enable_api_kernel_fallback &&
+      (kernel_iter == iter->second.end() ||
+       phi::backends::custom_device::is_in_custom_black_list(
+           TransToFluidOpName(kernel_name)))
 #else
   if ((FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end())
 #endif

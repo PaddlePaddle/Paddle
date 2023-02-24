@@ -28,6 +28,7 @@ from filters import (
     to_opmaker_name_cstr,
     to_pascal_case,
     to_scalar_tensor_name,
+    to_variable_names,
 )
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 from parse_utils import to_named_dict
@@ -60,6 +61,7 @@ env.filters["to_input_name"] = to_input_name
 env.filters["to_opmaker_name_cstr"] = to_opmaker_name_cstr
 env.filters["cartesian_prod_mapping"] = cartesian_prod_mapping
 env.filters["to_composite_grad_opmaker_name"] = to_composite_grad_opmaker_name
+env.filters["to_variable_names"] = to_variable_names
 env.tests["base_op"] = is_base_op
 env.tests["composite_op"] = is_composite_op
 env.tests["vec"] = is_vec
@@ -157,29 +159,26 @@ def process_int_array(op_item, int_array_configs):
                         ]
 
 
-def parse_composite_info(ops, backward_ops, backward_op_dict):
-    for op in ops:
-        if "backward" in op:
-            op["phi_backward"] = op["backward"]
-    for backward_op in backward_ops:
-        if "backward" in backward_op:
-            backward_op["phi_backward"] = backward_op["backward"]
-    for backward_op_name, op_dict in backward_op_dict.items():
-        if "composite" not in op_dict:
-            continue
-        op_dict["composite"]["phi_inputs"] = []
-        op_dict["composite"]["phi_attrs"] = []
-        op_dict["composite"]["phi_outputs"] = []
-        for input in op_dict["inputs"]:
-            op_dict["composite"]["phi_inputs"].append(input['name'])
-        for attr in op_dict["attrs"]:
-            op_dict["composite"]["phi_attrs"].append(attr['name'])
-        for output in op_dict["outputs"]:
-            op_dict["composite"]["phi_outputs"].append(output['name'])
+def add_composite_info(ops, backward_ops, backward_op_dict):
+    # add backward composite name in forward
+    for op in ops + backward_ops:
+        if (
+            op["backward"] in backward_op_dict
+            and "composite" in backward_op_dict[op["backward"]]
+        ):
+            op["backward_composite"] = op["backward"]
+        else:
+            op["backward_composite"] = None
 
 
-# replace name of op and params for OpMaker
-def replace_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict):
+# add fluid name in ops and backward ops info
+def add_fluid_name(dict_list):
+    for item in dict_list:
+        item["fluid_name"] = item["name"]
+
+
+# add fluid name of op and params for OpMaker
+def add_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict):
     def get_phi_and_fluid_op_name(op_item):
         names = op_item.split('(')
         if len(names) == 1:
@@ -187,12 +186,14 @@ def replace_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict):
         else:
             return names[0].strip(), names[1].split(')')[0].strip()
 
-    def update_op_param_name(op_args, args_alias_map):
+    def add_op_param_name(op_args, args_alias_map):
         for item in op_args:
             if item['name'] in args_alias_map:
-                item['name'] = args_alias_map[item['name']]
+                item['fluid_name'] = args_alias_map[item['name']]
+            else:
+                item['fluid_name'] = item['name']
 
-    def update_grad_args_name(op_args, args_alias_map):
+    def add_grad_args_name(op_args, args_alias_map):
         for item in op_args:
             if (
                 item['name'].endswith('_grad')
@@ -201,38 +202,12 @@ def replace_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict):
                 args_alias_map[item['name']] = (
                     args_alias_map[item['name'][:-5]] + '_grad'
                 )
-                item['name'] = args_alias_map[item['name'][:-5]] + '_grad'
-
-    def add_fluid_info_in_composite(composite_map, args_alias_map):
-        fluid_input_list = []
-        fluid_attr_list = []
-        fluid_output_list = []
-        # add fluid op inputs
-        for input in composite_map["phi_inputs"]:
-            if input in args_alias_map:
-                fluid_input_list.append(args_alias_map[input])
-            else:
-                fluid_input_list.append(input)
-        # add fluid op attrs
-        for attr in composite_map["phi_attrs"]:
-            if attr in args_alias_map:
-                fluid_attr_list.append(args_alias_map[attr])
-            else:
-                fluid_attr_list.append(attr)
-        # add fluid op outputs
-        for output in composite_map["phi_outputs"]:
-            if output in args_alias_map:
-                fluid_output_list.append(args_alias_map[output])
-            else:
-                fluid_output_list.append(output)
-
-        composite_map.update(
-            {
-                "fluid_inputs": fluid_input_list,
-                "fluid_attrs": fluid_attr_list,
-                "fluid_outputs": fluid_output_list,
-            }
-        )
+                item['fluid_name'] = args_alias_map[item['name'][:-5]] + '_grad'
+            elif (
+                item['name'].endswith('_grad')
+                and item['name'][:-5] not in args_alias_map
+            ):
+                item['fluid_name'] = item['name']
 
     def get_param_list_alias(param_list, args_map):
         return [
@@ -297,15 +272,15 @@ def replace_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict):
                 op_item['kernel']['layout']['candidates'], args_name_map
             )
 
-    def update_grad_op_compat_name(grad_op_item, args_name_map):
-        update_op_param_name(grad_op_item['inputs'], args_name_map)
-        update_op_param_name(grad_op_item['outputs'], args_name_map)
-        update_op_param_name(grad_op_item['attrs'], args_name_map)
-        update_op_param_name(grad_op_item['forward']['inputs'], args_name_map)
-        update_op_param_name(grad_op_item['forward']['outputs'], args_name_map)
-        update_op_param_name(grad_op_item['forward']['attrs'], args_name_map)
-        update_grad_args_name(grad_op_item['inputs'], args_map)
-        update_grad_args_name(grad_op_item['outputs'], args_map)
+    def add_grad_op_compat_name(grad_op_item, args_name_map):
+        add_op_param_name(grad_op_item['inputs'], args_name_map)
+        add_op_param_name(grad_op_item['outputs'], args_name_map)
+        add_op_param_name(grad_op_item['attrs'], args_name_map)
+        add_op_param_name(grad_op_item['forward']['inputs'], args_name_map)
+        add_op_param_name(grad_op_item['forward']['outputs'], args_name_map)
+        add_op_param_name(grad_op_item['forward']['attrs'], args_name_map)
+        add_grad_args_name(grad_op_item['inputs'], args_map)
+        add_grad_args_name(grad_op_item['outputs'], args_map)
 
     for op_args in op_fluid_map_list:
         new_op_name, op_name = get_phi_and_fluid_op_name(op_args['op'])
@@ -318,6 +293,11 @@ def replace_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict):
         if new_op_name != op_name:
             forward_op_item['op_name'] = op_name
 
+        # add complex promote infomation
+        if "complex_promote" in op_args:
+            forward_op_item["complex_promote"] = op_args["complex_promote"]
+            if has_backward:
+                backward_op_item["complex_promote"] = op_args["complex_promote"]
         scalar_configs = None
         int_array_configs = None
         if 'scalar' in op_args:
@@ -350,39 +330,32 @@ def replace_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict):
                             int_array_configs[
                                 op_args[key][args_item['name']]
                             ] = int_array_configs[args_item['name']]
-                        args_item['name'] = op_args[key][args_item['name']]
-                if has_backward:
-                    for args_item in backward_op_item['forward'][key]:
-                        if args_item['name'] in op_args[key]:
-                            args_item['name'] = op_args[key][args_item['name']]
-        forward_op_item["attr_dict"] = to_named_dict(forward_op_item["attrs"])
+                        args_item['fluid_name'] = op_args[key][
+                            args_item['name']
+                        ]
         update_common_params_name(
             forward_op_item, args_map, scalar_configs, int_array_configs
         )
 
         if has_backward:
-            update_grad_op_compat_name(backward_op_item, args_map)
+            # update fluid info in backward
+            add_grad_op_compat_name(backward_op_item, args_map)
             update_common_params_name(
                 backward_op_item, args_map, scalar_configs, int_array_configs
-            )
-            backward_op_item["attr_dict"] = to_named_dict(
-                backward_op_item["attrs"]
             )
 
             if 'backward' not in op_args:
                 continue
 
             backward_op_list = op_args['backward'].split(',')
-            # add fluid args name in composite map
-            for backward_op in backward_op_list:
-                if (
-                    "composite"
-                    in backward_op_dict[backward_op.split('(')[0].strip()]
-                ):
-                    add_fluid_info_in_composite(
-                        backward_op_dict[backward_op]["composite"], args_map
-                    )
-            _, bw_op_name = get_phi_and_fluid_op_name(backward_op_list[0])
+            phi_bw_op_name, bw_op_name = get_phi_and_fluid_op_name(
+                backward_op_list[0]
+            )
+            if (
+                forward_op_item["backward_composite"] is not None
+                and phi_bw_op_name != bw_op_name
+            ):
+                forward_op_item["backward_composite"] = bw_op_name
             forward_op_item['backward'] = bw_op_name
             backward_op_item['op_name'] = bw_op_name
 
@@ -393,17 +366,19 @@ def replace_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict):
                     double_grad_op_name,
                 ) = get_phi_and_fluid_op_name(backward_op_list[1])
                 double_grad_item = backward_op_dict[phi_double_grad_op_name]
+                if (
+                    backward_op_item["backward_composite"] is not None
+                    and phi_double_grad_op_name != double_grad_op_name
+                ):
+                    backward_op_item["backward_composite"] = double_grad_op_name
                 backward_op_item['backward'] = double_grad_op_name
                 double_grad_item['op_name'] = double_grad_op_name
-                update_grad_op_compat_name(double_grad_item, args_map)
+                add_grad_op_compat_name(double_grad_item, args_map)
                 update_common_params_name(
                     double_grad_item,
                     args_map,
                     scalar_configs,
                     int_array_configs,
-                )
-                double_grad_item["attr_dict"] = to_named_dict(
-                    double_grad_item["attrs"]
                 )
 
                 # for triple grad
@@ -413,17 +388,21 @@ def replace_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict):
                         triple_grad_op_name,
                     ) = get_phi_and_fluid_op_name(backward_op_list[2])
                     triple_grad_item = backward_op_dict[phi_triple_grad_op_name]
+                    if (
+                        double_grad_item["backward_composite"] is not None
+                        and phi_triple_grad_op_name != triple_grad_op_name
+                    ):
+                        double_grad_item[
+                            "backward_composite"
+                        ] = triple_grad_op_name
                     double_grad_item['backward'] = triple_grad_op_name
                     triple_grad_item['op_name'] = triple_grad_op_name
-                    update_grad_op_compat_name(triple_grad_item, args_map)
+                    add_grad_op_compat_name(triple_grad_item, args_map)
                     update_common_params_name(
                         triple_grad_item,
                         args_map,
                         scalar_configs,
                         int_array_configs,
-                    )
-                    triple_grad_item["attr_dict"] = to_named_dict(
-                        triple_grad_item["attrs"]
                     )
 
 
@@ -433,6 +412,7 @@ def process_invoke_op(forward_op_dict, backward_op_dict):
             invoke_op = bw_op['invoke']['func']
             args_list = bw_op['invoke']['args']
             args_index = 0
+            # backward invoke forward
             if invoke_op in forward_op_dict:
                 reuse_op = forward_op_dict[invoke_op]
                 bw_op['invoke']['func'] = reuse_op['op_name']
@@ -442,20 +422,28 @@ def process_invoke_op(forward_op_dict, backward_op_dict):
                 for input_item in reuse_op['inputs']:
                     bw_op['invoke']['inputs'].append(
                         {
+                            'fluid_name': input_item['fluid_name'],
                             'name': input_item['name'],
                             'value': args_list[args_index],
                         }
                     )
                     args_index = args_index + 1
+                bw_fluid_attrs_set = [
+                    item['fluid_name'] for item in bw_op['attrs']
+                ]
                 for attr in reuse_op['attrs']:
                     if args_index < len(args_list):
                         attr_value = (
                             f"this->GetAttr(\"{args_list[args_index]}\")"
-                            if args_list[args_index] in bw_op['attr_dict']
+                            if args_list[args_index] in bw_fluid_attrs_set
                             else args_list[args_index]
                         )
                         bw_op['invoke']['attrs'].append(
-                            {'name': attr['name'], 'value': attr_value}
+                            {
+                                'name': attr['name'],
+                                'fluid_name': attr['fluid_name'],
+                                'value': attr_value,
+                            }
                         )
                         args_index = args_index + 1
                     else:
@@ -464,7 +452,8 @@ def process_invoke_op(forward_op_dict, backward_op_dict):
                     bw_op['invoke']['outputs'].append(
                         {
                             'name': output_item['name'],
-                            'value': bw_op['outputs'][idx]['name'],
+                            'fluid_name': output_item['fluid_name'],
+                            'value': bw_op['outputs'][idx]['fluid_name'],
                         }
                     )
 
@@ -477,17 +466,16 @@ def parse_drop_empty_grad(op_fluid_list: list, bw_op_dict: dict):
                 for bw_name in op_op['backward'].split(',')
             ]
             for bw_name in bw_names:
-                assert (
-                    bw_name in bw_op_dict
-                ), f"backward {bw_name} is not existed"
-                for out_grad in op_op['drop_empty_grad']:
-                    assert (
-                        out_grad in bw_op_dict[bw_name]['output_dict']
-                    ), f'''
-                         {bw_name} with {out_grad} is not existed in output_dict '''
-                    bw_op_dict[bw_name]['output_dict'][out_grad][
-                        'drop_empty_grad'
-                    ] = False
+                # static_ops.yaml and ops.yaml use the common op_compat.yaml
+                if bw_name in bw_op_dict:
+                    for out_grad in op_op['drop_empty_grad']:
+                        assert (
+                            out_grad in bw_op_dict[bw_name]['output_dict']
+                        ), f'''
+                            {bw_name} with {out_grad} is not existed in output_dict '''
+                        bw_op_dict[bw_name]['output_dict'][out_grad][
+                            'drop_empty_grad'
+                        ] = False
 
 
 def main(
@@ -510,24 +498,34 @@ def main(
         op_versions = yaml.safe_load(f)
     # add op version info into op
     for op_version in op_versions:
-        forward_op_dict[op_version['op']]['version'] = op_version['version']
+        if op_version['op'] in forward_op_dict:
+            forward_op_dict[op_version['op']]['version'] = op_version['version']
 
     with open(op_compat_yaml_path, "rt") as f:
         op_fluid_map_list = yaml.safe_load(f)
 
     for op in ops:
         op['op_name'] = op['name']
+        add_fluid_name(op['inputs'])
+        add_fluid_name(op['attrs'])
+        add_fluid_name(op['outputs'])
     for bw_op in backward_ops:
         bw_op['op_name'] = bw_op['name']
+        add_fluid_name(bw_op['inputs'])
+        add_fluid_name(bw_op['attrs'])
+        add_fluid_name(bw_op['outputs'])
+        add_fluid_name(bw_op['forward']['inputs'])
+        add_fluid_name(bw_op['forward']['attrs'])
+        add_fluid_name(bw_op['forward']['outputs'])
         for bw_output in bw_op['outputs']:
             bw_output['drop_empty_grad'] = True
 
     # deal the drop_empty_grad of bw_op by op_compat.yaml
     parse_drop_empty_grad(op_fluid_map_list, backward_op_dict)
 
-    parse_composite_info(ops, backward_ops, backward_op_dict)
+    add_composite_info(ops, backward_ops, backward_op_dict)
 
-    replace_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict)
+    add_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict)
 
     # prepare for invoke case
     process_invoke_op(forward_op_dict, backward_op_dict)
@@ -555,7 +553,6 @@ def main(
             ops=ops,
             backward_ops=backward_ops,
             op_dict=op_dict,
-            composite_gen_flag=True,
         )
         f.write(msg)
     ks_template = env.get_template('ks.c.j2')

@@ -276,15 +276,16 @@ GetUnusedVars(const BlockDesc& block,
 }
 
 void BuildVariableScope(const framework::BlockDesc& block,
-                        VariableScope* var_scope,
-                        bool use_local_scope) {
+                        const ExecutionConfig& execution_config,
+                        VariableScope* var_scope) {
   VLOG(3) << "Creating Variables";
   auto inner_scope = var_scope->GetMutableScope();
 
   // NOTE(zhiqiu): if create_local_scope_ is true, the persistable is
   // created in var_scope.scope_ , and other scope is created in local scope.
-  Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
-                                       : var_scope->GetMutableScope();
+  Scope* local_scope = execution_config.create_local_scope
+                           ? var_scope->GetMutableLocalScope()
+                           : var_scope->GetMutableScope();
 
   for (auto& var_desc : block.AllVars()) {
     auto var_name = var_desc->Name();
@@ -295,7 +296,8 @@ void BuildVariableScope(const framework::BlockDesc& block,
       continue;
     }
 
-    if (var_desc->Persistable()) {
+    if (var_desc->Persistable() ||
+        execution_config.force_root_scope_vars.count(var_name)) {
       // In principle, we should put all trainable parameters in global scope,
       // which means the root of the scope tree. Some cases like quantization
       // will look up these parameters in global scope.
@@ -305,7 +307,6 @@ void BuildVariableScope(const framework::BlockDesc& block,
       }
       auto* ptr = const_cast<Scope*>(ancestor_scope)->Var(var_name);
 
-      VLOG(3) << "Initialize Variable " << var_name;
       // NOTE(zhiqiu): if var exists in scope and the type is right,
       // InitializeVariable will not create a new variable.
       InitializeVariable(ptr, var_desc->GetType());
@@ -315,8 +316,7 @@ void BuildVariableScope(const framework::BlockDesc& block,
       auto* ptr = local_scope->Var(var_name);
       InitializeVariable(ptr, var_desc->GetType());
       VLOG(3) << "Create Variable " << var_name << " locally, which pointer is "
-              << ptr << "Variable Type "
-              << static_cast<int>(var_desc->GetType());
+              << ptr << " type is " << static_cast<int>(var_desc->GetType());
     }
     var_scope->AddVar(var_name, var_desc);
   }
@@ -666,21 +666,28 @@ bool BuildOpFuncList(const platform::Place& place,
     op_func_node.output_index = outs_name2id;
 
     const OperatorDistAttr* dist_attr = block.Op(i)->DistAttr();
-    if (dist_attr &&
-        dist_attr->execution_stream() != distributed::auto_parallel::kDefault) {
-      op_func_node.execution_stream_ = dist_attr->execution_stream();
+    if (dist_attr) {
+      if (dist_attr->execution_stream() !=
+          distributed::auto_parallel::kDefault) {
+        op_func_node.execution_stream_ = dist_attr->execution_stream();
+      }
+      op_func_node.stream_priority_ = dist_attr->stream_priority();
+      op_func_node.scheduling_priority_ = dist_attr->scheduling_priority();
+    } else {
+      if (interpreter::IsCommunicationOp(op_type)) {
+        // NOTE(Ruibiao): Dispatching computation before communication improves
+        // multi-stream overlap when the time cost of communication less than
+        // that of the calculation (e.g., ResNet50_bs128_pure_fp16 N4C32
+        // training).
+        op_func_node.scheduling_priority_ = 1;
+      }
     }
 
-    if (dist_attr) {
-      op_func_node.priority_ = dist_attr->scheduling_priority();
-    } else if (interpreter::IsCommunicationOp(op_type)) {
-      // NOTE(Ruibiao): Dispatching computation before communication improves
-      // multi-stream overlap when the time cost of communication less than that
-      // of the calculation (e.g., ResNet50_bs128_pure_fp16 N4C32 training).
-      op_func_node.priority_ = 1;
-    }
-    VLOG(6) << "scheduling priority of " << op_type << " : "
-            << op_func_node.priority_;
+    VLOG(6) << op_type
+            << " : [execution_stream, stream_priority, scheduling_priority] = ["
+            << op_func_node.execution_stream_ << ", "
+            << op_func_node.stream_priority_ << ", "
+            << op_func_node.scheduling_priority_ << "]";
 
     SingleStreamGuard single_stream_guard(ops[i]);
 
@@ -752,12 +759,22 @@ bool BuildOpFuncList(const platform::Place& place,
                 op_with_kernel->Type())) {
           auto phi_kernel_key = op_with_kernel->ChoosePhiKernel(exec_ctx);
           auto phi_kernel_name = op_with_kernel->PhiKernelSignature()->name;
-
-          if (op_with_kernel->PhiKernel()->IsValid()) {
+          bool in_custom_back_list = false;
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+          in_custom_back_list =
+              phi::backends::custom_device::is_in_custom_black_list(
+                  phi_kernel_name);
+#endif
+          if (op_with_kernel->PhiKernel()->IsValid() && !in_custom_back_list) {
             run_phi_kernel = true;
           } else {
-            if (!op_with_kernel->SupportsKernelType(expected_kernel_key,
-                                                    exec_ctx)) {
+            if ((!op_with_kernel->SupportsKernelType(expected_kernel_key,
+                                                     exec_ctx)) ||
+                in_custom_back_list) {
+              std::string info = in_custom_back_list ? "fluid in black list "
+                                                     : "fluid missing ";
+              VLOG(3) << info << phi_kernel_key
+                      << " kernel: " << phi_kernel_name;
               auto phi_cpu_kernel_key =
                   FallBackToCpu(phi_kernel_key, *op_with_kernel);
               op_with_kernel->ResetPhiKernel(
@@ -820,7 +837,9 @@ bool BuildOpFuncList(const platform::Place& place,
         }
 
         // step 5. run kernel
-        if (run_phi_kernel) {
+        if (run_phi_kernel &&
+            op_func_node.phi_kernel_->GetKernelRegisteredType() ==
+                phi::KernelRegisteredType::FUNCTION) {
           phi::KernelContext phi_kernel_context;
           op_with_kernel->BuildPhiKernelContext(
               runtime_context, dev_ctx, &phi_kernel_context);
@@ -831,6 +850,12 @@ bool BuildOpFuncList(const platform::Place& place,
                                   op_with_kernel->PhiKernelSignature(),
                                   &phi_kernel_context);
           }
+        } else if (run_phi_kernel &&
+                   op_func_node.phi_kernel_->GetKernelRegisteredType() ==
+                       phi::KernelRegisteredType::STRUCTURE) {
+          ExecutionContext execution_context(
+              *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context);
+          (*op_func_node.phi_kernel_)(&execution_context);
         } else {
           // the place of exec_ctx maybe has changed.
           if (!skip_run) {

@@ -16,9 +16,9 @@
 
 import paddle
 
+from ..common_ops_import import Variable
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..fluid.framework import global_var
-from ..static import Variable
 from .layer_function_generator import templatedoc
 
 if global_var._in_eager_mode_:
@@ -779,7 +779,10 @@ def is_tensor(x):
             print(check)  #False
 
     """
-    return isinstance(x, (Tensor, paddle.fluid.core.eager.Tensor))
+    if in_dygraph_mode():
+        return isinstance(x, (Tensor, paddle.fluid.core.eager.Tensor))
+    else:
+        return isinstance(x, Variable)
 
 
 def _bitwise_op(op_name, x, y, out=None, name=None, binary_op=True):
@@ -825,18 +828,26 @@ def _bitwise_op(op_name, x, y, out=None, name=None, binary_op=True):
         return out
 
 
-@templatedoc()
 def bitwise_and(x, y, out=None, name=None):
-    """
-    ${comment}
+    r"""
+
+    Apply ``bitwise_and`` on Tensor ``X`` and ``Y`` .
+
+    .. math::
+        Out = X \& Y
+
+    .. note::
+        ``paddle.bitwise_and`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
+
+    .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor.
 
     Args:
-        x (Tensor): ${x_comment}
-        y (Tensor): ${y_comment}
-        out(Tensor): ${out_comment}
+        x (Tensor): Input Tensor of ``bitwise_and`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        y (Tensor): Input Tensor of ``bitwise_and`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        out(Tensor): Result of ``bitwise_and`` . It is a N-D Tensor with the same data type of input Tensor.
 
     Returns:
-        Tensor: ${out_comment}
+        Tensor: Result of ``bitwise_and`` . It is a N-D Tensor with the same data type of input Tensor.
 
     Examples:
         .. code-block:: python
@@ -854,18 +865,26 @@ def bitwise_and(x, y, out=None, name=None):
     )
 
 
-@templatedoc()
 def bitwise_or(x, y, out=None, name=None):
-    """
-    ${comment}
+    r"""
+
+    Apply ``bitwise_or`` on Tensor ``X`` and ``Y`` .
+
+    .. math::
+        Out = X | Y
+
+    .. note::
+        ``paddle.bitwise_or`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
+
+    .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor.
 
     Args:
-        x (Tensor): ${x_comment}
-        y (Tensor): ${y_comment}
-        out(Tensor): ${out_comment}
+        x (Tensor): Input Tensor of ``bitwise_or`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        y (Tensor): Input Tensor of ``bitwise_or`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        out(Tensor): Result of ``bitwise_or`` . It is a N-D Tensor with the same data type of input Tensor.
 
     Returns:
-        Tensor: ${out_comment}
+        Tensor: Result of ``bitwise_or`` . It is a N-D Tensor with the same data type of input Tensor.
 
     Examples:
         .. code-block:: python
@@ -884,18 +903,26 @@ def bitwise_or(x, y, out=None, name=None):
     )
 
 
-@templatedoc()
 def bitwise_xor(x, y, out=None, name=None):
-    """
-    ${comment}
+    r"""
+
+    Apply ``bitwise_xor`` on Tensor ``X`` and ``Y`` .
+
+    .. math::
+        Out = X ^\wedge Y
+
+    .. note::
+        ``paddle.bitwise_xor`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
+
+    .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor.
 
     Args:
-        x (Tensor): ${x_comment}
-        y (Tensor): ${y_comment}
-        out(Tensor): ${out_comment}
+        x (Tensor): Input Tensor of ``bitwise_xor`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        y (Tensor): Input Tensor of ``bitwise_xor`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        out(Tensor): Result of ``bitwise_xor`` . It is a N-D Tensor with the same data type of input Tensor.
 
     Returns:
-        Tensor: ${out_comment}
+        Tensor: Result of ``bitwise_xor`` . It is a N-D Tensor with the same data type of input Tensor.
 
     Examples:
         .. code-block:: python
@@ -913,17 +940,25 @@ def bitwise_xor(x, y, out=None, name=None):
     )
 
 
-@templatedoc()
 def bitwise_not(x, out=None, name=None):
-    """
-    ${comment}
+    r"""
+
+    Apply ``bitwise_not`` on Tensor ``X``.
+
+    .. math::
+        Out = \sim X
+
+    .. note::
+        ``paddle.bitwise_not`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor.
 
     Args:
-        x(Tensor):  ${x_comment}
-        out(Tensor): ${out_comment}
+        x (Tensor): Input Tensor of ``bitwise_not`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        out(Tensor): Result of ``bitwise_not`` . It is a N-D Tensor with the same data type of input Tensor.
 
     Returns:
-        Tensor: ${out_comment}
+        Tensor: Result of ``bitwise_not`` . It is a N-D Tensor with the same data type of input Tensor.
 
     Examples:
         .. code-block:: python

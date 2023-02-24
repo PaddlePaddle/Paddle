@@ -79,7 +79,7 @@ def simple_fc_net(img, label, use_py_func_op):
             hidden,
             size=200,
             bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0)
+                initializer=paddle.nn.initializer.Constant(value=1.0)
             ),
         )
         if not use_py_func_op:
@@ -202,7 +202,6 @@ def test_main(use_cuda, use_py_func_op, use_parallel_executor):
                 train_cp = compiler.CompiledProgram(
                     fluid.default_main_program()
                 )
-                train_cp = train_cp.with_data_parallel(loss_name=loss.name)
                 fetch_list = [loss.name]
             else:
                 fetch_list = [loss]

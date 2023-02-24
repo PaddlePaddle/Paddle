@@ -98,7 +98,7 @@ TEST(AssignOp, AssignSelectedRows) {
   assign_functor(input);
 
   auto& out_selected_row = output.Get<phi::SelectedRows>();
-  const paddle::framework::Vector<int64_t>& out_rows = out_selected_row.rows();
+  const phi::Vector<int64_t>& out_rows = out_selected_row.rows();
   EXPECT_EQ(rows.size(), out_rows.size());
   for (size_t i = 0; i < rows.size(); ++i) {
     EXPECT_EQ(rows[i], out_rows[i]);

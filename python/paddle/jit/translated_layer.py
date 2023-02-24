@@ -373,7 +373,7 @@ class _ProgramHolder:
     @switch_to_static_graph
     def _create_backward_train_program(self):
         whole_program = _build_program_by_desc(self._train_program_desc)
-        start_op_index = self._infer_program_desc.block(0).op_size() + 2 * len(
+        start_op_index = self._infer_program_desc.block(0).op_size() + len(
             self._output_descs
         )
         end_op_index = whole_program.desc.block(0).op_size()
@@ -563,6 +563,11 @@ class _ProgramHolder:
                         op.desc.set_output("ReserveSpace", [reserve_space.name])
                     continue
 
+                # There are some situations that users will add backward op in Forward
+                # function of Layer. And because backward op doesn't have proto. So, we
+                # should skip it when we meet it.
+                if not OpProtoHolder.instance().has_op_proto(op.type):
+                    continue
                 proto = OpProtoHolder.instance().get_op_proto(op.type)
                 has_create_intermediate_out = False
                 for output_proto in proto.outputs:

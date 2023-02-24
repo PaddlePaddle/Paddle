@@ -34,17 +34,30 @@ def init_communicator(block, rank, ranks, ring_id):
     comm_id_var = block.create_var(
         name=comm_var_name, persistable=True, type=core.VarDesc.VarType.RAW
     )
-    block.append_op(
-        type='c_gen_nccl_id',
-        inputs={},
-        outputs={'Out': comm_id_var},
-        attrs={
-            'rank': local_rank,
-            'endpoint': cur_ep,
-            'other_endpoints': other_eps,
-            'ring_id': ring_id,
-        },
-    )
+    if core.is_compiled_with_cuda():
+        block.append_op(
+            type='c_gen_nccl_id',
+            inputs={},
+            outputs={'Out': comm_id_var},
+            attrs={
+                'rank': local_rank,
+                'endpoint': cur_ep,
+                'other_endpoints': other_eps,
+                'ring_id': ring_id,
+            },
+        )
+    elif core.is_compiled_with_xpu():
+        block.append_op(
+            type='c_gen_bkcl_id',
+            inputs={},
+            outputs={'Out': comm_id_var},
+            attrs={
+                'rank': local_rank,
+                'endpoint': cur_ep,
+                'other_endpoints': other_eps,
+                'ring_id': ring_id,
+            },
+        )
     block.append_op(
         type='c_comm_init',
         inputs={'X': comm_id_var},

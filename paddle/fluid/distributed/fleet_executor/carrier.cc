@@ -15,6 +15,7 @@
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
 
 #include <algorithm>
+#include <vector>
 
 #include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
@@ -24,7 +25,15 @@
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/framework/variable_helper.h"
+
+PADDLE_DEFINE_EXPORTED_bool(
+    fleet_executor_with_standalone,
+    false,
+    "Use standalone executor to run ops. Temporary FLAGS, will be removed "
+    "after all fleet executor cases are modified to run ops with standalone "
+    "executor.");
 
 namespace paddle {
 namespace distributed {
@@ -34,6 +43,7 @@ USE_INTERCEPTOR(Compute);
 USE_INTERCEPTOR(Amplifier);
 USE_INTERCEPTOR(Sink);
 USE_INTERCEPTOR(Cond);
+USE_INTERCEPTOR(Start);
 
 void Carrier::Init(
     int64_t rank,
@@ -55,23 +65,34 @@ void Carrier::Init(
     framework::Scope* scope,
     int64_t num_micro_batches,
     const platform::Place& place,
-    const std::vector<std::string>& inference_root_scope_vars) {
+    const std::vector<std::string>& inference_root_scope_vars,
+    const std::vector<framework::Scope*>& micro_scope_list) {
   rank_ = rank;
   interceptor_id_to_rank_ = interceptor_id_to_rank;
   interceptor_id_to_node_ = interceptor_id_to_node;
   place_ = place;
   root_scope_ = scope;
   dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
+  bool need_create_scope = micro_scope_list.empty();
 
   PADDLE_ENFORCE_NOT_NULL(
       root_scope_,
       platform::errors::InvalidArgument("root_scope can not be nullptr"));
-  minibatch_scope_ = &root_scope_->NewScope();
-  microbatch_scopes_.resize(num_micro_batches);
-  for (int i = 0; i < num_micro_batches; ++i) {
-    microbatch_scopes_[i] = &minibatch_scope_->NewScope();
-    CopyParameters(i, program, inference_root_scope_vars);
+
+  if (need_create_scope) {
+    minibatch_scope_ = &root_scope_->NewScope();
+    microbatch_scopes_.resize(num_micro_batches);
+    for (int i = 0; i < num_micro_batches; ++i) {
+      microbatch_scopes_[i] = &minibatch_scope_->NewScope();
+      CopyParameters(i, program, inference_root_scope_vars);
+    }
+  } else {
+    microbatch_scopes_ = micro_scope_list;
+    for (int i = 0; i < num_micro_batches; ++i) {
+      CopyParameters(i, program, inference_root_scope_vars);
+    }
   }
+
   // Add source and sink interceptor id to rank
   interceptor_id_to_rank_.emplace(SOURCE_ID, rank);
   interceptor_id_to_rank_.emplace(SINK_ID, rank);
@@ -81,7 +102,7 @@ void Carrier::Init(
   thread_pool_.SetThreadNum(thread_num_);
   thread_pool_.Start();
 
-  CreateInterceptors();
+  CreateInterceptors(inference_root_scope_vars);
   is_init_ = true;
 }
 
@@ -166,6 +187,7 @@ void Carrier::Start() {
                         "Using carrier before initialized."));
   InterceptorMessage start_msg;
   start_msg.set_dst_id(SOURCE_ID);
+  start_msg.set_src_id(SOURCE_ID);
   start_msg.set_message_type(START);
   Send(start_msg);
   // TODO(wangxi): async step
@@ -264,7 +286,8 @@ static std::shared_ptr<framework::GarbageCollector> GetGC(
   return gc;
 }
 
-void Carrier::CreateInterceptors() {
+void Carrier::CreateInterceptors(
+    const std::vector<std::string>& inference_root_scope_vars) {
   if (interceptor_id_to_node_.empty()) return;
 
   auto gc = GetGC(place_);
@@ -328,7 +351,48 @@ void Carrier::CreateInterceptors() {
     interceptor->SetMiniBatchScope(minibatch_scope_);
     interceptor->SetMicroBatchScope(microbatch_scopes_);
     interceptor->SetRootScope(root_scope_);
-    interceptor->SetGC(gc);
+
+    if (FLAGS_fleet_executor_with_standalone &&
+        (task_node->type() == "Amplifier" || task_node->type() == "Compute")) {
+      std::vector<std::shared_ptr<InterpreterCore>> cores;
+      framework::interpreter::ExecutionConfig execution_config;
+      execution_config.create_local_scope = false;
+      execution_config.force_root_scope_vars = std::set<std::string>(
+          inference_root_scope_vars.begin(), inference_root_scope_vars.end());
+
+      const framework::ProgramDesc* program = task_node->program();
+      PADDLE_ENFORCE_NOT_NULL(
+          program,
+          phi::errors::InvalidArgument("TaskNode %d's program is not set.",
+                                       interceptor_id));
+      std::vector<framework::VarDesc*> all_vars = program->Block(0).AllVars();
+      for (framework::VarDesc* var : all_vars) {
+        execution_config.skip_gc_vars.insert(var->Name());
+      }
+
+      // ONLY unused vars can be GCed.
+      const std::unordered_map<const framework::OperatorBase*,
+                               std::vector<std::string>>& unused_vars =
+          task_node->unused_vars();
+      for (auto& item : unused_vars) {
+        for (const std::string& unused_var : item.second) {
+          execution_config.skip_gc_vars.erase(unused_var);
+        }
+      }
+
+      for (framework::Scope* scope : microbatch_scopes_) {
+        cores.push_back(std::make_shared<InterpreterCore>(
+            place_, task_node->program()->Block(0), scope, execution_config));
+      }
+
+      for (size_t i = 1; i < cores.size(); ++i) {
+        cores[i]->ShareWorkQueueFrom(cores[i - 1]);
+      }
+
+      interceptor->SetInterpreterCore(cores);
+    } else {
+      interceptor->SetGC(gc);
+    }
 
     SetInterceptor(interceptor_id, std::move(interceptor));
     VLOG(3) << "Create Interceptor with interceptor id: " << interceptor_id

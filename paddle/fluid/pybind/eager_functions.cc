@@ -16,6 +16,10 @@ typedef SSIZE_T ssize_t;
 #endif
 
 #include <Python.h>
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
 
 #include <string>
 #include <vector>
@@ -29,19 +33,21 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/op_meta_info_helper.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/prim/utils/eager/eager_tensor_operants.h"
+#include "paddle/fluid/prim/utils/static/static_tensor_operants.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -53,6 +59,12 @@ typedef SSIZE_T ssize_t;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/pybind/cuda_streams_py.h"
 #endif
+
+#include "gflags/gflags.h"
+#include "paddle/phi/api/include/operants_manager.h"
+#include "paddle/phi/api/include/tensor_operants.h"
+
+DECLARE_string(tensor_operants_mode);
 
 namespace paddle {
 namespace pybind {
@@ -487,10 +499,31 @@ static PyObject* eager_api_jit_function_call(PyObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* eager_api_init_eager_and_static_tensor_operants(
+    PyObject* self, PyObject* args, PyObject* kwargs) {
+  EAGER_TRY
+
+  paddle::OperantsManager::Instance().eager_operants.reset(
+      new paddle::prim::EagerTensorOperants());
+  paddle::OperantsManager::Instance().static_operants.reset(
+      new paddle::prim::StaticTensorOperants());
+  VLOG(4) << "Initialize eager and static tensor operants successfully";
+
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* eager_api_run_custom_op(PyObject* self,
                                          PyObject* args,
                                          PyObject* kwargs) {
   EAGER_TRY
+  FLAGS_tensor_operants_mode = "phi";
+  if (paddle::OperantsManager::Instance().phi_operants.get() == nullptr) {
+    paddle::OperantsManager::Instance().phi_operants.reset(
+        new paddle::operants::PhiTensorOperants());
+    VLOG(4) << "Initialize phi tensor operants successfully";
+  }
+
   paddle::CustomOpKernelContext ctx =
       CastPyArg2CustomOpKernelContext(PyTuple_GET_ITEM(args, 0), 0);
   std::string op_type = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 1), 1);
@@ -575,7 +608,6 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
         egr::EagerUtils::SetOutRankWithSlot(&(outs_auto_grad_metas[i]), i);
         egr::EagerUtils::SetHistory(&(outs_auto_grad_metas[i]), grad_node);
         grad_node->SetGradInMeta(out_tensors, i);
-        egr::EagerUtils::CheckAndRetainGrad(out_tensors);
       }
 
       // Prepare Grad inputs with fwd outputs
@@ -1089,6 +1121,11 @@ PyMethodDef variable_functions[] = {
      NULL},
     {"_run_custom_op",
      (PyCFunction)(void (*)(void))eager_api_run_custom_op,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"_init_eager_and_static_tensor_operants",
+     (PyCFunction)(void (*)(
+         void))eager_api_init_eager_and_static_tensor_operants,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"tensor_copy",

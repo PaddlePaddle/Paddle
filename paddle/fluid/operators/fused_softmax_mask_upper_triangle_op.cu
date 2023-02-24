@@ -43,11 +43,11 @@ limitations under the License. */
 #include <algorithm>
 #include <string>
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/fused_softmax_mask_upper_triangle_op.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/core/generator.h"
 
 namespace paddle {
 namespace operators {

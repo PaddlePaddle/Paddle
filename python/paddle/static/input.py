@@ -298,12 +298,6 @@ class InputSpec:
                     type(shape).__name__
                 )
             )
-        if len(shape) == 0:
-            raise ValueError(
-                "`shape` in InputSpec should contain at least 1 element, but received {}.".format(
-                    shape
-                )
-            )
 
         for i, ele in enumerate(shape):
             if ele is not None:

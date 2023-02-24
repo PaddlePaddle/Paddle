@@ -19,18 +19,23 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/prim/api/manual/utils/utils.h"
+#include "paddle/fluid/prim/api/manual_prim/utils/utils.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
+#include "paddle/fluid/prim/utils/static/static_tensor_operants.h"
 #include "paddle/fluid/prim/utils/utils.h"
+#include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 DECLARE_bool(prim_enabled);
+DECLARE_string(tensor_operants_mode);
+
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(tanh, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(tanh_grad, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(pow, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(scale, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(subtract, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(multiply, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(concat, CPU, ALL_LAYOUT);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -39,6 +44,7 @@ PD_DECLARE_KERNEL(tanh, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(tanh_grad, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(pow, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(scale, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(subtract, KPS, ALL_LAYOUT);
 PD_DECLARE_KERNEL(multiply, KPS, ALL_LAYOUT);
 PD_DECLARE_KERNEL(concat, GPU, ALL_LAYOUT);
 #endif
@@ -135,13 +141,18 @@ struct TestBaseProgram {
   int idx_{0};
 };
 
-class TestGradCompositeGradMaker : public GradCompositeOpMakerBase {
+class TestCompositeGradMaker : public CompositeGradOpMakerBase {
  public:
-  using prim::GradCompositeOpMakerBase::GradCompositeOpMakerBase;
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
   void Apply() override {}
 };
 
 TEST(StaticPrim, TanhBackwardComposite) {
+  // Initialized environment
+  FLAGS_tensor_operants_mode = "static";
+  paddle::OperantsManager::Instance().static_operants.reset(
+      new paddle::prim::StaticTensorOperants());
+
   TestBaseProgram base_program = TestBaseProgram();
   auto* target_block = base_program.GetBlock(0);
   // Prepare for forward tanh
@@ -177,13 +188,13 @@ TEST(StaticPrim, TanhBackwardComposite) {
   std::vector<std::unique_ptr<framework::OpDesc>> grad_ops =
       std::move(framework::OpInfoMap::Instance()
                     .Get(forward_opdesc->Type())
-                    .GradCompOpMaker()(*forward_opdesc,
+                    .CompGradOpMaker()(*forward_opdesc,
                                        std::unordered_set<std::string>(),
                                        &grad_to_var,
                                        target_block,
                                        grad_sub_block));
   ASSERT_EQ(target_block->AllOps().size(), static_cast<std::size_t>(1));
-  ASSERT_EQ(grad_ops.size(), static_cast<std::size_t>(3));
+  ASSERT_EQ(grad_ops.size(), static_cast<std::size_t>(4));
   ASSERT_EQ(target_block->AllOps()[0]->Type(), "tanh");
   ASSERT_EQ(target_block->AllOps()[0]->Inputs().at("X").size(),
             static_cast<std::size_t>(1));
@@ -201,28 +212,36 @@ TEST(StaticPrim, TanhBackwardComposite) {
   ASSERT_EQ(grad_ops[0]->Outputs().at("Out").size(),
             static_cast<std::size_t>(1));
 
-  ASSERT_EQ(grad_ops[1]->Type(), "scale");
-  ASSERT_EQ(grad_ops[1]->Inputs().at("X").size(), static_cast<std::size_t>(1));
-  ASSERT_EQ(grad_ops[1]->Inputs().at("X")[0],
-            grad_ops[0]->Outputs().at("Out")[0]);
-  ASSERT_EQ(PADDLE_GET_CONST(float, grad_ops[1]->GetAttr("scale")),
-            static_cast<float>(-1.0));
-  ASSERT_EQ(PADDLE_GET_CONST(float, grad_ops[1]->GetAttr("bias")),
-            static_cast<float>(1.0));
+  ASSERT_EQ(grad_ops[1]->Type(), "fill_constant");
+  ASSERT_EQ(PADDLE_GET_CONST(int, grad_ops[1]->GetAttr("dtype")),
+            static_cast<int>(5));  // ProtoDataType::FP32
   ASSERT_EQ(grad_ops[1]->Outputs().at("Out").size(),
             static_cast<std::size_t>(1));
 
-  ASSERT_EQ(grad_ops[2]->Type(), "elementwise_mul");
+  ASSERT_EQ(grad_ops[2]->Type(), "elementwise_sub");
   ASSERT_EQ(grad_ops[2]->Inputs().at("X").size(), static_cast<std::size_t>(1));
   ASSERT_EQ(grad_ops[2]->Inputs().at("Y").size(), static_cast<std::size_t>(1));
-  ASSERT_EQ(grad_ops[2]->Inputs().at("Y")[0],
+  ASSERT_EQ(grad_ops[2]->Inputs().at("X")[0],
             grad_ops[1]->Outputs().at("Out")[0]);
-  ASSERT_EQ(grad_ops[2]->Inputs().at("X")[0], "b@GRAD");
   ASSERT_EQ(grad_ops[2]->Outputs().at("Out").size(),
+            static_cast<std::size_t>(1));
+
+  ASSERT_EQ(grad_ops[3]->Type(), "elementwise_mul");
+  ASSERT_EQ(grad_ops[3]->Inputs().at("X").size(), static_cast<std::size_t>(1));
+  ASSERT_EQ(grad_ops[3]->Inputs().at("Y").size(), static_cast<std::size_t>(1));
+  ASSERT_EQ(grad_ops[3]->Inputs().at("Y")[0],
+            grad_ops[2]->Outputs().at("Out")[0]);
+  ASSERT_EQ(grad_ops[3]->Inputs().at("X")[0], "b@GRAD");
+  ASSERT_EQ(grad_ops[3]->Outputs().at("Out").size(),
             static_cast<std::size_t>(1));
 }
 
 TEST(StaticCompositeGradMaker, TestMutiInputMethod) {
+  // Initialized environment
+  FLAGS_tensor_operants_mode = "static";
+  paddle::OperantsManager::Instance().static_operants.reset(
+      new paddle::prim::StaticTensorOperants());
+
   TestBaseProgram base_program = TestBaseProgram();
   auto* target_block = base_program.GetBlock(0);
   std::vector<int64_t> shape = {2, 2};
@@ -250,11 +269,11 @@ TEST(StaticCompositeGradMaker, TestMutiInputMethod) {
   auto* forward_opdesc = target_block->AllOps()[0];
   std::unordered_map<std::string, std::string> grad_to_var;
   std::vector<framework::BlockDesc*> grad_sub_block;
-  auto test = TestGradCompositeGradMaker(*forward_opdesc,
-                                         std::unordered_set<std::string>(),
-                                         &grad_to_var,
-                                         target_block,
-                                         grad_sub_block);
+  auto test = TestCompositeGradMaker(*forward_opdesc,
+                                     std::unordered_set<std::string>(),
+                                     &grad_to_var,
+                                     target_block,
+                                     grad_sub_block);
   test();
   std::vector<paddle::experimental::Tensor> muti_fw_input =
       test.GetMultiForwardInput("X");
@@ -285,6 +304,11 @@ TEST(StaticCompositeGradMaker, TestMutiInputMethod) {
 }
 
 TEST(StaticCompositeGradMaker, TestMutiOutputMethod) {
+  // Initialized environment
+  FLAGS_tensor_operants_mode = "static";
+  paddle::OperantsManager::Instance().static_operants.reset(
+      new paddle::prim::StaticTensorOperants());
+
   TestBaseProgram base_program = TestBaseProgram();
   auto* target_block = base_program.GetBlock(0);
   std::vector<int64_t> shape = {4, 2};
@@ -312,11 +336,11 @@ TEST(StaticCompositeGradMaker, TestMutiOutputMethod) {
   auto* forward_opdesc = target_block->AllOps()[0];
   std::unordered_map<std::string, std::string> grad_to_var;
   std::vector<framework::BlockDesc*> grad_sub_block;
-  auto test = TestGradCompositeGradMaker(*forward_opdesc,
-                                         std::unordered_set<std::string>(),
-                                         &grad_to_var,
-                                         target_block,
-                                         grad_sub_block);
+  auto test = TestCompositeGradMaker(*forward_opdesc,
+                                     std::unordered_set<std::string>(),
+                                     &grad_to_var,
+                                     target_block,
+                                     grad_sub_block);
   test();
   paddle::experimental::Tensor fw_input = test.GetSingleForwardInput("X");
   paddle::optional<paddle::experimental::Tensor> opt_fw_input =
@@ -349,8 +373,10 @@ TEST(StaticPrim, TestFlags) {
 
 }  // namespace prim
 }  // namespace paddle
+USE_OP_ITSELF(fill_constant);
 USE_OP_ITSELF(tanh);
 USE_OP_ITSELF(tanh_grad);
 USE_OP_ITSELF(pow);
 USE_OP_ITSELF(elementwise_mul);
+USE_OP_ITSELF(elementwise_sub);
 USE_OP_ITSELF(scale);

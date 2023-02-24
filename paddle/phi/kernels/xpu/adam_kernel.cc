@@ -124,7 +124,7 @@ void AdamDenseKernel(const Context& dev_ctx,
         errors::InvalidArgument("Input(SkipUpdate) size must be 1, but get %d",
                                 skip_update->numel()));
     std::vector<bool> skip_update_vec;
-    paddle::framework::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
+    phi::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
     skip_update_ = skip_update_vec[0];
   }
 
@@ -180,7 +180,6 @@ void AdamDenseKernel(const Context& dev_ctx,
       epsilon_,
       param.numel());
 
-  xpu_wait(dev_ctx.x_context()->xpu_stream);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "adam");
 
   funcs::FreeData<float>(grad, grad_c);
@@ -213,7 +212,6 @@ void AdamDenseKernel(const Context& dev_ctx,
                        false,
                        beta1_,
                        0.0f);
-        xpu_wait(dev_ctx.x_context()->xpu_stream);
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "adam");
       }
 
@@ -231,7 +229,6 @@ void AdamDenseKernel(const Context& dev_ctx,
                        false,
                        beta2_,
                        0.0f);
-        xpu_wait(dev_ctx.x_context()->xpu_stream);
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "adam");
       }
     }

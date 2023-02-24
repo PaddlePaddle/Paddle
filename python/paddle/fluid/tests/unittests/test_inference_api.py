@@ -119,15 +119,54 @@ class TestInferenceBaseAPI(unittest.TestCase):
         predictor.run()
 
     def test_wrong_input(self):
+        program, params = get_sample_model()
+        config = self.get_config(program, params)
+        predictor = create_predictor(config)
+        in_names = predictor.get_input_names()
+        in_handle = predictor.get_input_handle(in_names[0])
+
         with self.assertRaises(TypeError):
-            program, params = get_sample_model()
+            in_data = np.ones((1, 6, 64, 64)).astype(np.float32)
+            in_handle.copy_from_cpu(list(in_data))
+            predictor.run()
+
+        with self.assertRaises(TypeError):
+            in_handle.share_external_data(
+                paddle.to_tensor(
+                    np.full((1, 6, 32, 32), 1.0, "float32"),
+                    place=paddle.CPUPlace(),
+                )
+            )
+            predictor.run()
+
+    def test_share_external_data(self):
+        program, params = get_sample_model()
+
+        def test_lod_tensor():
+            config = Config()
+            config.set_model_buffer(program, len(program), params, len(params))
+            predictor = create_predictor(config)
+            in_names = predictor.get_input_names()
+            in_handle = predictor.get_input_handle(in_names[0])
+            in_data = paddle.fluid.create_lod_tensor(
+                np.full((1, 6, 32, 32), 1.0, "float32"),
+                [[1]],
+                paddle.fluid.CPUPlace(),
+            )
+            in_handle.share_external_data(in_data)
+            predictor.run()
+
+        def test_paddle_tensor():
             config = self.get_config(program, params)
             predictor = create_predictor(config)
             in_names = predictor.get_input_names()
             in_handle = predictor.get_input_handle(in_names[0])
-            in_data = np.ones((1, 6, 64, 64)).astype(np.float32)
-            in_handle.copy_from_cpu(list(in_data))
+            in_data = paddle.Tensor(np.ones((1, 6, 32, 32)).astype(np.float32))
+            in_handle.share_external_data(in_data)
             predictor.run()
+
+        test_lod_tensor()
+        test_paddle_tensor()
 
 
 if __name__ == '__main__':
