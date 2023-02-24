@@ -18,18 +18,28 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.io as io
 import paddle.fluid.transpiler.distribute_transpiler as dist_transpiler
-from paddle.fluid.compiler import CompiledProgram
+from paddle.fluid import compiler
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program
 from paddle.fluid.incubate.checkpoint.checkpoint_saver import (
     CheckpointSaver,
     PaddleModel,
 )
-from paddle.incubate.distributed.fleet.base import (
+from paddle.fluid.incubate.fleet.base.fleet_base import (
     DistributedOptimizer,
     Fleet,
     Mode,
 )
+
+
+class LambConfig:
+    def __init__(self):
+        pass
+
+
+class DistFCConfig:
+    def __init__(self):
+        pass
 
 
 class Collective(Fleet):
@@ -472,7 +482,14 @@ class CollectiveOptimizer(DistributedOptimizer):
         self._strategy.trainers_endpoints = fleet.worker_endpoints()
         self._strategy.enable_backward_optimizer_op_deps = True
 
-        self._compiled_program = CompiledProgram(main_program)
+        self._compiled_program = compiler.CompiledProgram(main_program)
+
+        self._compiled_program.with_data_parallel(
+            loss_name=self._loss.name,
+            build_strategy=self._strategy,
+            exec_strategy=self._strategy.exec_strategy,
+            share_vars_from=None,
+        )
 
         return self._compiled_program
 
