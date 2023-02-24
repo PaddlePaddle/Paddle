@@ -26,7 +26,7 @@ class TestFillAnyLikeOp(OpTest):
         self.op_type = "fill_any_like"
         self.python_api = paddle.full_like
         self.prim_op_type = "comp"
-        self.python_api = paddle.full_like 
+        self.python_api = paddle.full_like
         self.dtype = np.int32
         self.value = 0.0
         self.init()
