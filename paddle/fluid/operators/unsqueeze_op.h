@@ -43,7 +43,7 @@ class UnsqueezeKernel : public framework::OpKernel<T> {
         axes = GetDataFromTensorList<int>(axes_tensor_list);
       } else if (context.HasInput("AxesTensor")) {
         auto *axes_tensor = context.Input<phi::DenseTensor>("AxesTensor");
-        axes = GetDataFromTensor<int>(axes_tensor);
+        axes = phi::GetVectorFromTensor<int>(axes_tensor);
       }
       need_resize_out_dims = true;
     }
