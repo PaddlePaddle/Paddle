@@ -258,21 +258,6 @@ void Copy<phi::Place, phi::XPUPlace>(phi::Place dst_place,
   }
 }
 
-// NOTE: only for XPUPlace <-> CPUPlace. XPUPlace <-> XPUPlace
-template <>
-void Copy<phi::Place, phi::Place>(phi::Place dst_place,
-                                  void* dst,
-                                  phi::Place src_place,
-                                  const void* src,
-                                  size_t num) {
-  if (dst_place.GetType() == phi::AllocationType::XPU) {
-    platform::XPUPlace place_dst(dst_place.GetDeviceId());
-    return Copy<phi::XPUPlace, phi::Place>(place_dst, dst, src_place, src, num);
-  } else if (src_place.GetType() == phi::AllocationType::XPU) {
-    platform::XPUPlace place_src(src_place.GetDeviceId());
-    return Copy<phi::Place, phi::XPUPlace>(dst_place, dst, place_src, src, num);
-  }
-}
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL
