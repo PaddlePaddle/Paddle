@@ -7230,7 +7230,7 @@ class EagerParamBase(_core_eager_eagertensor):
         assert (
             self._init_func is not None
         ), "Required self._init_func is not None, but received None."
-        self._init_func()
+        self._init_func(self, None)
         # clear function handle to release resource
         self._init_func = None
 
@@ -7255,7 +7255,7 @@ class EagerParamBase(_core_eager_eagertensor):
         assert (
             self._init_op_creator is not None
         ), "Required self._init_op_creator is not None, but received None."
-        self._init_op_creator(block)
+        self._init_op_creator(self, block)
 
     def __str__(self):
         """
@@ -7307,6 +7307,8 @@ class EagerParamBase(_core_eager_eagertensor):
         new_param = EagerParamBase(self.shape, self.dtype, **state)
         memo[id(self)] = new_param
         new_param.copy_(self, True)
+        new_param._init_func = self._init_func
+        new_param._init_op_creator = self._init_op_creator
         return new_param
 
     def _copy_to(self, device, blocking):
