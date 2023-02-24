@@ -83,8 +83,10 @@ cudaDataType_t ToCudaDataType() {
     return CUDA_R_64F;
   } else if (std::is_same<T, phi::dtype::float16>::value) {
     return CUDA_R_16F;
+#if CUDA_VERSION >= 11000
   } else if (std::is_same<T, phi::dtype::bfloat16>::value) {
     return CUDA_R_16BF;
+#endif
   }
 }
 

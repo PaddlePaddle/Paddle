@@ -15,14 +15,16 @@ limitations under the License. */
 
 #pragma once
 
-// #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
-
 #include <algorithm>
 #include <mutex>
 #include <unordered_map>
 
+#ifdef PADDLE_WITH_CUDA
+
 #include <cuda_runtime_api.h>  // NOLINT
 #include "cuda.h"              // NOLINT
+
+#if CUDA_VERSION >= 11060
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/scope_guard.h"
@@ -980,5 +982,5 @@ void ComputeFusedGemmEpilogueBackward(const phi::GPUContext& dev_ctx,
 
 }  // namespace operators
 }  // namespace paddle
-
-// #endif
+#endif
+#endif
