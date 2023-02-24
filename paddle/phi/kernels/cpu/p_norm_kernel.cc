@@ -92,7 +92,7 @@ void PNormKernel(const Context& dev_ctx,
   } else if (porder == -INFINITY) {
     norm.device(*place) = xr.abs().minimum(rdim);
   } else {
-    norm.device(*place) = xr.abs().pow(porder).sum(rdim).pow(static_cast<T>(1.0f / porder));
+    norm.device(*place) = xr.abs().pow(static_cast<T>(porder)).sum(rdim).pow(static_cast<T>(1.0f / porder));
   }
 }
 }  // namespace phi
