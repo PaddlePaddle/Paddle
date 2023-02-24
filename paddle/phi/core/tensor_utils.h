@@ -14,12 +14,14 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/core/tensor_meta.h"
+#include "paddle/phi/core/utils/data_type.h"
 
 namespace phi {
 
@@ -147,8 +149,7 @@ inline T GetValue(const Context& dev_ctx, const DenseTensor& x) {
 template <typename T = int32_t>
 inline std::vector<T> GetDataFromTensor(const DenseTensor* x) {
   std::vector<T> vec_new_data;
-  if (paddle::framework::TransToProtoVarType(x->dtype()) ==
-      paddle::framework::proto::VarType::INT32) {
+  if (phi::TransToProtoVarType(x->dtype()) == DataType::INT32) {
     auto* data = x->data<int>();
     DenseTensor cpu_attr_tensor;
     if (!paddle::platform::is_cpu_place(x->place())) {
@@ -157,21 +158,19 @@ inline std::vector<T> GetDataFromTensor(const DenseTensor* x) {
       data = cpu_attr_tensor.data<int>();
     }
     vec_new_data = std::vector<T>(data, data + x->numel());
-  } else if (paddle::framework::TransToProtoVarType(x->dtype()) ==
-             paddle::framework::proto::VarType::INT64) {
+  } else if (phi::TransToProtoVarType(x->dtype()) == DataType::INT64) {
     auto* data = x->data<int64_t>();
     DenseTensor cpu_attr_tensor;
     if (!paddle::platform::is_cpu_place(x->place())) {
-      paddle::framework::TensorCopySync(
-          *x, paddle::platform::CPUPlace(), &cpu_attr_tensor);
+      paddle::framework::TensorCopySync(*x, phi::CPUPlace(), &cpu_attr_tensor);
       data = cpu_attr_tensor.data<int64_t>();
     }
     // NOTE: Converting int64 to int32 may cause data overflow.
     vec_new_data = std::vector<T>(data, data + x->numel());
   } else {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "The dtype of Tensor must be int32 or int64, but received: %s",
-        paddle::framework::TransToProtoVarType(x->dtype())));
+        phi::TransToProtoVarType(x->dtype())));
   }
   return vec_new_data;
 }
