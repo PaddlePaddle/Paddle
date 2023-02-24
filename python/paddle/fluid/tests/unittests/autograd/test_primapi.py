@@ -20,10 +20,12 @@ import autograd.numpy as anp
 import autograd.scipy as ascipy
 import config
 import numpy as np
+import parameterized as param
 import utils
 
 import paddle
-from paddle.incubate.autograd import primx
+from paddle.fluid import core
+from paddle.incubate.autograd import primapi, primx
 
 
 @utils.place(config.DEVICES)
@@ -1032,6 +1034,26 @@ class TestGradWithHigherOrder(unittest.TestCase):
         self.assertEqual(type(actual), type(expected))
         for i, j in zip(actual, expected):
             np.testing.assert_allclose(i, j, rtol=self._rtol, atol=self._atol)
+
+
+class TestToPrim(unittest.TestCase):
+    def setUp(self):
+        paddle.enable_static()
+        core._set_prim_forward_enabled(True)
+
+    def tearDown(self):
+        core._set_prim_forward_enabled(False)
+        paddle.disable_static()
+
+    @param.parameterized((('dropout',),))
+    def test_exclude(self, exclude):
+        program = paddle.static.Program()
+        with paddle.static.program_guard(program):
+            x = paddle.rand((1,))
+            y = paddle.nn.functional.dropout(x)
+        primapi.to_prim(program, exclude)
+        ops = tuple(op.type for op in program.block(0).ops)
+        self.assertTrue(all(tuple(op in ops for op in exclude)))
 
 
 if __name__ == '__main__':
