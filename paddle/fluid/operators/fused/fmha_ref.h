@@ -62,6 +62,78 @@ class AttnDropoutParam {
   const phi::DenseTensor* seed_;
 };
 
+template <typename T, int VecSize>
+__global__ void TransposeRemovingPadding(const T* input_data,
+                                         T* output_data,
+                                         const int batch_size,
+                                         const int num_head,
+                                         const int seq_len,
+                                         const int head_dim,
+                                         const int token_num,
+                                         const int elem_cnt,
+                                         const int* padding_offset) {
+  // transpose and remove padding
+  // [batch_size, num_head, seq_len, head_dim] -> [token_num, num_head,
+  // head_dim]
+  int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
+  const int dim_embed = num_head * head_dim;
+  using LoadT = phi::AlignedVector<T, VecSize>;
+  LoadT src_vec;
+
+  for (int32_t linear_index = idx * VecSize,
+               step = gridDim.x * blockDim.x * VecSize;
+       linear_index < elem_cnt;
+       linear_index += step) {
+    const int token_idx = linear_index / dim_embed;
+    const int ori_token_idx =
+        token_idx + (padding_offset == nullptr ? 0 : padding_offset[token_idx]);
+    const int ori_batch_id = ori_token_idx / seq_len;
+    const int ori_seq_id = ori_token_idx % seq_len;
+    const int ori_head_id = (linear_index % dim_embed) / head_dim;
+    const int ori_head_lane = (linear_index % dim_embed) % head_dim;
+    const int ori_idx = ori_batch_id * num_head * seq_len * head_dim +
+                        ori_head_id * seq_len * head_dim +
+                        ori_seq_id * head_dim + ori_head_lane;
+    phi::Load<T, VecSize>(&input_data[ori_idx], &src_vec);
+    phi::Store<T, VecSize>(src_vec, &output_data[linear_index]);
+  }
+}
+
+template <typename T>
+void InvokeTransposeRemovePadding(const phi::GPUContext& dev_ctx,
+                                  const T* input_data,
+                                  T* output_data,
+                                  const int batch_size,
+                                  const int num_head,
+                                  const int seq_len,
+                                  const int head_dim,
+                                  const int token_num,
+                                  const int* padding_offset) {
+  // [batch_size, num_head, seq_len, head_dim] -> [token_num, num_head,
+  // head_dim]
+  constexpr int VEC_16B = 16;
+  const int elem_cnt = token_num * num_head * head_dim;
+  constexpr int PackSize = VEC_16B / sizeof(T);
+  PADDLE_ENFORCE_EQ(
+      head_dim % PackSize,
+      0,
+      platform::errors::PreconditionNotMet(
+          "dim_head=%d must be divisible by vec_size=%d", head_dim, PackSize));
+  const int32_t pack_num = elem_cnt / PackSize;
+  const int32_t block_size = 128;
+  int32_t grid_size = (pack_num + block_size - 1) / block_size;
+  TransposeRemovingPadding<T, PackSize>
+      <<<grid_size, block_size, 0, dev_ctx.stream()>>>(input_data,
+                                                       output_data,
+                                                       batch_size,
+                                                       num_head,
+                                                       seq_len,
+                                                       head_dim,
+                                                       token_num,
+                                                       elem_cnt,
+                                                       padding_offset);
+}
+
 template <typename T>
 class FMHARef {
  public:
@@ -256,18 +328,21 @@ class FMHARef {
         dev_ctx_, *qktv_out_tensor, perm_3, fmha_out_tensor);
   }
 
-  void ComputeForwardWithoutTranspose(const phi::DenseTensor* cache_kv_tensor,
-                                      const phi::DenseTensor* src_mask_tensor,
-                                      phi::DenseTensor* q_transpose_out_tensor,
-                                      phi::DenseTensor* kv_transpose_out_tensor,
-                                      phi::DenseTensor* cache_kv_out_tensor,
-                                      phi::DenseTensor* qk_out_tensor,
-                                      phi::DenseTensor* src_mask_out_tensor,
-                                      phi::DenseTensor* softmax_out_tensor,
-                                      phi::DenseTensor* dropout_mask_out_tensor,
-                                      phi::DenseTensor* dropout_out_tensor,
-                                      phi::DenseTensor* qktv_out_tensor,
-                                      phi::DenseTensor* fmha_out_tensor) {
+  void ComputeForwardWithoutTranspose(
+      const phi::DenseTensor* cache_kv_tensor,
+      const phi::DenseTensor* src_mask_tensor,
+      const phi::DenseTensor* padding_offset_tensor,
+      phi::DenseTensor* q_transpose_out_tensor,
+      phi::DenseTensor* kv_transpose_out_tensor,
+      phi::DenseTensor* cache_kv_out_tensor,
+      phi::DenseTensor* qk_out_tensor,
+      phi::DenseTensor* src_mask_out_tensor,
+      phi::DenseTensor* softmax_out_tensor,
+      phi::DenseTensor* dropout_mask_out_tensor,
+      phi::DenseTensor* dropout_out_tensor,
+      phi::DenseTensor* qktv_out_tensor,
+      phi::DenseTensor* fmha_out_tensor,
+      const int token_num) {
     // input shape: [bs, seq_len, 3, num_head, head_dim]
     // transpose with perm [2, 0, 3, 1, 4],
     // output_shape: [3, bs, num_head, seq_len, head_dim]
@@ -424,9 +499,21 @@ class FMHARef {
     }
     // transpose: [0, 2, 1, 3]
     // output shape: [batch_size, seq_len, num_heads, head_dim]
-    std::vector<int> perm_3 = {0, 2, 1, 3};
-    phi::funcs::TransposeGPUKernelDriver<T>(
-        dev_ctx_, *qktv_out_tensor, perm_3, fmha_out_tensor);
+    if (!padding_offset_tensor) {
+      std::vector<int> perm_3 = {0, 2, 1, 3};
+      phi::funcs::TransposeGPUKernelDriver<T>(
+          dev_ctx_, *qktv_out_tensor, perm_3, fmha_out_tensor);
+    } else {
+      InvokeTransposeRemovePadding<T>(dev_ctx_,
+                                      qktv_out_data,
+                                      fmha_out_data,
+                                      batch_size_,
+                                      num_head_,
+                                      seq_len_,
+                                      head_dim_,
+                                      token_num,
+                                      padding_offset_tensor->data<int>());
+    }
   }
 
   void ComputeBackward(const phi::DenseTensor& transpose_2_out_tensor,

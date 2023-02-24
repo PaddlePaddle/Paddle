@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/utils.h"
+#include "paddle/phi/core/generator.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/operators/cudnn_lstm_cache.h"
@@ -232,7 +232,7 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
       if (seed == 0) {
         // If not specify seed, use global Generator to generate seed.
         int device_id = ctx.GetPlace().GetDeviceId();
-        auto gen_cuda = paddle::framework::DefaultCUDAGenerator(device_id);
+        auto gen_cuda = phi::DefaultCUDAGenerator(device_id);
         seed = static_cast<int>(gen_cuda->Random64());
       }
       // else use `ctx.Attr<int>("seed")` specified seed

@@ -14,9 +14,9 @@
 
 #include "paddle/phi/kernels/add_n_kernel.h"
 
-#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/impl/add_n_kernel_impl.h"
 namespace phi {
 
@@ -75,6 +75,13 @@ void AddNKernel(const Context &dev_ctx,
                 const std::vector<const TensorBase *> &x,
                 DenseTensor *out) {
   const size_t in_num = x.size();
+  for (int i = 0; i < in_num; ++i) {
+    PADDLE_ENFORCE_EQ(
+        x[i]->initialized(),
+        true,
+        phi::errors::InvalidArgument(
+            "This argument is invalid, %d-th tensor is uninitialized.", i));
+  }
 
   constexpr size_t theory_sm_threads = 1024;
   auto stream = dev_ctx.stream();
@@ -198,7 +205,7 @@ void AddNKernel(const Context &dev_ctx,
       }
     }
     if (!sr_in_out_data.empty()) {
-      auto tmp_sr_in_out_array = paddle::memory::Alloc(
+      auto tmp_sr_in_out_array = phi::memory_utils::Alloc(
           dev_ctx.GetPlace(), sr_in_out_data.size() * sizeof(T *));
 
       paddle::memory::Copy(dev_ctx.GetPlace(),
@@ -219,8 +226,8 @@ void AddNKernel(const Context &dev_ctx,
   }
   // if indata not null, merge into one kernel call.
   if (!in_data.empty()) {
-    auto tmp_in_array =
-        paddle::memory::Alloc(dev_ctx.GetPlace(), in_data.size() * sizeof(T *));
+    auto tmp_in_array = phi::memory_utils::Alloc(dev_ctx.GetPlace(),
+                                                 in_data.size() * sizeof(T *));
 
     paddle::memory::Copy(dev_ctx.GetPlace(),
                          tmp_in_array->ptr(),

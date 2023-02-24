@@ -238,9 +238,7 @@ class TestInstance(unittest.TestCase):
 
         # will print warning message
 
-        cp_prog = CompiledProgram(program).with_data_parallel(
-            loss_name=avg_cost.name
-        )
+        cp_prog = CompiledProgram(program)
 
         save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe, cp_prog)
         self.assertRaises(
