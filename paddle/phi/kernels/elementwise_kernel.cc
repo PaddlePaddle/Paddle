@@ -283,7 +283,7 @@ PD_REGISTER_KERNEL(elementwise_pow,
 
 #endif
 
-#if defined(PADDLE_WITH_XPU_KP) && !defined(PADDLE_WITH_XPU)
+#if defined(PADDLE_WITH_XPU_KP) && defined(PADDLE_WITH_XPU)
 PD_REGISTER_KERNEL(subtract, KPS, ALL_LAYOUT, phi::SubtractKernel, float) {}
 PD_REGISTER_KERNEL(add, KPS, ALL_LAYOUT, phi::AddKernel, float) {}
 PD_REGISTER_KERNEL(multiply, KPS, ALL_LAYOUT, phi::MultiplyKernel, float) {}
@@ -368,8 +368,7 @@ PD_REGISTER_KERNEL(subtract,
                    phi::dtype::float16,
                    int64_t) {}
 #endif
-
-#if defined PADDLE_WITH_XPU
+#if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
 PD_REGISTER_KERNEL(floor_divide,
                    XPU,
                    ALL_LAYOUT,
