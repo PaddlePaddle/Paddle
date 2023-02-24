@@ -125,7 +125,7 @@ def generate_inputs_info(input_info):
     input_args_ = ""
     for index in range(len(input_info)):
         [target_, layout_, precision_] = input_info[index].split(',')
-        # todo: check vadility
+        # todo: check validity
         target_ = target_type_converter[target_.strip()]
         layout_ = layout_type_converter[layout_.strip()]
         precision_ = precision_type_converter[precision_.strip()]
@@ -153,7 +153,7 @@ def generate_results_info(output_info):
     output_args_ = "let results = (outs "
     for index in range(len(output_info)):
         [target_, layout_, precision_] = output_info[index].split(',')
-        # todo: check vadility
+        # todo: check validity
         target_ = target_type_converter[target_.strip()]
         layout_ = layout_type_converter[layout_.strip()]
         precision_ = precision_type_converter[precision_.strip()]
