@@ -24,7 +24,6 @@ import paddle.fluid.core as core
 class TestFillAnyLikeOp(OpTest):
     def setUp(self):
         self.op_type = "fill_any_like"
-        self.python_api = paddle.full_like
         self.prim_op_type = "comp"
         self.python_api = paddle.full_like
         self.dtype = np.int32
@@ -60,7 +59,6 @@ class TestFillAnyLikeOpFloat32(TestFillAnyLikeOp):
 class TestFillAnyLikeOpBfloat16(OpTest):
     def setUp(self):
         self.op_type = "fill_any_like"
-        self.python_api = paddle.full_like
         self.prim_op_type = "comp"
         self.python_api = paddle.full_like
         self.dtype = np.uint16
@@ -109,7 +107,6 @@ class TestFillAnyLikeOpValue3(TestFillAnyLikeOp):
 class TestFillAnyLikeOpType(TestFillAnyLikeOp):
     def setUp(self):
         self.op_type = "fill_any_like"
-        self.python_api = paddle.full_like
         self.prim_op_type = "comp"
         self.python_api = paddle.full_like
         self.dtype = np.int32
