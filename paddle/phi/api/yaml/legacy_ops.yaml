@@ -532,15 +532,6 @@
     func : einsum
   backward : einsum_grad
 
-- op : elementwise_heaviside
-  args : (Tensor x, Tensor y)
-  output : Tensor
-  infer_meta :
-    func : ElementwiseInferMeta
-  kernel :
-    func : elementwise_heaviside
-  backward : elementwise_heaviside_grad
-
 - op : elementwise_pow
   args : (Tensor x, Tensor y)
   output : Tensor(out)
@@ -826,6 +817,15 @@
   kernel :
     func : hardswish
   backward : hardswish_grad
+
+- op : heaviside
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : heaviside
+  backward : heaviside_grad
 
 - op : hsigmoid_loss
   args : (Tensor x, Tensor label, Tensor w, Tensor bias, Tensor path, Tensor code, int num_classes, bool remote_prefetch, bool is_sparse)
