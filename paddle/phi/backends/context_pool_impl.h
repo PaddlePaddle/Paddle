@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include "paddle/phi/backends/all_context.h"
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
+#include "paddle/phi/core/generator.h"
 
 namespace phi {
 
@@ -69,8 +69,7 @@ inline std::unique_ptr<DeviceContext> CreateDeviceContext(
         instance.GetAllocator(phi::GPUPinnedPlace()).get());
 
     cuda_ctx->PartialInitWithAllocator();
-    dev_ctx->SetGenerator(
-        paddle::framework::DefaultCUDAGenerator(p.GetDeviceId()).get());
+    dev_ctx->SetGenerator(phi::DefaultCUDAGenerator(p.GetDeviceId()).get());
 #endif
   } else if (p.GetType() == phi::AllocationType::XPU) {
 #if defined(PADDLE_WITH_XPU)
@@ -78,17 +77,16 @@ inline std::unique_ptr<DeviceContext> CreateDeviceContext(
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetAllocator(p)
             .get());
-    dev_ctx->SetGenerator(
-        paddle::framework::DefaultXPUGenerator(p.GetDeviceId()).get());
+    dev_ctx->SetGenerator(phi::DefaultXPUGenerator(p.GetDeviceId()).get());
 #endif
   } else {
     dev_ctx->SetAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetAllocator(p)
             .get());
-    dev_ctx->SetGenerator(paddle::framework::DefaultCPUGenerator().get());
+    dev_ctx->SetGenerator(phi::DefaultCPUGenerator().get());
   }
-  dev_ctx->SetHostGenerator(paddle::framework::DefaultCPUGenerator().get());
+  dev_ctx->SetHostGenerator(phi::DefaultCPUGenerator().get());
   dev_ctx->SetHostAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(phi::CPUPlace())
