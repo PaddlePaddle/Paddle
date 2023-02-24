@@ -30,10 +30,7 @@ register_operators(
   fused_gate_attention_op
   resnet_basic_block_op
   fused_scale_bias_relu_conv_bnstats_op
-  fused_dgrad_drelu_bnbwdweight_op
-  fused_dbn_apply_op
-  fused_bn_finalize_op
-  fused_conv_bn_wgrad_op
+  fused_dconv_drelu_dbn_op
   fused_scale_bias_add_relu_op)
 
 # fusion_gru_op does not have CUDA kernel
@@ -166,10 +163,7 @@ if(WITH_GPU OR WITH_ROCM)
 
   if(WITH_CUDNN_FRONTEND)
     op_library(fused_scale_bias_relu_conv_bnstats_op)
-    op_library(fused_dgrad_drelu_bnbwdweight_op)
-    op_library(fused_dbn_apply_op)
-    op_library(fused_bn_finalize_op)
-    op_library(fused_conv_bn_wgrad_op)
+    op_library(fused_dconv_drelu_dbn_op)
     op_library(fused_scale_bias_add_relu_op)
   endif()
 endif()

@@ -22,17 +22,20 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class FusedDgradDreluBnBwdWeightOpMaker
-    : public framework::OpProtoAndCheckerMaker {
+class FusedDconvDreluDbnOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     // dgrad inputs
     AddInput("dY", "Grad input of dgrad");
     AddInput("W", "Filter input of dgrad");
     // fuse_add inputs (optional)
-    AddInput("dX_branch", "Gradient of the optional branch.").AsDispensable();
+    AddInput("dY_branch", "Gradient of the optional branch.").AsDispensable();
     // drelu inputs (optional)
     AddInput("Relu_X", "Residual input to relu").AsDispensable();
+    // wgrad inputs
+    AddInput("BN1_eqscale", "").AsDispensable();
+    AddInput("BN1_eqbias", "").AsDispensable();
+    AddInput("Conv_X", "").AsDispensable();
     // dBN1 inputs
     AddInput("BN1_mean", "");
     AddInput("BN1_inv_std", "");
@@ -45,20 +48,16 @@ class FusedDgradDreluBnBwdWeightOpMaker
     AddInput("BN2_scale", "").AsDispensable();
     AddInput("BN2_bias", "").AsDispensable();
     AddInput("BN2_X", "The input to BN2").AsDispensable();
-    // drelu outputs
-    AddOutput("dX", "Output of fused dgrad drelu");
     // dBN1 outputs
+    AddOutput("BN1_dX", "");
     AddOutput("BN1_dGamma", "");
     AddOutput("BN1_dBeta", "");
-    AddOutput("BN1_eqscale_dy", "");
-    AddOutput("BN1_eqscale_x", "");
-    AddOutput("BN1_eqbias", "");
+    // wgrad outputs
+    AddOutput("dW", "");
     // dBN2 outputs (optional)
+    AddOutput("BN2_dX", "").AsDispensable();
     AddOutput("BN2_dGamma", "").AsDispensable();
     AddOutput("BN2_dBeta", "").AsDispensable();
-    AddOutput("BN2_eqscale_dy", "").AsDispensable();
-    AddOutput("BN2_eqscale_x", "").AsDispensable();
-    AddOutput("BN2_eqbias", "").AsDispensable();
     // conv params
     AddAttr<std::vector<int>>("strides",
                               "(vector<int> default:{1, 1}), the "
@@ -100,17 +99,16 @@ class FusedDgradDreluBnBwdWeightOpMaker
         "(int default:1), the groups number of the convolution operator. ")
         .SetDefault(1);
     AddComment(R"DOC(
-FusedDgradDreluBnBwdWeight Operator
+This op includes 3 kernels:
+1. FusedDgradDreluBnBwdWeight
 It fuses the backward of the following patterns:
 (1)    BN -> ReLU -> Conv
 
-                       |---> (optional branch)
 (2)    BN1 -> Add -> ReLU -> Conv
-       BN2 ----^
+       BN2 ----^       |---> (optional branch)
 
-                      |---> (optional branch)
 (3)    BN -> Add -> ReLU -> Conv
-  (shortcut)--^
+  (shortcut)--^       |---> (optional branch)
 
 The meaning of three attributes are:
 - fuse_shortcut: Whether a shortcut is added in the forward pattern, as in (2).
@@ -119,73 +117,40 @@ The meaning of three attributes are:
   marked in (2)(3) as (optional branch). In this case, the gradient of the branch
   should be added to the output dgrad.
 
+2. DbnApply
+Ref: https://docs.nvidia.com/deeplearning/cudnn/developer-guide/index.html#dualdbnapply
+By default it performs the following:
+dX = A* dY + B * X + C
+With fuse_dual:
+dX = A * dY + B * X + C
+dX_dual = A_dual * dY + B_dual * X_dual + C_dual
+
+3. ConvBnWgrad
+Ref: https://docs.nvidia.com/deeplearning/cudnn/developer-guide/index.html#convbnwgrad
+It fuses the following pattern:
+
+X = ReLU(BN_X * Scale + Bias)
+dW = Wgrad(dY, X)
+
 Requirements:
-- All tensors should have layout NHWC, except that W is NCHW.
-- BN_dGamma, BN_dBeta, BN_eqscale_dy, BN_eqscale_x, BN_eqbias
-  BN_mean, BN_inv_std, BN_scale, BN_bias should have shape [C]
+- All tensors should have layout NHWC, except that W, dW are NCHW.
+- BN_dGamma, BN_dBeta, BN_mean, BN_inv_std, BN_scale, BN_bias should have shape [C]
   and dtype FP32.
-- BN_X, dX, Relu_X should have input shape of Conv and dtype FP16.
+- BN1_eqscale, BN1_eqbias should shape [C] and dtype FP16.
+- BN_X, dX, Relu_X, Conv_X should have input shape of Conv and dtype FP16.
 )DOC");
   }
 };
 
-class FusedDgradDreluBnBwdWeightOp : public framework::OperatorWithKernel {
+class FusedDconvDreluDbnOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    // check basic IOs
-    OP_INOUT_CHECK(
-        ctx->HasInput("dY"), "Input", "dY", "FusedDgradDreluBnBwdWeight");
-    OP_INOUT_CHECK(
-        ctx->HasInput("W"), "Input", "W", "FusedDgradDreluBnBwdWeight");
-    OP_INOUT_CHECK(ctx->HasInput("BN1_mean"),
-                   "Input",
-                   "BN1_mean",
-                   "FusedDgradDreluBnBwdWeight");
-    OP_INOUT_CHECK(ctx->HasInput("BN1_inv_std"),
-                   "Input",
-                   "BN1_inv_std",
-                   "FusedDgradDreluBnBwdWeight");
-    OP_INOUT_CHECK(ctx->HasInput("BN1_scale"),
-                   "Input",
-                   "BN1_scale",
-                   "FusedDgradDreluBnBwdWeight");
-    OP_INOUT_CHECK(ctx->HasInput("BN1_bias"),
-                   "Input",
-                   "BN1_bias",
-                   "FusedDgradDreluBnBwdWeight");
-    OP_INOUT_CHECK(
-        ctx->HasInput("BN1_X"), "Input", "BN1_X", "FusedDgradDreluBnBwdWeight");
-
-    OP_INOUT_CHECK(
-        ctx->HasOutput("dX"), "Output", "dX", "FusedDgradDreluBnBwdWeight");
-    OP_INOUT_CHECK(ctx->HasOutput("BN1_dGamma"),
-                   "Output",
-                   "BN1_dGamma",
-                   "FusedDgradDreluBnBwdWeight");
-    OP_INOUT_CHECK(ctx->HasOutput("BN1_dBeta"),
-                   "Output",
-                   "BN1_dBeta",
-                   "FusedDgradDreluBnBwdWeight");
-    OP_INOUT_CHECK(ctx->HasOutput("BN1_eqscale_dy"),
-                   "Output",
-                   "BN1_eqscale_dy",
-                   "FusedDgradDreluBnBwdWeight");
-    OP_INOUT_CHECK(ctx->HasOutput("BN1_eqscale_x"),
-                   "Output",
-                   "BN1_eqscale_x",
-                   "FusedDgradDreluBnBwdWeight");
-    OP_INOUT_CHECK(ctx->HasOutput("BN1_eqbias"),
-                   "Output",
-                   "BN1_eqbias",
-                   "FusedDgradDreluBnBwdWeight");
-
     bool fuse_shortcut = ctx->Attrs().Get<bool>("fuse_shortcut");
     bool fuse_dual = ctx->Attrs().Get<bool>("fuse_dual");
     bool fuse_add = ctx->Attrs().Get<bool>("fuse_add");
-
     PADDLE_ENFORCE_EQ(
         fuse_shortcut && fuse_dual,
         0,
@@ -194,63 +159,86 @@ class FusedDgradDreluBnBwdWeightOp : public framework::OperatorWithKernel {
             "Got fuse_shortcut=%d, fuse_dual=%d.",
             fuse_shortcut,
             fuse_dual));
-
-    if (fuse_shortcut) {
-      OP_INOUT_CHECK(ctx->HasInput("Relu_X"),
+    // check basic IOs
+    OP_INOUT_CHECK(ctx->HasInput("dY"), "Input", "dY", "FusedDconvDreluDbn");
+    OP_INOUT_CHECK(ctx->HasInput("W"), "Input", "W", "FusedDconvDreluDbn");
+    if (fuse_add) {
+      OP_INOUT_CHECK(ctx->HasInput("dY_branch"),
                      "Input",
-                     "Relu_X",
-                     "FusedDgradDreluBnBwdWeight");
+                     "dY_branch",
+                     "FusedDconvDreluDbn");
     }
+    if (fuse_shortcut) {
+      OP_INOUT_CHECK(
+          ctx->HasInput("Relu_X"), "Input", "Relu_X", "FusedDconvDreluDbn");
+    }
+    if (fuse_shortcut || fuse_dual) {
+      OP_INOUT_CHECK(
+          ctx->HasInput("Conv_X"), "Input", "Conv_X", "FusedDconvDreluDbn");
+
+    } else {
+      OP_INOUT_CHECK(ctx->HasInput("BN1_eqscale"),
+                     "Input",
+                     "BN1_eqscale",
+                     "FusedDconvDreluDbn");
+      OP_INOUT_CHECK(ctx->HasInput("BN1_eqbias"),
+                     "Input",
+                     "BN1_eqbias",
+                     "FusedDconvDreluDbn");
+    }
+    OP_INOUT_CHECK(
+        ctx->HasInput("BN1_mean"), "Input", "BN1_mean", "FusedDconvDreluDbn");
+    OP_INOUT_CHECK(ctx->HasInput("BN1_inv_std"),
+                   "Input",
+                   "BN1_inv_std",
+                   "FusedDconvDreluDbn");
+    OP_INOUT_CHECK(
+        ctx->HasInput("BN1_scale"), "Input", "BN1_scale", "FusedDconvDreluDbn");
+    OP_INOUT_CHECK(
+        ctx->HasInput("BN1_bias"), "Input", "BN1_bias", "FusedDconvDreluDbn");
+    OP_INOUT_CHECK(
+        ctx->HasInput("BN1_X"), "Input", "BN1_X", "FusedDconvDreluDbn");
 
     if (fuse_dual) {
-      OP_INOUT_CHECK(ctx->HasInput("BN2_mean"),
-                     "Input",
-                     "BN2_mean",
-                     "FusedDgradDreluBnBwdWeight");
+      OP_INOUT_CHECK(
+          ctx->HasInput("BN2_mean"), "Input", "BN2_mean", "FusedDconvDreluDbn");
       OP_INOUT_CHECK(ctx->HasInput("BN2_inv_std"),
                      "Input",
                      "BN2_inv_std",
-                     "FusedDgradDreluBnBwdWeight");
+                     "FusedDconvDreluDbn");
       OP_INOUT_CHECK(ctx->HasInput("BN2_scale"),
                      "Input",
                      "BN2_scale",
-                     "FusedDgradDreluBnBwdWeight");
-      OP_INOUT_CHECK(ctx->HasInput("BN2_bias"),
-                     "Input",
-                     "BN2_bias",
-                     "FusedDgradDreluBnBwdWeight");
-      OP_INOUT_CHECK(ctx->HasInput("BN2_X"),
-                     "Input",
-                     "BN2_X",
-                     "FusedDgradDreluBnBwdWeight");
-
+                     "FusedDconvDreluDbn");
+      OP_INOUT_CHECK(
+          ctx->HasInput("BN2_bias"), "Input", "BN2_bias", "FusedDconvDreluDbn");
+      OP_INOUT_CHECK(
+          ctx->HasInput("BN2_X"), "Input", "BN2_X", "FusedDconvDreluDbn");
+    }
+    OP_INOUT_CHECK(
+        ctx->HasOutput("BN1_dX"), "Output", "BN1_dX", "FusedDconvDreluDbn");
+    OP_INOUT_CHECK(ctx->HasOutput("BN1_dGamma"),
+                   "Output",
+                   "BN1_dGamma",
+                   "FusedDconvDreluDbn");
+    OP_INOUT_CHECK(ctx->HasOutput("BN1_dBeta"),
+                   "Output",
+                   "BN1_dBeta",
+                   "FusedDconvDreluDbn");
+    OP_INOUT_CHECK(ctx->HasOutput("dW"), "Output", "dW", "FusedDconvDreluDbn");
+    if (fuse_shortcut || fuse_dual) {
+      OP_INOUT_CHECK(
+          ctx->HasOutput("BN2_dX"), "Output", "BN2_dX", "FusedDconvDreluDbn");
+    }
+    if (fuse_dual) {
       OP_INOUT_CHECK(ctx->HasOutput("BN2_dGamma"),
                      "Output",
                      "BN2_dGamma",
-                     "FusedDgradDreluBnBwdWeight");
+                     "FusedDconvDreluDbn");
       OP_INOUT_CHECK(ctx->HasOutput("BN2_dBeta"),
                      "Output",
                      "BN2_dBeta",
-                     "FusedDgradDreluBnBwdWeight");
-      OP_INOUT_CHECK(ctx->HasOutput("BN2_eqscale_dy"),
-                     "Output",
-                     "BN2_eqscale_dy",
-                     "FusedDgradDreluBnBwdWeight");
-      OP_INOUT_CHECK(ctx->HasOutput("BN2_eqscale_x"),
-                     "Output",
-                     "BN2_eqscale_x",
-                     "FusedDgradDreluBnBwdWeight");
-      OP_INOUT_CHECK(ctx->HasOutput("BN2_eqbias"),
-                     "Output",
-                     "BN2_eqbias",
-                     "FusedDgradDreluBnBwdWeight");
-    }
-
-    if (fuse_add) {
-      OP_INOUT_CHECK(ctx->HasInput("dX_branch"),
-                     "Input",
-                     "dX_branch",
-                     "FusedDgradDreluBnBwdWeight");
+                     "FusedDconvDreluDbn");
     }
 
     int groups = ctx->Attrs().Get<int>("groups");
@@ -292,19 +280,16 @@ class FusedDgradDreluBnBwdWeightOp : public framework::OperatorWithKernel {
                                           c_dims));
 
     // set output shapes
-    ctx->SetOutputDim("dX", x_dims);
+    ctx->SetOutputDim("BN1_dX", x_dims);
     ctx->SetOutputDim("BN1_dGamma", c_dims);
     ctx->SetOutputDim("BN1_dBeta", c_dims);
-    ctx->SetOutputDim("BN1_eqscale_dy", c_dims);
-    ctx->SetOutputDim("BN1_eqscale_x", c_dims);
-    ctx->SetOutputDim("BN1_eqbias", c_dims);
-
+    ctx->SetOutputDim("dW", w_dims);
+    if (fuse_shortcut || fuse_dual) {
+      ctx->SetOutputDim("BN2_dX", x_dims);
+    }
     if (fuse_dual) {
       ctx->SetOutputDim("BN2_dGamma", c_dims);
       ctx->SetOutputDim("BN2_dBeta", c_dims);
-      ctx->SetOutputDim("BN2_eqscale_dy", c_dims);
-      ctx->SetOutputDim("BN2_eqscale_x", c_dims);
-      ctx->SetOutputDim("BN2_eqbias", c_dims);
     }
   }
 
@@ -319,6 +304,6 @@ class FusedDgradDreluBnBwdWeightOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(fused_dgrad_drelu_bnbwdweight,
-                             ops::FusedDgradDreluBnBwdWeightOp,
-                             ops::FusedDgradDreluBnBwdWeightOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(fused_dconv_drelu_dbn,
+                             ops::FusedDconvDreluDbnOp,
+                             ops::FusedDconvDreluDbnOpMaker);

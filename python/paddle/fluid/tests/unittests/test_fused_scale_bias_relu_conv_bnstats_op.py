@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 
 import unittest
 
 import numpy as np
 from op_test import OpTest, skip_check_grad_ci
-from test_conv2d_op import conv2d_forward_naive
 
 import paddle
-import paddle.fluid.core as core
+from paddle import nn
+from paddle.fluid import core, framework
+from paddle.fluid.executor import Executor
 
 
 def skip_unit_test():
@@ -38,117 +38,313 @@ skip_msg = "only support with cuda and Ampere or later devices"
 @unittest.skipIf(skip_unit_test(), skip_msg)
 class TestFusedScaleBiasReluConvBnstatsOp(OpTest):
     def setUp(self):
-        self.op_type = "fused_scale_bias_relu_conv_bnstats"
-        self.exhaustive_search = False
-        self.data_format = "NHWC"
+        self.__class__.op_type = "fused_scale_bias_relu_conv_bnstats"
         self.dtype = np.float16
+        self.math_type = np.float32
         self.outputs = None
         self.padding_algorithm = "EXIPLICIT"
+        self.data_format = "NHWC"
+        self.groups = 1
         self.init_attr()
-        self.init_group()
-        self.init_dilation()
         self.init_test_case()
-        self.init_paddings()
-        self.set_search_method()
-
-        conv2d_param = {
-            'stride': self.stride,
-            'pad': self.pad,
-            'dilation': self.dilations,
-        }
-
-        c_dim = self.input_size[-1]
-        input = np.random.random(self.input_size).astype(self.dtype)
-        filter = np.random.random(self.filter_size).astype(self.dtype)
-        bias = np.random.random(c_dim).astype(self.dtype)
-        scale = np.random.random(c_dim).astype(self.dtype)
-
-        # calculate reference
-        input_ref = input.astype(np.float32)
-        if self.fuse_prologue:
-            input_ref *= scale.reshape((1, 1, 1, c_dim)).astype(
-                np.float32
-            )  # scale
-            input_ref += bias.reshape((1, 1, 1, c_dim)).astype(
-                np.float32
-            )  # bias
-            input_ref = np.maximum(input_ref, 0)  # relu
-
-        self.output, _, _, _, _ = conv2d_forward_naive(
-            input_ref,
-            filter,
-            self.groups,
-            conv2d_param,
-            self.padding_algorithm,
-            self.data_format,
-        )
-
-        self.output = self.output.astype(self.dtype)
-
-        self.inputs = {
-            'Input': OpTest.np_dtype_to_fluid_dtype(input),
-            'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
-        }
-
-        if self.fuse_prologue:
-            extra_inputs = {
-                'Bias': OpTest.np_dtype_to_fluid_dtype(bias),
-                'Scale': OpTest.np_dtype_to_fluid_dtype(scale),
-            }
-            self.inputs.update(extra_inputs)
+        self.rtol = 1e-5
+        self.atol = 2e-2
 
         self.attrs = {
             'fuse_prologue': self.fuse_prologue,
             'strides': self.stride,
             'paddings': self.pad,
-            'groups': self.groups,
             'dilations': self.dilations,
             'data_format': self.data_format,
             'padding_algorithm': self.padding_algorithm,
+            'accumulation_count': self.accumulation_count,
+            'momentum': self.momentum,
+            'epsilon': self.epsilon,
         }
 
-        k_dim = self.filter_size[0]
-        empty_sum_output = np.zeros(k_dim).astype(np.float32)
-        empty_sqsum_output = np.zeros(k_dim).astype(np.float32)
+        # prepare inputs
+        self.x_input = np.random.random(self.x_size).astype(self.dtype)
+        self.bias_input = np.random.random(self.in_channel_num).astype(
+            self.dtype
+        )
+        self.scale_input = np.random.random(self.in_channel_num).astype(
+            self.dtype
+        )
 
-        self.outputs = {
-            'Output': self.output,
-            'SumOutput': empty_sum_output,
-            'SqSumOutput': empty_sqsum_output,
+        self.x_input_prologue = self.x_input.astype(np.float32)
+        if self.fuse_prologue:
+            self.x_input_prologue *= self.scale_input.reshape(
+                (1, 1, 1, self.in_channel_num)
+            ).astype(
+                np.float32
+            )  # scale
+            self.x_input_prologue += self.bias_input.reshape(
+                (1, 1, 1, self.in_channel_num)
+            ).astype(
+                np.float32
+            )  # bias
+            self.x_input_prologue = np.maximum(self.x_input_prologue, 0)  # relu
+        self.x_input_prologue = self.x_input_prologue.astype(self.dtype)
+
+        paddle.disable_static()
+        paddle.set_default_dtype(self.dtype)
+
+        self.conv = nn.Conv2D(
+            in_channels=self.x_size[-1],
+            out_channels=self.filter_size[0],
+            kernel_size=self.filter_size[-1],
+            stride=self.stride,
+            padding=self.pad,
+            groups=self.groups,
+            bias_attr=False,
+            data_format=self.data_format,
+        )
+
+        self.bn = nn.BatchNorm(
+            self.filter_size[0],
+            momentum=self.momentum,
+            epsilon=self.epsilon,
+            data_layout=self.data_format,
+        )
+
+        self.w_input = self.conv.weight.numpy().astype(self.dtype)
+        self.bn_scale_input = self.bn.weight.numpy()
+        self.bn_bias_input = self.bn.bias.numpy()
+        self.bn_running_mean_input = self.bn._mean.numpy()
+        self.bn_running_var_input = self.bn._variance.numpy()
+
+        self.inputs = {
+            'X': self.x_input,
+            'W': self.w_input,
+            'BN_Scale': self.bn_scale_input,
+            'BN_Bias': self.bn_bias_input,
+            'inputRunningMean': self.bn_running_mean_input,
+            'inputRunningVar': self.bn_running_var_input,
         }
-        # SumOutput, SqSumOutput will be checked in test_fused_bn_finalize_op
-        self.skip_list = ['SumOutput', 'SqSumOutput']
+
+        if self.fuse_prologue:
+            extra_inputs = {
+                'Bias': self.bias_input,
+                'Scale': self.scale_input,
+            }
+            self.inputs.update(extra_inputs)
 
     def has_cuda(self):
         return core.is_compiled_with_cuda()
 
+    def get_feed_map(self, inputs, place):
+        feed_map = {}
+        for name in inputs:
+            tensor = core.LoDTensor()
+            tensor.set(inputs[name], place)
+            feed_map[name] = tensor
+        return feed_map
+
+    def calc_normal_pass(self):
+        # Calculate normal (scale + bias + relu +) Conv + BN
+        x_input_np = self.x_input
+        if self.fuse_prologue:
+            x_input_np = self.x_input_prologue
+        x_tensor = paddle.to_tensor(x_input_np, stop_gradient=False)
+        after_conv = self.conv(x_tensor)
+        after_bn = self.bn(after_conv)
+        # Calculate reference for saved_mean and saved_invvar
+        after_conv_np = (
+            after_conv.numpy()
+            .astype(np.float32)
+            .reshape((-1, after_conv.shape[-1]))
+        )
+        mean_np = after_conv_np.mean(axis=0)
+        var_np = after_conv_np.var(axis=0)
+        invstd_np = 1 / np.sqrt(var_np + self.epsilon)
+        return (
+            after_conv.numpy().astype(self.dtype),
+            after_bn.numpy().astype(self.dtype),
+            self.bn._mean.numpy(),
+            self.bn._variance.numpy(),
+            mean_np,
+            invstd_np,
+        )
+
+    def calc_fused_pass(self, place):
+        paddle.enable_static()
+        program = framework.Program()
+        block = program.global_block()
+
+        x_var = block.create_var(name="X", shape=self.x_size, dtype='float16')
+        w_var = block.create_var(
+            name="W", shape=self.filter_size, dtype='float16'
+        )
+        scale_var = block.create_var(
+            name="Scale", shape=self.scale_size, dtype='float16'
+        )
+        bias_var = block.create_var(
+            name="Bias", shape=self.scale_size, dtype='float16'
+        )
+        y_var = block.create_var(name="Y", dtype='float16')
+        bn_scale = block.create_var(
+            name="BN_Scale", shape=self.bn_size, dtype='float32'
+        )
+        bn_bias = block.create_var(
+            name="BN_Bias", shape=self.bn_size, dtype='float32'
+        )
+        bn_running_mean = block.create_var(
+            name="inputRunningMean", shape=self.bn_size, dtype='float32'
+        )
+        bn_running_var = block.create_var(
+            name="inputRunningVar", shape=self.bn_size, dtype='float32'
+        )
+        updated_running_mean = block.create_var(
+            name="updatedRunningMean", shape=self.bn_size, dtype='float32'
+        )
+        updated_running_var = block.create_var(
+            name="updatedRunningVar", shape=self.bn_size, dtype='float32'
+        )
+        saved_mean = block.create_var(
+            name="SavedMean", shape=self.bn_size, dtype='float32'
+        )
+        saved_inv_var = block.create_var(
+            name="SavedInvVar", shape=self.bn_size, dtype='float32'
+        )
+        eq_scale = block.create_var(
+            name="eqScale", shape=self.bn_size, dtype='float16'
+        )
+        eq_bias = block.create_var(
+            name="eqBias", shape=self.bn_size, dtype='float16'
+        )
+        op_inputs = {
+            'Input': x_var,
+            'Filter': w_var,
+            'Scale': scale_var,
+            'Bias': bias_var,
+            'BN_Scale': bn_scale,
+            'BN_Bias': bn_bias,
+            'inputRunningMean': bn_running_mean,
+            'inputRunningVar': bn_running_var,
+        }
+        op_outputs = {
+            'Output': y_var,
+            'updatedRunningMean': updated_running_mean,
+            'updatedRunningVar': updated_running_var,
+            'SavedMean': saved_mean,
+            'SavedInvVar': saved_inv_var,
+            'eqScale': eq_scale,
+            'eqBias': eq_bias,
+        }
+        op = block.append_op(
+            type=self.__class__.op_type,
+            inputs=op_inputs,
+            outputs=op_outputs,
+            attrs=self.attrs,
+        )
+        op.desc.infer_shape(block.desc)
+
+        # execute program
+        feed_map = self.get_feed_map(self.inputs, place)
+        fetch_list = [
+            'Y',
+            'eqScale',
+            'eqBias',
+            'updatedRunningMean',
+            'updatedRunningVar',
+            'SavedMean',
+            'SavedInvVar',
+        ]
+
+        executor = Executor(place)
+        outs = executor.run(
+            program, feed=feed_map, fetch_list=fetch_list, return_numpy=True
+        )
+        (
+            y_out,
+            eq_scale_out,
+            eq_bias_out,
+            running_mean_out,
+            running_var_out,
+            saved_mean_out,
+            saved_invvar_out,
+        ) = outs
+        bn_out = y_out * eq_scale_out.reshape(
+            [1, 1, 1, -1]
+        ) + eq_bias_out.reshape([1, 1, 1, -1])
+        return (
+            y_out,
+            bn_out,
+            running_mean_out,
+            running_var_out,
+            saved_mean_out,
+            saved_invvar_out,
+        )
+
     def test_check_output(self):
         if self.has_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(
-                place, no_check_set=self.skip_list, atol=2e-2
+            (
+                y_ref,
+                bn_out_ref,
+                running_mean_out_ref,
+                running_var_out_ref,
+                saved_mean_out_ref,
+                saved_invvar_out_ref,
+            ) = self.calc_normal_pass()
+            (
+                y_out,
+                bn_out,
+                running_mean_out,
+                running_var_out,
+                saved_mean_out,
+                saved_invvar_out,
+            ) = self.calc_fused_pass(place)
+
+            np.testing.assert_allclose(
+                y_ref, y_out, rtol=self.rtol, atol=self.atol
+            )
+
+            np.testing.assert_allclose(
+                bn_out_ref, bn_out, rtol=self.rtol, atol=self.atol
+            )
+            np.testing.assert_allclose(
+                running_mean_out_ref,
+                running_mean_out,
+                rtol=self.rtol,
+                atol=self.atol,
+            )
+            np.testing.assert_allclose(
+                running_var_out_ref,
+                running_var_out,
+                rtol=self.rtol,
+                atol=self.atol,
+            )
+            np.testing.assert_allclose(
+                saved_mean_out_ref,
+                saved_mean_out,
+                rtol=self.rtol,
+                atol=self.atol,
+            )
+            np.testing.assert_allclose(
+                saved_invvar_out_ref,
+                saved_invvar_out,
+                rtol=self.rtol,
+                atol=self.atol,
             )
 
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
-        self.input_size = [2, 5, 5, 8]  # NHWC
-        assert np.mod(self.input_size[-1], self.groups) == 0
-        f_c = self.input_size[-1] // self.groups
-        self.filter_size = [16, f_c, 3, 3]
-
-    def init_dilation(self):
         self.dilations = [1, 1]
 
-    def init_group(self):
-        self.groups = 1
-
-    def set_search_method(self):
-        self.exhaustive_search = False
-
-    def init_paddings(self):
-        self.pad = [0, 0]
-        self.padding_algorithm = "EXPLICIT"
+        self.x_size = [8, 16, 16, 32]  # NHWC
+        self.filter_size = [64, 32, 1, 1]
+        self.y_size = [8, 16, 16, 64]
+        self.in_channel_num = self.x_size[-1]
+        self.out_channel_num = self.y_size[-1]
+        self.scale_size = [self.in_channel_num]
+        self.bn_size = [self.out_channel_num]
+        self.momentum = 0.9
+        self.epsilon = 1e-5
+        self.accumulation_count = (
+            self.y_size[0] * self.y_size[1] * self.y_size[2]
+        )
 
     def init_attr(self):
         self.fuse_prologue = True
@@ -162,35 +358,6 @@ class TestFusedScaleBiasReluConvBnstatsOpNoPrologue(
     def init_attr(self):
         self.fuse_prologue = False
 
-
-def create_test_padding_SAME_class(parent):
-    @skip_check_grad_ci(reason="no grap op")
-    @unittest.skipIf(skip_unit_test(), skip_msg)
-    class TestPaddingSMAECase(parent):
-        def init_paddings(self):
-            self.pad = [0, 0]
-            self.padding_algorithm = "SAME"
-
-    cls_name = "{0}_{1}".format(parent.__name__, "PaddingSAMEOp")
-    TestPaddingSMAECase.__name__ = cls_name
-    globals()[cls_name] = TestPaddingSMAECase
-
-
-def create_test_padding_VALID_class(parent):
-    @skip_check_grad_ci(reason="no grap op")
-    @unittest.skipIf(skip_unit_test(), skip_msg)
-    class TestPaddingVALIDCase(parent):
-        def init_paddings(self):
-            self.pad = [1, 1]
-            self.padding_algorithm = "VALID"
-
-    cls_name = "{0}_{1}".format(parent.__name__, "PaddingVALIDOp")
-    TestPaddingVALIDCase.__name__ = cls_name
-    globals()[cls_name] = TestPaddingVALIDCase
-
-
-create_test_padding_SAME_class(TestFusedScaleBiasReluConvBnstatsOp)
-create_test_padding_VALID_class(TestFusedScaleBiasReluConvBnstatsOp)
 
 if __name__ == '__main__':
     unittest.main()

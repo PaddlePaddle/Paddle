@@ -27,16 +27,26 @@ class FusedScaleBiasReluConvBnstatsOpMaker
     : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    // inputs
+    // conv inputs
     AddInput("Input", "");
     AddInput("Filter", "");
+    // prologue inputs
     AddInput("Scale", "").AsDispensable();
     AddInput("Bias", "").AsDispensable();
-    // outputs
+    // BN inputs
+    AddInput("BN_Scale", "");
+    AddInput("BN_Bias", "");
+    AddInput("inputRunningMean", "");
+    AddInput("inputRunningVar", "");
+    // conv outputs
     AddOutput("Output", "");
-    AddOutput("SumOutput", "");
-    AddOutput("SqSumOutput", "");
-    // conv params
+    // BN outputs
+    AddOutput("updatedRunningMean", "");
+    AddOutput("updatedRunningVar", "");
+    AddOutput("SavedMean", "");
+    AddOutput("SavedInvVar", "");
+    AddOutput("eqScale", "half");
+    AddOutput("eqBias", "half");
     // conv params
     AddAttr<std::vector<int>>("strides",
                               "(vector<int> default:{1, 1}), the "
@@ -66,13 +76,18 @@ class FusedScaleBiasReluConvBnstatsOpMaker
         .SetDefault(1);
     AddAttr<std::string>("data_format", "(string, NHWC) Must be NHWC.")
         .SetDefault("NHWC");
+    // BN params
+    AddAttr<int64_t>("accumulation_count", "").SetDefault(1L);
+    AddAttr<float>("momentum", "").SetDefault(0.9);
+    AddAttr<float>("epsilon", "").SetDefault(1e-5);
     // fusion options
     AddAttr<bool>(
         "fuse_prologue",
         R"DOC((bool, default true). Whether to fuse scale bias relu.)DOC")
         .SetDefault(true);
     AddComment(R"DOC(
-FusedScaleBiasReluConvBnstats Operator
+This op includes two fused kernels:
+1. FusedScaleBiasReluConvBnstats
 It fuses the following operations:
 Output = Conv(ReLU(Input * Scale + Bias))
 SumOutput = Output.sum([0,1,2])
@@ -87,7 +102,16 @@ Requirements:
 - Input, Output should have NHWC layout and FP16 dtype.
 - Scale, Bias should have shape [K], where K is the first
 dimension of Filter. The dtype should be FP16
-- SumOutput, SqSumOutput should have shape [K] and dtype FP32.
+
+2. FusedBnFinalize Operator
+Ref: https://github.com/NVIDIA/cudnn-frontend/blob/81a041a68245cd8f871c43bbbbd5b6b627979a30/samples/test_list.cpp#L1688
+
+Conv + BN = Conv + Genstats + BN_Finalize
+
+Requirements:
+- All BN input / output tensors should have shape [C], where C is the channel
+  dimension of convolution input. Dtype should be FP32, except that
+  eqScale and eqBias should be FP16.
 )DOC");
   }
 };
@@ -101,6 +125,22 @@ class FusedScaleBiasReluConvBnstatsOp : public operators::ConvOp {
     OP_INOUT_CHECK(ctx->HasInput("Input"),
                    "Input",
                    "Input",
+                   "FusedScaleBiasReluConvBnstats");
+    OP_INOUT_CHECK(ctx->HasInput("BN_Scale"),
+                   "Input",
+                   "BN_Scale",
+                   "FusedScaleBiasReluConvBnstats");
+    OP_INOUT_CHECK(ctx->HasInput("BN_Bias"),
+                   "Input",
+                   "BN_Bias",
+                   "FusedScaleBiasReluConvBnstats");
+    OP_INOUT_CHECK(ctx->HasInput("inputRunningMean"),
+                   "Input",
+                   "inputRunningMean",
+                   "FusedScaleBiasReluConvBnstats");
+    OP_INOUT_CHECK(ctx->HasInput("inputRunningVar"),
+                   "Input",
+                   "inputRunningVar",
                    "FusedScaleBiasReluConvBnstats");
     bool fuse_prologue = ctx->Attrs().Get<bool>("fuse_prologue");
     if (fuse_prologue) {
@@ -117,15 +157,30 @@ class FusedScaleBiasReluConvBnstatsOp : public operators::ConvOp {
                    "Output",
                    "Output",
                    "FusedScaleBiasReluConvBnstats");
-    OP_INOUT_CHECK(ctx->HasOutput("SumOutput"),
+    OP_INOUT_CHECK(ctx->HasOutput("updatedRunningMean"),
                    "Output",
-                   "SumOutput",
+                   "updatedRunningMean",
                    "FusedScaleBiasReluConvBnstats");
-    OP_INOUT_CHECK(ctx->HasOutput("SqSumOutput"),
+    OP_INOUT_CHECK(ctx->HasOutput("updatedRunningVar"),
                    "Output",
-                   "SqSumOutput",
+                   "updatedRunningVar",
                    "FusedScaleBiasReluConvBnstats");
-
+    OP_INOUT_CHECK(ctx->HasOutput("SavedMean"),
+                   "Output",
+                   "SavedMean",
+                   "FusedScaleBiasReluConvBnstats");
+    OP_INOUT_CHECK(ctx->HasOutput("SavedInvVar"),
+                   "Output",
+                   "SavedInvVar",
+                   "FusedScaleBiasReluConvBnstats");
+    OP_INOUT_CHECK(ctx->HasOutput("eqScale"),
+                   "Output",
+                   "eqScale",
+                   "FusedScaleBiasReluConvBnstats");
+    OP_INOUT_CHECK(ctx->HasOutput("eqBias"),
+                   "Output",
+                   "eqBias",
+                   "FusedScaleBiasReluConvBnstats");
     auto in_dims = ctx->GetInputDim("Input");
     PADDLE_ENFORCE_EQ(
         in_dims.size(),
@@ -202,11 +257,31 @@ class FusedScaleBiasReluConvBnstatsOp : public operators::ConvOp {
     }
     std::vector<int64_t> output_shape = ComputeOutputShape(ctx);
     ctx->SetOutputDim("Output", phi::make_ddim(output_shape));
-
-    const int64_t K = output_shape[output_shape.size() - 1];
-    ctx->SetOutputDim("SumOutput", {K});
-    ctx->SetOutputDim("SqSumOutput", {K});
     ctx->ShareLoD("Input", "Output");
+
+    // sanity checks for BN
+    const int64_t K = output_shape[output_shape.size() - 1];
+    auto c_dims = ctx->GetInputDim("BN_Scale");
+    int64_t accumulation_count =
+        ctx->Attrs().Get<int64_t>("accumulation_count");
+    PADDLE_ENFORCE(
+        (c_dims.size() == 1) && (c_dims[0] == K),
+        platform::errors::InvalidArgument("BN_Scale, should be of shape [%d]."
+                                          "Got: [%s]",
+                                          K,
+                                          c_dims));
+    PADDLE_ENFORCE_GT(
+        accumulation_count,
+        0,
+        platform::errors::InvalidArgument(
+            "Expect accumulation_count > 0, got %d", accumulation_count));
+    // set output shapes
+    ctx->SetOutputDim("updatedRunningMean", c_dims);
+    ctx->SetOutputDim("updatedRunningVar", c_dims);
+    ctx->SetOutputDim("SavedMean", c_dims);
+    ctx->SetOutputDim("SavedInvVar", c_dims);
+    ctx->SetOutputDim("eqScale", c_dims);
+    ctx->SetOutputDim("eqBias", c_dims);
   }
 
   std::vector<int64_t> ComputeOutputShape(
