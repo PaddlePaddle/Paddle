@@ -70,7 +70,7 @@ class TestConjOp(OpTest):
 
 class TestComplexConjOp(unittest.TestCase):
     def setUp(self):
-        self._dtypes = ["float32", "float64"]
+        self._dtypes = ["float16", "float32", "float64"]
         self._places = [paddle.CPUPlace()]
         if paddle.is_compiled_with_cuda():
             self._places.append(paddle.CUDAPlace(0))
@@ -131,6 +131,21 @@ class TestComplexConjOp(unittest.TestCase):
                     result = paddle.conj(var_x).numpy()
                     target = np.conj(input)
                     np.testing.assert_array_equal(result, target)
+
+
+class Testfp16ConjOp(unittest.TestCase):
+    def testfp16(self):
+        input_x = rand([2, 20, 2, 3]).astype('float16') + 1j * rand(
+            [2, 20, 2, 3]
+        ).astype('float16')
+        with static.program_guard(static.Program()):
+            x = static.data(name="x", shape=[2, 20, 2, 3], dtype='float16')
+            out = paddle.conj(x)
+            if paddle.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                exe.run(paddle.static.default_startup_program())
+                out = exe.run(feed={'x': input_x}, fetch_list=[out])
 
 
 if __name__ == "__main__":
