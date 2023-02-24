@@ -1209,7 +1209,11 @@ def save(layer, path, input_spec=None, **configs):
             paddle.static.save_vars(
                 Executor(_current_expected_place()),
                 dirname=model_path,
-                vars=list(filter(paddle.fluid.io.is_persistable, ordered_vars)),
+                vars=list(
+                    filter(
+                        paddle.framework.io_utils.is_persistable, ordered_vars
+                    )
+                ),
                 filename=params_filename,
             )
         # save property

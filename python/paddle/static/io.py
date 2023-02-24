@@ -1707,6 +1707,27 @@ def set_program_state(program, state_dict):
         )
 
 
+@dygraph_not_support
+def get_program_persistable_vars(program):
+    """
+    Get all the persistable vars from Program.
+    Args:
+        var(Program): The Program to get persistable vars
+    Returns:
+        list: The list contains all persistable vars in the program
+    Examples:
+        .. code-block:: python
+            import paddle
+            import paddle.fluid as fluid
+            paddle.enable_static()
+            data = fluid.data(name="img", shape=[64, 784])
+            w = paddle.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
+            b = paddle.create_parameter(shape=[200], dtype='float32', name='fc_b')
+            list_para  = fluid.io.get_program_persistable_vars(  fluid.default_main_program() )
+    """
+    return list(filter(is_persistable, program.list_vars()))
+
+
 def load_program_state(model_path, var_list=None):
     """
 

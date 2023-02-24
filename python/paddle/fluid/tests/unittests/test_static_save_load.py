@@ -1394,7 +1394,7 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
                 main_program,
                 file_model_path,
                 exe,
-                fluid.io.get_program_persistable_vars(main_program),
+                paddle.static.get_program_persistable_vars(main_program),
             )
 
             for var in main_program.list_vars():
@@ -1420,7 +1420,7 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
                     main_program,
                     file_model_path,
                     exe,
-                    fluid.io.get_program_persistable_vars(main_program),
+                    paddle.static.get_program_persistable_vars(main_program),
                 )
 
             with self.assertRaises(RuntimeError):
@@ -1428,7 +1428,7 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
                     main_program,
                     file_model_path,
                     exe,
-                    fluid.io.get_program_persistable_vars(main_program),
+                    paddle.static.get_program_persistable_vars(main_program),
                 )
 
             # check when executor is None
@@ -1437,7 +1437,7 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
                     main_program,
                     file_model_path,
                     None,
-                    fluid.io.get_program_persistable_vars(main_program),
+                    paddle.static.get_program_persistable_vars(main_program),
                 )
 
             # check when var list is None
@@ -1770,7 +1770,9 @@ class TestProgramStateOldSaveSingleModel(unittest.TestCase):
             # fluid.load(test_program, "./test_1", None )
             program_state = paddle.static.load_program_state(
                 os.path.join(save_dir, "model_1"),
-                var_list=fluid.io.get_program_persistable_vars(main_program),
+                var_list=paddle.static.get_program_persistable_vars(
+                    main_program
+                ),
             )
             paddle.static.set_program_state(main_program, program_state)
 
