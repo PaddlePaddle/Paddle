@@ -29,8 +29,33 @@ import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 
 
-def cast_wrapper(x, in_dtype=None, out_dtype=None):
-    return paddle.tensor.cast(x, out_dtype)
+def convert_to_dtype_(dtype):
+    if dtype == 5:
+        return core.VarDesc.VarType.FP32
+    elif dtype == 6:
+        return core.VarDesc.VarType.FP64
+    elif dtype == 4:
+        return core.VarDesc.VarType.FP16
+    elif dtype == 2:
+        return core.VarDesc.VarType.INT32
+    elif dtype == 1:
+        return core.VarDesc.VarType.INT16
+    elif dtype == 3:
+        return core.VarDesc.VarType.INT64
+    elif dtype == 0:
+        return core.VarDesc.VarType.BOOL
+    elif dtype == 22:
+        return core.VarDesc.VarType.BF16
+    elif dtype == 20:
+        return core.VarDesc.VarType.UINT8
+    elif dtype == 21:
+        return core.VarDesc.VarType.INT8
+    elif dtype == np.complex64:
+        raise ValueError("Not supported dtype %s" % dtype)
+
+
+def cast_wrapper(x, out_dtype=None):
+    return paddle.tensor.cast(x, convert_to_dtype_(out_dtype))
 
 
 class TestCastOpFp32ToFp64(OpTest):
