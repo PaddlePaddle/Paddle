@@ -1281,7 +1281,6 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetCustomDeviceId(config_.custom_device_id());
   }
 #endif
-
 #ifdef PADDLE_WITH_XPU
   argument_->SetUseXpu(config_.use_xpu_);
   argument_->SetXpuL3WorkspaceSize(config_.xpu_l3_workspace_size_);
@@ -1343,6 +1342,15 @@ void AnalysisPredictor::PrepareArgument() {
       LOG(INFO) << "This model run in Paddle-GPU mixed precision mode.";
     }
   }
+
+  argument_->SetEnableCustomDeviceMixed(config_.enable_custom_device_mixed());
+  if (config_.enable_custom_device_mixed_) {
+    argument_->SetEnableIrOptim(true);
+    pass_builder->ClearPasses();
+    pass_builder->AppendPass("auto_mixed_precision_pass");
+    LOG(INFO) << "This model run in Custom Device mixed precision mode.";
+  }
+
   argument_->SetDisableLogs(config_.glog_info_disabled());
   argument_->SetIrAnalysisPasses(pass_builder->AllPasses());
   argument_->SetAnalysisPasses(pass_builder->AnalysisPasses());
