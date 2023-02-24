@@ -594,14 +594,6 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void MarkTrtEngineOutputs(
       const std::vector<std::string>& output_tensor_names = {});
-
-  ///
-  /// \brief A boolean state telling Whether the output of TensorRT engine is
-  /// labled.
-  ///
-  /// \return bool Whether the output of TensorRT engine is labled.
-  ///
-  bool mark_trt_engine_outputs_enable() const { return trt_mark_output_; }
   ///
   /// \brief Turn on the TensorRT memory optimization.
   ///
