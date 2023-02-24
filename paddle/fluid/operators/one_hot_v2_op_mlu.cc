@@ -32,8 +32,8 @@ class OneHotV2MLUKernel : public framework::OpKernel<T> {
     int depth = ctx.Attr<int>("depth");
     if (ctx.HasInput("depth_tensor")) {
       std::vector<int32_t> depth_data;
-      depth_data = phi::GetVectorFromTensor<int>(
-          ctx.Input<phi::DenseTensor>("depth_tensor"));
+      depth_data =
+          GetDataFromTensor<int>(ctx.Input<phi::DenseTensor>("depth_tensor"));
       depth = depth_data[0];
 
       auto out_dims = out->dims();

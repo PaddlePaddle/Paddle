@@ -243,7 +243,7 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     std::vector<int> SequenceLength;
     if (has_seq_length) {
       auto *sequence_length = ctx.Input<phi::DenseTensor>("SequenceLength");
-      SequenceLength = phi::GetVectorFromTensor<int>(sequence_length);
+      SequenceLength = operators::GetDataFromTensor<int>(sequence_length);
     }
 
     auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
@@ -533,7 +533,7 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     std::vector<int> SequenceLength;
     if (has_seq_length) {
       auto *sequence_length = ctx.Input<phi::DenseTensor>("SequenceLength");
-      SequenceLength = phi::GetVectorFromTensor<int>(sequence_length);
+      SequenceLength = operators::GetDataFromTensor<int>(sequence_length);
     }
 
     int seq_length = input_dims[0];
