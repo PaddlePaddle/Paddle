@@ -157,13 +157,18 @@ class InputSpec:
                 dtype = convert_np_dtype_to_dtype_(dtype)
         self.dtype = dtype
         self.name = name
+        self.stop_gradient = False
 
     def _create_feed_layer(self):
         return data(self.name, shape=self.shape, dtype=self.dtype)
 
     def __repr__(self):
-        return '{}(shape={}, dtype={}, name={})'.format(
-            type(self).__name__, self.shape, self.dtype, self.name
+        return '{}(shape={}, dtype={}, name={}, stop_gradient={})'.format(
+            type(self).__name__,
+            self.shape,
+            self.dtype,
+            self.name,
+            self.stop_gradient,
         )
 
     @classmethod
@@ -327,13 +332,33 @@ class InputSpec:
         #      foo(x_var)
         #      foo(x_np)  # x_np is a numpy.ndarray.
         #  x_var and x_np hold same shape and dtype, they should also share a same program.
-        return hash((tuple(self.shape), self.dtype))
+        return hash((tuple(self.shape), self.dtype, self.stop_gradient))
 
     def __eq__(self, other):
-        slots = ['shape', 'dtype', 'name']
+        slots = ['shape', 'dtype', 'name', 'stop_gradient']
         return type(self) is type(other) and all(
             getattr(self, attr) == getattr(other, attr) for attr in slots
         )
 
     def __ne__(self, other):
         return not self == other
+
+    def greater(self, other):
+        """
+        greater means a input spec is a father class of subclass.
+        [-1, 3, 5] is a father class of [10, 3, 5]
+        """
+
+        def _shape_greater(first_shape, second_shape):
+            if len(first_shape) != len(second_shape):
+                return False
+            for first_n, second_n in zip(first_shape, second_shape):
+                if first_n != -1 and first_n != second_n:
+                    return False
+            return True
+
+        return (
+            other.stop_gradient == self.stop_gradient
+            and other.dtype == self.dtype
+            and _shape_greater(self.shape, other.shape)
+        )
