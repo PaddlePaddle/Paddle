@@ -52,16 +52,20 @@ __global__ void AttnSoftmaxGpuKernel(const int64_t* x_crows,
   for (int idx = threadIdx.x; idx < row_nnz; idx += blockDim.x) {
     bool mask = false;
     int col_idx = static_cast<int>(x_cols[row_first + idx]);
+    T val = x_values[row_first + idx];
     if (kp_mask != nullptr &&
         kp_mask[(cur_batch / num_heads) * M + col_idx] == 0) {
       mask = true;
     }
-    if (attn_mask != nullptr && attn_mask[cur_row * M + col_idx] == 0) {
-      mask = true;
+    // if (attn_mask != nullptr && attn_mask[cur_row * M + col_idx] == 0) {
+    // if (attn_mask != nullptr && attn_mask[(cur_batch / num_heads) * M +
+    // col_idx] == 0) {
+    if (attn_mask != nullptr) {
+      // mask = true;
+      val += attn_mask[(cur_batch / num_heads) * M + col_idx];
     }
 
     if (!mask) {
-      T val = x_values[row_first + idx];
       if (val > max_val) {
         max_val = val;
       }
@@ -172,7 +176,8 @@ void FusedAttentionCsrKernel(
                       phi::errors::InvalidArgument(
                           "shape of 'attn_mask' must be [seq_len, seq_len]"));
     PADDLE_ENFORCE_EQ(attn_mask_ptr->dims()[0],
-                      M,
+                      // M,
+                      q_dim[0],
                       phi::errors::InvalidArgument(
                           "shape of 'attn_mask' must be [seq_len, seq_len]"));
     PADDLE_ENFORCE_EQ(attn_mask_ptr->dims()[1],
@@ -212,7 +217,11 @@ void FusedAttentionCsrKernel(
       batch_nnz);
 
   softmax->set_dims(phi::make_ddim({q_dim[0], q_dim[1], q_dim[2], q_dim[2]}));
+
+  // dropout
+
   MatmulCsrDenseKernel<T, Context>(dev_ctx, *softmax, value, out);
+
 #else
   PADDLE_THROW(
       phi::errors::Unimplemented("forward of 'sparse.nn.functional.attention' "

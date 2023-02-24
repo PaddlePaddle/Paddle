@@ -221,6 +221,43 @@ class MultiHeadAttention(Layer):
             mask = mask[:seq_len, :seq_len]
         return mask
 
+    def bert_sparse_mask(self, seq_len, num_heads):
+        init_alphas = 1e-3 * paddle.randn((num_heads, seq_len, 2))
+        init_alphas = paddle.to_tensor(init_alphas)
+        logits = init_alphas
+
+        tau = 1
+        dim = -1
+        hard = True
+        eps = 1e-5
+
+        gumbels = -(
+            paddle.empty_like(logits).exponential_() + eps
+        ).log()  # ~Gumbel(0,1)
+        gumbels = (logits + gumbels) / tau  # ~Gumbel(logits,tau)
+        softmax = paddle.nn.Softmax(dim)
+        y_soft = softmax(gumbels)
+
+        if hard:
+            # Straight through.
+            index = y_soft.argmax(axis=dim, keepdim=True)
+            y_hard = paddle.zeros_like(logits).put_along_axis_(index, 1.0, dim)
+            mask = y_hard - y_soft + y_soft
+        else:
+            # Reparametrization trick.
+            mask = y_soft
+
+        mask = mask[:, :, 0].unsqueeze(2)  # (12, 128, 1)
+        mask = mask.expand((num_heads, seq_len, seq_len))
+        mask = paddle.triu(mask)
+        mask = paddle.rot90(mask, 1, (1, 2))
+        mask_tri = paddle.zeros((num_heads, seq_len, seq_len))
+        mask_tri[:, 0] = mask[:, 0]
+        for i in range(1, seq_len):
+            mask_tri[:, i, i:] = mask[:, i, :-i]
+        masks = mask_tri + paddle.transpose(paddle.triu(mask_tri, 1), (0, 2, 1))
+        return masks
+
     def _prepare_qkv(self, query, key, value, cache=None):
         r"""
         Prapares linear projected queries, keys and values for usage of subsequnt
@@ -438,7 +475,8 @@ class MultiHeadAttention(Layer):
         else:
             q, k, v, cache = self._prepare_qkv(query, key, value, cache)
 
-        if self.sparse is False or q.shape[2] <= 128:
+        # if self.sparse is False or q.shape[2] <= 128:
+        if self.sparse is False:
             # scale dot product attention
             product = paddle.matmul(
                 x=q * (self.head_dim**-0.5), y=k, transpose_y=True
@@ -465,19 +503,36 @@ class MultiHeadAttention(Layer):
                 or self.sparse_mask.shape[0] != q.shape[0] * q.shape[1]
                 or self.sparse_mask.shape[1] != q.shape[2]
             ):
-                glb = 128
-                wnd = 64
-                seq_len = q.shape[-2]
-                mask = self.ernie_sparse_mask(seq_len, glb, wnd)
-                mask = np.repeat(
-                    mask[None, :, :], [q.shape[0] * self.num_heads], axis=0
+                # glb = 128
+                # wnd = 64
+                # seq_len = q.shape[-2]
+                # mask = self.ernie_sparse_mask(seq_len, glb, wnd)
+                # mask = np.repeat(
+                #    mask[None, :, :], [q.shape[0] * self.num_heads], axis=0
+                # )
+                # self.sparse_mask = (
+                #    paddle.to_tensor(mask).astype('float32').to_sparse_csr()
+                # )
+                mask = self.bert_sparse_mask(q.shape[2], 1)
+                mask = paddle.repeat_interleave(
+                    mask, q.shape[0] * self.num_heads, 0
                 )
-                self.sparse_mask = (
-                    paddle.to_tensor(mask).astype('float32').to_sparse_csr()
-                )
+                self.sparse_mask = mask.astype('float32').to_sparse_csr()
+
+            attn_mask = _convert_attention_mask(attn_mask, q.dtype)
+            attn_mask = attn_mask.squeeze()
+            if len(attn_mask.shape) == 1:
+                attn_mask = attn_mask.reshape((1, attn_mask.shape[0]))
             out = paddle.sparse.nn.functional.attention(
-                q, k, v, self.sparse_mask
+                q, k, v, self.sparse_mask, attn_mask=attn_mask
             )
+            # if self.dropout:
+            #    out = F.dropout(
+            #        out,
+            #        self.dropout,
+            #        training=self.training,
+            #        mode="upscale_in_train",
+            #    )
 
         # combine heads
         out = tensor.transpose(out, perm=[0, 2, 1, 3])
