@@ -30,9 +30,7 @@ class TestGetGradOpDescPrimEnabled(unittest.TestCase):
         self.desired_ops_no_skip = (
             'pow',
             'fill_constant',
-            'elementwise_mul',
-            'fill_constant',
-            'elementwise_add',
+            'elementwise_sub',
             'elementwise_mul',
         )
         paddle.enable_static()
