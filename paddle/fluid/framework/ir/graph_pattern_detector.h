@@ -2152,6 +2152,7 @@ struct FusedFeedForwardFwd : public PatternBase {
 
   PDNode* operator()(PDNode* x,
                      std::unordered_set<std::string> act_types,
+                     bool use_mp,
                      bool pre_layer_norm,
                      bool add_residual,
                      bool use_dropout_1,
@@ -2176,6 +2177,11 @@ struct FusedFeedForwardFwd : public PatternBase {
   PATTERN_DECL_NODE(layer_norm_out);
   PATTERN_DECL_NODE(layer_norm_mean);
   PATTERN_DECL_NODE(layer_norm_variance);
+  // Mode parallelism
+  PATTERN_DECL_NODE(c_identity_op);
+  PATTERN_DECL_NODE(c_identity_out);
+  PATTERN_DECL_NODE(c_allreduce_sum_op);
+  PATTERN_DECL_NODE(c_allreduce_sum_out);
   // Linear 1 and Dropout 1: matmul_v2 + elementwise_add + dropout
   FEEDFORWARD_LINEAR_DROPOUT_NODE(1);
   // Activation Grad: gelu or relu
@@ -2203,6 +2209,7 @@ struct FusedFeedForwardBwd : public PatternBase {
 
   PDNode* operator()(PDNode* x,
                      std::unordered_set<std::string> act_grad_types,
+                     bool use_mp,
                      bool pre_layer_norm,
                      bool add_residual,
                      bool use_dropout_1,
@@ -2233,6 +2240,11 @@ struct FusedFeedForwardBwd : public PatternBase {
   PATTERN_DECL_NODE(layer_norm_in_grad);
   PATTERN_DECL_NODE(layer_norm_scale_grad);
   PATTERN_DECL_NODE(layer_norm_bias_grad);
+  // Mode parallelism
+  PATTERN_DECL_NODE(c_identity_op);
+  PATTERN_DECL_NODE(c_identity_out);
+  PATTERN_DECL_NODE(c_allreduce_sum_op);
+  PATTERN_DECL_NODE(c_allreduce_sum_out);
   // Linear 1 and Dropout 1: matmul_v2_grad + elementwise_add_grad +
   // dropout_grad
   FEEDFORWARD_LINEAR_DROPOUT_GRAD_NODE(1);

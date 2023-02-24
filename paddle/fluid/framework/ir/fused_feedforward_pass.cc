@@ -25,27 +25,31 @@ namespace ir {
 
 void FusedFeedForwardPass::ApplyImpl(ir::Graph *graph) const {
   FusePassBase::Init(scope_name, graph);
-  for (auto pre_layer_norm : std::vector<bool>({true, false})) {
-    for (auto add_residual : std::vector<bool>({true, false})) {
-      for (auto use_dropout_1 : std::vector<bool>({true, false})) {
-        for (auto use_dropout_2 : std::vector<bool>({true, false})) {
-          // pre_layer_norm and add_residual can't both be false!
-          if (!pre_layer_norm && !add_residual) continue;
-          // use_dropout_1 and use_dropout_2 can't both be false!
-          if (!use_dropout_1 && !use_dropout_2) continue;
-          Cache dropout_nodes_map;
-          graph = FusedFeedForwardFwd(graph,
-                                      pre_layer_norm,
-                                      add_residual,
-                                      use_dropout_1,
-                                      use_dropout_2,
-                                      &dropout_nodes_map);
-          graph = FusedFeedForwardBwd(graph,
-                                      pre_layer_norm,
-                                      add_residual,
-                                      use_dropout_1,
-                                      use_dropout_2,
-                                      &dropout_nodes_map);
+  for (auto use_mp : std::vector<bool>({true, false})) {
+    for (auto pre_layer_norm : std::vector<bool>({true, false})) {
+      for (auto add_residual : std::vector<bool>({true, false})) {
+        for (auto use_dropout_1 : std::vector<bool>({true, false})) {
+          for (auto use_dropout_2 : std::vector<bool>({true, false})) {
+            // pre_layer_norm and add_residual can't both be false!
+            if (!pre_layer_norm && !add_residual) continue;
+            // use_dropout_1 and use_dropout_2 can't both be false!
+            if (!use_dropout_1 && !use_dropout_2) continue;
+            Cache dropout_nodes_map;
+            graph = FusedFeedForwardFwd(graph,
+                                        use_mp,
+                                        pre_layer_norm,
+                                        add_residual,
+                                        use_dropout_1,
+                                        use_dropout_2,
+                                        &dropout_nodes_map);
+            graph = FusedFeedForwardBwd(graph,
+                                        use_mp,
+                                        pre_layer_norm,
+                                        add_residual,
+                                        use_dropout_1,
+                                        use_dropout_2,
+                                        &dropout_nodes_map);
+          }
         }
       }
     }
@@ -54,6 +58,7 @@ void FusedFeedForwardPass::ApplyImpl(ir::Graph *graph) const {
 
 ir::Graph *FusedFeedForwardPass::FusedFeedForwardFwd(
     ir::Graph *graph,
+    bool use_mp,
     bool pre_layer_norm,
     bool add_residual,
     bool use_dropout_1,
@@ -76,7 +81,7 @@ ir::Graph *FusedFeedForwardPass::FusedFeedForwardFwd(
   // -> residual_add (pre_layer_norm)
   // 2. linear1 -> activation -> dropout1 -> linear2 -> dropout2 -> residual_add
   // -> layer_norm (post_layer_norm)
-  // other cases: may delete residual_add, dropout1, dropout2 operators
+  // other cases: may delete mp, residual_add, dropout1, dropout2 operators
   patterns::FusedFeedForwardFwd fused_feedforward_pattern(gpd.mutable_pattern(),
                                                           scope_name);
   std::unordered_set<std::string> act_types = {"gelu", "relu"};
@@ -87,8 +92,13 @@ ir::Graph *FusedFeedForwardPass::FusedFeedForwardFwd(
           << ", use_dropout_1: " << use_dropout_1
           << ", use_dropout_2: " << use_dropout_2;
 
-  fused_feedforward_pattern(
-      x, act_types, pre_layer_norm, add_residual, use_dropout_1, use_dropout_2);
+  fused_feedforward_pattern(x,
+                            act_types,
+                            use_mp,
+                            pre_layer_norm,
+                            add_residual,
+                            use_dropout_1,
+                            use_dropout_2);
 
   int found_fused_feedforward_fwd_count = 0;
 
@@ -306,7 +316,14 @@ ir::Graph *FusedFeedForwardPass::FusedFeedForwardFwd(
     fused_feedforward_op_desc.SetAttr("dropout1_seed", 0);
     fused_feedforward_op_desc.SetAttr("dropout2_seed", 0);
     fused_feedforward_op_desc.SetAttr("add_residual", add_residual);
-    // fused_feedforward_op_desc.SetAttr("ring_id", {});
+    int ring_id = -1;
+    if (use_mp) {
+      GET_IR_NODE_FROM_SUBGRAPH(
+          c_allreduce_sum_op, c_allreduce_sum_op, fused_feedforward_pattern);
+      ring_id =
+          PADDLE_GET_CONST(int, c_allreduce_sum_op->Op()->GetAttr("ring_id"));
+    }
+    fused_feedforward_op_desc.SetAttr("ring_id", ring_id);
 
     auto fused_feedforward_node = g->CreateOpNode(&fused_feedforward_op_desc);
 
@@ -346,6 +363,14 @@ ir::Graph *FusedFeedForwardPass::FusedFeedForwardFwd(
                                                         act_op,
                                                         matmul_op_2,
                                                         ele_add_op_2};
+    if (use_mp) {
+      GET_IR_NODE_FROM_SUBGRAPH(
+          c_identity_op, c_identity_op, fused_feedforward_pattern);
+      GET_IR_NODE_FROM_SUBGRAPH(
+          c_allreduce_sum_op, c_allreduce_sum_op, fused_feedforward_pattern);
+      nodes_to_remove.insert(c_identity_op);
+      nodes_to_remove.insert(c_allreduce_sum_op);
+    }
     if (use_dropout_1) {
       GET_IR_NODE_FROM_SUBGRAPH(
           dropout_op_1, dropout_op_1, fused_feedforward_pattern);
@@ -373,6 +398,7 @@ ir::Graph *FusedFeedForwardPass::FusedFeedForwardFwd(
 
 ir::Graph *FusedFeedForwardPass::FusedFeedForwardBwd(
     ir::Graph *graph,
+    bool use_mp,
     bool pre_layer_norm,
     bool add_residual,
     bool use_dropout_1,
@@ -386,7 +412,7 @@ ir::Graph *FusedFeedForwardPass::FusedFeedForwardBwd(
   // activation_grad -> linear1_grad -> layer_norm_grad
   // 2. layer_norm_grad -> residual_add_grad -> dropout2_grad -> linear2_grad ->
   // dropout1_grad -> activation_grad -> linear1_grad
-  // other cases: may delete residual_add_grad, dropout1_grad, dropout2_grad
+  // other cases: may delete mp, residual_add_grad, dropout1_grad, dropout2_grad
   // operators
   GraphPatternDetector gpd;
 
@@ -399,6 +425,7 @@ ir::Graph *FusedFeedForwardPass::FusedFeedForwardBwd(
   std::unordered_set<std::string> act_grad_types = {"gelu_grad", "relu_grad"};
   fused_feedforward_pattern(x_grad,
                             act_grad_types,
+                            use_mp,
                             pre_layer_norm,
                             add_residual,
                             use_dropout_1,
@@ -563,7 +590,14 @@ ir::Graph *FusedFeedForwardPass::FusedFeedForwardBwd(
     fused_feedforward_op_desc.SetAttr("dropout2_fix_seed", false);
     fused_feedforward_op_desc.SetAttr("dropout1_seed", 0);
     fused_feedforward_op_desc.SetAttr("dropout2_seed", 0);
-    fused_feedforward_op_desc.SetAttr("ring_id", -1);
+    int ring_id = -1;
+    if (use_mp) {
+      GET_IR_NODE_FROM_SUBGRAPH(
+          c_allreduce_sum_op, c_allreduce_sum_op, fused_feedforward_pattern);
+      ring_id =
+          PADDLE_GET_CONST(int, c_allreduce_sum_op->Op()->GetAttr("ring_id"));
+    }
+    fused_feedforward_op_desc.SetAttr("ring_id", ring_id);
 
     if (pre_layer_norm) {
       fused_feedforward_op_desc.SetInput("Ln1Scale",
@@ -683,6 +717,14 @@ ir::Graph *FusedFeedForwardPass::FusedFeedForwardBwd(
                                                         act_op_grad,
                                                         matmul_op_grad_2,
                                                         ele_add_op_grad_2};
+    if (use_mp) {
+      GET_IR_NODE_FROM_SUBGRAPH(
+          c_identity_op, c_identity_op, fused_feedforward_pattern);
+      GET_IR_NODE_FROM_SUBGRAPH(
+          c_allreduce_sum_op, c_allreduce_sum_op, fused_feedforward_pattern);
+      nodes_to_remove.insert(c_identity_op);
+      nodes_to_remove.insert(c_allreduce_sum_op);
+    }
     if (use_dropout_1) {
       GET_IR_NODE_FROM_SUBGRAPH(
           dropout_op_grad_1, dropout_op_grad_1, fused_feedforward_pattern);

@@ -3990,6 +3990,7 @@ PDNode *patterns::MergeLayernormPattern::operator()(PDNode *in) {
 PDNode *patterns::FusedFeedForwardFwd::operator()(
     paddle::framework::ir::PDNode *x_var,
     std::unordered_set<std::string> act_types,
+    bool use_mp,
     bool pre_layer_norm,
     bool add_residual,
     bool use_dropout_1,
@@ -4024,12 +4025,22 @@ PDNode *patterns::FusedFeedForwardFwd::operator()(
           ->assert_is_op_output("layer_norm", "Variance");
   if (pre_layer_norm) {
     out_var->assert_is_op_input("layer_norm", "X");
-    layer_norm_out_var->assert_is_op_input("matmul_v2", "X");
     layer_norm_op
         ->LinksFrom({out_var, layer_norm_bias_var, layer_norm_scale_var})
         .LinksTo(
             {layer_norm_out_var, layer_norm_mean_var, layer_norm_variance_var});
     out_var = layer_norm_out_var;
+  }
+
+  // Model parallel, do nothing in forward.
+  if (use_mp) {
+    out_var->assert_is_op_input("c_identity", "X");
+    auto *c_identity_op =
+        pattern->NewNode(c_identity_op_repr())->assert_is_op("c_identity");
+    auto *c_identity_out_var = pattern->NewNode(c_identity_out_repr())
+                                   ->assert_is_op_output("c_identity", "Out");
+    c_identity_op->LinksFrom({out_var}).LinksTo({c_identity_out_var});
+    out_var = c_identity_out_var;
   }
 
   // Linear1
@@ -4089,6 +4100,18 @@ PDNode *patterns::FusedFeedForwardFwd::operator()(
   matmul_op_2->LinksFrom({out_var, matmul_w_var_2}).LinksTo({matmul_out_var_2});
   out_var = matmul_out_var_2;
 
+  // Model parallel, do nothing in forward.
+  if (use_mp) {
+    out_var->assert_is_op_input("c_allreduce_sum", "X");
+    auto *c_allreduce_sum_op = pattern->NewNode(c_allreduce_sum_op_repr())
+                                   ->assert_is_op("c_allreduce_sum");
+    auto *c_allreduce_sum_out_var =
+        pattern->NewNode(c_allreduce_sum_out_repr())
+            ->assert_is_op_output("c_allreduce_sum", "Out");
+    c_allreduce_sum_op->LinksFrom({out_var}).LinksTo({c_allreduce_sum_out_var});
+    out_var = c_allreduce_sum_out_var;
+  }
+
   out_var->assert_is_op_input("elementwise_add", "X");
   auto *ele_add_op_2 =
       pattern->NewNode(ele_add_op_2_repr())->assert_is_op("elementwise_add");
@@ -4142,6 +4165,7 @@ PDNode *patterns::FusedFeedForwardFwd::operator()(
 PDNode *patterns::FusedFeedForwardBwd::operator()(
     paddle::framework::ir::PDNode *x_grad,
     std::unordered_set<std::string> act_grad_types,
+    bool use_mp,
     bool pre_layer_norm,
     bool add_residual,
     bool use_dropout_1,
@@ -4265,6 +4289,17 @@ PDNode *patterns::FusedFeedForwardBwd::operator()(
       .LinksTo({ele_add_in_grad_2, ele_add_bias_grad_2});
   out_grad = ele_add_in_grad_2;
 
+  // Model parallel, do nothing in backward.
+  if (use_mp) {
+    out_grad->assert_is_op_input("c_identity", "X");
+    auto *c_identity_op =
+        pattern->NewNode(c_identity_op_repr())->assert_is_op("c_identity");
+    auto *c_identity_out_grad = pattern->NewNode(c_identity_out_repr())
+                                    ->assert_is_op_output("c_identity", "Out");
+    c_identity_op->LinksFrom({out_grad}).LinksTo({c_identity_out_grad});
+    out_grad = c_identity_out_grad;
+  }
+
   // matmul_v2: in["Out@GRAD", "X", "Y"], out["X@GRAD", "Y@GRAD"]
   out_grad->assert_is_op_input("matmul_v2_grad", GradVarName("Out"));
   auto *matmul_op_grad_2 =
@@ -4348,6 +4383,19 @@ PDNode *patterns::FusedFeedForwardBwd::operator()(
   matmul_op_grad_1->LinksFrom({out_grad, matmul_in_var_1, matmul_w_var_1})
       .LinksTo({matmul_in_grad_1, matmul_w_grad_1});
   out_grad = matmul_in_grad_1;
+
+  // Model parallel, all_reduce in backward.
+  if (use_mp) {
+    out_grad->assert_is_op_input("c_allreduce_sum", "X");
+    auto *c_allreduce_sum_op = pattern->NewNode(c_allreduce_sum_op_repr())
+                                   ->assert_is_op("c_allreduce_sum");
+    auto *c_allreduce_sum_out_grad =
+        pattern->NewNode(c_allreduce_sum_out_repr())
+            ->assert_is_op_output("c_allreduce_sum", "Out");
+    c_allreduce_sum_op->LinksFrom({out_grad})
+        .LinksTo({c_allreduce_sum_out_grad});
+    out_grad = c_allreduce_sum_out_grad;
+  }
 
   // pre LayerNorm
   if (pre_layer_norm) {

@@ -31,20 +31,17 @@ namespace ir {
  * Fuse the FeedForward in attention
  * Forward:
  *   1. layer_norm -> linear1 -> activation -> dropout1 -> linear2 -> dropout2
- * -> residual_add
- *   2. layer_norm -> linear1 -> activation -> dropout1 -> linear2 -> dropout2
- *   3. linear1 -> activation -> dropout1 -> linear2 -> dropout2 -> residual_add
- * -> layer_norm
- *   4. linear1 -> activation -> dropout1 -> linear2 -> dropout2 -> layer_norm
+ * -> residual_add (pre_layer_norm)
+ *   2. linear1 -> activation -> dropout1 -> linear2 -> dropout2 -> residual_add
+ * -> layer_norm (pose_layer_norm)
+ *   other cases: may delete mp, residual_add, dropout1, dropout2 operators
  * Backward:
  *   1. residual_add_grad -> dropout2_grad -> linear2_grad -> dropout1_grad ->
- * activation_grad -> linear1_grad -> layer_norm_grad
- *   2. dropout2_grad -> linear2_grad -> dropout1_grad -> activation_grad ->
- * linear1_grad -> layer_norm_grad
- *   3. layer_norm_grad -> residual_add_grad -> dropout2_grad -> linear2_grad ->
- * dropout1_grad -> activation_grad -> linear1_grad
- *   4. layer_norm_grad -> dropout2_grad -> linear2_grad -> dropout1_grad ->
- * activation_grad -> linear1_grad
+ * activation_grad -> linear1_grad -> layer_norm_grad (pre_layer_norm)
+ *   2. layer_norm_grad -> residual_add_grad -> dropout2_grad -> linear2_grad ->
+ * dropout1_grad -> activation_grad -> linear1_grad (pose_layer_norm)
+ *   other cases: may delete mp, residual_add_grad, dropout1_grad, dropout2_grad
+ * operators
  */
 class Graph;
 class Node;
@@ -74,6 +71,7 @@ class FusedFeedForwardPass : public FusePassBase {
   void ApplyImpl(ir::Graph *graph) const override;
 
   ir::Graph *FusedFeedForwardFwd(ir::Graph *graph,
+                                 bool use_mp,
                                  bool pre_layer_norm,
                                  bool add_residual,
                                  bool use_dropout_1,
@@ -81,6 +79,7 @@ class FusedFeedForwardPass : public FusePassBase {
                                  Cache *dropout_nodes_map) const;
 
   ir::Graph *FusedFeedForwardBwd(ir::Graph *graph,
+                                 bool use_mp,
                                  bool pre_layer_norm,
                                  bool add_residual,
                                  bool use_dropout_1,
