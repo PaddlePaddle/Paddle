@@ -16,7 +16,6 @@ from .amp_optimizer import AMPOptimizer
 from .asp_optimizer import ASPOptimizer
 from .recompute_optimizer import RecomputeOptimizer
 from .gradient_merge_optimizer import GradientMergeOptimizer
-from .graph_execution_optimizer import GraphExecutionOptimizer
 from .ps_optimizer import ParameterServerOptimizer
 from .pipeline_optimizer import PipelineOptimizer
 from .localsgd_optimizer import LocalSGDOptimizer
