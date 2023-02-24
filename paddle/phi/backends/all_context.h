@@ -18,6 +18,7 @@ limitations under the License. */
 #include <map>
 #include <memory>
 #include <mutex>  // NOLINT
+#include <set>
 
 // Note: Some scenarios need to include all types of Context declarations.
 // In order to avoid including the header files of each backend in turn,
