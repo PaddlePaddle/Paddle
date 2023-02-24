@@ -164,11 +164,13 @@ class TestCompositeDropout(unittest.TestCase):
             return fwd, rev, mp
 
         core._set_prim_forward_enabled(False)
+        core._set_prim_backward_enabled(False)
         desired_fwd, desired_rev, _ = dropout(
             self.x, self.p, self.is_test, self.mode, self.seed
         )
 
         core._set_prim_forward_enabled(True)
+        core._set_prim_backward_enabled(False)
         actual_fwd, actual_rev, prog = dropout(
             self.x, self.p, self.is_test, self.mode, self.seed
         )
@@ -188,6 +190,23 @@ class TestCompositeDropout(unittest.TestCase):
             atol=0,
         )
 
+        core._set_prim_forward_enabled(False)
+        core._set_prim_backward_enabled(True)
+        actual_fwd, actual_rev, _ = dropout(
+            self.x, self.p, self.is_test, self.mode, self.seed
+        )
+        np.testing.assert_allclose(
+            actual_fwd.sum(),
+            desired_fwd.sum(),
+            rtol=1e-2,  # mean of uniform distribution, scale for avoid random failed
+            atol=0,
+        )
+        np.testing.assert_allclose(
+            actual_rev.sum(),
+            desired_rev.sum(),
+            rtol=1e-2,  # mean of uniform distribution, scale for avoid random failed
+            atol=0,
+        )
         core._set_prim_all_enabled(True)
         actual_fwd, actual_rev, _ = dropout(
             self.x, self.p, self.is_test, self.mode, self.seed
