@@ -322,7 +322,7 @@ class TestClipOpFp16(unittest.TestCase):
                 },
                 fetch_list=[out],
             )
-        np.testing.assert_allclose(res1, data.clip(0.2, 0.8), rtol=1e-04)
+            np.testing.assert_allclose(res1, data.clip(0.2, 0.8), rtol=1e-04)
 
 
 class TestInplaceClipAPI(TestClipAPI):
