@@ -315,7 +315,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
             return loss
 
     def test_amp(self):
-        if not isinstance(framework._current_expected_place(), core.CPUPlace()):
+        if not isinstance(framework._current_expected_place(), core.CPUPlace):
             expected = self.train(False)
             actual = self.train(True)
             np.testing.assert_allclose(
