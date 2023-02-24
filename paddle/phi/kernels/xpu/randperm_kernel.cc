@@ -15,16 +15,14 @@
 #include "paddle/phi/kernels/randperm_kernel.h"
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void RandpermRawKernel(const Context& dev_ctx,
-                       int n,
-                       phi::DenseTensorMeta::DataType dtype,
-                       unsigned int seed,
-                       phi::DenseTensor* out) {
+void RandpermRawKernel(
+    const Context& dev_ctx, int n, DataType dtype, int seed, DenseTensor* out) {
   std::shared_ptr<std::mt19937_64> engine;
 
   if (seed) {
@@ -49,25 +47,34 @@ void RandpermRawKernel(const Context& dev_ctx,
       tmp_data[i] = static_cast<T>(i);
     }
     std::shuffle(tmp_data, tmp_data + n, *engine);
-    TensorCopy(dev_ctx, tmp_tensor, true, out);
+    Copy(dev_ctx, tmp_tensor, dev_ctx.GetPlace(), true, out);
   }
 }
 
 template <typename T, typename Context>
 void RandpermKernel(const Context& dev_ctx,
                     int n,
-                    phi::DenseTensorMeta::DataType dtype,
-                    phi::DenseTensor* out) {
-  phi::RandpermRawKernel<T, Context>(dev_ctx, n, dtype, 0, out);
+                    DataType dtype,
+                    DenseTensor* out) {
+  RandpermRawKernel<T, Context>(dev_ctx, n, dtype, 0, out);
 }
 
 }  // namespace phi
+
+PD_REGISTER_KERNEL(randperm_raw,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::RandpermRawKernel,
+                   int,
+                   int64_t,
+                   float,
+                   double) {}
 
 PD_REGISTER_KERNEL(randperm,
                    XPU,
                    ALL_LAYOUT,
                    phi::RandpermKernel,
-                   int64_t,
                    int,
+                   int64_t,
                    float,
                    double) {}

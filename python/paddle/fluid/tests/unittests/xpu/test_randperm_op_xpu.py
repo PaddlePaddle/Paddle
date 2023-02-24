@@ -65,7 +65,7 @@ class TestXPURandpermOp(XPUOpTest):
         self.init_op_type()
         self.initTestCase()
         self.n = 200
-        self.dtype = "int64"
+        self.dtype = "int32"
         self.use_xpu = True
         self.use_mkldnn = False
         self.inputs = {}
