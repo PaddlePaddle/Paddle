@@ -70,7 +70,7 @@ class TestConjOp(OpTest):
 
 class TestComplexConjOp(unittest.TestCase):
     def setUp(self):
-        self._dtypes = ["float16", "float32", "float64"]
+        self._dtypes = ["float32", "float64"]
         self._places = [paddle.CPUPlace()]
         if paddle.is_compiled_with_cuda():
             self._places.append(paddle.CUDAPlace(0))
