@@ -119,10 +119,6 @@ def run_check():
                     startup_prog.random_seed = 1
                     compiled_prog = compiler.CompiledProgram(
                         train_prog
-                    ).with_data_parallel(
-                        build_strategy=build_strategy,
-                        loss_name=loss.name,
-                        places=device_list,
                     )
                     exe.run(startup_prog)
 
