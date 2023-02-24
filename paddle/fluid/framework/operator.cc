@@ -1621,13 +1621,15 @@ void OperatorWithKernel::CheckWhetherPreparePhiData(
 // When do we need to reset runtime context?
 // 1. When enable cache runtime context, if the program runs for the first time,
 //   runtime_ctx_.get() == nullptr, we need to create a new runtime context.
-// 2. When enable cache runtime context, if the program is not running for the
+// 2. When pre_scope_ = current_scope, it means that this op in while block.
+// 3. When enable cache runtime context, if the program is not running for the
 // first time,
 //   but the input shape or tensor layout of the operator has changed, we cannot
 //   use the runtime context stored in the cache at this time, and need to
 //   create a new one.
 bool OperatorWithKernel::NeedResetRuntimeContext(const Scope& scope) const {
   if (runtime_ctx_.get() == nullptr) return true;
+  if (pre_scope_ != &scope) return true;
   const auto& name_map = Inputs();
   for (auto& var_name_item : name_map) {
     auto& name_vec = var_name_item.second;
@@ -1678,10 +1680,12 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   if (!all_kernels_must_compute_runtime_shape_ &&
       HasAttr(kAllKernelsMustComputeRuntimeShape))
     all_kernels_must_compute_runtime_shape_ = true;
+  const Scope* cur_scope = &scope;
   CheckWhetherPreparePhiData(Inputs(), Outputs(), scope);
   if (!enable_cache_runtime_context_) {
     RuntimeContext ctx(Inputs(), Outputs(), scope);
     RunImpl(scope, place, &ctx);
+    pre_scope_ = cur_scope;
   } else if (run_phi_kernel_ && impl_ != nullptr && !need_prepare_data_ &&
              !need_prepare_phi_data_) {
     if (!all_kernels_must_compute_runtime_shape_ && impl_->NeedInferShape()) {
@@ -1691,7 +1695,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   } else {
     if (NeedResetRuntimeContext(scope)) {
       std::lock_guard<std::mutex> lock(cache_update_mutex_);
-      runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
+      if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
+        runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
+        pre_scope_ = cur_scope;
+      }
     }
     RunImpl(scope, place, runtime_ctx_.get());
   }
@@ -2733,7 +2740,8 @@ Scope* OperatorWithKernel::PrepareData(
   // so disable prepare optimization conservatively.
   bool force_prepare_data = HasAttr("inference_force_prepare_data") &&
                             Attr<bool>("inference_force_prepare_data");
-  if (enable_cache_runtime_context_ && !force_prepare_data) {
+  if (pre_scope_ == &scope && enable_cache_runtime_context_ &&
+      !force_prepare_data) {
     need_prepare_data_ = false;
   }
 
