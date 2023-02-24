@@ -2773,6 +2773,9 @@ class OpProtoHolder:
 
         return custom_op_names
 
+    def has_op_proto(self, type):
+        return type in self.op_proto_map
+
     @staticmethod
     def generated_op_attr_names():
         return {
@@ -2883,6 +2886,8 @@ class Operator:
             self._type = type
             self.attrs = attrs if attrs else {}
         else:
+            self.legacy_attrs = attrs if attrs else {}
+
             self.block = block
             self.desc = desc
             # note: not add self.attrs here:
@@ -3080,12 +3085,21 @@ class Operator:
                     )
 
             self.desc.check_attrs()
+
+            # record all attrs needed by creating op
+            for item in self.desc.attr_names():
+                self.legacy_attrs[item] = self.desc.attr(item)
+
             if self._has_kernel(type):
                 self.desc.infer_var_type(self.block.desc)
                 self.desc.infer_shape(self.block.desc)
 
     def _has_kernel(self, op_type):
         return op_type not in self.OP_WITHOUT_KERNEL_SET
+
+    def _get_runtime_attrs(self):
+        """Record all attrs needed by creating op. This api is only for to_prim process."""
+        return self.legacy_attrs
 
     def to_string(self, throw_on_error):
         """
@@ -7216,7 +7230,7 @@ class EagerParamBase(_core_eager_eagertensor):
         assert (
             self._init_func is not None
         ), "Required self._init_func is not None, but received None."
-        self._init_func()
+        self._init_func(self, None)
         # clear function handle to release resource
         self._init_func = None
 
@@ -7241,7 +7255,7 @@ class EagerParamBase(_core_eager_eagertensor):
         assert (
             self._init_op_creator is not None
         ), "Required self._init_op_creator is not None, but received None."
-        self._init_op_creator(block)
+        self._init_op_creator(self, block)
 
     def __str__(self):
         """
@@ -7293,6 +7307,8 @@ class EagerParamBase(_core_eager_eagertensor):
         new_param = EagerParamBase(self.shape, self.dtype, **state)
         memo[id(self)] = new_param
         new_param.copy_(self, True)
+        new_param._init_func = self._init_func
+        new_param._init_op_creator = self._init_op_creator
         return new_param
 
     def _copy_to(self, device, blocking):
@@ -7739,7 +7755,7 @@ def _get_paddle_place(place):
         if not core.is_compiled_with_cuda():
             raise ValueError(
                 "The device should not be {}, since PaddlePaddle is "
-                "not compiled with CUDA".format(avaliable_gpu_place)
+                "not compiled with CUDA".format(avaliable_gpu_place.group())
             )
         if place == "gpu_pinned":
             return core.CUDAPinnedPlace()
@@ -7757,7 +7773,7 @@ def _get_paddle_place(place):
         if not core.is_compiled_with_xpu():
             raise ValueError(
                 "The device should not be {}, since PaddlePaddle is "
-                "not compiled with XPU".format(avaliable_xpu_place)
+                "not compiled with XPU".format(avaliable_xpu_place.group())
             )
         place_info_list = place.split(':', 1)
         device_id = place_info_list[1]
@@ -7770,7 +7786,7 @@ def _get_paddle_place(place):
         if not core.is_compiled_with_npu():
             raise ValueError(
                 "The device should not be {}, since PaddlePaddle is "
-                "not compiled with NPU".format(avaliable_npu_place)
+                "not compiled with NPU".format(avaliable_npu_place.group())
             )
         place_info_list = place.split(':', 1)
         device_id = place_info_list[1]
@@ -7783,7 +7799,7 @@ def _get_paddle_place(place):
         if not core.is_compiled_with_ipu():
             raise ValueError(
                 "The device should not be {}, since PaddlePaddle is "
-                "not compiled with IPU".format(avaliable_ipu_place)
+                "not compiled with IPU".format(avaliable_ipu_place.group())
             )
         place_info_list = place.split(':', 1)
         device_id = place_info_list[1]
@@ -7796,7 +7812,7 @@ def _get_paddle_place(place):
         if not core.is_compiled_with_mlu():
             raise ValueError(
                 "The device should not be {}, since PaddlePaddle is "
-                "not compiled with MLU".format(avaliable_mlu_place)
+                "not compiled with MLU".format(avaliable_mlu_place.group())
             )
         place_info_list = place.split(':', 1)
         device_id = place_info_list[1]

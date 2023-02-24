@@ -125,6 +125,42 @@
   kernel :
     func : bernoulli
 
+- op : bitwise_and
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : bitwise_and
+    backend : x
+
+- op : bitwise_not
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : bitwise_not
+    backend : x
+
+- op : bitwise_or
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : bitwise_or
+    backend : x
+
+- op : bitwise_xor
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : bitwise_xor
+    backend : x
+
 - op : bmm
   args : (Tensor x, Tensor y)
   output : Tensor
@@ -653,6 +689,15 @@
     func : isnan {dense -> dense},
            isnan_sr {selected_rows -> selected_rows}
 
+- op : kron
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : KronInferMeta
+  kernel :
+    func : kron
+  backward : kron_grad
+
 - op : kthvalue
   args : (Tensor x, int k = 1, int axis = -1, bool keepdim = false)
   output : Tensor(out), Tensor(indices)
@@ -1022,6 +1067,19 @@
   inplace : (x -> out)
   backward : rsqrt_grad
 
+- op : scale
+  args : (Tensor x, Scalar scale=1.0, float bias=0.0, bool bias_after_scale=true)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : scale {dense -> dense},
+           scale_sr {selected_rows -> selected_rows}
+    data_type : x
+  inplace : (x -> out)
+  backward : scale_grad
+
 - op : scatter
   args : (Tensor x, Tensor index, Tensor updates, bool overwrite=true)
   output : Tensor(out)
@@ -1110,6 +1168,15 @@
   kernel :
     func : sigmoid
   backward : sigmoid_grad
+
+- op : sign
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : sign
+  backward : sign_grad
 
 - op : silu
   args : (Tensor x)
