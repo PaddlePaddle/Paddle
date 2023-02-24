@@ -16,7 +16,7 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
-
+#include "paddle/phi/kernels/funcs/math_function.h"
 namespace phi {
 
 template <typename T, typename Context>
