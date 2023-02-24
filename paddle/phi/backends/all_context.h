@@ -65,7 +65,7 @@ struct DefaultDeviceContextType<phi::GPUPlace> {
 
 #ifdef PADDLE_WITH_XPU
 template <>
-struct phi::DefaultDeviceContextType<phi::XPUPlace> {
+struct DefaultDeviceContextType<phi::XPUPlace> {
   using TYPE = phi::XPUContext;
 };
 #endif
