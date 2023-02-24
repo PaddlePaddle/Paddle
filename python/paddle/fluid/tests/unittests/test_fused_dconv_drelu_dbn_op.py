@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 
 import unittest
 
@@ -20,9 +19,8 @@ import numpy as np
 from op_test import OpTest, skip_check_grad_ci
 
 import paddle
-import paddle.fluid.core as core
-import paddle.fluid.framework as framework
-import paddle.nn as nn
+from paddle import nn
+from paddle.fluid import core, framework
 from paddle.fluid.executor import Executor
 
 
@@ -45,9 +43,9 @@ skip_msg = (
 
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(skip_unit_test(), skip_msg)
-class TestFusedDgradDreluBnBwdWeightOp(OpTest):
+class TestFusedDconvDreluDbnOp(OpTest):
     def setUp(self):
-        self.__class__.op_type = "fused_dgrad_drelu_bnbwdweight"
+        self.__class__.op_type = "fused_dconv_drelu_dbn"
         self.dtype = np.float16
         self.math_type = np.float32
         self.outputs = None
@@ -154,128 +152,68 @@ class TestFusedDgradDreluBnBwdWeightOp(OpTest):
         else:
             paddle.autograd.backward([y1_tensor], [dy1_tensor], True)
 
-        outputs = [x1_tensor.grad.numpy()]
+        self.conv_x = after_relu.numpy()
+        # ['dW', 'dX1', "BN1_dGamma", "BN1_dBeta"]
+        outputs = [
+            self.conv.weight.grad.numpy(),
+            x1_tensor.grad.numpy(),
+            self.bn1.weight.grad.numpy(),
+            self.bn1.bias.grad.numpy(),
+        ]
         if self.fuse_dual or self.fuse_shortcut:
+            # ['dX2']
             outputs.append(x2_tensor.grad.numpy())
+        if self.fuse_dual:
+            # ['BN2_dGamma', 'BN1_dBeta']
+            outputs += [
+                self.bn2.weight.grad.numpy(),
+                self.bn2.bias.grad.numpy(),
+            ]
         return outputs
 
     def _calc_mean_invstd(
         self,
-        place,
         input,
         bn_scale_np,
         bn_bias_np,
-        bn_running_mean_np,
-        bn_running_var_np,
     ):
-        # Calculate saved mean and saved inv_std using fused_bn_finalize op
-        # prepare inputs
-        input = input.astype(self.math_type)
-        input_sum = input.sum(axis=(0, 1, 2))
-        input_sqsum = (input**2).sum(axis=(0, 1, 2))
-        # define graph
-        paddle.enable_static()
-        program = framework.Program()
-        block = program.global_block()
-        bn_size = [self.input_size[-1]]
-        sum_var = block.create_var(name="Sum", dtype='float32')
-        sq_sum_var = block.create_var(name="SqSum", dtype='float32')
-        bn_scale = block.create_var(
-            name="Scale", shape=bn_size, dtype='float32'
+        input = input.astype(self.math_type).reshape((-1, input.shape[-1]))
+        sample_mean = input.mean(axis=0)
+        sample_var = input.var(axis=0)
+        sample_invstd = 1 / np.sqrt(sample_var + self.epsilon)
+        sample_eqscale = bn_scale_np * sample_invstd
+        sample_eqbias = -bn_scale_np * sample_invstd * sample_mean + bn_bias_np
+        return (
+            sample_mean,
+            sample_invstd,
+            sample_eqscale.astype(self.dtype),
+            sample_eqbias.astype(self.dtype),
         )
-        bn_bias = block.create_var(name="Bias", shape=bn_size, dtype='float32')
-        bn_running_mean = block.create_var(
-            name="inputRunningMean", shape=bn_size, dtype='float32'
-        )
-        bn_running_var = block.create_var(
-            name="inputRunningVar", shape=bn_size, dtype='float32'
-        )
-        updated_running_mean = block.create_var(
-            name="updatedRunningMean", shape=bn_size, dtype='float32'
-        )
-        updated_running_var = block.create_var(
-            name="updatedRunningVar", shape=bn_size, dtype='float32'
-        )
-        saved_mean = block.create_var(
-            name="SavedMean", shape=bn_size, dtype='float32'
-        )
-        saved_inv_var = block.create_var(
-            name="SavedInvVar", shape=bn_size, dtype='float32'
-        )
-        eq_scale = block.create_var(
-            name="eqScale", shape=bn_size, dtype='float16'
-        )
-        eq_bias = block.create_var(
-            name="eqBias", shape=bn_size, dtype='float16'
-        )
-        bn_finalize_attrs = {
-            'accumulation_count': self.accumulation_count,
-            'momentum': self.momentum,
-            'epsilon': self.epsilon,
-        }
-        bn_finalize_inputs = {
-            'Sum': sum_var,
-            'SqSum': sq_sum_var,
-            'Scale': bn_scale,
-            'Bias': bn_bias,
-            'inputRunningMean': bn_running_mean,
-            'inputRunningVar': bn_running_var,
-        }
-        bn_finalize_outputs = {
-            'updatedRunningMean': updated_running_mean,
-            'updatedRunningVar': updated_running_var,
-            'SavedMean': saved_mean,
-            'SavedInvVar': saved_inv_var,
-            'eqScale': eq_scale,
-            'eqBias': eq_bias,
-        }
-
-        bn_finalize_op = block.append_op(
-            type="fused_bn_finalize",
-            inputs=bn_finalize_inputs,
-            outputs=bn_finalize_outputs,
-            attrs=bn_finalize_attrs,
-        )
-
-        inputs = {
-            'Sum': input_sum,
-            'SqSum': input_sqsum,
-            'Scale': bn_scale_np,
-            'Bias': bn_bias_np,
-            'inputRunningMean': bn_running_mean_np,
-            'inputRunningVar': bn_running_var_np,
-        }
-        # execute program
-        feed_map = self.get_feed_map(inputs, place)
-        fetch_list = ['SavedMean', 'SavedInvVar']
-        executor = Executor(place)
-        outs = executor.run(
-            program, feed=feed_map, fetch_list=fetch_list, return_numpy=True
-        )
-        return outs
 
     def calc_mean_invstd(self, place):
-        self.bn1_saved_mean, self.bn1_saved_invstd = self._calc_mean_invstd(
-            place,
+        (
+            self.bn1_saved_mean,
+            self.bn1_saved_invstd,
+            self.bn1_eqscale,
+            self.bn1_eqbias,
+        ) = self._calc_mean_invstd(
             self.X1,
             self.bn1_scale_input,
             self.bn1_bias_input,
-            self.bn1_running_mean_input,
-            self.bn1_running_var_input,
         )
 
-        self.bn2_saved_mean, self.bn2_saved_invstd = self._calc_mean_invstd(
-            place,
+        (
+            self.bn2_saved_mean,
+            self.bn2_saved_invstd,
+            _,
+            _,
+        ) = self._calc_mean_invstd(
             self.X2,
             self.bn2_scale_input,
             self.bn2_bias_input,
-            self.bn2_running_mean_input,
-            self.bn2_running_var_input,
         )
 
     def calc_fused_pass(self, place):
-        # Calculate dX using fused_dgrad_drelu_bnbwdweight + fused_dbn_apply
-        # BN1_mean and BN1_inv_std need to get from fused_bn_finalize op
         self.calc_mean_invstd(place)
 
         paddle.enable_static()
@@ -283,8 +221,6 @@ class TestFusedDgradDreluBnBwdWeightOp(OpTest):
         block = program.global_block()
         bn_size = [self.input_size[-1]]
 
-        # fused_dgrad_drelu_bnbwdweight op
-        # inputs
         dY1 = block.create_var(
             name="dY1", shape=self.output_size, dtype='float16'
         )
@@ -292,8 +228,14 @@ class TestFusedDgradDreluBnBwdWeightOp(OpTest):
             name="dY2", shape=self.input_size, dtype='float16'
         )
         W = block.create_var(name="W", shape=self.filter_size, dtype='float16')
+        dW = block.create_var(
+            name="dW", shape=self.filter_size, dtype='float16'
+        )
         X1 = block.create_var(name="X1", shape=self.input_size, dtype='float16')
         X2 = block.create_var(name="X2", shape=self.input_size, dtype='float16')
+        Conv_X = block.create_var(
+            name="Conv_X", shape=self.input_size, dtype='float16'
+        )
         BN1_mean = block.create_var(
             name="BN1_mean", shape=bn_size, dtype='float32'
         )
@@ -305,6 +247,12 @@ class TestFusedDgradDreluBnBwdWeightOp(OpTest):
         )
         BN1_bias = block.create_var(
             name="BN1_bias", shape=bn_size, dtype='float32'
+        )
+        BN1_eqscale = block.create_var(
+            name="BN1_eqscale", shape=bn_size, dtype='float16'
+        )
+        BN1_eqbias = block.create_var(
+            name="BN1_eqbias", shape=bn_size, dtype='float16'
         )
         BN2_mean = block.create_var(
             name="BN2_mean", shape=bn_size, dtype='float32'
@@ -319,41 +267,18 @@ class TestFusedDgradDreluBnBwdWeightOp(OpTest):
             name="BN2_bias", shape=bn_size, dtype='float32'
         )
         # outputs
-        dX_relu = block.create_var(
-            name="dX_relu", shape=self.input_size, dtype='float16'
-        )
         BN1_dGamma = block.create_var(
             name="BN1_dGamma", shape=bn_size, dtype='float32'
         )
         BN1_dBeta = block.create_var(
             name="BN1_dBeta", shape=bn_size, dtype='float32'
         )
-        BN1_eqscale_dy = block.create_var(
-            name="BN1_eqscale_dy", shape=bn_size, dtype='float32'
-        )
-        BN1_eqscale_x = block.create_var(
-            name="BN1_eqscale_x", shape=bn_size, dtype='float32'
-        )
-        BN1_eqbias = block.create_var(
-            name="BN1_eqbias", shape=bn_size, dtype='float32'
-        )
-
         BN2_dGamma = block.create_var(
             name="BN2_dGamma", shape=bn_size, dtype='float32'
         )
         BN2_dBeta = block.create_var(
             name="BN2_dBeta", shape=bn_size, dtype='float32'
         )
-        BN2_eqscale_dy = block.create_var(
-            name="BN2_eqscale_dy", shape=bn_size, dtype='float32'
-        )
-        BN2_eqscale_x = block.create_var(
-            name="BN2_eqscale_x", shape=bn_size, dtype='float32'
-        )
-        BN2_eqbias = block.create_var(
-            name="BN2_eqbias", shape=bn_size, dtype='float32'
-        )
-
         dX1 = block.create_var(
             name="dX1", shape=self.input_size, dtype='float16'
         )
@@ -361,7 +286,7 @@ class TestFusedDgradDreluBnBwdWeightOp(OpTest):
             name="dX2", shape=self.input_size, dtype='float16'
         )
 
-        dgrad_attrs = {
+        op_attrs = {
             'strides': self.stride,
             'paddings': self.pad,
             'dilations': self.dilations,
@@ -370,7 +295,7 @@ class TestFusedDgradDreluBnBwdWeightOp(OpTest):
             'fuse_add': self.fuse_add,
         }
 
-        dgrad_inputs = {
+        op_inputs = {
             'dY': dY1,
             'W': W,
             'BN1_mean': BN1_mean,
@@ -380,20 +305,19 @@ class TestFusedDgradDreluBnBwdWeightOp(OpTest):
             'BN1_X': X1,
         }
 
-        dgrad_outputs = {
-            'dX': dX_relu,
+        op_outputs = {
+            'BN1_dX': dX1,
             'BN1_dGamma': BN1_dGamma,
             'BN1_dBeta': BN1_dBeta,
-            'BN1_eqscale_dy': BN1_eqscale_dy,
-            'BN1_eqscale_x': BN1_eqscale_x,
-            'BN1_eqbias': BN1_eqbias,
+            'dW': dW,
         }
 
         if self.fuse_add:
-            dgrad_inputs['dX_branch'] = dY2
+            op_inputs['dY_branch'] = dY2
 
         if self.fuse_shortcut:
-            dgrad_inputs['Relu_X'] = X2
+            op_inputs['Relu_X'] = X2
+            op_outputs['BN2_dX'] = dX2
 
         if self.fuse_dual:
             extra_inputs = {
@@ -403,50 +327,26 @@ class TestFusedDgradDreluBnBwdWeightOp(OpTest):
                 'BN2_bias': BN2_bias,
                 'BN2_X': X2,
             }
-            dgrad_inputs.update(extra_inputs)
+            op_inputs.update(extra_inputs)
 
             extra_outputs = {
+                'BN2_dX': dX2,
                 'BN2_dGamma': BN2_dGamma,
                 'BN2_dBeta': BN2_dBeta,
-                'BN2_eqscale_dy': BN2_eqscale_dy,
-                'BN2_eqscale_x': BN2_eqscale_x,
-                'BN2_eqbias': BN2_eqbias,
             }
-            dgrad_outputs.update(extra_outputs)
+            op_outputs.update(extra_outputs)
 
-        dgrad_op = block.append_op(
+        if self.fuse_shortcut or self.fuse_dual:
+            op_inputs['Conv_X'] = Conv_X
+        else:
+            op_inputs['BN1_eqscale'] = BN1_eqscale
+            op_inputs['BN1_eqbias'] = BN1_eqbias
+
+        op = block.append_op(
             type=self.__class__.op_type,
-            inputs=dgrad_inputs,
-            outputs=dgrad_outputs,
-            attrs=dgrad_attrs,
-        )
-
-        # fused_dbn_apply op
-        dbn_apply_inputs = {
-            'dY': dX_relu,
-            'X': X1,
-            'A': BN1_eqscale_dy,
-            'B': BN1_eqscale_x,
-            'C': BN1_eqbias,
-        }
-        if self.fuse_dual:
-            extra_inputs = {
-                'X_dual': X2,
-                'A_dual': BN2_eqscale_dy,
-                'B_dual': BN2_eqscale_x,
-                'C_dual': BN2_eqbias,
-            }
-            dbn_apply_inputs.update(extra_inputs)
-
-        dbn_apply_outputs = {'dX': dX1}
-        if self.fuse_dual:
-            dbn_apply_outputs['dX_dual'] = dX2
-
-        dbn_apply_op = block.append_op(
-            type="fused_dbn_apply",
-            inputs=dbn_apply_inputs,
-            outputs=dbn_apply_outputs,
-            attrs={'fuse_dual': self.fuse_dual},
+            inputs=op_inputs,
+            outputs=op_outputs,
+            attrs=op_attrs,
         )
 
         # execute program
@@ -460,6 +360,9 @@ class TestFusedDgradDreluBnBwdWeightOp(OpTest):
             'BN1_inv_std': self.bn1_saved_invstd,
             'BN1_scale': self.bn1_scale_input,
             'BN1_bias': self.bn1_bias_input,
+            'Conv_X': self.conv_x,
+            'BN1_eqscale': self.bn1_eqscale,
+            'BN1_eqbias': self.bn1_eqbias,
             'BN2_mean': self.bn2_saved_mean,
             'BN2_inv_std': self.bn2_saved_invstd,
             'BN2_scale': self.bn2_scale_input,
@@ -467,12 +370,11 @@ class TestFusedDgradDreluBnBwdWeightOp(OpTest):
         }
 
         feed_map = self.get_feed_map(graph_inputs, place)
+        fetch_list = ['dW', 'dX1', "BN1_dGamma", "BN1_dBeta"]
+        if self.fuse_dual or self.fuse_shortcut:
+            fetch_list += ['dX2']
         if self.fuse_dual:
-            fetch_list = ['dX1', 'dX2']
-        elif self.fuse_shortcut:
-            fetch_list = ['dX1', 'dX_relu']
-        else:
-            fetch_list = ['dX1']
+            fetch_list += ['BN2_dGamma', 'BN1_dBeta']
 
         executor = Executor(place)
         outs = executor.run(
@@ -486,16 +388,11 @@ class TestFusedDgradDreluBnBwdWeightOp(OpTest):
             outputs_expected = self.calc_normal_pass()
             outputs_actual, _ = self.calc_fused_pass(place)
 
-            np.testing.assert_allclose(
-                outputs_actual[0],
-                outputs_expected[0],
-                rtol=self.rtol,
-                atol=self.atol,
-            )
-            if self.fuse_dual or self.fuse_shortcut:
+            assert len(outputs_expected) == len(outputs_actual)
+            for expected, actual in zip(outputs_expected, outputs_actual):
                 np.testing.assert_allclose(
-                    outputs_actual[1],
-                    outputs_expected[1],
+                    expected,
+                    actual,
                     rtol=self.rtol,
                     atol=self.atol,
                 )
@@ -529,9 +426,7 @@ class TestFusedDgradDreluBnBwdWeightOp(OpTest):
 
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(skip_unit_test(), skip_msg)
-class TestFusedDgradDreluBnBwdWeightOpShortcut(
-    TestFusedDgradDreluBnBwdWeightOp
-):
+class TestFusedDconvDreluDbnOpShortcut(TestFusedDconvDreluDbnOp):
     def init_attr(self):
         self.fuse_add = False
         self.fuse_shortcut = True
@@ -540,7 +435,7 @@ class TestFusedDgradDreluBnBwdWeightOpShortcut(
 
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(skip_unit_test(), skip_msg)
-class TestFusedDgradDreluBnBwdWeightOpDual(TestFusedDgradDreluBnBwdWeightOp):
+class TestFusedDconvDreluDbnOpDual(TestFusedDconvDreluDbnOp):
     def init_attr(self):
         self.fuse_add = False
         self.fuse_shortcut = False
@@ -549,9 +444,7 @@ class TestFusedDgradDreluBnBwdWeightOpDual(TestFusedDgradDreluBnBwdWeightOp):
 
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(skip_unit_test(), skip_msg)
-class TestFusedDgradDreluBnBwdWeightOpShortcutAdd(
-    TestFusedDgradDreluBnBwdWeightOp
-):
+class TestFusedDconvDreluDbnOpShortcutAdd(TestFusedDconvDreluDbnOp):
     def init_attr(self):
         self.fuse_add = True
         self.fuse_shortcut = True
@@ -560,7 +453,7 @@ class TestFusedDgradDreluBnBwdWeightOpShortcutAdd(
 
 @skip_check_grad_ci(reason="no grap op")
 @unittest.skipIf(skip_unit_test(), skip_msg)
-class TestFusedDgradDreluBnBwdWeightOpDualAdd(TestFusedDgradDreluBnBwdWeightOp):
+class TestFusedDconvDreluDbnOpDualAdd(TestFusedDconvDreluDbnOp):
     def init_attr(self):
         self.fuse_add = True
         self.fuse_shortcut = False
