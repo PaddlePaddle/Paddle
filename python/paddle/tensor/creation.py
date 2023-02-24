@@ -1694,7 +1694,7 @@ def diag(x, offset=0, padding_value=0, name=None):
         check_dtype(
             x.dtype,
             'x',
-            ['float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64'],
             'diag_v2',
         )
         check_type(offset, 'offset', (int), 'diag_v2')
