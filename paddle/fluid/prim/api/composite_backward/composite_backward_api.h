@@ -331,7 +331,9 @@ void exp_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
 
 template <typename T>
 void gather_nd_grad(const Tensor& x,
-                    const Tensor& index const Tensor& out_grad Tensor* x_grad) {
+                    const Tensor& index,
+                    const Tensor& out_grad,
+                    Tensor* x_grad) {
   if (x_grad) {
     auto zero_tensor = full<T>(phi::vectorize(x.dims()), 0.0);
     auto x_grad_tmp = scatter_nd_add<T>(zero_tensor, index, out_grad);
