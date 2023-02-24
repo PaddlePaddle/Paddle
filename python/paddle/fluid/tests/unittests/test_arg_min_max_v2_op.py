@@ -300,6 +300,145 @@ for op_type in ['argmin', 'argmax']:
     create_test_case(op_type)
 
 
+def create_test_case1(op_type):
+    class ArgMaxMinTestCase(unittest.TestCase):
+        def setUp(self):
+            np.random.seed(123)
+            self.input_data = np.random.rand(10, 10).astype("float16")
+            self.places = []
+            self.places.append(fluid.CPUPlace())
+            if core.is_compiled_with_cuda():
+                self.places.append(paddle.CUDAPlace(0))
+            self.op = eval("paddle.%s" % (op_type))
+            self.numpy_op = eval("np.%s" % (op_type))
+
+        def run_static(self, place):
+            paddle.enable_static()
+            with paddle.static.program_guard(paddle.static.Program()):
+                data_var = paddle.static.data(
+                    name="data", shape=[10, 10], dtype="float32"
+                )
+                op = eval("paddle.%s" % (op_type))
+                result = op(data_var)
+                exe = paddle.static.Executor(place)
+                result_data = exe.run(
+                    feed={"data": self.input_data}, fetch_list=[result]
+                )
+                expected_data = self.numpy_op(self.input_data)
+                self.assertTrue(
+                    (result_data == np.array(expected_data)).all(), True
+                )
+
+            with paddle.static.program_guard(paddle.static.Program()):
+                data_var = paddle.static.data(
+                    name="data", shape=[10, 10], dtype="float32"
+                )
+                op = eval("paddle.%s" % (op_type))
+                result = op(data_var, axis=1)
+                exe = paddle.static.Executor(place)
+                result_data = exe.run(
+                    feed={"data": self.input_data}, fetch_list=[result]
+                )
+                expected_data = self.numpy_op(self.input_data, axis=1)
+                self.assertTrue((result_data == expected_data).all(), True)
+
+            with paddle.static.program_guard(paddle.static.Program()):
+                data_var = paddle.static.data(
+                    name="data", shape=[10, 10], dtype="float32"
+                )
+                op = eval("paddle.%s" % (op_type))
+                result = op(data_var, axis=-1)
+                exe = paddle.static.Executor(place)
+                result_data = exe.run(
+                    feed={"data": self.input_data}, fetch_list=[result]
+                )
+                expected_data = self.numpy_op(self.input_data, axis=-1)
+                self.assertTrue((result_data == expected_data).all(), True)
+
+            with paddle.static.program_guard(paddle.static.Program()):
+                data_var = paddle.static.data(
+                    name="data", shape=[10, 10], dtype="float32"
+                )
+
+                op = eval("paddle.%s" % (op_type))
+                result = op(data_var, axis=-1, keepdim=True)
+                exe = paddle.static.Executor(place)
+                result_data = exe.run(
+                    feed={"data": self.input_data}, fetch_list=[result]
+                )
+                expected_data = self.numpy_op(self.input_data, axis=-1).reshape(
+                    (10, 1)
+                )
+                self.assertTrue((result_data == expected_data).all(), True)
+
+            with paddle.static.program_guard(paddle.static.Program()):
+                op = eval("paddle.%s" % (op_type))
+                data_var = paddle.static.data(
+                    name="data", shape=[10, 10], dtype="float32"
+                )
+                result = op(data_var, axis=-1, name="test_arg_api")
+                self.assertTrue("test_arg_api" in result.name)
+
+        def run_dygraph(self, place):
+            paddle.disable_static(place)
+            op = eval("paddle.%s" % (op_type))
+            data_tensor = paddle.to_tensor(self.input_data)
+
+            # case 1
+            result_data = op(data_tensor)
+            excepted_data = self.numpy_op(self.input_data)
+            self.assertTrue((result_data.numpy() == excepted_data).all(), True)
+
+            # case 2
+            result_data = op(data_tensor, axis=1)
+            excepted_data = self.numpy_op(self.input_data, axis=1)
+            self.assertTrue((result_data.numpy() == excepted_data).all(), True)
+
+            # case 3
+            result_data = op(data_tensor, axis=-1)
+            excepted_data = self.numpy_op(self.input_data, axis=-1)
+            self.assertTrue((result_data.numpy() == excepted_data).all(), True)
+
+            # case 4
+            result_data = op(data_tensor, axis=-1, keepdim=True)
+            excepted_data = self.numpy_op(self.input_data, axis=-1)
+            excepted_data = excepted_data.reshape((10, 1))
+            self.assertTrue((result_data.numpy() == excepted_data).all(), True)
+
+            # case 5
+            result_data = op(data_tensor, axis=-1, keepdim=True, dtype="int32")
+            self.assertTrue(result_data.numpy().dtype == np.int32)
+
+            # case for dim 4, 5, 6, for test case coverage
+            input_data = np.random.rand(5, 5, 5, 5)
+            excepted_data = self.numpy_op(input_data, axis=0)
+            result_data = op(paddle.to_tensor(input_data), axis=0)
+            self.assertTrue((result_data.numpy() == excepted_data).all(), True)
+
+            input_data = np.random.rand(4, 4, 4, 4, 4)
+            excepted_data = self.numpy_op(input_data, axis=0)
+            result_data = op(paddle.to_tensor(input_data), axis=0)
+            self.assertTrue((result_data.numpy() == excepted_data).all(), True)
+
+            input_data = np.random.rand(3, 3, 3, 3, 3, 3)
+            excepted_data = self.numpy_op(input_data, axis=0)
+            result_data = op(paddle.to_tensor(input_data), axis=0)
+            self.assertTrue((result_data.numpy() == excepted_data).all(), True)
+
+        def test_case(self):
+            for place in self.places:
+                self.run_static(place)
+                self.run_dygraph(place)
+
+    cls_name = "ArgMaxMinTestCase_{}".format(op_type)
+    ArgMaxMinTestCase.__name__ = cls_name
+    globals()[cls_name] = ArgMaxMinTestCase
+
+
+for op_type in ['argmin', 'argmax']:
+    create_test_case1(op_type)
+
+
 class TestArgMinMaxOpError(unittest.TestCase):
     def test_errors(self):
         paddle.enable_static()
