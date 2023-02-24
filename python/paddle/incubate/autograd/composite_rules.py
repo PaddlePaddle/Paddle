@@ -275,11 +275,10 @@ def silu_composite(x):
 
 
 @REGISTER_COMPOSITE('fill_any_like')
-def fill_any_like(x, fill_value, dtype=None, name=None):
+def fill_any_like(x, fill_value, dtype, place=None):
     """define composite rule of op full_like."""
     """op name: full_like  op type name: fill_any_like."""
-    if dtype is None:
-        dtype = x.dtype
+    """arg place is not used, add it here to keep same as python api."""
     dtype = dtypes.dtype(dtype)
-    val = full(x.shape, fill_value, dtype, name)
+    val = full(x.shape, fill_value, dtype, place)
     return val
