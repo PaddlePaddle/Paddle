@@ -61,6 +61,13 @@ def composite_batchnorm(
     trainable_statistics,
 ):
     """define composite rule of op batch_norm"""
+    is_amp = False
+    from paddle.fluid.data_feeder import convert_dtype
+
+    if convert_dtype(x.dtype) == "float16":
+        print("Running batch_norm in amp")
+        is_amp = True
+        x = cast(x, "float32")
 
     feature_axis = (
         1 if data_layout in ('NC', 'NCL', 'NCHW', 'NCHWD') else len(x.shape) - 1
@@ -99,6 +106,8 @@ def composite_batchnorm(
             reshape(run_var, stats_shape) + epsilon
         )
     y = reshape(scale, stats_shape) * x_hat + reshape(bias, stats_shape)
+    if is_amp:
+        y = cast(y, "float16")
 
     # add op assign to detach tensor in void unsafe change outside the rule.
     batch_mean_ = assign(reshape(batch_mean, run_mean.shape))
