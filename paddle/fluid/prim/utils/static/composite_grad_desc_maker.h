@@ -29,21 +29,25 @@
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/fluid/prim/utils/static/static_global_utils.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/flags.h"
+
+DECLARE_string(tensor_operants_mode);
+
 namespace paddle {
 namespace prim {
 
 /*
   This functor class is responsible for creating the gradient ops for the given
-  operator fwd_op. After it is called (through operator()), the pairs of
-  (gradient variable, corresponding input variable of fwd_op) will be added to
-  grad_to_var. If an input variable of fwd_op is contained in no_grad_set, its
+  operator fwd_op_. After it is called (through operator()), the pairs of
+  (gradient variable, corresponding input variable of fwd_op_) will be added to
+  grad_to_var. If an input variable of fwd_op_ is contained in no_grad_set, its
   gradient variable will be ignored or kEmptyVarName depending on the template
   argument DropEmptyIG in the derived classes.
  */
 
-class GradCompositeOpMakerBase {
+class CompositeGradOpMakerBase {
  public:
-  explicit GradCompositeOpMakerBase(
+  explicit CompositeGradOpMakerBase(
       const framework::OpDesc& fwd_op,
       const std::unordered_set<std::string>& no_grad_set,
       std::unordered_map<std::string, std::string>* grad_to_var,
@@ -57,13 +61,17 @@ class GradCompositeOpMakerBase {
         acting_program_(framework::ProgramDesc()),
         grad_block_(grad_block) {
     // TODO(jiabin): This should always execute by one thread...
+    VLOG(6) << "Constructing Composite Grad func for " << fwd_op_.Type()
+            << "_grad ";
+    FLAGS_tensor_operants_mode = "static";
     StaticCompositeContext::Instance().SetBlock(
         acting_program_.MutableBlock(0));
   }
 
-  virtual ~GradCompositeOpMakerBase() = default;
+  virtual ~CompositeGradOpMakerBase() = default;
 
   virtual std::vector<std::unique_ptr<framework::OpDesc>> operator()() {
+    VLOG(3) << "Runing Composite Grad func for " << fwd_op_.Type() << "_grad ";
     this->Apply();
     std::vector<std::unique_ptr<framework::OpDesc>> ops;
     // TODO(jiabin): Support multiple blocks later
@@ -106,34 +114,40 @@ class GradCompositeOpMakerBase {
   paddle::optional<paddle::experimental::Tensor> GetOptionalSingleForwardOutput(
       const std::string& name) {
     paddle::optional<paddle::experimental::Tensor> output_opt;
-    framework::VarDesc* output_desc = this->SingleForwardOutput(name);
-    if (!output_desc) return output_opt;
-    paddle::experimental::Tensor output =
-        paddle::experimental::Tensor(std::make_shared<DescTensor>(output_desc));
-    output_opt = paddle::make_optional<paddle::experimental::Tensor>(output);
+    if (fwd_op_.Outputs().find(name) != fwd_op_.Outputs().end()) {
+      framework::VarDesc* output_desc = this->SingleForwardOutput(name);
+      if (!output_desc) return output_opt;
+      paddle::experimental::Tensor output = paddle::experimental::Tensor(
+          std::make_shared<DescTensor>(output_desc));
+      output_opt = paddle::make_optional<paddle::experimental::Tensor>(output);
+    }
     return output_opt;
   }
 
   paddle::optional<paddle::experimental::Tensor> GetOptionalSingleForwardInput(
       const std::string& name) {
     paddle::optional<paddle::experimental::Tensor> input_opt;
-    framework::VarDesc* input_desc = this->SingleForwardInput(name);
-    if (!input_desc) return input_opt;
-    paddle::experimental::Tensor input =
-        paddle::experimental::Tensor(std::make_shared<DescTensor>(input_desc));
-    input_opt = paddle::make_optional<paddle::experimental::Tensor>(input);
+    if (fwd_op_.Inputs().find(name) != fwd_op_.Inputs().end()) {
+      framework::VarDesc* input_desc = this->SingleForwardInput(name);
+      if (!input_desc) return input_opt;
+      paddle::experimental::Tensor input = paddle::experimental::Tensor(
+          std::make_shared<DescTensor>(input_desc));
+      input_opt = paddle::make_optional<paddle::experimental::Tensor>(input);
+    }
     return input_opt;
   }
 
   paddle::optional<paddle::experimental::Tensor> GetOptionalSingleOutputGrad(
       const std::string& name) {
     paddle::optional<paddle::experimental::Tensor> output_grad_opt;
-    framework::VarDesc* output_grad_desc = this->SingleOutputGrad(name);
-    if (!output_grad_desc) return output_grad_opt;
-    paddle::experimental::Tensor output_grad = paddle::experimental::Tensor(
-        std::make_shared<DescTensor>(output_grad_desc));
-    output_grad_opt =
-        paddle::make_optional<paddle::experimental::Tensor>(output_grad);
+    if (fwd_op_.Outputs().find(name) != fwd_op_.Outputs().end()) {
+      framework::VarDesc* output_grad_desc = this->SingleOutputGrad(name);
+      if (!output_grad_desc) return output_grad_opt;
+      paddle::experimental::Tensor output_grad = paddle::experimental::Tensor(
+          std::make_shared<DescTensor>(output_grad_desc));
+      output_grad_opt =
+          paddle::make_optional<paddle::experimental::Tensor>(output_grad);
+    }
     return output_grad_opt;
   }
 
@@ -318,6 +332,7 @@ class GradCompositeOpMakerBase {
       grad_var_name = framework::kEmptyVarName;
       if (drop_empty_grad) return nullptr;
     }
+
     if (original_block_->HasVar(grad_var_name)) {
       // Copy Var from original block to active block, or create a new one.
       CopyVarFromOrig(grad_var_name);
@@ -333,6 +348,12 @@ class GradCompositeOpMakerBase {
     auto grad_var_name = framework::GradVarName(var_name);
     (*this->grad_to_var_)[grad_var_name] = var_name;
     VLOG(8) << "Valid gradients: " << grad_var_name;
+
+    auto target_grad = StaticCompositeContext::Instance().GetTargetGradName();
+    if (target_grad.find(grad_var_name) != target_grad.end()) {
+      grad_var_name = target_grad.at(grad_var_name);
+    }
+
     if (original_block_->HasVar(grad_var_name)) {
       // Copy Var from original block to active block, or create a new one.
       CopyVarFromOrig(grad_var_name);
@@ -421,7 +442,11 @@ class GradCompositeOpMakerBase {
                      return g_name;
                    });
     std::vector<framework::VarDesc*> grad_out;
-    for (const auto& name : ret_val) {
+    for (auto name : ret_val) {
+      auto target_grad = StaticCompositeContext::Instance().GetTargetGradName();
+      if (target_grad.find(name) != target_grad.end()) {
+        name = target_grad.at(name);
+      }
       // TODO(jiabin): Will this cause fill zeros error?
       if (original_block_->HasVar(name)) {
         // Copy Var from original block to active block, or create a new one.
@@ -438,16 +463,44 @@ class GradCompositeOpMakerBase {
 
   framework::VarDesc* SingleForwardInput(const std::string& name) const {
     // Copy Var from original block to active block, or create a new one.
-    CopyVarFromOrig(fwd_op_.Input(name).at(0));
-    return StaticCompositeContext::Instance().GetBlock()->FindVar(
-        fwd_op_.Input(name).at(0));
+    auto fwd_in_names = fwd_op_.Input(name);
+    if (!fwd_in_names.empty()) {
+      PADDLE_ENFORCE_EQ(
+          fwd_in_names.size(),
+          1,
+          phi::errors::InvalidArgument(
+              "When calling SingleForward for op: %s's Input: %s, we should "
+              "only get one input tensor, but we got %d instead.",
+              fwd_op_.Type(),
+              name,
+              fwd_in_names.size()));
+      CopyVarFromOrig(fwd_op_.Input(name).at(0));
+      return StaticCompositeContext::Instance().GetBlock()->FindVar(
+          fwd_op_.Input(name).at(0));
+    } else {
+      return nullptr;
+    }
   }
 
   framework::VarDesc* SingleForwardOutput(const std::string& name) const {
     // Copy Var from original block to active block, or create a new one.
-    CopyVarFromOrig(fwd_op_.Output(name).at(0));
-    return StaticCompositeContext::Instance().GetBlock()->FindVar(
-        fwd_op_.Output(name).at(0));
+    auto fwd_out_names = fwd_op_.Output(name);
+    if (!fwd_out_names.empty()) {
+      PADDLE_ENFORCE_EQ(
+          fwd_out_names.size(),
+          1,
+          phi::errors::InvalidArgument(
+              "When calling SingleForward for op: %s's Output: %s, we should "
+              "only get one input tensor, but we got %d instead.",
+              fwd_op_.Type(),
+              name,
+              fwd_out_names.size()));
+      CopyVarFromOrig(fwd_op_.Output(name).at(0));
+      return StaticCompositeContext::Instance().GetBlock()->FindVar(
+          fwd_op_.Output(name).at(0));
+    } else {
+      return nullptr;
+    }
   }
 
   std::vector<framework::VarDesc*> MultiForwardInput(

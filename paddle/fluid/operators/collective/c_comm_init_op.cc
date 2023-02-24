@@ -84,15 +84,6 @@ class CCommInitOp : public framework::OperatorBase {
     int nranks = Attr<int>("nranks");
     int rid = Attr<int>("ring_id");
 
-#if defined(PADDLE_WITH_XPU_BKCL)
-    PADDLE_ENFORCE_EQ(
-        rid,
-        0,
-        platform::errors::OutOfRange(
-            "Ring id must equal 0 in multi Kunlun cards training, but got %d",
-            rid));
-#endif
-
     int device_id = place.device;
     if (Attr<int>("device_id") >= 0) {
       device_id = Attr<int>("device_id");

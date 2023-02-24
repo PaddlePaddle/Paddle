@@ -138,6 +138,7 @@ set(PYBIND_SRCS
     generator_py.cc
     communication.cc
     cuda_streams_py.cc
+    custom_device_py.cc
     xpu_streams_py.cc
     jit.cc
     auto_parallel_py.cc)
@@ -496,6 +497,12 @@ if(WITH_PYTHON)
     list(APPEND PYBIND_DEPS python)
     list(APPEND PYBIND_DEPS custom_operator)
     list(APPEND PYBIND_DEPS custom_operator_node)
+    list(APPEND PYBIND_DEPS tensor_api)
+    list(APPEND PYBIND_DEPS operants_manager)
+    list(APPEND PYBIND_DEPS eager_tensor_operants)
+    list(APPEND PYBIND_DEPS static_tensor_operants)
+    list(APPEND PYBIND_DEPS phi_tensor_operants)
+    list(APPEND PYBIND_DEPS pybind_util)
   endif()
 
   # On Linux, cc_library(paddle SHARED ..) will generate the libpaddle.so,

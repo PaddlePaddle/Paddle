@@ -190,6 +190,32 @@ class TestUniqueOpAxisNone(TestUniqueOp):
         }
 
 
+class TestUniqueOpAxisNeg(TestUniqueOp):
+    def init_config(self):
+        self.inputs = {'X': np.random.random((6, 1, 8)).astype('float64')}
+        unique, indices, inverse, counts = np.unique(
+            self.inputs['X'],
+            return_index=True,
+            return_inverse=True,
+            return_counts=True,
+            axis=-1,
+        )
+        self.attrs = {
+            'dtype': int(core.VarDesc.VarType.INT32),
+            "return_index": True,
+            "return_inverse": True,
+            "return_counts": True,
+            "axis": [-1],
+            "is_sorted": True,
+        }
+        self.outputs = {
+            'Out': unique,
+            'Indices': indices,
+            "Index": inverse,
+            "Counts": counts,
+        }
+
+
 class TestUniqueOpAxis1(TestUniqueOp):
     def init_config(self):
         self.inputs = {'X': np.random.random((3, 8, 8)).astype('float64')}

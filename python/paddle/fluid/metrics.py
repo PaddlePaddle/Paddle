@@ -19,7 +19,6 @@ import numpy as np
 import copy
 
 from .layer_helper import LayerHelper
-from .initializer import Constant
 from . import unique_name
 from .framework import Program, Variable, program_guard
 from . import layers

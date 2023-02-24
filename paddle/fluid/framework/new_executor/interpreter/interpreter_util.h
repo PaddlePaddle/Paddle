@@ -91,8 +91,8 @@ bool BuildOpFuncList(const platform::Place& place,
                      bool use_local_scope = true);
 
 void BuildVariableScope(const framework::BlockDesc& block,
-                        VariableScope* var_scope,
-                        bool use_local_scope = true);
+                        const ExecutionConfig& execution_config,
+                        VariableScope* var_scope);
 
 void LogDeviceMemoryStats(const platform::Place& place);
 

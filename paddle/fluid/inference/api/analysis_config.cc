@@ -672,22 +672,8 @@ void AnalysisConfig::EnableMkldnnInt8(
 #ifdef PADDLE_WITH_MKLDNN
   use_mkldnn_int8_ = true;
   use_fc_padding_ = false;
-  if (!op_list.empty()) {
-    for (auto &type : op_list) {
-      if (!quantize_enabled_op_types_.count(type)) {
-        LOG(ERROR) << "There are unsupported operators in the configured "
-                      "quantization operator list. The unsupported operator "
-                      "is: "
-                   << type;
-        use_mkldnn_int8_ = false;
-        break;
-      }
-    }
-    if (use_mkldnn_int8_) {
-      quantize_enabled_op_types_.clear();
-      quantize_enabled_op_types_.insert(op_list.begin(), op_list.end());
-    }
-  }
+  if (!op_list.empty())
+    quantize_enabled_op_types_.insert(op_list.begin(), op_list.end());
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnInt8";
   use_mkldnn_int8_ = false;

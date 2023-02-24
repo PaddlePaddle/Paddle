@@ -22,6 +22,12 @@ from paddle.distributed.fleet.utils.log_util import logger
 from paddle.fluid.framework import _global_flags
 from paddle.fluid.wrapped_decorator import wrap_decorator
 
+protobuf_version = google.protobuf.__version__
+if protobuf_version >= "4.21.0":
+    import google._upb._message as _message
+else:
+    import google.protobuf.pyext._message as _message
+
 __all__ = []
 
 non_auto_func_called = True
@@ -104,7 +110,6 @@ class DistributedJobInfo:
         self.job_info.strategy = dist_strategy
 
 
-ReduceStrategyFluid = paddle.static.BuildStrategy.ReduceStrategy
 ReduceStrategyFleet = int
 
 
@@ -261,7 +266,7 @@ class DistributedStrategy:
         for f in fields:
             value = getattr(self.strategy.build_strategy, f.name)
             if f.name == 'reduce_strategy':
-                value = ReduceStrategyFluid(value)
+                value = paddle.static.BuildStrategy.ReduceStrategy(value)
             setattr(build_strategy, f.name, value)
         return build_strategy
 
@@ -2498,7 +2503,7 @@ class DistributedStrategy:
                             for ff in config_fields:
                                 if isinstance(
                                     getattr(my_configs, ff.name),
-                                    google.protobuf.pyext._message.RepeatedScalarContainer,
+                                    _message.RepeatedScalarContainer,
                                 ):
                                     values = getattr(my_configs, ff.name)
                                     for i, v in enumerate(values):

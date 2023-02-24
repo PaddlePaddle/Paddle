@@ -341,6 +341,7 @@ void LogspaceInferMeta(const MetaTensor& start,
                        const MetaTensor& stop,
                        const MetaTensor& number,
                        const MetaTensor& base,
+                       DataType dtype,
                        MetaTensor* out);
 
 void MergedAdamInferMeta(
@@ -536,6 +537,31 @@ void IndexPutInferMeta(const MetaTensor& x,
                        const std::vector<const MetaTensor*>& indices,
                        const MetaTensor& value,
                        MetaTensor* out);
+
+void FusedAdamInferMeta(
+    const std::vector<const MetaTensor*>& params,
+    const std::vector<const MetaTensor*>& grads,
+    const MetaTensor& learning_rate,
+    const std::vector<const MetaTensor*>& moments1,
+    const std::vector<const MetaTensor*>& moments2,
+    const std::vector<const MetaTensor*>& beta1_pows,
+    const std::vector<const MetaTensor*>& beta2_pows,
+    const paddle::optional<std::vector<const MetaTensor*>>& master_params,
+    const MetaTensor& skip_update,
+    const Scalar& beta1,
+    const Scalar& beta2,
+    const Scalar& epsilon,
+    int chunk_size,
+    float weight_decay,
+    bool use_adamw,
+    bool multi_precision,
+    bool use_global_beta_pow,
+    std::vector<MetaTensor*> params_out,
+    std::vector<MetaTensor*> moments1_out,
+    std::vector<MetaTensor*> moments2_out,
+    std::vector<MetaTensor*> beta1_pows_out,
+    std::vector<MetaTensor*> beta2_pows_out,
+    std::vector<MetaTensor*> master_params_out);
 
 void MoeInferMeta(const MetaTensor& x,
                   const MetaTensor& gate,

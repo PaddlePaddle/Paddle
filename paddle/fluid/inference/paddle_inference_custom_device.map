@@ -38,9 +38,8 @@
 			*paddle::ResourceManager*;
 			*paddle::GPUContextResource*;
 			*paddle::CPUContextResource*;
-
-			*paddle::LoadCustomOperatorLib*;
-			*paddle::RegisterAllCustomOperator*;
+			*paddle::OpMetaInfoBuilder*;
+			*paddle::CustomOpKernelContext*;
 
 			/* ut needs the following symbol, we need to modify all the ut to hidden such symbols */
 
@@ -67,6 +66,7 @@
 			/* *paddle::framework*; */
 			*paddle::framework::InterpreterCore*;
 			*paddle::framework::Executor*;
+			*paddle::framework::proto*;
 		};
 
 		/* The following symbols need to reconsider. */

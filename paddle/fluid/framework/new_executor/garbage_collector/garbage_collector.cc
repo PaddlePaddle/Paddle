@@ -60,7 +60,16 @@ CreateInterpreterCoreGarbageCollector(
       return std::unique_ptr<InterpreterCoreGarbageCollector>(
           new InterpreterCoreEventGarbageCollector(vec_instruction));
     }
-  } else if (platform::is_xpu_place(place) || platform::is_ipu_place(place)) {
+  } else if (platform::is_xpu_place(place)) {
+    // Because there is no multi-stream on XPU device, fast GC can
+    // be used.
+    // Previously, XPU used no_event GC. But `Wait` in no_event GC
+    // may cause GC delayed, causing no enough memory problem.
+    // TODO(pangyoki): Multi-stream allocator and multi-stream GC
+    // are needed to be adapted for XPU.
+    return std::unique_ptr<InterpreterCoreGarbageCollector>(
+        new InterpreterCoreFastGarbageCollector());
+  } else if (platform::is_ipu_place(place)) {
     return std::unique_ptr<InterpreterCoreGarbageCollector>(
         new InterpreterCoreNoEventGarbageCollector());
   } else {

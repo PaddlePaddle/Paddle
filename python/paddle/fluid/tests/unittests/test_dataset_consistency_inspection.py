@@ -21,8 +21,8 @@ import tempfile
 import unittest
 
 import paddle
+import paddle.distributed.fleet as fleet
 import paddle.fluid as fluid
-import paddle.fluid.incubate.data_generator as dg
 
 # paddle.enable_static()
 # fluid.disable_dygraph()
@@ -51,7 +51,7 @@ query_schema = [
 ]
 
 
-class CTRDataset(dg.MultiSlotDataGenerator):
+class CTRDataset(fleet.MultiSlotDataGenerator):
     def __init__(self, mode):
         self.test = mode
 
