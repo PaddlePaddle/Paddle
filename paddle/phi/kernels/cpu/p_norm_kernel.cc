@@ -86,13 +86,17 @@ void PNormKernel(const Context& dev_ctx,
   // otherwise, Lp-norm = pow(sum(pow(|xr|, p)), 1/p)
   Eigen::DSizes<int, 1> rdim(1);
   if (porder == 0) {
-    norm.device(*place) = (xr != xr.constant(static_cast<T>(0))).template cast<T>().sum(rdim);
+    norm.device(*place) = 
+        (xr != xr.constant(static_cast<T>(0))).template cast<T>().sum(rdim);
   } else if (porder == INFINITY) {
     norm.device(*place) = xr.abs().maximum(rdim);
   } else if (porder == -INFINITY) {
     norm.device(*place) = xr.abs().minimum(rdim);
   } else {
-    norm.device(*place) = xr.abs().pow(static_cast<T>(porder)).sum(rdim).pow(static_cast<T>(1.0f / porder));
+    norm.device(*place) = xr.abs()
+                              .pow(static_cast<T>(porder))
+                              .sum(rdim)
+                              .pow(static_cast<T>(1.0f / porder));
   }
 }
 }  // namespace phi
