@@ -130,8 +130,8 @@ Tensor cast<DescTensor>(const Tensor& x, DataType dtype) {
                {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
   op->SetOutput(
       "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
-  op->SetAttr("in_dtype", static_cast<int>(x.dtype()));
-  op->SetAttr("out_dtype", static_cast<int>(dtype));
+  op->SetAttr("in_dtype", paddle::framework::TransToProtoVarType(x.dtype()));
+  op->SetAttr("out_dtype", paddle::framework::TransToProtoVarType(dtype));
   op->CheckAttrs();
   op->InferVarType(block);
   op->InferShape(*block);

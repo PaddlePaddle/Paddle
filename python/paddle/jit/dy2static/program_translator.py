@@ -953,13 +953,6 @@ class ConcreteProgram:
         self.function = function
         self.kwargs = kwargs
 
-    @switch_to_static_graph
-    def _to_prim(self):
-        # TODO(Aurelius84): Fix this cycle import problem
-        from paddle.incubate.autograd.primapi import to_prim
-
-        to_prim(self.main_program.blocks)
-
     @staticmethod
     @switch_to_static_graph
     def from_func_spec(
@@ -1189,9 +1182,28 @@ class ProgramCache:
                             var.name, var.shape
                         )
                     )
-        if not _in_amp_guard() and not _in_pure_fp16_guard():
-            concrete_program._to_prim()
-        return concrete_program, partial_program_from(concrete_program)
+
+        custom_vjps = set()
+        if core._is_fwd_prim_enabled() and core._is_bwd_prim_enabled():
+            custom_vjps = {
+                op.type
+                for op in concrete_program.main_program.block(0).ops
+                if core.has_comp_grad_op_maker(op.type)
+            }
+
+        if core._is_fwd_prim_enabled():
+            if not _in_amp_guard() and not _in_pure_fp16_guard():
+                _to_prim(
+                    concrete_program.main_program.blocks, exclude=custom_vjps
+                )
+
+        partial_program = partial_program_from(concrete_program)
+
+        if core._is_fwd_prim_enabled() and len(custom_vjps) != 0:
+            if not _in_amp_guard() and not _in_pure_fp16_guard():
+                _to_prim(partial_program.forward_program.blocks)
+
+        return concrete_program, partial_program
 
     def __getitem__(self, item):
         if not isinstance(item, CacheKey):
@@ -1660,3 +1672,11 @@ def enable_to_static(enable_to_static_bool):
     )
     _program_trans = ProgramTranslator()
     _program_trans.enable(enable_to_static_bool)
+
+
+@switch_to_static_graph
+def _to_prim(blocks, exclude=frozenset()):
+    # TODO(Aurelius84): Fix this cycle import problem
+    from paddle.incubate.autograd import primapi
+
+    primapi.to_prim(blocks, exclude=exclude)
