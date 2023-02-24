@@ -550,7 +550,7 @@ def _lower(block, reverse, blacklist):
     block._sync_with_cpp()
 
 
-def _lower_composite(block, blacklist=[]):
+def _lower_composite(block, blacklist=frozenset()):
     # Some functions which are only used in _lower.
     def bind(args, to_bind, value_table):
         for i in range(len(args)):
