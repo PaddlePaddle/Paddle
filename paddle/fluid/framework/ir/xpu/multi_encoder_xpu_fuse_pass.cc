@@ -625,9 +625,9 @@ class MultiEncoderXPUFusePass : public FusePassBase {
   // 2. Concat q_w, k_w, v_w
   // 3. Generate qkv_w_max tensor
   // 4. Quant qkv_w to int16
-  void PrepareQKVWeight(phi::DenseTensor* q_w,
-                        phi::DenseTensor* k_w,
-                        phi::DenseTensor* v_w,
+  void PrepareQKVWeight(const phi::DenseTensor& q_w,
+                        const phi::DenseTensor& k_w,
+                        const phi::DenseTensor& v_w,
                         phi::DenseTensor* qkv_w,
                         phi::DenseTensor* qkv_w_max) const;
 
@@ -686,25 +686,29 @@ void MultiEncoderXPUFusePass::ApplyImpl(ir::Graph* graph) const {
 }
 
 void MultiEncoderXPUFusePass::PrepareQKVWeight(
-    phi::DenseTensor* q_w,
-    phi::DenseTensor* k_w,
-    phi::DenseTensor* v_w,
+    const phi::DenseTensor& q_w,
+    const phi::DenseTensor& k_w,
+    const phi::DenseTensor& v_w,
     phi::DenseTensor* qkv_w,
     phi::DenseTensor* qkv_w_max) const {
   // Transpose
-  Transpose2D(q_w);
-  Transpose2D(k_w);
-  Transpose2D(v_w);
+  phi::DenseTensor q_w_t;
+  phi::DenseTensor k_w_t;
+  phi::DenseTensor v_w_t;
+  Assign(q_w, &q_w_t);
+  Assign(k_w, &k_w_t);
+  Assign(v_w, &v_w_t);
+  Transpose2D(&q_w_t);
+  Transpose2D(&k_w_t);
+  Transpose2D(&v_w_t);
 
   // Concat
-  auto q_w_dims = q_w->dims();
-  auto k_w_dims = k_w->dims();
-  auto v_w_dims = v_w->dims();
-  qkv_w->Resize(DDim({q_w_dims[0] + k_w_dims[0] + v_w_dims[0], q_w_dims[1]}));
-  qkv_w->set_type(q_w->type());
+  qkv_w->Resize(DDim(
+      {q_w_t.dims()[0] + k_w_t.dims()[0] + v_w_t.dims()[0], q_w_t.dims()[1]}));
+  qkv_w->set_type(q_w.type());
   auto* dev_ctx = static_cast<phi::CPUContext*>(
       platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
-  std::vector<const phi::DenseTensor*> in_tensors{q_w, k_w, v_w};
+  std::vector<const phi::DenseTensor*> in_tensors{&q_w_t, &k_w_t, &v_w_t};
   phi::ConcatKernel<float>(*dev_ctx, in_tensors, 0, qkv_w);
 
   // Quant to int16
@@ -844,6 +848,9 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
 
     auto* block = q_matmul->Op()->Block();
     auto* scope = param_scope();
+    bool enable_fp16 =
+        scope->FindVar(q_matmul_w->Name())->Get<phi::DenseTensor>().dtype() ==
+        phi::DataType::FLOAT16;
 
     // Prepare q,k,v weight
     std::string q_w_name = q_matmul_w->Name();
@@ -861,17 +868,10 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
     auto* qkv_w_max = graph->CreateVarNode(&qkv_w_max_desc);
     auto* qkv_w_max_var = block->Var(qkv_w_max_name);
     qkv_w_max_var->SetPersistable(true);
-    auto* q_w_tensor = scope->FindVar(q_w_name)->GetMutable<phi::DenseTensor>();
-    auto* k_w_tensor = scope->FindVar(k_w_name)->GetMutable<phi::DenseTensor>();
-    auto* v_w_tensor = scope->FindVar(v_w_name)->GetMutable<phi::DenseTensor>();
-    bool enable_fp16 = q_w_tensor->dtype() == phi::DataType::FLOAT16;
-    CastToFp32(q_w_tensor);
-    CastToFp32(k_w_tensor);
-    CastToFp32(v_w_tensor);
     PrepareQKVWeight(
-        q_w_tensor,
-        k_w_tensor,
-        v_w_tensor,
+        scope->FindVar(q_w_name)->Get<phi::DenseTensor>(),
+        scope->FindVar(k_w_name)->Get<phi::DenseTensor>(),
+        scope->FindVar(v_w_name)->Get<phi::DenseTensor>(),
         scope->Var(qkv_w_name)->GetMutable<phi::DenseTensor>(),
         scope->Var(qkv_w_max_name)->GetMutable<phi::DenseTensor>());
 
