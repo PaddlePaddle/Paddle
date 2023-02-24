@@ -124,8 +124,9 @@ class API_Test_Nansum(unittest.TestCase):
                     (out4_np == out4_ref).all(),
                     msg='nansum output is wrong, out =' + str(out4_np),
                 )
+
         self.assertRaises(NotImplementedError, run1)
-        
+
     def test_dygraph(self):
         x = np.array(
             [[float('nan'), 3, 5, 9], [1, 2, float('-nan'), 7]]
