@@ -26,4 +26,5 @@
 - tile
 - transpose
 - subtract
+- pad
 - put_along_axis
