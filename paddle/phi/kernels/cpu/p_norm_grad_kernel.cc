@@ -15,7 +15,6 @@
 #include "paddle/phi/kernels/p_norm_grad_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
@@ -93,17 +92,11 @@ void PNormGradKernel(const Context& dev_ctx,
                         xr.sign() * norm_dy.broadcast(bcast);
   } else {
     dx.device(*place) =
-        (xr.abs()).pow(static_cast<T>(porder - 1.0f)) /
-        ((norm.broadcast(bcast)).pow(static_cast<T>(porder - 1.0f)) +
-         xr.constant(eps));
+        (xr.abs()).pow(porder - 1.0f) /
+        ((norm.broadcast(bcast)).pow(porder - 1.0f) + xr.constant(eps));
     dx.device(*place) = dx * norm_dy.broadcast(bcast) * xr.sign();
   }
 }
 }  // namespace phi
-PD_REGISTER_KERNEL(p_norm_grad,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::PNormGradKernel,
-                   phi::dtype::float16,
-                   float,
-                   double) {}
+PD_REGISTER_KERNEL(
+    p_norm_grad, CPU, ALL_LAYOUT, phi::PNormGradKernel, float, double) {}

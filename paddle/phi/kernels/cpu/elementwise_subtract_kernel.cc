@@ -16,7 +16,6 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
@@ -45,5 +44,4 @@ PD_REGISTER_KERNEL(subtract_raw,
                    int64_t,
                    complex64,
                    complex128,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::dtype::bfloat16) {}

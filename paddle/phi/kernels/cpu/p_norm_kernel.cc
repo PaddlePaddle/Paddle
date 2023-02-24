@@ -15,7 +15,6 @@
 #include "paddle/phi/kernels/p_norm_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -86,24 +85,14 @@ void PNormKernel(const Context& dev_ctx,
   // otherwise, Lp-norm = pow(sum(pow(|xr|, p)), 1/p)
   Eigen::DSizes<int, 1> rdim(1);
   if (porder == 0) {
-    norm.device(*place) =
-        (xr != xr.constant(static_cast<T>(0))).template cast<T>().sum(rdim);
+    norm.device(*place) = (xr != xr.constant(0)).template cast<T>().sum(rdim);
   } else if (porder == INFINITY) {
     norm.device(*place) = xr.abs().maximum(rdim);
   } else if (porder == -INFINITY) {
     norm.device(*place) = xr.abs().minimum(rdim);
   } else {
-    norm.device(*place) = xr.abs()
-                              .pow(static_cast<T>(porder))
-                              .sum(rdim)
-                              .pow(static_cast<T>(1.0f / porder));
+    norm.device(*place) = xr.abs().pow(porder).sum(rdim).pow(1.0f / porder);
   }
 }
 }  // namespace phi
-PD_REGISTER_KERNEL(p_norm,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::PNormKernel,
-                   phi::dtype::float16,
-                   float,
-                   double) {}
+PD_REGISTER_KERNEL(p_norm, CPU, ALL_LAYOUT, phi::PNormKernel, float, double) {}
