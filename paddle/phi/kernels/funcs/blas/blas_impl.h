@@ -1171,23 +1171,48 @@ void Blas<DeviceContext>::MatMul(const phi::DenseTensor &mat_a,
                                    "should be same, please check your "
                                    "code."));
 
-  int M = dim_out[0];
-  int N = dim_out[1];
-  int K = !trans_a ? dim_a[1] : dim_a[0];
+  int M = dim_out[0];                      // 512
+  int N = dim_out[1];                      // 49
+  int K = !trans_a ? dim_a[1] : dim_a[0];  // 2048
 
   CBLAS_TRANSPOSE transA = !trans_a ? CblasNoTrans : CblasTrans;
   CBLAS_TRANSPOSE transB = !trans_b ? CblasNoTrans : CblasTrans;
 
-  this->GEMM(transA,
-             transB,
-             M,
-             N,
-             K,
-             alpha,
-             mat_a.data<T>(),
-             mat_b.data<T>(),
-             beta,
-             mat_out->data<T>());
+  const T *a = mat_a.data<T>();
+  const T *b = mat_b.data<T>();
+  T *c = mat_out->data<T>();
+
+  // caculate the matrix multiplication for a and b, output to c
+  for (int i = 0; i < M; i++) {
+    for (int j = 0; j < N; j++) {
+      T sum = 0;
+      for (int k = 0; k < K; k++) {
+        T a_value = !trans_a ? a[i * K + k] : a[k * K + i];
+        T b_value = !trans_b ? b[k * N + j] : b[j * K + k];
+        sum += a_value * b_value;
+      }
+      c[i * N + j] = sum;
+    }
+  }
+
+  // for (int m = 0; m < M; m++) {
+  //   for (int k = 0; k < K; k++) {
+  //     for (int n = 0; n < N; n++) {
+  //       c[m * N + n] += a[m * K + k] * b[k * N + n];
+  //     }
+  //   }
+  // }
+
+  // this->GEMM(transA,
+  //            transB,
+  //            M,
+  //            N,
+  //            K,
+  //            alpha,
+  //            mat_a.data<T>(),
+  //            mat_b.data<T>(),
+  //            beta,
+  //            mat_out->data<T>());
 }
 
 template <>
