@@ -173,3 +173,12 @@ PD_REGISTER_KERNEL(elementwise_pow_raw,
                    double,
                    int,
                    int64_t) {}
+
+PD_REGISTER_KERNEL(heaviside,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::HeavisideKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}

@@ -242,6 +242,7 @@ PD_REGISTER_BASE_KERNEL_NAME(elementwise_max, maximum);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_min, minimum);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_mod, remainder);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_floordiv, floor_divide);
+PD_REGISTER_BASE_KERNEL_NAME(elementwise_heaviside, heaviside);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_add_grad, add_grad);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_add_grad_grad, add_double_grad);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_add_triple_grad, add_triple_grad);
@@ -258,6 +259,7 @@ PD_REGISTER_BASE_KERNEL_NAME(elementwise_fmax_grad, fmax_grad);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_fmin_grad, fmin_grad);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_max_grad, maximum_grad);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_min_grad, minimum_grad);
+PD_REGISTER_BASE_KERNEL_NAME(elementwise_heaviside_grad, heaviside_grad);
 
 PD_REGISTER_ARG_MAPPING_FN(elementwise_add,
                            phi::ElementwiseAddOpArgumentMapping);
