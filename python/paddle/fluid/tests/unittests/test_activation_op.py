@@ -207,7 +207,7 @@ class TestSigmoid(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.01)
+        self.check_grad(['X'], 'Out', max_relative_error=0.01, check_prim=True)
 
 
 class TestSigmoid_ZeroDim(TestSigmoid):
@@ -244,11 +244,11 @@ class TestSigmoidBF16(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_prim=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out')
+        self.check_grad_with_place(place, ['X'], 'Out', check_prim=True)
 
 
 '''
