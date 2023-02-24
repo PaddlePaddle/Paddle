@@ -197,13 +197,13 @@ void AutoMixedPrecisionPass::SetDefaultBlacklist() const {
 }
 
 void AutoMixedPrecisionPass::Init(Graph* graph) const {
-  backend_ = Get<phi::Backend>("backend");
-  skip_pass_ = !(backend_ == phi::Backend::GPU ||  //
-                 backend_ == phi::Backend::XPU ||  //
-                 backend_ == phi::Backend::CUSTOM);
-
-  if (backend_ == phi::Backend::CUSTOM) {
-// transform Backend::CUSTOM to actual backend.
+  if (Has("enable_gpu_mixed") && Get<bool>("enable_gpu_mixed")) {
+    backend_ = phi::Backend::GPU;
+  } else if (Has("enable_xpu_mixed") && Get<bool>("enable_xpu_mixed")) {
+    backend_ = phi::Backend::XPU;
+  } else if (Has("enable_custom_device_mixed") &&
+             Get<bool>("enable_custom_device_mixed")) {
+    // transform Backend::CUSTOM to actual backend.
 // Here, we only consider one custom backend.
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     auto device_type = phi::DeviceManager::GetAllCustomDeviceTypes()[0];
@@ -217,6 +217,7 @@ void AutoMixedPrecisionPass::Init(Graph* graph) const {
         "Cannot enable custom_device_mixed."));
 #endif
   }
+  skip_pass_ = backend_ == phi::Backend::UNDEFINED;
 
   low_precision_ = static_cast<phi::DataType>(Get<int>("mixed_precision_mode"));
 
@@ -227,7 +228,9 @@ void AutoMixedPrecisionPass::Init(Graph* graph) const {
     VLOG(4) << " - " << name;
   }
 
-  keep_io_types_ = Has("keep_io_types") && Get<bool>("keep_io_types");
+  if (Has("keep_io_types")) {
+    keep_io_types_ = Get<bool>("keep_io_types");
+  }
 
   auto graph_size = graph->SubGraphsSize();
   VLOG(4) << "graph size: " << graph_size;

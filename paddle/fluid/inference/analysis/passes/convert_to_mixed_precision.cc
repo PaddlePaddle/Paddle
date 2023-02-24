@@ -83,7 +83,13 @@ void ConvertToMixedPrecisionPass::Run() {
 
   framework::ir::AutoMixedPrecisionPass pass;
   pass.Set("mixed_precision_mode", new int{static_cast<int>(mixed_precision_)});
-  pass.Set("backend", new phi::Backend{backend_});
+  if (backend_ == phi::Backend::GPU) {
+    pass.Set("enable_gpu_mixed", new bool{true});
+  } else if (backend_ == phi::Backend::XPU) {
+    pass.Set("enable_xpu_mixed", new bool{true});
+  } else if (backend_ == phi::Backend::CUSTOM) {
+    pass.Set("enable_custom_device_mixed", new bool{true});
+  }
   pass.Set("mixed_black_list",
            new std::unordered_set<std::string>{black_list_});
   pass.Set("keep_io_types", new bool{keep_io_types_});

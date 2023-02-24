@@ -94,15 +94,6 @@ void IRPassManager::CreatePasses(Argument *argument,
                               argument->tensorrt_tuned_dynamic_shape();
     pass->Set("with_dynamic_shape", new bool(with_dynamic_shape));
 
-    // Mixed precision related.
-    pass->Set(
-        "mixed_black_list",
-        new std::unordered_set<std::string>(argument->mixed_black_list()));
-    pass->Set("enable_gpu_mixed", new bool(argument->enable_gpu_mixed()));
-    pass->Set("mixed_precision_mode",
-              new int(argument->mixed_precision_mode()));
-    pass->Set("model_precision", new int(argument->model_precision()));
-
     if (pass_name == "graph_viz_pass") {
       std::string optim_cache_dir = argument->optim_cache_dir();
       std::string dot_file_path;
@@ -304,6 +295,14 @@ void IRPassManager::CreatePasses(Argument *argument,
       }
       bool use_fc_padding = !fc_mkldnn_pass && argument->use_fc_padding();
       pass->Set("use_fc_padding", new bool(use_fc_padding));
+    } else if (pass_name == "auto_mixed_precision_pass") {
+      pass->Set(
+          "mixed_black_list",
+          new std::unordered_set<std::string>(argument->mixed_black_list()));
+      pass->Set("enable_gpu_mixed", new bool(argument->enable_gpu_mixed()));
+      pass->Set("mixed_precision_mode",
+                new int(argument->mixed_precision_mode()));
+      pass->Set("model_precision", new int(argument->model_precision()));
     }
     pre_pass = pass_name;
 

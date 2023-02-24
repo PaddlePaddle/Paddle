@@ -1302,23 +1302,23 @@ void AnalysisPredictor::PrepareArgument() {
               << ", we will use a new PassStrategy. Note that only the GPU "
                  "backend is supported for now.";
     if (!config_.use_cinn_compiler_) {
-      pass_builder->ClearPasses();
       const auto &deleted_passes = pass_builder->GetAllDeletedPasses();
       if (config_.tensorrt_engine_enabled()) {
+        pass_builder->ClearPasses();
         for (const auto &pass : kTrtLowerPrecisionPasses) {
           if (deleted_passes.count(pass)) continue;
           pass_builder->AppendPass(pass);
         }
       } else if (config_.use_gpu()) {
+        pass_builder->ClearPasses();
         for (const auto &pass : kGpuLowerPrecisionPasses) {
           if (deleted_passes.count(pass)) continue;
           pass_builder->AppendPass(pass);
         }
       } else if (config_.use_xpu()) {
-        for (const auto &pass : kXpuLowerPrecisionPasses) {
-          if (deleted_passes.count(pass)) continue;
-          pass_builder->AppendPass(pass);
-        }
+        // All passes support fp16. Not reset pass_builder.
+      } else {
+        pass_builder->ClearPasses();
       }
     }
   }

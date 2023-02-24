@@ -1266,8 +1266,6 @@ int MultiEncoderXPUFusePass::CastMask(ir::Graph* graph) const {
         break;
       }
     }
-    PADDLE_ENFORCE_NOT_NULL(
-        mask, platform::errors::InvalidArgument("Not find mask node."));
 
     // Create new_mask node/var/tensor
     std::string new_mask_name = mask_name + "_fp32";
