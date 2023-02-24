@@ -121,7 +121,8 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
       var_scope_(scope) {
   VLOG(4) << "InterpreterCore(): " << this << " on " << place_;
 
-  static_build_ = FLAGS_new_executor_static_build;
+  static_build_ = FLAGS_new_executor_static_build &&
+                  interpreter::BlockCanBeStaticBuilt(block);
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
