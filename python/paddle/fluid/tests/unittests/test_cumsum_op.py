@@ -188,7 +188,7 @@ class TestSumOp5(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
         self.prim_op_type = "prim"
-        self.python_api = paddle.cumsu
+        self.python_api = paddle.cumsum
         self.enable_cinn = False
         self.inputs = {'X': np.random.random((5, 20)).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].cumsum(axis=1)}
