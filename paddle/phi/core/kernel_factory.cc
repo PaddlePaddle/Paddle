@@ -206,14 +206,14 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
       kernel_iter = kernel_iter_kp;
     }
   }
-  // check iter
-  bool flag_and_iter =
-      FLAGS_enable_api_kernel_fallback && (kernel_iter == iter->second.end());
   // check in xpu
   bool xpu_unsupport =
       !phi::backends::xpu::is_xpu_support_op(fluid_op_name, kernel_key.dtype());
   VLOG(6) << "Current KernelKey is " << kernel_key;
-  if (flag_and_iter || (xpu_unsupport && !has_kp_kernel)
+  // Fall back to CPU, when FLAGS_enable_api_kernel_fallback is true and op
+  // was unregistered in xpu and kp
+  if (FLAGS_enable_api_kernel_fallback &&
+      (kernel_iter == iter->second.end() || (xpu_unsupport && !has_kp_kernel))
 #elif defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
   VLOG(6) << "fluid_op_name: " << TransToFluidOpName(kernel_name);
   if ((FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end()) ||
