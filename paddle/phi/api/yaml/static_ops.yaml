@@ -1,3 +1,12 @@
+- op : embedding_with_eltwise_add_xpu
+  args : (Tensor[] ids, Tensor[] tables, int64_t padding_idx)
+  output: Tensor
+  infer_meta :
+    func: EmbeddingWithEltwiseAddXPUInferMeta
+  kernel:
+    func: embedding_with_eltwise_add_xpu
+    data_type: tables
+
 - op : fc_xpu
   args : (Tensor x, Tensor x_max, Tensor w, Tensor w_max, Tensor bias, int in_num_col_dims, bool transpose_x, float alpha, float beta, int act_type, float act_alpha)
   output : Tensor(out), Tensor(out_max)

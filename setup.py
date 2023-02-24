@@ -578,7 +578,7 @@ def write_parameter_server_version_py(
 
 # THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
 
-from paddle.fluid.incubate.fleet.base.mode import Mode
+from paddle.incubate.distributed.fleet.base import Mode
 
 BUILD_MODE=Mode.%(mode)s
 
@@ -1295,11 +1295,8 @@ def get_setup_parameters():
         'paddle.fluid.contrib.layers',
         'paddle.fluid.transpiler',
         'paddle.fluid.incubate',
-        'paddle.fluid.incubate.fleet',
+        'paddle.incubate.distributed.fleet',
         'paddle.fluid.incubate.checkpoint',
-        'paddle.fluid.incubate.fleet.base',
-        'paddle.fluid.incubate.fleet.collective',
-        'paddle.fluid.incubate.fleet.utils',
         'paddle.fluid.incubate.fleet.parameter_server',
         'paddle.amp',
         'paddle.cost_model',
