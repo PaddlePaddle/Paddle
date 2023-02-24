@@ -709,7 +709,11 @@ void MultiEncoderXPUFusePass::PrepareQKVWeight(
   auto* dev_ctx = static_cast<phi::CPUContext*>(
       platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
   std::vector<const phi::DenseTensor*> in_tensors{&q_w_t, &k_w_t, &v_w_t};
-  phi::ConcatKernel<float>(*dev_ctx, in_tensors, 0, qkv_w);
+  if (q_w.type() == phi::DataType::FLOAT16) {
+    phi::ConcatKernel<float16>(*dev_ctx, in_tensors, 0, qkv_w);
+  } else {
+    phi::ConcatKernel<float>(*dev_ctx, in_tensors, 0, qkv_w);
+  }
 
   // Quant to int16
   QuantWeight<int16_t>(qkv_w, qkv_w_max, false);
