@@ -1454,7 +1454,7 @@ def main():
         filename='{}/python/paddle/cuda_env.py'.format(paddle_binary_dir)
     )
     write_parameter_server_version_py(
-        filename='{}/python/paddle/incubate/fleet/parameter_server/version.py'.format(
+        filename='{}/python/paddle/incubate/distributed/fleet/parameter_server/version.py'.format(
             paddle_binary_dir
         )
     )
