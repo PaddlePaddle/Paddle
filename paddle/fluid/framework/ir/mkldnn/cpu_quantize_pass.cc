@@ -453,7 +453,7 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
     VLOG(4) << "Quantize conv2d op";
     GET_IR_NODE_FROM_SUBGRAPH(conv_op, conv_op, conv_pattern);
     if (conv_op->Op()->Type() == "conv2d") {
-      conv_op->Op()->SetType("fused_conv2d");
+      ConvertToFusedOp(conv_op->Op());
     }
 
     // skip if should not be quantized
