@@ -97,6 +97,33 @@ namespace cpp = ::cinn::frontend::paddle::cpp;
 #undef SET_DATA_TYPE_CASE_ITEM
 }
 
+std::string VarDataTypeToString(
+    const ::paddle::framework::proto::VarType::Type &type) {
+#define SET_DATA_TYPE_CASE_ITEM(type__)             \
+  case ::paddle::framework::proto::VarType::type__: \
+    return std::string(#type__);                    \
+    break;
+
+  switch (type) {
+    SET_DATA_TYPE_CASE_ITEM(BOOL);
+    SET_DATA_TYPE_CASE_ITEM(SIZE_T);
+    SET_DATA_TYPE_CASE_ITEM(UINT8);
+    SET_DATA_TYPE_CASE_ITEM(INT8);
+    SET_DATA_TYPE_CASE_ITEM(INT16);
+    SET_DATA_TYPE_CASE_ITEM(INT32);
+    SET_DATA_TYPE_CASE_ITEM(INT64);
+    SET_DATA_TYPE_CASE_ITEM(FP16);
+    SET_DATA_TYPE_CASE_ITEM(FP32);
+    SET_DATA_TYPE_CASE_ITEM(FP64);
+    SET_DATA_TYPE_CASE_ITEM(BF16);
+    SET_DATA_TYPE_CASE_ITEM(COMPLEX64);
+    SET_DATA_TYPE_CASE_ITEM(COMPLEX128);
+    default:
+      PADDLE_THROW(platform::errors::NotFound("Cannot found var data type"));
+  }
+#undef SET_DATA_TYPE_CASE_ITEM
+}
+
 ::paddle::framework::proto::VarType::Type TransformVarDataTypeFromCpp(
     const ::cinn::frontend::paddle::cpp::VarDescAPI::Type &type) {
 #define SET_DATA_TYPE_CASE_ITEM(type__)                         \
