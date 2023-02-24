@@ -645,6 +645,7 @@ def _lower_composite(block, blacklist=frozenset()):
                     else:
                         none_vars_to_remove.add(orig_out.name)
             else:
+<<<<<<< HEAD
                 inputs = {}
                 for i in range(len(op.input_names)):
                     inputs[op.input_names[i]] = bind_name(
@@ -669,6 +670,11 @@ def _lower_composite(block, blacklist=frozenset()):
                         attrs=None,
                     )
                 block.ops.append(op)
+=======
+                op_desc = block.desc.append_op()
+                op_desc.copy_from(op.desc)
+                block._sync_with_cpp()
+>>>>>>> [prim] enable dygraph_to_static to support custom_vjp
 
         # Step3: Do some post-processing work
         for op_idx in reversed(ops_to_remove):
