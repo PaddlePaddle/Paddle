@@ -409,6 +409,17 @@
     layout : x
   backward : transpose_grad
 
+- op : sum
+  args : (Tensor x, IntArray axis={}, DataType dtype=DataType::UNDEFINED, bool keepdim=false)
+  output : Tensor(out)
+  infer_meta :
+    func : SumInferMeta
+  kernel :
+    func : sum_coo{sparse_coo -> sparse_coo},
+           sum_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : sum_grad
+
 - op : values
   args : (Tensor x)
   output : Tensor(out)
