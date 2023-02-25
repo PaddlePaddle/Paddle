@@ -453,9 +453,9 @@ struct ReduceConfig {
     int block_x, block_y;
     int grid_num, reduce_num_per_thread_tmp;
     if (reduce_last_dim) {
-      block_x = left_num < 2 * max_mp ? GetBlockDim(reduce_num)
-                                      : std::min(kps::details::kWarpSize,
-                                                 GetBlockDim(reduce_num));
+      block_x = left_num < 24 * max_mp ? GetBlockDim(reduce_num)
+                                       : std::min(kps::details::kWarpSize,
+                                                  GetBlockDim(reduce_num));
       block_y = GetBlockDim(left_num);
       block_dim->x = block_x;
       block_dim->y =
@@ -646,15 +646,15 @@ __global__ void ReduceAnyKernel(const Tx* x,
 
   int input_idx_tmp = input_idx;
   // load REDUCE_VEC_SIZE data once, and then compute
-  int bound = min(input_idx_tmp + reduce_num_per_thread * stride, reduce_num);
   for (int i = 0; i < loop_left; i += stride_left) {
     int input_offset = left_index_calculator(left_idx + i);
     const _ptr_ Tx* input = x + input_offset;
     MPType reduce_var = init;
 
     input_idx = input_idx_tmp;
+    int bound = min(input_idx_tmp + reduce_num_per_thread * stride, reduce_num);
 
-    for (; input_idx + REDUCE_VEC_SIZE * stride < bound;
+    for (; input_idx + REDUCE_VEC_SIZE * block_size < bound;
          input_idx += REDUCE_VEC_SIZE * stride) {
       kps::ReadDataReduce<Tx,
                           Tx,
@@ -856,6 +856,7 @@ static void LaunchReduceKernel(const Tx* x_data,
   } else {
     int reduce_rank = config.reduce_strides.size();
     int left_rank = config.left_strides.size();
+
     auto reduce_index_calculator = IndexCalculator(reduce_rank,
                                                    config.reduce_dim,
                                                    config.reduce_strides,
