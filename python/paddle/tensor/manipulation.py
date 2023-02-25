@@ -3668,7 +3668,7 @@ def gather_nd(x, index, name=None):
                          = [23]
 
     Args:
-        x (Tensor): The input Tensor which it's data type should be bool, float32, float64, int32, int64.
+        x (Tensor): The input Tensor which it's data type should be bool, float16, float32, float64, int32, int64.
         index (Tensor): The index input with rank > 1, index.shape[-1] <= input.rank.
                         Its dtype should be int32, int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
@@ -3695,7 +3695,15 @@ def gather_nd(x, index, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['bool', 'float32', 'float64', 'int16', 'int32', 'int64'],
+            [
+                'bool',
+                'float16',
+                'float32',
+                'float64',
+                'int16',
+                'int32',
+                'int64',
+            ],
             'gather_np',
         )
         check_variable_and_dtype(
