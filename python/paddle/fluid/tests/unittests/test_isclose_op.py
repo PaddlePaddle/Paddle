@@ -98,6 +98,15 @@ class TestIscloseOpSmallNum(TestIscloseOp):
         self.equal_nan = False
 
 
+class TestIscloseOpSmallNumFP16(TestIscloseOp):
+    def set_args(self):
+        self.input = np.array([10000.0, 1e-08]).astype("float16")
+        self.other = np.array([10000.1, 1e-09]).astype("float16")
+        self.rtol = np.array([1e-05]).astype("float64")
+        self.atol = np.array([1e-08]).astype("float64")
+        self.equal_nan = False
+
+
 class TestIscloseOpNanFalse(TestIscloseOp):
     def set_args(self):
         self.input = np.array([1.0, float('nan')]).astype("float32")
@@ -201,6 +210,15 @@ class TestIscloseError(unittest.TestCase):
             result = paddle.isclose(x, y, equal_nan=1)
 
         self.assertRaises(TypeError, test_equal_nan)
+
+
+class TestIscloseOpFloat16(TestIscloseOp):
+    def set_args(self):
+        self.input = np.array([10.1]).astype("float16")
+        self.other = np.array([10]).astype("float16")
+        self.rtol = np.array([0.01]).astype("float64")
+        self.atol = np.array([0]).astype("float64")
+        self.equal_nan = False
 
 
 class TestIscloseOpFloat32(TestIscloseOp):
