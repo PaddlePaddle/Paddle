@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
@@ -154,7 +155,7 @@ inline std::vector<T> GetDataFromTensor(const DenseTensor* x) {
     DenseTensor cpu_attr_tensor;
     if (x->place() != CPUPlace()) {
       phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-      auto dev_ctx = pool.Get(tensor.place());
+      phi::DeviceContext* dev_ctx = pool.Get(x->place());
       phi::Copy(*dev_ctx, *x, CPUPlace(), true, &cpu_attr_tensor);
       data = cpu_attr_tensor.data<int>();
     }
@@ -164,7 +165,7 @@ inline std::vector<T> GetDataFromTensor(const DenseTensor* x) {
     DenseTensor cpu_attr_tensor;
     if (x->place() != CPUPlace()) {
       phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-      auto dev_ctx = pool.Get(tensor.place());
+      auto dev_ctx = pool.Get(x->place());
       phi::Copy(*dev_ctx, *x, CPUPlace(), true, &cpu_attr_tensor);
       data = cpu_attr_tensor.data<int64_t>();
     }
