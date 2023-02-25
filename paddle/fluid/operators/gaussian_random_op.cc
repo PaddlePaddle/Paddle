@@ -14,10 +14,10 @@ limitations under the License. */
 
 #include <random>
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/core/generator.h"
 #include "paddle/phi/infermeta/nullary.h"
 
 namespace paddle {
