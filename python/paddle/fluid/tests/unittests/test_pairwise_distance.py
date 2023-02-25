@@ -335,10 +335,10 @@ class TestPairwiseDistance(unittest.TestCase):
                             )
 
                             np.testing.assert_allclose(
-                                static_ret, excepted_value, rtol=1e-02
+                                static_ret, excepted_value, atol=1e-03
                             )
                             np.testing.assert_allclose(
-                                dygraph_ret, excepted_value, rtol=1e-02
+                                dygraph_ret, excepted_value, atol=1e-03
                             )
                             static_functional_ret = test_static(
                                 place,
@@ -369,12 +369,12 @@ class TestPairwiseDistance(unittest.TestCase):
                             np.testing.assert_allclose(
                                 static_functional_ret,
                                 excepted_value,
-                                rtol=1e-02,
+                                atol=1e-03,
                             )
                             np.testing.assert_allclose(
                                 dygraph_functional_ret,
                                 excepted_value,
-                                rtol=1e-02,
+                                atol=1e-03,
                             )
 
 
