@@ -135,11 +135,11 @@ class TestComplexConjOp(unittest.TestCase):
 
 class Testfp16ConjOp(unittest.TestCase):
     def testfp16(self):
-        input_x = rand([2, 20, 2, 3]).astype('float16') + 1j * rand(
-            [2, 20, 2, 3]
+        input_x = (
+            np.random.random((12, 14)) + 1j * np.random.random((12, 14))
         ).astype('float16')
         with static.program_guard(static.Program()):
-            x = static.data(name="x", shape=[2, 20, 2, 3], dtype='float16')
+            x = static.data(name="x", shape=[12, 14], dtype='float16')
             out = paddle.conj(x)
             if paddle.is_compiled_with_cuda():
                 place = paddle.CUDAPlace(0)
