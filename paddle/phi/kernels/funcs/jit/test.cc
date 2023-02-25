@@ -20,6 +20,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/jit/kernels.h"
 
 DEFINE_double(acc, 1e-5, "Test accuracy threshold.");
@@ -1128,7 +1129,7 @@ void TestKernelSgd() {
                                   const int64_t upper) -> std::vector<int64_t> {
     PADDLE_ENFORCE_LE(static_cast<size_t>(upper - lower),
                       n - 1,
-                      paddle::phi::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The range of Sgd (upper - lower) should be lower "
                           "than n-1 (Sgd size -1). But the upper - lower is %d "
                           "and n-1 is %d.",
@@ -1137,7 +1138,7 @@ void TestKernelSgd() {
     PADDLE_ENFORCE_GT(
         n,
         0,
-        paddle::phi::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The Sgd size should be larger than 0. But the n is %d.", n));
     std::vector<int64_t> all, out;
     for (int i = 0; i < n; ++i) {
