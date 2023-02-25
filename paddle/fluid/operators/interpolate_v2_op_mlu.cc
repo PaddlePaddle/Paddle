@@ -16,7 +16,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/interpolate_op.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
 #include "paddle/fluid/operators/utils.h"
-#include "paddle/phi/core/tensor_utils.h"
 
 namespace paddle {
 namespace operators {

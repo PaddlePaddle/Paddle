@@ -18,8 +18,6 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/phi/core/tensor_utils.h"
-
 namespace paddle {
 namespace operators {
 

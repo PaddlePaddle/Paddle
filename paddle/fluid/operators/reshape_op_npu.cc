@@ -18,7 +18,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
-#include "paddle/phi/core/tensor_utils.h"
 
 namespace paddle {
 namespace operators {
