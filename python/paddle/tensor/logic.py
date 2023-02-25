@@ -45,7 +45,7 @@ def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
         check_variable_and_dtype(
             x,
             "x",
-            ["bool", "int8", "int16", "int32", "int64", "float32", "float64"],
+            ["bool", "int8", "int16", "int32", "int64", "float16", "float32", "float64"],
             op_name,
         )
         if y is not None:
@@ -58,6 +58,7 @@ def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
                     "int16",
                     "int32",
                     "int64",
+                    "float16",
                     "float32",
                     "float64",
                 ],
