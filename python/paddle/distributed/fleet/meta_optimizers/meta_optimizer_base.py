@@ -25,10 +25,6 @@ class MetaOptimizerBase(Optimizer):
         self.meta_optimizers_white_list = []
         self.meta_optimizers_black_list = []
 
-    def _set_auxiliary_var(self, key, val):
-        super()._set_auxiliary_var(key, val)
-        self.inner_opt._set_auxiliary_var(key, val)
-
     def _set_basic_info(
         self, loss, role_maker, user_defined_optimizer, user_defined_strategy
     ):

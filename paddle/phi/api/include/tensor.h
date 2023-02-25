@@ -556,6 +556,8 @@ class PADDLE_API Tensor final {
 
   Tensor operator/(const Scalar& other) const;
 
+  Tensor operator-() const;
+
   /* Part 8: Autograd methods */
 
   /**
@@ -698,6 +700,14 @@ class PADDLE_API Tensor final {
   Tensor sum(const IntArray& axis, DataType dtype, bool keepdim) const;
   Tensor tile(const IntArray& repeat_times) const;
 };
+
+PADDLE_API Tensor operator+(const Scalar& x, const Tensor& y);
+
+PADDLE_API Tensor operator-(const Scalar& x, const Tensor& y);
+
+PADDLE_API Tensor operator*(const Scalar& x, const Tensor& y);
+
+PADDLE_API Tensor operator/(const Scalar& x, const Tensor& y);
 
 }  // namespace experimental
 }  // namespace paddle
