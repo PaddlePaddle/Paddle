@@ -115,7 +115,7 @@ def composite_batchnorm(
     run_mean_ = assign(run_mean)
     run_var_ = assign(run_var)
 
-    # reserve_space is not needed in composite rule, but still ruturn None to keep same as phi op defination.
+    # reserve_space is not needed in composite rule, but still ruturn None to keep same as phi op definition.
     reserve_space = None
 
     return y, run_mean_, run_var_, batch_mean_, batch_var_, reserve_space
