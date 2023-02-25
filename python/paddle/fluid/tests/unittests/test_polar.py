@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import math
 import unittest
 
 # import torch
@@ -23,13 +22,14 @@ import paddle.fluid.core as core
 
 np.random.seed(10)
 
+
 def numpy_polar(abs, angle):
     real = np.multiply(abs, np.cos(angle))
     imag = np.multiply(abs, np.sin(angle))
     return real + imag * 1j
 
-class TestPolarAPI(unittest.TestCase):
 
+class TestPolarAPI(unittest.TestCase):
     def setUp(self):
         self.abs = np.array([1, 2]).astype("float64")
         self.angle = np.array([np.pi / 2, 5 * np.pi / 4]).astype("float64")
@@ -47,7 +47,9 @@ class TestPolarAPI(unittest.TestCase):
                     shape=self.abs.shape,
                     dtype="float64",
                 )
-                angle = paddle.static.data('angle', shape=self.angle.shape, dtype="float64")
+                angle = paddle.static.data(
+                    'angle', shape=self.angle.shape, dtype="float64"
+                )
                 out1 = paddle.polar(abs, angle)
                 exe = paddle.static.Executor(place)
                 res = exe.run(
@@ -91,9 +93,7 @@ class TestPolarAPI(unittest.TestCase):
     def test_polar_dims_error(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            abs = paddle.static.data(
-                'abs', shape=[2, 2], dtype="float64"
-            )
+            abs = paddle.static.data('abs', shape=[2, 2], dtype="float64")
             angle = paddle.static.data('angle', shape=[2, 2], dtype="float64")
             self.assertRaises(ValueError, paddle.polar, abs, angle)
         paddle.disable_static()
@@ -103,9 +103,7 @@ class TestPolarAPI(unittest.TestCase):
             paddle.disable_static(place)
             abs = paddle.to_tensor(self.abs)
             angle = paddle.to_tensor(self.angle)
-            self.assertRaises(
-                ValueError, paddle.polar, None, angle
-            )
+            self.assertRaises(ValueError, paddle.polar, None, angle)
             self.assertRaises(AttributeError, paddle.polar, abs, None)
 
 

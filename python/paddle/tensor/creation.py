@@ -2399,12 +2399,8 @@ def polar(abs, angle, name=None):
             #       [ (6.123233995736766e-17+1j) ,
             #       (-1.4142135623730954-1.414213562373095j)])
     """
-    check_variable_and_dtype(
-        abs, 'abs', ['float32', 'float64'], 'polar'
-    )
-    check_variable_and_dtype(
-        angle, 'angle', ['float32', 'float64'], 'polar'
-    )
+    check_variable_and_dtype(abs, 'abs', ['float32', 'float64'], 'polar')
+    check_variable_and_dtype(angle, 'angle', ['float32', 'float64'], 'polar')
 
     if abs.dim() != angle.dim():
         raise ValueError(
