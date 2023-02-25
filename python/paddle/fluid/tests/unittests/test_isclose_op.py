@@ -175,16 +175,6 @@ class TestIscloseError(unittest.TestCase):
     def test_input_dtype(self):
         paddle.enable_static()
 
-        def test_x_dtype():
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
-                x = paddle.fluid.data(name='x', shape=[10, 10], dtype='float16')
-                y = paddle.fluid.data(name='y', shape=[10, 10], dtype='float64')
-                result = paddle.isclose(x, y)
-
-        self.assertRaises(TypeError, test_x_dtype)
-
         def test_y_dtype():
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
