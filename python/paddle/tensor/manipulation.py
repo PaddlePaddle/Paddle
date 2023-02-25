@@ -3247,7 +3247,7 @@ def broadcast_to(x, shape, name=None):
 
 
     Args:
-        x (Tensor): The input tensor, its data type is bool, float32, float64, int32 or int64.
+        x (Tensor): The input tensor, its data type is bool, float16, float32, float64, int32 or int64.
         shape (list|tuple|Tensor): The result shape after broadcasting. The data type is int32. If shape is a list or tuple, all its elements
             should be integers or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32.
             The value -1 in shape means keeping the corresponding dimension unchanged.
@@ -3285,7 +3285,7 @@ def broadcast_to(x, shape, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['bool', 'float32', 'float64', 'int32', 'int64'],
+            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
             'broadcast_to',
         )
         check_type(shape, 'shape', (list, tuple, Variable), 'broadcast_to')
