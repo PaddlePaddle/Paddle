@@ -80,6 +80,8 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
 
     if in_dygraph_mode():
         if p == 2:
+            if len(x.shape) == 1:
+                axis = 0
             out, _ = _C_ops.norm(x, 1 if axis is None else axis, epsilon, False)
             return out
         else:
