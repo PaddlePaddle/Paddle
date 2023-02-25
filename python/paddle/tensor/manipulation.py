@@ -1510,7 +1510,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
             Out.shape = (3 * 100 * 100 * 4)
 
     Args:
-        x (Tensor): A tensor of number of dimentions >= axis. A tensor with data type float32,
+        x (Tensor): A tensor of number of dimentions >= axis. A tensor with data type float16, float32,
                       float64, int8, int32, int64, uint8.
         start_axis (int): the start axis to flatten
         stop_axis (int): the stop axis to flatten
@@ -1582,7 +1582,16 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['float32', 'float64', 'int8', 'int16', 'int32', 'int64', 'uint8'],
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int8',
+                'int16',
+                'int32',
+                'int64',
+                'uint8',
+            ],
             'flatten',
         )
         helper = LayerHelper('flatten', **locals())
