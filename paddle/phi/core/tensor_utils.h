@@ -152,7 +152,7 @@ inline std::vector<T> GetDataFromTensor(const DenseTensor* x) {
   if (x->dtype() == DataType::INT32) {
     auto* data = x->data<int>();
     DenseTensor cpu_attr_tensor;
-    if (x.place() != CPUPlace()) {
+    if (x->place() != CPUPlace()) {
       phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
       auto dev_ctx = pool.Get(tensor.place());
       phi::Copy(*dev_ctx, *x, CPUPlace(), true, &cpu_attr_tensor);
@@ -162,7 +162,7 @@ inline std::vector<T> GetDataFromTensor(const DenseTensor* x) {
   } else if (x->dtype() == DataType::INT64) {
     auto* data = x->data<int64_t>();
     DenseTensor cpu_attr_tensor;
-    if (x.place() != CPUPlace()) {
+    if (x->place() != CPUPlace()) {
       phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
       auto dev_ctx = pool.Get(tensor.place());
       phi::Copy(*dev_ctx, *x, CPUPlace(), true, &cpu_attr_tensor);
