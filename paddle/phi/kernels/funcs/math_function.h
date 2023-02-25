@@ -56,11 +56,6 @@ struct SetConstant {
 
 #ifdef PADDLE_WITH_XPU
 template <typename T>
-struct SetConstant<XPUContext, T> {
-  void operator()(const XPUContext& context, phi::DenseTensor* tensor, T num);
-};
-
-template <typename T>
 struct SetConstant<phi::XPUContext, T> {
   void operator()(const phi::XPUContext& context,
                   phi::DenseTensor* tensor,
