@@ -151,8 +151,7 @@ def log_loss(input, label, epsilon=1e-4, name=None):
           print(cost)
           # Tensor(shape=[2, 1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
           #        [[ nan       ],
-          #        [-3.66994476]])
-
+          #         [-3.66994476]])
     """
     if in_dygraph_mode():
         return _C_ops.log_loss(input, label, epsilon)
