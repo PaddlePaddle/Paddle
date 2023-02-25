@@ -366,6 +366,37 @@ class TestTileAPI_ZeroDim(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestTileOpFp16(unittest.TestCase):
+    def tile_wrapper(self, x):
+        return paddle.tile(x[0], [2, 1])
+
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        eps = 0.005
+        dtype = np.float16
+
+        data = paddle.static.data('data', [1, 2], dtype)
+        data.persistable = True
+        out = paddle.tile(data, [2, 1])
+        data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
+
+        gradient_checker.double_grad_check(
+            [data], out, x_init=[data_arr], place=place, eps=eps
+        )
+        gradient_checker.double_grad_check_for_dygraph(
+            self.tile_wrapper, [data], out, x_init=[data_arr], place=place
+        )
+
+    def test_fp16(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
