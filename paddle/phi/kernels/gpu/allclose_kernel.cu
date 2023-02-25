@@ -22,19 +22,23 @@
 namespace phi {
 
 template <typename T>
-__global__ void AllcloseCUDAKernel(const T* in_data,
-                                   const T* other_data,
+__global__ void AllcloseCUDAKernel(const T* __restrict__ in_data,
+                                   const T* __restrict__ other_data,
                                    const double rtol,
                                    const double atol,
                                    bool equal_nan,
                                    int num,
                                    bool* out_data) {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  __shared__ MPType in_shared[1024];
+  __shared__ MPType other_shared[1024];
   unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
   bool val;
   for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
-    const MPType a = static_cast<MPType>(in_data[i]),
-                 b = static_cast<MPType>(other_data[i]);
+    in_shared[threadIdx.x] = static_cast<MPType>(in_data[i]);
+    other_shared[threadIdx.x] = static_cast<MPType>(other_data[i]);
+    __syncthreads();
+    const MPType a = in_shared[threadIdx.x], b = other_shared[threadIdx.x];
     if (isnan(a) || isnan(b)) {
       val = equal_nan && isnan(a) == isnan(b);
     } else {
@@ -44,6 +48,7 @@ __global__ void AllcloseCUDAKernel(const T* in_data,
       val = a == b || left <= right || diff <= 1e-15;
     }
     if (!val) *out_data = false;
+    __syncthreads();
   }
 }
 

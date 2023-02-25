@@ -101,17 +101,22 @@ struct IscloseFunctor<phi::CPUContext, T> {
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 template <typename T>
-__global__ void IscloseCUDAKernel(const T* in_data,
-                                  const T* other_data,
+__global__ void IscloseCUDAKernel(const T* __restrict__ in_data,
+                                  const T* __restrict__ other_data,
                                   const double rtol,
                                   const double atol,
                                   bool equal_nan,
                                   int num,
                                   bool* out_data) {
   unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
-  bool val;
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  __shared__ MPType s_in_data[1024];
+  __shared__ MPType s_other_data[1024];
+  bool val;
   for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
+    s_in_data[threadIdx.x] = static_cast<MPType>(in_data[i]);
+    s_other_data[threadIdx.x] = static_cast<MPType>(other_data[i]);
+    __syncthreads();
     const MPType a = static_cast<MPType>(in_data[i]),
                  b = static_cast<MPType>(other_data[i]);
     if (isnan(a) || isnan(b)) {
@@ -122,6 +127,7 @@ __global__ void IscloseCUDAKernel(const T* in_data,
       MPType diff = (left > right ? left - right : right - left);
       val = a == b || left <= right || diff <= 1e-15;
     }
+    __syncthreads();
     out_data[i] = val;
     // if (!val) *out_data = false;
   }
