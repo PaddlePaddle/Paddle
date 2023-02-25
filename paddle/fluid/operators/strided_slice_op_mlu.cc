@@ -350,7 +350,7 @@ class StridedSliceGradMLUKernel : public framework::OpKernel<T> {
       strides = GetDataFromTensorList<int64_t>(list_new_strides_tensor);
     } else if (ctx.HasInput("StridesTensor")) {
       auto* strides_tensor = ctx.Input<phi::DenseTensor>("StridesTensor");
-      strides = phi::GetVectorFromTensor<int64_t>(strides_tensor);
+      strides = GetDataFromTensor<int64_t>(strides_tensor);
     }
 
     std::vector<int64_t> out_dims_vector(input_dims.size(), -1);
