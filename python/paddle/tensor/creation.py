@@ -2405,7 +2405,12 @@ def polar(abs, angle, name=None):
     check_variable_and_dtype(
         angle, 'angle', ['float32', 'float64'], 'polar'
     )
+
+    if abs.dim() != angle.dim():
+        raise ValueError(
+            f"abs and angle tensor must be the same dimension, but got abs dim {abs.dim()} and angle dim {angle.dim()}."
+        )
+
     real = paddle.multiply(abs, paddle.cos(angle))
     imag = paddle.multiply(abs, paddle.sin(angle))
-    out = complex(real, imag)
-    return out
+    return complex(real, imag)
