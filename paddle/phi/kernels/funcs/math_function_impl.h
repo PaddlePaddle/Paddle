@@ -34,13 +34,6 @@ void SetConstant<DeviceContext, T>::operator()(const DeviceContext& context,
 
 #ifdef PADDLE_WITH_XPU
 template <typename T>
-void SetConstant<XPUContext, T>::operator()(const XPUContext& context,
-                                            phi::DenseTensor* tensor,
-                                            T num) {
-  phi::VisitDataType(tensor->dtype(),
-                     TensorSetConstantXPU<T>(tensor, num, context.GetPlace()));
-}
-template <typename T>
 void SetConstant<phi::XPUContext, T>::operator()(const phi::XPUContext& context,
                                                  phi::DenseTensor* tensor,
                                                  T num) {
