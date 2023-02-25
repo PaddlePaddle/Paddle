@@ -149,20 +149,23 @@ inline T GetValue(const Context& dev_ctx, const DenseTensor& x) {
 template <typename T = int32_t>
 inline std::vector<T> GetDataFromTensor(const DenseTensor* x) {
   std::vector<T> vec_new_data;
-  if (phi::TransToProtoVarType(x->dtype()) == DataType::INT32) {
+  if (x->dtype() == DataType::INT32) {
     auto* data = x->data<int>();
     DenseTensor cpu_attr_tensor;
-    if (!paddle::platform::is_cpu_place(x->place())) {
-      paddle::framework::TensorCopySync(
-          *x, paddle::platform::CPUPlace(), &cpu_attr_tensor);
+    if (x.place() != CPUPlace()) {
+      phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+      auto dev_ctx = pool.Get(tensor.place());
+      phi::Copy(*dev_ctx, *x, CPUPlace(), true, &cpu_attr_tensor);
       data = cpu_attr_tensor.data<int>();
     }
     vec_new_data = std::vector<T>(data, data + x->numel());
-  } else if (phi::TransToProtoVarType(x->dtype()) == DataType::INT64) {
+  } else if (x->dtype() == DataType::INT64) {
     auto* data = x->data<int64_t>();
     DenseTensor cpu_attr_tensor;
-    if (!paddle::platform::is_cpu_place(x->place())) {
-      paddle::framework::TensorCopySync(*x, phi::CPUPlace(), &cpu_attr_tensor);
+    if (x.place() != CPUPlace()) {
+      phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+      auto dev_ctx = pool.Get(tensor.place());
+      phi::Copy(*dev_ctx, *x, CPUPlace(), true, &cpu_attr_tensor);
       data = cpu_attr_tensor.data<int64_t>();
     }
     // NOTE: Converting int64 to int32 may cause data overflow.
@@ -170,7 +173,7 @@ inline std::vector<T> GetDataFromTensor(const DenseTensor* x) {
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "The dtype of Tensor must be int32 or int64, but received: %s",
-        phi::TransToProtoVarType(x->dtype())));
+        x->dtype()));
   }
   return vec_new_data;
 }
