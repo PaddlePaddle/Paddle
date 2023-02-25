@@ -15,13 +15,18 @@
 import math
 import unittest
 
-import torch
+# import torch
 import numpy as np
 
 import paddle
 import paddle.fluid.core as core
 
 np.random.seed(10)
+
+def numpy_polar(abs, angle):
+    real = np.multiply(abs, np.cos(angle))
+    imag = np.multiply(abs, np.sin(angle))
+    return real + imag * 1j
 
 class TestPolarAPI(unittest.TestCase):
 
@@ -49,7 +54,7 @@ class TestPolarAPI(unittest.TestCase):
                     feed={'abs': self.abs, 'angle': self.angle},
                     fetch_list=[out1],
                 )
-            out_ref = torch.poloar(abs, angle)
+            out_ref = numpy_polar(abs, angle)
             np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
         for place in self.place:
@@ -62,7 +67,7 @@ class TestPolarAPI(unittest.TestCase):
             angle = paddle.to_tensor(self.angle)
             out1 = paddle.polar(abs, angle)
 
-            out_ref1 = torch.polar(self.sorted_sequence, self.x)
+            out_ref1 = numpy_polar(self.abs, self.angle)
             np.testing.assert_allclose(out_ref1, out1.numpy(), rtol=1e-05)
             paddle.enable_static()
 
@@ -84,12 +89,14 @@ class TestPolarAPI(unittest.TestCase):
         self.assertTrue(out.type, 'complex128')
 
     def test_polar_dims_error(self):
+        paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             abs = paddle.static.data(
                 'abs', shape=[2, 2], dtype="float64"
             )
             angle = paddle.static.data('angle', shape=[2, 2], dtype="float64")
             self.assertRaises(ValueError, paddle.polar, abs, angle)
+        paddle.disable_static()
 
     def test_empty_input_error(self):
         for place in self.place:
@@ -97,9 +104,9 @@ class TestPolarAPI(unittest.TestCase):
             abs = paddle.to_tensor(self.abs)
             angle = paddle.to_tensor(self.angle)
             self.assertRaises(
-                ValueError, paddle.bucketize, None, angle
+                ValueError, paddle.polar, None, angle
             )
-            self.assertRaises(AttributeError, paddle.bucketize, abs, None)
+            self.assertRaises(AttributeError, paddle.polar, abs, None)
 
 
 if __name__ == "__main__":
