@@ -1410,8 +1410,7 @@ if(WITH_IPU)
     SRCS
     ipu_multi_model_profile.cc
     ARGS
-    --model_name="Resnet50
-      "
+    --model_name="Resnet50"
     --infer_model=${RESNET50_MODEL_DIR}
     --warmup=true
     --repeat=10)
