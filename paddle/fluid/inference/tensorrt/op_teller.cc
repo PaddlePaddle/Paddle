@@ -2216,8 +2216,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto dtype = x_var_desc->GetDataType();
 #if IS_TRT_VERSION_GE(7000)
       if (dtype != framework::proto::VarType::INT32 &&
+          dtype != framework::proto::VarType::INT64 &&
           dtype != framework::proto::VarType::FP32) {
-        VLOG(3) << "reduce op input data type must be int32 or float32";
+        VLOG(3) << "reduce op input data type must be int32, int64 or float32";
         return false;
       }
 #else
