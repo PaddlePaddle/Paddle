@@ -67,5 +67,6 @@ class TestDiagError(unittest.TestCase):
             self.assertRaises(TypeError, test_diag_type)
 
 
+
 if __name__ == "__main__":
     unittest.main()
