@@ -1889,7 +1889,7 @@ def linear(x, weight, bias=None, name=None):
                 type='elementwise_add',
                 inputs={'X': [tmp], 'Y': [bias]},
                 outputs={'Out': [res]},
-                attrs={'axis': len(x.shape) - 1},
+                attrs={'axis': -1},
             )
         else:
             res = tmp

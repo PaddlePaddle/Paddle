@@ -44,9 +44,7 @@ from paddle.fluid import core, framework
             (
                 'pow',
                 'fill_constant',
-                'elementwise_mul',
-                'fill_constant',
-                'elementwise_add',
+                'elementwise_sub',
                 'elementwise_mul',
             ),
         ),
