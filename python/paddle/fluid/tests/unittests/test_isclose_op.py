@@ -18,6 +18,7 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
+import paddle.fluid.core as core
 
 
 class TestIscloseOp(OpTest):
@@ -98,6 +99,9 @@ class TestIscloseOpSmallNum(TestIscloseOp):
         self.equal_nan = False
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestIscloseOpSmallNumFP16(TestIscloseOp):
     def set_args(self):
         self.input = np.array([10000.0, 1e-08]).astype("float16")
@@ -212,6 +216,9 @@ class TestIscloseError(unittest.TestCase):
         self.assertRaises(TypeError, test_equal_nan)
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestIscloseOpFloat16(TestIscloseOp):
     def set_args(self):
         self.input = np.array([10.1]).astype("float16")
