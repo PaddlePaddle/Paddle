@@ -18,6 +18,8 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/phi/core/tensor_utils.h"
+
 namespace paddle {
 namespace operators {
 
@@ -100,7 +102,7 @@ inline framework::DDim GetShape(const framework::ExecutionContext& ctx) {
   // 1. shape is a Tensor
   if (ctx.HasInput("ShapeTensor")) {
     auto* shape_tensor = ctx.Input<phi::DenseTensor>("ShapeTensor");
-    auto vec_shape = GetDataFromTensor<int>(shape_tensor);
+    auto vec_shape = phi::GetVectorFromTensor<int>(shape_tensor);
     return phi::make_ddim(vec_shape);
   }
 
