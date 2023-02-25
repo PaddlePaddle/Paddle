@@ -209,13 +209,6 @@ PDNode* TrtCrossMultiHeadMatmulPattern::operator()() {
 
 }  // namespace patterns
 
-inline int getSMVersion() {
-  const int device = phi::backends::gpu::GetCurrentDeviceId();
-  const phi::gpuDeviceProp prop =
-      phi::backends::gpu::GetDeviceProperties(device);
-  return prop.major * 10 + prop.minor;
-}
-
 TrtCrossMultiHeadMatmulFusePass::TrtCrossMultiHeadMatmulFusePass() {
   AddOpCompat(OpCompat("mul"))
       .AddInput("X")  // the shape shoule be (B, S, N*H)
@@ -560,10 +553,11 @@ void TrtCrossMultiHeadMatmulFusePass::ApplyImpl(Graph* graph) const {
                "8.5.2.2. Stop this pass";
     return;
   }
-  int sm = getSMVersion();
+  int sm = platform::GetGPUComputeCapability(platform::GetCurrentDeviceId());
   if (sm < 80) {
     VLOG(3) << "Flash attention oss plugin only available for nvidia gpu with "
-               "sm >= 80. Stop this pass";
+               "sm >= 80, but got sm = "
+            << sm << " . Stop this pass";
     return;
   }
 #else
