@@ -19,6 +19,7 @@
 
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/core/data_type.h"
 
 namespace phi {
 namespace backends {
@@ -87,6 +88,11 @@ cudaDataType_t ToCudaDataType() {
   } else if (std::is_same<T, phi::dtype::bfloat16>::value) {
     return CUDA_R_16BF;
 #endif
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "DataType %s is unsupported for CUDA.",
+        paddle::experimental::DataTypeToString(
+            paddle::experimental::CppTypeToDataType<T>::Type())));
   }
 }
 

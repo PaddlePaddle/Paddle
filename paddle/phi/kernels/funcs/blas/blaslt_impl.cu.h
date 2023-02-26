@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include <cuda_runtime_api.h>
 #include "cuda.h"  // NOLINT
+#include "paddle/phi/backends/gpu/cuda/cuda_helper.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/gpu_timer.h"
@@ -26,19 +27,6 @@ namespace phi {
 namespace funcs {
 
 enum MatmulImplType { kImplWithCublas = 1, kImplWithCublasLt = 2 };
-
-template <typename T>
-cudaDataType_t ConvertToCudaDataType() {
-  if (std::is_same<T, float>::value) {
-    return CUDA_R_32F;
-  } else if (std::is_same<T, double>::value) {
-    return CUDA_R_64F;
-  } else if (std::is_same<T, phi::dtype::float16>::value) {
-    return CUDA_R_16F;
-  } else if (std::is_same<T, phi::dtype::bfloat16>::value) {
-    return CUDA_R_16BF;
-  }
-}
 
 template <typename T>
 cublasComputeType_t GetCudaComputeType() {
@@ -68,8 +56,8 @@ struct MatmulDescriptor {
               int64_t stride_out = 0) {
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
-    cudaDataType_t mat_type = ConvertToCudaDataType<T>();
-    cudaDataType_t scale_type = ConvertToCudaDataType<MT>();
+    cudaDataType_t mat_type = phi::backends::gpu::ToCudaDataType<T>();
+    cudaDataType_t scale_type = phi::backends::gpu::ToCudaDataType<MT>();
     cublasComputeType_t compute_type = GetCudaComputeType<T>();
 
     // Create operation desciriptor; see cublasLtMatmulDescAttributes_t for
