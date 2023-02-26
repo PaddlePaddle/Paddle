@@ -158,6 +158,61 @@ SparseCsrTensor TransposeCsr(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+void SumCooKernel(const Context& dev_ctx,
+                  const SparseCooTensor& x,
+                  const IntArray& axis,
+                  DataType dtype,
+                  bool keep_dim,
+                  SparseCooTensor* out);
+
+template <typename T, typename Context>
+void SumCsrKernel(const Context& dev_ctx,
+                  const SparseCsrTensor& x,
+                  const IntArray& axis,
+                  DataType dtype,
+                  bool keep_dim,
+                  SparseCsrTensor* out);
+
+template <typename T, typename Context>
+SparseCooTensor SumCoo(const Context& dev_ctx,
+                       const SparseCooTensor& x,
+                       const IntArray& axis,
+                       DataType dtype,
+                       bool keep_dim) {
+  unsigned int n_dim = axis.size();
+  PADDLE_ENFORCE_LE(n_dim,
+                    2,
+                    phi::errors::Unimplemented(
+                        "`axis` of SumCsrKernel only support None or int now."
+                        "It will support list in the future."));
+  SparseCooTensor coo;
+  SumCooKernel<T, Context>(dev_ctx, x, axis, dtype, keep_dim, &coo);
+  return coo;
+}
+
+template <typename T, typename Context>
+SparseCsrTensor SumCsr(const Context& dev_ctx,
+                       const SparseCsrTensor& x,
+                       const IntArray& axis,
+                       DataType dtype,
+                       bool keep_dim) {
+  PADDLE_ENFORCE_LE(
+      keep_dim,
+      true,
+      phi::errors::Unimplemented("SparseCsrTensor only support 2 dims tensor, "
+                                 "so `keep_dim` should be true."));
+  unsigned int n_dim = axis.size();
+  PADDLE_ENFORCE_LE(n_dim,
+                    2,
+                    phi::errors::Unimplemented(
+                        "`axis` of SumCsrKernel only support None or int now."
+                        "It will support list in the future."));
+  SparseCsrTensor csr;
+  SumCsrKernel<T, Context>(dev_ctx, x, axis, dtype, keep_dim, &csr);
+  return csr;
+}
+
+template <typename T, typename Context>
 SparseCooTensor ReluCoo(const Context& dev_ctx, const SparseCooTensor& x) {
   SparseCooTensor coo;
   ReluCooKernel<T, Context>(dev_ctx, x, &coo);
