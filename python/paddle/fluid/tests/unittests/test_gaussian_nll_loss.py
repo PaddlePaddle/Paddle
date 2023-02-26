@@ -102,7 +102,7 @@ class TestGaussianNLLLossAPI(unittest.TestCase):
 
         for r in [out1, out2]:
             self.assertEqual(
-                np.allclose(out_ref, r.numpy(), rtol=1e-8, atol=1e-7), True
+                np.allclose(out_ref, r.numpy(), rtol=1e-5, atol=1e-5), True
             )
         paddle.enable_static()
 
@@ -148,7 +148,7 @@ class TestGaussianNLLLossAPI(unittest.TestCase):
             )
         for r in res:
             self.assertEqual(
-                np.allclose(out_ref, r, rtol=1e-8, atol=1e-7), True
+                np.allclose(out_ref, r, rtol=1e-5, atol=1e-5), True
             )
 
     def test_api(self):

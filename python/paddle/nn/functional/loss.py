@@ -3984,9 +3984,6 @@ def gaussian_nll_loss(
 
     # Entries of var must be non-negative
     # print(paddle.any(var < 0))
-    # if paddle.any(var < 0):
-    #     raise ValueError("var has negative entry/entries")
-
     if not in_dygraph_mode():
         check_variable_and_dtype(
             input, 'Input', ['float32', 'float64'], 'gaussian_nll_loss'
@@ -4003,6 +4000,9 @@ def gaussian_nll_loss(
             ['float32', 'float64'],
             'gaussian_nll_loss',
         )
+    else:
+        if paddle.any(var < 0):
+            raise ValueError("var has negative entry/entries")
 
     # Clamp for stability
     var = var.clone()
