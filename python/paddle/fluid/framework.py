@@ -799,7 +799,8 @@ def is_compiled_with_xpu():
     """
     Whether this whl package can be used to run the model on XPU.
 
-    Returns (bool): support xpu or not.
+    Returns (bool): 
+        support xpu or not.
 
     Examples:
         .. code-block:: python
@@ -814,7 +815,8 @@ def is_compiled_with_npu():
     """
     Whether this whl package can be used to run the model on NPU.
 
-    Returns (bool): support npu or not.
+    Returns (bool): 
+        support npu or not.
 
     Examples:
         .. code-block:: python
@@ -855,7 +857,8 @@ def is_compiled_with_cinn():
     """
     Whether this whl package can be used to run the model on CINN.
 
-    Returns (bool): `True` if CINN is currently available, otherwise `False`.
+    Returns (bool): 
+        `True` if CINN is currently available, otherwise `False`.
 
     Examples:
         .. code-block:: python
@@ -870,7 +873,8 @@ def is_compiled_with_cuda():
     """
     Whether this whl package can be used to run the model on GPU.
 
-    Returns (bool): `True` if CUDA is currently available, otherwise `False`.
+    Returns (bool): 
+        `True` if CUDA is currently available, otherwise `False`.
 
     Examples:
         .. code-block:: python
@@ -885,7 +889,8 @@ def is_compiled_with_rocm():
     """
     Whether this whl package can be used to run the model on AMD or Hygon GPU(ROCm).
 
-    Returns (bool): `True` if ROCm is currently available, otherwise `False`.
+    Returns (bool): 
+        `True` if ROCm is currently available, otherwise `False`.
 
     Examples:
         .. code-block:: python
