@@ -31,8 +31,8 @@ void PutAlongAxisKernel(const Context& dev_ctx,
                         int axis,
                         const std::string& reduce,
                         DenseTensor* out) {
-  PADDLE_ENFORCE_EQ(dev_ctx.GetPlace().GetType(),
-                    phi::AllocationType::GPU,
+  PADDLE_ENFORCE_EQ(dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU,
+                    true,
                     errors::PreconditionNotMet(
                         "PutAlongAxisCUDAKernel only runs on GPU device."));
 

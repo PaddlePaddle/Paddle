@@ -22,8 +22,8 @@ void TransposeGradKernel(const Context& dev_ctx,
                          const DenseTensor& out_grad,
                          const std::vector<int>& axis,
                          DenseTensor* x_grad) {
-  PADDLE_ENFORCE_EQ(dev_ctx.GetPlace().GetType(),
-                    AllocationType::CPU,
+  PADDLE_ENFORCE_EQ(dev_ctx.GetPlace().GetType() == AllocationType::CPU,
+                    true,
                     errors::PreconditionNotMet(
                         "oneDNN TransposeGrad kernel must use CPUPlace"));
   if (!x_grad) return;
