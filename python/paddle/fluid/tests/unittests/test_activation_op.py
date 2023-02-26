@@ -139,14 +139,10 @@ class TestExpPrimFp16(TestExpPrimFp32):
         self.only_prim = True
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            self.check_output_with_place(place=core.CUDAPlace(0))
+        self.check_output()
 
     def test_check_grad(self):
-        if core.is_compiled_with_cuda():
-            self.check_grad_with_place(
-                core.CUDAPlace(0), ['X'], 'Out', check_prim=True
-            )
+        self.check_grad(['X'], 'Out', check_prim=True)
 
     def skip_cinn(self):
         self.enable_cinn = False
@@ -1147,6 +1143,7 @@ class TestSqrt(TestActivation, TestParameter):
         self.outputs = {'Out': out}
         self.enable_cinn = False
 
+    # TODO(wanghao107) add prim test
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
@@ -1220,8 +1217,7 @@ class TestSqrtBF16(OpTest):
             'X': OpTest.np_dtype_to_fluid_dtype(convert_float_to_uint16(x))
         }
         self.outputs = {'Out': convert_float_to_uint16(out)}
-        self.enable_fw_comp = False
-        self.enable_rev_comp = False
+        # TODO(wanghao107): add prim test
         self.enable_cinn = False
 
     def init_dtype(self):
@@ -1236,9 +1232,7 @@ class TestSqrtBF16(OpTest):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place, ['X'], 'Out', check_eager=True, check_prim=True
-        )
+        self.check_grad_with_place(place, ['X'], 'Out', check_eager=True)
 
 
 class TestRsqrt(TestActivation):

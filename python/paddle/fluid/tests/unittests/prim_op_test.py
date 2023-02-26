@@ -367,6 +367,11 @@ class PrimForwardChecker:
             )
 
     def check(self):
+        if (
+            self.place is paddle.fluid.libpaddle.CUDAPlace
+            and not paddle.is_compiled_with_cuda()
+        ):
+            return
         self.eager_desire = self.get_eager_desire()
         if self.enable_check_static_comp:
             self.check_static_comp()
@@ -760,6 +765,11 @@ class PrimGradChecker(PrimForwardChecker):
         self.checker_name = "PrimGradChecker"
 
     def check(self):
+        if (
+            self.place is paddle.fluid.libpaddle.CUDAPlace
+            and not paddle.is_compiled_with_cuda()
+        ):
+            return
         self.eager_desire = self.get_eager_desire()
         if self.enable_check_eager_comp:
             self.check_eager_comp()
