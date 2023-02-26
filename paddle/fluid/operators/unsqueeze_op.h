@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -34,7 +35,7 @@ class UnsqueezeKernel : public framework::OpKernel<T> {
     auto *out = context.Output<phi::DenseTensor>("Out");
     auto x_dims = in->dims();
 
-    bool need_dims = false;
+    bool need_resize_out_dims = false;
     if (axes.empty()) {
       auto axes_tensor_list =
           context.MultiInput<phi::DenseTensor>("AxesTensorList");
@@ -42,12 +43,12 @@ class UnsqueezeKernel : public framework::OpKernel<T> {
         axes = GetDataFromTensorList<int>(axes_tensor_list);
       } else if (context.HasInput("AxesTensor")) {
         auto *axes_tensor = context.Input<phi::DenseTensor>("AxesTensor");
-        axes = GetDataFromTensor<int>(axes_tensor);
+        axes = phi::GetVectorFromTensor<int>(axes_tensor);
       }
-      need_dims = true;
+      need_resize_out_dims = true;
     }
     framework::DDim out_dims = out->dims();
-    if (need_dims) {
+    if (need_resize_out_dims) {
       out_dims = GetOutputShape(axes, x_dims);
       out->Resize(out_dims);
     }
