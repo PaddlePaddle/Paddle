@@ -43,10 +43,17 @@ else:
         python_version = platform.python_version()
         os.environ["PY_VERSION"] = python_version
     else:
-        if os.getenv("PY_VERSION") != platform.python_version()[:3]:
+        if os.getenv("PY_VERSION") != str(sys.version_info.major) + '.' + str(
+            sys.version_info.minor
+        ):
             raise RuntimeError(
                 "You set PY_VERSION=%s, but your current python environment is %s, you should keep them consistent!"
-                % (os.getenv("PY_VERSION"), platform.python_version()[:3])
+                % (
+                    os.getenv("PY_VERSION"),
+                    str(sys.version_info.major)
+                    + '.'
+                    + str(sys.version_info.minor),
+                )
             )
 
 # check cmake
@@ -578,7 +585,7 @@ def write_parameter_server_version_py(
 
 # THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
 
-from paddle.fluid.incubate.fleet.base.mode import Mode
+from paddle.incubate.distributed.fleet.base import Mode
 
 BUILD_MODE=Mode.%(mode)s
 
@@ -1295,11 +1302,8 @@ def get_setup_parameters():
         'paddle.fluid.contrib.layers',
         'paddle.fluid.transpiler',
         'paddle.fluid.incubate',
-        'paddle.fluid.incubate.fleet',
+        'paddle.incubate.distributed.fleet',
         'paddle.fluid.incubate.checkpoint',
-        'paddle.fluid.incubate.fleet.base',
-        'paddle.fluid.incubate.fleet.collective',
-        'paddle.fluid.incubate.fleet.utils',
         'paddle.fluid.incubate.fleet.parameter_server',
         'paddle.amp',
         'paddle.cost_model',

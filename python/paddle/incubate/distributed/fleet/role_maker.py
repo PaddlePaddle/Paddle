@@ -13,10 +13,11 @@
 # limitations under the License.
 """Defination of Role Makers."""
 
-from multiprocessing import Process, Manager
-import paddle.fluid as fluid
 import os
 import time
+from multiprocessing import Manager, Process
+
+import paddle.fluid as fluid
 
 __all__ = [
     'Role',
@@ -1036,7 +1037,7 @@ class GeneralRoleMaker(RoleMakerBase):
         return "lo"
 
     def __start_kv_server(self, http_server_d, size_d):
-        from paddle.fluid.incubate.fleet.utils.http_server import KVServer
+        from paddle.distributed.launch.utils.kv_server import KVServer
 
         http_server = KVServer(int(self._http_ip_port[1]), size_d)
         http_server.start()
