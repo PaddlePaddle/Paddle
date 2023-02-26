@@ -491,10 +491,10 @@ def _elementwise_op(helper):
     assert x is not None, 'x cannot be None in {}'.format(original_op_type)
     assert y is not None, 'y cannot be None in {}'.format(original_op_type)
     bf16_and_complex_supported_ops = [
+        "elementwise_add",
         "elementwise_sub",
         "elementwise_mul",
-        "elementwise_max",
-        "elementwise_min",
+        "elementwise_div",
     ]
     if original_op_type in bf16_and_complex_supported_ops:
         data_type = [
