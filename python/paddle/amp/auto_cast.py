@@ -22,44 +22,6 @@ from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
 AMP_LEVEL = core.AmpLevel
 
-# The set of ops that support fp16 calculation and are considered numerically-
-# safe and performance-critical. These ops are always converted to fp16.
-FP16_WHITE_LIST = {
-    'conv2d',
-    'matmul',
-    'matmul_v2',
-    'max_pool2d_with_index',
-    'mul',
-    'fake_quantize_dequantize_abs_max',
-    'fake_quantize_dequantize_moving_average_abs_max',
-}
-
-# The set of ops that support fp16 calculation and are considered numerically-
-# dangerous and whose effects may also be observed in downstream ops.
-FP16_BLACK_LIST = {
-    'exp',
-    'square',
-    'log',
-    'mean',
-    'sum',
-    'cos_sim',
-    'softmax',
-    'softmax_with_cross_entropy',
-    'sigmoid_cross_entropy_with_logits',
-    'c_softmax_with_cross_entropy',
-    'cross_entropy',
-    'cross_entropy2',
-    # default fp32 can avoid return inf when the sum value large than 65504
-    'reduce_sum',
-    # FP16 performance of grad op is worse than that of FP32. Use FP32 by default.
-    'linear_interp_v2',
-    'nearest_interp_v2',
-    'bilinear_interp_v2',
-    'bicubic_interp_v2',
-    'trilinear_interp_v2',
-}
-
-
 AMP_RELATED_FLAGS = [
     'FLAGS_cudnn_exhaustive_search',
     'FLAGS_conv_workspace_size_limit',
@@ -71,27 +33,6 @@ AMP_RELATED_FLAGS_SETTING = {
     'FLAGS_conv_workspace_size_limit': 1000,
     'FLAGS_cudnn_batchnorm_spatial_persistent': 1,
 }
-
-PURE_FP16_WHITE_LIST = copy.copy(FP16_WHITE_LIST)
-
-PURE_FP16_BLACK_LIST = {
-    'lookup_table',
-    'lookup_table_v2',
-    'scatter',
-    'scatter_grad',
-    # FP16 performance of grad op is worse than that of FP32. Use FP32 by default.
-    'linear_interp_v2',
-    'nearest_interp_v2',
-    'bilinear_interp_v2',
-    'bicubic_interp_v2',
-    'trilinear_interp_v2',
-}
-
-BF16_WHITE_LIST = {'conv2d', 'matmul_v2'}
-BF16_BLACK_LIST = set()
-
-PURE_BF16_WHITE_LIST = copy.copy(BF16_WHITE_LIST)
-PURE_BF16_BLACK_LIST = set()
 
 _g_amp_state_ = None
 
