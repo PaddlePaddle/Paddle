@@ -2399,12 +2399,19 @@ def polar(abs, angle, name=None):
             #       [ (6.123233995736766e-17+1j) ,
             #       (-1.4142135623730954-1.414213562373095j)])
     """
-    check_variable_and_dtype(abs, 'abs', ['float32', 'float64'], 'polar')
-    check_variable_and_dtype(angle, 'angle', ['float32', 'float64'], 'polar')
+    check_variable_and_dtype(abs, 'abs', ['float32', 'float64'], 'paddle.polar')
+    check_variable_and_dtype(
+        angle, 'angle', ['float32', 'float64'], 'paddle.polar'
+    )
 
     if abs.dim() != angle.dim():
         raise ValueError(
             f"abs and angle tensor must be the same dimension, but got abs dim {abs.dim()} and angle dim {angle.dim()}."
+        )
+
+    if abs.shape != angle.shape:
+        raise ValueError(
+            f"abs and angle tensor must be the same shape, but got abs shape {abs.shape} and angle dim {angle.shape}."
         )
 
     real = paddle.multiply(abs, paddle.cos(angle))

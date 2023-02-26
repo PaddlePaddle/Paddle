@@ -56,7 +56,7 @@ class TestPolarAPI(unittest.TestCase):
                     feed={'abs': self.abs, 'angle': self.angle},
                     fetch_list=[out1],
                 )
-            out_ref = numpy_polar(abs, angle)
+            out_ref = numpy_polar(self.abs, self.angle)
             np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
         for place in self.place:
@@ -94,7 +94,7 @@ class TestPolarAPI(unittest.TestCase):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             abs = paddle.static.data('abs', shape=[2, 2], dtype="float64")
-            angle = paddle.static.data('angle', shape=[2, 2], dtype="float64")
+            angle = paddle.static.data('angle', shape=[2, 1], dtype="float64")
             self.assertRaises(ValueError, paddle.polar, abs, angle)
         paddle.disable_static()
 
@@ -103,7 +103,7 @@ class TestPolarAPI(unittest.TestCase):
             paddle.disable_static(place)
             abs = paddle.to_tensor(self.abs)
             angle = paddle.to_tensor(self.angle)
-            self.assertRaises(ValueError, paddle.polar, None, angle)
+            self.assertRaises(AttributeError, paddle.polar, None, angle)
             self.assertRaises(AttributeError, paddle.polar, abs, None)
 
 
