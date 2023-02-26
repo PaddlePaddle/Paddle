@@ -25,9 +25,21 @@ void RuntimeContextCachePass::ApplyImpl(ir::Graph* graph) const {
   static constexpr char kNotAllowInferShapeCahce[] =
       "@NOT_ALLOW_INFERSHAPE_CACHE@";
   VLOG(3) << "Applies Runtime Context Cache strategy.";
+  // If a model contains a shape operator, the input of the model is dynamic
+  // shape. In this case, the cache function needs to be turned off
+  bool is_dynamic_shape = false;
   for (const Node* n : graph->Nodes()) {
-    if (n->IsOp() && n->Op()) {
-      n->Op()->SetAttr(framework::kEnableCacheRuntimeContext, true);
+    if (n->IsOp() && n->Op() && n->Op()->Type() == "shape") {
+      is_dynamic_shape = true;
+      break;
+    }
+  }
+
+  if (!is_dynamic_shape) {
+    for (const Node* n : graph->Nodes()) {
+      if (n->IsOp() && n->Op()) {
+        n->Op()->SetAttr(framework::kEnableCacheRuntimeContext, true);
+      }
     }
   }
 
