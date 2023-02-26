@@ -306,7 +306,9 @@ class TestClipOpFp16(unittest.TestCase):
         data = np.random.random(data_shape).astype('float16')
 
         with paddle.static.program_guard(paddle.static.Program()):
-            images = paddle.static.data(name='image1', shape=data_shape, dtype='float16')
+            images = paddle.static.data(
+                name='image1', shape=data_shape, dtype='float16'
+            )
             min = paddle.static.data(name='min1', shape=[1], dtype='float16')
             max = paddle.static.data(name='max1', shape=[1], dtype='float16')
             out = paddle.clip(images, min, max)
