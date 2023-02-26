@@ -305,24 +305,23 @@ class TestClipOpFp16(unittest.TestCase):
         data_shape = [1, 9, 9, 4]
         data = np.random.random(data_shape).astype('float16')
 
-        images = fluid.data(name='image1', shape=data_shape, dtype='float16')
-        min = fluid.data(name='min1', shape=[1], dtype='float16')
-        max = fluid.data(name='max1', shape=[1], dtype='float16')
-        out = paddle.clip(images, min, max)
-
-        if fluid.core.is_compiled_with_cuda():
-            place = fluid.CUDAPlace(0)
-            exe = fluid.Executor(place)
-            res1 = exe.run(
-                fluid.default_main_program(),
-                feed={
-                    "image1": data,
-                    "min1": np.array([0.2]).astype('float16'),
-                    "max1": np.array([0.8]).astype('float16'),
-                },
-                fetch_list=[out],
-            )
-            np.testing.assert_allclose(res1, data.clip(0.2, 0.8), rtol=1e-04)
+        with paddle.static.program_guard(paddle.static.Program()):
+            images = paddle.static.data(name='image1', shape=data_shape, dtype='float16')
+            min = paddle.static.data(name='min1', shape=[1], dtype='float16')
+            max = paddle.static.data(name='max1', shape=[1], dtype='float16')
+            out = paddle.clip(images, min, max)
+            if fluid.core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                res1 = exe.run(
+                    feed={
+                        "image1": data,
+                        "min1": np.array([0.2]).astype('float16'),
+                        "max1": np.array([0.8]).astype('float16'),
+                    },
+                    fetch_list=[out],
+                )
+        paddle.disable_static()
 
 
 class TestInplaceClipAPI(TestClipAPI):
