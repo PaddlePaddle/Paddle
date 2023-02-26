@@ -102,6 +102,22 @@ struct MatmulDescriptor {
     }
   }
 
+  void Release(const bool is_release) {
+    if (is_release) {
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutDestroy(y_desc));
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutDestroy(x_desc));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          dynload::cublasLtMatrixLayoutDestroy(out_desc));
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmulDescDestroy(op_desc));
+
+      op_desc = nullptr;
+      x_desc = nullptr;
+      y_desc = nullptr;
+      out_desc = nullptr;
+    }
+  }
+
+ private:
   void CreateMatrixLayout(cublasLtMatrixLayout_t* desc,
                           cudaDataType type,
                           uint64_t rows,
@@ -130,19 +146,75 @@ struct MatmulDescriptor {
         &stride,
         sizeof(stride)));
   }
-
-  void Release() {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutDestroy(y_desc));
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutDestroy(x_desc));
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatrixLayoutDestroy(out_desc));
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmulDescDestroy(op_desc));
-
-    op_desc = nullptr;
-    x_desc = nullptr;
-    y_desc = nullptr;
-    out_desc = nullptr;
-  }
 };
+
+class MatmulDescriptorCache {
+ public:
+  static MatmulDescriptorCache& Instance() {
+    static MatmulDescriptorCache matmul_desc_cache;
+    return matmul_desc_cache;
+  }
+
+  bool FindDescriptor(const size_t key) {
+    std::lock_guard<std::mutex> lock(cache_mutex_);
+    bool ret = (hash_.find(key) != hash_.end()) ? true : false;
+    return ret;
+  }
+
+  void SetDescriptor(const size_t key, const MatmulDescriptor& desc_ptr) {
+    std::lock_guard<std::mutex> lock(cache_mutex_);
+    // Avoid too much occupation of static memory.
+    constexpr int desc_num_limit = 50;
+    if (hash_num < desc_num_limit) {
+      hash_[key] = desc_ptr;
+      hash_num++;
+    }
+  }
+
+  MatmulDescriptor* GetDescriptor(const size_t key) {
+    std::lock_guard<std::mutex> lock(cache_mutex_);
+    PADDLE_ENFORCE_NE(
+        hash_.find(key),
+        hash_.end(),
+        phi::errors::PreconditionNotMet("The key does not exist."));
+    return &(hash_[key]);
+  }
+
+ private:
+  int hash_num{0};
+  mutable std::mutex cache_mutex_;
+  std::unordered_map<int64_t, MatmulDescriptor> hash_;
+};
+
+template <typename T>
+inline size_t GetDescriptorAndKey(phi::autotune::MatmulCacheKey* matmul_key,
+                                  MatmulDescriptor* desc,
+                                  const int M,
+                                  const int N,
+                                  const int K,
+                                  const bool trans_x,
+                                  const bool trans_y,
+                                  const int batch_size = 1,
+                                  int64_t stride_x = 0,
+                                  int64_t stride_y = 0,
+                                  int64_t stride_out = 0) {
+  size_t sub_key = std::numeric_limits<size_t>::min();
+  // Share the same key for both algorithm cache and descriptor cache.
+  if (matmul_key != nullptr) {
+    auto& mamtul_cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
+    sub_key = matmul_key->GetSubKey(
+        static_cast<int64_t>(MatmulImplType::kImplWithCublasLt));
+  }
+
+  auto& desc_cache = MatmulDescriptorCache::Instance();
+  if (desc_cache.FindDescriptor(sub_key)) {
+    desc = desc_cache.GetDescriptor(sub_key);
+  } else {
+    desc->Create<T>(
+        M, N, K, trans_x, trans_y, batch_size, stride_x, stride_y, stride_out);
+  }
+  return sub_key;
+}
 
 template <typename T>
 struct MatmulWithCublasLt {
@@ -160,9 +232,12 @@ struct MatmulWithCublasLt {
                   const bool trans_y,
                   phi::autotune::MatmulCacheKey* matmul_key = nullptr) {
     MatmulDescriptor desc;
-    desc.Create<T>(M, N, K, trans_x, trans_y);
-    RunImpl(ctx, desc, x_data, y_data, out_data, matmul_key);
-    desc.Release();
+    size_t key =
+        GetDescriptorAndKey<T>(matmul_key, &desc, M, N, K, trans_x, trans_y);
+    RunImpl(ctx, desc, x_data, y_data, out_data, key, matmul_key);
+
+    bool is_release = MatmulDescriptorCache::Instance().FindDescriptor(key);
+    desc.Release(is_release);
   }
 
   static void RunWithBatch(
@@ -181,10 +256,21 @@ struct MatmulWithCublasLt {
       int64_t stride_out,
       phi::autotune::MatmulCacheKey* matmul_key = nullptr) {
     MatmulDescriptor desc;
-    desc.Create<T>(
-        M, N, K, trans_x, trans_y, batch_size, stride_x, stride_y, stride_out);
-    RunImpl(ctx, desc, x_data, y_data, out_data, matmul_key);
-    desc.Release();
+    size_t key = GetDescriptorAndKey<T>(matmul_key,
+                                        &desc,
+                                        M,
+                                        N,
+                                        K,
+                                        trans_x,
+                                        trans_y,
+                                        batch_size,
+                                        stride_x,
+                                        stride_y,
+                                        stride_out);
+    RunImpl(ctx, desc, x_data, y_data, out_data, key, matmul_key);
+
+    bool is_release = MatmulDescriptorCache::Instance().FindDescriptor(key);
+    desc.Release(is_release);
   }
 
   static void RunWithBatch(
@@ -227,6 +313,7 @@ struct MatmulWithCublasLt {
                       const T* x_ptr,
                       const T* y_ptr,
                       T* out_ptr,
+                      const size_t sub_key,
                       phi::autotune::MatmulCacheKey* matmul_key = nullptr) {
     MT alpha = static_cast<MT>(1);
     MT beta = static_cast<MT>(0);
@@ -236,14 +323,11 @@ struct MatmulWithCublasLt {
 
     size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
     phi::Allocator::AllocationPtr workspace = GetWorkspace(ctx, workspace_size);
-
     if (matmul_key != nullptr) {
       auto& cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
-      size_t sub_key = matmul_key->GetSubKey(
-          static_cast<int64_t>(MatmulImplType::kImplWithCublasLt));
-      if (cache.FindSubKey(sub_key)) {
+      if (sub_key != std::numeric_limits<size_t>::min()) {
         best_algo =
-            reinterpret_cast<cublasLtMatmulAlgo_t*>(cache.GetSubKey(sub_key));
+            reinterpret_cast<cublasLtMatmulAlgo_t*>(cache.GetSubAlgo(sub_key));
       } else if (phi::autotune::AutoTuneStatus::Instance().UseAutoTune()) {
         cublasLtMatmulAlgo_t test_algo;
         SearchBestAlgo(ctx,
@@ -263,6 +347,7 @@ struct MatmulWithCublasLt {
         cache.SetSubKey(
             sub_key,
             reinterpret_cast<phi::autotune::MatmulHashValueType*>(&test_algo));
+        MatmulDescriptorCache::Instance().SetDescriptor(sub_key, desc);
         best_algo = &test_algo;
       }
     }

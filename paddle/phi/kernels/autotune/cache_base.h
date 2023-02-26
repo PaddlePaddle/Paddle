@@ -254,7 +254,7 @@ class MatmulAlgorithmsCache : public AlgorithmsCache<KeyT, AlgorithmT> {
     sub_hash_[sub_key] = *algo;
   }
 
-  MatmulHashValueType* GetSubKey(const KeyT& sub_key) {
+  MatmulHashValueType* GetSubAlgo(const KeyT& sub_key) {
     std::lock_guard<std::mutex> lock(*(this->cache_mutex_));
     PADDLE_ENFORCE_NE(
         sub_hash_.find(sub_key),
