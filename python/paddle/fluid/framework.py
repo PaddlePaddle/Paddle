@@ -7420,8 +7420,7 @@ def switch_startup_program(program):
 @signature_safe_contextmanager
 def program_guard(main_program, startup_program=None):
     """
-    :api_attr: Static Graph
-
+    
     Change the global main program and startup program with ``with`` statement.
     Layer functions in the Python ``with`` block will append operators and
     Tensors to the new main programs.
@@ -7445,8 +7444,9 @@ def program_guard(main_program, startup_program=None):
               data = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
               hidden = paddle.static.nn.fc(x=data, size=10, activation='relu')
 
-    Notes: The temporary :code:`Program` can be used if the user does not need
-    to construct either of startup program or main program.
+    Notes: 
+        The temporary :code:`Program` can be used if the user does not need
+        to construct either of startup program or main program.
 
     Examples:
        .. code-block:: python
