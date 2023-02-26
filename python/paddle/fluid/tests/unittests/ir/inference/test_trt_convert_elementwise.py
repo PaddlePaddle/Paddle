@@ -191,6 +191,7 @@ class TrtConvertElementwiseTestOneInputSpecialCase1(TrtLayerAutoScanTest):
                 "elementwise_min",
                 "elementwise_max",
                 "elementwise_floordiv",
+                "elementwise_mod",
             ]:
                 for axis in [-1]:
                     self.dims = len(shape)
@@ -455,6 +456,7 @@ class TrtConvertElementwiseTestTwoInputWithoutBroadcast(TrtLayerAutoScanTest):
                 "elementwise_min",
                 "elementwise_max",
                 "elementwise_floordiv",
+                "elementwise_mod",
             ]:
                 for axis in [0, -1]:
                     self.dims = len(shape)

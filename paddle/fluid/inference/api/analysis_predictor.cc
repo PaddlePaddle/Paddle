@@ -2415,6 +2415,7 @@ USE_TRT_CONVERTER(elementwise_max_tensor);
 USE_TRT_CONVERTER(elementwise_min_tensor);
 USE_TRT_CONVERTER(elementwise_pow_tensor);
 USE_TRT_CONVERTER(elementwise_floordiv_tensor);
+USE_TRT_CONVERTER(elementwise_mod_tensor);
 USE_TRT_CONVERTER(less_than);
 USE_TRT_CONVERTER(greater_than);
 USE_TRT_CONVERTER(logical_or);

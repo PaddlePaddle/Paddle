@@ -1418,7 +1418,8 @@ struct SimpleOpTypeSetTeller : public Teller {
     if (op_type == "elementwise_add" || op_type == "elementwise_mul" ||
         op_type == "elementwise_sub" || op_type == "elementwise_div" ||
         op_type == "elementwise_pow" || op_type == "elementwise_min" ||
-        op_type == "elementwise_max" || op_type == "elementwise_floordiv") {
+        op_type == "elementwise_max" || op_type == "elementwise_floordiv" ||
+        op_type == "elementwise_mod") {
       if (desc.Input("X").size() != 1) {
         VLOG(3) << "The input op's Input(\"X\").size() "
                    "should equal to 1, but received Input(\"X\").size() = "
@@ -1453,11 +1454,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (op_type == "elementwise_add" || op_type == "elementwise_mul" ||
           op_type == "elementwise_sub" || op_type == "elementwise_div" ||
           op_type == "elementwise_pow" || op_type == "elementwise_min" ||
-          op_type == "elementwise_max" || op_type == "elementwise_floordiv") {
+          op_type == "elementwise_max" || op_type == "elementwise_floordiv" ||
+          op_type == "elementwise_mod") {
         if (x_var_desc->GetDataType() ==
             paddle::framework::proto::VarType_Type::VarType_Type_BOOL) {
           VLOG(3) << "These operations "
-                     "(elementwise_add/mul/sub/div/pow/min/max/floordiv) do "
+                     "(elementwise_add/mul/sub/div/pow/min/max/floordiv/mod) do "
                      "not support boolean datatype.";
           return false;
         }
@@ -2606,6 +2608,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_min",
       "elementwise_max",
       "elementwise_floordiv",
+      "elementwise_mod",
       "equal",
       "not_equal",
       "less_than",
@@ -2758,6 +2761,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_min",
       "elementwise_max",
       "elementwise_floordiv",
+      "elementwise_mod",
       "equal",
       "not_equal",
       "less_than",
