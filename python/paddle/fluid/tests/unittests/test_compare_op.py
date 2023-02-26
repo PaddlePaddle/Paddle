@@ -467,16 +467,38 @@ class API_TestElementwise_Equal(unittest.TestCase):
             (res,) = exe.run(fetch_list=[out])
         self.assertEqual((res == np.array([True, True])).all(), True)
 
-    def test_fp16(self):
-        with paddle.static.program_guard(paddle.static.Program()):
+    def test_api_fp16(self):
+        paddle.enable_static()
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            label = paddle.assign(np.array([3, 3], dtype="float16"))
+            limit = paddle.assign(np.array([3, 2], dtype="float16"))
+            out = paddle.equal(x=label, y=limit)
+            if core.is_compiled_with_cuda():
+                place = fluid.CPUPlace()
+                exe = fluid.Executor(place)
+                (res,) = exe.run(fetch_list=[out])
+        self.assertEqual((res == np.array([True, False])).all(), True)
+
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
             label = paddle.assign(np.array([3, 3], dtype="float16"))
             limit = paddle.assign(np.array([3, 3], dtype="float16"))
             out = paddle.equal(x=label, y=limit)
             if core.is_compiled_with_cuda():
-                place = paddle.CUDAPlace(0)
-                exe = paddle.static.Executor(place)
+                place = fluid.CPUPlace()
+                exe = fluid.Executor(place)
                 (res,) = exe.run(fetch_list=[out])
         self.assertEqual((res == np.array([True, True])).all(), True)
+
+    def test_fp16(self):
+        x_np = np.random.random((10, 16)).astype('float16')
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(shape=[10, 16], name='x', dtype='float16')
+            out = paddle.equal(x=label, y=limit)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                exe.run(paddle.static.default_startup_program())
+                out = exe.run(feed={'x': x_np}, fetch_list=[out])
 
 
 class TestCompareOpPlace(unittest.TestCase):
