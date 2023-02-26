@@ -18,8 +18,8 @@
 #include <cuda_runtime.h>  // NOLINT
 
 #include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/float16.h"
-#include "paddle/phi/core/data_type.h"
 
 namespace phi {
 namespace backends {
