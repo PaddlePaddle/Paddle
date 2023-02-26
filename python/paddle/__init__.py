@@ -682,5 +682,5 @@ __all__ = [  # noqa
     'triu_indices',
     'take',
     'frexp',
-    'polar'
+    'polar',
 ]
