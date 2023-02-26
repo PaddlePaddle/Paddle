@@ -212,6 +212,8 @@ XPUOpMap& get_kl2_ops() {
                      phi::DataType::FLOAT16,
                      phi::DataType::INT64,
                      phi::DataType::INT32})},
+      {"embedding_with_eltwise_add_xpu",
+       XPUKernelSet({phi::DataType::FLOAT32})},
       {"empty",
        XPUKernelSet({phi::DataType::INT64,
                      phi::DataType::INT32,
@@ -771,6 +773,14 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::INT32})},
       {"randint", XPUKernelSet({phi::DataType::INT32, phi::DataType::INT64})},
       {"group_norm", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"meshgrid",
+       XPUKernelSet({phi::DataType::FLOAT32,
+                     phi::DataType::INT32,
+                     phi::DataType::INT64})},
+      {"expand_v2_grad",
+       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::INT32})},
+      {"isnan_v2",
+       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
 
       // AddMore
       {"sequence_conv", XPUKernelSet({phi::DataType::FLOAT32})},

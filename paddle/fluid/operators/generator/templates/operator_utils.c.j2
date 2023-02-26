@@ -12,7 +12,7 @@ class {{op_name | to_pascal_case}}OpMaker : public framework::OpProtoAndCheckerM
 {{add_output(loop.index0, output, op_name)}};
     {% endfor %}
     {% for attr in op["attrs"] %}
-      {% if attr["fluid_name"] in op["kernel"]["param"] %}
+      {% if attr["fluid_name"] %}
 {{add_attr(loop.index0, attr, op_name)}};
       {% endif %}
     {% endfor %}
@@ -260,6 +260,7 @@ paddle::small_vector<const char*> outputs {
 {% set kernel = op["kernel"] %}
 phi::KernelKey GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const override {
+    phi::KernelKey kt;
 {%if kernel["data_type"] is not none %}{# data type ---------------------------------#}
   {% if kernel["data_type"]["candidates"] | length == 1 %}
     {% set data_type_arg = kernel["data_type"]["candidates"][0] %}
@@ -279,30 +280,70 @@ phi::KernelKey GetExpectedKernelType(
     data_type = framework::OperatorWithKernel::IndicateVarDataType(ctx, {{data_type_args[1] | to_opmaker_name}});
   }
   {% endif %}
+  kt = phi::KernelKey(data_type, ctx.GetPlace());
+{% elif "complex_promote" in op and "forward" not in op%} {# compext data promote #}
+  {% set inputs = op["complex_promote"]%}
+  auto data_type =
+        OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "{{inputs[0]}}", "{{inputs[1]}}");
+  kt = phi::KernelKey(data_type, ctx.GetPlace());
+{% endif -%}
+{%- if kernel["backend"] is not none %}
+    {% if kernel["data_type"] is none %}
+    kt = OperatorWithKernel::GetExpectedKernelType(ctx);
+    {% endif %}
+    kt.set_backend(
+        phi::TransToPhiBackend(ctx.Input<phi::DenseTensor>("{{kernel["backend"]["candidates"][0]}}")->place()));
 {% endif %}
-  return phi::KernelKey(data_type, ctx.GetPlace());
+{% if "force_backend" in op["kernel"] and op["kernel"]["force_backend"] == "force_cpu" %}
+  {% if  kernel["backend"] is none and kernel["data_type"] is none %} {# only force_cpu#}
+    kt = OperatorWithKernel::GetExpectedKernelType(ctx);
+  {% endif %}
+    if (ctx.Attr<bool>("force_cpu")) {
+      kt.set_backend(phi::Backend::CPU);
+    }
+{% endif %}
+  return kt;
 }
-{% endmacro %}
+{% endmacro -%}
 
-{% macro get_kernel_for_var(op) %} {# only for data_transform #}
-{% set skip_args = op["data_transform"]["skip_transform"] %}
-{% set var_name = "var_name" %}
-{% set skip_args_len = skip_args | length %}
+{% macro get_kernel_for_var(op) %}
+{% set skip_args = none %}
+{% if op["data_transform"] is not none%}
+  {% if "skip_transform" in op["data_transform"] %}
+  {# TODO:(lizhiyu) support skip_transform and support_trans_dtype at the same time#}
+    {% set skip_args = op["data_transform"]["skip_transform"] %}
+  {% elif "support_trans_dtype" in op["data_transform"] %}
+    {% set skip_args = op["data_transform"]["support_trans_dtype"] %}
+  {% endif %}
+{% endif %}
+{% set var_name = "var_name" -%}
+
 phi::KernelKey GetKernelTypeForVar(
     const std::string& {{var_name}},
     const phi::DenseTensor& tensor,
     const phi::KernelKey& expected_kernel_type) const override {
-    
+{%if skip_args is not none%}{# deal data_transform #}
+  {% set skip_args_len = skip_args | length %}
       if (
         {%- for skip_arg in skip_args -%}
           var_name == "{{ skip_arg }}"
           {%- if skip_args_len != 1 and loop.index != skip_args_len %} || {% endif -%}
         {%- endfor -%}
       ){
+    {% if "skip_transform" in op["data_transform"] %}
         return phi::KernelKey(phi::Backend::ALL_BACKEND,
                             expected_kernel_type.layout(),
                             expected_kernel_type.dtype());
+    {% elif "support_trans_dtype" in op["data_transform"] %}
+       return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
+    {% endif %}
       }
+{% else %}{# deal complex_promote #}
+      if (framework::IsComplexType(expected_kernel_type.dtype())) {
+      // only promote inputs’s types when contains complex input
+        return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
+      }
+{% endif %}
       else{
           return phi::KernelKey(
             tensor.place(), tensor.layout(), expected_kernel_type.dtype());
@@ -317,20 +358,26 @@ class {{op["op_name"] | to_pascal_case}}Op : public framework::OperatorWithKerne
   using framework::OperatorWithKernel::OperatorWithKernel;
   {# ----------- get expected kernel type function -------------------------- #}
   {% set kernel = op["kernel"] %}
-  {% if kernel["data_type"] is not none %}
+  {% if kernel["data_type"] is not none or kernel["backend"] is not none
+      or kernel["force_backend"] is not none
+      or "complex_promote" in op or "data_transform" in op %}
  protected:
-    {% filter indent(2, True)%}
+    {% if kernel["data_type"] is not none or kernel["backend"] is not none
+      or kernel["force_backend"] is not none or "complex_promote" in op %}
+      {% filter indent(2, True)%}
 {{get_expected_kernel(op)}}
-    {% endfilter %}
-    {%- if "data_transform" in op and op["data_transform"] is not none -%}
-      {%- if "skip_transform" in op["data_transform"] -%}
-        {% filter indent(2, True) %}
+      {% endfilter %}
+    {% endif %}
+  {% endif %}
+  {%- if "data_transform" in op and op["data_transform"] is not none -%}
+      {% filter indent(2, True) %}
+{{get_kernel_for_var(op)}}
+      {% endfilter %}
+  {%- elif "complex_promote" in op and op["complex_promote"] is not none -%}
+      {% filter indent(2, True) %}
 {{get_kernel_for_var(op)}}
         {% endfilter %}
       {%- endif %}
-    {%- endif -%}
-{# TODO(lizhiyu): add the 'support_trans_dtype' #}
-  {% endif %}
 };
 
 DECLARE_INFER_SHAPE_FUNCTOR({{op["op_name"]}}, {{op["op_name"] | to_pascal_case}}InferShapeFunctor,
@@ -411,6 +458,9 @@ REGISTER_OP_VERSION({{name}})
       {% endif %}
       {% if "delete_attr" in action %}
         .DeleteAttr("{{action["delete_attr"]}}", "{{action["comment"]}}"){{")" if loop.last}}
+      {% endif %}
+      {% if "modify_attr" in action %}
+        .ModifyAttr("{{action["modify_attr"]}}", "{{action["comment"]}}", {{action["default"]}}){{")" if loop.last}}
       {% endif %}
       {% if "fix_bug" in action %}
         .BugfixWithBehaviorChanged("{{action["comment"]}}"){{")" if loop.last}}
@@ -644,7 +694,11 @@ class {{op_name | to_composite_grad_opmaker_name}} : public prim::CompositeGradO
 {% macro construct_composite_attr(attrs, fluid_attrs, attr_dict) %}
   {% set attrs_length = attrs | length %}
   {% for i in range(attrs_length) %}
-    {% set attrs_data_type = attr_dict[attrs[i]]["typename"] | to_op_attr_type %}
+    {% if "data_type" in attr_dict[attrs[i]] %}
+      {% set attrs_data_type = attr_dict[attrs[i]]["data_type"]%}
+    {% else %}
+      {% set attrs_data_type = attr_dict[attrs[i]]["typename"] | to_op_attr_type %}
+    {%- endif %}
     const {{attrs_data_type}} {{attrs[i]}} = this->Attr<{{attrs_data_type}}>("{{fluid_attrs[i]}}");
   {% endfor %}
 {%- endmacro %}

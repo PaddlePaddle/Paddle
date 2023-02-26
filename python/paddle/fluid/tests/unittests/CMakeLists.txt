@@ -1206,6 +1206,7 @@ set(TEST_CINN_OPS
     test_softmax_op
     test_expand_v2_op
     test_reduce_op
+    test_slice_op
     test_elementwise_add_op
     test_elementwise_sub_op
     test_elementwise_div_op
