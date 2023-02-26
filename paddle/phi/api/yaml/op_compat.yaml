@@ -685,6 +685,15 @@
     attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
+- op : greater_than
+  inputs :
+    x : X
+    y : Y
+  outputs :
+    out : Out
+  extra :
+    attrs : [int axis = -1, bool force_cpu = false]
+
 - op : grid_sample(grid_sampler)
   backward : grid_sample_grad (grid_sampler_grad)
   inputs :
@@ -854,6 +863,15 @@
     {x : X, y : Y, weight : Weight}
   outputs :
     out : Out
+
+- op : less_equal
+  inputs :
+    x : X
+    y : Y
+  outputs :
+    out : Out
+  extra :
+    attrs : [int axis = -1, bool force_cpu = false]
 
 - op : lgamma
   inputs :
