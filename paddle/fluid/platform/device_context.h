@@ -151,15 +151,7 @@ class MLUDeviceContext;
 
 #ifdef PADDLE_WITH_XPU
 namespace xpu = baidu::xpu::api;
-class XPUDeviceContext : public phi::XPUContext {
- public:
-  XPUDeviceContext();
-  explicit XPUDeviceContext(XPUPlace place);
-  virtual ~XPUDeviceContext();
-  Eigen::DefaultDevice* eigen_device() const { return nullptr; }
-  xpuStream stream() const { return XPUContext::x_context()->xpu_stream; }
-  void CreateStream() { XPUContext::CreateStream(); }
-};
+using XPUDeviceContext = phi::XPUContext;
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -264,23 +256,7 @@ class CUDAPinnedDeviceContext
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-class CustomDeviceContext : public phi::CustomContext {
- public:
-  explicit CustomDeviceContext(CustomPlace place);
-  virtual ~CustomDeviceContext();
-
-  Eigen::DefaultDevice* eigen_device() const { return nullptr; }
-
-  template <typename Callback>
-  void AddStreamCallback(Callback&& callback) const {
-    return stream_->AddCallback(callback);
-  }
-
-  void WaitStreamCallback() const { return stream_->WaitCallback(); }
-
- private:
-  std::shared_ptr<phi::stream::Stream> stream_;
-};
+using CustomDeviceContext = phi::CustomContext;
 #endif
 
 void EmplaceExternalContext(

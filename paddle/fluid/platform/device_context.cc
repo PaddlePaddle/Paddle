@@ -146,19 +146,6 @@ void IPUDeviceContext::Wait() const {
 IPUDeviceContext::~IPUDeviceContext() {}
 
 #endif
-#ifdef PADDLE_WITH_XPU
-XPUDeviceContext::XPUDeviceContext() : phi::XPUContext() {
-  phi::XPUContext::Init();
-}
-
-XPUDeviceContext::~XPUDeviceContext() {}
-
-XPUDeviceContext::XPUDeviceContext(XPUPlace place) : phi::XPUContext(place) {
-  phi::XPUContext::Init();
-  LOG_FIRST_N(WARNING, 1) << "Please NOTE: xpu device: "
-                          << static_cast<int>(place.device);
-}
-#endif
 
 #ifdef PADDLE_WITH_ASCEND_CL
 NPUDeviceContext::NPUDeviceContext(NPUPlace place) : place_(place) {
