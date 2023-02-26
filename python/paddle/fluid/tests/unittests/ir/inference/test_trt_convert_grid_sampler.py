@@ -25,6 +25,10 @@ import paddle.inference as paddle_infer
 
 class TrtConvertGridSampler(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        self.trt_param.workspace_size = 1073741824
+        ver = paddle_infer.get_trt_compile_version()
+        if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8500:
+            return False
         return True
 
     def sample_program_configs(self):
@@ -34,6 +38,12 @@ class TrtConvertGridSampler(TrtLayerAutoScanTest):
         def generate_input2():
             return np.random.random([1, 3, 3, 2]).astype(np.float32)
 
+        desc = {
+            "mode": "bilinear",
+            "padding_mode": "border",
+            "align_corners": True,
+        }
+
         ops_config = [
             {
                 "op_type": "grid_sampler",
@@ -42,7 +52,7 @@ class TrtConvertGridSampler(TrtLayerAutoScanTest):
                     "Grid": ["grid_data"],
                 },
                 "op_outputs": {"Output": ["output_data"]},
-                "op_attrs": {},
+                "op_attrs": desc,
             }
         ]
 

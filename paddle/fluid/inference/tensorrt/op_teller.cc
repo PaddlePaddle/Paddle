@@ -2542,6 +2542,34 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "grid_sampler") {
+#if !IS_TRT_VERSION_GE(8500)
+      VLOG(3) << "grid_sampler is not supported when TensorRT < 8.5";
+      return false;
+#else
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the grid_sampler does not support "
+                   "static shape yet";
+        return false;
+      }
+
+      if (!desc.HasAttr("mode") || !desc.HasAttr("padding_mode") ||
+          !desc.HasAttr("align_corners")) {
+        VLOG(3) << "grid_sampler need attributes : mode, padding_mode, "
+                   "align_corners";
+        return false;
+      }
+
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+#endif
+    }
+
     if (use_no_calib_int8) {
       return int8_teller_set.count(op_type);
     } else {
@@ -2701,7 +2729,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "expand_v2",
       "fuse_eleadd_transpose",
       "skip_groupnorm_act",
-      "preln_groupnorm_act"};
+      "preln_groupnorm_act",
+      "grid_sampler"};
 
   std::unordered_set<std::string> teller_set{
       "mul",
@@ -2853,7 +2882,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "expand_v2",
       "fuse_eleadd_transpose",
       "skip_groupnorm_act",
-      "preln_groupnorm_act"};
+      "preln_groupnorm_act",
+      "grid_sampler"};
 };
 
 struct GenericPluginTeller : public Teller {

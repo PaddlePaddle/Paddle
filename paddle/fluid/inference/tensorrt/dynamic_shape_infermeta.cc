@@ -360,6 +360,7 @@ nvinfer1::DimsExprs PNormInferMeta(
   return output;
 }
 
+#if !IS_TRT_VERSION_GE(8500)
 nvinfer1::DimsExprs GridSamplerInferMeta(
     int output_index,
     const nvinfer1::DimsExprs* inputs,
@@ -386,6 +387,7 @@ nvinfer1::DimsExprs GridSamplerInferMeta(
   }
   return output;
 }
+#endif
 
 PD_REGISTER_DYNAMIC_INFER_META_FN(gather_nd, GatherNdInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(yolo_box, YoloBoxInferMeta);
@@ -395,7 +397,9 @@ PD_REGISTER_DYNAMIC_INFER_META_FN(scatter_nd_add, ScatterNdAddInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(inverse, UnchangedInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(moe, MoeInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(pad3d, Pad3dInferMeta);
+#if !IS_TRT_VERSION_GE(8500)
 PD_REGISTER_DYNAMIC_INFER_META_FN(grid_sampler, GridSamplerInferMeta);
+#endif
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
